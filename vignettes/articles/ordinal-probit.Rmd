@@ -61,7 +61,7 @@ should be integer-coded `1, ..., K` within each ordinal trait.
 ```{r}
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    phylo_unique(species, tree = tree),
+    phylo_indep(species, tree = tree),
   data = df_long,
   trait = "trait",
   unit = "individual",
@@ -77,7 +77,7 @@ before fitting.
 ```{r}
 fit_wide <- gllvmTMB(
   traits(display_score, parasite_score, rank_score) ~ 1 +
-    phylo_unique(species, tree = tree),
+    phylo_indep(species, tree = tree),
   data = df_wide,
   unit = "individual",
   cluster = "species",
@@ -87,9 +87,11 @@ fit_wide <- gllvmTMB(
 
 The species-axis phylogenetic keyword already names the grouping axis,
 so it is unchanged between long and wide forms. For non-phylogenetic
-ordinal traits, replace `phylo_unique()` with the ordinary covariance
+ordinal traits, replace `phylo_indep()` with the ordinary covariance
 keyword you need, such as `latent()` or `indep()`. The family does
-not change the 4 x 5 covariance keyword grammar.
+not change the 4 x 5 covariance keyword grammar. The older
+`phylo_unique()` spelling remains soft-deprecated compatibility syntax
+for the same explicit diagonal-Psi idea.
 
 ## Cutpoints
 

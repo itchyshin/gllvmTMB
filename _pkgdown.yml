@@ -36,6 +36,8 @@ navbar:
       - text: Suggesting Lambda constraint
         href: articles/lambda-constraint-suggest.html
       - text: Concepts
+      - text: Plain-English vocabulary
+        href: articles/gllvm-vocabulary.html
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
       - text: Formula keyword grid
@@ -69,6 +71,7 @@ articles:
 
   - title: Concepts
     contents:
+    - articles/gllvm-vocabulary
     - articles/covariance-correlation
     - articles/api-keyword-grid
     - articles/response-families
@@ -93,7 +96,6 @@ articles:
     - articles/random-slopes-nongaussian
     - articles/cross-lineage-coevolution
     - articles/behavioural-syndromes
-    - articles/gllvm-vocabulary
     - articles/mixed-family-extractors
     - articles/ordinal-probit
     - articles/stacked-trait-gllvm
@@ -125,33 +127,38 @@ reference:
     - gllvm_julia_setup
     - gllvmTMB_julia-methods
 
-  - title: Core covariance keywords
-    desc: First-line formula keywords for the 4 x 5 grid (correlation source x mode)
+  - title: First-line covariance keywords
+    desc: Formula keywords to teach first for the 4 x 5 grid; soft-deprecated explicit-Psi compatibility aliases are grouped below
     contents:
     - latent
-    - unique
     - indep
     - dep
     - animal_scalar
-    - animal_unique
     - animal_indep
     - animal_dep
     - animal_latent
     - pedigree_to_A
     - pedigree_to_Ainv_sparse
     - phylo_scalar
-    - phylo_unique
     - phylo_indep
     - phylo_dep
     - phylo_latent
     - spatial_scalar
-    - spatial_unique
     - spatial_indep
     - spatial_dep
     - spatial_latent
     - kernel_latent
     - meta_V
     - block_V
+
+  - title: Soft-deprecated covariance compatibility syntax
+    desc: Explicit diagonal-Psi spellings retained for old formulas; new standalone diagonal examples use indep / *_indep, and ordinary decomposed examples use latent defaults
+    contents:
+    - unique
+    - animal_unique
+    - phylo_unique
+    - spatial_unique
+    - kernel_unique
 
   - title: Advanced formula keywords and shorthands
     desc: Useful after the core grid is familiar; public articles prefer the explicit core keywords

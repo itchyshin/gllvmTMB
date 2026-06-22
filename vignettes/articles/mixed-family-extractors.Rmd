@@ -88,7 +88,7 @@ A single `gllvmTMB()` call handles the compact mixed-family case. The
 formula has a single shared rank-1 latent factor. Ordinary `latent()`
 carries the per-trait $\boldsymbol\Psi$ residual by default, so the
 implied unit-level covariance is the full ordinary decomposition
-$\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\boldsymbol\Psi)$
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$
 rather than the shared low-rank axis alone.
 
 ```{r fit, results='hide'}
@@ -131,7 +131,7 @@ PASS / WARN / FAIL count from `check_gllvmTMB(fit)`.
 `extract_Sigma()` returns the trait-covariance matrix on the latent
 scale. For this mixed-family fit, the fitted unit-level matrix is the
 full ordinary decomposition that ordinary `latent()` carries by
-default ($\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\boldsymbol\Psi)$);
+default ($\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$);
 `link_residual = "auto"` adds the per-family **link residual** to the
 diagonal when a total latent-scale correlation is requested. The link
 residual is the variance of the
@@ -175,7 +175,7 @@ plot_Sigma_heatmap(
 By default `link_residual = "auto"` adds the per-family residual to
 the diagonal. Passing `link_residual = "none"` returns the structural
 latent-scale matrix
-$\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\boldsymbol\Psi)$
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$
 that ordinary `latent()` carries -- useful for comparing factor
 structure across fits but not for interpreting correlations between
 traits of different families.

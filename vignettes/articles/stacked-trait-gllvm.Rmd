@@ -52,7 +52,7 @@ needed several separate analyses for:
    phylogeny? (`indep(species)`)
 5. **Residual spatial autocorrelation**: do nearby sites' trait values
    look similar after accounting for the predictors and the
-   above? (`spatial_unique(coords)`)
+   above? (`spatial_indep(coords)`)
 
 The corresponding decomposition is
 
@@ -123,8 +123,8 @@ str(df)
 mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.07)
 
 fit <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
-          spatial_unique(0 + trait | coords, mesh = mesh) +
+          value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
+          spatial_indep(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
           latent(0 + trait | site_species, d = 1) +
           indep(0 + trait | species) +
@@ -137,7 +137,7 @@ fit <- gllvmTMB(
 Each formula term carries a specific role:
 
 - `0 + trait + (0 + trait):env_*` -- trait-specific intercepts and slopes.
-- `spatial_unique(0 + trait | coords)` -- fast SPDE spatial term using
+- `spatial_indep(0 + trait | coords)` -- fast marginal diagonal SPDE spatial term using
   the precomputed `mesh`. Replaces the slow dense
   `glmmTMB::glmmTMB(... + exp(coords + 0 | trait))` /
   `... + gau(...)` paths.
@@ -206,7 +206,7 @@ For the non-spatial covstructs (`latent()`, `indep()`,
 `gllvmTMB`'s log-likelihood matches `glmmTMB::glmmTMB()` exactly to
 TMB tolerance; see `tests/testthat/test-stage[2-3]-*.R` in the source
 for worked examples. The advantage over `glmmTMB` is that the same fit
-can include `spatial_unique(0 + trait | coords)` for sparse-precision
+can include `spatial_indep(0 + trait | coords)` for sparse-precision
 spatial fields, which is dramatically faster than `exp()` / `gau()`
 on more than a few hundred sites (Anderson et al. 2025).
 

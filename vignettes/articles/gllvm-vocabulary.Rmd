@@ -64,7 +64,9 @@ $\boldsymbol{\Psi} = \mathrm{diag}(\psi_1, \ldots, \psi_T)$ is
 diagonal by construction. Ordinary `latent()` carries this
 $\boldsymbol{\Psi}$ by default; `latent(..., unique = FALSE)` drops it
 to give the loadings-only subset, and a separate diagonal-only tier is
-written with `indep()`.
+written with `indep()`. The older `unique()` / `*_unique()` functions
+remain soft-deprecated compatibility syntax for explicit diagonal-Psi
+formulas.
 *Math*: $\boldsymbol{\Sigma} = \boldsymbol{\Lambda}
 \boldsymbol{\Lambda}^{\top} + \boldsymbol{\Psi}$ (factor
 decomposition); $\psi_t$ is the $t$-th diagonal of

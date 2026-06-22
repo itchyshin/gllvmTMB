@@ -253,7 +253,7 @@ cors_b
 
 ### Phylogenetic signal $H^2$
 
-When the fit has both `phylo_unique(species)` and
+When the fit has both `phylo_indep(species)` and
 `indep(0 + trait | species)`, $H^2 = \sigma^2_{\mathrm{phy}} /
 (\sigma^2_{\mathrm{phy}} + \sigma^2_{\mathrm{non}})$ is profileable via a
 single linear contrast (analogous to repeatability). For richer

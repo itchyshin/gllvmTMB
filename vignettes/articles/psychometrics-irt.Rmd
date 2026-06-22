@@ -200,7 +200,7 @@ fit_exp
 The exploratory loadings are rotation-invariant. Ordinary `latent()`
 carries the per-trait $\boldsymbol\Psi$ residual by default, so the
 implied unit-level covariance is the full ordinary decomposition
-$\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\boldsymbol\Psi)$;
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$;
 the rotation-invariant loadings here describe its shared low-rank axis:
 
 ```{r sigma-exp}

@@ -17033,3 +17033,327 @@ multi-kernel `kernel_latent()` remains latent-only in the first engine wave,
 explicit multi-kernel `kernel_unique()` Psi is deferred, `spatial_latent()` is
 blocked by #526, and `lambda-constraint-suggest.Rmd` article rendering remains
 separate pre-existing debt.
+
+## 2026-06-22 (Codex / Ada + Pat team) -- article accessibility and unique compatibility cleanup
+
+Branch/worktree: `/private/tmp/gllvmtmb-article-accessibility-20260622` on
+`codex/article-accessibility-unique-cleanup-20260622`, created from
+`origin/main` after #527 merged. The dirty mission-control checkout at
+`/Users/z3437171/Dropbox/Github Local/gllvmTMB` was not touched.
+
+Pre-edit coordination checks before shared-file edits:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,url,isDraft`
+  -> only open PR was draft #528
+  `codex/kernel-latent-psi-fold-20260621`, a separate kernel lane.
+- `git log --all --oneline --since="6 hours ago"` -> recent commits
+  `bfdab63` (kernel PR head), `b3fc729` (#527 merge), and unrelated
+  `2e6e225` power-pilot accumulation; no competing article edit detected.
+
+Implemented documentation slice:
+
+- Reworked the homepage and Getting Started opening to define
+  `Sigma = Lambda Lambda^T + Psi`, `Psi = diag(psi_1, ..., psi_T)`,
+  `Lambda`, and per-trait `psi_t` before readers encounter model-output
+  interpretation.
+- Promoted `gllvm-vocabulary` into the pkgdown Concepts path.
+- Moved `unique()` / source-specific `*_unique()` / `kernel_unique()` wording
+  to soft-deprecated or explicit-Psi compatibility language in public article
+  sources. New standalone diagonal examples now prefer `indep()` /
+  source-specific `*_indep()` where the current engine supports that route.
+- Kept one honest exception labelled as a guarded path:
+  random-regression augmented diagonal slopes still require ordinary
+  `unique(1 + x | unit)` for the current extractor path. After #528 merged,
+  cross-lineage kernel examples were updated to folded `kernel_latent()`.
+
+Subagent review used:
+
+- Pat / user_tester reviewed the landing page and Getting Started for applied
+  reader accessibility.
+- Rose / systems_auditor scanned `unique()` / `*_unique()` and Lambda/Psi
+  terminology.
+- pkgdown_editor reviewed navigation and learning-path risks.
+
+Exact validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load_all ok\n")'`
+  -> PASS (`load_all ok`).
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `Rscript --vanilla -e 'pkgdown::build_home(quiet = FALSE, new_process = FALSE)'`
+  -> failed because pkgdown 2.1.3 `build_home()` has no `new_process`
+  argument; rerun below used the supported signature.
+- `Rscript --vanilla -e 'pkgdown::build_home(quiet = FALSE); articles <- c("gllvmTMB", "articles/gllvm-vocabulary", "articles/api-keyword-grid", "articles/covariance-correlation"); for (a in articles) { message("BUILD ", a); pkgdown::build_article(a, lazy = FALSE, quiet = FALSE, new_process = FALSE) }'`
+  -> PASS; rendered `index.html`, `gllvmTMB`, `gllvm-vocabulary`,
+  `api-keyword-grid`, and `covariance-correlation`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/functional-biogeography", lazy = FALSE, quiet = FALSE, new_process = FALSE)'`
+  -> PASS after changing evaluated `phylo_indep(species, tree = tree)` to
+  `phylo_indep(0 + trait | species, tree = tree)`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/phylogenetic-gllvm", lazy = FALSE, quiet = FALSE, new_process = FALSE)'`
+  -> PASS after making the two-Psi helper calls explicit compatibility
+  examples (`eval = FALSE`), because those helpers still key on
+  `phylo_latent(..., unique = FALSE) + phylo_unique(...)`.
+- `Rscript --vanilla -e 'articles <- c("articles/profile-likelihood-ci", "articles/mixed-family-extractors", "articles/psychometrics-irt", "articles/pitfalls", "articles/random-regression-reaction-norms"); for (a in articles) { message("BUILD ", a); pkgdown::build_article(a, lazy = FALSE, quiet = FALSE, new_process = FALSE) }'`
+  -> rendered profile-likelihood, mixed-family, psychometrics, and pitfalls;
+  failed at `random-regression-reaction-norms` because the article requested
+  `extract_Sigma(level = "unit_slope", part = "unique")` without the current
+  explicit ordinary `unique()` random-regression companion.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/random-regression-reaction-norms", lazy = FALSE, quiet = FALSE, new_process = FALSE)'`
+  -> PASS after restoring `unique(1 + temperature | individual)` /
+  long-form equivalent and labelling it as a guarded compatibility path.
+- Earlier focused renders in this branch also passed for
+  `articles/model-selection-latent-rank`, `articles/morphometrics`,
+  `articles/choose-your-model`, `articles/stacked-trait-gllvm`,
+  `articles/ordinal-probit`, `articles/animal-model`, and
+  `articles/cross-lineage-coevolution`.
+- Post-#528 rebase update:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/cross-lineage-coevolution", lazy = FALSE, quiet = FALSE, new_process = FALSE)'`
+  -> PASS after replacing explicit `kernel_unique()` companions with the
+  folded `kernel_latent()` default from merged PR #528.
+- Post-#528 rebase lightweight gates:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS
+  (`No problems found`);
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load_all ok\n")'`
+  -> PASS (`load_all ok`);
+  `git diff --check HEAD~1..HEAD` -> PASS.
+- `git diff --check` -> PASS.
+
+Exact stale-wording scans:
+
+- ``rg -n 'Lamdba|depreciat|diag\(psi\)|diag\(\\boldsymbol\\Psi\)|mathrm\{diag\}\(\\boldsymbol\\Psi\)|the Greek letter Psi|trait-specific diagonal from `unique\(\)`|why `unique\(\)` matters|bare phylo_latent|loadings-only by default|Use `phylo_latent\(\) \+ phylo_unique|Use `animal_latent\(\) \+ animal_unique|Use `spatial_unique|append `spatial_unique|recommended when traits|unique\(\) matters|ordinary `latent\(\)` by default' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd``
+  -> no matches.
+- ``rg -n '`[a-z_]*unique\(|\b[a-z_]*unique\(' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd``
+  -> remaining hits manually reviewed; survivors are compatibility labels,
+  source tables, or guarded random-regression slope examples.
+- ``rg -n 'Sigma = Lambda|Lambda Lambda\^T|Psi|psi_t|loading matrix|trait-specific diagonal|soft-deprecated|compatibility' README.md vignettes/gllvmTMB.Rmd vignettes/articles/gllvm-vocabulary.Rmd vignettes/articles/covariance-correlation.Rmd``
+  -> confirmed the landing sources now define `Lambda`, `Psi`, and `psi_t`
+  in the intended reader-facing places.
+
+Not run:
+
+- Full `pkgdown::build_articles(lazy = FALSE)`, because the repository has the
+  known pre-existing `lambda-constraint-suggest.Rmd` unconstrained-loading
+  Wald-CI failure recorded in the animal/kernel logs. The touched
+  `lambda-constraint.Rmd` page was not fully rendered in this branch; an
+  exploratory render reached the expensive `vp-profile` chunk and was
+  interrupted rather than used as validation.
+- `devtools::test()` / `devtools::check()`, because this slice changed article,
+  README, and pkgdown navigation prose only; no R, TMB, Rd, or parser code was
+  edited.
+
+After-task report:
+`docs/dev-log/after-task/2026-06-22-article-accessibility-unique-cleanup.md`.
+
+## 2026-06-22 follow-up -- full article build after Lambda-suggestion guard
+
+Maintainer follow-up question: are all articles clean, and can the
+accessibility/article cleanup be implemented rather than left as a claim?
+
+Branch/worktree: `/private/tmp/gllvmtmb-article-accessibility-20260622` on
+`codex/article-accessibility-unique-cleanup-20260622`. The dirty
+mission-control checkout at `/Users/z3437171/Dropbox/Github Local/gllvmTMB`
+was not touched.
+
+Pre-edit coordination checks before updating shared docs / pkgdown config:
+
+- `gh pr list --state open`
+  -> only open PR was draft #529
+  `codex/article-accessibility-unique-cleanup-20260622`.
+- `git log --all --oneline --since="6 hours ago"`
+  -> current article PR head `af63c90`, #528 merge `1264fbb`, #528 branch head
+  `bfdab63`, #527 merge `b3fc729`, and unrelated power-pilot commit
+  `2e6e225`; no competing article edit detected.
+
+Implementation updates:
+
+- `vignettes/articles/lambda-constraint-suggest.Rmd`
+  now handles the current `profile_retention` fixture where the suggester
+  returns zero explicit pins. The article prints a diagnostic table instead of
+  calling `loading_ci()` on a rotation-ambiguous loading matrix, and the prose
+  explains that readers should use `Sigma` / communality or add confirmatory
+  pins before interpreting individual `Lambda` entries.
+- `_pkgdown.yml` now lists `gllvm-vocabulary` only once in the article index:
+  public Concepts yes, internal drafts no. The June 9 navigation decision still
+  keeps profile-CI, troubleshooting-profile, cross-lineage, JSDM, and other
+  technical pages buildable under `Internal drafts and technical notes`, not in
+  the public dropdown.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/lambda-constraint-suggest", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS; rendered `pkgdown-site/articles/lambda-constraint-suggest.html`.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> PASS. This full article render now clears the formerly recorded
+  `lambda-constraint-suggest` blocker and also renders the slow
+  `lambda-constraint` page through its profile chunk.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load_all ok\n")'`
+  -> PASS (`load_all ok`).
+- `git diff --check`
+  -> PASS.
+- `ruby -e 'require "yaml"; y=YAML.load_file("_pkgdown.yml"); h=Hash.new(0); y["articles"].each{|s| (s["contents"] || []).each{|c| h[c]+=1 }}; dup=h.select{|k,v| v>1}; abort("duplicate articles: #{dup.inspect}") unless dup.empty?; puts "pkgdown-article-nav-unique-ok"'`
+  -> PASS (`pkgdown-article-nav-unique-ok`).
+- ``rg -n 'Lamdba|depreciat|diag\(psi\)|diag\(\\boldsymbol\\Psi\)|mathrm\{diag\}\(\\boldsymbol\\Psi\)|the Greek letter Psi|trait-specific diagonal from `unique\(\)`|why `unique\(\)` matters|bare phylo_latent|loadings-only by default|Use `phylo_latent\(\) \+ phylo_unique|Use `animal_latent\(\) \+ animal_unique|Use `spatial_unique|append `spatial_unique|recommended when traits|unique\(\) matters|ordinary `latent\(\)` by default' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd``
+  -> no matches.
+- ``rg -n '`[a-z_]*unique\(|\b[a-z_]*unique\(' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd``
+  -> remaining hits manually reviewed; survivors are compatibility labels,
+  keyword tables, or guarded random-regression / source-specific compatibility
+  examples.
+- `rg -n 'No profile_retention Confidence Eye drawn|profile_retention returned 0 explicit pins|Plain-English vocabulary|Internal drafts and technical notes|gllvm-vocabulary.html|profile-likelihood-ci.html|troubleshooting-profile.html' pkgdown-site/articles/lambda-constraint-suggest.html pkgdown-site/articles/index.html pkgdown-site/articles/gllvmTMB.html pkgdown-site/index.html`
+  -> rendered HTML contains the zero-pin explanation, public vocabulary links,
+  and the intended internal technical article section.
+
+Generated cleanup:
+
+- Full article rendering left transient untracked files
+  `vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, and `vignettes/residual-qq-1.png`; these were removed
+  after validation and are not source artefacts.
+
+Not run:
+
+- `devtools::test()` and `devtools::check()` were not rerun in this follow-up;
+  the follow-up changed article prose and `_pkgdown.yml` navigation only.
+
+## 2026-06-22 follow-up -- first-screen equation accessibility
+
+Maintainer prompt: add a clean LaTeX version of the equations and more
+accessible explanation on the landing page and Getting Started page.
+
+Branch/worktree: `/private/tmp/gllvmtmb-article-accessibility-20260622` on
+`codex/article-accessibility-unique-cleanup-20260622`.
+
+Pre-edit coordination checks were already refreshed for this article/docs lane:
+
+- `gh pr list --state open`
+  -> only open PR was draft #529.
+- `git log --all --oneline --since="6 hours ago"`
+  -> current article PR head plus #528 / #527 merge history; no competing
+  article edit detected.
+
+Implementation updates:
+
+- `README.md` and `vignettes/gllvmTMB.Rmd` now show the first covariance
+  decomposition as rendered LaTeX:
+  `Sigma = Lambda Lambda^T + Psi`, with
+  `Psi = diag(psi_1, ..., psi_T)`.
+- Both pages keep a plain-English fallback:
+  "total trait covariance = shared multivariate structure +
+  response-specific variation."
+- The Getting Started page now tells first-time readers to read `Sigma` and
+  correlations before individual `Lambda` entries, because the raw loading
+  entries are rotation-dependent unless a rotation or confirmatory constraint is
+  chosen.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::build_home(quiet = FALSE); pkgdown::build_article("gllvmTMB", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS; rendered `pkgdown-site/index.html` and
+  `pkgdown-site/articles/gllvmTMB.html`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load_all ok\n")'`
+  -> PASS (`load_all ok`).
+- `git diff --check`
+  -> PASS.
+- `rg -n 'boldsymbol\{|operatorname\{diag\}|rotation-dependent|For a first fit, read' README.md vignettes/gllvmTMB.Rmd pkgdown-site/index.html pkgdown-site/articles/gllvmTMB.html`
+  -> confirmed the source and rendered HTML contain the LaTeX equation and
+  the `Lambda` interpretation guard.
+
+Rendered preview screenshots:
+
+- `/private/tmp/gllvmtmb-landing-latex-accessible.png`
+- `/private/tmp/gllvmtmb-get-started-latex-accessible.png`
+
+Generated cleanup:
+
+- The focused article render again left transient vignette PNGs
+  (`vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, `vignettes/residual-qq-1.png`); these were removed
+  after validation.
+
+## 2026-06-22 follow-up -- Getting Started model-first accessibility
+
+Maintainer correction: the landing page is fine, but Getting Started should not
+make `Sigma` feel like the model. `Sigma` is the covariance summary implied by
+the model, not the model itself. Pat and the pkgdown editor team reviewed the
+opening path before edits.
+
+Branch/worktree: `/private/tmp/gllvmtmb-article-accessibility-20260622` on
+`codex/article-accessibility-unique-cleanup-20260622`.
+
+Pre-edit coordination checks:
+
+- `gh pr list --state open`
+  -> only open PR was draft #529,
+  `codex/article-accessibility-unique-cleanup-20260622`.
+- `git log --all --oneline --since="6 hours ago"`
+  -> current article PR head `b2c0e0b`, #528 merge `1264fbb`, #528 branch head
+  `bfdab63`, #527 merge `b3fc729`; no competing article edit detected.
+
+Implementation updates:
+
+- `vignettes/gllvmTMB.Rmd` now opens with the actual Gaussian teaching model:
+  `y_it = alpha_t + lambda_t^T u_i + e_it`, with latent scores and
+  trait-specific diagonal variance defined before the covariance summary.
+- The covariance equation is now explicitly framed as
+  `Cov(y_i) = Sigma = Lambda Lambda^T + Psi`, i.e. the report-ready summary
+  implied by the latent part of the model.
+- The first-copy R call appears before the symbol glossary and uses clean
+  `latent(1 | individual, d = 2)` syntax.
+- The interpretation order now reads `Sigma` rows, truth `Sigma`,
+  communality, correlations, plots, then loadings and ordination.
+- `data-raw/examples/make-morphometrics-example.R` and
+  `inst/extdata/examples/morphometrics-example.rds` now label the decomposition
+  keyword as ordinary `latent()` and describe `Psi / psi` as the ordinary
+  `latent()` default, not `unique()`.
+- `vignettes/articles/morphometrics.Rmd` now prefers the worktree fixture over
+  an installed package fixture while rendering, removes the raw fit-object
+  print that exposed internal `unique_unit`, and describes `psi_t` as
+  trait-specific diagonal variance.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla data-raw/examples/make-morphometrics-example.R`
+  -> PASS; regenerated `inst/extdata/examples/morphometrics-example.rds`.
+- `Rscript --vanilla -e 'pkgdown::build_article("gllvmTMB", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS after the model-first rewrite and again after mobile equation
+  line-break polish.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-example-morphometrics.R", reporter = "summary")'`
+  -> PASS (`example-morphometrics: ..................................................`).
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/morphometrics", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS after the fixture lookup and raw-fit-print cleanup.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `git diff --check`
+  -> PASS.
+
+Rendered preview screenshots:
+
+- `/private/tmp/gllvmtmb-get-started-model-first-desktop.png`
+- `/private/tmp/gllvmtmb-get-started-model-first-mobile.png`
+
+Exact stale-wording / rendered-output scans:
+
+- `rg -n 'unique\(|latent\(\) \+ unique|unique_unit|trait-specific unique variance|model in one sentence|fitted Gaussian model starts|Read the covariance summaries first|Then inspect loadings|trait-specific diagonal variance' vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/morphometrics.html data-raw/examples/make-morphometrics-example.R`
+  -> no stale `unique()` / `unique_unit` / "model in one sentence" hits in
+  the two affected rendered articles; expected positive hits confirmed the new
+  model-first headings and diagonal-variance wording.
+- `rg -n 'formula_wide|Covstructs|latent\(1 \| individual' pkgdown-site/articles/gllvmTMB.html`
+  -> confirmed the rendered Getting Started formula output shows clean
+  `latent(1 | individual, d = 2)` and no `Covstructs` internal print.
+
+Generated cleanup:
+
+- Focused renders left transient untracked vignette PNGs
+  (`vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, `vignettes/residual-qq-1.png`); these were removed
+  after validation.
+
+Not run:
+
+- `devtools::test()` and `devtools::check()` were not rerun for this follow-up;
+  the changes are article prose, article chunk order, and a regenerated
+  teaching fixture label. The focused morphometrics fixture test and pkgdown
+  checks passed.

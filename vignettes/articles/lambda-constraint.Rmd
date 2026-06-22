@@ -750,8 +750,9 @@ Two implementation notes worth flagging:
   present in the fit, so the CI is on the proportion of the *total*
   liability variance, not the proportion of the tier-internal
   variance. For this single-tier fit the two collapse to the same
-  number; on a multi-tier fit (e.g. with `unique()` or
-  `phylo_unique()` terms) they would diverge.
+  number; on a multi-tier fit (e.g. with `indep()` or
+  source-specific `*_indep()` terms; older `unique()` / `*_unique()`
+  spellings remain soft-deprecated compatibility syntax) they would diverge.
 - `link_residual` is flagged as `method = "(unavailable)"` here -- for
   probit it is a known constant ($\sigma^2_d = 1$), so there is no
   profile to invert and the bounds collapse to the point estimate.
@@ -827,8 +828,9 @@ The bracket-and-bisect inversion in `profile_ci_proportions()` keeps
 its answer honest by reporting `NA` rather than extrapolating beyond
 where the data constrain.
 
-The same machinery extends to multi-tier fits (with `unique()` or
-`phylo_unique()` terms) where the partition has three or more
+The same machinery extends to multi-tier fits (with `indep()` or
+source-specific `*_indep()` terms; older `unique()` / `*_unique()`
+spellings remain soft-deprecated compatibility syntax) where the partition has three or more
 components and `link_residual` is the smallest piece rather than half
 the bar. The `parm` token grammar is uniform --
 `"proportion:<component>[:trait]"` -- so the demo above generalises

@@ -39,7 +39,7 @@ across traits. The four correlation rows go from finest-grained
 > phylogenetic, spatial, animal, and meta-analysis worked examples stay
 > hidden until their article-specific return conditions pass.
 
-| correlation \ mode | scalar | unique | indep | dep | latent |
+| correlation \ mode | scalar | unique (compatibility) | indep | dep | latent |
 |---|---|---|---|---|---|
 | none | (omit) | `unique()` | `indep()` | `dep()` | `latent()` |
 | **animal** | `animal_scalar()` | `animal_unique()` | `animal_indep()` | `animal_dep()` | `animal_latent()` |
@@ -49,6 +49,14 @@ across traits. The four correlation rows go from finest-grained
 Plus the **random-slope** keywords alongside the grid:
 `phylo_slope(x | species)` and `animal_slope(x | id)` — for
 per-group random regression slopes on a continuous covariate.
+
+The `unique` column is part of the live parser and remains documented
+because old formulas must keep running. It is not the spelling to teach
+first. In new standalone diagonal examples, use `indep()` and the
+source-specific `*_indep()` functions. In ordinary decomposed examples,
+use `latent()` itself: it carries the diagonal `Psi` companion by
+default. `unique()` and `*_unique()` are soft-deprecated compatibility
+syntax for explicit diagonal-Psi formulas.
 
 Status labels during the public-surface reset:
 
@@ -74,7 +82,7 @@ level.
 | mode | Meaning | Use when |
 |---|---|---|
 | scalar | one shared variance for all traits | every trait should have the same group-level scale |
-| unique | a diagonal matrix `Psi` of trait-specific variances `psi` | compatibility spelling for explicit diagonal Psi |
+| unique | a diagonal matrix `Psi` of trait-specific variances `psi` | soft-deprecated compatibility spelling for explicit diagonal Psi |
 | indep | the same diagonal covariance as standalone `unique()` | you want to state marginal-only intent explicitly |
 | dep | a full unstructured positive-definite `Sigma` | the number of traits is small enough for a saturated covariance |
 | latent | low-rank shared covariance plus default diagonal `Psi` | a few latent axes should explain cross-trait association while retaining trait-specific residual variance |
@@ -82,7 +90,8 @@ level.
 The most common decomposed ordinary model is `latent()`:
 
 ```text
-Sigma = Lambda Lambda^T + diag(psi)
+Sigma = Lambda Lambda^T + Psi
+Psi = diag(psi_1, ..., psi_T)
 ```
 
 The same alignment appears in the worked articles:
@@ -98,10 +107,11 @@ The same alignment appears in the worked articles:
 Ordinary `latent()` fits the shared-plus-diagonal-Psi decomposition;
 use `latent(..., unique = FALSE)` for the old no-residual subset.
 Standalone `unique()` and `indep()` both fit independent per-trait
-variances, but `indep()` tells the next reader that the marginal-only
-interpretation is intentional. `dep()` is the full unstructured
-baseline and should not be combined with the matching `latent()`,
-`unique()`, or `indep()` term at the same level.
+variances, but `unique()` is compatibility syntax and `indep()` tells
+the next reader that the marginal-only interpretation is intentional.
+`dep()` is the full unstructured baseline and should not be combined
+with the matching `latent()`, `unique()`, or `indep()` term at the same
+level.
 
 ## The Four Correlation Rows
 
@@ -125,8 +135,9 @@ and the argument naming keeps them visually separated. See
 [`docs/design/14-known-relatedness-keywords.md`](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
 §3 for the full rule.
 
-No-prefix keywords such as `latent()`, `unique()`, `indep()`, and
-`dep()` use independent group effects. The animal row uses
+No-prefix keywords such as `latent()`, `indep()`, and `dep()` use
+independent group effects. The no-prefix `unique()` keyword is retained
+for compatibility with older explicit-Psi formulas. The animal row uses
 `animal_*()` keywords with a pedigree (or pre-computed A / Ainv).
 The phylogenetic row uses `phylo_*()` keywords and a tree or
 covariance matrix. The spatial row
@@ -166,8 +177,10 @@ The same shorthand applies to `indep()`, `dep()`,
 bar-style `phylo_indep()` / `phylo_dep()`, and `spatial_*()` terms.
 Species-axis phylogenetic calls such as
 `phylo_latent(species, d = K, tree = tree)` and
-`phylo_unique(species, tree = tree)` already name their phylogenetic
-axis, so they pass through unchanged.
+`phylo_indep(species, tree = tree)` already name their phylogenetic
+axis, so they pass through unchanged. The older
+`phylo_unique(species, tree = tree)` spelling is the same axis with
+the soft-deprecated compatibility keyword.
 
 ## Per-Cell Examples
 
@@ -179,11 +192,11 @@ bar-style terms.
 ### No Correlation
 
 ```{r}
-# Explicit diagonal-Psi compatibility syntax
-unique(0 + trait | unit)
-
 # Explicit marginal-only diagonal covariance
 indep(0 + trait | unit)
+
+# Soft-deprecated explicit diagonal-Psi compatibility syntax
+unique(0 + trait | unit)
 
 # Full unstructured trait covariance
 dep(0 + trait | unit)
@@ -202,7 +215,7 @@ intercepts rather than trait covariance terms.
 # One shared additive-genetic variance
 animal_scalar(id, pedigree = ped)
 
-# Trait-specific additive-genetic diagonal
+# Soft-deprecated trait-specific additive-genetic diagonal compatibility
 animal_unique(id, pedigree = ped)
 
 # Explicit marginal-only animal-model diagonal
@@ -230,7 +243,7 @@ comparator.
 # One shared phylogenetic variance
 phylo_scalar(species, tree = tree)
 
-# Trait-specific phylogenetic diagonal
+# Soft-deprecated trait-specific phylogenetic diagonal compatibility
 phylo_unique(species, tree = tree)
 
 # Explicit marginal-only phylogenetic diagonal
@@ -243,10 +256,12 @@ phylo_dep(0 + trait | species, tree = tree)
 phylo_latent(species, d = 2, tree = tree)
 ```
 
-Use `phylo_latent() + phylo_unique()` when the scientific question is
-about shared phylogenetic trait axes plus trait-specific phylogenetic
-variance. Use `phylo_dep()` as a saturated comparator when the number
-of traits is small enough.
+Use `phylo_latent()` alone for the folded default decomposition of
+shared phylogenetic trait axes plus trait-specific phylogenetic
+variance. The older `phylo_latent(..., unique = FALSE) +
+phylo_unique()` pair is the explicit compatibility spelling.
+Use `phylo_dep()` as a saturated comparator when the number of traits
+is small enough.
 
 ### Spatial
 
@@ -254,11 +269,11 @@ of traits is small enough.
 # One shared spatial variance
 spatial_scalar(0 + trait | site, mesh = mesh)
 
-# Trait-specific spatial fields
-spatial_unique(0 + trait | site, mesh = mesh)
-
 # Explicit marginal-only spatial fields
 spatial_indep(0 + trait | site, mesh = mesh)
+
+# Soft-deprecated explicit-Psi spatial compatibility spelling
+spatial_unique(0 + trait | site, mesh = mesh)
 
 # Full unstructured spatial trait covariance
 spatial_dep(0 + trait | site, mesh = mesh)
@@ -268,8 +283,10 @@ spatial_latent(0 + trait | site, d = 2, mesh = mesh)
 ```
 
 The spatial row uses the SPDE/GMRF approximation inherited from
-`sdmTMB`. `spatial_unique()` is the canonical replacement for the
-legacy `spatial()` alias.
+`sdmTMB`. Prefer `spatial_indep()` for a marginal-only spatial
+diagonal. Treat `spatial_unique()` as compatibility syntax for
+explicit spatial `Psi` while the spatial latent-Psi fold remains
+blocked; it also replaces the older `spatial()` alias in old formulas.
 
 ## Helpers Outside The Grid
 

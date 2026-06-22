@@ -60,7 +60,7 @@ $$
 $$
 
 where `Lambda` contains the shared latent loadings and `Psi` is the
-trait-specific diagonal from `unique()`.
+trait-specific diagonal carried by ordinary `latent()`.
 
 ```{r example-data, eval = FALSE}
 rank_ex <- readRDS(system.file(
@@ -154,7 +154,7 @@ summarise_candidate <- function(fit, d) {
 
   data.frame(
     d = d,
-    model = if (d == 0L) "unique only" else paste0("latent d = ", d),
+    model = if (d == 0L) "indep only" else paste0("latent d = ", d),
     logLik = as.numeric(ll),
     df = attr(ll, "df"),
     nobs = attr(ll, "nobs"),

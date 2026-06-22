@@ -69,7 +69,7 @@ observation-level covariance. $\boldsymbol\Lambda$ is the $T \times K$
 loading matrix (from the `latent()` term) and $\boldsymbol\Psi$ is the
 $T \times T$ diagonal matrix of trait-specific variances that ordinary
 `latent()` now carries by default. Older explicit formulas with
-`latent() + unique()` remains soft-deprecated compatibility syntax for
+`latent() + unique()` remain soft-deprecated compatibility syntax for
 the same decomposition.
 The correlation matrix is then
 
@@ -80,7 +80,7 @@ $$
 
 Both pieces matter: the diagonal of $\boldsymbol\Sigma$ is
 $(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}$ — the
-sum of squared loadings *plus* the trait-specific unique variance.
+sum of squared loadings *plus* the trait-specific diagonal variance.
 Drop $\boldsymbol\Psi$ and the diagonal shrinks; the off-diagonals stay the
 same; $\mathbf R$ swells.
 
@@ -165,7 +165,9 @@ The wide data-frame formula expresses the same recommended model through the
 `traits(...)` left-hand side:
 
 ```{r formula-wide}
-covex$formula_wide
+form_B_wide <- traits(boldness, exploration, activity, aggression, sociability) ~
+  1 + latent(1 | individual, d = 2)
+form_B_wide
 ```
 
 ```{r fit}
@@ -190,7 +192,7 @@ fit_B <- gllvmTMB(
 )
 
 fit_B_wide <- gllvmTMB(
-  covex$formula_wide,
+  form_B_wide,
   data = df_wide,
   unit = covex$fit_args$unit,
   family = covex$fit_args$family,
@@ -306,7 +308,7 @@ If you need a matrix for algebra checks, use `extract_Sigma()` directly:
 # Lambda Lambda^T alone (the "shared" component)
 extract_Sigma(fit_B, level = "unit", part = "shared")$Sigma |> round(2)
 
-# psi -- trait-specific unique variances (the "unique" component)
+# psi -- trait-specific diagonal variances (the `part = "unique"` component)
 extract_Sigma(fit_B, level = "unit", part = "unique")$s |> round(2)
 
 # Sigma_unit = Lambda Lambda^T + Psi (the "total" -- what you usually want)
@@ -342,7 +344,7 @@ For a reader-facing table, the alignment is:
 |---|---|---|
 | $c_t^2$ | `extract_communality(fit, level = "unit")` | Fraction of trait `t` variance explained by the shared latent axes. |
 | numerator | `extract_Sigma(fit, level = "unit", part = "shared")` diagonal | Shared variance for trait `t`. |
-| denominator | `extract_Sigma(fit, level = "unit", part = "total")` diagonal | Shared variance plus trait-specific unique variance. |
+| denominator | `extract_Sigma(fit, level = "unit", part = "total")` diagonal | Shared variance plus trait-specific diagonal variance. |
 
 **The catch**: with no-residual latent fits, $\psi_{tt} = 0$ for every trait by
 construction, so $c_t^2 = 1$ for every trait — the communality is

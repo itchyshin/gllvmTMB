@@ -336,10 +336,14 @@ For future immutable-chunk array jobs, `--mode=chunk` runs the active
 rows in a chunk manifest and writes one RDS per planned chunk, while
 `--mode=chunk-audit` reads the written manifests and requires every
 planned chunk file to exist and be non-empty before any aggregation
-step proceeds. Effective per-cell seed blocks are separated by a fixed
-stride larger than the intended batch size after the harness family/d
-seed offset is applied, so same-run cells do not share `rep_seed`
-values.
+step proceeds. `--mode=chunk-aggregate` is the derived single-writer
+step: it rereads the validated chunks, checks that each file's `rep`
+values match the manifest window, rejects duplicate
+`cell_id`/`rep`/`trait_id`/`target` rows, and writes per-cell aggregate
+RDS files under `_chunk-aggregate/`. Effective per-cell seed blocks are
+separated by a fixed stride larger than the intended batch size after
+the harness family/d seed offset is applied, so same-run cells do not
+share `rep_seed` values.
 
 Persist the long per-replicate grid (`<cell-id>.rds`) and rebuild
 `pilot-index.rds` as a derived cache from those per-cell files. The

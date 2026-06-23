@@ -18,6 +18,8 @@
 ##              chunk rows, and write one chunk RDS per planned row.
 ##   chunk-audit -- read chunk manifests and require every planned chunk
 ##              file to exist before a future aggregation job runs.
+##   chunk-aggregate -- read validated chunk outputs and write derived
+##              per-cell aggregate RDS files for downstream reporting.
 ##   shard   -- run one shard's cells: accumulate +n_sim_step reps toward
 ##              the cap for every cell in this shard that is below cap.
 ##   slice   -- copy only this shard's touched per-cell files + runstats
@@ -36,6 +38,8 @@
 ##     --n-sim-step=2 --n-sim-cap=10 --seed-base=1 \
 ##     --results-dir=/tmp/pilot-smoke --n-boot=0
 ##   Rscript dev/power-pilot-run.R --mode=chunk-audit \
+##     --results-dir=/tmp/pilot-smoke
+##   Rscript dev/power-pilot-run.R --mode=chunk-aggregate \
 ##     --results-dir=/tmp/pilot-smoke
 ##   Rscript dev/power-pilot-run.R --mode=status \
 ##     --n-sim-cap=2000 --results-dir=dev/m3-pilot-results \
@@ -87,6 +91,10 @@ n_sim_step <- as.integer(arg_value(
 n_boot <- as.integer(arg_value("--n-boot", as.character(PILOT_N_BOOT_DEFAULT)))
 dry_run <- as_truthy(arg_value("--dry-run", "false"))
 output_mode <- arg_value("--output-mode", "accumulate")
+aggregate_dir <- arg_value(
+  "--aggregate-dir",
+  pilot_chunk_aggregate_dir(results_dir)
+)
 
 ## Append a single KEY=VALUE line to the GitHub Actions step-output file
 ## ($GITHUB_OUTPUT), if present. No-op locally. Used so downstream jobs
@@ -185,6 +193,39 @@ if (identical(mode, "chunk-audit")) {
     "[power-pilot] chunk audit: validated %d planned chunk output(s) in %s\n",
     nrow(audit),
     results_dir
+  ))
+  quit(save = "no", status = 0L)
+}
+
+if (identical(mode, "chunk-aggregate")) {
+  manifest_df <- pilot_read_manifests(results_dir)
+  if (!nrow(manifest_df)) {
+    emit_output("chunk_aggregate_ok", "false")
+    stop("power-pilot chunk aggregate found no manifest rows.")
+  }
+  aggregate <- tryCatch(
+    pilot_aggregate_chunk_outputs(
+      manifest_df,
+      aggregate_dir = aggregate_dir,
+      write = TRUE
+    ),
+    error = function(e) e
+  )
+  aggregate_ok <- !inherits(aggregate, "error")
+  emit_output("chunk_aggregate_ok", tolower(as.character(aggregate_ok)))
+  if (!aggregate_ok) {
+    emit_output("chunk_aggregate_error", conditionMessage(aggregate))
+    stop("power-pilot chunk aggregate failed: ", conditionMessage(aggregate))
+  }
+  report <- aggregate$report
+  emit_output("chunk_aggregate_cells", as.character(nrow(report)))
+  emit_output("chunk_aggregate_rows", as.character(sum(report$n_rows)))
+  emit_output("chunk_aggregate_dir", aggregate_dir)
+  cat(sprintf(
+    "[power-pilot] chunk aggregate: wrote %d cell aggregate(s), %d row(s) to %s\n",
+    nrow(report),
+    sum(report$n_rows),
+    aggregate_dir
   ))
   quit(save = "no", status = 0L)
 }
@@ -546,8 +587,8 @@ if (identical(mode, "status")) {
 
 stop(sprintf(
   paste0(
-    "unknown --mode=%s (expected 'preflight', 'chunk', 'chunk-audit', 'shard', ",
-    "'slice', or 'status')"
+    "unknown --mode=%s (expected 'preflight', 'chunk', 'chunk-audit', ",
+    "'chunk-aggregate', 'shard', 'slice', or 'status')"
   ),
   mode
 ))

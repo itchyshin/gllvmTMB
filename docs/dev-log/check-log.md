@@ -18692,3 +18692,67 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-runner.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot immutable chunk aggregator
+
+Scope:
+
+- Added the derived single-writer aggregation step for immutable power-pilot
+  chunks. `pilot_read_chunk_outputs()` rereads validated chunk files,
+  verifies chunk/cell/campaign metadata, and requires each chunk's observed
+  `rep` values to match its manifest `rep_start`/`rep_end` window.
+- Added `pilot_aggregate_chunk_outputs()`, which rejects duplicate
+  `pilot_cell_id`/`rep`/`trait_id`/`target` rows and writes per-cell aggregate
+  RDS files under `_chunk-aggregate/`.
+- Added `dev/power-pilot-run.R --mode=chunk-aggregate` with GitHub-output
+  counters for aggregate success, cell count, row count, and aggregate
+  directory.
+- Updated the Design 66 compute ladder to place `chunk-aggregate` after
+  `chunk-audit` and before any future reporting/index rebuild step.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url && git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared dev-log/design edits; no open PRs, recent history was
+  the expected #538 through #545 sequence, with #545 merged at `fccc89c5`.
+- `git status --short --branch`
+  -> clean branch start in
+  `/private/tmp/gllvmtmb-power-pilot-chunk-aggregator-20260623` on
+  `codex/power-pilot-chunk-aggregator-20260623...origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> first run FAIL because the new test helper could not see the sourced dev
+  functions in testthat's per-test environment; fixed by resolving helpers from
+  `parent.frame()`. Second run PASS; 107 expectations.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 130 expectations.
+- `rm -rf /tmp/gllvmtmb-chunk-aggregate-smoke && Rscript --vanilla dev/power-pilot-run.R --mode=chunk --shard=1 --n-shards=48 --n-sim-step=1 --n-sim-cap=5 --seed-base=162 --results-dir=/tmp/gllvmtmb-chunk-aggregate-smoke --n-boot=0 --dry-run=true >/tmp/gllvmtmb-chunk-aggregate-smoke.out 2>&1 && Rscript --vanilla dev/power-pilot-run.R --mode=chunk-audit --results-dir=/tmp/gllvmtmb-chunk-aggregate-smoke >>/tmp/gllvmtmb-chunk-aggregate-smoke.out 2>&1 && Rscript --vanilla dev/power-pilot-run.R --mode=chunk-aggregate --results-dir=/tmp/gllvmtmb-chunk-aggregate-smoke >>/tmp/gllvmtmb-chunk-aggregate-smoke.out 2>&1 && cat /tmp/gllvmtmb-chunk-aggregate-smoke.out && find /tmp/gllvmtmb-chunk-aggregate-smoke -type f | sort`
+  -> PASS; wrote one real chunk RDS, validated it, and wrote one per-cell
+  aggregate RDS with five trait rows.
+
+Stale scans:
+
+- `rg -n "mode=chunk-aggregate|pilot_aggregate_chunk_outputs|pilot_read_chunk_outputs|pilot_assert_unique_chunk_rows|PILOT_CHUNK_AGGREGATE_DIR|_chunk-aggregate|chunk_aggregate" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended aggregation coverage.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML|pilot-index\\.rds.*chunk.*aggregate|chunk.*aggregate.*pilot-index\\.rds|concurrent.*aggregate" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no matches.
+
+Not claimed:
+
+- No Totoro login, DRAC login, SLURM job, GPU check, production campaign, or
+  `n_sim = 2000` run was launched.
+- This slice does not rebuild `pilot-index.rds` from immutable chunks and does
+  not add report/MCSE aggregation over the per-cell chunk aggregates.
+- True binary probit, ordinal coverage repair, denominator/MCSE expansion, and
+  DRAC environment checks remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-aggregator.md`.

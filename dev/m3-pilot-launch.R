@@ -84,6 +84,11 @@ PILOT_MANIFEST_DIR <- "_manifests"
 ## tasks can write one chunk per (campaign, cell, chunk) without shared files.
 PILOT_CHUNK_DIR <- "_chunks"
 
+## Derived per-cell aggregate output root for immutable chunk campaigns.
+## Aggregates are rebuilt from validated chunks; they are never written by
+## concurrent array tasks.
+PILOT_CHUNK_AGGREGATE_DIR <- "_chunk-aggregate"
+
 ## Per-cell fixed backbone (held constant across the pilot grid so the
 ## varied axes are interpretable). n_traits is fixed; n_units is a grid
 ## axis. These mirror the M3 defaults closely.
@@ -342,6 +347,10 @@ pilot_chunk_path <- function(results_dir, campaign_id, cell_id, chunk_id) {
     cell_id,
     paste0(chunk_id, ".rds")
   )
+}
+
+pilot_chunk_aggregate_dir <- function(results_dir) {
+  file.path(results_dir, PILOT_CHUNK_AGGREGATE_DIR)
 }
 
 pilot_manifest_seed_range <- function(batch_seed_base, family, d, n_reps) {
@@ -885,6 +894,229 @@ pilot_run_chunk_manifest <- function(
 
   rownames(report) <- NULL
   report
+}
+
+pilot_bind_rows_union <- function(rows) {
+  rows <- Filter(Negate(is.null), rows)
+  if (!length(rows)) {
+    return(data.frame())
+  }
+  cols <- unique(unlist(lapply(rows, names), use.names = FALSE))
+  rows <- lapply(rows, function(x) {
+    missing <- setdiff(cols, names(x))
+    for (nm in missing) {
+      x[[nm]] <- NA
+    }
+    x[, cols, drop = FALSE]
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+pilot_read_chunk_outputs <- function(manifest, require_all = TRUE) {
+  pilot_assert_chunk_outputs(manifest, require_all = require_all)
+  if (is.null(manifest) || !is.data.frame(manifest) || nrow(manifest) == 0L) {
+    return(data.frame())
+  }
+  active <- manifest[manifest$n_reps_planned > 0L, , drop = FALSE]
+  if (!nrow(active)) {
+    return(data.frame())
+  }
+  required_manifest <- c(
+    "campaign_id",
+    "chunk_id",
+    "cell_id",
+    "chunk_path",
+    "rep_start",
+    "rep_end"
+  )
+  missing_manifest <- setdiff(required_manifest, names(active))
+  if (length(missing_manifest)) {
+    stop(
+      "Pilot chunk aggregate missing manifest columns: ",
+      paste(missing_manifest, collapse = ", ")
+    )
+  }
+
+  chunks <- vector("list", nrow(active))
+  for (i in seq_len(nrow(active))) {
+    row <- active[i, , drop = FALSE]
+    chunk <- tryCatch(readRDS(row$chunk_path), error = function(e) e)
+    if (inherits(chunk, "error")) {
+      stop(
+        "Cannot read pilot chunk output for chunk_id ",
+        row$chunk_id,
+        ": ",
+        conditionMessage(chunk)
+      )
+    }
+    if (!is.data.frame(chunk) || !nrow(chunk)) {
+      stop("Pilot chunk output is not a non-empty data frame: ", row$chunk_id)
+    }
+    missing_chunk <- setdiff(c("rep", "trait_id"), names(chunk))
+    if (length(missing_chunk)) {
+      stop(
+        "Pilot chunk output missing required columns for chunk_id ",
+        row$chunk_id,
+        ": ",
+        paste(missing_chunk, collapse = ", ")
+      )
+    }
+
+    expected_reps <- seq.int(as.integer(row$rep_start), as.integer(row$rep_end))
+    observed_reps <- sort(unique(as.integer(chunk$rep)))
+    if (!identical(observed_reps, expected_reps)) {
+      stop(
+        "Pilot chunk rows do not match manifest replicate window for chunk_id ",
+        row$chunk_id,
+        ": expected rep ",
+        paste(expected_reps, collapse = ","),
+        "; got ",
+        paste(observed_reps, collapse = ",")
+      )
+    }
+
+    if ("pilot_chunk_id" %in% names(chunk)) {
+      vals <- unique(as.character(chunk$pilot_chunk_id))
+      vals <- vals[!is.na(vals)]
+      if (!identical(vals, as.character(row$chunk_id))) {
+        stop("Pilot chunk_id metadata mismatch for chunk_id: ", row$chunk_id)
+      }
+    } else {
+      chunk$pilot_chunk_id <- as.character(row$chunk_id)
+    }
+    if ("pilot_cell_id" %in% names(chunk)) {
+      vals <- unique(as.character(chunk$pilot_cell_id))
+      vals <- vals[!is.na(vals)]
+      if (!identical(vals, as.character(row$cell_id))) {
+        stop("Pilot cell_id metadata mismatch for chunk_id: ", row$chunk_id)
+      }
+    } else {
+      chunk$pilot_cell_id <- as.character(row$cell_id)
+    }
+    if ("pilot_campaign_id" %in% names(chunk)) {
+      vals <- unique(as.character(chunk$pilot_campaign_id))
+      vals <- vals[!is.na(vals)]
+      if (!identical(vals, as.character(row$campaign_id))) {
+        stop("Pilot campaign_id metadata mismatch for chunk_id: ", row$chunk_id)
+      }
+    } else {
+      chunk$pilot_campaign_id <- as.character(row$campaign_id)
+    }
+    chunk$pilot_chunk_path <- as.character(row$chunk_path)
+    chunks[[i]] <- chunk
+  }
+
+  pilot_bind_rows_union(chunks)
+}
+
+pilot_assert_unique_chunk_rows <- function(chunks) {
+  required <- c("pilot_cell_id", "rep", "trait_id")
+  missing <- setdiff(required, names(chunks))
+  if (length(missing)) {
+    stop(
+      "Pilot chunk aggregate missing duplicate-key columns: ",
+      paste(missing, collapse = ", ")
+    )
+  }
+  key_cols <- required
+  if ("target" %in% names(chunks)) {
+    key_cols <- c(key_cols, "target")
+  }
+  key_df <- chunks[, key_cols, drop = FALSE]
+  keys <- do.call(
+    paste,
+    c(lapply(key_df, as.character), sep = "\r")
+  )
+  dup <- which(duplicated(keys))
+  if (length(dup)) {
+    i <- dup[[1]]
+    key_values <- vapply(
+      key_cols,
+      function(col) as.character(chunks[[col]][i]),
+      character(1)
+    )
+    stop(
+      "Duplicate pilot chunk aggregate rows for key: ",
+      paste(
+        sprintf("%s=%s", key_cols, key_values),
+        collapse = ", "
+      )
+    )
+  }
+  invisible(TRUE)
+}
+
+pilot_aggregate_chunk_outputs <- function(
+  manifest,
+  aggregate_dir = NULL,
+  write = FALSE
+) {
+  chunks <- pilot_read_chunk_outputs(manifest, require_all = TRUE)
+  report <- data.frame(
+    cell_id = character(0),
+    n_chunks = integer(0),
+    n_rows = integer(0),
+    n_reps = integer(0),
+    rep_min = integer(0),
+    rep_max = integer(0),
+    aggregate_path = character(0),
+    size_bytes = numeric(0),
+    stringsAsFactors = FALSE
+  )
+  if (!nrow(chunks)) {
+    return(list(report = report, cells = list()))
+  }
+  pilot_assert_unique_chunk_rows(chunks)
+  if (isTRUE(write)) {
+    if (is.null(aggregate_dir) || !nzchar(aggregate_dir)) {
+      stop("aggregate_dir is required when write = TRUE.")
+    }
+    dir.create(aggregate_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  cells <- split(chunks, chunks$pilot_cell_id)
+  out_cells <- vector("list", length(cells))
+  names(out_cells) <- names(cells)
+  for (cid in names(cells)) {
+    cell <- cells[[cid]]
+    order_cols <- intersect(c("rep", "trait_id", "target"), names(cell))
+    if (length(order_cols)) {
+      ord <- do.call(order, cell[, order_cols, drop = FALSE])
+      cell <- cell[ord, , drop = FALSE]
+    }
+    rownames(cell) <- NULL
+    out_cells[[cid]] <- cell
+
+    aggregate_path <- if (isTRUE(write)) {
+      file.path(aggregate_dir, paste0(cid, ".rds"))
+    } else {
+      NA_character_
+    }
+    size_bytes <- NA_real_
+    if (isTRUE(write)) {
+      saveRDS(cell, aggregate_path)
+      size_bytes <- as.numeric(file.info(aggregate_path)$size)
+    }
+    reps <- sort(unique(as.integer(cell$rep)))
+    report <- rbind(
+      report,
+      data.frame(
+        cell_id = cid,
+        n_chunks = length(unique(cell$pilot_chunk_id)),
+        n_rows = nrow(cell),
+        n_reps = length(reps),
+        rep_min = min(reps),
+        rep_max = max(reps),
+        aggregate_path = aggregate_path,
+        size_bytes = size_bytes,
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+  rownames(report) <- NULL
+  list(report = report, cells = out_cells)
 }
 
 ## Upsert a single cell row into the index (replace any existing row for

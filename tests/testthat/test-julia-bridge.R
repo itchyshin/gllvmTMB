@@ -872,8 +872,16 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
   cors <- suppressMessages(extract_correlations(fit, tier = "unit"))
   expect_s3_class(cors, "data.frame")
   expect_true(all(
-    c("tier", "trait_i", "trait_j", "correlation", "lower", "upper", "method")
-    %in% names(cors)
+    c(
+      "tier",
+      "trait_i",
+      "trait_j",
+      "correlation",
+      "lower",
+      "upper",
+      "method"
+    ) %in%
+      names(cors)
   ))
   ## one row per upper-triangle pair of the unit-tier correlation matrix
   expect_equal(nrow(cors), choose(fit$n_traits, 2L))
@@ -1878,6 +1886,63 @@ test_that("gllvmTMB fit-time Julia CI controls preserve fixed-effect X", {
   expect_named(fit$gamma, "x")
 })
 
+test_that("gllvmTMB passes Xcoef_fixed masks to Julia fixed-effect X rows", {
+  df <- make_long()
+  df$x <- rep(seq(-0.7, 0.7, length.out = 10L), each = 3L)
+  seen <- new.env(parent = emptyenv())
+
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(
+      y,
+      family,
+      num.lv,
+      N,
+      X,
+      coef_fixed,
+      mask,
+      ci_method,
+      ci_level,
+      ci_nboot,
+      ci_seed,
+      ...
+    ) {
+      seen$X_names <- dimnames(X)[[3L]]
+      seen$coef_fixed <- coef_fixed
+      seen$mask <- mask
+
+      out <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+      out$engine <- "julia"
+      out$model <- "poisson_x_rr"
+      out$gamma <- stats::setNames(c(0.15, 0, -0.2), seen$X_names)
+      out$gamma_status <- stats::setNames(
+        c("estimated", "fixed", "estimated"),
+        seen$X_names
+      )
+      out$beta_cov <- out$alpha
+      out
+    }
+  )
+
+  fit <- gllvmTMB(
+    value ~ 0 + trait + (0 + trait):x + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = poisson(),
+    engine = "julia",
+    Xcoef_fixed = c("traitt2:x" = 0)
+  )
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(seen$X_names, c("traitt1:x", "traitt2:x", "traitt3:x"))
+  expect_equal(seen$coef_fixed, c(FALSE, TRUE, FALSE))
+  expect_null(seen$mask)
+  expect_equal(fit$X_fix_names, seen$X_names)
+  expect_equal(fit$Xcoef_fixed$status, c("estimated", "fixed", "estimated"))
+  expect_equal(unname(coef(fit)$gamma["traitt2:x"]), 0)
+  expect_equal(unname(coef(fit)$gamma_status["traitt2:x"]), "fixed")
+})
+
 test_that("gllvmTMB fit-time CI controls keep unsupported rows explicit", {
   df <- make_long()
   f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)
@@ -2146,9 +2211,24 @@ test_that("engine = 'julia' cbind(successes, failures) matches a direct trials-m
   units <- paste0("site", 1:6)
   succ <- matrix(
     c(
-      2, 5, 3, 6, 1, 4,
-      7, 2, 8, 3, 6, 5,
-      1, 4, 2, 7, 3, 6
+      2,
+      5,
+      3,
+      6,
+      1,
+      4,
+      7,
+      2,
+      8,
+      3,
+      6,
+      5,
+      1,
+      4,
+      2,
+      7,
+      3,
+      6
     ),
     nrow = 3L,
     byrow = TRUE,
@@ -2156,9 +2236,24 @@ test_that("engine = 'julia' cbind(successes, failures) matches a direct trials-m
   )
   trials <- matrix(
     c(
-      8, 9, 7, 10, 6, 9,
-      10, 8, 11, 9, 10, 8,
-      7, 9, 8, 11, 7, 10
+      8,
+      9,
+      7,
+      10,
+      6,
+      9,
+      10,
+      8,
+      11,
+      9,
+      10,
+      8,
+      7,
+      9,
+      8,
+      11,
+      7,
+      10
     ),
     nrow = 3L,
     byrow = TRUE,
@@ -2394,6 +2489,43 @@ test_that("engine = 'julia' main dispatch routes complete non-Gaussian fixed-eff
       expect_true(any(startsWith(rownames(stored_ci), "gamma[")))
     }
   }
+})
+
+test_that("engine = 'julia' main dispatch routes Xcoef_fixed to live GLLVM.jl", {
+  skip_if_no_julia()
+
+  case <- julia_fixed_x_cases()$poisson
+  x <- seq(-0.9, 0.9, length.out = ncol(case$Y))
+  df <- julia_bridge_matrix_to_long(case$Y)
+  df$x <- x[match(as.character(df$unit), colnames(case$Y))]
+  X <- julia_bridge_x_array(case$Y, x)
+
+  direct <- gllvm_julia_fit(
+    case$Y,
+    family = case$family,
+    num.lv = 1L,
+    X = X,
+    coef_fixed = TRUE
+  )
+  routed <- gllvmTMB(
+    value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, unique = FALSE),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = case$family,
+    engine = "julia",
+    Xcoef_fixed = c(x = 0)
+  )
+
+  expect_equal(unname(routed$gamma["x"]), 0)
+  expect_equal(unname(routed$gamma_status["x"]), "fixed")
+  expect_equal(routed$Xcoef_fixed$status, "fixed")
+  expect_equal(routed$gamma, direct$gamma, tolerance = 1e-8)
+  expect_equal(
+    as.numeric(logLik(routed)),
+    as.numeric(logLik(direct)),
+    tolerance = 1e-8
+  )
 })
 
 test_that("NB1 grouped likelihood matches the native linear-variance kernel at fixed parameters", {

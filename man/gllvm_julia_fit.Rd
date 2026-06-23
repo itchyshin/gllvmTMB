@@ -10,6 +10,7 @@ gllvm_julia_fit(
   num.lv = 2L,
   N = NULL,
   X = NULL,
+  coef_fixed = NULL,
   mask = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
@@ -30,6 +31,11 @@ gllvm_julia_fit(
 
 \item{X}{Fixed-effect design (p x n x q array), or \code{NULL}. Routed for
 Gaussian and selected one-part non-Gaussian bridge families.}
+
+\item{coef_fixed}{Optional logical vector of length \code{dim(X)[3]}. \code{TRUE}
+entries are fixed at zero by the Julia bridge. Most R users should prefer
+the named \code{Xcoef_fixed} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}, which is translated to
+this positional mask after the expanded fixed-effect design is known.}
 
 \item{mask}{Optional logical response-observation mask with the same orientation
 as \code{y}; \code{TRUE} cells contribute to the likelihood and \code{FALSE} cells are

@@ -1112,11 +1112,17 @@ gllvm_julia_capabilities <- function() {
   if (!is.null(object$mean_coef)) {
     out$mean_coef <- object$mean_coef
   }
+  if (!is.null(object$mean_coef_status)) {
+    out$mean_coef_status <- object$mean_coef_status
+  }
   if (!is.null(object$beta_cov)) {
     out$beta_cov <- object$beta_cov
   }
   if (!is.null(object$gamma)) {
     out$gamma <- object$gamma
+  }
+  if (!is.null(object$gamma_status)) {
+    out$gamma_status <- object$gamma_status
   }
   if (!is.null(object$loadings)) {
     out$loadings <- as.matrix(object$loadings)
@@ -2107,6 +2113,10 @@ gllvm_julia_capabilities <- function() {
 #' @param N Binomial trials (matrix or scalar), or `NULL`.
 #' @param X Fixed-effect design (p x n x q array), or `NULL`. Routed for
 #'   Gaussian and selected one-part non-Gaussian bridge families.
+#' @param coef_fixed Optional logical vector of length `dim(X)[3]`. `TRUE`
+#'   entries are fixed at zero by the Julia bridge. Most R users should prefer
+#'   the named `Xcoef_fixed` argument to [gllvmTMB()], which is translated to
+#'   this positional mask after the expanded fixed-effect design is known.
 #' @param mask Optional logical response-observation mask with the same orientation
 #'   as `y`; `TRUE` cells contribute to the likelihood and `FALSE` cells are
 #'   ignored. Currently routed for one-part no-X non-Gaussian point fits, with
@@ -2152,6 +2162,7 @@ gllvm_julia_fit <- function(
   num.lv = 2L,
   N = NULL,
   X = NULL,
+  coef_fixed = NULL,
   mask = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
@@ -2277,16 +2288,59 @@ gllvm_julia_fit <- function(
   if (!is.null(X)) {
     args$X <- X
   }
+  coef_fixed_option <- NULL
+  if (!is.null(coef_fixed)) {
+    if (is.null(X)) {
+      stop(
+        "engine = 'julia': `coef_fixed` can only be used when `X` is supplied.",
+        call. = FALSE
+      )
+    }
+    q <- dim(X)[3L]
+    if (is.null(q) || length(coef_fixed) != q) {
+      stop(
+        "engine = 'julia': `coef_fixed` must have one entry per X column.",
+        call. = FALSE
+      )
+    }
+    coef_fixed <- as.logical(coef_fixed)
+    if (any(is.na(coef_fixed))) {
+      stop(
+        "engine = 'julia': `coef_fixed` must be TRUE/FALSE with no missing values.",
+        call. = FALSE
+      )
+    }
+    fixed_idx <- which(coef_fixed)
+    if (length(fixed_idx)) {
+      ## JuliaCall simplifies length-1 R vectors to scalar Julia values. Use
+      ## GLLVM.jl's index=>0 dictionary route so one-column masks stay vectors
+      ## semantically and multi-column masks use the same transport.
+      coef_fixed_option <- stats::setNames(
+        as.list(rep(0, length(fixed_idx))),
+        as.character(fixed_idx)
+      )
+    }
+  }
   if (!is.null(mask)) {
     args$mask <- mask
   }
+  bridge_options <- list()
   if (ci_method != "none") {
-    args$options <- list(
-      ci_method = ci_method,
-      ci_level = as.numeric(ci_level),
-      ci_nboot = as.integer(ci_nboot),
-      ci_seed = as.integer(ci_seed)
+    bridge_options <- c(
+      bridge_options,
+      list(
+        ci_method = ci_method,
+        ci_level = as.numeric(ci_level),
+        ci_nboot = as.integer(ci_nboot),
+        ci_seed = as.integer(ci_seed)
+      )
     )
+  }
+  if (!is.null(coef_fixed_option)) {
+    bridge_options$coef_fixed <- coef_fixed_option
+  }
+  if (length(bridge_options)) {
+    args$options <- bridge_options
   }
   do.call(gllvm_julia_setup, setup_args)
   res <- do.call(JuliaCall::julia_call, args)
@@ -2297,9 +2351,26 @@ gllvm_julia_fit <- function(
       res$gamma <- .gllvm_julia_as_vector(res$gamma, "numeric")
       names(res$gamma) <- x_names
     }
+    if (
+      !is.null(res$gamma_status) &&
+        length(res$gamma_status) == length(x_names)
+    ) {
+      res$gamma_status <- .gllvm_julia_as_vector(res$gamma_status, "character")
+      names(res$gamma_status) <- x_names
+    }
     if (!is.null(res$mean_coef) && length(res$mean_coef) == length(x_names)) {
       res$mean_coef <- .gllvm_julia_as_vector(res$mean_coef, "numeric")
       names(res$mean_coef) <- x_names
+    }
+    if (
+      !is.null(res$mean_coef_status) &&
+        length(res$mean_coef_status) == length(x_names)
+    ) {
+      res$mean_coef_status <- .gllvm_julia_as_vector(
+        res$mean_coef_status,
+        "character"
+      )
+      names(res$mean_coef_status) <- x_names
     }
   }
   res$engine <- "julia"
@@ -2314,6 +2385,9 @@ gllvm_julia_fit <- function(
     units_are_rows = FALSE,
     setup_args = setup_args
   )
+  if (!is.null(coef_fixed)) {
+    res$bridge_input$coef_fixed <- coef_fixed
+  }
   if (!is.null(mask)) {
     res$response_mask <- mask
   }
@@ -2848,6 +2922,8 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   unit_internal,
   family,
   weights = NULL,
+  REML = FALSE,
+  Xcoef_fixed = NULL,
   ci_method = "none",
   ci_level = 0.95,
   ci_nboot = 200L,
@@ -2988,6 +3064,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   }
 
   Xarg <- NULL
+  x_cols <- character(0)
   if (!has_only_trait_intercept) {
     if (length(fam_str) != 1L || !(fam_str %in% .GLLVM_JULIA_X_FAMILIES)) {
       stop(
@@ -3038,6 +3115,23 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     Xarg[idx3] <- as.numeric(Xbridge)
   }
 
+  xcoef_fixed <- .normalise_Xcoef_fixed(NULL, x_cols, REML = REML)
+  coef_fixed_arg <- NULL
+  if (!is.null(Xcoef_fixed)) {
+    if (is.null(Xarg)) {
+      cli::cli_abort(c(
+        "{.arg Xcoef_fixed} for {.code engine = \"julia\"} currently requires an admitted fixed-effect covariate design.",
+        "i" = "Use expanded covariate columns such as {.code traitb:x}. Per-trait intercept pinning remains on the native {.code engine = \"tmb\"} path."
+      ))
+    }
+    xcoef_fixed <- .normalise_Xcoef_fixed(
+      Xcoef_fixed,
+      x_cols,
+      REML = REML
+    )
+    coef_fixed_arg <- xcoef_fixed$status == "fixed"
+  }
+
   ## --- binomial trials: cbind(successes, failures) totals take precedence, then
   ## per-row n_trials (weights API), else Bernoulli (N = 1). ---
   Narg <- NULL
@@ -3061,6 +3155,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     num.lv = K,
     N = Narg,
     X = Xarg,
+    coef_fixed = coef_fixed_arg,
     mask = if (has_missing_response) response_mask else NULL,
     ci_method = ci_method,
     ci_level = ci_level,
@@ -3070,6 +3165,8 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   fit$call <- call
   fit$trait_levels <- traits
   fit$unit_levels <- units
+  fit$X_fix_names <- x_cols
+  fit$Xcoef_fixed <- xcoef_fixed
   fit$missing_response <- has_missing_response
   if (has_missing_response) {
     fit$response_mask <- response_mask

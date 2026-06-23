@@ -223,10 +223,12 @@ map to \code{unit} and \code{unit_obs} respectively.}
 \item{Xcoef_fixed}{Optional named numeric vector of fixed-effect
 coefficient constraints. Names must match the expanded fixed-effect
 design columns (\code{fit$X_fix_names}); values must currently be \code{0},
-pinning those coefficients exactly at structural zero via TMB's
-parameter map. This is an ML-only native-TMB feature in the first
-slice: \code{REML = TRUE} and \code{engine = "julia"} stop loudly. The
-fitted object still reports all fixed-effect rows; pinned rows have
+pinning those coefficients exactly at structural zero. Use this when a
+predictor is meaningful for some responses but should be fixed at zero
+for others. Native TMB fits use a parameter map; admitted
+\code{engine = "julia"} fixed-effect-X rows pass the same zero mask to
+GLLVM.jl. This is ML-only: \code{REML = TRUE} stops loudly. Native fitted
+objects still report all fixed-effect rows; pinned rows have
 \code{estimate = 0}, \code{std.error = NA}, and \code{status = "fixed"} in
 \code{tidy(fit, "fixed")}.}
 

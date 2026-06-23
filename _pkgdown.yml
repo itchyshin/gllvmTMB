@@ -44,6 +44,8 @@ navbar:
         href: articles/covariance-correlation.html
       - text: Formula keyword grid
         href: articles/api-keyword-grid.html
+      - text: Fixed predictor effects
+        href: articles/fixed-effect-zero-constraints.html
       - text: Response families
         href: articles/response-families.html
     diagnostics:
@@ -117,6 +119,7 @@ articles:
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
     - articles/api-keyword-grid
+    - articles/fixed-effect-zero-constraints
     - articles/response-families
 
   - title: Diagnostics and validation

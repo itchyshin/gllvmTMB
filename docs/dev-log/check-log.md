@@ -17975,3 +17975,101 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-22-xcoef-fixed-zero.md`.
+
+## 2026-06-23 -- Xcoef_fixed Julia bridge and user article
+
+Goal: finish the paired fixed-zero coefficient lane by routing
+`Xcoef_fixed` through admitted `engine = "julia"` fixed-effect-X rows,
+documenting the user story that some predictors only make sense for
+some responses, and keeping the native TMB support from 2026-06-22
+unchanged.
+
+Implementation:
+
+- Merged paired GLLVM.jl PR #114
+  (`https://github.com/itchyshin/GLLVM.jl/pull/114`), which supplies
+  the Julia-side positional zero-mask route used by this R bridge slice.
+- Removed the temporary `engine = "julia"` stop for `Xcoef_fixed` when
+  an admitted fixed-effect covariate design exists.
+- `gllvm_julia_fit()` now accepts `coef_fixed`, validates it against
+  `dim(X)[3]`, and passes fixed entries to GLLVM.jl through the
+  `options$coef_fixed` index-to-zero dictionary route. This avoids the
+  JuliaCall length-1 logical-vector-to-scalar issue.
+- `.gllvmTMB_julia_dispatch()` now normalises the named R-side
+  `Xcoef_fixed` vector against expanded fixed-effect column names,
+  passes the positional mask, and stores `fit$X_fix_names` and
+  `fit$Xcoef_fixed` on Julia-backed fits.
+- `coef.gllvmTMB_julia()` now exposes `gamma_status` /
+  `mean_coef_status` when returned by the Julia bridge.
+- Added `vignettes/articles/fixed-effect-zero-constraints.Rmd` and a
+  pkgdown Concepts entry, explaining that this is trait-specific
+  mean-structure control, not response screening or loading constraints.
+- Updated `NEWS.md`, `man/gllvmTMB.Rd`, `man/gllvm_julia_fit.Rd`, and
+  validation-debt row `MIS-34`.
+
+Pre-edit coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,author,updatedAt`
+  -> PASS; no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS; only unrelated local power-pilot commits were visible.
+
+Validation commands and outcomes:
+
+- `gh pr merge 114 --repo itchyshin/GLLVM.jl --merge --delete-branch`
+  -> PASS; GLLVM.jl PR #114 merged at
+  `00804c2994c4ffda30ec9ee8cdf6541e3337c50d`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE)'`
+  -> PASS.
+- `air format R/gllvmTMB.R R/julia-bridge.R tests/testthat/test-xcoef-fixed.R tests/testthat/test-julia-bridge.R`
+  -> PASS; unrelated formatting churn was subsequently trimmed back.
+- `Rscript --vanilla -e 'devtools::test(filter = "xcoef-fixed|julia-bridge")'`
+  -> PASS after cleanup: `FAIL 0 | WARN 1 | SKIP 16 | PASS 414`.
+  The single warning is the existing once-per-session Julia default-Psi
+  bridge warning in `test-julia-bridge.R:1754`, not the fixed-zero route.
+- `GLLVM_JL_PATH=/private/tmp/gllvmjl-xcoef-fixed-zero-20260622 Rscript --vanilla -e "devtools::load_all(quiet = TRUE); testthat::test_file('tests/testthat/test-julia-bridge.R', desc = \"engine = 'julia' main dispatch routes Xcoef_fixed to live GLLVM.jl\")"`
+  -> PASS after cleanup: `FAIL 0 | WARN 0 | SKIP 0 | PASS 5`.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated relevant help pages. Unrelated roxygen-version
+  Rd churn was excluded from the diff.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/fixed-effect-zero-constraints", lazy = FALSE, new_process = FALSE)'`
+  -> PASS; rendered the new article against the current source package.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS: `No problems found.`
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> PASS: `FAIL 0 | WARN 10 | SKIP 746 | PASS 3515`. Warnings were
+  the existing Julia bridge default-Psi warning plus the existing
+  multi-trial binomial `NaNs produced` warnings from `summary.sdreport()`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> completed with `0 errors, 1 warning, 1 note`; `devtools` exits
+  non-zero on warnings. The note was `unable to verify current time`.
+  The warning was reproduced with `R CMD INSTALL -l "$tmp_lib" --preclean .`
+  and is the known local Apple-clang / RcppEigen / R-header install
+  warning stack, including `xcrun --show-sdk-version` status 1 and
+  `R_ext/Boolean.h:62:36: warning: unknown warning group
+  '-Wfixed-enum-extension'`.
+- `R CMD INSTALL -l "$tmp_lib" --preclean .`
+  -> PASS; install completed with the known local compiler warnings above.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "engine = \"julia\".*Xcoef_fixed|Xcoef_fixed.*engine = \"julia\".*stop|not yet available for .*engine = \"julia\"|structural-zero coefficient masks remain follow-up|selects variables|automatic deletion|guarantees convergence|proves identifiability|validated item selection|separation solved" R tests vignettes NEWS.md docs/design man _pkgdown.yml`
+  -> PASS; no stale overclaim or old Julia-gate wording hits.
+- `rg -n "beta = 0|fixed predictor effects|Fix predictor effects|Xcoef_fixed|coef_fixed|gamma_status|mean_coef_status" R tests vignettes NEWS.md docs/design man _pkgdown.yml`
+  -> PASS; hits were intended implementation, docs, tests, and register
+  entries plus unrelated pre-existing `beta` comments in old tests.
+
+Not claimed:
+
+- The full live `test-julia-bridge.R` under `GLLVM_JL_PATH` is not
+  claimed as green in this slice; only the new live fixed-zero dispatch
+  smoke was run and passed. Older live bridge parity failures remain
+  outside this PR.
+- Julia per-trait intercept pinning, non-zero fixed values, REML, and
+  unsupported Julia fixed-effect-X families remain gated in `MIS-34`.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-xcoef-fixed-julia-bridge.md`.

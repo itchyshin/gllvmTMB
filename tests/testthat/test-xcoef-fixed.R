@@ -102,7 +102,7 @@ test_that("all-zero Xcoef_fixed covariate block equals omitting the block", {
   expect_equal(attr(logLik(fit_zero), "df"), attr(logLik(fit_omit), "df"))
 })
 
-test_that("Xcoef_fixed validates names, values, REML, and Julia scope", {
+test_that("Xcoef_fixed validates names, values, and REML", {
   dat <- make_xcoef_fixed_data(n_site = 12L)
 
   expect_error(
@@ -135,16 +135,5 @@ test_that("Xcoef_fixed validates names, values, REML, and Julia scope", {
       silent = TRUE
     ),
     "REML = TRUE"
-  )
-  expect_error(
-    gllvmTMB(
-      y ~ 0 + trait + (0 + trait):x + latent(0 + trait | site, d = 1),
-      data = dat,
-      unit = "site",
-      engine = "julia",
-      Xcoef_fixed = c("traita:x" = 0),
-      silent = TRUE
-    ),
-    "engine = \"julia\""
   )
 })

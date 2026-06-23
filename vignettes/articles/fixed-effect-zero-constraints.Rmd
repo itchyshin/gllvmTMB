@@ -1,0 +1,147 @@
+---
+title: "Fix predictor effects at zero"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Fix predictor effects at zero}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+`Xcoef_fixed` controls the fixed-effect part of the model. Use it when the same
+stacked-trait formula is convenient, but a predictor should be estimated for
+some responses and fixed at zero for others.
+
+For one unit `i` and response `t`, a simple stacked-trait model has a mean
+structure like
+
+$$
+\eta_{it} = x_{it}^{T}\beta_t + \lambda_t^{T}u_i .
+$$
+
+Here `beta` is the fixed-effect coefficient vector for the mean, `lambda` is a
+loading row, and `u_i` is the unit score. `Xcoef_fixed` changes the first part,
+`x beta`. It does not change `Lambda`, `Psi`, the latent rank, or the response
+set.
+
+## Why fix a coefficient?
+
+Sometimes a predictor is meaningful for one response but not another. In a
+systematic map, an urban-gradient predictor might be scientifically meaningful
+for biodiversity outcomes but not for a metadata indicator. In a joint species
+distribution model, a covariate might be pre-specified for some species or
+response groups but not others. In a morphometrics example, a treatment might
+affect growth traits but not a recording-quality indicator.
+
+You could split the model into several formulas. `Xcoef_fixed` gives a narrower
+route: keep one stacked model and pin only the irrelevant fixed-effect
+coefficients at structural zero.
+
+## Example
+
+```{r setup}
+library(gllvmTMB)
+```
+
+Create three responses measured on the same units. The predictor `x` should
+affect `growth` and `colour`, but the `metadata` response is included only as a
+control indicator, so we do not want `x` to define that response's mean.
+
+```{r data}
+set.seed(20260623)
+n_unit <- 36
+site <- factor(seq_len(n_unit))
+x_site <- rnorm(n_unit)
+
+dat <- expand.grid(
+  site = site,
+  trait = factor(c("growth", "colour", "metadata")),
+  KEEP.OUT.ATTRS = FALSE
+)
+dat$x <- x_site[as.integer(dat$site)]
+dat$eta <- with(dat, ifelse(
+  trait == "growth", 0.4 + 0.8 * x,
+  ifelse(trait == "colour", -0.2 - 0.5 * x, 0.1)
+))
+dat$y <- dat$eta + rnorm(nrow(dat), sd = 0.2)
+```
+
+The coefficient names come from the expanded fixed-effect design, not from the
+raw formula text. Check those names before supplying `Xcoef_fixed`.
+
+```{r names}
+colnames(model.matrix(~ 0 + trait + (0 + trait):x, dat))
+```
+
+Now fix only the `metadata` slope for `x` at zero.
+
+```{r fit}
+fit <- gllvmTMB(
+  y ~ 0 + trait + (0 + trait):x + latent(0 + trait | site, d = 1, unique = FALSE),
+  data = dat,
+  unit = "site",
+  family = gaussian(),
+  Xcoef_fixed = c("traitmetadata:x" = 0),
+  silent = TRUE
+)
+
+tidy(fit, "fixed")
+```
+
+The fixed row remains in the fitted object. Its estimate is `0`, its standard
+error is `NA`, and its `status` is `"fixed"`. The other response-specific slopes
+are still estimated.
+
+If your data start in wide form, use the same `gllvmTMB()` entry point with the
+`traits(...)` left-hand side. The expanded coefficient name is the same because
+both forms reach the same stacked fixed-effect design.
+
+```{r wide-fit}
+dat_wide <- stats::reshape(
+  dat[c("site", "trait", "x", "y")],
+  idvar = c("site", "x"),
+  timevar = "trait",
+  direction = "wide"
+)
+names(dat_wide) <- sub("^y\\.", "", names(dat_wide))
+
+fit_wide <- gllvmTMB(
+  traits(growth, colour, metadata) ~ 1 + x +
+    latent(1 | site, d = 1, unique = FALSE),
+  data = dat_wide,
+  unit = "site",
+  family = gaussian(),
+  Xcoef_fixed = c("traitmetadata:x" = 0),
+  silent = TRUE
+)
+
+tidy(fit_wide, "fixed")
+```
+
+## Relation to other tools
+
+`Xcoef_fixed` is not variable selection. It should express a pre-specified
+model structure: this response does not get this predictor effect. If you are
+unsure whether a binary response should enter the model at all, start with
+`screen_gllvmTMB()` instead.
+
+`Xcoef_fixed` is also not a loading constraint. Use loading constraints when
+you want to control which responses define a latent axis. Use `Xcoef_fixed`
+when you want to control which predictors enter each response's mean.
+
+The current implementation supports exact zero constraints in ML fits. Native
+TMB fits support the full named `Xcoef_fixed` contract. Admitted
+`engine = "julia"` fixed-effect-X rows use the same R argument and pass a
+zero-mask to GLLVM.jl. `REML = TRUE`, non-zero fixed values, and unsupported
+Julia fixed-effect-X rows remain gated.

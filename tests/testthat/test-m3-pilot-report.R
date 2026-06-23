@@ -9,13 +9,21 @@ source_power_pilot_report <- function() {
   roots <- roots[nzchar(roots)]
   roots <- roots[dir.exists(roots)]
   files <- lapply(roots, function(root) {
-    file.path(root, "dev", c(
-      "m3-grid.R",
-      "m3-pilot-launch.R",
-      "m3-pilot-report.R"
-    ))
+    file.path(
+      root,
+      "dev",
+      c(
+        "m3-grid.R",
+        "m3-pilot-launch.R",
+        "m3-pilot-report.R"
+      )
+    )
   })
-  hit <- files[vapply(files, function(paths) all(file.exists(paths)), logical(1))]
+  hit <- files[vapply(
+    files,
+    function(paths) all(file.exists(paths)),
+    logical(1)
+  )]
   testthat::skip_if(
     !length(hit),
     "dev power-pilot helpers are unavailable in this source-tarball context"
@@ -26,10 +34,8 @@ source_power_pilot_report <- function() {
   source(paths[3], local = parent.frame())
 }
 
-test_that("power pilot report carries denominators, MCSEs, and evidence labels", {
-  source_power_pilot_report()
-
-  g <- data.frame(
+fake_power_pilot_grid <- function() {
+  data.frame(
     cell = "binomial_probit-d1-n50-sig0p2",
     family = "binomial",
     d = 1L,
@@ -63,6 +69,12 @@ test_that("power pilot report carries denominators, MCSEs, and evidence labels",
     lambda_scale = 0.5,
     stringsAsFactors = FALSE
   )
+}
+
+test_that("power pilot report carries denominators, MCSEs, and evidence labels", {
+  source_power_pilot_report()
+
+  g <- fake_power_pilot_grid()
 
   row <- pilot_collect_cell(
     g,
@@ -99,4 +111,71 @@ test_that("power pilot report carries denominators, MCSEs, and evidence labels",
   expect_true(any(grepl("binomial_logit_harness", lines, fixed = TRUE)))
   expect_true(any(grepl("cov_mcse", lines, fixed = TRUE)))
   expect_true(any(grepl("sdreport", lines, fixed = TRUE)))
+})
+
+test_that("power pilot report reads explicit immutable chunk aggregates", {
+  source_power_pilot_report()
+
+  results_dir <- tempfile("pilot-report-chunk-")
+  aggregate_dir <- file.path(results_dir, PILOT_CHUNK_AGGREGATE_DIR)
+  dir.create(aggregate_dir, recursive = TRUE)
+  cell_id <- "binomial_probit-d1-n50-sig0p2"
+  saveRDS(
+    fake_power_pilot_grid(),
+    file.path(aggregate_dir, paste0(cell_id, ".rds"))
+  )
+
+  rows <- pilot_collect_chunk_aggregates(results_dirs = results_dir)
+
+  expect_equal(nrow(rows), 1L)
+  expect_equal(rows$cell_id, cell_id)
+  expect_equal(rows$evidence_family, "binomial_logit_harness")
+  expect_equal(rows$n_attempted_fits, 2L)
+  expect_equal(rows$coverage_eligible_n, 4L)
+  expect_equal(rows$coverage_primary, 0.75)
+  expect_equal(rows$coverage_mcse, sqrt(0.75 * 0.25 / 2))
+  expect_equal(rows$flag, "nonPD 50%; conv-fail 50%; boot-fail 10%")
+})
+
+test_that("power pilot report CLI emits issues from chunk aggregates", {
+  source_power_pilot_report()
+
+  workspace <- Sys.getenv("GITHUB_WORKSPACE", unset = NA_character_)
+  candidates <- unique(c(".", file.path("..", ".."), workspace))
+  candidates <- candidates[nzchar(candidates) & dir.exists(candidates)]
+  roots <- candidates[file.exists(file.path(
+    candidates,
+    "dev",
+    "m3-pilot-report.R"
+  ))]
+  testthat::skip_if(!length(roots), "repo root is unavailable for CLI smoke")
+  root <- normalizePath(roots[1], winslash = "/", mustWork = TRUE)
+
+  results_dir <- tempfile("pilot-report-cli-")
+  aggregate_dir <- file.path(results_dir, PILOT_CHUNK_AGGREGATE_DIR)
+  dir.create(aggregate_dir, recursive = TRUE)
+  cell_id <- "binomial_probit-d1-n50-sig0p2"
+  saveRDS(
+    fake_power_pilot_grid(),
+    file.path(aggregate_dir, paste0(cell_id, ".rds"))
+  )
+
+  cmd <- file.path(R.home("bin"), "Rscript")
+  old_wd <- setwd(root)
+  on.exit(setwd(old_wd), add = TRUE)
+  out <- system2(
+    cmd,
+    c(
+      "--vanilla",
+      file.path("dev", "m3-pilot-report.R"),
+      "--emit-issues",
+      "--chunk-aggregate",
+      paste0("--results-dir=", results_dir)
+    ),
+    stdout = TRUE,
+    stderr = TRUE
+  )
+
+  expect_null(attr(out, "status"))
+  expect_match(paste(out, collapse = "\n"), "nonPD 50%")
 })

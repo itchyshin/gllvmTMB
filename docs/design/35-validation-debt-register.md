@@ -279,7 +279,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-07 | `extract_phylo_signal()` | `covered` | `test-extractors-extra.R`, `test-extract-omega.R` | |
 | EXT-08 | `extract_residual_split()` | `covered` | `test-extract-omega.R`, `test-extractors-extra.R` | |
 | EXT-09 | `extract_ordination()` | `covered` | `test-ordiplot-VP.R`, `test-ordiplot-multi.R` | rotation-variant; warn |
-| EXT-10 | `extract_cutpoints()` ordinal-probit | `partial` | `test-ordinal-probit.R` | smoke |
+| EXT-10 | `extract_cutpoints()` ordinal-probit | `covered` | `test-ordinal-probit.R`, `test-ordinal-recovery-depth.R` | Returns ordinal-probit cutpoints with planted-threshold recovery across `K = 2, 3, 4`, omitting binary `K = 2` traits that have no free cutpoint; mixed-family Gaussian + ordinal-probit + Poisson fits return cutpoint rows only for the ordinal trait. Heavy joint-depth evidence (`test-ordinal-recovery-depth.R`) covers cutpoints alongside intercepts and full between-unit `Sigma_B`. |
 | EXT-11 | `extract_proportions()` delta-family | `blocked` | n/a | post-CRAN |
 | EXT-12 | `extract_ICC_site()` legacy | `covered` | `test-extractors.R` | superseded by `extract_repeatability()` |
 | EXT-13 | `bootstrap_Sigma()` | `covered` (Gaussian) / `partial` (non-Gaussian) | `test-bootstrap-Sigma.R` | M3.3b surface admission (Design 50) controls the next non-Gaussian evidence movement. Known-phi point diagnostics are not bootstrap coverage. |
@@ -348,7 +348,7 @@ M2 binary).
 | ID | Capability | Status | Test evidence | Notes |
 |----|------------|--------|---------------|-------|
 | LAM-01 | `lambda_constraint` argument accepted | `covered` | `test-lambda-constraint.R` | |
-| LAM-02 | `lambda_constraint` Gaussian fits | `partial` | `test-lambda-constraint.R` | smoke only |
+| LAM-02 | `lambda_constraint` Gaussian fits | `covered` | `test-lambda-constraint.R` | Gaussian confirmatory-loading fits pin requested entries exactly: diagonal pins, off-diagonal zero and non-zero pins, ignored upper-triangle pins, dimension-mismatch errors, W-level pins, and simultaneous B + W constraints. |
 | LAM-03 | `lambda_constraint` on binary fits (confirmatory IRT) | `covered` | `test-m2-3-lambda-constraint-binary.R`, `test-m2-3-mirt-cross-check.R`, `test-m2-3-galamm-cross-check.R`, `test-lambda-constraint.R` | M2.3 walks: binary 2PL IRT recovery at d ∈ {1, 2} × n_items ∈ {20, 50} + mirt + galamm cross-checks |
 | LAM-04 | `suggest_lambda_constraint()` / `suggest_lambda_constraints()` | `covered` | `test-m2-4-suggest-lambda-constraint-binary.R`, `test-suggest-lambda-constraint.R` | M2.4 walks: suggester output structure + suggester→fit recovery cycle on binary IRT at d ∈ {1, 2, 3}; d=3 n_items=10 boundary documented. The plural helper is a comparison wrapper around the same threshold / Wald / profile suggester surface. |
 
@@ -394,27 +394,31 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 
 ## Honest scope statement
 
-**Current tally (Gaussian REML pilot, 2026-06-09) — recounted from
-the actual per-row status column:**
+**Current tally (2026-06-22) — recounted from the leading status
+label in the per-row status column:**
 
-- **194 capability rows** (the register grew from 102 rows at
+- **201 capability rows** (the register grew from 102 rows at
   Phase 0A close as the kernel/coevolution, augmented-slope,
-  cluster2, missing-data, plot/extractor, and diagnostic
-  sections were added).
-- **167 `covered`** (86 %): test evidence exists at the depth
-  advertised.
-- **20 `partial`** (10 %): tests exist but coverage is
-  shallower than advertised — every remaining `partial` row
-  is an honest, deliberate deferral (known-V non-Gaussian
-  variants FG-07/08/09, spatial-family depth FG-13, single-V
-  `meta_V` inference MET-01/14, soft-deprecated
-  `gllvmTMB_wide()` FG-16/MIS-03, truncated/censored recovery
-  FAM-15/16, non-Gaussian s ≥ 2 slopes RE-03, multi-matrix /
-  cross-package animal models ANI-09/10, coverage-study gate
-  CI-08/CI-10, ordinal cutpoint smoke EXT-10, Gaussian
-  `lambda_constraint` smoke LAM-02, predict / plot dispatchers
-  MIS-07/09, meta-analytic two-stage article MET-04). None is
-  a v0.2.0 *correctness* blocker.
+  cluster2, missing-data, plot/extractor, diagnostic, and Julia
+  bridge sections were added).
+- **171 `covered`** (85 %): test evidence exists at the primary
+  depth advertised by the row. Four of these rows still carry an
+  explicit `partial` sub-scope in their status text (`EXT-04`,
+  `EXT-13`, `DIA-11`, `DIA-12`), so downstream prose must cite the
+  covered regime rather than generalising across all regimes.
+- **23 `partial`** (11 %): tests exist but coverage is shallower
+  than advertised — every remaining leading-`partial` row is an
+  honest, deliberate deferral (known-V non-Gaussian variants
+  FG-07/08/09, spatial-family depth FG-13, single-V `meta_V`
+  inference FG-14/MET-01, soft-deprecated `gllvmTMB_wide()`
+  FG-16/MIS-03, truncated/censored recovery FAM-15/16,
+  non-Gaussian s ≥ 2 slopes RE-03, ordinary random-regression
+  surface RE-12, multi-matrix / cross-package animal models
+  ANI-09/10, coevolution inference grids COE-03/COE-04,
+  binary-only pre-fit screening DIA-14, coverage-study gates
+  CI-08/CI-10, predict / plot dispatchers MIS-07/09,
+  meta-analytic two-stage article MET-04, and Julia bridge
+  JUL-01). None is a v0.2.0 *correctness* blocker.
 - **0 `opt-in`**: the `link_residual = "auto"` default
   (PR #101) eliminated this category and it has stayed empty.
 - **7 `blocked`** (4 %): advertised-but-undefined or
@@ -427,7 +431,7 @@ the actual per-row status column:**
   safeguard on the public surface.
 
 The headline therefore moved **40/48/0/14 over 102 rows
-(Phase 0A) → 167/20/0/7 over 194 rows (Gaussian REML pilot)**. No
+(Phase 0A) → 171/23/0/7 over 201 rows (2026-06-22 recount)**. No
 `partial` or `blocked` row is a v0.2.0 correctness blocker;
 they are honestly-marked deferrals (power-study coverage,
 mixture / gengamma families, proportional meta-V,

@@ -30,9 +30,11 @@
 ##     per-replicate data.frame from `m3_run_cell()`).
 ##   * An index at `<results_dir>/pilot-index.rds` records, per cell:
 ##     status (done|failed), n_sim, wall_s, coverage_primary, and (for
-##     failures) the error message. The index is the source of truth for
-##     "what is already done"; if it is absent it is rebuilt from the
-##     per-cell .rds files on disk.
+##     failures) the error message. The index is the local resume cache
+##     for "what is already done"; if it is absent it is rebuilt from the
+##     per-cell .rds files on disk. In the sharded workflow, per-cell
+##     grids plus per-shard manifests are the audit trail and the index
+##     is rebuilt as a derived cache by the single-writer persist job.
 ##   * Re-running skips cells already marked done (idempotent).
 ##   * A cell that errors is caught, logged, marked `failed`, and skipped
 ##     -- it never crashes the batch (failure-tolerant). Failed cells are
@@ -71,6 +73,11 @@ PILOT_RESULTS_DIR_DEFAULT <- "dev/m3-pilot-results"
 
 ## Index file name inside the results directory.
 PILOT_INDEX_FILE <- "pilot-index.rds"
+
+## Per-run manifest directory inside the results directory. Each shard writes
+## one CSV here; the persist job merges + validates them before rebuilding the
+## derived index.
+PILOT_MANIFEST_DIR <- "_manifests"
 
 ## Per-cell fixed backbone (held constant across the pilot grid so the
 ## varied axes are interpretable). n_traits is fixed; n_units is a grid
@@ -112,6 +119,10 @@ PILOT_SIGNAL_LEVELS <- c(0.0, 0.2, 0.5)
 ## Latent rank and unit-count axes (small + large), Design 66 sec. 4.2.
 PILOT_D_LEVELS <- c(1L, 2L)
 PILOT_N_UNITS_LEVELS <- c(50L, 150L)
+
+## Effective per-cell seed blocks must be farther apart than any per-batch
+## replicate block, otherwise cells can share rep_seed values.
+PILOT_CELL_SEED_STRIDE <- 10000L
 
 ## ---- Signal -> lambda_scale mapping -----------------------------------
 
@@ -171,12 +182,21 @@ pilot_grid <- function() {
     g$n_units,
     sub("\\.", "p", formatC(g$signal, format = "f", digits = 1))
   )
-  ## Deterministic per-cell seed base (distinct per cell to avoid seed
-  ## collision across cells; the harness derives per-rep seeds from it).
-  g$seed_base <- 660000L + seq_len(nrow(g))
-  ## Order columns; sort by family then d then n then signal for readability.
+  ## Sort by family then d then n then signal for readability before assigning
+  ## seed bases; this keeps the seed map stable under upstream expand.grid()
+  ## ordering changes.
+  g <- g[order(g$family_label, g$d, g$n_units, g$signal), ]
+  ## Deterministic per-cell seed base. m3_run_cell() adds a family/d offset
+  ## before adding the replicate index, so assign cell seed bases after
+  ## subtracting that offset. The resulting effective rep_seed bases are
+  ## exactly PILOT_CELL_SEED_STRIDE apart across the whole grid.
+  seed_offset <- 100000L * m3_family_seed_index(g$harness_family) + 1000L * g$d
+  g$seed_base <- 660000L +
+    seq_len(nrow(g)) * PILOT_CELL_SEED_STRIDE -
+    seed_offset
+  ## Order columns.
   g <- g[
-    order(g$family_label, g$d, g$n_units, g$signal),
+    seq_len(nrow(g)),
     c(
       "cell_id",
       "family_label",
@@ -263,24 +283,29 @@ pilot_load_index <- function(results_dir) {
         }
         wall <- sum(s$mean_runtime_s * s$n_completed, na.rm = TRUE)
       }
-      if ("rep" %in% names(df)) nsim <- length(unique(df$rep))
+      if ("rep" %in% names(df)) {
+        nsim <- length(unique(df$rep))
+      }
       if ("n_boot" %in% names(df)) {
         nb <- suppressWarnings(max(df$n_boot, na.rm = TRUE))
         if (is.finite(nb)) nboot <- as.integer(nb)
       }
     }
-    idx <- rbind(idx, data.frame(
-      cell_id = cell_id,
-      status = "done",
-      n_sim = nsim,
-      n_boot = nboot,
-      wall_s = wall,
-      coverage_primary = cov_p,
-      primary_gate_status = gate %||% NA_character_,
-      error = NA_character_,
-      timestamp = NA_character_,
-      stringsAsFactors = FALSE
-    ))
+    idx <- rbind(
+      idx,
+      data.frame(
+        cell_id = cell_id,
+        status = "done",
+        n_sim = nsim,
+        n_boot = nboot,
+        wall_s = wall,
+        coverage_primary = cov_p,
+        primary_gate_status = gate %||% NA_character_,
+        error = NA_character_,
+        timestamp = NA_character_,
+        stringsAsFactors = FALSE
+      )
+    )
   }
   idx
 }
@@ -291,6 +316,233 @@ pilot_save_index <- function(idx, results_dir) {
   }
   saveRDS(idx, pilot_index_path(results_dir))
   invisible(idx)
+}
+
+pilot_manifest_dir <- function(results_dir) {
+  file.path(results_dir, PILOT_MANIFEST_DIR)
+}
+
+pilot_manifest_path <- function(results_dir, shard) {
+  file.path(pilot_manifest_dir(results_dir), sprintf("shard-%s.csv", shard))
+}
+
+pilot_manifest_seed_range <- function(batch_seed_base, family, d, n_reps) {
+  if (!exists("m3_family_seed_index", mode = "function")) {
+    stop("pilot manifest needs m3_family_seed_index(); source dev/m3-grid.R.")
+  }
+  n_reps <- as.integer(n_reps)
+  if (is.na(n_reps) || n_reps < 1L) {
+    return(c(min = NA_integer_, max = NA_integer_))
+  }
+  offset <- 1000L * as.integer(d) + 100000L * m3_family_seed_index(family)
+  c(
+    min = as.integer(batch_seed_base + offset + 1L),
+    max = as.integer(batch_seed_base + offset + n_reps)
+  )
+}
+
+## Build the deterministic audit manifest for one shard/run before fitting.
+## This is intentionally side-effect free: it reads prior per-cell stores only
+## to record n_before and the planned step size.
+pilot_build_manifest <- function(
+  cell_ids = NULL,
+  n_sim_step = ACCUM_N_SIM_STEP_DEFAULT,
+  n_sim_cap = ACCUM_N_SIM_CAP_DEFAULT,
+  seed_base = NULL,
+  results_dir = PILOT_RESULTS_DIR_DEFAULT,
+  n_boot = PILOT_N_BOOT_DEFAULT,
+  seed_fn = pilot_accum_batch_seed,
+  shard = NA_integer_,
+  n_shards = NA_integer_,
+  source_sha = Sys.getenv("GITHUB_SHA", unset = NA_character_),
+  workflow_run_id = Sys.getenv("GITHUB_RUN_ID", unset = NA_character_),
+  workflow_run_number = Sys.getenv("GITHUB_RUN_NUMBER", unset = NA_character_)
+) {
+  stopifnot(is.function(seed_fn))
+  if (is.null(seed_base)) {
+    stop("pilot_build_manifest requires seed_base.")
+  }
+  n_sim_step <- as.integer(n_sim_step)
+  n_sim_cap <- as.integer(n_sim_cap)
+  seed_base <- as.integer(seed_base)
+  n_boot <- as.integer(n_boot)
+  if (is.na(seed_base) || seed_base < 0L) {
+    stop("seed_base must be a non-negative integer.")
+  }
+  if (is.na(n_sim_step) || n_sim_step < 1L) {
+    stop("n_sim_step must be a positive integer.")
+  }
+  if (is.na(n_sim_cap) || n_sim_cap < 1L) {
+    stop("n_sim_cap must be a positive integer.")
+  }
+
+  grid <- pilot_grid()
+  if (!is.null(cell_ids)) {
+    unknown <- setdiff(cell_ids, grid$cell_id)
+    if (length(unknown)) {
+      stop(
+        "unknown cell_ids requested: ",
+        paste(utils::head(unknown, 5L), collapse = ", ")
+      )
+    }
+    grid <- grid[grid$cell_id %in% cell_ids, , drop = FALSE]
+  }
+
+  rows <- vector("list", nrow(grid))
+  for (i in seq_len(nrow(grid))) {
+    cell <- grid[i, , drop = FALSE]
+    cid <- cell$cell_id
+    cell_path <- file.path(results_dir, paste0(cid, ".rds"))
+    prior <- if (file.exists(cell_path)) {
+      tryCatch(readRDS(cell_path), error = function(e) NULL)
+    } else {
+      NULL
+    }
+    n_before <- pilot_accum_count(prior)
+    n_reps_planned <- if (n_before >= n_sim_cap) {
+      0L
+    } else {
+      min(n_sim_step, n_sim_cap - n_before)
+    }
+    batch_seed_base <- seed_fn(seed_base, cell$seed_base)
+    seed_range <- pilot_manifest_seed_range(
+      batch_seed_base,
+      cell$harness_family,
+      cell$d,
+      n_reps_planned
+    )
+    rows[[i]] <- data.frame(
+      campaign_id = sprintf("power-pilot-seed-%s", seed_base),
+      source_sha = as.character(source_sha),
+      workflow_run_id = as.character(workflow_run_id),
+      workflow_run_number = as.character(workflow_run_number),
+      shard = as.integer(shard),
+      n_shards = as.integer(n_shards),
+      chunk_id = sprintf("seed%s-shard%s-%s", seed_base, shard, cid),
+      cell_id = cid,
+      family_label = cell$family_label,
+      harness_family = cell$harness_family,
+      evidence_family = cell$evidence_family,
+      d = as.integer(cell$d),
+      n_units = as.integer(cell$n_units),
+      signal = as.numeric(cell$signal),
+      result_file = paste0(cid, ".rds"),
+      result_path = cell_path,
+      n_before = as.integer(n_before),
+      n_reps_planned = as.integer(n_reps_planned),
+      n_sim_cap = as.integer(n_sim_cap),
+      n_boot = as.integer(n_boot),
+      run_seed_base = as.integer(seed_base),
+      cell_seed_base = as.integer(cell$seed_base),
+      batch_seed_base = as.integer(batch_seed_base),
+      rep_seed_min = as.integer(seed_range[["min"]]),
+      rep_seed_max = as.integer(seed_range[["max"]]),
+      action = if (n_reps_planned > 0L) "advance" else "skip_at_cap",
+      stringsAsFactors = FALSE
+    )
+  }
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+pilot_write_manifest <- function(manifest, results_dir, shard) {
+  manifest_dir <- pilot_manifest_dir(results_dir)
+  if (!dir.exists(manifest_dir)) {
+    dir.create(manifest_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  path <- pilot_manifest_path(results_dir, shard)
+  utils::write.csv(manifest, path, row.names = FALSE, na = "")
+  invisible(path)
+}
+
+pilot_read_manifests <- function(results_dirs = PILOT_RESULTS_DIR_DEFAULT) {
+  results_dirs <- results_dirs[dir.exists(results_dirs)]
+  if (!length(results_dirs)) {
+    return(data.frame())
+  }
+  files <- unlist(
+    lapply(results_dirs, function(dir) {
+      list.files(
+        pilot_manifest_dir(dir),
+        pattern = "[.]csv$",
+        full.names = TRUE
+      )
+    }),
+    use.names = FALSE
+  )
+  if (!length(files)) {
+    return(data.frame())
+  }
+  rows <- lapply(files, function(path) {
+    out <- utils::read.csv(path, stringsAsFactors = FALSE)
+    out$manifest_file <- basename(path)
+    out
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+pilot_assert_manifest <- function(manifest) {
+  if (is.null(manifest) || !is.data.frame(manifest) || nrow(manifest) == 0L) {
+    return(invisible(TRUE))
+  }
+  required <- c(
+    "chunk_id",
+    "cell_id",
+    "result_path",
+    "n_reps_planned",
+    "rep_seed_min",
+    "rep_seed_max"
+  )
+  missing <- setdiff(required, names(manifest))
+  if (length(missing)) {
+    stop(
+      "Pilot manifest missing required columns: ",
+      paste(missing, collapse = ", ")
+    )
+  }
+  active <- manifest[manifest$n_reps_planned > 0L, , drop = FALSE]
+  if (!nrow(active)) {
+    return(invisible(TRUE))
+  }
+  dup_chunk <- active$chunk_id[duplicated(active$chunk_id)]
+  if (length(dup_chunk)) {
+    stop("Duplicate pilot manifest chunk_id: ", dup_chunk[[1]])
+  }
+  dup_path <- active$result_path[duplicated(active$result_path)]
+  if (length(dup_path)) {
+    stop("Duplicate pilot output paths in manifest: ", dup_path[[1]])
+  }
+  active <- active[
+    order(active$rep_seed_min, active$rep_seed_max),
+    ,
+    drop = FALSE
+  ]
+  bad_seed <- is.na(active$rep_seed_min) |
+    is.na(active$rep_seed_max) |
+    active$rep_seed_min > active$rep_seed_max
+  if (any(bad_seed)) {
+    stop(
+      "Invalid pilot seed range for chunk_id: ",
+      active$chunk_id[which(bad_seed)[1]]
+    )
+  }
+  if (nrow(active) >= 2L) {
+    prev_max <- active$rep_seed_max[-nrow(active)]
+    next_min <- active$rep_seed_min[-1L]
+    hit <- which(next_min <= prev_max)
+    if (length(hit)) {
+      stop(
+        "Overlapping pilot seed ranges: ",
+        active$chunk_id[hit[[1]]],
+        " and ",
+        active$chunk_id[hit[[1]] + 1L]
+      )
+    }
+  }
+  invisible(TRUE)
 }
 
 ## Upsert a single cell row into the index (replace any existing row for
@@ -394,18 +646,21 @@ run_next_pilot_batch <- function(
       msg <- iconv(msg, to = "ASCII", sub = "?")
       msg <- gsub("[\r\n]+", " ", msg)
       cat(sprintf("[pilot] FAILED cell %s after %.1fs: %s\n", cid, wall, msg))
-      idx <- pilot_index_upsert(idx, data.frame(
-        cell_id = cid,
-        status = "failed",
-        n_sim = n_sim,
-        n_boot = as.integer(n_boot),
-        wall_s = wall,
-        coverage_primary = NA_real_,
-        primary_gate_status = NA_character_,
-        error = msg,
-        timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
-        stringsAsFactors = FALSE
-      ))
+      idx <- pilot_index_upsert(
+        idx,
+        data.frame(
+          cell_id = cid,
+          status = "failed",
+          n_sim = n_sim,
+          n_boot = as.integer(n_boot),
+          wall_s = wall,
+          coverage_primary = NA_real_,
+          primary_gate_status = NA_character_,
+          error = msg,
+          timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+          stringsAsFactors = FALSE
+        )
+      )
       pilot_save_index(idx, results_dir)
       batch_results <- c(batch_results, paste0(cid, "[FAIL]"))
       next
@@ -423,18 +678,21 @@ run_next_pilot_batch <- function(
         gate <- prim$primary_gate_status[1]
       }
     }
-    idx <- pilot_index_upsert(idx, data.frame(
-      cell_id = cid,
-      status = "done",
-      n_sim = n_sim,
-      n_boot = as.integer(n_boot),
-      wall_s = wall,
-      coverage_primary = cov_p,
-      primary_gate_status = gate %||% NA_character_,
-      error = NA_character_,
-      timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
-      stringsAsFactors = FALSE
-    ))
+    idx <- pilot_index_upsert(
+      idx,
+      data.frame(
+        cell_id = cid,
+        status = "done",
+        n_sim = n_sim,
+        n_boot = as.integer(n_boot),
+        wall_s = wall,
+        coverage_primary = cov_p,
+        primary_gate_status = gate %||% NA_character_,
+        error = NA_character_,
+        timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+        stringsAsFactors = FALSE
+      )
+    )
     pilot_save_index(idx, results_dir)
     cat(sprintf(
       "[pilot] OK cell %s in %.1fs (coverage_primary=%s)\n",
@@ -586,7 +844,9 @@ pilot_status <- function(
       mean(null_cells$coverage_primary)
     ))
   } else {
-    cat("preliminary signal-zero coverage diagnostic (signal=0): <no done cells yet>\n")
+    cat(
+      "preliminary signal-zero coverage diagnostic (signal=0): <no done cells yet>\n"
+    )
   }
 
   invisible(list(
@@ -641,9 +901,12 @@ pilot_status <- function(
 ## being added to the cell seed_base, guaranteeing disjoint seed blocks
 ## across runs. m3_run_cell derives rep_seed = seed_base + 1000*d +
 ## 100000*family_index + r, so a single batch spans < ~1.3e6 of seed
-## space (cell seed_base <= 6.6e5, plus 100000*family_index <= 5e5, plus
-## 1000*d + r); a 5e6 stride leaves a wide margin so blocks never
-## overlap. R seeds are 32-bit, so batch_seed_base MUST stay inside the
+## space (cell seed_base < 1.2e6, plus 100000*family_index <= 5e5, plus
+## 1000*d + r); a 5e6 stride leaves a wide margin so run-number blocks
+## never overlap. Per-cell seed bases are separated by
+## PILOT_CELL_SEED_STRIDE so same-run cells also do not share rep_seed
+## values after the harness family/d seed offset is added. R seeds are
+## 32-bit, so batch_seed_base MUST stay inside the
 ## signed-int range; with this stride the base stays in range for run
 ## numbers up to ~400 (~33 days at the 2h cadence -- well beyond the
 ## 1-week campaign). pilot_accum_batch_seed() folds defensively if a
@@ -841,15 +1104,18 @@ run_accumulate_pilot_batch <- function(
         n_before,
         n_sim_cap
       ))
-      report <- rbind(report, data.frame(
-        cell_id = cid,
-        action = "skip_at_cap",
-        n_before = n_before,
-        n_after = n_before,
-        coverage_primary = NA_real_,
-        error = NA_character_,
-        stringsAsFactors = FALSE
-      ))
+      report <- rbind(
+        report,
+        data.frame(
+          cell_id = cid,
+          action = "skip_at_cap",
+          n_before = n_before,
+          n_after = n_before,
+          coverage_primary = NA_real_,
+          error = NA_character_,
+          stringsAsFactors = FALSE
+        )
+      )
       next
     }
 
@@ -918,42 +1184,53 @@ run_accumulate_pilot_batch <- function(
       } else {
         list(coverage_primary = NA_real_, primary_gate_status = NA_character_)
       }
-      idx <- pilot_index_upsert(idx, data.frame(
-        cell_id = cid,
-        status = status,
-        n_sim = n_before,
-        n_boot = as.integer(n_boot),
-        wall_s = wall,
-        coverage_primary = prior_sum$coverage_primary,
-        primary_gate_status = prior_sum$primary_gate_status %||% NA_character_,
-        error = msg,
-        timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
-        stringsAsFactors = FALSE
-      ))
+      idx <- pilot_index_upsert(
+        idx,
+        data.frame(
+          cell_id = cid,
+          status = status,
+          n_sim = n_before,
+          n_boot = as.integer(n_boot),
+          wall_s = wall,
+          coverage_primary = prior_sum$coverage_primary,
+          primary_gate_status = prior_sum$primary_gate_status %||%
+            NA_character_,
+          error = msg,
+          timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+          stringsAsFactors = FALSE
+        )
+      )
       pilot_save_index(idx, results_dir)
-      report <- rbind(report, data.frame(
-        cell_id = cid,
-        action = "error",
-        n_before = n_before,
-        n_after = n_before,
-        coverage_primary = prior_sum$coverage_primary,
-        error = msg,
-        stringsAsFactors = FALSE
-      ))
+      report <- rbind(
+        report,
+        data.frame(
+          cell_id = cid,
+          action = "error",
+          n_before = n_before,
+          n_after = n_before,
+          coverage_primary = prior_sum$coverage_primary,
+          error = msg,
+          stringsAsFactors = FALSE
+        )
+      )
       next
     }
 
     ## Success: renumber the new batch's reps above the prior max, then
     ## combine with the prior stored grid.
     prior_max_rep <- if (
-      !is.null(prior) && is.data.frame(prior) && "rep" %in% names(prior) &&
+      !is.null(prior) &&
+        is.data.frame(prior) &&
+        "rep" %in% names(prior) &&
         nrow(prior)
     ) {
       suppressWarnings(max(prior$rep, na.rm = TRUE))
     } else {
       0L
     }
-    if (!is.finite(prior_max_rep)) prior_max_rep <- 0L
+    if (!is.finite(prior_max_rep)) {
+      prior_max_rep <- 0L
+    }
     res <- pilot_reindex_reps(res, prior_max_rep)
 
     combined <- if (is.null(prior)) {
@@ -970,18 +1247,21 @@ run_accumulate_pilot_batch <- function(
     prim <- pilot_summarise_primary(combined)
     status <- if (n_after >= n_sim_cap) "done" else "pending"
 
-    idx <- pilot_index_upsert(idx, data.frame(
-      cell_id = cid,
-      status = status,
-      n_sim = n_after,
-      n_boot = as.integer(n_boot),
-      wall_s = wall,
-      coverage_primary = prim$coverage_primary,
-      primary_gate_status = prim$primary_gate_status %||% NA_character_,
-      error = NA_character_,
-      timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
-      stringsAsFactors = FALSE
-    ))
+    idx <- pilot_index_upsert(
+      idx,
+      data.frame(
+        cell_id = cid,
+        status = status,
+        n_sim = n_after,
+        n_boot = as.integer(n_boot),
+        wall_s = wall,
+        coverage_primary = prim$coverage_primary,
+        primary_gate_status = prim$primary_gate_status %||% NA_character_,
+        error = NA_character_,
+        timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+        stringsAsFactors = FALSE
+      )
+    )
     pilot_save_index(idx, results_dir)
     cat(sprintf(
       "[accum] OK   %s in %.1fs: n_sim %d -> %d (%s); coverage_primary=%s\n",
@@ -996,15 +1276,18 @@ run_accumulate_pilot_batch <- function(
         formatC(prim$coverage_primary, format = "f", digits = 3)
       )
     ))
-    report <- rbind(report, data.frame(
-      cell_id = cid,
-      action = if (status == "done") "advanced_to_cap" else "advanced",
-      n_before = n_before,
-      n_after = n_after,
-      coverage_primary = prim$coverage_primary,
-      error = NA_character_,
-      stringsAsFactors = FALSE
-    ))
+    report <- rbind(
+      report,
+      data.frame(
+        cell_id = cid,
+        action = if (status == "done") "advanced_to_cap" else "advanced",
+        n_before = n_before,
+        n_after = n_after,
+        coverage_primary = prim$coverage_primary,
+        error = NA_character_,
+        stringsAsFactors = FALSE
+      )
+    )
   }
 
   fail_rate <- if (n_attempted > 0L) n_errored / n_attempted else 0

@@ -275,8 +275,11 @@ Rationale for the level choices:
 - **n_species 50/150:** brackets the Boettiger et al. (2012) low-power
   regime (n=50) and a comfortable regime (n=150) so H3's power curve has
   a visible rise.
-- **Signal {0, moderate, strong}:** the 0 level *is* the Type-I error
-  cell (H4); moderate/strong trace the power curve (H3).
+- **Signal {0, moderate, strong}:** the 0 level is the signal-absent
+  condition needed for the future H4 Type-I target, but the current
+  Phase-1 `Sigma_unit_diag` pilot reports it only as a signal-zero
+  coverage diagnostic. It is not a Type-I error estimate until a
+  structure-detection rejection rule is specified.
 
 ### 4.3 Tier 1 -- Family-completion extension (nice-to-have)
 
@@ -321,11 +324,22 @@ them; this is a correctness constraint, not a power-tuning choice.
 
 Reuse the M3 seed discipline: a per-dispatch `seed_base` (distinct per
 run to avoid collision, per the workflow input help) plus deterministic
-per-cell/per-rep derivation inside `m3_run_cell()`. Persist the long
-per-replicate grid (`*-grid.rds`) and the per-cell summary
-(`*-summary.rds`) exactly as `dev/precompute-m3-grid.R` already does, so
-every failed fit, seed, and CI is auditable (Williams et al. 2024
-transparency items; Design 42 sec.1).
+per-cell/per-rep derivation inside `m3_run_cell()`. The Phase-1
+accumulation driver writes a per-shard manifest before fitting. Each
+manifest row records the source SHA, workflow run id/number, shard,
+cell, result path, planned replicate count, batch seed base, and
+`rep_seed` range. The persist/status path validates the merged manifest
+for duplicate output paths and overlapping seed ranges before treating
+the store as auditable. Effective per-cell seed blocks are separated by
+a fixed stride larger than the intended batch size after the harness
+family/d seed offset is applied, so same-run cells do not share
+`rep_seed` values.
+
+Persist the long per-replicate grid (`<cell-id>.rds`) and rebuild
+`pilot-index.rds` as a derived cache from those per-cell files. The
+manifest plus per-cell grids, not the shared index, are the audit trail
+for every failed fit, seed, and CI (Williams et al. 2024 transparency
+items; Design 42 sec.1).
 
 ---
 
@@ -669,6 +683,10 @@ reimplement any of it). Entry points:
   the preliminary 94%/95% coverage (signal > 0) plus the signal-zero
   coverage diagnostic (signal = 0) available so far. The signal-zero
   diagnostic is not a Type-I error or power claim for `Sigma_unit_diag`.
+- `pilot_build_manifest()` / `pilot_assert_manifest()` -- record and
+  validate the planned per-shard chunks before fitting. The manifest
+  catches duplicate output paths and overlapping seed ranges before the
+  store is persisted or summarized.
 
 Phase 2 (HPC, n_sim = 2000, the full core grid + the probit-link swap)
 reuses the same harness with a cluster array-job driver (section 9); the

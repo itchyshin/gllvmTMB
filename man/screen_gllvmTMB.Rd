@@ -47,6 +47,9 @@ report-ready tables.
 response and formula conditions before fitting a stacked-trait GLLVM.
 The screen is advisory: it does not fit the model, remove traits, choose
 a latent rank, prove identifiability, or guarantee convergence.
+This is validation row \code{DIA-14}: binary/binomial screening is implemented,
+while non-binary modules, optional comparator checks, and high-dimensional
+benchmarks remain planned.
 }
 \details{
 The first implemented module covers binomial traits. It distinguishes
@@ -55,7 +58,9 @@ relevant denominators, and flags constants, sparse minority outcomes,
 duplicate or near-duplicate binary traits, rank-deficient fixed-effect
 designs, and grouping/rank conditions that should be inspected before
 interpretation. In systematic maps, a \code{trait} may be a content item or
-indicator.
+indicator. In a binary JSDM, a \code{trait} may be a species presence-absence
+response. Rare or constant species are flagged for inspection and possible
+sensitivity analysis, not automatically removed.
 }
 \examples{
 df <- data.frame(
@@ -64,6 +69,8 @@ df <- data.frame(
   b = c(rep(1, 10), 0, 0),
   c = rep(c(0, 1), 6)
 )
+# The wrapper keeps the rendered example focused on the screen tables;
+# inspect warnings in interactive work.
 scr <- suppressWarnings(screen_gllvmTMB(
   traits(a, b, c) ~ 1 + latent(1 | study, d = 2),
   data = df,

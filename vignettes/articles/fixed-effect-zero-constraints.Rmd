@@ -19,9 +19,17 @@ knitr::opts_chunk$set(
 )
 ```
 
-`Xcoef_fixed` controls the fixed-effect part of the model. Use it when the same
-stacked-trait formula is convenient, but a predictor should be estimated for
-some responses and fixed at zero for others.
+When should one response ignore a predictor while the others estimate it?
+`Xcoef_fixed` controls the fixed-effect part of the model for that case. Use it
+when the same stacked-trait formula is convenient, but a predictor should be
+estimated for some responses and fixed at zero for others.
+
+Scope boundary (`MIS-34`): exact zero fixed-effect constraints are covered for
+native ML fits and for admitted `engine = "julia"` fixed-effect-X rows. This is
+not variable selection, response screening, response deletion, loading
+constraints, or latent-rank selection. `REML = TRUE`, non-zero fixed values,
+Julia per-trait intercept pinning, and unsupported Julia fixed-effect-X families
+remain gated.
 
 For one unit `i` and response `t`, a simple stacked-trait model has a mean
 structure like
@@ -143,5 +151,5 @@ when you want to control which predictors enter each response's mean.
 The current implementation supports exact zero constraints in ML fits. Native
 TMB fits support the full named `Xcoef_fixed` contract. Admitted
 `engine = "julia"` fixed-effect-X rows use the same R argument and pass a
-zero-mask to GLLVM.jl. `REML = TRUE`, non-zero fixed values, and unsupported
-Julia fixed-effect-X rows remain gated.
+zero-mask to GLLVM.jl. These are the covered parts of `MIS-34`; `REML = TRUE`,
+non-zero fixed values, and unsupported Julia fixed-effect-X rows remain gated.

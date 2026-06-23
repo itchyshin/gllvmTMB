@@ -29,6 +29,11 @@ rank, prove identifiability, or guarantee convergence. It builds the same long r
 shape that `gllvmTMB()` would use, then reports data and formula conditions that
 are easy to miss before fitting.
 
+Scope boundary (`DIA-14`): the current screen covers binary and binomial
+candidate responses before fitting. It is advisory only. Non-binary modules,
+optional `detectseparation` / `mirt` comparator checks, and high-dimensional
+systematic-map benchmarks remain planned.
+
 The first screen is for binary and binomial responses. This is the place where
 complete or quasi-complete separation is most visible: a constant, rare,
 near-universal, duplicated, or nearly deterministic indicator can produce a
@@ -45,6 +50,11 @@ The example uses a systematic-map style data set. Each row is a review. Each
 binary column records whether a review has a topic, region, taxonomic group, or
 outcome indicator. In this setting the word `trait` means "response column";
 scientifically, it may be a content item or coding indicator.
+
+For a binary joint species distribution model (JSDM), read `review` as the
+site, plot, survey, or other sampling unit and read each indicator column as
+one species' presence-absence response. The screen asks whether those response
+columns are well supported for the latent block you are about to fit.
 
 ```{r data}
 n <- 40
@@ -69,6 +79,15 @@ minority outcomes. `level_ecosystem` is constant.
 Most systematic-map data start wide: one row per review and one column per
 indicator. Use the same `traits(...)` left-hand side that you would use in a
 wide `gllvmTMB()` call.
+
+Here `latent(1 | review, d = 2)` requests two ordinary unit-tier latent axes
+for the review or site units. The screen uses that requested rank when checking
+whether the candidate response block is too small or too redundant; it is not
+checking phylogenetic, spatial, or meta-analytic covariance tiers.
+
+The example wraps the call in `suppressWarnings()` only to keep the rendered
+article focused on the screen output. In an interactive analysis, read warnings
+and then inspect `screen_table(scr, "recommendations")`.
 
 ```{r screen-wide}
 scr <- suppressWarnings(screen_gllvmTMB(
@@ -149,9 +168,12 @@ shape matches your workflow.
 ## What to do with warnings
 
 `FAIL` means the candidate response cannot be interpreted as a valid binomial
-trait in the screened data, or an exact duplicate/complement is present in the
-candidate latent-response block. Fix the data or decide which indicator should
-represent that information before the first latent GLLVM fit.
+trait in the screened data, or that two candidate responses carry exactly the
+same or exactly opposite information in the rows being fitted. Do not treat this
+as an automatic species-removal rule. First check coding, taxonomy, sampling
+design, and the scientific role of the response; then either justify keeping
+both, combine or recode them, or run a sensitivity fit with one representative
+response.
 
 `WARN` means the trait or pair has weak support. Inspect the coding, missingness,
 and scientific purpose. Do not lower the latent rank and assume the problem is
@@ -179,6 +201,20 @@ to sparse outcomes, rare exposures, highly correlated predictors, and strong
 effects, and can produce infinite maximum-likelihood estimates if left
 unchecked (Mansournia et al. 2018). The UCLA OARC separation FAQ is a useful
 teaching reference for the practical complete/quasi-complete distinction.
+
+In JSDM work, rare species are not automatically discarded. They are often one
+reason to use a joint model, because hierarchical, latent-variable, trait, or
+phylogenetic structure can let weakly observed species borrow information from
+the rest of the community (Ovaskainen and Soininen 2011; Warton et al. 2015).
+At the same time, very sparse or constant responses can make species-level
+parameters hard to estimate, slow computation, worsen convergence, or make a
+binomial likelihood uninformative (Norberg et al. 2019; Zhang et al. 2020).
+Some applied HMSC/JSDM analyses therefore set documented prevalence thresholds,
+but those thresholds are analysis choices, not general rules (Cranston et al.
+2024). `screen_gllvmTMB()` follows that convention: it flags
+all-zero, all-one, near-constant, and very rare candidate species for
+inspection, reporting, and possible sensitivity analysis. It does not decide
+that a biologically important rare species should be removed.
 
 Psychometric item analysis similarly treats item support, redundancy, response
 frequencies, and interpretability as diagnostic evidence rather than removal
@@ -215,6 +251,19 @@ the same as pre-fit response screening.
   the R environment. *Journal of Statistical Software* 48(6):1--29.
 - Chalmers RP. `mirt::itemstats()` documentation: generic item summary
   statistics without prior IRT fitting. <https://rdrr.io/cran/mirt/man/itemstats.html>
+- Cranston A, Cooper N, Bro-Jorgensen J (2024). Using joint species distribution
+  modelling to identify climatic and non-climatic drivers of Afrotropical
+  ungulate distributions. *Ecography* 2024:e07209. doi:10.1111/ecog.07209.
+- Norberg A, Abrego N, Blanchet FG, Adler FR, Anderson BJ, Anttila J, Araujo MB,
+  Dallas T, Dunson D, Elith J, Foster SD, Fox R, Franklin J, Godsoe W, Guisan A,
+  O'Hara B, Hill NA, Holt RD, Hui FKC, Husby M, Kalas JA, Lehikoinen A,
+  Luoto M, Mod HK, Newell G, Renner I, Roslin T, Soininen J, Thuiller W,
+  Vanhatalo J, Warton D, White M, Zimmermann NE, Gravel D, Ovaskainen O (2019).
+  A comprehensive evaluation of predictive performance of 33 species distribution
+  models at species and community levels. *Ecological Monographs* 89:e01370.
+  doi:10.1002/ecm.1370.
+- Ovaskainen O, Soininen J (2011). Making more out of sparse data: hierarchical
+  modeling of species communities. *Ecology* 92:289--295. doi:10.1890/10-1251.1.
 - An X, Yung Y-F (2014). Item Response Theory: what it is and how you can use
   the IRT procedure to apply it. SAS Global Forum paper SAS364-2014.
   <https://support.sas.com/resources/papers/proceedings14/SAS364-2014.pdf>
@@ -227,3 +276,9 @@ the same as pre-fit response screening.
 - Raykov T (2008). Alpha if item deleted: a note on loss of criterion validity
   in scale development if maximizing coefficient alpha. *British Journal of
   Mathematical and Statistical Psychology* 61:275--285.
+- Warton DI, Blanchet FG, O'Hara RB, Ovaskainen O, Taskinen S, Walker SC,
+  Hui FKC (2015). So many variables: joint modeling in community ecology.
+  *Trends in Ecology & Evolution* 30:766--779. doi:10.1016/j.tree.2015.09.007.
+- Zhang C, Chen Y, Xu B, Xue Y, Ren Y (2020). Improving prediction of rare
+  species' distribution from community data. *Scientific Reports* 10:12230.
+  doi:10.1038/s41598-020-69157-x.

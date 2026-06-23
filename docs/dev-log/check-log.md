@@ -17806,3 +17806,72 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-22-validation-ledger-ext10-lam02.md`.
+
+## 2026-06-22 -- validation ledger MIS-07 predict coverage
+
+Goal: walk the stale `MIS-07` validation-register row for
+`predict.gllvmTMB_multi()` from partial to covered where existing behaviour and
+new focused tests support the claim.
+
+Implementation:
+
+- Added a focused mixed-family `predict(type = "response")` test in
+  `tests/testthat/test-tidy-predict.R`.
+- The new test covers training-row `type = "link"` alignment with
+  `fit$report$eta`, per-trait inverse-link response predictions for mixed
+  Gaussian / binomial / Poisson fits, and `newdata` response-scale dispatch via
+  the training trait's link.
+- Updated the `predict.gllvmTMB_multi()` roxygen description and regenerated
+  `man/predict.gllvmTMB_multi.Rd`.
+- Updated `docs/design/06-extractors-contract.md` to remove the stale
+  "response-scale outputs are M2 work" statement; response-scale fitted values
+  now live in `predict(type = "response")`.
+- Promoted `MIS-07` in `docs/design/35-validation-debt-register.md` from
+  `partial` to `covered` and updated the leading-status tally to
+  `172/22/0/7` over 201 rows.
+
+Pre-edit coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url`
+  -> PASS; no open PRs after #534 merged.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS; recent shared-file edits were the just-merged #533 / #534 sequence
+  from this session, with no competing design/dev-log edit detected.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "tidy-predict|missing-data-robustfix|integration-tour", stop_on_failure = TRUE)'`
+  -> PASS: `[ FAIL 0 | WARN 0 | SKIP 5 | PASS 64 ]`; skips are existing heavy
+  missing-data robustfix blocks.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/predict.gllvmTMB_multi.Rd`. Other roxygen-version
+  Rd churn was deliberately excluded from the staged slice.
+- `Rscript --vanilla -e 'devtools::test(filter = "tidy-predict", stop_on_failure = TRUE)'`
+  -> PASS: `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 35 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS: `No problems found.`
+- `Rscript --vanilla -e 'res <- devtools::check(args = "--no-manual", document = FALSE, check_dir = "/private/tmp/gllvmtmb-predict-validation-check", error_on = "never", quiet = FALSE); print(res)'`
+  -> PASS with the known local Apple-clang/R-header install warning:
+  `0 errors, 1 warning, 0 notes`. The warning is
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+
+Stale scans:
+
+- `rg -n "MIS-07.*partial|family-aware predict typed outputs is M2|Response-scale outputs are M2 work|predict / plot dispatchers MIS-07/09|171/23/0/7|response-scale outputs are M2" docs/design R man tests/testthat -g '*.md' -g '*.R' -g '*.Rd'`
+  -> PASS for live docs / R / Rd / tests after this slice; historical
+  after-task reports were not rewritten.
+- `rg -n "MIS-07|predict\\(type = \"response\"\\)|per-trait inverse link|row.?s own trait/family inverse link|172/22/0/7" docs/design/35-validation-debt-register.md docs/design/06-extractors-contract.md R/methods-gllvmTMB.R man/predict.gllvmTMB_multi.Rd tests/testthat/test-tidy-predict.R docs/dev-log/after-task/2026-06-22-predict-validation-mis07.md`
+  -> PASS; row, docs, roxygen/Rd, and tests agree on the scoped claim.
+- `git diff --check`
+  -> PASS.
+
+Not run:
+
+- Full `devtools::test()`. The local `devtools::check()` ran the package
+  test suite through `testthat.R` and completed with only the known local
+  install warning above.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-predict-validation-mis07.md`.

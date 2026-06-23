@@ -629,8 +629,8 @@ does NOT do. From this contract:
   parameters / their transformations.
 - **No fitted-scale / response-scale conversion**:
   `extract_*()` always returns on the latent (link) scale.
-  Response-scale outputs are M2 work
-  (`predict(type = "response")`).
+  Response-scale fitted values belong to `predict(type = "response")`,
+  which dispatches by row / trait for mixed-family fits.
 - **No probability-output for delta / hurdle**:
   `extract_proportions()` is reserved for the post-CRAN
   delta-family extension.

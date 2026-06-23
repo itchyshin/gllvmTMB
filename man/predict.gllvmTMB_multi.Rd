@@ -33,12 +33,11 @@ regardless of \code{re_form}.}
 }
 \value{
 A data frame with the original row identifiers plus an \code{est}
-column.
+column on the requested link or response scale.
 }
 \description{
-Returns the linear predictor (and conditional response) at each
-observation in the training data, or the fixed-effects-only prediction
-at user-supplied \code{newdata} (for sites / species not present in the
-training data we cannot draw the corresponding random effects, so
-predictions are returned on the population mean).
+Returns the linear predictor or inverse-link response at each observation
+in the training data, or at user-supplied \code{newdata}. For mixed-family fits,
+\code{type = "response"} uses the row's own trait/family inverse link rather
+than the first trait's link.
 }

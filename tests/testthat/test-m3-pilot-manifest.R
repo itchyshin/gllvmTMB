@@ -37,6 +37,81 @@ source_power_pilot_manifest <- function() {
   source(paths[2], local = parent.frame())
 }
 
+two_chunk_manifest <- function(results_dir, seed_base = 158L) {
+  env <- parent.frame()
+  pilot_grid <- get("pilot_grid", envir = env)
+  pilot_build_manifest <- get("pilot_build_manifest", envir = env)
+  pilot_manifest_seed_range <- get("pilot_manifest_seed_range", envir = env)
+  pilot_assert_manifest <- get("pilot_assert_manifest", envir = env)
+  pilot_chunk_path <- get("pilot_chunk_path", envir = env)
+  PILOT_CHUNK_DIR <- get("PILOT_CHUNK_DIR", envir = env)
+
+  cid <- pilot_grid()$cell_id[1]
+  first <- pilot_build_manifest(
+    cell_ids = cid,
+    n_sim_step = 2L,
+    n_sim_cap = 10L,
+    seed_base = seed_base,
+    results_dir = results_dir,
+    n_boot = 0L,
+    shard = 1L,
+    n_shards = 48L,
+    output_mode = "chunk"
+  )
+  second <- first
+  second$n_before <- 2L
+  second$rep_start <- 3L
+  second$rep_end <- 4L
+  second$batch_seed_base <- as.integer(second$batch_seed_base + 100L)
+  seed_range <- pilot_manifest_seed_range(
+    second$batch_seed_base,
+    second$harness_family,
+    second$d,
+    second$n_reps_planned
+  )
+  second$rep_seed_min <- as.integer(seed_range[["min"]])
+  second$rep_seed_max <- as.integer(seed_range[["max"]])
+  second$chunk_id <- paste0(first$chunk_id, "-next")
+  second$chunk_file <- file.path(
+    PILOT_CHUNK_DIR,
+    second$campaign_id,
+    second$cell_id,
+    paste0(second$chunk_id, ".rds")
+  )
+  second$chunk_path <- pilot_chunk_path(
+    results_dir,
+    second$campaign_id,
+    second$cell_id,
+    second$chunk_id
+  )
+  second$result_file <- second$chunk_file
+  second$result_path <- second$chunk_path
+  out <- rbind(first, second)
+  pilot_assert_manifest(out, require_unique_result_path = FALSE)
+  out
+}
+
+write_fake_chunk <- function(row, reps, duplicate = FALSE) {
+  chunk <- expand.grid(
+    rep = as.integer(reps),
+    trait_id = seq_len(2L),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  chunk$target <- "Sigma_unit_diag"
+  chunk$estimate <- seq_len(nrow(chunk))
+  chunk$pilot_campaign_id <- row$campaign_id
+  chunk$pilot_chunk_id <- row$chunk_id
+  chunk$pilot_cell_id <- row$cell_id
+  chunk$pilot_rep_start <- as.integer(row$rep_start)
+  chunk$pilot_rep_end <- as.integer(row$rep_end)
+  if (isTRUE(duplicate)) {
+    chunk <- rbind(chunk, chunk[1L, , drop = FALSE])
+  }
+  dir.create(dirname(row$chunk_path), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(chunk, row$chunk_path)
+  invisible(row$chunk_path)
+}
+
 test_that("power pilot manifest records disjoint planned chunks", {
   source_power_pilot_manifest()
 
@@ -329,6 +404,88 @@ test_that("power pilot chunk runner rejects accumulated manifests", {
   expect_match(conditionMessage(err), "requires output_mode = 'chunk'")
 })
 
+test_that("power pilot chunk aggregator writes per-cell aggregate files", {
+  source_power_pilot_manifest()
+
+  results_dir <- tempfile("pilot-chunk-aggregate-")
+  dir.create(results_dir)
+  on.exit(unlink(results_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  manifest <- two_chunk_manifest(results_dir, seed_base = 158L)
+  write_fake_chunk(manifest[1L, , drop = FALSE], reps = 1:2)
+  write_fake_chunk(manifest[2L, , drop = FALSE], reps = 3:4)
+
+  aggregate_dir <- file.path(results_dir, "aggregate")
+  aggregate <- pilot_aggregate_chunk_outputs(
+    manifest,
+    aggregate_dir = aggregate_dir,
+    write = TRUE
+  )
+
+  expect_equal(nrow(aggregate$report), 1L)
+  expect_equal(aggregate$report$n_chunks, 2L)
+  expect_equal(aggregate$report$n_rows, 8L)
+  expect_equal(aggregate$report$n_reps, 4L)
+  expect_equal(aggregate$report$rep_min, 1L)
+  expect_equal(aggregate$report$rep_max, 4L)
+  expect_true(file.exists(aggregate$report$aggregate_path))
+  expect_true(aggregate$report$size_bytes > 0)
+
+  combined <- readRDS(aggregate$report$aggregate_path)
+  expect_equal(nrow(combined), 8L)
+  expect_equal(sort(unique(combined$rep)), 1:4)
+  expect_equal(unique(combined$pilot_cell_id), manifest$cell_id[1L])
+  expect_equal(
+    sort(unique(combined$pilot_chunk_id)),
+    sort(manifest$chunk_id)
+  )
+  expect_equal(nrow(aggregate$cells[[manifest$cell_id[1L]]]), 8L)
+})
+
+test_that("power pilot chunk aggregator validates chunk content windows", {
+  source_power_pilot_manifest()
+
+  results_dir <- tempfile("pilot-chunk-window-")
+  dir.create(results_dir)
+  on.exit(unlink(results_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  manifest <- two_chunk_manifest(results_dir, seed_base = 159L)
+  write_fake_chunk(manifest[1L, , drop = FALSE], reps = 2:3)
+  write_fake_chunk(manifest[2L, , drop = FALSE], reps = 3:4)
+
+  err <- tryCatch(
+    {
+      pilot_aggregate_chunk_outputs(manifest)
+      NULL
+    },
+    error = function(e) e
+  )
+  expect_equal(inherits(err, "error"), TRUE)
+  expect_match(conditionMessage(err), "do not match manifest replicate window")
+})
+
+test_that("power pilot chunk aggregator rejects duplicate aggregate rows", {
+  source_power_pilot_manifest()
+
+  results_dir <- tempfile("pilot-chunk-duplicates-")
+  dir.create(results_dir)
+  on.exit(unlink(results_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  manifest <- two_chunk_manifest(results_dir, seed_base = 160L)
+  write_fake_chunk(manifest[1L, , drop = FALSE], reps = 1:2, duplicate = TRUE)
+  write_fake_chunk(manifest[2L, , drop = FALSE], reps = 3:4)
+
+  err <- tryCatch(
+    {
+      pilot_aggregate_chunk_outputs(manifest)
+      NULL
+    },
+    error = function(e) e
+  )
+  expect_equal(inherits(err, "error"), TRUE)
+  expect_match(conditionMessage(err), "Duplicate pilot chunk aggregate rows")
+})
+
 test_that("power pilot manifest seed audit covers the full 48-cell grid", {
   source_power_pilot_manifest()
 
@@ -525,4 +682,47 @@ test_that("power pilot chunk-audit CLI rejects missing manifests", {
   out <- paste(out, collapse = "\n")
   expect_match(out, "chunk_outputs_ok=false")
   expect_match(out, "found no manifest rows")
+})
+
+test_that("power pilot chunk-aggregate CLI writes per-cell aggregate files", {
+  source_power_pilot_manifest()
+  testthat::skip_if_not(
+    file.exists(file.path(power_pilot_root, "dev", "power-pilot-run.R"))
+  )
+
+  results_dir <- tempfile("pilot-chunk-aggregate-cli-")
+  aggregate_dir <- file.path(results_dir, "aggregate")
+  dir.create(results_dir)
+  on.exit(unlink(results_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  manifest <- two_chunk_manifest(results_dir, seed_base = 161L)
+  pilot_write_manifest(manifest, results_dir, shard = 1L)
+  write_fake_chunk(manifest[1L, , drop = FALSE], reps = 1:2)
+  write_fake_chunk(manifest[2L, , drop = FALSE], reps = 3:4)
+
+  old_wd <- setwd(power_pilot_root)
+  on.exit(setwd(old_wd), add = TRUE)
+
+  rscript <- file.path(R.home("bin"), "Rscript")
+  out <- system2(
+    rscript,
+    c(
+      "--vanilla",
+      file.path("dev", "power-pilot-run.R"),
+      "--mode=chunk-aggregate",
+      paste0("--results-dir=", results_dir),
+      paste0("--aggregate-dir=", aggregate_dir)
+    ),
+    stdout = TRUE,
+    stderr = TRUE
+  )
+  out <- paste(out, collapse = "\n")
+  expect_match(out, "chunk_aggregate_ok=true")
+  expect_match(out, "chunk_aggregate_cells=1")
+  expect_match(out, "chunk_aggregate_rows=8")
+  expect_match(out, "chunk aggregate: wrote 1 cell aggregate")
+  expect_true(file.exists(file.path(
+    aggregate_dir,
+    paste0(manifest$cell_id[1L], ".rds")
+  )))
 })

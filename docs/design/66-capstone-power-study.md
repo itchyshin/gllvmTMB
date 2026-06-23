@@ -710,6 +710,12 @@ reimplement any of it). Entry points:
   This is the audit-mini gate before broader local or DRAC volume; it
   is not true binomial-probit evidence until the Phase-2 probit-link
   swap is implemented and validated.
+- `pilot_run_audit_mini_manifest()` / `dev/power-pilot-run.R
+  --mode=audit-mini-run` -- run the same fixed four-cell manifest as
+  immutable chunk outputs, with `n_boot = 0` by default. Use this only
+  as a tiny local execution smoke after the manifest-only gate; it still
+  does not mutate `pilot-index.rds`, submit DRAC/SLURM work, or start a
+  production campaign.
 - `pilot_run_chunk_manifest()` / `dev/power-pilot-run.R --mode=chunk`
   -- run the active rows from a chunk manifest, reindex each chunk's
   `rep` column into the planned per-cell window, add chunk provenance

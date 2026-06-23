@@ -237,6 +237,81 @@ test_that("power pilot audit-mini manifest names representative cells", {
   )
 })
 
+test_that("power pilot audit-mini runner writes immutable chunks", {
+  source_power_pilot_manifest()
+
+  results_dir <- tempfile("pilot-audit-mini-run-")
+  dir.create(results_dir)
+  on.exit(unlink(results_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  calls <- list()
+  fake_runner <- function(
+    family,
+    d,
+    n_reps,
+    seed_base,
+    n_units,
+    n_traits,
+    lambda_scale,
+    targets,
+    n_boot,
+    ci_level,
+    verbose
+  ) {
+    calls[[length(calls) + 1L]] <<- list(
+      family = family,
+      d = d,
+      n_reps = n_reps,
+      seed_base = seed_base,
+      n_units = n_units,
+      n_traits = n_traits,
+      lambda_scale = lambda_scale,
+      targets = targets,
+      n_boot = n_boot,
+      ci_level = ci_level,
+      verbose = verbose
+    )
+    expand.grid(
+      rep = seq_len(n_reps),
+      trait_id = seq_len(2L),
+      KEEP.OUT.ATTRS = FALSE
+    )
+  }
+
+  res <- pilot_run_audit_mini_manifest(
+    n_sim_step = 1L,
+    n_sim_cap = 1L,
+    seed_base = 151L,
+    results_dir = results_dir,
+    n_boot = 0L,
+    runner = fake_runner,
+    verbose = TRUE
+  )
+
+  expect_equal(nrow(res$manifest), 4L)
+  expect_equal(nrow(res$report), 4L)
+  expect_equal(nrow(res$audit), 4L)
+  expect_equal(res$report$status, rep("written", 4L))
+  expect_true(all(file.exists(res$manifest$chunk_path)))
+  expect_true(file.exists(res$manifest_path))
+  expect_equal(length(calls), 4L)
+  expect_equal(
+    vapply(calls, `[[`, character(1), "family"),
+    res$manifest$harness_family
+  )
+  expect_equal(vapply(calls, `[[`, integer(1), "n_reps"), rep(1L, 4L))
+  expect_equal(vapply(calls, `[[`, integer(1), "n_boot"), rep(0L, 4L))
+  expect_equal(
+    vapply(calls, `[[`, character(1), "targets"),
+    rep("Sigma_unit_diag", 4L)
+  )
+
+  first_chunk <- readRDS(res$manifest$chunk_path[1L])
+  expect_equal(sort(unique(first_chunk$rep)), 1L)
+  expect_equal(unique(first_chunk$pilot_chunk_id), res$manifest$chunk_id[1L])
+  expect_equal(unique(first_chunk$pilot_cell_id), res$manifest$cell_id[1L])
+})
+
 test_that("power pilot manifest validator catches overlapping replicate windows", {
   source_power_pilot_manifest()
 

@@ -17749,3 +17749,60 @@ Final plan-tightening addendum:
 - `Rscript --vanilla -e 'devtools::check(args = "--no-manual", document = FALSE, quiet = FALSE, error_on = "never")'`
   -> PASS with the known local Apple-clang/R-header install warning:
   `0 errors, 1 warning, 0 notes`.
+
+## 2026-06-22 -- validation ledger EXT-10 / LAM-02 cleanup
+
+Goal: continue the evidence-led validation-register cleanup after PR #533
+merged by promoting only rows where existing tests already exceed old
+smoke/partial wording.
+
+Implementation:
+
+- Updated `EXT-10` from `partial` / smoke to `covered`, citing
+  `test-ordinal-probit.R` and `test-ordinal-recovery-depth.R`.
+- Updated `LAM-02` from `partial` / smoke-only to `covered`, citing
+  `test-lambda-constraint.R`.
+- Updated `docs/design/06-extractors-contract.md` so
+  `extract_cutpoints()` is covered for ordinal-probit traits in mixed-family
+  fits and non-ordinal fits fail loudly.
+- Updated `docs/design/01-formula-grammar.md` to remove stale LAM-03/LAM-04
+  future-partial wording; the grammar table now agrees with the register that
+  binary IRT lambda constraints and lambda-suggester workflows are covered.
+- Recounted the leading-status register tally as `171/23/0/7` over 201 rows,
+  with an explicit caution that `EXT-04`, `EXT-13`, `DIA-11`, and `DIA-12`
+  still carry partial sub-scopes.
+
+Pre-edit coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,statusCheckRollup,url --limit 20`
+  -> PASS; no open PRs after #533 merged.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS; recent commits were the just-merged #533 sequence and no competing
+  design/dev-log edit was detected.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "ordinal-probit|ordinal-recovery-depth|lambda-constraint", stop_on_failure = TRUE)'`
+  -> PASS: `[ FAIL 0 | WARN 0 | SKIP 8 | PASS 96 ]`; skips are expected heavy
+  binary/lambda and ordinal-depth cells.
+- `GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "ordinal-recovery-depth", stop_on_failure = TRUE)'`
+  -> PASS: `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 12 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS: `No problems found.`
+- `rg -n "LAM-03 stays partial|LAM-04.*stays partial|M2 verifies on binary|EXT-10.*partial|LAM-02.*partial|ordinal cutpoint smoke EXT-10|lambda_constraint.*smoke LAM-02|extract_cutpoints.*smoke|lambda_constraint.*smoke only|ordinal-probit thresholds only \\(single-family ordinal\\)|Reserved for non-Gaussian and mixed-family|167/20/0/7|194 capability rows" docs/design docs/dev-log/after-task tests/testthat -g '*.md' -g '*.R'`
+  -> PASS for live files; the only remaining hit is a historical
+  2026-05-16 after-task preview noting that LAM-03 was partial before M2.3.
+- `rg -n "EXT-10|LAM-02|LAM-03|LAM-04|171/23/0/7|201 capability rows|covered \\(Gaussian and binary IRT\\)|mixed-family fits" docs/design/35-validation-debt-register.md docs/design/06-extractors-contract.md docs/design/01-formula-grammar.md docs/dev-log/after-task/2026-06-22-validation-ledger-ext10-lam02.md`
+  -> PASS; live register, extractor contract, and formula grammar agree.
+- `git diff --check`
+  -> PASS.
+
+Not run:
+
+- Full `devtools::test()` and `devtools::check()`. This is a docs/register-only
+  cleanup on the just-merged PR #533 base; focused tests directly cover the
+  promoted rows, and #533 already passed the broad local and GitHub gates.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-validation-ledger-ext10-lam02.md`.

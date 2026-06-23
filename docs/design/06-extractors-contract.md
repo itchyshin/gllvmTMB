@@ -63,7 +63,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `extract_residual_split(fit)` | c | cl | cl | cl | OLRE $\sigma^2_d / \sigma^2_e / \sigma^2_{\text{total}}$ |
 | `extract_ordination(fit, level)` | c | cl | cl | cl | factor scores (rotation-invariant up to orthogonal transform) |
 | `extract_proportions(fit)` | r | r | r | r | delta-family conditional probability — reserved (post-CRAN; depends on delta-family support) |
-| `extract_cutpoints(fit)` | r | r | cl | r | ordinal-probit thresholds only (single-family ordinal) |
+| `extract_cutpoints(fit)` | r | r | cl | r | ordinal-probit thresholds, including mixed-family fits with ordinal traits |
 | `extract_ICC_site(fit)` | c | cl | cl | cl | legacy ICC; superseded by `extract_repeatability()` |
 | `bootstrap_Sigma(fit, n_boot, level, what, link_residual)` | c | cl | cl | cl | parametric-bootstrap path |
 | `getLoadings(fit, level, rotate)` | c | cl | cl | cl | raw or rotated $\Lambda$ matrix |
@@ -443,9 +443,10 @@ for fits where at least one trait has
 `family = ordinal_probit()`. Errors with class
 `gllvmTMB_extract_cutpoints_not_ordinal` otherwise.
 
-Reserved for non-Gaussian and mixed-family — those regimes
-require the per-trait family interrogation that is the M1
-audit (slice 1.1).
+Covered for ordinal-probit traits, including mixed-family fits
+where only some traits are ordinal. Non-ordinal fits fail loudly
+with the class above rather than returning an empty or ambiguous
+threshold table.
 
 #### `extract_proportions(fit)`
 

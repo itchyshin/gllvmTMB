@@ -71,6 +71,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                known_V = NULL,
                                mesh = NULL,
                                lambda_constraint = NULL,
+                               Xcoef_fixed = NULL,
                                control, silent,
                                unit_obs = "site_species",
                                impute = NULL,
@@ -2231,6 +2232,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     fit_lm <- stats::lm.fit(X_fix, y)
   }
   b_fix_init <- fit_lm$coefficients
+  xcoef_fixed <- .normalise_Xcoef_fixed(
+    Xcoef_fixed = Xcoef_fixed,
+    x_names = colnames(X_fix),
+    REML = REML
+  )
+  if (isTRUE(xcoef_fixed$has_fixed)) {
+    fixed_idx <- which(xcoef_fixed$status == "fixed")
+    b_fix_init[fixed_idx] <- xcoef_fixed$init_fixed[fixed_idx]
+  }
   resid_init <- fit_lm$residuals
   ## Guard against numerical zero residuals (degenerate single-row case).
   log_sigma_eps_init <- log(max(stats::sd(resid_init), 1e-3))
@@ -3414,6 +3424,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
   ## ---- Map: zero-out unused parameters ---------------------------------
   tmb_map <- list()
+  if (isTRUE(xcoef_fixed$has_fixed)) {
+    tmb_map$b_fix <- xcoef_fixed$map
+  }
   ## Missing-predictor params are stubs when no mi() term is present: map both
   ## scalars off so TMB does not estimate them (x_mis is length 0 and simply
   ## stays out of the `random` set).
@@ -4412,6 +4425,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       phylo_tree   = phylo_tree,
       X_fix        = X_fix,
       X_fix_names  = colnames(X_fix),
+      Xcoef_fixed  = xcoef_fixed,
       lambda_constraint     = lambda_constraint,
       needs_rotation_advice = needs_rotation_advice,
       restart_history = restart_history,

@@ -145,12 +145,19 @@
   n <- length(fit$X_fix_names %||% character(0))
   if (n == 0L) return(numeric(0))
   if (is.null(fit$sd_report)) return(rep(NA_real_, n))
+  status <- .gllvmTMB_xcoef_status(fit)
+  free <- status != "fixed"
+  out <- rep(NA_real_, n)
   fixed_sum <- tryCatch(
     suppressWarnings(summary(fit$sd_report, "fixed")),
     error = function(e) NULL
   )
   if (!is.null(fixed_sum)) {
     rows <- grepl("^b_fix$", rownames(fixed_sum))
+    if (sum(rows) == sum(free)) {
+      out[free] <- unname(as.numeric(fixed_sum[rows, "Std. Error"]))
+      return(out)
+    }
     if (sum(rows) >= n) {
       return(unname(as.numeric(fixed_sum[rows, "Std. Error"][seq_len(n)])))
     }
@@ -178,6 +185,7 @@
     term = fit$X_fix_names,
     Estimate = .gllvmTMB_b_fix_values(fit),
     Std.Err = .gllvmTMB_b_fix_se(fit),
+    status = .gllvmTMB_xcoef_status(fit),
     stringsAsFactors = FALSE,
     row.names = NULL
   )
@@ -538,18 +546,17 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
     ftab <- x$fixef
     rownames(ftab) <- ftab$term
     cols <- c("Estimate", "Std.Err")
+    if ("status" %in% names(ftab) && any(ftab$status == "fixed")) {
+      cols <- c(cols, "status")
+    }
     if ("link" %in% names(ftab)) {
       cols <- c(cols, "link")
     }
-    if ("link" %in% names(ftab)) {
-      ## Round numeric columns only.
-      tbl <- ftab[, cols, drop = FALSE]
-      tbl$Estimate <- round(tbl$Estimate, digits)
-      tbl$Std.Err <- round(tbl$Std.Err, digits)
-      print(tbl)
-    } else {
-      print(round(ftab[, cols, drop = FALSE], digits))
-    }
+    ## Round numeric columns only.
+    tbl <- ftab[, cols, drop = FALSE]
+    tbl$Estimate <- round(tbl$Estimate, digits)
+    tbl$Std.Err <- round(tbl$Std.Err, digits)
+    print(tbl)
   }
 
   ## Trait-correlation matrices (B / W tiers); only print if the fit has them.
@@ -735,6 +742,9 @@ tidy.gllvmTMB_multi <- function(
     ## that applies to its trait. Useful for downstream reporting code
     ## that needs to convert estimates back to the response scale.
     out$link <- .per_fixef_link(x)[seq_len(nrow(out))]
+    if ("status" %in% names(bfix) && any(bfix$status == "fixed")) {
+      out$status <- bfix$status
+    }
     if (conf.int) {
       crit <- stats::qnorm((1 + conf.level) / 2)
       out$conf.low <- out$estimate - crit * out$std.error

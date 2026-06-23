@@ -3,6 +3,10 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## `Xcoef_fixed` pins fixed-effect coefficients at zero (2026-06-22)
+
+* `gllvmTMB(..., Xcoef_fixed = c("traitB:x" = 0))` now pins selected expanded fixed-effect coefficients exactly at structural zero in native ML fits. Names match the post-`model.matrix()` fixed-effect columns (`fit$X_fix_names`), fixed entries are removed from the free TMB parameter vector through `map`, and `tidy(fit, "fixed")` reports pinned rows with `estimate = 0`, `std.error = NA`, and `status = "fixed"`. IN (`MIS-34`): exact zero pinning, df reduction, all-zero covariate-block equivalence to omitting the block, and validation errors are covered by `test-xcoef-fixed.R`. PARTIAL / GATED: only zero constraints are implemented; REML, non-zero fixed values, and `engine = "julia"` structural-zero coefficient masks remain follow-up work.
+
 ## `screen_gllvmTMB()` screens candidate responses before fitting (2026-06-22)
 
 * `screen_gllvmTMB()` adds a formula-aware pre-fit response screen for binary/binomial candidate traits before fitting a stacked-trait GLLVM. It reuses the wide `traits(...)` and long `trait =` preparation paths, reports denominator-aware prevalence and minority counts, flags constants, sparse minority outcomes, exact duplicate/complement pairs, fixed-effect rank deficiency, and `d >= n_traits`, and returns extractable `summary`, `traits`, `pairs`, `units`, `design`, `recommendations`, and `settings` tables via `screen_table()`. IN (`DIA-14`): Bernoulli, `cbind(success, failure)`, and `weights = n_trials` binomial screens are covered by `test-screen-gllvmTMB.R`. PARTIAL: this is advisory pre-fit screening only; it does not select variables, delete traits, solve separation, prove identifiability, choose rank, guarantee convergence, or cover non-binary modules yet. This is the pre-fit companion to the Ayumi-495/urbanisation_map#3 post-fit large-loading diagnostic work.

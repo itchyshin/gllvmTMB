@@ -391,21 +391,22 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 | MIS-31 | One unordered categorical missing predictor via exact K-state softmax summation | `covered` | `test-missing-predictor-categorical.R` | Phase 5c / Design 68. Supports one unordered factor / character / integer-score predictor with fixed-effect baseline-softmax `impute_model(..., family = categorical())`; reports modal category and per-level probabilities; likelihood is invariant to baseline-level choice. |
 | MIS-32 | Deferred missing-data extensions beyond the shipped v1 layer | `blocked` | n/a | Multiple simultaneous `mi()` terms; EM/profile/REML missing-data engines; simulated imputations; MI pooling; structured discrete predictor models; spatial / animal / relatedness covariate models; joint response-covariate fields; bounded / count / lognormal / Gamma missing-predictor families; dense known sampling-covariance matrices with partial multivariate response rows; MNAR sensitivity and bootstrap-SE cross-checks. |
 | MIS-33 | Gaussian-only REML pilot via `gllvmTMB(REML = TRUE)` | `covered` | `test-gaussian-reml.R` | Gaussian ordinary random-intercept and Gaussian ordinary `latent()` fits integrate `b_fix` through TMB's Laplace random block and match `glmmTMB(..., REML = TRUE)` log-likelihoods and df metadata. Guarded / deferred: non-Gaussian REML, observation weights, retained missing responses, `mi()` predictor models, and fixed-effect profile CIs under REML. |
+| MIS-34 | Native ML structural-zero fixed-effect coefficients via `Xcoef_fixed` | `covered` (native ML zero constraints) / `partial` (REML, non-zero fixed values, Julia twin) | `test-xcoef-fixed.R` | `gllvmTMB(..., Xcoef_fixed = c("expanded_column" = 0))` pins selected expanded fixed-effect `b_fix` coefficients exactly at zero through TMB's parameter `map`, reports all coefficient rows with pinned rows marked `status = "fixed"`, sets fixed-row SE/CIs to `NA`, and reduces `logLik()` df by the number of fixed coefficients. The test covers exact zero pinning, one-parameter df reduction, all-zero covariate-block equivalence to omitting that block, unknown-name rejection, non-zero fixed-value rejection, REML rejection, and explicit `engine = "julia"` gating. This is not a formula-grammar change, not a response mask, and not a `lambda_constraint`; it constrains the fixed-effect design matrix after normal `model.matrix()` expansion. Follow-up: paired GLLVM.jl `gamma`/coefficient masks and non-zero fixed values remain planned. |
 
 ## Honest scope statement
 
 **Current tally (2026-06-22) — recounted from the leading status
 label in the per-row status column:**
 
-- **201 capability rows** (the register grew from 102 rows at
+- **202 capability rows** (the register grew from 102 rows at
   Phase 0A close as the kernel/coevolution, augmented-slope,
   cluster2, missing-data, plot/extractor, diagnostic, and Julia
   bridge sections were added).
-- **172 `covered`** (86 %): test evidence exists at the primary
-  depth advertised by the row. Four of these rows still carry an
+- **173 `covered`** (86 %): test evidence exists at the primary
+  depth advertised by the row. Five of these rows still carry an
   explicit `partial` sub-scope in their status text (`EXT-04`,
-  `EXT-13`, `DIA-11`, `DIA-12`), so downstream prose must cite the
-  covered regime rather than generalising across all regimes.
+  `EXT-13`, `DIA-11`, `DIA-12`, `MIS-34`), so downstream prose must
+  cite the covered regime rather than generalising across all regimes.
 - **22 `partial`** (11 %): tests exist but coverage is shallower
   than advertised — every remaining leading-`partial` row is an
   honest, deliberate deferral (known-V non-Gaussian variants

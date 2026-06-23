@@ -479,6 +479,7 @@ pilot_build_manifest <- function(
       d = as.integer(cell$d),
       n_units = as.integer(cell$n_units),
       signal = as.numeric(cell$signal),
+      lambda_scale = as.numeric(cell$lambda_scale),
       output_mode = output_mode,
       result_file = result_file,
       result_path = result_path,
@@ -709,6 +710,181 @@ pilot_assert_chunk_outputs <- function(manifest, require_all = TRUE) {
     }
   }
   audit
+}
+
+pilot_run_chunk_manifest <- function(
+  manifest,
+  runner = m3_run_cell,
+  ci_level = PILOT_CI_LEVEL,
+  verbose = FALSE
+) {
+  stopifnot(is.function(runner))
+  pilot_assert_manifest(manifest, require_unique_result_path = FALSE)
+  report <- data.frame(
+    chunk_id = character(0),
+    cell_id = character(0),
+    status = character(0),
+    n_reps = integer(0),
+    chunk_path = character(0),
+    size_bytes = numeric(0),
+    wall_s = numeric(0),
+    error = character(0),
+    stringsAsFactors = FALSE
+  )
+  if (is.null(manifest) || !is.data.frame(manifest) || nrow(manifest) == 0L) {
+    return(report)
+  }
+  required <- c(
+    "campaign_id",
+    "chunk_id",
+    "cell_id",
+    "harness_family",
+    "d",
+    "n_units",
+    "signal",
+    "lambda_scale",
+    "chunk_path",
+    "n_before",
+    "n_reps_planned",
+    "rep_start",
+    "rep_end",
+    "n_boot",
+    "run_seed_base",
+    "batch_seed_base"
+  )
+  missing <- setdiff(required, names(manifest))
+  if (length(missing)) {
+    stop(
+      "Pilot chunk runner missing required columns: ",
+      paste(missing, collapse = ", ")
+    )
+  }
+  active <- manifest[manifest$n_reps_planned > 0L, , drop = FALSE]
+  if (!nrow(active)) {
+    return(report)
+  }
+  bad_mode <- if ("output_mode" %in% names(active)) {
+    active$output_mode != "chunk"
+  } else {
+    rep(TRUE, nrow(active))
+  }
+  if (any(bad_mode)) {
+    stop(
+      "Pilot chunk runner requires output_mode = 'chunk' for chunk_id: ",
+      active$chunk_id[which(bad_mode)[1]]
+    )
+  }
+
+  for (i in seq_len(nrow(active))) {
+    row <- active[i, , drop = FALSE]
+    n_reps <- as.integer(row$n_reps_planned)
+    n_before <- as.integer(row$n_before)
+    if (!is.finite(n_before) || n_before < 0L) {
+      stop("Invalid pilot chunk n_before for chunk_id: ", row$chunk_id)
+    }
+    if (!nzchar(row$chunk_path)) {
+      stop("Missing pilot chunk path for chunk_id: ", row$chunk_id)
+    }
+    dir.create(dirname(row$chunk_path), recursive = TRUE, showWarnings = FALSE)
+
+    cat(sprintf(
+      paste0(
+        "[chunk] RUN  %s: %d reps (cell=%s n_before=%d; ",
+        "family=%s d=%d n=%d signal=%.1f seed_base=%d)\n"
+      ),
+      row$chunk_id,
+      n_reps,
+      row$cell_id,
+      n_before,
+      row$harness_family,
+      as.integer(row$d),
+      as.integer(row$n_units),
+      as.numeric(row$signal),
+      as.integer(row$batch_seed_base)
+    ))
+
+    t0 <- Sys.time()
+    res <- tryCatch(
+      runner(
+        family = row$harness_family,
+        d = as.integer(row$d),
+        n_reps = n_reps,
+        seed_base = as.integer(row$batch_seed_base),
+        n_units = as.integer(row$n_units),
+        n_traits = PILOT_N_TRAITS,
+        lambda_scale = as.numeric(row$lambda_scale),
+        targets = "Sigma_unit_diag",
+        n_boot = as.integer(row$n_boot),
+        ci_level = ci_level,
+        verbose = verbose
+      ),
+      error = function(e) e
+    )
+    wall <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+    if (inherits(res, "error")) {
+      msg <- conditionMessage(res)
+      msg <- iconv(msg, to = "ASCII", sub = "?")
+      msg <- gsub("[\r\n]+", " ", msg)
+      report <- rbind(
+        report,
+        data.frame(
+          chunk_id = row$chunk_id,
+          cell_id = row$cell_id,
+          status = "error",
+          n_reps = 0L,
+          chunk_path = row$chunk_path,
+          size_bytes = NA_real_,
+          wall_s = wall,
+          error = msg,
+          stringsAsFactors = FALSE
+        )
+      )
+      stop("Pilot chunk runner failed for chunk_id ", row$chunk_id, ": ", msg)
+    }
+    if (!is.data.frame(res)) {
+      stop(
+        "Pilot chunk runner returned non-data-frame for chunk_id: ",
+        row$chunk_id
+      )
+    }
+
+    res <- pilot_reindex_reps(res, n_before)
+    res$pilot_campaign_id <- row$campaign_id
+    res$pilot_chunk_id <- row$chunk_id
+    res$pilot_cell_id <- row$cell_id
+    res$pilot_rep_start <- as.integer(row$rep_start)
+    res$pilot_rep_end <- as.integer(row$rep_end)
+    res$pilot_run_seed_base <- as.integer(row$run_seed_base)
+    res$pilot_batch_seed_base <- as.integer(row$batch_seed_base)
+
+    saveRDS(res, row$chunk_path)
+    size_bytes <- file.info(row$chunk_path)$size
+    out_reps <- pilot_accum_count(res)
+    cat(sprintf(
+      "[chunk] OK   %s in %.1fs: wrote %d rep(s) to %s\n",
+      row$chunk_id,
+      wall,
+      out_reps,
+      row$chunk_path
+    ))
+    report <- rbind(
+      report,
+      data.frame(
+        chunk_id = row$chunk_id,
+        cell_id = row$cell_id,
+        status = "written",
+        n_reps = as.integer(out_reps),
+        chunk_path = row$chunk_path,
+        size_bytes = as.numeric(size_bytes),
+        wall_s = wall,
+        error = NA_character_,
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+
+  rownames(report) <- NULL
+  report
 }
 
 ## Upsert a single cell row into the index (replace any existing row for

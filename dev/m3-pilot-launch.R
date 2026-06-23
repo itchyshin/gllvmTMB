@@ -79,6 +79,11 @@ PILOT_INDEX_FILE <- "pilot-index.rds"
 ## derived index.
 PILOT_MANIFEST_DIR <- "_manifests"
 
+## Planned immutable chunk output root. Current GitHub accumulation still writes
+## per-cell stores, but DRAC preflight uses this path to prove that future array
+## tasks can write one chunk per (campaign, cell, chunk) without shared files.
+PILOT_CHUNK_DIR <- "_chunks"
+
 ## Per-cell fixed backbone (held constant across the pilot grid so the
 ## varied axes are interpretable). n_traits is fixed; n_units is a grid
 ## axis. These mirror the M3 defaults closely.
@@ -326,6 +331,19 @@ pilot_manifest_path <- function(results_dir, shard) {
   file.path(pilot_manifest_dir(results_dir), sprintf("shard-%s.csv", shard))
 }
 
+pilot_chunk_dir <- function(results_dir) {
+  file.path(results_dir, PILOT_CHUNK_DIR)
+}
+
+pilot_chunk_path <- function(results_dir, campaign_id, cell_id, chunk_id) {
+  file.path(
+    pilot_chunk_dir(results_dir),
+    campaign_id,
+    cell_id,
+    paste0(chunk_id, ".rds")
+  )
+}
+
 pilot_manifest_seed_range <- function(batch_seed_base, family, d, n_reps) {
   if (!exists("m3_family_seed_index", mode = "function")) {
     stop("pilot manifest needs m3_family_seed_index(); source dev/m3-grid.R.")
@@ -354,11 +372,13 @@ pilot_build_manifest <- function(
   seed_fn = pilot_accum_batch_seed,
   shard = NA_integer_,
   n_shards = NA_integer_,
+  output_mode = c("accumulate", "chunk"),
   source_sha = Sys.getenv("GITHUB_SHA", unset = NA_character_),
   workflow_run_id = Sys.getenv("GITHUB_RUN_ID", unset = NA_character_),
   workflow_run_number = Sys.getenv("GITHUB_RUN_NUMBER", unset = NA_character_)
 ) {
   stopifnot(is.function(seed_fn))
+  output_mode <- match.arg(output_mode)
   if (is.null(seed_base)) {
     stop("pilot_build_manifest requires seed_base.")
   }
@@ -388,13 +408,15 @@ pilot_build_manifest <- function(
     grid <- grid[grid$cell_id %in% cell_ids, , drop = FALSE]
   }
 
+  campaign_id <- sprintf("power-pilot-seed-%s", seed_base)
   rows <- vector("list", nrow(grid))
   for (i in seq_len(nrow(grid))) {
     cell <- grid[i, , drop = FALSE]
     cid <- cell$cell_id
-    cell_path <- file.path(results_dir, paste0(cid, ".rds"))
-    prior <- if (file.exists(cell_path)) {
-      tryCatch(readRDS(cell_path), error = function(e) NULL)
+    store_file <- paste0(cid, ".rds")
+    store_path <- file.path(results_dir, store_file)
+    prior <- if (file.exists(store_path)) {
+      tryCatch(readRDS(store_path), error = function(e) NULL)
     } else {
       NULL
     }
@@ -411,14 +433,45 @@ pilot_build_manifest <- function(
       cell$d,
       n_reps_planned
     )
+    rep_start <- if (n_reps_planned > 0L) n_before + 1L else NA_integer_
+    rep_end <- if (n_reps_planned > 0L) {
+      n_before + n_reps_planned
+    } else {
+      NA_integer_
+    }
+    chunk_id <- sprintf(
+      "seed%s-shard%s-%s-rep%s-%s",
+      seed_base,
+      shard,
+      cid,
+      ifelse(is.na(rep_start), "none", rep_start),
+      ifelse(is.na(rep_end), "none", rep_end)
+    )
+    chunk_file <- file.path(
+      PILOT_CHUNK_DIR,
+      campaign_id,
+      cid,
+      paste0(chunk_id, ".rds")
+    )
+    chunk_path <- pilot_chunk_path(results_dir, campaign_id, cid, chunk_id)
+    result_file <- if (identical(output_mode, "chunk")) {
+      chunk_file
+    } else {
+      store_file
+    }
+    result_path <- if (identical(output_mode, "chunk")) {
+      chunk_path
+    } else {
+      store_path
+    }
     rows[[i]] <- data.frame(
-      campaign_id = sprintf("power-pilot-seed-%s", seed_base),
+      campaign_id = campaign_id,
       source_sha = as.character(source_sha),
       workflow_run_id = as.character(workflow_run_id),
       workflow_run_number = as.character(workflow_run_number),
       shard = as.integer(shard),
       n_shards = as.integer(n_shards),
-      chunk_id = sprintf("seed%s-shard%s-%s", seed_base, shard, cid),
+      chunk_id = chunk_id,
       cell_id = cid,
       family_label = cell$family_label,
       harness_family = cell$harness_family,
@@ -426,10 +479,17 @@ pilot_build_manifest <- function(
       d = as.integer(cell$d),
       n_units = as.integer(cell$n_units),
       signal = as.numeric(cell$signal),
-      result_file = paste0(cid, ".rds"),
-      result_path = cell_path,
+      output_mode = output_mode,
+      result_file = result_file,
+      result_path = result_path,
+      store_file = store_file,
+      store_path = store_path,
+      chunk_file = chunk_file,
+      chunk_path = chunk_path,
       n_before = as.integer(n_before),
       n_reps_planned = as.integer(n_reps_planned),
+      rep_start = as.integer(rep_start),
+      rep_end = as.integer(rep_end),
       n_sim_cap = as.integer(n_sim_cap),
       n_boot = as.integer(n_boot),
       run_seed_base = as.integer(seed_base),
@@ -484,7 +544,7 @@ pilot_read_manifests <- function(results_dirs = PILOT_RESULTS_DIR_DEFAULT) {
   out
 }
 
-pilot_assert_manifest <- function(manifest) {
+pilot_assert_manifest <- function(manifest, require_unique_result_path = TRUE) {
   if (is.null(manifest) || !is.data.frame(manifest) || nrow(manifest) == 0L) {
     return(invisible(TRUE))
   }
@@ -511,9 +571,24 @@ pilot_assert_manifest <- function(manifest) {
   if (length(dup_chunk)) {
     stop("Duplicate pilot manifest chunk_id: ", dup_chunk[[1]])
   }
-  dup_path <- active$result_path[duplicated(active$result_path)]
-  if (length(dup_path)) {
-    stop("Duplicate pilot output paths in manifest: ", dup_path[[1]])
+  if (isTRUE(require_unique_result_path)) {
+    dup_path <- active$result_path[duplicated(active$result_path)]
+    if (length(dup_path)) {
+      stop("Duplicate pilot output paths in manifest: ", dup_path[[1]])
+    }
+  }
+  if ("chunk_path" %in% names(active)) {
+    bad_chunk_path <- is.na(active$chunk_path) | !nzchar(active$chunk_path)
+    if (any(bad_chunk_path)) {
+      stop(
+        "Missing pilot chunk path for chunk_id: ",
+        active$chunk_id[which(bad_chunk_path)[1]]
+      )
+    }
+    dup_chunk_path <- active$chunk_path[duplicated(active$chunk_path)]
+    if (length(dup_chunk_path)) {
+      stop("Duplicate pilot chunk paths in manifest: ", dup_chunk_path[[1]])
+    }
   }
   active <- active[
     order(active$rep_seed_min, active$rep_seed_max),

@@ -322,6 +322,10 @@ jobs:
             if [ -d "$d/_runstats" ]; then
               cp -a "$d/_runstats/." "$RESULTS_DIR/_runstats/" 2>/dev/null || true
             fi
+            if [ -d "$d/_manifests" ]; then
+              mkdir -p "$RESULTS_DIR/_manifests"
+              cp -a "$d/_manifests/." "$RESULTS_DIR/_manifests/" 2>/dev/null || true
+            fi
           done
           rm -f "$RESULTS_DIR/pilot-index.rds"
           ls -la "$RESULTS_DIR" || true
@@ -346,6 +350,19 @@ jobs:
             echo "n_attempted=$att"
             echo "n_errored=$err"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Validate pilot manifests
+        shell: bash
+        run: |
+          Rscript -e '
+            suppressWarnings(suppressMessages({
+              library(gllvmTMB); source("dev/m3-grid.R"); source("dev/m3-pilot-launch.R")
+            }))
+            rd <- Sys.getenv("RESULTS_DIR")
+            manifest <- pilot_read_manifests(rd)
+            pilot_assert_manifest(manifest)
+            cat(sprintf("validated manifest rows: %d\n", nrow(manifest)))
+          '
 
       - name: Rebuild pilot-index.rds from the merged per-cell files
         shell: bash

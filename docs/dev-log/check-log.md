@@ -18409,3 +18409,72 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-power-pilot-metric-repair.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot manifest and seed audit
+
+Scope:
+
+- Added a no-fit manifest layer for the Design 66 Phase-1 power pilot.
+- Each shard now writes `_manifests/shard-<n>.csv` before fitting. Rows
+  record source SHA, workflow run id/number, shard, cell, result path,
+  planned replicate count, batch seed base, and `rep_seed` min/max.
+- The slice/persist/status path carries and validates manifests for duplicate
+  output paths, duplicate chunk IDs, invalid seed ranges, and overlapping seed
+  ranges.
+- Corrected the pilot seed map so the effective `rep_seed` ranges are spaced
+  after the harness family/d seed offset is applied. The first all-48 no-fit
+  audit failed before this correction, catching a real cross-family overlap.
+- Updated Design 66 and stale signal-zero wording. `signal = 0` remains only a
+  signal-zero coverage diagnostic in the current `Sigma_unit_diag` pilot.
+
+Coordination:
+
+- `git worktree add -b codex/power-pilot-manifest-20260623 /private/tmp/gllvmtmb-power-pilot-manifest-20260623 origin/main`
+  -> clean worktree from #541 merge commit `f98db0e7`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> PASS before shared dev-log/design edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work is #537-#541 plus the run-144 pilot result branch.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS; 22 expectations.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 45 expectations across manifest/report tests.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-launch.R"); mf <- pilot_build_manifest(n_sim_step = 200L, n_sim_cap = 2000L, seed_base = 144L, results_dir = tempfile("pilot-manifest-all-"), n_boot = 0L, shard = 1L, n_shards = 1L, source_sha = "sha"); pilot_assert_manifest(mf); cat(sprintf("manifest ok: %d rows; seed range %d-%d\n", nrow(mf), min(mf$rep_seed_min), max(mf$rep_seed_max)))'`
+  -> PASS after seed-map correction; 48 manifest rows, seed range
+  `721370001-721840200`. This command failed before the correction with an
+  overlapping seed-range error.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-launch.R"); rd <- tempfile("pilot-store-"); sd <- tempfile("pilot-slice-"); dir.create(rd); grid <- pilot_grid(); ord <- order(grid$cell_id); cell <- grid$cell_id[ord][1L]; mf <- pilot_build_manifest(cell_ids = cell, n_sim_step = 2L, n_sim_cap = 10L, seed_base = 147L, results_dir = rd, n_boot = 0L, shard = 1L, n_shards = 48L, source_sha = "slice-smoke"); pilot_write_manifest(mf, rd, shard = 1L); out <- system2("Rscript", c("--vanilla", "dev/power-pilot-run.R", "--mode=slice", "--shard=1", "--n-shards=48", paste0("--results-dir=", rd), paste0("--slice-dir=", sd)), stdout = TRUE, stderr = TRUE); stopifnot(file.exists(file.path(sd, "_manifests", "shard-1.csv"))); cat(paste(out, collapse = "\n"), "\n"); cat("slice manifest copied\n"); unlink(c(rd, sd), recursive = TRUE, force = TRUE)'`
+  -> PASS; slice mode copied `_manifests/shard-1.csv` without launching fits.
+- `Rscript --vanilla dev/power-pilot-run.R --mode=status --results-dir=/tmp/gllvmtmb-empty-manifest-store --n-sim-cap=10 --status-out=/tmp/gllvmtmb-empty-manifest-status.md`
+  -> PASS; `manifest_ok=true`. The warning about no existing results
+  directory is expected for this artificial empty-store smoke.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `rg -n "Type-I proxy|coverage-under-null|null/Type-I|power/Type-I|0 level \\*is\\* the Type-I|signal-zero Type-I" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS; no matches.
+- `rg -n "pilot_build_manifest|pilot_assert_manifest|duplicate output paths|overlapping seed ranges|pilot-index.rds.*source of truth|manifest" dev/m3-pilot-launch.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS for intended manifest coverage. The old `pilot-index.rds` source-of-truth
+  wording was found and replaced with derived-cache wording.
+- `rg -n "source of truth|pilot-index|index.*truth|derived cache" dev/m3-pilot-launch.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS after header repair; remaining hits describe `pilot-index.rds` as a
+  local resume cache / derived cache.
+- `git diff --check`
+  -> PASS.
+
+Not claimed:
+
+- No fits, simulations, Totoro check, DRAC login, SLURM job, or GPU check was
+  launched.
+- This does not yet convert the pilot to immutable per-task chunk files; it adds
+  manifest validation around the current per-cell accumulated store.
+- True binary probit and ordinal-probit coverage repair remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-manifest-seed-audit.md`.

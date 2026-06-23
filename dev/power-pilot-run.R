@@ -62,8 +62,14 @@ as_truthy <- function(x) {
 
 mode <- arg_value("--mode", "shard")
 results_dir <- arg_value("--results-dir", PILOT_RESULTS_DIR_DEFAULT)
-n_sim_cap <- as.integer(arg_value("--n-sim-cap", as.character(ACCUM_N_SIM_CAP_DEFAULT)))
-n_sim_step <- as.integer(arg_value("--n-sim-step", as.character(ACCUM_N_SIM_STEP_DEFAULT)))
+n_sim_cap <- as.integer(arg_value(
+  "--n-sim-cap",
+  as.character(ACCUM_N_SIM_CAP_DEFAULT)
+))
+n_sim_step <- as.integer(arg_value(
+  "--n-sim-step",
+  as.character(ACCUM_N_SIM_STEP_DEFAULT)
+))
 n_boot <- as.integer(arg_value("--n-boot", as.character(PILOT_N_BOOT_DEFAULT)))
 dry_run <- as_truthy(arg_value("--dry-run", "false"))
 
@@ -132,6 +138,20 @@ if (identical(mode, "shard")) {
     quit(save = "no", status = 0L)
   }
 
+  manifest <- pilot_build_manifest(
+    cell_ids = cells,
+    n_sim_step = n_sim_step,
+    n_sim_cap = n_sim_cap,
+    seed_base = seed_base,
+    results_dir = results_dir,
+    n_boot = n_boot,
+    shard = shard,
+    n_shards = n_shards
+  )
+  pilot_assert_manifest(manifest)
+  manifest_path <- pilot_write_manifest(manifest, results_dir, shard)
+  cat(sprintf("[power-pilot] wrote shard manifest to %s\n", manifest_path))
+
   res <- run_accumulate_pilot_batch(
     cell_ids = cells,
     n_sim_step = n_sim_step,
@@ -198,6 +218,16 @@ if (identical(mode, "slice")) {
     dir.create(rs_dir, recursive = TRUE, showWarnings = FALSE)
     file.copy(rs_src, file.path(rs_dir, basename(rs_src)), overwrite = TRUE)
   }
+  manifest_src <- pilot_manifest_path(results_dir, shard)
+  if (file.exists(manifest_src)) {
+    manifest_dir <- file.path(slice_dir, PILOT_MANIFEST_DIR)
+    dir.create(manifest_dir, recursive = TRUE, showWarnings = FALSE)
+    file.copy(
+      manifest_src,
+      file.path(manifest_dir, basename(manifest_src)),
+      overwrite = TRUE
+    )
+  }
 
   cat(sprintf(
     "[power-pilot] shard %d/%d slice: copied %d/%d cell file(s) to %s\n",
@@ -211,6 +241,22 @@ if (identical(mode, "slice")) {
 }
 
 if (identical(mode, "status")) {
+  manifest_df <- pilot_read_manifests(results_dir)
+  manifest_ok <- TRUE
+  manifest_error <- NA_character_
+  tryCatch(
+    pilot_assert_manifest(manifest_df),
+    error = function(e) {
+      manifest_ok <<- FALSE
+      manifest_error <<- conditionMessage(e)
+    }
+  )
+  emit_output("manifest_ok", tolower(as.character(manifest_ok)))
+  if (!manifest_ok) {
+    emit_output("manifest_error", manifest_error)
+    stop("power-pilot manifest validation failed: ", manifest_error)
+  }
+
   st <- pilot_accum_status(results_dir = results_dir, n_sim_cap = n_sim_cap)
   emit_output("all_complete", tolower(as.character(st$all_complete)))
   emit_output("reps_total", as.character(st$counts[["reps_total"]]))
@@ -268,7 +314,9 @@ if (identical(mode, "status")) {
         cells$evidence_family <- cells$evidence_family.x
       }
     }
-    cells <- cells[order(cells$family_label, cells$d, cells$n_units, cells$signal), ]
+    cells <- cells[
+      order(cells$family_label, cells$d, cells$n_units, cells$signal),
+    ]
     lines <- c(
       paste0(
         "| cell | evidence | n_sim | complete | ci_rows | coverage_primary |",
@@ -279,59 +327,67 @@ if (identical(mode, "status")) {
         "-----:|:-----:|:-----:|---------:|------:|---------:|----------:|"
       )
     )
-    fmt_cov <- function(x) ifelse(is.na(x), "-", formatC(x, format = "f", digits = 3))
+    fmt_cov <- function(x) {
+      ifelse(is.na(x), "-", formatC(x, format = "f", digits = 3))
+    }
     fmt_int <- function(x) ifelse(is.na(x), "-", as.character(as.integer(x)))
     fmt_pct <- function(x) ifelse(is.na(x), "-", sprintf("%.0f%%", 100 * x))
     fmt_lgl <- function(x) ifelse(is.na(x), "-", ifelse(x, "Y", "n"))
     for (i in seq_len(nrow(cells))) {
-      lines <- c(lines, sprintf(
-        paste0(
-          "| %s | %s | %d | %s | %s | %s | %s | %s | %s |",
-          " %s | %s | %s | %s |"
-        ),
-        cells$cell_id[i],
-        if ("evidence_family" %in% names(cells) &&
-          !is.na(cells$evidence_family[i])) {
-          cells$evidence_family[i]
-        } else {
-          cells$family_label[i]
-        },
-        as.integer(cells$n_sim[i]),
-        if (isTRUE(cells$complete[i])) "Y" else "n",
-        if ("coverage_eligible_n" %in% names(cells)) {
-          fmt_int(cells$coverage_eligible_n[i])
-        } else {
-          "-"
-        },
-        fmt_cov(cells$coverage_primary[i]),
-        if ("coverage_mcse" %in% names(cells)) {
-          fmt_cov(cells$coverage_mcse[i])
-        } else {
-          "-"
-        },
-        fmt_lgl(cells$passes_94[i]),
-        fmt_lgl(cells$passes_95[i]),
-        if ("fit_failure_rate" %in% names(cells)) {
-          fmt_pct(cells$fit_failure_rate[i])
-        } else {
-          "-"
-        },
-        if ("nonpd_rate" %in% names(cells)) {
-          fmt_pct(cells$nonpd_rate[i])
-        } else {
-          "-"
-        },
-        if ("sdreport_ok_rate" %in% names(cells)) {
-          fmt_pct(cells$sdreport_ok_rate[i])
-        } else {
-          "-"
-        },
-        if ("boot_fail_rate" %in% names(cells)) {
-          fmt_pct(cells$boot_fail_rate[i])
-        } else {
-          "-"
-        }
-      ))
+      lines <- c(
+        lines,
+        sprintf(
+          paste0(
+            "| %s | %s | %d | %s | %s | %s | %s | %s | %s |",
+            " %s | %s | %s | %s |"
+          ),
+          cells$cell_id[i],
+          if (
+            "evidence_family" %in%
+              names(cells) &&
+              !is.na(cells$evidence_family[i])
+          ) {
+            cells$evidence_family[i]
+          } else {
+            cells$family_label[i]
+          },
+          as.integer(cells$n_sim[i]),
+          if (isTRUE(cells$complete[i])) "Y" else "n",
+          if ("coverage_eligible_n" %in% names(cells)) {
+            fmt_int(cells$coverage_eligible_n[i])
+          } else {
+            "-"
+          },
+          fmt_cov(cells$coverage_primary[i]),
+          if ("coverage_mcse" %in% names(cells)) {
+            fmt_cov(cells$coverage_mcse[i])
+          } else {
+            "-"
+          },
+          fmt_lgl(cells$passes_94[i]),
+          fmt_lgl(cells$passes_95[i]),
+          if ("fit_failure_rate" %in% names(cells)) {
+            fmt_pct(cells$fit_failure_rate[i])
+          } else {
+            "-"
+          },
+          if ("nonpd_rate" %in% names(cells)) {
+            fmt_pct(cells$nonpd_rate[i])
+          } else {
+            "-"
+          },
+          if ("sdreport_ok_rate" %in% names(cells)) {
+            fmt_pct(cells$sdreport_ok_rate[i])
+          } else {
+            "-"
+          },
+          if ("boot_fail_rate" %in% names(cells)) {
+            fmt_pct(cells$boot_fail_rate[i])
+          } else {
+            "-"
+          }
+        )
+      )
     }
     ## Append the ISSUES block (flagged cells with failure / non-PD /
     ## convergence rates) so the board carries issues beside coverage/power.
@@ -348,4 +404,7 @@ if (identical(mode, "status")) {
   quit(save = "no", status = 0L)
 }
 
-stop(sprintf("unknown --mode=%s (expected 'shard' or 'status')", mode))
+stop(sprintf(
+  "unknown --mode=%s (expected 'shard', 'slice', or 'status')",
+  mode
+))

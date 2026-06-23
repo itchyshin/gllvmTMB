@@ -62,6 +62,9 @@ if (!exists("pilot_grid", mode = "function")) {
 PILOT_FIGURE_DIR_DEFAULT <- "dev/m3-pilot-figures"
 PILOT_SUMMARY_MD_DEFAULT <- "dev/m3-pilot-summary.md"
 PILOT_SUMMARY_RDS_DEFAULT <- "dev/m3-pilot-summary.rds"
+if (!exists("PILOT_CHUNK_AGGREGATE_DIR", inherits = TRUE)) {
+  PILOT_CHUNK_AGGREGATE_DIR <- "_chunk-aggregate"
+}
 
 ## Gate thresholds (Design 66 locked: report BOTH the 94% audit gate and
 ## the stricter 95% gate). Mirrors pilot_accum_status().
@@ -151,6 +154,49 @@ pilot_collect <- function(
   rownames(out) <- NULL
   ord <- order(out$family, out$d, out$n_units, out$signal, na.last = TRUE)
   out[ord, , drop = FALSE]
+}
+
+## Resolve explicit immutable-chunk aggregate stores from their parent pilot
+## result directories. The report layer does not auto-scan these subdirs from
+## pilot_collect() because legacy accumulated stores can coexist with derived
+## aggregate stores and must not be double-counted by accident.
+pilot_chunk_aggregate_results_dirs <- function(
+  results_dirs = "dev/m3-pilot-results",
+  aggregate_subdir = PILOT_CHUNK_AGGREGATE_DIR
+) {
+  stopifnot(length(results_dirs) >= 1L)
+  dirs <- file.path(results_dirs, aggregate_subdir)
+  dirs[dir.exists(dirs)]
+}
+
+## Collect per-cell reports from immutable chunk aggregates written by
+## pilot_aggregate_chunk_outputs(). This reuses the same MCSE, denominator,
+## fit-health, and evidence-label reducer as pilot_collect(); the only
+## difference is the explicit source directory.
+pilot_collect_chunk_aggregates <- function(
+  results_dirs = "dev/m3-pilot-results",
+  aggregate_subdir = PILOT_CHUNK_AGGREGATE_DIR,
+  index_file = "pilot-index.rds",
+  gate_94 = PILOT_GATE_94,
+  gate_95 = PILOT_GATE_95
+) {
+  aggregate_dirs <- pilot_chunk_aggregate_results_dirs(
+    results_dirs = results_dirs,
+    aggregate_subdir = aggregate_subdir
+  )
+  if (!length(aggregate_dirs)) {
+    warning(
+      "pilot_collect_chunk_aggregates(): no existing chunk aggregate dirs; ",
+      "returning empty table."
+    )
+    return(pilot_collect_empty())
+  }
+  pilot_collect(
+    results_dirs = aggregate_dirs,
+    index_file = index_file,
+    gate_94 = gate_94,
+    gate_95 = gate_95
+  )
 }
 
 ## Read and combine the long per-replicate grids from one or more stores.
@@ -383,8 +429,9 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
   data.frame(
     cell_id = cid,
     family = fam_label,
-    evidence_family = if (!is.null(m) && nrow(m) &&
-      "evidence_family" %in% names(m)) {
+    evidence_family = if (
+      !is.null(m) && nrow(m) && "evidence_family" %in% names(m)
+    ) {
       m$evidence_family[1]
     } else {
       fam_label
@@ -394,14 +441,14 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
     } else {
       (if ("family" %in% names(g)) g$family[1] else NA_character_)
     },
-    link_intended = if (!is.null(m) && nrow(m) &&
-      "link_intended" %in% names(m)) {
+    link_intended = if (
+      !is.null(m) && nrow(m) && "link_intended" %in% names(m)
+    ) {
       m$link_intended[1]
     } else {
       NA_character_
     },
-    link_harness = if (!is.null(m) && nrow(m) &&
-      "link_harness" %in% names(m)) {
+    link_harness = if (!is.null(m) && nrow(m) && "link_harness" %in% names(m)) {
       m$link_harness[1]
     } else {
       NA_character_
@@ -534,14 +581,22 @@ pilot_boot_counts <- function(rows, rep_key) {
     return(list(failed = NA_integer_, attempted = NA_integer_))
   }
   by_rep <- split(rows, rows[[rep_key]], drop = TRUE)
-  failed <- vapply(by_rep, function(rep_df) {
-    x <- rep_df$n_boot_failed
-    if (all(is.na(x))) 0 else max(x, na.rm = TRUE)
-  }, numeric(1))
-  attempted <- vapply(by_rep, function(rep_df) {
-    x <- rep_df$n_boot
-    if (all(is.na(x))) 0 else max(x, na.rm = TRUE)
-  }, numeric(1))
+  failed <- vapply(
+    by_rep,
+    function(rep_df) {
+      x <- rep_df$n_boot_failed
+      if (all(is.na(x))) 0 else max(x, na.rm = TRUE)
+    },
+    numeric(1)
+  )
+  attempted <- vapply(
+    by_rep,
+    function(rep_df) {
+      x <- rep_df$n_boot
+      if (all(is.na(x))) 0 else max(x, na.rm = TRUE)
+    },
+    numeric(1)
+  )
   list(
     failed = as.integer(sum(failed, na.rm = TRUE)),
     attempted = as.integer(sum(attempted, na.rm = TRUE))
@@ -1560,7 +1615,11 @@ if (sys.nframe() == 0L && !interactive()) {
       fixed = TRUE
     )[[1]]
     df <- tryCatch(
-      pilot_collect(results_dirs = rdirs),
+      if ("--chunk-aggregate" %in% args) {
+        pilot_collect_chunk_aggregates(results_dirs = rdirs)
+      } else {
+        pilot_collect(results_dirs = rdirs)
+      },
       error = function(e) {
         ## Fail-soft: never break the summary job on a report error.
         cat("none\n")
@@ -1586,7 +1645,12 @@ if (sys.nframe() == 0L && !interactive()) {
       "--audit-rds",
       sub("\\.md$", ".rds", md_path)
     )
-    audit <- pilot_scoring_audit(results_dirs = rdirs, cell_ids = cells)
+    audit_dirs <- if ("--chunk-aggregate" %in% args) {
+      pilot_chunk_aggregate_results_dirs(results_dirs = rdirs)
+    } else {
+      rdirs
+    }
+    audit <- pilot_scoring_audit(results_dirs = audit_dirs, cell_ids = cells)
     pilot_scoring_audit_record(audit, md_path = md_path, rds_path = rds_path)
     quit(save = "no", status = 0L)
   }

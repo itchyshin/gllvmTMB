@@ -713,6 +713,14 @@ reimplement any of it). Entry points:
   every planned active chunk file to exist and be non-empty; it does
   not launch fits and does not replace the current accumulated-store
   driver.
+- `pilot_collect_chunk_aggregates()` / `dev/m3-pilot-report.R
+  --emit-issues --chunk-aggregate` -- read the per-cell RDS files
+  written under `_chunk-aggregate/` after immutable chunks have been
+  validated and aggregated. This is an explicit report source, not an
+  automatic scan, so legacy accumulated stores and derived chunk
+  aggregates cannot be double-counted by accident. It reuses the same
+  MCSE, denominator, fit-health, and evidence-label reducer as
+  `pilot_collect()`, and still does not mutate `pilot-index.rds`.
 - For manifest-only compute smoke tests, `dev/power-pilot-run.R
   --mode=preflight --output-mode=chunk` validates the future immutable
   chunk destinations without launching fits.

@@ -18756,3 +18756,72 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-aggregator.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot aggregate report reader
+
+Scope:
+
+- Added an explicit read-only report path for immutable chunk aggregates.
+  `pilot_chunk_aggregate_results_dirs()` resolves `_chunk-aggregate/` stores
+  from parent pilot result directories, and
+  `pilot_collect_chunk_aggregates()` sends those per-cell aggregate RDS files
+  through the existing `pilot_collect()` reducer.
+- Added `dev/m3-pilot-report.R --emit-issues --chunk-aggregate` so the GitHub
+  issue-summary line can read aggregate stores after the chunk-audit and
+  chunk-aggregate steps.
+- Added `--chunk-aggregate` support for the scoring-audit CLI path by resolving
+  the aggregate directory before calling `pilot_scoring_audit()`.
+- Updated the Design 66 compute ladder to state that aggregate reporting is an
+  explicit source and does not mutate `pilot-index.rds`.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url && git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared design/dev-log edits; no open PRs, recent history was
+  the expected #538 through #546 sequence, with #546 merged at `0d2c2ea1`.
+- `git status --short --branch`
+  -> clean branch start in
+  `/private/tmp/gllvmtmb-power-pilot-aggregate-report-20260623` on
+  `codex/power-pilot-aggregate-report-20260623...origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-report.R")); invisible(parse("tests/testthat/test-m3-pilot-report.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-report.R")'`
+  -> first run FAIL because the CLI smoke inherited testthat's working
+  directory and the script could not auto-source `dev/m3-grid.R`; fixed by
+  running the CLI smoke from the repo root. Second run PASS; 33 expectations.
+- `air format dev/m3-pilot-report.R tests/testthat/test-m3-pilot-report.R`
+  -> PASS.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 140 expectations.
+- `rm -rf /tmp/gllvmtmb-aggregate-report-smoke && Rscript --vanilla dev/power-pilot-run.R --mode=chunk --shard=1 --n-shards=48 --n-sim-step=1 --n-sim-cap=5 --seed-base=162 --results-dir=/tmp/gllvmtmb-aggregate-report-smoke --n-boot=0 --dry-run=true >/tmp/gllvmtmb-aggregate-report-smoke.out 2>&1 && Rscript --vanilla dev/power-pilot-run.R --mode=chunk-audit --results-dir=/tmp/gllvmtmb-aggregate-report-smoke >>/tmp/gllvmtmb-aggregate-report-smoke.out 2>&1 && Rscript --vanilla dev/power-pilot-run.R --mode=chunk-aggregate --results-dir=/tmp/gllvmtmb-aggregate-report-smoke >>/tmp/gllvmtmb-aggregate-report-smoke.out 2>&1 && Rscript --vanilla dev/m3-pilot-report.R --emit-issues --chunk-aggregate --results-dir=/tmp/gllvmtmb-aggregate-report-smoke >>/tmp/gllvmtmb-aggregate-report-smoke.out 2>&1 && cat /tmp/gllvmtmb-aggregate-report-smoke.out && find /tmp/gllvmtmb-aggregate-report-smoke -type f | sort`
+  -> PASS; wrote one chunk, audited it, aggregated it, and emitted an aggregate
+  issue summary of `none` from `_chunk-aggregate/`.
+
+Stale scans:
+
+- `rg -n "pilot_collect_chunk_aggregates|pilot_chunk_aggregate_results_dirs|--chunk-aggregate|_chunk-aggregate|PILOT_CHUNK_AGGREGATE_DIR" dev/m3-pilot-report.R tests/testthat/test-m3-pilot-report.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended aggregate-report coverage.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML|pilot-index\\.rds.*(write|mutate|update|rebuild)|automatic.*chunk.*scan|double-count" dev/m3-pilot-report.R tests/testthat/test-m3-pilot-report.R docs/design/66-capstone-power-study.md`
+  -> PASS for no DRAC/SLURM/GPU/production/AI-REML overclaim, no
+  `pilot-index.rds` mutation wording, and no automatic chunk-scan wording.
+  Expected `double-counted` guardrail matches appeared in the new aggregate
+  report helper/design note and in an older row-deduplication helper comment.
+
+Not claimed:
+
+- No Totoro login, DRAC login, SLURM job, GPU check, production campaign, or
+  `n_sim = 2000` run was launched.
+- This slice does not rebuild `pilot-index.rds`, change pilot metric semantics,
+  or move validation rows.
+- True binary probit, ordinal coverage repair, and final power/Type-I metric
+  semantics remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-aggregate-report-reader.md`.

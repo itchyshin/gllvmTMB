@@ -12,6 +12,8 @@
 ## consume (the run-level failure rate, and an all-complete flag).
 ##
 ## Modes (one --mode=... per invocation):
+##   audit-mini -- build + validate the fixed four-cell audit-mini manifest
+##              and exit before fitting; first smoke before broader volume.
 ##   preflight -- build + validate this shard's manifest and exit before
 ##              fitting; used for Totoro/DRAC manifest-parse smoke tests.
 ##   chunk   -- build this shard's immutable-chunk manifest, run the active
@@ -28,6 +30,8 @@
 ##              compact status payload (used by the guard + summary jobs).
 ##
 ## Usage (from repo root):
+##   Rscript dev/power-pilot-run.R --mode=audit-mini \
+##     --seed-base=1 --results-dir=/tmp/pilot-smoke
 ##   Rscript dev/power-pilot-run.R --mode=shard --shard=1 --n-shards=8 \
 ##     --n-sim-step=200 --n-sim-cap=2000 --seed-base=$GITHUB_RUN_NUMBER \
 ##     --results-dir=dev/m3-pilot-results --n-boot=25
@@ -123,6 +127,51 @@ shard_cell_ids <- function(shard, n_shards) {
 }
 
 ## ---- Modes ------------------------------------------------------------
+
+if (identical(mode, "audit-mini")) {
+  shard <- as.integer(arg_value("--shard", "1"))
+  n_shards <- as.integer(arg_value("--n-shards", "1"))
+  seed_base <- arg_value("--seed-base", NULL)
+  if (is.null(seed_base)) {
+    stop("--seed-base is required for --mode=audit-mini.")
+  }
+  seed_base <- as.integer(seed_base)
+  audit_output_mode <- arg_value("--output-mode", "chunk")
+  audit_n_sim_step <- as.integer(arg_value("--n-sim-step", "2"))
+  audit_n_sim_cap <- as.integer(arg_value("--n-sim-cap", "2"))
+  audit_n_boot <- as.integer(arg_value("--n-boot", "0"))
+
+  manifest <- pilot_build_audit_mini_manifest(
+    n_sim_step = audit_n_sim_step,
+    n_sim_cap = audit_n_sim_cap,
+    seed_base = seed_base,
+    results_dir = results_dir,
+    n_boot = audit_n_boot,
+    shard = shard,
+    n_shards = n_shards,
+    output_mode = audit_output_mode
+  )
+  pilot_assert_manifest(
+    manifest,
+    require_unique_result_path = !identical(audit_output_mode, "chunk")
+  )
+  manifest_path <- pilot_write_manifest(manifest, results_dir, shard)
+  active_chunks <- sum(manifest$n_reps_planned > 0L)
+  emit_output("audit_mini_rows", as.character(nrow(manifest)))
+  emit_output("audit_mini_active_chunks", as.character(active_chunks))
+  emit_output("audit_mini_cells", paste(manifest$cell_id, collapse = ","))
+  cat(sprintf(
+    paste0(
+      "[power-pilot] audit-mini manifest: wrote %d row(s), ",
+      "%d active chunk(s), output_mode=%s to %s\n"
+    ),
+    nrow(manifest),
+    active_chunks,
+    audit_output_mode,
+    manifest_path
+  ))
+  quit(save = "no", status = 0L)
+}
 
 if (identical(mode, "preflight")) {
   shard <- as.integer(arg_value("--shard", "1"))
@@ -587,8 +636,8 @@ if (identical(mode, "status")) {
 
 stop(sprintf(
   paste0(
-    "unknown --mode=%s (expected 'preflight', 'chunk', 'chunk-audit', ",
-    "'chunk-aggregate', 'shard', 'slice', or 'status')"
+    "unknown --mode=%s (expected 'audit-mini', 'preflight', 'chunk', ",
+    "'chunk-audit', 'chunk-aggregate', 'shard', 'slice', or 'status')"
   ),
   mode
 ))

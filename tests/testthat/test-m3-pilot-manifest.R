@@ -203,6 +203,40 @@ test_that("power pilot chunk manifests point at immutable chunk files", {
   expect_match(conditionMessage(err), "Duplicate pilot chunk paths")
 })
 
+test_that("power pilot audit-mini manifest names representative cells", {
+  source_power_pilot_manifest()
+
+  mini <- pilot_audit_mini_grid()
+
+  expect_equal(nrow(mini), 4L)
+  expect_equal(
+    mini$family_label,
+    c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit")
+  )
+  expect_equal(mini$d, rep(1L, 4L))
+  expect_equal(mini$n_units, rep(50L, 4L))
+  expect_equal(mini$signal, rep(0.2, 4L))
+  expect_equal(
+    mini$evidence_family,
+    c("gaussian", "nbinom2", "binomial_logit_harness", "ordinal_probit")
+  )
+  expect_equal(pilot_audit_mini_cell_ids(), mini$cell_id)
+
+  manifest <- pilot_build_audit_mini_manifest(
+    seed_base = 150L,
+    results_dir = tempfile("pilot-audit-mini-")
+  )
+  expect_equal(nrow(manifest), 4L)
+  expect_equal(manifest$cell_id, mini$cell_id)
+  expect_equal(manifest$output_mode, rep("chunk", 4L))
+  expect_equal(manifest$n_reps_planned, rep(2L, 4L))
+  expect_equal(manifest$n_boot, rep(0L, 4L))
+  expect_equal(
+    pilot_assert_manifest(manifest, require_unique_result_path = FALSE),
+    TRUE
+  )
+})
+
 test_that("power pilot manifest validator catches overlapping replicate windows", {
   source_power_pilot_manifest()
 
@@ -596,6 +630,52 @@ test_that("power pilot preflight writes a chunk manifest without fits", {
   expect_equal(nrow(manifest), 1L)
   expect_equal(manifest$output_mode, "chunk")
   expect_equal(manifest$result_path, manifest$chunk_path)
+  expect_equal(
+    length(list.files(results_dir, pattern = "[.]rds$", full.names = TRUE)),
+    0L
+  )
+})
+
+test_that("power pilot audit-mini CLI writes a manifest without fits", {
+  source_power_pilot_manifest()
+  testthat::skip_if_not(
+    file.exists(file.path(power_pilot_root, "dev", "power-pilot-run.R"))
+  )
+
+  results_dir <- tempfile("pilot-audit-mini-cli-")
+  on.exit(unlink(results_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  old_wd <- setwd(power_pilot_root)
+  on.exit(setwd(old_wd), add = TRUE)
+
+  rscript <- file.path(R.home("bin"), "Rscript")
+  out <- system2(
+    rscript,
+    c(
+      "--vanilla",
+      file.path("dev", "power-pilot-run.R"),
+      "--mode=audit-mini",
+      "--seed-base=150",
+      paste0("--results-dir=", results_dir)
+    ),
+    stdout = TRUE,
+    stderr = TRUE
+  )
+  out <- paste(out, collapse = "\n")
+  expect_match(out, "audit_mini_rows=4")
+  expect_match(out, "audit_mini_active_chunks=4")
+  expect_match(out, "audit-mini manifest: wrote 4 row")
+
+  manifest_path <- file.path(results_dir, "_manifests", "shard-1.csv")
+  expect_true(file.exists(manifest_path))
+  manifest <- utils::read.csv(manifest_path, stringsAsFactors = FALSE)
+  expect_equal(nrow(manifest), 4L)
+  expect_equal(manifest$output_mode, rep("chunk", 4L))
+  expect_equal(manifest$n_boot, rep(0L, 4L))
+  expect_equal(
+    manifest$family_label,
+    c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit")
+  )
   expect_equal(
     length(list.files(results_dir, pattern = "[.]rds$", full.names = TRUE)),
     0L

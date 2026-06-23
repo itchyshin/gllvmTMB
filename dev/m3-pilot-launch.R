@@ -130,6 +130,20 @@ PILOT_SIGNAL_LEVELS <- c(0.0, 0.2, 0.5)
 PILOT_D_LEVELS <- c(1L, 2L)
 PILOT_N_UNITS_LEVELS <- c(50L, 150L)
 
+## Audit-mini cells: one cheap representative moderate-signal cell per core
+## family, used before any broader local or DRAC volume. The binomial row keeps
+## the intended `binomial_probit` label and the current `binomial_logit_harness`
+## evidence label until the true probit DGP/fit swap lands.
+PILOT_AUDIT_MINI_FAMILIES <- c(
+  "gaussian",
+  "nbinom2",
+  "binomial_probit",
+  "ordinal_probit"
+)
+PILOT_AUDIT_MINI_D <- 1L
+PILOT_AUDIT_MINI_N_UNITS <- 50L
+PILOT_AUDIT_MINI_SIGNAL <- 0.2
+
 ## Effective per-cell seed blocks must be farther apart than any per-batch
 ## replicate block, otherwise cells can share rep_seed values.
 PILOT_CELL_SEED_STRIDE <- 10000L
@@ -223,6 +237,64 @@ pilot_grid <- function() {
   ]
   rownames(g) <- NULL
   g
+}
+
+pilot_audit_mini_grid <- function() {
+  g <- pilot_grid()
+  keep <- g$family_label %in%
+    PILOT_AUDIT_MINI_FAMILIES &
+    g$d == PILOT_AUDIT_MINI_D &
+    g$n_units == PILOT_AUDIT_MINI_N_UNITS &
+    abs(g$signal - PILOT_AUDIT_MINI_SIGNAL) < sqrt(.Machine$double.eps)
+  out <- g[keep, , drop = FALSE]
+  missing <- setdiff(PILOT_AUDIT_MINI_FAMILIES, out$family_label)
+  if (length(missing)) {
+    stop(
+      "pilot_audit_mini_grid() missing representative family row(s): ",
+      paste(missing, collapse = ", ")
+    )
+  }
+  out <- out[match(PILOT_AUDIT_MINI_FAMILIES, out$family_label), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+pilot_audit_mini_cell_ids <- function() {
+  pilot_audit_mini_grid()$cell_id
+}
+
+pilot_build_audit_mini_manifest <- function(
+  n_sim_step = 2L,
+  n_sim_cap = 2L,
+  seed_base,
+  results_dir = PILOT_RESULTS_DIR_DEFAULT,
+  n_boot = 0L,
+  shard = 1L,
+  n_shards = 1L,
+  output_mode = c("chunk", "accumulate"),
+  source_sha = Sys.getenv("GITHUB_SHA", unset = NA_character_),
+  workflow_run_id = Sys.getenv("GITHUB_RUN_ID", unset = NA_character_),
+  workflow_run_number = Sys.getenv("GITHUB_RUN_NUMBER", unset = NA_character_)
+) {
+  output_mode <- match.arg(output_mode)
+  cell_ids <- pilot_audit_mini_cell_ids()
+  manifest <- pilot_build_manifest(
+    cell_ids = cell_ids,
+    n_sim_step = n_sim_step,
+    n_sim_cap = n_sim_cap,
+    seed_base = seed_base,
+    results_dir = results_dir,
+    n_boot = n_boot,
+    shard = shard,
+    n_shards = n_shards,
+    output_mode = output_mode,
+    source_sha = source_sha,
+    workflow_run_id = workflow_run_id,
+    workflow_run_number = workflow_run_number
+  )
+  manifest <- manifest[match(cell_ids, manifest$cell_id), , drop = FALSE]
+  rownames(manifest) <- NULL
+  manifest
 }
 
 ## ---- Index helpers ----------------------------------------------------

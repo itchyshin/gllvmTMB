@@ -18825,3 +18825,69 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-power-pilot-aggregate-report-reader.md`.
+
+## 2026-06-23 (Codex / Ada) -- Power pilot audit-mini manifest
+
+Scope:
+
+- Added `pilot_audit_mini_grid()`, `pilot_audit_mini_cell_ids()`, and
+  `pilot_build_audit_mini_manifest()` as a manifest-only gate before broader
+  local or DRAC simulation volume.
+- Added `dev/power-pilot-run.R --mode=audit-mini` to write and validate a
+  four-cell chunk manifest and then exit before fitting.
+- The audit-mini cells are gaussian, nbinom2, the current `binomial_probit`
+  label carried by `binomial_logit_harness`, and ordinal-probit at `d = 1`,
+  `n_units = 50`, `signal = 0.2`, `n_sim_step = 2`, `n_boot = 0` by default.
+- Updated Design 66 to describe this as a smoke gate, not as true
+  binomial-probit evidence or DRAC production launch.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url && git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared design/dev-log edits; no open PRs, recent history was
+  the expected #538 through #547 sequence, with #547 merged at `654591e9`.
+- `git status --short --branch`
+  -> clean branch start in
+  `/private/tmp/gllvmtmb-power-pilot-audit-mini-manifest-20260623` on
+  `codex/power-pilot-audit-mini-manifest-20260623...origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`. An earlier parse run caught a mistaken `}` closing the
+  new test; fixed before logging.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS after fixing the manifest order to preserve the audit-mini family
+  order; 129 expectations.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 162 expectations.
+- `rm -rf /tmp/gllvmtmb-audit-mini-smoke && Rscript --vanilla dev/power-pilot-run.R --mode=audit-mini --seed-base=170 --results-dir=/tmp/gllvmtmb-audit-mini-smoke > /tmp/gllvmtmb-audit-mini-smoke.out 2>&1 && cat /tmp/gllvmtmb-audit-mini-smoke.out && find /tmp/gllvmtmb-audit-mini-smoke -type f | sort && Rscript --vanilla -e 'm <- read.csv("/tmp/gllvmtmb-audit-mini-smoke/_manifests/shard-1.csv"); print(m[, c("cell_id", "family_label", "evidence_family", "output_mode", "n_reps_planned", "n_boot")])'`
+  -> PASS; wrote exactly `_manifests/shard-1.csv`, reported four active
+  chunks, preserved the intended family order, and created no fit result RDS
+  files.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "audit-mini|pilot_audit_mini|audit_mini|binomial_logit_harness|binomial_probit|ordinal_probit" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended audit-mini and existing family-label matches.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML|validated binomial-probit|probit support|pilot-index\\.rds.*(write|mutate|update|rebuild)" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no DRAC/SLURM/GPU/production/AI-REML overclaim, no validated
+  binomial-probit wording, and no `pilot-index.rds` mutation wording.
+
+Not claimed:
+
+- No Totoro login, DRAC login, SLURM job, GPU check, production campaign, or
+  `n_sim = 2000` run was launched.
+- This slice launches no fits, changes no DGP, changes no likelihood, and
+  changes no scoring metric.
+- True binary probit, ordinal coverage repair, denominator/MCSE expansion, and
+  DRAC environment checks remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-audit-mini-manifest.md`.

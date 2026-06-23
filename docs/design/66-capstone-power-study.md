@@ -701,6 +701,15 @@ reimplement any of it). Entry points:
   catches duplicate output paths, duplicate chunk paths, overlapping
   per-cell replicate windows, and overlapping seed ranges before the
   store is persisted or summarized.
+- `pilot_audit_mini_cell_ids()` / `dev/power-pilot-run.R
+  --mode=audit-mini` -- write a manifest-only four-cell smoke for
+  gaussian, nbinom2, the current `binomial_probit` label carried by the
+  `binomial_logit_harness`, and ordinal-probit. It uses the moderate
+  `d = 1`, `n_units = 50`, `signal = 0.2` row for each family, plans
+  two chunk reps with `n_boot = 0` by default, and launches no fits.
+  This is the audit-mini gate before broader local or DRAC volume; it
+  is not true binomial-probit evidence until the Phase-2 probit-link
+  swap is implemented and validated.
 - `pilot_run_chunk_manifest()` / `dev/power-pilot-run.R --mode=chunk`
   -- run the active rows from a chunk manifest, reindex each chunk's
   `rep` column into the planned per-cell window, add chunk provenance

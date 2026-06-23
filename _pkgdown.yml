@@ -49,6 +49,8 @@ navbar:
     diagnostics:
       text: Diagnostics & Validation
       menu:
+      - text: Screen binary traits before fitting
+        href: articles/pre-fit-response-screening.html
       - text: Can I trust this fit?
         href: articles/fit-diagnostics.html
       - text: Convergence and start values
@@ -119,6 +121,7 @@ articles:
 
   - title: Diagnostics and validation
     contents:
+    - articles/pre-fit-response-screening
     - articles/fit-diagnostics
     - articles/convergence-start-values
     - articles/profile-likelihood-ci
@@ -274,6 +277,9 @@ reference:
   - title: First-line diagnostics and uncertainty
     desc: Start here before interpreting covariance, ordination, or interval estimates
     contents:
+    - screen_gllvmTMB
+    - screen_control
+    - screen_table
     - check_gllvmTMB
     - gllvmTMB_diagnose
     - predictive_check

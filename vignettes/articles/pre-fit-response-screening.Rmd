@@ -174,9 +174,23 @@ Complete and quasi-complete separation in logistic/probit models is a
 well-studied maximum-likelihood failure mode (Albert and Anderson 1984). Small
 minority counts matter, but the old "10 events per variable" rule is a
 simulation-based heuristic whose strictness depends on the modelling context
-(Peduzzi et al. 1996; Vittinghoff and McCulloch 2007). Psychometric item
-analysis similarly treats item support, redundancy, and interpretability as
-diagnostic evidence rather than removal rules (Chalmers 2012).
+(Peduzzi et al. 1996; Vittinghoff and McCulloch 2007). Separation is also tied
+to sparse outcomes, rare exposures, highly correlated predictors, and strong
+effects, and can produce infinite maximum-likelihood estimates if left
+unchecked (Mansournia et al. 2018). The UCLA OARC separation FAQ is a useful
+teaching reference for the practical complete/quasi-complete distinction.
+
+Psychometric item analysis similarly treats item support, redundancy, response
+frequencies, and interpretability as diagnostic evidence rather than removal
+rules. The `mirt::itemstats()` interface is a useful precedent because it
+computes item summary statistics without first fitting an IRT model (Chalmers
+2012). The SAS IRT overview is another applied reference for thinking of
+binary responses as items that measure latent traits. Predictor-screening tools
+such as `recipes::step_nzv()` and `recipes::step_corr()` are another precedent,
+but `screen_gllvmTMB()` is more conservative: it reports candidate response
+risks for this formula instead of silently deleting columns. This caution
+matters because item-deletion rules can reduce criterion validity even when a
+reliability statistic improves (Raykov 2008).
 
 Post-fit loading thresholds, such as a 0.30 loading-salience rule after
 rotation, belong to the identification and interpretation stage. They are not
@@ -192,5 +206,24 @@ the same as pre-fit response screening.
 - Vittinghoff E, McCulloch CE (2007). Relaxing the rule of ten events per
   variable in logistic and Cox regression. *American Journal of Epidemiology*
   165:710--718.
+- Mansournia MA, Geroldinger A, Greenland S, Heinze G (2018). Separation in
+  logistic regression: causes, consequences, and control. *American Journal of
+  Epidemiology* 187:864--870.
+- UCLA OARC. Complete or quasi-complete separation in logistic/probit
+  regression. <https://stats.oarc.ucla.edu/other/mult-pkg/faq/general/faqwhat-is-complete-or-quasi-complete-separation-in-logisticprobit-regression-and-how-do-we-deal-with-them/>
 - Chalmers RP (2012). mirt: A multidimensional item response theory package for
   the R environment. *Journal of Statistical Software* 48(6):1--29.
+- Chalmers RP. `mirt::itemstats()` documentation: generic item summary
+  statistics without prior IRT fitting. <https://rdrr.io/cran/mirt/man/itemstats.html>
+- An X, Yung Y-F (2014). Item Response Theory: what it is and how you can use
+  the IRT procedure to apply it. SAS Global Forum paper SAS364-2014.
+  <https://support.sas.com/resources/papers/proceedings14/SAS364-2014.pdf>
+- Kosmidis I, Schumacher D. `detectseparation`: detect and check for separation
+  and infinite maximum-likelihood estimates in binomial-response GLMs.
+  <https://cran.r-project.org/package=detectseparation>
+- Kuhn M, Wickham H. `recipes::step_nzv()` and `recipes::step_corr()`
+  documentation. <https://recipes.tidymodels.org/reference/step_nzv.html> and
+  <https://recipes.tidymodels.org/reference/step_corr.html>
+- Raykov T (2008). Alpha if item deleted: a note on loss of criterion validity
+  in scale development if maximizing coefficient alpha. *British Journal of
+  Mathematical and Statistical Psychology* 61:275--285.

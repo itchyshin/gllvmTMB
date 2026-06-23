@@ -110,6 +110,60 @@ test_that("screen_gllvmTMB() uses minority counts as well as prevalence", {
   expect_equal(large_traits$prevalence, 0.01)
 })
 
+test_that("screen_gllvmTMB() sample-size grid is count-first", {
+  grid <- expand.grid(
+    n = c(20, 50, 200, 1000, 100000),
+    prevalence = c(0, 0.001, 0.005, 0.01, 0.05, 0.5, 0.95, 0.99, 1),
+    KEEP.OUT.ATTRS = FALSE
+  )
+
+  observed <- lapply(seq_len(nrow(grid)), function(i) {
+    n <- grid$n[[i]]
+    k <- round(n * grid$prevalence[[i]])
+    df <- data.frame(
+      trait = factor("indicator"),
+      y = c(rep(1, k), rep(0, n - k))
+    )
+    scr <- screen_gllvmTMB(
+      y ~ 1,
+      data = df,
+      trait = "trait",
+      family = binomial()
+    )
+    out <- screen_table(scr, "traits")
+    data.frame(
+      n = n,
+      prevalence_target = grid$prevalence[[i]],
+      status = out$status,
+      severity = out$severity,
+      minority_count = out$minority_count,
+      prevalence = out$prevalence
+    )
+  })
+  observed <- do.call(rbind, observed)
+
+  expected_status <- ifelse(
+    observed$minority_count == 0,
+    "FAIL",
+    ifelse(
+      observed$minority_count < 10,
+      "WARN",
+      ifelse(
+        observed$prevalence < 0.05 | observed$prevalence > 0.95,
+        "INFO",
+        "PASS"
+      )
+    )
+  )
+  expect_equal(observed$status, expected_status)
+
+  large_rare <- observed[
+    observed$n == 100000 & observed$prevalence_target %in% c(0.001, 0.01),
+  ]
+  expect_equal(large_rare$status, c("INFO", "INFO"))
+  expect_equal(large_rare$minority_count, c(100, 1000))
+})
+
 test_that("screen_gllvmTMB() uses strong pairwise association thresholds", {
   n <- 1000
   x <- rep(c(0, 1), each = n / 2)
@@ -133,6 +187,50 @@ test_that("screen_gllvmTMB() uses strong pairwise association thresholds", {
   expect_equal(pair$severity, "strong_association")
   expect_equal(pair$discordant_n, 20)
   expect_gt(pair$phi, 0.95)
+})
+
+test_that("screen_gllvmTMB() checks requested discordant-count boundaries", {
+  discordant_counts <- c(0, 1, 5, 10, 50, 500)
+  pairs <- lapply(discordant_counts, function(discordant_n) {
+    n <- 1000
+    x <- rep(c(0, 1), each = n / 2)
+    y <- x
+    if (discordant_n > 0L) {
+      n_low <- floor(discordant_n / 2)
+      n_high <- discordant_n - n_low
+      flip <- c(
+        if (n_low > 0L) seq_len(n_low) else integer(0),
+        if (n_high > 0L) n / 2 + seq_len(n_high) else integer(0)
+      )
+      y[flip] <- 1 - y[flip]
+    }
+    df <- data.frame(
+      unit = factor(seq_len(n)),
+      x = x,
+      y = y
+    )
+    scr <- screen_gllvmTMB(
+      traits(x, y) ~ 1,
+      data = df,
+      unit = "unit",
+      family = binomial()
+    )
+    cbind(
+      data.frame(target_discordant_n = discordant_n),
+      screen_table(scr, "pairs")
+    )
+  })
+  pairs <- do.call(rbind, pairs)
+
+  expect_equal(pairs$discordant_n, discordant_counts)
+  expect_equal(
+    pairs$status,
+    c("FAIL", "WARN", "WARN", "WARN", "WARN", "PASS")
+  )
+  expect_equal(
+    pairs$severity,
+    c("duplicate", "strong", "moderate", "moderate", "association", "none")
+  )
 })
 
 test_that("screen_gllvmTMB() handles cbind and weights binomial modes", {

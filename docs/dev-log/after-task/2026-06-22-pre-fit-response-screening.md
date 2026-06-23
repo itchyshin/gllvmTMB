@@ -24,6 +24,12 @@ claiming automatic variable selection or fitted-model validation.
 - Added `vignettes/articles/pre-fit-response-screening.Rmd`, design note
   `docs/design/2026-06-22-pre-fit-response-screening.md`, validation-register
   row `DIA-14`, NEWS entry, and pkgdown navigation/reference entries.
+- Tightened the final evidence boundary with the approved literature anchors:
+  UCLA OARC, Mansournia et al. (2018), `mirt::itemstats()`, SAS IRT,
+  `detectseparation`, `recipes::step_nzv()`, `recipes::step_corr()`, and
+  Raykov (2008).
+- Added the requested sample-size/prevalence grid and discordant-count boundary
+  tests to turn that part of the plan into executable evidence.
 - Posted the separate maintainer-approved accessible reply to Ayumi at
   `https://github.com/Ayumi-495/urbanisation_map/issues/1#issuecomment-4773564655`.
 
@@ -69,9 +75,11 @@ No `src/`, TMB, parser grammar, family, or optimizer files changed.
 - `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
   -> PASS; generated the three new Rd topics.
 - `Rscript --vanilla -e 'devtools::test(filter = "screen")'`
-  -> PASS: `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 34 ]`.
+  -> PASS after the final plan-tightening grid tests:
+  `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 40 ]`.
 - `Rscript --vanilla -e 'devtools::test()'`
-  -> PASS: `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3479 ]`.
+  -> PASS after the final plan-tightening grid tests:
+  `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3485 ]`.
 - `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); rmarkdown::render("vignettes/articles/pre-fit-response-screening.Rmd", output_dir = tempfile("screen-article-"), quiet = FALSE)'`
   -> PASS.
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
@@ -81,6 +89,10 @@ No `src/`, TMB, parser grammar, family, or optimizer files changed.
   clang/R-header `-Wfixed-enum-extension` warning.
 - `git diff --check`
   -> PASS.
+- `air format tests/testthat/test-screen-gllvmTMB.R`
+  -> PASS.
+- `rg -n "Mansournia|Geroldinger|Greenland|Heinze|UCLA OARC|SAS364|An X|Yung|detectseparation|itemstats|step_nzv|step_corr|Raykov|0, 1, 5, 10, 50, 500|100000" vignettes/articles/pre-fit-response-screening.Rmd docs/design/2026-06-22-pre-fit-response-screening.md tests/testthat/test-screen-gllvmTMB.R`
+  -> PASS; confirmed final literature anchors and grid-count evidence.
 
 Stale/prose scans recorded in `docs/dev-log/check-log.md` included exact
 patterns for overclaiming, stale `gllvmTMB_wide()` wording, misspellings, and
@@ -94,7 +106,11 @@ The new test file covers boundary and malformed cases, not only happy paths:
 - all-zero/all-one-like constants and rare binary indicators;
 - invalid binomial support through the trait status path;
 - duplicate and complement pairs;
-- denominator-aware prevalence with `n = 20` versus `n = 100000`;
+- the approved sample-size/prevalence grid:
+  `n = 20, 50, 200, 1000, 100000` crossed with prevalence
+  `0, .001, .005, .01, .05, .5, .95, .99, 1`;
+- requested pairwise discordant-count boundaries:
+  `0, 1, 5, 10, 50, 500`;
 - strong pairwise association thresholds;
 - `cbind(success, failure)` and `weights = n_trials`;
 - long versus wide `traits(...)` parity;
@@ -122,6 +138,9 @@ or indicator.
 Noether/Fisher verdict: PASS for v1 thresholds as evidence-informed
 diagnostics. The article and design note distinguish pre-fit support screening
 from post-fit 0.30 loading-salience/identification rules.
+The final addendum includes the named separation, item-analysis,
+preprocessing-screen, and item-deletion-caution references from the approved
+plan.
 
 Grace verdict: PASS locally except for the known platform warning in
 `devtools::check()`. `pkgdown::check_pkgdown()` passed and the article rendered
@@ -166,6 +185,8 @@ inspect support and redundancy before fitting, then still run
 - Optional comparator checks against `mirt::itemstats()` and
   `detectseparation` are not implemented.
 - This screen is not a variable-selection or item-deletion method.
+- High-dimensional systematic-map performance benchmarking beyond the focused
+  100000-row smoke test is still a follow-up.
 
 ## Next Actions
 
@@ -174,6 +195,5 @@ inspect support and redundancy before fitting, then still run
   passed on Ubuntu.
 - Mark PR #533 ready for maintainer review once the closeout-doc correction is
   pushed and its lightweight CI rerun is green.
-- In a later PR, consider optional Suggests-only comparator checks and a
-  broader simulation grid over sample size, prevalence, and pairwise
-  dependence.
+- In a later PR, consider optional Suggests-only comparator checks and
+  high-dimensional performance benchmarks.

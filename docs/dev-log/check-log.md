@@ -17708,3 +17708,41 @@ GitHub closeout:
 - GitHub Actions R-CMD-check run `27990468804` completed successfully on
   Ubuntu:
   `https://github.com/itchyshin/gllvmTMB/actions/runs/27990468804`.
+
+Final plan-tightening addendum:
+
+- Added the remaining literature anchors named in the approved plan to the
+  article/design-note evidence boundary: UCLA OARC separation FAQ, Mansournia
+  et al. (2018), `mirt::itemstats()`, SAS IRT overview, `detectseparation`,
+  `recipes::step_nzv()`, `recipes::step_corr()`, and Raykov (2008).
+- Added deterministic test grids for:
+  - `n = 20, 50, 200, 1000, 100000` crossed with prevalence
+    `0, .001, .005, .01, .05, .5, .95, .99, 1`;
+  - pairwise discordant counts `0, 1, 5, 10, 50, 500`.
+- Pre-edit coordination checks before this shared dev-log/design addendum:
+  - `gh pr list --repo itchyshin/gllvmTMB --state open`
+    -> one open PR, this branch only: #533
+    `codex/pre-fit-response-screen-20260622`.
+  - `git log --all --oneline --since="6 hours ago"`
+    -> `ec686ee`, `40a876c`, and the already-merged docs sequence
+    `a47a870`, `7298451`; no competing design/dev-log edit detected.
+- `air format tests/testthat/test-screen-gllvmTMB.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "screen")'`
+  -> PASS: `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 40 ]`.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); rmarkdown::render("vignettes/articles/pre-fit-response-screening.Rmd", output_dir = tempfile("screen-article-final-"), quiet = FALSE)'`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> PASS: `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3485 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `rg -n "selects variables|automatic deletion|guarantees convergence|proves identifiability|validated item selection|separation solved|choose variables|choose_variables|bad item|failed trait|depreciat|Lamdba|gllvmTMB_wide" R/screen-gllvmTMB.R tests/testthat/test-screen-gllvmTMB.R vignettes/articles/pre-fit-response-screening.Rmd docs/design/2026-06-22-pre-fit-response-screening.md NEWS.md man/screen_gllvmTMB.Rd man/screen_control.Rd man/screen_table.Rd _pkgdown.yml docs/design/35-validation-debt-register.md`
+  -> PASS for this slice; matches were only the existing intentional
+  `gllvmTMB_wide()` soft-deprecation notes in NEWS/register.
+- `rg -n "Mansournia|Geroldinger|Greenland|Heinze|UCLA OARC|SAS364|An X|Yung|detectseparation|itemstats|step_nzv|step_corr|Raykov|0, 1, 5, 10, 50, 500|100000" vignettes/articles/pre-fit-response-screening.Rmd docs/design/2026-06-22-pre-fit-response-screening.md tests/testthat/test-screen-gllvmTMB.R`
+  -> PASS; confirmed literature anchors and grid-count evidence are present.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", document = FALSE, quiet = FALSE, error_on = "never")'`
+  -> PASS with the known local Apple-clang/R-header install warning:
+  `0 errors, 1 warning, 0 notes`.

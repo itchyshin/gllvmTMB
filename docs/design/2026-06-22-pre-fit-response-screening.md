@@ -83,9 +83,30 @@ literature: Albert and Anderson (1984) give the existence conditions for
 logistic maximum likelihood estimates. Events-per-variable work by Peduzzi et
 al. (1996) and Vittinghoff and McCulloch (2007) supports using minority counts
 as evidence, while also warning against treating a single count threshold as a
-universal rule. Psychometric item-analysis practice, including tools such as
-`mirt::itemstats()` (Chalmers 2012), similarly treats item support and
-redundancy as diagnostic evidence to inspect before interpretation.
+universal rule. Mansournia, Geroldinger, Greenland, and Heinze (2018) connect
+complete/quasi-complete separation to sparse outcomes, rare exposures, strong
+effects, and highly correlated predictors; that is the direct statistical
+reason for flagging constants, rare indicators, and redundant candidate
+responses before a latent block is fitted. The UCLA OARC separation FAQ is a
+reader-facing reference for the practical distinction between complete and
+quasi-complete separation.
+
+Psychometric item-analysis practice, including tools such as
+`mirt::itemstats()` (Chalmers 2012), similarly treats item support, response
+frequencies, item-total information, and redundancy as diagnostic evidence to
+inspect before interpretation. The SAS IRT overview is a second applied
+reference for binary items as observed responses that measure latent traits.
+The machine-learning preprocessing precedents `recipes::step_nzv()` and
+`recipes::step_corr()` show that near-zero variance and high-correlation
+screens are useful, but `screen_gllvmTMB()` deliberately does not inherit their
+deletion semantics. It reports candidate-response risks for this formula
+because deleting an item solely to improve a diagnostic statistic can harm
+criterion validity (Raykov 2008).
+
+`detectseparation` is the closest software precedent for formal binomial
+separation detection, but it targets fixed-effect GLMs. `screen_gllvmTMB()` v1
+uses cheaper pre-fit support and design summaries only; optional
+`detectseparation` comparator rows are left for a Suggests-only follow-up.
 
 Post-fit loading thresholds, such as an entry-wise 0.30 varimax loading
 salience rule, belong to identification and interpretation. They should not be
@@ -117,8 +138,10 @@ Implemented tests in `test-screen-gllvmTMB.R` cover:
 
 - constants, near-constants, balanced binary indicators, and invalid support;
 - duplicate and complement pairs;
-- denominator-aware prevalence behaviour, including a 100000-row minority-count
-  check;
+- the planned sample-size/prevalence grid over
+  `n = 20, 50, 200, 1000, 100000` and prevalence
+  `0, .001, .005, .01, .05, .5, .95, .99, 1`;
+- requested pairwise discordant-count boundaries at `0, 1, 5, 10, 50, 500`;
 - `cbind(success, failure)` and `weights = n_trials` binomial modes;
 - wide `traits(...)` versus long-form parity;
 - rank-deficient fixed-effect design and `d >= n_traits`;
@@ -126,8 +149,6 @@ Implemented tests in `test-screen-gllvmTMB.R` cover:
 
 Open validation:
 
-- broader simulation grids over prevalence, sample size, and pairwise
-  dependence;
 - optional comparator checks against `mirt::itemstats()` and
   `detectseparation` if added as Suggests-only;
 - performance benchmarks for high-dimensional systematic maps beyond the
@@ -143,5 +164,24 @@ Open validation:
 - Vittinghoff E, McCulloch CE (2007). Relaxing the rule of ten events per
   variable in logistic and Cox regression. *American Journal of Epidemiology*
   165:710--718.
+- Mansournia MA, Geroldinger A, Greenland S, Heinze G (2018). Separation in
+  logistic regression: causes, consequences, and control. *American Journal of
+  Epidemiology* 187:864--870.
+- UCLA OARC. Complete or quasi-complete separation in logistic/probit
+  regression. <https://stats.oarc.ucla.edu/other/mult-pkg/faq/general/faqwhat-is-complete-or-quasi-complete-separation-in-logisticprobit-regression-and-how-do-we-deal-with-them/>
 - Chalmers RP (2012). mirt: A multidimensional item response theory package for
   the R environment. *Journal of Statistical Software* 48(6):1--29.
+- Chalmers RP. `mirt::itemstats()` documentation: generic item summary
+  statistics without prior IRT fitting. <https://rdrr.io/cran/mirt/man/itemstats.html>
+- An X, Yung Y-F (2014). Item Response Theory: what it is and how you can use
+  the IRT procedure to apply it. SAS Global Forum paper SAS364-2014.
+  <https://support.sas.com/resources/papers/proceedings14/SAS364-2014.pdf>
+- Kosmidis I, Schumacher D. `detectseparation`: detect and check for separation
+  and infinite maximum-likelihood estimates in binomial-response GLMs.
+  <https://cran.r-project.org/package=detectseparation>
+- Kuhn M, Wickham H. `recipes::step_nzv()` and `recipes::step_corr()`
+  documentation. <https://recipes.tidymodels.org/reference/step_nzv.html> and
+  <https://recipes.tidymodels.org/reference/step_corr.html>
+- Raykov T (2008). Alpha if item deleted: a note on loss of criterion validity
+  in scale development if maximizing coefficient alpha. *British Journal of
+  Mathematical and Statistical Psychology* 61:275--285.

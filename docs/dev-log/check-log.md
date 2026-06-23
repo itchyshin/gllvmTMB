@@ -18269,3 +18269,83 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-midterm-truth-scout.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot run 144 snapshot audit
+
+Maintainer request: after merging the clean truth lane, keep moving through the
+mid-term plan without launching broad simulations. This slice freezes run 144
+as a diagnostic audit snapshot only.
+
+Setup and coordination:
+- `git worktree add -b codex/power-pilot-audit-20260623
+  /private/tmp/gllvmtmb-power-pilot-audit-20260623 origin/main`
+  -> clean worktree at `88b8fa85`.
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json
+  number,title,headRefName,isDraft,url,mergeStateStatus,statusCheckRollup`
+  -> `[]`.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> showed #537, #538, #539 merges and `origin/power-pilot-results` at
+  `6f0be960`.
+
+Snapshot evidence:
+- `git ls-tree -r --name-only origin/power-pilot-results`
+  -> 48 per-cell result RDS files plus `dev/m3-pilot-results/pilot-index.rds`.
+- `git show --stat --oneline --decorate --no-renames
+  origin/power-pilot-results -1`
+  -> `6f0be960 power-pilot: accumulate reps (run 144)`, 48 binary cell files
+  changed plus `pilot-index.rds`.
+- `git show --no-patch --format='%H%n%P%n%an <%ae>%n%aI%n%cn <%ce>%n%cI%n%s'
+  origin/power-pilot-results`
+  -> result SHA `6f0be9607ccaf507d42814c9371f614b3a3da946`, parent
+  `ac166a0cebfb8505ba4f4bfc7ae33d737b6de9d5`, commit time
+  `2026-06-23T14:19:01Z`.
+- `gh run list --repo itchyshin/gllvmTMB --workflow 'Power pilot sweep'
+  --limit 20 --json databaseId,number,displayTitle,workflowName,headBranch,headSha,status,conclusion,createdAt,updatedAt,event,url`
+  -> run 144 success at source SHA `43e643b8`; run 145 already in progress.
+- `gh run view 28022283502 --repo itchyshin/gllvmTMB --json jobs`
+  -> 51 jobs, all success; first start `2026-06-23T11:17:06Z`, last completion
+  `2026-06-23T14:25:18Z`.
+
+Read-only result-store checks:
+- `git show origin/power-pilot-results:dev/m3-pilot-results/pilot-index.rds
+  >/tmp/pilot-index-run144.rds && Rscript --vanilla -e 'idx <- readRDS(...)'`
+  -> index is `48 x 9`, `sum_n_sim = 273576`, and all rows have
+  `status == "done"` even though cap completion is not reached for 47 cells.
+- `mkdir -p /tmp/pilot-run144-store && git archive origin/power-pilot-results
+  dev/m3-pilot-results | tar -x -C /tmp/pilot-run144-store`
+  plus `Rscript --vanilla -e '... pilot_accum_status(..., n_sim_cap=10000);
+  df <- pilot_collect(...) ...'`
+  -> 1 / 48 cells complete, 273,576 / 480,000 reps, `ALL_COMPLETE=FALSE`,
+  48 collected cells, and 28 flagged cells.
+- `Rscript --vanilla -e '... aggregate(is.na(coverage_primary) ~ family, df,
+  sum) ...'`
+  -> all 12 missing `coverage_primary` rows are `ordinal_probit`.
+- `Rscript --vanilla -e '... print(out[, keep]); ...'`
+  -> compact per-cell table printed; signal coverage mean 0.752, 3 / 24 pass
+  94%, 2 / 24 pass 95%, null mean coverage 0.424, 28 flagged cells.
+- `git show origin/power-pilot-results:dev/m3-pilot-results/binomial_probit-d1-n50-sig0p2.rds
+  >/tmp/binom-cell.rds && Rscript --vanilla -e 'x <- readRDS(...)'`
+  -> per-replicate rows include `rep_seed`, `seed_base`, fit-health,
+  sdreport, and bootstrap fields, but no durable run/session manifest.
+
+Implemented:
+- Added `docs/dev-log/audits/2026-06-23-power-pilot-run144-snapshot-audit.md`.
+- Added `docs/dev-log/after-task/2026-06-23-power-pilot-run144-snapshot-audit.md`.
+- Recorded run 144 as diagnostic only. `CI-08` and `CI-10` remain partial.
+
+Validation after writing:
+- `Rscript --vanilla -e 'source("/Users/z3437171/shinichi-brain/tools/check-after-task.R"); main_check_after_task("docs/dev-log/after-task/2026-06-23-power-pilot-run144-snapshot-audit.md")'`
+  -> PASS; after-task structure check passed.
+- `git diff --check`
+  -> PASS.
+- `rg -n "pending at report creation|CI-08|CI-10|binomial_probit|coverage_primary|zero-exclusion|Type-I|DRAC|MCSE|session" docs/dev-log/audits/2026-06-23-power-pilot-run144-snapshot-audit.md docs/dev-log/after-task/2026-06-23-power-pilot-run144-snapshot-audit.md`
+  -> PASS for intended audit coverage; found the expected row IDs,
+  target-mismatch terms, coverage fields, and gate wording. The only
+  `pending at report creation` hit is the recorded scan command itself,
+  not a stale status claim.
+
+Not claimed:
+- No simulation was launched.
+- No Totoro, DRAC, SLURM, or GPU check was attempted.
+- No package behavior, workflow, validation register, README, NEWS, article,
+  roxygen, generated Rd, or pkgdown navigation changed.

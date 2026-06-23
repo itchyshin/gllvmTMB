@@ -1320,11 +1320,10 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 
 #' Predict from a fitted gllvmTMB model
 #'
-#' Returns the linear predictor (and conditional response) at each
-#' observation in the training data, or the fixed-effects-only prediction
-#' at user-supplied `newdata` (for sites / species not present in the
-#' training data we cannot draw the corresponding random effects, so
-#' predictions are returned on the population mean).
+#' Returns the linear predictor or inverse-link response at each observation
+#' in the training data, or at user-supplied `newdata`. For mixed-family fits,
+#' `type = "response"` uses the row's own trait/family inverse link rather
+#' than the first trait's link.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param newdata Optional new data frame. If `NULL`, predictions are
@@ -1341,7 +1340,7 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #' @param ... Unused.
 #'
 #' @return A data frame with the original row identifiers plus an `est`
-#'   column.
+#'   column on the requested link or response scale.
 #' @export
 predict.gllvmTMB_multi <- function(
   object,

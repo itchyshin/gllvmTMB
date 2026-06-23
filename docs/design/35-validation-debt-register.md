@@ -364,7 +364,7 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 | MIS-04 | Weight column unified handling | `covered` | `test-weights-unified.R`, `test-lme4-style-weights.R` | |
 | MIS-05 | `simulate.gllvmTMB_multi()` family-aware draws (per-row family dispatch) | `covered` | `test-m1-8-bootstrap-mixed-family.R`, `test-simulate-site-trait.R` | M1.8 (PR #157) — `.draw_y_per_family()` dispatches by `family_id_vec`; 6 families (gaussian / binomial / poisson / lognormal / Gamma / nbinom2) covered; others fall back with one-time warning |
 | MIS-06 | `tidy.gllvmTMB_multi()` broom-style output | `covered` | `test-tidy-predict.R` | |
-| MIS-07 | `predict.gllvmTMB_multi()` link / response | `partial` | `test-tidy-predict.R` | family-aware predict typed outputs is M2 |
+| MIS-07 | `predict.gllvmTMB_multi()` link / response | `covered` | `test-tidy-predict.R`, `test-missing-data-robustfix.R`, `test-integration-tour.R` | Training-row predictions return one row per observed response on the link scale, and `type = "response"` dispatches through each row's trait/family inverse link for mixed Gaussian / binomial / Poisson fits. `newdata` response predictions map rows back to the training trait's link before transformation; random-effect handling remains controlled by `re_form`, with known-level random effects added only when requested / available. |
 | MIS-08 | `print.gllvmTMB_multi()` summary label discipline | `covered` | `test-print-labels.R` | |
 | MIS-09 | `plot.gllvmTMB_multi()` dispatcher | `partial` | `test-plot-gllvmTMB.R`, `test-plot-visual-snapshots.R` | Seven dispatcher types are object-shape tested (`correlation`, `correlation_ellipse`, `loadings`, `integration`, `communality`, `variance`, `ordination`), including bootstrap interval overlays and rotated ordination metadata. Visual snapshots now cover Confidence Eye correlation plots, Sigma-table Confidence Eye plots, and anchored rotated ordination; still partial until broader rendered-figure QA covers the full dispatcher surface. |
 | MIS-10 | brms-style sugar | `covered` | `test-brms-sugar.R` | |
@@ -401,12 +401,12 @@ label in the per-row status column:**
   Phase 0A close as the kernel/coevolution, augmented-slope,
   cluster2, missing-data, plot/extractor, diagnostic, and Julia
   bridge sections were added).
-- **171 `covered`** (85 %): test evidence exists at the primary
+- **172 `covered`** (86 %): test evidence exists at the primary
   depth advertised by the row. Four of these rows still carry an
   explicit `partial` sub-scope in their status text (`EXT-04`,
   `EXT-13`, `DIA-11`, `DIA-12`), so downstream prose must cite the
   covered regime rather than generalising across all regimes.
-- **23 `partial`** (11 %): tests exist but coverage is shallower
+- **22 `partial`** (11 %): tests exist but coverage is shallower
   than advertised — every remaining leading-`partial` row is an
   honest, deliberate deferral (known-V non-Gaussian variants
   FG-07/08/09, spatial-family depth FG-13, single-V `meta_V`
@@ -416,8 +416,8 @@ label in the per-row status column:**
   surface RE-12, multi-matrix / cross-package animal models
   ANI-09/10, coevolution inference grids COE-03/COE-04,
   binary-only pre-fit screening DIA-14, coverage-study gates
-  CI-08/CI-10, predict / plot dispatchers MIS-07/09,
-  meta-analytic two-stage article MET-04, and Julia bridge
+  CI-08/CI-10, plot dispatcher MIS-09, meta-analytic two-stage
+  article MET-04, and Julia bridge
   JUL-01). None is a v0.2.0 *correctness* blocker.
 - **0 `opt-in`**: the `link_residual = "auto"` default
   (PR #101) eliminated this category and it has stayed empty.
@@ -431,7 +431,7 @@ label in the per-row status column:**
   safeguard on the public surface.
 
 The headline therefore moved **40/48/0/14 over 102 rows
-(Phase 0A) → 171/23/0/7 over 201 rows (2026-06-22 recount)**. No
+(Phase 0A) → 172/22/0/7 over 201 rows (2026-06-22 recount)**. No
 `partial` or `blocked` row is a v0.2.0 correctness blocker;
 they are honestly-marked deferrals (power-study coverage,
 mixture / gengamma families, proportional meta-V,

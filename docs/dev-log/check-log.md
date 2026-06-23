@@ -17875,3 +17875,103 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-22-predict-validation-mis07.md`.
+
+## 2026-06-22 -- Xcoef_fixed structural-zero fixed-effect coefficients
+
+Goal: add a narrow native-TMB route for pinning selected expanded
+fixed-effect coefficients at structural zero, while keeping REML,
+non-zero fixed values, and the Julia twin explicitly gated.
+
+Implementation:
+
+- Added `Xcoef_fixed` to `gllvmTMB()`, passed through the wide
+  `traits(...)` rewrite and into `gllvmTMB_multi_fit()`.
+- Added `R/xcoef-fixed.R` to validate the named numeric vector against
+  `fit$X_fix_names`, require zero values, reject duplicate / unknown /
+  non-finite entries, reject `REML = TRUE`, and build a TMB `map` for
+  `b_fix`.
+- Pinned fixed coefficients are set to zero in the starting vector,
+  removed from the free TMB parameter vector, retained in the fitted
+  object's coefficient table, and reported with `status = "fixed"`,
+  `std.error = NA`, and `NA` fixed-effect CIs.
+- Added an explicit `engine = "julia"` gate until the paired GLLVM.jl
+  coefficient mask exists.
+- Added validation-debt row `MIS-34` and updated the leading-status
+  tally to `173/22/0/7` over 202 rows, with `MIS-34` carrying the
+  explicit native-covered / Julia-partial sub-scope.
+
+Pre-edit coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,author,updatedAt`
+  -> PASS; no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS; recent commits were this session's merged PRs #533, #534,
+  and #535 plus one unrelated power-pilot artifact commit; no competing
+  shared-file edit was detected.
+
+Validation commands and outcomes:
+
+- `gh run view 27998401037 --repo itchyshin/gllvmTMB --json status,conclusion,url,jobs`
+  -> PASS; post-merge #535 `R-CMD-check / ubuntu-latest (release)` run
+  completed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/gllvmTMB.Rd`. Unrelated roxygen-version Rd
+  churn was deliberately excluded from the diff.
+- `air format R/xcoef-fixed.R tests/testthat/test-xcoef-fixed.R R/gllvmTMB.R R/fit-multi.R R/methods-gllvmTMB.R R/z-confint-gllvmTMB.R`
+  -> PASS, but the first run reformatted large legacy files; the
+  existing-file formatting churn was reverted and only the new helper /
+  test formatting was retained.
+- `Rscript --vanilla -e 'devtools::test(filter = "xcoef-fixed", reporter = "summary", stop_on_failure = TRUE)'`
+  -> PASS: `xcoef-fixed: ................`.
+- `Rscript --vanilla -e 'devtools::test(filter = "xcoef-fixed|profile-targets|tidy|confint", reporter = "summary", stop_on_failure = TRUE)'`
+  -> PASS; no failures. Existing heavy-profile tests were skipped by
+  their normal `GLLVMTMB_HEAVY_TESTS` gate.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary", stop_on_failure = TRUE)'`
+  -> PASS; no failures. Summary reported 10 warnings: one existing
+  Julia bridge default-Psi warning and nine existing multi-trial
+  binomial `NaNs produced` warnings.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS: `No problems found.`
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", document = FALSE, check_dir = "/private/tmp/gllvmtmb-xcoef-fixed-zero-check", error_on = "never", quiet = FALSE)'`
+  -> PASS with the known local Apple-clang/R-header install warning:
+  `0 errors, 1 warning, 0 notes`. The warning is
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+- `Rscript --vanilla - <<'RS' ... confint(fit, method = 'profile') ... RS`
+  -> PASS; direct profile-CI smoke confirmed the fixed `traitb:x` row
+  receives `NA` profile bounds rather than shifted free-parameter bounds.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "Xcoef_fixed|structural-zero|non-zero fixed|engine = \"julia\" structural-zero|Julia twin|guarantee|guarantees|automatic coefficient|beta to zero|fix beta|fixed-effect coefficients" NEWS.md R man tests docs/design/35-validation-debt-register.md`
+  -> PASS; hits were the intended new `Xcoef_fixed` implementation /
+  docs plus unrelated existing uses of "guarantee" in other validated
+  contexts.
+- `rg -n "Xcoef_fixed.*covered|covered.*Xcoef_fixed|Julia.*covered|engine = \"julia\".*covered|non-zero fixed values.*implemented|guarantees convergence|proves identifiability|automatic deletion|selects variables" NEWS.md R man tests docs/design/35-validation-debt-register.md || true`
+  -> PASS; hits were the intended `MIS-34` scoped coverage statements
+  and the earlier `screen_gllvmTMB()` overclaim guard, not stale claims
+  that Julia masks or non-zero fixed values are implemented.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "Xcoef_fixed OR structural-zero OR beta zero OR coefficient zero" --json number,title,url,state,updatedAt --limit 20`
+  -> no dedicated zero-coefficient issue found; broad roadmap/status
+  issues were returned but not directly advanced.
+- `gh issue view 488 --repo itchyshin/gllvmTMB --json number,title,url,state,body,comments`
+  -> inspected as the relevant Julia bridge-gate drift ledger. This PR
+  deliberately adds a conservative `engine = "julia"` stop for
+  `Xcoef_fixed`; it does not close #488 and should be followed by a
+  paired GLLVM.jl coefficient-mask slice.
+
+Not run:
+
+- `pkgdown::build_articles(lazy = FALSE)`: no article or formula-parser
+  examples changed.
+- Live GLLVM.jl twin tests: the R PR deliberately gates Julia rather
+  than claiming paired support before the Julia mask exists.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-xcoef-fixed-zero.md`.

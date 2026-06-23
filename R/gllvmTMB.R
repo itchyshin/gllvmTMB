@@ -214,6 +214,15 @@
 #'   biological hypothesis. Deprecated legacy element names `B` and `W`
 #'   are still accepted (with a one-shot soft deprecation message) and
 #'   map to `unit` and `unit_obs` respectively.
+#' @param Xcoef_fixed Optional named numeric vector of fixed-effect
+#'   coefficient constraints. Names must match the expanded fixed-effect
+#'   design columns (`fit$X_fix_names`); values must currently be `0`,
+#'   pinning those coefficients exactly at structural zero via TMB's
+#'   parameter map. This is an ML-only native-TMB feature in the first
+#'   slice: `REML = TRUE` and `engine = "julia"` stop loudly. The
+#'   fitted object still reports all fixed-effect rows; pinned rows have
+#'   `estimate = 0`, `std.error = NA`, and `status = "fixed"` in
+#'   `tidy(fit, "fixed")`.
 #' @param control Output of `gllvmTMBcontrol()`.
 #' @param missing Output of [miss_control()] configuring missing-data
 #'   handling. The default `miss_control()` (`response = "drop"`,
@@ -428,6 +437,7 @@ gllvmTMB <- function(
   phylo_tree = NULL,
   known_V = NULL,
   lambda_constraint = NULL,
+  Xcoef_fixed = NULL,
   control = gllvmTMBcontrol(),
   missing = miss_control(),
   impute = NULL,
@@ -505,6 +515,7 @@ gllvmTMB <- function(
       phylo_tree = phylo_tree,
       known_V = known_V,
       lambda_constraint = lambda_constraint,
+      Xcoef_fixed = Xcoef_fixed,
       control = control,
       missing = missing,
       impute = impute,
@@ -732,6 +743,12 @@ gllvmTMB <- function(
   ## dispatch maps the unconstrained-ordination core and errors loudly on
   ## anything the bridge does not yet cover (R/julia-bridge.R).
   if (identical(engine, "julia")) {
+    if (!is.null(Xcoef_fixed)) {
+      cli::cli_abort(c(
+        "{.arg Xcoef_fixed} is not yet available for {.code engine = \"julia\"}.",
+        "i" = "Use the native {.code engine = \"tmb\"} path for structural-zero fixed-effect coefficients while the Julia twin mask is being implemented."
+      ))
+    }
     return(.gllvmTMB_julia_dispatch(
       parsed         = parsed,
       data           = data,
@@ -761,6 +778,7 @@ gllvmTMB <- function(
     known_V = known_V,
     mesh = mesh,
     lambda_constraint = lambda_constraint,
+    Xcoef_fixed = Xcoef_fixed,
     control = control,
     silent = silent,
     unit_obs = unit_obs,

@@ -217,10 +217,12 @@
 #' @param Xcoef_fixed Optional named numeric vector of fixed-effect
 #'   coefficient constraints. Names must match the expanded fixed-effect
 #'   design columns (`fit$X_fix_names`); values must currently be `0`,
-#'   pinning those coefficients exactly at structural zero via TMB's
-#'   parameter map. This is an ML-only native-TMB feature in the first
-#'   slice: `REML = TRUE` and `engine = "julia"` stop loudly. The
-#'   fitted object still reports all fixed-effect rows; pinned rows have
+#'   pinning those coefficients exactly at structural zero. Use this when a
+#'   predictor is meaningful for some responses but should be fixed at zero
+#'   for others. Native TMB fits use a parameter map; admitted
+#'   `engine = "julia"` fixed-effect-X rows pass the same zero mask to
+#'   GLLVM.jl. This is ML-only: `REML = TRUE` stops loudly. Native fitted
+#'   objects still report all fixed-effect rows; pinned rows have
 #'   `estimate = 0`, `std.error = NA`, and `status = "fixed"` in
 #'   `tidy(fit, "fixed")`.
 #' @param control Output of `gllvmTMBcontrol()`.
@@ -743,12 +745,6 @@ gllvmTMB <- function(
   ## dispatch maps the unconstrained-ordination core and errors loudly on
   ## anything the bridge does not yet cover (R/julia-bridge.R).
   if (identical(engine, "julia")) {
-    if (!is.null(Xcoef_fixed)) {
-      cli::cli_abort(c(
-        "{.arg Xcoef_fixed} is not yet available for {.code engine = \"julia\"}.",
-        "i" = "Use the native {.code engine = \"tmb\"} path for structural-zero fixed-effect coefficients while the Julia twin mask is being implemented."
-      ))
-    }
     return(.gllvmTMB_julia_dispatch(
       parsed         = parsed,
       data           = data,
@@ -756,6 +752,8 @@ gllvmTMB <- function(
       unit_internal  = site,
       family         = family,
       weights        = weights,
+      REML           = REML,
+      Xcoef_fixed    = Xcoef_fixed,
       ci_method      = ci_method,
       ci_level       = ci_level,
       ci_nboot       = ci_nboot,

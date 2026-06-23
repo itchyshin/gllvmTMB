@@ -24,6 +24,17 @@ Design 35 (validation-debt register -- rows CI-08, CI-10, FAM-*, RE-*,
 ANI-*), Design 65 (cross-lineage coevolution kernel -- Gamma; scope
 question in section 12).
 
+**2026-06-23 scaling gate:** the current pilot is diagnostic only. Do
+not launch a broad Totoro/DRAC campaign or promote `CI-08` / `CI-10`
+until the pilot audit resolves four issues: the `binomial_probit` label
+must match the actual link/DGP, ordinal-probit cells must produce
+primary coverage rows or be excluded from the confirmatory core,
+`signal = 0` diagnostics must not be described as Type-I error for
+positive `Sigma_unit_diag` targets, and all aggregates must report MCSE
+with explicit fit-health denominators. The first compute step after
+that audit is an immutable-chunk smoke ladder, not the full `n_sim =
+2000` grid.
+
 **Backed by (verified on origin/main):** PR #364 (merged 2026-05-31,
 `fix(m3): coverage gate keys on Sigma_unit_diag bootstrap, not psi
 proxy`); PR #366 (merged 2026-05-31, RE-09 within-unit latent()+unique()
@@ -116,6 +127,14 @@ between-unit structure is absent (signal = 0), the rejection rate of the
 "structure present" decision is at or below the nominal alpha (target ~=
 0.05 within MCSE). *Falsified* if the false-positive rate is materially
 inflated.
+
+**Current audit caveat (2026-06-23).** The existing pilot's
+`signal = 0` cells should not yet be interpreted as H4 evidence for
+`Sigma_unit_diag`, because total diagonal variance can remain positive
+when the shared latent loading signal is absent. The Type-I target must
+be a pre-specified structure-present decision, such as off-diagonal
+correlation, a variance-share component, or another explicitly defined
+null, before the metric is used in the capstone.
 
 **Non-claims (state explicitly in the paper).** (i) We do not claim
 asymptotic coverage at n = 10,000; the anchor is the moderate field-study

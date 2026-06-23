@@ -1,9 +1,36 @@
 # 61 -- Capability Status and Dependency-Ordered Work-List
 
-**Status date:** 2026-06-08
+**Status date:** 2026-06-23
 **Scope:** status synthesis only. The validation-debt register
 (`docs/design/35-validation-debt-register.md`) remains the row-level source
 of truth; this document is the readable planning layer.
+
+## 2026-06-23 Truth Sync
+
+The current register tally is **202 rows: 173 covered, 22 partial,
+0 opt-in, and 7 blocked**. Five covered rows still include explicit
+partial sub-scope caveats (`EXT-04`, `EXT-13`, `DIA-11`, `DIA-12`,
+`MIS-34`), so public prose must cite the covered regime instead of
+generalising the row.
+
+Two near-term status surfaces need to stay separate:
+
+- PR #538 (`docs: clarify JSDM screening scope`) merged on 2026-06-23
+  at `475cd7a`, so `origin/main` now includes the JSDM screening scope
+  polish and fixed-effect-zero article boundary updates.
+- The mission-control widget and issue #340 are operating surfaces. They
+  must be refreshed from this register before they are treated as current
+  evidence.
+
+`Xcoef_fixed` is now implemented within the `MIS-34` covered scope:
+zero fixed-effect constraints in native ML fits and admitted Julia
+fixed-effect-X rows. `REML = TRUE`, non-zero fixed values, Julia
+per-trait intercept pinning, mixed-family-X, masks+X, NB1-X,
+ordinal-X, and unsupported Julia fixed-effect-X families remain gated.
+
+The current power pilot remains diagnostic only. Do not promote `CI-08`
+or `CI-10` until the pilot reports target-explicit coverage, MCSE, and
+fit-health denominators for the corrected estimands.
 
 ## Bottom Line
 

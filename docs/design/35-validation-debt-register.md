@@ -432,7 +432,7 @@ label in the per-row status column:**
   safeguard on the public surface.
 
 The headline therefore moved **40/48/0/14 over 102 rows
-(Phase 0A) → 172/22/0/7 over 201 rows (2026-06-22 recount)**. No
+(Phase 0A) -> 173/22/0/7 over 202 rows (2026-06-23 recount)**. No
 `partial` or `blocked` row is a v0.2.0 correctness blocker;
 they are honestly-marked deferrals (power-study coverage,
 mixture / gengamma families, proportional meta-V,

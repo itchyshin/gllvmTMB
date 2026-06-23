@@ -9,6 +9,16 @@ reference material; single-trait warmup has since moved from this
 borrowable-technique list into the implemented M3.4 mitigation
 recorded in Design 48 and MIS-16 / MIS-17.
 
+**2026-06-23 sibling-team update:** HSquared/DRM scouting reinforces the
+measure-first rule. Borrow scale-aware convergence diagnostics, sparse
+trace discipline, provenance fields, and evidence ladders. Do not borrow
+HSquared-style AI-REML language outside exact Gaussian restricted
+likelihoods, do not add METIS or other sparse-ordering dependencies
+until a local profile shows ordering/factorisation is the bottleneck,
+and describe non-Gaussian GLLVM speedups by their actual method family
+(ML/Laplace, observed-information, Fisher/natural-gradient,
+reverse-mode, or implicit-Laplace-adjoint).
+
 ## 1. Why this document exists
 
 Maintainer ask 2026-05-17: *"is there any coding techniques you

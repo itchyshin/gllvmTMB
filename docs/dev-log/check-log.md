@@ -18192,3 +18192,80 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-jsdm-screening-scope-polish.md`.
+
+## 2026-06-23 -- Mid-term truth sync and scout packet
+
+Scope:
+
+- Implemented the safe first slice of the mid-term capability/compute
+  plan after merging the approved PR #538, without refreshing the
+  dashboard, editing issue #340, or launching Totoro/DRAC jobs.
+- Corrected the validation-register headline from `172/22/0/7 over
+  201 rows` to `173/22/0/7 over 202 rows`.
+- Added source-truth notes for capability status, capstone scaling gates,
+  and ASReml/HSquared/DRM transfer boundaries.
+- Added `docs/dev-log/audits/2026-06-23-midterm-capability-compute-scout.md`.
+
+Coordination commands and outcomes:
+
+- `git status --short --branch`
+  -> WARN in the Dropbox checkout: dirty mission-control tree on
+  `codex/r-bridge-grouped-dispersion`, ahead 56. No edits were made
+  there.
+- `gh pr view 538 --repo itchyshin/gllvmTMB --json number,title,state,isDraft,mergeStateStatus,headRefName,baseRefName,statusCheckRollup,url`
+  -> PASS before merge; PR #538 open, non-draft, clean, Ubuntu R-CMD-check
+  success.
+- `gh pr merge 538 --repo itchyshin/gllvmTMB --merge --delete-branch --match-head-commit 3a15adf2a6170b49d4a2e456909cf3dd6ed9a0c3`
+  -> PASS; PR #538 merged at `475cd7a`.
+- `git fetch origin --prune`
+  -> PASS; `origin/main` advanced to `475cd7a`.
+- `git rebase origin/main`
+  -> PASS after resolving the append-only `docs/dev-log/check-log.md`
+  conflict by keeping both the #538 entry and this truth-scout entry.
+- `gh issue view 340 --repo itchyshin/gllvmTMB --json number,title,state,body,updatedAt,url`
+  -> PASS; issue body still carries the old 2026-06-03 register tally
+  and must be refreshed later from the register.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url,files --limit 20`
+  -> PASS before merge; only #538 open. This branch avoids #538 article
+  files.
+- `git log --all --oneline --since='6 hours ago' --decorate --date=short`
+  -> WARN; recent remote activity includes the #537 merge, #538 branch,
+  and power-pilot result commits. No competing local edit was made in
+  this clean worktree; #538 overlap is limited to append-only
+  `check-log` / after-task files.
+
+Validation commands and outcomes:
+
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'tools::md5sum(c("docs/design/35-validation-debt-register.md", "docs/design/61-capability-status.md", "docs/design/66-capstone-power-study.md", "docs/design/43-asreml-speed-techniques.md"))'`
+  -> PASS; touched design files are readable by R.
+- `Rscript --vanilla -e 'source("/Users/z3437171/shinichi-brain/tools/check-after-task.R"); main_check_after_task("docs/dev-log/after-task/2026-06-23-midterm-truth-scout.md")'`
+  -> PASS; after-task structure check passed.
+
+Stale scans:
+
+- `rg -n "172/22/0/7|201 rows|166 C|193 rows|Register tally now" docs/design docs/dev-log README.md NEWS.md _pkgdown.yml`
+  -> WARN; current stale headline fixed. Historical `193 rows` hits
+  remain in older snapshot/provenance sections.
+- `rg -n "automatic removal|automatic deletion|guarantees convergence|proves identifiability" docs/design docs/dev-log README.md NEWS.md vignettes R man`
+  -> WARN; hits are old dev-log scan records and this check-log entry,
+  not live user-facing overclaims in touched prose.
+- `rg -n "AI-REML|REML" docs/design/43-asreml-speed-techniques.md docs/design/61-capability-status.md docs/design/66-capstone-power-study.md docs/dev-log/audits/2026-06-23-midterm-capability-compute-scout.md`
+  -> PASS; hits are bounded to Gaussian-only or do-not-borrow wording.
+- `rg -n "Type-I proxy|coverage-under-null|signal = 0|binomial_probit|coverage_primary" docs/design/66-capstone-power-study.md dev/m3-pilot-launch.R dev/m3-pilot-report.R`
+  -> WARN; stale `Type-I proxy` / `coverage-under-null` wording remains
+  in `dev/m3-pilot-launch.R` and is explicitly deferred to the pilot
+  metric-audit slice.
+
+Not claimed:
+
+- No package behavior changed.
+- No validation row moved.
+- PR #538 was merged after Shinichi approved the first packet.
+- Mission control and issue #340 were not refreshed.
+- No Totoro or DRAC login/submission was attempted.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-midterm-truth-scout.md`.

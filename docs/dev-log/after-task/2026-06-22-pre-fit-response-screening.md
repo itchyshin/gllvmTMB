@@ -30,6 +30,8 @@ claiming automatic variable selection or fitted-model validation.
   Raykov (2008).
 - Added the requested sample-size/prevalence grid and discordant-count boundary
   tests to turn that part of the plan into executable evidence.
+- Updated validation-register row `DIA-14` so the register no longer describes
+  those grids as planned-only evidence.
 - Posted the separate maintainer-approved accessible reply to Ayumi at
   `https://github.com/Ayumi-495/urbanisation_map/issues/1#issuecomment-4773564655`.
 

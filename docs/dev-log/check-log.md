@@ -17719,6 +17719,9 @@ Final plan-tightening addendum:
   - `n = 20, 50, 200, 1000, 100000` crossed with prevalence
     `0, .001, .005, .01, .05, .5, .95, .99, 1`;
   - pairwise discordant counts `0, 1, 5, 10, 50, 500`.
+- Updated validation-register row `DIA-14` so those grids are now recorded as
+  covered evidence; the row remains partial for non-binary modules, optional
+  comparator checks, and high-dimensional performance benchmarks.
 - Pre-edit coordination checks before this shared dev-log/design addendum:
   - `gh pr list --repo itchyshin/gllvmTMB --state open`
     -> one open PR, this branch only: #533

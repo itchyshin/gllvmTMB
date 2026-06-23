@@ -330,11 +330,14 @@ manifest row records the source SHA, workflow run id/number, shard,
 cell, current accumulated-store path, future immutable chunk path,
 planned replicate count, batch seed base, and `rep_seed` range. The
 persist/status path validates the merged manifest for duplicate output
-paths, duplicate chunk paths, and overlapping seed ranges before
-treating the store as auditable. Effective per-cell seed blocks are
-separated by a fixed stride larger than the intended batch size after
-the harness family/d seed offset is applied, so same-run cells do not
-share `rep_seed` values.
+paths, duplicate chunk paths, overlapping per-cell replicate windows,
+and overlapping seed ranges before treating the store as auditable.
+For future immutable-chunk array jobs, `--mode=chunk-audit` reads the
+written manifests and requires every planned chunk file to exist and be
+non-empty before any aggregation step proceeds. Effective per-cell seed
+blocks are separated by a fixed stride larger than the intended batch
+size after the harness family/d seed offset is applied, so same-run
+cells do not share `rep_seed` values.
 
 Persist the long per-replicate grid (`<cell-id>.rds`) and rebuild
 `pilot-index.rds` as a derived cache from those per-cell files. The
@@ -689,9 +692,16 @@ reimplement any of it). Entry points:
   diagnostic is not a Type-I error or power claim for `Sigma_unit_diag`.
 - `pilot_build_manifest()` / `pilot_assert_manifest()` -- record and
   validate the planned per-shard chunks before fitting. The manifest
-  catches duplicate output paths, duplicate chunk paths, and overlapping
-  seed ranges before the store is persisted or summarized. For
-  manifest-only compute smoke tests, `dev/power-pilot-run.R
+  catches duplicate output paths, duplicate chunk paths, overlapping
+  per-cell replicate windows, and overlapping seed ranges before the
+  store is persisted or summarized.
+- `pilot_assert_chunk_outputs()` / `dev/power-pilot-run.R
+  --mode=chunk-audit` -- validate the future immutable-chunk output
+  set after array tasks finish and before aggregation. This requires
+  every planned active chunk file to exist and be non-empty; it does
+  not launch fits and does not replace the current accumulated-store
+  driver.
+- For manifest-only compute smoke tests, `dev/power-pilot-run.R
   --mode=preflight --output-mode=chunk` validates the future immutable
   chunk destinations without launching fits.
 

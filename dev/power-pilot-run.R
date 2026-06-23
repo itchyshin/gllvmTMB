@@ -14,6 +14,8 @@
 ## Modes (one --mode=... per invocation):
 ##   preflight -- build + validate this shard's manifest and exit before
 ##              fitting; used for Totoro/DRAC manifest-parse smoke tests.
+##   chunk-audit -- read chunk manifests and require every planned chunk
+##              file to exist before a future aggregation job runs.
 ##   shard   -- run one shard's cells: accumulate +n_sim_step reps toward
 ##              the cap for every cell in this shard that is below cap.
 ##   slice   -- copy only this shard's touched per-cell files + runstats
@@ -28,6 +30,8 @@
 ##   Rscript dev/power-pilot-run.R --mode=preflight --shard=1 --n-shards=48 \
 ##     --n-sim-step=2 --n-sim-cap=10 --seed-base=1 \
 ##     --results-dir=/tmp/pilot-smoke --n-boot=0 --output-mode=chunk
+##   Rscript dev/power-pilot-run.R --mode=chunk-audit \
+##     --results-dir=/tmp/pilot-smoke
 ##   Rscript dev/power-pilot-run.R --mode=status \
 ##     --n-sim-cap=2000 --results-dir=dev/m3-pilot-results \
 ##     --status-out=dev/m3-pilot-results/_status.txt
@@ -151,6 +155,31 @@ if (identical(mode, "preflight")) {
     active_chunks,
     output_mode,
     manifest_path
+  ))
+  quit(save = "no", status = 0L)
+}
+
+if (identical(mode, "chunk-audit")) {
+  manifest_df <- pilot_read_manifests(results_dir)
+  if (!nrow(manifest_df)) {
+    emit_output("chunk_outputs_ok", "false")
+    stop("power-pilot chunk output audit found no manifest rows.")
+  }
+  audit <- tryCatch(
+    pilot_assert_chunk_outputs(manifest_df),
+    error = function(e) e
+  )
+  chunk_outputs_ok <- !inherits(audit, "error")
+  emit_output("chunk_outputs_ok", tolower(as.character(chunk_outputs_ok)))
+  if (!chunk_outputs_ok) {
+    emit_output("chunk_outputs_error", conditionMessage(audit))
+    stop("power-pilot chunk output audit failed: ", conditionMessage(audit))
+  }
+  emit_output("chunk_output_rows", as.character(nrow(audit)))
+  cat(sprintf(
+    "[power-pilot] chunk audit: validated %d planned chunk output(s) in %s\n",
+    nrow(audit),
+    results_dir
   ))
   quit(save = "no", status = 0L)
 }
@@ -459,6 +488,9 @@ if (identical(mode, "status")) {
 }
 
 stop(sprintf(
-  "unknown --mode=%s (expected 'preflight', 'shard', 'slice', or 'status')",
+  paste0(
+    "unknown --mode=%s (expected 'preflight', 'chunk-audit', 'shard', ",
+    "'slice', or 'status')"
+  ),
   mode
 ))

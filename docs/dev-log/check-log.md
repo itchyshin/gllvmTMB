@@ -18891,3 +18891,69 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-power-pilot-audit-mini-manifest.md`.
+
+## 2026-06-23 (Codex / Ada) -- Power pilot audit-mini runner
+
+Scope:
+
+- Added `pilot_run_audit_mini_manifest()` as the execution companion to the
+  audit-mini manifest gate. It builds the same fixed four-cell chunk manifest,
+  writes it, runs the active immutable chunks through `pilot_run_chunk_manifest()`,
+  and audits the chunk files.
+- Added `dev/power-pilot-run.R --mode=audit-mini-run` for a local tiny
+  execution smoke after the manifest-only `--mode=audit-mini` gate.
+- Updated Design 66 to state that this runner is local-smoke only: it does not
+  mutate `pilot-index.rds`, submit DRAC/SLURM work, or start production volume.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url && git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared design/dev-log edits; no open PRs, recent history was
+  the expected #539 through #548 sequence, with #548 merged at `2b6ede35`.
+- `git status --short --branch`
+  -> clean branch start in
+  `/private/tmp/gllvmtmb-power-pilot-audit-mini-runner-20260623` on
+  `codex/power-pilot-audit-mini-runner-20260623...origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS; 143 expectations.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 176 expectations.
+- `rm -rf /tmp/gllvmtmb-audit-mini-run-smoke && OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla dev/power-pilot-run.R --mode=audit-mini-run --seed-base=171 --n-sim-step=1 --n-sim-cap=1 --n-boot=0 --results-dir=/tmp/gllvmtmb-audit-mini-run-smoke > /tmp/gllvmtmb-audit-mini-run-smoke.out 2>&1 && cat /tmp/gllvmtmb-audit-mini-run-smoke.out && find /tmp/gllvmtmb-audit-mini-run-smoke -type f | sort && Rscript --vanilla -e 'm <- read.csv("/tmp/gllvmtmb-audit-mini-run-smoke/_manifests/shard-1.csv"); print(m[, c("cell_id", "family_label", "evidence_family", "output_mode", "n_reps_planned", "n_boot")]); cat("chunk files=", length(list.files("/tmp/gllvmtmb-audit-mini-run-smoke/_chunks", pattern = "[.]rds$", recursive = TRUE)), "\n")'`
+  -> PASS; ran one local no-bootstrap rep for each of the four audit-mini
+  cells, wrote four immutable chunk files, and emitted `n_errored=0`.
+- `OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla dev/power-pilot-run.R --mode=chunk-audit --results-dir=/tmp/gllvmtmb-audit-mini-run-smoke >> /tmp/gllvmtmb-audit-mini-run-smoke.out 2>&1 && OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla dev/power-pilot-run.R --mode=chunk-aggregate --results-dir=/tmp/gllvmtmb-audit-mini-run-smoke >> /tmp/gllvmtmb-audit-mini-run-smoke.out 2>&1 && OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla dev/m3-pilot-report.R --emit-issues --chunk-aggregate --results-dir=/tmp/gllvmtmb-audit-mini-run-smoke >> /tmp/gllvmtmb-audit-mini-run-smoke.out 2>&1 && tail -80 /tmp/gllvmtmb-audit-mini-run-smoke.out && find /tmp/gllvmtmb-audit-mini-run-smoke/_chunk-aggregate -type f | sort`
+  -> PASS; chunk audit validated four planned outputs, chunk aggregate wrote
+  four per-cell aggregate files and 20 rows, and the issue line flagged two
+  one-rep nonPD cells (`binomial_probit` and `nbinom2`). This is expected
+  diagnostic noise from the tiny smoke, not power evidence.
+
+Stale scans:
+
+- `rg -n "audit-mini-run|pilot_run_audit_mini_manifest|audit_mini_chunk_output_rows|pilot-index\\.rds|DRAC|SLURM|production campaign|n_sim = 2000|AI-REML|validated binomial-probit|probit support" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended new runner matches plus existing Design 66 boundary
+  language around `n_sim = 2000`, DRAC, and `pilot-index.rds`.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML|validated binomial-probit|probit support|pilot-index\\.rds.*(write|mutate|update|rebuild)" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no DRAC/SLURM/GPU/production/AI-REML overclaim, no validated
+  binomial-probit wording, and no `pilot-index.rds` mutation wording.
+
+Not claimed:
+
+- No DRAC login, SLURM job, GPU check, production campaign, or `n_sim = 2000`
+  run was launched.
+- This slice changes no DGP, likelihood, scoring metric, interval definition,
+  or validation row status.
+- The local one-rep smoke is not coverage, power, or Type-I evidence.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-audit-mini-runner.md`.

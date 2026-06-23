@@ -297,6 +297,52 @@ pilot_build_audit_mini_manifest <- function(
   manifest
 }
 
+pilot_run_audit_mini_manifest <- function(
+  n_sim_step = 2L,
+  n_sim_cap = 2L,
+  seed_base,
+  results_dir = PILOT_RESULTS_DIR_DEFAULT,
+  n_boot = 0L,
+  shard = 1L,
+  n_shards = 1L,
+  runner = m3_run_cell,
+  ci_level = PILOT_CI_LEVEL,
+  verbose = FALSE,
+  source_sha = Sys.getenv("GITHUB_SHA", unset = NA_character_),
+  workflow_run_id = Sys.getenv("GITHUB_RUN_ID", unset = NA_character_),
+  workflow_run_number = Sys.getenv("GITHUB_RUN_NUMBER", unset = NA_character_)
+) {
+  stopifnot(is.function(runner))
+  manifest <- pilot_build_audit_mini_manifest(
+    n_sim_step = n_sim_step,
+    n_sim_cap = n_sim_cap,
+    seed_base = seed_base,
+    results_dir = results_dir,
+    n_boot = n_boot,
+    shard = shard,
+    n_shards = n_shards,
+    output_mode = "chunk",
+    source_sha = source_sha,
+    workflow_run_id = workflow_run_id,
+    workflow_run_number = workflow_run_number
+  )
+  pilot_assert_manifest(manifest, require_unique_result_path = FALSE)
+  manifest_path <- pilot_write_manifest(manifest, results_dir, shard)
+  report <- pilot_run_chunk_manifest(
+    manifest,
+    runner = runner,
+    ci_level = ci_level,
+    verbose = verbose
+  )
+  audit <- pilot_assert_chunk_outputs(manifest)
+  list(
+    manifest = manifest,
+    manifest_path = manifest_path,
+    report = report,
+    audit = audit
+  )
+}
+
 ## ---- Index helpers ----------------------------------------------------
 
 pilot_index_path <- function(results_dir) {

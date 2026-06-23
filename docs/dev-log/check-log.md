@@ -18478,3 +18478,73 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-power-pilot-manifest-seed-audit.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot chunk preflight
+
+Scope:
+
+- Added future immutable chunk destinations to the Phase-1 pilot manifest
+  while preserving the current GitHub accumulated per-cell store.
+- Added `dev/power-pilot-run.R --mode=preflight --output-mode=chunk` so
+  Totoro/DRAC can run the first smoke as manifest parse + destination audit
+  only, with no calls to `m3_run_cell()`.
+- Extended manifest validation to catch duplicate `chunk_path` values as well
+  as duplicate chunk IDs, duplicate current output paths, invalid seed ranges,
+  and overlapping seed ranges.
+- Updated Design 66 wording to keep the boundary explicit: this prepares the
+  immutable chunk lane but does not launch compute or replace the current
+  accumulated writer.
+
+Coordination:
+
+- `git fetch origin main --prune && git worktree list --porcelain | rg 'gllvmtmb-power-pilot-chunks-20260623|codex/power-pilot-chunks-20260623' || true && gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url && git log --all --oneline --since="6 hours ago"`
+  -> PASS before shared dev-log/design edits; no open PRs and recent history
+  was #537 through #542.
+- `git worktree add -b codex/power-pilot-chunks-20260623 /private/tmp/gllvmtmb-power-pilot-chunks-20260623 origin/main`
+  -> clean worktree from #542 merge commit `7effa8a2`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS after rooting the CLI smoke at the resolved repo root; 42
+  expectations, 0 skips. GitHub R-CMD-check run `28050578137` then failed
+  because this test used bare `Rscript`; R CMD check requires an explicit path
+  (see Writing R Extensions 1.6). The test was fixed to use
+  `file.path(R.home("bin"), "Rscript")`.
+- `rm -rf /tmp/gllvmtmb-preflight-all48 && Rscript --vanilla dev/power-pilot-run.R --mode=preflight --shard=1 --n-shards=1 --n-sim-step=200 --n-sim-cap=2000 --seed-base=150 --results-dir=/tmp/gllvmtmb-preflight-all48 --n-boot=0 --output-mode=chunk && find /tmp/gllvmtmb-preflight-all48 -maxdepth 3 -type f -print | sort`
+  -> PASS; wrote 48 manifest rows and 48 active chunks; the only file printed
+  was `/tmp/gllvmtmb-preflight-all48/_manifests/shard-1.csv`.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 65 expectations.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "Type-I proxy|coverage-under-null|null/Type-I|power/Type-I|0 level \\*is\\* the Type-I|signal-zero Type-I" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS; no matches.
+- `rg -n "pilot-index\\.rds.*source of truth|source of truth.*pilot-index|index.*source of truth|shared index.*audit trail|derived cache|local resume cache" dev/m3-pilot-launch.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS; remaining hits describe `pilot-index.rds` as a local resume cache
+  or derived cache, and the manifest/per-cell grids as the audit trail.
+- `rg -n "mode=preflight|output-mode=chunk|chunk_path|chunk destinations|without launching fits|before fitting|m3_run_cell\\(" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended coverage.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no matches.
+
+Not claimed:
+
+- No fits, simulations, Totoro login, DRAC login, SLURM job, or GPU check was
+  launched.
+- The current GitHub pilot still accumulates into per-cell stores; this slice
+  only prepares and validates future immutable chunk destinations.
+- True binary probit, ordinal coverage repair, DRAC environment checks, and
+  production `n_sim = 2000` remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-preflight.md`.

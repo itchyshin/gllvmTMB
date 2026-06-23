@@ -327,19 +327,23 @@ run to avoid collision, per the workflow input help) plus deterministic
 per-cell/per-rep derivation inside `m3_run_cell()`. The Phase-1
 accumulation driver writes a per-shard manifest before fitting. Each
 manifest row records the source SHA, workflow run id/number, shard,
-cell, result path, planned replicate count, batch seed base, and
-`rep_seed` range. The persist/status path validates the merged manifest
-for duplicate output paths and overlapping seed ranges before treating
-the store as auditable. Effective per-cell seed blocks are separated by
-a fixed stride larger than the intended batch size after the harness
-family/d seed offset is applied, so same-run cells do not share
-`rep_seed` values.
+cell, current accumulated-store path, future immutable chunk path,
+planned replicate count, batch seed base, and `rep_seed` range. The
+persist/status path validates the merged manifest for duplicate output
+paths, duplicate chunk paths, and overlapping seed ranges before
+treating the store as auditable. Effective per-cell seed blocks are
+separated by a fixed stride larger than the intended batch size after
+the harness family/d seed offset is applied, so same-run cells do not
+share `rep_seed` values.
 
 Persist the long per-replicate grid (`<cell-id>.rds`) and rebuild
 `pilot-index.rds` as a derived cache from those per-cell files. The
 manifest plus per-cell grids, not the shared index, are the audit trail
 for every failed fit, seed, and CI (Williams et al. 2024 transparency
-items; Design 42 sec.1).
+items; Design 42 sec.1). The first Totoro/DRAC smoke test uses
+`dev/power-pilot-run.R --mode=preflight --output-mode=chunk`: it parses
+the grid, writes the manifest, validates unique immutable chunk
+destinations, and exits before fitting.
 
 ---
 
@@ -685,8 +689,11 @@ reimplement any of it). Entry points:
   diagnostic is not a Type-I error or power claim for `Sigma_unit_diag`.
 - `pilot_build_manifest()` / `pilot_assert_manifest()` -- record and
   validate the planned per-shard chunks before fitting. The manifest
-  catches duplicate output paths and overlapping seed ranges before the
-  store is persisted or summarized.
+  catches duplicate output paths, duplicate chunk paths, and overlapping
+  seed ranges before the store is persisted or summarized. For
+  manifest-only compute smoke tests, `dev/power-pilot-run.R
+  --mode=preflight --output-mode=chunk` validates the future immutable
+  chunk destinations without launching fits.
 
 Phase 2 (HPC, n_sim = 2000, the full core grid + the probit-link swap)
 reuses the same harness with a cluster array-job driver (section 9); the

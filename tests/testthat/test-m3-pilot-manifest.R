@@ -28,6 +28,11 @@ source_power_pilot_manifest <- function() {
     "dev power-pilot helpers are unavailable in this source-tarball context"
   )
   paths <- hit[[1]]
+  assign(
+    "power_pilot_root",
+    normalizePath(dirname(dirname(paths[1])), mustWork = TRUE),
+    envir = parent.frame()
+  )
   source(paths[1], local = parent.frame())
   source(paths[2], local = parent.frame())
 }
@@ -60,7 +65,13 @@ test_that("power pilot manifest records disjoint planned chunks", {
   expect_equal(manifest$source_sha, rep("abc123", 4L))
   expect_equal(manifest$workflow_run_id, rep("run-1", 4L))
   expect_equal(manifest$workflow_run_number, rep("144", 4L))
+  expect_equal(manifest$output_mode, rep("accumulate", 4L))
+  expect_equal(manifest$result_file, manifest$store_file)
+  expect_equal(manifest$result_path, manifest$store_path)
+  expect_true(all(nzchar(manifest$chunk_path)))
+  expect_equal(basename(manifest$chunk_path), paste0(manifest$chunk_id, ".rds"))
   expect_equal(any(duplicated(manifest$result_path)), FALSE)
+  expect_equal(any(duplicated(manifest$chunk_path)), FALSE)
   expect_equal(any(duplicated(manifest$chunk_id)), FALSE)
   expect_equal(
     any(manifest$rep_seed_min[-1L] <= manifest$rep_seed_max[-4L]),
@@ -74,6 +85,45 @@ test_that("power pilot manifest records disjoint planned chunks", {
   expect_equal(nrow(roundtrip), 4L)
   expect_equal(roundtrip$cell_id, manifest$cell_id)
   expect_equal(pilot_assert_manifest(roundtrip), TRUE)
+})
+
+test_that("power pilot chunk manifests point at immutable chunk files", {
+  source_power_pilot_manifest()
+
+  manifest <- pilot_build_manifest(
+    cell_ids = utils::head(pilot_grid()$cell_id, 2L),
+    n_sim_step = 2L,
+    n_sim_cap = 10L,
+    seed_base = 148L,
+    results_dir = tempfile("pilot-manifest-chunk-"),
+    n_boot = 0L,
+    shard = 1L,
+    n_shards = 48L,
+    output_mode = "chunk"
+  )
+
+  expect_equal(manifest$output_mode, rep("chunk", 2L))
+  expect_equal(manifest$result_file, manifest$chunk_file)
+  expect_equal(manifest$result_path, manifest$chunk_path)
+  expect_false(any(manifest$result_path == manifest$store_path))
+  expect_match(manifest$chunk_file[1], "^_chunks/power-pilot-seed-148/")
+  expect_equal(
+    pilot_assert_manifest(manifest, require_unique_result_path = FALSE),
+    TRUE
+  )
+
+  bad <- manifest
+  bad$chunk_path[2L] <- bad$chunk_path[1L]
+  bad$result_path[2L] <- bad$result_path[1L]
+  err <- tryCatch(
+    {
+      pilot_assert_manifest(bad, require_unique_result_path = FALSE)
+      NULL
+    },
+    error = function(e) e
+  )
+  expect_equal(inherits(err, "error"), TRUE)
+  expect_match(conditionMessage(err), "Duplicate pilot chunk paths")
 })
 
 test_that("power pilot manifest seed audit covers the full 48-cell grid", {
@@ -145,4 +195,49 @@ test_that("power pilot manifest validator catches overlapping seed ranges", {
   )
   expect_equal(inherits(err, "error"), TRUE)
   expect_match(conditionMessage(err), "Overlapping pilot seed ranges")
+})
+
+test_that("power pilot preflight writes a chunk manifest without fits", {
+  source_power_pilot_manifest()
+  testthat::skip_if_not(
+    file.exists(file.path(power_pilot_root, "dev", "power-pilot-run.R"))
+  )
+
+  results_dir <- tempfile("pilot-preflight-")
+  on.exit(unlink(results_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  old_wd <- setwd(power_pilot_root)
+  on.exit(setwd(old_wd), add = TRUE)
+
+  rscript <- file.path(R.home("bin"), "Rscript")
+  out <- system2(
+    rscript,
+    c(
+      "--vanilla",
+      file.path("dev", "power-pilot-run.R"),
+      "--mode=preflight",
+      "--shard=1",
+      "--n-shards=48",
+      "--n-sim-step=2",
+      "--n-sim-cap=10",
+      "--seed-base=149",
+      paste0("--results-dir=", results_dir),
+      "--n-boot=0",
+      "--output-mode=chunk"
+    ),
+    stdout = TRUE,
+    stderr = TRUE
+  )
+  expect_match(paste(out, collapse = "\n"), "preflight shard 1/48")
+
+  manifest_path <- file.path(results_dir, "_manifests", "shard-1.csv")
+  expect_true(file.exists(manifest_path))
+  manifest <- utils::read.csv(manifest_path, stringsAsFactors = FALSE)
+  expect_equal(nrow(manifest), 1L)
+  expect_equal(manifest$output_mode, "chunk")
+  expect_equal(manifest$result_path, manifest$chunk_path)
+  expect_equal(
+    length(list.files(results_dir, pattern = "[.]rds$", full.names = TRUE)),
+    0L
+  )
 })

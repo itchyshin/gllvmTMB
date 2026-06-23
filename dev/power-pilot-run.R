@@ -12,6 +12,8 @@
 ## consume (the run-level failure rate, and an all-complete flag).
 ##
 ## Modes (one --mode=... per invocation):
+##   preflight -- build + validate this shard's manifest and exit before
+##              fitting; used for Totoro/DRAC manifest-parse smoke tests.
 ##   shard   -- run one shard's cells: accumulate +n_sim_step reps toward
 ##              the cap for every cell in this shard that is below cap.
 ##   slice   -- copy only this shard's touched per-cell files + runstats
@@ -23,6 +25,9 @@
 ##   Rscript dev/power-pilot-run.R --mode=shard --shard=1 --n-shards=8 \
 ##     --n-sim-step=200 --n-sim-cap=2000 --seed-base=$GITHUB_RUN_NUMBER \
 ##     --results-dir=dev/m3-pilot-results --n-boot=25
+##   Rscript dev/power-pilot-run.R --mode=preflight --shard=1 --n-shards=48 \
+##     --n-sim-step=2 --n-sim-cap=10 --seed-base=1 \
+##     --results-dir=/tmp/pilot-smoke --n-boot=0 --output-mode=chunk
 ##   Rscript dev/power-pilot-run.R --mode=status \
 ##     --n-sim-cap=2000 --results-dir=dev/m3-pilot-results \
 ##     --status-out=dev/m3-pilot-results/_status.txt
@@ -72,6 +77,7 @@ n_sim_step <- as.integer(arg_value(
 ))
 n_boot <- as.integer(arg_value("--n-boot", as.character(PILOT_N_BOOT_DEFAULT)))
 dry_run <- as_truthy(arg_value("--dry-run", "false"))
+output_mode <- arg_value("--output-mode", "accumulate")
 
 ## Append a single KEY=VALUE line to the GitHub Actions step-output file
 ## ($GITHUB_OUTPUT), if present. No-op locally. Used so downstream jobs
@@ -100,6 +106,54 @@ shard_cell_ids <- function(shard, n_shards) {
 }
 
 ## ---- Modes ------------------------------------------------------------
+
+if (identical(mode, "preflight")) {
+  shard <- as.integer(arg_value("--shard", "1"))
+  n_shards <- as.integer(arg_value("--n-shards", "8"))
+  seed_base <- arg_value("--seed-base", NULL)
+  if (is.null(seed_base)) {
+    stop("--seed-base is required for --mode=preflight.")
+  }
+  seed_base <- as.integer(seed_base)
+
+  cells <- shard_cell_ids(shard, n_shards)
+  if (dry_run) {
+    cells <- utils::head(cells, 1L)
+  }
+
+  manifest <- pilot_build_manifest(
+    cell_ids = cells,
+    n_sim_step = n_sim_step,
+    n_sim_cap = n_sim_cap,
+    seed_base = seed_base,
+    results_dir = results_dir,
+    n_boot = n_boot,
+    shard = shard,
+    n_shards = n_shards,
+    output_mode = output_mode
+  )
+  pilot_assert_manifest(
+    manifest,
+    require_unique_result_path = !identical(output_mode, "chunk")
+  )
+  manifest_path <- pilot_write_manifest(manifest, results_dir, shard)
+  active_chunks <- sum(manifest$n_reps_planned > 0L)
+  emit_output("manifest_rows", as.character(nrow(manifest)))
+  emit_output("active_chunks", as.character(active_chunks))
+  cat(sprintf(
+    paste0(
+      "[power-pilot] preflight shard %d/%d: wrote %d row(s), ",
+      "%d active chunk(s), output_mode=%s to %s\n"
+    ),
+    shard,
+    n_shards,
+    nrow(manifest),
+    active_chunks,
+    output_mode,
+    manifest_path
+  ))
+  quit(save = "no", status = 0L)
+}
 
 if (identical(mode, "shard")) {
   shard <- as.integer(arg_value("--shard", "1"))
@@ -405,6 +459,6 @@ if (identical(mode, "status")) {
 }
 
 stop(sprintf(
-  "unknown --mode=%s (expected 'shard', 'slice', or 'status')",
+  "unknown --mode=%s (expected 'preflight', 'shard', 'slice', or 'status')",
   mode
 ))

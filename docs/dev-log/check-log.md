@@ -18073,3 +18073,122 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-xcoef-fixed-julia-bridge.md`.
+
+## 2026-06-23 -- JSDM response-screening article polish and scope boundaries
+
+Goal: implement the council plan after PR #537 by clarifying that
+`screen_gllvmTMB()` flags binary/binomial JSDM responses for inspection and
+sensitivity analysis, not automatic species removal, and by adding explicit
+row-backed scope wording to the fixed-effect zero-constraint article.
+
+Implementation:
+
+- Confirmed PR #537 was merged and started a fresh worktree from updated
+  `origin/main` at `e2b9440`.
+- Updated `vignettes/articles/pre-fit-response-screening.Rmd` with `DIA-14`
+  scope wording, binary JSDM site/species framing, a documented
+  `suppressWarnings()` rationale, softer `FAIL` guidance, and literature-backed
+  language that rare species are not automatically discarded.
+- Updated `R/screen-gllvmTMB.R` roxygen and regenerated
+  `man/screen_gllvmTMB.Rd` so the examples mirror the advisory-only scope.
+- Updated `vignettes/articles/fixed-effect-zero-constraints.Rmd` with explicit
+  `MIS-34` IN / gated wording, keeping it focused on trait-specific
+  mean-structure control rather than screening, response deletion, variable
+  selection, loading constraints, or rank selection.
+- Added `docs/dev-log/spikes/2026-06-23-ayumi-jsdm-screening-draft.md` with a
+  draft GitHub response tagging `@Ayumi-495`; it was not posted.
+
+Coordination and branch-state commands:
+
+- `gh pr view 537 --repo itchyshin/gllvmTMB --json number,state,mergeCommit,url,title`
+  -> PASS; PR #537 is `MERGED` at
+  `e2b94409dca50a268aab582bffa9f350178aadc9`.
+- `git worktree add -b codex/jsdm-screen-polish-20260623 /private/tmp/gllvmtmb-jsdm-screen-polish-20260623 origin/main`
+  -> PASS; new worktree created from fresh `origin/main`.
+- `git status --short --branch`
+  -> PASS before edits; branch was clean at `origin/main`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,author,updatedAt`
+  -> PASS; no open PRs after #537 merge.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS; visible recent gllvmTMB commits were #537 merge, #537 head, and one
+  unrelated local `power-pilot` commit outside this slice.
+- `gh issue list --repo Ayumi-495/urbanisation_map --state open --limit 20 --json number,title,url,updatedAt`
+  -> PASS; inspected open issues #3 and #1 for draft-comment context.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/screen_gllvmTMB.Rd`. Unrelated roxygen churn in
+  other Rd files was excluded from the diff.
+- `tail -5 man/screen_gllvmTMB.Rd`
+  -> PASS; generated help ends in the expected references block.
+- `grep -c '^\\keyword' man/screen_gllvmTMB.Rd`
+  -> PASS; returned `0`, so no misplaced roxygen keyword spillover.
+- `LC_ALL=C rg -n "[^\x00-\x7F]" R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd docs/dev-log/spikes/2026-06-23-ayumi-jsdm-screening-draft.md`
+  -> PASS; no non-ASCII hits after edits.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/pre-fit-response-screening", lazy = FALSE, new_process = FALSE)'`
+  -> PASS; targeted screening article rendered.
+- `Rscript --vanilla -e 'pkgdown::clean_site(force = TRUE); devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/pre-fit-response-screening", lazy = FALSE, new_process = FALSE); pkgdown::build_article("articles/fixed-effect-zero-constraints", lazy = FALSE, new_process = FALSE)'`
+  -> PASS; both touched articles rendered sequentially after removing an ignored
+  `pkgdown-site/` collision from an earlier parallel render attempt.
+- `Rscript --vanilla -e 'devtools::test(filter = "screen-gllvmTMB|xcoef-fixed|julia-bridge")'`
+  -> PASS with existing warning: `FAIL 0 | WARN 1 | SKIP 16 | PASS 454`.
+  The warning is the existing once-per-session Julia ordinary-`latent()` Psi
+  bridge warning in `test-julia-bridge.R:1754`.
+- `git diff --check`
+  -> PASS.
+- `rg -n "DIA-14|MIS-34" NEWS.md vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd docs/design/35-validation-debt-register.md`
+  -> PASS; intended row references are present in touched articles, NEWS, and
+  the register.
+- `rg -n "automatic deletion|remove species|guarantees convergence|proves identifiability|selects variables|gllvmTMB_wide|meta_known_V|trio|diag\\(U\\)|\\\\bf S|S_B|S_W" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd docs/dev-log/spikes/2026-06-23-ayumi-jsdm-screening-draft.md _pkgdown.yml`
+  -> PASS; no stale-overclaim hits.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS: `No problems found.`
+- Rose pre-publish audit commands:
+  - `rg -n "Scope boundary|DIA-14|MIS-34|IN|PARTIAL|PLANNED|gated" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd`
+    -> PASS; touched public prose and roxygen/Rd cite the relevant row-backed
+    scope boundaries.
+  - `rg -n "gllvmTMB\\(|screen_gllvmTMB\\(" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd`
+    -> PASS; examples use wide `traits(...)` where appropriate and the long
+    screening call passes `trait = "indicator"`.
+  - `rg -n "trio|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(|profile-likelihood default|diag\\(U\\)|U_phy|U_non|\\\\bf S|S_B|S_W|gllvmTMB_wide|meta_known_V|automatic deletion|response deletion|selects variables|guarantees convergence|proves identifiability" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd`
+    -> PASS with one intended negative-scope hit:
+    `fixed-effect-zero-constraints.Rmd` says the feature is "not ... response
+    deletion".
+  - `Rscript --vanilla -e 'print(names(formals(gllvmTMB::screen_gllvmTMB))); print("Xcoef_fixed" %in% names(formals(gllvmTMB::gllvmTMB)))'`
+    -> PASS; `screen_gllvmTMB()` formals are unchanged and the installed
+    package now exposes `Xcoef_fixed`.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> first run failed in `fixed-effect-zero-constraints.Rmd` because the
+  separately launched pkgdown process loaded an older installed `gllvmTMB`
+  without `Xcoef_fixed`.
+- `Rscript --vanilla -e '"Xcoef_fixed" %in% names(formals(gllvmTMB::gllvmTMB))'`
+  -> initially `FALSE`, confirming the stale installed package.
+- `Rscript --vanilla -e 'devtools::install(quick = TRUE, upgrade = "never", quiet = TRUE)'`
+  -> PASS; installed this source checkout locally for the broad pkgdown render.
+- `Rscript --vanilla -e '"Xcoef_fixed" %in% names(formals(gllvmTMB::gllvmTMB))'`
+  -> `TRUE` after install.
+- `Rscript --vanilla -e 'pkgdown::clean_site(force = TRUE); pkgdown::build_articles(lazy = FALSE)'`
+  -> re-run progressed past the touched fixed-effect article but was manually
+  interrupted after a long unrelated `lambda-constraint.Rmd` render with the
+  child R process still using CPU. Targeted renders for the two touched
+  articles are the claimed article-render evidence for this slice.
+
+Behavior check:
+
+- The article calls were run with and without `suppressWarnings()` before
+  editing. The wide call emits the ordinary one-shot `latent()` Psi-default
+  warning. The wrapper was kept and explained in prose so the rendered article
+  stays focused while interactive users are still told to read warnings.
+
+Not claimed:
+
+- No behavior or API change.
+- No non-binary screening module, Julia screening parity, separation solver,
+  item-response comparator, variable selection, response deletion, or automatic
+  rare-species removal rule.
+- The draft comment for `@Ayumi-495` has not been posted.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-jsdm-screening-scope-polish.md`.

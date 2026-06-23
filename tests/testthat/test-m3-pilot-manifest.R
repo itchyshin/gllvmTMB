@@ -65,6 +65,8 @@ test_that("power pilot manifest records disjoint planned chunks", {
   expect_equal(manifest$source_sha, rep("abc123", 4L))
   expect_equal(manifest$workflow_run_id, rep("run-1", 4L))
   expect_equal(manifest$workflow_run_number, rep("144", 4L))
+  expect_true("lambda_scale" %in% names(manifest))
+  expect_true(all(is.finite(manifest$lambda_scale)))
   expect_equal(manifest$output_mode, rep("accumulate", 4L))
   expect_equal(manifest$result_file, manifest$store_file)
   expect_equal(manifest$result_path, manifest$store_path)
@@ -208,6 +210,123 @@ test_that("power pilot chunk output audit requires planned chunk files", {
   )
   expect_equal(inherits(err, "error"), TRUE)
   expect_match(conditionMessage(err), "Empty pilot chunk output")
+})
+
+test_that("power pilot chunk runner writes immutable chunk files", {
+  source_power_pilot_manifest()
+
+  results_dir <- tempfile("pilot-chunk-runner-")
+  dir.create(results_dir)
+  on.exit(unlink(results_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  cid <- pilot_grid()$cell_id[1]
+  prior <- data.frame(rep = 1:3, rep_seed = 1001:1003)
+  saveRDS(prior, file.path(results_dir, paste0(cid, ".rds")))
+
+  manifest <- pilot_build_manifest(
+    cell_ids = cid,
+    n_sim_step = 2L,
+    n_sim_cap = 10L,
+    seed_base = 155L,
+    results_dir = results_dir,
+    n_boot = 0L,
+    shard = 1L,
+    n_shards = 48L,
+    output_mode = "chunk"
+  )
+  expect_equal(manifest$n_before, 3L)
+  expect_equal(manifest$rep_start, 4L)
+  expect_equal(manifest$rep_end, 5L)
+
+  calls <- list()
+  fake_runner <- function(
+    family,
+    d,
+    n_reps,
+    seed_base,
+    n_units,
+    n_traits,
+    lambda_scale,
+    targets,
+    n_boot,
+    ci_level,
+    verbose
+  ) {
+    calls[[length(calls) + 1L]] <<- list(
+      family = family,
+      d = d,
+      n_reps = n_reps,
+      seed_base = seed_base,
+      n_units = n_units,
+      n_traits = n_traits,
+      lambda_scale = lambda_scale,
+      targets = targets,
+      n_boot = n_boot,
+      ci_level = ci_level,
+      verbose = verbose
+    )
+    data.frame(
+      rep = seq_len(n_reps),
+      rep_seed = seed_base + seq_len(n_reps),
+      ok = TRUE
+    )
+  }
+
+  report <- pilot_run_chunk_manifest(
+    manifest,
+    runner = fake_runner,
+    verbose = TRUE
+  )
+  expect_equal(nrow(report), 1L)
+  expect_equal(report$status, "written")
+  expect_equal(report$n_reps, 2L)
+  expect_true(file.exists(manifest$chunk_path))
+  expect_true(report$size_bytes > 0)
+  audit <- pilot_assert_chunk_outputs(manifest)
+  expect_equal(nrow(audit), 1L)
+  expect_true(audit$exists)
+
+  chunk <- readRDS(manifest$chunk_path)
+  expect_equal(chunk$rep, 4:5)
+  expect_equal(unique(chunk$pilot_campaign_id), manifest$campaign_id)
+  expect_equal(unique(chunk$pilot_chunk_id), manifest$chunk_id)
+  expect_equal(unique(chunk$pilot_cell_id), manifest$cell_id)
+  expect_equal(unique(chunk$pilot_rep_start), 4L)
+  expect_equal(unique(chunk$pilot_rep_end), 5L)
+
+  expect_equal(length(calls), 1L)
+  expect_equal(calls[[1]]$family, manifest$harness_family)
+  expect_equal(calls[[1]]$n_reps, manifest$n_reps_planned)
+  expect_equal(calls[[1]]$seed_base, manifest$batch_seed_base)
+  expect_equal(calls[[1]]$n_units, manifest$n_units)
+  expect_equal(calls[[1]]$lambda_scale, manifest$lambda_scale)
+  expect_equal(calls[[1]]$targets, "Sigma_unit_diag")
+  expect_equal(calls[[1]]$n_boot, 0L)
+})
+
+test_that("power pilot chunk runner rejects accumulated manifests", {
+  source_power_pilot_manifest()
+
+  manifest <- pilot_build_manifest(
+    cell_ids = pilot_grid()$cell_id[1],
+    n_sim_step = 2L,
+    n_sim_cap = 10L,
+    seed_base = 156L,
+    results_dir = tempfile("pilot-chunk-runner-bad-"),
+    n_boot = 0L,
+    shard = 1L,
+    n_shards = 48L,
+    output_mode = "accumulate"
+  )
+  err <- tryCatch(
+    {
+      pilot_run_chunk_manifest(manifest, runner = function(...) data.frame())
+      NULL
+    },
+    error = function(e) e
+  )
+  expect_equal(inherits(err, "error"), TRUE)
+  expect_match(conditionMessage(err), "requires output_mode = 'chunk'")
 })
 
 test_that("power pilot manifest seed audit covers the full 48-cell grid", {

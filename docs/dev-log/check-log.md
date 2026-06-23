@@ -17942,6 +17942,8 @@ Validation commands and outcomes:
   receives `NA` profile bounds rather than shifted free-parameter bounds.
 - `git diff --check`
   -> PASS.
+- `Rscript --vanilla -e 'source("/Users/z3437171/shinichi-brain/tools/check-after-task.R"); main_check_after_task("docs/dev-log/after-task/2026-06-23-power-pilot-chunk-runner.md")'`
+  -> PASS; `after-task structure check passed`.
 
 Stale scans:
 
@@ -18622,3 +18624,71 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-output-audit.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot immutable chunk runner
+
+Scope:
+
+- Added the first runnable immutable-chunk writer for the Design 66 power
+  pilot. `pilot_run_chunk_manifest()` consumes active `output_mode = "chunk"`
+  manifest rows, calls `m3_run_cell()`, reindexes `rep` into the planned
+  per-cell replicate window, tags chunk provenance fields, and writes one RDS
+  file per chunk.
+- Added `dev/power-pilot-run.R --mode=chunk`, which builds/writes the chunk
+  manifest, runs active chunk rows, and immediately validates them with
+  `pilot_assert_chunk_outputs()`.
+- Added `lambda_scale` to the manifest schema so chunk runs do not need to
+  rediscover the signal-to-loading-scale mapping from the grid.
+- Updated the Design 66 compute ladder wording to separate preflight,
+  chunk writing, chunk-output audit, and later aggregation.
+
+Coordination:
+
+- `git fetch origin main --prune && gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url && git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared dev-log/design edits; no open PRs, recent history was
+  the expected #538 through #544 sequence, with #544 merged at `72f24154`.
+- `git worktree add -b codex/power-pilot-chunk-runner-20260623 /private/tmp/gllvmtmb-power-pilot-chunk-runner-20260623 origin/main`
+  -> clean worktree from post-#544 `origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS after fixing the new test to inspect the returned chunk-audit table
+  instead of expecting literal `TRUE`; 85 expectations.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 108 expectations.
+- `rm -rf /tmp/gllvmtmb-chunk-runner-smoke && Rscript --vanilla dev/power-pilot-run.R --mode=chunk --shard=1 --n-shards=48 --n-sim-step=1 --n-sim-cap=5 --seed-base=157 --results-dir=/tmp/gllvmtmb-chunk-runner-smoke --n-boot=0 --dry-run=true >/tmp/gllvmtmb-chunk-runner-smoke.out 2>&1 && Rscript --vanilla dev/power-pilot-run.R --mode=chunk-audit --results-dir=/tmp/gllvmtmb-chunk-runner-smoke >>/tmp/gllvmtmb-chunk-runner-smoke.out 2>&1 && cat /tmp/gllvmtmb-chunk-runner-smoke.out && find /tmp/gllvmtmb-chunk-runner-smoke -type f | sort`
+  -> PASS; wrote one real chunk RDS and one manifest CSV, then
+  `chunk-audit` validated one planned chunk output.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "mode=chunk|pilot_run_chunk_manifest|lambda_scale|chunk_rows|pilot_chunk_id|pilot_assert_chunk_outputs" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended chunk-runner coverage.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML|pilot-index\\.rds.*chunk.*writer|chunk.*writer.*pilot-index\\.rds" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no matches.
+
+What did not go smoothly:
+
+- The first focused test run failed because the new test expected
+  `pilot_assert_chunk_outputs()` to return `TRUE`; the helper correctly returns
+  an audit data frame. The assertion now checks the audit table.
+
+Not claimed:
+
+- No Totoro login, DRAC login, SLURM job, GPU check, production campaign, or
+  `n_sim = 2000` run was launched.
+- No chunk aggregator or index rebuilder for immutable chunks was added.
+- True binary probit, ordinal coverage repair, denominator/MCSE expansion, and
+  DRAC environment checks remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-runner.md`.

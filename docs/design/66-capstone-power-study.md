@@ -332,12 +332,14 @@ planned replicate count, batch seed base, and `rep_seed` range. The
 persist/status path validates the merged manifest for duplicate output
 paths, duplicate chunk paths, overlapping per-cell replicate windows,
 and overlapping seed ranges before treating the store as auditable.
-For future immutable-chunk array jobs, `--mode=chunk-audit` reads the
-written manifests and requires every planned chunk file to exist and be
-non-empty before any aggregation step proceeds. Effective per-cell seed
-blocks are separated by a fixed stride larger than the intended batch
-size after the harness family/d seed offset is applied, so same-run
-cells do not share `rep_seed` values.
+For future immutable-chunk array jobs, `--mode=chunk` runs the active
+rows in a chunk manifest and writes one RDS per planned chunk, while
+`--mode=chunk-audit` reads the written manifests and requires every
+planned chunk file to exist and be non-empty before any aggregation
+step proceeds. Effective per-cell seed blocks are separated by a fixed
+stride larger than the intended batch size after the harness family/d
+seed offset is applied, so same-run cells do not share `rep_seed`
+values.
 
 Persist the long per-replicate grid (`<cell-id>.rds`) and rebuild
 `pilot-index.rds` as a derived cache from those per-cell files. The
@@ -695,6 +697,12 @@ reimplement any of it). Entry points:
   catches duplicate output paths, duplicate chunk paths, overlapping
   per-cell replicate windows, and overlapping seed ranges before the
   store is persisted or summarized.
+- `pilot_run_chunk_manifest()` / `dev/power-pilot-run.R --mode=chunk`
+  -- run the active rows from a chunk manifest, reindex each chunk's
+  `rep` column into the planned per-cell window, add chunk provenance
+  fields, and write one immutable RDS file per planned chunk. This is
+  the future array-task writer; it does not update `pilot-index.rds` or
+  combine chunks.
 - `pilot_assert_chunk_outputs()` / `dev/power-pilot-run.R
   --mode=chunk-audit` -- validate the future immutable-chunk output
   set after array tasks finish and before aggregation. This requires

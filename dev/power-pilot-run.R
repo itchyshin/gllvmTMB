@@ -14,6 +14,8 @@
 ## Modes (one --mode=... per invocation):
 ##   preflight -- build + validate this shard's manifest and exit before
 ##              fitting; used for Totoro/DRAC manifest-parse smoke tests.
+##   chunk   -- build this shard's immutable-chunk manifest, run the active
+##              chunk rows, and write one chunk RDS per planned row.
 ##   chunk-audit -- read chunk manifests and require every planned chunk
 ##              file to exist before a future aggregation job runs.
 ##   shard   -- run one shard's cells: accumulate +n_sim_step reps toward
@@ -30,6 +32,9 @@
 ##   Rscript dev/power-pilot-run.R --mode=preflight --shard=1 --n-shards=48 \
 ##     --n-sim-step=2 --n-sim-cap=10 --seed-base=1 \
 ##     --results-dir=/tmp/pilot-smoke --n-boot=0 --output-mode=chunk
+##   Rscript dev/power-pilot-run.R --mode=chunk --shard=1 --n-shards=48 \
+##     --n-sim-step=2 --n-sim-cap=10 --seed-base=1 \
+##     --results-dir=/tmp/pilot-smoke --n-boot=0
 ##   Rscript dev/power-pilot-run.R --mode=chunk-audit \
 ##     --results-dir=/tmp/pilot-smoke
 ##   Rscript dev/power-pilot-run.R --mode=status \
@@ -180,6 +185,58 @@ if (identical(mode, "chunk-audit")) {
     "[power-pilot] chunk audit: validated %d planned chunk output(s) in %s\n",
     nrow(audit),
     results_dir
+  ))
+  quit(save = "no", status = 0L)
+}
+
+if (identical(mode, "chunk")) {
+  shard <- as.integer(arg_value("--shard", "1"))
+  n_shards <- as.integer(arg_value("--n-shards", "8"))
+  seed_base <- arg_value("--seed-base", NULL)
+  if (is.null(seed_base)) {
+    stop("--seed-base is required for --mode=chunk.")
+  }
+  seed_base <- as.integer(seed_base)
+
+  cells <- shard_cell_ids(shard, n_shards)
+  if (dry_run) {
+    cells <- utils::head(cells, 1L)
+    n_sim_step <- 1L
+    cat("[power-pilot] DRY RUN: tiny chunk step, 1 cell/shard.\n")
+  }
+  if (length(cells) == 0L) {
+    cat("[power-pilot] no cells for this chunk shard; nothing to do.\n")
+    emit_output("chunk_rows", "0")
+    emit_output("chunk_output_rows", "0")
+    emit_output("n_errored", "0")
+    quit(save = "no", status = 0L)
+  }
+
+  manifest <- pilot_build_manifest(
+    cell_ids = cells,
+    n_sim_step = n_sim_step,
+    n_sim_cap = n_sim_cap,
+    seed_base = seed_base,
+    results_dir = results_dir,
+    n_boot = n_boot,
+    shard = shard,
+    n_shards = n_shards,
+    output_mode = "chunk"
+  )
+  pilot_assert_manifest(manifest, require_unique_result_path = FALSE)
+  manifest_path <- pilot_write_manifest(manifest, results_dir, shard)
+  cat(sprintf("[power-pilot] wrote chunk manifest to %s\n", manifest_path))
+
+  report <- pilot_run_chunk_manifest(manifest, verbose = FALSE)
+  audit <- pilot_assert_chunk_outputs(manifest)
+  emit_output("chunk_rows", as.character(nrow(report)))
+  emit_output("chunk_output_rows", as.character(nrow(audit)))
+  emit_output("n_errored", as.character(sum(report$status == "error")))
+  cat(sprintf(
+    "[power-pilot] chunk shard %d/%d: wrote %d planned chunk output(s)\n",
+    shard,
+    n_shards,
+    nrow(report)
   ))
   quit(save = "no", status = 0L)
 }
@@ -489,7 +546,7 @@ if (identical(mode, "status")) {
 
 stop(sprintf(
   paste0(
-    "unknown --mode=%s (expected 'preflight', 'chunk-audit', 'shard', ",
+    "unknown --mode=%s (expected 'preflight', 'chunk', 'chunk-audit', 'shard', ",
     "'slice', or 'status')"
   ),
   mode

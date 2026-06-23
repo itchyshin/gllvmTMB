@@ -590,6 +590,41 @@ pilot_assert_manifest <- function(manifest, require_unique_result_path = TRUE) {
       stop("Duplicate pilot chunk paths in manifest: ", dup_chunk_path[[1]])
     }
   }
+  if (all(c("rep_start", "rep_end") %in% names(active))) {
+    bad_rep <- is.na(active$rep_start) |
+      is.na(active$rep_end) |
+      active$rep_start > active$rep_end
+    if (any(bad_rep)) {
+      stop(
+        "Invalid pilot replicate window for chunk_id: ",
+        active$chunk_id[which(bad_rep)[1]]
+      )
+    }
+    for (cid in unique(active$cell_id)) {
+      cell_rows <- active[active$cell_id == cid, , drop = FALSE]
+      if (nrow(cell_rows) < 2L) {
+        next
+      }
+      cell_rows <- cell_rows[
+        order(cell_rows$rep_start, cell_rows$rep_end),
+        ,
+        drop = FALSE
+      ]
+      prev_end <- cell_rows$rep_end[-nrow(cell_rows)]
+      next_start <- cell_rows$rep_start[-1L]
+      hit <- which(next_start <= prev_end)
+      if (length(hit)) {
+        stop(
+          "Overlapping pilot replicate windows for cell_id ",
+          cid,
+          ": ",
+          cell_rows$chunk_id[hit[[1]]],
+          " and ",
+          cell_rows$chunk_id[hit[[1]] + 1L]
+        )
+      }
+    }
+  }
   active <- active[
     order(active$rep_seed_min, active$rep_seed_max),
     ,
@@ -618,6 +653,62 @@ pilot_assert_manifest <- function(manifest, require_unique_result_path = TRUE) {
     }
   }
   invisible(TRUE)
+}
+
+pilot_assert_chunk_outputs <- function(manifest, require_all = TRUE) {
+  if (is.null(manifest) || !is.data.frame(manifest) || nrow(manifest) == 0L) {
+    return(data.frame())
+  }
+  required <- c("chunk_id", "cell_id", "chunk_path", "n_reps_planned")
+  missing <- setdiff(required, names(manifest))
+  if (length(missing)) {
+    stop(
+      "Pilot chunk audit missing required columns: ",
+      paste(missing, collapse = ", ")
+    )
+  }
+  pilot_assert_manifest(manifest, require_unique_result_path = FALSE)
+  active <- manifest[manifest$n_reps_planned > 0L, , drop = FALSE]
+  if (!nrow(active)) {
+    return(data.frame())
+  }
+  exists <- file.exists(active$chunk_path)
+  size_bytes <- rep(NA_real_, nrow(active))
+  if (any(exists)) {
+    size_bytes[exists] <- file.info(active$chunk_path[exists])$size
+  }
+  audit <- data.frame(
+    chunk_id = active$chunk_id,
+    cell_id = active$cell_id,
+    chunk_path = active$chunk_path,
+    n_reps_planned = as.integer(active$n_reps_planned),
+    exists = exists,
+    size_bytes = size_bytes,
+    stringsAsFactors = FALSE
+  )
+  if (isTRUE(require_all)) {
+    missing_file <- which(!audit$exists)
+    if (length(missing_file)) {
+      stop(
+        "Missing pilot chunk output: ",
+        audit$chunk_id[missing_file[[1]]],
+        " at ",
+        audit$chunk_path[missing_file[[1]]]
+      )
+    }
+    empty_file <- which(
+      audit$exists & (is.na(audit$size_bytes) | audit$size_bytes <= 0)
+    )
+    if (length(empty_file)) {
+      stop(
+        "Empty pilot chunk output: ",
+        audit$chunk_id[empty_file[[1]]],
+        " at ",
+        audit$chunk_path[empty_file[[1]]]
+      )
+    }
+  }
+  audit
 }
 
 ## Upsert a single cell row into the index (replace any existing row for

@@ -18548,3 +18548,77 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-preflight.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot chunk output audit
+
+Scope:
+
+- Added an audit layer for future immutable chunk outputs in the Design 66
+  power pilot. This is a no-fit guardrail for dependent aggregation jobs, not
+  a DRAC launch or a replacement for the current GitHub accumulated-store
+  writer.
+- Extended manifest validation to reject overlapping per-cell replicate
+  windows, in addition to duplicate chunk IDs/paths and overlapping seed
+  ranges.
+- Added `pilot_assert_chunk_outputs()` and
+  `dev/power-pilot-run.R --mode=chunk-audit`, which read written manifests and
+  require every planned active chunk file to exist and be non-empty.
+- Updated Design 66 wording so the mid-term compute plan now distinguishes:
+  preflight destination validation, chunk output audit, and later aggregation.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url`
+  -> PASS before shared dev-log/design edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS; recent history was the expected #538 through #543 sequence, with
+  #543 merged at `366441ed`.
+- `git worktree add -b codex/power-pilot-chunk-aggregate-20260623 /private/tmp/gllvmtmb-power-pilot-chunk-aggregate-20260623 origin/main`
+  -> clean worktree from post-#543 `origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS after suppressing the expected `system2()` warning in the intentional
+  CLI failure test; 57 expectations, 0 warnings/skips.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 80 expectations.
+- `rm -rf /tmp/gllvmtmb-chunk-audit-missing && Rscript --vanilla dev/power-pilot-run.R --mode=preflight --shard=1 --n-shards=1 --n-sim-step=2 --n-sim-cap=10 --seed-base=154 --results-dir=/tmp/gllvmtmb-chunk-audit-missing --n-boot=0 --output-mode=chunk >/tmp/gllvmtmb-chunk-audit-preflight.out 2>&1 && set +e; Rscript --vanilla dev/power-pilot-run.R --mode=chunk-audit --results-dir=/tmp/gllvmtmb-chunk-audit-missing >/tmp/gllvmtmb-chunk-audit-missing.out 2>&1; audit_status=$?; set -e; cat /tmp/gllvmtmb-chunk-audit-preflight.out; cat /tmp/gllvmtmb-chunk-audit-missing.out; echo "chunk_audit_exit=$audit_status"; test "$audit_status" -ne 0; rg -q "Missing pilot chunk output" /tmp/gllvmtmb-chunk-audit-missing.out`
+  -> PASS; preflight wrote 48 planned chunk rows and chunk-audit exited 1
+  with `Missing pilot chunk output`.
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "mode=chunk-audit|pilot_assert_chunk_outputs|Overlapping pilot replicate windows|Missing pilot chunk output|Empty pilot chunk output|found no manifest rows" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended chunk-audit coverage.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no matches.
+
+What did not go smoothly:
+
+- A manual shell smoke first failed because `status` is a read-only zsh
+  variable; rerun with `audit_status` passed. This was shell syntax, not a
+  package failure.
+- The first missing-manifest CLI test emitted a `system2()` warning for the
+  expected nonzero exit; the test now suppresses that expected warning and
+  checks the status/message directly.
+
+Not claimed:
+
+- No fits, simulations, Totoro login, DRAC login, SLURM job, GPU check, or
+  `n_sim = 2000` production run was launched.
+- No chunk writer or result aggregator was added; this slice only validates
+  the manifest and the presence/non-empty state of planned chunk files.
+- True binary probit, ordinal coverage repair, MCSE denominator expansion,
+  and DRAC environment checks remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-output-audit.md`.

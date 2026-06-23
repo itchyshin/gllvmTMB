@@ -26,14 +26,15 @@ question in section 12).
 
 **2026-06-23 scaling gate:** the current pilot is diagnostic only. Do
 not launch a broad Totoro/DRAC campaign or promote `CI-08` / `CI-10`
-until the pilot audit resolves four issues: the `binomial_probit` label
-must match the actual link/DGP, ordinal-probit cells must produce
-primary coverage rows or be excluded from the confirmatory core,
-`signal = 0` diagnostics must not be described as Type-I error for
-positive `Sigma_unit_diag` targets, and all aggregates must report MCSE
-with explicit fit-health denominators. The first compute step after
-that audit is an immutable-chunk smoke ladder, not the full `n_sim =
-2000` grid.
+until the pilot audit and metric-repair slices resolve the remaining
+issues: the binary logit harness must not be read as true
+`binomial_probit` evidence, ordinal-probit cells must produce primary
+coverage rows or be excluded from the confirmatory core, `signal = 0`
+diagnostics must not be described as Type-I error for positive
+`Sigma_unit_diag` targets, and decision aggregates must report MCSE with
+explicit fit-health denominators. The first compute step after that
+audit is an immutable-chunk smoke ladder, not the full `n_sim = 2000`
+grid.
 
 **Backed by (verified on origin/main):** PR #364 (merged 2026-05-31,
 `fix(m3): coverage gate keys on Sigma_unit_diag bootstrap, not psi
@@ -485,14 +486,15 @@ provides the pieces. Explicit reuse map (verified on origin/main):
 |---|---|---|
 | DGP / truth | `m3_make_truth()`, `m3_simulate_response()` | extend to phylo/spatial/animal between-unit structure (M3 currently builds the within-trait `Sigma_unit` truth; the RE-source axis needs a between-unit covariance `K` injected) |
 | Cell runner | `m3_run_cell()` (targets, n_boot, seeds) | parametrize the RE source/mode + signal-strength axes |
-| Estimands + gate | `coverage_primary` / `primary_gate_status` on `Sigma_unit_diag` bootstrap (PR #364) | add a power/Type-I decision rule (reject "structure present") -- the one genuinely new performance measure |
+| Estimands + gate | `coverage_primary` / `primary_gate_status` on `Sigma_unit_diag` bootstrap (PR #364) | add a target-aligned detection / false-positive decision rule (reject "structure present") -- the one genuinely new performance measure |
 | Signal knobs | `--lambda-scale`, `--psi-scale`, `--phi`, `--n-units`, `--n-traits`, `--d` (precompute CLI) | wire a signal-strength factor (incl. the 0 / null level for H4) |
 | Convergence filtering | `pd_hessian_rate`, `sdreport_ok_rate`, `boot_fail_rate`, restart cols | none (reuse) |
 | Persistence | `*-grid.rds` + `*-summary.rds` writers | none (reuse) |
 | Dispatch | `.github/workflows/m3-production-grid.yaml` (matrix shards) | replace GHA matrix with a cluster array job for production; keep GHA for pilot + aggregation |
 
 The new code surface is: (a) a between-unit-`K` DGP extension, (b) a
-signal-strength + null factor, (c) a power/Type-I decision rule, (d) a
+signal-strength + null factor, (c) a target-aligned detection /
+false-positive decision rule, (d) a
 cluster array-job driver. None of it touches the engine lane.
 
 **Build it test-first** (the repo's TDD discipline): a smoke at n_sim =
@@ -636,8 +638,9 @@ direct consequence for the grid and the compute.
   0 / 0.2 / 0.5 (resolves Q-g).** "Signal" is operationalized as the
   **between-unit (latent) variance share of total latent variance**:
   `share = trace(Lambda Lambda^T) / (trace(Lambda Lambda^T) + trace(Psi))`
-  per trait, in expectation. The three levels are **0.0 (null;
-  Type-I / coverage-under-null), 0.2 (moderate), 0.5 (strong)**. In the
+  per trait, in expectation. The three levels are **0.0 (signal-zero
+  coverage diagnostic for the positive `Sigma_unit_diag` target, not
+  Type-I error), 0.2 (moderate), 0.5 (strong)**. In the
   M3 DGP this maps to `lambda_scale` via
   `lambda_scale = sqrt( (s/(1-s)) / (d * 0.75) )` (derivation in
   `dev/m3-pilot-launch.R::pilot_signal_to_lambda_scale`), holding the
@@ -663,8 +666,9 @@ reimplement any of it). Entry points:
   that errors is logged + marked failed + skipped, never crashing the
   batch), and ASCII-logging.
 - `pilot_status(results_dir)` -- summarizes done / pending / failed and
-  the preliminary 94%/95% coverage (signal > 0) and null/Type-I proxy
-  (signal = 0) numbers available so far.
+  the preliminary 94%/95% coverage (signal > 0) plus the signal-zero
+  coverage diagnostic (signal = 0) available so far. The signal-zero
+  diagnostic is not a Type-I error or power claim for `Sigma_unit_diag`.
 
 Phase 2 (HPC, n_sim = 2000, the full core grid + the probit-link swap)
 reuses the same harness with a cluster array-job driver (section 9); the

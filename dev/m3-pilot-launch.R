@@ -92,14 +92,21 @@ PILOT_N_TRAITS <- 5L
 PILOT_CORE4 <- data.frame(
   family_label = c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit"),
   harness_family = c("gaussian", "nbinom2", "binomial", "ordinal_probit"),
+  evidence_family = c(
+    "gaussian",
+    "nbinom2",
+    "binomial_logit_harness",
+    "ordinal_probit"
+  ),
   link_intended = c("identity", "log", "probit", "probit"),
   link_harness = c("identity", "log", "logit", "probit"),
   stringsAsFactors = FALSE
 )
 
 ## Signal axis (Design 66 locked decision): signal = between-unit
-## variance share of total latent variance. 0.0 (null, for Type-I /
-## coverage-under-null) / 0.2 (moderate) / 0.5 (strong).
+## variance share of total latent variance. 0.0 is a signal-zero coverage
+## diagnostic for the positive Sigma_unit_diag target, not a Type-I cell;
+## 0.2 is moderate and 0.5 is strong.
 PILOT_SIGNAL_LEVELS <- c(0.0, 0.2, 0.5)
 
 ## Latent rank and unit-count axes (small + large), Design 66 sec. 4.2.
@@ -178,6 +185,7 @@ pilot_grid <- function() {
       "n_units",
       "signal",
       "lambda_scale",
+      "evidence_family",
       "link_intended",
       "link_harness",
       "seed_base"
@@ -460,14 +468,14 @@ run_next_pilot_batch <- function(
 ## ---- Status helper ----------------------------------------------------
 
 ## pilot_status: summarize done / pending / failed across the pilot grid,
-## plus preliminary coverage / power numbers available so far.
+## plus preliminary coverage / zero-exclusion diagnostics available so far.
 ##
 ## Returns (invisibly) a list with `$counts`, `$cells` (the per-cell
 ## index joined to the grid), and `$coverage` / `$power` summaries. Also
 ## prints a compact ASCII report. "Coverage" cells are signal > 0 (the
-## primary Sigma_unit_diag coverage claim); "power/Type-I" reporting uses
-## the signal = 0 null cells (coverage-under-null is the Type-I proxy --
-## a full reject-rate power rule is a Phase-2 addition, Design 66 sec. 9).
+## primary Sigma_unit_diag coverage claim). Signal == 0 cells are reported
+## only as signal-zero coverage diagnostics because the Sigma_unit_diag target
+## remains positive; they are not Type-I error or power cells.
 pilot_status <- function(
   results_dir = PILOT_RESULTS_DIR_DEFAULT,
   gate_94 = 0.94,
@@ -485,7 +493,14 @@ pilot_status <- function(
 
   ## Join grid <- index for the per-cell view.
   cells <- merge(
-    grid[, c("cell_id", "family_label", "d", "n_units", "signal")],
+    grid[, c(
+      "cell_id",
+      "family_label",
+      "evidence_family",
+      "d",
+      "n_units",
+      "signal"
+    )],
     idx[, c(
       "cell_id",
       "status",
@@ -522,7 +537,7 @@ pilot_status <- function(
     ,
     drop = FALSE
   ]
-  ## Null cells (signal == 0): coverage-under-null = Type-I proxy.
+  ## Signal-zero cells: coverage on the positive Sigma_unit_diag target.
   null_cells <- cells[
     cells$status == "done" &
       cells$signal == 0 &
@@ -566,12 +581,12 @@ pilot_status <- function(
   }
   if (nrow(null_cells)) {
     cat(sprintf(
-      "preliminary null/Type-I proxy (signal=0, %d cells): mean coverage-under-null=%.3f\n",
+      "preliminary signal-zero coverage diagnostic (signal=0, %d cells): mean coverage=%.3f\n",
       nrow(null_cells),
       mean(null_cells$coverage_primary)
     ))
   } else {
-    cat("preliminary null/Type-I proxy (signal=0): <no done cells yet>\n")
+    cat("preliminary signal-zero coverage diagnostic (signal=0): <no done cells yet>\n")
   }
 
   invisible(list(
@@ -1027,7 +1042,14 @@ pilot_accum_status <- function(
   idx <- pilot_load_index(results_dir)
 
   cells <- merge(
-    grid[, c("cell_id", "family_label", "d", "n_units", "signal")],
+    grid[, c(
+      "cell_id",
+      "family_label",
+      "evidence_family",
+      "d",
+      "n_units",
+      "signal"
+    )],
     idx[, c(
       "cell_id",
       "status",
@@ -1102,12 +1124,12 @@ pilot_accum_status <- function(
   }
   if (nrow(null_cells)) {
     cat(sprintf(
-      "null/Type-I proxy (signal=0, %d cells): mean coverage-under-null=%.3f\n",
+      "signal-zero coverage diagnostic (signal=0, %d cells): mean coverage=%.3f\n",
       nrow(null_cells),
       mean(null_cells$coverage_primary)
     ))
   } else {
-    cat("null/Type-I proxy (signal=0): <no reps yet>\n")
+    cat("signal-zero coverage diagnostic (signal=0): <no reps yet>\n")
   }
 
   invisible(list(

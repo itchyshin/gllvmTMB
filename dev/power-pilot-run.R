@@ -238,22 +238,99 @@ if (identical(mode, "status")) {
   status_out <- arg_value("--status-out", NULL)
   if (!is.null(status_out)) {
     cells <- st$cells
+    if (!is.null(report_df) && nrow(report_df)) {
+      report_cols <- intersect(
+        c(
+          "cell_id",
+          "evidence_family",
+          "coverage_eligible_n",
+          "coverage_mcse",
+          "fit_failure_rate",
+          "nonpd_rate",
+          "sdreport_ok_rate",
+          "boot_fail_rate"
+        ),
+        names(report_df)
+      )
+      cells <- merge(
+        cells,
+        report_df[, report_cols, drop = FALSE],
+        by = "cell_id",
+        all.x = TRUE
+      )
+      if ("evidence_family.y" %in% names(cells)) {
+        cells$evidence_family <- ifelse(
+          !is.na(cells$evidence_family.y),
+          cells$evidence_family.y,
+          cells$evidence_family.x
+        )
+      } else if ("evidence_family.x" %in% names(cells)) {
+        cells$evidence_family <- cells$evidence_family.x
+      }
+    }
     cells <- cells[order(cells$family_label, cells$d, cells$n_units, cells$signal), ]
     lines <- c(
-      "| cell | n_sim | complete | coverage_primary | >=94% | >=95% |",
-      "|------|------:|:--------:|-----------------:|:-----:|:-----:|"
+      paste0(
+        "| cell | evidence | n_sim | complete | ci_rows | coverage_primary |",
+        " mcse | >=94% | >=95% | fit-fail | nonPD | sdreport | boot-fail |"
+      ),
+      paste0(
+        "|------|----------|------:|:--------:|--------:|-----------------:|",
+        "-----:|:-----:|:-----:|---------:|------:|---------:|----------:|"
+      )
     )
     fmt_cov <- function(x) ifelse(is.na(x), "-", formatC(x, format = "f", digits = 3))
+    fmt_int <- function(x) ifelse(is.na(x), "-", as.character(as.integer(x)))
+    fmt_pct <- function(x) ifelse(is.na(x), "-", sprintf("%.0f%%", 100 * x))
     fmt_lgl <- function(x) ifelse(is.na(x), "-", ifelse(x, "Y", "n"))
     for (i in seq_len(nrow(cells))) {
       lines <- c(lines, sprintf(
-        "| %s | %d | %s | %s | %s | %s |",
+        paste0(
+          "| %s | %s | %d | %s | %s | %s | %s | %s | %s |",
+          " %s | %s | %s | %s |"
+        ),
         cells$cell_id[i],
+        if ("evidence_family" %in% names(cells) &&
+          !is.na(cells$evidence_family[i])) {
+          cells$evidence_family[i]
+        } else {
+          cells$family_label[i]
+        },
         as.integer(cells$n_sim[i]),
         if (isTRUE(cells$complete[i])) "Y" else "n",
+        if ("coverage_eligible_n" %in% names(cells)) {
+          fmt_int(cells$coverage_eligible_n[i])
+        } else {
+          "-"
+        },
         fmt_cov(cells$coverage_primary[i]),
+        if ("coverage_mcse" %in% names(cells)) {
+          fmt_cov(cells$coverage_mcse[i])
+        } else {
+          "-"
+        },
         fmt_lgl(cells$passes_94[i]),
-        fmt_lgl(cells$passes_95[i])
+        fmt_lgl(cells$passes_95[i]),
+        if ("fit_failure_rate" %in% names(cells)) {
+          fmt_pct(cells$fit_failure_rate[i])
+        } else {
+          "-"
+        },
+        if ("nonpd_rate" %in% names(cells)) {
+          fmt_pct(cells$nonpd_rate[i])
+        } else {
+          "-"
+        },
+        if ("sdreport_ok_rate" %in% names(cells)) {
+          fmt_pct(cells$sdreport_ok_rate[i])
+        } else {
+          "-"
+        },
+        if ("boot_fail_rate" %in% names(cells)) {
+          fmt_pct(cells$boot_fail_rate[i])
+        } else {
+          "-"
+        }
       ))
     }
     ## Append the ISSUES block (flagged cells with failure / non-PD /

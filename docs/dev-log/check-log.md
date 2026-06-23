@@ -18349,3 +18349,63 @@ Not claimed:
 - No Totoro, DRAC, SLURM, or GPU check was attempted.
 - No package behavior, workflow, validation register, README, NEWS, article,
   roxygen, generated Rd, or pkgdown navigation changed.
+
+## 2026-06-23 (Codex / Ada) — Power pilot metric repair
+
+Scope:
+
+- Repaired reporting semantics only. No likelihood, DGP, estimator, bootstrap
+  interval, workflow volume, or compute launch changed.
+- Added `evidence_family = "binomial_logit_harness"` while preserving existing
+  `binomial_probit-*` cell IDs.
+- Added explicit denominators and MCSE columns to `pilot_collect()` output:
+  attempted fits, converged fits, optimizer-converged fits, PD-Hessian fits,
+  sdreport-usable fits, bootstrap attempts, coverage-eligible rows,
+  coverage MCSE, zero-exclusion denominator/MCSE, and failure-rate MCSEs.
+- Reworded signal-zero rows as coverage diagnostics, not Type-I/power.
+- Updated the workflow status table to show MCSE, denominator, evidence label,
+  and fit-health rates when `pilot_collect()` is available.
+
+Coordination:
+
+- `git worktree add -b codex/power-pilot-metric-repair-20260623 /private/tmp/gllvmtmb-power-pilot-metric-repair-20260623 origin/main`
+  -> clean worktree from #540 merge commit `850963d9`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url --limit 20`
+  -> PASS before shared dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent work is #537-#540 plus `origin/power-pilot-results` run 144.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-report.R")); invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-report.R")); cat("parse ok\n")'`
+  -> PASS.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-report.R")'`
+  -> PASS; 23 expectations.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-report|m3-grid-summary")'`
+  -> PASS; 23 passed, 13 existing heavy M3 summary tests skipped behind
+  `GLLVMTMB_HEAVY_TESTS`.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-launch.R"); source("dev/m3-pilot-report.R"); df <- pilot_collect(results_dirs = "/tmp/pilot-run144-metric-repair/dev/m3-pilot-results"); ...'`
+  -> PASS on archived run-144 results; 48 cells collected and new columns
+  populated.
+- `Rscript --vanilla dev/power-pilot-run.R --mode=status --results-dir=/tmp/pilot-run144-metric-repair/dev/m3-pilot-results --n-sim-cap=10000 --status-out=/tmp/pilot-status-metric-repair.md`
+  -> PASS on archived run-144 results; status output used signal-zero
+  diagnostic wording and wrote the richer board table.
+- One-cell status smoke using `/tmp/pilot-one-cell-store`
+  -> PASS; all binomial rows, including cells without stored result rows,
+  displayed `binomial_logit_harness`.
+- `rg -n "Type-I proxy|coverage-under-null|null/Type-I|power/Type-I" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS; no matches after the repair.
+- `git diff --check`
+  -> PASS.
+
+Not claimed:
+
+- True binary probit is still not implemented.
+- Ordinal-probit coverage is still unresolved.
+- No durable run/session manifest was added.
+- No simulation, Totoro check, DRAC login, SLURM job, or GPU check was run.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-metric-repair.md`.

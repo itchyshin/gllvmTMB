@@ -349,10 +349,12 @@ Persist the long per-replicate grid (`<cell-id>.rds`) and rebuild
 `pilot-index.rds` as a derived cache from those per-cell files. The
 manifest plus per-cell grids, not the shared index, are the audit trail
 for every failed fit, seed, and CI (Williams et al. 2024 transparency
-items; Design 42 sec.1). The first Totoro/DRAC smoke test uses
-`dev/power-pilot-run.R --mode=preflight --output-mode=chunk`: it parses
-the grid, writes the manifest, validates unique immutable chunk
-destinations, and exits before fitting.
+items; Design 42 sec.1). The first Totoro/DRAC smoke step is
+manifest-only: `dev/power-pilot-smoke.sh` runs with
+`SMOKE_STAGE=manifest`, or `dev/power-pilot-slurm-smoke.sh` writes and
+optionally submits the same manifest-only smoke as a SLURM job. It
+parses the fixed audit-mini grid, writes the manifest, validates unique
+immutable chunk destinations, and exits before fitting.
 
 ---
 
@@ -727,6 +729,16 @@ reimplement any of it). Entry points:
   The wrapper sets `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, and
   `MKL_NUM_THREADS` to 1 by default and still does not submit SLURM
   work, use GPUs, mutate `pilot-index.rds`, or start the production
+  campaign.
+- `dev/power-pilot-slurm-smoke.sh` -- write, validate, or submit a
+  conservative SLURM wrapper around `dev/power-pilot-smoke.sh`. The
+  default `SLURM_ACTION=test` calls `sbatch --test-only`; actual
+  submission requires `SLURM_ACTION=submit`. The default
+  `SLURM_STAGE=manifest` is the first DRAC-safe smoke and launches no
+  fits. Fit-running stages such as `SLURM_STAGE=all` are only for
+  scheduled compute jobs after the manifest smoke passes. The wrapper is
+  CPU-only, loads R and Julia modules explicitly, sets BLAS/OpenMP
+  threads to one, and does not start the production `n_sim = 2000`
   campaign.
 - `pilot_run_chunk_manifest()` / `dev/power-pilot-run.R --mode=chunk`
   -- run the active rows from a chunk manifest, reindex each chunk's

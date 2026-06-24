@@ -254,41 +254,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   groupings <- vapply(parsed$covstructs, function(cs) deparse(cs$group), character(1))
   kinds     <- vapply(parsed$covstructs, function(cs) cs$kind, character(1))
 
-  ## ---- Design 73 `lv = ~ ...` reservation guard -------------------------
-  ## The parser currently preserves unknown term-local arguments in `extra`.
-  ## Until the predictor-informed latent-score engine is implemented, fail
-  ## before any fit can silently ignore an `lv` formula.
-  lv_covstruct_idx <- which(vapply(parsed$covstructs, function(cs) {
-    !is.null(cs$extra[["lv"]])
-  }, logical(1L)))
-  if (length(lv_covstruct_idx) > 0L) {
-    lv_term_label <- vapply(parsed$covstructs[lv_covstruct_idx], function(cs) {
-      if (identical(cs$kind, "rr")) {
-        mode <- cs$extra[[".kernel_mode"]]
-        if (!is.null(mode) && identical(as.character(mode), "latent")) {
-          return("kernel_latent()")
-        }
-        return("latent()")
-      }
-      if (identical(cs$kind, "phylo_rr")) {
-        mode <- cs$extra[[".kernel_mode"]]
-        if (!is.null(mode) && identical(as.character(mode), "latent")) {
-          return("kernel_latent()")
-        }
-        return("phylo_latent()")
-      }
-      if (identical(cs$kind, "spde")) {
-        return("spatial_latent()")
-      }
-      paste0(cs$kind, "()")
-    }, character(1L))
-    lv_term_label <- paste(unique(lv_term_label), collapse = ", ")
-    cli::cli_abort(c(
-      "{.arg lv} is reserved for Design 73 predictor-informed latent scores but is not implemented yet.",
-      "i" = "Term(s): {lv_term_label}.",
-      "i" = "Current releases would otherwise ignore {.arg lv}; this guard prevents accidental unmodelled score predictors.",
-      ">" = "Fit the ordinary latent model without {.arg lv}, or wait for validation rows {.code FG-18}, {.code RE-13}, and {.code LV-01} to move."
-    ))
+  ## ---- Design 73 `lv = ~ ...` parser/API preflight -----------------------
+  ## Validate and prepare the future unit-level X_lv_B design, then stop before
+  ## TMB construction. This keeps the reserved surface fail-loud while proving
+  ## the parser contract for the next implementation slice.
+  lv_setup <- gll_prepare_lv_predictor_setup(
+    parsed = parsed,
+    data = data,
+    trait = trait,
+    site = site,
+    family_id_vec = family_id_vec,
+    REML = REML
+  )
+  if (isTRUE(lv_setup$enabled)) {
+    gll_abort_lv_not_implemented(lv_setup)
   }
 
   ## ---- Design 65 C3.2 two-Psi identifiability guardrail -----------------

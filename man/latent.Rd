@@ -4,7 +4,7 @@
 \alias{latent}
 \title{Latent-factor (reduced-rank) random effect: \code{latent(0 + trait | g, d = K)}}
 \usage{
-latent(formula, d = 1, unique = TRUE, common = FALSE)
+latent(formula, d = 1, unique = TRUE, common = FALSE, lv = NULL)
 }
 \arguments{
 \item{formula}{\code{0 + trait | g} style formula (LHS is the response
@@ -22,6 +22,10 @@ argument name \code{residual} is retained as a soft-deprecated alias.}
 \eqn{\boldsymbol\Psi} variance per trait. \code{TRUE} ties the default ordinary
 diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 traits. Only applies when \code{unique = TRUE}.}
+
+\item{lv}{Reserved one-sided formula for Design 73 predictor-informed latent
+score means. Current releases validate the parser surface and then stop
+before fitting; no runtime support is implemented yet.}
 }
 \value{
 A formula marker; never evaluated.

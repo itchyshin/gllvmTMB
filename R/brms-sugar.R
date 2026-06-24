@@ -478,6 +478,9 @@ meta <- function(value, sampling_var) {
 #'   \eqn{\boldsymbol\Psi} variance per trait. `TRUE` ties the default ordinary
 #'   diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 #'   traits. Only applies when `unique = TRUE`.
+#' @param lv Reserved one-sided formula for Design 73 predictor-informed latent
+#'   score means. Current releases validate the parser surface and then stop
+#'   before fitting; no runtime support is implemented yet.
 #' @return A formula marker; never evaluated.
 #' @seealso [unique()], [phylo_latent()], [diag_re], [extract_Sigma()].
 #' @examples
@@ -496,7 +499,7 @@ meta <- function(value, sampling_var) {
 #' extract_Sigma(fit)
 #' }
 #' @export
-latent <- function(formula, d = 1, unique = TRUE, common = FALSE) {
+latent <- function(formula, d = 1, unique = TRUE, common = FALSE, lv = NULL) {
   invisible(NULL)
 }
 
@@ -2094,6 +2097,18 @@ rewrite_canonical_aliases <- function(formula) {
     }
     args[nms %in% keep & nzchar(nms)]
   }
+  .has_named_arg <- function(e, arg) {
+    nm <- names(e)
+    !is.null(nm) && any(nm == arg, na.rm = TRUE)
+  }
+  .abort_unsupported_lv_keyword <- function(fn) {
+    cli::cli_abort(c(
+      "{.arg lv} is reserved for ordinary {.fn latent} only.",
+      "x" = "{.fn {fn}} does not support predictor-informed latent-score means.",
+      "i" = "Design 73 C1 is limited to ordinary Gaussian unit-tier {.code latent(..., lv = ~ x)}.",
+      ">" = "Remove {.arg lv} from {.fn {fn}} until validation row {.code LV-07} moves."
+    ))
+  }
   .meta_type <- function(e, fn) {
     nm <- names(e)
     type_idx <- if (is.null(nm)) integer(0L) else which(nm == "type")
@@ -2194,6 +2209,42 @@ rewrite_canonical_aliases <- function(formula) {
   rewrite <- function(e) {
     if (is.call(e)) {
       fn <- as.character(e[[1L]])
+      if (
+        !identical(fn, "latent") &&
+          .has_named_arg(e, "lv") &&
+          fn %in%
+            c(
+              "unique",
+              "diag",
+              "indep",
+              "dep",
+              "phylo",
+              "gr",
+              "phylo_scalar",
+              "phylo_unique",
+              "phylo_indep",
+              "phylo_latent",
+              "phylo_dep",
+              "animal_scalar",
+              "animal_unique",
+              "animal_indep",
+              "animal_latent",
+              "animal_dep",
+              "spatial",
+              "spatial_scalar",
+              "spatial_unique",
+              "spatial_indep",
+              "spatial_latent",
+              "spatial_dep",
+              "spde",
+              "kernel_latent",
+              "kernel_unique",
+              "kernel_indep",
+              "kernel_dep"
+            )
+      ) {
+        .abort_unsupported_lv_keyword(fn)
+      }
       ## `spatial(formula, mode = ..., mesh = ..., coords = ..., d = ...)`
       ## -> one of spatial_scalar / spatial_unique / spatial_indep /
       ## spatial_latent / spatial_dep based on (LHS, mode). Design 07
@@ -2791,6 +2842,13 @@ rewrite_canonical_aliases <- function(formula) {
             if (is.null(d_arg)) {
               d_arg <- 1L
             }
+            if (.has_named_arg(e, "lv")) {
+              cli::cli_abort(c(
+                "{.arg lv} cannot yet be combined with augmented ordinary {.fn latent} random-regression syntax.",
+                "x" = "Design 73 C1 requires an intercept-only latent block.",
+                ">" = "Use {.code latent(0 + trait | unit, d = K, lv = ~ x)} without an augmented LHS."
+              ))
+            }
             return(as.call(c(
               list(as.name("rr"), bar),
               list(
@@ -2952,6 +3010,10 @@ rewrite_canonical_aliases <- function(formula) {
             if (any(drop_args)) {
               new_call <- new_call[!drop_args]
             }
+          }
+          if (.has_named_arg(new_call, "lv")) {
+            new_call[["lv_formula"]] <- new_call[["lv"]]
+            new_call[["lv"]] <- NULL
           }
 
           if (isFALSE(unique_arg) && isTRUE(common_arg)) {

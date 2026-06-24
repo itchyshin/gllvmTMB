@@ -35,10 +35,11 @@ fit-health denominators for the corrected estimands.
 Design 73 adds a new predictor-informed latent-score lane:
 `latent(..., lv = ~ x)`. This is a major future capability, but it is
 not live. The validation register records `FG-18`, `RE-13`, `EXT-31`,
-and `LV-01` through `LV-07` as blocked/design rows until parser, TMB,
-extractor, and Gaussian recovery evidence land. The first target is
-ordinary Gaussian unit-tier `latent()` only; non-Gaussian, tier-expanded,
-structured-source, and Julia bridge claims remain gated.
+and `LV-01` through `LV-07` as blocked/design rows. Current code only
+guards the reserved surface against silent use; parser acceptance, TMB,
+extractor, and Gaussian recovery evidence still have to land. The first
+target is ordinary Gaussian unit-tier `latent()` only; non-Gaussian,
+tier-expanded, structured-source, and Julia bridge claims remain gated.
 
 ## Bottom Line
 
@@ -124,7 +125,7 @@ n_traits` is valid and tested, while `d > n_traits` aborts.
 | Interval coverage | CI-08 / CI-10 remain separate from point recovery and must not be implied by slope examples. | Keep slope articles point-estimate/recovery framed until coverage gates pass. |
 | Delta / hurdle covariance | Two response scales make a single latent residual or slope covariance undefined. | Derivation first; no article or runtime admission in this slice. |
 | Ordinary behavioural random regression | The Gaussian Appendix-B-style target is now public as the individual-level article; broader non-Gaussian augmented `unique()` support remains guarded. | Decide whether non-Gaussian augmented `unique()` should stay guarded or get a separate admission grid. |
-| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is now the source-of-truth spec, but there is no parser, TMB, extractor, or recovery evidence yet. | Start with a parser/API PR for ordinary Gaussian unit-tier support, then TMB, extractor, and Gaussian recovery PRs. |
+| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is the source-of-truth spec, and a fail-loud guard now prevents silent ignored `lv` formulas. There is still no accepted parser surface, TMB path, extractor, or recovery evidence. | Start with the real parser/API PR for ordinary Gaussian unit-tier support, then TMB, extractor, and Gaussian recovery PRs. |
 
 ## Status-Scan Handles
 

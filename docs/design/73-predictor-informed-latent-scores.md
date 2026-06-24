@@ -1,6 +1,7 @@
 # Design 73 -- Predictor-Informed Latent Scores
 
-**Status:** design/spec only, no parser or TMB runtime support yet.
+**Status:** design/spec plus fail-loud runtime guard only; no accepted
+parser surface or TMB model support yet.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
@@ -154,6 +155,9 @@ navigation.
 
 ### 2. Parser/API PR
 
+- Guard slice (landed first): if parsed term metadata contains `lv`, abort
+  before fitting so current releases cannot silently ignore score
+  predictors.
 - Add `lv = NULL` to `latent()`.
 - Store `extra$lv_formula` only on the rewritten reduced-rank term,
   never on the auto-added diagonal `Psi` companion.

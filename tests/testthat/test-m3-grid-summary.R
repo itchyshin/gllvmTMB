@@ -283,6 +283,28 @@ test_that("M3 stress register can include Gaussian and Poisson controls", {
   expect_true(all(sim$data$value >= 0))
 })
 
+test_that("M3 binomial-probit truth uses probit link and zero binary psi", {
+  skip_if_not_heavy()
+  source_m3_grid()
+
+  truth <- m3_sample_truth(
+    "binomial_probit",
+    d = 1L,
+    seed = 11L,
+    n_units = 40L,
+    n_traits = 4L
+  )
+  sim <- m3_simulate_response(truth)
+
+  expect_true(all(sim$row_family == "binomial_probit"))
+  expect_true(all(truth$psi_effective == 0))
+  expect_true(all(sim$data$value %in% c(0, 1)))
+
+  eta <- as.numeric(truth$Z %*% t(truth$Lambda))
+  expect_true(all(stats::pnorm(eta) >= 0))
+  expect_true(all(stats::pnorm(eta) <= 1))
+})
+
 test_that("M3 NB2 start probe configs are bounded and labelled", {
   skip_if_not_heavy()
   source_m3_grid()

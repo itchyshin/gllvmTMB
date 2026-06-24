@@ -27,12 +27,12 @@ question in section 12).
 **2026-06-23 scaling gate:** the current pilot is diagnostic only. Do
 not launch a broad Totoro/DRAC campaign or promote `CI-08` / `CI-10`
 until the pilot audit and metric-repair slices resolve the remaining
-issues: the binary logit harness must not be read as true
-`binomial_probit` evidence, ordinal-probit cells must produce primary
-coverage rows or be excluded from the confirmatory core, `signal = 0`
-diagnostics must not be described as Type-I error for positive
-`Sigma_unit_diag` targets, and decision aggregates must report MCSE with
-explicit fit-health denominators. The first compute step after that
+issues: pre-2026-06-24 binary logit-harness artifacts must not be read
+as true `binomial_probit` evidence, ordinal-probit cells must produce
+primary coverage rows or be excluded from the confirmatory core,
+`signal = 0` diagnostics must not be described as Type-I error for
+positive `Sigma_unit_diag` targets, and decision aggregates must report
+MCSE with explicit fit-health denominators. The first compute step after that
 audit is an immutable-chunk smoke ladder, not the full `n_sim = 2000`
 grid.
 
@@ -657,20 +657,15 @@ direct consequence for the grid and the compute.
   (CI-10) are the Tier-1 family-completion EXTENSION (section 4.3), not
   the core. nbinom1 (FAM-07) stays out (review-branch-wired).
 
-  *Pilot harness note (binomial link).* The validated `m3_run_cell`
-  harness on origin/main realizes "binomial" with the LOGIT link in
-  both the DGP (`plogis`) and the fit (`stats::binomial()`); there is no
-  binomial(probit) path in the cell runner yet. The Phase-1 PILOT
-  therefore validates the binomial coverage path via the existing logit
-  harness and DEFERS the one-line probit-link swap to the Phase-2 core
-  grid (this section already names binomial-probit as the intended core
-  family; section 4.2). The pilot grid records the intended link
-  (`link_intended = "probit"`) alongside the harness link
-  (`link_harness = "logit"`) for traceability. Wiring probit into
-  `m3_run_cell` (DGP `pnorm` + `binomial(link = "probit")`) is a small,
-  bounded Phase-2 prerequisite, tracked against this decision -- it is
-  deliberately NOT done in the pilot to keep the driver a thin reuse of
-  the validated harness rather than a DGP modification.
+  *Pilot harness note (binomial link).* The current `m3_run_cell`
+  harness has a true `binomial_probit` path: the DGP uses `pnorm()` and
+  the fit uses `stats::binomial(link = "probit")`. Older Phase-1 pilot
+  artifacts, including the first fir scheduled smoke jobs recorded on
+  2026-06-24, used the existing binary LOGIT harness behind
+  `binomial_probit` cell IDs and saved
+  `evidence_family = "binomial_logit_harness"` for traceability. Those
+  older artifacts remain scheduler/plumbing evidence only and must not
+  be reinterpreted as true binomial-probit validation evidence.
 
 - **L-g (signal parametrization) -- between-unit variance share; levels
   0 / 0.2 / 0.5 (resolves Q-g).** "Signal" is operationalized as the
@@ -714,13 +709,12 @@ reimplement any of it). Entry points:
   store is persisted or summarized.
 - `pilot_audit_mini_cell_ids()` / `dev/power-pilot-run.R
   --mode=audit-mini` -- write a manifest-only four-cell smoke for
-  gaussian, nbinom2, the current `binomial_probit` label carried by the
-  `binomial_logit_harness`, and ordinal-probit. It uses the moderate
-  `d = 1`, `n_units = 50`, `signal = 0.2` row for each family, plans
-  two chunk reps with `n_boot = 0` by default, and launches no fits.
-  This is the audit-mini gate before broader local or DRAC volume; it
-  is not true binomial-probit evidence until the Phase-2 probit-link
-  swap is implemented and validated.
+  gaussian, nbinom2, true `binomial_probit`, and ordinal-probit. It
+  uses the moderate `d = 1`, `n_units = 50`, `signal = 0.2` row for
+  each family, plans two chunk reps with `n_boot = 0` by default, and
+  launches no fits. This is the audit-mini gate before broader local or
+  DRAC volume; it is still smoke evidence until the corrected harness is
+  rerun at the intended replication depth.
 - `pilot_run_audit_mini_manifest()` / `dev/power-pilot-run.R
   --mode=audit-mini-run` -- run the same fixed four-cell manifest as
   immutable chunk outputs, with `n_boot = 0` by default. Use this only
@@ -771,10 +765,11 @@ reimplement any of it). Entry points:
   `$SCRATCH/gllvmtmb-power-pilot-smoke-fit-nboot2-20260624T165402Z`;
   it also completed with exit code 0 and the same immutable artifact
   shape. This is reproducibility / scheduler plumbing evidence only:
-  the `binomial_probit` cell remains labelled by
-  `binomial_logit_harness`, the `N_BOOT=2` report flagged non-PD
-  diagnostics for the binomial and nbinom2 cells, ordinal-probit still
-  lacked a primary interval row, and `CI-08` / `CI-10` remain partial.
+  these jobs pre-date the true probit harness swap, so their
+  `binomial_probit` cell remains labelled by `binomial_logit_harness`;
+  the `N_BOOT=2` report flagged non-PD diagnostics for the binomial and
+  nbinom2 cells, ordinal-probit still lacked a primary interval row, and
+  `CI-08` / `CI-10` remain partial.
 - `pilot_run_chunk_manifest()` / `dev/power-pilot-run.R --mode=chunk`
   -- run the active rows from a chunk manifest, reindex each chunk's
   `rep` column into the planned per-cell window, add chunk provenance
@@ -799,6 +794,6 @@ reimplement any of it). Entry points:
   --mode=preflight --output-mode=chunk` validates the future immutable
   chunk destinations without launching fits.
 
-Phase 2 (HPC, n_sim = 2000, the full core grid + the probit-link swap)
+Phase 2 (HPC, n_sim = 2000, the full core grid)
 reuses the same harness with a cluster array-job driver (section 9); the
 pilot driver and its results directory are the bridge.

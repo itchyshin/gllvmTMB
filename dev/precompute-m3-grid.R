@@ -99,7 +99,7 @@ config <- switch(
     label = "smoke-gaussian"
   ),
   `all-fams` = list(
-    ## All 5 families × 3 dims = 15 cells.
+    ## M3_FAMILIES x 3 dims.
     ## Mixed-family integration uses the M1 fixture pattern: per-row
     ## `family_id` column + `attr(family_list, 'family_var')` lookup.
     cells = expand.grid(

@@ -218,7 +218,15 @@ test_that("power pilot audit-mini manifest names representative cells", {
   expect_equal(mini$signal, rep(0.2, 4L))
   expect_equal(
     mini$evidence_family,
-    c("gaussian", "nbinom2", "binomial_logit_harness", "ordinal_probit")
+    c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit")
+  )
+  expect_equal(
+    mini$harness_family,
+    c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit")
+  )
+  expect_equal(
+    mini$link_harness,
+    c("identity", "log", "probit", "probit")
   )
   expect_equal(pilot_audit_mini_cell_ids(), mini$cell_id)
 
@@ -749,6 +757,14 @@ test_that("power pilot audit-mini CLI writes a manifest without fits", {
   expect_equal(manifest$n_boot, rep(0L, 4L))
   expect_equal(
     manifest$family_label,
+    c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit")
+  )
+  expect_equal(
+    manifest$harness_family,
+    c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit")
+  )
+  expect_equal(
+    manifest$evidence_family,
     c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit")
   )
   expect_equal(

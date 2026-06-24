@@ -71,6 +71,40 @@ fake_power_pilot_grid <- function() {
   )
 }
 
+test_that("M3 harness simulates and fits true binomial-probit", {
+  source_power_pilot_report()
+
+  truth <- m3_sample_truth(
+    "binomial_probit",
+    d = 1L,
+    seed = 42L,
+    n_units = 30L,
+    n_traits = 3L
+  )
+  sim <- m3_simulate_response(truth)
+
+  expect_true(all(sim$row_family == "binomial_probit"))
+  expect_true(all(truth$psi_effective == 0))
+  expect_true(all(sim$data$value %in% c(0, 1)))
+
+  one <- m3_run_cell(
+    family = "binomial_probit",
+    d = 1L,
+    n_reps = 1L,
+    seed_base = 42L,
+    n_units = 30L,
+    n_traits = 3L,
+    lambda_scale = 0.4,
+    targets = "Sigma_unit_diag",
+    n_boot = 0L,
+    se = FALSE
+  )
+
+  expect_equal(unique(one$family), "binomial_probit")
+  expect_equal(unique(one$target), "Sigma_unit_diag")
+  expect_equal(unique(one$n_boot), 0L)
+})
+
 test_that("power pilot report carries denominators, MCSEs, and evidence labels", {
   source_power_pilot_report()
 
@@ -84,9 +118,9 @@ test_that("power pilot report carries denominators, MCSEs, and evidence labels",
     PILOT_GATE_95
   )
 
-  expect_equal(row$evidence_family, "binomial_logit_harness")
+  expect_equal(row$evidence_family, "binomial_probit")
   expect_equal(row$link_intended, "probit")
-  expect_equal(row$link_harness, "logit")
+  expect_equal(row$link_harness, "probit")
 
   expect_equal(row$n_attempted_fits, 2L)
   expect_equal(row$n_converged_fits, 2L)
@@ -108,7 +142,7 @@ test_that("power pilot report carries denominators, MCSEs, and evidence labels",
   expect_equal(row$boot_fail_mcse, sqrt(0.1 * 0.9 / 10))
 
   lines <- pilot_record_lines(row)
-  expect_true(any(grepl("binomial_logit_harness", lines, fixed = TRUE)))
+  expect_true(any(grepl("binomial_probit", lines, fixed = TRUE)))
   expect_true(any(grepl("cov_mcse", lines, fixed = TRUE)))
   expect_true(any(grepl("sdreport", lines, fixed = TRUE)))
 })
@@ -129,7 +163,7 @@ test_that("power pilot report reads explicit immutable chunk aggregates", {
 
   expect_equal(nrow(rows), 1L)
   expect_equal(rows$cell_id, cell_id)
-  expect_equal(rows$evidence_family, "binomial_logit_harness")
+  expect_equal(rows$evidence_family, "binomial_probit")
   expect_equal(rows$n_attempted_fits, 2L)
   expect_equal(rows$coverage_eligible_n, 4L)
   expect_equal(rows$coverage_primary, 0.75)

@@ -147,10 +147,11 @@ The random-effects block decomposes as:
   $\eta_{it} = \mu_{it} + \boldsymbol\lambda_t^\top
   (M_i\alpha + \mathbf{e}_i) + q_{it}$. The innovation prior remains
   centred at zero, and the diagonal $\Psi$ companion remains the
-  ordinary `latent()` companion. No parser or TMB runtime support
-  exists yet; `REML = TRUE`, non-Gaussian families, unsupported tiers,
-  and fixed/LV predictor overlap remain rejected until the validation
-  rows `FG-18`, `RE-13`, and `LV-01` through `LV-07` move.
+  ordinary `latent()` companion. Current support is a fail-loud guard
+  only, not an implemented likelihood path; `REML = TRUE`,
+  non-Gaussian families, unsupported tiers, and fixed/LV predictor
+  overlap remain rejected until the validation rows `FG-18`, `RE-13`,
+  and `LV-01` through `LV-07` move.
 
 - **Ordinary augmented Gaussian random regression** from
   `latent(0 + trait + (0 + trait):x | unit, d = K)` or the equivalent

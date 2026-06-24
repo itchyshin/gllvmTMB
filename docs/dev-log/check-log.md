@@ -19510,3 +19510,98 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-24-lv-predictor-design-spec.md`.
+
+## 2026-06-24 -- Predictor-informed latent-score runtime guard
+
+Branch: `codex/lv-parser-guard-20260624`
+
+Goal:
+
+- Prevent the reserved Design 73 surface `latent(..., lv = ~ x)` from
+  being silently accepted and ignored before the real parser/TMB/extractor
+  implementation exists.
+- Keep `FG-18`, `RE-13`, `EXT-31`, and `LV-01` through `LV-07` blocked.
+
+Coordination and mainline state:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared design/dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared design/dev-log edits; current main is
+  `16d92b2 docs: specify predictor-informed latent scores (#555)`.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 10 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> PASS before PR closeout; R-CMD-check run `28129990711`
+  succeeded on `16d92b2`, pkgdown run `28130029193` was still in
+  progress, and Power pilot sweep runs `28130468525` / `28125143612`
+  were pending/in progress and not used as evidence.
+- `gh run watch 28130029193 --repo itchyshin/gllvmTMB --exit-status`
+  -> stopped manually after repeated in-progress `Build site` status;
+  no failure observed.
+- `gh run view 28130029193 --repo itchyshin/gllvmTMB --json status,conclusion,createdAt,updatedAt,url,jobs`
+  -> PASS; run remained `in_progress` in `Build site`.
+
+Runtime finding:
+
+- Current `origin/main` preserved `lv = ~ x` in parsed covstruct
+  metadata, but `gllvmTMB()` then fit the ordinary latent model and
+  ignored `lv`.
+- Added an early `fit_multi()` guard that aborts when any parsed
+  covstruct carries `extra$lv`, before TMB construction.
+
+Files changed:
+
+- `R/fit-multi.R`
+- `tests/testthat/test-lv-parser-guard.R`
+- `docs/design/01-formula-grammar.md`
+- `docs/design/03-likelihoods.md`
+- `docs/design/35-validation-debt-register.md`
+- `docs/design/61-capability-status.md`
+- `docs/design/73-predictor-informed-latent-scores.md`
+
+Checks run:
+
+- `air format R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no output, but it reformatted legacy `R/fit-multi.R`
+  broadly. The formatter churn was restored to `HEAD`, and only the
+  guard patch was reapplied.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-lv-parser-guard.R")'`
+  -> PASS; 5 pass, 0 fail, 0 warn, 0 skip.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); for (f in c("tests/testthat/test-latent-unique-rename.R", "tests/testthat/test-brms-sugar.R", "tests/testthat/test-ordinary-latent-random-regression.R")) testthat::test_file(f)'`
+  -> PASS; `test-latent-unique-rename.R` 6 pass; `test-brms-sugar.R`
+  5 pass with expected once-per-session deprecation messages;
+  `test-ordinary-latent-random-regression.R` 23 pass, 8 expected skips.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); df <- expand.grid(unit = paste0("u", 1:3), trait = paste0("t", 1:2), KEEP.OUT.ATTRS = FALSE); df$value <- rnorm(nrow(df)); df$x <- rep(c(0,1,2), each = 2); tryCatch(gllvmTMB(value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~ x), data = df, unit = "unit", trait = "trait", control = gllvmTMBcontrol(se = FALSE)), error = function(e) { message("ERROR: ", conditionMessage(e)); quit(status = 0) }); quit(status = 1)'`
+  -> PASS; errors with "reserved for Design 73 predictor-informed latent
+  scores" and names `FG-18`, `RE-13`, and `LV-01`.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-24-lv-parser-guard.md`
+  -> PASS.
+
+Consistency scans:
+
+- `rg -n "latent\\([^\\n]*lv\\s*=|predictor-informed|latent-score mean|B_lv|LV-0[1-7]|FG-18|RE-13|EXT-31" docs R tests/testthat vignettes README.md NEWS.md`
+  -> PASS; hits are Design 73, blocked validation rows, the new
+  runtime guard, the new guard tests, and prior Design 73 dev-log
+  artifacts.
+- `rg -n "no parser|no accepted parser|fail-loud guard|silently ignore|not implemented yet|not live" docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; current hits distinguish fail-loud guard evidence from
+  accepted parser/TMB runtime support.
+- `rg -n "REML|AI-REML|Gaussian-only|non-Gaussian.*REML|REML.*non-Gaussian" docs/design/73-predictor-informed-latent-scores.md docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; hits preserve the Gaussian-only REML boundary and keep
+  `REML = TRUE` rejected for the planned `lv` lane.
+- `rg -n "Julia|GLLVM\\.jl|parity|engine = \"julia\"|engine = 'julia'" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; hits remain row-backed Julia bridge boundaries and do not
+  imply broad `lv` parity.
+
+Not claimed:
+
+- No accepted `lv` parser surface, TMB likelihood path, ADREPORT,
+  extractor, Gaussian recovery, non-Gaussian support, Julia bridge
+  support, roxygen/Rd change, vignette/article/README/NEWS change,
+  validation-row promotion, DRAC job, GPU work, production simulation,
+  or non-Gaussian REML claim was made.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-lv-parser-guard.md`.

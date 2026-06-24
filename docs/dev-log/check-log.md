@@ -19169,3 +19169,158 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-24-fir-slurm-library-manifest-smoke.md`.
+
+## 2026-06-24 (Codex / Ada) -- capability-first ultraplan audit packet
+
+Scope:
+
+- Added a capability-first two-hour audit packet under
+  `docs/dev-log/audits/2026-06-24-capability-first-two-hour-packet.md`.
+- Recorded the next safest slices after PR #552: tiny scheduled fir fit smoke,
+  optional tiny bootstrap smoke, true binomial-probit repair, ordinal coverage
+  decision, and core-grid analysis scaffold.
+- Prepared fir SLURM command packets for `SLURM_STAGE=all` but did not run or
+  submit them.
+- Triage-read `/Users/z3437171/Desktop/speed.txt` into benchmark-first speed
+  spikes; the NotebookLM URL redirected to Google login, so those citation
+  leads remain unverified in this session.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared dev-log edits; recent history in the clean worktree was
+  `7c675dd` only.
+- `git status --short --branch`
+  -> PASS before edits; clean `main...origin/main`.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 8 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> post-merge R-CMD-check `28111548411` success, post-merge pkgdown
+  `28111605400` success, scheduled Power pilot sweep `28106026686` still
+  in progress.
+
+Audit inputs:
+
+- `sed -n '1,260p' docs/design/66-capstone-power-study.md`
+  -> inspected Design 66 pilot/core-grid contract.
+- `sed -n '1,260p' docs/design/50-m3-3b-surface-admission.md`
+  -> inspected surface-admission contract.
+- `rg -n "^CI-08|^CI-10|^EXT-13|^EXT-04|JUL-01|JUL-01A|FAM-15|FAM-16|COE-03|COE-04|RE-12|RE-03|FG-13|FG-14|MET-01|MET-04|ANI-09|ANI-10|MIS-07|MIS-09|LAM-02|EXT-10|DIA-11|DIA-12|DIA-14|FG-17|FAM-18|FAM-19|MET-03|MIX-10|EXT-11|MIS-32" docs/design/35-validation-debt-register.md`
+  -> inspected the capability rows named by the plan.
+- `sed -n '90,240p' dev/m3-pilot-launch.R`
+  -> inspected pilot family/link/signal/grid definitions.
+- `sed -n '490,940p' dev/m3-pilot-launch.R`
+  -> inspected manifest, chunk, and artifact guards.
+- `sed -n '260,620p' dev/m3-pilot-report.R`
+  -> inspected denominators, MCSE, and zero-exclusion semantics.
+- `sed -n '1,260p' dev/power-pilot-slurm-smoke.sh`
+  -> inspected SLURM wrapper boundaries and variables.
+- `sed -n '1,220p' dev/power-pilot-drac-setup.sh`
+  -> inspected DRAC setup helper and fir library convention.
+- `sed -n '1,260p' /Users/z3437171/Desktop/speed.txt`
+  -> inspected speed-note synthesis.
+
+Stale scans:
+
+- `rg -n "Type-I proxy|coverage-under-null|null/Type-I|power/Type-I|signal-zero Type-I|Type-I error for Sigma_unit_diag" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS; current source/report wording keeps signal-zero output diagnostic.
+- `rg -n "binomial_probit|binomial_logit_harness|zero-exclusion|coverage_mcse|coverage_eligible" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml tests/testthat/test-m3-pilot-report.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS; current source labels the binomial logit harness while preserving
+  old `binomial_probit-*` cell IDs.
+- `rg -n "GPU.*(enabled|tested)|production launch|n_sim = 2000.*started|validated binomial-probit|probit support|CI-08.*covered|CI-10.*covered" docs/dev-log/audits/2026-06-24-capability-first-two-hour-packet.md`
+  -> PASS after edits; no hard-stop overclaim in the new audit packet.
+
+Not claimed:
+
+- No DRAC submission, fit, bootstrap, GPU check, production campaign, Julia
+  parity widening, validation-row promotion, DGP change, likelihood change, or
+  public API change was made.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-capability-first-ultraplan-audit.md`.
+
+## 2026-06-24 (Codex / Ada) -- fir scheduled fit and bootstrap smoke
+
+Scope:
+
+- Ran the next CPU-only fir SLURM smoke steps after the manifest-only
+  infrastructure PR.
+- Submitted one scheduled tiny fit smoke with `SLURM_STAGE=all`,
+  `N_SIM_STEP=1`, `N_SIM_CAP=1`, `N_BOOT=0`.
+- After inspecting that output, submitted one scheduled tiny bootstrap smoke
+  with `N_BOOT=2`.
+- Updated Design 66 and this check log with smoke evidence only. No validation
+  rows, source code, tests, public examples, roxygen, Rd, NEWS, README,
+  vignette, or pkgdown navigation changed.
+
+Coordination and local gates:
+
+- `git fetch origin --prune`
+  -> PASS.
+- `git status --short --branch`
+  -> clean base before this sitting except for the existing audit packet files
+  on `codex/capability-first-audit-20260624`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared doc edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared doc edits; recent history was only `7c675dd`.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 8 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> post-merge R-CMD-check `28111548411` success, pkgdown `28111605400`
+  success, scheduled Power pilot sweep `28106026686` still in progress.
+- `bash -n dev/power-pilot-slurm-smoke.sh dev/power-pilot-drac-setup.sh dev/power-pilot-smoke.sh`
+  -> PASS.
+- `RESULTS_DIR=/tmp/gllvmtmb-local-slurm-write-check R_LIBS_USER_DIR=/tmp/gllvmtmb-local-r-lib SLURM_ACTION=write SLURM_STAGE=all SLURM_TIME=01:00:00 N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=0 bash dev/power-pilot-slurm-smoke.sh`
+  -> PASS; wrote the expected sbatch file.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R"); testthat::test_file("tests/testthat/test-m3-pilot-report.R")'`
+  -> PASS; 143 + 33 expectations.
+- `ssh fir '... command -v sbatch; command -v srun; command -v sinfo; ...'`
+  -> PASS; fir reachable and SLURM commands present.
+- `ssh fir '... R_LIBS_USER="$SCRATCH/gllvmtmb-r-libs/4.5.0" Rscript --vanilla -e "requireNamespace(\"gllvmTMB\")" ...'`
+  -> PASS; prepared scratch R library exposes `gllvmTMB` 0.2.0.
+- Local/remote `sha256sum` comparison for the smoke wrapper, setup helper,
+  runner, launcher, and report scripts
+  -> PASS; fir source copy matched the clean local source.
+
+Remote smoke evidence:
+
+- fir `SLURM_ACTION=test SLURM_STAGE=all N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=0`
+  -> PASS; `sbatch --test-only` accepted the job.
+- fir `SLURM_ACTION=submit SLURM_STAGE=all N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=0`
+  -> PASS; job `45626865` completed with exit code `0:0`, elapsed
+  `00:00:08`, four active manifest rows, four chunk files, four aggregate
+  files, source SHA `7c675dd33d58f4dfd633cacfbf05e62c0e168d61`, and no
+  `pilot-index.rds`.
+- fir `SLURM_ACTION=test SLURM_STAGE=all N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=2`
+  -> PASS; `sbatch --test-only` accepted the job.
+- fir `SLURM_ACTION=submit SLURM_STAGE=all N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=2`
+  -> PASS; job `45627388` completed with exit code `0:0`, elapsed
+  `00:00:08`, four active manifest rows, four chunk files, four aggregate
+  files, source SHA `7c675dd33d58f4dfd633cacfbf05e62c0e168d61`, and no
+  `pilot-index.rds`.
+- The `N_BOOT=2` issue line was
+  `binomial_probit-d1-n50-sig0p2 nonPD 100%; nbinom2-d1-n50-sig0p2 nonPD 100%`.
+  Ordinal-probit had `ci_available = FALSE`. This is expected smoke-diagnostic
+  evidence and is not a validation promotion.
+
+Stale scans:
+
+- `rg -n "Type-I proxy|coverage-under-null|null/Type-I|power/Type-I|signal-zero Type-I|Type-I error for Sigma_unit_diag" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS before this report; signal-zero wording remains diagnostic.
+- `rg -n "binomial_probit|binomial_logit_harness|zero-exclusion|coverage_mcse|coverage_eligible" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml tests/testthat/test-m3-pilot-report.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS before this report; binomial-probit cell IDs still carry explicit
+  `binomial_logit_harness` evidence.
+- `rg -n "GPU.*(enabled|tested)|production launch|n_sim = 2000.*started|validated binomial-probit|probit support|CI-08.*covered|CI-10.*covered" docs/design/66-capstone-power-study.md`
+  -> PASS after edits; no new overclaim in the updated Design 66 prose.
+
+Not claimed:
+
+- No GPU work, production campaign, broad DRAC/Totoro launch, validation-row
+  promotion, Julia parity widening, DGP change, likelihood change, public API
+  change, or login-node fitting was made.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-fir-scheduled-fit-bootstrap-smoke.md`.

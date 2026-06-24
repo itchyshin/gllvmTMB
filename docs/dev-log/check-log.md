@@ -19080,3 +19080,92 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-power-pilot-slurm-smoke.md`.
+
+## 2026-06-24 (Codex / Ada) -- fir SLURM library + manifest smoke
+
+Scope:
+
+- Added `dev/power-pilot-drac-setup.sh`, a login-node helper that prepares a
+  version-pinned fir R library, installs the current checkout, and verifies
+  `gllvmTMB` before scheduled smoke jobs run.
+- Extended `dev/power-pilot-slurm-smoke.sh` with `R_LIBS_USER_DIR`,
+  `DRAC_EXTRA_MODULES`, and `SLURM_CHECK_PACKAGE` so submitted jobs can use
+  the prepared library and fail before smoke execution if the package is not
+  visible.
+- Updated Design 66 to record the package-library convention and the
+  manifest-only fir stop line without recording private account or quota
+  details.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared design/dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS before shared design/dev-log edits; recent remote history was the
+  expected `power-pilot-results` accumulator commits only.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 10 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> observed `full-check` run `28088698708` completed as `cancelled`
+  because Windows was cancelled after macOS and Ubuntu had passed; scheduled
+  Power pilot sweep run `28093240971` was still queued/running on main and
+  was not used as validation evidence.
+
+Validation:
+
+- `bash -n dev/power-pilot-drac-setup.sh && bash -n dev/power-pilot-slurm-smoke.sh && git diff --check`
+  -> PASS.
+- `rm -rf /tmp/gllvmtmb-slurm-lib-write && SLURM_ACTION=write RESULTS_DIR=/tmp/gllvmtmb-slurm-lib-write SLURM_STAGE=manifest SCRATCH=/tmp/gllvmtmb-scratch DRAC_EXTRA_MODULES='StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0' SEED_BASE=182 bash dev/power-pilot-slurm-smoke.sh && bash -n /tmp/gllvmtmb-slurm-lib-write/_slurm/power-pilot-smoke.sbatch && sed -n '1,80p' /tmp/gllvmtmb-slurm-lib-write/_slurm/power-pilot-smoke.sbatch`
+  -> PASS; generated manifest sbatch script parsed cleanly and showed the
+  compatible fir module stack plus the prepared R library path.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS; 143 expectations.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-report.R")'`
+  -> PASS; 33 expectations.
+- fir setup discovery: copying the checkout to the home filesystem failed
+  with remote I/O errors, so the checkout was placed under scratch instead.
+  A first package setup without extra system-library modules failed at
+  `units`/`sf`/`fmesher`; loading
+  `StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0`
+  exposed the needed `udunits`, GDAL, GEOS, and PROJ configuration.
+- `DRAC_EXTRA_MODULES="StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0" R_LIBS_USER_DIR="$SCRATCH/gllvmtmb-r-libs/4.5.0" bash dev/power-pilot-drac-setup.sh`
+  -> PASS on fir from the scratch checkout; final lines included
+  `gllvmTMB_version=0.2.0` and `ready`.
+- `ssh fir 'set -euo pipefail; cd "$SCRATCH/gllvmTMB-fir-slurm-library-smoke"; module load StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0 r/4.5.0 julia/1.12.5; export R_LIBS_USER="$SCRATCH/gllvmtmb-r-libs/4.5.0"; export R_LIBS="$R_LIBS_USER${R_LIBS:+:$R_LIBS}"; Rscript --vanilla -e '\''cat("gllvmTMB_available=", requireNamespace("gllvmTMB", quietly = TRUE), "\n", sep = ""); if (requireNamespace("gllvmTMB", quietly = TRUE)) cat("gllvmTMB_version=", as.character(utils::packageVersion("gllvmTMB")), "\n", sep = "")'\'''`
+  -> PASS; `gllvmTMB_available=TRUE`, `gllvmTMB_version=0.2.0`.
+- `ssh fir 'set -euo pipefail; cd "$SCRATCH/gllvmTMB-fir-slurm-library-smoke"; RESULTS_DIR="$SCRATCH/gllvmtmb-power-pilot-smoke-manifest-20260624-codex"; rm -rf "$RESULTS_DIR"; DRAC_EXTRA_MODULES="StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0" R_LIBS_USER_DIR="$SCRATCH/gllvmtmb-r-libs/4.5.0" SLURM_ACTION=test SLURM_STAGE=manifest RESULTS_DIR="$RESULTS_DIR" SEED_BASE=184 bash dev/power-pilot-slurm-smoke.sh'`
+  -> PASS; `sbatch --test-only` accepted the manifest job.
+- `ssh fir 'set -euo pipefail; cd "$SCRATCH/gllvmTMB-fir-slurm-library-smoke"; RESULTS_DIR="$SCRATCH/gllvmtmb-power-pilot-smoke-manifest-20260624-codex"; DRAC_EXTRA_MODULES="StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0" R_LIBS_USER_DIR="$SCRATCH/gllvmtmb-r-libs/4.5.0" SLURM_ACTION=submit SLURM_STAGE=manifest RESULTS_DIR="$RESULTS_DIR" SEED_BASE=184 bash dev/power-pilot-slurm-smoke.sh'`
+  -> PASS; submitted batch job `45601426`.
+- `ssh fir 'set -euo pipefail; JOB=45601426; for i in $(seq 1 60); do line=$(squeue -j "$JOB" -h -o "%i|%T|%M|%D|%R" || true); if [[ -z "$line" ]]; then break; fi; echo "squeue=$line"; sleep 5; done; sacct -j "$JOB" --format=JobID,JobName,State,Elapsed,ExitCode%20 -P || true'`
+  -> PASS; the job waited in `PENDING` with reason `Priority`, then ran on
+  `fc30555` and completed in 4 seconds with `ExitCode 0:0`.
+- `ssh fir 'set -euo pipefail; RESULTS_DIR="$SCRATCH/gllvmtmb-power-pilot-smoke-manifest-20260624-codex"; find "$RESULTS_DIR" -maxdepth 4 -type f | sort; sed -n "1,220p" "$RESULTS_DIR"/_slurm/gllvmtmb-smoke-45601426.out; if [[ -s "$RESULTS_DIR"/_slurm/gllvmtmb-smoke-45601426.err ]]; then sed -n "1,220p" "$RESULTS_DIR"/_slurm/gllvmtmb-smoke-45601426.err; else echo "<empty>"; fi; find "$RESULTS_DIR" -type f \( -path "*/_chunks/*" -o -name "*.rds" -o -name "*.RData" \) -print | sort'`
+  -> PASS; result tree contained only `_manifests/shard-1.csv`, the sbatch
+  file, and SLURM stdout/stderr. The non-manifest scan returned no files.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-24-fir-slurm-library-manifest-smoke.md`
+  -> PASS.
+- `after-task-audit` skill checklist
+  -> PASS; code paths, Design 66 wording, test evidence, stale scans, and
+  validation-row boundaries are aligned. No formula grammar, likelihood,
+  roxygen, Rd, vignette, NEWS, public API, or validation-debt row changed.
+
+Stale scans:
+
+- `rg -n "power-pilot-drac-setup|R_LIBS_USER_DIR|DRAC_EXTRA_MODULES|SLURM_CHECK_PACKAGE|SLURM_ACTION|SLURM_STAGE|fir|udunits|GDAL|GEOS|PROJ|GPU|production campaign|n_sim = 2000|CI-08|CI-10|AI-REML" dev/power-pilot-drac-setup.sh dev/power-pilot-slurm-smoke.sh docs/design/66-capstone-power-study.md`
+  -> PASS for intended helper, wrapper, fir-module, and Design 66 boundary
+  wording.
+- `rg -n "GPU.*(enabled|tested)|production launch|n_sim = 2000.*started|AI-REML|validated binomial-probit|probit support|pilot-index\\.rds.*(write|mutate|update|rebuild)|CI-08.*covered|CI-10.*covered|Type-I error for Sigma_unit_diag" dev/power-pilot-drac-setup.sh dev/power-pilot-slurm-smoke.sh docs/design/66-capstone-power-study.md || true`
+  -> PASS; no red-flag matches.
+
+Not claimed:
+
+- No tiny fit smoke, bootstrap smoke, GPU check, broad DRAC/Totoro setup,
+  production campaign, or `n_sim = 2000` run was launched.
+- This slice changes no DGP, likelihood, scoring metric, interval definition,
+  validation row, user-facing formula syntax, or public R API.
+- The manifest-only fir job is compute-plumbing evidence only. It is not
+  coverage, power, Type-I, or probit-link validation evidence.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-fir-slurm-library-manifest-smoke.md`.

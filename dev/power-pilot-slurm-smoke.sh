@@ -25,6 +25,9 @@ Environment variables:
   SLURM_PARTITION       optional partition          (default: unset)
   R_MODULE              R module to load            (default: r/4.5.0)
   JULIA_MODULE          Julia module to load        (default: julia/1.12.5)
+  DRAC_EXTRA_MODULES    optional modules to load first (default: unset)
+  R_LIBS_USER_DIR       user R library for the job   (default: $PROJECT/$USER/R/<R>, else $SCRATCH/gllvmtmb-r-libs/<R>, else $HOME/.local/R/<R>)
+  SLURM_CHECK_PACKAGE   true | false                 (default: true)
   SEED_BASE             integer seed base           (default: 181)
   N_SIM_STEP            reps per audit-mini chunk   (default: 1)
   N_SIM_CAP             per-cell cap                (default: N_SIM_STEP)
@@ -36,6 +39,10 @@ Examples:
 
   # Submit the first DRAC smoke: manifest parse only, no fits.
   SLURM_ACTION=submit bash dev/power-pilot-slurm-smoke.sh
+
+  # Submit with an explicit prepared R library.
+  SLURM_ACTION=submit R_LIBS_USER_DIR=$SCRATCH/gllvmtmb-r-libs/4.5.0 \
+    bash dev/power-pilot-slurm-smoke.sh
 
   # Submit the second DRAC smoke from a login node: scheduled tiny fits.
   SLURM_ACTION=submit SLURM_STAGE=all SLURM_TIME=01:00:00 \
@@ -65,17 +72,33 @@ SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-1}"
 SLURM_JOB_NAME="${SLURM_JOB_NAME:-gllvmtmb-smoke}"
 R_MODULE="${R_MODULE:-r/4.5.0}"
 JULIA_MODULE="${JULIA_MODULE:-julia/1.12.5}"
+DRAC_EXTRA_MODULES="${DRAC_EXTRA_MODULES:-}"
+SLURM_CHECK_PACKAGE="${SLURM_CHECK_PACKAGE:-true}"
 SEED_BASE="${SEED_BASE:-181}"
 N_SIM_STEP="${N_SIM_STEP:-1}"
 N_SIM_CAP="${N_SIM_CAP:-$N_SIM_STEP}"
 N_BOOT="${N_BOOT:-0}"
 SBATCH="${SBATCH:-sbatch}"
+R_MODULE_VERSION="${R_MODULE##*/}"
 
 if [[ -z "${RESULTS_DIR:-}" ]]; then
   if [[ -n "${SCRATCH:-}" ]]; then
     RESULTS_DIR="$SCRATCH/gllvmtmb-power-pilot-smoke"
   else
     RESULTS_DIR="/tmp/$USER/gllvmtmb-power-pilot-smoke"
+  fi
+fi
+
+if [[ -z "${R_LIBS_USER_DIR:-}" ]]; then
+  if [[ -n "${PROJECT:-}" ]]; then
+    R_LIBS_USER_DIR="$PROJECT/$USER/R/$R_MODULE_VERSION"
+  elif [[ -n "${SCRATCH:-}" ]]; then
+    R_LIBS_USER_DIR="$SCRATCH/gllvmtmb-r-libs/$R_MODULE_VERSION"
+  elif [[ -n "${HOME:-}" ]]; then
+    R_LIBS_USER_DIR="$HOME/.local/R/$R_MODULE_VERSION"
+  else
+    echo "Set R_LIBS_USER_DIR, PROJECT, SCRATCH, or HOME before running this wrapper." >&2
+    exit 2
   fi
 fi
 
@@ -102,12 +125,29 @@ write_sbatch() {
 
 set -euo pipefail
 
+if [[ -n "$DRAC_EXTRA_MODULES" ]]; then
+  module load $DRAC_EXTRA_MODULES
+fi
 module load "$R_MODULE"
 module load "$JULIA_MODULE"
+
+mkdir -p "$R_LIBS_USER_DIR"
+export R_LIBS_USER="$R_LIBS_USER_DIR"
+if [[ -n "\${R_LIBS:-}" ]]; then
+  export R_LIBS="\$R_LIBS_USER:\$R_LIBS"
+else
+  export R_LIBS="\$R_LIBS_USER"
+fi
 
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
+
+echo "[power-pilot-slurm-smoke] R user library configured"
+
+if [[ "$SLURM_CHECK_PACKAGE" == "true" ]]; then
+  Rscript --vanilla -e 'if (!requireNamespace("gllvmTMB", quietly = TRUE)) stop("gllvmTMB is not installed in the configured R library; run dev/power-pilot-drac-setup.sh on the login node first.", call. = FALSE)'
+fi
 
 cd "$REPO_ROOT"
 
@@ -129,6 +169,10 @@ echo "[power-pilot-slurm-smoke] stage=$SLURM_STAGE"
 echo "[power-pilot-slurm-smoke] results_dir=$RESULTS_DIR"
 echo "[power-pilot-slurm-smoke] sbatch_file=$SBATCH_FILE"
 echo "[power-pilot-slurm-smoke] modules R=$R_MODULE Julia=$JULIA_MODULE"
+if [[ -n "$DRAC_EXTRA_MODULES" ]]; then
+  echo "[power-pilot-slurm-smoke] extra_modules=$DRAC_EXTRA_MODULES"
+fi
+echo "[power-pilot-slurm-smoke] r_libs_user_dir=$R_LIBS_USER_DIR"
 echo "[power-pilot-slurm-smoke] threads cpus=$SLURM_CPUS_PER_TASK OMP=1 OPENBLAS=1 MKL=1"
 
 case "$SLURM_ACTION" in

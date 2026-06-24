@@ -354,7 +354,16 @@ manifest-only: `dev/power-pilot-smoke.sh` runs with
 `SMOKE_STAGE=manifest`, or `dev/power-pilot-slurm-smoke.sh` writes and
 optionally submits the same manifest-only smoke as a SLURM job. It
 parses the fixed audit-mini grid, writes the manifest, validates unique
-immutable chunk destinations, and exits before fitting.
+immutable chunk destinations, and exits before fitting. Before any real
+SLURM submission, prepare the remote checkout on the login node with
+`dev/power-pilot-drac-setup.sh`: it creates a version-pinned user R
+library, installs this checkout into that library, and verifies
+`library(gllvmTMB)`. The default library convention is project storage
+when `$PROJECT` is set, otherwise a scratch smoke library when
+`$SCRATCH` is set, with `$HOME/.local/R/<R version>` as the final
+fallback. Scratch libraries are purgeable and are for smoke setup only;
+private account and quota paths are deliberately not recorded in this
+public design note.
 
 ---
 
@@ -730,6 +739,14 @@ reimplement any of it). Entry points:
   `MKL_NUM_THREADS` to 1 by default and still does not submit SLURM
   work, use GPUs, mutate `pilot-index.rds`, or start the production
   campaign.
+- `dev/power-pilot-drac-setup.sh` -- login-node setup for the first
+  DRAC/fir smoke checkout. It loads the selected R and Julia modules,
+  creates a version-pinned user R library, installs the current checkout
+  with Depends/Imports/LinkingTo dependencies, and verifies
+  `gllvmTMB` is visible from `.libPaths()`. `DRAC_EXTRA_MODULES` carries
+  cluster-specific system libraries such as udunits/GDAL/GEOS/PROJ when
+  `fmesher`/`sf` need them. It submits no jobs and records no private
+  allocation/account path in the repository.
 - `dev/power-pilot-slurm-smoke.sh` -- write, validate, or submit a
   conservative SLURM wrapper around `dev/power-pilot-smoke.sh`. The
   default `SLURM_ACTION=test` calls `sbatch --test-only`; actual
@@ -737,9 +754,10 @@ reimplement any of it). Entry points:
   `SLURM_STAGE=manifest` is the first DRAC-safe smoke and launches no
   fits. Fit-running stages such as `SLURM_STAGE=all` are only for
   scheduled compute jobs after the manifest smoke passes. The wrapper is
-  CPU-only, loads R and Julia modules explicitly, sets BLAS/OpenMP
-  threads to one, and does not start the production `n_sim = 2000`
-  campaign.
+  CPU-only, loads R and Julia modules explicitly, prepends the prepared
+  user R library, checks that `gllvmTMB` is installed before running the
+  smoke, sets BLAS/OpenMP threads to one, and does not start the
+  production `n_sim = 2000` campaign.
 - `pilot_run_chunk_manifest()` / `dev/power-pilot-run.R --mode=chunk`
   -- run the active rows from a chunk manifest, reindex each chunk's
   `rep` column into the planned per-cell window, add chunk provenance

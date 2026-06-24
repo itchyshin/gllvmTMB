@@ -96,27 +96,22 @@ PILOT_N_TRAITS <- 5L
 
 ## Family map: Design 66 locked "core 4" confirmatory families ->
 ## the family strings the M3 harness (`m3_run_cell`) actually accepts.
-## NOTE (documented deviation): the harness's "binomial" path uses the
-## LOGIT link in both the DGP (plogis) and the fit (stats::binomial()).
-## There is no binomial(probit) path in `m3_run_cell` on origin/main.
-## The locked decision names binomial(probit); for the LOCAL PILOT we
-## validate the binomial coverage path via the existing logit harness
-## and DEFER the one-line probit-link swap to the Phase-2 core grid
-## (Design 66 sec. 4.2 already lists binomial-probit as a harness target
-## to reach). This keeps the pilot a thin reuse of the validated harness
-## rather than a DGP modification. The grid records the intended link in
-## `link_intended` for traceability.
+## `binomial_probit` is a harness family here: the DGP uses pnorm() and
+## the fit uses stats::binomial(link = "probit"). The older local pilot
+## used the logit harness behind the probit-labelled cell; result stores
+## that pre-date this slice remain identifiable through their saved
+## `evidence_family = "binomial_logit_harness"` metadata.
 PILOT_CORE4 <- data.frame(
   family_label = c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit"),
-  harness_family = c("gaussian", "nbinom2", "binomial", "ordinal_probit"),
+  harness_family = c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit"),
   evidence_family = c(
     "gaussian",
     "nbinom2",
-    "binomial_logit_harness",
+    "binomial_probit",
     "ordinal_probit"
   ),
   link_intended = c("identity", "log", "probit", "probit"),
-  link_harness = c("identity", "log", "logit", "probit"),
+  link_harness = c("identity", "log", "probit", "probit"),
   stringsAsFactors = FALSE
 )
 
@@ -131,9 +126,7 @@ PILOT_D_LEVELS <- c(1L, 2L)
 PILOT_N_UNITS_LEVELS <- c(50L, 150L)
 
 ## Audit-mini cells: one cheap representative moderate-signal cell per core
-## family, used before any broader local or DRAC volume. The binomial row keeps
-## the intended `binomial_probit` label and the current `binomial_logit_harness`
-## evidence label until the true probit DGP/fit swap lands.
+## family, used before any broader local or DRAC volume.
 PILOT_AUDIT_MINI_FAMILIES <- c(
   "gaussian",
   "nbinom2",

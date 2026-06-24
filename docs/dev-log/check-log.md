@@ -19324,3 +19324,90 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-24-fir-scheduled-fit-bootstrap-smoke.md`.
+
+## 2026-06-24 (Codex / Ada) -- true binomial-probit pilot harness
+
+Scope:
+
+- Patched the M3/power-pilot harness so `binomial_probit` is a real
+  harness family rather than a probit-labelled logit-harness cell.
+- The DGP now uses `pnorm(eta)` and the fit path uses
+  `stats::binomial(link = "probit")`.
+- Updated audit-mini metadata so current manifests record
+  `harness_family = "binomial_probit"`, `evidence_family =
+  "binomial_probit"`, and `link_harness = "probit"`.
+- Preserved the historical boundary: pre-2026-06-24 fir smoke artifacts
+  remain scheduler/plumbing evidence labelled by
+  `binomial_logit_harness`; they must not be reinterpreted as true
+  binomial-probit validation evidence.
+
+Coordination and mainline state:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared dev-log / after-task edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared dev-log / after-task edits; recent history was
+  `b08b146`, `3f76530`, and `7c675dd`.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 8 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> observed R-CMD-check run `28120675137` success for `b08b146`,
+  pkgdown run `28120717889` still in progress, scheduled Power pilot
+  sweep run `28118670213` queued, and older scheduled sweep run
+  `28106026686` success. No scheduled sweep output was used as
+  validation evidence.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "probit OR power pilot OR CI-08 OR CI-10" --limit 20 --json number,title,url,updatedAt`
+  -> inspected the relevant roadmap / board surface.
+- `gh issue view 349 --repo itchyshin/gllvmTMB --json number,title,state,url,body,updatedAt`
+  -> inspected the Power-simulation capstone issue; this slice advances
+  the 66.4 probit-swap prerequisite but does not close the issue.
+- `gh issue view 346 --repo itchyshin/gllvmTMB --json number,title,state,url,body,updatedAt`
+  -> inspected the Simulation / coverage framework issue.
+- `gh issue view 340 --repo itchyshin/gllvmTMB --json number,title,state,url,body,updatedAt`
+  -> inspected the capability matrix board; `CI-08` and `CI-10` remain
+  partial.
+
+Implementation / targeted tests:
+
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-launch.R"); g <- pilot_audit_mini_grid(); print(g[, c("family_label", "harness_family", "evidence_family", "link_harness")]); stopifnot(g$harness_family[3] == "binomial_probit", g$evidence_family[3] == "binomial_probit", g$link_harness[3] == "probit")'`
+  -> PASS; audit-mini now reports true probit harness/evidence metadata
+  for the third core cell.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS; 147 expectations.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-report.R")'`
+  -> PASS; 39 expectations, including one direct
+  `m3_run_cell(family = "binomial_probit", n_reps = 1, n_boot = 0,
+  se = FALSE)` smoke.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-grid-summary.R")'`
+  -> PASS by opt-in skip; 14 skipped because `GLLVMTMB_HEAVY_TESTS` was
+  not set.
+- `SMOKE_STAGE=all RESULTS_DIR=/tmp/gllvmtmb-true-probit-smoke-20260624 N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=0 SEED_BASE=191 bash dev/power-pilot-smoke.sh`
+  -> PASS; local audit-mini smoke wrote manifest, chunk, aggregate, and
+  report artifacts. The binomial row carried
+  `cell_id = binomial_probit-d1-n50-sig0p2`,
+  `harness_family = binomial_probit`, `evidence_family =
+  binomial_probit`, and `n_boot = 0`. Tiny-run report diagnostics
+  flagged non-PD for binomial-probit and nbinom2; this was not promoted.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-24-true-binomial-probit-harness.md`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "All 5 families|binomial_logit_harness|There is no binomial\\(probit\\)|logit harness|DEFERS|not true binomial-probit|probit-link swap" dev tests docs/design/66-capstone-power-study.md`
+  -> PASS; remaining hits are intentional historical-boundary notes for
+  old result stores and fir smoke artifacts.
+- `rg -n "binomial_probit|link_harness|evidence_family|pnorm|plogis|stats::binomial\\(" dev/m3-grid.R dev/m3-pilot-launch.R dev/precompute-m3-grid.R tests/testthat/test-m3-pilot-manifest.R tests/testthat/test-m3-pilot-report.R docs/design/66-capstone-power-study.md`
+  -> PASS; current implementation/test/design paths show `pnorm` DGP,
+  probit fit, and true-probit manifest metadata.
+
+Not claimed:
+
+- No DRAC submission, GPU work, production campaign, broad DRAC/Totoro
+  setup, Julia parity widening, public API change, package likelihood
+  change, roxygen/Rd change, vignette change, NEWS change, validation-row
+  promotion, or scheduled-sweep evidence promotion was made.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-true-binomial-probit-harness.md`.

@@ -99,6 +99,7 @@ Row-owner: **Boole** (formula-grammar parser).
 | FG-15 | `phylo_slope()` random-slope keyword | `covered` | `test-phylo-slope.R`, `test-matrix-slope-*.R` | Augmented random-regression slope validated across families (local measurement 2026-05-30, 0 fail); `phylo_indep(1+x)` independent variant added this cycle. |
 | FG-16 | `gllvmTMB_wide(Y, ...)` legacy constructor | `partial` | `test-gllvmTMB-wide.R`, `test-wide-weights-matrix.R` | soft-deprecated in 0.2.0; new examples use `traits(...)`; removal is a later API-change decision while export remains live |
 | FG-17 | Slash form `(1 \| g1/g2)` nesting | `blocked` | `test-augmented-lhs-guard.R` | parser rejects with snapshot-pinned error |
+| FG-18 | `latent(..., lv = ~ x)` predictor-informed latent-score grammar | `blocked` | n/a | Design 73 reserves the term-local fixed-effect formula surface but no parser or TMB runtime support exists yet. C1 target is ordinary Gaussian unit-tier `latent()` only. Random terms, offsets, `mi()`, smooths, response/trait columns, nonconstant-within-unit predictors, exact fixed/LV overlap, `REML = TRUE`, non-Gaussian families, unsupported tiers, and source-specific / kernel forms must reject until LV-01..LV-07 move. |
 
 ### Section 2 — Response families (15 advertised)
 
@@ -144,6 +145,7 @@ Row-owner: **Boole + Fisher** (random-effects design lead).
 | RE-10 | Augmented LHS guard (engine-internal variable name clashes) | `covered` | `test-augmented-lhs-guard.R` | |
 | RE-11 | Second independent diagonal grouping (`cluster2` argument) | `covered` | `test-cluster2-rename.R`, `test-cluster2-families.R` | Issue #342 (sub-issues #355, #356). cluster2 is a renamed copy of the `cluster` (`diag_species` / `q_sp`) diagonal tier on a disjoint grouping column, so two crossed/nested plain diagonal per-trait variance components fit at once (e.g. `cluster = "site"` + `cluster2 = "year"`). Family-agnostic (contribution added to `eta` before family dispatch; no per-family C++ branch). Equivalence gate: a `cluster2`-routed `unique(0+trait\|G)` fit is byte-identical (objective + `extract_Sigma` delta = 0) to the `cluster`-routed fit on the same G (local measurement 2026-05-31: 24 pass / 0 fail, heavy crossed-recovery cell included; Gaussian site+year variances recovered within 0.30 band). Diagonal-only: `latent`/`rr`/`dep` on the cluster2 column aborts with a `unit =` redirect. Per-family recovery sweep (Slice F, #356; `test-cluster2-families.R`): for each wired family the simulated cluster2 diagonal variance is recovered within that family's sibling tier band, mirroring `test-tiers-*.R` conventions (local measurement 2026-05-31, `GLLVMTMB_HEAVY_TESTS=1`: 70 pass / 0 fail / 0 skip across gaussian, poisson, binomial, nbinom2, beta, Gamma, ordinal\_probit -- every cell conv == 0, PD Hessian, finite `sd_c2`, `extract_Sigma(level = "cluster2")$s == sd_c2^2`). cluster2 sits one level above any per-row residual / OLRE / overdispersion (shared across many rows per level), so no family is the structurally degenerate per-row case -- all seven recover, none skipped. |
 | RE-12 | Ordinary individual-level `latent(1 + x \| unit, d = K)` random-regression component | `partial` | `test-ordinary-latent-random-regression.R`, `test-example-behavioural-reaction-norm.R` | Implemented 2026-06-08 for the Gaussian unit-tier augmented decomposition, then updated 2026-06-18 so Gaussian augmented `latent()` supplies the diagonal `Psi_B,aug` companion by default. Parser accepts the wide `latent(1 + x \| unit, d = K)` and long `latent(0 + trait + (0 + trait):x \| unit, d = K)` forms, routes them to dedicated TMB blocks with `Lambda_aug` and `Psi_B,aug` over the `2T` `(intercept, slope) x trait` coefficient vector, and `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")` returns `Lambda_aug Lambda_aug^T`, the augmented diagonal, or their sum with labelled rows. Evidence includes parser classification, long and wide fits, Gaussian default composition and recovery, explicit `+ unique(1 + x \| unit)` compatibility composition, explicit compatibility diagonal extraction, behavioural reaction-norm long/wide fixture agreement, rank guard, unit_obs rejection, mismatched-slope rejection, and a Poisson latent-only smoke fit. The row remains `partial` because non-Gaussian augmented `latent()` remains low-rank-only, non-Gaussian augmented `unique()` is deliberately guarded, and delta / hurdle families remain out of scope per FAM-17. |
+| RE-13 | Ordinary unit-tier predictor-informed latent-score mean `latent(..., lv = ~ x)` | `blocked` | n/a | Design 73 only. The future model is `z_i = M_i alpha + e_i`, `e_i ~ N(0, I_K)`, with the ordinary `latent()` `Lambda Lambda^T + Psi` decomposition preserved and `B_lv = Lambda alpha^T` as the primary trait-scale estimand. No parser, TMB, or extractor support exists yet. |
 
 ### Section 4 — Phylogenetic GLLVM
 
@@ -300,6 +302,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-28 | `extract_rotated_loadings_table()` report-ready rotated loading rows | `covered` | `test-rotate-compare-loadings.R` | Row-first table over `rotate_loadings()` for ordination reports and figures; includes rotation, axis-ordering, sign-anchor, anchor-trait, raw axis-variance/share, and raw/standardized loading scale metadata. Point-estimate helper only; no loading uncertainty intervals. |
 | EXT-29 | `plot_rotated_loadings()` rotated loading matrix helper | `covered` | `test-rotate-compare-loadings.R` | Plots fitted-model or `extract_rotated_loadings_table()` rows as a report-ready loading matrix with rotation/sign/loading-scale metadata preserved in `gllvmTMB_meta` / `gllvmTMB_data`; point-estimate visual helper only, no loading uncertainty intervals. |
 | EXT-30 | `plot_correlations()` heatmap / ellipse matrix styles | `covered` | `test-plot-covariance-tables.R`, `test-plot-visual-snapshots.R` | Adds matrix-style correlation heatmap and ellipse/oval views over fitted-model, `bootstrap_Sigma()`, or `extract_correlations()` rows, with full/lower/upper triangle controls, diagonal control, optional estimate/CI labels, `matrix_layout = "estimate_ci"` for upper estimates plus lower interval bounds, `matrix_layout = "levels"` for two-level upper/lower matrices such as `unit` over `unit_obs`, and significance outlines/stars for supplied intervals that exclude zero. Snapshot guards cover the estimate-CI heatmap and two-level ellipse matrix layouts. Plotting helper only; it does not compute intervals or calibrate uncertainty. |
+| EXT-31 | `extract_lv_effects()` and `extract_ordination(component = ...)` for predictor-informed latent scores | `blocked` | n/a | Design 73 only. Future extractor surface should return `B_lv = Lambda alpha^T` as the preferred trait-scale effect table, raw `alpha` only with rotation warnings, and ordination components `total`, `mean`, and `innovation`. No exported function or component argument exists yet. |
 
 ### Section 9 — Diagnostics
 
@@ -395,19 +398,19 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 
 ## Honest scope statement
 
-**Current tally (2026-06-22) — recounted from the leading status
+**Current tally (2026-06-24) — recounted from the leading status
 label in the per-row status column:**
 
-- **202 capability rows** (the register grew from 102 rows at
+- **211 capability rows** (the register grew from 102 rows at
   Phase 0A close as the kernel/coevolution, augmented-slope,
-  cluster2, missing-data, plot/extractor, diagnostic, and Julia
-  bridge sections were added).
-- **173 `covered`** (86 %): test evidence exists at the primary
+  cluster2, missing-data, plot/extractor, diagnostic, Julia bridge,
+  and predictor-informed latent-score sections were added).
+- **173 `covered`** (82 %): test evidence exists at the primary
   depth advertised by the row. Five of these rows still carry an
   explicit `partial` sub-scope in their status text (`EXT-04`,
   `EXT-13`, `DIA-11`, `DIA-12`, `MIS-34`), so downstream prose must
   cite the covered regime rather than generalising across all regimes.
-- **22 `partial`** (11 %): tests exist but coverage is shallower
+- **22 `partial`** (10 %): tests exist but coverage is shallower
   than advertised — every remaining leading-`partial` row is an
   honest, deliberate deferral (known-V non-Gaussian variants
   FG-07/08/09, spatial-family depth FG-13, single-V `meta_V`
@@ -422,17 +425,20 @@ label in the per-row status column:**
   JUL-01). None is a v0.2.0 *correctness* blocker.
 - **0 `opt-in`**: the `link_residual = "auto"` default
   (PR #101) eliminated this category and it has stayed empty.
-- **7 `blocked`** (4 %): advertised-but-undefined or
-  deliberately-deferred surfaces, all post-CRAN by design —
+- **16 `blocked`** (8 %): advertised-but-undefined or
+  deliberately-deferred surfaces, either post-CRAN by design or
+  design-first lanes without parser/TMB support yet —
   slash-form nesting FG-17, mixture families FAM-18, gengamma
   FAM-19, proportional `meta_V` MET-03, delta/hurdle
   latent-scale correlation MIX-10, delta-family
   `extract_proportions()` EXT-11, and the missing-data v2
-  extensions MIS-32. Each carries a fail-loud / typed-error
-  safeguard on the public surface.
+  extensions MIS-32, plus the Design 73 predictor-informed
+  latent-score surfaces FG-18, RE-13, EXT-31, and LV-01..LV-07.
+  Each live public surface carries or must carry a fail-loud /
+  typed-error safeguard.
 
 The headline therefore moved **40/48/0/14 over 102 rows
-(Phase 0A) -> 173/22/0/7 over 202 rows (2026-06-23 recount)**. No
+(Phase 0A) -> 173/22/0/16 over 211 rows (2026-06-24 recount)**. No
 `partial` or `blocked` row is a v0.2.0 correctness blocker;
 they are honestly-marked deferrals (power-study coverage,
 mixture / gengamma families, proportional meta-V,
@@ -535,6 +541,24 @@ current intentional drift is `binomial` / `cbind_binomial`, linked to
 row. See
 `docs/dev-log/after-task/2026-06-16-r-bridge-capability-drift-guard.md`.
 
+### Section 14 -- Predictor-informed latent scores
+
+Row-owner: **Boole + Gauss + Noether + Emmy + Curie + Fisher**
+(formula grammar, TMB implementation, mathematical contract,
+extractor contract, simulation recovery, and inference semantics).
+Added by Design 73 (2026-06-24). These rows are deliberately blocked
+until parser/TMB/extractor code and recovery tests exist.
+
+| ID | Capability | Status | Test evidence | Notes |
+|----|------------|--------|---------------|-------|
+| LV-01 | Ordinary Gaussian unit-tier `latent(..., lv = ~ x)` end-to-end support | `blocked` | n/a | C1 target. Requires parser metadata, unit-level `X_lv_B`, TMB `alpha_lv_B`, preserved zero-mean innovation `e_i`, ordinary `Psi` companion, `B_lv = Lambda alpha^T` ADREPORT, and extractor output. Must reject `REML = TRUE`, non-Gaussian families, exact fixed/LV overlap, unsupported tiers/sources, and augmented random-regression combinations. |
+| LV-02 | Gaussian recovery of `B_lv`, `Sigma`, and `Psi` | `blocked` | n/a | Requires CRAN-safe rank-1 smoke and heavy rank-1/rank-2 recovery. Primary target is trait-scale `B_lv`; raw `alpha` and raw `Lambda` alone are not pass/fail targets for `K > 1` because they are rotation-dependent. |
+| LV-03 | Missing-response compatibility for `lv` predictors | `blocked` | n/a | Future tests must show retained/missing response cells do not break unit-level `X_lv` construction when `lv` predictors are observed and constant within unit. Missing `lv` predictors and `mi()` terms inside `lv` remain rejected until a separate missing-predictor design derives them. |
+| LV-04 | Factor predictors and rank-deficiency guards in `lv` | `blocked` | n/a | Future parser/API tests must cover factor expansion, rare levels, intercept dropping, equivalence of `lv = ~ x` and `lv = ~ 0 + x`, and typed rejection for rank-deficient or aliased `X_lv` designs. |
+| LV-05 | Non-Gaussian predictor-informed latent scores | `blocked` | n/a | Planned only. Requires family-specific recovery and link-scale diagnostics before any binomial, ordinal, count, Gamma, Beta, mixed-family, or delta/hurdle claim. CI-08/CI-10 coverage gates remain separate. |
+| LV-06 | Tier-expanded `lv` support (`unit_obs`, `cluster`, `cluster2`) | `blocked` | n/a | Planned only. `unit_obs` needs within-unit/session score-mean derivation. `cluster` needs an ordinary reduced-rank cluster slot or an explicit remap. `cluster2` is diagonal-only today and cannot carry `lv` without a new tier design and simulation recovery. |
+| LV-07 | Structured-source `lv` support (`phylo_*`, `animal_*`, `spatial_*`, `kernel_*`) | `blocked` | n/a | Planned only. Dense `kernel_latent(..., lv = )` must first clear single-kernel equivalence; phylo/animal need observed-tip/animal-level covariate derivations; spatial needs the site-vs-mesh score-mean target; multi-kernel attribution needs diagnostics. No broad R-Julia parity claim until named Julia rows move. |
+
 ## What this register does NOT do
 
 - **It does not replace the test files.** Every `covered`
@@ -568,7 +592,8 @@ Each new PR that touches an advertised capability:
 3. **Appends the row** (if new capability) with a row ID
    following the section-prefix convention (`FG-`, `FAM-`,
    `RE-`, `PHY-`, `SPA-`, `MET-`, `MIX-`, `EXT-`, `DIA-`,
-   `CI-`, `LAM-`, `MIS-`).
+   `CI-`, `LAM-`, `MIS-`, `JUL-`, `KER-`, `COE-`, `ANI-`,
+   `LV-`).
 4. **References the row** in the after-task report's
    "validation-debt update" section (new section added by
    Phase 0A step 9 `10-after-task-protocol.md` revision).
@@ -614,9 +639,10 @@ The audit is a Shannon-specific dev-log entry.
   M2 close, M3 close, M5 close, M5.5 close — Ada's
   ratification is the gate.
 - **Row-owner personas** (per row): Boole for FG / RE / PHY
-  / SPA / MET / LAM, Gauss for FAM / SPA, Fisher for CI /
-  MET / MIX / DIA / LAM, Emmy for EXT / MIS, Curie for DIA
-  / MIS-05, Pat for MIS user-facing surface.
+  / SPA / MET / LAM / LV grammar, Gauss for FAM / SPA / LV TMB,
+  Fisher for CI / MET / MIX / DIA / LAM / LV inference, Emmy for
+  EXT / MIS / LV extractors, Curie for DIA / MIS-05 / LV recovery,
+  Pat for MIS user-facing surface.
 
 Each row-owner persona is responsible for:
 

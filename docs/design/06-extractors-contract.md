@@ -80,6 +80,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `tmbprofile_wrapper(fit, target)` | c | cl | cl | cl | Phase 1b PR #109 |
 | `confint_inspect(fit, parameter)` | c | cl | cl | cl | Phase 1b PR #121 |
 | `coverage_study(fit, R)` | c | cl | cl | r | Phase 1b PR #120 |
+| `extract_lv_effects(fit, level, type)` | p | p | p | p | planned by Design 73 for `latent(..., lv = ~ x)`; preferred public output is trait-scale `B_lv`, not raw `alpha` |
 | `compare_loadings(fit1, fit2)` | c | cl | cl | cl | legacy; for two-stage cross-checks |
 | `compare_dep_vs_two_psi(fit)` | c | r | r | r | legacy task-label (PR #40 logic) |
 | `compare_indep_vs_two_psi(fit)` | c | r | r | r | legacy task-label |
@@ -386,6 +387,30 @@ loadings or ordinations carries a rotation-disclaimer
 caption (`getLoadings()` and `rotate_loadings()` already
 warn explicitly).
 
+Design 73 reserves a future
+`component = c("total", "mean", "innovation")` argument for
+predictor-informed latent-score fits. In that regime, `"mean"` returns
+`M alpha`, `"innovation"` returns the fitted innovation `e_hat`, and
+`"total"` returns `M alpha + e_hat`. Until `latent(..., lv = ~ x)` is
+implemented, this component argument is planned only and must not be
+advertised as live.
+
+#### `extract_lv_effects(fit, level = "unit", type = "trait_effect")`
+
+**Status**: planned by Design 73; no exported function or runtime
+support exists yet.
+
+For future `latent(..., lv = ~ x)` fits, this extractor will return
+the predictor-informed latent-score effects. The preferred public
+return is `type = "trait_effect"`, a row-first table for
+$B_\text{lv} = \Lambda\alpha^\top$ with stable columns:
+`level`, `predictor`, `trait`, `estimate`, `lower`, `upper`,
+`interval_method`, `interval_status`, `axis_rank`, and
+`validation_row`. Raw `alpha` can be exposed for method developers, but
+it is rotation-dependent and must carry the same warning discipline as
+loadings and ordinations. Standard errors or intervals are admitted
+only after the ADREPORT and recovery gates in `LV-01` / `LV-02` pass.
+
 #### `getLoadings(fit, level = "unit", rotate = c("none", "varimax", "promax"))`
 
 **Return**: a `T x d` matrix of loadings ($\Lambda$). Row
@@ -586,6 +611,8 @@ contract:
 | `bootstrap_Sigma` | ✅ yes | resamples $\Sigma$, not $\Lambda$ |
 | `getLoadings`, `rotate_loadings` | ❌ no | $\Lambda$ identity; warn |
 | `extract_ordination`, `getLV` | ❌ no | factor scores; warn |
+| `extract_lv_effects(type = "trait_effect")` | ✅ yes, after Design 73 implementation | reports $B_\text{lv} = \Lambda\alpha^\top$ |
+| `extract_lv_effects(type = "axis_coefficient")` | ❌ no, after Design 73 implementation | raw `alpha`; warn |
 | `compare_loadings` | partial | uses Procrustes alignment |
 
 The rotation-disclaimer caption (Darwin's rotational-

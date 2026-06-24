@@ -140,6 +140,21 @@ Promotion from `partial` to `covered` requires a broader coverage or recovery
 grid and either validation or a deliberate design rejection for non-Gaussian
 augmented diagonal Psi.
 
+Design 73 predictor-informed latent scores (`latent(..., lv = ~ x)`)
+start as design rows only. Their first implementation must add parser
+acceptance and rejection tests before any TMB recovery claim. The
+minimum C1 contract is: long and `traits(...)` wide ordinary unit-tier
+Gaussian acceptance; `lv = ~ x` equivalence to `lv = ~ 0 + x`; rejection
+of random bars, offsets, `mi()`, smooth terms, missing predictors,
+response/trait columns, rank-deficient designs, nonconstant
+within-unit predictors, exact fixed/LV overlap, `REML = TRUE`,
+non-Gaussian families, unsupported tiers/sources, and augmented
+random-regression combinations; a small Gaussian rank-1 smoke with
+finite reports and extractor dimensions; and heavy recovery for
+`B_lv`, `Sigma`, and `Psi`. Raw `alpha` and raw `Lambda` are not
+primary pass/fail targets for `K > 1` because they are
+rotation-dependent.
+
 ### Phase 0B per-keyword smoke-test plan
 
 Phase 0B writes a `test-formula-grammar-smoke.R` file that hits
@@ -371,6 +386,7 @@ test files should adopt a more semantic naming convention:
 | Per-extractor | `test-extract-*.R` | `test-extract-sigma.R`, `test-extract-correlations.R` |
 | Per-diagnostic | `test-diagnostic-*.R` | `test-diagnostic-check-identifiability.R` |
 | Random effects | `test-random-effects-*.R` | `test-random-effects-slopes.R` |
+| Predictor-informed latent scores | `test-lv-*.R` | `test-lv-parser.R`, `test-lv-gaussian-recovery.R`, `test-extract-lv-effects.R` |
 | Comparator | `test-comparator-*.R` | `test-comparator-glmmTMB.R`, `test-comparator-gllvm.R` |
 | Mixed-family | `test-mixed-family-*.R` | `test-mixed-family-extractors.R` (M1 work) |
 | Snapshots | `test-snapshots-*.R` | `test-snapshots-error-messages.R` |

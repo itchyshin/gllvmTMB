@@ -1,14 +1,14 @@
 # 61 -- Capability Status and Dependency-Ordered Work-List
 
-**Status date:** 2026-06-23
+**Status date:** 2026-06-24
 **Scope:** status synthesis only. The validation-debt register
 (`docs/design/35-validation-debt-register.md`) remains the row-level source
 of truth; this document is the readable planning layer.
 
-## 2026-06-23 Truth Sync
+## 2026-06-24 Truth Sync
 
-The current register tally is **202 rows: 173 covered, 22 partial,
-0 opt-in, and 7 blocked**. Five covered rows still include explicit
+The current register tally is **211 rows: 173 covered, 22 partial,
+0 opt-in, and 16 blocked**. Five covered rows still include explicit
 partial sub-scope caveats (`EXT-04`, `EXT-13`, `DIA-11`, `DIA-12`,
 `MIS-34`), so public prose must cite the covered regime instead of
 generalising the row.
@@ -31,6 +31,14 @@ ordinal-X, and unsupported Julia fixed-effect-X families remain gated.
 The current power pilot remains diagnostic only. Do not promote `CI-08`
 or `CI-10` until the pilot reports target-explicit coverage, MCSE, and
 fit-health denominators for the corrected estimands.
+
+Design 73 adds a new predictor-informed latent-score lane:
+`latent(..., lv = ~ x)`. This is a major future capability, but it is
+not live. The validation register records `FG-18`, `RE-13`, `EXT-31`,
+and `LV-01` through `LV-07` as blocked/design rows until parser, TMB,
+extractor, and Gaussian recovery evidence land. The first target is
+ordinary Gaussian unit-tier `latent()` only; non-Gaussian, tier-expanded,
+structured-source, and Julia bridge claims remain gated.
 
 ## Bottom Line
 
@@ -116,6 +124,7 @@ n_traits` is valid and tested, while `d > n_traits` aborts.
 | Interval coverage | CI-08 / CI-10 remain separate from point recovery and must not be implied by slope examples. | Keep slope articles point-estimate/recovery framed until coverage gates pass. |
 | Delta / hurdle covariance | Two response scales make a single latent residual or slope covariance undefined. | Derivation first; no article or runtime admission in this slice. |
 | Ordinary behavioural random regression | The Gaussian Appendix-B-style target is now public as the individual-level article; broader non-Gaussian augmented `unique()` support remains guarded. | Decide whether non-Gaussian augmented `unique()` should stay guarded or get a separate admission grid. |
+| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is now the source-of-truth spec, but there is no parser, TMB, extractor, or recovery evidence yet. | Start with a parser/API PR for ordinary Gaussian unit-tier support, then TMB, extractor, and Gaussian recovery PRs. |
 
 ## Status-Scan Handles
 
@@ -128,4 +137,6 @@ rg -n "random-regression-reaction-norms|random-slopes-nongaussian|under audit|fo
   README.md ROADMAP.md _pkgdown.yml vignettes/articles docs/dev-log/audits
 rg -n "d == n_traits|d = n_traits|d <= n_traits|d = K|d = q|d = 6" \
   docs R tests/testthat vignettes
+rg -n "lv =|predictor-informed|latent-score mean|B_lv|LV-0[1-7]|FG-18|RE-13|EXT-31" \
+  docs R tests/testthat vignettes README.md NEWS.md
 ```

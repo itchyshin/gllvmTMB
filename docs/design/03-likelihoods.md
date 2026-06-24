@@ -138,6 +138,20 @@ The random-effects block decomposes as:
   $\ell$. The trait-by-row contribution is $\eta_{it} = \mu_{it}
   + \boldsymbol\lambda_t^\top \mathbf{u}_{g(i)}$ on the link scale.
 
+- **Predictor-informed latent-score means** from the planned
+  `latent(..., lv = ~ x)` surface (Design 73): for ordinary unit-tier
+  Gaussian C1 only, the score is split as
+  $\mathbf{z}_i = M_i\alpha + \mathbf{e}_i$ with
+  $\mathbf{e}_i \sim \mathcal{N}(0, I_K)$. The TMB change is a mean
+  shift inside the existing reduced-rank contribution,
+  $\eta_{it} = \mu_{it} + \boldsymbol\lambda_t^\top
+  (M_i\alpha + \mathbf{e}_i) + q_{it}$. The innovation prior remains
+  centred at zero, and the diagonal $\Psi$ companion remains the
+  ordinary `latent()` companion. No parser or TMB runtime support
+  exists yet; `REML = TRUE`, non-Gaussian families, unsupported tiers,
+  and fixed/LV predictor overlap remain rejected until the validation
+  rows `FG-18`, `RE-13`, and `LV-01` through `LV-07` move.
+
 - **Ordinary augmented Gaussian random regression** from
   `latent(0 + trait + (0 + trait):x | unit, d = K)` or the equivalent
   `traits(...)` shorthand `latent(1 + x | unit, d = K)` (RE-12):

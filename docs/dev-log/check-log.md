@@ -19411,3 +19411,102 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-24-true-binomial-probit-harness.md`.
+
+## 2026-06-24 -- Predictor-informed latent-score design spec
+
+Branch: `codex/lv-predictor-design-20260624`
+
+Goal:
+
+- Create the design/spec source of truth for a future
+  `latent(..., lv = ~ x)` capability before parser or TMB
+  implementation work.
+- Keep the feature blocked/planned until parser, TMB, extractor, and
+  Gaussian recovery gates move.
+
+Coordination and mainline state:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared design / dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before closeout; recent shared-file history was the merged
+  power-pilot lane: `1018c62`, `b08b146`, and `7c675dd`, plus local
+  closed branches.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 8 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> current main R-CMD-check run `28122717337` and pkgdown run
+  `28123499603` succeeded on `1018c62`. Scheduled Power pilot sweep
+  runs `28125143612` and `28118670213` were pending/in progress and not
+  used as evidence.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "latent lv OR constrained ordination OR predictor-informed OR GLLVM.jl parity" --limit 20 --json number,title,url,updatedAt`
+  -> located capability board #340 and adjacent bridge/article issues.
+- `gh issue view 340 --repo itchyshin/gllvmTMB --json number,title,state,url,updatedAt,body`
+  -> inspected capability board. No row promotion.
+- `gh issue view 347 --repo itchyshin/gllvmTMB --json number,title,state,url,updatedAt,body`
+  -> inspected article-completion issue; not changed by this design PR.
+- `gh issue view 488 --repo itchyshin/gllvmTMB --json number,title,state,url,updatedAt,body`
+  -> inspected Julia bridge-gate drift issue; not changed by this design
+  PR.
+
+Prior-art sources inspected:
+
+- `https://jenniniku.github.io/gllvm/reference/gllvm.html`
+  -> checked `gllvm` arguments `num.lv.c`, `num.RR`, and `lv.formula`.
+- `https://jenniniku.github.io/gllvm/articles/vignette6.html`
+  -> checked concurrent, constrained, and partial ordination wording and
+  the fixed-formula / latent-formula overlap boundary.
+- `https://lavaan.ugent.be/tutorial/syntax1.html`
+  -> checked broad SEM syntax precedent for separating measurement
+  relations from latent-variable regressions.
+- `https://rdrr.io/cran/boral/man/boral.html`
+  -> checked comparison-package context only; no `gllvmTMB` claim is
+  derived from `boral`.
+
+Design changes:
+
+- Added `docs/design/73-predictor-informed-latent-scores.md` as the
+  source-of-truth design for the future model
+  `z_i = M_i alpha + e_i`, `e_i ~ N(0, I_K)`, with
+  `B_lv = Lambda alpha'` as the primary trait-scale estimand.
+- Updated `docs/design/01-formula-grammar.md`,
+  `docs/design/03-likelihoods.md`, `docs/design/04-random-effects.md`,
+  `docs/design/05-testing-strategy.md`,
+  `docs/design/06-extractors-contract.md`,
+  `docs/design/35-validation-debt-register.md`, and
+  `docs/design/61-capability-status.md`.
+- Added blocked validation rows `FG-18`, `RE-13`, `EXT-31`, and
+  `LV-01` through `LV-07`.
+- Added recovery checkpoint
+  `docs/dev-log/recovery-checkpoints/2026-06-24-lv-predictor-main-lane-handoff.md`.
+
+Checks and stale scans:
+
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no pkgdown problems found.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-24-lv-predictor-design-spec.md`
+  -> PASS.
+- `rg -n "latent\\([^\\n]*lv\\s*=|predictor-informed|latent-score mean|B_lv|LV-0[1-7]|FG-18|RE-13|EXT-31" docs R tests/testthat vignettes README.md NEWS.md`
+  -> PASS; hits are the intended Design 73 surface, validation rows,
+  linked design-doc updates, and the lane recovery checkpoint.
+- `rg -n "REML|AI-REML|Gaussian-only|non-Gaussian.*REML|REML.*non-Gaussian" docs/design/73-predictor-informed-latent-scores.md docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md`
+  -> PASS; hits keep `REML = TRUE` rejected for `lv` and preserve the
+  Gaussian-only REML / AI-REML boundary.
+- `rg -n "Julia|GLLVM.jl|parity|engine = \"julia\"|engine = 'julia'" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md`
+  -> PASS; hits are row-backed Julia bridge boundaries and Design 73's
+  explicit no-broad-parity statement.
+- `rg -n "residual = FALSE|residual score|old no-residual|unique = FALSE" docs/design/73-predictor-informed-latent-scores.md docs/design/01-formula-grammar.md`
+  -> PASS; Design 73 uses current `unique = FALSE` wording, and remaining
+  no-residual references are existing formula-grammar context.
+
+Not claimed:
+
+- No parser/TMB implementation, package runtime change, R API export,
+  roxygen/Rd change, vignette/article/README/NEWS change, pkgdown
+  navigation change, validation-row promotion, Julia bridge admission,
+  DRAC job, GPU work, production simulation, or non-Gaussian REML claim
+  was made.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-lv-predictor-design-spec.md`.

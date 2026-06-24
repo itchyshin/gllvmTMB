@@ -19016,3 +19016,67 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-power-pilot-smoke-wrapper.md`.
+
+## 2026-06-23 (Codex / Ada) -- Power pilot SLURM smoke wrapper
+
+Scope:
+
+- Added `dev/power-pilot-slurm-smoke.sh`, a conservative SLURM wrapper
+  around `dev/power-pilot-smoke.sh`.
+- The default path is `SLURM_ACTION=test` and `SLURM_STAGE=manifest`:
+  it writes an sbatch file and asks SLURM to validate it with
+  `sbatch --test-only`, launching no fits and queueing no job.
+- Actual submission is opt-in via `SLURM_ACTION=submit`; fit-running
+  stages remain scheduled-compute-only and CPU-only.
+- Updated Design 66 to describe the first DRAC smoke as manifest-only,
+  with fit-running SLURM stages gated until after the manifest smoke.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,author,updatedAt`
+  -> PASS before shared design/dev-log edits; no open PRs.
+- `git log --all --oneline --since='6 hours ago' --decorate`
+  -> PASS; recent history was the expected power-pilot readiness sequence.
+- `git fetch origin --prune`
+  -> PASS; `origin/main` advanced to the merged smoke-wrapper head
+  `73051316`.
+- `git worktree add -b codex/power-pilot-slurm-smoke-20260624 /private/tmp/gllvmtmb-slurm-smoke-fir-20260624 origin/main`
+  -> PASS; fresh clean worktree from current `origin/main`.
+
+Validation:
+
+- `ssh -G fir | rg '^(hostname|user|identityfile|port) '`
+  -> PASS; `fir` resolves to the DRAC host alias.
+- Read-only `fir` login/environment probe
+  -> PASS; SLURM was available, `/scratch` and `/project` existed, and
+  `module load r/4.5.0 julia/1.12.5` exposed `Rscript` and `julia`.
+  Private quota/account details were not persisted in this public log.
+- `bash -n dev/power-pilot-slurm-smoke.sh`
+  -> PASS.
+- `rm -rf /tmp/gllvmtmb-slurm-smoke-write && SLURM_ACTION=write RESULTS_DIR=/tmp/gllvmtmb-slurm-smoke-write SLURM_STAGE=manifest SEED_BASE=181 bash dev/power-pilot-slurm-smoke.sh && bash -n /tmp/gllvmtmb-slurm-smoke-write/_slurm/power-pilot-smoke.sbatch`
+  -> PASS; wrote a manifest-stage sbatch file and the generated job
+  script parsed cleanly.
+- `ssh -o BatchMode=yes -o ConnectTimeout=12 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null fir 'sbatch --test-only' < /tmp/gllvmtmb-slurm-smoke-write/_slurm/power-pilot-smoke.sbatch`
+  -> PASS; `fir` SLURM accepted the script as a dry-run/test-only job.
+- `ssh -o BatchMode=yes -o ConnectTimeout=12 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null fir 'squeue -u "$USER" -h -o "%i|%t|%M|%D|%R|%j" | head -n 20'`
+  -> PASS; no jobs were queued by the test-only validation.
+
+Stale scans:
+
+- `rg -n "SLURM|sbatch|DRAC|GPU|production campaign|n_sim = 2000|AI-REML|validated binomial-probit|probit support" dev/power-pilot-slurm-smoke.sh docs/design/66-capstone-power-study.md`
+  -> PASS for intended SLURM/DRAC boundary wording and existing
+  `n_sim = 2000` planning references.
+- `rg -n "GPU.*(enabled|tested)|production launch|n_sim = 2000.*started|AI-REML|validated binomial-probit|probit support|pilot-index\\.rds.*(write|mutate|update|rebuild)" dev/power-pilot-slurm-smoke.sh docs/design/66-capstone-power-study.md || true`
+  -> PASS; no red-flag matches.
+
+Not claimed:
+
+- No DRAC fit, SLURM submission, package install, GPU check, production
+  campaign, or `n_sim = 2000` run was launched.
+- This slice changes no DGP, likelihood, scoring metric, interval
+  definition, or validation row status.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-slurm-smoke.md`.

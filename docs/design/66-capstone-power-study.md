@@ -758,6 +758,23 @@ reimplement any of it). Entry points:
   user R library, checks that `gllvmTMB` is installed before running the
   smoke, sets BLAS/OpenMP threads to one, and does not start the
   production `n_sim = 2000` campaign.
+
+  Fir scheduled smoke evidence (2026-06-24, source
+  `7c675dd33d58f4dfd633cacfbf05e62c0e168d61`) now covers the first two
+  CPU-only scheduled fit steps after the manifest-only gate. Job
+  `45626865` ran `SLURM_STAGE=all`, `N_SIM_STEP=1`, `N_SIM_CAP=1`,
+  `N_BOOT=0` against
+  `$SCRATCH/gllvmtmb-power-pilot-smoke-fit-nboot0-20260624T164759Z`;
+  it completed with exit code 0, four active manifest rows, four chunk
+  files, four aggregate files, and no `pilot-index.rds`. Job `45627388`
+  repeated the same ladder with `N_BOOT=2` against
+  `$SCRATCH/gllvmtmb-power-pilot-smoke-fit-nboot2-20260624T165402Z`;
+  it also completed with exit code 0 and the same immutable artifact
+  shape. This is reproducibility / scheduler plumbing evidence only:
+  the `binomial_probit` cell remains labelled by
+  `binomial_logit_harness`, the `N_BOOT=2` report flagged non-PD
+  diagnostics for the binomial and nbinom2 cells, ordinal-probit still
+  lacked a primary interval row, and `CI-08` / `CI-10` remain partial.
 - `pilot_run_chunk_manifest()` / `dev/power-pilot-run.R --mode=chunk`
   -- run the active rows from a chunk manifest, reindex each chunk's
   `rep` column into the planned per-cell window, add chunk provenance

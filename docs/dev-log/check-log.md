@@ -18957,3 +18957,62 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-23-power-pilot-audit-mini-runner.md`.
+
+## 2026-06-23 (Codex / Ada) -- Power pilot smoke wrapper
+
+Scope:
+
+- Added `dev/power-pilot-smoke.sh`, a small shell wrapper for the
+  immutable audit-mini ladder. The default `SMOKE_STAGE=all` path runs
+  manifest, local one-rep `audit-mini-run`, chunk audit, chunk aggregate,
+  and chunk-aggregate reporting with `n_boot = 0`.
+- Added a `SMOKE_STAGE=manifest` path for DRAC-login-safe manifest parsing:
+  it validates the four-cell audit-mini manifest and launches no fits.
+- Updated Design 66 to separate login-node-safe manifest checks from
+  fit-running local/Totoro or scheduled-compute smoke stages.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url`
+  -> PASS before shared design/dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS; recent history was the expected #542 through #549 power-pilot
+  readiness sequence, with #549 merged at `51f8fe7d`.
+- `git status --short --branch`
+  -> clean branch start in
+  `/private/tmp/gllvmtmb-power-pilot-smoke-runbook-20260624` on
+  `codex/power-pilot-smoke-runbook-20260624...origin/main`.
+
+Validation:
+
+- `bash -n dev/power-pilot-smoke.sh`
+  -> PASS.
+- `SMOKE_STAGE=manifest SEED_BASE=172 RESULTS_DIR=/tmp/gllvmtmb-smoke-wrapper-manifest bash dev/power-pilot-smoke.sh`
+  -> PASS; wrote only `_manifests/shard-1.csv` and launched no fits.
+- `rm -rf /tmp/gllvmtmb-smoke-wrapper-all && RESULTS_DIR=/tmp/gllvmtmb-smoke-wrapper-all SEED_BASE=173 N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=0 bash dev/power-pilot-smoke.sh`
+  -> PASS; ran the four-cell local smoke, chunk audit, chunk aggregate, and
+  chunk-aggregate report. The report may flag one-rep nonPD cells; those are
+  diagnostic smoke noise, not power or coverage evidence.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "power-pilot-smoke|SMOKE_STAGE|DRAC-login-safe|login nodes|SLURM|GPU|production campaign|n_sim = 2000|pilot-index\\.rds|AI-REML" dev/power-pilot-smoke.sh docs/design/66-capstone-power-study.md`
+  -> PASS for intended wrapper, boundary, and thread-cap wording.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(submitted|sbatch)|GPU.*(enabled|tested)|production launch|n_sim = 2000.*started|AI-REML|validated binomial-probit|probit support|pilot-index\\.rds.*(write|mutate|update|rebuild)" dev/power-pilot-smoke.sh docs/design/66-capstone-power-study.md`
+  -> PASS with no matches; reran with `|| echo "no red-flag matches"` and
+  got `no red-flag matches`.
+
+Not claimed:
+
+- No SSH login, DRAC login-node fit, SLURM submission, GPU check, production
+  campaign, or `n_sim = 2000` run was launched.
+- This slice changes no DGP, likelihood, scoring metric, interval definition,
+  or validation row status.
+- The one-rep local wrapper smoke is not coverage, power, or Type-I evidence.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-smoke-wrapper.md`.

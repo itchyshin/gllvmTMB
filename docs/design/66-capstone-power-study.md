@@ -716,6 +716,18 @@ reimplement any of it). Entry points:
   as a tiny local execution smoke after the manifest-only gate; it still
   does not mutate `pilot-index.rds`, submit DRAC/SLURM work, or start a
   production campaign.
+- `dev/power-pilot-smoke.sh` -- wrap the audit-mini ladder in one
+  shell entry point for humans and future job scripts. The default
+  `SMOKE_STAGE=all` path runs a one-rep, no-bootstrap local/Totoro
+  smoke through manifest, immutable chunk writing, chunk audit, chunk
+  aggregation, and chunk-aggregate reporting. `SMOKE_STAGE=manifest` is
+  the DRAC-login-safe step: it parses and validates the fixed four-cell
+  manifest but launches no fits. Fit-running stages (`run` and `all`)
+  are for local/Totoro or scheduled compute jobs, not DRAC login nodes.
+  The wrapper sets `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, and
+  `MKL_NUM_THREADS` to 1 by default and still does not submit SLURM
+  work, use GPUs, mutate `pilot-index.rds`, or start the production
+  campaign.
 - `pilot_run_chunk_manifest()` / `dev/power-pilot-run.R --mode=chunk`
   -- run the active rows from a chunk manifest, reindex each chunk's
   `rep` column into the planned per-cell window, add chunk provenance

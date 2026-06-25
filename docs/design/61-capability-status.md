@@ -35,11 +35,15 @@ fit-health denominators for the corrected estimands.
 Design 73 adds a new predictor-informed latent-score lane:
 `latent(..., lv = ~ x)`. This is a major future capability, but it is
 not live. The validation register records `FG-18`, `RE-13`, `EXT-31`,
-and `LV-01` through `LV-07` as blocked/design rows. Current code only
-guards the reserved surface against silent use; parser acceptance, TMB,
+and `LV-01` through `LV-07` as blocked/design rows. Current code now has
+a parser/API preflight for the ordinary Gaussian unit-tier surface: it
+stores `extra$lv_formula`, builds the future unit-level `X_lv_B` design,
+checks malformed formulas and unsupported regimes, then aborts before
+TMB construction. The likelihood path, `alpha_lv_B`, ADREPORT,
 extractor, and Gaussian recovery evidence still have to land. The first
-target is ordinary Gaussian unit-tier `latent()` only; non-Gaussian,
-tier-expanded, structured-source, and Julia bridge claims remain gated.
+target remains ordinary Gaussian unit-tier `latent()` only;
+non-Gaussian, tier-expanded, structured-source, and Julia bridge claims
+remain gated.
 
 ## Bottom Line
 
@@ -125,7 +129,7 @@ n_traits` is valid and tested, while `d > n_traits` aborts.
 | Interval coverage | CI-08 / CI-10 remain separate from point recovery and must not be implied by slope examples. | Keep slope articles point-estimate/recovery framed until coverage gates pass. |
 | Delta / hurdle covariance | Two response scales make a single latent residual or slope covariance undefined. | Derivation first; no article or runtime admission in this slice. |
 | Ordinary behavioural random regression | The Gaussian Appendix-B-style target is now public as the individual-level article; broader non-Gaussian augmented `unique()` support remains guarded. | Decide whether non-Gaussian augmented `unique()` should stay guarded or get a separate admission grid. |
-| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is the source-of-truth spec, and a fail-loud guard now prevents silent ignored `lv` formulas. There is still no accepted parser surface, TMB path, extractor, or recovery evidence. | Start with the real parser/API PR for ordinary Gaussian unit-tier support, then TMB, extractor, and Gaussian recovery PRs. |
+| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is the source-of-truth spec. The parser/API preflight now validates ordinary Gaussian unit-tier `lv` formulas, builds `X_lv_B`, and rejects unsupported forms before TMB construction. There is still no likelihood path, extractor, or recovery evidence. | Next slice is TMB data/parameter plumbing for `alpha_lv_B`, followed by extractor and Gaussian recovery PRs. |
 
 ## Status-Scan Handles
 

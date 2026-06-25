@@ -158,16 +158,19 @@ navigation.
 - Guard slice (landed first): if parsed term metadata contains `lv`, abort
   before fitting so current releases cannot silently ignore score
   predictors.
-- Add `lv = NULL` to `latent()`.
-- Store `extra$lv_formula` only on the rewritten reduced-rank term,
-  never on the auto-added diagonal `Psi` companion.
-- Build `X_lv_B` at the unit level, not the row level.
-- Validate one-sided formulas, predictor availability, within-unit
-  constancy, rank, fixed-RHS overlap, unsupported terms, unsupported
-  tiers/sources, non-Gaussian families, and `REML = TRUE`.
+- Parser/API preflight slice (landed after the guard): add
+  `lv = NULL` to `latent()`, store `extra$lv_formula` only on the
+  rewritten reduced-rank term, never on the auto-added diagonal `Psi`
+  companion, and build `X_lv_B` at the unit level, not the row level.
+- Validate one-sided formulas, predictor availability, intercept
+  dropping (`lv = ~ x` equals `lv = ~ 0 + x`), factor expansion,
+  within-unit constancy, rank, fixed-RHS overlap, unsupported terms,
+  unsupported tiers/sources, non-Gaussian families, and `REML = TRUE`.
 - Reject augmented random-regression combinations such as
   `latent(1 + x | unit, d = K, lv = ~ z)` until a separate design
   proves the combined target.
+- This stage still aborts before TMB construction. It does not add
+  `alpha_lv_B`, ADREPORT output, extractors, or recovery evidence.
 
 ### 3. TMB PR
 

@@ -19605,3 +19605,138 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-24-lv-parser-guard.md`.
+
+## 2026-06-24 -- Predictor-informed latent-score parser/API preflight
+
+Branch: `codex/lv-parser-api-preflight-20260624`
+
+Goal:
+
+- Extend the Design 73 `latent(..., lv = ~ x)` reservation from a coarse
+  fail-loud runtime guard to a typed parser/API preflight for ordinary
+  Gaussian unit-tier `latent()`.
+- Validate and prepare the future unit-level `X_lv_B` design, then abort
+  before TMB construction.
+- Keep `FG-18`, `RE-13`, `EXT-31`, and `LV-01` through `LV-07` blocked.
+
+Coordination and mainline state:
+
+- `git status --short --branch && git diff --stat`
+  -> PASS after compaction recovery; dirty files were only this slice.
+- `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-06-24-lv-predictor-main-lane-handoff.md`
+  -> PASS; confirmed the Design 73 source contract and hard scope.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared-file edits; no open PRs.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 10 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> PASS; post-#556 R-CMD-check run `28133069989` succeeded on
+  `6667a3203a6d46d202ec7ce37be1f4d0f2643898`; pkgdown run
+  `28133663663` was still in progress and not used as validation
+  evidence; Power pilot sweep runs remained separate and were not used.
+- `git log --all --oneline --since='6 hours ago' --decorate`
+  -> PASS; no collision detected before shared design/dev-log edits.
+
+Implementation:
+
+- Added `lv = NULL` to `latent()` and regenerated `man/latent.Rd`.
+- Rewrote ordinary `latent(..., lv = ~ x)` metadata to
+  `extra$lv_formula` on the reduced-rank term only; the auto-added
+  diagonal `Psi` companion does not receive `lv` metadata.
+- Added `R/lv-predictor.R` with `gll_prepare_lv_predictor_setup()`,
+  validating the ordinary Gaussian unit-tier surface and constructing
+  one-row-per-unit `X_lv_B`.
+- Replaced the coarse `fit_multi()` `extra$lv` guard with
+  validation-and-abort preflight before TMB construction.
+- Rejected unsupported surfaces and malformed `lv` formulas early:
+  random terms, offsets, `mi()`, smooths, response/trait columns,
+  missing columns, exact fixed-effect overlap, nonconstant-within-unit
+  predictors, unused unit levels, rank-deficient designs, `REML = TRUE`,
+  non-Gaussian families, unsupported tiers, augmented random-regression
+  combinations, ordinary diagonal aliases, source-specific forms, spatial /
+  animal / deprecated aliases, and kernel forms.
+- Updated NEWS, Design 73-linked docs, and validation rows without
+  promoting any row.
+
+Checks run:
+
+- `air format R/lv-predictor.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no output. Formatter intentionally stayed off legacy
+  `R/fit-multi.R` and `R/brms-sugar.R` to avoid broad churn.
+- `Rscript --vanilla -e 'devtools::test(filter = "^lv-parser-guard$")'`
+  -> PASS; 38 pass, 0 fail, 0 warn, 0 skip.
+- `Rscript --vanilla -e 'devtools::test(filter = "^(lv-parser-guard|latent-unique-rename|latent-rank-guard|brms-sugar|formula-grammar-smoke|canonical-keywords|traits-keyword|ordinary-latent-random-regression|kernel-latent-unique-fold|phylo-latent-unique-fold|animal-latent-unique-fold|stage2-rr-diag|mixed-response-sigma)$")'`
+  -> PASS; 346 pass, 6 skip, 1 warning. Skips were INLA absent,
+  one glmmTMB non-PD Hessian skip, and two heavy recovery/matrix skips.
+  The warning was the existing `level = "B"` deprecation path in
+  `extract_Omega()`.
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> PASS before the final unsupported-keyword broadening; 3737 pass,
+  747 skip, 10 warnings, 0 fail. Warnings were existing
+  numerical/deprecation/Julia-bridge warnings, not new `lv` preflight
+  failures. Current-tip coverage after the broadening was checked by
+  the focused/expanded suites above and the `devtools::check()` run
+  below.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/latent.Rd`. Unrelated roxygen2 churn in
+  other generated Rd files was restored out of the diff.
+- `tail -5 man/latent.Rd; printf 'keyword_count='; grep -c '^\\\\keyword' man/latent.Rd || true`
+  -> PASS; tail shows the expected `\\seealso{}` close, and
+  `keyword_count=0`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no problems found.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> PARTIAL / STOPPED. The render reached and wrote the main
+  `articles/gllvmTMB.html` plus several earlier articles, then spent
+  about 17 minutes in the later `lambda-constraint.Rmd` article and
+  spawned `tools/run-structured-re-q4-location-slope-bootstrap-budget-probe.R`.
+  Because that heavy probe is outside this `lv` parser/API slice, the
+  article-only gate was interrupted; the orphaned probe process was
+  terminated and generated vignette images were removed from the
+  worktree.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> WARN; 0 errors, 1 warning, 0 notes. The warning was the local
+  Apple clang / R header diagnostic:
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = FALSE, error_on = "never", check_dir = "/private/tmp/gllvmtmb-lv-parser-api-preflight-check")'`
+  -> WARN; reproduced the same 0-error / 1-warning / 0-note result and
+  preserved logs in
+  `/private/tmp/gllvmtmb-lv-parser-api-preflight-check/gllvmTMB.Rcheck`.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-24-lv-parser-api-preflight.md`
+  -> PASS; no output.
+
+Consistency scans:
+
+- `rg -n "latent\\([^\\n]*lv\\s*=|lv_formula|X_lv_B|predictor-informed|latent-score mean|B_lv|LV-0[1-7]|FG-18|RE-13|EXT-31" docs R tests/testthat NEWS.md man/latent.Rd`
+  -> PASS; hits are the intended Design 73 parser/API surface, blocked
+  rows, helper code, tests, NEWS, and linked status/design text.
+- `rg -n "latent\\([^\\n]*lv\\s*=|lv\\s*=\\s*~|lv_formula|X_lv_B" README.md vignettes R tests docs NEWS.md man/latent.Rd`
+  -> PASS; no `README.md` or `vignettes` `lv` examples exist to
+  cascade in this slice. Hits are the intended R helper, tests,
+  design/dev-log, NEWS, and `man/latent.Rd` surfaces.
+- `rg -n "REML|AI-REML|Gaussian-only|non-Gaussian.*REML|REML.*non-Gaussian" docs/design/73-predictor-informed-latent-scores.md docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md R/lv-predictor.R R/fit-multi.R tests/testthat/test-lv-parser-guard.R NEWS.md`
+  -> PASS; hits preserve the Gaussian-only REML boundary and keep
+  `REML = TRUE` rejected for `lv`.
+- `rg -n "Julia|GLLVM\\.jl|parity|engine = \"julia\"|engine = 'julia'" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md NEWS.md`
+  -> PASS; hits keep the Julia bridge language row-backed and do not
+  imply broad `lv` parity.
+- `rg -n "No accepted parser|reserved-surface fail-loud guard only|accepted parser|implemented model|TMB construction|ADREPORT|extract_lv_effects|alpha_lv_B" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md NEWS.md R/lv-predictor.R R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS after patching `RE-13`; remaining hits correctly say this
+  aborts before TMB construction and has no ADREPORT/extractor path yet.
+
+Not claimed:
+
+- No TMB likelihood path, `alpha_lv_B`, ADREPORT, extractor, Gaussian
+  recovery, non-Gaussian support, tier-expanded support, structured-source
+  support, Julia bridge support, validation-row promotion, DRAC job, GPU
+  work, production simulation, or non-Gaussian REML claim was made.
+- A final code-read found that `phylo_unique(..., lv = ~ x)` could silently
+  drop the reserved metadata before the preflight saw it. The rewriter now
+  rejects the broader unsupported keyword family immediately, and the final
+  focused/expanded test counts include `unique()` and `phylo_unique()`
+  coverage for that edge.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-lv-parser-api-preflight.md`.

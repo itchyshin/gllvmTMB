@@ -17192,6 +17192,8 @@ Validation commands and outcomes:
   -> PASS (`load_all ok`).
 - `git diff --check`
   -> PASS.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-25-lv-effect-sdreport-se.md`
+  -> PASS; no output.
 - `ruby -e 'require "yaml"; y=YAML.load_file("_pkgdown.yml"); h=Hash.new(0); y["articles"].each{|s| (s["contents"] || []).each{|c| h[c]+=1 }}; dup=h.select{|k,v| v>1}; abort("duplicate articles: #{dup.inspect}") unless dup.empty?; puts "pkgdown-article-nav-unique-ok"'`
   -> PASS (`pkgdown-article-nav-unique-ok`).
 - ``rg -n 'Lamdba|depreciat|diag\(psi\)|diag\(\\boldsymbol\\Psi\)|mathrm\{diag\}\(\\boldsymbol\\Psi\)|the Greek letter Psi|trait-specific diagonal from `unique\(\)`|why `unique\(\)` matters|bare phylo_latent|loadings-only by default|Use `phylo_latent\(\) \+ phylo_unique|Use `animal_latent\(\) \+ animal_unique|Use `spatial_unique|append `spatial_unique|recommended when traits|unique\(\) matters|ordinary `latent\(\)` by default' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd``
@@ -20052,3 +20054,98 @@ Checks:
 
 - `git diff --check`
   -> PASS.
+
+2026-06-25 - LV effect sdreport SE extraction
+
+Context:
+
+- Follow-up to the Design 73 `latent(..., lv = ~ x)` lane after Ayumi's
+  applied binary-probit smoke issue. The goal was to expose existing
+  TMB `ADREPORT(B_lv_unit)` standard errors through
+  `extract_lv_effects()` only when `se = TRUE` gives a
+  positive-definite `sdreport()`, while keeping interval/coverage
+  claims gated.
+- Worktree: `/private/tmp/gllvmtmb-lv-next-20260625`.
+- Branch: `codex/lv-effect-sdreport-se-20260625`.
+
+Changes:
+
+- `R/extractors.R`: `extract_lv_effects(type = "trait_effect")` now
+  fills `std.error` from `summary(fit$sd_report, "report")` rows named
+  `B_lv_unit` when `fit$sd_report$pdHess` is true and the SEs are
+  finite. Otherwise it returns `NA` SEs with specific
+  `sdreport_*_no_lv_se` or `sdreport_*_lv_se` status labels.
+- `tests/testthat/test-lv-parser-guard.R`: added an `se = TRUE`
+  positive-definite sdreport fixture and a test comparing extractor
+  estimates/SEs to the TMB report table.
+- NEWS, Design 06/35/61/73, and `man/extract_lv_effects.Rd` now say
+  Wald SEs are available from `ADREPORT(B_lv_unit)` under the sdreport
+  gate, but intervals and coverage remain validation-gated.
+
+Checks:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; no open `gllvmTMB` PRs before shared-doc edits.
+- `git log --all --oneline --since='6 hours ago'`
+  -> REVIEWED; only recent commit in this worktree was
+  `4a4c468 lv: admit binary standard links (#560)`.
+- `air format R/extractors.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no output.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); testthat::test_file("tests/testthat/test-lv-parser-guard.R")'`
+  -> FIRST RUN FAILED with 3 failures because the deterministic algebra
+  fixture produced `pdHess = FALSE` and non-finite `B_lv_unit` SEs;
+  rerun after switching the SE test to the stochastic Gaussian fixture
+  and adding a two-predictor `lv = ~ x + z` matrix-order check
+  -> PASS; 199 pass, 0 fail, 0 warn, 0 skip.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); testthat::test_file("tests/testthat/test-extractors.R")'`
+  -> PASS; 17 pass, 0 fail, 0 warn, 0 skip.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'parse("R/extractors.R"); parse("tests/testthat/test-lv-parser-guard.R"); cat("parse ok\n")'`
+  -> PASS; parsed cleanly.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); devtools::document(quiet = TRUE)'`
+  -> BLOCKED; `devtools` is not installed in the active R 4.6 library
+  stack.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); roxygen2::roxygenise(".", roclets = "rd")'`
+  -> BLOCKED; `roxygen2` is not installed in the active R 4.6 library
+  stack.
+- `tail -n 8 man/extract_lv_effects.Rd`
+  -> PASS; generated Rd details paragraph matches roxygen.
+- `grep -c '^\\keyword' man/extract_lv_effects.Rd`
+  -> PASS; printed `0`, no stray keyword entries.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); if (!requireNamespace("pkgdown", quietly = TRUE)) stop("pkgdown not available in this R library stack"); pkgdown::check_pkgdown()'`
+  -> BLOCKED; `pkgdown` is not installed in the active R 4.6 library
+  stack.
+- `git diff --check`
+  -> PASS.
+
+Consistency scans:
+
+- `rg -n 'std\.error.*NA|standard errors are `?NA|standard errors are NA|point_estimate_only_no_ci_validation|standard errors and interval|ADREPORT uncertainty|no_lv_se|wald_sdreport_no_ci_validation|B_lv_unit' NEWS.md docs/design/06-extractors-contract.md docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md man/extract_lv_effects.Rd R/extractors.R tests/testthat/test-lv-parser-guard.R`
+  -> REVIEWED; stale `extract_lv_effects()` "SE is always NA" wording
+  is removed. Remaining `no_lv_se` hits are intentional status labels;
+  unrelated `Xcoef_fixed` `std.error = NA` wording remains correct.
+- `rg --files tests/testthat | rg 'extract|lv'`
+  -> REVIEWED; selected `test-lv-parser-guard.R` for the feature path
+  and `test-extractors.R` for extractor-neighbour coverage.
+- `sed -n '512,532p' R/extractors.R && sed -n '36,46p' man/extract_lv_effects.Rd`
+  -> REVIEWED; roxygen and generated Rd details agree.
+
+Issue ledger:
+
+- `gh issue view 8 --repo Ayumi-495/urbanisation_map --json number,title,state,url,updatedAt,comments`
+  -> REVIEWED; maintainer comment posted at
+  `https://github.com/Ayumi-495/urbanisation_map/issues/8#issuecomment-4802757622`,
+  promising to write again once SE support is available.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'lv OR latent predictor OR extract_lv_effects' --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; no dedicated `extract_lv_effects()` SE issue found.
+
+Not claimed:
+
+- No confidence intervals, profile/bootstrap intervals, coverage
+  calibration, CI-08/CI-10 promotion, Bernoulli single-trial depth,
+  ordinal/count/Gamma/Beta/mixed-family support, tier/source expansion,
+  Julia bridge parity, DRAC run, GPU work, production simulation, or
+  non-Gaussian REML claim moved.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-25-lv-effect-sdreport-se.md`.

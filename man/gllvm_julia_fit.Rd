@@ -10,6 +10,7 @@ gllvm_julia_fit(
   num.lv = 2L,
   N = NULL,
   X = NULL,
+  X_lv = NULL,
   coef_fixed = NULL,
   mask = NULL,
   units_are_rows = FALSE,
@@ -31,6 +32,13 @@ gllvm_julia_fit(
 
 \item{X}{Fixed-effect design (p x n x q array), or \code{NULL}. Routed for
 Gaussian and selected one-part non-Gaussian bridge families.}
+
+\item{X_lv}{Unit-level predictor-informed latent-score design
+(n x q_lv matrix), or \code{NULL}. Routed only for complete Gaussian bridge
+rows with no fixed-effect \code{X}, no response mask, and
+\code{ci_method = "none"}. The returned object carries point-estimate
+\code{lv_effects}, \code{alpha_lv}, \code{scores_mean}, and \code{scores_innovation} payloads;
+confidence intervals and non-Gaussian \code{X_lv} rows remain gated.}
 
 \item{coef_fixed}{Optional logical vector of length \code{dim(X)[3]}. \code{TRUE}
 entries are fixed at zero by the Julia bridge. Most R users should prefer
@@ -81,6 +89,18 @@ y <- matrix(rnorm(2 * 40), nrow = 2)
 fit <- gllvm_julia_fit(y, family = "gaussian", num.lv = 2)
 fit$loglik
 fit$Sigma
+
+# Predictor-informed latent-score means are point-only on the bridge.
+rownames(y) <- paste0("trait", seq_len(nrow(y)))
+colnames(y) <- paste0("site", seq_len(ncol(y)))
+x <- seq(-1, 1, length.out = ncol(y))
+fit_lv <- gllvm_julia_fit(
+  y,
+  family = "gaussian",
+  num.lv = 1,
+  X_lv = matrix(x, ncol = 1, dimnames = list(colnames(y), "x"))
+)
+extract_lv_effects(fit_lv)
 
 # Wald confidence intervals for an admitted no-X row:
 fit_ci <- gllvm_julia_fit(

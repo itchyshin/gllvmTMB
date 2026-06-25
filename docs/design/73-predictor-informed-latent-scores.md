@@ -146,7 +146,7 @@ but C1 exposes only ordinary unit-tier support.
 
 | Tier / source | Eventual target | C1 behaviour |
 |---|---|---|
-| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog; smoke/algebra evidence and standard-link binary latent-predictor trait-effect recovery, not interval calibration |
+| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian `engine = "julia"` point route; smoke/algebra evidence and standard-link binary latent-predictor trait-effect recovery, not interval calibration |
 | `latent(... | unit_obs, lv = ~ x_obs)` | Within-unit/session latent-score mean | Reject as planned |
 | `latent(... | cluster, lv = ~ x_cluster)` | Cluster latent-score mean if a reduced-rank cluster slot is added | Reject as planned |
 | `latent(... | cluster2, lv = ~ x_cluster2)` | Not valid today; `cluster2` is diagonal-only | Reject |
@@ -230,6 +230,26 @@ withheld until recovery/calibration evidence lands.
   `wald_sdreport_no_ci_validation` standard errors only from validated
   `ADREPORT(B_lv_unit)` output and no confidence-interval claim.
 
+### 4a. R-to-Julia bridge PR
+
+Status: landed for a narrow Gaussian point route only. The R bridge
+builds the same unit-level `X_lv` design through the Design 73 parser
+setup and passes it to `GLLVM.bridge_fit(X_lv = ...)` for complete
+Gaussian `latent(..., unique = FALSE, lv = ~ x)` rows with no
+fixed-effect `X`, no response mask, and `ci_method = "none"`.
+
+- Retained Julia payloads are `lv_effects`, `alpha_lv`,
+  `scores_mean`, and `scores_innovation`.
+- `extract_lv_effects()` reports the Julia bridge `lv_effects` table
+  as point estimates only: `std.error = NA` and
+  `uncertainty_status =
+  "julia_bridge_point_estimate_only_no_ci_validation"`.
+- `extract_ordination(component = c("total", "mean", "innovation"))`
+  is routed for those retained Gaussian bridge score payloads.
+- Non-Gaussian/binary `X_lv`, fixed-effect `X` plus `X_lv`, response
+  masks plus `X_lv`, mixed-family `X_lv`, and any CI/profile/bootstrap
+  route remain gated under `JUL-01`, `JUL-01A`, and `LV-01`.
+
 ### 5. Public docs/article PR
 
 Only after C1 recovery evidence, add a Tier-1 article:
@@ -285,11 +305,11 @@ target for `K > 1`.
 ## GLLVM.jl Parity Boundary
 
 This is a twin-lane concept for `gllvmTMB` and `GLLVM.jl`, but parity
-must move row by row. The R-side design should make the future Julia
-bridge input explicit (`X_lv_B`, `alpha_lv_B`, total/mean/innovation
-scores, and `B_lv`), but public docs must not imply that the Julia
-engine supports `lv` until a named Julia bridge row is implemented and
-validated.
+must move row by row. A named Julia bridge row now exists only for the
+complete-response Gaussian point route described above. Public docs must
+not imply binary/non-Gaussian `X_lv`, response masks with `X_lv`,
+fixed-effect `X` plus `X_lv`, CI/profile/bootstrap support, or broad
+native-vs-Julia parity until those rows are implemented and validated.
 
 ## Reviewer Checklist
 

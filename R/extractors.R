@@ -392,9 +392,11 @@ extract_communality <- function(
 #' Extract ordination scores and loadings from a fitted multivariate model
 #'
 #' @param fit A fitted multivariate model returned by [gllvmTMB()]. Admitted
-#'   `engine = "julia"` bridge fits expose raw unit-tier loadings and scores;
-#'   within-unit, structured-tier, and rotated ordinations remain gated for
-#'   Julia bridge extractors.
+#'   `engine = "julia"` bridge fits expose raw unit-tier loadings and scores.
+#'   Gaussian bridge fits with `latent(..., lv = ~ x)` also expose retained
+#'   `"mean"` and `"innovation"` score components. Within-unit,
+#'   structured-tier, and rotated ordinations remain gated for Julia bridge
+#'   extractors.
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
 #'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
 #' @param component Score component to return. `"total"` returns the latent
@@ -432,15 +434,10 @@ extract_ordination <- function(
   component <- match.arg(component)
   level <- .normalise_level(level, arg_name = "level")
   if (inherits(fit, "gllvmTMB_julia")) {
-    if (!identical(component, "total")) {
-      cli::cli_abort(c(
-        "Julia bridge ordination currently supports only {.code component = \"total\"}.",
-        "i" = "Predictor-informed score components are not admitted for GLLVM.jl bridge fits yet."
-      ))
-    }
     return(.gllvm_julia_extract_ordination(
       fit = fit,
-      level = .canonical_level_name(level)
+      level = .canonical_level_name(level),
+      component = component
     ))
   }
   obj <- fit$tmb_obj
@@ -524,7 +521,10 @@ extract_ordination <- function(
 #' For `type = "trait_effect"`, `std.error` is populated from TMB's
 #' delta-method `ADREPORT(B_lv_unit)` output when the fit carries a valid
 #' positive-definite `sdreport()`. Confidence intervals and coverage
-#' calibration remain validation-gated.
+#' calibration remain validation-gated. Gaussian `engine = "julia"` bridge fits
+#' expose point estimates only; their `std.error` values are `NA` and
+#' `uncertainty_status` is
+#' `"julia_bridge_point_estimate_only_no_ci_validation"`.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param level Currently `"unit"` only. Legacy alias `"B"` is accepted.
@@ -550,9 +550,10 @@ extract_lv_effects <- function(
   level <- .normalise_level(level, arg_name = "level")
 
   if (inherits(fit, "gllvmTMB_julia")) {
-    cli::cli_abort(c(
-      "Julia bridge fits do not yet expose predictor-informed latent effects.",
-      "i" = "Only named R-side C1 fits with {.code latent(..., lv = ~ x)} are admitted in this slice."
+    return(.gllvm_julia_extract_lv_effects(
+      fit = fit,
+      level = .canonical_level_name(level),
+      type = type
     ))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {

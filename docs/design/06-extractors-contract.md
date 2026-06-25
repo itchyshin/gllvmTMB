@@ -392,8 +392,9 @@ Design 73 adds a C1
 predictor-informed latent-score fits. In that regime, `"mean"` returns
 `M alpha`, `"innovation"` returns the fitted innovation `e_hat`, and
 `"total"` returns `M alpha + e_hat`. The live C1 surface is ordinary
-unit-tier Gaussian plus pure binomial logit/probit/cloglog only; Julia bridge fits
-currently accept only `component = "total"`.
+unit-tier Gaussian plus pure binomial logit/probit/cloglog on the TMB
+path, plus a narrow complete-response Gaussian Julia bridge point route.
+Other Julia bridge rows still accept only `component = "total"`.
 
 #### `extract_lv_effects(fit, level = "unit", type = "trait_effect")`
 
@@ -411,8 +412,12 @@ $B_\text{lv} = \Lambda\alpha^\top$ with columns `level`, `trait`,
 `type = "axis_effect"`, but it is rotation-dependent and carries
 `rotation_status`. Trait-scale `std.error` values are copied from the
 TMB delta-method `ADREPORT(B_lv_unit)` output when available and are
-labelled `wald_sdreport_no_ci_validation`; intervals are not admitted
-until the recovery/calibration gates in `LV-02` pass.
+labelled `wald_sdreport_no_ci_validation`. Gaussian Julia bridge
+`X_lv` rows return point estimates only with `std.error = NA` and
+`uncertainty_status =
+"julia_bridge_point_estimate_only_no_ci_validation"`. Intervals are not
+admitted until the recovery/calibration gates in `LV-02` and the named
+Julia bridge CI rows pass.
 
 #### `getLoadings(fit, level = "unit", rotate = c("none", "varimax", "promax"))`
 
@@ -615,7 +620,7 @@ contract:
 | `getLoadings`, `rotate_loadings` | ❌ no | $\Lambda$ identity; warn |
 | `extract_ordination`, `getLV` | ❌ no | factor scores; warn |
 | `extract_lv_effects(type = "trait_effect")` | ✅ yes, after Design 73 implementation | reports $B_\text{lv} = \Lambda\alpha^\top$ |
-| `extract_lv_effects(type = "axis_coefficient")` | ❌ no, after Design 73 implementation | raw `alpha`; warn |
+| `extract_lv_effects(type = "axis_effect")` | ❌ no, after Design 73 implementation | raw `alpha`; warn |
 | `compare_loadings` | partial | uses Procrustes alignment |
 
 The rotation-disclaimer caption (Darwin's rotational-

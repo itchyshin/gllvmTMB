@@ -70,11 +70,13 @@ discipline, adapted for the multi-trait stacked grammar):
     `s = 1` cells and Gaussian `phylo_dep(..., s = 2)` live in the
     validation-debt register; non-Gaussian `s >= 2` remains partial.
 13. **Predictor-informed latent-score means**
-    `latent(..., lv = ~ x)` (Design 73). **Status: partial / Gaussian
-    C1**: ordinary unit-tier Gaussian `latent()` now has parser, TMB
-    smoke, `B_lv_unit`, and point-extractor support. Non-Gaussian,
-    tier-expanded, structured-source, missing-response, and recovery /
-    interval variants remain design rows until their own tests exist.
+    `latent(..., lv = ~ x)` (Design 73). **Status: partial / C1**:
+    ordinary unit-tier Gaussian `latent()` now has parser, TMB smoke,
+    `B_lv_unit`, and point-extractor support; pure binomial-probit is
+    admitted with a small trait-scale `B_lv` recovery/algebra gate.
+    Other non-Gaussian links/families, tier-expanded,
+    structured-source, missing-response, and interval variants remain
+    design rows until their own tests exist.
 
 ## Vocabulary
 
@@ -90,7 +92,7 @@ adding the `animal_*` row; per [`14-known-relatedness-keywords.md`](14-known-rel
 | 4 × 5 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Explicit marginal / independent trait covariance; diagonal, no off-diagonal |
 | 4 × 5 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
 | 4 × 5 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$) |
-| Predictor-informed latent scores | `latent(..., lv = ~ x)` | Term-local fixed-effect mean for latent scores; Design 73, ordinary Gaussian unit-tier C1 partial |
+| Predictor-informed latent scores | `latent(..., lv = ~ x)` | Term-local fixed-effect mean for latent scores; Design 73, ordinary unit-tier C1 partial for Gaussian and pure binomial-probit |
 | Random slope | `latent(1 + x \| unit, d = K)` / structured `phylo_*()` and `spatial_*()` slope keywords | Per-group random regression slope on covariate `x`; ordinary Gaussian default `latent()` path is partial under RE-12, structured paths follow their validation rows |
 | `meta_V` | `meta_V(V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. `meta_known_V()` is a deprecated alias. |
 
@@ -145,8 +147,8 @@ $$
 z_i = M_i\alpha + e_i,\qquad e_i \sim N(0, I_K).
 $$
 
-The ordinary unit-tier Gaussian C1 target keeps the current
-`latent()` decomposition,
+The ordinary unit-tier C1 target keeps the current `latent()`
+decomposition,
 
 $$
 \Sigma_\text{unit} = \Lambda\Lambda^\top + \Psi,
@@ -167,11 +169,13 @@ while preserving a latent-score innovation. C1 must reject combined
 forms such as `latent(1 + x | unit, d = K, lv = ~ z)` until a separate
 design proves the target.
 
-Status: partial under `FG-18`, `RE-13`, `EXT-31`, `LV-01`, and
-`LV-04`: ordinary Gaussian unit-tier smoke/algebra support exists with
-point extractors. `LV-02`, `LV-03`, and `LV-05` through `LV-07` remain
-blocked for recovery, missing-response, non-Gaussian, tier-expanded,
-and structured-source support.
+Status: partial under `FG-18`, `RE-13`, `EXT-31`, `LV-01`, `LV-04`,
+and `LV-05`: ordinary Gaussian unit-tier smoke/algebra support exists
+with point extractors, and pure binomial-probit has a small
+trait-scale `B_lv` recovery/algebra gate. `LV-02`, `LV-03`, `LV-06`,
+and `LV-07` remain blocked for Gaussian recovery, missing-response,
+tier-expanded, and structured-source support; other non-Gaussian
+families/links remain blocked under `LV-05`.
 
 ### `lambda_constraint` for confirmatory factor analysis
 

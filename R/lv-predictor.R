@@ -1,6 +1,7 @@
 ## Design 73 parser/API preflight for predictor-informed latent scores.
 ## This file validates and prepares the unit-level X_lv_B design. The first
-## TMB path is ordinary Gaussian unit-tier latent() only.
+## TMB path is ordinary unit-tier latent(); non-Gaussian admission starts with
+## binomial-probit only because that link has a fixed latent residual scale.
 
 gll_lv_covstruct_indices <- function(covstructs) {
   which(vapply(
@@ -55,6 +56,7 @@ gll_prepare_lv_predictor_setup <- function(
   trait,
   site,
   family_id_vec,
+  link_id_vec,
   REML = FALSE
 ) {
   lv_idx <- gll_lv_covstruct_indices(parsed$covstructs)
@@ -70,7 +72,7 @@ gll_prepare_lv_predictor_setup <- function(
     cli::cli_abort(c(
       "Only one {.arg lv} predictor-informed latent-score term is allowed in this Design 73 C1 slice.",
       "x" = "Found terms: {paste(unique(labels), collapse = ', ')}.",
-      "i" = "C1 targets one ordinary Gaussian unit-tier {.fn latent} block."
+      "i" = "C1 targets one ordinary unit-tier {.fn latent} block."
     ))
   }
 
@@ -104,15 +106,24 @@ gll_prepare_lv_predictor_setup <- function(
   if (isTRUE(REML)) {
     cli::cli_abort(c(
       "{.arg lv} does not support {.arg REML = TRUE} in this C1 slice.",
-      "i" = "Design 73 starts with ML for ordinary Gaussian unit-tier fits.",
+      "i" = "Design 73 starts with ML for admitted ordinary unit-tier fits.",
       ">" = "Use {.code REML = FALSE}; REML support needs a separate derivation and validation row."
     ))
   }
-  if (any(family_id_vec != 0L)) {
+  if (length(link_id_vec) != length(family_id_vec)) {
     cli::cli_abort(c(
-      "{.arg lv} is currently Gaussian-only.",
-      "x" = "At least one response row uses a non-Gaussian family.",
-      "i" = "Non-Gaussian predictor-informed latent scores remain blocked under {.code LV-05}."
+      "Internal error: {.arg link_id_vec} must match {.arg family_id_vec}.",
+      "i" = "This should be reported as a gllvmTMB bug."
+    ))
+  }
+  if (
+    any(family_id_vec != 0L) &&
+      !all(family_id_vec == 1L & link_id_vec == 1L)
+  ) {
+    cli::cli_abort(c(
+      "{.arg lv} currently admits only Gaussian and single-family binomial-probit fits.",
+      "x" = "Found at least one row outside {.code family = binomial(link = \"probit\")}.",
+      "i" = "Other non-Gaussian predictor-informed latent scores remain blocked under {.code LV-05}."
     ))
   }
 

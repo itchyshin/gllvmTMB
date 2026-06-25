@@ -141,17 +141,20 @@ grid and either validation or a deliberate design rejection for non-Gaussian
 augmented diagonal Psi.
 
 Design 73 predictor-informed latent scores (`latent(..., lv = ~ x)`)
-are C1 partial for ordinary Gaussian unit-tier fits. The first
-implementation adds parser acceptance/rejection tests and a small TMB
-smoke before any recovery claim. The minimum C1 contract is: long and
-`traits(...)` wide ordinary unit-tier
-Gaussian acceptance; `lv = ~ x` equivalence to `lv = ~ 0 + x`; rejection
+are C1 partial for ordinary unit-tier Gaussian and pure binomial-probit
+fits. The first implementation adds parser acceptance/rejection tests,
+small TMB smokes, and a narrow binomial-probit trait-effect recovery
+gate before any broad recovery claim. The minimum C1 contract is: long
+and `traits(...)` wide ordinary unit-tier Gaussian acceptance; pure
+binomial-probit long-form acceptance; `lv = ~ x` equivalence to
+`lv = ~ 0 + x`; rejection
 of random bars, offsets, `mi()`, smooth terms, missing predictors,
 response/trait columns, rank-deficient designs, nonconstant
 within-unit predictors, exact fixed/LV overlap, `REML = TRUE`,
-non-Gaussian families, unsupported tiers/sources, and augmented
-random-regression combinations; a small Gaussian rank-1 smoke with
-finite reports and extractor dimensions; and heavy recovery for
+unsupported non-Gaussian families/links, unsupported tiers/sources, and
+augmented random-regression combinations; a small Gaussian rank-1 smoke
+with finite reports and extractor dimensions; a binomial-probit
+multi-trial `B_lv` recovery/algebra gate; and heavy recovery for
 `B_lv`, `Sigma`, and `Psi`. Raw `alpha` and raw `Lambda` are not
 primary pass/fail targets for `K > 1` because they are
 rotation-dependent.

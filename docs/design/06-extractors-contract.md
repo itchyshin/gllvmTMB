@@ -80,7 +80,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `tmbprofile_wrapper(fit, target)` | c | cl | cl | cl | Phase 1b PR #109 |
 | `confint_inspect(fit, parameter)` | c | cl | cl | cl | Phase 1b PR #121 |
 | `coverage_study(fit, R)` | c | cl | cl | r | Phase 1b PR #120 |
-| `extract_lv_effects(fit, level, type)` | cl | p | p | p | Design 73 C1 point extractor for ordinary Gaussian unit-tier `latent(..., lv = ~ x)`; preferred public output is trait-scale `B_lv`, not raw `alpha`; intervals remain gated |
+| `extract_lv_effects(fit, level, type)` | cl | p | p | p | Design 73 C1 point extractor for admitted ordinary unit-tier `latent(..., lv = ~ x)` fits; preferred public output is trait-scale `B_lv`, not raw `alpha`; intervals remain gated |
 | `compare_loadings(fit1, fit2)` | c | cl | cl | cl | legacy; for two-stage cross-checks |
 | `compare_dep_vs_two_psi(fit)` | c | r | r | r | legacy task-label (PR #40 logic) |
 | `compare_indep_vs_two_psi(fit)` | c | r | r | r | legacy task-label |
@@ -392,13 +392,13 @@ Design 73 adds a C1
 predictor-informed latent-score fits. In that regime, `"mean"` returns
 `M alpha`, `"innovation"` returns the fitted innovation `e_hat`, and
 `"total"` returns `M alpha + e_hat`. The live C1 surface is ordinary
-Gaussian unit-tier only; Julia bridge fits currently accept only
-`component = "total"`.
+unit-tier Gaussian plus pure binomial-probit only; Julia bridge fits
+currently accept only `component = "total"`.
 
 #### `extract_lv_effects(fit, level = "unit", type = "trait_effect")`
 
-**Status**: C1 point extractor for ordinary Gaussian unit-tier
-`latent(..., lv = ~ x)`.
+**Status**: C1 point extractor for admitted ordinary unit-tier
+`latent(..., lv = ~ x)` fits.
 
 For `latent(..., lv = ~ x)` fits, this extractor returns the
 predictor-informed latent-score effects. The preferred public return is

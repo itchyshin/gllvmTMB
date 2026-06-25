@@ -19852,3 +19852,86 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-24-lv-tmb-extractor-c1.md`.
+## 2026-06-25 -- LV binary-probit C1 admission (Codex)
+
+Worktree: `/private/tmp/gllvmtmb-lv-binary-probit-20260625`
+Branch: `codex/lv-binary-probit-20260625`
+Base: `origin/main` at `d26b5eb` (`latent lv: add Gaussian C1 TMB path (#558)`)
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; no open `gllvmTMB` PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> REVIEWED; only the merged Gaussian LV C1 commit was relevant.
+
+Implementation:
+
+- Relaxed the Design 73 `lv` family guard from Gaussian-only to
+  Gaussian plus pure `binomial(link = "probit")` only. Binary logit,
+  cloglog, ordinal, count, Gamma, Beta, mixed-family, and delta/hurdle
+  `lv` fits remain blocked under `LV-05`.
+- Passed `link_id_vec` into `gll_prepare_lv_predictor_setup()` so the
+  binary admission is link-specific rather than all-binomial.
+- Added a CRAN-safe multi-trial binomial-probit fixture to
+  `test-lv-parser-guard.R` that checks convergence, finite reports,
+  family/link IDs, `total = innovation + mean`, and trait-scale
+  `B_lv = Lambda alpha^T` recovery.
+- Updated NEWS and Design 01/03/04/05/06/35/61/73 plus
+  `man/extract_lv_effects.Rd` so `LV-05` is partial for pure
+  binomial-probit only. No public README/vignette example was added.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "^lv-parser-guard$")'`
+  -> PASS before docs update; 135 pass, 0 fail, 0 warn, 0 skip.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/extract_lv_effects.Rd`. Unrelated roxygen
+  churn in `man/add_utm_columns.Rd`, `man/extract_correlations.Rd`,
+  `man/gllvmTMB-package.Rd`, `man/make_mesh.Rd`, `man/phylo_latent.Rd`,
+  and `man/reexports.Rd` was removed from the diff.
+- `Rscript --vanilla -e 'devtools::test(filter = "^lv-parser-guard$")'`
+  -> PASS after docs/Rd update; 135 pass, 0 fail, 0 warn, 0 skip.
+- `Rscript --vanilla -e 'devtools::test(filter = "^(lv-parser-guard|formula-grammar-smoke)$")'`
+  -> PASS; 162 pass, 0 fail, 0 warn, 0 skip.
+- `air format R/brms-sugar.R R/extractors.R R/lv-predictor.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "^(extractors|extractors-extra|rotate-compare-loadings)$")'`
+  -> PASS; 136 pass, 0 fail, 0 warn, 0 skip.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no problems found.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> PASS. The full article rebuild completed; the two Lambda
+  constraint/profile articles were the slow path. Generated scratch
+  PNGs under `vignettes/` were removed before commit.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = FALSE, error_on = "never", check_dir = "/private/tmp/gllvmtmb-lv-binary-probit-check")'`
+  -> PASS with 0 errors, 1 warning, 1 note. The warning is the local
+  Apple clang / R header warning group (`R_ext/Boolean.h:
+  -Wfixed-enum-extension`) with Eigen unused-variable warnings in
+  `00install.out`; the note is `unable to verify current time`.
+  Testthat inside R CMD check was OK (`[141s/157s]`).
+- `git diff --check`
+  -> PASS.
+
+Consistency scans:
+
+- `rg -n 'ordinary Gaussian unit-tier|partial / Gaussian C1|non-Gaussian support|LV-05.*remain|planned or blocked rows|Gaussian-only unit-tier|ordinary Gaussian only|non-Gaussian families, unsupported tiers' NEWS.md R docs/design tests/testthat man | head -n 120`
+  -> REVIEWED; remaining hits are deliberate Gaussian row labels
+  (`LV-01`), broad-gate language, or the updated `LV-05` partial row.
+- `rg -n 'binomial-probit|link_id_vec|family_id_vec|B_lv|LV-05' R/lv-predictor.R R/fit-multi.R R/extractors.R tests/testthat/test-lv-parser-guard.R docs/design/35-validation-debt-register.md NEWS.md`
+  -> REVIEWED; hits match the new pure binomial-probit C1 admission and
+  blocked broader-family wording.
+
+Not claimed:
+
+- No binary logit/cloglog, Bernoulli single-trial depth, ordinal, count,
+  Gamma, Beta, mixed-family, delta/hurdle, missing-response, interval,
+  CI-08/CI-10, Julia bridge parity, DRAC, GPU, or production simulation
+  claim moved.
+- GLLVM.jl PR #115 was merged after all its checks passed, freeing the
+  one-PR-at-a-time slot for this R-side binary-probit PR after the
+  final local audit.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-25-lv-binary-probit-c1.md`.

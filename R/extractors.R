@@ -521,7 +521,7 @@ extract_ordination <- function(
 #' or the raw axis-scale \eqn{\boldsymbol\alpha}. The trait-scale table is the
 #' preferred summary because raw latent axes are scale- and rotation-dependent.
 #'
-#' This is a C1 point-estimate extractor for ordinary Gaussian unit-tier
+#' This is a C1 point-estimate extractor for admitted ordinary unit-tier
 #' `latent(..., lv = ~ x)` fits. Confidence intervals and recovery calibration
 #' remain validation-gated.
 #'
@@ -566,7 +566,7 @@ extract_lv_effects <- function(
   if (!isTRUE(fit$use$lv_B)) {
     cli::cli_abort(c(
       "{.fn extract_lv_effects} requires a predictor-informed latent fit.",
-      "i" = "Fit an ordinary Gaussian unit-tier model with {.code latent(..., lv = ~ x)}."
+      "i" = "Fit an admitted ordinary unit-tier model with {.code latent(..., lv = ~ x)}."
     ))
   }
 

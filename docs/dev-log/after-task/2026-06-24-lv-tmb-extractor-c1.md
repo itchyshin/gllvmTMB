@@ -39,6 +39,10 @@ support, tier/source expansion, DRAC evidence, GPU work, or Julia parity.
   long/wide Gaussian C1 fit smoke, report-shape checks, score
   decomposition checks, extractor algebra checks, and unsupported-level
   / no-`lv` extractor errors.
+- Added a deterministic ordinary-default `latent(..., lv = ~ x)` smoke
+  so the C1 path is covered both with the default Psi companion
+  (`use_diag_B = TRUE`) and the explicit loadings-only
+  `unique = FALSE` subset.
 - Updated `NEWS.md`, `_pkgdown.yml`, generated Rd, and Design
   01/03/04/06/35/61/73 so the package now says "C1 partial" instead of
   "planned / blocked".
@@ -123,7 +127,8 @@ Dev-log:
 - `air format R/extractors.R R/lv-predictor.R tests/testthat/test-lv-parser-guard.R`
   -> PASS; no output.
 - `Rscript --vanilla -e 'devtools::test(filter = "^lv-parser-guard$")'`
-  -> PASS; 93 pass, 0 fail, 0 warn, 0 skip.
+  -> PASS after the compatibility/default-Psi patch; 113 pass, 0 fail,
+  0 warn, 0 skip.
 - `Rscript --vanilla -e 'devtools::test(filter = "^(extractors|extractors-extra|rotate-compare-loadings|julia-bridge)$")'`
   -> PASS; 535 pass, 16 skip, 1 warning, 0 fail. The skips were
   expected local `GLLVM.jl` path skips. The warning was the existing
@@ -147,6 +152,9 @@ The focused LV suite exercises both acceptance and rejection:
   satisfy `total = innovation + mean`;
 - feature combination: the wide `traits(...)` surface and
   loadings-only subset (`unique = FALSE`) both run through the C1 path;
+- ordinary-default path: `latent(..., lv = ~ x)` keeps its Psi
+  companion (`use_diag_B = TRUE`) while preserving
+  `U_B_total = U_lv_mean_B + z_B`;
 - boundary/rejection: malformed formulas, unsupported tiers/sources,
   non-Gaussian families, `REML = TRUE`, fixed/LV overlap, and
   extractor calls on unsupported levels or no-`lv` fits still error.
@@ -242,7 +250,9 @@ ordinary `Psi` companion is unchanged.
 
 Curie's tests now cover acceptance, algebra, and rejection. The
 neighbor extractor tests caught the return-shape regression that the
-new happy path alone would have missed.
+new happy path alone would have missed. A late TMB-review pass also
+added the default-Psi ordinary `latent()` smoke so the NEWS claim that
+the Psi companion is preserved has direct test coverage.
 
 Fisher's boundary is the next tranche: smoke/algebra is not recovery.
 The pass/fail target must be `B_lv`, `Sigma`, and `Psi`, not raw

@@ -92,6 +92,55 @@ fit_lv_smoke <- function(data = make_lv_fit_data()) {
   )
 }
 
+make_lv_default_fit_data <- function(n_units = 80L) {
+  set.seed(20260625)
+  traits <- paste0("t", 1:4)
+  units <- paste0("u", seq_len(n_units))
+  x_unit <- scale(seq(-1.5, 1.5, length.out = n_units))[, 1]
+  z_innov <- stats::rnorm(n_units, 0, 0.35)
+  Lambda <- c(0.8, -0.45, 0.35, 0.55)
+  beta <- c(0.2, -0.1, 0.15, -0.05)
+  alpha <- 0.7
+  df <- do.call(
+    rbind,
+    lapply(seq_along(units), function(i) {
+      data.frame(
+        unit = units[[i]],
+        trait = traits,
+        x = x_unit[[i]],
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+  df$unit <- factor(df$unit, levels = units)
+  df$trait <- factor(df$trait, levels = traits)
+  trait_i <- as.integer(df$trait)
+  unit_i <- as.integer(df$unit)
+  score <- alpha * x_unit[unit_i] + z_innov[unit_i]
+  trait_sd <- rep(c(0.08, 0.06, 0.05, 0.07), times = n_units)
+  df$value <- beta[trait_i] +
+    Lambda[trait_i] * score +
+    stats::rnorm(nrow(df), 0, trait_sd) +
+    stats::rnorm(nrow(df), 0, 0.12)
+  df
+}
+
+fit_lv_default_smoke <- function(data = make_lv_default_fit_data()) {
+  withr::local_options(
+    gllvmTMB.quiet_grammar_notes = TRUE,
+    lifecycle_verbosity = "quiet"
+  )
+  gllvmTMB(
+    value ~ 0 +
+      trait +
+      latent(0 + trait | unit, d = 1, lv = ~x),
+    data = data,
+    unit = "unit",
+    trait = "trait",
+    control = gllvmTMBcontrol(se = FALSE)
+  )
+}
+
 expect_lv_smoke_reports <- function(fit) {
   expect_true(isTRUE(fit$use$lv_B))
   expect_equal(dim(fit$tmb_data$X_lv_B), c(fit$n_sites, 1L))
@@ -272,6 +321,26 @@ test_that("latent lv C1 engine supports the loadings-only subset", {
   expect_true(isTRUE(fit$use$rr_B))
   expect_false(isTRUE(fit$use$diag_B))
   expect_lv_smoke_reports(fit)
+})
+
+test_that("latent lv C1 engine keeps the ordinary Psi companion", {
+  fit <- fit_lv_default_smoke()
+  expect_true(isTRUE(fit$use$rr_B))
+  expect_true(isTRUE(fit$use$diag_B))
+  expect_true(isTRUE(fit$use$lv_B))
+  expect_identical(fit$opt$convergence, 0L)
+  expect_lt(max(abs(fit$tmb_obj$gr(fit$opt$par))), 1e-2)
+  expect_lv_smoke_reports(fit)
+
+  par_list <- fit$tmb_obj$env$parList(
+    fit$opt$par,
+    fit$tmb_obj$env$last.par.best
+  )
+  expect_equal(
+    fit$report$U_B_total,
+    fit$report$U_lv_mean_B + t(par_list$z_B),
+    tolerance = 1e-8
+  )
 })
 
 test_that("latent lv preflight rejects malformed lv formulas", {

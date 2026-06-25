@@ -19782,8 +19782,10 @@ Implementation and docs:
 Tests and checks:
 
 - `Rscript --vanilla -e 'devtools::test(filter = "^lv-parser-guard$")'`
-  -> PASS after the final compatibility patch; 93 pass, 0 fail, 0 warn,
-  0 skip.
+  -> PASS after the final compatibility/default-Psi patch; 113 pass,
+  0 fail, 0 warn, 0 skip. The focused LV suite now includes the
+  loadings-only `unique = FALSE` path and the ordinary default
+  `latent()` path with its Psi companion (`use_diag_B = TRUE`).
 - `Rscript --vanilla -e 'devtools::test(filter = "^(extractors|extractors-extra|rotate-compare-loadings|julia-bridge)$")'`
   -> PASS; 535 pass, 16 skip, 1 warning, 0 fail. Skips were expected
   local `GLLVM.jl` path skips. The warning was the existing Julia
@@ -19839,6 +19841,13 @@ Not claimed:
 - No Gaussian recovery grid, CI/status calibration, DRAC/Totoro run,
   GPU work, production simulation, non-Gaussian `lv`, expanded tier,
   structured-source `lv`, or Julia `lv` parity was claimed.
+- Additional TMB-review smoke after the PR opened confirmed convergence
+  and finite fitted-point gradients on the loadings-only path
+  (`max_abs_gradient = 0.0004014055`) and exact report identities for
+  `B_lv_unit = Lambda_B alpha_lv_B^T`, `U_B_total = U_lv_mean_B + z_B`,
+  and `total = innovation + mean`. A larger default-Psi fixture confirmed
+  the same identities with `use_diag_B = TRUE`; the deterministic fixture
+  was added to `test-lv-parser-guard.R`.
 
 After-task report:
 

@@ -47,7 +47,77 @@ lv_preflight_setup <- function(
   )
 }
 
-test_that("latent lv metadata is preserved until the runtime guard", {
+make_lv_fit_data <- function(n_units = 10L, traits = paste0("t", 1:3)) {
+  units <- paste0("u", seq_len(n_units))
+  x_unit <- seq(-1.2, 1.2, length.out = n_units)
+  e_unit <- sin(seq_len(n_units)) * 0.15
+  Lambda <- c(0.8, -0.45, 0.35)[seq_along(traits)]
+  beta <- c(0.2, -0.1, 0.15)[seq_along(traits)]
+  alpha <- 0.9
+  df <- do.call(
+    rbind,
+    lapply(seq_along(units), function(i) {
+      data.frame(
+        unit = units[[i]],
+        trait = traits,
+        x = x_unit[[i]],
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+  df$unit <- factor(df$unit, levels = units)
+  df$trait <- factor(df$trait, levels = traits)
+  trait_i <- as.integer(df$trait)
+  unit_i <- as.integer(df$unit)
+  score <- alpha * x_unit[unit_i] + e_unit[unit_i]
+  df$value <- beta[trait_i] +
+    Lambda[trait_i] * score +
+    rep(c(-0.03, 0.02, 0.01)[seq_along(traits)], times = n_units)
+  df
+}
+
+fit_lv_smoke <- function(data = make_lv_fit_data()) {
+  withr::local_options(
+    gllvmTMB.quiet_grammar_notes = TRUE,
+    lifecycle_verbosity = "quiet"
+  )
+  gllvmTMB(
+    value ~ 0 +
+      trait +
+      latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
+    data = data,
+    unit = "unit",
+    trait = "trait",
+    control = gllvmTMBcontrol(se = FALSE)
+  )
+}
+
+expect_lv_smoke_reports <- function(fit) {
+  expect_true(isTRUE(fit$use$lv_B))
+  expect_equal(dim(fit$tmb_data$X_lv_B), c(fit$n_sites, 1L))
+  expect_equal(colnames(fit$lv$X_lv_B), "x")
+  expect_equal(
+    as.numeric(fit$tmb_data$X_lv_B[, 1L]),
+    as.numeric(fit$lv$X_lv_B[, "x"])
+  )
+  expect_equal(dim(fit$tmb_params$alpha_lv_B), c(1L, fit$d_B))
+  expect_equal(dim(fit$report$alpha_lv_B), c(1L, fit$d_B))
+  expect_equal(dim(fit$report$U_lv_mean_B), c(fit$n_sites, fit$d_B))
+  expect_equal(dim(fit$report$U_B_total), c(fit$n_sites, fit$d_B))
+  expect_equal(dim(fit$report$B_lv_unit), c(fit$n_traits, 1L))
+  expect_true(all(is.finite(fit$report$alpha_lv_B)))
+  expect_true(all(is.finite(fit$report$U_lv_mean_B)))
+  expect_true(all(is.finite(fit$report$U_B_total)))
+  expect_true(all(is.finite(fit$report$B_lv_unit)))
+  expect_equal(
+    as.numeric(fit$report$B_lv_unit[, 1L]),
+    as.numeric(fit$report$Lambda_B[, 1L]) *
+      as.numeric(fit$report$alpha_lv_B[1L, 1L]),
+    tolerance = 1e-8
+  )
+}
+
+test_that("latent lv metadata is preserved on the reduced-rank term", {
   withr::local_options(
     gllvmTMB.quiet_grammar_notes = TRUE,
     lifecycle_verbosity = "quiet"
@@ -99,79 +169,109 @@ test_that("latent lv preflight treats factor formulas as no-intercept designs", 
   expect_equal(colnames(by_default$X_lv_B), c("faca", "facb"))
 })
 
-test_that("latent lv errors before fit implementation", {
-  withr::local_options(
-    gllvmTMB.quiet_grammar_notes = TRUE,
-    lifecycle_verbosity = "quiet"
-  )
-  df <- expand.grid(
-    unit = paste0("u", 1:3),
-    trait = paste0("t", 1:2),
-    KEEP.OUT.ATTRS = FALSE
-  )
-  df$value <- seq_len(nrow(df)) / 10
-  df$x <- rep(c(0, 1, 2), each = 2)
+test_that("latent lv C1 engine reports score-mean quantities", {
+  fit <- fit_lv_smoke()
+  expect_lv_smoke_reports(fit)
 
+  total <- extract_ordination(fit, level = "unit", component = "total")
+  innovation <- extract_ordination(
+    fit,
+    level = "unit",
+    component = "innovation"
+  )
+  mean <- extract_ordination(fit, level = "unit", component = "mean")
+
+  expect_equal(total$scores, innovation$scores + mean$scores, tolerance = 1e-8)
+  expect_equal(
+    unname(mean$scores),
+    unname(fit$report$U_lv_mean_B),
+    tolerance = 1e-8
+  )
+
+  trait_effect <- extract_lv_effects(fit)
+  axis_effect <- extract_lv_effects(fit, type = "axis_effect")
+  expect_named(
+    trait_effect,
+    c(
+      "level",
+      "trait",
+      "predictor",
+      "estimate",
+      "std.error",
+      "uncertainty_status",
+      "validation_row"
+    )
+  )
+  expect_equal(nrow(trait_effect), fit$n_traits)
+  expect_equal(trait_effect$level, rep("unit", fit$n_traits))
+  expect_equal(trait_effect$predictor, rep("x", fit$n_traits))
+  expect_equal(
+    trait_effect$estimate,
+    as.numeric(fit$report$B_lv_unit[, 1L, drop = TRUE]),
+    tolerance = 1e-8
+  )
+  expect_true(all(is.na(trait_effect$std.error)))
+  expect_equal(
+    unique(trait_effect$uncertainty_status),
+    "point_estimate_only_no_ci_validation"
+  )
+  expect_named(
+    axis_effect,
+    c(
+      "level",
+      "axis",
+      "predictor",
+      "estimate",
+      "rotation_status",
+      "validation_row"
+    )
+  )
+  expect_equal(axis_effect$estimate, as.numeric(fit$report$alpha_lv_B))
+  expect_equal(
+    unique(axis_effect$rotation_status),
+    "axis_scale_rotation_dependent"
+  )
   expect_error(
-    gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
-      data = df,
-      unit = "unit",
-      trait = "trait",
-      control = gllvmTMBcontrol(se = FALSE)
-    ),
-    regexp = "Design 73|not implemented|FG-18|RE-13|LV-01"
+    extract_lv_effects(fit, level = "unit_obs"),
+    regexp = "currently supports only"
+  )
+  no_lv <- fit
+  no_lv$use$lv_B <- FALSE
+  expect_error(
+    extract_lv_effects(no_lv),
+    regexp = "requires a predictor-informed latent fit"
   )
 })
 
-test_that("latent lv preflight also covers the wide traits surface", {
+test_that("latent lv C1 engine also covers the wide traits surface", {
   withr::local_options(
     gllvmTMB.quiet_grammar_notes = TRUE,
     lifecycle_verbosity = "quiet"
   )
-  wide <- data.frame(
-    unit = factor(paste0("u", 1:4)),
-    x = c(-1, 0, 1, 2),
-    t1 = c(0.1, 0.2, 0.3, 0.4),
-    t2 = c(0.5, 0.6, 0.7, 0.8)
+  long <- make_lv_fit_data()
+  wide <- stats::reshape(
+    long[c("unit", "x", "trait", "value")],
+    idvar = c("unit", "x"),
+    timevar = "trait",
+    direction = "wide"
   )
+  names(wide) <- sub("^value\\.", "", names(wide))
 
-  expect_error(
-    gllvmTMB(
-      traits(t1, t2) ~ 1 + latent(1 | unit, d = 1, lv = ~x),
-      data = wide,
-      unit = "unit",
-      control = gllvmTMBcontrol(se = FALSE)
-    ),
-    regexp = "Design 73|not implemented|unit-level design columns"
+  fit <- gllvmTMB(
+    traits(t1, t2, t3) ~ 1 +
+      latent(1 | unit, d = 1, unique = FALSE, lv = ~x),
+    data = wide,
+    unit = "unit",
+    control = gllvmTMBcontrol(se = FALSE)
   )
+  expect_lv_smoke_reports(fit)
 })
 
-test_that("latent lv guard also covers the loadings-only subset", {
-  withr::local_options(
-    gllvmTMB.quiet_grammar_notes = TRUE,
-    lifecycle_verbosity = "quiet"
-  )
-  df <- expand.grid(
-    unit = paste0("u", 1:3),
-    trait = paste0("t", 1:2),
-    KEEP.OUT.ATTRS = FALSE
-  )
-  df$value <- stats::rnorm(nrow(df))
-  df$x <- rep(c(0, 1, 2), each = 2)
-
-  expect_error(
-    gllvmTMB(
-      value ~ 0 +
-        trait +
-        latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
-      data = df,
-      unit = "unit",
-      trait = "trait",
-      control = gllvmTMBcontrol(se = FALSE)
-    ),
-    regexp = "Design 73|not implemented|FG-18|RE-13|LV-01"
-  )
+test_that("latent lv C1 engine supports the loadings-only subset", {
+  fit <- fit_lv_smoke()
+  expect_true(isTRUE(fit$use$rr_B))
+  expect_false(isTRUE(fit$use$diag_B))
+  expect_lv_smoke_reports(fit)
 })
 
 test_that("latent lv preflight rejects malformed lv formulas", {

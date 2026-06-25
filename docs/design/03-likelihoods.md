@@ -138,7 +138,7 @@ The random-effects block decomposes as:
   $\ell$. The trait-by-row contribution is $\eta_{it} = \mu_{it}
   + \boldsymbol\lambda_t^\top \mathbf{u}_{g(i)}$ on the link scale.
 
-- **Predictor-informed latent-score means** from the planned
+- **Predictor-informed latent-score means** from the
   `latent(..., lv = ~ x)` surface (Design 73): for ordinary unit-tier
   Gaussian C1 only, the score is split as
   $\mathbf{z}_i = M_i\alpha + \mathbf{e}_i$ with
@@ -147,13 +147,13 @@ The random-effects block decomposes as:
   $\eta_{it} = \mu_{it} + \boldsymbol\lambda_t^\top
   (M_i\alpha + \mathbf{e}_i) + q_{it}$. The innovation prior remains
   centred at zero, and the diagonal $\Psi$ companion remains the
-  ordinary `latent()` companion. Current support is parser/API
-  preflight only: R validates the `lv` formula, builds the future
-  unit-level `X_lv_B` design, and aborts before TMB construction. There
-  is no implemented likelihood path yet; `REML = TRUE`, non-Gaussian
-  families, unsupported tiers, and fixed/LV predictor overlap remain
-  rejected until the validation rows `FG-18`, `RE-13`, and `LV-01`
-  through `LV-07` move.
+  ordinary `latent()` companion. Current support is C1 partial: R
+  validates the `lv` formula, builds unit-level `X_lv_B`, estimates
+  `alpha_lv_B`, reports `B_lv_unit`, and tests a small Gaussian
+  smoke/algebra fit. This is not yet recovery or interval evidence;
+  `REML = TRUE`, non-Gaussian families, unsupported tiers, and fixed/LV
+  predictor overlap remain rejected until the corresponding validation
+  rows move.
 
 - **Ordinary augmented Gaussian random regression** from
   `latent(0 + trait + (0 + trait):x | unit, d = K)` or the equivalent

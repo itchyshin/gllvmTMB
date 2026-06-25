@@ -33,17 +33,17 @@ or `CI-10` until the pilot reports target-explicit coverage, MCSE, and
 fit-health denominators for the corrected estimands.
 
 Design 73 adds a new predictor-informed latent-score lane:
-`latent(..., lv = ~ x)`. This is a major future capability, but it is
-not live. The validation register records `FG-18`, `RE-13`, `EXT-31`,
-and `LV-01` through `LV-07` as blocked/design rows. Current code now has
-a parser/API preflight for the ordinary Gaussian unit-tier surface: it
-stores `extra$lv_formula`, builds the future unit-level `X_lv_B` design,
-checks malformed formulas and unsupported regimes, then aborts before
-TMB construction. The likelihood path, `alpha_lv_B`, ADREPORT,
-extractor, and Gaussian recovery evidence still have to land. The first
-target remains ordinary Gaussian unit-tier `latent()` only;
-non-Gaussian, tier-expanded, structured-source, and Julia bridge claims
-remain gated.
+`latent(..., lv = ~ x)`. This is now a C1 **partial** capability for
+ordinary Gaussian unit-tier `latent()` fits: parser/API preflight stores
+`extra$lv_formula`, builds unit-level `X_lv_B`, wires `alpha_lv_B` into
+the TMB score mean while preserving the zero-mean innovation and ordinary
+`Psi` companion, reports `B_lv_unit = Lambda alpha^T`, and exposes
+point-estimate extractors. The validation register records `FG-18`,
+`RE-13`, `EXT-31`, `LV-01`, and `LV-04` as partial rows; `LV-02`,
+`LV-03`, and `LV-05` through `LV-07` remain blocked. Gaussian recovery,
+missing-response compatibility, interval calibration, non-Gaussian
+families, tier-expanded / structured-source support, and Julia bridge
+parity are still gated.
 
 ## Bottom Line
 
@@ -129,7 +129,7 @@ n_traits` is valid and tested, while `d > n_traits` aborts.
 | Interval coverage | CI-08 / CI-10 remain separate from point recovery and must not be implied by slope examples. | Keep slope articles point-estimate/recovery framed until coverage gates pass. |
 | Delta / hurdle covariance | Two response scales make a single latent residual or slope covariance undefined. | Derivation first; no article or runtime admission in this slice. |
 | Ordinary behavioural random regression | The Gaussian Appendix-B-style target is now public as the individual-level article; broader non-Gaussian augmented `unique()` support remains guarded. | Decide whether non-Gaussian augmented `unique()` should stay guarded or get a separate admission grid. |
-| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is the source-of-truth spec. The parser/API preflight now validates ordinary Gaussian unit-tier `lv` formulas, builds `X_lv_B`, and rejects unsupported forms before TMB construction. There is still no likelihood path, extractor, or recovery evidence. | Next slice is TMB data/parameter plumbing for `alpha_lv_B`, followed by extractor and Gaussian recovery PRs. |
+| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is the source-of-truth spec. Ordinary Gaussian unit-tier `lv` formulas now validate, build `X_lv_B`, fit through the C1 TMB path with `alpha_lv_B`, report `B_lv_unit`, and expose point-estimate extractor/ordination components. This is smoke/algebra evidence only, not recovery or CI calibration. | Next slice is Gaussian recovery for `B_lv`, `Sigma`, and `Psi`, plus missing-response/factor-runtime smoke before any broader docs article. |
 
 ## Status-Scan Handles
 

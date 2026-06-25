@@ -19740,3 +19740,106 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-24-lv-parser-api-preflight.md`.
+## 2026-06-24 — Design 73 C1 TMB/extractor slice (`codex/lv-tmb-plumbing-20260624`)
+
+Scope:
+
+- Implemented the first fitted `latent(..., lv = ~ x)` slice for ordinary
+  Gaussian unit-tier `latent()` models only.
+- Added `use_lv_B`, `n_lv_B`, `X_lv_B`, `alpha_lv_B`,
+  `U_lv_mean_B`, `U_B_total`, and `B_lv_unit` plumbing while preserving
+  the zero-mean innovation and ordinary `Psi` companion.
+- Added `extract_lv_effects()` and
+  `extract_ordination(component = c("total", "innovation", "mean"))`.
+- Updated row-backed docs/status to keep the slice partial: no Gaussian
+  recovery, interval calibration, missing-response compatibility,
+  non-Gaussian support, tier/source expansion, or Julia parity claimed.
+
+Coordination and GitHub state:
+
+- `git status --short --branch`
+  -> PASS; active worktree
+  `/private/tmp/gllvmtmb-lv-tmb-plumbing-20260624` on
+  `codex/lv-tmb-plumbing-20260624`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; no open PRs before this slice.
+- `gh run view 28137682170 --repo itchyshin/gllvmTMB --json databaseId,workflowName,status,conclusion,headSha,createdAt,updatedAt,url`
+  -> PASS; post-#557 main R-CMD-check completed `success` on
+  `0b3da99d982f79e35b1c8f273261d78280d32c20`.
+
+Implementation and docs:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; wrote `NAMESPACE`, `man/extract_ordination.Rd`, and
+  `man/extract_lv_effects.Rd`. Unrelated roxygen2 refreshes in
+  `man/add_utm_columns.Rd`, `man/extract_correlations.Rd`,
+  `man/gllvmTMB-package.Rd`, `man/make_mesh.Rd`,
+  `man/phylo_latent.Rd`, and `man/reexports.Rd` were restored out of
+  the diff.
+- `air format R/extractors.R R/lv-predictor.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no output.
+
+Tests and checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "^lv-parser-guard$")'`
+  -> PASS after the final compatibility patch; 93 pass, 0 fail, 0 warn,
+  0 skip.
+- `Rscript --vanilla -e 'devtools::test(filter = "^(extractors|extractors-extra|rotate-compare-loadings|julia-bridge)$")'`
+  -> PASS; 535 pass, 16 skip, 1 warning, 0 fail. Skips were expected
+  local `GLLVM.jl` path skips. The warning was the existing Julia
+  bridge ordinary-`latent()` Psi advisory.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no problems found.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = FALSE, error_on = "never", check_dir = "/private/tmp/gllvmtmb-lv-tmb-plumbing-check")'`
+  -> WARN; 0 errors, 1 warning, 0 notes. The warning was the known
+  local Apple clang/R header diagnostic:
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+  The check log is preserved at
+  `/private/tmp/gllvmtmb-lv-tmb-plumbing-check/gllvmTMB.Rcheck/00check.log`;
+  testthat inside R CMD check was OK (`[131s/149s]`).
+- `git diff --check`
+  -> PASS before and after the broad check cleanup.
+
+Consistency scans:
+
+- `rg -n "latent\\([^\\n]*lv\\s*=|lv\\s*=\\s*~|predictor-informed|latent-score|B_lv|LV-0[1-7]|FG-18|RE-13|EXT-31" README.md ROADMAP.md docs/dev-log/known-limitations.md docs/design NEWS.md vignettes _pkgdown.yml R tests/testthat man/extract_ordination.Rd man/extract_lv_effects.Rd`
+  -> PASS after patching stale design docs; hits are the intended C1
+  partial story, blocked follow-up rows, implementation, tests, and
+  generated help. No README/vignette example was added.
+- `rg -n "planned / blocked|blocked / planned|no parser|no TMB runtime|no runtime claim|before TMB construction|aborts before TMB|planned first implementation|future unit-level|not implemented yet|no exported function|no implemented likelihood" docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/04-random-effects.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md NEWS.md R/lv-predictor.R R/fit-multi.R`
+  -> PASS; remaining hits are the historical Design 73 parser stage and
+  the fit preflight comment for unsupported regimes.
+- `rg -n "REML|AI-REML|Gaussian-only|non-Gaussian.*REML|REML.*non-Gaussian" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md NEWS.md R/lv-predictor.R R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; `REML = TRUE` remains rejected for `lv`, and non-Gaussian
+  REML wording stays guarded.
+- `rg -n "Julia|GLLVM\\.jl|parity|engine = \\\"julia\\\"|engine = 'julia'" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md NEWS.md R/extractors.R`
+  -> PASS; Julia language remains row-backed and does not claim `lv`
+  parity.
+- `rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design | head -n 80`
+  -> PASS/manual spot-check; no new long-format user example was added
+  without `trait =`.
+- `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|meta_known_V|gllvmTMB_wide|full.*rejected|only diagonal|planned.*implemented|No accepted parser|reserved-surface fail-loud guard only" README.md ROADMAP.md NEWS.md docs vignettes R tests/testthat`
+  -> REVIEWED; hits are known compatibility/historical/dev-log mentions
+  or unrelated existing aliases, not new `lv` overclaims in touched
+  user-facing files.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "latent lv OR predictor-informed OR latent-score" --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; no dedicated Design 73 issue. Broad related issues:
+  #340 capability board, #346 simulation/coverage framework, #349
+  power-simulation capstone. None closed by this smoke/algebra slice.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "Design 73 OR LV-01 OR LV-02 OR extract_lv_effects" --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; same broad roadmap/capability issues only.
+
+Not claimed:
+
+- No validation row was moved to `covered`.
+- No Gaussian recovery grid, CI/status calibration, DRAC/Totoro run,
+  GPU work, production simulation, non-Gaussian `lv`, expanded tier,
+  structured-source `lv`, or Julia `lv` parity was claimed.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-lv-tmb-extractor-c1.md`.

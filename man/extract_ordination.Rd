@@ -4,7 +4,11 @@
 \alias{extract_ordination}
 \title{Extract ordination scores and loadings from a fitted multivariate model}
 \usage{
-extract_ordination(fit, level = "unit")
+extract_ordination(
+  fit,
+  level = "unit",
+  component = c("total", "innovation", "mean")
+)
 }
 \arguments{
 \item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. Admitted
@@ -14,6 +18,11 @@ Julia bridge extractors.}
 
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
 Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
+
+\item{component}{Score component to return. \code{"total"} returns the latent
+score entering the linear predictor. \code{"innovation"} returns the zero-mean
+latent innovation. \code{"mean"} returns the predictor-informed score mean and
+is non-zero only for Design 73 \code{latent(..., lv = ~ x)} fits.}
 }
 \value{
 A list with \code{scores} (units or within-unit observations in rows,

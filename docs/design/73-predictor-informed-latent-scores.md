@@ -1,17 +1,20 @@
 # Design 73 -- Predictor-Informed Latent Scores
 
-**Status:** design/spec plus fail-loud runtime guard only; no accepted
-parser surface or TMB model support yet.
+**Status:** C1 ordinary Gaussian unit-tier parser + TMB smoke +
+point-estimate extractor support; recovery and interval calibration
+still pending.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
 **Validation rows:** `FG-18`, `RE-13`, `EXT-31`, `LV-01` through
 `LV-07` in `docs/design/35-validation-debt-register.md`.
 
-This design adds a future `lv = ~ ...` argument to `latent()` terms.
+This design adds an `lv = ~ ...` argument to ordinary `latent()` terms.
 The argument is a term-local fixed-effect formula for the mean of the
 latent scores. It is not a random-effects formula, not a loading model,
-and not a replacement for trait-specific fixed effects.
+and not a replacement for trait-specific fixed effects. The current
+implementation admits only the C1 ordinary Gaussian unit-tier surface;
+all other rows remain planned or blocked as listed below.
 
 The first public target is ordinary Gaussian unit-tier support only:
 
@@ -130,7 +133,7 @@ but C1 exposes only ordinary unit-tier support.
 
 | Tier / source | Eventual target | C1 behaviour |
 |---|---|---|
-| `latent(... | unit, lv = ~ x_unit)` | Between-unit latent-score mean | Planned first implementation |
+| `latent(... | unit, lv = ~ x_unit)` | Between-unit latent-score mean | C1 partial: ordinary Gaussian only; smoke/algebra evidence, not recovery |
 | `latent(... | unit_obs, lv = ~ x_obs)` | Within-unit/session latent-score mean | Reject as planned |
 | `latent(... | cluster, lv = ~ x_cluster)` | Cluster latent-score mean if a reduced-rank cluster slot is added | Reject as planned |
 | `latent(... | cluster2, lv = ~ x_cluster2)` | Not valid today; `cluster2` is diagonal-only | Reject |
@@ -169,10 +172,14 @@ navigation.
 - Reject augmented random-regression combinations such as
   `latent(1 + x | unit, d = K, lv = ~ z)` until a separate design
   proves the combined target.
-- This stage still aborts before TMB construction. It does not add
-  `alpha_lv_B`, ADREPORT output, extractors, or recovery evidence.
+- At that stage, runtime still aborted before TMB construction. Later
+  C1 slices added `alpha_lv_B`, ADREPORT output, and point-estimate
+  extractors; recovery evidence remains pending.
 
 ### 3. TMB PR
+
+Status: landed for the C1 ordinary Gaussian unit-tier smoke/algebra
+gate. Recovery evidence is still Stage 5 work.
 
 - Add data flags and matrices: `use_lv_B`, `n_lv_B`, `X_lv_B`.
 - Add parameter matrix `alpha_lv_B[p_lv, d_B]`, unconstrained and
@@ -189,6 +196,10 @@ eta(o) += sum_k Lambda_B(t, k) * score_k;
   `ADREPORT(B_lv_unit = Lambda_B %*% t(alpha_lv_B))`.
 
 ### 4. Extractor PR
+
+Status: landed as point-estimate C1 extractors. Standard errors and
+interval claims are deliberately withheld until recovery/calibration
+evidence lands.
 
 - Add `extract_lv_effects(fit, level = "unit",
   type = "trait_effect")`.

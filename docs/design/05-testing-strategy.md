@@ -141,9 +141,10 @@ grid and either validation or a deliberate design rejection for non-Gaussian
 augmented diagonal Psi.
 
 Design 73 predictor-informed latent scores (`latent(..., lv = ~ x)`)
-start as design rows only. Their first implementation must add parser
-acceptance and rejection tests before any TMB recovery claim. The
-minimum C1 contract is: long and `traits(...)` wide ordinary unit-tier
+are C1 partial for ordinary Gaussian unit-tier fits. The first
+implementation adds parser acceptance/rejection tests and a small TMB
+smoke before any recovery claim. The minimum C1 contract is: long and
+`traits(...)` wide ordinary unit-tier
 Gaussian acceptance; `lv = ~ x` equivalence to `lv = ~ 0 + x`; rejection
 of random bars, offsets, `mi()`, smooth terms, missing predictors,
 response/trait columns, rank-deficient designs, nonconstant

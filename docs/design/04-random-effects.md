@@ -70,11 +70,11 @@ discipline, adapted for the multi-trait stacked grammar):
     `s = 1` cells and Gaussian `phylo_dep(..., s = 2)` live in the
     validation-debt register; non-Gaussian `s >= 2` remains partial.
 13. **Predictor-informed latent-score means**
-    `latent(..., lv = ~ x)` (Design 73). **Status: `blocked` /
-    planned**: no parser or TMB runtime support yet. C1 target is
-    ordinary unit-tier Gaussian `latent()` only; non-Gaussian,
-    tier-expanded, and structured-source variants remain design rows
-    until their own recovery tests exist.
+    `latent(..., lv = ~ x)` (Design 73). **Status: partial / Gaussian
+    C1**: ordinary unit-tier Gaussian `latent()` now has parser, TMB
+    smoke, `B_lv_unit`, and point-extractor support. Non-Gaussian,
+    tier-expanded, structured-source, missing-response, and recovery /
+    interval variants remain design rows until their own tests exist.
 
 ## Vocabulary
 
@@ -90,7 +90,7 @@ adding the `animal_*` row; per [`14-known-relatedness-keywords.md`](14-known-rel
 | 4 × 5 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Explicit marginal / independent trait covariance; diagonal, no off-diagonal |
 | 4 × 5 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
 | 4 × 5 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$) |
-| Predictor-informed latent scores | planned `latent(..., lv = ~ x)` | Term-local fixed-effect mean for latent scores; Design 73, ordinary Gaussian unit-tier first |
+| Predictor-informed latent scores | `latent(..., lv = ~ x)` | Term-local fixed-effect mean for latent scores; Design 73, ordinary Gaussian unit-tier C1 partial |
 | Random slope | `latent(1 + x \| unit, d = K)` / structured `phylo_*()` and `spatial_*()` slope keywords | Per-group random regression slope on covariate `x`; ordinary Gaussian default `latent()` path is partial under RE-12, structured paths follow their validation rows |
 | `meta_V` | `meta_V(V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. `meta_known_V()` is a deprecated alias. |
 
@@ -136,9 +136,9 @@ parameterisation fixes the rotation. For post-hoc varimax /
 oblimin rotation on the loadings, see `rotate_loadings()` and
 the `lambda-constraint.Rmd` worked example.
 
-### Planned `lv = ~ ...` latent-score means
+### C1 `lv = ~ ...` latent-score means
 
-Design 73 reserves a future `lv` argument on `latent()` for predictors
+Design 73 adds an `lv` argument on ordinary `latent()` for predictors
 of the latent-score mean:
 
 $$
@@ -161,14 +161,17 @@ latent-axis rotation.
 This is not an ordinary random slope. The syntax
 `latent(1 + x | unit, d = K)` estimates random intercept/slope
 covariance over the augmented `(intercept, slope) x trait` coefficient
-vector. The planned `latent(1 | unit, d = K, lv = ~ x)` instead lets
+vector. The C1 `latent(1 | unit, d = K, lv = ~ x)` instead lets
 unit-level predictors explain the mean of the latent ecological axes
 while preserving a latent-score innovation. C1 must reject combined
 forms such as `latent(1 + x | unit, d = K, lv = ~ z)` until a separate
 design proves the target.
 
-Status: blocked / planned under `FG-18`, `RE-13`, and `LV-01` through
-`LV-07`. No runtime claim exists in this document.
+Status: partial under `FG-18`, `RE-13`, `EXT-31`, `LV-01`, and
+`LV-04`: ordinary Gaussian unit-tier smoke/algebra support exists with
+point extractors. `LV-02`, `LV-03`, and `LV-05` through `LV-07` remain
+blocked for recovery, missing-response, non-Gaussian, tier-expanded,
+and structured-source support.
 
 ### `lambda_constraint` for confirmatory factor analysis
 

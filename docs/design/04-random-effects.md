@@ -72,9 +72,9 @@ discipline, adapted for the multi-trait stacked grammar):
 13. **Predictor-informed latent-score means**
     `latent(..., lv = ~ x)` (Design 73). **Status: partial / C1**:
     ordinary unit-tier Gaussian `latent()` now has parser, TMB smoke,
-    `B_lv_unit`, and point-extractor support; pure binomial-probit is
-    admitted with a small trait-scale `B_lv` recovery/algebra gate.
-    Other non-Gaussian links/families, tier-expanded,
+    `B_lv_unit`, and point-extractor support; pure binomial
+    logit/probit/cloglog is admitted with small trait-scale `B_lv`
+    recovery/algebra gates. Other non-Gaussian families, tier-expanded,
     structured-source, missing-response, and interval variants remain
     design rows until their own tests exist.
 
@@ -92,7 +92,7 @@ adding the `animal_*` row; per [`14-known-relatedness-keywords.md`](14-known-rel
 | 4 × 5 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Explicit marginal / independent trait covariance; diagonal, no off-diagonal |
 | 4 × 5 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
 | 4 × 5 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$) |
-| Predictor-informed latent scores | `latent(..., lv = ~ x)` | Term-local fixed-effect mean for latent scores; Design 73, ordinary unit-tier C1 partial for Gaussian and pure binomial-probit |
+| Predictor-informed latent scores | `latent(..., lv = ~ x)` | Term-local fixed-effect mean for latent scores; Design 73, ordinary unit-tier C1 partial for Gaussian and pure binomial logit/probit/cloglog |
 | Random slope | `latent(1 + x \| unit, d = K)` / structured `phylo_*()` and `spatial_*()` slope keywords | Per-group random regression slope on covariate `x`; ordinary Gaussian default `latent()` path is partial under RE-12, structured paths follow their validation rows |
 | `meta_V` | `meta_V(V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. `meta_known_V()` is a deprecated alias. |
 
@@ -171,11 +171,11 @@ design proves the target.
 
 Status: partial under `FG-18`, `RE-13`, `EXT-31`, `LV-01`, `LV-04`,
 and `LV-05`: ordinary Gaussian unit-tier smoke/algebra support exists
-with point extractors, and pure binomial-probit has a small
-trait-scale `B_lv` recovery/algebra gate. `LV-02`, `LV-03`, `LV-06`,
+with point extractors, and pure binomial logit/probit/cloglog has
+small trait-scale `B_lv` recovery/algebra gates. `LV-02`, `LV-03`, `LV-06`,
 and `LV-07` remain blocked for Gaussian recovery, missing-response,
 tier-expanded, and structured-source support; other non-Gaussian
-families/links remain blocked under `LV-05`.
+families remain blocked under `LV-05`.
 
 ### `lambda_constraint` for confirmatory factor analysis
 

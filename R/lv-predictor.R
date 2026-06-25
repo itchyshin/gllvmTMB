@@ -1,7 +1,7 @@
 ## Design 73 parser/API preflight for predictor-informed latent scores.
 ## This file validates and prepares the unit-level X_lv_B design. The first
 ## TMB path is ordinary unit-tier latent(); non-Gaussian admission starts with
-## binomial-probit only because that link has a fixed latent residual scale.
+## pure binomial fits under the three standard admitted binary links.
 
 gll_lv_covstruct_indices <- function(covstructs) {
   which(vapply(
@@ -116,13 +116,13 @@ gll_prepare_lv_predictor_setup <- function(
       "i" = "This should be reported as a gllvmTMB bug."
     ))
   }
-  if (
-    any(family_id_vec != 0L) &&
-      !all(family_id_vec == 1L & link_id_vec == 1L)
-  ) {
+  is_gaussian <- all(family_id_vec == 0L)
+  is_pure_binomial <- all(family_id_vec == 1L)
+  is_binomial_standard_link <- all(link_id_vec %in% c(0L, 1L, 2L))
+  if (!is_gaussian && !(is_pure_binomial && is_binomial_standard_link)) {
     cli::cli_abort(c(
-      "{.arg lv} currently admits only Gaussian and single-family binomial-probit fits.",
-      "x" = "Found at least one row outside {.code family = binomial(link = \"probit\")}.",
+      "{.arg lv} currently admits only Gaussian and pure binomial fits with standard links.",
+      "x" = "Found at least one row outside {.code gaussian()} or {.code binomial(link = \"logit\" / \"probit\" / \"cloglog\")}.",
       "i" = "Other non-Gaussian predictor-informed latent scores remain blocked under {.code LV-05}."
     ))
   }

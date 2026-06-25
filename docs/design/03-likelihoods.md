@@ -140,7 +140,7 @@ The random-effects block decomposes as:
 
 - **Predictor-informed latent-score means** from the
   `latent(..., lv = ~ x)` surface (Design 73): for ordinary unit-tier
-  C1 fits, currently Gaussian and pure binomial-probit only, the score
+  C1 fits, currently Gaussian and pure binomial logit/probit/cloglog only, the score
   is split as
   $\mathbf{z}_i = M_i\alpha + \mathbf{e}_i$ with
   $\mathbf{e}_i \sim \mathcal{N}(0, I_K)$. The TMB change is a mean
@@ -151,9 +151,9 @@ The random-effects block decomposes as:
   ordinary `latent()` companion. Current support is C1 partial: R
   validates the `lv` formula, builds unit-level `X_lv_B`, estimates
   `alpha_lv_B`, reports `B_lv_unit`, and tests a small Gaussian
-  smoke/algebra fit plus a pure binomial-probit trait-scale
-  `B_lv` recovery/algebra fit. This is not yet interval evidence;
-  `REML = TRUE`, unsupported non-Gaussian families and binary links,
+  smoke/algebra fit plus pure-binomial standard-link trait-scale
+  `B_lv` recovery/algebra fits. This is not yet interval evidence;
+  `REML = TRUE`, unsupported non-Gaussian families,
   unsupported tiers, and fixed/LV predictor overlap remain rejected
   until the corresponding validation rows move.
 

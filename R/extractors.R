@@ -575,6 +575,7 @@ extract_lv_effects <- function(
   if (is.null(predictor_names) || length(predictor_names) == 0L) {
     predictor_names <- paste0("x", seq_len(ncol(fit$lv$X_lv_B)))
   }
+  validation_row <- .lv_effects_validation_row(fit)
 
   if (identical(type, "trait_effect")) {
     B_lv <- fit$report$B_lv_unit
@@ -603,7 +604,7 @@ extract_lv_effects <- function(
       estimate = as.numeric(B_lv),
       std.error = NA_real_,
       uncertainty_status = "point_estimate_only_no_ci_validation",
-      validation_row = "EXT-31; LV-01",
+      validation_row = validation_row,
       stringsAsFactors = FALSE
     )
   } else {
@@ -631,8 +632,22 @@ extract_lv_effects <- function(
       predictor = out$predictor,
       estimate = as.numeric(alpha_lv),
       rotation_status = "axis_scale_rotation_dependent",
-      validation_row = "EXT-31; LV-01",
+      validation_row = validation_row,
       stringsAsFactors = FALSE
     )
   }
+}
+
+.lv_effects_validation_row <- function(fit) {
+  family_id_vec <- fit$tmb_data$family_id_vec
+  link_id_vec <- fit$tmb_data$link_id_vec
+  if (
+    length(family_id_vec) > 0L &&
+      length(link_id_vec) > 0L &&
+      all(family_id_vec == 1L) &&
+      all(link_id_vec %in% c(0L, 1L, 2L))
+  ) {
+    return("EXT-31; LV-05")
+  }
+  "EXT-31; LV-01"
 }

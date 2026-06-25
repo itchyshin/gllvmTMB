@@ -19935,3 +19935,120 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-25-lv-binary-probit-c1.md`.
+## 2026-06-25 -- LV binary standard-link C1 admission (Codex)
+
+Worktree: `/private/tmp/gllvmtmb-lv-binary-links-20260625`
+Branch: `codex/lv-binary-links-20260625`
+Base: `origin/main` at `865bab77119d2546781e7fe7aa146e51d3945467`
+(`lv: admit binomial-probit score predictors (#559)`)
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; no open `gllvmTMB` PRs.
+- `git log --all --oneline --since='6 hours ago' -- docs/design docs/dev-log/check-log.md docs/dev-log/after-task R tests NEWS.md | head -50`
+  -> REVIEWED; only the merged probit slice touched this lane.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "latent lv OR predictor-informed OR latent-score" --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; broad capability/simulation issues only (#340, #346,
+  #348, #349, #526, #230), no dedicated issue to close.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "LV-05 OR binary OR binomial logit probit cloglog" --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; broad roadmap/support issues only (#340, #341, #343,
+  #348, #332, #437), no dedicated issue to close.
+
+Implementation:
+
+- Broadened the Design 73 `lv` family/link guard from pure
+  binomial-probit to pure `binomial()` with the package's three standard
+  binary links: logit (`link_id = 0`), probit (`link_id = 1`), and
+  cloglog (`link_id = 2`).
+- Generalized the deterministic multi-trial binary fixture in
+  `test-lv-parser-guard.R` so logit, probit, and cloglog each get their
+  own seed, intercepts, inverse-link DGP, convergence/gradient gate, and
+  trait-scale `B_lv = Lambda alpha^T` recovery tolerance.
+- Updated `extract_lv_effects()` so admitted binary `lv` fits report
+  `validation_row = "EXT-31; LV-05"` while Gaussian `lv` fits keep
+  `EXT-31; LV-01`.
+- Updated NEWS and Design 01/03/04/05/06/35/61/73 to describe the
+  pure-binomial standard-link C1 surface and keep Bernoulli depth,
+  intervals, other families, mixed-family fits, missing-response
+  compatibility, tier/source expansion, and Julia parity gated.
+
+Checks:
+
+- `air format R/extractors.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no output.
+- `Rscript --vanilla -e 'parse("R/lv-predictor.R"); parse("R/extractors.R"); parse("tests/testthat/test-lv-parser-guard.R"); cat("parse ok\n")'`
+  -> PASS; parsed cleanly.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); testthat::test_file("tests/testthat/test-lv-parser-guard.R")'`
+  -> PASS; 185 pass, 0 fail, 0 warn, 0 skip.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); testthat::test_file("tests/testthat/test-extractors.R")'`
+  -> PASS; 17 pass, 0 fail, 0 warn, 0 skip.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); testthat::test_file("tests/testthat/test-multi-trial-binomial.R"); testthat::test_file("tests/testthat/test-m2-2a-binary-recovery.R")'`
+  -> PASS/expected skips; multi-trial binomial 5 pass, 3 CRAN skips;
+  M2.2a binary recovery 5 expected heavy skips.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); cat("pkgload ok\n")'`
+  -> PASS.
+- `R CMD build --no-build-vignettes .`
+  -> PASS; built `gllvmTMB_0.2.0.tar.gz`, then moved it to
+  `/private/tmp/gllvmtmb-binary-links-check-current/`.
+- `R_LIBS=/private/tmp/gllvmtmb-install-lib-4.6:/private/tmp/gllvmtmb-r-lib-4.6:/Library/Frameworks/R.framework/Versions/4.6/Resources/library R_LIBS_USER=/private/tmp/gllvmtmb-empty-r-user-lib R CMD check --no-manual --no-build-vignettes /private/tmp/gllvmtmb-binary-links-check-current/gllvmTMB_0.2.0.tar.gz`
+  -> BLOCKED; local R 4.6.0 segfaulted during `checking package
+  namespace information` before package tests, through
+  `requireNamespace("gllvm", quietly = TRUE)` and TMB namespace loading.
+  This reproduces the local broad-check blocker; source-tree targeted
+  tests above are the usable evidence in this R stack.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); if (!requireNamespace("pkgdown", quietly = TRUE)) stop("pkgdown not available in this R library stack"); pkgdown::check_pkgdown()'`
+  -> BLOCKED; `pkgdown` is not installed in the active R 4.6 library stack.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); if (!requireNamespace("devtools", quietly = TRUE)) stop("devtools not available in this R library stack"); devtools::test(filter = "^lv-parser-guard$")'`
+  -> BLOCKED; `devtools` is not installed in the active R 4.6 library stack.
+- `git diff --check`
+  -> PASS.
+
+Consistency scans:
+
+- `rg -n 'pure binomial-probit|binomial-probit is admitted|binary logit/cloglog|logit/cloglog.*blocked|unsupported non-Gaussian families/links|other non-Gaussian links/families|probit only|binomial-probit only|single-family binomial\(link = "probit"\)' NEWS.md R docs/design tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no stale probit-only wording remains in the touched Design 73
+  surfaces.
+- `rg -n "binomial-probit|logit/probit/cloglog|standard binary links|standard-link binary|LV-05|validation_row" NEWS.md R docs/design tests/testthat/test-lv-parser-guard.R | head -220`
+  -> REVIEWED; remaining `binomial-probit` hits are older unrelated
+  binary/slope design history or existing binary completeness docs, not
+  new Design 73 `lv` overclaims.
+- `rg -n "validation_row = \"EXT-31; LV-01\"|validation_row = \"EXT-31; LV-05\"|LV-05" R/extractors.R tests/testthat/test-lv-parser-guard.R docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md`
+  -> PASS; binary extractor rows are tested as `LV-05`, Gaussian rows as
+  `LV-01`, and the validation register carries the matching partial
+  row.
+
+Not claimed:
+
+- No Bernoulli single-trial binary depth, interval calibration,
+  CI-08/CI-10 promotion, ordinal/count/Gamma/Beta/mixed-family/delta
+  or hurdle `lv`, missing-response compatibility, tier/source expansion,
+  Julia bridge parity, DRAC run, GPU work, production simulation, or
+  non-Gaussian REML claim moved.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-25-lv-binary-standard-links-c1.md`.
+
+2026-06-25 - LV binary standard-link C1 naming cleanup
+
+Context:
+
+- Maintainer flagged that `B_lv` can read like old "between" naming.
+  Public prose should lead with "latent-predictor trait effect" and use
+  `B_lv` only as the compact math/internal label.
+
+Changes:
+
+- Updated `NEWS.md`, `docs/design/06-extractors-contract.md`, and
+  `docs/design/73-predictor-informed-latent-scores.md` to describe the
+  primary public estimand as the latent-predictor trait effect, with
+  `B_lv = Lambda alpha^T` retained as the math notation.
+- Updated the PR body draft at
+  `/private/tmp/gllvmtmb-lv-binary-links-pr-body.md` with the same
+  wording.
+
+Checks:
+
+- `git diff --check`
+  -> PASS.

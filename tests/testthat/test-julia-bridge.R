@@ -201,6 +201,77 @@ fake_raw_extractor_julia_fit <- function(
   structure(out, class = c("gllvmTMB_julia", "list"))
 }
 
+fake_lv_predictor_julia_fit <- function() {
+  traits <- c("sp1", "sp2")
+  units <- paste0("site", 1:4)
+  loadings <- matrix(
+    c(0.8, -0.2, 0.3, 0.6),
+    nrow = length(traits),
+    dimnames = list(traits, c("LV1", "LV2"))
+  )
+  scores_mean <- matrix(
+    c(-0.20, 0.05, -0.10, 0.02, 0.10, -0.02, 0.20, -0.05),
+    nrow = length(units),
+    byrow = TRUE,
+    dimnames = list(units, c("LV1", "LV2"))
+  )
+  scores_innovation <- matrix(
+    c(0.01, -0.02, 0.03, 0.04, -0.05, 0.06, 0.07, -0.08),
+    nrow = length(units),
+    byrow = TRUE,
+    dimnames = list(units, c("LV1", "LV2"))
+  )
+  X_lv <- matrix(
+    c(-1, 1, -0.3, 0.5, 0.3, -0.5, 1, -1),
+    nrow = length(units),
+    byrow = TRUE,
+    dimnames = list(units, c("temp", "forest"))
+  )
+  structure(
+    list(
+      family = "gaussian",
+      model = "gaussian_xlv_rr",
+      d = 2L,
+      n_traits = length(traits),
+      n_units = length(units),
+      trait_names = traits,
+      unit_names = units,
+      alpha = c(0.1, -0.2),
+      loadings = loadings,
+      Sigma = loadings %*% t(loadings),
+      correlation = stats::cov2cor(loadings %*% t(loadings)),
+      communality = c(1, 1),
+      scores = scores_mean + scores_innovation,
+      scores_mean = scores_mean,
+      scores_innovation = scores_innovation,
+      lv_effects = matrix(
+        c(0.5, -0.2, 0.15, 0.3),
+        nrow = length(traits),
+        dimnames = list(traits, colnames(X_lv))
+      ),
+      alpha_lv = matrix(
+        c(0.4, -0.1, 0.05, 0.6),
+        nrow = ncol(X_lv),
+        dimnames = list(colnames(X_lv), c("LV1", "LV2"))
+      ),
+      loglik = -18,
+      aic = 48,
+      bic = 50,
+      df = 8L,
+      nobs = length(traits) * length(units),
+      converged = TRUE,
+      message = "converged",
+      bridge_input = list(
+        y = matrix(0, nrow = length(traits), ncol = length(units)),
+        family = "gaussian",
+        num.lv = 2L,
+        X_lv = X_lv
+      )
+    ),
+    class = c("gllvmTMB_julia", "list")
+  )
+}
+
 julia_bridge_matrix_to_long <- function(Y) {
   df <- as.data.frame(as.table(Y), stringsAsFactors = FALSE)
   names(df) <- c("trait", "unit", "value")
@@ -460,7 +531,11 @@ test_that("Julia bridge gate registry names every primary R admission stop", {
       "GJL-GATE-MULTI-RR",
       "GJL-GATE-MASK-X",
       "GJL-GATE-X-FAMILY",
-      "GJL-GATE-X-DESIGN"
+      "GJL-GATE-X-DESIGN",
+      "GJL-GATE-XLV-FAMILY",
+      "GJL-GATE-XLV-CI",
+      "GJL-GATE-MASK-XLV",
+      "GJL-GATE-X-XLV"
     )
   )
 })
@@ -483,6 +558,7 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_false("lognormal" %in% caps$family)
   expect_equal(caps$family[caps$fit_no_x], caps$family)
   expect_equal(caps$family[caps$fixed_effect_X], .GLLVM_JULIA_X_FAMILIES)
+  expect_equal(caps$family[caps$predictor_informed_lv], "gaussian")
   expect_equal(caps$family[caps$ci_no_x_wald], .GLLVM_JULIA_CI_NO_X_FAMILIES)
   expect_equal(caps$family[caps$ci_no_x_profile], .GLLVM_JULIA_CI_NO_X_FAMILIES)
   expect_equal(
@@ -516,6 +592,10 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     caps$notes
   )))
   expect_true(any(grepl("fixed-effect X point fits are routed", caps$notes)))
+  expect_true(any(grepl(
+    "predictor-informed latent-score X_lv point fits",
+    caps$notes
+  )))
   expect_true(any(grepl(
     "complete-response fixed-effect-X Wald/profile/bootstrap CI payloads",
     caps$notes
@@ -1116,6 +1196,62 @@ test_that("Julia bridge raw extractor payloads preserve labels and fallback calc
   )
 })
 
+test_that("Julia bridge exposes Gaussian predictor-informed LV payloads", {
+  fit <- .gllvm_julia_normalise_result(fake_lv_predictor_julia_fit())
+  fit$engine <- "julia"
+
+  trait_effects <- extract_lv_effects(fit, type = "trait_effect")
+  expect_equal(nrow(trait_effects), 4L)
+  expect_equal(
+    trait_effects[, c("trait", "predictor")],
+    expand.grid(
+      trait = c("sp1", "sp2"),
+      predictor = c("temp", "forest"),
+      KEEP.OUT.ATTRS = FALSE,
+      stringsAsFactors = FALSE
+    )
+  )
+  expect_equal(trait_effects$estimate, as.numeric(fit$lv_effects))
+  expect_true(all(is.na(trait_effects$std.error)))
+  expect_equal(
+    unique(trait_effects$uncertainty_status),
+    "julia_bridge_point_estimate_only_no_ci_validation"
+  )
+  expect_equal(
+    unique(trait_effects$validation_row),
+    "EXT-31; JUL-01; JUL-01A; LV-01"
+  )
+
+  axis_effects <- extract_lv_effects(fit, type = "axis_effect")
+  expect_equal(nrow(axis_effects), 4L)
+  expect_equal(axis_effects$estimate, as.numeric(fit$alpha_lv))
+  expect_equal(
+    unique(axis_effects$rotation_status),
+    "axis_scale_rotation_dependent"
+  )
+
+  total <- extract_ordination(fit, component = "total")
+  mean <- extract_ordination(fit, component = "mean")
+  innovation <- extract_ordination(fit, component = "innovation")
+  expect_equal(total$scores, fit$scores)
+  expect_equal(mean$scores, fit$scores_mean)
+  expect_equal(innovation$scores, fit$scores_innovation)
+  expect_equal(total$scores, mean$scores + innovation$scores)
+
+  no_payload <- fit
+  no_payload$lv_effects <- NULL
+  expect_error(
+    extract_lv_effects(no_payload),
+    "lv_effects"
+  )
+  no_mean <- fit
+  no_mean$scores_mean <- NULL
+  expect_error(
+    extract_ordination(no_mean, component = "mean"),
+    "component = \"mean\""
+  )
+})
+
 test_that("Julia bridge CI payloads are normalised and read by confint", {
   fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
   fit$engine <- "julia"
@@ -1681,6 +1817,7 @@ test_that("confint recomputes from retained Julia bridge input", {
 
 test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup", {
   y <- matrix(c(1, 2, 3, 4, 2, 3, 4, 5), nrow = 2L)
+  X_lv <- matrix(seq(-1, 1, length.out = ncol(y) * 2L), ncol = 2L)
   expect_error(
     gllvm_julia_fit(y, family = ordinal_probit(), ci_method = "wald"),
     "GJL-GATE-ORDINAL-CI"
@@ -1711,6 +1848,40 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
       ci_method = "wald"
     ),
     "GJL-GATE-MASK-X-CI"
+  )
+  expect_error(
+    gllvm_julia_fit(y, family = binomial(), X_lv = X_lv),
+    "GJL-GATE-XLV-FAMILY"
+  )
+  expect_error(
+    gllvm_julia_fit(y, family = gaussian(), X_lv = X_lv, ci_method = "wald"),
+    "GJL-GATE-XLV-CI"
+  )
+  expect_error(
+    gllvm_julia_fit(
+      y,
+      family = gaussian(),
+      X = array(1, dim = c(2L, 4L, 1L)),
+      X_lv = X_lv
+    ),
+    "GJL-GATE-X-XLV"
+  )
+  expect_error(
+    gllvm_julia_fit(
+      y,
+      family = gaussian(),
+      X_lv = X_lv,
+      mask = matrix(TRUE, nrow = 2L, ncol = 4L)
+    ),
+    "GJL-GATE-MASK-XLV"
+  )
+  expect_error(
+    gllvm_julia_fit(
+      y,
+      family = gaussian(),
+      X_lv = matrix(1, nrow = ncol(y) - 1L, ncol = 1L)
+    ),
+    "n_units x n_predictors"
   )
 })
 
@@ -1981,6 +2152,136 @@ test_that("gllvmTMB fit-time CI controls keep unsupported rows explicit", {
       ci_method = "wald"
     ),
     "per-trait ordinal"
+  )
+})
+
+test_that("gllvmTMB routes Gaussian latent-score X_lv through the Julia bridge", {
+  df <- make_long()
+  df$x <- rep(seq(-1, 1, length.out = 10L), times = 3L)
+  seen <- new.env(parent = emptyenv())
+
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(
+      y,
+      family,
+      num.lv,
+      N,
+      X,
+      X_lv,
+      mask,
+      ci_method,
+      ci_level,
+      ci_nboot,
+      ci_seed,
+      ...
+    ) {
+      seen$y <- y
+      seen$family <- family
+      seen$num.lv <- num.lv
+      seen$N <- N
+      seen$X <- X
+      seen$X_lv <- X_lv
+      seen$mask <- mask
+      seen$ci_method <- ci_method
+
+      out <- .gllvm_julia_normalise_result(fake_lv_predictor_julia_fit())
+      out$engine <- "julia"
+      out
+    }
+  )
+
+  fit <- gllvmTMB(
+    value ~ 0 +
+      trait +
+      latent(0 + trait | unit, d = 2, unique = FALSE, lv = ~x),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = gaussian(),
+    engine = "julia"
+  )
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(seen$num.lv, 2L)
+  expect_s3_class(seen$family, "family")
+  expect_null(seen$N)
+  expect_null(seen$X)
+  expect_null(seen$mask)
+  expect_equal(seen$ci_method, "none")
+  expect_equal(dim(seen$X_lv), c(10L, 1L))
+  expect_equal(colnames(seen$X_lv), "x")
+  expect_equal(rownames(seen$X_lv), levels(df$unit))
+  expect_equal(as.numeric(seen$X_lv[, "x"]), seq(-1, 1, length.out = 10L))
+  expect_true(isTRUE(fit$use$lv_B))
+  expect_equal(fit$lv$engine, "julia")
+  expect_equal(fit$lv$X_lv_B_names, "x")
+
+  trait_effects <- extract_lv_effects(fit)
+  expect_equal(
+    unique(trait_effects$uncertainty_status),
+    "julia_bridge_point_estimate_only_no_ci_validation"
+  )
+  expect_equal(
+    extract_ordination(fit, component = "mean")$scores,
+    fit$scores_mean
+  )
+})
+
+test_that("gllvmTMB keeps unsupported Julia X_lv bridge rows explicit", {
+  df <- make_long()
+  df$x <- rep(seq(-1, 1, length.out = 10L), times = 3L)
+  df$z <- rep(seq(1, -1, length.out = 10L), times = 3L)
+  f <- value ~ 0 +
+    trait +
+    latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)
+
+  expect_error(
+    gllvmTMB(
+      f,
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = binomial(),
+      engine = "julia"
+    ),
+    "GJL-GATE-XLV-FAMILY"
+  )
+  expect_error(
+    gllvmTMB(
+      f,
+      data = df[-1L, , drop = FALSE],
+      trait = "trait",
+      unit = "unit",
+      family = gaussian(),
+      engine = "julia"
+    ),
+    "GJL-GATE-MASK-XLV"
+  )
+  expect_error(
+    gllvmTMB(
+      value ~ 0 +
+        trait +
+        z +
+        latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = gaussian(),
+      engine = "julia"
+    ),
+    "GJL-GATE-X-XLV"
+  )
+  expect_error(
+    gllvmTMB(
+      f,
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = gaussian(),
+      engine = "julia",
+      ci_method = "wald"
+    ),
+    "GJL-GATE-XLV-CI"
   )
 })
 
@@ -3254,6 +3555,41 @@ test_that("engine = 'julia' main dispatch supports fit-time no-X CIs", {
     expect_equal(s$status$ci_method, "wald")
     expect_equal(s$status$ci_status, "available")
   }
+})
+
+test_that("gllvm_julia_fit routes live Gaussian predictor-informed LV payloads", {
+  skip_if_no_julia()
+  set.seed(587)
+  units <- paste0("site", seq_len(24L))
+  traits <- c("sp1", "sp2")
+  x <- seq(-1, 1, length.out = length(units))
+  Y <- rbind(
+    0.4 + 0.8 * x + stats::rnorm(length(units), sd = 0.2),
+    -0.2 - 0.3 * x + stats::rnorm(length(units), sd = 0.2)
+  )
+  dimnames(Y) <- list(traits, units)
+  X_lv <- matrix(x, ncol = 1L, dimnames = list(units, "x"))
+
+  fit <- gllvm_julia_fit(Y, family = gaussian(), num.lv = 1L, X_lv = X_lv)
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(fit$model, "gaussian_xlv_rr")
+  expect_equal(dim(fit$lv_effects), c(2L, 1L))
+  expect_equal(dim(fit$alpha_lv), c(1L, 1L))
+  expect_equal(dim(fit$scores_mean), c(length(units), 1L))
+  expect_equal(dim(fit$scores_innovation), c(length(units), 1L))
+  expect_equal(
+    extract_ordination(fit, component = "total")$scores,
+    extract_ordination(fit, component = "mean")$scores +
+      extract_ordination(fit, component = "innovation")$scores,
+    tolerance = 1e-8
+  )
+  effects <- extract_lv_effects(fit)
+  expect_equal(effects$predictor, rep("x", length(traits)))
+  expect_equal(
+    unique(effects$uncertainty_status),
+    "julia_bridge_point_estimate_only_no_ci_validation"
+  )
 })
 
 test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {

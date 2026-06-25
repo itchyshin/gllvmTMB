@@ -20149,3 +20149,155 @@ Not claimed:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-25-lv-effect-sdreport-se.md`.
+
+2026-06-25 - R bridge Gaussian predictor-informed latent-score X_lv route
+
+Context:
+
+- Follow-up to the Design 73 `latent(..., lv = ~ x)` lane after the TMB
+  Gaussian, binary-standard-link, and sdreport-SE slices landed.
+- Goal: use the already-landed `GLLVM.jl` Gaussian `X_lv` bridge endpoint from
+  the R bridge without claiming broad Julia parity.
+- Worktree: `/private/tmp/gllvmtmb-lv-julia-bridge-20260625`.
+- Branch: `codex/lv-julia-bridge-20260625`.
+- Paired Julia checkout for direct engine tests:
+  `/private/tmp/gllvmjl-lv-next-20260625` at
+  `2396380fc118adcac5a841f38289329ead92ad5b`.
+
+Changes:
+
+- `R/julia-bridge.R`: added `X_lv` transport to `gllvm_julia_fit()` and
+  `.gllvmTMB_julia_dispatch()` for complete-response Gaussian rows only. Added
+  `predictor_informed_lv` to `gllvm_julia_capabilities()` and new gate ids
+  `GJL-GATE-XLV-FAMILY`, `GJL-GATE-XLV-CI`, `GJL-GATE-MASK-XLV`, and
+  `GJL-GATE-X-XLV`.
+- `R/extractors.R`: allowed `gllvmTMB_julia` objects to route
+  `extract_ordination(component = "mean" / "innovation")` and
+  `extract_lv_effects()` when retained Gaussian `X_lv` payloads exist.
+- `tests/testthat/test-julia-bridge.R`: added pure-R mock coverage for
+  payload extraction, direct-wrapper gates, main-dispatch `X_lv` construction,
+  unsupported main-dispatch combinations, and a live JuliaCall smoke that skips
+  when JuliaCall is absent.
+- NEWS, Design 06/35/61/73, and affected Rd files now say the Julia bridge
+  route is Gaussian, complete-response, no fixed-effect `X`, no mask, no CI,
+  point-estimate only, and not broad parity.
+
+Checks:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; no open `gllvmTMB` PRs before shared-doc edits.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> REVIEWED; no concurrent shared-file edits found in this worktree after
+  fast-forwarding to `origin/main`.
+- `gh run view 28196337855 --repo itchyshin/gllvmTMB --json databaseId,workflowName,status,conclusion,headSha,url,jobs`
+  -> PASS after waiting; post-#561 pkgdown completed successfully at
+  `9c59d9efafc5ac6d49b1a3d72ce28e886a390e05`.
+- `air format R/julia-bridge.R R/extractors.R tests/testthat/test-julia-bridge.R`
+  -> PASS; no output.
+- `Rscript --vanilla -e 'invisible(parse(file="R/julia-bridge.R")); invisible(parse(file="R/extractors.R")); invisible(parse(file="tests/testthat/test-julia-bridge.R")); cat("parse-ok\n")'`
+  -> PASS; printed `parse-ok`.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'`
+  -> PASS; pure-R bridge tests passed. Live JuliaCall tests skipped because
+  `JuliaCall` is not installed; one existing once-per-session warning about
+  dropping auto-Psi for `engine = "julia"` was shown.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-lv-parser-guard.R", reporter = "summary")'`
+  -> PASS; all Design 73 parser/extractor tests passed. Existing
+  auto-suppressed `sigma_eps` informational message was shown.
+- `julia --project=/private/tmp/gllvmjl-lv-next-20260625 -e 'import Pkg; Pkg.instantiate()'`
+  -> PASS; instantiated the local clean Julia project, precompiled `GLLVM`,
+  and left the Julia checkout clean.
+- `julia --project=/private/tmp/gllvmjl-lv-next-20260625 /private/tmp/gllvmjl-lv-next-20260625/test/test_bridge_lv_predictor.jl`
+  -> PASS; 19 pass.
+- `julia --project=/private/tmp/gllvmjl-lv-next-20260625 /private/tmp/gllvmjl-lv-next-20260625/test/test_bridge_capabilities.jl`
+  -> PASS; 42 pass.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'if (!requireNamespace("devtools", quietly = TRUE)) stop("devtools not available"); devtools::document(quiet = TRUE)'`
+  -> BLOCKED; `devtools` is not installed in the active R 4.6 temp library.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'if (!requireNamespace("roxygen2", quietly = TRUE)) stop("roxygen2 not available"); roxygen2::roxygenise(".", roclets = "rd")'`
+  -> BLOCKED; `roxygen2` is not installed in the active R 4.6 temp library.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'if (!requireNamespace("pkgdown", quietly = TRUE)) stop("pkgdown not available"); pkgdown::check_pkgdown()'`
+  -> BLOCKED; `pkgdown` is not installed in the active R 4.6 temp library.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 R CMD check --no-manual --no-build-vignettes .`
+  -> LOCAL TOOLING FAILURE before tests; R 4.6.0 `R CMD check` rejected this
+  working tree DESCRIPTION as missing legacy `Author`/`Maintainer` fields
+  even though the package uses `Authors@R`. Generated `..Rcheck/` was removed.
+- `git diff --check`
+  -> PASS.
+
+Consistency scans:
+
+- `rg -n "no Julia bridge parity|Julia bridge parity|component = \"total\"|Julia bridge fits accept only|do not yet expose predictor-informed|not admitted for GLLVM.jl bridge|X_lv|predictor_informed_lv" NEWS.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R R/extractors.R man/*.Rd tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; stale hard refusal wording was removed. Remaining
+  `component = "total"` and `Julia bridge parity` hits are scoped boundary
+  statements for non-`X_lv` bridge rows or broad parity.
+- `rg -n "std\\.error = NA|julia_bridge_point_estimate_only_no_ci_validation|wald_sdreport_no_ci_validation|GJL-GATE-XLV|predictor_informed_lv" NEWS.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R R/extractors.R man/*.Rd tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; point-only Julia bridge uncertainty labels and new gate ids are
+  present where expected.
+
+Not claimed:
+
+- No Julia binary/non-Gaussian `X_lv`, no mixed-family `X_lv`, no response-mask
+  `X_lv`, no simultaneous fixed-effect `X` plus `X_lv`, no Julia `X_lv` CIs, no
+  Gaussian recovery promotion, no CI-08/CI-10 promotion, no DRAC/GPU work, and
+  no broad native-vs-Julia parity claim moved.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-25-r-bridge-lv-gaussian-point.md`.
+
+2026-06-25 - R bridge Gaussian X_lv route pre-PR audit refresh
+
+Context:
+
+- Continuation after app update / context refresh. Same worktree:
+  `/private/tmp/gllvmtmb-lv-julia-bridge-20260625`; same branch:
+  `codex/lv-julia-bridge-20260625`.
+- Added a direct-wrapper help example for `gllvm_julia_fit(X_lv = ...)` so the
+  new exported argument is represented in both roxygen and the synced Rd file.
+
+GitHub / coordination refresh:
+
+- `git fetch origin --prune`
+  -> PASS; no output.
+- `git status --short --branch`
+  -> REVIEWED; branch still based on `origin/main` at `9c59d9e` with only the
+  expected modified files and the new after-task report.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> REVIEWED; no new conflicting shared-doc edits after the branch point.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; `[]`.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 10 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> REVIEWED; main R-CMD-check run `28195571078` and pkgdown run
+  `28196337855` are green at `9c59d9e`. Scheduled Power pilot sweep run
+  `28190721828` is still in progress and an older scheduled sweep
+  `28177773826` failed; neither is used as validation-promotion evidence.
+
+Post-example checks:
+
+- `air format R/julia-bridge.R R/extractors.R tests/testthat/test-julia-bridge.R`
+  -> PASS.
+- `Rscript --vanilla -e 'invisible(parse(file="R/julia-bridge.R")); invisible(parse(file="R/extractors.R")); invisible(parse(file="tests/testthat/test-julia-bridge.R")); cat("parse-ok\n")'`
+  -> PASS; printed `parse-ok`.
+- `git diff --check`
+  -> PASS.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'`
+  -> PASS; local live JuliaCall rows skipped because `{JuliaCall}` is not
+  installed; existing once-per-session auto-Psi bridge warning was shown.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-lv-parser-guard.R", reporter = "summary")'`
+  -> PASS.
+- `julia --project=/private/tmp/gllvmjl-lv-next-20260625 /private/tmp/gllvmjl-lv-next-20260625/test/test_bridge_lv_predictor.jl`
+  -> PASS; 19 pass.
+- `julia --project=/private/tmp/gllvmjl-lv-next-20260625 /private/tmp/gllvmjl-lv-next-20260625/test/test_bridge_capabilities.jl`
+  -> PASS; 42 pass.
+
+Rendered-Rd spot-check:
+
+- `for f in man/gllvm_julia_fit.Rd man/gllvm_julia_capabilities.Rd man/extract_ordination.Rd man/extract_lv_effects.Rd; do printf '%s\n' "--- $f"; tail -5 "$f"; printf 'keyword_count='; grep -c '^\\keyword' "$f" || true; done`
+  -> PASS; tails close cleanly and all four touched Rd files report
+  `keyword_count=0`.
+
+Consistency scan:
+
+- `rg -n "X_lv|predictor_informed_lv|julia_bridge_point_estimate_only_no_ci_validation|GJL-GATE-XLV|component = \"mean\"|component = \"innovation\"" NEWS.md R/julia-bridge.R R/extractors.R man/gllvm_julia_fit.Rd man/gllvm_julia_capabilities.Rd man/extract_ordination.Rd man/extract_lv_effects.Rd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; new argument, capability column, gate IDs, point-only labels,
+  and component names are present in the expected source/help/design/test
+  surfaces.

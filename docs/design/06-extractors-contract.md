@@ -80,7 +80,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `tmbprofile_wrapper(fit, target)` | c | cl | cl | cl | Phase 1b PR #109 |
 | `confint_inspect(fit, parameter)` | c | cl | cl | cl | Phase 1b PR #121 |
 | `coverage_study(fit, R)` | c | cl | cl | r | Phase 1b PR #120 |
-| `extract_lv_effects(fit, level, type)` | p | p | p | p | planned by Design 73 for `latent(..., lv = ~ x)`; preferred public output is trait-scale `B_lv`, not raw `alpha` |
+| `extract_lv_effects(fit, level, type)` | cl | p | p | p | Design 73 C1 point extractor for ordinary Gaussian unit-tier `latent(..., lv = ~ x)`; preferred public output is trait-scale `B_lv`, not raw `alpha`; intervals remain gated |
 | `compare_loadings(fit1, fit2)` | c | cl | cl | cl | legacy; for two-stage cross-checks |
 | `compare_dep_vs_two_psi(fit)` | c | r | r | r | legacy task-label (PR #40 logic) |
 | `compare_indep_vs_two_psi(fit)` | c | r | r | r | legacy task-label |
@@ -387,29 +387,28 @@ loadings or ordinations carries a rotation-disclaimer
 caption (`getLoadings()` and `rotate_loadings()` already
 warn explicitly).
 
-Design 73 reserves a future
+Design 73 adds a C1
 `component = c("total", "mean", "innovation")` argument for
 predictor-informed latent-score fits. In that regime, `"mean"` returns
 `M alpha`, `"innovation"` returns the fitted innovation `e_hat`, and
-`"total"` returns `M alpha + e_hat`. Until `latent(..., lv = ~ x)` is
-implemented, this component argument is planned only and must not be
-advertised as live.
+`"total"` returns `M alpha + e_hat`. The live C1 surface is ordinary
+Gaussian unit-tier only; Julia bridge fits currently accept only
+`component = "total"`.
 
 #### `extract_lv_effects(fit, level = "unit", type = "trait_effect")`
 
-**Status**: planned by Design 73; no exported function or runtime
-support exists yet.
+**Status**: C1 point extractor for ordinary Gaussian unit-tier
+`latent(..., lv = ~ x)`.
 
-For future `latent(..., lv = ~ x)` fits, this extractor will return
-the predictor-informed latent-score effects. The preferred public
-return is `type = "trait_effect"`, a row-first table for
-$B_\text{lv} = \Lambda\alpha^\top$ with stable columns:
-`level`, `predictor`, `trait`, `estimate`, `lower`, `upper`,
-`interval_method`, `interval_status`, `axis_rank`, and
-`validation_row`. Raw `alpha` can be exposed for method developers, but
-it is rotation-dependent and must carry the same warning discipline as
-loadings and ordinations. Standard errors or intervals are admitted
-only after the ADREPORT and recovery gates in `LV-01` / `LV-02` pass.
+For `latent(..., lv = ~ x)` fits, this extractor returns the
+predictor-informed latent-score effects. The preferred public return is
+`type = "trait_effect"`, a row-first table for
+$B_\text{lv} = \Lambda\alpha^\top$ with columns `level`, `trait`,
+`predictor`, `estimate`, `std.error`, `uncertainty_status`, and
+`validation_row`. Raw `alpha` is exposed for method developers through
+`type = "axis_effect"`, but it is rotation-dependent and carries
+`rotation_status`. Standard errors are `NA` and intervals are not
+admitted until the recovery/calibration gates in `LV-02` pass.
 
 #### `getLoadings(fit, level = "unit", rotate = c("none", "varimax", "promax"))`
 

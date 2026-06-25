@@ -1,6 +1,6 @@
 ## Design 73 parser/API preflight for predictor-informed latent scores.
-## This file validates and prepares the future unit-level X_lv_B design. The
-## TMB likelihood path is deliberately not wired yet.
+## This file validates and prepares the unit-level X_lv_B design. The first
+## TMB path is ordinary Gaussian unit-tier latent() only.
 
 gll_lv_covstruct_indices <- function(covstructs) {
   which(vapply(
@@ -68,7 +68,7 @@ gll_prepare_lv_predictor_setup <- function(
       character(1L)
     )
     cli::cli_abort(c(
-      "Only one {.arg lv} predictor-informed latent-score term is allowed in this Design 73 preflight slice.",
+      "Only one {.arg lv} predictor-informed latent-score term is allowed in this Design 73 C1 slice.",
       "x" = "Found terms: {paste(unique(labels), collapse = ', ')}.",
       "i" = "C1 targets one ordinary Gaussian unit-tier {.fn latent} block."
     ))
@@ -103,9 +103,9 @@ gll_prepare_lv_predictor_setup <- function(
   }
   if (isTRUE(REML)) {
     cli::cli_abort(c(
-      "{.arg lv} does not support {.arg REML = TRUE} in this preflight slice.",
+      "{.arg lv} does not support {.arg REML = TRUE} in this C1 slice.",
       "i" = "Design 73 starts with ML for ordinary Gaussian unit-tier fits.",
-      ">" = "Use {.code REML = FALSE} until validation row {.code LV-01} moves."
+      ">" = "Use {.code REML = FALSE}; REML support needs a separate derivation and validation row."
     ))
   }
   if (any(family_id_vec != 0L)) {
@@ -153,7 +153,7 @@ gll_prepare_lv_predictor_setup <- function(
   smooth_calls <- intersect(rhs_functions, c("s", "te", "ti", "t2"))
   if (length(smooth_calls) > 0L) {
     cli::cli_abort(c(
-      "{.arg lv} formulas cannot contain smooth terms in this preflight slice.",
+      "{.arg lv} formulas cannot contain smooth terms in this C1 slice.",
       "x" = "Found {.fn {smooth_calls}}.",
       "i" = "Use already-computed unit-level columns, or wait for a smooth-specific design."
     ))
@@ -295,14 +295,4 @@ gll_prepare_lv_predictor_setup <- function(
     X_lv_B_names = colnames(X_lv_B),
     unit_names = rownames(X_lv_B)
   )
-}
-
-gll_abort_lv_not_implemented <- function(lv_setup) {
-  cli::cli_abort(c(
-    "{.arg lv} is reserved for Design 73 predictor-informed latent scores but is not implemented yet.",
-    "i" = "Validated parser preflight for term: {lv_setup$term_label}.",
-    "i" = "Prepared unit-level design columns: {.val {lv_setup$X_lv_B_names}}.",
-    "i" = "Current releases stop before TMB construction so score predictors cannot be silently ignored.",
-    ">" = "Fit the ordinary latent model without {.arg lv}, or wait for validation rows {.code FG-18}, {.code RE-13}, and {.code LV-01} to move."
-  ))
 }

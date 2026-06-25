@@ -397,6 +397,10 @@ extract_communality <- function(
 #'   Julia bridge extractors.
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
 #'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
+#' @param component Score component to return. `"total"` returns the latent
+#'   score entering the linear predictor. `"innovation"` returns the zero-mean
+#'   latent innovation. `"mean"` returns the predictor-informed score mean and
+#'   is non-zero only for Design 73 `latent(..., lv = ~ x)` fits.
 #' @return A list with `scores` (units or within-unit observations in rows,
 #'   latent axes in columns) and `loadings` (traits in rows, axes in columns).
 #'
@@ -419,10 +423,21 @@ extract_communality <- function(
 #' }
 #'
 #' @export
-extract_ordination <- function(fit, level = "unit") {
+extract_ordination <- function(
+  fit,
+  level = "unit",
+  component = c("total", "innovation", "mean")
+) {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
+  component <- match.arg(component)
   level <- .normalise_level(level, arg_name = "level")
   if (inherits(fit, "gllvmTMB_julia")) {
+    if (!identical(component, "total")) {
+      cli::cli_abort(c(
+        "Julia bridge ordination currently supports only {.code component = \"total\"}.",
+        "i" = "Predictor-informed score components are not admitted for GLLVM.jl bridge fits yet."
+      ))
+    }
     return(.gllvm_julia_extract_ordination(
       fit = fit,
       level = .canonical_level_name(level)
@@ -440,10 +455,25 @@ extract_ordination <- function(fit, level = "unit") {
     rownames(Lambda) <- trait_names
     colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
     site_names <- levels(fit$data[[fit$unit_col]])
-    scores <- t(z_B)
+    innovation <- t(z_B)
+    mean_scores <- if (isTRUE(fit$use$lv_B)) {
+      fit$report$U_lv_mean_B
+    } else {
+      matrix(0, nrow = nrow(innovation), ncol = ncol(innovation))
+    }
+    scores <- switch(
+      component,
+      total = innovation + mean_scores,
+      innovation = innovation,
+      mean = mean_scores
+    )
     rownames(scores) <- site_names
     colnames(scores) <- paste0("LV", seq_len(ncol(scores)))
-    list(scores = scores, loadings = Lambda, row_id = site_names)
+    list(
+      scores = scores,
+      loadings = Lambda,
+      row_id = site_names
+    )
   } else {
     if (!fit$use$rr_W) {
       return(NULL)
@@ -462,9 +492,147 @@ extract_ordination <- function(fit, level = "unit") {
       "site_species"
     }
     ss_names <- levels(fit$data[[obs_col]])
-    scores <- t(z_W)
+    innovation <- t(z_W)
+    mean_scores <- matrix(0, nrow = nrow(innovation), ncol = ncol(innovation))
+    scores <- switch(
+      component,
+      total = innovation,
+      innovation = innovation,
+      mean = mean_scores
+    )
     rownames(scores) <- ss_names
     colnames(scores) <- paste0("LV", seq_len(ncol(scores)))
-    list(scores = scores, loadings = Lambda, row_id = ss_names)
+    list(
+      scores = scores,
+      loadings = Lambda,
+      row_id = ss_names
+    )
+  }
+}
+
+#' Predictor effects on latent-score means
+#'
+#' For a predictor-informed ordinary latent fit, `latent(..., lv = ~ x)` uses
+#' the unit-level score model
+#' \deqn{\mathbf u_s = \mathbf z_s + \mathbf X_s \boldsymbol\alpha,}
+#' where the innovation \eqn{\mathbf z_s} keeps the usual standard-normal prior.
+#' `extract_lv_effects()` reports either the trait-scale contribution
+#' \eqn{\mathbf B_{\mathrm{lv}} = \boldsymbol\Lambda \boldsymbol\alpha^\top}
+#' or the raw axis-scale \eqn{\boldsymbol\alpha}. The trait-scale table is the
+#' preferred summary because raw latent axes are scale- and rotation-dependent.
+#'
+#' This is a C1 point-estimate extractor for ordinary Gaussian unit-tier
+#' `latent(..., lv = ~ x)` fits. Confidence intervals and recovery calibration
+#' remain validation-gated.
+#'
+#' @param fit A fit returned by [gllvmTMB()].
+#' @param level Currently `"unit"` only. Legacy alias `"B"` is accepted.
+#' @param type `"trait_effect"` returns \eqn{\mathbf B_{\mathrm{lv}}} on the
+#'   trait linear-predictor scale. `"axis_effect"` returns raw
+#'   \eqn{\boldsymbol\alpha} coefficients for diagnostic use.
+#'
+#' @return A data frame. For `type = "trait_effect"`, columns are `level`,
+#'   `trait`, `predictor`, `estimate`, `std.error`, `uncertainty_status`, and
+#'   `validation_row`. For `type = "axis_effect"`, columns are `level`, `axis`,
+#'   `predictor`, `estimate`, `rotation_status`, and `validation_row`.
+#'
+#' @seealso [extract_ordination()]
+#'
+#' @export
+extract_lv_effects <- function(
+  fit,
+  level = "unit",
+  type = c("trait_effect", "axis_effect")
+) {
+  type <- match.arg(type)
+  level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
+  level <- .normalise_level(level, arg_name = "level")
+
+  if (inherits(fit, "gllvmTMB_julia")) {
+    cli::cli_abort(c(
+      "Julia bridge fits do not yet expose predictor-informed latent effects.",
+      "i" = "Only named R-side C1 fits with {.code latent(..., lv = ~ x)} are admitted in this slice."
+    ))
+  }
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+  }
+  if (!identical(level, "B")) {
+    cli::cli_abort(c(
+      "{.fn extract_lv_effects} currently supports only {.code level = \"unit\"}.",
+      "i" = "Within-unit, cluster, phylogenetic, spatial, and kernel score predictors remain planned rows."
+    ))
+  }
+  if (!isTRUE(fit$use$lv_B)) {
+    cli::cli_abort(c(
+      "{.fn extract_lv_effects} requires a predictor-informed latent fit.",
+      "i" = "Fit an ordinary Gaussian unit-tier model with {.code latent(..., lv = ~ x)}."
+    ))
+  }
+
+  trait_names <- levels(fit$data[[fit$trait_col]])
+  predictor_names <- fit$lv$X_lv_B_names %||% colnames(fit$lv$X_lv_B)
+  if (is.null(predictor_names) || length(predictor_names) == 0L) {
+    predictor_names <- paste0("x", seq_len(ncol(fit$lv$X_lv_B)))
+  }
+
+  if (identical(type, "trait_effect")) {
+    B_lv <- fit$report$B_lv_unit
+    if (is.null(B_lv)) {
+      cli::cli_abort(
+        "The fit does not contain the reported {.field B_lv_unit} matrix."
+      )
+    }
+    if (
+      !identical(dim(B_lv), c(length(trait_names), length(predictor_names)))
+    ) {
+      cli::cli_abort(
+        "The reported {.field B_lv_unit} dimensions do not match traits and {.arg lv} predictors."
+      )
+    }
+    out <- expand.grid(
+      trait = trait_names,
+      predictor = predictor_names,
+      KEEP.OUT.ATTRS = FALSE,
+      stringsAsFactors = FALSE
+    )
+    data.frame(
+      level = "unit",
+      trait = out$trait,
+      predictor = out$predictor,
+      estimate = as.numeric(B_lv),
+      std.error = NA_real_,
+      uncertainty_status = "point_estimate_only_no_ci_validation",
+      validation_row = "EXT-31; LV-01",
+      stringsAsFactors = FALSE
+    )
+  } else {
+    alpha_lv <- fit$report$alpha_lv_B
+    if (is.null(alpha_lv)) {
+      cli::cli_abort(
+        "The fit does not contain the reported {.field alpha_lv_B} matrix."
+      )
+    }
+    axes <- paste0("LV", seq_len(ncol(alpha_lv)))
+    if (!identical(dim(alpha_lv), c(length(predictor_names), length(axes)))) {
+      cli::cli_abort(
+        "The reported {.field alpha_lv_B} dimensions do not match {.arg lv} predictors and latent axes."
+      )
+    }
+    out <- expand.grid(
+      predictor = predictor_names,
+      axis = axes,
+      KEEP.OUT.ATTRS = FALSE,
+      stringsAsFactors = FALSE
+    )
+    data.frame(
+      level = "unit",
+      axis = out$axis,
+      predictor = out$predictor,
+      estimate = as.numeric(alpha_lv),
+      rotation_status = "axis_scale_rotation_dependent",
+      validation_row = "EXT-31; LV-01",
+      stringsAsFactors = FALSE
+    )
   }
 }

@@ -255,9 +255,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   kinds     <- vapply(parsed$covstructs, function(cs) cs$kind, character(1))
 
   ## ---- Design 73 `lv = ~ ...` parser/API preflight -----------------------
-  ## Validate and prepare the future unit-level X_lv_B design, then stop before
-  ## TMB construction. This keeps the reserved surface fail-loud while proving
-  ## the parser contract for the next implementation slice.
+  ## Validate and prepare the unit-level X_lv_B design for the ordinary
+  ## Gaussian B-tier score-mean model. Unsupported regimes still fail here
+  ## before TMB construction.
   lv_setup <- gll_prepare_lv_predictor_setup(
     parsed = parsed,
     data = data,
@@ -266,9 +266,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     family_id_vec = family_id_vec,
     REML = REML
   )
-  if (isTRUE(lv_setup$enabled)) {
-    gll_abort_lv_not_implemented(lv_setup)
-  }
+  use_lv_B <- isTRUE(lv_setup$enabled)
 
   ## ---- Design 65 C3.2 two-Psi identifiability guardrail -----------------
   ## A two-kernel model carries two uniqueness tiers (e.g. a phylo cross-
@@ -1582,6 +1580,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   n_traits        <- nlevels(data[[trait]])
   n_sites         <- nlevels(data[[site]])
   n_site_species  <- nlevels(data[[ss_name]])
+  n_lv_B <- if (use_lv_B) {
+    ncol(lv_setup$X_lv_B)
+  } else {
+    1L
+  }
+  X_lv_B <- if (use_lv_B) {
+    unit_levels <- levels(data[[site]])
+    missing_lv_units <- setdiff(unit_levels, rownames(lv_setup$X_lv_B))
+    if (length(missing_lv_units) > 0L) {
+      cli::cli_abort(c(
+        "Internal error: the {.arg lv} unit-level design is missing unit level(s).",
+        "x" = "Missing level(s): {.val {missing_lv_units}}."
+      ))
+    }
+    unname(lv_setup$X_lv_B[unit_levels, , drop = FALSE])
+  } else {
+    matrix(0.0, nrow = max(n_sites, 1L), ncol = 1L)
+  }
 
   ## ---- Phase 2a: validate mi() BEFORE the design matrix -----------------
   ## gll_prepare_mi_setup is data-free; running it here fires the loud mi()
@@ -2975,6 +2991,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_B              = as.integer(d_B),
     d_W              = as.integer(d_W),
     use_rr_B         = as.integer(use_rr_B),
+    use_lv_B         = as.integer(use_lv_B),
+    n_lv_B           = as.integer(n_lv_B),
+    X_lv_B           = X_lv_B,
     use_diag_B       = as.integer(use_diag_B),
     use_rr_W         = as.integer(use_rr_W),
     use_diag_W       = as.integer(use_diag_W),
@@ -3099,6 +3118,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_sigma_eps = log_sigma_eps_init,
     theta_rr_B   = if (use_rr_B) init_rr_theta(n_traits, d_B) else rep(0.0, theta_rr_B_len),
     z_B          = matrix(0, nrow = max(d_B, 1L), ncol = n_sites),
+    alpha_lv_B   = matrix(0, nrow = max(n_lv_B, 1L), ncol = max(d_B, 1L)),
     theta_rr_B_slope = if (use_rr_B_slope) {
                          init_rr_theta(n_lhs_cols_B_lat, d_B_slope)
                        } else {
@@ -3470,6 +3490,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!use_rr_B) {
     tmb_map$theta_rr_B <- factor(rep(NA_integer_, length(tmb_params$theta_rr_B)))
     tmb_map$z_B        <- factor(rep(NA_integer_, length(tmb_params$z_B)))
+  }
+  if (!use_lv_B) {
+    tmb_map$alpha_lv_B <- factor(rep(NA_integer_, length(tmb_params$alpha_lv_B)))
   }
   if (!use_rr_B_slope) {
     tmb_map$theta_rr_B_slope <-
@@ -4314,6 +4337,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## augmented B-tier latent covariance over the
                           ## (intercept, slope) x trait coefficient vector.
                           rr_B_slope = isTRUE(use_rr_B_slope),
+                          lv_B = isTRUE(use_lv_B),
                           rr_B_slope_col =
                             if (use_rr_B_slope) rr_B_slope_xcol else NULL,
                           ## Augmented B-tier unique diagonal over the same
@@ -4429,6 +4453,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                        groups   = re_int_groups,
                        n_groups = re_int_n_groups,
                        offsets  = re_int_offsets
+                     ) else NULL,
+      lv           = if (use_lv_B) list(
+                       level = "unit",
+                       formula = lv_setup$formula,
+                       formula_no_intercept = lv_setup$formula_no_intercept,
+                       X_lv_B = lv_setup$X_lv_B,
+                       X_lv_B_names = lv_setup$X_lv_B_names,
+                       unit_names = lv_setup$unit_names
                      ) else NULL,
       d_phy        = d_phy,
       d_B_slope    = d_B_slope,

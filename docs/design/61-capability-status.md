@@ -36,9 +36,9 @@ Design 73 adds a new predictor-informed latent-score lane:
 `latent(..., lv = ~ x)`. This is now a C1 **partial** capability for
 ordinary unit-tier `latent()` fits. Gaussian fits have parser/API
 preflight, TMB score-mean plumbing, `B_lv_unit = Lambda alpha^T`, and
-point-estimate extractors. Pure binomial-probit fits are now admitted
-through the same score-mean path with a small trait-scale `B_lv`
-recovery/algebra gate. The validation register records `FG-18`,
+point-estimate extractors. Pure binomial logit/probit/cloglog fits are
+now admitted through the same score-mean path with small trait-scale
+`B_lv` recovery/algebra gates. The validation register records `FG-18`,
 `RE-13`, `EXT-31`, `LV-01`, `LV-04`, and `LV-05` as partial rows;
 `LV-02`, `LV-03`, `LV-06`, and `LV-07` remain blocked. Gaussian
 recovery, Bernoulli single-trial depth, missing-response compatibility,
@@ -129,7 +129,7 @@ n_traits` is valid and tested, while `d > n_traits` aborts.
 | Interval coverage | CI-08 / CI-10 remain separate from point recovery and must not be implied by slope examples. | Keep slope articles point-estimate/recovery framed until coverage gates pass. |
 | Delta / hurdle covariance | Two response scales make a single latent residual or slope covariance undefined. | Derivation first; no article or runtime admission in this slice. |
 | Ordinary behavioural random regression | The Gaussian Appendix-B-style target is now public as the individual-level article; broader non-Gaussian augmented `unique()` support remains guarded. | Decide whether non-Gaussian augmented `unique()` should stay guarded or get a separate admission grid. |
-| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is the source-of-truth spec. Ordinary Gaussian unit-tier `lv` formulas now validate, build `X_lv_B`, fit through the C1 TMB path with `alpha_lv_B`, report `B_lv_unit`, and expose point-estimate extractor/ordination components. Pure binomial-probit is admitted on the same ordinary unit-tier path with trait-scale `B_lv` recovery/algebra evidence. This is still partial: no interval calibration, no Bernoulli single-trial depth, no other non-Gaussian links/families, and no Julia bridge parity. | Next slice is Gaussian recovery for `B_lv`, `Sigma`, and `Psi`, plus Bernoulli/probit depth and missing-response/factor-runtime smoke before any broader docs article. |
+| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is the source-of-truth spec. Ordinary Gaussian unit-tier `lv` formulas now validate, build `X_lv_B`, fit through the C1 TMB path with `alpha_lv_B`, report `B_lv_unit`, and expose point-estimate extractor/ordination components. Pure binomial logit/probit/cloglog is admitted on the same ordinary unit-tier path with trait-scale `B_lv` recovery/algebra evidence. This is still partial: no interval calibration, no Bernoulli single-trial depth, no other non-Gaussian families, and no Julia bridge parity. | Next slice is Gaussian recovery for `B_lv`, `Sigma`, and `Psi`, plus Bernoulli binary depth and missing-response/factor-runtime smoke before any broader docs article. |
 
 ## Status-Scan Handles
 

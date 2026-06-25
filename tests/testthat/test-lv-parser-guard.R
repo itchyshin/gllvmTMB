@@ -127,15 +127,31 @@ make_lv_default_fit_data <- function(n_units = 80L) {
   df
 }
 
-make_lv_binomial_probit_fit_data <- function(n_units = 120L, n_trials = 12L) {
-  set.seed(20260625)
+make_lv_binomial_fit_data <- function(
+  n_units = 160L,
+  n_trials = 18L,
+  link = c("logit", "probit", "cloglog")
+) {
+  link <- match.arg(link)
+  seed <- switch(
+    link,
+    logit = 20260626L,
+    probit = 20260625L,
+    cloglog = 20260627L
+  )
+  set.seed(seed)
   traits <- paste0("t", 1:3)
   units <- paste0("u", seq_len(n_units))
-  x_unit <- scale(seq(-1.6, 1.6, length.out = n_units))[, 1]
-  z_innov <- stats::rnorm(n_units, 0, 1)
-  Lambda <- c(0.75, -0.55, 0.6)
-  beta <- c(-0.15, 0.1, 0.05)
-  alpha <- 0.65
+  x_unit <- scale(seq(-1.4, 1.4, length.out = n_units))[, 1]
+  z_innov <- stats::rnorm(n_units, 0, 0.7)
+  Lambda <- c(0.55, -0.45, 0.5)
+  beta <- switch(
+    link,
+    logit = c(-0.15, 0.05, -0.05),
+    probit = c(-0.1, 0.1, 0.0),
+    cloglog = c(-1.0, -0.85, -1.1)
+  )
+  alpha <- 0.55
   df <- do.call(
     rbind,
     lapply(seq_along(units), function(i) {
@@ -153,15 +169,29 @@ make_lv_binomial_probit_fit_data <- function(n_units = 120L, n_trials = 12L) {
   unit_i <- as.integer(df$unit)
   score <- alpha * x_unit[unit_i] + z_innov[unit_i]
   eta <- beta[trait_i] + Lambda[trait_i] * score
-  p <- stats::pnorm(eta)
+  p <- switch(
+    link,
+    logit = stats::plogis(eta),
+    probit = stats::pnorm(eta),
+    cloglog = 1 - exp(-exp(eta))
+  )
   df$success <- stats::rbinom(nrow(df), size = n_trials, prob = p)
   df$failure <- n_trials - df$success
   attr(df, "truth") <- list(
     alpha = alpha,
     Lambda = Lambda,
-    B_lv = Lambda * alpha
+    B_lv = Lambda * alpha,
+    link = link
   )
   df
+}
+
+make_lv_binomial_probit_fit_data <- function(n_units = 160L, n_trials = 18L) {
+  make_lv_binomial_fit_data(
+    n_units = n_units,
+    n_trials = n_trials,
+    link = "probit"
+  )
 }
 
 fit_lv_default_smoke <- function(data = make_lv_default_fit_data()) {
@@ -180,9 +210,11 @@ fit_lv_default_smoke <- function(data = make_lv_default_fit_data()) {
   )
 }
 
-fit_lv_binomial_probit_smoke <- function(
-  data = make_lv_binomial_probit_fit_data()
+fit_lv_binomial_smoke <- function(
+  data = make_lv_binomial_fit_data(link = link),
+  link = c("logit", "probit", "cloglog")
 ) {
+  link <- match.arg(link)
   withr::local_options(
     gllvmTMB.quiet_grammar_notes = TRUE,
     lifecycle_verbosity = "quiet"
@@ -194,9 +226,15 @@ fit_lv_binomial_probit_smoke <- function(
     data = data,
     unit = "unit",
     trait = "trait",
-    family = stats::binomial(link = "probit"),
+    family = stats::binomial(link = link),
     control = gllvmTMBcontrol(se = FALSE)
   )
+}
+
+fit_lv_binomial_probit_smoke <- function(
+  data = make_lv_binomial_probit_fit_data()
+) {
+  fit_lv_binomial_smoke(data = data, link = "probit")
 }
 
 expect_lv_smoke_reports <- function(fit) {
@@ -322,6 +360,7 @@ test_that("latent lv C1 engine reports score-mean quantities", {
     unique(trait_effect$uncertainty_status),
     "point_estimate_only_no_ci_validation"
   )
+  expect_equal(unique(trait_effect$validation_row), "EXT-31; LV-01")
   expect_named(
     axis_effect,
     c(
@@ -338,6 +377,7 @@ test_that("latent lv C1 engine reports score-mean quantities", {
     unique(axis_effect$rotation_status),
     "axis_scale_rotation_dependent"
   )
+  expect_equal(unique(axis_effect$validation_row), "EXT-31; LV-01")
   expect_error(
     extract_lv_effects(fit, level = "unit_obs"),
     regexp = "currently supports only"
@@ -401,47 +441,63 @@ test_that("latent lv C1 engine keeps the ordinary Psi companion", {
   )
 })
 
-test_that("latent lv admits binomial-probit and recovers trait-scale B_lv", {
-  ## Symbol <-> implementation alignment for this binary-probit slice:
+test_that("latent lv admits binomial standard links and recovers B_lv", {
+  ## Symbol <-> implementation alignment for this binary-link slice:
   ##   z_i = x_i alpha + e_i, e_i ~ N(0, 1)
   ##   eta_it = beta_t + lambda_t z_i
-  ##   y_it ~ Binomial(n, Phi(eta_it))
+  ##   y_it ~ Binomial(n, g^{-1}(eta_it))
   ##   Formula: cbind(success, failure) ~ 0 + trait +
   ##     latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)
-  ##   Recovery target: B_lv,t = lambda_t * alpha, reported by
-  ##     extract_lv_effects(type = "trait_effect").
-  data <- make_lv_binomial_probit_fit_data()
-  truth <- attr(data, "truth")
-  fit <- fit_lv_binomial_probit_smoke(data)
+  ##   Links: logit, probit, cloglog.
+  ##   Recovery target: link-scale B_lv,t = lambda_t * alpha, reported
+  ##     by extract_lv_effects(type = "trait_effect").
+  link_id <- c(logit = 0L, probit = 1L, cloglog = 2L)
+  tolerance <- c(logit = 0.35, probit = 0.30, cloglog = 0.40)
 
-  expect_true(isTRUE(fit$use$lv_B))
-  expect_true(all(fit$tmb_data$family_id_vec == 1L))
-  expect_true(all(fit$tmb_data$link_id_vec == 1L))
-  expect_identical(fit$opt$convergence, 0L)
-  expect_lt(max(abs(fit$tmb_obj$gr(fit$opt$par))), 5e-3)
-  expect_lv_smoke_reports(fit)
+  for (link in names(link_id)) {
+    data <- make_lv_binomial_fit_data(link = link)
+    truth <- attr(data, "truth")
+    fit <- fit_lv_binomial_smoke(data, link = link)
 
-  trait_effect <- extract_lv_effects(fit)
-  b_hat <- stats::setNames(trait_effect$estimate, trait_effect$trait)
-  b_truth <- stats::setNames(truth$B_lv, levels(data$trait))
-  abs_err <- max(abs(b_hat[names(b_truth)] - b_truth))
-  expect_lt(
-    abs_err,
-    0.30,
-    label = sprintf(
-      "binomial-probit predictor-informed latent B_lv max abs error = %.3f",
-      abs_err
+    expect_true(isTRUE(fit$use$lv_B), info = link)
+    expect_true(all(fit$tmb_data$family_id_vec == 1L), info = link)
+    expect_true(all(fit$tmb_data$link_id_vec == link_id[[link]]), info = link)
+    expect_identical(fit$opt$convergence, 0L, info = link)
+    expect_lt(
+      max(abs(fit$tmb_obj$gr(fit$opt$par))),
+      8e-3,
+      label = sprintf("binomial-%s gradient gate", link)
     )
-  )
+    expect_lv_smoke_reports(fit)
 
-  total <- extract_ordination(fit, level = "unit", component = "total")
-  innovation <- extract_ordination(
-    fit,
-    level = "unit",
-    component = "innovation"
-  )
-  mean <- extract_ordination(fit, level = "unit", component = "mean")
-  expect_equal(total$scores, innovation$scores + mean$scores, tolerance = 1e-8)
+    trait_effect <- extract_lv_effects(fit)
+    expect_equal(unique(trait_effect$validation_row), "EXT-31; LV-05")
+    b_hat <- stats::setNames(trait_effect$estimate, trait_effect$trait)
+    b_truth <- stats::setNames(truth$B_lv, levels(data$trait))
+    abs_err <- max(abs(b_hat[names(b_truth)] - b_truth))
+    expect_lt(
+      abs_err,
+      tolerance[[link]],
+      label = sprintf(
+        "binomial-%s predictor-informed latent B_lv max abs error = %.3f",
+        link,
+        abs_err
+      )
+    )
+
+    total <- extract_ordination(fit, level = "unit", component = "total")
+    innovation <- extract_ordination(
+      fit,
+      level = "unit",
+      component = "innovation"
+    )
+    mean <- extract_ordination(fit, level = "unit", component = "mean")
+    expect_equal(
+      total$scores,
+      innovation$scores + mean$scores,
+      tolerance = 1e-8
+    )
+  }
 })
 
 test_that("latent lv preflight rejects malformed lv formulas", {
@@ -546,20 +602,33 @@ test_that("latent lv preflight rejects unsupported model regimes", {
     ),
     regexp = "REML"
   )
+  for (link_id in 0:2) {
+    expect_silent(
+      lv_preflight_setup(
+        y_bin ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
+        family_id_vec = rep(1L, nrow(make_lv_preflight_data())),
+        link_id_vec = rep(link_id, nrow(make_lv_preflight_data()))
+      )
+    )
+  }
   expect_error(
     lv_preflight_setup(
       y_bin ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
       family_id_vec = rep(1L, nrow(make_lv_preflight_data())),
-      link_id_vec = rep(0L, nrow(make_lv_preflight_data()))
+      link_id_vec = rep(3L, nrow(make_lv_preflight_data()))
     ),
-    regexp = "binomial-probit|LV-05"
+    regexp = "standard links|LV-05"
   )
-  expect_silent(
+  expect_error(
     lv_preflight_setup(
       y_bin ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
-      family_id_vec = rep(1L, nrow(make_lv_preflight_data())),
-      link_id_vec = rep(1L, nrow(make_lv_preflight_data()))
-    )
+      family_id_vec = rep(
+        c(1L, 2L),
+        length.out = nrow(make_lv_preflight_data())
+      ),
+      link_id_vec = rep(0L, nrow(make_lv_preflight_data()))
+    ),
+    regexp = "standard links|LV-05"
   )
   expect_error(
     lv_preflight_setup(

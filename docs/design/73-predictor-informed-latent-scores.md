@@ -1,8 +1,8 @@
 # Design 73 -- Predictor-Informed Latent Scores
 
 **Status:** C1 ordinary unit-tier parser + TMB support for Gaussian and
-pure binomial-probit fits; Gaussian recovery and interval calibration
-still pending.
+pure binomial logit/probit/cloglog fits; Gaussian recovery and interval
+calibration still pending.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
@@ -14,7 +14,7 @@ The argument is a term-local fixed-effect formula for the mean of the
 latent scores. It is not a random-effects formula, not a loading model,
 and not a replacement for trait-specific fixed effects. The current
 implementation admits only the C1 ordinary unit-tier surface: Gaussian
-fits plus a narrow pure binomial-probit admission. All other rows remain
+fits plus a narrow pure-binomial standard-link admission. All other rows remain
 planned or blocked as listed below.
 
 The first public target remains ordinary Gaussian unit-tier support:
@@ -31,10 +31,11 @@ latent(0 + trait | unit, d = 2,
 ```
 
 The first admitted binary target is deliberately narrower:
-single-family `binomial(link = "probit")` with the same ordinary
-unit-tier score-mean model. Binary logit, cloglog, ordinal, count,
-Gamma, Beta, mixed-family, and delta/hurdle `lv` fits remain blocked
-until their own validation rows move.
+single-family `binomial()` with one of the package's three supported
+binary links (`"logit"`, `"probit"`, or `"cloglog"`) and the same
+ordinary unit-tier score-mean model. Ordinal, count, Gamma, Beta,
+mixed-family, and delta/hurdle `lv` fits remain blocked until their own
+validation rows move.
 
 ## Model Contract
 
@@ -62,8 +63,9 @@ Here `M_i` is the unit-level model matrix built from the `lv` formula,
 latent-score innovation, and `q_it` is the diagonal `Psi` companion
 already supplied by ordinary `latent()`. Gaussian responses use the
 identity-link Gaussian observation likelihood. The first binary
-admission uses the same linear predictor inside the probit likelihood,
-`y_it ~ Binomial(n_it, Phi(eta_it))`.
+admission uses the same linear predictor inside the selected binomial
+likelihood, `y_it ~ Binomial(n_it, g^{-1}(eta_it))`, for logit,
+probit, or cloglog links.
 
 Use **innovation** for `e_i` in user prose. Do not call it the
 "residual" score, because `unique = FALSE` already means "drop the
@@ -109,8 +111,8 @@ and latent-variable modelling, not evidence that this specific
 
 ## Non-Negotiable Decisions
 
-- C1 supports **ordinary unit-tier Gaussian and pure binomial-probit
-  `latent()` only**.
+- C1 supports **ordinary unit-tier Gaussian and pure binomial
+  logit/probit/cloglog `latent()` only**.
 - `lv` accepts a one-sided fixed-effect formula only.
 - Random-effect bars, offsets, `mi()`, smooth terms, and response or
   trait columns inside `lv` are rejected.
@@ -125,16 +127,17 @@ and latent-variable modelling, not evidence that this specific
 - `REML = TRUE` with `lv` is rejected. REML / AI-REML language remains
   Gaussian-only and needs a separate derivation even for this Gaussian
   C1 surface.
-- Other non-Gaussian families and binary logit/cloglog `lv` fits are
-  rejected until their own validation rows move.
+- Other non-Gaussian families and mixed-family `lv` fits are rejected
+  until their own validation rows move.
 - C1 supports at most one ordinary unit-tier `latent()` term carrying
   `lv`.
 - `extract_Sigma()` keeps its current meaning:
   `Lambda Lambda^T + Psi` for the model's conditional unit-tier
   covariance. It does not add empirical variance induced by the
   observed `lv` predictors.
-- The primary public estimand is `B_lv = Lambda %*% t(alpha)`, not raw
-  `alpha`, because `alpha` depends on the latent-axis convention.
+- The primary public estimand is the latent-predictor trait effect,
+  written as `B_lv = Lambda %*% t(alpha)` in the internal math notation,
+  not raw `alpha`, because `alpha` depends on the latent-axis convention.
 
 ## Tier Grammar
 
@@ -143,7 +146,7 @@ but C1 exposes only ordinary unit-tier support.
 
 | Tier / source | Eventual target | C1 behaviour |
 |---|---|---|
-| `latent(... | unit, lv = ~ x_unit)` | Between-unit latent-score mean | C1 partial: ordinary Gaussian plus pure binomial-probit; smoke/algebra evidence and binary-probit `B_lv` recovery, not interval calibration |
+| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog; smoke/algebra evidence and standard-link binary latent-predictor trait-effect recovery, not interval calibration |
 | `latent(... | unit_obs, lv = ~ x_obs)` | Within-unit/session latent-score mean | Reject as planned |
 | `latent(... | cluster, lv = ~ x_cluster)` | Cluster latent-score mean if a reduced-rank cluster slot is added | Reject as planned |
 | `latent(... | cluster2, lv = ~ x_cluster2)` | Not valid today; `cluster2` is diagonal-only | Reject |
@@ -190,9 +193,9 @@ navigation.
 ### 3. TMB PR
 
 Status: landed for the C1 ordinary Gaussian unit-tier smoke/algebra
-gate and the first pure binomial-probit trait-scale `B_lv`
-recovery/algebra gate. Broader recovery and interval evidence are still
-Stage 5 work.
+gate and the first pure-binomial logit/probit/cloglog trait-scale
+`B_lv` recovery/algebra gate. Broader recovery and interval evidence
+are still Stage 5 work.
 
 - Add data flags and matrices: `use_lv_B`, `n_lv_B`, `X_lv_B`.
 - Add parameter matrix `alpha_lv_B[p_lv, d_B]`, unconstrained and
@@ -211,7 +214,7 @@ eta(o) += sum_k Lambda_B(t, k) * score_k;
 ### 4. Extractor PR
 
 Status: landed as point-estimate C1 extractors for the admitted
-Gaussian and binomial-probit R-side fits. Standard errors and interval
+Gaussian and pure-binomial standard-link R-side fits. Standard errors and interval
 claims are deliberately withheld until recovery/calibration evidence
 lands.
 
@@ -230,9 +233,10 @@ Only after C1 recovery evidence, add a Tier-1 article:
 
 The article must show long and `traits(...)` wide calls side by side,
 use distinct fixed-effect and LV predictors, and include a scope box:
-IN ordinary Gaussian and pure binomial-probit unit-tier; PLANNED other
-non-Gaussian links/families, `unit_obs`, `cluster`, `cluster2`, phylo,
-animal, spatial, kernel, and mean-only reduced-rank modes.
+IN ordinary Gaussian and pure binomial logit/probit/cloglog unit-tier;
+PLANNED other non-Gaussian families, mixed-family rows, `unit_obs`,
+`cluster`, `cluster2`, phylo, animal, spatial, kernel, and mean-only
+reduced-rank modes.
 
 ## Test Contract
 
@@ -243,19 +247,18 @@ CRAN-safe tests for the parser/API PR:
 - Random-effect syntax, offsets, `mi()`, smooths, missing predictors,
   response/trait columns, rank-deficient designs, nonconstant
   within-unit predictors, exact fixed-RHS overlap, `REML = TRUE`,
-  unsupported non-Gaussian families/links, unsupported tiers/sources,
+  unsupported non-Gaussian families, unsupported tiers/sources,
   and augmented random-regression combinations fail loudly.
 - Small Gaussian rank-1 fit reaches finite reports and correct
   extractor dimensions.
-- Pure binomial-probit rank-1 fit reaches finite reports, rejects
-  binary logit/cloglog at preflight, recovers trait-scale `B_lv` on a
-  small multi-trial fixture, and preserves
+- Pure binomial logit/probit/cloglog rank-1 fits reach finite reports,
+  recover trait-scale `B_lv` on small multi-trial fixtures, and preserve
   `total = innovation + mean`.
 
 Heavy tests under `GLLVMTMB_HEAVY_TESTS=1`:
 
 - Rank-1 and rank-2 Gaussian recovery of `B_lv`.
-- Bernoulli single-trial binomial-probit recovery and separation
+- Bernoulli single-trial binomial recovery and separation
   diagnostics.
 - Factor predictors and rare-level behaviour.
 - Missing-response compatibility when the `lv` predictors remain

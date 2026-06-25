@@ -74,7 +74,7 @@ support from end-to-end verification:
 | `gllvmTMB_wide(Y, ...)` | **partial / soft-deprecated in 0.2.0** | Legacy matrix-in wrapper. It remains exported for migration and matrix-first workflows, but new examples use `gllvmTMB(traits(...) ~ ..., data = df_wide)` instead. |
 | `0 + trait` and `(0 + trait):x` | **covered** | Long-form trait-stacked fixed-effect grammar. Test evidence: `test-stage1-stacked-fixed-effects.R`, `test-canonical-keywords.R` (via validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
 | `latent(0 + trait \| g, d = K)` | **covered / ordinary Psi folded** | Reduced-rank loadings plus the default diagonal $\boldsymbol\Psi$ companion for $T$ traits across grouping factor `g`, rank $K \le T$. Use `unique = FALSE` for the old no-residual subset; use `common = TRUE` for one shared ordinary $\psi$ across traits. Test evidence: `test-stage2-rr-diag.R`, `test-keyword-grid.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (validation-debt register FG-04 / FG-06; Phase 0B promotion 2026-05-16; ordinary latent-Psi fold and common-Psi re-home slices 2026-06-18). |
-| `latent(..., lv = ~ x)` | **partial / Gaussian C1** | Predictor-informed latent-score means. Design 73 now admits ordinary Gaussian unit-tier `latent()` fits with unit-level `X_lv_B`, TMB `alpha_lv_B`, the zero-mean innovation retained, the ordinary `Psi` companion retained, and point-estimate `B_lv_unit = Lambda alpha^T` extractor support. This is smoke/algebra evidence only, not recovery or interval calibration. Random terms, offsets, `mi()`, smooths, response/trait columns, exact fixed-RHS overlap, nonconstant within-unit predictors, rank-deficient designs, `REML = TRUE`, non-Gaussian families, unsupported tiers, augmented random-regression combinations, and source-specific / kernel forms still reject until their validation rows move (validation-debt register FG-18 / RE-13 / EXT-31 / LV-01..LV-07). |
+| `latent(..., lv = ~ x)` | **partial / C1** | Predictor-informed latent-score means. Design 73 now admits ordinary unit-tier `latent()` fits for Gaussian and pure binomial-probit responses with unit-level `X_lv_B`, TMB `alpha_lv_B`, the zero-mean innovation retained, and point-estimate `B_lv_unit = Lambda alpha^T` extractor support. This is smoke/algebra evidence plus a small binomial-probit `B_lv` recovery gate, not interval calibration or broad recovery. Random terms, offsets, `mi()`, smooths, response/trait columns, exact fixed-RHS overlap, nonconstant within-unit predictors, rank-deficient designs, `REML = TRUE`, unsupported non-Gaussian families/links, unsupported tiers, augmented random-regression combinations, and source-specific / kernel forms still reject until their validation rows move (validation-debt register FG-18 / RE-13 / EXT-31 / LV-01..LV-07). |
 | `latent(1 + x \| unit, d = K)` / long-form equivalents | **partial / Gaussian covered** | Ordinary individual-level Gaussian random-regression decomposition over the augmented `(intercept, slope) x trait` coefficient vector. The Gaussian engine reports `Lambda_aug Lambda_aug^T`, the default augmented diagonal `Psi_B,aug`, and their total through `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`. Explicit `+ unique(1 + x \| unit)` remains accepted as compatibility syntax, and standalone augmented `unique()` remains the diagonal-only compatibility mode. Test evidence: `test-ordinary-latent-random-regression.R` (parser, long fit, `traits(...)` wide fit, Gaussian default composition and recovery, explicit compatibility composition, explicit compatibility diagonal fit, Poisson latent-only smoke, rank / unit_obs / mismatched-slope / Gaussian-only guards). Non-Gaussian augmented `unique()` remains guarded, and non-Gaussian augmented `latent()` stays low-rank-only. |
 | `unique(0 + trait \| g)` | **covered / compatibility** | Trait-diagonal $\boldsymbol\Psi$ on grouping factor `g`. New standalone diagonal examples use `indep()`; `unique()` remains accepted compatibility syntax. Test evidence: `test-stage2-rr-diag.R`, `test-cross-sectional-unique.R`, `test-unique-family-deprecation.R` (validation-debt register FG-05; Phase 0B promotion 2026-05-16; soft-deprecation slice 2026-06-18). |
 | `latent + unique` paired | **covered / compatibility** | Explicit spelling for the same decomposition now carried by ordinary `latent()`: $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$. Test evidence: `test-stage2-rr-diag.R`, `test-mixed-response-sigma.R`, `test-unique-family-deprecation.R` (validation-debt register FG-06; Phase 0B promotion 2026-05-16; ordinary latent-Psi fold 2026-06-18). |
@@ -159,7 +159,7 @@ The compact RHS shorthand is:
 | `1` | `0 + trait` |
 | `env` | `(0 + trait):env` |
 | `latent(1 \| g, d = K)` | `latent(0 + trait \| g, d = K)` |
-| `latent(1 \| g, d = K, lv = ~ x_lv)` | `latent(0 + trait \| g, d = K, lv = ~ x_lv)` for the current ordinary Gaussian unit-tier C1 surface |
+| `latent(1 \| g, d = K, lv = ~ x_lv)` | `latent(0 + trait \| g, d = K, lv = ~ x_lv)` for the current ordinary unit-tier C1 surface |
 | `latent(1 + env \| g, d = K)` | `latent(0 + trait + (0 + trait):env \| g, d = K)` |
 | `indep(1 \| g)` | `indep(0 + trait \| g)` |
 | `dep(1 \| g)` | `dep(0 + trait \| g)` |
@@ -336,7 +336,7 @@ $B_\text{lv} = \Lambda\alpha^\top$. The outer `latent()` term still
 supplies the latent-score innovation `e_i`; `lv` does not replace the
 innovation with a mean-only reduced-rank model.
 
-The current runtime supports the ordinary Gaussian unit-tier C1 surface:
+The current runtime supports the ordinary unit-tier C1 surface:
 it stores the formula as `extra$lv_formula` on the reduced-rank term,
 keeps the auto-added diagonal `Psi` companion free of `lv` metadata,
 builds unit-level `X_lv_B`, estimates `alpha_lv_B`, preserves the
@@ -350,7 +350,7 @@ capability. The following stay rejected or planned:
   `latent()` term;
 - exact overlap between fixed-effect RHS predictors and `lv`
   predictors;
-- `REML = TRUE`, non-Gaussian families, augmented random-regression
+- `REML = TRUE`, unsupported non-Gaussian families/links, augmented random-regression
   combinations, `unit_obs`, `cluster`, `cluster2`, `phylo_*`,
   `animal_*`, `spatial_*`, and `kernel_*` forms.
 

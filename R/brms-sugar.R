@@ -2105,7 +2105,7 @@ rewrite_canonical_aliases <- function(formula) {
     cli::cli_abort(c(
       "{.arg lv} is reserved for ordinary {.fn latent} only.",
       "x" = "{.fn {fn}} does not support predictor-informed latent-score means.",
-      "i" = "Design 73 C1 is limited to ordinary Gaussian unit-tier {.code latent(..., lv = ~ x)}.",
+      "i" = "Design 73 C1 is limited to ordinary unit-tier {.code latent(..., lv = ~ x)}; only Gaussian and pure binomial-probit fits are admitted.",
       ">" = "Remove {.arg lv} from {.fn {fn}} until validation row {.code LV-07} moves."
     ))
   }

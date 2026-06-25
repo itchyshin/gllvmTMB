@@ -264,6 +264,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     trait = trait,
     site = site,
     family_id_vec = family_id_vec,
+    link_id_vec = link_id_vec,
     REML = REML
   )
   use_lv_B <- isTRUE(lv_setup$enabled)

@@ -36,7 +36,7 @@ or the raw axis-scale \eqn{\boldsymbol\alpha}. The trait-scale table is the
 preferred summary because raw latent axes are scale- and rotation-dependent.
 }
 \details{
-This is a C1 point-estimate extractor for ordinary Gaussian unit-tier
+This is a C1 point-estimate extractor for admitted ordinary unit-tier
 \code{latent(..., lv = ~ x)} fits. Confidence intervals and recovery calibration
 remain validation-gated.
 }

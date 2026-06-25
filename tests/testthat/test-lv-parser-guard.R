@@ -29,6 +29,7 @@ lv_preflight_setup <- function(
   formula,
   data = make_lv_preflight_data(),
   family_id_vec = rep(0L, nrow(data)),
+  link_id_vec = rep(0L, nrow(data)),
   REML = FALSE
 ) {
   withr::local_options(
@@ -43,6 +44,7 @@ lv_preflight_setup <- function(
     trait = "trait",
     site = "unit",
     family_id_vec = family_id_vec,
+    link_id_vec = link_id_vec,
     REML = REML
   )
 }
@@ -125,6 +127,43 @@ make_lv_default_fit_data <- function(n_units = 80L) {
   df
 }
 
+make_lv_binomial_probit_fit_data <- function(n_units = 120L, n_trials = 12L) {
+  set.seed(20260625)
+  traits <- paste0("t", 1:3)
+  units <- paste0("u", seq_len(n_units))
+  x_unit <- scale(seq(-1.6, 1.6, length.out = n_units))[, 1]
+  z_innov <- stats::rnorm(n_units, 0, 1)
+  Lambda <- c(0.75, -0.55, 0.6)
+  beta <- c(-0.15, 0.1, 0.05)
+  alpha <- 0.65
+  df <- do.call(
+    rbind,
+    lapply(seq_along(units), function(i) {
+      data.frame(
+        unit = units[[i]],
+        trait = traits,
+        x = x_unit[[i]],
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+  df$unit <- factor(df$unit, levels = units)
+  df$trait <- factor(df$trait, levels = traits)
+  trait_i <- as.integer(df$trait)
+  unit_i <- as.integer(df$unit)
+  score <- alpha * x_unit[unit_i] + z_innov[unit_i]
+  eta <- beta[trait_i] + Lambda[trait_i] * score
+  p <- stats::pnorm(eta)
+  df$success <- stats::rbinom(nrow(df), size = n_trials, prob = p)
+  df$failure <- n_trials - df$success
+  attr(df, "truth") <- list(
+    alpha = alpha,
+    Lambda = Lambda,
+    B_lv = Lambda * alpha
+  )
+  df
+}
+
 fit_lv_default_smoke <- function(data = make_lv_default_fit_data()) {
   withr::local_options(
     gllvmTMB.quiet_grammar_notes = TRUE,
@@ -137,6 +176,25 @@ fit_lv_default_smoke <- function(data = make_lv_default_fit_data()) {
     data = data,
     unit = "unit",
     trait = "trait",
+    control = gllvmTMBcontrol(se = FALSE)
+  )
+}
+
+fit_lv_binomial_probit_smoke <- function(
+  data = make_lv_binomial_probit_fit_data()
+) {
+  withr::local_options(
+    gllvmTMB.quiet_grammar_notes = TRUE,
+    lifecycle_verbosity = "quiet"
+  )
+  gllvmTMB(
+    cbind(success, failure) ~ 0 +
+      trait +
+      latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
+    data = data,
+    unit = "unit",
+    trait = "trait",
+    family = stats::binomial(link = "probit"),
     control = gllvmTMBcontrol(se = FALSE)
   )
 }
@@ -343,6 +401,49 @@ test_that("latent lv C1 engine keeps the ordinary Psi companion", {
   )
 })
 
+test_that("latent lv admits binomial-probit and recovers trait-scale B_lv", {
+  ## Symbol <-> implementation alignment for this binary-probit slice:
+  ##   z_i = x_i alpha + e_i, e_i ~ N(0, 1)
+  ##   eta_it = beta_t + lambda_t z_i
+  ##   y_it ~ Binomial(n, Phi(eta_it))
+  ##   Formula: cbind(success, failure) ~ 0 + trait +
+  ##     latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)
+  ##   Recovery target: B_lv,t = lambda_t * alpha, reported by
+  ##     extract_lv_effects(type = "trait_effect").
+  data <- make_lv_binomial_probit_fit_data()
+  truth <- attr(data, "truth")
+  fit <- fit_lv_binomial_probit_smoke(data)
+
+  expect_true(isTRUE(fit$use$lv_B))
+  expect_true(all(fit$tmb_data$family_id_vec == 1L))
+  expect_true(all(fit$tmb_data$link_id_vec == 1L))
+  expect_identical(fit$opt$convergence, 0L)
+  expect_lt(max(abs(fit$tmb_obj$gr(fit$opt$par))), 5e-3)
+  expect_lv_smoke_reports(fit)
+
+  trait_effect <- extract_lv_effects(fit)
+  b_hat <- stats::setNames(trait_effect$estimate, trait_effect$trait)
+  b_truth <- stats::setNames(truth$B_lv, levels(data$trait))
+  abs_err <- max(abs(b_hat[names(b_truth)] - b_truth))
+  expect_lt(
+    abs_err,
+    0.30,
+    label = sprintf(
+      "binomial-probit predictor-informed latent B_lv max abs error = %.3f",
+      abs_err
+    )
+  )
+
+  total <- extract_ordination(fit, level = "unit", component = "total")
+  innovation <- extract_ordination(
+    fit,
+    level = "unit",
+    component = "innovation"
+  )
+  mean <- extract_ordination(fit, level = "unit", component = "mean")
+  expect_equal(total$scores, innovation$scores + mean$scores, tolerance = 1e-8)
+})
+
 test_that("latent lv preflight rejects malformed lv formulas", {
   expect_error(
     lv_preflight_setup(
@@ -448,9 +549,17 @@ test_that("latent lv preflight rejects unsupported model regimes", {
   expect_error(
     lv_preflight_setup(
       y_bin ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
-      family_id_vec = rep(1L, nrow(make_lv_preflight_data()))
+      family_id_vec = rep(1L, nrow(make_lv_preflight_data())),
+      link_id_vec = rep(0L, nrow(make_lv_preflight_data()))
     ),
-    regexp = "Gaussian-only|non-Gaussian"
+    regexp = "binomial-probit|LV-05"
+  )
+  expect_silent(
+    lv_preflight_setup(
+      y_bin ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
+      family_id_vec = rep(1L, nrow(make_lv_preflight_data())),
+      link_id_vec = rep(1L, nrow(make_lv_preflight_data()))
+    )
   )
   expect_error(
     lv_preflight_setup(

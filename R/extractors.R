@@ -521,9 +521,10 @@ extract_ordination <- function(
 #' or the raw axis-scale \eqn{\boldsymbol\alpha}. The trait-scale table is the
 #' preferred summary because raw latent axes are scale- and rotation-dependent.
 #'
-#' This is a C1 point-estimate extractor for admitted ordinary unit-tier
-#' `latent(..., lv = ~ x)` fits. Confidence intervals and recovery calibration
-#' remain validation-gated.
+#' For `type = "trait_effect"`, `std.error` is populated from TMB's
+#' delta-method `ADREPORT(B_lv_unit)` output when the fit carries a valid
+#' positive-definite `sdreport()`. Confidence intervals and coverage
+#' calibration remain validation-gated.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param level Currently `"unit"` only. Legacy alias `"B"` is accepted.
@@ -597,13 +598,14 @@ extract_lv_effects <- function(
       KEEP.OUT.ATTRS = FALSE,
       stringsAsFactors = FALSE
     )
+    se_info <- .lv_trait_effect_se(fit, length(B_lv))
     data.frame(
       level = "unit",
       trait = out$trait,
       predictor = out$predictor,
       estimate = as.numeric(B_lv),
-      std.error = NA_real_,
-      uncertainty_status = "point_estimate_only_no_ci_validation",
+      std.error = se_info$std.error,
+      uncertainty_status = se_info$status,
       validation_row = validation_row,
       stringsAsFactors = FALSE
     )
@@ -636,6 +638,50 @@ extract_lv_effects <- function(
       stringsAsFactors = FALSE
     )
   }
+}
+
+.lv_trait_effect_se <- function(fit, n_effects) {
+  empty <- function(status) {
+    list(std.error = rep(NA_real_, n_effects), status = status)
+  }
+
+  if (is.null(fit$sd_report)) {
+    sdreport_error <- fit$sdreport_error %||% ""
+    status <- if (grepl("skipped", sdreport_error, ignore.case = TRUE)) {
+      "sdreport_skipped_no_lv_se"
+    } else if (isTRUE(nzchar(sdreport_error))) {
+      "sdreport_error_no_lv_se"
+    } else {
+      "sdreport_skipped_no_lv_se"
+    }
+    return(empty(status))
+  }
+  if (!isTRUE(fit$sd_report$pdHess)) {
+    return(empty("sdreport_non_pd_hessian_no_lv_se"))
+  }
+
+  report <- tryCatch(
+    summary(fit$sd_report, "report"),
+    error = function(e) NULL
+  )
+  if (is.null(report) || !("Std. Error" %in% colnames(report))) {
+    return(empty("sdreport_missing_lv_se"))
+  }
+
+  rows <- which(rownames(report) == "B_lv_unit")
+  if (length(rows) != n_effects) {
+    return(empty("sdreport_mismatched_lv_se"))
+  }
+
+  se <- as.numeric(report[rows, "Std. Error"])
+  if (anyNA(se) || any(!is.finite(se))) {
+    return(empty("sdreport_nonfinite_lv_se"))
+  }
+
+  list(
+    std.error = se,
+    status = "wald_sdreport_no_ci_validation"
+  )
 }
 
 .lv_effects_validation_row <- function(fit) {

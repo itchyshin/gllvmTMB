@@ -36,9 +36,10 @@ or the raw axis-scale \eqn{\boldsymbol\alpha}. The trait-scale table is the
 preferred summary because raw latent axes are scale- and rotation-dependent.
 }
 \details{
-This is a C1 point-estimate extractor for admitted ordinary unit-tier
-\code{latent(..., lv = ~ x)} fits. Confidence intervals and recovery calibration
-remain validation-gated.
+For \code{type = "trait_effect"}, \code{std.error} is populated from TMB's
+delta-method \code{ADREPORT(B_lv_unit)} output when the fit carries a valid
+positive-definite \code{sdreport()}. Confidence intervals and coverage
+calibration remain validation-gated.
 }
 \seealso{
 \code{\link[=extract_ordination]{extract_ordination()}}

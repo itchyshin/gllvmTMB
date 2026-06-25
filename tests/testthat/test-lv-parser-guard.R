@@ -94,11 +94,46 @@ fit_lv_smoke <- function(data = make_lv_fit_data()) {
   )
 }
 
+fit_lv_smoke_se <- function(data = make_lv_default_fit_data(n_units = 40L)) {
+  withr::local_options(
+    gllvmTMB.quiet_grammar_notes = TRUE,
+    lifecycle_verbosity = "quiet"
+  )
+  gllvmTMB(
+    value ~ 0 +
+      trait +
+      latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x),
+    data = data,
+    unit = "unit",
+    trait = "trait",
+    control = gllvmTMBcontrol(se = TRUE)
+  )
+}
+
+fit_lv_smoke_se_two_predictors <- function(
+  data = make_lv_default_fit_data(n_units = 40L)
+) {
+  withr::local_options(
+    gllvmTMB.quiet_grammar_notes = TRUE,
+    lifecycle_verbosity = "quiet"
+  )
+  gllvmTMB(
+    value ~ 0 +
+      trait +
+      latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~ x + z),
+    data = data,
+    unit = "unit",
+    trait = "trait",
+    control = gllvmTMBcontrol(se = TRUE)
+  )
+}
+
 make_lv_default_fit_data <- function(n_units = 80L) {
   set.seed(20260625)
   traits <- paste0("t", 1:4)
   units <- paste0("u", seq_len(n_units))
   x_unit <- scale(seq(-1.5, 1.5, length.out = n_units))[, 1]
+  z_unit <- scale(cos(seq_len(n_units) / 5))[, 1]
   z_innov <- stats::rnorm(n_units, 0, 0.35)
   Lambda <- c(0.8, -0.45, 0.35, 0.55)
   beta <- c(0.2, -0.1, 0.15, -0.05)
@@ -110,6 +145,7 @@ make_lv_default_fit_data <- function(n_units = 80L) {
         unit = units[[i]],
         trait = traits,
         x = x_unit[[i]],
+        z = z_unit[[i]],
         stringsAsFactors = FALSE
       )
     })
@@ -358,7 +394,7 @@ test_that("latent lv C1 engine reports score-mean quantities", {
   expect_true(all(is.na(trait_effect$std.error)))
   expect_equal(
     unique(trait_effect$uncertainty_status),
-    "point_estimate_only_no_ci_validation"
+    "sdreport_skipped_no_lv_se"
   )
   expect_equal(unique(trait_effect$validation_row), "EXT-31; LV-01")
   expect_named(
@@ -387,6 +423,61 @@ test_that("latent lv C1 engine reports score-mean quantities", {
   expect_error(
     extract_lv_effects(no_lv),
     regexp = "requires a predictor-informed latent fit"
+  )
+})
+
+test_that("extract_lv_effects reports sdreport SEs when available", {
+  fit <- fit_lv_smoke_se()
+  expect_true(isTRUE(fit$sd_report$pdHess))
+
+  report <- summary(fit$sd_report, "report")
+  b_rows <- report[rownames(report) == "B_lv_unit", , drop = FALSE]
+  expect_equal(nrow(b_rows), fit$n_traits)
+  expect_true(all(is.finite(b_rows[, "Std. Error"])))
+
+  trait_effect <- extract_lv_effects(fit)
+  expect_equal(
+    trait_effect$estimate,
+    as.numeric(b_rows[, "Estimate"]),
+    tolerance = 1e-8
+  )
+  expect_equal(
+    trait_effect$std.error,
+    as.numeric(b_rows[, "Std. Error"]),
+    tolerance = 1e-8
+  )
+  expect_equal(
+    unique(trait_effect$uncertainty_status),
+    "wald_sdreport_no_ci_validation"
+  )
+
+  fit_two <- fit_lv_smoke_se_two_predictors()
+  expect_true(isTRUE(fit_two$sd_report$pdHess))
+
+  report_two <- summary(fit_two$sd_report, "report")
+  b_rows_two <- report_two[rownames(report_two) == "B_lv_unit", , drop = FALSE]
+  expect_equal(nrow(b_rows_two), fit_two$n_traits * 2L)
+  expect_true(all(is.finite(b_rows_two[, "Std. Error"])))
+
+  trait_effect_two <- extract_lv_effects(fit_two)
+  expect_equal(nrow(trait_effect_two), fit_two$n_traits * 2L)
+  expect_equal(
+    trait_effect_two$predictor,
+    rep(c("x", "z"), each = fit_two$n_traits)
+  )
+  expect_equal(
+    trait_effect_two$estimate,
+    as.numeric(b_rows_two[, "Estimate"]),
+    tolerance = 1e-8
+  )
+  expect_equal(
+    trait_effect_two$std.error,
+    as.numeric(b_rows_two[, "Std. Error"]),
+    tolerance = 1e-8
+  )
+  expect_equal(
+    unique(trait_effect_two$uncertainty_status),
+    "wald_sdreport_no_ci_validation"
   )
 })
 

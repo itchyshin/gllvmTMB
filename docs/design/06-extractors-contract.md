@@ -397,8 +397,10 @@ currently accept only `component = "total"`.
 
 #### `extract_lv_effects(fit, level = "unit", type = "trait_effect")`
 
-**Status**: C1 point extractor for admitted ordinary unit-tier
-`latent(..., lv = ~ x)` fits.
+**Status**: C1 extractor for admitted ordinary unit-tier
+`latent(..., lv = ~ x)` fits; Wald SEs are available only when
+`se = TRUE` yields a positive-definite `sdreport()` for
+`ADREPORT(B_lv_unit)`.
 
 For `latent(..., lv = ~ x)` fits, this extractor returns the
 predictor-informed latent-score effects. The preferred public return is
@@ -407,8 +409,10 @@ $B_\text{lv} = \Lambda\alpha^\top$ with columns `level`, `trait`,
 `predictor`, `estimate`, `std.error`, `uncertainty_status`, and
 `validation_row`. Raw `alpha` is exposed for method developers through
 `type = "axis_effect"`, but it is rotation-dependent and carries
-`rotation_status`. Standard errors are `NA` and intervals are not
-admitted until the recovery/calibration gates in `LV-02` pass.
+`rotation_status`. Trait-scale `std.error` values are copied from the
+TMB delta-method `ADREPORT(B_lv_unit)` output when available and are
+labelled `wald_sdreport_no_ci_validation`; intervals are not admitted
+until the recovery/calibration gates in `LV-02` pass.
 
 #### `getLoadings(fit, level = "unit", rotate = c("none", "varimax", "promax"))`
 

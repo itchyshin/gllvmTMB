@@ -187,8 +187,10 @@ navigation.
   `latent(1 + x | unit, d = K, lv = ~ z)` until a separate design
   proves the combined target.
 - At that stage, runtime still aborted before TMB construction. Later
-  C1 slices added `alpha_lv_B`, ADREPORT output, and point-estimate
-  extractors; recovery evidence remains pending.
+  C1 slices added `alpha_lv_B`, ADREPORT output, point-estimate
+  extractors, and `ADREPORT(B_lv_unit)` standard-error extraction for
+  positive-definite `sdreport()` fits; recovery and interval evidence
+  remain pending.
 
 ### 3. TMB PR
 
@@ -213,10 +215,11 @@ eta(o) += sum_k Lambda_B(t, k) * score_k;
 
 ### 4. Extractor PR
 
-Status: landed as point-estimate C1 extractors for the admitted
-Gaussian and pure-binomial standard-link R-side fits. Standard errors and interval
-claims are deliberately withheld until recovery/calibration evidence
-lands.
+Status: landed as C1 extractors for the admitted Gaussian and
+pure-binomial standard-link R-side fits. Trait-scale `B_lv` standard
+errors are returned only when `se = TRUE` produces a positive-definite
+`sdreport()` for `ADREPORT(B_lv_unit)`; interval claims are deliberately
+withheld until recovery/calibration evidence lands.
 
 - Add `extract_lv_effects(fit, level = "unit",
   type = "trait_effect")`.
@@ -224,7 +227,8 @@ lands.
   `component = c("total", "mean", "innovation")`.
 - Return raw `alpha` only with a rotation warning.
 - Return `B_lv` as the preferred trait-scale effect table, with
-  standard errors only when the ADREPORT path is validated.
+  `wald_sdreport_no_ci_validation` standard errors only from validated
+  `ADREPORT(B_lv_unit)` output and no confidence-interval claim.
 
 ### 5. Public docs/article PR
 

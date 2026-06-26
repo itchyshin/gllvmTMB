@@ -39,9 +39,9 @@ preferred summary because raw latent axes are scale- and rotation-dependent.
 For \code{type = "trait_effect"}, \code{std.error} is populated from TMB's
 delta-method \code{ADREPORT(B_lv_unit)} output when the fit carries a valid
 positive-definite \code{sdreport()}. Confidence intervals and coverage
-calibration remain validation-gated. Gaussian \code{engine = "julia"} bridge fits
-expose point estimates only; their \code{std.error} values are \code{NA} and
-\code{uncertainty_status} is
+calibration remain validation-gated. Gaussian and binomial logit/probit/
+cloglog \code{engine = "julia"} bridge fits expose point estimates only; their
+\code{std.error} values are \code{NA} and \code{uncertainty_status} is
 \code{"julia_bridge_point_estimate_only_no_ci_validation"}.
 }
 \seealso{

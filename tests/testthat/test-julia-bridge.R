@@ -451,7 +451,19 @@ test_that("family mapping covers every bridged family", {
   expect_equal(.gllvm_julia_family(gaussian()), "gaussian")
   expect_equal(.gllvm_julia_family(poisson()), "poisson")
   expect_equal(.gllvm_julia_family(binomial()), "binomial")
+  expect_equal(.gllvm_julia_family(binomial(link = "logit")), "binomial")
+  expect_equal(
+    .gllvm_julia_family(binomial(link = "probit")),
+    "binomial_probit"
+  )
+  expect_equal(
+    .gllvm_julia_family(binomial(link = "cloglog")),
+    "binomial_cloglog"
+  )
   expect_equal(.gllvm_julia_family("bernoulli"), "binomial")
+  expect_equal(.gllvm_julia_family("binomial_logit"), "binomial")
+  expect_equal(.gllvm_julia_family("binomial_probit"), "binomial_probit")
+  expect_equal(.gllvm_julia_family("binomial_cloglog"), "binomial_cloglog")
   expect_equal(.gllvm_julia_family("negbinomial"), "negbinomial")
   expect_equal(.gllvm_julia_family("nbinom2"), "negbinomial")
   expect_equal(.gllvm_julia_family("nb2"), "negbinomial")
@@ -472,12 +484,20 @@ test_that("family mapping is element-wise over a mixed list", {
     .gllvm_julia_family(list("gaussian", nbinom1())),
     "mixed-family vectors currently support"
   )
+  expect_error(
+    .gllvm_julia_family(list("gaussian", binomial(link = "probit"))),
+    "mixed-family vectors currently support"
+  )
 })
 
 test_that("family mapping rejects unsupported families loudly", {
   expect_error(.gllvm_julia_family("lognormal"), "GJL-GATE-FAMILY")
   expect_error(.gllvm_julia_family("tweedie"), "GJL-GATE-FAMILY")
   expect_error(.gllvm_julia_family("nonsense"), "GJL-GATE-FAMILY")
+  expect_error(
+    .gllvm_julia_family(binomial(link = "cauchit")),
+    "unsupported binomial link"
+  )
 })
 
 test_that("Julia bridge gate registry names every primary R admission stop", {
@@ -558,7 +578,10 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_false("lognormal" %in% caps$family)
   expect_equal(caps$family[caps$fit_no_x], caps$family)
   expect_equal(caps$family[caps$fixed_effect_X], .GLLVM_JULIA_X_FAMILIES)
-  expect_equal(caps$family[caps$predictor_informed_lv], "gaussian")
+  expect_equal(
+    caps$family[caps$predictor_informed_lv],
+    .GLLVM_JULIA_XLV_FAMILIES
+  )
   expect_equal(caps$family[caps$ci_no_x_wald], .GLLVM_JULIA_CI_NO_X_FAMILIES)
   expect_equal(caps$family[caps$ci_no_x_profile], .GLLVM_JULIA_CI_NO_X_FAMILIES)
   expect_equal(
@@ -644,9 +667,9 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     "gllvmTMB\\(\\) fits retain bridge input for post-fit confint\\(\\)",
     caps$notes
   )))
-  ## cbind(successes, failures) binomial marshaling is now routed: only the
-  ## binomial row claims it; the mixed-family vector route stays gated.
-  expect_equal(caps$family[caps$cbind_binomial], "binomial")
+  ## cbind(successes, failures) binomial marshaling is routed for every admitted
+  ## standard binary link; the mixed-family vector route stays gated.
+  expect_equal(caps$family[caps$cbind_binomial], .GLLVM_JULIA_BINOMIAL_FAMILIES)
   expect_false(caps$cbind_binomial[caps$family == .GLLVM_JULIA_MIXED_FAMILY])
 })
 
@@ -791,6 +814,8 @@ test_that("CI normalisation enforces matching lengths and gates status", {
 test_that("response-mask placeholder admits routed families and gates the rest", {
   expect_equal(.gllvm_julia_mask_placeholder("poisson"), 0)
   expect_equal(.gllvm_julia_mask_placeholder("binomial"), 0)
+  expect_equal(.gllvm_julia_mask_placeholder("binomial_probit"), 0)
+  expect_equal(.gllvm_julia_mask_placeholder("binomial_cloglog"), 0)
   expect_equal(.gllvm_julia_mask_placeholder("negbinomial"), 0)
   expect_equal(.gllvm_julia_mask_placeholder("nb1"), 0)
   expect_equal(.gllvm_julia_mask_placeholder("beta"), 0.5)
@@ -1850,7 +1875,7 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
     "GJL-GATE-MASK-X-CI"
   )
   expect_error(
-    gllvm_julia_fit(y, family = binomial(), X_lv = X_lv),
+    gllvm_julia_fit(y, family = poisson(), X_lv = X_lv),
     "GJL-GATE-XLV-FAMILY"
   )
   expect_error(
@@ -2227,6 +2252,77 @@ test_that("gllvmTMB routes Gaussian latent-score X_lv through the Julia bridge",
   )
 })
 
+test_that("gllvmTMB routes binary latent-score X_lv with standard links", {
+  df <- make_long(n_unit = 8L)
+  df$x <- rep(seq(-1, 1, length.out = 8L), times = 3L)
+  df$value <- rep(c(0, 1, 1, 0, 1, 0, 1, 1), times = 3L)
+  f <- value ~ 0 +
+    trait +
+    latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)
+  seen <- list()
+
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(
+      y,
+      family,
+      num.lv,
+      N,
+      X,
+      X_lv,
+      mask,
+      ci_method,
+      ...
+    ) {
+      key <- .gllvm_julia_family(family)
+      seen[[length(seen) + 1L]] <<- list(
+        family = key,
+        num.lv = num.lv,
+        N = N,
+        X = X,
+        X_lv = X_lv,
+        mask = mask,
+        ci_method = ci_method
+      )
+      out <- .gllvm_julia_normalise_result(fake_lv_predictor_julia_fit())
+      out$family <- key
+      out$engine <- "julia"
+      out
+    }
+  )
+
+  link_cases <- c(
+    logit = "binomial",
+    probit = "binomial_probit",
+    cloglog = "binomial_cloglog"
+  )
+  for (link in names(link_cases)) {
+    expect_s3_class(
+      gllvmTMB(
+        f,
+        data = df,
+        trait = "trait",
+        unit = "unit",
+        family = binomial(link = link),
+        engine = "julia"
+      ),
+      "gllvmTMB_julia"
+    )
+  }
+
+  expect_equal(vapply(seen, `[[`, character(1), "family"), unname(link_cases))
+  expect_equal(vapply(seen, `[[`, integer(1), "num.lv"), rep(1L, 3L))
+  for (call in seen) {
+    expect_identical(call$N, 1L)
+    expect_null(call$X)
+    expect_null(call$mask)
+    expect_equal(call$ci_method, "none")
+    expect_equal(dim(call$X_lv), c(8L, 1L))
+    expect_equal(colnames(call$X_lv), "x")
+    expect_equal(rownames(call$X_lv), levels(df$unit))
+    expect_equal(as.numeric(call$X_lv[, "x"]), seq(-1, 1, length.out = 8L))
+  }
+})
+
 test_that("gllvmTMB keeps unsupported Julia X_lv bridge rows explicit", {
   df <- make_long()
   df$x <- rep(seq(-1, 1, length.out = 10L), times = 3L)
@@ -2241,7 +2337,7 @@ test_that("gllvmTMB keeps unsupported Julia X_lv bridge rows explicit", {
       data = df,
       trait = "trait",
       unit = "unit",
-      family = binomial(),
+      family = poisson(),
       engine = "julia"
     ),
     "GJL-GATE-XLV-FAMILY"
@@ -3590,6 +3686,68 @@ test_that("gllvm_julia_fit routes live Gaussian predictor-informed LV payloads",
     unique(effects$uncertainty_status),
     "julia_bridge_point_estimate_only_no_ci_validation"
   )
+})
+
+test_that("gllvm_julia_fit routes live binary predictor-informed LV payloads", {
+  skip_if_no_julia()
+  set.seed(588)
+  units <- paste0("site", seq_len(28L))
+  traits <- c("sp1", "sp2", "sp3")
+  x <- seq(-1, 1, length.out = length(units))
+  eta <- rbind(
+    -0.35 + 0.6 * x,
+    0.1 - 0.45 * x,
+    0.35 + 0.25 * x
+  )
+  N <- matrix(12L, nrow = length(traits), ncol = length(units))
+  dimnames(N) <- list(traits, units)
+  Y <- matrix(
+    stats::rbinom(
+      length(eta),
+      size = as.vector(N),
+      prob = stats::plogis(as.vector(eta))
+    ),
+    nrow = length(traits),
+    dimnames = list(traits, units)
+  )
+  X_lv <- matrix(x, ncol = 1L, dimnames = list(units, "x"))
+  cases <- list(
+    logit = list(family = binomial(), key = "binomial"),
+    probit = list(family = binomial(link = "probit"), key = "binomial_probit"),
+    cloglog = list(
+      family = binomial(link = "cloglog"),
+      key = "binomial_cloglog"
+    )
+  )
+
+  for (case in cases) {
+    fit <- gllvm_julia_fit(
+      Y,
+      family = case$family,
+      num.lv = 1L,
+      N = N,
+      X_lv = X_lv
+    )
+    expect_s3_class(fit, "gllvmTMB_julia")
+    expect_equal(fit$family, case$key)
+    expect_equal(fit$model, paste0(case$key, "_xlv_rr"))
+    expect_equal(dim(fit$lv_effects), c(length(traits), 1L))
+    expect_equal(dim(fit$alpha_lv), c(1L, 1L))
+    expect_equal(dim(fit$scores_mean), c(length(units), 1L))
+    expect_equal(dim(fit$scores_innovation), c(length(units), 1L))
+    expect_equal(
+      extract_ordination(fit, component = "total")$scores,
+      extract_ordination(fit, component = "mean")$scores +
+        extract_ordination(fit, component = "innovation")$scores,
+      tolerance = 1e-8
+    )
+    effects <- extract_lv_effects(fit)
+    expect_equal(effects$predictor, rep("x", length(traits)))
+    expect_equal(
+      unique(effects$uncertainty_status),
+      "julia_bridge_point_estimate_only_no_ci_validation"
+    )
+  }
 })
 
 test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {

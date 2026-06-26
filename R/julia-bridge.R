@@ -19,12 +19,19 @@
   "gaussian",
   "poisson",
   "binomial",
+  "binomial_probit",
+  "binomial_cloglog",
   "negbinomial",
   "nb1",
   "beta",
   "gamma",
   "ordinal",
   "ordinal_probit"
+)
+.GLLVM_JULIA_BINOMIAL_FAMILIES <- c(
+  "binomial",
+  "binomial_probit",
+  "binomial_cloglog"
 )
 .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES <- c(
   "negbinomial",
@@ -44,7 +51,7 @@
 .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES <- c(
   "gaussian",
   "poisson",
-  "binomial",
+  .GLLVM_JULIA_BINOMIAL_FAMILIES,
   "negbinomial",
   "nb1",
   "beta",
@@ -59,7 +66,7 @@
 .GLLVM_JULIA_ORDINATION_FAMILIES <- .GLLVM_JULIA_BRIDGE_FAMILIES
 .GLLVM_JULIA_MASK_FAMILIES <- c(
   "poisson",
-  "binomial",
+  .GLLVM_JULIA_BINOMIAL_FAMILIES,
   "negbinomial",
   "nb1",
   "beta",
@@ -73,6 +80,10 @@
   "negbinomial",
   "beta",
   "gamma"
+)
+.GLLVM_JULIA_XLV_FAMILIES <- c(
+  "gaussian",
+  .GLLVM_JULIA_BINOMIAL_FAMILIES
 )
 .GLLVM_JULIA_MIXED_FAMILY <- "mixed-family vector"
 .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES <- c(
@@ -183,7 +194,7 @@
       "Response masks plus fixed-effect X are not routed.",
       "Fixed-effect X is admitted for complete one-part rows only.",
       "Non-Gaussian X rows require the canonical 0 + trait design.",
-      "Predictor-informed latent-score covariates are admitted only for Gaussian bridge rows.",
+      "Predictor-informed latent-score covariates are admitted only for Gaussian and binomial standard-link bridge rows.",
       "Confidence intervals for predictor-informed latent-score bridge rows are not admitted.",
       "Response masks plus predictor-informed latent-score covariates are not routed.",
       "Fixed-effect X plus predictor-informed latent-score covariates are not routed."
@@ -321,8 +332,8 @@ gllvm_julia_capabilities <- function() {
     fit_no_x = TRUE,
     fixed_effect_X = families %in% .GLLVM_JULIA_X_FAMILIES,
     missing_response = families %in% .GLLVM_JULIA_MASK_FAMILIES,
-    cbind_binomial = families == "binomial",
-    predictor_informed_lv = families == "gaussian",
+    cbind_binomial = families %in% .GLLVM_JULIA_BINOMIAL_FAMILIES,
+    predictor_informed_lv = families %in% .GLLVM_JULIA_XLV_FAMILIES,
     ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_profile = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_bootstrap = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
@@ -526,10 +537,11 @@ gllvm_julia_capabilities <- function() {
   } else {
     "fixed-effect X remains gated; "
   }
-  xlv_clause <- if (identical(family, "gaussian")) {
+  xlv_clause <- if (family %in% .GLLVM_JULIA_XLV_FAMILIES) {
     paste0(
       "predictor-informed latent-score X_lv point fits are routed for ",
-      "complete Gaussian rows with no fixed-effect X and no CIs; "
+      "complete Gaussian and binomial standard-link rows with no fixed-effect ",
+      "X and no CIs; "
     )
   } else {
     ""
@@ -665,6 +677,24 @@ gllvm_julia_capabilities <- function() {
 # Map one R family (a `family` object or a string) to the GLLVM.jl bridge key.
 .gllvm_julia_family_scalar <- function(family) {
   if (inherits(family, "family")) {
+    if (identical(family$family, "binomial")) {
+      link <- tolower(family$link %||% "logit")
+      return(switch(
+        link,
+        logit = "binomial",
+        probit = "binomial_probit",
+        cloglog = "binomial_cloglog",
+        stop(
+          .gllvm_julia_gate_message(
+            "GJL-GATE-FAMILY",
+            "engine = 'julia': unsupported binomial link '",
+            link,
+            "'. Supported binomial links are logit, probit, and cloglog."
+          ),
+          call. = FALSE
+        )
+      ))
+    }
     family <- family$family
   }
   fam <- tolower(as.character(family))
@@ -680,6 +710,12 @@ gllvm_julia_capabilities <- function() {
     normal = "gaussian",
     poisson = "poisson",
     binomial = "binomial",
+    binomial_logit = "binomial",
+    bernoulli_logit = "binomial",
+    binomial_probit = "binomial_probit",
+    bernoulli_probit = "binomial_probit",
+    binomial_cloglog = "binomial_cloglog",
+    bernoulli_cloglog = "binomial_cloglog",
     bernoulli = "binomial",
     negbinomial = "negbinomial",
     nbinom2 = "negbinomial",
@@ -697,7 +733,8 @@ gllvm_julia_capabilities <- function() {
           "engine = 'julia': unsupported family '",
           fam,
           "'. Supported: gaussian, poisson, ",
-          "binomial, nbinom2, nbinom1, beta, gamma, ordinal, ordinal_probit ",
+          "binomial, binomial_probit, binomial_cloglog, nbinom2, nbinom1, ",
+          "beta, gamma, ordinal, ordinal_probit ",
           "(or a narrow list for mixed gaussian/poisson/binomial responses)."
         ),
         call. = FALSE
@@ -1095,6 +1132,8 @@ gllvm_julia_capabilities <- function() {
     family,
     poisson = 0,
     binomial = 0,
+    binomial_probit = 0,
+    binomial_cloglog = 0,
     negbinomial = 0,
     nb1 = 0,
     beta = 0.5,
@@ -1810,6 +1849,7 @@ gllvm_julia_capabilities <- function() {
       LogLink = exp(eta[i, ]),
       LogitLink = stats::plogis(eta[i, ]),
       ProbitLink = stats::pnorm(eta[i, ]),
+      CLogLogLink = 1 - exp(-exp(eta[i, ])),
       stop(
         "engine = 'julia': unsupported prediction link '",
         link,
@@ -1982,6 +2022,8 @@ gllvm_julia_capabilities <- function() {
     gaussian = "IdentityLink",
     poisson = "LogLink",
     binomial = "LogitLink",
+    binomial_probit = "ProbitLink",
+    binomial_cloglog = "CLogLogLink",
     negbinomial = "LogLink",
     nb1 = "LogLink",
     beta = "LogitLink",
@@ -2098,7 +2140,9 @@ gllvm_julia_capabilities <- function() {
         rep(sigma^2, n)
       },
       poisson = mu[i, ],
-      binomial = {
+      binomial = ,
+      binomial_probit = ,
+      binomial_cloglog = {
         trials <- .gllvm_julia_trials_matrix(object, p, n)
         mu[i, ] * (1 - mu[i, ]) / trials[i, ]
       },
@@ -2167,7 +2211,7 @@ gllvm_julia_capabilities <- function() {
 
 .gllvm_julia_observed_response <- function(object, families, y) {
   out <- y
-  binomial_rows <- families == "binomial"
+  binomial_rows <- families %in% .GLLVM_JULIA_BINOMIAL_FAMILIES
   if (any(binomial_rows)) {
     trials <- .gllvm_julia_trials_matrix(object, nrow(y), ncol(y))
     out[binomial_rows, ] <- y[binomial_rows, , drop = FALSE] /
@@ -2180,7 +2224,7 @@ gllvm_julia_capabilities <- function() {
   p <- nrow(mu)
   n <- ncol(mu)
   dispersion <- .gllvm_julia_dispersion_vector(object, p)
-  trials <- if (any(families == "binomial")) {
+  trials <- if (any(families %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
     .gllvm_julia_trials_matrix(object, p, n)
   } else {
     NULL
@@ -2206,7 +2250,9 @@ gllvm_julia_capabilities <- function() {
         stats::rnorm(n, mean = m, sd = sigma)
       },
       poisson = stats::rpois(n, lambda = m),
-      binomial = {
+      binomial = ,
+      binomial_probit = ,
+      binomial_cloglog = {
         size <- trials[i, ]
         if (any(abs(size - round(size)) > sqrt(.Machine$double.eps))) {
           stop(
@@ -2290,11 +2336,12 @@ gllvm_julia_capabilities <- function() {
 #' @param X Fixed-effect design (p x n x q array), or `NULL`. Routed for
 #'   Gaussian and selected one-part non-Gaussian bridge families.
 #' @param X_lv Unit-level predictor-informed latent-score design
-#'   (n x q_lv matrix), or `NULL`. Routed only for complete Gaussian bridge
-#'   rows with no fixed-effect `X`, no response mask, and
-#'   `ci_method = "none"`. The returned object carries point-estimate
-#'   `lv_effects`, `alpha_lv`, `scores_mean`, and `scores_innovation` payloads;
-#'   confidence intervals and non-Gaussian `X_lv` rows remain gated.
+#'   (n x q_lv matrix), or `NULL`. Routed only for complete Gaussian and
+#'   binomial logit/probit/cloglog bridge rows with no fixed-effect `X`, no
+#'   response mask, and `ci_method = "none"`. The returned object carries
+#'   point-estimate `lv_effects`, `alpha_lv`, `scores_mean`, and
+#'   `scores_innovation` payloads; confidence intervals and other
+#'   non-Gaussian `X_lv` rows remain gated.
 #' @param coef_fixed Optional logical vector of length `dim(X)[3]`. `TRUE`
 #'   entries are fixed at zero by the Julia bridge. Most R users should prefer
 #'   the named `Xcoef_fixed` argument to [gllvmTMB()], which is translated to
@@ -2440,13 +2487,14 @@ gllvm_julia_fit <- function(
     storage.mode(mask) <- "logical"
   }
   if (!is.null(X_lv)) {
-    if (length(fam) != 1L || !identical(fam, "gaussian")) {
+    if (length(fam) != 1L || !(fam %in% .GLLVM_JULIA_XLV_FAMILIES)) {
       stop(
         .gllvm_julia_gate_message(
           "GJL-GATE-XLV-FAMILY",
           "engine = 'julia': predictor-informed latent-score covariates ",
-          "`X_lv` are admitted only for complete Gaussian bridge rows. ",
-          "Use engine = 'tmb' for binary/non-Gaussian `latent(..., lv = ~ x)` fits."
+          "`X_lv` are admitted only for complete Gaussian and binomial ",
+          "logit/probit/cloglog bridge rows. Use engine = 'tmb' for other ",
+          "non-Gaussian `latent(..., lv = ~ x)` fits."
         ),
         call. = FALSE
       )
@@ -2536,7 +2584,17 @@ gllvm_julia_fit <- function(
       call. = FALSE
     )
   }
-  if (any(fam %in% c("poisson", "binomial", "negbinomial", "nb1"))) {
+  if (
+    any(
+      fam %in%
+        c(
+          "poisson",
+          .GLLVM_JULIA_BINOMIAL_FAMILIES,
+          "negbinomial",
+          "nb1"
+        )
+    )
+  ) {
     storage.mode(y) <- "integer"
   }
   args <- list("GLLVM.bridge_fit", y = y, family = fam, d = as.integer(num.lv))
@@ -3326,13 +3384,17 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   )
   yraw <- stats::model.response(mf)
   fam_str <- .gllvm_julia_family(family)
-  if (has_lv && (length(fam_str) != 1L || !identical(fam_str, "gaussian"))) {
+  if (
+    has_lv &&
+      (length(fam_str) != 1L || !(fam_str %in% .GLLVM_JULIA_XLV_FAMILIES))
+  ) {
     stop(
       .gllvm_julia_gate_message(
         "GJL-GATE-XLV-FAMILY",
         "engine = 'julia' admits predictor-informed `latent(..., lv = ~ x)` ",
-        "only for ordinary Gaussian complete-response bridge rows. Use ",
-        "engine = 'tmb' for binary/non-Gaussian predictor-informed latent scores."
+        "only for ordinary Gaussian and binomial logit/probit/cloglog ",
+        "complete-response bridge rows. Use engine = 'tmb' for other ",
+        "non-Gaussian predictor-informed latent scores."
       ),
       call. = FALSE
     )
@@ -3350,7 +3412,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   }
   cbind_trials <- NULL
   if (is.matrix(yraw) && ncol(yraw) == 2L) {
-    if (!any(fam_str == "binomial")) {
+    if (!any(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
       stop(
         .gllvm_julia_gate_message(
           "GJL-GATE-FAMILY",
@@ -3521,7 +3583,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   ## --- binomial trials: cbind(successes, failures) totals take precedence, then
   ## per-row n_trials (weights API), else Bernoulli (N = 1). ---
   Narg <- NULL
-  if (any(fam_str == "binomial")) {
+  if (any(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
     if (!is.null(cbind_trials)) {
       Narg <- matrix(1, p, n)
       Narg[cbind(as.integer(ft), as.integer(fu))] <- as.numeric(cbind_trials)

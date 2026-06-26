@@ -20244,6 +20244,132 @@ After-task report:
 
 - `docs/dev-log/after-task/2026-06-25-r-bridge-lv-gaussian-point.md`.
 
+2026-06-26 - R bridge binary X_lv route closeout
+
+Context:
+
+- Worktree: `/private/tmp/gllvmtmb-lv-binary-julia-bridge-20260626`.
+- Branch: `codex/lv-binary-julia-bridge-20260626`.
+- Paired GLLVM.jl worktree:
+  `/private/tmp/gllvmjl-binomial-xlv-20260625`, branch
+  `codex/binomial-xlv-20260625`.
+- Goal: widen the narrow Design 73 Julia bridge `X_lv` point route from
+  Gaussian-only to complete-response binomial logit/probit/cloglog rows,
+  without admitting masks, fixed-effect `X` plus `X_lv`, mixed families, CIs,
+  or broad R-Julia parity.
+
+Coordination / GitHub state:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; `[]`.
+- `git log --all --oneline --since="6 hours ago" -- AGENTS.md CLAUDE.md ROADMAP.md CONTRIBUTING.md docs/dev-log/check-log.md docs/design docs/dev-log/after-task inst/COPYRIGHTS DESCRIPTION`
+  -> PASS; no concurrent shared-file edits found before dev-log edits.
+- `gh pr list --repo itchyshin/GLLVM.jl --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; draft PR #113 remains open and `DIRTY` on
+  `claude/studentt-105-20260620`, so the Julia binary-`X_lv` branch stays
+  pushed but no new GLLVM.jl PR was opened in this slice.
+
+Implementation summary:
+
+- `R/julia-bridge.R` maps `binomial(link = "logit")` to `binomial`,
+  `binomial(link = "probit")` to `binomial_probit`, and
+  `binomial(link = "cloglog")` to `binomial_cloglog`.
+- `.GLLVM_JULIA_XLV_FAMILIES` now admits only `gaussian`, `binomial`,
+  `binomial_probit`, and `binomial_cloglog` for predictor-informed latent-score
+  bridge rows.
+- Existing gates remain live for CI/profile/bootstrap requests, response masks
+  plus `X_lv`, fixed-effect `X` plus `X_lv`, mixed-family `X_lv`, and other
+  non-Gaussian `X_lv` rows.
+- `extract_lv_effects()` docs and Design 73/status/register docs now state that
+  Gaussian and binomial logit/probit/cloglog bridge rows are point-only with
+  `std.error = NA` and
+  `julia_bridge_point_estimate_only_no_ci_validation`.
+
+R checks:
+
+- `air format R/julia-bridge.R R/extractors.R tests/testthat/test-julia-bridge.R`
+  -> PASS; no output.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'roxygen2::roxygenise()'`
+  -> PASS; only existing unresolved-link warnings in `data-mixed-family.R`,
+  `fit-multi.R`, `loading-uncertainty-helpers.R`, and `phylo-signal-ci.R`.
+- `Rscript --vanilla -e 'invisible(parse("R/julia-bridge.R")); invisible(parse("R/extractors.R")); invisible(parse("tests/testthat/test-julia-bridge.R")); cat("parse-ok\n")'`
+  -> PASS before closeout; printed `parse-ok`.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgload::load_all(export_all = TRUE, helpers = TRUE, quiet = TRUE); Sys.unsetenv("GLLVM_JL_PATH"); res <- testthat::test_file("tests/testthat/test-julia-bridge.R"); failed <- vapply(res, function(x) any(x$results$failed), logical(1)); if (any(failed)) quit(status = 1)'`
+  -> PASS; `FAIL 0 | WARN 1 | SKIP 18 | PASS 480`. The warning was the
+  existing once-per-session auto-Psi bridge message; live Julia rows skipped
+  because `GLLVM_JL_PATH` was unset for CRAN-style checking.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgload::load_all(export_all = TRUE, helpers = TRUE, quiet = TRUE); res <- testthat::test_file("tests/testthat/test-lv-parser-guard.R"); failed <- vapply(res, function(x) any(x$results$failed), logical(1)); if (any(failed)) quit(status = 1)'`
+  -> PASS; `FAIL 0 | WARN 0 | SKIP 0 | PASS 199`.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgload::load_all(export_all = TRUE, helpers = TRUE, quiet = TRUE); res <- testthat::test_file("tests/testthat/test-extractors.R"); failed <- vapply(res, function(x) any(x$results$failed), logical(1)); if (any(failed)) quit(status = 1)'`
+  -> PASS; `FAIL 0 | WARN 0 | SKIP 0 | PASS 17`.
+- Standalone live R-to-Julia binary `X_lv` smoke with
+  `GLLVM_JL_PATH=/private/tmp/gllvmjl-binomial-xlv-20260625`
+  -> PASS before stop checkpoint; logit, probit, and cloglog printed
+  `live-binary-xlv-ok`. Julia printed an existing
+  `LogExpFunctionsInverseFunctionsExt` warning under Julia 1.10 but continued.
+- Full live `tests/testthat/test-julia-bridge.R` with
+  `GLLVM_JL_PATH=/private/tmp/gllvmjl-binomial-xlv-20260625`
+  -> REVIEWED before stop checkpoint; `FAIL 10 | WARN 1 | SKIP 0 | PASS 1351`.
+  The failures were pre-existing grouped-dispersion/Gaussian parity rows; the
+  new binary `X_lv` live test did not fail.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'Sys.unsetenv("GLLVM_JL_PATH"); devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> FINAL PASS after installing optional test dependencies `ape` and
+  `MCMCglmm` into the temp library; `0 errors | 0 warnings | 0 notes`.
+  Two earlier attempts failed only because first `ape`, then `MCMCglmm`, were
+  absent from the temp library.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found`.
+- `git diff --check`
+  -> PASS.
+- `for f in man/extract_lv_effects.Rd man/gllvm_julia_fit.Rd; do printf '%s\n' "--- $f"; tail -5 "$f"; printf 'keyword_count='; grep -c '^\\keyword' "$f" || true; done`
+  -> PASS; both touched Rd files closed cleanly and `keyword_count=0`.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'files <- c("man/extract_lv_effects.Rd", "man/gllvm_julia_fit.Rd"); for (f in files) { cat("--", f, "--\n"); tools::checkRd(f) }; cat("rd-check-ok\n")'`
+  -> PASS; printed `rd-check-ok`.
+
+GLLVM.jl checks:
+
+- `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  -> PASS before closeout; 83 pass.
+- `julia --project=. --startup-file=no test/test_bridge_lv_predictor.jl`
+  -> PASS before closeout; 94 pass.
+- `julia --project=. --startup-file=no test/test_binomial_fit.jl`
+  -> PASS before closeout; 8 pass.
+- `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> PASS before closeout; 64 pass.
+- `julia --project=. --startup-file=no -e 'using Pkg; Pkg.test()'`
+  -> PASS after rerun; `GLLVM.jl | 4629 pass, 1 broken, 4630 total,
+  49m24.9s`.
+- `julia --project=docs --startup-file=no docs/make.jl`
+  -> INITIAL TOOLING FAILURE; docs environment was not instantiated.
+- `julia --project=docs --startup-file=no -e 'using Pkg; Pkg.instantiate()'`
+  -> TOOLING FAILURE; docs env expected local unregistered `GLLVM`.
+- `julia --project=docs --startup-file=no -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); include("docs/make.jl")'`
+  -> PASS; Documenter/Vitepress built locally. Existing local-link warnings,
+  default Vitepress asset warnings, npm audit warnings, and deployment-skip
+  warnings were reported; the worktree stayed clean.
+
+Consistency scans:
+
+- `rg -n 'Gaussian Julia bridge|complete-response Gaussian|Gaussian .*X_lv|non-Gaussian/binary|binary/non-Gaussian|unsupported Julia bridge `X_lv`' NEWS.md R docs/design man tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; expected row-specific Gaussian hits remain for the Gaussian
+  bridge test title and `LV-01`. Stale binary/non-Gaussian hard-refusal wording
+  was removed or narrowed to "other non-Gaussian" rows.
+- `rg -n 'binomial_probit|binomial_cloglog|predictor_informed_lv|julia_bridge_point_estimate_only_no_ci_validation|GJL-GATE-XLV|std\.error = NA|component = "mean"|component = "innovation"' NEWS.md R/julia-bridge.R R/extractors.R man/extract_lv_effects.Rd man/gllvm_julia_fit.Rd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; binary link labels, point-only uncertainty labels, gate IDs, and
+  score-component language appear in the expected implementation, help, design,
+  and test surfaces.
+
+Not claimed:
+
+- No Julia `X_lv` CIs, no response-mask `X_lv`, no fixed-effect `X` plus
+  `X_lv`, no mixed-family `X_lv`, no ordinal/count/Gamma/Beta/delta-hurdle
+  `X_lv`, no Bernoulli single-trial depth, no Gaussian recovery grid, no
+  CI-08/CI-10 promotion, no DRAC/GPU work, and no broad R-Julia parity claim.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-26-r-bridge-binary-xlv.md`.
+
 2026-06-25 - R bridge Gaussian X_lv route pre-PR audit refresh
 
 Context:

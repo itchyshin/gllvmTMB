@@ -393,8 +393,9 @@ predictor-informed latent-score fits. In that regime, `"mean"` returns
 `M alpha`, `"innovation"` returns the fitted innovation `e_hat`, and
 `"total"` returns `M alpha + e_hat`. The live C1 surface is ordinary
 unit-tier Gaussian plus pure binomial logit/probit/cloglog on the TMB
-path, plus a narrow complete-response Gaussian Julia bridge point route.
-Other Julia bridge rows still accept only `component = "total"`.
+path, plus a narrow complete-response Gaussian and binomial
+logit/probit/cloglog Julia bridge point route. Other Julia bridge rows
+still accept only `component = "total"`.
 
 #### `extract_lv_effects(fit, level = "unit", type = "trait_effect")`
 
@@ -412,8 +413,9 @@ $B_\text{lv} = \Lambda\alpha^\top$ with columns `level`, `trait`,
 `type = "axis_effect"`, but it is rotation-dependent and carries
 `rotation_status`. Trait-scale `std.error` values are copied from the
 TMB delta-method `ADREPORT(B_lv_unit)` output when available and are
-labelled `wald_sdreport_no_ci_validation`. Gaussian Julia bridge
-`X_lv` rows return point estimates only with `std.error = NA` and
+labelled `wald_sdreport_no_ci_validation`. Gaussian and binomial
+logit/probit/cloglog Julia bridge `X_lv` rows return point estimates
+only with `std.error = NA` and
 `uncertainty_status =
 "julia_bridge_point_estimate_only_no_ci_validation"`. Intervals are not
 admitted until the recovery/calibration gates in `LV-02` and the named

@@ -521,9 +521,9 @@ extract_ordination <- function(
 #' For `type = "trait_effect"`, `std.error` is populated from TMB's
 #' delta-method `ADREPORT(B_lv_unit)` output when the fit carries a valid
 #' positive-definite `sdreport()`. Confidence intervals and coverage
-#' calibration remain validation-gated. Gaussian `engine = "julia"` bridge fits
-#' expose point estimates only; their `std.error` values are `NA` and
-#' `uncertainty_status` is
+#' calibration remain validation-gated. Gaussian and binomial logit/probit/
+#' cloglog `engine = "julia"` bridge fits expose point estimates only; their
+#' `std.error` values are `NA` and `uncertainty_status` is
 #' `"julia_bridge_point_estimate_only_no_ci_validation"`.
 #'
 #' @param fit A fit returned by [gllvmTMB()].

@@ -1875,7 +1875,7 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
     "GJL-GATE-MASK-X-CI"
   )
   expect_error(
-    gllvm_julia_fit(y, family = Gamma(link = "log"), X_lv = X_lv),
+    gllvm_julia_fit(y, family = nbinom1(), X_lv = X_lv),
     "GJL-GATE-XLV-FAMILY"
   )
   expect_error(
@@ -2386,6 +2386,80 @@ test_that("gllvmTMB routes Poisson latent-score X_lv through the Julia bridge", 
   expect_equal(as.numeric(call$X_lv[, "x"]), seq(-1, 1, length.out = 8L))
 })
 
+test_that("gllvmTMB routes NB2/Gamma/Beta latent-score X_lv through the Julia bridge", {
+  cases <- list(
+    list(
+      family = nbinom2(),
+      key = "negbinomial",
+      value = c(2, 1, 3, 1, 4, 1, 2, 5)
+    ),
+    list(
+      family = Gamma(link = "log"),
+      key = "gamma",
+      value = c(0.5, 1.2, 0.8, 2.1, 0.9, 1.5, 0.7, 1.1)
+    ),
+    list(
+      family = glmmTMB::beta_family(),
+      key = "beta",
+      value = c(0.2, 0.5, 0.3, 0.7, 0.4, 0.6, 0.25, 0.55)
+    )
+  )
+  f <- value ~ 0 +
+    trait +
+    latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)
+
+  for (case in cases) {
+    df <- make_long(n_unit = 8L)
+    df$x <- rep(seq(-1, 1, length.out = 8L), times = 3L)
+    df$value <- rep(case$value, times = 3L)
+    seen <- list()
+    testthat::local_mocked_bindings(
+      gllvm_julia_fit = function(
+        y,
+        family,
+        num.lv,
+        N,
+        X,
+        X_lv,
+        mask,
+        ci_method,
+        ...
+      ) {
+        key <- .gllvm_julia_family(family)
+        seen[[length(seen) + 1L]] <<- list(
+          family = key,
+          X = X,
+          X_lv = X_lv,
+          mask = mask,
+          ci_method = ci_method
+        )
+        out <- .gllvm_julia_normalise_result(fake_lv_predictor_julia_fit())
+        out$family <- key
+        out$engine <- "julia"
+        out
+      }
+    )
+    expect_s3_class(
+      gllvmTMB(
+        f,
+        data = df,
+        trait = "trait",
+        unit = "unit",
+        family = case$family,
+        engine = "julia"
+      ),
+      "gllvmTMB_julia"
+    )
+    expect_equal(length(seen), 1L)
+    expect_equal(seen[[1L]]$family, case$key)
+    expect_null(seen[[1L]]$X)
+    expect_null(seen[[1L]]$mask)
+    expect_equal(seen[[1L]]$ci_method, "none")
+    expect_equal(dim(seen[[1L]]$X_lv), c(8L, 1L))
+    expect_equal(colnames(seen[[1L]]$X_lv), "x")
+  }
+})
+
 test_that("gllvmTMB keeps unsupported Julia X_lv bridge rows explicit", {
   df <- make_long()
   df$x <- rep(seq(-1, 1, length.out = 10L), times = 3L)
@@ -2400,7 +2474,7 @@ test_that("gllvmTMB keeps unsupported Julia X_lv bridge rows explicit", {
       data = df,
       trait = "trait",
       unit = "unit",
-      family = Gamma(link = "log"),
+      family = nbinom1(),
       engine = "julia"
     ),
     "GJL-GATE-XLV-FAMILY"

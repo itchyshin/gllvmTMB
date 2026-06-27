@@ -84,7 +84,10 @@
 .GLLVM_JULIA_XLV_FAMILIES <- c(
   "gaussian",
   "poisson",
-  .GLLVM_JULIA_BINOMIAL_FAMILIES
+  .GLLVM_JULIA_BINOMIAL_FAMILIES,
+  "negbinomial",
+  "beta",
+  "gamma"
 )
 .GLLVM_JULIA_MIXED_FAMILY <- "mixed-family vector"
 .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES <- c(
@@ -2493,9 +2496,9 @@ gllvm_julia_fit <- function(
         .gllvm_julia_gate_message(
           "GJL-GATE-XLV-FAMILY",
           "engine = 'julia': predictor-informed latent-score covariates ",
-          "`X_lv` are admitted only for complete Gaussian and binomial ",
-          "logit/probit/cloglog bridge rows. Use engine = 'tmb' for other ",
-          "non-Gaussian `latent(..., lv = ~ x)` fits."
+          "`X_lv` are admitted for complete Gaussian, Poisson, NB2, Gamma, Beta, ",
+          "and binomial logit/probit/cloglog bridge rows. Use engine = 'tmb' for ",
+          "other `latent(..., lv = ~ x)` fits."
         ),
         call. = FALSE
       )

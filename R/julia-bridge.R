@@ -83,6 +83,7 @@
 )
 .GLLVM_JULIA_XLV_FAMILIES <- c(
   "gaussian",
+  "poisson",
   .GLLVM_JULIA_BINOMIAL_FAMILIES
 )
 .GLLVM_JULIA_MIXED_FAMILY <- "mixed-family vector"

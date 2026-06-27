@@ -1875,7 +1875,7 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
     "GJL-GATE-MASK-X-CI"
   )
   expect_error(
-    gllvm_julia_fit(y, family = poisson(), X_lv = X_lv),
+    gllvm_julia_fit(y, family = Gamma(link = "log"), X_lv = X_lv),
     "GJL-GATE-XLV-FAMILY"
   )
   expect_error(
@@ -2323,6 +2323,69 @@ test_that("gllvmTMB routes binary latent-score X_lv with standard links", {
   }
 })
 
+test_that("gllvmTMB routes Poisson latent-score X_lv through the Julia bridge", {
+  df <- make_long(n_unit = 8L)
+  df$x <- rep(seq(-1, 1, length.out = 8L), times = 3L)
+  df$value <- rep(c(2, 0, 3, 1, 4, 0, 2, 5), times = 3L)
+  f <- value ~ 0 +
+    trait +
+    latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)
+  seen <- list()
+
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(
+      y,
+      family,
+      num.lv,
+      N,
+      X,
+      X_lv,
+      mask,
+      ci_method,
+      ...
+    ) {
+      key <- .gllvm_julia_family(family)
+      seen[[length(seen) + 1L]] <<- list(
+        family = key,
+        num.lv = num.lv,
+        N = N,
+        X = X,
+        X_lv = X_lv,
+        mask = mask,
+        ci_method = ci_method
+      )
+      out <- .gllvm_julia_normalise_result(fake_lv_predictor_julia_fit())
+      out$family <- key
+      out$engine <- "julia"
+      out
+    }
+  )
+
+  expect_s3_class(
+    gllvmTMB(
+      f,
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = poisson(),
+      engine = "julia"
+    ),
+    "gllvmTMB_julia"
+  )
+
+  expect_equal(length(seen), 1L)
+  call <- seen[[1L]]
+  expect_equal(call$family, "poisson")
+  expect_equal(call$num.lv, 1L)
+  expect_null(call$X)
+  expect_null(call$mask)
+  expect_equal(call$ci_method, "none")
+  expect_equal(dim(call$X_lv), c(8L, 1L))
+  expect_equal(colnames(call$X_lv), "x")
+  expect_equal(rownames(call$X_lv), levels(df$unit))
+  expect_equal(as.numeric(call$X_lv[, "x"]), seq(-1, 1, length.out = 8L))
+})
+
 test_that("gllvmTMB keeps unsupported Julia X_lv bridge rows explicit", {
   df <- make_long()
   df$x <- rep(seq(-1, 1, length.out = 10L), times = 3L)
@@ -2337,7 +2400,7 @@ test_that("gllvmTMB keeps unsupported Julia X_lv bridge rows explicit", {
       data = df,
       trait = "trait",
       unit = "unit",
-      family = poisson(),
+      family = Gamma(link = "log"),
       engine = "julia"
     ),
     "GJL-GATE-XLV-FAMILY"

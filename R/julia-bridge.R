@@ -199,7 +199,7 @@
       "Fixed-effect X is admitted for complete one-part rows only.",
       "Non-Gaussian X rows require the canonical 0 + trait design.",
       "Predictor-informed latent-score covariates are admitted only for Gaussian and binomial standard-link bridge rows.",
-      "Confidence intervals for predictor-informed latent-score bridge rows are not admitted.",
+      "Profile/bootstrap confidence intervals for predictor-informed latent-score bridge rows are not admitted; Wald X_lv CIs are routed.",
       "Response masks plus predictor-informed latent-score covariates are not routed.",
       "Fixed-effect X plus predictor-informed latent-score covariates are not routed."
     ),
@@ -1695,16 +1695,50 @@ gllvm_julia_capabilities <- function() {
       KEEP.OUT.ATTRS = FALSE,
       stringsAsFactors = FALSE
     )
-    return(data.frame(
+    se_mat <- fit$lv_effects_se %||% NULL
+    lo_mat <- fit$lv_effects_lower %||% NULL
+    hi_mat <- fit$lv_effects_upper %||% NULL
+    have_ci <- !is.null(se_mat) && !is.null(lo_mat) && !is.null(hi_mat)
+    if (have_ci) {
+      se_mat <- as.matrix(se_mat)
+      lo_mat <- as.matrix(lo_mat)
+      hi_mat <- as.matrix(hi_mat)
+      storage.mode(se_mat) <- "numeric"
+      storage.mode(lo_mat) <- "numeric"
+      storage.mode(hi_mat) <- "numeric"
+      if (
+        !identical(dim(se_mat), dim(B_lv)) ||
+          !identical(dim(lo_mat), dim(B_lv)) ||
+          !identical(dim(hi_mat), dim(B_lv))
+      ) {
+        cli::cli_abort(
+          "engine = 'julia': {.field lv_effects} CI payload dimensions do not match the point estimate."
+        )
+      }
+    }
+    # Absent-CI path keeps the canonical 7-column schema (level, trait,
+    # predictor, estimate, std.error, uncertainty_status, validation_row) shared
+    # with the TMB engine and the documented @return contract; lower/upper are
+    # added only when the Julia bridge actually returned Wald CI fields.
+    res_df <- data.frame(
       level = "unit",
       trait = out$trait,
       predictor = out$predictor,
       estimate = as.numeric(B_lv),
-      std.error = rep(NA_real_, length(B_lv)),
-      uncertainty_status = "julia_bridge_point_estimate_only_no_ci_validation",
-      validation_row = validation_row,
+      std.error = if (have_ci) as.numeric(se_mat) else rep(NA_real_, length(B_lv)),
       stringsAsFactors = FALSE
-    ))
+    )
+    if (have_ci) {
+      res_df$lower <- as.numeric(lo_mat)
+      res_df$upper <- as.numeric(hi_mat)
+    }
+    res_df$uncertainty_status <- if (have_ci) {
+      "julia_bridge_wald_delta_method"
+    } else {
+      "julia_bridge_point_estimate_only_no_ci_validation"
+    }
+    res_df$validation_row <- validation_row
+    return(res_df)
   }
 
   alpha_lv <- fit$alpha_lv %||% NULL
@@ -2340,11 +2374,14 @@ gllvm_julia_capabilities <- function() {
 #' @param X Fixed-effect design (p x n x q array), or `NULL`. Routed for
 #'   Gaussian and selected one-part non-Gaussian bridge families.
 #' @param X_lv Unit-level predictor-informed latent-score design
-#'   (n x q_lv matrix), or `NULL`. Routed only for complete Gaussian and
+#'   (n x q_lv matrix), or `NULL`. Routed for complete Gaussian and
 #'   binomial logit/probit/cloglog bridge rows with no fixed-effect `X`, no
-#'   response mask, and `ci_method = "none"`. The returned object carries
-#'   point-estimate `lv_effects`, `alpha_lv`, `scores_mean`, and
-#'   `scores_innovation` payloads; confidence intervals and other
+#'   response mask, and `ci_method` in `c("none", "wald")`. The returned object
+#'   carries point-estimate `lv_effects`, `alpha_lv`, `scores_mean`, and
+#'   `scores_innovation` payloads; for `ci_method = "wald"` it additionally
+#'   carries `lv_effects_se`, `lv_effects_lower`, and `lv_effects_upper`, which
+#'   [extract_lv_effects()] surfaces as finite `std.error`, `lower`, and
+#'   `upper`. Profile/bootstrap `X_lv` confidence intervals and other
 #'   non-Gaussian `X_lv` rows remain gated.
 #' @param coef_fixed Optional logical vector of length `dim(X)[3]`. `TRUE`
 #'   entries are fixed at zero by the Julia bridge. Most R users should prefer
@@ -2362,8 +2399,10 @@ gllvm_julia_capabilities <- function() {
 #'   `"bootstrap"`. Response-mask CIs are routed for the same non-ordinal
 #'   non-Gaussian rows when `X = NULL`; complete-response fixed-effect-X CIs
 #'   are routed for Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and
-#'   Gamma. Per-trait ordinal rows, NB1-X rows, mixed-family vectors, and
-#'   response masks combined with fixed-effect X remain loud gates.
+#'   Gamma. Predictor-informed `X_lv` rows admit `"wald"` confidence
+#'   intervals. Per-trait ordinal rows, NB1-X rows, mixed-family vectors,
+#'   profile/bootstrap `X_lv` rows, and response masks combined with
+#'   fixed-effect X remain loud gates.
 #' @param ci_level Nominal confidence level when `ci_method != "none"`.
 #' @param ci_nboot Number of parametric bootstrap replicates when
 #'   `ci_method = "bootstrap"`.
@@ -2530,13 +2569,13 @@ gllvm_julia_fit <- function(
         call. = FALSE
       )
     }
-    if (ci_method != "none") {
+    if (!ci_method %in% c("none", "wald")) {
       stop(
         .gllvm_julia_gate_message(
           "GJL-GATE-XLV-CI",
-          "engine = 'julia': confidence intervals for latent-score `X_lv` ",
-          "bridge rows are not admitted yet. Use `ci_method = \"none\"`; ",
-          "`extract_lv_effects()` returns point estimates only."
+          "engine = 'julia': profile and bootstrap confidence intervals for ",
+          "latent-score `X_lv` bridge rows are not admitted yet. Use ",
+          "`ci_method = \"none\"` or `\"wald\"`."
         ),
         call. = FALSE
       )
@@ -2728,6 +2767,32 @@ gllvm_julia_fit <- function(
         res$lv_effects <- lv_effects
       }
     }
+    for (ci_name in c("lv_effects_lower", "lv_effects_upper", "lv_effects_se")) {
+      if (is.null(res[[ci_name]])) {
+        next
+      }
+      ci_mat <- as.matrix(res[[ci_name]])
+      if (identical(dim(ci_mat), c(length(traits), length(xlv_names)))) {
+        dimnames(ci_mat) <- list(traits, xlv_names)
+        res[[ci_name]] <- ci_mat
+      }
+    }
+    if (!is.null(res$lv_effects_ci_level)) {
+      res$lv_effects_ci_level <- as.numeric(
+        .gllvm_julia_as_vector(res$lv_effects_ci_level, "numeric")
+      )[1L]
+    }
+    if (!is.null(res$lv_effects_ci_method)) {
+      res$lv_effects_ci_method <- .gllvm_julia_as_vector(
+        res$lv_effects_ci_method,
+        "character"
+      )[1L]
+    }
+    if (!is.null(res$lv_effects_ci_pd)) {
+      res$lv_effects_ci_pd <- as.logical(
+        .gllvm_julia_as_vector(res$lv_effects_ci_pd, "numeric")
+      )[1L]
+    }
     if (!is.null(res$alpha_lv)) {
       alpha_lv <- as.matrix(res$alpha_lv)
       if (identical(dim(alpha_lv), c(length(xlv_names), length(axes)))) {
@@ -2794,6 +2859,9 @@ gllvm_julia_fit <- function(
 #' Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. They may
 #' be requested at fit time through
 #' `gllvmTMB(ci_method = ...)`, or retrieved and recomputed through `confint()`.
+#' Predictor-informed `latent(..., lv = ~ x)` rows admit `ci_method = "wald"`
+#' at fit time; those Wald intervals are surfaced as `std.error`, `lower`, and
+#' `upper` through `extract_lv_effects()` rather than `confint()`.
 #'
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
 #'   [gllvm_julia_fit()].
@@ -3403,13 +3471,13 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
       call. = FALSE
     )
   }
-  if (has_lv && ci_method != "none") {
+  if (has_lv && !ci_method %in% c("none", "wald")) {
     stop(
       .gllvm_julia_gate_message(
         "GJL-GATE-XLV-CI",
-        "engine = 'julia' does not admit confidence intervals for ",
-        "`latent(..., lv = ~ x)` bridge rows yet. Use `ci_method = \"none\"`; ",
-        "`extract_lv_effects()` returns point estimates only."
+        "engine = 'julia' does not admit profile or bootstrap confidence ",
+        "intervals for `latent(..., lv = ~ x)` bridge rows yet. Use ",
+        "`ci_method = \"none\"` or `\"wald\"`."
       ),
       call. = FALSE
     )
@@ -3631,7 +3699,11 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
       X_lv_B_names = lv_setup$X_lv_B_names,
       unit_names = units,
       engine = "julia",
-      uncertainty_status = "julia_bridge_point_estimate_only_no_ci_validation"
+      uncertainty_status = if (identical(ci_method, "wald")) {
+        "julia_bridge_wald_delta_method"
+      } else {
+        "julia_bridge_point_estimate_only_no_ci_validation"
+      }
     )
   }
   if (has_missing_response) {

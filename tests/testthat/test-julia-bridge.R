@@ -2387,6 +2387,7 @@ test_that("gllvmTMB routes Poisson latent-score X_lv through the Julia bridge", 
 })
 
 test_that("gllvmTMB routes NB2/Gamma/Beta latent-score X_lv through the Julia bridge", {
+  skip_if_not_installed("glmmTMB")   # cases list builds glmmTMB::beta_family() eagerly
   cases <- list(
     list(
       family = nbinom2(),

@@ -36,9 +36,14 @@ Gaussian and selected one-part non-Gaussian bridge families.}
 \item{X_lv}{Unit-level predictor-informed latent-score design
 (n x q_lv matrix), or \code{NULL}. Routed only for complete Gaussian, Poisson,
 NB2, Gamma, Beta, and binomial logit/probit/cloglog bridge rows with no
-fixed-effect \code{X}, no response mask, and \code{ci_method = "none"}. The returned
-object carries point-estimate \code{lv_effects}, \code{alpha_lv}, \code{scores_mean}, and
-\code{scores_innovation} payloads; confidence intervals, NB1, ordinal,
+fixed-effect \code{X}, no response mask, and \code{ci_method} in
+\code{c("none", "wald")}. The returned object
+carries point-estimate \code{lv_effects}, \code{alpha_lv}, \code{scores_mean}, and
+\code{scores_innovation} payloads; for \code{ci_method = "wald"} it additionally
+carries \code{lv_effects_se}, \code{lv_effects_lower}, and \code{lv_effects_upper}, which
+\code{\link[=extract_lv_effects]{extract_lv_effects()}} surfaces as finite \code{std.error}, \code{lower}, and
+\code{upper}. These are bridge-reader Wald payloads, not calibrated coverage
+claims. Profile/bootstrap \code{X_lv} confidence intervals, NB1, ordinal,
 mixed-family, masked, and fixed-effect-X-plus-\code{X_lv} rows remain gated.}
 
 \item{coef_fixed}{Optional logical vector of length \code{dim(X)[3]}. \code{TRUE}
@@ -60,8 +65,10 @@ Beta, and Gamma. One of \code{"none"} (default), \code{"wald"}, \code{"profile"}
 \code{"bootstrap"}. Response-mask CIs are routed for the same non-ordinal
 non-Gaussian rows when \code{X = NULL}; complete-response fixed-effect-X CIs
 are routed for Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and
-Gamma. Per-trait ordinal rows, NB1-X rows, mixed-family vectors, and
-response masks combined with fixed-effect X remain loud gates.}
+Gamma. Predictor-informed \code{X_lv} rows admit \code{"wald"} confidence
+intervals. Per-trait ordinal rows, NB1-X rows, mixed-family vectors,
+profile/bootstrap \code{X_lv} rows, and response masks combined with
+fixed-effect X remain loud gates.}
 
 \item{ci_level}{Nominal confidence level when \code{ci_method != "none"}.}
 

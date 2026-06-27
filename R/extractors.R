@@ -520,11 +520,15 @@ extract_ordination <- function(
 #'
 #' For `type = "trait_effect"`, `std.error` is populated from TMB's
 #' delta-method `ADREPORT(B_lv_unit)` output when the fit carries a valid
-#' positive-definite `sdreport()`. Confidence intervals and coverage
-#' calibration remain validation-gated. Gaussian and binomial logit/probit/
-#' cloglog `engine = "julia"` bridge fits expose point estimates only; their
-#' `std.error` values are `NA` and `uncertainty_status` is
-#' `"julia_bridge_point_estimate_only_no_ci_validation"`.
+#' positive-definite `sdreport()`. Coverage calibration of the corresponding
+#' intervals remains validation-gated. For Gaussian, Poisson, NB2, Gamma, Beta,
+#' and binomial logit/probit/cloglog `engine = "julia"` bridge fits,
+#' `ci_method = "none"` exposes point estimates only (`std.error` is `NA` and
+#' `uncertainty_status` is `"julia_bridge_point_estimate_only_no_ci_validation"`),
+#' while `ci_method = "wald"` surfaces finite `std.error`, `lower`, and `upper`
+#' (`uncertainty_status` is `"julia_bridge_wald_delta_method"`). Those Julia
+#' bridge values are Wald payload reader output, not coverage-calibrated
+#' intervals.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param level Currently `"unit"` only. Legacy alias `"B"` is accepted.
@@ -534,8 +538,10 @@ extract_ordination <- function(
 #'
 #' @return A data frame. For `type = "trait_effect"`, columns are `level`,
 #'   `trait`, `predictor`, `estimate`, `std.error`, `uncertainty_status`, and
-#'   `validation_row`. For `type = "axis_effect"`, columns are `level`, `axis`,
-#'   `predictor`, `estimate`, `rotation_status`, and `validation_row`.
+#'   `validation_row`; `engine = "julia"` fits requested with
+#'   `ci_method = "wald"` additionally carry `lower` and `upper`. For
+#'   `type = "axis_effect"`, columns are `level`, `axis`, `predictor`,
+#'   `estimate`, `rotation_status`, and `validation_row`.
 #'
 #' @seealso [extract_ordination()]
 #'

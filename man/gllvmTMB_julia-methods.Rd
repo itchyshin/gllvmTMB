@@ -136,4 +136,7 @@ rows when \code{X = NULL}; complete-response fixed-effect-X CIs are routed for
 Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. They may
 be requested at fit time through
 \code{gllvmTMB(ci_method = ...)}, or retrieved and recomputed through \code{confint()}.
+Predictor-informed \code{latent(..., lv = ~ x)} rows admit \code{ci_method = "wald"}
+at fit time; those Wald intervals are surfaced as \code{std.error}, \code{lower}, and
+\code{upper} through \code{extract_lv_effects()} rather than \code{confint()}.
 }

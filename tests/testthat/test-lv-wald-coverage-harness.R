@@ -25,10 +25,37 @@ test_that("LV Wald coverage grid assigns one seed per task", {
   expect_true(all(plan$rep %in% 1:2))
 })
 
+test_that("LV Wald coverage interval methods define normal and t criticals", {
+  source_lv_wald_coverage()
+
+  expect_equal(lv_wald_interval_methods(), c("wald_z", "wald_t_unit"))
+  expect_equal(lv_wald_unit_t_df(n_units = 12L, d = 2L), 9L)
+
+  z <- lv_wald_interval_critical(
+    method = "wald_z",
+    level = 0.95,
+    n_units = 12L,
+    d = 2L
+  )
+  t <- lv_wald_interval_critical(
+    method = "wald_t_unit",
+    level = 0.95,
+    n_units = 12L,
+    d = 2L
+  )
+
+  expect_equal(z$critical, stats::qnorm(0.975))
+  expect_true(is.na(z$df))
+  expect_equal(t$critical, stats::qt(0.975, df = 9L))
+  expect_equal(t$df, 9L)
+  expect_gt(t$critical, z$critical)
+  expect_error(lv_wald_interval_methods("bogus"), "Unknown")
+})
+
 test_that("LV Wald coverage summary keeps failed-fit denominators", {
   source_lv_wald_coverage()
 
-  rows <- data.frame(
+  base_rows <- data.frame(
     cell_id = "gaussian-d1-n72-t3",
     family = "gaussian",
     d = 1L,
@@ -63,22 +90,43 @@ test_that("LV Wald coverage summary keeps failed-fit denominators", {
     sdreport_ok = c(TRUE, TRUE, FALSE),
     stringsAsFactors = FALSE
   )
+  rows <- rbind(
+    transform(
+      base_rows,
+      interval_method = "wald_z",
+      critical = stats::qnorm(0.975),
+      critical_df = NA_real_,
+      critical_df_source = "normal"
+    ),
+    transform(
+      base_rows,
+      interval_method = "wald_t_unit",
+      critical = stats::qt(0.975, df = 70L),
+      critical_df = 70,
+      critical_df_source = "n_units_minus_d_minus_1",
+      conf.low = c(0.40, 0.40, NA),
+      conf.high = c(0.60, 1.00, NA),
+      covered = c(TRUE, TRUE, NA)
+    )
+  )
 
   summary <- lv_wald_coverage_summarise(rows, production_n_reps = 3L)
+  summary <- summary[order(summary$interval_method), , drop = FALSE]
 
-  expect_equal(summary$n_attempted, 3L)
-  expect_equal(summary$n_converged, 2L)
-  expect_equal(summary$n_pd_hessian, 2L)
-  expect_equal(summary$n_sdreport_ok, 2L)
-  expect_equal(summary$n_ci_available, 2L)
-  expect_equal(summary$n_eligible, 2L)
-  expect_equal(summary$coverage, 0.5)
-  expect_equal(summary$coverage_mcse, sqrt(0.5 * 0.5 / 2))
-  expect_equal(summary$nominal_coverage_mcse, sqrt(0.95 * 0.05 / 2))
-  expect_equal(summary$bias, 0.2)
-  expect_equal(summary$rmse, sqrt(mean(c(0, 0.4)^2)))
-  expect_equal(summary$fit_failure_rate, 1 / 3)
-  expect_false(summary$passes_wald_coverage_band)
+  expect_equal(summary$interval_method, c("wald_t_unit", "wald_z"))
+  expect_equal(summary$n_attempted, c(3L, 3L))
+  expect_equal(summary$n_converged, c(2L, 2L))
+  expect_equal(summary$n_pd_hessian, c(2L, 2L))
+  expect_equal(summary$n_sdreport_ok, c(2L, 2L))
+  expect_equal(summary$n_ci_available, c(2L, 2L))
+  expect_equal(summary$n_eligible, c(2L, 2L))
+  expect_equal(summary$coverage, c(1, 0.5))
+  expect_equal(summary$coverage_mcse, c(0, sqrt(0.5 * 0.5 / 2)))
+  expect_equal(summary$nominal_coverage_mcse, rep(sqrt(0.95 * 0.05 / 2), 2))
+  expect_equal(summary$bias, c(0.2, 0.2))
+  expect_equal(summary$rmse, rep(sqrt(mean(c(0, 0.4)^2)), 2))
+  expect_equal(summary$fit_failure_rate, c(1 / 3, 1 / 3))
+  expect_false(any(summary$passes_coverage_band))
 })
 
 test_that("LV Wald coverage smoke returns B_lv target rows", {
@@ -95,8 +143,13 @@ test_that("LV Wald coverage smoke returns B_lv target rows", {
     verbose = FALSE
   )
 
-  expect_equal(nrow(rows), 3L)
+  expect_equal(nrow(rows), 6L)
   expect_equal(unique(rows$target), "B_lv")
+  expect_equal(sort(unique(rows$interval_method)), c("wald_t_unit", "wald_z"))
+  expect_true(all(
+    rows$critical[rows$interval_method == "wald_t_unit"] >
+      rows$critical[rows$interval_method == "wald_z"]
+  ))
   expect_equal(
     unique(rows$uncertainty_status),
     "wald_sdreport_no_ci_validation"

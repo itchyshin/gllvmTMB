@@ -4,8 +4,8 @@
 pure binomial logit/probit/cloglog fits; the R-to-Julia bridge also has
 point-only complete-response Poisson, NB2, Gamma, and Beta routes. Focused
 native TMB Gaussian recovery is partial, and a dev-only Wald coverage harness
-now exists, but interval calibration is still pending until production reps
-finish.
+now exists with normal-critical and unit-df t-critical comparator rows, but
+interval calibration is still pending until production reps finish.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
@@ -337,10 +337,15 @@ Heavy tests under `GLLVMTMB_HEAVY_TESTS=1`:
 - Rank-1 and rank-2 Gaussian recovery of `B_lv` and `Sigma`
   (covered by `test-lv-gaussian-recovery.R`, with rank 2 heavy-gated).
 - Gaussian Wald coverage harness checks for the grid layout, one
-  recorded seed per task, failed-fit denominators, MCSE formulas, and an
-  opt-in one-fit smoke (`test-lv-wald-coverage-harness.R`). The
+  recorded seed per task, failed-fit denominators, MCSE formulas,
+  normal-critical and unit-df t-critical comparator rows, and an opt-in
+  one-fit smoke (`test-lv-wald-coverage-harness.R`). The
   production 500-rep run is still external evidence, not a package-test
   shortcut.
+- `dev/lv-wald-coverage-slurm.sh` writes/tests/submits the matching
+  one-seed-per-SLURM-array-task campaign and collects summaries after the
+  array finishes. The wrapper is launch infrastructure only; it is not
+  production evidence until the array output exists and is audited.
 - Bernoulli single-trial binomial recovery and separation
   diagnostics.
 - Factor predictors and rare-level behaviour.

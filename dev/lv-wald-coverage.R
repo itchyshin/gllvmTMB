@@ -8,11 +8,13 @@
 ## Scope:
 ##   - ordinary unit-tier Gaussian `latent(..., lv = ~ x)`;
 ##   - target `B_lv = Lambda %*% t(alpha)`;
-##   - Wald intervals from `ADREPORT(B_lv_unit)` only.
+##   - Wald intervals from `ADREPORT(B_lv_unit)` SEs;
+##   - normal-critical Wald and unit-df t-critical Wald comparators.
 ##
 ## The harness records failed-fit denominators and Monte Carlo standard
 ## errors. A smoke run from this file is not coverage calibration evidence;
 ## production admission still needs >= 500 reps/cell.
+## The t-critical comparator is a small-N candidate, not an inferential claim.
 ##
 ## Examples:
 ##   source("dev/lv-wald-coverage.R")
@@ -32,6 +34,7 @@ LV_WALD_DEFAULT_SEED_BASE <- 20260628L
 LV_WALD_NOMINAL <- 0.95
 LV_WALD_PASS_LO <- 0.92
 LV_WALD_PASS_HI <- 0.98
+LV_WALD_INTERVAL_METHODS <- c("wald_z", "wald_t_unit")
 
 LV_WALD_CELLS <- data.frame(
   cell_id = c(
@@ -65,6 +68,22 @@ lv_wald_cell <- function(cell_id, cells = LV_WALD_CELLS) {
     )
   }
   cells[idx, , drop = FALSE]
+}
+
+lv_wald_ensure_package <- function() {
+  if (requireNamespace("gllvmTMB", quietly = TRUE)) {
+    return(invisible(TRUE))
+  }
+  if (
+    requireNamespace("pkgload", quietly = TRUE) && file.exists("DESCRIPTION")
+  ) {
+    pkgload::load_all(".", quiet = TRUE)
+    return(invisible(TRUE))
+  }
+  stop(
+    "dev/lv-wald-coverage.R requires gllvmTMB to be installed, ",
+    "or must be run from a source checkout with pkgload available."
+  )
 }
 
 lv_wald_cell_seeds <- function(cell, n_reps, seed_base, cell_index) {
@@ -185,6 +204,7 @@ lv_wald_coverage_data <- function(
 }
 
 lv_wald_coverage_fit <- function(data, d) {
+  lv_wald_ensure_package()
   old_options <- options(
     gllvmTMB.quiet_grammar_notes = TRUE,
     lifecycle_verbosity = "quiet"
@@ -214,6 +234,44 @@ lv_wald_truth_rows <- function(truth) {
     truth = as.numeric(truth$B_lv[, 1L]),
     stringsAsFactors = FALSE
   )
+}
+
+lv_wald_interval_methods <- function(methods = LV_WALD_INTERVAL_METHODS) {
+  methods <- unique(as.character(methods))
+  known <- c("wald_z", "wald_t_unit")
+  unknown <- setdiff(methods, known)
+  if (length(unknown)) {
+    stop(
+      "Unknown LV Wald interval method(s): ",
+      paste(unknown, collapse = ", "),
+      ". Known methods: ",
+      paste(known, collapse = ", ")
+    )
+  }
+  methods
+}
+
+lv_wald_unit_t_df <- function(n_units, d) {
+  max(1L, as.integer(n_units) - as.integer(d) - 1L)
+}
+
+lv_wald_interval_critical <- function(method, level, n_units, d) {
+  if (identical(method, "wald_z")) {
+    return(list(
+      critical = stats::qnorm((1 + level) / 2),
+      df = NA_real_,
+      df_source = "normal"
+    ))
+  }
+  if (identical(method, "wald_t_unit")) {
+    df <- lv_wald_unit_t_df(n_units = n_units, d = d)
+    return(list(
+      critical = stats::qt((1 + level) / 2, df = df),
+      df = df,
+      df_source = "n_units_minus_d_minus_1"
+    ))
+  }
+  stop("Unhandled LV Wald interval method: ", method)
 }
 
 lv_wald_fit_health <- function(fit = NULL, fit_error = NA_character_) {
@@ -268,8 +326,13 @@ lv_wald_extract_effects <- function(fit) {
   list(data = effects, error = err)
 }
 
-lv_wald_coverage_run_rep <- function(plan_row, level = LV_WALD_NOMINAL) {
+lv_wald_coverage_run_rep <- function(
+  plan_row,
+  level = LV_WALD_NOMINAL,
+  interval_methods = LV_WALD_INTERVAL_METHODS
+) {
   start <- proc.time()[["elapsed"]]
+  interval_methods <- lv_wald_interval_methods(interval_methods)
   data <- lv_wald_coverage_data(
     n_units = plan_row$n_units,
     n_traits = plan_row$n_traits,
@@ -313,36 +376,48 @@ lv_wald_coverage_run_rep <- function(plan_row, level = LV_WALD_NOMINAL) {
     )
   }
 
-  critical <- stats::qnorm((1 + level) / 2)
-  lower <- matched$estimate - critical * matched$std.error
-  upper <- matched$estimate + critical * matched$std.error
-  ci_available <- is.finite(lower) & is.finite(upper)
-  eligible <- isTRUE(health$fit_converged) &
-    isTRUE(health$pd_hessian) &
-    isTRUE(health$sdreport_ok) &
-    ci_available
-  covered <- rep(NA, nrow(truth_rows))
-  covered[eligible] <- lower[eligible] <= truth_rows$truth[eligible] &
-    truth_rows$truth[eligible] <= upper[eligible]
-
-  cbind(
-    plan_row[rep(1L, nrow(truth_rows)), , drop = FALSE],
-    truth_rows,
-    matched,
-    data.frame(
+  method_rows <- lapply(interval_methods, function(method) {
+    critical <- lv_wald_interval_critical(
+      method = method,
       level = level,
-      conf.low = lower,
-      conf.high = upper,
-      ci_available = ci_available,
-      eligible = eligible,
-      covered = covered,
-      error = matched$estimate - truth_rows$truth,
-      runtime_s = proc.time()[["elapsed"]] - start,
-      extract_error = extract_error,
-      stringsAsFactors = FALSE
-    ),
-    health[rep(1L, nrow(truth_rows)), , drop = FALSE]
-  )
+      n_units = plan_row$n_units,
+      d = plan_row$d
+    )
+    lower <- matched$estimate - critical$critical * matched$std.error
+    upper <- matched$estimate + critical$critical * matched$std.error
+    ci_available <- is.finite(lower) & is.finite(upper)
+    eligible <- isTRUE(health$fit_converged) &
+      isTRUE(health$pd_hessian) &
+      isTRUE(health$sdreport_ok) &
+      ci_available
+    covered <- rep(NA, nrow(truth_rows))
+    covered[eligible] <- lower[eligible] <= truth_rows$truth[eligible] &
+      truth_rows$truth[eligible] <= upper[eligible]
+
+    cbind(
+      plan_row[rep(1L, nrow(truth_rows)), , drop = FALSE],
+      truth_rows,
+      matched,
+      data.frame(
+        level = level,
+        interval_method = method,
+        critical = critical$critical,
+        critical_df = critical$df,
+        critical_df_source = critical$df_source,
+        conf.low = lower,
+        conf.high = upper,
+        ci_available = ci_available,
+        eligible = eligible,
+        covered = covered,
+        error = matched$estimate - truth_rows$truth,
+        runtime_s = proc.time()[["elapsed"]] - start,
+        extract_error = extract_error,
+        stringsAsFactors = FALSE
+      ),
+      health[rep(1L, nrow(truth_rows)), , drop = FALSE]
+    )
+  })
+  do.call(rbind, method_rows)
 }
 
 lv_wald_rep_path <- function(results_dir, cell_id, rep) {
@@ -366,6 +441,7 @@ lv_wald_coverage_run_cell <- function(
   n_reps = LV_WALD_DEFAULT_N_REPS,
   seed_base = LV_WALD_DEFAULT_SEED_BASE,
   rep_indices = NULL,
+  interval_methods = LV_WALD_INTERVAL_METHODS,
   results_dir = NULL,
   verbose = TRUE
 ) {
@@ -390,7 +466,10 @@ lv_wald_coverage_run_cell <- function(
         n_reps
       )
     }
-    rows[[i]] <- lv_wald_coverage_run_rep(plan[i, , drop = FALSE])
+    rows[[i]] <- lv_wald_coverage_run_rep(
+      plan[i, , drop = FALSE],
+      interval_methods = interval_methods
+    )
     if (!is.null(results_dir)) {
       lv_wald_write_rep(rows[[i]], results_dir)
     }
@@ -402,6 +481,7 @@ lv_wald_coverage_run_task <- function(
   task_id = Sys.getenv("SLURM_ARRAY_TASK_ID"),
   n_reps = LV_WALD_DEFAULT_N_REPS,
   seed_base = LV_WALD_DEFAULT_SEED_BASE,
+  interval_methods = LV_WALD_INTERVAL_METHODS,
   results_dir,
   verbose = TRUE
 ) {
@@ -425,7 +505,10 @@ lv_wald_coverage_run_task <- function(
   if (isTRUE(verbose)) {
     message("[lv-wald] task ", task_id, "/", nrow(plan))
   }
-  rows <- lv_wald_coverage_run_rep(plan[task_id, , drop = FALSE])
+  rows <- lv_wald_coverage_run_rep(
+    plan[task_id, , drop = FALSE],
+    interval_methods = interval_methods
+  )
   path <- lv_wald_write_rep(rows, results_dir)
   attr(rows, "path") <- path
   rows
@@ -452,9 +535,13 @@ lv_wald_coverage_summarise <- function(
   pass_hi = LV_WALD_PASS_HI,
   production_n_reps = LV_WALD_DEFAULT_N_REPS
 ) {
+  if (!"interval_method" %in% names(rows)) {
+    rows$interval_method <- "wald_z"
+  }
   required <- c(
     "cell_id",
     "target_id",
+    "interval_method",
     "rep",
     "truth",
     "estimate",
@@ -474,7 +561,17 @@ lv_wald_coverage_summarise <- function(
       paste(missing_cols, collapse = ", ")
     )
   }
-  groups <- split(rows, list(rows$cell_id, rows$target_id), drop = TRUE)
+  if (!"critical_df" %in% names(rows)) {
+    rows$critical_df <- NA_real_
+  }
+  if (!"critical_df_source" %in% names(rows)) {
+    rows$critical_df_source <- NA_character_
+  }
+  groups <- split(
+    rows,
+    list(rows$cell_id, rows$target_id, rows$interval_method),
+    drop = TRUE
+  )
   out <- lapply(groups, function(df) {
     df <- df[order(df$rep), , drop = FALSE]
     eligible <- isTRUE(df$eligible) | (!is.na(df$eligible) & df$eligible)
@@ -513,6 +610,9 @@ lv_wald_coverage_summarise <- function(
       trait = df$trait[[1L]],
       predictor = df$predictor[[1L]],
       truth = df$truth[[1L]],
+      interval_method = df$interval_method[[1L]],
+      critical_df = df$critical_df[[1L]],
+      critical_df_source = df$critical_df_source[[1L]],
       n_attempted = length(unique(df$rep)),
       n_converged = sum(df$fit_converged, na.rm = TRUE),
       n_pd_hessian = sum(df$pd_hessian, na.rm = TRUE),
@@ -531,7 +631,7 @@ lv_wald_coverage_summarise <- function(
       sdreport_failure_rate = mean(!df$sdreport_ok, na.rm = TRUE),
       ci_unavailable_rate = mean(!df$ci_available, na.rm = TRUE),
       production_n_reps_met = length(unique(df$rep)) >= production_n_reps,
-      passes_wald_coverage_band = isTRUE(
+      passes_coverage_band = isTRUE(
         length(unique(df$rep)) >= production_n_reps &&
           is.finite(coverage) &&
           coverage >= pass_lo &&
@@ -542,6 +642,7 @@ lv_wald_coverage_summarise <- function(
   })
   summary <- do.call(rbind, out)
   rownames(summary) <- NULL
+  summary$passes_wald_coverage_band <- summary$passes_coverage_band
   summary
 }
 
@@ -589,6 +690,16 @@ lv_wald_coverage_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
     as.character(LV_WALD_DEFAULT_SEED_BASE)
   ))
   results_dir <- lv_wald_arg_value(args, "--results-dir", "dev/lv-wald-results")
+  interval_methods <- strsplit(
+    lv_wald_arg_value(
+      args,
+      "--interval-methods",
+      paste(LV_WALD_INTERVAL_METHODS, collapse = ",")
+    ),
+    ",",
+    fixed = TRUE
+  )[[1L]]
+  interval_methods <- lv_wald_interval_methods(trimws(interval_methods))
 
   if (identical(mode, "preflight")) {
     plan <- lv_wald_coverage_grid(n_reps = n_reps, seed_base = seed_base)
@@ -618,6 +729,7 @@ lv_wald_coverage_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       task_id = task_id,
       n_reps = n_reps,
       seed_base = seed_base,
+      interval_methods = interval_methods,
       results_dir = results_dir
     )
     message("[lv-wald] wrote ", attr(rows, "path"))
@@ -637,6 +749,7 @@ lv_wald_coverage_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       n_reps = n_reps,
       seed_base = seed_base,
       rep_indices = seq.int(rep_start, rep_end),
+      interval_methods = interval_methods,
       results_dir = results_dir
     )
     summary <- lv_wald_write_outputs(rows, results_dir)

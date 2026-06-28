@@ -20902,3 +20902,149 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-29-r-bridge-xlv-ci-reader.md`.
+
+## 2026-06-28 -- LV Gaussian Wald t comparator
+
+Scope:
+
+- added a small-N `wald_t_unit` comparator to the ordinary Gaussian
+  `latent(..., lv = ~ x)` `B_lv` coverage harness;
+- kept the existing normal-critical Wald row as `wald_z`;
+- kept the output long over `interval_method`, so the production grid can
+  compare methods without rerunning fits;
+- kept `LV-02` partial: this is harness plumbing, not coverage calibration.
+
+Implemented:
+
+- `dev/lv-wald-coverage.R` now defines `LV_WALD_INTERVAL_METHODS`,
+  validates `--interval-methods`, computes normal and unit-df t critical
+  values, records `critical_df` / `critical_df_source`, and summarises by
+  `cell_id`, `target_id`, and `interval_method`.
+- `tests/testthat/test-lv-wald-coverage-harness.R` now checks the critical
+  values, invalid-method guard, method-split denominators, and opt-in live
+  smoke shape.
+- `docs/design/35-validation-debt-register.md`,
+  `docs/design/61-capability-status.md`, and
+  `docs/design/73-predictor-informed-latent-scores.md` now state that the
+  comparator exists while interval calibration remains pending.
+
+Checks:
+
+- `air format dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> PASS.
+- `Rscript --vanilla -e 'invisible(parse("dev/lv-wald-coverage.R")); cat("parse-ok\n")'`
+  -> PASS.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS with the opt-in fit smoke skipped.
+- `GLLVMTMB_LV_WALD_SMOKE=true NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS.
+- Initial CLI smoke failed because raw `Rscript dev/lv-wald-coverage.R` could
+  not find an installed `gllvmTMB` package. Added `lv_wald_ensure_package()`
+  to load the source checkout with `pkgload::load_all(".")` when available.
+- `rm -rf /tmp/gllvmtmb-lv-t-coverage-smoke-seed2 && GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=gaussian-d1-n72-t3 --n-reps=1 --seed-base=2 --rep-start=1 --rep-end=1 --results-dir=/tmp/gllvmtmb-lv-t-coverage-smoke-seed2`
+  -> PASS; summary contained six rows, three `B_lv` targets by two interval
+  methods, with one converged / PD-Hessian / sdreport-ok / CI-available
+  replicate per method.
+- `git diff --check`
+  -> PASS.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m34.4s with 0 errors, 0 warnings, and
+  0 notes. As in the prior slices, `devtools::check()` did not re-document
+  because local roxygen2 8.0.0 differs from declared 7.3.2; no roxygen files
+  changed in this slice.
+- `rg -n 'wald_t_unit|interval_method|critical_df|passes_coverage_band|passes_wald_coverage_band' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> REVIEWED; expected implementation/test hits only.
+- `rg -n 'coverage (passed|validated|calibrated)|calibrated intervals|complete.*coverage|t-based.*(validated|covered|calibrated)|t-critical.*(validated|covered|calibrated)' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-06-28-lv-wald-coverage-harness.md`
+  -> REVIEWED; no new t-based calibration claim.
+- `rg -n '500-rep|500 reps|500L|production_n_reps|LV_WALD_DEFAULT_N_REPS|MCSE|failed-fit|denominator' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/after-task/2026-06-28-lv-wald-coverage-harness.md`
+  -> REVIEWED; production evidence still requires >=500 reps/cell and
+  denominator accounting.
+- `rg -n 'B_lv|alpha|Lambda|rotation|raw axis|ADREPORT|sdreport' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/design/35-validation-debt-register.md`
+  -> REVIEWED; interval target remains trait-scale `B_lv`.
+
+Not run:
+
+- The 500-rep coverage grid, profile/bootstrap rescue, binomial/non-Gaussian
+  interval grids, mixed-family rows, masks, `X + X_lv`, and source-specific
+  `lv` intervals.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-t-comparator.md`.
+
+## 2026-06-28 -- LV Gaussian Wald SLURM launcher
+
+Scope:
+
+- added `dev/lv-wald-coverage-slurm.sh`, a dev-only wrapper for the
+  ordinary Gaussian `latent(..., lv = ~ x)` `B_lv` coverage campaign;
+- default action is `SLURM_ACTION=test`, so login-node use writes the
+  preflight plan and sbatch file and calls `sbatch --test-only`;
+- submit action runs one seed per `SLURM_ARRAY_TASK_ID` through the existing
+  `dev/lv-wald-coverage.R --mode=task` path;
+- summary action collects finished replicate RDS files through the existing
+  `--mode=summarise` path;
+- `LV-02` remains partial: this is launch infrastructure, not coverage
+  evidence.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- 'dev/lv-wald-coverage*.sh' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/check-log.md docs/dev-log/after-task docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; known LV bridge / coverage commits only.
+
+Implementation:
+
+- `dev/lv-wald-coverage-slurm.sh` computes the array task count by sourcing
+  `dev/lv-wald-coverage.R` and calling `lv_wald_coverage_grid()`.
+- Default `N_REPS=500` over the four current Gaussian cells yields 2,000 array
+  tasks.
+- The generated sbatch file sets one CPU thread, records stdout/stderr under
+  `_slurm`, loads configured R/optional Julia modules when `module` exists, and
+  runs `GLLVMTMB_LV_WALD_COVERAGE_CLI=true Rscript --vanilla
+  dev/lv-wald-coverage.R --mode=task --task-id="$SLURM_ARRAY_TASK_ID" ...`.
+
+Checks:
+
+- `bash -n dev/lv-wald-coverage-slurm.sh`
+  -> PASS.
+- `rm -rf /tmp/gllvmtmb-lv-wald-slurm-write && SLURM_ACTION=write RESULTS_DIR=/tmp/gllvmtmb-lv-wald-slurm-write N_REPS=500 bash dev/lv-wald-coverage-slurm.sh`
+  -> PASS; wrote `lv-wald-coverage-plan.csv` / `.rds` and
+  `_slurm/lv-wald-coverage.sbatch`, with `n_reps=500`, `total_tasks=2000`,
+  and `array=1-2000`.
+- `Rscript --vanilla -e 'p <- read.csv("/tmp/gllvmtmb-lv-wald-slurm-write/lv-wald-coverage-plan.csv"); stopifnot(nrow(p) == 2000L, length(unique(p$task_id)) == 2000L, all(table(p$cell_id) == 500L)); print(table(p$cell_id)); cat("plan-ok\n")'`
+  -> PASS; each of `gaussian-d1-n72-t3`, `gaussian-d1-n144-t3`,
+  `gaussian-d2-n96-t4`, and `gaussian-d2-n160-t4` had exactly 500 tasks.
+- `rg -n '#SBATCH --array=1-2000|--mode=task|SLURM_ARRAY_TASK_ID|--n-reps="500"|--seed-base="20260628"|--interval-methods="wald_z,wald_t_unit"|--results-dir="/tmp/gllvmtmb-lv-wald-slurm-write"' /tmp/gllvmtmb-lv-wald-slurm-write/_slurm/lv-wald-coverage.sbatch`
+  -> PASS; generated sbatch routes one array task to one task-mode replicate
+  with both interval methods.
+- `rm -rf /tmp/gllvmtmb-lv-wald-slurm-write-small && SLURM_ACTION=write RESULTS_DIR=/tmp/gllvmtmb-lv-wald-slurm-write-small N_REPS=3 SLURM_ARRAY_LIMIT=2 bash dev/lv-wald-coverage-slurm.sh && rg -n '#SBATCH --array=1-12%2' /tmp/gllvmtmb-lv-wald-slurm-write-small/_slurm/lv-wald-coverage.sbatch`
+  -> PASS; concurrency cap is written as `%2`.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS with the opt-in live fit smoke skipped.
+- `git diff --check`
+  -> PASS.
+- `rg -n 'coverage (passed|validated|calibrated)|calibrated intervals|complete.*coverage|SLURM.*(passed|coverage evidence|calibrated)|t-based.*(validated|covered|calibrated)|t-critical.*(validated|covered|calibrated)' dev/lv-wald-coverage-slurm.sh docs/design/35-validation-debt-register.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/after-task/2026-06-28-lv-wald-slurm-launcher.md docs/dev-log/check-log.md`
+  -> REVIEWED; expected partial/gated wording and historical check-log
+  cautions only. No SLURM production or t-critical calibration claim was added.
+- `rg -n 'LV-02|one-seed|array task|SLURM_ACTION|500|2000|wald_z|wald_t_unit|partial|not coverage|not production evidence' dev/lv-wald-coverage-slurm.sh docs/design/35-validation-debt-register.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/after-task/2026-06-28-lv-wald-slurm-launcher.md docs/dev-log/check-log.md`
+  -> REVIEWED; expected launcher, plan-size, paired-interval-method, and
+  `LV-02` partial-boundary hits.
+
+Not run:
+
+- Totoro fit checks: non-interactive SSH failed with
+  `Permission denied (publickey,password)`.
+- DRAC submission: Fir, Nibi, and tamIA required keyboard-interactive MFA.
+- The 500-rep production array, profile/bootstrap rescue, binomial/non-Gaussian
+  intervals, mixed-family rows, masks, `X + X_lv`, and source-specific `lv`
+  intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun because this slice changes only dev shell launch infrastructure
+  plus design/dev-log prose. The immediately prior t-comparator branch check
+  passed 0 errors, 0 warnings, and 0 notes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-slurm-launcher.md`.

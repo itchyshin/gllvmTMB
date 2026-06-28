@@ -1,7 +1,8 @@
 # Design 73 -- Predictor-Informed Latent Scores
 
 **Status:** C1 ordinary unit-tier parser + TMB support for Gaussian and
-pure binomial logit/probit/cloglog fits; focused native TMB Gaussian
+pure binomial logit/probit/cloglog fits; the R-to-Julia bridge also has
+a point-only complete-response Poisson route. Focused native TMB Gaussian
 recovery is partial, and a dev-only Wald coverage harness now exists,
 but interval calibration is still pending until production reps finish.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
@@ -14,9 +15,11 @@ This design adds an `lv = ~ ...` argument to ordinary `latent()` terms.
 The argument is a term-local fixed-effect formula for the mean of the
 latent scores. It is not a random-effects formula, not a loading model,
 and not a replacement for trait-specific fixed effects. The current
-implementation admits only the C1 ordinary unit-tier surface: Gaussian
-fits plus a narrow pure-binomial standard-link admission. All other rows remain
-planned or blocked as listed below.
+implementation admits only the C1 ordinary unit-tier surface: native
+TMB Gaussian fits, native TMB pure-binomial standard-link fits, and a
+narrow R-to-Julia bridge point route for Gaussian, Poisson, and binomial
+standard-link fits. All other rows remain planned or blocked as listed
+below.
 
 The first public target remains ordinary Gaussian unit-tier support:
 
@@ -34,9 +37,12 @@ latent(0 + trait | unit, d = 2,
 The first admitted binary target is deliberately narrower:
 single-family `binomial()` with one of the package's three supported
 binary links (`"logit"`, `"probit"`, or `"cloglog"`) and the same
-ordinary unit-tier score-mean model. Ordinal, count, Gamma, Beta,
-mixed-family, and delta/hurdle `lv` fits remain blocked until their own
-validation rows move.
+ordinary unit-tier score-mean model. A bridge-only Poisson point route is
+also admitted for complete-response `engine = "julia"` fits with
+`unique = FALSE`, no fixed-effect `X`, no response mask, and no CIs.
+Native TMB count-family support, ordinal, NB, Gamma, Beta, mixed-family,
+and delta/hurdle `lv` fits remain blocked until their own validation rows
+move.
 
 ## Model Contract
 
@@ -112,8 +118,10 @@ and latent-variable modelling, not evidence that this specific
 
 ## Non-Negotiable Decisions
 
-- C1 supports **ordinary unit-tier Gaussian and pure binomial
-  logit/probit/cloglog `latent()` only**.
+- C1 native TMB support covers **ordinary unit-tier Gaussian and pure
+  binomial logit/probit/cloglog `latent()` only**. The R-to-Julia bridge
+  additionally admits a complete-response Poisson point route under the
+  bridge restrictions in Section 4a.
 - `lv` accepts a one-sided fixed-effect formula only.
 - Random-effect bars, offsets, `mi()`, smooth terms, and response or
   trait columns inside `lv` are rejected.
@@ -128,8 +136,8 @@ and latent-variable modelling, not evidence that this specific
 - `REML = TRUE` with `lv` is rejected. REML / AI-REML language remains
   Gaussian-only and needs a separate derivation even for this Gaussian
   C1 surface.
-- Other non-Gaussian families and mixed-family `lv` fits are rejected
-  until their own validation rows move.
+- Other non-Gaussian families, native count-family `lv`, and mixed-family
+  `lv` fits are rejected until their own validation rows move.
 - C1 supports at most one ordinary unit-tier `latent()` term carrying
   `lv`.
 - `extract_Sigma()` keeps its current meaning:
@@ -147,7 +155,7 @@ but C1 exposes only ordinary unit-tier support.
 
 | Tier / source | Eventual target | C1 behaviour |
 |---|---|---|
-| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian and binomial logit/probit/cloglog `engine = "julia"` point route; smoke/algebra evidence, focused native Gaussian recovery, and standard-link binary latent-predictor trait-effect recovery, not interval calibration |
+| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian, Poisson, and binomial logit/probit/cloglog `engine = "julia"` point route; smoke/algebra evidence, focused native Gaussian recovery, and standard-link binary latent-predictor trait-effect recovery, not interval calibration |
 | `latent(... | unit_obs, lv = ~ x_obs)` | Within-unit/session latent-score mean | Reject as planned |
 | `latent(... | cluster, lv = ~ x_cluster)` | Cluster latent-score mean if a reduced-rank cluster slot is added | Reject as planned |
 | `latent(... | cluster2, lv = ~ x_cluster2)` | Not valid today; `cluster2` is diagonal-only | Reject |
@@ -182,8 +190,8 @@ navigation.
 - Validate one-sided formulas, predictor availability, intercept
   dropping (`lv = ~ x` equals `lv = ~ 0 + x`), factor expansion,
   within-unit constancy, rank, fixed-RHS overlap, unsupported terms,
-  unsupported tiers/sources, unsupported non-Gaussian families and
-  binary links, and `REML = TRUE`.
+  unsupported tiers/sources, unsupported native-TMB non-Gaussian families,
+  unsupported bridge families, unsupported binary links, and `REML = TRUE`.
 - Reject augmented random-regression combinations such as
   `latent(1 + x | unit, d = K, lv = ~ z)` until a separate design
   proves the combined target.
@@ -234,12 +242,13 @@ withheld until coverage/calibration evidence lands.
 
 ### 4a. R-to-Julia bridge PR
 
-Status: landed for narrow Gaussian and binomial logit/probit/cloglog
-point routes only. The R bridge builds the same unit-level `X_lv`
-design through the Design 73 parser setup and passes it to
-`GLLVM.bridge_fit(X_lv = ...)` for complete Gaussian and binomial
-logit/probit/cloglog `latent(..., unique = FALSE, lv = ~ x)` rows with
-no fixed-effect `X`, no response mask, and `ci_method = "none"`.
+Status: landed for narrow Gaussian, Poisson, and binomial
+logit/probit/cloglog point routes only. The R bridge builds the same
+unit-level `X_lv` design through the Design 73 parser setup and passes it
+to `GLLVM.bridge_fit(X_lv = ...)` for complete Gaussian, Poisson, and
+binomial logit/probit/cloglog
+`latent(..., unique = FALSE, lv = ~ x)` rows with no fixed-effect `X`, no
+response mask, and `ci_method = "none"`.
 
 - Retained Julia payloads are `lv_effects`, `alpha_lv`,
   `scores_mean`, and `scores_innovation`.
@@ -248,11 +257,12 @@ no fixed-effect `X`, no response mask, and `ci_method = "none"`.
   `uncertainty_status =
   "julia_bridge_point_estimate_only_no_ci_validation"`.
 - `extract_ordination(component = c("total", "mean", "innovation"))`
-  is routed for those retained Gaussian and binomial bridge score
-  payloads.
-- Other non-Gaussian `X_lv`, fixed-effect `X` plus `X_lv`, response
-  masks plus `X_lv`, mixed-family `X_lv`, and any CI/profile/bootstrap
-  route remain gated under `JUL-01`, `JUL-01A`, and `LV-01`.
+  is routed for those retained Gaussian, Poisson, and binomial bridge
+  score payloads.
+- Other non-Gaussian `X_lv` rows beyond Poisson and the three binomial
+  standard links, fixed-effect `X` plus `X_lv`, response masks plus
+  `X_lv`, mixed-family `X_lv`, and any CI/profile/bootstrap route remain
+  gated under `JUL-01`, `JUL-01A`, and `LV-01`.
 
 ### 4b. Gaussian Wald coverage campaign
 
@@ -299,10 +309,11 @@ Only after C1 recovery evidence, add a Tier-1 article:
 
 The article must show long and `traits(...)` wide calls side by side,
 use distinct fixed-effect and LV predictors, and include a scope box:
-IN ordinary Gaussian and pure binomial logit/probit/cloglog unit-tier;
-PLANNED other non-Gaussian families, mixed-family rows, `unit_obs`,
-`cluster`, `cluster2`, phylo, animal, spatial, kernel, and mean-only
-reduced-rank modes.
+IN ordinary Gaussian and pure binomial logit/probit/cloglog native
+unit-tier fits; PARTIAL bridge-only Poisson point rows; PLANNED native
+count-family support, other non-Gaussian families, mixed-family rows,
+`unit_obs`, `cluster`, `cluster2`, phylo, animal, spatial, kernel, and
+mean-only reduced-rank modes.
 
 ## Test Contract
 
@@ -313,8 +324,9 @@ CRAN-safe tests for the parser/API PR:
 - Random-effect syntax, offsets, `mi()`, smooths, missing predictors,
   response/trait columns, rank-deficient designs, nonconstant
   within-unit predictors, exact fixed-RHS overlap, `REML = TRUE`,
-  unsupported non-Gaussian families, unsupported tiers/sources,
-  and augmented random-regression combinations fail loudly.
+  unsupported native-TMB non-Gaussian families, unsupported bridge
+  families, unsupported tiers/sources, and augmented random-regression
+  combinations fail loudly.
 - Small Gaussian rank-1 fit reaches finite reports and correct
   extractor dimensions.
 - Pure binomial logit/probit/cloglog rank-1 fits reach finite reports,
@@ -354,11 +366,12 @@ target for `K > 1`.
 
 This is a twin-lane concept for `gllvmTMB` and `GLLVM.jl`, but parity
 must move row by row. Named Julia bridge rows now exist only for the
-complete-response Gaussian and binomial logit/probit/cloglog point
-routes described above. Public docs must not imply ordinal, count,
-Gamma, Beta, or mixed-family `X_lv`, response masks with `X_lv`,
-fixed-effect `X` plus `X_lv`, CI/profile/bootstrap support, or broad
-native-vs-Julia parity until those rows are implemented and validated.
+complete-response Gaussian, Poisson, and binomial logit/probit/cloglog
+point routes described above. Public docs must not imply native
+count-family support, ordinal, NB, Gamma, Beta, or mixed-family `X_lv`,
+response masks with `X_lv`, fixed-effect `X` plus `X_lv`,
+CI/profile/bootstrap support, or broad native-vs-Julia parity until
+those rows are implemented and validated.
 
 ## Reviewer Checklist
 

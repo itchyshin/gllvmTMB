@@ -20658,3 +20658,85 @@ Post-report checks:
   `Rscript --vanilla -e 'devtools::test(filter =
   "lv-wald-coverage-harness", reporter = "summary")'`, and
   `git diff --check` -> all PASS.
+
+## 2026-06-28 - R bridge Poisson `latent(lv = ~ x)` point route
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-poisson-xlv-r-20260628`
+- `codex/poisson-xlv-r-bridge-20260628`, created from `origin/main`
+  at `10bd368d1b54daa9b2210b817e44059b78ce4201`.
+- Cherry-picked held branch commit
+  `1404783 feat(julia-bridge): admit Poisson X_lv on the R engine='julia' route`
+  as local commit `4812ec2`.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft`
+  -> PASS; `[]`, no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> REVIEWED; recent entries were the already-merged LV slices
+  `10bd368`, `49ee528`, `3c063aa`, `412dd17`, `aa5d198`, and `556bf6a`.
+
+Implemented:
+
+- Added Poisson to the narrow R-to-Julia bridge `X_lv` family set for
+  complete-response `latent(..., unique = FALSE, lv = ~ x)` point fits.
+- Added a mocked main-dispatch Poisson `X_lv` route test in
+  `tests/testthat/test-julia-bridge.R`; unsupported-family bridge tests now
+  use `Gamma(link = "log")` so Poisson is no longer the fail-loud probe.
+- Updated runtime capability notes, gate messages, roxygen, generated Rd,
+  `NEWS.md`, Design 73, Design 61, and validation-debt rows `FG-18`,
+  `RE-13`, `EXT-31`, `JUL-01` / `JUL-01A`, and `LV-05`.
+
+Checks:
+
+- `Rscript --vanilla -e 'invisible(parse(file="R/julia-bridge.R")); invisible(parse(file="tests/testthat/test-julia-bridge.R")); cat("parse-ok\n")'`
+  -> PASS; `parse-ok`.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'`
+  -> PASS; one expected warning about Julia bridge `unique = FALSE`, and 18
+  live JuliaCall tests skipped because `{JuliaCall}` is not installed.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> PASS; same expected warning and 18 JuliaCall skips.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; wrote `man/gllvm_julia_fit.Rd`. Existing roxygen warnings about
+  unresolved `MCMCglmm`, fixture-helper, `parse_multi_formula`, and `[0, 1]`
+  links were printed; no new `X_lv` warning was introduced.
+- `rg -n 'X_lv|Gaussian, Poisson|binomial logit/probit|non-Gaussian `X_lv`|keyword' man/gllvm_julia_fit.Rd R/julia-bridge.R`
+  -> REVIEWED; roxygen and Rd now both state Gaussian, Poisson, and binomial
+  standard-link `X_lv` bridge rows.
+- `tail -5 man/gllvm_julia_fit.Rd`
+  -> REVIEWED; file ends cleanly.
+- `grep -c '^\\keyword' man/gllvm_julia_fit.Rd`
+  -> REVIEWED; printed `0`, confirming no accidental keyword spill.
+- `git diff --check`
+  -> PASS.
+- `rg -n 'complete-response Gaussian and binomial|Gaussian and binomial logit/probit/cloglog `engine = "julia"`|ordinal, count|Other non-Gaussian `X_lv`|count/Gamma/Beta|unsupported non-Gaussian families|complete Gaussian and binomial|Routed only for complete Gaussian and|latent\\(lv\\).*complete|coverage (passed|validated|calibrated)|calibrated CIs|500-rep.*(passed|complete|validated)' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R man/gllvm_julia_fit.Rd tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; expected hits only: "Other non-Gaussian `X_lv` rows beyond
+  Poisson..." gates, Design 61's explicit "no 500-rep interval calibration",
+  and historical "coverage passed" cautions.
+- `rg -n 'Gaussian, Poisson, and binomial|bridge-only Poisson|native count-family|julia_bridge_point_estimate_only_no_ci_validation|GJL-GATE-XLV|LV-0[1-7]|JUL-01|JUL-01A' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; expected hits show the Poisson bridge route is point-only and
+  `LV-02`, `LV-03`, `LV-06`, and `LV-07` remain partial/blocked.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library; Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found.`
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library; Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m 1s with 0 errors, 0 warnings, and
+  0 notes. As in the prior slice, `devtools::check()` did not re-document
+  because local roxygen2 8.0.0 differs from declared 7.3.2; documentation was
+  regenerated explicitly before the check.
+
+Not run:
+
+- Live JuliaCall/GLLVM.jl Poisson `X_lv` fit, because `{JuliaCall}` is not
+  installed in this local R library. The test added here is an R-side mocked
+  routing and gate test.
+- Coverage/calibration grids, profile/bootstrap intervals, response-mask
+  `X_lv`, fixed-effect `X + X_lv`, mixed-family `X_lv`, NB/Gamma/Beta `X_lv`,
+  or source-specific/phylo `lv`.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-r-bridge-poisson-xlv.md`.

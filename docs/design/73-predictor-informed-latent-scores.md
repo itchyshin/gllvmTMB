@@ -2,9 +2,10 @@
 
 **Status:** C1 ordinary unit-tier parser + TMB support for Gaussian and
 pure binomial logit/probit/cloglog fits; the R-to-Julia bridge also has
-a point-only complete-response Poisson route. Focused native TMB Gaussian
-recovery is partial, and a dev-only Wald coverage harness now exists,
-but interval calibration is still pending until production reps finish.
+point-only complete-response Poisson, NB2, Gamma, and Beta routes. Focused
+native TMB Gaussian recovery is partial, and a dev-only Wald coverage harness
+now exists, but interval calibration is still pending until production reps
+finish.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
@@ -17,9 +18,9 @@ latent scores. It is not a random-effects formula, not a loading model,
 and not a replacement for trait-specific fixed effects. The current
 implementation admits only the C1 ordinary unit-tier surface: native
 TMB Gaussian fits, native TMB pure-binomial standard-link fits, and a
-narrow R-to-Julia bridge point route for Gaussian, Poisson, and binomial
-standard-link fits. All other rows remain planned or blocked as listed
-below.
+narrow R-to-Julia bridge point route for Gaussian, Poisson, NB2, Gamma,
+Beta, and binomial standard-link fits. All other rows remain planned or
+blocked as listed below.
 
 The first public target remains ordinary Gaussian unit-tier support:
 
@@ -37,12 +38,11 @@ latent(0 + trait | unit, d = 2,
 The first admitted binary target is deliberately narrower:
 single-family `binomial()` with one of the package's three supported
 binary links (`"logit"`, `"probit"`, or `"cloglog"`) and the same
-ordinary unit-tier score-mean model. A bridge-only Poisson point route is
-also admitted for complete-response `engine = "julia"` fits with
-`unique = FALSE`, no fixed-effect `X`, no response mask, and no CIs.
-Native TMB count-family support, ordinal, NB, Gamma, Beta, mixed-family,
-and delta/hurdle `lv` fits remain blocked until their own validation rows
-move.
+ordinary unit-tier score-mean model. Bridge-only Poisson, NB2, Gamma, and
+Beta point routes are also admitted for complete-response `engine = "julia"`
+fits with `unique = FALSE`, no fixed-effect `X`, no response mask, and no
+CIs. Native TMB count-family support and ordinal, NB1, mixed-family, and
+delta/hurdle bridge rows remain blocked until their own validation rows move.
 
 ## Model Contract
 
@@ -120,8 +120,8 @@ and latent-variable modelling, not evidence that this specific
 
 - C1 native TMB support covers **ordinary unit-tier Gaussian and pure
   binomial logit/probit/cloglog `latent()` only**. The R-to-Julia bridge
-  additionally admits a complete-response Poisson point route under the
-  bridge restrictions in Section 4a.
+  additionally admits complete-response Poisson, NB2, Gamma, and Beta point
+  routes under the bridge restrictions in Section 4a.
 - `lv` accepts a one-sided fixed-effect formula only.
 - Random-effect bars, offsets, `mi()`, smooth terms, and response or
   trait columns inside `lv` are rejected.
@@ -155,7 +155,7 @@ but C1 exposes only ordinary unit-tier support.
 
 | Tier / source | Eventual target | C1 behaviour |
 |---|---|---|
-| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian, Poisson, and binomial logit/probit/cloglog `engine = "julia"` point route; smoke/algebra evidence, focused native Gaussian recovery, and standard-link binary latent-predictor trait-effect recovery, not interval calibration |
+| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog `engine = "julia"` point route; smoke/algebra evidence, focused native Gaussian recovery, and standard-link binary latent-predictor trait-effect recovery, not interval calibration |
 | `latent(... | unit_obs, lv = ~ x_obs)` | Within-unit/session latent-score mean | Reject as planned |
 | `latent(... | cluster, lv = ~ x_cluster)` | Cluster latent-score mean if a reduced-rank cluster slot is added | Reject as planned |
 | `latent(... | cluster2, lv = ~ x_cluster2)` | Not valid today; `cluster2` is diagonal-only | Reject |
@@ -242,11 +242,11 @@ withheld until coverage/calibration evidence lands.
 
 ### 4a. R-to-Julia bridge PR
 
-Status: landed for narrow Gaussian, Poisson, and binomial
+Status: landed for narrow Gaussian, Poisson, NB2, Gamma, Beta, and binomial
 logit/probit/cloglog point routes only. The R bridge builds the same
 unit-level `X_lv` design through the Design 73 parser setup and passes it
-to `GLLVM.bridge_fit(X_lv = ...)` for complete Gaussian, Poisson, and
-binomial logit/probit/cloglog
+to `GLLVM.bridge_fit(X_lv = ...)` for complete Gaussian, Poisson, NB2,
+Gamma, Beta, and binomial logit/probit/cloglog
 `latent(..., unique = FALSE, lv = ~ x)` rows with no fixed-effect `X`, no
 response mask, and `ci_method = "none"`.
 
@@ -257,11 +257,10 @@ response mask, and `ci_method = "none"`.
   `uncertainty_status =
   "julia_bridge_point_estimate_only_no_ci_validation"`.
 - `extract_ordination(component = c("total", "mean", "innovation"))`
-  is routed for those retained Gaussian, Poisson, and binomial bridge
-  score payloads.
-- Other non-Gaussian `X_lv` rows beyond Poisson and the three binomial
-  standard links, fixed-effect `X` plus `X_lv`, response masks plus
-  `X_lv`, mixed-family `X_lv`, and any CI/profile/bootstrap route remain
+  is routed for those retained Gaussian, Poisson, NB2, Gamma, Beta, and
+  binomial bridge score payloads.
+- NB1, ordinal, mixed-family `X_lv`, fixed-effect `X` plus `X_lv`,
+  response masks plus `X_lv`, and any CI/profile/bootstrap route remain
   gated under `JUL-01`, `JUL-01A`, and `LV-01`.
 
 ### 4b. Gaussian Wald coverage campaign
@@ -366,12 +365,11 @@ target for `K > 1`.
 
 This is a twin-lane concept for `gllvmTMB` and `GLLVM.jl`, but parity
 must move row by row. Named Julia bridge rows now exist only for the
-complete-response Gaussian, Poisson, and binomial logit/probit/cloglog
-point routes described above. Public docs must not imply native
-count-family support, ordinal, NB, Gamma, Beta, or mixed-family `X_lv`,
-response masks with `X_lv`, fixed-effect `X` plus `X_lv`,
-CI/profile/bootstrap support, or broad native-vs-Julia parity until
-those rows are implemented and validated.
+complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial
+logit/probit/cloglog point routes described above. Public docs must not imply
+native count-family support, NB1, ordinal, mixed-family `X_lv`, response masks
+with `X_lv`, fixed-effect `X` plus `X_lv`, CI/profile/bootstrap support, or
+broad native-vs-Julia parity until those rows are implemented and validated.
 
 ## Reviewer Checklist
 

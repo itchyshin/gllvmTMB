@@ -20748,3 +20748,83 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-28-r-bridge-poisson-xlv.md`.
+
+## 2026-06-28 - R bridge NB2 / Gamma / Beta `latent(lv = ~ x)` point routes
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-nbgammabeta-xlv-r-20260628`
+- `codex/nbgammabeta-xlv-r-bridge-20260628`, created from `origin/main`
+  at `7ba0890e8083417d67560bcf2186556f9fad0df5` after #568 merged.
+- Ported held branch commits
+  `67158e9 feat(julia-bridge): admit NB2/Gamma/Beta X_lv on the R engine='julia' route`
+  and `b940a96 test(julia-bridge): guard NB2/Gamma/Beta X_lv mocked test with skip_if_not_installed(glmmTMB)`.
+
+Pre-edit lane check:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,statusCheckRollup,url`
+  -> PASS; `[]`, no open gllvmTMB PRs after #568 merged.
+- `git log --all --oneline --since="6 hours ago"`
+  -> REVIEWED; recent entries were the current LV arc merges and held-branch
+  commits.
+
+Implemented:
+
+- Added `negbinomial`, `gamma`, and `beta` to the narrow R-to-Julia bridge
+  `X_lv` family set for complete-response
+  `latent(..., unique = FALSE, lv = ~ x)` point fits.
+- Added a mocked main-dispatch NB2 / Gamma / Beta `X_lv` route test in
+  `tests/testthat/test-julia-bridge.R`; unsupported-family bridge tests use
+  `nbinom1()` so NB2/Gamma/Beta are no longer fail-loud probes.
+- Updated runtime capability notes, gate messages, roxygen, generated Rd,
+  `NEWS.md`, Design 73, Design 61, and validation-debt rows `FG-18`,
+  `RE-13`, `EXT-31`, `JUL-01` / `JUL-01A`, and partial `LV-05`.
+- Added t-based small-sample intervals as a future Gaussian coverage comparator
+  in Design 61, without claiming validation.
+
+Checks:
+
+- `Rscript --vanilla -e 'invisible(parse(file="R/julia-bridge.R")); invisible(parse(file="tests/testthat/test-julia-bridge.R")); cat("parse-ok\n")'`
+  -> PASS; `parse-ok`.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'`
+  -> PASS; one expected Julia bridge `unique = FALSE` warning and 18
+  `{JuliaCall}` skips.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/gllvm_julia_fit.Rd`. Existing roxygen unresolved-link
+  warnings were unrelated to `X_lv`.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> PASS; same expected warning and 18 `{JuliaCall}` skips.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library; export GLLVM_JL_PATH=/private/tmp/gllvmjl-phylo-xlv; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla - <<'RS' ... live NB2/Gamma/Beta X_lv smoke ... RS`
+  -> PASS; printed `live-nbgammabeta-xlv-ok` for `nbinom2`, `gamma`, and
+  `beta`, with models `negbinomial_xlv_rr`, `gamma_xlv_rr`, and `beta_xlv_rr`
+  and `lv_effects = 3x1`. Julia emitted the known
+  `LogExpFunctionsInverseFunctionsExt` precompile error before continuing.
+- `rg -n 'Gaussian, Poisson, and binomial|Poisson and binomial|Poisson, and binomial|beyond Poisson|count/Gamma/Beta|NB/Gamma/Beta|other non-Gaussian bridge families|ordinal/NB/Gamma/Beta|Named Julia bridge rows now exist only for the complete-response Gaussian, Poisson' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R man/gllvm_julia_fit.Rd tests/testthat/test-julia-bridge.R`
+  -> PASS; no hits after `EXT-31` was updated.
+- `rg -n 'coverage (passed|validated|calibrated)|calibrated CIs|500-rep.*(passed|complete|validated)|t-based.*(passed|validated|calibrated)|t-Wald.*(passed|validated|calibrated)' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R man/gllvm_julia_fit.Rd tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; expected cautionary hits only. Design 61 says 500-rep
+  calibration evidence has not landed and t-based intervals are future
+  candidate work.
+- `git diff --check`
+  -> PASS.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found.`
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m 9.7s with 0 errors, 0 warnings, and
+  0 notes.
+- `gh run view 28332014688 --repo itchyshin/gllvmTMB --json status,conclusion,jobs`
+  -> PASS; main-branch #568 merge check `ubuntu-latest (release)` passed in
+  13m15s on commit `7ba0890`.
+
+Not run:
+
+- Coverage/calibration grids, profile/bootstrap intervals, t-based interval
+  coverage, response-mask `X_lv`, fixed-effect `X + X_lv`, mixed-family
+  `X_lv`, NB1/ordinal `X_lv`, native count-family `lv`, or source-specific/
+  phylo `lv`.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-r-bridge-nbgammabeta-xlv.md`.

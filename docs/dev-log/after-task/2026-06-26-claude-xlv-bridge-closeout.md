@@ -11,6 +11,13 @@ no new code.
 **Roles (engaged)**: Ada (orchestration), Rose (scope audit), Shannon
 (coordination audit).
 
+**Codex clarification 2026-06-28**: the "zero open PRs" statements below are
+historical audit facts from 2026-06-26, before this docs-only closeout PR and
+later follow-up work existed. They should not be read as current repository
+state. Also, `Psi` preservation in this report refers to the native TMB ordinary
+`latent()` path; the Julia bridge C1 `X_lv` route remains the reduced-rank
+`latent(..., unique = FALSE, lv = ~ x)` point-only path with no interval claim.
+
 ## 1. Goal
 
 Close the active goal handed off by Codex: *finish the work related to
@@ -28,7 +35,8 @@ gllvmTMB PR #563). This session verified the four closure conditions:
   `main` CI + Documenter green.
 - gllvmTMB PR #563 merged (`791f2abc58b48750f3b31a9d89ebca920dd7bcf2`) and
   `main` R-CMD-check + pkgdown green.
-- No open PRs in either repository.
+- No open implementation bridge PRs in either repository as of the 2026-06-26
+  audit, before opening this docs-only closeout PR.
 - Public / story wording across NEWS, both changelogs, the parity scoreboard,
   the design + capability docs, the validation register, and the two generated
   Rd files stays within the admitted binary `X_lv` scope.
@@ -120,8 +128,11 @@ None of the OUT-of-scope claims (Julia `X_lv` intervals, response-mask `X_lv`,
 `X`+`X_lv`, mixed-family `X_lv`, non-binomial non-Gaussian `X_lv`, Bernoulli
 single-trial depth, broad R–Julia parity, non-Gaussian REML) appear.
 
-Shannon coordination verdict: PASS. Zero open PRs in either repo; both worktrees
-clean apart from the handover checkpoint and this report; no file overlap.
+Shannon coordination verdict on 2026-06-26: PASS. At that audit point there
+were zero open implementation bridge PRs in either repo; both worktrees were
+clean apart from the handover checkpoint and this report; no file overlap. This
+sentence is an audit-time record, not a current-state assertion after #564 or
+later follow-up branches.
 
 ## 9. What Did Not Go Smoothly
 
@@ -134,7 +145,9 @@ poll handled the wait without manual re-checking.
 
 Landed: complete-response binomial `X_lv` point fits — logit, probit, cloglog —
 through the default GLLVM.jl bridge, plus the matching R bridge route and the
-ordinary Gaussian unit-tier path, with the diagonal `Psi` companion preserved.
+ordinary Gaussian unit-tier path. The diagonal `Psi` companion is preserved on
+the native TMB ordinary `latent()` path; the Julia bridge C1 route remains the
+reduced-rank `latent(..., unique = FALSE, lv = ~ x)` point-only path.
 
 Deliberately still gated (not regressions):
 

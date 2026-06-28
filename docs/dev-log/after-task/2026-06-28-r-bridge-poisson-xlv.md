@@ -70,6 +70,17 @@ Rationale: none is implemented or calibrated by this slice. Confidence: high.
   -> PASS; `No problems found.`
 - `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library; Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
   -> PASS; 0 errors, 0 warnings, 0 notes in 5m 1s.
+- `mkdir -p /private/tmp/gllvmtmb-r-live-lib && Rscript --vanilla -e 'install.packages("JuliaCall", lib="/private/tmp/gllvmtmb-r-live-lib", repos="https://cloud.r-project.org", quiet=TRUE)'`
+  -> PASS; installed temporary `JuliaCall` 0.17.6 and `rjson`.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library; export GLLVM_JL_PATH=/private/tmp/gllvmjl-phylo-xlv; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla - <<'RS' ... live Poisson X_lv smoke ... RS`
+  -> PASS; printed `live-poisson-xlv-ok` and
+  `family=poisson model=poisson_xlv_rr lv_effects=3x1`. Julia emitted a noisy
+  `LogExpFunctionsInverseFunctionsExt` precompile error
+  (`UndefVarError: loglogistic not defined`) before continuing; all R-side
+  payload and extractor checks passed. The live GLLVM.jl target was
+  `/private/tmp/gllvmjl-phylo-xlv` at local commit `bcf2680`.
+- `gh pr checks 568 --repo itchyshin/gllvmTMB --watch --interval 30`
+  -> PASS; GitHub `ubuntu-latest (release)` R-CMD-check passed in 13m9s.
 
 ## 5. Tests of the Tests
 
@@ -111,8 +122,11 @@ No new issue created. Existing bridge gate wording continues to reference
 
 The first stale-wording scan was quoted incorrectly with shell backticks around
 `X_lv`; zsh tried to execute `X_lv`. No files were changed. The scan was rerun
-with single-quoted patterns. Local live Julia tests also remain skipped because
-`{JuliaCall}` is not installed in this R library.
+with single-quoted patterns. Local live Julia tests initially skipped because
+`{JuliaCall}` was not installed in the default R library; installing it into a
+temporary library allowed the focused Poisson `X_lv` smoke to run. Julia still
+printed a noisy `LogExpFunctionsInverseFunctionsExt` precompile error before
+completing the fit.
 
 ## 9. Team Learning
 
@@ -127,8 +141,9 @@ evidence. The next non-Gaussian scientific claim still needs family-specific
 simulation depth and failed-fit denominators.
 
 Grace: `pkgdown::check_pkgdown()` and `R CMD check --no-manual` both passed
-locally from the clean `/private/tmp` worktree. The roxygen2 version mismatch
-means explicit `devtools::document()` remains the source of regenerated Rd.
+locally from the clean `/private/tmp` worktree, and GitHub ubuntu R-CMD-check
+passed on PR #568. The roxygen2 version mismatch means explicit
+`devtools::document()` remains the source of regenerated Rd.
 
 Rose and Shannon: Claim text now separates native TMB Gaussian/binomial support
 from bridge-only Poisson point support, and no open gllvmTMB PR collision was
@@ -136,7 +151,6 @@ present at branch start.
 
 ## 10. Known Limitations And Next Actions
 
-- No live JuliaCall Poisson `X_lv` fit ran locally.
 - No Poisson `B_lv` recovery, Wald/profile/bootstrap coverage, response-mask
   compatibility, fixed-effect `X + X_lv`, mixed-family `X_lv`, NB/Gamma/Beta
   `X_lv`, or source-specific/phylo `lv` support is admitted.

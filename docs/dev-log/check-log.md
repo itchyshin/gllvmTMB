@@ -20727,12 +20727,20 @@ Checks:
   0 notes. As in the prior slice, `devtools::check()` did not re-document
   because local roxygen2 8.0.0 differs from declared 7.3.2; documentation was
   regenerated explicitly before the check.
+- `mkdir -p /private/tmp/gllvmtmb-r-live-lib && Rscript --vanilla -e 'install.packages("JuliaCall", lib="/private/tmp/gllvmtmb-r-live-lib", repos="https://cloud.r-project.org", quiet=TRUE)'`
+  -> PASS; installed temporary `JuliaCall` 0.17.6 and `rjson`.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library; export GLLVM_JL_PATH=/private/tmp/gllvmjl-phylo-xlv; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla - <<'RS' ... live Poisson X_lv smoke ... RS`
+  -> PASS; printed `live-poisson-xlv-ok` and
+  `family=poisson model=poisson_xlv_rr lv_effects=3x1`. Julia emitted a noisy
+  `LogExpFunctionsInverseFunctionsExt` precompile error
+  (`UndefVarError: loglogistic not defined`) before continuing; all R-side
+  payload and extractor checks passed. The live GLLVM.jl target was
+  `/private/tmp/gllvmjl-phylo-xlv` at local commit `bcf2680`.
+- `gh pr checks 568 --repo itchyshin/gllvmTMB --watch --interval 30`
+  -> PASS; GitHub `ubuntu-latest (release)` R-CMD-check passed in 13m9s.
 
 Not run:
 
-- Live JuliaCall/GLLVM.jl Poisson `X_lv` fit, because `{JuliaCall}` is not
-  installed in this local R library. The test added here is an R-side mocked
-  routing and gate test.
 - Coverage/calibration grids, profile/bootstrap intervals, response-mask
   `X_lv`, fixed-effect `X + X_lv`, mixed-family `X_lv`, NB/Gamma/Beta `X_lv`,
   or source-specific/phylo `lv`.

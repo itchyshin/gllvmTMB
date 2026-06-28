@@ -59,3 +59,69 @@ test_that("ordinary latent lv desugars but source-specific lv fails loudly", {
     )
   }
 })
+
+test_that("deprecated/internal covariance aliases cannot carry lv silently", {
+  A <- diag(4)
+  rownames(A) <- colnames(A) <- paste0("u", 1:4)
+  data <- data.frame(
+    unit = factor(rep(paste0("u", 1:4), each = 2L), levels = paste0("u", 1:4)),
+    trait = factor(rep(c("t1", "t2"), times = 4L), levels = c("t1", "t2")),
+    value = seq_len(8L) / 10,
+    x = rep(c(-1, 0, 1, 2), each = 2L),
+    stringsAsFactors = FALSE
+  )
+
+  raw_allowed <- gllvmTMB:::desugar_brms_sugar(
+    value ~ 0 + trait + rr(0 + trait | unit, d = 1, lv = ~x)
+  )
+  parsed_allowed <- gllvmTMB:::parse_multi_formula(raw_allowed)
+  lv_terms <- which(vapply(
+    parsed_allowed$covstructs,
+    function(cs) {
+      !is.null(cs$extra[["lv_formula"]]) || !is.null(cs$extra[["lv"]])
+    },
+    logical(1L)
+  ))
+  expect_length(lv_terms, 1L)
+  expect_identical(parsed_allowed$covstructs[[lv_terms]]$kind, "rr")
+  expect_identical(
+    as.character(gllvmTMB:::gll_lv_formula(parsed_allowed$covstructs[[lv_terms]])),
+    c("~", "x")
+  )
+  allowed_setup <- gllvmTMB:::gll_prepare_lv_predictor_setup(
+    parsed = parsed_allowed,
+    data = data,
+    trait = "trait",
+    site = "unit",
+    family_id_vec = rep(0L, nrow(data)),
+    link_id_vec = rep(0L, nrow(data))
+  )
+  expect_true(isTRUE(allowed_setup$enabled))
+  expect_equal(dim(allowed_setup$X_lv_B), c(4L, 1L))
+
+  raw_rejected <- list(
+    diag = value ~ 0 + trait + diag(0 + trait | unit, lv = ~x),
+    phylo_rr = value ~ 0 + trait + phylo_rr(unit, d = 1, vcv = A, lv = ~x),
+    spde = value ~
+      0 + trait + spde(0 + trait | unit, coords = c("lon", "lat"), lv = ~x)
+  )
+
+  for (keyword in names(raw_rejected)) {
+    expect_error(
+      suppressWarnings({
+        f <- gllvmTMB:::desugar_brms_sugar(raw_rejected[[keyword]])
+        p <- gllvmTMB:::parse_multi_formula(f)
+        gllvmTMB:::gll_prepare_lv_predictor_setup(
+          parsed = p,
+          data = data,
+          trait = "trait",
+          site = "unit",
+          family_id_vec = rep(0L, nrow(data)),
+          link_id_vec = rep(0L, nrow(data))
+        )
+      }),
+      regexp = "ordinary unit-tier|ordinary `latent\\(\\)` only|does not support|LV-07",
+      info = keyword
+    )
+  }
+})

@@ -150,9 +150,9 @@ The random-effects block decomposes as:
   centred at zero, and the diagonal $\Psi$ companion remains the
   ordinary `latent()` companion. Current support is C1 partial: R
   validates the `lv` formula, builds unit-level `X_lv_B`, estimates
-  `alpha_lv_B`, reports `B_lv_unit`, and tests a small Gaussian
-  smoke/algebra fit plus pure-binomial standard-link trait-scale
-  `B_lv` recovery/algebra fits. This is not yet interval evidence;
+  `alpha_lv_B`, reports `B_lv_unit`, and tests focused native Gaussian
+  recovery plus pure-binomial standard-link trait-scale `B_lv`
+  recovery/algebra fits. This is not yet interval evidence;
   `REML = TRUE`, unsupported non-Gaussian families,
   unsupported tiers, and fixed/LV predictor overlap remain rejected
   until the corresponding validation rows move.

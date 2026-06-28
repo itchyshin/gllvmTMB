@@ -1,8 +1,8 @@
 # Design 73 -- Predictor-Informed Latent Scores
 
 **Status:** C1 ordinary unit-tier parser + TMB support for Gaussian and
-pure binomial logit/probit/cloglog fits; Gaussian recovery and interval
-calibration still pending.
+pure binomial logit/probit/cloglog fits; focused native TMB Gaussian
+recovery is partial, and interval calibration is still pending.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
@@ -146,7 +146,7 @@ but C1 exposes only ordinary unit-tier support.
 
 | Tier / source | Eventual target | C1 behaviour |
 |---|---|---|
-| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian and binomial logit/probit/cloglog `engine = "julia"` point route; smoke/algebra evidence and standard-link binary latent-predictor trait-effect recovery, not interval calibration |
+| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian and binomial logit/probit/cloglog `engine = "julia"` point route; smoke/algebra evidence, focused native Gaussian recovery, and standard-link binary latent-predictor trait-effect recovery, not interval calibration |
 | `latent(... | unit_obs, lv = ~ x_obs)` | Within-unit/session latent-score mean | Reject as planned |
 | `latent(... | cluster, lv = ~ x_cluster)` | Cluster latent-score mean if a reduced-rank cluster slot is added | Reject as planned |
 | `latent(... | cluster2, lv = ~ x_cluster2)` | Not valid today; `cluster2` is diagonal-only | Reject |
@@ -189,15 +189,15 @@ navigation.
 - At that stage, runtime still aborted before TMB construction. Later
   C1 slices added `alpha_lv_B`, ADREPORT output, point-estimate
   extractors, and `ADREPORT(B_lv_unit)` standard-error extraction for
-  positive-definite `sdreport()` fits; recovery and interval evidence
-  remain pending.
+  positive-definite `sdreport()` fits; focused Gaussian recovery is now
+  partial, and interval evidence remains pending.
 
 ### 3. TMB PR
 
 Status: landed for the C1 ordinary Gaussian unit-tier smoke/algebra
-gate and the first pure-binomial logit/probit/cloglog trait-scale
-`B_lv` recovery/algebra gate. Broader recovery and interval evidence
-are still Stage 5 work.
+gate, focused native TMB Gaussian recovery, and the first pure-binomial
+logit/probit/cloglog trait-scale `B_lv` recovery/algebra gate. Interval
+coverage and broader family recovery are still Stage 5 work.
 
 - Add data flags and matrices: `use_lv_B`, `n_lv_B`, `X_lv_B`.
 - Add parameter matrix `alpha_lv_B[p_lv, d_B]`, unconstrained and
@@ -218,8 +218,9 @@ eta(o) += sum_k Lambda_B(t, k) * score_k;
 Status: landed as C1 extractors for the admitted Gaussian and
 pure-binomial standard-link R-side fits. Trait-scale `B_lv` standard
 errors are returned only when `se = TRUE` produces a positive-definite
-`sdreport()` for `ADREPORT(B_lv_unit)`; interval claims are deliberately
-withheld until recovery/calibration evidence lands.
+`sdreport()` for `ADREPORT(B_lv_unit)`. Focused Gaussian recovery and
+rank-1 delta-SE validation now exist, but interval claims are deliberately
+withheld until coverage/calibration evidence lands.
 
 - Add `extract_lv_effects(fit, level = "unit",
   type = "trait_effect")`.
@@ -283,7 +284,8 @@ CRAN-safe tests for the parser/API PR:
 
 Heavy tests under `GLLVMTMB_HEAVY_TESTS=1`:
 
-- Rank-1 and rank-2 Gaussian recovery of `B_lv`.
+- Rank-1 and rank-2 Gaussian recovery of `B_lv` and `Sigma`
+  (covered by `test-lv-gaussian-recovery.R`, with rank 2 heavy-gated).
 - Bernoulli single-trial binomial recovery and separation
   diagnostics.
 - Factor predictors and rare-level behaviour.

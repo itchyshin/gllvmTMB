@@ -72,7 +72,8 @@ discipline, adapted for the multi-trait stacked grammar):
 13. **Predictor-informed latent-score means**
     `latent(..., lv = ~ x)` (Design 73). **Status: partial / C1**:
     ordinary unit-tier Gaussian `latent()` now has parser, TMB smoke,
-    `B_lv_unit`, and point-extractor support; pure binomial
+    `B_lv_unit`, point-extractor support, and focused native recovery
+    evidence for rotation-stable `B_lv` and `Sigma`; pure binomial
     logit/probit/cloglog is admitted with small trait-scale `B_lv`
     recovery/algebra gates. Other non-Gaussian families, tier-expanded,
     structured-source, missing-response, and interval variants remain
@@ -171,11 +172,12 @@ design proves the target.
 
 Status: partial under `FG-18`, `RE-13`, `EXT-31`, `LV-01`, `LV-04`,
 and `LV-05`: ordinary Gaussian unit-tier smoke/algebra support exists
-with point extractors, and pure binomial logit/probit/cloglog has
-small trait-scale `B_lv` recovery/algebra gates. `LV-02`, `LV-03`, `LV-06`,
-and `LV-07` remain blocked for Gaussian recovery, missing-response,
-tier-expanded, and structured-source support; other non-Gaussian
-families remain blocked under `LV-05`.
+with point extractors, pure binomial logit/probit/cloglog has small
+trait-scale `B_lv` recovery/algebra gates, and `LV-02` now records
+focused native TMB Gaussian recovery of `B_lv` plus `Sigma`. `LV-03`,
+`LV-06`, and `LV-07` remain blocked for missing-response,
+tier-expanded, and structured-source support; interval calibration and
+other non-Gaussian families remain gated under `LV-02` and `LV-05`.
 
 ### `lambda_constraint` for confirmatory factor analysis
 

@@ -418,8 +418,8 @@ logit/probit/cloglog Julia bridge `X_lv` rows return point estimates
 only with `std.error = NA` and
 `uncertainty_status =
 "julia_bridge_point_estimate_only_no_ci_validation"`. Intervals are not
-admitted until the recovery/calibration gates in `LV-02` and the named
-Julia bridge CI rows pass.
+admitted until the Gaussian coverage/calibration follow-up to `LV-02`
+and the named Julia bridge CI rows pass.
 
 #### `getLoadings(fit, level = "unit", rotate = c("none", "varimax", "promax"))`
 

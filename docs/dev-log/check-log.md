@@ -20427,3 +20427,137 @@ Consistency scan:
   -> REVIEWED; new argument, capability column, gate IDs, point-only labels,
   and component names are present in the expected source/help/design/test
   surfaces.
+
+2026-06-28 - Design 73 LV-02 native Gaussian recovery gate
+
+Context:
+
+- Work happened in clean worktree `/private/tmp/gllvmtmb-lv-native-gaussian`
+  on branch `codex/lv-native-gaussian-validation-20260628`, not the dirty
+  Dropbox checkout.
+- `git worktree add -b codex/lv-native-gaussian-validation-20260628 /private/tmp/gllvmtmb-lv-native-gaussian origin/main`
+  -> PASS; clean worktree based on `origin/main` at `791f2abc`.
+- Implemented the first focused native TMB Gaussian recovery gate for ordinary
+  unit-tier Design 73 predictor-informed latent scores. This moves `LV-02`
+  from `blocked` to `partial`, not `covered`.
+
+Coordination / lane checks:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; one open PR: #564
+  `claude/xlv-bridge-closeout`, non-draft, `mergeStateStatus = CLEAN`,
+  updated `2026-06-27T00:20:44Z`.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> REVIEWED; no output, no recent local branch collision found.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "Design 73 OR LV-02 OR latent lv OR predictor-informed latent" --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; broader tracker hits were #526, #348, #346, #349, and #340;
+  no dedicated LV-02 issue was found or closed.
+
+Implemented:
+
+- Added `tests/testthat/test-lv-gaussian-recovery.R` with the symbolic
+  alignment table for `z_i = x_i alpha + e_i`,
+  `B_lv = Lambda alpha'`, and `Sigma_unit = Lambda Lambda' + Psi`.
+- The CRAN-safe rank-1 DGP checks convergence, positive-definite
+  `sdreport()`, finite `ADREPORT(B_lv_unit)` SEs, extractor/report SE
+  agreement, independent manual delta-method SEs for `B_lv`, primary
+  trait-scale `B_lv` recovery, secondary total-`Sigma` recovery, and finite
+  non-negative `Psi`.
+- The heavy rank-2 DGP checks rotation-stable `B_lv` and `Sigma` recovery
+  while deliberately avoiding raw `alpha` or raw `Lambda` as pass/fail targets.
+- Updated `NEWS.md`, `docs/design/01-formula-grammar.md`,
+  `docs/design/03-likelihoods.md`, `docs/design/04-random-effects.md`,
+  `docs/design/05-testing-strategy.md`,
+  `docs/design/06-extractors-contract.md`,
+  `docs/design/35-validation-debt-register.md`,
+  `docs/design/61-capability-status.md`, and
+  `docs/design/73-predictor-informed-latent-scores.md` so they say focused
+  Gaussian recovery is partial while interval calibration, Bernoulli
+  single-trial depth, missing responses, other non-Gaussian families,
+  mixed-family rows, source-specific `lv`, Julia CIs, and broad parity remain
+  gated.
+- Recounted the validation register with the status-token scan below:
+  213 rows, 173 covered, 30 partial, 0 opt-in, and 10 blocked.
+
+Checks:
+
+- `air format tests/testthat/test-lv-gaussian-recovery.R`
+  -> PASS; no output.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-gaussian-recovery", reporter = "summary")'`
+  -> PASS; `lv-gaussian-recovery: ................S`, with the heavy rank-2
+  test skipped behind `GLLVMTMB_HEAVY_TESTS=1`.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "lv-gaussian-recovery", reporter = "summary")'`
+  -> PASS; `lv-gaussian-recovery: .............................`.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> PASS with 18 live-Julia skips because `{JuliaCall}` is not installed and
+  the expected once-per-session Julia-bridge `Psi` warning.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found.`
+- `git diff --check`
+  -> PASS.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> FAIL in the full test suite: 20 failures, 17 warnings, 820 skips,
+  3615 passes. Failures were existing phylo/tree rows requiring `{MCMCglmm}`
+  in the built-check environment (for example `test-augmented-lhs-guard.R`,
+  `test-canonical-keywords.R`, `test-formula-grammar-smoke.R`,
+  `test-keyword-grid.R`, `test-ordinal-probit.R`,
+  `test-phylo-latent-slope-gaussian.R`, and `test-traits-keyword.R`), not the
+  new LV Gaussian recovery test.
+- `mkdir -p /private/tmp/gllvmtmb-check-lib && R_LIBS_USER=/private/tmp/gllvmtmb-check-lib Rscript --vanilla -e '.libPaths(c(Sys.getenv("R_LIBS_USER"), .libPaths())); install.packages("MCMCglmm", repos = "https://cloud.r-project.org")'`
+  -> PASS; installed binary `{MCMCglmm}` plus dependencies into the temporary
+  library.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m 2.6s with 0 errors, 0 warnings, and
+  0 notes. `devtools::check()` still reported the local roxygen2 8.0.0 vs
+  declared 7.3.2 mismatch and therefore did not re-document; no roxygen/Rd
+  files changed in this slice.
+- `printf 'rows='; rg '^\| [A-Z]+-[0-9A-Z]+ \|' docs/design/35-validation-debt-register.md | wc -l; printf 'covered='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `covered' docs/design/35-validation-debt-register.md | wc -l; printf 'partial='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `partial' docs/design/35-validation-debt-register.md | wc -l; printf 'blocked='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `blocked' docs/design/35-validation-debt-register.md | wc -l; printf 'opt-in='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `opt-in' docs/design/35-validation-debt-register.md | wc -l`
+  -> REVIEWED; `rows=213`, `covered=173`, `partial=30`, `blocked=10`,
+  `opt-in=0`.
+
+Consistency scans:
+
+- `rg -n 'not yet a recovery-validated|not yet Gaussian recovery|not Gaussian recovery|Gaussian recovery.*pending|small Gaussian.*smoke/algebra|no Gaussian recovery grid|recovery and interval evidence\s+remain pending|LV-02.*blocked' NEWS.md docs/design docs/dev-log/known-limitations.md README.md ROADMAP.md`
+  -> PASS; no stale hits after the design-doc updates.
+- `rg -n 'lv =|predictor-informed|latent-score mean|B_lv|LV-0[1-7]|FG-18|RE-13|EXT-31' NEWS.md docs/design README.md ROADMAP.md docs/dev-log/known-limitations.md tests/testthat/test-lv-gaussian-recovery.R`
+  -> REVIEWED; expected hits show `LV-02` as partial, `LV-03` / `LV-06` /
+  `LV-07` as blocked, and source-specific `lv` still rejected.
+- `rg -n 'complete|covered|validated|interval calibration|coverage|wald_sdreport_no_ci_validation|julia_bridge_point_estimate_only_no_ci_validation|Bernoulli single-trial|mixed-family|phylo_latent\([^\n]*lv|spatial_latent\([^\n]*lv|kernel_latent\([^\n]*lv' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/design/04-random-effects.md docs/design/06-extractors-contract.md`
+  -> REVIEWED; the new Gaussian recovery language is partial/gated, Wald SEs
+  remain labelled no-CI-validation, Julia `X_lv` stays point-only, and
+  source-specific / mixed-family `lv` rows remain rejected or planned.
+
+Not run:
+
+- Full standalone `devtools::test()` outside the successful R CMD check,
+  `devtools::document()`, full `pkgdown::build_articles(lazy = FALSE)`,
+  DRAC/SLURM coverage arrays, and any GLLVM.jl PR #127 fix. This slice is the
+  native TMB Gaussian recovery gate, not interval calibration, phylo grammar,
+  or the held R-bridge branch merge.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-native-gaussian-recovery.md`.
+
+Post-rebase coordination refresh:
+
+- `gh pr view 564 --repo itchyshin/gllvmTMB --json state,mergedAt,mergeCommit,url,number,title`
+  -> PASS; #564 is `MERGED` at `2026-06-28T13:29:59Z` with merge commit
+  `aa5d1980c36ceab93b10942145249d14472985d8`.
+- `git fetch origin main`
+  -> PASS; `origin/main` advanced from `791f2abc` to `aa5d1980`.
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; `[]`, no open PRs before publishing the native Gaussian LV-02
+  branch.
+- `git rebase origin/main`
+  -> PASS; native Gaussian LV-02 branch rebased cleanly from `29201a65` to
+  `034ac679` on top of #564's merge commit.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-gaussian-recovery", reporter = "summary")'`
+  -> PASS after rebase; `lv-gaussian-recovery: ................S`, with the
+  heavy rank-2 test skipped behind `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS after rebase; `No problems found.`
+- `git diff --check`
+  -> PASS after rebase.

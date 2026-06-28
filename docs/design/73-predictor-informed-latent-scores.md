@@ -2,7 +2,8 @@
 
 **Status:** C1 ordinary unit-tier parser + TMB support for Gaussian and
 pure binomial logit/probit/cloglog fits; focused native TMB Gaussian
-recovery is partial, and interval calibration is still pending.
+recovery is partial, and a dev-only Wald coverage harness now exists,
+but interval calibration is still pending until production reps finish.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
@@ -253,6 +254,44 @@ no fixed-effect `X`, no response mask, and `ci_method = "none"`.
   masks plus `X_lv`, mixed-family `X_lv`, and any CI/profile/bootstrap
   route remain gated under `JUL-01`, `JUL-01A`, and `LV-01`.
 
+### 4b. Gaussian Wald coverage campaign
+
+Status: harness/pilot scaffold added, production evidence pending. The
+dev-only runner `dev/lv-wald-coverage.R` defines four ordinary Gaussian
+cells:
+
+| Cell | Target |
+|---|---|
+| `gaussian-d1-n72-t3` | Rank-1, small `n`, three traits |
+| `gaussian-d1-n144-t3` | Rank-1, larger `n`, three traits |
+| `gaussian-d2-n96-t4` | Rank-2, small/moderate `n`, four traits |
+| `gaussian-d2-n160-t4` | Rank-2, larger `n`, four traits |
+
+ADEMP mapping for this slice:
+
+- Aim: estimate empirical Wald coverage for the trait-scale
+  `B_lv = Lambda alpha^T` entries from native TMB
+  `ADREPORT(B_lv_unit)`.
+- Data-generating mechanism: complete-response Gaussian ordinary
+  unit-tier `latent(..., lv = ~ x)`, fixed known `Lambda`, `alpha`,
+  and `Psi`, with `e_i ~ N(0, I_K)` and one unit-level predictor `x`.
+- Estimands: `B_lv` entries are primary; fit health and failure rates
+  are reported alongside them. Raw `alpha` and raw `Lambda` are not
+  coverage targets.
+- Method: refit the matching `gllvmTMB()` model with `se = TRUE` and
+  compute nominal 95% Wald intervals from extractor `estimate` and
+  `std.error`.
+- Performance: coverage, coverage MCSE, bias, bias MCSE, RMSE,
+  convergence, positive-definite Hessian, `sdreport()` availability,
+  CI availability, and wall time.
+
+Production admission requires at least 500 reps per cell, one recorded
+seed per replicate/SLURM array task, per-replicate RDS outputs,
+`sessionInfo()`, and failed-fit denominators. With 500 eligible reps,
+nominal 95% coverage has MCSE about 0.01; a 0.92--0.98 band is the
+initial audit range. Passing the dev harness or a one-rep smoke is not
+coverage evidence.
+
 ### 5. Public docs/article PR
 
 Only after C1 recovery evidence, add a Tier-1 article:
@@ -286,6 +325,11 @@ Heavy tests under `GLLVMTMB_HEAVY_TESTS=1`:
 
 - Rank-1 and rank-2 Gaussian recovery of `B_lv` and `Sigma`
   (covered by `test-lv-gaussian-recovery.R`, with rank 2 heavy-gated).
+- Gaussian Wald coverage harness checks for the grid layout, one
+  recorded seed per task, failed-fit denominators, MCSE formulas, and an
+  opt-in one-fit smoke (`test-lv-wald-coverage-harness.R`). The
+  production 500-rep run is still external evidence, not a package-test
+  shortcut.
 - Bernoulli single-trial binomial recovery and separation
   diagnostics.
 - Factor predictors and rare-level behaviour.

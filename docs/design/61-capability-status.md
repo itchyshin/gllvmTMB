@@ -1,14 +1,14 @@
 # 61 -- Capability Status and Dependency-Ordered Work-List
 
-**Status date:** 2026-06-24
+**Status date:** 2026-06-28
 **Scope:** status synthesis only. The validation-debt register
 (`docs/design/35-validation-debt-register.md`) remains the row-level source
 of truth; this document is the readable planning layer.
 
-## 2026-06-24 Truth Sync
+## 2026-06-28 Truth Sync
 
-The current register tally is **211 rows: 173 covered, 22 partial,
-0 opt-in, and 16 blocked**. Five covered rows still include explicit
+The current register tally is **213 rows: 173 covered, 30 partial,
+0 opt-in, and 10 blocked**. Five covered rows still include explicit
 partial sub-scope caveats (`EXT-04`, `EXT-13`, `DIA-11`, `DIA-12`,
 `MIS-34`), so public prose must cite the covered regime instead of
 generalising the row.
@@ -39,11 +39,13 @@ preflight, TMB score-mean plumbing, `B_lv_unit = Lambda alpha^T`, and
 point-estimate extractors. Pure binomial logit/probit/cloglog fits are
 now admitted through the same score-mean path with small trait-scale
 `B_lv` recovery/algebra gates. The validation register records `FG-18`,
-`RE-13`, `EXT-31`, `LV-01`, `LV-04`, and `LV-05` as partial rows;
-`LV-02`, `LV-03`, `LV-06`, and `LV-07` remain blocked. Gaussian
-recovery, Bernoulli single-trial depth, missing-response compatibility,
-interval calibration, other non-Gaussian families/links, tier-expanded
-/ structured-source support, and Julia bridge parity are still gated.
+`RE-13`, `EXT-31`, `LV-01`, `LV-02`, `LV-04`, and `LV-05` as partial
+rows; `LV-03`, `LV-06`, and `LV-07` remain blocked. Focused native TMB
+Gaussian recovery now exists for rotation-stable `B_lv` and `Sigma`
+targets, but Gaussian interval calibration, Bernoulli single-trial depth,
+missing-response compatibility, other non-Gaussian families/links,
+tier-expanded / structured-source support, and Julia bridge parity are
+still gated.
 
 ## Bottom Line
 
@@ -129,7 +131,7 @@ n_traits` is valid and tested, while `d > n_traits` aborts.
 | Interval coverage | CI-08 / CI-10 remain separate from point recovery and must not be implied by slope examples. | Keep slope articles point-estimate/recovery framed until coverage gates pass. |
 | Delta / hurdle covariance | Two response scales make a single latent residual or slope covariance undefined. | Derivation first; no article or runtime admission in this slice. |
 | Ordinary behavioural random regression | The Gaussian Appendix-B-style target is now public as the individual-level article; broader non-Gaussian augmented `unique()` support remains guarded. | Decide whether non-Gaussian augmented `unique()` should stay guarded or get a separate admission grid. |
-| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is the source-of-truth spec. Ordinary Gaussian unit-tier `lv` formulas now validate, build `X_lv_B`, fit through the C1 TMB path with `alpha_lv_B`, report `B_lv_unit`, and expose extractor/ordination components. `extract_lv_effects()` returns trait-scale `B_lv` SEs from `ADREPORT(B_lv_unit)` only when `se = TRUE` yields a positive-definite `sdreport()`. Pure binomial logit/probit/cloglog is admitted on the same ordinary unit-tier path with trait-scale `B_lv` recovery/algebra evidence. The R bridge now admits a narrow Gaussian and binomial logit/probit/cloglog `engine = "julia"` point route for complete-response `latent(..., unique = FALSE, lv = ~ x)` fits with no fixed-effect `X`, no response mask, and no CIs; it passes retained `X_lv`, `lv_effects`, `alpha_lv`, `scores_mean`, and `scores_innovation` payloads through `test-julia-bridge.R`. This is still partial: no interval calibration, no Bernoulli single-trial depth, no other non-Gaussian families, no Julia `X_lv` CIs, and no broad Julia bridge parity. | Next slice is Gaussian recovery for `B_lv`, `Sigma`, and `Psi`, plus Bernoulli binary depth and missing-response/factor-runtime smoke before any broader docs article. |
+| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is the source-of-truth spec. Ordinary Gaussian unit-tier `lv` formulas now validate, build `X_lv_B`, fit through the C1 TMB path with `alpha_lv_B`, report `B_lv_unit`, and expose extractor/ordination components. `extract_lv_effects()` returns trait-scale `B_lv` SEs from `ADREPORT(B_lv_unit)` only when `se = TRUE` yields a positive-definite `sdreport()`. Focused native TMB Gaussian recovery now checks `B_lv`, `Sigma = Lambda Lambda^T + Psi`, finite `Psi`, and rank-1 manual delta SEs; pure binomial logit/probit/cloglog is admitted on the same ordinary unit-tier path with trait-scale `B_lv` recovery/algebra evidence. The R bridge now admits a narrow Gaussian and binomial logit/probit/cloglog `engine = "julia"` point route for complete-response `latent(..., unique = FALSE, lv = ~ x)` fits with no fixed-effect `X`, no response mask, and no CIs; it passes retained `X_lv`, `lv_effects`, `alpha_lv`, `scores_mean`, and `scores_innovation` payloads through `test-julia-bridge.R`. This is still partial: no 500-rep interval calibration, no Bernoulli single-trial depth, no missing-response compatibility, no other non-Gaussian families, no Julia `X_lv` CIs, and no broad Julia bridge parity. | Next slice is Gaussian `B_lv` coverage with MCSE and failed-fit denominators, plus Bernoulli binary depth and missing-response/factor-runtime smoke before any broader docs article. |
 
 ## Status-Scan Handles
 

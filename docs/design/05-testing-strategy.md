@@ -144,8 +144,9 @@ Design 73 predictor-informed latent scores (`latent(..., lv = ~ x)`)
 are C1 partial for ordinary unit-tier Gaussian and pure binomial
 logit/probit/cloglog fits. The first implementation adds parser
 acceptance/rejection tests, small TMB smokes, and narrow standard-link
-binary trait-effect recovery
-gate before any broad recovery claim. The minimum C1 contract is: long
+binary trait-effect recovery gate. Focused native TMB Gaussian recovery
+is now covered by `test-lv-gaussian-recovery.R`, but interval coverage
+and broad family recovery remain separate gates. The minimum C1 contract is: long
 and `traits(...)` wide ordinary unit-tier Gaussian acceptance; pure
 binomial logit/probit/cloglog long-form acceptance; `lv = ~ x` equivalence to
 `lv = ~ 0 + x`; rejection

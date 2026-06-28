@@ -20561,3 +20561,100 @@ Post-rebase coordination refresh:
   -> PASS after rebase; `No problems found.`
 - `git diff --check`
   -> PASS after rebase.
+
+## 2026-06-28 08:46 MDT -- LV-02 Gaussian Wald coverage harness
+
+Scope:
+
+- Added the dev-only native TMB ordinary Gaussian Wald coverage harness for
+  `latent(..., lv = ~ x)`: `dev/lv-wald-coverage.R`.
+- Added harness tests for grid/task seeds, failed-fit denominators, MCSE
+  formulas, and an opt-in live fit smoke:
+  `tests/testthat/test-lv-wald-coverage-harness.R`.
+- Updated Design 73, the validation-debt register, and capability status to
+  state that coverage infrastructure exists but 500-rep calibration evidence
+  does not.
+
+Coordination / pre-edit lane check:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; `[]`, no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> REVIEWED; recent commits were the just-merged LV slices:
+  `3c063aa2`, `412dd172`, `aa5d1980`, `556bf6aa`.
+- `git fetch origin main`
+  -> PASS.
+
+Checks:
+
+- `air format dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> PASS; no output.
+- `Rscript --vanilla -e 'invisible(parse("dev/lv-wald-coverage.R")); invisible(parse("tests/testthat/test-lv-wald-coverage-harness.R")); cat("parse-ok\n")'`
+  -> PASS; `parse-ok`.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; `lv-wald-coverage-harness: ..................S`, with the live
+  fit smoke skipped because `GLLVMTMB_LV_WALD_SMOKE` was not set.
+- `GLLVMTMB_LV_WALD_SMOKE=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; `lv-wald-coverage-harness: ........................`.
+- `Rscript --vanilla - <<'RS' ... source('dev/lv-wald-coverage.R'); lv_wald_coverage_cli(c('--mode=preflight', '--n-reps=2', '--seed-base=20260628', ...)); lv_wald_coverage_cli(c('--mode=cell', '--cell=gaussian-d1-n72-t3', '--n-reps=2', ...)); ... RS`
+  -> PASS; temp pilot wrote the plan RDS/CSV, two per-replicate RDS files,
+  long RDS/CSV, summary RDS/CSV, and `session-info.txt`. Summary had
+  `n_attempted = 2`, `n_eligible = 2`, `coverage = 1`, nominal coverage MCSE
+  `0.1541104`, and `production_n_reps_met = FALSE` for all three trait
+  targets. This is a file-pipeline smoke only, not calibration evidence.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-gaussian-recovery", reporter = "summary")'`
+  -> PASS; `lv-gaussian-recovery: ................S`, with the heavy rank-2
+  test skipped behind `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found.`
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m 33.8s with 0 errors, 0 warnings, and
+  0 notes. As in the prior slice, `devtools::check()` reported the local
+  roxygen2 8.0.0 vs declared 7.3.2 mismatch and did not re-document; no
+  roxygen/Rd files were intended in this dev-harness slice.
+
+Consistency scans:
+
+- `rg -n 'LV-02.*covered|latent\(lv\).*complete|coverage (passed|validated|calibrated)|calibrated CIs|500-rep.*(passed|complete|validated)' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> REVIEWED; expected hits only: Design 61 says no 500-rep calibration
+  evidence, and the register's general pre-existing rule says scientific
+  coverage passed is not the same as release readiness.
+- `rg -n 'wald_sdreport_no_ci_validation|infrastructure, not coverage calibration|not coverage evidence|not covered|partial|blocked|500-rep|MCSE|failed-fit denominators' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> REVIEWED; expected hits show LV rows still partial/blocked, Wald SEs still
+  labelled no-CI-validation, and the coverage harness explicitly framed as
+  infrastructure rather than calibration evidence.
+- `printf 'rows='; rg '^\| [A-Z]+-[0-9A-Z]+ \|' docs/design/35-validation-debt-register.md | wc -l; printf 'covered='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `covered' docs/design/35-validation-debt-register.md | wc -l; printf 'partial='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `partial' docs/design/35-validation-debt-register.md | wc -l; printf 'blocked='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `blocked' docs/design/35-validation-debt-register.md | wc -l; printf 'opt-in='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `opt-in' docs/design/35-validation-debt-register.md | wc -l`
+  -> REVIEWED; `rows=213`, `covered=173`, `partial=30`, `blocked=10`,
+  `opt-in=0`.
+
+Not run:
+
+- The production Gaussian Wald coverage grid (`>= 500` reps/cell), profile or
+  bootstrap rescue intervals, DRAC/SLURM arrays, Bernoulli single-trial depth,
+  missing-response/factor-runtime cells, GLLVM.jl PR #127, and the held R
+  bridge branches. This slice adds the native TMB Gaussian Wald coverage
+  runner and pilot checks only.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-coverage-harness.md`.
+
+Post-report checks:
+
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-28-lv-wald-coverage-harness.md`
+  -> PASS.
+- `git diff --check`
+  -> PASS after the check-log and after-task edits.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS after the check-log and after-task edits;
+  `lv-wald-coverage-harness: ..................S`.
+- After a final seed-index robustness tweak in `dev/lv-wald-coverage.R`,
+  reran `air format dev/lv-wald-coverage.R`, `Rscript --vanilla -e
+  'invisible(parse("dev/lv-wald-coverage.R")); cat("parse-ok\n")'`,
+  `Rscript --vanilla -e 'devtools::test(filter =
+  "lv-wald-coverage-harness", reporter = "summary")'`, and
+  `git diff --check` -> all PASS.

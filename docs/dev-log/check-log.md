@@ -21111,6 +21111,55 @@ After-task report:
 
 - `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
 
+## 2026-06-29 -- LV Gaussian t-critical branch rebase check
+
+Scope:
+
+- rebased the queued ordinary Gaussian `latent(..., lv = ~ x)` Wald coverage
+  branch onto current `origin/main` after the Julia-bridge Poisson,
+  NB2/Gamma/Beta, and CI-reader branches had landed;
+- retained the local r500 native Gaussian evidence and the paired
+  `wald_z` / `wald_t_unit` comparator rows while keeping Julia bridge interval
+  calibration out of scope;
+- verified that the branch is PR-ready under the one-open-PR discipline.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --json number,title,headRefName,url,isDraft`
+  -> REVIEWED; no open gllvmTMB PRs.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md`
+  -> REVIEWED; only this Gaussian coverage stack and the already-merged CI
+  reader closeout had touched the check-log recently.
+
+Checks:
+
+- `git status --short --branch`
+  -> PASS; `codex/lv-gaussian-t-coverage-20260628` was clean and five commits
+  ahead of current `origin/main` after the rebase.
+- `rg -n '<<<<<<<|=======|>>>>>>>' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/check-log.md || true`
+  -> REVIEWED; the only hit was an older logged `git grep` command, not an
+  active conflict marker.
+- `git diff --check`
+  -> PASS; no whitespace errors.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; focused coverage-harness tests completed with 27 assertions and
+  one intentional opt-in fit-smoke skip.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m11.1s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+
+Not run:
+
+- `devtools::document()` and `pkgdown::check_pkgdown()`; the rebase changed no
+  roxygen, README, vignette, article, or pkgdown navigation files.
+- Binomial, non-Gaussian, mixed-family, mask, `X + X_lv`, source-specific
+  `lv`, or Julia bridge interval coverage grids.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
 ## 2026-06-28 -- LV Gaussian Wald local r500 coverage grid
 
 Scope:

@@ -4,8 +4,8 @@
 pure binomial logit/probit/cloglog fits; the R-to-Julia bridge also has
 point-only complete-response Poisson, NB2, Gamma, and Beta routes. Focused
 native TMB Gaussian recovery is partial, and a dev-only Wald coverage harness
-now exists, but interval calibration is still pending until production reps
-finish.
+now exists with normal-critical and unit-df t-critical comparator rows, but
+interval calibration is still pending until production reps finish.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
@@ -265,7 +265,8 @@ response mask, and `ci_method = "none"`.
 
 ### 4b. Gaussian Wald coverage campaign
 
-Status: harness/pilot scaffold added, production evidence pending. The
+Status: local r500 production-size evidence exists for the current ordinary
+Gaussian cells; public admission still needs branch audit/merge discipline. The
 dev-only runner `dev/lv-wald-coverage.R` defines four ordinary Gaussian
 cells:
 
@@ -300,6 +301,27 @@ seed per replicate/SLURM array task, per-replicate RDS outputs,
 nominal 95% coverage has MCSE about 0.01; a 0.92--0.98 band is the
 initial audit range. Passing the dev harness or a one-rep smoke is not
 coverage evidence.
+
+The 2026-06-28 local r500 run met that replicate bar for the four current
+ordinary Gaussian cells. It attempted 500 fits/cell, all optimizer-converged,
+and wrote the compact evidence artifacts under
+`docs/dev-log/artifacts/lv-wald-coverage/`:
+
+- `2026-06-28-local-r500-summary.csv`
+- `2026-06-28-local-r500-excluded-replicates.csv`
+- `2026-06-28-local-r500-t-vs-z.csv`
+
+All 28 target/method rows passed the 0.92--0.98 coverage band with
+coverage 0.9269--0.9610 and MCSE 0.0088--0.0119. The denominator audit
+is part of the evidence, not a side note: all optimizer runs converged,
+but non-positive-definite Hessian rows reduced `n_eligible` to 487 in
+`gaussian-d1-n72-t3`, 487 in `gaussian-d2-n96-t4`, and 479 in
+`gaussian-d2-n160-t4`; `gaussian-d1-n144-t3` retained all 500 eligible
+fits. The `wald_t_unit` comparator was never worse than `wald_z` in this
+grid and improved 12 of 14 target rows by 0.0020--0.0063. Profile or
+bootstrap rescue is therefore not required for these four ordinary
+Gaussian cells, but remains a separate inference slice if later cells
+under-cover.
 
 ### 5. Public docs/article PR
 
@@ -337,10 +359,16 @@ Heavy tests under `GLLVMTMB_HEAVY_TESTS=1`:
 - Rank-1 and rank-2 Gaussian recovery of `B_lv` and `Sigma`
   (covered by `test-lv-gaussian-recovery.R`, with rank 2 heavy-gated).
 - Gaussian Wald coverage harness checks for the grid layout, one
-  recorded seed per task, failed-fit denominators, MCSE formulas, and an
-  opt-in one-fit smoke (`test-lv-wald-coverage-harness.R`). The
-  production 500-rep run is still external evidence, not a package-test
-  shortcut.
+  recorded seed per task, failed-fit denominators, MCSE formulas,
+  normal-critical and unit-df t-critical comparator rows, and an opt-in
+  one-fit smoke (`test-lv-wald-coverage-harness.R`). The local r500
+  evidence artifacts are external validation evidence; the package tests
+  remain harness and smoke checks, not a shortcut for rerunning 2,000
+  fits on CRAN.
+- `dev/lv-wald-coverage-slurm.sh` writes/tests/submits the matching
+  one-seed-per-SLURM-array-task campaign and collects summaries after the
+  array finishes. The wrapper is launch infrastructure only; it is not
+  production evidence until the array output exists and is audited.
 - Bernoulli single-trial binomial recovery and separation
   diagnostics.
 - Factor predictors and rare-level behaviour.

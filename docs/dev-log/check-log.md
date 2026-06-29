@@ -20902,3 +20902,410 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-29-r-bridge-xlv-ci-reader.md`.
+
+## 2026-06-28 -- LV Gaussian Wald t comparator
+
+Scope:
+
+- added a small-N `wald_t_unit` comparator to the ordinary Gaussian
+  `latent(..., lv = ~ x)` `B_lv` coverage harness;
+- kept the existing normal-critical Wald row as `wald_z`;
+- kept the output long over `interval_method`, so the production grid can
+  compare methods without rerunning fits;
+- kept `LV-02` partial: this is harness plumbing, not coverage calibration.
+
+Implemented:
+
+- `dev/lv-wald-coverage.R` now defines `LV_WALD_INTERVAL_METHODS`,
+  validates `--interval-methods`, computes normal and unit-df t critical
+  values, records `critical_df` / `critical_df_source`, and summarises by
+  `cell_id`, `target_id`, and `interval_method`.
+- `tests/testthat/test-lv-wald-coverage-harness.R` now checks the critical
+  values, invalid-method guard, method-split denominators, and opt-in live
+  smoke shape.
+- `docs/design/35-validation-debt-register.md`,
+  `docs/design/61-capability-status.md`, and
+  `docs/design/73-predictor-informed-latent-scores.md` now state that the
+  comparator exists while interval calibration remains pending.
+
+Checks:
+
+- `air format dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> PASS.
+- `Rscript --vanilla -e 'invisible(parse("dev/lv-wald-coverage.R")); cat("parse-ok\n")'`
+  -> PASS.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS with the opt-in fit smoke skipped.
+- `GLLVMTMB_LV_WALD_SMOKE=true NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS.
+- Initial CLI smoke failed because raw `Rscript dev/lv-wald-coverage.R` could
+  not find an installed `gllvmTMB` package. Added `lv_wald_ensure_package()`
+  to load the source checkout with `pkgload::load_all(".")` when available.
+- `rm -rf /tmp/gllvmtmb-lv-t-coverage-smoke-seed2 && GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=gaussian-d1-n72-t3 --n-reps=1 --seed-base=2 --rep-start=1 --rep-end=1 --results-dir=/tmp/gllvmtmb-lv-t-coverage-smoke-seed2`
+  -> PASS; summary contained six rows, three `B_lv` targets by two interval
+  methods, with one converged / PD-Hessian / sdreport-ok / CI-available
+  replicate per method.
+- `git diff --check`
+  -> PASS.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m34.4s with 0 errors, 0 warnings, and
+  0 notes. As in the prior slices, `devtools::check()` did not re-document
+  because local roxygen2 8.0.0 differs from declared 7.3.2; no roxygen files
+  changed in this slice.
+- `rg -n 'wald_t_unit|interval_method|critical_df|passes_coverage_band|passes_wald_coverage_band' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> REVIEWED; expected implementation/test hits only.
+- `rg -n 'coverage (passed|validated|calibrated)|calibrated intervals|complete.*coverage|t-based.*(validated|covered|calibrated)|t-critical.*(validated|covered|calibrated)' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-06-28-lv-wald-coverage-harness.md`
+  -> REVIEWED; no new t-based calibration claim.
+- `rg -n '500-rep|500 reps|500L|production_n_reps|LV_WALD_DEFAULT_N_REPS|MCSE|failed-fit|denominator' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/after-task/2026-06-28-lv-wald-coverage-harness.md`
+  -> REVIEWED; production evidence still requires >=500 reps/cell and
+  denominator accounting.
+- `rg -n 'B_lv|alpha|Lambda|rotation|raw axis|ADREPORT|sdreport' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/design/35-validation-debt-register.md`
+  -> REVIEWED; interval target remains trait-scale `B_lv`.
+
+Not run:
+
+- The 500-rep coverage grid, profile/bootstrap rescue, binomial/non-Gaussian
+  interval grids, mixed-family rows, masks, `X + X_lv`, and source-specific
+  `lv` intervals.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-t-comparator.md`.
+
+## 2026-06-28 -- LV Gaussian Wald SLURM launcher
+
+Scope:
+
+- added `dev/lv-wald-coverage-slurm.sh`, a dev-only wrapper for the
+  ordinary Gaussian `latent(..., lv = ~ x)` `B_lv` coverage campaign;
+- default action is `SLURM_ACTION=test`, so login-node use writes the
+  preflight plan and sbatch file and calls `sbatch --test-only`;
+- submit action runs one seed per `SLURM_ARRAY_TASK_ID` through the existing
+  `dev/lv-wald-coverage.R --mode=task` path;
+- summary action collects finished replicate RDS files through the existing
+  `--mode=summarise` path;
+- `LV-02` remains partial: this is launch infrastructure, not coverage
+  evidence.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- 'dev/lv-wald-coverage*.sh' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/check-log.md docs/dev-log/after-task docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; known LV bridge / coverage commits only.
+
+Implementation:
+
+- `dev/lv-wald-coverage-slurm.sh` computes the array task count by sourcing
+  `dev/lv-wald-coverage.R` and calling `lv_wald_coverage_grid()`.
+- Default `N_REPS=500` over the four current Gaussian cells yields 2,000 array
+  tasks.
+- The generated sbatch file sets one CPU thread, records stdout/stderr under
+  `_slurm`, loads configured R/optional Julia modules when `module` exists, and
+  runs `GLLVMTMB_LV_WALD_COVERAGE_CLI=true Rscript --vanilla
+  dev/lv-wald-coverage.R --mode=task --task-id="$SLURM_ARRAY_TASK_ID" ...`.
+
+Checks:
+
+- `bash -n dev/lv-wald-coverage-slurm.sh`
+  -> PASS.
+- `rm -rf /tmp/gllvmtmb-lv-wald-slurm-write && SLURM_ACTION=write RESULTS_DIR=/tmp/gllvmtmb-lv-wald-slurm-write N_REPS=500 bash dev/lv-wald-coverage-slurm.sh`
+  -> PASS; wrote `lv-wald-coverage-plan.csv` / `.rds` and
+  `_slurm/lv-wald-coverage.sbatch`, with `n_reps=500`, `total_tasks=2000`,
+  and `array=1-2000`.
+- `Rscript --vanilla -e 'p <- read.csv("/tmp/gllvmtmb-lv-wald-slurm-write/lv-wald-coverage-plan.csv"); stopifnot(nrow(p) == 2000L, length(unique(p$task_id)) == 2000L, all(table(p$cell_id) == 500L)); print(table(p$cell_id)); cat("plan-ok\n")'`
+  -> PASS; each of `gaussian-d1-n72-t3`, `gaussian-d1-n144-t3`,
+  `gaussian-d2-n96-t4`, and `gaussian-d2-n160-t4` had exactly 500 tasks.
+- `rg -n '#SBATCH --array=1-2000|--mode=task|SLURM_ARRAY_TASK_ID|--n-reps="500"|--seed-base="20260628"|--interval-methods="wald_z,wald_t_unit"|--results-dir="/tmp/gllvmtmb-lv-wald-slurm-write"' /tmp/gllvmtmb-lv-wald-slurm-write/_slurm/lv-wald-coverage.sbatch`
+  -> PASS; generated sbatch routes one array task to one task-mode replicate
+  with both interval methods.
+- `rm -rf /tmp/gllvmtmb-lv-wald-slurm-write-small && SLURM_ACTION=write RESULTS_DIR=/tmp/gllvmtmb-lv-wald-slurm-write-small N_REPS=3 SLURM_ARRAY_LIMIT=2 bash dev/lv-wald-coverage-slurm.sh && rg -n '#SBATCH --array=1-12%2' /tmp/gllvmtmb-lv-wald-slurm-write-small/_slurm/lv-wald-coverage.sbatch`
+  -> PASS; concurrency cap is written as `%2`.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS with the opt-in live fit smoke skipped.
+- `git diff --check`
+  -> PASS.
+- `rg -n 'coverage (passed|validated|calibrated)|calibrated intervals|complete.*coverage|SLURM.*(passed|coverage evidence|calibrated)|t-based.*(validated|covered|calibrated)|t-critical.*(validated|covered|calibrated)' dev/lv-wald-coverage-slurm.sh docs/design/35-validation-debt-register.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/after-task/2026-06-28-lv-wald-slurm-launcher.md docs/dev-log/check-log.md`
+  -> REVIEWED; expected partial/gated wording and historical check-log
+  cautions only. No SLURM production or t-critical calibration claim was added.
+- `rg -n 'LV-02|one-seed|array task|SLURM_ACTION|500|2000|wald_z|wald_t_unit|partial|not coverage|not production evidence' dev/lv-wald-coverage-slurm.sh docs/design/35-validation-debt-register.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/after-task/2026-06-28-lv-wald-slurm-launcher.md docs/dev-log/check-log.md`
+  -> REVIEWED; expected launcher, plan-size, paired-interval-method, and
+  `LV-02` partial-boundary hits.
+
+Not run:
+
+- Totoro fit checks: non-interactive SSH failed with
+  `Permission denied (publickey,password)`.
+- DRAC submission: Fir, Nibi, and tamIA required keyboard-interactive MFA.
+- The 500-rep production array, profile/bootstrap rescue, binomial/non-Gaussian
+  intervals, mixed-family rows, masks, `X + X_lv`, and source-specific `lv`
+  intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun because this slice changes only dev shell launch infrastructure
+  plus design/dev-log prose. The immediately prior t-comparator branch check
+  passed 0 errors, 0 warnings, and 0 notes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-slurm-launcher.md`.
+
+## 2026-06-28 -- LV Gaussian Wald local pilot
+
+Scope:
+
+- ran a local, non-production pilot of the ordinary Gaussian
+  `latent(..., lv = ~ x)` `B_lv` coverage harness across all four current
+  Gaussian cells;
+- exercised both interval methods, `wald_z` and `wald_t_unit`;
+- verified output shape and denominator accounting before the >=500 reps/cell
+  production campaign;
+- kept `LV-02` partial: four reps/cell is pilot evidence only, not interval
+  calibration.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- dev/lv-wald-coverage.R dev/lv-wald-coverage-slurm.sh tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/check-log.md docs/dev-log/after-task docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; only this queued Gaussian coverage branch had touched the same
+  files recently.
+
+Checks:
+
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-pilot-20260628; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=gaussian-d1-n72-t3 --n-reps=4 --seed-base=20260628 --rep-start=1 --rep-end=4 --interval-methods=wald_z,wald_t_unit --results-dir=/tmp/gllvmtmb-lv-wald-local-pilot-20260628`
+  -> PASS; wrote six summary rows for the one-cell pilot, with four eligible
+  rows per target and method. `production_n_reps_met` was `FALSE`.
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true Rscript --vanilla - <<'RS' ... RS`
+  -> PASS; ran four reps/cell over all four cells and wrote long and summary
+  CSV/RDS files under `/tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628`.
+- `wc -l /tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-long.csv /tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-summary.csv`
+  -> PASS; 113 long CSV lines and 29 summary CSV lines, meaning 112 long rows
+  and 28 summary rows after headers.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-summary.csv"); cat("rows", nrow(s), "\n"); print(s[, c("cell_id", "target_id", "interval_method", "n_attempted", "n_converged", "n_eligible", "coverage", "coverage_mcse", "production_n_reps_met", "passes_coverage_band")], row.names = FALSE)'`
+  -> PASS; summary had 28 rows, all `n_attempted = 4`, all `n_converged = 4`,
+  and all `n_eligible = 4` except `gaussian-d2-n96-t4`, where replicate 3 had
+  `pd_hessian = FALSE` and per-target `n_eligible = 3`. All
+  `production_n_reps_met` and `passes_coverage_band` values were `FALSE`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-long.csv"); print(subset(x, !eligible | !ci_available | !fit_converged | !sdreport_ok)[, c("cell_id", "rep", "target_id", "interval_method", "fit_converged", "pd_hessian", "sdreport_ok", "ci_available", "eligible")], row.names = FALSE)'`
+  -> PASS; the only ineligible rows were `gaussian-d2-n96-t4`, replicate 3,
+  all four `B_lv` targets and both interval methods. The fit converged and
+  `sdreport_ok` was true, but `pd_hessian` was false, so CI rows were not
+  eligible.
+- `git diff --check`
+  -> PASS.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; the opt-in live fit smoke remained skipped.
+
+Not run:
+
+- The >=500 reps/cell production coverage campaign.
+- DRAC submission, profile/bootstrap rescue, binomial/non-Gaussian interval
+  grids, mixed-family rows, masks, `X + X_lv`, and source-specific `lv`
+  intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun because this slice changed only dev-log evidence prose. The
+  immediately prior t-comparator branch check passed R CMD check with 0
+  errors, 0 warnings, and 0 notes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-29 -- LV Gaussian t-critical branch rebase check
+
+Scope:
+
+- rebased the queued ordinary Gaussian `latent(..., lv = ~ x)` Wald coverage
+  branch onto current `origin/main` after the Julia-bridge Poisson,
+  NB2/Gamma/Beta, and CI-reader branches had landed;
+- retained the local r500 native Gaussian evidence and the paired
+  `wald_z` / `wald_t_unit` comparator rows while keeping Julia bridge interval
+  calibration out of scope;
+- verified that the branch is PR-ready under the one-open-PR discipline.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --json number,title,headRefName,url,isDraft`
+  -> REVIEWED; no open gllvmTMB PRs.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md`
+  -> REVIEWED; only this Gaussian coverage stack and the already-merged CI
+  reader closeout had touched the check-log recently.
+
+Checks:
+
+- `git status --short --branch`
+  -> PASS; `codex/lv-gaussian-t-coverage-20260628` was clean and five commits
+  ahead of current `origin/main` after the rebase.
+- `rg -n '<<<<<<<|=======|>>>>>>>' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/check-log.md || true`
+  -> REVIEWED; the only hit was an older logged `git grep` command, not an
+  active conflict marker.
+- `git diff --check`
+  -> PASS; no whitespace errors.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; focused coverage-harness tests completed with 27 assertions and
+  one intentional opt-in fit-smoke skip.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m11.1s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+
+Not run:
+
+- `devtools::document()` and `pkgdown::check_pkgdown()`; the rebase changed no
+  roxygen, README, vignette, article, or pkgdown navigation files.
+- Binomial, non-Gaussian, mixed-family, mask, `X + X_lv`, source-specific
+  `lv`, or Julia bridge interval coverage grids.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-28 -- LV Gaussian Wald local r500 coverage grid
+
+Scope:
+
+- ran the ordinary Gaussian native TMB `B_lv` Wald grid at 500 reps/cell
+  locally after Totoro remained unavailable non-interactively;
+- emitted both `wald_z` and `wald_t_unit` intervals for the four current
+  Gaussian cells;
+- committed compact evidence artifacts for the summary, excluded replicates,
+  and t-vs-z comparison;
+- moved `LV-02` to covered on this queued branch only; the broader LV arc rows
+  remain partial.
+
+Checks:
+
+- `ssh -o BatchMode=yes -o ConnectTimeout=12 totoro 'hostname; pwd; uname -a; command -v Rscript || true; command -v git || true; command -v julia || true'`
+  -> FAIL; `Permission denied (publickey,password)`.
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-r500-20260628; NOT_CRAN=true nice -n 10 Rscript --vanilla - <<'RS' ... RS`
+  -> PASS; completed in 26.94 minutes, attempted 500 fits/cell across the four
+  Gaussian cells, and emitted both `wald_z` and `wald_t_unit` rows.
+- `wc -l /tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-long.csv /tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv`
+  -> PASS; 14,001 long CSV lines and 29 summary CSV lines, meaning 14,000
+  long rows and 28 summary rows after headers.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv"); cat("summary rows", nrow(s), "\n"); cat("all_production", all(s$production_n_reps_met), "all_pass_band", all(s$passes_coverage_band), "\n"); print(aggregate(cbind(n_attempted,n_converged,n_eligible) ~ cell_id + interval_method, s, unique), row.names=FALSE); print(range(s$coverage)); print(range(s$coverage_mcse));'`
+  -> PASS; all rows had `production_n_reps_met = TRUE` and
+  `passes_coverage_band = TRUE`; coverage ranged 0.9269--0.9610 and MCSE
+  ranged 0.0088--0.0119.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-long.csv"); bad <- subset(x, !eligible | !ci_available | !fit_converged | !sdreport_ok | !pd_hessian); cat("long rows", nrow(x), "bad rows", nrow(bad), "\n"); print(aggregate(rep ~ cell_id + interval_method, unique(bad[, c("cell_id", "interval_method", "rep")]), length), row.names=FALSE); print(unique(bad[, c("cell_id", "rep", "rep_seed", "fit_converged", "pd_hessian", "sdreport_ok", "ci_available", "eligible", "fit_convergence_code", "max_gradient")]), row.names=FALSE)'`
+  -> PASS; all optimizer fits converged and all `sdreport_ok` values were
+  true, but non-PD Hessians made 47 fitted replicates ineligible: 13 in
+  `gaussian-d1-n72-t3`, 13 in `gaussian-d2-n96-t4`, and 21 in
+  `gaussian-d2-n160-t4`.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv"); z <- subset(s, interval_method == "wald_z")[, c("cell_id","target_id","coverage","coverage_mcse","n_eligible")]; t <- subset(s, interval_method == "wald_t_unit")[, c("cell_id","target_id","coverage","coverage_mcse","n_eligible")]; names(z)[3:5] <- c("coverage_z","mcse_z","n_eligible_z"); names(t)[3:5] <- c("coverage_t","mcse_t","n_eligible_t"); m <- merge(z, t, by=c("cell_id","target_id")); m$delta_t_minus_z <- m$coverage_t - m$coverage_z; print(m[order(m$cell_id, m$target_id), ], row.names=FALSE); print(summary(m$delta_t_minus_z)); cat("t better count", sum(m$delta_t_minus_z > 0), "equal", sum(m$delta_t_minus_z == 0), "worse", sum(m$delta_t_minus_z < 0), "\n")'`
+  -> PASS; `wald_t_unit` exceeded `wald_z` for 12 of 14 target rows, tied for
+  two, and was never worse. The improvement range was 0.0020--0.0063 where
+  positive.
+- `mkdir -p docs/dev-log/artifacts/lv-wald-coverage` plus generated artifact
+  extraction from `/tmp/gllvmtmb-lv-wald-local-r500-20260628`
+  -> PASS; wrote `2026-06-28-local-r500-summary.csv`,
+  `2026-06-28-local-r500-excluded-replicates.csv`, and
+  `2026-06-28-local-r500-t-vs-z.csv`.
+
+Not run:
+
+- DRAC submission; local r500 evidence was used because Totoro/DRAC remained
+  unavailable non-interactively.
+- Binomial/non-Gaussian interval grids, mixed-family rows, masks, `X + X_lv`,
+  Julia bridge CIs, and source-specific `lv` intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun yet after the evidence-doc updates.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-28 -- LV Gaussian Wald local r25 pilot
+
+Scope:
+
+- ran a larger local pilot of the ordinary Gaussian
+  `latent(..., lv = ~ x)` `B_lv` coverage harness across all four current
+  Gaussian cells;
+- used 25 reps/cell with both `wald_z` and `wald_t_unit`;
+- treated the output as fit-health / denominator / t-vs-z shape evidence only;
+- kept `LV-02` partial at the r25 pilot stage because the production bar
+  remained >=500 reps/cell with MCSE and failed-fit denominators. This r25
+  entry is superseded by the local r500 evidence entry.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- dev/lv-wald-coverage.R dev/lv-wald-coverage-slurm.sh tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/check-log.md docs/dev-log/after-task docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; only this queued Gaussian coverage branch had touched the same
+  files recently.
+
+Checks:
+
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-r25-20260628; NOT_CRAN=true Rscript --vanilla - <<'RS' ... RS`
+  -> PASS with one `sqrt(diag(cov))` NaN warning during sdreport extraction;
+  wrote long and summary CSV/RDS files under
+  `/tmp/gllvmtmb-lv-wald-local-r25-20260628`.
+- `wc -l /tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-long.csv /tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv`
+  -> PASS; 701 long CSV lines and 29 summary CSV lines, meaning 700 long rows
+  and 28 summary rows after headers.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv"); cat("summary rows", nrow(s), "\n"); print(s[, c("cell_id", "target_id", "interval_method", "n_attempted", "n_converged", "n_eligible", "coverage", "coverage_mcse", "production_n_reps_met", "passes_coverage_band")], row.names = FALSE)'`
+  -> PASS; all 28 target/method rows had `n_attempted = 25` and
+  `n_converged = 25`; rank-1 cells had `n_eligible = 25`, while both rank-2
+  cells had `n_eligible = 24` because one replicate per rank-2 cell was
+  non-PD. All `production_n_reps_met` and `passes_coverage_band` values
+  remained `FALSE`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-long.csv"); bad <- subset(x, !eligible | !ci_available | !fit_converged | !sdreport_ok | !pd_hessian); cat("long rows", nrow(x), "bad rows", nrow(bad), "\n"); print(unique(bad[, c("cell_id", "rep", "rep_seed", "interval_method", "fit_converged", "pd_hessian", "sdreport_ok", "ci_available", "eligible", "fit_convergence_code", "max_gradient")]), row.names = FALSE)'`
+  -> PASS; the only excluded replicates were `gaussian-d2-n96-t4` rep 3 and
+  `gaussian-d2-n160-t4` rep 6. Both optimizer runs had convergence code 0 and
+  `sdreport_ok = TRUE`, but `pd_hessian = FALSE`, so CI rows were not
+  eligible.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv"); z <- subset(s, interval_method == "wald_z")[, c("cell_id","target_id","coverage","n_eligible")]; t <- subset(s, interval_method == "wald_t_unit")[, c("cell_id","target_id","coverage","n_eligible")]; names(z)[3:4] <- c("coverage_z","n_eligible_z"); names(t)[3:4] <- c("coverage_t","n_eligible_t"); m <- merge(z, t, by=c("cell_id","target_id")); m$delta_t_minus_z <- m$coverage_t - m$coverage_z; print(m[order(m$cell_id, m$target_id), ], row.names = FALSE); print(table(m$delta_t_minus_z))'`
+  -> PASS; `wald_t_unit` exceeded `wald_z` for two of 14 target rows by 0.04,
+  and matched `wald_z` for the other 12 target rows. This is descriptive
+  pilot behaviour, not calibration evidence.
+
+Not run:
+
+- The >=500 reps/cell production coverage campaign.
+- DRAC/Totoro production execution: non-interactive Totoro SSH still failed
+  with `Permission denied (publickey,password)`.
+- Profile/bootstrap rescue, binomial/non-Gaussian interval grids,
+  mixed-family rows, masks, `X + X_lv`, and source-specific `lv` intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun in the r25 slice because it changed only dev-log evidence prose.
+  Full R CMD check was rerun after the later r500 evidence update.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-28 -- LV Gaussian Wald r500 branch full check
+
+Scope:
+
+- reran package-level validation on the queued Gaussian r500 branch after the
+  compact r500 artifacts, validation-register update, Design 73 update, and
+  after-task/check-log evidence updates landed;
+- this makes the branch ready for a PR once #569 clears the one-open-PR gate.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/artifacts/lv-wald-coverage dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> REVIEWED; only this queued Gaussian coverage branch had touched the
+  same files recently.
+
+Checks:
+
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m46.7s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+
+Not run:
+
+- `devtools::document()` and `pkgdown::check_pkgdown()`; no roxygen,
+  README, vignette, article, or pkgdown navigation file changed in this
+  queued evidence update.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.

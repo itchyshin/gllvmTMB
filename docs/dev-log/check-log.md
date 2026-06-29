@@ -21048,3 +21048,65 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-28-lv-wald-slurm-launcher.md`.
+
+## 2026-06-28 -- LV Gaussian Wald local pilot
+
+Scope:
+
+- ran a local, non-production pilot of the ordinary Gaussian
+  `latent(..., lv = ~ x)` `B_lv` coverage harness across all four current
+  Gaussian cells;
+- exercised both interval methods, `wald_z` and `wald_t_unit`;
+- verified output shape and denominator accounting before the >=500 reps/cell
+  production campaign;
+- kept `LV-02` partial: four reps/cell is pilot evidence only, not interval
+  calibration.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- dev/lv-wald-coverage.R dev/lv-wald-coverage-slurm.sh tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/check-log.md docs/dev-log/after-task docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; only this queued Gaussian coverage branch had touched the same
+  files recently.
+
+Checks:
+
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-pilot-20260628; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=gaussian-d1-n72-t3 --n-reps=4 --seed-base=20260628 --rep-start=1 --rep-end=4 --interval-methods=wald_z,wald_t_unit --results-dir=/tmp/gllvmtmb-lv-wald-local-pilot-20260628`
+  -> PASS; wrote six summary rows for the one-cell pilot, with four eligible
+  rows per target and method. `production_n_reps_met` was `FALSE`.
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true Rscript --vanilla - <<'RS' ... RS`
+  -> PASS; ran four reps/cell over all four cells and wrote long and summary
+  CSV/RDS files under `/tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628`.
+- `wc -l /tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-long.csv /tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-summary.csv`
+  -> PASS; 113 long CSV lines and 29 summary CSV lines, meaning 112 long rows
+  and 28 summary rows after headers.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-summary.csv"); cat("rows", nrow(s), "\n"); print(s[, c("cell_id", "target_id", "interval_method", "n_attempted", "n_converged", "n_eligible", "coverage", "coverage_mcse", "production_n_reps_met", "passes_coverage_band")], row.names = FALSE)'`
+  -> PASS; summary had 28 rows, all `n_attempted = 4`, all `n_converged = 4`,
+  and all `n_eligible = 4` except `gaussian-d2-n96-t4`, where replicate 3 had
+  `pd_hessian = FALSE` and per-target `n_eligible = 3`. All
+  `production_n_reps_met` and `passes_coverage_band` values were `FALSE`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-long.csv"); print(subset(x, !eligible | !ci_available | !fit_converged | !sdreport_ok)[, c("cell_id", "rep", "target_id", "interval_method", "fit_converged", "pd_hessian", "sdreport_ok", "ci_available", "eligible")], row.names = FALSE)'`
+  -> PASS; the only ineligible rows were `gaussian-d2-n96-t4`, replicate 3,
+  all four `B_lv` targets and both interval methods. The fit converged and
+  `sdreport_ok` was true, but `pd_hessian` was false, so CI rows were not
+  eligible.
+- `git diff --check`
+  -> PASS.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; the opt-in live fit smoke remained skipped.
+
+Not run:
+
+- The >=500 reps/cell production coverage campaign.
+- DRAC submission, profile/bootstrap rescue, binomial/non-Gaussian interval
+  grids, mixed-family rows, masks, `X + X_lv`, and source-specific `lv`
+  intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun because this slice changed only dev-log evidence prose. The
+  immediately prior t-comparator branch check passed R CMD check with 0
+  errors, 0 warnings, and 0 notes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.

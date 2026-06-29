@@ -66,6 +66,32 @@ test_that("latent lv top-level fit keeps ML and fixed-predictor boundaries loud"
     gllvmTMB(
       value ~ 0 +
         trait +
+        latent(0 + trait | unit, d = 1, lv = ~ mi(x)),
+      data = df,
+      unit = "unit",
+      trait = "trait",
+      control = gllvmTMBcontrol(se = FALSE)
+    ),
+    regexp = "mi|Missing"
+  )
+
+  expect_lv_reml_boundary_rejects(
+    gllvmTMB(
+      value ~ 0 +
+        trait +
+        latent(0 + trait | unit, d = 1, lv = ~ s(x)),
+      data = df,
+      unit = "unit",
+      trait = "trait",
+      control = gllvmTMBcontrol(se = FALSE)
+    ),
+    regexp = "smooth|s"
+  )
+
+  expect_lv_reml_boundary_rejects(
+    gllvmTMB(
+      value ~ 0 +
+        trait +
         latent(0 + trait | unit, d = 1, lv = ~ (1 | block)),
       data = df,
       unit = "unit",

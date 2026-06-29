@@ -21111,6 +21111,61 @@ After-task report:
 
 - `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
 
+## 2026-06-28 -- LV Gaussian Wald local r500 coverage grid
+
+Scope:
+
+- ran the ordinary Gaussian native TMB `B_lv` Wald grid at 500 reps/cell
+  locally after Totoro remained unavailable non-interactively;
+- emitted both `wald_z` and `wald_t_unit` intervals for the four current
+  Gaussian cells;
+- committed compact evidence artifacts for the summary, excluded replicates,
+  and t-vs-z comparison;
+- moved `LV-02` to covered on this queued branch only; the broader LV arc rows
+  remain partial.
+
+Checks:
+
+- `ssh -o BatchMode=yes -o ConnectTimeout=12 totoro 'hostname; pwd; uname -a; command -v Rscript || true; command -v git || true; command -v julia || true'`
+  -> FAIL; `Permission denied (publickey,password)`.
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-r500-20260628; NOT_CRAN=true nice -n 10 Rscript --vanilla - <<'RS' ... RS`
+  -> PASS; completed in 26.94 minutes, attempted 500 fits/cell across the four
+  Gaussian cells, and emitted both `wald_z` and `wald_t_unit` rows.
+- `wc -l /tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-long.csv /tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv`
+  -> PASS; 14,001 long CSV lines and 29 summary CSV lines, meaning 14,000
+  long rows and 28 summary rows after headers.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv"); cat("summary rows", nrow(s), "\n"); cat("all_production", all(s$production_n_reps_met), "all_pass_band", all(s$passes_coverage_band), "\n"); print(aggregate(cbind(n_attempted,n_converged,n_eligible) ~ cell_id + interval_method, s, unique), row.names=FALSE); print(range(s$coverage)); print(range(s$coverage_mcse));'`
+  -> PASS; all rows had `production_n_reps_met = TRUE` and
+  `passes_coverage_band = TRUE`; coverage ranged 0.9269--0.9610 and MCSE
+  ranged 0.0088--0.0119.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-long.csv"); bad <- subset(x, !eligible | !ci_available | !fit_converged | !sdreport_ok | !pd_hessian); cat("long rows", nrow(x), "bad rows", nrow(bad), "\n"); print(aggregate(rep ~ cell_id + interval_method, unique(bad[, c("cell_id", "interval_method", "rep")]), length), row.names=FALSE); print(unique(bad[, c("cell_id", "rep", "rep_seed", "fit_converged", "pd_hessian", "sdreport_ok", "ci_available", "eligible", "fit_convergence_code", "max_gradient")]), row.names=FALSE)'`
+  -> PASS; all optimizer fits converged and all `sdreport_ok` values were
+  true, but non-PD Hessians made 47 fitted replicates ineligible: 13 in
+  `gaussian-d1-n72-t3`, 13 in `gaussian-d2-n96-t4`, and 21 in
+  `gaussian-d2-n160-t4`.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv"); z <- subset(s, interval_method == "wald_z")[, c("cell_id","target_id","coverage","coverage_mcse","n_eligible")]; t <- subset(s, interval_method == "wald_t_unit")[, c("cell_id","target_id","coverage","coverage_mcse","n_eligible")]; names(z)[3:5] <- c("coverage_z","mcse_z","n_eligible_z"); names(t)[3:5] <- c("coverage_t","mcse_t","n_eligible_t"); m <- merge(z, t, by=c("cell_id","target_id")); m$delta_t_minus_z <- m$coverage_t - m$coverage_z; print(m[order(m$cell_id, m$target_id), ], row.names=FALSE); print(summary(m$delta_t_minus_z)); cat("t better count", sum(m$delta_t_minus_z > 0), "equal", sum(m$delta_t_minus_z == 0), "worse", sum(m$delta_t_minus_z < 0), "\n")'`
+  -> PASS; `wald_t_unit` exceeded `wald_z` for 12 of 14 target rows, tied for
+  two, and was never worse. The improvement range was 0.0020--0.0063 where
+  positive.
+- `mkdir -p docs/dev-log/artifacts/lv-wald-coverage` plus generated artifact
+  extraction from `/tmp/gllvmtmb-lv-wald-local-r500-20260628`
+  -> PASS; wrote `2026-06-28-local-r500-summary.csv`,
+  `2026-06-28-local-r500-excluded-replicates.csv`, and
+  `2026-06-28-local-r500-t-vs-z.csv`.
+
+Not run:
+
+- DRAC submission; local r500 evidence was used because Totoro/DRAC remained
+  unavailable non-interactively.
+- Binomial/non-Gaussian interval grids, mixed-family rows, masks, `X + X_lv`,
+  Julia bridge CIs, and source-specific `lv` intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun yet after the evidence-doc updates.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
 ## 2026-06-28 -- LV Gaussian Wald local r25 pilot
 
 Scope:

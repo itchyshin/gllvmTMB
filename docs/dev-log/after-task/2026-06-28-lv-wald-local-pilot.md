@@ -119,11 +119,49 @@ Checks:
   and matched `wald_z` for the other 12 target rows. This is descriptive
   pilot behaviour, not calibration evidence.
 
+## Addendum: Local r500 Coverage Grid
+
+The local machine completed the production-size ordinary Gaussian grid after
+Totoro remained unavailable non-interactively. This is now local validation
+evidence for the four current native TMB Gaussian `B_lv` cells; it is still
+subject to branch audit/merge discipline before any public wording changes.
+
+Checks and artifacts:
+
+- `ssh -o BatchMode=yes -o ConnectTimeout=12 totoro 'hostname; pwd; uname -a; command -v Rscript || true; command -v git || true; command -v julia || true'`
+  -> FAIL; `Permission denied (publickey,password)`.
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-r500-20260628; NOT_CRAN=true nice -n 10 Rscript --vanilla - <<'RS' ... RS`
+  -> PASS; completed in 26.94 minutes, attempted 500 fits/cell across the four
+  Gaussian cells, and emitted both `wald_z` and `wald_t_unit` rows.
+- `wc -l /tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-long.csv /tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv`
+  -> PASS; 14,001 long CSV lines and 29 summary CSV lines, meaning 14,000
+  long rows and 28 summary rows after headers.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv"); cat("summary rows", nrow(s), "\n"); cat("all_production", all(s$production_n_reps_met), "all_pass_band", all(s$passes_coverage_band), "\n"); print(aggregate(cbind(n_attempted,n_converged,n_eligible) ~ cell_id + interval_method, s, unique), row.names=FALSE); print(range(s$coverage)); print(range(s$coverage_mcse));'`
+  -> PASS; all rows had `production_n_reps_met = TRUE` and
+  `passes_coverage_band = TRUE`; coverage ranged 0.9269--0.9610 and MCSE
+  ranged 0.0088--0.0119.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-long.csv"); bad <- subset(x, !eligible | !ci_available | !fit_converged | !sdreport_ok | !pd_hessian); cat("long rows", nrow(x), "bad rows", nrow(bad), "\n"); print(aggregate(rep ~ cell_id + interval_method, unique(bad[, c("cell_id", "interval_method", "rep")]), length), row.names=FALSE); print(unique(bad[, c("cell_id", "rep", "rep_seed", "fit_converged", "pd_hessian", "sdreport_ok", "ci_available", "eligible", "fit_convergence_code", "max_gradient")]), row.names=FALSE)'`
+  -> PASS; all optimizer fits converged and all `sdreport_ok` values were
+  true, but non-PD Hessians made 47 fitted replicates ineligible: 13 in
+  `gaussian-d1-n72-t3`, 13 in `gaussian-d2-n96-t4`, and 21 in
+  `gaussian-d2-n160-t4`.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv"); z <- subset(s, interval_method == "wald_z")[, c("cell_id","target_id","coverage","coverage_mcse","n_eligible")]; t <- subset(s, interval_method == "wald_t_unit")[, c("cell_id","target_id","coverage","coverage_mcse","n_eligible")]; names(z)[3:5] <- c("coverage_z","mcse_z","n_eligible_z"); names(t)[3:5] <- c("coverage_t","mcse_t","n_eligible_t"); m <- merge(z, t, by=c("cell_id","target_id")); m$delta_t_minus_z <- m$coverage_t - m$coverage_z; print(m[order(m$cell_id, m$target_id), ], row.names=FALSE); print(summary(m$delta_t_minus_z)); cat("t better count", sum(m$delta_t_minus_z > 0), "equal", sum(m$delta_t_minus_z == 0), "worse", sum(m$delta_t_minus_z < 0), "\n")'`
+  -> PASS; `wald_t_unit` exceeded `wald_z` for 12 of 14 target rows, tied for
+  two, and was never worse. The improvement range was 0.0020--0.0063 where
+  positive.
+- Compact artifacts committed under
+  `docs/dev-log/artifacts/lv-wald-coverage/`:
+  `2026-06-28-local-r500-summary.csv`,
+  `2026-06-28-local-r500-excluded-replicates.csv`, and
+  `2026-06-28-local-r500-t-vs-z.csv`.
+
 ## Consistency Audit
 
-No user-facing documentation changed. The new report and check-log entry label
-the local runs as pilot evidence only, keep `LV-02` partial, and repeat that
->=500 reps/cell remain required before interval calibration can be claimed.
+No user-facing documentation changed. The early local runs are labelled as
+pilot evidence only; the later r500 run is labelled as local validation
+evidence for `LV-02`. The broader `latent(lv = ~ x)` arc remains incomplete, and
+non-Gaussian/binomial/mixed/source-specific intervals still require their own
+coverage evidence before interval claims can be widened.
 
 ## What Did Not Go Smoothly
 
@@ -148,11 +186,13 @@ production replicate threshold is not met.
 
 ## Known Limitations
 
-No production coverage grid was run. No DRAC array was submitted. No
-profile/bootstrap rescue, binomial interval grid, non-Gaussian interval grid,
-mixed-family row, mask row, `X + X_lv` row, or source-specific `lv` interval
-claim changed. The r25 pilot is too small for a coverage decision, and the
-non-PD rank-2 replicates need denominator reporting in the production run.
+No DRAC array was submitted, and no 3-OS PR/merge evidence exists for this
+queued branch yet. The local r500 grid covers the current ordinary Gaussian
+native TMB cells only; it does not cover binomial intervals, non-Gaussian
+intervals, mixed-family rows, masks, `X + X_lv`, Julia bridge CIs, or
+source-specific `lv`. Profile/bootstrap rescue was not needed for these four
+ordinary Gaussian Wald cells, but remains a separate slice if later cells
+under-cover.
 
 ## Next Actions
 

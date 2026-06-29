@@ -20828,3 +20828,77 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-28-r-bridge-nbgammabeta-xlv.md`.
+
+## 2026-06-29 - R bridge `X_lv` Wald CI reader plumbing
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-xlv-ci-reader-20260628`
+- `codex/xlv-ci-reader-rebase-probe-20260628`, rebased onto `origin/main`
+  at `1d15e01dcca30de27ab94f80024cd9b4c6f91d1f` after #569 merged.
+- Opened as draft PR #570:
+  <https://github.com/itchyshin/gllvmTMB/pull/570>.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --limit 20 --json number,title,headRefName,mergeStateStatus,isDraft,url`
+  -> REVIEWED; PR #570 was the only open gllvmTMB PR before this audit-only
+  entry.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md docs/dev-log/after-task`
+  -> PASS; no recent shared-file edits in those paths.
+
+Implemented:
+
+- Surfaced retained Julia bridge `X_lv` Wald payloads through
+  `extract_lv_effects()` as finite `std.error`, `lower`, and `upper` rows.
+- Kept `ci_method = "none"` point-only rows labelled
+  `julia_bridge_point_estimate_only_no_ci_validation`.
+- Labelled Wald reader rows `julia_bridge_wald_delta_method`.
+- Kept profile/bootstrap `X_lv` intervals, response masks with `X_lv`,
+  fixed-effect `X + X_lv`, mixed-family `X_lv`, source-specific `lv`, and
+  calibrated bridge interval coverage outside the claim.
+
+Checks:
+
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library; export GLLVM_JL_PATH=/private/tmp/gllvmjl-phylo-xlv; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", desc = "extract_lv_effects surfaces Wald X_lv CIs and preserves the NA path")'`
+  -> PASS; 15 assertions, 0 failures, 0 warnings, 0 skips.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library; export GLLVM_JL_PATH=/private/tmp/gllvmjl-phylo-xlv; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", desc = "gllvmTMB routes Gaussian X_lv Wald CIs through the Julia bridge")'`
+  -> PASS; 7 assertions, 0 failures, 0 warnings, 0 skips. Julia emitted the
+  known local `LogExpFunctionsInverseFunctionsExt` precompile error
+  (`UndefVarError: loglogistic not defined`) before continuing.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library; export GLLVM_JL_PATH=/private/tmp/gllvmjl-phylo-xlv; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> FAIL; full live-Julia check ran `test-julia-bridge.R` live parity tests
+  and failed on pre-existing grouped-dispersion df/native parity and Gaussian
+  TMB-vs-Julia Sigma/logLik comparisons. These failures are not introduced by
+  the CI-reader patch.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library; unset GLLVM_JL_PATH; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; CI-shaped R CMD check completed in 5m 10.1s with 0 errors,
+  0 warnings, and 0 notes. Local roxygen2 8.0.0 differs from declared 7.3.2,
+  so `devtools::check()` did not re-document during the check.
+- `export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library; Rscript --vanilla -e 'files <- c("man/extract_lv_effects.Rd", "man/gllvmTMB_julia-methods.Rd", "man/gllvm_julia_fit.Rd"); for (f in files) { cat("--", f, "--\n"); tools::checkRd(f) }; cat("rd-check-ok\n")'`
+  -> PASS; `rd-check-ok`.
+- `for f in man/extract_lv_effects.Rd man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd; do printf '%s\n' "--- $f"; tail -5 "$f"; printf 'keyword_count='; grep -c '^\\keyword' "$f" || true; done`
+  -> PASS; all files ended cleanly and `keyword_count=0`.
+- `rg -n 'coverage (passed|validated|calibrated)|calibrated CIs|500-rep.*(passed|complete|validated)|profile/bootstrap.*X_lv|julia_bridge_point_estimate_only_no_ci_validation|julia_bridge_wald_delta_method|Wald.*payload' R/extractors.R R/julia-bridge.R man/extract_lv_effects.Rd man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; expected hits only. Changed prose says Wald payloads are
+  reader output, not calibrated coverage, and profile/bootstrap `X_lv` rows
+  remain not admitted.
+- `git diff --check`
+  -> PASS before this audit-only docs entry.
+- `gh pr checks 570`
+  -> PASS before this audit-only docs entry; `ubuntu-latest (release)` passed
+  in 13m43s.
+
+Not run:
+
+- `devtools::document()`, because local roxygen2 8.0.0 differs from declared
+  7.3.2 and the branch already includes generated Rd.
+- `pkgdown::check_pkgdown()`, because this branch touches existing reference
+  topics but not pkgdown navigation or articles.
+- Coverage/calibration grids, profile/bootstrap `X_lv` intervals,
+  response-mask `X_lv`, fixed-effect `X + X_lv`, mixed-family `X_lv`,
+  source-specific `lv`, or phylo grammar support.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-r-bridge-xlv-ci-reader.md`.

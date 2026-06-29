@@ -22,8 +22,10 @@ trait linear-predictor scale. \code{"axis_effect"} returns raw
 \value{
 A data frame. For \code{type = "trait_effect"}, columns are \code{level},
 \code{trait}, \code{predictor}, \code{estimate}, \code{std.error}, \code{uncertainty_status}, and
-\code{validation_row}. For \code{type = "axis_effect"}, columns are \code{level}, \code{axis},
-\code{predictor}, \code{estimate}, \code{rotation_status}, and \code{validation_row}.
+\code{validation_row}; \code{engine = "julia"} fits requested with
+\code{ci_method = "wald"} additionally carry \code{lower} and \code{upper}. For
+\code{type = "axis_effect"}, columns are \code{level}, \code{axis}, \code{predictor},
+\code{estimate}, \code{rotation_status}, and \code{validation_row}.
 }
 \description{
 For a predictor-informed ordinary latent fit, \code{latent(..., lv = ~ x)} uses
@@ -38,11 +40,15 @@ preferred summary because raw latent axes are scale- and rotation-dependent.
 \details{
 For \code{type = "trait_effect"}, \code{std.error} is populated from TMB's
 delta-method \code{ADREPORT(B_lv_unit)} output when the fit carries a valid
-positive-definite \code{sdreport()}. Confidence intervals and coverage
-calibration remain validation-gated. Gaussian and binomial logit/probit/
-cloglog \code{engine = "julia"} bridge fits expose point estimates only; their
-\code{std.error} values are \code{NA} and \code{uncertainty_status} is
-\code{"julia_bridge_point_estimate_only_no_ci_validation"}.
+positive-definite \code{sdreport()}. Coverage calibration of the corresponding
+intervals remains validation-gated. For Gaussian, Poisson, NB2, Gamma, Beta,
+and binomial logit/probit/cloglog \code{engine = "julia"} bridge fits,
+\code{ci_method = "none"} exposes point estimates only (\code{std.error} is \code{NA} and
+\code{uncertainty_status} is \code{"julia_bridge_point_estimate_only_no_ci_validation"}),
+while \code{ci_method = "wald"} surfaces finite \code{std.error}, \code{lower}, and \code{upper}
+(\code{uncertainty_status} is \code{"julia_bridge_wald_delta_method"}). Those Julia
+bridge values are Wald payload reader output, not coverage-calibrated
+intervals.
 }
 \seealso{
 \code{\link[=extract_ordination]{extract_ordination()}}

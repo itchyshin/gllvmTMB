@@ -81,10 +81,48 @@ same denominator logic that the harness tests protect: failed or non-PD fits
 must reduce `n_eligible`, keep `n_attempted` and `n_converged` visible, and
 avoid counting ineligible rows as coverage successes.
 
+## Addendum: r25 Local Pilot
+
+After the four-reps/cell pilot, a larger local pilot ran 25 reps/cell over the
+same four Gaussian cells with both `wald_z` and `wald_t_unit` interval rows.
+This remains pilot evidence only.
+
+Checks:
+
+- Pre-edit lane check:
+  `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- Pre-edit lane check:
+  `git log --all --oneline --since="6 hours ago" -- dev/lv-wald-coverage.R dev/lv-wald-coverage-slurm.sh tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/check-log.md docs/dev-log/after-task docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; only this queued Gaussian coverage branch had touched the
+  same files recently.
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-r25-20260628; NOT_CRAN=true Rscript --vanilla - <<'RS' ... RS`
+  -> PASS with one `sqrt(diag(cov))` NaN warning during sdreport extraction;
+  wrote long and summary CSV/RDS files under
+  `/tmp/gllvmtmb-lv-wald-local-r25-20260628`.
+- `wc -l /tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-long.csv /tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv`
+  -> PASS; 701 long CSV lines and 29 summary CSV lines, meaning 700 long rows
+  and 28 summary rows after headers.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv"); cat("summary rows", nrow(s), "\n"); print(s[, c("cell_id", "target_id", "interval_method", "n_attempted", "n_converged", "n_eligible", "coverage", "coverage_mcse", "production_n_reps_met", "passes_coverage_band")], row.names = FALSE)'`
+  -> PASS; all 28 target/method rows had `n_attempted = 25` and
+  `n_converged = 25`; rank-1 cells had `n_eligible = 25`, while both rank-2
+  cells had `n_eligible = 24` because one replicate per rank-2 cell was
+  non-PD. All `production_n_reps_met` and `passes_coverage_band` values
+  remained `FALSE`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-long.csv"); bad <- subset(x, !eligible | !ci_available | !fit_converged | !sdreport_ok | !pd_hessian); cat("long rows", nrow(x), "bad rows", nrow(bad), "\n"); print(unique(bad[, c("cell_id", "rep", "rep_seed", "interval_method", "fit_converged", "pd_hessian", "sdreport_ok", "ci_available", "eligible", "fit_convergence_code", "max_gradient")]), row.names = FALSE)'`
+  -> PASS; the only excluded replicates were `gaussian-d2-n96-t4` rep 3 and
+  `gaussian-d2-n160-t4` rep 6. Both optimizer runs had convergence code 0 and
+  `sdreport_ok = TRUE`, but `pd_hessian = FALSE`, so CI rows were not
+  eligible.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv"); z <- subset(s, interval_method == "wald_z")[, c("cell_id","target_id","coverage","n_eligible")]; t <- subset(s, interval_method == "wald_t_unit")[, c("cell_id","target_id","coverage","n_eligible")]; names(z)[3:4] <- c("coverage_z","n_eligible_z"); names(t)[3:4] <- c("coverage_t","n_eligible_t"); m <- merge(z, t, by=c("cell_id","target_id")); m$delta_t_minus_z <- m$coverage_t - m$coverage_z; print(m[order(m$cell_id, m$target_id), ], row.names = FALSE); print(table(m$delta_t_minus_z))'`
+  -> PASS; `wald_t_unit` exceeded `wald_z` for two of 14 target rows by 0.04,
+  and matched `wald_z` for the other 12 target rows. This is descriptive
+  pilot behaviour, not calibration evidence.
+
 ## Consistency Audit
 
 No user-facing documentation changed. The new report and check-log entry label
-the run as local pilot evidence only, keep `LV-02` partial, and repeat that
+the local runs as pilot evidence only, keep `LV-02` partial, and repeat that
 >=500 reps/cell remain required before interval calibration can be claimed.
 
 ## What Did Not Go Smoothly
@@ -113,7 +151,8 @@ production replicate threshold is not met.
 No production coverage grid was run. No DRAC array was submitted. No
 profile/bootstrap rescue, binomial interval grid, non-Gaussian interval grid,
 mixed-family row, mask row, `X + X_lv` row, or source-specific `lv` interval
-claim changed.
+claim changed. The r25 pilot is too small for a coverage decision, and the
+non-PD rank-2 replicates need denominator reporting in the production run.
 
 ## Next Actions
 

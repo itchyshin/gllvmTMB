@@ -21110,3 +21110,62 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-28 -- LV Gaussian Wald local r25 pilot
+
+Scope:
+
+- ran a larger local pilot of the ordinary Gaussian
+  `latent(..., lv = ~ x)` `B_lv` coverage harness across all four current
+  Gaussian cells;
+- used 25 reps/cell with both `wald_z` and `wald_t_unit`;
+- treated the output as fit-health / denominator / t-vs-z shape evidence only;
+- kept `LV-02` partial because the production bar remains >=500 reps/cell with
+  MCSE and failed-fit denominators.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- dev/lv-wald-coverage.R dev/lv-wald-coverage-slurm.sh tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/check-log.md docs/dev-log/after-task docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; only this queued Gaussian coverage branch had touched the same
+  files recently.
+
+Checks:
+
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-r25-20260628; NOT_CRAN=true Rscript --vanilla - <<'RS' ... RS`
+  -> PASS with one `sqrt(diag(cov))` NaN warning during sdreport extraction;
+  wrote long and summary CSV/RDS files under
+  `/tmp/gllvmtmb-lv-wald-local-r25-20260628`.
+- `wc -l /tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-long.csv /tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv`
+  -> PASS; 701 long CSV lines and 29 summary CSV lines, meaning 700 long rows
+  and 28 summary rows after headers.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv"); cat("summary rows", nrow(s), "\n"); print(s[, c("cell_id", "target_id", "interval_method", "n_attempted", "n_converged", "n_eligible", "coverage", "coverage_mcse", "production_n_reps_met", "passes_coverage_band")], row.names = FALSE)'`
+  -> PASS; all 28 target/method rows had `n_attempted = 25` and
+  `n_converged = 25`; rank-1 cells had `n_eligible = 25`, while both rank-2
+  cells had `n_eligible = 24` because one replicate per rank-2 cell was
+  non-PD. All `production_n_reps_met` and `passes_coverage_band` values
+  remained `FALSE`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-long.csv"); bad <- subset(x, !eligible | !ci_available | !fit_converged | !sdreport_ok | !pd_hessian); cat("long rows", nrow(x), "bad rows", nrow(bad), "\n"); print(unique(bad[, c("cell_id", "rep", "rep_seed", "interval_method", "fit_converged", "pd_hessian", "sdreport_ok", "ci_available", "eligible", "fit_convergence_code", "max_gradient")]), row.names = FALSE)'`
+  -> PASS; the only excluded replicates were `gaussian-d2-n96-t4` rep 3 and
+  `gaussian-d2-n160-t4` rep 6. Both optimizer runs had convergence code 0 and
+  `sdreport_ok = TRUE`, but `pd_hessian = FALSE`, so CI rows were not
+  eligible.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv"); z <- subset(s, interval_method == "wald_z")[, c("cell_id","target_id","coverage","n_eligible")]; t <- subset(s, interval_method == "wald_t_unit")[, c("cell_id","target_id","coverage","n_eligible")]; names(z)[3:4] <- c("coverage_z","n_eligible_z"); names(t)[3:4] <- c("coverage_t","n_eligible_t"); m <- merge(z, t, by=c("cell_id","target_id")); m$delta_t_minus_z <- m$coverage_t - m$coverage_z; print(m[order(m$cell_id, m$target_id), ], row.names = FALSE); print(table(m$delta_t_minus_z))'`
+  -> PASS; `wald_t_unit` exceeded `wald_z` for two of 14 target rows by 0.04,
+  and matched `wald_z` for the other 12 target rows. This is descriptive
+  pilot behaviour, not calibration evidence.
+
+Not run:
+
+- The >=500 reps/cell production coverage campaign.
+- DRAC/Totoro production execution: non-interactive Totoro SSH still failed
+  with `Permission denied (publickey,password)`.
+- Profile/bootstrap rescue, binomial/non-Gaussian interval grids,
+  mixed-family rows, masks, `X + X_lv`, and source-specific `lv` intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun because this slice changed only dev-log evidence prose.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.

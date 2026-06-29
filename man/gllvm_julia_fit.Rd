@@ -35,12 +35,11 @@ Gaussian and selected one-part non-Gaussian bridge families.}
 
 \item{X_lv}{Unit-level predictor-informed latent-score design
 (n x q_lv matrix), or \code{NULL}. Routed only for complete Gaussian, Poisson,
-and binomial logit/probit/cloglog bridge rows with no fixed-effect \code{X}, no
-response mask, and \code{ci_method = "none"}. The returned object carries
-point-estimate \code{lv_effects}, \code{alpha_lv}, \code{scores_mean}, and
-\code{scores_innovation} payloads; confidence intervals and other
-non-Gaussian \code{X_lv} rows beyond Poisson and the three binomial standard
-links remain gated.}
+NB2, Gamma, Beta, and binomial logit/probit/cloglog bridge rows with no
+fixed-effect \code{X}, no response mask, and \code{ci_method = "none"}. The returned
+object carries point-estimate \code{lv_effects}, \code{alpha_lv}, \code{scores_mean}, and
+\code{scores_innovation} payloads; confidence intervals, NB1, ordinal,
+mixed-family, masked, and fixed-effect-X-plus-\code{X_lv} rows remain gated.}
 
 \item{coef_fixed}{Optional logical vector of length \code{dim(X)[3]}. \code{TRUE}
 entries are fixed at zero by the Julia bridge. Most R users should prefer

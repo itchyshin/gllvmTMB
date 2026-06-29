@@ -20,8 +20,8 @@
   small multi-trial latent-predictor trait-effect recovery/algebra gates;
   `extract_lv_effects()` `std.error` values for trait-scale `B_lv` effects
   when `se = TRUE` produces a positive-definite `sdreport()` for
-  `ADREPORT(B_lv_unit)`; a narrow Gaussian, Poisson, and binomial
-  logit/probit/cloglog `engine = "julia"` point route for complete-response
+  `ADREPORT(B_lv_unit)`; a narrow Gaussian, Poisson, NB2, Gamma, Beta, and
+  binomial logit/probit/cloglog `engine = "julia"` point route for complete-response
   `latent(..., unique = FALSE, lv = ~ x)` bridge fits with no fixed-effect `X`,
   no response mask, no CIs, retained `X_lv`, `lv_effects`, `alpha_lv`,
   `scores_mean`, and `scores_innovation` payloads; intercept-dropping
@@ -39,7 +39,7 @@
   `X_lv` rows are point-estimate only with `std.error = NA` and
   `julia_bridge_point_estimate_only_no_ci_validation`; missing-response
   compatibility, factor-predictor runtime recovery, native count-family
-  support, ordinal/NB/Gamma/Beta/mixed-family/delta-hurdle support,
+  support, ordinal/NB1/mixed-family/delta-hurdle bridge rows,
   tier-expanded support, structured-source support, 500-rep coverage grids, and
   broad Julia bridge parity remain gated under `LV-02`, `LV-03`, `LV-06`, and
   `LV-07`.

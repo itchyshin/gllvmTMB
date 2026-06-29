@@ -84,7 +84,10 @@
 .GLLVM_JULIA_XLV_FAMILIES <- c(
   "gaussian",
   "poisson",
-  .GLLVM_JULIA_BINOMIAL_FAMILIES
+  .GLLVM_JULIA_BINOMIAL_FAMILIES,
+  "negbinomial",
+  "beta",
+  "gamma"
 )
 .GLLVM_JULIA_MIXED_FAMILY <- "mixed-family vector"
 .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES <- c(
@@ -195,7 +198,7 @@
       "Response masks plus fixed-effect X are not routed.",
       "Fixed-effect X is admitted for complete one-part rows only.",
       "Non-Gaussian X rows require the canonical 0 + trait design.",
-      "Predictor-informed latent-score covariates are admitted only for Gaussian, Poisson, and binomial standard-link bridge rows.",
+      "Predictor-informed latent-score covariates are admitted only for Gaussian, Poisson, NB2, Gamma, Beta, and binomial standard-link bridge rows.",
       "Confidence intervals for predictor-informed latent-score bridge rows are not admitted.",
       "Response masks plus predictor-informed latent-score covariates are not routed.",
       "Fixed-effect X plus predictor-informed latent-score covariates are not routed."
@@ -541,7 +544,7 @@ gllvm_julia_capabilities <- function() {
   xlv_clause <- if (family %in% .GLLVM_JULIA_XLV_FAMILIES) {
     paste0(
       "predictor-informed latent-score X_lv point fits are routed for ",
-      "complete Gaussian, Poisson, and binomial standard-link rows with no fixed-effect ",
+      "complete Gaussian, Poisson, NB2, Gamma, Beta, and binomial standard-link rows with no fixed-effect ",
       "X and no CIs; "
     )
   } else {
@@ -1669,7 +1672,7 @@ gllvm_julia_capabilities <- function() {
     if (is.null(B_lv)) {
       cli::cli_abort(c(
         "Julia bridge fit does not contain retained {.field lv_effects}.",
-        "i" = "Fit an admitted Gaussian, Poisson, or binomial bridge row with {.code latent(..., lv = ~ x)}."
+        "i" = "Fit an admitted Gaussian, Poisson, NB2, Gamma, Beta, or binomial bridge row with {.code latent(..., lv = ~ x)}."
       ))
     }
     B_lv <- as.matrix(B_lv)
@@ -1708,7 +1711,7 @@ gllvm_julia_capabilities <- function() {
   if (is.null(alpha_lv)) {
     cli::cli_abort(c(
       "Julia bridge fit does not contain retained {.field alpha_lv}.",
-      "i" = "Fit an admitted Gaussian, Poisson, or binomial bridge row with {.code latent(..., lv = ~ x)}."
+      "i" = "Fit an admitted Gaussian, Poisson, NB2, Gamma, Beta, or binomial bridge row with {.code latent(..., lv = ~ x)}."
     ))
   }
   alpha_lv <- as.matrix(alpha_lv)
@@ -2338,12 +2341,11 @@ gllvm_julia_capabilities <- function() {
 #'   Gaussian and selected one-part non-Gaussian bridge families.
 #' @param X_lv Unit-level predictor-informed latent-score design
 #'   (n x q_lv matrix), or `NULL`. Routed only for complete Gaussian, Poisson,
-#'   and binomial logit/probit/cloglog bridge rows with no fixed-effect `X`, no
-#'   response mask, and `ci_method = "none"`. The returned object carries
-#'   point-estimate `lv_effects`, `alpha_lv`, `scores_mean`, and
-#'   `scores_innovation` payloads; confidence intervals and other
-#'   non-Gaussian `X_lv` rows beyond Poisson and the three binomial standard
-#'   links remain gated.
+#'   NB2, Gamma, Beta, and binomial logit/probit/cloglog bridge rows with no
+#'   fixed-effect `X`, no response mask, and `ci_method = "none"`. The returned
+#'   object carries point-estimate `lv_effects`, `alpha_lv`, `scores_mean`, and
+#'   `scores_innovation` payloads; confidence intervals, NB1, ordinal,
+#'   mixed-family, masked, and fixed-effect-X-plus-`X_lv` rows remain gated.
 #' @param coef_fixed Optional logical vector of length `dim(X)[3]`. `TRUE`
 #'   entries are fixed at zero by the Julia bridge. Most R users should prefer
 #'   the named `Xcoef_fixed` argument to [gllvmTMB()], which is translated to
@@ -2494,9 +2496,9 @@ gllvm_julia_fit <- function(
         .gllvm_julia_gate_message(
           "GJL-GATE-XLV-FAMILY",
           "engine = 'julia': predictor-informed latent-score covariates ",
-          "`X_lv` are admitted only for complete Gaussian, Poisson, and ",
-          "binomial logit/probit/cloglog bridge rows. Other ",
-          "`latent(..., lv = ~ x)` families need their own validation rows."
+          "`X_lv` are admitted only for complete Gaussian, Poisson, NB2, ",
+          "Gamma, Beta, and binomial logit/probit/cloglog bridge rows. ",
+          "Other `latent(..., lv = ~ x)` families need their own validation rows."
         ),
         call. = FALSE
       )
@@ -3394,7 +3396,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
       .gllvm_julia_gate_message(
         "GJL-GATE-XLV-FAMILY",
         "engine = 'julia' admits predictor-informed `latent(..., lv = ~ x)` ",
-        "only for ordinary Gaussian, Poisson, and binomial ",
+        "only for ordinary Gaussian, Poisson, NB2, Gamma, Beta, and binomial ",
         "logit/probit/cloglog complete-response bridge rows. Other ",
         "predictor-informed latent-score families need their own validation rows."
       ),

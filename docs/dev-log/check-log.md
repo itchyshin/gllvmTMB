@@ -21309,3 +21309,62 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-29 -- LV Bernoulli single-trial depth branch rebase check
+
+Scope:
+
+- rebased the queued ordinary `latent(..., lv = ~ x)` Bernoulli depth branch
+  onto current `origin/main` after the Gaussian t-comparator PR #571 landed;
+- kept the claim to pure single-trial binomial/Bernoulli standard links
+  (`logit`, `probit`, `cloglog`) with complete responses and no interval
+  calibration;
+- verified the branch locally while respecting the one-open-PR / main-CI
+  pacing gate.
+
+Pre-edit lane check:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-29-lv-bernoulli-depth.md tests/testthat/test-lv-bernoulli-depth.R`
+  -> REVIEWED; only this queued Bernoulli branch had touched the new test file.
+
+Checks:
+
+- `git rebase origin/main`
+  -> PASS; branch rebased cleanly after PR #571, with top commit
+  `6c068367 test(lv): add Bernoulli single-trial depth gate`.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-bernoulli-depth", reporter = "summary")'`
+  -> PASS; focused Bernoulli depth tests completed with no failures.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; parser guard remained green with the existing informational
+  sigma-eps auto-suppression message.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m01.1s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `gh run list --repo itchyshin/gllvmTMB --limit 5 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url,createdAt`
+  -> REVIEWED; the post-merge main `R-CMD-check` run for #571 was still
+  `in_progress`, so no new PR was opened from this branch yet.
+- `git diff --check`
+  -> PASS; no whitespace errors.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-29-lv-bernoulli-depth.md`
+  -> PASS; validator returned successfully.
+- `rg -n "latent\\([^\\n]*lv\\s*=|lv\\s*=\\s*~|predictor-informed|B_lv|LV-0[1-7]" tests/testthat/test-lv-bernoulli-depth.R docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-29-lv-bernoulli-depth.md`
+  -> REVIEWED; expected hits are in the test, check-log, and after-task only.
+- `rg -n "coverage|interval|Wald|profile|bootstrap" tests/testthat/test-lv-bernoulli-depth.R docs/dev-log/after-task/2026-06-29-lv-bernoulli-depth.md`
+  -> REVIEWED; interval language is limited to explicit "not claimed" scope
+  boundaries.
+
+Not run:
+
+- Bernoulli interval coverage, missing-response Bernoulli rows, ordinal
+  binary-like rows, non-binomial families, mixed-family cells, masks,
+  `X + X_lv`, source-specific `lv`, or Julia bridge interval calibration.
+- `devtools::document()` and `pkgdown::check_pkgdown()`; this branch adds only
+  a test file plus dev-log evidence records, with no roxygen, README,
+  vignette, article, or pkgdown navigation changes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-bernoulli-depth.md`.

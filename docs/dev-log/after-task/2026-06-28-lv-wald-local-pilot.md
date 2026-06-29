@@ -154,6 +154,11 @@ Checks and artifacts:
   `2026-06-28-local-r500-summary.csv`,
   `2026-06-28-local-r500-excluded-replicates.csv`, and
   `2026-06-28-local-r500-t-vs-z.csv`.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS after the r500 artifacts and docs were recorded; R CMD check
+  completed in 4m46.7s with 0 errors, 0 warnings, and 0 notes. As in earlier
+  slices, `check()` did not re-document because local roxygen2 8.0.0 differs
+  from the declared 7.3.2.
 
 ## Consistency Audit
 
@@ -187,7 +192,8 @@ production replicate threshold is not met.
 ## Known Limitations
 
 No DRAC array was submitted, and no 3-OS PR/merge evidence exists for this
-queued branch yet. The local r500 grid covers the current ordinary Gaussian
+queued branch yet. The queued branch now has a local R CMD check 0/0/0 after
+the evidence updates. The local r500 grid covers the current ordinary Gaussian
 native TMB cells only; it does not cover binomial intervals, non-Gaussian
 intervals, mixed-family rows, masks, `X + X_lv`, Julia bridge CIs, or
 source-specific `lv`. Profile/bootstrap rescue was not needed for these four

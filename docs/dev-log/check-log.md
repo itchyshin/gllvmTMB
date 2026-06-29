@@ -21175,8 +21175,9 @@ Scope:
   Gaussian cells;
 - used 25 reps/cell with both `wald_z` and `wald_t_unit`;
 - treated the output as fit-health / denominator / t-vs-z shape evidence only;
-- kept `LV-02` partial because the production bar remains >=500 reps/cell with
-  MCSE and failed-fit denominators.
+- kept `LV-02` partial at the r25 pilot stage because the production bar
+  remained >=500 reps/cell with MCSE and failed-fit denominators. This r25
+  entry is superseded by the local r500 evidence entry.
 
 Pre-edit lane check:
 
@@ -21219,7 +21220,42 @@ Not run:
 - Profile/bootstrap rescue, binomial/non-Gaussian interval grids,
   mixed-family rows, masks, `X + X_lv`, and source-specific `lv` intervals.
 - `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
-  not rerun because this slice changed only dev-log evidence prose.
+  not rerun in the r25 slice because it changed only dev-log evidence prose.
+  Full R CMD check was rerun after the later r500 evidence update.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-28 -- LV Gaussian Wald r500 branch full check
+
+Scope:
+
+- reran package-level validation on the queued Gaussian r500 branch after the
+  compact r500 artifacts, validation-register update, Design 73 update, and
+  after-task/check-log evidence updates landed;
+- this makes the branch ready for a PR once #569 clears the one-open-PR gate.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/artifacts/lv-wald-coverage dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> REVIEWED; only this queued Gaussian coverage branch had touched the
+  same files recently.
+
+Checks:
+
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m46.7s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+
+Not run:
+
+- `devtools::document()` and `pkgdown::check_pkgdown()`; no roxygen,
+  README, vignette, article, or pkgdown navigation file changed in this
+  queued evidence update.
 
 After-task report:
 

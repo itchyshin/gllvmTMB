@@ -21830,3 +21830,81 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-30-lv-family-boundary-guard.md`.
+
+## 2026-06-30 -- LV REML/lv-formula boundary fail-loud guard
+
+Scope: queued-ready Design 73 LV guard branch
+`codex/lv-reml-boundary-guard-20260628`. This slice adds and records top-level
+native TMB rejection tests for unsupported predictor-informed latent-score
+boundaries: `REML = TRUE`, `offset()`, `mi()`, smooth terms, and random-effect
+terms inside `lv`. It does not admit REML / AI-REML `lv`, richer `lv`
+formulas, missing `lv` predictors, offsets, smooths, random-effect terms, or
+any broader family/source/tier support.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,url,isDraft`
+  -> REVIEWED; no open gllvmTMB PRs were present.
+- `git log --all --oneline --since="6 hours ago" -- NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/check-log.md docs/dev-log/after-task tests/testthat/test-lv-reml-boundary-guard.R`
+  -> REVIEWED; recent history showed the preceding LV guard/status slices and
+  this branch's first two test commits.
+- `git fetch origin +refs/heads/main:refs/remotes/origin/main --prune && git rebase origin/main`
+  -> PASS; branch rebased cleanly onto current `origin/main` after PR #578.
+
+Checks:
+
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-reml-boundary-guard", reporter = "summary")'`
+  -> PASS; 5 REML/lv-formula boundary rejection cases passed.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; focused parser guard completed with no failures. The existing
+  sigma-eps auto-suppression informational message appeared.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-family-boundary-guard", reporter = "summary")'`
+  -> PASS; 3 neighbouring family-boundary rejection cases passed.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no pkgdown reference/navigation problems found.
+- `git diff --check`
+  -> PASS; no whitespace errors before the report/check-log edit.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m46.1s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'lv reml' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348, the broad family-validation umbrella.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'lv formula boundary' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'LV-01' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue. No issue was closed or commented on.
+
+Rose / stale wording scans:
+
+- `rg -n 'FG-18|RE-13|LV-01|test-lv-reml-boundary-guard|REML = TRUE|offset\(\)|mi\(\)|smooth|random-effect|lv-formula|richer `lv`|fail-loud' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-lv-reml-boundary-guard.R`
+  -> REVIEWED; hits show the new guard evidence on `FG-18`, `RE-13`, and
+  `LV-01`, with REML/lv-formula support still blocked.
+- `rg -n 'REML.*lv.*(admitted|supported|covered|validated)|richer.*lv.*formula.*(admitted|supported|covered|validated)|offset.*lv.*(admitted|supported|covered|validated)|mi\(\).*lv.*(admitted|supported|covered|validated)|smooth.*lv.*(admitted|supported|covered|validated)|random-effect.*lv.*(admitted|supported|covered|validated)' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; the broad scan is intentionally conservative and matched long
+  rows that also contain `covered` / `validated` evidence for other LV
+  subclaims, but the touched Design 73, capability-status, and register rows
+  say REML/richer `lv` formulas are fail-loud or blocked, not supported.
+- `rg -n 'gllvmTMB_wide|meta_known_V|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(|\bS_B\b|\bS_W\b|\\bf S|in prep|in preparation' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits are historical/compatibility mentions (`gllvmTMB_wide`,
+  `meta_known_V`, `block_V`, `phylo_rr`, and `phylo()` in missing-predictor
+  rows), not new stale LV wording.
+- `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | head -n 220`
+  -> REVIEWED; this branch adds no new user-facing `gllvmTMB()` examples.
+  Touched NEWS/design text does not introduce long-format calls requiring a new
+  `trait =` audit.
+
+Not run:
+
+- `devtools::document()`; no roxygen, generated Rd, NAMESPACE, or exported
+  function docs changed.
+- `pkgdown::build_articles(lazy = FALSE)`; this branch changes NEWS/design
+  prose and one focused test file, not article examples or parser/user-call
+  examples. `pkgdown::check_pkgdown()` is the claimed pkgdown gate.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-30-lv-reml-boundary-guard.md`.

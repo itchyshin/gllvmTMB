@@ -21368,3 +21368,59 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-29-lv-bernoulli-depth.md`.
+
+## 2026-06-29 -- LV source-specific fail-loud guard branch check
+
+Scope:
+
+- rebased the queued source-specific `latent(..., lv = ~ x)` guard branch
+  onto current `origin/main` after PR #572 merged;
+- added a focused test proving ordinary unit-tier `latent()` preserves `lv`
+  metadata while source-specific phylo, animal, spatial, kernel, and
+  deprecated/internal aliases cannot carry `lv` silently;
+- kept the claim to fail-loud grammar protection only. This is not
+  source-specific `lv` support or phylo Model A R exposure.
+
+Pre-edit lane check:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; no open gllvmTMB PRs after PR #572 merged.
+- `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-29-lv-source-specific-guard.md tests/testthat/test-lv-source-specific-guard.R tests/testthat/test-lv-parser-guard.R`
+  -> REVIEWED; only this queued source-guard branch and the just-merged
+  Bernoulli branch had touched nearby LV files.
+
+Checks:
+
+- `git rebase origin/main`
+  -> PASS; branch rebased cleanly after PR #572, with top commits
+  `d4e898b3` and `4560c876`.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-source-specific-guard", reporter = "summary")'`
+  -> PASS; focused source-specific guard tests completed with no failures.
+  Expected lifecycle messages appeared for deprecated aliases `rr()`,
+  `diag()`, `phylo_rr()`, and `spde()`.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; parser guard remained green with the existing informational
+  sigma-eps auto-suppression message.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m05.8s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `git diff --check`
+  -> PASS; no whitespace errors.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-29-lv-source-specific-guard.md`
+  -> PASS; validator returned successfully.
+- `rg -n "phylo_latent\\([^\\n]*lv|animal_latent\\([^\\n]*lv|spatial_latent\\([^\\n]*lv|kernel_latent\\([^\\n]*lv|LV-07|source-specific" tests/testthat/test-lv-source-specific-guard.R docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-29-lv-source-specific-guard.md`
+  -> REVIEWED; expected hits are rejected syntax and boundary wording only.
+- `rg -n "source-specific.*support|phylo.*support|Model A.*R exposure|complete|coverage" tests/testthat/test-lv-source-specific-guard.R docs/dev-log/after-task/2026-06-29-lv-source-specific-guard.md`
+  -> REVIEWED; support/completion language is limited to explicit rejected or
+  not-yet-exposed boundaries.
+
+Not run:
+
+- `devtools::document()` and `pkgdown::check_pkgdown()`; this branch adds only
+  a test file plus dev-log evidence records, with no roxygen, README,
+  vignette, article, or pkgdown navigation changes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-source-specific-guard.md`.

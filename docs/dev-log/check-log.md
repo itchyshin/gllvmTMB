@@ -21490,6 +21490,8 @@ Checks:
   -> PASS; validator returned successfully.
 - `git diff --check`
   -> PASS; no whitespace errors after evidence edits.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-29-lv-missing-response.md`
+  -> PASS; validator returned successfully.
 
 Not run:
 
@@ -21505,3 +21507,81 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-29-lv-factor-runtime.md`.
+
+## 2026-06-29 -- LV missing-response compatibility branch rebase check
+
+Scope:
+
+- rebased the queued ordinary Gaussian `latent(..., lv = ~ x)` missing-response
+  branch onto current `origin/main` after PR #574 merged;
+- kept the claim to ordinary unit-tier Gaussian native TMB fits where `lv`
+  predictors are observed, complete, and constant within unit;
+- moved `LV-03` from `blocked` to `partial` with evidence for response masks
+  only, not missing `lv` predictors, `mi()` inside `lv`, non-Gaussian masks,
+  mixed-family masks, bridge masks, tiers, or structured sources.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; no open gllvmTMB PRs after PR #574 merged.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md docs/dev-log/after-task tests/testthat R docs/design/35-validation-debt-register.md docs/design/61-capability-status.md`
+  -> REVIEWED; recent nearby work was limited to merged Bernoulli, source
+  guard, and factor-runtime LV slices.
+
+Checks:
+
+- `git fetch origin +refs/heads/main:refs/remotes/origin/main`
+  -> PASS; refreshed `origin/main` at `5e708740`.
+- `git rebase origin/main`
+  -> PASS; branch rebased cleanly, with top commit
+  `b829e6ac test(lv): add missing-response compatibility gate`.
+- `git diff --check origin/main...HEAD`
+  -> PASS; no whitespace errors before evidence edits.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-missing-response", reporter = "summary")'`
+  -> PASS; focused missing-response tests completed with no failures.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; parser guard remained green with the existing informational
+  sigma-eps auto-suppression message.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m49.3s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `gh run view 28414994265 --repo itchyshin/gllvmTMB --json status,conclusion,workflowName,event,headSha,createdAt,updatedAt,url,jobs`
+  -> PASS; PR #574 post-merge pkgdown completed successfully at
+  2026-06-30T02:19:25Z after the long `Build site` step.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "lv missing response" --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned issue #348 only.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "latent missing response" --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned #332, #361, #348, #230, #347, #349, and #346.
+- `gh issue view 332 --repo itchyshin/gllvmTMB --json number,title,state,url,labels,body`
+  -> REVIEWED; #332 is the missing-data umbrella and is not closed by this
+  narrow LV observed-predictor mask slice.
+- `gh issue view 348 --repo itchyshin/gllvmTMB --json number,title,state,url,labels,body`
+  -> REVIEWED; #348 is the non-Gaussian family-validation umbrella and is not
+  advanced or closed by this ordinary Gaussian mask slice.
+- `rg -n 'no missing-response compatibility|Future tests must show|LV-03.*blocked|missing-response compatibility, Julia|missing-response compatibility,|response masks with `X_lv`|response mask, and no calibrated CIs' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md NEWS.md README.md ROADMAP.md docs/dev-log/known-limitations.md`
+  -> REVIEWED; remaining hits are bridge-boundary wording in the Julia bridge
+  addendum / Design 73 / NEWS and the intentionally complete-response bridge
+  clause in capability status, not stale `LV-03` blocked wording.
+- `rg -n 'LV-03.*covered|missing-response.*covered|response-mask compatibility.*covered|missing-response.*complete|non-Gaussian.*response masks.*validated|mixed-family.*response masks.*validated|Julia.*response mask.*admit|bridge.*response mask.*admit|missing `lv` predictors.*validated|mi\(\).*inside `lv`.*validated' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-lv-missing-response.R`
+  -> REVIEWED; hits are explicit ordinary-Gaussian limited evidence or
+  limitation language. No broad mask / missing-predictor support is claimed.
+- `rg -n "LV-03|missing response|missing-response|response mask|miss_control\\(response = \\\"include\\\"\\)|is_y_observed|X_lv_B|test-lv-missing-response" docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md ROADMAP.md NEWS.md README.md docs/dev-log/known-limitations.md tests/testthat/test-lv-missing-response.R | head -n 260`
+  -> REVIEWED; expected hits show `LV-03` partial evidence, public NEWS
+  bridge/missing-response boundaries, and the new test.
+- `git diff --check`
+  -> PASS; no whitespace errors after evidence edits.
+
+Not run:
+
+- Missing `lv` predictors, `mi()` inside `lv`, non-Gaussian response masks,
+  factor-valued masks, mixed-family masks, Julia bridge masks with `X_lv`,
+  source/tier masks, or interval coverage.
+- `devtools::document()` and `pkgdown::check_pkgdown()`; this branch adds a
+  test file plus validation-register / capability-status / design / dev-log
+  evidence records, with no roxygen, README, vignette, article, generated Rd,
+  or pkgdown navigation changes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-missing-response.md`.

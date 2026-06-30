@@ -1,11 +1,13 @@
 # Design 73 -- Predictor-Informed Latent Scores
 
 **Status:** C1 ordinary unit-tier parser + TMB support for Gaussian and
-pure binomial logit/probit/cloglog fits; the R-to-Julia bridge also has
-point-only complete-response Poisson, NB2, Gamma, and Beta routes. Focused
-native TMB Gaussian recovery is partial, and a dev-only Wald coverage harness
-now exists with normal-critical and unit-df t-critical comparator rows, but
-interval calibration is still pending until production reps finish.
+pure binomial logit/probit/cloglog fits; ordinary Gaussian response masks are
+validated when the `lv` predictors remain observed and complete at the unit
+level; the R-to-Julia bridge also has point-only complete-response Poisson,
+NB2, Gamma, and Beta routes. Native TMB Gaussian recovery and interval
+evidence now cover the current ordinary Gaussian cells, but broader interval,
+family, tier, source-specific, and bridge parity claims remain gated row by
+row.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
@@ -17,10 +19,11 @@ The argument is a term-local fixed-effect formula for the mean of the
 latent scores. It is not a random-effects formula, not a loading model,
 and not a replacement for trait-specific fixed effects. The current
 implementation admits only the C1 ordinary unit-tier surface: native
-TMB Gaussian fits, native TMB pure-binomial standard-link fits, and a
-narrow R-to-Julia bridge point route for Gaussian, Poisson, NB2, Gamma,
-Beta, and binomial standard-link fits. All other rows remain planned or
-blocked as listed below.
+TMB Gaussian fits, including response masks when `lv` predictors are
+observed and complete, native TMB pure-binomial standard-link fits, and a
+narrow R-to-Julia bridge point route for complete-response Gaussian,
+Poisson, NB2, Gamma, Beta, and binomial standard-link fits. All other rows
+remain planned or blocked as listed below.
 
 The first public target remains ordinary Gaussian unit-tier support:
 
@@ -41,8 +44,9 @@ binary links (`"logit"`, `"probit"`, or `"cloglog"`) and the same
 ordinary unit-tier score-mean model. Bridge-only Poisson, NB2, Gamma, and
 Beta point routes are also admitted for complete-response `engine = "julia"`
 fits with `unique = FALSE`, no fixed-effect `X`, no response mask, and no
-CIs. Native TMB count-family support and ordinal, NB1, mixed-family, and
-delta/hurdle bridge rows remain blocked until their own validation rows move.
+CIs. Native TMB count-family support and ordinal, NB1, mixed-family,
+response-mask bridge, and delta/hurdle bridge rows remain blocked until their
+own validation rows move.
 
 ## Model Contract
 
@@ -373,7 +377,8 @@ Heavy tests under `GLLVMTMB_HEAVY_TESTS=1`:
   diagnostics.
 - Factor predictors and rare-level behaviour.
 - Missing-response compatibility when the `lv` predictors remain
-  observed and constant within unit.
+  observed and constant within unit (covered for ordinary Gaussian native TMB
+  by `test-lv-missing-response.R`).
 - Variance/correlation edge regimes.
 - Optional `gllvm` comparator for the ordinary concurrent-ordination
   subset where parameterisations align.
@@ -395,9 +400,10 @@ This is a twin-lane concept for `gllvmTMB` and `GLLVM.jl`, but parity
 must move row by row. Named Julia bridge rows now exist only for the
 complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial
 logit/probit/cloglog point routes described above. Public docs must not imply
-native count-family support, NB1, ordinal, mixed-family `X_lv`, response masks
-with `X_lv`, fixed-effect `X` plus `X_lv`, CI/profile/bootstrap support, or
-broad native-vs-Julia parity until those rows are implemented and validated.
+native count-family support, NB1, ordinal, mixed-family `X_lv`, Julia bridge
+response masks with `X_lv`, fixed-effect `X` plus `X_lv`, CI/profile/bootstrap
+support, or broad native-vs-Julia parity until those rows are implemented and
+validated.
 
 ## Reviewer Checklist
 

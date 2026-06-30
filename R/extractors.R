@@ -513,35 +513,40 @@ extract_ordination <- function(
 #' the unit-level score model
 #' \deqn{\mathbf u_s = \mathbf z_s + \mathbf X_s \boldsymbol\alpha,}
 #' where the innovation \eqn{\mathbf z_s} keeps the usual standard-normal prior.
-#' `extract_lv_effects()` reports either the trait-scale contribution
-#' \eqn{\mathbf B_{\mathrm{lv}} = \boldsymbol\Lambda \boldsymbol\alpha^\top}
-#' or the raw axis-scale \eqn{\boldsymbol\alpha}. The trait-scale table is the
-#' preferred summary because raw latent axes are scale- and rotation-dependent.
+#' `extract_lv_effects()` reports either the raw axis-scale
+#' \eqn{\boldsymbol\alpha} coefficients or the induced trait-scale contribution
+#' \eqn{\mathbf B_{\mathrm{lv}} = \boldsymbol\Lambda \boldsymbol\alpha^\top}.
+#' The axis-scale table is the default because it matches the usual constrained
+#' latent-variable / ordination coefficient. It is conditional on the fitted
+#' loading constraint and axis orientation. The trait-scale table is the
+#' rotation-invariant induced slope surface on the trait linear-predictor scale.
 #'
-#' For `type = "trait_effect"`, `std.error` is populated from TMB's
-#' delta-method `ADREPORT(B_lv_unit)` output when the fit carries a valid
-#' positive-definite `sdreport()`. Coverage calibration of the corresponding
-#' intervals remains validation-gated. For Gaussian, Poisson, NB2, Gamma, Beta,
-#' and binomial logit/probit/cloglog `engine = "julia"` bridge fits,
-#' `ci_method = "none"` exposes point estimates only (`std.error` is `NA` and
-#' `uncertainty_status` is `"julia_bridge_point_estimate_only_no_ci_validation"`),
-#' while `ci_method = "wald"` surfaces finite `std.error`, `lower`, and `upper`
-#' (`uncertainty_status` is `"julia_bridge_wald_delta_method"`). Those Julia
-#' bridge values are Wald payload reader output, not coverage-calibrated
-#' intervals.
+#' For native TMB fits, `std.error` is populated from a positive-definite
+#' `sdreport()` when available. Axis-effect SEs come from the fixed-parameter
+#' block for `alpha_lv_B`; trait-effect SEs come from TMB's delta-method
+#' `ADREPORT(B_lv_unit)` output. `lower` and `upper` are Wald intervals using
+#' `conf.level`; coverage calibration remains validation-gated. For Gaussian,
+#' Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog
+#' `engine = "julia"` bridge fits, `ci_method = "none"` exposes point estimates
+#' only (`std.error`, `lower`, and `upper` are `NA`). When the bridge supplies a
+#' retained Wald payload, `extract_lv_effects()` surfaces finite `std.error`,
+#' `lower`, and `upper`. Those Julia bridge values are Wald payload reader
+#' output, not coverage-calibrated intervals.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param level Currently `"unit"` only. Legacy alias `"B"` is accepted.
-#' @param type `"trait_effect"` returns \eqn{\mathbf B_{\mathrm{lv}}} on the
-#'   trait linear-predictor scale. `"axis_effect"` returns raw
-#'   \eqn{\boldsymbol\alpha} coefficients for diagnostic use.
+#' @param type `"axis_effect"` returns raw \eqn{\boldsymbol\alpha}
+#'   coefficients on the latent-axis scale. `"trait_effect"` returns
+#'   \eqn{\mathbf B_{\mathrm{lv}}} on the trait linear-predictor scale.
+#' @param conf.level Confidence level for Wald intervals when finite standard
+#'   errors are available.
 #'
-#' @return A data frame. For `type = "trait_effect"`, columns are `level`,
-#'   `trait`, `predictor`, `estimate`, `std.error`, `uncertainty_status`, and
-#'   `validation_row`; `engine = "julia"` fits requested with
-#'   `ci_method = "wald"` additionally carry `lower` and `upper`. For
-#'   `type = "axis_effect"`, columns are `level`, `axis`, `predictor`,
-#'   `estimate`, `rotation_status`, and `validation_row`.
+#' @return A data frame. For `type = "axis_effect"`, columns are `level`,
+#'   `axis`, `predictor`, `estimate`, `std.error`, `lower`, `upper`,
+#'   `rotation_status`, `uncertainty_status`, and `validation_row`. For
+#'   `type = "trait_effect"`, columns are `level`, `trait`, `predictor`,
+#'   `estimate`, `std.error`, `lower`, `upper`, `uncertainty_status`, and
+#'   `validation_row`.
 #'
 #' @seealso [extract_ordination()]
 #'
@@ -549,9 +554,11 @@ extract_ordination <- function(
 extract_lv_effects <- function(
   fit,
   level = "unit",
-  type = c("trait_effect", "axis_effect")
+  type = c("axis_effect", "trait_effect"),
+  conf.level = 0.95
 ) {
   type <- match.arg(type)
+  conf.level <- .lv_effects_conf_level(conf.level)
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
 
@@ -559,7 +566,8 @@ extract_lv_effects <- function(
     return(.gllvm_julia_extract_lv_effects(
       fit = fit,
       level = .canonical_level_name(level),
-      type = type
+      type = type,
+      conf.level = conf.level
     ))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
@@ -606,12 +614,19 @@ extract_lv_effects <- function(
       stringsAsFactors = FALSE
     )
     se_info <- .lv_trait_effect_se(fit, length(B_lv))
+    interval <- .lv_effects_wald_interval(
+      estimate = as.numeric(B_lv),
+      std.error = se_info$std.error,
+      conf.level = conf.level
+    )
     data.frame(
       level = "unit",
       trait = out$trait,
       predictor = out$predictor,
       estimate = as.numeric(B_lv),
       std.error = se_info$std.error,
+      lower = interval$lower,
+      upper = interval$upper,
       uncertainty_status = se_info$status,
       validation_row = validation_row,
       stringsAsFactors = FALSE
@@ -635,12 +650,22 @@ extract_lv_effects <- function(
       KEEP.OUT.ATTRS = FALSE,
       stringsAsFactors = FALSE
     )
+    se_info <- .lv_axis_effect_se(fit, length(alpha_lv))
+    interval <- .lv_effects_wald_interval(
+      estimate = as.numeric(alpha_lv),
+      std.error = se_info$std.error,
+      conf.level = conf.level
+    )
     data.frame(
       level = "unit",
       axis = out$axis,
       predictor = out$predictor,
       estimate = as.numeric(alpha_lv),
+      std.error = se_info$std.error,
+      lower = interval$lower,
+      upper = interval$upper,
       rotation_status = "axis_scale_rotation_dependent",
+      uncertainty_status = se_info$status,
       validation_row = validation_row,
       stringsAsFactors = FALSE
     )
@@ -648,6 +673,24 @@ extract_lv_effects <- function(
 }
 
 .lv_trait_effect_se <- function(fit, n_effects) {
+  .lv_sdreport_effect_se(
+    fit = fit,
+    n_effects = n_effects,
+    row_name = "B_lv_unit",
+    component = "report"
+  )
+}
+
+.lv_axis_effect_se <- function(fit, n_effects) {
+  .lv_sdreport_effect_se(
+    fit = fit,
+    n_effects = n_effects,
+    row_name = "alpha_lv_B",
+    component = "fixed"
+  )
+}
+
+.lv_sdreport_effect_se <- function(fit, n_effects, row_name, component) {
   empty <- function(status) {
     list(std.error = rep(NA_real_, n_effects), status = status)
   }
@@ -667,20 +710,20 @@ extract_lv_effects <- function(
     return(empty("sdreport_non_pd_hessian_no_lv_se"))
   }
 
-  report <- tryCatch(
-    summary(fit$sd_report, "report"),
+  table <- tryCatch(
+    summary(fit$sd_report, component),
     error = function(e) NULL
   )
-  if (is.null(report) || !("Std. Error" %in% colnames(report))) {
+  if (is.null(table) || !("Std. Error" %in% colnames(table))) {
     return(empty("sdreport_missing_lv_se"))
   }
 
-  rows <- which(rownames(report) == "B_lv_unit")
+  rows <- which(rownames(table) == row_name)
   if (length(rows) != n_effects) {
     return(empty("sdreport_mismatched_lv_se"))
   }
 
-  se <- as.numeric(report[rows, "Std. Error"])
+  se <- as.numeric(table[rows, "Std. Error"])
   if (anyNA(se) || any(!is.finite(se))) {
     return(empty("sdreport_nonfinite_lv_se"))
   }
@@ -689,6 +732,31 @@ extract_lv_effects <- function(
     std.error = se,
     status = "wald_sdreport_no_ci_validation"
   )
+}
+
+.lv_effects_conf_level <- function(conf.level) {
+  if (
+    !is.numeric(conf.level) ||
+      length(conf.level) != 1L ||
+      is.na(conf.level) ||
+      conf.level <= 0 ||
+      conf.level >= 1
+  ) {
+    cli::cli_abort("{.arg conf.level} must be a single number between 0 and 1.")
+  }
+  as.numeric(conf.level)
+}
+
+.lv_effects_wald_interval <- function(estimate, std.error, conf.level) {
+  lower <- rep(NA_real_, length(estimate))
+  upper <- rep(NA_real_, length(estimate))
+  finite <- is.finite(estimate) & is.finite(std.error)
+  if (any(finite)) {
+    z <- stats::qnorm((1 + conf.level) / 2)
+    lower[finite] <- estimate[finite] - z * std.error[finite]
+    upper[finite] <- estimate[finite] + z * std.error[finite]
+  }
+  list(lower = lower, upper = upper)
 }
 
 .lv_effects_validation_row <- function(fit) {

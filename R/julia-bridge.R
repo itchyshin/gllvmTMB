@@ -1649,7 +1649,8 @@ gllvm_julia_capabilities <- function() {
 .gllvm_julia_extract_lv_effects <- function(
   fit,
   level,
-  type = c("trait_effect", "axis_effect")
+  type = c("axis_effect", "trait_effect"),
+  conf.level = 0.95
 ) {
   type <- match.arg(type)
   if (length(level) > 1L) {
@@ -1716,21 +1717,37 @@ gllvm_julia_capabilities <- function() {
         )
       }
     }
-    # Absent-CI path keeps the canonical 7-column schema (level, trait,
-    # predictor, estimate, std.error, uncertainty_status, validation_row) shared
-    # with the TMB engine and the documented @return contract; lower/upper are
-    # added only when the Julia bridge actually returned Wald CI fields.
     res_df <- data.frame(
       level = "unit",
       trait = out$trait,
       predictor = out$predictor,
       estimate = as.numeric(B_lv),
-      std.error = if (have_ci) as.numeric(se_mat) else rep(NA_real_, length(B_lv)),
+      std.error = if (have_ci) {
+        as.numeric(se_mat)
+      } else {
+        rep(NA_real_, length(B_lv))
+      },
+      lower = rep(NA_real_, length(B_lv)),
+      upper = rep(NA_real_, length(B_lv)),
       stringsAsFactors = FALSE
     )
     if (have_ci) {
-      res_df$lower <- as.numeric(lo_mat)
-      res_df$upper <- as.numeric(hi_mat)
+      if (
+        is.numeric(fit$lv_effects_ci_level) &&
+          length(fit$lv_effects_ci_level) == 1L &&
+          isTRUE(all.equal(fit$lv_effects_ci_level, conf.level))
+      ) {
+        res_df$lower <- as.numeric(lo_mat)
+        res_df$upper <- as.numeric(hi_mat)
+      } else {
+        interval <- .lv_effects_wald_interval(
+          estimate = as.numeric(B_lv),
+          std.error = as.numeric(se_mat),
+          conf.level = conf.level
+        )
+        res_df$lower <- interval$lower
+        res_df$upper <- interval$upper
+      }
     }
     res_df$uncertainty_status <- if (have_ci) {
       "julia_bridge_wald_delta_method"
@@ -1764,12 +1781,71 @@ gllvm_julia_capabilities <- function() {
     KEEP.OUT.ATTRS = FALSE,
     stringsAsFactors = FALSE
   )
+  se_mat <- fit$alpha_lv_se %||% NULL
+  lo_mat <- fit$alpha_lv_lower %||% NULL
+  hi_mat <- fit$alpha_lv_upper %||% NULL
+  have_se <- !is.null(se_mat)
+  if (have_se) {
+    se_mat <- as.matrix(se_mat)
+    storage.mode(se_mat) <- "numeric"
+    if (!identical(dim(se_mat), dim(alpha_lv))) {
+      cli::cli_abort(
+        "engine = 'julia': {.field alpha_lv_se} dimensions do not match the point estimate."
+      )
+    }
+  }
+  have_bounds <- !is.null(lo_mat) && !is.null(hi_mat)
+  if (have_bounds) {
+    lo_mat <- as.matrix(lo_mat)
+    hi_mat <- as.matrix(hi_mat)
+    storage.mode(lo_mat) <- "numeric"
+    storage.mode(hi_mat) <- "numeric"
+    if (
+      !identical(dim(lo_mat), dim(alpha_lv)) ||
+        !identical(dim(hi_mat), dim(alpha_lv))
+    ) {
+      cli::cli_abort(
+        "engine = 'julia': {.field alpha_lv} CI payload dimensions do not match the point estimate."
+      )
+    }
+  }
+  interval <- .lv_effects_wald_interval(
+    estimate = as.numeric(alpha_lv),
+    std.error = if (have_se) {
+      as.numeric(se_mat)
+    } else {
+      rep(NA_real_, length(alpha_lv))
+    },
+    conf.level = conf.level
+  )
+  if (
+    have_se &&
+      have_bounds &&
+      is.numeric(fit$alpha_lv_ci_level) &&
+      length(fit$alpha_lv_ci_level) == 1L &&
+      isTRUE(all.equal(fit$alpha_lv_ci_level, conf.level))
+  ) {
+    interval$lower <- as.numeric(lo_mat)
+    interval$upper <- as.numeric(hi_mat)
+  }
   data.frame(
     level = "unit",
     axis = out$axis,
     predictor = out$predictor,
     estimate = as.numeric(alpha_lv),
+    std.error = if (have_se) {
+      as.numeric(se_mat)
+    } else {
+      rep(NA_real_, length(alpha_lv))
+    },
+    lower = interval$lower,
+    upper = interval$upper,
     rotation_status = "axis_scale_rotation_dependent",
+    uncertainty_status = if (have_se) {
+      "julia_bridge_wald_delta_method"
+    } else {
+      "julia_bridge_point_estimate_only_no_ci_validation"
+    },
     validation_row = validation_row,
     stringsAsFactors = FALSE
   )
@@ -2378,13 +2454,16 @@ gllvm_julia_capabilities <- function() {
 #'   NB2, Gamma, Beta, and binomial logit/probit/cloglog bridge rows with no
 #'   fixed-effect `X`, no response mask, and `ci_method` in
 #'   `c("none", "wald")`. The returned object
-#'   carries point-estimate `lv_effects`, `alpha_lv`, `scores_mean`, and
+#'   carries point-estimate `alpha_lv`, `lv_effects`, `scores_mean`, and
 #'   `scores_innovation` payloads; for `ci_method = "wald"` it additionally
 #'   carries `lv_effects_se`, `lv_effects_lower`, and `lv_effects_upper`, which
 #'   [extract_lv_effects()] surfaces as finite `std.error`, `lower`, and
-#'   `upper`. These are bridge-reader Wald payloads, not calibrated coverage
-#'   claims. Profile/bootstrap `X_lv` confidence intervals, NB1, ordinal,
-#'   mixed-family, masked, and fixed-effect-X-plus-`X_lv` rows remain gated.
+#'   `upper` when called with `type = "trait_effect"`. If future bridge payloads include
+#'   `alpha_lv_se`, `alpha_lv_lower`, and `alpha_lv_upper`,
+#'   [extract_lv_effects()] surfaces those on the default axis-effect table.
+#'   These are bridge-reader Wald payloads, not calibrated coverage claims.
+#'   Profile/bootstrap `X_lv` confidence intervals, NB1, ordinal, mixed-family,
+#'   masked, and fixed-effect-X-plus-`X_lv` rows remain gated.
 #' @param coef_fixed Optional logical vector of length `dim(X)[3]`. `TRUE`
 #'   entries are fixed at zero by the Julia bridge. Most R users should prefer
 #'   the named `Xcoef_fixed` argument to [gllvmTMB()], which is translated to
@@ -2769,7 +2848,11 @@ gllvm_julia_fit <- function(
         res$lv_effects <- lv_effects
       }
     }
-    for (ci_name in c("lv_effects_lower", "lv_effects_upper", "lv_effects_se")) {
+    for (ci_name in c(
+      "lv_effects_lower",
+      "lv_effects_upper",
+      "lv_effects_se"
+    )) {
       if (is.null(res[[ci_name]])) {
         next
       }
@@ -2801,6 +2884,32 @@ gllvm_julia_fit <- function(
         dimnames(alpha_lv) <- list(xlv_names, axes)
         res$alpha_lv <- alpha_lv
       }
+    }
+    for (ci_name in c("alpha_lv_lower", "alpha_lv_upper", "alpha_lv_se")) {
+      if (is.null(res[[ci_name]])) {
+        next
+      }
+      ci_mat <- as.matrix(res[[ci_name]])
+      if (identical(dim(ci_mat), c(length(xlv_names), length(axes)))) {
+        dimnames(ci_mat) <- list(xlv_names, axes)
+        res[[ci_name]] <- ci_mat
+      }
+    }
+    if (!is.null(res$alpha_lv_ci_level)) {
+      res$alpha_lv_ci_level <- as.numeric(
+        .gllvm_julia_as_vector(res$alpha_lv_ci_level, "numeric")
+      )[1L]
+    }
+    if (!is.null(res$alpha_lv_ci_method)) {
+      res$alpha_lv_ci_method <- .gllvm_julia_as_vector(
+        res$alpha_lv_ci_method,
+        "character"
+      )[1L]
+    }
+    if (!is.null(res$alpha_lv_ci_pd)) {
+      res$alpha_lv_ci_pd <- as.logical(
+        .gllvm_julia_as_vector(res$alpha_lv_ci_pd, "numeric")
+      )[1L]
     }
     for (score_name in c("scores_mean", "scores_innovation")) {
       if (is.null(res[[score_name]])) {
@@ -2862,8 +2971,8 @@ gllvm_julia_fit <- function(
 #' be requested at fit time through
 #' `gllvmTMB(ci_method = ...)`, or retrieved and recomputed through `confint()`.
 #' Predictor-informed `latent(..., lv = ~ x)` rows admit `ci_method = "wald"`
-#' at fit time; those Wald intervals are surfaced as `std.error`, `lower`, and
-#' `upper` through `extract_lv_effects()` rather than `confint()`.
+#' at fit time; retained Wald payloads are surfaced as `std.error`, `lower`,
+#' and `upper` through `extract_lv_effects()` rather than `confint()`.
 #'
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
 #'   [gllvm_julia_fit()].

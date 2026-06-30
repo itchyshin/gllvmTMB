@@ -248,10 +248,13 @@ withheld until coverage/calibration evidence lands.
   type = "trait_effect")`.
 - Extend `extract_ordination()` with
   `component = c("total", "mean", "innovation")`.
-- Return raw `alpha` only with a rotation warning.
-- Return `B_lv` as the preferred trait-scale effect table, with
-  `wald_sdreport_no_ci_validation` standard errors only from validated
-  `ADREPORT(B_lv_unit)` output and no confidence-interval claim.
+- Return raw `alpha` as the default axis / CLV effect table, with a
+  rotation warning and Wald SE / CI columns when the fitted loading
+  constraint and a positive-definite `sdreport()` make them available.
+- Return `B_lv` as the explicit induced trait-scale effect table, with
+  `wald_sdreport_no_ci_validation` standard errors and Wald CI columns
+  from `ADREPORT(B_lv_unit)` output when available. Coverage calibration
+  remains target- and regime-specific.
 
 ### 4a. R-to-Julia bridge PR
 
@@ -265,8 +268,10 @@ response mask, and `ci_method = "none"`.
 
 - Retained Julia payloads are `lv_effects`, `alpha_lv`,
   `scores_mean`, and `scores_innovation`.
-- `extract_lv_effects()` reports the Julia bridge `lv_effects` table
-  as point estimates only: `std.error = NA` and
+- `extract_lv_effects()` defaults to the Julia bridge `alpha_lv` axis
+  table and reports `lv_effects` only through `type = "trait_effect"`.
+  Bridge rows are point estimates only unless a retained Wald payload is
+  present: `std.error = NA` and
   `uncertainty_status =
   "julia_bridge_point_estimate_only_no_ci_validation"`.
 - `extract_ordination(component = c("total", "mean", "innovation"))`

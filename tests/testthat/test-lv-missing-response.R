@@ -151,7 +151,7 @@ test_that("latent lv supports masked Gaussian responses with observed predictors
   expect_identical(counts$n_observed, nrow(data_cc))
   expect_identical(counts$n_missing_response, length(truth$missing_rows))
 
-  trait_effect <- extract_lv_effects(fit_inc)
+  trait_effect <- extract_lv_effects(fit_inc, type = "trait_effect")
   expect_equal(unique(trait_effect$validation_row), "EXT-31; LV-01")
   expect_equal(
     unique(trait_effect$uncertainty_status),

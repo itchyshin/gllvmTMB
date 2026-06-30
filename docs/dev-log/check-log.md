@@ -21424,3 +21424,84 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-29-lv-source-specific-guard.md`.
+
+## 2026-06-29 -- LV factor predictor runtime branch rebase check
+
+Scope:
+
+- rebased the queued ordinary `latent(..., lv = ~ habitat)` factor-predictor
+  runtime branch onto current `origin/main` after PR #573 merged and its
+  post-merge R-CMD-check/pkgdown gates passed;
+- kept the claim to ordinary unit-tier Gaussian `latent()` with observed,
+  complete, factor-valued LV predictors;
+- added runtime/recovery evidence for the trait-by-factor effect
+  `B_lv = Lambda alpha^T`, plus rare nonempty factor-level and empty-level
+  preflight behaviour.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,url`
+  -> REVIEWED; no open gllvmTMB PRs after PR #573 merged.
+- `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/after-task tests/testthat R docs/design/35-validation-debt-register.md`
+  -> REVIEWED; recent nearby work was limited to the merged source-specific
+  guard and Bernoulli LV depth slices.
+
+Checks:
+
+- `git fetch origin main`
+  -> PASS; fetched current `main`.
+- `git rebase origin/main`
+  -> PASS; branch rebased cleanly after PR #573, with top commit
+  `5108c5d4 test(lv): add factor predictor runtime gate`.
+- `git diff --check origin/main...HEAD`
+  -> PASS; no whitespace errors before evidence edits.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-factor-runtime", reporter = "summary")'`
+  -> PASS; focused factor-runtime tests completed with no failures.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; parser guard remained green with the existing informational
+  sigma-eps auto-suppression message.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m45.6s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "lv latent factor" --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned issue #348 only.
+- `gh issue view 348 --repo itchyshin/gllvmTMB --json number,title,state,url,labels,body`
+  -> REVIEWED; #348 is the non-Gaussian family-validation umbrella and does
+  not need a comment or closure for this ordinary Gaussian factor-runtime
+  test slice.
+- `rg -n "LV-04|factor.*lv|factor.*LV|lv.*factor|predictor-informed|FG-18|RE-13|EXT-31|LV-05" docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md ROADMAP.md NEWS.md README.md docs/dev-log/known-limitations.md | head -n 220`
+  -> REVIEWED; expected hits are the Design 73 status files, NEWS scope
+  boundary, and validation rows. No README, roadmap, or known-limitations
+  promotion is required for this test/evidence slice.
+- `rg -n "until Bernoulli|Bernoulli single-trial depth,|no Bernoulli single-trial depth|Bernoulli binary depth|factor-predictor runtime smoke" docs/design/35-validation-debt-register.md docs/design/61-capability-status.md`
+  -> PASS; no stale pre-PR #572 or pre-factor-runtime wording remains in the
+  current status rows.
+- `rg -n "LV-04.*(covered|complete|calibrated)|factor-valued.*(covered|complete|calibrated)|factor-valued.*interval|factor-predictor.*(covered|complete|calibrated)|factor-predictor.*interval|source-specific.*factor-valued|phylo.*factor-valued|mixed-family.*factor-valued|non-Gaussian.*factor-valued" docs/design/35-validation-debt-register.md docs/design/61-capability-status.md tests/testthat/test-lv-factor-runtime.R`
+  -> REVIEWED; hits are explicit limitations or partial-row boundaries, not
+  promoted claims.
+- `rg -n "lv\\s*=\\s*~\\s*habitat|factor predictor|factor-valued|B_lv|LV-04" tests/testthat/test-lv-factor-runtime.R docs/dev-log/after-task/2026-06-29-lv-factor-runtime.md`
+  -> REVIEWED; expected hits are the new factor-runtime DGP/test and
+  after-task evidence only.
+- `rg -n "factor.*support|complete|coverage|interval|non-Gaussian|mixed-family|source-specific|phylo" tests/testthat/test-lv-factor-runtime.R docs/dev-log/after-task/2026-06-29-lv-factor-runtime.md`
+  -> REVIEWED; broad support/completion words appear only in explicit scope
+  boundaries, limitations, and validation records.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-29-lv-factor-runtime.md`
+  -> PASS; validator returned successfully.
+- `git diff --check`
+  -> PASS; no whitespace errors after evidence edits.
+
+Not run:
+
+- Factor-predictor interval coverage, non-Gaussian factor predictors,
+  missing LV predictors, missing responses with factors, mixed-family cells,
+  masks, `X + X_lv`, source-specific `lv`, or phylo Model A factor
+  predictors.
+- `devtools::document()` and `pkgdown::check_pkgdown()`; this branch adds a
+  test file plus validation-register / capability-status / dev-log evidence
+  records, with no roxygen, README, vignette, article, generated Rd, or
+  pkgdown navigation changes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-factor-runtime.md`.

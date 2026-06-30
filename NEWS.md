@@ -38,7 +38,8 @@
   `LV-05`, `JUL-01`, `JUL-01A`; `test-lv-parser-guard.R`,
   `test-lv-gaussian-recovery.R`, `test-lv-bernoulli-depth.R`,
   `test-lv-native-nongaussian-guard.R`,
-  `test-lv-family-boundary-guard.R`, `test-lv-factor-runtime.R`,
+  `test-lv-family-boundary-guard.R`,
+  `test-lv-reml-boundary-guard.R`, `test-lv-factor-runtime.R`,
   `test-lv-missing-response.R`, `test-julia-bridge.R`). PARTIAL / GATED:
   this is not broad
   `latent(lv = ...)` completion; binomial, non-Gaussian, mixed-family,

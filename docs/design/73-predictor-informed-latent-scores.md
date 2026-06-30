@@ -6,8 +6,9 @@ validated when the `lv` predictors remain observed and complete at the unit
 level; the R-to-Julia bridge also has point-only complete-response Poisson,
 NB2, Gamma, and Beta routes. Native TMB Gaussian recovery and interval
 evidence now cover the current ordinary Gaussian cells, and unsupported native
-family/link boundaries have fail-loud guard tests, but broader interval,
-family, tier, source-specific, and bridge parity claims remain gated row by row.
+family/link plus REML/lv-formula boundaries have fail-loud guard tests, but
+broader interval, family, tier, source-specific, and bridge parity claims remain
+gated row by row.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
@@ -129,7 +130,8 @@ and latent-variable modelling, not evidence that this specific
   routes under the bridge restrictions in Section 4a.
 - `lv` accepts a one-sided fixed-effect formula only.
 - Random-effect bars, offsets, `mi()`, smooth terms, and response or
-  trait columns inside `lv` are rejected.
+  trait columns inside `lv` are rejected; top-level guard tests cover
+  random-effect bars, `offset()`, `mi()`, and smooth terms.
 - `lv = ~ x` is accepted, but the intercept is dropped internally.
   The parser records a fit note and tests equivalence to
   `lv = ~ 0 + x`.
@@ -140,9 +142,9 @@ and latent-variable modelling, not evidence that this specific
   such as `x + latent(..., lv = ~ x)` and non-overlap formulas such as
   `z + latent(..., lv = ~ x)`. The combined `X + X_lv` regime remains
   gated until it has its own derivation and recovery evidence.
-- `REML = TRUE` with `lv` is rejected. REML / AI-REML language remains
-  Gaussian-only and needs a separate derivation even for this Gaussian
-  C1 surface.
+- `REML = TRUE` with `lv` is rejected by a top-level guard test. REML /
+  AI-REML language remains Gaussian-only and needs a separate derivation even
+  for this Gaussian C1 surface.
 - Other non-Gaussian families, native count-family `lv`, nonstandard binomial
   links, ordinal `lv`, and mixed-family `lv` fits are rejected until their own
   validation rows move. The native fail-loud guards currently cover binomial
@@ -412,8 +414,8 @@ native count-family support, NB1, ordinal, mixed-family `X_lv`, Julia bridge
 response masks with `X_lv`, fixed-effect `X` plus `X_lv`, CI/profile/bootstrap
 support, or broad native-vs-Julia parity until those rows are implemented and
 validated. Current parser guards reject fixed-effect `X + X_lv` formulas on
-both the overlapping and non-overlapping covariate paths, and native guards
-reject unsupported family/link calls before fitting.
+both the overlapping and non-overlapping covariate paths, and top-level guards
+reject unsupported family/link plus REML/lv-formula calls before fitting.
 
 ## Reviewer Checklist
 

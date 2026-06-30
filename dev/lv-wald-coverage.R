@@ -1,12 +1,14 @@
 ## dev/lv-wald-coverage.R
 ## ======================
-## Design 73 native TMB Gaussian Wald-coverage campaign harness.
+## Design 73 native TMB Wald-coverage campaign harness.
 ##
 ## This is a dev-only simulation runner. It is intentionally not exported
 ## and is excluded from the package tarball through `.Rbuildignore`.
 ##
 ## Scope:
 ##   - ordinary unit-tier Gaussian `latent(..., lv = ~ x)`;
+##   - ordinary unit-tier pure-binomial logit/probit/cloglog
+##     `latent(..., unique = FALSE, lv = ~ x)`;
 ##   - target `B_lv = Lambda %*% t(alpha)`;
 ##   - Wald intervals from `ADREPORT(B_lv_unit)` SEs;
 ##   - normal-critical Wald and unit-df t-critical Wald comparators.
@@ -41,12 +43,25 @@ LV_WALD_CELLS <- data.frame(
     "gaussian-d1-n72-t3",
     "gaussian-d1-n144-t3",
     "gaussian-d2-n96-t4",
-    "gaussian-d2-n160-t4"
+    "gaussian-d2-n160-t4",
+    "binomial-logit-d1-n160-t3",
+    "binomial-probit-d1-n160-t3",
+    "binomial-cloglog-d1-n160-t3"
   ),
-  family = "gaussian",
-  d = c(1L, 1L, 2L, 2L),
-  n_units = c(72L, 144L, 96L, 160L),
-  n_traits = c(3L, 3L, 4L, 4L),
+  family = c(
+    rep("gaussian", 4L),
+    rep("binomial", 3L)
+  ),
+  link = c(
+    rep(NA_character_, 4L),
+    "logit",
+    "probit",
+    "cloglog"
+  ),
+  n_trials = c(rep(NA_integer_, 4L), rep(18L, 3L)),
+  d = c(1L, 1L, 2L, 2L, 1L, 1L, 1L),
+  n_units = c(72L, 144L, 96L, 160L, 160L, 160L, 160L),
+  n_traits = c(3L, 3L, 4L, 4L, 3L, 3L, 3L),
   predictor = "x",
   stringsAsFactors = FALSE
 )
@@ -109,7 +124,9 @@ lv_wald_coverage_grid <- function(
       task_id = task_offset + seq_len(n_reps),
       cell_id = cell$cell_id,
       family = cell$family,
+      link = cell$link,
       d = cell$d,
+      n_trials = cell$n_trials,
       n_units = cell$n_units,
       n_traits = cell$n_traits,
       predictor = cell$predictor,
@@ -128,7 +145,10 @@ lv_wald_coverage_data <- function(
   n_traits,
   d,
   seed,
-  predictor = "x"
+  predictor = "x",
+  family = "gaussian",
+  link = NA_character_,
+  n_trials = NA_integer_
 ) {
   if (n_traits > 4L) {
     stop("lv_wald_coverage_data() currently defines truths for <= 4 traits.")
@@ -136,12 +156,29 @@ lv_wald_coverage_data <- function(
   if (d > 2L) {
     stop("lv_wald_coverage_data() currently defines truths for d <= 2.")
   }
+  family <- match.arg(family, c("gaussian", "binomial"))
+  if (identical(family, "binomial")) {
+    link <- match.arg(as.character(link), c("logit", "probit", "cloglog"))
+    n_trials <- as.integer(n_trials)
+    if (length(n_trials) != 1L || is.na(n_trials) || n_trials < 1L) {
+      stop("n_trials must be a positive integer for binomial cells")
+    }
+    if (!identical(as.integer(d), 1L)) {
+      stop("binomial LV Wald cells currently use d = 1.")
+    }
+    if (n_traits > 3L) {
+      stop("binomial LV Wald cells currently define truths for <= 3 traits.")
+    }
+  }
   set.seed(seed)
   traits <- paste0("t", seq_len(n_traits))
   units <- paste0("u", seq_len(n_units))
   x_unit <- scale(seq(-1.5, 1.5, length.out = n_units))[, 1L]
 
-  if (identical(as.integer(d), 1L)) {
+  if (identical(family, "binomial")) {
+    Lambda <- matrix(c(0.55, -0.45, 0.50)[seq_len(n_traits)], ncol = 1L)
+    alpha <- matrix(0.55, nrow = 1L, ncol = 1L)
+  } else if (identical(as.integer(d), 1L)) {
     Lambda <- matrix(c(0.70, -0.45, 0.55, 0.35)[seq_len(n_traits)], ncol = 1L)
     alpha <- matrix(0.65, nrow = 1L, ncol = 1L)
   } else {
@@ -162,10 +199,29 @@ lv_wald_coverage_data <- function(
     )
     alpha <- matrix(c(0.55, -0.35), nrow = 1L, ncol = d)
   }
-  beta <- matrix(c(0.10, -0.05, 0.08, 0.03)[seq_len(n_traits)], ncol = 1L)
-  psi <- c(0.18, 0.14, 0.16, 0.20)[seq_len(n_traits)]
+  if (identical(family, "binomial")) {
+    beta <- matrix(
+      switch(
+        link,
+        logit = c(-0.15, 0.05, -0.05),
+        probit = c(-0.10, 0.10, 0.00),
+        cloglog = c(-1.00, -0.85, -1.10)
+      )[seq_len(n_traits)],
+      ncol = 1L
+    )
+    psi <- rep(NA_real_, n_traits)
+    innovation_sd <- 0.70
+  } else {
+    beta <- matrix(c(0.10, -0.05, 0.08, 0.03)[seq_len(n_traits)], ncol = 1L)
+    psi <- c(0.18, 0.14, 0.16, 0.20)[seq_len(n_traits)]
+    innovation_sd <- 1
+  }
 
-  innovation <- matrix(stats::rnorm(n_units * d), nrow = n_units, ncol = d)
+  innovation <- matrix(
+    stats::rnorm(n_units * d, sd = innovation_sd),
+    nrow = n_units,
+    ncol = d
+  )
   mean_scores <- x_unit %*% alpha
   scores <- mean_scores + innovation
 
@@ -187,29 +243,71 @@ lv_wald_coverage_data <- function(
   unit_i <- as.integer(df$unit)
   eta <- as.numeric(beta[trait_i, 1L]) +
     rowSums(Lambda[trait_i, , drop = FALSE] * scores[unit_i, , drop = FALSE])
-  df$value <- eta + stats::rnorm(nrow(df), sd = psi[trait_i])
+  if (identical(family, "binomial")) {
+    p <- switch(
+      link,
+      logit = stats::plogis(eta),
+      probit = stats::pnorm(eta),
+      cloglog = 1 - exp(-exp(eta))
+    )
+    df$success <- stats::rbinom(nrow(df), size = n_trials, prob = p)
+    df$failure <- n_trials - df$success
+  } else {
+    df$value <- eta + stats::rnorm(nrow(df), sd = psi[trait_i])
+  }
 
   attr(df, "truth") <- list(
     traits = traits,
+    family = family,
+    link = if (identical(family, "binomial")) link else NA_character_,
+    n_trials = if (identical(family, "binomial")) n_trials else NA_integer_,
     predictor = predictor,
     Lambda = Lambda,
     alpha = alpha,
     B_lv = Lambda %*% t(alpha),
     Sigma_shared = Lambda %*% t(Lambda),
     psi = psi,
-    Sigma_total = Lambda %*% t(Lambda) + diag(psi^2, n_traits),
+    Sigma_total = if (identical(family, "gaussian")) {
+      Lambda %*% t(Lambda) + diag(psi^2, n_traits)
+    } else {
+      NA
+    },
     d = d
   )
   df
 }
 
-lv_wald_coverage_fit <- function(data, d) {
+lv_wald_coverage_fit <- function(
+  data,
+  d,
+  family = "gaussian",
+  link = NA_character_
+) {
   lv_wald_ensure_package()
+  family <- match.arg(family, c("gaussian", "binomial"))
   old_options <- options(
     gllvmTMB.quiet_grammar_notes = TRUE,
     lifecycle_verbosity = "quiet"
   )
   on.exit(options(old_options), add = TRUE)
+  control <- gllvmTMB::gllvmTMBcontrol(
+    se = TRUE,
+    optimizer = "optim",
+    optArgs = list(method = "BFGS")
+  )
+  if (identical(family, "binomial")) {
+    link <- match.arg(as.character(link), c("logit", "probit", "cloglog"))
+    return(suppressMessages(gllvmTMB::gllvmTMB(
+      cbind(success, failure) ~ 0 +
+        trait +
+        latent(0 + trait | unit, d = d, unique = FALSE, lv = ~x),
+      data = data,
+      unit = "unit",
+      trait = "trait",
+      family = stats::binomial(link = link),
+      control = control
+    )))
+  }
   suppressMessages(gllvmTMB::gllvmTMB(
     value ~ 0 +
       trait +
@@ -217,11 +315,7 @@ lv_wald_coverage_fit <- function(data, d) {
     data = data,
     unit = "unit",
     trait = "trait",
-    control = gllvmTMB::gllvmTMBcontrol(
-      se = TRUE,
-      optimizer = "optim",
-      optArgs = list(method = "BFGS")
-    )
+    control = control
   ))
 }
 
@@ -338,14 +432,22 @@ lv_wald_coverage_run_rep <- function(
     n_traits = plan_row$n_traits,
     d = plan_row$d,
     seed = plan_row$rep_seed,
-    predictor = plan_row$predictor
+    predictor = plan_row$predictor,
+    family = plan_row$family,
+    link = plan_row$link,
+    n_trials = plan_row$n_trials
   )
   truth <- attr(data, "truth")
   truth_rows <- lv_wald_truth_rows(truth)
 
   fit_error <- NA_character_
   fit <- tryCatch(
-    lv_wald_coverage_fit(data, d = plan_row$d),
+    lv_wald_coverage_fit(
+      data,
+      d = plan_row$d,
+      family = plan_row$family,
+      link = plan_row$link
+    ),
     error = function(e) {
       fit_error <<- conditionMessage(e)
       NULL
@@ -602,7 +704,13 @@ lv_wald_coverage_summarise <- function(
     data.frame(
       cell_id = df$cell_id[[1L]],
       family = df$family[[1L]],
+      link = if ("link" %in% names(df)) df$link[[1L]] else NA_character_,
       d = df$d[[1L]],
+      n_trials = if ("n_trials" %in% names(df)) {
+        df$n_trials[[1L]]
+      } else {
+        NA_integer_
+      },
       n_units = df$n_units[[1L]],
       n_traits = df$n_traits[[1L]],
       target = df$target[[1L]],

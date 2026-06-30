@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SLURM wrapper for the Design 73 ordinary Gaussian LV Wald coverage campaign.
+# SLURM wrapper for the Design 73 ordinary native LV Wald coverage campaign.
 #
 # Run this from a checked-out gllvmTMB repository on a DRAC login node.
 # The default action validates the generated sbatch file with
@@ -40,7 +40,7 @@ Examples:
   SLURM_ACTION=write RESULTS_DIR=/project/$USER/gllvmtmb-lv-wald \
     bash dev/lv-wald-coverage-slurm.sh
 
-  # Submit the full 4 x 500-rep campaign, capped at 40 concurrent tasks.
+  # Submit the full 7 x 500-rep campaign, capped at 40 concurrent tasks.
   SLURM_ACTION=submit SLURM_ACCOUNT=def-yourpi SLURM_ARRAY_LIMIT=40 \
     RESULTS_DIR=/project/$USER/gllvmtmb-lv-wald bash dev/lv-wald-coverage-slurm.sh
 

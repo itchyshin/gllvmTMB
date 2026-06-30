@@ -277,12 +277,12 @@ response mask, and `ci_method = "none"`.
   gated under `JUL-01`, `JUL-01A`, and `LV-01`. The same fixed-effect
   `X + X_lv` boundary is enforced on the native path before fitting.
 
-### 4b. Gaussian Wald coverage campaign
+### 4b. Native Wald coverage campaign
 
 Status: local r500 production-size evidence exists for the current ordinary
-Gaussian cells; public admission still needs branch audit/merge discipline. The
-dev-only runner `dev/lv-wald-coverage.R` defines four ordinary Gaussian
-cells:
+Gaussian cells; binomial standard-link cells are launch-ready infrastructure
+only and are not coverage evidence until an audited production run exists. The
+dev-only runner `dev/lv-wald-coverage.R` defines four ordinary Gaussian cells:
 
 | Cell | Target |
 |---|---|
@@ -337,6 +337,22 @@ bootstrap rescue is therefore not required for these four ordinary
 Gaussian cells, but remains a separate inference slice if later cells
 under-cover.
 
+The same harness now also defines the first pure-binomial standard-link
+interval cells:
+
+| Cell | Target |
+|---|---|
+| `binomial-logit-d1-n160-t3` | Rank-1, multi-trial logit, three traits |
+| `binomial-probit-d1-n160-t3` | Rank-1, multi-trial probit, three traits |
+| `binomial-cloglog-d1-n160-t3` | Rank-1, multi-trial cloglog, three traits |
+
+These binomial cells reuse the same `B_lv` estimand, interval methods,
+per-replicate seeds, failed-fit denominators, and summary fields as the
+Gaussian campaign. They are a production-run gate, not a result:
+`LV-05` remains point/recovery-only for native binomial `lv` fits until
+a >= 500-rep/cell binomial coverage run is collected, audited, and added
+to `docs/dev-log/artifacts/lv-wald-coverage/`.
+
 ### 5. Public docs/article PR
 
 Only after C1 recovery evidence, add a Tier-1 article:
@@ -372,13 +388,14 @@ Heavy tests under `GLLVMTMB_HEAVY_TESTS=1`:
 
 - Rank-1 and rank-2 Gaussian recovery of `B_lv` and `Sigma`
   (covered by `test-lv-gaussian-recovery.R`, with rank 2 heavy-gated).
-- Gaussian Wald coverage harness checks for the grid layout, one
+- Native Wald coverage harness checks for the grid layout, one
   recorded seed per task, failed-fit denominators, MCSE formulas,
-  normal-critical and unit-df t-critical comparator rows, and an opt-in
-  one-fit smoke (`test-lv-wald-coverage-harness.R`). The local r500
-  evidence artifacts are external validation evidence; the package tests
-  remain harness and smoke checks, not a shortcut for rerunning 2,000
-  fits on CRAN.
+  normal-critical and unit-df t-critical comparator rows, binomial
+  standard-link cell metadata/DGP construction, and opt-in one-fit
+  Gaussian/binomial smokes (`test-lv-wald-coverage-harness.R`). The local
+  r500 Gaussian evidence artifacts are external validation evidence; the
+  package tests remain harness and smoke checks, not a shortcut for
+  rerunning production coverage fits on CRAN.
 - `dev/lv-wald-coverage-slurm.sh` writes/tests/submits the matching
   one-seed-per-SLURM-array-task campaign and collects summaries after the
   array finishes. The wrapper is launch infrastructure only; it is not

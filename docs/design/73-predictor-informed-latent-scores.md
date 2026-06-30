@@ -168,7 +168,7 @@ but C1 exposes only ordinary unit-tier support.
 
 | Tier / source | Eventual target | C1 behaviour |
 |---|---|---|
-| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog `engine = "julia"` point route; smoke/algebra evidence, focused native Gaussian recovery, and standard-link binary latent-predictor trait-effect recovery, not interval calibration |
+| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog `engine = "julia"` point route; smoke/algebra evidence, focused native Gaussian recovery, standard-link binary latent-predictor trait-effect recovery, and rank-1 multi-trial standard-link binomial interval evidence |
 | `latent(... | unit_obs, lv = ~ x_obs)` | Within-unit/session latent-score mean | Reject as planned |
 | `latent(... | cluster, lv = ~ x_cluster)` | Cluster latent-score mean if a reduced-rank cluster slot is added | Reject as planned |
 | `latent(... | cluster2, lv = ~ x_cluster2)` | Not valid today; `cluster2` is diagonal-only | Reject |
@@ -280,8 +280,7 @@ response mask, and `ci_method = "none"`.
 ### 4b. Native Wald coverage campaign
 
 Status: local r500 production-size evidence exists for the current ordinary
-Gaussian cells; binomial standard-link cells are launch-ready infrastructure
-only and are not coverage evidence until an audited production run exists. The
+Gaussian cells and for the rank-1 multi-trial binomial standard-link cells. The
 dev-only runner `dev/lv-wald-coverage.R` defines four ordinary Gaussian cells:
 
 | Cell | Target |
@@ -346,12 +345,27 @@ interval cells:
 | `binomial-probit-d1-n160-t3` | Rank-1, multi-trial probit, three traits |
 | `binomial-cloglog-d1-n160-t3` | Rank-1, multi-trial cloglog, three traits |
 
-These binomial cells reuse the same `B_lv` estimand, interval methods,
-per-replicate seeds, failed-fit denominators, and summary fields as the
-Gaussian campaign. They are a production-run gate, not a result:
-`LV-05` remains point/recovery-only for native binomial `lv` fits until
-a >= 500-rep/cell binomial coverage run is collected, audited, and added
-to `docs/dev-log/artifacts/lv-wald-coverage/`.
+The 2026-06-30 local r500 binomial run met the same replicate bar for
+these three standard-link cells. It attempted 500 fits/cell across logit,
+probit, and cloglog, all optimizer-converged, all had positive-definite
+Hessians, all had usable `sdreport()` output, and all 1,500 fitted replicates
+remained eligible for interval summaries. Compact evidence artifacts are
+recorded under `docs/dev-log/artifacts/lv-wald-coverage/`:
+
+- `2026-06-30-local-binomial-r500-summary.csv`
+- `2026-06-30-local-binomial-r500-excluded-replicates.csv`
+- `2026-06-30-local-binomial-r500-t-vs-z.csv`
+- `2026-06-30-local-binomial-r500-session-info.txt`
+
+All 18 target/method rows passed the 0.92--0.98 coverage band, with coverage
+0.920--0.952 and MCSE 0.0096--0.0121. The excluded-replicate artifact is
+header-only because no replicate failed convergence, Hessian, `sdreport()`, or
+CI availability checks. The `wald_t_unit` comparator improved four of nine
+paired target rows by 0.002, tied the other five, and was never worse. This
+promotes the narrow native binomial interval subclaim for the three rank-1
+multi-trial standard-link cells only; `LV-05` remains partial for native
+count-family, nonstandard binomial-link, ordinal, mixed-family, response-mask,
+source/tier-expanded, and Julia-bridge interval support.
 
 ### 5. Public docs/article PR
 

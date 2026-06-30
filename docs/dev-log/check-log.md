@@ -21999,3 +21999,86 @@ Post-report checks:
 - `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
   -> PASS after dev-log / after-task edits; `lv-wald-coverage-harness:
   ................................................SS`.
+
+## 2026-06-30 -- LV binomial Wald local r500 evidence
+
+Scope: clean gllvmTMB worktree
+`/private/tmp/gllvmtmb-lv-binomial-interval-20260630` on branch
+`codex/lv-binomial-interval-20260630`. This slice promotes the
+rank-1 multi-trial binomial logit/probit/cloglog Design 73 coverage cells from
+launch-ready infrastructure to narrow local r500 evidence.
+
+Pre-edit / coordination checks:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,updatedAt`
+  -> PASS; `[]`, no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago" -- docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/check-log.md docs/dev-log/after-task`
+  -> REVIEWED; only the current harness commit touched this lane recently.
+
+Production runs:
+
+- `rm -rf /tmp/gllvmtmb-lv-binomial-r500-logit-20260630; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=binomial-logit-d1-n160-t3 --n-reps=500 --seed-base=20260630 --interval-methods=wald_z,wald_t_unit --results-dir=/tmp/gllvmtmb-lv-binomial-r500-logit-20260630`
+  -> PASS; 500/500 reps completed.
+- `rm -rf /tmp/gllvmtmb-lv-binomial-r500-probit-20260630; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=binomial-probit-d1-n160-t3 --n-reps=500 --seed-base=20260630 --interval-methods=wald_z,wald_t_unit --results-dir=/tmp/gllvmtmb-lv-binomial-r500-probit-20260630`
+  -> PASS; 500/500 reps completed.
+- `rm -rf /tmp/gllvmtmb-lv-binomial-r500-cloglog-20260630; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=binomial-cloglog-d1-n160-t3 --n-reps=500 --seed-base=20260630 --interval-methods=wald_z,wald_t_unit --results-dir=/tmp/gllvmtmb-lv-binomial-r500-cloglog-20260630`
+  -> PASS; 500/500 reps completed.
+
+Aggregate and artifacts:
+
+- `Rscript --vanilla - <<'RS' ... RS`
+  -> PASS; aggregation across the three summary/long CSVs reported 18 summary
+  rows, `all_production TRUE`, `all_pass TRUE`, 9,000 long rows, and 0 bad
+  rows.
+- Artifact extraction to
+  `docs/dev-log/artifacts/lv-wald-coverage/2026-06-30-local-binomial-r500-*`
+  -> PASS; wrote 18 summary rows, one header-only excluded-replicate ledger,
+  nine t-vs-z comparator rows, and combined session info.
+- The committed evidence records coverage 0.920--0.952, MCSE
+  0.0096--0.0121, 1,500/1,500 optimizer-converged fits, 1,500/1,500
+  positive-definite Hessians, 1,500/1,500 usable `sdreport()` outputs, and
+  zero excluded replicates.
+
+Docs / register updates:
+
+- Design 73 now records the binomial local r500 result and artifact names.
+- Design 61 now says the native binomial interval subclaim is covered only for
+  the three rank-1 multi-trial standard-link cells.
+- Validation-debt rows `FG-18`, `RE-13`, `EXT-31`, and `LV-05` cite the
+  binomial r500 artifact. Rows `LV-01` and `LV-02` remain Gaussian-only rows.
+
+Rose / stale wording scans:
+
+- `rg -n 'LV-05|binomial.*interval|local.*binomial.*r500|coverage artifact|coverage band|0\.920|0\.952|2026-06-30-local-binomial' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; expected evidence and artifact hits.
+- `rg -n 'binomial.*(launch-ready|infrastructure only|not coverage evidence|no native binomial interval coverage|no calibrated native binomial)|native binomial.*(blocked|pending).*interval|500-rep.*binomial.*pending' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md NEWS.md`
+  -> PASS; no stale launch-only binomial interval wording in live status docs.
+- `rg -n 'native count-family.*(covered|validated|calibrated)|nonstandard binomial.*(covered|validated|calibrated)|ordinal.*lv.*(covered|validated|calibrated)|mixed-family.*lv.*(covered|validated|calibrated)|Julia.*(covered|validated|calibrated).*CI|calibrated Julia' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md NEWS.md`
+  -> REVIEWED; broad hits were unrelated historical rows or rows that still
+  keep broader non-Gaussian / Julia CI support gated.
+- `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | head -n 220`
+  -> REVIEWED; no user-facing examples changed in this slice.
+
+Not run yet:
+
+- `devtools::document()`; no roxygen, generated Rd, NAMESPACE, or exported
+  function docs changed.
+- `pkgdown::check_pkgdown()` / `pkgdown::build_articles(lazy = FALSE)`; no
+  pkgdown navigation, vignettes, articles, parser behaviour, or user-call
+  examples changed.
+- `devtools::check()`; this is evidence/doc/artifact promotion after the
+  focused harness commit already passed its test and CLI checks.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-30-lv-binomial-wald-local-r500.md`.
+
+Post-report checks:
+
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-30-lv-binomial-wald-local-r500.md`
+  -> PASS.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; `lv-wald-coverage-harness:
+  ................................................SS`.

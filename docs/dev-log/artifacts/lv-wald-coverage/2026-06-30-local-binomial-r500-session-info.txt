@@ -1,0 +1,69 @@
+===== logit =====
+R version 4.6.0 (2026-04-24)
+Platform: aarch64-apple-darwin23
+Running under: macOS Tahoe 26.5.1
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
+
+time zone: America/Edmonton
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+ [1] compiler_4.6.0   Matrix_1.7-5     assertthat_0.2.1 generics_0.1.4  
+ [5] cli_3.6.6        TMB_1.9.21       grid_4.6.0       rlang_1.2.0     
+ [9] gllvmTMB_0.2.0   lattice_0.22-9  
+
+===== probit =====
+R version 4.6.0 (2026-04-24)
+Platform: aarch64-apple-darwin23
+Running under: macOS Tahoe 26.5.1
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
+
+time zone: America/Edmonton
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+ [1] compiler_4.6.0   Matrix_1.7-5     assertthat_0.2.1 generics_0.1.4  
+ [5] cli_3.6.6        TMB_1.9.21       grid_4.6.0       rlang_1.2.0     
+ [9] gllvmTMB_0.2.0   lattice_0.22-9  
+
+===== cloglog =====
+R version 4.6.0 (2026-04-24)
+Platform: aarch64-apple-darwin23
+Running under: macOS Tahoe 26.5.1
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
+
+time zone: America/Edmonton
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+ [1] compiler_4.6.0   Matrix_1.7-5     assertthat_0.2.1 generics_0.1.4  
+ [5] cli_3.6.6        TMB_1.9.21       grid_4.6.0       rlang_1.2.0     
+ [9] gllvmTMB_0.2.0   lattice_0.22-9  
+

@@ -51,9 +51,14 @@ Gaussian Wald grid records one seed per replicate, MCSE, failed-fit
 denominators, and paired normal-critical / unit-df t-critical
 comparator rows for four ordinary Gaussian `B_lv` cells. Missing `lv`
 predictors, non-Gaussian response masks, binomial interval coverage,
-native non-binomial families, mixed-family rows, tier-expanded /
-structured-source support, Julia bridge intervals, and broad Julia bridge
-parity are still gated until their own evidence lands.
+fixed-effect `X + X_lv`, native non-binomial families, mixed-family rows,
+tier-expanded / structured-source support, Julia bridge intervals, and broad
+Julia bridge parity are still gated until their own evidence lands.
+
+Guard note: current Design 73 C1 parser tests reject any ordinary
+fixed-effect RHS covariate beside `latent(..., lv = ~ x)`, including exact
+overlap and non-overlap formulas. This is fail-loud evidence only; it does
+not admit combined `X + X_lv` fits.
 
 ## Bottom Line
 

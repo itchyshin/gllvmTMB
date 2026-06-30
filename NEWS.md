@@ -25,23 +25,29 @@
   `latent(..., unique = FALSE, lv = ~ x)` bridge fits with no fixed-effect `X`,
   no response mask, no CIs, retained `X_lv`, `lv_effects`, `alpha_lv`,
   `scores_mean`, and `scores_innovation` payloads; intercept-dropping
-  (`lv = ~ x` equals `lv = ~ 0 + x`); factor/rank preflight; fixed-effect
-  overlap checks; and typed rejections for random terms, offsets, `mi()`,
-  smooth terms, response/trait columns, `REML = TRUE`, unsupported native-TMB
-  non-Gaussian families, unsupported Julia bridge `X_lv` combinations,
-  unsupported tiers, augmented random-regression combinations, ordinary
-  diagonal aliases, source-specific forms, and kernel forms (`FG-18`, `RE-13`,
-  `EXT-31`, `LV-01`, `LV-02`, `LV-04`, `LV-05`, `JUL-01`, `JUL-01A`;
-  `test-lv-parser-guard.R`, `test-lv-gaussian-recovery.R`,
-  `test-julia-bridge.R`). PARTIAL / GATED: this is not yet Bernoulli
-  single-trial binary depth or interval calibration; Wald SEs are labelled
-  `wald_sdreport_no_ci_validation` and do not imply CI coverage; Julia bridge
-  `X_lv` rows are point-estimate only with `std.error = NA` and
-  `julia_bridge_point_estimate_only_no_ci_validation`; missing-response
-  compatibility, factor-predictor runtime recovery, native count-family
-  support, ordinal/NB1/mixed-family/delta-hurdle bridge rows,
-  tier-expanded support, structured-source support, 500-rep coverage grids, and
-  broad Julia bridge parity remain gated under `LV-02`, `LV-03`, `LV-06`, and
+  (`lv = ~ x` equals `lv = ~ 0 + x`); factor/rank preflight plus ordinary
+  Gaussian factor-predictor runtime/recovery and empty-level rejection;
+  ordinary Gaussian response-mask compatibility when `lv` predictors are
+  observed and complete; fixed-effect RHS guards that reject both overlapping
+  and non-overlapping `X + X_lv` formulas; and typed rejections for random
+  terms, offsets, `mi()`, smooth terms, response/trait columns, `REML = TRUE`,
+  unsupported native-TMB non-Gaussian families, unsupported Julia bridge
+  `X_lv` combinations, unsupported tiers, augmented random-regression
+  combinations, ordinary diagonal aliases, source-specific forms, and kernel
+  forms (`FG-18`, `RE-13`, `EXT-31`, `LV-01`, `LV-02`, `LV-03`, `LV-04`,
+  `LV-05`, `JUL-01`, `JUL-01A`; `test-lv-parser-guard.R`,
+  `test-lv-gaussian-recovery.R`, `test-lv-bernoulli-depth.R`,
+  `test-lv-factor-runtime.R`, `test-lv-missing-response.R`,
+  `test-julia-bridge.R`). PARTIAL / GATED: this is not broad
+  `latent(lv = ...)` completion; binomial, non-Gaussian, mixed-family,
+  factor-predictor, bridge, source/tier, and mask interval calibration remain
+  separate gates; Julia bridge `X_lv` rows are point-estimate only with
+  `std.error = NA` and `julia_bridge_point_estimate_only_no_ci_validation`;
+  missing `lv` predictors, `mi()` terms inside `lv`, non-Gaussian response
+  masks, mixed-family response masks, native count-family support,
+  ordinal/NB1/mixed-family/delta-hurdle bridge rows, combined fixed-effect
+  `X + X_lv` fits, tier-expanded support, structured-source support, and
+  broad Julia bridge parity remain gated under `LV-03`, `LV-05`, `LV-06`, and
   `LV-07`.
 
 ## `Xcoef_fixed` pins fixed-effect coefficients at zero (2026-06-22)

@@ -209,15 +209,13 @@ gll_prepare_lv_predictor_setup <- function(
   } else {
     character(0L)
   }
-  fixed_overlap <- intersect(lv_vars, fixed_rhs_vars)
-  if (length(fixed_overlap) > 0L) {
+  if (length(fixed_rhs_vars) > 0L) {
     cli::cli_abort(c(
-      "{.arg lv} predictors cannot also appear on the fixed-effect RHS.",
-      "x" = "Overlapping column(s): {.var {fixed_overlap}}.",
-      "i" = "Design 73 C1 keeps fixed effects and latent-score means distinct for identifiability."
+      "{.arg lv} predictor-informed latent scores cannot yet be combined with fixed-effect RHS covariates.",
+      "x" = "Found fixed-effect RHS column(s): {.var {fixed_rhs_vars}}.",
+      "i" = "Design 73 C1 keeps fixed effects and latent-score means distinct; the {.code X + X_lv} regime remains gated until it has its own derivation and recovery evidence."
     ))
   }
-
   lv_no_intercept <- gll_lv_no_intercept_formula(lv_formula)
   mf <- tryCatch(
     stats::model.frame(

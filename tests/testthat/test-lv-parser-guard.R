@@ -684,7 +684,13 @@ test_that("latent lv preflight rejects unsupported model regimes", {
     lv_preflight_setup(
       value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, lv = ~x)
     ),
-    regexp = "fixed-effect RHS|Overlapping"
+    regexp = "fixed-effect RHS|X \\+ X_lv|Design 73"
+  )
+  expect_error(
+    lv_preflight_setup(
+      value ~ 0 + trait + z + latent(0 + trait | unit, d = 1, lv = ~x)
+    ),
+    regexp = "fixed-effect RHS|X \\+ X_lv|Design 73"
   )
   expect_error(
     lv_preflight_setup(

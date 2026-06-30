@@ -21585,3 +21585,94 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-29-lv-missing-response.md`.
+
+## 2026-06-29 -- LV X + X_lv fixed-effect guard branch check
+
+Scope:
+
+- rebased the queued `X + X_lv` guard branch onto current `origin/main` after
+  PR #575 merged and its post-merge main/pkgdown gates passed;
+- changed the Design 73 C1 preflight from rejecting only exact fixed/LV
+  overlap to rejecting any ordinary fixed-effect RHS covariate when
+  `latent(..., lv = ~ x)` is present;
+- kept the claim to fail-loud grammar protection only. This is not combined
+  `X + X_lv` support.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> REVIEWED; no open gllvmTMB PRs after PR #575 merged.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md docs/dev-log/after-task tests/testthat R docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; nearby LV edits were the recently merged Bernoulli, source
+  guard, factor-runtime, and missing-response slices.
+- `gh run view 28417152793 --repo itchyshin/gllvmTMB --json status,conclusion,updatedAt,createdAt,headSha,url,jobs`
+  -> PASS; PR #575 post-merge pkgdown completed successfully on `86188d69`.
+
+Checks:
+
+- `git fetch origin +refs/heads/main:refs/remotes/origin/main --prune`
+  -> PASS.
+- `git rebase origin/main`
+  -> PASS; branch rebased cleanly, with top commit
+  `917c214f fix(lv): reject fixed effects beside predictor-informed scores`.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; focused parser guard completed with no failures. The existing
+  sigma-eps auto-suppression informational message appeared.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no pkgdown reference/navigation problems found.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::build_article("gllvmTMB", lazy = FALSE, new_process = FALSE); pkgdown::build_article("articles/fixed-effect-zero-constraints", lazy = FALSE, new_process = FALSE); pkgdown::build_article("articles/covariance-correlation", lazy = FALSE, new_process = FALSE)'`
+  -> PASS; targeted article smoke rendered the package vignette plus the two
+  neighbouring public articles. Disposable vignette PNGs were removed after
+  inspection.
+- Earlier full article-estate probe:
+  `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> first attempt failed before rendering because the package was not
+  installed in the subprocess; after
+  `devtools::install(quick = TRUE, dependencies = FALSE, upgrade = FALSE, quiet = TRUE)`,
+  the second run rendered many articles and was manually stopped after spending
+  too long in unrelated `lambda-constraint.Rmd`. This is recorded as partial
+  article-estate evidence, not a full-site proof.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m45.5s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `git diff --check`
+  -> PASS; no whitespace errors.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-29-lv-x-guard.md`
+  -> PASS; validator returned successfully.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'X_lv fixed effect' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'Design 73 fixed-effect lv' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'latent lv fixed' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348, the broad non-Gaussian
+  family-validation umbrella, which is not advanced or closed by this
+  fixed-effect guard slice.
+
+Rose / stale wording scans:
+
+- `rg -n 'FG-18|RE-13|EXT-31|LV-0[1-7]|JUL-01|JUL-01A|IN for this slice|PARTIAL / GATED|X \+ X_lv|fixed-effect RHS|factor-predictor|response-mask|missing `lv` predictors' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md | head -n 260`
+  -> REVIEWED; hits show the row IDs and narrow fail-loud boundary.
+- `rg -n 'not yet Bernoulli|Bernoulli single-trial.*gated|missing-response compatibility, factor-predictor runtime|factor-predictor runtime recovery, native count-family|500-rep coverage grids.*remain gated|fixed-effect overlap checks|exact fixed-effect overlap is rejected|LV-03.*blocked|LV-04.*blocked|response-mask compatibility.*blocked|X \+ X_lv.*(covered|validated|admitted|supported)|combined fixed-effect `X \+ X_lv` fits.*(covered|validated|admitted|supported)' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; the only hit was the expected `EXT-31` limitation row, not a
+  promoted `X + X_lv` claim.
+- `rg -n 'gllvmTMB_wide|meta_known_V|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(|\bS_B\b|\bS_W\b|\\bf S|in prep|in preparation' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits are historical/compatibility mentions (`gllvmTMB_wide`,
+  `meta_known_V`, `block_V`, `phylo_rr`, and `phylo()` in missing-predictor
+  rows), not new stale LV wording.
+- `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | head -n 220`
+  -> REVIEWED; this branch adds no new `gllvmTMB()` examples. Touched
+  NEWS/design text does not introduce long-format calls requiring a new
+  `trait =` audit.
+
+Not run:
+
+- `devtools::document()`; no roxygen, generated Rd, NAMESPACE, or exported
+  function docs changed.
+- Full `pkgdown::build_articles(lazy = FALSE)` to completion; the broad run
+  was stopped in the unrelated expensive `lambda-constraint.Rmd` path, so only
+  targeted article smoke plus `pkgdown::check_pkgdown()` are claimed.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-x-guard.md`.

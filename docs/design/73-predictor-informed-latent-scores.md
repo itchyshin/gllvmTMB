@@ -134,9 +134,11 @@ and latent-variable modelling, not evidence that this specific
   `lv = ~ 0 + x`.
 - Predictors in `lv` must be constant within the grouping level of the
   outer `latent()` term. The parser errors rather than averaging.
-- Exact fixed-effect overlap is rejected in C1: if `x` appears in
-  `lv = ~ x`, the same expanded predictor cannot also appear in the
-  ordinary fixed-effect RHS.
+- Any ordinary fixed-effect RHS covariate is rejected in C1 when a
+  predictor-informed `lv` term is present. This includes exact overlap
+  such as `x + latent(..., lv = ~ x)` and non-overlap formulas such as
+  `z + latent(..., lv = ~ x)`. The combined `X + X_lv` regime remains
+  gated until it has its own derivation and recovery evidence.
 - `REML = TRUE` with `lv` is rejected. REML / AI-REML language remains
   Gaussian-only and needs a separate derivation even for this Gaussian
   C1 surface.
@@ -265,7 +267,8 @@ response mask, and `ci_method = "none"`.
   binomial bridge score payloads.
 - NB1, ordinal, mixed-family `X_lv`, fixed-effect `X` plus `X_lv`,
   response masks plus `X_lv`, and any CI/profile/bootstrap route remain
-  gated under `JUL-01`, `JUL-01A`, and `LV-01`.
+  gated under `JUL-01`, `JUL-01A`, and `LV-01`. The same fixed-effect
+  `X + X_lv` boundary is enforced on the native path before fitting.
 
 ### 4b. Gaussian Wald coverage campaign
 
@@ -403,7 +406,8 @@ logit/probit/cloglog point routes described above. Public docs must not imply
 native count-family support, NB1, ordinal, mixed-family `X_lv`, Julia bridge
 response masks with `X_lv`, fixed-effect `X` plus `X_lv`, CI/profile/bootstrap
 support, or broad native-vs-Julia parity until those rows are implemented and
-validated.
+validated. Current parser guards reject fixed-effect `X + X_lv` formulas on
+both the overlapping and non-overlapping covariate paths.
 
 ## Reviewer Checklist
 

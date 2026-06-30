@@ -22179,3 +22179,19 @@ Post-report checks:
   (`TRUE`), while the default library path does not.
 - `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
   -> PASS in 4m 54s; `0 errors | 0 warnings | 0 notes`.
+
+Pre-merge public-doc / pkgdown gate:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,url,mergeStateStatus --limit 20`
+  -> REVIEWED; PR #581 is the only open gllvmTMB PR and is ready/clean.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-30-lv-axis-effect-se.md`
+  -> REVIEWED; only the current branch commit touched these files.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found.`
+- `rg -n "extract_lv_effects|LV-AXIS|axis_effect|trait_effect|alpha_lv_B|B_lv_unit|std.error|conf.level" _pkgdown.yml NAMESPACE man/extract_lv_effects.Rd R/extractors.R`
+  -> PASS; source formals, generated Rd usage, NAMESPACE export, and
+  `_pkgdown.yml` reference entry agree.
+- `rg -n "trio|profile-likelihood default|unsupported.*implemented|implemented.*unsupported|gllvmTMB_wide|meta_known_V|\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(U\\)|U_phy|U_non|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(" NEWS.md R/extractors.R R/julia-bridge.R man/extract_lv_effects.Rd man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits are older compatibility / alias wording (`gllvmTMB_wide`,
+  `meta_known_V`, `block_V`) that is explicitly described as deprecated or
+  blocked, not a current `extract_lv_effects()` overclaim.

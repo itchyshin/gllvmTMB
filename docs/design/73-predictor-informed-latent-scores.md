@@ -168,7 +168,7 @@ but C1 exposes only ordinary unit-tier support.
 
 | Tier / source | Eventual target | C1 behaviour |
 |---|---|---|
-| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog `engine = "julia"` point route; smoke/algebra evidence, focused native Gaussian recovery, and standard-link binary latent-predictor trait-effect recovery, not interval calibration |
+| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog `engine = "julia"` point route; smoke/algebra evidence, focused native Gaussian recovery, standard-link binary latent-predictor trait-effect recovery, and rank-1 multi-trial standard-link binomial interval evidence |
 | `latent(... | unit_obs, lv = ~ x_obs)` | Within-unit/session latent-score mean | Reject as planned |
 | `latent(... | cluster, lv = ~ x_cluster)` | Cluster latent-score mean if a reduced-rank cluster slot is added | Reject as planned |
 | `latent(... | cluster2, lv = ~ x_cluster2)` | Not valid today; `cluster2` is diagonal-only | Reject |
@@ -277,12 +277,11 @@ response mask, and `ci_method = "none"`.
   gated under `JUL-01`, `JUL-01A`, and `LV-01`. The same fixed-effect
   `X + X_lv` boundary is enforced on the native path before fitting.
 
-### 4b. Gaussian Wald coverage campaign
+### 4b. Native Wald coverage campaign
 
 Status: local r500 production-size evidence exists for the current ordinary
-Gaussian cells; public admission still needs branch audit/merge discipline. The
-dev-only runner `dev/lv-wald-coverage.R` defines four ordinary Gaussian
-cells:
+Gaussian cells and for the rank-1 multi-trial binomial standard-link cells. The
+dev-only runner `dev/lv-wald-coverage.R` defines four ordinary Gaussian cells:
 
 | Cell | Target |
 |---|---|
@@ -337,6 +336,37 @@ bootstrap rescue is therefore not required for these four ordinary
 Gaussian cells, but remains a separate inference slice if later cells
 under-cover.
 
+The same harness now also defines the first pure-binomial standard-link
+interval cells:
+
+| Cell | Target |
+|---|---|
+| `binomial-logit-d1-n160-t3` | Rank-1, multi-trial logit, three traits |
+| `binomial-probit-d1-n160-t3` | Rank-1, multi-trial probit, three traits |
+| `binomial-cloglog-d1-n160-t3` | Rank-1, multi-trial cloglog, three traits |
+
+The 2026-06-30 local r500 binomial run met the same replicate bar for
+these three standard-link cells. It attempted 500 fits/cell across logit,
+probit, and cloglog, all optimizer-converged, all had positive-definite
+Hessians, all had usable `sdreport()` output, and all 1,500 fitted replicates
+remained eligible for interval summaries. Compact evidence artifacts are
+recorded under `docs/dev-log/artifacts/lv-wald-coverage/`:
+
+- `2026-06-30-local-binomial-r500-summary.csv`
+- `2026-06-30-local-binomial-r500-excluded-replicates.csv`
+- `2026-06-30-local-binomial-r500-t-vs-z.csv`
+- `2026-06-30-local-binomial-r500-session-info.txt`
+
+All 18 target/method rows passed the 0.92--0.98 coverage band, with coverage
+0.920--0.952 and MCSE 0.0096--0.0121. The excluded-replicate artifact is
+header-only because no replicate failed convergence, Hessian, `sdreport()`, or
+CI availability checks. The `wald_t_unit` comparator improved four of nine
+paired target rows by 0.002, tied the other five, and was never worse. This
+promotes the narrow native binomial interval subclaim for the three rank-1
+multi-trial standard-link cells only; `LV-05` remains partial for native
+count-family, nonstandard binomial-link, ordinal, mixed-family, response-mask,
+source/tier-expanded, and Julia-bridge interval support.
+
 ### 5. Public docs/article PR
 
 Only after C1 recovery evidence, add a Tier-1 article:
@@ -372,13 +402,14 @@ Heavy tests under `GLLVMTMB_HEAVY_TESTS=1`:
 
 - Rank-1 and rank-2 Gaussian recovery of `B_lv` and `Sigma`
   (covered by `test-lv-gaussian-recovery.R`, with rank 2 heavy-gated).
-- Gaussian Wald coverage harness checks for the grid layout, one
+- Native Wald coverage harness checks for the grid layout, one
   recorded seed per task, failed-fit denominators, MCSE formulas,
-  normal-critical and unit-df t-critical comparator rows, and an opt-in
-  one-fit smoke (`test-lv-wald-coverage-harness.R`). The local r500
-  evidence artifacts are external validation evidence; the package tests
-  remain harness and smoke checks, not a shortcut for rerunning 2,000
-  fits on CRAN.
+  normal-critical and unit-df t-critical comparator rows, binomial
+  standard-link cell metadata/DGP construction, and opt-in one-fit
+  Gaussian/binomial smokes (`test-lv-wald-coverage-harness.R`). The local
+  r500 Gaussian evidence artifacts are external validation evidence; the
+  package tests remain harness and smoke checks, not a shortcut for
+  rerunning production coverage fits on CRAN.
 - `dev/lv-wald-coverage-slurm.sh` writes/tests/submits the matching
   one-seed-per-SLURM-array-task campaign and collects summaries after the
   array finishes. The wrapper is launch infrastructure only; it is not

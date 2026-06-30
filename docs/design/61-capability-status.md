@@ -42,18 +42,18 @@ single-trial trait-scale `B_lv` recovery/algebra and separation
 diagnostics. Ordinary Gaussian factor-valued `lv` predictors now have
 runtime/recovery evidence for the trait-by-level `B_lv` target, rare
 nonempty factor levels, and empty-level rejection. The validation
-register records `FG-18`, `RE-13`, `EXT-31`, `LV-01`, `LV-04`, and
-`LV-05` as partial rows; `LV-02` as covered for native Gaussian
-recovery/interval evidence; and `LV-03`, `LV-06`, and `LV-07` as
+register records `FG-18`, `RE-13`, `EXT-31`, `LV-01`, `LV-03`,
+`LV-04`, and `LV-05` as partial rows; `LV-02` as covered for native
+Gaussian recovery/interval evidence; and `LV-06` and `LV-07` as
 blocked. Focused native TMB Gaussian recovery now exists for
 rotation-stable `B_lv` and `Sigma` targets, and the local r500
 Gaussian Wald grid records one seed per replicate, MCSE, failed-fit
 denominators, and paired normal-critical / unit-df t-critical
-comparator rows for four ordinary Gaussian `B_lv` cells. Missing-response
-compatibility, binomial interval coverage, native non-binomial families,
-mixed-family rows, tier-expanded / structured-source support, Julia
-bridge intervals, and broad Julia bridge parity are still gated until
-their own evidence lands.
+comparator rows for four ordinary Gaussian `B_lv` cells. Missing `lv`
+predictors, non-Gaussian response masks, binomial interval coverage,
+native non-binomial families, mixed-family rows, tier-expanded /
+structured-source support, Julia bridge intervals, and broad Julia bridge
+parity are still gated until their own evidence lands.
 
 ## Bottom Line
 
@@ -139,7 +139,7 @@ n_traits` is valid and tested, while `d > n_traits` aborts.
 | Interval coverage | CI-08 / CI-10 remain separate from point recovery and must not be implied by slope examples. | Keep slope articles point-estimate/recovery framed until coverage gates pass. |
 | Delta / hurdle covariance | Two response scales make a single latent residual or slope covariance undefined. | Derivation first; no article or runtime admission in this slice. |
 | Ordinary behavioural random regression | The Gaussian Appendix-B-style target is now public as the individual-level article; broader non-Gaussian augmented `unique()` support remains guarded. | Decide whether non-Gaussian augmented `unique()` should stay guarded or get a separate admission grid. |
-| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is the source-of-truth spec. Ordinary Gaussian unit-tier `lv` formulas now validate, build `X_lv_B`, fit through the C1 TMB path with `alpha_lv_B`, report `B_lv_unit`, and expose extractor/ordination components. `extract_lv_effects()` returns trait-scale `B_lv` SEs from `ADREPORT(B_lv_unit)` only when `se = TRUE` yields a positive-definite `sdreport()`. Focused native TMB Gaussian recovery now checks `B_lv`, `Sigma = Lambda Lambda^T + Psi`, finite `Psi`, and rank-1 manual delta SEs; the local 2026-06-28 r500 Gaussian Wald grid covers four ordinary cells, emits paired `wald_z` and `wald_t_unit` rows, and all target/method rows pass the 0.92--0.98 coverage band with MCSE and failed-fit denominators recorded. Pure binomial logit/probit/cloglog is admitted on the same ordinary unit-tier native TMB path with trait-scale `B_lv` recovery/algebra evidence, including Bernoulli single-trial depth diagnostics. Ordinary Gaussian factor-valued `lv` predictors now have runtime/recovery evidence for trait-by-level `B_lv`, rare nonempty factor levels, and empty-level rejection. The R bridge now admits a narrow Gaussian, Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog `engine = "julia"` point route for complete-response `latent(..., unique = FALSE, lv = ~ x)` fits with no fixed-effect `X`, no response mask, and no calibrated CIs; it passes retained `X_lv`, `lv_effects`, `alpha_lv`, `scores_mean`, and `scores_innovation` payloads through `test-julia-bridge.R`. This is still partial: no missing-response compatibility, no native count-family `lv` support, no NB1/ordinal/mixed-family bridge `X_lv`, no calibrated Julia `X_lv` CIs, no source/tier expansion, and no broad Julia bridge parity. | Next slices are to land missing-response compatibility and the remaining bridge/family guards without widening the public claim. |
+| Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Design 73 is the source-of-truth spec. Ordinary Gaussian unit-tier `lv` formulas now validate, build `X_lv_B`, fit through the C1 TMB path with `alpha_lv_B`, report `B_lv_unit`, and expose extractor/ordination components. `extract_lv_effects()` returns trait-scale `B_lv` SEs from `ADREPORT(B_lv_unit)` only when `se = TRUE` yields a positive-definite `sdreport()`. Focused native TMB Gaussian recovery now checks `B_lv`, `Sigma = Lambda Lambda^T + Psi`, finite `Psi`, and rank-1 manual delta SEs; the local 2026-06-28 r500 Gaussian Wald grid covers four ordinary cells, emits paired `wald_z` and `wald_t_unit` rows, and all target/method rows pass the 0.92--0.98 coverage band with MCSE and failed-fit denominators recorded. Pure binomial logit/probit/cloglog is admitted on the same ordinary unit-tier native TMB path with trait-scale `B_lv` recovery/algebra evidence, including Bernoulli single-trial depth diagnostics. Ordinary Gaussian factor-valued `lv` predictors now have runtime/recovery evidence for trait-by-level `B_lv`, rare nonempty factor levels, and empty-level rejection. Ordinary Gaussian response masks are now validated when `lv` predictors are observed and complete at the unit level: `miss_control(response = "include")` retains masked rows, preserves `X_lv_B`, and matches the complete-case log likelihood and fitted parameters. The R bridge now admits a narrow Gaussian, Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog `engine = "julia"` point route for complete-response `latent(..., unique = FALSE, lv = ~ x)` fits with no fixed-effect `X`, no response mask, and no calibrated CIs; it passes retained `X_lv`, `lv_effects`, `alpha_lv`, `scores_mean`, and `scores_innovation` payloads through `test-julia-bridge.R`. This is still partial: no missing `lv` predictors or `mi()` terms inside `lv`, no native count-family `lv` support, no non-Gaussian/mixed-family response masks with `lv`, no NB1/ordinal/mixed-family bridge `X_lv`, no calibrated Julia `X_lv` CIs, no source/tier expansion, and no broad Julia bridge parity. | Next slices are to land the remaining bridge/family guards without widening the public claim. |
 
 ## Status-Scan Handles
 

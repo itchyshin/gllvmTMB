@@ -281,6 +281,17 @@ fake_lv_predictor_julia_fit <- function(with_ci = FALSE) {
     payload$lv_effects_ci_level <- 0.95
     payload$lv_effects_ci_method <- "wald"
     payload$lv_effects_ci_pd <- TRUE
+    payload$alpha_lv_se <- matrix(
+      0.04,
+      nrow = ncol(X_lv),
+      ncol = 2L,
+      dimnames = list(colnames(X_lv), c("LV1", "LV2"))
+    )
+    payload$alpha_lv_lower <- payload$alpha_lv - 0.08
+    payload$alpha_lv_upper <- payload$alpha_lv + 0.08
+    payload$alpha_lv_ci_level <- 0.95
+    payload$alpha_lv_ci_method <- "wald"
+    payload$alpha_lv_ci_pd <- TRUE
   }
   structure(payload, class = c("gllvmTMB_julia", "list"))
 }
@@ -1263,9 +1274,16 @@ test_that("Julia bridge exposes Gaussian predictor-informed LV payloads", {
   axis_effects <- extract_lv_effects(fit, type = "axis_effect")
   expect_equal(nrow(axis_effects), 4L)
   expect_equal(axis_effects$estimate, as.numeric(fit$alpha_lv))
+  expect_true(all(is.na(axis_effects$std.error)))
+  expect_true(all(is.na(axis_effects$lower)))
+  expect_true(all(is.na(axis_effects$upper)))
   expect_equal(
     unique(axis_effects$rotation_status),
     "axis_scale_rotation_dependent"
+  )
+  expect_equal(
+    unique(axis_effects$uncertainty_status),
+    "julia_bridge_point_estimate_only_no_ci_validation"
   )
 
   total <- extract_ordination(fit, component = "total")
@@ -1279,7 +1297,7 @@ test_that("Julia bridge exposes Gaussian predictor-informed LV payloads", {
   no_payload <- fit
   no_payload$lv_effects <- NULL
   expect_error(
-    extract_lv_effects(no_payload),
+    extract_lv_effects(no_payload, type = "trait_effect"),
     "lv_effects"
   )
   no_mean <- fit
@@ -1291,7 +1309,9 @@ test_that("Julia bridge exposes Gaussian predictor-informed LV payloads", {
 })
 
 test_that("extract_lv_effects surfaces Wald X_lv CIs and preserves the NA path", {
-  fit <- .gllvm_julia_normalise_result(fake_lv_predictor_julia_fit(with_ci = TRUE))
+  fit <- .gllvm_julia_normalise_result(fake_lv_predictor_julia_fit(
+    with_ci = TRUE
+  ))
   fit$engine <- "julia"
   te <- extract_lv_effects(fit, type = "trait_effect")
 
@@ -1310,21 +1330,34 @@ test_that("extract_lv_effects surfaces Wald X_lv CIs and preserves the NA path",
   pt$engine <- "julia"
   te0 <- extract_lv_effects(pt, type = "trait_effect")
   expect_true(all(is.na(te0$std.error)))
-  # Option (b): the absent-CI path keeps the canonical 7-column schema with no
-  # lower/upper columns, matching the TMB engine path and the @return contract.
-  expect_false("lower" %in% names(te0))
-  expect_false("upper" %in% names(te0))
+  expect_true(all(is.na(te0$lower)))
+  expect_true(all(is.na(te0$upper)))
   expect_setequal(
     names(te0),
     c(
-      "level", "trait", "predictor", "estimate", "std.error",
-      "uncertainty_status", "validation_row"
+      "level",
+      "trait",
+      "predictor",
+      "estimate",
+      "std.error",
+      "lower",
+      "upper",
+      "uncertainty_status",
+      "validation_row"
     )
   )
   expect_equal(
     unique(te0$uncertainty_status),
     "julia_bridge_point_estimate_only_no_ci_validation"
   )
+
+  ae <- extract_lv_effects(fit)
+  expect_equal(nrow(ae), 4L)
+  expect_equal(ae$estimate, as.numeric(fit$alpha_lv))
+  expect_equal(ae$std.error, as.numeric(fit$alpha_lv_se))
+  expect_equal(ae$lower, as.numeric(fit$alpha_lv_lower))
+  expect_equal(ae$upper, as.numeric(fit$alpha_lv_upper))
+  expect_equal(unique(ae$uncertainty_status), "julia_bridge_wald_delta_method")
 })
 
 test_that("Julia bridge CI payloads are normalised and read by confint", {
@@ -2300,7 +2333,7 @@ test_that("gllvmTMB routes Gaussian latent-score X_lv through the Julia bridge",
   expect_equal(fit$lv$engine, "julia")
   expect_equal(fit$lv$X_lv_B_names, "x")
 
-  trait_effects <- extract_lv_effects(fit)
+  trait_effects <- extract_lv_effects(fit, type = "trait_effect")
   expect_equal(
     unique(trait_effects$uncertainty_status),
     "julia_bridge_point_estimate_only_no_ci_validation"
@@ -2446,7 +2479,7 @@ test_that("gllvmTMB routes Poisson latent-score X_lv through the Julia bridge", 
 })
 
 test_that("gllvmTMB routes NB2/Gamma/Beta latent-score X_lv through the Julia bridge", {
-  skip_if_not_installed("glmmTMB")   # cases list builds glmmTMB::beta_family() eagerly
+  skip_if_not_installed("glmmTMB") # cases list builds glmmTMB::beta_family() eagerly
   cases <- list(
     list(
       family = nbinom2(),
@@ -3889,7 +3922,7 @@ test_that("gllvm_julia_fit routes live Gaussian predictor-informed LV payloads",
       extract_ordination(fit, component = "innovation")$scores,
     tolerance = 1e-8
   )
-  effects <- extract_lv_effects(fit)
+  effects <- extract_lv_effects(fit, type = "trait_effect")
   expect_equal(effects$predictor, rep("x", length(traits)))
   expect_equal(
     unique(effects$uncertainty_status),
@@ -3988,7 +4021,7 @@ test_that("gllvm_julia_fit routes live binary predictor-informed LV payloads", {
         extract_ordination(fit, component = "innovation")$scores,
       tolerance = 1e-8
     )
-    effects <- extract_lv_effects(fit)
+    effects <- extract_lv_effects(fit, type = "trait_effect")
     expect_equal(effects$predictor, rep("x", length(traits)))
     expect_equal(
       unique(effects$uncertainty_status),

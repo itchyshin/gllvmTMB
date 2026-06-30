@@ -369,8 +369,8 @@ test_that("latent lv C1 engine reports score-mean quantities", {
     tolerance = 1e-8
   )
 
-  trait_effect <- extract_lv_effects(fit)
-  axis_effect <- extract_lv_effects(fit, type = "axis_effect")
+  axis_effect <- extract_lv_effects(fit)
+  trait_effect <- extract_lv_effects(fit, type = "trait_effect")
   expect_named(
     trait_effect,
     c(
@@ -379,6 +379,8 @@ test_that("latent lv C1 engine reports score-mean quantities", {
       "predictor",
       "estimate",
       "std.error",
+      "lower",
+      "upper",
       "uncertainty_status",
       "validation_row"
     )
@@ -392,6 +394,8 @@ test_that("latent lv C1 engine reports score-mean quantities", {
     tolerance = 1e-8
   )
   expect_true(all(is.na(trait_effect$std.error)))
+  expect_true(all(is.na(trait_effect$lower)))
+  expect_true(all(is.na(trait_effect$upper)))
   expect_equal(
     unique(trait_effect$uncertainty_status),
     "sdreport_skipped_no_lv_se"
@@ -404,14 +408,26 @@ test_that("latent lv C1 engine reports score-mean quantities", {
       "axis",
       "predictor",
       "estimate",
+      "std.error",
+      "lower",
+      "upper",
       "rotation_status",
+      "uncertainty_status",
       "validation_row"
     )
   )
+  expect_equal(axis_effect, extract_lv_effects(fit, type = "axis_effect"))
   expect_equal(axis_effect$estimate, as.numeric(fit$report$alpha_lv_B))
+  expect_true(all(is.na(axis_effect$std.error)))
+  expect_true(all(is.na(axis_effect$lower)))
+  expect_true(all(is.na(axis_effect$upper)))
   expect_equal(
     unique(axis_effect$rotation_status),
     "axis_scale_rotation_dependent"
+  )
+  expect_equal(
+    unique(axis_effect$uncertainty_status),
+    "sdreport_skipped_no_lv_se"
   )
   expect_equal(unique(axis_effect$validation_row), "EXT-31; LV-01")
   expect_error(
@@ -435,7 +451,8 @@ test_that("extract_lv_effects reports sdreport SEs when available", {
   expect_equal(nrow(b_rows), fit$n_traits)
   expect_true(all(is.finite(b_rows[, "Std. Error"])))
 
-  trait_effect <- extract_lv_effects(fit)
+  axis_effect <- extract_lv_effects(fit)
+  trait_effect <- extract_lv_effects(fit, type = "trait_effect")
   expect_equal(
     trait_effect$estimate,
     as.numeric(b_rows[, "Estimate"]),
@@ -450,6 +467,33 @@ test_that("extract_lv_effects reports sdreport SEs when available", {
     unique(trait_effect$uncertainty_status),
     "wald_sdreport_no_ci_validation"
   )
+  expect_true(all(is.finite(trait_effect$lower)))
+  expect_true(all(is.finite(trait_effect$upper)))
+  expect_true(all(trait_effect$lower <= trait_effect$estimate))
+  expect_true(all(trait_effect$estimate <= trait_effect$upper))
+
+  fixed <- summary(fit$sd_report, "fixed")
+  alpha_rows <- fixed[rownames(fixed) == "alpha_lv_B", , drop = FALSE]
+  expect_equal(nrow(alpha_rows), fit$d_B)
+  expect_equal(axis_effect$estimate, as.numeric(alpha_rows[, "Estimate"]))
+  expect_equal(axis_effect$std.error, as.numeric(alpha_rows[, "Std. Error"]))
+  expect_true(all(is.finite(axis_effect$lower)))
+  expect_true(all(is.finite(axis_effect$upper)))
+  expect_true(all(axis_effect$lower <= axis_effect$estimate))
+  expect_true(all(axis_effect$estimate <= axis_effect$upper))
+  expect_equal(
+    unique(axis_effect$uncertainty_status),
+    "wald_sdreport_no_ci_validation"
+  )
+  axis_effect_80 <- extract_lv_effects(fit, conf.level = 0.80)
+  expect_lt(
+    axis_effect_80$upper - axis_effect_80$lower,
+    axis_effect$upper - axis_effect$lower
+  )
+  expect_error(
+    extract_lv_effects(fit, conf.level = 1),
+    regexp = "conf.level"
+  )
 
   fit_two <- fit_lv_smoke_se_two_predictors()
   expect_true(isTRUE(fit_two$sd_report$pdHess))
@@ -459,7 +503,8 @@ test_that("extract_lv_effects reports sdreport SEs when available", {
   expect_equal(nrow(b_rows_two), fit_two$n_traits * 2L)
   expect_true(all(is.finite(b_rows_two[, "Std. Error"])))
 
-  trait_effect_two <- extract_lv_effects(fit_two)
+  axis_effect_two <- extract_lv_effects(fit_two)
+  trait_effect_two <- extract_lv_effects(fit_two, type = "trait_effect")
   expect_equal(nrow(trait_effect_two), fit_two$n_traits * 2L)
   expect_equal(
     trait_effect_two$predictor,
@@ -475,10 +520,33 @@ test_that("extract_lv_effects reports sdreport SEs when available", {
     as.numeric(b_rows_two[, "Std. Error"]),
     tolerance = 1e-8
   )
+  expect_true(all(is.finite(trait_effect_two$lower)))
+  expect_true(all(is.finite(trait_effect_two$upper)))
   expect_equal(
     unique(trait_effect_two$uncertainty_status),
     "wald_sdreport_no_ci_validation"
   )
+
+  fixed_two <- summary(fit_two$sd_report, "fixed")
+  alpha_rows_two <- fixed_two[
+    rownames(fixed_two) == "alpha_lv_B",
+    ,
+    drop = FALSE
+  ]
+  expect_equal(nrow(alpha_rows_two), 2L * fit_two$d_B)
+  expect_equal(nrow(axis_effect_two), 2L * fit_two$d_B)
+  expect_equal(axis_effect_two$predictor, c("x", "z"))
+  expect_equal(axis_effect_two$axis, rep("LV1", 2L))
+  expect_equal(
+    axis_effect_two$estimate,
+    as.numeric(alpha_rows_two[, "Estimate"])
+  )
+  expect_equal(
+    axis_effect_two$std.error,
+    as.numeric(alpha_rows_two[, "Std. Error"])
+  )
+  expect_true(all(is.finite(axis_effect_two$lower)))
+  expect_true(all(is.finite(axis_effect_two$upper)))
 })
 
 test_that("latent lv C1 engine also covers the wide traits surface", {
@@ -561,7 +629,7 @@ test_that("latent lv admits binomial standard links and recovers B_lv", {
     )
     expect_lv_smoke_reports(fit)
 
-    trait_effect <- extract_lv_effects(fit)
+    trait_effect <- extract_lv_effects(fit, type = "trait_effect")
     expect_equal(unique(trait_effect$validation_row), "EXT-31; LV-05")
     b_hat <- stats::setNames(trait_effect$estimate, trait_effect$trait)
     b_truth <- stats::setNames(truth$B_lv, levels(data$trait))

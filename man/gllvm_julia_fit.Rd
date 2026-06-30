@@ -38,13 +38,16 @@ Gaussian and selected one-part non-Gaussian bridge families.}
 NB2, Gamma, Beta, and binomial logit/probit/cloglog bridge rows with no
 fixed-effect \code{X}, no response mask, and \code{ci_method} in
 \code{c("none", "wald")}. The returned object
-carries point-estimate \code{lv_effects}, \code{alpha_lv}, \code{scores_mean}, and
+carries point-estimate \code{alpha_lv}, \code{lv_effects}, \code{scores_mean}, and
 \code{scores_innovation} payloads; for \code{ci_method = "wald"} it additionally
 carries \code{lv_effects_se}, \code{lv_effects_lower}, and \code{lv_effects_upper}, which
 \code{\link[=extract_lv_effects]{extract_lv_effects()}} surfaces as finite \code{std.error}, \code{lower}, and
-\code{upper}. These are bridge-reader Wald payloads, not calibrated coverage
-claims. Profile/bootstrap \code{X_lv} confidence intervals, NB1, ordinal,
-mixed-family, masked, and fixed-effect-X-plus-\code{X_lv} rows remain gated.}
+\code{upper} when called with \code{type = "trait_effect"}. If future bridge payloads include
+\code{alpha_lv_se}, \code{alpha_lv_lower}, and \code{alpha_lv_upper},
+\code{\link[=extract_lv_effects]{extract_lv_effects()}} surfaces those on the default axis-effect table.
+These are bridge-reader Wald payloads, not calibrated coverage claims.
+Profile/bootstrap \code{X_lv} confidence intervals, NB1, ordinal, mixed-family,
+masked, and fixed-effect-X-plus-\code{X_lv} rows remain gated.}
 
 \item{coef_fixed}{Optional logical vector of length \code{dim(X)[3]}. \code{TRUE}
 entries are fixed at zero by the Julia bridge. Most R users should prefer

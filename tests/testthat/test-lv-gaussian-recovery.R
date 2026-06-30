@@ -148,7 +148,8 @@ expect_lv_gaussian_recovery <- function(
   expect_true(isTRUE(fit$sd_report$pdHess))
   expect_true(isTRUE(fit$use$lv_B))
 
-  effects <- extract_lv_effects(fit)
+  axis_effects <- extract_lv_effects(fit)
+  effects <- extract_lv_effects(fit, type = "trait_effect")
   expect_equal(
     unique(effects$uncertainty_status),
     "wald_sdreport_no_ci_validation"
@@ -172,9 +173,31 @@ expect_lv_gaussian_recovery <- function(
     as.numeric(b_rows[, "Std. Error"]),
     tolerance = 1e-8
   )
+  expect_true(all(is.finite(effects$lower)))
+  expect_true(all(is.finite(effects$upper)))
+  expect_true(all(effects$lower <= effects$estimate))
+  expect_true(all(effects$estimate <= effects$upper))
   if (identical(fit$d_B, 1L)) {
     expect_equal(effects$std.error, manual_B_lv_delta_se(fit), tolerance = 1e-8)
   }
+
+  fixed <- summary(fit$sd_report, "fixed")
+  alpha_rows <- fixed[rownames(fixed) == "alpha_lv_B", , drop = FALSE]
+  expect_equal(nrow(alpha_rows), length(fit$report$alpha_lv_B))
+  expect_equal(axis_effects$estimate, as.numeric(fit$report$alpha_lv_B))
+  expect_equal(
+    axis_effects$std.error,
+    as.numeric(alpha_rows[, "Std. Error"]),
+    tolerance = 1e-8
+  )
+  expect_true(all(is.finite(axis_effects$lower)))
+  expect_true(all(is.finite(axis_effects$upper)))
+  expect_true(all(axis_effects$lower <= axis_effects$estimate))
+  expect_true(all(axis_effects$estimate <= axis_effects$upper))
+  expect_equal(
+    unique(axis_effects$uncertainty_status),
+    "wald_sdreport_no_ci_validation"
+  )
 
   shared <- suppressMessages(extract_Sigma(
     fit,

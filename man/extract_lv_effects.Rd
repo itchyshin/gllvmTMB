@@ -7,7 +7,8 @@
 extract_lv_effects(
   fit,
   level = "unit",
-  type = c("trait_effect", "axis_effect")
+  type = c("axis_effect", "trait_effect"),
+  conf.level = 0.95
 )
 }
 \arguments{
@@ -15,40 +16,46 @@ extract_lv_effects(
 
 \item{level}{Currently \code{"unit"} only. Legacy alias \code{"B"} is accepted.}
 
-\item{type}{\code{"trait_effect"} returns \eqn{\mathbf B_{\mathrm{lv}}} on the
-trait linear-predictor scale. \code{"axis_effect"} returns raw
-\eqn{\boldsymbol\alpha} coefficients for diagnostic use.}
+\item{type}{\code{"axis_effect"} returns raw \eqn{\boldsymbol\alpha}
+coefficients on the latent-axis scale. \code{"trait_effect"} returns
+\eqn{\mathbf B_{\mathrm{lv}}} on the trait linear-predictor scale.}
+
+\item{conf.level}{Confidence level for Wald intervals when finite standard
+errors are available.}
 }
 \value{
-A data frame. For \code{type = "trait_effect"}, columns are \code{level},
-\code{trait}, \code{predictor}, \code{estimate}, \code{std.error}, \code{uncertainty_status}, and
-\code{validation_row}; \code{engine = "julia"} fits requested with
-\code{ci_method = "wald"} additionally carry \code{lower} and \code{upper}. For
-\code{type = "axis_effect"}, columns are \code{level}, \code{axis}, \code{predictor},
-\code{estimate}, \code{rotation_status}, and \code{validation_row}.
+A data frame. For \code{type = "axis_effect"}, columns are \code{level},
+\code{axis}, \code{predictor}, \code{estimate}, \code{std.error}, \code{lower}, \code{upper},
+\code{rotation_status}, \code{uncertainty_status}, and \code{validation_row}. For
+\code{type = "trait_effect"}, columns are \code{level}, \code{trait}, \code{predictor},
+\code{estimate}, \code{std.error}, \code{lower}, \code{upper}, \code{uncertainty_status}, and
+\code{validation_row}.
 }
 \description{
 For a predictor-informed ordinary latent fit, \code{latent(..., lv = ~ x)} uses
 the unit-level score model
 \deqn{\mathbf u_s = \mathbf z_s + \mathbf X_s \boldsymbol\alpha,}
 where the innovation \eqn{\mathbf z_s} keeps the usual standard-normal prior.
-\code{extract_lv_effects()} reports either the trait-scale contribution
-\eqn{\mathbf B_{\mathrm{lv}} = \boldsymbol\Lambda \boldsymbol\alpha^\top}
-or the raw axis-scale \eqn{\boldsymbol\alpha}. The trait-scale table is the
-preferred summary because raw latent axes are scale- and rotation-dependent.
+\code{extract_lv_effects()} reports either the raw axis-scale
+\eqn{\boldsymbol\alpha} coefficients or the induced trait-scale contribution
+\eqn{\mathbf B_{\mathrm{lv}} = \boldsymbol\Lambda \boldsymbol\alpha^\top}.
+The axis-scale table is the default because it matches the usual constrained
+latent-variable / ordination coefficient. It is conditional on the fitted
+loading constraint and axis orientation. The trait-scale table is the
+rotation-invariant induced slope surface on the trait linear-predictor scale.
 }
 \details{
-For \code{type = "trait_effect"}, \code{std.error} is populated from TMB's
-delta-method \code{ADREPORT(B_lv_unit)} output when the fit carries a valid
-positive-definite \code{sdreport()}. Coverage calibration of the corresponding
-intervals remains validation-gated. For Gaussian, Poisson, NB2, Gamma, Beta,
-and binomial logit/probit/cloglog \code{engine = "julia"} bridge fits,
-\code{ci_method = "none"} exposes point estimates only (\code{std.error} is \code{NA} and
-\code{uncertainty_status} is \code{"julia_bridge_point_estimate_only_no_ci_validation"}),
-while \code{ci_method = "wald"} surfaces finite \code{std.error}, \code{lower}, and \code{upper}
-(\code{uncertainty_status} is \code{"julia_bridge_wald_delta_method"}). Those Julia
-bridge values are Wald payload reader output, not coverage-calibrated
-intervals.
+For native TMB fits, \code{std.error} is populated from a positive-definite
+\code{sdreport()} when available. Axis-effect SEs come from the fixed-parameter
+block for \code{alpha_lv_B}; trait-effect SEs come from TMB's delta-method
+\code{ADREPORT(B_lv_unit)} output. \code{lower} and \code{upper} are Wald intervals using
+\code{conf.level}; coverage calibration remains validation-gated. For Gaussian,
+Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog
+\code{engine = "julia"} bridge fits, \code{ci_method = "none"} exposes point estimates
+only (\code{std.error}, \code{lower}, and \code{upper} are \code{NA}). When the bridge supplies a
+retained Wald payload, \code{extract_lv_effects()} surfaces finite \code{std.error},
+\code{lower}, and \code{upper}. Those Julia bridge values are Wald payload reader
+output, not coverage-calibrated intervals.
 }
 \seealso{
 \code{\link[=extract_ordination]{extract_ordination()}}

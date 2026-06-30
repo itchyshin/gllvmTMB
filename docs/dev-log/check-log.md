@@ -22082,3 +22082,116 @@ Post-report checks:
   ................................................SS`.
 - `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
   -> PASS; `0 errors | 0 warnings | 0 notes` in 5m 16s.
+
+## 2026-06-30 (Codex / Ada) -- `extract_lv_effects()` axis default and alpha SEs
+
+Scope: clean gllvmTMB worktree
+`/private/tmp/gllvmtmb-lv-axis-alpha-se-20260630` on branch
+`codex/lv-axis-alpha-se-20260630`. This slice responds to Ayumi's
+per-LV versus per-trait `extract_lv_effects()` comment by making
+`axis_effect` / `alpha` the default table and adding native TMB Wald SE / CI
+columns for alpha.
+
+Pre-edit / coordination checks:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,url`
+  -> PASS; `[]`, no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago" -- R/extractors.R R/julia-bridge.R tests/testthat/test-lv-parser-guard.R tests/testthat/test-lv-gaussian-recovery.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/design/06-extractors-contract.md NEWS.md`
+  -> REVIEWED; only recent relevant mainline hit was `f4f631dc test(lv):
+  record binomial interval evidence`.
+- `gh api repos/Ayumi-495/urbanisation_map/issues/comments/4845237642 --jq '{user:.user.login, created_at, body:.body}'`
+  -> REVIEWED; comment asks whether `axis_effect` should be the per-LV /
+  GLLVM-style default and notes missing alpha SEs. No reply was posted.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'extract_lv_effects alpha axis effect' --json number,title,state,url,labels --limit 20`
+  -> PASS; `[]`.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'latent lv alpha standard error' --json number,title,state,url,labels --limit 20`
+  -> PASS; `[]`.
+
+Implemented:
+
+- `R/extractors.R`: `extract_lv_effects()` now defaults to
+  `type = "axis_effect"` and adds `conf.level = 0.95`.
+- Native TMB axis effects now get `std.error`, `lower`, and `upper` from the
+  fixed-parameter `alpha_lv_B` rows in `summary(fit$sd_report, "fixed")` when
+  `se = TRUE` and the Hessian is positive-definite.
+- Native TMB trait effects still use `ADREPORT(B_lv_unit)` but now also return
+  Wald `lower` / `upper` columns.
+- `R/julia-bridge.R`: bridge rows now use the same default/schema. Existing
+  trait-effect Wald payloads are preserved; optional future `alpha_lv_se`,
+  `alpha_lv_lower`, and `alpha_lv_upper` payloads are normalised and surfaced.
+- Updated tests, roxygen/generated Rd, NEWS, extractor contract, validation
+  register, capability status, and Design 73.
+
+Validation:
+
+- `air format R/extractors.R R/julia-bridge.R tests/testthat/test-lv-parser-guard.R tests/testthat/test-lv-gaussian-recovery.R tests/testthat/test-julia-bridge.R tests/testthat/test-lv-factor-runtime.R tests/testthat/test-lv-bernoulli-depth.R tests/testthat/test-lv-missing-response.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard|lv-gaussian-recovery|lv-factor-runtime|lv-bernoulli-depth|lv-missing-response|julia-bridge", reporter = "summary", stop_on_failure = TRUE)'`
+  -> PASS; 19 live Julia tests skipped because `{JuliaCall}` is not installed;
+  one rank-2 heavy recovery skipped because `GLLVMTMB_HEAVY_TESTS` was unset;
+  one existing Julia bridge Psi warning was emitted.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary", stop_on_failure = TRUE)'`
+  -> PASS; two opt-in live fit smokes skipped.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS with pre-existing roxygen warnings for uninstalled `MCMCglmm` and
+  unresolved internal links; regenerated `man/extract_lv_effects.Rd`,
+  `man/gllvm_julia_fit.Rd`, and `man/gllvmTMB_julia-methods.Rd`.
+- `Rscript --vanilla -e 'files <- c("man/extract_lv_effects.Rd", "man/gllvm_julia_fit.Rd", "man/gllvmTMB_julia-methods.Rd"); for (f in files) { cat("--", f, "--\n"); tools::checkRd(f) }; cat("rd-check-ok\n")'`
+  -> PASS; `rd-check-ok`.
+- `git diff --check -- R/extractors.R R/julia-bridge.R tests/testthat/test-lv-parser-guard.R tests/testthat/test-lv-gaussian-recovery.R tests/testthat/test-julia-bridge.R NEWS.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md man/extract_lv_effects.Rd man/gllvm_julia_fit.Rd man/gllvmTMB_julia-methods.Rd`
+  -> PASS.
+
+Rose / stale wording scans:
+
+- `rg -n 'preferred.*B_lv|B_lv.*preferred|trait-scale table is the preferred|raw \`alpha\` only|extract_lv_effects\(fit, level = "unit", type = "trait_effect"\)|extract_lv_effects\(\) returns trait-scale|type = "axis_effect"\) \| ❌ no|point estimates only: \`std.error = NA\`|axis_effect.*diagnostic use' R docs/design NEWS.md man tests/testthat/test-lv*.R tests/testthat/test-julia-bridge.R`
+  -> PASS; no stale current-source hits. Historical after-task notes were left
+  unchanged.
+- `rg -n 'extract_lv_effects\(fit\)|extract_lv_effects\([^\n]*\)' tests/testthat/test-lv*.R tests/testthat/test-julia-bridge.R | head -120`
+  -> REVIEWED; bare default calls are now intentional axis-effect checks, while
+  B/trait-effect recovery checks call `type = "trait_effect"` explicitly.
+
+Not run:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`, and
+  article renders were not rerun in this slice. The change is extractor/API,
+  roxygen, tests, and status docs; no vignette code or pkgdown navigation was
+  touched.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-30-lv-axis-effect-se.md`.
+
+Post-report checks:
+
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-30-lv-axis-effect-se.md`
+  -> PASS.
+- `git diff --check`
+  -> PASS.
+- `for f in man/extract_lv_effects.Rd man/gllvm_julia_fit.Rd man/gllvmTMB_julia-methods.Rd; do printf '%s\n' "--- $f"; tail -5 "$f"; printf 'keyword_count='; grep -c '^\\keyword' "$f" || true; done`
+  -> PASS; all three changed Rd files ended cleanly and had `keyword_count=0`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> FAIL in 4m 56s due to the default R library path lacking `MCMCglmm`.
+  Failure set was 20 phylo/animal tests aborting with
+  `MCMCglmm is required for the phylo_tree path` or
+  `phylo_vcv (or phylo_tree) is NULL`; not an alpha/B extractor regression.
+- `R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla - <<'RS' ... RS`
+  -> VERIFIED; project check libraries contain `MCMCglmm` and `JuliaCall`
+  (`TRUE`), while the default library path does not.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS in 4m 54s; `0 errors | 0 warnings | 0 notes`.
+
+Pre-merge public-doc / pkgdown gate:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,url,mergeStateStatus --limit 20`
+  -> REVIEWED; PR #581 is the only open gllvmTMB PR and is ready/clean.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-30-lv-axis-effect-se.md`
+  -> REVIEWED; only the current branch commit touched these files.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found.`
+- `rg -n "extract_lv_effects|LV-AXIS|axis_effect|trait_effect|alpha_lv_B|B_lv_unit|std.error|conf.level" _pkgdown.yml NAMESPACE man/extract_lv_effects.Rd R/extractors.R`
+  -> PASS; source formals, generated Rd usage, NAMESPACE export, and
+  `_pkgdown.yml` reference entry agree.
+- `rg -n "trio|profile-likelihood default|unsupported.*implemented|implemented.*unsupported|gllvmTMB_wide|meta_known_V|\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(U\\)|U_phy|U_non|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(" NEWS.md R/extractors.R R/julia-bridge.R man/extract_lv_effects.Rd man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits are older compatibility / alias wording (`gllvmTMB_wide`,
+  `meta_known_V`, `block_V`) that is explicitly described as deprecated or
+  blocked, not a current `extract_lv_effects()` overclaim.

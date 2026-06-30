@@ -80,7 +80,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `tmbprofile_wrapper(fit, target)` | c | cl | cl | cl | Phase 1b PR #109 |
 | `confint_inspect(fit, parameter)` | c | cl | cl | cl | Phase 1b PR #121 |
 | `coverage_study(fit, R)` | c | cl | cl | r | Phase 1b PR #120 |
-| `extract_lv_effects(fit, level, type)` | cl | p | p | p | Design 73 C1 point extractor for admitted ordinary unit-tier `latent(..., lv = ~ x)` fits; preferred public output is the latent-predictor trait effect (`B_lv` in math notation), not raw `alpha`; intervals remain gated |
+| `extract_lv_effects(fit, level, type)` | cl | p | p | p | Design 73 C1 extractor for admitted ordinary unit-tier `latent(..., lv = ~ x)` fits; default public output is the axis / CLV coefficient (`alpha`), with `B_lv = Lambda alpha^T` available as the induced trait-scale effect; calibrated intervals remain gated |
 | `compare_loadings(fit1, fit2)` | c | cl | cl | cl | legacy; for two-stage cross-checks |
 | `compare_dep_vs_two_psi(fit)` | c | r | r | r | legacy task-label (PR #40 logic) |
 | `compare_indep_vs_two_psi(fit)` | c | r | r | r | legacy task-label |
@@ -397,29 +397,31 @@ path, plus a narrow complete-response Gaussian and binomial
 logit/probit/cloglog Julia bridge point route. Other Julia bridge rows
 still accept only `component = "total"`.
 
-#### `extract_lv_effects(fit, level = "unit", type = "trait_effect")`
+#### `extract_lv_effects(fit, level = "unit", type = "axis_effect")`
 
 **Status**: C1 extractor for admitted ordinary unit-tier
 `latent(..., lv = ~ x)` fits; Wald SEs are available only when
-`se = TRUE` yields a positive-definite `sdreport()` for
-`ADREPORT(B_lv_unit)`.
+`se = TRUE` yields a positive-definite `sdreport()`.
 
 For `latent(..., lv = ~ x)` fits, this extractor returns the
-predictor-informed latent-score effects. The preferred public return is
-`type = "trait_effect"`, a row-first table for
+predictor-informed latent-score effects. The default public return is
+`type = "axis_effect"`, a row-first table for the axis / CLV coefficient
+`alpha` with columns `level`, `axis`, `predictor`, `estimate`,
+`std.error`, `lower`, `upper`, `rotation_status`,
+`uncertainty_status`, and `validation_row`. Axis-effect intervals are
+conditional on the fitted loading constraint and axis orientation.
+`type = "trait_effect"` returns the induced trait-scale slope surface
 $B_\text{lv} = \Lambda\alpha^\top$ with columns `level`, `trait`,
-`predictor`, `estimate`, `std.error`, `uncertainty_status`, and
-`validation_row`. Raw `alpha` is exposed for method developers through
-`type = "axis_effect"`, but it is rotation-dependent and carries
-`rotation_status`. Trait-scale `std.error` values are copied from the
-TMB delta-method `ADREPORT(B_lv_unit)` output when available and are
-labelled `wald_sdreport_no_ci_validation`. Gaussian and binomial
-logit/probit/cloglog Julia bridge `X_lv` rows return point estimates
-only with `std.error = NA` and
-`uncertainty_status =
-"julia_bridge_point_estimate_only_no_ci_validation"`. Intervals are not
-admitted until the Gaussian coverage/calibration follow-up to `LV-02`
-and the named Julia bridge CI rows pass.
+`predictor`, `estimate`, `std.error`, `lower`, `upper`,
+`uncertainty_status`, and `validation_row`. Axis-scale `std.error`
+values are copied from the fixed-parameter `alpha_lv_B` block when
+available; trait-scale `std.error` values are copied from the TMB
+delta-method `ADREPORT(B_lv_unit)` output. Both are labelled
+`wald_sdreport_no_ci_validation` because coverage calibration remains
+target- and regime-specific. Narrow Julia bridge `X_lv` rows return
+point-estimate `alpha_lv`/`lv_effects` rows unless a retained Wald
+payload is present; bridge interval payloads are reader plumbing only
+until the named Julia bridge CI rows pass.
 
 #### `getLoadings(fit, level = "unit", rotate = c("none", "varimax", "promax"))`
 

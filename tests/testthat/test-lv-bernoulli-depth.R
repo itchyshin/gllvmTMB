@@ -165,7 +165,7 @@ test_that("latent lv admits Bernoulli single-trial standard links", {
     )
     expect_lv_bernoulli_reports(fit)
 
-    trait_effect <- extract_lv_effects(fit)
+    trait_effect <- extract_lv_effects(fit, type = "trait_effect")
     expect_equal(unique(trait_effect$validation_row), "EXT-31; LV-05")
     b_hat <- stats::setNames(trait_effect$estimate, trait_effect$trait)
     b_truth <- stats::setNames(truth$B_lv, levels(data$trait))

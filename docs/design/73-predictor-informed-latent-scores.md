@@ -5,9 +5,9 @@ pure binomial logit/probit/cloglog fits; ordinary Gaussian response masks are
 validated when the `lv` predictors remain observed and complete at the unit
 level; the R-to-Julia bridge also has point-only complete-response Poisson,
 NB2, Gamma, and Beta routes. Native TMB Gaussian recovery and interval
-evidence now cover the current ordinary Gaussian cells, but broader interval,
-family, tier, source-specific, and bridge parity claims remain gated row by
-row.
+evidence now cover the current ordinary Gaussian cells, and unsupported native
+non-binomial families have fail-loud guard tests, but broader interval, family,
+tier, source-specific, and bridge parity claims remain gated row by row.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
@@ -46,7 +46,8 @@ Beta point routes are also admitted for complete-response `engine = "julia"`
 fits with `unique = FALSE`, no fixed-effect `X`, no response mask, and no
 CIs. Native TMB count-family support and ordinal, NB1, mixed-family,
 response-mask bridge, and delta/hurdle bridge rows remain blocked until their
-own validation rows move.
+own validation rows move. Unsupported native non-binomial calls fail loudly;
+that guard is not support for those families.
 
 ## Model Contract
 
@@ -143,7 +144,10 @@ and latent-variable modelling, not evidence that this specific
   Gaussian-only and needs a separate derivation even for this Gaussian
   C1 surface.
 - Other non-Gaussian families, native count-family `lv`, and mixed-family
-  `lv` fits are rejected until their own validation rows move.
+  `lv` fits are rejected until their own validation rows move. The native
+  fail-loud guard currently covers Poisson, NB1, NB2, lognormal, Gamma, Beta,
+  Tweedie, Student-t, truncated Poisson, truncated NB2, beta-binomial,
+  delta-lognormal, and delta-Gamma.
 - C1 supports at most one ordinary unit-tier `latent()` term carrying
   `lv`.
 - `extract_Sigma()` keeps its current meaning:
@@ -407,7 +411,8 @@ native count-family support, NB1, ordinal, mixed-family `X_lv`, Julia bridge
 response masks with `X_lv`, fixed-effect `X` plus `X_lv`, CI/profile/bootstrap
 support, or broad native-vs-Julia parity until those rows are implemented and
 validated. Current parser guards reject fixed-effect `X + X_lv` formulas on
-both the overlapping and non-overlapping covariate paths.
+both the overlapping and non-overlapping covariate paths, and native guards
+reject unsupported non-binomial family calls before fitting.
 
 ## Reviewer Checklist
 

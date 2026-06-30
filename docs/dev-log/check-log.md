@@ -21676,3 +21676,75 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-29-lv-x-guard.md`.
+
+## 2026-06-29 -- LV native non-Gaussian fail-loud guard
+
+Scope: queued-ready Design 73 LV guard branch
+`codex/lv-native-nongaussian-guard-20260628`. This slice adds and records
+top-level native TMB rejection tests for unsupported non-binomial
+`latent(..., lv = ~ x)` families. It does not admit native count-family,
+continuous-positive, truncated, beta-binomial, delta, mixed-family, interval,
+source/tier, or bridge-parity support.
+
+Pre-edit lane check:
+
+- `date '+%Y-%m-%d %H:%M %Z' && gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,url && git log --all --oneline --since='6 hours ago' -- NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/check-log.md docs/dev-log/after-task tests/testthat/test-lv-native-nongaussian-guard.R`
+  -> REVIEWED; local time was 2026-06-29 22:47 MDT, no open PRs were present,
+  and recent shared-file history showed the preceding LV guard/status slices.
+- `git fetch origin +refs/heads/main:refs/remotes/origin/main --prune && git rebase origin/main`
+  -> PASS; branch rebased cleanly onto main after PR #576.
+
+Checks:
+
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-native-nongaussian-guard", reporter = "summary")'`
+  -> PASS; 13 native non-Gaussian rejection cases passed.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; focused parser guard completed with no failures. The existing
+  sigma-eps auto-suppression informational message appeared.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no pkgdown reference/navigation problems found.
+- `git diff --check`
+  -> PASS; no whitespace errors.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m48.9s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'native non-Gaussian lv' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'latent lv non-Gaussian' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348, the broad family-validation
+  completion umbrella. This guard does not close #348.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'LV-05' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348. No issue was closed or commented on.
+
+Rose / stale wording scans:
+
+- `rg -n 'FG-18|RE-13|LV-05|test-lv-native-nongaussian-guard|native non-binomial|native count-family|unsupported native' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-lv-native-nongaussian-guard.R`
+  -> REVIEWED; hits show the new guard evidence on `FG-18`, `RE-13`, and
+  `LV-05`, with the native non-binomial path still blocked.
+- `rg -n 'native (count-family|non-binomial|non-Gaussian).*(admitted|supported|covered|validated)|NB1.*native.*lv.*(admitted|supported)|Poisson.*native.*lv.*(admitted|supported)|native non-binomial support' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits were the deliberate "not native non-binomial support" and
+  fail-loud/blocked wording, not a promoted support claim.
+- `rg -n 'gllvmTMB_wide|meta_known_V|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(|\bS_B\b|\bS_W\b|\\bf S|in prep|in preparation' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits are historical/compatibility mentions (`gllvmTMB_wide`,
+  `meta_known_V`, `block_V`, `phylo_rr`, and `phylo()` in missing-predictor
+  rows), not new stale LV wording.
+- `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | head -n 220`
+  -> REVIEWED; this branch adds no new `gllvmTMB()` examples. Touched
+  NEWS/design text does not introduce long-format calls requiring a new
+  `trait =` audit.
+
+Not run:
+
+- `devtools::document()`; no roxygen, generated Rd, NAMESPACE, or exported
+  function docs changed.
+- `pkgdown::build_articles(lazy = FALSE)`; this branch changes NEWS/design
+  prose and one focused test file, not article examples or parser/user-call
+  examples. `pkgdown::check_pkgdown()` is the claimed pkgdown gate.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-native-nongaussian-guard.md`.

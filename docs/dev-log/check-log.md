@@ -21748,3 +21748,85 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-29-lv-native-nongaussian-guard.md`.
+
+## 2026-06-30 -- LV family/link boundary fail-loud guard
+
+Scope: queued-ready Design 73 LV guard branch
+`codex/lv-family-boundary-guard-20260628`. This slice adds and records top-level
+native TMB rejection tests for unsupported family/link boundaries:
+`stats::binomial(link = "cauchit")`, `ordinal_probit()`, and a mixed
+Gaussian/binomial/Poisson family list. It does not admit nonstandard binomial,
+ordinal, mixed-family, native count-family, interval, source/tier, or bridge
+parity support.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB`
+  -> REVIEWED; no open gllvmTMB PRs were present.
+- `git log --all --oneline --since="6 hours ago"`
+  -> REVIEWED; recent history showed the preceding LV guard/status slices and
+  this branch's first test commit.
+- `git fetch origin +refs/heads/main:refs/remotes/origin/main --prune && git rebase origin/main`
+  -> PASS; branch rebased cleanly onto current `origin/main` after PR #577.
+
+Checks:
+
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-family-boundary-guard", reporter = "summary")'`
+  -> PASS; 3 family-boundary rejection cases passed.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; focused parser guard completed with no failures. The existing
+  sigma-eps auto-suppression informational message appeared.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-native-nongaussian-guard", reporter = "summary")'`
+  -> PASS; 13 native non-Gaussian rejection cases passed.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no pkgdown reference/navigation problems found.
+- `git diff --check`
+  -> PASS; no whitespace errors before the report/check-log edit.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m46.2s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-30-lv-family-boundary-guard.md`
+  -> PASS; validator returned successfully.
+- `git diff --check`
+  -> PASS; no whitespace errors after the report/check-log edit.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'lv family boundary' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348, the broad family-validation umbrella.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'latent lv ordinal mixed' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'LV-05' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348. No issue was closed or commented on.
+
+Rose / stale wording scans:
+
+- `rg -n 'FG-18|RE-13|LV-05|test-lv-family-boundary-guard|binomial cauchit|ordinal-probit|mixed Gaussian/binomial/Poisson|nonstandard binomial|family/link' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-lv-family-boundary-guard.R`
+  -> REVIEWED; hits show the new guard evidence on `FG-18`, `RE-13`, and
+  `LV-05`, with nonstandard binomial, ordinal, and mixed-family support still
+  blocked.
+- `rg -n '(cauchit|ordinal|mixed-family|mixed family|family/list|family list).*(admitted|supported|covered|validated)|native.*(ordinal|mixed-family|cauchit).*(admitted|supported|covered|validated)|nonstandard binomial.*(admitted|supported|covered|validated)' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; the broad scan is noisy because older unrelated ordinal and
+  mixed-family rows exist, but the touched Design 73 and `LV-05` rows use
+  fail-loud/blocked wording, not support wording.
+- `rg -n 'gllvmTMB_wide|meta_known_V|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(|\bS_B\b|\bS_W\b|\\bf S|in prep|in preparation' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits are historical/compatibility mentions (`gllvmTMB_wide`,
+  `meta_known_V`, `block_V`, `phylo_rr`, and `phylo()` in missing-predictor
+  rows), not new stale LV wording.
+- `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | head -n 220`
+  -> REVIEWED; this branch adds no new user-facing `gllvmTMB()` examples.
+  Touched NEWS/design text does not introduce long-format calls requiring a new
+  `trait =` audit.
+
+Not run:
+
+- `devtools::document()`; no roxygen, generated Rd, NAMESPACE, or exported
+  function docs changed.
+- `pkgdown::build_articles(lazy = FALSE)`; this branch changes NEWS/design
+  prose and one focused test file, not article examples or parser/user-call
+  examples. `pkgdown::check_pkgdown()` is the claimed pkgdown gate.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-30-lv-family-boundary-guard.md`.

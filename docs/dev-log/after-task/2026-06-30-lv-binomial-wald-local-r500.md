@@ -103,6 +103,8 @@ navigation changed in this evidence-promotion slice.
   keep broader non-Gaussian / Julia CI support gated.
 - `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | head -n 220`
   -> REVIEWED; no user-facing examples changed in this slice.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; `0 errors | 0 warnings | 0 notes` in 5m 16s.
 
 ## Tests Of The Tests
 

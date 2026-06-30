@@ -22066,8 +22066,6 @@ Not run yet:
 - `pkgdown::check_pkgdown()` / `pkgdown::build_articles(lazy = FALSE)`; no
   pkgdown navigation, vignettes, articles, parser behaviour, or user-call
   examples changed.
-- `devtools::check()`; this is evidence/doc/artifact promotion after the
-  focused harness commit already passed its test and CLI checks.
 
 After-task report:
 
@@ -22082,3 +22080,5 @@ Post-report checks:
 - `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
   -> PASS; `lv-wald-coverage-harness:
   ................................................SS`.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; `0 errors | 0 warnings | 0 notes` in 5m 16s.

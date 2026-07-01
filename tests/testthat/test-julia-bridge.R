@@ -399,7 +399,11 @@ test_that("family mapping is element-wise over a mixed list", {
   )
   expect_error(
     .gllvm_julia_family(list("gaussian", nbinom1())),
-    "mixed-family vectors currently support"
+    "GJL-GATE-MIXED-COMPONENTS"
+  )
+  expect_error(
+    .gllvm_julia_family(c("gaussian", "gamma")),
+    "GJL-GATE-MIXED-COMPONENTS"
   )
 })
 
@@ -445,6 +449,7 @@ test_that("Julia bridge gate registry names every primary R admission stop", {
     c(
       "GJL-GATE-FAMILY",
       "GJL-GATE-MIXED-CI",
+      "GJL-GATE-MIXED-COMPONENTS",
       "GJL-GATE-ORDINAL-CI",
       "GJL-GATE-MASK-X-CI",
       "GJL-GATE-X-CI",
@@ -566,6 +571,29 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     caps$notes
   )))
   expect_true(all(!caps$cbind_binomial))
+  mixed <- caps[caps$family == .GLLVM_JULIA_MIXED_FAMILY, , drop = FALSE]
+  expect_equal(nrow(mixed), 1L)
+  expect_true(mixed$fit_no_x)
+  expect_false(mixed$fixed_effect_X)
+  expect_false(mixed$missing_response)
+  expect_false(mixed$ci_no_x_wald)
+  expect_false(mixed$ci_no_x_profile)
+  expect_false(mixed$ci_no_x_bootstrap)
+  expect_false(mixed$ci_mask_wald)
+  expect_false(mixed$ci_mask_profile)
+  expect_false(mixed$ci_mask_bootstrap)
+  expect_false(mixed$ci_x_wald)
+  expect_false(mixed$ci_x_profile)
+  expect_false(mixed$ci_x_bootstrap)
+  expect_true(mixed$postfit_coef)
+  expect_true(mixed$postfit_summary)
+  expect_true(mixed$postfit_predict)
+  expect_true(mixed$postfit_residuals)
+  expect_true(mixed$postfit_simulate)
+  expect_true(mixed$postfit_ordination)
+  expect_match(mixed$notes, "no-X/no-mask/no-CI")
+  expect_match(mixed$notes, "predictor-informed lv")
+  expect_match(mixed$notes, "gaussian, poisson, binomial")
 })
 
 test_that("Julia bridge capability drift is explicit and gate-labelled", {

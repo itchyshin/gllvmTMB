@@ -117,6 +117,7 @@
     gate_id = c(
       "GJL-GATE-FAMILY",
       "GJL-GATE-MIXED-CI",
+      "GJL-GATE-MIXED-COMPONENTS",
       "GJL-GATE-ORDINAL-CI",
       "GJL-GATE-MASK-X-CI",
       "GJL-GATE-X-CI",
@@ -139,6 +140,7 @@
     source = c(
       "family mapping",
       "direct wrapper CI",
+      "family mapping",
       "direct wrapper CI",
       "direct wrapper CI",
       "direct wrapper CI",
@@ -160,6 +162,7 @@
     reason = c(
       "R bridge lacks payload labels, scale maps, or tests for the family.",
       "Mixed-family CI/status payloads are not specified.",
+      "The R bridge admits only the narrow mixed-family component set.",
       "Per-trait ordinal CI endpoints are not routed.",
       "Masks combined with fixed-effect X have no CI/status contract.",
       "Fixed-effect-X CI endpoints are admitted for a smaller family set.",
@@ -181,6 +184,7 @@
     representative_test = "tests/testthat/test-julia-bridge.R",
     issue = "gllvmTMB#488",
     validation_row = c(
+      "JUL-01",
       "JUL-01",
       "JUL-01",
       "JUL-01",
@@ -356,7 +360,8 @@ gllvm_julia_capabilities <- function() {
       "coef(), summary(), in-sample predict()/fitted(),",
       "response/Pearson residuals, conditional simulate(), and raw unit-tier",
       "covariance/ordination accessors are routed from retained payloads;",
-      "CI, masks, fixed-effect X, newdata, and richer extractor parity remain gated;",
+      "CI, masks, fixed-effect X, predictor-informed lv, newdata, and",
+      "richer extractor parity remain gated;",
       "component families:",
       paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", ")
     ),
@@ -678,6 +683,18 @@ gllvm_julia_capabilities <- function() {
   )
 }
 
+.gllvm_julia_mixed_component_gate <- function(bad) {
+  .gllvm_julia_gate_message(
+    "GJL-GATE-MIXED-COMPONENTS",
+    "engine = 'julia': mixed-family vectors currently support ",
+    paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", "),
+    "; unsupported component(s): ",
+    paste(unique(bad), collapse = ", "),
+    ". The R bridge admits only the balanced point/postfit mixed-family route; ",
+    "use engine = 'tmb' or a one-family Julia bridge row for broader components."
+  )
+}
+
 # Map an R family (a `family` object, a string, a character vector, or a list of
 # one family per trait) to the GLLVM.jl bridge family string(s).
 .gllvm_julia_family <- function(family) {
@@ -686,11 +703,7 @@ gllvm_julia_capabilities <- function() {
     bad <- setdiff(fam, .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES)
     if (length(bad)) {
       stop(
-        "engine = 'julia': mixed-family vectors currently support ",
-        paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", "),
-        "; unsupported component(s): ",
-        paste(unique(bad), collapse = ", "),
-        ".",
+        .gllvm_julia_mixed_component_gate(bad),
         call. = FALSE
       )
     }
@@ -701,11 +714,7 @@ gllvm_julia_capabilities <- function() {
     bad <- setdiff(fam, .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES)
     if (length(bad)) {
       stop(
-        "engine = 'julia': mixed-family vectors currently support ",
-        paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", "),
-        "; unsupported component(s): ",
-        paste(unique(bad), collapse = ", "),
-        ".",
+        .gllvm_julia_mixed_component_gate(bad),
         call. = FALSE
       )
     }

@@ -62,7 +62,7 @@ test_that("phylo_latent and phylo_scalar are recognized canonical aliases", {
   ## phylo_latent canonical
   fit_pl <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + phylo_latent(species, d = 1),
-    data = df, phylo_tree = tree
+    data = df, phylo_vcv = Cphy
   )))
   expect_equal(fit_pl$opt$convergence, 0L)
 

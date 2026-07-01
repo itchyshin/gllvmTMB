@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-30 23:30 MDT",
+  "updated": "2026-07-01 05:19 MDT",
   "metrics": {
     "covered": 17,
     "partial": 3,
@@ -43,7 +43,7 @@
       "when": "2026-06-30 22:37 MDT",
       "who": "Structural fork lock",
       "status": "blocked",
-      "text": "Remaining phylo Model A choice is v1 retirement or a changed realized/sampling-conditional target with fresh ADEMP evidence. Wald is fine only for conditional alpha axis/access-effect output. Profile-LR is the canary for the changed target, not a continuation of the failed population-B_lv route. No bootstrap, source-specific grammar exposure, PR reopen, or production compute is active."
+      "text": "Phylo Model A v1 public exposure is parked. A future changed realized/sampling-conditional target would require fresh ADEMP evidence before any grammar exposure. Wald is fine only for conditional alpha axis/access-effect output. Profile-LR remains the canary for a changed target, not a continuation of the failed population-B_lv route. No bootstrap, source-specific grammar exposure, PR reopen, or production compute is active."
     },
     {
       "when": "2026-06-30 22:54 MDT",
@@ -68,6 +68,12 @@
       "who": "Phylo Model A v1 parking",
       "status": "blocked",
       "text": "Public source-specific phylo lv is retired/parked for v1 under the current evidence. PR #127 remains closed/parked, phylo_latent(..., lv = ~ x) stays fail-loud, no compute is active, and any future work must start with a newly predeclared ADEMP target/gate before profile-LR, Totoro diagnostics, DRAC claim evidence, or R grammar exposure resumes."
+    },
+    {
+      "when": "2026-07-01 05:12 MDT",
+      "who": "LV structural dependency council",
+      "status": "guard",
+      "text": "Truth-lock slice: source guards stay covered/fail-loud, mixed-family bridge is complete balanced Gaussian + Poisson + Binomial point/postfit only, and bridge-matrix drift must be gate-labelled. Boole owns source grammar, Hopper owns R-Julia bridge truth, Fisher blocks interval overclaims, Curie owns focused guard tests, Grace owns preview refresh, and Rose blocks partial-support wording. No API widening, source-specific lv exposure, PR reopen, or compute launch."
     }
   ],
   "evidence": [
@@ -108,6 +114,18 @@
       "who": "Rose",
       "status": "guard",
       "text": "Keep alpha axis_effect and B_lv trait_effect language distinct. Alpha Wald output is conditional axis/access-effect output; do not call source-specific phylo lv partial support after the profile_truth misses or the profile_direct_slope strict-gate failure; call it retired/parked for v1."
+    },
+    {
+      "when": "source grammar",
+      "who": "Boole",
+      "status": "guard",
+      "text": "Source-specific phylo/animal/spatial/kernel lv syntax remains fail-loud. Ordinary latent(lv = ~ x) evidence must not be reused to promote phylo_latent(..., lv = ~ x)."
+    },
+    {
+      "when": "mixed bridge",
+      "who": "Hopper + Curie",
+      "status": "blocked",
+      "text": "Mixed-family X_lv, fixed X, masks, missing responses, and CIs remain blocked. The admitted bridge row is point/postfit only for complete balanced Gaussian + Poisson + Binomial vectors, and unsupported mixed components are now named by GJL-GATE-MIXED-COMPONENTS."
     }
   ],
   "serial_gates": [
@@ -122,6 +140,12 @@
       "who": "Maintainer",
       "status": "blocked",
       "text": "The profile-LR truth canary did not pass for task 8 entry 71, the K=1 population-target gate covered only 98/100 after converged misses, and profile_direct_slope failed the strict K=1 20-replicate no-miss canary despite 96/100 aggregate coverage. Source-specific phylo lv is retired/parked for v1. Future exposure requires a newly predeclared ADEMP target/gate before any gllvmTMB source-specific lv grammar exposure. Do not restart bootstrap."
+    },
+    {
+      "when": "before mixed-family bridge promotion",
+      "who": "Hopper + Boole",
+      "status": "guard",
+      "text": "Do not widen mixed-family bridge claims beyond the complete balanced Gaussian + Poisson + Binomial point/postfit row. Mixed-family X/X_lv/masks/CIs require a separate parity slice and evidence gate."
     }
   ],
   "ci_runs": [

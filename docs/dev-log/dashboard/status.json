@@ -1,11 +1,11 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local operating board for gllvmTMB capability truth. Current focus: latent(lv = ~ x) ordinary, Julia-bridge, phylo, and mixed-family evidence.",
-  "updated": "2026-06-30 23:30 MDT",
-  "source": "gllvmTMB PR #581 merged to main at 12526a15. Post-merge R-CMD-check run 28476941515 and pkgdown run 28477809749 both passed; the public extract_lv_effects reference page now shows axis_effect as the default with conf.level, alpha SE/CIs, and explicit trait_effect B_lv SE/CIs. GLLVM.jl PR #127 remains closed/parked as blocked evidence. Current v1 decision: retire/park public source-specific phylo lv under the current evidence; keep phylo_latent(..., lv = ~ x) fail-loud. No bootstrap rescue is planned. Alpha Wald output is conditional axis/access-effect output, not the Model A evidence target. Profile-LR can return only as a selected-entry truth-inclusion canary after Fisher names a genuinely revised estimand or regime. Old evidence is negative: bootstrap_basic 591/720 = 0.821; optimistic cancelled-task bound 671/800 = 0.839; local task-8 entry-71 profile_truth LR 9.9918 > 3.8415; narrowed K=1 profile_truth 98/100 with two converged misses. Bench-only profile_direct_slope passed early diagnostics but failed the K=1 20-replicate no-miss gate at 96/100 with four converged misses and max LR 6.6614 > 3.8415. Aggregate 96/100 is nominal-compatible at this denominator, but it is not public support. No active compute is claimed; Totoro remains diagnostic-only and DRAC claim-only after a future ADEMP gate passes.",
+  "updated": "2026-07-01 05:19 MDT",
+  "source": "gllvmTMB PR #581 merged to main at 12526a15. Post-merge R-CMD-check run 28476941515 and pkgdown run 28477809749 both passed; the public extract_lv_effects reference page now shows axis_effect as the default with conf.level, alpha SE/CIs, and explicit trait_effect B_lv SE/CIs. GLLVM.jl PR #127 remains closed/parked as blocked evidence. Current v1 decision: retire/park public source-specific phylo lv under the current evidence; keep phylo_latent(..., lv = ~ x) fail-loud. No bootstrap rescue is planned. Alpha Wald output is conditional axis/access-effect output, not the Model A evidence target. Profile-LR can return only as a selected-entry truth-inclusion canary after Fisher names a genuinely revised estimand or regime. Old evidence is negative: bootstrap_basic 591/720 = 0.821; optimistic cancelled-task bound 671/800 = 0.839; local task-8 entry-71 profile_truth LR 9.9918 > 3.8415; narrowed K=1 profile_truth 98/100 with two converged misses. Bench-only profile_direct_slope passed early diagnostics but failed the K=1 20-replicate no-miss gate at 96/100 with four converged misses and max LR 6.6614 > 3.8415. Aggregate 96/100 is nominal-compatible at this denominator, but it is not public support. LV structural dependencies are now truth-locked: source-specific lv guards stay covered/fail-loud, the mixed-family bridge row is complete balanced point/postfit only, and mixed-family X/X_lv/masks/CIs remain blocked. No active compute is claimed; Totoro remains diagnostic-only and DRAC claim-only after a future ADEMP gate passes.",
   "claim_guard": {
     "title": "Claim boundary",
-    "text": "On main, extract_lv_effects() defaults to axis_effect alpha and returns Wald SE/CIs when the fitted native TMB sdreport supports them. These alpha intervals remain conditional on the fitted loading/axis convention, not broad calibrated coverage claims. Rotation-invariant trait effects remain explicit as type = \"trait_effect\" with B_lv = Lambda alpha^T and Wald SE/CIs. Ordinary C1 is closed for the named regimes; source-specific phylo lv is retired/parked for v1, mixed-family lv is blocked, and calibrated Julia bridge CIs remain partial. For phylo Model A, bootstrap is out for the current arc, profile-LR is only a selected-entry canary after a genuinely new target is named, and profile_truth plus profile_direct_slope canaries both fired stop rules. Do not call this partial support; the current action is parking, not another same-route rerun."
+    "text": "On main, extract_lv_effects() defaults to axis_effect alpha and returns Wald SE/CIs when the fitted native TMB sdreport supports them. These alpha intervals remain conditional on the fitted loading/axis convention, not broad calibrated coverage claims. Rotation-invariant trait effects remain explicit as type = \"trait_effect\" with B_lv = Lambda alpha^T and Wald SE/CIs. Ordinary C1 is closed for the named regimes; source-specific phylo lv is retired/parked for v1, mixed-family lv is blocked, and calibrated Julia bridge CIs remain partial. The mixed-family Julia bridge row is point/postfit only for complete balanced Gaussian + Poisson + Binomial vectors; fixed X, predictor-informed X_lv, masks, missing responses, newdata, and CIs remain gated. For phylo Model A, bootstrap is out for the current arc, profile-LR is only a selected-entry canary after a genuinely new target is named, and profile_truth plus profile_direct_slope canaries both fired stop rules. Do not call this partial support; the current action is parking, not another same-route rerun."
   },
   "metrics": {
     "covered": 17,
@@ -144,9 +144,9 @@
     },
     {
       "label": "Mixed distributions",
-      "value": "backlog",
+      "value": "point-only guard",
       "status": "blocked",
-      "note": "First mixed cell should be balanced Gaussian + binomial + Poisson with no masks, no fixed X, no missing responses, and no CIs."
+      "note": "The narrow Julia bridge mixed-family row is complete balanced Gaussian + Poisson + Binomial point/postfit only. It does not admit fixed X, predictor-informed X_lv, masks, missing responses, newdata, or CIs. Mixed-family latent(lv = ~ x) remains blocked/fail-loud."
     },
     {
       "label": "Phylo DRAC launcher",
@@ -362,7 +362,7 @@
         "recovery": "blocked",
         "intervals": "blocked",
         "status": "blocked",
-        "evidence": "Keep source-specific lv grammar fail-loud until structural redesign with fresh evidence or explicit v1 retirement/sign-off. PR #573 merged the source-specific guard tests for phylo, animal, spatial, kernel, and deprecated/internal alias lv metadata handling."
+        "evidence": "Keep source-specific lv grammar fail-loud after the v1 parking decision. PR #573 merged the source-specific guard tests for phylo, animal, spatial, kernel, and deprecated/internal alias lv metadata handling."
       },
       {
         "lane": "Source-specific lv grammar guard",
@@ -728,14 +728,14 @@
       "name": "Mixed distributions",
       "owner": "Boole + Curie + Fisher",
       "status": "blocked",
-      "counts": "0/4",
+      "counts": "point bridge guarded; X_lv blocked",
       "slices": [
         {
-          "name": "Balanced Gaussian + binomial + Poisson, no masks, no fixed X, no missing responses, no CIs.",
-          "status": "queued"
+          "name": "Balanced Gaussian + Poisson + Binomial bridge point/postfit row is guarded as no fixed X, no X_lv, no masks, no missing responses, no CIs.",
+          "status": "guard"
         },
         {
-          "name": "Add NB2/Gamma/Beta mixed cells only after first mixed cell is stable.",
+          "name": "Add NB2/Gamma/Beta mixed R bridge cells only after a separate parity slice widens the component contract.",
           "status": "blocked"
         },
         {
@@ -784,7 +784,7 @@
       "when": "2026-06-30 22:37 MDT",
       "who": "Structural fork lock",
       "status": "blocked",
-      "text": "The remaining phylo Model A decision is now explicit: either retire public source-specific phylo lv from v1, or authorize a changed realized/sampling-conditional target with a fresh ADEMP gate. Wald is acceptable only for conditional alpha axis/access-effect output. Profile-LR is the canary for the changed target only; no bootstrap, endpoint-profile fan-out, grammar widening, PR reopen, or production compute follows from the failed old route."
+      "text": "The phylo Model A v1 decision is now explicit: public source-specific phylo lv is retired/parked for v1. Any future non-v1 branch must authorize a changed realized/sampling-conditional target with a fresh ADEMP gate. Wald is acceptable only for conditional alpha axis/access-effect output. Profile-LR is the canary for a changed target only; no bootstrap, endpoint-profile fan-out, grammar widening, PR reopen, or production compute follows from the failed old route."
     },
     {
       "when": "2026-06-30 22:54 MDT",
@@ -809,6 +809,12 @@
       "who": "Phylo Model A v1 parking",
       "status": "blocked",
       "text": "Public source-specific phylo lv is now retired/parked for v1 under the current evidence. PR #127 remains closed/parked, phylo_latent(..., lv = ~ x) stays fail-loud, and no compute is active. Future work must start from a newly predeclared ADEMP target/gate before profile-LR, Totoro diagnostics, DRAC claim evidence, or R grammar exposure can resume."
+    },
+    {
+      "when": "2026-07-01 05:12 MDT",
+      "who": "LV structural dependency council",
+      "status": "guard",
+      "text": "Source guards, mixed-family point boundary, and R-Julia bridge matrix truth are the active planning/verification slice. Boole keeps source-specific lv fail-loud, Hopper owns bridge ledger parity, Fisher blocks interval overclaims, Curie owns focused guard tests, Grace owns local preview, and Rose blocks partial-support wording. No package API widening, no grammar exposure, no PR reopen, and no compute launch."
     },
     {
       "when": "2026-06-30 16:10 MDT",
@@ -837,6 +843,12 @@
       "who": "Rose",
       "status": "guard",
       "text": "Keep alpha axis_effect, B_lv trait_effect, Julia bridge point routes, and phylo/mixed-family blocked rows separate."
+    },
+    {
+      "when": "before mixed-family bridge promotion",
+      "who": "Hopper + Boole",
+      "status": "guard",
+      "text": "The R bridge admits only the complete balanced Gaussian + Poisson + Binomial point/postfit row. Unsupported mixed components use GJL-GATE-MIXED-COMPONENTS; mixed-family X/X_lv/masks/CIs stay blocked."
     }
   ],
   "blockers": [
@@ -853,10 +865,16 @@
       "text": "Same-route bootstrap, Wald, t-Wald, percentile, bootstrap_basic, population profile_truth, and current profile_direct_slope reruns are retired. Profile-LR can return only after a genuinely revised target/gate. Totoro may be used only for small diagnostics after the target changes; DRAC denominators stay seed-matched and separate."
     },
     {
+      "when": "source grammar",
+      "who": "Boole",
+      "status": "guard",
+      "text": "Source-specific phylo/animal/spatial/kernel lv syntax remains fail-loud. Ordinary latent(lv = ~ x) evidence must not be reused to promote phylo_latent(..., lv = ~ x)."
+    },
+    {
       "when": "mixed",
-      "who": "Curie",
+      "who": "Curie + Hopper",
       "status": "blocked",
-      "text": "Mixed-family LV has no V1 evidence yet and should remain backlog."
+      "text": "Mixed-family LV has no V1 evidence. The bridge row is point/postfit only for complete balanced Gaussian + Poisson + Binomial vectors; fixed X, predictor-informed X_lv, masks, missing responses, and CIs remain blocked."
     },
     {
       "when": "public wording",
@@ -891,10 +909,18 @@
     },
     {
       "lane": "Julia bridge point routes",
-      "owners": "Ada + Grace",
+      "owners": "Ada + Grace + Hopper",
       "parallel_with": "ordinary native LV closeout",
-      "join_gate": "point-route scope only; no calibrated Julia CIs",
+      "join_gate": "point-route scope only; no mixed-family X/X_lv/masks/CIs and no calibrated Julia CIs",
       "status": "partial"
+    },
+    {
+      "lane": "LV structural dependency truth lock",
+      "owners": "Ada + Boole + Hopper + Fisher + Curie + Grace + Rose",
+      "parallel_with": "no compute lanes",
+      "join_gate": "source guard covered, mixed bridge point-only row explicit, bridge matrix drift gated",
+      "status": "guard",
+      "text": "This lane updates guard tests and Mission Control only. It is not a package API, likelihood, source-specific grammar, PR reopen, or large-compute change."
     }
   ],
   "agents": [
@@ -946,11 +972,20 @@
     {
       "name": "Boole",
       "role": "R API and formula reviewer",
-      "task": "Keep latent(lv = ~ x) distinct from latent(1 + x | unit); source-specific lv must fail loudly until supported.",
+      "task": "Keep ordinary latent(lv = ~ x) distinct from source-specific phylo/animal/spatial/kernel lv syntax; source-specific lv remains fail-loud after v1 parking.",
       "status": "guard",
       "blocked_by": "phylo Model A sign-off",
-      "parallel_with": "Rose",
-      "join_gate": "Design 73"
+      "parallel_with": "Hopper + Rose",
+      "join_gate": "source guard tests and Mission Control wording stay aligned"
+    },
+    {
+      "name": "Hopper",
+      "role": "R to Julia bridge translator",
+      "task": "Keep gllvm_julia_capabilities() and GLLVM.bridge_capabilities() reconciled: mixed-family vector is point/postfit only, unsupported mixed components are gate-labelled, and X/X_lv/masks/CIs stay blocked.",
+      "status": "guard",
+      "blocked_by": "separate parity slice for any wider mixed-family bridge support",
+      "parallel_with": "Boole + Grace",
+      "join_gate": "bridge matrix drift is explicit and gate-labelled"
     },
     {
       "name": "Grace",
@@ -1068,7 +1103,7 @@
       "bridge": "blocked",
       "inference": "not_applicable",
       "evidence": "PR #573 merged at 2fc42935. Ordinary latent lv remains admitted; phylo/animal/spatial/kernel lv spellings and unsupported aliases fail loudly.",
-            "next_gate": "Source-specific support stays blocked until structural redesign with fresh evidence or explicit v1 retirement/sign-off."
+            "next_gate": "Source-specific support is parked for v1; future non-v1 support needs structural redesign with fresh evidence and explicit maintainer sign-off."
     },
     {
       "id": "LV-NG-GUARD",
@@ -1141,8 +1176,8 @@
       "engine": "blocked",
       "bridge": "queued",
       "inference": "blocked",
-      "evidence": "No V1 evidence.",
-      "next_gate": "Balanced Gaussian + binomial + Poisson point-only cell"
+      "evidence": "R-Julia bridge truth-lock: the only mixed-family bridge row is complete balanced Gaussian + Poisson + Binomial point/postfit with no fixed X, no predictor-informed X_lv, no masks, no missing responses, no newdata, and no CIs. Native mixed-family latent(lv = ~ x) remains fail-loud.",
+      "next_gate": "A separate mixed-family parity slice is required before widening components, X/X_lv, masks, or intervals."
     },
     {
       "id": "LV-PHYLO-DRAC-LAUNCH",

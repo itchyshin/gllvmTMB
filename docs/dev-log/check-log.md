@@ -23133,3 +23133,67 @@ Still not claimed:
 - No explicit Psi support in the Paper 2 multi-kernel path.
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-07-01 (Codex / Ada) -- LV structural dependency truth lock
+
+Maintainer request: finish the LV structural dependency slice as a truth-lock
+gate, not a new modelling or compute slice.
+
+Changed:
+- `R/julia-bridge.R`: added named gate `GJL-GATE-MIXED-COMPONENTS` and routed
+  unsupported mixed-family vector/list components through that gate. The R
+  bridge remains deliberately narrow: complete balanced mixed-family point and
+  postfit rows only for `gaussian`, `poisson`, and `binomial`.
+- `tests/testthat/test-julia-bridge.R`: tightened bridge ledger expectations for
+  the `mixed-family vector` row: `fit_no_x = TRUE`; fixed `X`,
+  predictor-informed `X_lv`, masks, and all CI routes remain false; retained
+  postfit payloads remain explicit; unsupported mixed components expect
+  `GJL-GATE-MIXED-COMPONENTS`.
+- `tests/testthat/test-canonical-keywords.R`: kept the canonical
+  `phylo_latent()` alias smoke on the already-computed `phylo_vcv` path so the
+  focused source-guard test does not require optional `MCMCglmm`.
+- `docs/dev-log/dashboard/status.json` and
+  `docs/dev-log/dashboard/sweep.json`: refreshed Mission Control with the
+  source-guard, mixed-family point-only, and bridge-matrix truth-lock rows. The
+  board still reports no active compute and PR #127 closed/parked.
+- `/private/tmp/gllvmjl-phylo-xlv/test/test_bridge_capabilities.jl`: mirrored the
+  mixed-family bridge ledger assertions on the Julia side.
+
+Validation:
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null` and
+  `python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null` -> both
+  parsed successfully.
+- `git diff --check -- R/julia-bridge.R tests/testthat/test-julia-bridge.R
+  docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json` -> no
+  whitespace errors.
+- `Rscript -e 'invisible(parse("R/julia-bridge.R")); cat("parse-ok\n")'` ->
+  `parse-ok`.
+- Direct pure-R bridge smoke after sourcing `R/julia-bridge.R` ->
+  `bridge-gate-smoke-ok`; confirmed the new gate is registered, the mixed row is
+  no-X/no-mask/no-CI, postfit payloads are retained, and
+  `c("gaussian", "gamma")` fails with `GJL-GATE-MIXED-COMPONENTS`.
+- The initial `devtools::load_all()` probe aborted at `dyn.load(dll_copy_file)`
+  because the local untracked `src/gllvmTMB.so` was linked to R 4.5 while the
+  active R is 4.6. The stale `src/gllvmTMB.o`/`.so` were moved to
+  `/tmp/gllvmtmb-stale-r45-dll-20260701/`; `TMB::compile("src/gllvmTMB.cpp")`
+  rebuilt against R 4.6; direct `dyn.load("src/gllvmTMB.so")` and
+  `devtools::load_all(quiet = TRUE)` then passed.
+- Focused R tests after the rebuild:
+  `test-julia-bridge.R` 380 pass / 14 expected live-Julia skips;
+  `test-ordinary-latent-random-regression.R` 23 pass / 7 CRAN skips;
+  `test-canonical-keywords.R` 46 pass / 10 optional-package skips;
+  `test-stage37-mixed-family.R` 6 pass.
+- `/private/tmp/gllvmjl-phylo-xlv` focused bridge tests:
+  `test_bridge_capabilities.jl` 63/63 pass;
+  `test_bridge_mixed.jl` 18/18 pass;
+  `test_bridge_x.jl` 195/195 pass;
+  `test_bridge_missing_mask.jl` 83/83 pass;
+  `test_bridge_ci.jl` 64/64 pass.
+- Claim audit:
+  `rg -n "ready to scale|source-specific.*covered|source-specific phylo.*support|phylo.*partial support|active compute|production fan-out is running|Remaining phylo Model A choice|until structural redesign with fresh evidence or explicit v1 retirement|mixed-family.*CI.*routed|mixed-family.*X_lv.*covered" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> only expected negative guard text such as `no active compute` and
+  `do not call source-specific phylo lv partial support`.
+
+Not run:
+- No `R CMD check`, pkgdown, article render, Totoro job, DRAC job, PR reopen,
+  push, API widening, R grammar exposure, or likelihood change.

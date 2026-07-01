@@ -4,6 +4,56 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-01 09:14 MDT -- Phylo Model A Gate 0 mission-control refresh
+
+Branch: local dirty Dropbox checkout; no push or PR.
+
+Guard: `Gate 0 local evidence != Gate 1 diagnostic != source-specific phylo lv support`.
+
+Purpose:
+
+- Move Mission Control from "B_eta_realized Gate 0 missing" to "Gate 0
+  implemented locally; Gate 1/2/3 unrun".
+- Keep the weak-cell stop evidence, v1 parking, PR #127 closed/parked state,
+  Totoro diagnostic-only posture, and DRAC claim-only posture visible.
+- Keep metrics unchanged because no source-specific support, compute, or public
+  exposure status changed.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json`.
+- Updated `docs/dev-log/dashboard/sweep.json`.
+- Added `docs/dev-log/after-task/2026-07-01-lv-arc-gate0-mission-control.md`.
+
+Checks:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+git diff --check -- docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-01-lv-arc-gate0-mission-control.md
+rg -n "B_eta_realized|profile_eta_realized|Gate 0|Gate 1|Gate 2|Gate 3|source-specific.*support|partial support|ready to scale|active compute" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-01-lv-arc-gate0-mission-control.md
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "09:14|Gate 0|Gate 1|B_eta_realized|0 active|no Totoro|no DRAC|closed/parked"
+curl -s http://127.0.0.1:8770/sweep.json | python3 -m json.tool | rg -n "09:14|Gate 0|Gate 1|profile_eta_realized|0 active"
+```
+
+Results: JSON parsed for both files; `git diff --check` returned no whitespace
+errors. The claim-audit scan found the intended Gate 0/Gate 1,
+`B_eta_realized`, `profile_eta_realized`, no-active-compute, and
+source-specific guard language. `tools/start-mission-control.sh --background`
+reused the existing preview server and synced files to `/tmp/gllvm-dashboard`
+and `/private/tmp/gllvm-dashboard`. Curl and the in-app browser both showed the
+09:14 Gate 0 row, `0 active`, PR #127 closed/parked, Gate 1/2/3 unrun, and the
+06:24 design row marked superseded by the Gate 0 row.
+
+Still not claimed:
+
+- No source-specific `phylo_latent(..., lv = ~ x)` exposure.
+- No PR #127 reopen, push, package API widening, likelihood change, or compute
+  launch.
+- No Gate 1/2/3 result, no non-Gaussian extension, and no full-suite-green
+  GLLVM.jl claim.
+
 ## 2026-07-01 06:24 MDT -- LV arc next-target mission-control refresh
 
 Branch: local dirty Dropbox checkout; no push or PR.

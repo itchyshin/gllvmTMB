@@ -4,6 +4,61 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-01 15:40 MDT -- Phylo Model A Gate 3 passed mission-control refresh
+
+Branch: local dirty Dropbox checkout; no push or PR.
+
+Guard: `Gate 3 passed != source-specific phylo lv support != R grammar exposure`.
+
+Purpose:
+
+- Move Mission Control from “Gate 3 running” to “Gate 3 DRAC claim evidence
+  passed.”
+- Show no active or queued LV compute remains.
+- Keep source-specific R grammar, PR #127 reopening, package API widening, and
+  public support blocked until explicit maintainer authorization.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json`.
+- Updated `docs/dev-log/dashboard/sweep.json`.
+- Added
+  `docs/dev-log/after-task/2026-07-01-lv-arc-gate3-passed-mission-control.md`.
+
+Evidence:
+
+```text
+SLURM job: 17049809_[1-500%100]
+host: Nibi
+result files: 500
+detail files: 500
+fit convergence: 500/500
+profile status: 500/500 ok rows
+selected entries: 2500
+usable profile truth solves: 2500/2500
+covered/planned: 2495/2500 = 0.998000000
+task coverage MCSE: 0.000890835
+Wilson 95 percent interval: 0.995326484 to 0.999145426
+LR misses: 5
+non-empty error logs: 0
+```
+
+Checks:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "17049809|Gate 3|passed|18 covered|0 active|2495/2500"
+```
+
+Still not claimed:
+
+- No source-specific `phylo_latent(..., lv = ~ x)` exposure.
+- No PR #127 reopen, push, package API widening, likelihood change, bootstrap
+  rescue, or public source-specific support.
+- The old population-`B_lv` route remains negative/retired.
+
 ## 2026-07-01 11:42 MDT -- Phylo Model A Gate 3 running mission-control refresh
 
 Branch: local dirty Dropbox checkout; no push or PR.

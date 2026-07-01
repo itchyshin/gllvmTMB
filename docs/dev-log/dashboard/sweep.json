@@ -1,10 +1,10 @@
 {
-  "updated": "2026-07-01 11:42 MDT",
+  "updated": "2026-07-01 15:40 MDT",
   "metrics": {
-    "covered": 17,
+    "covered": 18,
     "partial": 3,
     "ready": 0,
-    "active": 1,
+    "active": 0,
     "queued": 0,
     "blocked": 5,
     "total": 26,
@@ -23,7 +23,7 @@
       "when": "2026-06-30 16:10 MDT",
       "who": "Mission-control refresh",
       "status": "covered",
-      "text": "Widget now reports 17 covered, 3 partial, 0 ready, 1 active DRAC claim-evidence row, 0 queued rows, and 5 blocked LV rows. Gate 2 diagnostic is passed; Gate 3 is running; public/source-specific exposure still waits for DRAC results."
+      "text": "Widget now reports 18 covered, 3 partial, 0 ready, 0 active rows, 0 queued rows, and 5 blocked LV rows. Gate 2 diagnostic and Gate 3 DRAC claim evidence passed; public/source-specific exposure still waits for maintainer authorization."
     },
     {
       "when": "2026-06-30 17:53 MDT",
@@ -79,7 +79,7 @@
       "when": "2026-07-01 06:24 MDT",
       "who": "Phylo Model A next target",
       "status": "guard",
-      "text": "No-compute design recorded: the only candidate restart was eta-scale realized B_eta_realized with selected-entry profile-LR. This 06:24 row is superseded by the 09:14 Gate 0 row, the 09:32 strict Gate 1 failure row, and the 09:48 corrected Gate 1 row. Gate 2 Totoro diagnostic is complete; DRAC claim evidence, source-specific lv grammar, and PR #127 reopening remain pending."
+      "text": "No-compute design recorded: the only candidate restart was eta-scale realized B_eta_realized with selected-entry profile-LR. This 06:24 row is superseded by the 09:14 Gate 0 row, the 09:32 strict Gate 1 failure row, and the 09:48 corrected Gate 1 row. Gate 2 Totoro diagnostic is complete; DRAC claim evidence later passed; source-specific lv grammar and PR #127 reopening remain blocked pending maintainer authorization."
     },
     {
       "when": "2026-07-01 09:14 MDT",
@@ -106,10 +106,10 @@
       "text": "Totoro-only B_eta_realized weak-cell diagnostic passed from clean GLLVM.jl commit 41a4120: 20/20 fits converged, 100/100 selected-entry profile truth solves usable, 100/100 covered, MCSE 0.0000, Wilson 95% 0.9630 to 1.0000, max LR 2.6733 < 3.8415, zero misses. This authorizes Gate 3 DRAC claim-evidence planning only; no source-specific R grammar, PR #127 reopen, public support claim, or bootstrap rescue follows."
     },
     {
-      "when": "2026-07-01 11:42 MDT",
+      "when": "2026-07-01 15:40 MDT",
       "who": "Phylo Model A Gate 3",
-      "status": "active",
-      "text": "Gate 3 DRAC claim-evidence array is running on Nibi as job 17049809_[1-500%100], account def-snakagaw_cpu. Design: B_eta_realized, profile_eta_realized, p=80, n_sites=200, K=2, lambda=0.5, 500 reps, entries 14,41,71,8,44, truth-init, fit/profile budgets 1000/1000. This is active compute only; do not claim Gate 3 passed or expose source-specific R grammar."
+      "status": "covered",
+      "text": "Gate 3 DRAC claim evidence passed on Nibi job 17049809: 500/500 fits converged, 2500/2500 selected entries usable, 2495/2500 covered = 0.998000000, MCSE 0.000890835, Wilson 95 percent 0.995326484 to 0.999145426, 5 LR misses, and 0 non-empty error logs. This is DRAC-only evidence for the non-v1 B_eta_realized target; no source-specific R grammar or PR #127 reopen follows without explicit maintainer authorization."
     }
   ],
   "evidence": [
@@ -144,10 +144,10 @@
       "text": "B_eta_realized profile_eta_realized Gate 2 completed on Totoro: 20/20 result files, 100/100 usable selected entries, 100/100 covered, max LR 2.6733 below 3.8415."
     },
     {
-      "when": "2026-07-01 11:42 MDT",
-      "who": "Gate 3 DRAC run",
-      "status": "active",
-      "text": "Nibi SLURM job 17049809_[1-500%100] is running: 20 array tasks active, 480 pending, 0/500 result files, 0/500 detail files, and 0 non-empty error logs at the 11:42 MDT poll. Results path /scratch/snakagaw/phylo_model_a_gate3_20260701-1122/results."
+      "when": "2026-07-01 15:40 MDT",
+      "who": "Gate 3 DRAC pass",
+      "status": "covered",
+      "text": "Nibi SLURM job 17049809_[1-500%100] completed and was reduced from /scratch/snakagaw/phylo_model_a_gate3_20260701-1122/results: 500 result files, 500 detail files, 0 non-empty error logs, 2495/2500 covered."
     }
   ],
   "blockers": [
@@ -155,7 +155,7 @@
       "when": "phylo",
       "who": "Fisher",
       "status": "blocked",
-      "text": "Do not spend more cores on bootstrap_basic/Wald/t-Wald/percentile/profile endpoint repeats for the current phylo weak cell. Bootstrap is not the next route. The local profile_truth canaries missed task 8 entry 71 and the K=1 20-replicate gate, profile_direct_slope failed its strict K=1 20-replicate gate at 96/100 with four converged misses, and original B_eta_realized Gate 1 failed the no-miss rule at 84/100 planned entries. Corrected local Gate 1 reached 97/100 with 100/100 usable, but Gate 2 has passed; Gate 3 DRAC claim evidence is running and incomplete. Public source-specific phylo lv is retired/parked for v1; any future path needs a new method decision before compute."
+      "text": "Do not spend more cores on bootstrap_basic/Wald/t-Wald/percentile/profile endpoint repeats for the current phylo weak cell. Bootstrap is not the next route. The local profile_truth canaries missed task 8 entry 71 and the K=1 20-replicate gate, profile_direct_slope failed its strict K=1 20-replicate gate at 96/100 with four converged misses, and original B_eta_realized Gate 1 failed the no-miss rule at 84/100 planned entries. Corrected local Gate 1 reached 97/100 with 100/100 usable, but Gate 2 has passed; Gate 3 DRAC claim evidence passed, but public/source-specific exposure remains blocked pending maintainer authorization. Public source-specific phylo lv is retired/parked for v1; any future path needs a new method decision before compute."
     },
     {
       "when": "phylo Gate 0",
@@ -193,7 +193,7 @@
       "when": "before phylo exposure",
       "who": "Maintainer",
       "status": "blocked",
-      "text": "The profile-LR truth canary did not pass for task 8 entry 71, the K=1 population-target gate covered only 98/100 after converged misses, profile_direct_slope failed the strict K=1 20-replicate no-miss canary despite 96/100 aggregate coverage, and original B_eta_realized Gate 1 failed the no-miss rule. Corrected local Gate 1 is 97/100 with 100/100 usable. Source-specific phylo lv is retired/parked for v1. Future exposure requires an approved MCSE-aware gate and fresh evidence; Gate 2 has passed; Gate 3 remains pending. Do not restart bootstrap."
+      "text": "The profile-LR truth canary did not pass for task 8 entry 71, the K=1 population-target gate covered only 98/100 after converged misses, profile_direct_slope failed the strict K=1 20-replicate no-miss canary despite 96/100 aggregate coverage, and original B_eta_realized Gate 1 failed the no-miss rule. Corrected local Gate 1 is 97/100 with 100/100 usable. Source-specific phylo lv is retired/parked for v1. Future exposure requires an approved MCSE-aware gate and fresh evidence; Gate 2 has passed; Gate 3 passed. Do not restart bootstrap."
     },
     {
       "when": "before mixed-family bridge promotion",

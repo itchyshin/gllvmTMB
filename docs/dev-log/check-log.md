@@ -4,6 +4,46 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-01 17:31 MDT -- LV arc post-Gate3 hardening refresh
+
+Branch: local dirty Dropbox checkout; no push or PR.
+
+Guard: `Gate 3 evidence freeze != source-specific phylo lv support !=
+non-Gaussian inheritance`.
+
+Purpose:
+
+- Show the next LV arc step after Gate 3 as structural/non-Gaussian gates, not
+  automatic exposure.
+- Keep Mission Control counts unchanged.
+- Record that Gate 3 is internal evidence for `B_eta_realized` only.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json`.
+- Updated `docs/dev-log/dashboard/sweep.json`.
+- Added
+  `docs/dev-log/after-task/2026-07-01-lv-arc-post-gate3-hardening.md`.
+
+Checks:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+git diff --check -- docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-01-lv-arc-post-gate3-hardening.md
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "17:31|Post-Gate3|non-Gaussian|B_eta_realized|0 active|0 queued|2495/2500"
+rg -n "Gate 3 running|active compute only|result files: 0/500|detail files: 0/500|1 active|ready to scale|source-specific phylo lv.*covered|non-Gaussian.*covered" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json
+```
+
+Still not claimed:
+
+- No source-specific `phylo_latent(..., lv = ~ x)` exposure.
+- No PR #127 reopen, push, package API widening, likelihood change, bootstrap
+  rescue, public source-specific support, or non-Gaussian/source-specific
+  extension.
+- No new compute.
+
 ## 2026-07-01 15:40 MDT -- Phylo Model A Gate 3 passed mission-control refresh
 
 Branch: local dirty Dropbox checkout; no push or PR.

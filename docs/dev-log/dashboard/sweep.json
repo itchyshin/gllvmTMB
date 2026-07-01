@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-01 15:40 MDT",
+  "updated": "2026-07-01 17:31 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -110,6 +110,12 @@
       "who": "Phylo Model A Gate 3",
       "status": "covered",
       "text": "Gate 3 DRAC claim evidence passed on Nibi job 17049809: 500/500 fits converged, 2500/2500 selected entries usable, 2495/2500 covered = 0.998000000, MCSE 0.000890835, Wilson 95 percent 0.995326484 to 0.999145426, 5 LR misses, and 0 non-empty error logs. This is DRAC-only evidence for the non-v1 B_eta_realized target; no source-specific R grammar or PR #127 reopen follows without explicit maintainer authorization."
+    },
+    {
+      "when": "2026-07-01 17:31 MDT",
+      "who": "Post-Gate3 hardening",
+      "status": "covered",
+      "text": "Evidence packet frozen in the GLLVM.jl handover worktree. Rose/Ada claim audit keeps Gate 3 as internal evidence for B_eta_realized only: old population-B_lv remains retired, source-specific phylo lv exposure remains blocked, and non-Gaussian/source-specific structural models must start as separate derivation and ADEMP gates."
     }
   ],
   "evidence": [
@@ -200,6 +206,12 @@
       "who": "Hopper + Boole",
       "status": "guard",
       "text": "Do not widen mixed-family bridge claims beyond the complete balanced Gaussian + Poisson + Binomial point/postfit row. Mixed-family X/X_lv/masks/CIs require a separate parity slice and evidence gate."
+    },
+    {
+      "when": "before non-Gaussian/source-specific expansion",
+      "who": "Fisher + Curie + Rose",
+      "status": "blocked",
+      "text": "Do not inherit Gaussian Gate 3 evidence into non-Gaussian or broader structural models. Each family/source combination needs a named estimand, derivation, ADEMP gate, and claim audit before compute, bridge promotion, or public wording."
     }
   ],
   "ci_runs": [

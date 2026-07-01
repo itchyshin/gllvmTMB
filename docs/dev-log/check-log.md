@@ -4,6 +4,68 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-01 11:34 MDT -- Phylo Model A Gate 3 queued mission-control refresh
+
+Branch: local dirty Dropbox checkout; no push or PR.
+
+Guard: `Gate 3 queued != Gate 3 passed != source-specific phylo lv support`.
+
+Purpose:
+
+- Move Mission Control from “Gate 3 pending” to “Gate 3 DRAC queued.”
+- Make the queued job visible without implying completed claim evidence.
+- Keep source-specific R grammar, PR #127 reopening, package API widening, and
+  public support blocked.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json`.
+- Updated `docs/dev-log/dashboard/sweep.json`.
+- Added
+  `docs/dev-log/after-task/2026-07-01-lv-arc-gate3-queued-mission-control.md`.
+
+Queued evidence:
+
+```text
+SLURM job: 17049809
+array: 1-500%100
+host: Nibi
+account: def-snakagaw_cpu
+state at submission: PENDING (Priority)
+results: /scratch/snakagaw/phylo_model_a_gate3_20260701-1122/results
+```
+
+Design:
+
+```text
+target: B_eta_realized
+method: profile_eta_realized
+cell: p=80, n_sites=200, K=2, q_lv=1, K_phy=1, lambda=0.5, scenario=main
+replicates: 500
+seed0: 20260701
+entries: 14,41,71,8,44
+fit/profile optimizer budgets: 1000 / 1000
+host denominator: DRAC/Nibi only
+```
+
+Checks:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "17049809|Gate 3|queued|100/100|0 active"
+ssh nibi 'squeue -j 17049809 -o "%.30i %.12P %.20j %.8u %.2t %.12M %.6D %R"'
+```
+
+Still not claimed:
+
+- Gate 3 has not passed.
+- No DRAC result denominator has been reduced.
+- No source-specific `phylo_latent(..., lv = ~ x)` exposure.
+- No PR #127 reopen, push, package API widening, likelihood change, bootstrap
+  rescue, or public source-specific support.
+
 ## 2026-07-01 11:22 MDT -- Phylo Model A Gate 2 mission-control refresh
 
 Branch: local dirty Dropbox checkout; no push or PR.

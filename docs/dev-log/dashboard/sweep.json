@@ -1,13 +1,13 @@
 {
-  "updated": "2026-07-01 11:22 MDT",
+  "updated": "2026-07-01 11:34 MDT",
   "metrics": {
     "covered": 17,
     "partial": 3,
     "ready": 0,
     "active": 0,
-    "queued": 0,
+    "queued": 1,
     "blocked": 5,
-    "total": 25,
+    "total": 26,
     "label": "LV arc coverage rows"
   },
   "active_work": [
@@ -23,7 +23,7 @@
       "when": "2026-06-30 16:10 MDT",
       "who": "Mission-control refresh",
       "status": "covered",
-      "text": "Widget still reports 17 covered, 3 partial, 0 ready, 0 active compute rows, 0 queued production rows, and 5 blocked LV rows. Gate 2 diagnostic is passed, but public/source-specific exposure still waits for Gate 3 DRAC claim evidence."
+      "text": "Widget now reports 17 covered, 3 partial, 0 ready, 0 active running rows, 1 queued DRAC claim-evidence row, and 5 blocked LV rows. Gate 2 diagnostic is passed; Gate 3 is queued; public/source-specific exposure still waits for DRAC results."
     },
     {
       "when": "2026-06-30 17:53 MDT",
@@ -104,6 +104,12 @@
       "who": "Phylo Model A Gate 2",
       "status": "guard",
       "text": "Totoro-only B_eta_realized weak-cell diagnostic passed from clean GLLVM.jl commit 41a4120: 20/20 fits converged, 100/100 selected-entry profile truth solves usable, 100/100 covered, MCSE 0.0000, Wilson 95% 0.9630 to 1.0000, max LR 2.6733 < 3.8415, zero misses. This authorizes Gate 3 DRAC claim-evidence planning only; no source-specific R grammar, PR #127 reopen, public support claim, or bootstrap rescue follows."
+    },
+    {
+      "when": "2026-07-01 11:34 MDT",
+      "who": "Phylo Model A Gate 3",
+      "status": "queued",
+      "text": "Gate 3 DRAC claim-evidence array is queued on Nibi as job 17049809_[1-500%100], account def-snakagaw_cpu. Design: B_eta_realized, profile_eta_realized, p=80, n_sites=200, K=2, lambda=0.5, 500 reps, entries 14,41,71,8,44, truth-init, fit/profile budgets 1000/1000. This is queued evidence only; do not claim Gate 3 passed or expose source-specific R grammar."
     }
   ],
   "evidence": [
@@ -136,6 +142,12 @@
       "who": "Gate 2 Totoro diagnostic",
       "status": "success",
       "text": "B_eta_realized profile_eta_realized Gate 2 completed on Totoro: 20/20 result files, 100/100 usable selected entries, 100/100 covered, max LR 2.6733 below 3.8415."
+    },
+    {
+      "when": "2026-07-01 11:34 MDT",
+      "who": "Gate 3 DRAC queue",
+      "status": "queued",
+      "text": "Nibi SLURM job 17049809_[1-500%100] is pending for priority; results path /scratch/snakagaw/phylo_model_a_gate3_20260701-1122/results."
     }
   ],
   "blockers": [
@@ -143,7 +155,7 @@
       "when": "phylo",
       "who": "Fisher",
       "status": "blocked",
-      "text": "Do not spend more cores on bootstrap_basic/Wald/t-Wald/percentile/profile endpoint repeats for the current phylo weak cell. Bootstrap is not the next route. The local profile_truth canaries missed task 8 entry 71 and the K=1 20-replicate gate, profile_direct_slope failed its strict K=1 20-replicate gate at 96/100 with four converged misses, and original B_eta_realized Gate 1 failed the no-miss rule at 84/100 planned entries. Corrected local Gate 1 reached 97/100 with 100/100 usable, but Gate 2 has passed; Gate 3 DRAC claim evidence remains pending. Public source-specific phylo lv is retired/parked for v1; any future path needs a new method decision before compute."
+      "text": "Do not spend more cores on bootstrap_basic/Wald/t-Wald/percentile/profile endpoint repeats for the current phylo weak cell. Bootstrap is not the next route. The local profile_truth canaries missed task 8 entry 71 and the K=1 20-replicate gate, profile_direct_slope failed its strict K=1 20-replicate gate at 96/100 with four converged misses, and original B_eta_realized Gate 1 failed the no-miss rule at 84/100 planned entries. Corrected local Gate 1 reached 97/100 with 100/100 usable, but Gate 2 has passed; Gate 3 DRAC claim evidence is queued and incomplete. Public source-specific phylo lv is retired/parked for v1; any future path needs a new method decision before compute."
     },
     {
       "when": "phylo Gate 0",

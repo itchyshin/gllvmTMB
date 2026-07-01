@@ -1,632 +1,161 @@
 {
-  "updated": "2026-06-18 16:03 MDT",
+  "updated": "2026-06-30 23:30 MDT",
+  "metrics": {
+    "covered": 17,
+    "partial": 3,
+    "ready": 0,
+    "active": 0,
+    "queued": 0,
+    "blocked": 5,
+    "total": 25,
+    "label": "LV arc coverage rows"
+  },
   "active_work": [
     {
-      "when": "live",
-      "who": "#489",
-      "text": "Draft PR #489 is clean and green at 03fdda1; it remains partial and not release-ready."
+      "when": "2026-06-30 16:10 MDT",
+      "who": "PR #581 merged",
+      "status": "covered",
+      "text": "Default axis_effect alpha SE/CIs plus explicit trait_effect B_lv SE/CIs are on main at 12526a15. Post-merge R-CMD-check and pkgdown are green.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/581",
+      "link_label": "PR #581"
     },
     {
-      "when": "live",
-      "who": "main CI",
-      "text": "Main R-CMD-check 27720099917 and pkgdown 27720668325 completed successfully at 0567cd7. Newer scheduled full-check 27752749643 also completed successfully on windows-latest, ubuntu-latest, and macos-latest at the same head. This is main CI health evidence only, not release readiness."
+      "when": "2026-06-30 16:10 MDT",
+      "who": "Mission-control refresh",
+      "status": "covered",
+      "text": "Widget now reports 17 covered, 3 partial, 0 ready, 0 active compute rows, 0 queued production rows, and 5 blocked LV rows. The former ready row is merged; phylo remains blocked/parked."
     },
     {
-      "when": "live",
-      "who": "power-pilot",
-      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results; run 27735802023 cancelled without branch movement. Run 27752884846 completed success at 2026-06-18T14:07:44Z with 51/51 jobs successful and pushed power-pilot-results 1a2aac6 (run 110). The remote store now has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. Local pilot reached 383510 / 480000 reps at iter 24. Fisher/Curie scoring still blocks coverage or power promotion."
+      "when": "2026-06-30 17:53 MDT",
+      "who": "Phylo Model A council",
+      "status": "blocked",
+      "text": "GLLVM.jl phylo Model A is retired/parked for public v1 exposure under the current population-B_lv target. Future reopening requires structural redesign with fresh ADEMP evidence. Method lock: no bootstrap rescue; profile-LR is only a selected-entry truth-inclusion canary after a genuinely new target/regime is named; alpha Wald output is conditional axis/access-effect output. The local seed-matched task-8 entry-71 profile_truth canary missed truth with LR 9.9918 > 3.8415, and the K=1 20-replicate profile gate covered only 98/100 selected entries. Same-route Wald, t-Wald, percentile, bootstrap_basic, and endpoint-profile reruns are retired; no production fan-out or source-specific lv grammar exposure follows.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/127",
+      "link_label": "closed PR #127"
     },
     {
-      "when": "live",
-      "who": "GLLVM.jl",
-      "text": "#95 is merged and main CI is green; #101 is draft/open and clean at f7be594, local merge-ref bridge slice passed 641/641, and local live JuliaCall bridge suite passed. Maintainer-approved close/reopen triggered fresh PR CI run 27763712855 and Documenter run 27763712914; both completed successfully. #94 remains dirty salvage."
+      "when": "2026-06-30 22:15 MDT",
+      "who": "K=1 profile gate",
+      "status": "blocked",
+      "text": "Diagnostic-only local K=1 Gaussian Model A profile_truth wave at p=20, n_sites=200, lambda=0.5 fired the stop rule: 20/20 fits converged, 100/100 selected entries were usable, but only 98/100 included truth. Converged misses were task 15 entry 10 (LR 4.942) and task 19 entry 20 (LR 5.143), above the 3.841 cutoff. Do not scale K=1 profile, bootstrap, Wald, t-Wald, percentile, or endpoint-profile reruns; source-specific phylo lv remains blocked."
     },
     {
-      "when": "live",
-      "who": "articles",
-      "text": "Article council slice 5A started the biological worked-example triage, and the first Psi cleanup anchor sweep now renders. api-keyword-grid, covariance-correlation, model-selection-latent-rank, and cross-lineage-coevolution separate standalone indep() from explicit Psi/unique() language. This is article-claim cleanup only, not bridge, release, or scientific-coverage completion."
+      "when": "2026-06-30 22:37 MDT",
+      "who": "Structural fork lock",
+      "status": "blocked",
+      "text": "Remaining phylo Model A choice is v1 retirement or a changed realized/sampling-conditional target with fresh ADEMP evidence. Wald is fine only for conditional alpha axis/access-effect output. Profile-LR is the canary for the changed target, not a continuation of the failed population-B_lv route. No bootstrap, source-specific grammar exposure, PR reopen, or production compute is active."
     },
     {
-      "when": "live",
-      "who": "Paper 2 kernels",
-      "text": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered by non-heavy and heavy kernel/coevolution tests; COE-03 remains partial; COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, two-cell moderate-overlap recovery plus one tested moderate-edge boundary, high-overlap exact-duplicate and diagonal-shrink near-duplicate collapse-equivalence, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke plus a 12-seed null diagnostic and medium-signal grid, bounded Poisson construction fixtures plus two known-DGP Poisson recovery cells, fixed-rho profile/sensitivity via profile_cross_rho(), fixed-rho Gamma_effect extraction, pair-specific point covariance via predict_cross_covariance(), and high-overlap fit/extract_Gamma warning language. The fixed-rho profile helper refits rho = c(0, 0.25, 0.55, 0.85), detects positive cross signal versus rho = 0, and deliberately stops short of estimating rho because the best grid point can sit at the high edge. predict_cross_covariance() uses Gamma_shape_r * K_r[i, j] because make_cross_kernel() already stores fixed rho inside K_r[i, j]; it does not create a universal total Gamma. The null diagnostic quantifies an overfit tail rather than closing Type-I/null calibration; the Poisson gate now includes two known-DGP recovery cells but remains narrow log-link count evidence only. The moderate grid now covers promoted 0.30 and 0.35 blends, while a tested 0.40 cell converges but fails component-separation thresholds and remains a boundary. Broader/harder moderate-overlap calibration, broader high-overlap truth-recovery/failure calibration beyond the collapse-equivalence and warning gates, formal null-threshold calibration beyond this diagnostic grid, in-engine rho estimation, rho profile intervals, interval calibration, and broader non-Gaussian/mixed-family recovery gates beyond the narrow Poisson cell pair remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc; the Paper 2 multi-kernel path remains latent-only. PR green != bridge complete != release ready != scientific coverage passed."
+      "when": "2026-06-30 22:54 MDT",
+      "who": "Direct-slope canary smoke",
+      "status": "guard",
+      "text": "Bench-only profile_direct_slope canary computes B_lv_direct_slope from saturated Y ~ X_lv slopes and constrains selected B_lv entries to that realized target. Tiny local smoke at p=5,n_sites=60,K=1,lambda=0.5 passed 2/2 selected entries with LR 0.0895 and 1.6022 below 3.8415. This is diagnostic tooling only: no source-specific lv grammar, no production compute, no bootstrap rescue, and no population B_lv claim."
     },
     {
-      "when": "live",
-      "who": "Laplace/VA",
-      "text": "Capability audit added to the widget: gllvmTMB has the production TMB Laplace estimator route, but all-family scientific coverage remains row-specific. gllvmTMB VA is parked/prototype-only in Design 72 and no method = \"VA\" API is merged. Current GLLVM.jl has exact Gaussian, Laplace one-part non-Gaussian families, and dedicated two-part Laplace fitters; it has no production VA/ELBO API in the current checkout. Planned gaps now include R VA revival only as a separate validation lane, Julia VA/ELBO design only if explicitly reopened, Delta-Gamma, ZIP/ZINB, Tweedie, Exponential/public dispatch, unified two-part dispatch, structured non-Gaussian dependence, formula parity, CI/post-fit parity, and mixed-family masks/X/CI."
+      "when": "2026-06-30 23:10 MDT",
+      "who": "Direct-slope early canaries",
+      "status": "guard",
+      "text": "Early realized-target profile_direct_slope canaries were positive: K=1 p=20,n_sites=200 five-seed selected-entry wave passed 25/25 with max LR 3.6595 < 3.8415, and old failed population-target task-8 entry-71 at p=80,K=2 passed under B_lv_direct_slope with LR 0.00569 < 3.8415. Superseded by the 20-rep strict-gate result below."
+    },
+    {
+      "when": "2026-06-30 23:19 MDT",
+      "who": "Direct-slope 20-rep gate",
+      "status": "blocked",
+      "text": "K=1 profile_direct_slope promotion diagnostic fired the strict stop rule: 20/20 fits converged, 100/100 selected entries usable, and 96/100 included B_lv_direct_slope, but four converged entries missed the LR cutoff. Aggregate coverage is nominal-compatible at this small denominator, but the no-miss canary failed. Do not expose source-specific phylo lv; same-route scaling is retired."
+    },
+    {
+      "when": "2026-06-30 23:30 MDT",
+      "who": "Phylo Model A v1 parking",
+      "status": "blocked",
+      "text": "Public source-specific phylo lv is retired/parked for v1 under the current evidence. PR #127 remains closed/parked, phylo_latent(..., lv = ~ x) stays fail-loud, no compute is active, and any future work must start with a newly predeclared ADEMP target/gate before profile-LR, Totoro diagnostics, DRAC claim evidence, or R grammar exposure resumes."
     }
   ],
   "evidence": [
     {
-      "when": "2026-06-18 16:03 MDT",
-      "who": "Paper 2 Poisson recovery",
-      "text": "Added a narrow known-DGP Poisson recovery gate to COE-04. Seeds 2801 and 2804 fit the latent-only two-kernel log-link count model, converge for full and one-component comparators, keep near-orthogonal diagnostics, beat the best one-component Poisson comparator by more than 40 log-likelihood units, recover both planted component Gamma_shape blocks with correlations above 0.98, and keep cross-component matches below 0.10. This upgrades the previous Poisson construction smoke to a narrow recovery cell pair only; it is not interval calibration, broader non-Gaussian recovery, mixed-family coverage, bridge completion, release readiness, or scientific coverage. Checks: coevolution-two-kernel PASS 67 non-heavy / SKIP 10, PASS 259 heavy; kernel|coevolution PASS 171 non-heavy / SKIP 13, PASS 388 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 15:43 MDT",
-      "who": "Paper 2 moderate-edge boundary",
-      "text": "Added a tested 0.40 moderate-overlap boundary cell to COE-04. Seed 2403 still converges and the full two-kernel model beats either one-component model by >50 log-likelihood units, but Gamma_phy recovery falls below 0.95 and its cross-component match exceeds 0.25. This is a stop marker for harder moderate overlap, not promoted component-separation evidence. Checks: coevolution-two-kernel PASS 67 non-heavy / PASS 233 heavy; kernel|coevolution PASS 171 non-heavy / PASS 362 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 15:26 MDT",
-      "who": "Paper 2 fixed-rho profile",
-      "text": "Added profile_cross_rho() as the formal fixed-kernel rho profile helper. The helper rebuilds K_star over a user-supplied rho grid with make_cross_kernel(), calls a caller-supplied refit(K, rho, ...) function, and returns logLik, relative_logLik, delta_deviance, best-rho flags, convergence, Hessian status, and optional metric columns. The heavy COE-04 fixed-rho gate now runs through this exported helper over rho = c(0, 0.25, 0.55, 0.85) and still shows positive-rho fits beating rho = 0 while refusing to call the high-edge best grid point rho estimation. Checks: devtools::document(quiet = TRUE); devtools::test(filter = \"coevolution-two-kernel\") -> PASS 67 with 9 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"coevolution-two-kernel\") -> PASS 225; devtools::test(filter = \"kernel|coevolution\") -> PASS 171 with 12 expected heavy skips. This is fixed-grid profile/sensitivity support only, not in-engine rho estimation, rho profile intervals, interval calibration, bridge completion, release readiness, or scientific coverage. PR green != bridge complete != release ready != scientific coverage passed.",
-      "link_label": "profile_cross_rho",
-      "link": "../reference/profile_cross_rho.html"
-    },
-    {
-      "when": "2026-06-18 15:03 MDT",
-      "who": "Paper 2 pair-specific covariance",
-      "text": "Added predict_cross_covariance() for fixed dense kernel tiers. Multi-kernel fits now store aligned K_r matrices by component name, and the helper returns pair-specific point covariance rows as Gamma_shape_r * K_r[i, j]. For make_cross_kernel() tiers, K_r[i, j] already includes the supplied fixed rho, so the helper deliberately avoids multiplying by Gamma_effect and closes the no-universal-total-Gamma teaching gap. Checks: devtools::document(quiet = TRUE); devtools::test(filter = \"coevolution-recovery|coevolution-two-kernel\") -> PASS 75 with 11 expected heavy skips; devtools::test(filter = \"kernel|coevolution\") -> PASS 159 with 12 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 342; pkgdown::check_pkgdown() -> No problems found. This is point-extractor evidence only, not rho estimation, intervals, null calibration, bridge completion, release readiness, or scientific coverage. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/R/extract-sigma.R",
-      "link_label": "predict_cross_covariance"
-    },
-    {
-      "when": "2026-06-18 14:46 MDT",
-      "who": "Paper 2 Poisson smoke",
-      "text": "Added the first non-Gaussian COE-04 construction smoke for the latent-only two-kernel path. Two bounded Poisson count fixtures fit with kernel_latent(..., name = \"phy\") + kernel_latent(..., name = \"non\"), converge, return finite log likelihoods, keep the near-orthogonal diagnostic, and return finite component-specific Gamma point blocks. This is construction evidence only, not Poisson recovery, interval calibration, mixed-family coverage, bridge completion, release readiness, or scientific coverage. Checks: coevolution-two-kernel PASS 47 non-heavy / SKIP 9, PASS 205 heavy; kernel|coevolution PASS 142 non-heavy / SKIP 12, PASS 325 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 14:36 MDT",
-      "who": "Paper 2 null diagnostic grid",
-      "text": "Expanded the COE-04 near-orthogonal null side from three seeds to a 12-seed diagnostic grid. All fits converged, null Gamma_shape norms stayed near zero (phy < 2e-4, non < 1.5e-3), and the full-vs-intercept overfit tail is now explicit: median below 2, at most two seeds above 3, and maximum below 8 log-likelihood units. This quantifies the null tail; it does not close Type-I/null calibration. Checks: coevolution-two-kernel PASS 47 non-heavy / PASS 191 heavy; kernel|coevolution PASS 142 non-heavy / PASS 311 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 14:25 MDT",
-      "who": "Paper 2 high-overlap near-duplicate",
-      "text": "Expanded the COE-04 high-overlap collapse-equivalence gate from an exact duplicate kernel pair to exact duplicate plus diagonal-shrink near-duplicate cases. Both cases warn on the separated two-tier fit, converge, stay within 2 log-likelihood units of one collapsed rank-2 kernel tier, warn for component-specific extract_Gamma(level = ...), and keep the collapsed Gamma extraction quiet and finite. This is high-overlap failure/collapse discipline, not high-overlap truth recovery. Checks: coevolution-two-kernel PASS 47 non-heavy / PASS 171 heavy; kernel|coevolution PASS 142 non-heavy / PASS 291 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 14:13 MDT",
-      "who": "Paper 2 moderate-overlap grid",
-      "text": "Expanded COE-04 moderate-overlap recovery from one fixture to two promoted moderate cells: non_association_blend 0.30 (seed 2401) and 0.35 (seed 2402) both recover the phy and non Gamma_shape blocks with correlations above 0.95 and cross-component matches below 0.25. A later tested 0.40 cell degraded, so harder moderate overlap stays open. Checks: coevolution-two-kernel PASS 47 non-heavy / PASS 158 heavy; kernel|coevolution PASS 142 non-heavy / PASS 278 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 14:03 MDT",
-      "who": "Paper 2 fixed-rho sensitivity",
-      "text": "Added the COE-04 fixed-rho sensitivity gate. The heavy test rebuilds the phy cross-kernel at rho = c(0, 0.25, 0.55, 0.85) while holding the non component fixed, verifies all fits converge, and checks that planted rho = 0.55 plus the best positive-rho fit strongly beat rho = 0. The high-edge outcome is recorded as a claim boundary: this grid detects cross signal but does not estimate rho or provide intervals. Checks: coevolution-two-kernel PASS 47 non-heavy / PASS 145 heavy; kernel|coevolution PASS 142 non-heavy / PASS 265 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 13:52 MDT",
-      "who": "Laplace/VA capability audit",
-      "text": "Read gllvmTMB Design 72, GLLVM.jl docs/src/response-families.md, current GLLVM.jl source includes, and the live R gllvm_julia_capabilities() table. Added status.json matrix rows EST-R-LAPLACE, EST-R-VA, EST-JL-LAPLACE, and EST-JL-VA. The current truth is: Laplace exists as production/default estimator evidence in both lanes for their implemented surfaces; VA is not production in either current checkout. Bridge family rows remain partial, especially ordinal, mixed-family, two-part, masks, fixed-effect X, CI payloads, residuals, simulation, and richer extractor parity. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/72-variational-approximation-feasibility.md",
-      "link_label": "Design 72"
-    },
-    {
-      "when": "2026-06-18 13:43 MDT",
-      "who": "Paper 2 Gamma effect",
-      "text": "Added fixed-rho Gamma_effect extraction without widening the scientific claim: make_cross_kernel() records supplied rho metadata on K_star, fitted single- and multi-kernel tiers preserve rho in fit$kernel_levels, and extract_Gamma(scale = \"effect\") returns rho * Gamma_shape only for tiers built from make_cross_kernel(); generic kernels fail loudly and should use scale = \"shape\". The coevolution teaching fixture was regenerated so ex$K_star carries the same metadata. Checks: devtools::document(quiet = TRUE) regenerated extract_Gamma.Rd and make_cross_kernel.Rd; devtools::test(filter = \"kernel|coevolution\") -> PASS 142 with 10 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 257. This is fixed-kernel shape/effect plumbing only, not rho estimation, interval coverage, non-Gaussian/cross-family coverage, bridge completion, release readiness, or scientific coverage. kernel_unique()/*_unique() remains compatibility syntax now and post-arc deprecation/redesign work remains open. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/R/extract-sigma.R",
-      "link_label": "extract_Gamma"
-    },
-    {
-      "when": "2026-06-18 13:24 MDT",
-      "who": "Paper 2 COE-04",
-      "text": "Extended the COE-04 recovery/separation evidence slice: multi-kernel fits now store fit$kernel_diagnostics, a fast off-diagonal Frobenius-style kernel-similarity diagnostic distinguishes low-overlap from high-overlap kernel pairs, high-overlap fitted tier pairs now warn that component-specific Gamma_shape separation is weak evidence, extract_Gamma(level = ...) repeats that warning for affected components while still returning the point block, the heavy near-orthogonal Gaussian latent-only DGP recovers both component-specific Gamma_shape matrices, a conservative moderate-edge gate recovers both components just above the near-orthogonal threshold, a high-overlap collapse-equivalence gate verifies identical named kernels are not materially better than one collapsed rank-2 kernel tier, selective-absence gates collapse either absent component below 1e-3 while recovering the present component, a block-null smoke gate collapses both extracted Gamma_shape norms below 1e-3, and a small null/signal grid now checks three block-null seeds plus two medium-signal fixtures. Checks: devtools::test(filter = \"coevolution-two-kernel\") -> PASS 47 with 7 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"coevolution-two-kernel\") -> PASS 134; devtools::test(filter = \"kernel|coevolution\") -> PASS 133 with 10 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 243. COE-04 is partial, not covered; broader moderate-overlap calibration, broader high-overlap recovery/failure calibration beyond the collapse and warning gates, broader null-threshold calibration, rho/interval gates, mixed/non-Gaussian gates, and post-arc *_unique() lifecycle/deprecation work remain open. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 10:42 MDT",
-      "who": "Paper 2 kernels",
-      "text": "Implemented fixed named multi-kernel TMB path for two or more dense kernel_latent() tiers over the same grouping levels, with per-tier K_r, Lambda_r, and latent field. The Paper 2 path is latent-only; paired kernel_unique()/Psi is deferred because it is a poor default for non-Gaussian and cross-family coevolution, and *_unique() should move to post-arc compatibility/deprecation planning. Updated extract_Sigma()/extract_Gamma() to resolve named components, kept the one-name KER-02 phylo-equivalent path intact, added KER-03 / COE-03 / COE-04 register rows, and regenerated kernel_latent.Rd. Checks: devtools::test(filter = \"kernel|coevolution\") -> PASS 112 with 4 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 138; pkgdown::check_pkgdown() -> No problems found with Pandoc on PATH; rcmdcheck --no-manual with _R_CHECK_FORCE_SUGGESTS_=false -> 0 errors, 1 Apple clang/R header install warning, 0 notes. This is engine/extractor evidence only, not bridge completion, release readiness, or scientific coverage.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/65-cross-lineage-coevolution-kernel.md",
-      "link_label": "Design 65"
-    },
-    {
-      "when": "2026-06-18 09:55 MDT",
-      "who": "Psi cleanup",
-      "text": "First anchor sweep implemented: api-keyword-grid now recommends indep() for standalone diagonal models and unique() for explicit Psi; covariance-correlation is reframed around explicit Psi; model-selection-latent-rank uses indep() for the d = 0 diagonal baseline; cross-lineage-coevolution centers kernel_latent()/extract_Gamma() and describes kernel_unique() as fixture Psi. pkgdown::build_articles(lazy = FALSE), pkgdown::check_pkgdown(), HTML rg checks, JSON validation, and git diff --check passed. This is article-claim cleanup only, not bridge, release, or scientific-coverage completion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-master-finish-plan-psi-coevolution-ledger.md",
-      "link_label": "Psi/coev ledger"
-    },
-    {
-      "when": "2026-06-18 09:05 MDT",
-      "who": "Coevolution audit",
-      "text": "Current checkout confirms the one-kernel Design 65 coevolution workflow is implemented and still green: C0 make_cross_kernel/prototype, C1 single named dense kernel equivalence, C2 point-estimate extract_Gamma known-Gamma recovery, C2 article fixture, and C3 guardrail tests passed with GLLVMTMB_HEAVY_TESTS=1 (`FAIL 0 | WARN 0 | SKIP 0 | PASS 125`). The full Paper 2 Option B model is not finished: two independent named kernels, estimated/profiled rho, Gamma_shape/Gamma_effect, bootstrap intervals, mixed-family recovery, and two-kernel identifiability simulations remain future gates.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-coevolution-work-inventory.md",
-      "link_label": "coevolution audit"
-    },
-    {
-      "when": "2026-06-18 09:05 MDT",
-      "who": "GLLVM.jl #101",
-      "text": "Fresh PR checks from the maintainer-approved close/reopen completed successfully without pushing code: CI run 27763712855 and Documenter run 27763712914 both succeeded at head f7be594. #101 is open/draft and clean. This clears the fresh Julia PR-check gate, but it is not bridge completion, release readiness, or scientific coverage.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "GLLVM.jl #101"
-    },
-    {
-      "when": "2026-06-18 08:51 MDT",
-      "who": "Article council",
-      "text": "Article council slice 5A started the biological worked-example triage: behavioural-syndromes stays internal as a Tier 3 candidate Tier 1 draft, now with explicit YAML and a gate note. Public promotion waits for a runnable wide-format fit, diagnostic_table() evidence, clearer reader path, Florence figure review, and rendered HTML review. This is article-readiness progress only, not bridge, release, or scientific-coverage completion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-article-council-ledger.md",
-      "link_label": "article council ledger"
-    },
-    {
-      "when": "2026-06-18 08:37 MDT",
-      "who": "Article council",
-      "text": "Article council slice 4 completed: gllvm-vocabulary returned as a visible Tier 2 Technical reference glossary with scope wording and hidden-page links pruned; data-shape-flowchart and stacked-trait-gllvm are explicitly Tier 3 internal drafts with gate notes. Pitfalls now links to the public glossary instead of saying it is under audit. This is reader-path cleanup only, not bridge, release, or scientific-coverage completion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-article-council-ledger.md",
-      "link_label": "article council ledger"
-    },
-    {
-      "when": "2026-06-18 08:26 MDT",
-      "who": "Article council",
-      "text": "Article council slice 3 completed: profile-likelihood-ci and troubleshooting-profile moved out of the internal bucket into the public Technical reference group, profile-likelihood-ci now has Tier 2 YAML and explicit CI-01..CI-10/EXT-13 scope wording, pkgdown::check_pkgdown() passed, and pkgdown::build_articles(lazy = FALSE) rendered both pages. This is reader-path cleanup only, not bridge, release, or scientific-coverage completion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-article-council-ledger.md",
-      "link_label": "article council ledger"
-    },
-    {
-      "when": "2026-06-18 08:11 MDT",
-      "who": "Power-pilot scoring",
-      "text": "Completed power-pilot run 27752884846 succeeded at main 0567cd7 and moved power-pilot-results 5969f6f -> 1a2aac6 (1a2aac654e877a34b3e590f0269d10cca05a43e7). The scored remote run-110 store has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. The scoring audit, run against the remote run-110 store plus the local store, blocks promotion: gaussian-d1-n150-sig0p0 coverage 0.390 with one-sided misses, nbinom2-d2-n50-sig0p0 coverage 0.899 with 76% non-PD, and binomial_probit-d1-n50-sig0p2 coverage 0.959 but 34% non-PD and extremely wide intervals. CI-excludes-zero remains diagnostic only for Sigma_unit_diag, not valid Type-I error.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
-      "link_label": "run 27752884846"
-    },
-    {
-      "when": "2026-06-18 07:47 MDT",
-      "who": "GLLVM.jl #101",
-      "text": "Maintainer-approved close/reopen triggered fresh PR checks without pushing code: CI run 27763712855 is in progress and Documenter run 27763712914 completed successfully at head f7be594. #101 was open/draft with mergeStateStatus UNSTABLE while CI ran, so this was trigger evidence only, not bridge completion.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "GLLVM.jl #101"
-    },
-    {
-      "when": "2026-06-18 07:47 MDT",
+      "when": "2026-06-30",
       "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27752884846 is still live on main 0567cd7. GitHub reports run-level status in_progress with 49 jobs total: 48 completed-success jobs and shard 31/48 in progress. The power-pilot-results branch is still 5969f6f, so no new persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
-      "link_label": "run 27752884846"
+      "status": "success",
+      "text": "Post-merge main R-CMD-check run 28476941515 passed at 12526a15.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/28476941515",
+      "link_label": "main R-CMD-check"
     },
     {
-      "when": "2026-06-18 06:34 MDT",
+      "when": "2026-06-30",
       "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27752884846 is still live on main 0567cd7. GitHub reports run-level status in_progress, while the job rollup shows 49 jobs total: 43 completed-success and 6 in progress (shards 25/48, 26/48, 27/48, 31/48, 32/48, and 33/48). The power-pilot-results branch is still 5969f6f, so no new persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
-      "link_label": "run 27752884846"
+      "status": "success",
+      "text": "Post-merge pkgdown run 28477809749 built and deployed successfully at 12526a15.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/28477809749",
+      "link_label": "pkgdown"
     },
     {
-      "when": "2026-06-18 06:34 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled full-check run 27752749643 completed successfully on main 0567cd7. The windows-latest, ubuntu-latest, and macos-latest release jobs all completed with conclusion success. This confirms main full-check health only; it does not close #489, #101, release #486, or scientific coverage gates.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752749643",
-      "link_label": "run 27752749643"
+      "when": "2026-06-30",
+      "who": "Public site",
+      "status": "covered",
+      "text": "Deployed reference page confirms axis_effect default, conf.level, alpha_lv_B SEs, and ADREPORT(B_lv_unit) SEs.",
+      "url": "https://itchyshin.github.io/gllvmTMB/reference/extract_lv_effects.html",
+      "link_label": "reference"
+    }
+  ],
+  "blockers": [
+    {
+      "when": "phylo",
+      "who": "Fisher",
+      "status": "blocked",
+      "text": "Do not spend more cores on bootstrap_basic/Wald/t-Wald/percentile/profile endpoint repeats for the current phylo weak cell. Bootstrap is not the next route. The local profile_truth canaries missed task 8 entry 71 and the K=1 20-replicate gate, and profile_direct_slope also failed its strict K=1 20-replicate gate at 96/100 with four converged misses. Public source-specific phylo lv is retired/parked for v1; any future path needs a newly predeclared ADEMP target/gate."
     },
     {
-      "when": "2026-06-18 05:19 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 24 completed at 2026-06-18 05:14 MDT: 383510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, and null mean coverage-under-null 0.425. Parent loop and all ten workers are alive; nine workers are active; STOP flag is absent.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
+      "when": "scope",
+      "who": "Rose",
+      "status": "guard",
+      "text": "Keep alpha axis_effect and B_lv trait_effect language distinct. Alpha Wald output is conditional axis/access-effect output; do not call source-specific phylo lv partial support after the profile_truth misses or the profile_direct_slope strict-gate failure; call it retired/parked for v1."
+    }
+  ],
+  "serial_gates": [
+    {
+      "when": "ordinary LV",
+      "who": "GitHub",
+      "status": "covered",
+      "text": "PR #581 is merged and post-merge main/pkgdown are green."
     },
     {
-      "when": "2026-06-18 05:19 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled full-check run 27752749643 is still in progress on main 0567cd7: 1 job has completed successfully and 2 OS jobs remain in progress. This is process evidence only; no run conclusion exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752749643",
-      "link_label": "run 27752749643"
-    },
-    {
-      "when": "2026-06-18 05:19 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27752884846 is still live on main 0567cd7. GitHub reports run-level status queued, while the job rollup shows 49 jobs total: 19 completed-success, 20 in progress, and 10 queued. The power-pilot-results branch is still 5969f6f, so no new persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
-      "link_label": "run 27752884846"
-    },
-    {
-      "when": "2026-06-18 05:08 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled full-check run 27752749643 is in progress on main 0567cd7 with 3 jobs total: windows-latest, ubuntu-latest, and macos-latest all still in progress. This is process evidence only; no new conclusion exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752749643",
-      "link_label": "run 27752749643"
-    },
-    {
-      "when": "2026-06-18 05:08 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27752884846 is live on main 0567cd7. GitHub reports run-level status queued, while the job rollup shows 49 jobs total: 11 completed-success, 20 in progress, and 18 queued. The power-pilot-results branch is still 5969f6f, so no new persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
-      "link_label": "run 27752884846"
-    },
-    {
-      "when": "2026-06-18 05:08 MDT",
-      "who": "Local power pilot",
-      "text": "Post-stop local status helper confirmed the latest stable local evidence remains iter 23: 382010 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, and null mean coverage-under-null 0.425. Parent loop and all ten workers are alive; three workers are active; STOP flag is absent.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-18 04:35 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 23 completed at 2026-06-18 04:33 MDT: 382010 / 480000 reps, 0/48 cells at cap, 0 errored cells. Parent and all ten workers remained alive and active after the status helper. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-18 04:18 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 22 completed at 2026-06-18 04:07 MDT: 380510 / 480000 reps, 0/48 cells at cap, 0 errored cells. Parent and all ten workers remained alive after the status helper; seven workers were active. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-18 03:59 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 21 completed at 2026-06-18 03:43 MDT: 379010 / 480000 reps, 0/48 cells at cap, 0 errored cells. Parent and all ten workers remained alive after the status helper; four workers were active. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-18 03:41 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 20 completed at 2026-06-18 03:26 MDT: 377510 / 480000 reps, 0/48 cells at cap, 0 errored cells. Parent and all ten workers remained alive after the status helper; one worker was active. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-18 02:38 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 19 completed at 2026-06-18 02:35 MDT: 376010 / 480000 reps, 0/48 cells at cap, 0 errored cells. The 02:33 poll caught pilot-index.rds absent during the local merge; it stabilized at 02:35 before the status helper. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-18 01:56 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 18 completed at 2026-06-18 01:53 MDT: 374510 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-18 01:56 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 completed cancelled on main 0567cd7: shard jobs succeeded, persist and summary cancelled after the 20-minute job limit, and power-pilot-results stayed at 5969f6f. No remote scoring path exists for this run.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
-    },
-    {
-      "when": "2026-06-18 01:03 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 16 completed at 2026-06-18 01:03 MDT: 371510 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-18 01:03 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 is in progress on main 0567cd7 with 49 jobs: 48 completed-success and 1 in progress. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
-    },
-    {
-      "when": "2026-06-18 00:08 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 14 completed at 2026-06-17 23:54 MDT: 368510 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-18 00:08 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 is in progress on main 0567cd7 with 49 jobs: 43 completed-success and 6 in progress. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
-    },
-    {
-      "when": "2026-06-17 23:16 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 13 completed at 23:12 MDT: 367010 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 23:16 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 is in progress on main 0567cd7 with 49 jobs: 38 completed-success and 11 in progress. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
-    },
-    {
-      "when": "2026-06-17 22:58 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 12 completed at 22:47 MDT: 365510 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 22:58 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 remains in flight on main 0567cd7 with 49 jobs: 20 completed-success, 20 in progress, and 9 queued. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
-    },
-    {
-      "when": "2026-06-17 22:29 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 11 completed at 22:23 MDT: 364010 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 22:29 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 remains in flight on main 0567cd7 with 49 jobs: 4 completed-success, 20 in progress, and 25 queued. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
-    },
-    {
-      "when": "2026-06-17 22:10 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 is in flight on main 0567cd7 with 49 jobs: 2 completed-success, 20 in progress, and 27 queued. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
-    },
-    {
-      "when": "2026-06-17 21:42 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 10 completed at 21:33 MDT: 362510 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 20:57 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 9 completed at 20:46 MDT: 361010 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 20:06 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 8 completed at 20:05 MDT: 359510 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 19:47 MDT",
-      "who": "Power-pilot persisted store scoring",
-      "text": "Run 27722546237 completed successfully and pushed results branch 5969f6f. Run 108 has 19776 reps versus run 107's 10376, but pass95 dropped from 3/24 to 0/24 and flagged cells rose from 24 to 28, so no promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237",
-      "link_label": "run 27722546237"
-    },
-    {
-      "when": "2026-06-17 19:47 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 7 completed at 19:41 MDT: 358010 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 19:00 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27722546237 remains in progress on main 0567cd7 with 48 completed-success jobs, 0 failures, and only shard 33/48 still running.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237",
-      "link_label": "run 27722546237"
-    },
-    {
-      "when": "2026-06-17 18:59 MDT",
-      "who": "GLLVM.jl workflow trigger audit",
-      "text": "#101 branch run listing still shows only the older Documenter PR run 27652799083. CI.yml has push-to-main and pull_request-to-main triggers only; no non-mutating CI dispatch path was found.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "GLLVM.jl #101"
-    },
-    {
-      "when": "2026-06-17 18:29 MDT",
-      "who": "R bridge local tests",
-      "text": "No-Julia bridge suite passed with expected live skips; live JuliaCall bridge suite passed locally against GLLVM.jl f7be594 after adding $HOME/.juliaup/bin to PATH. This is local partial evidence, not fresh #101 PR CI.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "GLLVM.jl #101"
-    },
-    {
-      "when": "2026-06-17 18:29 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent remains running at 355010 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 18:20 MDT",
-      "who": "GitHub Actions",
-      "text": "#489 at 03fdda1 is clean and green: recovery run 27727834498 and R-CMD-check run 27727834488 both succeeded.",
-      "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
-      "link_label": "PR #489"
-    },
-    {
-      "when": "2026-06-17 18:48 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27722546237 remains in progress on main 0567cd7 with 47 completed-success jobs, 0 failures, and 2 running shards.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237",
-      "link_label": "run 27722546237"
-    },
-    {
-      "when": "2026-06-17 18:13 MDT",
-      "who": "GLLVM.jl local merge-ref",
-      "text": "refs/pull/101/merge at 2cd8563 passed the focused bridge/grouped-dispersion slice with Julia 1.10: 641/641 tests in 1m56s. This is local partial evidence, not fresh PR CI.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "GLLVM.jl #101"
-    },
-    {
-      "when": "2026-06-17 16:32 MDT",
-      "who": "GitHub Actions",
-      "text": "#489 recovery run 27723504285 and R-CMD-check run 27723504298 both succeeded at 7c16433.",
-      "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
-      "link_label": "PR #489"
-    },
-    {
-      "when": "2026-06-17 17:59 MDT",
-      "who": "GitHub Actions",
-      "text": "GLLVM.jl main CI run 27724193515 succeeded at merge commit 70a5c83 after #95 landed.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/actions/runs/27724193515",
-      "link_label": "GLLVM.jl CI 27724193515"
-    },
-    {
-      "when": "2026-06-17 15:51 MDT",
-      "who": "GitHub Actions",
-      "text": "Power pilot run 27717007830 completed successfully; persist pushed ed7a88d..2709930 (run 107).",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27717007830",
-      "link_label": "run 27717007830"
+      "when": "before phylo exposure",
+      "who": "Maintainer",
+      "status": "blocked",
+      "text": "The profile-LR truth canary did not pass for task 8 entry 71, the K=1 population-target gate covered only 98/100 after converged misses, and profile_direct_slope failed the strict K=1 20-replicate no-miss canary despite 96/100 aggregate coverage. Source-specific phylo lv is retired/parked for v1. Future exposure requires a newly predeclared ADEMP target/gate before any gllvmTMB source-specific lv grammar exposure. Do not restart bootstrap."
     }
   ],
   "ci_runs": [
     {
-      "workflow": "full-check",
-      "branch": "main",
-      "head": "0567cd7",
-      "status": "completed",
-      "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752749643"
-    },
-    {
-      "workflow": "Power pilot sweep",
-      "branch": "main",
-      "head": "0567cd7",
-      "status": "completed",
-      "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846"
-    },
-    {
-      "workflow": "GLLVM.jl CI",
-      "branch": "codex/julia-per-trait-dispersion",
-      "head": "f7be594",
-      "status": "in_progress",
-      "conclusion": "",
-      "url": "https://github.com/itchyshin/GLLVM.jl/actions/runs/27763712855"
-    },
-    {
-      "workflow": "GLLVM.jl Documenter",
-      "branch": "codex/julia-per-trait-dispersion",
-      "head": "f7be594",
-      "status": "completed",
-      "conclusion": "success",
-      "url": "https://github.com/itchyshin/GLLVM.jl/actions/runs/27763712914"
-    },
-    {
-      "workflow": "Power pilot sweep",
-      "branch": "main",
-      "head": "0567cd7",
-      "status": "completed",
-      "conclusion": "cancelled",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023"
-    },
-    {
       "workflow": "R-CMD-check",
-      "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "03fdda1",
-      "status": "completed",
+      "status": "success",
       "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27727834488"
-    },
-    {
-      "workflow": "coevolution-two-kernel-recovery",
-      "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "03fdda1",
-      "status": "completed",
-      "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27727834498"
-    },
-    {
-      "workflow": "R-CMD-check",
-      "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "7c16433",
-      "status": "completed",
-      "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27723504298"
-    },
-    {
-      "workflow": "coevolution-two-kernel-recovery",
-      "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "7c16433",
-      "status": "completed",
-      "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27723504285"
-    },
-    {
-      "workflow": "GLLVM.jl CI",
       "branch": "main",
-      "head": "70a5c83",
-      "status": "completed",
-      "conclusion": "success",
-      "url": "https://github.com/itchyshin/GLLVM.jl/actions/runs/27724193515"
-    },
-    {
-      "workflow": "GLLVM.jl Documenter",
-      "branch": "main",
-      "head": "70a5c83",
-      "status": "completed",
-      "conclusion": "success",
-      "url": "https://github.com/itchyshin/GLLVM.jl/actions/runs/27724193513"
-    },
-    {
-      "workflow": "R-CMD-check",
-      "branch": "main",
-      "head": "0567cd7",
-      "status": "completed",
-      "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27720099917"
+      "head": "12526a15",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/28476941515",
+      "link_label": "run 28476941515"
     },
     {
       "workflow": "pkgdown",
-      "branch": "main",
-      "head": "0567cd7",
-      "status": "completed",
+      "status": "success",
       "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27720668325"
-    },
-    {
-      "workflow": "Power pilot sweep",
       "branch": "main",
-      "head": "6f13a6d",
-      "status": "completed",
-      "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27717007830"
-    },
-    {
-      "workflow": "Power pilot sweep",
-      "branch": "main",
-      "head": "0567cd7",
-      "status": "completed",
-      "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237"
+      "head": "12526a15",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/28477809749",
+      "link_label": "run 28477809749"
     }
   ],
   "priority_issues": [
     {
-      "number": 488,
-      "title": "Bridge-gate drift: R wrapper may reject engine=\"julia\" features GLLVM.jl already supports (audit)",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/488"
+      "title": "Ayumi access-vs-trait discussion",
+      "status": "covered",
+      "url": "https://github.com/Ayumi-495/urbanisation_map/issues/8#issuecomment-4848347523",
+      "link_label": "@Ayumi-495 thread"
     },
     {
-      "number": 340,
-      "title": "Capability matrix - live status board",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/340"
-    },
-    {
-      "number": 346,
-      "title": "Power and coverage pilot status",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346"
-    },
-    {
-      "number": 349,
-      "title": "Design 66 power-pilot status",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/349"
-    },
-    {
-      "number": 486,
-      "title": "[release] First --as-cran run: punch list before CRAN submit",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/486"
+      "title": "Phylo weak-cell method decision",
+      "status": "blocked",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/127",
+      "link_label": "closed PR #127"
     }
   ]
 }

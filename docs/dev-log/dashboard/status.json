@@ -1,1155 +1,1299 @@
 {
   "title": "GLLVM mission control",
-  "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 16:03 MDT",
-  "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
+  "subtitle": "Local operating board for gllvmTMB capability truth. Current focus: latent(lv = ~ x) ordinary, Julia-bridge, phylo, and mixed-family evidence.",
+  "updated": "2026-06-30 23:30 MDT",
+  "source": "gllvmTMB PR #581 merged to main at 12526a15. Post-merge R-CMD-check run 28476941515 and pkgdown run 28477809749 both passed; the public extract_lv_effects reference page now shows axis_effect as the default with conf.level, alpha SE/CIs, and explicit trait_effect B_lv SE/CIs. GLLVM.jl PR #127 remains closed/parked as blocked evidence. Current v1 decision: retire/park public source-specific phylo lv under the current evidence; keep phylo_latent(..., lv = ~ x) fail-loud. No bootstrap rescue is planned. Alpha Wald output is conditional axis/access-effect output, not the Model A evidence target. Profile-LR can return only as a selected-entry truth-inclusion canary after Fisher names a genuinely revised estimand or regime. Old evidence is negative: bootstrap_basic 591/720 = 0.821; optimistic cancelled-task bound 671/800 = 0.839; local task-8 entry-71 profile_truth LR 9.9918 > 3.8415; narrowed K=1 profile_truth 98/100 with two converged misses. Bench-only profile_direct_slope passed early diagnostics but failed the K=1 20-replicate no-miss gate at 96/100 with four converged misses and max LR 6.6614 > 3.8415. Aggregate 96/100 is nominal-compatible at this denominator, but it is not public support. No active compute is claimed; Totoro remains diagnostic-only and DRAC claim-only after a future ADEMP gate passes.",
   "claim_guard": {
     "title": "Claim boundary",
-    "text": "PR green != bridge complete != release ready != scientific coverage passed. The Julia bridge is draft and partial unless a matrix row names covered evidence."
+    "text": "On main, extract_lv_effects() defaults to axis_effect alpha and returns Wald SE/CIs when the fitted native TMB sdreport supports them. These alpha intervals remain conditional on the fitted loading/axis convention, not broad calibrated coverage claims. Rotation-invariant trait effects remain explicit as type = \"trait_effect\" with B_lv = Lambda alpha^T and Wald SE/CIs. Ordinary C1 is closed for the named regimes; source-specific phylo lv is retired/parked for v1, mixed-family lv is blocked, and calibrated Julia bridge CIs remain partial. For phylo Model A, bootstrap is out for the current arc, profile-LR is only a selected-entry canary after a genuinely new target is named, and profile_truth plus profile_direct_slope canaries both fired stop rules. Do not call this partial support; the current action is parking, not another same-route rerun."
   },
   "metrics": {
-    "covered": 2,
-    "partial": 9,
-    "active": 2,
-    "blocked": 1,
-    "queued": 3,
-    "total": 17
+    "covered": 17,
+    "partial": 3,
+    "ready": 0,
+    "active": 0,
+    "queued": 0,
+    "blocked": 5,
+    "total": 25,
+    "label": "LV arc coverage rows",
+    "notes": {
+      "merged": "covered rows have linked local/PR evidence through PR #581; post-merge main R-CMD-check and pkgdown are green",
+      "ready": "no open ready LV PR remains after #581 merged",
+      "active": "no active LV compute is claimed; Narval login/status reads stalled, and no production fan-out is running",
+      "queued": "no production phylo queue should launch after the local profile_truth misses or the profile_direct_slope 20-replicate strict-gate failure; no bootstrap rescue; source-specific phylo lv is retired/parked for v1",
+      "partial": "broad LV, source-specific phylo lv, Julia CI calibration, and mixed-family rows are not complete",
+      "blocked": "phylo Model A production coverage remains blocked/parked for v1. Old population-target diagnostics failed, and the realized direct-slope route failed the strict K=1 20-replicate canary despite 96/100 aggregate coverage. Source-specific phylo lv stays fail-loud"
+    }
   },
   "truth_cards": [
     {
-      "label": "Local workspace",
-      "value": "branch",
-      "status": "success",
-      "note": "Dashboard evidence refresh is tracked on the #489 branch; recovery checkpoints remain untracked local handoff notes."
+      "label": "V1 distance",
+      "value": "ordinary LV closed",
+      "status": "partial",
+      "note": "The gllvmTMB ordinary LV arc is merged and green through PR #581. The remaining two-package LV caveat is the GLLVM.jl phylo weak-cell route, now retired/parked for v1 rather than solved; mixed/source/bridge-CI claims remain outside V1."
     },
     {
-      "label": "Draft PR",
-      "value": "#489",
-      "status": "success",
-      "note": "Draft PR #489 is clean and both current checks are green at 03fdda1; it remains partial and not release-ready."
+      "label": "Merged LV slices",
+      "value": "#564 #566 #567 #568 #569 #570 #571 #572 #573 #574 #575 #576 #577 #578 #579 #580 #581",
+      "status": "covered",
+      "note": "Main is merged and green through PR #581."
     },
     {
-      "label": "Main full-check",
-      "value": "green",
-      "status": "success",
-      "note": "Main R-CMD-check 27720099917 and pkgdown 27720668325 are green at 0567cd7. Newer scheduled full-check 27752749643 also completed successfully on windows-latest, ubuntu-latest, and macos-latest at the same head. This confirms main CI health only; it does not close the bridge, release, or scientific-coverage gates."
+      "label": "Open LV PRs",
+      "value": "0",
+      "status": "covered",
+      "note": "No open gllvmTMB PRs after PR #581 merged at 12526a15. Post-merge main R-CMD-check and pkgdown passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/581",
+      "link_label": "PR #581"
     },
     {
-      "label": "Power pilot",
-      "value": "run 110 scored",
-      "status": "guard",
-      "note": "Run 27722546237 succeeded and pushed 5969f6f; run 27735802023 cancelled without branch movement; Run 27752884846 completed success at 2026-06-18T14:07:44Z with 51/51 jobs successful and pushed power-pilot-results 1a2aac6 (run 110). The remote store now has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. Fisher/Curie scoring still blocks coverage or power promotion. Local iter 24 remains process evidence only."
+      "label": "Shannon audit",
+      "value": "WARN",
+      "status": "partial",
+      "note": "gllvmTMB PR queue is clear and main/pkgdown are green. The Dropbox checkout remains dirty and should stay out of validation; phylo GLLVM.jl PR #127 is closed/parked as a two-package caveat."
     },
     {
-      "label": "Psi cleanup",
-      "value": "anchor sweep",
-      "status": "active",
-      "note": "First implementation slice reframed api-keyword-grid, covariance-correlation, model-selection-latent-rank, and cross-lineage-coevolution around explicit Psi versus standalone indep(). pkgdown::build_articles(lazy = FALSE) rendered the touched pages, pkgdown::check_pkgdown() passed, and stale scans only hit intentional guard/ledger text. Broader article estate remains one-decision-at-a-time."
+      "label": "Coverage gap",
+      "value": "v1 parked",
+      "status": "blocked",
+      "note": "GLLVM.jl phylo Model A production coverage is blocked and public source-specific v1 exposure is retired/parked. The completed bootstrap_basic evidence cannot reach the 0.92 gate even under an optimistic cancelled-task assumption; bootstrap is not the next route. Direct saturated slopes track B_lv, so this is a finite-sample slope/interval-calibration problem, not an extractor artifact. PR #127 is closed/parked. The local seed-matched task-8 entry-71 profile_truth canary missed truth with LR 9.9918 > 3.8415, and the K=1 20-replicate profile gate covered only 98/100 selected entries. Bench-only profile_direct_slope passed early diagnostics but then failed the strict K=1 20-replicate no-miss gate at 96/100 with four converged misses. No source-specific lv exposure is allowed yet; any future work needs a newly predeclared ADEMP estimand/gate.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/127",
+      "link_label": "closed PR #127"
     },
     {
-      "label": "Laplace / VA",
-      "value": "VA gap",
-      "status": "guard",
-      "note": "gllvmTMB production estimation uses the TMB Laplace path for latent/random effects, with coverage still family-row specific. Current GLLVM.jl has exact Gaussian, Laplace one-part non-Gaussian families, and dedicated two-part Laplace fitters. VA is not production in either current checkout: gllvmTMB Design 72 parks the VA prototype, and current GLLVM.jl exposes no VA/ELBO API. This is a planned/future lane only if reopened with validation rows."
+      "label": "Small-N intervals",
+      "value": "merged #571",
+      "status": "covered",
+      "note": "PR #571 merged at 4b8b3d3 with the native Gaussian r500 grid for both wald_z and wald_t_unit plus compact evidence artifacts. Fresh local focused test passed, local R CMD check --no-manual passed 0 errors, 0 warnings, 0 notes in 6m29.4s, PR Ubuntu R-CMD-check succeeded, and the post-merge main R-CMD-check completed successfully at 2026-06-29T23:20:00Z. Coverage was 0.9269-0.9610 with MCSE 0.0088-0.0119; t was never worse than z and improved 12/14 target rows. This does not cover phylo, binomial, non-Gaussian, mixed, or bridge CI intervals."
     },
     {
-      "label": "Paper 2 kernels",
-      "value": "COE-04 partial",
-      "status": "guard",
-      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered, COE-03 remains partial, and COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, two-cell moderate-overlap recovery plus one tested moderate-edge boundary, high-overlap exact-duplicate and diagonal-shrink near-duplicate collapse-equivalence, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke plus a 12-seed null diagnostic and medium-signal grid, bounded Poisson construction fixtures plus two known-DGP Poisson recovery cells, fixed-rho profile/sensitivity via profile_cross_rho(), fixed-rho Gamma_effect extraction, pair-specific point covariance via predict_cross_covariance(), and high-overlap fit/extract_Gamma warning language. The fixed-rho profile helper detects positive cross signal versus rho = 0 but does not estimate rho; predict_cross_covariance() uses Gamma_shape_r * K_r[i, j] because make_cross_kernel() already stores fixed rho inside K_r[i, j]. The null diagnostic quantifies an overfit tail rather than closing Type-I/null calibration; the Poisson gate now includes two known-DGP recovery cells but remains narrow log-link count evidence only. Broader/harder moderate-overlap calibration, broader high-overlap truth-recovery/failure calibration beyond the collapse-equivalence and warning gates, formal null-threshold calibration beyond this diagnostic grid, in-engine rho estimation and rho profile intervals, interval calibration, and broader non-Gaussian/mixed-family recovery gates beyond the narrow Poisson cell pair remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc; the Paper 2 multi-kernel path remains latent-only. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
+      "label": "Binomial intervals",
+      "value": "merged #580",
+      "status": "covered",
+      "note": "PR #580 merged the native binomial rank-1 multi-trial standard-link r500 interval evidence at 20f09546; post-merge main R-CMD-check and pkgdown passed. No nonstandard binomial, native count-family, mixed, mask, source/tier, or Julia bridge CI claim."
     },
     {
-      "label": "Next decision",
-      "value": "#101 green",
-      "status": "guard",
-      "note": "GLLVM.jl #95 has landed and main CI is green; #101 merge-ref and local live JuliaCall bridge suites passed. Maintainer-approved close/reopen triggered fresh #101 PR CI run 27763712855 and Documenter run 27763712914 at f7be594; both completed successfully and #101 is clean, but #489 still needs an explicit landing/split decision before bridge claims widen."
+      "label": "CI reader",
+      "value": "merged",
+      "status": "covered",
+      "note": "PR #570 merged at 46c5884. It surfaces Julia-bridge X_lv Wald payloads through extract_lv_effects() as reader plumbing only. Focused tests, CI-shaped local R CMD check, after-task validation, and GitHub R-CMD-check passed. This is not calibrated coverage."
+    },
+    {
+      "label": "Bernoulli depth",
+      "value": "merged #572",
+      "status": "covered",
+      "note": "PR #572 merged at cf2f4f9 after green PR Ubuntu R-CMD-check. It adds single-trial logit/probit/cloglog recovery and separation diagnostics. Post-merge main R-CMD-check run 28409754509 completed successfully.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/572",
+      "link_label": "PR #572"
+    },
+    {
+      "label": "Factor lv runtime",
+      "value": "merged #574",
+      "status": "covered",
+      "note": "PR #574 merged at 5e708740 after green PR Ubuntu R-CMD-check run 28414061056. It adds ordinary Gaussian factor-predictor runtime, B_lv recovery, rare nonempty level smoke, and empty-level rejection; focused test passed 45/45, parser guard passed, local R CMD check --no-manual passed 0/0/0, post-merge main R-CMD-check run 28414574396 completed successfully, and post-merge pkgdown run 28414994265 completed successfully. No interval, non-Gaussian, missing-response, mixed-family, tier, or structured-source claim.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/574",
+      "link_label": "PR #574"
+    },
+    {
+      "label": "Masked responses",
+      "value": "merged #575",
+      "status": "covered",
+      "note": "PR #575 merged at 86188d69. It covers ordinary Gaussian response=include masking when unit-level lv predictors are observed/complete: complete-case likelihood and parameter match, X_lv_B alignment, B_lv recovery, retained masked rows, and missing-predictor rejection. Focused test passed 50/50, parser guard passed, local R CMD check --no-manual passed 0/0/0, PR Ubuntu R-CMD-check run 28416296110 passed, post-merge main R-CMD-check run 28416802599 is green, and post-merge pkgdown run 28417152793 is green. No missing lv predictors, mi() inside lv, non-Gaussian masks, factor-valued masks, mixed-family masks, bridge masks, source/tier masks, or interval claim.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/575",
+      "link_label": "PR #575"
+    },
+    {
+      "label": "X + X_lv guard",
+      "value": "merged #576",
+      "status": "covered",
+      "note": "PR #576 merged at f9bdbb46. It rejects any extra fixed-effect RHS covariate alongside lv, including exact overlap x + lv=~x and non-overlap z + lv=~x. Local parser guard, pkgdown check, targeted article smoke, R CMD check --no-manual 0/0/0, git diff --check, and after-task validation passed. PR Ubuntu R-CMD-check run 28418870376, post-merge main R-CMD-check run 28419398630, and post-merge pkgdown run 28419946303 are green. This is a fail-loud guard, not a new fit regime.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/576",
+      "link_label": "PR #576"
+    },
+    {
+      "label": "Source lv guard",
+      "value": "merged #573",
+      "status": "covered",
+      "note": "PR #573 merged at 2fc42935 after green PR Ubuntu R-CMD-check. It proves ordinary latent lv desugars, source-specific spellings fail loudly, and deprecated/internal aliases cannot silently drop lv metadata. Post-merge main R-CMD-check run 28411534774 and pkgdown run 28412018639 completed successfully.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/573",
+      "link_label": "PR #573"
+    },
+    {
+      "label": "Native non-Gaussian guard",
+      "value": "merged #577",
+      "status": "covered",
+      "note": "PR #577 merged at 5710e6ce. It proves native TMB rejects unsupported non-binomial latent(lv = ~ x) calls for Poisson, NB1, NB2, lognormal, Gamma, Beta, Tweedie, Student-t, truncated Poisson, truncated NB2, beta-binomial, delta-lognormal, and delta-Gamma. Focused guard passed 13/13, parser guard passed, pkgdown check passed, local R CMD check --no-manual passed 0/0/0, after-task validation passed, PR Ubuntu R-CMD-check run 28421490866 passed, post-merge main R-CMD-check run 28422049207 passed, and post-merge pkgdown run 28422549178 passed. This is fail-loud evidence only, not native non-binomial support.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/577",
+      "link_label": "PR #577"
+    },
+    {
+      "label": "Family boundary guard",
+      "value": "merged #578",
+      "status": "covered",
+      "note": "PR #578 merged at 65136f96. It proves top-level latent(lv = ~ x) calls reject binomial cauchit, ordinal_probit, and mixed Gaussian/binomial/Poisson before fitting. Focused guard passed 3/3, parser guard passed, native non-Gaussian guard passed 13/13, pkgdown check passed, local R CMD check --no-manual passed 0/0/0, after-task validation passed, PR Ubuntu R-CMD-check run 28424216581 passed, post-merge main R-CMD-check run 28424798107 passed, and post-merge pkgdown run 28425402434 passed. This is fail-loud evidence only, not nonstandard binomial, ordinal, or mixed-family support.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/578",
+      "link_label": "PR #578"
+    },
+    {
+      "label": "REML/formula guard",
+      "value": "merged #579",
+      "status": "covered",
+      "note": "PR #579 merged at a7599b2b. It proves top-level latent(lv = ~ x) calls reject REML = TRUE, offset(), mi(), smooth terms, and random-effect terms inside lv before fitting. Focused guard passed 5/5, parser guard passed, family-boundary guard passed 3/3, pkgdown check passed, local R CMD check --no-manual passed 0/0/0, after-task validation passed, PR Ubuntu R-CMD-check run 28427646094 passed, post-merge main R-CMD-check run 28428340817 passed, and post-merge pkgdown run 28429099746 passed. This is fail-loud evidence only, not REML or richer lv formula support.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/579",
+      "link_label": "PR #579"
+    },
+    {
+      "label": "Mixed distributions",
+      "value": "backlog",
+      "status": "blocked",
+      "note": "First mixed cell should be balanced Gaussian + binomial + Poisson with no masks, no fixed X, no missing responses, and no CIs."
+    },
+    {
+      "label": "Phylo DRAC launcher",
+      "value": "closed blocked",
+      "status": "blocked",
+      "note": "The weak-cell bootstrap_basic, direct-mean, local profile_truth, and profile_direct_slope diagnostics are complete enough to stop spending cores on this route. No bootstrap rescue is planned. Profile-LR is reserved for selected-entry canaries after a genuinely new target/regime is named. New DRAC/Totoro work should wait for a future ADEMP redesign. Source-specific phylo lv is retired/parked for v1."
+    },
+    {
+      "label": "Axis alpha SEs",
+      "value": "merged #581",
+      "status": "covered",
+      "note": "extract_lv_effects(fit) now returns axis_effect rows by default on main, with estimate/std.error/lower/upper for alpha when sdreport is PD. type = \"trait_effect\" returns B_lv = Lambda alpha^T with SE/CIs. Intervals are Wald/conditional, not broad coverage-calibrated.",
+      "url": "https://itchyshin.github.io/gllvmTMB/reference/extract_lv_effects.html",
+      "link_label": "reference"
     }
   ],
+  "lv_arc": {
+    "subtitle": "Focused lane inside mission control. Top rows now separate merged ordinary LV evidence, blocked phylo diagnostics, and deferred source/mixed-family claims.",
+    "metrics": {
+      "merged": 17,
+      "partial": 3,
+      "ready": 0,
+      "active": 0,
+      "queued": 0,
+      "blocked": 5,
+      "notes": {
+        "merged": "covered rows have linked local/PR evidence through PR #581, with post-merge main CI and pkgdown green",
+        "ready": "no ready LV PR remains after #581 merged",
+        "active": "no LV compute race is currently active; old DRAC/Totoro lanes are closed, stopped, cancelled, held, or unread due to Narval login/status stalls",
+        "partial": "broad LV, source-specific phylo lv, Julia CI calibration, and mixed-family claims remain outside the safe boundary",
+        "queued": "no production phylo coverage queue should launch after the local profile_truth and profile_direct_slope misses; no bootstrap rescue is planned and K=1 same-route scaling is stopped",
+        "blocked": "phylo Model A production coverage is blocked/parked for v1: bootstrap_basic observed rows are 591/720 = 0.821, local seed-matched task-8 entry-71 profile_truth missed truth with LR 9.9918 > 3.8415, K=1 20-replicate profile_truth covered only 98/100 selected entries, and profile_direct_slope failed the strict 96/100 no-miss gate"
+      }
+    },
+    "rows": [
+      {
+        "lane": "Scope and claim guard",
+        "point": "not_applicable",
+        "recovery": "not_applicable",
+        "intervals": "not_applicable",
+        "status": "covered",
+        "evidence": "LV arc is split into point routes, recovery, intervals, phylo, and mixed-family rows. No broad complete claim."
+      },
+      {
+        "lane": "Ordinary C1 parser/API",
+        "point": "covered",
+        "recovery": "partial",
+        "intervals": "partial",
+        "status": "partial",
+        "evidence": "Parser/API, X_lv_B, alpha_lv_B, and B_lv_unit are present. PR #581 is merged and makes alpha axis_effect the default extractor target with SE/CIs, while B_lv remains explicit as trait_effect. Broad lv support is still not claimed."
+      },
+      {
+        "lane": "Axis-effect alpha SEs and CIs",
+        "point": "covered",
+        "recovery": "covered",
+        "intervals": "covered",
+        "status": "covered",
+        "evidence": "PR #581 merged at 12526a15 and is on main. Native TMB alpha_lv_B rows surface std.error/lower/upper from sdreport fixed effects when se = TRUE and pdHess/sdreport permit it; conf.level is configurable. Julia bridge schema accepts future alpha interval payloads and returns NA intervals when absent. Post-merge main R-CMD-check and pkgdown passed, and the public reference page is updated.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/581",
+        "link_label": "PR #581"
+      },
+      {
+        "lane": "Factor predictors in lv",
+        "point": "covered",
+        "recovery": "covered",
+        "intervals": "blocked",
+        "status": "covered",
+        "evidence": "PR #574 merged at 5e708740. It adds a three-level ordinary Gaussian DGP, trait-by-level B_lv recovery, rare nonempty factor-level smoke, and empty-level rejection. devtools::test(filter = \"lv-factor-runtime\") passed 45/45; lv-parser-guard passed; local R CMD check --no-manual passed 0/0/0; PR Ubuntu R-CMD-check run 28414061056, post-merge main R-CMD-check run 28414574396, and post-merge pkgdown run 28414994265 passed. No interval, non-Gaussian, missing-response, mixed-family, tier, or structured-source claim.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/574",
+        "link_label": "PR #574"
+      },
+      {
+        "lane": "Missing responses with observed lv predictors",
+        "point": "covered",
+        "recovery": "covered",
+        "intervals": "blocked",
+        "status": "covered",
+        "evidence": "PR #575 merged at 86188d69. It adds ordinary Gaussian response=include masking for observed complete unit-level lv predictors, complete-case logLik/parameter match, X_lv_B alignment, retained masked-row sentinel checks, B_lv recovery, extract_lv_effects() validation row checks, and explicit rejection for missing lv predictor values. devtools::test(filter = \"lv-missing-response\") passed 50/50; lv-parser-guard passed; local R CMD check --no-manual passed 0/0/0; PR Ubuntu R-CMD-check run 28416296110 passed. Post-merge main R-CMD-check run 28416802599 is green and post-merge pkgdown run 28417152793 is green. Missing lv predictors, mi() inside lv, non-Gaussian masks, factor-valued masks, mixed-family masks, bridge masks, source/tier masks, and intervals remain outside the claim.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/575",
+        "link_label": "PR #575"
+      },
+      {
+        "lane": "X + X_lv fixed-effect guard",
+        "point": "covered",
+        "recovery": "not_applicable",
+        "intervals": "not_applicable",
+        "status": "covered",
+        "evidence": "PR #576 merged at f9bdbb46. The branch changes preflight so predictor-informed lv cannot yet be combined with extra fixed-effect RHS covariates, including exact overlap x + lv=~x and non-overlap z + lv=~x. Local parser guard, pkgdown check, targeted article smoke, R CMD check --no-manual 0/0/0, git diff --check, and after-task validation passed. PR Ubuntu R-CMD-check run 28418870376, post-merge main R-CMD-check run 28419398630, and post-merge pkgdown run 28419946303 are green. This is a fail-loud guard, not a new fit regime.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/576",
+        "link_label": "PR #576"
+      },
+      {
+        "lane": "Native TMB Gaussian B_lv",
+        "point": "covered",
+        "recovery": "covered",
+        "intervals": "covered",
+        "status": "covered",
+        "evidence": "Focused Gaussian DGP and B_lv_unit recovery landed, and local r500 Wald/t coverage evidence is merged. After PR #581, B_lv is the explicit trait_effect view with SE/CIs; the default extractor target is alpha axis_effect. Raw Lambda alone remains outside K > 1 gates."
+      },
+      {
+        "lane": "Gaussian interval calibration",
+        "point": "not_applicable",
+        "recovery": "not_applicable",
+        "intervals": "covered",
+        "status": "covered",
+        "evidence": "PR #571 merged at 4b8b3d3. It carries 500 reps/cell over four ordinary Gaussian cells for paired wald_z and wald_t_unit rows: 14,000 long rows / 28 summary rows; all optimizer fits converged; eligible denominators were 500, 487, 487, and 479 by cell; all target/method rows passed 0.92-0.98 with MCSE 0.0088-0.0119. Fresh local focused test and local R CMD check --no-manual passed 0/0/0; PR Ubuntu R-CMD-check passed; post-merge main R-CMD-check completed successfully at 2026-06-29T23:20:00Z."
+      },
+      {
+        "lane": "Binomial standard links",
+        "point": "covered",
+        "recovery": "covered",
+        "intervals": "covered",
+        "status": "covered",
+        "evidence": "Pure logit/probit/cloglog point routes are admitted. Multi-trial recovery, Bernoulli single-trial depth, and rank-1 multi-trial standard-link r500 B_lv Wald interval evidence are merged through PR #580 with post-merge main R-CMD-check and pkgdown green. Broader native non-Gaussian, nonstandard binomial, mixed-family, mask, source/tier, and Julia CI claims remain gated."
+      },
+      {
+        "lane": "Bernoulli single-trial native TMB",
+        "point": "covered",
+        "recovery": "covered",
+        "intervals": "blocked",
+        "status": "covered",
+        "evidence": "PR #572 merged at cf2f4f9 on 2026-06-29T23:35:02Z after green PR Ubuntu R-CMD-check. It adds deterministic single-trial logit/probit/cloglog DGPs, per-trait separation diagnostics, and B_lv recovery. Post-merge main R-CMD-check run 28409754509 completed successfully. Interval claims remain blocked.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/572",
+        "link_label": "PR #572"
+      },
+      {
+        "lane": "Julia bridge Gaussian/binomial",
+        "point": "covered",
+        "recovery": "smoke",
+        "intervals": "blocked",
+        "status": "partial",
+        "evidence": "Ordinary bridge point routes work in narrow scope. PR #581 updates the extractor schema so future bridge alpha interval payloads can be surfaced, but current bridge CI calibration is still not claimed."
+      },
+      {
+        "lane": "Julia bridge Poisson",
+        "point": "covered",
+        "recovery": "smoke",
+        "intervals": "blocked",
+        "status": "covered",
+        "evidence": "Merged as ordinary unit-tier Julia bridge point scope.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/568",
+        "link_label": "PR #568"
+      },
+      {
+        "lane": "Julia bridge NB2/Gamma/Beta",
+        "point": "covered",
+        "recovery": "smoke",
+        "intervals": "blocked",
+        "status": "covered",
+        "evidence": "Merged as ordinary unit-tier Julia bridge point scope in PR #569 at 1d15e01. Targeted NB2/Gamma/Beta X_lv route test passed 24/24 locally; live smoke had passed for nbinom2, gamma, and beta point routes. No CI calibration or recovery grid claim.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/569",
+        "link_label": "PR #569"
+      },
+      {
+        "lane": "Native non-Gaussian lv guard",
+        "point": "covered",
+        "recovery": "not_applicable",
+        "intervals": "not_applicable",
+        "status": "covered",
+        "evidence": "PR #577 merged at 5710e6ce. It adds top-level fail-loud tests proving native TMB rejects unsupported non-binomial latent(lv = ~ x) calls for Poisson, NB1, NB2, lognormal, Gamma, Beta, Tweedie, Student-t, truncated Poisson, truncated NB2, beta-binomial, delta-lognormal, and delta-Gamma. Focused guard, parser guard, pkgdown check, local R CMD check --no-manual, after-task validation, PR Ubuntu R-CMD-check run 28421490866, post-merge main R-CMD-check run 28422049207, and post-merge pkgdown run 28422549178 passed. This is fail-loud evidence only; native non-binomial lv support remains blocked.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/577",
+        "link_label": "PR #577"
+      },
+      {
+        "lane": "Binomial/ordinal/mixed family boundary guard",
+        "point": "covered",
+        "recovery": "not_applicable",
+        "intervals": "not_applicable",
+        "status": "covered",
+        "evidence": "PR #578 merged at 65136f96. It adds top-level fail-loud tests proving binomial(link = \"cauchit\"), ordinal_probit(), and mixed Gaussian/binomial/Poisson latent(lv = ~ x) calls reject before fitting. Focused guard, parser guard, native non-Gaussian guard, pkgdown check, local R CMD check --no-manual, after-task validation, PR Ubuntu R-CMD-check run 28424216581, post-merge main R-CMD-check run 28424798107, and post-merge pkgdown run 28425402434 passed. This preserves the pure logit/probit/cloglog binomial claim boundary and keeps nonstandard binomial, ordinal, and mixed families blocked.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/578",
+        "link_label": "PR #578"
+      },
+      {
+        "lane": "REML and lv-formula boundary guard",
+        "point": "covered",
+        "recovery": "not_applicable",
+        "intervals": "not_applicable",
+        "status": "covered",
+        "evidence": "PR #579 merged at a7599b2b. It adds top-level fail-loud tests proving REML = TRUE, offset(), mi(), smooth terms, and random-effect terms inside lv reject before fitting. Focused guard, parser guard, family-boundary guard, pkgdown check, local R CMD check --no-manual, after-task validation, PR Ubuntu R-CMD-check run 28427646094, post-merge main R-CMD-check run 28428340817, and post-merge pkgdown run 28429099746 passed. This keeps predictor-informed latent scores ML-only and fixed-effect-formula-only until separate derivations and recovery/interval evidence land.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/579",
+        "link_label": "PR #579"
+      },
+      {
+        "lane": "CI reader branch",
+        "point": "not_applicable",
+        "recovery": "not_applicable",
+        "intervals": "covered",
+        "status": "covered",
+        "evidence": "Merged in PR #570 at 46c5884. It surfaces retained Julia-bridge X_lv Wald payloads through extract_lv_effects() as reader plumbing only; focused extractor test passed 15/15, routed Gaussian test passed 7/7, CI-shaped local R CMD check --no-manual passed 0/0/0, after-task validation passed, and GitHub R-CMD-check passed. This is not calibrated coverage.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/570",
+        "link_label": "PR #570"
+      },
+      {
+        "lane": "GLLVM.jl phylo Model A",
+        "point": "covered",
+        "recovery": "partial",
+        "intervals": "blocked",
+        "status": "blocked",
+        "evidence": "Local GLLVM.jl Model A targeted tests and stale-guard fixes are banked, and selected-entry profile canary tooling is local-only. Production promotion is retired/parked for v1 by the weak-cell diagnostics: bootstrap_basic did not clear the gate and is no longer a rescue route, direct saturated slopes track B_lv, local seed-matched task-8 entry-71 profile_truth missed truth with LR 9.9918 > 3.8415, K=1 20-replicate profile_truth covered only 98/100 selected entries, and profile_direct_slope failed the strict 96/100 no-miss gate."
+      },
+      {
+        "lane": "Phylo DRAC coverage",
+        "point": "not_applicable",
+        "recovery": "blocked",
+        "intervals": "blocked",
+        "status": "blocked",
+        "evidence": "Final weak-cell bootstrap_basic diagnostic for p=80,K=2,lambda=0.5 B_lv is blocked/parked for v1: valid observed rows give 591/720 = 0.821 entry coverage; even granting the cancelled task 1 perfect coverage would reach only 671/800 = 0.839. Narval direct-mean comparator showed saturated Y~X_lv slopes and latent-product B_lv slopes align, including the weak task 8, so the failure is finite-sample data-level slope/interval calibration rather than extraction. A local seed-matched task-8 entry-71 profile_truth canary also missed truth with LR 9.9918 > 3.8415, and profile_direct_slope failed the strict K=1 no-miss gate. Same-route bootstrap/Wald/t-Wald/percentile/profile endpoint reruns are retired."
+      },
+      {
+        "lane": "gllvmTMB phylo grammar/bridge",
+        "point": "blocked",
+        "recovery": "blocked",
+        "intervals": "blocked",
+        "status": "blocked",
+        "evidence": "Keep source-specific lv grammar fail-loud until structural redesign with fresh evidence or explicit v1 retirement/sign-off. PR #573 merged the source-specific guard tests for phylo, animal, spatial, kernel, and deprecated/internal alias lv metadata handling."
+      },
+      {
+        "lane": "Source-specific lv grammar guard",
+        "point": "covered",
+        "recovery": "not_applicable",
+        "intervals": "not_applicable",
+        "status": "covered",
+        "evidence": "PR #573 merged at 2fc42935 after green PR Ubuntu R-CMD-check. It tests ordinary latent lv desugaring, source-specific phylo/animal/spatial/kernel lv rejection, and deprecated/internal alias metadata: raw rr(..., lv=~x) is preserved into X_lv_B, while raw diag/phylo_rr/spde with lv fail loudly. Focused source guard, broader parser guard, local R CMD check --no-manual, post-merge main R-CMD-check, and pkgdown run 28412018639 all passed.",
+        "url": "https://github.com/itchyshin/gllvmTMB/pull/573",
+        "link_label": "PR #573"
+      },
+      {
+        "lane": "Mixed-family X_lv",
+        "point": "blocked",
+        "recovery": "blocked",
+        "intervals": "blocked",
+        "status": "blocked",
+        "evidence": "Backlog, not V1. Start later with balanced Gaussian + binomial + Poisson, no masks, no fixed X, no missing responses, no CIs."
+      },
+      {
+        "lane": "Model B / collinear phylo arm",
+        "point": "blocked",
+        "recovery": "blocked",
+        "intervals": "blocked",
+        "status": "blocked",
+        "evidence": "No phylo-collinear arm in Model A. This is a separate Model B derivation and validation lane."
+      },
+      {
+        "lane": "Small-N t-based intervals",
+        "point": "not_applicable",
+        "recovery": "not_applicable",
+        "intervals": "covered",
+        "status": "covered",
+        "evidence": "Ordinary native TMB Gaussian t evidence merged in PR #571: r500 paired wald_z/wald_t_unit rows passed the ordinary Gaussian coverage band, and t was never worse than z in the recorded grid. GLLVM.jl also has a Gaussian-only confint_lv_effects(method=:wald_t_unit) comparator for phylo B_lv; Nibi 16950659 completed the p=80,K=2,lambda=0.5 10-seed diagnostic with Wald 0.844 vs wald_t_unit 0.845. That phylo result is useful negative diagnostic evidence, not production coverage."
+      },
+      {
+        "lane": "Phylo DRAC launcher",
+        "point": "not_applicable",
+        "recovery": "covered",
+        "intervals": "blocked",
+        "status": "blocked",
+        "evidence": "Launcher tooling exists, and selected-entry profile-LR B_lv canary tooling is now local-only. The current old route remains closed as negative evidence: no bootstrap rescue, and profile-LR only after a genuinely new target/regime is named. Local GLLVM.jl closeout commit 7d6985d records the blocked weak-cell diagnostic, and the later K=1 20-replicate profile gate covered only 98/100 selected entries. Narval/Nibi/Rorqual/Totoro races are closed, cancelled, stopped, held, or unread due to Narval login/status stalls; Trillium remains held because small jobs reserve whole 192-core nodes. Next compute should wait for structural redesign or v1 retirement."
+      }
+    ],
+    "distributions": [
+      {
+        "family": "Gaussian",
+        "native_tmb": "covered",
+        "julia_bridge": "covered",
+        "recovery": "covered",
+        "coverage": "partial",
+        "boundary": "PR #581 is on main and makes alpha axis_effect the default extractor view with Wald SE/CIs; B_lv remains explicit as trait_effect with SE/CIs. REML/AI-REML with lv remains fail-loud guarded by PR #579."
+      },
+      {
+        "family": "Binomial links",
+        "native_tmb": "covered",
+        "julia_bridge": "covered",
+        "recovery": "covered",
+        "coverage": "covered",
+        "boundary": "Pure binomial logit/probit/cloglog only. Rank-1 multi-trial standard-link interval evidence is merged through PR #580. Nonstandard links, native count families, ordinal, mixed rows, masks, source/tier expansion, and Julia bridge CIs remain gated."
+      },
+      {
+        "family": "Bernoulli single-trial",
+        "native_tmb": "covered",
+        "julia_bridge": "covered",
+        "recovery": "covered",
+        "coverage": "blocked",
+        "boundary": "PR #572 covers single-trial logit/probit/cloglog point recovery and separation diagnostics. No interval calibration."
+      },
+      {
+        "family": "Poisson",
+        "native_tmb": "blocked",
+        "julia_bridge": "covered",
+        "recovery": "smoke",
+        "coverage": "wald-reader",
+        "boundary": "Ordinary unit-tier Julia bridge route. Native TMB lv=~x rejection is locally guarded; no calibrated coverage or mixed-family claim."
+      },
+      {
+        "family": "NB2",
+        "native_tmb": "blocked",
+        "julia_bridge": "covered",
+        "recovery": "smoke",
+        "coverage": "wald-reader",
+        "boundary": "Merged PR #569 admits Julia-bridge point routing; local CI-reader probe reads Wald payloads; native TMB lv=~x rejection is merged in PR #577. Dispersion and calibrated intervals stay out of the claim."
+      },
+      {
+        "family": "Gamma",
+        "native_tmb": "blocked",
+        "julia_bridge": "covered",
+        "recovery": "smoke",
+        "coverage": "wald-reader",
+        "boundary": "Merged PR #569 admits Julia-bridge point routing; local CI-reader probe reads Wald payloads; native TMB lv=~x rejection is merged in PR #577. No missing-response, mask, or calibrated interval claim."
+      },
+      {
+        "family": "Beta",
+        "native_tmb": "blocked",
+        "julia_bridge": "covered",
+        "recovery": "smoke",
+        "coverage": "wald-reader",
+        "boundary": "Merged PR #569 admits Julia-bridge point routing on valid open-interval responses; local CI-reader probe reads Wald payloads only; native TMB lv=~x rejection is merged in PR #577."
+      },
+      {
+        "family": "NB1 / ordinal",
+        "native_tmb": "blocked",
+        "julia_bridge": "blocked",
+        "recovery": "blocked",
+        "coverage": "blocked",
+        "boundary": "NB1 native TMB lv=~x rejection is merged in PR #577; ordinal_probit lv=~x rejection is merged in PR #578. Support would need separate family-specific derivation, simulation, docs, and gates."
+      },
+      {
+        "family": "Mixed Gaussian + binomial + Poisson",
+        "native_tmb": "blocked",
+        "julia_bridge": "queued",
+        "recovery": "blocked",
+        "coverage": "blocked",
+        "boundary": "First backlog cell only: balanced data, no masks, no fixed X, no missing responses, no CIs."
+      },
+      {
+        "family": "Mixed with NB2/Gamma/Beta",
+        "native_tmb": "blocked",
+        "julia_bridge": "blocked",
+        "recovery": "blocked",
+        "coverage": "blocked",
+        "boundary": "Only after single-family point routes and the first balanced mixed cell are stable."
+      },
+      {
+        "family": "Missing responses / masks / X + X_lv",
+        "native_tmb": "partial",
+        "julia_bridge": "blocked",
+        "recovery": "partial",
+        "coverage": "blocked",
+        "boundary": "PR #575 covers ordinary Gaussian response masks only when unit-level lv predictors are observed and complete. Missing lv predictors, mi() inside lv, factor-valued masks, non-Gaussian masks, mixed-family masks, bridge masks, source/tier masks, X + X_lv, and intervals remain blocked or guard-only."
+      }
+    ]
+  },
   "repos": [
     {
-      "name": "gllvmTMB",
-      "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "03fdda1",
-      "state": "success",
-      "note": "Draft PR #489 is pushed, clean, and green at 03fdda1; recovery run 27727834498 and R-CMD-check run 27727834488 both succeeded.",
-      "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
-      "link_label": "PR #489"
+      "name": "gllvmTMB main",
+      "branch": "main",
+      "head": "12526a15 after PR #581",
+      "state": "covered",
+      "note": "Main now includes default axis_effect alpha SE/CIs and explicit trait_effect B_lv SE/CIs. Post-merge R-CMD-check run 28476941515 and pkgdown run 28477809749 passed; public reference docs are updated.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/581",
+      "link_label": "PR #581"
     },
     {
-      "name": "GLLVM.jl",
-      "branch": "codex/julia-per-trait-dispersion",
-      "head": "f7be594",
-      "state": "success",
-      "note": "#95 merged to main; main CI 27724193515 is green at 70a5c83. #101 is draft/open and clean at f7be594; local merge-ref 2cd8563 and live R bridge suites passed locally. Maintainer-approved close/reopen triggered fresh PR CI 27763712855 and Documenter 27763712914, both completed success.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "PR #101"
+      "name": "gllvmTMB open PR queue",
+      "branch": "none",
+      "head": "0 open",
+      "state": "covered",
+      "note": "No open gllvmTMB PRs after PR #581 merged."
     },
     {
-      "name": "public pkgdown",
-      "branch": "main/pages",
-      "head": "0567cd7",
-      "state": "success",
-      "note": "Main pkgdown run 27720668325 passed after the Julia bridge reference-index repair; dashboard remains local mission control."
+      "name": "dashboard preview",
+      "branch": "/tmp/gllvm-dashboard",
+      "head": "local preview r60",
+      "state": "guard",
+      "note": "This browser widget is a working board. It is not package evidence and is not committed to the active PR."
+    },
+    {
+      "name": "GLLVM.jl phylo DRAC launcher / diagnostics branch",
+      "branch": "codex/phylo-xlv-drac-launcher-20260628",
+      "head": "7d6985d local closeout",
+      "state": "blocked",
+            "note": "Local closeout records the weak-cell diagnostic: bootstrap_basic cannot reach the 0.92 gate, direct slopes track B_lv, local profile_truth missed task 8 entry 71, K=1 20-replicate profile_truth covered only 98/100 selected entries, and profile_direct_slope failed the strict no-miss gate. Production phylo coverage is retired/parked for v1. No active cluster race remains."
+    },
+    {
+      "name": "gllvmTMB merged CI-reader branch",
+      "branch": "codex/xlv-ci-reader-rebase-probe-20260628",
+      "head": "46c5884",
+      "state": "covered",
+      "note": "Merged in PR #570. Local focused tests, CI-shaped R CMD check, after-task validation, git diff --check, and GitHub R-CMD-check passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/570",
+      "link_label": "PR #570"
+    },
+    {
+      "name": "gllvmTMB merged Gaussian t-comparator / SLURM launcher branch",
+      "branch": "main (#571 merged)",
+      "head": "4b8b3d3",
+      "state": "covered",
+      "note": "Merged as PR #571. Native Gaussian r500 wald_z/wald_t_unit evidence passed its coverage band; PR CI and post-merge main R-CMD-check passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/571",
+      "link_label": "PR #571"
+    },
+    {
+      "name": "gllvmTMB queued Bernoulli LV depth branch",
+      "branch": "codex/lv-bernoulli-depth-20260628",
+      "head": "cf2f4f9",
+      "state": "covered",
+      "note": "Merged as PR #572. Focused Bernoulli depth test passed 90/90, parser guard passed, local R CMD check --no-manual passed 0/0/0, and PR Ubuntu R-CMD-check passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/572",
+      "link_label": "PR #572"
+    },
+    {
+      "name": "gllvmTMB queued factor LV runtime branch",
+      "branch": "codex/lv-factor-runtime-20260628",
+      "head": "5e708740",
+      "state": "covered",
+      "note": "Merged as PR #574. Focused factor runtime test passed 45/45, parser guard passed, local R CMD check --no-manual passed 0/0/0, PR Ubuntu R-CMD-check run 28414061056 passed, post-merge main R-CMD-check run 28414574396 passed, and post-merge pkgdown run 28414994265 passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/574",
+      "link_label": "PR #574"
+    },
+    {
+      "name": "gllvmTMB merged missing-response LV branch",
+      "branch": "main (#575 merged)",
+      "head": "86188d69",
+      "state": "covered",
+      "note": "Merged as PR #575. Ordinary Gaussian response-mask compatibility with observed complete lv predictors is covered; PR CI, post-merge main R-CMD-check, and pkgdown are green.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/575",
+      "link_label": "PR #575"
+    },
+    {
+      "name": "gllvmTMB merged X+X_lv guard branch",
+      "branch": "main (#576 merged)",
+      "head": "f9bdbb46",
+      "state": "covered",
+      "note": "Merged as PR #576. Extra fixed-effect RHS covariates with predictor-informed lv fail loudly; PR CI, post-merge main R-CMD-check, and pkgdown are green.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/576",
+      "link_label": "PR #576"
+    },
+    {
+      "name": "gllvmTMB merged source-specific LV guard branch",
+      "branch": "codex/lv-source-guard-20260628",
+      "head": "2fc42935",
+      "state": "covered",
+      "note": "Merged as PR #573. Tests ordinary latent lv desugaring, source-specific phylo/animal/spatial/kernel lv rejection, and deprecated/internal alias lv metadata handling; focused source guard, parser guard, local R CMD check --no-manual, PR Ubuntu R-CMD-check, post-merge main R-CMD-check, and pkgdown run 28412018639 passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/573",
+      "link_label": "PR #573"
+    },
+    {
+      "name": "gllvmTMB merged native non-Gaussian LV guard branch",
+      "branch": "main (#577 merged)",
+      "head": "5710e6ce",
+      "state": "covered",
+      "note": "Merged as PR #577. Unsupported native non-binomial lv=~x families fail loudly; PR CI, post-merge main R-CMD-check, and pkgdown are green. This is a claim boundary, not support.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/577",
+      "link_label": "PR #577"
+    },
+    {
+      "name": "gllvmTMB merged binomial/ordinal LV boundary guard",
+      "branch": "main (#578 merged)",
+      "head": "65136f96",
+      "state": "covered",
+      "note": "PR #578 merged. Top-level binomial cauchit, ordinal_probit, and mixed Gaussian/binomial/Poisson lv=~x calls fail loudly; PR CI, post-merge main R-CMD-check, and post-merge pkgdown are green. This protects the pure binomial logit/probit/cloglog boundary and keeps mixed-family backlog blocked."
+    },
+    {
+      "name": "gllvmTMB merged REML / lv-formula boundary guard branch",
+      "branch": "main (#579 merged)",
+      "head": "a7599b2b",
+      "state": "covered",
+      "note": "Merged as PR #579. REML = TRUE, offset(), mi(), smooth terms, and random-effect terms inside lv fail loudly; PR CI, post-merge main R-CMD-check, and pkgdown are green.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/579",
+      "link_label": "PR #579"
     }
   ],
   "phases": [
     {
-      "id": "Phase 0",
-      "name": "Mission truth freeze",
-      "owner": "Ada + Shannon + Rose",
-      "status": "active",
-      "counts": "5/5",
+      "id": "LV-1",
+      "name": "Ordinary Gaussian native TMB",
+      "owner": "Gauss + Noether + Fisher",
+      "status": "covered",
+      "counts": "4/4 for current ordinary Gaussian/extractor grid",
       "slices": [
         {
-          "name": "Read 05:00 handover checkpoint and repo truth before edits",
+          "name": "Focused B_lv_unit DGP and recovery tests landed.",
           "status": "covered"
         },
         {
-          "name": "Run pre-edit lane check for open PRs and recent commits",
+          "name": "Wald/profile/bootstrap harness exists.",
           "status": "covered"
         },
         {
-          "name": "Keep #489 draft/partial rather than widening bridge claims",
+          "name": "Ordinary Gaussian r500 Wald/t coverage evidence merged in PR #571.",
           "status": "covered"
         },
         {
-          "name": "Replace ignored widget with tracked dashboard source",
-          "status": "covered"
-        },
-        {
-          "name": "After-task closeout and dashboard validation",
-          "status": "covered"
+          "name": "Default axis_effect alpha SE/CIs and explicit trait_effect B_lv SE/CIs merged in PR #581.",
+          "status": "covered",
+          "url": "https://github.com/itchyshin/gllvmTMB/pull/581",
+          "issue": "PR #581"
         }
       ]
     },
     {
-      "id": "Phase 1",
-      "name": "R bridge grouped-dispersion lane",
-      "owner": "Hopper + Emmy + Grace",
+      "id": "LV-2",
+      "name": "Binomial depth",
+      "owner": "Curie + Fisher",
       "status": "partial",
-      "counts": "2/5",
+      "counts": "4/4 standard-link cells locally covered",
       "slices": [
         {
-          "name": "PR #489 is clean and green at 03fdda1",
-          "status": "covered",
-          "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
-          "issue": "PR #489"
+          "name": "Pure standard-link point routes admitted.",
+          "status": "covered"
         },
         {
-          "name": "Bridge admission rows stay point-only/partial where intervals are gated",
-          "status": "partial"
+          "name": "Bernoulli single-trial recovery.",
+          "status": "covered"
         },
         {
-          "name": "Local no-Julia and live JuliaCall bridge suites passed against GLLVM.jl f7be594",
-          "status": "partial"
+          "name": "Separation diagnostics.",
+          "status": "covered"
         },
         {
-          "name": "No issue closure from chat memory",
-          "status": "guard"
-        },
-        {
-          "name": "Release hygiene waits for chosen bridge/release path",
-          "status": "queued"
+          "name": "Binomial B_lv local r500 coverage evidence recorded; package check clean.",
+          "status": "covered"
         }
       ]
     },
     {
-      "id": "Phase 2",
-      "name": "Paired GLLVM.jl engine gate",
-      "owner": "Karpinski + Gauss + Hopper",
-      "status": "active",
-      "counts": "2/4",
+      "id": "LV-3",
+      "name": "R Julia bridge non-Gaussian point routes",
+      "owner": "Ada + Grace",
+      "status": "covered",
+      "counts": "3/3 held R slices merged",
       "slices": [
         {
-          "name": "GLLVM.jl #101 local merge-ref bridge slice passed 641/641 at 2cd8563; fresh PR CI 27763712855 and Documenter 27763712914 both succeeded at f7be594 after maintainer-approved close/reopen",
+          "name": "Poisson point route merged.",
           "status": "covered",
-          "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-          "issue": "GLLVM.jl #101"
+          "url": "https://github.com/itchyshin/gllvmTMB/pull/568",
+          "issue": "PR #568"
         },
         {
-          "name": "GLLVM.jl #95 merged to main; main CI 27724193515 is green",
-          "status": "covered"
+          "name": "NB2/Gamma/Beta point route merged.",
+          "status": "covered",
+          "url": "https://github.com/itchyshin/gllvmTMB/pull/569",
+          "issue": "PR #569"
         },
         {
-          "name": "GLLVM.jl #94 salvage stays separate from #101/#95 landing order",
-          "status": "guard"
-        },
-        {
-          "name": "Pin paired Julia SHA after #101 has fresh PR checks; local live JuliaCall passed",
-          "status": "queued"
+          "name": "CI reader plumbing merged in PR #570; not coverage calibration.",
+          "status": "covered",
+          "url": "https://github.com/itchyshin/gllvmTMB/pull/570",
+          "issue": "PR #570"
         }
       ]
     },
     {
-      "id": "Phase 3",
-      "name": "Simulation and power evidence",
-      "owner": "Curie + Fisher + Grace",
-      "status": "active",
-      "counts": "2/5",
+      "id": "LV-4",
+      "name": "Phylo Gaussian Model A",
+      "owner": "Grace + Fisher + Rose",
+      "status": "blocked",
+      "counts": "targeted code exists; coverage route blocked",
       "slices": [
         {
-          "name": "Local LaunchAgent running with 383510 / 480000 reps and 0/48 cells at cap",
-          "status": "active"
-        },
-        {
-          "name": "Power-pilot run 27722546237 completed successfully and pushed 5969f6f to results; scoring blocks promotion",
+          "name": "GLLVM.jl targeted local tests and CI trio smoke are banked.",
           "status": "covered"
         },
         {
-          "name": "Do not convert process health into coverage or power claims",
-          "status": "guard"
-        },
-        {
-          "name": "Fisher/Curie scoring gate completed for run-110 snapshot; audit blocks coverage/power promotion",
-          "status": "guard"
-        },
-        {
-          "name": "Power-pilot run 27752884846 completed success, pushed 1a2aac6, and scored as no-promotion evidence",
-          "status": "covered",
-          "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
-          "issue": "run 27752884846"
-        }
-      ]
-    },
-    {
-      "id": "Phase 4",
-      "name": "Public docs, pkgdown, and release gate",
-      "owner": "Pat + Darwin + Florence + Grace",
-      "status": "active",
-      "counts": "2/5 + 1 partial",
-      "slices": [
-        {
-          "name": "Dashboard remains local; no public pkgdown dashboard navigation change",
-          "status": "covered"
-        },
-        {
-          "name": "Main pkgdown run 27720668325 passed at 0567cd7",
-          "status": "covered"
-        },
-        {
-          "name": "Article council slices 1-5A plus Psi cleanup anchor sweep: public surface stabilized, lambda hidden, methods and glossary Tier 2 placement recorded, entry-path helpers placed, behavioural-syndromes gated as an internal biological candidate, and api-keyword-grid / covariance-correlation / model-selection-latent-rank / cross-lineage-coevolution reframed around explicit Psi versus standalone indep(). Broader article estate still waits one-decision-at-a-time council work.",
+          "name": "Local stale-guard/status-boundary fixes are documented, but not enough for R exposure.",
           "status": "partial"
         },
         {
-          "name": "Final release-branch --as-cran evidence for #486",
+          "name": "p=80,K=2,lambda=0.5 weak-cell bootstrap_basic cannot reach the 0.92 gate.",
           "status": "blocked"
         },
         {
-          "name": "Rose pre-publish audit before public claim changes",
+          "name": "Expose phylo_latent(..., lv = ~ x) in gllvmTMB only after a new method decision and maintainer sign-off.",
+          "status": "blocked"
+        }
+      ]
+    },
+    {
+      "id": "LV-5",
+      "name": "Mixed distributions",
+      "owner": "Boole + Curie + Fisher",
+      "status": "blocked",
+      "counts": "0/4",
+      "slices": [
+        {
+          "name": "Balanced Gaussian + binomial + Poisson, no masks, no fixed X, no missing responses, no CIs.",
           "status": "queued"
+        },
+        {
+          "name": "Add NB2/Gamma/Beta mixed cells only after first mixed cell is stable.",
+          "status": "blocked"
+        },
+        {
+          "name": "Missing responses and masks require separate gates.",
+          "status": "blocked"
+        },
+        {
+          "name": "Delta/hurdle latent-scale correlation requires separate two-scale derivation.",
+          "status": "blocked"
         }
       ]
     }
   ],
   "active_work": [
     {
-      "when": "now",
-      "who": "Ada",
-      "text": "#489 is clean and green at 03fdda1 and #101 fresh PR CI is now green at f7be594, but keep the bridge draft/partial until the landing/split decision and claim gates close."
+      "when": "2026-06-30 16:10 MDT",
+      "who": "PR #581 merged",
+      "status": "covered",
+      "text": "Default axis_effect alpha SE/CIs plus explicit trait_effect B_lv SE/CIs are on main at 12526a15. Post-merge R-CMD-check and pkgdown both passed, and the public reference page is updated.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/581",
+      "link_label": "PR #581"
     },
     {
-      "when": "now",
-      "who": "Grace",
-      "text": "gllvmTMB #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, #101 fresh PR CI, local bridge suites, and main scheduled full-check 27752749643 are green. Fresh #101 PR CI run 27763712855 and Documenter run 27763712914 both completed success at f7be594. Full-check 27752749643 completed successfully on windows-latest, ubuntu-latest, and macos-latest at 0567cd7. Run 27752884846 completed success at 2026-06-18T14:07:44Z with 51/51 jobs successful and pushed power-pilot-results 1a2aac6 (run 110). The remote store now has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. Fisher/Curie scoring still blocks coverage or power promotion. Local iter 24 reached 383510 / 480000 reps as process evidence."
+      "when": "2026-06-30 16:10 MDT",
+      "who": "Public docs verified",
+      "status": "covered",
+      "text": "The deployed extract_lv_effects reference page shows type = c(\"axis_effect\", \"trait_effect\"), conf.level = 0.95, alpha SEs from alpha_lv_B, and trait-effect SEs from ADREPORT(B_lv_unit).",
+      "url": "https://itchyshin.github.io/gllvmTMB/reference/extract_lv_effects.html",
+      "link_label": "reference"
     },
     {
-      "when": "now",
-      "who": "Rose",
-      "text": "Keeping all bridge, interval, release, and power wording bounded by row-level evidence."
+      "when": "2026-06-30 17:53 MDT",
+      "who": "Phylo Model A council",
+      "status": "blocked",
+      "text": "Council decision is now explicit and selected-entry profile tooling exists locally. Method lock: no bootstrap rescue; profile-LR is only a selected-entry canary after a genuinely new target/regime is named; alpha Wald is conditional axis/access-effect output. The cheaper profile_truth canary was run locally on the seed-matched task-8 entry-71 row and missed truth: LR 9.9918 > 3.8415, and the K=1 20-replicate gate later covered only 98/100 selected entries. Earlier Narval endpoint-profile jobs 64462844, 64463813, 64466208, and 64468504 produced no profile result; capped exact job 64471433 could not be read because Narval login/status reads stalled. Same-route bootstrap/Wald/t-Wald/percentile/profile endpoint reruns are retired; no production fan-out and no source-specific lv grammar exposure.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/127",
+      "link_label": "closed PR #127"
     },
     {
-      "when": "now",
-      "who": "Pat",
-      "text": "Article council slices 1-5A are reflected in source, and the first Psi cleanup anchor sweep now renders: standalone diagonal teaching moves to indep(), while unique() is framed as explicit Psi in decomposed models."
+      "when": "2026-06-30 22:15 MDT",
+      "who": "K=1 profile gate",
+      "status": "blocked",
+      "text": "Diagnostic-only local K=1 Gaussian Model A profile_truth wave at p=20, n_sites=200, lambda=0.5 fired the stop rule: 20/20 fits converged, 100/100 selected entries were usable, but only 98/100 included truth. Converged misses were task 15 entry 10 (LR 4.942) and task 19 entry 20 (LR 5.143), above the 3.841 cutoff. Do not scale K=1 profile, bootstrap, Wald, t-Wald, percentile, or endpoint-profile reruns; source-specific phylo lv remains blocked."
     },
     {
-      "when": "now",
-      "who": "Boole",
-      "text": "kernel_*() remains the general API; relmat remains compatibility sugar. Fixed named multi-kernel tiers now have a local TMB engine slice, two-cell moderate-overlap recovery, fixed-rho profile/sensitivity via profile_cross_rho(), fixed-rho Gamma_effect extraction, pair-specific point covariance via predict_cross_covariance(), and a small COE-04 null/signal grid, while unique()/*_unique() stays compatibility syntax for this arc; the post-arc cleanup should deprecate or supersede *_unique() teaching, with standalone diagonal teaching already pointing to indep()."
+      "when": "2026-06-30 22:37 MDT",
+      "who": "Structural fork lock",
+      "status": "blocked",
+      "text": "The remaining phylo Model A decision is now explicit: either retire public source-specific phylo lv from v1, or authorize a changed realized/sampling-conditional target with a fresh ADEMP gate. Wald is acceptable only for conditional alpha axis/access-effect output. Profile-LR is the canary for the changed target only; no bootstrap, endpoint-profile fan-out, grammar widening, PR reopen, or production compute follows from the failed old route."
     },
     {
-      "when": "now",
-      "who": "Fisher/Grace",
-      "text": "Laplace/VA capability audit added: gllvmTMB has the production TMB Laplace route but row-specific validation gates remain; GLLVM.jl has exact Gaussian, Laplace one-part families, and dedicated two-part Laplace fitters; VA is parked/prototype-only for gllvmTMB and absent as a production GLLVM.jl API. Planned gaps now include R VA revival, Julia VA/ELBO design, two-part bridge parity, and Julia planned families such as Delta-Gamma, ZIP/ZINB, Tweedie, and Exponential/public dispatch."
+      "when": "2026-06-30 22:54 MDT",
+      "who": "Direct-slope canary smoke",
+      "status": "guard",
+      "text": "Bench-only profile_direct_slope canary now computes B_lv_direct_slope from saturated Y ~ X_lv slopes and constrains selected B_lv entries to that realized target. Tiny local smoke at p=5,n_sites=60,K=1,lambda=0.5 passed 2/2 selected entries with LR 0.0895 and 1.6022 below the 3.8415 cutoff. This proves diagnostic tooling only; no source-specific lv grammar, no production compute, no bootstrap rescue, and no population B_lv claim."
+    },
+    {
+      "when": "2026-06-30 23:10 MDT",
+      "who": "Direct-slope early canaries",
+      "status": "guard",
+      "text": "Early realized-target diagnostics were positive: K=1 p=20,n_sites=200 five-seed selected-entry canary passed 25/25 entries with max LR 3.6595 < 3.8415, and the old failed population-target task-8 entry-71 row at p=80,K=2 passed under B_lv_direct_slope with LR 0.00569 < 3.8415. This row is superseded by the 20-rep strict-gate result below."
+    },
+    {
+      "when": "2026-06-30 23:19 MDT",
+      "who": "Direct-slope 20-rep gate",
+      "status": "blocked",
+      "text": "K=1 profile_direct_slope promotion diagnostic fired the strict stop rule: 20/20 fits converged, 100/100 selected entries usable, and 96/100 included B_lv_direct_slope, but four converged selected entries missed the LR cutoff. Misses were task 7 entry 5 (LR 5.651), task 10 entry 5 (LR 6.661), task 16 entry 5 (LR 5.440), and task 17 entry 20 (LR 5.624). Aggregate coverage is nominal-compatible at this small denominator, but the no-miss canary failed. Do not expose source-specific phylo lv; same-route scaling is retired."
+    },
+    {
+      "when": "2026-06-30 23:30 MDT",
+      "who": "Phylo Model A v1 parking",
+      "status": "blocked",
+      "text": "Public source-specific phylo lv is now retired/parked for v1 under the current evidence. PR #127 remains closed/parked, phylo_latent(..., lv = ~ x) stays fail-loud, and no compute is active. Future work must start from a newly predeclared ADEMP target/gate before profile-LR, Totoro diagnostics, DRAC claim evidence, or R grammar exposure can resume."
+    },
+    {
+      "when": "2026-06-30 16:10 MDT",
+      "who": "Ayumi thread",
+      "status": "covered",
+      "text": "@Ayumi-495 has now been given the main-branch install route after PR #581 merged and pkgdown deployed.",
+      "url": "https://github.com/Ayumi-495/urbanisation_map/issues/8#issuecomment-4848347523",
+      "link_label": "Ayumi thread"
     }
   ],
   "serial_gates": [
     {
-      "status": "guard",
-      "kind": "Ada",
-      "item": "Choose #489 landing path: keep draft, split, or move toward review; do not call it release-ready."
-    },
-    {
-      "status": "guard",
-      "kind": "GLLVM.jl",
-      "item": "#95 has landed; #101 has local merge-ref, live JuliaCall bridge evidence, fresh Documenter success, and fresh PR CI success. Use this as gate evidence, not as release readiness."
-    },
-    {
-      "status": "guard",
-      "kind": "Curie/Fisher",
-      "item": "Run-110 scoring audit blocks coverage/power promotion; use persisted-store success only as process evidence."
-    },
-    {
-      "status": "guard",
-      "kind": "Rose/Grace",
-      "item": "Close claim, pkgdown, validation-register, and CI pacing gates before release wording."
-    }
-  ],
-  "parallel_lanes": [
-    {
-      "lane": "CI and run watch",
-      "owners": "Grace + Shannon",
-      "status": "active",
-      "parallel_with": "dashboard JSON refresh and public-reader audit",
-      "join_gate": "Only summarize runs after completion or explicit snapshot time."
-    },
-    {
-      "lane": "Dashboard claim grammar",
-      "owners": "Rose + Ada",
-      "status": "active",
-      "parallel_with": "CI watch and simulation scoring",
-      "join_gate": "Rose signoff before using dashboard language in public docs."
-    },
-    {
-      "lane": "Bridge and engine parity",
-      "owners": "Hopper + Karpinski + Gauss",
-      "status": "active",
-      "parallel_with": "simulation/power and docs-read path",
-      "join_gate": "Fresh #101 PR checks now agree; next gate is the #489 landing/split decision."
-    },
-    {
-      "lane": "Simulation and power scoring",
-      "owners": "Fisher + Curie",
-      "status": "active",
-      "parallel_with": "CI watch and dashboard updates",
-      "join_gate": "Merge/scoring of stores; no zero-exclusion shortcut."
-    },
-    {
-      "lane": "Public learning path",
-      "owners": "Pat + Darwin + Florence",
-      "status": "queued",
-      "parallel_with": "bridge parity once examples are stable",
-      "join_gate": "Only after bridge syntax and claim boundaries settle."
-    },
-    {
-      "lane": "Kernel and coevolution scout",
-      "owners": "Jason + Boole + Fisher",
-      "status": "active",
-      "parallel_with": "public-reader audit",
-      "join_gate": "C3.1 engine is local; next gate is COE-04 recovery/separation diagnostics, not release wording."
-    },
-    {
-      "lane": "Psi article cleanup",
-      "owners": "Boole + Rose + Pat + Grace",
-      "status": "active",
-      "parallel_with": "article council and coevolution Option B planning",
-      "join_gate": "One article decision at a time with rendered HTML and check-log evidence."
-    }
-  ],
-  "agents": [
-    {
-      "name": "Ada",
-      "role": "orchestrator and integrator",
-      "status": "active",
-      "task": "Keep #101 -> #489 ordering explicit after #101 fresh PR CI turned green and avoid widening #489 claims.",
-      "blocked_by": "#489 landing/split decision and claim gates, not #101 CI",
-      "parallel_with": "Rose, Grace, Shannon",
-      "join_gate": "#489 ready/split/hold choice"
-    },
-    {
-      "name": "Shannon",
-      "role": "coordination auditor",
-      "status": "active",
-      "task": "Watch branch, PR, handoff, and hot-file consistency.",
-      "blocked_by": "None",
-      "parallel_with": "Grace CI watch",
-      "join_gate": "End-of-session handoff"
-    },
-    {
-      "name": "Rose",
-      "role": "systems and claim auditor",
-      "status": "active",
-      "task": "Keep partial/covered/blocked wording matched to evidence, including article-tier scope boundaries.",
-      "blocked_by": "Evidence row gaps",
-      "parallel_with": "Ada dashboard grammar",
-      "join_gate": "Pre-publish or PR closeout audit"
-    },
-    {
-      "name": "Grace",
-      "role": "CI, pkgdown, CRAN, reproducibility",
-      "status": "active",
-      "task": "Track main pkgdown, #489 checks, power-pilot persistence, and local LaunchAgent health.",
-      "blocked_by": "Power-pilot run 27752884846 completed success and pushed run 110, but Fisher/Curie scoring blocks coverage/power promotion.",
-      "parallel_with": "Shannon and Curie",
-      "join_gate": "Completed runs or explicit snapshot"
-    },
-    {
-      "name": "Hopper",
-      "role": "R-Julia bridge",
-      "status": "active",
-      "task": "Local no-Julia and live JuliaCall bridge suites passed against GLLVM.jl f7be594; fresh #101 Documenter and CI both succeeded.",
-      "blocked_by": "#489 landing/split decision and interval/claim gates",
-      "parallel_with": "Karpinski and Gauss",
-      "join_gate": "Paired Julia SHA"
-    },
-    {
-      "name": "Karpinski",
-      "role": "Julia engine and sparse/AD path",
-      "status": "active",
-      "task": "Record maintainer-approved close/reopen #101 PR CI outcome; local merge-ref bridge slice passed and fresh checks are green.",
-      "blocked_by": "No Julia CI blocker remains; bridge claim still waits on #489 decision",
-      "parallel_with": "Hopper and Gauss",
-      "join_gate": "GLLVM.jl #101 check evidence"
-    },
-    {
-      "name": "Gauss",
-      "role": "likelihood and numerical reviewer",
-      "status": "queued",
-      "task": "Guard scale, Hessian, CI, and bridge likelihood wording.",
-      "blocked_by": "No likelihood edit in this dashboard slice",
-      "parallel_with": "Hopper and Fisher",
-      "join_gate": "Any future TMB or likelihood touch"
-    },
-    {
-      "name": "Noether",
-      "role": "mathematical consistency reviewer",
-      "status": "queued",
-      "task": "Check equation, df/logLik, and parameter-map alignment when math changes.",
-      "blocked_by": "No math change in this slice",
-      "parallel_with": "Gauss",
-      "join_gate": "Future model or extractor contract change"
-    },
-    {
-      "name": "Fisher",
-      "role": "statistical inference reviewer",
-      "status": "active",
-      "task": "Separate run-110 persistence proof from coverage, power, Type-I error, and CI-status evidence.",
-      "blocked_by": "Run-110 scoring audit finds undercoverage, high non-PD cells, and diagnostic-only zero-reject rates.",
-      "parallel_with": "Curie and Grace",
-      "join_gate": "Estimand-specific scoring gate"
-    },
-    {
-      "name": "Curie",
-      "role": "simulation and testing specialist",
-      "status": "active",
-      "task": "Score accumulated remote and local pilot stores row by row.",
-      "blocked_by": "Run-110 remote store remains 1/48 cells at cap, and scoring audit blocks promotion.",
-      "parallel_with": "Fisher and Grace",
-      "join_gate": "Pilot store merge/scoring"
-    },
-    {
-      "name": "Pat",
-      "role": "applied-user reader",
-      "status": "active",
-      "task": "Keep biological worked examples out of public navigation until each has a runnable reader path, diagnostics, and rendered evidence.",
-      "blocked_by": "behavioural-syndromes still needs wide-form fit, diagnostic table, figure review, and rendered HTML review; phylogenetic-gllvm and animal-model remain untriaged in this biological block.",
-      "parallel_with": "Darwin and Florence",
-      "join_gate": "Public docs pass"
-    },
-    {
-      "name": "Darwin",
-      "role": "ecology/evolution audience reviewer",
-      "status": "active",
-      "task": "Review biological examples one at a time for a real ecology/evolution reader question before public promotion.",
-      "blocked_by": "behavioural-syndromes reader path needs tightening before public placement.",
-      "parallel_with": "Pat and Florence",
-      "join_gate": "Article or README change"
-    },
-    {
-      "name": "Florence",
-      "role": "scientific figure editor",
-      "status": "queued",
-      "task": "Review covariance, ordination, loading-recovery, and truth-comparison figures before behavioural-syndromes can become Tier 1.",
-      "blocked_by": "Figure review not started for the behavioural article.",
-      "parallel_with": "Pat and Darwin",
-      "join_gate": "Figure or plot helper change"
-    },
-    {
-      "name": "Jason",
-      "role": "landscape and source-map scout",
-      "status": "queued",
-      "task": "Scout kernel, coevolution, and MultiTraits learning path without comparator overclaim.",
-      "blocked_by": "Not on critical path for launcher",
-      "parallel_with": "Boole and Fisher",
-      "join_gate": "C4/C5 issue split"
-    },
-    {
-      "name": "Boole",
-      "role": "R API and formula reviewer",
-      "status": "active",
-      "task": "Keep kernel_*() grammar bounded after the latent-only fixed named multi-kernel TMB slice; no relmat expansion, and plan *_unique() as post-arc compatibility/deprecation work.",
-      "blocked_by": "Broader COE-04 calibration, in-engine rho estimation, rho profile intervals, interval gates, and future grammar-design questions for rho/Psi replacement",
-      "parallel_with": "Jason and Emmy",
-      "join_gate": "Any future formula grammar touch"
-    },
-    {
-      "name": "Emmy",
-      "role": "R package architecture reviewer",
-      "status": "queued",
-      "task": "Review S3/helper coherence when bridge object APIs change.",
-      "blocked_by": "No R API edit in this slice",
-      "parallel_with": "Hopper",
-      "join_gate": "Future bridge API touch"
-    }
-  ],
-  "matrix": [
-    {
-      "id": "JUL-01",
-      "capability": "Julia bridge ordinary complete-response admission",
-      "status": "partial",
-      "engine": "active",
-      "bridge": "partial",
-      "inference": "partial",
-      "evidence": "PR #489 is clean and green at 03fdda1: coevolution recovery 27727834498 and R-CMD-check 27727834488 both succeeded. GLLVM.jl #101 merge-ref 2cd8563 focused bridge slice passed 641/641 locally with Julia 1.10. gllvmTMB no-Julia bridge suite passed; live JuliaCall bridge suite passed locally against GLLVM.jl f7be594 with juliaup on PATH. Maintainer-approved close/reopen triggered fresh #101 PR CI run 27763712855 and Documenter run 27763712914 at the same f7be594 head; both completed success and #101 is clean.",
-      "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
-      "link_label": "PR #489",
-      "next_gate": "Decide the #489 landing/split path and keep claims partial until bridge, release, and scientific coverage gates close."
-    },
-    {
-      "id": "JUL-01A",
-      "capability": "Julia bridge Sigma-table point routes",
-      "status": "partial",
-      "engine": "active",
-      "bridge": "partial",
-      "inference": "blocked",
-      "evidence": "Point rows allowed; correlation intervals and richer extractors remain gated.",
-      "next_gate": "Local live JuliaCall suite passed; interval wording remains blocked until #101 PR CI and interval semantics are covered."
-    },
-    {
-      "id": "EST-R-LAPLACE",
-      "capability": "gllvmTMB production Laplace estimator surface",
-      "status": "partial",
-      "engine": "covered",
-      "bridge": "not_applicable",
-      "inference": "partial",
-      "evidence": "Current gllvmTMB uses the TMB random-effects/Laplace path as the production estimator for latent and random-effect models. This covers the implemented engine path, but it does not mean every family/distribution has equal simulation, interval, bridge, or public-article coverage. Family depth remains validation-row specific, and delta/hurdle/mixed-family latent-scale interpretation stays guarded.",
-      "next_gate": "Keep Laplace claims tied to docs/design/35-validation-debt-register.md rows and per-family tests; do not advertise all-distribution scientific coverage from the shared estimator alone."
-    },
-    {
-      "id": "EST-R-VA",
-      "capability": "gllvmTMB variational approximation",
-      "status": "queued",
-      "engine": "planned",
-      "bridge": "not_applicable",
-      "inference": "blocked",
-      "evidence": "Design 72 records VA as a parked feasibility/prototype lane: the Phase 1 separate-DLL experiment converged where Laplace failed and matched Laplace when identifiable, but it did not solve under-identification and no method = \"VA\" production API is merged.",
-      "next_gate": "Only revive VA as a separate method-development lane with explicit ELBO design, family coverage, benchmarks, warning semantics, and validation rows."
-    },
-    {
-      "id": "EST-JL-LAPLACE",
-      "capability": "GLLVM.jl exact Gaussian and Laplace family surface",
-      "status": "partial",
-      "engine": "covered",
-      "bridge": "partial",
-      "inference": "partial",
-      "evidence": "Current GLLVM.jl documents exact closed-form Gaussian fits, Laplace one-part non-Gaussian fits for Binomial, Poisson, NegativeBinomial, Beta, Ordinal, and Gamma, plus dedicated two-part Laplace fitters for Delta-lognormal, Hurdle-Poisson, and Hurdle-NB. The gllvmTMB bridge capability table remains partial: fixed-effect X, masks, CI payloads, residuals, simulation, and mixed-family support differ by family, with mixed-family currently a balanced no-X/no-mask/no-CI route.",
-      "next_gate": "Close planned Julia family and bridge gaps one row at a time: Delta-Gamma, ZIP/ZINB, Tweedie, Exponential/public row, unified two-part dispatch, structured non-Gaussian dependence, formula parity, CI/post-fit parity, and mixed-family masks/X/CI."
-    },
-    {
-      "id": "EST-JL-VA",
-      "capability": "GLLVM.jl variational approximation",
-      "status": "queued",
-      "engine": "planned",
-      "bridge": "planned",
-      "inference": "blocked",
-      "evidence": "The current GLLVM.jl checkout includes no production VA/ELBO estimator or public VA method switch. Older handoff notes about VA branches are not current-source evidence.",
-      "next_gate": "If VA is revived, make it a separate Julia design and validation lane before any bridge or public capability claim."
-    },
-    {
-      "id": "CI-08",
-      "capability": "Design 66 power-pilot coverage diagnostics",
-      "status": "active",
-      "engine": "local",
-      "bridge": "not_applicable",
-      "inference": "partial",
-      "evidence": "LaunchAgent latest logged summary is iter 24 at 383510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, and null mean coverage-under-null 0.425. Status helper at 05:17 MDT confirmed the same totals, STOP flag absent, parent loop plus all ten workers alive, and nine workers active. Local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
-      "next_gate": "Fisher/Curie scoring and cap completion."
-    },
-    {
-      "id": "CI-10",
-      "capability": "Power-pilot scheduled workflow",
+      "when": "ordinary LV",
+      "who": "GitHub",
       "status": "covered",
-      "engine": "github",
-      "bridge": "not_applicable",
-      "inference": "partial",
-      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; scoring blocked promotion. Scheduled run 27735802023 completed cancelled at 0567cd7 with no branch movement. Completed power-pilot run 27752884846 succeeded at main 0567cd7 and moved power-pilot-results 5969f6f -> 1a2aac6 (1a2aac654e877a34b3e590f0269d10cca05a43e7). The scored remote run-110 store has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. The scoring audit, run against the remote run-110 store plus the local store, blocks promotion: gaussian-d1-n150-sig0p0 coverage 0.390 with one-sided misses, nbinom2-d2-n50-sig0p0 coverage 0.899 with 76% non-PD, and binomial_probit-d1-n50-sig0p2 coverage 0.959 but 34% non-PD and extremely wide intervals. CI-excludes-zero remains diagnostic only for Sigma_unit_diag, not valid Type-I error.",
-      "next_gate": "Fisher/Curie scoring blocks promotion; workflow success and persistence are process evidence only."
+      "text": "PR #581 is merged and post-merge main/pkgdown are green. Ordinary axis/trait extractor slice can be treated as mainline."
     },
     {
-      "id": "RE-03",
-      "capability": "Random-slope s >= 2 evidence",
-      "status": "partial",
-      "engine": "covered",
-      "bridge": "planned",
-      "inference": "partial",
-      "evidence": "Gaussian lane covered; non-Gaussian guard remains reserved.",
-      "next_gate": "Family-specific recovery evidence before guard relaxation."
-    },
-    {
-      "id": "FG-07/08/09",
-      "capability": "Known-V, proportional, and scalar hard-inference lanes",
-      "status": "queued",
-      "engine": "planned",
-      "bridge": "planned",
-      "inference": "planned",
-      "evidence": "Listed as follow-up matrix rows, not current dashboard proof.",
-      "next_gate": "Define row-specific estimands and tests."
-    },
-    {
-      "id": "FAM-15/16/18/19",
-      "capability": "Truncated, censored, mixture, and gengamma family depth",
-      "status": "partial",
-      "engine": "partial",
-      "bridge": "planned",
-      "inference": "partial",
-      "evidence": "Some family surfaces exist; depth remains row-specific.",
-      "next_gate": "Simulation recovery rows before advertising depth."
-    },
-    {
-      "id": "SPA-*",
-      "capability": "Spatial capability reconciliation",
-      "status": "partial",
-      "engine": "partial",
-      "bridge": "planned",
-      "inference": "partial",
-      "evidence": "Subrows stronger than parent rows; register reconciliation needed.",
-      "next_gate": "Rose/Fisher register audit."
-    },
-    {
-      "id": "KER-03",
-      "capability": "Fixed named multi-kernel engine",
-      "status": "covered",
-      "engine": "covered",
-      "bridge": "not_applicable",
-      "inference": "guard",
-      "evidence": "Local engine slice adds two or more named dense kernel_latent() tiers over the same grouping levels, with per-tier K_r, Lambda_r, and latent field. The Paper 2 path is latent-only; explicit kernel_unique()/Psi is deferred because it is a poor default for non-Gaussian and cross-family coevolution. Evidence: non-heavy devtools::test(filter = \"kernel|coevolution\") passed 112, heavy GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") passed 138, and pkgdown::check_pkgdown() passed with Pandoc on PATH. The one-name KER-02 equivalence path remains green.",
-      "next_gate": "Sparse/generic kernel unification, crossed/different groups, kernel_dep multi-tier, and source-specific phylo/animal/spatial re-pointing remain future rows."
-    },
-    {
-      "id": "COE-03",
-      "capability": "Generic kernel and coevolution tier",
-      "status": "partial",
-      "engine": "covered",
-      "bridge": "planned",
-      "inference": "partial",
-      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma_shape blocks by name. For tiers built from make_cross_kernel(), extract_Gamma(scale = \"effect\") returns fixed-rho Gamma_effect = rho_r * Gamma_shape_r. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. COE-04 near-orthogonal heavy recovery, two-cell moderate-overlap recovery plus one harder moderate-edge boundary cell, high-overlap exact-duplicate and diagonal-shrink near-duplicate collapse-equivalence, two-sided selective-absence, block-null smoke plus a 12-seed null diagnostic and medium-signal grid, bounded Poisson construction fixtures plus two-cell Poisson recovery gate, fixed-rho profile/sensitivity via profile_cross_rho(), fixed-rho effect-scale extraction, and high-overlap fit/extract_Gamma warning fixtures now pass, but this remains partial and does not prove explicit Psi support, broad/harder moderate-overlap calibration, broad high-overlap truth-recovery/failure calibration, formal null-threshold calibration beyond the diagnostic grid, in-engine rho estimation, rho profile intervals, broader interval coverage, or broader non-Gaussian/mixed-family recovery beyond the narrow Poisson cell pair.",
-      "next_gate": "Broader COE-04 recovery/separation grid before scientific coverage or public Paper 2 promotion."
-    },
-    {
-      "id": "COE-04",
-      "capability": "Two-component recovery and kernel-separation diagnostics",
-      "status": "partial",
-      "engine": "covered",
-      "bridge": "not_applicable",
-      "inference": "partial",
-      "evidence": "Multi-kernel fits now carry fit$kernel_diagnostics with pairwise off-diagonal Frobenius-style kernel similarity and overlap classes. Fast diagnostic evidence classifies low-overlap versus high-overlap K_phy/K_non pairs; high-overlap fitted tier pairs warn that component-specific Gamma_shape separation is weak evidence while still fitting; and extract_Gamma(level = ...) repeats that warning when the requested component participates in a high-overlap pair while still returning the point block. Heavy near-orthogonal Gaussian latent-only evidence passes: full two-component fit beats either one-component fit by >50 log-likelihood units, component-specific extract_Gamma() recovers each Gamma_shape truth with correlation >0.95 while not matching the other component, and extract_Gamma(scale = \"effect\") returns fixed-rho Gamma_effect = rho_r * Gamma_shape_r for each recorded cross-kernel tier. A two-cell moderate-overlap grid blends the non association pattern 30% and 35% toward the phy pattern, lands both cells in the moderate overlap class, and recovers both component Gamma_shape matrices with cross-component matches below 0.25. A tested 40% moderate-edge cell still converges and beats either one-component model, but Gamma_phy recovery drops below 0.95 and cross-component matching exceeds 0.25, so it is a claim-boundary cell rather than promoted component-separation evidence. High-overlap collapse-equivalence gates cover an exact duplicate pair and a diagonal-shrink near-duplicate pair, verify the separated two-tier fit is not materially better than one collapsed rank-2 kernel tier, and keep separated Gamma extraction warned while collapsed extraction is quiet and finite. Two-sided selective-absence gates collapse whichever component has true zero loadings below 1e-3 while recovering the present component. A block-null smoke gate sets both loading blocks to zero, collapses both extracted Gamma_shape norms below 1e-3, and keeps the full model within 3 log-likelihood units of an intercept-only fit. The 12-seed null diagnostic keeps null Gamma_shape norms bounded near zero and quantifies the full-vs-intercept overfit tail: median below 2, at most two seeds above 3, and maximum below 8 log-likelihood units; two medium-signal fixtures still recover both component Gamma_shape blocks. Poisson evidence now has two layers: construction smokes fit two bounded count fixtures with the same latent-only two-kernel syntax and finite component-specific Gamma point blocks, and two known-DGP recovery cells (seeds 2801 and 2804) recover both planted Poisson log-link component Gamma_shape blocks with correlations above 0.98, beat either one-component Poisson comparator by more than 40 log-likelihood units, and keep cross-component matches below 0.10. This is narrow Poisson recovery evidence, not interval calibration, broader non-Gaussian recovery, or mixed-family coverage. profile_cross_rho() now formalizes the fixed-kernel rho profile and refits the phy component over rho = c(0, 0.25, 0.55, 0.85) while holding the non component fixed: the planted rho = 0.55 and the best positive-rho fit strongly beat rho = 0, but the best grid point may sit at the high edge, so this is fixed-grid profile/sensitivity evidence only, not in-engine rho estimation or rho profile-interval evidence. Focused coevolution-two-kernel tests pass 67 non-heavy with 10 expected heavy skips and 259 heavy; aggregate kernel|coevolution tests pass 171 non-heavy with 13 expected heavy skips and 388 heavy. Pair-specific point covariance extraction is covered by both a fast fake-fit contract test and a real two-kernel object-contract test. Broader/harder moderate-overlap calibration, broader high-overlap truth-recovery/failure calibration beyond the collapse-equivalence and warning gates, formal null-threshold calibration beyond this diagnostic grid, in-engine rho estimation, rho profile intervals, interval calibration, and broader non-Gaussian/mixed-family recovery gates beyond the narrow Poisson cell pair remain blocked.",
-      "next_gate": "Extend the Paper 2 recovery grid to broader/harder moderate-overlap calibration, calibrated high-overlap failure/recovery behavior, formal null-threshold calibration beyond this diagnostic grid, in-engine rho estimation, rho profile intervals, interval calibration, and broader non-Gaussian/mixed-family recovery beyond the narrow Poisson cell pair before any full scientific-coverage language moves."
-    },
-    {
-      "id": "PSI-SWEEP",
-      "capability": "unique/Psi public article cleanup",
-      "status": "active",
-      "engine": "documentation",
-      "bridge": "not_applicable",
-      "inference": "guard",
-      "evidence": "First implementation slice edited api-keyword-grid.Rmd, covariance-correlation.Rmd, model-selection-latent-rank.Rmd, and cross-lineage-coevolution.Rmd. The rendered pages now teach indep() for standalone marginal-only diagonal models, reserve unique() for explicit Psi in latent()+unique() decompositions, and treat kernel_unique() in the coevolution fixture as optional Psi rather than the source of Gamma or proof of Paper 2 Option B. pkgdown::build_articles(lazy = FALSE) and pkgdown::check_pkgdown() passed.",
-      "next_gate": "Continue the article sweep through response-families, binary/JSDM, phylogenetic, animal, and advanced-method pages one decision at a time."
-    },
-    {
-      "id": "MIS-32",
-      "capability": "Missing-data closure beyond covered local rows",
+      "when": "before public phylo lv claim",
+      "who": "Maintainer",
       "status": "blocked",
-      "engine": "partial",
-      "bridge": "planned",
-      "inference": "blocked",
-      "evidence": "MIS-23..MIS-31 covered locally; MIS-32 remains blocked/deferred.",
-      "next_gate": "Rose/Fisher closure audit, not chat-based issue closure."
+      "text": "The profile-LR truth canary did not pass for task 8 entry 71, and the K=1 20-replicate selected-entry diagnostic gate covered only 98/100 after converged misses. The profile_direct_slope route also failed the strict K=1 20-replicate no-miss canary despite 96/100 aggregate coverage. Source-specific phylo lv is retired/parked for v1; future exposure requires a newly predeclared ADEMP target/gate first. Do not restart bootstrap."
+    },
+    {
+      "when": "before any broad LV claim",
+      "who": "Rose",
+      "status": "guard",
+      "text": "Keep alpha axis_effect, B_lv trait_effect, Julia bridge point routes, and phylo/mixed-family blocked rows separate."
     }
   ],
   "blockers": [
     {
-      "status": "guard",
-      "kind": "Release",
-      "item": "#489 green at 03fdda1 does not close #483/#485/#486 or make the bridge release-ready."
-    },
-    {
-      "status": "guard",
-      "kind": "Julia bridge",
-      "item": "Use default GLLVM.jl fitting-path wording only; do not imply selectable Julia-side algorithms."
-    },
-    {
+      "when": "phylo",
+      "who": "Fisher",
       "status": "blocked",
-      "kind": "Power evidence",
-      "item": "Run-110 remote store still has only 1/48 cells at cap; persistence success is process evidence, not coverage proof."
+      "text": "Phylo Model A production coverage is blocked/parked for v1. bootstrap_basic is not a rescue route: 591/720 = 0.821 observed and at most 0.839 with a perfect cancelled task 1. The local seed-matched profile_truth canary missed task 8 entry 71 with LR 9.9918 > 3.8415, the K=1 population-target gate covered only 98/100, and the profile_direct_slope K=1 20-replicate gate fired the strict no-miss stop rule at 96/100. Any future non-v1 path needs a newly predeclared estimand/gate."
     },
     {
+      "when": "phylo reruns",
+      "who": "Grace",
       "status": "guard",
-      "kind": "Power pilot follow-up",
-      "item": "Run 108 persisted fresh results at 5969f6f, but scoring showed pass95 0/24, 28 flagged cells, and 27 coverage anomalies; no coverage/power promotion."
+      "text": "Same-route bootstrap, Wald, t-Wald, percentile, bootstrap_basic, population profile_truth, and current profile_direct_slope reruns are retired. Profile-LR can return only after a genuinely revised target/gate. Totoro may be used only for small diagnostics after the target changes; DRAC denominators stay seed-matched and separate."
     },
     {
-      "status": "guard",
-      "kind": "Power pilot run 109",
-      "item": "Scheduled run 27735802023 completed cancelled at 0567cd7: shard jobs succeeded, persist and summary cancelled after the 20-minute job limit, and power-pilot-results stayed at 5969f6f; no new persisted store or scoring evidence."
+      "when": "mixed",
+      "who": "Curie",
+      "status": "blocked",
+      "text": "Mixed-family LV has no V1 evidence yet and should remain backlog."
     },
     {
+      "when": "public wording",
+      "who": "Rose",
       "status": "guard",
-      "kind": "Power pilot run 110",
-      "item": "Run 27752884846 completed success and pushed 1a2aac6, but scoring audit shows undercoverage/high non-PD/diagnostic-only zero-reject issues; no coverage or power promotion."
+      "text": "Do not call source-specific phylo lv partial support. Mission Control language must say retired/parked for v1 after the profile_truth and profile_direct_slope misses, not pending support."
+    }
+  ],
+  "parallel_lanes": [
+    {
+      "lane": "Axis/trait extractor PR #581",
+      "owners": "Ada + Fisher + Emmy",
+      "parallel_with": "post-merge R-CMD-check and pkgdown",
+      "join_gate": "merged to main; keep alpha intervals conditional on the fitted axis convention",
+      "status": "covered",
+      "text": "Implementation, docs, focused tests, local check, local pkgdown gate, after-task report, PR CI, post-merge main R-CMD-check, pkgdown deploy, and public reference-page verification are complete."
     },
     {
-      "status": "guard",
-      "kind": "Issues",
-      "item": "No issue is closed from dashboard text or chat memory."
+      "lane": "Phylo Model A selected-entry profile canary",
+      "owners": "Ada + Fisher + Curie + Grace + Rose",
+      "parallel_with": "Boole/Hopper held at grammar guard",
+      "join_gate": "future ADEMP target/gate before any new production grid",
+      "status": "blocked",
+      "text": "bootstrap_basic did not rescue p=80,K=2,lambda=0.5, the local task-8 entry-71 profile_truth canary missed truth, and the K=1 20-replicate gate covered only 98/100 selected entries. Bench-only profile_direct_slope had positive early canaries, but the K=1 20-replicate strict gate failed at 96/100 with four converged misses. Source-specific phylo lv is retired/parked for v1; future work must start with a newly predeclared ADEMP target/gate, not same-route scaling."
     },
     {
-      "status": "guard",
-      "kind": "Psi cleanup",
-      "item": "unique()/*_unique() stays compatibility syntax during the current arc; after the coevolution/Psi cleanup, *_unique() should move to a deprecation or supersession plan. Public teaching now prefers indep() for standalone diagonal models and reserves explicit Psi only where evidence supports it."
+      "lane": "Gaussian/binomial native interval evidence",
+      "owners": "Fisher + Curie",
+      "parallel_with": "boundary-guard PRs #573-#579",
+      "join_gate": "merged PR #571, PR #580, and PR #581 evidence; broader regimes need their own rows",
+      "status": "covered"
     },
     {
+      "lane": "Julia bridge point routes",
+      "owners": "Ada + Grace",
+      "parallel_with": "ordinary native LV closeout",
+      "join_gate": "point-route scope only; no calibrated Julia CIs",
+      "status": "partial"
+    }
+  ],
+  "agents": [
+    {
+      "name": "Noether",
+      "role": "Mathematical consistency reviewer",
+      "task": "Keep alpha axis_effect and B_lv trait_effect algebra distinct: alpha is the default axis/CLV coefficient; B_lv = Lambda alpha^T is the explicit trait-scale induced effect.",
       "status": "guard",
-      "kind": "Estimation methods",
-      "item": "Laplace is production estimator evidence, not all-family scientific coverage. VA is not production in either current checkout; treat it as a planned lane only if reopened with explicit validation rows."
+      "blocked_by": "none",
+      "parallel_with": "Gauss",
+      "join_gate": "equation-to-code alignment and conditional-interval wording"
+    },
+    {
+      "name": "Gauss",
+      "role": "TMB likelihood and numerical reviewer",
+      "task": "PR #581 native sdreport plumbing for alpha and B_lv SE/CIs is merged; keep future claims conditional unless coverage evidence widens.",
+      "status": "covered",
+      "blocked_by": "none",
+      "parallel_with": "Fisher",
+      "join_gate": "finite SEs, PD sdreport behavior, and no overclaiming"
+    },
+    {
+      "name": "Ada",
+      "role": "Council chair and maintainer voice",
+      "task": "Hold the phylogenetic LV arc continuum decision after profile_truth failed the task-8 entry-71 canary/K=1 gate and profile_direct_slope failed the strict K=1 20-replicate gate; source-specific phylo lv is retired/parked for v1.",
+      "status": "blocked",
+            "blocked_by": "future maintainer choice required for any non-v1 redesign",
+      "parallel_with": "Fisher + Curie + Grace + Rose",
+      "join_gate": "v1 parking recorded; future redesign needs a new ADEMP gate"
+    },
+    {
+      "name": "Fisher",
+      "role": "Statistical inference reviewer",
+      "task": "Own any future interval target after profile_truth and profile_direct_slope both failed strict local gates; bootstrap_basic is not a rescue route, and any further profile-LR work needs a revised target/gate.",
+      "status": "blocked",
+      "blocked_by": "weak-cell finite-sample slope/interval calibration",
+      "parallel_with": "Curie",
+      "join_gate": "future defensible replacement target after v1 parking"
+    },
+    {
+      "name": "Curie",
+      "role": "Simulation and recovery testing reviewer",
+            "task": "Define a revised ADEMP-style gate if Shinichi wants another realized/sampling-conditional target; profile_direct_slope failed the K=1 20-replicate no-miss gate despite 96/100 aggregate coverage.",
+      "status": "guard",
+      "blocked_by": "redesigned target/regime decision",
+      "parallel_with": "Grace",
+      "join_gate": "coverage rule, MCSE posture, denominators, and positive-control cell are named before compute"
+    },
+    {
+      "name": "Boole",
+      "role": "R API and formula reviewer",
+      "task": "Keep latent(lv = ~ x) distinct from latent(1 + x | unit); source-specific lv must fail loudly until supported.",
+      "status": "guard",
+      "blocked_by": "phylo Model A sign-off",
+      "parallel_with": "Rose",
+      "join_gate": "Design 73"
+    },
+    {
+      "name": "Grace",
+      "role": "CI, pkgdown, CRAN, and reproducibility engineer",
+      "task": "Keep validation on clean /private/tmp worktrees; keep Totoro diagnostic-only and DRAC seed-matched if a redesigned target is later approved. No active compute follows from the profile_direct_slope gate failure.",
+      "status": "guard",
+      "blocked_by": "none",
+      "parallel_with": "Shannon",
+      "join_gate": "no active compute; host provenance and denominators remain separate"
+    },
+    {
+      "name": "Rose",
+      "role": "Systems auditor",
+      "task": "Block partial-support language for source-specific phylo lv after the profile_truth and profile_direct_slope misses; audit stale wording before any capability expansion.",
+      "status": "guard",
+      "blocked_by": "none",
+      "parallel_with": "Shannon",
+      "join_gate": "Mission Control says blocked after negative canary evidence"
+    }
+  ],
+  "collaborator_table": [
+    {
+      "article": "Ordinary Gaussian",
+      "user_question": "Can I fit lv = ~ x and interpret effects?",
+      "safe_now": "Yes for named ordinary regimes; after PR #581 merges, extract_lv_effects() defaults to axis_effect alpha with SE/CIs.",
+      "partial_caveat": "Alpha intervals are Wald/conditional on the fitted axis convention; B_lv trait effects are explicit via type = \"trait_effect\".",
+      "boundary": "Do not claim full LV arc, source-specific phylo lv, mixed families, or calibrated Julia bridge CIs.",
+      "evidence_rows": "LV-1, LV-AXIS-SE, Gaussian"
+    },
+    {
+      "article": "Non-Gaussian bridge",
+      "user_question": "Which families route through Julia?",
+      "safe_now": "Poisson merged; NB2/Gamma/Beta merged in #569.",
+      "partial_caveat": "Point routes only.",
+      "boundary": "No CI calibration, masks, X + X_lv, or mixed claim.",
+      "evidence_rows": "LV-3"
+    },
+    {
+      "article": "Phylo",
+      "user_question": "Can I use phylo_latent(lv = ~ x)?",
+      "safe_now": "Not through gllvmTMB yet.",
+      "partial_caveat": "GLLVM.jl Model A targeted evidence exists, but the weak-cell interval diagnostic is blocked.",
+      "boundary": "No source-specific lv grammar exposure in v1; future exposure needs structural redesign with fresh evidence.",
+      "evidence_rows": "LV-4, LV-PHYLO-A, LV-PHYLO-DRAC-LAUNCH"
+    }
+  ],
+  "matrix": [
+    {
+      "id": "LV-GAUSS",
+      "capability": "Ordinary Gaussian latent(lv = ~ x)",
+      "status": "partial",
+      "engine": "native",
+      "bridge": "covered",
+      "inference": "partial",
+      "evidence": "B_lv recovery and ordinary Gaussian r500 Wald/t coverage are merged. PR #581 adds the default axis_effect alpha view with Wald SE/CIs on main.",
+      "next_gate": "Do not widen beyond named ordinary Gaussian regimes without new evidence."
+    },
+    {
+      "id": "LV-AXIS-SE",
+      "capability": "Default axis_effect alpha SE/CIs plus explicit trait_effect B_lv SE/CIs",
+      "status": "covered",
+      "engine": "native",
+      "bridge": "schema-ready",
+      "inference": "wald",
+      "evidence": "PR #581 merged at 12526a15 with post-merge main R-CMD-check run 28476941515 and pkgdown run 28477809749 green. extract_lv_effects() defaults to axis_effect; alpha rows include std.error/lower/upper when sdreport is usable; type = \"trait_effect\" returns B_lv with SE/CIs. Public reference page is deployed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/581",
+      "link_label": "PR #581",
+      "next_gate": "Keep alpha intervals conditional on fitted axis convention and do not widen beyond named ordinary regimes without new evidence."
+    },
+    {
+      "id": "LV-BINOM",
+      "capability": "Pure binomial standard links",
+      "status": "partial",
+      "engine": "native",
+      "bridge": "covered",
+      "inference": "covered",
+      "evidence": "Point routes, parser guards, multi-trial recovery, Bernoulli depth, and rank-1 multi-trial logit/probit/cloglog r500 Wald interval evidence are merged through PR #580 at 20f09546 with post-merge CI/pkgdown green.",
+      "next_gate": "Broader native non-Gaussian, nonstandard binomial, masks, source/tier, mixed-family, and Julia CI claims need separate evidence."
+    },
+    {
+      "id": "LV-FACTOR",
+      "capability": "Factor predictors in latent(lv = ~ x)",
+      "status": "covered",
+      "engine": "native",
+      "bridge": "blocked",
+      "inference": "blocked",
+      "evidence": "PR #574 merged ordinary Gaussian factor-predictor runtime/recovery, rare nonempty factor level smoke, and empty-level rejection. PR CI, post-merge main R-CMD-check, and pkgdown run 28414994265 are green.",
+      "next_gate": "Covered for ordinary Gaussian observed factor-valued lv predictors only; intervals and broader regimes remain separate"
+    },
+    {
+      "id": "LV-MISSING",
+      "capability": "Missing responses with observed latent(lv = ~ x) predictors",
+      "status": "covered",
+      "engine": "native",
+      "bridge": "blocked",
+      "inference": "blocked",
+      "evidence": "PR #575 merged ordinary Gaussian response='include' mask compatibility, complete-case likelihood match, X_lv_B alignment, B_lv recovery, retained-row checks, and missing-predictor rejection. PR CI passed; post-merge main R-CMD-check run 28416802599 is green and post-merge pkgdown run 28417152793 is green.",
+      "next_gate": "Continue the active X + X_lv guard PR slice; missing lv predictors stay blocked"
+    },
+    {
+      "id": "LV-X-GUARD",
+      "capability": "Fail-loud guard for fixed-effect X plus latent(lv = ~ x)",
+      "status": "covered",
+      "engine": "native",
+      "bridge": "guard",
+      "inference": "not_applicable",
+      "evidence": "PR #576 merged at f9bdbb46. Extra fixed-effect RHS covariates alongside predictor-informed lv reject before fitting; PR/main/pkgdown CI are green.",
+      "next_gate": "True X+X_lv support stays backlog until design and recovery evidence exist."
+    },
+    {
+      "id": "LV-SOURCE-GUARD",
+      "capability": "Fail-loud guard for source-specific latent(lv = ~ x)",
+      "status": "covered",
+      "engine": "guard",
+      "bridge": "blocked",
+      "inference": "not_applicable",
+      "evidence": "PR #573 merged at 2fc42935. Ordinary latent lv remains admitted; phylo/animal/spatial/kernel lv spellings and unsupported aliases fail loudly.",
+            "next_gate": "Source-specific support stays blocked until structural redesign with fresh evidence or explicit v1 retirement/sign-off."
+    },
+    {
+      "id": "LV-NG-GUARD",
+      "capability": "Fail-loud guard for native non-Gaussian latent(lv = ~ x)",
+      "status": "covered",
+      "engine": "guard",
+      "bridge": "not_applicable",
+      "inference": "not_applicable",
+      "evidence": "PR #577 merged at 5710e6ce. Unsupported native non-binomial latent(lv = ~ x) calls fail loudly; PR/main/pkgdown CI are green.",
+      "next_gate": "Native non-Gaussian support stays blocked until derivation, recovery, and interval evidence land."
+    },
+    {
+      "id": "LV-FAMILY-BOUNDARY",
+      "capability": "Fail-loud guard for binomial non-standard links, ordinal, and mixed-family latent(lv = ~ x)",
+      "status": "covered",
+      "engine": "guard",
+      "bridge": "not_applicable",
+      "inference": "not_applicable",
+      "evidence": "PR #578 merged at 65136f96. Top-level rejection for binomial(link = \"cauchit\"), ordinal_probit(), and mixed Gaussian/binomial/Poisson lv=~x fits is covered by tests and green PR/main/pkgdown CI.",
+      "next_gate": "Nonstandard binomial, ordinal, and mixed-family support still need derivation, recovery, and interval evidence before admission."
+    },
+    {
+      "id": "LV-REML-FORMULA-GUARD",
+      "capability": "Fail-loud guard for REML and unsupported lv formula terms",
+      "status": "covered",
+      "engine": "guard",
+      "bridge": "not_applicable",
+      "inference": "not_applicable",
+      "evidence": "PR #579 merged at a7599b2b. Top-level rejection for REML = TRUE, offset(), mi(), smooth terms, and random-effect terms inside lv is covered by tests and green PR/main/pkgdown CI.",
+      "next_gate": "REML/AI-REML and richer lv formula support remain unsupported until separate derivations, recovery tests, and interval evidence land."
+    },
+    {
+      "id": "LV-POIS",
+      "capability": "Poisson Julia bridge point route",
+      "status": "covered",
+      "engine": "blocked",
+      "bridge": "covered",
+      "inference": "blocked",
+      "evidence": "PR #568 merged.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/568",
+      "link_label": "PR #568",
+      "next_gate": "Keep claim point-only"
+    },
+    {
+      "id": "LV-NGB",
+      "capability": "NB2/Gamma/Beta Julia bridge point route",
+      "status": "covered",
+      "engine": "blocked",
+      "bridge": "covered",
+      "inference": "blocked",
+      "evidence": "PR #569 merged at 1d15e01 after green ubuntu R-CMD-check; local targeted NB2/Gamma/Beta X_lv test passed 24/24.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/569",
+      "link_label": "PR #569",
+      "next_gate": "Keep claim point-only; CI-reader plumbing can be next after refresh against main"
+    },
+    {
+      "id": "LV-PHYLO-A",
+      "capability": "GLLVM.jl phylo Gaussian Model A",
+      "status": "blocked",
+      "engine": "julia",
+      "bridge": "blocked",
+      "inference": "blocked",
+      "evidence": "GLLVM.jl targeted Model A code/tests exist locally, but production exposure is retired/parked for v1. The p=80,K=2,lambda=0.5 weak-cell diagnostic shows bootstrap_basic cannot reach the coverage gate, direct slopes track B_lv rather than exposing an extractor artifact, local profile_truth missed task 8 entry 71, and K=1 20-replicate profile_truth covered only 98/100 selected entries. Bench-only profile_direct_slope computes B_lv_direct_slope and passed early canaries, but the K=1 20-replicate strict gate failed: 96/100 included truth, with four converged selected-entry misses and max LR 6.6614 > 3.8415.",
+      "next_gate": "No v1 R exposure. Future work requires a newly predeclared ADEMP estimand/gate before profile-LR or compute resumes."
+    },
+    {
+      "id": "LV-MIX",
+      "capability": "Mixed-family X_lv",
+      "status": "blocked",
+      "engine": "blocked",
+      "bridge": "queued",
+      "inference": "blocked",
+      "evidence": "No V1 evidence.",
+      "next_gate": "Balanced Gaussian + binomial + Poisson point-only cell"
+    },
+    {
+      "id": "LV-PHYLO-DRAC-LAUNCH",
+      "capability": "GLLVM.jl phylo Model A DRAC launcher",
+      "status": "blocked",
+      "engine": "julia",
+      "bridge": "not_applicable",
+      "inference": "blocked",
+      "evidence": "Launcher branch closeout at local 7d6985d: observed bootstrap_basic rows are 591/720 = 0.821; even a perfect cancelled task 1 would be 671/800 = 0.839. Narval direct-mean comparator completed and supports finite-sample slope shrinkage, not extraction failure. The later K=1 local profile gate failed at 98/100 selected-entry truth inclusion, and the profile_direct_slope K=1 20-replicate strict gate failed at 96/100 with four converged misses.",
+      "next_gate": "No more production fan-out until the estimand/gate genuinely changes and is predeclared."
     }
   ],
   "evidence": [
     {
-      "when": "2026-06-18 16:03 MDT",
-      "who": "Paper 2 Poisson recovery",
-      "text": "Added a narrow known-DGP Poisson recovery gate to COE-04. Seeds 2801 and 2804 fit the latent-only two-kernel log-link count model, converge for full and one-component comparators, keep near-orthogonal diagnostics, beat the best one-component Poisson comparator by more than 40 log-likelihood units, recover both planted component Gamma_shape blocks with correlations above 0.98, and keep cross-component matches below 0.10. This upgrades the previous Poisson construction smoke to a narrow recovery cell pair only; it is not interval calibration, broader non-Gaussian recovery, mixed-family coverage, bridge completion, release readiness, or scientific coverage. Checks: coevolution-two-kernel PASS 67 non-heavy / SKIP 10, PASS 259 heavy; kernel|coevolution PASS 171 non-heavy / SKIP 13, PASS 388 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
+      "when": "2026-06-30",
+      "who": "GitHub",
+      "status": "covered",
+      "text": "PR #581 merged to main as 12526a15 at 2026-06-30T21:26:16Z.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/581",
+      "link_label": "PR #581"
     },
     {
-      "when": "2026-06-18 15:43 MDT",
-      "who": "Paper 2 moderate-edge boundary",
-      "text": "Added a tested 0.40 moderate-overlap boundary cell to COE-04. The seed 2403 fixture still converges and the full two-kernel model beats either one-component model by >50 log-likelihood units, but Gamma_phy recovery falls below 0.95 and its cross-component match exceeds 0.25. This turns the prior exploratory caveat into a tested stop marker: harder moderate overlap remains outside promoted component-separation evidence. Checks: devtools::test(filter = \"coevolution-two-kernel\") -> PASS 67 with 9 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"coevolution-two-kernel\") -> PASS 233; devtools::test(filter = \"kernel|coevolution\") -> PASS 171 with 12 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 362. This is boundary evidence only, not broad moderate-overlap calibration, high-overlap recovery, interval calibration, bridge completion, release readiness, or scientific coverage. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 15:26 MDT",
-      "who": "Paper 2 fixed-rho profile",
-      "text": "Added profile_cross_rho() as the formal fixed-kernel rho profile helper. The helper rebuilds K_star over a user-supplied rho grid with make_cross_kernel(), calls a caller-supplied refit(K, rho, ...) function, and returns logLik, relative_logLik, delta_deviance, best-rho flags, convergence, Hessian status, and optional metric columns. The heavy COE-04 fixed-rho gate now runs through this exported helper over rho = c(0, 0.25, 0.55, 0.85) and still shows positive-rho fits beating rho = 0 while refusing to call the high-edge best grid point rho estimation. Checks: devtools::document(quiet = TRUE); devtools::test(filter = \"coevolution-two-kernel\") -> PASS 67 with 9 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"coevolution-two-kernel\") -> PASS 225; devtools::test(filter = \"kernel|coevolution\") -> PASS 171 with 12 expected heavy skips. This is fixed-grid profile/sensitivity support only, not in-engine rho estimation, rho profile intervals, interval calibration, bridge completion, release readiness, or scientific coverage. PR green != bridge complete != release ready != scientific coverage passed.",
-      "link_label": "profile_cross_rho",
-      "link": "../reference/profile_cross_rho.html"
-    },
-    {
-      "when": "2026-06-18 15:03 MDT",
-      "who": "Paper 2 pair-specific covariance",
-      "text": "Added predict_cross_covariance() for fixed dense kernel tiers. Multi-kernel fits now store aligned K_r matrices by component name, and the helper returns pair-specific point covariance rows as Gamma_shape_r * K_r[i, j]. For make_cross_kernel() tiers, K_r[i, j] already includes the supplied fixed rho, so the helper deliberately avoids multiplying by Gamma_effect and closes the no-universal-total-Gamma teaching gap. Checks: devtools::document(quiet = TRUE); devtools::test(filter = \"coevolution-recovery|coevolution-two-kernel\") -> PASS 75 with 11 expected heavy skips; devtools::test(filter = \"kernel|coevolution\") -> PASS 159 with 12 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 342; pkgdown::check_pkgdown() -> No problems found. This is point-extractor evidence only, not rho estimation, intervals, null calibration, bridge completion, release readiness, or scientific coverage. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/R/extract-sigma.R",
-      "link_label": "predict_cross_covariance"
-    },
-    {
-      "when": "2026-06-18 14:46 MDT",
-      "who": "Paper 2 Poisson smoke",
-      "text": "Added the first non-Gaussian COE-04 construction smoke for the latent-only two-kernel path. Two bounded Poisson count fixtures fit with kernel_latent(..., name = \"phy\") + kernel_latent(..., name = \"non\"), converge, return finite log likelihoods, keep the near-orthogonal diagnostic, and return finite component-specific Gamma point blocks. This is construction evidence only, not Poisson recovery, interval calibration, mixed-family coverage, bridge completion, release readiness, or scientific coverage. Checks: coevolution-two-kernel PASS 47 non-heavy / SKIP 9, PASS 205 heavy; kernel|coevolution PASS 142 non-heavy / SKIP 12, PASS 325 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 14:36 MDT",
-      "who": "Paper 2 null diagnostic grid",
-      "text": "Expanded the COE-04 near-orthogonal null side from three seeds to a 12-seed diagnostic grid. All fits converged, null Gamma_shape norms stayed near zero (phy < 2e-4, non < 1.5e-3), and the full-vs-intercept overfit tail is now explicit: median below 2, at most two seeds above 3, and maximum below 8 log-likelihood units. This quantifies the null tail; it does not close Type-I/null calibration. Checks: coevolution-two-kernel PASS 47 non-heavy / PASS 191 heavy; kernel|coevolution PASS 142 non-heavy / PASS 311 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 14:25 MDT",
-      "who": "Paper 2 high-overlap near-duplicate",
-      "text": "Expanded the COE-04 high-overlap collapse-equivalence gate from an exact duplicate kernel pair to exact duplicate plus diagonal-shrink near-duplicate cases. Both cases warn on the separated two-tier fit, converge, stay within 2 log-likelihood units of one collapsed rank-2 kernel tier, warn for component-specific extract_Gamma(level = ...), and keep the collapsed Gamma extraction quiet and finite. This is high-overlap failure/collapse discipline, not high-overlap truth recovery. Checks: coevolution-two-kernel PASS 47 non-heavy / PASS 171 heavy; kernel|coevolution PASS 142 non-heavy / PASS 291 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 14:13 MDT",
-      "who": "Paper 2 moderate-overlap grid",
-      "text": "Expanded COE-04 moderate-overlap evidence from one conservative moderate-edge fixture to a two-cell grid: non_association_blend = 0.30 at seed 2401 and 0.35 at seed 2402 both land in the moderate overlap class, converge, beat one-component fits by >50 log-likelihood units, recover both component Gamma_shape matrices above 0.95 correlation, and keep cross-component matches below 0.25. An exploratory 0.40 blend degraded (phy Gamma_shape correlation about 0.88 and cross-match above 0.25), so harder moderate overlap remains outside the claim. Checks: devtools::test(filter = \"coevolution-two-kernel\") -> PASS 47 with 8 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"coevolution-two-kernel\") -> PASS 158; devtools::test(filter = \"kernel|coevolution\") -> PASS 142 with 11 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 278. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 14:03 MDT",
-      "who": "Paper 2 fixed-rho sensitivity",
-      "text": "Added a heavy fixed-rho profile grid to COE-04. The fixture rebuilds the phy cross-kernel at rho = c(0, 0.25, 0.55, 0.85) while holding the non component fixed, verifies all fits converge, and checks that the planted rho = 0.55 and the best positive-rho fit strongly beat the block-null rho = 0 fit. The test deliberately does not require the best grid point to recover the planted rho because fixed kernel strength and loading magnitudes can trade off; this is sensitivity/cross-signal evidence, not rho estimation, profile intervals, bridge completion, release readiness, or scientific coverage. Checks: devtools::test(filter = \"coevolution-two-kernel\") -> PASS 47 with 8 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"coevolution-two-kernel\") -> PASS 145; devtools::test(filter = \"kernel|coevolution\") -> PASS 142 with 11 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 265. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 13:52 MDT",
-      "who": "Laplace/VA capability audit",
-      "text": "Added estimation-method rows to the mission-control matrix. gllvmTMB has the production TMB Laplace estimator path for latent/random-effect models, but family, interval, bridge, and public-article claims remain validation-row specific. gllvmTMB VA remains parked in Design 72: the Phase 1 prototype was a separate DLL/branch experiment and no method = \"VA\" production API is merged. Current GLLVM.jl has exact Gaussian, Laplace one-part non-Gaussian families (Binomial, Poisson, NegativeBinomial, Beta, Ordinal, Gamma), and dedicated two-part Laplace fitters (Delta-lognormal, Hurdle-Poisson, Hurdle-NB). Current GLLVM.jl does not expose production VA/ELBO. Planned/gated gaps include Delta-Gamma, ZIP/ZINB, Tweedie, Exponential/public row, unified two-part dispatch, structured non-Gaussian dependence, formula parity, CI/post-fit parity, mixed-family masks/X/CI, and any future VA lane. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/blob/main/docs/src/response-families.md",
-      "link_label": "GLLVM.jl families"
-    },
-    {
-      "when": "2026-06-18 13:43 MDT",
-      "who": "Paper 2 Gamma effect",
-      "text": "Added fixed-rho Gamma_effect extraction without widening the scientific claim: make_cross_kernel() now records supplied rho metadata on K_star, fitted single- and multi-kernel tiers preserve rho in fit$kernel_levels, and extract_Gamma(scale = \"effect\") returns rho * Gamma_shape only for tiers built from make_cross_kernel(); generic kernels fail loudly and should use scale = \"shape\". The coevolution teaching fixture was regenerated so ex$K_star carries the same metadata. Checks: devtools::document(quiet = TRUE) regenerated extract_Gamma.Rd and make_cross_kernel.Rd; devtools::test(filter = \"kernel|coevolution\") -> PASS 142 with 10 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 257. This is fixed-kernel shape/effect plumbing only, not rho estimation, interval coverage, non-Gaussian/cross-family coverage, bridge completion, release readiness, or scientific coverage. kernel_unique()/*_unique() remains compatibility syntax now and post-arc deprecation/redesign work remains open. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/R/extract-sigma.R",
-      "link_label": "extract_Gamma"
-    },
-    {
-      "when": "2026-06-18 12:22 MDT",
-      "who": "Paper 2 COE-04",
-      "text": "Added the COE-04 small null/signal grid on top of the high-overlap collapse-equivalence gate: three near-orthogonal block-null seeds keep both component Gamma_shape norms below 1e-3 and full-versus-intercept likelihood gain below 3, while two medium-signal fixtures recover both component Gamma_shape blocks above 0.90 correlation and beat either one-component fit by more than 100 log-likelihood units. Checks: devtools::test(filter = \"coevolution-two-kernel\") -> PASS 47 with 7 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"coevolution-two-kernel\") -> PASS 134; devtools::test(filter = \"kernel|coevolution\") -> PASS 133 with 10 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 243. This is small-grid claim-boundary evidence, not broad null calibration, high-overlap truth recovery, or interval/rho evidence. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
-      "link_label": "COE-04 test"
-    },
-    {
-      "when": "2026-06-18 12:09 MDT",
-      "who": "Paper 2 COE-04",
-      "text": "Added extractor-level high-overlap guard: extract_Gamma(level = ...) now warns when the requested fixed kernel component participates in a high-overlap pair, while still returning the point Gamma_shape block for inspection. Moderate two-kernel extraction remains quiet. Checks: devtools::test(filter = \"coevolution-two-kernel\") -> PASS 47 with 5 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"coevolution-two-kernel\") -> PASS 99; devtools::test(filter = \"kernel|coevolution\") -> PASS 133 with 8 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 208. This closes warning/claim-boundary evidence only; high-overlap recovery/failure calibration remains open. PR green != bridge complete != release ready != scientific coverage passed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/R/extract-sigma.R",
-      "link_label": "extract_Gamma"
-    },
-    {
-      "when": "2026-06-18 09:55 MDT",
-      "who": "Psi cleanup",
-      "text": "First anchor sweep implemented: api-keyword-grid now recommends indep() for standalone diagonal models and unique() for explicit Psi; covariance-correlation is reframed around explicit Psi; model-selection-latent-rank uses indep() for the d = 0 diagonal baseline; cross-lineage-coevolution centers kernel_latent()/extract_Gamma() and describes kernel_unique() as fixture Psi. pkgdown::build_articles(lazy = FALSE), pkgdown::check_pkgdown(), HTML rg checks, JSON validation, and git diff --check passed. This is article-claim cleanup only, not bridge, release, or scientific-coverage completion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-master-finish-plan-psi-coevolution-ledger.md",
-      "link_label": "Psi/coev ledger"
-    },
-    {
-      "when": "2026-06-18 09:05 MDT",
-      "who": "Coevolution audit",
-      "text": "Current checkout confirms the one-kernel Design 65 coevolution workflow is implemented and still green: C0 make_cross_kernel/prototype, C1 single named dense kernel equivalence, C2 point-estimate extract_Gamma known-Gamma recovery, C2 article fixture, and C3 guardrail tests passed with GLLVMTMB_HEAVY_TESTS=1 (`FAIL 0 | WARN 0 | SKIP 0 | PASS 125`). The full Paper 2 Option B model is not finished: two independent named kernels, estimated/profiled rho, Gamma_shape/Gamma_effect, bootstrap intervals, mixed-family recovery, and two-kernel identifiability simulations remain future gates.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-coevolution-work-inventory.md",
-      "link_label": "coevolution audit"
-    },
-    {
-      "when": "2026-06-18 09:05 MDT",
-      "who": "GLLVM.jl #101",
-      "text": "Fresh PR checks from the maintainer-approved close/reopen completed successfully without pushing code: CI run 27763712855 and Documenter run 27763712914 both succeeded at head f7be594. #101 is open/draft and clean. This clears the fresh Julia PR-check gate, but it is not bridge completion, release readiness, or scientific coverage.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "GLLVM.jl #101"
-    },
-    {
-      "when": "2026-06-18 08:51 MDT",
-      "who": "Article council",
-      "text": "Article council slice 5A started the biological worked-example triage: behavioural-syndromes stays internal as a Tier 3 candidate Tier 1 draft, now with explicit YAML and a gate note. Public promotion waits for a runnable wide-format fit, diagnostic_table() evidence, clearer reader path, Florence figure review, and rendered HTML review. This is article-readiness progress only, not bridge, release, or scientific-coverage completion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-article-council-ledger.md",
-      "link_label": "article council ledger"
-    },
-    {
-      "when": "2026-06-18 08:37 MDT",
-      "who": "Article council",
-      "text": "Article council slice 4 completed: gllvm-vocabulary returned as a visible Tier 2 Technical reference glossary with scope wording and hidden-page links pruned; data-shape-flowchart and stacked-trait-gllvm are explicitly Tier 3 internal drafts with gate notes. Pitfalls now links to the public glossary instead of saying it is under audit. This is reader-path cleanup only, not bridge, release, or scientific-coverage completion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-article-council-ledger.md",
-      "link_label": "article council ledger"
-    },
-    {
-      "when": "2026-06-18 08:26 MDT",
-      "who": "Article council",
-      "text": "Article council slice 3 completed: profile-likelihood-ci and troubleshooting-profile moved out of the internal bucket into the public Technical reference group, profile-likelihood-ci now has Tier 2 YAML and explicit CI-01..CI-10/EXT-13 scope wording, pkgdown::check_pkgdown() passed, and pkgdown::build_articles(lazy = FALSE) rendered both pages. This is reader-path cleanup only, not bridge, release, or scientific-coverage completion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-article-council-ledger.md",
-      "link_label": "article council ledger"
-    },
-    {
-      "when": "2026-06-18 08:11 MDT",
-      "who": "Power-pilot scoring",
-      "text": "Completed power-pilot run 27752884846 succeeded at main 0567cd7 and moved power-pilot-results 5969f6f -> 1a2aac6 (1a2aac654e877a34b3e590f0269d10cca05a43e7). The scored remote run-110 store has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. The scoring audit, run against the remote run-110 store plus the local store, blocks promotion: gaussian-d1-n150-sig0p0 coverage 0.390 with one-sided misses, nbinom2-d2-n50-sig0p0 coverage 0.899 with 76% non-PD, and binomial_probit-d1-n50-sig0p2 coverage 0.959 but 34% non-PD and extremely wide intervals. CI-excludes-zero remains diagnostic only for Sigma_unit_diag, not valid Type-I error.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
-      "link_label": "run 27752884846"
-    },
-    {
-      "when": "2026-06-18 07:47 MDT",
-      "who": "GLLVM.jl #101",
-      "text": "Maintainer-approved close/reopen triggered fresh PR checks without pushing code: CI run 27763712855 was in progress and Documenter run 27763712914 completed successfully at head f7be594. #101 was open/draft with mergeStateStatus UNSTABLE while CI ran, so this was trigger evidence only, not bridge completion.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "GLLVM.jl #101"
-    },
-    {
-      "when": "2026-06-18 07:47 MDT",
+      "when": "2026-06-30",
       "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27752884846 is still live on main 0567cd7. GitHub reports run-level status in_progress with 49 jobs total: 48 completed-success jobs and shard 31/48 in progress. The power-pilot-results branch is still 5969f6f, so no new persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
-      "link_label": "run 27752884846"
+      "status": "covered",
+      "text": "Post-merge main R-CMD-check run 28476941515 passed at 12526a15.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/28476941515",
+      "link_label": "main R-CMD-check"
     },
     {
-      "when": "2026-06-18 06:34 MDT",
+      "when": "2026-06-30",
       "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27752884846 is still live on main 0567cd7. GitHub reports run-level status in_progress, while the job rollup shows 49 jobs total: 43 completed-success and 6 in progress (shards 25/48, 26/48, 27/48, 31/48, 32/48, and 33/48). The power-pilot-results branch is still 5969f6f, so no new persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
-      "link_label": "run 27752884846"
+      "status": "covered",
+      "text": "Post-merge pkgdown run 28477809749 built and deployed successfully at 12526a15.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/28477809749",
+      "link_label": "pkgdown"
     },
     {
-      "when": "2026-06-18 06:34 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled full-check run 27752749643 completed successfully on main 0567cd7. The windows-latest, ubuntu-latest, and macos-latest release jobs all completed with conclusion success. This confirms main full-check health only; it does not close #489, #101, release #486, or scientific coverage gates.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752749643",
-      "link_label": "run 27752749643"
+      "when": "2026-06-30",
+      "who": "Public site",
+      "status": "covered",
+      "text": "Deployed extract_lv_effects reference page shows axis_effect default, conf.level, alpha_lv_B SEs, and ADREPORT(B_lv_unit) trait-effect SEs.",
+      "url": "https://itchyshin.github.io/gllvmTMB/reference/extract_lv_effects.html",
+      "link_label": "reference"
     },
     {
-      "when": "2026-06-18 04:35 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 23 completed at 2026-06-18 04:33 MDT: 382010 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. Parent R process and all ten RSOCK workers remained alive and active in the post-helper snapshot. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
+      "when": "2026-06-30",
+      "who": "Codex/GLLVM.jl",
+      "status": "blocked",
+      "text": "Phylo bootstrap_basic closeout: valid observed rows reached 591/720 = 0.821; even a perfect cancelled task 1 would be 671/800 = 0.839. Direct-mean comparator confirmed saturated slopes track B_lv, so the failure is finite-sample slope/interval calibration, not extraction."
+    }
+  ],
+  "compute_status": [
+    {
+      "cluster": "Totoro",
+      "state": "available_manual_guard",
+      "job": "local host",
+      "role": "fast local compute when a route is worth running",
+      "note": "Remember Totoro is available under the shared core cap, but do not launch more phylo bootstrap_basic or endpoint-profile repeats. Use Totoro only for small diagnostics after a redesigned target/regime is locked."
     },
     {
-      "when": "2026-06-18 04:18 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 22 completed at 2026-06-18 04:07 MDT: 380510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. Parent R process and all ten RSOCK workers remained alive in the post-helper snapshot; seven workers were active. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
+      "cluster": "DRAC",
+      "state": "blocked_no_active_claim",
+      "job": "64471433 unread",
+      "role": "Narval/Nibi/Rorqual/Trillium cluster lanes",
+      "note": "Narval endpoint-profile jobs 64463813, 64466208, and 64468504 produced no profile result; capped exact job 64471433 could not be read because Narval login/status reads stalled. A local seed-matched profile_truth canary for task 8 entry 71 missed truth with LR 9.9918 > 3.8415, and K=1 20-replicate profile_truth covered only 98/100 selected entries. No active compute is claimed."
     },
     {
-      "when": "2026-06-18 03:59 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 21 completed at 2026-06-18 03:43 MDT: 379010 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. Parent R process and all ten RSOCK workers remained alive in the post-helper snapshot; four workers were active. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
+      "cluster": "Narval direct mean",
+      "state": "completed",
+      "job": "64442542",
+      "role": "10-seed saturated Y~X_lv comparator for B_lv weak cell",
+      "note": "mle_slope_mean=1.000455 and ols_slope_mean=1.000468 overall; task 8 slopes were about 0.536 and 0.533 of truth. This supports finite-sample realized-slope shrinkage rather than extractor distortion."
     },
     {
-      "when": "2026-06-18 03:41 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 20 completed at 2026-06-18 03:26 MDT: 377510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. Parent R process and all ten RSOCK workers remained alive in the post-helper snapshot; one worker was active. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
+      "cluster": "Nibi",
+      "state": "closed_partial",
+      "job": "16988973",
+      "role": "remaining bootstrap_basic seeds",
+      "note": "Observed rows contributed to the 591/720 = 0.821 aggregate. A perfect cancelled task 1 would still leave the 10-seed aggregate at 671/800 = 0.839, below the 0.92 gate."
     },
     {
-      "when": "2026-06-18 02:38 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 19 completed at 2026-06-18 02:35 MDT: 376010 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. The 02:33 poll caught pilot-index.rds absent while the parent loop was active; it stabilized at 02:35 before the status helper was run. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
+      "cluster": "Narval bootstrap_basic",
+      "state": "closed_negative",
+      "job": "64432230 + 64432317 + 64435762",
+      "role": "p=80 K=2 lambda=0.5 B_lv bootstrap_basic weak cell",
+      "note": "Combined valid observed rows with Nibi/Rorqual/Totoro bookkeeping show bootstrap_basic cannot clear the gate; no production coverage claim."
     },
     {
-      "when": "2026-06-18 01:56 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 18 completed at 2026-06-18 01:53 MDT: 374510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. Parent R process and all ten RSOCK workers remained alive and active in the post-helper snapshot. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
+      "cluster": "Totoro",
+      "state": "stopped",
+      "job": "local pinned processes",
+      "role": "local no-queue race copy",
+      "note": "Useful as a local stress host, but Julia 1.12 did not reproduce the same B_true stream as DRAC Julia 1.10 for identical seeds. Keep Totoro provenance separate."
     },
     {
-      "when": "2026-06-18 01:56 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 completed cancelled on main 0567cd7. The shard jobs succeeded, but persist and summary cancelled after the 20-minute job limit; power-pilot-results remained at 5969f6f, so there is no new remote store to score.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
+      "cluster": "Rorqual / Trillium",
+      "state": "cancelled_or_held",
+      "job": "14967239 / staged only",
+      "role": "remaining race lanes",
+      "note": "Rorqual fixed-source race was cancelled. Trillium was load-tested but held because small jobs reserve whole 192-core nodes."
+    }
+  ],
+  "active_jobs": [
+    {
+      "cluster": "LV compute posture",
+      "job": "none confirmed",
+      "target": "next LV arc step",
+      "state": "blocked_no_active_compute",
+      "elapsed": "updated 2026-06-30 23:30 MDT",
+      "note": "No active LV compute is claimed. Local seed-matched profile_truth for task 8 entry 71 missed truth with LR 9.9918 > 3.8415, K=1 20-replicate profile_truth covered only 98/100 selected entries, and profile_direct_slope failed the strict K=1 20-replicate gate at 96/100 with four converged misses. Source-specific phylo lv is retired/parked for v1; any future compute needs a newly predeclared ADEMP target/gate."
     },
     {
-      "when": "2026-06-18 01:03 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 16 completed at 2026-06-18 01:03 MDT: 371510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. The index briefly appeared absent during the merge, then stabilized at 01:03:26 MDT; parent R process and all ten RSOCK workers remained alive, with all ten workers active in the post-helper snapshot. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
+      "cluster": "Narval direct mean",
+      "job": "64442542",
+      "target": "10-seed saturated Y~X_lv comparator for B_lv weak cell",
+      "state": "completed",
+      "elapsed": "closed before 2026-06-30 15:00 MDT",
+      "note": "mle_slope_mean=1.000455 and ols_slope_mean=1.000468 overall; task 8 slopes were about 0.536 and 0.533 of truth. This supports finite-sample realized-slope shrinkage rather than extractor distortion."
     },
     {
-      "when": "2026-06-18 01:03 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 is in progress on main 0567cd7 with 49 jobs: 48 completed-success and 1 in progress. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
+      "cluster": "Nibi",
+      "job": "16988973",
+      "target": "remaining bootstrap_basic seeds",
+      "state": "closed_partial",
+      "elapsed": "tasks 2,4,5,9,10 completed; task 1 cancelled",
+      "note": "Observed rows contributed to the 591/720 = 0.821 aggregate. A perfect cancelled task 1 would still leave the 10-seed aggregate at 671/800 = 0.839, below the 0.92 gate."
     },
     {
-      "when": "2026-06-18 00:08 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 14 completed at 2026-06-17 23:54 MDT: 368510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. Parent R process and all ten RSOCK workers remained alive after the iter-14 merge; four workers were active in the post-helper snapshot. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
+      "cluster": "Narval bootstrap_basic",
+      "job": "64432230 + 64432317 + 64435762",
+      "target": "p=80 K=2 lambda=0.5 B_lv bootstrap_basic weak cell",
+      "state": "closed_negative",
+      "elapsed": "complete enough for decision",
+      "note": "Combined valid observed rows with Nibi/Rorqual/Totoro bookkeeping show bootstrap_basic cannot clear the gate; no production coverage claim."
     },
     {
-      "when": "2026-06-18 00:08 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 is in progress on main 0567cd7 with 49 jobs: 43 completed-success and 6 in progress. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
+      "cluster": "Totoro",
+      "job": "local pinned processes",
+      "target": "local no-queue race copy",
+      "state": "stopped",
+      "elapsed": "stopped after diagnostic mismatch",
+      "note": "Useful as a local stress host, but Julia 1.12 did not reproduce the same B_true stream as DRAC Julia 1.10 for identical seeds. Keep Totoro provenance separate."
     },
     {
-      "when": "2026-06-17 23:16 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 13 completed at 23:12 MDT: 367010 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. All ten RSOCK workers were still alive and active after the iter-13 merge. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 23:16 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 is in progress on main 0567cd7 with 49 jobs: 38 completed-success and 11 in progress. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
-    },
-    {
-      "when": "2026-06-17 22:58 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 12 completed at 22:47 MDT: 365510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. All ten RSOCK workers were still alive after the iter-12 merge, with seven active in the next-batch snapshot. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 22:58 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 remains in flight on main 0567cd7 with 49 jobs: 20 completed-success, 20 in progress, and 9 queued. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
-    },
-    {
-      "when": "2026-06-17 22:29 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 11 completed at 22:23 MDT: 364010 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. All ten RSOCK workers were still alive after the iter-11 merge, with three active in the next-batch snapshot. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 22:29 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 remains in flight on main 0567cd7 with 49 jobs: 4 completed-success, 20 in progress, and 25 queued. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
-    },
-    {
-      "when": "2026-06-17 22:10 MDT",
-      "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27735802023 is in flight on main 0567cd7 with 49 jobs: 2 completed-success, 20 in progress, and 27 queued. This is process evidence only; no persisted-store or scoring evidence exists yet.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
-      "link_label": "run 27735802023"
-    },
-    {
-      "when": "2026-06-17 21:42 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 10 completed at 21:33 MDT: 362510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. All ten RSOCK workers were still alive after the iter-10 merge, with five active in the next-batch snapshot. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 20:57 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 9 completed at 20:46 MDT: 361010 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. All ten RSOCK workers were still alive after the iter-9 merge, with seven active in the next-batch snapshot. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 20:06 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 8 completed at 20:05 MDT: 359510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. All ten RSOCK workers were active in the next-batch snapshot. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 19:47 MDT",
-      "who": "Power-pilot persisted store scoring",
-      "text": "Run 27722546237 completed successfully and pushed power-pilot-results 5969f6f. Scored store: 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, 27 coverage anomalies. Compared with run 107 at 2709930: 10376 reps, 1/48 cells at cap, signal mean coverage 0.733, pass94 3/24, pass95 3/24, 24 flagged cells, 1 coverage anomaly.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237",
-      "link_label": "run 27722546237"
-    },
-    {
-      "when": "2026-06-17 19:47 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent iter 7 completed at 19:41 MDT: 358010 / 480000 reps, 0/48 cells at cap, 0 errored cells. All ten RSOCK workers were active in the 19:45 MDT snapshot. No coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 19:00 MDT",
-      "who": "GitHub CLI",
-      "text": "Scheduled power-pilot run 27722546237 remains in progress on main 0567cd7 with 48 completed-success jobs, 0 failures, and only shard 33/48 still running.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237",
-      "link_label": "run 27722546237"
-    },
-    {
-      "when": "2026-06-17 18:59 MDT",
-      "who": "GLLVM.jl workflow trigger audit",
-      "text": "GLLVM.jl #101 remains draft/clean at f7be594 and branch run listing still shows only Documenter run 27652799083 from 2026-06-16. CI.yml triggers only on push to main and pull_request to main; Documenter.yml triggers on push/pull_request; TagBot alone has workflow_dispatch. No non-mutating CI trigger path is available from the current workflow set.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "GLLVM.jl #101"
-    },
-    {
-      "when": "2026-06-17 18:29 MDT",
-      "who": "R bridge local tests",
-      "text": "No-Julia bridge suite passed with expected live rows skipped; live JuliaCall bridge suite then passed locally against GLLVM.jl f7be594 after adding $HOME/.juliaup/bin to PATH. This is local partial evidence, not fresh #101 PR CI.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "GLLVM.jl #101"
-    },
-    {
-      "when": "2026-06-17 18:29 MDT",
-      "who": "Local power pilot",
-      "text": "LaunchAgent remains running at 355010 / 480000 reps, 0/48 cells at cap, 0 errored cells. Scoring audit shows gaussian-d1-n150-sig0p0 coverage 0.389, nbinom2-d2-n50-sig0p0 coverage 0.899 with high non-PD, and binomial_probit-d1-n50-sig0p2 coverage 0.959 with high non-PD; no coverage or power promotion.",
-      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
-      "link_label": "issue #346"
-    },
-    {
-      "when": "2026-06-17 18:20 MDT",
-      "who": "GitHub CLI",
-      "text": "PR #489 is clean and green at 03fdda1 after the Julia-gate evidence refresh push; recovery run 27727834498 and R-CMD-check run 27727834488 both succeeded.",
-      "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
-      "link_label": "PR #489"
-    },
-    {
-      "when": "2026-06-17 18:48 MDT",
-      "who": "GitHub CLI",
-      "text": "Scheduled power-pilot run 27722546237 remains in progress on main 0567cd7 with 47 completed-success jobs, 0 failures, and shards 32/48 and 33/48 still running.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237",
-      "link_label": "run 27722546237"
-    },
-    {
-      "when": "2026-06-17 18:13 MDT",
-      "who": "GLLVM.jl local merge-ref",
-      "text": "Fetched refs/pull/101/merge at 2cd8563 (f7be594 into 70a5c83) and ran the focused bridge/grouped-dispersion slice with Julia 1.10: 641/641 tests passed in 1m56s. This is local partial evidence, not fresh PR CI.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "GLLVM.jl #101"
-    },
-    {
-      "when": "2026-06-17 16:28 MDT",
-      "who": "GitHub Actions",
-      "text": "#489 coevolution recovery run 27723504285 succeeded at 7c16433.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27723504285",
-      "link_label": "run 27723504285"
-    },
-    {
-      "when": "2026-06-17 16:32 MDT",
-      "who": "GitHub Actions",
-      "text": "#489 R-CMD-check run 27723504298 succeeded at 7c16433.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27723504298",
-      "link_label": "run 27723504298"
-    },
-    {
-      "when": "2026-06-17 15:23 MDT",
-      "who": "GitHub Actions",
-      "text": "Main R-CMD-check run 27720099917 succeeded at 0567cd7 after the Julia bridge pkgdown-index repair.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27720099917",
-      "link_label": "run 27720099917"
-    },
-    {
-      "when": "2026-06-17 15:49 MDT",
-      "who": "GitHub Actions",
-      "text": "Main pkgdown run 27720668325 succeeded at 0567cd7.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27720668325",
-      "link_label": "run 27720668325"
-    },
-    {
-      "when": "2026-06-17 15:51 MDT",
-      "who": "GitHub Actions",
-      "text": "Power-pilot run 27717007830 succeeded; persist rebuilt a 48-row index and pushed results branch ed7a88d..2709930.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27717007830",
-      "link_label": "run 27717007830"
-    },
-    {
-      "when": "2026-06-17 15:55 MDT",
-      "who": "power-pilot-results",
-      "text": "Remote store at 2709930 has 48 cells, 10376 reps, 1/48 cells at cap, signal mean coverage 0.733, pass94 3/24, pass95 3/24, null mean coverage-under-null 0.412."
-    },
-    {
-      "when": "2026-06-17 17:59 MDT",
-      "who": "GLLVM.jl",
-      "text": "#95 merged to main at 70a5c83 and main CI run 27724193515 succeeded on Ubuntu 1.10, macOS, Ubuntu current, and Windows.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/95",
-      "link_label": "GLLVM.jl #95"
-    },
-    {
-      "when": "2026-06-17 17:07 MDT",
-      "who": "GLLVM.jl",
-      "text": "#101 was retargeted from integration to main and remains draft/clean at f7be594; displayed PR checks are still the older Documenter preview, so fresh #101 evidence is still required.",
-      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
-      "link_label": "GLLVM.jl #101"
-    },
-    {
-      "when": "2026-06-17 15:20 MDT",
-      "who": "LaunchAgent",
-      "text": "Local loop restarted with 10 cores; earlier logged summary showed 347510 / 480000 reps, 0/48 cells at cap, signal mean coverage 0.753, pass94 3/24, pass95 2/24."
+      "cluster": "Rorqual / Trillium",
+      "job": "14967239 / staged only",
+      "target": "remaining race lanes",
+      "state": "cancelled_or_held",
+      "elapsed": "closed before dashboard refresh",
+      "note": "Rorqual fixed-source race was cancelled. Trillium was load-tested but held because small jobs reserve whole 192-core nodes."
     }
   ]
 }

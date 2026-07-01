@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-01 09:48 MDT",
+  "updated": "2026-07-01 11:22 MDT",
   "metrics": {
     "covered": 17,
     "partial": 3,
@@ -23,7 +23,7 @@
       "when": "2026-06-30 16:10 MDT",
       "who": "Mission-control refresh",
       "status": "covered",
-      "text": "Widget now reports 17 covered, 3 partial, 0 ready, 0 active compute rows, 0 queued production rows, and 5 blocked LV rows. The former ready row is merged; phylo remains blocked/parked."
+      "text": "Widget still reports 17 covered, 3 partial, 0 ready, 0 active compute rows, 0 queued production rows, and 5 blocked LV rows. Gate 2 diagnostic is passed, but public/source-specific exposure still waits for Gate 3 DRAC claim evidence."
     },
     {
       "when": "2026-06-30 17:53 MDT",
@@ -79,7 +79,7 @@
       "when": "2026-07-01 06:24 MDT",
       "who": "Phylo Model A next target",
       "status": "guard",
-      "text": "No-compute design recorded: the only candidate restart was eta-scale realized B_eta_realized with selected-entry profile-LR. This 06:24 row is superseded by the 09:14 Gate 0 row, the 09:32 strict Gate 1 failure row, and the 09:48 corrected Gate 1 row. Totoro diagnostics, DRAC claim evidence, source-specific lv grammar, and PR #127 reopening remain idle."
+      "text": "No-compute design recorded: the only candidate restart was eta-scale realized B_eta_realized with selected-entry profile-LR. This 06:24 row is superseded by the 09:14 Gate 0 row, the 09:32 strict Gate 1 failure row, and the 09:48 corrected Gate 1 row. Gate 2 Totoro diagnostic is complete; DRAC claim evidence, source-specific lv grammar, and PR #127 reopening remain pending."
     },
     {
       "when": "2026-07-01 09:14 MDT",
@@ -97,7 +97,13 @@
       "when": "2026-07-01 09:48 MDT",
       "who": "Phylo Model A corrected Gate 1",
       "status": "guard",
-      "text": "Corrected local B_eta_realized Gate 1 reran the same 20 seeds and five entries with fit/profile optimizer budgets of 1000. Usability was fixed: 20/20 fits converged, 100/100 profile truth solves were usable, and selected-entry truth inclusion was 97/100 with MCSE 0.0171. The three real LR misses remain task 7 entry 9, task 8 entry 9, and task 11 entry 11. The original no-miss rule still fails; next decision is whether to amend Gate 1 to an MCSE-aware selected-entry coverage gate before Gate 2/3. No Totoro/DRAC compute, source-specific lv grammar, PR #127 reopen, or bootstrap rescue is active."
+      "text": "Corrected local B_eta_realized Gate 1 reran the same 20 seeds and five entries with fit/profile optimizer budgets of 1000. Usability was fixed: 20/20 fits converged, 100/100 profile truth solves were usable, and selected-entry truth inclusion was 97/100 with MCSE 0.0171. This row is superseded by the Gate 2 Totoro diagnostic row, which passed 100/100."
+    },
+    {
+      "when": "2026-07-01 11:22 MDT",
+      "who": "Phylo Model A Gate 2",
+      "status": "guard",
+      "text": "Totoro-only B_eta_realized weak-cell diagnostic passed from clean GLLVM.jl commit 41a4120: 20/20 fits converged, 100/100 selected-entry profile truth solves usable, 100/100 covered, MCSE 0.0000, Wilson 95% 0.9630 to 1.0000, max LR 2.6733 < 3.8415, zero misses. This authorizes Gate 3 DRAC claim-evidence planning only; no source-specific R grammar, PR #127 reopen, public support claim, or bootstrap rescue follows."
     }
   ],
   "evidence": [
@@ -124,6 +130,12 @@
       "text": "Deployed reference page confirms axis_effect default, conf.level, alpha_lv_B SEs, and ADREPORT(B_lv_unit) SEs.",
       "url": "https://itchyshin.github.io/gllvmTMB/reference/extract_lv_effects.html",
       "link_label": "reference"
+    },
+    {
+      "when": "2026-07-01 11:22 MDT",
+      "who": "Gate 2 Totoro diagnostic",
+      "status": "success",
+      "text": "B_eta_realized profile_eta_realized Gate 2 completed on Totoro: 20/20 result files, 100/100 usable selected entries, 100/100 covered, max LR 2.6733 below 3.8415."
     }
   ],
   "blockers": [
@@ -131,13 +143,13 @@
       "when": "phylo",
       "who": "Fisher",
       "status": "blocked",
-      "text": "Do not spend more cores on bootstrap_basic/Wald/t-Wald/percentile/profile endpoint repeats for the current phylo weak cell. Bootstrap is not the next route. The local profile_truth canaries missed task 8 entry 71 and the K=1 20-replicate gate, profile_direct_slope failed its strict K=1 20-replicate gate at 96/100 with four converged misses, and original B_eta_realized Gate 1 failed the no-miss rule at 84/100 planned entries. Corrected local Gate 1 reached 97/100 with 100/100 usable, but Gate 2/3 are held until Shinichi decides whether to amend the gate. Public source-specific phylo lv is retired/parked for v1; any future path needs a new method decision before compute."
+      "text": "Do not spend more cores on bootstrap_basic/Wald/t-Wald/percentile/profile endpoint repeats for the current phylo weak cell. Bootstrap is not the next route. The local profile_truth canaries missed task 8 entry 71 and the K=1 20-replicate gate, profile_direct_slope failed its strict K=1 20-replicate gate at 96/100 with four converged misses, and original B_eta_realized Gate 1 failed the no-miss rule at 84/100 planned entries. Corrected local Gate 1 reached 97/100 with 100/100 usable, but Gate 2 has passed; Gate 3 DRAC claim evidence remains pending. Public source-specific phylo lv is retired/parked for v1; any future path needs a new method decision before compute."
     },
     {
       "when": "phylo Gate 0",
       "who": "Curie + Fisher",
       "status": "guard",
-      "text": "B_eta_realized is implemented from the noiseless eta-scale latent-mediated surface and centering/orientation is proven against an independent dense calculation. This is still only the minimal evidence gate; it does not authorize Totoro, DRAC, source-specific lv grammar, or PR #127 reopening."
+      "text": "B_eta_realized is implemented from the noiseless eta-scale latent-mediated surface and centering/orientation is proven against an independent dense calculation. This is still only the minimal evidence gate; it did not by itself authorize the later Totoro diagnostic, DRAC, source-specific lv grammar, or PR #127 reopening."
     },
     {
       "when": "scope",
@@ -169,7 +181,7 @@
       "when": "before phylo exposure",
       "who": "Maintainer",
       "status": "blocked",
-      "text": "The profile-LR truth canary did not pass for task 8 entry 71, the K=1 population-target gate covered only 98/100 after converged misses, profile_direct_slope failed the strict K=1 20-replicate no-miss canary despite 96/100 aggregate coverage, and original B_eta_realized Gate 1 failed the no-miss rule. Corrected local Gate 1 is 97/100 with 100/100 usable. Source-specific phylo lv is retired/parked for v1. Future exposure requires an approved MCSE-aware gate and fresh evidence; Gate 2/3 are held. Do not restart bootstrap."
+      "text": "The profile-LR truth canary did not pass for task 8 entry 71, the K=1 population-target gate covered only 98/100 after converged misses, profile_direct_slope failed the strict K=1 20-replicate no-miss canary despite 96/100 aggregate coverage, and original B_eta_realized Gate 1 failed the no-miss rule. Corrected local Gate 1 is 97/100 with 100/100 usable. Source-specific phylo lv is retired/parked for v1. Future exposure requires an approved MCSE-aware gate and fresh evidence; Gate 2 has passed; Gate 3 remains pending. Do not restart bootstrap."
     },
     {
       "when": "before mixed-family bridge promotion",

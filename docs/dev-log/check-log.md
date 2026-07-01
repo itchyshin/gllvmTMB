@@ -4,6 +4,72 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-01 11:22 MDT -- Phylo Model A Gate 2 mission-control refresh
+
+Branch: local dirty Dropbox checkout; no push or PR.
+
+Guard: `Gate 2 passed != public source-specific phylo lv support != Gate 3 DRAC claim evidence`.
+
+Purpose:
+
+- Move Mission Control from “Gate 2/3 held” to “Gate 2 Totoro diagnostic
+  passed; Gate 3 DRAC claim evidence pending.”
+- Keep old population-`B_lv`, bootstrap, profile_truth, and profile_direct_slope
+  failures visible as retired route evidence.
+- Keep metrics unchanged because no public package support, active compute,
+  queued production/public grammar, PR reopen, or source-specific R exposure
+  changed.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json`.
+- Updated `docs/dev-log/dashboard/sweep.json`.
+- Added
+  `docs/dev-log/after-task/2026-07-01-lv-arc-gate2-mission-control.md`.
+
+Evidence now shown:
+
+```text
+Gate 2 Totoro diagnostic:
+source commit = GLLVM.jl 41a4120
+result files = 20
+detail files = 20
+fit convergence = 20/20
+profile status = 20/20 ok rows
+usable selected entries = 100/100
+covered/planned = 100/100 = 1.000
+MCSE = 0.0000
+Wilson 95% interval = 0.9630 to 1.0000
+max LR = 2.6733 < 3.8415
+LR misses = 0
+```
+
+Checks:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "Gate 2 Totoro diagnostic passed|100/100|0\\.9630|Gate 3 DRAC|0 active"
+```
+
+Browser preview:
+
+```text
+URL: http://127.0.0.1:8770/
+Signals: Gate 2 shown, 100/100 shown, Gate 3 DRAC pending shown, 0 active
+shown, closed PR #127/source-specific grammar guard shown.
+Stale phrase audit: no visible "No DRAC/Totoro work is queued"; no visible
+"does not authorize Totoro".
+```
+
+Still not claimed:
+
+- No source-specific `phylo_latent(..., lv = ~ x)` exposure.
+- No PR #127 reopen, push, package API widening, likelihood change, bootstrap
+  rescue, or public source-specific support.
+- No Gate 3 DRAC claim evidence yet.
+
 ## 2026-07-01 09:48 MDT -- Phylo Model A corrected Gate 1 mission-control refresh
 
 Branch: local dirty Dropbox checkout; no push or PR.

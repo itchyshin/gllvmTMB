@@ -1,11 +1,11 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local operating board for gllvmTMB capability truth. Current focus: latent(lv = ~ x) ordinary, Julia-bridge, phylo, and mixed-family evidence.",
-  "updated": "2026-07-01 09:14 MDT",
-  "source": "gllvmTMB PR #581 merged to main at 12526a15. Post-merge R-CMD-check run 28476941515 and pkgdown run 28477809749 both passed; the public extract_lv_effects reference page now shows axis_effect as the default with conf.level, alpha SE/CIs, and explicit trait_effect B_lv SE/CIs. GLLVM.jl PR #127 remains closed/parked as blocked evidence. Current v1 decision: retire/park public source-specific phylo lv under the current evidence; keep phylo_latent(..., lv = ~ x) fail-loud. No bootstrap rescue is planned. Alpha Wald output is conditional axis/access-effect output, not the Model A evidence target. Profile-LR can return only as a selected-entry truth-inclusion canary after Fisher names a genuinely revised estimand or regime. Old evidence is negative: bootstrap_basic 591/720 = 0.821; optimistic cancelled-task bound 671/800 = 0.839; local task-8 entry-71 profile_truth LR 9.9918 > 3.8415; narrowed K=1 profile_truth 98/100 with two converged misses. Bench-only profile_direct_slope passed early diagnostics but failed the K=1 20-replicate no-miss gate at 96/100 with four converged misses and max LR 6.6614 > 3.8415. Aggregate 96/100 is nominal-compatible at this denominator, but it is not public support. LV structural dependencies are now truth-locked: source-specific lv guards stay covered/fail-loud, the mixed-family bridge row is complete balanced point/postfit only, and mixed-family X/X_lv/masks/CIs remain blocked. No active compute is claimed; Totoro remains diagnostic-only and DRAC claim-only after a future ADEMP gate passes. Gate 0 for the eta-scale realized/design-conditional B_eta_realized profile-LR canary is now implemented locally in the GLLVM.jl handover worktree: target test 7/7, bench include smoke ok, and one tiny profile_eta_realized smoke converged with LR 0.4156 < 3.8415. Gate 1/2/3 remain unrun; no Totoro diagnostic, DRAC claim evidence, or R grammar discussion is authorized by Gate 0 alone.",
+  "updated": "2026-07-01 09:32 MDT",
+  "source": "gllvmTMB PR #581 merged to main at 12526a15. Post-merge R-CMD-check run 28476941515 and pkgdown run 28477809749 both passed; the public extract_lv_effects reference page now shows axis_effect as the default with conf.level, alpha SE/CIs, and explicit trait_effect B_lv SE/CIs. GLLVM.jl PR #127 remains closed/parked as blocked evidence. Current v1 decision: retire/park public source-specific phylo lv under the current evidence; keep phylo_latent(..., lv = ~ x) fail-loud. No bootstrap rescue is planned. Alpha Wald output is conditional axis/access-effect output, not the Model A evidence target. Profile-LR can return only as a selected-entry truth-inclusion canary after Fisher names a genuinely revised estimand or regime. Old evidence is negative: bootstrap_basic 591/720 = 0.821; optimistic cancelled-task bound 671/800 = 0.839; local task-8 entry-71 profile_truth LR 9.9918 > 3.8415; narrowed K=1 profile_truth 98/100 with two converged misses. Bench-only profile_direct_slope passed early diagnostics but failed the K=1 20-replicate no-miss gate at 96/100 with four converged misses and max LR 6.6614 > 3.8415. Aggregate 96/100 is nominal-compatible at this denominator, but it is not public support. LV structural dependencies are now truth-locked: source-specific lv guards stay covered/fail-loud, the mixed-family bridge row is complete balanced point/postfit only, and mixed-family X/X_lv/masks/CIs remain blocked. No active compute is claimed. Gate 0 for the eta-scale realized/design-conditional B_eta_realized profile-LR canary is implemented locally in the GLLVM.jl handover worktree: target test 7/7, bench include smoke ok, and one tiny profile_eta_realized smoke converged with LR 0.4156 < 3.8415. Gate 1 local positive-control diagnostic then failed: 84/100 planned selected entries covered, 84/87 usable entries covered, one fit non-convergence, four profile-underconverged tasks, and three converged LR misses. Gate 2/3 remain held; no Totoro diagnostic, DRAC claim evidence, or R grammar discussion follows from this evidence.",
   "claim_guard": {
     "title": "Claim boundary",
-    "text": "On main, extract_lv_effects() defaults to axis_effect alpha and returns Wald SE/CIs when the fitted native TMB sdreport supports them. These alpha intervals remain conditional on the fitted loading/axis convention, not broad calibrated coverage claims. Rotation-invariant trait effects remain explicit as type = \"trait_effect\" with B_lv = Lambda alpha^T and Wald SE/CIs. Ordinary C1 is closed for the named regimes; source-specific phylo lv is retired/parked for v1, mixed-family lv is blocked, and calibrated Julia bridge CIs remain partial. The mixed-family Julia bridge row is point/postfit only for complete balanced Gaussian + Poisson + Binomial vectors; fixed X, predictor-informed X_lv, masks, missing responses, newdata, and CIs remain gated. For phylo Model A, bootstrap is out for the current arc, profile-LR is only a selected-entry canary after a genuinely new target is named, and profile_truth plus profile_direct_slope canaries both fired stop rules. Do not call this partial support; the current action is parking, not another same-route rerun. Gate 0 for B_eta_realized is locally implemented and smoke-tested, but it is not active compute or partial source-specific support; the next decision is whether to authorize a tiny Gate 1 positive-control diagnostic."
+    "text": "On main, extract_lv_effects() defaults to axis_effect alpha and returns Wald SE/CIs when the fitted native TMB sdreport supports them. These alpha intervals remain conditional on the fitted loading/axis convention, not broad calibrated coverage claims. Rotation-invariant trait effects remain explicit as type = \"trait_effect\" with B_lv = Lambda alpha^T and Wald SE/CIs. Ordinary C1 is closed for the named regimes; source-specific phylo lv is retired/parked for v1, mixed-family lv is blocked, and calibrated Julia bridge CIs remain partial. The mixed-family Julia bridge row is point/postfit only for complete balanced Gaussian + Poisson + Binomial vectors; fixed X, predictor-informed X_lv, masks, missing responses, newdata, and CIs remain gated. For phylo Model A, bootstrap is out for the current arc, profile-LR is only a selected-entry canary after a genuinely new target is named, and profile_truth plus profile_direct_slope canaries both fired stop rules. Do not call this partial support; the current action is parking, not another same-route rerun. Gate 0 for B_eta_realized is locally implemented and smoke-tested, but Gate 1 failed locally, so Gate 2/3 compute and source-specific grammar remain blocked."
   },
   "metrics": {
     "covered": 17,
@@ -20,9 +20,9 @@
       "merged": "covered rows have linked local/PR evidence through PR #581; post-merge main R-CMD-check and pkgdown are green",
       "ready": "no open ready LV PR remains after #581 merged",
       "active": "no active LV compute is claimed; Narval login/status reads stalled, and no production fan-out is running",
-      "queued": "no production phylo queue should launch after the local profile_truth misses or the profile_direct_slope 20-replicate strict-gate failure; no bootstrap rescue; source-specific phylo lv is retired/parked for v1. No Totoro or DRAC queue is authorized for B_eta_realized until Shinichi approves a Gate 1 diagnostic after local Gate 0 evidence.",
+      "queued": "no production phylo queue should launch after the local profile_truth misses, the profile_direct_slope 20-replicate strict-gate failure, or the Gate 1 B_eta_realized local failure; no bootstrap rescue; source-specific phylo lv is retired/parked for v1. No Totoro or DRAC queue is authorized.",
       "partial": "broad LV, source-specific phylo lv, Julia CI calibration, and mixed-family rows are not complete",
-      "blocked": "phylo Model A production coverage remains blocked/parked for v1. Old population-target diagnostics failed, and the realized direct-slope route failed the strict K=1 20-replicate canary despite 96/100 aggregate coverage. Source-specific phylo lv stays fail-loud. B_eta_realized Gate 0 is implemented and locally smoke-tested; Gate 1/2/3 remain unrun and no compute is active."
+      "blocked": "phylo Model A production coverage remains blocked/parked for v1. Old population-target diagnostics failed, the realized direct-slope route failed the strict K=1 20-replicate canary despite 96/100 aggregate coverage, and the B_eta_realized Gate 1 local positive-control diagnostic failed at 84/100 planned entries. Source-specific phylo lv stays fail-loud; Gate 2/3 are held and no compute is active."
     }
   },
   "truth_cards": [
@@ -56,7 +56,7 @@
       "label": "Coverage gap",
       "value": "v1 parked",
       "status": "blocked",
-      "note": "GLLVM.jl phylo Model A production coverage is blocked and public source-specific v1 exposure is retired/parked. The completed bootstrap_basic evidence cannot reach the 0.92 gate even under an optimistic cancelled-task assumption; bootstrap is not the next route. Direct saturated slopes track B_lv, so this is a finite-sample slope/interval-calibration problem, not an extractor artifact. PR #127 is closed/parked. The local seed-matched task-8 entry-71 profile_truth canary missed truth with LR 9.9918 > 3.8415, and the K=1 20-replicate profile gate covered only 98/100 selected entries. Bench-only profile_direct_slope passed early diagnostics but then failed the strict K=1 20-replicate no-miss gate at 96/100 with four converged misses. No source-specific lv exposure is allowed yet; any future work needs a newly predeclared ADEMP estimand/gate. Gate 0 now implements B_eta_realized as the candidate non-v1 target and verifies centering/orientation in a focused unit test plus tiny local smoke. Gate 1/2/3 remain unrun.",
+      "note": "GLLVM.jl phylo Model A production coverage is blocked and public source-specific v1 exposure is retired/parked. The completed bootstrap_basic evidence cannot reach the 0.92 gate even under an optimistic cancelled-task assumption; bootstrap is not the next route. Direct saturated slopes track B_lv, so this is a finite-sample slope/interval-calibration problem, not an extractor artifact. PR #127 is closed/parked. The local seed-matched task-8 entry-71 profile_truth canary missed truth with LR 9.9918 > 3.8415, and the K=1 20-replicate profile gate covered only 98/100 selected entries. Bench-only profile_direct_slope passed early diagnostics but then failed the strict K=1 20-replicate no-miss gate at 96/100 with four converged misses. Gate 0 implemented B_eta_realized as the candidate non-v1 target, but Gate 1 failed locally: 84/100 planned entries covered with one fit non-convergence, profile underconvergence, and three converged LR misses. No source-specific lv exposure is allowed.",
       "url": "https://github.com/itchyshin/GLLVM.jl/pull/127",
       "link_label": "closed PR #127"
     },
@@ -152,7 +152,7 @@
       "label": "Phylo DRAC launcher",
       "value": "closed blocked",
       "status": "blocked",
-      "note": "The weak-cell bootstrap_basic, direct-mean, local profile_truth, and profile_direct_slope diagnostics are complete enough to stop spending cores on this route. No bootstrap rescue is planned. Gate 0 for B_eta_realized is implemented locally: target test 7/7, bench include smoke ok, and tiny profile_eta_realized smoke LR 0.4156 < 3.8415. New DRAC/Totoro work still waits for maintainer approval of a small Gate 1 profile-LR diagnostic. Source-specific phylo lv is retired/parked for v1."
+      "note": "The weak-cell bootstrap_basic, direct-mean, local profile_truth, profile_direct_slope, and B_eta_realized Gate 1 diagnostics are complete enough to stop spending cores on this arc. No bootstrap rescue is planned. Gate 0 for B_eta_realized is implemented locally, but Gate 1 failed at 84/100 planned selected entries with profile underconvergence and three converged LR misses. No DRAC/Totoro work is queued. Source-specific phylo lv is retired/parked for v1."
     },
     {
       "label": "Axis alpha SEs",
@@ -178,7 +178,7 @@
         "active": "no LV compute race is currently active; old DRAC/Totoro lanes are closed, stopped, cancelled, held, or unread due to Narval login/status stalls",
         "partial": "broad LV, source-specific phylo lv, Julia CI calibration, and mixed-family claims remain outside the safe boundary",
         "queued": "no production phylo coverage queue should launch after the local profile_truth and profile_direct_slope misses; no bootstrap rescue is planned and K=1 same-route scaling is stopped. No queued compute for B_eta_realized exists.",
-        "blocked": "phylo Model A production coverage is blocked/parked for v1: bootstrap_basic observed rows are 591/720 = 0.821, local seed-matched task-8 entry-71 profile_truth missed truth with LR 9.9918 > 3.8415, K=1 20-replicate profile_truth covered only 98/100 selected entries, and profile_direct_slope failed the strict 96/100 no-miss gate. B_eta_realized Gate 0 extractor/unit-test evidence now exists locally, but Gate 1/2/3 remain unrun and no compute is active."
+        "blocked": "phylo Model A production coverage is blocked/parked for v1: bootstrap_basic observed rows are 591/720 = 0.821, local seed-matched task-8 entry-71 profile_truth missed truth with LR 9.9918 > 3.8415, K=1 20-replicate profile_truth covered only 98/100 selected entries, profile_direct_slope failed the strict 96/100 no-miss gate, and B_eta_realized Gate 1 failed at 84/100 planned selected entries. Gate 2/3 are held and no compute is active."
       }
     },
     "rows": [
@@ -346,7 +346,7 @@
         "recovery": "partial",
         "intervals": "blocked",
         "status": "blocked",
-        "evidence": "Local GLLVM.jl Model A targeted tests and stale-guard fixes are banked, and selected-entry profile canary tooling is local-only. Production promotion is retired/parked for v1 by the weak-cell diagnostics: bootstrap_basic did not clear the gate and is no longer a rescue route, direct saturated slopes track B_lv, local seed-matched task-8 entry-71 profile_truth missed truth with LR 9.9918 > 3.8415, K=1 20-replicate profile_truth covered only 98/100 selected entries, and profile_direct_slope failed the strict 96/100 no-miss gate. Gate 0 for the next candidate non-v1 target, B_eta_realized, is now implemented locally: 7/7 target test, bench include smoke ok, and one tiny profile_eta_realized smoke converged with LR 0.4156 < 3.8415. This is not Gate 1/2/3, source-specific lv support, or grammar exposure."
+        "evidence": "Local GLLVM.jl Model A targeted tests and stale-guard fixes are banked, and selected-entry profile canary tooling is local-only. Production promotion is retired/parked for v1 by the weak-cell diagnostics: bootstrap_basic did not clear the gate and is no longer a rescue route, direct saturated slopes track B_lv, local seed-matched task-8 entry-71 profile_truth missed truth with LR 9.9918 > 3.8415, K=1 20-replicate profile_truth covered only 98/100 selected entries, and profile_direct_slope failed the strict 96/100 no-miss gate. Gate 0 for the candidate non-v1 target, B_eta_realized, is implemented locally, but Gate 1 then failed: 84/100 planned selected entries covered, 84/87 usable covered, one fit non-convergence, four profile-underconverged tasks, and three converged LR misses. Gate 2/3 are held. This is not source-specific lv support or grammar exposure."
       },
       {
         "lane": "Phylo DRAC coverage",
@@ -354,7 +354,7 @@
         "recovery": "blocked",
         "intervals": "blocked",
         "status": "blocked",
-        "evidence": "Final weak-cell bootstrap_basic diagnostic for p=80,K=2,lambda=0.5 B_lv is blocked/parked for v1: valid observed rows give 591/720 = 0.821 entry coverage; even granting the cancelled task 1 perfect coverage would reach only 671/800 = 0.839. Narval direct-mean comparator showed saturated Y~X_lv slopes and latent-product B_lv slopes align, including the weak task 8, so the failure is finite-sample data-level slope/interval calibration rather than extraction. A local seed-matched task-8 entry-71 profile_truth canary also missed truth with LR 9.9918 > 3.8415, and profile_direct_slope failed the strict K=1 no-miss gate. Same-route bootstrap/Wald/t-Wald/percentile/profile endpoint reruns are retired. DRAC is now explicitly claim-only after future gates; Totoro is diagnostic-only after Gate 1 sign-off, and host denominators must stay separate unless a future run design says otherwise."
+        "evidence": "Final weak-cell bootstrap_basic diagnostic for p=80,K=2,lambda=0.5 B_lv is blocked/parked for v1: valid observed rows give 591/720 = 0.821 entry coverage; even granting the cancelled task 1 perfect coverage would reach only 671/800 = 0.839. Narval direct-mean comparator showed saturated Y~X_lv slopes and latent-product B_lv slopes align, including the weak task 8, so the failure is finite-sample data-level slope/interval calibration rather than extraction. A local seed-matched task-8 entry-71 profile_truth canary also missed truth with LR 9.9918 > 3.8415, profile_direct_slope failed the strict K=1 no-miss gate, and B_eta_realized Gate 1 failed at 84/100 planned selected entries. Same-route bootstrap/Wald/t-Wald/percentile/profile endpoint reruns are retired. DRAC and Totoro remain idle; host denominators must stay separate if a future redesigned run is authorized."
       },
       {
         "lane": "gllvmTMB phylo grammar/bridge",
@@ -404,7 +404,7 @@
         "recovery": "covered",
         "intervals": "blocked",
         "status": "blocked",
-        "evidence": "Launcher tooling exists, but the old route remains closed as negative evidence: no bootstrap rescue, profile_truth failed selected entries, and profile_direct_slope failed the strict K=1 no-miss canary. Gate 0 for the next candidate target, B_eta_realized, is implemented locally. The next permitted action is a maintainer-approved Gate 1 positive-control diagnostic design; Totoro/DRAC compute remains idle."
+        "evidence": "Launcher tooling exists, but the old route remains closed as negative evidence: no bootstrap rescue, profile_truth failed selected entries, profile_direct_slope failed the strict K=1 no-miss canary, and B_eta_realized Gate 1 failed locally. Gate 2/3 are held. The next permitted action is a method redesign or explicit continued parking decision; Totoro/DRAC compute remains idle."
       }
     ],
     "distributions": [
@@ -718,7 +718,7 @@
           "status": "blocked"
         },
         {
-          "name": "Next candidate target is B_eta_realized profile-LR Gate 1: positive-control diagnostic design before compute.",
+          "name": "B_eta_realized Gate 1 local diagnostic failed; Gate 2/3 held.",
           "status": "guard"
         },
         {
@@ -824,13 +824,19 @@
       "when": "2026-07-01 06:24 MDT",
       "who": "Phylo Model A next target",
       "status": "guard",
-      "text": "No-compute design recorded: the only candidate restart is eta-scale realized B_eta_realized with selected-entry profile-LR. This 06:24 row is superseded by the 09:14 Gate 0 row: the truth helper/unit test now exist locally. Totoro diagnostics, DRAC claim evidence, source-specific lv grammar, and PR #127 reopening remain idle until Gate 1 sign-off."
+      "text": "No-compute design recorded: the only candidate restart was eta-scale realized B_eta_realized with selected-entry profile-LR. This 06:24 row is superseded by the 09:14 Gate 0 row and the 09:32 Gate 1 failure row. Totoro diagnostics, DRAC claim evidence, source-specific lv grammar, and PR #127 reopening remain idle."
     },
     {
       "when": "2026-07-01 09:14 MDT",
       "who": "Phylo Model A Gate 0",
       "status": "guard",
-      "text": "Gate 0 is implemented locally in GLLVM.jl: B_eta_realized truth helper, orientation/centering unit test 7/7, bench include smoke, and one tiny profile_eta_realized smoke with fit/constrained solve converged and LR 0.4156 < 3.8415. Full core suite was interrupted after about 31 minutes in an unrelated zero-inflated/two-part path, so this is not a full-suite-green claim. Gate 1/2/3 remain unrun; no Totoro/DRAC compute, source-specific lv grammar, PR #127 reopen, or bootstrap rescue is active."
+      "text": "Gate 0 is implemented locally in GLLVM.jl: B_eta_realized truth helper, orientation/centering unit test 7/7, bench include smoke, and one tiny profile_eta_realized smoke with fit/constrained solve converged and LR 0.4156 < 3.8415. Full core suite was interrupted after about 31 minutes in an unrelated zero-inflated/two-part path, so this is not a full-suite-green claim. This row is superseded by the 09:32 Gate 1 failure row."
+    },
+    {
+      "when": "2026-07-01 09:32 MDT",
+      "who": "Phylo Model A Gate 1",
+      "status": "blocked",
+      "text": "Gate 1 local B_eta_realized positive-control diagnostic failed: 20 planned reps x 5 predeclared entries = 100 selected entries; 84/100 planned covered, 84/87 usable covered, task 3 fit did not converge, tasks 9/12/14/20 were profile-underconverged, and converged LR misses occurred at task 7 entry 9, task 8 entry 9, and task 11 entry 11. Gate 2/3 are held. No Totoro/DRAC compute, source-specific lv grammar, PR #127 reopen, or bootstrap rescue is active."
     },
     {
       "when": "2026-06-30 16:10 MDT",
@@ -852,7 +858,7 @@
       "when": "before public phylo lv claim",
       "who": "Maintainer",
       "status": "blocked",
-      "text": "The profile-LR truth canary did not pass for task 8 entry 71, and the K=1 20-replicate selected-entry diagnostic gate covered only 98/100 after converged misses. The profile_direct_slope route also failed the strict K=1 20-replicate no-miss canary despite 96/100 aggregate coverage. Source-specific phylo lv is retired/parked for v1; future exposure requires a newly predeclared ADEMP target/gate first. Do not restart bootstrap. Gate 0 for the B_eta_realized restart is locally implemented; passing Gate 0 still does not authorize R grammar exposure or diagnostic compute without a Gate 1 sign-off."
+      "text": "The profile-LR truth canary did not pass for task 8 entry 71, the K=1 20-replicate selected-entry diagnostic gate covered only 98/100 after converged misses, profile_direct_slope failed the strict K=1 20-replicate no-miss canary despite 96/100 aggregate coverage, and B_eta_realized Gate 1 failed locally at 84/100 planned entries. Source-specific phylo lv is retired/parked for v1. Do not restart bootstrap. Future exposure requires a newly predeclared method redesign and evidence gate; Gate 2/3 are held."
     },
     {
       "when": "before any broad LV claim",
@@ -872,7 +878,7 @@
       "when": "phylo",
       "who": "Fisher",
       "status": "blocked",
-      "text": "Phylo Model A production coverage is blocked/parked for v1. bootstrap_basic is not a rescue route: 591/720 = 0.821 observed and at most 0.839 with a perfect cancelled task 1. The local seed-matched profile_truth canary missed task 8 entry 71 with LR 9.9918 > 3.8415, the K=1 population-target gate covered only 98/100, and the profile_direct_slope K=1 20-replicate gate fired the strict no-miss stop rule at 96/100. Any future non-v1 path needs a newly predeclared estimand/gate. The candidate replacement target is B_eta_realized; Gate 0 is locally implemented, and the next action is maintainer approval for a tiny Gate 1 diagnostic."
+      "text": "Phylo Model A production coverage is blocked/parked for v1. bootstrap_basic is not a rescue route: 591/720 = 0.821 observed and at most 0.839 with a perfect cancelled task 1. The local seed-matched profile_truth canary missed task 8 entry 71 with LR 9.9918 > 3.8415, the K=1 population-target gate covered only 98/100, profile_direct_slope fired the strict no-miss stop rule at 96/100, and B_eta_realized Gate 1 failed locally at 84/100 planned selected entries. Gate 2/3 are held."
     },
     {
       "when": "phylo Gate 0",
@@ -884,7 +890,7 @@
       "when": "phylo reruns",
       "who": "Grace",
       "status": "guard",
-      "text": "Same-route bootstrap, Wald, t-Wald, percentile, bootstrap_basic, population profile_truth, and current profile_direct_slope reruns are retired. Profile-LR can return only after a genuinely revised target/gate. Totoro may be used only for small diagnostics after Gate 1 is approved; DRAC denominators stay seed-matched and separate. Keep Totoro and DRAC idle for this arc until Shinichi signs off on the Gate 1 design."
+      "text": "Same-route bootstrap, Wald, t-Wald, percentile, bootstrap_basic, population profile_truth, current profile_direct_slope, and B_eta_realized Gate 1 reruns are retired unless a genuinely revised method/gate is declared. Gate 2/3 are held. Keep Totoro and DRAC idle for this arc; DRAC denominators stay seed-matched and separate if a future redesigned claim run is authorized."
     },
     {
       "when": "source grammar",
@@ -902,7 +908,7 @@
       "when": "public wording",
       "who": "Rose",
       "status": "guard",
-      "text": "Do not call source-specific phylo lv partial support. Mission Control language must say retired/parked for v1 after the profile_truth and profile_direct_slope misses, not pending support."
+      "text": "Do not call source-specific phylo lv partial support. Mission Control language must say retired/parked for v1 after the profile_truth, profile_direct_slope, and B_eta_realized Gate 1 failures, not pending support."
     }
   ],
   "parallel_lanes": [
@@ -918,9 +924,9 @@
       "lane": "Phylo Model A selected-entry profile canary",
       "owners": "Ada + Fisher + Curie + Grace + Rose",
       "parallel_with": "Boole/Hopper held at grammar guard",
-      "join_gate": "Gate 1 B_eta_realized positive-control diagnostic design before any new compute",
+      "join_gate": "Gate 1 B_eta_realized local diagnostic failed; redesign or parking decision before any new compute",
       "status": "blocked",
-      "text": "bootstrap_basic did not rescue p=80,K=2,lambda=0.5, the local task-8 entry-71 profile_truth canary missed truth, and the K=1 20-replicate gate covered only 98/100 selected entries. Bench-only profile_direct_slope had positive early canaries, but the K=1 20-replicate strict gate failed at 96/100 with four converged misses. Source-specific phylo lv is retired/parked for v1; future work must start with a newly predeclared ADEMP target/gate, not same-route scaling. Gate 0 now names and implements B_eta_realized locally; Totoro diagnostic and DRAC claim evidence stay held until Gate 1 design/sign-off."
+      "text": "bootstrap_basic did not rescue p=80,K=2,lambda=0.5, the local task-8 entry-71 profile_truth canary missed truth, and the K=1 20-replicate gate covered only 98/100 selected entries. Bench-only profile_direct_slope had positive early canaries, but the K=1 20-replicate strict gate failed at 96/100 with four converged misses. Gate 0 named and implemented B_eta_realized locally, but Gate 1 failed at 84/100 planned selected entries. Source-specific phylo lv is retired/parked for v1; future work must be a new method redesign or explicit parking decision, not same-route scaling. Totoro and DRAC stay idle."
     },
     {
       "lane": "Gaussian/binomial native interval evidence",
@@ -967,29 +973,29 @@
     {
       "name": "Ada",
       "role": "Council chair and maintainer voice",
-      "task": "Hold v1 parking after local B_eta_realized Gate 0 evidence; no source-specific phylo lv grammar or PR #127 reopen follows from Gate 0.",
+      "task": "Hold v1 parking after local B_eta_realized Gate 1 failure; no source-specific phylo lv grammar or PR #127 reopen follows.",
       "status": "blocked",
       "blocked_by": "future maintainer choice required for any non-v1 redesign",
       "parallel_with": "Fisher + Curie + Grace + Rose",
-      "join_gate": "v1 parking recorded; future redesign proceeds only with Gate 1 sign-off"
+      "join_gate": "v1 parking recorded; future redesign needs a new method decision before any compute"
     },
     {
       "name": "Fisher",
       "role": "Statistical inference reviewer",
-      "task": "Own the B_eta_realized target definition and selected-entry profile-LR interpretation; block bootstrap/Wald/t-Wald/percentile reruns on the failed old route.",
+      "task": "Own the B_eta_realized Gate 1 failure interpretation; block bootstrap/Wald/t-Wald/percentile reruns and hold Gate 2/3.",
       "status": "blocked",
       "blocked_by": "weak-cell finite-sample slope/interval calibration",
       "parallel_with": "Curie",
-      "join_gate": "profile-LR Gate 1 cell, entries, and LR cutoff are predeclared before compute"
+      "join_gate": "new target or constraint redesign is required before any profile-LR compute resumes"
     },
     {
       "name": "Curie",
       "role": "Simulation and recovery testing reviewer",
-      "task": "Gate 0 is locally implemented; own the next Gate 1 positive-control diagnostic design for B_eta_realized before any compute.",
-      "status": "guard",
+      "task": "Gate 1 local B_eta_realized diagnostic failed; preserve the seed manifest and failure denominator, and do not promote to Gate 2/3.",
+      "status": "blocked",
       "blocked_by": "redesigned target/regime decision",
       "parallel_with": "Grace",
-      "join_gate": "truth object, seed manifest, host boundary, and MCSE posture are named before diagnostics"
+      "join_gate": "method redesign or explicit parking decision before diagnostics"
     },
     {
       "name": "Boole",
@@ -1012,7 +1018,7 @@
     {
       "name": "Grace",
       "role": "CI, pkgdown, CRAN, and reproducibility engineer",
-      "task": "Keep Totoro diagnostic-only and DRAC claim-only, both idle until Gate 1 design/sign-off; keep denominators separated by host unless a future run design permits pooling.",
+      "task": "Keep Totoro diagnostic-only and DRAC claim-only, both idle after Gate 1 failed; keep denominators separated by host unless a future run design permits pooling.",
       "status": "guard",
       "blocked_by": "none",
       "parallel_with": "Shannon",
@@ -1021,11 +1027,11 @@
     {
       "name": "Rose",
       "role": "Systems auditor",
-      "task": "Block partial-support language for source-specific phylo lv; local B_eta_realized Gate 0 evidence is not support until Gate 1/2 canaries and Gate 3 claim evidence exist.",
+      "task": "Block partial-support language for source-specific phylo lv; local B_eta_realized Gate 1 failure is a stop signal, not support.",
       "status": "guard",
       "blocked_by": "none",
       "parallel_with": "Shannon",
-      "join_gate": "Mission Control says design gate, not support"
+      "join_gate": "Mission Control says parked/blocked, not support"
     }
   ],
   "collaborator_table": [
@@ -1049,8 +1055,8 @@
       "article": "Phylo",
       "user_question": "Can I use phylo_latent(lv = ~ x)?",
       "safe_now": "Not through gllvmTMB yet.",
-      "partial_caveat": "GLLVM.jl Model A targeted evidence exists, but the weak-cell interval diagnostics are blocked and B_eta_realized has only local Gate 0 evidence.",
-      "boundary": "No source-specific lv grammar exposure in v1; future exposure starts after local Gate 0 truth extraction/unit-test evidence, then maintainer-approved Gate 1/2 diagnostics.",
+      "partial_caveat": "GLLVM.jl Model A targeted evidence exists, but the weak-cell interval diagnostics are blocked and the B_eta_realized Gate 1 local diagnostic failed.",
+      "boundary": "No source-specific lv grammar exposure in v1; future exposure requires a new method decision and fresh gates, not Gate 2/3 scale-up from the failed Gate 1.",
       "evidence_rows": "LV-4, LV-PHYLO-A, LV-PHYLO-DRAC-LAUNCH"
     }
   ],

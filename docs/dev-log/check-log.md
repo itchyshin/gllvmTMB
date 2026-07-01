@@ -4,6 +4,70 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-01 09:32 MDT -- Phylo Model A Gate 1 mission-control refresh
+
+Branch: local dirty Dropbox checkout; no push or PR.
+
+Guard: `Gate 1 failed != Gate 2/3 scale-up != source-specific phylo lv support`.
+
+Purpose:
+
+- Move Mission Control from "Gate 1 pending" to "Gate 1 failed locally; Gate
+  2/3 held".
+- Keep the Gate 0 evidence visible without allowing it to imply active compute
+  or source-specific support.
+- Keep metrics unchanged because no row became covered, active, queued, or
+  public-supporting.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json`.
+- Updated `docs/dev-log/dashboard/sweep.json`.
+- Added
+  `docs/dev-log/after-task/2026-07-01-lv-arc-gate1-mission-control.md`.
+
+Evidence now shown:
+
+```text
+Gate 1 local B_eta_realized diagnostic:
+planned selected entries = 100
+covered/planned = 84/100 = 0.840
+covered/usable = 84/87 = 0.966
+fit non-convergence = task 3
+profile-underconverged tasks = 9, 12, 14, 20
+converged LR misses = task 7 entry 9, task 8 entry 9, task 11 entry 11
+```
+
+Checks:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+git diff --check -- docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-01-lv-arc-gate1-mission-control.md
+rg -n "Gate 1 local|84/100|Gate 2/3|active compute|partial support|ready to scale|Gate 1 sign-off" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-01-lv-arc-gate1-mission-control.md
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "09:32|Gate 1|84/100|Gate 2/3|0 active|closed/parked"
+curl -s http://127.0.0.1:8770/sweep.json | python3 -m json.tool | rg -n "09:32|Gate 1|84/100|Gate 2/3|0 active"
+```
+
+Results: JSON parsed for both files; `git diff --check` returned no whitespace
+errors. The claim-audit scan found the intended Gate 1, `84/100`, Gate 2/3
+hold, no-active-compute, and source-specific guard language. Hits for "partial
+support" are guard wording only. `tools/start-mission-control.sh --background`
+reused the existing preview server and synced files to `/tmp/gllvm-dashboard`
+and `/private/tmp/gllvm-dashboard`; `version.txt` remained `r60`. Curl and the
+in-app browser both showed the 09:32 Gate 1 row, `84/100 planned`, `Gate 2/3
+are held`, `No Totoro/DRAC compute`, `0 active`, and PR #127 closed/parked
+language.
+
+Still not claimed:
+
+- No source-specific `phylo_latent(..., lv = ~ x)` exposure.
+- No PR #127 reopen, push, package API widening, likelihood change, Totoro
+  diagnostic, DRAC claim run, or bootstrap rescue.
+- No Gate 2/3 result, no non-Gaussian extension, and no full-suite-green
+  GLLVM.jl claim.
+
 ## 2026-07-01 09:14 MDT -- Phylo Model A Gate 0 mission-control refresh
 
 Branch: local dirty Dropbox checkout; no push or PR.

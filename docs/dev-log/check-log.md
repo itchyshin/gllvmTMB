@@ -4,6 +4,73 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-01 09:48 MDT -- Phylo Model A corrected Gate 1 mission-control refresh
+
+Branch: local dirty Dropbox checkout; no push or PR.
+
+Guard: `97/100 corrected Gate 1 != Gate 2/3 authorization != source-specific phylo lv support`.
+
+Purpose:
+
+- Move Mission Control from only the original strict no-miss Gate 1 failure to
+  the corrected optimizer-budget diagnostic.
+- Preserve the original `84/100` no-miss failure as historical stop evidence.
+- Make the next decision explicit: Shinichi must amend Gate 1 to an MCSE-aware
+  selected-entry coverage gate, or reaffirm parking, before Gate 2/3 compute.
+- Keep metrics unchanged because no source-specific support, active compute,
+  queued compute, PR reopen, or package grammar changed.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json`.
+- Updated `docs/dev-log/dashboard/sweep.json`.
+- Added
+  `docs/dev-log/after-task/2026-07-01-lv-arc-gate1-corrected-mission-control.md`.
+
+Evidence now shown:
+
+```text
+Corrected local B_eta_realized Gate 1 diagnostic:
+planned selected entries = 100
+fit convergence = 20/20
+usable profile truth solves = 100/100
+covered/planned = 97/100 = 0.970
+MCSE = 0.0171
+Wilson 95% interval = 0.915481 to 0.989745
+real LR misses = task 7 entry 9, task 8 entry 9, task 11 entry 11
+```
+
+Checks:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+git diff --check -- docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-01-lv-arc-gate1-corrected-mission-control.md
+rg -n "09:48|97/100|100/100 usable|MCSE|Gate 2/3|84/100|partial support|ready to scale|active compute" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-01-lv-arc-gate1-corrected-mission-control.md
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "09:48|97/100|MCSE|Gate 2/3|0 active|closed/parked"
+curl -s http://127.0.0.1:8770/sweep.json | python3 -m json.tool | rg -n "09:48|97/100|MCSE|Gate 2/3|0 active"
+```
+
+Results: JSON parsed for both files; `git diff --check` returned no whitespace
+errors. The claim-audit scan found the intended `09:48`, `97/100`, `MCSE`,
+Gate 2/3 hold, no-active-compute, and source-specific guard wording. Hits for
+"partial support" are guard wording only; hits for `84/100` are historical
+strict no-miss evidence that is explicitly superseded by the corrected
+optimizer-budget row. `tools/start-mission-control.sh --background` reused the
+existing preview server and synced files to `/tmp/gllvm-dashboard` and
+`/private/tmp/gllvm-dashboard`. Curl confirmed served `status.json` and
+`sweep.json` contain the corrected row. The in-app browser at
+`http://127.0.0.1:8770/` showed `Phylo Model A corrected Gate 1`, `97/100`,
+`MCSE`, `Gate 2/3`, `0 active`, and `closed/parked`.
+
+Still not claimed:
+
+- No source-specific `phylo_latent(..., lv = ~ x)` exposure.
+- No PR #127 reopen, push, package API widening, likelihood change, Totoro
+  diagnostic, DRAC claim run, or bootstrap rescue.
+- No Gate 2/3 result, non-Gaussian extension, or public source-specific support.
+
 ## 2026-07-01 09:32 MDT -- Phylo Model A Gate 1 mission-control refresh
 
 Branch: local dirty Dropbox checkout; no push or PR.

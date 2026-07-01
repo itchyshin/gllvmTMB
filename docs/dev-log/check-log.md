@@ -4,6 +4,58 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-01 11:42 MDT -- Phylo Model A Gate 3 running mission-control refresh
+
+Branch: local dirty Dropbox checkout; no push or PR.
+
+Guard: `Gate 3 running != Gate 3 passed != source-specific phylo lv support`.
+
+Purpose:
+
+- Move Mission Control from “Gate 3 queued” to “Gate 3 running.”
+- Keep active compute visible without implying reduced DRAC claim evidence.
+- Keep source-specific R grammar, PR #127 reopening, package API widening, and
+  public support blocked.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json`.
+- Updated `docs/dev-log/dashboard/sweep.json`.
+- Added
+  `docs/dev-log/after-task/2026-07-01-lv-arc-gate3-running-mission-control.md`.
+
+Live poll:
+
+```text
+SLURM job: 17049809_[1-500%100]
+host: Nibi
+state: running / pending array
+active tasks: 20
+pending tasks: 480
+result files: 0/500
+detail files: 0/500
+non-empty error logs: 0
+results: /scratch/snakagaw/phylo_model_a_gate3_20260701-1122/results
+```
+
+Checks:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "17049809|Gate 3|running|1 active|0 queued|0/500"
+ssh nibi 'squeue -j 17049809 -o "%.30i %.12P %.20j %.8u %.2t %.12M %.6D %R"'
+```
+
+Still not claimed:
+
+- Gate 3 has not passed.
+- No DRAC result denominator has been reduced.
+- No source-specific `phylo_latent(..., lv = ~ x)` exposure.
+- No PR #127 reopen, push, package API widening, likelihood change, bootstrap
+  rescue, or public source-specific support.
+
 ## 2026-07-01 11:34 MDT -- Phylo Model A Gate 3 queued mission-control refresh
 
 Branch: local dirty Dropbox checkout; no push or PR.

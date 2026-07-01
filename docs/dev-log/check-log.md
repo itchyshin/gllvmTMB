@@ -4,6 +4,60 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-01 06:24 MDT -- LV arc next-target mission-control refresh
+
+Branch: local dirty Dropbox checkout; no push or PR.
+
+Guard: `B_eta_realized design != compute != source-specific phylo lv support`.
+
+Purpose:
+
+- Make Mission Control show the next Phylo Gaussian Model A decision after the
+  failed weak-cell evidence: Gate 0 for an eta-scale realized
+  `B_eta_realized` target.
+- Keep the old p=80, K=2, lambda=0.5 evidence blocked/parked for v1:
+  `591/720 = 0.821`, optimistic `671/800 = 0.839`, task-8 entry-71
+  `profile_truth` LR miss, K=1 profile_truth `98/100`, and direct-slope
+  strict-gate `96/100`.
+- Keep Totoro diagnostic-only and DRAC claim-only, both idle until Gate 0
+  truth-extractor/unit-test evidence and maintainer approval.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json`.
+- Updated `docs/dev-log/dashboard/sweep.json`.
+- Added `docs/dev-log/after-task/2026-07-01-lv-arc-next-target-mission-control.md`.
+
+Checks:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+git diff --check -- docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-01-lv-arc-next-target-mission-control.md
+rg -n "B_eta_realized|Gate 0|no-compute|Totoro|DRAC|partial support|ready to scale|active compute" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-01-lv-arc-next-target-mission-control.md
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/version.txt
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "B_eta_realized|Gate 0|no active compute|Totoro|DRAC"
+```
+
+Results: JSON parsed for both files; `git diff --check` returned no whitespace
+errors. The claim-audit scan found the intended `B_eta_realized`, Gate 0,
+no-compute, Totoro, and DRAC gate language. Hits for "partial support" are
+explicit guard wording, and no stale "ready to scale" claim was present in the
+dashboard source. `tools/start-mission-control.sh --background` reused the
+existing preview server and synced files to `/tmp/gllvm-dashboard` and
+`/private/tmp/gllvm-dashboard`; `version.txt` stayed `r60`. Curl and the in-app
+browser both showed `B_eta_realized`, Gate 0, no-compute, Totoro diagnostics,
+DRAC claim evidence, `0 active compute`, the blocked weak-cell row, and
+source-specific phylo `lv` retired/parked language.
+
+Still not claimed:
+
+- No source-specific `phylo_latent(..., lv = ~ x)` exposure.
+- No PR #127 reopen, push, package API widening, likelihood change, or compute
+  launch.
+- No non-Gaussian, mixed-family, mask, or CI calibration claim.
+
 ## 2026-06-16 -- Masked-CI report stale wording cleanup
 
 Tightened one after-task phrase found by a Rose stale-wording scan so it now

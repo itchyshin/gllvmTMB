@@ -23759,3 +23759,79 @@ Validation:
 Not run:
 - No `R CMD check`, pkgdown, article render, Totoro job, DRAC job, PR reopen,
   push, API widening, R grammar exposure, or likelihood change.
+
+Rose verdict: PASS WITH NOTES -- the truth-lock wording and bridge guard are
+coherent; this remains a focused guard slice, not a full package check.
+
+## 2026-07-02 - Structural-dependence LV truth matrix Gates 0-2
+
+Mission Control was refreshed after local Gate 0-2 verification. This is a
+truth-lock update only: no source-specific `lv` exposure, no API widening, no
+likelihood change, no PR reopen, and no Totoro/DRAC compute.
+
+Files updated:
+
+- `docs/dev-log/dashboard/status.json`
+- `docs/dev-log/dashboard/sweep.json`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-07-02-structural-lv-gates-0-2.md`
+
+Detailed closeout:
+
+- `/private/tmp/gllvmjl-phylo-xlv/docs/dev-log/decisions/2026-07-02-structural-dependence-lv-gates-0-2-closeout.md`
+
+Focused checks:
+
+```sh
+Rscript -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-canonical-keywords.R")'
+# 67 pass / 3 INLA skips
+
+Rscript -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+# 380 pass / 14 GLLVM.jl-path skips
+
+Rscript -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-ordinary-latent-random-regression.R")'
+# 23 pass / 7 CRAN skips
+
+Rscript -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-stage37-mixed-family.R")'
+# 6 pass
+
+julia --project=. --startup-file=no test/test_bridge_capabilities.jl
+# 63 pass
+
+julia --project=. --startup-file=no test/test_bridge_mixed.jl
+# 18 pass
+
+julia --project=. --startup-file=no test/test_bridge_x.jl
+# 195 pass
+
+julia --project=. --startup-file=no test/test_bridge_missing_mask.jl
+# 83 pass
+
+julia --project=. --startup-file=no test/test_bridge_ci.jl
+# 64 pass
+```
+
+Gate verdict: source-specific structural `lv = ~ env` remains fail-loud;
+structural random-slope syntax is a separate evidence lane; R and Julia bridge
+truth reconciles with named drift; mixed-family vectors remain point/postfit
+only; non-Gaussian/source-specific structural LV requires a new derivation and
+ADEMP gate.
+
+Dashboard / claim validation after refresh:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+git diff --check -- docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-02-structural-lv-gates-0-2.md
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool >/dev/null
+curl -s http://127.0.0.1:8770/sweep.json | python3 -m json.tool >/dev/null
+curl -s http://127.0.0.1:8770/version.txt
+# r60
+```
+
+Served JSON contains the new `Structural LV truth matrix` row and the Gate 0-2
+focused-test evidence row. In-app browser preview at `http://127.0.0.1:8770/`
+confirmed the row is visible. Claim audit returned only expected negative guard
+phrasing such as no source-specific support, no PR #127 reopen, and no active
+compute.

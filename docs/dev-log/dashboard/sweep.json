@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-01 17:55 MDT",
+  "updated": "2026-07-02 18:31 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-02 18:31 MDT",
+      "who": "Structural LV truth matrix",
+      "status": "covered",
+      "text": "Gates 0-2 are locally verified for the structural-dependence LV truth-lock: source-specific lv = ~ env guards are fail-loud, structural random-slope syntax is separated from lv grammar, R and Julia bridge ledgers reconcile with named drift, and mixed-family vectors remain point/postfit only. No API widening, source-specific lv exposure, PR reopen, Totoro/DRAC compute, or public support claim."
+    },
     {
       "when": "2026-06-30 16:10 MDT",
       "who": "PR #581 merged",
@@ -125,6 +131,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-02 18:31 MDT",
+      "who": "Gate 0-2 focused tests",
+      "status": "covered",
+      "text": "Focused verification passed: canonical source guards 67 pass / 3 INLA skips; R Julia bridge 380 pass / 14 GLLVM.jl-path skips; ordinary latent random-regression 23 pass / 7 CRAN skips; mixed-family stage smoke 6 pass; Julia bridge capabilities 63 pass, mixed-family 18 pass, fixed-effect X 195 pass, missing-mask 83 pass, and CI routing 64 pass."
+    },
     {
       "when": "2026-06-30",
       "who": "GitHub Actions",

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-02 18:31 MDT",
+  "updated": "2026-07-02 19:05 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-02 19:05 MDT",
+      "who": "LV arc final closeout",
+      "status": "covered",
+      "text": "Remaining unblocked LV work is closed: ordinary LV is covered, B_eta_realized Gate 0-3 evidence is frozen for the changed target, structural source guards and bridge truth are verified through Gates 0-2, and the next work moves to a separate GLLVM capability slice. No source-specific grammar exposure, PR #127 reopen, API widening, large compute, non-Gaussian inheritance, or mixed-family CI claim."
+    },
     {
       "when": "2026-07-02 18:31 MDT",
       "who": "Structural LV truth matrix",
@@ -131,6 +137,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-02 19:05 MDT",
+      "who": "Final closeout packet",
+      "status": "covered",
+      "text": "GLLVM.jl handover note 2026-07-02-lv-arc-final-closeout-and-next-capabilities.md reconciles the evidence ladders: Phylo Gaussian Model A is internally closed through Gate 0-3 for B_eta_realized, structural-dependence guards are closed through Gates 0-2, and future public/source-specific/non-Gaussian/mixed-family work is a new gated goal."
+    },
     {
       "when": "2026-07-02 18:31 MDT",
       "who": "Gate 0-2 focused tests",

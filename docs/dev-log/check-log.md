@@ -23835,3 +23835,47 @@ focused-test evidence row. In-app browser preview at `http://127.0.0.1:8770/`
 confirmed the row is visible. Claim audit returned only expected negative guard
 phrasing such as no source-specific support, no PR #127 reopen, and no active
 compute.
+
+## 2026-07-02 - LV final closeout and next capability lane
+
+Mission Control was refreshed with a final top-row closeout after reconciling
+the two evidence ladders:
+
+- Phylo Gaussian Model A is frozen through Gate 0-3 for the changed
+  `B_eta_realized` target only.
+- Structural-dependence LV source guards and bridge truth are locally verified
+  through Gates 0-2.
+- Source-specific R grammar, PR #127 reopening, package API widening,
+  non-Gaussian/source-specific inheritance, mixed-family `X`/`X_lv`/masks/CIs,
+  and public support wording remain separate future goals.
+
+Files updated:
+
+- `docs/dev-log/dashboard/status.json`
+- `docs/dev-log/dashboard/sweep.json`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-07-02-lv-final-closeout-next-capabilities.md`
+
+Detailed closeout:
+
+- `/private/tmp/gllvmjl-phylo-xlv/docs/dev-log/decisions/2026-07-02-lv-arc-final-closeout-and-next-capabilities.md`
+
+No package API, likelihood, source-specific grammar, PR state, push, Totoro job,
+or DRAC job changed.
+
+Validation:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+git diff --check -- docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-02-lv-final-closeout-next-capabilities.md
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool >/dev/null
+curl -s http://127.0.0.1:8770/sweep.json | python3 -m json.tool >/dev/null
+curl -s http://127.0.0.1:8770/version.txt
+# r60
+```
+
+In-app browser preview at `http://127.0.0.1:8770/` shows the final closeout
+row, `B_eta_realized Gate 0-3`, no source-specific grammar exposure, and
+`0 active`.

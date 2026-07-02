@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-02 12:57 MDT",
+  "updated": "2026-07-02 13:04 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-02 13:04 MDT",
+      "who": "Structural-source non-Gaussian LV Gate 0",
+      "status": "guard",
+      "text": "Gate 0 matrix is now banked in GLLVM.jl: ordinary Poisson/Binomial logit/NB2/Gamma/Beta selected-entry B_lv profile-LR canaries remain ordinary route evidence only. Phylo/spatial/animal/kernel non-Gaussian LV now require a source/family target page, local canary, Totoro diagnostic, DRAC evidence, and maintainer/Rose sign-off before compute or grammar exposure. No active compute."
+    },
     {
       "when": "2026-07-02 12:57 MDT",
       "who": "Ordinary non-Gaussian LV profile",

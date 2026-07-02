@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-02 13:04 MDT",
+  "updated": "2026-07-02 13:15 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-02 13:15 MDT",
+      "who": "Phylo x Poisson structural LV S0",
+      "status": "guard",
+      "text": "First source/family S0 target page is banked in GLLVM.jl. It defines the phylo x Poisson link-scale realized/design-conditional B_eta_realized target and symbolic alignment table. S1 remains blocked until a combined phylo + Poisson + X_lv likelihood exists with reduction tests; no source-specific R grammar, bridge transport, Totoro/DRAC compute, or support wording follows."
+    },
     {
       "when": "2026-07-02 13:04 MDT",
       "who": "Structural-source non-Gaussian LV Gate 0",

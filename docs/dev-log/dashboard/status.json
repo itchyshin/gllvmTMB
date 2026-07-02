@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local operating board for gllvmTMB capability truth. Current focus: LV arc closeout, source guards, profile-first native GLLVM.jl B_lv hardening, bridge truth, and next gated structural arcs.",
-  "updated": "2026-07-02 13:04 MDT",
+  "updated": "2026-07-02 13:15 MDT",
   "source": "gllvmTMB PR #581 merged to main at 12526a15. Post-merge R-CMD-check run 28476941515 and pkgdown run 28477809749 both passed; the public extract_lv_effects reference page now shows axis_effect as the default with conf.level, alpha SE/CIs, and explicit trait_effect B_lv SE/CIs. GLLVM.jl PR #127 remains closed/parked as blocked evidence, and source-specific phylo_latent(..., lv = ~ x) remains fail-loud. Old population-B_lv evidence remains negative: bootstrap_basic 591/720 = 0.821, optimistic cancelled-task bound 671/800 = 0.839, local task-8 entry-71 profile_truth LR 9.9918 > 3.8415, narrowed K=1 profile_truth 98/100, and profile_direct_slope strict K=1 gate 96/100. The non-v1 eta-scale realized/design-conditional B_eta_realized route has now cleared Gate 0, amended Gate 1, and Gate 2 diagnostic evidence: corrected Gate 1 was 97/100 with 100/100 usable, and Gate 2 on Totoro from clean GLLVM.jl commit 41a4120 was 20/20 fits converged, 100/100 usable selected-entry profile truth solves, 100/100 covered, MCSE 0.0000, Wilson 95% 0.9630 to 1.0000, max LR 2.6733 < 3.8415, and zero misses. Gate 2 is diagnostic evidence only, not public source-specific support. Gate 3 DRAC claim evidence passed on Nibi as job 17049809_[1-500%100]: 500/500 fits converged, 2500/2500 selected entries were usable, 2495/2500 covered, MCSE 0.000890835, Wilson 95 percent 0.995326484 to 0.999145426, 5 LR misses, and 0 non-empty error logs. This is DRAC-only evidence for the non-v1 B_eta_realized target; source-specific R grammar, PR #127 reopening, and public support wording still require explicit maintainer authorization. LV structural dependencies remain truth-locked: source-specific lv guards stay covered/fail-loud, the mixed-family bridge row is complete balanced point/postfit only, and mixed-family X/X_lv/masks/CIs remain blocked. No active Gate 3 compute remains; the reduced evidence is recorded, the compact evidence-freeze packet is written in the GLLVM.jl handover worktree, and no public/source-specific support is claimed without maintainer authorization. Final LV arc closeout hardens the source-specific lv guard: lv = ~ env is rejected for phylo, spatial, animal, and kernel structural keywords and legacy aliases instead of being silently dropped. This is a fail-loud boundary, not source-specific lv support. Native GLLVM.jl profile-first hardening now adds selected-entry B_lv profile routing and profile control knobs, but this is not R bridge profile transport, R parity, coverage calibration, source-specific lv support, or mixed-family CI support. The concurrent unique= implementation lane is R/TMB-first and separate; this LV closeout does not start Julia parity or widen source-specific lv grammar from that lane.",
   "claim_guard": {
     "title": "Claim boundary",
@@ -764,6 +764,12 @@
     }
   ],
   "active_work": [
+    {
+      "when": "2026-07-02 13:15 MDT",
+      "who": "Phylo x Poisson structural LV S0",
+      "status": "guard",
+      "text": "First source/family S0 target page is banked in GLLVM.jl. It defines the phylo x Poisson link-scale realized/design-conditional B_eta_realized target and symbolic alignment table. S1 remains blocked until a combined phylo + Poisson + X_lv likelihood exists with reduction tests; no source-specific R grammar, bridge transport, Totoro/DRAC compute, or support wording follows."
+    },
     {
       "when": "2026-07-02 13:04 MDT",
       "who": "Structural-source non-Gaussian LV Gate 0",

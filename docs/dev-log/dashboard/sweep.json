@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-02 08:23 MDT",
+  "updated": "2026-07-02 12:49 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -12,10 +12,10 @@
   },
   "active_work": [
     {
-      "when": "2026-07-02 08:23 MDT",
+      "when": "2026-07-02 12:49 MDT",
       "who": "Ordinary non-Gaussian LV profile",
       "status": "guard",
-      "text": "GLLVM.jl Gate 0/1 route evidence is now local for ordinary Poisson, Binomial logit, and NB2 selected-entry B_lv profile-LR: ADEMP note recorded, test/test_lv_ci.jl canaries B_lv[1,1] with finite endpoints and known DGP truth inclusion, and the focused LV CI test passed 162/162 in 3m26.5s. This is not coverage calibration, R bridge profile/bootstrap transport, source-specific lv support, mixed-family CI support, or unique= parity. No compute is active."
+      "text": "GLLVM.jl Gate 0/1 route evidence is now local for ordinary Poisson, Binomial logit, NB2, and Gamma selected-entry B_lv profile-LR: ADEMP note recorded, test/test_lv_ci.jl canaries B_lv[1,1] with finite endpoints and known DGP truth inclusion, and the focused LV CI test passed 171/171 in 3m39.1s. This is not coverage calibration, R bridge profile/bootstrap transport, source-specific lv support, mixed-family CI support, or unique= parity. No compute is active."
     },
     {
       "when": "2026-07-02 06:14 MDT",

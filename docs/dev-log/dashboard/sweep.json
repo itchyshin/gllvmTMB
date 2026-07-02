@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-02 13:42 MDT",
+  "updated": "2026-07-02 14:00 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -12,10 +12,10 @@
   },
   "active_work": [
     {
-      "when": "2026-07-02 13:42 MDT",
+      "when": "2026-07-02 14:00 MDT",
       "who": "Phylo x Poisson structural LV S1",
       "status": "guard",
-      "text": "GLLVM.jl now has the first private phylo x Poisson x X_lv combined likelihood proof: joint Laplace over site-score innovations and the augmented phylo random intercept, with reductions to ordinary Poisson X_lv, phylo-only Poisson GLM at Lambda = 0, and a dense leaf-covariance reference. The next gate is a tiny selected-entry B_eta_realized profile-LR canary. No public fitter, source-specific R grammar, bridge transport, Totoro/DRAC compute, or support wording follows."
+      "text": "GLLVM.jl now has the first private phylo x Poisson x X_lv S1 route canary: the combined likelihood proof has reductions to ordinary Poisson X_lv, phylo-only Poisson GLM at Lambda = 0, and a dense leaf-covariance reference, and the deterministic selected-entry B_eta_realized profile-LR canary is covered locally in test/test_phylo_poisson_xlv.jl (9/9 likelihood anchors + 14/14 canary assertions). Next gate is only an S2/Totoro diagnostic manifest if authorized. No public fitter, source-specific R grammar, bridge transport, Totoro/DRAC compute, or support wording follows."
     },
     {
       "when": "2026-07-02 13:04 MDT",

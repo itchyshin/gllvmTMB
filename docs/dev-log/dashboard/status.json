@@ -2,10 +2,10 @@
   "title": "GLLVM mission control",
   "subtitle": "Local operating board for gllvmTMB capability truth. Current focus: LV arc closeout, source guards, phylo evidence freeze, and next gated structural arcs.",
   "updated": "2026-07-02 19:05 MDT",
-  "source": "gllvmTMB PR #581 merged to main at 12526a15. Post-merge R-CMD-check run 28476941515 and pkgdown run 28477809749 both passed; the public extract_lv_effects reference page now shows axis_effect as the default with conf.level, alpha SE/CIs, and explicit trait_effect B_lv SE/CIs. GLLVM.jl PR #127 remains closed/parked as blocked evidence, and source-specific phylo_latent(..., lv = ~ x) remains fail-loud. Old population-B_lv evidence remains negative: bootstrap_basic 591/720 = 0.821, optimistic cancelled-task bound 671/800 = 0.839, local task-8 entry-71 profile_truth LR 9.9918 > 3.8415, narrowed K=1 profile_truth 98/100, and profile_direct_slope strict K=1 gate 96/100. The non-v1 eta-scale realized/design-conditional B_eta_realized route has now cleared Gate 0, amended Gate 1, and Gate 2 diagnostic evidence: corrected Gate 1 was 97/100 with 100/100 usable, and Gate 2 on Totoro from clean GLLVM.jl commit 41a4120 was 20/20 fits converged, 100/100 usable selected-entry profile truth solves, 100/100 covered, MCSE 0.0000, Wilson 95% 0.9630 to 1.0000, max LR 2.6733 < 3.8415, and zero misses. Gate 2 is diagnostic evidence only, not public source-specific support. Gate 3 DRAC claim evidence passed on Nibi as job 17049809_[1-500%100]: 500/500 fits converged, 2500/2500 selected entries were usable, 2495/2500 covered, MCSE 0.000890835, Wilson 95 percent 0.995326484 to 0.999145426, 5 LR misses, and 0 non-empty error logs. This is DRAC-only evidence for the non-v1 B_eta_realized target; source-specific R grammar, PR #127 reopening, and public support wording still require explicit maintainer authorization. LV structural dependencies remain truth-locked: source-specific lv guards stay covered/fail-loud, the mixed-family bridge row is complete balanced point/postfit only, and mixed-family X/X_lv/masks/CIs remain blocked. No active Gate 3 compute remains; the reduced evidence is recorded, the compact evidence-freeze packet is written in the GLLVM.jl handover worktree, and no public/source-specific support is claimed without maintainer authorization. Final LV arc closeout adds the source-specific lv guard: lv = ~ env is rejected for phylo_latent(), spatial_latent(), animal_latent(), kernel_latent(), and phylo()/spatial() latent-mode wrappers instead of being silently dropped. This is a fail-loud boundary, not source-specific lv support.",
+  "source": "gllvmTMB PR #581 merged to main at 12526a15. Post-merge R-CMD-check run 28476941515 and pkgdown run 28477809749 both passed; the public extract_lv_effects reference page now shows axis_effect as the default with conf.level, alpha SE/CIs, and explicit trait_effect B_lv SE/CIs. GLLVM.jl PR #127 remains closed/parked as blocked evidence, and source-specific phylo_latent(..., lv = ~ x) remains fail-loud. Old population-B_lv evidence remains negative: bootstrap_basic 591/720 = 0.821, optimistic cancelled-task bound 671/800 = 0.839, local task-8 entry-71 profile_truth LR 9.9918 > 3.8415, narrowed K=1 profile_truth 98/100, and profile_direct_slope strict K=1 gate 96/100. The non-v1 eta-scale realized/design-conditional B_eta_realized route has now cleared Gate 0, amended Gate 1, and Gate 2 diagnostic evidence: corrected Gate 1 was 97/100 with 100/100 usable, and Gate 2 on Totoro from clean GLLVM.jl commit 41a4120 was 20/20 fits converged, 100/100 usable selected-entry profile truth solves, 100/100 covered, MCSE 0.0000, Wilson 95% 0.9630 to 1.0000, max LR 2.6733 < 3.8415, and zero misses. Gate 2 is diagnostic evidence only, not public source-specific support. Gate 3 DRAC claim evidence passed on Nibi as job 17049809_[1-500%100]: 500/500 fits converged, 2500/2500 selected entries were usable, 2495/2500 covered, MCSE 0.000890835, Wilson 95 percent 0.995326484 to 0.999145426, 5 LR misses, and 0 non-empty error logs. This is DRAC-only evidence for the non-v1 B_eta_realized target; source-specific R grammar, PR #127 reopening, and public support wording still require explicit maintainer authorization. LV structural dependencies remain truth-locked: source-specific lv guards stay covered/fail-loud, the mixed-family bridge row is complete balanced point/postfit only, and mixed-family X/X_lv/masks/CIs remain blocked. No active Gate 3 compute remains; the reduced evidence is recorded, the compact evidence-freeze packet is written in the GLLVM.jl handover worktree, and no public/source-specific support is claimed without maintainer authorization. Final LV arc closeout hardens the source-specific lv guard: lv = ~ env is rejected for phylo, spatial, animal, and kernel structural keywords and legacy aliases instead of being silently dropped. This is a fail-loud boundary, not source-specific lv support.",
   "claim_guard": {
     "title": "Claim boundary",
-    "text": "The current LV arc is closed as a truth-lock. Ordinary extract_lv_effects() remains covered: axis_effect alpha is the default conditional axis/access-effect output, and trait_effect B_lv is explicit. Phylo Gaussian Model A Gate 0-3 evidence is frozen for the changed B_eta_realized target only; this is not public source-specific lv support and does not reopen PR #127. Source-specific lv = ~ env is fail-loud for phylo_latent(), spatial_latent(), animal_latent(), kernel_latent(), and latent-mode wrappers. Mixed-family LV remains complete balanced point/postfit only. Non-Gaussian/source-specific structural LV starts a separate derivation and ADEMP arc; it does not inherit Gaussian Gate 3 evidence."
+    "text": "The current LV arc is closed as a truth-lock. Ordinary extract_lv_effects() remains covered: axis_effect alpha is the default conditional axis/access-effect output, and trait_effect B_lv is explicit. Phylo Gaussian Model A Gate 0-3 evidence is frozen for the changed B_eta_realized target only; this is not public source-specific lv support and does not reopen PR #127. Source-specific lv = ~ env is fail-loud for phylo, spatial, animal, and kernel structural keywords and legacy aliases. Mixed-family LV remains complete balanced point/postfit only. Non-Gaussian/source-specific structural LV starts a separate derivation and ADEMP arc; it does not inherit Gaussian Gate 3 evidence."
   },
   "metrics": {
     "covered": 18,
@@ -22,7 +22,7 @@
       "active": "LV arc closeout is complete; no active LV compute remains and no grammar/API widening is running.",
       "queued": "No queued LV row remains; next structural/non-Gaussian LV work must start as a separate target, derivation, and ADEMP gate.",
       "partial": "broad LV, source-specific phylo lv, Julia CI calibration, and mixed-family rows are not complete",
-      "blocked": "public source-specific phylo Model A remains blocked/parked until Shinichi explicitly authorizes grammar/API exposure. Source-specific lv = ~ env now fails loudly for structural latent keywords. Old population-target and bootstrap routes remain retired; Gate 3 passed only for the revised B_eta_realized target."
+      "blocked": "public source-specific phylo Model A remains blocked/parked until Shinichi explicitly authorizes grammar/API exposure. Source-specific lv = ~ env now fails loudly for all source-specific structural keywords and legacy aliases. Old population-target and bootstrap routes remain retired; Gate 3 passed only for the revised B_eta_realized target."
     }
   },
   "truth_cards": [
@@ -114,7 +114,7 @@
       "label": "Source lv guard",
       "value": "merged #573",
       "status": "covered",
-      "note": "PR #573 proved ordinary latent lv desugaring and source-specific phylo/animal/spatial/kernel lv rejection. The closeout guard now also rejects lv = ~ env on phylo_latent(), spatial_latent(), animal_latent(), kernel_latent(), and phylo()/spatial() latent-mode wrappers before desugaring can silently drop it. Post-merge main R-CMD-check and pkgdown completed successfully for the original guard; the closeout parser test is local focused evidence.",
+      "note": "PR #573 proved ordinary latent lv desugaring and source-specific phylo/animal/spatial/kernel lv rejection. The closeout guard now rejects lv = ~ env across phylo, spatial, animal, and kernel structural keywords and legacy aliases before desugaring can silently drop it. Post-merge main R-CMD-check and pkgdown completed successfully for the original guard; the expanded closeout parser test is local focused evidence.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/573",
       "link_label": "PR #573"
     },
@@ -884,7 +884,7 @@
       "when": "2026-07-01 17:55 MDT",
       "who": "LV arc closeout",
       "status": "covered",
-      "text": "Current LV arc is closed as a truth-lock: ordinary LV is covered, phylo Gaussian Model A B_eta_realized Gate 0-3 evidence is frozen, source-specific lv = ~ env is fail-loud for structural latent keywords, mixed-family remains point/postfit only, and non-Gaussian/source-specific structural LV starts a separate gated arc."
+      "text": "Current LV arc is closed as a truth-lock: ordinary LV is covered, phylo Gaussian Model A B_eta_realized Gate 0-3 evidence is frozen, source-specific lv = ~ env is fail-loud for source-specific structural keywords and legacy aliases, mixed-family remains point/postfit only, and non-Gaussian/source-specific structural LV starts a separate gated arc."
     }
   ],
   "serial_gates": [
@@ -948,7 +948,7 @@
       "when": "source grammar",
       "who": "Boole",
       "status": "guard",
-      "text": "Source-specific phylo/animal/spatial/kernel lv syntax remains fail-loud. Ordinary latent(lv = ~ x) evidence must not be reused to promote phylo_latent(..., lv = ~ x), spatial_latent(..., lv = ~ x), animal_latent(..., lv = ~ x), or kernel_latent(..., lv = ~ x). Structural random-slope syntax such as spatial_latent(1 + env | site, d = K) is a separate route, not predictor-informed lv grammar."
+      "text": "Source-specific phylo/animal/spatial/kernel lv syntax remains fail-loud across scalar, unique, indep, dep, latent, and legacy-alias spellings. Ordinary latent(lv = ~ x) evidence must not be reused to promote phylo_latent(..., lv = ~ x), spatial_latent(..., lv = ~ x), animal_latent(..., lv = ~ x), or kernel_latent(..., lv = ~ x). Structural random-slope syntax such as spatial_latent(1 + env | site, d = K) is a separate route, not predictor-informed lv grammar."
     },
     {
       "when": "mixed",
@@ -1182,7 +1182,7 @@
       "engine": "guard",
       "bridge": "blocked",
       "inference": "not_applicable",
-      "evidence": "PR #573 merged at 2fc42935. Ordinary latent lv remains admitted; phylo/animal/spatial/kernel lv spellings and unsupported aliases fail loudly.",
+      "evidence": "PR #573 merged at 2fc42935. Ordinary latent lv remains admitted; phylo/animal/spatial/kernel structural lv spellings and legacy aliases fail loudly. Expanded local guard test now passes in test-canonical-keywords.R.",
       "next_gate": "Source-specific support is parked for v1; future non-v1 support needs structural redesign with fresh evidence and explicit maintainer sign-off."
     },
     {
@@ -1281,7 +1281,7 @@
       "when": "2026-07-02 18:31 MDT",
       "who": "Gate 0-2 focused tests",
       "status": "covered",
-      "text": "Focused verification passed: canonical source guards 67 pass / 3 INLA skips; R Julia bridge 380 pass / 14 GLLVM.jl-path skips; ordinary latent random-regression 23 pass / 7 CRAN skips; mixed-family stage smoke 6 pass; Julia bridge capabilities 63 pass, mixed-family 18 pass, fixed-effect X 195 pass, missing-mask 83 pass, and CI routing 64 pass."
+      "text": "Focused verification passed: canonical source guards 82 pass / 3 INLA skips; R Julia bridge 380 pass / 14 GLLVM.jl-path skips; ordinary latent random-regression 23 pass / 7 CRAN skips; mixed-family stage smoke 6 pass; Julia bridge capabilities 63 pass, mixed-family 18 pass, fixed-effect X 195 pass, missing-mask 83 pass, and CI routing 64 pass."
     },
     {
       "when": "2026-06-30",
@@ -1331,7 +1331,7 @@
       "when": "2026-07-01 17:55 MDT",
       "who": "Source-specific lv guard",
       "status": "covered",
-      "text": "Parser guard now rejects lv = ~ env on phylo_latent(), spatial_latent(), animal_latent(), kernel_latent(), and phylo()/spatial() latent-mode wrappers before desugaring can silently drop it. Focused canonical keyword test passes with 67 pass / 3 INLA skips after pkgload::load_all()."
+      "text": "Parser guard now rejects lv = ~ env across phylo, spatial, animal, and kernel structural keywords and legacy aliases before desugaring can silently drop it. Focused canonical keyword test passes with 82 pass / 3 INLA skips after pkgload::load_all()."
     }
   ],
   "compute_status": [

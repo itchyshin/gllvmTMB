@@ -1915,6 +1915,15 @@ rewrite_canonical_aliases <- function(formula) {
       ">" = "Remove {.code lv = ~ ...} from {.fn {fn}}, or use the supported structural random-slope syntax such as {.code {fn}(1 + env | group, d = K)} when that route is validated for the source."
     ))
   }
+  .source_specific_lv_keywords <- c(
+    "phylo", "phylo_scalar", "phylo_unique", "phylo_indep",
+    "phylo_latent", "phylo_dep", "phylo_rr", "phylo_slope",
+    "spatial", "spatial_scalar", "spatial_unique", "spatial_indep",
+    "spatial_latent", "spatial_dep", "spde",
+    "animal_scalar", "animal_unique", "animal_indep",
+    "animal_latent", "animal_dep", "animal_slope",
+    "kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep"
+  )
   .meta_type <- function(e, fn) {
     nm <- names(e)
     type_idx <- if (is.null(nm)) integer(0L) else which(nm == "type")
@@ -2015,17 +2024,7 @@ rewrite_canonical_aliases <- function(formula) {
   rewrite <- function(e) {
     if (is.call(e)) {
       fn <- as.character(e[[1L]])
-      if (
-        fn %in%
-          c(
-            "phylo",
-            "phylo_latent",
-            "spatial",
-            "spatial_latent",
-            "animal_latent",
-            "kernel_latent"
-          )
-      ) {
+      if (fn %in% .source_specific_lv_keywords) {
         .abort_source_specific_lv(e, fn)
       }
       ## `spatial(formula, mode = ..., mesh = ..., coords = ..., d = ...)`

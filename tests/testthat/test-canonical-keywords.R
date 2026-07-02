@@ -184,12 +184,27 @@ test_that("`unique(..., common = TRUE)` works at the W tier too", {
 
 test_that("source-specific latent lv predictors fail loudly", {
   source_specific_lv <- list(
+    value ~ 0 + trait + phylo_scalar(species, lv = ~env),
+    value ~ 0 + trait + phylo_unique(species, lv = ~env),
+    value ~ 0 + trait + phylo_indep(0 + trait | species, lv = ~env),
     value ~ 0 + trait + phylo_latent(species, d = 1, lv = ~env),
+    value ~ 0 + trait + phylo_dep(0 + trait | species, lv = ~env),
     value ~ 0 + trait + phylo(0 + trait | species, mode = "latent", lv = ~env),
+    value ~ 0 + trait + spatial_scalar(0 + trait | site, lv = ~env),
+    value ~ 0 + trait + spatial_unique(0 + trait | site, lv = ~env),
+    value ~ 0 + trait + spatial_indep(0 + trait | site, lv = ~env),
     value ~ 0 + trait + spatial_latent(0 + trait | site, d = 1, lv = ~env),
+    value ~ 0 + trait + spatial_dep(0 + trait | site, lv = ~env),
     value ~ 0 + trait + spatial(0 + trait | site, mode = "latent", lv = ~env),
+    value ~ 0 + trait + animal_scalar(species, pedigree = ped, lv = ~env),
+    value ~ 0 + trait + animal_unique(species, pedigree = ped, lv = ~env),
+    value ~ 0 + trait + animal_indep(0 + trait | species, pedigree = ped, lv = ~env),
     value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped, lv = ~env),
-    value ~ 0 + trait + kernel_latent(site, K = K, d = 1, lv = ~env)
+    value ~ 0 + trait + animal_dep(0 + trait | species, pedigree = ped, lv = ~env),
+    value ~ 0 + trait + kernel_latent(site, K = K, d = 1, lv = ~env),
+    value ~ 0 + trait + kernel_unique(site, K = K, lv = ~env),
+    value ~ 0 + trait + kernel_indep(site, K = K, lv = ~env),
+    value ~ 0 + trait + kernel_dep(site, K = K, lv = ~env)
   )
 
   for (f in source_specific_lv) {

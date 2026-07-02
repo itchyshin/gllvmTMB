@@ -133,7 +133,7 @@
       "when": "2026-07-01 17:55 MDT",
       "who": "LV arc closeout",
       "status": "covered",
-      "text": "Current LV arc is closed as a truth-lock: ordinary LV is covered, phylo Gaussian Model A B_eta_realized Gate 0-3 evidence is frozen, source-specific lv = ~ env is fail-loud for structural latent keywords, mixed-family remains point/postfit only, and non-Gaussian/source-specific structural LV starts a separate gated arc."
+      "text": "Current LV arc is closed as a truth-lock: ordinary LV is covered, phylo Gaussian Model A B_eta_realized Gate 0-3 evidence is frozen, source-specific lv = ~ env is fail-loud for source-specific structural keywords and legacy aliases, mixed-family remains point/postfit only, and non-Gaussian/source-specific structural LV starts a separate gated arc."
     }
   ],
   "evidence": [
@@ -147,7 +147,7 @@
       "when": "2026-07-02 18:31 MDT",
       "who": "Gate 0-2 focused tests",
       "status": "covered",
-      "text": "Focused verification passed: canonical source guards 67 pass / 3 INLA skips; R Julia bridge 380 pass / 14 GLLVM.jl-path skips; ordinary latent random-regression 23 pass / 7 CRAN skips; mixed-family stage smoke 6 pass; Julia bridge capabilities 63 pass, mixed-family 18 pass, fixed-effect X 195 pass, missing-mask 83 pass, and CI routing 64 pass."
+      "text": "Focused verification passed: canonical source guards 82 pass / 3 INLA skips; R Julia bridge 380 pass / 14 GLLVM.jl-path skips; ordinary latent random-regression 23 pass / 7 CRAN skips; mixed-family stage smoke 6 pass; Julia bridge capabilities 63 pass, mixed-family 18 pass, fixed-effect X 195 pass, missing-mask 83 pass, and CI routing 64 pass."
     },
     {
       "when": "2026-06-30",
@@ -189,7 +189,7 @@
       "when": "2026-07-01 17:55 MDT",
       "who": "Source-specific lv guard",
       "status": "covered",
-      "text": "Parser guard now rejects lv = ~ env on phylo_latent(), spatial_latent(), animal_latent(), kernel_latent(), and phylo()/spatial() latent-mode wrappers before desugaring can silently drop it. Focused canonical keyword test passes with 67 pass / 3 INLA skips after pkgload::load_all()."
+      "text": "Parser guard now rejects lv = ~ env across phylo, spatial, animal, and kernel structural keywords and legacy aliases before desugaring can silently drop it. Focused canonical keyword test passes with 82 pass / 3 INLA skips after pkgload::load_all()."
     }
   ],
   "blockers": [
@@ -215,7 +215,7 @@
       "when": "source grammar",
       "who": "Boole",
       "status": "guard",
-      "text": "Source-specific phylo/animal/spatial/kernel lv syntax remains fail-loud. Ordinary latent(lv = ~ x) evidence must not be reused to promote phylo_latent(..., lv = ~ x), spatial_latent(..., lv = ~ x), animal_latent(..., lv = ~ x), or kernel_latent(..., lv = ~ x). Structural random-slope syntax such as spatial_latent(1 + env | site, d = K) is a separate route, not predictor-informed lv grammar."
+      "text": "Source-specific phylo/animal/spatial/kernel lv syntax remains fail-loud across scalar, unique, indep, dep, latent, and legacy-alias spellings. Ordinary latent(lv = ~ x) evidence must not be reused to promote phylo_latent(..., lv = ~ x), spatial_latent(..., lv = ~ x), animal_latent(..., lv = ~ x), or kernel_latent(..., lv = ~ x). Structural random-slope syntax such as spatial_latent(1 + env | site, d = K) is a separate route, not predictor-informed lv grammar."
     },
     {
       "when": "mixed bridge",

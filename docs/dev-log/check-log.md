@@ -4,6 +4,51 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-01 21:27 MDT -- Source-specific lv alias guard hardening
+
+Branch: local dirty Dropbox checkout; no push or PR.
+
+Guard: `ordinary latent(lv = ~ x) != source-specific structural lv support`.
+
+Purpose:
+
+- Remove remaining source-specific `lv = ~ env` silent-drop paths on structural
+  aliases beyond the latent-mode wrappers.
+- Keep the result as fail-loud grammar only, with no API widening,
+  likelihood change, PR reopen, or compute launch.
+
+Implemented:
+
+- Widened the source-specific parser guard to cover phylo, spatial, animal,
+  and kernel structural keywords, including scalar/unique/indep/dep/latent
+  forms and legacy aliases such as `phylo_rr()` and `spde()`.
+- Expanded the canonical-keyword guard test for formerly silent aliases such as
+  `phylo_indep()`, `spatial_dep()`, `animal_dep()`, and `kernel_dep()`.
+- Updated the formula-grammar note and Mission Control wording to say
+  fail-loud source-specific structural aliases, not source-specific support.
+
+Checks:
+
+```sh
+Rscript -e 'parse("R/brms-sugar.R"); cat("parse-ok\n")'
+Rscript -e 'pkgload::load_all(quiet=TRUE); <all source-specific structural lv probe>'
+Rscript -e 'pkgload::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-canonical-keywords.R")'
+```
+
+Observed focused tallies:
+
+- All source-specific structural `lv = ~ env` probe cases failed loudly.
+- `test-canonical-keywords.R`: 82 pass, 3 INLA skips.
+
+Still not claimed:
+
+- No source-specific `phylo_latent(..., lv = ~ x)`,
+  `spatial_latent(..., lv = ~ x)`, `animal_latent(..., lv = ~ x)`, or
+  `kernel_latent(..., lv = ~ x)` support.
+- No source-specific scalar/unique/indep/dep `lv` support, no PR #127 reopen,
+  no public support wording, no new compute, and no mixed-family `X_lv`/CI
+  widening.
+
 ## 2026-07-01 17:55 MDT -- LV arc closeout source-guard refresh
 
 Branch: local dirty Dropbox checkout; no push or PR.

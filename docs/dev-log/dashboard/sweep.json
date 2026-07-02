@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-02 13:15 MDT",
+  "updated": "2026-07-02 13:42 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -12,10 +12,10 @@
   },
   "active_work": [
     {
-      "when": "2026-07-02 13:15 MDT",
-      "who": "Phylo x Poisson structural LV S0",
+      "when": "2026-07-02 13:42 MDT",
+      "who": "Phylo x Poisson structural LV S1",
       "status": "guard",
-      "text": "First source/family S0 target page is banked in GLLVM.jl. It defines the phylo x Poisson link-scale realized/design-conditional B_eta_realized target and symbolic alignment table. S1 remains blocked until a combined phylo + Poisson + X_lv likelihood exists with reduction tests; no source-specific R grammar, bridge transport, Totoro/DRAC compute, or support wording follows."
+      "text": "GLLVM.jl now has the first private phylo x Poisson x X_lv combined likelihood proof: joint Laplace over site-score innovations and the augmented phylo random intercept, with reductions to ordinary Poisson X_lv, phylo-only Poisson GLM at Lambda = 0, and a dense leaf-covariance reference. The next gate is a tiny selected-entry B_eta_realized profile-LR canary. No public fitter, source-specific R grammar, bridge transport, Totoro/DRAC compute, or support wording follows."
     },
     {
       "when": "2026-07-02 13:04 MDT",
@@ -167,6 +167,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-02 13:42 MDT",
+      "who": "Phylo x Poisson S1 likelihood tests",
+      "status": "covered",
+      "text": "Focused GLLVM.jl tests passed for the private structural-source likelihood proof: test_phylo_poisson_xlv.jl 9/9, test_phylo_glm.jl 6/6, test_phylo_eta_realized.jl 7/7, and GLLVM loaded cleanly. The broader test/runtests.jl include run was interrupted after a long active run in test_zero_inflated.jl and is not counted as a pass."
+    },
     {
       "when": "2026-07-02 06:14 MDT",
       "who": "Profile-first focused tests",

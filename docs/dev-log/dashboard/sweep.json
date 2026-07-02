@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-02 15:59 MDT",
+  "updated": "2026-07-02 16:09 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -12,10 +12,10 @@
   },
   "active_work": [
     {
-      "when": "2026-07-02 15:59 MDT",
-      "who": "Phylo x Poisson structural LV S1",
+      "when": "2026-07-02 16:09 MDT",
+      "who": "Phylo x Poisson structural LV S2 manifest",
       "status": "guard",
-      "text": "GLLVM.jl now has the first private phylo x Poisson x X_lv S1 finite-endpoint route canary: the combined likelihood proof has reductions to ordinary Poisson X_lv, phylo-only Poisson GLM at Lambda = 0, and a dense leaf-covariance reference, and the deterministic selected-entry B_eta_realized profile-LR canary is covered locally in test/test_phylo_poisson_xlv.jl (9/9 likelihood anchors + 22/22 canary assertions), with finite profile endpoints, MLE bracketing, and truth inclusion. Next gate is only an S2/Totoro diagnostic manifest if authorized. No public fitter, source-specific R grammar, bridge transport, Totoro/DRAC compute, or support wording follows."
+      "text": "GLLVM.jl now has a predeclared S2/Totoro diagnostic manifest and local dry-run for the private phylo x Poisson x X_lv route: 20 manifest rows, seed0 20260702, selected B_eta_realized entries 1,2,5, and a 60-entry diagnostic denominator. This is manifest-only and no outcome-producing compute is active. The prior S1 evidence remains local route evidence: test/test_phylo_poisson_xlv.jl has 9/9 likelihood anchors and 22/22 finite-endpoint canary assertions. No public fitter, source-specific R grammar, bridge transport, Totoro/DRAC launch, bootstrap rescue, or support wording follows."
     },
     {
       "when": "2026-07-02 13:04 MDT",
@@ -167,6 +167,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-02 16:09 MDT",
+      "who": "Phylo x Poisson S2 manifest dry-run",
+      "status": "guard",
+      "text": "GLLVM.jl bench/phylo_poisson_xlv_s2_manifest.jl wrote 20 manifest tasks to /tmp/phylo_poisson_xlv_s2_manifest_params.csv and dry-ran task 1: Poisson(log) augmented phylo, p=6, n_sites=28, K=1, q_lv=1, sigma2_phy=0.35, selected entries 1;2;5, target B_eta_realized, method private _phylo_poisson_xlv_profile_eta_realized. Dry-run only: no model fit, no random draw, no Totoro/DRAC launch."
+    },
     {
       "when": "2026-07-02 13:42 MDT",
       "who": "Phylo x Poisson S1 likelihood tests",

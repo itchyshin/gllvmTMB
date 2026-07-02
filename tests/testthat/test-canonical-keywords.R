@@ -182,6 +182,24 @@ test_that("`unique(..., common = TRUE)` works at the W tier too", {
   expect_true(all(abs(sds_W - sds_W[1L]) < 1e-10))
 })
 
+test_that("source-specific latent lv predictors fail loudly", {
+  source_specific_lv <- list(
+    value ~ 0 + trait + phylo_latent(species, d = 1, lv = ~env),
+    value ~ 0 + trait + phylo(0 + trait | species, mode = "latent", lv = ~env),
+    value ~ 0 + trait + spatial_latent(0 + trait | site, d = 1, lv = ~env),
+    value ~ 0 + trait + spatial(0 + trait | site, mode = "latent", lv = ~env),
+    value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped, lv = ~env),
+    value ~ 0 + trait + kernel_latent(site, K = K, d = 1, lv = ~env)
+  )
+
+  for (f in source_specific_lv) {
+    expect_error(
+      suppressMessages(suppressWarnings(gllvmTMB:::desugar_brms_sugar(f))),
+      regexp = "reserved for ordinary.*latent|silently dropping"
+    )
+  }
+})
+
 test_that("PGLLVM foot-gun: phylo_latent + latent/unique without `unit = species` errors", {
   set.seed(7)
   n_sp <- 20

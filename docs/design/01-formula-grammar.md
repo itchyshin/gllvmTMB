@@ -98,6 +98,15 @@ support from end-to-end verification:
 | `meta_V(V = V, type = "proportional")` | **planned (post-CRAN)** | Unification of known-additive and proportional sampling-variance forms per Nakagawa 2022 EcoLetters. See vision doc "Planned extensions". |
 | `weights = w` argument | **planned (post-CRAN)** | glmmTMB-style row-weights, separate from `meta_V()`. See vision doc "Planned extensions". |
 
+**Source-specific `lv` guard (2026-07-01):** `lv = ~ env` is
+predictor-informed ordinary-latent syntax only. It is not active for
+`phylo_latent()`, `spatial_latent()`, `animal_latent()`,
+`kernel_latent()`, or their `phylo()` / `spatial()` latent-mode wrappers.
+These calls fail loudly instead of silently dropping `lv`. Structural
+random-slope syntax such as `spatial_latent(1 + env | site, d = K)` remains a
+separate validated route when its own source/family gate is covered; it is not
+the same as `lv = ~ env`.
+
 **Persona-active engagement on this table:** Boole owns the column
 "Current status" — every change to the column requires a Boole
 review. Rose owns cross-checking each row against

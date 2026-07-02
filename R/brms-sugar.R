@@ -1903,6 +1903,18 @@ rewrite_canonical_aliases <- function(formula) {
     }
     args[nms %in% keep & nzchar(nms)]
   }
+  .abort_source_specific_lv <- function(e, fn) {
+    nm <- names(e)
+    if (is.null(nm) || !"lv" %in% nm) {
+      return(invisible(NULL))
+    }
+    cli::cli_abort(c(
+      "{.arg lv} is reserved for ordinary {.fn latent} only.",
+      "x" = "{.fn {fn}} does not currently support predictor-informed latent means.",
+      "i" = "Source-specific {.arg lv} support needs a separate structural-dependence gate; silently dropping {.arg lv} is not allowed.",
+      ">" = "Remove {.code lv = ~ ...} from {.fn {fn}}, or use the supported structural random-slope syntax such as {.code {fn}(1 + env | group, d = K)} when that route is validated for the source."
+    ))
+  }
   .meta_type <- function(e, fn) {
     nm <- names(e)
     type_idx <- if (is.null(nm)) integer(0L) else which(nm == "type")
@@ -2003,6 +2015,19 @@ rewrite_canonical_aliases <- function(formula) {
   rewrite <- function(e) {
     if (is.call(e)) {
       fn <- as.character(e[[1L]])
+      if (
+        fn %in%
+          c(
+            "phylo",
+            "phylo_latent",
+            "spatial",
+            "spatial_latent",
+            "animal_latent",
+            "kernel_latent"
+          )
+      ) {
+        .abort_source_specific_lv(e, fn)
+      }
       ## `spatial(formula, mode = ..., mesh = ..., coords = ..., d = ...)`
       ## -> one of spatial_scalar / spatial_unique / spatial_indep /
       ## spatial_latent / spatial_dep based on (LHS, mode). Design 07

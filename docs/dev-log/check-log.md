@@ -4,6 +4,58 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-01 17:55 MDT -- LV arc closeout source-guard refresh
+
+Branch: local dirty Dropbox checkout; no push or PR.
+
+Guard: `LV arc closed != source-specific lv support != non-Gaussian inheritance`.
+
+Purpose:
+
+- Close the current LV arc as operating truth.
+- Fix the structural-source foot-gun where `lv = ~ env` on
+  source-specific latent keywords could desugar without an error.
+- Keep mixed-family and non-Gaussian/source-specific structural LV outside this
+  arc.
+
+Implemented:
+
+- Added a parser guard that rejects `lv = ~ env` on `phylo_latent()`,
+  `spatial_latent()`, `animal_latent()`, `kernel_latent()`, and the
+  `phylo()` / `spatial()` latent-mode wrappers before desugaring can silently
+  drop it.
+- Added a focused canonical-keyword test for those structural-source guards.
+- Updated the formula-grammar note, Mission Control JSON, and after-task report.
+
+Checks:
+
+```sh
+Rscript -e 'parse("R/brms-sugar.R"); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-canonical-keywords.R")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-ordinary-latent-random-regression.R")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-stage37-mixed-family.R")'
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+```
+
+Observed focused tallies:
+
+- `test-canonical-keywords.R`: 67 pass, 3 skips.
+- `test-ordinary-latent-random-regression.R`: 23 pass, 7 skips.
+- `test-julia-bridge.R`: 380 pass, 14 expected Julia-path skips.
+- `test-stage37-mixed-family.R`: 6 pass.
+
+Still not claimed:
+
+- No source-specific `phylo_latent(..., lv = ~ x)`,
+  `spatial_latent(..., lv = ~ x)`, `animal_latent(..., lv = ~ x)`, or
+  `kernel_latent(..., lv = ~ x)` support.
+- No PR #127 reopen, push, package API widening beyond the guard, likelihood
+  change, bootstrap rescue, public source-specific support, or
+  non-Gaussian/source-specific extension.
+- No new compute.
+
 ## 2026-07-01 17:31 MDT -- LV arc post-Gate3 hardening refresh
 
 Branch: local dirty Dropbox checkout; no push or PR.

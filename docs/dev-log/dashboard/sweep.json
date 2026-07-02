@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-01 17:31 MDT",
+  "updated": "2026-07-01 17:55 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -116,6 +116,12 @@
       "who": "Post-Gate3 hardening",
       "status": "covered",
       "text": "Evidence packet frozen in the GLLVM.jl handover worktree. Rose/Ada claim audit keeps Gate 3 as internal evidence for B_eta_realized only: old population-B_lv remains retired, source-specific phylo lv exposure remains blocked, and non-Gaussian/source-specific structural models must start as separate derivation and ADEMP gates."
+    },
+    {
+      "when": "2026-07-01 17:55 MDT",
+      "who": "LV arc closeout",
+      "status": "covered",
+      "text": "Current LV arc is closed as a truth-lock: ordinary LV is covered, phylo Gaussian Model A B_eta_realized Gate 0-3 evidence is frozen, source-specific lv = ~ env is fail-loud for structural latent keywords, mixed-family remains point/postfit only, and non-Gaussian/source-specific structural LV starts a separate gated arc."
     }
   ],
   "evidence": [
@@ -154,6 +160,12 @@
       "who": "Gate 3 DRAC pass",
       "status": "covered",
       "text": "Nibi SLURM job 17049809_[1-500%100] completed and was reduced from /scratch/snakagaw/phylo_model_a_gate3_20260701-1122/results: 500 result files, 500 detail files, 0 non-empty error logs, 2495/2500 covered."
+    },
+    {
+      "when": "2026-07-01 17:55 MDT",
+      "who": "Source-specific lv guard",
+      "status": "covered",
+      "text": "Parser guard now rejects lv = ~ env on phylo_latent(), spatial_latent(), animal_latent(), kernel_latent(), and phylo()/spatial() latent-mode wrappers before desugaring can silently drop it. Focused canonical keyword test passes with 67 pass / 3 INLA skips after pkgload::load_all()."
     }
   ],
   "blockers": [
@@ -179,7 +191,7 @@
       "when": "source grammar",
       "who": "Boole",
       "status": "guard",
-      "text": "Source-specific phylo/animal/spatial/kernel lv syntax remains fail-loud. Ordinary latent(lv = ~ x) evidence must not be reused to promote phylo_latent(..., lv = ~ x)."
+      "text": "Source-specific phylo/animal/spatial/kernel lv syntax remains fail-loud. Ordinary latent(lv = ~ x) evidence must not be reused to promote phylo_latent(..., lv = ~ x), spatial_latent(..., lv = ~ x), animal_latent(..., lv = ~ x), or kernel_latent(..., lv = ~ x). Structural random-slope syntax such as spatial_latent(1 + env | site, d = K) is a separate route, not predictor-informed lv grammar."
     },
     {
       "when": "mixed bridge",
@@ -189,6 +201,12 @@
     }
   ],
   "serial_gates": [
+    {
+      "when": "current LV arc closeout",
+      "who": "Ada + Rose",
+      "status": "covered",
+      "text": "Close the current LV arc without widening syntax: ordinary LV is covered, B_eta_realized evidence is frozen, source-specific lv guards are fail-loud, mixed-family is point/postfit only, and non-Gaussian/source-specific structural LV moves to a new derivation/ADEMP arc."
+    },
     {
       "when": "ordinary LV",
       "who": "GitHub",

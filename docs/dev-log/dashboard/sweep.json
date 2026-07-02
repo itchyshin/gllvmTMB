@@ -12,6 +12,18 @@
   },
   "active_work": [
     {
+      "when": "2026-07-02 06:14 MDT",
+      "who": "Profile-first LV uncertainty",
+      "status": "guard",
+      "text": "Native GLLVM.jl profile-LR selected-entry B_lv hardening is implemented in the handover worktree: profile_ci and family profile routes now expose bounded refit/profile controls, and confint_lv_effects(..., method = :profile, profile_indices = ...) profiles selected entries of vec(B_lv). Bootstrap remains secondary and cost-bounded. R bridge X_lv profile/bootstrap transport, R-vs-Julia parity, coverage calibration, source-specific lv exposure, mixed-family CIs, and PR #127 reopening remain blocked or pending. No active compute."
+    },
+    {
+      "when": "2026-07-02 19:05 MDT",
+      "who": "Unique lane boundary",
+      "status": "guard",
+      "text": "Concurrent unique= work is a separate R/TMB-first lane. This LV closeout does not touch spatial_latent(..., unique=), phylo_latent(..., unique=), *_unique() compatibility, or Julia spatial/phylo unique parity. Join only after the R contract is green and a separate parity gate is opened."
+    },
+    {
       "when": "2026-07-02 19:05 MDT",
       "who": "LV arc final closeout",
       "status": "covered",
@@ -138,6 +150,12 @@
   ],
   "evidence": [
     {
+      "when": "2026-07-02 06:14 MDT",
+      "who": "Profile-first focused tests",
+      "status": "covered",
+      "text": "Focused GLLVM.jl tests passed for the profile-first slice: profile_ci 8/8; non-Gaussian confidence intervals 124/124; X_lv confint_lv_effects 139/139; phylo x X_lv Model A 25/25; bridge capabilities 105/105; bridge CI routing 64/64; bridge fixed-effect X 195/195; bridge missing-response mask 83/83; mixed-family bridge metadata 18/18."
+    },
+    {
       "when": "2026-07-02 19:05 MDT",
       "who": "Final closeout packet",
       "status": "covered",
@@ -194,6 +212,12 @@
   ],
   "blockers": [
     {
+      "when": "bridge/profile",
+      "who": "Profile bridge boundary",
+      "status": "blocked",
+      "text": "Native GLLVM.jl selected-entry B_lv profile-LR does not imply gllvmTMB/R bridge X_lv profile or bootstrap transport. Bridge X_lv remains Wald payload only; R-vs-Julia parity and coverage calibration remain pending; mixed-family and source-specific X_lv CIs remain blocked."
+    },
+    {
       "when": "phylo",
       "who": "Fisher",
       "status": "blocked",
@@ -225,6 +249,12 @@
     }
   ],
   "serial_gates": [
+    {
+      "when": "native GLLVM.jl",
+      "who": "Profile-first LV canary",
+      "status": "guard",
+      "text": "Use profile-LR selected entries for admitted ordinary B_lv routes before any new compute or R grammar exposure. Bootstrap is secondary; source-specific and mixed-family profile claims stay gated."
+    },
     {
       "when": "current LV arc closeout",
       "who": "Ada + Rose",

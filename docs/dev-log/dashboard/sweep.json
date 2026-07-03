@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 12:47 MDT",
+  "updated": "2026-07-03 13:05 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -12,10 +12,16 @@
   },
   "active_work": [
     {
+      "when": "2026-07-03 13:05 MDT",
+      "who": "Cbind binomial bridge row",
+      "status": "guard",
+      "text": "Paired gllvmTMB commit fa70b50d routes ordinary binomial cbind(successes, failures) responses into the Julia bridge as success-count Y plus trial-count N; GLLVM.jl commit e5cc322e records the completed drift reduction in the v1.0 matrix. Live drift is now 61 registered rows, 0 unregistered rows, and 0 cbind drift rows. This is ordinary binomial bridge transport only: no v1.0 completion, no coverage calibration, no source-specific lv support, no mixed-family CI support, no X/mask parity, no unique= parity, and no active compute."
+    },
+    {
       "when": "2026-07-03 12:47 MDT",
       "who": "Selected profile parm transport",
       "status": "guard",
-      "text": "Paired gllvmTMB commit 96028892 routes named R post-fit confint(..., method = \"profile\", parm = ...) selections into the Julia bridge ci_parm option; GLLVM.jl commit 28967d3d records the completed gate in the v1.0 matrix. This is selected no-X profile transport only: live drift remains 62 registered rows and 0 unregistered rows, with no v1.0 completion, no coverage calibration, no source-specific lv support, no mixed-family CI support, no X/mask parity, and no active compute."
+      "text": "Paired gllvmTMB commit 96028892 routes named R post-fit confint(..., method = \"profile\", parm = ...) selections into the Julia bridge ci_parm option; GLLVM.jl commit 28967d3d records the completed gate in the v1.0 matrix. At that step live drift remained 62 registered rows and 0 unregistered rows. This is selected no-X profile transport only: no v1.0 completion, no coverage calibration, no source-specific lv support, no mixed-family CI support, no X/mask parity, and no active compute."
     },
     {
       "when": "2026-07-03 12:32 MDT",
@@ -233,6 +239,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-03 13:05 MDT",
+      "who": "Cbind bridge checks",
+      "status": "guard",
+      "text": "Focused checks passed from clean gllvmTMB worktree /private/tmp/gllvmtmb-v1-contract-drift-20260703: parse R/julia-bridge.R ok; R test-julia-bridge.R passed 410 with 14 expected live-GLLVM-path skips; live test-julia-bridge-live-capabilities.R passed 12/12 against local GLLVM.jl and skipped 2/2 when GLLVM_JL_PATH was unset; live drift printout was drift_rows=61, unregistered=0, cbind_rows=0; git diff --check was clean. The cbind row is resolved for ordinary binomial cbind responses, but remaining registered drift is still not parity."
+    },
     {
       "when": "2026-07-03 12:47 MDT",
       "who": "Profile parm transport checks",

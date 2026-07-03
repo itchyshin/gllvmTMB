@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 11:43 MDT",
+  "updated": "2026-07-03 11:58 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 11:58 MDT",
+      "who": "R+Julia v1.0 drift gate",
+      "status": "guard",
+      "text": "The focused R-vs-local-Julia capability drift gate is now executable in the clean gllvmTMB worktree codex/v1-contract-drift-20260703. Expected mismatches between gllvm_julia_capabilities() and the current narrow GLLVM.bridge_capabilities() surface are registered with GJL-GATE-* labels; a synthetic narrow Julia fixture produced 68 registered drift rows and zero unregistered rows. This is truth-contract evidence only: not R/Julia parity completion, not bridge widening, not v1.0 completion, not source-specific lv support, not mixed-family CI/X/X_lv/mask support, and not active compute."
+    },
     {
       "when": "2026-07-03 11:43 MDT",
       "who": "R+Julia v1.0 contract packet",
@@ -203,6 +209,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-03 11:58 MDT",
+      "who": "R+Julia v1.0 drift-gate checks",
+      "status": "guard",
+      "text": "Focused drift-gate checks passed from the clean gllvmTMB worktree: parse R/julia-bridge.R ok; R test-julia-bridge.R 389 pass / 14 expected live-GLLVM-path skips; R canonical keyword guards 69 pass / 3 INLA skips; synthetic narrow Julia fixture drift rows = 68, all registered by GJL-GATE-*; GLLVM.jl test_bridge_capabilities.jl 60/60; GLLVM.jl test_bridge_fit.jl 175/175; git diff --check clean. The stale test/test_bridge_ci.jl command is not a valid current GLLVM.jl path; CI/profile internals live under the test_confint* family. No LV compute is active."
+    },
     {
       "when": "2026-07-03 11:43 MDT",
       "who": "R+Julia v1.0 contract phase 0/1 checks",

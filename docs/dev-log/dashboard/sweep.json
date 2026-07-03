@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 10:50 MDT",
+  "updated": "2026-07-03 11:16 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 11:16 MDT",
+      "who": "Phylo six-family structural LV S2 runners",
+      "status": "guard",
+      "text": "GLLVM.jl now has explicit gated single-task S2 runners for all six private phylo structural-source non-Gaussian LV families: Poisson, Binomial logit, NB2, Gamma, Beta, and native shared-cutpoint Ordinal. Local no-endpoint smokes for Gamma, Beta, and Ordinal each produced usable_endpoint_entries=0, lr_at_truth_only_entries=3, coverage=NaN, and no sigma2/nuisance boundary flags. These are runner-readiness/plumbing rows only: no authorized S2 endpoint-profile denominator, no Totoro/DRAC launch, no public fitter, no source-specific grammar, no bridge transport, no per-trait ordinal parity, no bootstrap rescue, and no support claim."
+    },
     {
       "when": "2026-07-03 10:50 MDT",
       "who": "Phylo x NB2 structural LV S2 runner",
@@ -51,7 +57,7 @@
       "when": "2026-07-02 12:57 MDT",
       "who": "Ordinary non-Gaussian LV profile",
       "status": "guard",
-      "text": "GLLVM.jl Gate 0/1 route evidence is now local for ordinary Poisson, Binomial logit, NB2, Gamma, and Beta selected-entry B_lv profile-LR: ADEMP note recorded, test/test_lv_ci.jl canaries B_lv[1,1] with finite endpoints and known DGP truth inclusion, and the focused LV CI test passed 180/180 in 3m49.4s. This is not coverage calibration, R bridge profile/bootstrap transport, source-specific lv support, mixed-family CI support, or unique= parity. No compute is active."
+      "text": "GLLVM.jl Gate 0/1 route evidence is local for ordinary Poisson, Binomial logit, NB2, Gamma, Beta, and shared-cutpoint Ordinal selected-entry B_lv profile-LR: ADEMP note recorded, test/test_lv_ci.jl canaries B_lv[1,1] with finite endpoints and known DGP truth inclusion, and the focused LV CI test passed 196/196 in 3m57.7s. This is not coverage calibration, R bridge profile/bootstrap transport, source-specific lv support, mixed-family CI support, or unique= parity. No compute is active."
     },
     {
       "when": "2026-07-02 06:14 MDT",
@@ -191,6 +197,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-03 11:16 MDT",
+      "who": "Gamma/Beta/Ordinal S2 runner smokes",
+      "status": "guard",
+      "text": "Focused checks passed for the final S2 runner-readiness slices: Gamma harness 38/38 plus S1 12/12 + 25/25; Beta harness 38/38 plus S1 13/13 + 25/25; shared-cutpoint Ordinal harness 38/38 plus S1 12/12 + 25/25. Local no-endpoint smokes each wrote 3 selected-entry rows with usable_endpoint_entries=0, lr_at_truth_only_entries=3, coverage=NaN, and zero sigma2/nuisance boundary flags. This is not S2 endpoint-profile evidence."
+    },
     {
       "when": "2026-07-03 10:50 MDT",
       "who": "Phylo x NB2 S2 runner smoke",

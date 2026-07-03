@@ -55,14 +55,17 @@
 #'   scale (1 for probit, \eqn{\pi^2/3} for logit, \eqn{\pi^2/6} for
 #'   cloglog), which acts as the implicit unique component. Adding an
 #'   explicit `unique()` term on top is typically not identified.
-#' * **Folded source-specific latent terms**. `phylo_latent()` and
-#'   `animal_latent()` now carry their source-specific diagonal
-#'   \eqn{\boldsymbol\Psi} companions by default, matching ordinary
-#'   `latent()`. Use `phylo_latent(..., unique = FALSE) + phylo_unique()`,
-#'   `animal_latent(..., unique = FALSE) + animal_unique()`, or
-#'   `kernel_latent(..., unique = FALSE) + kernel_unique()` only when
-#'   you need the explicit compatibility spelling. `spatial_latent()` keeps
-#'   its explicit `+ spatial_unique()` companion until its fold slice lands. See
+#' * **Source-specific latent terms**. Use
+#'   `phylo_latent(..., unique = TRUE)`,
+#'   `animal_latent(..., unique = TRUE)`,
+#'   `spatial_latent(..., unique = TRUE)`, or
+#'   `kernel_latent(..., unique = TRUE)` when the folded term itself should
+#'   carry its source-specific diagonal \eqn{\boldsymbol\Psi} companion. The
+#'   explicit compatibility spellings
+#'   `phylo_latent(..., unique = FALSE) + phylo_unique()`,
+#'   `animal_latent(..., unique = FALSE) + animal_unique()`,
+#'   `spatial_latent(..., unique = FALSE) + spatial_unique()`, and
+#'   `kernel_latent(..., unique = FALSE) + kernel_unique()` remain accepted. See
 #'   `vignettes/articles/pitfalls.Rmd` section 5 and
 #'   `docs/dev-log/decisions.md` 2026-05-14 entry.
 #' * **Confirmatory factor models**. Sometimes domain knowledge tells

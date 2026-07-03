@@ -238,10 +238,11 @@ For any `latent()`, compatibility `unique()`, `indep()`, `dep()`, or `*_scalar()
 choice, first name the covariance tier, decide which diagonal variance
 is separately identifiable, and use scalar shortcuts only when a shared
 variance is the estimand. The phylogenetic example below is one
-instance. A bare
-`phylo_latent(species, d = K)` now carries its diagonal `Psi` by
-default; use `phylo_latent(..., unique = FALSE)` only for the
-no-residual reduced-rank subset. A bare `phylo_scalar()` fits a
+instance. Use
+`phylo_latent(species, d = K, unique = TRUE)` when the phylogenetic
+reduced-rank term should also carry its diagonal `Psi`; a bare
+`phylo_latent(species, d = K)` is the no-residual loadings-only subset.
+A bare `phylo_scalar()` fits a
 single shared scalar $\lambda$ multiplying a free trait correlation
 matrix, so only the product $\lambda \cdot \rho_{tt'}$ is
 identifiable. Neither bare form is a per-trait phylogenetic-variance
@@ -260,11 +261,10 @@ set.seed(1)
 tree <- ape::rcoal(15)
 tree$tip.label <- paste0("sp", seq_len(15))
 
-# Folded phylogenetic decomposition (ordinary and phylogenetic `latent()`
-# carry diagonal Psi by default, so neither tier needs a separate
-# separate diagonal term):
+# Folded phylogenetic decomposition (ordinary `latent()` carries Psi by
+# default; source-specific `phylo_latent()` needs explicit unique=TRUE):
 #   value ~ 0 + trait +
-#     phylo_latent(species, d = K_phy, tree = tree) +
+#     phylo_latent(species, d = K_phy, tree = tree, unique = TRUE) +
 #     latent(0 + trait | species, d = K_non)
 
 # Single-scalar simplification (only when trait correlations are
@@ -274,7 +274,7 @@ tree$tip.label <- paste0("sp", seq_len(15))
 
 **Rule of thumb.** *Start from the scientific target and the design.
 Use the paired four-component decomposition
-(`phylo_latent + latent`, each with default `Psi`) only when **both
+(`phylo_latent(..., unique = TRUE) + latent`) only when **both
 $\boldsymbol{\Psi}$ diagonals are identifiable**, typically with
 crossed replication, enough species, and strong phylogenetic signal.
 Reserve `phylo_scalar()` for the simpler case where a single shared
@@ -304,7 +304,7 @@ of every variance component in whichever model you fit (four
 pieces in the paired form above, three pieces here, more if you
 add `spatial_*` or extra latent tiers). The number of pieces
 follows from the keywords in the formula. `gllvmTMB(... +
-phylo_latent + latent, ...)` is a three-piece fallback for
+phylo_latent(..., unique = FALSE) + latent, ...)` is a three-piece fallback for
 this case. The validation evidence for this fallback is
 tracked under `PHY-03`; future worked phylogenetic examples should
 present this as one concrete case of the broader identifiability

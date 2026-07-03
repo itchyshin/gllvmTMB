@@ -4,7 +4,7 @@
 # dense A, or sparse Ainv. The folded companion therefore has the same shape as
 # phylo_latent(): phylo_rr(id, .phylo_unique = TRUE, .auto_unique = TRUE, vcv = A).
 #
-# unique = FALSE -> loadings-only (Lambda Lambda^T (x) A).
+# unique = FALSE/default -> loadings-only (Lambda Lambda^T (x) A).
 
 ## ---- Parser-level fold (fast; no fit) --------------------------------------
 
@@ -30,6 +30,20 @@ test_that("animal_latent(unique = FALSE) is loadings-only (parser, no companion)
   )
   f <- gllvmTMB:::rewrite_canonical_aliases(
     value ~ 0 + trait + animal_latent(species, d = 2, A = A, unique = FALSE)
+  )
+  txt <- paste(deparse(f), collapse = " ")
+  expect_match(txt, "phylo_rr", fixed = TRUE)
+  expect_match(txt, "vcv = A", fixed = TRUE)
+  expect_false(grepl(".auto_unique", txt, fixed = TRUE))
+})
+
+test_that("animal_latent() default is loadings-only (parser, no companion)", {
+  withr::local_options(
+    lifecycle_verbosity = "quiet",
+    gllvmTMB.quiet_grammar_notes = TRUE
+  )
+  f <- gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + animal_latent(species, d = 2, A = A)
   )
   txt <- paste(deparse(f), collapse = " ")
   expect_match(txt, "phylo_rr", fixed = TRUE)
@@ -109,7 +123,8 @@ test_that("animal_latent(unique = TRUE) is byte-identical to animal_latent + ani
     silent = TRUE
   )
   fit_fold <- gllvmTMB(
-    value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped),
+    value ~ 0 + trait +
+      animal_latent(species, d = 1, pedigree = ped, unique = TRUE),
     data = s$data,
     family = gaussian(),
     silent = TRUE
@@ -144,32 +159,20 @@ test_that("animal_latent(unique = FALSE) is loadings-only (no animal diagonal)",
   expect_false(isTRUE(fit$use$phylo_diag))
 })
 
-test_that("animal_latent(unique = TRUE) + explicit animal_unique() is deduped", {
+test_that("animal_latent(unique = TRUE) + explicit animal_unique() errors as duplicate Psi", {
   skip_on_cran()
   s <- .sim_animal_fold()
   ped <- s$ped
-  fit_explicit <- gllvmTMB(
-    value ~ 0 +
-      trait +
-      animal_latent(species, d = 1, pedigree = ped, unique = FALSE) +
-      animal_unique(species, pedigree = ped),
-    data = s$data,
-    family = gaussian(),
-    silent = TRUE
-  )
-  fit_both <- gllvmTMB(
-    value ~ 0 +
-      trait +
-      animal_latent(species, d = 1, pedigree = ped, unique = TRUE) +
-      animal_unique(species, pedigree = ped),
-    data = s$data,
-    family = gaussian(),
-    silent = TRUE
-  )
-  expect_equal(fit_both$opt$convergence, 0L)
-  expect_equal(
-    as.numeric(logLik(fit_both)),
-    as.numeric(logLik(fit_explicit)),
-    tolerance = 1e-6
+  expect_error(
+    gllvmTMB(
+      value ~ 0 +
+        trait +
+        animal_latent(species, d = 1, pedigree = ped, unique = TRUE) +
+        animal_unique(species, pedigree = ped),
+      data = s$data,
+      family = gaussian(),
+      silent = TRUE
+    ),
+    "Duplicate source-specific"
   )
 })

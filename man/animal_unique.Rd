@@ -29,8 +29,9 @@ See \code{\link[=animal_scalar]{animal_scalar()}}.
 \details{
 \code{animal_unique()} is soft-deprecated as compatibility syntax in gllvmTMB
 0.2.0. Use \code{\link[=animal_indep]{animal_indep()}} for standalone marginal diagonal animal-model
-terms. Paired explicit-Psi use remains accepted; \code{\link[=animal_latent]{animal_latent()}} now
-carries this diagonal companion by default.
+terms. Paired explicit-Psi use remains accepted; use
+\code{animal_latent(..., unique = TRUE)} when the folded latent term itself
+should carry this diagonal companion.
 
 Canonical name for the \strong{D independent} animal-model random
 intercept on a shared relatedness matrix \eqn{\mathbf A}. Each

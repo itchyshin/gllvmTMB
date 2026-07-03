@@ -65,29 +65,33 @@
 
 * `screen_gllvmTMB()` adds a formula-aware pre-fit response screen for binary/binomial candidate traits before fitting a stacked-trait GLLVM. It reuses the wide `traits(...)` and long `trait =` preparation paths, reports denominator-aware prevalence and minority counts, flags constants, sparse minority outcomes, exact duplicate/complement pairs, fixed-effect rank deficiency, and `d >= n_traits`, and returns extractable `summary`, `traits`, `pairs`, `units`, `design`, `recommendations`, and `settings` tables via `screen_table()`. IN (`DIA-14`): Bernoulli, `cbind(success, failure)`, and `weights = n_trials` binomial screens are covered by `test-screen-gllvmTMB.R`. PARTIAL: this is advisory pre-fit screening only; it does not select variables, delete traits, solve separation, prove identifiability, choose rank, guarantee convergence, or cover non-binary modules yet. This is the pre-fit companion to the Ayumi-495/urbanisation_map#3 post-fit large-loading diagnostic work.
 
-## `kernel_latent()` folds its diagonal Psi by default (2026-06-21)
+## Source-specific `*_latent(unique = TRUE)` folds diagonal Psi explicitly (2026-07-03)
 
-* `kernel_latent(unit, K = A, d = q, name = "known")` now carries its dense-kernel diagonal trait-specific `Psi_kernel` companion by default (`unique = TRUE`) for one named kernel tier, mirroring ordinary `latent()`, `phylo_latent()`, and `animal_latent()`: `Sigma_kernel = Lambda Lambda^T (x) A + Psi_kernel (x) A`. The paired `kernel_latent(..., unique = FALSE) + kernel_unique()` spelling remains accepted -- the auto-companion is deduped against an explicit `kernel_unique()`, byte-identical to the explicit pair. Use `kernel_latent(..., unique = FALSE)` for the loadings-only subset. IN (`KER-02`): parser emission, malformed-`unique` rejection, Gaussian fold equivalence, explicit-companion dedup, and loadings-only dense-phylo equivalence are covered by `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R`. PARTIAL (`KER-03` / `COE-03`): two-or-more named `kernel_latent()` tiers remain the existing latent-only multi-kernel engine; auto-generated kernel Psi companions are pruned for that path and explicit multi-kernel `kernel_unique()` Psi remains deferred. `spatial_latent()` is still blocked on the SPDE diagonal engine slot.
+* `phylo_latent()`, `animal_latent()`, `spatial_latent()`, and `kernel_latent()` now share one explicit source-tier contract: `*_latent(..., unique = TRUE)` means `Sigma_source = Lambda_source Lambda_source^T + Psi_source`, while the default `unique = FALSE` preserves the loadings-only path. This differs from ordinary `latent()`, which still carries Psi by default. The compatibility spelling `*_latent(..., unique = FALSE) + *_unique()` remains accepted; `*_latent(unique = TRUE) + *_unique()` now errors as duplicate Psi rather than silently deduping. IN (`FG-13`, `ANI-05`, `KER-02`): parser markers, malformed-`unique` rejection, spatial random-vector/report presence, Gaussian equivalence to the explicit pair, and rank-1 total-correlation non-degeneracy are covered by `test-spatial-latent-unique-fold.R`, `test-phylo-latent-unique-fold.R`, `test-animal-latent-unique-fold.R`, and `test-kernel-latent-unique-fold.R`. PARTIAL: broad non-Gaussian recovery, profile/bootstrap interval calibration, Julia parity, and multi-kernel explicit Psi remain later evidence gates.
 
-## `animal_latent()` folds its diagonal Psi by default (2026-06-21)
+## `kernel_latent(unique = TRUE)` folds its diagonal Psi explicitly (2026-06-21; revised 2026-07-03)
 
-* `animal_latent(id, d = K, pedigree = ped)` now carries its additive-genetic diagonal trait-specific `Psi_animal` companion by default (`unique = TRUE`), mirroring ordinary `latent()` and `phylo_latent()`: `G = Lambda Lambda^T + Psi_animal`, with both parts scaled by the same relatedness matrix `A`. The paired `animal_latent(..., unique = FALSE) + animal_unique()` spelling remains accepted -- the auto-companion is deduped against an explicit `animal_unique()`, byte-identical to the explicit pair. Use `animal_latent(..., unique = FALSE)` for the loadings-only subset. IN (`ANI-05`): parser emission, Gaussian fold equivalence, explicit-companion dedup, and Gaussian/non-Gaussian loadings-only animal-vs-phylo equivalence are covered by `test-animal-latent-unique-fold.R`, `test-animal-keyword.R`, and `test-matrix-animal-nongaussian.R`. PARTIAL: augmented `animal_latent(1 + x | id)` slopes remain on their existing loadings-only slope engine for this Stage-A slice; `spatial_latent()` is blocked on the SPDE diagonal engine and `kernel_latent()` is handled by the follow-up kernel fold.
+* `kernel_latent(unit, K = A, d = q, name = "known", unique = TRUE)` carries its dense-kernel diagonal trait-specific `Psi_kernel` companion for one named kernel tier: `Sigma_kernel = Lambda Lambda^T (x) A + Psi_kernel (x) A`. The default `kernel_latent(..., unique = FALSE)` is loadings-only, and the paired `kernel_latent(..., unique = FALSE) + kernel_unique()` spelling remains accepted as compatibility syntax. IN (`KER-02`): parser emission, malformed-`unique` rejection, Gaussian fold equivalence, duplicate-Psi rejection, and loadings-only dense-phylo equivalence are covered by `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R`. PARTIAL (`KER-03` / `COE-03`): two-or-more named `kernel_latent()` tiers remain the existing latent-only multi-kernel engine; explicit multi-kernel `kernel_unique()` Psi remains deferred.
+
+## `animal_latent(unique = TRUE)` folds its diagonal Psi explicitly (2026-06-21; revised 2026-07-03)
+
+* `animal_latent(id, d = K, pedigree = ped, unique = TRUE)` carries its additive-genetic diagonal trait-specific `Psi_animal` companion: `G = Lambda Lambda^T + Psi_animal`, with both parts scaled by the same relatedness matrix `A`. The default `animal_latent(..., unique = FALSE)` is loadings-only, and the paired `animal_latent(..., unique = FALSE) + animal_unique()` spelling remains accepted as compatibility syntax. IN (`ANI-05`): parser emission, Gaussian fold equivalence, duplicate-Psi rejection, and Gaussian/non-Gaussian loadings-only animal-vs-phylo equivalence are covered by `test-animal-latent-unique-fold.R`, `test-animal-keyword.R`, and `test-matrix-animal-nongaussian.R`. PARTIAL: augmented `animal_latent(1 + x | id)` slopes remain on their existing loadings-only slope engine for this Stage-A slice.
 
 ## `check_gllvmTMB()` near-constant binomial diagnostic (2026-06-21)
 
 * `check_gllvmTMB()` now adds a `binomial_prevalence_loading` row when binomial traits are present, surfacing the worst per-trait prevalence, fitted-probability saturation, maximum loading, and loading size relative to the typical fitted loading scale. IN (`DIA-08`): this is a diagnostic screen for near-constant binary traits that can drive runaway loadings and weak latent-axis warnings. PARTIAL (`DIA-10`): it points users to remove or re-code near-constant indicators, but it does not calibrate interval coverage, prove separation formally, or change the fitted likelihood. This closes the package-side mirror of Ayumi-495/urbanisation_map#3 (#523).
 
-## `phylo_latent()` folds its diagonal Psi by default (2026-06-21)
+## `phylo_latent(unique = TRUE)` folds its diagonal Psi explicitly (2026-06-21; revised 2026-07-03)
 
-* `phylo_latent(species, d = K)` now carries its phylo-structured diagonal
-  trait-specific `Psi_phy` companion by default (`unique = TRUE`), mirroring
-  ordinary `latent()`: `Sigma_phy = Lambda Lambda^T (x) A + Psi_phy (x) A`. The
-  paired `phylo_latent(..., unique = FALSE) + phylo_unique()` spelling remains
-  accepted -- the auto-companion is deduped against an explicit `phylo_unique()`,
-  byte-identical to the explicit pair. Use `phylo_latent(..., unique = FALSE)`
-  for the loadings-only subset. Augmented `phylo_latent(1 + x | sp)` slopes and
-  the `phylo_indep` / `phylo_dep` mutual-exclusion paths are unchanged. The
-  remaining `spatial_latent` fold is blocked on the SPDE diagonal engine slot.
+* `phylo_latent(species, d = K, unique = TRUE)` carries its phylo-structured diagonal
+  trait-specific `Psi_phy` companion:
+  `Sigma_phy = Lambda Lambda^T (x) A + Psi_phy (x) A`. The default
+  `phylo_latent(..., unique = FALSE)` is loadings-only, and the paired
+  `phylo_latent(..., unique = FALSE) + phylo_unique()` spelling remains
+  accepted as compatibility syntax. Duplicate
+  `phylo_latent(unique = TRUE) + phylo_unique()` now errors. Augmented
+  `phylo_latent(1 + x | sp)` slopes and the `phylo_indep` / `phylo_dep`
+  mutual-exclusion paths are unchanged.
 
 ## `latent(unique = ...)` argument rename (2026-06-21)
 

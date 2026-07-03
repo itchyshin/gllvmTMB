@@ -29,8 +29,9 @@ A formula marker; never evaluated.
 \details{
 \code{phylo_unique()} is soft-deprecated as compatibility syntax in gllvmTMB
 0.2.0. Use \code{\link[=phylo_indep]{phylo_indep()}} for standalone marginal diagonal phylogenetic
-tiers. Paired explicit-Psi use remains accepted; \code{\link[=phylo_latent]{phylo_latent()}} now
-carries this diagonal companion by default.
+tiers. Paired explicit-Psi use remains accepted; use
+\code{phylo_latent(..., unique = TRUE)} when the folded latent term itself
+should carry this diagonal companion.
 
 Canonical name for the \strong{D independent} phylogenetic random
 intercepts. Each trait \eqn{t} gets its own variance
@@ -65,8 +66,8 @@ two terms co-fit as \strong{separate covariance components}:
 \eqn{\boldsymbol\Lambda_\text{phy}} is filled by the rank-K shared
 latent factors; \eqn{\boldsymbol\Psi_\text{phy}} carries
 the per-trait phylogenetic variances not absorbed by the K shared
-axes. Bare \code{phylo_latent(species, d = K)} now fits this same
-manuscript-aligned PGLLVM decomposition by default
+axes. \code{phylo_latent(species, d = K, unique = TRUE)} fits this same
+manuscript-aligned PGLLVM decomposition as a single term
 (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et
 al. 2025). Replication (multiple sites per species) is required
 to break the Psi_phy / Psi_non confound at the species level.}

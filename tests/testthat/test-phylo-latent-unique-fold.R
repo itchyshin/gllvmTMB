@@ -1,9 +1,9 @@
 # Stage A (phylo slice): phylo_latent(unique = TRUE) auto-Psi fold (PR B).
 #
-# Ordinary latent() already auto-carries its diagonal Psi by default (PR A's
-# `unique =` argument). This folds the SAME behaviour into phylo_latent(): the
-# source-specific decomposition phylo_latent(d=K) + phylo_unique() collapses to a
-# single phylo_latent(d=K, unique = TRUE). The auto-companion is the
+# Ordinary latent() already auto-carries its diagonal Psi by default. Source-
+# specific latent terms stay loadings-only unless `unique = TRUE` is explicit:
+# the decomposition phylo_latent(d=K, unique=FALSE) + phylo_unique() can be
+# written as phylo_latent(d=K, unique = TRUE). The auto-companion is the
 # phylo-structured diagonal Psi_phy (x) A, i.e.
 # phylo_rr(species, .phylo_unique = TRUE, .auto_unique = TRUE) -- NOT a plain diag.
 #
@@ -34,6 +34,41 @@ test_that("phylo_latent(unique = FALSE) is loadings-only (parser, no companion)"
   )
   f <- gllvmTMB:::rewrite_canonical_aliases(
     value ~ 0 + trait + phylo_latent(species, d = 2, unique = FALSE)
+  )
+  txt <- paste(deparse(f), collapse = " ")
+  expect_match(txt, "phylo_rr", fixed = TRUE)
+  expect_false(grepl(".auto_unique", txt, fixed = TRUE))
+})
+
+test_that("phylo_latent(unique = TRUE) forwards A/Ainv to shared and Psi pieces", {
+  withr::local_options(
+    lifecycle_verbosity = "quiet",
+    gllvmTMB.quiet_grammar_notes = TRUE
+  )
+  f_direct <- gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + phylo_latent(species, d = 2, A = A0, unique = TRUE)
+  )
+  txt_direct <- paste(deparse(f_direct), collapse = " ")
+  expect_match(txt_direct, ".auto_unique = TRUE", fixed = TRUE)
+  expect_gte(length(gregexpr("vcv = A0", txt_direct, fixed = TRUE)[[1]]), 2L)
+
+  f_wrapper <- gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait +
+      phylo(0 + trait | species, mode = "latent", d = 2,
+            A = A0, unique = TRUE)
+  )
+  txt_wrapper <- paste(deparse(f_wrapper), collapse = " ")
+  expect_match(txt_wrapper, ".auto_unique = TRUE", fixed = TRUE)
+  expect_gte(length(gregexpr("vcv = A0", txt_wrapper, fixed = TRUE)[[1]]), 2L)
+})
+
+test_that("phylo_latent() default is loadings-only (parser, no companion)", {
+  withr::local_options(
+    lifecycle_verbosity = "quiet",
+    gllvmTMB.quiet_grammar_notes = TRUE
+  )
+  f <- gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + phylo_latent(species, d = 2)
   )
   txt <- paste(deparse(f), collapse = " ")
   expect_match(txt, "phylo_rr", fixed = TRUE)
@@ -117,25 +152,15 @@ test_that("phylo_latent(unique = FALSE) is loadings-only (no phylo diagonal)", {
   expect_false(isTRUE(fit$use$phylo_diag))
 })
 
-test_that("phylo_latent(unique = TRUE) + explicit phylo_unique() is deduped (no double Psi)", {
+test_that("phylo_latent(unique = TRUE) + explicit phylo_unique() errors as duplicate Psi", {
   skip_unless_ape()
   s <- .sim_phylo_fold()
-  fit_explicit <- gllvmTMB(
-    value ~ 0 + trait +
-      phylo_latent(species, d = 2, unique = FALSE) + phylo_unique(species),
-    data = s$data, phylo_vcv = s$Cphy, silent = TRUE
-  )
-  # unique = TRUE auto-companion PLUS an explicit phylo_unique(): the auto one
-  # must be deduped, so this is byte-identical to the explicit pair (and must not
-  # trip the >1 phylo_unique abort).
-  fit_both <- gllvmTMB(
-    value ~ 0 + trait +
-      phylo_latent(species, d = 2, unique = TRUE) + phylo_unique(species),
-    data = s$data, phylo_vcv = s$Cphy, silent = TRUE
-  )
-  expect_equal(fit_both$opt$convergence, 0L)
-  expect_equal(
-    as.numeric(logLik(fit_both)), as.numeric(logLik(fit_explicit)),
-    tolerance = 1e-6
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait +
+        phylo_latent(species, d = 2, unique = TRUE) + phylo_unique(species),
+      data = s$data, phylo_vcv = s$Cphy, silent = TRUE
+    ),
+    "Duplicate source-specific"
   )
 })

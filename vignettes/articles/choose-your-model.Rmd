@@ -179,7 +179,7 @@ A phylogenetic random effect is appropriate when species (or other
 taxa) appear repeatedly in your data and closely related taxa are
 likely to share trait values for evolutionary reasons. The
 folded phylogenetic decomposition pairs two species-level covariance
-matrices: a phylogenetic shared-plus-diagonal tier (`phylo_latent`)
+matrices: a phylogenetic shared-plus-diagonal tier (`phylo_latent(..., unique = TRUE)`)
 and, when needed, a non-phylogenetic shared-plus-diagonal species tier
 (`latent`). The full decomposition reads
 
@@ -199,7 +199,7 @@ example.
 |---|---|
 | Rows are not phylogenetically structured (e.g. individuals from one species, or sites without taxonomic identity). | Nothing. |
 | Phylogenetic structure with one shared phylogenetic variance per trait (simplest phylo model). | `+ phylo_scalar(species, vcv = Cphy)` |
-| Folded phylogenetic decomposition (when traits can be both phylogenetically and non-phylogenetically correlated). | `+ phylo_latent(species, d = K_phy, tree = tree) + latent(0 + trait \| species, d = K_non)` |
+| Folded phylogenetic decomposition (when traits can be both phylogenetically and non-phylogenetically correlated). | `+ phylo_latent(species, d = K_phy, tree = tree, unique = TRUE) + latent(0 + trait \| species, d = K_non)` |
 | Many species (n > ~200) and you want speed. | (same paired form) with `tree = tree` (sparse $A^{-1}$ trick); much faster than `vcv = Cphy` at this scale. |
 
 The crossover where the sparse $A^{-1}$ path overtakes the dense
@@ -223,13 +223,13 @@ input forms:
 ```r
 # 1. Three-column pedigree (MCMCglmm-style; columns id/sire/dam
 #    or animal/dam/sire — resolved by name with positional fallback):
-+ animal_latent(individual, d = K, pedigree = ped)
++ animal_latent(individual, d = K, pedigree = ped, unique = TRUE)
 
 # 2. Pre-computed A matrix:
-+ animal_latent(individual, d = K, A = A_matrix)
++ animal_latent(individual, d = K, A = A_matrix, unique = TRUE)
 
 # 3. Sparse precision Ainv (densified for v0.2.0):
-+ animal_latent(individual, d = K, Ainv = Ainv_matrix)
++ animal_latent(individual, d = K, Ainv = Ainv_matrix, unique = TRUE)
 ```
 
 The full 5-keyword grid (`animal_scalar`, soft-deprecated
@@ -286,7 +286,7 @@ one phylogenetically-structured slope variance and per-species
 slopes drawn from $\mathcal N(\mathbf 0,\, \sigma^2_{\text{slope}}\,
 \mathbf C_{\text{phy}})$. It composes with the intercept terms from
 §3 — you can have phylogenetic random *intercepts*
-(`phylo_latent()` with its default diagonal `Psi`) and a phylogenetic
+(`phylo_latent(..., unique = TRUE)`) and a phylogenetic
 random *slope* in the same fit. The
 worked recovery is in §7e below. `animal_slope(x | id)` is the
 pedigree parallel (same engine, relatedness matrix $\mathbf A$ from
@@ -442,7 +442,7 @@ levels(df_p$species) <- tree$tip.label
 
 fit_phy <- gllvmTMB(
   value ~ 0 + trait +
-          phylo_latent(species, d = 1, tree = tree) +
+          phylo_latent(species, d = 1, tree = tree, unique = TRUE) +
           latent(0 + trait | species, d = 1),
   data = df_p,
   trait = "trait",
@@ -629,7 +629,7 @@ fit_full <- gllvmTMB(
           spatial_indep(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
           latent(0 + trait | site_species, d = 1) +
-          phylo_latent(species, d = 1, tree = tree),
+          phylo_latent(species, d = 1, tree = tree, unique = TRUE),
   data = df,
   trait = "trait"
 )

@@ -4,16 +4,19 @@
 \alias{animal_latent}
 \title{Reduced-rank animal-model latent factors: \code{animal_latent(id, d = K)}}
 \usage{
-animal_latent(id, d = 1, unique = TRUE, pedigree = NULL, A = NULL, Ainv = NULL)
+animal_latent(
+  id,
+  d = 1,
+  pedigree = NULL,
+  A = NULL,
+  Ainv = NULL,
+  unique = FALSE
+)
 }
 \arguments{
 \item{id}{Bare column name of the individual factor.}
 
 \item{d}{Number of latent factors (\eqn{K \le T}). Default 1.}
-
-\item{unique}{Logical; when \code{TRUE} (default), include the per-trait
-diagonal additive-genetic \eqn{\boldsymbol\Psi} companion. Use
-\code{unique = FALSE} for the older loadings-only subset.}
 
 \item{pedigree}{A 3-column data frame with columns \code{id}, \code{sire},
 \code{dam} (unknown parents encoded as \code{NA}). Converted internally
@@ -25,14 +28,18 @@ colnames must match levels of \code{id}.}
 
 \item{Ainv}{Sparse precision matrix (inverse of A). Currently
 densified for v0.2.0; sparse engine path is a v0.3.0 follow-up.}
+
+\item{unique}{Logical; when \code{TRUE}, include the per-trait diagonal
+additive-genetic \eqn{\boldsymbol\Psi} companion. The default \code{FALSE}
+preserves the loadings-only subset.}
 }
 \value{
 See \code{\link[=animal_scalar]{animal_scalar()}}.
 }
 \description{
 Reduced-rank decomposition of the additive-genetic covariance
-matrix using \eqn{K} latent factors plus, by default, a per-trait
-diagonal \eqn{\boldsymbol\Psi} companion:
+matrix using \eqn{K} latent factors. Set \code{unique = TRUE} to add a
+per-trait diagonal \eqn{\boldsymbol\Psi} companion:
 \eqn{\boldsymbol G =
 \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 with \eqn{\boldsymbol\Lambda} a \eqn{T \times K} loadings matrix
@@ -67,7 +74,8 @@ df <- data.frame(
   value   = yvec
 )
 fit <- gllvmTMB(
-  value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped),
+  value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped,
+                                   unique = TRUE),
   data = df, family = gaussian()
 )
 }

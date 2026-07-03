@@ -4,10 +4,10 @@
 #' `kernel_latent()` fits named random-effect tiers with user-supplied
 #' between-unit covariance matrices `K`. The IN scope (`KER-02`) for one named
 #' dense-kernel tier is the phylo-equivalent path:
-#' `kernel_latent(unit, K = A, d = q)` now carries its kernel-structured
-#' diagonal \eqn{\boldsymbol\Psi} companion by default and must match
-#' `phylo_latent(unit, vcv = A, d = q)` to less than `1e-6` for log likelihood
-#' and extracted `Sigma`. The compatibility spelling
+#' `kernel_latent(unit, K = A, d = q, unique = TRUE)` carries its
+#' kernel-structured diagonal \eqn{\boldsymbol\Psi} companion and must match
+#' `phylo_latent(unit, vcv = A, d = q, unique = TRUE)` to less than `1e-6`
+#' for log likelihood and extracted `Sigma`. The compatibility spelling
 #' `kernel_latent(..., unique = FALSE) + kernel_unique(...)` remains accepted.
 #' The first multi-kernel scope (`KER-03`) accepts two or more fixed named
 #' `kernel_latent()` tiers over the same grouping levels, each with its own
@@ -34,9 +34,9 @@
 #' @param name Character scalar used as the extractor level, e.g.
 #'   `extract_Sigma(fit, level = "cross")`.
 #' @param d Integer latent rank for `kernel_latent()`.
-#' @param unique Logical; `TRUE` (default) auto-includes the kernel-structured
-#'   diagonal trait-specific \eqn{\boldsymbol\Psi} companion for a single
-#'   dense-kernel tier. Set `FALSE` for the loadings-only subset.
+#' @param unique Logical; `TRUE` auto-includes the kernel-structured diagonal
+#'   trait-specific \eqn{\boldsymbol\Psi} companion for a single dense-kernel
+#'   tier. The default `FALSE` preserves the loadings-only subset.
 #'
 #' @return A formula marker; never evaluated as a regular R function.
 #'
@@ -52,7 +52,8 @@
 #' rownames(A) <- colnames(A) <- levels(dat$unit)
 #' fit <- gllvmTMB(
 #'   traits(y1, y2) ~
-#'     1 + kernel_latent(unit, K = A, d = 1, name = "known"),
+#'     1 + kernel_latent(unit, K = A, d = 1, name = "known",
+#'                       unique = TRUE),
 #'   data = dat,
 #'   unit = "obs",
 #'   cluster = "unit",
@@ -62,7 +63,7 @@
 #' }
 #'
 #' @export
-kernel_latent <- function(unit, K, d = 1, name = "kernel", unique = TRUE) {
+kernel_latent <- function(unit, K, d = 1, name = "kernel", unique = FALSE) {
   invisible(NULL)
 }
 

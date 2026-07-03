@@ -154,8 +154,12 @@ Type objective_function<Type>::operator()()
   //     absorbed into Lambda_spde for identifiability, mirroring
   //     phylo_latent), and a T x K_S loading matrix Lambda_spde drives all
   //     traits via eta(o) += sum_k Lambda_spde(t, k) * (A_proj * omega_spde_lv.col(k))(o).
+  //     If spde_lv_unique == 1, an additional per-trait omega_spde block is
+  //     kept alive on the same Q_base with its own tau_t scale, giving
+  //     Sigma_spde = Lambda_spde Lambda_spde' + diag(Psi_spde).
   DATA_INTEGER(use_spde);
   DATA_INTEGER(spde_lv_k);         // 0 = per-trait path; >=1 = K-rank loadings path
+  DATA_INTEGER(spde_lv_unique);    // 1 = spatial_latent(..., unique = TRUE)
   DATA_INTEGER(n_mesh);
   (void)n_mesh;                    // retained in the data contract for mesh sanity checks in R
   DATA_SPARSE_MATRIX(A_proj);      // n_obs x n_mesh
@@ -1398,6 +1402,8 @@ Type objective_function<Type>::operator()()
   //     omega_spde_lv with prior GMRF(Q_base) (tau == 1, scale absorbed
   //     into Lambda_spde for identifiability), and a packed
   //     lower-triangular Lambda_spde (n_traits x K_S) loading matrix.
+  //     If spde_lv_unique == 1, also keep the per-trait omega_spde block as
+  //     the diagonal Psi_spde companion.
   matrix<Type> Lambda_spde(n_traits, std::max(spde_lv_k, 1));
   Lambda_spde.setZero();
   if (use_spde == 1) {
@@ -1406,15 +1412,16 @@ Type objective_function<Type>::operator()()
     Type kappa4 = kappa2 * kappa2;
     Eigen::SparseMatrix<Type> Q_base =
       kappa4 * spde_M0 + Type(2.0) * kappa2 * spde_M1 + spde_M2;
-    if (spde_lv_k == 0) {
-      // Per-trait path
+    if (spde_lv_k == 0 || spde_lv_unique == 1) {
+      // Per-trait path, or diagonal Psi companion for spatial_latent(unique=TRUE).
       for (int t = 0; t < n_traits; t++) {
         Type tau = exp(log_tau_spde(t));
         vector<Type> omega_t = omega_spde.col(t);
         nll += SCALE(GMRF(Q_base), Type(1.0) / tau)(omega_t);
       }
       REPORT(log_tau_spde);
-    } else {
+    }
+    if (spde_lv_k > 0) {
       // spatial_latent: build Lambda_spde from packed lower-triangular
       // theta_rr_spde_lv (same layout as theta_rr_B/W/phy).
       int p = n_traits;
@@ -1442,7 +1449,21 @@ Type objective_function<Type>::operator()()
         nll += GMRF(Q_base)(omega_k);
       }
       REPORT(Lambda_spde);
-      matrix<Type> Sigma_spde = Lambda_spde * Lambda_spde.transpose();
+      matrix<Type> Sigma_spde_shared = Lambda_spde * Lambda_spde.transpose();
+      matrix<Type> Sigma_spde = Sigma_spde_shared;
+      REPORT(Sigma_spde_shared);
+      if (spde_lv_unique == 1) {
+        vector<Type> sd_spde_unique(n_traits);
+        vector<Type> Psi_spde_unique(n_traits);
+        for (int t = 0; t < n_traits; t++) {
+          Type tau = exp(log_tau_spde(t));
+          sd_spde_unique(t) = Type(1.0) / tau;
+          Psi_spde_unique(t) = sd_spde_unique(t) * sd_spde_unique(t);
+          Sigma_spde(t, t) += Psi_spde_unique(t);
+        }
+        REPORT(sd_spde_unique);
+        REPORT(Psi_spde_unique);
+      }
       REPORT(Sigma_spde);
     }
     REPORT(kappa);
@@ -1715,13 +1736,14 @@ Type objective_function<Type>::operator()()
   A_omega.setZero();
   A_omega_lv.setZero();
   if (use_spde == 1) {
-    if (spde_lv_k == 0) {
+    if (spde_lv_k == 0 || spde_lv_unique == 1) {
       for (int t = 0; t < n_traits; t++) {
         vector<Type> omega_t = omega_spde.col(t);
         vector<Type> Ao_t = A_proj * omega_t;
         for (int o = 0; o < y.size(); o++) A_omega(o, t) = Ao_t(o);
       }
-    } else {
+    }
+    if (spde_lv_k > 0) {
       for (int k = 0; k < spde_lv_k; k++) {
         vector<Type> omega_k = omega_spde_lv.col(k);
         vector<Type> Ao_k = A_proj * omega_k;
@@ -1815,6 +1837,8 @@ Type objective_function<Type>::operator()()
         Type contrib_spde = 0;
         for (int k = 0; k < spde_lv_k; k++)
           contrib_spde += Lambda_spde(t, k) * A_omega_lv(o, k);
+        if (spde_lv_unique == 1)
+          contrib_spde += A_omega(o, t);
         eta(o) += contrib_spde;
       }
     }

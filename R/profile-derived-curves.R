@@ -747,10 +747,10 @@ profile_correlation <- function(
     use_diag <- isTRUE(fit$use$phylo_diag)
   } else {
     ix_rr <- which(par_names == "theta_rr_spde_lv")
-    ix_diag <- integer(0)
+    ix_diag <- which(par_names == "log_tau_spde")
     rank <- fit$d_spde_lv
     use_rr <- isTRUE(fit$use$spatial_latent)
-    use_diag <- FALSE
+    use_diag <- isTRUE(fit$use$spatial_latent_unique)
   }
   if (!use_rr) {
     cli::cli_abort(
@@ -773,7 +773,7 @@ profile_correlation <- function(
     Sigma <- LLt
     if (use_diag) {
       th_diag <- par[ix_diag]
-      diag(Sigma) <- diag(Sigma) + exp(2 * th_diag)
+      diag(Sigma) <- diag(Sigma) + exp(-2 * th_diag)
     }
     if (!is.finite(Sigma[local_i, local_i]) ||
           !is.finite(Sigma[local_j, local_j]) ||

@@ -8,14 +8,25 @@
 follow-up slice; `spatial_latent()` remains blocked on the missing SPDE
 diagonal engine slot.
 
-## Goal
+**Superseding note 2026-07-03:** the default-fold part of this design was
+revised. Ordinary `latent()` still carries diagonal Psi by default, but
+source-specific and kernel latent terms are loadings-only by default. Use
+`phylo_latent(..., unique = TRUE)`, `animal_latent(..., unique = TRUE)`,
+`spatial_latent(..., unique = TRUE)`, or
+`kernel_latent(..., unique = TRUE)` for
+`Lambda Lambda^T + Psi_source`; keep
+`*_latent(..., unique = FALSE) + *_unique()` as compatibility syntax.
 
-Make each `*_latent()` auto-carry its source-specific diagonal Ψ companion by default
-(`unique = TRUE`), so the paired `*_latent + *_unique` collapses to a single
-`*_latent()` — mirroring the ordinary `latent()` fold already shipped. This is the
-prerequisite for `latent_*`-only and the eventual removal of `*_unique()`
-(verification sweep finding from the original design baseline: source-specific
-latents did **not** yet fold Ψ).
+## Historical Goal Superseded 2026-07-03
+
+This note originally proposed making each `*_latent()` auto-carry its
+source-specific diagonal Ψ companion by default. That default change was
+superseded on 2026-07-03. The current contract is explicit:
+`*_latent(..., unique = TRUE)` gives
+`Lambda Lambda^T + Psi_source`, while bare `*_latent()` remains
+loadings-only. The compatibility spelling
+`*_latent(..., unique = FALSE) + *_unique()` stays live until a later
+lifecycle PR retires `*_unique()`.
 
 ## Current state (verified)
 

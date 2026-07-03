@@ -99,8 +99,8 @@ matrix (`animal_dep()`), per-trait independent diagonal entries
 soft-deprecated compatibility syntax), or as a reduced-rank factor-analytic
 parameterisation $\boldsymbol G \approx \boldsymbol\Lambda
 \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
-(`animal_latent()`; use `unique = FALSE` only for the loadings-only
-subset).
+(`animal_latent(..., unique = TRUE)`; omit `unique = TRUE` only for the
+loadings-only subset).
 
 Because the `animal_*()` keywords are pure syntactic sugar over the
 `phylo_*()` engine path (only the relatedness-matrix input differs),
@@ -249,15 +249,15 @@ head(df2)
 ```
 
 The full unstructured $\boldsymbol G$ is fit with `animal_dep()`.
-The factor-analytic alternative is `animal_latent()`, which now carries
-the shared factor-analytic part and the trait-specific diagonal
-$\boldsymbol\Psi$ by default. At $d = T$, the folded latent form spans
+The factor-analytic alternative is `animal_latent(..., unique = TRUE)`,
+which carries the shared factor-analytic part and the trait-specific
+diagonal $\boldsymbol\Psi$. At $d = T$, the folded latent form spans
 the full $T \times T$ space, equivalent to `animal_dep()`.
 
 ```{r fit2}
 fit2 <- gllvmTMB(
   value ~ 0 + trait +
-    animal_latent(id, d = 1, pedigree = ped) +
+    animal_latent(id, d = 1, pedigree = ped, unique = TRUE) +
     indep(0 + trait | id),
   data = df2,
   trait = "trait",
@@ -267,8 +267,8 @@ fit2 <- gllvmTMB(
 fit2$opt$convergence
 ```
 
-The model has a one-factor genetic structure (`animal_latent(d = 1)`)
-with the default per-trait genetic diagonal, plus a non-genetic
+The model has a one-factor genetic structure (`animal_latent(d = 1, unique = TRUE)`)
+with the per-trait genetic diagonal, plus a non-genetic
 trait-level residual covariance (`indep(0 + trait | id)`). The
 genetic covariance matrix $\boldsymbol G$ is rotation-invariant and
 recovered by combining the shared and diagonal parts:
@@ -312,7 +312,7 @@ Runcie & Mukherjee 2013): approximate
 $\boldsymbol G \approx \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}
 + \boldsymbol\Psi$ where $\boldsymbol\Lambda$ is a $T \times d$
 loading matrix ($d \ll T$) and $\boldsymbol\Psi$ is diagonal. In
-`gllvmTMB` this is `animal_latent(d = K)` — the same folded
+`gllvmTMB` this is `animal_latent(d = K, unique = TRUE)` — the same folded
 decomposition as Tutorial 2, but with $d < T$.
 
 The biological justification (Cheverud 1996; Wagner & Altenberg 1996;
@@ -321,7 +321,7 @@ number of **modular** pathways, so the trait covariance is expected
 to be sparse and low rank. Runcie & Mukherjee's BSFG (Bayesian
 Sparse Factor analysis of G-matrices) scales this idea to thousands
 of traits via shrinkage priors on $\boldsymbol\Lambda$. `gllvmTMB`'s
-`animal_latent()` is the frequentist (TMB Laplace) counterpart —
+`animal_latent(..., unique = TRUE)` is the frequentist (TMB Laplace) counterpart —
 faster on moderate-dim problems, applicable to mixed response
 families via the GLLVM machinery, no sparsity penalty in v0.2.0.
 
@@ -358,7 +358,7 @@ df3 <- data.frame(
 ```{r fit3}
 fit3 <- gllvmTMB(
   value ~ 0 + trait +
-    animal_latent(id, d = 1, pedigree = ped) +
+    animal_latent(id, d = 1, pedigree = ped, unique = TRUE) +
     indep(0 + trait | id),
   data = df3,
   trait = "trait",

@@ -63,7 +63,7 @@ contribution and are deliberate about what the current engine does and does
 not yet certify.
 
 Scope boundary: **IN** (`COE-02`, `KER-02`), this article fits one named
-dense kernel tier with folded `kernel_latent()` and extracts the
+dense kernel tier with `kernel_latent(..., unique = TRUE)` and extracts the
 cross-lineage shared block with `extract_Gamma()`. **PARTIAL**, `rho` is
 supplied when `K*` is built (not estimated in the engine), and
 `extract_Gamma()` returns point estimates without calibrated intervals.
@@ -225,13 +225,14 @@ max(abs(K_null[rownames(coev$A_H), rownames(coev$A_P)]))
 The full coevolution analysis is three steps:
 
 1. **Build** `K* <- make_cross_kernel(A_H, A_P, W, rho)`.
-2. **Fit** `kernel_latent(species, K = K_star, d = 2, name = "cross")`
-   on the block-`NA` stacked `Y*`; the ordinary folded default estimates
-   both `Lambda Lambda^T` and the diagonal `Psi` at this named kernel tier.
+2. **Fit** `kernel_latent(species, K = K_star, d = 2, name = "cross",
+   unique = TRUE)` on the block-`NA` stacked `Y*`; the explicit
+   `unique = TRUE` fold estimates both `Lambda Lambda^T` and the
+   diagonal `Psi` at this named kernel tier.
 3. **Extract** `extract_Gamma(fit, level = "cross", row_traits, col_traits)`.
 
-`kernel_latent()` estimates the shared reduced-rank `Lambda Lambda^T`
-covariance attached to `K*` plus the trait-specific diagonal `Psi` at the
+`kernel_latent(..., unique = TRUE)` estimates the shared reduced-rank
+`Lambda Lambda^T` covariance attached to `K*` plus the trait-specific diagonal `Psi` at the
 same named tier. The name `"cross"` is the level that `extract_Sigma()` and
 `extract_Gamma()` read back.
 
@@ -243,7 +244,8 @@ ctrl <- gllvmTMBcontrol(se = TRUE)
 
 fit_cross <- gllvmTMB(
   traits(h_size, h_defence, p_size, p_attack) ~ 1 +
-    kernel_latent(species, K = K_star, d = 2, name = "cross"),
+    kernel_latent(species, K = K_star, d = 2, name = "cross",
+                  unique = TRUE),
   data = coev$data_wide,
   unit = "row_id",
   cluster = "species",
@@ -264,7 +266,8 @@ noise (the C2 fixture test asserts the wide/long `logLik` difference is below
 ```{r fit-long, eval = FALSE}
 fit_cross_long <- gllvmTMB(
   value ~ 0 + trait +
-    kernel_latent(species, K = K_star, d = 2, name = "cross"),
+    kernel_latent(species, K = K_star, d = 2, name = "cross",
+                  unique = TRUE),
   data = coev$data_long,
   trait = "trait",
   unit = "row_id",
@@ -290,7 +293,8 @@ model-comparison diagnostic, not as a calibrated likelihood-ratio test.
 ```{r fit-null, eval = FALSE}
 fit_null <- gllvmTMB(
   traits(h_size, h_defence, p_size, p_attack) ~ 1 +
-    kernel_latent(species, K = K_null, d = 2, name = "cross"),
+    kernel_latent(species, K = K_null, d = 2, name = "cross",
+                  unique = TRUE),
   data = coev$data_wide,
   unit = "row_id",
   cluster = "species",
@@ -450,7 +454,8 @@ rho_results <- lapply(rho_grid, function(rho) {
   K_rho <- make_cross_kernel(coev$A_H, coev$A_P, coev$W, rho = rho)
   fit_rho <- gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~ 1 +
-      kernel_latent(species, K = K_rho, d = 2, name = "cross"),
+      kernel_latent(species, K = K_rho, d = 2, name = "cross",
+                    unique = TRUE),
     data = coev$data_wide,
     unit = "row_id",
     cluster = "species",

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 10:34 MDT",
+  "updated": "2026-07-03 10:50 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 10:50 MDT",
+      "who": "Phylo x NB2 structural LV S2 runner",
+      "status": "guard",
+      "text": "GLLVM.jl now has an explicit single-task runner for the private phylo x NB2(log) x X_lv S2 manifest: shared r=1.6, selected B_eta_realized entries 1,2,5, selected-entry CSVs, endpoint-usability summaries, fitted-r guard, and --run-task separated from manifest dry-run. Local smoke used --no-profile-endpoints and is plumbing only: usable_endpoint_entries=0, lr_at_truth_only_entries=3, coverage=NaN, sigma2_boundary_tasks_lt_1e-8=0, r_boundary_tasks=0. Focused harness passed 38/38 and NB2 S1 tests passed 12/12 + 25/25. No authorized S2 endpoint-profile denominator, Totoro/DRAC launch, public fitter, source-specific grammar, bridge transport, bootstrap rescue, or support claim."
+    },
     {
       "when": "2026-07-03 10:34 MDT",
       "who": "Phylo x Binomial structural LV S2 runner",
@@ -185,6 +191,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-03 10:50 MDT",
+      "who": "Phylo x NB2 S2 runner smoke",
+      "status": "guard",
+      "text": "Focused GLLVM.jl checks passed for the NB2 S2 runner readiness slice: harness 38/38, existing phylo NB2 S1 tests 12/12 + 25/25, after-task validation, and git diff --check. One local --run-task --no-profile-endpoints smoke wrote 3 selected-entry rows and summarized usable_endpoint_entries=0, lr_at_truth_only_entries=3, coverage=NaN, sigma2_boundary_tasks_lt_1e-8=0, and r_boundary_tasks=0. This is not S2 endpoint-profile evidence."
+    },
     {
       "when": "2026-07-03 05:26 MDT",
       "who": "Phylo x Poisson S2 runner smoke",

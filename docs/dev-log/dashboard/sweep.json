@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-02 16:09 MDT",
+  "updated": "2026-07-03 05:26 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,18 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 05:26 MDT",
+      "who": "Phylo x Poisson structural LV S2 runner",
+      "status": "guard",
+      "text": "GLLVM.jl now has an explicit single-task runner for the private phylo x Poisson x X_lv S2 manifest: write one selected-entry CSV per task, summarize coverage/MCSE/Wilson/misses/boundary counts, and keep --run-task separate from manifest dry-run. Local smoke used --no-profile-endpoints and is plumbing only. No authorized S2 endpoint-profile denominator, Totoro/DRAC launch, public fitter, source-specific grammar, bridge transport, bootstrap rescue, or support claim."
+    },
+    {
+      "when": "2026-07-02 20:24 MDT",
+      "who": "Arc 1 Gate 0 truth lock",
+      "status": "guard",
+      "text": "GLLVM.jl PR #165 merged as 8617ba1 after the phylo x Poisson selected-entry canary was stabilized, and PR #166 merged as 05210ec with the Arc 1 Gate 0 truth-lock/audit packet. Route-boundary only: no active compute, no public source-specific lv support, no R grammar exposure, no PR #127 reopen, no bootstrap rescue, and no mixed-family CI claim."
+    },
     {
       "when": "2026-07-02 16:09 MDT",
       "who": "Phylo x Poisson structural LV S2 manifest",
@@ -167,6 +179,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-03 05:26 MDT",
+      "who": "Phylo x Poisson S2 runner smoke",
+      "status": "guard",
+      "text": "Focused GLLVM.jl checks passed for the re-landed S2 runner readiness slice: harness 30/30, existing phylo Poisson S1 tests 9/9 + 22/22, full Pkg.test 5099/5100 with 1 broken in 53m04.0s, after-task validator, and git diff --check. One local --run-task --no-profile-endpoints smoke wrote 3 selected-entry rows and summarized usable_endpoint_entries=0, lr_at_truth_only_entries=3, coverage=NaN, and one sigma2_phy boundary task. This is not S2 endpoint-profile evidence."
+    },
     {
       "when": "2026-07-02 16:09 MDT",
       "who": "Phylo x Poisson S2 manifest dry-run",

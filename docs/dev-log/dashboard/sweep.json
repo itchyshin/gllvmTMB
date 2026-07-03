@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 11:16 MDT",
+  "updated": "2026-07-03 11:43 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 11:43 MDT",
+      "who": "R+Julia v1.0 contract packet",
+      "status": "guard",
+      "text": "GLLVM.jl fc8af22c adds the first v1.0 R+Julia capability-contract packet: orientation, matrix, and bridge-drift gates. It records that local Julia bridge truth is narrower than the current R-side gllvmTMB ledger, names expected drift rows, keeps source-specific structural lv fail-loud, keeps mixed-family CIs blocked, and keeps all-six phylo non-Gaussian S2 runners as plumbing only. This is documentation/evidence governance only: no package API, bridge widening, source-specific grammar, likelihood change, Mission Control metric promotion, Totoro/DRAC launch, or v1.0 completion claim. No LV compute is active."
+    },
     {
       "when": "2026-07-03 11:16 MDT",
       "who": "Phylo six-family structural LV S2 runners",
@@ -197,6 +203,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-03 11:43 MDT",
+      "who": "R+Julia v1.0 contract phase 0/1 checks",
+      "status": "guard",
+      "text": "Focused checks for the contract packet passed: Julia bridge_capabilities 60/60, Julia bridge_fit 175/175, R Julia bridge 380 pass / 14 expected live-GLLVM-path skips, R canonical keyword guards 86 pass / 3 INLA skips, JSON validation, and git diff --check. This is not a bridge widening or v1.0 completion claim. No LV compute is active."
+    },
     {
       "when": "2026-07-03 11:16 MDT",
       "who": "Gamma/Beta/Ordinal S2 runner smokes",

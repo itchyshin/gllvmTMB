@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 05:26 MDT",
+  "updated": "2026-07-03 10:34 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 10:34 MDT",
+      "who": "Phylo x Binomial structural LV S2 runner",
+      "status": "guard",
+      "text": "GLLVM.jl now has an explicit single-task runner for the private phylo x Binomial(logit) x X_lv S2 manifest: fixed N=28, selected B_eta_realized entries 1,2,5, selected-entry CSVs, endpoint-usability summaries, and --run-task separated from manifest dry-run. Local smoke used --no-profile-endpoints and is plumbing only: usable_endpoint_entries=0, lr_at_truth_only_entries=3, coverage=NaN. Full Pkg.test passed 5318/5319 with 1 broken. No authorized S2 endpoint-profile denominator, Totoro/DRAC launch, public fitter, source-specific grammar, bridge transport, bootstrap rescue, or support claim."
+    },
     {
       "when": "2026-07-03 05:26 MDT",
       "who": "Phylo x Poisson structural LV S2 runner",

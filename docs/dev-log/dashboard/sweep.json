@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 11:58 MDT",
+  "updated": "2026-07-03 12:18 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 12:18 MDT",
+      "who": "R+Julia v1.0 live drift gate",
+      "status": "guard",
+      "text": "The R+Julia v1.0 bridge drift gate now has focused live-path test coverage. gllvmTMB commit f3148474 adds tests/testthat/test-julia-bridge-live-capabilities.R: it skips when GLLVM_JL_PATH is unset and passes against the current GLLVM.jl checkout with 68 drift rows and zero unregistered rows. GLLVM.jl commit d8ca3874 records that evidence in the v1.0 capability matrix and drift-gate notes. This is registered-drift evidence only: not R/Julia parity completion, not v1.0 completion, not bridge widening, not source-specific lv support, not mixed-family CI/X/X_lv/mask support, and not active compute."
+    },
     {
       "when": "2026-07-03 11:58 MDT",
       "who": "R+Julia v1.0 drift gate",
@@ -209,6 +215,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-03 12:18 MDT",
+      "who": "Live R-to-GLLVM drift test",
+      "status": "guard",
+      "text": "Focused live bridge-drift test passed in both modes: with GLLVM_JL_PATH unset, test-julia-bridge-live-capabilities.R skipped 1/1 as expected; with GLLVM_JL_PATH pointing at /Users/z3437171/Dropbox/Github Local/GLLVM.jl and JULIA_HOME at ~/.juliaup/bin, it passed 8/8 and confirmed live GLLVM.bridge_capabilities() produces 68 registered drift rows and 0 unregistered rows. GLLVM.jl bridge_capabilities 60/60 and bridge_fit 175/175 also passed. A Julia Distributions precompile warning appeared during one live run but did not affect assertions."
+    },
     {
       "when": "2026-07-03 11:58 MDT",
       "who": "R+Julia v1.0 drift-gate checks",

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 12:18 MDT",
+  "updated": "2026-07-03 12:19 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 12:19 MDT",
+      "who": "R+Julia v1.0 matrix supersession",
+      "status": "guard",
+      "text": "GLLVM.jl commit 31374617 supersedes the historical docs/dev-log/capability-bridge-matrix.md for current v1.0 decisions. The authoritative contract is now docs/dev-log/v1-contract/r-julia-v1-capability-matrix.md plus docs/dev-log/v1-contract/2026-07-03-bridge-drift-gates.md. Old GLLVM.jl-integration and 439/439 bridge evidence is retained only as pre-v1 historical context. This is a claim-boundary cleanup: not R/Julia parity completion, not v1.0 completion, not bridge widening, not source-specific lv support, not mixed-family CI/X/X_lv/mask support, and not active compute."
+    },
     {
       "when": "2026-07-03 12:18 MDT",
       "who": "R+Julia v1.0 live drift gate",
@@ -215,6 +221,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-03 12:19 MDT",
+      "who": "Matrix supersession checks",
+      "status": "guard",
+      "text": "GLLVM.jl matrix-supersession checks passed: git diff --check clean; test_bridge_capabilities.jl 60/60; test_bridge_fit.jl 175/175; stale-current scan no longer finds the exact old \"This is the governing matrix\" sentence in the active ledger. Remaining GLLVM.jl-integration and 439/439 hits are historical context or after-task/check-log audit text. No Totoro/DRAC compute, package API, or bridge parity row changed."
+    },
     {
       "when": "2026-07-03 12:18 MDT",
       "who": "Live R-to-GLLVM drift test",

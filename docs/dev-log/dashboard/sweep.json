@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 13:05 MDT",
+  "updated": "2026-07-03 13:21 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 13:21 MDT",
+      "who": "Gaussian X bridge row",
+      "status": "guard",
+      "text": "GLLVM.jl commit 32b1c2d0 routes Gaussian fixed-effect X point fits and selected Gaussian X Wald/profile/bootstrap CI payloads through the local bridge; paired gllvmTMB commit fb2090d5 updates the live drift guard. Live drift is now 57 registered rows and 0 unregistered rows, with no Gaussian fixed_effect_X or ci_x_* drift rows. This is Gaussian bridge transport only: non-Gaussian X, masks, mask+X, mixed-family vectors/CIs, source-specific lv, unique= parity, coverage calibration, v1.0 completion, and active compute remain gated."
+    },
     {
       "when": "2026-07-03 13:05 MDT",
       "who": "Cbind binomial bridge row",
@@ -239,6 +245,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-03 13:21 MDT",
+      "who": "Gaussian X bridge checks",
+      "status": "guard",
+      "text": "Focused checks passed: GLLVM.jl test_bridge_capabilities.jl 90/90 and test_bridge_fit.jl 193/193; paired gllvmTMB test-julia-bridge-live-capabilities.R 24/24 against local GLLVM.jl; R test-julia-bridge.R 410 pass with 14 expected live-GLLVM-path skips; drift printout drift_rows=57 and unregistered=0. No Gaussian fixed_effect_X or ci_x_* drift rows remain; remaining registered drift is still not parity."
+    },
     {
       "when": "2026-07-03 13:05 MDT",
       "who": "Cbind bridge checks",

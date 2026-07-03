@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 12:32 MDT",
+  "updated": "2026-07-03 12:47 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 12:47 MDT",
+      "who": "Selected profile parm transport",
+      "status": "guard",
+      "text": "Paired gllvmTMB commit 96028892 routes named R post-fit confint(..., method = \"profile\", parm = ...) selections into the Julia bridge ci_parm option; GLLVM.jl commit 28967d3d records the completed gate in the v1.0 matrix. This is selected no-X profile transport only: live drift remains 62 registered rows and 0 unregistered rows, with no v1.0 completion, no coverage calibration, no source-specific lv support, no mixed-family CI support, no X/mask parity, and no active compute."
+    },
     {
       "when": "2026-07-03 12:32 MDT",
       "who": "Selected no-X bridge profile CIs",
@@ -227,6 +233,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-03 12:47 MDT",
+      "who": "Profile parm transport checks",
+      "status": "guard",
+      "text": "Focused checks passed from clean gllvmTMB worktree /private/tmp/gllvmtmb-v1-contract-drift-20260703: parse R/julia-bridge.R ok; R test-julia-bridge.R passed 394 with 14 expected live-GLLVM-path skips; live test-julia-bridge-live-capabilities.R passed 12/12 against local GLLVM.jl and skipped 2/2 when GLLVM_JL_PATH was unset; git diff --check clean. The selected parm gate is covered, but 62 registered R-vs-Julia drift rows remain."
+    },
     {
       "when": "2026-07-03 12:32 MDT",
       "who": "Live drift now 62 rows",

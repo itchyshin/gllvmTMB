@@ -93,8 +93,9 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'
 #' `animal_unique()` is soft-deprecated as compatibility syntax in gllvmTMB
 #' 0.2.0. Use [animal_indep()] for standalone marginal diagonal animal-model
-#' terms. Paired explicit-Psi use remains accepted; [animal_latent()] now
-#' carries this diagonal companion by default.
+#' terms. Paired explicit-Psi use remains accepted; use
+#' `animal_latent(..., unique = TRUE)` when the folded latent term itself
+#' should carry this diagonal companion.
 #'
 #' Canonical name for the **D independent** animal-model random
 #' intercept on a shared relatedness matrix \eqn{\mathbf A}. Each
@@ -192,8 +193,8 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' Reduced-rank animal-model latent factors: `animal_latent(id, d = K)`
 #'
 #' Reduced-rank decomposition of the additive-genetic covariance
-#' matrix using \eqn{K} latent factors plus, by default, a per-trait
-#' diagonal \eqn{\boldsymbol\Psi} companion:
+#' matrix using \eqn{K} latent factors. Set `unique = TRUE` to add a
+#' per-trait diagonal \eqn{\boldsymbol\Psi} companion:
 #' \eqn{\boldsymbol G =
 #' \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 #' with \eqn{\boldsymbol\Lambda} a \eqn{T \times K} loadings matrix
@@ -209,9 +210,9 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'
 #' @inheritParams animal_scalar
 #' @param d Number of latent factors (\eqn{K \le T}). Default 1.
-#' @param unique Logical; when `TRUE` (default), include the per-trait
-#'   diagonal additive-genetic \eqn{\boldsymbol\Psi} companion. Use
-#'   `unique = FALSE` for the older loadings-only subset.
+#' @param unique Logical; when `TRUE`, include the per-trait diagonal
+#'   additive-genetic \eqn{\boldsymbol\Psi} companion. The default `FALSE`
+#'   preserves the loadings-only subset.
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_unique()], [phylo_latent()].
 #' @examples
@@ -234,7 +235,8 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'   value   = yvec
 #' )
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped),
+#'   value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped,
+#'                                    unique = TRUE),
 #'   data = df, family = gaussian()
 #' )
 #' }
@@ -242,10 +244,10 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 animal_latent <- function(
   id,
   d = 1,
-  unique = TRUE,
   pedigree = NULL,
   A = NULL,
-  Ainv = NULL
+  Ainv = NULL,
+  unique = FALSE
 ) {
   invisible(NULL)
 }

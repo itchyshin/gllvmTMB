@@ -681,10 +681,10 @@ profile_ci_correlation <- function(
   } else {
     # spde
     ix_rr <- which(par_names == "theta_rr_spde_lv")
-    ix_diag <- integer(0)
+    ix_diag <- which(par_names == "log_tau_spde")
     rank <- fit$d_spde_lv
     use_rr <- isTRUE(fit$use$spatial_latent)
-    use_diag <- FALSE
+    use_diag <- isTRUE(fit$use$spatial_latent_unique)
   }
   if (!use_rr) {
     cli::cli_abort(
@@ -726,7 +726,7 @@ profile_ci_correlation <- function(
     Sigma <- LLt
     if (use_diag) {
       th_diag <- par[ix_diag]
-      diag(Sigma) <- diag(Sigma) + exp(2 * th_diag)
+      diag(Sigma) <- diag(Sigma) + exp(-2 * th_diag)
     }
     if (Sigma[i, i] <= 0 || Sigma[j, j] <= 0) {
       return(NA_real_)

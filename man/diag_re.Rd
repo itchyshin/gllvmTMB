@@ -63,14 +63,17 @@ link function fixes an implicit residual variance on the latent
 scale (1 for probit, \eqn{\pi^2/3} for logit, \eqn{\pi^2/6} for
 cloglog), which acts as the implicit unique component. Adding an
 explicit \code{unique()} term on top is typically not identified.
-\item \strong{Folded source-specific latent terms}. \code{phylo_latent()} and
-\code{animal_latent()} now carry their source-specific diagonal
-\eqn{\boldsymbol\Psi} companions by default, matching ordinary
-\code{latent()}. Use \code{phylo_latent(..., unique = FALSE) + phylo_unique()},
-\code{animal_latent(..., unique = FALSE) + animal_unique()}, or
-\code{kernel_latent(..., unique = FALSE) + kernel_unique()} only when
-you need the explicit compatibility spelling. \code{spatial_latent()} keeps
-its explicit \code{+ spatial_unique()} companion until its fold slice lands. See
+\item \strong{Source-specific latent terms}. Use
+\code{phylo_latent(..., unique = TRUE)},
+\code{animal_latent(..., unique = TRUE)},
+\code{spatial_latent(..., unique = TRUE)}, or
+\code{kernel_latent(..., unique = TRUE)} when the folded term itself should
+carry its source-specific diagonal \eqn{\boldsymbol\Psi} companion. The
+explicit compatibility spellings
+\code{phylo_latent(..., unique = FALSE) + phylo_unique()},
+\code{animal_latent(..., unique = FALSE) + animal_unique()},
+\code{spatial_latent(..., unique = FALSE) + spatial_unique()}, and
+\code{kernel_latent(..., unique = FALSE) + kernel_unique()} remain accepted. See
 \code{vignettes/articles/pitfalls.Rmd} section 5 and
 \code{docs/dev-log/decisions.md} 2026-05-14 entry.
 \item \strong{Confirmatory factor models}. Sometimes domain knowledge tells

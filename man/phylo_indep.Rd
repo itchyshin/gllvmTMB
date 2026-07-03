@@ -39,8 +39,10 @@ are otherwise independent.
 \deqn{\mathbf p_t \sim \mathcal{N}(\mathbf 0,\, \sigma^2_{\text{phy},t}\,\mathbf A_{\text{phy}}), \qquad t = 1, \dots, T.}
 
 Use \code{phylo_indep()} for an explicit marginal-only phylogenetic fit
-(no cross-trait phylogenetic decomposition). Use \code{phylo_latent()}
-paired with \code{phylo_unique()} for the paired phylogenetic decomposition
+(no cross-trait phylogenetic decomposition). Use
+\code{phylo_latent(..., unique = TRUE)} or the compatibility pair
+\code{phylo_latent(..., unique = FALSE) + phylo_unique()} for the paired
+phylogenetic decomposition
 \eqn{\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}}\boldsymbol\Lambda_{\text{phy}}^\top + \boldsymbol\Psi_{\text{phy}}}.
 \subsection{Mutual exclusion with \code{phylo_latent()}}{
 

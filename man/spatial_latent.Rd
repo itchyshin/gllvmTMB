@@ -4,7 +4,7 @@
 \alias{spatial_latent}
 \title{Reduced-rank spatial latent factors: \code{spatial_latent(0 + trait | coords, d = K)}}
 \usage{
-spatial_latent(formula, d = 1, coords = NULL, mesh = NULL)
+spatial_latent(formula, d = 1, coords = NULL, mesh = NULL, unique = FALSE)
 }
 \arguments{
 \item{formula}{\code{0 + trait | coords} style formula (LHS is the trait
@@ -20,6 +20,12 @@ the coordinates via the formula RHS.}
 
 \item{mesh}{Optional \code{fmesher} mesh object built via \code{\link[=make_mesh]{make_mesh()}}. If
 \code{NULL}, the engine constructs a default mesh from \code{coords}.}
+
+\item{unique}{Logical; \code{TRUE} adds a per-trait unique SPDE field
+companion so the reported spatial covariance is
+\eqn{\boldsymbol\Lambda_{\mathrm{spa}}\boldsymbol\Lambda_{\mathrm{spa}}^\top +
+\boldsymbol\Psi_{\mathrm{spa}}}. The default \code{FALSE} preserves the
+previous low-rank-only spatial latent path.}
 }
 \value{
 A formula marker; never evaluated.

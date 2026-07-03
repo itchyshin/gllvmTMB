@@ -7,7 +7,7 @@
 \alias{kernel_dep}
 \title{Generic dense-kernel covariance keywords}
 \usage{
-kernel_latent(unit, K, d = 1, name = "kernel", unique = TRUE)
+kernel_latent(unit, K, d = 1, name = "kernel", unique = FALSE)
 
 kernel_unique(unit, K, name = "kernel")
 
@@ -27,9 +27,9 @@ path.}
 \item{name}{Character scalar used as the extractor level, e.g.
 \code{extract_Sigma(fit, level = "cross")}.}
 
-\item{unique}{Logical; \code{TRUE} (default) auto-includes the kernel-structured
-diagonal trait-specific \eqn{\boldsymbol\Psi} companion for a single
-dense-kernel tier. Set \code{FALSE} for the loadings-only subset.}
+\item{unique}{Logical; \code{TRUE} auto-includes the kernel-structured diagonal
+trait-specific \eqn{\boldsymbol\Psi} companion for a single dense-kernel
+tier. The default \code{FALSE} preserves the loadings-only subset.}
 }
 \value{
 A formula marker; never evaluated as a regular R function.
@@ -38,10 +38,10 @@ A formula marker; never evaluated as a regular R function.
 \code{kernel_latent()} fits named random-effect tiers with user-supplied
 between-unit covariance matrices \code{K}. The IN scope (\code{KER-02}) for one named
 dense-kernel tier is the phylo-equivalent path:
-\code{kernel_latent(unit, K = A, d = q)} now carries its kernel-structured
-diagonal \eqn{\boldsymbol\Psi} companion by default and must match
-\code{phylo_latent(unit, vcv = A, d = q)} to less than \code{1e-6} for log likelihood
-and extracted \code{Sigma}. The compatibility spelling
+\code{kernel_latent(unit, K = A, d = q, unique = TRUE)} carries its
+kernel-structured diagonal \eqn{\boldsymbol\Psi} companion and must match
+\code{phylo_latent(unit, vcv = A, d = q, unique = TRUE)} to less than \code{1e-6}
+for log likelihood and extracted \code{Sigma}. The compatibility spelling
 \code{kernel_latent(..., unique = FALSE) + kernel_unique(...)} remains accepted.
 The first multi-kernel scope (\code{KER-03}) accepts two or more fixed named
 \code{kernel_latent()} tiers over the same grouping levels, each with its own
@@ -73,7 +73,8 @@ dat <- data.frame(
 rownames(A) <- colnames(A) <- levels(dat$unit)
 fit <- gllvmTMB(
   traits(y1, y2) ~
-    1 + kernel_latent(unit, K = A, d = 1, name = "known"),
+    1 + kernel_latent(unit, K = A, d = 1, name = "known",
+                      unique = TRUE),
   data = dat,
   unit = "obs",
   cluster = "unit",

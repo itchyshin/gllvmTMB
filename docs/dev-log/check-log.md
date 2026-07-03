@@ -22195,3 +22195,76 @@ Pre-merge public-doc / pkgdown gate:
   -> REVIEWED; hits are older compatibility / alias wording (`gllvmTMB_wide`,
   `meta_known_V`, `block_V`) that is explicitly described as deprecated or
   blocked, not a current `extract_lv_effects()` overclaim.
+
+## 2026-07-03 -- explicit source-specific `*_latent(unique = TRUE)` Psi fold
+
+Branch / worktree:
+
+- `codex/unique-latent-psi-fold`
+- `/private/tmp/gllvmtmb-unique-latent-psi-fold-20260703`
+
+Scope:
+
+- Implemented the explicit source/kernel contract:
+  `phylo_latent()`, `animal_latent()`, `spatial_latent()`, and
+  `kernel_latent()` remain loadings-only by default; `unique = TRUE` folds in
+  the source-specific diagonal Psi companion.
+- Kept `*_latent(..., unique = FALSE) + *_unique()` as compatibility syntax and
+  added duplicate-Psi errors for `*_latent(..., unique = TRUE) + *_unique()`.
+- Wired spatial latent-Psi through both SPDE random-effect blocks
+  (`omega_spde_lv` plus `omega_spde`) and reported total
+  `Sigma_spde = Lambda_spde Lambda_spde^T + diag(Psi_spde)`.
+
+Validation:
+
+- `gh pr list --state open --limit 20 --json number,title,headRefName,isDraft,url,mergeStateStatus`
+  -> PASS; no open PRs.
+- `git log --all --oneline --since="6 hours ago" -- AGENTS.md CLAUDE.md NEWS.md docs/design R src tests/testthat vignettes/articles man docs/dev-log/check-log.md docs/dev-log/after-task`
+  -> REVIEWED; recent commits were unrelated live bridge drift gates; no open
+  PR collision.
+- `pkgbuild::compile_dll()`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated changed Rd files. Roxygen emitted pre-existing
+  unresolved-link warnings for helper topics such as
+  `load_mixed_family_fixture`, `fit_mixed_family_fixture`,
+  `parse_multi_formula`, and `"0, 1"`.
+- `Rscript --vanilla -e 'devtools::test(filter = "phylo-latent-unique-fold|animal-latent-unique-fold|kernel-latent-unique-fold|spatial-latent-unique-fold", reporter = "summary")'`
+  -> PASS; one expected legacy `phylo_vcv =` deprecation message.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|keyword-grid|extract-sigma|profile-targets|confint-derived|profile-derived", reporter = "summary")'`
+  -> PASS. Skips were pre-existing: 3 INLA-missing spatial dep checks and
+  heavy gates requiring `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual")'`
+  -> PASS in 4m 53.5s; `0 errors | 0 warnings | 1 note`. The note is the
+  existing `NEWS.md` version-title parsing note for older dated sections.
+- `git diff --check`
+  -> PASS.
+
+Rose / stale wording scans:
+
+- ``rg -n 'folds.*by default|by default.*phylo_latent|phylo_latent\\(\\).*default|animal_latent\\(\\).*default|kernel_latent\\(\\).*default|spatial latent-Psi fold remains blocked|fold remains blocked|auto-companion.*dedup|explicit-companion dedup|default-vs-explicit|default phylo-structured|default diagonal.*phylo|default diagonal.*animal|source-specific.*by default|broader `\\*_unique\\(\\)` surface should become' AGENTS.md CLAUDE.md NEWS.md R docs/design vignettes/articles README.md man``
+  -> REVIEWED; remaining hits are intentional current contract, ordinary
+  `latent()` default Psi, historical superseding notes, or the updated
+  multi-kernel Psi boundary.
+- `rg -n 'unique = TRUE\\) \\+|unique = TRUE.*\\+ .*_unique|spatial_latent\\([^\\n]*unique = TRUE' AGENTS.md CLAUDE.md NEWS.md R docs/design vignettes/articles tests/testthat man`
+  -> REVIEWED; hits are intentional examples, duplicate-Psi guards, tests, and
+  valid article examples.
+- `rg -n 'pass_through_extras\\(e, c\\(\"tree\", \"vcv\"\\)' R/brms-sugar.R`
+  -> PASS; no stale phylo pass-through path omits `A` / `Ainv`.
+
+Not run:
+
+- `GLLVMTMB_HEAVY_TESTS=1` profile/bootstrap and broad recovery gates were not
+  run in this local slice.
+- 3-OS GitHub CI has not run.
+- Julia parity was not attempted; it remains a later PR.
+
+Issue ledger / after-task:
+
+- Inspected #526; it was already closed from the earlier spatial branch. This
+  branch strengthens and integrates the source/kernel-wide arc rather than
+  reclosing that issue.
+- After-task report:
+  `docs/dev-log/after-task/2026-07-03-unique-latent-psi-fold.md`.

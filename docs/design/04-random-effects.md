@@ -316,8 +316,10 @@ $$
 $$
 
 `phylo_latent(species, d = K, tree = tree)` estimates
-$\boldsymbol\Lambda_\text{phy}$; `phylo_unique(species, tree = tree)`
-estimates the diagonal $\boldsymbol\Psi_\text{phy}$.
+$\boldsymbol\Lambda_\text{phy}$; `phylo_latent(..., unique = TRUE)`
+or the compatibility pair
+`phylo_latent(..., unique = FALSE) + phylo_unique(species, tree = tree)`
+adds the diagonal $\boldsymbol\Psi_\text{phy}$.
 
 ### Three-piece fallback
 

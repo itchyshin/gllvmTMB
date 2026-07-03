@@ -838,11 +838,13 @@ tidy.gllvmTMB_multi <- function(
     }
     if (x$use$spde) {
       if (isTRUE(x$use$spatial_latent)) {
-        ## spatial_latent: tau is absorbed into Lambda_spde for
-        ## identifiability, so we report kappa_spde plus the implied
-        ## per-trait spatial SDs sqrt(diag(Lambda_spde Lambda_spde')).
+        ## spatial_latent: report kappa_spde plus the implied per-trait
+        ## spatial SDs. With unique=TRUE, Sigma_spde already includes
+        ## Lambda_spde Lambda_spde' + diag(Psi_spde); otherwise it is the
+        ## shared low-rank covariance.
         L <- x$report$Lambda_spde
-        sd_spde <- sqrt(diag(L %*% t(L)))
+        S_spde <- x$report$Sigma_spde %||% (L %*% t(L))
+        sd_spde <- sqrt(diag(S_spde))
         rows[[length(rows) + 1L]] <- data.frame(
           term = c(
             "kappa_spde",

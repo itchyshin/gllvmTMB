@@ -170,7 +170,7 @@ When rows are individuals and you have a three-column pedigree
 canonical QG animal model: the random effect's covariance is the
 pedigree-derived additive-genetic relatedness matrix
 $\mathbf{A}$ (Henderson 1976). Pass the pedigree directly:
-`animal_latent(individual, d = K, pedigree = ped)`, or pre-compute
+`animal_latent(individual, d = K, pedigree = ped, unique = TRUE)`, or pre-compute
 with `pedigree_to_A(ped)` and pass `A =`. The full grid
 (`animal_scalar`, `_unique`, `_indep`, `_dep`, `_latent` plus
 `animal_slope` for random regression / reaction norms) mirrors

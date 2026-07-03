@@ -42,7 +42,8 @@
 ##   --------------------------------             ----------------------------
 ##   latent(0 + trait | g, d = K)                 rr(0 + trait | g, d = K)
 ##   unique(0 + trait | g)                        diag(0 + trait | g)
-##   phylo_latent(species, d = K)                 phylo_rr(species, d = K) +
+##   phylo_latent(species, d = K)                 phylo_rr(species, d = K)
+##   phylo_latent(species, d = K, unique = TRUE)  phylo_rr(species, d = K) +
 ##                                                auto phylo_unique companion
 ##   phylo_scalar(species)                        phylo(species)
 ##   phylo_unique(species)                        phylo_rr(species, d = T) +
@@ -226,6 +227,12 @@
 #'   `"dep"`. Optional when LHS is `1` (defaults silently to
 #'   `"scalar"`). Mandatory when LHS is `0 + trait`.
 #' @param d Latent rank for `mode = "latent"`. Default 1.
+#' @param unique Logical; for `mode = "latent"`, `TRUE` includes the
+#'   phylo-structured diagonal \eqn{\boldsymbol\Psi_{phy}} companion.
+#'   The default `FALSE` preserves the loadings-only source-specific
+#'   latent path.
+#' @param A Tip-level relatedness matrix; alias of `vcv =`.
+#' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_scalar()], [phylo_unique()], [phylo_indep()],
 #'   [phylo_latent()], [phylo_dep()].
@@ -264,7 +271,16 @@
 #'                        cluster   = "species",
 #'                        phylo_vcv = Cphy)
 #' }
-phylo <- function(formula, tree = NULL, vcv = NULL, mode = NULL, d = 1) {
+phylo <- function(
+  formula,
+  tree = NULL,
+  vcv = NULL,
+  mode = NULL,
+  d = 1,
+  unique = FALSE,
+  A = NULL,
+  Ainv = NULL
+) {
   ## Marker function. Body unused -- never called at evaluation time.
   invisible(NULL)
 }
@@ -591,12 +607,13 @@ NULL
 #'
 #' @param species Unquoted column name for the species factor.
 #' @param d Integer; number of phylogenetic latent factors.
-#' @param unique Logical; `TRUE` (default) auto-includes the
+#' @param unique Logical; `TRUE` auto-includes the
 #'   phylo-structured diagonal trait-specific \eqn{\boldsymbol\Psi_{phy}}
 #'   companion, folding the paired `phylo_latent() + phylo_unique()` into a
 #'   single term (\eqn{\boldsymbol\Sigma_{phy} = \boldsymbol\Lambda
 #'   \boldsymbol\Lambda^\top \otimes \mathbf{A} + \boldsymbol\Psi_{phy} \otimes
-#'   \mathbf{A}}). Set `FALSE` for the loadings-only / rotation-invariant subset.
+#'   \mathbf{A}}). The default `FALSE` preserves the loadings-only /
+#'   rotation-invariant subset.
 #' @param tree An `ape::phylo` object. **Canonical.** Use this if
 #'   you have a tree.
 #' @param vcv A tip-only phylogenetic correlation matrix
@@ -638,11 +655,11 @@ NULL
 phylo_latent <- function(
   species,
   d = 1,
-  unique = TRUE,
   tree = NULL,
   vcv = NULL,
   A = NULL,
-  Ainv = NULL
+  Ainv = NULL,
+  unique = FALSE
 ) {
   invisible(NULL)
 }
@@ -777,8 +794,9 @@ phylo_scalar <- function(
 #'
 #' `phylo_unique()` is soft-deprecated as compatibility syntax in gllvmTMB
 #' 0.2.0. Use [phylo_indep()] for standalone marginal diagonal phylogenetic
-#' tiers. Paired explicit-Psi use remains accepted; [phylo_latent()] now
-#' carries this diagonal companion by default.
+#' tiers. Paired explicit-Psi use remains accepted; use
+#' `phylo_latent(..., unique = TRUE)` when the folded latent term itself
+#' should carry this diagonal companion.
 #'
 #' Canonical name for the **D independent** phylogenetic random
 #' intercepts. Each trait \eqn{t} gets its own variance
@@ -814,8 +832,8 @@ phylo_scalar <- function(
 #'     \eqn{\boldsymbol\Lambda_\text{phy}} is filled by the rank-K shared
 #'     latent factors; \eqn{\boldsymbol\Psi_\text{phy}} carries
 #'     the per-trait phylogenetic variances not absorbed by the K shared
-#'     axes. Bare `phylo_latent(species, d = K)` now fits this same
-#'     manuscript-aligned PGLLVM decomposition by default
+#'     axes. `phylo_latent(species, d = K, unique = TRUE)` fits this same
+#'     manuscript-aligned PGLLVM decomposition as a single term
 #'     (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et
 #'     al. 2025). Replication (multiple sites per species) is required
 #'     to break the Psi_phy / Psi_non confound at the species level.}
@@ -885,8 +903,8 @@ phylo_unique <- function(
 #'
 #' `spatial_unique()` is soft-deprecated as compatibility syntax in gllvmTMB
 #' 0.2.0. Use [spatial_indep()] for standalone marginal diagonal spatial
-#' fields. Paired explicit-Psi use remains accepted while the spatial
-#' latent-Psi fold remains a future slice.
+#' fields. Paired explicit-Psi use remains accepted; new decomposition
+#' code can use [spatial_latent()] with `unique = TRUE`.
 #'
 #' Canonical name for the SPDE / GMRF Matern spatial random field with
 #' **one independent field per trait** (per-trait variance
@@ -1025,6 +1043,11 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   factor `0 + trait`; RHS is the `coords` placeholder symbol).
 #' @param d Integer; number of spatial latent factors (rank K). Defaults
 #'   to 1.
+#' @param unique Logical; `TRUE` adds a per-trait unique SPDE field
+#'   companion so the reported spatial covariance is
+#'   \eqn{\boldsymbol\Lambda_{\mathrm{spa}}\boldsymbol\Lambda_{\mathrm{spa}}^\top +
+#'   \boldsymbol\Psi_{\mathrm{spa}}}. The default `FALSE` preserves the
+#'   previous low-rank-only spatial latent path.
 #' @param coords Character; the column-name pair of spatial coordinates
 #'   in `data` (e.g. `c("lon", "lat")`). Resolved by the parser when
 #'   supplied as keyword argument; `NULL` when the orientation expresses
@@ -1049,7 +1072,13 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   )
 #' }
 #' @export
-spatial_latent <- function(formula, d = 1, coords = NULL, mesh = NULL) {
+spatial_latent <- function(
+  formula,
+  d = 1,
+  coords = NULL,
+  mesh = NULL,
+  unique = FALSE
+) {
   invisible(NULL)
 }
 
@@ -1122,6 +1151,8 @@ spatial_latent <- function(formula, d = 1, coords = NULL, mesh = NULL) {
 #'   `"dep"`. Optional when LHS is `1` (defaults silently to
 #'   `"scalar"`). Mandatory when LHS is `0 + trait`.
 #' @param d Latent rank for `mode = "latent"`. Default 1.
+#' @param unique Logical; forwarded to [spatial_latent()] when
+#'   `mode = "latent"`. The default `FALSE` keeps the low-rank-only path.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_scalar()], [spatial_unique()], [spatial_indep()],
 #'   [spatial_latent()], [spatial_dep()], [phylo()] (phylogenetic
@@ -1156,7 +1187,14 @@ spatial_latent <- function(formula, d = 1, coords = NULL, mesh = NULL) {
 #'                        unit  = "site",
 #'                        mesh  = mesh)
 #' }
-spatial <- function(formula, mesh = NULL, coords = NULL, mode = NULL, d = 1) {
+spatial <- function(
+  formula,
+  mesh = NULL,
+  coords = NULL,
+  mode = NULL,
+  d = 1,
+  unique = FALSE
+) {
   ## Marker function. Body unused -- never called at evaluation time.
   invisible(NULL)
 }
@@ -1340,8 +1378,10 @@ indep <- function(formula, common = FALSE) {
 #' \deqn{\mathbf p_t \sim \mathcal{N}(\mathbf 0,\, \sigma^2_{\text{phy},t}\,\mathbf A_{\text{phy}}), \qquad t = 1, \dots, T.}
 #'
 #' Use `phylo_indep()` for an explicit marginal-only phylogenetic fit
-#' (no cross-trait phylogenetic decomposition). Use `phylo_latent()`
-#' paired with `phylo_unique()` for the paired phylogenetic decomposition
+#' (no cross-trait phylogenetic decomposition). Use
+#' `phylo_latent(..., unique = TRUE)` or the compatibility pair
+#' `phylo_latent(..., unique = FALSE) + phylo_unique()` for the paired
+#' phylogenetic decomposition
 #' \eqn{\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}}\boldsymbol\Lambda_{\text{phy}}^\top + \boldsymbol\Psi_{\text{phy}}}.
 #'
 #' ## Mutual exclusion with `phylo_latent()`
@@ -2286,6 +2326,7 @@ rewrite_canonical_aliases <- function(formula) {
         mesh_arg <- get_arg("mesh", default = NULL)
         coords_arg <- get_arg("coords", default = NULL)
         d_arg <- get_arg("d", default = NULL)
+        unique_arg <- get_arg("unique", default = NULL)
 
         ## Detect LHS shape.
         is_intercept_only <- (is.numeric(lhs) &&
@@ -2390,9 +2431,13 @@ rewrite_canonical_aliases <- function(formula) {
           }
           if (mode_str == "latent") {
             d_use <- if (is.null(d_arg)) 1 else d_arg
+            latent_extras <- extras
+            if (!is.null(unique_arg)) {
+              latent_extras$unique <- unique_arg
+            }
             new_call <- as.call(c(
               list(as.name("spatial_latent"), bar, d = d_use),
-              extras
+              latent_extras
             ))
             return(rewrite(new_call))
           }
@@ -2587,7 +2632,7 @@ rewrite_canonical_aliases <- function(formula) {
           ))
           unique_arg <- e[["unique"]]
           if (is.null(unique_arg)) {
-            unique_arg <- TRUE
+            unique_arg <- FALSE
           }
           if (
             !is.logical(unique_arg) ||
@@ -2744,7 +2789,7 @@ rewrite_canonical_aliases <- function(formula) {
           unique_arg <- if ("unique" %in% nm) {
             e[[which(nm == "unique")]]
           } else {
-            TRUE
+            FALSE
           }
           if (
             !is.logical(unique_arg) ||
@@ -3038,8 +3083,8 @@ rewrite_canonical_aliases <- function(formula) {
           psi_call <- as.call(c(list(as.name("diag"), e[[2L]]), psi_extras))
           return(call("+", new_call, psi_call))
         }
-        ## Phylo latent-Psi fold (Stage A): mirror the ordinary latent() fold for
-        ## the phylogenetic tier so phylo_latent(d=K) + phylo_unique() collapses to
+        ## Phylo latent-Psi fold: source-specific latent terms stay loadings-only
+        ## by default; explicit unique=TRUE collapses the compatibility pair into
         ## a single phylo_latent(d=K, unique = TRUE). The auto-companion is the
         ## phylo-structured diagonal Psi_phy (x) A, i.e. phylo_rr(species,
         ## .phylo_unique = TRUE, .auto_unique = TRUE), NOT a plain diag. Augmented
@@ -3048,7 +3093,7 @@ rewrite_canonical_aliases <- function(formula) {
         if (identical(fn, "phylo_latent")) {
           unique_arg <- e[["unique"]]
           if (is.null(unique_arg)) {
-            unique_arg <- TRUE
+            unique_arg <- FALSE
           }
           if (
             !is.logical(unique_arg) ||
@@ -3068,7 +3113,7 @@ rewrite_canonical_aliases <- function(formula) {
           if (isFALSE(unique_arg)) {
             return(new_call)
           }
-          phy_psi_extras <- .pass_through_extras(e, c("tree", "vcv"))
+          phy_psi_extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
           psi_call <- as.call(c(
             list(as.name("phylo_rr"), e[[2L]]),
             list(.phylo_unique = TRUE, .auto_unique = TRUE),
@@ -3147,16 +3192,25 @@ rewrite_canonical_aliases <- function(formula) {
         mode_arg <- get_arg("mode", default = NULL)
         tree_arg <- get_arg("tree", default = NULL)
         vcv_arg <- get_arg("vcv", default = NULL)
+        A_arg <- get_arg("A", default = NULL)
+        Ainv_arg <- get_arg("Ainv", default = NULL)
         d_arg <- get_arg("d", default = NULL)
+        unique_arg <- get_arg("unique", default = NULL)
 
-        ## Helper: extras to splice into the rewritten call (named args
-        ## tree/vcv only -- mode/d are interpreted here, not forwarded).
+        ## Helper: extras to splice into the rewritten call (named
+        ## relatedness args only -- mode/d are interpreted here, not forwarded).
         extras <- list()
         if (!is.null(tree_arg)) {
           extras$tree <- tree_arg
         }
         if (!is.null(vcv_arg)) {
           extras$vcv <- vcv_arg
+        }
+        if (!is.null(A_arg)) {
+          extras$A <- A_arg
+        }
+        if (!is.null(Ainv_arg)) {
+          extras$Ainv <- Ainv_arg
         }
 
         ## Detect LHS shape.
@@ -3232,9 +3286,13 @@ rewrite_canonical_aliases <- function(formula) {
         if (mode_str == "latent") {
           ## phylo_latent(species, d = K, tree = ..., vcv = ...).
           d_use <- if (is.null(d_arg)) 1 else d_arg
+          latent_extras <- extras
+          if (!is.null(unique_arg)) {
+            latent_extras$unique <- unique_arg
+          }
           new_call <- as.call(c(
             list(as.name("phylo_latent"), rhs, d = d_use),
-            extras
+            latent_extras
           ))
           return(rewrite(new_call))
         }
@@ -3256,7 +3314,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## machinery without a new TMB switch.
       if (fn == "phylo_unique") {
         .gllvmTMB_warn_unique_family_deprecated(fn)
-        extras <- .pass_through_extras(e, c("tree", "vcv"))
+        extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
         if (
           length(e) >= 2L &&
             is.call(e[[2L]]) &&
@@ -3329,6 +3387,21 @@ rewrite_canonical_aliases <- function(formula) {
         nm <- names(e)
         d_val <- if (!is.null(nm) && "d" %in% nm) e[[which(nm == "d")]] else 1L
         extras <- .pass_through_extras(e, c("coords", "mesh"))
+        unique_arg <- if (!is.null(nm) && "unique" %in% nm) {
+          e[[which(nm == "unique")]]
+        } else {
+          FALSE
+        }
+        if (
+          !is.logical(unique_arg) ||
+            length(unique_arg) != 1L ||
+            is.na(unique_arg)
+        ) {
+          cli::cli_abort(c(
+            "{.arg unique} in {.fn spatial_latent} must be a literal {.code TRUE} or {.code FALSE}.",
+            ">" = "Use {.code spatial_latent(..., unique = FALSE)} for the loadings-only subset."
+          ))
+        }
         ## Design 64 §3: augmented spatial_latent(1 + x | coords, d) random
         ## regression. `spatial_latent` normally renames to `spde` reading ONLY
         ## the coords RHS -- so an augmented intercept+slope bar would have its
@@ -3350,6 +3423,13 @@ rewrite_canonical_aliases <- function(formula) {
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
           ) {
+            if (isTRUE(unique_arg)) {
+              cli::cli_abort(c(
+                "{.code spatial_latent(..., unique = TRUE)} is not implemented for augmented spatial random-regression LHS yet.",
+                "i" = "The folded spatial Psi companion is available for intercept-only {.fn spatial_latent} terms.",
+                ">" = "Use {.code spatial_latent(0 + trait | coords, d = K, unique = TRUE)} or omit {.arg unique} for the augmented loadings-only slope path."
+              ))
+            }
             new_call <- as.call(c(
               list(as.name("spde"), bar),
               list(
@@ -3365,7 +3445,11 @@ rewrite_canonical_aliases <- function(formula) {
         }
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
-          list(.spatial_latent = TRUE, d = d_val),
+          list(
+            .spatial_latent = TRUE,
+            d = d_val,
+            .spatial_unique_diag = unique_arg
+          ),
           extras
         ))
         return(new_call)
@@ -3425,7 +3509,7 @@ rewrite_canonical_aliases <- function(formula) {
           lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
         ) {
-          extras <- .pass_through_extras(e, c("tree", "vcv"))
+          extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
           new_call <- as.call(c(
             list(as.name("phylo_slope"), bar),
             list(
@@ -3448,7 +3532,7 @@ rewrite_canonical_aliases <- function(formula) {
             ">" = "Trait-specific phylogenetic random slopes (e.g. {.code phylo_indep(0 + trait + trait:x | species)}) are reserved for a future release; use {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit."
           ))
         }
-        extras <- .pass_through_extras(e, c("tree", "vcv"))
+        extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
         new_call <- as.call(c(
           list(as.name("phylo_rr"), species_arg),
           list(.phylo_unique = TRUE, .indep = TRUE),
@@ -3564,7 +3648,7 @@ rewrite_canonical_aliases <- function(formula) {
           lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
         ) {
-          extras <- .pass_through_extras(e, c("tree", "vcv"))
+          extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
           new_call <- as.call(c(
             list(as.name("phylo_slope"), bar),
             list(
@@ -3581,7 +3665,7 @@ rewrite_canonical_aliases <- function(formula) {
         ## unstructured cross-trait phylogenetic intercept covariance via the
         ## phylo_rr full-rank path (UNCHANGED).
         if (identical(lhs_form$lhs_form, "intercept_only")) {
-          extras <- .pass_through_extras(e, c("tree", "vcv"))
+          extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
           new_call <- as.call(c(
             list(as.name("phylo_rr"), species_arg),
             list(d = as.name(".deferred_n_traits"), .dep = TRUE),

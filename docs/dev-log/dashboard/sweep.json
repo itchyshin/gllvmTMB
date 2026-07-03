@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 13:21 MDT",
+  "updated": "2026-07-03 13:39 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,18 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 13:39 MDT",
+      "who": "Live R/JL bridge parity caveat",
+      "status": "guard",
+      "text": "Post-merge cleanup found that current gllvmTMB main now has a broader bridge capability ledger than the stale local 57-drift branch, so the old local bridge-drift branches are parked rather than pushed. Pure checks passed locally from clean main-based worktrees: R test-julia-bridge.R without GLLVM_JL_PATH reached 542 pass / 19 expected skips, and GLLVM.jl bridge_capabilities, bridge_x, and bridge_ci passed 105/105, 195/195, and 64/64. A configured live R/JL run against the clean GLLVM.jl worktree finished with 1420 pass, 1 warning, and 10 failures in TMB-vs-Julia parity expectations; it also emitted a Julia LogExpFunctions extension warning. Treat live R/JL parity as follow-up work, not green evidence."
+    },
+    {
+      "when": "2026-07-03 13:39 MDT",
+      "who": "Source unique/Psi arc",
+      "status": "covered",
+      "text": "gllvmTMB PR #706 merged into main as 42a1995d after final head SHA 1727270c passed routine PR checks and manual 3-OS R-CMD-check. phylo_latent(), animal_latent(), spatial_latent(), and single-tier kernel_latent() now share the explicit unique= contract: unique=FALSE keeps the old low-rank/loadings-only source covariance, while unique=TRUE fits Lambda_source Lambda_source^T + Psi_source. This is R/TMB source-Psi coverage only: Julia parity, source-specific lv=~env, multi-kernel explicit Psi, and heavy profile/bootstrap calibration remain follow-up gates."
+    },
     {
       "when": "2026-07-03 13:21 MDT",
       "who": "Gaussian X bridge row",
@@ -246,6 +258,12 @@
   ],
   "evidence": [
     {
+      "when": "2026-07-03 13:39 MDT",
+      "who": "PR #706 merge evidence",
+      "status": "covered",
+      "text": "PR #706 is merged: https://github.com/itchyshin/gllvmTMB/pull/706. Merge commit 42a1995d includes the source-specific unique/Psi fold; pre-merge checks on head 1727270c were green across routine PR checks plus manual macOS, Ubuntu, and Windows R-CMD-check dispatch. The post-merge main R-CMD-check run 28679944062 is in progress at this board refresh."
+    },
+    {
       "when": "2026-07-03 13:21 MDT",
       "who": "Gaussian X bridge checks",
       "status": "guard",
@@ -386,6 +404,12 @@
   ],
   "blockers": [
     {
+      "when": "2026-07-03 13:39 MDT",
+      "who": "Live R/JL bridge parity caveat",
+      "status": "guard",
+      "text": "Post-merge cleanup found that current gllvmTMB main now has a broader bridge capability ledger than the stale local 57-drift branch, so the old local bridge-drift branches are parked rather than pushed. Pure checks passed locally from clean main-based worktrees: R test-julia-bridge.R without GLLVM_JL_PATH reached 542 pass / 19 expected skips, and GLLVM.jl bridge_capabilities, bridge_x, and bridge_ci passed 105/105, 195/195, and 64/64. A configured live R/JL run against the clean GLLVM.jl worktree finished with 1420 pass, 1 warning, and 10 failures in TMB-vs-Julia parity expectations; it also emitted a Julia LogExpFunctions extension warning. Treat live R/JL parity as follow-up work, not green evidence."
+    },
+    {
       "when": "bridge/profile",
       "who": "Profile bridge boundary",
       "status": "blocked",
@@ -461,6 +485,15 @@
     }
   ],
   "ci_runs": [
+    {
+      "workflow": "R-CMD-check",
+      "status": "in_progress",
+      "conclusion": "",
+      "branch": "main",
+      "head": "42a1995d",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/28679944062",
+      "link_label": "post-#706 run 28679944062"
+    },
     {
       "workflow": "R-CMD-check",
       "status": "success",

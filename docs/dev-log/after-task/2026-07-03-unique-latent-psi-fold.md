@@ -143,6 +143,13 @@ non-Gaussian recovery gates run.
 - `Rscript --vanilla -e 'devtools::check(args = "--no-manual")'`
   -> PASS with `0 errors`, `0 warnings`, `1 note`. The note is the existing
   `NEWS.md` version-title parsing note for older dated sections.
+- GitHub Actions manual `R-CMD-check.yaml` workflow dispatch with
+  `full_matrix = true`, run
+  [`28677871029`](https://github.com/itchyshin/gllvmTMB/actions/runs/28677871029)
+  on branch `codex/unique-latent-psi-fold`
+  -> PASS on all three OSes: `macos-latest (release)` in 10m23s,
+  `ubuntu-latest (release)` in 13m17s, and `windows-latest (release)` in
+  16m34s.
 - `git diff --check`
   -> PASS.
 
@@ -235,8 +242,9 @@ correlation summaries now use total fitted covariance by default when Psi is
 active, while shared and unique pieces remain separately extractable.
 
 **Grace** covered package hygiene. `pkgdown::check_pkgdown()` and
-`devtools::check(args = "--no-manual")` pass locally; 3-OS CI is still needed
-before calling the arc release-complete.
+`devtools::check(args = "--no-manual")` pass locally, the routine PR checks
+passed on GitHub, and the manual three-OS `R-CMD-check.yaml` matrix passed on
+macOS, Ubuntu, and Windows.
 
 **Rose** caught stale wording around default source-Psi claims and the old
 Design 65 future-arc sentence. The validation-debt register is deliberately
@@ -249,7 +257,6 @@ checkout.
 
 ## 10. Known Limitations And Next Actions
 
-- 3-OS GitHub CI has not run for this branch yet.
 - `GLLVMTMB_HEAVY_TESTS=1` profile/bootstrap and broader recovery gates were not
   run in this local slice.
 - Broad non-Gaussian recovery for folded source/kernel Psi remains partial.

@@ -22239,6 +22239,15 @@ Validation:
 - `Rscript --vanilla -e 'devtools::check(args = "--no-manual")'`
   -> PASS in 4m 53.5s; `0 errors | 0 warnings | 1 note`. The note is the
   existing `NEWS.md` version-title parsing note for older dated sections.
+- GitHub Actions routine PR checks for #706
+  -> PASS; `R-CMD-check / ubuntu-latest (release)` passed in 14m15s, and the
+  recovery workflows that fired for this PR all passed.
+- `gh workflow run R-CMD-check.yaml --ref codex/unique-latent-psi-fold -f full_matrix=true`
+  -> queued manual 3-OS run
+  `https://github.com/itchyshin/gllvmTMB/actions/runs/28677871029`.
+- Manual `R-CMD-check.yaml` workflow dispatch run `28677871029`
+  -> PASS on all three OSes: `macos-latest (release)` 10m23s,
+  `ubuntu-latest (release)` 13m17s, `windows-latest (release)` 16m34s.
 - `git diff --check`
   -> PASS.
 
@@ -22258,7 +22267,6 @@ Not run:
 
 - `GLLVMTMB_HEAVY_TESTS=1` profile/bootstrap and broad recovery gates were not
   run in this local slice.
-- 3-OS GitHub CI has not run.
 - Julia parity was not attempted; it remains a later PR.
 
 Issue ledger / after-task:

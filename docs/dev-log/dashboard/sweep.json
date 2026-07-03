@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 12:19 MDT",
+  "updated": "2026-07-03 12:32 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-03 12:32 MDT",
+      "who": "Selected no-X bridge profile CIs",
+      "status": "guard",
+      "text": "GLLVM.jl commit 6d8d59a5 routes selected no-X profile CI payloads through bridge_fit for Gaussian, Poisson, Binomial, NB2, Beta, and Gamma. Ordinal profile CI remains unsupported through the bridge until R semantics are reconciled. This is a local bridge parity reduction, not coverage calibration, not source-specific lv support, not mixed-family CI support, not X/mask parity, not v1.0 completion, and not active compute."
+    },
     {
       "when": "2026-07-03 12:19 MDT",
       "who": "R+Julia v1.0 matrix supersession",
@@ -221,6 +227,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-03 12:32 MDT",
+      "who": "Live drift now 62 rows",
+      "status": "guard",
+      "text": "Paired gllvmTMB commit 7d3110f6 updates the R drift contract after selected profile routing: live test-julia-bridge-live-capabilities.R passed 8/8 with 62 registered drift rows and 0 unregistered rows; unconfigured mode skipped 1/1 as expected; R test-julia-bridge.R passed 389 with 14 expected skips. GLLVM.jl focused checks passed bridge_capabilities 69/69, bridge_fit 181/181, and non-Gaussian profile smoke rows Poisson 7/7, NB 8/8, Ordinal 5/5, Binomial/Beta/Gamma 9/9."
+    },
     {
       "when": "2026-07-03 12:19 MDT",
       "who": "Matrix supersession checks",

@@ -101,6 +101,7 @@
   pieces <- lapply(traits, function(trait) {
     rows <- dat[as.character(dat$trait) == trait, , drop = FALSE]
     hit <- which.max(rows$abs_loading)
+    if (length(hit) == 0L) hit <- 1L
     data.frame(
       trait = trait,
       dominant_axis = match(as.character(rows$axis[[hit]]), axes),
@@ -343,7 +344,7 @@ plot_rotated_loadings <- function(
     digits = digits
   )
   show_values <- if (is.null(show_values)) {
-    nrow(dat) <= 80L
+    max(tabulate(as.integer(factor(dat$.level_label)))) <= 80L
   } else {
     isTRUE(show_values)
   }

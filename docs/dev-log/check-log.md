@@ -22,6 +22,53 @@ Checks (macOS, R 4.6.0, NOT_CRAN=true):
 testthat::test_file("tests/testthat/test-diagnostics-family-label.R")  # 3 pass (new)
 testthat::test_file("tests/testthat/test-predictive-diagnostics.R")    # no regressions
 testthat::test_file("tests/testthat/test-loading-ci-bootstrap.R")      # no regressions
+## 2026-07-03 -- Dead-code + validator cleanup (twin-review batch 2)
+
+Branch: `fix/dead-code-cleanup` (from `origin/main`; all touched files
+byte-identical to `origin/main`, isolated from the in-flight Codex branch).
+
+Scope: #618/#675 (vector-`isTRUE()` bugs in `R/profile-targets.R`), #701
+(remove dead `R/parsing.R`), #700 (remove unused
+`gll_ordered_probability_matrix()` in `R/missing-predictor.R`), #671
+(remove empty `nbinom2()` `v()` stub in `R/families.R`), #669 (remove
+no-op inner `withCallingHandlers()` in `R/bootstrap-sigma.R`). All dead
+code verified caller-free by repo-wide grep before removal. No
+likelihood/family/grammar/C++ change.
+
+Checks (macOS, R 4.6.0, `pkgload::load_all` OK after removals):
+
+```r
+# NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1
+testthat::test_file("tests/testthat/test-profile-targets.R")            # 32 pass
+testthat::test_file("tests/testthat/test-profile-targets-validator.R")  # 2 pass (new)
+gllvmTMB::nbinom2(); gllvmTMB::nbinom1()   # family constructors still build
+```
+
+rg patterns used for the dead-code confirmation:
+`parse_formula|make_indices|add_model_index|barnames`,
+`gll_ordered_probability_matrix` (no callers outside their own defs).
+
+## 2026-07-03 -- Plotting robustness guards (twin-review batch 1)
+
+Branch: `fix/robustness-guards-plotting` (cut from `origin/main` to
+stay isolated from the in-flight `codex/r-bridge-grouped-dispersion`
+branch; the touched plotting files are byte-identical to `origin/main`).
+
+Scope: robustness guards on plotting helpers for the twin code-review
+issues #651/#692 (rotated-loadings all-NA trait), #667 (per-facet
+value-label threshold), #691 (`null_region` validation), #689/#690
+(NA-safe repeatability ordering and ordination arrow scaling). No
+likelihood, family, grammar, or C++ change. Files: `R/plot-rotated-loadings.R`,
+`R/plot-loadings-confidence-eye.R`, `R/plot-gllvmTMB.R`, new test
+`tests/testthat/test-plot-robustness-guards.R`.
+
+Checks (macOS, R 4.6.0, `pkgload::load_all`):
+
+```r
+testthat::test_file("tests/testthat/test-plot-robustness-guards.R")  # 7 pass
+testthat::test_file("tests/testthat/test-rotate-compare-loadings.R") # 84 pass
+testthat::test_file("tests/testthat/test-plot-gllvmTMB.R")           # all pass
+testthat::test_file("tests/testthat/test-plot-visual-snapshots.R")   # 11 skip (vdiffr absent)
 ```
 
 ## 2026-05-10 -- drmTMB-parity match exposes unstated tidyselect

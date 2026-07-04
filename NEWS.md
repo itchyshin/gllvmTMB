@@ -14,6 +14,29 @@
   count of dropped replicates via `attr(x, "n_failed")` and warn when
   any refit failed, so intervals built from a small surviving fraction
   are not mistaken for fully reliable ones (#644).
+## Dead-code and validator cleanup (2026-07-03)
+
+* Fixed a silently dead internal invariant check: `profile_targets()`
+  now actually enforces that derived targets are never `profile_ready`
+  (the guard used `isTRUE()` on a vector, which is always `FALSE`) and
+  its `ready_only = TRUE` filter drops `NA` rows cleanly (#618, #675).
+* Removed dead code with no callers: the unused `R/parsing.R`
+  helpers (#701), the never-wired `gll_ordered_probability_matrix()`
+  cumulative-logit helper (#700), an empty `nbinom2()` variance stub
+  (#671), and a no-op inner `withCallingHandlers()` error handler in
+  the Sigma bootstrap refit (#669).
+## Plotting robustness fixes (2026-07-03)
+
+* Hardened plotting helpers against degenerate inputs, from the twin
+  code review. `plot_rotated_loadings()` no longer errors when a trait's
+  loadings are all `NA` (#651, #692), and its default value-label
+  threshold now counts cells per facet rather than across all facets so
+  labels are not spuriously hidden on multi-level plots (#667).
+  `plot_loadings_confidence_eye()` validates `null_region` as a length-2
+  finite numeric vector (#691). Ordination arrow scaling and the
+  repeatability ordering in the integration plot no longer emit
+  `-Inf`/`NaN` or silently drop traits when scores or repeatabilities
+  are `NA` (#689, #690).
 
 ## `extract_lv_effects()` defaults to axis effects (2026-06-30)
 

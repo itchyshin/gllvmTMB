@@ -4,6 +4,32 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-03 -- Dead-code + validator cleanup (twin-review batch 2)
+
+Branch: `fix/dead-code-cleanup` (from `origin/main`; all touched files
+byte-identical to `origin/main`, isolated from the in-flight Codex branch).
+
+Scope: #618/#675 (vector-`isTRUE()` bugs in `R/profile-targets.R`), #701
+(remove dead `R/parsing.R`), #700 (remove unused
+`gll_ordered_probability_matrix()` in `R/missing-predictor.R`), #671
+(remove empty `nbinom2()` `v()` stub in `R/families.R`), #669 (remove
+no-op inner `withCallingHandlers()` in `R/bootstrap-sigma.R`). All dead
+code verified caller-free by repo-wide grep before removal. No
+likelihood/family/grammar/C++ change.
+
+Checks (macOS, R 4.6.0, `pkgload::load_all` OK after removals):
+
+```r
+# NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1
+testthat::test_file("tests/testthat/test-profile-targets.R")            # 32 pass
+testthat::test_file("tests/testthat/test-profile-targets-validator.R")  # 2 pass (new)
+gllvmTMB::nbinom2(); gllvmTMB::nbinom1()   # family constructors still build
+```
+
+rg patterns used for the dead-code confirmation:
+`parse_formula|make_indices|add_model_index|barnames`,
+`gll_ordered_probability_matrix` (no callers outside their own defs).
+
 ## 2026-07-03 -- Plotting robustness guards (twin-review batch 1)
 
 Branch: `fix/robustness-guards-plotting` (cut from `origin/main` to

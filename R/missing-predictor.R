@@ -1410,26 +1410,6 @@ gll_ordinal_raw_from_cutpoints <- function(cutpoints) {
   c(cutpoints[[1L]], log(spacings))
 }
 
-## Cumulative-logit cell probability matrix (PORT drmTMB drm_ordinal_probability_
-## matrix): rows = units, cols = K categories, given eta_x and cutpoints.
-gll_ordered_probability_matrix <- function(eta, cutpoints) {
-  n_category <- length(cutpoints) + 1L
-  out <- matrix(NA_real_, nrow = length(eta), ncol = n_category)
-  out[, 1L] <- stats::plogis(cutpoints[[1L]] - eta)
-  if (n_category > 2L) {
-    for (k in 2:(n_category - 1L)) {
-      upper <- stats::plogis(cutpoints[[k]] - eta)
-      lower <- stats::plogis(cutpoints[[k - 1L]] - eta)
-      out[, k] <- upper - lower
-    }
-  }
-  out[, n_category] <- stats::plogis(
-    cutpoints[[n_category - 1L]] - eta,
-    lower.tail = FALSE
-  )
-  pmax(out, .Machine$double.eps)
-}
-
 ## Build the ORDERED missing-predictor model (Phase 5b, ADAPT drmTMB
 ## drm_build_ordinal_missing_predictor_model). Like the binary builder it does
 ## the UNIT-level reduction + broadcast-constancy guards, but: the response is

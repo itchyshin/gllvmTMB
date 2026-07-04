@@ -3,6 +3,17 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Dead-code and validator cleanup (2026-07-03)
+
+* Fixed a silently dead internal invariant check: `profile_targets()`
+  now actually enforces that derived targets are never `profile_ready`
+  (the guard used `isTRUE()` on a vector, which is always `FALSE`) and
+  its `ready_only = TRUE` filter drops `NA` rows cleanly (#618, #675).
+* Removed dead code with no callers: the unused `R/parsing.R`
+  helpers (#701), the never-wired `gll_ordered_probability_matrix()`
+  cumulative-logit helper (#700), an empty `nbinom2()` variance stub
+  (#671), and a no-op inner `withCallingHandlers()` error handler in
+  the Sigma bootstrap refit (#669).
 ## Plotting robustness fixes (2026-07-03)
 
 * Hardened plotting helpers against degenerate inputs, from the twin

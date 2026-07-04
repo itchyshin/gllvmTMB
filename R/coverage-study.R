@@ -230,7 +230,10 @@ coverage_study <- function(
       list(
         formula = full_formula,
         data = df_i,
-        family = fit$family,
+        ## Use the preserved original family input (a list with a
+        ## `family_var` attribute for mixed-family fits); `fit$family`
+        ## is the reduced form and drops the mixed-family specification.
+        family = fit$family_input %||% fit$family,
         trait = fit$trait_col,
         unit = fit$unit_col,
         unit_obs = fit$unit_obs_col,

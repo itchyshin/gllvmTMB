@@ -3,6 +3,21 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Meta-analysis and pedigree helper bug fixes (2026-07-04)
+
+* `block_V()` now rejects within-study correlations that would make a
+  compound-symmetric study block non-positive-definite. For a block of
+  size `m`, `rho_within` must satisfy `rho > -1/(m - 1)`; previously
+  some moderately negative values passed the broad `(-1, 1)` check and
+  produced an invalid known-covariance matrix for `meta_V()` (#656,
+  #657). IN: validation of the existing `block_V()` helper contract.
+  No formula grammar, likelihood, or `meta_V()` API change is included.
+* `pedigree_to_A()` now handles selfing by using `F_i = A[parent,parent] / 2`
+  when sire and dam are the same known individual, and warns when a
+  parent is referenced but absent from the `id` column instead of
+  silently treating that parent as an unrelated founder (#607, #623).
+  IN: dense pedigree relationship-matrix construction. No sparse
+  `pedigree_to_Ainv_sparse()` or animal-keyword engine change is included.
 ## Diagnostic and bootstrap fixes (2026-07-03)
 
 * Fixed diagnostic and bootstrap reliability issues from the twin code

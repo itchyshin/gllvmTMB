@@ -227,9 +227,10 @@ cross-partition integrated covariance — the natural place
 where phylogenetic and spatial *shares* re-enter as
 partitions of the unit-tier variance rather than as
 separate levels. For paired phylogenetic fits with
-`latent + unique` on the unit grouping factor and
-`phylo_latent + phylo_unique` adding a phylogenetically-
-correlated share to the same unit-level variance:
+default `latent()` on the unit grouping factor (or explicit
+`latent + unique` compatibility syntax) and `phylo_latent +
+phylo_unique` adding a phylogenetically-correlated share to
+the same unit-level variance:
 
 $$
 \Omega = \Lambda_{\text{phy}}\Lambda_{\text{phy}}^\top
@@ -259,10 +260,10 @@ identifiable), Ω uses a single non-tier-specific Ψ. See
 `link_residual = "auto"` matches `extract_Sigma()` and adds
 family/link implicit residual variance to non-Gaussian trait
 diagonals before computing `Sigma`, `R`, `communality`, and `ICC`.
-`link_residual = "none"` returns the fitted latent + unique
-covariance only. Use `"none"` for validation targets whose DGP
-truth is $\Lambda\Lambda^\top + \Psi$ rather than the marginal
-latent response variance.
+`link_residual = "none"` returns the fitted model covariance without
+link-residual additions. Use `"none"` for validation targets whose DGP
+truth is $\Lambda\Lambda^\top + \Psi$ rather than the marginal latent
+response variance.
 
 Mixed-family bootstrap is **claimed** — the per-row family
 must be preserved in each resample. M1 slice 1.8 in the
@@ -301,6 +302,17 @@ errors with class
 - `profile`: profile-likelihood CI via
   `profile_ci_correlation()` (Phase 1b PR #122).
 - `bootstrap`: bootstrap CI from `bootstrap_Sigma()`.
+
+For structured tiers, `extract_correlations()` inherits the
+`extract_Sigma(level = ..., part = "total")` contract. In particular,
+`spatial_latent(..., unique = TRUE)` uses
+$\Sigma_\text{spde} =
+\Lambda_\text{spde}\Lambda_\text{spde}^\top +
+\operatorname{diag}(\Psi_\text{spde})$; the low-rank-only
+`spatial_latent(..., unique = FALSE)` subset uses
+$\Lambda_\text{spde}\Lambda_\text{spde}^\top$ and therefore rank-1
+correlations can be mechanically $\pm 1$. Report figures must label
+which subset was fitted.
 
 #### `extract_communality(fit, level)`
 
@@ -483,6 +495,14 @@ $H^2_t / C^2_t / \psi^2_t$ separately.
 **Return**: a `data.frame` with `trait1`, `trait2`,
 `lower`, `upper`, `level`. CI on the latent-scale
 correlation between the named trait pair.
+
+For `tier = "spatial"`, the derived profile target rebuilds the same
+spatial total covariance as `extract_Sigma(level = "spatial",
+part = "total")`. When `spatial_latent(unique = TRUE)` is active, the
+diagonal contribution is `exp(-2 * log_tau_spde)` because the SPDE
+field prior uses `SCALE(GMRF(Q), 1 / tau)`. The profile-inversion
+coverage row remains partial in the validation-debt register until a
+heavy constrained-refit gate is added for this total-covariance target.
 
 #### `profile_targets(fit, ready_only = FALSE)` (PR #109)
 

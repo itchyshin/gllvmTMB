@@ -62,16 +62,17 @@ after \code{glmmTMB::glmmTMBControl(start_method = ...)} but extended for
 two-level gllvmTMB models. Use \code{list(method = "res", jitter.sd = 0.2)}
 to seed \code{latent()} loadings and latent scores from a reduced-rank
 decomposition of fixed-effect residuals. Use \code{list(method = "indep")}
-to first fit the matching independent \code{unique()}-only GLMM/GLLVM and
+to first fit the matching independent diagonal GLMM/GLLVM and
 copy its estimated fixed effects, per-trait variance starts, and random
-effects into the full latent+unique fit. \code{jitter.sd} adds Normal jitter
+effects into the full latent covariance fit. \code{jitter.sd} adds Normal jitter
 to residual-start latent scores. Default
 \code{list(method = NULL, jitter.sd = 0)} keeps the historical starts.}
 
 \item{start_from}{Optional fitted \code{gllvmTMB} object, usually a simpler
-model such as one \code{latent()} tier or an independent \code{unique()}-only
-model. Any estimated TMB parameters with shapes matching the current
-model are copied into the starting parameter list before optimisation.
+model such as one \code{latent()} tier or an independent diagonal model
+(\code{indep()}, with legacy \code{unique()} compatibility). Any estimated TMB
+parameters with shapes matching the current model are copied into the
+starting parameter list before optimisation.
 This implements the "fit simpler, then use it as starting values"
 workflow recommended for complex reduced-rank models.}
 

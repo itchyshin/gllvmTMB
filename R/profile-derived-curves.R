@@ -348,7 +348,8 @@ profile_repeatability <- function(
   if (length(ix_B) == 0L || length(ix_W) == 0L) {
     cli::cli_abort(c(
       "Repeatability requires both {.code theta_diag_B} and {.code theta_diag_W} in the fit.",
-      "i" = "Refit with {.code unique(0 + trait | <unit>)} and {.code unique(0 + trait | <obs>)}."
+      "i" = "Refit with ordinary {.code latent(0 + trait | <unit>, d = K)} and {.code latent(0 + trait | <obs>, d = K)} tiers so each tier has default diagonal Psi.",
+      ">" = "Use explicit {.code unique(0 + trait | ...)} only for legacy diag-only compatibility fits."
     ))
   }
   T <- length(ix_B)
@@ -559,7 +560,8 @@ profile_communality <- function(
   ix_diag <- which(par_names == paste0("theta_diag_", tier))
   if (length(ix_rr) == 0L || length(ix_diag) == 0L) {
     cli::cli_abort(
-      "Communality requires both {.code latent()} and {.code unique()} terms at tier {.val {tier}} for the curve path."
+      "Communality profiling requires a {.code latent()} tier with a {.code Psi} diagonal at tier {.val {tier}}.",
+      "i" = "Ordinary {.code latent()} includes {.code Psi} by default; {.code latent(..., residual = FALSE)} is the explicit no-Psi subset."
     )
   }
   d_tier <- if (tier == "B") fit$d_B else fit$d_W
@@ -745,10 +747,10 @@ profile_correlation <- function(
     use_diag <- isTRUE(fit$use$phylo_diag)
   } else {
     ix_rr <- which(par_names == "theta_rr_spde_lv")
-    ix_diag <- integer(0)
+    ix_diag <- which(par_names == "log_tau_spde")
     rank <- fit$d_spde_lv
     use_rr <- isTRUE(fit$use$spatial_latent)
-    use_diag <- FALSE
+    use_diag <- isTRUE(fit$use$spatial_latent_unique)
   }
   if (!use_rr) {
     cli::cli_abort(
@@ -771,7 +773,11 @@ profile_correlation <- function(
     Sigma <- LLt
     if (use_diag) {
       th_diag <- par[ix_diag]
-      diag(Sigma) <- diag(Sigma) + exp(2 * th_diag)
+      if (tier == "spde") {
+        diag(Sigma) <- diag(Sigma) + exp(-2 * th_diag)
+      } else {
+        diag(Sigma) <- diag(Sigma) + exp(2 * th_diag)
+      }
     }
     if (!is.finite(Sigma[local_i, local_i]) ||
           !is.finite(Sigma[local_j, local_j]) ||

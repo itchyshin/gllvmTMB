@@ -68,13 +68,16 @@ The example below uses a two-trait Gaussian model. The scientific
 target is the trait covariance
 `Sigma = Lambda Lambda^T + Psi`, where `Lambda` contains the shared
 latent loadings and `Psi` is the diagonal trait-specific variance.
+In current ordinary `latent()` models, that diagonal `Psi` companion is
+included by default; `latent(..., residual = FALSE)` requests the older
+no-Psi subset, and explicit `unique()` remains compatibility syntax.
 
 Use this alignment while reading the diagnostics:
 
 | Symbol | R syntax or object | Plain meaning |
 |---|---|---|
 | `Lambda` | `latent(0 + trait | site, d = 1)`; `Lambda_B` in the simulator | The shared loading axis that creates cross-trait covariance. |
-| `Psi` | `unique(0 + trait | site)`; `psi_B` in the simulator | Trait-specific variance that is not shared with the other trait. |
+| `Psi` | default companion inside `latent(0 + trait | site, d = 1)`; `psi_B` in the simulator | Trait-specific variance that is not shared with the other trait. |
 | `Sigma` | `extract_Sigma_table(fit, level = "unit", part = "total")` | The full trait covariance, `Lambda Lambda^T + Psi`, used for interpretation. |
 
 ```{r simulate}
@@ -95,8 +98,7 @@ explicitly.
 ```{r fit-long}
 fit <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | site, d = 1) +
-    unique(0 + trait | site),
+    latent(0 + trait | site, d = 1),
   data = df_long,
   trait = "trait",
   unit = "site",
@@ -117,8 +119,7 @@ names(df_wide) <- sub("^value\\.", "", names(df_wide))
 
 fit_wide <- gllvmTMB(
   traits(trait_1, trait_2) ~ 1 +
-    latent(1 | site, d = 1) +
-    unique(1 | site),
+    latent(1 | site, d = 1),
   data = df_wide,
   unit = "site",
   control = gllvmTMBcontrol(se = FALSE, n_init = 2, init_jitter = 0.05)
@@ -171,7 +172,7 @@ families and ranks.
 | Routine fit | `gllvmTMBcontrol()` |
 | Suspect local optima | `gllvmTMBcontrol(n_init = 5, init_jitter = 0.1)` |
 | Non-Gaussian reduced-rank fit | `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))` |
-| Gaussian two-level latent+unique fit | `gllvmTMBcontrol(start_method = list(method = "indep"))` |
+| Gaussian two-level ordinary latent covariance fit | `gllvmTMBcontrol(start_method = list(method = "indep"))` |
 | Known simpler model is available | `gllvmTMBcontrol(start_from = simpler_fit)` |
 | Count-family dispersion is unstable | `gllvmTMBcontrol(init_strategy = "single_trait_warmup")` |
 | `nlminb` reports a suspicious stop | `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))` |
@@ -247,7 +248,7 @@ single variance share. Use it when the target has a stable profile
 and the model is not bouncing between likelihood basins. It is not a
 general substitute for bootstrap across every derived table entry.
 
-For full latent+unique models, some derived targets still fall back to
+For full latent covariance models, some derived targets still fall back to
 Wald or bootstrap while constrained-profile machinery is expanded.
 The output method column should be read literally: if it says
 `"wald"`, the interval is Hessian-based even if the requested method

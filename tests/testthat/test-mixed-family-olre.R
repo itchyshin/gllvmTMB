@@ -3,7 +3,7 @@
 ##
 ## Design choices being verified here:
 ##
-##   * Pure single-trial Bernoulli + `unique(0 + trait | obs)` is OLRE on a
+##   * Pure single-trial Bernoulli + `indep(0 + trait | obs)` is OLRE on a
 ##     family that is statistically unidentifiable (no within-cell
 ##     replication). The engine maps `theta_diag_W[t]` AND the
 ##     corresponding `s_W` column off, pinning sd_W[t] at ~1e-6.
@@ -37,19 +37,19 @@ test_that("pure Bernoulli OLRE: theta_diag_W and s_W mapped off, parameter count
                      levels = paste0("t", seq_len(n_traits)))
   df$value <- rbinom(nrow(df), 1L, plogis(true_alpha[df$trait_idx]))
 
-  ## Reference fit without unique() to get the baseline parameter count
+  ## Reference fit without OLRE to get the baseline parameter count
   ## (just b_fix, no OLRE machinery at all).
   fit_ref <- suppressMessages(suppressWarnings(
     gllvmTMB(value ~ 0 + trait,
              data = df, unit = "unit", unit_obs = "obs",
              family = binomial())
   ))
-  ## Fit WITH unique(): the per-family-aware block should map all T
+  ## Fit WITH OLRE: the per-family-aware block should map all T
   ## theta_diag_W entries off (and all s_W entries off), so the free
   ## parameter count matches the reference.
   msgs <- testthat::capture_messages(
     fit <- suppressWarnings(gllvmTMB(
-      value ~ 0 + trait + unique(0 + trait | obs),
+      value ~ 0 + trait + indep(0 + trait | obs),
       data = df, unit = "unit", unit_obs = "obs",
       family = binomial()
     ))
@@ -82,7 +82,7 @@ test_that("pure Bernoulli OLRE: theta_diag_W and s_W mapped off, parameter count
   ## Free-parameter count: same as the reference (no extra free pars
   ## for the unidentifiable OLRE).
   expect_equal(length(fit$tmb_obj$par), length(fit_ref$tmb_obj$par),
-               label = "fit with unique() has the same number of free pars as the reference (Bernoulli OLRE skipped)")
+               label = "fit with OLRE has the same number of free pars as the reference (Bernoulli OLRE skipped)")
 })
 
 
@@ -114,7 +114,7 @@ test_that("mixed-family OLRE: skip Bernoulli trait only; estimate Gaussian and P
   attr(fams, "family_var") <- "family"
 
   fit <- suppressWarnings(suppressMessages(gllvmTMB(
-    value ~ 0 + trait + unique(0 + trait | obs),
+    value ~ 0 + trait + indep(0 + trait | obs),
     data = df, unit = "unit", unit_obs = "obs",
     family = fams
   )))
@@ -147,7 +147,7 @@ test_that("pure delta_lognormal + OLRE: warning emitted, fit still converges", {
   set.seed(2027)
   sim <- simulate_site_trait(n_sites = 30, n_species = 5, n_traits = 2,
                              mean_species_per_site = 4)
-  ## Add an `obs` column at the per-row level so unique() is OLRE.
+  ## Add an `obs` column at the per-row level so indep() is OLRE.
   sim$data$obs <- factor(seq_len(nrow(sim$data)))
   ## Introduce zeros and clip negatives so the response is non-negative
   ## (delta_lognormal requires y >= 0).
@@ -156,12 +156,12 @@ test_that("pure delta_lognormal + OLRE: warning emitted, fit still converges", {
 
   expect_warning(
     fit <- suppressMessages(gllvmTMB(
-      value ~ 0 + trait + unique(0 + trait | obs),
+      value ~ 0 + trait + indep(0 + trait | obs),
       data = sim$data, unit_obs = "obs",
       family = delta_lognormal()
     )),
     regexp = "OLRE on hurdle / delta families",
-    label = "warning fires for delta_lognormal + per-row unique()"
+    label = "warning fires for delta_lognormal + per-row OLRE"
   )
 
   ## The fit still runs; theta_diag_W stays free (the warning is advisory).
@@ -188,7 +188,7 @@ test_that("ordinal_probit OLRE: theta_diag_W mapped off (scale absorbed by cutpo
   ## Bernoulli.
   ##
   ## Test fixture mirrors the K=4 recovery test in test-ordinal-probit.R:
-  ## one row per (individual, trait), so `unique(0 + trait | individual)`
+  ## one row per (individual, trait), so `indep(0 + trait | individual)`
   ## IS at per-row resolution for the W tier and the auto-suppress
   ## block fires.
   set.seed(951)
@@ -207,7 +207,7 @@ test_that("ordinal_probit OLRE: theta_diag_W mapped off (scale absorbed by cutpo
 
   msgs <- testthat::capture_messages(
     fit <- suppressWarnings(gllvmTMB(
-      value ~ 0 + trait + unique(0 + trait | individual),
+      value ~ 0 + trait + indep(0 + trait | individual),
       data = df, unit = "individual", unit_obs = "individual",
       family = ordinal_probit()
     ))

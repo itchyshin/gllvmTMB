@@ -12,7 +12,7 @@ test_that("tidy(fixed) returns a coefficient table with SEs and a link column", 
   )
   fit <- gllvmTMB(
     value ~ 0 + trait + (0 + trait):env_1 +
-            latent(0 + trait | site, d = 2) + unique(0 + trait | site),
+            latent(0 + trait | site, d = 2),
     data = sim$data
   )
   tf <- tidy(fit, "fixed", conf.int = TRUE)
@@ -43,7 +43,7 @@ test_that("tidy(fixed) link column reports per-trait link in mixed-family fits",
   fams <- list(gaussian(), binomial(), poisson())
   attr(fams, "family_var") <- "family"
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + (0 + trait):env_1 + unique(0 + trait | site),
+    value ~ 0 + trait + (0 + trait):env_1 + indep(0 + trait | site),
     data   = sim$data,
     family = fams
   )))
@@ -76,7 +76,7 @@ test_that("print(fit) annotates per-trait link in mixed-family fits", {
   fams <- list(gaussian(), binomial(), poisson())
   attr(fams, "family_var") <- "family"
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + (0 + trait):env_1 + unique(0 + trait | site),
+    value ~ 0 + trait + (0 + trait):env_1 + indep(0 + trait | site),
     data   = sim$data,
     family = fams
   )))
@@ -105,7 +105,7 @@ test_that("tidy(cutpoint) returns ordinal_probit thresholds, not ran_pars", {
     value      = c(t(cbind(y_a, y_b)))
   )
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + unique(0 + trait | individual),
+    value ~ 0 + trait + indep(0 + trait | individual),
     data   = df,
     unit   = "individual",
     family = ordinal_probit()
@@ -148,7 +148,7 @@ test_that("tidy(ran_pars) returns rows for active covstructs", {
   )
   fit <- gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 2) + unique(0 + trait | site),
+            latent(0 + trait | site, d = 2),
     data = sim$data
   )
   tr <- tidy(fit, "ran_pars")

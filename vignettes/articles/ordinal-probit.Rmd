@@ -1,6 +1,6 @@
 ---
 title: "Ordinal-probit threshold traits"
-tier: 2 # technical reference for the ordinal_probit() family
+tier: 3 # internal threshold-trait technical draft until FAM-14 validation closes
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -15,17 +15,25 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment  = "#>",
-  eval     = FALSE
+  eval     = TRUE
 )
 ```
 
-> **Preview — `ordinal_probit` family validation is M2 (Binary completeness) milestone work.**
+> **Preview — `ordinal_probit` family validation is covered for the current
+> family-recovery row, but this article stays internal.**
 >
-> The `ordinal_probit()` family exists and works in smoke tests
-> (FAM-14 `partial` in the
+> The `ordinal_probit()` family has covered family-recovery evidence
+> (FAM-14 in the
 > [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
-> Full per-cell validation walks the row to `covered` after the
-> **M2** milestone closes.
+> This page is still not a public worked example because cutpoint extractor
+> depth, interval examples, and reader/browser review remain open.
+
+**Internal article gate.** This page is a Tier 3 technical draft while
+the ordinal article surface is under audit. It now contains a compact
+runnable long/wide example, cutpoint extraction, latent-scale Sigma extraction,
+and fit-health diagnostics. It is not a public worked example, an ordinal
+interval-coverage claim, or a claim that ordinal randomized-quantile residuals
+are available for exact-CDF diagnostics.
 
 Use `ordinal_probit()` when a trait is ordered categorical with at
 least three categories and the scientific target is a latent continuous
@@ -52,20 +60,85 @@ distribution-specific latent residual is exactly `sigma_d^2 = 1`.
 There is no trigamma or logistic `pi^2 / 3` approximation to add
 before comparing variance components to a continuous Gaussian trait.
 
+## Reader path and scope
+
+This internal draft answers five threshold-trait reference questions:
+
+| Reader question | Model object | Code section | Readout |
+|---|---|---|---|
+| When is `ordinal_probit()` the right family? | ordered categorical trait with `K >= 3` | opening and `Guardrails` | probit threshold model versus binary probit |
+| How do long and wide formulas spell the same family? | long `value ~ ...` and wide `traits(...) ~ ...` examples | `Fit The Family` | same compact fixture, same log-likelihood |
+| How are cutpoints identified? | `extract_cutpoints()` | `Cutpoints` | `tau_1 = 0`, then `cutpoint_2`, ... rows |
+| How do variance components stay comparable? | `extract_Sigma(..., link_residual = "auto")` | `Variance Components` | fixed ordinal residual `sigma_d^2 = 1` |
+| Is the tiny fit numerically usable? | `check_gllvmTMB()` | `Diagnostics` | optimizer, gradient, sdreport, and Hessian rows |
+| What should readers avoid? | family and residual-scale guardrails | `Guardrails` | no `K = 2` threshold model, no mixed family within one ordinal trait, no OLRE residual scale |
+
+Scope boundary: IN evidence includes `FAM-14` family-recovery coverage and
+the runnable local article fixture below. PARTIAL rows include ordinal
+cutpoint extractor depth (`EXT-10`), ordinal bridge CI endpoints, and any
+profile/bootstrap interval claims for ordinal cutpoints or variance
+components. PLANNED or guarded work includes broader applied examples,
+ordinal exact-CDF residual diagnostics, interval calibration, and final
+article placement review. Until those land, this page stays internal.
+
 ## Fit The Family
 
-The ordinal examples below use long data because each response is
-already stored as one row per `(unit, trait)` observation. The response
-should be integer-coded `1, ..., K` within each ordinal trait.
+This small fixture has two ordinal traits scored as `1`, `2`, or `3`.
+The latent responses are simulated on a probit scale with one fixed
+threshold at `tau_1 = 0` and one free threshold at `tau_2 = 0.8`.
+
+```{r simulate-ordinal}
+set.seed(20260619)
+
+n_unit <- 30L
+traits <- c("display_score", "parasite_score")
+unit_id <- factor(seq_len(n_unit))
+
+unit_effect <- matrix(
+  rnorm(n_unit * length(traits), sd = 0.55),
+  nrow = n_unit,
+  dimnames = list(NULL, traits)
+)
+
+eta <- cbind(
+  display_score = 0.2 + unit_effect[, "display_score"],
+  parasite_score = -0.1 + unit_effect[, "parasite_score"]
+)
+
+y_star <- eta + matrix(rnorm(n_unit * length(traits)), nrow = n_unit)
+ordinal_y <- apply(y_star, 2, function(x) {
+  as.integer(cut(x, breaks = c(-Inf, 0, 0.8, Inf), labels = FALSE))
+})
+
+df_wide <- data.frame(
+  unit = unit_id,
+  display_score = ordinal_y[, "display_score"],
+  parasite_score = ordinal_y[, "parasite_score"]
+)
+
+df_long <- data.frame(
+  unit = rep(unit_id, times = length(traits)),
+  trait = factor(rep(traits, each = n_unit), levels = traits),
+  value = as.integer(c(
+    ordinal_y[, "display_score"],
+    ordinal_y[, "parasite_score"]
+  ))
+)
+
+with(df_long, table(trait, value))
+```
+
+The long form is the canonical stacked-trait spelling: one row per
+`(unit, trait)` observation, one response column, and a `trait` column
+that names the response.
 
 ```{r}
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    phylo_unique(species, tree = tree),
+    indep(0 + trait | unit),
   data = df_long,
   trait = "trait",
-  unit = "individual",
-  cluster = "species",
+  unit = "unit",
   family = ordinal_probit()
 )
 ```
@@ -76,20 +149,23 @@ before fitting.
 
 ```{r}
 fit_wide <- gllvmTMB(
-  traits(display_score, parasite_score, rank_score) ~ 1 +
-    phylo_unique(species, tree = tree),
+  traits(display_score, parasite_score) ~ 1 +
+    indep(1 | unit),
   data = df_wide,
-  unit = "individual",
-  cluster = "species",
+  unit = "unit",
   family = ordinal_probit()
 )
+
+as.numeric(logLik(fit_long) - logLik(fit_wide))
 ```
 
-The species-axis phylogenetic keyword already names the grouping axis,
-so it is unchanged between long and wide forms. For non-phylogenetic
-ordinal traits, replace `phylo_unique()` with the ordinary covariance
-keyword you need, such as `latent()` or `unique()`. The family does
-not change the 4 x 5 covariance keyword grammar.
+The example uses `indep()` because it is fast and stable for a small
+article fixture. For phylogenetic ordinal traits, replace it with
+`phylo_indep(species, tree = tree)` or another source-specific covariance
+keyword after checking the relevant validation row. Source-specific
+`*_unique()` syntax remains compatibility spelling for explicit `Psi` in
+paired decompositions, not the primary standalone diagonal teaching form.
+The family does not change the 4 x 5 covariance keyword grammar.
 
 ## Cutpoints
 
@@ -121,14 +197,21 @@ predictor, but the reported cutpoint count is not the same.
 ## Variance Components
 
 The main payoff is that ordinal variance components are already on the
-latent continuous scale. In a phylogenetic threshold-trait model,
-`extract_Sigma(fit, level = "phy")` returns the phylogenetic trait
+latent continuous scale. In the small standalone diagonal example,
+`extract_Sigma(fit, level = "unit")` returns the fitted unit-level trait
 covariance, and `extract_Sigma(..., link_residual = "auto")` adds the
 exact ordinal residual `sigma_d^2 = 1` on the diagonal when needed.
 
 ```{r}
-Sigma_phy <- extract_Sigma(fit_long, level = "phy")$Sigma
-cuts <- extract_cutpoints(fit_long)
+Sigma_unit <- extract_Sigma(fit_long, level = "unit")$Sigma
+Sigma_total <- extract_Sigma(
+  fit_long,
+  level = "unit",
+  link_residual = "auto"
+)$Sigma
+
+Sigma_unit
+Sigma_total
 ```
 
 For a one-trait threshold heritability calculation, the familiar
@@ -141,6 +224,16 @@ H^2 = sigma_phy^2 / (sigma_phy^2 + 1)
 The `+ 1` is the fixed latent residual variance. That is the practical
 advantage over logit-scale ordinal or binary models when the analysis
 needs variance components rather than only fixed-effect contrasts.
+
+## Diagnostics
+
+Run fit-health diagnostics before interpreting the cutpoints or covariance
+components. This tiny fixture is useful because all core fit-health rows pass
+while still leaving ordinal residual and interval examples outside this page.
+
+```{r diagnostics}
+check_gllvmTMB(fit_long)
+```
 
 ## Guardrails
 

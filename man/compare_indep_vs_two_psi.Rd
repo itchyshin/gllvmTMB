@@ -13,7 +13,7 @@ compare_indep_vs_two_psi(
 }
 \arguments{
 \item{fit_two_psi}{A joint two-psi fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, e.g.
-one produced by \code{gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = K_phy) + phylo_unique(species) + unique(0 + trait | species), ...)}.
+one produced by \code{gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = K_phy) + phylo_unique(species) + indep(0 + trait | species), ...)}.
 The cross-check refits the same data and family with
 \code{phylo_dep + dep} and compares.}
 

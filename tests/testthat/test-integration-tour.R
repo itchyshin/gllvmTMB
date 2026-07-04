@@ -25,9 +25,7 @@ test_that("integration: simulate -> fit -> all extractors -> predict -> simulate
       trait +
       (0 + trait):env_1 +
       latent(0 + trait | site, d = 2) +
-      unique(0 + trait | site) +
-      latent(0 + trait | site_species, d = 1) +
-      unique(0 + trait | site_species),
+      latent(0 + trait | site_species, d = 1),
     data = sim$data
   )
 

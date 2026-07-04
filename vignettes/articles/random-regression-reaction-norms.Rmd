@@ -25,9 +25,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Internal draft.** This page is not yet in the public article menu. It is a
-> working behavioural-syndrome example for Gaussian individual-level reaction
-> norms, and still needs a plain-language reader pass before promotion.
+> **Internal article gate.** This page is not yet in the public article menu.
+> It is a working behavioural-syndrome example for Gaussian individual-level
+> reaction norms. The fitted examples below are point-estimate teaching
+> evidence; public promotion still needs browser review and a final uncertainty
+> review.
 
 This draft fits an individual-level random-regression GLLVM for a behavioural
 syndrome question. The unit is the **individual**, the repeated occasion is
@@ -36,19 +38,45 @@ model asks whether individuals differ in both average behaviour and
 temperature responsiveness, and whether those reaction-norm coefficients
 covary across behaviours.
 
-Here `latent()` estimates shared axes of between-individual covariance, and
-`unique()` estimates trait-specific variation left after those shared axes.
-The current draft covers the Gaussian version only. It does not yet teach
-non-Gaussian reaction norms, calibrated intervals for slope summaries, or the
-broader model-choice path for deciding when this random-regression model is
-appropriate.
+Here `latent()` estimates shared axes of between-individual covariance and,
+for Gaussian random-regression fits, carries the default diagonal `Psi`
+left after those shared axes. The current draft covers the Gaussian version
+only. It does not yet teach non-Gaussian reaction norms, calibrated intervals
+for slope summaries, or the broader model-choice path for deciding when this
+random-regression model is appropriate.
+
+## Reader path and scope
+
+This draft follows one behavioural reaction-norm question through five
+checks:
+
+| Question | Model object | Code section | Readout |
+|---|---|---|---|
+| Do individuals differ in average behaviour and temperature responsiveness? | `latent(1 + temperature | individual, d = 1)` | `fit`, `formula-pieces` | long/wide log-likelihood equality and fitted augmented covariance |
+| Which covariance blocks answer the biological question? | `extract_Sigma(level = "unit_slope")` | `extract-sigma`, `composition` | intercept-intercept, slope-slope, and intercept-slope blocks |
+| Does this teaching fixture recover the known covariance? | generated example truth | `recovery-data`, `recovery-plot` | relative Frobenius error and estimate-versus-truth plot |
+| How does repeatability change over temperature? | fitted augmented covariance plus occasion covariance | `repeatability-data`, `repeatability-plot` | trait-specific repeatability curves against simulation truth |
+| Is the point fit numerically usable? | `check_gllvmTMB()` | `diagnostics` | optimizer and gradient rows; `sdreport`/Hessian warn because `se = FALSE` |
+
+Scope boundary: IN rows are ordinary Gaussian augmented random-regression
+syntax and extraction for `latent(1 + x | unit, d = K)` (`RE-12`), basic
+fit-health rows (`DIA-08`), `extract_Sigma()` (`EXT-01`), point-estimate Sigma
+table/plot helpers (`EXT-18`, `EXT-27` where used elsewhere), and
+repeatability extraction concepts (`EXT-06`). PARTIAL rows are the broader
+RE-12 non-Gaussian augmented path, calibrated interval coverage for derived
+slope and repeatability summaries (`CI-08`, `CI-10`), and model-choice
+evidence for when the augmented reaction-norm model should replace a simpler
+between/within model. PLANNED or guarded rows include non-Gaussian augmented
+diagonal `Psi` support and delta/hurdle-family extensions. `unique()` appears
+only in the deliberately failing compatibility-boundary chunk; the fitted
+Gaussian examples use default `latent()` with its diagonal `Psi_B,aug`
+companion.
 
 ## Setup
 
 ```{r setup}
 library(gllvmTMB)
 library(ggplot2)
-library(dplyr)
 ```
 
 ## Example data
@@ -151,7 +179,6 @@ ctl <- gllvmTMBcontrol(
 fit_long <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):temperature +
     latent(0 + trait + (0 + trait):temperature | individual, d = 1) +
-    unique(0 + trait + (0 + trait):temperature | individual) +
     latent(0 + trait | session_id, d = 1),
   data = df,
   trait = rr$fit_args$trait,
@@ -164,7 +191,6 @@ fit_long <- gllvmTMB(
 fit_wide <- gllvmTMB(
   traits(boldness, exploration, activity) ~ 1 + temperature +
     latent(1 + temperature | individual, d = 1) +
-    unique(1 + temperature | individual) +
     latent(1 | session_id, d = 1),
   data = df_wide,
   unit = rr$fit_args$unit,
@@ -190,16 +216,16 @@ tier:
 ```{r formula-pieces, eval = FALSE}
 # Long format
 latent(0 + trait + (0 + trait):temperature | individual, d = 1)
-unique(0 + trait + (0 + trait):temperature | individual)
 
 # Wide data-frame shorthand
 latent(1 + temperature | individual, d = 1)
-unique(1 + temperature | individual)
 ```
 
 The article uses `se = FALSE` so the vignette renders quickly. That
 means the diagnostic table below is a point-estimate fit check, not a
-curvature-based interval claim.
+curvature-based interval claim. Optimizer and gradient rows should pass before
+interpreting the point estimates; `sdreport` and Hessian rows are expected to
+warn in this draft because standard-error calculation is deliberately skipped.
 
 ```{r diagnostics}
 diag_tbl <- check_gllvmTMB(fit)
@@ -305,8 +331,9 @@ The three blocks answer different biological questions:
   to temperature.
 
 The shared and unique pieces compose the total augmented covariance.
-`Sigma_unique$s` is the fitted diagonal contribution from `unique()`,
-ordered to match the rows and columns of `Sigma_total$Sigma`:
+`Sigma_unique$s` is the fitted diagonal `Psi` contribution supplied by
+the Gaussian `latent()` default, ordered to match the rows and columns of
+`Sigma_total$Sigma`:
 
 ```{r composition}
 max(abs(
@@ -484,11 +511,11 @@ differences at each temperature value?
 
 ## Current non-Gaussian boundary
 
-The paired augmented `latent() + unique()` random-regression path in
-this article is Gaussian. The low-rank augmented `latent()` path can
-currently fit ordinary non-Gaussian random slopes in a smoke-test
-regime, but adding the augmented diagonal `unique()` component is still
-guarded for non-Gaussian families.
+The default augmented `latent()` random-regression path in this article
+is Gaussian when it includes the diagonal `Psi` component. The low-rank
+augmented `latent()` path can currently fit ordinary non-Gaussian random
+slopes in a smoke-test regime, but the explicit augmented `unique()`
+compatibility syntax is still guarded for non-Gaussian families.
 
 ```{r nongaussian-boundary, eval = FALSE}
 # This intentionally errors today.
@@ -502,16 +529,15 @@ gllvmTMB(
   unit_obs = "session_id",
   family = poisson()
 )
-#> Error: Augmented ordinary `unique()` random-regression slopes are currently
-#> implemented for Gaussian responses only.
+#> Error: Augmented ordinary diagonal-compatibility random-regression slopes
+#> are currently implemented for Gaussian responses only.
 ```
 
-For a non-Gaussian reaction-norm analysis today, either fit the
-augmented `latent()` part without `unique()` and treat it as early
-evidence, or stay with the established non-slope `latent + unique`
-between/within model. Do not switch to `phylo_*()` or `spatial_*()`
-syntax unless the scientific model genuinely contains phylogenetic or
-spatial dependence.
+For a non-Gaussian reaction-norm analysis today, fit augmented `latent()`
+as a low-rank-only model and treat it as early evidence, or stay with
+the established non-slope between/within model. Do not switch to
+`phylo_*()` or `spatial_*()` syntax unless the scientific model genuinely
+contains phylogenetic or spatial dependence.
 
 ## What to report
 
@@ -529,10 +555,10 @@ For this model, the primary reportable pieces are:
 - diagnostics from `check_gllvmTMB()` before interpreting covariance or
   repeatability.
 
-This draft demonstrates the Gaussian random-regression model only. It does not
-establish calibrated confidence intervals for slope variances, slope
+This draft demonstrates the Gaussian random-regression model only. It does
+not establish calibrated confidence intervals for slope variances, slope
 correlations, intercept-slope correlations, repeatability curves, or
-non-Gaussian augmented `unique()` support.
+non-Gaussian augmented diagonal-`Psi` support.
 
 ## References
 

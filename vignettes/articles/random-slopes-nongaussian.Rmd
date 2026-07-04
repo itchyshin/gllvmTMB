@@ -1,5 +1,6 @@
 ---
 title: "Structured random slopes for non-Gaussian traits"
+tier: 3 # internal technical draft until structured-dependence reader review passes
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -35,13 +36,19 @@ knitr::opts_chunk$set(
 
 A reaction norm is a slope: how a trait responds to an environmental
 gradient. The ordinary individual-level behavioural reaction-norm article is
-now an internal Gaussian draft for
-`latent(1 + x | individual, d = K) + unique(1 + x | individual)`, while plain
-non-structured bare-bar `(1 + x | individual)` random slopes remain reserved.
+now an internal Gaussian draft for default
+`latent(1 + x | individual, d = K)` with its diagonal `Psi_B,aug` companion,
+while plain non-structured bare-bar `(1 + x | individual)` random slopes remain reserved.
 This article covers a different, internal technical surface: **structured**
 random slopes, where the slope varies across species along a phylogeny or
 across sites in space. Those are random regressions with an explicit dependence
 structure.
+
+**Internal article gate.** This page remains a Tier 3 technical draft. It
+documents validated syntax and point-recovery evidence for structured
+single-slope models, but it is not yet a public worked example, not a
+confidence-interval calibration claim, and not a replacement for the ordinary
+Gaussian behavioural reaction-norm article.
 
 This article covers two directions that matter for ecological and evolutionary
 data:
@@ -77,6 +84,28 @@ The scope is deliberately single-slope:
 | Non-Gaussian `phylo_dep(..., s >= 2)` | **Partial**; fail-loud guarded while RE-03 diagnostics continue |
 | Delta, hurdle, and two-stage zero-inflated families | **Blocked / out of scope** for latent-scale slope covariance (FAM-17, MIX-10) |
 | Confidence intervals on slope variances | **Not calibrated here**; this article reports point estimates and recovery bands, not coverage guarantees |
+
+## Reader path and scope
+
+This draft is a structured-dependence map rather than a first-use tutorial:
+
+| Reader question | Model object | Code section | Readout |
+|---|---|---|---|
+| How does the augmented-slope grammar work in long and wide data? | `phylo_indep(1 + x | species)` | `fit-small-long`, `fit-small-wide` | long/wide log-likelihood difference |
+| Can a small structured Gaussian fit return usable slope scales? | diagonal phylogenetic slope fit | `recover-small`, `check-small` | fitted intercept/slope SDs and `check_gllvmTMB()` rows |
+| Does the same grammar compose with counts? | Poisson `phylo_indep(1 + x | species)` | `poisson-small` | convergence, Hessian flag, fitted slope scale |
+| Where is the correlated structured slope path? | `phylo_dep(1 + x | species)` | `dep-poisson` | exact shipped syntax and validation-cell recovery prose |
+| Where is the spatial twin? | `spatial_indep(1 + x | coords)` | `spatial-poisson` | exact shipped syntax and validation-cell recovery prose |
+
+Scope boundary: IN rows are the one-covariate structured random-slope grid
+for phylogenetic, spatial, and animal paths (`PHY-11`--`PHY-18`,
+`SPA-08`--`SPA-10`, `ANI-11`, `ANI-12`) and fit-health diagnostics
+(`DIA-08`). PARTIAL rows include non-Gaussian `s >= 2` dependent slopes under
+`RE-03` and interval coverage for slope summaries (`CI-08`, `CI-10`). BLOCKED
+or out-of-scope rows are delta, hurdle, and zero-inflated slope covariance
+families (`FAM-17`, `MIX-10`). Treat the build-time examples as syntax and
+point-fit demonstrations; the heavy validation prose names recovery bands, not
+calibrated uncertainty.
 
 ## The augmented-slope grammar
 

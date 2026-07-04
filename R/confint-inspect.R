@@ -115,8 +115,7 @@
 #' @examples
 #' \dontrun{
 #' fit <- gllvmTMB(value ~ 0 + trait +
-#'                 latent(0 + trait | site, d = 1) +
-#'                 unique(0 + trait | site),
+#'                 latent(0 + trait | site, d = 1),
 #'                 data  = sim$data,
 #'                 trait = "trait",
 #'                 unit  = "site")
@@ -488,6 +487,7 @@ confint_inspect <- function(
 ## ---- print method -----------------------------------------------------
 
 #' @export
+#' @keywords internal
 print.gllvmTMB_confint_inspect <- function(x, ...) {
   cli::cli_h1("gllvmTMB confint_inspect for {.val {x$bounds$parm}}")
   cli::cli_h2("Estimate + CI")

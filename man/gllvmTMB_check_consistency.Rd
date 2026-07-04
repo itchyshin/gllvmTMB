@@ -101,8 +101,7 @@ audit's recommended Bayesian-comparison path).
 \examples{
 \dontrun{
 fit <- gllvmTMB(value ~ 0 + trait +
-                latent(0 + trait | site, d = 1) +
-                unique(0 + trait | site),
+                latent(0 + trait | site, d = 1),
                 data  = sim$data,
                 trait = "trait",
                 unit  = "site")

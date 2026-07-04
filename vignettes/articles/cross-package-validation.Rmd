@@ -1,5 +1,6 @@
 ---
 title: "Cross-package validation: gllvmTMB vs glmmTMB and gllvm"
+tier: 3 # internal comparator ledger until Phase 5.5 evidence is complete
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,11 +24,17 @@ knitr::opts_chunk$set(
 )
 ```
 
-A package is only useful if its answers can be trusted. This article
-shows that, for every covariance structure shared with an established
-package, **`gllvmTMB` reproduces the reference package's
-log-likelihood or parameter estimates to numerical tolerance** on
-identical data.
+> **Internal article gate.** This page is a Tier 3 comparator ledger while
+> Phase 5.5 external validation is incomplete. It keeps the current glmmTMB and
+> gllvm agreement checks visible, but it is not a public proof that every shared
+> covariance structure or inference workflow has been validated.
+
+A package is only useful if its answers can be trusted. This internal article
+shows the comparator checks that are already wired into local examples or
+tests, and names the rows that remain validation debt. The safe claim is
+evidence-specific: `gllvmTMB` matches selected `glmmTMB` and `gllvm`
+objectives or loading subspaces on named fixtures. It does not yet certify the
+full cross-package surface.
 
 The wider cross-package agreement programme — including Bayesian
 comparators (`MCMCglmm`, `Hmsc`) and the spatial / mixed-family /
@@ -35,19 +42,30 @@ constrained-loadings neighbours (`sdmTMB`, `galamm`) — is Phase 5.5
 external-validation-sprint work and ships as a separate article
 once those runs complete.
 
+Scope boundary: **IN**, the live or tested rows below cover ordinary Gaussian
+reduced-rank agreement with `glmmTMB::rr()` / `diag()`, one binary
+loading-subspace comparison with `gllvm::gllvm()`, and selected parser or
+test fixtures for `phylo_scalar()` and `meta_V()`. **PARTIAL**, the article
+does not yet carry a complete comparator ledger for all phylogenetic, spatial,
+mixed-family, missing-data, interval, or Julia-bridge paths. **PLANNED**,
+Phase 5.5 should decide which comparator packages, fixtures, tolerances, and
+stored evidence files are required before this becomes a public validation
+article.
+
 ## Validation matrix
 
-Every row in the matrix below is **live**: the comparison either
-runs in this article, or an existing test in `tests/testthat/`
-asserts the agreement.
+Every row in the matrix below is deliberately scoped: the comparison either
+runs in this article or an existing test in `tests/testthat/` asserts the
+agreement. Rows marked partial are not release evidence for the broader
+capability.
 
 | gllvmTMB term | Reference package | Status | Detail |
 |---|---|---|---|
-| <code>latent(0 + trait &#124; site, d)</code> | `glmmTMB::glmmTMB(rr())` | ✅ live (this article) | log-likelihood match to 1e-4 |
-| <code>latent(0 + trait &#124; site, d)</code> (binary) | `gllvm::gllvm(num.lv)` | ✅ live (this article) | Procrustes-aligned $\boldsymbol{\Lambda}$, per-factor $\rho > 0.95$ |
-| <code>unique(0 + trait &#124; site)</code> | `glmmTMB::glmmTMB(diag())` | ✅ live (this article) | log-likelihood match to 1e-4 |
-| `phylo_scalar(species)` | `glmmTMB::glmmTMB(propto())` | ✅ tested (`test-stage3-propto-equalto.R`) | log-likelihood match to 1e-4 |
-| `meta_V(V = V)` | `glmmTMB::glmmTMB(equalto())` | ⚠ partial (`test-formula-grammar-smoke.R`, `test-gllvmTMB-args.R`) | parser / dimension / smoke coverage exists; direct equalto LL comparator remains MET-01 validation debt |
+| <code>latent(0 + trait &#124; site, d)</code> | `glmmTMB::glmmTMB(rr())` | live in this article | log-likelihood match to 1e-4 on this Gaussian fixture |
+| <code>latent(0 + trait &#124; site, d)</code> (binary) | `gllvm::gllvm(num.lv)` | live when optional packages are installed | Procrustes-aligned $\boldsymbol{\Lambda}$ on one binary fixture |
+| default `latent()` diagonal `Psi` companion | `glmmTMB::glmmTMB(diag())` | live in this article | log-likelihood match to 1e-4 on this Gaussian fixture |
+| `phylo_scalar(species)` | `glmmTMB::glmmTMB(propto())` | tested (`test-stage3-propto-equalto.R`) | log-likelihood match to 1e-4 on the staged fixture |
+| `meta_V(V = V)` | `glmmTMB::glmmTMB(equalto())` | partial (`test-formula-grammar-smoke.R`, `test-gllvmTMB-args.R`) | parser / dimension / smoke coverage exists; direct equalto LL comparator remains MET-01 validation debt |
 
 ## Setup
 
@@ -95,8 +113,7 @@ Fit with `gllvmTMB`:
 ```{r fit-gllvm}
 fit_g <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site),
+          latent(0 + trait | site, d = 2),
   data = df,
   trait = "trait"
 )
@@ -108,8 +125,9 @@ Fit with `glmmTMB::glmmTMB()` on the same data:
 
 ```{r fit-glmmtmb}
 ## glmmTMB has its own `rr()` / `diag()` keywords; we use those here
-## (NOT gllvmTMB's canonical latent() / unique()) because this is a
-## cross-package log-likelihood agreement fit.
+## (not gllvmTMB's canonical default latent()) because this is a
+## cross-package log-likelihood agreement fit. In gllvmTMB, ordinary
+## latent() includes the diagonal Psi companion by default.
 fit_t <- suppressWarnings(glmmTMB::glmmTMB(
   value ~ 0 + trait +
           rr(0 + trait | site, d = 2) +
@@ -295,11 +313,12 @@ traits cluster on the same axes, with the same signs, after the
 orthogonal rotation that aligns one fit's $\boldsymbol{\Lambda}$ to
 the other's.
 
-## Why `gllvmTMB` adds value over `gllvm` and `galamm`
+## Current differentiators and open comparator debt
 
-The cross-package agreement above shows `gllvmTMB` is **correct**
-relative to `glmmTMB` and `gllvm`. The package's *added* value is on
-two axes:
+The agreement rows above support selected port and grammar claims relative to
+`glmmTMB` and `gllvm`. The package's intended added value is on two axes, but
+both should stay tied to validation rows rather than treated as universal
+release claims:
 
 1. **Engine breadth**: `gllvmTMB` handles phylogenetic structure
    (`phylo_*()` keywords; sparse $A^{-1}$ representation) and
@@ -309,18 +328,16 @@ two axes:
    SEM-style neighbour but has neither spatial nor phylogenetic
    keywords.
 
-2. **Inference completeness**: `gllvmTMB` offers
+2. **Inference surface**: `gllvmTMB` offers
    `confint(method = c("wald", "profile", "bootstrap"))` plus
    derived-quantity profile-likelihood CIs for repeatability,
    communality, phylogenetic signal, and pairwise correlations
    (see [Profile-likelihood CIs](profile-likelihood-ci.html)).
    `gllvm`'s `confint()` is Wald only.
    `galamm::confint()` is documented as *"Currently only 'Wald'
-   is available"*. Per the Fisher persona review 2026-05-14, this
-   makes `gllvmTMB` the **inference-complete** alternative for
-   derived-quantity inference under non-quadratic profile shapes
-   (variance components near zero, correlations near $\pm 1$,
-   under-identified factor loadings).
+   is available"*. This is a real design direction, but coverage remains
+   row-specific: CI-08 and CI-10 still block broad interval-coverage claims,
+   especially for mixed-family and difficult boundary regimes.
 
 ## `phylo_scalar()` / `meta_V()`: existing test agreement
 

@@ -64,6 +64,13 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 
 #' Per-trait independent animal-model random intercepts: `animal_unique(id)`
 #'
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `animal_unique()` is soft-deprecated as compatibility syntax in gllvmTMB
+#' 0.2.0. Use [animal_indep()] for standalone marginal diagonal animal-model
+#' terms. Paired explicit-Psi use remains accepted until the latent-Psi fold
+#' lands.
+#'
 #' Canonical name for the **D independent** animal-model random
 #' intercept on a shared relatedness matrix \eqn{\mathbf A}. Each
 #' trait gets its own variance \eqn{\sigma^{2}_{\text{a},t}}; traits

@@ -67,12 +67,21 @@ test_that("spatial_unique(coords | trait) emits a lifecycle deprecation warning"
     lifecycle:::deprecation_env,
     "gllvmTMB-spatial-orientation-flip-spatial_unique"
   )
-  expect_warning(
-    suppressMessages(gllvmTMB::gllvmTMB(
-      value ~ 0 + trait + spatial_unique(coords | trait),
-      data = fix$df, mesh = fix$mesh, silent = TRUE)),
-    regexp = "deprecated|0 \\+ trait \\| coords"
+  ws <- list()
+  suppressMessages(
+    withCallingHandlers(
+      gllvmTMB::gllvmTMB(
+        value ~ 0 + trait + spatial_unique(coords | trait),
+        data = fix$df, mesh = fix$mesh, silent = TRUE
+      ),
+      warning = function(w) {
+        ws[[length(ws) + 1L]] <<- w
+        invokeRestart("muffleWarning")
+      }
+    )
   )
+  msgs <- vapply(ws, conditionMessage, character(1))
+  expect_true(any(grepl("0 \\+ trait \\| coords|coords \\| trait", msgs)))
 })
 
 test_that("Both orientations of spatial_unique() give byte-identical fits", {

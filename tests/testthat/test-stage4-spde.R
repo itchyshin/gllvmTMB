@@ -17,7 +17,7 @@ test_that("Stage 4: spde() converges and recovers sensible kappa / range", {
   sim <- simulate_spatial_data()
   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.07)
   fit <- gllvmTMB(
-    value ~ 0 + trait + spatial_unique(0 + trait | coords),
+    value ~ 0 + trait + spatial_indep(0 + trait | coords),
     data = sim$data, mesh = mesh
   )
   expect_s3_class(fit, "gllvmTMB_multi")
@@ -35,8 +35,8 @@ test_that("Stage 4: spde() + diag combined model converges", {
   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.07)
   fit <- gllvmTMB(
     value ~ 0 + trait + (0 + trait):env_1 +
-            spatial_unique(0 + trait | coords) +
-            unique(0 + trait | site_species),
+            spatial_indep(0 + trait | coords) +
+            indep(0 + trait | site_species),
     data = sim$data, mesh = mesh
   )
   expect_equal(fit$opt$convergence, 0L)
@@ -49,7 +49,7 @@ test_that("Stage 4: spde() requires mesh", {
   sim <- simulate_spatial_data()
   expect_error(
     gllvmTMB(
-      value ~ 0 + trait + spatial_unique(0 + trait | coords),
+      value ~ 0 + trait + spatial_indep(0 + trait | coords),
       data = sim$data, mesh = NULL
     ),
     "mesh"
@@ -62,7 +62,7 @@ test_that("Stage 4: spde() handles a fixed-rank between-site rr too", {
                                seed = 9)
   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.07)
   fit <- gllvmTMB(
-    value ~ 0 + trait + spatial_unique(0 + trait | coords) + latent(0 + trait | site, d = 2),
+    value ~ 0 + trait + spatial_indep(0 + trait | coords) + latent(0 + trait | site, d = 2),
     data = sim$data, mesh = mesh
   )
   expect_equal(fit$opt$convergence, 0L)

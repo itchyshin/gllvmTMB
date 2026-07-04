@@ -1,12 +1,12 @@
 ---
-title: "Confirmatory loadings for binary species distributions: pinning Lambda with lambda_constraint"
+title: "Confirmatory loadings for binary species distributions"
 tier: 3 # Hidden while the binary loading-constraint reader path is under article-council review.
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Confirmatory loadings for binary species distributions: pinning Lambda with lambda_constraint}
+  %\VignetteIndexEntry{Confirmatory loadings for binary species distributions}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -630,7 +630,7 @@ pale CI region with thick semi-transparent line, hollow point
 estimate, optional shaded "negligible" band so the reader can tell at
 a glance which CIs sit outside it.
 
-```{r confidence-eye, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the constrained loadings. For each species (x-axis), the hollow point is the Wald point estimate and the coloured eye-shaped polygon is the 95% delta-method CI, with width proportional to the Gaussian sampling density (peak at the estimate; ~15% of peak at the 95% bound). The pale grey band marks the biologically negligible region (-0.1, 0.1). Green: CI excludes the null region; red: CI overlaps it; grey: pinned by construction.", fig.alt = "Two-panel chart with 20 species on the x-axis, separated by latent axis (LV1, LV2). Each species has a hollow point at the point estimate and an eye-shaped polygon whose vertical extent is the 95% CI and whose width is the Gaussian sampling density. Polygons are colour-coded by reliability: green when the CI excludes the (-0.1, 0.1) null band, red when it overlaps, grey when pinned (in which case only the hollow point is shown)."}
+```{r confidence-eye, fig.width = 8, fig.height = 4.5, fig.cap = "Diagnostic Confidence Eye attempt for the constrained loadings. In this fixture the Wald loading-CI path is unavailable because the fitted Hessian is non-positive-definite, so the rendered plot shows hollow point estimates only rather than confidence-eye polygons. This is kept as an internal review signal, not as a public-ready loading-uncertainty figure.", fig.alt = "Two-panel chart with 20 species on the x-axis, separated by latent axis (LV1, LV2). Hollow point estimates are shown, but no confidence-eye polygons appear because the fitted Hessian is non-positive-definite and Wald loading intervals are unavailable for this fit."}
 plot_loadings_confidence_eye(
   fit_con,
   level       = "unit",
@@ -638,11 +638,13 @@ plot_loadings_confidence_eye(
 )
 ```
 
-The plot makes the "dominant loading with large error" problem
-visible. Species whose green bar sits clearly above the null band can
-support biological interpretation; species whose red bar overlaps it
-should be reported as "no evidence of a non-trivial response" rather
-than as point estimates carrying a particular sign.
+The current rendered output is a review blocker, not a finished teaching
+figure. It shows where the Confidence Eye should appear, but the fitted
+Hessian is non-positive-definite and the Wald loading-CI helper correctly
+refuses to draw uncertainty polygons. Before this article returns to the
+public navigation, this section needs either a fixture with positive-definite
+loading intervals or a profile/bootstrap loading-interval path that can carry
+the intended uncertainty display.
 
 ## Communality and uniqueness
 

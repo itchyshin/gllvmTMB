@@ -40,9 +40,11 @@ stacking; the user picks whichever shape matches their data on disk.
 Because the LHS already names the response traits, the RHS can use a
 compact wide shorthand. \code{1} expands to the trait-specific intercepts
 \code{0 + trait}; ordinary predictors such as \code{env_temp} expand to
-\code{(0 + trait):env_temp}; and \code{latent(1 | individual)} /
-\code{unique(1 | individual)} expand to the long covariance syntax
-\code{latent(0 + trait | individual)} / \code{unique(0 + trait | individual)}.
+\code{(0 + trait):env_temp}; and \code{latent(1 | individual)} expands to
+the long covariance syntax \code{latent(0 + trait | individual)}.
+Ordinary \code{latent()} includes its \eqn{\boldsymbol\Psi} companion by
+default; the soft-deprecated explicit \code{unique(1 | individual)}
+compatibility spelling still expands to \code{unique(0 + trait | individual)}.
 The same \code{1 | group} shorthand is recognised for \code{indep()},
 \code{dep()}, bar-style \code{phylo_indep()} / \code{phylo_dep()}, and the
 \verb{spatial_*()} keywords. Species-axis phylogenetic keywords such as
@@ -52,8 +54,7 @@ and pass through unchanged. Ordinary random-intercept terms such as
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{gllvmTMB(
   traits(sleep, mass, lifespan, brain) ~ 1 + env_temp +
-    latent(1 | individual, d = 2) +
-    unique(1 | individual),
+    latent(1 | individual, d = 2),
   data   = wide_df,
   unit   = "individual",
   family = gaussian()

@@ -66,10 +66,11 @@ extract_Sigma_W <- function(fit) {
 #' \deqn{\mathrm{ICC}_t \;=\; \frac{(\boldsymbol\Sigma_B)_{tt}}{(\boldsymbol\Sigma_B)_{tt} + (\boldsymbol\Sigma_W)_{tt}}.}
 #'
 #' Calls [extract_Sigma()] internally for both levels with `part = "total"`,
-#' so the diagonal of each \eqn{\boldsymbol\Sigma} includes the unique
-#' component \eqn{\boldsymbol\Psi} when `unique()` is in the formula. If either
-#' level has only `latent()` and no `unique()`, the corresponding advisory
-#' message fires and the ICC is computed against the latent-only diagonal.
+#' so the diagonal of each \eqn{\boldsymbol\Sigma} includes the
+#' \eqn{\boldsymbol\Psi} component when it is present. Ordinary `latent()`
+#' includes \eqn{\boldsymbol\Psi} by default; if either level uses
+#' `latent(..., residual = FALSE)`, the corresponding advisory message
+#' fires and the ICC is computed against the no-Psi diagonal.
 #'
 #' For binomial fits the implicit link residual is included in the
 #' within-unit variance by default (matching the marginal latent-scale
@@ -78,7 +79,7 @@ extract_Sigma_W <- function(fit) {
 #' @inheritParams extract_Sigma_B
 #' @param link_residual For binomial fits: `"auto"` (default) adds the
 #'   link-specific implicit residual to \eqn{(\boldsymbol\Sigma_W)_{tt}};
-#'   `"none"` returns ICC on the latent+unique-implied scale only.
+#'   `"none"` returns ICC on the latent/Psi-implied scale only.
 #' @return Numeric vector indexed by trait, or `NULL` if either Sigma_B or
 #'   Sigma_W is unavailable.
 #' @seealso [extract_proportions()] for the canonical per-trait variance
@@ -120,16 +121,19 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' other traits via the latent factors. Bounded between 0 and 1. Calls
 #' [extract_Sigma()] internally for the chosen level, so the diagonal
 #' uses the full \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi}
-#' decomposition when both `latent()` and `unique()` are in the formula.
+#' decomposition. Ordinary `latent()` includes \eqn{\boldsymbol\Psi}
+#' by default; explicit `latent() + unique()` remains compatibility
+#' syntax.
 #'
-#' ## Caveat: communality with latent-only fits
+#' ## Caveat: communality with no-Psi fits
 #'
-#' If the fit has `latent()` but **no** `unique()` at the requested level (for
-#' Gaussian / lognormal / Gamma responses), then \eqn{\boldsymbol\Psi = \mathbf 0}
-#' and `c_t^2 = 1` for every trait — this is mathematically correct given
-#' the model spec but tells you nothing about trait integration. The
+#' If the fit uses `latent(..., residual = FALSE)` at the requested
+#' level, then \eqn{\boldsymbol\Psi = \mathbf 0} and `c_t^2 = 1` for
+#' every trait. This is mathematically correct for the no-residual
+#' subset but tells you nothing about trait integration. The
 #' [extract_Sigma()] advisory message will fire to flag this. To get
-#' meaningful communalities, refit with `+ unique(0 + trait | <group>)`.
+#' meaningful communalities, use ordinary `latent()` with the default
+#' `residual = TRUE`.
 #'
 #' For binomial fits the link-specific implicit residual (\eqn{\pi^2/3}
 #' for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the
@@ -143,7 +147,8 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'   Legacy aliases `"B"` and `"W"` are accepted with a deprecation warning.
 #' @param link_residual For binomial fits: `"auto"` (default) adds the
 #'   link-specific implicit residual to the denominator; `"none"` returns
-#'   communalities on the latent+unique-implied scale only.
+#'   communalities on the fitted model covariance scale without link-residual
+#'   additions.
 #' @param ci Logical. When `TRUE`, returns a tidy data frame with
 #'   confidence-interval columns; when `FALSE` (the default), returns a
 #'   plain named numeric vector for backward compatibility.
@@ -169,8 +174,7 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
-#'             latent(0 + trait | site, d = 2) +
-#'             unique(0 + trait | site),
+#'             latent(0 + trait | site, d = 2),
 #'     data  = sim$data,
 #'     trait = "trait",
 #'     unit  = "site"
@@ -405,8 +409,7 @@ extract_communality <- function(
 #'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
-#'             latent(0 + trait | site, d = 2) +
-#'             unique(0 + trait | site),
+#'             latent(0 + trait | site, d = 2),
 #'     data  = sim$data,
 #'     trait = "trait",
 #'     unit  = "site"

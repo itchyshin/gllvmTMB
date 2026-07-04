@@ -17,10 +17,10 @@ capability matrix to `covered`, honestly skipping infeasible cells.
 
 | Group | Cells | Families |
 |---|---|---|
-| **A** unit-tier structural | `latent`, `unique`, `latent+unique`, `indep`, `dep`, `scalar` at the unit tier | poisson, nbinom2, gamma, beta, ordinal_probit, binomial-logit |
-| **B** phylo × non-binary | `phylo_latent+unique`, `phylo_scalar`, `phylo_indep/dep` | poisson, nbinom2, gamma, beta, ordinal_probit |
-| **C** spatial × non-binary | `spatial_latent+unique`, `spatial_scalar`, `spatial_indep/dep` | poisson, nbinom2, gamma, beta, ordinal_probit |
-| **E** tail-family recovery | family recovery depth + `latent`/`unique` smoke | betabinomial, nbinom1, lognormal, student-t, tweedie, truncated, censored |
+| **A** unit-tier structural | ordinary `latent`, explicit-Psi compatibility, `indep`, `dep`, and scalar diagonal cells at the unit tier | poisson, nbinom2, gamma, beta, ordinal_probit, binomial-logit |
+| **B** phylo × non-binary | `phylo_latent()` with explicit-Psi compatibility where needed, `phylo_scalar`, `phylo_indep` / `phylo_dep` | poisson, nbinom2, gamma, beta, ordinal_probit |
+| **C** spatial × non-binary | `spatial_latent()` with explicit-Psi compatibility where needed, `spatial_scalar`, `spatial_indep` / `spatial_dep` | poisson, nbinom2, gamma, beta, ordinal_probit |
+| **E** tail-family recovery | family recovery depth plus ordinary latent / explicit compatibility diagonal smoke | betabinomial, nbinom1, lognormal, student-t, tweedie, truncated, censored |
 
 ## Agent ownership (1 test file per agent, disjoint)
 

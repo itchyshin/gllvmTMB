@@ -64,7 +64,8 @@ systematic mapping. Default \code{"site"}.}
 \item{unit_obs}{Name of the column holding the \strong{within-unit}
 grouping factor — one level per (unit, replicate) cell — used by
 \code{latent(0 + trait | unit_obs, ...)} and
-\code{unique(0 + trait | unit_obs)} for the W-tier covariance.
+\code{indep(0 + trait | unit_obs)} for the W-tier covariance. Legacy
+\code{unique(0 + trait | unit_obs)} remains accepted as compatibility syntax.
 Default \code{"site_species"} (the conventional name in joint species
 distribution modelling; safe for site × species data). For other
 domains pass e.g. \code{unit_obs = "obs"} for behavioural syndromes.}
@@ -100,14 +101,15 @@ crossed (or nested) plain diagonal per-trait variance components at
 once. Default \code{NULL} (slot inactive). It is a plain crossed/nested
 diagonal grouping only -- it carries no phylogenetic or spatial
 correlation (those stay bound to \code{cluster} / \code{coords}). A
-\verb{unique(0 + trait | <cluster2 col>)} term then fits a per-trait
+\verb{indep(0 + trait | <cluster2 col>)} term then fits a per-trait
 variance at this second grouping, exactly as \code{cluster} does at the
-third slot. Example: \code{cluster = "site"}, \code{cluster2 = "year"} to fit
+third slot. Legacy \code{unique()} spelling remains compatibility syntax.
+Example: \code{cluster = "site"}, \code{cluster2 = "year"} to fit
 a site variance and a year variance simultaneously. As with the
 other slots, nesting is not enforced (crossed and nested both fit).
 The cluster2 column must be disjoint from the \code{unit} / \code{unit_obs} /
-\code{cluster} columns (a \code{unique()} term routes to whichever slot its
-grouping column matches).}
+\code{cluster} columns (a diagonal term routes to whichever slot its grouping
+column matches).}
 
 \item{family}{A \code{family} object. The multivariate engine
 (formulas with \code{latent()}, \code{unique()}, etc.) supports \code{gaussian()},
@@ -296,10 +298,11 @@ The four "quartet" modes (\code{unique} / \code{indep} / \code{dep} / \code{late
 encode covstruct intent under a strict always-paired-vs-always-alone
 convention:
 \itemize{
-\item \code{latent + unique} (paired) — the \strong{decomposition} mode:
+\item \code{latent + unique} (paired) — the \strong{compatibility decomposition} spelling:
 \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}.
-\code{unique} standalone is also legitimate (e.g. observation-level
-random effects), but the canonical pattern is paired with \code{latent}.
+Ordinary \code{latent()} now carries \eqn{\boldsymbol\Psi} by default, so new
+standalone diagonal code should use \code{indep()}; \code{unique()} remains accepted
+as legacy compatibility syntax.
 \item \code{indep} (alone) — the \strong{marginal-only} mode: each trait gets its
 own variance, no cross-trait covariance.
 \item \code{dep} (alone) — the \strong{full unstructured} mode: \eqn{\boldsymbol\Sigma}
@@ -370,62 +373,59 @@ non-negative.
 
 "Residual" in a mixed-effects model is \strong{scale-relative}: what
 counts as residual variance shifts as you add levels to the model.
-In a no-\code{unique} Gaussian fit, the residual is row-level noise
-captured by a single shared \code{sigma_eps}. Once you add a per-row
-\code{unique(0 + trait | obs)} term, the \emph{row-level} residual is now T
-per-trait random-effect variances and \code{sigma_eps} is auto-suppressed
-to avoid double-counting. Once you also add \code{unique(0 + trait | site)}
-on top, the row-level term remains the residual and the \code{site}-level
-term is now an additional, \emph{higher-level} random effect — not a
-residual at all. The dispatch table below records this explicitly
-for the configurations the engine supports today.
+In a Gaussian fit without a per-row diagonal term, the residual is row-level
+noise captured by a single shared \code{sigma_eps}. Once you add a per-row
+\code{indep(0 + trait | obs)} term (or legacy \code{unique()} compatibility spelling),
+the \emph{row-level} residual is now T per-trait random-effect variances and
+\code{sigma_eps} is auto-suppressed to avoid double-counting. If you also add a
+site-level diagonal term on top, the row-level term remains the residual and
+the \code{site}-level term is now an additional, \emph{higher-level} random effect, not
+a residual at all. The dispatch table below records this explicitly for the
+configurations the engine supports today.
 
 For continuous-family responses (Gaussian, lognormal, Gamma) the
 engine has one residual scale parameter, \code{sigma_eps}. By default
 \code{sigma_eps} is \strong{estimated as a single shared scalar across all
-continuous-family rows} — per-trait residual variances only appear
-if you explicitly add a per-row \code{unique(...)} (or, when Phase B
-lands, \code{indep(...)}) term. The dispatch is automatic:
+continuous-family rows}; per-trait residual variances only appear
+if you explicitly add a per-row \code{indep(...)} term or legacy \code{unique(...)}
+compatibility term. The dispatch is automatic:
 
 \describe{
-\item{No \code{unique} / \code{indep}, continuous families present}{One
+\item{No per-row \code{indep} / \code{unique}, continuous families present}{One
 shared \code{sigma_eps} across all rows. \emph{Not} per-trait.}
-\item{No \code{unique} / \code{indep}, no continuous families}{\code{sigma_eps}
+\item{No per-row \code{indep} / \code{unique}, no continuous families}{\code{sigma_eps}
 is mapped off; the family's intrinsic dispersion handles the
 residual.}
-\item{\code{unique(0 + trait | g)} where \code{g} has fewer levels than
+\item{\code{indep(0 + trait | g)} where \code{g} has fewer levels than
 rows (e.g. \code{g = "site"})}{\code{sigma_eps} is still estimated as the
-row-level residual; the \code{unique} term adds a per-trait random
-effect at level \code{g} on top.}
-\item{\code{unique(0 + trait | obs)} at the per-row level (one
+row-level residual; the diagonal term adds a per-trait random
+effect at level \code{g} on top. Legacy \code{unique()} spelling is equivalent.}
+\item{\code{indep(0 + trait | obs)} at the per-row level (one
 level per row), continuous families fitted}{\code{sigma_eps} is
 auto-suppressed (mapped off, fixed at a tiny stabiliser); the
-T per-trait \code{unique} random effects \emph{are} the residual. A
+T per-trait diagonal random effects \emph{are} the residual. A
 one-shot \code{cli::cli_inform} fires at fit time announcing the
-auto-suppression.}
-\item{\code{unique(0 + trait | obs)} at the per-row level,
+auto-suppression. Legacy \code{unique()} spelling is equivalent.}
+\item{\code{indep(0 + trait | obs)} at the per-row level,
 non-Gaussian or mixed-family fit}{Treated as observation-level
 random effects (OLRE). For Bernoulli traits the OLRE is
 statistically unidentifiable and is mapped off; for hurdle /
 delta families a warning is emitted (see "Per-family-aware OLRE
-selection" below).}
-\item{\code{indep(0 + trait | obs)} at the per-row level (Phase B,
-not yet implemented)}{Mathematically equivalent to the per-row
-\code{unique} case; same auto-suppression dispatch.}
+selection" below). Legacy \code{unique()} spelling is equivalent.}
 }
 
 Mnemonic: continuous-family \code{sigma_eps} is the default; per-row
-\code{unique} / \code{indep} replaces it with T per-trait residuals; non-per-row
-\code{unique} / \code{indep} adds a higher-level random effect on top of
+\code{indep} / legacy \code{unique} replaces it with T per-trait residuals;
+non-per-row \code{indep} / legacy \code{unique} adds a higher-level random effect on top of
 \code{sigma_eps}; non-continuous families never carry \code{sigma_eps}
 regardless.
 
-\strong{Per-family-aware OLRE selection.} When \verb{unique(0 + trait | <unit_obs>)}
-is at per-row resolution (i.e. one row per \verb{(trait, unit_obs)} cell),
-the resulting per-trait random effects on the linear predictor are an
-observation-level random effect (OLRE). The engine now decides per
-trait what to do with the OLRE variance based on the trait's response
-family:
+\strong{Per-family-aware OLRE selection.} When
+\verb{indep(0 + trait | <unit_obs>)} (or legacy \code{unique()} spelling) is at
+per-row resolution, i.e. one row per \verb{(trait, unit_obs)} cell, the resulting
+per-trait random effects on the linear predictor are an observation-level
+random effect (OLRE). The engine now decides per trait what to do with the
+OLRE variance based on the trait's response family:
 \itemize{
 \item \strong{single-trial Bernoulli} (\code{binomial()}, all rows have
 \code{n_trials == 1}): \code{theta_diag_W[t]} and the corresponding

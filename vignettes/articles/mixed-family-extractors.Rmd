@@ -1,5 +1,6 @@
 ---
 title: "Mixed-family fits: latent-scale covariance and correlations"
+tier: 3 # internal mixed-response extractor draft until broader family story passes
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,7 +24,8 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Internal status — hold for a broader mixed-response expansion.**
+> **Internal article gate.** Hold this page for a broader mixed-response
+> expansion.
 >
 > This page stays internal until the mixed-family article covers the
 > broader response story: Gaussian, binomial, Poisson/NB,
@@ -50,9 +52,39 @@ profile and bootstrap uncertainty summaries on mixed-family targets
 latent-scale correlations (MIX-10), where the continuous-positive and
 zero-generating pieces live on different scales.
 
+The broader family map is:
+
+| Family group | This page does | Status for public teaching |
+|---|---|---|
+| Gaussian, binomial, Poisson | Fits all three together in the runnable fixture and extracts latent-scale Sigma, correlations, communality, and bootstrap Sigma examples | Internal worked extractor draft; rows `MIX-01`--`MIX-09` supply the current evidence |
+| Negative binomial and beta/proportion | Shares the same one-part latent-residual logic, but this page does not yet include a runnable NB/beta fixture | Needs a broader mixed-response teaching pass before public promotion |
+| Delta and hurdle families | Names the blocked boundary only | `MIX-10` stays blocked because the zero-generating and positive-response pieces do not define one shared latent correlation scale |
+| Mixture families | Not taught here | Remain outside this article until their validation rows move |
+
 This article is long-format only because the teaching fixture uses
 per-row `family_var` dispatch. A wide-data companion needs a separate
 family-by-trait teaching fixture before it can be shown honestly.
+
+## Reader path and scope
+
+This internal draft answers one extractor question: after fitting a
+mixed-family GLLVM, which summaries live on a common latent scale?
+
+| Reader question | Model object | Code section | Readout |
+|---|---|---|---|
+| How does per-row family dispatch enter one fit? | `family = fixture$family_list` with `family_var = "family"` | `fixture`, `fixture-data`, `fit` | Gaussian, binomial, and Poisson rows in one long-format model |
+| Is the fit in a usable diagnostic state? | randomized-quantile residual metadata | `diagnostic-status` | row-status counts and compact fit-health PASS/WARN counts |
+| What is the mixed-family covariance target? | `extract_Sigma_table(..., link_residual = "auto")` | `sigma` | total latent-scale covariance rows with interval status |
+| What correlations can a reader plot? | `plot_Sigma_heatmap()` | `corr` | point-estimate correlation heatmap including family-specific link residuals |
+| Which interval paths are available but partial? | `extract_correlations()` and `bootstrap_Sigma()` | `corr-fisher`, `corr-bootstrap`, `bootstrap` | Fisher-z and bootstrap examples with CI-10 boundary |
+
+Scope boundary by row: `MIX-01`--`MIX-09` cover the long-format engine and
+extractor surfaces used here; `DIA-13` covers diagnostic metadata tables;
+`EXT-01`, `EXT-05`, `EXT-06`, `EXT-13`, `EXT-18`, and `EXT-27` cover the
+extractor and point-plot helpers this page demonstrates. `CI-10` remains
+partial, so the interval examples are API demonstrations, not calibrated
+mixed-family coverage proof. `MIX-10` remains blocked: delta and hurdle
+mixed-family latent-scale correlations are not defined on one shared scale.
 
 ## The setup
 
@@ -85,10 +117,10 @@ the `family` column.
 ## Fitting
 
 A single `gllvmTMB()` call handles the compact mixed-family case. The
-formula is latent-only: it has a shared rank-1 latent factor and no
-free `unique()` component. The later comprehensive article should use
-`latent() + unique()` if it teaches a full
-`Sigma = shared + unique` decomposition.
+formula uses the ordinary default `latent()` decomposition: a shared
+rank-1 latent factor plus the package's diagonal `Psi` companion. The
+later comprehensive article should spell out the diagonal-Psi target in
+prose if it teaches a full `Sigma = shared + Psi` decomposition.
 
 ```{r fit, results='hide'}
 fit <- gllvmTMB(
@@ -213,7 +245,7 @@ observable-scale correlation.
 `extract_communality()` returns the proportion of each trait's
 latent-scale variance attributable to the shared rank-$d$ factor. In
 this latent-only draft, that is a diagnostic summary for the compact
-fixture, not a full `latent + unique` decomposition example:
+fixture, not a full Gaussian covariance-decomposition example:
 
 ```{r communality}
 extract_communality(fit, level = "unit", link_residual = "auto")

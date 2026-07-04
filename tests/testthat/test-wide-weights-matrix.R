@@ -69,8 +69,8 @@ test_that("weights = NULL byte-identical to weights = matrix(1, n, p)", {
 #
 # (Aside: the long-format SE-shrinkage / b_fix-invariance pattern that
 # test-lme4-style-weights.R uses is structurally muted in the wide
-# wrapper because the default formula includes `unique(0 + trait | site)`,
-# a per-(site,trait) random intercept that saturates the residual when
+# wrapper because the default formula includes ordinary `latent()`, whose
+# fitted per-trait Psi can absorb much of the residual variation when
 # there is exactly one observation per cell. The long-format file already
 # pins those downstream behaviours; here we pin the conversion.)
 test_that("Weights matrix pivots column-major to weights_i", {
@@ -113,8 +113,7 @@ test_that("Wide weights matrix matches hand-pivoted long-format fit", {
   long_df$site_species <- factor(paste(long_df$site, long_df$species, sep = "_"))
   fit_long <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 1) +
-            unique(0 + trait | site),
+            latent(0 + trait | site, d = 1),
     data    = long_df,
     weights = as.numeric(W),
     silent  = TRUE

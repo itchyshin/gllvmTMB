@@ -199,8 +199,9 @@ $$
 where $\boldsymbol{\lambda}_t \in \mathbb{R}^d$ is the loading vector
 for trait $t$, $\mathbf{u}_i$ is a $d$-dimensional latent factor for
 individual $i$, and $\varepsilon_{it}$ is the trait-specific residual
-with variance $\psi_{tt}$. The `unique()` term collects those residual
-variances on the diagonal of $\boldsymbol\Psi$. The implied
+with variance $\psi_{tt}$. Ordinary `latent()` includes this diagonal
+$\boldsymbol\Psi$ term by default; the old explicit `+ unique()` spelling
+is retained as compatibility syntax. The implied
 between-individual trait covariance is
 
 $$
@@ -219,25 +220,25 @@ loadings rather than the full $T(T + 1) / 2$ covariance surface. That
 low-rank structure is the point of GLLVMs: shared biological axes
 first, trait-specific variation second.
 
-> **`+ unique(0 + trait | individual)` with cross-sectional data.**
+> **Diagonal $\boldsymbol\Psi$ with cross-sectional data.**
 > With cross-sectional data (one observation per individual per
 > trait), the `(trait, individual)` pair uniquely identifies every
 > row. gllvmTMB detects this automatically: it fixes
 > $\sigma_\varepsilon$ to a negligibly small constant (and prints an
-> `i Auto-suppressing sigma_eps: ...` message), so the `unique()` term
-> absorbs the full observation-level residual and becomes the
-> trait-specific residual variance $\psi_t$. The confounding that would
-> arise if both $\sigma_\varepsilon$ and $\psi_t$ were estimated freely
-> is therefore resolved by construction — you do not need to choose
-> between them. With *longitudinal* data (multiple sessions per
-> individual), both terms are separately identified and can be
-> estimated without any auto-suppression; the `unique()` term then
-> captures genuine between-individual trait-specific variance on top of
-> the latent structure. See the
+> `i Auto-suppressing sigma_eps: ...` message), so the diagonal
+> $\boldsymbol\Psi$ term absorbs the full observation-level residual and
+> becomes the trait-specific residual variance $\psi_t$. The confounding
+> that would arise if both $\sigma_\varepsilon$ and $\psi_t$ were estimated
+> freely is therefore resolved by construction — you do not need to add
+> `unique()` for this default latent model. With *longitudinal* data
+> (multiple sessions per individual), both terms are separately identified
+> and can be estimated without any auto-suppression; the diagonal
+> $\boldsymbol\Psi$ term then captures genuine between-individual
+> trait-specific variance on top of the latent structure. See the
 > [Covariance & correlation article](covariance-correlation.html)
 > for the side-by-side comparison.
 
-```{r fit-unique-s}
+```{r fit-psi-s}
 # Trait-specific unique variances (psi_t)
 psi_hat <- extract_Sigma(fit, level = "unit", part = "unique")$s
 cat("Estimated psi_t:", round(psi_hat, 3), "\n")
@@ -275,11 +276,12 @@ plot_Sigma_comparison(corr_compare, measure = "correlation")
 > between-unit covariance
 > $\boldsymbol\Sigma_B = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
 > — the sum of the reduced-rank shared component and the diagonal
-> unique component. If you fit without `+ unique()`, $\boldsymbol\Psi = 0$
-> and you get only $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$,
-> which understates the diagonal. Adding `+ unique()` (as in the fit
-> above) fills in the diagonal correctly. Use `part = "shared"` /
-> `part = "unique"` to pull just one component.
+> unique component. If you request `latent(..., residual = FALSE)`,
+> $\boldsymbol\Psi = 0$ and you get only
+> $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$, which understates the
+> diagonal for this data-generating process. The default `latent()` fit
+> above includes $\boldsymbol\Psi$. Use `part = "shared"` / `part = "unique"`
+> to pull just one component.
 
 ## Pairwise correlations and communality
 
@@ -337,9 +339,9 @@ the shipped object and checks that the off-diagonal covariance pattern
 recovers the known truth. Broader coverage and interval-calibration
 claims belong in the simulation-grid articles, which remain under audit.
 
-## Why `latent + unique`? `dep` and `indep` on the same data
+## Why default `latent()`? `dep` and `indep` on the same data
 
-The morphometric workflow pairs `latent(d = K)` with `unique()` to
+The morphometric workflow uses ordinary `latent(d = K)` to
 estimate $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol{\Psi}$.
 Two alternative covstruct modes — `dep` (full unstructured $\boldsymbol\Sigma_B$
 with $T(T+1)/2$ free entries) and `indep` (diagonal-only
@@ -403,7 +405,7 @@ truth_off <- off(Sigma_true)
 ll        <- function(f) round(as.numeric(logLik(f)), 2)
 
 data.frame(
-  mode               = c("latent(d=2) + unique", "latent(d=T) only",
+  mode               = c("latent(d=2)", "latent(d=T)",
                          "dep", "indep"),
   logL               = c(ll(fit), ll(fit_full), ll(fit_dep), ll(fit_indep)),
   off_diag_corr_truth = c(round(cor(off(S1), truth_off), 3),
@@ -419,10 +421,10 @@ data.frame(
 
 What this shows:
 
-- **`dep` is mathematically identical to `latent(d = T)` standalone** —
-  same logL, same $\boldsymbol\Sigma_B$ to numerical precision. The two
-  keywords are aliases of the saturated unstructured fit.
-- **Reduced-rank `latent(d = 2) + unique` matches the saturated fit
+- **`dep` and `latent(d = T)` both recover the saturated covariance
+  surface** — the comparison is a useful check that the dense fit and the
+  full-rank latent parameterisation agree on the covariance pattern.
+- **Reduced-rank `latent(d = 2)` with default $\boldsymbol\Psi$ matches the saturated fit
   within 0.1 nats of logL.** With $T = 5$ traits and a
   rank-2 truth, the rank constraint loses essentially no information
   and gives the same off-diagonal correlation pattern as the saturated
@@ -433,10 +435,10 @@ What this shows:
   correlation with truth is `NA` because the fitted off-diagonals are
   exactly zero by construction. logL is materially worse.
 
-For this simulated rank-2 Gaussian truth, `latent + unique` and the
+For this simulated rank-2 Gaussian truth, default `latent(d = 2)` and the
 saturated `dep` fit recover nearly the same covariance pattern, while
 `indep` cannot recover off-diagonal association because it sets those
-entries to zero by construction. Pick `latent + unique` when you have a
+entries to zero by construction. Pick `latent(d = K)` when you have a
 strong rank-$K$ hypothesis (size + shape, here); fall back to `dep` if
 you suspect $K \approx T$ and want the saturated fit; reach for `indep`
 only when you genuinely believe traits are mutually independent.
@@ -527,6 +529,6 @@ HTML review pass.
 ## See also
 
 * [Covariance and correlation](covariance-correlation.html) — why
-  `unique()` matters for interpreting trait correlations.
+  diagonal $\boldsymbol\Psi$ matters for interpreting trait correlations.
 * [Formula keyword grid](api-keyword-grid.html) — the syntax map for
   moving from this example to other covariance rows and modes.

@@ -26,7 +26,8 @@ Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning
 
 \item{link_residual}{For binomial fits: \code{"auto"} (default) adds the
 link-specific implicit residual to the denominator; \code{"none"} returns
-communalities on the latent+unique-implied scale only.}
+communalities on the fitted model covariance scale without link-residual
+additions.}
 
 \item{ci}{Logical. When \code{TRUE}, returns a tidy data frame with
 confidence-interval columns; when \code{FALSE} (the default), returns a
@@ -57,15 +58,18 @@ The proportion of trait \eqn{t}'s variance that is \emph{shared} with the
 other traits via the latent factors. Bounded between 0 and 1. Calls
 \code{\link[=extract_Sigma]{extract_Sigma()}} internally for the chosen level, so the diagonal
 uses the full \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi}
-decomposition when both \code{latent()} and \code{unique()} are in the formula.
-\subsection{Caveat: communality with latent-only fits}{
+decomposition. Ordinary \code{latent()} includes \eqn{\boldsymbol\Psi}
+by default; explicit \code{latent() + unique()} remains compatibility
+syntax.
+\subsection{Caveat: communality with no-Psi fits}{
 
-If the fit has \code{latent()} but \strong{no} \code{unique()} at the requested level (for
-Gaussian / lognormal / Gamma responses), then \eqn{\boldsymbol\Psi = \mathbf 0}
-and \code{c_t^2 = 1} for every trait — this is mathematically correct given
-the model spec but tells you nothing about trait integration. The
+If the fit uses \code{latent(..., residual = FALSE)} at the requested
+level, then \eqn{\boldsymbol\Psi = \mathbf 0} and \code{c_t^2 = 1} for
+every trait. This is mathematically correct for the no-residual
+subset but tells you nothing about trait integration. The
 \code{\link[=extract_Sigma]{extract_Sigma()}} advisory message will fire to flag this. To get
-meaningful communalities, refit with \verb{+ unique(0 + trait | <group>)}.
+meaningful communalities, use ordinary \code{latent()} with the default
+\code{residual = TRUE}.
 
 For binomial fits the link-specific implicit residual (\eqn{\pi^2/3}
 for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the
@@ -80,8 +84,7 @@ denominator by default; pass \code{link_residual = "none"} to suppress.
   )
   fit <- gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 2) +
-            unique(0 + trait | site),
+            latent(0 + trait | site, d = 2),
     data  = sim$data,
     trait = "trait",
     unit  = "site"

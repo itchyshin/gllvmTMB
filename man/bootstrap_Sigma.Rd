@@ -52,7 +52,7 @@ residual variance when extracting \code{Sigma}, \code{R}, \code{communality}, an
 \code{ICC}.
 \code{"auto"} (default) matches \code{\link[=extract_Sigma]{extract_Sigma()}} and adds the
 family/link residual to non-Gaussian trait diagonals; \code{"none"}
-returns the fitted latent + unique covariance only. Use \code{"none"}
+returns the fitted model covariance without link residuals. Use \code{"none"}
 when validating against a DGP target defined as
 \eqn{\Lambda\Lambda^\top + \Psi}.}
 }
@@ -140,8 +140,7 @@ s <- simulate_site_trait(n_sites = 30, n_species = 1, n_traits = 3,
                          mean_species_per_site = 1,
                          Lambda_B = matrix(c(1, .5, -.4), 3, 1),
                          psi_B = c(.2, .15, .1))
-fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1) +
-                           unique(0 + trait | site),
+fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1),
                 data  = s$data,
                 trait = "trait",
                 unit  = "site")

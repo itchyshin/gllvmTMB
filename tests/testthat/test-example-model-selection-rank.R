@@ -12,13 +12,12 @@ load_model_selection_rank_example <- function() {
 
 model_selection_candidate_formula <- function(d) {
   if (identical(d, 0L)) {
-    return(value ~ 0 + trait + unique(0 + trait | individual))
+    return(value ~ 0 + trait + indep(0 + trait | individual))
   }
 
   stats::as.formula(paste0(
     "value ~ 0 + trait + ",
-    "latent(0 + trait | individual, d = ", d, ") + ",
-    "unique(0 + trait | individual)"
+    "latent(0 + trait | individual, d = ", d, ")"
   ))
 }
 
@@ -56,6 +55,10 @@ test_that("model-selection rank example object has the required contract fields"
   expect_s3_class(ex$data_wide, "data.frame")
   expect_s3_class(ex$formula_long, "formula")
   expect_s3_class(ex$formula_wide, "formula")
+  expect_no_match(paste(deparse(ex$formula_long), collapse = " "), "unique\\(")
+  expect_no_match(paste(deparse(ex$formula_wide), collapse = " "), "unique\\(")
+  expect_match(ex$rank_candidates$formula_label[1], "indep\\(")
+  expect_false(any(grepl("unique\\(", ex$rank_candidates$formula_label)))
   expect_equal(ex$truth$d_true, 2L)
   expect_equal(dim(ex$truth$Lambda), c(5L, 2L))
   expect_equal(dim(ex$truth$Sigma), c(5L, 5L))

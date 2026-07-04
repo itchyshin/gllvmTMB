@@ -360,10 +360,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   diag_B_slope_idx <- which(diag_is_unique_augmented & groupings == site)
   if (length(diag_B_slope_idx) > 1L) {
-    cli::cli_abort("Only one augmented ordinary {.fn unique} random-regression term is supported at the {.arg unit} tier.")
+    cli::cli_abort("Only one augmented ordinary diagonal-compatibility random-regression term is supported at the {.arg unit} tier.")
   }
   use_rr_B_slope <- length(rr_B_slope_idx) > 0L
   use_diag_B_slope <- length(diag_B_slope_idx) > 0L
+  diag_B_slope_is_default <- use_rr_B_slope &&
+    !use_diag_B_slope &&
+    !any(family_id_vec != 0L)
+  if (diag_B_slope_is_default) {
+    use_diag_B_slope <- TRUE
+  }
   use_rr_B   <- any(kinds == "rr"   & groupings == site & !rr_is_latent_augmented)
   if (use_rr_B_slope && use_rr_B) {
     cli::cli_abort(c(
@@ -375,9 +381,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   use_diag_B <- any(kinds == "diag" & groupings == site & !diag_is_unique_augmented)
   if (use_diag_B_slope && use_diag_B) {
     cli::cli_abort(c(
-      "Do not combine augmented ordinary {.fn unique} random-regression slopes with an intercept-only {.fn unique} term at the same {.arg unit} tier.",
+      "Do not combine augmented ordinary diagonal-compatibility random-regression slopes with an intercept-only {.fn unique} term at the same {.arg unit} tier.",
       "i" = "The augmented term already includes trait-specific intercept and slope rows.",
-      ">" = "Use one {.code unique(1 + x | unit)} term for the unit-tier reaction norm."
+      ">" = "For new code, use one {.code latent(1 + x | unit, d = K)} term for the default shared + diagonal-Psi reaction norm; explicit {.code unique(1 + x | unit)} remains compatibility syntax for diagonal-only augmented fits."
     ))
   }
   ## `common = TRUE` parsimony mode: when the user passes
@@ -405,9 +411,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   diag_W_slope_idx <- which(diag_is_unique_augmented & groupings == ss_name)
   if (length(diag_W_slope_idx) > 0L) {
     cli::cli_abort(c(
-      "Augmented ordinary {.fn unique} random-regression slopes are currently implemented at the {.arg unit} tier only.",
+      "Augmented ordinary diagonal-compatibility random-regression slopes are currently implemented at the {.arg unit} tier only.",
       "i" = "You wrote an augmented {.fn unique} term on {.val {ss_name}}.",
-      ">" = "Use {.code unique(1 + x | {site})} for the individual-level random-regression slope, and keep the {.arg unit_obs} tier intercept-only for now."
+      ">" = "Use {.code latent(1 + x | {site}, d = K)} for the default individual-level shared + diagonal-Psi reaction norm, and keep the {.arg unit_obs} tier intercept-only for now.",
+      ">" = "Explicit {.code unique(1 + x | {site})} remains compatibility syntax for legacy diagonal-only augmented fits."
     ))
   }
   use_rr_W   <- any(kinds == "rr"   & groupings == ss_name & !rr_is_latent_augmented)
@@ -877,31 +884,41 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## would PARTIAL-MATCH the augmented marker and spuriously flip the
   ## intercept-only flag on (the bug that activated a stray omega_spde_lv block
   ## on the spatial_latent slope path).
+  spde_idx <- which(kinds == "spde")
+  spde_flag <- function(flag) {
+    vapply(spde_idx, function(i)
+      isTRUE(parsed$covstructs[[i]]$extra[[flag]]),
+      logical(1L))
+  }
+  spde_is_scalar_flag <- spde_flag(".spatial_scalar")
+  spde_is_latent_flag <- spde_flag(".spatial_latent")
+  spde_is_indep_flag <- spde_flag(".spatial_indep")
+  spde_is_dep_flag <- spde_flag(".dep")
+  spde_is_aug_flag <- spde_flag(".spatial_unique_augmented") |
+    spde_flag(".spatial_indep_augmented") |
+    spde_flag(".spatial_dep_augmented") |
+    spde_flag(".spatial_latent_augmented")
+  spde_is_plain_unique <- !spde_is_scalar_flag &
+    !spde_is_latent_flag &
+    !spde_is_indep_flag &
+    !spde_is_dep_flag &
+    !spde_is_aug_flag
   ## spatial_scalar(): rewrites to spde(form, .spatial_scalar = TRUE).
   ## We tie log_tau_spde across traits via the TMB map mechanism so the
   ## per-trait variances collapse to one shared scalar. No C++ change.
-  is_spatial_scalar <- isTRUE({
-    idx <- which(kinds == "spde")
-    length(idx) > 0L && isTRUE(parsed$covstructs[[idx[1L]]]$extra[[".spatial_scalar"]])
-  })
+  is_spatial_scalar <- any(spde_is_scalar_flag)
   ## spatial_latent(): rewrites to spde(form, .spatial_latent = TRUE, d = K).
   ## K_S shared SPDE fields drive all T traits via a T x K_S loading matrix
   ## Lambda_spde (the spatial analogue of phylo_latent's Lambda_phy). The
   ## TMB template provides a `spde_lv_k` switch that toggles between the
   ## per-trait omega_spde path (used by spatial_unique / spatial_scalar)
   ## and the low-rank Lambda_spde x omega_spde_lv path used here.
-  is_spatial_latent <- isTRUE({
-    idx <- which(kinds == "spde")
-    length(idx) > 0L && isTRUE(parsed$covstructs[[idx[1L]]]$extra[[".spatial_latent"]])
-  })
+  is_spatial_latent <- any(spde_is_latent_flag)
   ## spatial_indep(): rewrites to spde(form, .spatial_indep = TRUE).
   ## Same engine path as spatial_unique-alone (per-trait omega_spde with
   ## independent log_tau per trait). The .spatial_indep marker only changes
   ## the printed label and triggers the spatial_indep+spatial_latent guard.
-  is_spatial_indep <- isTRUE({
-    idx <- which(kinds == "spde")
-    length(idx) > 0L && isTRUE(parsed$covstructs[[idx[1L]]]$extra[[".spatial_indep"]])
-  })
+  is_spatial_indep <- any(spde_is_indep_flag)
   ## spatial_dep(): rewrites to spde(form, .spatial_latent = TRUE,
   ## d = n_traits, .dep = TRUE). Same engine path as
   ## spatial_latent(d = n_traits) standalone (full-rank packed-triangular
@@ -910,18 +927,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##   * spatial_dep + spatial_latent: over-parameterised (different rank)
   ##   * spatial_dep + spatial_unique: redundant (dep already includes diag)
   ##   * spatial_dep + spatial_indep:  redundant
-  spde_idx_for_dep <- which(kinds == "spde")
-  spde_is_dep_flag <- vapply(spde_idx_for_dep, function(i)
-                             isTRUE(parsed$covstructs[[i]]$extra$.dep),
-                             logical(1L))
   is_spatial_dep <- any(spde_is_dep_flag)
   if (is_spatial_dep) {
     ## spatial_dep + spatial_latent: over-parameterised. Detect by counting
     ## spde terms with .spatial_latent but WITHOUT .dep markers (i.e. user
     ## wrote both spatial_dep and spatial_latent on the same coords).
-    spde_is_latent <- vapply(spde_idx_for_dep, function(i)
-                             isTRUE(parsed$covstructs[[i]]$extra[[".spatial_latent"]]),
-                             logical(1L))
+    spde_is_latent <- spde_is_latent_flag
     if (any(spde_is_latent & !spde_is_dep_flag)) {
       cli::cli_abort(c(
         "{.fn spatial_dep} and {.fn spatial_latent} are over-parameterised together.",
@@ -931,13 +942,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     ## spatial_dep + spatial_unique: redundant. spatial_unique = spde with
     ## no markers; detect any spde term with no dep/indep/latent/scalar flag.
-    spde_is_plain <- !spde_is_dep_flag & !spde_is_latent &
-      !vapply(spde_idx_for_dep, function(i)
-              isTRUE(parsed$covstructs[[i]]$extra[[".spatial_indep"]]),
-              logical(1L)) &
-      !vapply(spde_idx_for_dep, function(i)
-              isTRUE(parsed$covstructs[[i]]$extra[[".spatial_scalar"]]),
-              logical(1L))
+    spde_is_plain <- spde_is_plain_unique
     if (any(spde_is_plain)) {
       cli::cli_abort(c(
         "{.fn spatial_dep} and {.fn spatial_unique} are redundant together.",
@@ -946,9 +951,6 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     ## spatial_dep + spatial_indep: redundant.
-    spde_is_indep_flag <- vapply(spde_idx_for_dep, function(i)
-                                 isTRUE(parsed$covstructs[[i]]$extra[[".spatial_indep"]]),
-                                 logical(1L))
     if (any(spde_is_indep_flag)) {
       cli::cli_abort(c(
         "{.fn spatial_dep} and {.fn spatial_indep} are redundant together.",
@@ -968,10 +970,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## spatial_indep + spatial_unique: redundant (both produce per-trait
     ## independent fields with the SPDE precision). Detect by counting
     ## spde terms with vs. without the .spatial_indep marker.
-    spde_idx <- which(kinds == "spde")
-    spde_indep_flags <- vapply(spde_idx, function(i)
-                               isTRUE(parsed$covstructs[[i]]$extra[[".spatial_indep"]]),
-                               logical(1L))
+    spde_indep_flags <- spde_is_indep_flag
     if (any(!spde_indep_flags) && any(spde_indep_flags)) {
       cli::cli_abort(c(
         "{.fn spatial_indep} and {.fn spatial_unique} are redundant together.",
@@ -980,8 +979,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
   }
+  spde_latent_idx <- spde_idx[spde_is_latent_flag]
+  spde_latent_unique_arg <- if (length(spde_latent_idx) > 0L) {
+    any(vapply(spde_latent_idx, function(i)
+      isTRUE(parsed$covstructs[[i]]$extra[[".spatial_unique_diag"]]),
+      logical(1L)))
+  } else {
+    FALSE
+  }
+  use_spde_latent_diag <- is_spatial_latent &&
+    !is_spatial_dep &&
+    (spde_latent_unique_arg || any(spde_is_plain_unique))
   d_spde_lv <- if (is_spatial_latent) {
-    cs <- parsed$covstructs[[which(kinds == "spde")[1L]]]
+    cs <- parsed$covstructs[[spde_latent_idx[1L]]]
     as.integer(cs$extra$d %||% 1L)
   } else 0L
   d_phy <- if (use_phylo_rr) {
@@ -1226,20 +1236,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else 1L
 
   diag_B_slope_cs <- if (use_diag_B_slope) {
-    parsed$covstructs[[diag_B_slope_idx[1L]]]
+    if (diag_B_slope_is_default) {
+      rr_B_slope_cs
+    } else {
+      parsed$covstructs[[diag_B_slope_idx[1L]]]
+    }
   } else NULL
   if (use_diag_B_slope && any(family_id_vec != 0L)) {
     cli::cli_abort(c(
-      "Augmented ordinary {.fn unique} random-regression slopes are currently implemented for Gaussian responses only.",
+      "Augmented ordinary diagonal-compatibility random-regression slopes are currently implemented for Gaussian responses only.",
       "i" = "This slice targets Gaussian behavioural reaction-norm models.",
-      ">" = "Use {.code unique(1 + x | unit)} with {.fn gaussian} data, or omit the augmented {.fn unique} term for non-Gaussian fits."
+      ">" = "For new code, use default {.code latent(1 + x | unit, d = K)} with {.fn gaussian} data, or omit the explicit augmented diagonal-Psi term for non-Gaussian fits."
     ))
   }
   if (use_diag_B_slope && isTRUE(diag_B_slope_cs$extra$common)) {
     cli::cli_abort(c(
-      "{.code common = TRUE} is not implemented for augmented ordinary {.fn unique} random-regression slopes.",
+      "{.code common = TRUE} is not implemented for augmented ordinary diagonal-compatibility random-regression slopes.",
       "i" = "The augmented diagonal has separate intercept and slope entries for each trait.",
-      ">" = "Use {.code unique(1 + x | unit)} without {.code common = TRUE}."
+      ">" = "Use the default {.code latent(1 + x | unit, d = K)} grammar for new reaction-norm fits; explicit augmented {.fn unique} remains compatibility syntax without {.code common = TRUE}."
     ))
   }
   diag_B_slope_lhs_form <- if (use_diag_B_slope) {
@@ -1248,7 +1262,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   diag_B_slope_xcol <- if (use_diag_B_slope) {
     sc <- diag_B_slope_cs$extra$slope_col
     if (is.null(sc) || !nzchar(sc)) {
-      cli::cli_abort("Internal: augmented ordinary unique random regression is missing {.code slope_col}.")
+      cli::cli_abort("Internal: augmented ordinary diagonal-compatibility random regression is missing {.code slope_col}.")
     }
     sc
   } else NA_character_
@@ -1257,9 +1271,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       !identical(rr_B_slope_xcol, diag_B_slope_xcol)
   ) {
     cli::cli_abort(c(
-      "Paired augmented ordinary {.fn latent} and {.fn unique} random-regression terms must use the same slope covariate.",
+      "Paired augmented ordinary {.fn latent} and diagonal-compatibility random-regression terms must use the same slope covariate.",
       "i" = "The {.fn latent} term uses {.val {rr_B_slope_xcol}}; the {.fn unique} term uses {.val {diag_B_slope_xcol}}.",
-      ">" = "Use matching calls such as {.code latent(1 + x | unit, d = K) + unique(1 + x | unit)}."
+      ">" = "For new code, write one default {.code latent(1 + x | unit, d = K)} term. If you keep the explicit compatibility pair, both terms must use the same slope covariate."
     ))
   }
   n_lhs_cols_B_diag <- if (use_diag_B_slope) 2L * .n_traits_for_dep else 1L
@@ -1306,7 +1320,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##       cluster grouping. Without `unit = species` this term is silently
   ##       ignored. Hard-abort with a redirect to `unit = species`.
   ##
-  ##   (b) `unique(0 + trait | species)` (i.e. `diag | species`) at
+  ##   (b) `indep(0 + trait | species)` (legacy `unique()` / `diag`) at
   ##       `unit != species`: the engine HAS a slot (`use_diag_species` /
   ##       `q_sp`) for per-trait non-phylo species variance. This is the
   ##       q_it term in the Nakagawa et al. functional-biogeography
@@ -1329,8 +1343,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     if (species_diag && !identical(site, species)) {
       cli::cli_inform(c(
-        "i" = "{.code phylo_unique({species}) + unique(0 + trait | {species})} at {.code unit = {.val {site}}} fits the {.val {species}}-level non-phylogenetic variance via the {.code diag | {species}} ({.code q_sp}) engine slot.",
-        "*" = "This is the {.code p_it + q_it} decomposition of the Nakagawa et al. functional-biogeography model. Joint identifiability is empirically reasonable at {.code n_species >= 100} with strong phylogenetic signal: {.code sigma2_Q} recovers within ~10% relative error; {.code sigma2_P} within ~50% (per-trait estimates can be noisy). Compare the fit without the {.code unique({species})} term to the fit with it to confirm both terms contribute on your data."
+        "i" = "{.code phylo_unique({species}) + indep(0 + trait | {species})} at {.code unit = {.val {site}}} fits the {.val {species}}-level non-phylogenetic variance via the {.code diag | {species}} ({.code q_sp}) engine slot.",
+        "*" = "This is the {.code p_it + q_it} decomposition of the Nakagawa et al. functional-biogeography model. Joint identifiability is empirically reasonable at {.code n_species >= 100} with strong phylogenetic signal: {.code sigma2_Q} recovers within ~10% relative error; {.code sigma2_P} within ~50% (per-trait estimates can be noisy). Compare the fit without the standalone species-level diagonal term to the fit with it to confirm both terms contribute on your data.",
+        ">" = "Use {.fn indep} for new standalone non-phylogenetic diagonal terms; explicit ordinary {.fn unique} remains compatibility syntax."
       ), .frequency = "once",
          .frequency_id = "gllvmTMB-phylo-q-decomposition-inform")
     }
@@ -1346,7 +1361,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (length(rr_cluster2) > 0) {
       cli::cli_abort(c(
         "The {.code cluster2} tier is diagonal-only: {.fn latent}/{.fn rr}/{.fn dep} on {.val {cluster2_col}} is not supported.",
-        "i" = "Use {.code unique(0 + trait | {cluster2_col})} for the per-trait diagonal variance at the cluster2 slot.",
+        "i" = "Use {.code indep(0 + trait | {cluster2_col})} for the per-trait diagonal variance at the cluster2 slot.",
+        ">" = "Explicit ordinary {.fn unique} remains compatibility syntax for the same standalone diagonal model.",
         ">" = "For a reduced-rank latent structure on {.val {cluster2_col}}, pass {.code unit = {.val {cluster2_col}}} (or {.code unit_obs = {.val {cluster2_col}}}) to {.fn gllvmTMB} instead."
       ))
     }
@@ -2736,7 +2752,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
-  ## Ordinary B-tier augmented unique random regression:
+  ## Ordinary B-tier augmented diagonal-compatibility random regression:
   ## Z_B_diag uses the same 2T interleaved coefficient ordering as Z_B_lat,
   ## but the coefficients are independent Gaussian random effects with
   ## per-row SDs exp(theta_diag_B_slope) rather than Lambda z loadings.
@@ -2747,9 +2763,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         c("wide_intercept_slope", "long_intercept_slope")
     ) {
       cli::cli_abort(c(
-        "Unsupported augmented ordinary unique random-regression LHS.",
+        "Unsupported augmented ordinary diagonal-compatibility random-regression LHS.",
         "i" = "Got LHS form {.val {diag_B_slope_lhs_form}}.",
-        ">" = "Use {.code unique(1 + x | unit)} or {.code unique(0 + trait + (0 + trait):x | unit)}."
+        ">" = "For new code, prefer {.code latent(1 + x | unit, d = K)}. Explicit diagonal-only compatibility syntax accepts {.code unique(1 + x | unit)} or {.code unique(0 + trait + (0 + trait):x | unit)}."
       ))
     }
     if (!diag_B_slope_xcol %in% names(data)) {
@@ -2806,6 +2822,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_det_V        = log_det_V,
     use_spde         = as.integer(use_spde),
     spde_lv_k        = as.integer(d_spde_lv),
+    spde_lv_unique   = as.integer(use_spde_latent_diag),
     n_mesh           = as.integer(n_mesh),
     A_proj           = A_proj,
     spde_M0          = spde_M0,
@@ -3179,7 +3196,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         start_provenance$start_from_source <- "auto_indep"
         start_provenance$auto_indep_fit <- TRUE
         if (isTRUE(control$verbose)) {
-          cat("  start_method='indep': fitted unique-only warm-start model\n")
+          cat("  start_method='indep': fitted independent diagonal warm-start model\n")
         }
       }
     } else if (isTRUE(control$verbose)) {
@@ -3369,13 +3386,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_spde && is_spatial_scalar) {
     tmb_map$log_tau_spde <- factor(rep(1L, n_traits))
   }
-  ## spatial_latent(): the engine reads Lambda_spde * omega_spde_lv instead
-  ## of per-trait omega_spde. Map off the unused per-trait params so the
-  ## optimiser doesn't move them. The shared kappa stays free; tau is
-  ## absorbed into Lambda_spde for identifiability (mirrors phylo_latent).
+  ## spatial_latent(): the engine reads Lambda_spde * omega_spde_lv. When
+  ## unique = TRUE (or legacy spatial_latent + spatial_unique compatibility
+  ## syntax), the per-trait omega_spde path is ALSO live and supplies the
+  ## diagonal Psi_spde companion. Otherwise map it off to preserve the old
+  ## low-rank-only path. The shared kappa stays free.
   if (use_spde && is_spatial_latent) {
-    tmb_map$log_tau_spde <- factor(rep(NA_integer_, length(tmb_params$log_tau_spde)))
-    tmb_map$omega_spde   <- factor(rep(NA_integer_, length(tmb_params$omega_spde)))
+    if (!use_spde_latent_diag) {
+      tmb_map$log_tau_spde <- factor(rep(NA_integer_, length(tmb_params$log_tau_spde)))
+      tmb_map$omega_spde   <- factor(rep(NA_integer_, length(tmb_params$omega_spde)))
+    }
     ## Optional confirmatory constraint on Lambda_spde, same packed
     ## lower-triangular convention as B / W / phy.
     if (!is.null(lambda_constraint$spde)) {
@@ -3589,7 +3609,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## (gaussian fid 0, lognormal fid 3, gamma fid 4 with sigma_eps = CV).
   ## Map it off and fix at log(1) only when NONE of those families is in use.
   any_continuous <- any(family_id_vec %in% c(0L, 3L, 4L))
-  ## Detect whether unique() is at per-row resolution (OLRE regime). We
+  ## Detect whether a diagonal term is at per-row resolution (OLRE regime). We
   ## compute these flags up here so the per-family-aware OLRE selection
   ## block below can also use them.
   cell_W <- paste(trait_id, site_species_id, sep = "_")
@@ -3600,14 +3620,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$log_sigma_eps <- factor(NA_integer_)
     tmb_params$log_sigma_eps <- 0
   } else {
-    ## Q7: auto-suppress sigma_eps when a `diag()` term is at the per-row
-    ## level — i.e., the diag random effects index the same atoms as the
+    ## Q7: auto-suppress sigma_eps when a diagonal term is at the per-row
+    ## level, i.e. the diagonal random effects index the same atoms as the
     ## observation residual. Keeping both estimable creates a non-identifiable
     ## sum sd_W[t]^2 + sigma_eps^2; the user's intent when they wrote
-    ## `+ unique(0 + trait | <row-level group>)` is for unique(S) to BE the
-    ## row-level residual. We honour that by fixing sigma_eps to a tiny
-    ## fraction of the response sd so the Gaussian density stays well-defined
-    ## while diag(Psi) absorbs the row-level variation.
+    ## `+ indep(0 + trait | <row-level group>)` (or legacy `unique()`
+    ## compatibility spelling) is for diag(Psi) to BE the row-level residual.
+    ## We honour that by fixing sigma_eps to a tiny fraction of the response sd
+    ## so the Gaussian density stays well-defined while diag(Psi) absorbs the
+    ## row-level variation.
     if (per_row_diag_W || per_row_diag_B) {
       level_lab <- if (per_row_diag_W) ss_name else site
       data_sd  <- stats::sd(y)
@@ -3617,19 +3638,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_inform(c(
         "i" = paste0(
           "Auto-suppressing {.code sigma_eps}: ",
-          "{.code unique(0 + trait | ", level_lab, ")} is at the per-row level, so it already absorbs the observation residual."
+          "{.code indep(0 + trait | ", level_lab, ")} (or legacy {.code unique()} spelling) is at the per-row level, so it already absorbs the observation residual."
         ),
-        "*" = "Fixed at {.val {signif(small_eps, 3)}} (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by {.code unique()}."
+        "*" = "Fixed at {.val {signif(small_eps, 3)}} (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term."
       ))
     }
   }
 
   ## ---- Per-family-aware OLRE selection (W-tier) ------------------------
-  ## When `unique(0 + trait | <unit_obs>)` is at the per-row level, the
-  ## resulting per-trait random effects on the linear predictor are an
-  ## observation-level random effect (OLRE). For some response families
-  ## OLRE is unidentifiable or biologically suspect; we handle these per
-  ## trait so that mixed-family fits do the right thing for each trait.
+  ## When a diagonal term is at the per-row level, the resulting per-trait
+  ## random effects on the linear predictor are an observation-level random
+  ## effect (OLRE). For some response families OLRE is unidentifiable or
+  ## biologically suspect; we handle these per trait so that mixed-family fits
+  ## do the right thing for each trait.
   ##
   ## Family-id table for OLRE handling (W-tier, per-row regime):
   ##   * fid 1 (binomial), all rows single-trial (n_trials == 1): SKIP
@@ -3765,7 +3786,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_diag_species) random <- c(random, "q_sp")
   if (use_diag_cluster2) random <- c(random, "r_c2")
   if (use_equalto) random <- c(random, "e_eq")
-  if (use_spde && !is_spatial_latent) random <- c(random, "omega_spde")
+  if (use_spde && (!is_spatial_latent || use_spde_latent_diag)) {
+    random <- c(random, "omega_spde")
+  }
   if (is_spatial_latent)              random <- c(random, "omega_spde_lv")
   if (use_spde_slope)                 random <- c(random, "omega_spde_aug")
   if (use_spde_latent_slope)          random <- c(random, "g_spde_slope")
@@ -4063,6 +4086,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## Augmented B-tier unique diagonal over the same
                           ## (intercept, slope) x trait coefficient vector.
                           diag_B_slope = isTRUE(use_diag_B_slope),
+                          diag_B_slope_default =
+                            isTRUE(diag_B_slope_is_default),
                           diag_B_slope_col =
                             if (use_diag_B_slope) diag_B_slope_xcol else NULL,
                           phylo_rr = use_phylo_rr,
@@ -4087,6 +4112,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           phylo_unique   = isTRUE(is_phylo_unique),
                           spatial_scalar = isTRUE(is_spatial_scalar),
                           spatial_latent = isTRUE(is_spatial_latent),
+                          spatial_latent_unique =
+                            isTRUE(use_spde_latent_diag),
                           ## "indep" mode (one of the quartet): marginal-
                           ## only canonical keywords. Engine path
                           ## identical to the matching unique() /

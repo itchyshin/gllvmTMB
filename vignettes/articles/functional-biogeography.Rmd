@@ -1,5 +1,6 @@
 ---
 title: "Functional biogeography: trait syndromes with optional spatial and phylogenetic controls"
+tier: 3 # final capstone draft until M3/CI/component evidence closes
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,19 +24,23 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Preview — capstone composite fit is M3 milestone work.**
+> **Internal article gate -- capstone composite fit is M3 milestone work.**
 >
 > The component keywords shown below have mixed validation status in the
 > [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md):
-> latent/unique covariance is `covered` (FG-04..FG-06), `phylo_*` is
+> ordinary default-`latent()` covariance is `covered` (FG-04..FG-06), explicit
+> `unique()` remains compatibility syntax where shown, `phylo_*` is
 > `covered` for the main decomposition rows (FG-12 / PHY-01..PHY-03),
 > while the `spatial_*` family rollup and `meta_V` remain `partial` in the
-> current validation depth (FG-13 and FG-14 / MET-01); the spatial
-> inference rows SPA-02..SPA-04 are now `covered`.
+> current validation depth (FG-13 and FG-14 / MET-01). Spatial scalar,
+> independent, and full-rank paths have covered smoke/recovery rows
+> (SPA-03..SPA-04), but the reduced-rank spatial latent plus unique
+> total-covariance path remains partial (SPA-02), including derived
+> profile intervals for total spatial correlations (CI-07).
 > The full six-piece kitchen-sink composite's identifiability and
 > interpretability on real data is **M3** milestone work
-> (R >= 200 empirical-coverage gate). Treat this as a method demo
-> until M3 closes.
+> (R >= 200 empirical-coverage gate), and CI-08 / CI-10 remain partial.
+> Treat this as an internal method demo until M3 closes.
 
 The replicated site--species--trait GLLVM is the canonical
 functional-biogeography model in this package.
@@ -95,7 +100,7 @@ partitioning** distinction for spatial and phylogenetic terms.
 * **Adjustment models** (this article's main focus, §2). Spatial
   and phylogenetic terms are *controls*, so the primary biological
   targets remain $\boldsymbol{\Sigma}_B$ and $\boldsymbol{\Sigma}_W$.
-  Use `spatial_unique()` and `phylo_unique()` -- per-trait variances
+  Use `spatial_indep()` and `phylo_indep()` -- per-trait marginal variances
   on a shared correlation structure ($\mathbf{K}_{\text{space}}$ and
   $\mathbf{C}_{\text{phy}}$).
 * **Partitioning models** (§3 and §4). Spatial and phylogenetic
@@ -119,8 +124,8 @@ library(ggplot2)
 > `(site, species, trait)` cell), but field datasets sometimes arrive
 > wide (one row per `(site, species)`, one column per trait). The
 > formula-wide path keeps that shape readable:
-> `traits(trait_1, ..., trait_T) ~ 1 + latent(1 | site_species, d = 2)
-> + unique(1 | site_species)`. The long form below stays canonical
+> `traits(trait_1, ..., trait_T) ~ 1 + latent(1 | site_species, d = 2)`.
+> The long form below stays canonical
 > because it keeps `site`, `species`, and `site_species` visible for the
 > crossed ecological interpretation.
 
@@ -205,15 +210,18 @@ with
 
 `gllvmTMB` syntax:
 
+Ordinary `latent()` includes its diagonal $\boldsymbol{\Psi}$ companion by
+default, so the between-site and within-site decompositions below do not need
+an explicit `unique()` term. Use `latent(..., residual = FALSE)` only for the
+older no-Psi subset.
+
 ```{r fit-m1}
 t0 <- Sys.time()
 fit_core <- gllvmTMB(
   value ~ 0 + trait +
           (0 + trait):env_1 + (0 + trait):env_2 +
           latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site) +
-          latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species),
+          latent(0 + trait | site_species, d = 1),
   data    = df,
   trait   = "trait",
   cluster = "species"
@@ -256,7 +264,8 @@ Three things to watch for in any core-model fit, each a separate identifiability
 > per (`site`, `species`, `trait`) triple), only the *sum*
 > $\boldsymbol{\Sigma}_W^{*} = \boldsymbol{\Sigma}_W + \mathrm{diag}(\sigma^2_\delta)$
 > is identified. The engine handles this by auto-suppressing
-> `sigma_eps` to a tiny floor whenever a per-row `unique()` is
+> `sigma_eps` to a tiny floor whenever a per-row `indep()` term (or
+> legacy `unique()` compatibility spelling) is
 > present (you'll see a one-shot inform when the core model fits).
 > Replication within cell -- multiple individuals of the same
 > species at the same site, or repeated visits -- is the design
@@ -273,9 +282,7 @@ fit_core_d1 <- gllvmTMB(
   value ~ 0 + trait +
           (0 + trait):env_1 + (0 + trait):env_2 +
           latent(0 + trait | site, d = 1) +
-          unique(0 + trait | site) +
-          latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species),
+          latent(0 + trait | site_species, d = 1),
   data    = df,
   trait   = "trait",
   cluster = "species"
@@ -345,13 +352,11 @@ t0 <- Sys.time()
 fit_adj <- gllvmTMB(
   value ~ 0 + trait +
           (0 + trait):env_1 + (0 + trait):env_2 +
-          spatial_unique(0 + trait | coords, mesh = mesh) +
+          spatial_indep(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site) +
           latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species) +
-          unique(0 + trait | species) +              # q_it
-          phylo_unique(species, tree = tree),         # p_it
+          indep(0 + trait | species) +               # q_it
+          phylo_indep(0 + trait | species, tree = tree), # p_it
   data    = df,
   trait   = "trait",
   cluster = "species"
@@ -369,7 +374,7 @@ within $\sim$10% relative error and $\sigma^2_{P,t}$ within $\sim$50%
 signal is weak; the trait-averaged $\bar{\sigma}^2_P$ is more
 stable). At small $n_{\text{species}}$ or weak phylogenetic signal,
 the $p_{it}$ and $q_{it}$ pieces cannot be cleanly separated and one
-should compare the core model (without `unique(0 + trait | species)`) to the adjusted model (with
+should compare the core model (without `indep(0 + trait | species)`) to the adjusted model (with
 it) to confirm both terms contribute on the focal data. The engine
 prints a one-shot informational note pointing at this regime when it
 detects the pairing.
@@ -504,10 +509,8 @@ fit_M3 <- gllvmTMB(
           spatial_latent(0 + trait | coords, d = 2, mesh = mesh) +
           spatial_unique(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site) +
           latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species) +
-          phylo_unique(species, tree = tree),
+          phylo_indep(0 + trait | species, tree = tree),
   data = df, trait = "trait", cluster = "species"
 )
 ```
@@ -534,11 +537,9 @@ $\boldsymbol{\Lambda}_P$ tell you which traits cluster together
 ```r
 fit_M4 <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
-          spatial_unique(0 + trait | coords, mesh = mesh) +
+          spatial_indep(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site) +
           latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species) +
           phylo_latent(species, d = 2, tree = tree) +
           phylo_unique(species, tree = tree),
   data = df,
@@ -566,7 +567,7 @@ $\boldsymbol{\Lambda}_R$, $\boldsymbol{\Lambda}_P$) is conceptually
 beautiful but statistically fragile -- the partitioning at one tier
 trades off against the others, and the loadings stop being separately
 identifiable without strong constraints. The adjusted model is the
-sweet spot for publication-grade fits; the spatial- and
+most defensible point-estimate teaching fit in this article; the spatial- and
 phylogenetic-partition models are sensitivity analyses;
 beyond that, the data have to carry the burden of identifiability
 that the model can no longer.

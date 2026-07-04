@@ -4,7 +4,7 @@
 \alias{spatial_latent}
 \title{Reduced-rank spatial latent factors: \code{spatial_latent(0 + trait | coords, d = K)}}
 \usage{
-spatial_latent(formula, d = 1, coords = NULL, mesh = NULL)
+spatial_latent(formula, d = 1, unique = FALSE, coords = NULL, mesh = NULL)
 }
 \arguments{
 \item{formula}{\code{0 + trait | coords} style formula (LHS is the trait
@@ -12,6 +12,11 @@ factor \code{0 + trait}; RHS is the \code{coords} placeholder symbol).}
 
 \item{d}{Integer; number of spatial latent factors (rank K). Defaults
 to 1.}
+
+\item{unique}{Logical; include a per-trait unique spatial diagonal
+companion. \code{FALSE} preserves the old low-rank-only
+\code{spatial_latent()} path; \code{TRUE} fits the total spatial covariance
+\eqn{\Lambda\Lambda^\top + \Psi}.}
 
 \item{coords}{Character; the column-name pair of spatial coordinates
 in \code{data} (e.g. \code{c("lon", "lat")}). Resolved by the parser when
@@ -33,7 +38,17 @@ grid (alongside \code{\link[=spatial_scalar]{spatial_scalar()}} and \code{\link[
 }
 \details{
 Internally this rewrites to \code{spde(form, .spatial_latent = TRUE, d = K)}
-and toggles the TMB template's \code{spde_lv_k} switch to K. The C++ kernel
+and toggles the TMB template's \code{spde_lv_k} switch to K. With
+\code{unique = TRUE}, the same SPDE tier also keeps the per-trait
+\code{omega_spde} fields active, giving
+\eqn{\boldsymbol\Sigma_{\mathrm{spa}} =
+\boldsymbol\Lambda_{\mathrm{spa}}\boldsymbol\Lambda_{\mathrm{spa}}^\top +
+\boldsymbol\Psi_{\mathrm{spa}}}. The default \code{unique = FALSE} preserves
+the older low-rank-only path. Legacy
+\code{spatial_latent(...) + spatial_unique(...)} is accepted as compatibility
+syntax for the same total-covariance decomposition.
+
+The C++ kernel
 then reads a packed lower-triangular \code{Lambda_spde} and K shared spatial
 fields \code{omega_spde_lv} (each prior \eqn{\mathrm{N}(\mathbf{0},
 \mathbf{Q}^{-1})} where \eqn{\mathbf{Q}} is the SPDE precision built

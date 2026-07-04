@@ -27,19 +27,23 @@ knitr::opts_chunk$set(
 > **Preview — Gaussian validated; mixed-family extension is M3 milestone work.**
 >
 > Profile, Wald, and bootstrap CIs are end-to-end-validated for
-> Gaussian fits (CI-02..CI-07 `covered` in the
+> the ordinary Gaussian interval paths (CI-02..CI-06 `covered` in the
 > [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
+> The ordinary / phylogenetic low-rank-plus-diagonal correlation-profile
+> paths have covered evidence under CI-07, but spatial total-covariance
+> correlations remain partial.
 > Extension to non-Gaussian and mixed-family fits is **M3**
 > milestone work.
 
 > **Scope boundary.** This page is a Tier 2 technical reference for
 > interval APIs on already-fitted models. IN: Wald, profile, and
 > bootstrap CI routes with covered Gaussian evidence are represented
-> by CI-01..CI-07 and EXT-13 (Gaussian) in the validation-debt
-> register. PARTIAL: empirical coverage and mixed-family interval
-> calibration remain CI-08 and CI-10 work. PLANNED: this page does
-> not add a new interval method, move validation rows, or claim broad
-> release/scientific coverage.
+> by CI-01..CI-06, the covered parts of CI-07, and EXT-13 (Gaussian)
+> in the validation-debt register. PARTIAL: spatial total-covariance
+> correlation profiles, empirical coverage, and mixed-family interval
+> calibration remain CI-07, CI-08, and CI-10 work. PLANNED: this page
+> does not add a new interval method, move validation rows, or claim
+> broad release/scientific coverage.
 
 `gllvmTMB` uses **profile-likelihood confidence intervals** as the
 default for the ratio-quantity extractors (`extract_repeatability()`,
@@ -154,8 +158,8 @@ df_wide <- tidyr::pivot_wider(
 # Long format (canonical)
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | site, d = 1) + unique(0 + trait | site) +
-    unique(0 + trait | site_species),
+    latent(0 + trait | site, d = 1) +
+    indep(0 + trait | site_species),
   data = df_long,
   trait = "trait"
 )
@@ -163,8 +167,8 @@ fit_long <- gllvmTMB(
 # Wide data-frame format (same model with compact formula syntax)
 fit_wide <- gllvmTMB(
   traits(trait_1, trait_2, trait_3) ~ 1 +
-    latent(1 | site, d = 1) + unique(1 | site) +
-    unique(1 | site_species),
+    latent(1 | site, d = 1) +
+    indep(1 | site_species),
   data = df_wide
 )
 
@@ -212,7 +216,7 @@ in `TMB::tmbprofile()`'s `lincomb` argument, then transforms via
 $\mathrm{plogis}$ to map back to the unit interval.
 
 > **Honest fallback**: when the fit has a full-$\boldsymbol\Sigma$
-> structure (i.e. `latent()` factor model on top of `unique()`),
+> decomposition (shared `latent()` axes plus the diagonal `Psi` companion),
 > proper Lagrange-style profile-likelihood CIs for the ratio quantity
 > require a constrained refit per parameter that is not yet
 > implemented. `extract_repeatability(method = "profile")` currently
@@ -263,15 +267,17 @@ cors_b
 
 ### Phylogenetic signal $H^2$
 
-When the fit has both `phylo_unique(species)` and
-`unique(0 + trait | species)`, $H^2 = \sigma^2_{\mathrm{phy}} /
-(\sigma^2_{\mathrm{phy}} + \sigma^2_{\mathrm{non}})$ is profileable via a
-single linear contrast (analogous to repeatability). For richer
-3-component decompositions (PGLLVM with
-`phylo_latent + latent + unique`), the extractor returns the point
-estimate with a `method = "wald(approx)"` flag in the output's
-method column. The constrained-refit profile for the 3-component
-case is a known gap; bootstrap is the recommended interim.
+When the fit has a source-specific `phylo_unique(species)` diagonal
+and an ordinary default-`latent()` non-phylogenetic `Psi` diagonal,
+$H^2 = \sigma^2_{\mathrm{phy}} /
+(\sigma^2_{\mathrm{phy}} + \sigma^2_{\mathrm{non}})$ is profileable via
+a single linear contrast (analogous to repeatability). For richer
+3-component decompositions (PGLLVM with `phylo_latent + latent()`,
+where ordinary `latent()` carries the non-phylogenetic diagonal
+`Psi`), the extractor returns the point estimate with a
+`method = "wald(approx)"` flag in the output's method column. The
+constrained-refit profile for the 3-component case is a known gap;
+bootstrap is the recommended interim.
 
 ## Speed comparison
 

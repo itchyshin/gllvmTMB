@@ -31,7 +31,7 @@ make_small_rrB_fit <- function(
     seed = seed
   )
   fmla <- stats::as.formula(sprintf(
-    "value ~ 0 + trait + latent(0 + trait | site, d = %d) + unique(0 + trait | site)",
+    "value ~ 0 + trait + latent(0 + trait | site, d = %d)",
     d
   ))
   suppressMessages(suppressWarnings(gllvmTMB(fmla, data = sim$data)))
@@ -46,7 +46,7 @@ make_diag_only_fit <- function(seed = 2) {
     psi_B = c(0.3, 0.3, 0.3),
     seed = seed
   )
-  gllvmTMB(value ~ 0 + trait + unique(0 + trait | site), data = sim$data)
+  gllvmTMB(value ~ 0 + trait + indep(0 + trait | site), data = sim$data)
 }
 
 # ---- error on non-gllvmTMB_multi input -----------------------------------
@@ -79,7 +79,7 @@ test_that("extract_Sigma_B(): NULL when neither rr_B nor diag_B is in the fit", 
     seed = 9
   )
   fit <- gllvmTMB(
-    value ~ 0 + trait + unique(0 + trait | site_species),
+    value ~ 0 + trait + indep(0 + trait | site_species),
     data = sim$data
   )
   expect_null(extract_Sigma_B(fit))
@@ -156,9 +156,7 @@ test_that("extract_ICC_site(): values are named by trait levels", {
     value ~ 0 +
       trait +
       latent(0 + trait | site, d = 1) +
-      unique(0 + trait | site) +
-      latent(0 + trait | site_species, d = 1) +
-      unique(0 + trait | site_species),
+      latent(0 + trait | site_species, d = 1),
     data = sim$data
   ))
   icc <- extract_ICC_site(fit)

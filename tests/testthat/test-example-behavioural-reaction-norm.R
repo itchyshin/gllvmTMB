@@ -87,6 +87,15 @@ test_that("behavioural reaction-norm example object has contract fields", {
   expect_s3_class(ex$data_wide, "data.frame")
   expect_s3_class(ex$formula_long, "formula")
   expect_s3_class(ex$formula_wide, "formula")
+  expect_false(grepl(
+    "unique\\(",
+    paste(deparse(ex$formula_long), collapse = " ")
+  ))
+  expect_false(grepl(
+    "unique\\(",
+    paste(deparse(ex$formula_wide), collapse = " ")
+  ))
+  expect_true("default diagonal Psi under latent()" %in% ex$alignment$keyword)
   expect_named(ex$fit_args, c("trait", "unit", "unit_obs", "family"))
   expect_named(
     ex$alignment,
@@ -121,6 +130,8 @@ test_that("behavioural reaction-norm long and wide fits agree and recover truth"
 
   expect_equal(fit_long$opt$convergence, 0L)
   expect_equal(fit_wide$opt$convergence, 0L)
+  expect_true(isTRUE(fit_long$use$diag_B_slope_default))
+  expect_true(isTRUE(fit_wide$use$diag_B_slope_default))
   expect_equal(
     as.numeric(logLik(fit_long)),
     as.numeric(logLik(fit_wide)),
@@ -152,14 +163,20 @@ test_that("behavioural reaction-norm long and wide fits agree and recover truth"
   )$Sigma
   truth <- ex$truth$Sigma_unit_slope
 
-  expect_equal(total, shared + diag(unique, nrow = length(unique)),
-               tolerance = 1e-8)
+  expect_equal(
+    total,
+    shared + diag(unique, nrow = length(unique)),
+    tolerance = 1e-8
+  )
   expect_equal(dimnames(total), dimnames(truth))
   expect_lt(norm(total - truth, "F") / norm(truth, "F"), 0.30)
   expect_lt(max(abs(total - truth)), 0.15)
 
   unit_obs <- extract_Sigma(fit_long, level = "unit_obs", part = "shared")$Sigma
-  expect_equal(dim(unit_obs), c(length(ex$truth$trait_names), length(ex$truth$trait_names)))
+  expect_equal(
+    dim(unit_obs),
+    c(length(ex$truth$trait_names), length(ex$truth$trait_names))
+  )
 })
 
 test_that("behavioural reaction-norm recovery figure data are plot-ready", {

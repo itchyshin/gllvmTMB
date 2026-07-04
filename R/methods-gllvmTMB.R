@@ -829,16 +829,38 @@ tidy.gllvmTMB_multi <- function(
     if (x$use$spde) {
       if (isTRUE(x$use$spatial_latent)) {
         ## spatial_latent: tau is absorbed into Lambda_spde for
-        ## identifiability, so we report kappa_spde plus the implied
-        ## per-trait spatial SDs sqrt(diag(Lambda_spde Lambda_spde')).
+        ## identifiability on the shared latent field. With
+        ## spatial_latent(unique = TRUE), log_tau_spde additionally
+        ## parameterises the per-trait unique SPDE companion on the
+        ## 1 / tau scale.
         L <- x$report$Lambda_spde
-        sd_spde <- sqrt(diag(L %*% t(L)))
-        rows[[length(rows) + 1L]] <- data.frame(
-          term = c(
+        sd_spde_shared <- sqrt(diag(L %*% t(L)))
+        if (isTRUE(x$use$spatial_latent_unique) &&
+            !is.null(x$report$sd_spde_unique)) {
+          sd_spde_unique <- as.numeric(x$report$sd_spde_unique)
+          sd_spde_total <- sqrt(sd_spde_shared^2 + sd_spde_unique^2)
+          term_spde <- c(
+            "kappa_spde",
+            paste0("sd_spde_shared[", levels(x$data[[x$trait_col]]), "]"),
+            paste0("sd_spde_unique[", levels(x$data[[x$trait_col]]), "]"),
+            paste0("sd_spde_total[", levels(x$data[[x$trait_col]]), "]")
+          )
+          est_spde <- c(
+            as.numeric(x$report$kappa),
+            sd_spde_shared,
+            sd_spde_unique,
+            sd_spde_total
+          )
+        } else {
+          term_spde <- c(
             "kappa_spde",
             paste0("sd_spde[", levels(x$data[[x$trait_col]]), "]")
-          ),
-          estimate = c(as.numeric(x$report$kappa), sd_spde),
+          )
+          est_spde <- c(as.numeric(x$report$kappa), sd_spde_shared)
+        }
+        rows[[length(rows) + 1L]] <- data.frame(
+          term = term_spde,
+          estimate = est_spde,
           stringsAsFactors = FALSE
         )
       } else {

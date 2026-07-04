@@ -18,9 +18,9 @@ A data frame with one row per trait and columns:
 latent residual (computed by the internal \code{link_residual_per_trait()}
 helper; see the per-family table above; zero for \code{gaussian} and
 \code{lognormal}).}
-\item{\code{sigma2_e}}{Estimated OLRE variance per trait — the per-trait
+\item{\code{sigma2_e}}{Estimated OLRE variance per trait -- the per-trait
 diagonal of \eqn{\boldsymbol{\Psi}_W} when the fit has a genuine
-observation-level \code{unique()} term, else 0.}
+observation-level diagonal term, else 0.}
 \item{\code{sigma2_total}}{\code{sigma2_d + sigma2_e}.}
 }
 }
@@ -32,15 +32,15 @@ the total latent-scale residual variance for trait \eqn{t} is
 \deqn{\sigma^2_{d,t} + \sigma^2_{e,t},}
 where \eqn{\sigma^2_d} is the \strong{distribution-specific (theoretical)}
 component that depends only on the family/link, and \eqn{\sigma^2_e}
-is the \strong{estimated OLRE variance} — the per-trait diagonal of the
-within-unit unique covariance \eqn{\boldsymbol{\Psi}_W}.
+is the \strong{estimated OLRE variance} -- the per-trait diagonal of the
+within-unit residual covariance \eqn{\boldsymbol{\Psi}_W}.
 }
 \details{
 The function detects whether the fit includes a genuine observation-level
-random effect: a \verb{unique(0 + trait | <obs-level>)} term where every
-(trait, obs) cell is unique (i.e. one row per observation level per
-trait). When this cell-uniqueness condition holds, \code{sigma2_e} is
-populated; otherwise it is zero.
+random effect: normally a per-row \verb{indep(0 + trait | <obs-level>)} term,
+with the legacy \code{unique()} spelling still accepted as compatibility syntax.
+When every (trait, obs) cell has one row per observation level per trait,
+\code{sigma2_e} is populated; otherwise it is zero.
 \subsection{Terminology note}{
 
 Nakagawa & Schielzeth (2010) use \eqn{\sigma^2_d} for both components.
@@ -74,7 +74,7 @@ Family \tab Link \tab \eqn{\sigma^2_d} \cr
 ## Add a site_species column (one level per row) as the obs-level grouping.
 df$site_species <- factor(seq_len(nrow(df)))
 fit <- gllvmTMB(
-  value ~ 0 + trait + unique(0 + trait | site_species),
+  value ~ 0 + trait + indep(0 + trait | site_species),
   data     = df,
   trait    = "trait",
   unit     = "site",

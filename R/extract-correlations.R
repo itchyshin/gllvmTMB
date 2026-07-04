@@ -86,9 +86,10 @@
 #'       are on the latent-liability scale; this is the convention most
 #'       readers expect. Gaussian fits are unaffected (link residual is
 #'       \eqn{0}).}
-#'     \item{\code{"none"}}{Use the latent + unique-implied \eqn{\Sigma}
-#'       directly with no link-residual addition. Correlations come out
-#'       on the model-implied scale without the family adjustment.}
+#'     \item{\code{"none"}}{Use the fitted model \eqn{\Sigma}
+#'       (\eqn{\Lambda\Lambda^\top + \Psi} where a latent decomposition is
+#'       present) directly with no link-residual addition. Correlations come
+#'       out on the model-implied scale without the family adjustment.}
 #'   }
 #'
 #'   **Behaviour change in this release**: the previous version
@@ -141,8 +142,7 @@
 #'   psi_B = c(0.4, 0.3, 0.5, 0.2)
 #' )
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
-#'           unique(0 + trait | site),
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 1),
 #'   data  = s$data,
 #'   trait = "trait",
 #'   unit  = "site"
@@ -283,7 +283,7 @@ extract_correlations <- function(
   if (length(available) == 0L) {
     cli::cli_abort(c(
       "No covariance tiers found in the fit.",
-      "i" = "Add a {.code latent() / unique() / phylo_*() / spatial_*()} term to the formula."
+      "i" = "Add a {.code latent() / indep() / phylo_*() / spatial_*()} term to the formula; explicit {.fn unique} remains compatibility syntax where a diagonal Psi term is still needed."
     ))
   }
 

@@ -1,5 +1,6 @@
 ---
 title: "Cross-lineage coevolution kernels"
+tier: 3 # internal methods draft until COE-04 and interval/rho gates close
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -41,6 +42,11 @@ or any mutualist/antagonist pair. The estimand is the **coevolution matrix**
 traits move with which partner traits *after* both phylogenies and the
 observed association structure are accounted for.
 
+> **Internal article gate.** This page is a Tier 3 methods draft while the
+> Paper 2 coevolution evidence remains fixed-rho, point-estimate, and
+> diagnostic-only. It may be used to keep the syntax and estimand coherent, but
+> it is not yet a release-ready public worked example.
+
 The model is a stacked-trait phylogenetic GLLVM in which a single
 **cross-clade kernel** `K*` carries the coevolution signal in its
 off-diagonal block. As far as we have found, the one-matrix stacked-`Y`
@@ -53,15 +59,33 @@ the two lineages' *traits* jointly. We therefore present this as a methods
 contribution and are deliberate about what the current engine does and does
 not yet certify.
 
-Scope boundary: **IN** (`COE-02`, `KER-02`), this article fits one named
-dense kernel tier with `kernel_latent()` and extracts the cross-lineage
-shared block with `extract_Gamma()`. The shipped Gaussian fixture also pairs
-`kernel_unique()` at the same named tier as an explicit `Psi` component.
-**PARTIAL**, `rho` is supplied when `K*` is built (not estimated in the
-engine), and `extract_Gamma()` returns point estimates without calibrated
-intervals. **PLANNED**, multiple simultaneous kernel tiers, component-specific
-`Gamma_shape` / `Gamma_effect`, and in-engine `rho` estimation remain later
-Design 65 work.
+Scope boundary: **IN** (`COE-02`, `KER-02`), this article fits one named dense
+kernel tier with `kernel_latent()` and extracts the cross-lineage shared block
+with `extract_Gamma()`. **PARTIAL** (`COE-03`, `COE-04`), tests now cover
+latent-only two-kernel fixtures and kernel-separability diagnostics, including
+a raw-versus-residualized reciprocal-dependence screen for present-day/tip
+matching. The article therefore describes the two-component Paper 2 estimand,
+but still teaches only a fixed-kernel, point-estimate workflow. The current
+Paper 2 first-wave syntax is latent-only; `kernel_unique()` remains
+soft-deprecated compatibility syntax for older explicit-Psi fixtures and
+equivalence tests. **PLANNED**, in-engine `rho` estimation, calibrated
+intervals, module uncertainty, rank calibration, formal null thresholds, and
+broader recovery grids remain later Design 65 work.
+
+The target Paper 2 identity separates two cross-lineage covariance sources:
+
+$$
+\mathrm{Cov}(\eta_{H,ia}, \eta_{P,jb})
+= C_{\mathrm{phy},ij}\Gamma_{\mathrm{phy},ab}
++ C_{\mathrm{tip},ij}\Gamma_{\mathrm{tip},ab}.
+$$
+
+`C_phy` is the phylogenetically structured association kernel: it asks whether
+related hosts tend to match related partners in a conserved way. `C_tip` is a
+present-day/tip-level matching kernel: it asks whether the realised network has
+extra trait matching after the phylogenetic cross pattern has been accounted
+for. When those two fixed kernels are too similar, the honest answer is one
+network-conditioned covariance block, not two biological stories.
 
 ## Why coevolution lives in an off-diagonal block
 
@@ -89,8 +113,13 @@ K_{HP}^{T} & A_P
 \end{bmatrix},
 \qquad
 \mathrm{Var}\{\mathrm{vec}(\eta^* - M^*)\}
-= (\Lambda\Lambda^{T} + \Psi) \otimes K^*.
+= (\Lambda\Lambda^{T}) \otimes K^*.
 $$
+
+Older explicit-Psi compatibility fits add a diagonal `kernel_unique()` term at
+the same named tier. The current article teaches the latent-only first wave,
+because the Paper 2 multi-kernel path deliberately defers explicit
+kernel-level `Psi`.
 
 The two diagonal blocks `A_H` and `A_P` are the within-lineage phylogenetic
 covariances: they describe how host species resemble each other, and how
@@ -212,26 +241,82 @@ K_null <- coev$K_null
 max(abs(K_null[rownames(coev$A_H), rownames(coev$A_P)]))
 ```
 
+## Screen phylogenetic and tip kernels before splitting them
+
+The two-component Paper 2 split only makes sense when the proposed
+phylogenetic and tip kernels carry distinguishable cross-lineage information.
+For an observed interaction-count matrix, a defensible first tip candidate is
+the symmetric reciprocal-dependence surface
+
+$$
+W_{\mathrm{recip},ij} =
+\sqrt{p(j \mid i)\,p(i \mid j)}.
+$$
+
+The current COE-04 gate treats raw `W_recip` as a sensitivity target, not a
+promotion target. In the deterministic test fixture, the raw reciprocal tip
+kernel has **moderate** overlap with the phylogenetic cross kernel and receives
+the `sensitivity_required` recommendation. A residualized-plus-opposed tip
+candidate is **near orthogonal** and receives `separable_candidate`.
+
+```{r reciprocal-screen, eval = FALSE}
+p_col_given_row <- sweep(counts, 1, rowSums(counts), "/")
+p_row_given_col <- sweep(counts, 2, colSums(counts), "/")
+W_recip <- sqrt(p_col_given_row * p_row_given_col)
+
+K_phy <- make_cross_kernel(A_H, A_P, W_phy, rho = 0.55)
+I_H <- diag(nrow(A_H), dimnames = dimnames(A_H))
+I_P <- diag(nrow(A_P), dimnames = dimnames(A_P))
+K_tip_raw <- make_cross_kernel(I_H, I_P, W_recip, rho = 0.55)
+
+raw_dx <- diagnose_kernel_separability(
+  phy = K_phy,
+  tip_raw = K_tip_raw
+)
+raw_dx$pairs[, c("similarity", "overlap_class", "recommendation")]
+#> moderate overlap; recommendation = "sensitivity_required"
+
+W_tip_resid <- matrix(
+  resid(lm(as.vector(W_recip) ~ as.vector(W_phy))),
+  nrow(W_recip), ncol(W_recip),
+  dimnames = dimnames(W_recip)
+)
+K_tip_resid <- make_cross_kernel(I_H, I_P, W_tip_resid, rho = 0.55)
+
+resid_dx <- diagnose_kernel_separability(
+  phy = K_phy,
+  tip_resid = K_tip_resid
+)
+resid_dx$pairs[, c("similarity", "overlap_class", "recommendation")]
+#> near_orthogonal; recommendation = "separable_candidate"
+```
+
+This screen does not prove causal coevolution, and it does not deliver
+intervals. It decides which model is scientifically defensible before a fit:
+collapse to one cross-lineage covariance when the kernels overlap too strongly,
+run a sensitivity analysis in the moderate zone, and fit separate
+`name = "phy"` / `name = "tip"` tiers only when the fixed kernels are
+distinguishable enough for component-specific `Gamma` blocks to mean
+something.
+
 ## The workflow at a glance
 
 The full coevolution analysis is three steps:
 
 1. **Build** `K* <- make_cross_kernel(A_H, A_P, W, rho)`.
-2. **Fit** `kernel_latent(species, K = K_star, d = 2, name = "cross")`,
-   with `kernel_unique(species, K = K_star, name = "cross")` added when
-   the Gaussian fixture needs an explicit `Psi` component, on the block-`NA`
-   stacked `Y*`.
+2. **Fit** `kernel_latent(species, K = K_star, d = 2, name = "cross")`
+   on the block-`NA` stacked `Y*`.
 3. **Extract** `extract_Gamma(fit, level = "cross", row_traits, col_traits)`.
+4. **Summarise modules** with `extract_coevolution_modules()` when a
+   standardized host-axis / partner-axis decomposition is useful.
 
 `kernel_latent()` estimates the shared reduced-rank `Lambda Lambda^T`
 covariance attached to `K*`, and that shared component is the source of
-`Gamma`. In the Gaussian fixture, `kernel_unique()` adds trait-specific
-diagonal `psi` (the Greek Psi) variation at the same named tier so the total
-`Sigma` is `Lambda Lambda^T + Psi`. The name `"cross"` is the level that
-`extract_Sigma()` and `extract_Gamma()` read back. True Paper 2 Option B would
-need two independent named kernel tiers with separate `Lambda`, optional
-`Psi`, and component-specific `Gamma` targets; that engine is not present in
-this article.
+`Gamma`. The name `"cross"` is the level that `extract_Sigma()`,
+`extract_Gamma()`, and `extract_coevolution_modules()` read back. Explicit
+`kernel_unique()` can still reproduce older Gaussian C2 fixtures as
+compatibility syntax, but it is no longer the first-line coevolution teaching
+path.
 
 The wide `traits(...)` call names the four response columns on the
 left-hand side:
@@ -241,8 +326,7 @@ ctrl <- gllvmTMBcontrol(se = TRUE)
 
 fit_cross <- gllvmTMB(
   traits(h_size, h_defence, p_size, p_attack) ~ 1 +
-    kernel_latent(species, K = K_star, d = 2, name = "cross") +
-    kernel_unique(species, K = K_star, name = "cross"),
+    kernel_latent(species, K = K_star, d = 2, name = "cross"),
   data = coev$data_wide,
   unit = "row_id",
   cluster = "species",
@@ -263,8 +347,7 @@ noise (the C2 fixture test asserts the wide/long `logLik` difference is below
 ```{r fit-long, eval = FALSE}
 fit_cross_long <- gllvmTMB(
   value ~ 0 + trait +
-    kernel_latent(species, K = K_star, d = 2, name = "cross") +
-    kernel_unique(species, K = K_star, name = "cross"),
+    kernel_latent(species, K = K_star, d = 2, name = "cross"),
   data = coev$data_long,
   trait = "trait",
   unit = "row_id",
@@ -290,8 +373,7 @@ model-comparison diagnostic, not as a calibrated likelihood-ratio test.
 ```{r fit-null, eval = FALSE}
 fit_null <- gllvmTMB(
   traits(h_size, h_defence, p_size, p_attack) ~ 1 +
-    kernel_latent(species, K = K_null, d = 2, name = "cross") +
-    kernel_unique(species, K = K_null, name = "cross"),
+    kernel_latent(species, K = K_null, d = 2, name = "cross"),
   data = coev$data_wide,
   unit = "row_id",
   cluster = "species",
@@ -454,8 +536,7 @@ rho_results <- profile_cross_rho(
   refit = function(K, rho) {
     gllvmTMB(
       traits(h_size, h_defence, p_size, p_attack) ~ 1 +
-        kernel_latent(species, K = K, d = 2, name = "cross") +
-        kernel_unique(species, K = K, name = "cross"),
+        kernel_latent(species, K = K, d = 2, name = "cross"),
       data = coev$data_wide,
       unit = "row_id",
       cluster = "species",

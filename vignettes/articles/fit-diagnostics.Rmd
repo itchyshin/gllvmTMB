@@ -34,7 +34,7 @@ claims.
 The example is deliberately modest: three behaviours counted on each
 individual, fitted with one shared latent axis. `latent()` estimates a
 low-rank axis of between-individual covariance; this is a diagnostic
-example, not the full `latent() + unique()` covariance-decomposition
+example, not the full Gaussian default-`latent()` covariance-decomposition
 tutorial from [Morphometrics](morphometrics.html).
 
 ## Setup

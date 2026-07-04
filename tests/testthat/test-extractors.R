@@ -21,9 +21,7 @@ test_that("extract_Sigma_B / Sigma_W return correlation matrices on the diagonal
     value ~ 0 +
       trait +
       latent(0 + trait | site, d = 2) +
-      unique(0 + trait | site) +
-      latent(0 + trait | site_species, d = 1) +
-      unique(0 + trait | site_species),
+      latent(0 + trait | site_species, d = 1),
     data = sim$data
   )
   B <- extract_Sigma_B(fit)
@@ -54,9 +52,7 @@ test_that("ICC_site is in (0, 1) when both Sigma_B and Sigma_W are present", {
     value ~ 0 +
       trait +
       latent(0 + trait | site, d = 2) +
-      unique(0 + trait | site) +
-      latent(0 + trait | site_species, d = 1) +
-      unique(0 + trait | site_species),
+      latent(0 + trait | site_species, d = 1),
     data = sim$data
   )
   icc <- extract_ICC_site(fit)
@@ -83,8 +79,7 @@ test_that("Communalities are in (0, 1]", {
   fit <- gllvmTMB(
     value ~ 0 +
       trait +
-      latent(0 + trait | site, d = 2) +
-      unique(0 + trait | site),
+      latent(0 + trait | site, d = 2),
     data = sim$data
   )
   c_B <- extract_communality(fit, "unit")

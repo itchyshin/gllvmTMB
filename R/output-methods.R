@@ -188,13 +188,14 @@ ordiplot.gllvmTMB_multi <- function(
 ) {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
+  canonical_level <- .canonical_level_name(level)
   rotate <- match.arg(rotate)
   if (length(axes) != 2L) {
     cli::cli_abort("axes must be length 2.")
   }
 
-  scores <- getLV(fit, level, rotate)
-  loadings <- getLoadings(fit, level, rotate)
+  scores <- getLV(fit, canonical_level, rotate)
+  loadings <- getLoadings(fit, canonical_level, rotate)
   if (is.null(scores) || ncol(scores) < max(axes)) {
     cli::cli_abort("Not enough latent axes for the requested {.code axes}.")
   }

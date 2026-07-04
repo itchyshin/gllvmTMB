@@ -1,5 +1,6 @@
 ---
 title: "Psychometrics: confirmatory factor analysis with mixed-response items"
+tier: 3 # internal preview until binary lambda/JSDM and comparator paths are designed
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,7 +24,8 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Preview — slated for re-authoring in M2.5 after binary IRT validation.**
+> **Internal article gate.** This preview is slated for re-authoring in M2.5
+> after the binary IRT teaching path is designed.
 >
 > The current article uses `lambda_constraint` for binary IRT
 > (LAM-03 `covered` in the
@@ -58,9 +60,9 @@ and binary (yes/no) items in one fit via the per-row family
 dispatch -- i.e. the same engine call that ecologists use for
 `family = list(gaussian(), binomial(), poisson())`.
 
-This article is a **cross-domain validation** of the same engine: it
-demonstrates that the package's stacked-trait grammar handles
-psychometric data without modification. It is also a worked example
+This article is a **cross-domain preview** of the same engine: it
+demonstrates the package's stacked-trait grammar on psychometric-style
+data without changing the model syntax. It is also a worked example
 of the [Lambda-constraint pedagogy](lambda-constraint.html) applied
 to a CFA pattern (block-diagonal off-pattern zeros) rather than the
 exploratory lower-triangular convention.
@@ -199,7 +201,8 @@ fit_exp
 
 The exploratory loadings are rotation-invariant. This preview uses a
 latent-only formula, so the implied unit-level covariance is the
-shared latent surface, not a full `latent + unique` decomposition:
+shared latent surface rather than a Gaussian covariance-decomposition
+tutorial:
 
 ```{r sigma-exp}
 SB_exp_rows <- extract_Sigma_table(

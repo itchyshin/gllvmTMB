@@ -1,6 +1,6 @@
 # 61 -- Capability Status and Dependency-Ordered Work-List
 
-**Status date:** 2026-06-08
+**Status date:** 2026-06-18
 **Scope:** status synthesis only. The validation-debt register
 (`docs/design/35-validation-debt-register.md`) remains the row-level source
 of truth; this document is the readable planning layer.
@@ -24,12 +24,12 @@ covered capability:
 - **CAUTION:** interval calibration is still separate from point-estimate
   recovery. CI-08 and CI-10 remain open/failing coverage gates.
 - **GAUSSIAN ORDINARY REACTION NORMS:** the ordinary unit-tier
-  `latent(1 + x | unit, d = K) + unique(1 + x | unit)` / long-form augmented
-  decomposition now fits and extracts `Lambda_aug Lambda_aug^T`,
-  `Psi_B,aug`, and their total covariance under RE-12. The behavioural
-  reaction-norm article is buildable but internal while its plain-language
-  reader path is under review; non-Gaussian augmented `unique()` remains
-  guarded.
+  `latent(1 + x | unit, d = K)` / long-form augmented decomposition now fits
+  the default `Lambda_aug Lambda_aug^T + Psi_B,aug` covariance and extracts the
+  shared, unique, and total pieces under RE-12. The behavioural reaction-norm
+  article is buildable but internal while its plain-language reader path is
+  under review; explicit augmented `unique()` remains Gaussian-only
+  compatibility syntax, and non-Gaussian augmented `unique()` remains guarded.
 
 The practical consequence is simple: the public article lane stays narrow.
 Ordinary Gaussian individual-level reaction norms, structured random slopes for
@@ -52,7 +52,7 @@ depth; **blocked** = needs a mathematical derivation or different scope.
 | `phylo_dep(1 + x | species)` | covered | PHY-18 | Full unstructured 2T x 2T intercept+slope covariance across traits. |
 | `phylo_dep(1 + x1 + x2 | species)` under Gaussian | covered | RE-03 | Gaussian full-unstructured multi-slope path; `s = 2` validated. |
 | `phylo_dep(..., s >= 2)` under non-Gaussian families | partial | RE-03 | Runtime guard remains; feasibility sweeps continue but this is not admitted. |
-| `latent(1 + x | unit, d = K) + unique(1 + x | unit)` ordinary unit-tier Gaussian reaction norm | partial | RE-12 | Gaussian `latent + unique` decomposition implemented with `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`, deterministic recovery evidence, and a buildable internal behavioural-syndrome draft; non-Gaussian augmented `unique()` remains guarded. |
+| `latent(1 + x \| unit, d = K)` ordinary unit-tier Gaussian reaction norm | partial | RE-12 | Gaussian default `latent()` decomposition implemented with `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`, deterministic recovery evidence, and a buildable internal behavioural-syndrome draft; explicit `+ unique(1 + x \| unit)` remains Gaussian-only compatibility syntax, and non-Gaussian augmented `unique()` remains guarded. |
 | `spatial_unique(1 + x | coords)` / `spatial_indep(1 + x | coords)` | covered | SPA-08 | Two-field spatial intercept+slope path; `indep` pins cross-field correlation to zero. |
 | `spatial_latent(1 + x | coords, d = 1)` | covered | SPA-09 | Block-diagonal reduced-rank spatial slope across the core families. |
 | `spatial_dep(1 + x | coords)` | covered | SPA-10 | Full unstructured 2T x 2T SPDE field covariance; hard cells require large validation fixtures. |

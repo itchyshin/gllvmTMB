@@ -52,7 +52,7 @@ simulation check say otherwise.
 |---|---|---|---|---|
 | continuous, unbounded | `gaussian()` | identity | covered (FAM-01) | Default family. |
 | binary or binomial trials | `binomial()` | logit, probit, cloglog | covered (FAM-02--FAM-04) | Use `cbind(success, failure)` or `weights` for multi-trial binomial data. |
-| counts | `poisson()` | log | covered (FAM-06) | No dispersion parameter; add an observation-level `unique()` term when that is identifiable. |
+| counts | `poisson()` | log | covered (FAM-06) | No dispersion parameter; add an observation-level `indep()` term only when an OLRE is identifiable. Legacy `unique()` spelling remains compatibility syntax. |
 | positive continuous, right-skewed | `lognormal()` | log | partial (FAM-11) | Use only when the response is strictly positive. |
 | positive continuous, constant CV | `Gamma(link = "log")` | log | partial (FAM-09) | Base R `Gamma()`, with log link in the engine. |
 | overdispersed counts | `nbinom2()` | log | covered (FAM-08) | NB2 variance grows quadratically with the mean. |
@@ -64,12 +64,14 @@ simulation check say otherwise.
 | overdispersed positive counts, no zeros | `truncated_nbinom2()` | log | partial (FAM-15) | Requires integer responses `y >= 1`. |
 | non-negative continuous with exact zeros | `delta_lognormal()` | logit + log | blocked for response-scale and mixed-family interpretation (FAM-17, MIX-10) | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
 | non-negative continuous with exact zeros | `delta_gamma()` | logit + log | blocked for response-scale and mixed-family interpretation (FAM-17, MIX-10) | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
-| ordered categories with `K >= 3` | `ordinal_probit()` | probit | partial (FAM-14) | Threshold model with latent residual variance fixed at 1; the ordinal worked article is under audit. |
+| ordered categories with `K >= 3` | `ordinal_probit()` | probit | covered (FAM-14); article still internal | Threshold model with latent residual variance fixed at 1; the ordinal worked article is under audit for extractor depth, intervals, and public placement. |
 
 Use this table as a likelihood lookup. For covariance keywords, see
-[Formula keyword grid](api-keyword-grid.html). Binary species, mixed-family,
-and other non-Gaussian worked examples are under audit until their example
-objects, diagnostics, and validation caveats are ready.
+[Formula keyword grid](api-keyword-grid.html). In that grid, `unique()`
+remains compatibility/external-Psi syntax (`FG-05`) and `indep()` is the
+documentary standalone diagonal spelling (`FG-07`). Binary species,
+mixed-family, and other non-Gaussian worked examples are under audit until
+their example objects, diagnostics, and validation caveats are ready.
 
 ## Single-Family Fits
 
@@ -79,8 +81,7 @@ rows. Long data remain the canonical form:
 ```{r}
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | individual, d = 2) +
-    unique(0 + trait | individual),
+    latent(0 + trait | individual, d = 2),
   data = df_long,
   trait = "trait",
   unit = "individual",
@@ -96,8 +97,7 @@ have one row per unit and one column per trait:
 fit_wide <- gllvmTMB(
   traits(length, mass, wing, tarsus, bill) ~
     1 +
-    latent(1 | individual, d = 2) +
-    unique(1 | individual),
+    latent(1 | individual, d = 2),
   data = df_wide,
   unit = "individual",
   family = gaussian()
@@ -106,7 +106,11 @@ fit_wide <- gllvmTMB(
 
 Only the `family` argument changes when you move from Gaussian to
 another supported likelihood. The covariance keyword grammar stays
-the same.
+the same, but the diagonal keyword choice should still match the
+model interpretation: ordinary `latent()` already includes the diagonal
+Psi component by default; use `indep()` for standalone marginal diagonal tiers
+and identifiable observation-level random effects. Use `unique()` only as
+compatibility syntax.
 
 ## Mixed-Family Fits
 
@@ -154,11 +158,11 @@ Poisson, Tweedie, beta-binomial, delta, and ordinal responses, the
 family determines the residual term that makes the reported
 covariance interpretable on the link scale.
 
-That is why family choice is not cosmetic. A Poisson count model and
-a Gaussian model can share the same `latent() + unique()` formula but
-will not imply the same residual scale. Use `extract_Omega()` and
-`extract_Sigma()` after fitting, and read the extractor output on the
-scale implied by the family.
+That is why family choice is not cosmetic. A Poisson count model and a
+Gaussian model can share the same default `latent()` formula, but they will
+not imply the same residual scale. Use `extract_Omega()` and
+`extract_Sigma()` after fitting, and read the extractor output on the scale
+implied by the family.
 
 Correlations need one extra sentence of caution. `extract_correlations()`
 reports correlations in the fitted covariance tier, not correlations

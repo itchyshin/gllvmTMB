@@ -60,7 +60,7 @@ $$
 $$
 
 where `Lambda` contains the shared latent loadings and `Psi` is the
-trait-specific diagonal from `unique()`.
+trait-specific diagonal included by default in ordinary `latent()`.
 
 ```{r example-data, eval = FALSE}
 rank_ex <- readRDS(system.file(
@@ -73,15 +73,14 @@ truth <- rank_ex$truth
 ```
 
 ```{r example-data-load, include = FALSE}
-rank_path <- system.file(
-  "extdata", "examples", "model-selection-rank-example.rds",
-  package = "gllvmTMB"
-)
 rank_path <- c(
-  rank_path,
   file.path("inst", "extdata", "examples", "model-selection-rank-example.rds"),
   file.path("..", "inst", "extdata", "examples", "model-selection-rank-example.rds"),
-  file.path("..", "..", "inst", "extdata", "examples", "model-selection-rank-example.rds")
+  file.path("..", "..", "inst", "extdata", "examples", "model-selection-rank-example.rds"),
+  system.file(
+    "extdata", "examples", "model-selection-rank-example.rds",
+    package = "gllvmTMB"
+  )
 )
 rank_path <- rank_path[nzchar(rank_path) & file.exists(rank_path)][1]
 stopifnot(!is.na(rank_path))
@@ -114,9 +113,8 @@ rank_ex$formula_wide
 
 The diagonal baseline has no shared latent axis, so it uses `indep()`
 to make the standalone marginal-only intent explicit. The `d >= 1`
-candidates use the same fixed effects and the same explicit `Psi`
-component through `unique()`, changing only the rank of the `latent()`
-term.
+candidates use the same fixed effects and the same default diagonal `Psi`
+component, changing only the rank of the `latent()` term.
 
 ```{r rank-helpers}
 candidate_formula <- function(d) {
@@ -126,8 +124,7 @@ candidate_formula <- function(d) {
 
   stats::as.formula(paste0(
     "value ~ 0 + trait + ",
-    "latent(0 + trait | individual, d = ", d, ") + ",
-    "unique(0 + trait | individual)"
+    "latent(0 + trait | individual, d = ", d, ")"
   ))
 }
 
@@ -433,8 +430,8 @@ Report the candidate set and the checks that constrained it.
 | Rotation-invariant summaries | `Sigma`, correlations, and communalities are safer than raw loading labels. |
 | Biological interpretation | A rank is useful only if the resulting summaries answer the study question. |
 
-This article covers a model-selection workflow for Gaussian
-`latent() + unique()` candidate ranks using base `AIC()` / `BIC()`,
+This article covers a model-selection workflow for Gaussian default-`latent()`
+candidate ranks using base `AIC()` / `BIC()`,
 `logLik()`, and `check_gllvmTMB()` (FG-04, FG-06, DIA-03, DIA-08,
 DIA-10), then shows a Gaussian-only `REML = TRUE` refit for the chosen
 rank (MIS-33).

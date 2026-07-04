@@ -29,6 +29,9 @@ knitr::opts_chunk$set(
 > article-council review. The current public binary worked example is
 > [`vignette("joint-sdm")`](joint-sdm.html); do not treat this page as a
 > first-stop technical reference until the main teaching path is public.
+> The profile-retention and Confidence Eye chunks below are shown as
+> maintainer code but are not executed in routine article builds, because
+> the cold-cache path is intentionally refit-heavy.
 
 ## Why this article exists
 
@@ -254,10 +257,11 @@ Why profile rather than Wald or bootstrap:
   refit count.
 
 The `profile_retention` call is the single most expensive step in this
-article (one full model refit per testable loading entry). We run it
-once with `cache = TRUE`; on a cold cache expect a few minutes.
+article (one full model refit per testable loading entry). It is left
+as display-only code in routine builds; run this chunk manually when
+refreshing the companion article's retained-loadings evidence.
 
-```{r suggest-profile-retention, cache = TRUE}
+```{r suggest-profile-retention, cache = TRUE, eval = FALSE}
 sug_pr <- suggest_lambda_constraint(
   fit_exp_long,
   convention     = "profile_retention",
@@ -274,7 +278,7 @@ Refit with the suggested constraint, then compare on LRT / AIC / BIC
 against the exploratory baseline, the biology-driven fit, and a
 one-factor (d = 1) sanity check.
 
-```{r fit-data-driven, cache = TRUE}
+```{r fit-data-driven, cache = TRUE, eval = FALSE}
 fit_vmx <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 2L),
   data              = df_long,
@@ -295,7 +299,7 @@ fit_d1 <- gllvmTMB(
 )
 ```
 
-```{r model-comparison}
+```{r model-comparison, eval = FALSE}
 mc <- function(fit, label) {
   data.frame(
     model       = label,
@@ -355,7 +359,7 @@ method follows from that:
   are `NA` in this case. We therefore use the **profile** path for
   this plot: the LRT-inverted profile uses only log-likelihood values,
   bypasses the pdHess gate, and yields valid CIs even at a non-PD fit.
-- **`profile_retention`** pins more entries (here `r n_pins_pr`) -- more
+- **`profile_retention`** pins more entries in the full retained run -- more
   aggressive in count -- but pins entries the LRT actually fails to
   reject, which preserves identifiability. The refit's Hessian is PD,
   so the default Wald (delta-method) path is available here. A few
@@ -383,7 +387,7 @@ entries get genuine LRT-inverted bounds. This preserves the teaching
 point -- a real non-PD fit, rescued by the profile path -- at a
 fraction of the cost.
 
-```{r varimax-confidence-eye, echo = FALSE, cache = TRUE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the varimax_threshold refit, using profile-likelihood CIs on a restricted set of representative free entries. Point estimates come from the (non-PD) Wald skeleton; the four profiled entries carry eyes (polygons) spanning the 95 percent profile CI with width proportional to the Gaussian sampling density. Grey = pinned by the suggester to zero (no eye drawn); green = CI excludes the (-0.1, 0.1) null region; red = CI overlaps it; remaining free entries without a profiled CI are shown as hollow points. The profile path bypasses the pdHess gate, so CIs are available even though this refit's Hessian is non-positive-definite.", fig.alt = "Per-species loadings from the varimax_threshold refit. A few representative free entries are drawn as eye-shaped polygons whose CI bounds are profile-likelihood (LRT-inverted); pinned entries are grey points; the rest are hollow points. Demonstrates that the profile path yields CIs at a non-positive-definite fit."}
+```{r varimax-confidence-eye, echo = FALSE, cache = TRUE, eval = FALSE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the varimax_threshold refit, using profile-likelihood CIs on a restricted set of representative free entries. Point estimates come from the (non-PD) Wald skeleton; the four profiled entries carry eyes (polygons) spanning the 95 percent profile CI with width proportional to the Gaussian sampling density. Grey = pinned by the suggester to zero (no eye drawn); green = CI excludes the (-0.1, 0.1) null region; red = CI overlaps it; remaining free entries without a profiled CI are shown as hollow points. The profile path bypasses the pdHess gate, so CIs are available even though this refit's Hessian is non-positive-definite.", fig.alt = "Per-species loadings from the varimax_threshold refit. A few representative free entries are drawn as eye-shaped polygons whose CI bounds are profile-likelihood (LRT-inverted); pinned entries are grey points; the rest are hollow points. Demonstrates that the profile path yields CIs at a non-positive-definite fit."}
 # Skeleton: correct trait/axis/estimate/pinned for ALL entries.
 # fit_vmx is non-PD, so the Wald path returns NA bounds (expected) but a
 # complete, plot-ready frame. (warning = FALSE suppresses the non-PD note.)
@@ -439,7 +443,7 @@ plot_loadings_confidence_eye(
 )
 ```
 
-```{r profile-confidence-eye, echo = FALSE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the profile_retention refit. Same encoding as the varimax_threshold plot above, but with the default Wald (delta-method) path: this refit is positive-definite. Profile retention pins more aggressively than varimax_threshold, so more entries are grey (pinned by the suggester to zero, no eye drawn). Off-scale Wald entries are shown as boundary points with no eye, because drawing their huge intervals would obscure the interpretable loadings.", fig.alt = "Per-species loadings from the profile_retention refit, displayed as eye-shaped polygons centred at the Wald estimate; pinned entries shown as grey points without an eye. A few extreme Wald entries are marked at the display boundary without an eye."}
+```{r profile-confidence-eye, echo = FALSE, eval = FALSE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the profile_retention refit. Same encoding as the varimax_threshold plot above, but with the default Wald (delta-method) path: this refit is positive-definite. Profile retention pins more aggressively than varimax_threshold, so more entries are grey (pinned by the suggester to zero, no eye drawn). Off-scale Wald entries are shown as boundary points with no eye, because drawing their huge intervals would obscure the interpretable loadings.", fig.alt = "Per-species loadings from the profile_retention refit, displayed as eye-shaped polygons centred at the Wald estimate; pinned entries shown as grey points without an eye. A few extreme Wald entries are marked at the display boundary without an eye."}
 ci_pr <- flag_unreliable_loadings(
   loading_ci(fit_pr, level = "unit", method = "wald"),
   null_region = c(-0.1, 0.1)
@@ -479,11 +483,8 @@ A few things to read off:
   bypasses the pdHess gate). `profile_retention`'s refit is
   identifiable, so the default Wald path works. The boundary points in
   the lower plot are not pins: they are extreme probit-scale Wald
-  entries, most visibly `B_drought_4` on `LV2` (estimate
-  `r round(ci_pr$estimate[ci_pr$trait == "B_drought_4" & ci_pr$axis == "LV2"], 1)`,
-  95 percent CI
-  [`r round(ci_pr$lower[ci_pr$trait == "B_drought_4" & ci_pr$axis == "LV2"], 1)`,
-  `r round(ci_pr$upper[ci_pr$trait == "B_drought_4" & ci_pr$axis == "LV2"], 1)`]).
+  entries, most visibly the `B_drought_4` loading on `LV2` in the full
+  retained run.
   This is not a generic property of the methods -- at other fixtures
   the situation can reverse -- but it is what happens at *this*
   moderate-signal binary fixture.

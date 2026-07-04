@@ -13,7 +13,7 @@ test_that("Stage 39: n_init > 1 runs the requested number of restarts", {
     seed = 7
   )
   fit <- gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2) + unique(0 + trait | site),
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = sim$data,
     control = gllvmTMBcontrol(n_init = 3, init_jitter = 0.2)
   )
@@ -41,7 +41,7 @@ test_that("Stage 39: optimizer = 'optim' with BFGS is dispatched", {
     seed = 11
   )
   fit <- gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2) + unique(0 + trait | site),
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = sim$data,
     control = gllvmTMBcontrol(optimizer = "optim",
                               optArgs = list(method = "BFGS"))

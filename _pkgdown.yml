@@ -126,6 +126,16 @@ reference:
     - gllvm_julia_fit
     - gllvm_julia_setup
     - gllvmTMB_julia-methods
+    - logLik.gllvmTMB_julia
+    - print.gllvmTMB_julia
+    - coef.gllvmTMB_julia
+    - predict.gllvmTMB_julia
+    - fitted.gllvmTMB_julia
+    - residuals.gllvmTMB_julia
+    - simulate.gllvmTMB_julia
+    - confint.gllvmTMB_julia
+    - summary.gllvmTMB_julia
+    - print.summary.gllvmTMB_julia
 
   - title: Core covariance keywords
     desc: First-line formula keywords for the 4 x 5 grid (correlation source x mode)
@@ -152,6 +162,9 @@ reference:
     - spatial_dep
     - spatial_latent
     - kernel_latent
+    - kernel_unique
+    - kernel_indep
+    - kernel_dep
     - meta_V
     - block_V
 
@@ -169,14 +182,40 @@ reference:
     - pedigree_to_A
     - pedigree_to_Ainv_sparse
     - make_cross_kernel
+    - diagnose_kernel_separability
     - profile_cross_rho
     - make_mesh
+    - plot.sdmTMBmesh
     - add_utm_columns
+    - get_crs
     - plot_anisotropy
+    - plot_anisotropy2
 
   - title: Response families
     contents:
     - Families
+    - Beta
+    - lognormal
+    - gamma_mix
+    - lognormal_mix
+    - nbinom2_mix
+    - nbinom2
+    - nbinom1
+    - truncated_poisson
+    - truncated_nbinom2
+    - truncated_nbinom1
+    - student
+    - tweedie
+    - censored_poisson
+    - delta_gamma
+    - delta_gamma_mix
+    - delta_gengamma
+    - delta_lognormal
+    - delta_lognormal_mix
+    - delta_truncated_nbinom2
+    - delta_truncated_nbinom1
+    - betabinomial
+    - delta_beta
     - categorical
     - cumulative_logit
     - ordinal_probit
@@ -186,6 +225,7 @@ reference:
     contents:
     - extract_Sigma
     - extract_Gamma
+    - extract_coevolution_modules
     - predict_cross_covariance
     - extract_Sigma_table
     - compare_Sigma_table
@@ -205,6 +245,7 @@ reference:
     - print.gllvmTMB_multi
     - print.gllvmTMB_Sigma_phy_slope
     - summary.gllvmTMB_multi
+    - print.summary.gllvmTMB_multi
     - logLik.gllvmTMB_multi
     - confint.gllvmTMB_multi
     - tidy.gllvmTMB_multi
@@ -212,6 +253,7 @@ reference:
     - predict.gllvmTMB_multi
     - predict_missing
     - imputed
+    - imputed.gllvmTMB
     - phylo_signal_mi
     - plot.gllvmTMB_multi
     - plot_correlations

@@ -3,6 +3,108 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## `unique()` family soft deprecation (2026-06-18)
+
+* Added the first parser-level lifecycle slice for the `unique()` keyword
+  family. `unique()`, `phylo_unique()`, `animal_unique()`,
+  `spatial_unique()`, and `kernel_unique()` now emit one-shot
+  `lifecycle::deprecate_soft()` warnings when the formula parser sees them,
+  while preserving the existing compatibility rewrites and fits. For
+  standalone marginal diagonal tiers, new code should use `indep()` and the
+  source-specific `*_indep()` spellings. Ordinary `latent()` now emits its
+  diagonal Psi companion by default; use `latent(..., residual = FALSE)` for the
+  old no-residual subset. Paired explicit-Psi forms such as
+  `latent() + unique()` and source-specific pairs such as
+  `phylo_latent() + phylo_unique()` remain accepted as compatibility syntax. The
+  Paper 2 multi-kernel path remains latent-only; `kernel_unique()` warns but is
+  still retained as compatibility syntax and as a guarded first-wave rejection
+  in multi-kernel fits. This is a lifecycle / ordinary-Psi fold slice only: no
+  exported keyword was removed, source-specific and `kernel_*()` latent-Psi
+  folds remain future work, `part = "unique"` is not renamed, and
+  bridge/release/scientific-coverage gates do not widen.
+  A follow-up diagnostic cleanup now removes stale ordinary-user guidance that
+  said communality CIs or augmented `extract_Sigma(part = "unique")` require an
+  explicit `unique()` term. Those messages now refer to the diagonal Psi
+  component and the default `latent()` fit, with `latent(..., residual = FALSE)`
+  named as the deliberate no-Psi subset. Compatibility tests that intentionally
+  exercise explicit `unique()` now quiet lifecycle warnings locally; the
+  dedicated deprecation test remains the warning assertion surface. Fit-time
+  ordinary augmented reaction-norm guard suggestions now prefer
+  `latent(1 + x | unit, d = K)` for the default shared + diagonal-Psi fit and
+  describe explicit `unique(1 + x | unit)` as compatibility syntax. Generic
+  extractor no-covariance diagnostics now list `latent()` / `indep()` before
+  noting explicit `unique()` as compatibility syntax.
+  A rendered article cleanup updated `convergence-start-values`,
+  `choose-your-model`, `profile-likelihood-ci`, and
+  `functional-biogeography`, `cross-package-validation`, and
+  `simulation-verification`, then extended the same cleanup to
+  `morphometrics`, `api-keyword-grid`, `pitfalls`, `joint-sdm`,
+  `response-families`, `model-selection-latent-rank`, `fit-diagnostics`,
+  `mixed-family-extractors`, `psychometrics-irt`, `phylogenetic-gllvm`, and
+  the main `gllvmTMB` vignette: ordinary examples now teach default
+  `latent()` for `Lambda Lambda^T + Psi`, `dep()` for full unstructured
+  covariance, and `indep()` for standalone diagonal tiers. The cleanup rendered
+  all touched pages, regenerated the morphometrics and latent-rank
+  model-selection teaching fixtures so their stored formulas no longer use
+  explicit ordinary `unique()`, and kept `unique()` / `*_unique()` as
+  compatibility syntax only. The phylogenetic article still uses
+  `phylo_unique()` for an explicitly separated phylogenetic `Psi` component;
+  source-specific latent-Psi folding remains future work. No keyword removal or
+  extractor contract change is claimed. The simulation-recovery validation
+  article now names the target as diagonal `Psi` variance under the
+  default-`latent()` formula while preserving the per-trait $\psi_t$ coverage
+  estimand. Tier-3 internal routing/concept drafts `data-shape-flowchart` and
+  `stacked-trait-gllvm` were also refreshed so their ordinary examples point to
+  default `latent()` and standalone `indep()` rather than teaching explicit
+  ordinary `unique()`. The Tier-3 candidate worked example
+  `behavioural-syndromes` now uses default `latent()` at the between- and
+  within-individual tiers while preserving the same `Psi_B` / `Psi_W`
+  interpretation.
+  A follow-up implementation slice extends the ordinary Gaussian
+  random-regression default to augmented `latent(1 + x | unit, d = K)` terms:
+  the fit now supplies the diagonal `Psi_B,aug` companion automatically, so
+  `extract_Sigma(level = "unit_slope", part = "unique")` works without an
+  explicit augmented `unique()` term. The `random-regression-reaction-norms`
+  article and bundled behavioural reaction-norm fixture now use the default
+  `latent()` spelling in long and wide formulas. Explicit augmented
+  `unique(1 + x | unit)` remains compatibility syntax and is still
+  Gaussian-only; non-Gaussian augmented `latent()` remains low-rank-only.
+  The standalone scalar marginal path now has a non-deprecated spelling:
+  `indep(..., common = TRUE)` rewrites to the same scalar diagonal model as
+  legacy standalone `unique(..., common = TRUE)`. The ordinary paired scalar
+  Psi path is now re-homed as `latent(..., common = TRUE)`: it is
+  objective-equivalent to legacy
+  `latent(..., residual = FALSE) + unique(..., common = TRUE)` for
+  intercept-only ordinary terms, while rejecting `residual = FALSE,
+  common = TRUE` and augmented random-regression `common = TRUE` forms.
+  Source-specific and `kernel_*()` paired-Psi folds remain future work.
+
+## Psi / `unique()` public-story cleanup (2026-06-18)
+
+* Continued the post-coevolution Psi cleanup. `unique()` / source-specific
+  `*_unique()` remain
+  compatibility and explicit-Psi syntax. New public teaching now points
+  standalone marginal diagonal models to `indep()` / source-specific
+  `*_indep()` while keeping `unique()` for the Psi component in
+  `latent() + unique()` decompositions. The second sweep edited and rendered
+  `response-families`, `animal-model`, `phylogenetic-gllvm`, and
+  `functional-biogeography`: the response-family reference now separates
+  identifiable observation-level `unique()` from standalone diagonal tiers;
+  the animal-model article teaches `animal_indep()` for marginal genetic
+  diagonals and fixes stale ANI-11 read-out wording; the phylogenetic article
+  names `phylo_indep()` / `indep()` for standalone diagonals; and the
+  functional-biogeography capstone now uses `spatial_indep()` /
+  `phylo_indep()` for adjustment-only controls while preserving true
+  explicit-Psi compatibility partitioning examples. IN/covered row anchors remain
+  `FG-05` for compatibility `unique()`, `FG-06` for the explicit-Psi
+  compatibility pair,
+  `ANI-03` / `ANI-11` for the animal-model wording, and `FAM-06` for the
+  Poisson OLRE note. PARTIAL row anchor: `FG-07` for the documentary
+  `indep()` spelling, whose known-V non-Gaussian variant is still partial.
+  This is documentation and claim-boundary cleanup only, not an API removal,
+  parser deprecation, bridge completion, release readiness, or scientific
+  coverage completion.
+
 ## Fixed named multi-kernel tiers (2026-06-18)
 
 * Added the first fixed multi-kernel engine wave for `kernel_latent()`: two or
@@ -16,13 +118,31 @@
   deferred because explicit residual/Psi structure is a poor default for
   non-Gaussian and cross-family coevolution models. PARTIAL (`COE-03`): this
   opens the fixed two-component Paper 2 shape for `Gamma_shape_r` inspection.
+  `extract_coevolution_modules()` now turns a component-specific
+  `Gamma_shape` or fixed-`rho` `Gamma_effect` block into a standardized
+  cross-lineage correlation-like matrix and singular-value module table, so
+  Paper 2 can report coupled host/partner trait axes as point estimates. This
+  is a derived extractor only: no module uncertainty, biological rank
+  selection, `rho` estimation, or null-threshold calibration is claimed.
   A first heavy `COE-04` recovery gate now passes for a near-orthogonal
   Gaussian latent-only fixture: a predeclared Frobenius-style kernel-similarity
   diagnostic, now stored on multi-kernel fits as `fit$kernel_diagnostics`,
   classifies the two kernels as separable, the full two-component fit beats
   either one-component fit, and each extracted component-specific
   `Gamma_shape_r` recovers its own truth while not matching the other
-  component. The same near-orthogonal Gaussian fixture now also covers
+  component. `diagnose_kernel_separability()` now exposes the same
+  off-diagonal Frobenius-style screening before fitting; the raw/aliased
+  `K_tip` fixture is flagged as `high` overlap with recommendation
+  `collapse_or_single_covariance`, while the residualized/opposed candidate is
+  `near_orthogonal` with recommendation `separable_candidate`. This is a
+  kernel-screening and claim-boundary helper only, not a formal identifiability
+  proof, interval calibration, or scientific-coverage promotion. A deterministic
+  pre-fit collinearity gate now blends the residualized `K_tip` candidate
+  toward `K_phy`, verifies monotone similarity, and forces
+  `near_orthogonal -> separable_candidate`,
+  `moderate -> sensitivity_required`, and
+  `high -> collapse_or_single_covariance` before any component-specific Paper 2
+  claim is advertised. The same near-orthogonal Gaussian fixture now also covers
   selective absence in both directions: if either the phy or non component has
   true zero loadings, the two-kernel fit collapses that component's
   `extract_Gamma()` while recovering the present component. A block-null smoke
@@ -62,7 +182,12 @@
   high-overlap collapse gate now covers both exact-duplicate and
   diagonal-shrink near-duplicate kernel pairs; in both cases the separated
   two-tier fit is not materially better than one collapsed rank-2 kernel tier,
-  and component-specific `Gamma` extraction remains warning-only. A two-cell
+  and component-specific `Gamma` extraction remains warning-only. A separate
+  high-overlap non-identical gate now mixes the non kernel 85% toward the phy
+  kernel before simulating (`similarity = 0.999876`): the two-kernel fit
+  detects signal over either one-component comparator, but component
+  `Gamma_shape` recovery fails the ordinary separation thresholds, so this is
+  failure-calibration evidence rather than promoted recovery. A two-cell
   moderate-overlap grid, with the non
   association pattern blended 30% and 35% toward the phy pattern, now also
   recovers both component `Gamma_shape` matrices while keeping cross-component
@@ -71,8 +196,8 @@
   claim boundary rather than a promotion. PARTIAL (`COE-04`): broader/harder
   moderate-overlap calibration,
   broader high-overlap truth-recovery/failure calibration beyond the
-  collapse-equivalence and warning gates, formal null-threshold calibration
-  beyond this diagnostic grid, explicit Psi
+  collapse-equivalence, non-identical failure-calibration, and warning gates,
+  formal null-threshold calibration beyond this diagnostic grid, explicit Psi
   redesign/deprecation, in-engine `rho` estimation, `rho` profile intervals,
   calibration, and broader non-Gaussian/mixed-family recovery remain gated. The
   one-name `kernel_*()` path still uses the
@@ -157,7 +282,7 @@
 ## Latent-rank model-selection article (2026-06-09)
 
 * Added the public `model-selection-latent-rank` article, "How many latent
-  dimensions should I fit?", as a worked Gaussian `latent() + unique()` example
+  dimensions should I fit?", as a worked Gaussian default-`latent()` example
   for comparing candidate latent ranks. IN: the article uses a shipped
   deterministic teaching fixture with long and `traits(...)` wide formulas,
   compares a diagonal baseline and `d = 1`, `d = 2`, and `d = 3` candidates
@@ -186,24 +311,26 @@
 
 ## Ordinary Gaussian reaction-norm component (#341, 2026-06-08)
 
-* **`latent(1 + x | unit, d = K) + unique(1 + x | unit)`** and the long-form
-  **`latent(0 + trait + (0 + trait):x | unit, d = K) +
-  unique(0 + trait + (0 + trait):x | unit)`** now fit the ordinary
+* **`latent(1 + x | unit, d = K)`** and the long-form
+  **`latent(0 + trait + (0 + trait):x | unit, d = K)`** now fit the ordinary
   individual-level Gaussian random-regression decomposition. IN: the parser
   routes the augmented LHS to dedicated B-tier TMB blocks with `Lambda_aug` and
-  `Psi_B,aug` over the `2T` `(intercept, slope) x trait` coefficient vector,
-  and `extract_Sigma(level = "unit_slope", part = "shared" / "unique" /
-  "total")` returns `Lambda_aug Lambda_aug^T`, the augmented diagonal, or their
-  sum (RE-12). Evidence: `test-ordinary-latent-random-regression.R` now covers
-  parser classification, long and `traits(...)` wide fits, Gaussian paired
-  `latent + unique` composition, a deterministic Gaussian recovery fixture for
-  the intercept-intercept, slope-slope, and intercept-slope covariance blocks,
-  the unique-only diagonal path, a Poisson latent-only smoke fit, the rank
-  guard, `unit_obs` rejection, mismatched-slope rejection, and the Gaussian-only
-  augmented-`unique()` guard. PARTIAL: non-Gaussian augmented `unique()` remains
-  guarded while non-Gaussian ordinary latent slopes remain latent-only smoke
-  evidence. OUT: bare `(1 + x | g)` random slopes remain reserved, and delta /
-  hurdle families stay outside this slope-covariance lane (FAM-17 / MIX-10).
+  the default diagonal `Psi_B,aug` over the `2T` `(intercept, slope) x trait`
+  coefficient vector, and `extract_Sigma(level = "unit_slope", part =
+  "shared" / "unique" / "total")` returns `Lambda_aug Lambda_aug^T`, the
+  augmented diagonal, or their sum (RE-12). Evidence:
+  `test-ordinary-latent-random-regression.R` and
+  `test-example-behavioural-reaction-norm.R` now cover parser classification,
+  long and `traits(...)` wide fits, Gaussian default composition, explicit
+  `+ unique(1 + x | unit)` compatibility composition, a deterministic Gaussian
+  recovery fixture for the intercept-intercept, slope-slope, and
+  intercept-slope covariance blocks, the explicit compatibility diagonal path, behavioural
+  fixture long/wide agreement, a Poisson latent-only smoke fit, the rank guard,
+  `unit_obs` rejection, mismatched-slope rejection, and the Gaussian-only
+  augmented-`unique()` guard. PARTIAL: non-Gaussian augmented `latent()` remains
+  low-rank-only and non-Gaussian augmented `unique()` remains guarded. OUT: bare
+  `(1 + x | g)` random slopes remain reserved, and delta / hurdle families stay
+  outside this slope-covariance lane (FAM-17 / MIX-10).
 
 ## Behavioural reaction-norm article kept internal pending reader review (#466, 2026-06-08)
 
@@ -213,9 +340,9 @@
   the repeated occasion, long and wide `gllvmTMB()` formulas, diagnostics from
   `check_gllvmTMB()`, an augmented-covariance recovery figure, and
   temperature-specific repeatability curves. The current draft covers Gaussian
-  ordinary `latent + unique` random slopes; non-Gaussian augmented `unique()`,
-  calibrated intervals for slope summaries, and the plain-language reader path
-  remain open before promotion.
+  ordinary `latent()` random slopes with default diagonal `Psi_B,aug`;
+  non-Gaussian augmented diagonal `Psi`, calibrated intervals for slope
+  summaries, and the plain-language reader path remain open before promotion.
 
 ## Structured random-slope article kept internal pending the phylogenetic reader path (#341, 2026-06-08)
 
@@ -338,8 +465,9 @@ section further down.
   | phylo   | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
   | spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 
-  The decomposition mode pairs `latent + unique`:
-  `Sigma = Lambda Lambda^T + diag(psi)`. Math notation uses
+  The ordinary decomposition mode is default `latent()`:
+  `Sigma = Lambda Lambda^T + diag(psi)`. Explicit
+  `latent() + unique()` remains compatibility syntax. Math notation uses
   the Greek letter `\boldsymbol{\Psi}` (bold capital) for the
   unique-variance diagonal matrix and `\psi_t` (italic lowercase,
   subscripted by trait) for the per-trait derived scalar, matching
@@ -374,7 +502,7 @@ section further down.
 
 ### Inference
 
-* `gllvmTMB(REML = TRUE)` adds a narrow Gaussian-only restricted maximum-likelihood pilot. IN: ordinary Gaussian random-intercept fits and Gaussian `latent() + unique()` covariance fits match `glmmTMB(..., REML = TRUE)` log-likelihoods and AIC degrees of freedom in `test-gaussian-reml.R` (MIS-33). PARTIAL: fixed-effect profile CIs are not available for REML fits; use Wald CIs or refit with `REML = FALSE` for ML profiling. PLANNED: non-Gaussian REML, observation weights, `miss_control(response = "include")`, and `mi()` predictor models remain guarded / deferred (MIS-32, MIS-33).
+* `gllvmTMB(REML = TRUE)` adds a narrow Gaussian-only restricted maximum-likelihood pilot. IN: ordinary Gaussian random-intercept fits and Gaussian covariance fits through default `latent()` (with explicit `latent() + unique()` retained as compatibility syntax) match `glmmTMB(..., REML = TRUE)` log-likelihoods and AIC degrees of freedom in `test-gaussian-reml.R` (MIS-33). PARTIAL: fixed-effect profile CIs are not available for REML fits; use Wald CIs or refit with `REML = FALSE` for ML profiling. PLANNED: non-Gaussian REML, observation weights, `miss_control(response = "include")`, and `mi()` predictor models remain guarded / deferred (MIS-32, MIS-33).
 * Maximum-likelihood point estimates via TMB's Laplace approximation remain the default estimator.
 * Profile-likelihood confidence intervals for derived quantities
   (repeatability, communality, phylogenetic signal, pairwise
@@ -633,7 +761,7 @@ meta-analysis; `meta_known_V()` is the deprecated alias. Existing
 
 ### Canonical `confint()` Sigma names (2026-05-22)
 
-* **`confint()`** now accepts canonical Sigma parameter names `parm = "Sigma_unit"` and `parm = "Sigma_unit_obs"` alongside the legacy aliases `"Sigma_B"` and `"Sigma_W"` (CI-02 / CI-03; underlying extraction EXT-01). IN: users can request unit- and unit-observation covariance intervals with the same naming used by `extract_Sigma(level = "unit")` and `extract_Sigma(level = "unit_obs")`; returned `parameter` labels follow the requested `parm` so existing scripts keep their legacy labels. PARTIAL: profile intervals for full latent + unique Sigma entries still fall back to bootstrap, and non-Gaussian bootstrap calibration remains experimental under EXT-13 / CI-10. PLANNED: richer derived-profile intervals and broader calibration evidence remain M3 work.
+* **`confint()`** now accepts canonical Sigma parameter names `parm = "Sigma_unit"` and `parm = "Sigma_unit_obs"` alongside the legacy aliases `"Sigma_B"` and `"Sigma_W"` (CI-02 / CI-03; underlying extraction EXT-01). IN: users can request unit- and unit-observation covariance intervals with the same naming used by `extract_Sigma(level = "unit")` and `extract_Sigma(level = "unit_obs")`; returned `parameter` labels follow the requested `parm` so existing scripts keep their legacy labels. PARTIAL: profile intervals for full decomposed Sigma entries still fall back to bootstrap, and non-Gaussian bootstrap calibration remains experimental under EXT-13 / CI-10. PLANNED: richer derived-profile intervals and broader calibration evidence remain M3 work.
 
 ### Inference, fitting robustness, and the validation milestone surface
 
@@ -643,7 +771,7 @@ meta-analysis; `meta_known_V()` is the deprecated alias. Existing
 
 ### Bootstrap covariance scale control (M3.3a, 2026-05-19)
 
-* **`bootstrap_Sigma()`** gains `link_residual = c("auto", "none")`, matching `extract_Sigma()` so bootstrap point estimates and refit summaries can either include family/link implicit residuals (`"auto"`, the existing default) or report the fitted latent + unique covariance only (`"none"`). IN: mixed-family bootstrap refits still preserve per-row family dispatch (MIX-08) and the default link-residual formulas remain covered (MIX-09). PARTIAL: non-Gaussian bootstrap inference remains experimental under EXT-13 / CI-08 / CI-10 until the M3 target-explicit grid is rerun with the corrected `Sigma_unit_diag` convention.
+* **`bootstrap_Sigma()`** gains `link_residual = c("auto", "none")`, matching `extract_Sigma()` so bootstrap point estimates and refit summaries can either include family/link implicit residuals (`"auto"`, the existing default) or report the fitted model covariance without link-residual additions (`"none"`). IN: mixed-family bootstrap refits still preserve per-row family dispatch (MIX-08) and the default link-residual formulas remain covered (MIX-09). PARTIAL: non-Gaussian bootstrap inference remains experimental under EXT-13 / CI-08 / CI-10 until the M3 target-explicit grid is rerun with the corrected `Sigma_unit_diag` convention.
 
 ### New exports (Phase 1b validation milestone)
 

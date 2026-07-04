@@ -4,7 +4,14 @@
 \alias{spatial}
 \title{Spatial random field: lme4-bar mode-dispatch wrapper}
 \usage{
-spatial(formula, mesh = NULL, coords = NULL, mode = NULL, d = 1)
+spatial(
+  formula,
+  mesh = NULL,
+  coords = NULL,
+  mode = NULL,
+  d = 1,
+  unique = FALSE
+)
 }
 \arguments{
 \item{formula}{An lme4-bar formula. The bar's RHS is the spatial

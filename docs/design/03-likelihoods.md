@@ -139,15 +139,14 @@ The random-effects block decomposes as:
   + \boldsymbol\lambda_t^\top \mathbf{u}_{g(i)}$ on the link scale.
 
 - **Ordinary augmented Gaussian random regression** from
-  `latent(0 + trait + (0 + trait):x | unit, d = K) +
-  unique(0 + trait + (0 + trait):x | unit)` or the equivalent
-  `traits(...)` shorthand `latent(1 + x | unit, d = K) +
-  unique(1 + x | unit)` (RE-12): the coefficient vector has
+  `latent(0 + trait + (0 + trait):x | unit, d = K)` or the
+  equivalent `traits(...)` shorthand
+  `latent(1 + x | unit, d = K)` (RE-12): the coefficient vector has
   $C = 2T$ rows ordered as `(intercept, slope) x trait`. The
   shared component uses
   $\Lambda_{\text{aug}} \in \mathbb{R}^{C \times K}$ and unit
-  scores $\mathbf{z}_i \sim \mathcal{N}(0, I_K)$. The unique
-  component uses independent unit-level coefficients
+  scores $\mathbf{z}_i \sim \mathcal{N}(0, I_K)$. The default
+  diagonal Psi companion uses independent unit-level coefficients
   $\mathbf{q}_i \sim \mathcal{N}(0, \Psi_{B,\text{aug}})$, where
   $\Psi_{B,\text{aug}}$ is diagonal with entries
   $\psi_{B,\text{aug},c}^2$. Row-level designs `Z_B_lat` and
@@ -157,8 +156,9 @@ The random-effects block decomposes as:
   `sd_B_slope`, and `Sigma_B_unique_slope`; the extractor composes
   `part = "total"` as
   $\Lambda_{\text{aug}}\Lambda_{\text{aug}}^\top +
-  \Psi_{B,\text{aug}}$. Non-Gaussian augmented `unique()` remains
-  guarded in this slice.
+  \Psi_{B,\text{aug}}`. Explicit augmented `unique()` remains
+  Gaussian-only compatibility syntax; non-Gaussian augmented diagonal
+  Psi remains guarded in this slice.
 
 - **Trait-unique diagonal** from `unique(0 + trait | g)`:
   $\boldsymbol\Psi = \text{diag}(\psi_1^2, \ldots, \psi_T^2)$
@@ -260,6 +260,30 @@ range parameter. Mesh nodes' field values are linearly
 interpolated to observation locations via a sparse projection
 matrix $A_{n \times n_\text{mesh}}$. Status: `claimed`; Phase 0B
 verifies via a single-trait sdmTMB cross-comparison.
+
+For `spatial_latent(0 + trait | sites, d = K)`, the shared fields
+use the unscaled base SPDE prior and the scale is absorbed into the
+trait loadings $\Lambda_\text{spde}$ for identifiability. The
+optional `unique = TRUE` fold keeps a second per-trait SPDE block
+alive:
+
+$$
+\mathbf{u}_t \sim \mathcal{N}\left(
+  \mathbf{0}, \tau_t^{-2} Q^{-1}
+\right),
+\qquad
+\Sigma_\text{spde}
+  = \Lambda_\text{spde}\Lambda_\text{spde}^\top
+    + \operatorname{diag}(\tau_t^{-2}).
+$$
+
+This is the spatial analogue of the ordinary / phylogenetic
+`latent + Psi` decomposition, but note the SPDE scale: the unique
+diagonal on the trait covariance scale is `exp(-2 * log_tau_spde)`,
+not `exp(2 * log_tau_spde)`. Direct profile targets can still
+profile `tau_spde`; derived spatial correlation profiles must use the
+same total covariance as `extract_Sigma(level = "spatial",
+part = "total")`.
 
 ## `meta_V()` additive sampling-covariance contribution
 

@@ -1,11 +1,12 @@
 ---
-title: "Simulation recovery: validated DGP grid"
+title: "Simulation recovery: M3 smoke grid"
+tier: 3 # internal coverage triage until CI-08 and CI-10 pass
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Simulation recovery: validated DGP grid}
+  %\VignetteIndexEntry{Simulation recovery: M3 smoke grid}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -25,27 +26,34 @@ knitr::opts_chunk$set(
 )
 ```
 
-This article is for a reader who wants to know **whether the
-confidence intervals reported by `gllvmTMB()` actually contain the
-truth at their nominal rate**. The standard quantitative-genetic and
-psychometric tutorials don't usually answer this question — they
-demonstrate that fits *converge* and *recover point estimates*, but
-not whether the CIs *cover*.
+> **Internal article gate.** This page is a Tier 3 coverage-triage article.
+> It shows the M3 smoke-grid machinery and the under-coverage pattern, but it
+> is not evidence that interval coverage has passed. CI-08 and CI-10 remain
+> partial in the validation-debt register.
 
-Coverage validation is the M3 milestone in `gllvmTMB`'s roadmap:
-empirical coverage rates ≥ 94% (the audit-1 exit gate) at 95%
-nominal across Gaussian, binomial, nbinom2, ordinal-probit, and
-mixed-family fits.
+This article is for a reader who wants to know **whether the confidence
+intervals reported by `gllvmTMB()` actually contain the truth at their nominal
+rate**. The standard quantitative-genetic and psychometric tutorials usually
+demonstrate convergence and point-estimate recovery; this internal page tracks
+the harder coverage question.
+
+Coverage validation is an open M3 target in `gllvmTMB`'s roadmap: empirical
+coverage rates at or above 94% for nominal 95% intervals across Gaussian,
+binomial, nbinom2, ordinal-probit, and mixed-family fits. The current register
+status is **partial**, not covered. The M3.3 production run completed, but did
+not clear the gate: only the Gaussian `d = 1` and `d = 3` cells passed, 13 of
+15 cells stayed below gate, and 236 of 3000 replicate fits failed. No
+production RDS was promoted to `inst/extdata/`.
 
 The full M3 grid is described in
 [Design 42](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/42-m3-dgp-grid.md):
 5 family cells × 3 latent ranks × R = 200 replicates = 3000 fits,
 with profile-likelihood CIs on each free parameter. This article
 shows **the M3.3a smoke output** — a 15-cell × 10-rep version of
-that grid with **profile-likelihood CIs** on per-trait
-unique-tier variance $\psi_t = \mathrm{sd\_B}_t^2$. The M3.3
-production grid scales R = 10 to R = 200 (Monte Carlo error
-±15 pp → ±3 pp at the 95% level).
+that grid with **profile-likelihood CIs** on per-trait diagonal `Psi`
+variance $\psi_t = \mathrm{sd\_B}_t^2$. Treat the smoke output as triage
+evidence: it shows which surfaces are hard, not that interval coverage is
+validated.
 
 ## The target
 
@@ -55,7 +63,7 @@ and $\boldsymbol\psi_{\mathrm{true}} \sim \mathrm{Gamma}(2, 2)^5$
 per replicate, then asks: does the fit's profile-likelihood CI
 on each per-trait $\psi_t$ contain the generative truth? $\psi_t$
 is the **rotation-invariant target** — it's the per-trait
-unique-tier variance, identifiable up to non-rotational sign +
+diagonal `Psi` variance, identifiable up to non-rotational sign +
 permutation. The shared-Lambda contribution to the full
 $\Sigma_{\mathrm{unit}}$ diagonal is rotation-ambiguous on
 individual loading entries; the **communality** $c_t^2 =
@@ -74,9 +82,9 @@ Per replicate, the DGP samples a fresh
 $\boldsymbol\Lambda_{\mathrm{true}} \sim \mathrm{Uniform}(-1.5, 1.5)^{5 \times d}$
 and $\boldsymbol\psi_{\mathrm{true}} \sim \mathrm{Gamma}(2, 2)^5$,
 simulates 60 units × 5 traits from that truth, fits `gllvmTMB` with
-the matching `latent() + unique()` formula and family, and records
-whether the fit's profile-CI on each per-trait $\psi_t$ contains
-the generative truth $\boldsymbol\psi_{\mathrm{true}, t}$.
+the matching default-`latent()` formula and family, and records whether
+the fit's profile-CI on each per-trait $\psi_t$ contains the generative
+truth $\boldsymbol\psi_{\mathrm{true}, t}$.
 Per-family non-Gaussian responses: binomial uses `rbinom(size = 1)`;
 nbinom2 uses `rnbinom(mu, size = phi)` with `phi ~ Gamma(5, 5)`;
 ordinal-probit uses 4 categories with quantile-spaced cutpoints.
@@ -127,20 +135,21 @@ Interpretation:
   one trait carries little variance signal. M3.4 (boundary
   regimes) and M3.5 (derived-quantity coverage) work on these.
 
-The M3.3 production pass will:
+A future recovery pass must:
 
-1. Increase R = 10 → R = 200 (Monte Carlo error ±15 pp → ±3 pp
-   at the 95 % level — current 0.95 estimates at R = 10 can't
-   be distinguished from 0.92 or 0.98 statistically).
-2. Run in parallel (`future::multisession`); expected
-   ~1.5 h on 8 cores.
-3. Land in CI via `workflow_dispatch` so re-runs don't cost
-   local compute.
-4. Extend coverage to derived quantities (communality,
+1. Keep R = 200 or larger so Monte Carlo error is narrow enough for gate
+   decisions.
+2. Diagnose and reduce replicate-fit failures before any result is promoted.
+3. Use target-explicit coverage surfaces, including total `Sigma_unit[tt]`
+   where Design 50 requires it.
+4. Land a diagnostic report beside the production artefact before moving
+   CI-08 or CI-10.
+5. Extend coverage to derived quantities (communality,
    repeatability, phylo signal) — M3.5.
 
-When M3.3 (production scale, R = 200) lands, this article will
-re-render with tighter coverage estimates.
+When a later production pass clears its gates, this article can re-render with
+promoted coverage estimates. Until then, it is an internal failure-analysis
+page.
 
 ## Inspecting individual fits
 
@@ -178,10 +187,9 @@ runs; what M3.3a surfaces is the **inference-quality pattern**:
   unstable. M3.4 + a possible engine-side fix for dispersion
   identifiability are next.
 
-These are real inference patterns, not placeholder artefacts.
-M3.3 (production at R = 200) will tighten the estimates; the
-qualitative ranking (Gaussian/binomial near-nominal,
-counts/ordinal under-covering) is unlikely to change.
+These are real inference patterns, not placeholder artefacts. They should be
+treated as failure-analysis evidence until the production grid, target
+definition, and replicate-fit failure rate all pass their gates.
 
 ## Reproducing the smoke run
 
@@ -210,14 +218,17 @@ Output goes to `dev/precomputed/m3-coverage-grid.rds` (long-format,
 
 Per Design 42 §6 honest-scope boundaries, the M3 milestone covers:
 
-- ✅ **Pipeline machinery (M3.2)** — this article, smoke output.
-- ⚪ **Per-family profile CI accuracy (M3.3)** — replace Wald
+- **Pipeline machinery (M3.2):** this article and smoke output.
+- **Per-family profile CI accuracy (M3.3):** replace Wald
   placeholder with proper inference; expand to all 5 families.
-- ⚪ **Boundary regimes (M3.4)** — sparse-Bernoulli at d=3;
+- **Boundary regimes (M3.4):** sparse-Bernoulli at d=3;
   ordinal-probit at d=2 with rare categories.
-- ⚪ **Derived-quantity coverage (M3.5)** — communality,
+- **Derived-quantity coverage (M3.5):** communality,
   repeatability, phylogenetic signal.
-- ⚪ **M3 close gate (M3.7)** — Ada + Shannon coordination audit.
+- **M3 close gate (M3.7):** Ada + Shannon coordination audit.
+
+CI-08 and CI-10 remain partial. This page must not be used as release
+readiness, broad interval calibration, or scientific coverage evidence.
 
 Out of scope for M3 entirely:
 
@@ -237,9 +248,9 @@ Out of scope for M3 entirely:
 - [`confint_inspect()`](../reference/confint_inspect.html) —
   visual diagnosis when coverage falls short.
 - [Profile-likelihood CIs](profile-likelihood-ci.html) — the
-  inference method M3.3 validates.
+  inference method M3.3 is trying to validate.
 - [Troubleshooting profile](troubleshooting-profile.html) — common
   patterns when profile coverage is unexpectedly low.
 - [Animal model](animal-model.html) — quantitative-genetic worked
-  example using the same `latent() + unique()` machinery this
-  article validates.
+  example using the same default-`latent()` diagonal-`Psi` machinery
+  this article audits.

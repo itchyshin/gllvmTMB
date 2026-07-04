@@ -11,7 +11,7 @@ make_simple <- function(seed = 42) {
   )$data
 }
 
-test_that("New canonical syntax (latent + unique) fits and matches old (rr + diag)", {
+test_that("explicit latent plus unique compatibility pair matches old rr plus diag aliases", {
   df <- make_simple()
   fit_new <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait +
@@ -139,7 +139,7 @@ test_that("`unique(..., common = TRUE)` ties trait variances to one shared param
   ## With `common = TRUE`, all traits should share one sd_B value.
   fit_common <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 2) +
+            latent(0 + trait | site, d = 2, residual = FALSE) +
             unique(0 + trait | site, common = TRUE),
     data = sim$data, unit = "site"
   )))
@@ -151,7 +151,7 @@ test_that("`unique(..., common = TRUE)` ties trait variances to one shared param
   ## Free version has T-1 more parameters.
   fit_free <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 2) +
+            latent(0 + trait | site, d = 2, residual = FALSE) +
             unique(0 + trait | site),
     data = sim$data, unit = "site"
   )))
@@ -171,15 +171,65 @@ test_that("`unique(..., common = TRUE)` works at the W tier too", {
   )
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 2) +
+            latent(0 + trait | site, d = 2, residual = FALSE) +
             unique(0 + trait | site) +
-            latent(0 + trait | site_species, d = 1) +
+            latent(0 + trait | site_species, d = 1, residual = FALSE) +
             unique(0 + trait | site_species, common = TRUE),
     data = sim$data
   )))
   expect_equal(fit$opt$convergence, 0L)
   sds_W <- as.numeric(fit$report$sd_W)
   expect_true(all(abs(sds_W - sds_W[1L]) < 1e-10))
+})
+
+test_that("latent(common = TRUE) is the paired common-Psi replacement", {
+  df <- make_simple(seed = 20260618)
+
+  fit_latent_common <- suppressMessages(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+            latent(0 + trait | site, d = 2, common = TRUE),
+    data = df, unit = "site"
+  ))
+  fit_legacy_common <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+            latent(0 + trait | site, d = 2, residual = FALSE) +
+            unique(0 + trait | site, common = TRUE),
+    data = df, unit = "site"
+  )))
+
+  expect_equal(fit_latent_common$opt$convergence, 0L)
+  expect_equal(fit_legacy_common$opt$convergence, 0L)
+  expect_equal(
+    fit_latent_common$opt$objective,
+    fit_legacy_common$opt$objective,
+    tolerance = 1e-10
+  )
+  expect_true(isTRUE(fit_latent_common$use$diag_B))
+  expect_false(isTRUE(fit_latent_common$use$indep_B))
+  sds <- as.numeric(fit_latent_common$report$sd_B)
+  expect_lt(max(abs(sds - sds[1L])), 1e-10)
+})
+
+test_that("latent(common = TRUE) rejects removed or augmented Psi targets", {
+  df <- make_simple(seed = 20260619)
+  df$temperature <- rnorm(nrow(df))
+
+  expect_error(
+    gllvmTMB::gllvmTMB(
+      value ~ 0 + trait +
+              latent(0 + trait | site, d = 2, residual = FALSE, common = TRUE),
+      data = df, unit = "site"
+    ),
+    regexp = "requires.*residual = TRUE"
+  )
+
+  expect_error(
+    gllvmTMB::gllvmTMB(
+      value ~ 0 + trait + latent(1 + temperature | site, d = 1, common = TRUE),
+      data = df, unit = "site"
+    ),
+    regexp = "not implemented.*augmented ordinary"
+  )
 })
 
 test_that("source-specific latent lv predictors fail loudly", {
@@ -215,6 +265,24 @@ test_that("source-specific latent lv predictors fail loudly", {
   }
 })
 
+test_that("spatial_latent(unique = TRUE) carries the unique-diagonal parser marker", {
+  f_unique <- gllvmTMB:::desugar_brms_sugar(
+    value ~ 0 + trait +
+      spatial_latent(0 + trait | coords, d = 1, unique = TRUE)
+  )
+  txt_unique <- paste(deparse(f_unique), collapse = " ")
+  expect_match(txt_unique, ".spatial_latent = TRUE", fixed = TRUE)
+  expect_match(txt_unique, ".spatial_unique_diag = TRUE", fixed = TRUE)
+
+  f_low_rank <- gllvmTMB:::desugar_brms_sugar(
+    value ~ 0 + trait +
+      spatial_latent(0 + trait | coords, d = 1)
+  )
+  txt_low_rank <- paste(deparse(f_low_rank), collapse = " ")
+  expect_match(txt_low_rank, ".spatial_latent = TRUE", fixed = TRUE)
+  expect_match(txt_low_rank, ".spatial_unique_diag = FALSE", fixed = TRUE)
+})
+
 test_that("PGLLVM foot-gun: phylo_latent + latent/unique without `unit = species` errors", {
   set.seed(7)
   n_sp <- 20
@@ -231,12 +299,12 @@ test_that("PGLLVM foot-gun: phylo_latent + latent/unique without `unit = species
   levels(df$species) <- tree$tip.label
 
   expect_error(
-    gllvmTMB::gllvmTMB(
+    suppressWarnings(gllvmTMB::gllvmTMB(
       value ~ 0 + trait + phylo_latent(species, d = 2) +
               latent(0 + trait | species, d = 1) +
               unique(0 + trait | species),
       data = df, phylo_tree = tree
-    ),
+    )),
     regexp = "PGLLVM-style|unit ="
   )
 })
@@ -262,6 +330,25 @@ test_that("indep(0+trait|g) standalone fits identically to unique(0+trait|g) sta
   ## Use-flag dispatch: indep_B should be TRUE only on the indep fit.
   expect_true(isTRUE(fit_indep$use$indep_B))
   expect_false(isTRUE(fit_unique$use$indep_B))
+})
+
+test_that("indep(common = TRUE) is the standalone scalar diagonal replacement", {
+  df <- make_simple()
+  fit_indep <- suppressMessages(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + indep(0 + trait | site, common = TRUE),
+    data = df
+  ))
+  fit_unique <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + unique(0 + trait | site, common = TRUE),
+    data = df
+  )))
+
+  expect_equal(fit_indep$opt$convergence, 0L)
+  expect_equal(fit_unique$opt$convergence, 0L)
+  expect_equal(fit_indep$opt$objective, fit_unique$opt$objective, tolerance = 1e-10)
+  expect_true(isTRUE(fit_indep$use$indep_B))
+  sds <- as.numeric(fit_indep$report$sd_B)
+  expect_lt(max(abs(sds - sds[1L])), 1e-10)
 })
 
 test_that("phylo_indep(0+trait|species) standalone fits identically to phylo_unique(species) standalone", {

@@ -4,9 +4,9 @@
 ## (between-unit "B", within-unit "W", phylogenetic "phy"), and exposes
 ## three "parts": total / shared / unique.
 ##
-## For OLRE (observation-level random effect) fits — i.e. fits with a
-## `unique(0 + trait | <obs-level>)` term where each (trait, obs) cell is
-## unique — see extract_residual_split() in R/extract-omega.R for the
+## For OLRE (observation-level random effect) fits, i.e. fits with a
+## per-row `indep(0 + trait | <obs-level>)` term (or legacy `unique()`
+## spelling), see extract_residual_split() in R/extract-omega.R for the
 ## explicit sigma^2_d / sigma^2_e / sigma^2_total decomposition
 ## (Nakagawa & Schielzeth 2010; Nakagawa, Johnson & Schielzeth 2017).
 
@@ -363,28 +363,29 @@ link_residual_per_trait <- function(fit) {
 #' Extract the implied trait covariance / correlation at one tier
 #'
 #' Implements the decomposition
-#' \deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\boldsymbol\Psi_\text{tier}}_{\text{unique (unique)}},}
-#' where \eqn{\boldsymbol\Lambda} comes from the `latent()` term at that tier
-#' and \eqn{\boldsymbol\Psi} comes from the corresponding `unique()` term. This is the
-#' same decomposition the behavioural-syndromes / phenotypic-integration
-#' literature uses (Bartholomew et al. 2011).
+#' \deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\boldsymbol\Psi_\text{tier}}_{\text{unique}},}
+#' where ordinary `latent()` now carries both \eqn{\boldsymbol\Lambda} and the
+#' diagonal \eqn{\boldsymbol\Psi} companion by default. This is the same
+#' decomposition the behavioural-syndromes / phenotypic-integration literature
+#' uses (Bartholomew et al. 2011).
 #'
-#' ## Why both `latent()` and `unique()` matter
+#' ## When a fit has no Psi component
 #'
-#' If the formula has only `latent(0 + trait | unit, d = K)` and **no**
-#' `unique(0 + trait | unit)`, the engine can only fit the
-#' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component -- there is no
-#' slot for trait-specific *unique* variance \eqn{\boldsymbol\Psi}. Calling
-#' `extract_Sigma(fit, level, part = "total")` then returns just
-#' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}, which **understates the
-#' diagonal** of the true covariance. Any correlations computed from this
-#' incomplete \eqn{\hat{\boldsymbol\Sigma}} are systematically inflated
-#' (the same numerator with a too-small denominator).
+#' If the formula deliberately uses
+#' `latent(0 + trait | unit, d = K, residual = FALSE)`, the engine fits only the
+#' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component. Calling
+#' `extract_Sigma(fit, level, part = "total")` then returns just the shared
+#' component. This is useful for no-residual / rotation-invariant checks, but it
+#' **understates the diagonal** of the usual covariance decomposition. Any
+#' correlations computed from this incomplete
+#' \eqn{\hat{\boldsymbol\Sigma}} are systematically inflated (the same numerator
+#' with a too-small denominator).
 #'
-#' For Gaussian / lognormal / Gamma fits this function emits a one-shot
-#' message reminding the user to add `+ unique(0 + trait | unit)` (or its
-#' within-unit analogue) when this happens. Add the `unique()` term and the
-#' decomposition is complete.
+#' For Gaussian / lognormal / Gamma fits this function emits an advisory note
+#' when a reduced-rank tier has no Psi component. Use the ordinary
+#' `latent(..., residual = TRUE)` default for
+#' \eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}; the
+#' explicit `latent() + unique()` spelling remains compatibility syntax only.
 #'
 #' For non-Gaussian families (binomial, Poisson, Gamma) the latent-scale
 #' residual variance has a closed-form approximation that should be added
@@ -458,9 +459,10 @@ link_residual_per_trait <- function(fit) {
 #' For mixed-family fits the residual is computed *per trait* from the
 #' family of the rows belonging to that trait, then added to the diagonal
 #' of \eqn{\boldsymbol\Sigma} entry-by-entry. The default
-#' `link_residual = "auto"` applies this; `"none"` returns the latent+unique-implied
-#' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi} with no
-#' implicit residual added. For continuous-only Gaussian or lognormal fits
+#' `link_residual = "auto"` applies this; `"none"` returns the fitted model
+#' covariance without link-residual additions
+#' (\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi} where a
+#' latent decomposition is present). For continuous-only Gaussian or lognormal fits
 #' `"auto"` is a no-op (their per-trait \eqn{\sigma^2_d} is zero).
 #'
 #' Citations: Nakagawa & Schielzeth (2010); Nakagawa, Johnson & Schielzeth
@@ -494,9 +496,9 @@ link_residual_per_trait <- function(fit) {
 #'   `Sigma`, giving the marginal latent-scale interpretation; in mixed-
 #'   family fits each trait gets the residual implied by *its* family/link
 #'   (see "Family-aware link residuals" below for the full table).
-#'   `"none"` returns the latent+unique-implied
-#'   \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi} with no
-#'   implicit residual added. For Gaussian or lognormal-only fits this
+#'   `"none"` returns the fitted model covariance without link-residual additions
+#'   (\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi} where a
+#'   latent decomposition is present). For Gaussian or lognormal-only fits this
 #'   argument is effectively a no-op (their implied \eqn{\sigma^2_d = 0}).
 #' @param .skip_warn Internal flag (default `FALSE`). When `TRUE`,
 #'   suppresses the once-per-session deprecation message that the
@@ -507,7 +509,7 @@ link_residual_per_trait <- function(fit) {
 #' @return For `part = "total"` or `"shared"`: a list with components
 #'   `Sigma` (T x T matrix), `R` (T x T correlation matrix; only for
 #'   `"total"`), `level`, `part`, and `note` (character vector of
-#'   advisory messages, e.g. about a missing `unique()` term).
+#'   advisory messages, e.g. about a no-Psi `residual = FALSE` fit).
 #'
 #'   For `part = "unique"`: a list with `s` (length-T named numeric
 #'   vector of unique variances), `level`, `part`, `note`.
@@ -551,7 +553,7 @@ link_residual_per_trait <- function(fit) {
 #' \dontrun{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait +
-#'           latent(0 + trait | unit, d = 2) + unique(0 + trait | unit),
+#'           latent(0 + trait | unit, d = 2),
 #'   data  = df,
 #'   trait = "trait",
 #'   unit  = "unit"
@@ -611,7 +613,11 @@ extract_Sigma <- function(
   if (!is.null(kernel_level)) {
     level <- kernel_level$internal_level
   } else {
-    level <- .normalise_level(level, arg_name = "level", .skip_warn = .skip_warn)
+    level <- .normalise_level(
+      level,
+      arg_name = "level",
+      .skip_warn = .skip_warn
+    )
   }
   part <- match.arg(part)
   link_residual <- match.arg(link_residual)
@@ -621,8 +627,8 @@ extract_Sigma <- function(
 
   ## ---- Ordinary B-tier augmented reaction-norm block -------------------
   ## latent(1 + x | unit, d = K) supplies Lambda_aug Lambda_aug^T over the
-  ## 2T augmented coefficient vector; unique(1 + x | unit) supplies the paired
-  ## diagonal Psi_B,aug. Rows are interleaved by trait:
+  ## 2T augmented coefficient vector; the default latent() Psi fold supplies
+  ## the paired diagonal Psi_B,aug. Rows are interleaved by trait:
   ## (intercept.t1, slope.x.t1, intercept.t2, slope.x.t2, ...).
   if (identical(level, "B_slope")) {
     has_shared <- isTRUE(fit$use$rr_B_slope)
@@ -641,18 +647,24 @@ extract_Sigma <- function(
     }
     if (identical(part, "unique") && !has_unique) {
       cli::cli_abort(c(
-        "Fit has no augmented ordinary {.fn unique} random-regression term for {.code part = \"unique\"}.",
-        ">" = "Use {.code unique(1 + x | unit)} to estimate {.code Psi_B,aug}, or request {.code part = \"shared\"} for a latent-only fit."
+        "Fit has no augmented ordinary diagonal Psi term for {.code part = \"unique\"}.",
+        ">" = "Use the default {.code latent(1 + x | unit, d = K)} fit to estimate {.code Psi_B,aug}; only use {.code latent(..., residual = FALSE)} for the no-Psi subset."
       ))
     }
     slope_col <- fit$use$rr_B_slope_col %||%
-      fit$use$diag_B_slope_col %||% "x"
+      fit$use$diag_B_slope_col %||%
+      "x"
     aug_names <- as.vector(rbind(
       paste0("intercept.", trait_names),
       paste0("slope.", slope_col, ".", trait_names)
     ))
     n_aug <- length(aug_names)
-    Sigma_shared <- matrix(0.0, n_aug, n_aug, dimnames = list(aug_names, aug_names))
+    Sigma_shared <- matrix(
+      0.0,
+      n_aug,
+      n_aug,
+      dimnames = list(aug_names, aug_names)
+    )
     if (has_shared) {
       Sigma_shared <- fit$report$Sigma_B_slope
       if (is.null(Sigma_shared)) {
@@ -669,7 +681,7 @@ extract_Sigma <- function(
       sd_unique <- fit$report$sd_B_slope
       if (is.null(sd_unique)) {
         cli::cli_abort(
-          "Augmented ordinary unique random-regression fit has no reported {.code sd_B_slope}."
+          "Augmented ordinary diagonal-compatibility random-regression fit has no reported {.code sd_B_slope}."
         )
       }
       S_unique <- as.numeric(sd_unique)^2
@@ -684,7 +696,7 @@ extract_Sigma <- function(
     if (has_shared && !has_unique && identical(part, "total")) {
       notes <- c(
         notes,
-        "No augmented unique() term is present, so total equals the shared low-rank component."
+        "No augmented diagonal Psi term is present, so total equals the shared low-rank component."
       )
     }
     if (has_unique && !has_shared && identical(part, "total")) {
@@ -707,7 +719,11 @@ extract_Sigma <- function(
       Sigma_shared + diag(S_unique, nrow = n_aug)
     }
     D <- sqrt(diag(Sigma))
-    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    R <- if (all(is.finite(D)) && all(D > 0)) {
+      Sigma / outer(D, D)
+    } else {
+      NA * Sigma
+    }
     rownames(R) <- colnames(R) <- aug_names
     return(list(
       Sigma = Sigma,
@@ -764,7 +780,11 @@ extract_Sigma <- function(
     dep_names <- as.vector(row_block)
     rownames(Sigma) <- colnames(Sigma) <- dep_names
     D <- sqrt(diag(Sigma))
-    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    R <- if (all(is.finite(D)) && all(D > 0)) {
+      Sigma / outer(D, D)
+    } else {
+      NA * Sigma
+    }
     rownames(R) <- colnames(R) <- dep_names
     return(list(
       Sigma = Sigma,
@@ -801,10 +821,12 @@ extract_Sigma <- function(
   ## dep case is handled by its own block above. Honest scope (#373): this
   ## surfaces the FREE-correlation `unique` 2x2; for `phylo_indep` the cor is
   ## pinned to 0 by the engine, so the off-diagonal returns ~0.
-  if (identical(level, "phy") &&
-        !isTRUE(fit$use$phylo_dep_slope) &&
-        !is.null(fit$report$cor_b)) {
-    sd_b  <- as.numeric(fit$report$sd_b)
+  if (
+    identical(level, "phy") &&
+      !isTRUE(fit$use$phylo_dep_slope) &&
+      !is.null(fit$report$cor_b)
+  ) {
+    sd_b <- as.numeric(fit$report$sd_b)
     rho_v <- as.numeric(fit$report$cor_b)
     if (length(sd_b) != 2L) {
       cli::cli_abort(paste0(
@@ -814,14 +836,23 @@ extract_Sigma <- function(
     }
     rho <- if (length(rho_v) >= 1L) rho_v[1L] else 0
     Sigma <- matrix(
-      c(sd_b[1L]^2,                  rho * sd_b[1L] * sd_b[2L],
-        rho * sd_b[1L] * sd_b[2L],   sd_b[2L]^2),
-      nrow = 2L, ncol = 2L
+      c(
+        sd_b[1L]^2,
+        rho * sd_b[1L] * sd_b[2L],
+        rho * sd_b[1L] * sd_b[2L],
+        sd_b[2L]^2
+      ),
+      nrow = 2L,
+      ncol = 2L
     )
     slope_names <- c("intercept", "slope")
     rownames(Sigma) <- colnames(Sigma) <- slope_names
     D <- sqrt(diag(Sigma))
-    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    R <- if (all(is.finite(D)) && all(D > 0)) {
+      Sigma / outer(D, D)
+    } else {
+      NA * Sigma
+    }
     rownames(R) <- colnames(R) <- slope_names
     return(list(
       Sigma = Sigma,
@@ -858,9 +889,13 @@ extract_Sigma <- function(
   ## Scale note: Sigma_field is on the SPDE parameterisation scale (tau
   ## absorbed; NOT a per-site marginal). To convert to the marginal field SD:
   ## sigma_marg = sd_spde_b / (sqrt(4*pi) * kappa_s).
-  if (isTRUE(fit$use$spde_slope) && !isTRUE(fit$use$spde_dep_slope) &&
-        !isTRUE(fit$use$spde_latent_slope) && identical(level, "spde")) {
-    sd_b  <- as.numeric(fit$report$sd_spde_b)
+  if (
+    isTRUE(fit$use$spde_slope) &&
+      !isTRUE(fit$use$spde_dep_slope) &&
+      !isTRUE(fit$use$spde_latent_slope) &&
+      identical(level, "spde")
+  ) {
+    sd_b <- as.numeric(fit$report$sd_spde_b)
     rho_v <- as.numeric(fit$report$cor_spde_b)
     kappa_s <- as.numeric(fit$report$kappa_s)
     if (length(sd_b) != 2L) {
@@ -871,19 +906,30 @@ extract_Sigma <- function(
     }
     rho <- if (length(rho_v) >= 1L) rho_v[1L] else 0
     Sigma <- matrix(
-      c(sd_b[1L]^2,                  rho * sd_b[1L] * sd_b[2L],
-        rho * sd_b[1L] * sd_b[2L],   sd_b[2L]^2),
-      nrow = 2L, ncol = 2L
+      c(
+        sd_b[1L]^2,
+        rho * sd_b[1L] * sd_b[2L],
+        rho * sd_b[1L] * sd_b[2L],
+        sd_b[2L]^2
+      ),
+      nrow = 2L,
+      ncol = 2L
     )
     field_names <- c("intercept", "slope")
     rownames(Sigma) <- colnames(Sigma) <- field_names
     D <- sqrt(diag(Sigma))
-    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    R <- if (all(is.finite(D)) && all(D > 0)) {
+      Sigma / outer(D, D)
+    } else {
+      NA * Sigma
+    }
     rownames(R) <- colnames(R) <- field_names
     kappa_note <- if (length(kappa_s) >= 1L && is.finite(kappa_s[1L])) {
       sprintf(
-        paste0("kappa_s = %.4g; marginal field SD = sd_spde_b / ",
-               "(sqrt(4*pi) * kappa_s): intercept %.4g, slope %.4g."),
+        paste0(
+          "kappa_s = %.4g; marginal field SD = sd_spde_b / ",
+          "(sqrt(4*pi) * kappa_s): intercept %.4g, slope %.4g."
+        ),
         kappa_s[1L],
         sd_b[1L] / (sqrt(4 * pi) * kappa_s[1L]),
         sd_b[2L] / (sqrt(4 * pi) * kappa_s[1L])
@@ -901,7 +947,8 @@ extract_Sigma <- function(
         "spatial_unique/indep(1 + x | coords): 2x2 cross-field covariance ",
         "Sigma_field over the (intercept, slope) SPDE fields, on the SPDE ",
         "parameterisation scale (tau absorbed, NOT per-site marginal). ",
-        kappa_note, " ",
+        kappa_note,
+        " ",
         "The part / link_residual arguments do not apply to this single ",
         "unstructured block."
       )
@@ -930,7 +977,11 @@ extract_Sigma <- function(
     ))
     rownames(Sigma) <- colnames(Sigma) <- dep_names
     D <- sqrt(diag(Sigma))
-    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    R <- if (all(is.finite(D)) && all(D > 0)) {
+      Sigma / outer(D, D)
+    } else {
+      NA * Sigma
+    }
     rownames(R) <- colnames(R) <- dep_names
     return(list(
       Sigma = Sigma,
@@ -1076,16 +1127,16 @@ extract_Sigma <- function(
     }
     Sigma_int <- fit$report$Sigma_phy_slope_intercept
     Sigma_slope <- fit$report$Sigma_phy_slope_slope
-    Lam_arr <- fit$report$Lambda_phy_slope   # T x K x n_lhs_cols
+    Lam_arr <- fit$report$Lambda_phy_slope # T x K x n_lhs_cols
     rownames(Sigma_int) <- colnames(Sigma_int) <- trait_names
     rownames(Sigma_slope) <- colnames(Sigma_slope) <- trait_names
     return(structure(
       list(
         intercept = Sigma_int,
         slope = Sigma_slope,
-        Lambda_intercept = Lam_arr[, , 1L, drop = TRUE],
+        Lambda_intercept = Lam_arr[,, 1L, drop = TRUE],
         Lambda_slope = if (dim(Lam_arr)[3L] > 1L) {
-          Lam_arr[, , 2L, drop = TRUE]
+          Lam_arr[,, 2L, drop = TRUE]
         } else {
           NULL
         },
@@ -1115,16 +1166,16 @@ extract_Sigma <- function(
     }
     Sigma_int <- fit$report$Sigma_spde_slope_intercept
     Sigma_slope <- fit$report$Sigma_spde_slope_slope
-    Lam_arr <- fit$report$Lambda_spde_slope   # T x K x n_lhs_cols
+    Lam_arr <- fit$report$Lambda_spde_slope # T x K x n_lhs_cols
     rownames(Sigma_int) <- colnames(Sigma_int) <- trait_names
     rownames(Sigma_slope) <- colnames(Sigma_slope) <- trait_names
     return(structure(
       list(
         intercept = Sigma_int,
         slope = Sigma_slope,
-        Lambda_intercept = Lam_arr[, , 1L, drop = TRUE],
+        Lambda_intercept = Lam_arr[,, 1L, drop = TRUE],
         Lambda_slope = if (dim(Lam_arr)[3L] > 1L) {
-          Lam_arr[, , 2L, drop = TRUE]
+          Lam_arr[,, 2L, drop = TRUE]
         } else {
           NULL
         },
@@ -1148,11 +1199,20 @@ extract_Sigma <- function(
       )
     }
     L <- fit$report$Lambda_spde
-    S <- NULL # spatial_latent has no per-trait residual S component
-    notes <- c(
-      notes,
-      "spatial_latent tier has no unique component (no S_spde in the model)."
-    )
+    if (isTRUE(fit$use$spatial_latent_unique) &&
+        !is.null(fit$report$sd_spde_unique)) {
+      S <- as.numeric(fit$report$sd_spde_unique)^2
+      notes <- c(
+        notes,
+        "spatial_latent(unique = TRUE) reports total spatial covariance as Lambda_spde Lambda_spde^T + Psi_spde."
+      )
+    } else {
+      S <- NULL
+      notes <- c(
+        notes,
+        "spatial_latent tier has no unique component (low-rank Lambda_spde Lambda_spde^T only)."
+      )
+    }
   } else if (identical(level, "cluster")) {
     ## Cluster (third-slot) tier: extracts the diagonal of
     ## `unique(0 + trait | <cluster_col>)` (the engine-internal
@@ -1200,7 +1260,7 @@ extract_Sigma <- function(
   rownames(LLt) <- colnames(LLt) <- trait_names
   names(Sd) <- trait_names
 
-  ## ---- The "missing diag()" advisory for continuous families ----------
+  ## ---- No-Psi advisory for continuous families -----------------------
   if (level %in% c("B", "W")) {
     rr_used <- if (level == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
     diag_used <- if (level == "B") {
@@ -1211,28 +1271,17 @@ extract_Sigma <- function(
     fids <- fit$tmb_data$family_id_vec
     has_continuous <- any(fids %in% c(0L, 3L, 4L)) # gaussian / lognormal / Gamma
     if (rr_used && !diag_used && has_continuous && part == "total") {
-      diag_call <- sprintf(
-        "unique(0 + trait | %s)",
-        if (level == "B") {
-          fit$unit_col
-        } else if (!is.null(fit$unit_obs_col)) {
-          fit$unit_obs_col
-        } else {
-          "site_species"
-        }
-      )
       notes <- c(
         notes,
         paste0(
           "Sigma_",
           level_label,
-          " is currently latent-only (Lambda Lambda^T) because no `",
-          diag_call,
-          "` term is in the formula. Trait-specific unique variance is not modelled, ",
-          "so correlations from this matrix overstate cross-trait coupling. ",
-          "For the correct decomposition Sigma = Lambda Lambda^T + Psi, refit with `+ ",
-          diag_call,
-          "`."
+          " is currently no-Psi (Lambda Lambda^T only). Trait-specific ",
+          "unique variance is not modelled, so correlations from this matrix ",
+          "overstate cross-trait coupling. For the standard decomposition ",
+          "Sigma = Lambda Lambda^T + Psi, use ordinary `latent()` with its ",
+          "default `residual = TRUE`; `latent(..., residual = FALSE)` is the ",
+          "explicit no-residual subset."
         )
       )
     }
@@ -1412,17 +1461,24 @@ extract_Sigma <- function(
 #' }
 #'
 #' @export
-extract_Gamma <- function(fit, level, row_traits, col_traits,
-                          scale = c("shape", "effect")) {
+extract_Gamma <- function(
+  fit,
+  level,
+  row_traits,
+  col_traits,
+  scale = c("shape", "effect")
+) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
   scale <- match.arg(scale)
-  if (missing(level) ||
-        !is.character(level) ||
-        length(level) != 1L ||
-        !nzchar(level) ||
-        is.na(level)) {
+  if (
+    missing(level) ||
+      !is.character(level) ||
+      length(level) != 1L ||
+      !nzchar(level) ||
+      is.na(level)
+  ) {
     cli::cli_abort("{.arg level} must be one non-empty character string.")
   }
   row_traits <- .gamma_trait_arg(row_traits, "row_traits")
@@ -1477,6 +1533,195 @@ extract_Gamma <- function(fit, level, row_traits, col_traits,
   Gamma
 }
 
+#' Extract cross-lineage coevolutionary modules
+#'
+#' @description
+#' `extract_coevolution_modules()` standardizes a component-specific
+#' cross-lineage covariance block and decomposes it into coupled trait axes.
+#' For a named coevolution kernel tier, the helper computes
+#' `R = Sigma_row^{-1/2} Gamma Sigma_col^{-1/2}` from the shared covariance
+#' returned by [extract_Sigma()], then applies a singular-value decomposition.
+#'
+#' IN (`COE-04`): this is a point-estimate derived-output helper for fitted
+#' dense-kernel coevolution models whose component-specific `Gamma` blocks are
+#' already extractable with [extract_Gamma()]. PARTIAL: it does not report
+#' uncertainty, choose the biological rank, estimate `rho`, or calibrate null
+#' thresholds. Use simulation, bootstrap, and kernel-separability checks before
+#' treating the returned axes as scientific evidence.
+#'
+#' @param fit A fitted `gllvmTMB_multi` object.
+#' @param level Character scalar naming the fitted covariance tier.
+#' @param row_traits,col_traits Character vectors naming the row-lineage and
+#'   column-lineage traits.
+#' @param scale Character scalar. `"shape"` (default) uses
+#'   `Gamma_shape = Lambda_row Lambda_col^T`; `"effect"` uses the fixed-rho
+#'   `Gamma_effect` available for kernels built by [make_cross_kernel()].
+#' @param n_modules Optional positive integer limiting the number of returned
+#'   singular axes. By default all axes are returned.
+#' @param tol Numerical tolerance for the generalized inverse square roots of
+#'   the within-lineage shared covariance blocks.
+#'
+#' @return A list with `R`, `modules`, `row_axes`, and `col_axes`. `R` is the
+#'   standardized cross-lineage correlation-like block. `modules` has one row
+#'   per singular axis with its singular value and squared-value share.
+#'   `row_axes` and `col_axes` contain trait loadings for each coupled axis.
+#'
+#' @examples
+#' \dontrun{
+#' mods <- extract_coevolution_modules(
+#'   fit,
+#'   level = "phy",
+#'   row_traits = c("host_size", "host_defence"),
+#'   col_traits = c("partner_size", "partner_attack")
+#' )
+#' mods$modules
+#' mods$row_axes
+#' mods$col_axes
+#' }
+#'
+#' @export
+extract_coevolution_modules <- function(
+  fit,
+  level,
+  row_traits,
+  col_traits,
+  scale = c("shape", "effect"),
+  n_modules = NULL,
+  tol = sqrt(.Machine$double.eps)
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+  }
+  scale <- match.arg(scale)
+  if (
+    missing(level) ||
+      !is.character(level) ||
+      length(level) != 1L ||
+      !nzchar(level) ||
+      is.na(level)
+  ) {
+    cli::cli_abort("{.arg level} must be one non-empty character string.")
+  }
+  row_traits <- .gamma_trait_arg(row_traits, "row_traits")
+  col_traits <- .gamma_trait_arg(col_traits, "col_traits")
+  if (!is.null(n_modules)) {
+    if (
+      length(n_modules) != 1L ||
+        is.na(n_modules) ||
+        n_modules < 1 ||
+        n_modules != as.integer(n_modules)
+    ) {
+      cli::cli_abort("{.arg n_modules} must be a positive integer.")
+    }
+    n_modules <- as.integer(n_modules)
+  }
+  if (!is.numeric(tol) || length(tol) != 1L || is.na(tol) || tol <= 0) {
+    cli::cli_abort("{.arg tol} must be one positive number.")
+  }
+
+  shared <- suppressMessages(extract_Sigma(
+    fit,
+    level = level,
+    part = "shared",
+    link_residual = "none"
+  ))
+  Sigma <- shared$Sigma
+  if (!is.matrix(Sigma)) {
+    cli::cli_abort(c(
+      "The requested level has no shared covariance matrix.",
+      "i" = "Refit with a {.fn latent}, {.fn phylo_latent}, {.fn spatial_latent}, or {.fn kernel_latent} term before calling {.fn extract_coevolution_modules}."
+    ))
+  }
+
+  sigma_rows <- rownames(Sigma)
+  missing_rows <- setdiff(row_traits, sigma_rows)
+  missing_cols <- setdiff(col_traits, sigma_rows)
+  if (length(missing_rows) || length(missing_cols)) {
+    bullets <- c("Trait block is not present in the shared covariance matrix.")
+    if (length(missing_rows)) {
+      bullets <- c(
+        bullets,
+        "x" = "{.arg row_traits} not found: {.val {missing_rows}}."
+      )
+    }
+    if (length(missing_cols)) {
+      bullets <- c(
+        bullets,
+        "x" = "{.arg col_traits} not found: {.val {missing_cols}}."
+      )
+    }
+    bullets <- c(
+      bullets,
+      "i" = "Available traits are: {.val {sigma_rows}}."
+    )
+    cli::cli_abort(bullets)
+  }
+
+  .warn_high_overlap_gamma(fit, level)
+
+  Sigma_row <- Sigma[row_traits, row_traits, drop = FALSE]
+  Sigma_col <- Sigma[col_traits, col_traits, drop = FALSE]
+  Gamma <- Sigma[row_traits, col_traits, drop = FALSE]
+  if (identical(scale, "effect")) {
+    Gamma <- .gamma_level_rho(fit, level) * Gamma
+  }
+  R <- .matrix_inv_sqrt(Sigma_row, tol = tol, arg = "row_traits") %*%
+    Gamma %*%
+    .matrix_inv_sqrt(Sigma_col, tol = tol, arg = "col_traits")
+  R <- as.matrix(R)
+  rownames(R) <- row_traits
+  colnames(R) <- col_traits
+
+  sv <- svd(R)
+  n_axis <- length(sv$d)
+  if (!is.null(n_modules)) {
+    n_axis <- min(n_axis, n_modules)
+  }
+  idx <- seq_len(n_axis)
+  module <- paste0("module_", idx)
+  singular <- sv$d[idx]
+  sq_sum <- sum(sv$d^2)
+  share <- if (sq_sum > 0) singular^2 / sq_sum else rep(NA_real_, n_axis)
+  modules <- data.frame(
+    component = level,
+    module = module,
+    singular_value = singular,
+    squared_share = share,
+    stringsAsFactors = FALSE
+  )
+  row_axes <- .coevolution_axis_table(
+    sv$u[, idx, drop = FALSE],
+    traits = row_traits,
+    modules = module,
+    component = level,
+    side = "row"
+  )
+  col_axes <- .coevolution_axis_table(
+    sv$v[, idx, drop = FALSE],
+    traits = col_traits,
+    modules = module,
+    component = level,
+    side = "column"
+  )
+
+  out <- list(
+    R = R,
+    modules = modules,
+    row_axes = row_axes,
+    col_axes = col_axes,
+    level = level,
+    scale = scale,
+    row_traits = row_traits,
+    col_traits = col_traits,
+    note = c(
+      "Point-estimate module decomposition only.",
+      "No uncertainty, rank-selection, rho-estimation, or null-threshold calibration is included."
+    )
+  )
+  class(out) <- c("gllvmTMB_coevolution_modules", "list")
+  out
+}
+
 #' Predict pair-specific cross-lineage covariance
 #'
 #' @description
@@ -1522,17 +1767,24 @@ extract_Gamma <- function(fit, level, row_traits, col_traits,
 #' }
 #'
 #' @export
-predict_cross_covariance <- function(fit, level, row_levels = NULL,
-                                     col_levels = NULL, row_traits,
-                                     col_traits) {
+predict_cross_covariance <- function(
+  fit,
+  level,
+  row_levels = NULL,
+  col_levels = NULL,
+  row_traits,
+  col_traits
+) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
-  if (missing(level) ||
-        !is.character(level) ||
-        length(level) != 1L ||
-        !nzchar(level) ||
-        is.na(level)) {
+  if (
+    missing(level) ||
+      !is.character(level) ||
+      length(level) != 1L ||
+      !nzchar(level) ||
+      is.na(level)
+  ) {
     cli::cli_abort("{.arg level} must be one non-empty character string.")
   }
 
@@ -1614,9 +1866,11 @@ predict_cross_covariance <- function(fit, level, row_levels = NULL,
 
   alias <- .kernel_level_alias(fit, level)
   rho <- alias$rho
-  grid$rho <- if (!is.null(rho) &&
-                    length(rho) == 1L &&
-                    is.finite(rho)) {
+  grid$rho <- if (
+    !is.null(rho) &&
+      length(rho) == 1L &&
+      is.finite(rho)
+  ) {
     as.numeric(rho)
   } else {
     NA_real_
@@ -1650,10 +1904,12 @@ predict_cross_covariance <- function(fit, level, row_levels = NULL,
   K <- NULL
   if (is.list(mats)) {
     K <- mats[[level]]
-    if (is.null(K) &&
-          !is.null(alias$index) &&
-          length(alias$index) == 1L &&
-          is.finite(alias$index)) {
+    if (
+      is.null(K) &&
+        !is.null(alias$index) &&
+        length(alias$index) == 1L &&
+        is.finite(alias$index)
+    ) {
       K <- mats[[as.integer(alias$index)]]
     }
   }
@@ -1670,10 +1926,14 @@ predict_cross_covariance <- function(fit, level, row_levels = NULL,
     K <- as.matrix(K)
   }
   if (!is.matrix(K) || !is.numeric(K)) {
-    cli::cli_abort("The stored {.arg K} for level {.val {level}} is not a numeric matrix.")
+    cli::cli_abort(
+      "The stored {.arg K} for level {.val {level}} is not a numeric matrix."
+    )
   }
   if (is.null(rownames(K)) || is.null(colnames(K))) {
-    cli::cli_abort("The stored {.arg K} for level {.val {level}} must have row and column names.")
+    cli::cli_abort(
+      "The stored {.arg K} for level {.val {level}} must have row and column names."
+    )
   }
   K
 }
@@ -1691,13 +1951,56 @@ predict_cross_covariance <- function(fit, level, row_levels = NULL,
   x
 }
 
+.matrix_inv_sqrt <- function(x, tol, arg) {
+  x <- (x + t(x)) / 2
+  eg <- eigen(x, symmetric = TRUE)
+  scale <- max(abs(eg$values), 1)
+  if (min(eg$values) < -tol * scale) {
+    cli::cli_abort(c(
+      "Cannot standardize the cross-lineage block.",
+      "x" = "The shared covariance block for {.arg {arg}} is not positive semidefinite.",
+      "i" = "Check the fitted component or use a more stable covariance specification."
+    ))
+  }
+  keep <- eg$values > tol * scale
+  if (!any(keep)) {
+    cli::cli_abort(c(
+      "Cannot standardize the cross-lineage block.",
+      "x" = "The shared covariance block for {.arg {arg}} is numerically zero.",
+      "i" = "A coevolutionary module requires nonzero within-lineage shared covariance."
+    ))
+  }
+  values <- ifelse(keep, 1 / sqrt(pmax(eg$values, 0)), 0)
+  out <- eg$vectors %*% diag(values, nrow = length(values)) %*% t(eg$vectors)
+  dimnames(out) <- dimnames(x)
+  out
+}
+
+.coevolution_axis_table <- function(x, traits, modules, component, side) {
+  grid <- expand.grid(
+    trait = traits,
+    module = modules,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  grid$component <- component
+  grid$side <- side
+  grid$loading <- x[cbind(
+    match(grid$trait, traits),
+    match(grid$module, modules)
+  )]
+  grid[, c("component", "side", "module", "trait", "loading")]
+}
+
 .gamma_level_rho <- function(fit, level) {
   alias <- .kernel_level_alias(fit, level)
   rho <- alias$rho
-  if (is.null(alias) ||
+  if (
+    is.null(alias) ||
       is.null(rho) ||
       length(rho) != 1L ||
-      !is.finite(rho)) {
+      !is.finite(rho)
+  ) {
     cli::cli_abort(c(
       "{.arg scale = \"effect\"} requires a fixed cross-lineage {.arg rho}.",
       "i" = "Build the kernel with {.fn make_cross_kernel} so the fitted tier records the supplied {.arg rho}.",
@@ -1815,7 +2118,9 @@ print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
   print(round(x$slope, digits))
   if (length(x$notes)) {
     cat("\n")
-    for (n in x$notes) cat(strwrap(n, prefix = "  "), sep = "\n")
+    for (n in x$notes) {
+      cat(strwrap(n, prefix = "  "), sep = "\n")
+    }
     cat("\n")
   }
   invisible(x)

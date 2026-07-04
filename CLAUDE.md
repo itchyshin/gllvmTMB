@@ -28,12 +28,19 @@ does NOT do" section), see
 
 - Use the canonical 4 x 5 keyword grid (correlation x mode):
   `latent`, `unique`, `indep`, `dep`, `scalar`, with `phylo_*` and
-  `spatial_*` variants plus the `animal_*` known-pedigree row.
+  `spatial_*` variants plus the `animal_*` known-pedigree row. As of
+  2026-06-18, `unique()` / `*_unique()` are soft-deprecated
+  compatibility syntax: new standalone diagonal examples use
+  `indep()` / `*_indep()`, ordinary `latent()` now carries Psi by
+  default, and `latent(..., residual = FALSE)` requests the old
+  no-residual subset. Paired explicit-Psi examples and source-specific
+  `*_unique()` forms remain accepted as compatibility syntax until
+  their own fold/removal slices land.
 - Design 65 adds the generic dense-kernel quartet outside that
   source-specific grid: `kernel_unique()`, `kernel_indep()`,
   `kernel_dep()`, and `kernel_latent()`. C1 must stay
   phylo-equivalent for dense `K` inputs to less than `1e-6`.
-- The decomposition mode is the `latent + unique` pair:
+- The ordinary decomposition mode is `latent`:
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
   Psi; see `decisions.md` 2026-05-14 notation reversal).
 - `phylo_latent + phylo_unique` is the canonical phylogenetic
@@ -44,7 +51,7 @@ does NOT do" section), see
   a deprecated alias. `block_V(study, sampling_var, rho_within)` is
   the helper that builds V.
 - Wide data-frame input uses the simplified `traits(...)` LHS grammar:
-  `traits(t1, t2, ...) ~ 1 + latent(1 | unit, d = K) + unique(1 | unit)`.
+  `traits(t1, t2, ...) ~ 1 + latent(1 | unit, d = K)`.
   The same shorthand covers `indep()`, `dep()`, and `spatial_*()`;
   ordinary `(1 | group)` random intercepts pass through unchanged.
   Long-format `gllvmTMB()` uses the explicit `0 + trait` /
@@ -161,3 +168,6 @@ Anderson, Eric Ward, Philina English, and Lewis Barnett.
 Selective reuse of A-inverse phylogenetic or further SPDE speed
 modules from sister packages requires provenance notes in
 `inst/COPYRIGHTS` and tests around the ported behaviour.
+
+<!-- shinichi-hub -->
+@/Users/z3437171/Dropbox/Github Local/Shinichi/AGENTS.md

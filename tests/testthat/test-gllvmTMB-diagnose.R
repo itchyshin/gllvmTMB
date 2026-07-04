@@ -15,7 +15,7 @@ make_basic_fit <- function(n_ind = 80, seed = 42) {
     value = as.vector(t(Y))
   )
   suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | individual, d = 2),
+    value ~ 0 + trait + latent(0 + trait | individual, d = 2, residual = FALSE),
     data = df,
     site = "individual"
   )))
@@ -67,7 +67,7 @@ test_that("rotation hint is silenced when lambda_constraint is supplied", {
   cnst <- matrix(NA_real_, Tn, 2)
   diag(cnst) <- 1
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | individual, d = 2),
+    value ~ 0 + trait + latent(0 + trait | individual, d = 2, residual = FALSE),
     data = df,
     site = "individual",
     lambda_constraint = list(unit = cnst)

@@ -14,8 +14,7 @@ test_that("sanity_multi() reports the expected fields", {
   fit <- gllvmTMB(
     value ~ 0 +
       trait +
-      latent(0 + trait | site, d = 2) +
-      unique(0 + trait | site),
+      latent(0 + trait | site, d = 2),
     data = sim$data
   )
   flags <- capture.output(out <- sanity_multi(fit))
@@ -73,8 +72,7 @@ test_that("check_gllvmTMB flags weak axes and near-boundary variance terms", {
   fit <- gllvmTMB(
     value ~ 0 +
       trait +
-      latent(0 + trait | site, d = 2) +
-      unique(0 + trait | site),
+      latent(0 + trait | site, d = 2),
     data = sim$data
   )
 
@@ -109,8 +107,7 @@ test_that("diagnostics degrade gracefully when sdreport is unavailable", {
   fit <- gllvmTMB(
     value ~ 0 +
       trait +
-      latent(0 + trait | site, d = 1) +
-      unique(0 + trait | site),
+      latent(0 + trait | site, d = 1),
     data = sim$data
   )
   fit$sd_report <- NULL
@@ -148,8 +145,7 @@ test_that("gllvmTMB records an in-fit TMB::sdreport failure", {
       gllvmTMB(
         value ~ 0 +
           trait +
-          latent(0 + trait | site, d = 1) +
-          unique(0 + trait | site),
+          latent(0 + trait | site, d = 1),
         data = sim$data
       )
     },
@@ -196,8 +192,7 @@ test_that("se = FALSE keeps point estimates and records skipped sdreport status"
   fit <- gllvmTMB(
     value ~ 0 +
       trait +
-      latent(0 + trait | site, d = 1) +
-      unique(0 + trait | site),
+      latent(0 + trait | site, d = 1),
     data = sim$data,
     control = gllvmTMBcontrol(se = FALSE)
   )
@@ -229,8 +224,7 @@ test_that("predict() with re_form ~ . differs from re_form ~ 0", {
   fit <- gllvmTMB(
     value ~ 0 +
       trait +
-      latent(0 + trait | site, d = 1) +
-      unique(0 + trait | site),
+      latent(0 + trait | site, d = 1),
     data = sim$data
   )
   nd <- head(sim$data, 6)

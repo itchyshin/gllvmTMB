@@ -82,8 +82,7 @@ sim <- simulate_site_trait(
   seed = 1
 )
 fit <- gllvmTMB(value ~ 0 + trait +
-                        latent(0 + trait | site, d = 2) +
-                        unique(0 + trait | site),
+                        latent(0 + trait | site, d = 2),
                 data  = sim$data,
                 trait = "trait",
                 unit  = "site")

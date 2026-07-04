@@ -4,7 +4,7 @@
 #   beta_t        | fixed 0 + trait       | trait means      | tidy(fit) / logLik | beta
 #   u_g           | (1 | study)           | N(0, sigma_g^2)  | logLik vs glmmTMB  | sigma_g
 #   z_{s,k}       | latent(..., d = 1)    | Lambda_B z_s     | logLik vs glmmTMB  | Lambda_B
-#   s_{s,t}       | unique(... | site)    | N(0, psi_t)      | logLik vs glmmTMB  | psi_B
+#   s_{s,t}       | latent default Psi    | N(0, psi_t)      | logLik vs glmmTMB  | psi_B
 #   e_{i,t}       | Gaussian residual     | N(0, sigma^2)    | logLik vs glmmTMB  | sigma_eps
 
 make_reml_gaussian_data <- function(seed = 20260609, n_groups = 12L,
@@ -59,7 +59,7 @@ test_that("Gaussian REML matches glmmTMB for an ordinary random intercept", {
   expect_false(anyNA(td$std.error))
 })
 
-test_that("Gaussian REML matches glmmTMB for latent plus unique covariance", {
+test_that("Gaussian REML matches glmmTMB for default latent covariance", {
   skip_if_not_installed("glmmTMB")
 
   Lambda_B <- matrix(c(0.8, 0.4, -0.2), nrow = 3, ncol = 1)
@@ -77,8 +77,7 @@ test_that("Gaussian REML matches glmmTMB for latent plus unique covariance", {
 
   fit <- gllvmTMB(
     value ~ 0 + trait +
-      latent(0 + trait | site, d = 1) +
-      unique(0 + trait | site),
+      latent(0 + trait | site, d = 1),
     data = df,
     REML = TRUE,
     control = gllvmTMBcontrol(se = FALSE)

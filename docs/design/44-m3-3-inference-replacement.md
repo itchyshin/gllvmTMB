@@ -129,8 +129,8 @@ Three-step rollout, dispatched as separate slices:
 - **Engine work**: `dev/m3-grid.R` calls
   `bootstrap_Sigma(fit, n_boot = B, level = "unit",
   link_residual = "none")` per rep. Replace the 20% RSE placeholder
-  with bootstrap percentile bounds on the fitted latent + unique
-  covariance target.
+  with bootstrap percentile bounds on the fitted model covariance target
+  without link-residual additions.
 - **Compute trade-off**: smoke runs B = 30 (fast). Production
   M3.3a-full runs B = 100. Total smoke: 15 × 10 × 30 × ~1.5 s
   ≈ 6750 s ≈ ~2 h. Production: 15 × 200 × 100 × ~1.5 s ≈ 450 000 s.
@@ -254,12 +254,12 @@ to the M3 grid first:
 - optional `ci_method = "wald"` later as a fast diagnostic, not the
   M3.3 gate.
 
-For `latent() + unique()` fits, total `Sigma_unit[tt]` is a nonlinear
-function of rotation-equivalent loadings plus `psi`. A derived
-profile fix-and-refit path is possible, but it is a larger numerical
-slice than the next pilot. Bootstrap total-Sigma rows are therefore
-the next safest primary target; derived profiles can follow if the
-bootstrap pilot exposes a calibration problem.
+For ordinary `latent()` decomposition fits, total `Sigma_unit[tt]` is a
+nonlinear function of rotation-equivalent loadings plus `psi`. A derived
+profile fix-and-refit path is possible, but it is a larger numerical slice
+than the next pilot. Bootstrap total-Sigma rows are therefore the next
+safest primary target; derived profiles can follow if the bootstrap pilot
+exposes a calibration problem.
 
 Curie's pilot cells are:
 
@@ -301,7 +301,8 @@ conditional simulation.
 
 - **REML-based CIs**: not in v0.2.0 (REML is post-CRAN per README).
 - **Multi-matrix animal-model coverage**: ANI-09 follow-up
-  (v0.3.0). M3.3 grid uses `latent() + unique()` only.
+  (v0.3.0). M3.3 grid uses ordinary default `latent()` decomposition fits
+  only.
 - **Random slopes coverage**: pre-engine-support; v0.3.0.
 - **Cross-package agreement**: Phase 5.5.
 - **Bayesian model comparison**: not in scope.

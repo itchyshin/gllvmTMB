@@ -289,8 +289,8 @@ grid schema reserves the slot.
 ### 4.6 Replication structure (do not skip)
 
 RE-09 established that within-cell replicates are **required** to separate
-the unique-`psi` tier from `sigma_eps` in the unit_obs / latent+unique
-configuration (register RE-09; `test-mixed-response-unique-nongaussian.R`,
+the diagonal `Psi` tier from `sigma_eps` in the unit_obs / explicit-Psi
+compatibility configuration (register RE-09; `test-mixed-response-unique-nongaussian.R`,
 `test-tiers-*.R`). The core grid therefore treats "replicates per unit"
 as a *design property of each cell* (>= 2 observations per unit where the
 estimand requires the separation), not merely a free knob. Cells whose

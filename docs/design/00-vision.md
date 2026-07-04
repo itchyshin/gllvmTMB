@@ -70,9 +70,9 @@ form.
 formula grammar, the following five capabilities:
 
 1. **Multivariate GLMMs by reduced-rank regression** -- the
-   `latent() + unique()` decomposition of trait covariance,
-   exposed via a clean **4 × 5** covariance keyword grid (see
-   `docs/design/01-formula-grammar.md`).
+   default `latent()` decomposition of trait covariance,
+   **Σ = ΛΛᵀ + Ψ**, exposed via a clean **4 × 5** covariance
+   keyword grid (see `docs/design/01-formula-grammar.md`).
 2. **Phylogenetic + animal-model GLLVMs** via the same sparse
    `A^{-1}` machinery (Hadfield & Nakagawa 2010 trick). Both the
    `phylo_*` family (species-relatedness from a tree) and the
@@ -136,12 +136,13 @@ A model is defined by:
    meta-analysis (renamed from `meta_known_V()` in 0.2.0; the old
    name is a deprecated alias).
 
-The decomposition mode is the `latent + unique` pair:
+The ordinary decomposition mode is now default `latent()`:
 **Σ = ΛΛᵀ + Ψ**, where `Λ` is a low-rank loading matrix and `Ψ`
 is the diagonal trait-unique-variance matrix (factor-analysis /
-SEM convention; Bollen 1989, Mulaik 2010, lavaan). See the
-`decisions.md` 2026-05-14 notation entry for the historical
-reasoning.
+SEM convention; Bollen 1989, Mulaik 2010, lavaan). The explicit
+`latent() + unique()` spelling remains compatibility syntax for
+older examples and validation fixtures. See the `decisions.md`
+2026-05-14 notation entry for the historical reasoning.
 
 ## Signature Feature
 
@@ -154,10 +155,8 @@ appropriate column name.
 ```r
 gllvmTMB(
   value ~ 0 + trait
-        + latent(0 + trait | site, d = 2)         # share of unit-tier variance
-        + unique(0 + trait | site)                # unit-tier trait-diagonal
-        + latent(0 + trait | site_species, d = 1) # share of unit_obs variance
-        + unique(0 + trait | site_species)        # unit_obs trait-diagonal
+        + latent(0 + trait | site, d = 2)         # unit-tier share + diagonal
+        + latent(0 + trait | site_species, d = 1) # unit_obs share + diagonal
         + phylo_latent(species, d = 1)            # phylogenetic share of unit
         + phylo_unique(species),                  # phylogenetic trait-diagonal
   data     = df,
@@ -176,8 +175,8 @@ passed (or accepted):
 ```r
 gllvmTMB(
   traits(trait_1, trait_2, trait_3) ~ 1
-        + latent(1 | site, d = 2) + unique(1 | site)
-        + latent(1 | site_species, d = 1) + unique(1 | site_species)
+        + latent(1 | site, d = 2)
+        + latent(1 | site_species, d = 1)
         + phylo_latent(species, d = 1) + phylo_unique(species),
   data     = df_wide,
   family   = gaussian(),

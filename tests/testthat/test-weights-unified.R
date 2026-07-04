@@ -40,13 +40,11 @@ phase3_fit_long <- function(long, weights = NULL, extra = FALSE) {
     value ~ 0 +
       trait +
       (0 + trait):env_temp +
-      latent(0 + trait | site, d = 1) +
-      unique(0 + trait | site)
+      latent(0 + trait | site, d = 1)
   } else {
     value ~ 0 +
       trait +
-      latent(0 + trait | site, d = 1) +
-      unique(0 + trait | site)
+      latent(0 + trait | site, d = 1)
   }
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     rhs,

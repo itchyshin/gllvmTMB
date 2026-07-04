@@ -35,8 +35,8 @@ simulate_pgllvm <- function(n_sp = 20, T = 4, sites = 50, K = 2, seed = 1) {
 test_that("Stage 35: phylo_latent(species, d = K) fits and produces a Sigma_phy", {
   skip_unless_ape()
   s <- simulate_pgllvm()
-  fit <- gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = 2),
-                  data = s$data, phylo_vcv = s$Cphy)
+  fit <- gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = 2, vcv = s$Cphy),
+                  data = s$data)
   expect_s3_class(fit, "gllvmTMB_multi")
   expect_equal(fit$opt$convergence, 0L)
   expect_true(fit$use$phylo_rr)
@@ -48,7 +48,7 @@ test_that("Stage 35: phylo_latent(species, d = K) fits and produces a Sigma_phy"
   expect_equal(fit$report$Lambda_phy[1, 2], 0)
 })
 
-test_that("Stage 35: phylo_latent() requires phylo_vcv", {
+test_that("Stage 35: phylo_latent() requires vcv data", {
   skip_unless_ape()
   s <- simulate_pgllvm(n_sp = 10, T = 3, sites = 20)
   expect_error(
@@ -63,10 +63,9 @@ test_that("Stage 35: phylo_latent() can be combined with rr() and diag()", {
   s <- simulate_pgllvm()
   fit <- gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 2) + unique(0 + trait | site) +
-            phylo_latent(species, d = 2),
-    data      = s$data,
-    phylo_vcv = s$Cphy
+            latent(0 + trait | site, d = 2) +
+            phylo_latent(species, d = 2, vcv = s$Cphy),
+    data      = s$data
   )
   expect_equal(fit$opt$convergence, 0L)
   expect_true(fit$use$phylo_rr)

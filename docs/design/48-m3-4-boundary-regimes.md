@@ -69,7 +69,7 @@ $(\psi, \phi)$ trade-off axis.
 **User-facing API** (Boole lead):
 
 ```r
-gllvmTMB(value ~ ... + latent(...) + unique(...),
+gllvmTMB(value ~ ... + latent(...),
          data = df,
          family = nbinom2(),
          control = gllvmTMBcontrol(
@@ -107,8 +107,7 @@ paper also recommends repeated fits with jittered latent starts
 **User-facing API** (Boole lead):
 
 ```r
-gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K) +
-           unique(0 + trait | unit),
+gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K),
          data = df,
          family = gaussian(),
          control = gllvmTMBcontrol(
@@ -173,16 +172,15 @@ gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K) +
 or manually:
 
 ```r
-fit_indep <- gllvmTMB(value ~ ... + unique(0 + trait | unit),
+fit_indep <- gllvmTMB(value ~ ... + indep(0 + trait | unit),
                       data = df, family = gaussian())
 
-fit_full <- gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K) +
-                       unique(0 + trait | unit),
+fit_full <- gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K),
                      data = df, family = gaussian(),
                      control = gllvmTMBcontrol(start_from = fit_indep))
 ```
 
-**Why it helps**: an independent `unique()`-only model is a genuine
+**Why it helps**: an independent diagonal model is a genuine
 GLMM/GLLVM warm start, not a fixed-effect-only GLM start. It estimates
 the fixed effects, per-trait variance starts, and conditional random
 effects on the same grouping tier before the full model has to split
@@ -191,8 +189,8 @@ that signal between `Lambda Lambda^T` and `Psi`.
 **Implemented path** (Boole + Gauss):
 
 1. `start_method = list(method = "indep")` drops B/W `latent()` rr
-   terms from the parsed formula while retaining paired `unique()`
-   terms.
+   terms from the parsed formula while retaining independent diagonal
+   variance terms.
 2. The simpler independent model is fitted once with recursive
    warm-starting disabled.
 3. Matching same-shaped TMB parameters are copied into the full
@@ -381,7 +379,7 @@ activates.
     and their combination.
 - **Q-Boole-3**: should `start_method = list(method = "indep")`
   become the recommended default for Gaussian two-level
-  latent+unique fits?
+  ordinary latent covariance fits?
   - Lean: not automatically. It is now the preferred rescue workflow
     for this regime, but defaulting needs M3 timing and recovery
     evidence because it adds an extra model fit.

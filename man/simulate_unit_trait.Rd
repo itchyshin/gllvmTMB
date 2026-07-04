@@ -33,9 +33,9 @@ if \code{NULL}.}
 the reduced-rank between-unit component. Set to \code{NULL} (default) to omit.}
 
 \item{Lambda_W}{Optional \code{n_traits} x \code{d_W} within-unit loading matrix for
-the reduced-rank observation-level component (matching a \code{unique()} or
-\code{latent()} term on the within-unit grouping). Set to \code{NULL} (default) to
-omit.}
+the reduced-rank observation-level component (matching a default
+\code{latent()} term, or an explicit compatibility \code{unique()} term, on the
+within-unit grouping). Set to \code{NULL} (default) to omit.}
 
 \item{psi_B}{Optional length-\code{n_traits} vector of trait-specific
 between-unit variances. (Lowercase psi matches the factor-analysis
@@ -57,8 +57,8 @@ A list with components:
 \describe{
 \item{\code{data}}{Long-format data frame with one row per (unit,
 observation, trait): columns \code{unit}, \code{observation}, \code{trait}, \code{value},
-and \code{unit_observation} -- the row id matching gllvmTMB's \code{unique()}
-within-unit grouping contract (one level per unit-observation cell).}
+and \code{unit_observation} -- the row id used for a per-observation
+diagonal within-unit grouping (one level per unit-observation cell).}
 \item{\code{truth}}{Named list of true parameter values: \code{alpha}, \code{Lambda_B},
 \code{Lambda_W}, \code{psi_B}, \code{psi_W}, \code{sigma2_eps}.}
 }

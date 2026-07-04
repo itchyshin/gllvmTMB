@@ -83,10 +83,10 @@
 .phylo_signal_H2_from_report <- function(rep_list, T) {
   ## Sigma_phy diagonal (T-vector). Mirrors extract_phylo_signal() in
   ## R/extract-omega.R: Lambda_phy %*% t(Lambda_phy) plus sd_phy_diag^2
-  ## when present (paired phylo_latent + phylo_unique case). For the
-  ## rerouted "phylo_unique only" case, the per-trait phylo variances
-  ## live on the diagonal of Lambda_phy (engine rewrites the lone
-  ## phylo_unique to phylo_rr with diagonal Lambda).
+  ## when present (paired phylo_latent + phylo_unique compatibility case).
+  ## For a rerouted phylo_unique compatibility-only term, the per-trait
+  ## phylo variances live on the diagonal of Lambda_phy (engine rewrites
+  ## the lone phylo_unique to phylo_rr with diagonal Lambda).
   Lphy <- rep_list[["Lambda_phy"]]
   Sigma_phy_diag <- if (!is.null(Lphy)) {
     Lphy <- as.matrix(Lphy)

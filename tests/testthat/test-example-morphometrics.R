@@ -44,6 +44,8 @@ test_that("morphometrics example object has the required contract fields", {
   expect_s3_class(ex$data_wide, "data.frame")
   expect_s3_class(ex$formula_long, "formula")
   expect_s3_class(ex$formula_wide, "formula")
+  expect_no_match(paste(deparse(ex$formula_long), collapse = " "), "unique\\(")
+  expect_no_match(paste(deparse(ex$formula_wide), collapse = " "), "unique\\(")
   expect_named(ex$fit_args, c("trait", "unit", "family"))
   expect_named(
     ex$alignment,

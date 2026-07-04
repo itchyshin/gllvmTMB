@@ -1,5 +1,6 @@
 ---
 title: "Simulation-based verification of gllvmTMB fits"
+tier: 3 # internal diagnostic draft until M3 target-explicit gates close
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -22,6 +23,11 @@ knitr::opts_chunk$set(
   warning  = FALSE
 )
 ```
+
+> **Internal article gate.** This diagnostic draft is kept buildable for
+> maintainers while M3 target-explicit simulation gates remain open. It is not
+> a public validation article and does not by itself make a fit release-ready
+> or scientifically covered.
 
 A multivariate latent-variable fit summarises a lot of data into a
 small set of statements: *here are the loadings, this is the
@@ -98,11 +104,13 @@ df <- sim$data
 
 ### 2b. Fit the model
 
+Ordinary `latent()` includes the diagonal `Psi` companion by default, so this
+single term fits the simulated `Lambda Lambda^T + Psi` target.
+
 ```{r fit}
 fit <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | site, d = 1) +
-          unique(0 + trait | site),
+          latent(0 + trait | site, d = 1),
   data = df,
   trait = "trait"
 )
@@ -205,7 +213,8 @@ the recovery target should live on the same scale.
 
 ## 4. The user's verification checklist
 
-Before treating a fit as publication-ready, run all four:
+Before using a fit as evidence in an article, report, or package claim, run all
+four:
 
 ### 4a. `sanity_multi()` -- structural convergence
 
@@ -244,8 +253,8 @@ Laplace approximation is unreliable for *this* fit. See
 gllvmTMB_check_consistency(fit, n_sim = 50L, seed = 1)
 ```
 
-(Not evaluated inline; the call is slow. Run it locally before
-publication-grade reporting.)
+(Not evaluated inline; the call is slow. Run it locally before external
+reporting.)
 
 ### 4d. `coverage_study()` -- empirical CI coverage
 

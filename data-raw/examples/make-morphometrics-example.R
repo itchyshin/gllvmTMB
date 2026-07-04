@@ -80,19 +80,17 @@ estimands <- data.frame(
 )
 
 formula_long <- value ~ 0 + trait +
-  latent(0 + trait | individual, d = 2) +
-  unique(0 + trait | individual)
+  latent(0 + trait | individual, d = 2)
 
 formula_wide <- traits(length, mass, wing, tarsus, bill) ~ 1 +
-  latent(1 | individual, d = 2) +
-  unique(1 | individual)
+  latent(1 | individual, d = 2)
 
 alignment <- data.frame(
   symbol = c("Sigma", "Lambda", "Psi / psi", "cor(Sigma)", "communality"),
   keyword = c(
-    "latent() + unique()",
+    "latent()",
     "latent(..., d = 2)",
-    "unique()",
+    "default latent() diagonal Psi",
     "extract_correlations()",
     "extract_communality()"
   ),

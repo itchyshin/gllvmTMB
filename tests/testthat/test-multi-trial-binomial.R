@@ -125,7 +125,19 @@ test_that("Multi-trial binomial slope recovery (50 nests x 8 eggs, 30 reps)", {
       error = function(e) NULL
     )
     if (is.null(fit) || fit$opt$convergence != 0L) next
-    sd_rep <- summary(fit$sd_report, "fixed")
+    ## summary.sdreport() computes SEs for every fixed-effect row. A few
+    ## nuisance rows in this small simulation grid can have negative
+    ## cov.fixed diagonals, which emits "NaNs produced" while the target slope
+    ## row remains finite. This recovery test only scores the early-trait
+    ## concealment slope, so filter on that row explicitly below.
+    sd_rep <- withCallingHandlers(
+      summary(fit$sd_report, "fixed"),
+      warning = function(w) {
+        if (identical(conditionMessage(w), "NaNs produced")) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    )
     ## Find the X_fix column corresponding to early-trait conceal slope.
     col_match <- which(fit$X_fix_names == "traitearly:conceal")
     if (length(col_match) != 1L) next
@@ -133,6 +145,7 @@ test_that("Multi-trial binomial slope recovery (50 nests x 8 eggs, 30 reps)", {
     if (length(b_rows) < col_match) next
     est[r] <- sd_rep[b_rows[col_match], "Estimate"]
     se[r]  <- sd_rep[b_rows[col_match], "Std. Error"]
+    if (!is.finite(est[r]) || !is.finite(se[r]) || se[r] <= 0) next
     hits[r] <- as.integer(abs(est[r] - true_slope_early) <= 2 * se[r])
   }
   ok <- hits == 1L

@@ -22,10 +22,11 @@
 #' encode covstruct intent under a strict always-paired-vs-always-alone
 #' convention:
 #'
-#' * `latent + unique` (paired) — the **decomposition** mode:
+#' * `latent + unique` (paired) — the **compatibility decomposition** spelling:
 #'   \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}.
-#'   `unique` standalone is also legitimate (e.g. observation-level
-#'   random effects), but the canonical pattern is paired with `latent`.
+#'   Ordinary `latent()` now carries \eqn{\boldsymbol\Psi} by default, so new
+#'   standalone diagonal code should use `indep()`; `unique()` remains accepted
+#'   as legacy compatibility syntax.
 #' * `indep` (alone) — the **marginal-only** mode: each trait gets its
 #'   own variance, no cross-trait covariance.
 #' * `dep` (alone) — the **full unstructured** mode: \eqn{\boldsymbol\Sigma}
@@ -64,7 +65,8 @@
 #' @param unit_obs Name of the column holding the **within-unit**
 #'   grouping factor — one level per (unit, replicate) cell — used by
 #'   `latent(0 + trait | unit_obs, ...)` and
-#'   `unique(0 + trait | unit_obs)` for the W-tier covariance.
+#'   `indep(0 + trait | unit_obs)` for the W-tier covariance. Legacy
+#'   `unique(0 + trait | unit_obs)` remains accepted as compatibility syntax.
 #'   Default `"site_species"` (the conventional name in joint species
 #'   distribution modelling; safe for site × species data). For other
 #'   domains pass e.g. `unit_obs = "obs"` for behavioural syndromes.
@@ -101,14 +103,15 @@
 #'   once. Default `NULL` (slot inactive). It is a plain crossed/nested
 #'   diagonal grouping only -- it carries no phylogenetic or spatial
 #'   correlation (those stay bound to `cluster` / `coords`). A
-#'   `unique(0 + trait | <cluster2 col>)` term then fits a per-trait
+#'   `indep(0 + trait | <cluster2 col>)` term then fits a per-trait
 #'   variance at this second grouping, exactly as `cluster` does at the
-#'   third slot. Example: `cluster = "site"`, `cluster2 = "year"` to fit
+#'   third slot. Legacy `unique()` spelling remains compatibility syntax.
+#'   Example: `cluster = "site"`, `cluster2 = "year"` to fit
 #'   a site variance and a year variance simultaneously. As with the
 #'   other slots, nesting is not enforced (crossed and nested both fit).
 #'   The cluster2 column must be disjoint from the `unit` / `unit_obs` /
-#'   `cluster` columns (a `unique()` term routes to whichever slot its
-#'   grouping column matches).
+#'   `cluster` columns (a diagonal term routes to whichever slot its grouping
+#'   column matches).
 #' @param species (deprecated) alias for `cluster`. Kept for
 #'   backward compatibility. Use `cluster = ...` in new code.
 #' @param family A `family` object. The multivariate engine
@@ -310,62 +313,59 @@
 #'
 #' "Residual" in a mixed-effects model is **scale-relative**: what
 #' counts as residual variance shifts as you add levels to the model.
-#' In a no-`unique` Gaussian fit, the residual is row-level noise
-#' captured by a single shared `sigma_eps`. Once you add a per-row
-#' `unique(0 + trait | obs)` term, the *row-level* residual is now T
-#' per-trait random-effect variances and `sigma_eps` is auto-suppressed
-#' to avoid double-counting. Once you also add `unique(0 + trait | site)`
-#' on top, the row-level term remains the residual and the `site`-level
-#' term is now an additional, *higher-level* random effect — not a
-#' residual at all. The dispatch table below records this explicitly
-#' for the configurations the engine supports today.
+#' In a Gaussian fit without a per-row diagonal term, the residual is row-level
+#' noise captured by a single shared `sigma_eps`. Once you add a per-row
+#' `indep(0 + trait | obs)` term (or legacy `unique()` compatibility spelling),
+#' the *row-level* residual is now T per-trait random-effect variances and
+#' `sigma_eps` is auto-suppressed to avoid double-counting. If you also add a
+#' site-level diagonal term on top, the row-level term remains the residual and
+#' the `site`-level term is now an additional, *higher-level* random effect, not
+#' a residual at all. The dispatch table below records this explicitly for the
+#' configurations the engine supports today.
 #'
 #' For continuous-family responses (Gaussian, lognormal, Gamma) the
 #' engine has one residual scale parameter, `sigma_eps`. By default
 #' `sigma_eps` is **estimated as a single shared scalar across all
-#' continuous-family rows** — per-trait residual variances only appear
-#' if you explicitly add a per-row `unique(...)` (or, when Phase B
-#' lands, `indep(...)`) term. The dispatch is automatic:
+#' continuous-family rows**; per-trait residual variances only appear
+#' if you explicitly add a per-row `indep(...)` term or legacy `unique(...)`
+#' compatibility term. The dispatch is automatic:
 #'
 #' \describe{
-#'   \item{No `unique` / `indep`, continuous families present}{One
+#'   \item{No per-row `indep` / `unique`, continuous families present}{One
 #'     shared `sigma_eps` across all rows. *Not* per-trait.}
-#'   \item{No `unique` / `indep`, no continuous families}{`sigma_eps`
+#'   \item{No per-row `indep` / `unique`, no continuous families}{`sigma_eps`
 #'     is mapped off; the family's intrinsic dispersion handles the
 #'     residual.}
-#'   \item{\code{unique(0 + trait | g)} where `g` has fewer levels than
+#'   \item{\code{indep(0 + trait | g)} where `g` has fewer levels than
 #'     rows (e.g. `g = "site"`)}{`sigma_eps` is still estimated as the
-#'     row-level residual; the `unique` term adds a per-trait random
-#'     effect at level `g` on top.}
-#'   \item{\code{unique(0 + trait | obs)} at the per-row level (one
+#'     row-level residual; the diagonal term adds a per-trait random
+#'     effect at level `g` on top. Legacy `unique()` spelling is equivalent.}
+#'   \item{\code{indep(0 + trait | obs)} at the per-row level (one
 #'     level per row), continuous families fitted}{`sigma_eps` is
 #'     auto-suppressed (mapped off, fixed at a tiny stabiliser); the
-#'     T per-trait `unique` random effects *are* the residual. A
+#'     T per-trait diagonal random effects *are* the residual. A
 #'     one-shot `cli::cli_inform` fires at fit time announcing the
-#'     auto-suppression.}
-#'   \item{\code{unique(0 + trait | obs)} at the per-row level,
+#'     auto-suppression. Legacy `unique()` spelling is equivalent.}
+#'   \item{\code{indep(0 + trait | obs)} at the per-row level,
 #'     non-Gaussian or mixed-family fit}{Treated as observation-level
 #'     random effects (OLRE). For Bernoulli traits the OLRE is
 #'     statistically unidentifiable and is mapped off; for hurdle /
 #'     delta families a warning is emitted (see "Per-family-aware OLRE
-#'     selection" below).}
-#'   \item{\code{indep(0 + trait | obs)} at the per-row level (Phase B,
-#'     not yet implemented)}{Mathematically equivalent to the per-row
-#'     `unique` case; same auto-suppression dispatch.}
+#'     selection" below). Legacy `unique()` spelling is equivalent.}
 #' }
 #'
 #' Mnemonic: continuous-family `sigma_eps` is the default; per-row
-#' `unique` / `indep` replaces it with T per-trait residuals; non-per-row
-#' `unique` / `indep` adds a higher-level random effect on top of
+#' `indep` / legacy `unique` replaces it with T per-trait residuals;
+#' non-per-row `indep` / legacy `unique` adds a higher-level random effect on top of
 #' `sigma_eps`; non-continuous families never carry `sigma_eps`
 #' regardless.
 #'
-#' **Per-family-aware OLRE selection.** When `unique(0 + trait | <unit_obs>)`
-#' is at per-row resolution (i.e. one row per `(trait, unit_obs)` cell),
-#' the resulting per-trait random effects on the linear predictor are an
-#' observation-level random effect (OLRE). The engine now decides per
-#' trait what to do with the OLRE variance based on the trait's response
-#' family:
+#' **Per-family-aware OLRE selection.** When
+#' `indep(0 + trait | <unit_obs>)` (or legacy `unique()` spelling) is at
+#' per-row resolution, i.e. one row per `(trait, unit_obs)` cell, the resulting
+#' per-trait random effects on the linear predictor are an observation-level
+#' random effect (OLRE). The engine now decides per trait what to do with the
+#' OLRE variance based on the trait's response family:
 #' \itemize{
 #'   \item **single-trial Bernoulli** (`binomial()`, all rows have
 #'         `n_trials == 1`): `theta_diag_W[t]` and the corresponding
@@ -922,15 +922,16 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   two-level gllvmTMB models. Use `list(method = "res", jitter.sd = 0.2)`
 #'   to seed `latent()` loadings and latent scores from a reduced-rank
 #'   decomposition of fixed-effect residuals. Use `list(method = "indep")`
-#'   to first fit the matching independent `unique()`-only GLMM/GLLVM and
+#'   to first fit the matching independent diagonal GLMM/GLLVM and
 #'   copy its estimated fixed effects, per-trait variance starts, and random
-#'   effects into the full latent+unique fit. `jitter.sd` adds Normal jitter
+#'   effects into the full latent covariance fit. `jitter.sd` adds Normal jitter
 #'   to residual-start latent scores. Default
 #'   `list(method = NULL, jitter.sd = 0)` keeps the historical starts.
 #' @param start_from Optional fitted `gllvmTMB` object, usually a simpler
-#'   model such as one `latent()` tier or an independent `unique()`-only
-#'   model. Any estimated TMB parameters with shapes matching the current
-#'   model are copied into the starting parameter list before optimisation.
+#'   model such as one `latent()` tier or an independent diagonal model
+#'   (`indep()`, with legacy `unique()` compatibility). Any estimated TMB
+#'   parameters with shapes matching the current model are copied into the
+#'   starting parameter list before optimisation.
 #'   This implements the "fit simpler, then use it as starting values"
 #'   workflow recommended for complex reduced-rank models.
 #' @param se Logical; if `TRUE`, compute `TMB::sdreport()` after

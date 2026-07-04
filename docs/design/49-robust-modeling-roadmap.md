@@ -153,11 +153,11 @@ inference target.
 
 Pilot cells:
 
-- Gaussian latent+unique, rank 2
-- `nbinom2` latent+unique, rank 1
-- mixed-family latent+unique, rank 2
-- two-level Gaussian within/between latent+unique
-- ordinal-probit latent+unique, rank 1, only after simulation support
+- Gaussian ordinary latent covariance, rank 2
+- `nbinom2` ordinary latent covariance, rank 1
+- mixed-family ordinary latent covariance, rank 2
+- two-level Gaussian within/between ordinary latent covariance
+- ordinal-probit ordinary latent covariance, rank 1, only after simulation support
   is valid for that path
 
 Each replicate records family, rank, sample size, seed, start method,

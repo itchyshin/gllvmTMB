@@ -83,8 +83,9 @@ Omega = Lambda_phy Lambda_phy^T + Lambda_non Lambda_non^T + Psi
 ```
 
 with a single non-tier-specific diagonal `Psi` (the only
-unique-variance matrix in the fit; comes from the species-level
-`unique()` term).
+trait-specific diagonal matrix in the fit; ordinary `latent()` now
+emits this non-phylogenetic `Psi` companion by default, while explicit
+`unique()` is compatibility syntax).
 
 ## R Syntax Alignment
 
@@ -92,25 +93,29 @@ unique-variance matrix in the fit; comes from the species-level
 |---|---|---|
 | Trait intercepts | `value ~ 0 + trait` | `traits(t1, t2) ~ 1` |
 | Phylogenetic shared covariance | `phylo_latent(species, d = K, tree = tree)` | same |
-| Phylogenetic unique diagonal | `phylo_unique(species, tree = tree)` | same |
-| Non-phylogenetic unique diagonal | `unique(0 + trait \| species)` | `unique(1 \| species)` |
+| Phylogenetic diagonal Psi compatibility | `phylo_unique(species, tree = tree)` | same |
+| Non-phylogenetic shared + diagonal Psi | `latent(0 + trait \| species, d = K_non)` | `latent(1 \| species, d = K_non)` |
+| Non-phylogenetic standalone diagonal | `indep(0 + trait \| species)` | `indep(1 \| species)` |
 | Full phylogenetic fallback | `phylo_dep(0 + trait \| species, tree = tree)` | `phylo_dep(1 \| species, tree = tree)` |
 
 Species-axis phylogenetic calls such as `phylo_latent(species, ...)`
 already name their phylogenetic axis, so the `traits(...)` RHS expander
 leaves them unchanged. Bar-style covariance terms such as
-`unique(1 | species)` and `phylo_dep(1 | species)` expand to the
-explicit trait-stacked form.
+`latent(1 | species)`, `indep(1 | species)`, and
+`phylo_dep(1 | species)` expand to the explicit trait-stacked form.
+The older `unique(1 | species)` spelling remains accepted as
+compatibility syntax.
 
 ## Current Implementation Map
 
 - `phylo_latent(species, d = K, tree = tree)` activates the
   reduced-rank phylogenetic block (`use$phylo_rr`).
 - `phylo_unique(species, tree = tree)` paired with `phylo_latent()`
-  activates the phylogenetic diagonal block (`use$phylo_diag`).
+  activates the phylogenetic diagonal block (`use$phylo_diag`) as
+  explicit-Psi compatibility syntax.
 - `phylo_unique(species)` alone is retained as the legacy diagonal
-  phylogenetic mode and is equivalent to the `phylo_indep()` /
-  `phylo_unique()` diagonal intent.
+  phylogenetic mode; new standalone phylogenetic diagonal code should use
+  `phylo_indep()`.
 - `extract_Sigma(fit, level = "phy", part = "shared")` returns
   `Lambda_phy Lambda_phy^T`.
 - `extract_Sigma(fit, level = "phy", part = "unique")` returns the

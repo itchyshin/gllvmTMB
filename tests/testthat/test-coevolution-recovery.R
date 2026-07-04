@@ -44,10 +44,15 @@
   W
 }
 
-.c2_make_fixture <- function(seed = 31L, n_H = 36L, n_P = 72L,
-                             n_rep = 5L, rho = 0.65,
-                             richness = c("dense", "sparse"),
-                             resid_sd = 0.10) {
+.c2_make_fixture <- function(
+  seed = 31L,
+  n_H = 36L,
+  n_P = 72L,
+  n_rep = 5L,
+  rho = 0.65,
+  richness = c("dense", "sparse"),
+  resid_sd = 0.10
+) {
   richness <- match.arg(richness)
   set.seed(seed)
   A_H <- .c2_tree_corr(n_H, "H")
@@ -58,14 +63,28 @@
   trait_names <- c("h_size", "h_defence", "p_size", "p_attack")
   host_traits <- trait_names[1:2]
   partner_traits <- trait_names[3:4]
-  Lambda_H <- matrix(c(
-    1.00, 0.00,
-    0.45, 0.85
-  ), 2, 2, byrow = TRUE)
-  Lambda_P <- matrix(c(
-    0.75, 0.25,
-    -0.25, 0.90
-  ), 2, 2, byrow = TRUE)
+  Lambda_H <- matrix(
+    c(
+      1.00,
+      0.00,
+      0.45,
+      0.85
+    ),
+    2,
+    2,
+    byrow = TRUE
+  )
+  Lambda_P <- matrix(
+    c(
+      0.75,
+      0.25,
+      -0.25,
+      0.90
+    ),
+    2,
+    2,
+    byrow = TRUE
+  )
   Lambda <- rbind(Lambda_H, Lambda_P)
   rownames(Lambda) <- trait_names
   Gamma_true <- Lambda_H %*% t(Lambda_P)
@@ -77,11 +96,12 @@
   shared <- G %*% t(Lambda)
 
   psi <- c(0.02, 0.025, 0.02, 0.025)
-  U <- L_K %*% matrix(
-    stats::rnorm(n_total * length(trait_names)),
-    n_total,
-    length(trait_names)
-  )
+  U <- L_K %*%
+    matrix(
+      stats::rnorm(n_total * length(trait_names)),
+      n_total,
+      length(trait_names)
+    )
   unique <- sweep(U, 2L, sqrt(psi), `*`)
   eta <- sweep(shared + unique, 2L, c(0.2, -0.15, 0.1, -0.05), `+`)
   colnames(eta) <- trait_names
@@ -130,7 +150,8 @@
 .c2_fit_kernel <- function(fx, K = fx$K, lambda_constraint = NULL) {
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = K, d = 2, name = "cross") +
+      1 +
+      kernel_latent(species, K = K, d = 2, name = "cross") +
       kernel_unique(species, K = K, name = "cross"),
     data = fx$data,
     unit = "row_id",
@@ -170,12 +191,21 @@
 }
 
 test_that("extract_Gamma slices the shared kernel Sigma block by trait names", {
-  Lambda <- matrix(c(
-    1.00, 0.00,
-    0.45, 0.85,
-    0.75, 0.25,
-    -0.25, 0.90
-  ), 4, 2, byrow = TRUE)
+  Lambda <- matrix(
+    c(
+      1.00,
+      0.00,
+      0.45,
+      0.85,
+      0.75,
+      0.25,
+      -0.25,
+      0.90
+    ),
+    4,
+    2,
+    byrow = TRUE
+  )
   rownames(Lambda) <- c("h_size", "h_defence", "p_size", "p_attack")
   fit <- .c2_fake_gamma_fit(Lambda)
 
@@ -202,12 +232,21 @@ test_that("extract_Gamma slices the shared kernel Sigma block by trait names", {
 })
 
 test_that("extract_Gamma can return fixed-rho Gamma_effect when rho is recorded", {
-  Lambda <- matrix(c(
-    1.00, 0.00,
-    0.45, 0.85,
-    0.75, 0.25,
-    -0.25, 0.90
-  ), 4, 2, byrow = TRUE)
+  Lambda <- matrix(
+    c(
+      1.00,
+      0.00,
+      0.45,
+      0.85,
+      0.75,
+      0.25,
+      -0.25,
+      0.90
+    ),
+    4,
+    2,
+    byrow = TRUE
+  )
   rownames(Lambda) <- c("h_size", "h_defence", "p_size", "p_attack")
   fit <- .c2_fake_gamma_fit(Lambda, rho = 0.4)
 
@@ -242,12 +281,21 @@ test_that("extract_Gamma can return fixed-rho Gamma_effect when rho is recorded"
 })
 
 test_that("predict_cross_covariance multiplies Gamma_shape by fitted K entries", {
-  Lambda <- matrix(c(
-    1.00, 0.00,
-    0.45, 0.85,
-    0.75, 0.25,
-    -0.25, 0.90
-  ), 4, 2, byrow = TRUE)
+  Lambda <- matrix(
+    c(
+      1.00,
+      0.00,
+      0.45,
+      0.85,
+      0.75,
+      0.25,
+      -0.25,
+      0.90
+    ),
+    4,
+    2,
+    byrow = TRUE
+  )
   rownames(Lambda) <- c("h_size", "h_defence", "p_size", "p_attack")
 
   A_H <- matrix(c(1, 0.2, 0.2, 1), 2, 2)
@@ -304,12 +352,21 @@ test_that("predict_cross_covariance multiplies Gamma_shape by fitted K entries",
 })
 
 test_that("extract_Gamma uses the rotation-invariant shared covariance block", {
-  Lambda <- matrix(c(
-    1.00, 0.00,
-    0.45, 0.85,
-    0.75, 0.25,
-    -0.25, 0.90
-  ), 4, 2, byrow = TRUE)
+  Lambda <- matrix(
+    c(
+      1.00,
+      0.00,
+      0.45,
+      0.85,
+      0.75,
+      0.25,
+      -0.25,
+      0.90
+    ),
+    4,
+    2,
+    byrow = TRUE
+  )
   rownames(Lambda) <- c("h_size", "h_defence", "p_size", "p_attack")
   Q <- matrix(c(0, -1, 1, 0), 2, 2)
 
@@ -327,6 +384,83 @@ test_that("extract_Gamma uses the rotation-invariant shared covariance block", {
   )
 
   expect_equal(Gamma_rot, Gamma, tolerance = 1e-12)
+})
+
+test_that("extract_coevolution_modules returns standardized SVD modules", {
+  Lambda <- matrix(
+    c(
+      1.00,
+      0.00,
+      0.45,
+      0.85,
+      0.75,
+      0.25,
+      -0.25,
+      0.90
+    ),
+    4,
+    2,
+    byrow = TRUE
+  )
+  rownames(Lambda) <- c("h_size", "h_defence", "p_size", "p_attack")
+  fit <- .c2_fake_gamma_fit(Lambda)
+  Sigma <- Lambda %*% t(Lambda)
+  row_traits <- rownames(Lambda)[1:2]
+  col_traits <- rownames(Lambda)[3:4]
+  inv_sqrt <- function(x) {
+    eg <- eigen((x + t(x)) / 2, symmetric = TRUE)
+    eg$vectors %*%
+      diag(1 / sqrt(eg$values), nrow = length(eg$values)) %*%
+      t(eg$vectors)
+  }
+  R_expected <- inv_sqrt(Sigma[row_traits, row_traits]) %*%
+    Sigma[row_traits, col_traits] %*%
+    inv_sqrt(Sigma[col_traits, col_traits])
+  dimnames(R_expected) <- list(row_traits, col_traits)
+  sv <- svd(R_expected)
+
+  mods <- gllvmTMB::extract_coevolution_modules(
+    fit,
+    level = "cross",
+    row_traits = row_traits,
+    col_traits = col_traits
+  )
+  expect_s3_class(mods, "gllvmTMB_coevolution_modules")
+  expect_equal(mods$R, R_expected, tolerance = 1e-12)
+  expect_equal(mods$modules$singular_value, sv$d, tolerance = 1e-12)
+  expect_equal(sum(mods$modules$squared_share), 1, tolerance = 1e-12)
+  expect_equal(mods$row_axes$trait, rep(row_traits, times = 2L))
+  expect_equal(mods$col_axes$trait, rep(col_traits, times = 2L))
+
+  one <- gllvmTMB::extract_coevolution_modules(
+    fit,
+    level = "cross",
+    row_traits = row_traits,
+    col_traits = col_traits,
+    n_modules = 1L
+  )
+  expect_equal(nrow(one$modules), 1L)
+  expect_equal(nrow(one$row_axes), length(row_traits))
+  expect_equal(nrow(one$col_axes), length(col_traits))
+
+  effect <- gllvmTMB::extract_coevolution_modules(
+    .c2_fake_gamma_fit(Lambda, rho = 0.4),
+    level = "cross",
+    row_traits = row_traits,
+    col_traits = col_traits,
+    scale = "effect"
+  )
+  expect_equal(effect$R, 0.4 * mods$R, tolerance = 1e-12)
+
+  expect_error(
+    gllvmTMB::extract_coevolution_modules(
+      fit,
+      level = "cross",
+      row_traits = "missing",
+      col_traits = col_traits
+    ),
+    regexp = "not found"
+  )
 })
 
 test_that("C2 kernel path recovers Gamma and beats the zero-Gamma null", {

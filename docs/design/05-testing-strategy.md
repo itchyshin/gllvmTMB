@@ -125,15 +125,16 @@ keyword:
 - **Failure path**: malformed inputs are rejected before TMB
   evaluation.
 
-RE-12 ordinary Gaussian random regression now has focused
-`latent + unique` evidence, not broad coverage evidence. Its minimum
-focused test contract is: parser classification for long and
-`traits(...)` wide forms; a Gaussian paired fit that reaches the
-dedicated B-tier `Z_B_lat` / `Lambda_B_slope` / `Sigma_B_slope` and
-`Z_B_diag` / `sd_B_slope` / `s_B_slope` blocks; `extract_Sigma(level =
-"unit_slope", part = "shared" / "unique" / "total")` composition;
+RE-12 ordinary Gaussian random regression now has focused default
+`latent()` evidence for `Lambda Lambda^T + Psi`, not broad coverage
+evidence. Its minimum focused test contract is: parser classification
+for long and `traits(...)` wide forms; a Gaussian default fit that
+reaches the dedicated B-tier `Z_B_lat` / `Lambda_B_slope` /
+`Sigma_B_slope` and `Z_B_diag` / `sd_B_slope` / `s_B_slope` blocks;
+`extract_Sigma(level = "unit_slope", part = "shared" / "unique" /
+"total")` composition;
 deterministic Gaussian recovery for the intercept-intercept,
-slope-slope, and intercept-slope blocks; unique-only diagonal
+slope-slope, and intercept-slope blocks; explicit compatibility diagonal
 extraction; at least one non-Gaussian latent-only smoke fit; rank guard;
 rejection of augmented `latent()` / `unique()` at the `unit_obs` tier;
 and the Gaussian-only guard for augmented `unique()` under non-Gaussian
@@ -154,8 +155,7 @@ test_that("latent(0 + trait | site, d = K) accepts + fits + extracts", {
                              Lambda_B = ..., psi_B = ...)
   fit <- gllvmTMB(
     value ~ 0 + trait +
-      latent(0 + trait | site, d = 2) +
-      unique(0 + trait | site),
+      latent(0 + trait | site, d = 2),
     data = sim$data, unit = "site"
   )
   expect_equal(fit$opt$convergence, 0L)
@@ -339,7 +339,7 @@ For every new test, verify at least one of:
   saturated mean, weak identifiability).
 - the test **combines the new feature with an existing
   neighbouring feature** (e.g. when adding `meta_V`, test it
-  with a `latent + unique` decomposition too, not just
+  with a default `latent()` decomposition too, not just
   alone).
 
 Generic "the function returned without error" assertions are

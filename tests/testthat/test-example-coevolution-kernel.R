@@ -85,7 +85,7 @@ test_that("coevolution kernel example long and wide fits agree", {
   environment(ex$formula_long) <- environment()
   environment(ex$formula_wide) <- environment()
 
-  fit_long <- suppressMessages(gllvmTMB(
+  fit_long <- suppressWarnings(suppressMessages(gllvmTMB(
     ex$formula_long,
     data = ex$data_long,
     trait = ex$fit_args$trait,
@@ -93,15 +93,15 @@ test_that("coevolution kernel example long and wide fits agree", {
     cluster = ex$fit_args$cluster,
     family = ex$fit_args$family,
     control = ctl
-  ))
-  fit_wide <- suppressMessages(gllvmTMB(
+  )))
+  fit_wide <- suppressWarnings(suppressMessages(gllvmTMB(
     ex$formula_wide,
     data = ex$data_wide,
     unit = ex$fit_args$unit,
     cluster = ex$fit_args$cluster,
     family = ex$fit_args$family,
     control = ctl
-  ))
+  )))
 
   expect_equal(fit_long$opt$convergence, 0L)
   expect_equal(fit_wide$opt$convergence, 0L)

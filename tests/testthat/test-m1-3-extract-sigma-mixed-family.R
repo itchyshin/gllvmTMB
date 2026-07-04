@@ -10,8 +10,8 @@
 ##   (3) part = "shared" returns Lambda Lambda^T with rank ≤ d;
 ##   (4) part = "total" with link_residual = "auto" adds the
 ##       per-family link residual to the diagonal;
-##   (5) link_residual = "none" reverts to Lambda Lambda^T
-##       (no unique() in the fixture fit ⇒ no Psi diagonal);
+##   (5) link_residual = "none" returns the latent + Psi covariance
+##       without adding family/link implicit residuals;
 ##   (6) the additive identity diag(total) − diag(shared) equals
 ##       link_residual_per_trait(fit) (Gaussian traits → 0,
 ##       non-Gaussian → strictly positive);

@@ -35,8 +35,10 @@ estimate), \code{lower}, \code{upper}, \code{method}.
 \description{
 Returns the per-trait repeatability
 \eqn{R_t = \sigma^2_{B,t} / (\sigma^2_{B,t} + \sigma^2_{W,t})} for a
-fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with both \code{unique(0 + trait | <unit>)}
-and \code{unique(0 + trait | <obs>)} terms. Also known as the
+fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with both unit- and observation-level diagonal
+variance components. In new ordinary formulas those diagonal components are
+usually supplied by default \code{latent()} terms or explicit \code{indep()} terms;
+older \code{unique()} formulas remain compatibility syntax. Also known as the
 intraclass correlation coefficient (ICC) at the unit level.
 }
 \section{Method choice}{
@@ -62,8 +64,7 @@ Reviews} \strong{85}, 935-956. \doi{10.1111/j.1469-185X.2010.00141.x}
 fit <- gllvmTMB(
   value ~ 0 + trait +
           latent(0 + trait | site, d = 1) +
-          unique(0 + trait | site) +
-          unique(0 + trait | site_species),
+          latent(0 + trait | site_species, d = 1),
   data     = df,
   trait    = "trait",
   unit     = "site",

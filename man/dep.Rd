@@ -29,8 +29,8 @@ trait covariance is the model.
 This completes the structural-mode quartet:
 
 \describe{
-\item{\strong{Decomposition} (\code{latent + unique})}{Shared low-rank
-loadings plus trait-specific residual:
+\item{\strong{Decomposition} (\code{latent} by default)}{Shared low-rank
+loadings plus the default trait-specific Psi companion:
 \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}.
 \eqn{TK + T} parameters (rotation-removed).}
 \item{\strong{Marginal} (\code{indep} standalone)}{Per-trait variance with

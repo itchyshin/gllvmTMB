@@ -1,5 +1,6 @@
 ---
 title: "How to choose your model: a decision tree"
+tier: 3 # internal navigation draft until linked article surface is public-safe
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,12 +24,12 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Status — validated rungs are runnable here; two capabilities are
-> scoped honestly.**
+> **Internal article gate -- navigation draft.**
 >
-> Every worked example below runs live against the installed package and
-> recovers its simulated truth. Two things on this page are deliberately
-> bounded by the
+> This page is a Tier 3 routing draft while several linked examples remain
+> internal. The runnable chunks below exercise named formula rungs on small
+> fixtures, but the page is not yet a public decision guide. Two things on this
+> page are deliberately bounded by the
 > [capability status](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/61-capability-status.md):
 >
 > - **Random-regression slopes.** Section 7e showcases phylogenetic
@@ -57,12 +58,14 @@ reduced-rank or full-rank trait covariance. That generality is
 helpful when your data are unusual but unhelpful when you are
 picking a formula on day 1.
 
-This article is the decision tree we wish we had: six questions
+This draft is the decision tree we want: six questions
 about your data, each answered with a small piece of the formula,
 that you assemble at the end into the model that matches your
 problem. A seventh question — *how should I report uncertainty?* —
 is answered in section 8. If you already know the rung you want,
-jump to the linked article for that rung.
+jump to the linked article for that rung, but note that several linked
+worked examples are intentionally internal until their rendered/browser and
+evidence gates close.
 
 ## How to use this article
 
@@ -91,11 +94,11 @@ identifiability and fit time.
 |---|---|
 | 0 | Individual × trait — `latent(... \| unit)` |
 | 1 | Site × species (JSDM) — `+ family = binomial()` |
-| 2 | + phylogeny — `+ phylo_latent + phylo_unique` (paired with `latent + unique`) |
+| 2 | + phylogeny — `+ phylo_latent + phylo_unique` (paired with ordinary `latent()`) |
 | 3 | + spatial — `+ spatial_unique(0 + trait \| coords)` |
 | 4 | + relatedness-structured random slope (reaction norm) — `+ phylo_slope(x \| species)` |
 | 5 | Two-level (between / within) — `+ latent(... \| unit_obs)` |
-| 6 | Three-level (cluster > unit > unit_obs) — `+ unique(0 + trait \| cluster)` |
+| 6 | Three-level (cluster > unit > unit_obs) — `+ indep(0 + trait \| cluster)` |
 | 7 | Capstone — phylogeny + space + tiers together |
 
 Below the table, sections 1–6 ask one question per rung and let
@@ -119,8 +122,8 @@ whether your data have **one** observational level or **two**.
 | Your data look like... | Observational levels | Random-effect grouping | Example article |
 |---|---|---|---|
 | One row per individual / site, with several traits as columns. Use the wide path directly, or reshape to long. | One: `unit` | <code>latent(0 + trait &#124; unit)</code> (long) / <code>latent(1 &#124; unit, d = K)</code> (wide via `traits()`) | [Morphometrics](morphometrics.html) (individuals × continuous traits) |
-| Sites that each contain multiple species, with traits measured for each (site, species) combination; or repeated measures per individual; or papers with multiple items each. | Two: `unit` (between) and `unit_obs` (within) | <code>latent(0 + trait &#124; unit)</code> *and* <code>unique(0 + trait &#124; unit_obs)</code> | [Behavioural syndromes](behavioural-syndromes.html) and [Functional biogeography](functional-biogeography.html) |
-| The within-unit rows themselves nest inside a higher grouping — e.g. observations within individuals within populations, or items within papers within research groups. | Three: `cluster` > `unit` > `unit_obs` | add <code>unique(0 + trait &#124; cluster)</code> on top of the two-level pair | §7f (worked example below) |
+| Sites that each contain multiple species, with traits measured for each (site, species) combination; or repeated measures per individual; or papers with multiple items each. | Two: `unit` (between) and `unit_obs` (within) | <code>latent(0 + trait &#124; unit)</code> *and* <code>latent(0 + trait &#124; unit_obs)</code> when both tiers need a shared-plus-diagonal decomposition | [Behavioural syndromes](behavioural-syndromes.html) and [Functional biogeography](functional-biogeography.html) |
+| The within-unit rows themselves nest inside a higher grouping — e.g. observations within individuals within populations, or items within papers within research groups. | Three: `cluster` > `unit` > `unit_obs` | add <code>indep(0 + trait &#124; cluster)</code> for a standalone diagonal cluster tier | §7f (worked example below) |
 
 If you have a single observational level, the `unit` column can be
 called anything (`individual`, `site`, `study`, `paper`); pass its
@@ -172,8 +175,9 @@ likely to share trait values for evolutionary reasons. The
 canonical phylogenetic decomposition pairs four components: a
 phylogenetic shared low-rank axis (`phylo_latent`), a
 phylogenetic trait-specific diagonal (`phylo_unique`), a
-non-phylogenetic shared axis (`latent`), and a non-phylogenetic
-trait-specific diagonal (`unique`). The full decomposition reads
+non-phylogenetic shared axis (`latent`), and the ordinary diagonal
+`Psi` companion included by default in `latent()`. The full
+decomposition reads
 
 $$
 \Omega = (\Sigma_{\text{phy}} \otimes A) + (\Sigma_{\text{non}} \otimes I), \quad
@@ -191,7 +195,7 @@ example.
 |---|---|
 | Rows are not phylogenetically structured (e.g. individuals from one species, or sites without taxonomic identity). | Nothing. |
 | Phylogenetic structure with one shared phylogenetic variance per trait (simplest phylo model). | `+ phylo_scalar(species, vcv = Cphy)` |
-| **Canonical paired phylogenetic decomposition** (recommended when traits can be both phylogenetically and non-phylogenetically correlated). | `+ phylo_latent(species, d = K_phy, tree = tree) + phylo_unique(species, tree = tree) + latent(0 + trait \| species, d = K_non) + unique(0 + trait \| species)` |
+| **Explicit phylogenetic-Psi decomposition** (compatibility spelling; use only when the phylogenetic diagonal component is separately identifiable). | `+ phylo_latent(species, d = K_phy, tree = tree) + phylo_unique(species, tree = tree) + latent(0 + trait \| species, d = K_non)` |
 | Many species (n > ~200) and you want speed. | (same paired form) with `tree = tree` (sparse $A^{-1}$ trick); much faster than `vcv = Cphy` at this scale. |
 
 The crossover where the sparse $A^{-1}$ path overtakes the dense
@@ -327,17 +331,17 @@ covariance* (every pair gets its own parameter).
 | Your situation | Add to formula | Notes |
 |---|---|---|
 | You expect a small number of latent dimensions (size, shape, life-history pace) to explain most of the cross-trait covariance. T traits, K << T factors. | <code>+ latent(0 + trait &#124; site, d = K)</code> | The default GLLVM choice. K = 1–3 is typical. |
-| You want full unstructured between-unit covariance with no rank reduction. | <code>+ unique(0 + trait &#124; site)</code> (specific variance) plus a separate term for off-diagonal structure as needed | Reasonable when T is small (T ≤ 5) and you have many units. |
+| You want full unstructured between-unit covariance with no rank reduction. | <code>+ dep(0 + trait &#124; site)</code> | Reasonable when T is small (T ≤ 5) and you have many units. |
+| You want only a standalone trait-specific diagonal tier. | <code>+ indep(0 + trait &#124; site)</code> | Use this when the model should have no off-diagonal covariance at that tier. |
 | Confirmatory: you know which traits load on which factor and want to pin those entries of $\boldsymbol\Lambda$. | <code>+ latent(0 + trait &#124; site, d = K)</code> plus `lambda_constraint = list(unit = M)` | M is a `T × K` matrix with `NA` for free entries and numeric values for fixed ones. See [Lambda constraint](lambda-constraint.html); `?suggest_lambda_constraint` proposes a sensible matrix from a fitted unconstrained model. |
 
-For two-level models you typically include both `latent()` and `unique()`
-at each level, so the full between-unit piece is
-`latent(0 + trait | site, d = K) + unique(0 + trait | site)` and the
-within-unit piece substitutes the within-unit grouping column
-(e.g. `site_species` for site × species data, or the value passed via
-`unit_obs = "..."` for other domains).
-The `latent()` term gives the shared latent factors; the `unique()` term
-gives each trait its own residual variance on top.
+For two-level decomposed models, put `latent()` at each tier that needs
+shared axes plus a diagonal `Psi` companion. The full between-unit
+piece is now `latent(0 + trait | site, d = K)`, and the within-unit
+piece substitutes the within-unit grouping column (e.g. `site_species`
+for site × species data, or the value passed via `unit_obs = "..."`
+for other domains). Use `latent(..., residual = FALSE)` only when you
+want the no-Psi subset, and use `indep()` for standalone diagonal tiers.
 
 ## 7. Final formula assembly
 
@@ -392,8 +396,7 @@ df_b$value <- as.integer(df_b$value > 0)
 
 fit_jsdm <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site),
+          latent(0 + trait | site, d = 2),
   data   = df_b,
   trait  = "trait",
   family = binomial()
@@ -404,7 +407,8 @@ fit_jsdm <- gllvmTMB(
 
 Rung 2: the canonical paired phylogenetic decomposition combines
 `phylo_latent + phylo_unique` (the phy side) with
-`latent + unique` (the non-phy side). With a tree in hand, prefer
+ordinary `latent()` (the non-phy side, including its default diagonal
+`Psi`). With a tree in hand, prefer
 `tree = tree` (in-keyword) for the sparse $A^{-1}$ path. See
 [Phylogenetic GLLVM](phylogenetic-gllvm.html) for the worked
 example with simulation recovery and `extract_phylo_signal()`.
@@ -429,8 +433,7 @@ fit_phy <- gllvmTMB(
   value ~ 0 + trait +
           phylo_latent(species, d = 1, tree = tree) +
           phylo_unique(species, tree = tree) +
-          latent(0 + trait | species, d = 1) +
-          unique(0 + trait | species),
+          latent(0 + trait | species, d = 1),
   data = df_p,
   trait = "trait",
   unit = "species"
@@ -551,7 +554,7 @@ extract_Sigma(fit_rr_aug, level = "phy")   # 2x2 (intercept, slope)
 ### 7f. Three-level cluster tier
 
 Rung 6: when the within-unit rows nest inside a higher grouping,
-add a third per-trait diagonal tier `unique(0 + trait | cluster)`
+add a third per-trait diagonal tier `indep(0 + trait | cluster)`
 and pass all three grouping keys. Each tier gets its own per-trait
 variance; the cluster tier's is reported as `fit$report$sd_q`.
 
@@ -580,7 +583,7 @@ eta_c      <- q_cluster[cbind(as.integer(rows$cluster), rows$trait_idx)]
 rows$value <- eta_c + rnorm(nrow(rows), sd = 0.3)
 
 fit_cluster <- gllvmTMB(
-  value ~ 0 + trait + unique(0 + trait | cluster),
+  value ~ 0 + trait + indep(0 + trait | cluster),
   data     = rows,
   unit     = "unit",
   unit_obs = "unit_obs",
@@ -614,9 +617,7 @@ fit_full <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
           spatial_unique(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site) +
           latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species) +
           phylo_latent(species, d = 1, tree = tree) +
           phylo_unique(species, tree = tree),
   data = df,
@@ -637,7 +638,7 @@ components.
 |---|---|---|---|
 | `"wald"` | fastest (reads `sd_report` directly) | symmetric on the natural scale; can cross a boundary (e.g. $R < 0$) | a quick check on a well-identified fit |
 | `"profile"` | fast (TMB inner optim, warm-started) | respects skewness; one-sided near $\sigma^2 \to 0$ | the default for derived ratio quantities |
-| `"bootstrap"` | slowest (refits per replicate) | full empirical sampling distribution | non-monotone profiles, joint uncertainty, publication-grade CIs |
+| `"bootstrap"` | slowest (refits per replicate) | empirical sampling distribution for the fitted target | non-monotone profiles, joint uncertainty, reportable intervals when the relevant coverage row supports them |
 
 ```{r ci-setup, results = "hide"}
 s_ci <- simulate_site_trait(
@@ -648,8 +649,8 @@ s_ci <- simulate_site_trait(
 )
 fit_ci <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | site, d = 1) + unique(0 + trait | site) +
-    unique(0 + trait | site_species),
+    latent(0 + trait | site, d = 1) +
+    latent(0 + trait | site_species, d = 1),
   data  = s_ci$data,
   trait = "trait"
 )
@@ -711,10 +712,10 @@ of the factor-level pitfall.
 
 * [Morphometrics](morphometrics.html) — rung 0: individuals × continuous traits.
 * [Joint SDM](joint-sdm.html) — rung 1: binary multivariate.
-* [Behavioural syndromes](behavioural-syndromes.html) — two observational levels.
-* [Phylogenetic GLLVM](phylogenetic-gllvm.html) — phylogenetic dependence (the canonical paired four-component decomposition).
-* [The animal model](animal-model.html) — rung 4 parallel: pedigree-structured `animal_*` keywords and the heritable reaction norm.
-* [Functional biogeography](functional-biogeography.html) — capstone: two-level + space + phylogeny.
+* [Behavioural syndromes](behavioural-syndromes.html) — internal two-observational-level worked-example draft.
+* [Phylogenetic GLLVM](phylogenetic-gllvm.html) — internal phylogenetic-dependence draft for the canonical paired four-component decomposition.
+* [The animal model](animal-model.html) — internal pedigree-structured `animal_*` and heritable reaction-norm draft.
+* [Functional biogeography](functional-biogeography.html) — internal capstone draft: two-level + space + phylogeny.
 * [Response families](response-families.html) — supported likelihoods and mixed-family dispatch.
 * [Lambda constraint](lambda-constraint.html) — confirmatory factor analysis with fixed loadings; see also `?suggest_lambda_constraint`.
 * [Profile-likelihood confidence intervals](profile-likelihood-ci.html) — the Wald / profile / bootstrap CI choice (section 8) in depth.

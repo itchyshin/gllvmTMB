@@ -4,13 +4,22 @@
 \alias{latent}
 \title{Latent-factor (reduced-rank) random effect: \code{latent(0 + trait | g, d = K)}}
 \usage{
-latent(formula, d = 1)
+latent(formula, d = 1, residual = TRUE, common = FALSE)
 }
 \arguments{
 \item{formula}{\code{0 + trait | g} style formula (LHS is the response
 factor, typically \code{0 + trait}; RHS is the grouping factor).}
 
 \item{d}{Integer; number of latent factors.}
+
+\item{residual}{Logical; \code{TRUE} (default) auto-includes the diagonal
+trait-unique \eqn{\boldsymbol\Psi} companion. Set \code{FALSE} for the
+no-residual / rotation-invariant subset.}
+
+\item{common}{Logical; \code{FALSE} (default) estimates one diagonal
+\eqn{\boldsymbol\Psi} variance per trait. \code{TRUE} ties the default ordinary
+diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
+traits. Only applies when \code{residual = TRUE}.}
 }
 \value{
 A formula marker; never evaluated.
@@ -27,13 +36,18 @@ Used inside a \code{gllvmTMB()} formula:
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{value ~ 0 + trait + latent(0 + trait | unit, d = 2)
 }\if{html}{\out{</div>}}
 
-For the canonical decomposition
+By default, ordinary \code{latent()} now fits the canonical decomposition
 \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi},
-add an explicit \code{\link[=unique]{unique()}} term:
+with the diagonal \eqn{\boldsymbol\Psi} companion included automatically:
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{value ~ 0 + trait + latent(0 + trait | unit, d = 2) +
-                    unique(0 + trait | unit)
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{value ~ 0 + trait + latent(0 + trait | unit, d = 2)
 }\if{html}{\out{</div>}}
+
+Set \code{residual = FALSE} for the old no-residual subset.
+For a scalar diagonal \eqn{\boldsymbol\Psi} companion shared across traits,
+use \code{common = TRUE}; this replaces the legacy paired
+\code{latent(..., residual = FALSE) + unique(..., common = TRUE)} spelling for
+ordinary intercept-only latent terms.
 }
 \seealso{
 \code{\link[=unique]{unique()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \link{diag_re}, \code{\link[=extract_Sigma]{extract_Sigma()}}.

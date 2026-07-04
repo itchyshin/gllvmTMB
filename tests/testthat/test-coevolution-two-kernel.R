@@ -69,8 +69,12 @@
   A
 }
 
-.c3_association_pattern <- function(n_H, n_P, type = c("aligned", "opposed"),
-                                    range = 0.18) {
+.c3_association_pattern <- function(
+  n_H,
+  n_P,
+  type = c("aligned", "opposed"),
+  range = 0.18
+) {
   type <- match.arg(type)
   h <- seq(-1, 1, length.out = n_H)
   p <- seq(-1, 1, length.out = n_P)
@@ -88,6 +92,17 @@
   sum(x * y) / sqrt(sum(x^2) * sum(y^2))
 }
 
+.c3_muffle_lifecycle_warnings <- function(expr) {
+  withCallingHandlers(
+    expr,
+    warning = function(w) {
+      if (inherits(w, "lifecycle_warning_deprecated")) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+}
+
 .c3_kernel_overlap_class <- function(similarity) {
   if (similarity < 0.25) {
     "near_orthogonal"
@@ -102,15 +117,32 @@
   abs(stats::cor(as.vector(x), as.vector(y)))
 }
 
-.c3_make_two_component_fixture <- function(seed = 2003L, n_H = 32L,
-                                           n_P = 32L, n_rep = 6L,
-                                           rho_phy = 0.55,
-                                           rho_non = 0.55,
-                                           non_association_blend = 0,
-                                           identical_kernels = FALSE,
-                                           lambda_phy_scale = 1,
-                                           lambda_non_scale = 1,
-                                           resid_sd = 0.08) {
+.c3_inv_sqrt <- function(x, tol = sqrt(.Machine$double.eps)) {
+  x <- (x + t(x)) / 2
+  eg <- eigen(x, symmetric = TRUE)
+  scale <- max(abs(eg$values), 1)
+  keep <- eg$values > tol * scale
+  values <- numeric(length(eg$values))
+  values[keep] <- 1 / sqrt(eg$values[keep])
+  out <- eg$vectors %*% diag(values, nrow = length(values)) %*% t(eg$vectors)
+  dimnames(out) <- dimnames(x)
+  out
+}
+
+.c3_make_two_component_fixture <- function(
+  seed = 2003L,
+  n_H = 32L,
+  n_P = 32L,
+  n_rep = 6L,
+  rho_phy = 0.55,
+  rho_non = 0.55,
+  non_association_blend = 0,
+  identical_kernels = FALSE,
+  non_kernel_phy_mix = 0,
+  lambda_phy_scale = 1,
+  lambda_non_scale = 1,
+  resid_sd = 0.08
+) {
   set.seed(seed)
   A_H <- .c3_axis_kernel(n_H, "H", range = 0.45)
   A_P <- .c3_axis_kernel(n_P, "P", range = 0.45)
@@ -122,13 +154,18 @@
   W_phy <- .c3_association_pattern(n_H, n_P, type = "aligned")
   W_non_opposed <- .c3_association_pattern(n_H, n_P, type = "opposed")
   W_non_aligned <- .c3_association_pattern(n_H, n_P, type = "aligned")
-  W_non <- non_association_blend * W_non_aligned +
+  W_non <- non_association_blend *
+    W_non_aligned +
     (1 - non_association_blend) * W_non_opposed
   dimnames(W_phy) <- dimnames(W_non) <- list(rownames(A_H), rownames(A_P))
   K_phy <- gllvmTMB::make_cross_kernel(A_H, A_P, W_phy, rho = rho_phy)
   K_non <- gllvmTMB::make_cross_kernel(I_H, I_P, W_non, rho = rho_non)
   if (isTRUE(identical_kernels)) {
     K_non <- K_phy
+  } else if (non_kernel_phy_mix > 0) {
+    stopifnot(non_kernel_phy_mix < 1)
+    K_non <- non_kernel_phy_mix * K_phy + (1 - non_kernel_phy_mix) * K_non
+    dimnames(K_non) <- dimnames(K_phy)
   }
 
   trait_names <- c("h_size", "h_defence", "p_size", "p_attack")
@@ -201,10 +238,12 @@
   )
 }
 
-.c3_make_poisson_two_kernel_fixture <- function(seed = 2701L,
-                                               n_H = 16L,
-                                               n_P = 16L,
-                                               n_rep = 4L) {
+.c3_make_poisson_two_kernel_fixture <- function(
+  seed = 2701L,
+  n_H = 16L,
+  n_P = 16L,
+  n_rep = 4L
+) {
   fx <- .c3_make_two_component_fixture(
     seed = seed,
     n_H = n_H,
@@ -223,13 +262,15 @@
   fx
 }
 
-.c3_make_poisson_two_kernel_recovery_fixture <- function(seed = 2801L,
-                                                        n_H = 24L,
-                                                        n_P = 24L,
-                                                        n_rep = 12L,
-                                                        lambda_phy_scale = 0.30,
-                                                        lambda_non_scale = 0.30,
-                                                        intercept = 1.2) {
+.c3_make_poisson_two_kernel_recovery_fixture <- function(
+  seed = 2801L,
+  n_H = 24L,
+  n_P = 24L,
+  n_rep = 12L,
+  lambda_phy_scale = 0.30,
+  lambda_non_scale = 0.30,
+  intercept = 1.2
+) {
   set.seed(seed)
   A_H <- .c3_axis_kernel(n_H, "H", range = 0.45)
   A_P <- .c3_axis_kernel(n_P, "P", range = 0.45)
@@ -450,6 +491,115 @@
   )
 }
 
+.c3_make_mixed_family_two_kernel_recovery_fixture <- function(
+  seed = 2912L,
+  n_H = 20L,
+  n_P = 20L,
+  n_rep = 10L,
+  lambda_phy_scale = 0.45,
+  lambda_non_scale = 0.45,
+  link_scale = 0.22,
+  intercept = 1.1
+) {
+  fx <- .c3_make_two_component_fixture(
+    seed = seed,
+    n_H = n_H,
+    n_P = n_P,
+    n_rep = n_rep,
+    lambda_phy_scale = lambda_phy_scale,
+    lambda_non_scale = lambda_non_scale,
+    resid_sd = 0.08
+  )
+  partner_traits <- c("p_size", "p_attack")
+  for (nm in partner_traits) {
+    idx <- !is.na(fx$data[[nm]])
+    eta <- intercept + link_scale * as.numeric(fx$data[[nm]][idx])
+    fx$data[[nm]][idx] <- stats::rpois(sum(idx), lambda = exp(eta))
+  }
+
+  trait_names <- c("h_size", "h_defence", "p_size", "p_attack")
+  long <- do.call(rbind, lapply(trait_names, function(nm) {
+    data.frame(
+      row_id = fx$data$row_id,
+      species = fx$data$species,
+      trait = factor(nm, levels = trait_names),
+      value = fx$data[[nm]],
+      family = if (nm %in% partner_traits) "poisson" else "gaussian",
+      stringsAsFactors = FALSE
+    )
+  }))
+  long <- long[!is.na(long$value), , drop = FALSE]
+  long$family <- factor(long$family, levels = c("gaussian", "poisson"))
+
+  fam <- list(stats::gaussian(), stats::poisson())
+  attr(fam, "family_var") <- "family"
+
+  list(
+    data = long,
+    family = fam,
+    K_phy = fx$K_phy,
+    K_non = fx$K_non,
+    Gamma_phy = fx$Gamma_phy,
+    Gamma_non = fx$Gamma_non,
+    host_traits = fx$host_traits,
+    partner_traits = fx$partner_traits,
+    similarity = fx$similarity,
+    mean_count = mean(long$value[long$family == "poisson"])
+  )
+}
+
+.c3_fit_mixed_family_two_kernel_set <- function(fx) {
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  fit_full <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+      kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
+      kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = fx$data,
+    trait = "trait",
+    unit = "row_id",
+    cluster = "species",
+    family = fx$family,
+    control = ctl
+  )))
+  fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+      kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+    data = fx$data,
+    trait = "trait",
+    unit = "row_id",
+    cluster = "species",
+    family = fx$family,
+    control = ctl
+  )))
+  fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+      kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = fx$data,
+    trait = "trait",
+    unit = "row_id",
+    cluster = "species",
+    family = fx$family,
+    control = ctl
+  )))
+  list(
+    full = fit_full,
+    phy_only = fit_phy_only,
+    non_only = fit_non_only,
+    Gamma_phy = gllvmTMB::extract_Gamma(
+      fit_full,
+      level = "phy",
+      row_traits = fx$host_traits,
+      col_traits = fx$partner_traits
+    ),
+    Gamma_non = gllvmTMB::extract_Gamma(
+      fit_full,
+      level = "non",
+      row_traits = fx$host_traits,
+      col_traits = fx$partner_traits
+    )
+  )
+}
+
 test_that("two distinct named kernel tiers fit and extract by component", {
   ## C3.1 first-wave acceptance: two named fixed kernels get separate latent
   ## fields and separate loading matrices. This is not an interval/rho gate.
@@ -482,9 +632,11 @@ test_that("two distinct named kernel tiers fit and extract by component", {
   Lambda_phy <- c(0.7, 0.25)
   Lambda_non <- c(-0.15, 0.55)
   eta <- cbind(
-    y1 = Lambda_phy[[1L]] * g_phy[as.integer(rows$unit_id)] +
+    y1 = Lambda_phy[[1L]] *
+      g_phy[as.integer(rows$unit_id)] +
       Lambda_non[[1L]] * g_non[as.integer(rows$unit_id)],
-    y2 = Lambda_phy[[2L]] * g_phy[as.integer(rows$unit_id)] +
+    y2 = Lambda_phy[[2L]] *
+      g_phy[as.integer(rows$unit_id)] +
       Lambda_non[[2L]] * g_non[as.integer(rows$unit_id)]
   )
   rows$y1 <- eta[, 1L] + stats::rnorm(nrow(rows), sd = 0.25)
@@ -634,6 +786,211 @@ test_that("kernel-similarity diagnostic separates low and high overlap cases", {
   expect_equal(diag_dx$pairs$overlap_class, "high")
 })
 
+test_that("pre-fit kernel separability diagnostic flags raw versus residualized candidates", {
+  n_H <- 10L
+  n_P <- 10L
+  A_H <- .c3_axis_kernel(n_H, "H")
+  A_P <- .c3_axis_kernel(n_P, "P")
+  I_H <- diag(n_H)
+  I_P <- diag(n_P)
+  rownames(I_H) <- colnames(I_H) <- rownames(A_H)
+  rownames(I_P) <- colnames(I_P) <- rownames(A_P)
+
+  W_phy <- .c3_association_pattern(n_H, n_P, type = "aligned")
+  W_tip_resid <- .c3_association_pattern(n_H, n_P, type = "opposed")
+  dimnames(W_phy) <- dimnames(W_tip_resid) <-
+    list(rownames(A_H), rownames(A_P))
+
+  K_phy <- gllvmTMB::make_cross_kernel(A_H, A_P, W_phy, rho = 0.55)
+  ## This raw candidate deliberately aliases the phylogenetic kernel: it is the
+  ## claim-boundary case where Paper 2 must not force a split interpretation.
+  K_tip_raw <- K_phy
+  K_tip_resid <- gllvmTMB::make_cross_kernel(
+    I_H,
+    I_P,
+    W_tip_resid,
+    rho = 0.55
+  )
+
+  dx <- gllvmTMB::diagnose_kernel_separability(
+    phy = K_phy,
+    tip_raw = K_tip_raw,
+    tip_resid = K_tip_resid
+  )
+
+  expect_s3_class(dx, "gllvmTMB_kernel_separability")
+  expect_equal(dim(dx$similarity), c(3L, 3L))
+  expect_equal(dx$similarity["phy", "tip_raw"], 1)
+  expect_equal(
+    dx$pairs$overlap_class[dx$pairs$level_2 == "tip_raw"],
+    "high"
+  )
+  expect_equal(
+    dx$pairs$recommendation[dx$pairs$level_2 == "tip_raw"],
+    "collapse_or_single_covariance"
+  )
+  resid_pair <- dx$pairs[
+    dx$pairs$level_1 == "phy" & dx$pairs$level_2 == "tip_resid",
+  ]
+  expect_equal(resid_pair$overlap_class, "near_orthogonal")
+  expect_equal(resid_pair$recommendation, "separable_candidate")
+  expect_match(dx$note, "one network-conditioned covariance")
+
+  expect_error(
+    gllvmTMB::diagnose_kernel_separability(phy = K_phy),
+    "at least two"
+  )
+  expect_error(
+    gllvmTMB::diagnose_kernel_separability(phy = K_phy, phy = K_tip_resid),
+    "unique"
+  )
+})
+
+test_that("kernel-collinearity simulation gate separates Paper 2 claim regimes", {
+  n_H <- 10L
+  n_P <- 10L
+  A_H <- .c3_axis_kernel(n_H, "H")
+  A_P <- .c3_axis_kernel(n_P, "P")
+  I_H <- diag(n_H)
+  I_P <- diag(n_P)
+  rownames(I_H) <- colnames(I_H) <- rownames(A_H)
+  rownames(I_P) <- colnames(I_P) <- rownames(A_P)
+
+  W_phy <- .c3_association_pattern(n_H, n_P, type = "aligned")
+  W_tip_resid <- .c3_association_pattern(n_H, n_P, type = "opposed")
+  dimnames(W_phy) <- dimnames(W_tip_resid) <-
+    list(rownames(A_H), rownames(A_P))
+
+  K_phy <- gllvmTMB::make_cross_kernel(A_H, A_P, W_phy, rho = 0.55)
+  K_tip_resid <- gllvmTMB::make_cross_kernel(
+    I_H,
+    I_P,
+    W_tip_resid,
+    rho = 0.55
+  )
+  make_tip_blend <- function(alpha) {
+    K <- alpha * K_phy + (1 - alpha) * K_tip_resid
+    K <- (K + t(K)) / 2
+    diag(K) <- 1
+    dimnames(K) <- dimnames(K_phy)
+    K
+  }
+
+  ## Alignment:
+  ## - Gamma_phy: kernel_latent(..., name = "phy"), K_phy from W_phy.
+  ## - Gamma_tip: kernel_latent(..., name = "tip"), K_tip(alpha) blends
+  ##   residualized W_tip toward K_phy.
+  ## - Recovery gate: diagnose_kernel_separability() must demote moderate/high
+  ##   collinearity before any component-specific Paper 2 claim is advertised.
+  regimes <- data.frame(
+    alpha = c(0, 0.15, 0.25, 1),
+    expected_class = c("near_orthogonal", "moderate", "high", "high"),
+    expected_recommendation = c(
+      "separable_candidate",
+      "sensitivity_required",
+      "collapse_or_single_covariance",
+      "collapse_or_single_covariance"
+    ),
+    stringsAsFactors = FALSE
+  )
+  results <- lapply(seq_len(nrow(regimes)), function(i) {
+    dx <- gllvmTMB::diagnose_kernel_separability(
+      phy = K_phy,
+      tip = make_tip_blend(regimes$alpha[[i]])
+    )
+    dx$pairs
+  })
+  similarity <- vapply(results, `[[`, numeric(1), "similarity")
+  overlap_class <- vapply(results, `[[`, character(1), "overlap_class")
+  recommendation <- vapply(results, `[[`, character(1), "recommendation")
+
+  expect_true(all(diff(similarity) > 0))
+  expect_equal(overlap_class, regimes$expected_class)
+  expect_equal(recommendation, regimes$expected_recommendation)
+  expect_lt(similarity[[1L]], 0.25)
+  expect_gte(similarity[[2L]], 0.25)
+  expect_lt(similarity[[2L]], 0.70)
+  expect_gte(similarity[[3L]], 0.70)
+  expect_equal(similarity[[4L]], 1)
+})
+
+test_that("reciprocal-dependence W needs sensitivity before tip-kernel claims", {
+  set.seed(2901)
+  n_H <- 18L
+  n_P <- 18L
+  A_H <- .c3_axis_kernel(n_H, "H", range = 0.45)
+  A_P <- .c3_axis_kernel(n_P, "P", range = 0.45)
+  I_H <- diag(n_H)
+  I_P <- diag(n_P)
+  rownames(I_H) <- colnames(I_H) <- rownames(A_H)
+  rownames(I_P) <- colnames(I_P) <- rownames(A_P)
+
+  W_phy <- .c3_association_pattern(n_H, n_P, type = "aligned")
+  W_opposed <- .c3_association_pattern(n_H, n_P, type = "opposed")
+  dimnames(W_phy) <- dimnames(W_opposed) <- list(rownames(A_H), rownames(A_P))
+
+  raw_mean <- 100 * (0.05 + W_phy)
+  counts <- matrix(
+    stats::rpois(length(raw_mean), lambda = as.vector(raw_mean)),
+    n_H,
+    n_P,
+    dimnames = dimnames(W_phy)
+  )
+  p_col_given_row <- sweep(
+    counts,
+    1L,
+    pmax(rowSums(counts), .Machine$double.eps),
+    `/`
+  )
+  p_row_given_col <- sweep(
+    counts,
+    2L,
+    pmax(colSums(counts), .Machine$double.eps),
+    `/`
+  )
+  W_recip <- sqrt(p_col_given_row * p_row_given_col)
+  W_resid <- matrix(
+    stats::resid(stats::lm(as.vector(W_recip) ~ as.vector(W_phy))),
+    n_H,
+    n_P,
+    dimnames = dimnames(W_phy)
+  )
+  W_tip_resid <- W_resid + 0.25 * W_opposed
+
+  K_phy <- gllvmTMB::make_cross_kernel(A_H, A_P, W_phy, rho = 0.55)
+  K_tip_raw <- gllvmTMB::make_cross_kernel(I_H, I_P, W_recip, rho = 0.55)
+  K_tip_resid <- gllvmTMB::make_cross_kernel(
+    I_H,
+    I_P,
+    W_tip_resid,
+    rho = 0.55
+  )
+
+  ## COE-04 reciprocal-dependence alignment table.
+  ##
+  ## | Symbol | Covstruct keyword | DGP / diagnostic input | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | C_phy | kernel_latent(..., name = "phy") candidate | make_cross_kernel(A_H, A_P, W_phy) | diagnose_kernel_separability() | conserved interaction neighbourhood |
+  ## | C_tip,raw | kernel_latent(..., name = "tip") candidate | reciprocal W from link counts | diagnose_kernel_separability() | sensitivity_required |
+  ## | C_tip,resid | kernel_latent(..., name = "tip") candidate | residualized W plus opposed tip signal | diagnose_kernel_separability() | separable_candidate |
+  raw_dx <- gllvmTMB::diagnose_kernel_separability(
+    phy = K_phy,
+    tip = K_tip_raw
+  )
+  resid_dx <- gllvmTMB::diagnose_kernel_separability(
+    phy = K_phy,
+    tip = K_tip_resid
+  )
+
+  expect_equal(raw_dx$pairs$overlap_class, "moderate")
+  expect_equal(raw_dx$pairs$recommendation, "sensitivity_required")
+  expect_gte(raw_dx$pairs$similarity, 0.25)
+  expect_lt(raw_dx$pairs$similarity, 0.70)
+  expect_equal(resid_dx$pairs$overlap_class, "near_orthogonal")
+  expect_equal(resid_dx$pairs$recommendation, "separable_candidate")
+  expect_lt(resid_dx$pairs$similarity, 0.25)
+})
+
 test_that("profile_cross_rho records a fixed-kernel profile grid", {
   A_H <- diag(2L)
   A_P <- diag(2L)
@@ -675,7 +1032,9 @@ test_that("profile_cross_rho records a fixed-kernel profile grid", {
   expect_true(all(is.na(prof$pd_hessian)))
 
   expect_error(
-    gllvmTMB::profile_cross_rho(A_H, A_P, W, rho = 1.2, refit = function(...) NULL),
+    gllvmTMB::profile_cross_rho(A_H, A_P, W, rho = 1.2, refit = function(...) {
+      NULL
+    }),
     regexp = "\\[-1, 1\\]"
   )
   expect_error(
@@ -707,10 +1066,12 @@ test_that("high-overlap kernel tiers warn while still fitting", {
   L_A <- t(chol(A + diag(1e-8, n_unit)))
   g_phy <- as.numeric(L_A %*% stats::rnorm(n_unit))
   g_non <- as.numeric(L_A %*% stats::rnorm(n_unit))
-  rows$y1 <- 0.5 * g_phy[as.integer(rows$unit_id)] +
+  rows$y1 <- 0.5 *
+    g_phy[as.integer(rows$unit_id)] +
     0.5 * g_non[as.integer(rows$unit_id)] +
     stats::rnorm(nrow(rows), sd = 0.25)
-  rows$y2 <- -0.3 * g_phy[as.integer(rows$unit_id)] +
+  rows$y2 <- -0.3 *
+    g_phy[as.integer(rows$unit_id)] +
     0.4 * g_non[as.integer(rows$unit_id)] +
     stats::rnorm(nrow(rows), sd = 0.25)
 
@@ -803,7 +1164,10 @@ test_that("near-orthogonal two-component kernels recover component Gamma shapes"
   expect_equal(fit_full$opt$convergence, 0L)
   expect_equal(fit_phy_only$opt$convergence, 0L)
   expect_equal(fit_non_only$opt$convergence, 0L)
-  expect_equal(fit_full$kernel_diagnostics$pairs$overlap_class, "near_orthogonal")
+  expect_equal(
+    fit_full$kernel_diagnostics$pairs$overlap_class,
+    "near_orthogonal"
+  )
   expect_equal(
     fit_full$kernel_diagnostics$pairs$similarity,
     fx$similarity,
@@ -852,6 +1216,87 @@ test_that("near-orthogonal two-component kernels recover component Gamma shapes"
   expect_gt(.c3_gamma_corr(Gamma_non, fx$Gamma_non), 0.95)
   expect_lt(.c3_gamma_corr(Gamma_phy, fx$Gamma_non), 0.25)
   expect_lt(.c3_gamma_corr(Gamma_non, fx$Gamma_phy), 0.25)
+
+  modules_phy <- gllvmTMB::extract_coevolution_modules(
+    fit_full,
+    level = "phy",
+    row_traits = fx$host_traits,
+    col_traits = fx$partner_traits
+  )
+  modules_non <- gllvmTMB::extract_coevolution_modules(
+    fit_full,
+    level = "non",
+    row_traits = fx$host_traits,
+    col_traits = fx$partner_traits
+  )
+  expect_equal(dim(modules_phy$R), c(2L, 2L))
+  expect_equal(dim(modules_non$R), c(2L, 2L))
+  expect_true(all(is.finite(modules_phy$modules$singular_value)))
+  expect_true(all(is.finite(modules_non$modules$singular_value)))
+  expect_lte(diff(modules_phy$modules$singular_value), 0)
+  expect_lte(diff(modules_non$modules$singular_value), 0)
+  expect_equal(sum(modules_phy$modules$squared_share), 1, tolerance = 1e-12)
+  expect_equal(sum(modules_non$modules$squared_share), 1, tolerance = 1e-12)
+
+  Sigma_phy <- suppressMessages(gllvmTMB::extract_Sigma(
+    fit_full,
+    level = "phy",
+    part = "shared",
+    link_residual = "none"
+  ))$Sigma
+  Sigma_non <- suppressMessages(gllvmTMB::extract_Sigma(
+    fit_full,
+    level = "non",
+    part = "shared",
+    link_residual = "none"
+  ))$Sigma
+  R_phy_manual <- .c3_inv_sqrt(
+    Sigma_phy[fx$host_traits, fx$host_traits, drop = FALSE]
+  ) %*%
+    Gamma_phy %*%
+    .c3_inv_sqrt(Sigma_phy[fx$partner_traits, fx$partner_traits, drop = FALSE])
+  R_non_manual <- .c3_inv_sqrt(
+    Sigma_non[fx$host_traits, fx$host_traits, drop = FALSE]
+  ) %*%
+    Gamma_non %*%
+    .c3_inv_sqrt(Sigma_non[fx$partner_traits, fx$partner_traits, drop = FALSE])
+  expect_equal(modules_phy$R, R_phy_manual, tolerance = 1e-10)
+  expect_equal(modules_non$R, R_non_manual, tolerance = 1e-10)
+  expect_equal(
+    modules_phy$modules$singular_value,
+    svd(R_phy_manual)$d,
+    tolerance = 1e-10
+  )
+  expect_equal(
+    modules_non$modules$singular_value,
+    svd(R_non_manual)$d,
+    tolerance = 1e-10
+  )
+
+  one_module <- gllvmTMB::extract_coevolution_modules(
+    fit_full,
+    level = "phy",
+    row_traits = fx$host_traits,
+    col_traits = fx$partner_traits,
+    n_modules = 1
+  )
+  expect_equal(nrow(one_module$modules), 1L)
+  expect_equal(nrow(one_module$row_axes), length(fx$host_traits))
+  expect_equal(nrow(one_module$col_axes), length(fx$partner_traits))
+
+  effect_modules <- gllvmTMB::extract_coevolution_modules(
+    fit_full,
+    level = "phy",
+    row_traits = fx$host_traits,
+    col_traits = fx$partner_traits,
+    scale = "effect"
+  )
+  expect_equal(effect_modules$R, 0.55 * modules_phy$R, tolerance = 1e-10)
+  expect_equal(
+    effect_modules$modules$singular_value,
+    0.55 * modules_phy$modules$singular_value,
+    tolerance = 1e-10
+  )
 })
 
 test_that("moderately overlapping kernels still recover component Gamma shapes", {
@@ -869,8 +1314,8 @@ test_that("moderately overlapping kernels still recover component Gamma shapes",
   ## | Gamma_phy | same "phy" tier | Lambda_H,phy Lambda_P,phy^T | extract_Gamma(level = "phy") | Gamma_shape_phy |
   ## | Gamma_non | same "non" tier | Lambda_H,non Lambda_P,non^T | extract_Gamma(level = "non") | Gamma_shape_non |
   moderate_grid <- data.frame(
-    seed = c(2401L, 2402L),
-    non_association_blend = c(0.30, 0.35)
+    seed = c(2400L, 2401L, 2402L),
+    non_association_blend = c(0.25, 0.30, 0.35)
   )
 
   for (i in seq_len(nrow(moderate_grid))) {
@@ -952,8 +1397,7 @@ test_that("high-overlap two-component fits collapse to one higher-rank kernel", 
     seed = 2501L,
     identical_kernels = TRUE
   )
-  fx_shrink$K_non <- 0.95 * fx_shrink$K_phy +
-    0.05 * diag(nrow(fx_shrink$K_phy))
+  fx_shrink$K_non <- 0.95 * fx_shrink$K_phy + 0.05 * diag(nrow(fx_shrink$K_phy))
   dimnames(fx_shrink$K_non) <- dimnames(fx_shrink$K_phy)
   fx_shrink$similarity <- .c3_kernel_similarity(
     fx_shrink$K_phy,
@@ -999,8 +1443,10 @@ test_that("high-overlap two-component fits collapse to one higher-rank kernel", 
     expect_equal(fit_full$opt$convergence, 0L)
     expect_equal(fit_collapsed$opt$convergence, 0L)
     expect_lt(
-      abs(as.numeric(stats::logLik(fit_full)) -
-        as.numeric(stats::logLik(fit_collapsed))),
+      abs(
+        as.numeric(stats::logLik(fit_full)) -
+          as.numeric(stats::logLik(fit_collapsed))
+      ),
       2
     )
 
@@ -1037,6 +1483,70 @@ test_that("high-overlap two-component fits collapse to one higher-rank kernel", 
   }
 })
 
+test_that("high-overlap non-identical kernels detect signal without promoting separation", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  testthat::skip_if_not_installed("tidyr")
+
+  ## COE-04 high-overlap failure-calibration alignment table.
+  ##
+  ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | K_phy | kernel_latent(..., name = "phy") | aligned cross kernel | fit$kernel_diagnostics | high-overlap pair |
+  ## | K_non | kernel_latent(..., name = "non") | 85% K_phy + 15% opposed kernel | fit$kernel_diagnostics | non-identical high-overlap pair |
+  ## | Gamma_phy/Gamma_non | same named tiers | nonzero Lambda blocks | extract_Gamma(level = ...) warns | descriptive only |
+  ## | full-vs-one | both named tiers vs one-component fits | same high-overlap DGP | logLik difference | signal detection, not separation |
+  fx <- .c3_make_two_component_fixture(
+    seed = 2551L,
+    n_H = 24L,
+    n_P = 24L,
+    n_rep = 5L,
+    non_kernel_phy_mix = 0.85
+  )
+  expect_false(isTRUE(all.equal(fx$K_phy, fx$K_non)))
+  expect_equal(.c3_kernel_overlap_class(fx$similarity), "high")
+  expect_gt(fx$similarity, 0.70)
+  expect_lt(fx$similarity, 1)
+
+  fit <- suppressWarnings(.c3_fit_two_kernel_set(fx))
+  expect_equal(fit$full$opt$convergence, 0L)
+  expect_equal(fit$phy_only$opt$convergence, 0L)
+  expect_equal(fit$non_only$opt$convergence, 0L)
+  expect_equal(fit$full$kernel_diagnostics$pairs$overlap_class, "high")
+  expect_warning(
+    gllvmTMB::extract_Gamma(
+      fit$full,
+      level = "phy",
+      row_traits = fx$host_traits,
+      col_traits = fx$partner_traits
+    ),
+    regexp = "high-overlap fixed kernel tier"
+  )
+  expect_gt(
+    as.numeric(stats::logLik(fit$full)) -
+      max(
+        as.numeric(stats::logLik(fit$phy_only)),
+        as.numeric(stats::logLik(fit$non_only))
+      ),
+    20
+  )
+
+  ## The high-overlap fit can detect that two latent fields improve the
+  ## likelihood, but component-wise Gamma shapes are not promoted as recovered:
+  ## at least one own-shape correlation fails the ordinary 0.95 recovery bar
+  ## or at least one cross-component match crosses the 0.25 separation bar.
+  own_cor <- c(
+    phy = .c3_gamma_corr(fit$Gamma_phy, fx$Gamma_phy),
+    non = .c3_gamma_corr(fit$Gamma_non, fx$Gamma_non)
+  )
+  cross_cor <- c(
+    phy_vs_non = .c3_gamma_corr(fit$Gamma_phy, fx$Gamma_non),
+    non_vs_phy = .c3_gamma_corr(fit$Gamma_non, fx$Gamma_phy)
+  )
+  expect_true(any(own_cor < 0.95) || any(cross_cor > 0.25))
+})
+
 test_that("near-orthogonal selective absence collapses either absent Gamma", {
   skip_if_not_heavy()
   testthat::skip_on_cran()
@@ -1055,7 +1565,10 @@ test_that("near-orthogonal selective absence collapses either absent Gamma", {
   expect_equal(absent_non_fit$full$opt$convergence, 0L)
   expect_equal(absent_non_fit$phy_only$opt$convergence, 0L)
   expect_equal(absent_non_fit$non_only$opt$convergence, 0L)
-  expect_gt(.c3_gamma_corr(absent_non_fit$Gamma_phy, absent_non$Gamma_phy), 0.95)
+  expect_gt(
+    .c3_gamma_corr(absent_non_fit$Gamma_phy, absent_non$Gamma_phy),
+    0.95
+  )
   expect_lt(sqrt(sum(absent_non_fit$Gamma_non^2)), 1e-3)
   expect_gt(
     as.numeric(stats::logLik(absent_non_fit$phy_only)) -
@@ -1077,7 +1590,10 @@ test_that("near-orthogonal selective absence collapses either absent Gamma", {
   expect_equal(absent_phy_fit$phy_only$opt$convergence, 0L)
   expect_equal(absent_phy_fit$non_only$opt$convergence, 0L)
   expect_lt(sqrt(sum(absent_phy_fit$Gamma_phy^2)), 1e-3)
-  expect_gt(.c3_gamma_corr(absent_phy_fit$Gamma_non, absent_phy$Gamma_non), 0.95)
+  expect_gt(
+    .c3_gamma_corr(absent_phy_fit$Gamma_non, absent_phy$Gamma_non),
+    0.95
+  )
   expect_gt(
     as.numeric(stats::logLik(absent_phy_fit$non_only)) -
       as.numeric(stats::logLik(absent_phy_fit$phy_only)),
@@ -1158,12 +1674,21 @@ test_that("near-orthogonal null diagnostic and medium-signal grid separates clai
   expect_lt(stats::median(null_grid[, "full_minus_intercept"]), 2)
   expect_true(sum(null_grid[, "full_minus_intercept"] > 3) <= 2L)
   expect_lt(max(null_grid[, "full_minus_intercept"]), 8)
+  null_tail_95 <- unname(stats::quantile(
+    null_grid[, "full_minus_intercept"],
+    probs = 0.95,
+    type = 8
+  ))
+  expect_true(is.finite(null_tail_95))
+  expect_gt(null_tail_95, 0)
+  expect_lt(null_tail_95, 8)
 
   signal_grid <- data.frame(
     seed = c(2602L, 2604L),
     lambda_phy_scale = c(0.50, 0.50),
     lambda_non_scale = c(0.50, 0.30)
   )
+  signal_gain <- numeric(nrow(signal_grid))
   for (i in seq_len(nrow(signal_grid))) {
     fx <- .c3_make_two_component_fixture(
       seed = signal_grid$seed[[i]],
@@ -1175,17 +1700,22 @@ test_that("near-orthogonal null diagnostic and medium-signal grid separates clai
     expect_equal(fit$full$opt$convergence, 0L)
     expect_equal(fit$phy_only$opt$convergence, 0L)
     expect_equal(fit$non_only$opt$convergence, 0L)
+    signal_gain[[i]] <- as.numeric(stats::logLik(fit$full)) -
+      max(
+        as.numeric(stats::logLik(fit$phy_only)),
+        as.numeric(stats::logLik(fit$non_only))
+      )
+    expect_gt(signal_gain[[i]], 100)
     expect_gt(
-      as.numeric(stats::logLik(fit$full)) -
-        max(
-          as.numeric(stats::logLik(fit$phy_only)),
-          as.numeric(stats::logLik(fit$non_only))
-        ),
-      100
+      signal_gain[[i]],
+      10 * null_tail_95
     )
     expect_gt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_phy), 0.90)
     expect_gt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_non), 0.90)
   }
+  ## This is an empirical threshold scaffold for this fixed small grid, not a
+  ## formal Type-I calibration or a reusable decision rule.
+  expect_gt(min(signal_gain), 10 * null_tail_95)
 })
 
 test_that("fixed-rho sensitivity grid separates cross signal from block-null but does not estimate rho", {
@@ -1327,7 +1857,10 @@ test_that("Poisson two-kernel coevolution recovers component Gamma shapes", {
     expect_equal(fit$full$opt$convergence, 0L)
     expect_equal(fit$phy_only$opt$convergence, 0L)
     expect_equal(fit$non_only$opt$convergence, 0L)
-    expect_equal(fit$full$kernel_diagnostics$pairs$overlap_class, "near_orthogonal")
+    expect_equal(
+      fit$full$kernel_diagnostics$pairs$overlap_class,
+      "near_orthogonal"
+    )
     expect_gt(
       as.numeric(stats::logLik(fit$full)) -
         max(
@@ -1340,6 +1873,135 @@ test_that("Poisson two-kernel coevolution recovers component Gamma shapes", {
     expect_gt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_non), 0.98)
     expect_lt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_non), 0.10)
     expect_lt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_phy), 0.10)
+  }
+})
+
+test_that("mixed-family two-kernel coevolution smoke constructs finite component Gammas", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+
+  fx <- .c3_make_two_component_fixture(seed = 2911L, n_H = 16L, n_P = 16L)
+  partner_traits <- c("p_size", "p_attack")
+  for (nm in partner_traits) {
+    idx <- !is.na(fx$data[[nm]])
+    eta <- 0.6 + 0.25 * as.numeric(base::scale(fx$data[[nm]][idx]))
+    fx$data[[nm]][idx] <- stats::rpois(sum(idx), lambda = exp(eta))
+  }
+
+  trait_names <- c("h_size", "h_defence", "p_size", "p_attack")
+  long <- do.call(rbind, lapply(trait_names, function(nm) {
+    data.frame(
+      row_id = fx$data$row_id,
+      species = fx$data$species,
+      trait = factor(nm, levels = trait_names),
+      value = fx$data[[nm]],
+      family = if (nm %in% partner_traits) "poisson" else "gaussian",
+      stringsAsFactors = FALSE
+    )
+  }))
+  long <- long[!is.na(long$value), , drop = FALSE]
+  long$family <- factor(long$family, levels = c("gaussian", "poisson"))
+  expect_true(all(long$value[long$family == "poisson"] >= 0))
+  expect_true(all(long$value[long$family == "poisson"] ==
+    floor(long$value[long$family == "poisson"])))
+  expect_equal(as.integer(table(long$family)), c(192L, 192L))
+
+  fam <- list(stats::gaussian(), stats::poisson())
+  attr(fam, "family_var") <- "family"
+
+  ## COE-04 mixed-family construction-smoke alignment table.
+  ##
+  ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | K_phy/K_non | kernel_latent(..., name = "phy/non") | same fixed kernels as Gaussian fixture | fit$kernel_diagnostics | construction smoke |
+  ## | Y_H/Y_P | gaussian() + poisson() via family_var | host traits continuous, partner traits counts | convergence + finite logLik | smoke only |
+  ## | Gamma_phy/Gamma_non | same named tiers | no recovery target in this mixed-family smoke | extract_Gamma(level = ...) | finite point blocks |
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+      kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
+      kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = long,
+    trait = "trait",
+    unit = "row_id",
+    cluster = "species",
+    family = fam,
+    control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  )))
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(is.finite(as.numeric(stats::logLik(fit))))
+  expect_equal(fit$kernel_diagnostics$pairs$overlap_class, "near_orthogonal")
+
+  S_phy <- suppressMessages(gllvmTMB::extract_Sigma(
+    fit,
+    level = "phy",
+    part = "shared"
+  ))
+  S_non <- suppressMessages(gllvmTMB::extract_Sigma(
+    fit,
+    level = "non",
+    part = "shared"
+  ))
+  expect_true(all(is.finite(S_phy$Sigma)))
+  expect_true(all(is.finite(S_non$Sigma)))
+
+  Gamma_phy <- gllvmTMB::extract_Gamma(
+    fit,
+    level = "phy",
+    row_traits = fx$host_traits,
+    col_traits = fx$partner_traits
+  )
+  Gamma_non <- gllvmTMB::extract_Gamma(
+    fit,
+    level = "non",
+    row_traits = fx$host_traits,
+    col_traits = fx$partner_traits
+  )
+  expect_true(all(is.finite(Gamma_phy)))
+  expect_true(all(is.finite(Gamma_non)))
+})
+
+test_that("mixed-family two-kernel coevolution recovers component Gamma shapes", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+
+  ## COE-04 mixed-family recovery alignment table.
+  ##
+  ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | K_phy/K_non | kernel_latent(..., name = "phy/non") | fixed cross kernels | fit$kernel_diagnostics | near-orthogonal pair |
+  ## | Y_H | gaussian() via family_var | identity-link host traits | convergence + logLik | continuous host block |
+  ## | Y_P | poisson() via family_var | log-link partner counts from same latent component shapes | convergence + logLik | count partner block |
+  ## | Gamma_phy/Gamma_non | same named tiers | Lambda_H,r Lambda_P,r^T, shape-only | extract_Gamma(level = r) | planted shape correlation |
+  for (seed in c(2912L, 2913L)) {
+    fx <- .c3_make_mixed_family_two_kernel_recovery_fixture(seed = seed)
+    expect_equal(.c3_kernel_overlap_class(fx$similarity), "near_orthogonal")
+    expect_gt(fx$mean_count, 2.5)
+    expect_lt(fx$mean_count, 4)
+    expect_equal(as.integer(table(fx$data$family)), c(400L, 400L))
+
+    fit <- .c3_fit_mixed_family_two_kernel_set(fx)
+    expect_equal(fit$full$opt$convergence, 0L)
+    expect_equal(fit$phy_only$opt$convergence, 0L)
+    expect_equal(fit$non_only$opt$convergence, 0L)
+    expect_equal(
+      fit$full$kernel_diagnostics$pairs$overlap_class,
+      "near_orthogonal"
+    )
+    expect_gt(
+      as.numeric(stats::logLik(fit$full)) -
+        max(
+          as.numeric(stats::logLik(fit$phy_only)),
+          as.numeric(stats::logLik(fit$non_only))
+        ),
+      200
+    )
+    expect_gt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_phy), 0.90)
+    expect_gt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_non), 0.90)
+    expect_lt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_non), 0.12)
+    expect_lt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_phy), 0.12)
   }
 })
 
@@ -1441,17 +2103,19 @@ test_that("two kernel_unique tiers without replication warn and collapse to one"
 
   ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
   expect_warning(
-    fit <- suppressMessages(gllvmTMB::gllvmTMB(
-      traits(y1, y2) ~
-        1 +
-        kernel_unique(species, K = fx$A, name = "phy") +
-        kernel_unique(species, K = A_non, name = "non"),
-      data = fx$data,
-      unit = "row_id",
-      cluster = "species",
-      family = stats::gaussian(),
-      control = ctl
-    )),
+    fit <- .c3_muffle_lifecycle_warnings(
+      suppressMessages(gllvmTMB::gllvmTMB(
+        traits(y1, y2) ~
+          1 +
+          kernel_unique(species, K = fx$A, name = "phy") +
+          kernel_unique(species, K = A_non, name = "non"),
+        data = fx$data,
+        unit = "row_id",
+        cluster = "species",
+        family = stats::gaussian(),
+        control = ctl
+      ))
+    ),
     regexp = "not separable without replication"
   )
   ## The collapsed fit is the single-uniqueness-tier model and still fits.
@@ -1466,15 +2130,17 @@ test_that("a single kernel_unique tier does NOT trigger the C3.2 warning", {
   fx <- .c3_make_unreplicated()
   ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
   expect_no_warning(
-    suppressMessages(gllvmTMB::gllvmTMB(
-      traits(y1, y2) ~
-        1 + kernel_unique(species, K = fx$A, name = "phy"),
-      data = fx$data,
-      unit = "row_id",
-      cluster = "species",
-      family = stats::gaussian(),
-      control = ctl
-    ))
+    .c3_muffle_lifecycle_warnings(
+      suppressMessages(gllvmTMB::gllvmTMB(
+        traits(y1, y2) ~
+          1 + kernel_unique(species, K = fx$A, name = "phy"),
+        data = fx$data,
+        unit = "row_id",
+        cluster = "species",
+        family = stats::gaussian(),
+        control = ctl
+      ))
+    )
   )
 })
 
@@ -1504,11 +2170,15 @@ test_that("two kernel_unique tiers WITH replication separate the two Psi", {
   L_A <- t(chol(A + diag(1e-8, n_sp)))
   u_phy <- sweep(
     L_A %*% matrix(stats::rnorm(n_sp * 2L), n_sp, 2L),
-    2L, sqrt(psi_phy), `*`
+    2L,
+    sqrt(psi_phy),
+    `*`
   )
   u_non <- sweep(
     matrix(stats::rnorm(n_sp * 2L), n_sp, 2L),
-    2L, sqrt(psi_non), `*`
+    2L,
+    sqrt(psi_non),
+    `*`
   )
   eta_sp <- u_phy + u_non
   colnames(eta_sp) <- c("y1", "y2")

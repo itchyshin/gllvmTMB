@@ -43,7 +43,7 @@ See Details.}
 effective sample size used in Fisher's
 \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}}
 formula. Only consulted for \code{method \%in\% c("fisher-z",
-  "wald")}. The default heuristic uses \code{fit$n_sites} for tier
+"wald")}. The default heuristic uses \code{fit$n_sites} for tier
 \code{"B"} (\code{"unit"}), \code{fit$n_site_species} for
 \code{"W"} (\code{"unit_obs"}), \code{fit$n_species} for
 \code{"phy"}, and \code{fit$n_sites} elsewhere — adequate for
@@ -70,9 +70,10 @@ diagonal before computing correlations. Returned correlations
 are on the latent-liability scale; this is the convention most
 readers expect. Gaussian fits are unaffected (link residual is
 \eqn{0}).}
-\item{\code{"none"}}{Use the latent + unique-implied \eqn{\Sigma}
-directly with no link-residual addition. Correlations come out
-on the model-implied scale without the family adjustment.}
+\item{\code{"none"}}{Use the fitted model \eqn{\Sigma}
+(\eqn{\Lambda\Lambda^\top + \Psi} where a latent decomposition is
+present) directly with no link-residual addition. Correlations come
+out on the model-implied scale without the family adjustment.}
 }
 
 \strong{Behaviour change in this release}: the previous version
@@ -160,8 +161,7 @@ s <- simulate_site_trait(
   psi_B = c(0.4, 0.3, 0.5, 0.2)
 )
 fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 1) +
-          unique(0 + trait | site),
+  value ~ 0 + trait + latent(0 + trait | site, d = 1),
   data  = s$data,
   trait = "trait",
   unit  = "site"

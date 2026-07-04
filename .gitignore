@@ -72,6 +72,9 @@ inst/tmb/*.dylib
 tests/testthat/Rplots.pdf
 Rplots.pdf
 
+# Local scratch renders and transient diagnostics
+tmp/
+
 # Workshop drawer: preserved work from the legacy repo + global skills.
 # Gitignored: never commits to the fresh repo. See _workshop/README.md.
 _workshop/

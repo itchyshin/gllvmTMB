@@ -17,8 +17,7 @@ test_that("extract_Sigma accepts canonical and legacy level names", {
     psi_B = rep(0.3, 4)
   )
   fit <- suppressMessages(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2) +
-            unique(0 + trait | site),
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = sim$data, unit = "site"
   ))
 
@@ -47,8 +46,7 @@ test_that("extract_communality accepts canonical and legacy level names", {
     psi_B = rep(0.3, 4)
   )
   fit <- suppressMessages(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2) +
-            unique(0 + trait | site),
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = sim$data, unit = "site"
   ))
 
@@ -73,8 +71,7 @@ test_that("extract_correlations accepts canonical and legacy tier names", {
     psi_B = rep(0.3, 4)
   )
   fit <- suppressMessages(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2) +
-            unique(0 + trait | site),
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = sim$data, unit = "site"
   ))
 

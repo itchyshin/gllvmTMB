@@ -57,18 +57,17 @@ test_that("Stage 3: propto() recovers loglambda_phy reasonably", {
   expect_equal(unname(as.numeric(est)), log(0.8), tolerance = 0.7)
 })
 
-test_that("Stage 3: rr + diag + propto can run together (smoke test)", {
+test_that("Stage 3: default latent covariance + propto can run together (smoke test)", {
   skip_if_not_glmmTMB()
   s <- simulate_phylo_data(n_sites = 80, n_species = 14, n_traits = 4,
                            sigma2_phy = c(0.5, 0.5, 0.5, 0.5), seed = 13)
   df <- s$data; Cphy <- s$Cphy
 
-  ## Add a between-site rr+diag layer to the simulated data.
+  ## Add a between-site latent layer with its default diagonal Psi companion.
   ## This is just a smoke test that the combined model fits without error.
   fit_g <- gllvmTMB(
     value ~ 0 + trait + (0 + trait):env_1 +
             latent(0 + trait | site, d = 2) +
-            unique(0 + trait | site) +
             propto(0 + species | trait, Cphy),
     data = df, phylo_vcv = Cphy
   )
@@ -78,8 +77,8 @@ test_that("Stage 3: rr + diag + propto can run together (smoke test)", {
   expect_true(fit_g$use$diag_B)
 
   ## Cross-check LL against glmmTMB on the same formula. glmmTMB-side
-  ## uses its own `rr()` / `diag()` keywords (NOT gllvmTMB's canonical
-  ## latent()/unique()).
+  ## uses its own `rr()` / `diag()` keywords. In gllvmTMB, ordinary
+  ## latent() now carries the matching diagonal Psi companion by default.
   ll_g <- -fit_g$opt$objective
   fit_t <- suppressWarnings(glmmTMB::glmmTMB(
     value ~ 0 + trait + (0 + trait):env_1 +

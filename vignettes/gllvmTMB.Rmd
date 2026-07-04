@@ -46,9 +46,10 @@ HTML reviews are ready.
 We have `n` individuals, each measured on `T` morphological traits
 across a few sessions. The biological question: do the traits covary
 on a small number of latent axes (e.g. a body-size axis, a shape
-axis)? With one observational level and modest repetition, both the
-shared (`latent()`) and unique (`unique()`) covariance components are
-identifiable. No spatial or phylogenetic structure here.
+axis)? With one observational level and modest repetition, ordinary
+`latent()` estimates both the shared low-rank covariance and the diagonal
+trait-specific $\boldsymbol\Psi$ component by default. No spatial or
+phylogenetic structure here.
 
 ```{r setup}
 library(gllvmTMB)
@@ -101,11 +102,12 @@ head(df, 6)
 The example has shared low-rank covariance
 $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ plus per-trait unique
 variance $\boldsymbol\Psi$. The fit below recovers the individual-level
-covariance via `latent()` and `unique()`.
+covariance via ordinary `latent()`.
 
-Fit a `d = 2` reduced-rank GLLVM with **`latent() + unique()`** at the
-individual level — the shared low-rank structure plus trait-specific
-unique variance:
+Fit a `d = 2` reduced-rank GLLVM with **`latent()`** at the individual
+level — the shared low-rank structure plus trait-specific unique variance.
+The older explicit `latent() + unique()` spelling remains compatibility
+syntax, but new ordinary examples can use `latent()` alone:
 
 ```{r fit-call}
 morph$formula_wide
@@ -226,8 +228,8 @@ plot(ord$scores[, 1], ord$scores[, 2], pch = 19, col = "steelblue",
 abline(h = 0, v = 0, lty = 2, col = "grey70")
 ```
 
-That's the whole model — `latent()` for shared trait covariance,
-`unique()` for trait-specific residual variance, plus trait-specific
+That's the whole model — `latent()` for shared trait covariance and the
+diagonal trait-specific $\boldsymbol\Psi$ component, plus trait-specific
 intercepts.
 
 Per-trait communality $c_t^2$ — the proportion of each trait's

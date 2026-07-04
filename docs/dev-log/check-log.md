@@ -611,6 +611,2802 @@ Still not claimed:
   launch.
 - No non-Gaussian, mixed-family, mask, or CI calibration claim.
 
+## 2026-06-19 01:56 MDT -- choose-your-model internal gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Align the internal `choose-your-model` routing draft with the current
+  article-council ledger.
+- Prevent the page from reading as a public decision guide while linked
+  biological, advanced, and capstone articles remain internal.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Implemented:
+
+- Added Tier 3 YAML.
+- Added an internal navigation-draft gate.
+- Named linked worked examples as intentionally internal until their gates
+  close.
+- Removed `validated rungs are runnable` wording.
+- Replaced `publication-grade CIs` with coverage-row-scoped interval wording.
+- Updated the article-council ledger row and added
+  `docs/dev-log/after-task/2026-06-19-choose-your-model-internal-gate.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/choose-your-model", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/choose-your-model.html`.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/choose-your-model.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); stopifnot(grepl("Internal article gate", flat, fixed = TRUE)); stopifnot(grepl("Tier 3 routing draft", flat, fixed = TRUE)); stopifnot(grepl("not yet a public decision guide", flat, fixed = TRUE)); stopifnot(grepl("linked worked examples are intentionally internal", flat, fixed = TRUE)); stopifnot(grepl("internal capstone draft", flat, fixed = TRUE)); stopifnot(!grepl("publication-grade", flat, fixed = TRUE)); stopifnot(!grepl("validated rungs are runnable", flat, fixed = TRUE)); cat("choose_your_model_rendered_scope_review=PASS\n")'`
+  -> `choose_your_model_rendered_scope_review=PASS`.
+- `sips -g pixelWidth -g pixelHeight pkgdown-site/articles/choose-your-model_files/figure-html/ladder-fig-1.png`
+  -> `pixelWidth: 1459`, `pixelHeight: 806`.
+
+Still not claimed:
+
+- No public promotion of `choose-your-model`.
+- No final navigation-guide decision, release readiness, or scientific coverage
+  completion.
+
+## 2026-06-19 01:51 MDT -- functional biogeography internal gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Align the final capstone `functional-biogeography` draft with current M3 /
+  CI evidence.
+- Remove the remaining publication-grade implication while M3/CI/component
+  evidence remains incomplete.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Implemented:
+
+- Added Tier 3 YAML.
+- Strengthened the internal capstone gate.
+- Updated default-`latent()` / compatibility-`unique()` wording.
+- Kept CI-08 / CI-10 partial in the gate.
+- Replaced `publication-grade` with point-estimate teaching language.
+- Updated the article-council ledger row and added
+  `docs/dev-log/after-task/2026-06-19-functional-biogeography-internal-gate.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/functional-biogeography", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/functional-biogeography.html`.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/functional-biogeography.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); stopifnot(grepl("Internal article gate", flat, fixed = TRUE)); stopifnot(grepl("capstone composite fit is M3 milestone work", flat, fixed = TRUE)); stopifnot(grepl("CI-08 / CI-10 remain partial", flat, fixed = TRUE)); stopifnot(grepl("internal method demo", flat, fixed = TRUE)); stopifnot(grepl("most defensible point-estimate teaching fit", flat, fixed = TRUE)); stopifnot(!grepl("publication-grade", flat, fixed = TRUE)); cat("functional_biogeography_rendered_scope_review=PASS\n")'`
+  -> `functional_biogeography_rendered_scope_review=PASS`.
+- `sips -g pixelWidth -g pixelHeight pkgdown-site/articles/functional-biogeography_files/figure-html/heatmap-rb-1.png`
+  -> `pixelWidth: 1536`, `pixelHeight: 768`.
+- `sips -g pixelWidth -g pixelHeight pkgdown-site/articles/functional-biogeography_files/figure-html/heatmap-rw-1.png`
+  -> `pixelWidth: 1536`, `pixelHeight: 768`.
+
+Still not claimed:
+
+- No public promotion of `functional-biogeography`.
+- No M3 close, CI-08 / CI-10 promotion, publication-grade claim, release
+  readiness, or scientific coverage completion.
+
+## 2026-06-19 01:48 MDT -- simulation recovery internal gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Align the internal `simulation-recovery-validated` article with current
+  CI-08 / CI-10 partial status.
+- Remove validated/release-readiness implications while M3 target-explicit
+  statistical gates remain open.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Implemented:
+
+- Retitled the page to `Simulation recovery: M3 smoke grid`.
+- Added Tier 3 YAML and an internal coverage-triage gate.
+- Named the failed M3.3 production-gate outcome and kept CI-08 / CI-10
+  partial.
+- Reframed smoke-grid output as failure-analysis evidence.
+- Updated the article-council ledger row and added
+  `docs/dev-log/after-task/2026-06-19-simulation-recovery-internal-gate.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/simulation-recovery-validated", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/simulation-recovery-validated.html`.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/simulation-recovery-validated.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); stopifnot(grepl("Simulation recovery: M3 smoke grid", flat, fixed = TRUE)); stopifnot(grepl("Internal article gate", flat, fixed = TRUE)); stopifnot(grepl("Tier 3 coverage-triage article", flat, fixed = TRUE)); stopifnot(grepl("CI-08 and CI-10 remain partial", flat, fixed = TRUE)); stopifnot(grepl("did not clear the gate", flat, fixed = TRUE)); stopifnot(grepl("13 of 15 cells", flat, fixed = TRUE)); stopifnot(grepl("failure-analysis evidence", flat, fixed = TRUE)); stopifnot(grepl("must not be used as release readiness", flat, fixed = TRUE)); stopifnot(!grepl("validated DGP grid", flat, fixed = TRUE)); stopifnot(!grepl("this article validates", flat, fixed = TRUE)); cat("simulation_recovery_rendered_scope_review=PASS\n")'`
+  -> `simulation_recovery_rendered_scope_review=PASS`.
+- `find pkgdown-site/articles -path '*simulation-recovery-validated_files*' -type f -maxdepth 5 -print`
+  -> no figure assets; expected for this page.
+
+Still not claimed:
+
+- No CI-08 or CI-10 promotion.
+- No new production-grid success.
+- No broad interval calibration, release readiness, or scientific coverage
+  completion.
+
+## 2026-06-19 01:45 MDT -- cross-package validation internal gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Align the internal `cross-package-validation` article with the article-council
+  ledger.
+- Keep comparator evidence row-specific while Phase 5.5, CI-08, CI-10, and
+  MET-01 remain incomplete.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Implemented:
+
+- Added Tier 3 YAML and an internal comparator-ledger gate.
+- Reframed the opening from universal validation to named-fixture evidence.
+- Added a live / partial / planned scope boundary.
+- Replaced broad matrix statuses with row-specific comparator statuses.
+- Removed broad `gllvmTMB is correct` / `inference-complete` wording.
+- Updated the article-council ledger row and added
+  `docs/dev-log/after-task/2026-06-19-cross-package-validation-internal-gate.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/cross-package-validation", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/cross-package-validation.html`.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/cross-package-validation.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); stopifnot(grepl("Internal article gate", flat, fixed = TRUE)); stopifnot(grepl("Tier 3 comparator ledger", flat, fixed = TRUE)); stopifnot(grepl("not a public proof", flat, fixed = TRUE)); stopifnot(grepl("full cross-package surface", flat, fixed = TRUE)); stopifnot(grepl("Rows marked partial", flat, fixed = TRUE)); stopifnot(grepl("Current differentiators and open comparator debt", flat, fixed = TRUE)); stopifnot(grepl("CI-08", flat, fixed = TRUE)); stopifnot(grepl("CI-10", flat, fixed = TRUE)); stopifnot(!grepl("for every covariance structure shared", flat, fixed = TRUE)); stopifnot(!grepl("gllvmTMB is correct", flat, fixed = TRUE)); stopifnot(!grepl("inference-complete", flat, fixed = TRUE)); cat("cross_package_rendered_scope_review=PASS\n")'`
+  -> `cross_package_rendered_scope_review=PASS`.
+- `sips -g pixelWidth -g pixelHeight pkgdown-site/articles/cross-package-validation_files/figure-html/gllvm-plot-1.png`
+  -> `pixelWidth: 1344`, `pixelHeight: 672`.
+
+Still not claimed:
+
+- No public promotion of `cross-package-validation`.
+- No complete Phase 5.5 comparator ledger.
+- No CI-08 / CI-10 promotion, release readiness, or scientific coverage
+  completion.
+
+## 2026-06-19 01:40 MDT -- cross-lineage coevolution internal gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Align the internal `cross-lineage-coevolution` article with the current
+  Paper 2 coevolution evidence after the COE-04 reciprocal-dependence gate.
+- Keep the article Tier 3/internal while `rho`, intervals, null thresholds,
+  and broader scientific coverage remain open.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Implemented:
+
+- Added Tier 3 YAML and an internal article gate.
+- Added the Paper 2 two-source covariance identity
+  `C_phy Gamma_phy + C_tip Gamma_tip`.
+- Added a raw reciprocal-dependence versus residualized tip-kernel screen:
+  `W_recip = sqrt(p(j|i) p(i|j))`, `sensitivity_required`, and
+  `separable_candidate`.
+- Updated the article-council ledger row and added
+  `docs/dev-log/after-task/2026-06-19-cross-lineage-coevolution-internal-gate.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/cross-lineage-coevolution", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/cross-lineage-coevolution.html`.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/cross-lineage-coevolution.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); stopifnot(grepl("Internal article gate", flat, fixed = TRUE)); stopifnot(grepl("Tier 3 methods draft", flat, fixed = TRUE)); stopifnot(grepl("C_phy", flat, fixed = TRUE)); stopifnot(grepl("C_tip", flat, fixed = TRUE)); stopifnot(grepl("W_recip", flat, fixed = TRUE)); stopifnot(grepl("sensitivity_required", flat, fixed = TRUE)); stopifnot(grepl("separable_candidate", flat, fixed = TRUE)); stopifnot(grepl("not yet a release-ready public worked example", flat, fixed = TRUE)); stopifnot(grepl("does not deliver intervals", flat, fixed = TRUE)); stopifnot(!grepl("release-ready public coevolution workflow", flat, fixed = TRUE)); stopifnot(!grepl("scientific coverage passed", flat, fixed = TRUE)); cat("cross_lineage_rendered_scope_review=PASS\n")'`
+  -> `cross_lineage_rendered_scope_review=PASS`.
+- `sips -g pixelWidth -g pixelHeight pkgdown-site/articles/cross-lineage-coevolution_files/figure-html/gamma-plot-1.png`
+  -> `pixelWidth: 1382`, `pixelHeight: 844`.
+
+Still not claimed:
+
+- No public promotion of `cross-lineage-coevolution`.
+- No calibrated intervals, in-engine `rho`, formal null thresholds, bridge
+  completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 01:29 MDT -- COE-04 reciprocal-dependence separability gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add one narrow Paper 2 coevolution gate from the maintainer's model note:
+  raw reciprocal-dependence `W` must be screened against a residualized tip
+  candidate before phylogenetic-versus-tip component claims are advertised.
+- Keep the current Paper 2 multi-kernel path latent-only; do not expand
+  `kernel_unique()` / `*_unique()` for coevolution.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Implemented:
+
+- Added `reciprocal-dependence W needs sensitivity before tip-kernel claims`
+  to `tests/testthat/test-coevolution-two-kernel.R`.
+- The deterministic fixture builds
+  `W_recip = sqrt(p(j|i) p(i|j))` from link counts.
+- The raw reciprocal tip kernel is `moderate` overlap with recommendation
+  `sensitivity_required`; the residualized-plus-opposed candidate is
+  `near_orthogonal` with recommendation `separable_candidate`.
+- Updated Design 65, the validation-debt register, dashboard JSON, and this
+  check-log.
+- Added
+  `docs/dev-log/after-task/2026-06-19-coe04-reciprocal-dependence-separability.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 11 | PASS 92`.
+
+Still not claimed:
+
+- No fitted recovery evidence from this slice.
+- No interval calibration, in-engine `rho` estimation, mechanistic validation,
+  empirical trait/data audit, bridge completion, release readiness, or
+  scientific coverage completion.
+
+## 2026-06-19 01:24 MDT -- ordinal-probit reader scope
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Finish article-council step 6 by aligning the internal `ordinal-probit`
+  technical draft with current `FAM-14` partial status.
+- Remove stale Tier 2/public-readiness implication while keeping the threshold
+  syntax note recoverable.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Implemented:
+
+- Changed YAML from Tier 2 to Tier 3 while `FAM-14` remains partial.
+- Added an internal article gate.
+- Added a reader/scope bridge for family choice, long/wide syntax, cutpoints,
+  latent-scale variance, and guardrails.
+- Updated standalone diagonal teaching from `phylo_unique()` / `unique()` to
+  `phylo_indep()` / `indep()`.
+- Kept `unique()` only as the observation-level residual guardrail, where it is
+  structurally unidentifiable for ordinal-probit traits.
+- Updated the article-council ledger, dashboard JSON, and this check-log.
+- Added `docs/dev-log/after-task/2026-06-19-ordinal-probit-reader-scope.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/ordinal-probit", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/ordinal-probit.html`.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/ordinal-probit.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); stopifnot(grepl("Internal article gate", flat, fixed = TRUE)); stopifnot(grepl("Reader path and scope", flat, fixed = TRUE)); stopifnot(grepl("FAM-14", flat, fixed = TRUE)); stopifnot(grepl("partial", flat, fixed = TRUE)); stopifnot(grepl("phylo_indep", flat, fixed = TRUE)); stopifnot(grepl("indep()", flat, fixed = TRUE)); stopifnot(grepl("structurally unidentifiable", flat, fixed = TRUE)); stopifnot(!grepl("gllvmTMB_wide", flat, fixed = TRUE)); stopifnot(!grepl("meta_known_V", flat, fixed = TRUE)); stopifnot(!grepl("phylo_unique", flat, fixed = TRUE)); cat("ordinal_rendered_reader_scope_review=PASS\n")'`
+  -> `ordinal_rendered_reader_scope_review=PASS`.
+- `find pkgdown-site/articles -path '*ordinal-probit_files*' -type f -maxdepth 5 -print`
+  -> no figure assets; expected because all chunks remain `eval = FALSE`.
+
+Still not claimed:
+
+- No public promotion of `ordinal-probit`.
+- No runnable ordinal worked example.
+- No per-cell `FAM-14` validation promotion.
+- No ordinal interval-coverage claim.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 01:20 MDT -- mixed-family extractors reader scope
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue article-council step 6 with the internal
+  `mixed-family-extractors` draft.
+- Add explicit Tier 3 gating and a reader/scope bridge without promoting
+  CI-10 or MIX-10.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Implemented:
+
+- Added Tier 3/internal YAML.
+- Added a reader/scope bridge mapping per-row family dispatch, diagnostic
+  metadata, latent-scale Sigma rows, heatmap correlations, Fisher-z/bootstrap
+  examples, and `bootstrap_Sigma()` rows to readouts.
+- Updated the article-council ledger, dashboard JSON, and this check-log.
+- Added
+  `docs/dev-log/after-task/2026-06-19-mixed-family-extractors-reader-scope.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/mixed-family-extractors", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/mixed-family-extractors.html`.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/mixed-family-extractors.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); stopifnot(grepl("Reader path and scope", flat, fixed = TRUE)); stopifnot(grepl("delta and hurdle", flat, fixed = TRUE)); stopifnot(grepl("not defined on one shared scale", flat, fixed = TRUE)); stopifnot(grepl("Mixed-family trait correlations", flat, fixed = TRUE)); stopifnot(grepl("fit_health_status", flat, fixed = TRUE)); stopifnot(grepl("PASS[[:space:]]+10", flat)); stopifnot(grepl("WARN[[:space:]]+3", flat)); stopifnot(grepl("bootstrap", flat, fixed = TRUE)); stopifnot(!grepl("gllvmTMB_wide", flat, fixed = TRUE)); stopifnot(!grepl("meta_known_V", flat, fixed = TRUE)); cat("mixed_rendered_reader_scope_review=PASS\n")'`
+  -> `mixed_rendered_reader_scope_review=PASS`.
+- `Rscript --vanilla -e 'img <- "pkgdown-site/articles/mixed-family-extractors_files/figure-html/corr-1.png"; d <- dim(png::readPNG(img)); stopifnot(d[1] > 0, d[2] > 0); cat("mixed_png_asset=PASS\n"); cat("image_dims=", d[2], "x", d[1], "\n", sep = "")'`
+  -> `mixed_png_asset=PASS`, `image_dims=1113x921`.
+- Florence figure review:
+  -> the mixed-family correlation heatmap passes as an internal point-estimate
+  figure with readable labels, a clear link-residual subtitle, and no interval
+  overclaim.
+
+Still not claimed:
+
+- No public promotion of `mixed-family-extractors`.
+- No broad NB/beta/delta/hurdle mixed-response tutorial.
+- No calibrated mixed-family interval coverage.
+- No delta/hurdle latent-scale correlation target.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 01:25 MDT -- random-slopes-nongaussian reader scope
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue article-council step 6 with the internal
+  `random-slopes-nongaussian` technical draft.
+- Add explicit Tier 3 gating and a reader/scope bridge without promoting
+  confidence intervals, non-Gaussian `s >= 2`, or blocked families.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Implemented:
+
+- Added Tier 3/internal YAML and an internal article gate.
+- Added a reader/scope bridge mapping long/wide grammar, small Gaussian fit,
+  small Poisson fit, correlated `phylo_dep` syntax, and spatial-twin syntax to
+  readouts.
+- Updated the article-council ledger, dashboard JSON, and this check-log.
+- Added
+  `docs/dev-log/after-task/2026-06-19-random-slopes-nongaussian-reader-scope.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/random-slopes-nongaussian", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-slopes-nongaussian.html`.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/random-slopes-nongaussian.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); stopifnot(grepl("Internal article gate", flat, fixed = TRUE)); stopifnot(grepl("Reader path and scope", flat, fixed = TRUE)); stopifnot(grepl("long vs wide logLik difference:[[:space:]]+0", flat)); stopifnot(grepl("optimizer_convergence[[:space:]]+PASS", flat)); stopifnot(grepl("max_gradient[[:space:]]+PASS", flat)); stopifnot(grepl("Confidence intervals on slope variances", flat, fixed = TRUE)); stopifnot(!grepl("gllvmTMB_wide", flat, fixed = TRUE)); stopifnot(!grepl("meta_known_V", flat, fixed = TRUE)); cat("rsng_rendered_reader_scope_review=PASS\n")'`
+  -> `rsng_rendered_reader_scope_review=PASS`.
+- `find pkgdown-site/articles -path '*random-slopes-nongaussian_files*' -type f -maxdepth 5 -print`
+  -> no figure assets; expected for this syntax/evidence map.
+
+Still not claimed:
+
+- No public promotion of `random-slopes-nongaussian`.
+- No calibrated confidence intervals for slope variances.
+- No non-Gaussian `s >= 2` promotion.
+- No delta/hurdle/zero-inflated slope covariance support.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 01:17 MDT -- random-regression reaction-norm reader scope
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Start article-council step 6 with the internal
+  `random-regression-reaction-norms` advanced-methods draft.
+- Add the missing reader/scope bridge while preserving the point-estimate-only
+  diagnostic boundary.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Implemented:
+
+- Replaced the old "needs plain-language reader pass" placeholder with a
+  reader/scope bridge for long/wide fit equivalence, augmented covariance
+  blocks, known-truth recovery, repeatability curves, and diagnostics.
+- Removed the unused `library(dplyr)` attach.
+- Tightened the diagnostic prose so optimizer/gradient rows are interpreted as
+  point-fit checks while `sdreport` and Hessian rows are expected to warn
+  because `se = FALSE`.
+- Updated the article-council ledger, dashboard JSON, and this check-log.
+- Added
+  `docs/dev-log/after-task/2026-06-19-random-regression-reader-scope.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-regression-reaction-norms.html`.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/random-regression-reaction-norms.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); stopifnot(grepl("Reader path and scope", flat, fixed = TRUE)); stopifnot(grepl("point-estimate teaching evidence", flat, fixed = TRUE)); stopifnot(grepl("optimizer_convergence[[:space:]]+PASS", flat)); stopifnot(grepl("max_gradient[[:space:]]+PASS", flat)); stopifnot(grepl("sdreport[[:space:]]+WARN", flat)); stopifnot(grepl("pd_hessian[[:space:]]+WARN", flat)); stopifnot(grepl("Relative Frobenius error:[[:space:]]+0.132", flat)); stopifnot(grepl("Long/wide logLik difference:[[:space:]]+0", flat)); stopifnot(!grepl("library(dplyr)", flat, fixed = TRUE)); stopifnot(!grepl("gllvmTMB_wide", flat, fixed = TRUE)); stopifnot(!grepl("meta_known_V", flat, fixed = TRUE)); cat("rrn_rendered_reader_scope_review=PASS\n")'`
+  -> `rrn_rendered_reader_scope_review=PASS`.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/random-regression-reaction-norms.html", warn = FALSE); refs <- unique(unlist(regmatches(html, gregexpr("random-regression-reaction-norms_files/figure-html/[^\"]+[.]png", html)))); stopifnot(length(refs) == 2L); for (rel in refs) { img <- file.path("pkgdown-site/articles", rel); d <- dim(png::readPNG(img)); stopifnot(d[1] > 0, d[2] > 0); cat(basename(img), d[2], "x", d[1], "\n") }'`
+  -> referenced figures were `recovery-plot-1.png 1248 x 921` and
+  `repeatability-plot-1.png 1344 x 921`.
+- Florence figure review:
+  -> the recovery and repeatability figures pass for internal point-estimate
+  teaching: clear axes, explicit truth/estimate comparison, stable palette, and
+  no interval overclaim.
+
+Still not claimed:
+
+- No public promotion of `random-regression-reaction-norms`.
+- No calibrated intervals for slope variances, slope correlations,
+  intercept-slope correlations, or repeatability curves.
+- No non-Gaussian augmented diagonal `Psi` support.
+- No `unique()` API removal.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 01:07 MDT -- animal-model reader scope and diagnostics
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the article-council biological worked-example triage after
+  `behavioural-syndromes` and `phylogenetic-gllvm`.
+- Remove the "animal-model remains untriaged" blocker without promoting the
+  article publicly.
+- Keep `animal_unique()` as source-specific explicit genetic `Psi`
+  compatibility syntax only; standalone diagonal teaching remains
+  `animal_indep()`.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Implemented:
+
+- Added Tier 3/internal YAML and an internal article gate to
+  `vignettes/articles/animal-model.Rmd`.
+- Added a reader/scope bridge mapping heritability, bivariate G, rank-1 G,
+  heritable reaction norms, and fit-health checks to model objects, code
+  sections, known truth, and readouts.
+- Added explicit scope-boundary wording for `ANI-01`--`ANI-12`, `ANI-09`,
+  `ANI-10`, and `DIA-08`.
+- Added a rendered `diagnostic_table()` block covering the heritability,
+  bivariate_G, rank1_G, and reaction_norm examples.
+- Updated the article-council ledger, dashboard JSON, and this check-log.
+- Added
+  `docs/dev-log/after-task/2026-06-19-animal-model-reader-scope-diagnostics.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/animal-model", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/animal-model.html`.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/animal-model.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); stopifnot(grepl("Internal article gate", flat, fixed = TRUE)); stopifnot(grepl("Reader path and scope", flat, fixed = TRUE)); for (pat in c("optimizer_convergence[[:space:]]+PASS", "max_gradient[[:space:]]+PASS", "sdreport[[:space:]]+PASS", "pd_hessian[[:space:]]+PASS")) stopifnot(grepl(pat, flat)); stopifnot(grepl("heritability", flat, fixed = TRUE)); stopifnot(grepl("bivariate_G", flat, fixed = TRUE)); stopifnot(grepl("rank1_G", flat, fixed = TRUE)); stopifnot(grepl("reaction_norm", flat, fixed = TRUE)); stopifnot(!grepl("gllvmTMB_wide", flat, fixed = TRUE)); stopifnot(!grepl("meta_known_V", flat, fixed = TRUE)); cat("animal_rendered_diagnostic_review=PASS\n")'`
+  -> `animal_rendered_diagnostic_review=PASS`.
+- `find pkgdown-site/articles -path '*animal-model_files*' -type f -maxdepth 5 -print`
+  -> one rendered figure asset:
+  `pkgdown-site/articles/animal-model_files/figure-html/G3-correlation-1.png`.
+- `Rscript --vanilla -e 'img <- "pkgdown-site/articles/animal-model_files/figure-html/G3-correlation-1.png"; stopifnot(file.exists(img)); d <- dim(png::readPNG(img)); stopifnot(d[1] > 0, d[2] > 0); cat("animal_png_asset=PASS\n"); cat("image_dims=", d[2], "x", d[1], "\n", sep = "")'`
+  -> `animal_png_asset=PASS`, `image_dims=1113x921`.
+- Florence figure review:
+  -> the current genetic-correlation heatmap passes as a point-estimate
+  display: readable labels, appropriate correlation scale, and explicit
+  no-interval caption.
+
+Still not claimed:
+
+- No public promotion of `animal-model`.
+- No cross-package agreement with MCMCglmm, WOMBAT, or ASReml.
+- No broader non-Gaussian calibration claim.
+- No `unique()` API removal.
+- No `kernel_unique()` expansion for Paper 2 multi-kernel coevolution.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 00:58 MDT -- phylogenetic-gllvm reader and scope bridge
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Start the `phylogenetic-gllvm` biological worked-example triage after the
+  behavioural-syndromes reader/asset slices.
+- Add explicit internal/Tier 3 gating and a compact reader/scope bridge before
+  any public placement decision.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Implemented:
+
+- Added `tier: 3` YAML to `vignettes/articles/phylogenetic-gllvm.Rmd`.
+- Added an internal article gate pointing readers to current public articles.
+- Added a reader-path table mapping the phylogenetic/non-phylogenetic split,
+  long/wide likelihood check, Sigma table/heatmap readout, and simplification
+  path to code sections and outputs.
+- Added a scope-boundary paragraph naming row anchors `PHY-02`, `PHY-03`,
+  `PHY-05`, `PHY-06`, `PHY-07`, `PHY-08`, `EXT-05`, `EXT-07`, `EXT-18`,
+  `EXT-27`, and `DIA-08`, while keeping point estimates separate from
+  calibrated uncertainty.
+- Updated the article-council ledger and dashboard surfaces.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/phylogenetic-gllvm", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> passed; wrote `pkgdown-site/articles/phylogenetic-gllvm.html`.
+- `rg -n 'tier: 3|Internal article gate|Reader path and scope|PHY-02|PHY-03|PHY-05|PHY-06|PHY-07|PHY-08|EXT-05|EXT-07|EXT-18|EXT-27|DIA-08|calibrated uncertainty|gllvmTMB_wide|meta_known_V|diag\\(U\\)|diag\\(S\\)|\\\\bf S|estimated rho|calibrated intervals' vignettes/articles/phylogenetic-gllvm.Rmd`
+  -> confirmed the new bridge/gate text and no stale forbidden terms in the
+  touched article source.
+- `git diff --check`
+  -> clean before dashboard bookkeeping.
+
+Follow-up 2026-06-19 01:00 MDT:
+
+- Added a `diagnostic-table` chunk to `phylogenetic-gllvm` using
+  randomized-quantile residual metadata and `diagnostic_table()`.
+- Re-rendered the article successfully.
+- Rendered HTML check confirmed long and wide `optimizer_convergence`,
+  `max_gradient`, `sdreport`, and `pd_hessian` rows all show `PASS`.
+
+Additional checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/phylogenetic-gllvm", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> passed after the diagnostic-table chunk was added.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/phylogenetic-gllvm.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); stopifnot(grepl("Internal article gate", flat, fixed = TRUE)); stopifnot(grepl("Reader path and scope", flat, fixed = TRUE)); stopifnot(grepl("optimizer_convergence[[:space:]]+PASS", flat)); stopifnot(grepl("pd_hessian[[:space:]]+PASS", flat)); stopifnot(grepl("max_gradient[[:space:]]+PASS", flat)); stopifnot(grepl("sdreport[[:space:]]+PASS", flat)); stopifnot(!grepl("gllvmTMB_wide", flat, fixed = TRUE)); stopifnot(!grepl("meta_known_V", flat, fixed = TRUE)); stopifnot(!grepl("diag(U)", flat, fixed = TRUE)); stopifnot(!grepl("diag(S)", flat, fixed = TRUE)); cat("phylo_rendered_diagnostic_review=PASS\n")'`
+  -> `phylo_rendered_diagnostic_review=PASS`.
+- `git diff --check`
+  -> clean before dashboard bookkeeping.
+
+Figure review follow-up 2026-06-19 01:01 MDT:
+
+Verdict: PASS.
+
+Main reason:
+
+- The rendered `extract-total-correlations-1.png` heatmap clearly compares
+  total phylogenetic and non-phylogenetic trait correlations as point estimates.
+
+What works:
+
+- Facets separate `phy` and `unit` cleanly.
+- Cell labels are readable.
+- The diverging correlation scale is appropriate for signed correlations.
+- The figure caption states that heatmaps do not display uncertainty intervals.
+
+Blocking issues:
+
+- None for the current point-estimate display.
+
+Minimal patch:
+
+- No figure patch required in this slice.
+
+Verification:
+
+- Inspected
+  `pkgdown-site/articles/phylogenetic-gllvm_files/figure-html/extract-total-correlations-1.png`
+  after rendering the article.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `Rscript --vanilla -e 'img <- "pkgdown-site/articles/phylogenetic-gllvm_files/figure-html/extract-total-correlations-1.png"; stopifnot(file.exists(img)); d <- dim(png::readPNG(img)); stopifnot(d[1] > 0, d[2] > 0); cat("phylo_png_asset=PASS\n"); cat("image_dims=", d[2], "x", d[1], "\n", sep = "")'`
+  -> `phylo_png_asset=PASS`, `image_dims=1420x883`.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean after dashboard
+  bookkeeping.
+
+Still not claimed:
+
+- No public promotion.
+- No rendered/browser review yet.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 00:45 MDT -- behavioural-syndromes Pat/Darwin reader cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the narrow Pat/Darwin reader cleanup blocker for the internal
+  `behavioural-syndromes` candidate worked example.
+- Keep the article internal until final rendered-HTML review passes.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Implemented:
+
+- Updated the article gate to reflect that Florence figure review has passed
+  and that final rendered-HTML review remains.
+- Removed an unused `library(dplyr)` attach from the setup chunk.
+- Replaced the unsupported `Dingemanse et al. 2002` aside with already-listed
+  animal-personality citations.
+- Softened two simulated-example claims so the article describes fitted
+  variation and expected syndrome structure rather than overclaiming genuine
+  biological evidence.
+- Updated the article-council ledger and dashboard surfaces.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> passed after the Pat/Darwin cleanup and again after the final gate wording
+  correction.
+- `rg -n 'Florence reviews|Pat/Darwin reader review.*block|Pat/Darwin reader review and final|Dingemanse et al\\. 2002|library\\(dplyr\\)|genuine behavioural syndrome|confirming that both axes capture genuine|Reader-path cleanup, Florence figure review|Pat/Darwin reader review, Florence figure review' ...`
+  -> clean after the final article and dashboard wording pass.
+- Rendered-asset review script on
+  `pkgdown-site/articles/behavioural-syndromes.html`
+  -> `rendered_asset_review=PASS`; confirmed gate text, diagnostic PASS rows,
+  no stale `Dingemanse et al. 2002` / `library(dplyr)` / genuine-syndrome
+  wording, and five PNG assets with nonzero dimensions:
+  `1267x960`, `1267x960`, `1152x768`, `1382x998`, and `1382x921`.
+- `qlmanage -t -s 1280 -o /tmp/gllvm-behavioural-preview pkgdown-site/articles/behavioural-syndromes.html`
+  -> produced `/tmp/gllvm-behavioural-preview/behavioural-syndromes.html.png`;
+  visual inspection showed readable navbar, H1, internal gate, and opening
+  biological prose.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> passed before the rendered-asset bookkeeping update; rerun after this
+  update is required.
+
+Blocked / not run:
+
+- In-app browser review could not run because the browser surface reported
+  `Browser is not available: iab`.
+- Headless Playwright could not launch because the Chromium binary was missing
+  from the local Playwright cache.
+
+Still not claimed:
+
+- No public promotion.
+- No full browser scroll-through review yet.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 00:37 MDT -- behavioural-syndromes Florence figure review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the Florence figure-review blocker for the current point-estimate
+  figures in the internal `behavioural-syndromes` candidate worked example.
+- Keep the article internal until reader and final rendered-review gates pass.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+- `git diff --check`
+  -> clean before this slice.
+
+Figure-review verdict:
+
+- Heatmaps: PASS as point-estimate displays. The diverging correlation scale,
+  readable labels, and explicit no-interval caption are clear.
+- Sigma truth-comparison plot: PASS as point-estimate truth comparison. It has
+  one-to-one reference geometry and states that segments are errors, not CIs.
+- Ordination: REVISE -> PASS after polishing. Added subtitle/caption, package
+  palette colour, equal-coordinate geometry, clearer grid, and unclipped
+  caption.
+- Loading recovery: REVISE -> PASS after polishing. Added shorter title,
+  subtitle/caption, package-aligned colours, equal-coordinate geometry, and an
+  unclipped internal legend/caption layout.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> completed successfully.
+- Visual inspection of rendered PNGs:
+  - `inspect-1.png`;
+  - `inspect-w-1.png`;
+  - `ord-1.png`;
+  - `recovery-1.png`;
+  - `recovery-sigma-1.png`.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-behavioural|ordinary-latent|unique-family-deprecation|predictive-diagnostics", reporter = "summary")'`
+  -> passed.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- The article remains Tier 3/internal.
+- Pat/Darwin reader review and final rendered HTML review still block public
+  promotion.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 00:27 MDT -- behavioural-syndromes reader-path bridge
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Move the internal `behavioural-syndromes` candidate toward Tier 1 shape after
+  the wide-fit and diagnostic gates were repaired.
+- Add a compact reader path from biological question to model object, code
+  section, and readout.
+
+Implemented:
+
+- Added a `Reader path` section before setup/simulation.
+- Mapped the between-individual, within-individual, long/wide likelihood,
+  diagnostic, and recovery checks to their article code sections.
+- Updated the internal gate, article council ledger, and dashboard so the
+  remaining blockers are Pat/Darwin reader review, Florence figure review, and
+  final rendered HTML review.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> completed successfully; rendered
+  `pkgdown-site/articles/behavioural-syndromes.html`.
+- `rg -n "Reader path|Do individuals differ|Do sessions carry|Do long and wide|Is the fitted model|Did the example recover|Pat/Darwin|independent-diagonal warm start|optimizer_convergence   PASS" pkgdown-site/articles/behavioural-syndromes.html`
+  -> confirmed the rendered reader-path bridge and repaired diagnostic rows.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-behavioural|ordinary-latent|unique-family-deprecation|predictive-diagnostics", reporter = "summary")'`
+  -> passed.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- The article remains Tier 3/internal.
+- No public promotion, release readiness, bridge completion, or scientific
+  coverage completion.
+
+## 2026-06-19 00:21 MDT -- behavioural-syndromes diagnostic repair
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Repair the diagnostic-table blocker found in the internal
+  `behavioural-syndromes` candidate worked example.
+- Use an existing two-level model control route rather than hiding or
+  downgrading the diagnostic.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+- `git diff --check`
+  -> clean before this slice.
+
+Implemented:
+
+- Added one shared `fit_control <- gllvmTMBcontrol(start_method = list(method = "indep"))`
+  object to the article.
+- Passed that control object to both the long and wide two-level fits.
+- Updated the internal gate, diagnostic prose, article council ledger, and
+  dashboard so diagnostics are no longer the current blocker.
+
+Probe evidence:
+
+- Default control had long `optimizer_convergence = FAIL` with
+  `max_gradient`, `sdreport`, and `pd_hessian` passing; wide layout passed all
+  four key rows.
+- `gllvmTMBcontrol(n_init = 3L)` moved the failure from long to wide.
+- `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))`
+  made optimizer convergence pass but changed both maximum-gradient rows to
+  `WARN`.
+- `gllvmTMBcontrol(start_method = list(method = "indep"))` made long and wide
+  optimizer convergence, maximum gradient, `sdreport`, and `pd_hessian` all
+  pass; long/wide logLik difference was about `2.6e-09`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> completed successfully; rendered
+  `pkgdown-site/articles/behavioural-syndromes.html`.
+- `sed -n '536,542p' pkgdown-site/articles/behavioural-syndromes.html`
+  -> rendered long/wide logLik difference `-2.590241e-09`.
+- `sed -n '660,682p' pkgdown-site/articles/behavioural-syndromes.html`
+  and `rg -n "optimizer_convergence|max_gradient|sdreport|pd_hessian|long_logLik|wide_logLik|difference|independent-diagonal warm start|key rows pass" pkgdown-site/articles/behavioural-syndromes.html`
+  -> confirmed rendered long and wide key diagnostic rows all `PASS`.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-behavioural|ordinary-latent|unique-family-deprecation|predictive-diagnostics", reporter = "summary")'`
+  -> passed.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- `git diff --check`
+  -> clean after the article edit.
+
+Still not claimed:
+
+- The article remains Tier 3/internal.
+- Reader-path cleanup, Florence figure review, and final rendered HTML review
+  still block public promotion.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 00:07 MDT -- behavioural-syndromes diagnostic-table gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add the next article-council diagnostic evidence slice to the internal
+  `behavioural-syndromes` candidate worked example.
+- Keep the page internal if diagnostics expose WARN/FAIL rows.
+
+Implemented:
+
+- Added randomized-quantile residual calls for the long and wide fits.
+- Added `diagnostic_table(..., table = "check_gllvmTMB")` output for
+  optimizer convergence, maximum gradient, `sdreport`, and `pd_hessian`.
+- Added prose making WARN/FAIL rows public-promotion blockers rather than
+  hidden warnings.
+- Updated the article council ledger and dashboard to record the diagnostic
+  outcome.
+
+Checks and probes:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> completed successfully; rendered the new `diagnostic-table` chunk.
+- `rg -n "diagnostic-table|optimizer_convergence|max_gradient|pd_hessian|sdreport|long|wide" pkgdown-site/articles/behavioural-syndromes.html`
+  -> confirmed rendered rows. Long layout:
+  `optimizer_convergence = FAIL`, `max_gradient = PASS`,
+  `sdreport = PASS`, `pd_hessian = PASS`; wide layout:
+  all four key rows `PASS`.
+- BFGS probe:
+  `optimizer = "optim", optArgs = list(method = "BFGS")` made both layouts
+  `optimizer_convergence = PASS`, but both `max_gradient` rows became `WARN`;
+  the article fit calls were left unchanged.
+- `git diff --check`
+  -> clean after article edit.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-behavioural|ordinary-latent|unique-family-deprecation|predictive-diagnostics", reporter = "summary")'`
+  -> passed.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null`
+  and `python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> both passed.
+- Stale current-dashboard wording scan:
+  `rg -n "until it includes a diagnostic table|still needs diagnostic table|diagnostic_table\\(\\) evidence, clearer reader path|diagnostic table, figure review|Public promotion waits for a runnable wide-format fit" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/audits/2026-06-18-article-council-ledger.md vignettes/articles/behavioural-syndromes.Rmd`
+  -> no matches.
+
+Still not claimed:
+
+- The article remains Tier 3/internal.
+- No public promotion, release readiness, bridge completion, or scientific
+  coverage completion.
+- Next repair is diagnostic repair/explanation, then reader-path and Florence
+  figure review.
+
+## 2026-06-19 00:07 MDT -- behavioural-syndromes wide-format fit gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Remove one article-council blocker from the internal
+  `behavioural-syndromes` candidate Tier 1 worked example.
+- Add a runnable wide-format `traits(...)` call next to the long-format fit,
+  without promoting the article to public-ready status.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+- `git diff --check`
+  -> clean before this slice.
+
+Skill used:
+
+- `article-tier-audit`: the article stays Tier 3/internal until the reader
+  path, diagnostics, figures, and final rendered HTML review are complete.
+
+Implemented:
+
+- Added `df_wide` construction to
+  `vignettes/articles/behavioural-syndromes.Rmd`.
+- Added a wide `gllvmTMB(traits(...) ~ latent(...) + latent(...))` fit and
+  rendered long/wide log-likelihood comparison.
+- Updated the article council ledger and dashboard state to remove the
+  wide-call blocker while keeping diagnostic, reader-path, Florence, and final
+  rendered-review blockers.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> completed successfully; rendered
+  `pkgdown-site/articles/behavioural-syndromes.html`.
+- `sed -n '520,536p' pkgdown-site/articles/behavioural-syndromes.html`
+  -> rendered `long_logLik = -3.108447e+03`,
+  `wide_logLik = -3.108447e+03`, and
+  `difference = 3.886697e-06`.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-behavioural|ordinary-latent|unique-family-deprecation", reporter = "summary")'`
+  -> passed.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+
+Still not claimed:
+
+- The article is not public-ready and remains Tier 3/internal.
+- No diagnostic-table pass, Florence figure review, release readiness,
+  bridge completion, or scientific coverage completion.
+
+## 2026-06-19 00:01 MDT -- local power-pilot iter 50 heartbeat
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Keep the local mission-control dashboard alive after midnight while the
+  Design 66 local power-pilot LaunchAgent continues running.
+- Record process evidence only; do not convert accumulated reps into coverage,
+  power, release, bridge, or scientific-coverage claims.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+- `git diff --check`
+  -> clean before this heartbeat slice.
+
+Checks:
+
+- `date '+%Y-%m-%d %H:%M %Z'`
+  -> `2026-06-19 00:01 MDT`.
+- `curl -s -o /dev/null -w '8765=%{http_code}\n' http://127.0.0.1:8765/ && curl -s -o /dev/null -w '8770=%{http_code}\n' http://127.0.0.1:8770/`
+  -> both dashboards returned `200`.
+- `tail -n 140 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> latest stable local merge was iter 50 at 2026-06-18T23:54:27,
+  `422510 / 480000` reps, `0/48` cells at cap, and `0` errored cells.
+  Summary metrics stayed process-only: signal mean coverage `0.753`,
+  pass94 `3/24`, pass95 `2/24`, and null mean coverage-under-null `0.425`.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json` and
+  `docs/dev-log/dashboard/sweep.json` current process-evidence text from
+  iter 49 / `421010` reps to iter 50 / `422510` reps.
+
+Still not claimed:
+
+- No coverage or power promotion.
+- No bridge completion, release readiness, or scientific coverage completion.
+- No change to the Fisher/Curie scoring block.
+
+## 2026-06-18 23:58 MDT -- kernel_unique lifecycle badge alignment
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Finish one small `unique()` deprecation polish gap after the coevolution
+  model stop point.
+- Make the `kernel_unique()` lifecycle stage visually explicit on the shared
+  `kernel_latent` reference topic without deprecating `kernel_latent()`,
+  `kernel_indep()`, or `kernel_dep()`.
+- Keep `kernel_unique()` as compatibility syntax only; do not expand it into
+  Paper 2 multi-kernel explicit-Psi support.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Implemented:
+
+- Added a `kernel_unique()`-only lifecycle deprecated badge line to
+  `R/kernel-keywords.R`.
+- Regenerated `man/kernel_latent.Rd`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/kernel_latent.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation|kernel-equivalence|coevolution-two-kernel", reporter = "summary")'`
+  -> passed; expected heavy COE-04 skips reported.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n "kernel_unique\\(\\) only|lifecycle|deprecated|soft-deprecated" R/kernel-keywords.R man/kernel_latent.Rd`
+  -> confirmed the source and regenerated Rd badge/warning text.
+- `grep -c '^\\keyword' man/kernel_latent.Rd`
+  -> `0` keyword blocks.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No `unique()` keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No Paper 2 multi-kernel explicit-Psi implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:55 MDT -- local power-pilot iter 49 heartbeat
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue Phase 3 mission-control monitoring for the local Design 66
+  power-pilot LaunchAgent.
+- Refresh stale dashboard process evidence after the local loop advanced beyond
+  iter 48.
+- Record process evidence only; do not convert accumulated reps into coverage,
+  power, release, bridge, or scientific-coverage claims.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+- `git diff --check`
+  -> clean before this heartbeat slice.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution|kernel|unique-family-deprecation", reporter = "summary")'`
+  -> passed; heavy coevolution recovery cells skipped as expected without
+  `GLLVMTMB_HEAVY_TESTS=1`.
+- `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8765/`
+  -> `200`.
+- `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8770/`
+  -> `200`.
+- `tail -n 100 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> latest stable local merge was iter 49 at 2026-06-18T23:50:48,
+  `421010 / 480000` reps, `0/48` cells at cap, and `0` errored cells.
+  Summary metrics stayed process-only: signal mean coverage `0.753`,
+  pass94 `3/24`, pass95 `2/24`, and null mean coverage-under-null `0.425`.
+- `launchctl list | rg 'gllvmtmb|power|pilot'`
+  -> `com.gllvmtmb.power-pilot-local` still running at PID 1386.
+- `Rscript --vanilla -e 'idx <- readRDS("/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/pilot-index.rds"); str(idx); if (is.data.frame(idx)) print(utils::tail(idx, 3))'`
+  -> local index contained 48 rows; tail rows were finite and readable.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json` and
+  `docs/dev-log/dashboard/sweep.json` current process-evidence text from
+  iter 48 / `419510` reps to iter 49 / `421010` reps.
+
+Still not claimed:
+
+- No coverage or power promotion.
+- No bridge completion, release readiness, or scientific coverage completion.
+- No change to the Fisher/Curie scoring block.
+
+## 2026-06-18 23:25 MDT -- public vocabulary unique cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup on public prose
+  and reference topics.
+- Remove wording that taught ordinary diagonal `Psi` as something the
+  `unique()` keyword itself supplies, rather than teaching default ordinary
+  `latent()` and standalone `indep()` first.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Implemented:
+
+- Updated `vignettes/articles/gllvm-vocabulary.Rmd` so the `Psi` definition
+  says ordinary `latent()` includes the diagonal companion by default, while
+  `unique()` remains compatibility spelling for explicit `Psi`.
+- Updated `vignettes/articles/profile-likelihood-ci.Rmd` so the fallback note
+  describes shared `latent()` axes plus diagonal `Psi`, not a factor model on
+  top of `unique()`.
+- Updated `R/extract-repeatability.R` and regenerated
+  `man/extract_repeatability.Rd`.
+- Updated `R/simulate-unit-trait.R` and regenerated
+  `man/simulate_unit_trait.Rd`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `extract_repeatability.Rd` and `simulate_unit_trait.Rd`.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); for (article in c("articles/gllvm-vocabulary", "articles/profile-likelihood-ci")) { message("Building ", article); pkgdown::build_article(article, pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE) }'`
+  -> rendered both articles.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-repeatability|profile-derived|simulate-unit-trait|example", reporter = "summary")'`
+  -> passed; expected heavy skips reported, and the broad `example` filter
+  surfaced two lifecycle warnings from the intentional legacy covariance-edge
+  compatibility fixture.
+- `rg -n -F 'The `unique()` keyword in the formula estimates this' R vignettes man README.md NEWS.md docs/design || true; rg -n -F 'factor model on top of `unique()`' R vignettes man README.md NEWS.md docs/design || true; rg -n -F 'unique(0 + trait | <unit>)' R vignettes man README.md NEWS.md docs/design || true; rg -n -F 'unit_observation` -- the row id matching gllvmTMB' R vignettes man README.md NEWS.md docs/design || true; rg -n -F "unit_observation} -- the row id matching gllvmTMB" R vignettes man README.md NEWS.md docs/design || true`
+  -> no hits.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Addendum:
+
+- Tightened three adjacent labels in `NEWS.md`,
+  `docs/design/04-random-effects.md`, and
+  `docs/design/48-m3-4-boundary-regimes.md` from `unique`-only /
+  `latent+unique` wording to explicit compatibility diagonal / ordinary latent
+  covariance wording.
+- Exact stale-label scans for `unique-only diagonal path`,
+  `unique-only diagonal extraction`, and
+  `Gaussian two-level latent+unique fits` returned no hits.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No API removal.
+- No source-specific/kernel latent-Psi folding.
+- No Paper 2 multi-kernel explicit-Psi implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:20 MDT -- augmented diagonal runtime/article alignment
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Finish the next narrow `unique()` deprecation cleanup by aligning runtime
+  diagnostics and the random-regression article.
+- Stop the non-Gaussian boundary example from quoting the old
+  "ordinary `unique()` random-regression" wording.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Implemented:
+
+- Updated `R/fit-multi.R` diagnostics so the augmented ordinary diagonal path
+  is labelled "diagonal-compatibility random-regression" rather than
+  "`unique()` random-regression" when describing path constraints.
+- Preserved `unique(1 + x | unit)` only where it names explicit compatibility
+  syntax.
+- Updated `vignettes/articles/random-regression-reaction-norms.Rmd` so the
+  displayed non-Gaussian error matches the runtime wording.
+
+Checks:
+
+- `Rscript --vanilla -e 'invisible(parse("R/fit-multi.R")); devtools::test(filter = "ordinary-latent|canonical-keywords|keyword-grid|unique-family-deprecation", reporter = "summary")'`
+  -> passed with 3 expected INLA skips.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-regression-reaction-norms.html`.
+- `rg -n -F '{.fn unique} random-regression' R/fit-multi.R R man vignettes tests || true; rg -n -F 'ordinary `unique()` random-regression' vignettes R man tests || true; rg -n -F 'ordinary unique random-regression' R man vignettes tests || true`
+  -> no hits.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No API removal.
+- No source-specific/kernel latent-Psi folding.
+- No Paper 2 multi-kernel explicit-Psi implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:16 MDT -- augmented diagonal-compatibility wording cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup by removing
+  internal labels that still used "ordinary unique random regression" as the
+  noun for the augmented ordinary diagonal compatibility path.
+
+Implemented:
+
+- Updated `R/fit-multi.R` so internal augmented reaction-norm diagnostics and
+  comments say "ordinary diagonal-compatibility random-regression" instead of
+  "ordinary unique random-regression".
+- Preserved explicit `unique(1 + x | unit)` examples only where they describe
+  compatibility syntax.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/fit-multi.R"); devtools::test(filter = "ordinary-latent|canonical-keywords|keyword-grid|unique-family-deprecation", reporter = "summary")'`
+  -> passed with 3 expected INLA skips. The parse expression printed because it
+  was not wrapped in `invisible()`.
+- `rg -n "ordinary unique|augmented ordinary unique|ordinary unique random-regression|Unsupported augmented ordinary unique|Internal: augmented ordinary unique|common = TRUE.*ordinary.*unique|new code.*unique|recommended.*unique" R/fit-multi.R R/extract-sigma.R R man vignettes README.md NEWS.md docs/design/00-vision.md docs/design/01-formula-grammar.md docs/design/61-capability-status.md tests/testthat/test-unique-family-deprecation.R`
+  -> remaining hits were design rows documenting replacement syntax,
+  compatibility suggestions, or source-specific `phylo_unique()` wording.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No API removal.
+- No source-specific/kernel latent-Psi folding.
+- No Paper 2 multi-kernel explicit-Psi implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:12 MDT -- API keyword-grid common=TRUE unique cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close one remaining public wording wrinkle in the post-coevolution
+  `unique()` deprecation cleanup.
+- Keep `unique()` documented as live compatibility syntax while making
+  `indep(..., common = TRUE)` and `latent(..., common = TRUE)` the ordinary
+  replacement paths for old `common = TRUE` formulas.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no conflicting recent commit surfaced in the command output.
+
+Implemented:
+
+- Updated `vignettes/articles/api-keyword-grid.Rmd` so ordinary
+  `common = TRUE` formulas migrate to `indep(..., common = TRUE)` for
+  standalone diagonal models or `latent(..., common = TRUE)` for ordinary
+  paired decompositions.
+- Kept `unique()` as compatibility syntax for old ordinary formulas and
+  source-specific explicit-Psi components.
+- Marked the no-correlation `unique(0 + trait | unit)` snippet as deprecated
+  compatibility spelling rather than copy-first syntax.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/api-keyword-grid", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/api-keyword-grid.html`.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|keyword-grid|unique-family-deprecation", reporter = "summary")'`
+  -> completed successfully with 3 expected INLA skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'need.*unique\(\).*common|unique\(\).*common = TRUE|compatibility-only option such as\s*`common = TRUE`|new public examples should use `unique\(\)`' R man vignettes README.md NEWS.md docs/design || true`
+  -> only the design rows documenting `indep(..., common = TRUE)` as the
+  replacement remained.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean before dashboard update.
+
+Still not claimed:
+
+- No API removal.
+- No source-specific/kernel latent-Psi folding.
+- No Paper 2 multi-kernel explicit-Psi implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:08 MDT -- internal ordinary unique wording cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup by removing
+  internal drift that still described ordinary species-tier diagonal syntax as
+  `unique()` first.
+- Preserve compatibility behavior; this is wording only.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Implemented:
+
+- Updated the PGLLVM foot-gun detector comment in `R/fit-multi.R` so the
+  ordinary species-tier diagonal is described as `indep(0 + trait | species)`,
+  with legacy `unique()` / `diag` named as compatibility/internal routing.
+- Updated one internal `extract_Sigma()` error from "ordinary unique
+  random-regression" to "ordinary diagonal-compatibility random-regression".
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/fit-multi.R"); parse("R/extract-sigma.R")'`
+  -> both files parsed.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|ordinary-latent|canonical-keywords|keyword-grid|unique-family-deprecation", reporter = "summary")'`
+  -> passed with expected INLA/heavy skips.
+- `rg -n "unique\(0 \+ trait \| species\)|ordinary unique random-regression|new code.*unique|recommended.*unique" R/fit-multi.R R/extract-sigma.R R man vignettes README.md NEWS.md docs/design/00-vision.md docs/design/01-formula-grammar.md docs/design/61-capability-status.md tests/testthat/test-unique-family-deprecation.R | head -160`
+  -> remaining hits were intentional augmented compatibility wording and
+  source-specific `phylo_unique()` article wording; the ordinary species-tier
+  `unique(0 + trait | species)` production-text residue is gone.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No `unique()` keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:05 MDT -- extract phylo signal example uses indep
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup on exported
+  extractor examples.
+- Stop `extract_phylo_signal()` from teaching ordinary
+  `unique(0 + trait | species)` as the non-phylogenetic species-tier diagonal
+  in new code.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Implemented:
+
+- Updated the `extract_phylo_signal()` roxygen example to use
+  `indep(0 + trait | species)` for the ordinary non-phylogenetic diagonal tier.
+- Regenerated `man/extract_phylo_signal.Rd`.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/extract-omega.R"); devtools::document(quiet = TRUE)'`
+  -> parsed the touched R file and regenerated `extract_phylo_signal.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-omega|phylo-signal|canonical-keywords|keyword-grid|unique-family-deprecation", reporter = "summary")'`
+  -> passed with expected INLA/heavy skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'latent\(0 \+ trait \| species, d = 2\) \+\s*$|unique\(0 \+ trait \| species\)|indep\(0 \+ trait \| species\)' R/extract-omega.R man/extract_phylo_signal.Rd`
+  -> confirmed the source/Rd example now uses `indep(0 + trait | species)`.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No `unique()` keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:02 MDT -- two-Psi diagnostic examples use indep
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup on exported
+  diagnostic examples.
+- Stop the two-Psi cross-check references from teaching ordinary
+  `unique(0 + trait | species)` as the non-phylogenetic diagonal tier in new
+  code. `phylo_unique()` remains because source-specific latent-Psi folding is
+  still a future slice.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Implemented:
+
+- Updated `compare_dep_vs_two_psi()` and inherited
+  `compare_indep_vs_two_psi()` roxygen examples/argument text so the ordinary
+  non-phylogenetic diagonal tier is `indep(0 + trait | species)`.
+- Regenerated `man/compare_dep_vs_two_psi.Rd` and
+  `man/compare_indep_vs_two_psi.Rd`.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/extract-two-psi-cross-check.R"); devtools::document(quiet = TRUE)'`
+  -> parsed the touched R file and regenerated the two Rd topics.
+- `Rscript --vanilla -e 'devtools::test(filter = "two-psi|phylo-q-decomposition|canonical-keywords|keyword-grid|unique-family-deprecation", reporter = "summary")'`
+  -> passed with expected INLA/heavy skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'phylo_unique\(species\) \+ unique\(0 \+ trait \| species\)|one produced by .*unique\(0 \+ trait \| species\)|fit_two_psi.*unique\(0 \+ trait \| species\)' R/extract-two-psi-cross-check.R man/compare_dep_vs_two_psi.Rd man/compare_indep_vs_two_psi.Rd`
+  -> no hits.
+- `rg -n 'phylo_unique\(species\) \+ indep\(0 \+ trait \| species\)' R/extract-two-psi-cross-check.R man/compare_dep_vs_two_psi.Rd man/compare_indep_vs_two_psi.Rd`
+  -> confirmed the new source and Rd examples.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No `unique()` keyword removal.
+- No source-specific `phylo_unique()` fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:00 MDT -- local power-pilot iter 48 heartbeat
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue Phase 3 mission-control monitoring for the local Design 66
+  power-pilot LaunchAgent.
+- Record process evidence only; do not convert accumulated reps into coverage,
+  power, release, bridge, or scientific-coverage claims.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Checks:
+
+- `tail -n 100 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> latest stable local merge was iter 48 at 2026-06-18T22:42:44,
+  `419510 / 480000` reps, `0/48` cells at cap, and `0` errored cells.
+- `launchctl print gui/$(id -u)/com.gllvmtmb.power-pilot-local`
+  -> service state `running`, PID 1386, `LOCAL_CORES=10`,
+  `LOCAL_N_SIM_STEP=150`, `LOCAL_N_SIM_CAP=10000`.
+- `/usr/local/bin/Rscript --vanilla dev/power-pilot-run.R --mode=status --n-sim-cap=10000 --results-dir=dev/m3-pilot-results-local --status-out=/tmp/gllvmtmb-local-iter48-status.md`
+  -> `all_complete=false`, `reps_total=419510`, `reps_target=480000`,
+  `cells_complete=0`, `cells_total=48`.
+- `git diff --check`
+  -> clean before the dashboard/check-log update.
+
+Still not claimed:
+
+- No coverage or power promotion.
+- No bridge completion, release readiness, or scientific coverage completion.
+- No change to the Fisher/Curie scoring block.
+
+## 2026-06-18 22:58 MDT -- latest-tree full check after unique example cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Re-run the package-level gate after the narrow `indep()` help /
+  functional-biogeography `unique()` cleanup so the latest working tree has
+  current package-installed evidence.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors`, `1 warning`, `0 notes`; the warning remains at package
+  installation and matches the known local Apple clang / R-header warning
+  class inspected in the preserved `/tmp/gllvmTMB-rcmdcheck` run.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- Not a fully green local check because the install warning remains.
+- No bridge completion, release readiness, or scientific coverage completion.
+- No `unique()` keyword removal.
+
+## 2026-06-18 22:49 MDT -- narrow standalone unique example cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup with one narrow
+  public-surface slice.
+- Stop the `indep()` reference examples and the functional-biogeography
+  wide-format teaser from showing ordinary standalone `unique()` /
+  `latent() + unique()` as copy-first code.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Implemented:
+
+- Removed the legacy standalone `unique(0 + trait | site)` worked example from
+  the `indep()` roxygen examples. Compatibility remains documented on the
+  deprecated `unique()` page and in the formula-grammar ledger.
+- Updated `vignettes/articles/functional-biogeography.Rmd` so the wide-format
+  teaser uses default `latent(1 | site_species, d = 2)` alone rather than
+  `latent() + unique()`.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/brms-sugar.R"); devtools::document(quiet = TRUE)'`
+  -> parsed the touched R file and regenerated `man/indep.Rd`.
+- `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/functional-biogeography.Rmd", output_file = tempfile(fileext = ".html"), quiet = TRUE)'`
+  -> rendered successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|keyword-grid|unique-family-deprecation", reporter = "summary")'`
+  -> passed with three expected INLA skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'Legacy compatibility spelling for the same standalone diagonal model|value ~ 0 \+ trait \+ unique\(0 \+ trait \| site\)|traits\(trait_1, \.\.\., trait_T\).*unique|latent\(1 \| site_species, d = 2\).*unique' R/brms-sugar.R man/indep.Rd vignettes/articles/functional-biogeography.Rmd`
+  -> no hits.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No `unique()` removal.
+- No source-specific/kernel latent-Psi fold.
+- No article-wide rewrite beyond this teaser.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 22:44 MDT -- full check after residual-false fixture repair
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Re-run the package-level gate after the ordinary `latent()` default-Psi
+  cleanup exposed older no-Psi fixtures that needed to request
+  `latent(..., residual = FALSE)` explicitly.
+- Verify that the coevolution / `unique()` cleanup stack has no remaining
+  package-installed test, example, vignette, documentation, or Rd failures.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no commits returned.
+
+Repairs completed before this final gate:
+
+- Updated covariance-edge-case fixture generation and regenerated
+  `inst/extdata/examples/covariance-edge-cases-example.rds` so the comparator
+  that is meant to be no-Psi uses `latent(..., residual = FALSE)`.
+- Updated Julia bridge, Gamma-family, diagnostic, joint-SDM, and lme4-style
+  weight fixtures so tests that require the old no-residual random-regression
+  target request `residual = FALSE` explicitly.
+- Confirmed focused post-repair suites:
+  `example-covariance-edge-cases|julia-bridge` and
+  `family-gamma|gllvmTMB-diagnose|joint-sdm-binary-long-wide|lme4-style-weights`
+  passed.
+
+Checks:
+
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors`, `1 warning`, `0 notes`; the warning was at package
+  installation.
+- `rm -rf /tmp/gllvmTMB-rcmdcheck && mkdir -p /tmp/gllvmTMB-rcmdcheck && Rscript --vanilla -e 'rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", error_on = "never", check_dir = "/tmp/gllvmTMB-rcmdcheck")'`
+  -> stopped early with `Packages suggested but not available: 'mirt', 'nadiv'`;
+  this was not comparable to the local devtools gate because force-suggests was
+  not disabled.
+- `rm -rf /tmp/gllvmTMB-rcmdcheck && mkdir -p /tmp/gllvmTMB-rcmdcheck && _R_CHECK_FORCE_SUGGESTS_=false Rscript --vanilla -e 'rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", error_on = "never", check_dir = "/tmp/gllvmTMB-rcmdcheck")'`
+  -> `0 errors`, `1 warning`, `0 notes`; examples, tests, and vignette
+  rebuilds all passed.
+- `rg -n "warning:|ERROR|Status:|checking whether package" /private/tmp/gllvmTMB-rcmdcheck/gllvmTMB.Rcheck/00install.out /private/tmp/gllvmTMB-rcmdcheck/gllvmTMB.Rcheck/00check.log`
+  -> the significant warning was an Apple clang 21 / R-header toolchain
+  warning:
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored
+  [-Wunknown-warning-option]`. Upstream Eigen header unused-variable warnings
+  were also present in `00install.out`.
+
+Still not claimed:
+
+- This is not a fully green local check because the install warning remains.
+- No bridge completion, release readiness, or scientific coverage completion.
+- No `unique()` keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No Paper 2 multi-kernel scientific coverage beyond the current COE-04
+  partial evidence.
+
+## 2026-06-18 21:22 MDT -- Exported extractor help ordinary unique cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup on exported help
+  topics and top-level residual guidance.
+- Stop copy-paste examples in extractor references from teaching ordinary
+  `latent() + unique()` or standalone per-row `unique()` as the first spelling.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack through `5346391`.
+
+Implemented:
+
+- Updated `extract_Sigma()` and `extract_Sigma_table()` examples to use
+  ordinary `latent()` alone for the default `Lambda Lambda^T + Psi` covariance.
+- Updated `extract_residual_split()` to use `indep(0 + trait | site_species)`
+  for the per-row OLRE diagonal.
+- Updated `extract_repeatability()` to use two default ordinary `latent()`
+  tiers rather than explicit `unique()` companions.
+- Updated top-level `gllvmTMB()` residual-variance docs and the fit-time
+  `sigma_eps` auto-suppression message so per-row `indep()` is the new public
+  spelling and ordinary `unique()` is legacy compatibility.
+- Updated one `indep()` example label so standalone `unique()` is called
+  compatibility spelling, not a new decomposition form.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/gllvmTMB.R"); parse("R/fit-multi.R"); parse("R/extract-sigma.R"); parse("R/extract-sigma-table.R"); parse("R/extract-omega.R"); parse("R/extract-repeatability.R"); parse("R/brms-sugar.R")'`
+  -> parsed all touched R files successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/indep.Rd`, `man/extract_residual_split.Rd`,
+  `man/extract_repeatability.Rd`, `man/extract_Sigma_table.Rd`,
+  `man/extract_Sigma.Rd`, and `man/gllvmTMB.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|extract-repeatability|sigma-eps-autosuppress|cross-sectional-unique|canonical-keywords|unique-family-deprecation", reporter = "summary")'`
+  -> passed with expected INLA/heavy skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'latent\(0 \+ trait \| unit, d = 2\) \+ unique\(0 \+ trait \| unit\)|value ~ 0 \+ trait \+ unique\(0 \+ trait \| site_species\)|when Phase B|not yet implemented|Auto-suppressing.*unique\(0 \+ trait|fully captured by \{\.code unique\(\)\}|The mathematically-equivalent decomposition form:' R/gllvmTMB.R R/fit-multi.R R/extract-sigma.R R/extract-sigma-table.R R/extract-omega.R R/extract-repeatability.R R/brms-sugar.R man/gllvmTMB.Rd man/extract_Sigma.Rd man/extract_Sigma_table.Rd man/extract_residual_split.Rd man/extract_repeatability.Rd man/indep.Rd`
+  -> only unrelated profile/constraint `not yet implemented` notes remain; no
+  touched-surface unique-deprecation residue.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific/kernel paired-Psi fold.
+- No extractor `part = "unique"` rename.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:15 MDT -- Runtime ordinary unique diagnostic cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup on runtime
+  diagnostics and parser warnings.
+- Stop `diag()` alias and ordinary no-prefix diagnostic messages from teaching
+  `unique()` as the new spelling.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack through `5346391`.
+
+Implemented:
+
+- Updated the `diag()` alias warning so it recommends `indep()` for new
+  standalone diagonal code and names ordinary `latent(..., d = K)` for the
+  shared + diagonal-Psi decomposition; explicit `unique()` is compatibility.
+- Updated the unit-observation augmented-slope error so default reaction-norm
+  users see `latent(1 + x | unit, d = K)` first.
+- Updated the cluster2 diagonal-only guard so new code sees
+  `indep(0 + trait | cluster2)` instead of ordinary `unique()`.
+- Updated the phylogenetic `p_it + q_it` informational message so the
+  non-phylogenetic standalone diagonal term is `indep(...)`.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/brms-sugar.R"); parse("R/fit-multi.R")'`
+  -> parsed both touched R files successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|unique-family-deprecation|ordinary-latent-random-regression|keyword-grid", reporter = "summary")'`
+  -> passed with expected INLA skips; the visible `diag()` alias warning now
+  says `use indep() for new code`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'use `unique\(\)` for new code|diag\s+-> use unique|Use \{\.code unique\(1 \+ x \| \{site\}\)|Use \{\.code unique\(0 \+ trait \| \{cluster2_col\}\)|phylo_unique\(\{species\}\) \+ unique|unique\(\{species\}\)' R/brms-sugar.R R/fit-multi.R tests/testthat`
+  -> only intentional `phylo_unique(...) + indep(...)` source-specific
+  compatibility wording remains.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific/kernel paired-Psi fold.
+- No rename of extractor `part = "unique"`.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:11 MDT -- API/profile ordinary unique cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup on the remaining
+  ordinary no-prefix reader path.
+- Stop the API keyword-grid starter example and profile-derived diagnostics from
+  telling ordinary users to add explicit `unique()` where the preferred syntax
+  is default ordinary `latent()` or standalone `indep()`.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack through `5346391`.
+
+Implemented:
+
+- Updated `vignettes/articles/api-keyword-grid.Rmd` so the long and wide starter
+  examples fit ordinary `latent()` alone; the prose now states that ordinary
+  `latent()` carries the diagonal Psi companion by default.
+- Updated `profile_ci_repeatability()` and `profile_repeatability()` error hints
+  so missing diagonal parameters point to default ordinary `latent()` tiers, with
+  explicit `unique()` reserved for legacy diag-only compatibility fits.
+- Updated the simple two-component `profile_ci_phylo_signal()` documentation so
+  the non-phylogenetic standalone diagonal term is `indep(0 + trait | species)`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/profile_ci_phylo_signal.Rd`.
+- `Rscript --vanilla -e 'parse("R/profile-derived.R"); parse("R/profile-derived-curves.R")'`
+  -> parsed both touched R files successfully.
+- `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/api-keyword-grid.Rmd", output_dir = tempfile("api-keyword-grid-"), quiet = TRUE)'`
+  -> rendered successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "profile-derived-curves|confint-derived", reporter = "summary")'`
+  -> passed with expected heavy skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'unique\(0 \+ trait \| individual\)|unique\(1 \| individual\)|unique\(0 \+ trait \| <unit>\)|unique\(0 \+ trait \| <obs>\)|For fits with `phylo_unique\(species\)`' R/profile-derived.R R/profile-derived-curves.R vignettes/articles/api-keyword-grid.Rmd man/profile_ci_phylo_signal.Rd`
+  -> only the intentional `phylo_unique(species) + indep(...)` roxygen line
+  remains.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+- `rsync -a docs/dev-log/dashboard/ /tmp/gllvm-dashboard/ && curl -s -o /dev/null -w '8765=%{http_code}\n' http://127.0.0.1:8765/ && curl -s -o /dev/null -w '8770=%{http_code}\n' http://127.0.0.1:8770/`
+  -> both dashboards returned HTTP 200.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific/kernel paired-Psi fold.
+- No rename of extractor `part = "unique"`.
+- No Paper 2 multi-kernel explicit Psi.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:05 MDT -- Phylogenetic design unique wording cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup on the
+  phylogenetic design surface.
+- Stop `docs/design/03-phylogenetic-gllvm.md` from presenting ordinary
+  `unique()` as the first-line non-phylogenetic diagonal syntax.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack through `5346391`.
+
+Implemented:
+
+- Updated the three-piece fallback note so the non-phylogenetic diagonal
+  `Psi` comes from default ordinary `latent()`, with explicit `unique()` named
+  compatibility syntax.
+- Updated the R syntax alignment table:
+  - non-phylogenetic shared + diagonal Psi uses `latent(...)`;
+  - standalone diagonal uses `indep(...)`;
+  - `phylo_unique()` is labelled diagonal-Psi compatibility.
+- Updated the implementation map so standalone `phylo_unique()` points new
+  code to `phylo_indep()`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'unique\(\)|unique\(1|unique\(0 \+ trait|unique diagonal|unique-variance|should use.*unique|new .*use.*unique|indep\(' docs/design/03-phylogenetic-gllvm.md`
+  -> only intentional compatibility mentions plus new `indep()` rows remain.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific paired-Psi fold.
+- No Paper 2 multi-kernel explicit Psi.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:03 MDT -- Cross-lineage article kernel-unique cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup on the Paper 2
+  article surface.
+- Stop the internal cross-lineage coevolution article from teaching
+  `kernel_unique()` as the main C2 workflow while keeping it as
+  compatibility/equivalence syntax.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack through `5346391`.
+
+Implemented:
+
+- Updated `vignettes/articles/cross-lineage-coevolution.Rmd` scope boundary so
+  the article teaches latent-only `kernel_latent()` first-wave syntax and names
+  `kernel_unique()` only as soft-deprecated compatibility.
+- Changed wide, long, null, and fixed-`rho` profile snippets to remove
+  `kernel_unique(...)`.
+- Added `extract_coevolution_modules()` to the workflow overview as the
+  point-estimate module summary helper.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("cross-lineage-coevolution", quiet = TRUE)'`
+  -> not applicable; pkgdown reported it cannot find the internal article by
+  slug.
+- `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/cross-lineage-coevolution.Rmd", output_dir = tempfile("coev-article-"), quiet = TRUE)'`
+  -> rendered successfully.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'kernel_latent\(species, K = K_(star|null|K|), d = 2, name = "cross"\) \+|kernel_unique\(species, K = K_(star|null|K|), name = "cross"\)|with `kernel_unique|Gaussian fixture needs an explicit|kernel_unique\(species' vignettes/articles/cross-lineage-coevolution.Rmd`
+  -> no stale first-line `kernel_unique()` teaching remains.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No Paper 2 multi-kernel explicit Psi.
+- No source-specific or kernel paired-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:00 MDT -- Kernel reference unique compatibility cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup.
+- Stop the `?kernel_latent` reference example from teaching
+  `kernel_latent() + kernel_unique()` as the main dense-kernel example while
+  preserving `kernel_unique()` as compatibility/equivalence syntax.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack through `5346391`.
+
+Implemented:
+
+- Updated `R/kernel-keywords.R` so the prose says new examples should use
+  `kernel_latent()` for shared latent structure and `kernel_indep()` for
+  standalone diagonal dense-kernel tiers.
+- Changed the roxygen example to fit `kernel_latent(...)` alone and to call
+  `extract_Sigma(fit, level = "known", part = "shared")`.
+- Regenerated `man/kernel_latent.Rd`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/kernel_latent.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation|kernel-equivalence|coevolution-two-kernel", reporter = "summary")'`
+  -> PASS, with expected heavy COE-04 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'kernel_latent\(unit, K = A, d = 1, name = "known"\) \+|kernel_unique\(unit, K = A, name = "known"\)|extract_Sigma\(fit, level = "known"\)$|extract_Sigma\(fit, level = "known", part = "shared"\)' R/kernel-keywords.R man/kernel_latent.Rd`
+  -> only the preferred `extract_Sigma(..., part = "shared")` example remains.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No Paper 2 multi-kernel explicit Psi.
+- No source-specific or kernel paired-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 20:56 MDT -- Current design-doc ordinary unique cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup after the Paper 2
+  module extractor slice.
+- Remove remaining active design-doc examples that taught ordinary explicit
+  `unique()` as the default companion for ordinary `latent()`.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack through `5346391`.
+
+Implemented:
+
+- Updated `docs/design/02-data-shape-and-weights.md` user-facing long/wide
+  examples to use default `latent()` without explicit ordinary `unique()`.
+- Updated `docs/design/05-testing-strategy.md` RE-12 wording and pseudocode so
+  the default Gaussian random-regression contract is `latent()` with default
+  diagonal Psi, not explicit `latent() + unique()`.
+- Updated `docs/design/06-extractors-contract.md` so the ordinary unit-tier
+  side names default `latent()` and keeps explicit `latent + unique` only as
+  compatibility syntax.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'latent\(0 \+ trait \| site, d = 2\)|unique\(0 \+ trait \| site\)|latent\(0 \+ trait \| individual, d = 2\) \+|unique\(0 \+ trait \| individual\)|ordinary.*latent \+ unique|Gaussian latent \+ unique|acceptance path.*latent \+ unique|unit-tier Gaussian augmented `latent \+ unique|ordinary `latent \+ unique|latent \+ unique` evidence' docs/design/02-data-shape-and-weights.md docs/design/05-testing-strategy.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md`
+  -> no active stale ordinary-default hits; remaining output was the new default
+  `latent()` pseudocode line plus a historical FAM-07 ledger paragraph.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific or kernel paired-Psi fold.
+- No extractor `part = "unique"` rename.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 20:54 MDT -- Paper 2 coevolutionary module extractor
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the next narrow COE-04 Paper 2 model gap from the maintainer's paper
+  note: point-estimate coevolutionary modules from standardized cross-lineage
+  covariance blocks.
+- Keep `kernel_unique()` / `*_unique()` as compatibility syntax only; do not
+  add explicit Psi to the Paper 2 multi-kernel path.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack through `5346391`.
+
+Implemented:
+
+- Added `extract_coevolution_modules()` in `R/extract-sigma.R`.
+  It computes `R = Sigma_H^{-1/2} Gamma Sigma_P^{-1/2}` from a named
+  component's shared covariance block, then returns SVD-based coupled
+  host/partner trait axes as point estimates.
+- Added roxygen/Rd, `NAMESPACE`, and `_pkgdown.yml` reference-index coverage.
+- Added fake-fit tests for the exact standardized-SVD contract, fixed-`rho`
+  effect scaling, one-module truncation, and trait validation.
+- Added a real-fit COE-04 assertion inside the near-orthogonal two-kernel
+  recovery gate to verify finite ordered module singular values for both
+  named components.
+- Updated `NEWS.md`, Design 65, and Design 35 so module extraction is covered
+  only as a point-estimate derived extractor; uncertainty, rank calibration,
+  null thresholds, intervals, and empirical/mechanistic validation remain
+  open.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/extract-sigma.R"); invisible(NULL)'`
+  -> parsed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `NAMESPACE` and `man/extract_coevolution_modules.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-recovery", reporter = "summary")'`
+  -> PASS, with 2 expected heavy skips.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> PASS, with 11 expected heavy skips before formatting and 13 expected
+  heavy skips after line-number shifts / combined filter context.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> PASS after formatting and documentation regeneration.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-recovery|coevolution-two-kernel", reporter = "summary")'`
+  -> PASS, with expected heavy skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rsync -a docs/dev-log/dashboard/ /tmp/gllvm-dashboard/`
+  -> local dashboard source synced.
+- `curl -s -o /dev/null -w '%{http_code}\n' --max-time 2 http://127.0.0.1:8765/`
+  -> `200`.
+- `curl -s -o /dev/null -w '%{http_code}\n' --max-time 2 http://127.0.0.1:8770/`
+  -> `200`.
+- `curl -s --max-time 2 http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "03:10|mixed-family Gaussian\+Poisson construction smoke|COE-04 partial"`
+  -> live dashboard JSON showed the refreshed timestamp and COE-04
+  mixed-family construction-smoke wording.
+
+Still not claimed:
+
+- No module uncertainty, module-rank calibration, or null-threshold
+  calibration.
+- No in-engine `rho` estimation or profile-interval coverage.
+- No broader non-Gaussian / mixed-family recovery beyond the current narrow
+  Poisson gate.
+- No explicit Paper 2 multi-kernel Psi; `kernel_unique()` and `*_unique()`
+  remain compatibility syntax.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 20:41 MDT -- Random-effects / likelihood design-doc Psi wording cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation cleanup after the
+  `latent(..., common = TRUE)` slice.
+- Remove stale design-doc wording that taught ordinary `latent() + unique()` as
+  the primary ordinary Psi path.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack through `5346391`.
+
+Implemented:
+
+- Updated `docs/design/04-random-effects.md` so ordinary intercept-only and
+  augmented Gaussian random-regression examples use default `latent()` rather
+  than ordinary `latent() + unique()`.
+- Updated `docs/design/03-likelihoods.md` so the RE-12 likelihood note names
+  `latent()` as the ordinary augmented Gaussian surface and describes
+  `Psi_B,aug` as the default diagonal Psi companion.
+- Updated the older REML NEWS bullet so it names default `latent()` covariance
+  fits while retaining explicit `latent() + unique()` as compatibility syntax.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+- `rg -n 'ordinary.*latent \+ unique|ordinary.*latent\(\) \+ unique|latent\(1 \+ x \| unit, d = K\) \+ unique|ordinary Gaussian `latent \+ unique|Gaussian latent \+ unique|acceptance path.*latent \+ unique|unit-tier Gaussian augmented `latent \+ unique|ordinary `latent \+ unique' docs/design/03-likelihoods.md docs/design/04-random-effects.md README.md vignettes/gllvmTMB.Rmd vignettes/articles/random-regression-reaction-norms.Rmd`
+  -> no stale ordinary-default hits in the active design/article surface.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific or kernel paired-Psi fold.
+- No extractor `part = "unique"` rename.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 20:21 MDT -- `unique()` reference common-boundary cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Keep the generated `?unique` reference page aligned with the new standalone
+  scalar `indep(common = TRUE)` gate.
+- Avoid teaching legacy `unique(..., common = TRUE)` as the recommended
+  standalone spelling.
+
+Implemented:
+
+- `R/brms-sugar.R`
+  - Updated the `unique_keyword` roxygen block so standalone scalar marginal
+    users are pointed to `indep(..., common = TRUE)`.
+  - Clarified that paired `latent() + unique(..., common = TRUE)` remains
+    accepted compatibility syntax and is not yet re-homed on `latent()`.
+- `man/unique_keyword.Rd`
+  - Regenerated from roxygen.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/unique_keyword.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|unique-family-deprecation", reporter = "summary")'`
+  -> passed; expected skips were three INLA-dependent spatial checks.
+- `rg -n 'pass \`common = TRUE\`|pass \\code\\{common = TRUE\\}|Use .*unique\\(.*common = TRUE|unique\\(\\.\\.\\., common = TRUE\\).*replacement|common = TRUE.*indep|paired.*common' R/brms-sugar.R man/unique_keyword.Rd man/diag_re.Rd man/indep.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md NEWS.md docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json`
+  -> hits are intended current boundary statements; no stale "pass
+  `common = TRUE` to `unique()`" recommendation remains in the active reference
+  surface.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> dashboard JSON valid.
+- `git diff --check`
+  -> clean.
+- `rsync -a docs/dev-log/dashboard/ /tmp/gllvm-dashboard/`
+  -> refreshed the live local dashboard source for `http://127.0.0.1:8770/`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Still not claimed:
+
+- No grammar/API removal.
+- No paired `common = TRUE` re-home.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 20:17 MDT -- formula-grammar ordinary `unique()` example cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the `unique()` deprecation lane by removing old ordinary
+  `latent() + unique()` teaching examples from the canonical formula grammar
+  body.
+- Keep compatibility rows and explicit boundary prose intact.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack headed by `5346391`.
+
+Implemented:
+
+- `docs/design/01-formula-grammar.md`
+  - Updated the long-format and wide-format first examples to use default
+    ordinary `latent()` without explicit `unique()`.
+  - Replaced the random-effect mini-example with default `latent()`,
+    `latent(..., residual = FALSE)`, and standalone `indep()`.
+  - Removed explicit ordinary `unique()` from the non-default-trait examples
+    and the nested `unit` / `unit_obs` example.
+
+Checks:
+
+- `rg -n 'latent\\([^\\n]+\\) \\+\\s*unique|\\+\\s*unique\\(|unique\\(0 \\+ trait \\| site\\)|unique\\(1 \\| individual\\)|unique\\(0 \\+ behavior \\| individual\\)|unique\\(0 \\+ trait \\| individual\\)|unique\\(0 \\+ trait \\| session_id\\)' docs/design/01-formula-grammar.md`
+  -> only intentional compatibility mentions remain: the augmented
+  random-regression compatibility row and random-slope eligibility boundary.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> dashboard JSON valid.
+- `git diff --check`
+  -> clean.
+- `rsync -a docs/dev-log/dashboard/ /tmp/gllvm-dashboard/`
+  -> refreshed the live local dashboard source for `http://127.0.0.1:8770/`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Still not claimed:
+
+- No grammar/API removal.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No paired `common = TRUE` re-home.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 20:12 MDT -- standalone scalar `indep(common = TRUE)` gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` lifecycle lane with the smallest
+  remaining `common = TRUE` compatibility slice.
+- Give standalone scalar marginal diagonal models a non-deprecated spelling:
+  `indep(..., common = TRUE)`.
+- Keep paired `latent() + unique(..., common = TRUE)` as compatibility syntax;
+  this slice does not re-home paired-Psi parsimony on `latent()`.
+
+Pre-edit lane check:
+
+- Inherited from the current continuation: earlier pre-edit checks showed only
+  draft PR #489 open and recent commits on the current coevolution stack.
+- No push, branch switch, staging, or GLLVM.jl #101 mutation occurred.
+
+Implemented:
+
+- `R/brms-sugar.R`
+  - Added `common = FALSE` to `indep()`.
+  - Rewrites `indep(form, common = TRUE)` to
+    `diag(form, common = TRUE, .indep = TRUE)`, reusing the existing scalar
+    diagonal map path.
+  - Documents `indep(..., common = TRUE)` as the standalone scalar marginal
+    replacement for legacy standalone `unique(..., common = TRUE)`.
+- `tests/testthat/test-canonical-keywords.R`
+  - Adds an objective-equivalence gate comparing standalone
+    `indep(..., common = TRUE)` against legacy standalone
+    `unique(..., common = TRUE)`.
+  - Asserts convergence, `indep_B` dispatch, and one shared fitted marginal SD
+    across traits.
+  - Pins legacy paired `latent() + unique(..., common = TRUE)` compatibility
+    tests to `latent(..., residual = FALSE)` so the internal auto-Psi term does
+    not double-count the explicit compatibility term.
+- `docs/design/01-formula-grammar.md`,
+  `docs/design/35-validation-debt-register.md`, `R/unique-keyword.R`,
+  `NEWS.md`, `man/indep.Rd`, and `man/diag_re.Rd`
+  - Record the narrow claim boundary and evidence.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/indep.Rd` and `man/diag_re.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|unique-family-deprecation|stage2-rr-diag", reporter = "summary")'`
+  -> passed; expected skips were three INLA-dependent spatial checks and one
+  historical glmmTMB non-PD comparison in `test-stage2-rr-diag.R`.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> dashboard JSON valid.
+- `rg -n 'common= re-homing|common = TRUE re-hom|common= was not re-homed|No \`common = TRUE\` re-homing|common= rehome|common re-home' NEWS.md R man docs/design docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/dashboard tests/testthat`
+  -> only older historical log/report entries plus explicit paired-common
+  boundary wording remained; the current dashboard and top entry state the new
+  standalone-only scalar gate.
+- `rg -n 'paired.*indep\\(\\.\\.\\., common = TRUE\\)|indep\\(\\.\\.\\., common = TRUE\\).*paired|latent\\(\\).*indep\\(\\.\\.\\., common = TRUE\\)|unique\\(\\.\\.\\., common = TRUE\\).*removed|common = TRUE.*removed' NEWS.md R/unique-keyword.R R/brms-sugar.R man/diag_re.Rd man/indep.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json tests/testthat/test-canonical-keywords.R`
+  -> hits were the intended paired-compatibility boundary and standalone
+  scalar-gate evidence; no paired `indep(common = TRUE)` recommendation or
+  removal claim found.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `rsync -a docs/dev-log/dashboard/ /tmp/gllvm-dashboard/`
+  -> refreshed the live local dashboard source for `http://127.0.0.1:8770/`.
+
+Still not claimed:
+
+- No `unique()` / `*_unique()` removal.
+- No paired `latent() + unique(..., common = TRUE)` re-home.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No Paper 2 multi-kernel explicit-Psi support.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 19:53 MDT -- Gaussian augmented latent random-regression Psi fold
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the residual Tier-3 random-regression `unique()` cleanup gap uncovered
+  by the article sweep.
+- Make ordinary Gaussian augmented `latent(1 + x | unit, d = K)` supply the
+  diagonal `Psi_B,aug` companion by default, matching the intercept-only
+  ordinary `latent()` fold.
+- Keep explicit augmented `unique(1 + x | unit)` as Gaussian-only
+  compatibility syntax, and keep non-Gaussian augmented `latent()` low-rank-only.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack headed by `5346391`.
+- `git status --short --branch`, `git diff --stat`, and `git diff --check`
+  -> broad inherited local diff, no whitespace errors.
+
+Implemented:
+
+- `R/fit-multi.R`
+  - Turns on the existing augmented diagonal B-slope block by default when an
+    ordinary augmented `latent()` term is present and all response rows are
+    Gaussian.
+  - Records `fit$use$diag_B_slope_default` for diagnostics/tests.
+  - Leaves explicit augmented `unique()` on the compatibility path and keeps
+    non-Gaussian augmented `latent()` low-rank-only.
+- `tests/testthat/test-ordinary-latent-random-regression.R`
+  - Asserts Gaussian default composition through
+    `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`.
+  - Moves the Gaussian recovery gate to the default `latent()` spelling.
+  - Pins the Poisson augmented latent smoke to `use_diag_B_slope == 0`.
+- `data-raw/examples/make-behavioural-reaction-norm-example.R` and
+  `inst/extdata/examples/behavioural-reaction-norm-example.rds`
+  - Regenerated the behavioural reaction-norm teaching fixture with default
+    augmented `latent()` long and wide formulas.
+- `tests/testthat/test-example-behavioural-reaction-norm.R`
+  - Guards that the fixture formulas do not regress to explicit augmented
+    ordinary `unique()` and that long/wide fits use the default diagonal-Psi
+    path.
+- `vignettes/articles/random-regression-reaction-norms.Rmd`
+  - Teaches the default augmented `latent()` spelling.
+  - Describes `part = "unique"` as the Gaussian default diagonal `Psi`
+    contribution.
+  - Keeps explicit non-Gaussian augmented `unique()` as the guarded boundary
+    example.
+- `docs/design/01-formula-grammar.md`
+  - Updates the random-regression row and random-effect eligibility section so
+    the canonical grammar is `latent(1 + x | unit, d = K)` for the Gaussian
+    full augmented decomposition.
+- `README.md` and `docs/design/35-validation-debt-register.md`
+  - Updated the front-door status table and RE-12 validation row so the
+    canonical Gaussian random-regression syntax is default augmented
+    `latent(1 + x | unit, d = K)`, with explicit augmented `unique()` retained
+    as compatibility syntax.
+- `R/unique-keyword.R` / `man/diag_re.Rd`, `NEWS.md`,
+  `docs/dev-log/after-task/2026-06-18-article-unique-cleanup.md`, and the
+  dashboard JSON files were updated for the same claim boundary.
+
+Checks:
+
+- `Rscript --vanilla data-raw/examples/make-behavioural-reaction-norm-example.R`
+  -> regenerated `inst/extdata/examples/behavioural-reaction-norm-example.rds`
+  with default augmented `latent()` long/wide formulas.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/diag_re.Rd`.
+- `air format R/fit-multi.R R/unique-keyword.R tests/testthat/test-ordinary-latent-random-regression.R tests/testthat/test-example-behavioural-reaction-norm.R data-raw/examples/make-behavioural-reaction-norm-example.R`
+  -> completed cleanly.
+- `Rscript --vanilla -e 'devtools::test(filter = "ordinary-latent-random-regression|example-behavioural-reaction-norm", reporter = "summary")'`
+  -> passed.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/random-regression-reaction-norms", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> failed in the default new process because the local process picked up an
+  older installed namespace that still required explicit augmented `unique()`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); ex <- readRDS("inst/extdata/examples/behavioural-reaction-norm-example.rds"); fit <- suppressMessages(suppressWarnings(gllvmTMB(ex$formula_long, data=ex$data_long, trait=ex$fit_args$trait, unit=ex$fit_args$unit, unit_obs=ex$fit_args$unit_obs, family=ex$fit_args$family, control=gllvmTMBcontrol(se=FALSE, optimizer="optim", optArgs=list(method="BFGS"))))); print(fit$use[c("rr_B_slope","diag_B_slope","diag_B_slope_default")]); print(extract_Sigma(fit, level="unit_slope", part="unique")$s)'`
+  -> confirmed `rr_B_slope`, `diag_B_slope`, and `diag_B_slope_default` were
+  all `TRUE`, and `part = "unique"` returned the augmented diagonal `Psi`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered successfully and wrote
+  `pkgdown-site/articles/random-regression-reaction-norms.html`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation|extract-sigma|ordinary-latent-random-regression|example-behavioural-reaction-norm", reporter = "summary")'`
+  -> passed with twelve expected heavy skips.
+- `rg -n 'latent\(\) \+ unique\(\)|latent \+ unique|unique\(0 \+ trait \+ \(0 \+ trait\):temperature \| individual\)|unique\(1 \+ temperature \| individual\)|paired augmented latent\(\) \+ unique\(\)|non-slope latent \+ unique|fitted diagonal contribution from unique\(\)' vignettes/articles/random-regression-reaction-norms.Rmd pkgdown-site/articles/random-regression-reaction-norms.html data-raw/examples/make-behavioural-reaction-norm-example.R tests/testthat/test-example-behavioural-reaction-norm.R tests/testthat/test-ordinary-latent-random-regression.R R/unique-keyword.R docs/design/01-formula-grammar.md`
+  -> remaining hits were intentional compatibility tests, the explicit
+  non-Gaussian boundary example, and canonical compatibility/history prose.
+- `rg -n 'latent\(1 \+ x \| unit, d = K\) \+ unique\(1 \+ x \| unit\)|latent \+ unique decomposition|Gaussian unit-tier augmented latent \+ unique|Gaussian ordinary latent \+ unique|non-Gaussian augmented unique\(\) remains guarded while the non-Gaussian' README.md docs/design/35-validation-debt-register.md docs/design/01-formula-grammar.md NEWS.md`
+  -> no hits after the README, RE-12, and older NEWS random-regression entry
+  were aligned to the default augmented `latent()` spelling.
+- `Rscript --vanilla -e 'jsonlite::validate(readLines("docs/dev-log/dashboard/status.json", warn = FALSE)); jsonlite::validate(readLines("docs/dev-log/dashboard/sweep.json", warn = FALSE))'`
+  -> both dashboard JSON files valid.
+- `git diff --check`
+  -> no whitespace errors.
+
+Still not claimed:
+
+- No `unique()` / `*_unique()` removal.
+- No `part = "unique"` rename.
+- No `common = TRUE` re-homing.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No Paper 2 multi-kernel explicit-Psi implementation.
+- No non-Gaussian augmented diagonal-Psi support.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 18:20 MDT -- Unique deprecation diagnostic cleanup
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation lane without removing any
+  compatibility syntax.
+- Replace stale ordinary-user diagnostics that still said explicit `unique()` was
+  required for Psi where the new grammar should point to default `latent()` Psi
+  or `latent(..., residual = FALSE)` for the deliberate no-Psi subset.
+
+Coordination check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack, headed by
+  `5346391 test(coevolution): add poisson recovery gate`.
+- Note: in the continuation that added the final generic extractor wording
+  cleanup, this check was rerun after state refresh and before any further
+  shared-file edits. No collision was detected.
+
+Implemented:
+
+- Updated `R/extract-sigma.R` ordinary augmented readout messages from
+  explicit `unique()` wording to diagonal-Psi / default-`latent()` wording.
+- Updated `R/communality-ci.R` so the missing-Psi diagnostic names the diagonal
+  Psi component and `latent(..., residual = FALSE)` no-Psi subset.
+- Updated `R/fit-multi.R` ordinary augmented reaction-norm guard suggestions so
+  new code points to default `latent(1 + x | unit, d = K)` and explicit
+  `unique(1 + x | unit)` is described as compatibility syntax.
+- Updated generic no-covariance diagnostics in `R/extract-sigma-table.R` and
+  `R/extract-correlations.R` so they list `latent()` / `indep()` first and
+  describe explicit `unique()` as compatibility syntax.
+- Quieted lifecycle warnings in compatibility-only
+  `tests/testthat/test-ordinary-latent-random-regression.R` fixtures; the
+  dedicated `test-unique-family-deprecation.R` remains the warning assertion
+  surface.
+- Updated `NEWS.md` to record the diagnostic cleanup.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|communality|ordinary-latent|unique-family", reporter = "summary")'`
+  -> passed; 23 expected heavy skips, no warnings.
+- `Rscript --vanilla -e 'devtools::test(filter = "ordinary-latent|unique-family", reporter = "summary")'`
+  -> passed after the `R/fit-multi.R` diagnostic wording cleanup.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma-table|extract-correlations|unique-family", reporter = "summary")'`
+  -> passed after the generic extractor diagnostic cleanup; 6 expected heavy
+  skips.
+
+Still not claimed:
+
+- No `unique()` / `*_unique()` removal.
+- No `part = "unique"` rename.
+- No `common = TRUE` re-homing.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 18:55 MDT -- Morphometrics, keyword-grid, pitfalls, joint-sdm, response-families, model-selection, mixed-family, psychometrics, phylogenetic, fit-diagnostics, and main-vignette default-latent cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation lane after the six-article
+  cleanup by updating the canonical `morphometrics` worked example and the
+  main `gllvmTMB` vignette.
+- Extend the same public syntax cleanup to the `api-keyword-grid` technical
+  reference.
+- Replace stale ordinary `+ unique()` recovery advice in the `pitfalls`
+  article.
+- Replace stale Gaussian contrast and repeatability-aside wording in the
+  `joint-sdm` article.
+- Replace stale ordinary `latent() + unique()` examples in the
+  `response-families` technical reference.
+- Replace stale rank-candidate fixture formulas and prose in the
+  `model-selection-latent-rank` article.
+- Replace stale morphometrics pointer wording in the `fit-diagnostics` article.
+- Replace stale `latent() + unique()` boundary wording in
+  `mixed-family-extractors` and `psychometrics-irt`.
+- Replace stale ordinary `unique()` teaching in `phylogenetic-gllvm` while
+  preserving `phylo_unique()` as explicit source-specific `Psi` syntax.
+- Replace validation-grid wording in `simulation-recovery-validated` so the
+  same $\psi_t$ coverage target is described as diagonal `Psi` under
+  default `latent()`.
+- Replace stale ordinary `unique()` examples in Tier-3 internal drafts
+  `data-shape-flowchart` and `stacked-trait-gllvm`.
+- Replace stale ordinary `unique()` examples in the Tier-3
+  `behavioural-syndromes` candidate worked example.
+- Keep explicit ordinary `unique()` as compatibility syntax only.
+- Do not expand `kernel_unique()` / `*_unique()` for Paper 2 multi-kernel
+  coevolution.
+
+Pre-edit lane check:
+
+- In this continuation, the pre-edit lane check had already been run before
+  touching shared files:
+  `gh pr list --state open` showed only draft PR #489, and
+  `git log --all --oneline --since="6 hours ago"` showed the current
+  coevolution stack headed by `5346391`.
+
+Implemented:
+
+- Updated `data-raw/examples/make-morphometrics-example.R` so the stored long
+  and wide teaching formulas use ordinary `latent()` alone for
+  `Lambda Lambda^T + Psi`.
+- Regenerated `inst/extdata/examples/morphometrics-example.rds`.
+- Updated `vignettes/articles/morphometrics.Rmd` so:
+  - ordinary `latent()` is the default diagonal-Psi decomposition;
+  - explicit `+ unique()` is described only as compatibility syntax;
+  - `latent(..., residual = FALSE)` is the no-Psi subset;
+  - the `dep` / `indep` comparison no longer teaches `latent + unique` as the
+    primary spelling.
+- Added a fixture regression guard in
+  `tests/testthat/test-example-morphometrics.R` to reject stored formulas that
+  contain explicit ordinary `unique()`.
+- Updated `vignettes/gllvmTMB.Rmd` so the first-fit prose teaches ordinary
+  `latent()` as the default shared + diagonal-Psi decomposition and reserves
+  the old explicit `latent() + unique()` spelling for compatibility syntax.
+- Updated `vignettes/articles/api-keyword-grid.Rmd` so ordinary `latent()` is
+  the primary no-prefix decomposed model, `latent(..., residual = FALSE)` is
+  the no-Psi subset, explicit `latent() + unique()` is compatibility syntax,
+  and `indep()` remains the standalone diagonal baseline.
+- Updated `vignettes/articles/pitfalls.Rmd` so no-Psi examples explicitly use
+  `residual = FALSE`, default `latent()` carries ordinary diagonal `Psi`, and
+  phylogenetic fallback wording no longer tells users to add ordinary
+  `unique()`.
+- Updated `vignettes/articles/joint-sdm.Rmd` so the binary JSDM contrast points
+  to default Gaussian `latent()`, the repeatability aside uses `indep()` for
+  diagonal tiers, and the See Also link no longer advertises
+  `latent() + unique()`.
+- Updated `vignettes/articles/response-families.Rmd` so long/wide Gaussian
+  examples use default `latent()`, `unique()` is compatibility/OLRE syntax, and
+  `indep()` stays the standalone diagonal spelling.
+- Updated `data-raw/examples/make-model-selection-rank-example.R` so the stored
+  long and wide latent-rank formulas use ordinary `latent()` alone for
+  `Lambda Lambda^T + Psi`, and the `d = 0` baseline uses `indep()`.
+- Regenerated `inst/extdata/examples/model-selection-rank-example.rds`.
+- Updated `tests/testthat/test-example-model-selection-rank.R` to reject stored
+  formulas or candidate labels that regress to explicit ordinary `unique()`.
+- Updated `vignettes/articles/model-selection-latent-rank.Rmd` so rank
+  candidates use default `latent()`, the diagonal baseline uses `indep()`, and
+  local renders prefer the repo fixture over a stale installed package fixture.
+- Updated `vignettes/articles/fit-diagnostics.Rmd` so its morphometrics pointer
+  names the Gaussian default-`latent()` covariance-decomposition tutorial
+  instead of `latent() + unique()`.
+- Updated `vignettes/articles/mixed-family-extractors.Rmd` so the compact
+  mixed-family fixture teaches ordinary default `latent()` with diagonal `Psi`
+  and avoids saying a later full decomposition should use `latent() + unique()`.
+- Updated `vignettes/articles/psychometrics-irt.Rmd` so the exploratory loading
+  preview is framed as a mixed-family diagnostic surface, not a full
+  `latent + unique` decomposition.
+- Updated `vignettes/articles/phylogenetic-gllvm.Rmd` so ordinary
+  non-phylogenetic tiers use default `latent()` for `Lambda Lambda^T + Psi`,
+  standalone population diagonals use `indep()`, and source-specific
+  `phylo_unique()` remains the explicit phylogenetic `Psi` component.
+- Updated the `vignettes/articles/profile-likelihood-ci.Rmd` phylogenetic
+  signal paragraph so its 3-component example says ordinary `latent()` carries
+  the non-phylogenetic diagonal `Psi`.
+- Updated `vignettes/articles/simulation-recovery-validated.Rmd` so the M3
+  smoke grid describes per-trait diagonal `Psi` variance under
+  default-`latent()` syntax, while preserving the existing $\psi_t$ coverage
+  estimand.
+- Updated `vignettes/articles/data-shape-flowchart.Rmd` so the
+  functional-biogeography branch points to default `latent()`.
+- Updated `vignettes/articles/stacked-trait-gllvm.Rmd` so default `latent()`
+  carries the site and site-species diagonal `Psi` companions, and standalone
+  non-phylogenetic species diagonal syntax uses `indep()`.
+- Updated `vignettes/articles/behavioural-syndromes.Rmd` so default `latent()`
+  carries `Psi_B` and `Psi_W` at the between- and within-individual tiers.
+- Updated `NEWS.md`, `docs/dev-log/dashboard/status.json`,
+  `docs/dev-log/dashboard/sweep.json`, and
+  `docs/dev-log/after-task/2026-06-18-article-unique-cleanup.md`.
+
+Checks:
+
+- `Rscript --vanilla data-raw/examples/make-morphometrics-example.R`
+  -> regenerated the morphometrics example RDS.
+- `Rscript --vanilla -e 'm <- readRDS("inst/extdata/examples/morphometrics-example.rds"); print(m$formula_long); print(m$formula_wide); print(m$alignment)'`
+  -> confirmed long/wide formulas use default `latent()` without explicit
+  ordinary `unique()`.
+- `rg -n 'latent \+ unique|\+ unique\(\)|without `?\+ unique\(\)`?|Pick `?latent \+ unique|latent\(d = 2\) \+ unique|`?unique\(\)`? matters|pairs `?latent' vignettes/articles/morphometrics.Rmd pkgdown-site/articles/morphometrics.html`
+  -> no hits after rendering.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics", reporter = "summary")'`
+  -> passed.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/morphometrics", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/morphometrics.html` successfully.
+- `Rscript --vanilla -e 'pkgdown::build_article("gllvmTMB", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/gllvmTMB.html` successfully.
+- `rg -n 'shared \(`latent\(\)`\) and unique|via `latent\(\)` and `unique\(\)`|Fit a .*latent\(\) \+ unique|That.s the whole model.*unique\(\)|latent\(\) \+ unique\(\)|latent \+ unique' vignettes/gllvmTMB.Rmd pkgdown-site/articles/gllvmTMB.html`
+  -> only the intentional compatibility note remained after rendering.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/api-keyword-grid", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/api-keyword-grid.html` successfully.
+- `rg -n 'core Gaussian `latent\(\) \+ unique\(\)`|start with `latent\(\) \+ unique\(\)`|Standalone `latent\(\)` fits|most common decomposed model pairs|The most common decomposed model pairs|Use `unique\(\)` when you want to name' vignettes/articles/api-keyword-grid.Rmd pkgdown-site/articles/api-keyword-grid.html`
+  -> no hits after rendering.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/pitfalls", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/pitfalls.html` successfully.
+- `rg -n 'unique\(0 \+ trait \| site\)|\+ unique\(0 \+ trait \| site\)|add `\+ unique|phylo_latent \+ latent \+ unique|phylo_latent \+ phylo_unique \+ latent \+ unique|four-component|Standalone `latent\(\)` fits|latent \+ unique' vignettes/articles/pitfalls.Rmd pkgdown-site/articles/pitfalls.html`
+  -> no hits after rendering.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/joint-sdm", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/joint-sdm.html` successfully.
+- `rg -n 'latent\(\) \+ unique\(\)|latent \+ unique|unique\(0 \+ trait \| site\)|unique\(0 \+ trait \| site_species\)|Gaussian `latent|Morphometrics.*unique|needs a paired `unique' vignettes/articles/joint-sdm.Rmd pkgdown-site/articles/joint-sdm.html`
+  -> no hits after rendering.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/response-families", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/response-families.html` successfully.
+- `rg -n 'latent\(\) \+ unique\(\)|latent \+ unique|unique\(1 \| individual\)|unique\(0 \+ trait \| individual\)|share a `latent\(\) \+ unique\(\)`|use `unique\(\)` for the explicit Psi component' vignettes/articles/response-families.Rmd pkgdown-site/articles/response-families.html`
+  -> no hits after rendering.
+- `Rscript --vanilla data-raw/examples/make-model-selection-rank-example.R`
+  -> regenerated the model-selection rank example RDS.
+- `Rscript --vanilla -e 'x <- readRDS("inst/extdata/examples/model-selection-rank-example.rds"); print(x$formula_long); print(x$formula_wide); print(x$rank_candidates); print(x$alignment)'`
+  -> confirmed long/wide formulas use default `latent()` without explicit
+  ordinary `unique()`, rank labels use `latent(..., d = K)`, and the `d = 0`
+  baseline uses `indep()`.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-model-selection-rank", reporter = "summary")'`
+  -> passed.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/model-selection-latent-rank", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/model-selection-latent-rank.html`
+  successfully.
+- `rg -n 'latent\(\) \+ unique\(\)|latent \+ unique|unique\(0 \+ trait \| individual\)|unique\(1 \| individual\)|trait-specific diagonal from `unique\(\)`|explicit `Psi`.*unique|default-`latent' vignettes/articles/model-selection-latent-rank.Rmd pkgdown-site/articles/model-selection-latent-rank.html data-raw/examples/make-model-selection-rank-example.R tests/testthat/test-example-model-selection-rank.R`
+  -> only the intentional `default-`latent()` phrase remained.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/fit-diagnostics", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/fit-diagnostics.html` successfully.
+- `rg -n 'latent\(\) \+ unique\(\)|latent \+ unique|full `latent\(\) \+ unique\(\)`|unique\(' vignettes/articles/fit-diagnostics.Rmd pkgdown-site/articles/fit-diagnostics.html`
+  -> no hits after rendering.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/mixed-family-extractors", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/mixed-family-extractors.html`
+  successfully.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/psychometrics-irt", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/psychometrics-irt.html` successfully.
+- `rg -n 'latent\(\) \+ unique\(\)|latent \+ unique|full `latent \+ unique`|full `latent\(\) \+ unique\(\)`|free `unique\(\)` component|Sigma = shared \+ unique' vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/psychometrics-irt.Rmd pkgdown-site/articles/mixed-family-extractors.html pkgdown-site/articles/psychometrics-irt.html`
+  -> no hits after rendering.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/phylogenetic-gllvm", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/phylogenetic-gllvm.html` successfully.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/profile-likelihood-ci", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/profile-likelihood-ci.html` successfully.
+- `rg -n 'latent\(\) \+ unique\(\)|latent \+ unique|phylo_latent \+ latent \+ unique|phylo_latent \+ phylo_unique \+ latent \+ unique|unique\(0 \+ trait \| individual\)|unique\(1 \| individual\)|unique\(0 \+ trait \| species\)|unique\(1 \| species\)|same `latent\(\) \+ unique\(\)`|simplest non-phylogenetic\s+`latent\(\) \+ unique\(\)`' vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/profile-likelihood-ci.Rmd pkgdown-site/articles/phylogenetic-gllvm.html pkgdown-site/articles/profile-likelihood-ci.html`
+  -> no hits after rendering.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/simulation-recovery-validated", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/simulation-recovery-validated.html`
+  successfully.
+- `rg -n 'latent\(\) \+ unique\(\)|latent \+ unique|unique-tier variance|same `latent\(\) \+ unique\(\)` machinery' vignettes/articles/simulation-recovery-validated.Rmd pkgdown-site/articles/simulation-recovery-validated.html`
+  -> no hits after rendering.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/data-shape-flowchart", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/data-shape-flowchart.html` successfully,
+  with pre-existing Pandoc math warnings for `\rm` fragments.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/stacked-trait-gllvm", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/stacked-trait-gllvm.html` successfully.
+- `rg -n 'latent\(\) \+ unique\(\)|latent \+ unique|unique\(0 \+ trait \| site\)|unique\(1 \| site\)|unique\(0 \+ trait \| site_species\)|unique\(0 \+ trait \| species\)|`unique\(species\)`|canonical decomposition mode' vignettes/articles/data-shape-flowchart.Rmd vignettes/articles/stacked-trait-gllvm.Rmd pkgdown-site/articles/data-shape-flowchart.html pkgdown-site/articles/stacked-trait-gllvm.html`
+  -> only the new "Default `latent()` is the canonical decomposition mode"
+  wording remained.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/behavioural-syndromes", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/behavioural-syndromes.html` successfully.
+- `rg -n 'latent\(\) \+ unique\(\)|latent \+ unique|unique\(0 \+ trait \| individual\)|unique\(1 \| individual\)|unique\(0 \+ trait \| session_id\)|unique\(1 \| session_id\)|unique\(' vignettes/articles/behavioural-syndromes.Rmd pkgdown-site/articles/behavioural-syndromes.html`
+  -> no hits after rendering.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Still not claimed:
+
+- No `unique()` / `*_unique()` removal.
+- No `part = "unique"` rename.
+- No `common = TRUE` re-homing.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No Paper 2 multi-kernel explicit-Psi implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 18:11 MDT -- Paper 2 pre-fit kernel-collinearity gate
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add the next narrow `COE-04` gate after the Paper 2 estimand and separability
+  audit: a deterministic pre-fit simulation of kernel collinearity regimes for
+  raw/residualized `K_tip` candidates.
+- Keep `kernel_unique()` / `*_unique()` as compatibility syntax only; the Paper
+  2 multi-kernel path remains latent-only.
+
+Pre-edit coordination:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack, headed by
+  `5346391 test(coevolution): add poisson recovery gate`.
+
+Implemented:
+
+- Added a fast deterministic test in `tests/testthat/test-coevolution-two-kernel.R`
+  that blends residualized/opposed `K_tip` toward `K_phy`.
+- The gate verifies monotone off-diagonal Frobenius-style similarity and checks
+  that `diagnose_kernel_separability()` maps:
+  `near_orthogonal -> separable_candidate`,
+  `moderate -> sensitivity_required`, and
+  `high -> collapse_or_single_covariance`.
+- Updated `NEWS.md`, Design 65, the `COE-04` row in the validation-debt
+  register, and the mission-control dashboard JSON to name this as pre-fit
+  claim-boundary evidence.
+
+Checks:
+
+- Exploratory threshold probe:
+  `Rscript --vanilla - <<'EOF' ... EOF`
+  -> `alpha = 0` gave similarity `0.1588016` / `near_orthogonal`,
+  `alpha = 0.15` gave `0.6290093` / `moderate`,
+  `alpha = 0.25` gave `0.8108305` / `high`, and
+  `alpha = 1` gave `1` / `high`.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel|coevolution-recovery", reporter = "summary")'`
+  -> passed with 13 expected heavy skips.
+
+Still not claimed:
+
+- No formal identifiability proof.
+- No interval calibration.
+- No in-engine `rho` estimation or `rho` profile intervals.
+- No module extraction / mechanistic validation / empirical trait-data audit.
+- No broader non-Gaussian or mixed-family scientific coverage beyond the narrow
+  Poisson cell pair already recorded.
+- No `kernel_unique()` / `*_unique()` expansion for Paper 2 multi-kernel
+  coevolution.
+
 ## 2026-06-16 -- Masked-CI report stale wording cleanup
 
 Tightened one after-task phrase found by a Rose stale-wording scan so it now
@@ -23741,6 +26537,4327 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 16:25 MDT -- COE-04 non-identical high-overlap failure calibration
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add one high-overlap, non-identical kernel failure-calibration gate for the
+  Paper 2 fixed named multi-kernel model.
+- Keep `COE-04` partial: this detects signal in a high-overlap setting while
+  explicitly refusing to promote component-specific `Gamma_shape` recovery.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current mission-control/coevolution commits on
+  this branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Extended `.c3_make_two_component_fixture()` with `non_kernel_phy_mix` so the
+  DGP can mix `K_non` toward `K_phy` before simulating.
+- Added a heavy non-identical high-overlap gate:
+  - seed `2551`, `n_H = 24`, `n_P = 24`, `n_rep = 5`;
+  - `K_non` is mixed 85% toward `K_phy`;
+  - the fitted pair remains non-identical but high-overlap
+    (`similarity = 0.999876`);
+  - the full two-kernel fit converges and beats either one-component
+    comparator by about `601` log-likelihood units;
+  - component-specific `extract_Gamma()` still warns for the high-overlap
+    tier;
+  - component separation is not promoted: own-shape correlations are `0.64`
+    and `0.87`, and one cross-component match is `0.52`.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Confirmed dashboard server at `http://127.0.0.1:8770/` was already alive
+  (`HTTP 200`, Python PID `95119`) and resynced dashboard source to
+  `/tmp/gllvm-dashboard/`.
+
+Checks:
+
+- Exploratory checkout-loaded probe with `non_association_blend` values
+  `0.55`, `0.65`, `0.75`, and `0.85`
+  -> all remained moderate-overlap, so that knob was not the right
+  high-overlap axis.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> first attempt failed because `.c3_fit_two_kernel_set()` suppressed the fit
+  warning and the test needed to assert the user-facing `extract_Gamma()`
+  warning directly.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 270`.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 11 | PASS 67`.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 14 | PASS 171`.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 399`.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No broad moderate-overlap calibration.
+- No broad high-overlap truth recovery; this is failure-calibration evidence.
+- No formal null-threshold calibration beyond the diagnostic grid.
+- No estimated/profiled `rho` intervals or in-engine `rho` estimation.
+- No interval coverage.
+- No broader non-Gaussian/mixed-family recovery beyond the narrow Poisson
+  cell pair.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 16:42 MDT -- Psi / unique second article sweep
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution Psi cleanup without changing formula grammar or
+  adding parser-wide lifecycle warnings.
+- Move standalone diagonal teaching toward `indep()` / source-specific
+  `*_indep()` while preserving `unique()` / `*_unique()` for explicit Psi in
+  paired decompositions.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current mission-control/coevolution commits on
+  this branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Updated `vignettes/articles/response-families.Rmd` to separate
+  observation-level `unique()` / OLRE language from standalone diagonal tiers,
+  which now point to `indep()`.
+- Updated `vignettes/articles/animal-model.Rmd` so standalone marginal genetic
+  diagonal teaching points to `animal_indep()`, paired
+  `animal_latent() + animal_unique()` stays the explicit genetic Psi
+  decomposition, and stale ANI-11 read-out wording is corrected.
+- Updated `vignettes/articles/phylogenetic-gllvm.Rmd` so standalone marginal
+  phylogenetic/non-phylogenetic diagonal models point to `phylo_indep()` /
+  `indep()`, while paired `phylo_unique()` / `unique()` remain explicit Psi.
+- Updated `vignettes/articles/functional-biogeography.Rmd` so
+  adjustment-only controls use `spatial_indep()` and `phylo_indep()`; true
+  spatial/phylogenetic partitioning examples keep the `latent + unique` pairs.
+- Updated `NEWS.md`, `docs/dev-log/dashboard/status.json`,
+  `docs/dev-log/dashboard/sweep.json`, and added after-task report
+  `docs/dev-log/after-task/2026-06-18-psi-unique-second-sweep.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); for (article in c("articles/response-families", "articles/animal-model", "articles/phylogenetic-gllvm", "articles/functional-biogeography")) { message("Building ", article); pkgdown::build_article(article, pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE) }'`
+  -> all four touched articles rendered successfully; functional-biogeography
+  reached and completed the edited evaluated `fit-m2` chunk.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'standalone diagonal|standalone marginal|animal_indep|phylo_indep|spatial_indep|explicit Psi|ANI-11|observation-level unique|latent\\(\\) \\+ unique\\(\\)' vignettes/articles/response-families.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/functional-biogeography.Rmd pkgdown-site/articles/response-families.html pkgdown-site/articles/animal-model.html pkgdown-site/articles/phylogenetic-gllvm.html pkgdown-site/articles/functional-biogeography.html`
+  -> confirmed source and rendered HTML contain the intended boundary wording.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> dashboard JSON valid.
+- `rsync -a docs/dev-log/dashboard/ /tmp/gllvm-dashboard/ && curl -s --max-time 2 http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "16:42|sweep 2|source-specific \\*_indep|parser-wide deprecation"`
+  -> local mission-control dashboard is live and synced with the second Psi
+  sweep evidence.
+- `git diff --check`
+  -> clean after edits.
+
+Still not claimed:
+
+- No API removal.
+- No parser-wide lifecycle/deprecation warning.
+- No Paper 2 multi-kernel explicit-Psi implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 02:24 MDT -- random-regression-reaction-norms rendered review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the rendered HTML and asset evidence slice for the internal
+  `random-regression-reaction-norms` candidate article.
+- Keep true browser review and final uncertainty review open.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Aligned the opening note in
+  `vignettes/articles/random-regression-reaction-norms.Rmd` from
+  `Internal draft` to the standard `Internal article gate` wording.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-regression-reaction-norms.html`
+  successfully before and after the wording fix.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/random-regression-reaction-norms.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); checks <- c("Internal article gate", "optimizer_convergence", "max_gradient", "sdreport", "pd_hessian", "repeatability", "reaction norm"); missing <- checks[!vapply(checks, grepl, logical(1), x = flat, fixed = TRUE)]; if (length(missing)) stop("missing rendered terms: ", paste(missing, collapse = ", ")); forbidden <- c("release ready", "scientific coverage passed", "publication-grade"); hits <- forbidden[vapply(forbidden, grepl, logical(1), x = flat, ignore.case = TRUE, fixed = FALSE)]; if (length(hits)) stop("forbidden rendered claims: ", paste(hits, collapse = ", ")); cat("random_regression_rendered_scope_review=PASS\n")'`
+  -> `random_regression_rendered_scope_review=PASS`.
+- `for f in pkgdown-site/articles/random-regression-reaction-norms_files/figure-html/*.png; do printf '%s ' "$f"; sips -g pixelWidth -g pixelHeight "$f" 2>/dev/null | awk '/pixelWidth|pixelHeight/{printf "%s=%s ", $1, $2} END{printf "\n"}'; done`
+  -> figure dimensions:
+  `inspect-slopes-1.png` 1036 x 1036,
+  `per-species-slopes-1.png` 1036 x 1036,
+  `recovery-plot-1.png` 1248 x 921,
+  `repeatability-plot-1.png` 1344 x 921.
+
+Still not claimed:
+
+- No public promotion of `random-regression-reaction-norms`.
+- No true browser scroll-through.
+- No interval calibration or non-Gaussian augmented covariance promotion.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 02:27 MDT -- psychometrics-irt rendered review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Align `psychometrics-irt` with the article-council Tier 3 contract.
+- Record rendered evidence while keeping binary lambda/JSDM and comparator
+  design gates open.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Added `tier: 3` YAML to `vignettes/articles/psychometrics-irt.Rmd`.
+- Replaced the opening preview banner with the standard
+  `Internal article gate` wording.
+- Changed overstrong `cross-domain validation` wording to
+  `cross-domain preview`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/psychometrics-irt", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/psychometrics-irt.html` successfully.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/psychometrics-irt.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); checks <- c("Internal article gate", "cross-domain preview", "lambda_constraint", "diagnose", "M2.5"); missing <- checks[!vapply(checks, grepl, logical(1), x = flat, fixed = TRUE)]; if (length(missing)) stop("missing rendered terms: ", paste(missing, collapse = ", ")); forbidden <- c("release ready", "scientific coverage passed", "publication-grade", "cross-domain validation"); hits <- forbidden[vapply(forbidden, grepl, logical(1), x = flat, ignore.case = TRUE, fixed = FALSE)]; if (length(hits)) stop("forbidden rendered claims: ", paste(hits, collapse = ", ")); cat("psychometrics_irt_rendered_scope_review=PASS\n")'`
+  -> `psychometrics_irt_rendered_scope_review=PASS`.
+- `rg -n "cross-domain validation|scientific coverage passed|release ready|publication-grade|tier: 3|Internal article gate" vignettes/articles/psychometrics-irt.Rmd pkgdown-site/articles/psychometrics-irt.html`
+  -> confirmed Tier 3/internal gate in source/rendered HTML and no stale
+  validation/release/coverage/publication-grade hits.
+- `for f in pkgdown-site/articles/psychometrics-irt_files/figure-html/*.png; do printf '%s ' "$f"; sips -g pixelWidth -g pixelHeight "$f" 2>/dev/null | awk '/pixelWidth|pixelHeight/{printf "%s=%s ", $1, $2} END{printf "\n"}'; done`
+  -> `sigma-exp-corr-1.png` is 1228 x 1113.
+
+Still not claimed:
+
+- No public promotion of `psychometrics-irt`.
+- No `mirt` comparator validation.
+- No binary IRT/JSDM teaching-path completion.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 02:29 MDT -- simulation-verification rendered review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Align `simulation-verification` with internal Tier 3 diagnostic-draft status.
+- Record rendered evidence while keeping M3 target-explicit gates open.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Added `tier: 3` YAML to `vignettes/articles/simulation-verification.Rmd`.
+- Added a standard `Internal article gate` note.
+- Replaced `publication-ready` / `publication-grade` wording with internal
+  evidence / external-reporting wording.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/simulation-verification", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/simulation-verification.html`
+  successfully.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/simulation-verification.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); checks <- c("Internal article gate", "M3 target-explicit", "diagnostic", "coverage_study", "confint_inspect"); missing <- checks[!vapply(checks, grepl, logical(1), x = flat, fixed = TRUE)]; if (length(missing)) stop("missing rendered terms: ", paste(missing, collapse = ", ")); forbidden <- c("release ready", "scientific coverage passed", "publication-grade", "publication-ready"); hits <- forbidden[vapply(forbidden, grepl, logical(1), x = flat, ignore.case = TRUE, fixed = FALSE)]; if (length(hits)) stop("forbidden rendered claims: ", paste(hits, collapse = ", ")); cat("simulation_verification_rendered_scope_review=PASS\n")'`
+  -> `simulation_verification_rendered_scope_review=PASS`.
+- `rg -n "publication-ready|publication-grade|scientific coverage passed|release ready|tier: 3|Internal article gate" vignettes/articles/simulation-verification.Rmd pkgdown-site/articles/simulation-verification.html`
+  -> confirmed Tier 3/internal gate in source/rendered HTML and no stale
+  publication/release/scientific-coverage hits.
+- `for f in pkgdown-site/articles/simulation-verification_files/figure-html/*.png; do printf '%s ' "$f"; sips -g pixelWidth -g pixelHeight "$f" 2>/dev/null | awk '/pixelWidth|pixelHeight/{printf "%s=%s ", $1, $2} END{printf "\n"}'; done`
+  -> `recover-sigma-1.png` is 1344 x 806.
+
+Still not claimed:
+
+- No public promotion of `simulation-verification`.
+- No M3 target-explicit gate closure.
+- No validation completion, bridge completion, release readiness, or
+  scientific coverage completion.
+
+## 2026-06-19 02:34 MDT -- mixed-family broader family map
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Move `mixed-family-extractors` one step closer to a coherent mixed-response
+  teaching path.
+- Add the missing broader-family map without pretending NB/beta or
+  delta/hurdle public teaching is complete.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Changed the opening note to the standard `Internal article gate` wording.
+- Added a compact family map that separates:
+  Gaussian/binomial/Poisson runnable evidence in this article, NB/beta as
+  one-part families needing a broader teaching fixture, delta/hurdle as the
+  blocked `MIX-10` two-scale target, and mixture families as outside scope.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/mixed-family-extractors", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/mixed-family-extractors.html`
+  successfully.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/mixed-family-extractors.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); checks <- c("Internal article gate", "broader family map", "Negative binomial", "beta/proportion", "MIX-10", "Delta and hurdle", "coverage proof"); missing <- checks[!vapply(checks, grepl, logical(1), x = flat, fixed = TRUE)]; if (length(missing)) stop("missing rendered terms: ", paste(missing, collapse = ", ")); forbidden <- c("release ready", "scientific coverage passed", "publication-grade"); hits <- forbidden[vapply(forbidden, grepl, logical(1), x = flat, ignore.case = TRUE, fixed = FALSE)]; if (length(hits)) stop("forbidden rendered claims: ", paste(hits, collapse = ", ")); cat("mixed_family_rendered_scope_review=PASS\n")'`
+  -> `mixed_family_rendered_scope_review=PASS`.
+- `rg -n "Internal article gate|broader family map|Negative binomial|beta/proportion|Delta and hurdle|release ready|scientific coverage passed|publication-grade" vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/mixed-family-extractors.html`
+  -> confirmed the new family-map wording in source/rendered HTML and no
+  stale release/scientific-coverage/publication-grade hits.
+- `for f in pkgdown-site/articles/mixed-family-extractors_files/figure-html/*.png; do printf '%s ' "$f"; sips -g pixelWidth -g pixelHeight "$f" 2>/dev/null | awk '/pixelWidth|pixelHeight/{printf "%s=%s ", $1, $2} END{printf "\n"}'; done`
+  -> `corr-1.png` is 1113 x 921.
+
+Still not claimed:
+
+- No public promotion of `mixed-family-extractors`.
+- No runnable NB/beta teaching fixture.
+- No delta/hurdle mixed-family latent-scale correlation support.
+- No CI-10 coverage promotion, bridge completion, release readiness, or
+  scientific coverage completion.
+
+## 2026-06-19 02:36 MDT -- mixed-family pkgdown check
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Run a site-level pkgdown check after the mixed-family article update.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Still not claimed:
+
+- No public article promotion from this check.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 02:31 MDT -- article-council pkgdown check
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Run a site-level pkgdown check after the rendered-review article slices.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Still not claimed:
+
+- No public article promotion from this check.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 02:00 MDT -- lambda-constraint rendered internal review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Resolve the next article-council item for the binary loading-constraint lane.
+- Render and inspect the current `lambda-constraint` internal article before any
+  public-placement decision.
+- Keep the page internal; do not promote it as release-ready or
+  scientific-coverage evidence.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/lambda-constraint.html` successfully.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/lambda-constraint.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); checks <- c("Internal article gate", "binary loading-constraint teaching path", "joint-sdm", "confirmatory_lambda", "lambda_constraint"); missing <- checks[!vapply(checks, grepl, logical(1), x = flat, fixed = TRUE)]; if (length(missing)) stop("missing rendered terms: ", paste(missing, collapse = ", ")); forbidden <- c("release ready", "scientific coverage passed", "publication-grade"); hits <- forbidden[vapply(forbidden, grepl, logical(1), x = flat, ignore.case = TRUE, fixed = FALSE)]; if (length(hits)) stop("forbidden rendered claims: ", paste(hits, collapse = ", ")); cat("lambda_constraint_rendered_scope_review=PASS\n")'`
+  -> `lambda_constraint_rendered_scope_review=PASS`.
+- `find pkgdown-site/articles -path '*lambda-constraint_files*' -type f -print`
+  -> found seven rendered PNG assets.
+- `for f in pkgdown-site/articles/lambda-constraint_files/figure-html/*.png; do printf '%s ' "$f"; sips -g pixelWidth -g pixelHeight "$f" 2>/dev/null | awk '/pixelWidth|pixelHeight/{printf "%s=%s ", $1, $2} END{printf "\n"}'; done`
+  -> asset dimensions:
+  `communality-plot-1.png` 1344 x 768,
+  `confidence-eye-1.png` 1536 x 864,
+  `constraint-tile-1.png` 864 x 960,
+  `loadings-compare-1.png` 1536 x 960,
+  `prevalence-1.png` 1152 x 576,
+  `side-by-side-heatmap-1.png` 1440 x 768,
+  `vp-plot-1.png` 1440 x 768.
+
+Still not claimed:
+
+- No public promotion of `lambda-constraint`.
+- No promotion of `lambda-constraint-suggest`.
+- No interval calibration or lambda-constraint scientific coverage.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 02:11 MDT -- lambda-constraint-suggest companion render blocked
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the lambda lane by checking the companion
+  `lambda-constraint-suggest` article after the main `lambda-constraint`
+  rendered internal review passed.
+- Keep the companion behind the main article until it has its own rendered
+  review and final placement decision.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Checks:
+
+- `sed -n '1,140p' vignettes/articles/lambda-constraint-suggest.Rmd`
+  -> confirmed Tier 3 YAML and the internal article gate.
+- `rg -n "Internal|gate|tier|lambda-constraint|lambda_constraint|suggest_lambda|release ready|scientific coverage|publication-grade|public" vignettes/articles/lambda-constraint-suggest.Rmd`
+  -> confirmed the internal gate and no source hits for release/scientific
+  coverage/publication-grade overclaims.
+- `git ls-files vignettes/articles/lambda-constraint-suggest_cache pkgdown-site/articles/lambda-constraint-suggest_files | head -n 50`
+  -> no tracked cache/rendered asset files.
+- First render attempt:
+  `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint-suggest", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> failed in `profile-confidence-eye` because a cached fit lacked
+  `n_kernel_tiers`, consistent with stale cache against the current TMB data
+  contract.
+- Cache reset:
+  `rm -rf vignettes/articles/lambda-constraint-suggest_cache`
+  -> removed only untracked article cache files.
+- Fresh cold-cache render attempt:
+  `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint-suggest", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> stopped manually after more than 7.5 minutes of CPU time in
+  `suggest-profile-retention` with no cache files written; final message:
+  `Quitting from lambda-constraint-suggest.Rmd:260-269 [suggest-profile-retention]`.
+
+Result:
+
+- `lambda-constraint-suggest` remains internal and not rendered-reviewed.
+- Next safe action is to slim/precompute the profile-retention companion path,
+  then rerender and inspect.
+
+Still not claimed:
+
+- No public promotion of `lambda-constraint-suggest`.
+- No LAM-04 or EXT-14/15 promotion from this companion page.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 02:14 MDT -- internal primer rendered review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the article-council queue after the lambda lane.
+- Verify the Tier 3 internal primer pages `data-shape-flowchart` and
+  `stacked-trait-gllvm` as rendered HTML.
+- Keep both pages internal and out of public promotion.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Replaced `\rm` math subscripts in
+  `vignettes/articles/data-shape-flowchart.Rmd` with `\mathrm{...}` so
+  pkgdown/pandoc no longer falls back to raw TeX for those equations.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); for (article in c("articles/data-shape-flowchart", "articles/stacked-trait-gllvm")) { message("Building ", article); pkgdown::build_article(article, pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE) }'`
+  -> both pages rendered; the first `data-shape-flowchart` render warned about
+  MathML conversion for `\rm` subscripts.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/data-shape-flowchart", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rerendered cleanly after the notation fix.
+- `Rscript --vanilla -e 'pages <- c("data-shape-flowchart", "stacked-trait-gllvm"); for (page in pages) { html <- readLines(file.path("pkgdown-site/articles", paste0(page, ".html")), warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); if (!grepl("Internal article gate", flat, fixed = TRUE)) stop(page, ": missing internal gate"); forbidden <- c("release ready", "scientific coverage passed", "publication-grade"); hits <- forbidden[vapply(forbidden, grepl, logical(1), x = flat, ignore.case = TRUE, fixed = FALSE)]; if (length(hits)) stop(page, ": forbidden rendered claims: ", paste(hits, collapse = ", ")); }; cat("internal_primer_rendered_scope_review=PASS\n")'`
+  -> `internal_primer_rendered_scope_review=PASS`.
+- `find pkgdown-site/articles -path '*data-shape-flowchart_files*' -type f -print; find pkgdown-site/articles -path '*stacked-trait-gllvm_files*' -type f -print`
+  -> no figure assets produced.
+- `rg -n '\\rm|_\\{\\rm|release ready|scientific coverage passed|publication-grade' vignettes/articles/data-shape-flowchart.Rmd vignettes/articles/stacked-trait-gllvm.Rmd pkgdown-site/articles/data-shape-flowchart.html pkgdown-site/articles/stacked-trait-gllvm.html`
+  -> no hits.
+
+Still not claimed:
+
+- No public promotion of either internal primer page.
+- No claim that hidden biological or advanced examples are safe public routes.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 02:16 MDT -- phylogenetic-gllvm rendered asset review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the rendered HTML and asset evidence slice for the internal
+  `phylogenetic-gllvm` candidate article.
+- Keep the true browser and final public-placement gates open.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Checks:
+
+- In-app browser setup via the browser plugin was attempted before claiming
+  browser unavailability.
+  -> `iab` was unavailable, so true browser scroll-through remains blocked.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/phylogenetic-gllvm", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/phylogenetic-gllvm.html` successfully.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/phylogenetic-gllvm.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); checks <- c("Internal article gate", "optimizer_convergence", "max_gradient", "pd_hessian", "phylogenetic"); missing <- checks[!vapply(checks, grepl, logical(1), x = flat, fixed = TRUE)]; if (length(missing)) stop("missing rendered terms: ", paste(missing, collapse = ", ")); forbidden <- c("release ready", "scientific coverage passed", "publication-grade"); hits <- forbidden[vapply(forbidden, grepl, logical(1), x = flat, ignore.case = TRUE, fixed = FALSE)]; if (length(hits)) stop("forbidden rendered claims: ", paste(hits, collapse = ", ")); cat("phylogenetic_gllvm_rendered_scope_review=PASS\n")'`
+  -> `phylogenetic_gllvm_rendered_scope_review=PASS`.
+- `find pkgdown-site/articles -path '*phylogenetic-gllvm_files*' -type f -print`
+  -> one rendered figure asset.
+- `for f in pkgdown-site/articles/phylogenetic-gllvm_files/figure-html/*.png; do printf '%s ' "$f"; sips -g pixelWidth -g pixelHeight "$f" 2>/dev/null | awk '/pixelWidth|pixelHeight/{printf "%s=%s ", $1, $2} END{printf "\n"}'; done`
+  -> `extract-total-correlations-1.png` is 1420 x 883.
+
+Still not claimed:
+
+- No public promotion of `phylogenetic-gllvm`.
+- No true browser scroll-through.
+- No interval calibration or broad phylogenetic scientific coverage.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 02:18 MDT -- animal-model rendered asset review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the rendered HTML and asset evidence slice for the internal
+  `animal-model` candidate article.
+- Keep true browser, final public-placement, larger-pedigree, and
+  cross-package agreement gates open.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/animal-model", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/animal-model.html` successfully.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/animal-model.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); checks <- c("Internal article gate", "optimizer_convergence", "max_gradient", "pd_hessian", "heritability", "animal"); missing <- checks[!vapply(checks, grepl, logical(1), x = flat, fixed = TRUE)]; if (length(missing)) stop("missing rendered terms: ", paste(missing, collapse = ", ")); forbidden <- c("release ready", "scientific coverage passed", "publication-grade"); hits <- forbidden[vapply(forbidden, grepl, logical(1), x = flat, ignore.case = TRUE, fixed = FALSE)]; if (length(hits)) stop("forbidden rendered claims: ", paste(hits, collapse = ", ")); cat("animal_model_rendered_scope_review=PASS\n")'`
+  -> `animal_model_rendered_scope_review=PASS`.
+- `find pkgdown-site/articles -path '*animal-model_files*' -type f -print`
+  -> one rendered figure asset.
+- `for f in pkgdown-site/articles/animal-model_files/figure-html/*.png; do printf '%s ' "$f"; sips -g pixelWidth -g pixelHeight "$f" 2>/dev/null | awk '/pixelWidth|pixelHeight/{printf "%s=%s ", $1, $2} END{printf "\n"}'; done`
+  -> `G3-correlation-1.png` is 1113 x 921.
+
+Still not claimed:
+
+- No public promotion of `animal-model`.
+- No true browser scroll-through.
+- No larger-pedigree validation or cross-package agreement evidence.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 02:20 MDT -- random-slopes-nongaussian rendered review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the rendered HTML evidence slice for the internal
+  `random-slopes-nongaussian` technical draft.
+- Keep confidence intervals, non-Gaussian `s >= 2`, true browser, and public
+  placement gates open.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/random-slopes-nongaussian", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-slopes-nongaussian.html`
+  successfully.
+- `Rscript --vanilla -e 'html <- readLines("pkgdown-site/articles/random-slopes-nongaussian.html", warn = FALSE); flat <- gsub("[[:space:]]+", " ", paste(html, collapse = "\n")); checks <- c("Internal article gate", "optimizer_convergence", "max_gradient", "logLik", "phylo_dep", "spatial"); missing <- checks[!vapply(checks, grepl, logical(1), x = flat, fixed = TRUE)]; if (length(missing)) stop("missing rendered terms: ", paste(missing, collapse = ", ")); forbidden <- c("release ready", "scientific coverage passed", "publication-grade"); hits <- forbidden[vapply(forbidden, grepl, logical(1), x = flat, ignore.case = TRUE, fixed = FALSE)]; if (length(hits)) stop("forbidden rendered claims: ", paste(hits, collapse = ", ")); cat("random_slopes_nongaussian_rendered_scope_review=PASS\n")'`
+  -> `random_slopes_nongaussian_rendered_scope_review=PASS`.
+- `find pkgdown-site/articles -path '*random-slopes-nongaussian_files*' -type f -print`
+  -> no figure assets produced, as expected.
+
+Still not claimed:
+
+- No public promotion of `random-slopes-nongaussian`.
+- No true browser scroll-through.
+- No interval calibration or non-Gaussian `s >= 2` promotion.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:32 MDT -- Link-residual extractor wording cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Finish the narrow extractor/Rd wording gap left by the public `unique()`
+  cleanup.
+- Make `link_residual = "none"` documentation describe the fitted model
+  covariance without link-residual additions, instead of teaching a
+  `latent + unique` compatibility spelling as the ordinary scale.
+
+Implemented:
+
+- Updated extractor roxygen and regenerated Rd for `extract_Sigma()`,
+  `extract_correlations()`, `bootstrap_Sigma()`, `extract_Sigma_table()`,
+  `extract_Omega()`, `extract_communality()`, `extract_phylo_signal()`,
+  `profile_ci_phylo_signal()`, `gllvmTMBcontrol()`, and
+  `confint.gllvmTMB_multi()`.
+- Updated `extract_repeatability()` and `gllvmTMBcontrol()` diagnostics/prose
+  so ordinary repair paths name default `latent()` / `indep()` or diagonal
+  covariance, not `unique()`-first recipes.
+- Updated extractor-contract, inference-replacement, and NEWS wording to keep
+  `Lambda Lambda^T + Psi` as the decomposition target while avoiding
+  `latent + unique` as ordinary-user vocabulary.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated the affected Rd files.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-correlations|bootstrap-Sigma|extract-sigma-table|link-residual|confint|extract-repeatability|extractors", reporter = "summary")'`
+  -> completed successfully; expected heavy recovery fixtures skipped under the
+  normal `GLLVMTMB_HEAVY_TESTS` gate.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n -F 'latent+unique-implied' R man vignettes README.md NEWS.md docs/design || true`; `rg -n -F 'fitted latent + unique' R man vignettes README.md NEWS.md docs/design || true`; `rg -n -F 'full latent + unique Sigma' R man vignettes README.md NEWS.md docs/design || true`; `rg -n -F 'latent + unique covariance' R man vignettes README.md NEWS.md docs/design || true`; `rg -n -F 'latent + unique Sigma' R man vignettes README.md NEWS.md docs/design || true`
+  -> no hits.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No extractor field rename or `part = "unique"` rename.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No Paper 2 multi-kernel explicit-Psi support.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:40 MDT -- Start-method unique wording cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Remove stale `unique()`-first vocabulary from convergence/start-method prose
+  and the corresponding design/status rows.
+- Keep the start-method implementation unchanged while making the ordinary
+  teaching language say independent diagonal model / ordinary latent covariance
+  fit.
+
+Implemented:
+
+- Updated `vignettes/articles/convergence-start-values.Rmd` so the start-method
+  table and profile fallback note say ordinary latent covariance rather than
+  `latent+unique`.
+- Updated `docs/design/43-asreml-speed-techniques.md` and MIS-18/MIS-19 in
+  `docs/design/35-validation-debt-register.md` so residual and independent
+  starts no longer present `unique()`-only or `latent+unique` as ordinary
+  vocabulary.
+- Updated RE-12 wording from `unique`-only diagonal extraction to explicit
+  compatibility diagonal extraction.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> article rendered successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "start-method|gllvmTMBcontrol|unique-family-deprecation", reporter = "summary")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n -F 'unique()-only' ...`; `rg -n -F 'unique-only' ...`; `rg -n -F 'full latent+unique' ...`; `rg -n -F 'Gaussian two-level latent+unique' ...`; `rg -n -F 'latent+unique fit' ...`
+  -> no hits over the touched start-method surface.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No behavior change to `start_method`.
+- No keyword removal.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:40 MDT -- Design-roadmap latent/unique wording cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Remove remaining design-roadmap labels that made ordinary validation targets
+  sound like `latent+unique` or `unique`-only formulas.
+
+Implemented:
+
+- Updated `docs/design/01-formula-grammar.md` to say explicit compatibility
+  diagonal fit in the RE-12 evidence list.
+- Updated `docs/design/49-robust-modeling-roadmap.md` M3.3a pilot cells to
+  ordinary latent covariance wording.
+- Updated `docs/design/66-capstone-power-study.md` to say diagonal `Psi` tier
+  and explicit-Psi compatibility configuration.
+
+Checks:
+
+- Exact scans for `unique-only fit`, the old M3.3a `latent+unique` pilot-cell
+  phrases, `unique-\`psi\` tier`, and `unit_obs / latent+unique`
+  -> no hits in the touched files.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No behavior change.
+- No keyword removal.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:40 MDT -- Validation-row explicit-Psi wording cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Tighten NEWS and validation-debt prose so compatibility formulas remain exact,
+  but ordinary explanatory text no longer uses `latent+unique` /
+  `unique()`-first shorthand.
+
+Implemented:
+
+- Updated NEWS row-anchor wording to explicit-Psi compatibility examples.
+- Updated FG-06 and RE-09 labels to explicit-Psi compatibility.
+- Updated FAM-07, RE-09, and KER-02 explanatory prose to distinguish ordinary
+  latent covariance, compatibility diagonal, and explicit-Psi compatibility
+  evidence.
+
+Checks:
+
+- Exact stale-phrase scans over `NEWS.md` and
+  `docs/design/35-validation-debt-register.md`
+  -> no hits for the replaced shorthand.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No behavior change.
+- No keyword removal.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:40 MDT -- Phase-B matrix wording cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Clean the Phase-B matrix-completion planning table so it separates ordinary
+  `latent()` covariance from explicit-Psi compatibility cells.
+
+Implemented:
+
+- Updated `docs/design/59-phase-b-matrix-completion.md` unit, phylo, spatial,
+  and tail-family rows.
+
+Checks:
+
+- Exact scans for `latent+unique` and the old `latent` / `unique` smoke phrase
+  -> no hits in the touched file.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No behavior change.
+- No keyword removal.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 23:40 MDT -- Runtime start-method label cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Remove the last adjacent `unique-only` labels from the independent warm-start
+  runtime message and the RE-12 testing contract.
+
+Implemented:
+
+- Changed the verbose `start_method = "indep"` message in `R/fit-multi.R` to
+  `fitted independent diagonal warm-start model`.
+- Changed the RE-12 testing-contract wording in
+  `docs/design/05-testing-strategy.md` to explicit compatibility diagonal
+  extraction.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "start-method|gllvmTMBcontrol|ordinary-latent|unique-family-deprecation", reporter = "summary")'`
+  -> completed successfully.
+- Exact scans for `unique-only` and the old verbose
+  `start_method='indep': fitted unique-only` string over the touched
+  runtime/design/status surface
+  -> no hits.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No behavior change to `start_method`.
+- No keyword removal.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 22:10 MDT -- Rose pre-publish audit for coevolution / unique cleanup surface
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Run the narrow Rose pre-publish gate after the coevolution model slice and
+  ordinary `unique()` deprecation cleanup changed public prose, roxygen, Rd, and
+  pkgdown reference navigation.
+- Close only the coevolution/unique public-surface check, while leaving broader
+  release hygiene open.
+
+Pre-edit lane check before `_pkgdown.yml` edit:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> latest shared commit remained `5346391 test(coevolution): add poisson recovery gate`.
+
+Implemented:
+
+- Added `kernel_unique`, `kernel_indep`, and `kernel_dep` to the `_pkgdown.yml`
+  core covariance keyword reference index beside `kernel_latent`.
+- Recorded Rose as a warning gate because the strict export/reference parity
+  script still finds broader pre-existing release-hygiene gaps outside this
+  coevolution/unique slice.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `Rscript --vanilla - <<'RS' ... RS`
+  -> focused coevolution export parity returned
+  `MISSING_COEVOLUTION_EXPORTS 0` for `kernel_unique`,
+  `kernel_indep`, `kernel_dep`, `extract_coevolution_modules`, and
+  `diagnose_kernel_separability`.
+- `rg -n 'worked Gaussian `latent\(\) \+ unique\(\)` example|The decomposition mode pairs `latent \+ unique`|\*\*Decomposition\*\* \(`latent \+ unique`\)|latent\(1 \+ x \| individual, d = K\) \+ unique\(1 \+ x \| individual\)|latent\(1 \+ x \| unit, d = K\) \+ unique\(1 \+ x \| unit\)|default formula includes `unique\(0 \+ trait \| site\)`' NEWS.md R/brms-sugar.R man/indep.Rd man/dep.Rd vignettes/articles/random-slopes-nongaussian.Rmd docs/design/00-vision.md docs/design/61-capability-status.md R/gllvmTMB-wide.R tests/testthat/test-gllvmTMB-wide.R tests/testthat/test-wide-weights-matrix.R tests/testthat/test-weights-unified.R`
+  -> no hits in the touched coevolution/unique cleanup surface.
+- `rg -n '^> \*\*Preview' -A 8 vignettes/articles`
+  -> every Preview banner still cites validation-debt row IDs and a milestone.
+- `rg -n "gllvmTMB_wide\(|gllvmTMB_wide" README.md NEWS.md vignettes docs/design R man --glob '!docs/dev-log/**'`
+  -> hits are soft-deprecated/migration/per-cell-weight compatibility language,
+  not primary-new-user or already-removed claims.
+- `rg -n "meta_known_V" README.md NEWS.md docs/design vignettes R man --glob '!docs/dev-log/**'`
+  -> hits are deprecated-alias compatibility language, not primary syntax.
+- `rg -n "profile-likelihood default|already removed|primary new-user API|unsupported.*implemented|diag\(U\)|U_phy|U_non|\\bf S|\bS_B\b|\bS_W\b" README.md NEWS.md vignettes docs/design R man --glob '!docs/dev-log/**'`
+  -> no hits.
+- `git diff --check`
+  -> clean.
+
+Rose verdict:
+
+- `WARN`, not `PASS`: the coevolution/unique public surface is clean and the
+  new coevolution exports are indexed, but strict whole-package
+  export/reference parity still reports broader release-hygiene debt
+  (`phylo_rr`, `gr`, `meta`, `meta_known_V`, family constructors, selected S3
+  methods, and helpers such as `get_crs`, `spde`, `plot_anisotropy2`). This is
+  not closed by the current slice.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific or kernel latent-Psi fold beyond ordinary latent.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 22:22 MDT -- Export / pkgdown reference parity closeout
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the broader Rose export/reference parity warning found during the
+  coevolution/unique pre-publish audit.
+- Keep deprecated/internal S3 registrations out of the first-stop reference
+  index while ensuring every public export is represented or explicitly
+  internal.
+
+Implemented:
+
+- Added missing public reference-index entries to `_pkgdown.yml`:
+  response-family constructors, `get_crs`, `plot_anisotropy2`, and public
+  Julia/method aliases already documented by existing topics.
+- Marked exported S3 printer registrations as roxygen-internal where they are
+  not standalone reference aliases:
+  `print.gllvmTMB_confint_inspect`,
+  `print.gllvmTMB_check_consistency`,
+  `print.gllvmTMB_identifiability`, and
+  `print.gllvmTMB_coverage_study`.
+- Regenerated roxygen output with `devtools::document()`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> passed.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Corrected Rose export/reference parity script over `R/*.R` and
+  `_pkgdown.yml`
+  -> `PUBLIC_EXPORTS 151`, `MISSING_PUBLIC_EXPORTS 0`.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No release readiness.
+- No full `devtools::check()`.
+- No bridge completion or scientific coverage completion.
+
+## 2026-06-18 22:28 MDT -- local power-pilot iter 47 heartbeat
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Refresh Phase 3 local LaunchAgent process evidence after the dashboard had
+  stale local progress from iter 24.
+- Keep process health separate from coverage/power promotion.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits.
+
+Evidence:
+
+- `tail -n 80 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> latest stable local merge was iter 47 at 2026-06-18T21:47:09,
+  `418010 / 480000` reps, `0/48` cells at cap, and `0` errored cells.
+- `launchctl print gui/$(id -u)/com.gllvmtmb.power-pilot-local | sed -n '1,100p'`
+  -> LaunchAgent `com.gllvmtmb.power-pilot-local` remains `running`, PID
+  1386, with `LOCAL_CORES=10`, `LOCAL_N_SIM_STEP=150`, and
+  `LOCAL_N_SIM_CAP=10000`.
+- `stat -f '%Sm %N' -t '%Y-%m-%d %H:%M:%S %Z' /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/pilot-index.rds /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> pilot index timestamp `2026-06-18 21:47:09 MDT`; log timestamp
+  `2026-06-18 21:47:14 MDT`.
+- `/usr/local/bin/Rscript --vanilla dev/power-pilot-run.R --mode=status --n-sim-cap=10000 --results-dir=dev/m3-pilot-results-local --status-out=/tmp/gllvmtmb-local-iter47-status.md`
+  from `/Users/z3437171/gllvmTMB-power-pilot`
+  -> `all_complete=false`, `reps_total=418010`, `reps_target=480000`,
+  `cells_complete=0`, `cells_total=48`.
+
+Still not claimed:
+
+- No coverage or power promotion.
+- No scientific coverage completion.
+- No release readiness.
+
+## 2026-06-18 21:51 MDT -- gllvmTMB_wide default latent cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Remove one more active ordinary `unique()` residue from the soft-deprecated
+  matrix wrapper.
+- Keep `gllvmTMB_wide()` compatibility alive while making its generated default
+  formula match the ordinary `latent()` + default Psi contract.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were `5346391` and `2475537` on the current
+  coevolution/mission-control stack.
+
+Implemented:
+
+- Updated `R/gllvmTMB-wide.R` so the generated default formula uses
+  `latent(0 + trait | site, d = K)` alone instead of appending
+  `unique(0 + trait | site)`.
+- Updated the long-format equivalence, per-cell weight equivalence, and unified
+  weight-shape tests to compare against the same latent-only formula.
+- Updated the local dashboard status/sweep sources.
+- Added `docs/dev-log/after-task/2026-06-18-gllvmtmb-wide-default-latent-cleanup.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/gllvmTMB-wide.R"); parse("tests/testthat/test-gllvmTMB-wide.R"); parse("tests/testthat/test-wide-weights-matrix.R"); parse("tests/testthat/test-weights-unified.R")'`
+  -> touched R/test files parsed successfully.
+- `rg -n 'default formula includes `unique\\(0 \\+ trait \\| site\\)`|latent\\(0 \\+ trait \\| site, d = 1\\) \\+\\s*unique\\(0 \\+ trait \\| site\\)|" \\+ unique\\(0 \\+ trait \\| site\\)"|unique\\(0 \\+ trait \\| site\\)' R/gllvmTMB-wide.R tests/testthat/test-gllvmTMB-wide.R tests/testthat/test-wide-weights-matrix.R tests/testthat/test-weights-unified.R man/gllvmTMB_wide.Rd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::test(filter = "gllvmTMB-wide|wide-weights-matrix|weights-unified|unique-family-deprecation", reporter = "summary")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> dashboard JSON valid.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No `unique()` API removal.
+- No source-specific or kernel latent-Psi fold.
+- No `part = "unique"` rename.
+- No Paper 2 multi-kernel explicit-Psi support.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 22:01 MDT -- random-slopes article reaction-norm pointer cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Remove a stale `latent()+unique()` headline from the internal
+  `random-slopes-nongaussian` article pointer to the ordinary behavioural
+  reaction-norm draft.
+- Apply the article-tier gate as a tiny Tier-3/internal wording correction,
+  not an article rewrite or public promotion.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were `5346391` and `2475537` on the current
+  coevolution/mission-control stack.
+
+Implemented:
+
+- Updated `vignettes/articles/random-slopes-nongaussian.Rmd` so it describes
+  the ordinary behavioural reaction-norm draft as default
+  `latent(1 + x | individual, d = K)` with `Psi_B,aug`.
+
+Checks:
+
+- Read `.agents/skills/article-tier-audit/SKILL.md` before editing the article.
+- `rg -n 'latent\\(1 \\+ x \\| individual, d = K\\) \\+ unique\\(1 \\+ x \\| individual\\)' vignettes/articles/random-slopes-nongaussian.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/random-slopes-nongaussian.Rmd", quiet = TRUE)'`
+  -> rendered successfully.
+- `rm vignettes/articles/random-slopes-nongaussian.html`
+  -> removed the temporary direct-render artifact.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No article promotion.
+- No `unique()` API removal.
+- No source-specific or kernel latent-Psi fold.
+- No `part = "unique"` rename.
+- No Paper 2 multi-kernel explicit-Psi support.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 22:04 MDT -- paired GLLVM.jl SHA pin
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the queued dashboard slice "Pin paired Julia SHA after #101 has fresh
+  PR checks; local live JuliaCall passed."
+- Keep the pin as R-side mission-control evidence only; do not mutate
+  GLLVM.jl #101 and do not widen bridge/release/scientific claims.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commit was `5346391` on the current
+  coevolution/mission-control stack.
+
+Verified:
+
+- `gh pr view 101 --repo itchyshin/GLLVM.jl --json number,state,isDraft,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,url,title`
+  -> #101 is draft/open, base `main`, head
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`, mergeStateStatus `CLEAN`;
+  status rollup shows successful fresh CI and Documenter checks at that head.
+- `gh run view 27763712855 --repo itchyshin/GLLVM.jl --json databaseId,status,conclusion,headSha,displayTitle,workflowName,url,createdAt,updatedAt`
+  -> CI completed successfully at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`.
+- `gh run view 27763712914 --repo itchyshin/GLLVM.jl --json databaseId,status,conclusion,headSha,displayTitle,workflowName,url,createdAt,updatedAt`
+  -> Documenter completed successfully at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`.
+- `gh pr view 489 --repo itchyshin/gllvmTMB --json number,state,isDraft,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,url,title`
+  -> #489 remains draft/open, clean, and green at `03fdda1`.
+
+Implemented:
+
+- Updated `docs/dev-log/dashboard/status.json` and
+  `docs/dev-log/dashboard/sweep.json` to pin paired GLLVM.jl SHA
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`.
+- Marked the Phase 2 paired-SHA slice as covered and updated Phase 2 count to
+  `3/4`.
+- Added
+  `docs/dev-log/after-task/2026-06-18-paired-gllvmjl-sha-pin.md`.
+
+Checks:
+
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> dashboard JSON valid.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No mutation of GLLVM.jl #101.
+- No #489 merge/landing decision.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:59 MDT -- NEWS and quartet-reference default latent cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Remove remaining current NEWS/reference wording that made ordinary
+  `latent()+unique()` sound like the new-user decomposition headline.
+- Keep explicit `unique()` wording only where it is compatibility or
+  source-specific explicit-Psi syntax.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were `5346391` and `2475537` on the current
+  coevolution/mission-control stack.
+
+Implemented:
+
+- Updated the `model-selection-latent-rank` NEWS entry to describe the worked
+  example as default `latent()` rather than `latent()+unique()`.
+- Updated the 0.2.0 NEWS grammar section so the ordinary decomposition mode is
+  default `latent()`, with explicit `latent()+unique()` compatibility syntax.
+- Updated `indep()` and `dep()` roxygen structural-mode descriptions so the
+  decomposition mode is default `latent()` plus Psi.
+- Regenerated `man/indep.Rd` and `man/dep.Rd`.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/brms-sugar.R")'`
+  -> parsed successfully.
+- `rg -n 'worked Gaussian `latent\\(\\) \\+ unique\\(\\)` example|The decomposition mode pairs `latent \\+ unique`|\\*\\*Decomposition\\*\\* \\(`latent \\+ unique`\\)' NEWS.md R/brms-sugar.R`
+  -> no hits before documentation regeneration.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `indep.Rd` and `dep.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|keyword-grid|unique-family-deprecation", reporter = "summary")'`
+  -> passed with three expected INLA skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'worked Gaussian `latent\\(\\) \\+ unique\\(\\)` example|The decomposition mode pairs `latent \\+ unique`|\\*\\*Decomposition\\*\\* \\(`latent \\+ unique`\\)' NEWS.md R/brms-sugar.R man/indep.Rd man/dep.Rd`
+  -> no hits.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No `unique()` API removal.
+- No source-specific or kernel latent-Psi fold.
+- No `part = "unique"` rename.
+- No Paper 2 multi-kernel explicit-Psi support.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:56 MDT -- capability-status default augmented latent cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Align the readable capability-status planning layer with the current
+  ordinary augmented `latent()` default.
+- Keep explicit augmented `unique()` as Gaussian-only compatibility syntax,
+  not the new-user reaction-norm headline.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were `5346391` and `2475537` on the current
+  coevolution/mission-control stack.
+
+Implemented:
+
+- Updated `docs/design/61-capability-status.md` status date to 2026-06-18.
+- Updated the bottom-line ordinary Gaussian reaction-norm bullet to name
+  default `latent(1 + x | unit, d = K)` plus `Psi_B,aug`.
+- Updated the capability table row so explicit `+ unique(1 + x | unit)` is
+  compatibility syntax, while non-Gaussian augmented `unique()` remains
+  guarded.
+
+Checks:
+
+- `rg -n 'latent\\(1 \\+ x \\| unit, d = K\\) \\+ unique\\(1 \\+ x \\| unit\\)|Gaussian `latent \\+ unique`|ordinary unit-tier\\s+`latent\\(1 \\+ x \\| unit' docs/design/61-capability-status.md`
+  -> no hits.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No `unique()` API removal.
+- No source-specific or kernel latent-Psi fold.
+- No `part = "unique"` rename.
+- No Paper 2 multi-kernel explicit-Psi support.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:54 MDT -- canonical vision default latent cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Remove old ordinary `latent()+unique()` teaching from the canonical
+  `00-vision.md` signature examples.
+- Keep the explicit source-specific `phylo_unique()` example intact because
+  source-specific latent-Psi folding remains future work.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were `5346391` and `2475537` on the current
+  coevolution/mission-control stack.
+
+Implemented:
+
+- Updated the first capability bullet to describe ordinary default `latent()`
+  as `Sigma = Lambda Lambda^T + Psi`.
+- Updated the decomposition paragraph so explicit ordinary
+  `latent() + unique()` is compatibility syntax only.
+- Updated long and wide signature examples so ordinary site and site-species
+  tiers use default `latent()` alone.
+
+Checks:
+
+- `rg -n 'latent\\(\\) \\+ unique\\(\\)|\\+ unique\\(0 \\+ trait \\| site\\)|\\+ unique\\(1 \\| site\\)|\\+ unique\\(0 \\+ trait \\| site_species\\)|\\+ unique\\(1 \\| site_species\\)' docs/design/00-vision.md`
+  -> only the intended compatibility sentence remained.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No `unique()` API removal.
+- No source-specific or kernel latent-Psi fold.
+- No `part = "unique"` rename.
+- No Paper 2 multi-kernel explicit-Psi support.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:27 MDT -- OLRE indep public wording cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close another ordinary `unique()` deprecation residue after the exported
+  extractor-help cleanup.
+- Teach observation-level residual/OLRE diagonal terms as per-row `indep()`
+  first, with ordinary `unique()` named only as legacy compatibility syntax.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution / `unique()` cleanup stack on
+  this branch.
+
+Implemented:
+
+- Updated the `gllvmTMB()` residual roxygen note so Poisson/binomial per-row
+  residual guidance says to use `indep(0 + trait | <unit_obs>)`, with
+  `unique()` only as legacy compatibility syntax.
+- Updated `extract-sigma` and `fit-multi` OLRE comments so internal guidance no
+  longer presents per-row ordinary `unique()` as the primary spelling.
+- Updated `covariance-correlation`, `functional-biogeography`, and
+  `response-families` article prose so observation-level diagonal terms point to
+  `indep()` first.
+- Regenerated `man/gllvmTMB.Rd`.
+- Updated `docs/dev-log/dashboard/status.json` and
+  `docs/dev-log/dashboard/sweep.json`.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/gllvmTMB.R"); parse("R/extract-sigma.R"); parse("R/fit-multi.R")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed successfully; `man/gllvmTMB.Rd` regenerated.
+- `Rscript --vanilla -e 'for (f in c("vignettes/articles/covariance-correlation.Rmd", "vignettes/articles/functional-biogeography.Rmd", "vignettes/articles/response-families.Rmd")) rmarkdown::render(f, output_dir = tempfile(), quiet = TRUE)'`
+  -> all three touched article sources rendered successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "sigma-eps-autosuppress|cross-sectional-unique|extract-sigma|extract-repeatability|unique-family-deprecation", reporter = "summary")'`
+  -> completed successfully with expected heavy skips and one existing
+  `site = ...` alias informational message.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'add an observation-level `unique\\(\\)`|include `unique\\(0 \\+ trait \\| obs_id\\)`|per-row `unique\\(\\)` is|per-row `unique\\(\\)` term|When `unique\\(0 \\+ trait \\| <unit_obs>\\)`|unique\\(0 \\+ trait \\| obs\\).*per-row|sigma_eps.*per-row `unique|Auto-suppressing.*unique\\(0 \\+ trait|fully captured by \\{\\.code unique\\(\\)\\}' R/gllvmTMB.R R/extract-sigma.R R/fit-multi.R vignettes/articles/covariance-correlation.Rmd vignettes/articles/functional-biogeography.Rmd vignettes/articles/response-families.Rmd man/gllvmTMB.Rd`
+  -> no stale per-row ordinary `unique()` teaching remained in the touched
+  surface.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No extractor `part = "unique"` rename.
+- No Paper 2 multi-kernel explicit-Psi support.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:30 MDT -- Residual-split indep help cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the leftover `extract_residual_split()` / `extract_proportions()` help
+  wording that still described observation-level residual variation as a
+  `unique()` term.
+- Preserve the historical `unique_W` output label while teaching per-row
+  `indep()` as the current user-facing spelling.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution / `unique()` cleanup stack on
+  this branch.
+
+Implemented:
+
+- Updated `R/extract-omega.R` roxygen so `extract_residual_split()` describes
+  observation-level OLRE diagonal terms as per-row
+  `indep(0 + trait | <obs-level>)`, with legacy `unique()` compatibility
+  spelling still accepted.
+- Updated `extract_proportions()` roxygen so the `unique_W` output component is
+  explicitly treated as a historical output label rather than new syntax
+  guidance.
+- Regenerated `man/extract_residual_split.Rd` and
+  `man/extract_proportions.Rd`.
+- Updated dashboard status/evidence JSON and added an after-task report.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/extract-omega.R")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed successfully; regenerated `man/extract_residual_split.Rd` and
+  `man/extract_proportions.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extractors|extract-sigma|mixed-family-olre|unique-family-deprecation", reporter = "summary")'`
+  -> completed successfully with expected heavy skips and one expected
+  lifecycle warning from a legacy `unique()` fixture in `test-mixed-family-olre.R`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'observation-level `unique\\(\\)` term|unique\\(0 \\+ trait \\| <obs-level>\\)|genuine observation-level\\s+`unique\\(\\)`|per-row `unique\\(\\)`|OLRE.*`unique\\(\\)`' R/extract-omega.R man/extract_residual_split.Rd man/extract_proportions.Rd`
+  -> no stale observation-level ordinary `unique()` teaching remained in the
+  touched source/help files.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No extractor `part = "unique"` rename or component-label migration.
+- No source-specific/kernel latent-Psi fold.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:33 MDT -- Unique reference per-row indep cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Update the deprecated `unique()` reference page so its per-row
+  `sigma_eps` section recommends `indep()` for new code.
+- Keep ordinary `unique()` as compatibility syntax without implying keyword
+  removal or a component-label migration.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution / `unique()` cleanup stack on
+  this branch.
+
+Implemented:
+
+- Updated `R/unique-keyword.R` so the per-row auto-suppression section says new
+  code should use `indep(0 + trait | g)`.
+- Retained `unique(0 + trait | g)` as legacy compatibility syntax.
+- Reworded the family-aware interpretation around standalone diagonal tiers
+  instead of ordinary `unique()` as the recommended spelling.
+- Regenerated `man/diag_re.Rd`.
+- Updated dashboard status/evidence JSON and added an after-task report.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/unique-keyword.R")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed successfully; regenerated `man/diag_re.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation|canonical-keywords|keyword-grid|sigma-eps-autosuppress", reporter = "summary")'`
+  -> completed successfully with three expected INLA skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'write a per-row `unique\\(\\)`|Per-row `unique\\(\\)`|unique random effects fully|unique variance to represent|The same `unique\\(0 \\+ trait \\| g\\)` formula keyword|`unique\\(0 \\+ trait \\| unit_obs\\)` doubles' R/unique-keyword.R man/diag_re.Rd`
+  -> no stale per-row ordinary `unique()` recommendation phrases remained in
+  the touched source/help files.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No extractor `part = "unique"` rename.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:35 MDT -- gllvmTMB top-level indep help cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Update top-level `gllvmTMB()` help so ordinary no-prefix diagonal slot
+  wording teaches `indep()` first.
+- Keep ordinary `unique()` as compatibility syntax without claiming keyword
+  removal.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution / `unique()` cleanup stack on
+  this branch.
+
+Implemented:
+
+- Updated the quartet overview in `R/gllvmTMB.R` so ordinary `latent()` carries
+  Psi by default and standalone diagonal code should use `indep()`.
+- Updated the `unit_obs` argument docs to name
+  `indep(0 + trait | unit_obs)` for the W-tier diagonal; legacy `unique()`
+  remains accepted compatibility syntax.
+- Updated the `cluster2` argument docs to name
+  `indep(0 + trait | <cluster2 col>)` for the second diagonal grouping; legacy
+  `unique()` remains accepted compatibility syntax.
+- Regenerated `man/gllvmTMB.Rd`.
+- Updated dashboard status/evidence JSON and added an after-task report.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/gllvmTMB.R")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed successfully; regenerated `man/gllvmTMB.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|keyword-grid|unique-family-deprecation|sigma-eps-autosuppress", reporter = "summary")'`
+  -> completed successfully with three expected INLA skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'unique` standalone is also legitimate|used by\\s+`latent\\(0 \\+ trait \\| unit_obs|`unique\\(0 \\+ trait \\| <cluster2 col>\\)` term|a `unique\\(\\)` term routes|cluster2.*unique\\(0 \\+ trait|unit_obs.*unique\\(0 \\+ trait' R/gllvmTMB.R man/gllvmTMB.Rd`
+  -> no stale top-level ordinary `unique()` slot wording remained in the
+  touched source/help files.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No extractor `part = "unique"` rename.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:37 MDT -- Animal-model ordinary indep cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Update the `animal-model` article so its ordinary non-genetic diagonal tier
+  uses `indep()` rather than deprecated ordinary `unique()` syntax.
+- Keep `animal_unique()` intact as the source-specific explicit genetic Psi
+  compatibility term.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution / `unique()` cleanup stack on
+  this branch.
+
+Implemented:
+
+- Replaced ordinary `unique(0 + trait | id)` with
+  `indep(0 + trait | id)` in two worked `animal-model` article fits.
+- Reworded the nearby interpretation as non-genetic trait-level diagonal
+  covariance.
+- Updated dashboard status/evidence JSON and added an after-task report.
+
+Checks:
+
+- `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/animal-model.Rmd", output_dir = tempfile(), quiet = TRUE)'`
+  -> rendered successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|keyword-grid|unique-family-deprecation|animal", reporter = "summary")'`
+  -> completed successfully with expected heavy, INLA, and `nadiv` skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'unique\\(0 \\+ trait \\| id\\)|non-genetic\\s+trait-level residual covariance' vignettes/articles/animal-model.Rmd`
+  -> no stale ordinary `unique(0 + trait | id)` article examples remained.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No extractor `part = "unique"` rename.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:40 MDT -- Covariance CI examples latent cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Update covariance/correlation interval examples so ordinary Gaussian
+  covariance examples use default `latent()` rather than old ordinary
+  `latent() + unique()` compatibility spelling.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution / `unique()` cleanup stack on
+  this branch.
+
+Implemented:
+
+- Updated `R/extract-correlations.R`, `R/bootstrap-sigma.R`, and
+  `R/z-confint-gllvmTMB.R` examples to use ordinary `latent()` alone.
+- Regenerated `man/extract_correlations.Rd`, `man/bootstrap_Sigma.Rd`, and
+  `man/confint.gllvmTMB_multi.Rd`.
+- Updated dashboard status/evidence JSON and added an after-task report.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/extract-correlations.R"); parse("R/bootstrap-sigma.R"); parse("R/z-confint-gllvmTMB.R")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed successfully; regenerated the three Rd files.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-correlations|bootstrap|confint-derived|unique-family-deprecation", reporter = "summary")'`
+  -> completed successfully with expected heavy skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'latent\\(0 \\+ trait \\| site, d = 1\\) \\+\\s*unique\\(0 \\+ trait \\| site\\)|unique\\(0 \\+ trait \\| site\\)' R/extract-correlations.R R/bootstrap-sigma.R R/z-confint-gllvmTMB.R man/extract_correlations.Rd man/bootstrap_Sigma.Rd man/confint.gllvmTMB_multi.Rd`
+  -> no stale ordinary `latent() + unique()` examples remained in the touched
+  source/help files.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No extractor `part = "unique"` rename.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:42 MDT -- Ancillary reference examples latent cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Update ancillary validation/profile/rotation reference examples so ordinary
+  Gaussian covariance examples use default `latent()` rather than old ordinary
+  `latent() + unique()` compatibility spelling.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution / `unique()` cleanup stack on
+  this branch.
+
+Implemented:
+
+- Updated `R/check-consistency.R`, `R/coverage-study.R`,
+  `R/profile-targets.R`, and `R/rotate-loadings.R` examples to use ordinary
+  `latent()` alone.
+- Regenerated `man/gllvmTMB_check_consistency.Rd`,
+  `man/coverage_study.Rd`, `man/profile_targets.Rd`,
+  `man/rotate_loadings.Rd`, and
+  `man/extract_rotated_loadings_table.Rd`.
+- Updated dashboard status/evidence JSON and added an after-task report.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/check-consistency.R"); parse("R/coverage-study.R"); parse("R/profile-targets.R"); parse("R/rotate-loadings.R")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed successfully; regenerated five Rd files.
+- `Rscript --vanilla -e 'devtools::test(filter = "check-consistency|coverage|profile-targets|rotate-loadings|unique-family-deprecation", reporter = "summary")'`
+  -> completed successfully with expected heavy skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'latent\\(0 \\+ trait \\| site, d = [12]\\) \\+\\s*unique\\(0 \\+ trait \\| site\\)|unique\\(0 \\+ trait \\| site\\)' R/check-consistency.R R/coverage-study.R R/profile-targets.R R/rotate-loadings.R man/gllvmTMB_check_consistency.Rd man/coverage_study.Rd man/profile_targets.Rd man/rotate_loadings.Rd man/extract_rotated_loadings_table.Rd`
+  -> no stale ordinary `latent() + unique()` examples remained in the touched
+  source/help files.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No extractor `part = "unique"` rename.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 21:44 MDT -- confint_inspect example latent cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Update the `confint_inspect()` reference example so the ordinary Gaussian
+  covariance example uses default `latent()` rather than old ordinary
+  `latent() + unique()` compatibility spelling.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution / `unique()` cleanup stack on
+  this branch.
+
+Implemented:
+
+- Updated `R/confint-inspect.R` example to use ordinary `latent()` alone.
+- Regenerated `man/confint_inspect.Rd`.
+- Updated dashboard status/evidence JSON and added an after-task report.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/confint-inspect.R")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed successfully; regenerated `man/confint_inspect.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "confint-inspect|profile-targets|unique-family-deprecation", reporter = "summary")'`
+  -> completed successfully with expected heavy skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'latent\\(0 \\+ trait \\| site, d = 1\\) \\+\\s*unique\\(0 \\+ trait \\| site\\)|unique\\(0 \\+ trait \\| site\\)' R/confint-inspect.R man/confint_inspect.Rd`
+  -> no stale ordinary `latent() + unique()` example remained in the touched
+  source/help files.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No extractor `part = "unique"` rename.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 20:33 MDT -- Paired scalar Psi re-home to `latent(common = TRUE)`
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Finish the narrow ordinary paired scalar-Psi replacement after the standalone
+  `indep(..., common = TRUE)` slice.
+- Keep `kernel_unique()` / source-specific `*_unique()` as compatibility syntax
+  only; do not expand Paper 2 multi-kernel coevolution with explicit kernel Psi.
+
+Pre-edit lane check:
+
+- Already satisfied for this sitting before editing shared files:
+  `gh pr list --state open` showed only draft PR #489, and
+  `git log --all --oneline --since="6 hours ago"` showed the current
+  coevolution / Psi cleanup stack on this branch.
+
+Implemented:
+
+- Added `common = FALSE` to ordinary `latent()` and the formula parser rewrite.
+- `latent(0 + trait | unit, d = K, common = TRUE)` now rewrites to the ordinary
+  reduced-rank latent term plus a scalar diagonal Psi companion, matching legacy
+  `latent(..., residual = FALSE) + unique(..., common = TRUE)`.
+- Added fail-loud guards for unsupported combinations:
+  `latent(..., residual = FALSE, common = TRUE)` and augmented
+  `latent(1 + x | unit, d = K, common = TRUE)`.
+- Added focused evidence to `tests/testthat/test-canonical-keywords.R`.
+- Updated `NEWS.md`, `R/unique-keyword.R`, `R/brms-sugar.R` roxygen,
+  `docs/design/01-formula-grammar.md`,
+  `docs/design/35-validation-debt-register.md`, generated Rd files, and the
+  dashboard JSON source.
+- Synced `docs/dev-log/dashboard/` to `/tmp/gllvm-dashboard/`.
+
+Checks:
+
+- `Rscript --vanilla -e 'parse("R/brms-sugar.R"); invisible(NULL)'`
+  -> parser file parsed successfully after the repair.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords", reporter = "summary")'`
+  -> passed after the parser cleanup; only the expected INLA spatial skips were
+  reported.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/latent.Rd`, `man/unique_keyword.Rd`, and `man/diag_re.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|unique-family-deprecation", reporter = "summary")'`
+  -> passed; only the expected INLA spatial skips were reported.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+- `rg -n "not yet re-homed|not a paired-Psi|has not yet been re-homed|paired common= was not re-homed|paired-Psi re-home" R docs/design NEWS.md man tests/testthat docs/dev-log/dashboard`
+  -> no stale paired-common "not re-homed" wording remains.
+- `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8765/`
+  -> `200`.
+- `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8770/`
+  -> `200`.
+
+Still not claimed:
+
+- No keyword removal.
+- No `part = "unique"` extractor rename.
+- No source-specific `phylo_*` / `animal_*` / `spatial_*` paired-Psi fold.
+- No `kernel_unique()` / multi-kernel explicit-Psi expansion.
+- No coevolution bridge completion, release readiness, or scientific coverage
+  completion.
+
+## 2026-06-18 18:33 MDT -- Article unique cleanup for default ordinary latent-Psi teaching
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation lane on the public
+  article surface.
+- Stop teaching ordinary explicit `unique()` as the first/default spelling for
+  `Lambda Lambda^T + Psi` in the convergence and model-decision articles.
+- Keep `unique()` / `*_unique()` compatibility syntax live; do not remove
+  keywords, rename extractor parts, or expand `kernel_unique()` for Paper 2
+  multi-kernel coevolution.
+
+Coordination check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack headed by
+  `5346391 test(coevolution): add poisson recovery gate`.
+- Process note: this continuation refreshed git state before editing but missed
+  the explicit pre-edit lane check until after the first
+  `functional-biogeography` edit. The check above was then rerun before further
+  shared-file edits; no collision was detected.
+
+Implemented:
+
+- `vignettes/articles/convergence-start-values.Rmd`
+  - Reframed the alignment table so ordinary `latent()` supplies the default
+    diagonal `Psi` companion.
+  - Removed explicit ordinary `unique()` from the runnable long-format example
+    and the wide `traits()` example.
+  - Named `latent(..., residual = FALSE)` as the deliberate no-Psi subset and
+    explicit `unique()` as compatibility syntax.
+- `vignettes/articles/choose-your-model.Rmd`
+  - Updated the complexity ladder and first decision table so standalone
+    diagonal tiers use `indep()`.
+  - Updated the phylogenetic decomposition wording so the non-phylogenetic side
+    uses ordinary default `latent()` rather than `latent + unique`.
+  - Corrected the full unstructured covariance row to use `dep()`, with a
+    separate `indep()` row for standalone diagonals.
+  - Updated live examples for JSDM, phylogenetic, cluster, capstone, and CI
+    setup formulas to avoid ordinary explicit `unique()` where default
+    `latent()` or `indep()` is the intended new-user syntax.
+- `vignettes/articles/profile-likelihood-ci.Rmd`
+  - Updated the runnable long and wide variance-component setup so the site
+    decomposition uses default ordinary `latent()` and the standalone
+    `site_species` diagonal uses `indep()`.
+- `vignettes/articles/functional-biogeography.Rmd`
+  - Updated the live core and adjusted model formulas so ordinary site and
+    site-species decompositions use default `latent()`.
+  - Updated the standalone non-phylogenetic species diagonal control to
+    `indep(0 + trait | species)`.
+  - Added a short note that ordinary `latent()` includes its diagonal `Psi`
+    companion by default and `latent(..., residual = FALSE)` is the no-Psi
+    subset.
+- `vignettes/articles/cross-package-validation.Rmd`
+  - Updated the live gllvmTMB fit to use default ordinary `latent()` rather
+    than explicit `latent() + unique()`.
+  - Updated the summary table so the diagonal comparison is described as the
+    default `latent()` diagonal `Psi` companion against glmmTMB's `diag()`.
+  - Clarified that glmmTMB still uses `rr() + diag()` because this is a
+    cross-package objective comparison.
+- `vignettes/articles/simulation-verification.Rmd`
+  - Updated the live fit so the simulated `Lambda Lambda^T + Psi` target is fit
+    with default ordinary `latent()`.
+  - Added a short note that ordinary `latent()` includes the diagonal `Psi`
+    companion by default.
+- `NEWS.md`, `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`
+  - Recorded the article cleanup without widening any completion claim.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-article-unique-cleanup.md`.
+
+Checks:
+
+- `rg -n 'unique\(0 \+ trait \| site\)|unique\(1 \| site\)|full unstructured.*unique|add a third per-trait diagonal tier unique|latent \+ unique' vignettes/articles/convergence-start-values.Rmd vignettes/articles/choose-your-model.Rmd`
+  -> one source hit remained in `choose-your-model`; it was updated.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/convergence-start-values", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered successfully.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/choose-your-model", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered successfully; rerun after the final stale phrase edit also
+  rendered successfully.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/profile-likelihood-ci", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered successfully.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/functional-biogeography", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered successfully; rerun after the final stale `unique(0 + trait | species)`
+  prose cleanup also rendered successfully.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/cross-package-validation", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered successfully; rerun after the summary-table stale cell cleanup
+  also rendered successfully.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/simulation-verification", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "ordinary-latent|unique-family", reporter = "summary")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma-table|extract-correlations|unique-family", reporter = "summary")'`
+  -> completed successfully with six expected heavy skips.
+- `rg -n 'unique\(0 \+ trait \| site\)|unique\(1 \| site\)|full unstructured.*unique|add a third per-trait diagonal tier unique|latent \+ unique' vignettes/articles/convergence-start-values.Rmd vignettes/articles/choose-your-model.Rmd pkgdown-site/articles/convergence-start-values.html pkgdown-site/articles/choose-your-model.html`
+  -> no hits after the final article render.
+- `rg -n 'latent\(0 \+ trait \| site, d = 1\) \+ unique\(0 \+ trait \| site\)|latent\(1 \| site, d = 1\) \+ unique\(1 \| site\)|unique\(0 \+ trait \| site_species\)|unique\(1 \| site_species\)' vignettes/articles/profile-likelihood-ci.Rmd pkgdown-site/articles/profile-likelihood-ci.html`
+  -> no hits after the profile article render.
+- `rg -n 'unique\(0 \+ trait \| site\)|unique\(0 \+ trait \| site_species\)|unique\(0 \+ trait \| species\)' vignettes/articles/functional-biogeography.Rmd pkgdown-site/articles/functional-biogeography.html`
+  -> no hits after the functional-biogeography render.
+- `rg -n 'unique\(0 \+ trait \| site\)|canonical latent\(\) / unique\(\)' vignettes/articles/cross-package-validation.Rmd pkgdown-site/articles/cross-package-validation.html`
+  -> first post-render scan found one stale rendered summary-table cell; after
+  the table update and rerender, no hits.
+- `rg -n 'unique\(0 \+ trait \| site\)|latent\(0 \+ trait \| site, d = 1\) \+ unique' vignettes/articles/simulation-verification.Rmd pkgdown-site/articles/simulation-verification.html`
+  -> no hits after the simulation-verification render.
+- `Rscript --vanilla -e 'devtools::test(filter = "ordinary-latent|unique-family|extract-sigma-table", reporter = "summary")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "ordinary-latent|unique-family|stage2-rr-diag", reporter = "summary")'`
+  -> completed successfully with one expected glmmTMB non-PD Hessian skip in
+  `test-stage2-rr-diag.R`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Still not claimed:
+
+- No `unique()` / `*_unique()` removal.
+- No `part = "unique"` rename.
+- No `common = TRUE` re-homing.
+- No source-specific or `kernel_*()` latent-Psi fold.
+- No Paper 2 multi-kernel explicit-Psi implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 17:49 MDT -- README and communality alignment after ordinary latent-Psi fold
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation lane by moving the
+  first-click README examples and communality extractor prose from explicit
+  ordinary `latent() + unique()` spelling to default ordinary `latent()`.
+- Keep `unique()` / `*_unique()` as compatibility syntax only; no removal,
+  source-specific fold, kernel fold, `part = "unique"` rename, or `common =`
+  migration in this slice.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since='6 hours ago'`
+  -> recent commits were the current coevolution / mission-control stack.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Updated `README.md` smoke-test and Tiny examples to use ordinary
+  `latent()` alone for the full Gaussian decomposition.
+- Updated `README.md` wording so `Psi` is carried by ordinary `latent()` by
+  default and `latent(..., residual = FALSE)` is the old no-residual subset.
+- Updated `R/traits-keyword.R` and regenerated `man/traits.Rd` so the primary
+  wide shorthand example teaches `latent(1 | individual, d = K)` while keeping
+  explicit `unique(1 | individual)` documented as compatibility syntax.
+- Updated `R/extractors.R`, `R/profile-derived.R`, and
+  `R/profile-derived-curves.R`, with regenerated Rd, so communality/ICC/profile
+  wording no longer tells users to add `unique()` for ordinary Psi.
+- Migrated extractor test fixtures that were not testing compatibility:
+  standalone diagonal fixtures now use `indep()`, and ordinary decomposed
+  covariance fixtures use default `latent()`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-readme-communality-latent-psi-alignment.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/traits.Rd`, `man/extract_communality.Rd`,
+  `man/extract_ICC_site.Rd`, and `man/extract_ordination.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extractors|extract-communality|profile-derived|profile-ci|confint-derived", reporter = "summary")'`
+  -> first rerun exposed dangling formula `+` operators in
+  `test-extractors-extra.R` and `test-extractors.R`; both were fixed.
+- `Rscript --vanilla -e 'devtools::test(filter = "extractors|extract-communality|profile-derived|profile-ci|confint-derived", reporter = "summary")'`
+  -> passed with expected heavy skips and informational per-row diagonal
+  `sigma_eps` messages.
+- `Rscript --vanilla -e 'devtools::test(filter = "traits-keyword|unique-family-deprecation|extractors|extract-communality", reporter = "summary")'`
+  -> passed with expected heavy skips and informational per-row diagonal
+  `sigma_eps` messages.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `tail -5 man/extract_communality.Rd; grep -c '^\\keyword' man/extract_communality.Rd`
+  -> keyword count 0; no runaway keyword block.
+- `tail -5 man/extract_ICC_site.Rd; grep -c '^\\keyword' man/extract_ICC_site.Rd`
+  -> keyword count 1; expected internal keyword only.
+- `tail -5 man/extract_ordination.Rd; grep -c '^\\keyword' man/extract_ordination.Rd`
+  -> keyword count 0; no runaway keyword block.
+- `tail -5 man/traits.Rd; grep -c '^\\keyword' man/traits.Rd`
+  -> keyword count 0; no runaway keyword block.
+- `rg -n 'level has only `latent\\(\\)` and no `unique\\(\\)`|latent-only fits|refit with `\\+ unique|requires both .*latent\\(\\).*unique\\(\\)|set by `unique\\(\\)`|latent\\(0 \\+ trait \\| site, d = [12]\\) \\+\\s*unique|unique\\(0 \\+ trait \\| site\\)' README.md R/traits-keyword.R R/extractors.R tests/testthat/test-extractors.R tests/testthat/test-extractors-extra.R man/extract_communality.Rd man/extract_ICC_site.Rd man/traits.Rd`
+  -> no hits after final edits.
+- `rg -n 'level has only `latent\\(\\)` and no `unique\\(\\)`|latent-only fits|refit with `\\+ unique|requires both .*latent\\(\\).*unique\\(\\)|set by `unique\\(\\)`|trait-specific residual variance \\(set by `unique\\(\\)`\\)|latent\\(0 \\+ trait \\| site, d = [12]\\) \\+\\s*unique|latent\\(1 \\| individual, d = 1\\) \\+\\s*unique|unique\\(1 \\| individual\\)|unique\\(0 \\+ trait \\| individual\\)' README.md R/traits-keyword.R R/extractors.R R/profile-derived.R R/profile-derived-curves.R tests/testthat/test-extractors.R tests/testthat/test-extractors-extra.R man/extract_communality.Rd man/extract_ICC_site.Rd man/extract_ordination.Rd man/traits.Rd`
+  -> remaining hits were intentional `traits()` compatibility explanation for
+  `unique(1 | individual)` / `unique(0 + trait | individual)`.
+
+Still not claimed:
+
+- No `unique()` API removal.
+- No source-specific or kernel latent-Psi fold.
+- No `part = "unique"` rename.
+- No `common =` replacement.
+- No free-correlation reaction-norm redesign.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 17:26 MDT -- Ordinary latent-Psi fold after coevolution closeout
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the first real `unique()` follow-on slice after the coevolution model:
+  ordinary `latent()` now carries its diagonal Psi companion by default while
+  `latent(..., residual = FALSE)` preserves the old no-residual subset.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only the current mission-control / coevolution stack appeared.
+- `git diff --check`
+  -> clean before this fold.
+
+Implemented:
+
+- Added `residual = TRUE` to the ordinary `latent()` stub and parser rewrite.
+- Auto-emitted an internal `diag(..., .latent_psi = TRUE)` companion for
+  ordinary `latent()` by default.
+- Added a parser opt-out with `latent(..., residual = FALSE)`.
+- Preserved explicit `latent() + unique()` compatibility and fixed
+  `common = TRUE` detection when an internal auto-Psi term appears before an
+  explicit compatibility `unique(common = TRUE)` term.
+- Updated roxygen/Rd, NEWS, formula grammar, AGENTS/CLAUDE, and dashboard JSON.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/latent.Rd`, `man/unique_keyword.Rd`, `man/indep.Rd`, and
+  `man/diag_re.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation|canonical-keywords|stage2-rr-diag", reporter = "summary")'`
+  -> passed; expected skips were three INLA skips and one glmmTMB non-PD
+  Hessian skip.
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation|canonical-keywords|keyword-grid|brms-sugar|spatial-deprecation|spatial-orientation|kernel-equivalence|stage2-rr-diag", reporter = "summary")'`
+  -> passed with the same expected skips.
+- `Rscript --vanilla -e 'jsonlite::fromJSON("docs/dev-log/dashboard/status.json"); jsonlite::fromJSON("docs/dev-log/dashboard/sweep.json"); cat("json ok\n")'`
+  -> dashboard JSON parsed successfully.
+- `tail -5 man/latent.Rd && grep -c '^\\keyword' man/latent.Rd`
+  -> no runaway keyword block (`0` keywords).
+- `tail -5 man/unique_keyword.Rd && grep -c '^\\keyword' man/unique_keyword.Rd`
+  -> expected single internal keyword.
+- `tail -5 man/diag_re.Rd && grep -c '^\\keyword' man/diag_re.Rd`
+  -> expected single internal keyword.
+- `tail -5 man/indep.Rd && grep -c '^\\keyword' man/indep.Rd`
+  -> no runaway keyword block (`0` keywords).
+- `rg -n 'latent\\(\\) does not yet auto-emit Psi|latent-Psi fold lands|later latent-Psi fold|without unique.*LLt|only the latent-implied|no parser-wide deprecation|not latent-Psi auto-folding|does not yet auto' NEWS.md docs/dev-log/dashboard docs/design AGENTS.md CLAUDE.md R tests/testthat man vignettes`
+  -> no current stale hits after roxygen regeneration.
+- `rg -n 'two `latent\\(\\) \\+ unique\\(\\)` pairs|recommended.*latent\\(\\).*unique|Use `unique\\(\\)` paired with `latent\\(\\)`|latent-Psi auto-folding' R NEWS.md docs/dev-log/dashboard docs/design AGENTS.md CLAUDE.md`
+  -> no stale recommended ordinary `latent() + unique()` wording in active
+  source surfaces.
+
+Still not claimed:
+
+- No `unique()` API removal.
+- No source-specific `phylo_latent()` / `animal_latent()` /
+  `spatial_latent()` Psi fold.
+- No `kernel_latent()` Psi fold; Paper 2 multi-kernel coevolution remains
+  latent-only.
+- No extractor contract change for `part = "unique"`.
+- No `common =` replacement beyond preserving explicit compatibility syntax.
+- No free-correlation reaction-norm redesign.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 18:03 MDT -- Paper 2 pre-fit kernel separability diagnostic
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Implement the next narrow coevolution gate identified by the Paper 2
+  estimand audit.
+- Add a pre-fit diagnostic for candidate `K_phy` / `K_tip` kernels before
+  fitting the two-kernel model.
+- Keep `kernel_unique()` / `*_unique()` as compatibility syntax only; no
+  Paper 2 explicit-Psi expansion in this slice.
+
+Pre-edit lane check:
+
+- Reused the current-turn pre-edit lane check before shared-file edits:
+  `gh pr list --state open`
+  -> only draft PR #489 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack on this branch.
+- `git diff --check`
+  -> clean before the slice.
+
+Implemented:
+
+- Added exported `diagnose_kernel_separability()` in `R/kernel-helpers.R`.
+- Regenerated `NAMESPACE` and `man/diagnose_kernel_separability.Rd`.
+- Added a fast `test-coevolution-two-kernel.R` gate that compares:
+  - an aliased raw `K_tip` candidate, which is flagged as `high` overlap with
+    recommendation `collapse_or_single_covariance`;
+  - a residualized/opposed candidate, which is flagged as `near_orthogonal`
+    with recommendation `separable_candidate`.
+- Updated `NEWS.md`, `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/design/35-validation-debt-register.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added `diagnose_kernel_separability` to `_pkgdown.yml` beside
+  `make_cross_kernel()` and `profile_cross_rho()`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `NAMESPACE` and `man/diagnose_kernel_separability.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel|coevolution-recovery", reporter = "summary")'`
+  -> first run failed because a validation `lapply()` stripped kernel names
+  before the pair data frame was built.
+- Fixed the helper body by preserving names with `stats::setNames()`.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel|coevolution-recovery", reporter = "summary")'`
+  -> passed with 13 expected heavy skips.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); A <- diag(2); rownames(A) <- colnames(A) <- c("H1", "H2"); B <- diag(2); rownames(B) <- colnames(B) <- c("P1", "P2"); W <- matrix(c(1, .2, .2, 1), 2, 2, dimnames = list(rownames(A), rownames(B))); K <- make_cross_kernel(A, B, W, rho = .5); dx <- diagnose_kernel_separability(phy = K, tip = K); print(dx$pairs)'`
+  -> returned one high-overlap row with recommendation
+  `collapse_or_single_covariance`.
+- `rg -n "diagnose_kernel_separability|export\\(diagnose_kernel_separability\\)|kernel separability|one network-conditioned covariance" NAMESPACE man/diagnose_kernel_separability.Rd R/kernel-helpers.R tests/testthat/test-coevolution-two-kernel.R`
+  -> confirmed export, Rd, helper, and test coverage.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> first run failed because `diagnose_kernel_separability` was missing from
+  `_pkgdown.yml`; added it to the relatedness/spatial helper reference group.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> rerun passed with `No problems found.`
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-18-paper2-kernel-separability-diagnostic.md`.
+
+Still not claimed:
+
+- No formal kernel-collinearity simulation campaign.
+- No in-engine `rho` estimation or `rho` profile intervals.
+- No `Gamma` interval calibration.
+- No module extractor for standardized `R_l` + SVD.
+- No `kernel_unique()` / `*_unique()` expansion for Paper 2 multi-kernel
+  coevolution.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 17:55 MDT -- Paper 2 coevolution estimand gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Answer whether the coevolution model is finished after the maintainer's Paper
+  2 conceptual note.
+- Preserve the distinction between the local fixed named multi-kernel engine
+  stop point and the still-open Paper 2 biological model gates.
+- Keep `kernel_unique()` / `*_unique()` as compatibility syntax only; do not
+  expand it for Paper 2 multi-kernel coevolution.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack on this branch, headed
+  by `5346391 test(coevolution): add poisson recovery gate`.
+- `git diff --check`
+  -> clean.
+
+Implemented:
+
+- Added
+  `docs/dev-log/audits/2026-06-18-paper2-coevolution-estimand-gate.md`.
+- The audit maps the maintainer Paper 2 note to current local evidence:
+  `KER-03` covered, `COE-03` partial, and `COE-04` partial.
+- The audit freezes the working Paper 2 estimand as
+  `Gamma_phy` / `Gamma_tip` cross-lineage covariance blocks, with
+  standardized `R_l` matrices and SVD-based coevolutionary modules as the
+  preferred derived outputs.
+- The audit records the next narrow coevolution gate as kernel separability:
+  raw `W` versus residualized `W_tip`, kernel-similarity diagnostics, and a
+  stop rule for reporting one network-conditioned covariance when kernels
+  cannot be distinguished.
+
+Commands / scans:
+
+- `curl -sf http://127.0.0.1:8765/status.json | head -c 2000`
+  -> confirmed port 8765 is the DRM/drmTMB grand-plan board.
+- `curl -sf http://127.0.0.1:8765/sweep.json | head -c 2500`
+  -> confirmed port 8765 active work is currently drmTMB#59.
+- `curl -sf http://127.0.0.1:8770/status.json | head -c 1200`
+  -> confirmed port 8770 is the GLLVM mission-control board.
+- `sed -n '1,260p' /Users/z3437171/.codex/attachments/93d6ad50-4129-4147-938c-6b1dd92c7be9/pasted-text.txt`
+  and
+  `sed -n '261,520p' /Users/z3437171/.codex/attachments/93d6ad50-4129-4147-938c-6b1dd92c7be9/pasted-text.txt`
+  -> read the full Paper 2 conceptual note.
+- `rg -n "COE-04|COE-03|KER-03|Gamma|rho|high-overlap|moderate" docs/design/65-cross-lineage-coevolution-kernel.md docs/design/35-validation-debt-register.md tests/testthat/test-coevolution-two-kernel.R`
+  -> confirmed current coevolution evidence and remaining gaps.
+- `sed -n '1,260p' docs/dev-log/dashboard/status.json`
+  and `sed -n '1,260p' docs/dev-log/dashboard/sweep.json`
+  -> checked current dashboard claim wording before updating.
+
+Still not claimed:
+
+- No claim that the full coevolution model is finished.
+- No in-engine rho estimation, rho profile intervals, or `Gamma` interval
+  calibration.
+- No Paper 2 empirical readiness, mechanistic validation, or module extractor.
+- No `kernel_unique()` / `*_unique()` expansion for Paper 2 multi-kernel
+  coevolution.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 17:39 MDT -- Extractor and covariance-correlation alignment after ordinary latent-Psi fold
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Remove the stale post-fold assumption that ordinary `latent()` without an
+  explicit `unique()` term is no-Psi.
+- Make extractor tests, extractor prose, and the covariance/correlation article
+  use `latent(..., residual = FALSE)` when they deliberately need the no-Psi
+  subset.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only the current mission-control / coevolution stack appeared.
+- `git diff --check`
+  -> clean before this slice.
+
+Implemented:
+
+- Updated `R/extract-sigma.R` and regenerated `man/extract_Sigma.Rd` so
+  no-Psi advisory prose says `residual = FALSE`, not "missing unique()".
+- Updated `tests/testthat/test-extract-sigma.R` and
+  `tests/testthat/test-mixed-family-extractor.R` so no-Psi fixtures explicitly
+  use `latent(..., residual = FALSE)`.
+- Updated `R/extract-omega.R` so the non-phylogenetic Psi advisory points to
+  default ordinary `latent()` rather than `+ unique()`.
+- Rewrote `vignettes/articles/covariance-correlation.Rmd` around the current
+  grammar: Model A is no-Psi via `residual = FALSE`; Model B is the default
+  ordinary `latent()` decomposition.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_Sigma.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|mixed-family-extractor", reporter = "summary")'`
+  -> passed; expected heavy extractor/mixed-family skips reported.
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation|extract-sigma|mixed-family-extractor", reporter = "summary")'`
+  -> passed; expected heavy skips reported.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/covariance-correlation", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/covariance-correlation.html` successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|mixed-family-extractor|m1-7-extract-omega|phylo-signal", reporter = "summary")'`
+  -> passed; expected heavy extractor / phylo-signal skips reported.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `tail -5 man/extract_Sigma.Rd && grep -c '^\\keyword' man/extract_Sigma.Rd`
+  -> no runaway keyword block (`0` keywords).
+- `rg -n 'without unique|without `unique\\(\\)`|no-unique|no unique|missing-unique|missing unique|fit has only latent\\(\\)|no `unique\\(\\)` term|add `\\+ unique|Refit with `\\+ unique|reminding the user to add `\\+ unique|latent\\(0 \\+ trait \\| unit, d = K\\).*no' R tests/testthat man NEWS.md README.md docs/design docs/dev-log/dashboard vignettes`
+  -> remaining hits are intentional: augmented non-Gaussian reaction-norm prose,
+  OLRE/standalone explicit-unique examples, ordinal no-unique unit test comment,
+  and source-specific spatial latent no-unique wording.
+- `rg -n 'residual = FALSE|default latent|no-Psi|ordinary latent|latent\\(\\).*Psi' vignettes/articles/covariance-correlation.Rmd pkgdown-site/articles/covariance-correlation.html R/extract-sigma.R man/extract_Sigma.Rd R/extract-omega.R tests/testthat/test-extract-sigma.R tests/testthat/test-mixed-family-extractor.R`
+  -> confirmed updated source, rendered HTML, Rd, extractor prose, and tests.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No `unique()` API removal.
+- No source-specific `phylo_latent()` / `animal_latent()` /
+  `spatial_latent()` Psi fold.
+- No `kernel_latent()` Psi fold; Paper 2 multi-kernel coevolution remains
+  latent-only.
+- No extractor `part = "unique"` rename; this slice preserves the name and
+  aligns its no-Psi/readout story.
+- No `common =` replacement beyond preserving explicit compatibility syntax.
+- No free-correlation reaction-norm redesign.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 17:11 MDT -- unique family soft-deprecation gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Finish the next narrow post-coevolution `unique()` compatibility slice.
+- Add parser-level lifecycle warnings for the `unique()` keyword family while
+  keeping every compatibility rewrite and fitted path live.
+- Keep `kernel_unique()` as compatibility syntax only; do not expand it into
+  Paper 2 multi-kernel explicit-Psi support.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current coevolution stack on this branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Added `.gllvmTMB_warn_unique_family_deprecated()` in `R/brms-sugar.R`.
+- Routed `unique()`, `phylo_unique()`, `animal_unique()`,
+  `spatial_unique()`, and `kernel_unique()` rewrites through
+  `lifecycle::deprecate_soft()`.
+- Added `tests/testthat/test-unique-family-deprecation.R` to assert that all
+  five keywords warn while preserving compatibility rewrites.
+- Updated existing parser/kernel tests so lifecycle warnings from intentional
+  compatibility fixtures do not hide the real warnings under test.
+- Updated roxygen and regenerated Rd for the affected keyword topics:
+  `man/animal_unique.Rd`, `man/unique_keyword.Rd`, `man/phylo_unique.Rd`,
+  `man/spatial_unique.Rd`, `man/kernel_latent.Rd`, and `man/diag_re.Rd`.
+- Updated current status surfaces in `NEWS.md`,
+  `docs/design/01-formula-grammar.md`, `AGENTS.md`, `CLAUDE.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> roxygen/Rd regenerated successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation", reporter = "summary")'`
+  -> first attempt found a duplicate `spatial_unique()` lifecycle warning and
+  one brittle deparse assertion; both were fixed.
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation", reporter = "summary")'`
+  -> completed successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation|canonical-keywords|keyword-grid|brms-sugar|spatial-deprecation|spatial-orientation|kernel-equivalence", reporter = "summary")'`
+  -> completed successfully; only three expected INLA skips were reported.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> first post-lifecycle run passed but exposed expected lifecycle-warning
+  noise in old `kernel_unique()` compatibility fixtures.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> completed successfully after the fixtures muffled only
+  `lifecycle_warning_deprecated`; 14 expected heavy skips were reported.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> completed successfully with no skips shown by testthat.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+- `rg -n 'no parser-wide deprecation|without adding parser-wide|parser deprecation is not claimed|No parser-wide lifecycle/deprecation warning' NEWS.md docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/design/01-formula-grammar.md CLAUDE.md AGENTS.md R man tests/testthat`
+  -> no current stale "no parser deprecation" claims in the active status/code
+  surface.
+- `for f in man/animal_unique.Rd man/unique_keyword.Rd man/phylo_unique.Rd man/spatial_unique.Rd man/kernel_latent.Rd man/diag_re.Rd; do printf '%s keywords=' "$f"; grep -c '^\\keyword' "$f"; tail -5 "$f"; done`
+  -> no runaway Rd keyword blocks; only the existing internal topics reported
+  one keyword.
+- `rg -n '\bS_B\b|\bS_W\b|\\bf S' R/animal-keyword.R R/brms-sugar.R R/kernel-keywords.R R/unique-keyword.R NEWS.md docs/design/01-formula-grammar.md CLAUDE.md AGENTS.md man/animal_unique.Rd man/unique_keyword.Rd man/phylo_unique.Rd man/spatial_unique.Rd man/kernel_latent.Rd tests/testthat/test-unique-family-deprecation.R`
+  -> no legacy S-notation hits in the touched surface.
+- `rg -n '\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(' NEWS.md docs/design/01-formula-grammar.md CLAUDE.md AGENTS.md R/animal-keyword.R R/brms-sugar.R R/kernel-keywords.R R/unique-keyword.R man/animal_unique.Rd man/unique_keyword.Rd man/phylo_unique.Rd man/spatial_unique.Rd man/kernel_latent.Rd`
+  -> hits were existing alias-documentation/compatibility references and
+  known `block_V()` status text, not new `unique()` deprecation drift.
+- `gh issue list --state open --search "unique deprecation" --limit 10`
+  -> #361 (kernel/co-evolution tracker), #230 (article surface reset), and
+  unrelated roadmap issue #341 surfaced.
+- `gh issue list --state open --search "coevolution" --limit 10`
+  -> #361 remains the relevant open coevolution/kernel tracker; no issue was
+  closed or commented from this unpushed local slice.
+
+Still not claimed:
+
+- No `unique()` API removal.
+- No `latent()` auto-Psi fold.
+- No extractor contract change for `part = "unique"`.
+- No free-correlation `unique()` / reaction-norm redesign.
+- No Paper 2 multi-kernel explicit-Psi support.
+- No broader coevolution scientific coverage beyond the current `COE-04`
+  partial gates.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 16:50 MDT -- Rose row-anchor audit for Psi / unique sweep
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Finish the narrow Rose pre-publish audit for the touched NEWS and article
+  files from the second Psi / `unique()` sweep.
+- Ensure the public wording names validation rows where it teaches
+  compatibility `unique()`, paired explicit Psi, standalone `indep()`, animal
+  diagonal syntax, and the Poisson OLRE caveat.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current mission-control / coevolution stack on
+  this branch.
+
+Implemented:
+
+- Added row anchors to the top NEWS entry:
+  `FG-05`, `FG-06`, `FG-07`, `ANI-03`, `ANI-11`, and `FAM-06`.
+- Added article row anchors where the edited pages teach the syntax boundary:
+  `response-families` names `FG-05` / `FG-07`, `animal-model` names
+  `ANI-03` / `ANI-11`, and `phylogenetic-gllvm` names `FG-05`--`FG-07`.
+- Added a Rose addendum to
+  `docs/dev-log/after-task/2026-06-18-psi-unique-second-sweep.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); for (article in c("articles/response-families", "articles/animal-model", "articles/phylogenetic-gllvm", "articles/functional-biogeography")) { message("Building ", article); pkgdown::build_article(article, pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE) }'`
+  -> all four touched articles rendered successfully.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n 'standalone diagonal|standalone marginal|animal_indep|phylo_indep|spatial_indep|explicit Psi|ANI-11|FG-05|FG-06|FG-07|ANI-03|observation-level unique|latent\\(\\) \\+ unique\\(\\)' vignettes/articles/response-families.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/functional-biogeography.Rmd pkgdown-site/articles/response-families.html pkgdown-site/articles/animal-model.html pkgdown-site/articles/phylogenetic-gllvm.html pkgdown-site/articles/functional-biogeography.html NEWS.md`
+  -> confirmed the row anchors and syntax-boundary wording in source, rendered
+  HTML, and NEWS.
+- `rg -n '\\btrio\\b|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(|profile-likelihood default|unsupported.*implemented|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|already removed|primary new-user API|meta_known_V' NEWS.md vignettes/articles/response-families.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/functional-biogeography.Rmd`
+  -> no hits in the edited article files; NEWS hits were existing compatibility
+  references to `block_V()` and `meta_known_V()`.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
+  -> dashboard JSON valid and whitespace checks clean.
+
+Still not claimed:
+
+- No API removal.
+- No parser-wide lifecycle/deprecation warning.
+- No Paper 2 multi-kernel explicit-Psi implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+## 2026-06-19 02:42 MDT -- ordinal-probit runnable fixture
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Move `vignettes/articles/ordinal-probit.Rmd` from syntax-only internal draft
+  to runnable article evidence.
+- Align the response-family table with the validation register's current
+  FAM-14 status while keeping ordinal extractor/interval/browser/public
+  placement gates open.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Replaced article-wide `eval = FALSE` with a compact runnable two-trait
+  ordinal-probit fixture.
+- Added long and wide `gllvmTMB()` calls, with rendered long/wide
+  log-likelihood difference near zero.
+- Added rendered `extract_cutpoints()` output, `extract_Sigma(...,
+  link_residual = "auto")` output, and `check_gllvmTMB()` fit-health output.
+- Updated `response-families` so the ordinal row says FAM-14 is covered while
+  the ordinal article remains internal for extractor depth, intervals, exact
+  ordinal residual diagnostics, browser review, and public placement.
+- Updated the article-council ledger, after-task report, and dashboard source.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/ordinal-probit", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/ordinal-probit.html` successfully.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/response-families", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/response-families.html` successfully.
+- `rg -n "covered family-recovery|compact runnable|same log-likelihood|check_gllvmTMB|optimizer_convergence|extract_cutpoints|link_residual|ordinal exact-CDF|examples are not executable|eval = FALSE|release ready|scientific coverage passed|publication-grade|public worked example" vignettes/articles/ordinal-probit.Rmd pkgdown-site/articles/ordinal-probit.html`
+  -> confirmed intended internal-gate/runnable/diagnostic wording and no stale
+  `eval = FALSE`, non-executable-example, release-ready, scientific-coverage,
+  or publication-grade claims. Hits for "public worked example" are negated
+  internal-gate wording.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> dashboard JSON valid.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rsync -a docs/dev-log/dashboard/ /tmp/gllvm-dashboard/ && for port in 8765 8770; do printf '%s ' "$port"; curl -s -o /dev/null -w '%{http_code}\n' --max-time 2 "http://127.0.0.1:${port}/"; done`
+  -> both dashboard ports returned `200`.
+- `curl -s --max-time 2 http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "02:42|ordinal-probit runnable|FAM-14 is covered"`
+  -> live dashboard JSON showed the refreshed timestamp and ordinal runnable
+  fixture entry. Port `8765` responds at `/` but does not expose the same
+  `status.json` endpoint.
+
+Still not claimed:
+
+- No ordinal interval calibration.
+- No exact ordinal randomized-quantile residual diagnostic support.
+- No public article promotion or true browser scroll-through.
+- No bridge completion, release readiness, or scientific coverage completion.
+## 2026-06-19 02:49 MDT -- lambda-constraint-suggest routine render unblock
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Unblock routine rendering of the hidden `lambda-constraint-suggest`
+  companion article after the cold-cache `profile_retention` path stalled.
+- Keep the expensive maintainer code visible but make it display-only in
+  routine article builds.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Added an internal-gate note that the profile-retention and Confidence Eye
+  chunks are maintainer code and are not executed in routine builds.
+- Marked `suggest-profile-retention`, `fit-data-driven`, `model-comparison`,
+  `varimax-confidence-eye`, and `profile-confidence-eye` with `eval = FALSE`.
+- Replaced inline prose that depended on skipped `profile_retention` objects
+  with static guarded wording.
+- Updated the article-council ledger, after-task report, and dashboard source.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint-suggest", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/lambda-constraint-suggest.html`
+  successfully.
+- `rg -n "Internal article gate|display-only|not executed|profile_retention|cold cache expect|first-stop technical reference|release ready|scientific coverage passed|publication-grade|public promotion" vignettes/articles/lambda-constraint-suggest.Rmd pkgdown-site/articles/lambda-constraint-suggest.html`
+  -> confirmed the internal gate, display-only wording, and profile-retention
+  code; no stale "cold cache expect", release-ready, scientific-coverage, or
+  publication-grade claims.
+- `rg -n "lambda-constraint-suggest_files|varimax-confidence-eye|profile-confidence-eye|<img|figure-html" pkgdown-site/articles/lambda-constraint-suggest.html`
+  -> no current rendered figure references beyond the package logo. Stale PNGs
+  remain in the output directory but are not linked by the HTML.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> dashboard JSON valid.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Still not claimed:
+
+- No refreshed `profile_retention` evidence.
+- No refreshed Confidence Eye figures.
+- No public promotion, bridge completion, release readiness, or scientific
+  coverage completion.
+## 2026-06-19 03:02 MDT -- lambda-constraint browser layout review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Start the browser/layout review for the hidden `lambda-constraint` article.
+- Fix the first-viewport title overflow caused by the long
+  `lambda_constraint` token in the H1.
+- Record the current Confidence Eye figure as a blocker rather than a pass.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Shortened the visible article title to
+  "Confirmatory loadings for binary species distributions".
+- Aligned the `\\VignetteIndexEntry{}` title with YAML to remove the
+  html-vignette title warning.
+- Updated the Confidence Eye caption/prose so the current hollow-point,
+  non-PD-Hessian output is named as an internal review blocker rather than a
+  public-ready loading-uncertainty figure.
+- Updated the article-council ledger, after-task report, and dashboard source.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/lambda-constraint.html` successfully.
+- `rg -n "Confirmatory loadings for binary species distributions|pinning Lambda with lambda_constraint|Diagnostic Confidence Eye attempt|current rendered output is a review blocker|public-ready loading-uncertainty|release ready|scientific coverage passed|publication-grade" vignettes/articles/lambda-constraint.Rmd pkgdown-site/articles/lambda-constraint.html`
+  -> confirmed shortened title and diagnostic Confidence Eye blocker wording;
+  no release-ready/scientific-coverage/publication-grade overclaim hits.
+- Headless Chrome screenshot:
+  `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --no-first-run --no-default-browser-check --allow-file-access-from-files --run-all-compositor-stages-before-draw --virtual-time-budget=3000 --window-size=1440,1600 --screenshot=/tmp/gllvm-lambda-browser/lambda-desktop-top-final.png file:///Users/z3437171/Dropbox/Github%20Local/gllvmTMB/pkgdown-site/articles/lambda-constraint.html`
+  -> screenshot written at 1440 x 1600; visual inspection passed the desktop
+  first viewport after the title fix.
+- `for f in pkgdown-site/articles/lambda-constraint_files/figure-html/*.png; do sips -g pixelWidth -g pixelHeight "$f"; done`
+  -> seven PNG assets exist with nonzero dimensions; `confidence-eye-1.png`
+  is 1536 x 864 but remains a visual/statistical blocker because it has hollow
+  points only under a non-PD Hessian.
+
+Still not claimed:
+
+- No public promotion of `lambda-constraint`.
+- No fixed Confidence Eye / loading-uncertainty figure.
+- No final mobile browser pass.
+- No bridge completion, release readiness, or scientific coverage completion.
+## 2026-06-19 03:10 MDT -- COE-04 mixed-family construction smoke
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add one narrow mixed-family construction gate for the Paper 2 latent-only
+  two-kernel coevolution model.
+- Keep `kernel_unique()` / `*_unique()` as compatibility syntax only; do not
+  expand explicit Psi for Paper 2 multi-kernel coevolution.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Added a heavy long-format mixed-family fixture to
+  `tests/testthat/test-coevolution-two-kernel.R`.
+- The fixture fits Gaussian host traits plus Poisson partner traits through
+  per-row family dispatch with
+  `kernel_latent(..., name = "phy") + kernel_latent(..., name = "non")`.
+- The gate verifies convergence, finite log likelihood, near-orthogonal kernel
+  diagnostics, finite component shared-Sigma blocks, and finite
+  component-specific `Gamma_shape` point blocks.
+- Updated Design 65, the validation-debt register, dashboard source, and an
+  after-task report.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> passed with `FAIL 0 | WARN 0 | SKIP 12 | PASS 92`.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> first run failed on a table-object assertion shape only; after replacing
+  `unname(table(...))` with `as.integer(table(...))`, the rerun passed with
+  `FAIL 0 | WARN 0 | SKIP 0 | PASS 313`.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null`
+  -> dashboard status JSON valid.
+- `python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> dashboard sweep JSON valid.
+- `git diff --check`
+  -> clean.
+- `rg -n "beyond the narrow Poisson cell pair|mixed-family coverage" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/design/65-cross-lineage-coevolution-kernel.md docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-19-coe04-mixed-family-construction-smoke.md`
+  -> current dashboard/design/register wording now says broader recovery is
+  blocked beyond the mixed-family construction smoke and narrow Poisson cell
+  pair; remaining hits are historical Poisson entries or explicit
+  "not mixed-family coverage" guard text.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Still not claimed:
+
+- No mixed-family `Gamma` recovery threshold.
+- No mixed-family interval calibration.
+- No broader heterogeneous-family coverage.
+- No in-engine `rho` estimation or profile intervals.
+- No bridge completion, release readiness, or scientific coverage completion.
+## 2026-06-19 03:19 MDT -- unique lifecycle badge assets
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Finish a narrow lifecycle infrastructure gap for the existing
+  `unique()` / `*_unique()` soft-deprecation slice.
+- Keep the warning stage at `deprecate_soft()` compatibility syntax; do not
+  remove keywords or expand `kernel_unique()` for Paper 2.
+
+Pre-edit lane check:
+
+- Reused the 03:10 MDT shared-file lane check from this sitting:
+  `gh pr list --state open` showed only draft PR #489, and
+  `git log --all --oneline --since="6 hours ago"` showed no recent commits.
+
+Implemented:
+
+- Confirmed generated Rd files already reference lifecycle badge assets:
+  `lifecycle-deprecated.svg` and `lifecycle-superseded.svg`.
+- `Rscript --vanilla -e 'usethis::use_lifecycle()'` was attempted but stopped
+  before mutation because the project does not use the package-doc shape
+  expected by `usethis::use_import_from()`.
+- Copied the two referenced SVG assets from the installed `lifecycle` package
+  to `man/figures/`.
+- Updated the dashboard source and after-task report.
+
+Checks:
+
+- `ls man/figures`
+  -> `lifecycle-deprecated.svg`, `lifecycle-superseded.svg`, and `logo.png`.
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation|canonical-keywords")'`
+  -> passed with `FAIL 0 | WARN 0 | SKIP 3 | PASS 80`; skips were the existing
+  INLA-unavailable spatial canonical-keyword cells.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Still not claimed:
+
+- No `deprecate_warn()` escalation.
+- No keyword removal.
+- No parser grammar expansion for Paper 2 explicit Psi.
+- No bridge completion, release readiness, or scientific coverage completion.
+## 2026-06-19 03:27 MDT -- COE-04 module standardized-SVD oracle
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Strengthen the Paper 2 point-estimate coevolutionary module gate without
+  widening scientific claims.
+- Prove the real fitted `extract_coevolution_modules()` output matches the
+  standardized covariance/SVD identity used in the paper note:
+  `R = Sigma_H^{-1/2} Gamma Sigma_P^{-1/2}`.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Added a test-side inverse-square-root oracle to
+  `tests/testthat/test-coevolution-two-kernel.R`.
+- Strengthened the heavy near-orthogonal two-kernel recovery gate so it now
+  checks:
+  - `extract_coevolution_modules()$R` equals the independent standardized
+    `Sigma_H^{-1/2} Gamma Sigma_P^{-1/2}` calculation;
+  - returned singular values equal `svd(R)$d`;
+  - `n_modules = 1` truncates modules and axis tables correctly;
+  - `scale = "effect"` scales the module `R` matrix and singular values by the
+    fixed recorded `rho`.
+- Updated Design 65, the validation-debt register, dashboard source, and this
+  check log.
+
+Checks:
+
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> first run passed functionally with `FAIL 0 | WARN 2 | SKIP 0 | PASS 322`;
+  the warnings came from the test helper using `ifelse()` on negative
+  eigenvalues in the unused branch.
+- After replacing the helper with explicit positive-eigenvalue indexing,
+  `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> passed cleanly with `FAIL 0 | WARN 0 | SKIP 0 | PASS 322`.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> passed with `FAIL 0 | WARN 0 | SKIP 12 | PASS 92`.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null`
+  -> dashboard status JSON valid.
+- `python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> dashboard sweep JSON valid.
+- `git diff --check`
+  -> clean.
+- `rsync -a docs/dev-log/dashboard/ /tmp/gllvm-dashboard/`
+  -> synced live gllvm dashboard copy.
+- `curl -s -o /dev/null -w '%{http_code}\n' --max-time 2 http://127.0.0.1:8770/`
+  -> `200`.
+- `curl -s -o /dev/null -w '%{http_code}\n' --max-time 2 http://127.0.0.1:8765/`
+  -> `200`.
+- `curl -s --max-time 2 http://127.0.0.1:8770/status.json | python3 -m json.tool | rg -n "03:27|module gate|standardized covariance/SVD|COE-04 partial|PR green"`
+  -> confirmed the synced dashboard carries the new timestamp, guard, COE-04
+  partial status, and module-gate text.
+
+Still not claimed:
+
+- No module uncertainty.
+- No biological rank calibration.
+- No null-threshold calibration for module strength.
+- No in-engine `rho` estimation or `rho` profile intervals.
+- No interval calibration, bridge completion, release readiness, or scientific
+  coverage completion.
+
+## 2026-06-19 03:39 MDT -- unique warm-start wording closeout
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution unique-deprecation closeout without changing
+  parser behavior.
+- Remove the remaining live `unique-only` warm-start teaching from public help
+  and current design prose, while keeping `unique()` / `*_unique()` accepted as
+  compatibility syntax.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Updated `gllvmTMBcontrol()` roxygen and regenerated
+  `man/gllvmTMBcontrol.Rd` so `start_method = list(method = "indep")` and
+  `start_from` describe independent diagonal warm starts rather than
+  `unique()`-only / latent+unique recipes.
+- Updated the warm-start design note to show `indep()` for the simpler
+  independent model and ordinary `latent()` for the default
+  shared-plus-diagonal-Psi fit.
+- Updated one internal warm-start comment, one phylo-unique compatibility
+  comment, and one canonical-keywords test label so current labels do not
+  teach `unique()` as the ordinary path.
+- Updated dashboard source and added this check-log entry.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> loaded `gllvmTMB` and wrote `gllvmTMBcontrol.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "unique-family-deprecation|canonical-keywords|gllvmTMBcontrol")'`
+  -> passed with `FAIL 0 | WARN 0 | SKIP 3 | PASS 114`; the three skips were
+  expected INLA-not-installed canonical-keyword checks.
+- `rg -n 'unique-only|unique only|independent \`unique\\(\\)\`|New canonical syntax \\(latent \\+ unique\\)' R man tests/testthat/test-canonical-keywords.R docs/design docs/dev-log/check-log.md`
+  -> after the edits, live hits remain only in historical check-log entries.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Still not claimed:
+
+- No `deprecate_warn()` escalation.
+- No keyword removal.
+- No source-specific/kernel latent-Psi fold.
+- No expansion of `kernel_unique()` for Paper 2 multi-kernel coevolution.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 03:42 MDT -- M3 unique wording micro-cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Remove the last small M3 design-roadmap wording that still presented the old
+  ordinary `latent()+unique()` spelling as the default fit recipe.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Updated `docs/design/48-m3-4-boundary-regimes.md` so the warm-up roadmap
+  example uses ordinary default `latent(...)` rather than `latent(...) +
+  unique(...)`.
+- Updated `docs/design/44-m3-3-inference-replacement.md` so M3 total-Sigma
+  planning says ordinary `latent()` decomposition fits rather than
+  `latent()+unique()` fits.
+- Folded the micro-cleanup into the existing unique warm-start after-task
+  report and dashboard source.
+
+Checks:
+
+- `rg -n 'latent\(\.\.\.\) \+ unique|M3\.3 grid uses \`latent\(\) \+ unique\(\)\`|For \`latent\(\) \+ unique\(\)\` fits|unique-only|unique only|independent \`unique\\(\\)\`|New canonical syntax \\(latent \\+ unique\\)' docs/design/44-m3-3-inference-replacement.md docs/design/48-m3-4-boundary-regimes.md R man tests/testthat/test-canonical-keywords.R`
+  -> no hits after the edit.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No parser or fitting behavior changed.
+- No source-specific/kernel latent-Psi fold.
+- No `deprecate_warn()` escalation.
+- No keyword removal.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 03:48 MDT -- phylogenetic-gllvm browser review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close one concrete article-council gap from the local dashboard: the
+  `phylogenetic-gllvm` article already had rendered asset evidence, but still
+  lacked browser-level review.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Browser setup note:
+
+- The in-app browser surface was unavailable (`iab` not available).
+- Playwright was installed, but its bundled Chromium executable was missing.
+- A system Google Chrome executable was present at
+  `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`, so the
+  browser review used Playwright with system Chrome rather than downloading a
+  browser.
+
+Checked page:
+
+- `pkgdown-site/articles/phylogenetic-gllvm.html`
+
+Checks:
+
+- Desktop viewport: 1440 x 1000.
+  - Page title: `Phylogenetic trait covariance • gllvmTMB`.
+  - H1: `Phylogenetic trait covariance`.
+  - Console messages: none.
+  - Page errors: none.
+  - Internal article gate present.
+  - Bad-claim scan found none for `release ready`, `release-ready`,
+    `scientific coverage passed`, `scientific-coverage passed`,
+    `publication-ready`, `publication grade`, or `publication-grade`.
+  - Images loaded: logo and
+    `phylogenetic-gllvm_files/figure-html/extract-total-correlations-1.png`
+    with natural size 1420 x 883 and descriptive alt text.
+  - Overflow scan found only the expected hidden skip-link element.
+- Mobile viewport: 390 x 844.
+  - Console messages: none.
+  - Page errors: none.
+  - Internal article gate present.
+  - Bad-claim scan found none for the same terms above.
+  - Images loaded, with the heatmap displayed at 366 x 228.
+  - Overflow scan found expected narrow-layout table/math overflow; visual
+    screenshot inspection did not show text covering other content.
+- Screenshots inspected locally:
+  - `/tmp/gllvm-phylogenetic-desktop.png`
+  - `/tmp/gllvm-phylogenetic-mobile.png`
+
+Still not claimed:
+
+- No public promotion or final placement.
+- No interval calibration.
+- No bridge completion.
+- No release readiness.
+- No scientific coverage completion.
+
+## 2026-06-19 03:54 MDT -- animal-model browser review and heatmap alt text
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue article-council browser review one page at a time.
+- Close the `animal-model` true-browser gap from the dashboard and repair the
+  rendered genetic-correlation heatmap's empty alt attribute.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Added `fig.alt` to the `G3-correlation` chunk in
+  `vignettes/articles/animal-model.Rmd`.
+- Re-rendered the registered article with
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/animal-model", pkg = ".", lazy = FALSE, quiet = FALSE)'`.
+- Updated dashboard source and added this check-log / after-task evidence.
+
+Browser setup note:
+
+- The in-app browser surface was unavailable (`iab` not available).
+- Playwright's bundled Chromium executable was missing.
+- A system Google Chrome executable was present at
+  `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`, so the
+  browser review used Playwright with system Chrome rather than downloading a
+  browser.
+
+Checked page:
+
+- `pkgdown-site/articles/animal-model.html`
+
+Checks:
+
+- Pre-edit rendered-page scan:
+  - `G3-correlation-1.png` loaded but had an empty `alt` attribute.
+- Post-render desktop viewport: 1440 x 1000.
+  - Page title: `The animal model: heritability and genetic covariance • gllvmTMB`.
+  - H1: `The animal model: heritability and genetic covariance`.
+  - Console messages: none.
+  - Page errors: none.
+  - Internal article gate present.
+  - Bad-claim scan found none for `release ready`, `release-ready`,
+    `scientific coverage passed`, `scientific-coverage passed`,
+    `publication-ready`, `publication grade`, or `publication-grade`.
+  - Images loaded: logo and `animal-model_files/figure-html/G3-correlation-1.png`.
+  - The heatmap image natural size was 1113 x 921 and now carries descriptive
+    alt text.
+  - Overflow scan found only the expected hidden skip link plus one horizontally
+    scrollable code block.
+- Post-render mobile viewport: 390 x 844.
+  - Console messages: none.
+  - Page errors: none.
+  - Internal article gate present.
+  - Bad-claim scan found none for the same terms above.
+  - Heatmap displayed at 366 x 303 with descriptive alt text.
+  - Overflow scan found expected narrow-layout table/math overflow; visual
+    screenshot inspection did not show incoherent text overlap.
+- Screenshots inspected locally:
+  - `/tmp/gllvm-animal-model-desktop-after.png`
+  - `/tmp/gllvm-animal-model-mobile-after.png`
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Still not claimed:
+
+- No public promotion or final placement.
+- No larger-pedigree validation.
+- No cross-package agreement promotion.
+- No bridge completion.
+- No release readiness.
+- No scientific coverage completion.
+
+## 2026-06-19 03:59 MDT -- random-regression browser review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue article-council browser review one page at a time.
+- Close the `random-regression-reaction-norms` true-browser gap from the
+  dashboard while keeping its final uncertainty review open.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Browser setup note:
+
+- The in-app browser surface was unavailable (`iab` not available).
+- A system Google Chrome executable was present at
+  `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`, so the
+  browser review used Playwright with system Chrome rather than downloading a
+  browser.
+
+Checked page:
+
+- `pkgdown-site/articles/random-regression-reaction-norms.html`
+
+Checks:
+
+- Desktop viewport: 1440 x 1000.
+  - Page title: `Behavioural reaction norms with random slopes • gllvmTMB`.
+  - H1: `Behavioural reaction norms with random slopes`.
+  - Console messages: none.
+  - Page errors: none.
+  - Internal article gate present.
+  - Bad-claim scan found none for `release ready`, `release-ready`,
+    `scientific coverage passed`, `scientific-coverage passed`,
+    `publication-ready`, `publication grade`, or `publication-grade`.
+  - Images loaded: logo, recovery plot, and repeatability plot.
+  - Recovery plot natural size: 1248 x 921, with descriptive alt text.
+  - Repeatability plot natural size: 1344 x 921, with descriptive alt text.
+  - Overflow scan found expected hidden skip link and horizontally scrollable
+    code blocks.
+- Mobile viewport: 390 x 844.
+  - Console messages: none.
+  - Page errors: none.
+  - Internal article gate present.
+  - Bad-claim scan found none for the same terms above.
+  - Recovery plot displayed at 366 x 270 with descriptive alt text.
+  - Repeatability plot displayed at 366 x 251 with descriptive alt text.
+  - Overflow scan found expected narrow-layout table/code overflow; visual
+    screenshot inspection did not show incoherent text overlap.
+- Screenshots inspected locally:
+  - `/tmp/gllvm-random-regression-desktop.png`
+  - `/tmp/gllvm-random-regression-mobile.png`
+
+Still not claimed:
+
+- No public promotion or final placement.
+- No final uncertainty review.
+- No interval calibration.
+- No non-Gaussian augmented covariance promotion.
+- No bridge completion.
+- No release readiness.
+- No scientific coverage completion.
+
+## 2026-06-19 04:05 MDT -- COE-04 null-threshold scaffold
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Return to the coevolution-first lane and close one narrow Paper 2 model gap
+  after the article-browser slices.
+- Strengthen the existing near-orthogonal null/signal grid without claiming
+  formal reusable Type-I calibration.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Updated `tests/testthat/test-coevolution-two-kernel.R` so the heavy
+  12-seed null grid computes an empirical 95% full-vs-intercept overfit-tail
+  marker.
+- Required that marker to remain finite, positive, and below 8 log-likelihood
+  units.
+- Required each planted medium-signal fixture to beat that fixed-grid marker
+  by more than 10x while still recovering both component `Gamma_shape` blocks
+  above 0.90 correlation.
+- Updated Design 65, the `COE-04` validation-debt row, dashboard status, and
+  dashboard sweep wording to call this a fixed-grid threshold scaffold only.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-coe04-null-threshold-scaffold.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 12 | PASS 92`.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 328`.
+
+Still not claimed:
+
+- No formal reusable null-threshold or Type-I calibration.
+- No interval calibration.
+- No `rho` estimation or `rho` profile intervals.
+- No broader moderate-overlap or high-overlap calibration.
+- No mixed-family recovery beyond the construction smoke.
+- No bridge completion.
+- No release readiness.
+- No scientific coverage completion.
+
+## 2026-06-19 04:10 MDT -- COE-04 moderate-overlap three-cell grid
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Broaden the promoted `COE-04` moderate-overlap recovery evidence without
+  changing the model surface or promoting scientific coverage.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Updated the heavy moderate-overlap grid in
+  `tests/testthat/test-coevolution-two-kernel.R` from two promoted cells to
+  three promoted cells:
+  - `seed = 2400`, `non_association_blend = 0.25`;
+  - `seed = 2401`, `non_association_blend = 0.30`;
+  - `seed = 2402`, `non_association_blend = 0.35`.
+- Kept the tested `0.40` moderate-edge cell as a boundary: it converges and
+  detects signal, but fails the promoted component-separation thresholds.
+- Updated Design 65, the `COE-04` validation-debt row, dashboard status, and
+  dashboard sweep wording from two-cell to three-cell moderate-overlap
+  evidence.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-coe04-moderate-overlap-three-cell.md`.
+
+Checks:
+
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 341`.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 12 | PASS 92`.
+
+Still not claimed:
+
+- No harder moderate-overlap recovery beyond the promoted 0.25-0.35 grid.
+- No high-overlap truth-recovery promotion.
+- No formal reusable null-threshold or Type-I calibration.
+- No interval calibration.
+- No `rho` estimation or `rho` profile intervals.
+- No bridge completion.
+- No release readiness.
+- No scientific coverage completion.
+
+## 2026-06-19 04:17 MDT -- COE-04 mixed-family recovery gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Upgrade the `COE-04` mixed-family evidence from construction smoke only to a
+  narrow known-DGP shape-recovery gate, without claiming broad mixed-family
+  coevolution coverage.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Added `.c3_make_mixed_family_two_kernel_recovery_fixture()` and
+  `.c3_fit_mixed_family_two_kernel_set()` to
+  `tests/testthat/test-coevolution-two-kernel.R`.
+- Added a heavy two-cell mixed-family recovery gate for seeds `2912` and
+  `2913`: Gaussian host traits plus Poisson partner traits through per-row
+  `family_var` dispatch, fitted with the latent-only two-kernel syntax.
+- Required full and one-component comparator convergence, near-orthogonal
+  diagnostics, full-model improvement over either one-component comparator by
+  more than 200 log-likelihood units, own-component `Gamma_shape` correlations
+  above `0.90`, and cross-component matches below `0.12`.
+- Updated Design 65, the `COE-04` validation-debt row, dashboard status, and
+  dashboard sweep wording to call this narrow shape-recovery evidence only.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-coe04-mixed-family-recovery.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 13 | PASS 92`.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 367`.
+
+Still not claimed:
+
+- No broad heterogeneous-trait coevolution recovery beyond the two-cell
+  Gaussian-host/Poisson-partner shape gate.
+- No mixed-family interval calibration.
+- No formal reusable null-threshold or Type-I calibration.
+- No `rho` estimation or `rho` profile intervals.
+- No bridge completion.
+- No release readiness.
+- No scientific coverage completion.
+
+## 2026-06-19 04:25 MDT -- unique deprecation article wording closeout
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Continue the post-coevolution `unique()` deprecation lane by removing two
+  live article phrases that still made `unique()` / `phylo_unique()` sound like
+  first-line new-user syntax.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Updated `vignettes/articles/api-keyword-grid.Rmd` so wide-form shorthand
+  teaches `indep()`, `dep()`, and supported source-specific shorthand first,
+  while naming `unique()` as soft-deprecated compatibility syntax for old
+  formulas.
+- Updated `vignettes/articles/choose-your-model.Rmd` so the
+  `phylo_latent() + phylo_unique() + latent()` row is no longer labelled as
+  generally recommended; it now says explicit phylogenetic-Psi compatibility
+  spelling should be used only when the phylogenetic diagonal component is
+  separately identifiable.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-unique-article-wording-closeout.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/api-keyword-grid.Rmd", output_dir = tempdir(), quiet = TRUE)'`
+  -> passed.
+- `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/choose-your-model.Rmd", output_dir = tempdir(), quiet = TRUE)'`
+  -> passed.
+- `rg -n 'same shorthand applies to \`unique\\(\\)\`|Canonical paired phylogenetic decomposition|recommended when traits can be both phylogenetically' vignettes/articles/api-keyword-grid.Rmd vignettes/articles/choose-your-model.Rmd`
+  -> no matches.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No keyword removal.
+- No escalation from `deprecate_soft()` to `deprecate_warn()` for the
+  `unique()` family.
+- No source-specific paired-Psi fold.
+- No expansion of `kernel_unique()` for Paper 2.
+
+## 2026-06-19 04:35 MDT -- behavioural-syndromes browser review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the true-browser review gap for the internal
+  `behavioural-syndromes` article after the coevolution and `unique()`
+  compatibility slices.
+- Keep the article internal; this is browser/render evidence, not a public
+  promotion decision.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> passed and wrote `pkgdown-site/articles/behavioural-syndromes.html`.
+- `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --hide-scrollbars --window-size=1440,1600 --screenshot=/tmp/behavioural-syndromes-desktop-after.png "file:///Users/z3437171/Dropbox/Github%20Local/gllvmTMB/pkgdown-site/articles/behavioural-syndromes.html"`
+  -> wrote a desktop screenshot; Chrome emitted external certificate/GCM noise
+  from local pkgdown dependencies, not an article render failure.
+- `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --hide-scrollbars --window-size=390,844 --screenshot=/tmp/behavioural-syndromes-mobile-after.png "file:///Users/z3437171/Dropbox/Github%20Local/gllvmTMB/pkgdown-site/articles/behavioural-syndromes.html"`
+  -> wrote a mobile screenshot; visual inspection found the internal gate,
+  biological-question opening, and reader-path table readable at the top.
+- Chrome DevTools Protocol layout probe through system Chrome:
+  -> page title `Behavioural syndromes (2-level GLLVM) • gllvmTMB`, H1
+  `Behavioural syndromes (2-level GLLVM)`, mobile `documentScrollWidth = 390`
+  at viewport width `390`; overflow findings were expected scrollable code
+  spans, not document-level horizontal overflow.
+- Chrome full-page captures:
+  -> `/tmp/behavioural-syndromes-desktop-full.png` at `1440 x 23093` and
+  `/tmp/behavioural-syndromes-mobile-full.png` at `390 x 24250` were inspected
+  locally for gross layout/figure failure.
+- Rendered image probe:
+  -> all six images loaded with nonzero natural dimensions; the five article
+  figures have descriptive alt text, while the package logo remains decorative.
+- `rg -n "release-ready|release ready|scientific coverage|scientific coverage passed|publication-ready|publication ready|public article dropdown|not ready|Internal article gate|candidate Tier 1|PR green|bridge complete" pkgdown-site/articles/behavioural-syndromes.html vignettes/articles/behavioural-syndromes.Rmd`
+  -> only the intended internal-gate wording matched.
+- Local HTML image/link parser:
+  -> `images 6 missing 0`; `local_links 47 missing 0`.
+- `find pkgdown-site/articles/behavioural-syndromes_files -type f -name '*.png' -print0 | xargs -0 file`
+  -> five article PNG assets exist with expected dimensions.
+
+Implemented:
+
+- Updated the article council ledger row and narrative checklist to replace the
+  old browser-tooling blocker with system-Chrome browser evidence.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-behavioural-syndromes-browser-review.md`.
+- Updated dashboard status and sweep entries.
+
+Still not claimed:
+
+- No public promotion or final placement decision.
+- No interval calibration or uncertainty upgrade.
+- No change to model code or article source.
+- No bridge completion.
+- No release readiness.
+- No scientific coverage completion.
+
+## 2026-06-19 04:40 MDT -- mixed-family-extractors browser review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the true-browser review gap for the internal
+  `mixed-family-extractors` article.
+- Keep the page internal until the broader mixed-response teaching fixture and
+  public-placement gates close.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/mixed-family-extractors", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> passed and wrote `pkgdown-site/articles/mixed-family-extractors.html`.
+- `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --hide-scrollbars --window-size=1440,1600 --screenshot=/tmp/mixed-family-extractors-desktop.png "file:///Users/z3437171/Dropbox/Github%20Local/gllvmTMB/pkgdown-site/articles/mixed-family-extractors.html"`
+  -> wrote the desktop screenshot.
+- `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --hide-scrollbars --window-size=390,844 --screenshot=/tmp/mixed-family-extractors-mobile.png "file:///Users/z3437171/Dropbox/Github%20Local/gllvmTMB/pkgdown-site/articles/mixed-family-extractors.html"`
+  -> wrote the mobile screenshot.
+- Chrome DevTools Protocol layout probe through system Chrome:
+  -> page title
+  `Mixed-family fits: latent-scale covariance and correlations • gllvmTMB`, H1
+  `Mixed-family fits: latent-scale covariance and correlations`, mobile
+  `documentScrollWidth = 390` at viewport width `390`; overflow findings were
+  expected scrollable code/output spans.
+- Targeted H1 check:
+  -> mobile H1 rectangle was inside the viewport (`left = 12`, `right = 378`,
+  `width = 366`) with `overflow-wrap: break-word`.
+- Chrome full-page captures:
+  -> `/tmp/mixed-family-extractors-desktop-full.png` at `1440 x 9299` and
+  `/tmp/mixed-family-extractors-mobile-full.png` at `390 x 11885` were
+  inspected locally.
+- Rendered image probe:
+  -> package logo and `corr-1.png` loaded with nonzero natural dimensions;
+  `corr-1.png` has descriptive alt text.
+- `rg -n "release-ready|release ready|scientific coverage|scientific coverage passed|publication-ready|publication ready|public article dropdown|not ready|Internal article gate|PR green|bridge complete" pkgdown-site/articles/mixed-family-extractors.html vignettes/articles/mixed-family-extractors.Rmd`
+  -> only the intended internal-gate wording matched.
+- Local HTML image/link parser:
+  -> `images 2 missing 0`; `local_links 49 missing 0`.
+- `find pkgdown-site/articles/mixed-family-extractors_files -type f -name '*.png' -print0 | xargs -0 file`
+  -> the `corr-1.png` heatmap exists at `1113 x 921`.
+
+Implemented:
+
+- Updated the article council ledger row to replace the browser-review blocker
+  with system-Chrome browser evidence.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-mixed-family-extractors-browser-review.md`.
+- Updated dashboard status and sweep entries.
+
+Still not claimed:
+
+- No public promotion or final placement decision.
+- No runnable NB/beta teaching fixture.
+- No CI-10 promotion.
+- No MIX-10 closure for delta/hurdle mixed-family latent-scale correlations.
+- No model-code change.
+- No bridge completion.
+- No release readiness.
+- No scientific coverage completion.
+
+## 2026-06-19 05:13 MDT -- random-slopes-nongaussian browser review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the true-browser review gap for the internal
+  `random-slopes-nongaussian` article after the rendered-review slice.
+- Keep the page internal until the structured-dependence learning path,
+  interval caveats, and final public-placement gates are resolved.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/random-slopes-nongaussian", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> passed and wrote `pkgdown-site/articles/random-slopes-nongaussian.html`.
+- Chrome DevTools Protocol screenshots through system Chrome wrote:
+  `/tmp/random-slopes-nongaussian-desktop.png`,
+  `/tmp/random-slopes-nongaussian-mobile.png`,
+  `/tmp/random-slopes-nongaussian-desktop-full.png`, and
+  `/tmp/random-slopes-nongaussian-mobile-full.png`.
+- Chrome DevTools Protocol layout metrics:
+  -> page title
+  `Structured random slopes for non-Gaussian traits • gllvmTMB`, H1
+  `Structured random slopes for non-Gaussian traits`, desktop
+  `documentScrollWidth = 1440` at viewport width `1440`, mobile H1 inside the
+  viewport (`left = 12`, `right = 378`, `width = 366`), mobile
+  `documentScrollWidth = 390` at viewport width `390`, and only expected
+  scrollable table/code overflow.
+- Rendered image probe:
+  -> package logo loaded with nonzero natural dimensions; no article PNG assets
+  were expected.
+- Local screenshot inspection with `view_image`:
+  -> desktop, mobile, desktop full-page, and mobile full-page captures showed
+  readable top matter, intact internal gate, and expected scrollable
+  table/code blocks.
+- `rg -n "release-ready|release ready|scientific coverage|scientific coverage passed|publication-ready|publication ready|public article dropdown|not ready|Internal article gate|PR green|bridge complete" pkgdown-site/articles/random-slopes-nongaussian.html vignettes/articles/random-slopes-nongaussian.Rmd`
+  -> only the intended internal-gate wording matched.
+- Local HTML image/link parser:
+  -> `images 1 missing 0`; `local_links 68 missing 0`.
+- `find pkgdown-site/articles -path '*random-slopes-nongaussian_files*' -type f -maxdepth 5 -print`
+  -> no article asset directory/files were produced, as expected.
+
+Implemented:
+
+- Updated the article council ledger row to replace the browser-review blocker
+  with system-Chrome browser evidence while keeping the article internal.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-random-slopes-nongaussian-browser-review.md`.
+- Updated dashboard status and sweep entries.
+
+Still not claimed:
+
+- No public promotion or final placement decision.
+- No confidence-interval calibration for slope variances.
+- No non-Gaussian `s >= 2` promotion.
+- No delta/hurdle/two-stage zero-inflated slope-covariance support.
+- No model-code change.
+- No bridge completion.
+- No release readiness.
+- No scientific coverage completion.
+
+## 2026-06-19 05:00 MDT -- ordinal-probit browser review
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the true-browser review gap for the internal `ordinal-probit` article.
+- Keep the page internal until extractor depth, ordinal intervals, exact
+  ordinal residual diagnostics, and final public-placement gates close.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Checks:
+
+- Inherited from the previous sitting:
+  `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/ordinal-probit", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> passed and wrote `pkgdown-site/articles/ordinal-probit.html`.
+- Inherited system-Chrome desktop/mobile screenshots:
+  `/tmp/ordinal-probit-desktop.png`,
+  `/tmp/ordinal-probit-mobile.png`,
+  `/tmp/ordinal-probit-desktop-full.png`, and
+  `/tmp/ordinal-probit-mobile-full.png`.
+- Inherited Chrome DevTools Protocol layout metrics:
+  -> page title `Ordinal-probit threshold traits • gllvmTMB`, H1
+  `Ordinal-probit threshold traits`, mobile H1 inside the viewport
+  (`left = 12`, `right = 378`, `width = 366`), mobile
+  `documentScrollWidth = 390` at viewport width `390`, and only expected
+  scrollable code/output overflow.
+- Local screenshot inspection with `view_image`:
+  -> desktop, mobile, desktop full-page, and mobile full-page captures showed
+  readable top matter, intact internal gate, no article PNG assets beyond the
+  package logo, and expected scrollable code/output blocks.
+- `rg -n "release-ready|release ready|scientific coverage|scientific coverage passed|publication-ready|publication ready|public article dropdown|not ready|Internal article gate|PR green|bridge complete" pkgdown-site/articles/ordinal-probit.html vignettes/articles/ordinal-probit.Rmd`
+  -> only the intended internal-gate wording matched.
+- Local HTML image/link parser:
+  -> `images 1 missing 0`; `local_links 48 missing 0`.
+
+Implemented:
+
+- Updated the article council ledger row to replace the browser-review blocker
+  with system-Chrome browser evidence while keeping the article internal.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-ordinal-probit-browser-review.md`.
+- Updated dashboard status and sweep entries.
+
+Still not claimed:
+
+- No public promotion or final placement decision.
+- No EXT-10/cutpoint-depth closure.
+- No ordinal interval calibration.
+- No exact ordinal residual diagnostic availability.
+- No model-code change.
+- No bridge completion.
+- No release readiness.
+- No scientific coverage completion.
+
+## 2026-06-19 05:21 MDT -- article council dashboard truth sync
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Synchronize the Article Council ledger and dashboard/sweep active surfaces
+  after the completed browser-review closeouts.
+- Keep browser evidence separate from public placement, bridge completion,
+  release readiness, and scientific coverage.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Updated the Article Council ledger rows for `animal-model`,
+  `phylogenetic-gllvm`, and `random-regression-reaction-norms` so their
+  blockers reflect current browser evidence and leave only placement,
+  uncertainty, or larger-evidence gates open.
+- Updated dashboard/sweep active text so stale `browser review remains open`,
+  `rendered/browser`, and `final rendered HTML` blockers are superseded by the
+  later system-Chrome evidence where that evidence exists.
+- Clarified the dashboard's #489 card and gllvmTMB repo card: green #489 checks
+  are pushed PR-head evidence at `03fdda1`, while the current local worktree is
+  ahead/dirty and not a release-ready state.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-article-council-dashboard-truth-sync.md`.
+
+Consistency scans used:
+
+- `jq '.active_work[] | select(.text|test("browser review remain open|rendered/browser|true browser|browser review remains|still blocks public promotion|final rendered HTML review"; "i"))' docs/dev-log/dashboard/status.json`
+- `jq '.active_work[] | select(.text|test("browser review remain open|rendered/browser|true browser|browser review remains|still blocks public promotion|final rendered HTML review"; "i"))' docs/dev-log/dashboard/sweep.json`
+- `rg -n "browser review remain open|rendered/browser review still blocks|true browser review remains blocked|Public promotion still needs rendered/browser|final rendered HTML review still blocks|Full browser/rendered review" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+
+Still not claimed:
+
+- No public article promotion or `_pkgdown.yml` nav movement.
+- No new render/browser pass; this sync only records existing evidence.
+- No R, Julia, or Julia-via-R bridge completion.
+- No release readiness.
+- No scientific coverage completion.
+
+## 2026-06-19 05:27 MDT -- R-only Julia bridge warning cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Clean the pure-R Julia bridge test slice so the intentionally deprecated
+  `unique()` compatibility formula used in a rejection test does not leak a
+  lifecycle warning into the bridge suite.
+- Preserve the bridge guard assertion and keep live JuliaCall rows gated behind
+  `GLLVM_JL_PATH`.
+
+Pre-edit lane check before updating shared dev-log/dashboard files:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+- `git diff --check`
+  -> clean before shared-file edits.
+
+Implemented:
+
+- Added `withr::local_options(lifecycle_verbosity = "quiet")` inside
+  `tests/testthat/test-julia-bridge.R` for the `engine = 'julia' rejects non
+  reduced-rank covariance terms` test only.
+- Updated dashboard status/sweep active work with the R-only bridge test result.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-julia-bridge-r-only-warning-cleanup.md`.
+
+Checks:
+
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 14 | PASS 357`.
+
+Still not claimed:
+
+- The 14 live JuliaCall rows were skipped because `GLLVM_JL_PATH` was unset.
+- No Julia-only test was run in this slice.
+- No Julia-via-R live bridge test was run in this slice.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-19 05:37 MDT -- R / Julia / Julia-via-R bridge matrix refresh
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Verify the next Big 4 bridge matrix row across R-only, Julia-only, and
+  Julia-via-R layers without mutating GLLVM.jl #101.
+- Keep the local `GLLVM.jl` working checkout separate from the paired PR #101
+  evidence.
+
+Agent input:
+
+- Lovelace / Noether-Grace read-only Julia-side audit:
+  local `GLLVM.jl` checkout is `codex/non-gaussian-fitter-gradients` at
+  `1b42e353601c5d835821e8fc1819427806daab46`, not PR #101; PR #101 is
+  open/draft/clean at `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`, with listed
+  PR checks passing.
+- Einstein / Grace read-only R-side audit:
+  local gllvmTMB tree is not equivalent to pushed PR #489 head; R-only bridge
+  rows pass but live Julia-via-R rows require an explicit paired GLLVM.jl path.
+
+Pre-edit lane check before updating shared dev-log/dashboard files:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+- `git diff --check`
+  -> clean before shared-file edits.
+
+Checks:
+
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 14 | PASS 357`.
+- `git -C "/Users/z3437171/Dropbox/Github Local/GLLVM.jl" worktree add --detach /tmp/gllvmjl-pr101.0Er7Dp f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`
+  -> created a detached temp worktree at the PR #101 head.
+- `julia --project=. --startup-file=no -e 'import Pkg; Pkg.instantiate()'`
+  in `/tmp/gllvmjl-pr101.0Er7Dp`
+  -> completed dependency setup and precompiled `GLLVM`.
+- `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  in `/tmp/gllvmjl-pr101.0Er7Dp`
+  -> `bridge grouped dispersion default | Pass 121 | Total 121`.
+- `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  in `/tmp/gllvmjl-pr101.0Er7Dp`
+  -> `bridge capabilities ledger | Pass 40 | Total 40`.
+- `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  in `/tmp/gllvmjl-pr101.0Er7Dp`
+  -> `bridge CI routing | Pass 64 | Total 64`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 1188`.
+
+Implemented:
+
+- Recorded the bridge matrix result in dashboard status/sweep active work.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-bridge-matrix-refresh.md`.
+
+Still not claimed:
+
+- The current local `GLLVM.jl` working checkout is not PR #101.
+- The current local gllvmTMB tree is ahead/dirty and not identical to pushed
+  PR #489 head.
+- No full gllvmTMB `devtools::test()`, `pkgdown::check_pkgdown()`, or
+  `devtools::check()` was run in this bridge slice.
+- No public docs promotion, release readiness, or scientific coverage
+  completion.
+
+## 2026-06-19 06:35 MDT -- local validation and bridge refresh
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the remaining local full-test warning tail after the ordinary
+  `latent()` default-Psi cleanup.
+- Refresh R-only, Julia-only, and Julia-via-R bridge evidence before the
+  bridge landing/split decision.
+
+Pre-edit lane check before updating shared dev-log/dashboard files:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Implemented:
+
+- Updated `tests/testthat/test-stage3-propto-equalto.R` so the combined
+  `propto()` smoke test uses ordinary `latent()` for the default
+  shared-plus-diagonal covariance path instead of spelling the same current
+  behaviour as `latent() + unique()`.
+- Updated `tests/testthat/test-stage33-non-gaussian.R` so the binomial and
+  Poisson current-behaviour tests use ordinary `latent()` instead of
+  `latent() + unique()`.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-19-local-validation-and-bridge-refresh.md`.
+- Updated dashboard status/sweep active work with the refreshed validation and
+  bridge evidence.
+
+Checks:
+
+- `git diff --check`
+  -> clean before edits and after validation.
+- `Rscript --vanilla -e 'devtools::test(filter = "stage3-propto-equalto|stage33-non-gaussian")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 20`.
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> `FAIL 0 | WARN 0 | SKIP 730 | PASS 3261`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE, error_on = "never")'`
+  -> `0 errors | 1 warning | 1 note`; the note was `unable to verify current time`.
+- `Rscript --vanilla -e 'rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-20260619-suggestsfalse", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false"))'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|NOTE|ERROR|clang|fixed-enum|R_ext/Boolean|whether package.*can be installed" /tmp/gllvmtmb-rcmdcheck-20260619-suggestsfalse`
+  -> preserved warning is the known Apple clang / R header warning:
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> expected 14 live-Julia skips; no failures or warnings.
+- `git -C "/Users/z3437171/Dropbox/Github Local/GLLVM.jl" worktree add --detach /tmp/gllvmjl-pr101-refresh-20260619 f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`
+  -> created a detached verification worktree at the pinned GLLVM.jl #101 SHA.
+- `julia --project=. --startup-file=no -e 'import Pkg; Pkg.instantiate()'`
+  in `/tmp/gllvmjl-pr101-refresh-20260619`
+  -> completed dependency setup and precompiled `GLLVM`.
+- `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  in `/tmp/gllvmjl-pr101-refresh-20260619`
+  -> `bridge grouped dispersion default | Pass 121 | Total 121`.
+- `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  in `/tmp/gllvmjl-pr101-refresh-20260619`
+  -> `bridge capabilities ledger | Pass 40 | Total 40`.
+- `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  in `/tmp/gllvmjl-pr101-refresh-20260619`
+  -> `bridge CI routing | Pass 64 | Total 64`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 1188`.
+
+Stale wording scans:
+
+- `rg -n "latent\\(0 \\+ trait \\| site, d = 2\\) \\+ unique\\(0 \\+ trait \\| site\\)|rr \\+ diag|latent\\(\\)/unique\\(\\)|latent\\(\\)/unique" tests/testthat/test-stage3-propto-equalto.R tests/testthat/test-stage33-non-gaussian.R`
+  -> no matches.
+- `rg -n "unique\\(0 \\+ trait \\| site\\)|converges with rr \\+ diag|Stage 3: rr \\+ diag" tests/testthat/test-stage3-propto-equalto.R tests/testthat/test-stage33-non-gaussian.R`
+  -> no matches.
+
+Agent input:
+
+- Maxwell / Grace read-only audit agreed the patch scope is appropriate and
+  recommended full R validation, pkgdown, R CMD check, and refreshed
+  R/Julia/Julia-via-R bridge evidence before logging this gate.
+
+Still not claimed:
+
+- No source-specific or kernel latent-Psi fold is proven by this slice.
+- The current local gllvmTMB tree is ahead/dirty and is not represented by
+  pushed PR #489 head.
+- The local GLLVM.jl working checkout is not PR #101; Julia-only checks used
+  the detached `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9` worktree.
+- No 3-OS PR matrix has run on the current local tree.
+- No public article placement, release readiness, CRAN readiness, or
+  scientific coverage completion is claimed.
+
+## 2026-06-19 06:42 MDT -- bridge landing / split decision
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Decide whether the current local tree can remain one Big 4 / bridge PR, or
+  whether it needs checkpointing and split before any push or widened claim.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+
+Evidence:
+
+- `gh pr view 489 --json number,title,state,isDraft,mergeStateStatus,headRefName,headRefOid,baseRefName,baseRefOid,statusCheckRollup,updatedAt,url`
+  -> PR #489 is open/draft/clean at pushed head
+  `03fdda1cedd325188448ffe58b42f09acbf69e61`; visible checks are
+  `ubuntu-latest (release)` and `coevolution-two-kernel-recovery`, both
+  successful at that pushed head.
+- `git rev-parse HEAD`
+  -> `5346391cc60da7af6d98a4ed05e1495f66430a54`.
+- `git rev-parse origin/codex/r-bridge-grouped-dispersion`
+  -> `03fdda1cedd325188448ffe58b42f09acbf69e61`.
+- `git diff --shortstat origin/codex/r-bridge-grouped-dispersion..HEAD`
+  -> `69 files changed, 11405 insertions(+), 309 deletions(-)`.
+- `git diff --shortstat`
+  -> dirty working layer has `171 files changed, 32374 insertions(+), 21489 deletions(-)`.
+- `git status --short | rg '^\\?\\?' | wc -l`
+  -> `147` untracked paths.
+- `git diff --name-only origin/codex/r-bridge-grouped-dispersion..HEAD | awk 'BEGIN{FS="/"} {k=$1; if ($1=="docs" && $2=="dev-log") k="docs/dev-log"; else if ($1=="docs" && $2=="design") k="docs/design"; else if ($1=="tests") k="tests"; else if ($1=="vignettes") k="vignettes"; else if ($1=="man") k="man"; else if ($1=="R") k="R"; count[k]++} END{for (k in count) print count[k], k}' | sort -nr`
+  -> committed-ahead groups include `36 docs/dev-log`, `13 vignettes`,
+  `5 man`, `4 R`, `3 tests`, `2 docs/design`, plus `src`, `inst`,
+  `_pkgdown.yml`, `ROADMAP.md`, `NEWS.md`, and `NAMESPACE`.
+- `git diff --name-only | awk 'BEGIN{FS="/"} {k=$1; if ($1=="docs" && $2=="dev-log") k="docs/dev-log"; else if ($1=="docs" && $2=="design") k="docs/design"; else if ($1=="tests") k="tests"; else if ($1=="vignettes") k="vignettes"; else if ($1=="man") k="man"; else if ($1=="R") k="R"; count[k]++} END{for (k in count) print count[k], k}' | sort -nr`
+  -> dirty groups include `40 tests`, `35 man`, `31 R`, `30 vignettes`,
+  `17 docs/design`, `4 inst`, `4 docs/dev-log`, `4 data-raw`, plus
+  top-level rule/docs/config files.
+- `git diff --check`
+  -> clean before recording this split-decision slice.
+
+Agent input:
+
+- Hilbert / Shannon-style read-only audit recommended: checkpoint first, then
+  split. Do not push the current local tree into PR #489 as-is.
+
+Decision:
+
+- Do not land the current local tree as one PR.
+- Preserve/checkpoint first, then split by review lane.
+- Keep PR #489 as the Julia bridge admission vehicle only if unrelated
+  coevolution, Psi/API, article, generated-doc, and dashboard/dev-log bulk does
+  not get pushed into it.
+
+Recommended lanes:
+
+- Bridge admission: `R/julia-bridge.R`, bridge tests, S3/docs, capability
+  ledgers, and focused mission-control evidence.
+- Fixed multi-kernel / coevolution engine: `src/gllvmTMB.cpp`,
+  `R/kernel-helpers.R`, `R/fit-multi.R`, `R/extract-sigma.R`,
+  `tests/testthat/test-coevolution-two-kernel.R`, Design 65, NEWS, and Rd;
+  requires Gauss/Noether/TMB review.
+- `unique()` / ordinary `latent()` Psi migration: parser lifecycle,
+  default-Psi fold, `latent(..., residual = FALSE)`, `indep(common = TRUE)`,
+  augmented ordinary random-regression Psi, extractor wording, design docs,
+  generated Rd, and convention-change cascade evidence.
+- Public article/example cleanup: README, vignettes/articles, data-raw and
+  `inst/extdata` fixtures, pkgdown placement; must follow the API lane and use
+  article rendering evidence.
+- Lane-specific dev-log/dashboard artefacts only; avoid dumping all process
+  evidence into one feature PR.
+
+Still not claimed:
+
+- No push was made.
+- No branch split was performed in this slice.
+- No fresh 3-OS PR matrix has run on the current local tree.
+- Local validation is strong but applies to the mixed dirty tree, not pushed PR
+  #489.
+- No bridge completion, release readiness, CRAN readiness, public article
+  placement, or scientific coverage completion is claimed.
+
+## 2026-06-19 06:47 MDT -- bridge split preservation manifest
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Preserve the current mixed local state non-destructively and make the split
+  lanes explicit before any push or branch surgery.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits were reported.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Created local preservation branch:
+  `codex/preserve-bridge-split-20260619-0644` at
+  `5346391cc60da7af6d98a4ed05e1495f66430a54`.
+- Created external preservation snapshot:
+  `/tmp/gllvmtmb-bridge-split-preserve-20260619-0647/`.
+- Added split manifest:
+  `docs/dev-log/audits/2026-06-19-bridge-split-manifest.md`.
+
+Snapshot contents:
+
+- `tracked-dirty.diff` -> binary tracked-file diff, 3.9M.
+- `tracked-dirty.name-status` -> tracked dirty name/status list, 5.9K.
+- `untracked-files.txt` -> 149 paths.
+- `untracked-files.zlist` -> nul-delimited untracked path list.
+- `untracked-files.tgz` -> untracked path tarball, 145K.
+- `untracked-tar.stderr` -> empty.
+
+Commands:
+
+- `git branch codex/preserve-bridge-split-20260619-0644 HEAD && git rev-parse codex/preserve-bridge-split-20260619-0644`
+  -> `5346391cc60da7af6d98a4ed05e1495f66430a54`.
+- `mkdir -p /tmp/gllvmtmb-bridge-split-preserve-20260619-0647 && git diff --binary > /tmp/gllvmtmb-bridge-split-preserve-20260619-0647/tracked-dirty.diff && git diff --name-status > /tmp/gllvmtmb-bridge-split-preserve-20260619-0647/tracked-dirty.name-status && git ls-files --others --exclude-standard > /tmp/gllvmtmb-bridge-split-preserve-20260619-0647/untracked-files.txt && git ls-files --others --exclude-standard -z > /tmp/gllvmtmb-bridge-split-preserve-20260619-0647/untracked-files.zlist && tar --null -T /tmp/gllvmtmb-bridge-split-preserve-20260619-0647/untracked-files.zlist -czf /tmp/gllvmtmb-bridge-split-preserve-20260619-0647/untracked-files.tgz`
+  -> snapshot created; tar stderr empty.
+
+Split lanes recorded:
+
+- Bridge admission.
+- Fixed multi-kernel / coevolution engine.
+- `unique()` / ordinary `latent()` Psi migration.
+- Article/example/public placement.
+- Lane-specific evidence/dev-log/dashboard artefacts.
+
+Shannon verdict:
+
+- `WARN`: work can continue, but branch splitting should happen before any
+  push. The current branch is locally preserved and the dirty tree has an
+  external snapshot.
+
+Still not claimed:
+
+- No push.
+- No destructive branch surgery.
+- No staging.
+- No bridge completion, release readiness, CRAN readiness, public placement, or
+  scientific coverage completion.
+
+## 2026-06-19 (Claude / Ada) — Bridge split push -> PR #492, dashboard truth pass
+
+Autonomous overnight finish run (maintainer away; ultracode orchestration).
+Worked from repository state; hard guard held throughout: PR green != bridge
+complete != release ready != scientific coverage passed.
+
+Pre-edit lane check:
+- `gh pr list --state open` -> #492 OPEN (bridge split), #489 DRAFT (dirty branch).
+- `git log --all --oneline --since="6 hours ago"` -> only the known bridge/
+  coevolution/unique split commits; no competing agent edits.
+
+Bridge lane (maintainer authorized "push split + open fresh PR"):
+- Verified bridge split `/private/tmp/gllvmtmb-bridge-admission-split` @ c061ce2:
+  clean tree; 5 commits on origin/main 0567cd7; 33 bridge-scoped files;
+  NAMESPACE exports present (gllvm_julia_capabilities, gllvm_julia_gate_registry);
+  `git diff --check` clean.
+- Pushed `codex/bridge-admission-split-20260619` to origin.
+- Opened **PR #492** "feat(julia-bridge): clean bridge admission split
+  (JUL-01/JUL-01A, partial)" from the clean split; supersedes the bridge portion
+  of draft #489. CI: `recovery` pass, `ubuntu-latest (release)` pass, mergeable.
+  Routine PR CI is ubuntu-only by cost-discipline design (R-CMD-check.yaml
+  matrix); 3-OS runs only pre-release (workflow_dispatch full_matrix) or nightly
+  (full-check.yaml), so 3-OS is not yet evidence for this split. Merge HELD for
+  maintainer (high-risk code PR).
+
+Coevolution lane:
+- Re-ran post-rebase heavy gate in `/private/tmp/gllvmtmb-coevolution-engine-split`
+  @ ad88ecb: `GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = "kernel|coevolution",
+  reporter = "summary")` -> exit 0. Suites: coevolution-prototype,
+  coevolution-recovery, coevolution-two-kernel (300+), example-coevolution-kernel,
+  kernel-equivalence all green. Log /tmp/coev-heavy-gate-ad88ecb.log.
+
+Dashboard / mission-control truth pass (docs/dev-log/dashboard/):
+- status.json + sweep.json: added a "Bridge split executed" active-work entry and
+  a repo/truth card naming PR #492; reframed the old "Draft PR #489" card as the
+  superseded draft; changed "Next decision" value "preserved; split next" ->
+  "split executed"; cross-linked register CI-08 (13/15 cells below 94% gate,
+  236/3000 fits failed) and CI-10 (mixed-family d=1 0.820 / d=2 0.685 / d=3 0.550,
+  105/600 fits failed) into the Power-pilot card; advanced `updated` to
+  2026-06-19 19:18 MDT.
+- Version bump r37 -> r38 across version.txt AND index.html `const BUILD`
+  (both required, else the served board hot-reload-loops).
+- `python3 json.load` parses both files; `rsync -a docs/dev-log/dashboard/
+  /tmp/gllvm-dashboard/`; `diff -rq` source vs served identical; live ports
+  8770 and 8765 both HTTP 200; served version.txt = r38; status.json names
+  pull/492. No metrics counts changed; no covered/partial/blocked row promoted.
+
+Flagged for maintainer (NOT edited — fix target is itself a doc-authority call):
+- CLAUDE.md:120 cites `ROADMAP.md "Discussion Checkpoints"` as the authoritative
+  high-risk set, but `grep "Discussion Checkpoints" ROADMAP.md` returns 0. The
+  section was lost in a reset. Candidate canonical homes: ROADMAP's Article-Gate-
+  Matrix / Infrastructure-Gates, or CLAUDE.md's own "Merge authority" section.
+  Maintainer to choose the replacement target; CLAUDE.md left unedited.
+
+Not claimed: no merge of #492, no scientific promotion, no version bump of the
+package, no grammar/likelihood/family change, no mutation of GLLVM.jl / PR #101.
+
+## 2026-06-22 (Codex / Ada) — Mission-control attention-board reorganisation
+
+Maintainer request: make the local `gllvmTMB` mission-control dashboard easier
+to scan, closer to the `drmTMB` team dashboard at `http://127.0.0.1:8765/`.
+
+Pre-edit lane check:
+- `gh pr list --state open --json number,title,headRefName,isDraft,url` ->
+  only #533 (`codex/pre-fit-response-screen-20260622`, draft).
+- `git log --all --oneline --since="6 hours ago"` -> #533 commit plus recent
+  article-accessibility merges; no competing mission-control dashboard commit
+  found.
+
+Changed:
+- `docs/dev-log/dashboard/index.html`: added a top **Attention Board** with four
+  derived sections: Current Work, Serial Gates, CI And Issues, and Claim
+  Boundary.
+- `docs/dev-log/dashboard/index.html`: reused existing `status.json` /
+  `sweep.json` fields only; no status claim, metric count, register row, or PR
+  state was promoted.
+- `docs/dev-log/dashboard/version.txt`: bumped dashboard build marker to `r57`
+  to force local browser reload.
+
+Validation:
+- Compared `http://127.0.0.1:8765/` and `http://127.0.0.1:8770/` locally with
+  `curl -fsS`.
+- `python3` source smoke: `const BUILD = "r57"`, Attention Board mount point,
+  and `version.txt` all agree.
+- `sh tools/start-mission-control.sh --background` -> dashboard already
+  available; files synced to `/tmp/gllvm-dashboard`.
+- In-app browser render check at `http://127.0.0.1:8770/`: title
+  `GLLVM mission control`, 4 Attention Board sections, first heading
+  `Current Work`.
+- Browser console warning/error check: `[]`.
+
+Not run:
+- No R package tests, pkgdown, or `devtools::check()`; this was a static local
+  dashboard UI reorganisation only.
+
+## 2026-06-23 (Codex / Ada) — PR #539 merge plus mission-control truth refresh
+
+Maintainer request: merge the current clean truth-sync lane and keep going with
+the narrow mission-control / issue #340 refresh.
+
+Merge and coordination:
+- `gh pr merge 539 --repo itchyshin/gllvmTMB --merge --delete-branch
+  --match-head-commit 3257e71ec079bf6d1ce138a38a52bee2b2fc3f7f` -> exit 0.
+  PR #539 merged to `main` as merge commit `88b8fa85`.
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json
+  number,title,headRefName,isDraft,url,mergeStateStatus,statusCheckRollup` ->
+  `[]`.
+- `git log --all --oneline --since="6 hours ago" --decorate` -> recent public
+  history showed #537, #538, #539 merged and `power-pilot-results` at run-144
+  accumulation.
+
+Changed:
+- `docs/dev-log/dashboard/status.json`: replaced stale June 20 feed with June
+  23 source truth: `173 covered`, `22 partial`, `0 opt-in`, `7 blocked` over
+  `202` rows; named the five covered-but-caveated rows; kept `CI-08`, `CI-10`,
+  `DIA-14`, and `JUL-01` partial.
+- `docs/dev-log/dashboard/sweep.json`: refreshed active work, serial gates,
+  issue row, CI/PR row, and blockers around pilot-audit-before-DRAC.
+- `docs/dev-log/dashboard/index.html`: added **Capability Sweep Summary** table
+  rendering and bumped embedded dashboard build to `r58`.
+- `docs/dev-log/dashboard/version.txt`: bumped `r57` -> `r58`.
+- Issue #340 body updated from stale June 3 counts to the current June 23
+  status board and article links.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-06-23-mission-control-truth-refresh.md`.
+
+Validation:
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/tmp/status-json-ok`
+  and `python3 -m json.tool docs/dev-log/dashboard/sweep.json
+  >/tmp/sweep-json-ok` -> both parsed.
+- `gh issue view 340 --repo itchyshin/gllvmTMB --json body,updatedAt,url` ->
+  issue updated at `2026-06-23T17:12:13Z` and body begins with the June 23
+  register tally.
+- `sh tools/start-mission-control.sh --background` -> dashboard already
+  available; synced dashboard files to `/tmp/gllvm-dashboard` and mirrored the
+  disposable live output to `/private/tmp/gllvm-dashboard`.
+- `curl -fsS --max-time 4 http://127.0.0.1:8770/version.txt` -> `r58`.
+- `curl -fsS --max-time 4 http://127.0.0.1:8770/status.json` -> served
+  `2026-06-23 11:07 MDT`, metrics `173 / 22 / 0 / 7 / total 202`, and truth
+  cards `Validation register`, `Clean docs lane`, `Safe now`,
+  `Partial / cautious`, `Blocked`, `Power pilot`.
+- `curl -fsS --max-time 4 http://127.0.0.1:8770/sweep.json` -> served current
+  active rows `Mission-control refresh`, `Issue #340 refresh`, `Pilot audit`
+  and blockers `CI-08 / CI-10`, `Power pilot semantics`, `Dirty
+  mission-control checkout`.
+- In-app browser runtime DOM check -> title `GLLVM mission control`, updated
+  line `live - 2026-06-23 11:07 MDT`, progress `Capability board: 173 covered,
+  22 partial, 0 active, 7 blocked of 202 rows`, six collaborator-table rows,
+  and eight matrix rows.
+- `rg -n "172/22/0/7|201 rows|automatic removal|automatic deletion|guarantees
+  convergence|proves identifiability|selects variables|gllvmTMB_wide|meta_known_V|AI-REML"
+  docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json
+  docs/dev-log/dashboard/index.html` -> no hits.
+- `rg -n "173 / 22 / 0 / 7|173 covered|22 partial|7 blocked|202 rows|Capability
+  Sweep Summary|const BUILD = \"r58\"" docs/dev-log/dashboard/status.json
+  docs/dev-log/dashboard/sweep.json docs/dev-log/dashboard/index.html
+  docs/dev-log/dashboard/version.txt` -> found only refreshed status strings
+  and build marker.
+- `git diff --check -- docs/dev-log/dashboard/index.html
+  docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json
+  docs/dev-log/dashboard/version.txt docs/dev-log/check-log.md
+  docs/dev-log/after-task/2026-06-23-mission-control-truth-refresh.md` -> no
+  whitespace errors.
+
+Not run:
+- No R package tests, pkgdown, article renders, Totoro checks, DRAC checks,
+  SLURM jobs, or GPU checks. This was a dashboard / issue-status refresh only.
+
+## 2026-06-30 (Codex / Ada) -- LV post-merge mission-control refresh
+
+Maintainer request: keep parallelism efficient while finishing the LV arc, and
+fix Mission Control so the widget shows the current LV coverage state.
+
+Changed:
+- `docs/dev-log/dashboard/status.json`: refreshed the LV board after PR #581
+  merged to `main`, with metrics `17 covered`, `3 partial`, `0 ready`,
+  `0 active`, `4 blocked`, `24 total`; recorded that PR #581 is merged,
+  post-merge R-CMD-check `28476941515` passed, pkgdown `28477809749` passed,
+  and the public `extract_lv_effects` reference page is updated.
+- `docs/dev-log/dashboard/sweep.json`: added the same LV metrics to the sweep
+  overlay, kept the active work focused on PR #581 merged, mission-control
+  refresh, and GLLVM.jl phylo blocked/parked, and updated the @Ayumi-495 thread
+  pointer to the main-branch install comment.
+- `docs/dev-log/dashboard/index.html` and
+  `docs/dev-log/dashboard/version.txt`: bumped the local widget build to `r60`.
+- Posted the promised GitHub follow-up to @Ayumi-495 with the main install route:
+  https://github.com/Ayumi-495/urbanisation_map/issues/8#issuecomment-4848347523
+- Inspected GLLVM.jl PR #127 and local `/private/tmp/gllvmjl-phylo-xlv` state.
+  The PR remains draft/red at remote head `b87a522`; local Codex diagnostic
+  branch `7d6985d` contains the weak-cell closeout and is clean. Per
+  GLLVM.jl `AGENTS.md`, no push was made without explicit maintainer
+  instruction.
+- Posted a blocked-evidence comment on GLLVM.jl PR #127 without pushing or
+  closing the PR:
+  https://github.com/itchyshin/GLLVM.jl/pull/127#issuecomment-4848385172
+- Edited GLLVM.jl PR #127 title/body, without code push, to make the public PR
+  state explicit:
+  `[BLOCKED] phylo Model A X_lv interval gate -- parked pending redesign`.
+- Closed GLLVM.jl PR #127 as parked blocked evidence, without code push:
+  `https://github.com/itchyshin/GLLVM.jl/pull/127#issuecomment-4848418863`.
+
+Validation:
+- `jq empty docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json`
+  -> parsed successfully.
+- `git diff --check -- docs/dev-log/dashboard/index.html
+  docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json
+  docs/dev-log/dashboard/version.txt` -> no whitespace errors.
+- `rg -n 'PR #539|Issue #340|2026-06-23|514/640|206/320|still running|ready #581|1 ready|PR #581 review queue|not yet main|open, ready|4847853283|can be posted|r59|const BUILD = "r59"' docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/dashboard/index.html docs/dev-log/dashboard/version.txt`
+  -> no hits.
+- `sh tools/start-mission-control.sh --background` -> dashboard already
+  available; synced dashboard files to `/tmp/gllvm-dashboard` and mirrored the
+  disposable live output to `/private/tmp/gllvm-dashboard`.
+- `curl -fsS --max-time 4 http://127.0.0.1:8770/version.txt` -> `r60`.
+- `curl -fsS --max-time 4 http://127.0.0.1:8770/sweep.json | jq '.updated, .metrics, .active_work[:3], .ci_runs, .blockers'`
+  -> served `2026-06-30 16:12 MDT`, metrics `17 / 3 / 0 / 0 / 4 / total 24`,
+  post-merge R-CMD-check/pkgdown rows, and the phylo no-more-bootstrap-repeat
+  blocker.
+- In-app browser DOM check -> URL `http://127.0.0.1:8770/`, updated line
+  `live - 2026-06-30 16:12 MDT`, progress
+  `Capability board: 17 covered, 3 partial, 0 ready, 0 active, 4 blocked of 24 rows`,
+  PR #581 merged visible, @Ayumi-495 main-branch comment link visible, and no
+  stale ready/June-23 strings.
+- `gh issue view 8 --repo Ayumi-495/urbanisation_map --comments --json comments --jq '.comments[-1] | {author:.author.login,url:.url,body:.body}'`
+  -> latest comment is by `itchyshin` at issuecomment `4848347523` and gives
+  `remotes::install_github("itchyshin/gllvmTMB")`.
+- `gh pr view 127 --repo itchyshin/GLLVM.jl --json number,state,title,headRefName,headRefOid,isDraft,mergeStateStatus,statusCheckRollup,url,updatedAt`
+  -> PR #127 is open draft, remote head `b87a522`, merge state `UNSTABLE`, CI
+  red from 2026-06-28.
+- `gh pr comment 127 --repo itchyshin/GLLVM.jl --body-file -`
+  -> posted blocked-evidence closeout comment
+  `https://github.com/itchyshin/GLLVM.jl/pull/127#issuecomment-4848385172`.
+- `gh pr edit 127 --repo itchyshin/GLLVM.jl --title '[BLOCKED] phylo Model A X_lv interval gate -- parked pending redesign' --body-file -`
+  -> updated PR #127 metadata at `2026-06-30T22:24:11Z`; no code push.
+- `gh pr close 127 --repo itchyshin/GLLVM.jl --comment "..."`
+  -> closed PR #127 at `2026-06-30T22:27:16Z`; parking comment
+  `https://github.com/itchyshin/GLLVM.jl/pull/127#issuecomment-4848418863`.
+- `git -C /private/tmp/gllvmjl-phylo-xlv status --short --branch` -> clean
+  `codex/phylo-xlv-drac-launcher-20260628`.
+- `rg -n '591/720|671/800|0\.821|0\.839|bootstrap_basic|direct.*slope|task 8|0\.536|0\.533' /private/tmp/gllvmjl-phylo-xlv/docs/dev-log/check-log.md /private/tmp/gllvmjl-phylo-xlv/docs/design/73-predictor-informed-latent-scores.md /private/tmp/gllvmjl-phylo-xlv/docs/src/model.md /private/tmp/gllvmjl-phylo-xlv/docs/dev-log/after-task/2026-06-30-phylo-xlv-weak-cell-mechanism-diagnosis.md`
+  -> found the blocked weak-cell evidence and direct-slope diagnosis.
+
+Not run:
+- No R package tests, pkgdown checks, article renders, Totoro jobs, DRAC jobs,
+  SLURM submissions, Julia `Pkg.test()`, or GLLVM.jl code pushes.
+  This was a mission-control / public-thread / coordination refresh after the
+  already merged #581 LV extractor work, plus parking the public GLLVM.jl PR
+  around the blocked interval gate.
+
 ## 2026-07-01 (Codex / Ada) -- LV structural dependency truth lock
 
 Maintainer request: finish the LV structural dependency slice as a truth-lock
@@ -23924,3 +31041,229 @@ curl -s http://127.0.0.1:8770/version.txt
 In-app browser preview at `http://127.0.0.1:8770/` shows the final closeout
 row, `B_eta_realized Gate 0-3`, no source-specific grammar exposure, and
 `0 active`.
+
+## 2026-07-03 - Spatial derived-profile gap for Ayumi functional phylogeography
+
+Read-only Fisher / Gauss / Rose audit of the spatial profile surface needed
+for the Ayumi site-by-trait functional phylogeography reanalysis.
+
+Finding: `profile likelihood` support exists in the package, but the current
+spatial-derived path is not the total-covariance target needed for final
+Ayumi spatial correlations/commonality. The current intercept-only
+`spatial_latent()` engine switches from the per-trait `omega_spde` path to
+the low-rank `omega_spde_lv` path and maps off `omega_spde`; the extractor
+and profile-correlation path therefore use `Lambda_spde Lambda_spde'` only.
+
+Files updated:
+
+- `docs/dev-log/audits/2026-07-03-spatial-derived-profile-gap.md`
+- `docs/design/35-validation-debt-register.md`
+- `vignettes/articles/functional-biogeography.Rmd`
+- `vignettes/articles/profile-likelihood-ci.Rmd`
+- `docs/dev-log/check-log.md`
+
+Evidence inspected:
+
+```sh
+nl -ba R/extract-sigma.R | sed -n '1188,1210p'
+nl -ba R/profile-derived.R | sed -n '630,705p'
+nl -ba R/fit-multi.R | sed -n '880,905p;3378,3395p;3778,3785p'
+nl -ba src/gllvmTMB.cpp | sed -n '1354,1412p'
+nl -ba docs/design/35-validation-debt-register.md | sed -n '176,185p;340,346p'
+```
+
+Pre-edit lane check:
+
+```sh
+gh pr list --state open --limit 20
+git log --all --oneline --since='6 hours ago' --decorate
+```
+
+Both returned no entries.
+
+Claim boundary recorded: `spatial_latent()` low-rank covariance is available;
+`spatial_latent(..., unique = TRUE)` total spatial covariance and spatial
+total-covariance derived profile CIs remain partial. Ayumi spatial
+correlation/commonality figures must stay exploratory until the total
+spatial covariance path lands and is tested.
+
+Follow-up Fisher / Gauss subagent audits agreed with the boundary. Gauss
+also flagged that the current parser / fit setup decides `is_spatial_latent`
+from the first `spde` term, so paired `spatial_latent + spatial_unique`
+syntax is not yet represented as a robust two-component spatial
+decomposition. A stale-wording scan found and corrected the
+`functional-biogeography` article gate that still called SPA-02..SPA-04
+`covered`.
+
+Additional checks:
+
+```sh
+rg -n "SPA-02.*covered|CI-07.*covered|spatial_latent.*spatial_unique.*covered|rho:spatial.*final|spatial total-covariance.*covered|spatial commonality.*final|spatial.*bootstrap.*correlation|bootstrap_Sigma.*spde" docs/design README.md NEWS.md vignettes R tests docs/dev-log/audits -S
+```
+
+Verdict: current authoritative register rows are partial for SPA-02 and
+CI-07; two current article gates had stale broad `covered` wording and
+were corrected (`functional-biogeography`, `profile-likelihood-ci`).
+Remaining matches were historical audit notes or unrelated covered profile
+rows.
+
+## 2026-07-03 - spatial_latent(unique = TRUE) total SPDE covariance fold
+
+Implemented the first package-capability repair needed before continuing the
+Ayumi functional phylogeography reanalysis.
+
+Scope:
+
+- `spatial_latent(..., unique = TRUE)` now means
+  `Sigma_spde = Lambda_spde Lambda_spde' + diag(Psi_spde)`.
+- `spatial_latent(..., unique = FALSE)` remains the old low-rank-only path.
+- Legacy `spatial_latent(...) + spatial_unique(...)` remains compatibility
+  syntax for the same unique fold.
+- The spatial derived-correlation profile target now adds the SPDE unique
+  diagonal as `exp(-2 * log_tau_spde)` when the fold is active.
+
+Implementation files:
+
+- `R/brms-sugar.R`: added the `unique` argument and parser marker
+  `.spatial_unique_diag`.
+- `R/fit-multi.R`: detects spatial-latent unique folds robustly across SPDE
+  terms, keeps both `omega_spde_lv` and `omega_spde` active, and stores
+  `fit$use$spatial_latent_unique`.
+- `src/gllvmTMB.cpp`: keeps both shared and per-trait SPDE random-effect
+  blocks active for `spde_lv_unique == 1`, reports `Sigma_spde_shared`,
+  `sd_spde_unique`, `Psi_spde_unique`, and total `Sigma_spde`.
+- `R/extract-sigma.R`: `level = "spatial", part = "total"` now uses the
+  total spatial covariance by default when the fold is active.
+- `R/profile-derived.R`: `profile_ci_correlation(tier = "spatial")` now
+  targets the same total covariance when `spatial_latent_unique` is true.
+- `R/methods-gllvmTMB.R`: parameter summaries report shared, unique, and total
+  spatial SDs for the folded form.
+- `tests/testthat/test-canonical-keywords.R`, `tests/testthat/test-keyword-grid.R`:
+  parser, random-vector, report, extractor, and non-degenerate rank-1 total
+  correlation regression coverage.
+
+Documentation / register files:
+
+- `man/spatial_latent.Rd`, `man/spatial.Rd`
+- `docs/design/01-formula-grammar.md`
+- `docs/design/03-likelihoods.md`
+- `docs/design/04-random-effects.md`
+- `docs/design/06-extractors-contract.md`
+- `docs/design/35-validation-debt-register.md`
+
+Commands run:
+
+```sh
+Rscript --vanilla -e 'pkgbuild::compile_dll()'
+```
+
+Outcome: passed. C++ compiled with only upstream Eigen unused-variable warnings.
+
+```sh
+Rscript --vanilla - <<'RS'
+pkgload::load_all('.', quiet = TRUE)
+print(args(spatial_latent))
+set.seed(42)
+sim <- simulate_site_trait(n_sites = 30, n_species = 1, n_traits = 3,
+                           mean_species_per_site = 1,
+                           spatial_range = 0.3,
+                           sigma2_spa = rep(0.4, 3), seed = 42)
+df <- sim$data
+mesh <- make_mesh(df, c('lon','lat'), cutoff = 0.1)
+fit <- suppressMessages(suppressWarnings(gllvmTMB(
+  value ~ 0 + trait +
+    spatial_latent(0 + trait | coords, d = 1, unique = TRUE),
+  data = df, mesh = mesh, silent = TRUE,
+  control = list(eval.max = 200, iter.max = 200)
+)))
+print(fit$use[c('spde','spatial_latent','spatial_latent_unique')])
+print(fit$random)
+print(names(fit$report)[grepl('spde|Sigma', names(fit$report))])
+RS
+```
+
+Outcome: source-loaded parser sees `unique`; both `omega_spde` and
+`omega_spde_lv` are present; reports include `sd_spde_unique`,
+`Psi_spde_unique`, `Sigma_spde_shared`, and total `Sigma_spde`.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|keyword-grid", reporter = "summary")'
+```
+
+Outcome after expectation cleanup: passed. Three `spatial_dep` redundancy tests
+skipped because `INLA` is not installed.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "stage4-spde|spatial-orientation|spatial-pair-binary|spatial-depindep-binary|profile-targets|confint-derived", reporter = "summary")'
+```
+
+Outcome: passed for non-heavy tests; profile/derived and binary spatial heavy
+cells skipped under the normal heavy-test gate.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Outcome: regenerated `man/spatial_latent.Rd` and `man/spatial.Rd`; emitted
+pre-existing unresolved-link warnings in unrelated documentation topics
+(`load_mixed_family_fixture`, `fit_mixed_family_fixture`,
+`parse_multi_formula`, and accidental `[0, 1]` links).
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|keyword-grid|stage4-spde|spatial-orientation", reporter = "summary")'
+```
+
+Outcome: passed; same three `INLA` skips.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|extractors-extra|m1-3-extract-sigma|profile-derived|profile-derived-curves|m1-4-extract-correlations", reporter = "summary")'
+```
+
+Outcome: passed for non-heavy tests; heavy extractor/profile cells skipped as
+expected.
+
+```sh
+git diff --check -- R/brms-sugar.R R/fit-multi.R src/gllvmTMB.cpp R/extract-sigma.R R/profile-derived.R R/methods-gllvmTMB.R tests/testthat/test-canonical-keywords.R tests/testthat/test-keyword-grid.R man/spatial_latent.Rd man/spatial.Rd docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/04-random-effects.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md
+```
+
+Outcome: passed with no output.
+
+Stale-wording scan:
+
+```sh
+rg -n "spatial_latent.*unique = TRUE.*covered|SPA-02.*covered|spatial total-covariance.*covered|spatial.*total.*profile.*covered|Lambda_spde Lambda_spde' only|profile.*spatial.*low-rank only|ix_diag <- integer\\(0\\).*spde|use_diag <- FALSE.*spatial" R docs/design vignettes tests man -S
+```
+
+Outcome: only intended `partial / Gaussian total-covariance fold covered`
+language remains. No broad `covered` claim for spatial total profile intervals.
+
+Known limitation:
+
+- This is not yet a full publication-grade profile-interval claim for spatial
+  total covariance. The fast Gaussian fold/extractor tests are green, but the
+  constrained-refit profile inversion needs a heavy gate before SPA-02 / CI-07
+  can move from `partial` to `covered`.
+
+Profile-curve addendum:
+
+- `R/profile-derived-curves.R`: `profile_correlation(tier = "spatial")` now
+  rebuilds the same total spatial covariance target as
+  `profile_ci_correlation(tier = "spatial")`; when
+  `spatial_latent(unique = TRUE)` is active it adds
+  `exp(-2 * log_tau_spde)` to the diagonal.
+- `tests/testthat/test-keyword-grid.R`: the spatial-latent-unique fixture now
+  checks that the profile curve returns to the fitted objective when evaluated
+  at the total spatial correlation, guarding against silently reverting to
+  low-rank-only spatial correlations.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "keyword-grid", reporter = "summary")'
+```
+
+Outcome: passed.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "profile-derived-curves|confint-derived", reporter = "summary")'
+```
+
+Outcome: clean heavy-gated skips under the normal test environment.

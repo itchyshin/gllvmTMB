@@ -14,7 +14,7 @@ make_rrB_fit <- function(seed = 1, d = 2, n_traits = 3) {
     Lambda_B = Lam, psi_B = rep(0.3, n_traits), seed = seed
   )
   fmla <- stats::as.formula(sprintf(
-    "value ~ 0 + trait + latent(0 + trait | site, d = %d) + unique(0 + trait | site)",
+    "value ~ 0 + trait + latent(0 + trait | site, d = %d)",
     d
   ))
   suppressMessages(suppressWarnings(gllvmTMB(fmla, data = sim$data)))
@@ -70,8 +70,8 @@ test_that("ordiplot(): rotate = 'varimax' returns rotated scores", {
   pdf(NULL); on.exit(dev.off(), add = TRUE)
   out <- ordiplot(fit, level = "unit", rotate = "varimax")
   ## Should match getLV / getLoadings under varimax
-  expect_equal(out$scores, getLV(fit, "B", "varimax"))
-  expect_equal(out$loadings, getLoadings(fit, "B", "varimax"))
+  expect_equal(out$scores, getLV(fit, "unit", "varimax"))
+  expect_equal(out$loadings, getLoadings(fit, "unit", "varimax"))
 })
 
 # =================== VP =================================================
@@ -96,7 +96,7 @@ test_that("VP(): only active components are columns", {
     psi_B = c(0.3, 0.3, 0.3), psi_W = c(0.3, 0.3, 0.3), seed = 7
   )
   fit <- gllvmTMB(
-    value ~ 0 + trait + unique(0 + trait | site) + unique(0 + trait | site_species),
+    value ~ 0 + trait + indep(0 + trait | site) + indep(0 + trait | site_species),
     data = sim$data
   )
   M <- VP(fit)

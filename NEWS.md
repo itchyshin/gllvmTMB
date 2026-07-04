@@ -3,6 +3,18 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Dead-code and validator cleanup (2026-07-03)
+
+* Fixed a silently dead internal invariant check: `profile_targets()`
+  now actually enforces that derived targets are never `profile_ready`
+  (the guard used `isTRUE()` on a vector, which is always `FALSE`) and
+  its `ready_only = TRUE` filter drops `NA` rows cleanly (#618, #675).
+* Removed dead code with no callers: the unused `R/parsing.R`
+  helpers (#701), the never-wired `gll_ordered_probability_matrix()`
+  cumulative-logit helper (#700), an empty `nbinom2()` variance stub
+  (#671), and a no-op inner `withCallingHandlers()` error handler in
+  the Sigma bootstrap refit (#669).
+
 ## `extract_lv_effects()` defaults to axis effects (2026-06-30)
 
 * `extract_lv_effects()` now defaults to `type = "axis_effect"` so the first table is the axis / CLV coefficient `alpha`, matching the usual GLLVM constrained-ordination interpretation. Native TMB fits with `se = TRUE` and a positive-definite `sdreport()` now return `std.error`, `lower`, and `upper` for those alpha rows from the fixed-parameter `alpha_lv_B` block. `type = "trait_effect"` remains available for the induced trait-scale slope surface `B_lv = Lambda alpha^T` and now also includes Wald `lower` / `upper` columns when `ADREPORT(B_lv_unit)` SEs are available. These intervals are Wald summaries conditional on the fitted axis/loading convention; coverage calibration and source-specific LV rows remain gated.

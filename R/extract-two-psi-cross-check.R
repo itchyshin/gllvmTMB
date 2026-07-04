@@ -213,9 +213,10 @@
     ))
     if (!is.null(ww$Sigma)) Sigma_non <- ww$Sigma
   }
-  if (is.null(Sigma_non)) {
-    Sigma_non <- matrix(0, T_n, T_n, dimnames = list(trait_names, trait_names))
-  }
+  ## No non-phylo tier in the joint model: leave Sigma_non NULL so the
+  ## cross-check skips that component (#609). Fabricating a zero here made the
+  ## baseline -- which always appends a non-phylo term -- look like a ~100%
+  ## disagreement and spuriously flagged phylo-only two-psi fits.
   list(Sigma_phy = Sigma_phy, Sigma_non = Sigma_non, trait_names = trait_names)
 }
 
@@ -423,8 +424,11 @@
 #'     `Sigma_non`, columns `rmse` (Frobenius RMSE between joint and
 #'     dep), `dep_mag` (Frobenius magnitude of the dep estimate),
 #'     `rel_disagreement` (`rmse / dep_mag`), and `flag`
-#'     (`rel_disagreement > threshold`).}
-#'   \item{`flag`}{Logical: `TRUE` if any component is flagged.}
+#'     (`rel_disagreement > threshold`, or `NA` when the alt refit
+#'     failed so the component could not be tested).}
+#'   \item{`flag`}{Logical: `TRUE` if any component is flagged, `FALSE`
+#'     if all tested components agreed, `NA` if nothing could be tested
+#'     (distinguishes agreement from a failed refit).}
 #'   \item{`threshold`}{The threshold used.}
 #'   \item{`alt_fit`}{The refit `gllvmTMB_multi` object (or `NULL` on
 #'     failure), retained so users can inspect convergence and pull
@@ -510,7 +514,7 @@ compare_dep_vs_two_psi <- function(
     rmse_phy <- NA_real_
     mag_phy <- NA_real_
   }
-  if (!is.null(alt$Sigma_non)) {
+  if (!is.null(alt$Sigma_non) && !is.null(joint$Sigma_non)) {
     nm <- intersect(rownames(alt$Sigma_non), rownames(joint$Sigma_non))
     A <- joint$Sigma_non[nm, nm, drop = FALSE]
     B <- alt$Sigma_non[nm, nm, drop = FALSE]
@@ -531,14 +535,24 @@ compare_dep_vs_two_psi <- function(
     ),
     stringsAsFactors = FALSE
   )
-  agreement$flag <- !is.na(agreement$rel_disagreement) &
+  ## NA (not FALSE) when a component could not be tested (the alt refit
+  ## failed, so rel_disagreement is NA): FALSE must mean "tested and
+  ## agreed", never "refit failed".
+  agreement$flag <- ifelse(
+    is.na(agreement$rel_disagreement),
+    NA,
     agreement$rel_disagreement > threshold
+  )
 
   list(
     joint = joint,
     dep = alt,
     agreement = agreement,
-    flag = any(agreement$flag, na.rm = TRUE),
+    flag = if (all(is.na(agreement$flag))) {
+      NA
+    } else {
+      any(agreement$flag, na.rm = TRUE)
+    },
     threshold = threshold,
     alt_fit = fit_alt
   )
@@ -615,7 +629,14 @@ compare_indep_vs_two_psi <- function(
 
   joint_full <- .joint_two_psi_sigmas(fit_two_psi)
   joint_diag_phy <- .diag_named(joint_full$Sigma_phy)
-  joint_diag_non <- .diag_named(joint_full$Sigma_non)
+  ## Sigma_non is NULL for a phylo-only two-psi fit (#609); keep it NULL so
+  ## the non-phylo component is skipped rather than compared against a
+  ## fabricated zero.
+  joint_diag_non <- if (!is.null(joint_full$Sigma_non)) {
+    .diag_named(joint_full$Sigma_non)
+  } else {
+    NULL
+  }
 
   fit_alt <- .refit_alt(fit_two_psi, kind = "indep", inputs = inputs)
   alt <- .alt_sigmas(fit_alt)
@@ -639,7 +660,7 @@ compare_indep_vs_two_psi <- function(
     rmse_phy <- NA_real_
     mag_phy <- NA_real_
   }
-  if (!is.null(alt_diag_non)) {
+  if (!is.null(alt_diag_non) && !is.null(joint_diag_non)) {
     nm <- intersect(names(alt_diag_non), names(joint_diag_non))
     rmse_non <- sqrt(mean((joint_diag_non[nm] - alt_diag_non[nm])^2))
     mag_non <- sqrt(mean(alt_diag_non[nm]^2))
@@ -658,8 +679,13 @@ compare_indep_vs_two_psi <- function(
     ),
     stringsAsFactors = FALSE
   )
-  agreement$flag <- !is.na(agreement$rel_disagreement) &
+  ## NA (not FALSE) when a component could not be tested (failed alt refit):
+  ## FALSE must mean "tested and agreed", never "refit failed".
+  agreement$flag <- ifelse(
+    is.na(agreement$rel_disagreement),
+    NA,
     agreement$rel_disagreement > threshold
+  )
 
   list(
     joint = list(
@@ -668,7 +694,11 @@ compare_indep_vs_two_psi <- function(
     ),
     indep = list(Sigma_phy_diag = alt_diag_phy, Sigma_non_diag = alt_diag_non),
     agreement = agreement,
-    flag = any(agreement$flag, na.rm = TRUE),
+    flag = if (all(is.na(agreement$flag))) {
+      NA
+    } else {
+      any(agreement$flag, na.rm = TRUE)
+    },
     threshold = threshold,
     alt_fit = fit_alt
   )

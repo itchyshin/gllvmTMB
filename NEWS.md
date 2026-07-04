@@ -3,6 +3,22 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Remaining clean-file robustness and correctness fixes (2026-07-04)
+
+* A batch of twin code-review fixes in independent modules: the
+  anisotropy plot no longer duplicates every ellipse via vestigial
+  `maj1`/`min1` columns (#602); `loading_profile()` refits keep the
+  fit's phylo/spatial structure and the other tier's `lambda_constraint`,
+  and default to `grid_extent = 6` to match `loading_ci()` (#594, #613,
+  #666, #699); `simulate_site_trait()` errors when `sigma2_phy` is given
+  without `Cphy` (#655); `gllvmTMB_wide()` validates the latent rank `d`
+  (#637); `suggest_lambda_constraint()` (#619), the two-Psi cross-check
+  (#609, #633), boundary-diagnostic (#584) and Laplace-consistency (#583)
+  extractors, the mixed-family coverage-study refit (#585), the
+  formula-environment / positional-argument parser paths (#688, #649),
+  the delta-family and Beta warm-starts (#591, #592), and the correlation
+  covariance-table fill clamp (#650) all gained guards or corrections.
+
 ## Meta-analysis and pedigree helper bug fixes (2026-07-04)
 
 * `block_V()` now rejects within-study correlations that would make a

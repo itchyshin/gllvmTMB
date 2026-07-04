@@ -514,7 +514,12 @@
   cells$.trait_y <- factor(cells$.row_trait, levels = rev(trait_levels))
   cells$.x_num <- match(cells$.col_trait, trait_levels)
   cells$.y_num <- match(cells$.row_trait, rev(trait_levels))
-  cells$.fill_estimate <- ifelse(cells$.diagonal, NA_real_, cells$.estimate)
+  ## Clamp to the scale's [-1, 1] limits (like plot_Sigma_heatmap) so a
+  ## correlation of e.g. 1.0000002 from a rounding/cov2cor artifact renders as
+  ## the extreme colour, not the pale-grey `na.value` used for missing cells (#650).
+  cells$.fill_estimate <- ifelse(
+    cells$.diagonal, NA_real_, pmax(pmin(cells$.estimate, 1), -1)
+  )
   cell_label_type <- if (identical(label_type, "auto")) {
     if (identical(matrix_layout, "estimate_ci")) {
       ifelse(cells$.triangle == "lower", "ci", "estimate")
@@ -633,7 +638,7 @@
       .facet = rows$.facet[i],
       .x = x0 + a * cos(theta) * cos(phi) - b * sin(theta) * sin(phi),
       .y = y0 + a * cos(theta) * sin(phi) + b * sin(theta) * cos(phi),
-      .estimate = rows$.estimate[i],
+      .estimate = rho,  # already clamped to [-1, 1]; used for the fill scale (#650)
       .cell_border = rows$.cell_border[i],
       stringsAsFactors = FALSE
     )

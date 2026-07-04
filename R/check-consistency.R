@@ -151,6 +151,7 @@ gllvmTMB_check_consistency <- function(
   ## random effects). The warning is often fired during summary()
   ## rather than during the call itself; capture both.
   raw <- NULL
+  smry <- NULL
   cap <- character(0)
   withCallingHandlers(
     {
@@ -159,11 +160,11 @@ gllvmTMB_check_consistency <- function(
         n = n_sim,
         estimate = isTRUE(estimate)
       )
-      ## Force-call summary() to trigger any singular-matrix warnings
-      ## (TMB's summary path is where the information-matrix-inversion
-      ## actually runs for the marginal p-value). The output is
-      ## discarded; we just want the warning channel.
-      invisible(tryCatch(summary(raw), error = function(e) NULL))
+      ## summary() is where TMB actually computes the p-values and the
+      ## per-parameter bias (and where the information-matrix inversion
+      ## runs); the raw object does not carry them. Capture the summary
+      ## rather than only triggering it for its warning channel.
+      smry <- tryCatch(summary(raw), error = function(e) NULL)
     },
     warning = function(w) {
       cap <<- c(cap, conditionMessage(w))
@@ -175,15 +176,15 @@ gllvmTMB_check_consistency <- function(
   ## or zero-length p-value entries (TMB returns NA when the
   ## information matrix is singular, but on some fixtures even the
   ## NA isn't populated and the slot is empty).
-  marginal_p <- raw$marginal$p.value
+  marginal_p <- smry$marginal$p.value
   if (is.null(marginal_p) || length(marginal_p) == 0L) {
     marginal_p <- NA_real_
   }
-  marginal_b <- raw$marginal$bias
+  marginal_b <- smry$marginal$bias
   if (is.null(marginal_b)) {
     marginal_b <- numeric(0L)
   }
-  joint_p <- if (isTRUE(estimate)) raw$joint$p.value else NA_real_
+  joint_p <- if (isTRUE(estimate)) smry$joint$p.value else NA_real_
   if (is.null(joint_p) || length(joint_p) == 0L) {
     joint_p <- NA_real_
   }

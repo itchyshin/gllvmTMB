@@ -1035,7 +1035,7 @@ plot.gllvmTMB_multi <- function(
 
   ## Order by repeatability descending if available, else by name
   if (!is.null(rep)) {
-    trait_order <- names(sort(rep, decreasing = TRUE))
+    trait_order <- names(sort(rep, decreasing = TRUE, na.last = TRUE))
   } else {
     trait_order <- tn
   }
@@ -1655,6 +1655,7 @@ plot.gllvmTMB_multi <- function(
     axis_pairs <- utils::combn(axes, 2L)
     selected_scores <- Sc[, axes, drop = FALSE]
     span <- max(abs(selected_scores), na.rm = TRUE)
+    if (!is.finite(span) || span <= 0) span <- 1
     loading_max <- max(abs(L[, axes, drop = FALSE]), 1e-9)
     sc <- 0.7 * span / loading_max
 
@@ -1769,6 +1770,7 @@ plot.gllvmTMB_multi <- function(
   )
   ## Scale loadings to the score range so arrows are visible alongside points.
   span <- max(abs(c(dat_s$x, dat_s$y)), na.rm = TRUE)
+  if (!is.finite(span) || span <= 0) span <- 1
   loading_max <- max(abs(L[, c(a1, a2)]), 1e-9)
   sc <- 0.7 * span / loading_max
   dat_l <- data.frame(

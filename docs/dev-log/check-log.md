@@ -30,6 +30,29 @@ rg patterns used for the dead-code confirmation:
 `parse_formula|make_indices|add_model_index|barnames`,
 `gll_ordered_probability_matrix` (no callers outside their own defs).
 
+## 2026-07-03 -- Plotting robustness guards (twin-review batch 1)
+
+Branch: `fix/robustness-guards-plotting` (cut from `origin/main` to
+stay isolated from the in-flight `codex/r-bridge-grouped-dispersion`
+branch; the touched plotting files are byte-identical to `origin/main`).
+
+Scope: robustness guards on plotting helpers for the twin code-review
+issues #651/#692 (rotated-loadings all-NA trait), #667 (per-facet
+value-label threshold), #691 (`null_region` validation), #689/#690
+(NA-safe repeatability ordering and ordination arrow scaling). No
+likelihood, family, grammar, or C++ change. Files: `R/plot-rotated-loadings.R`,
+`R/plot-loadings-confidence-eye.R`, `R/plot-gllvmTMB.R`, new test
+`tests/testthat/test-plot-robustness-guards.R`.
+
+Checks (macOS, R 4.6.0, `pkgload::load_all`):
+
+```r
+testthat::test_file("tests/testthat/test-plot-robustness-guards.R")  # 7 pass
+testthat::test_file("tests/testthat/test-rotate-compare-loadings.R") # 84 pass
+testthat::test_file("tests/testthat/test-plot-gllvmTMB.R")           # all pass
+testthat::test_file("tests/testthat/test-plot-visual-snapshots.R")   # 11 skip (vdiffr absent)
+```
+
 ## 2026-05-10 -- drmTMB-parity match exposes unstated tidyselect
 
 Scope:

@@ -4,6 +4,60 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-04 06:34 MDT -- Julia bridge live drift gate registration
+
+Branch: `codex/r-bridge-grouped-dispersion`; local checkpoint for cloud-work
+readiness. No push or PR.
+
+Guard: live R-vs-GLLVM.jl capability drift must be fully registered, and stale
+57-row branch wording must not be treated as a parity claim.
+
+Implemented:
+
+- Added `GJL-GATE-POSTFIT-SIMULATE-DRIFT` for the rows where R retained
+  simulation payloads remain broader than native GLLVM.jl post-fit simulation.
+- Tightened the focused live-drift expectation to exactly 9 registered rows
+  and zero unregistered rows against the current GLLVM.jl seven-family bridge
+  surface.
+- Regenerated `man/gllvm_julia_capabilities.Rd` after roxygen wording sync.
+- Refreshed Mission Control to show the current 9-row registered-drift cleanup
+  and no active compute.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'parse("R/julia-bridge.R"); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+```
+
+Outcome: passed with 350 assertions, 0 failures, and 14 live-Julia skips.
+
+```sh
+GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); gllvmTMB:::gllvm_julia_setup(); engine_caps <- JuliaCall::julia_eval("GLLVM.bridge_capabilities()"); drift <- gllvmTMB:::.gllvm_julia_capability_drift(julia_caps = engine_caps); print(drift[, c("family", "capability", "direction", "status", "gate_id")], row.names = FALSE); cat("n=", nrow(drift), " unregistered=", sum(drift$status == "unregistered"), "\n")'
+```
+
+Outcome: 9 live drift rows, all gated, and 0 unregistered rows.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Outcome: regenerated `man/gllvm_julia_capabilities.Rd`; emitted existing
+unresolved-link warnings in unrelated roxygen topics.
+
+Still not claimed:
+
+- No R/Julia parity completion or v1.0 completion.
+- No source-specific `lv = ~ env` support.
+- No mixed-family vector/CI support.
+- No `unique=` Julia parity.
+- No active compute, push, merge, or PR change.
+
 ## 2026-07-04 06:24 MDT -- Julia bridge capability checkpoint cleanup
 
 Branch: `codex/r-bridge-grouped-dispersion`; local checkpoint for cloud-work

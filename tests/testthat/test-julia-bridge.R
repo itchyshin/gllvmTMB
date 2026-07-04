@@ -458,6 +458,7 @@ test_that("Julia bridge gate registry names every primary R admission stop", {
       "GJL-GATE-PROB-CLASS-NONORDINAL",
       "GJL-GATE-ORDINAL-RESIDUAL",
       "GJL-GATE-NEWDATA-SIMULATE",
+      "GJL-GATE-POSTFIT-SIMULATE-DRIFT",
       "GJL-GATE-UNCONDITIONAL-SIMULATE",
       "GJL-GATE-ORDINAL-SIMULATE",
       "GJL-GATE-NO-CI-PAYLOAD",
@@ -1852,10 +1853,49 @@ test_that("live GLLVM.jl bridge capabilities drift only through registered gates
   gllvm_julia_setup()
   engine_caps <- JuliaCall::julia_eval("GLLVM.bridge_capabilities()")
   drift <- .gllvm_julia_capability_drift(julia_caps = engine_caps)
-  expect_equal(drift$status, "gated")
-  expect_equal(drift$family, "binomial")
-  expect_equal(drift$capability, "cbind_binomial")
-  expect_equal(drift$gate_id, "GJL-GATE-CBIND-BINOMIAL")
+  expected <- data.frame(
+    family = c(
+      "gaussian",
+      "poisson",
+      "binomial",
+      "binomial",
+      "negbinomial",
+      "beta",
+      "gamma",
+      "ordinal",
+      "ordinal"
+    ),
+    capability = c(
+      rep("postfit_simulate", 2L),
+      "cbind_binomial",
+      "postfit_simulate",
+      rep("postfit_simulate", 3L),
+      "ci_no_x_wald",
+      "postfit_residuals"
+    ),
+    direction = c(
+      rep("r_broader_than_julia", 2L),
+      "julia_broader_than_r",
+      rep("r_broader_than_julia", 4L),
+      "julia_broader_than_r",
+      "julia_broader_than_r"
+    ),
+    gate_id = c(
+      rep("GJL-GATE-POSTFIT-SIMULATE-DRIFT", 2L),
+      "GJL-GATE-CBIND-BINOMIAL",
+      rep("GJL-GATE-POSTFIT-SIMULATE-DRIFT", 4L),
+      "GJL-GATE-ORDINAL-CI",
+      "GJL-GATE-ORDINAL-RESIDUAL"
+    ),
+    stringsAsFactors = FALSE
+  )
+  expect_true(nrow(drift) > 0L)
+  expect_true(all(drift$status == "gated"))
+  expect_equal(sum(drift$status == "unregistered"), 0L)
+  expect_setequal(
+    paste(drift$family, drift$capability, drift$direction, drift$gate_id, sep = "\r"),
+    paste(expected$family, expected$capability, expected$direction, expected$gate_id, sep = "\r")
+  )
 })
 
 test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", {

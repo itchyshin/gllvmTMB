@@ -107,6 +107,7 @@
       "GJL-GATE-PROB-CLASS-NONORDINAL",
       "GJL-GATE-ORDINAL-RESIDUAL",
       "GJL-GATE-NEWDATA-SIMULATE",
+      "GJL-GATE-POSTFIT-SIMULATE-DRIFT",
       "GJL-GATE-UNCONDITIONAL-SIMULATE",
       "GJL-GATE-ORDINAL-SIMULATE",
       "GJL-GATE-NO-CI-PAYLOAD",
@@ -131,6 +132,7 @@
       "postfit prediction",
       "postfit residuals",
       "postfit simulation",
+      "capability drift",
       "postfit simulation",
       "postfit simulation",
       "postfit confint",
@@ -154,6 +156,7 @@
       "Probability/class output is ordinal-only.",
       "Ordinal residual semantics are not specified.",
       "Only retained in-sample fitted payloads are simulated.",
+      "R retained-payload simulation is broader than native GLLVM.jl simulation.",
       "Unconditional random-effect redraws are not routed.",
       "Ordinal simulation semantics are not specified.",
       "The object has no stored or recomputable CI payload.",
@@ -168,6 +171,7 @@
     representative_test = "tests/testthat/test-julia-bridge.R",
     issue = "gllvmTMB#488",
     validation_row = c(
+      "JUL-01",
       "JUL-01",
       "JUL-01",
       "JUL-01",
@@ -277,13 +281,14 @@ gllvm_julia_setup <- function(
 #' before R-side payload labels, public-scale maps, confidence-interval status,
 #' and native `gllvmTMB` parity evidence are complete.
 #'
-#' @return A data frame with one row per admitted bridge family plus the narrow
-#'   transport, no-X CI, complete-response fixed-effect-X CI, and post-fit
-#'   cells. CI columns are deliberately scoped: `ci_no_x_*` does not imply
-#'   masked, mixed-family, or fixed-effect-X intervals; response masks are
-#'   gated in the current bridge surface; and `ci_x_*` covers only
-#'   complete-response Gaussian fixed-effect-X rows. `status` is `"partial"`
-#'   for every current row, with the boundary recorded in `notes`.
+#' @return A data frame with one row per admitted bridge family. Boolean
+#'   columns mark the current R-side fit, transport, no-X CI,
+#'   complete-response fixed-effect-X CI, and post-fit cells. CI columns are
+#'   deliberately scoped: `ci_no_x_*` does not imply masked, mixed-family, or
+#'   fixed-effect-X intervals; response masks are gated in the current bridge
+#'   surface; and `ci_x_*` covers only complete-response Gaussian
+#'   fixed-effect-X rows. `status` is `"partial"` for every current row, with
+#'   the boundary recorded in `notes`.
 #' @examples
 #' head(gllvm_julia_capabilities())
 #' @export
@@ -351,7 +356,7 @@ gllvm_julia_capabilities <- function() {
 }
 
 .gllvm_julia_expected_capability_drifts <- function() {
-  data.frame(
+  explicit <- data.frame(
     family = c("binomial", "ordinal", "ordinal"),
     capability = c(
       "cbind_binomial",
@@ -389,6 +394,21 @@ gllvm_julia_capabilities <- function() {
     ),
     stringsAsFactors = FALSE
   )
+  simulate <- data.frame(
+    family = intersect(.GLLVM_JULIA_SIMULATE_FAMILIES, .GLLVM_JULIA_BRIDGE_FAMILIES),
+    capability = "postfit_simulate",
+    direction = "r_broader_than_julia",
+    gate_id = "GJL-GATE-POSTFIT-SIMULATE-DRIFT",
+    issue = "gllvmTMB#488",
+    validation_row = "JUL-01",
+    reason = paste(
+      "The R bridge reconstructs retained-payload conditional simulations",
+      "for selected non-ordinal rows, but the local GLLVM.jl capability",
+      "surface honestly reports no native post-fit response simulator."
+    ),
+    stringsAsFactors = FALSE
+  )
+  rbind(explicit, simulate)
 }
 
 .gllvm_julia_capability_drift <- function(

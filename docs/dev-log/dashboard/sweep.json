@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-03 13:39 MDT",
+  "updated": "2026-07-04 06:34 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-04 06:34 MDT",
+      "who": "R+Julia bridge drift cleanup",
+      "status": "guard",
+      "text": "The local R bridge ledger is narrowed to the live GLLVM.jl seven-family surface and now registers postfit_simulate drift under GJL-GATE-POSTFIT-SIMULATE-DRIFT. Focused R bridge tests passed 350/350 with 14 expected live-GLLVM-path skips, and the configured live drift probe reports exactly 9 gated rows and zero unregistered rows. This is truth-contract cleanup only: not R/Julia parity completion, not v1.0 completion, not source-specific lv support, not mixed-family CI support, not unique= parity, and not active compute."
+    },
     {
       "when": "2026-07-03 13:39 MDT",
       "who": "Live R/JL bridge parity caveat",

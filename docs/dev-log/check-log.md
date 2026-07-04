@@ -12,6 +12,15 @@ manifest. `check_auto_residual()` now names family id 15 as `nbinom1`,
 and `make_mesh(type = "cutoff", convex = ... / concave = ...)` now uses
 the observed coordinate matrix on the cutoff path. No family dispatch,
 likelihood, formula grammar, SPDE engine, or C++ change.
+## 2026-07-04 -- meta/pedigree helper bug fixes (#656/#657/#607/#623)
+
+Branch: `codex/meta-pedigree-pd-fixes` from `origin/main` at
+`42a1995d`. Scope: Groups A and D from the Claude pending-fixes
+manifest. `block_V()` now enforces the compound-symmetric
+positive-definite lower bound for each study block, and
+`pedigree_to_A()` now handles selfing plus warns on referenced-but-
+absent parents. No formula grammar, likelihood, family, C++, or sparse
+pedigree engine change.
 
 Commands run with `NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1`:
 
@@ -39,6 +48,26 @@ Formatting note: `air format R/check-auto-residual.R R/mesh.R` was run,
 but the broad `R/mesh.R` reflow was discarded to keep this PR to the
 one-line behavioural mesh fix. The final diff is the narrow copied
 manifest diff.
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-block-v-pd.R", reporter = "summary"); testthat::test_file("tests/testthat/test-block-V.R", reporter = "summary"); testthat::test_file("tests/testthat/test-pedigree-to-A-inbreeding.R", reporter = "summary")'
+```
+
+Outcome: passed. `test-block-v-pd.R` 6 expectations, existing
+`test-block-V.R` 19 expectations, and
+`test-pedigree-to-A-inbreeding.R` 7 expectations.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "animal-keyword", reporter = "summary")'
+```
+
+Outcome: passed; one pre-existing skip because `nadiv` is not installed
+(`pedigree_to_A() matches nadiv::makeAinv()`).
+
+```sh
+air format R/animal-keyword.R R/two-stage.R tests/testthat/test-block-v-pd.R tests/testthat/test-pedigree-to-A-inbreeding.R
+git diff --check
+```
+
+Outcome: format completed; `git diff --check` passed with no output.
 
 Rose / pre-publish and pkgdown checks for the NEWS entry:
 
@@ -53,6 +82,114 @@ mesh construction, with excluded likelihood / dispatch / SPDE /
 grammar surfaces named explicitly. Broader `rg` hits were pre-existing
 NEWS/history or generated-doc references. `pkgdown::check_pkgdown()`
 reported "No problems found."
+rg -n "block_V|pedigree_to_A|meta_V|pedigree_to_Ainv_sparse|animal-keyword|positive-definite|selfing|absent" NEWS.md R/animal-keyword.R R/two-stage.R man _pkgdown.yml docs/design tests/testthat/test-block-v-pd.R tests/testthat/test-pedigree-to-A-inbreeding.R
+rg -n "gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|\\bS_B\\b|\\bS_W\\b|\\\\bf S|trio" NEWS.md R/animal-keyword.R R/two-stage.R tests/testthat/test-block-v-pd.R tests/testthat/test-pedigree-to-A-inbreeding.R
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+```
+
+Outcome: new NEWS text is scoped to the two helper contracts and names
+the excluded grammar/likelihood/sparse-pedigree/animal-engine surfaces;
+`pkgdown::check_pkgdown()` reported "No problems found." Broader hits in
+the `rg` output were pre-existing NEWS/history or generated-doc matches,
+not new claims from this branch.
+
+Attempted but deliberately stopped:
+
+```sh
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+```
+
+Outcome: interrupted after about 14 minutes with no final summary and no
+worktree artefacts. It had emitted only the roxygen2 version-mismatch
+notice and was still inside `Rcmd check gllvmTMB_0.2.0.tar.gz --as-cran
+--no-manual --no-manual`. Do not count this as a passed package check.
+
+## 2026-07-03 -- Issue-clearing campaign: Claude batches + Codex handoff
+
+**@Codex**: the twin-review issue-clearing campaign is underway. Claude
+has landed the LOW-RISK R fixes in files byte-identical to `origin/main`
+as review-ready PRs (maintainer-gated merges):
+
+- PR #707 -- plotting robustness guards (#651, #667, #689, #690, #691, #692).
+- PR #708 -- dead code + profile-target validator (#618, #669, #671, #675, #700, #701).
+- PR #709 -- diagnostics/bootstrap (#603, #644, #652).
+
+The work that needs the live R/TMB + Julia toolchain, touches Codex-churned
+files (`fit-multi.R`, `z-confint-gllvmTMB.R`, `extract-*.R`,
+`methods-gllvmTMB.R`, `output-methods.R`, `julia-bridge.R`,
+`extract-correlations.R`, `kernel-helpers.R`, `plot-covariance-tables.R`),
+or is HIGH-RISK (likelihood/family/C++/Julia numerics) is handed to you in
+`docs/dev-log/handover/2026-07-03-claude-to-codex-numeric-waves.md`:
+Part A (churned-file R bugs), Part B (37 GLLVM.jl REAL issues), Part C
+(twin divergences -- GATED on the maintainer's canonical-side ruling; matrix
+in the campaign plan). PLAUSIBLE verdicts: 43 REAL, 3 INTENDED (#142, #148,
+#680), 2 ALREADY-FIXED (#144, #694).
+## 2026-07-03 -- Diagnostic + bootstrap robustness (twin-review batch 3)
+
+Branch: `fix/diagnostics-bootstrap-robustness` (from `origin/main`;
+touched files byte-identical to `origin/main`).
+
+Scope: #603 (nbinom1 id-15 label in `.gllvmTMB_family_label_from_id`),
+#652 (save/restore `.Random.seed` around the two seeded residual
+helpers), #644 (surface `attr(out, "n_failed")` + warn from the loading
+bootstrap). `R/predictive-diagnostics.R`, `R/loading-ci-bootstrap.R`.
+No likelihood/family/grammar/C++ change. `withr` is only in Suggests,
+so the RNG save/restore uses the base-R `.Random.seed` on.exit idiom.
+
+Checks (macOS, R 4.6.0, NOT_CRAN=true):
+
+```r
+testthat::test_file("tests/testthat/test-diagnostics-family-label.R")  # 3 pass (new)
+testthat::test_file("tests/testthat/test-predictive-diagnostics.R")    # no regressions
+testthat::test_file("tests/testthat/test-loading-ci-bootstrap.R")      # no regressions
+## 2026-07-03 -- Dead-code + validator cleanup (twin-review batch 2)
+
+Branch: `fix/dead-code-cleanup` (from `origin/main`; all touched files
+byte-identical to `origin/main`, isolated from the in-flight Codex branch).
+
+Scope: #618/#675 (vector-`isTRUE()` bugs in `R/profile-targets.R`), #701
+(remove dead `R/parsing.R`), #700 (remove unused
+`gll_ordered_probability_matrix()` in `R/missing-predictor.R`), #671
+(remove empty `nbinom2()` `v()` stub in `R/families.R`), #669 (remove
+no-op inner `withCallingHandlers()` in `R/bootstrap-sigma.R`). All dead
+code verified caller-free by repo-wide grep before removal. No
+likelihood/family/grammar/C++ change.
+
+Checks (macOS, R 4.6.0, `pkgload::load_all` OK after removals):
+
+```r
+# NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1
+testthat::test_file("tests/testthat/test-profile-targets.R")            # 32 pass
+testthat::test_file("tests/testthat/test-profile-targets-validator.R")  # 2 pass (new)
+gllvmTMB::nbinom2(); gllvmTMB::nbinom1()   # family constructors still build
+```
+
+rg patterns used for the dead-code confirmation:
+`parse_formula|make_indices|add_model_index|barnames`,
+`gll_ordered_probability_matrix` (no callers outside their own defs).
+
+## 2026-07-03 -- Plotting robustness guards (twin-review batch 1)
+
+Branch: `fix/robustness-guards-plotting` (cut from `origin/main` to
+stay isolated from the in-flight `codex/r-bridge-grouped-dispersion`
+branch; the touched plotting files are byte-identical to `origin/main`).
+
+Scope: robustness guards on plotting helpers for the twin code-review
+issues #651/#692 (rotated-loadings all-NA trait), #667 (per-facet
+value-label threshold), #691 (`null_region` validation), #689/#690
+(NA-safe repeatability ordering and ordination arrow scaling). No
+likelihood, family, grammar, or C++ change. Files: `R/plot-rotated-loadings.R`,
+`R/plot-loadings-confidence-eye.R`, `R/plot-gllvmTMB.R`, new test
+`tests/testthat/test-plot-robustness-guards.R`.
+
+Checks (macOS, R 4.6.0, `pkgload::load_all`):
+
+```r
+testthat::test_file("tests/testthat/test-plot-robustness-guards.R")  # 7 pass
+testthat::test_file("tests/testthat/test-rotate-compare-loadings.R") # 84 pass
+testthat::test_file("tests/testthat/test-plot-gllvmTMB.R")           # all pass
+testthat::test_file("tests/testthat/test-plot-visual-snapshots.R")   # 11 skip (vdiffr absent)
+```
 
 ## 2026-05-10 -- drmTMB-parity match exposes unstated tidyselect
 

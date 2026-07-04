@@ -72,6 +72,13 @@ plot_loadings_confidence_eye <- function(fit,
 
   sort_by <- match.arg(sort_by)
 
+  if (!is.null(null_region) &&
+      (!is.numeric(null_region) || length(null_region) != 2L ||
+       any(!is.finite(null_region))))
+    cli::cli_abort(
+      "{.arg null_region} must be a length-2 finite numeric vector, e.g. {.code c(-0.1, 0.1)}."
+    )
+
   if (is.data.frame(fit)) {
     needed <- c("trait", "axis", "estimate", "se", "lower", "upper", "pinned")
     if (!all(needed %in% names(fit)))

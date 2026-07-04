@@ -457,15 +457,30 @@ pedigree_to_A <- function(pedigree) {
     }
   }
 
+  ## Parents that are referenced but absent from the id column are treated
+  ## as unrelated founders; warn rather than doing so silently (a missing
+  ## parent row is often a typo or an incomplete pedigree).
+  missing_sire <- !is.na(sires) & is.na(s_idx)
+  missing_dam <- !is.na(dams) & is.na(d_idx)
+  if (any(missing_sire) || any(missing_dam)) {
+    bad <- unique(c(sires[missing_sire], dams[missing_dam]))
+    cli::cli_warn(c(
+      "Some parents are referenced but absent from the {.field id} column; treating them as unrelated founders.",
+      "i" = "Missing parent id{?s}: {.val {bad}}.",
+      ">" = "Add a row for each such parent (with its own parents or {.code NA}) if it is a known individual."
+    ))
+  }
+
   A <- matrix(0, nrow = n, ncol = n, dimnames = list(ids, ids))
 
   for (i in seq_len(n)) {
     si <- s_idx[i]
     di <- d_idx[i]
     ## Diagonal A_ii = 1 + F_i where F_i = A_{sire,dam}/2 if both
-    ## parents known and (sire != dam); otherwise 0.
+    ## parents are known. This includes selfing (sire == dam), where
+    ## F_i = A_{p,p}/2; unknown-parent individuals get F_i = 0.
     F_i <- 0
-    if (!is.na(si) && !is.na(di) && si != di) {
+    if (!is.na(si) && !is.na(di)) {
       F_i <- A[si, di] / 2
     }
     A[i, i] <- 1 + F_i

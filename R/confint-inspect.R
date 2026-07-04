@@ -329,16 +329,19 @@ confint_inspect <- function(
 
   ## ---- Diagnostic flags ----------------------------------------------
   flags <- character(0L)
-  if (is.na(lower_natural) && !is.infinite(lower_natural)) {
+  ## Drive the boundary flags off the LINK-scale bounds, where
+  ## .profile_bounds() leaves NA (no threshold crossing) and +/-Inf
+  ## (pinned at a boundary) intact. Transforming first would map, e.g.,
+  ## exp(-Inf) = 0 and plogis(Inf) = 1 to finite values and silently drop
+  ## the boundary flags (#584).
+  if (is.na(bounds_link$lower)) {
     flags <- c(flags, "no_lower_crossing")
-  }
-  if (is.na(upper_natural) && !is.infinite(upper_natural)) {
-    flags <- c(flags, "no_upper_crossing")
-  }
-  if (is.infinite(lower_natural)) {
+  } else if (is.infinite(bounds_link$lower)) {
     flags <- c(flags, "hits_lower_bound")
   }
-  if (is.infinite(upper_natural)) {
+  if (is.na(bounds_link$upper)) {
+    flags <- c(flags, "no_upper_crossing")
+  } else if (is.infinite(bounds_link$upper)) {
     flags <- c(flags, "hits_upper_bound")
   }
   ## Wald-profile disagreement flag:

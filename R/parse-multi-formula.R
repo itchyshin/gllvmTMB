@@ -139,6 +139,10 @@ parse_multi_formula <- function(formula) {
     fmla <- call("~", lhs, fixed_rhs)
     eval(call("as.formula", deparse(fmla)))
   }
+  ## reformulate()/as.formula() attach the parser's environment; restore the
+  ## user's formula environment so downstream fixed-effect evaluation resolves
+  ## variables in the caller's frame rather than the parser's (#688).
+  environment(fixed) <- formula_env
   ## The raw RHS (mi() wrapper intact) is needed by the missing-predictor layer
   ## to verify that mi() appears only as a simple additive term.
   mi_rhs <- rhs
@@ -193,6 +197,16 @@ parse_covstruct_call <- function(e, fn, eval_env = parent.frame()) {
         ## Positional — for rr() this is the rank d
         if (fn == "rr") nm <- "d"
         else if (fn %in% c("propto", "equalto")) nm <- "vcv"
+      }
+      if (is.null(nm)) {
+        ## A positional argument to a covstruct that has no positional slot
+        ## used to hit `extra[[NULL]] <- val` ('attempt to select less than
+        ## one element'); raise a clear, actionable error instead (#649).
+        cli::cli_abort(c(
+          "{.fn {fn}} received an unnamed argument it cannot interpret positionally.",
+          "x" = "Positional argument {.code {deparse(extra_args[[i]])}}.",
+          ">" = "Name it explicitly, e.g. {.code d = ...}, {.code tree = ...}, or {.code vcv = ...}."
+        ))
       }
       extra[[nm]] <- val
     }

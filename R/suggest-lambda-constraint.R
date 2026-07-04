@@ -400,6 +400,11 @@ suggest_lambda_constraint <- function(
             family = fit$family_input,
             trait = fit$trait_col,
             unit = fit$unit_col,
+            ## Preserve the within-unit and cluster groupings on the test
+            ## refit; omitting them silently changed the model (and voided
+            ## the LRT) for non-default groupings. NULL is a no-op.
+            unit_obs = fit$unit_obs_col,
+            cluster = fit$cluster_col,
             lambda_constraint = lc_test,
             silent = TRUE
           ),

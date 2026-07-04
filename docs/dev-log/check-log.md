@@ -13,6 +13,22 @@ campaign fixes for `families.R` (#665), `bootstrap-sigma.R` (#624/#661/#698),
 already-landed fixes (#671/#669/#700/#691) via a 3-way merge (base 42a1995d),
 verified to preserve every landed fix and add each new one. `load_all` OK.
 No likelihood/family/grammar/C++ change.
+## 2026-07-04 -- Remaining clean-file twin-review fixes (batch)
+
+Branch: `fix/remaining-clean-file-guards` (from `origin/main`). 12 R files
+untouched by the earlier merged PRs (#707-712), so each preserved fix from
+the campaign manifest applies cleanly with no conflict.
+
+Issues: #602, #594, #613, #666, #699, #655, #637, #619, #609, #633, #584,
+#583, #585, #688, #649, #591, #592, #650. Each fix was individually validated
+during the campaign (load_all + targeted tests); this batch re-confirms
+integration.
+
+Checks (macOS, R 4.6.0, NOT_CRAN=true): `pkgload::load_all` OK with all 12
+files. No likelihood/family/grammar/C++ change. The remaining manifest fixes
+in files already modified by #707-712 (families #665, bootstrap-sigma
+#624/#661, missing-predictor #646/#647/#648, confidence-eye #600/#601/#616/#617)
+are landed separately to apply on top of those merges.
 
 ## 2026-07-04 -- family-label and mesh helper fixes (#630/#595)
 

@@ -74,8 +74,6 @@ plot_anisotropy <- function(object, return_data = FALSE) {
       angle = c(angle1_s, angle1_st, angle2_s, angle2_st),
       a = c(rss(maj1_s), rss(maj1_st), rss(maj2_s), rss(maj2_st)),
       b = c(rss(min1_s), rss(min1_st), rss(min2_s), rss(min2_st)),
-      maj1 = c(maj1_s, maj1_st, maj2_s, maj2_st),
-      min1 = c(min1_s, min1_st, min2_s, min2_st),
       model = rep(object$family$family, each = 2L),
       model_num  = rep(seq(1L, 2L), each = 2L),
       random_field = rep(c("spatial", "spatiotemporal"), 2L),
@@ -99,8 +97,6 @@ plot_anisotropy <- function(object, return_data = FALSE) {
       angle = c(angle1_s, angle1_st),
       a = c(rss(maj1_s), rss(maj1_st)),
       b = c(rss(min1_s), rss(min1_st)),
-      maj1 = c(maj1_s, maj1_st),
-      min1 = c(min1_s, min1_st),
       model = object$family$family,
       random_field = rep(c("spatial", "spatiotemporal"), 1L),
       stringsAsFactors = FALSE

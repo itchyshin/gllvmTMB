@@ -134,6 +134,16 @@ simulate_site_trait <- function(n_sites = 50,
   }
 
   ## ---- Species-level p_{it} (phylo) and q_{it} (non-phylo) ----------------
+  ## Cphy is required when sigma2_phy is supplied; otherwise no phylo signal is
+  ## simulated yet truth$sigma2_phy would advertise variance that never entered
+  ## the DGP (#655).
+  if (!is.null(sigma2_phy) && is.null(Cphy)) {
+    cli::cli_abort(c(
+      "{.arg sigma2_phy} was supplied but {.arg Cphy} is {.code NULL}.",
+      "x" = "No phylogenetic signal can be simulated without the phylogenetic correlation matrix.",
+      ">" = "Pass {.arg Cphy}, or omit {.arg sigma2_phy}."
+    ))
+  }
   p_mat <- matrix(0, nrow = n_species, ncol = n_traits)
   q_mat <- matrix(0, nrow = n_species, ncol = n_traits)
   if (!is.null(Cphy)) {

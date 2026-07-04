@@ -76,7 +76,11 @@
     if (length(rows_t) < 3L) next   # too few observations to warmup
     fam_t  <- family_per_row[[rows_t[1L]]]
     fam_nm <- tryCatch(fam_t$family, error = function(e) NA_character_)
-    if (is.na(fam_nm) || is.null(fam_nm)) next
+    ## Delta / mixture families carry a length-2 $family (presence +
+    ## continuous component); phi seeding applies to the continuous part.
+    ## Reducing to a scalar also avoids a length > 1 condition error below.
+    if (length(fam_nm) > 1L) fam_nm <- fam_nm[[length(fam_nm)]]
+    if (length(fam_nm) != 1L || is.na(fam_nm) || is.null(fam_nm)) next
     y_t  <- y[rows_t]
     warm <- tryCatch(
       .gllvm_univariate_phi(y_t, fam_nm),
@@ -92,14 +96,16 @@
       "  warmup trait %d (%s): log_phi = %.3f\n",
       t, fam_nm, warm$log_phi))
     slot <- switch(
-      fam_nm,
+      tolower(fam_nm),
       "nbinom2"            = "log_phi_nbinom2",
       "nbinom1"            = "log_phi_nbinom1",   # nbinom1 has its own phi slot
       "tweedie"            = "log_phi_tweedie",
       "beta"               = "log_phi_beta",
       "betabinomial"       = "log_phi_betabinom",
       "truncated_nbinom2"  = "log_phi_truncnb2",
-      "gamma_delta"        = "log_phi_gamma_delta",
+      ## No "gamma_delta" case: the name is never produced (a delta-gamma's
+      ## continuous component reports "Gamma", indistinguishable from a plain
+      ## Gamma), so seeding here would be unreachable or mis-target (#639).
       NA_character_
     )
     if (!is.na(slot)) out[[slot]][t] <- warm$log_phi
@@ -124,6 +130,10 @@
 ## Intercept-only model — for phi seeding only (the fixed-effect
 ## warm-up is a follow-on slice).
 .gllvm_univariate_phi <- function(y, family_name) {
+  ## Family names are compared case-insensitively: constructors use
+  ## mixed case (e.g. Beta() sets family = "Beta") while the seeds
+  ## below key on lowercase names.
+  family_name <- tolower(family_name)
   ## NB2: MASS::glm.nb is the standard. gllvmTMB's nbinom2
   ## parameterisation Var = mu + mu^2/phi matches glm.nb's
   ## Var = mu + mu^2/theta exactly (phi_gllvmTMB == theta_glm).
@@ -183,17 +193,10 @@
   }
   ## Tweedie: complex MLE; defer the warm-up (return NULL).
   if (family_name == "tweedie") return(NULL)
-  ## Gamma (delta-gamma): phi = shape parameter; coefficient of
-  ## variation = 1/sqrt(phi). For y > 0 only (delta-gamma's
-  ## positive component), use the moment estimator.
-  if (family_name == "gamma_delta") {
-    y_pos <- y[y > 0]
-    if (length(y_pos) < 3L) return(NULL)
-    cv2 <- stats::var(y_pos) / mean(y_pos)^2
-    if (cv2 <= 0) return(NULL)
-    phi <- 1 / cv2
-    return(list(log_phi = log(phi)))
-  }
+  ## (The former "gamma_delta" moment-estimator branch was removed as dead
+  ## code: no family carries that name, and the delta-gamma continuous
+  ## component is indistinguishable from a plain Gamma, so it could not be
+  ## safely wired to the log_phi_gamma_delta slot (#639).)
   ## Unrecognised — no warm-up.
   NULL
 }

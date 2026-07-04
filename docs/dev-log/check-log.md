@@ -4,6 +4,67 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-04 16:51 MDT -- Julia bridge postfit simulation drift closure
+
+Branch: `codex/r-bridge-grouped-dispersion`; local checkpoint for bridge
+truth-lock cleanup. No push or PR.
+
+Guard: the R drift expectation must no longer allow the six non-ordinal
+`postfit_simulate` rows after local GLLVM.jl adds native conditional in-sample
+response simulation for those families.
+
+Implemented:
+
+- Removed `GJL-GATE-POSTFIT-SIMULATE-DRIFT` from the current R-side gate
+  registry.
+- Removed the six non-ordinal `postfit_simulate` rows from
+  `.gllvm_julia_expected_capability_drifts()`.
+- Updated the configured live bridge test to expect only two drift rows:
+  Ordinal `ci_no_x_wald` and Ordinal `postfit_residuals`.
+- Refreshed Mission Control to show 793/793 configured live bridge assertions,
+  2 registered drift rows, and 0 unregistered drift rows.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/julia-bridge.R")); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+```
+
+Outcome: passed with 362 assertions, 0 failures, and 13 expected
+live-GLLVM-path skips.
+
+```sh
+GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+```
+
+Outcome: passed with 793 assertions, 0 failures, and 0 skips.
+
+```sh
+GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla - <<'RS'
+pkgload::load_all(quiet = TRUE)
+gllvmTMB:::gllvm_julia_setup()
+engine_caps <- JuliaCall::julia_eval('GLLVM.bridge_capabilities()')
+drift <- gllvmTMB:::.gllvm_julia_capability_drift(julia_caps = engine_caps)
+print(drift[, c('family', 'capability', 'direction', 'status', 'gate_id')], row.names = FALSE)
+cat('n=', nrow(drift), ' unregistered=', sum(drift$status == 'unregistered'), '\n')
+RS
+```
+
+Outcome: 2 registered drift rows, 0 unregistered rows. Remaining drift is
+Ordinal Wald CI and Ordinal residual semantics.
+
+Not run:
+
+- Full `devtools::check()`; this was a focused bridge truth-lock cleanup.
+- Any Totoro/DRAC compute, source-specific `lv` exposure, Julia source-Psi
+  parity, or v1.0 parity claim.
+
 ## 2026-07-04 06:55 MDT -- Julia bridge live contract truth-lock
 
 Branch: `codex/r-bridge-grouped-dispersion`; local cleanup checkpoint for

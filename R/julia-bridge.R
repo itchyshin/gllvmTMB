@@ -107,7 +107,6 @@
       "GJL-GATE-PROB-CLASS-NONORDINAL",
       "GJL-GATE-ORDINAL-RESIDUAL",
       "GJL-GATE-NEWDATA-SIMULATE",
-      "GJL-GATE-POSTFIT-SIMULATE-DRIFT",
       "GJL-GATE-UNCONDITIONAL-SIMULATE",
       "GJL-GATE-ORDINAL-SIMULATE",
       "GJL-GATE-NO-CI-PAYLOAD",
@@ -132,7 +131,6 @@
       "postfit prediction",
       "postfit residuals",
       "postfit simulation",
-      "capability drift",
       "postfit simulation",
       "postfit simulation",
       "postfit confint",
@@ -156,7 +154,6 @@
       "Probability/class output is ordinal-only.",
       "Ordinal residual semantics are not specified.",
       "Only retained in-sample fitted payloads are simulated.",
-      "R retained-payload simulation is broader than native GLLVM.jl simulation.",
       "Unconditional random-effect redraws are not routed.",
       "Ordinal simulation semantics are not specified.",
       "The object has no stored or recomputable CI payload.",
@@ -171,7 +168,6 @@
     representative_test = "tests/testthat/test-julia-bridge.R",
     issue = "gllvmTMB#488",
     validation_row = c(
-      "JUL-01",
       "JUL-01",
       "JUL-01",
       "JUL-01",
@@ -386,21 +382,7 @@ gllvm_julia_capabilities <- function() {
     ),
     stringsAsFactors = FALSE
   )
-  simulate <- data.frame(
-    family = intersect(.GLLVM_JULIA_SIMULATE_FAMILIES, .GLLVM_JULIA_BRIDGE_FAMILIES),
-    capability = "postfit_simulate",
-    direction = "r_broader_than_julia",
-    gate_id = "GJL-GATE-POSTFIT-SIMULATE-DRIFT",
-    issue = "gllvmTMB#488",
-    validation_row = "JUL-01",
-    reason = paste(
-      "The R bridge reconstructs retained-payload conditional simulations",
-      "for selected non-ordinal rows, but the local GLLVM.jl capability",
-      "surface honestly reports no native post-fit response simulator."
-    ),
-    stringsAsFactors = FALSE
-  )
-  rbind(explicit, simulate)
+  explicit
 }
 
 .gllvm_julia_capability_drift <- function(

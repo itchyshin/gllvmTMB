@@ -4,6 +4,15 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-04 -- Remaining twin-review fixes in already-modified files
+
+Branch: `fix/remaining-cumulative-file-fixes` (from `origin/main`). The
+campaign fixes for `families.R` (#665), `bootstrap-sigma.R` (#624/#661/#698),
+`missing-predictor.R` (#597/#598/#599/#646/#647/#648) and
+`plot-loadings-confidence-eye.R` (#600/#601/#616/#617) were layered onto the
+already-landed fixes (#671/#669/#700/#691) via a 3-way merge (base 42a1995d),
+verified to preserve every landed fix and add each new one. `load_all` OK.
+No likelihood/family/grammar/C++ change.
 ## 2026-07-04 -- Remaining clean-file twin-review fixes (batch)
 
 Branch: `fix/remaining-clean-file-guards` (from `origin/main`). 12 R files

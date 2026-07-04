@@ -41,8 +41,10 @@
 #'   reliability via [flag_unreliable_loadings()]. Default `NULL`
 #'   (no band drawn).
 #' @param sort_by Character, one of `"trait_order"` (the order of the
-#'   `trait` factor, the default) or `"magnitude"` (absolute
-#'   point-estimate magnitude, largest first within each axis facet).
+#'   `trait` factor, the default) or `"magnitude"`. Note `"magnitude"`
+#'   applies a single **global** trait ordering keyed by each trait's
+#'   largest absolute loading across axes; the shared discrete x-axis
+#'   cannot reorder traits within individual facets.
 #' @param ylim Optional length-2 numeric vector clipping the y-axis
 #'   via `coord_cartesian()`. Useful when one degenerate loading
 #'   estimate would otherwise blow out the scale and crush the rest.
@@ -157,6 +159,10 @@ plot_loadings_confidence_eye <- function(fit,
   ## ---- Eye polygons (lens shapes), grouped by axis facet ----
   ## Skip entirely when the fit's Hessian was non-PD; the CIs are NA
   ## and any polygon would be a fabrication.
+  ## A data-frame input may carry a character `trait` (data.frame defaults to
+  ## stringsAsFactors = FALSE); coerce to a factor so as.integer() gives real
+  ## x-positions and the axis gets labels (#600).
+  if (!is.factor(df$trait)) df$trait <- factor(df$trait)
   df$.x_pos <- as.integer(df$trait)
   eye_df <- NULL
   if (!pd_failure) {
@@ -179,7 +185,10 @@ plot_loadings_confidence_eye <- function(fit,
   g <- ggplot2::ggplot(df, ggplot2::aes(x = .data$.x_pos, y = .data$estimate))
 
   if (!is.null(null_region))
+    ## Single-row data so exactly ONE band is drawn; inheriting `df` drew one
+    ## rectangle per row and stacked alpha to near-opaque (#601).
     g <- g + ggplot2::geom_rect(
+      data = data.frame(.x = 1),
       xmin = -Inf, xmax = Inf,
       ymin = null_region[1], ymax = null_region[2],
       fill = "grey85", alpha = 0.25, colour = NA,
@@ -230,8 +239,8 @@ plot_loadings_confidence_eye <- function(fit,
       subtitle = if (pd_failure)
         "Hessian non-PD; CIs unavailable (`?loading_ci`). Hollow points only."
       else if (!is.null(null_region))
-        sprintf("Eye: pale lens = 95%% CI; hollow point = estimate. Band (%.2f, %.2f) = biologically negligible.",
-                null_region[1], null_region[2])
+        sprintf("Eye: pale lens = %.0f%% CI; hollow point = estimate. Band (%.2f, %.2f) = biologically negligible.",
+                100 * conf_level, null_region[1], null_region[2])
       else NULL
     )
 

@@ -3,6 +3,22 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Julia bridge ordinal Wald CI and residual closure (2026-07-04)
+
+* Closed the last current R/Julia bridge capability drift rows for the narrowed
+  seven-family bridge ledger. `engine = "julia"` now admits no-X Wald CI
+  payloads for the GLLVM.jl `ordinal` bridge row and reconstructs
+  response/Pearson ordinal-score residuals from retained category
+  probabilities. Ordinal profile/bootstrap CIs, `ordinal_probit()` bridge
+  admission, ordinal simulation, newdata prediction/simulation, response masks,
+  mixed-family vectors/CIs, non-Gaussian fixed-effect `X`, source-specific
+  `lv = ~ env`, and Julia parity for source-specific `unique=` remain gated.
+  Focused pure R bridge tests passed with the expected live-Julia skips, the
+  configured live bridge file passed against the local GLLVM.jl checkout, and
+  the live capability drift probe now reports zero registered and zero
+  unregistered rows. This is bridge truth-contract cleanup, not v1.0 completion
+  or coverage calibration.
+
 ## `unique()` family soft deprecation (2026-06-18)
 
 * Added the first parser-level lifecycle slice for the `unique()` keyword

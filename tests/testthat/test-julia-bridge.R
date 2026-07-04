@@ -455,7 +455,6 @@ test_that("Julia bridge gate registry names every primary R admission stop", {
       "GJL-GATE-X-CI",
       "GJL-GATE-NEWDATA-PREDICT",
       "GJL-GATE-PROB-CLASS-NONORDINAL",
-      "GJL-GATE-ORDINAL-RESIDUAL",
       "GJL-GATE-NEWDATA-SIMULATE",
       "GJL-GATE-UNCONDITIONAL-SIMULATE",
       "GJL-GATE-ORDINAL-SIMULATE",
@@ -492,8 +491,14 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_false("ordinal_probit" %in% caps$family)
   expect_equal(caps$family[caps$fit_no_x], caps$family)
   expect_equal(caps$family[caps$fixed_effect_X], .GLLVM_JULIA_X_FAMILIES)
-  expect_equal(caps$family[caps$ci_no_x_wald], .GLLVM_JULIA_CI_NO_X_FAMILIES)
-  expect_equal(caps$family[caps$ci_no_x_profile], .GLLVM_JULIA_CI_NO_X_FAMILIES)
+  expect_equal(
+    caps$family[caps$ci_no_x_wald],
+    .GLLVM_JULIA_CI_NO_X_WALD_FAMILIES
+  )
+  expect_equal(
+    caps$family[caps$ci_no_x_profile],
+    .GLLVM_JULIA_CI_NO_X_PROFILE_FAMILIES
+  )
   expect_equal(
     caps$family[caps$ci_no_x_bootstrap],
     .GLLVM_JULIA_CI_NO_X_BOOTSTRAP_FAMILIES
@@ -513,9 +518,8 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_true(all(caps$ci_no_x_wald[
     caps$family %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES
   ]))
-  expect_false(any(caps$ci_no_x_wald[
-    caps$family %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
-  ]))
+  expect_true(caps$ci_no_x_wald[caps$family == "ordinal"])
+  expect_false(caps$ci_no_x_profile[caps$family == "ordinal"])
   expect_true(any(grepl("shared Gamma grouped dispersion", caps$notes)))
   expect_true(any(grepl("per-trait ordinal cutpoints", caps$notes)))
   expect_true(all(caps$status == "partial"))
@@ -536,7 +540,7 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     caps$family[caps$postfit_residuals],
     intersect(.GLLVM_JULIA_RESIDUAL_FAMILIES, caps$family)
   )
-  expect_false(caps$postfit_residuals[caps$family == "ordinal"])
+  expect_true(caps$postfit_residuals[caps$family == "ordinal"])
   expect_equal(
     caps$family[caps$postfit_simulate],
     intersect(.GLLVM_JULIA_SIMULATE_FAMILIES, caps$family)
@@ -568,9 +572,8 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_true(any(grepl("cbind\\(successes, failures\\)", caps$notes)))
 })
 
-test_that("Julia bridge capability drift is explicit and gate-labelled", {
+test_that("Julia bridge capability drift detects unregistered future drift", {
   julia_caps <- gllvm_julia_capabilities()
-  julia_caps$ci_no_x_wald[julia_caps$family == "ordinal"] <- TRUE
   drift <- .gllvm_julia_capability_drift(julia_caps = julia_caps)
   expect_named(
     drift,
@@ -585,15 +588,7 @@ test_that("Julia bridge capability drift is explicit and gate-labelled", {
       "reason"
     )
   )
-  expect_equal(nrow(drift), 1L)
-  expect_equal(drift$family, "ordinal")
-  expect_equal(drift$capability, "ci_no_x_wald")
-  expect_equal(drift$direction, "julia_broader_than_r")
-  expect_equal(drift$status, "gated")
-  expect_equal(drift$gate_id, "GJL-GATE-ORDINAL-CI")
-  expect_equal(drift$issue, "gllvmTMB#488")
-  expect_equal(drift$validation_row, "JUL-01")
-  expect_match(drift$reason, "ordinal Wald CI")
+  expect_equal(nrow(drift), 0L)
 
   future_julia <- julia_caps
   future_julia$fixed_effect_X[future_julia$family == "poisson"] <- TRUE
@@ -1319,7 +1314,13 @@ test_that("Julia bridge ordinal response-scale prediction returns probabilities"
   class_frame <- predict(fit, type = "class")
   expect_named(class_frame, c("trait", "unit", "est"))
   expect_equal(class_frame$est, as.vector(class_mat))
-  expect_error(residuals(fit), "GJL-GATE-ORDINAL-RESIDUAL")
+  response_resid <- residuals(fit)
+  pearson_resid <- residuals(fit, type = "pearson")
+  expect_equal(dim(response_resid), c(fit$n_traits, fit$n_units))
+  expect_equal(dim(pearson_resid), c(fit$n_traits, fit$n_units))
+  expect_equal(dimnames(response_resid), list(fit$trait_names, fit$unit_names))
+  expect_true(all(is.finite(response_resid)))
+  expect_true(all(is.finite(pearson_resid)))
   expect_error(simulate(fit), "GJL-GATE-ORDINAL-SIMULATE")
 })
 
@@ -1714,7 +1715,7 @@ test_that("gllvmTMB fit-time CI controls keep unsupported rows explicit", {
       engine = "julia",
       ci_method = "wald"
     ),
-    "per-trait ordinal"
+    "ordinal bridge confidence intervals"
   )
 })
 
@@ -1927,32 +1928,8 @@ test_that("live GLLVM.jl bridge capabilities drift only through registered gates
   gllvm_julia_setup()
   engine_caps <- JuliaCall::julia_eval("GLLVM.bridge_capabilities()")
   drift <- .gllvm_julia_capability_drift(julia_caps = engine_caps)
-  expected <- data.frame(
-    family = c(
-      "ordinal",
-      "ordinal"
-    ),
-    capability = c(
-      "ci_no_x_wald",
-      "postfit_residuals"
-    ),
-    direction = c(
-      "julia_broader_than_r",
-      "julia_broader_than_r"
-    ),
-    gate_id = c(
-      "GJL-GATE-ORDINAL-CI",
-      "GJL-GATE-ORDINAL-RESIDUAL"
-    ),
-    stringsAsFactors = FALSE
-  )
-  expect_true(nrow(drift) > 0L)
-  expect_true(all(drift$status == "gated"))
+  expect_equal(nrow(drift), 0L)
   expect_equal(sum(drift$status == "unregistered"), 0L)
-  expect_setequal(
-    paste(drift$family, drift$capability, drift$direction, drift$gate_id, sep = "\r"),
-    paste(expected$family, expected$capability, expected$direction, expected$gate_id, sep = "\r")
-  )
 })
 
 test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", {
@@ -2056,7 +2033,7 @@ test_that("gllvm_julia_fit keeps response masks gated", {
         mask = mask,
         ci_method = "wald"
       ),
-      if (identical(case_name, "ordinal")) "GJL-GATE-ORDINAL-CI" else "GJL-GATE-MASK"
+      "GJL-GATE-MASK"
     )
   }
 })
@@ -2392,6 +2369,14 @@ test_that("gllvm_julia_fit routes no-X CI payloads from GLLVM.jl", {
         dimnames = list(paste0("sp", 1:4), paste0("site", 1:50))
       ),
       family = binomial()
+    ),
+    ordinal = list(
+      Y = matrix(
+        rep(1:4, length.out = 4L * 50L),
+        nrow = 4L,
+        dimnames = list(paste0("sp", 1:4), paste0("site", 1:50))
+      ),
+      family = "ordinal"
     )
   )
 

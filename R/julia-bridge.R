@@ -52,7 +52,10 @@
   .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES,
   .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
 )
-.GLLVM_JULIA_RESIDUAL_FAMILIES <- .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
+.GLLVM_JULIA_RESIDUAL_FAMILIES <- c(
+  .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES,
+  .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
+)
 .GLLVM_JULIA_SIMULATE_FAMILIES <- .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
 .GLLVM_JULIA_ORDINATION_FAMILIES <- .GLLVM_JULIA_BRIDGE_FAMILIES
 .GLLVM_JULIA_MASK_FAMILIES <- character()
@@ -63,10 +66,12 @@
   "poisson",
   "binomial"
 )
-.GLLVM_JULIA_CI_NO_X_FAMILIES <- setdiff(
+.GLLVM_JULIA_CI_NO_X_WALD_FAMILIES <- .GLLVM_JULIA_BRIDGE_FAMILIES
+.GLLVM_JULIA_CI_NO_X_PROFILE_FAMILIES <- setdiff(
   .GLLVM_JULIA_BRIDGE_FAMILIES,
   .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
 )
+.GLLVM_JULIA_CI_NO_X_FAMILIES <- .GLLVM_JULIA_CI_NO_X_PROFILE_FAMILIES
 .GLLVM_JULIA_CI_NO_X_BOOTSTRAP_FAMILIES <- "gaussian"
 .GLLVM_JULIA_MASK_CI_FAMILIES <- character()
 .GLLVM_JULIA_X_CI_FAMILIES <- .GLLVM_JULIA_X_FAMILIES
@@ -105,7 +110,6 @@
       "GJL-GATE-X-CI",
       "GJL-GATE-NEWDATA-PREDICT",
       "GJL-GATE-PROB-CLASS-NONORDINAL",
-      "GJL-GATE-ORDINAL-RESIDUAL",
       "GJL-GATE-NEWDATA-SIMULATE",
       "GJL-GATE-UNCONDITIONAL-SIMULATE",
       "GJL-GATE-ORDINAL-SIMULATE",
@@ -129,7 +133,6 @@
       "direct wrapper CI",
       "postfit prediction",
       "postfit prediction",
-      "postfit residuals",
       "postfit simulation",
       "postfit simulation",
       "postfit simulation",
@@ -146,13 +149,12 @@
       "R bridge lacks payload labels, scale maps, or tests for the family.",
       "Mixed-family CI/status payloads are not specified.",
       "The R bridge admits only the narrow mixed-family component set.",
-      "Per-trait ordinal CI endpoints are not routed.",
+      "Ordinal profile/bootstrap CIs and ordinal_probit CI rows are not routed.",
       "Response masks are not wired through this GLLVM.jl bridge surface.",
       "Masks combined with fixed-effect X have no CI/status contract.",
       "Fixed-effect-X CI endpoints are admitted for a smaller family set.",
       "Only retained in-sample score/fitted payloads are routed.",
       "Probability/class output is ordinal-only.",
-      "Ordinal residual semantics are not specified.",
       "Only retained in-sample fitted payloads are simulated.",
       "Unconditional random-effect redraws are not routed.",
       "Ordinal simulation semantics are not specified.",
@@ -168,7 +170,6 @@
     representative_test = "tests/testthat/test-julia-bridge.R",
     issue = "gllvmTMB#488",
     validation_row = c(
-      "JUL-01",
       "JUL-01",
       "JUL-01",
       "JUL-01",
@@ -297,8 +298,8 @@ gllvm_julia_capabilities <- function() {
     fixed_effect_X = families %in% .GLLVM_JULIA_X_FAMILIES,
     missing_response = families %in% .GLLVM_JULIA_MASK_FAMILIES,
     cbind_binomial = families == "binomial",
-    ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
-    ci_no_x_profile = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
+    ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_WALD_FAMILIES,
+    ci_no_x_profile = families %in% .GLLVM_JULIA_CI_NO_X_PROFILE_FAMILIES,
     ci_no_x_bootstrap = families %in% .GLLVM_JULIA_CI_NO_X_BOOTSTRAP_FAMILIES,
     ci_mask_wald = families %in% .GLLVM_JULIA_MASK_CI_FAMILIES,
     ci_mask_profile = families %in% .GLLVM_JULIA_MASK_CI_FAMILIES,
@@ -352,37 +353,16 @@ gllvm_julia_capabilities <- function() {
 }
 
 .gllvm_julia_expected_capability_drifts <- function() {
-  explicit <- data.frame(
-    family = c("ordinal", "ordinal"),
-    capability = c(
-      "ci_no_x_wald",
-      "postfit_residuals"
-    ),
-    direction = c(
-      "julia_broader_than_r",
-      "julia_broader_than_r"
-    ),
-    gate_id = c(
-      "GJL-GATE-ORDINAL-CI",
-      "GJL-GATE-ORDINAL-RESIDUAL"
-    ),
-    issue = "gllvmTMB#488",
-    validation_row = "JUL-01",
-    reason = c(
-      paste(
-        "GLLVM.jl reports native ordinal Wald CI support, but the R bridge",
-        "keeps per-trait ordinal CI semantics gated until endpoint labels and",
-        "status payloads are reconciled."
-      ),
-      paste(
-        "GLLVM.jl reports ordinal residual support, but the R bridge keeps",
-        "ordinal residual semantics gated until response-scale residuals are",
-        "specified for users."
-      )
-    ),
+  data.frame(
+    family = character(0),
+    capability = character(0),
+    direction = character(0),
+    gate_id = character(0),
+    issue = character(0),
+    validation_row = character(0),
+    reason = character(0),
     stringsAsFactors = FALSE
   )
-  explicit
 }
 
 .gllvm_julia_capability_drift <- function(
@@ -500,18 +480,22 @@ gllvm_julia_capabilities <- function() {
   }
   ci_x_followup <- if (family %in% .GLLVM_JULIA_X_CI_FAMILIES) {
     "native parity promotion remains a follow-up"
-  } else if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
+  } else if (family %in% .GLLVM_JULIA_CI_NO_X_PROFILE_FAMILIES) {
     "X, X-row CI, and native parity promotion are follow-ups"
+  } else if (family %in% .GLLVM_JULIA_CI_NO_X_WALD_FAMILIES) {
+    "profile/bootstrap CI, X, X-row CI, and native parity promotion are follow-ups"
   } else if (family %in% .GLLVM_JULIA_X_FAMILIES) {
     "no-X CI, X-row CI, and native parity promotion are follow-ups"
   } else {
     "CI, X, and native parity promotion are follow-ups"
   }
-  ci_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
+  ci_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_WALD_FAMILIES) {
     routed_methods <- if (family %in% .GLLVM_JULIA_CI_NO_X_BOOTSTRAP_FAMILIES) {
       "Wald/profile/bootstrap"
-    } else {
+    } else if (family %in% .GLLVM_JULIA_CI_NO_X_PROFILE_FAMILIES) {
       "Wald/profile"
+    } else {
+      "Wald"
     }
     paste0(
       "direct gllvm_julia_fit() and gllvmTMB(..., engine = \"julia\") ",
@@ -535,7 +519,12 @@ gllvm_julia_capabilities <- function() {
       "are admitted; "
     )
   }
-  residual_clause <- if (family %in% .GLLVM_JULIA_RESIDUAL_FAMILIES) {
+  residual_clause <- if (family %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
+    paste0(
+      "in-sample response/Pearson ordinal-score residuals are routed from ",
+      "retained category probabilities; "
+    )
+  } else if (family %in% .GLLVM_JULIA_RESIDUAL_FAMILIES) {
     paste0(
       "in-sample response/Pearson residuals are routed from retained ",
       "fitted values; "
@@ -557,7 +546,7 @@ gllvm_julia_capabilities <- function() {
   } else {
     "extractor parity remains gated; "
   }
-  postfit_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
+  postfit_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_WALD_FAMILIES) {
     paste0(
       "coef(), summary(), and no-X confint() are routed; ",
       predict_clause,
@@ -607,8 +596,9 @@ gllvm_julia_capabilities <- function() {
       mask_clause,
       cbind_clause,
       x_clause,
+      ci_clause,
       postfit_clause,
-      "CI, X, and native parity promotion are follow-ups"
+      "profile/bootstrap CI, X, and native parity promotion are follow-ups"
     ))
   }
   paste0(
@@ -2215,13 +2205,17 @@ gllvm_julia_fit <- function(
         call. = FALSE
       )
     }
-    if (fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
+    if (
+      fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES &&
+        !(identical(fam, "ordinal") && identical(ci_method, "wald"))
+    ) {
       stop(
         .gllvm_julia_gate_message(
           "GJL-GATE-ORDINAL-CI",
-          "engine = 'julia': confidence intervals for per-trait ordinal ",
-          "bridge rows are not routed yet. Use `ci_method = \"none\"` or ",
-          "engine = 'tmb'."
+          "engine = 'julia': ordinal bridge confidence intervals are ",
+          "currently routed only for `family = \"ordinal\"` with ",
+          "`ci_method = \"wald\"`. Ordinal profile/bootstrap CIs and ",
+          "`ordinal_probit()` rows remain gated."
         ),
         call. = FALSE
       )
@@ -2398,9 +2392,11 @@ gllvm_julia_fit <- function(
 #' and raw ordination accessors are routed; richer extractor parity remains a
 #' separate bridge row.
 #' Confidence intervals are routed for admitted no-X Gaussian, Poisson,
-#' binomial, NB2, NB1, Beta, and Gamma rows; complete-response fixed-effect-X
-#' CIs are routed only for Gaussian rows. They may be requested at fit time through
-#' `gllvmTMB(ci_method = ...)`, or retrieved and recomputed through `confint()`.
+#' binomial, NB2, Beta, Gamma, and ordinal rows; ordinal CI routing is Wald-only.
+#' No-X profile/bootstrap recomputation remains non-ordinal, and
+#' complete-response fixed-effect-X CIs are routed only for Gaussian rows. They
+#' may be requested at fit time through `gllvmTMB(ci_method = ...)`, or retrieved
+#' and recomputed through `confint()`.
 #'
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
 #'   [gllvm_julia_fit()].
@@ -2418,16 +2414,19 @@ gllvm_julia_fit <- function(
 #'   ordinal bridge fits, `"response"` and `"prob"` return fitted category
 #'   probabilities and `"class"` returns the modal category. For `residuals()`,
 #'   `"response"` returns observed-minus-fitted residuals on the response scale
-#'   and `"pearson"` divides by the family-specific standard deviation.
-#'   Binomial rows use the observed proportion, `y / N`, on the response scale.
+#'   and `"pearson"` divides by the family-specific standard deviation. Ordinal
+#'   rows use observed category score minus the probability-weighted expected
+#'   category score. Binomial rows use the observed proportion, `y / N`, on the
+#'   response scale.
 #' @param level Confidence level requested by `confint()`. Stored Julia bridge
 #'   payloads can only be read at their stored level; post-fit requests recompute
 #'   the admitted Julia CI payload at the requested level.
 #' @param method CI route for `confint()`. `"stored"` reads an existing payload.
 #'   `"wald"`, `"profile"`, and `"bootstrap"` recompute from retained bridge
-#'   input for admitted no-X Gaussian, Poisson, binomial, NB2, NB1, Beta, and
-#'   Gamma rows. Complete-response fixed-effect-X recomputation is routed only
-#'   for Gaussian rows.
+#'   input for admitted no-X Gaussian, Poisson, binomial, NB2, Beta, and Gamma
+#'   rows; ordinal recomputation is routed for `"wald"` only.
+#'   Complete-response fixed-effect-X recomputation is routed only for Gaussian
+#'   rows.
 #'   If omitted, `confint()` reads a stored payload when present and otherwise
 #'   uses `"wald"` for current fits that retain their bridge input.
 #' @param ci_nboot Number of parametric bootstrap replicates when
@@ -2444,9 +2443,9 @@ gllvm_julia_fit <- function(
 #'   and `est`. `fitted()` returns the in-sample fitted matrix with traits in
 #'   rows and units in columns for non-ordinal rows, and an array of
 #'   category probabilities or a modal-class matrix for ordinal rows.
-#'   `residuals()` returns an in-sample residual matrix with the same shape as
-#'   `fitted()` for non-ordinal rows and keeps masked response cells as
-#'   `NA`. `simulate()` returns an `n_obs x nsim` matrix in the same trait-major
+#'   `residuals()` returns an in-sample residual matrix with one entry per
+#'   trait/unit cell and keeps masked response cells as `NA`. `simulate()`
+#'   returns an `n_obs x nsim` matrix in the same trait-major
 #'   cell order as `predict()` and keeps masked response cells as `NA`.
 #'   `summary()` returns a list with header, coefficients, covariance, and
 #'   status fields.
@@ -2583,14 +2582,62 @@ residuals.gllvmTMB_julia <- function(
   if (length(unsupported)) {
     stop(
       .gllvm_julia_gate_message(
-        "GJL-GATE-ORDINAL-RESIDUAL",
+        "GJL-GATE-FAMILY",
         "engine = 'julia': response/Pearson residuals are not routed for ",
         "family '",
         paste(unsupported, collapse = ", "),
-        "'. Ordinal bridge fits currently expose link-scale fitted values only."
+        "'."
       ),
       call. = FALSE
     )
+  }
+  if (.gllvm_julia_is_ordinal_fit(object, p)) {
+    prob <- fitted(object, type = "prob")
+    if (
+      length(dim(prob)) != 3L ||
+        !identical(dim(prob)[1:2], c(p, n))
+    ) {
+      stop(
+        "engine = 'julia': ordinal probability dimensions do not match the ",
+        "retained response payload.",
+        call. = FALSE
+      )
+    }
+    category_names <- dimnames(prob)[[3L]]
+    categories <- suppressWarnings(as.numeric(category_names))
+    if (
+      length(categories) != dim(prob)[[3L]] ||
+        any(!is.finite(categories))
+    ) {
+      categories <- seq_len(dim(prob)[[3L]])
+    }
+    mu <- matrix(
+      0,
+      nrow = p,
+      ncol = n,
+      dimnames = dimnames(prob)[1:2]
+    )
+    second <- mu
+    for (k in seq_along(categories)) {
+      pk <- prob[, , k, drop = TRUE]
+      pk[is.na(pk)] <- 0
+      mu <- mu + categories[[k]] * pk
+      second <- second + categories[[k]]^2 * pk
+    }
+    observed <- y
+    storage.mode(observed) <- "numeric"
+    out <- observed - mu
+    dimnames(out) <- dimnames(mu)
+    mask <- .gllvm_julia_response_mask(object, p, n)
+    out[!mask] <- NA_real_
+    if (type == "response") {
+      return(out)
+    }
+    var <- second - mu^2
+    var[!is.finite(var) | var <= 0] <- .Machine$double.eps
+    out <- out / sqrt(var)
+    out[!mask] <- NA_real_
+    return(out)
   }
   mu <- fitted(object, type = "response")
   if (!identical(dim(mu), c(p, n))) {
@@ -2746,8 +2793,8 @@ confint.gllvmTMB_julia <- function(
         "method = \"wald\")`, `\"profile\"`, or `\"bootstrap\"` on a current ",
         "`gllvmTMB(..., engine = \"julia\")` fit, or refit with ",
         "`gllvm_julia_fit(..., ci_method = \"wald\")` for admitted no-X ",
-        "Gaussian, Poisson, Bernoulli binomial, NB2, NB1, Beta, or Gamma rows ",
-        "or admitted complete-response fixed-effect-X rows."
+        "Gaussian, Poisson, Bernoulli binomial, NB2, Beta, Gamma, or Ordinal ",
+        "rows, or admitted complete-response fixed-effect-X rows."
       ),
       call. = FALSE
     )

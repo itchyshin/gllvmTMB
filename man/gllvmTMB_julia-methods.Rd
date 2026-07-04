@@ -69,8 +69,10 @@ inverse link for supported non-ordinal bridge families. For per-trait
 ordinal bridge fits, \code{"response"} and \code{"prob"} return fitted category
 probabilities and \code{"class"} returns the modal category. For \code{residuals()},
 \code{"response"} returns observed-minus-fitted residuals on the response scale
-and \code{"pearson"} divides by the family-specific standard deviation.
-Binomial rows use the observed proportion, \code{y / N}, on the response scale.}
+and \code{"pearson"} divides by the family-specific standard deviation. Ordinal
+rows use observed category score minus the probability-weighted expected
+category score. Binomial rows use the observed proportion, \code{y / N}, on the
+response scale.}
 
 \item{nsim}{Number of replicate response vectors to draw for \code{simulate()}.}
 
@@ -88,9 +90,10 @@ the admitted Julia CI payload at the requested level.}
 
 \item{method}{CI route for \code{confint()}. \code{"stored"} reads an existing payload.
 \code{"wald"}, \code{"profile"}, and \code{"bootstrap"} recompute from retained bridge
-input for admitted no-X Gaussian, Poisson, binomial, NB2, NB1, Beta, and
-Gamma rows. Complete-response fixed-effect-X recomputation is routed only
-for Gaussian rows.
+input for admitted no-X Gaussian, Poisson, binomial, NB2, Beta, and Gamma
+rows; ordinal recomputation is routed for \code{"wald"} only.
+Complete-response fixed-effect-X recomputation is routed only for Gaussian
+rows.
 If omitted, \code{confint()} reads a stored payload when present and otherwise
 uses \code{"wald"} for current fits that retain their bridge input.}
 
@@ -111,9 +114,9 @@ confidence-interval matrix for stored or recomputed Julia CI payloads.
 and \code{est}. \code{fitted()} returns the in-sample fitted matrix with traits in
 rows and units in columns for non-ordinal rows, and an array of
 category probabilities or a modal-class matrix for ordinal rows.
-\code{residuals()} returns an in-sample residual matrix with the same shape as
-\code{fitted()} for non-ordinal rows and keeps masked response cells as
-\code{NA}. \code{simulate()} returns an \verb{n_obs x nsim} matrix in the same trait-major
+\code{residuals()} returns an in-sample residual matrix with one entry per
+trait/unit cell and keeps masked response cells as \code{NA}. \code{simulate()}
+returns an \verb{n_obs x nsim} matrix in the same trait-major
 cell order as \code{predict()} and keeps masked response cells as \code{NA}.
 \code{summary()} returns a list with header, coefficients, covariance, and
 status fields.
@@ -129,7 +132,9 @@ rows. Unit-tier covariance honors native \code{link_residual} scale semantics,
 and raw ordination accessors are routed; richer extractor parity remains a
 separate bridge row.
 Confidence intervals are routed for admitted no-X Gaussian, Poisson,
-binomial, NB2, NB1, Beta, and Gamma rows; complete-response fixed-effect-X
-CIs are routed only for Gaussian rows. They may be requested at fit time through
-\code{gllvmTMB(ci_method = ...)}, or retrieved and recomputed through \code{confint()}.
+binomial, NB2, Beta, Gamma, and ordinal rows; ordinal CI routing is Wald-only.
+No-X profile/bootstrap recomputation remains non-ordinal, and
+complete-response fixed-effect-X CIs are routed only for Gaussian rows. They
+may be requested at fit time through \code{gllvmTMB(ci_method = ...)}, or retrieved
+and recomputed through \code{confint()}.
 }

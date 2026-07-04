@@ -4,6 +4,80 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-04 17:14 MDT -- Julia bridge ordinal drift closure
+
+Branch: `codex/r-bridge-grouped-dispersion`; local bridge truth-lock cleanup.
+No push or PR.
+
+Guard: closing the final current drift rows must admit only tested Ordinal
+Wald CI and ordinal-score residual semantics. It must not promote Ordinal
+profile/bootstrap CIs, `ordinal_probit()` bridge admission, Ordinal simulation,
+newdata, masks, mixed-family rows/CIs, non-Gaussian fixed-effect `X`,
+source-specific `lv`, `unique=` parity, or v1.0 completion.
+
+Implemented:
+
+- Split no-X CI capability into Wald and profile vectors so the R ledger admits
+  GLLVM.jl `ordinal` no-X Wald CI payloads while keeping Ordinal profile and
+  bootstrap gated.
+- Added response/Pearson ordinal-score residual reconstruction from retained
+  category probabilities.
+- Removed the obsolete `GJL-GATE-ORDINAL-RESIDUAL` current gate and emptied the
+  expected R-vs-Julia drift table.
+- Updated pure and live bridge tests so future unregistered drift still fails.
+- Refreshed the JUL-01 validation-debt row and generated Rd to describe Ordinal
+  Wald CI plus ordinal-score residual admission, while keeping profile/bootstrap,
+  `ordinal_probit()`, simulation, masks, X, and mixed-family gates explicit.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/julia-bridge.R")); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Outcome: completed and regenerated `man/gllvmTMB_julia-methods.Rd`; roxygen
+reported pre-existing unresolved-link warnings in unrelated topics.
+
+```sh
+Rscript --vanilla -e 'source("R/julia-bridge.R"); gates <- gllvm_julia_gate_registry(); caps <- gllvm_julia_capabilities(); print(gates[, c("gate_id", "validation_row")], row.names=FALSE); print(caps[, c("family", "ci_no_x_wald", "ci_no_x_profile", "postfit_residuals", "postfit_simulate")], row.names=FALSE); drift <- .gllvm_julia_capability_drift(julia_caps = caps); cat("drift_rows=", nrow(drift), "\n")'
+```
+
+Outcome: local R ledger has 20 gates; Ordinal has `ci_no_x_wald = TRUE`,
+`ci_no_x_profile = FALSE`, `postfit_residuals = TRUE`,
+`postfit_simulate = FALSE`; local R-vs-R drift is 0 rows.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+```
+
+Outcome: passed with 359 assertions, 0 failures, and 13 expected
+live-GLLVM-path skips.
+
+```sh
+GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+```
+
+Outcome: passed with 798 assertions, 0 failures, and 0 skips.
+
+```sh
+GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl' JULIA_HOME="$HOME/.juliaup/bin" Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); gllvm_julia_setup(); engine_caps <- JuliaCall::julia_eval("GLLVM.bridge_capabilities()"); drift <- gllvmTMB:::.gllvm_julia_capability_drift(julia_caps = engine_caps); print(drift[, c("family", "capability", "direction", "status", "gate_id")], row.names = FALSE); cat("n=", nrow(drift), "unregistered=", sum(drift$status == "unregistered"), "\n")'
+```
+
+Outcome: 0 drift rows, `n = 0`, `unregistered = 0`.
+
+Not run:
+
+- Full `devtools::check()`; this was a focused R/JL bridge truth-contract
+  cleanup.
+- Any Totoro/DRAC compute, source-specific `lv` exposure, Julia source-Psi
+  parity, or v1.0 parity claim.
+
 ## 2026-07-04 16:51 MDT -- Julia bridge postfit simulation drift closure
 
 Branch: `codex/r-bridge-grouped-dispersion`; local checkpoint for bridge

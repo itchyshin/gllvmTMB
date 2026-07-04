@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-04 07:07 MDT",
+  "updated": "2026-07-04 17:14 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -12,16 +12,16 @@
   },
   "active_work": [
     {
-      "when": "2026-07-04 16:51 MDT",
-      "who": "R+Julia bridge drift cleanup",
+      "when": "2026-07-04 17:14 MDT",
+      "who": "R+Julia bridge ordinal drift closure",
       "status": "guard",
-      "text": "Current local R/JL bridge cleanup adds native GLLVM.jl conditional in-sample simulate_response for Gaussian, Poisson, Binomial, NB2, Beta, and Gamma, while keeping Ordinal simulation, newdata simulation, unconditional redraws, X, masks, mixed-family, and source-specific rows gated. Focused pure R bridge tests passed 362/362 with 13 expected live-GLLVM-path skips, the configured live bridge file passed 793/793 against the current GLLVM.jl checkout, and the live drift probe is now 2 registered rows with zero unregistered rows: Ordinal Wald CI and Ordinal residual semantics. This is truth-contract cleanup only: not R/Julia parity completion, not v1.0 completion, not source-specific lv support, not mixed-family CI support, not unique= parity, not X/mask parity, and not active compute."
+      "text": "Current local R/JL bridge cleanup now closes the final two current capability drift rows: GLLVM.jl `ordinal` no-X Wald CI payloads are admitted on the R side, and response/Pearson ordinal-score residuals are reconstructed from retained category probabilities. Ordinal profile/bootstrap CIs, `ordinal_probit()` bridge admission, Ordinal simulation, newdata, masks, mixed-family rows/CIs, non-Gaussian fixed-effect X, source-specific lv, and unique= parity remain gated. Focused pure R bridge tests passed 359 assertions with 13 expected live-GLLVM-path skips, the configured live bridge file passed 798/798 against the current GLLVM.jl checkout, and the live drift probe is now 0 rows with 0 unregistered rows. This is truth-contract cleanup only: not R/Julia parity completion, not v1.0 completion, not coverage calibration, not source-specific lv support, not mixed-family CI support, not unique= parity, not X/mask parity, and not active compute."
     },
     {
-      "when": "2026-07-04 16:51 MDT",
+      "when": "2026-07-04 17:14 MDT",
       "who": "Live R/JL bridge contract caveat",
       "status": "guard",
-      "text": "The older red configured live run is superseded by the 2026-07-04 current-contract cleanup. The configured live bridge file now passes 793/793 after stale unsupported-row success assumptions, the binomial cbind drift row, and the six non-ordinal postfit-simulation drift rows were retired into explicit gates, admitted no-X trial-count routing, or native GLLVM.jl simulation. Treat this as a green narrowed-contract guard with 2 registered live drifts, not R/Julia parity completion or support promotion."
+      "text": "The older red configured live run and later registered-drift states are superseded by the 2026-07-04 ordinal drift closure. The configured live bridge file now passes 798/798 after stale unsupported-row success assumptions, the binomial cbind drift row, the six non-ordinal postfit-simulation drift rows, Ordinal Wald CI, and Ordinal residual semantics were retired into explicit gates, admitted transport, or native/retained-payload implementations. Treat this as a green narrowed-contract guard with 0 live drift rows, not R/Julia parity completion or support promotion."
     },
     {
       "when": "2026-07-03 13:39 MDT",
@@ -264,10 +264,10 @@
   ],
   "evidence": [
     {
-      "when": "2026-07-04 06:55 MDT",
+      "when": "2026-07-04 17:14 MDT",
       "who": "Live bridge contract tests",
       "status": "guard",
-      "text": "Pure bridge test-julia-bridge.R passed 350/350 with 13 expected live-GLLVM-path skips; configured live mode with GLLVM_JL_PATH and JULIA_HOME passed 781/781. The cleanup also makes Gaussian no-X postfit prediction internally usable by filling non-finite Gaussian/ordinal alpha payloads with the link-scale zero intercept convention, and keeps unsupported NB1, masks, non-Gaussian fixed X, mixed-family vectors, ordinal-probit, and broad TMB parity claims fail-loud."
+      "text": "Pure bridge test-julia-bridge.R passed 359 assertions with 13 expected live-GLLVM-path skips; configured live mode with GLLVM_JL_PATH and JULIA_HOME passed 798/798; the explicit live drift probe printed 0 rows with n=0 and unregistered=0. The cleanup admits GLLVM.jl `ordinal` no-X Wald CI payloads and response/Pearson ordinal-score residuals, while keeping Ordinal profile/bootstrap CIs, `ordinal_probit()` bridge admission, Ordinal simulation, newdata, masks, mixed-family rows/CIs, non-Gaussian fixed-effect X, source-specific lv, unique= parity, and coverage calibration gated."
     },
     {
       "when": "2026-07-03 13:39 MDT",
@@ -416,10 +416,10 @@
   ],
   "blockers": [
     {
-      "when": "2026-07-04 16:51 MDT",
+      "when": "2026-07-04 17:14 MDT",
       "who": "Live R/JL bridge contract caveat",
       "status": "guard",
-      "text": "The older red configured live run is superseded by the 2026-07-04 current-contract cleanup. The configured live bridge file now passes 793/793 after stale unsupported-row success assumptions, the binomial cbind drift row, and the six non-ordinal postfit-simulation drift rows were retired into explicit gates, admitted no-X trial-count routing, or native GLLVM.jl simulation. Treat this as a green narrowed-contract guard with 2 registered live drifts, not R/Julia parity completion or support promotion."
+      "text": "The older red configured live run and later registered-drift states are superseded by the 2026-07-04 ordinal drift closure. The configured live bridge file now passes 798/798 after stale unsupported-row success assumptions, the binomial cbind drift row, the six non-ordinal postfit-simulation drift rows, Ordinal Wald CI, and Ordinal residual semantics were retired into explicit gates, admitted transport, or native/retained-payload implementations. Treat this as a green narrowed-contract guard with 0 live drift rows, not R/Julia parity completion or support promotion."
     },
     {
       "when": "bridge/profile",

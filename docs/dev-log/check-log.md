@@ -63,6 +63,26 @@ worktree artefacts. It had emitted only the roxygen2 version-mismatch
 notice and was still inside `Rcmd check gllvmTMB_0.2.0.tar.gz --as-cran
 --no-manual --no-manual`. Do not count this as a passed package check.
 
+## 2026-07-03 -- Issue-clearing campaign: Claude batches + Codex handoff
+
+**@Codex**: the twin-review issue-clearing campaign is underway. Claude
+has landed the LOW-RISK R fixes in files byte-identical to `origin/main`
+as review-ready PRs (maintainer-gated merges):
+
+- PR #707 -- plotting robustness guards (#651, #667, #689, #690, #691, #692).
+- PR #708 -- dead code + profile-target validator (#618, #669, #671, #675, #700, #701).
+- PR #709 -- diagnostics/bootstrap (#603, #644, #652).
+
+The work that needs the live R/TMB + Julia toolchain, touches Codex-churned
+files (`fit-multi.R`, `z-confint-gllvmTMB.R`, `extract-*.R`,
+`methods-gllvmTMB.R`, `output-methods.R`, `julia-bridge.R`,
+`extract-correlations.R`, `kernel-helpers.R`, `plot-covariance-tables.R`),
+or is HIGH-RISK (likelihood/family/C++/Julia numerics) is handed to you in
+`docs/dev-log/handover/2026-07-03-claude-to-codex-numeric-waves.md`:
+Part A (churned-file R bugs), Part B (37 GLLVM.jl REAL issues), Part C
+(twin divergences -- GATED on the maintainer's canonical-side ruling; matrix
+in the campaign plan). PLAUSIBLE verdicts: 43 REAL, 3 INTENDED (#142, #148,
+#680), 2 ALREADY-FIXED (#144, #694).
 ## 2026-07-03 -- Diagnostic + bootstrap robustness (twin-review batch 3)
 
 Branch: `fix/diagnostics-bootstrap-robustness` (from `origin/main`;

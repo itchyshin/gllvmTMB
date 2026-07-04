@@ -4,6 +4,65 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-04 -- meta/pedigree helper bug fixes (#656/#657/#607/#623)
+
+Branch: `codex/meta-pedigree-pd-fixes` from `origin/main` at
+`42a1995d`. Scope: Groups A and D from the Claude pending-fixes
+manifest. `block_V()` now enforces the compound-symmetric
+positive-definite lower bound for each study block, and
+`pedigree_to_A()` now handles selfing plus warns on referenced-but-
+absent parents. No formula grammar, likelihood, family, C++, or sparse
+pedigree engine change.
+
+Commands run with `NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1`:
+
+```sh
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-block-v-pd.R", reporter = "summary"); testthat::test_file("tests/testthat/test-block-V.R", reporter = "summary"); testthat::test_file("tests/testthat/test-pedigree-to-A-inbreeding.R", reporter = "summary")'
+```
+
+Outcome: passed. `test-block-v-pd.R` 6 expectations, existing
+`test-block-V.R` 19 expectations, and
+`test-pedigree-to-A-inbreeding.R` 7 expectations.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "animal-keyword", reporter = "summary")'
+```
+
+Outcome: passed; one pre-existing skip because `nadiv` is not installed
+(`pedigree_to_A() matches nadiv::makeAinv()`).
+
+```sh
+air format R/animal-keyword.R R/two-stage.R tests/testthat/test-block-v-pd.R tests/testthat/test-pedigree-to-A-inbreeding.R
+git diff --check
+```
+
+Outcome: format completed; `git diff --check` passed with no output.
+
+Rose / pre-publish and pkgdown checks for the NEWS entry:
+
+```sh
+rg -n "block_V|pedigree_to_A|meta_V|pedigree_to_Ainv_sparse|animal-keyword|positive-definite|selfing|absent" NEWS.md R/animal-keyword.R R/two-stage.R man _pkgdown.yml docs/design tests/testthat/test-block-v-pd.R tests/testthat/test-pedigree-to-A-inbreeding.R
+rg -n "gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|\\bS_B\\b|\\bS_W\\b|\\\\bf S|trio" NEWS.md R/animal-keyword.R R/two-stage.R tests/testthat/test-block-v-pd.R tests/testthat/test-pedigree-to-A-inbreeding.R
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+```
+
+Outcome: new NEWS text is scoped to the two helper contracts and names
+the excluded grammar/likelihood/sparse-pedigree/animal-engine surfaces;
+`pkgdown::check_pkgdown()` reported "No problems found." Broader hits in
+the `rg` output were pre-existing NEWS/history or generated-doc matches,
+not new claims from this branch.
+
+Attempted but deliberately stopped:
+
+```sh
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+```
+
+Outcome: interrupted after about 14 minutes with no final summary and no
+worktree artefacts. It had emitted only the roxygen2 version-mismatch
+notice and was still inside `Rcmd check gllvmTMB_0.2.0.tar.gz --as-cran
+--no-manual --no-manual`. Do not count this as a passed package check.
+
 ## 2026-05-10 -- drmTMB-parity match exposes unstated tidyselect
 
 Scope:

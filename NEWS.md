@@ -3,6 +3,22 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Meta-analysis and pedigree helper bug fixes (2026-07-04)
+
+* `block_V()` now rejects within-study correlations that would make a
+  compound-symmetric study block non-positive-definite. For a block of
+  size `m`, `rho_within` must satisfy `rho > -1/(m - 1)`; previously
+  some moderately negative values passed the broad `(-1, 1)` check and
+  produced an invalid known-covariance matrix for `meta_V()` (#656,
+  #657). IN: validation of the existing `block_V()` helper contract.
+  No formula grammar, likelihood, or `meta_V()` API change is included.
+* `pedigree_to_A()` now handles selfing by using `F_i = A[parent,parent] / 2`
+  when sire and dam are the same known individual, and warns when a
+  parent is referenced but absent from the `id` column instead of
+  silently treating that parent as an unrelated founder (#607, #623).
+  IN: dense pedigree relationship-matrix construction. No sparse
+  `pedigree_to_Ainv_sparse()` or animal-keyword engine change is included.
+
 ## `extract_lv_effects()` defaults to axis effects (2026-06-30)
 
 * `extract_lv_effects()` now defaults to `type = "axis_effect"` so the first table is the axis / CLV coefficient `alpha`, matching the usual GLLVM constrained-ordination interpretation. Native TMB fits with `se = TRUE` and a positive-definite `sdreport()` now return `std.error`, `lower`, and `upper` for those alpha rows from the fixed-parameter `alpha_lv_B` block. `type = "trait_effect"` remains available for the induced trait-scale slope surface `B_lv = Lambda alpha^T` and now also includes Wald `lower` / `upper` columns when `ADREPORT(B_lv_unit)` SEs are available. These intervals are Wald summaries conditional on the fitted axis/loading convention; coverage calibration and source-specific LV rows remain gated.

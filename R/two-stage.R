@@ -53,27 +53,40 @@
 #' round(V, 3)
 #' @export
 block_V <- function(study_id, sampling_var, rho_within = 0.5) {
-  if (!is.factor(study_id)) study_id <- factor(study_id)
+  if (!is.factor(study_id)) {
+    study_id <- factor(study_id)
+  }
   n <- length(study_id)
-  if (length(sampling_var) != n)
-    cli::cli_abort("length(sampling_var) must equal length(study_id) (got {length(sampling_var)} vs {n}).")
-  if (any(sampling_var < 0))
+  if (length(sampling_var) != n) {
+    cli::cli_abort(
+      "length(sampling_var) must equal length(study_id) (got {length(sampling_var)} vs {n})."
+    )
+  }
+  if (any(sampling_var < 0)) {
     cli::cli_abort("All sampling_var entries must be non-negative.")
+  }
 
   if (length(rho_within) == 1L && is.null(names(rho_within))) {
     ## Unnamed scalar - broadcast to every study
-    rho_vec <- stats::setNames(rep(rho_within, nlevels(study_id)),
-                               levels(study_id))
+    rho_vec <- stats::setNames(
+      rep(rho_within, nlevels(study_id)),
+      levels(study_id)
+    )
   } else {
-    if (is.null(names(rho_within)))
-      cli::cli_abort("If {.arg rho_within} is a vector, it must be named with study levels.")
+    if (is.null(names(rho_within))) {
+      cli::cli_abort(
+        "If {.arg rho_within} is a vector, it must be named with study levels."
+      )
+    }
     miss <- setdiff(levels(study_id), names(rho_within))
-    if (length(miss) > 0)
+    if (length(miss) > 0) {
       cli::cli_abort("Missing rho_within entries for studies: {.val {miss}}.")
+    }
     rho_vec <- rho_within[levels(study_id)]
   }
-  if (any(rho_vec <= -1) || any(rho_vec >= 1))
+  if (any(rho_vec <= -1) || any(rho_vec >= 1)) {
     cli::cli_abort("All rho_within entries must lie strictly in (-1, 1).")
+  }
 
   V <- matrix(0, nrow = n, ncol = n)
   sd_vec <- sqrt(sampling_var)
@@ -83,7 +96,19 @@ block_V <- function(study_id, sampling_var, rho_within = 0.5) {
     if (length(idx) == 1L) {
       V[idx, idx] <- sampling_var[idx]
     } else {
-      Rs <- matrix(rho, length(idx), length(idx))
+      m <- length(idx)
+      ## A compound-symmetric m x m block has smallest eigenvalue
+      ## 1 + (m - 1) * rho, so it is positive-definite only when
+      ## rho > -1/(m - 1). The plain (-1, 1) check is not enough.
+      lower_bound <- -1 / (m - 1)
+      if (rho <= lower_bound) {
+        cli::cli_abort(c(
+          "{.arg rho_within} for study {.val {s}} is too negative for a positive-definite block.",
+          "x" = "A compound-symmetric {m}x{m} block needs {.code rho > {round(lower_bound, 4)}} (got {rho}).",
+          "i" = "The smallest eigenvalue is {.code 1 + (m - 1) * rho}, which must be positive."
+        ))
+      }
+      Rs <- matrix(rho, m, m)
       diag(Rs) <- 1
       Vs <- diag(sd_vec[idx]) %*% Rs %*% diag(sd_vec[idx])
       V[idx, idx] <- Vs

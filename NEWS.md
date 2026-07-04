@@ -3,6 +3,18 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Diagnostic and mesh helper bug fixes (2026-07-04)
+
+* `check_auto_residual()` now labels internal family id `15` as
+  `nbinom1` instead of returning `NA` in diagnostic messages (#630).
+  IN: diagnostic family-name reporting only. No family dispatch,
+  likelihood, or response-family support change is included.
+* `make_mesh(type = "cutoff", convex = ... / concave = ...)` now passes
+  the observed coordinate matrix to `fmesher` instead of the k-means
+  centre object that is not created on the cutoff path (#595). IN:
+  cutoff mesh construction with nonconvex-hull boundaries. No SPDE
+  likelihood or spatial formula grammar change is included.
+
 ## `extract_lv_effects()` defaults to axis effects (2026-06-30)
 
 * `extract_lv_effects()` now defaults to `type = "axis_effect"` so the first table is the axis / CLV coefficient `alpha`, matching the usual GLLVM constrained-ordination interpretation. Native TMB fits with `se = TRUE` and a positive-definite `sdreport()` now return `std.error`, `lower`, and `upper` for those alpha rows from the fixed-parameter `alpha_lv_B` block. `type = "trait_effect"` remains available for the induced trait-scale slope surface `B_lv = Lambda alpha^T` and now also includes Wald `lower` / `upper` columns when `ADREPORT(B_lv_unit)` SEs are available. These intervals are Wald summaries conditional on the fitted axis/loading convention; coverage calibration and source-specific LV rows remain gated.

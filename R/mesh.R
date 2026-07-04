@@ -127,7 +127,7 @@ make_mesh <- function(data, xy_cols,
     } else if (type == "cutoff") {
       if (!is.null(convex) || !is.null(concave)) {
         nch <- fmesher::fm_nonconvex_hull(loc_xy, convex = convex, concave = concave)
-        mesh <- fmesher_func(loc_centers, refine = list(), cutoff = cutoff, boundary = nch, extend = list(), ...)
+        mesh <- fmesher_func(loc_xy, refine = list(), cutoff = cutoff, boundary = nch, extend = list(), ...)
       } else {
         mesh <- fmesher_func(loc_xy, refine = list(), cutoff = cutoff, extend = list(), ...)
       }

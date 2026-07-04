@@ -164,7 +164,8 @@ check_auto_residual <- function(fit) {
     "11" = "truncated_nbinom2",
     "12" = "delta_lognormal",
     "13" = "delta_gamma",
-    "14" = "ordinal_probit"
+    "14" = "ordinal_probit",
+    "15" = "nbinom1"
   )
   unname(names[as.character(ids)])
 }

@@ -3,6 +3,17 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Diagnostic and mesh helper bug fixes (2026-07-04)
+
+* `check_auto_residual()` now labels internal family id `15` as
+  `nbinom1` instead of returning `NA` in diagnostic messages (#630).
+  IN: diagnostic family-name reporting only. No family dispatch,
+  likelihood, or response-family support change is included.
+* `make_mesh(type = "cutoff", convex = ... / concave = ...)` now passes
+  the observed coordinate matrix to `fmesher` instead of the k-means
+  centre object that is not created on the cutoff path (#595). IN:
+  cutoff mesh construction with nonconvex-hull boundaries. No SPDE
+  likelihood or spatial formula grammar change is included.
 ## Meta-analysis and pedigree helper bug fixes (2026-07-04)
 
 * `block_V()` now rejects within-study correlations that would make a

@@ -4,6 +4,14 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-04 -- family-label and mesh helper fixes (#630/#595)
+
+Branch: `codex/family-label-mesh-fixes` from `origin/main` at
+`42a1995d`. Scope: Groups B and C from the Claude pending-fixes
+manifest. `check_auto_residual()` now names family id 15 as `nbinom1`,
+and `make_mesh(type = "cutoff", convex = ... / concave = ...)` now uses
+the observed coordinate matrix on the cutoff path. No family dispatch,
+likelihood, formula grammar, SPDE engine, or C++ change.
 ## 2026-07-04 -- meta/pedigree helper bug fixes (#656/#657/#607/#623)
 
 Branch: `codex/meta-pedigree-pd-fixes` from `origin/main` at
@@ -17,6 +25,29 @@ pedigree engine change.
 Commands run with `NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1`:
 
 ```sh
+Rscript --vanilla - <<'RS'
+devtools::load_all(quiet = TRUE)
+stopifnot(identical(gllvmTMB:::.family_name_from_id(15L), "nbinom1"))
+set.seed(595)
+df <- data.frame(x = runif(40), y = runif(40))
+mesh <- make_mesh(df, c("x", "y"), cutoff = 0.1, type = "cutoff", convex = 0.1)
+stopifnot(inherits(mesh, "sdmTMBmesh"), inherits(mesh$mesh, "fm_mesh_2d"), nrow(mesh$mesh$loc) > 0)
+cat("family id 15 ->", gllvmTMB:::.family_name_from_id(15L), "\n")
+cat("mesh vertices", nrow(mesh$mesh$loc), "\n")
+RS
+Rscript --vanilla -e 'devtools::test(filter = "mesh|check-auto-residual", reporter = "summary")'
+git diff --check
+```
+
+Outcome: passed. Family id 15 printed `nbinom1`; the cutoff+convex mesh
+smoke returned an `sdmTMBmesh` with an `fm_mesh_2d` payload and 61 mesh
+vertices; existing `check-auto-residual` and `mesh` tests passed.
+`git diff --check` passed with no output.
+
+Formatting note: `air format R/check-auto-residual.R R/mesh.R` was run,
+but the broad `R/mesh.R` reflow was discarded to keep this PR to the
+one-line behavioural mesh fix. The final diff is the narrow copied
+manifest diff.
 Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-block-v-pd.R", reporter = "summary"); testthat::test_file("tests/testthat/test-block-V.R", reporter = "summary"); testthat::test_file("tests/testthat/test-pedigree-to-A-inbreeding.R", reporter = "summary")'
 ```
 
@@ -41,6 +72,16 @@ Outcome: format completed; `git diff --check` passed with no output.
 Rose / pre-publish and pkgdown checks for the NEWS entry:
 
 ```sh
+rg -n "check_auto_residual|family id|nbinom1|make_mesh|cutoff|convex|concave|SPDE|formula grammar|likelihood" NEWS.md R/check-auto-residual.R R/mesh.R tests/testthat/test-check-auto-residual.R tests/testthat/test-mesh.R man _pkgdown.yml docs/design
+rg -n "gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|\\bS_B\\b|\\bS_W\\b|\\\\bf S|trio" NEWS.md R/check-auto-residual.R R/mesh.R
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+```
+
+Outcome: new NEWS text is scoped to diagnostic labelling and cutoff
+mesh construction, with excluded likelihood / dispatch / SPDE /
+grammar surfaces named explicitly. Broader `rg` hits were pre-existing
+NEWS/history or generated-doc references. `pkgdown::check_pkgdown()`
+reported "No problems found."
 rg -n "block_V|pedigree_to_A|meta_V|pedigree_to_Ainv_sparse|animal-keyword|positive-definite|selfing|absent" NEWS.md R/animal-keyword.R R/two-stage.R man _pkgdown.yml docs/design tests/testthat/test-block-v-pd.R tests/testthat/test-pedigree-to-A-inbreeding.R
 rg -n "gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|\\bS_B\\b|\\bS_W\\b|\\\\bf S|trio" NEWS.md R/animal-keyword.R R/two-stage.R tests/testthat/test-block-v-pd.R tests/testthat/test-pedigree-to-A-inbreeding.R
 Rscript --vanilla -e 'pkgdown::check_pkgdown()'

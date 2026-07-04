@@ -3,6 +3,18 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Diagnostic and bootstrap fixes (2026-07-03)
+
+* Fixed diagnostic and bootstrap reliability issues from the twin code
+  review. Randomized-quantile-residual and rootogram diagnostics now
+  label `nbinom1` (family id 15) correctly instead of `family_id_15`
+  (#603). Seeded residual/predictive-check helpers save and restore the
+  global RNG state, so a seeded diagnostic no longer overwrites the
+  caller's random stream (#652). Loading bootstrap CIs now expose the
+  count of dropped replicates via `attr(x, "n_failed")` and warn when
+  any refit failed, so intervals built from a small surviving fraction
+  are not mistaken for fully reliable ones (#644).
+
 ## `extract_lv_effects()` defaults to axis effects (2026-06-30)
 
 * `extract_lv_effects()` now defaults to `type = "axis_effect"` so the first table is the axis / CLV coefficient `alpha`, matching the usual GLLVM constrained-ordination interpretation. Native TMB fits with `se = TRUE` and a positive-definite `sdreport()` now return `std.error`, `lower`, and `upper` for those alpha rows from the fixed-parameter `alpha_lv_B` block. `type = "trait_effect"` remains available for the induced trait-scale slope surface `B_lv = Lambda alpha^T` and now also includes Wald `lower` / `upper` columns when `ADREPORT(B_lv_unit)` SEs are available. These intervals are Wald summaries conditional on the fitted axis/loading convention; coverage calibration and source-specific LV rows remain gated.

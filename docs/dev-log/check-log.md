@@ -4,6 +4,26 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-03 -- Diagnostic + bootstrap robustness (twin-review batch 3)
+
+Branch: `fix/diagnostics-bootstrap-robustness` (from `origin/main`;
+touched files byte-identical to `origin/main`).
+
+Scope: #603 (nbinom1 id-15 label in `.gllvmTMB_family_label_from_id`),
+#652 (save/restore `.Random.seed` around the two seeded residual
+helpers), #644 (surface `attr(out, "n_failed")` + warn from the loading
+bootstrap). `R/predictive-diagnostics.R`, `R/loading-ci-bootstrap.R`.
+No likelihood/family/grammar/C++ change. `withr` is only in Suggests,
+so the RNG save/restore uses the base-R `.Random.seed` on.exit idiom.
+
+Checks (macOS, R 4.6.0, NOT_CRAN=true):
+
+```r
+testthat::test_file("tests/testthat/test-diagnostics-family-label.R")  # 3 pass (new)
+testthat::test_file("tests/testthat/test-predictive-diagnostics.R")    # no regressions
+testthat::test_file("tests/testthat/test-loading-ci-bootstrap.R")      # no regressions
+```
+
 ## 2026-05-10 -- drmTMB-parity match exposes unstated tidyselect
 
 Scope:

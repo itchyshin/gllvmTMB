@@ -125,10 +125,9 @@
 #'     Unsupported families fall back through the simulator's own
 #'     warning path.
 #'   \item Refits use the same `formula` reconstructed from
-#'     `fit$formula` and `fit$covstructs`. Auxiliary arguments such as
-#'     `phylo_vcv`, `mesh`, `lambda_constraint` are NOT currently
-#'     forwarded; pass `formula` and `extra_args` explicitly via the
-#'     low-level path if you need them.
+#'     `fit$formula` and `fit$covstructs`, and forward the fit's
+#'     auxiliary structure (`phylo_vcv`, `phylo_tree`, `mesh`,
+#'     `lambda_constraint`) so each refit matches the original model.
 #'   \item Convergence: replicates whose refit fails or whose
 #'     optimiser does not return `convergence == 0` are counted in
 #'     `n_failed` and excluded from CIs.
@@ -188,7 +187,9 @@ bootstrap_Sigma <- function(
     ## phylo_unique-with-latent (phylo_diag) is fit.
     phy = isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   )
-  level_kept <- level[level_avail[level]]
+  ## Deduplicate: the default level set normalises unit->B / unit_obs->W, which
+  ## collides with an explicit B/W and would extract the same tier twice (#624).
+  level_kept <- unique(level[level_avail[level]])
   if (length(level_kept) == 0L) {
     cli::cli_abort(c(
       "None of the requested {.arg level}(s) are present in the fit.",

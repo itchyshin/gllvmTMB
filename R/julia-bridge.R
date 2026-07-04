@@ -20,11 +20,9 @@
   "poisson",
   "binomial",
   "negbinomial",
-  "nb1",
   "beta",
   "gamma",
-  "ordinal",
-  "ordinal_probit"
+  "ordinal"
 )
 .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES <- c(
   "negbinomial",
@@ -57,23 +55,8 @@
 .GLLVM_JULIA_RESIDUAL_FAMILIES <- .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
 .GLLVM_JULIA_SIMULATE_FAMILIES <- .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
 .GLLVM_JULIA_ORDINATION_FAMILIES <- .GLLVM_JULIA_BRIDGE_FAMILIES
-.GLLVM_JULIA_MASK_FAMILIES <- c(
-  "poisson",
-  "binomial",
-  "negbinomial",
-  "nb1",
-  "beta",
-  "gamma",
-  .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
-)
-.GLLVM_JULIA_X_FAMILIES <- c(
-  "gaussian",
-  "poisson",
-  "binomial",
-  "negbinomial",
-  "beta",
-  "gamma"
-)
+.GLLVM_JULIA_MASK_FAMILIES <- character()
+.GLLVM_JULIA_X_FAMILIES <- "gaussian"
 .GLLVM_JULIA_MIXED_FAMILY <- "mixed-family vector"
 .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES <- c(
   "gaussian",
@@ -84,10 +67,8 @@
   .GLLVM_JULIA_BRIDGE_FAMILIES,
   .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
 )
-.GLLVM_JULIA_MASK_CI_FAMILIES <- setdiff(
-  .GLLVM_JULIA_MASK_FAMILIES,
-  .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
-)
+.GLLVM_JULIA_CI_NO_X_BOOTSTRAP_FAMILIES <- "gaussian"
+.GLLVM_JULIA_MASK_CI_FAMILIES <- character()
 .GLLVM_JULIA_X_CI_FAMILIES <- .GLLVM_JULIA_X_FAMILIES
 .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS <- c(
   "fit_no_x",
@@ -119,6 +100,7 @@
       "GJL-GATE-MIXED-CI",
       "GJL-GATE-MIXED-COMPONENTS",
       "GJL-GATE-ORDINAL-CI",
+      "GJL-GATE-MASK",
       "GJL-GATE-MASK-X-CI",
       "GJL-GATE-X-CI",
       "GJL-GATE-NEWDATA-PREDICT",
@@ -142,6 +124,7 @@
       "direct wrapper CI",
       "family mapping",
       "direct wrapper CI",
+      "direct wrapper",
       "direct wrapper CI",
       "direct wrapper CI",
       "postfit prediction",
@@ -164,6 +147,7 @@
       "Mixed-family CI/status payloads are not specified.",
       "The R bridge admits only the narrow mixed-family component set.",
       "Per-trait ordinal CI endpoints are not routed.",
+      "Response masks are not wired through this GLLVM.jl bridge surface.",
       "Masks combined with fixed-effect X have no CI/status contract.",
       "Fixed-effect-X CI endpoints are admitted for a smaller family set.",
       "Only retained in-sample score/fitted payloads are routed.",
@@ -184,6 +168,7 @@
     representative_test = "tests/testthat/test-julia-bridge.R",
     issue = "gllvmTMB#488",
     validation_row = c(
+      "JUL-01",
       "JUL-01",
       "JUL-01",
       "JUL-01",
@@ -293,13 +278,12 @@ gllvm_julia_setup <- function(
 #' and native `gllvmTMB` parity evidence are complete.
 #'
 #' @return A data frame with one row per admitted bridge family plus the narrow
-#'   mixed-family vector route. Boolean columns mark the current R-side fit,
-#'   transport, no-X CI, masked no-X CI, complete-response fixed-effect-X CI,
-#'   and post-fit cells. CI columns are deliberately scoped: `ci_no_x_*` does
-#'   not imply masked, mixed-family, or fixed-effect-X intervals; `ci_mask_*`
-#'   covers only no-X response-mask rows; and `ci_x_*` covers only
-#'   complete-response fixed-effect-X rows. `status` is `"partial"` for every
-#'   current row, with the boundary recorded in `notes`.
+#'   transport, no-X CI, complete-response fixed-effect-X CI, and post-fit
+#'   cells. CI columns are deliberately scoped: `ci_no_x_*` does not imply
+#'   masked, mixed-family, or fixed-effect-X intervals; response masks are
+#'   gated in the current bridge surface; and `ci_x_*` covers only
+#'   complete-response Gaussian fixed-effect-X rows. `status` is `"partial"`
+#'   for every current row, with the boundary recorded in `notes`.
 #' @examples
 #' head(gllvm_julia_capabilities())
 #' @export
@@ -314,7 +298,7 @@ gllvm_julia_capabilities <- function() {
     cbind_binomial = FALSE,
     ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_profile = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
-    ci_no_x_bootstrap = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
+    ci_no_x_bootstrap = families %in% .GLLVM_JULIA_CI_NO_X_BOOTSTRAP_FAMILIES,
     ci_mask_wald = families %in% .GLLVM_JULIA_MASK_CI_FAMILIES,
     ci_mask_profile = families %in% .GLLVM_JULIA_MASK_CI_FAMILIES,
     ci_mask_bootstrap = families %in% .GLLVM_JULIA_MASK_CI_FAMILIES,
@@ -332,42 +316,7 @@ gllvm_julia_capabilities <- function() {
     notes = notes,
     stringsAsFactors = FALSE
   )
-  mixed <- data.frame(
-    family = .GLLVM_JULIA_MIXED_FAMILY,
-    fit_no_x = TRUE,
-    fixed_effect_X = FALSE,
-    missing_response = FALSE,
-    cbind_binomial = FALSE,
-    ci_no_x_wald = FALSE,
-    ci_no_x_profile = FALSE,
-    ci_no_x_bootstrap = FALSE,
-    ci_mask_wald = FALSE,
-    ci_mask_profile = FALSE,
-    ci_mask_bootstrap = FALSE,
-    ci_x_wald = FALSE,
-    ci_x_profile = FALSE,
-    ci_x_bootstrap = FALSE,
-    postfit_coef = TRUE,
-    postfit_fit_stats = TRUE,
-    postfit_summary = TRUE,
-    postfit_predict = TRUE,
-    postfit_residuals = TRUE,
-    postfit_simulate = TRUE,
-    postfit_ordination = TRUE,
-    status = "partial",
-    notes = paste(
-      "complete balanced no-X/no-mask/no-CI mixed-family route;",
-      "coef(), summary(), in-sample predict()/fitted(),",
-      "response/Pearson residuals, conditional simulate(), and raw unit-tier",
-      "covariance/ordination accessors are routed from retained payloads;",
-      "CI, masks, fixed-effect X, predictor-informed lv, newdata, and",
-      "richer extractor parity remain gated;",
-      "component families:",
-      paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", ")
-    ),
-    stringsAsFactors = FALSE
-  )
-  rbind(out, mixed)
+  out
 }
 
 .gllvm_julia_capabilities_df <- function(caps, source = "capability surface") {
@@ -403,16 +352,40 @@ gllvm_julia_capabilities <- function() {
 
 .gllvm_julia_expected_capability_drifts <- function() {
   data.frame(
-    family = "binomial",
-    capability = "cbind_binomial",
-    direction = "julia_broader_than_r",
-    gate_id = "GJL-GATE-CBIND-BINOMIAL",
+    family = c("binomial", "ordinal", "ordinal"),
+    capability = c(
+      "cbind_binomial",
+      "ci_no_x_wald",
+      "postfit_residuals"
+    ),
+    direction = c(
+      "julia_broader_than_r",
+      "julia_broader_than_r",
+      "julia_broader_than_r"
+    ),
+    gate_id = c(
+      "GJL-GATE-CBIND-BINOMIAL",
+      "GJL-GATE-ORDINAL-CI",
+      "GJL-GATE-ORDINAL-RESIDUAL"
+    ),
     issue = "gllvmTMB#488",
     validation_row = "JUL-01",
-    reason = paste(
-      "GLLVM.jl exposes a binomial count-matrix bridge flag, but the R bridge",
-      "still requires one-row-per-unit-trait Bernoulli/binomial values until",
-      "the cbind marshaling contract is routed and parity-tested."
+    reason = c(
+      paste(
+        "GLLVM.jl exposes a binomial count-matrix bridge flag, but the R bridge",
+        "still requires one-row-per-unit-trait Bernoulli/binomial values until",
+        "the cbind marshaling contract is routed and parity-tested."
+      ),
+      paste(
+        "GLLVM.jl reports native ordinal Wald CI support, but the R bridge",
+        "keeps per-trait ordinal CI semantics gated until endpoint labels and",
+        "status payloads are reconciled."
+      ),
+      paste(
+        "GLLVM.jl reports ordinal residual support, but the R bridge keeps",
+        "ordinal residual semantics gated until response-scale residuals are",
+        "specified for users."
+      )
     ),
     stringsAsFactors = FALSE
   )
@@ -533,9 +506,14 @@ gllvm_julia_capabilities <- function() {
     "CI, X, and native parity promotion are follow-ups"
   }
   ci_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
+    routed_methods <- if (family %in% .GLLVM_JULIA_CI_NO_X_BOOTSTRAP_FAMILIES) {
+      "Wald/profile/bootstrap"
+    } else {
+      "Wald/profile"
+    }
     paste0(
       "direct gllvm_julia_fit() and gllvmTMB(..., engine = \"julia\") ",
-      "complete-response no-X Wald/profile/bootstrap CI payloads are routed; ",
+      "complete-response no-X ", routed_methods, " CI payloads are routed; ",
       "gllvmTMB() fits retain bridge input for post-fit confint() ",
       "recomputation; "
     )
@@ -791,6 +769,17 @@ gllvm_julia_capabilities <- function() {
   )
 }
 
+.gllvm_julia_engine_dispersion_parameter <- function(family) {
+  switch(
+    family,
+    negbinomial = "r",
+    nb1 = "phi",
+    beta = "phi",
+    gamma = "alpha",
+    "dispersion"
+  )
+}
+
 .gllvm_julia_normalise_result <- function(res) {
   p <- .gllvm_julia_n_traits(res)
   if (p > 0L) {
@@ -918,6 +907,8 @@ gllvm_julia_capabilities <- function() {
     res$dispersion_group_engine <- group
     res$dispersion_public <- public
     res$dispersion_group_public <- public_group
+    res$dispersion_parameter <- res$dispersion_parameter %||%
+      .gllvm_julia_engine_dispersion_parameter(fam)
     res$dispersion_public_parameter <- .gllvm_julia_public_dispersion_parameter(
       fam
     )
@@ -1097,18 +1088,21 @@ gllvm_julia_capabilities <- function() {
   }
   if (length(family) != 1L) {
     stop(
-      "engine = 'julia' does not yet route response masks for mixed-family ",
-      "vectors. Use engine = 'tmb'.",
+      .gllvm_julia_gate_message(
+        "GJL-GATE-MASK",
+        "engine = 'julia' response masks are not wired through the current ",
+        "GLLVM.jl bridge surface. Use complete responses or engine = 'tmb'."
+      ),
       call. = FALSE
     )
   }
   if (!(family %in% .GLLVM_JULIA_MASK_FAMILIES)) {
     stop(
-      "engine = 'julia' response masks are currently routed for ",
-      paste(.GLLVM_JULIA_MASK_FAMILIES, collapse = ", "),
-      "; family '",
-      family,
-      "' remains gated. Use engine = 'tmb'.",
+      .gllvm_julia_gate_message(
+        "GJL-GATE-MASK",
+        "engine = 'julia' response masks are not wired through the current ",
+        "GLLVM.jl bridge surface. Use complete responses or engine = 'tmb'."
+      ),
       call. = FALSE
     )
   }
@@ -1626,7 +1620,19 @@ gllvm_julia_capabilities <- function() {
   out <- eta
   for (i in seq_len(nrow(eta))) {
     fam <- families[[i]]
-    link <- links[[i]]
+    link <- gsub("[^A-Za-z]", "", links[[i]])
+    link <- switch(
+      tolower(link),
+      identity = "IdentityLink",
+      identitylink = "IdentityLink",
+      log = "LogLink",
+      loglink = "LogLink",
+      logit = "LogitLink",
+      logitlink = "LogitLink",
+      probit = "ProbitLink",
+      probitlink = "ProbitLink",
+      links[[i]]
+    )
     if (fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
       stop(
         "engine = 'julia': ordinal predictions are category probabilities, ",
@@ -2213,6 +2219,31 @@ gllvm_julia_fit <- function(
       )
     }
   }
+  if (length(fam) != 1L) {
+    stop(
+      .gllvm_julia_gate_message(
+        "GJL-GATE-MIXED-COMPONENTS",
+        "engine = 'julia': mixed-family vectors are not wired through the ",
+        "current GLLVM.jl bridge surface. Use engine = 'tmb' or a one-family ",
+        "Julia bridge row."
+      ),
+      call. = FALSE
+    )
+  }
+  unsupported_fam <- setdiff(fam, .GLLVM_JULIA_BRIDGE_FAMILIES)
+  if (length(unsupported_fam)) {
+    stop(
+      .gllvm_julia_gate_message(
+        "GJL-GATE-FAMILY",
+        "engine = 'julia': the current GLLVM.jl bridge admits ",
+        paste(.GLLVM_JULIA_BRIDGE_FAMILIES, collapse = ", "),
+        " only; found ",
+        paste(unsupported_fam, collapse = ", "),
+        ". Use engine = 'tmb' or a supported Julia bridge family."
+      ),
+      call. = FALSE
+    )
+  }
   y <- as.matrix(y)
   if (isTRUE(units_are_rows)) {
     y <- t(y)
@@ -2230,6 +2261,20 @@ gllvm_julia_fit <- function(
       )
     }
     storage.mode(mask) <- "logical"
+  }
+  if (
+    !is.null(mask) &&
+      any(!mask) &&
+      !(length(fam) == 1L && fam %in% .GLLVM_JULIA_MASK_FAMILIES)
+  ) {
+    stop(
+      .gllvm_julia_gate_message(
+        "GJL-GATE-MASK",
+        "engine = 'julia': response masks are not wired through the current ",
+        "GLLVM.jl bridge surface. Use complete responses or engine = 'tmb'."
+      ),
+      call. = FALSE
+    )
   }
   if (ci_method != "none" && !is.null(X) && !is.null(mask)) {
     stop(
@@ -2255,6 +2300,21 @@ gllvm_julia_fit <- function(
         "NB2, Beta, and Gamma complete-response fits. NB1-X, ordinal-X, ",
         "mixed-family-X, and masks+X remain gated. Use `ci_method = \"none\"` ",
         "or engine = 'tmb'."
+      ),
+      call. = FALSE
+    )
+  }
+  if (
+    !is.null(X) &&
+      !(length(fam) == 1L && fam %in% .GLLVM_JULIA_X_FAMILIES)
+  ) {
+    stop(
+      .gllvm_julia_gate_message(
+        "GJL-GATE-X-FAMILY",
+        "engine = 'julia': fixed-effect covariates are routed only for ",
+        paste(.GLLVM_JULIA_X_FAMILIES, collapse = ", "),
+        " complete one-part rows in the current GLLVM.jl bridge. Use ",
+        "engine = 'tmb' for this fixed-effect design."
       ),
       call. = FALSE
     )

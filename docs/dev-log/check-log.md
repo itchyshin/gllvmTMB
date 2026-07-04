@@ -4,6 +4,74 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-04 06:24 MDT -- Julia bridge capability checkpoint cleanup
+
+Branch: `codex/r-bridge-grouped-dispersion`; local checkpoint for cloud-work
+readiness. No push or PR.
+
+Guard: R-side bridge ledger must not advertise rows broader than the live
+`GLLVM.jl` capability surface.
+
+Implemented:
+
+- Narrowed the R bridge capability ledger to the live admitted family set:
+  Gaussian, Poisson, Binomial, NB2, Beta, Gamma, and Ordinal.
+- Removed the mixed-family vector row from the advertised live bridge surface.
+- Marked response masks and non-Gaussian fixed-effect `X` as fail-loud gates.
+- Kept `nb1` and `ordinal_probit` available only as gated/internal parser
+  concepts, not admitted live bridge rows.
+- Updated bridge drift expectations and focused tests for the narrower ledger.
+- Regenerated `man/gllvm_julia_capabilities.Rd` after the roxygen boundary
+  wording changed.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+```
+
+Outcome: passed with 350 assertions, 0 failures, and 14 live-Julia skips.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Outcome: regenerated `man/gllvm_julia_capabilities.Rd`; emitted existing
+unresolved-link warnings in unrelated roxygen topics
+(`load_mixed_family_fixture`, `fit_mixed_family_fixture`,
+`parse_multi_formula`, and accidental `[0, 1]` links).
+
+Live diagnostic, not accepted as green:
+
+```sh
+GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+```
+
+Outcome: optional live-Julia run reported 503 passes and 25 failures. The
+failures are concentrated in stale live-parity tests that still assume
+ungated `nb1`, `ordinal_probit`, response masks, non-Gaussian fixed-effect
+`X`, mixed-family vectors, dispersion CI naming, and a Gaussian TMB-vs-Julia
+log-likelihood equality claim. Those rows remain follow-up work; they are not
+claimed by this cleanup checkpoint.
+
+Stale-wording scan:
+
+```sh
+rg -n "mixed-family vector route|response masks and masked no-X|nb1.*postfit|ordinal_probit.*postfit" R/julia-bridge.R tests/testthat/test-julia-bridge.R man/gllvm_julia_capabilities.Rd
+```
+
+Outcome: one remaining hit in a dormant future mask-CI note branch inside
+`R/julia-bridge.R`; current active capability notes and generated Rd wording
+say response masks are gated.
+
+Still not claimed:
+
+- No mixed-family bridge parity.
+- No response-mask bridge parity.
+- No non-Gaussian fixed-effect `X` bridge parity.
+- No NB1 or `ordinal_probit` live bridge admission.
+- No push, merge, or PR change from this local cleanup.
+
 ## 2026-07-01 21:27 MDT -- Source-specific lv alias guard hardening
 
 Branch: local dirty Dropbox checkout; no push or PR.

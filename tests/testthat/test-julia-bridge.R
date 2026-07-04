@@ -451,6 +451,7 @@ test_that("Julia bridge gate registry names every primary R admission stop", {
       "GJL-GATE-MIXED-CI",
       "GJL-GATE-MIXED-COMPONENTS",
       "GJL-GATE-ORDINAL-CI",
+      "GJL-GATE-MASK",
       "GJL-GATE-MASK-X-CI",
       "GJL-GATE-X-CI",
       "GJL-GATE-NEWDATA-PREDICT",
@@ -484,16 +485,19 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   )
   expect_equal(
     caps$family,
-    c(.GLLVM_JULIA_BRIDGE_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
+    .GLLVM_JULIA_BRIDGE_FAMILIES
   )
   expect_false("lognormal" %in% caps$family)
+  expect_false(.GLLVM_JULIA_MIXED_FAMILY %in% caps$family)
+  expect_false("nb1" %in% caps$family)
+  expect_false("ordinal_probit" %in% caps$family)
   expect_equal(caps$family[caps$fit_no_x], caps$family)
   expect_equal(caps$family[caps$fixed_effect_X], .GLLVM_JULIA_X_FAMILIES)
   expect_equal(caps$family[caps$ci_no_x_wald], .GLLVM_JULIA_CI_NO_X_FAMILIES)
   expect_equal(caps$family[caps$ci_no_x_profile], .GLLVM_JULIA_CI_NO_X_FAMILIES)
   expect_equal(
     caps$family[caps$ci_no_x_bootstrap],
-    .GLLVM_JULIA_CI_NO_X_FAMILIES
+    .GLLVM_JULIA_CI_NO_X_BOOTSTRAP_FAMILIES
   )
   expect_equal(caps$family[caps$ci_mask_wald], .GLLVM_JULIA_MASK_CI_FAMILIES)
   expect_equal(
@@ -517,10 +521,7 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_true(any(grepl("per-trait ordinal cutpoints", caps$notes)))
   expect_true(all(caps$status == "partial"))
   expect_equal(caps$family[caps$missing_response], .GLLVM_JULIA_MASK_FAMILIES)
-  expect_true(any(grepl(
-    "response masks and masked no-X Wald/profile/bootstrap CI payloads",
-    caps$notes
-  )))
+  expect_true(any(grepl("response masks remain gated", caps$notes)))
   expect_true(any(grepl("fixed-effect X point fits are routed", caps$notes)))
   expect_true(any(grepl(
     "complete-response fixed-effect-X Wald/profile/bootstrap CI payloads",
@@ -530,33 +531,27 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_equal(caps$family[caps$postfit_summary], caps$family)
   expect_equal(
     caps$family[caps$postfit_predict],
-    c(.GLLVM_JULIA_PREDICT_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
+    intersect(.GLLVM_JULIA_PREDICT_FAMILIES, caps$family)
   )
   expect_equal(
     caps$family[caps$postfit_residuals],
-    c(.GLLVM_JULIA_RESIDUAL_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
+    intersect(.GLLVM_JULIA_RESIDUAL_FAMILIES, caps$family)
   )
   expect_false(caps$postfit_residuals[caps$family == "ordinal"])
-  expect_false(caps$postfit_residuals[caps$family == "ordinal_probit"])
   expect_equal(
     caps$family[caps$postfit_simulate],
-    c(.GLLVM_JULIA_SIMULATE_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
+    intersect(.GLLVM_JULIA_SIMULATE_FAMILIES, caps$family)
   )
   expect_equal(
     caps$family[caps$postfit_ordination],
-    c(.GLLVM_JULIA_ORDINATION_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
+    .GLLVM_JULIA_ORDINATION_FAMILIES
   )
   expect_false(caps$postfit_simulate[caps$family == "ordinal"])
-  expect_false(caps$postfit_simulate[caps$family == "ordinal_probit"])
   expect_true(any(grepl("in-sample predict\\(\\)/fitted\\(\\)", caps$notes)))
   expect_true(any(grepl("response/Pearson residuals", caps$notes)))
   expect_true(any(grepl("conditional simulate\\(\\)", caps$notes)))
   expect_true(any(grepl("native link_residual scale semantics", caps$notes)))
   expect_true(any(grepl("ordinal link, probability", caps$notes)))
-  expect_true(caps$postfit_predict[caps$family == "nb1"])
-  expect_true(caps$postfit_residuals[caps$family == "nb1"])
-  expect_true(caps$postfit_simulate[caps$family == "nb1"])
-  expect_true(caps$postfit_ordination[caps$family == "nb1"])
   expect_true(caps$postfit_predict[caps$family == "gamma"])
   expect_true(caps$postfit_residuals[caps$family == "gamma"])
   expect_true(caps$postfit_simulate[caps$family == "gamma"])
@@ -571,29 +566,6 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     caps$notes
   )))
   expect_true(all(!caps$cbind_binomial))
-  mixed <- caps[caps$family == .GLLVM_JULIA_MIXED_FAMILY, , drop = FALSE]
-  expect_equal(nrow(mixed), 1L)
-  expect_true(mixed$fit_no_x)
-  expect_false(mixed$fixed_effect_X)
-  expect_false(mixed$missing_response)
-  expect_false(mixed$ci_no_x_wald)
-  expect_false(mixed$ci_no_x_profile)
-  expect_false(mixed$ci_no_x_bootstrap)
-  expect_false(mixed$ci_mask_wald)
-  expect_false(mixed$ci_mask_profile)
-  expect_false(mixed$ci_mask_bootstrap)
-  expect_false(mixed$ci_x_wald)
-  expect_false(mixed$ci_x_profile)
-  expect_false(mixed$ci_x_bootstrap)
-  expect_true(mixed$postfit_coef)
-  expect_true(mixed$postfit_summary)
-  expect_true(mixed$postfit_predict)
-  expect_true(mixed$postfit_residuals)
-  expect_true(mixed$postfit_simulate)
-  expect_true(mixed$postfit_ordination)
-  expect_match(mixed$notes, "no-X/no-mask/no-CI")
-  expect_match(mixed$notes, "predictor-informed lv")
-  expect_match(mixed$notes, "gaussian, poisson, binomial")
 })
 
 test_that("Julia bridge capability drift is explicit and gate-labelled", {
@@ -624,10 +596,10 @@ test_that("Julia bridge capability drift is explicit and gate-labelled", {
   expect_match(drift$reason, "cbind marshaling contract")
 
   future_julia <- julia_caps
-  future_julia$fixed_effect_X[future_julia$family == "nb1"] <- TRUE
+  future_julia$fixed_effect_X[future_julia$family == "poisson"] <- TRUE
   future_drift <- .gllvm_julia_capability_drift(julia_caps = future_julia)
   expect_true(any(
-    future_drift$family == "nb1" &
+    future_drift$family == "poisson" &
       future_drift$capability == "fixed_effect_X" &
       future_drift$status == "unregistered"
   ))
@@ -1523,7 +1495,7 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
       X = array(1, dim = c(2L, 4L, 1L)),
       ci_method = "wald"
     ),
-    "GJL-GATE-X-CI"
+    "GJL-GATE-FAMILY"
   )
   expect_error(
     gllvm_julia_fit(
@@ -1602,7 +1574,7 @@ test_that("gllvmTMB fit-time Julia CI controls route through the bridge", {
   expect_equal(fit$ci_level, 0.8)
 })
 
-test_that("gllvmTMB fit-time Julia CI controls preserve response masks", {
+test_that("gllvmTMB fit-time Julia CI controls gate response masks", {
   df <- make_long()
   df <- df[-1L, , drop = FALSE]
   seen <- new.env(parent = emptyenv())
@@ -1635,23 +1607,19 @@ test_that("gllvmTMB fit-time Julia CI controls preserve response masks", {
     }
   )
 
-  fit <- gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE),
-    data = df,
-    trait = "trait",
-    unit = "unit",
-    family = poisson(),
-    engine = "julia",
-    ci_method = "wald",
-    ci_level = 0.9
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = poisson(),
+      engine = "julia",
+      ci_method = "wald",
+      ci_level = 0.9
+    ),
+    "GJL-GATE-MASK"
   )
-
-  expect_s3_class(fit, "gllvmTMB_julia")
-  expect_equal(seen$ci_method, "wald")
-  expect_equal(seen$ci_level, 0.9)
-  expect_true(is.matrix(seen$mask))
-  expect_true(any(!seen$mask))
-  expect_true(isTRUE(fit$missing_response))
 })
 
 test_that("gllvmTMB fit-time Julia CI controls preserve fixed-effect X", {
@@ -1680,7 +1648,7 @@ test_that("gllvmTMB fit-time Julia CI controls preserve fixed-effect X", {
 
       out <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
       out$engine <- "julia"
-      out$model <- "poisson_x_rr"
+      out$model <- "gaussian_x_rr"
       out$gamma <- c(x = 0.15)
       out$beta_cov <- out$alpha
       out$ci_method <- ci_method
@@ -1694,7 +1662,7 @@ test_that("gllvmTMB fit-time Julia CI controls preserve fixed-effect X", {
     data = df,
     trait = "trait",
     unit = "unit",
-    family = poisson(),
+    family = gaussian(),
     engine = "julia",
     ci_method = "wald",
     ci_level = 0.9
@@ -1703,8 +1671,8 @@ test_that("gllvmTMB fit-time Julia CI controls preserve fixed-effect X", {
   expect_s3_class(fit, "gllvmTMB_julia")
   expect_equal(seen$ci_method, "wald")
   expect_equal(seen$ci_level, 0.9)
-  expect_equal(dim(seen$X), c(3L, 10L, 1L))
-  expect_equal(dimnames(seen$X)[[3L]], "x")
+  expect_equal(dim(seen$X), c(3L, 10L, 4L))
+  expect_true("x" %in% dimnames(seen$X)[[3L]])
   expect_null(seen$mask)
   expect_named(fit$gamma, "x")
 })
@@ -1807,7 +1775,7 @@ test_that("engine = 'julia' keeps unsupported response-mask rows explicit", {
       family = gaussian(),
       engine = "julia"
     ),
-    "response masks.*gaussian"
+    "GJL-GATE-MASK"
   )
 
   df$x <- stats::rnorm(nrow(df))
@@ -1859,7 +1827,7 @@ test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
       family = poisson(),
       engine = "julia"
     ),
-    "GJL-GATE-X-DESIGN"
+    "GJL-GATE-X-FAMILY"
   )
 })
 

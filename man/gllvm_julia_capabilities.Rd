@@ -8,13 +8,12 @@ gllvm_julia_capabilities()
 }
 \value{
 A data frame with one row per admitted bridge family plus the narrow
-mixed-family vector route. Boolean columns mark the current R-side fit,
-transport, no-X CI, masked no-X CI, complete-response fixed-effect-X CI,
-and post-fit cells. CI columns are deliberately scoped: \verb{ci_no_x_*} does
-not imply masked, mixed-family, or fixed-effect-X intervals; \verb{ci_mask_*}
-covers only no-X response-mask rows; and \verb{ci_x_*} covers only
-complete-response fixed-effect-X rows. \code{status} is \code{"partial"} for every
-current row, with the boundary recorded in \code{notes}.
+transport, no-X CI, complete-response fixed-effect-X CI, and post-fit
+cells. CI columns are deliberately scoped: \verb{ci_no_x_*} does not imply
+masked, mixed-family, or fixed-effect-X intervals; response masks are
+gated in the current bridge surface; and \verb{ci_x_*} covers only
+complete-response Gaussian fixed-effect-X rows. \code{status} is \code{"partial"}
+for every current row, with the boundary recorded in \code{notes}.
 }
 \description{
 \code{gllvm_julia_capabilities()} reports the rows currently admitted by the lean

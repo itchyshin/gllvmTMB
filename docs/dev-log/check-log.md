@@ -31439,3 +31439,75 @@ Rscript --vanilla -e 'devtools::test(filter = "profile-derived-curves|confint-de
 ```
 
 Outcome: clean heavy-gated skips under the normal test environment.
+
+## 2026-07-04 -- Julia bridge cbind-binomial trial routing
+
+Goal: close the ordinary binomial `cbind(successes, failures)` capability drift
+row for the current R-to-GLLVM.jl bridge contract before starting cloud work.
+
+Implemented:
+
+- `gllvm_julia_capabilities()` now marks `cbind_binomial = TRUE` for the
+  binomial row, with notes that the formula route is admitted only as
+  complete no-X success counts plus trial-count `N`.
+- `gllvmTMB(..., engine = "julia")` now pivots two-column binomial responses
+  into success-count `Y` and trial-count `N` for complete no-X binomial rows.
+- Non-binomial cbind responses, cbind plus weights, fixed-effect-X cbind rows,
+  mixed-family rows, masks, and source-specific rows remain gated.
+- Roxygen/Rd wording now says fixed-effect-X CI transport is Gaussian-only in
+  the current R bridge surface, and mask CI parity remains gated.
+- Mission Control now records the current bridge guard as 8 registered live
+  drift rows, 0 unregistered rows, and configured live bridge tests at 793/793.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/julia-bridge.R")); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+```
+
+Final focused outcome after Roxygen/dashboard edits: passed with 362
+assertions, 0 failures, and 13 expected live-GLLVM-path skips.
+
+```sh
+GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+```
+
+Outcome before Roxygen/dashboard edits: passed with 793 assertions, 0 failures,
+and 0 skips.
+
+```sh
+GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla - <<'RS'
+pkgload::load_all(quiet = TRUE)
+gllvmTMB:::gllvm_julia_setup()
+engine_caps <- JuliaCall::julia_eval('GLLVM.bridge_capabilities()')
+drift <- gllvmTMB:::.gllvm_julia_capability_drift(julia_caps = engine_caps)
+print(drift[, c('family','capability','direction','status','gate_id')], row.names = FALSE)
+cat('n=', nrow(drift), ' unregistered=', sum(drift$status == 'unregistered'), '\n')
+RS
+```
+
+Outcome: 8 registered drift rows and 0 unregistered rows; the remaining drift is
+six `postfit_simulate` rows plus ordinal `ci_no_x_wald` and
+`postfit_residuals`.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Outcome: regenerated `man/gllvm_julia_fit.Rd` and
+`man/gllvmTMB_julia-methods.Rd`; emitted the same unresolved-link warnings in
+unrelated documentation topics.
+
+Consistency boundary:
+
+- No R/Julia parity-completion claim.
+- No v1.0 completion claim.
+- No source-specific `lv = ~ env` exposure.
+- No mixed-family CI, X, X_lv, or mask promotion.
+- No Totoro/DRAC compute launched.

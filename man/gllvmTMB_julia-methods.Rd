@@ -88,10 +88,9 @@ the admitted Julia CI payload at the requested level.}
 
 \item{method}{CI route for \code{confint()}. \code{"stored"} reads an existing payload.
 \code{"wald"}, \code{"profile"}, and \code{"bootstrap"} recompute from retained bridge
-input for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
-Beta, and Gamma rows, including masked non-Gaussian rows when \code{X = NULL}.
-Complete-response fixed-effect-X recomputation is routed for Gaussian,
-Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows.
+input for admitted no-X Gaussian, Poisson, binomial, NB2, NB1, Beta, and
+Gamma rows. Complete-response fixed-effect-X recomputation is routed only
+for Gaussian rows.
 If omitted, \code{confint()} reads a stored payload when present and otherwise
 uses \code{"wald"} for current fits that retain their bridge input.}
 
@@ -129,11 +128,8 @@ fitted values for admitted one-family rows and complete balanced mixed-family
 rows. Unit-tier covariance honors native \code{link_residual} scale semantics,
 and raw ordination accessors are routed; richer extractor parity remains a
 separate bridge row.
-Confidence intervals are
-routed for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
-Beta, and Gamma rows; response-mask CIs are routed for the same non-Gaussian
-rows when \code{X = NULL}; complete-response fixed-effect-X CIs are routed for
-Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. They may
-be requested at fit time through
+Confidence intervals are routed for admitted no-X Gaussian, Poisson,
+binomial, NB2, NB1, Beta, and Gamma rows; complete-response fixed-effect-X
+CIs are routed only for Gaussian rows. They may be requested at fit time through
 \code{gllvmTMB(ci_method = ...)}, or retrieved and recomputed through \code{confint()}.
 }

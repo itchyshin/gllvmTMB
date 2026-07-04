@@ -163,7 +163,7 @@
       "Correlation interval helpers need endpoint/status semantics.",
       "Structured covariance terms need Julia structured-fit payloads.",
       "Multiple reduced-rank latent blocks are not routed.",
-      "Two-column binomial responses are not marshalled to Julia yet.",
+      "Two-column binomial responses are routed only for complete no-X binomial rows.",
       "Response masks plus fixed-effect X are not routed.",
       "Fixed-effect X is admitted for complete one-part rows only.",
       "Non-Gaussian X rows require the canonical 0 + trait design."
@@ -300,7 +300,7 @@ gllvm_julia_capabilities <- function() {
     fit_no_x = TRUE,
     fixed_effect_X = families %in% .GLLVM_JULIA_X_FAMILIES,
     missing_response = families %in% .GLLVM_JULIA_MASK_FAMILIES,
-    cbind_binomial = FALSE,
+    cbind_binomial = families == "binomial",
     ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_profile = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_bootstrap = families %in% .GLLVM_JULIA_CI_NO_X_BOOTSTRAP_FAMILIES,
@@ -357,30 +357,22 @@ gllvm_julia_capabilities <- function() {
 
 .gllvm_julia_expected_capability_drifts <- function() {
   explicit <- data.frame(
-    family = c("binomial", "ordinal", "ordinal"),
+    family = c("ordinal", "ordinal"),
     capability = c(
-      "cbind_binomial",
       "ci_no_x_wald",
       "postfit_residuals"
     ),
     direction = c(
       "julia_broader_than_r",
-      "julia_broader_than_r",
       "julia_broader_than_r"
     ),
     gate_id = c(
-      "GJL-GATE-CBIND-BINOMIAL",
       "GJL-GATE-ORDINAL-CI",
       "GJL-GATE-ORDINAL-RESIDUAL"
     ),
     issue = "gllvmTMB#488",
     validation_row = "JUL-01",
     reason = c(
-      paste(
-        "GLLVM.jl exposes a binomial count-matrix bridge flag, but the R bridge",
-        "still requires one-row-per-unit-trait Bernoulli/binomial values until",
-        "the cbind marshaling contract is routed and parity-tested."
-      ),
       paste(
         "GLLVM.jl reports native ordinal Wald CI support, but the R bridge",
         "keeps per-trait ordinal CI semantics gated until endpoint labels and",
@@ -508,6 +500,14 @@ gllvm_julia_capabilities <- function() {
   } else {
     "fixed-effect X remains gated; "
   }
+  cbind_clause <- if (identical(family, "binomial")) {
+    paste0(
+      "cbind(successes, failures) is marshalled as success counts plus ",
+      "trial-count N for complete no-X binomial rows; "
+    )
+  } else {
+    ""
+  }
   x_ci_clause <- if (family %in% .GLLVM_JULIA_X_CI_FAMILIES) {
     paste0(
       "complete-response fixed-effect-X Wald/profile/bootstrap CI payloads ",
@@ -598,6 +598,7 @@ gllvm_julia_capabilities <- function() {
       "single reduced-rank point route; default no-X Julia payload uses ",
       "per-trait grouped dispersion; ",
       mask_clause,
+      cbind_clause,
       x_clause,
       x_ci_clause,
       postfit_clause,
@@ -610,6 +611,7 @@ gllvm_julia_capabilities <- function() {
       "shared Gamma grouped dispersion to match current native scalar-CV ",
       "Gamma; per-trait Gamma is a native-expansion follow-up; ",
       mask_clause,
+      cbind_clause,
       x_clause,
       x_ci_clause,
       postfit_clause,
@@ -621,6 +623,7 @@ gllvm_julia_capabilities <- function() {
       "single reduced-rank point route; default no-X Julia payload uses ",
       "per-trait ordinal cutpoints; ",
       mask_clause,
+      cbind_clause,
       x_clause,
       postfit_clause,
       "CI, X, and native parity promotion are follow-ups"
@@ -629,6 +632,7 @@ gllvm_julia_capabilities <- function() {
   paste0(
     "single reduced-rank point route; ",
     mask_clause,
+    cbind_clause,
     x_clause,
     x_ci_clause,
     ci_clause,
@@ -2146,23 +2150,22 @@ gllvm_julia_capabilities <- function() {
 #' @param y Response matrix, p x n (traits x units), or n x p (set `units_are_rows`).
 #' @param family A family object/string, or a list of them (one per trait -> mixed).
 #' @param num.lv Number of latent variables (K).
-#' @param N Binomial trials (matrix or scalar), or `NULL`.
+#' @param N Binomial trials (matrix or scalar), or `NULL`; formula-level
+#'   `cbind(successes, failures)` binomial responses are marshalled to Julia as
+#'   success counts plus this trial-count payload.
 #' @param X Fixed-effect design (p x n x q array), or `NULL`. Routed for
-#'   Gaussian and selected one-part non-Gaussian bridge families.
+#'   complete-response Gaussian bridge rows in the current R surface.
 #' @param mask Optional logical response-observation mask with the same orientation
 #'   as `y`; `TRUE` cells contribute to the likelihood and `FALSE` cells are
-#'   ignored. Currently routed for one-part no-X non-Gaussian point fits, with
-#'   masked no-X CI payloads for Poisson, Bernoulli binomial, NB2, NB1, Beta,
-#'   and Gamma.
+#'   ignored. Currently routed for selected one-part no-X point fits; CI,
+#'   mixed-family, and fixed-effect-X mask parity remain gated.
 #' @param units_are_rows If `TRUE`, `y` is n x p and is transposed to p x n.
 #' @param ci_method Confidence-interval route for admitted no-X bridge rows:
-#'   Gaussian, Poisson, Bernoulli binomial, and grouped-dispersion NB2, NB1,
-#'   Beta, and Gamma. One of `"none"` (default), `"wald"`, `"profile"`, or
-#'   `"bootstrap"`. Response-mask CIs are routed for the same non-ordinal
-#'   non-Gaussian rows when `X = NULL`; complete-response fixed-effect-X CIs
-#'   are routed for Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and
-#'   Gamma. Per-trait ordinal rows, NB1-X rows, mixed-family vectors, and
-#'   response masks combined with fixed-effect X remain loud gates.
+#'   Gaussian, Poisson, binomial, and grouped-dispersion NB2, NB1, Beta, and
+#'   Gamma. One of `"none"` (default), `"wald"`, `"profile"`, or `"bootstrap"`.
+#'   Complete-response fixed-effect-X CIs are routed only for Gaussian rows.
+#'   Per-trait ordinal rows, mixed-family vectors, non-Gaussian X rows, and
+#'   response-mask CI rows remain loud gates.
 #' @param ci_level Nominal confidence level when `ci_method != "none"`.
 #' @param ci_nboot Number of parametric bootstrap replicates when
 #'   `ci_method = "bootstrap"`.
@@ -2412,12 +2415,9 @@ gllvm_julia_fit <- function(
 #' rows. Unit-tier covariance honors native `link_residual` scale semantics,
 #' and raw ordination accessors are routed; richer extractor parity remains a
 #' separate bridge row.
-#' Confidence intervals are
-#' routed for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
-#' Beta, and Gamma rows; response-mask CIs are routed for the same non-Gaussian
-#' rows when `X = NULL`; complete-response fixed-effect-X CIs are routed for
-#' Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. They may
-#' be requested at fit time through
+#' Confidence intervals are routed for admitted no-X Gaussian, Poisson,
+#' binomial, NB2, NB1, Beta, and Gamma rows; complete-response fixed-effect-X
+#' CIs are routed only for Gaussian rows. They may be requested at fit time through
 #' `gllvmTMB(ci_method = ...)`, or retrieved and recomputed through `confint()`.
 #'
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
@@ -2443,10 +2443,9 @@ gllvm_julia_fit <- function(
 #'   the admitted Julia CI payload at the requested level.
 #' @param method CI route for `confint()`. `"stored"` reads an existing payload.
 #'   `"wald"`, `"profile"`, and `"bootstrap"` recompute from retained bridge
-#'   input for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
-#'   Beta, and Gamma rows, including masked non-Gaussian rows when `X = NULL`.
-#'   Complete-response fixed-effect-X recomputation is routed for Gaussian,
-#'   Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows.
+#'   input for admitted no-X Gaussian, Poisson, binomial, NB2, NB1, Beta, and
+#'   Gamma rows. Complete-response fixed-effect-X recomputation is routed only
+#'   for Gaussian rows.
 #'   If omitted, `confint()` reads a stored payload when present and otherwise
 #'   uses `"wald"` for current fits that retain their bridge input.
 #' @param ci_nboot Number of parametric bootstrap replicates when
@@ -2980,17 +2979,95 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     na.action = stats::na.pass
   )
   yraw <- stats::model.response(mf)
+  fam_str <- .gllvm_julia_family(family)
+  cbind_trials <- NULL
   if (is.matrix(yraw) && ncol(yraw) == 2L) {
+    if (length(fam_str) != 1L || !identical(fam_str, "binomial")) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-CBIND-BINOMIAL",
+          "engine = 'julia' routes two-column cbind(successes, failures) ",
+          "responses only for one-family binomial rows. Use engine = 'tmb' ",
+          "for this response/family combination."
+        ),
+        call. = FALSE
+      )
+    }
+    if (!is.null(weights)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-CBIND-BINOMIAL",
+          "engine = 'julia' routes cbind(successes, failures) binomial ",
+          "responses without additional likelihood weights. Use engine = ",
+          "'tmb' for cbind plus weights."
+        ),
+        call. = FALSE
+      )
+    }
+    succ <- as.numeric(yraw[, 1L])
+    fail <- as.numeric(yraw[, 2L])
+    observed <- !is.na(succ) & !is.na(fail)
+    if (any(xor(is.na(succ), is.na(fail)))) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-CBIND-BINOMIAL",
+          "engine = 'julia' needs both cbind response columns observed or ",
+          "both missing for each binomial row."
+        ),
+        call. = FALSE
+      )
+    }
+    if (any(!is.finite(succ[observed]) | !is.finite(fail[observed]))) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-CBIND-BINOMIAL",
+          "engine = 'julia' needs finite cbind(successes, failures) counts."
+        ),
+        call. = FALSE
+      )
+    }
+    if (any(succ[observed] < 0 | fail[observed] < 0)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-CBIND-BINOMIAL",
+          "engine = 'julia' needs non-negative cbind(successes, failures) counts."
+        ),
+        call. = FALSE
+      )
+    }
+    cbind_trials <- succ + fail
+    if (any(cbind_trials[observed] <= 0)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-CBIND-BINOMIAL",
+          "engine = 'julia' needs positive binomial trial counts."
+        ),
+        call. = FALSE
+      )
+    }
+    if (any(abs(succ[observed] - round(succ[observed])) > sqrt(.Machine$double.eps)) ||
+      any(abs(fail[observed] - round(fail[observed])) > sqrt(.Machine$double.eps))) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-CBIND-BINOMIAL",
+          "engine = 'julia' needs integer-like cbind(successes, failures) counts."
+        ),
+        call. = FALSE
+      )
+    }
+    yv <- succ
+  } else if (is.matrix(yraw)) {
     stop(
       .gllvm_julia_gate_message(
         "GJL-GATE-CBIND-BINOMIAL",
-        "engine = 'julia' does not yet support cbind(successes, failures) ",
-        "binomial responses; use a 0/1 Bernoulli response or engine = 'tmb'."
+        "engine = 'julia' routes only scalar responses or two-column ",
+        "cbind(successes, failures) binomial responses. Use engine = 'tmb'."
       ),
       call. = FALSE
     )
+  } else {
+    yv <- as.numeric(yraw)
   }
-  yv <- as.numeric(yraw)
   ft <- factor(data[[trait]])
   fu <- factor(data[[unit_internal]])
   if (length(yv) != length(ft) || length(yv) != length(fu)) {
@@ -3003,7 +3080,6 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   units <- levels(fu)
   p <- length(traits)
   n <- length(units)
-  fam_str <- .gllvm_julia_family(family)
   Y <- matrix(NA_real_, p, n, dimnames = list(traits, units))
   Y[cbind(as.integer(ft), as.integer(fu))] <- yv
   response_mask <- !is.na(Y)
@@ -3088,7 +3164,10 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   ## --- binomial trials: pivot per-row n_trials (weights API) else Bernoulli ---
   Narg <- NULL
   if (any(fam_str == "binomial")) {
-    if (
+    if (!is.null(cbind_trials)) {
+      Narg <- matrix(NA_real_, p, n, dimnames = list(traits, units))
+      Narg[cbind(as.integer(ft), as.integer(fu))] <- cbind_trials
+    } else if (
       !is.null(weights) && is.numeric(weights) && length(weights) == length(yv)
     ) {
       Narg <- matrix(1, p, n)

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-04 06:55 MDT",
+  "updated": "2026-07-04 07:07 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -15,13 +15,13 @@
       "when": "2026-07-04 06:55 MDT",
       "who": "R+Julia bridge drift cleanup",
       "status": "guard",
-      "text": "The local R bridge ledger is narrowed to the live GLLVM.jl seven-family surface and registers postfit_simulate drift under GJL-GATE-POSTFIT-SIMULATE-DRIFT. Focused pure R bridge tests passed 350/350 with 13 expected live-GLLVM-path skips, the configured live bridge file passed 781/781 against the current GLLVM.jl checkout, and the live drift probe remains 9 gated rows with zero unregistered rows. This is truth-contract cleanup only: not R/Julia parity completion, not v1.0 completion, not source-specific lv support, not mixed-family CI support, not unique= parity, and not active compute."
+      "text": "Current local R bridge cleanup routes ordinary binomial cbind(successes, failures) responses into the Julia bridge as success-count Y plus trial-count N for complete no-X binomial rows, while keeping cbind+weights, non-binomial cbind, X, masks, mixed-family, and source-specific rows gated. Focused pure R bridge tests passed 362/362 with 13 expected live-GLLVM-path skips, the configured live bridge file passed 793/793 against the current GLLVM.jl checkout, and the live drift probe is now 8 registered rows with zero unregistered rows. This is truth-contract cleanup only: not R/Julia parity completion, not v1.0 completion, not source-specific lv support, not mixed-family CI support, not unique= parity, not X/mask parity, and not active compute."
     },
     {
       "when": "2026-07-04 06:55 MDT",
       "who": "Live R/JL bridge contract caveat",
       "status": "guard",
-      "text": "The older red configured live run is superseded by the 2026-07-04 current-contract cleanup. The configured live bridge file now passes 781/781 after stale unsupported-row success assumptions were retired into explicit gate expectations for NB1, masks, non-Gaussian fixed X, mixed-family vectors, ordinal-probit, and broad TMB-vs-Julia Gaussian parity. Treat this as a green narrowed-contract guard, not R/Julia parity completion or support promotion."
+      "text": "The older red configured live run is superseded by the 2026-07-04 current-contract cleanup. The configured live bridge file now passes 793/793 after stale unsupported-row success assumptions and the binomial cbind drift row were retired into explicit gate expectations or admitted no-X trial-count routing. Treat this as a green narrowed-contract guard, not R/Julia parity completion or support promotion."
     },
     {
       "when": "2026-07-03 13:39 MDT",
@@ -419,7 +419,7 @@
       "when": "2026-07-04 06:55 MDT",
       "who": "Live R/JL bridge contract caveat",
       "status": "guard",
-      "text": "The older red configured live run is superseded by the 2026-07-04 current-contract cleanup. The configured live bridge file now passes 781/781 after stale unsupported-row success assumptions were retired into explicit gate expectations for NB1, masks, non-Gaussian fixed X, mixed-family vectors, ordinal-probit, and broad TMB-vs-Julia Gaussian parity. Treat this as a green narrowed-contract guard, not R/Julia parity completion or support promotion."
+      "text": "The older red configured live run is superseded by the 2026-07-04 current-contract cleanup. The configured live bridge file now passes 793/793 after stale unsupported-row success assumptions and the binomial cbind drift row were retired into explicit gate expectations or admitted no-X trial-count routing. Treat this as a green narrowed-contract guard, not R/Julia parity completion or support promotion."
     },
     {
       "when": "bridge/profile",

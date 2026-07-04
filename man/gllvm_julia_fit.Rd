@@ -26,27 +26,26 @@ gllvm_julia_fit(
 
 \item{num.lv}{Number of latent variables (K).}
 
-\item{N}{Binomial trials (matrix or scalar), or \code{NULL}.}
+\item{N}{Binomial trials (matrix or scalar), or \code{NULL}; formula-level
+\code{cbind(successes, failures)} binomial responses are marshalled to Julia as
+success counts plus this trial-count payload.}
 
 \item{X}{Fixed-effect design (p x n x q array), or \code{NULL}. Routed for
-Gaussian and selected one-part non-Gaussian bridge families.}
+complete-response Gaussian bridge rows in the current R surface.}
 
 \item{mask}{Optional logical response-observation mask with the same orientation
 as \code{y}; \code{TRUE} cells contribute to the likelihood and \code{FALSE} cells are
-ignored. Currently routed for one-part no-X non-Gaussian point fits, with
-masked no-X CI payloads for Poisson, Bernoulli binomial, NB2, NB1, Beta,
-and Gamma.}
+ignored. Currently routed for selected one-part no-X point fits; CI,
+mixed-family, and fixed-effect-X mask parity remain gated.}
 
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 
 \item{ci_method}{Confidence-interval route for admitted no-X bridge rows:
-Gaussian, Poisson, Bernoulli binomial, and grouped-dispersion NB2, NB1,
-Beta, and Gamma. One of \code{"none"} (default), \code{"wald"}, \code{"profile"}, or
-\code{"bootstrap"}. Response-mask CIs are routed for the same non-ordinal
-non-Gaussian rows when \code{X = NULL}; complete-response fixed-effect-X CIs
-are routed for Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and
-Gamma. Per-trait ordinal rows, NB1-X rows, mixed-family vectors, and
-response masks combined with fixed-effect X remain loud gates.}
+Gaussian, Poisson, binomial, and grouped-dispersion NB2, NB1, Beta, and
+Gamma. One of \code{"none"} (default), \code{"wald"}, \code{"profile"}, or \code{"bootstrap"}.
+Complete-response fixed-effect-X CIs are routed only for Gaussian rows.
+Per-trait ordinal rows, mixed-family vectors, non-Gaussian X rows, and
+response-mask CI rows remain loud gates.}
 
 \item{ci_level}{Nominal confidence level when \code{ci_method != "none"}.}
 

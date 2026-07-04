@@ -565,12 +565,13 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     "gllvmTMB\\(\\) fits retain bridge input for post-fit confint\\(\\)",
     caps$notes
   )))
-  expect_true(all(!caps$cbind_binomial))
+  expect_equal(caps$family[caps$cbind_binomial], "binomial")
+  expect_true(any(grepl("cbind\\(successes, failures\\)", caps$notes)))
 })
 
 test_that("Julia bridge capability drift is explicit and gate-labelled", {
   julia_caps <- gllvm_julia_capabilities()
-  julia_caps$cbind_binomial[julia_caps$family == "binomial"] <- TRUE
+  julia_caps$ci_no_x_wald[julia_caps$family == "ordinal"] <- TRUE
   drift <- .gllvm_julia_capability_drift(julia_caps = julia_caps)
   expect_named(
     drift,
@@ -586,14 +587,14 @@ test_that("Julia bridge capability drift is explicit and gate-labelled", {
     )
   )
   expect_equal(nrow(drift), 1L)
-  expect_equal(drift$family, "binomial")
-  expect_equal(drift$capability, "cbind_binomial")
+  expect_equal(drift$family, "ordinal")
+  expect_equal(drift$capability, "ci_no_x_wald")
   expect_equal(drift$direction, "julia_broader_than_r")
   expect_equal(drift$status, "gated")
-  expect_equal(drift$gate_id, "GJL-GATE-CBIND-BINOMIAL")
+  expect_equal(drift$gate_id, "GJL-GATE-ORDINAL-CI")
   expect_equal(drift$issue, "gllvmTMB#488")
   expect_equal(drift$validation_row, "JUL-01")
-  expect_match(drift$reason, "cbind marshaling contract")
+  expect_match(drift$reason, "ordinal Wald CI")
 
   future_julia <- julia_caps
   future_julia$fixed_effect_X[future_julia$family == "poisson"] <- TRUE
@@ -1749,14 +1750,89 @@ test_that("engine = 'julia' rejects non reduced-rank covariance terms", {
     ),
     "GJL-GATE-MULTI-RR"
   )
-  df$failures <- abs(round(df$value)) + 1L
+})
+
+test_that("engine = 'julia' main dispatch marshals cbind binomial trials", {
+  df <- make_long()
+  df$success <- as.integer(abs(round(df$value)) %% 3L)
+  df$failure <- 5L - df$success
+  seen <- new.env(parent = emptyenv())
+
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(
+      y,
+      family,
+      num.lv,
+      N,
+      X,
+      mask,
+      ci_method,
+      ci_level,
+      ci_nboot,
+      ci_seed,
+      ...
+    ) {
+      seen$y <- y
+      seen$family <- family
+      seen$num.lv <- num.lv
+      seen$N <- N
+      seen$X <- X
+      seen$mask <- mask
+      seen$ci_method <- ci_method
+      seen$ci_level <- ci_level
+      seen$ci_nboot <- ci_nboot
+      seen$ci_seed <- ci_seed
+
+      out <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+      out$engine <- "julia"
+      out$ci_method <- ci_method
+      out$ci_level <- ci_level
+      out
+    }
+  )
+
+  fit <- gllvmTMB(
+    cbind(success, failure) ~ 0 + trait +
+      latent(0 + trait | unit, d = 1, residual = FALSE),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = binomial(),
+    engine = "julia",
+    ci_method = "wald"
+  )
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(dim(seen$y), c(3L, 10L))
+  expect_equal(dim(seen$N), c(3L, 10L))
+  expect_equal(unname(seen$N), matrix(5, nrow = 3L, ncol = 10L))
+  expect_true(all(seen$y >= 0 & seen$y <= seen$N))
+  expect_s3_class(seen$family, "family")
+  expect_equal(seen$num.lv, 1L)
+  expect_null(seen$X)
+  expect_null(seen$mask)
+  expect_equal(seen$ci_method, "wald")
+
   expect_error(
     gllvmTMB(
-      cbind(value, failures) ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE),
-      data = df,
+      cbind(success, failure) ~ 0 + trait + x +
+        latent(0 + trait | unit, d = 1, residual = FALSE),
+      data = transform(df, x = stats::rnorm(nrow(df))),
       trait = "trait",
       unit = "unit",
       family = binomial(),
+      engine = "julia"
+    ),
+    "GJL-GATE-X-FAMILY"
+  )
+  expect_error(
+    gllvmTMB(
+      cbind(success, failure) ~ 0 + trait +
+        latent(0 + trait | unit, d = 1, residual = FALSE),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = poisson(),
       engine = "julia"
     ),
     "GJL-GATE-CBIND-BINOMIAL"
@@ -1857,7 +1933,6 @@ test_that("live GLLVM.jl bridge capabilities drift only through registered gates
       "gaussian",
       "poisson",
       "binomial",
-      "binomial",
       "negbinomial",
       "beta",
       "gamma",
@@ -1866,7 +1941,6 @@ test_that("live GLLVM.jl bridge capabilities drift only through registered gates
     ),
     capability = c(
       rep("postfit_simulate", 2L),
-      "cbind_binomial",
       "postfit_simulate",
       rep("postfit_simulate", 3L),
       "ci_no_x_wald",
@@ -1874,14 +1948,12 @@ test_that("live GLLVM.jl bridge capabilities drift only through registered gates
     ),
     direction = c(
       rep("r_broader_than_julia", 2L),
-      "julia_broader_than_r",
       rep("r_broader_than_julia", 4L),
       "julia_broader_than_r",
       "julia_broader_than_r"
     ),
     gate_id = c(
       rep("GJL-GATE-POSTFIT-SIMULATE-DRIFT", 2L),
-      "GJL-GATE-CBIND-BINOMIAL",
       rep("GJL-GATE-POSTFIT-SIMULATE-DRIFT", 4L),
       "GJL-GATE-ORDINAL-CI",
       "GJL-GATE-ORDINAL-RESIDUAL"

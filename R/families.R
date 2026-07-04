@@ -280,9 +280,6 @@ nbinom2 <- function(link = "log") {
     linktemp <- link
   }
 
-  v <- function(mu, theta) {
-
-  }
   x <- c(list(family = "nbinom2", link = linktemp), stats)
   add_to_family(x)
 }

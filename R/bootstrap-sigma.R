@@ -286,12 +286,9 @@ bootstrap_Sigma <- function(
       aux
     )
     out <- tryCatch(
-      withCallingHandlers(
-        suppressMessages(suppressWarnings(
-          do.call(gllvmTMB, call_args)
-        )),
-        error = function(e) NULL
-      ),
+      suppressMessages(suppressWarnings(
+        do.call(gllvmTMB, call_args)
+      )),
       error = function(e) NULL
     )
     if (

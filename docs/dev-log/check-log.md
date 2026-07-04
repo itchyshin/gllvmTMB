@@ -4,6 +4,56 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-04 06:55 MDT -- Julia bridge live contract truth-lock
+
+Branch: `codex/r-bridge-grouped-dispersion`; local cleanup checkpoint for
+cloud-work readiness. No push or PR.
+
+Guard: the configured live R-to-Julia bridge test file must describe the
+current narrowed contract, not stale success assumptions for unsupported
+surfaces.
+
+Implemented:
+
+- Filled non-finite Gaussian and per-trait ordinal alpha payloads with the
+  link-scale zero intercept convention before postfit prediction, so Gaussian
+  no-X Julia bridge fits are internally usable.
+- Tightened the fixed-effect-X CI gate message to say only Gaussian
+  complete-response fixed-X CIs are routed in the current bridge.
+- Retired stale live-test success expectations for NB1, response masks,
+  non-Gaussian fixed X, mixed-family vectors, ordinal-probit, and broad
+  TMB-vs-Julia Gaussian parity into explicit fail-loud gate expectations.
+- Refreshed Mission Control to replace the older 10-failure live caveat with
+  the green current-contract evidence while keeping parity completion blocked.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/julia-bridge.R")); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+```
+
+Outcome: passed with 350 assertions, 0 failures, and 13 expected
+live-GLLVM-path skips.
+
+```sh
+GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'
+```
+
+Outcome: passed with 781 assertions, 0 failures, and 0 skips.
+
+Not run:
+
+- Full `devtools::check()`; this was a focused bridge-contract cleanup for a
+  cloud-readiness checkpoint.
+- Any large Totoro/DRAC compute, source-specific `lv` exposure, Julia
+  source-Psi parity, or broad R/Julia parity claim.
+
 ## 2026-07-04 06:34 MDT -- Julia bridge live drift gate registration
 
 Branch: `codex/r-bridge-grouped-dispersion`; local checkpoint for cloud-work

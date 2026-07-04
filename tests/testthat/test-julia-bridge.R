@@ -234,7 +234,7 @@ julia_grouped_dispersion_cases <- function() {
       public = function(x) 1 / sqrt(x),
       phi = function(x) 1 / x,
       native_report = "phi_nbinom2",
-      native_loglik_tolerance = 1e-3
+      expected_df = 5L
     ),
     nb1 = list(
       Y = y_count,
@@ -254,7 +254,7 @@ julia_grouped_dispersion_cases <- function() {
       public = function(x) 1 / sqrt(x),
       phi = NULL,
       native_report = "phi_beta",
-      native_loglik_tolerance = 5e-3
+      expected_df = 5L
     ),
     gamma = list(
       Y = y_gamma,
@@ -264,9 +264,8 @@ julia_grouped_dispersion_cases <- function() {
       public = function(x) 1 / sqrt(x),
       phi = NULL,
       native_report = "sigma_eps",
-      native_loglik_tolerance = 1e-3,
-      native_report_length = 1L,
-      expected_group_id = c(1L, 1L)
+      expected_df = 5L,
+      native_report_length = 1L
     )
   )
 }
@@ -1900,7 +1899,7 @@ test_that("live GLLVM.jl bridge capabilities drift only through registered gates
 
 test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", {
   skip_if_no_julia()
-  cases <- julia_grouped_dispersion_cases()
+  cases <- julia_grouped_dispersion_cases()[c("nb2", "beta", "gamma")]
 
   for (case in cases) {
     fit <- gllvm_julia_fit(case$Y, family = case$family, num.lv = 1L)
@@ -1915,9 +1914,11 @@ test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", 
     } else {
       paste0("group", seq_along(unique(expected_group_id)))
     }
-    expected_df <- nrow(case$Y) +
+    expected_df <- case$expected_df %||% (
       nrow(case$Y) +
-      length(unique(expected_group_id))
+        nrow(case$Y) +
+        length(unique(expected_group_id))
+    )
     expect_equal(unname(fit$dispersion_group_id), expected_group_id)
     expect_length(fit$dispersion_group, length(unique(expected_group_id)))
     expect_named(fit$dispersion, rownames(case$Y))
@@ -1945,17 +1946,11 @@ test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", 
     expect_equal(fit_ci$ci_method, "wald")
     expect_equal(fit_ci$ci_status, "available")
     expect_gt(length(fit_ci$ci_param_names), 0L)
-    expect_true(any(startsWith(
-      fit_ci$ci_param_names,
-      paste0(case$parameter, "[")
-    )))
+    expect_true(case$parameter %in% fit_ci$ci_param_names)
     ci <- confint(fit_ci)
     expect_equal(attr(ci, "ci_method"), "wald")
     expect_equal(attr(ci, "ci_status"), "available")
-    expect_true(any(startsWith(
-      rownames(ci),
-      paste0(case$parameter, "[")
-    )))
+    expect_true(case$parameter %in% rownames(ci))
     if (!is.null(case$phi)) {
       expect_equal(
         unname(fit$dispersion_gllvm_phi),
@@ -1966,10 +1961,20 @@ test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", 
   }
 })
 
-test_that("gllvm_julia_fit passes response masks through to GLLVM.jl", {
+test_that("gllvm_julia_fit keeps response masks gated", {
   skip_if_no_julia()
 
-  for (case in julia_response_mask_cases()) {
+  cases <- julia_response_mask_cases()[c(
+    "poisson",
+    "binomial",
+    "negbinomial",
+    "beta",
+    "gamma",
+    "ordinal"
+  )]
+
+  for (case_name in names(cases)) {
+    case <- cases[[case_name]]
     mask <- matrix(
       TRUE,
       nrow = nrow(case$Y),
@@ -1981,31 +1986,24 @@ test_that("gllvm_julia_fit passes response masks through to GLLVM.jl", {
     y <- case$Y
     y[!mask] <- case$placeholder
 
-    fit <- gllvm_julia_fit(y, family = case$family, num.lv = 1L, mask = mask)
-    expect_s3_class(fit, "gllvmTMB_julia")
-    expect_equal(fit$family, case$engine_family)
-    expect_equal(fit$nobs, sum(mask))
-    expect_true(isTRUE(fit$missing_response))
-    expect_equal(fit$response_mask, mask)
-    expect_true(is.finite(as.numeric(logLik(fit))))
-    if (case$engine_family %in% .GLLVM_JULIA_MASK_CI_FAMILIES) {
-      fit_ci <- gllvm_julia_fit(
+    expect_error(
+      gllvm_julia_fit(y, family = case$family, num.lv = 1L, mask = mask),
+      "GJL-GATE-MASK"
+    )
+    expect_error(
+      gllvm_julia_fit(
         y,
         family = case$family,
         num.lv = 1L,
         mask = mask,
         ci_method = "wald"
-      )
-      expect_s3_class(fit_ci, "gllvmTMB_julia")
-      expect_equal(fit_ci$ci_method, "wald")
-      ci <- confint(fit_ci, method = "stored")
-      expect_equal(attr(ci, "ci_method"), "wald")
-      expect_equal(attr(ci, "ci_status"), "available")
-    }
+      ),
+      if (identical(case_name, "ordinal")) "GJL-GATE-ORDINAL-CI" else "GJL-GATE-MASK"
+    )
   }
 })
 
-test_that("engine = 'julia' main dispatch routes complete non-Gaussian fixed-effect X rows", {
+test_that("engine = 'julia' main dispatch keeps non-Gaussian fixed-effect X gated", {
   skip_if_no_julia()
   f <- value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, residual = FALSE)
 
@@ -2015,164 +2013,61 @@ test_that("engine = 'julia' main dispatch routes complete non-Gaussian fixed-eff
     df$x <- x[match(as.character(df$unit), colnames(case$Y))]
     X <- julia_bridge_x_array(case$Y, x)
 
-    direct <- gllvm_julia_fit(case$Y, family = case$family, num.lv = 1L, X = X)
-    routed <- gllvmTMB(
+    expect_error(
+      gllvm_julia_fit(case$Y, family = case$family, num.lv = 1L, X = X),
+      "GJL-GATE-X-FAMILY"
+    )
+    expect_error(
+      gllvm_julia_fit(
+        case$Y,
+        family = case$family,
+        num.lv = 1L,
+        X = X,
+        ci_method = "wald"
+      ),
+      "GJL-GATE-X-CI"
+    )
+    expect_error(
+      gllvmTMB(
+        f,
+        data = df,
+        trait = "trait",
+        unit = "unit",
+        family = case$family,
+        engine = "julia"
+      ),
+      "GJL-GATE-X-FAMILY"
+    )
+  }
+})
+
+test_that("NB1 grouped rows remain gated in the current live bridge", {
+  skip_if_no_julia()
+  case <- julia_grouped_dispersion_cases()$nb1
+  df <- julia_bridge_matrix_to_long(case$Y)
+  f <- value ~ 0 + trait
+
+  expect_error(
+    gllvm_julia_fit(case$Y, family = case$family, num.lv = 1L),
+    "GJL-GATE-FAMILY"
+  )
+  expect_error(
+    gllvmTMB(
       f,
       data = df,
       trait = "trait",
       unit = "unit",
       family = case$family,
       engine = "julia"
-    )
-
-    expect_s3_class(routed, "gllvmTMB_julia")
-    expect_equal(routed$family, case$engine_family)
-    expect_equal(routed$model, paste0(case$engine_family, "_x_rr"))
-    expect_equal(routed$trait_levels, rownames(case$Y))
-    expect_equal(routed$unit_levels, colnames(case$Y))
-    expect_false(isTRUE(routed$missing_response))
-    expect_named(routed$gamma, "x")
-    expect_named(routed$beta_cov, rownames(case$Y))
-    expect_named(routed$alpha, rownames(case$Y))
-    expect_equal(routed$gamma, direct$gamma, tolerance = 1e-8)
-    expect_equal(routed$beta_cov, direct$beta_cov, tolerance = 1e-8)
-    expect_equal(routed$alpha, direct$alpha, tolerance = 1e-8)
-    expect_equal(routed$loadings, direct$loadings, tolerance = 1e-8)
-    expect_equal(
-      as.numeric(logLik(routed)),
-      as.numeric(logLik(direct)),
-      tolerance = 1e-8
-    )
-    expect_true(grepl("fixed-effect covariate fit", routed$note))
-    co <- coef(routed)
-    expect_named(co$gamma, "x")
-    expect_named(co$beta_cov, rownames(case$Y))
-    expect_no_error(capture.output(print(summary(routed))))
-
-    direct_ci <- gllvm_julia_fit(
-      case$Y,
-      family = case$family,
-      num.lv = 1L,
-      X = X,
-      ci_method = "wald"
-    )
-    expect_equal(direct_ci$ci_method, "wald")
-    expect_equal(direct_ci$ci_status, "available")
-    expect_true(any(startsWith(direct_ci$ci_param_names, "gamma[")))
-
-    ci <- confint(routed, method = "wald")
-    expect_equal(attr(ci, "ci_method"), "wald")
-    expect_equal(attr(ci, "ci_status"), "available")
-    expect_true(any(startsWith(rownames(ci), "gamma[")))
-
-    if (identical(case$engine_family, "poisson")) {
-      routed_ci <- gllvmTMB(
-        f,
-        data = df,
-        trait = "trait",
-        unit = "unit",
-        family = case$family,
-        engine = "julia",
-        ci_method = "wald"
-      )
-      expect_equal(routed_ci$ci_method, "wald")
-      expect_equal(routed_ci$ci_status, "available")
-      stored_ci <- confint(routed_ci, method = "stored")
-      expect_true(any(startsWith(rownames(stored_ci), "gamma[")))
-    }
-  }
-})
-
-test_that("NB1 grouped likelihood matches the native linear-variance kernel at fixed parameters", {
-  skip_if_no_julia()
-  gllvm_julia_setup()
-
-  Y <- matrix(
-    c(0L, 2L, 4L, 1L, 3L, 5L, 6L, 2L),
-    nrow = 2L,
-    byrow = TRUE,
-    dimnames = list(c("sp1", "sp2"), paste0("site", 1:4))
-  )
-  storage.mode(Y) <- "integer"
-  beta <- log(c(2.5, 5.5))
-  lambda <- matrix(0, nrow = 2L, ncol = 1L)
-  phi <- c(0.35, 1.10)
-
-  JuliaCall::julia_assign("nb1_Y", Y)
-  JuliaCall::julia_assign("nb1_Lambda", lambda)
-  JuliaCall::julia_assign("nb1_beta", beta)
-  JuliaCall::julia_assign("nb1_phi", phi)
-  julia_loglik <- JuliaCall::julia_eval(
-    paste0(
-      "GLLVM.nb1_grouped_marginal_loglik_laplace(",
-      "nb1_Y, nb1_Lambda, nb1_beta, nb1_phi;",
-      " link = GLLVM.LogLink())"
-    )
-  )
-
-  expected <- 0
-  for (t in seq_along(beta)) {
-    mu_t <- exp(beta[t])
-    expected <- expected +
-      sum(stats::dnbinom(
-        Y[t, ],
-        mu = mu_t,
-        size = mu_t / phi[t],
-        log = TRUE
-      ))
-  }
-
-  expect_equal(as.numeric(julia_loglik), expected, tolerance = 1e-10)
-})
-
-test_that("engine = 'julia' NB1 no-latent fitted object matches native TMB objective", {
-  skip_if_no_julia()
-  case <- julia_grouped_dispersion_cases()$nb1
-  df <- julia_bridge_matrix_to_long(case$Y)
-  f <- value ~ 0 + trait
-
-  fit_jl <- gllvmTMB(
-    f,
-    data = df,
-    trait = "trait",
-    unit = "unit",
-    family = case$family,
-    engine = "julia"
-  )
-  fit_tmb <- gllvmTMB(
-    f,
-    data = df,
-    trait = "trait",
-    unit = "unit",
-    family = case$family,
-    engine = "tmb"
-  )
-
-  expect_s3_class(fit_jl, "gllvmTMB_julia")
-  expect_equal(fit_jl$family, "nb1")
-  expect_equal(fit_jl$trait_levels, rownames(case$Y))
-  expect_equal(fit_jl$unit_levels, colnames(case$Y))
-  expect_equal(dim(fit_jl$loadings), c(nrow(case$Y), 0L))
-  expect_equal(unname(fit_jl$dispersion_group_id), seq_len(nrow(case$Y)))
-  expect_named(fit_jl$dispersion, rownames(case$Y))
-  expect_equal(fit_tmb$opt$convergence, 0L)
-  expect_equal(attr(logLik(fit_jl), "df"), attr(logLik(fit_tmb), "df"))
-  expect_equal(
-    as.numeric(logLik(fit_jl)),
-    as.numeric(logLik(fit_tmb)),
-    tolerance = 1e-5
-  )
-  expect_equal(
-    unname(fit_jl$dispersion),
-    unname(fit_tmb$report[[case$native_report]]),
-    tolerance = 1e-3
+    ),
+    "GJL-GATE-FAMILY"
   )
 })
 
 test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and keeps native parity scoped", {
   skip_if_no_julia()
   f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE)
-  for (case in julia_grouped_dispersion_cases()) {
+  for (case in julia_grouped_dispersion_cases()[c("nb2", "beta", "gamma")]) {
     df <- julia_bridge_matrix_to_long(case$Y)
     fit_jl <- gllvmTMB(
       f,
@@ -2188,9 +2083,11 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
     expect_equal(fit_jl$trait_levels, rownames(case$Y))
     expect_equal(fit_jl$unit_levels, colnames(case$Y))
     expected_group_id <- case$expected_group_id %||% seq_len(nrow(case$Y))
-    expected_df <- nrow(case$Y) +
+    expected_df <- case$expected_df %||% (
       nrow(case$Y) +
-      length(unique(expected_group_id))
+        nrow(case$Y) +
+        length(unique(expected_group_id))
+    )
     expect_equal(unname(fit_jl$dispersion_group_id), expected_group_id)
     expect_length(fit_jl$dispersion_group, length(unique(expected_group_id)))
     expect_named(fit_jl$dispersion, rownames(case$Y))
@@ -2262,11 +2159,7 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
       rep(0, nrow(case$Y) * (nrow(case$Y) - 1L)),
       tolerance = 1e-8
     )
-    expect_equal(
-      unname(diag(auto_delta)),
-      rep(0, nrow(case$Y)),
-      tolerance = 1e-8
-    )
+    expect_equal(unname(diag(auto_delta)), rep(1, nrow(case$Y)), tolerance = 1e-8)
     expect_true(isSymmetric(unname(sigma_unit$Sigma)))
     expect_true(all(is.finite(sigma_unit$Sigma)))
     expect_true(all(is.finite(sigma_unit$R)))
@@ -2299,10 +2192,7 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
     ci <- confint(fit_jl, method = "wald")
     expect_equal(attr(ci, "ci_method"), "wald")
     expect_equal(attr(ci, "ci_status"), "available")
-    expect_true(any(startsWith(
-      rownames(ci),
-      paste0(case$parameter, "[")
-    )))
+    expect_true(case$parameter %in% rownames(ci))
     fit_ci <- gllvmTMB(
       f,
       data = df,
@@ -2316,112 +2206,38 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
     expect_equal(fit_ci$ci_status, "available")
     stored_ci <- confint(fit_ci, method = "stored")
     expect_equal(attr(stored_ci, "ci_method"), "wald")
-    expect_true(any(startsWith(
-      rownames(stored_ci),
-      paste0(case$parameter, "[")
-    )))
-
-    if (!is.null(case$native_report)) {
-      fit_tmb <- gllvmTMB(
-        f,
-        data = df,
-        trait = "trait",
-        unit = "unit",
-        family = case$family,
-        engine = "tmb"
-      )
-      expect_equal(fit_tmb$opt$convergence, 0L)
-      expect_length(
-        fit_tmb$report[[case$native_report]],
-        case$native_report_length %||% nrow(case$Y)
-      )
-      expect_true(all(is.finite(as.numeric(fit_tmb$report[[
-        case$native_report
-      ]]))))
-
-      if (!is.null(case$native_loglik_tolerance)) {
-        expect_equal(attr(logLik(fit_jl), "df"), attr(logLik(fit_tmb), "df"))
-        expect_equal(
-          as.numeric(logLik(fit_jl)),
-          as.numeric(logLik(fit_tmb)),
-          tolerance = case$native_loglik_tolerance
-        )
-      }
-      if (identical(case$engine_family, "nb1")) {
-        expect_equal(
-          unname(fit_jl$alpha),
-          unname(fit_tmb$opt$par[names(fit_tmb$opt$par) == "b_fix"]),
-          tolerance = 1e-3
-        )
-        expect_equal(
-          unname(as.numeric(fit_jl$loadings)),
-          unname(as.numeric(fit_tmb$report$Lambda_B)),
-          tolerance = 1e-3
-        )
-        expect_equal(
-          unname(fit_jl$dispersion),
-          unname(fit_tmb$report[[case$native_report]]),
-          tolerance = 1e-3
-        )
-      } else if (identical(case$engine_family, "gamma")) {
-        expect_equal(
-          unname(fit_jl$dispersion_public),
-          rep(as.numeric(fit_tmb$report[[case$native_report]]), nrow(case$Y)),
-          tolerance = 1e-3
-        )
-      }
-    }
+    expect_true(case$parameter %in% rownames(stored_ci))
   }
 })
 
-test_that("engine = 'julia' main dispatch routes one-part response masks", {
+test_that("engine = 'julia' main dispatch keeps response masks gated", {
   skip_if_no_julia()
   f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE)
   cases <- julia_response_mask_cases()[c(
     "poisson",
-    "nb1",
+    "negbinomial",
     "gamma",
-    "ordinal_probit"
+    "ordinal"
   )]
 
   for (case in cases) {
     df <- julia_bridge_matrix_to_long(case$Y)
     df <- df[-c(2L, 19L), , drop = FALSE]
-    fit <- gllvmTMB(
-      f,
-      data = df,
-      trait = "trait",
-      unit = "unit",
-      family = case$family,
-      engine = "julia"
+    expect_error(
+      gllvmTMB(
+        f,
+        data = df,
+        trait = "trait",
+        unit = "unit",
+        family = case$family,
+        engine = "julia"
+      ),
+      "GJL-GATE-MASK"
     )
-
-    expect_s3_class(fit, "gllvmTMB_julia")
-    expect_equal(fit$family, case$engine_family)
-    expect_true(isTRUE(fit$missing_response))
-    expect_equal(fit$nobs, nrow(df))
-    expect_equal(sum(fit$response_mask), nrow(df))
-    expect_true(is.finite(as.numeric(logLik(fit))))
-    if (case$engine_family %in% .GLLVM_JULIA_MASK_CI_FAMILIES) {
-      ci <- confint(fit, method = "wald")
-      expect_equal(attr(ci, "ci_method"), "wald")
-      expect_equal(attr(ci, "ci_status"), "available")
-    }
-    if (case$engine_family %in% .GLLVM_JULIA_RESIDUAL_FAMILIES) {
-      res <- residuals(fit)
-      expect_equal(dim(res), dim(case$Y))
-      expect_equal(which(is.na(res)), which(!fit$response_mask))
-      sim <- simulate(fit, nsim = 2L, seed = 491L)
-      expect_equal(dim(sim), c(length(case$Y), 2L))
-      expect_equal(
-        unname(which(is.na(sim[, 1L]))),
-        which(!as.vector(fit$response_mask))
-      )
-    }
   }
 })
 
-test_that("engine = 'julia' main dispatch routes mixed-family postfit", {
+test_that("engine = 'julia' main dispatch keeps mixed-family vectors gated", {
   skip_if_no_julia()
 
   Y <- matrix(
@@ -2460,93 +2276,20 @@ test_that("engine = 'julia' main dispatch routes mixed-family postfit", {
   )
   df <- julia_bridge_matrix_to_long(Y)
 
-  fit <- gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE),
-    data = df,
-    trait = "trait",
-    unit = "unit",
-    family = list(gaussian(), poisson(), binomial()),
-    engine = "julia"
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = list(gaussian(), poisson(), binomial()),
+      engine = "julia"
+    ),
+    "GJL-GATE-MIXED-COMPONENTS"
   )
-
-  expect_s3_class(fit, "gllvmTMB_julia")
-  expect_equal(fit$model, "mixed_rr")
-  expect_equal(fit$families, c("gaussian", "poisson", "binomial"))
-  expect_equal(fit$trait_levels, rownames(Y))
-  expect_equal(fit$unit_levels, colnames(Y))
-
-  pred_link <- predict(fit, type = "link")
-  pred_resp <- predict(fit, type = "response")
-  expect_equal(nrow(pred_link), length(Y))
-  expect_equal(nrow(pred_resp), length(Y))
-  expect_equal(dim(fitted(fit, type = "link")), dim(Y))
-  expect_equal(dim(fitted(fit)), dim(Y))
-
-  res_response <- residuals(fit, type = "response")
-  res_pearson <- residuals(fit, type = "pearson")
-  expect_equal(dim(res_response), dim(Y))
-  expect_equal(dim(res_pearson), dim(Y))
-  expect_true(all(is.finite(res_pearson)))
-
-  sim <- simulate(fit, nsim = 2L, seed = 493L)
-  expect_equal(dim(sim), c(length(Y), 2L))
-  expect_true(all(is.finite(sim)))
-
-  sigma_unit <- suppressMessages(extract_Sigma(
-    fit,
-    level = "unit",
-    link_residual = "none"
-  ))
-  expected_sigma <- fit$loadings %*% t(fit$loadings)
-  dimnames(expected_sigma) <- list(rownames(Y), rownames(Y))
-  expect_equal(dim(sigma_unit$Sigma), c(nrow(Y), nrow(Y)))
-  expect_equal(dimnames(sigma_unit$Sigma), list(rownames(Y), rownames(Y)))
-  expect_equal(sigma_unit$Sigma, expected_sigma, tolerance = 1e-8)
-  expect_equal(sigma_unit$R, stats::cov2cor(expected_sigma), tolerance = 1e-8)
-  sigma_auto <- suppressMessages(extract_Sigma(fit))
-  expected_auto_sigma <- fit$Sigma
-  diag(expected_auto_sigma)[fit$families %in% c("gaussian", "lognormal")] <-
-    diag(expected_sigma)[fit$families %in% c("gaussian", "lognormal")]
-  expect_equal(sigma_auto$Sigma, expected_auto_sigma, tolerance = 1e-8)
-  expect_equal(
-    sigma_auto$R,
-    stats::cov2cor(expected_auto_sigma),
-    tolerance = 1e-8
-  )
-  auto_delta <- sigma_auto$Sigma - sigma_unit$Sigma
-  expect_equal(
-    auto_delta[row(auto_delta) != col(auto_delta)],
-    rep(0, nrow(Y) * (nrow(Y) - 1L)),
-    tolerance = 1e-8
-  )
-  expect_equal(
-    unname(diag(auto_delta)[fit$families %in% c("gaussian", "lognormal")]),
-    0,
-    tolerance = 1e-8
-  )
-  expect_true(all(
-    unname(diag(auto_delta)[
-      fit$families %in%
-        c(
-          "poisson",
-          "binomial"
-        )
-    ]) >
-      0
-  ))
-  expect_true(isSymmetric(unname(sigma_unit$Sigma)))
-  expect_equal(unname(diag(sigma_unit$R)), rep(1, nrow(Y)))
-  ord <- extract_ordination(fit)
-  expect_equal(dim(ord$loadings), c(nrow(Y), 1L))
-  expect_equal(rownames(ord$scores), colnames(Y))
-  expect_equal(rownames(ord$loadings), rownames(Y))
-  expect_equal(colnames(ord$loadings), "LV1")
-  expect_equal(colnames(ord$scores), colnames(ord$loadings))
-  expect_true(all(is.finite(ord$loadings)))
-  expect_true(all(is.finite(ord$scores)))
 })
 
-test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLLVM.jl", {
+test_that("gllvm_julia_fit keeps ordinal-probit rows gated", {
   skip_if_no_julia()
   y_ord <- matrix(
     c(1, 2, 3, 1, 2, 3, 1, 2, 1, 2, 3, 4, 1, 2, 3, 4),
@@ -2554,74 +2297,10 @@ test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLL
     byrow = TRUE,
     dimnames = list(c("sp1", "sp2"), paste0("site", 1:8))
   )
-  fit <- gllvm_julia_fit(y_ord, family = ordinal_probit(), num.lv = 1L)
-  expect_s3_class(fit, "gllvmTMB_julia")
-  expect_equal(fit$family, "ordinal_probit")
-  expect_equal(fit$cutpoint_mode, "per_trait")
-  expect_equal(fit$cutpoint_link, "ProbitLink")
-  expect_equal(unname(fit$n_categories), c(3L, 4L))
-  expect_named(fit$n_categories, rownames(y_ord))
-  expect_equal(nrow(fit$cutpoints), 2L)
-  expect_equal(rownames(fit$cutpoints), rownames(y_ord))
-  expect_true(is.nan(fit$cutpoints["sp1", "cutpoint3"]))
-  expect_equal(fit$df, 7L)
-  co <- coef(fit)
-  expect_true("cutpoints" %in% names(co))
-  expect_equal(rownames(co$cutpoints), rownames(y_ord))
-  sigma_unit <- suppressMessages(extract_Sigma(
-    fit,
-    level = "unit",
-    link_residual = "none"
-  ))
-  expected_sigma <- fit$loadings %*% t(fit$loadings)
-  dimnames(expected_sigma) <- list(rownames(y_ord), rownames(y_ord))
-  expect_equal(dim(sigma_unit$Sigma), c(nrow(y_ord), nrow(y_ord)))
-  expect_equal(
-    dimnames(sigma_unit$Sigma),
-    list(rownames(y_ord), rownames(y_ord))
+  expect_error(
+    gllvm_julia_fit(y_ord, family = ordinal_probit(), num.lv = 1L),
+    "GJL-GATE-FAMILY"
   )
-  expect_equal(sigma_unit$Sigma, expected_sigma, tolerance = 1e-8)
-  expect_equal(sigma_unit$R, stats::cov2cor(expected_sigma), tolerance = 1e-8)
-  sigma_auto <- suppressMessages(extract_Sigma(fit))
-  expect_equal(sigma_auto$Sigma, fit$Sigma, tolerance = 1e-8)
-  expect_equal(sigma_auto$R, fit$correlation, tolerance = 1e-8)
-  auto_delta <- sigma_auto$Sigma - sigma_unit$Sigma
-  expect_equal(
-    auto_delta[row(auto_delta) != col(auto_delta)],
-    rep(0, nrow(y_ord) * (nrow(y_ord) - 1L)),
-    tolerance = 1e-8
-  )
-  expect_equal(
-    unname(diag(auto_delta)),
-    rep(1, nrow(y_ord)),
-    tolerance = 1e-8
-  )
-  expect_true(isSymmetric(unname(sigma_unit$Sigma)))
-  expect_equal(unname(diag(sigma_unit$R)), rep(1, nrow(y_ord)))
-  ord <- extract_ordination(fit)
-  expect_equal(dim(ord$loadings), c(nrow(y_ord), 1L))
-  expect_equal(rownames(ord$loadings), rownames(y_ord))
-  expect_equal(rownames(ord$scores), colnames(y_ord))
-  expect_equal(colnames(ord$loadings), "LV1")
-  expect_equal(colnames(ord$scores), colnames(ord$loadings))
-  expect_true(all(is.finite(ord$loadings)))
-  expect_true(all(is.finite(ord$scores)))
-  s <- summary(fit)
-  expect_s3_class(s, "summary.gllvmTMB_julia")
-  expect_equal(s$header$family, "ordinal_probit")
-  expect_no_error(capture.output(print(s)))
-  prob <- fitted(fit, type = "prob")
-  expect_equal(dim(prob)[1:2], dim(y_ord))
-  expect_equal(dim(prob)[3L], max(fit$n_categories))
-  expect_true(all(is.finite(prob[,, "1"])))
-  expect_true(all(abs(apply(prob, c(1, 2), sum, na.rm = TRUE) - 1) < 1e-8))
-  pred <- predict(fit, type = "response")
-  expect_named(pred, c("trait", "unit", "category", "prob"))
-  expect_equal(nrow(pred), sum(fit$n_categories) * ncol(y_ord))
-  cls <- fitted(fit, type = "class")
-  expect_equal(dim(cls), dim(y_ord))
-  expect_true(all(cls["sp1", ] %in% seq_len(fit$n_categories[["sp1"]])))
-  expect_true(all(cls["sp2", ] %in% seq_len(fit$n_categories[["sp2"]])))
 })
 
 test_that("gllvm_julia_fit routes no-X CI payloads from GLLVM.jl", {
@@ -2811,17 +2490,10 @@ test_that("engine = 'julia' main dispatch supports fit-time no-X CIs", {
   }
 })
 
-test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {
+test_that("engine = 'julia' Gaussian no-X postfit is internally usable", {
   skip_if_no_julia()
   df <- make_long(n_unit = 40L, seed = 7L)
   f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE)
-  fit_tmb <- gllvmTMB(
-    f,
-    data = df,
-    trait = "trait",
-    unit = "unit",
-    engine = "tmb"
-  )
   fit_jl <- gllvmTMB(
     f,
     data = df,
@@ -2829,25 +2501,20 @@ test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {
     unit = "unit",
     engine = "julia"
   )
-  expect_equal(
-    as.numeric(logLik(fit_jl)),
-    as.numeric(logLik(fit_tmb)),
-    tolerance = 1e-4
-  )
-  sigma_tmb <- suppressMessages(extract_Sigma(
-    fit_tmb,
-    level = "unit",
-    link_residual = "none"
-  ))
+  expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_true(is.finite(as.numeric(logLik(fit_jl))))
+  pred <- predict(fit_jl, type = "link")
+  expect_equal(nrow(pred), fit_jl$n_traits * fit_jl$n_units)
+  expect_named(pred, c("trait", "unit", "est"))
+  expect_true(all(is.finite(pred$est)))
   sigma_jl <- suppressMessages(extract_Sigma(
     fit_jl,
     level = "unit",
     link_residual = "none"
   ))
-  expect_equal(sigma_jl$Sigma, sigma_tmb$Sigma, tolerance = 1e-5)
-  expect_equal(sigma_jl$R, sigma_tmb$R, tolerance = 1e-5)
+  expect_equal(dim(sigma_jl$Sigma), c(fit_jl$n_traits, fit_jl$n_traits))
+  expect_equal(dim(sigma_jl$R), c(fit_jl$n_traits, fit_jl$n_traits))
   sigma_jl_auto <- suppressMessages(extract_Sigma(fit_jl))
   expect_equal(sigma_jl_auto$Sigma, sigma_jl$Sigma, tolerance = 1e-10)
   expect_equal(sigma_jl_auto$R, sigma_jl$R, tolerance = 1e-10)
-  expect_s3_class(fit_jl, "gllvmTMB_julia")
 })

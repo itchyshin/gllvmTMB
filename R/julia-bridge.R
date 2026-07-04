@@ -1245,7 +1245,10 @@ gllvm_julia_capabilities <- function() {
     )
   }
   fam <- object$families %||% object$family %||% character()
-  if (all(fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES)) {
+  if (
+    length(fam) > 0L &&
+      all(fam %in% c("gaussian", .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES))
+  ) {
     alpha[!is.finite(alpha)] <- 0
   }
   if (any(!is.finite(alpha))) {
@@ -2316,10 +2319,9 @@ gllvm_julia_fit <- function(
       .gllvm_julia_gate_message(
         "GJL-GATE-X-CI",
         "engine = 'julia': confidence intervals for fixed-effect-X bridge ",
-        "rows are routed only for Gaussian, Poisson, Bernoulli binomial, ",
-        "NB2, Beta, and Gamma complete-response fits. NB1-X, ordinal-X, ",
-        "mixed-family-X, and masks+X remain gated. Use `ci_method = \"none\"` ",
-        "or engine = 'tmb'."
+        "rows are routed only for Gaussian complete-response fits. ",
+        "Non-Gaussian-X, ordinal-X, mixed-family-X, and masks+X remain gated. ",
+        "Use `ci_method = \"none\"` or engine = 'tmb'."
       ),
       call. = FALSE
     )

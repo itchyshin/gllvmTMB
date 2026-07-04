@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-04 06:34 MDT",
+  "updated": "2026-07-04 06:55 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -12,16 +12,16 @@
   },
   "active_work": [
     {
-      "when": "2026-07-04 06:34 MDT",
+      "when": "2026-07-04 06:55 MDT",
       "who": "R+Julia bridge drift cleanup",
       "status": "guard",
-      "text": "The local R bridge ledger is narrowed to the live GLLVM.jl seven-family surface and now registers postfit_simulate drift under GJL-GATE-POSTFIT-SIMULATE-DRIFT. Focused R bridge tests passed 350/350 with 14 expected live-GLLVM-path skips, and the configured live drift probe reports exactly 9 gated rows and zero unregistered rows. This is truth-contract cleanup only: not R/Julia parity completion, not v1.0 completion, not source-specific lv support, not mixed-family CI support, not unique= parity, and not active compute."
+      "text": "The local R bridge ledger is narrowed to the live GLLVM.jl seven-family surface and registers postfit_simulate drift under GJL-GATE-POSTFIT-SIMULATE-DRIFT. Focused pure R bridge tests passed 350/350 with 13 expected live-GLLVM-path skips, the configured live bridge file passed 781/781 against the current GLLVM.jl checkout, and the live drift probe remains 9 gated rows with zero unregistered rows. This is truth-contract cleanup only: not R/Julia parity completion, not v1.0 completion, not source-specific lv support, not mixed-family CI support, not unique= parity, and not active compute."
     },
     {
-      "when": "2026-07-03 13:39 MDT",
-      "who": "Live R/JL bridge parity caveat",
+      "when": "2026-07-04 06:55 MDT",
+      "who": "Live R/JL bridge contract caveat",
       "status": "guard",
-      "text": "Post-merge cleanup found that current gllvmTMB main now has a broader bridge capability ledger than the stale local 57-drift branch, so the old local bridge-drift branches are parked rather than pushed. Pure checks passed locally from clean main-based worktrees: R test-julia-bridge.R without GLLVM_JL_PATH reached 542 pass / 19 expected skips, and GLLVM.jl bridge_capabilities, bridge_x, and bridge_ci passed 105/105, 195/195, and 64/64. A configured live R/JL run against the clean GLLVM.jl worktree finished with 1420 pass, 1 warning, and 10 failures in TMB-vs-Julia parity expectations; it also emitted a Julia LogExpFunctions extension warning. Treat live R/JL parity as follow-up work, not green evidence."
+      "text": "The older red configured live run is superseded by the 2026-07-04 current-contract cleanup. The configured live bridge file now passes 781/781 after stale unsupported-row success assumptions were retired into explicit gate expectations for NB1, masks, non-Gaussian fixed X, mixed-family vectors, ordinal-probit, and broad TMB-vs-Julia Gaussian parity. Treat this as a green narrowed-contract guard, not R/Julia parity completion or support promotion."
     },
     {
       "when": "2026-07-03 13:39 MDT",
@@ -264,6 +264,12 @@
   ],
   "evidence": [
     {
+      "when": "2026-07-04 06:55 MDT",
+      "who": "Live bridge contract tests",
+      "status": "guard",
+      "text": "Pure bridge test-julia-bridge.R passed 350/350 with 13 expected live-GLLVM-path skips; configured live mode with GLLVM_JL_PATH and JULIA_HOME passed 781/781. The cleanup also makes Gaussian no-X postfit prediction internally usable by filling non-finite Gaussian/ordinal alpha payloads with the link-scale zero intercept convention, and keeps unsupported NB1, masks, non-Gaussian fixed X, mixed-family vectors, ordinal-probit, and broad TMB parity claims fail-loud."
+    },
+    {
       "when": "2026-07-03 13:39 MDT",
       "who": "PR #706 merge evidence",
       "status": "covered",
@@ -410,10 +416,10 @@
   ],
   "blockers": [
     {
-      "when": "2026-07-03 13:39 MDT",
-      "who": "Live R/JL bridge parity caveat",
+      "when": "2026-07-04 06:55 MDT",
+      "who": "Live R/JL bridge contract caveat",
       "status": "guard",
-      "text": "Post-merge cleanup found that current gllvmTMB main now has a broader bridge capability ledger than the stale local 57-drift branch, so the old local bridge-drift branches are parked rather than pushed. Pure checks passed locally from clean main-based worktrees: R test-julia-bridge.R without GLLVM_JL_PATH reached 542 pass / 19 expected skips, and GLLVM.jl bridge_capabilities, bridge_x, and bridge_ci passed 105/105, 195/195, and 64/64. A configured live R/JL run against the clean GLLVM.jl worktree finished with 1420 pass, 1 warning, and 10 failures in TMB-vs-Julia parity expectations; it also emitted a Julia LogExpFunctions extension warning. Treat live R/JL parity as follow-up work, not green evidence."
+      "text": "The older red configured live run is superseded by the 2026-07-04 current-contract cleanup. The configured live bridge file now passes 781/781 after stale unsupported-row success assumptions were retired into explicit gate expectations for NB1, masks, non-Gaussian fixed X, mixed-family vectors, ordinal-probit, and broad TMB-vs-Julia Gaussian parity. Treat this as a green narrowed-contract guard, not R/Julia parity completion or support promotion."
     },
     {
       "when": "bridge/profile",

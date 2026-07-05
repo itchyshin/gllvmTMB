@@ -1755,6 +1755,23 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## Recognise the WIDE multi-slope LHS `1 + x1 + x2 + ...` (s >= 1 plain
 ## covariate names after the leading intercept `1`). Returns the ordered
 ## character vector of slope columns, or NULL when the shape does not match.
+## Reject duplicate slope covariates in an augmented multi-slope LHS -- each
+## slope column creates its own random-effect block, so duplicates make the
+## design rank deficient (fail loud before design expansion).
+.assert_distinct_slope_cols <- function(cols) {
+  dups <- unique(cols[duplicated(cols)])
+  if (length(dups)) {
+    dup_label <- paste(dups, collapse = ", ")
+    cli::cli_abort(c(
+      "Duplicate slope covariates are not allowed in augmented LHS terms.",
+      "x" = "Repeated slope column(s): {.field {dup_label}}.",
+      "i" = "Each slope column creates a separate random-effect block; duplicates make the design rank deficient.",
+      ">" = "Use each slope covariate once, for example {.code 1 + x1 + x2 | group}."
+    ))
+  }
+  invisible(cols)
+}
+
 .match_wide_intercept_slopes <- function(lhs) {
   terms <- .flatten_lhs_plus(lhs)
   if (length(terms) < 2L || !.is_one_lhs(terms[[1L]])) {
@@ -1767,6 +1784,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     }
     cols <- c(cols, as.character(term))
   }
+  .assert_distinct_slope_cols(cols)
   cols
 }
 
@@ -1796,6 +1814,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     }
     cols <- c(cols, as.character(sc))
   }
+  .assert_distinct_slope_cols(cols)
   cols
 }
 
@@ -2094,6 +2113,30 @@ rewrite_canonical_aliases <- function(formula) {
     }
     args[nms %in% keep & nzchar(nms)]
   }
+  ## HARD GUARD: source-specific `lv = ~ env` (predictor-informed latent means)
+  ## is reserved for ordinary latent() only; it must fail loud on source
+  ## keywords, never be silently dropped.
+  .abort_source_specific_lv <- function(e, fn) {
+    nm <- names(e)
+    if (is.null(nm) || !"lv" %in% nm) {
+      return(invisible(NULL))
+    }
+    cli::cli_abort(c(
+      "{.arg lv} is reserved for ordinary {.fn latent} only.",
+      "x" = "{.fn {fn}} does not currently support predictor-informed latent means.",
+      "i" = "Source-specific {.arg lv} support needs a separate structural-dependence gate; silently dropping {.arg lv} is not allowed.",
+      ">" = "Remove {.code lv = ~ ...} from {.fn {fn}}, or use the supported structural random-slope syntax such as {.code {fn}(1 + env | group, d = K)} when that route is validated for the source."
+    ))
+  }
+  .source_specific_lv_keywords <- c(
+    "phylo", "phylo_scalar", "phylo_unique", "phylo_indep",
+    "phylo_latent", "phylo_dep", "phylo_rr", "phylo_slope",
+    "spatial", "spatial_scalar", "spatial_unique", "spatial_indep",
+    "spatial_latent", "spatial_dep", "spde",
+    "animal_scalar", "animal_unique", "animal_indep",
+    "animal_latent", "animal_dep", "animal_slope",
+    "kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep"
+  )
   .meta_type <- function(e, fn) {
     nm <- names(e)
     type_idx <- if (is.null(nm)) integer(0L) else which(nm == "type")
@@ -2194,6 +2237,9 @@ rewrite_canonical_aliases <- function(formula) {
   rewrite <- function(e) {
     if (is.call(e)) {
       fn <- as.character(e[[1L]])
+      if (length(fn) == 1L && fn %in% .source_specific_lv_keywords) {
+        .abort_source_specific_lv(e, fn)
+      }
       ## `spatial(formula, mode = ..., mesh = ..., coords = ..., d = ...)`
       ## -> one of spatial_scalar / spatial_unique / spatial_indep /
       ## spatial_latent / spatial_dep based on (LHS, mode). Design 07

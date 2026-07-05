@@ -585,6 +585,31 @@
   )
 }
 
+## Restored from the feature branch (dropped during the merge union): helpers
+## used by the branch-unique profile_cross_rho / kernel-separability tests.
+.c3_muffle_lifecycle_warnings <- function(expr) {
+  withCallingHandlers(
+    expr,
+    warning = function(w) {
+      if (inherits(w, "lifecycle_warning_deprecated")) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+}
+
+.c3_inv_sqrt <- function(x, tol = sqrt(.Machine$double.eps)) {
+  x <- (x + t(x)) / 2
+  eg <- eigen(x, symmetric = TRUE)
+  scale <- max(abs(eg$values), 1)
+  keep <- eg$values > tol * scale
+  values <- numeric(length(eg$values))
+  values[keep] <- 1 / sqrt(eg$values[keep])
+  out <- eg$vectors %*% diag(values, nrow = length(values)) %*% t(eg$vectors)
+  dimnames(out) <- dimnames(x)
+  out
+}
+
 
 test_that("two distinct named kernel tiers fit and extract by component", {
   ## C3.1 first-wave acceptance: two named fixed kernels get separate latent

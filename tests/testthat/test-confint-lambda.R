@@ -145,6 +145,76 @@ test_that("Lambda selected-entry profile collapses explicit pinned entries", {
   expect_equal(ci$ci_status, "pinned")
 })
 
+test_that("Lambda selected-entry profile does not refit explicit pinned entries", {
+  fit <- make_fake_lambda_confint_fit()
+
+  with_mocked_bindings(
+    loading_profile = function(...) {
+      stop("pinned Lambda entries should not be profiled", call. = FALSE)
+    },
+    .invert_profile_loadings = function(prof) {
+      stop("no profile curve should be inverted", call. = FALSE)
+    },
+    .package = "gllvmTMB",
+    code = {
+      ci <- gllvmTMB:::.confint_lambda(
+        fit,
+        parm = "Lambda:1,2",
+        level = 0.95,
+        method = "profile"
+      )
+    }
+  )
+
+  expect_equal(ci$parameter, "Lambda[trait_1,LV2]")
+  expect_equal(ci$estimate, 0)
+  expect_equal(ci$lower, 0)
+  expect_equal(ci$upper, 0)
+  expect_equal(ci$ci_status, "pinned")
+})
+
+test_that("Lambda selected-entry profile profiles only free requested entries", {
+  fit <- make_fake_lambda_confint_fit()
+  profiler_called <- FALSE
+
+  with_mocked_bindings(
+    loading_profile = function(..., entries) {
+      profiler_called <<- TRUE
+      expect_equal(
+        unname(as.matrix(entries)),
+        matrix(c(2L, 1L), nrow = 1L)
+      )
+      data.frame(dummy = 1)
+    },
+    .invert_profile_loadings = function(prof) {
+      data.frame(
+        i = 2L,
+        k = 1L,
+        estimate = 0.25,
+        lower = 0.10,
+        upper = 0.40,
+        ci_status = "profile"
+      )
+    },
+    .package = "gllvmTMB",
+    code = {
+      ci <- gllvmTMB:::.confint_lambda(
+        fit,
+        parm = "Lambda:1,2;2,1",
+        level = 0.95,
+        method = "profile"
+      )
+    }
+  )
+
+  expect_true(profiler_called)
+  expect_equal(ci$parameter, c("Lambda[trait_1,LV2]", "Lambda[trait_2,LV1]"))
+  expect_equal(ci$estimate, c(0, 0.25))
+  expect_equal(ci$lower, c(0, 0.10))
+  expect_equal(ci$upper, c(0, 0.40))
+  expect_equal(ci$ci_status, c("pinned", "profile"))
+})
+
 ## ---- parm = "Lambda" returns all entries ----------------------------
 
 test_that("confint(fit, parm = 'Lambda') returns one row per entry", {

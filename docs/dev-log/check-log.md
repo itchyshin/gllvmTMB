@@ -4,6 +4,76 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-05 03:45 MDT -- Lambda selected-profile pinned-entry guard
+
+Branch: `codex/r-bridge-grouped-dispersion`; local inference-safety repair.
+No push or PR.
+
+Guard: selected-entry `confint(..., parm = "Lambda:i,k", method = "profile")`
+must not try to profile entries that are exact-known pins. Pinned requests
+should return the same collapsed point row as the Wald and full-grid profile
+paths; mixed pinned/free requests should profile only the requested free rows.
+
+Implemented:
+
+- Updated `.confint_lambda()` so selected profile requests filter pinned
+  Lambda entries before calling `loading_profile()`.
+- Kept pinned selected rows as `lower == estimate == upper` with
+  `ci_status = "pinned"`.
+- Added pure regressions in `test-confint-lambda.R` proving pinned-only
+  selected requests do not invoke the profiler and mixed pinned/free requests
+  profile only the free selected entries.
+- Updated CI-02 wording in the validation-debt register.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/z-confint-gllvmTMB.R")); invisible(parse("tests/testthat/test-confint-lambda.R")); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-confint-lambda.R")'
+```
+
+Outcome: passed, 25 assertions, 0 failures, 0 warnings, 11 expected heavy-test
+skips.
+
+```sh
+Rscript --vanilla - <<'RS'
+pkgload::load_all('.', quiet = TRUE)
+Lambda <- matrix(c(1.00, 0.25, -0.15, 0.00, 0.80, 0.35),
+                 nrow = 3L, ncol = 2L)
+rownames(Lambda) <- paste0('trait_', 1:3)
+colnames(Lambda) <- paste0('LV', 1:2)
+fit <- structure(
+  list(
+    report = list(Lambda_B = Lambda),
+    lambda_constraint = list(B = matrix(NA_real_, 3L, 2L)),
+    sd_report = list(pdHess = TRUE),
+    trait_col = 'trait',
+    data = data.frame(
+      trait = factor(paste0('trait_', 1:3),
+                     levels = paste0('trait_', 1:3))
+    )
+  ),
+  class = 'gllvmTMB_multi'
+)
+print(gllvmTMB:::.confint_lambda(
+  fit, parm = 'Lambda:1,2', level = 0.95, method = 'profile'
+))
+RS
+```
+
+Outcome: returned `Lambda[trait_1,LV2]` with `estimate = lower = upper = 0`
+and `ci_status = "pinned"`.
+
+Not run:
+
+- No full `devtools::test()`, pkgdown, R CMD check, or empirical interval
+  calibration.
+
 ## 2026-07-05 03:38 MDT -- Cluster Sigma profile canary
 
 Branch: `codex/r-bridge-grouped-dispersion`; local profile-route evidence.

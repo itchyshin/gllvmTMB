@@ -353,19 +353,36 @@
   }
 
   ## method == "profile": build curve(s) directly for the requested
-  ## entries, then invert. `loading_profile()` skips pinned entries when
-  ## `entries = NULL`; for `parm = "Lambda"` and explicit pinned entries
-  ## we include them as collapsed point rows so the output row count and
-  ## statuses match the Wald paths.
-  prof <- loading_profile(
-    fit = object,
-    level = "unit",
-    entries = entries,
-    n_grid = 11L,
-    grid_extent = 6,
-    conf_level = level
+  ## free entries, then invert. `loading_profile()` skips pinned entries
+  ## when `entries = NULL`, but explicit selected entries can include
+  ## pins. Do not ask the profiler to refit those exact-known entries:
+  ## they collapse to point rows below, matching the Wald paths.
+  is_pinned <- .lambda_pinned_matrix(object, "B", n_traits, K)
+  profile_entries <- entries
+  if (!is.null(entries)) {
+    entry_pos_all <- entries[, 1L] + (entries[, 2L] - 1L) * n_traits
+    profile_entries <- entries[!as.vector(is_pinned)[entry_pos_all], ,
+                               drop = FALSE]
+  }
+  bounds <- data.frame(
+    i = integer(0),
+    k = integer(0),
+    estimate = numeric(0),
+    lower = numeric(0),
+    upper = numeric(0),
+    ci_status = character(0)
   )
-  bounds <- .invert_profile_loadings(prof)
+  if (is.null(profile_entries) || nrow(profile_entries) > 0L) {
+    prof <- loading_profile(
+      fit = object,
+      level = "unit",
+      entries = profile_entries,
+      n_grid = 11L,
+      grid_extent = 6,
+      conf_level = level
+    )
+    bounds <- .invert_profile_loadings(prof)
+  }
   ## Map profile bounds back to a per-entry data.frame matching the
   ## Wald-path layout (so callers can rely on a consistent shape).
   trait_names <- rownames(Lambda_mat)
@@ -392,7 +409,6 @@
   if (is.null(entries)) {
     ## Build the full grid of (i, k) entries; pinned ones (not present
     ## in `bounds`) collapse to point.
-    is_pinned <- .lambda_pinned_matrix(object, "B", n_traits, K)
     is_pinned_vec <- as.vector(is_pinned)
     all_entries <- expand.grid(
       i = seq_len(n_traits),
@@ -430,7 +446,6 @@
 
   ## Specific entries requested: bounds row order matches `entries`
   ## (loading_profile preserves the order of `entries`).
-  is_pinned <- .lambda_pinned_matrix(object, "B", n_traits, K)
   entry_pos <- entries[, 1L] + (entries[, 2L] - 1L) * n_traits
   estimate <- as.numeric(Lambda_mat)[entry_pos]
   pinned <- as.vector(is_pinned)[entry_pos]

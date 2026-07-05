@@ -133,8 +133,8 @@ Row-owner: **Gauss** (TMB likelihood per family).
 | FAM-15 | truncated_poisson / truncated_nbinom2 | `partial` | `test-truncated-recovery.R`, `test-matrix-truncated.R` | Runtime ids 10 and 11 are admitted and have focused recovery / structural smoke evidence. Local heavy verification 2026-07-05: `test-truncated-recovery.R` 15 pass and `test-matrix-truncated.R` 30 pass. `truncated_nbinom1()` is exported as a constructor but not runtime-admitted. |
 | FAM-16 | truncated_nbinom1 / censored_poisson | `blocked` | `test-enum-runtime-ids.R` | Constructors exist for compatibility, but there is no multivariate runtime id and `gllvmTMB()` must fail loud with "Unsupported family" until likelihood wiring and recovery tests land. |
 | FAM-17 | delta_* families (10 variants) | `covered` (fixed/latent recovery); random structure **N/A by design** | `test-delta-gamma-recovery.R`, `test-delta-lognormal-recovery.R` | Single-family delta recovery green (local measurement 2026-05-30: 13 + 13 assertions, 0 fail). Per **Design 62**: two-part families are fixed-effect response distributions only — no latent/random/slope/tier structure (two link scales → species correlation undefined). Mixed-family delta latent-scale correlation remains the genuinely-blocked research item (Design 61 §B11). |
-| FAM-18 | gamma_mix / lognormal_mix / nbinom2_mix | `blocked` | n/a | mixture families exported but not validated |
-| FAM-19 | gengamma | `blocked` | n/a | exported but not validated |
+| FAM-18 | gamma_mix / lognormal_mix / nbinom2_mix | `blocked` | `test-enum-runtime-ids.R` | Mixture constructors are exported for API continuity, but there is no multivariate runtime id and `gllvmTMB()` must fail loud with "Unsupported family" until likelihood wiring and recovery tests land. |
+| FAM-19 | gengamma | `blocked` | `test-enum-runtime-ids.R` | Constructor is exported for API continuity, but there is no multivariate runtime id and `gllvmTMB()` must fail loud with "Unsupported family" until likelihood wiring and recovery tests land. |
 
 ### Section 3 — Random-effects structures
 

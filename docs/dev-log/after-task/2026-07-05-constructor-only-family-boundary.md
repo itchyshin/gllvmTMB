@@ -142,3 +142,20 @@ families.
   and prediction semantics, and validation-debt row promotion in the same slice.
 - No Totoro or DRAC run is needed until a future family-admission design is
   frozen.
+
+## 11. Follow-Up Register Reconciliation
+
+After the first commit, `FAM-18` and `FAM-19` still said `n/a` for evidence even
+though `test-enum-runtime-ids.R` now guards the mixture and `gengamma()`
+fail-loud boundary. The validation register now points those rows at the guard
+test. Re-check:
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-enum-runtime-ids.R")'
+rg -n 'FAM-18|FAM-19|gamma_mix / lognormal_mix / nbinom2_mix|gengamma|n/a \| mixture|n/a \| exported' docs/design/35-validation-debt-register.md docs/design/02-family-registry.md tests/testthat/test-enum-runtime-ids.R
+rg -n 'mixture.*claimed|gengamma.*claimed|claimed.*mixture|claimed.*gengamma|FAM-18.*n/a|FAM-19.*n/a' docs/design R man tests/testthat
+git diff --check
+```
+
+Result: `test-enum-runtime-ids.R` passed 9/9; the stale `n/a` evidence scan is
+clean.

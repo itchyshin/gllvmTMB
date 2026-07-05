@@ -34945,3 +34945,25 @@ Not run:
 - No `devtools::test()`, `devtools::check()`, pkgdown build, likelihood
   admission, simulation recovery, Totoro, or DRAC. This slice only locks the
   current unsupported-family truth.
+
+Follow-up register reconciliation:
+
+- Updated `FAM-18` and `FAM-19` so mixture and `gengamma()` blocked rows point
+  at the same fail-loud guard test as the other constructor-only families.
+
+Additional commands:
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-enum-runtime-ids.R")'
+rg -n 'FAM-18|FAM-19|gamma_mix / lognormal_mix / nbinom2_mix|gengamma|n/a \| mixture|n/a \| exported' docs/design/35-validation-debt-register.md docs/design/02-family-registry.md tests/testthat/test-enum-runtime-ids.R
+rg -n 'mixture.*claimed|gengamma.*claimed|claimed.*mixture|claimed.*gengamma|FAM-18.*n/a|FAM-19.*n/a' docs/design R man tests/testthat
+git diff --check
+```
+
+Additional results:
+
+- `test-enum-runtime-ids.R`: 9 pass, 0 fail, 0 warn, 0 skip.
+- `FAM-18` and `FAM-19` now cite `test-enum-runtime-ids.R`.
+- Stale evidence scan found no `FAM-18.*n/a`, `FAM-19.*n/a`, or
+  mixture/gengamma `claimed` row beyond the intended Rose example wording.
+- `git diff --check` passed.

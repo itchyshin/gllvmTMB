@@ -33230,3 +33230,28 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 Outcome: parse passed; focused Sigma-table tests passed with the expected
 mixed-family link-residual row skipped under CRAN mode. This is report-table
 truth hardening only; it does not change `extract_Sigma()` itself.
+
+## 2026-07-04 -- Julia bridge duplicate trait-unit guard
+
+Goal: close issue #642 by preventing the R main-dispatch Julia bridge from
+silently overwriting duplicate `(trait, unit)` long rows during response, X, or
+binomial trial-count matrix pivots.
+
+Edits:
+
+- Added `.gllvm_julia_guard_unique_trait_unit_cells()`.
+- Called the guard before the first long-to-matrix response pivot in
+  `.gllvmTMB_julia_dispatch()`.
+- Added a pure main-dispatch regression that fails with
+  `GJL-GATE-DUPLICATE-CELLS` before any JuliaCall setup.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/julia-bridge.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'
+```
+
+Outcome: parse passed; focused Julia-bridge tests passed with expected live
+GLLVM.jl skips because `GLLVM_JL_PATH` is not configured in this R worktree.
+This is an R-side bridge input guard only; it does not widen Julia parity.

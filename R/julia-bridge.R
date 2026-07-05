@@ -1868,6 +1868,30 @@ gllvm_julia_capabilities <- function() {
   mask
 }
 
+.gllvm_julia_guard_unique_trait_unit_cells <- function(ft, fu) {
+  cell <- paste(as.integer(ft), as.integer(fu), sep = "\r")
+  duplicated_cell <- duplicated(cell) | duplicated(cell, fromLast = TRUE)
+  if (!any(duplicated_cell)) {
+    return(invisible(NULL))
+  }
+  examples <- unique(paste0(
+    as.character(ft[duplicated_cell]),
+    "/",
+    as.character(fu[duplicated_cell])
+  ))
+  examples <- utils::head(examples, 3L)
+  stop(
+    .gllvm_julia_gate_message(
+      "GJL-GATE-DUPLICATE-CELLS",
+      "engine = 'julia' requires at most one row per trait-unit cell; ",
+      "duplicated (trait, unit) cells include: ",
+      paste(examples, collapse = ", "),
+      ". Aggregate deliberately or use engine = 'tmb' for repeated long rows."
+    ),
+    call. = FALSE
+  )
+}
+
 .gllvm_julia_trials_matrix <- function(object, p, n) {
   trials <- object$bridge_input$N %||% NULL
   if (is.null(trials)) {
@@ -3112,6 +3136,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   units <- levels(fu)
   p <- length(traits)
   n <- length(units)
+  .gllvm_julia_guard_unique_trait_unit_cells(ft, fu)
   Y <- matrix(NA_real_, p, n, dimnames = list(traits, units))
   Y[cbind(as.integer(ft), as.integer(fu))] <- yv
   response_mask <- !is.na(Y)

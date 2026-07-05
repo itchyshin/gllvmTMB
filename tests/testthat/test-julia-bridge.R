@@ -1898,6 +1898,24 @@ test_that("engine = 'julia' keeps unsupported response-mask rows explicit", {
   )
 })
 
+test_that("engine = 'julia' rejects duplicated trait-unit response cells", {
+  df <- make_long()
+  df <- rbind(df, df[1L, , drop = FALSE])
+  df$value[nrow(df)] <- df$value[1L] + 10
+
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = gaussian(),
+      engine = "julia"
+    ),
+    "GJL-GATE-DUPLICATE-CELLS"
+  )
+})
+
 test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
   df <- make_long()
   df$x <- stats::rnorm(nrow(df))

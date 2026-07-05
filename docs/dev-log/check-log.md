@@ -33789,3 +33789,45 @@ python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
 
 Outcome: dashboard JSON validates. Mission Control now names the known-DGP
 canary and keeps the remaining gates explicit.
+
+## 2026-07-05 -- Wide traits animal keyword pass-through
+
+Goal: close the local parser part of issue #604 by making wide-format
+`traits(...)` RHS expansion treat the animal source keywords as covariance
+markers, matching the existing phylo source keywords.
+
+Edits:
+
+- Added `animal_scalar`, `animal_unique`, and `animal_slope` to
+  `.traits_covstruct_keywords` in `R/traits-keyword.R`.
+- Extended the existing covariance-keyword-grid parser test so
+  `animal_scalar()`, `animal_unique()`, `animal_latent()`, `animal_indep()`,
+  `animal_dep()`, and `animal_slope()` are all checked under
+  `.traits_expand_rhs()`.
+- Added an explicit no-regression check that no `:animal_` interaction wrapper
+  appears in the wide RHS expansion.
+- Updated validation-debt rows `FG-03`, `ANI-01`, `ANI-02`, and `ANI-06` to
+  point at the new issue #604 parser evidence.
+
+Commands:
+
+```sh
+git status --short --branch
+git rev-parse --short HEAD
+gh issue view 604 --repo itchyshin/gllvmTMB --json number,title,state,body,url,labels
+rg -n "traits_covstruct_keywords|traits_expand_rhs|animal_scalar|animal_unique|animal_slope|animal_rr|phylo_scalar|phylo_unique|phylo_slope" R tests/testthat
+gh pr list --state open --limit 20
+git log --all --oneline --since="6 hours ago"
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); rhs <- quote(1 + animal_scalar(individual) + animal_unique(individual) + animal_slope(env_temp | individual)); cat(paste(deparse(gllvmTMB:::.traits_expand_rhs(rhs)), collapse = " "), "\n")'
+Rscript --vanilla -e 'invisible(parse("R/traits-keyword.R")); invisible(parse("tests/testthat/test-traits-keyword.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-traits-keyword.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-canonical-keywords.R", reporter = "summary")'
+git diff --check
+```
+
+Outcome: issue #604 reproduced locally before the fix as
+`(0 + trait):animal_*`; after the fix the animal markers pass through. Parse
+passed; `test-traits-keyword.R` passed with one existing CRAN-gated skip;
+`test-canonical-keywords.R` passed with three existing INLA skips. This is a
+parser truth-lock only: no TMB likelihood, extractor, inference, or new public
+capability was added.

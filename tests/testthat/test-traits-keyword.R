@@ -246,6 +246,12 @@ test_that("traits() RHS expander recognises the covariance keyword grid", {
       phylo_latent(individual, d = 1) +
       phylo_indep(1 | individual) +
       phylo_dep(1 | individual) +
+      animal_scalar(individual) +
+      animal_unique(individual) +
+      animal_latent(individual, d = 1) +
+      animal_indep(1 | individual) +
+      animal_dep(1 | individual) +
+      animal_slope(env_temp | individual) +
       spatial_scalar(1 | individual) +
       spatial_unique(1 | individual) +
       spatial_indep(1 | individual) +
@@ -271,6 +277,12 @@ test_that("traits() RHS expander recognises the covariance keyword grid", {
   expect_match(expanded, "phylo_latent\\(individual, d = 1\\)")
   expect_match(expanded, "phylo_indep\\(0 \\+ trait \\| individual\\)")
   expect_match(expanded, "phylo_dep\\(0 \\+ trait \\| individual\\)")
+  expect_match(expanded, "animal_scalar\\(individual\\)")
+  expect_match(expanded, "animal_unique\\(individual\\)")
+  expect_match(expanded, "animal_latent\\(individual, d = 1\\)")
+  expect_match(expanded, "animal_indep\\(0 \\+ trait \\| individual\\)")
+  expect_match(expanded, "animal_dep\\(0 \\+ trait \\| individual\\)")
+  expect_match(expanded, "animal_slope\\(env_temp \\| individual\\)")
   expect_match(expanded, "spatial_scalar\\(0 \\+ trait \\| individual\\)")
   expect_match(expanded, "spatial_unique\\(0 \\+ trait \\| individual\\)")
   expect_match(expanded, "spatial_indep\\(0 \\+ trait \\| individual\\)")
@@ -284,7 +296,7 @@ test_that("traits() RHS expander recognises the covariance keyword grid", {
   expect_match(expanded, "meta_known_V\\(V = V\\)")
   expect_no_match(
     expanded,
-    ":phylo_latent|:phylo_unique|:spatial_latent|:meta_V|:meta_known_V|:\\(1 \\| batch\\)"
+    ":phylo_latent|:phylo_unique|:animal_|:spatial_latent|:meta_V|:meta_known_V|:\\(1 \\| batch\\)"
   )
 })
 

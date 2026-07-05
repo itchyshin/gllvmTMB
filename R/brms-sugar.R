@@ -1785,7 +1785,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
   ) {
     return(invisible(NULL))
   }
-  lhs <- bar[[2L]]
+  lhs <- .strip_lhs_parens(bar[[2L]])
   ## Match exactly the same shape detection the phylo()/spatial() wrappers
   ## use (df76c705 / 8b1ddc92): `1` (intercept-only) or `0 + trait`
   ## (per-trait intercepts). Anything else is augmented LHS, not yet

@@ -39,6 +39,24 @@ make_lhs_fixture <- function(seed = 42) {
   df
 }
 
+test_that("parenthesized intercept-only LHS is not treated as augmented", {
+  withr::local_options(lifecycle_verbosity = "quiet")
+
+  f_indep <- expect_no_error(gllvmTMB:::desugar_brms_sugar(
+    value ~ 0 + trait + indep((0 + trait) | site)
+  ))
+  cs_indep <- gllvmTMB:::parse_multi_formula(f_indep)$covstructs[[1L]]
+  expect_identical(cs_indep$kind, "diag")
+  expect_true(gllvmTMB:::.is_zero_plus_trait(cs_indep$lhs))
+
+  f_latent <- expect_no_error(gllvmTMB:::desugar_brms_sugar(
+    value ~ 0 + trait + latent((0 + trait) | site, d = 1)
+  ))
+  cs_latent <- gllvmTMB:::parse_multi_formula(f_latent)$covstructs[[1L]]
+  expect_identical(cs_latent$kind, "rr")
+  expect_true(gllvmTMB:::.is_zero_plus_trait(cs_latent$lhs))
+})
+
 ## ---- 1. latent() augmented LHS routes to RE-12 engine -------------------
 
 test_that("latent(0 + trait + (0 + trait):temp | g, d = 1) routes to ordinary random-regression engine", {

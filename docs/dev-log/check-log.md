@@ -33255,3 +33255,29 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 Outcome: parse passed; focused Julia-bridge tests passed with expected live
 GLLVM.jl skips because `GLLVM_JL_PATH` is not configured in this R worktree.
 This is an R-side bridge input guard only; it does not widen Julia parity.
+
+## 2026-07-04 -- Parenthesized intercept-only LHS guard
+
+Goal: close issue #626 by letting formula guards strip harmless parentheses
+before classifying intercept-only LHS terms, so `(0 + trait)` is not treated as
+an unsupported augmented random-slope LHS.
+
+Edits:
+
+- Updated `.assert_no_augmented_lhs()` to call `.strip_lhs_parens()` before
+  intercept-only/per-trait-intercept classification.
+- Added a parser regression proving `indep((0 + trait) | site)` and
+  `latent((0 + trait) | site, d = 1)` are accepted as intercept-only forms.
+- Updated RE-12 to record the parser no-regression evidence while keeping the
+  row `partial`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/brms-sugar.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-augmented-lhs-guard.R", reporter = "summary")'
+```
+
+Outcome: parse passed; focused augmented-LHS guard tests passed with the
+expected CRAN-mode skips for heavier fit rows. This is parser truth hardening
+only; it does not add a new random-slope capability.

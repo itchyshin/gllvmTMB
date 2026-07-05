@@ -70,9 +70,9 @@ test_that("extract_proportions() (wide format) has one row per trait", {
   expect_true("total_variance" %in% names(out))
   ## Per-trait proportions sum to 1 (excluding `trait` and `total_variance`)
   prop_cols <- setdiff(names(out), c("trait", "total_variance"))
-  per_trait_sum <- rowSums(out[, prop_cols, drop = FALSE]) /
-                   out$total_variance
+  per_trait_sum <- rowSums(out[, prop_cols, drop = FALSE])
   expect_equal(unname(per_trait_sum), rep(1, fit$n_traits), tolerance = 1e-10)
+  expect_true(all(out$total_variance > 0))
 })
 
 test_that("extract_phylo_signal() errors when phylo_latent is not in the fit", {

@@ -148,9 +148,14 @@ test_that("extract_Omega() and extract_proportions() use per-trait residuals", {
   pr <- suppressMessages(extract_proportions(fit, link_residual = "auto",
                                               format = "wide"))
   expect_true("link_residual" %in% colnames(pr))
-  ## The Gaussian trait has 0 link residual; the binomial trait has pi^2/3;
-  ## the Poisson trait has log(1 + 1/mu).
-  expect_equal(unname(pr$link_residual), unname(v), tolerance = 1e-10)
+  ## Wide columns are proportions; multiplying by total_variance recovers
+  ## the absolute link residual. The Gaussian trait has 0 link residual; the
+  ## binomial trait has pi^2/3; the Poisson trait has log(1 + 1/mu).
+  expect_equal(
+    unname(pr$link_residual * pr$total_variance),
+    unname(v),
+    tolerance = 1e-10
+  )
 })
 
 test_that("single-family (binomial logit) fits give identical Sigma to before", {

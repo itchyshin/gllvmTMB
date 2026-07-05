@@ -33179,3 +33179,31 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 
 Outcome: parse passed; focused scanner tests passed. This is formula-message
 convention hardening only; no formula grammar or engine behavior changed.
+
+## 2026-07-04 -- extract_proportions wide-format contract
+
+Goal: close issue #663 by making `extract_proportions(format = "wide")` match
+the documented proportion contract.
+
+Edits:
+
+- Changed wide output to return the proportion matrix `P` rather than absolute
+  component variances `M`.
+- Kept `total_variance` as the absolute per-trait denominator.
+- Updated wide-format tests so component columns sum to one directly.
+- Updated the mixed-response link-residual expectation so
+  `link_residual * total_variance` recovers the absolute residual variance.
+- Updated validation row EXT-31.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/extract-omega.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-extract-omega.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-mixed-response-sigma.R", reporter = "summary")'
+```
+
+Outcome: parse passed; `test-extract-omega.R` passed; mixed-response rows
+remained skipped under CRAN mode while the edited file parsed. This is an
+extractor return-contract fix, not a new variance-partition capability or
+delta-family admission.

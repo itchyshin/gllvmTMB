@@ -586,7 +586,7 @@ extract_proportions <- function(
   } else {
     out <- data.frame(
       trait = factor(trait_names, levels = trait_names),
-      M,
+      P,
       total_variance = total,
       stringsAsFactors = FALSE,
       check.names = FALSE

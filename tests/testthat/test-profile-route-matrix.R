@@ -279,6 +279,135 @@ test_that("profile route matrix marks only unit_slope rho as the augmented canar
   expect_match(partial$route, "profile_ci_correlation", fixed = TRUE)
 })
 
+test_that("rho parser contract mirrors profile route matrix boundaries", {
+  routes <- gllvmTMB:::.profile_route_matrix()
+  trait_names <- c("t1", "t2")
+
+  accepted <- c(
+    unit = "unit",
+    unit_obs = "unit_obs",
+    cluster = "cluster",
+    cluster2 = "cluster2",
+    phy = "phy",
+    spatial = "spatial",
+    unit_slope = "unit_slope",
+    B = "unit",
+    W = "unit_obs",
+    spde = "spatial"
+  )
+  for (tier in names(accepted)) {
+    parsed <- gllvmTMB:::.parse_rho_parm(
+      sprintf("rho:%s:1,2", tier),
+      trait_names
+    )
+    expect_equal(parsed$tier, tier, label = tier)
+    level <- accepted[[tier]]
+    route <- gllvmTMB:::.profile_route_status("rho", level, routes = routes)
+    expect_true(
+      route$status %in% c("covered", "partial", "point_only"),
+      label = tier
+    )
+  }
+
+  blocked_tiers <- c(
+    "kernel_named",
+    "phy_unique_slope",
+    "phy_dep",
+    "phy_slope",
+    "spde_base_slope",
+    "spde_dep",
+    "spde_slope"
+  )
+  for (tier in blocked_tiers) {
+    expect_error(
+      gllvmTMB:::.parse_rho_parm(
+        sprintf("rho:%s:1,2", tier),
+        trait_names
+      ),
+      "Invalid tier",
+      label = tier
+    )
+    route <- gllvmTMB:::.profile_route_status("rho", tier, routes = routes)
+    expect_equal(route$status, "blocked", label = tier)
+  }
+})
+
+test_that("communality parser contract mirrors profile route matrix boundaries", {
+  routes <- gllvmTMB:::.profile_route_matrix()
+  trait_names <- c("t1", "t2")
+
+  accepted <- c(
+    unit = "unit",
+    unit_obs = "unit_obs",
+    phy = "phy",
+    B = "unit",
+    W = "unit_obs"
+  )
+  for (tier in names(accepted)) {
+    parsed <- gllvmTMB:::.parse_communality_parm(
+      sprintf("communality:%s:t1", tier),
+      trait_names
+    )
+    expect_equal(parsed$tier, tier, label = tier)
+    expect_equal(parsed$trait_idx, 1L, label = tier)
+    route <- gllvmTMB:::.profile_route_status(
+      "communality",
+      accepted[[tier]],
+      routes = routes
+    )
+    expect_equal(route$status, "covered", label = tier)
+  }
+
+  unavailable <- c("cluster", "cluster2")
+  for (tier in unavailable) {
+    expect_error(
+      gllvmTMB:::.parse_communality_parm(
+        sprintf("communality:%s:t1", tier),
+        trait_names
+      ),
+      "Invalid tier",
+      label = tier
+    )
+    route <- gllvmTMB:::.profile_route_status(
+      "communality",
+      tier,
+      routes = routes
+    )
+    expect_equal(route$status, "not_applicable", label = tier)
+  }
+
+  blocked <- c(
+    "spatial",
+    "kernel_named",
+    "unit_slope",
+    "phy_unique_slope",
+    "phy_dep",
+    "phy_slope",
+    "spde_base_slope",
+    "spde_dep",
+    "spde_slope"
+  )
+  for (tier in blocked) {
+    expect_error(
+      gllvmTMB:::.parse_communality_parm(
+        sprintf("communality:%s:t1", tier),
+        trait_names
+      ),
+      "Invalid tier",
+      label = tier
+    )
+    route <- gllvmTMB:::.profile_route_status(
+      "communality",
+      tier,
+      routes = routes
+    )
+    expect_true(
+      route$status %in% c("blocked", "planned"),
+      label = tier
+    )
+  }
+})
+
 test_that("augmented profile target table covers every split level and estimand", {
   targets <- gllvmTMB:::.profile_augmented_target_table()
   split_levels <- c(

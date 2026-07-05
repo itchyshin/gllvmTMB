@@ -35376,3 +35376,37 @@ Results:
 - Live `status.json` and `sweep.json` endpoints show the refreshed timestamp
   `2026-07-05 04:35 MDT`, the current local branch state, and PR #706 as
   successful.
+
+### 2026-07-05 -- Profile route parser-boundary truth lock
+
+Goal:
+
+- Tighten the profile route matrix around the structural-dependence
+  combinations that must either be explicitly routed or fail before profile
+  dispatch.
+
+Changes:
+
+- Added parser-contract checks to `tests/testthat/test-profile-route-matrix.R`
+  so accepted `rho:*` and `communality:*` tokens mirror the profile route
+  matrix.
+- Confirmed `rho` accepts the current profile-facing tiers and legacy aliases:
+  `unit`, `unit_obs`, `cluster`, `cluster2`, `phy`, `spatial`,
+  `unit_slope`, `B`, `W`, and `spde`.
+- Confirmed blocked split/source/kernel rho tokens fail before dispatch while
+  the route matrix records them as blocked.
+- Confirmed `communality` accepts only `unit`, `unit_obs`, `phy`, `B`, and
+  `W`; cluster tiers remain not applicable, and spatial/kernel/augmented split
+  tiers remain planned or blocked.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R", reporter = "summary")'
+```
+
+Results:
+
+- `test-profile-route-matrix.R` passed.
+- No package API, likelihood code, source-specific `lv` grammar, mixed-family
+  CI, or calibration claim changed.

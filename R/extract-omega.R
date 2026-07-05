@@ -390,6 +390,11 @@ extract_phylo_signal <- function(
   Psi_diag <- if (!is.null(out_uniq)) out_uniq$s else rep(0, fit$n_traits)
 
   V_eta <- Sigma_phy + Sigma_non_s + Psi_diag
+  phylo_parts <- .safe_phylo_signal_components(
+    Sigma_phy = Sigma_phy,
+    Sigma_non_s = Sigma_non_s,
+    Psi_diag = Psi_diag
+  )
 
   ## Build advisory if any component is structurally zero
   if (sum(Psi_diag) == 0) {
@@ -400,21 +405,9 @@ extract_phylo_signal <- function(
 
   pe_df <- data.frame(
     trait = factor(trait_names, levels = trait_names),
-    H2 = if (sum(V_eta) > 0) {
-      Sigma_phy / V_eta
-    } else {
-      rep(NA_real_, length(V_eta))
-    },
-    C2_non = if (sum(V_eta) > 0) {
-      Sigma_non_s / V_eta
-    } else {
-      rep(NA_real_, length(V_eta))
-    },
-    Psi = if (sum(V_eta) > 0) {
-      Psi_diag / V_eta
-    } else {
-      rep(NA_real_, length(V_eta))
-    },
+    H2 = phylo_parts[, "H2"],
+    C2_non = phylo_parts[, "C2_non"],
+    Psi = phylo_parts[, "Psi"],
     V_eta = V_eta,
     row.names = NULL,
     stringsAsFactors = FALSE
@@ -451,6 +444,15 @@ extract_phylo_signal <- function(
   pe_df$H2_upper <- NA_real_
   pe_df$H2_method <- "bootstrap"
   pe_df
+}
+
+.safe_phylo_signal_components <- function(Sigma_phy, Sigma_non_s, Psi_diag) {
+  M <- cbind(
+    H2 = Sigma_phy,
+    C2_non = Sigma_non_s,
+    Psi = Psi_diag
+  )
+  .safe_variance_proportion_matrix(M)
 }
 
 #' Per-trait proportion-of-variance decomposition across all model components

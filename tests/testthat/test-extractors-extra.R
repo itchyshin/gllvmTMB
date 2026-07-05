@@ -100,6 +100,15 @@ test_that("safe variance proportions and ICC return NA for zero denominators", {
   expect_true(all(is.na(P["b", ])))
   expect_false(any(is.nan(P)))
 
+  phy <- gllvmTMB:::.safe_phylo_signal_components(
+    Sigma_phy = c(2, 0),
+    Sigma_non_s = c(1, 0),
+    Psi_diag = c(1, 0)
+  )
+  expect_equal(phy[1, ], c(H2 = 0.5, C2_non = 0.25, Psi = 0.25))
+  expect_true(all(is.na(phy[2, ])))
+  expect_false(any(is.nan(phy)))
+
   icc <- gllvmTMB:::.safe_icc_ratio(c(2, 0), c(2, 0))
   expect_equal(icc[1], 0.5)
   expect_true(is.na(icc[2]))

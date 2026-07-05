@@ -33389,3 +33389,27 @@ NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::t
 Outcome: parse passed; the focused `test-fisher-z-correlations.R` file passed
 with `NOT_CRAN=true`. This reduces redundant refits but does not promote any
 new bootstrap calibration claim.
+
+## 2026-07-04 -- Phylogenetic-signal zero-denominator guard
+
+Goal: close issue #677 by making `extract_phylo_signal()` return `NA`, not
+`NaN`, for individual traits whose `H2 + C2_non + Psi` denominator is zero.
+
+Edits:
+
+- Added `.safe_phylo_signal_components()` and routed the
+  `extract_phylo_signal()` point decomposition through it.
+- Reused `.safe_variance_proportion_matrix()` so zero-denominator rows degrade
+  elementwise without erasing valid traits.
+- Added a pure regression for `H2`, `C2_non`, and `Psi` zero-denominator rows.
+- Updated PHY-07 and EXT-07.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/extract-omega.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-extractors-extra.R", reporter = "summary")'
+```
+
+Outcome: parse passed; focused `test-extractors-extra.R` passed, including the
+new `extract_phylo_signal()` zero-denominator component regression.

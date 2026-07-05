@@ -33025,3 +33025,30 @@ Outcome: parse passed; normal missing-data robustness tests passed; targeted
 heavy mixed-family response prediction test passed. This is a response-scale
 point-prediction dispatch repair only; newdata simulation and prediction
 intervals remain out of scope.
+
+## 2026-07-04 -- Julia bridge dispersion payload shape guard
+
+Goal: close issue #696 by making malformed Julia-bridge dispersion payloads
+fail loudly instead of being silently replaced by all-`NA` values.
+
+Edits:
+
+- Changed `.gllvm_julia_dispersion_vector()` to accept only scalar or
+  per-trait dispersion vectors.
+- Added a pure bridge regression for the `p + 1` payload case and the scalar
+  recycling case.
+- Added a JUL-01 malformed-payload guard addendum to the validation-debt
+  register.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/julia-bridge.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'
+git diff --check
+```
+
+Outcome: parse passed; focused bridge tests passed with expected live-Julia
+skips because `GLLVM_JL_PATH` is not configured in this R worktree; whitespace
+check passed. This is a malformed payload guard only; it does not widen Julia
+bridge parity or interval support.

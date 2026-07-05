@@ -1405,6 +1405,34 @@ test_that("Julia bridge mixed-family postfit reconstructs retained payloads", {
   expect_equal(dim(ord$loadings), c(2L, 1L))
 })
 
+test_that("Julia bridge dispersion payload length mismatch fails loudly", {
+  bad <- structure(
+    list(
+      dispersion = c(0.4, 0.5, 0.6)
+    ),
+    class = c("gllvmTMB_julia", "list")
+  )
+
+  expect_error(
+    gllvmTMB:::.gllvm_julia_dispersion_vector(bad, p = 2L),
+    "dispersion payload length does not match traits"
+  )
+  expect_error(
+    gllvmTMB:::.gllvm_julia_dispersion_vector(bad, p = 2L),
+    "expected 1 or 2, got 3",
+    fixed = TRUE
+  )
+
+  scalar <- structure(
+    list(dispersion = 0.7),
+    class = c("gllvmTMB_julia", "list")
+  )
+  expect_equal(
+    gllvmTMB:::.gllvm_julia_dispersion_vector(scalar, p = 2L),
+    c(0.7, 0.7)
+  )
+})
+
 test_that("confint recomputes from retained Julia bridge input", {
   y <- matrix(
     c(1, 2, 3, 4, 2, 3, 4, 5),

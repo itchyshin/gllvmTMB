@@ -1905,7 +1905,11 @@ gllvm_julia_capabilities <- function() {
     dispersion <- rep(dispersion, p)
   }
   if (length(dispersion) != p) {
-    dispersion <- rep(NA_real_, p)
+    stop(
+      "engine = 'julia': dispersion payload length does not match traits ",
+      "(expected 1 or ", p, ", got ", length(dispersion), ").",
+      call. = FALSE
+    )
   }
   dispersion
 }

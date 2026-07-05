@@ -555,6 +555,14 @@ split (`codex/bridge-admission-split-20260619` @ c061ce2; 5 commits on
 move any row to `covered`. See
 `docs/dev-log/after-task/2026-06-19-overnight-bridge-pr492-dashboard.md`.
 
+JUL-01 malformed-payload guard addendum (2026-07-04): issue #696 is closed
+for the R-side bridge postfit surface. `.gllvm_julia_dispersion_vector()` now
+fails loudly when a retained dispersion payload has length neither 1 nor the
+number of traits, reporting the observed and expected lengths instead of
+replacing the vector with all `NA`. The pure bridge regression lives in
+`test-julia-bridge.R`. This is a payload-shape guard only; it does not widen
+Julia bridge family, CI, mask, mixed-family, or structured-term support.
+
 ## What this register does NOT do
 
 - **It does not replace the test files.** Every `covered`

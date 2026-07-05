@@ -34910,6 +34910,11 @@ Rscript --vanilla -e 'tools::checkRd("man/families.Rd")'
 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-enum-runtime-ids.R")'
 GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-truncated-recovery.R")'
 GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-matrix-truncated.R")'
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool >/dev/null
+curl -s http://127.0.0.1:8770/sweep.json | python3 -m json.tool >/dev/null
 git diff --check
 ```
 
@@ -34926,6 +34931,13 @@ Results:
   15 pass, 0 fail, 0 warn, 0 skip.
 - `test-matrix-truncated.R` under `GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true`:
   30 pass, 0 fail, 0 warn, 0 skip.
+- Dashboard JSON validation passed for `status.json` and `sweep.json`; the
+  mission-control server was already running and synced the refreshed files to
+  `/tmp/gllvm-dashboard` and `/private/tmp/gllvm-dashboard`.
+- Served `status.json` and `sweep.json` validated, and the in-app browser at
+  `http://127.0.0.1:8770/` showed the refreshed `gllvmTMB completion truth
+  lock` row with commit `6bf0d79e`, constructor-only boundary text, and no
+  active compute.
 - `git diff --check` passed.
 
 Not run:

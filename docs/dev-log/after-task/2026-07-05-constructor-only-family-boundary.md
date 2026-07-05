@@ -62,6 +62,11 @@ Rscript --vanilla -e 'tools::checkRd("man/families.Rd")'
 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-enum-runtime-ids.R")'
 GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-truncated-recovery.R")'
 GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-matrix-truncated.R")'
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool >/dev/null
+curl -s http://127.0.0.1:8770/sweep.json | python3 -m json.tool >/dev/null
 git diff --check
 ```
 
@@ -75,6 +80,9 @@ Results:
   warnings from reference page ranges.
 - Heavy `test-truncated-recovery.R`: 15 pass, 0 fail, 0 warn, 0 skip.
 - Heavy `test-matrix-truncated.R`: 30 pass, 0 fail, 0 warn, 0 skip.
+- Dashboard JSON and served JSON validated. The in-app browser preview at
+  `http://127.0.0.1:8770/` showed the refreshed active-work row with
+  `6bf0d79e`, constructor-only boundary text, and no active compute.
 - `git diff --check`: clean.
 
 ## 5. Tests of the Tests

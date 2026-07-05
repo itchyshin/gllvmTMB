@@ -46,21 +46,39 @@ branch, by contrast, marks its point-only rows `interval_status = "none"`.
   Single injection point at the assembly; roxygen + Rd updated; tests assert
   `nominal` (Gaussian) and `route-only` (mixed). Full suite PASS 4168 / FAIL 0.
 
-### 3. MIX-10 delta/hurdle block — enforced, but the register's gate class is wrong 🔍
+### 3. MIX-10 "delta/hurdle blocked" is NOT enforced as an auto runtime gate 🔴
 
-Design 57 (§ lines 22, 40, 114) confirms `check_auto_residual()` **rejects**
-mixed-family delta/hurdle fits (two latent scales; single-σ²_d correlation
-contract undefined). The block is real. BUT the Day-2 audit named the abort class
-`gllvmTMB_auto_residual_delta_undefined` — that class **does not exist** in the
-code (pre- or post-merge). The actual aborts in `check-auto-residual.R` are
-`gllvmTMB_auto_residual_incoherent` (within-trait family mixing, line 107) and
-`gllvmTMB_auto_residual_ordinal_probit_overcount` (warn, line 127).
+Design 02 (lines ~174-191) and Design 57 say mixed-family delta/hurdle
+correlations are "undefined" (two latent scales) and that `check_auto_residual()`
+"rejects" them. Code trace says otherwise — three inaccuracies:
 
-- **Open verification:** confirm at runtime that a mixed-family fit containing a
-  `delta_*` trait is actually blocked (build the fit, expect an abort), and
-  correct the register/Day-2 note's class name. The delta block may rely on the
-  incoherent path or a fit-time guard in `families.R` — the exact route needs a
-  runtime trace, not asserted.
+1. The Day-2 audit named the abort class `gllvmTMB_auto_residual_delta_undefined`;
+   **that class does not exist** (pre- or post-merge). The only aborts in
+   `check-auto-residual.R` are `gllvmTMB_auto_residual_incoherent` (within-trait
+   family mixing, line 107) and `..._ordinal_probit_overcount` (warn, line 127).
+2. `check_auto_residual()` is **never called anywhere in `R/`** (grep-confirmed):
+   it is an `@export`ed, MANUAL diagnostic the user runs on demand — NOT an
+   automatic gate wired into `gllvmTMB()`, `extract_Sigma()`, or
+   `extract_correlations()`.
+3. Even when called, it blocks only *within-trait* family mixing, not delta/
+   hurdle families (a single-family delta trait passes). And `extract-sigma.R`
+   (lines 316-325) **handles** delta (delta_lognormal → σ²+π²/3; delta_gamma →
+   trigamma) — it computes a σ²_d rather than refusing.
+
+So a delta/hurdle mixed-family fit's `extract_correlations()` is **computed and
+returned**, not hard-blocked — and (as of today's marker) tagged
+`interval_status = "route-only"`. The claim boundary is therefore *flagged*
+(route-only), but the register/Design "blocked" wording overclaims a hard guard
+that isn't wired.
+
+- **Runtime confirmation (definitive, deferred — needs a delta-family fixture,
+  ~Codex lane):** fit `delta_* + gaussian`, call `extract_correlations()`, and
+  confirm it returns `route-only` rows rather than aborting.
+- **Decision (Shinichi / design):** is `route-only` marking sufficient for
+  delta/hurdle mixed correlations (⇒ correct the register from "blocked" to
+  "route-only / handled"), or should they be *hard-blocked* (⇒ wire a real guard
+  + auto-call it, since check_auto_residual is currently opt-in only)?
+- Register/audit fix regardless: the `..._delta_undefined` class name is wrong.
 
 ## Checks Run
 
@@ -73,11 +91,15 @@ code (pre- or post-merge). The actual aborts in `check-auto-residual.R` are
 ## Known Residuals / Next Actions (milestone, not yet done)
 
 - ~~Interval-status marker (finding 2)~~ — DONE (approved + implemented).
-- Runtime-verify the delta/hurdle block (finding 3) + fix the register/audit
-  class-name inaccuracy.
-- Re-confirm `na_mask` retention (`normalise_weights(drop_masked = FALSE)`) under
-  the folded covariance.
-- Register CI-08 / CI-10 promotion once the marker decision lands.
+- Finding 3: Shinichi/design call on route-only-vs-hard-block for delta/hurdle
+  mixed correlations; fix the register/audit class-name + "blocked" wording;
+  runtime confirmation with a delta fixture (Codex lane).
+- `na_mask` retention — CONFIRMED still valid: the merge did not touch
+  `R/weights-shape.R` (`git diff 08050034..HEAD` on the missing/mixed surface
+  changed only `extract-correlations.R` + `extract-sigma.R`), so the Day-2
+  audit's `normalise_weights(drop_masked = FALSE)` confirmation carries over
+  unchanged.
+- Register CI-08 / CI-10 promotion once the delta decision + marker land.
 
 ## Team Notes
 

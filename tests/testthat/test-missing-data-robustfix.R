@@ -120,6 +120,17 @@ test_that("per-row inverse link returns lognormal conditional mean, not median",
   expect_equal(out[2], exp(eta[2]))
 })
 
+test_that("newdata family/link lookup uses modal ids, not median-truncated ids", {
+  expect_equal(gllvmTMB:::.modal_integer_id(c(2L, 4L)), 2L)
+  expect_equal(gllvmTMB:::.modal_integer_id(c(4L, 2L)), 4L)
+  expect_equal(gllvmTMB:::.modal_integer_id(c(2L, 4L, 4L)), 4L)
+  expect_equal(gllvmTMB:::.modal_integer_id(integer(), fallback = 5L), 5L)
+  expect_false(identical(
+    gllvmTMB:::.modal_integer_id(c(2L, 4L)),
+    as.integer(stats::median(c(2L, 4L)))
+  ))
+})
+
 test_that("BUG-2 predict(type='response') uses per-row inverse link (mixed family)", {
   skip_if_not_heavy()
   mm <- .rf_make_mixed_family_fit()

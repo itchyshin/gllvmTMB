@@ -32998,3 +32998,30 @@ Outcome: parse passed; normal missing-data robustness tests passed; targeted
 heavy mixed-family response prediction test passed. This repairs lognormal
 response-scale point prediction only, not delta-lognormal or uncertainty
 prediction.
+
+## 2026-07-04 -- predict newdata modal family/link ids
+
+Goal: close issue #678 by making `predict(..., newdata = ..., type =
+"response")` choose per-trait family/link ids as categorical modal ids instead
+of numeric medians.
+
+Edits:
+
+- Added `.modal_integer_id()` for deterministic first-modal integer ids.
+- Replaced median/truncation in the `newdata` family/link lookup.
+- Added pure coverage for the exact even-mix failure case `c(2, 4)`, which
+  previously became id `3` by median truncation.
+- Updated validation row EXT-33.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/methods-gllvmTMB.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-missing-data-robustfix.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-missing-data-robustfix.R", reporter = "summary", desc = "BUG-2 predict(type='response') uses per-row inverse link (mixed family)")'
+```
+
+Outcome: parse passed; normal missing-data robustness tests passed; targeted
+heavy mixed-family response prediction test passed. This is a response-scale
+point-prediction dispatch repair only; newdata simulation and prediction
+intervals remain out of scope.

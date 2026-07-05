@@ -1,5 +1,16 @@
 ## S3 methods specific to gllvmTMB_multi objects.
 
+.modal_integer_id <- function(x, fallback = NA_integer_) {
+  x <- as.integer(x)
+  x <- x[!is.na(x)]
+  if (!length(x)) {
+    return(as.integer(fallback)[1L])
+  }
+  ux <- unique(x)
+  tab <- tabulate(match(x, ux))
+  ux[which.max(tab)]
+}
+
 ## Build a per-trait link-function label vector for a fitted multi
 ## object. Used by print.gllvmTMB_multi() (column annotation in mixed
 ## fits) and tidy.gllvmTMB_multi() (the new `link` column on
@@ -1499,8 +1510,14 @@ predict.gllvmTMB_multi <- function(
             fid_by_trait[t] <- fid_vec[1L]
             lid_by_trait[t] <- lid_vec[1L]
           } else {
-            fid_by_trait[t] <- as.integer(stats::median(fid_vec[rows_t]))
-            lid_by_trait[t] <- as.integer(stats::median(lid_vec[rows_t]))
+            fid_by_trait[t] <- .modal_integer_id(
+              fid_vec[rows_t],
+              fallback = fid_vec[1L]
+            )
+            lid_by_trait[t] <- .modal_integer_id(
+              lid_vec[rows_t],
+              fallback = lid_vec[1L]
+            )
           }
         }
         tr_out <- as.integer(out[[object$trait_col]])

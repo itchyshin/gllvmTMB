@@ -32800,3 +32800,30 @@ Outcome: parse passed; pure weight-shape tests passed; heavy missing-data
 robustfix tests passed; wide-weight matrix tests passed. This repairs one
 response-missing/per-cell-weight interaction only; it does not promote new
 missing-predictor families or missing-data calibration claims.
+
+## 2026-07-04 -- Lognormal/Gamma positivity guard
+
+Goal: close issue #659 by failing loudly before TMB evaluation when observed
+lognormal or Gamma responses are not strictly positive.
+
+Edits:
+
+- Added a shared observed-row positivity guard for family IDs 3 and 4 in
+  `R/fit-multi.R`.
+- Kept masked missing-response sentinel rows exempt through the existing
+  `!masked_response` range-check convention.
+- Tightened the lognormal non-positive-y test to expect the explicit guard.
+- Added a Gamma non-positive-y regression.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/fit-multi.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-family-lognormal.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-family-gamma.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-missing-response-gaussian.R", reporter = "summary")'
+```
+
+Outcome: parse passed; lognormal and Gamma family tests passed; heavy
+missing-response sentinel tests passed. This is an input-domain guard only, not
+a new family recovery, interval, or calibration claim.

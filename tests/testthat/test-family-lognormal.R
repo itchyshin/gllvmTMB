@@ -55,7 +55,7 @@ test_that("lognormal errors on non-positive y (sanity)", {
       value ~ 0 + trait + latent(0 + trait | individual, d = 1),
       data = df, site = "individual", family = lognormal()
     ))),
-    regexp = "."   # anything; the engine should fail rather than silently fit
+    regexp = "strictly positive"
   )
 })
 

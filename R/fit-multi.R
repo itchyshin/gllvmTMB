@@ -1919,6 +1919,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Exact 0s or 1s require a zero-/one-inflated Beta variant."
       ))
   }
+  ## Lognormal and Gamma rows require strictly positive observed responses.
+  ## Masked rows may carry the internal sentinel y = 0 under
+  ## response = "include" and are excluded by !masked_response.
+  positive_rows <- (family_id_vec %in% c(3L, 4L)) & !masked_response
+  if (any(positive_rows)) {
+    if (any(y[positive_rows] <= 0))
+      cli::cli_abort(c(
+        "Lognormal and Gamma rows: {.code y} must be strictly positive.",
+        "i" = "Exact zeros need a hurdle/delta, zero-inflated, or count-family model."
+      ))
+  }
   ## Beta-binomial rows: y must be in [0, n_trials], same as binomial.
   bb_rows <- (family_id_vec == 8L) & !masked_response
   if (any(bb_rows)) {

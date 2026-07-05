@@ -67,3 +67,19 @@ test_that("Gamma errors on default inverse link (must use log)", {
     regexp = "log link"
   )
 })
+
+test_that("Gamma errors on non-positive observed y", {
+  set.seed(2)
+  df <- data.frame(
+    individual = factor(rep(1:20, each = 2)),
+    trait      = factor(rep(c("a", "b"), 20)),
+    value      = rep(c(1.0, 0.0), 20)
+  )
+  expect_error(
+    suppressMessages(suppressWarnings(gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | individual, d = 1, residual = FALSE),
+      data = df, site = "individual", family = Gamma(link = "log")
+    ))),
+    regexp = "strictly positive"
+  )
+})

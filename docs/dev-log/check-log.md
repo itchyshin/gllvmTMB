@@ -33915,3 +33915,50 @@ claim-audit scan found historical guard/dashboard language only; this slice does
 not change public support, interval, source-specific `lv`, mixed-family CI, or
 compute claims. Issue #636 remains open upstream until the local fix is pushed
 or included in a PR.
+
+## 2026-07-05 -- Sparse Ainv extra-node direct engine marginalization (#612)
+
+Goal: close the local correctness issue where the direct sparse `Ainv` engine
+subsets a precomputed precision matrix to fitted species levels. That produces
+the conditional precision when the sparse matrix contains extra pedigree
+ancestors / internal nodes. The sparse engine should instead keep the full
+precision and map observed levels into it, matching the `phylo_tree` Hadfield
+path.
+
+Edits:
+
+- Added `.resolve_sparse_phylo_precision()` in `R/fit-multi.R`.
+- Preserved the exact tip-only sparse `Ainv` route and level reordering.
+- For extra-node sparse `Ainv`, retained the full precision, computed the full
+  covariance-scale log determinant, set `n_aug_phy` to the full sparse dimension,
+  and mapped observed species rows through `species_aug_id`.
+- Added an integration regression with unphenotyped pedigree ancestors in
+  `test-pedigree-sparse-ainv-engine.R`.
+- Updated validation-debt row `ANI-08` with the issue #612 guard.
+
+Commands:
+
+```sh
+git status --short --branch
+git rev-parse --short HEAD
+gh issue list --repo itchyshin/gllvmTMB --state open --limit 80 --json number,title,labels,updatedAt,url
+gh issue view 612 --repo itchyshin/gllvmTMB --json number,title,state,body,url
+rg -n "Ainv_phy_rr|log_det_A_phy_rr|species_aug_id|n_aug_phy|GMRF|phylo" src/gllvmTMB.cpp R/fit-multi.R tests/testthat/test-pedigree-sparse-ainv-engine.R tests/testthat/test-phylo-hadfield.R
+Rscript --vanilla -e 'invisible(parse("R/fit-multi.R")); invisible(parse("tests/testthat/test-pedigree-sparse-ainv-engine.R")); cat("parse-ok\n")'
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-pedigree-sparse-ainv-engine.R", reporter = "summary")'
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-phylo-hadfield.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-stage3-propto-equalto.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load-all-ok\n")'
+gh pr list --state open --limit 20
+git log --all --oneline --since="6 hours ago" -- docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task R/fit-multi.R tests/testthat/test-pedigree-sparse-ainv-engine.R
+git diff --check
+```
+
+Outcome: parse passed; `test-pedigree-sparse-ainv-engine.R` passed including
+the new unphenotyped-ancestor regression; `test-phylo-hadfield.R` passed;
+`test-stage3-propto-equalto.R` passed with one pre-existing glmmTMB non-PD
+Hessian skip in the combined smoke cell; `load_all()` passed; `git diff --check`
+passed. No open PR lane was returned before shared register/log edits. This is
+a sparse-prior correctness repair only: no formula grammar, likelihood family,
+public interval, source-specific `lv`, or compute claim changed. Issue #612
+remains open upstream until the local fix is pushed or included in a PR.

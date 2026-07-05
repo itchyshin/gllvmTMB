@@ -45,6 +45,36 @@ make_sparse_ainv_fixture <- function(n_ind = 20L, n_traits = 2L,
   list(data = df, A = A, ped = ped, n_traits = n_traits)
 }
 
+make_sparse_ainv_extra_node_fixture <- function(n_ind = 22L, n_traits = 2L,
+                                                seed = 4242L) {
+  set.seed(seed)
+  ped <- data.frame(
+    id   = paste0("i", seq_len(n_ind)),
+    sire = c(rep(NA, 4L),
+             rep(c("i1", "i2"), length.out = n_ind - 4L)),
+    dam  = c(rep(NA, 4L),
+             rep(c("i3", "i4"), length.out = n_ind - 4L)),
+    stringsAsFactors = FALSE
+  )
+  observed_id <- ped$id[9L:n_ind]
+  A <- gllvmTMB::pedigree_to_A(ped)
+  A_obs <- A[observed_id, observed_id, drop = FALSE]
+  yvec <- as.numeric(MASS::mvrnorm(
+    1, mu = rep(0, n_traits * length(observed_id)),
+    Sigma = kronecker(diag(n_traits), A_obs) * 0.5 +
+      diag(n_traits * length(observed_id)) * 0.5
+  ))
+  df <- data.frame(
+    site    = factor(rep(observed_id, each = n_traits), levels = observed_id),
+    species = factor(rep(observed_id, each = n_traits), levels = observed_id),
+    trait   = factor(rep(paste0("t", seq_len(n_traits)),
+                         times = length(observed_id)),
+                     levels = paste0("t", seq_len(n_traits))),
+    value   = yvec
+  )
+  list(data = df, A = A, A_obs = A_obs, ped = ped, observed_id = observed_id)
+}
+
 # ---- (1) Engine path identification ------------------------------------
 
 test_that("animal_*(pedigree = ped) stores a SPARSE phylo_vcv on the fit (proves sparse engine path is hit)", {
@@ -114,6 +144,35 @@ test_that("animal_unique(Ainv = sparse_Ainv) matches animal_unique(A = dense_A) 
   expect_equal(as.numeric(logLik(fit_sparse)), as.numeric(logLik(fit_dense)),
                tolerance = 1e-6,
                label = "animal_unique sparse-Ainv vs dense-A byte-equivalence")
+})
+
+test_that("animal_unique(Ainv = sparse_Ainv) keeps unphenotyped pedigree nodes as augmented precision rows", {
+  skip_on_cran()
+  skip_if_not_installed("MCMCglmm")
+  fx <- make_sparse_ainv_extra_node_fixture()
+  Ainv_sparse <- gllvmTMB::pedigree_to_Ainv_sparse(fx$ped)
+  fit_sparse <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + animal_unique(species, Ainv = Ainv_sparse),
+    data = fx$data, family = gaussian()
+  )))
+  fit_dense <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + animal_unique(species, A = fx$A),
+    data = fx$data, family = gaussian()
+  )))
+
+  expect_true(inherits(fit_sparse$phylo_vcv, "sparseMatrix"))
+  expect_gt(fit_sparse$tmb_data$n_aug_phy, nlevels(fx$data$species))
+  expect_equal(
+    rownames(fit_sparse$tmb_data$Ainv_phy_rr),
+    rownames(Ainv_sparse)
+  )
+  expect_equal(
+    fit_sparse$tmb_data$species_aug_id + 1L,
+    match(as.character(fx$data$species), rownames(Ainv_sparse))
+  )
+  expect_equal(as.numeric(logLik(fit_sparse)), as.numeric(logLik(fit_dense)),
+               tolerance = 1e-5,
+               label = "animal_unique sparse full-Ainv vs dense marginal-A equivalence with unphenotyped ancestors")
 })
 
 # ---- (3) Sparse Ainv must have matching rownames ----------------------

@@ -122,6 +122,52 @@
   )
 }
 
+.resolve_sparse_phylo_precision <- function(Ainv, levs, species_id) {
+  if (nrow(Ainv) != ncol(Ainv)) {
+    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must be square.")
+  }
+  if (is.null(rownames(Ainv))) {
+    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var species}.")
+  }
+  if (is.null(colnames(Ainv))) {
+    colnames(Ainv) <- rownames(Ainv)
+  }
+  if (anyDuplicated(rownames(Ainv)) || anyDuplicated(colnames(Ainv))) {
+    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must be unique.")
+  }
+  if (!setequal(rownames(Ainv), colnames(Ainv))) {
+    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must name the same levels.")
+  }
+  if (!all(levs %in% rownames(Ainv))) {
+    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.")
+  }
+
+  Ainv <- Ainv[, match(rownames(Ainv), colnames(Ainv)), drop = FALSE]
+  if (setequal(rownames(Ainv), levs) && length(levs) == nrow(Ainv)) {
+    Ainv <- Ainv[levs, levs, drop = FALSE]
+    return(list(
+      Ainv_phy_rr = Ainv,
+      log_det_A_phy_rr = -as.numeric(Matrix::determinant(
+        Ainv,
+        logarithm = TRUE
+      )$modulus),
+      n_aug_phy = nrow(Ainv),
+      species_aug_id = species_id
+    ))
+  }
+
+  tip_to_aug <- match(levs, rownames(Ainv))
+  list(
+    Ainv_phy_rr = Ainv,
+    log_det_A_phy_rr = -as.numeric(Matrix::determinant(
+      Ainv,
+      logarithm = TRUE
+    )$modulus),
+    n_aug_phy = nrow(Ainv),
+    species_aug_id = tip_to_aug[species_id + 1L] - 1L
+  )
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `unique()`
@@ -2478,18 +2524,25 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## by `animal_*(id, pedigree = ped)` (via
       ## `pedigree_to_Ainv_sparse()` in the brms-sugar resolver) and
       ## by `animal_*(id, Ainv = sparse_Ainv)` (via
-      ## `.gllvmTMB_maybe_keep_sparse_ainv()`).
+      ## `.gllvmTMB_maybe_keep_sparse_ainv()`). If Ainv includes
+      ## unphenotyped ancestors / internal nodes, keep the full
+      ## precision and map observed tips into it; subsetting a
+      ## precision would condition on the dropped nodes, not marginalize
+      ## them.
       if (is.null(rownames(phylo_vcv)))
         cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var {species}}.")
       levs <- levels(data[[species]])
       if (!all(levs %in% rownames(phylo_vcv)))
         cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.")
-      Ainv_phy_rr      <- phylo_vcv[levs, levs, drop = FALSE]
-      ## log_det_A = -log|det(Ainv)|; sparse Cholesky via Matrix.
-      log_det_A_phy_rr <- -as.numeric(Matrix::determinant(Ainv_phy_rr,
-                                                          logarithm = TRUE)$modulus)
-      n_aug_phy        <- nrow(Ainv_phy_rr)
-      species_aug_id   <- species_id    # tip-only sparse path: identity
+      sparse_phy <- .resolve_sparse_phylo_precision(
+        phylo_vcv,
+        levs = levs,
+        species_id = species_id
+      )
+      Ainv_phy_rr      <- sparse_phy$Ainv_phy_rr
+      log_det_A_phy_rr <- sparse_phy$log_det_A_phy_rr
+      n_aug_phy        <- sparse_phy$n_aug_phy
+      species_aug_id   <- sparse_phy$species_aug_id
     } else {
       ## --- Legacy dense path: invert tip-only Cphy and store sparse-format
       if (is.null(phylo_vcv))

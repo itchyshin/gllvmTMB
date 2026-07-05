@@ -29,7 +29,8 @@ knitr::opts_chunk$set(
 >
 > This page stays internal until the mixed-family article covers the
 > broader response story: Gaussian, binomial, Poisson/NB,
-> beta/proportion, and blocked delta/hurdle cases. It is not the
+> beta/proportion, and delta/hurdle cases (designed, route-only, and
+> pending a convergence fix; see below). It is not the
 > loading-constraint lane, and it should not be promoted before the
 > binary lambda/JSDM article plan lands.
 
@@ -37,7 +38,7 @@ knitr::opts_chunk$set(
 different response distribution within a single fit. The compact
 fixture here uses Gaussian, binomial, and Poisson rows. The broader
 mixed-response article still needs NB, beta/proportion, and explicit
-blocked delta/hurdle examples before this page becomes public. The
+delta/hurdle examples before this page becomes public. The
 package's headline differentiator is that the latent-factor structure
 is shared *across* traits even when the response distributions differ.
 This article walks through fitting a mixed-family model and using the
@@ -48,9 +49,12 @@ Scope boundary: **IN** are long-format mixed-family fits whose
 families have a defined latent residual scale (MIX-01..MIX-09) and
 report-ready extraction from fitted objects (DIA-13). **PARTIAL** are
 profile and bootstrap uncertainty summaries on mixed-family targets
-(CI-10 / EXT-04). **BLOCKED** are delta / hurdle mixed-family
-latent-scale correlations (MIX-10), where the continuous-positive and
-zero-generating pieces live on different scales.
+(CI-10 / EXT-04), and, as of the 2026-07-05 design decision, delta /
+hurdle mixed-family latent-scale correlations (MIX-10): these are
+now designed and route-only under a constraint (latent structure on
+the positive/continuous submodel only; the occurrence submodel is
+fixed-effects-only), but the live fit is not yet available pending a
+convergence fix.
 
 The broader family map is:
 
@@ -58,7 +62,7 @@ The broader family map is:
 |---|---|---|
 | Gaussian, binomial, Poisson | Fits all three together in the runnable fixture and extracts latent-scale Sigma, correlations, communality, and bootstrap Sigma examples | Internal worked extractor draft; rows `MIX-01`--`MIX-09` supply the current evidence |
 | Negative binomial and beta/proportion | Shares the same one-part latent-residual logic, but this page does not yet include a runnable NB/beta fixture | Needs a broader mixed-response teaching pass before public promotion |
-| Delta and hurdle families | Names the blocked boundary only | `MIX-10` stays blocked because the zero-generating and positive-response pieces do not define one shared latent correlation scale |
+| Delta and hurdle families | Names the route-only boundary only | `MIX-10` is designed and route-only (positive-part latent scale, occurrence fixed-effects-only) but not yet shippable: a probe found latent delta-lognormal recovery landing on a convergence boundary |
 | Mixture families | Not taught here | Remain outside this article until their validation rows move |
 
 This article is long-format only because the teaching fixture uses
@@ -83,8 +87,13 @@ extractor surfaces used here; `DIA-13` covers diagnostic metadata tables;
 `EXT-01`, `EXT-05`, `EXT-06`, `EXT-13`, `EXT-18`, and `EXT-27` cover the
 extractor and point-plot helpers this page demonstrates. `CI-10` remains
 partial, so the interval examples are API demonstrations, not calibrated
-mixed-family coverage proof. `MIX-10` remains blocked: delta and hurdle
-mixed-family latent-scale correlations are not defined on one shared scale.
+mixed-family coverage proof. `MIX-10` is `partial`: delta and hurdle
+mixed-family latent-scale correlations are now designed and route-only
+(latent structure constrained to the positive/continuous submodel, with
+the occurrence submodel fixed-effects-only), but the live fit is not yet
+available -- a probe found latent delta-lognormal recovery landing on a
+convergence boundary, so this remains a design decision pending a fix,
+not a shipped capability.
 
 ## The setup
 
@@ -297,7 +306,7 @@ This article uses the M1 validated machinery:
 | `extract_Omega()` cross-tier | covered (MIX-07) |
 | `bootstrap_Sigma()` per-row family preserved | covered (MIX-08) |
 | `simulate.gllvmTMB_multi()` family-aware draws | covered (MIS-05; 6 families) |
-| Delta / hurdle mixed-family latent-scale correlations | blocked (MIX-10; two-scale target is undefined) |
+| Delta / hurdle mixed-family latent-scale correlations | partial (MIX-10; route-only design accepted, live fit pending a convergence fix) |
 
 See the
 [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)

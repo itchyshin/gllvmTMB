@@ -228,7 +228,37 @@ extract_Omega <- function(
     if (is.null(out)) {
       next
     }
-    Omega <- Omega + out$Sigma
+    sigma <- out$Sigma
+    if (
+      !is.matrix(sigma) ||
+        length(dim(sigma)) != 2L ||
+        !identical(dim(sigma), dim(Omega))
+    ) {
+      sigma_dim <- if (is.null(dim(sigma))) {
+        "not a matrix"
+      } else {
+        paste(dim(sigma), collapse = " x ")
+      }
+      omega_dim <- paste(dim(Omega), collapse = " x ")
+      cli::cli_abort(c(
+        "Cannot add the {.field {tier}} covariance tier to trait-level Omega.",
+        "x" = "{.fn extract_Sigma} returned a {.field {sigma_dim}} block; {.fn extract_Omega} needs a {.field {omega_dim}} trait covariance.",
+        "i" = "Augmented structural tiers such as {.code phylo_dep(1 + x | species)} expose intercept/slope blocks rather than plain trait-level matrices.",
+        ">" = "Use {.code extract_Sigma(level = \"{tier}\", part = \"total\")} to inspect that block directly, or request only trait-level tiers."
+      ))
+    }
+    sigma_names <- dimnames(sigma)
+    omega_names <- dimnames(Omega)
+    if (!identical(sigma_names[[1L]], omega_names[[1L]]) ||
+        !identical(sigma_names[[2L]], omega_names[[2L]])) {
+      cli::cli_abort(c(
+        "Cannot add the {.field {tier}} covariance tier to trait-level Omega.",
+        "x" = "{.fn extract_Sigma} returned row or column names that do not match the fitted trait order.",
+        "i" = "Trait-level Omega summation requires each tier to use the same trait names in the same order.",
+        ">" = "Use {.code extract_Sigma(level = \"{tier}\", part = \"total\")} to inspect the tier-specific covariance block."
+      ))
+    }
+    Omega <- Omega + sigma
     notes <- c(notes, out$note)
     tiers_used <- c(tiers_used, tier)
   }

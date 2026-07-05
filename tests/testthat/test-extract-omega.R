@@ -49,6 +49,73 @@ test_that("extract_Omega errors when no covariance tiers are available", {
   )
 })
 
+test_that("extract_Omega fails loud on augmented non-trait covariance blocks", {
+  fake <- structure(
+    list(
+      use = list(),
+      n_traits = 3L,
+      data = data.frame(
+        trait = factor(c("a", "b", "c"), levels = c("a", "b", "c"))
+      ),
+      trait_col = "trait"
+    ),
+    class = c("gllvmTMB_multi", "gllvmTMB")
+  )
+
+  testthat::local_mocked_bindings(
+    extract_Sigma = function(fit, level, part, link_residual, ...) {
+      expect_equal(level, "phy")
+      expect_equal(part, "total")
+      expect_equal(link_residual, "none")
+      list(
+        Sigma = matrix(
+          c(1, 0.2, 0.2, 0.5),
+          nrow = 2L,
+          dimnames = list(c("intercept", "slope"), c("intercept", "slope"))
+        ),
+        note = "mock augmented phylo slope block"
+      )
+    },
+    .package = "gllvmTMB"
+  )
+
+  expect_error(
+    extract_Omega(fake, tiers = "phy", link_residual = "none"),
+    regexp = "Cannot add.*phy.*trait-level Omega|2 x 2.*3 x 3"
+  )
+})
+
+test_that("extract_Omega fails loud when tier trait names do not match", {
+  fake <- structure(
+    list(
+      use = list(),
+      n_traits = 3L,
+      data = data.frame(
+        trait = factor(c("a", "b", "c"), levels = c("a", "b", "c"))
+      ),
+      trait_col = "trait"
+    ),
+    class = c("gllvmTMB_multi", "gllvmTMB")
+  )
+
+  testthat::local_mocked_bindings(
+    extract_Sigma = function(fit, level, part, link_residual, ...) {
+      sigma <- diag(c(1, 2, 3), nrow = 3L)
+      dimnames(sigma) <- list(c("a", "b", "z"), c("a", "b", "z"))
+      list(
+        Sigma = sigma,
+        note = "mock mislabelled trait block"
+      )
+    },
+    .package = "gllvmTMB"
+  )
+
+  expect_error(
+    extract_Omega(fake, tiers = "unit", link_residual = "none"),
+    regexp = "trait names"
+  )
+})
+
 test_that("extract_proportions() (long format) returns a tidy frame summing to 1 per trait", {
   fit <- make_BW_fit()
   out <- suppressMessages(extract_proportions(fit, format = "long"))

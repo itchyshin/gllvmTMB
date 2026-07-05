@@ -34153,3 +34153,49 @@ Not run:
 
 - No interval behavior change and no heavy proportion-profile calibration; this
   is documentation truth only.
+
+## 2026-07-05 -- extract_Omega augmented block fail-loud guard
+
+Goal: close the local truth-lock repair for issue #632. `extract_Omega()` is a
+trait-level cross-tier summation helper, so it should not attempt to add
+augmented intercept/slope covariance blocks that are 2 x 2 or (1+s)T x (1+s)T.
+
+Edits:
+
+- Added a summability guard before `Omega <- Omega + Sigma`.
+- The guard rejects non-matrix, wrong-dimension, or mismatched-trait-name tier
+  payloads with a message pointing users to `extract_Sigma(level = ..., part =
+  "total")` for the tier-specific block.
+- Added pure mocked tests for an augmented 2 x 2 phylo slope block and a same-size
+  but mislabelled trait block.
+- Updated validation-debt row `EXT-03`.
+
+Commands:
+
+```sh
+gh pr list --state open --limit 20
+git log --all --oneline --since='6 hours ago' --decorate
+gh issue view 625 --repo itchyshin/gllvmTMB --json number,title,body,url
+gh issue view 626 --repo itchyshin/gllvmTMB --json number,title,body,url
+gh issue view 627 --repo itchyshin/gllvmTMB --json number,title,body,url
+gh issue view 632 --repo itchyshin/gllvmTMB --json number,title,body,url
+Rscript --vanilla -e 'parse("R/extract-omega.R"); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-extract-omega.R")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-keyword-grid.R")'
+git diff --check
+```
+
+Notes:
+
+- Direct `testthat::test_file("tests/testthat/test-extract-omega.R")` without
+  `pkgload::load_all()` failed because the standalone test file does not attach
+  the package namespace. Re-running with `pkgload::load_all(quiet = TRUE)` passed.
+- `test-keyword-grid.R` produced one expected CRAN skip when run outside
+  `NOT_CRAN`.
+
+Not run:
+
+- No real augmented phylo slope fit was launched for this guard; the new tests
+  mock the `extract_Sigma()` return shape to isolate the `extract_Omega()`
+  summation contract. No broad `devtools::check()`, pkgdown rebuild, Totoro, or
+  DRAC compute was needed for this local extractor guard.

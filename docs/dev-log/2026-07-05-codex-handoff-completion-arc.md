@@ -29,15 +29,29 @@ residual, reported `interval_status = "route-only"`.
   **This is exactly the obstruction Design 02's constraint removes.** (`pdHess`
   is never CI evidence, per the hard guard — it's used here only as the
   identifiability signal.)
-- **THE FIX = the design, with a specific target:** split the delta linear
-  predictor so the **latent (random-effect) contribution drives only the
-  positive component**, while the **occurrence component stays
-  fixed-effects-only**. Concretely at `src/gllvmTMB.cpp:2037` (+ the delta_gamma
-  twin ~2052): stop sharing the full `eta` across both parts — route the
-  random-effect contribution into the positive-part `eta` only; keep the presence
-  `eta` fixed-effects-only. Then the latent scale is single + identified (expect
-  `pdHess = TRUE`). A Totoro multi-seed recovery run CONFIRMS it across seeds once
-  implemented.
+- **THE PRIMARY FIX (maintainer, 2026-07-05 — general, not delta-specific):**
+  the real cause is broader than delta. A mixed `gaussian + <non-Gaussian>`
+  fit with `latent(0 + trait | unit)` estimates the non-Gaussian trait's
+  between-unit **Ψ (`theta_diag_B`) FREE**, and it is driven to a near-zero
+  boundary (probe: binomial → −8.75; poisson → −9.4/−11.1) — **a free parameter
+  pinned against a zero boundary is what makes the Hessian non-PD.** D-28 says
+  that Ψ is a *known zero* for every non-Gaussian family **except OD-Poisson**
+  (whose OLRE variance is legitimately estimated). So: **generalize the
+  single-trial-binary auto-Psi gate** (`fit-multi.R:4089`, currently
+  `family_id_vec == 1L && n_trials == 1`) to **fix `theta_diag_B` to zero + map it
+  (and its `s_B` rows) off for all non-Gaussian traits whose lowest-level Ψ is a
+  known zero — everything except gaussian and OD-Poisson/OLRE.** Small R change,
+  mirrors the existing gate. This unblocks the *general* non-Gaussian latent
+  identifiability (binomial/poisson/delta all currently leak the free Ψ), not
+  just delta. **Codex must recovery-test** it (does mixed non-Gaussian latent now
+  give `pdHess = TRUE` with correct recovery?) — the tier detail (B-tier Ψ vs
+  W-tier OLRE) and the exact OD-Poisson exception point need his live validation.
+- **Delta two-part note (secondary):** the `src/gllvmTMB.cpp:2037` shared-eta
+  (one `eta` drives both hurdle parts) is a *further* delta-specific factor for
+  the correlation *scale* (positive-part residual), but the Ψ-gate above is the
+  primary convergence fix. Verify whether the Ψ-gate alone restores delta
+  `pdHess = TRUE`; only if not, also split the delta eta (latent → positive part
+  only).
 - **Guard:** random *slopes* on delta are already blocked (`fit-multi.R:1495`).
   The occurrence-RE guard largely falls out of the fix (the occurrence predictor
   is constructed fixed-effects-only); still fail loud if a formula would target a

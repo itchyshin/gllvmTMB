@@ -10,10 +10,14 @@ normalise_weights <- function(
   n_obs,
   n_units = NULL,
   n_traits = NULL,
-  na_mask = NULL
+  na_mask = NULL,
+  drop_masked = TRUE
 ) {
   response_shape <- match.arg(response_shape)
   n_obs <- .weights_count(n_obs, "n_obs")
+  if (!is.logical(drop_masked) || length(drop_masked) != 1L || is.na(drop_masked)) {
+    cli::cli_abort("Internal error: {.arg drop_masked} must be a single logical value.")
+  }
 
   if (is.null(weights)) {
     return(NULL)
@@ -34,14 +38,16 @@ normalise_weights <- function(
       n_obs = n_obs,
       n_units = n_units,
       n_traits = n_traits,
-      na_mask = na_mask
+      na_mask = na_mask,
+      drop_masked = drop_masked
     ),
     wide_df = .normalise_weights_wide_df(
       weights = weights,
       n_obs = n_obs,
       n_units = n_units,
       n_traits = n_traits,
-      na_mask = na_mask
+      na_mask = na_mask,
+      drop_masked = drop_masked
     )
   )
 }
@@ -69,7 +75,8 @@ normalise_weights <- function(
   n_obs,
   n_units,
   n_traits,
-  na_mask = NULL
+  na_mask = NULL,
+  drop_masked = TRUE
 ) {
   n_units <- .weights_count(n_units, "n_units")
   n_traits <- .weights_count(n_traits, "n_traits")
@@ -125,7 +132,12 @@ normalise_weights <- function(
     }
   }
 
+  if (!is.null(mask) && !drop_masked) {
+    w_mat[mask] <- 0
+  }
   observed <- if (is.null(mask)) {
+    rep(TRUE, n_units * n_traits)
+  } else if (!drop_masked) {
     rep(TRUE, n_units * n_traits)
   } else {
     !as.numeric(mask)
@@ -145,7 +157,8 @@ normalise_weights <- function(
   n_obs,
   n_units,
   n_traits,
-  na_mask = NULL
+  na_mask = NULL,
+  drop_masked = TRUE
 ) {
   n_units <- .weights_count(n_units, "n_units")
   n_traits <- .weights_count(n_traits, "n_traits")
@@ -167,6 +180,8 @@ normalise_weights <- function(
   }
 
   observed <- if (is.null(mask)) {
+    rep(TRUE, n_units * n_traits)
+  } else if (!drop_masked) {
     rep(TRUE, n_units * n_traits)
   } else {
     !as.vector(t(mask))

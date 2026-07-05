@@ -343,6 +343,18 @@ test_that("GAP-7 gllvmTMB_wide(response='include') preserves the masked cells", 
   expect_false(is.null(iyo))
   expect_equal(sum(iyo == 0L), n_na)
 
+  W <- matrix(1, nrow = n_sites, ncol = n_sp)
+  W[na_cells] <- NA_real_
+  fit_wgt <- suppressMessages(suppressWarnings(gllvmTMB_wide(
+    Y, d = 1, family = gaussian(),
+    weights = W,
+    missing = miss_control(response = "include")
+  )))
+  expect_equal(length(fit_wgt$tmb_data$weights_i), n_sites * n_sp)
+  expect_true(all(is.finite(fit_wgt$tmb_data$weights_i)))
+  expect_equal(sum(fit_wgt$tmb_data$weights_i == 0), n_na)
+  expect_equal(sum(fit_wgt$tmb_data$is_y_observed == 0L), n_na)
+
   ## The default (drop) path is unchanged: NA cells are removed, no masked rows.
   fit_drop <- suppressMessages(suppressWarnings(gllvmTMB_wide(
     Y, d = 1, family = gaussian()

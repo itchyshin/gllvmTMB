@@ -32769,3 +32769,34 @@ Outcome: parse passed; Stage 37 mixed-family tests passed; fixture/extractor
 heavy mixed-family checks passed; traits parser tests passed; documentation
 regenerated. This is a correctness repair for existing mixed-family dispatch,
 not a mixed-family interval or calibration promotion.
+
+## 2026-07-04 -- Wide missing-response weight-mask repair
+
+Goal: close issue #589 by preserving per-cell weight matrices under
+`gllvmTMB_wide(..., missing = miss_control(response = "include"))` when weight
+`NA`s are aligned with missing response cells.
+
+Edits:
+
+- Added an internal `drop_masked` switch to `normalise_weights()`.
+- Kept the existing default behaviour: masked cells are dropped when
+  `drop_masked = TRUE`.
+- Routed `gllvmTMB_wide()` through `na_mask = is.na(Y)` in both response modes.
+- Under `response = "include"`, retained masked cells keep full row identity
+  while masked-cell weights are replaced with finite zero sentinels.
+- Added pure weight-shape coverage and a heavy `gllvmTMB_wide()` regression
+  with NA-aligned per-cell weights.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/weights-shape.R")); invisible(parse("R/gllvmTMB-wide.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-weights-unified.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-missing-data-robustfix.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-wide-weights-matrix.R", reporter = "summary")'
+```
+
+Outcome: parse passed; pure weight-shape tests passed; heavy missing-data
+robustfix tests passed; wide-weight matrix tests passed. This repairs one
+response-missing/per-cell-weight interaction only; it does not promote new
+missing-predictor families or missing-data calibration claims.

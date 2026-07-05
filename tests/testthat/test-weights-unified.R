@@ -100,6 +100,19 @@ test_that("normalise_weights() applies the shared shape rules", {
     ),
     c(0.5, 0.5, 0.5)
   )
+  w_mat <- matrix(c(1, NA, 3, 4), nrow = 2, ncol = 2)
+  expect_equal(
+    gllvmTMB:::normalise_weights(
+      weights = w_mat,
+      response_shape = "wide_matrix",
+      n_obs = 4,
+      n_units = 2,
+      n_traits = 2,
+      na_mask = na_mask,
+      drop_masked = FALSE
+    ),
+    c(1, 0, 3, 4)
+  )
 
   expect_error(
     gllvmTMB:::normalise_weights(

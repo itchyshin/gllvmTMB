@@ -169,7 +169,8 @@ gllvmTMB_wide <- function(
     },
     n_units = n_sites,
     n_traits = n_species,
-    na_mask = if (drop_na_cells) is.na(Y) else NULL
+    na_mask = is.na(Y),
+    drop_masked = drop_na_cells
   )
 
   long_df <- data.frame(

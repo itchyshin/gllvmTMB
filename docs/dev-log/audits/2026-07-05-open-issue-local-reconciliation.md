@@ -38,6 +38,7 @@ calibration.
 | #683 `extract_ICC_site()` returns NaN on zero total variance | EXT-12 register row records `NA`, not `NaN`, for zero-denominator ICC; after-task `2026-07-04-extractor-zero-boundary-guards.md`. | Fixed locally; GitHub still open. |
 | #642 Julia bridge duplicate `(trait, unit)` long rows silently overwrite | `.gllvm_julia_assert_unique_trait_unit_cells()` guards response, X, and binomial-trial pivots; `tests/testthat/test-julia-bridge.R` includes duplicate-cell rejection; after-task `2026-07-04-julia-bridge-duplicate-trait-unit-guard.md`. | Fixed locally; GitHub still open. |
 | #668 communality no-Psi `cli_abort()` hint bullet is swallowed | `profile-derived.R` and `profile-derived-curves.R` use vector-form `cli_abort()` for the actionable hint; after-task `2026-07-04-communality-profile-no-psi-cli-hint.md`. | Fixed locally; GitHub still open. |
+| #678 median over integer `family_id` / `link_id` can fabricate a family/link | `predict.gllvmTMB_multi()` now uses `.modal_integer_id()` in the `newdata` response-scale family/link lookup; EXT-33 records the boundary; `tests/testthat/test-missing-data-robustfix.R` includes the even-mix `c(2, 4)` regression; after-task `2026-07-04-predict-newdata-modal-family-link.md`. | Fixed locally; GitHub still open. |
 
 ## Previously Observed Local-Fixed Cluster
 

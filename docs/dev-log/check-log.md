@@ -33280,7 +33280,7 @@ prediction.
 
 ## 2026-07-04 -- predict newdata modal family/link ids
 
-Goal: close issue #678 by making `predict(..., newdata = ..., type =
+Goal: locally address issue #678 by making `predict(..., newdata = ..., type =
 "response")` choose per-trait family/link ids as categorical modal ids instead
 of numeric medians.
 
@@ -35452,3 +35452,39 @@ Results:
   `test-wide-weights-matrix.R` passed.
 - No package API, likelihood code, formula grammar, mixed-family CI, missing
   data capability, or calibration claim changed.
+
+### 2026-07-05 -- Issue #678 local reconciliation
+
+Goal:
+
+- Confirm whether open GitHub issue #678 still needs code, and reconcile the
+  local register wording with the remote-open issue state.
+
+Changes:
+
+- Confirmed the current branch already replaced median/truncated categorical
+  family/link IDs with `.modal_integer_id()` in `predict(..., newdata = ...,
+  type = "response")`.
+- Updated validation row EXT-33 and the original check-log wording to say the
+  local branch addresses #678 while public issue closure still waits for
+  push/PR/merge.
+- Added #678 to the open-issue local reconciliation table.
+
+Commands:
+
+```sh
+gh issue view 678 --repo itchyshin/gllvmTMB --json number,title,state,url,body
+git log --oneline -S 'modal_integer_id' -- R/methods-gllvmTMB.R tests/testthat/test-missing-data-robustfix.R | head -n 20
+git log --oneline -S 'median(fid_vec' -- R/methods-gllvmTMB.R | head -n 20
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-missing-data-robustfix.R", reporter = "summary")'
+```
+
+Results:
+
+- Issue #678 is open on GitHub.
+- Local commit `ae761d49` introduced `.modal_integer_id()` and removed the
+  median family/link lookup.
+- `test-missing-data-robustfix.R` passed its non-heavy checks; heavy rows were
+  skipped as designed.
+- No code, API, likelihood, newdata simulation, prediction interval, or
+  calibration claim changed in this reconciliation slice.

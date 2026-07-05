@@ -592,6 +592,43 @@
   )
 }
 
+.confint_resolve_parm <- function(parm, terms) {
+  terms <- as.character(terms)
+  shown <- terms[seq_len(min(length(terms), 8L))]
+  suffix <- if (length(terms) > 8L) " ..." else ""
+
+  if (is.numeric(parm)) {
+    parm_int <- suppressWarnings(as.integer(parm))
+    bad <- is.na(parm) |
+      !is.finite(parm) |
+      parm != parm_int |
+      parm_int < 1L |
+      parm_int > length(terms)
+    if (any(bad)) {
+      cli::cli_abort(c(
+        "Unknown {.arg parm} index{?es}: {.val {parm[bad]}}.",
+        "i" = "Available index range is 1 to {length(terms)}.",
+        ">" = "Available terms: {.val {shown}}{suffix}"
+      ))
+    }
+    return(parm_int)
+  }
+
+  if (is.character(parm)) {
+    idx <- match(parm, terms)
+    if (anyNA(idx)) {
+      unknown <- unique(parm[is.na(idx)])
+      cli::cli_abort(c(
+        "Unknown {.arg parm} value{?s}: {.val {unknown}}.",
+        "i" = "Available terms: {.val {shown}}{suffix}"
+      ))
+    }
+    return(idx)
+  }
+
+  cli::cli_abort("{.arg parm} must be a character or integer vector.")
+}
+
 ## Internal helper: dispatch `confint(fit, parm = "icc[:...]")`.
 ## Routes to extract_repeatability() for wald / bootstrap and to
 ## profile_ci_repeatability() for profile (the latter is the cheaper
@@ -971,11 +1008,10 @@
   derived_rows <- chosen[chosen$target_type == "derived", , drop = FALSE]
   if (nrow(derived_rows) > 0L) {
     derived_pointers <- derived_rows$parm
-    cli::cli_warn(c(
+    cli::cli_abort(c(
       "Profile CIs for {length(derived_pointers)} derived target{?s} ({.val {derived_pointers}}) are not produced by {.fn confint}.",
       "i" = "Use the matching {.fn extract_*} extractor with {.code method = \"profile\"} instead. See {.fn profile_targets} for the full mapping."
     ))
-    chosen <- chosen[chosen$target_type == "direct", , drop = FALSE]
   }
   not_ready <- chosen[!chosen$profile_ready, , drop = FALSE]
   if (nrow(not_ready) > 0L) {
@@ -1035,19 +1071,10 @@
   derived_rows <- chosen[chosen$target_type == "derived", , drop = FALSE]
   if (nrow(derived_rows) > 0L) {
     derived_pointers <- derived_rows$parm
-    cli::cli_warn(c(
+    cli::cli_abort(c(
       "Wald CIs for {length(derived_pointers)} derived target{?s} ({.val {derived_pointers}}) are not produced by {.fn confint}.",
       "i" = "Use the matching {.fn extract_*} extractor with {.code method = \"wald\"} instead."
     ))
-    chosen <- chosen[chosen$target_type == "direct", , drop = FALSE]
-  }
-  if (nrow(chosen) == 0L) {
-    out <- matrix(numeric(0L), nrow = 0L, ncol = 2L)
-    colnames(out) <- c(
-      sprintf("%.1f %%", 100 * (1 - level) / 2),
-      sprintf("%.1f %%", 100 * (1 + level) / 2)
-    )
-    return(out)
   }
   z <- stats::qnorm(1 - (1 - level) / 2)
   lower <- numeric(nrow(chosen))
@@ -1458,11 +1485,7 @@ confint.gllvmTMB_multi <- function(
   }
 
   if (!missing(parm)) {
-    if (is.numeric(parm)) {
-      td <- td[parm, , drop = FALSE]
-    } else {
-      td <- td[match(parm, td$term), , drop = FALSE]
-    }
+    td <- td[.confint_resolve_parm(parm, td$term), , drop = FALSE]
   }
   out <- as.matrix(td[, c("conf.low", "conf.high")])
   rownames(out) <- td$term

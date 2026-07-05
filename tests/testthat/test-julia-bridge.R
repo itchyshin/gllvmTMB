@@ -996,6 +996,8 @@ test_that("Julia bridge CI payloads are normalised and read by confint", {
 
   ci_one <- confint(fit, parm = "theta[2]")
   expect_equal(rownames(ci_one), "theta[2]")
+  expect_error(confint(fit, parm = "theta[99]"), "Unknown.*parm.*theta\\[99\\]")
+  expect_error(confint(fit, parm = 99L), "Unknown.*parm.*99|Available index range")
   expect_error(confint(fit, level = 0.9), "computed at level")
 
   no_ci <- .gllvm_julia_normalise_result(fake_grouped_dispersion_julia_fit(

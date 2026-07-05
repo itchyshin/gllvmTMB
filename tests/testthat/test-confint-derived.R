@@ -276,22 +276,19 @@ test_that("confint(fit, parm = 'communality:bogus') errors on bad tier", {
   )
 })
 
-test_that("confint(fit, parm = 'communality') without tier falls through to fixef path", {
+test_that("confint(fit, parm = 'communality') without tier errors loudly", {
   skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
   ## Bare "communality" does NOT match the recogniser (which requires
-  ## "communality:"). It falls through to the fixed-effects path,
-  ## where `match(parm, td$term)` returns NA and the result is an
-  ## empty / all-NA row -- not a typed error. We just confirm the
-  ## token didn't accidentally get dispatched to the communality
-  ## helper (which would error with a tier-required message).
-  res <- suppressMessages(suppressWarnings(
-    confint(fx$fit, parm = "communality", method = "wald")
-  ))
-  ## fixef path returns a numeric matrix (possibly empty / all-NA)
-  expect_true(is.matrix(res))
+  ## "communality:"). It is a derived profile-target label and must
+  ## fail loud with an extractor pointer rather than returning an
+  ## empty/all-NA matrix.
+  expect_error(
+    suppressMessages(confint(fx$fit, parm = "communality", method = "wald")),
+    "derived target|extract_"
+  )
 })
 
 test_that("confint(fit, parm = 'communality:unit', method = 'wald') returns finite bounds", {

@@ -140,6 +140,21 @@ test_that("confint(fit) without parm returns a matrix (Wald, fixed effects)", {
   expect_true(all(ci_wald[, 1L] < ci_wald[, 2L]))
 })
 
+test_that("confint(fit) errors loudly on unmatched fixed-effect parm", {
+  skip_if_not_heavy()
+  skip_on_cran()
+
+  fit <- make_tiny_B_fit()
+  expect_error(
+    suppressMessages(confint(fit, parm = "not_a_term", method = "wald")),
+    "Unknown.*parm.*not_a_term|Available terms"
+  )
+  expect_error(
+    suppressMessages(confint(fit, parm = 999L, method = "wald")),
+    "Unknown.*parm.*999|Available index range"
+  )
+})
+
 test_that("confint(fit, parm='Sigma_unit') errors when unit tier is absent", {
   skip_if_not_heavy()
   skip_on_cran()

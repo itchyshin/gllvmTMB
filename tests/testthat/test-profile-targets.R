@@ -162,15 +162,14 @@ test_that("confint(method = 'profile') accepts profile_targets() labels for dire
   expect_gt(ci["sigma_eps", 1], 0)
 })
 
-test_that("confint() on a derived target emits a warning and returns empty", {
+test_that("confint() on a derived target errors loudly", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
-  expect_warning(
-    ci <- stats::confint(fit, parm = "communality", method = "profile"),
+  expect_error(
+    stats::confint(fit, parm = "communality", method = "profile"),
     "derived target"
   )
-  expect_equal(nrow(ci), 0L)
 })
 
 ## ---- confint(method = "wald") for fixed effects is unchanged ------------

@@ -2817,12 +2817,11 @@ confint.gllvmTMB_julia <- function(
     stop("Julia bridge CI payload has no endpoints: ", note, call. = FALSE)
   }
   if (!missing(parm)) {
-    if (is.numeric(parm)) {
-      payload <- payload[parm, , drop = FALSE]
-    } else {
-      idx <- match(parm, payload$term)
-      payload <- payload[idx, , drop = FALSE]
-    }
+    payload <- payload[
+      .confint_resolve_parm(parm, payload$term),
+      ,
+      drop = FALSE
+    ]
   }
   out <- as.matrix(payload[, c("conf.low", "conf.high"), drop = FALSE])
   rownames(out) <- payload$term

@@ -32050,3 +32050,84 @@ Known limitation:
 
 - This is a fallback/route truth fix, not spatial bootstrap calibration.
 - CI-07 remains partial for spatial total-covariance profile intervals.
+
+## 2026-07-04 -- Confint parm selector fail-loud guard
+
+Goal: fix the robustness failure described in GitHub issue #660, where
+mistyped `confint(..., parm = ...)` values could return NA or empty interval
+rows. The same selector bug shape existed in the TMB fixed-effect path and the
+Julia bridge CI payload path.
+
+Implemented:
+
+- Added `.confint_resolve_parm()` to validate numeric and character selectors.
+- Routed TMB fixed-effect `confint()` and Julia-bridge stored CI payloads
+  through the same resolver.
+- Tightened derived-only `profile_targets()` labels so bare labels such as
+  `communality` error with an extractor pointer instead of warning and
+  returning an empty matrix.
+- Added fixed-effect, derived-target, profile-target, and Julia-bridge
+  regressions.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/z-confint-gllvmTMB.R")); invisible(parse("R/julia-bridge.R")); invisible(parse("tests/testthat/test-confint-bootstrap.R")); invisible(parse("tests/testthat/test-confint-derived.R")); invisible(parse("tests/testthat/test-julia-bridge.R")); invisible(parse("tests/testthat/test-profile-targets.R")); cat("parse-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); cat("load-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-bootstrap.R", reporter = "summary")'
+```
+
+Outcome: passed.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'
+```
+
+Outcome: passed for pure bridge tests; live GLLVM.jl tests skipped because no
+`GLLVM_JL_PATH` was configured.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-targets.R", reporter = "summary")'
+```
+
+Outcome: passed; `profile-targets: ...............................`.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-derived.R", reporter = "summary")'
+```
+
+First run outcome: failed because the new bare-`communality` assertion exposed
+the existing derived-target warning plus empty-matrix behavior.
+
+Fix: profile/Wald `confint()` on derived-only profile-target labels now errors
+with an extractor pointer.
+
+Second run outcome: passed.
+
+```sh
+rg -n "payload\\[idx|match\\(parm, payload\\$term\\)|match\\(parm, td\\$term\\)|all-NA row|returns empty|emits a warning and returns empty" R/z-confint-gllvmTMB.R R/julia-bridge.R tests/testthat/test-confint-bootstrap.R tests/testthat/test-confint-derived.R tests/testthat/test-julia-bridge.R tests/testthat/test-profile-targets.R
+```
+
+Outcome: no stale implementation or test-comment hits.
+
+```sh
+git diff --check
+```
+
+Outcome: passed.
+
+Known limitation:
+
+- This is fail-loud selector behavior only; it does not add new interval
+  methods.
+- Live GLLVM.jl bridge tests were not run locally.

@@ -269,12 +269,15 @@ belongs in `drmTMB`.
 prose does not overpromise):
 
 - **Mixed-family latent-scale correlations with delta / hurdle
-  families.** The two-stage structure of `delta_lognormal`,
-  `delta_gamma`, etc. has no single latent-scale residual, so the
-  cross-family Pearson correlation is undefined when one of the
-  rows is a delta family. `check_auto_residual()` errors with
-  class `gllvmTMB_auto_residual_delta_undefined` to prevent
-  silent overpromise (MIX-10).
+  families.** Designed, not yet shipped. Per Design 02 (2026-07-05),
+  a delta trait participates via the latent on its **positive**
+  submodel only (the occurrence/zero-inflation submodel is
+  fixed-effects-only), giving a single latent scale and a
+  correlation reported `interval_status = "route-only"`; the live
+  fit is gated on a convergence/identifiability fix (MIX-10). It is
+  **not** auto-rejected — the earlier `check_auto_residual()` block
+  and class `gllvmTMB_auto_residual_delta_undefined` were never
+  wired (no such class exists).
 - **Ordinary random slopes through `(1 + x | g)` syntax.** Plain,
   non-structured bare-bar random slopes remain reserved. The keyworded
   ordinary Gaussian reaction-norm decomposition

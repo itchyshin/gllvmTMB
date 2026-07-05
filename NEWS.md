@@ -3,6 +3,18 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## `extract_correlations()`: in-output interval calibration status (2026-07-05)
+
+* `extract_correlations()` now returns an `interval_status` column marking the
+  claim status of each interval: `"nominal"` for all-Gaussian fits (the nominal
+  fisher-z / profile / bootstrap CI), `"route-only"` for non-Gaussian /
+  mixed-family fits whose coverage is not yet established (validation gates
+  CI-08 / CI-10), and `"none"` for point-only `engine = "julia"` bridge fits.
+  This makes the calibration boundary visible in the output itself rather than
+  only in the validation register, and removes the earlier inconsistency where
+  `engine = "julia"` fits were marked but mixed-family fits were not. Labelling
+  only — no interval arithmetic changed; the column is additive.
+
 ## Ordinary `latent()`: `residual =` renamed to `unique =` (2026-07-05)
 
 * The ordinary intercept-only `latent()` argument `residual =` is renamed to

@@ -50,6 +50,16 @@
   L_boot %*% Q
 }
 
+.loading_bootstrap_scale_guard <- function(Lambda,
+                                           multiplier = 5,
+                                           absolute_floor = 2) {
+  max_loading <- suppressWarnings(max(abs(Lambda), na.rm = TRUE))
+  if (!is.finite(max_loading)) {
+    max_loading <- 0
+  }
+  max(multiplier * max_loading, absolute_floor)
+}
+
 
 #' Parametric bootstrap CI on individual entries of Lambda
 #'
@@ -174,9 +184,10 @@
   ## sparse / quasi-separated bootstrap data routinely converge to
   ## flat-likelihood regions with inflated Lambda magnitudes -- the
   ## refit is technically convergent and pdHess but its CI contribution
-  ## is meaningless). The threshold is 5 x max(|original Lambda|),
-  ## anchored by the user's pins which fix the scale by construction.
-  scale_guard <- 5 * max(abs(Lambda), na.rm = TRUE)
+  ## is meaningless). The multiplier catches orders-of-magnitude
+  ## inflation, while the floor avoids truncating legitimate percentile
+  ## tails when the fitted loading scale is genuinely small.
+  scale_guard <- .loading_bootstrap_scale_guard(Lambda)
 
   for (b in seq_len(nsim)) {
     dat <- data

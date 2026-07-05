@@ -134,6 +134,15 @@ test_that(".procrustes_align_lambda() recovers the rotation that minimises Frobe
   expect_equal(L_back, L_ref, tolerance = 1e-8)
 })
 
+test_that(".loading_bootstrap_scale_guard() keeps a floor for weak loadings", {
+  weak <- matrix(c(0.08, -0.10, 0.02, 0), nrow = 2L)
+  strong <- matrix(c(1.2, -0.6, 0.3, 0), nrow = 2L)
+
+  expect_equal(.loading_bootstrap_scale_guard(weak), 2)
+  expect_equal(.loading_bootstrap_scale_guard(strong), 6)
+  expect_equal(.loading_bootstrap_scale_guard(matrix(NA_real_, 2L, 2L)), 2)
+})
+
 
 ## ---- Rough agreement with Wald-asym on well-identified entries ----
 

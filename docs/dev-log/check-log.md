@@ -33335,3 +33335,29 @@ Outcome: parse passed; the focused heavy `test-confint-bootstrap.R` file
 passed, including the new reduced-rank total-Sigma Wald unavailable-bounds
 regression. This preserves the CI-01 guard and does not promote reduced-rank
 total-Sigma Wald bounds.
+
+## 2026-07-04 -- Loading bootstrap scale-guard floor
+
+Goal: close issue #687 by preventing the confirmatory loading bootstrap
+pathology screen from truncating legitimate percentile tails when fitted
+loadings are small.
+
+Edits:
+
+- Added `.loading_bootstrap_scale_guard()` with the existing 5x multiplier and
+  a conservative absolute floor.
+- Routed `.loading_ci_bootstrap()` through the helper instead of computing
+  `5 * max(abs(Lambda))` inline.
+- Added a pure regression for weak, strong, and all-`NA` loading matrices.
+- Updated LAM-03 to cite the loading-bootstrap robustness evidence.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/loading-ci-bootstrap.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-loading-ci-bootstrap.R", reporter = "summary")'
+```
+
+Outcome: parse passed; focused `test-loading-ci-bootstrap.R` passed with the
+new pure scale-guard regression executed and the expected heavy bootstrap-fit
+rows skipped. This is a robustness guard, not bootstrap calibration evidence.

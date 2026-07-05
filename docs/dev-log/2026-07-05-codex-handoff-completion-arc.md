@@ -75,6 +75,19 @@ residual, reported `interval_status = "route-only"`.
   the zero-it fix is right)? Only after that verdict should the two-gap gate
   change land. This is the concrete reason it is not a tail-of-session edit — the
   *direction itself* is unproven without the recovery loop.
+- **UPDATE — local recovery sweep LEANS toward "zero it" (Claude, 2026-07-05).**
+  Swept binomial true Ψ ∈ {0.00, 0.36, 1.44} × 3 seeds (100 units × 8 reps):
+  **`pdHess = FALSE` in all 9 runs**, and the recovered Ψ stayed ~0.3 *regardless
+  of the true value* (did NOT track 0 → 1.44). A cleanly-identified variance would
+  give `pdHess = TRUE` and recover ~1.44 at the top; persistent non-PD across the
+  whole range is the signature of genuine non-identifiability — so the non-Gaussian
+  B-tier Ψ does look unidentified, and the zero-it fix is probably correct. TWO
+  confounds remain for Codex to close before landing it: (a) the per-trait Ψ
+  extraction was heuristic (confirm which `theta_diag_B` index is the non-Gaussian
+  trait); (b) `pdHess = FALSE` could partly be the rank-1 Λ rotation, not only the
+  Ψ (test with `d = 0` / Ψ-only, or a controlled Λ). A clean per-trait,
+  multi-seed recovery study settles both; the direction is now *leaning* confirmed,
+  not merely unknown.
 - **Delta two-part note (secondary):** the `src/gllvmTMB.cpp:2037` shared-eta
   (one `eta` drives both hurdle parts) is a *further* delta-specific factor for
   the correlation *scale* (positive-part residual), but the Ψ-gate above is the

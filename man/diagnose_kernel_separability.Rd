@@ -10,8 +10,9 @@ diagnose_kernel_separability(
 )
 }
 \arguments{
-\item{...}{Two or more named numeric square kernel matrices with the same
-dimensions and level order.}
+\item{...}{Two or more named numeric square kernel matrices. If dimnames are
+present, kernels are aligned to the first kernel's level order before
+comparison; otherwise they are compared by raw position.}
 
 \item{thresholds}{Named numeric vector with entries \code{near_orthogonal} and
 \code{high}. Similarity below \code{near_orthogonal} is labelled

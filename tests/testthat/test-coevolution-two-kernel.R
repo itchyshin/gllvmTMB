@@ -846,6 +846,42 @@ test_that("pre-fit kernel separability diagnostic flags raw versus residualized 
   )
 })
 
+test_that("pre-fit kernel separability aligns named kernels before comparison", {
+  K <- matrix(
+    c(
+      1.0, 0.2, 0.4, 0.6,
+      0.2, 1.0, 0.3, 0.5,
+      0.4, 0.3, 1.0, 0.7,
+      0.6, 0.5, 0.7, 1.0
+    ),
+    nrow = 4L,
+    byrow = TRUE,
+    dimnames = list(letters[1:4], letters[1:4])
+  )
+  permuted <- K[c("c", "a", "d", "b"), c("c", "a", "d", "b")]
+
+  dx <- gllvmTMB::diagnose_kernel_separability(
+    reference = K,
+    permuted = permuted
+  )
+  expect_equal(dx$similarity["reference", "permuted"], 1)
+  expect_equal(dx$pairs$overlap_class, "high")
+
+  bad_levels <- K
+  dimnames(bad_levels) <- list(c("a", "b", "c", "x"), c("a", "b", "c", "x"))
+  expect_error(
+    gllvmTMB::diagnose_kernel_separability(reference = K, bad = bad_levels),
+    "same level set"
+  )
+
+  row_named_only <- K
+  colnames(row_named_only) <- NULL
+  expect_error(
+    gllvmTMB::diagnose_kernel_separability(reference = K, bad = row_named_only),
+    "Row names and column names"
+  )
+})
+
 test_that("kernel-collinearity simulation gate separates Paper 2 claim regimes", {
   n_H <- 10L
   n_P <- 10L

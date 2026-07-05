@@ -278,8 +278,9 @@ profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
 #' diagnostic, not recovery evidence, interval calibration, or an in-engine
 #' identifiability proof.
 #'
-#' @param ... Two or more named numeric square kernel matrices with the same
-#'   dimensions and level order.
+#' @param ... Two or more named numeric square kernel matrices. If dimnames are
+#'   present, kernels are aligned to the first kernel's level order before
+#'   comparison; otherwise they are compared by raw position.
 #' @param thresholds Named numeric vector with entries `near_orthogonal` and
 #'   `high`. Similarity below `near_orthogonal` is labelled
 #'   `"near_orthogonal"`; similarity below `high` is `"moderate"`; similarity
@@ -325,10 +326,7 @@ diagnose_kernel_separability <- function(...,
     function(i) .kernel_separability_matrix(kernels[[i]], names(kernels)[[i]])
   ), names(kernels))
 
-  dims <- lapply(kernels, dim)
-  if (!all(vapply(dims, identical, logical(1), dims[[1L]]))) {
-    cli::cli_abort("All kernels must have the same dimensions.")
-  }
+  kernels <- .kernel_separability_align(kernels)
 
   n_tiers <- length(kernels)
   sim <- diag(1, n_tiers)
@@ -567,6 +565,61 @@ diagnose_kernel_separability <- function(...,
   }
   storage.mode(x) <- "double"
   (x + t(x)) / 2
+}
+
+.kernel_separability_level_names <- function(K, name) {
+  rn <- rownames(K)
+  cn <- colnames(K)
+  if (is.null(rn) && is.null(cn)) {
+    return(NULL)
+  }
+  if (is.null(rn) || is.null(cn) || !identical(rn, cn)) {
+    cli::cli_abort(
+      "Row names and column names of kernel {.val {name}} must match."
+    )
+  }
+  if (anyNA(rn) || any(!nzchar(rn))) {
+    cli::cli_abort("Kernel {.val {name}} has empty or missing level names.")
+  }
+  if (anyDuplicated(rn)) {
+    cli::cli_abort("Kernel {.val {name}} has duplicated level names.")
+  }
+  rn
+}
+
+.kernel_separability_align <- function(kernels) {
+  dims <- lapply(kernels, dim)
+  if (!all(vapply(dims, identical, logical(1), dims[[1L]]))) {
+    cli::cli_abort("All kernels must have the same dimensions.")
+  }
+
+  level_names <- Map(
+    .kernel_separability_level_names,
+    kernels,
+    names(kernels)
+  )
+  has_names <- vapply(level_names, Negate(is.null), logical(1))
+  if (!any(has_names)) {
+    return(kernels)
+  }
+  if (!all(has_names)) {
+    cli::cli_abort(
+      "All kernels must either carry matching dimnames or all be unnamed."
+    )
+  }
+
+  reference <- level_names[[1L]]
+  aligned <- vector("list", length(kernels))
+  for (i in seq_along(kernels)) {
+    current <- level_names[[i]]
+    if (!setequal(current, reference)) {
+      cli::cli_abort(
+        "Kernel {.val {names(kernels)[[i]]}} must have the same level set as kernel {.val {names(kernels)[[1L]]}}."
+      )
+    }
+    aligned[[i]] <- kernels[[i]][reference, reference, drop = FALSE]
+  }
+  stats::setNames(aligned, names(kernels))
 }
 
 .kernel_pair_similarity <- function(K_1, K_2) {

@@ -33052,3 +33052,31 @@ Outcome: parse passed; focused bridge tests passed with expected live-Julia
 skips because `GLLVM_JL_PATH` is not configured in this R worktree; whitespace
 check passed. This is a malformed payload guard only; it does not widen Julia
 bridge parity or interval support.
+
+## 2026-07-04 -- Kernel separability dimname alignment
+
+Goal: close issue #686 by making `diagnose_kernel_separability()` align named
+kernels by level names before computing off-diagonal similarity.
+
+Edits:
+
+- Added internal dimname validation and alignment for the exported pre-fit
+  kernel separability diagnostic.
+- Preserved the old positional comparison contract for fully unnamed kernels.
+- Added pure regression coverage for a permuted named kernel, mismatched level
+  sets, and one-sided dimnames.
+- Regenerated `man/diagnose_kernel_separability.Rd`.
+- Added a COE-04 diagnostic-hardening addendum to the validation-debt register.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/kernel-helpers.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-two-kernel.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE); cat("document-ok\n")'
+```
+
+Outcome: parse passed; focused coevolution tests passed with expected heavy
+skips because `GLLVMTMB_HEAVY_TESTS` was not set; documentation regenerated.
+This is COE-04 diagnostic hardening only, not new coevolution recovery or
+interval evidence.

@@ -258,6 +258,13 @@ rho order, so `is_best` marks one row and `attr(best_rho)` remains scalar.
 This is fixed-kernel profile/sensitivity plumbing only, not in-engine rho
 estimation or interval coverage.
 
+COE-04 addendum (2026-07-04): issue #686 is closed for the exported pre-fit
+diagnostic. `diagnose_kernel_separability()` now aligns named kernels to the
+first kernel's level order before computing off-diagonal similarity, and fails
+loudly when named kernels do not share the same level set. Unnamed kernels keep
+the old positional comparison contract. This is diagnostic hardening only, not
+new coevolution recovery, interval calibration, or in-engine rho estimation.
+
 ### Section 7 — Mixed-family fits
 
 Row-owner: **Boole + Fisher + Emmy** (mixed-family is the

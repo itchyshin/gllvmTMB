@@ -34127,3 +34127,29 @@ Not run:
 
 - No bootstrap behavior change and no bootstrap calibration sweep; this is a
   documentation truth repair only.
+
+## 2026-07-05 -- confint proportion component docs
+
+Goal: align `confint.gllvmTMB_multi()` docs with the actual proportion token
+parser, which already accepts `unique_cluster` and `unique_cluster2`.
+
+Edits:
+
+- Added `unique_cluster` and `unique_cluster2` to the roxygen component list for
+  `parm = "proportion:<component>"`.
+- Regenerated `man/confint.gllvmTMB_multi.Rd`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/z-confint-gllvmTMB.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-proportions.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-proportions-cluster-components.R", reporter = "summary")'
+git diff --check
+```
+
+Not run:
+
+- No interval behavior change and no heavy proportion-profile calibration; this
+  is documentation truth only.

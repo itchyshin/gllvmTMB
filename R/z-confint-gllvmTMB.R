@@ -1332,7 +1332,8 @@
 #'       multiple traits), or \code{"proportion:<c1>;<c2>"} (multiple
 #'       components). Components are by name (\code{"shared_unit"},
 #'       \code{"unique_unit"}, \code{"shared_unit_obs"},
-#'       \code{"unique_unit_obs"}, \code{"shared_phy"},
+#'       \code{"unique_unit_obs"}, \code{"unique_cluster"},
+#'       \code{"unique_cluster2"}, \code{"shared_phy"},
 #'       \code{"unique_phy"}, \code{"link_residual"}). Routes to
 #'       [profile_ci_proportions()] for \code{"profile"} and the companion
 #'       proportion Wald/bootstrap helpers for \code{"wald"} /

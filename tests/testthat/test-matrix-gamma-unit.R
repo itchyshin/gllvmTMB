@@ -117,9 +117,10 @@ test_that("Gamma(log) x latent(d=1) unit-tier: converges, PD, recovers shape", {
   expect_gt(shape_hat, 1.0)
   expect_lt(shape_hat, 4.0)
 
-  ## CI smoke: rho:unit profile. For a standalone d=1 factor the correlation
-  ## profile's lower bound does not invert (returns NA) at this baseline --
-  ## a degenerate profile, honestly skipped rather than forced finite.
+  ## CI smoke: rho:unit profile. This standalone d = 1 cell used to be the
+  ## fragile Gamma profile canary. Keep the honest skip fallback if a future
+  ## optimizer/platform returns a degenerate endpoint, but the 2026-07-05 local
+  ## gate runs this cell non-skipped with finite bounds.
   ci <- tryCatch(
     suppressMessages(confint(fit, parm = "rho:unit:1,2", method = "profile")),
     error = function(e) e

@@ -125,8 +125,9 @@ blocked to covered unless it has direct code and validation-register evidence.
    spatial compatibility syntax.
 3. Add named-kernel interval routing only after a selected kernel target,
    token grammar, denominator convention, and calibration gate are declared.
-4. Repair hard-family profile stability, especially Gamma unit-tier rho
-   failures, before broader claims.
+4. Broaden hard-family profile stability beyond the local Gamma unit-tier rho
+   canary that passed non-skipped on 2026-07-05; broader calibration remains
+   separate.
 5. Use Design 74 as the target source for the first augmented Gaussian canary,
    now the selected `rho:unit_slope:i,j` route with one known-DGP
    truth-inclusion test; keep `Sigma_unit_slope`, augmented proportions,

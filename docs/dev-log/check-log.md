@@ -4,6 +4,41 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-05 02:42 MDT -- Gamma unit-tier rho profile canary refresh
+
+Branch: `codex/r-bridge-grouped-dispersion`; local hard-family profile
+canary evidence. No push or PR.
+
+Guard: Design 73 still named Gamma unit-tier rho profile failures as
+the next hard-family profile-stability gate. The current branch needed a
+live check before treating that as still open.
+
+Evidence:
+
+```sh
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-matrix-gamma-unit.R")'
+```
+
+Outcome: passed non-skipped, 45 assertions, 0 failures, 0 warnings,
+0 skips. The run covers Gamma unit-tier standalone `latent(d = 1)`,
+`unique`, `latent + unique`, `indep`, `dep`, and scalar cells; the
+rho-profile smoke for `rho:unit:1,2` is finite in the latent,
+latent+unique, and dep cells on this branch.
+
+Updates:
+
+- Corrected the stale comment in `test-matrix-gamma-unit.R` that still
+  described the standalone Gamma `latent(d = 1)` rho profile as
+  degenerate at the baseline.
+- Updated Design 73 so the next gate is broader hard-family profile
+  stability/calibration, not the already-cleared local Gamma rho canary.
+- Updated validation row FAM-09 with the exact non-skipped heavy result.
+
+Not run:
+
+- No broader hard-family sweep, empirical interval calibration, DRAC/Totoro
+  simulation, or public coverage promotion.
+
 ## 2026-07-05 02:10 MDT -- Cluster rho route fail-loud guard
 
 Branch: `codex/r-bridge-grouped-dispersion`; local profile-route

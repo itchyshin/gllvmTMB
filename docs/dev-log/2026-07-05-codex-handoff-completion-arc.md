@@ -46,6 +46,21 @@ residual, reported `interval_status = "route-only"`.
   just delta. **Codex must recovery-test** it (does mixed non-Gaussian latent now
   give `pdHess = TRUE` with correct recovery?) — the tier detail (B-tier Ψ vs
   W-tier OLRE) and the exact OD-Poisson exception point need his live validation.
+- **PRECISE LOCATION — the fix is TWO gaps, both traced 2026-07-05 (Claude):**
+  (1) **Gate-firing gap.** In a mixed `gaussian + binomial` latent fit the binomial
+  trait has `family_id == 1` and `n_trials == 1` (verified) — the gate's *inner*
+  condition is met — yet `theta_diag_B` stays free (est. −8.75, not pinned at the
+  gate's `log(1e-6)`). The gate never runs because its *outer* flag
+  `auto_psi_B <- any(diag_is_auto_residual & groupings == site)`
+  (`fit-multi.R:922`) is not TRUE here (grouping/`site` match or
+  `diag_is_auto_residual` fails for the mixed latent config). **Fix step 1: make
+  the auto-Psi gate actually fire for auto-Psi latent fits regardless of family
+  mix** (debug the `922` condition). (2) **Family-scope gap.** Even once firing,
+  the skip at `fit-multi.R:4093` is `family_id == 1L && n_trials == 1`
+  (single-trial binary only). **Fix step 2: widen it to all non-Gaussian except
+  gaussian + OD-Poisson.** Both are `fit-multi.R`, both need Codex's recovery
+  loop (a mis-fix silently zeroes a legitimate variance; the test suite lacks a
+  case for every legitimate non-Gaussian between-unit Ψ).
 - **Delta two-part note (secondary):** the `src/gllvmTMB.cpp:2037` shared-eta
   (one `eta` drives both hurdle parts) is a *further* delta-specific factor for
   the correlation *scale* (positive-part residual), but the Ψ-gate above is the

@@ -32859,3 +32859,30 @@ Outcome: parse passed; pure extractor boundary tests passed; base extractor
 tests passed; NOT_CRAN mixed-response Sigma tests passed; heavy proportions CI
 tests passed. This is a boundary-summary correctness repair only, not a new
 delta/hurdle, interval, or calibration claim.
+
+## 2026-07-04 -- Profile-derived non-finite grid inversion repair
+
+Goal: close issue #653 by letting derived profile-curve inversion use finite
+interior grid points when an extreme Lagrange-refit point fails.
+
+Edits:
+
+- Updated `.invert_profile_derived()` to drop non-finite `profile_value` /
+  `delta_deviance` points before side-specific root-finding.
+- Kept the fail-loud/fail-closed behavior when fewer than two finite points
+  remain on a side.
+- Added a pure regression with failed edge refits and finite interior
+  chi-square crossings on both sides.
+- Updated validation row CI-12.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/profile-derived-curves.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-derived-curves.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-derived-curves.R", reporter = "summary")'
+```
+
+Outcome: parse passed; normal profile-derived curve tests passed; heavy
+profile-derived curve tests passed. This is a profile-curve inversion
+robustness repair only, not a new coverage or calibration claim.

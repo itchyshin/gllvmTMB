@@ -266,7 +266,10 @@
       if (length(idx) < 2L) return(NA_real_)
       sub_pv <- pv[idx]
       sub_dv <- dv[idx]
-      if (any(!is.finite(sub_dv))) return(NA_real_)
+      finite <- is.finite(sub_pv) & is.finite(sub_dv)
+      sub_pv <- sub_pv[finite]
+      sub_dv <- sub_dv[finite]
+      if (length(sub_pv) < 2L) return(NA_real_)
       d_dv <- diff(sub_dv)
       monotone <- all(d_dv <= 1e-10) || all(d_dv >= -1e-10)
       val_fn <- if (monotone) {

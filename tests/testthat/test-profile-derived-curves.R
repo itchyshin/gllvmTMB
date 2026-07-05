@@ -310,6 +310,24 @@ invert_curve <- function(x) {
   gllvmTMB:::.invert_profile_derived(x)
 }
 
+test_that("profile-derived inverter drops failed edge refits before bracketing", {
+  x <- data.frame(
+    target = "rho:unit:trait1:trait2",
+    profile_value = c(-3, -2, -1, 0, 1, 2, 3),
+    objective = c(NA, 2.5, 1, 0, 1, 2.5, NA),
+    delta_deviance = c(NA, 5, 2, 0, 2, 5, NA),
+    estimate = 0,
+    conf_level = 0.95
+  )
+  class(x) <- c("profile_correlation", "profile_derived", class(x))
+
+  out <- invert_curve(x)
+  cutoff <- stats::qchisq(0.95, df = 1L)
+  expected_offset <- 1 + (cutoff - 2) / 3
+  expect_equal(out$lower, -expected_offset, tolerance = 1e-8)
+  expect_equal(out$upper, expected_offset, tolerance = 1e-8)
+})
+
 test_that("profile_repeatability(): grid-inverted bounds agree with profile_ci_repeatability() to 1e-2", {
   skip_if_not_heavy()
   skip_if_not_installed("TMB")

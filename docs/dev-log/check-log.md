@@ -33639,3 +33639,32 @@ RS
 Outcome: parse passed; pure cluster-proportion component tests passed; route
 matrix tests passed. The live smokes support route plumbing only, not
 coverage calibration.
+
+## 2026-07-04 -- Augmented profile target table
+
+Goal: close the Design 73 prerequisite that augmented structural split profile
+targets must have explicit symbols, flattening order, and denominator
+boundaries before any new profile route is implemented.
+
+Edits:
+
+- Added `.profile_augmented_target_table()` with one row for every augmented
+  level x estimand pair across `unit_slope`, `phy_unique_slope`, `phy_dep`,
+  `phy_slope`, `spde_base_slope`, `spde_dep`, and `spde_slope`.
+- Kept all augmented split rows in `.profile_route_matrix()` as `blocked`, but
+  moved the explanation from "target table missing" to "Design 74 target table
+  exists; implementation and calibration still pending".
+- Added Design 74 as the durable target source for augmented `Sigma`,
+  communality, `rho`, and proportion semantics.
+- Updated CI-11 and Design 73 to keep the claim boundary explicit.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/profile-route-matrix.R")); invisible(parse("tests/testthat/test-profile-route-matrix.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R", reporter = "summary")'
+```
+
+Outcome: parse passed; focused route-matrix tests passed. No public
+`confint()` route, Mission Control metric, or profile calibration claim was
+changed.

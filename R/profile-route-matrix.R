@@ -118,6 +118,331 @@
 
 #' @keywords internal
 #' @noRd
+.profile_augmented_target_row <- function(
+  level,
+  estimand,
+  target_state,
+  point_route,
+  target_shape,
+  flatten_order,
+  numerator,
+  denominator,
+  validation_row,
+  profile_gate
+) {
+  data.frame(
+    level = level,
+    estimand = estimand,
+    target_state = target_state,
+    point_route = point_route,
+    target_shape = target_shape,
+    flatten_order = flatten_order,
+    numerator = numerator,
+    denominator = denominator,
+    validation_row = validation_row,
+    profile_gate = profile_gate,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' @keywords internal
+#' @noRd
+.profile_augmented_target_table <- function() {
+  common_gate <- paste(
+    "Keep profile CI blocked until a selected Gaussian route has direct",
+    "implementation, boundary handling, and focused recovery/calibration",
+    "evidence."
+  )
+  rows <- list(
+    .profile_augmented_target_row(
+      "unit_slope", "Sigma", "declared_blocked",
+      "extract_Sigma(level='unit_slope', part='shared/unique/total')",
+      "2T_by_2T_total_augmented_covariance",
+      "interleaved:intercept.trait,slope.x.trait",
+      "Lambda_B_aug %*% t(Lambda_B_aug) plus optional diagonal Psi_B_aug",
+      "same augmented 2T coefficient vector; no intercept-only denominator reuse",
+      "RE-12;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "unit_slope", "communality", "declared_blocked",
+      "extract_Sigma(level='unit_slope', part='shared/total')",
+      "length_2T_coefficientwise_share",
+      "interleaved:intercept.trait,slope.x.trait",
+      "diag(Lambda_B_aug %*% t(Lambda_B_aug))",
+      "diag(total Sigma_unit_slope)",
+      "RE-12;CI-11",
+      "Name and validate as coefficient-level augmented communality before exposing."
+    ),
+    .profile_augmented_target_row(
+      "unit_slope", "rho", "declared_blocked",
+      "extract_Sigma(level='unit_slope', part='total')$R",
+      "lower_triangle_of_2T_by_2T_correlation",
+      "interleaved lower triangle over intercept.trait/slope.x.trait labels",
+      "covariance element Sigma_unit_slope[i,j]",
+      "sqrt(Sigma_unit_slope[i,i] * Sigma_unit_slope[j,j])",
+      "RE-12;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "unit_slope", "proportion", "declared_blocked",
+      "candidate from extract_Sigma(level='unit_slope')",
+      "coefficientwise_or_trace_share_not_public",
+      "must preserve intercept/slope labels",
+      "selected augmented coefficient variance or trace component",
+      "matched augmented denominator across all active tiers on the same scale",
+      "RE-12;CI-11",
+      "Choose coefficientwise versus trace-share semantics before implementation."
+    ),
+    .profile_augmented_target_row(
+      "phy_unique_slope", "Sigma", "declared_blocked",
+      "extract_Sigma(level='phy') -> level phy_unique_slope",
+      "2_by_2_block_local_intercept_slope_covariance",
+      "block-local:intercept,slope",
+      "D %*% R %*% D from report$sd_b and report$cor_b",
+      "single source-slope block; part/link_residual do not apply",
+      "PHY-11..16;ANI-11;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "phy_unique_slope", "communality", "not_applicable_blocked",
+      "no shared-loading numerator",
+      "not_applicable",
+      "block-local:intercept,slope",
+      "none",
+      "none",
+      "PHY-11..16;ANI-11;CI-11",
+      "Do not create communality for a single 2x2 source random-slope block."
+    ),
+    .profile_augmented_target_row(
+      "phy_unique_slope", "rho", "declared_blocked",
+      "extract_Sigma(level='phy')$R[intercept,slope]",
+      "single_intercept_slope_correlation",
+      "block-local:intercept,slope",
+      "Sigma_b[intercept,slope]",
+      "sqrt(Sigma_b[intercept,intercept] * Sigma_b[slope,slope])",
+      "PHY-11..16;ANI-11;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "phy_unique_slope", "proportion", "declared_blocked",
+      "candidate from 2x2 source-slope block",
+      "block_trace_or_coefficient_share_not_public",
+      "block-local:intercept,slope",
+      "intercept/slope source variance component",
+      "matched augmented source denominator; not intercept-only phy denominator",
+      "PHY-11..16;ANI-11;CI-11",
+      "Define denominator semantics before adding profile proportions."
+    ),
+    .profile_augmented_target_row(
+      "phy_dep", "Sigma", "declared_blocked",
+      "extract_Sigma(level='phy') -> level phy_dep",
+      "(1+s)T_by_(1+s)T_full_unstructured_covariance",
+      "interleaved:intercept.trait,slope1.trait,...,slope_s.trait",
+      "report$Sigma_b_dep",
+      "single full source-slope covariance block",
+      "RE-03;PHY-18;ANI-12;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "phy_dep", "communality", "not_applicable_blocked",
+      "no low-rank shared-loading split",
+      "not_applicable",
+      "interleaved dep columns",
+      "none",
+      "none",
+      "RE-03;PHY-18;ANI-12;CI-11",
+      "Do not label full dep covariance entries as communality."
+    ),
+    .profile_augmented_target_row(
+      "phy_dep", "rho", "declared_blocked",
+      "extract_Sigma(level='phy')$R",
+      "lower_triangle_of_full_augmented_correlation",
+      "interleaved lower triangle over dep columns",
+      "Sigma_b_dep[i,j]",
+      "sqrt(Sigma_b_dep[i,i] * Sigma_b_dep[j,j])",
+      "RE-03;PHY-18;ANI-12;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "phy_dep", "proportion", "declared_blocked",
+      "candidate from report$Sigma_b_dep",
+      "block_trace_or_coefficient_share_not_public",
+      "interleaved dep columns",
+      "selected dep variance or trace component",
+      "matched augmented source denominator; no intercept-only borrowing",
+      "RE-03;PHY-18;ANI-12;CI-11",
+      "Define dep trace/diagonal denominator semantics before implementation."
+    ),
+    .profile_augmented_target_row(
+      "phy_slope", "Sigma", "declared_blocked",
+      "extract_Sigma(level='phy_slope')",
+      "list_of_T_by_T_per_lhs_column",
+      "per-column:intercept matrix then slope matrix; trait labels inside each",
+      "Lambda_k %*% t(Lambda_k) for each LHS column",
+      "block-diagonal across LHS columns; cross-column covariance is structural zero",
+      "PHY-17;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "phy_slope", "communality", "declared_blocked",
+      "extract_Sigma(level='phy_slope')",
+      "per_lhs_column_traitwise_share",
+      "column first, then trait",
+      "diag(Lambda_k %*% t(Lambda_k))",
+      "same per-column covariance; no cross-column denominator",
+      "PHY-17;CI-11",
+      "Name and validate per-column latent communality before exposing."
+    ),
+    .profile_augmented_target_row(
+      "phy_slope", "rho", "declared_blocked",
+      "extract_Sigma(level='phy_slope')",
+      "within_column_lower_triangle_only",
+      "column first, then trait-pair lower triangle",
+      "Sigma_k[i,j]",
+      "sqrt(Sigma_k[i,i] * Sigma_k[j,j]); cross-column rho is structural zero",
+      "PHY-17;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "phy_slope", "proportion", "declared_blocked",
+      "candidate from per-column Lambda_k blocks",
+      "per_column_trace_or_trait_share_not_public",
+      "column first, then trait",
+      "selected per-column source-latent variance",
+      "matched per-column augmented denominator",
+      "PHY-17;CI-11",
+      "Define per-column denominator semantics before profile proportions."
+    ),
+    .profile_augmented_target_row(
+      "spde_base_slope", "Sigma", "declared_blocked",
+      "extract_Sigma(level='spatial') -> level spde_base_slope",
+      "2_by_2_block_local_intercept_slope_field_covariance",
+      "block-local:intercept,slope",
+      "D %*% R %*% D from report$sd_spde_b and report$cor_spde_b",
+      "SPDE field scale; marginal conversion requires kappa_s",
+      "SPA-08;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "spde_base_slope", "communality", "not_applicable_blocked",
+      "no shared-loading numerator",
+      "not_applicable",
+      "block-local:intercept,slope",
+      "none",
+      "none",
+      "SPA-08;CI-11",
+      "Do not create communality for a single 2x2 SPDE slope block."
+    ),
+    .profile_augmented_target_row(
+      "spde_base_slope", "rho", "declared_blocked",
+      "extract_Sigma(level='spatial')$R[intercept,slope]",
+      "single_intercept_slope_field_correlation",
+      "block-local:intercept,slope",
+      "Sigma_field[intercept,slope]",
+      "sqrt(Sigma_field[intercept,intercept] * Sigma_field[slope,slope])",
+      "SPA-08;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "spde_base_slope", "proportion", "declared_blocked",
+      "candidate from 2x2 SPDE field block",
+      "field_trace_or_coefficient_share_not_public",
+      "block-local:intercept,slope",
+      "intercept/slope SPDE field variance",
+      "matched spatial denominator on field or marginal scale, not mixed",
+      "SPA-08;CI-11",
+      "Write spatial denominator design before profile proportions."
+    ),
+    .profile_augmented_target_row(
+      "spde_dep", "Sigma", "declared_blocked",
+      "extract_Sigma(level='spatial') -> level spde_dep",
+      "2T_by_2T_full_unstructured_field_covariance",
+      "interleaved:intercept.trait,slope.trait",
+      "report$Sigma_field",
+      "SPDE field scale; marginal conversion divides by 4*pi*kappa^2",
+      "SPA-10;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "spde_dep", "communality", "not_applicable_blocked",
+      "no low-rank shared-loading split",
+      "not_applicable",
+      "interleaved field columns",
+      "none",
+      "none",
+      "SPA-10;CI-11",
+      "Do not label full SPDE dep covariance entries as communality."
+    ),
+    .profile_augmented_target_row(
+      "spde_dep", "rho", "declared_blocked",
+      "extract_Sigma(level='spatial')$R",
+      "lower_triangle_of_2T_by_2T_field_correlation",
+      "interleaved lower triangle over field columns",
+      "Sigma_field[i,j]",
+      "sqrt(Sigma_field[i,i] * Sigma_field[j,j])",
+      "SPA-10;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "spde_dep", "proportion", "declared_blocked",
+      "candidate from report$Sigma_field",
+      "field_trace_or_coefficient_share_not_public",
+      "interleaved field columns",
+      "selected field variance or trace component",
+      "matched spatial denominator on one declared scale",
+      "SPA-10;CI-11",
+      "Write spatial denominator design before profile proportions."
+    ),
+    .profile_augmented_target_row(
+      "spde_slope", "Sigma", "declared_blocked",
+      "extract_Sigma(level='spde_slope')",
+      "list_of_T_by_T_per_lhs_column_field_covariance",
+      "per-column:intercept matrix then slope matrix; trait labels inside each",
+      "Lambda_k %*% t(Lambda_k) for each LHS column",
+      "block-diagonal across LHS columns on SPDE field scale",
+      "SPA-09;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "spde_slope", "communality", "declared_blocked",
+      "extract_Sigma(level='spde_slope')",
+      "per_lhs_column_traitwise_share",
+      "column first, then trait",
+      "diag(Lambda_k %*% t(Lambda_k))",
+      "same per-column field covariance; no cross-column denominator",
+      "SPA-09;CI-11",
+      "Name and validate per-column SPDE latent communality before exposing."
+    ),
+    .profile_augmented_target_row(
+      "spde_slope", "rho", "declared_blocked",
+      "extract_Sigma(level='spde_slope')",
+      "within_column_lower_triangle_only",
+      "column first, then trait-pair lower triangle",
+      "Sigma_k[i,j]",
+      "sqrt(Sigma_k[i,i] * Sigma_k[j,j]); cross-column rho is structural zero",
+      "SPA-09;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "spde_slope", "proportion", "declared_blocked",
+      "candidate from per-column Lambda_k SPDE blocks",
+      "per_column_field_trace_or_trait_share_not_public",
+      "column first, then trait",
+      "selected per-column SPDE latent variance",
+      "matched spatial denominator on one declared scale",
+      "SPA-09;CI-11",
+      "Write spatial denominator design before profile proportions."
+    )
+  )
+
+  out <- do.call(rbind, rows)
+  .validate_profile_augmented_target_table(out)
+  out
+}
+
+#' @keywords internal
+#' @noRd
 .profile_route_matrix <- function() {
   rows <- list(
     .profile_route_row(
@@ -356,14 +681,20 @@
     "spde_slope"
   )
   split_estimands <- c("Sigma", "communality", "rho", "proportion")
+  split_targets <- .profile_augmented_target_table()
   for (lvl in split_levels) {
     for (est in split_estimands) {
+      target <- split_targets[
+        split_targets$level == lvl & split_targets$estimand == est,
+        ,
+        drop = FALSE
+      ]
       rows[[length(rows) + 1L]] <- .profile_route_row(
         est, lvl, "profile", "blocked",
-        "augmented_split_target_not_declared",
+        paste0("augmented_split_target_table:", target$target_state),
         "RE-03;RE-12;SPA-08;SPA-09;SPA-10;PHY-11..18",
-        "Point extraction/recovery may exist, but profile targets for augmented split blocks are not declared.",
-        "Write symbolic target table before adding any augmented split profile route."
+        "Point extraction/recovery may exist, and Design 74 declares the symbolic target, but profile CIs are not implemented or calibrated.",
+        target$profile_gate
       )
     }
   }
@@ -404,6 +735,70 @@
   if (anyDuplicated(key)) {
     dup <- key[duplicated(key)]
     cli::cli_abort("Duplicate profile route keys: {.val {dup}}.")
+  }
+
+  invisible(x)
+}
+
+#' @keywords internal
+#' @noRd
+.validate_profile_augmented_target_table <- function(x) {
+  required <- c(
+    "level", "estimand", "target_state", "point_route", "target_shape",
+    "flatten_order", "numerator", "denominator", "validation_row",
+    "profile_gate"
+  )
+  missing <- setdiff(required, names(x))
+  if (length(missing) > 0L) {
+    cli::cli_abort(
+      "Internal augmented target table missing columns: {.val {missing}}."
+    )
+  }
+
+  split_levels <- c(
+    "unit_slope",
+    "phy_unique_slope",
+    "phy_dep",
+    "phy_slope",
+    "spde_base_slope",
+    "spde_dep",
+    "spde_slope"
+  )
+  split_estimands <- c("Sigma", "communality", "rho", "proportion")
+  bad_levels <- setdiff(x$level, split_levels)
+  bad_estimands <- setdiff(x$estimand, split_estimands)
+  if (length(bad_levels) > 0L) {
+    cli::cli_abort("Invalid augmented target level: {.val {bad_levels}}.")
+  }
+  if (length(bad_estimands) > 0L) {
+    cli::cli_abort("Invalid augmented target estimand: {.val {bad_estimands}}.")
+  }
+
+  expected <- expand.grid(
+    level = split_levels,
+    estimand = split_estimands,
+    stringsAsFactors = FALSE
+  )
+  key <- paste(x$level, x$estimand, sep = "\r")
+  expected_key <- paste(expected$level, expected$estimand, sep = "\r")
+  missing_key <- setdiff(expected_key, key)
+  extra_key <- setdiff(key, expected_key)
+  if (length(missing_key) > 0L || length(extra_key) > 0L) {
+    cli::cli_abort("Augmented target table must cover every split level x estimand exactly once.")
+  }
+  if (anyDuplicated(key)) {
+    cli::cli_abort("Duplicate augmented target keys detected.")
+  }
+
+  ok_state <- c("declared_blocked", "not_applicable_blocked")
+  bad_state <- setdiff(x$target_state, ok_state)
+  if (length(bad_state) > 0L) {
+    cli::cli_abort("Invalid augmented target state: {.val {bad_state}}.")
+  }
+  text_cols <- setdiff(required, c("level", "estimand", "target_state"))
+  empty <- vapply(x[text_cols], function(col) any(is.na(col) | !nzchar(col)), logical(1))
+  if (any(empty)) {
+    cli::cli_abort("Augmented target table has empty required fields.")
   }
 
   invisible(x)

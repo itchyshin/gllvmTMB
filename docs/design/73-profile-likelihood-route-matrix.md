@@ -26,7 +26,7 @@ This design is implemented as the internal route ledger
 | `cluster2` | second extra diagonal grouping tier | diagonal `T` | direct log-SD profile label covered; diagonal-only `Sigma_cluster2` token partial |
 | `phy` | phylogenetic source tier | `T x T` | partial/covered depending on target; multi-component `H2` profile remains partial |
 | `spatial` | SPDE source tier | `T x T` | partial; total spatial covariance profile needs a heavy gate |
-| augmented split tiers | unit/source random-regression blocks | split or augmented block | blocked for profile until target symbols are declared |
+| augmented split tiers | unit/source random-regression blocks | split or augmented block | Design 74 declares target symbols; profile routes remain blocked until implementation and calibration gates |
 
 ## Estimand Routes
 
@@ -39,7 +39,7 @@ This design is implemented as the internal route ledger
 | Repeatability | direct diag-only ratio route | full low-rank repeatability profile is not covered |
 | Phylogenetic signal | two-component phylo signal direct profile | richer PGLLVM decompositions use labelled numeric Wald fallback |
 | Proportions | unit, unit_obs, phy components; cluster and cluster2 diagonal components are partial | spatial denominator components are planned, not covered |
-| Augmented split targets | none yet | symbolic target table required before implementation |
+| Augmented split targets | Design 74 target table only | implementation, boundary handling, and calibration required before any profile route is promoted |
 
 ## Current Route Snapshot
 
@@ -57,13 +57,13 @@ share.
 | `cluster2` | covered | partial | not applicable | point-only | partial | diagonal tier only |
 | `phy` | covered | partial | covered | covered | covered | phylogenetic signal partial |
 | `spatial` | covered | partial | planned | partial | planned | total spatial covariance needs heavy gate |
-| `unit_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
-| `phy_unique_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
-| `phy_dep` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
-| `phy_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
-| `spde_base_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
-| `spde_dep` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
-| `spde_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
+| `unit_slope` | not claimed | blocked | blocked | blocked | blocked | Design 74 target table declared; no profile implementation yet |
+| `phy_unique_slope` | not claimed | blocked | not applicable | blocked | blocked | Design 74 target table declared; no profile implementation yet |
+| `phy_dep` | not claimed | blocked | not applicable | blocked | blocked | Design 74 target table declared; no profile implementation yet |
+| `phy_slope` | not claimed | blocked | blocked | blocked | blocked | Design 74 target table declared; no profile implementation yet |
+| `spde_base_slope` | not claimed | blocked | not applicable | blocked | blocked | Design 74 target table declared; no profile implementation yet |
+| `spde_dep` | not claimed | blocked | not applicable | blocked | blocked | Design 74 target table declared; no profile implementation yet |
+| `spde_slope` | not claimed | blocked | blocked | blocked | blocked | Design 74 target table declared; no profile implementation yet |
 
 Two clarifications matter for future profile-function work:
 
@@ -77,6 +77,10 @@ Two clarifications matter for future profile-function work:
 - `unique_cluster` and `unique_cluster2` are now valid variance-proportion
   components. They enter the all-tier denominator as diagonal variance only;
   this is not a new shared-loading, correlation, or full covariance claim.
+- Design 74 now declares the augmented structural split targets and flattening
+  conventions. This does not promote any augmented split profile interval route:
+  every such row remains `blocked` until a later implementation slice directly
+  tests a selected target.
 
 ## ARIA
 
@@ -98,8 +102,9 @@ blocked to covered unless it has direct code and validation-register evidence.
   `Sigma_cluster` / `Sigma_cluster2` wrappers as full covariance support.
 - Do not fabricate intervals for structural-zero cluster correlations.
 - Do not use `pdHess = TRUE` as interval calibration evidence.
-- Do not profile augmented split tiers until the target symbols, flattening
-  convention, and denominator are written down.
+- Do not profile augmented split tiers merely because Design 74 declares their
+  symbols. A later slice still needs direct implementation, boundary handling,
+  and focused calibration evidence for each promoted target.
 - Do not mix Totoro and DRAC denominators for later calibration unless the
   simulation design explicitly says so.
 
@@ -112,5 +117,6 @@ blocked to covered unless it has direct code and validation-register evidence.
    spatial compatibility syntax.
 3. Repair hard-family profile stability, especially Gamma unit-tier rho
    failures, before broader claims.
-4. Write a symbolic target table before any augmented structural split profile
-   route.
+4. Use Design 74 as the target source for the first augmented Gaussian canary,
+   preferably a selected `unit_slope` `Sigma` or `rho` route; keep all other
+   augmented split targets blocked.

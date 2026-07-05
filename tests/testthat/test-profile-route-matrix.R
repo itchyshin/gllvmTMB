@@ -75,9 +75,79 @@ test_that("profile route matrix keeps augmented split profile routes blocked", {
     for (estimand in split_estimands) {
       route <- gllvmTMB:::.profile_route_status(estimand, lvl, routes = routes)
       expect_equal(route$status, "blocked", label = paste(estimand, lvl))
-      expect_match(route$next_gate, "symbolic target", fixed = TRUE)
+      expect_match(route$route, "augmented_split_target_table", fixed = TRUE)
+      expect_match(route$claim, "Design 74", fixed = TRUE)
+      expect_true(nzchar(route$next_gate))
+      expect_false(grepl("symbolic target table required", route$next_gate, fixed = TRUE))
     }
   }
+})
+
+test_that("augmented profile target table covers every split level and estimand", {
+  targets <- gllvmTMB:::.profile_augmented_target_table()
+  split_levels <- c(
+    "unit_slope", "phy_unique_slope", "phy_dep", "phy_slope",
+    "spde_base_slope", "spde_dep", "spde_slope"
+  )
+  split_estimands <- c("Sigma", "communality", "rho", "proportion")
+
+  expect_s3_class(targets, "data.frame")
+  expect_true(all(c(
+    "level", "estimand", "target_state", "point_route", "target_shape",
+    "flatten_order", "numerator", "denominator", "validation_row",
+    "profile_gate"
+  ) %in% names(targets)))
+  expect_equal(nrow(targets), length(split_levels) * length(split_estimands))
+  expect_equal(
+    anyDuplicated(paste(targets$level, targets$estimand)),
+    0L
+  )
+  expect_true(all(split_levels %in% targets$level))
+  expect_true(all(split_estimands %in% targets$estimand))
+  expect_true(all(grepl("blocked", targets$target_state, fixed = TRUE)))
+  expect_no_error(gllvmTMB:::.validate_profile_augmented_target_table(targets))
+})
+
+test_that("augmented profile target table preserves shape distinctions", {
+  targets <- gllvmTMB:::.profile_augmented_target_table()
+  row <- function(level, estimand = "Sigma") {
+    out <- targets[targets$level == level & targets$estimand == estimand, ]
+    expect_equal(nrow(out), 1L)
+    out
+  }
+
+  expect_match(row("unit_slope")$target_shape, "2T_by_2T", fixed = TRUE)
+  expect_match(row("unit_slope")$flatten_order, "interleaved", fixed = TRUE)
+  expect_match(row("unit_slope")$denominator, "no intercept-only", fixed = TRUE)
+
+  expect_match(row("phy_unique_slope")$target_shape, "2_by_2", fixed = TRUE)
+  expect_match(row("phy_unique_slope")$flatten_order, "block-local", fixed = TRUE)
+
+  expect_match(row("phy_dep")$target_shape, "(1+s)T", fixed = TRUE)
+  expect_match(row("phy_dep")$flatten_order, "interleaved", fixed = TRUE)
+
+  expect_match(row("phy_slope")$target_shape, "list_of_T_by_T", fixed = TRUE)
+  expect_match(row("phy_slope")$denominator, "block-diagonal", fixed = TRUE)
+
+  expect_match(row("spde_base_slope")$denominator, "kappa_s", fixed = TRUE)
+  expect_match(row("spde_dep")$target_shape, "2T_by_2T", fixed = TRUE)
+  expect_match(row("spde_dep")$denominator, "4*pi*kappa^2", fixed = TRUE)
+  expect_match(row("spde_slope")$target_shape, "list_of_T_by_T", fixed = TRUE)
+})
+
+test_that("augmented communality table blocks non-loading structural modes", {
+  targets <- gllvmTMB:::.profile_augmented_target_table()
+  non_loading <- targets[
+    targets$estimand == "communality" &
+      targets$level %in% c("phy_unique_slope", "phy_dep", "spde_base_slope", "spde_dep"),
+    ,
+    drop = FALSE
+  ]
+
+  expect_equal(nrow(non_loading), 4L)
+  expect_true(all(non_loading$target_state == "not_applicable_blocked"))
+  expect_true(all(non_loading$numerator == "none"))
+  expect_true(all(non_loading$denominator == "none"))
 })
 
 test_that("profile_targets exposes cluster and cluster2 direct SD aliases", {

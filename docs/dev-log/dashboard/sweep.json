@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-04 23:55 MDT",
+  "updated": "2026-07-05 00:03 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -12,10 +12,10 @@
   },
   "active_work": [
     {
-      "when": "2026-07-04 23:55 MDT",
+      "when": "2026-07-05 00:03 MDT",
       "who": "Completion profile hardening",
       "status": "guard",
-      "text": "Current local branch codex/r-bridge-grouped-dispersion is clean at 52465135 and ahead of origin by 156 commits. The review package now has the augmented profile target table plus the first Gaussian selected-entry profile canary, rho:unit_slope:i,j, committed locally. This is partial route hardening only: Sigma_unit_slope, augmented proportions, source-specific augmented profiles, non-Gaussian augmented profiles, empirical calibration, pushed GitHub CI, PR review, v1.0 completion, source-specific lv widening, mixed-family CIs, and unique= Julia parity remain gated. No active compute is running."
+      "text": "Current local branch codex/r-bridge-grouped-dispersion is clean at 839263ba and ahead of origin by 158 commits. The review package now has the augmented profile target table, the Gaussian selected-entry rho:unit_slope:i,j profile canary, and one known-DGP truth-inclusion test for rho:unit_slope:1,2 committed locally. This is partial route hardening only: Sigma_unit_slope, augmented proportions, source-specific augmented profiles, non-Gaussian augmented profiles, boundary calibration, empirical calibration, pushed GitHub CI, PR review, v1.0 completion, source-specific lv widening, mixed-family CIs, and unique= Julia parity remain gated. No active compute is running."
     },
     {
       "when": "2026-07-04 17:14 MDT",

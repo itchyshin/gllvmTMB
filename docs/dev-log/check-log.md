@@ -33767,3 +33767,25 @@ env NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testth
 Outcome: parse passed; profile route-matrix tests passed; focused ordinary
 latent random-regression tests passed with the new profile canary. This is not
 empirical coverage calibration, boundary calibration, or non-Gaussian support.
+
+## 2026-07-05 -- Mission Control known-DGP canary refresh
+
+Goal: refresh the local operating board after commit `839263ba` added the
+known-DGP `rho:unit_slope:1,2` profile canary test.
+
+Edits:
+
+- Refreshed `docs/dev-log/dashboard/status.json` and `sweep.json` to point at
+  local commit `839263ba` on `codex/r-bridge-grouped-dispersion`.
+- Kept metrics unchanged: this is one Gaussian truth-inclusion canary, not
+  boundary calibration, empirical calibration, or public promotion.
+
+Commands:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+```
+
+Outcome: dashboard JSON validates. Mission Control now names the known-DGP
+canary and keeps the remaining gates explicit.

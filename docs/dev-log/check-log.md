@@ -33441,3 +33441,34 @@ Outcome: parse passed; the focused warmstart/phi-clamp test file passed for the
 new pure reclamp regression, with heavy recovery cases intentionally skipped
 because `GLLVMTMB_HEAVY_TESTS` was not set. No validation-debt status or public
 capability claim changed.
+
+## 2026-07-04 -- predict(newdata) fixed-effect column alignment
+
+Goal: close issue #645 by making `predict.gllvmTMB_multi(newdata = ...)`
+align fixed-effect columns by training names rather than positional slices.
+
+Edits:
+
+- Added `.gllvmTMB_restore_newdata_factor_levels()` so factor columns in
+  `newdata` use the training factor levels, with unseen fixed-effect factor
+  levels failing loudly while new unit/species grouping levels remain allowed
+  for population-mean prediction rows.
+- Added `.gllvmTMB_predict_fixed_eta()` so the new fixed-effect design is
+  multiplied against named `b_fix` values aligned to `fit$X_fix_names`.
+- Routed the `predict(newdata = ...)` fixed-effect branch through these helpers.
+- Added a pure fake-fit regression for a `trait:habitat` design where `newdata`
+  contains only non-baseline habitat levels, plus the documented new-site
+  population-mean path.
+- Updated MIS-07 to record the fixed-effect point-prediction repair while
+  keeping broader `newdata` simulation / interval claims partial.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/methods-gllvmTMB.R")); invisible(parse("tests/testthat/test-tidy-predict.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-tidy-predict.R", reporter = "summary")'
+```
+
+Outcome: parse passed; focused `test-tidy-predict.R` passed with three expected
+CRAN skips. This is a point-prediction correctness fix only; it does not add
+prediction intervals, `newdata` simulation, or new response-family support.

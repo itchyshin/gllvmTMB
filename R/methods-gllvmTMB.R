@@ -152,6 +152,57 @@
   rep(NA_real_, n)
 }
 
+.gllvmTMB_restore_newdata_factor_levels <- function(newdata, training_data,
+                                                    allow_unseen = character()) {
+  nd <- as.data.frame(newdata)
+  common <- intersect(names(nd), names(training_data))
+  for (nm in common) {
+    ref <- training_data[[nm]]
+    if (!is.factor(ref)) {
+      next
+    }
+    raw <- as.character(nd[[nm]])
+    restored <- factor(
+      raw,
+      levels = levels(ref),
+      ordered = is.ordered(ref)
+    )
+    unseen <- unique(raw[!is.na(raw) & is.na(restored)])
+    if (length(unseen) && !nm %in% allow_unseen) {
+      cli::cli_abort(c(
+        "New data contains unseen level(s) in factor {.arg {nm}}.",
+        "x" = "Unseen level(s): {.val {unseen}}.",
+        "i" = "Use levels present in the training data or refit the model with the expanded factor scale."
+      ))
+    }
+    nd[[nm]] <- restored
+  }
+  nd
+}
+
+.gllvmTMB_predict_fixed_eta <- function(fit, X_new) {
+  train_cols <- fit$X_fix_names %||% character(0)
+  bfix <- .gllvmTMB_b_fix_values(fit)
+  if (length(train_cols) != length(bfix)) {
+    cli::cli_abort(c(
+      "Cannot align fixed-effect coefficients for prediction.",
+      "x" = "The fitted object stores {length(train_cols)} fixed-effect column name(s) but {length(bfix)} coefficient value(s)."
+    ))
+  }
+  unknown <- setdiff(colnames(X_new), train_cols)
+  if (length(unknown)) {
+    shown <- unknown[seq_len(min(length(unknown), 8L))]
+    suffix <- if (length(unknown) > 8L) " ..." else ""
+    cli::cli_abort(c(
+      "New data produced fixed-effect column(s) absent from the fitted model.",
+      "x" = "Unknown column(s): {.val {shown}}{suffix}.",
+      "i" = "Check factor levels, contrasts, and fixed-effect terms in {.arg newdata}."
+    ))
+  }
+  names(bfix) <- train_cols
+  as.numeric(X_new %*% bfix[colnames(X_new)])
+}
+
 .gllvmTMB_b_fix_se <- function(fit) {
   n <- length(fit$X_fix_names %||% character(0))
   if (n == 0L) return(numeric(0))
@@ -1386,31 +1437,14 @@ predict.gllvmTMB_multi <- function(
     )
     names(out)[1:3] <- c(unit_lbl, species_lbl, trait_lbl)
   } else {
-    nd <- as.data.frame(newdata)
-    if (!is.factor(nd[[object$trait_col]])) {
-      nd[[object$trait_col]] <- factor(
-        nd[[object$trait_col]],
-        levels = levels(object$data[[object$trait_col]])
-      )
-    }
-    if (!is.factor(nd[[object$unit_col]])) {
-      nd[[object$unit_col]] <- factor(
-        nd[[object$unit_col]],
-        levels = levels(object$data[[object$unit_col]])
-      )
-    }
-    if (
-      object$species_col %in% names(nd) && !is.factor(nd[[object$species_col]])
-    ) {
-      nd[[object$species_col]] <- factor(
-        nd[[object$species_col]],
-        levels = levels(object$data[[object$species_col]])
-      )
-    }
+    nd <- .gllvmTMB_restore_newdata_factor_levels(
+      newdata,
+      object$data,
+      allow_unseen = stats::na.omit(c(object$unit_col, object$species_col))
+    )
 
     X_new <- stats::model.matrix(object$formula, nd)
-    bfix <- .gllvmTMB_b_fix_values(object)
-    eta <- as.numeric(X_new %*% bfix[seq_len(ncol(X_new))])
+    eta <- .gllvmTMB_predict_fixed_eta(object, X_new)
 
     ## Random-effect contributions for KNOWN sites / species ----------------
     re_zero <- inherits(re_form, "formula") && identical(deparse(re_form), "~0")

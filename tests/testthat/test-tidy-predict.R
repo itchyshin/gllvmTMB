@@ -195,3 +195,68 @@ test_that("predict(newdata) emits a notice about random-effect handling", {
   expect_equal(nrow(pn), 4)
   expect_true(is.numeric(pn$est))
 })
+
+test_that("predict(newdata) aligns fixed-effect columns by training names", {
+  train <- expand.grid(
+    site = factor(paste0("s", 1:2)),
+    species = factor("sp1"),
+    trait = factor(c("t1", "t2"), levels = c("t1", "t2")),
+    habitat = factor(c("A", "B", "C"), levels = c("A", "B", "C")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  train$value <- 0
+  form <- value ~ 0 + trait + trait:habitat
+  X_train <- stats::model.matrix(form, train)
+  beta <- seq_along(colnames(X_train))
+  names(beta) <- colnames(X_train)
+  fit <- structure(
+    list(
+      data = train,
+      formula = form,
+      trait_col = "trait",
+      unit_col = "site",
+      species_col = "species",
+      X_fix_names = colnames(X_train),
+      opt = list(par = stats::setNames(unname(beta), rep("b_fix", length(beta)))),
+      use = list()
+    ),
+    class = "gllvmTMB_multi"
+  )
+
+  nd <- data.frame(
+    value = 0,
+    site = c("s1", "s2"),
+    species = "sp1",
+    trait = c("t1", "t2"),
+    habitat = c("B", "C")
+  )
+  pred <- predict(fit, newdata = nd, re_form = ~0)
+
+  nd_ref <- nd
+  nd_ref$site <- factor(nd_ref$site, levels = levels(train$site))
+  nd_ref$species <- factor(nd_ref$species, levels = levels(train$species))
+  nd_ref$trait <- factor(nd_ref$trait, levels = levels(train$trait))
+  nd_ref$habitat <- factor(nd_ref$habitat, levels = levels(train$habitat))
+  X_ref <- stats::model.matrix(form, nd_ref)
+  expected <- as.numeric(X_ref %*% beta[colnames(X_ref)])
+
+  expect_equal(pred$est, expected)
+  expect_equal(
+    pred$est[1],
+    beta[["traitt1"]] + beta[["traitt1:habitatB"]]
+  )
+  pred_new_site <- predict(
+    fit,
+    newdata = transform(nd, site = c("s-new-1", "s-new-2")),
+    re_form = ~0
+  )
+  expect_equal(pred_new_site$est, expected)
+  expect_error(
+    predict(
+      fit,
+      newdata = transform(nd, habitat = c("B", "D")),
+      re_form = ~0
+    ),
+    "unseen level"
+  )
+})

@@ -83,6 +83,45 @@
   out
 }
 
+.resolve_sparse_propto_precision <- function(Ainv, levs, jitter = 1e-8) {
+  if (is.null(rownames(Ainv))) {
+    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var species}.")
+  }
+  if (is.null(colnames(Ainv))) {
+    colnames(Ainv) <- rownames(Ainv)
+  }
+
+  if (!setequal(rownames(Ainv), colnames(Ainv))) {
+    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must name the same levels.")
+  }
+  if (!all(levs %in% rownames(Ainv))) {
+    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.")
+  }
+
+  Ainv <- Ainv[, match(rownames(Ainv), colnames(Ainv)), drop = FALSE]
+  if (setequal(rownames(Ainv), levs) && length(levs) == nrow(Ainv)) {
+    Ainv_tip <- Ainv[levs, levs, drop = FALSE]
+    return(list(
+      Cphy_inv = as.matrix(Ainv_tip),
+      log_det_Cphy = -as.numeric(Matrix::determinant(
+        Ainv_tip,
+        logarithm = TRUE
+      )$modulus)
+    ))
+  }
+
+  Cphy_full <- solve(as.matrix(Ainv))
+  Cphy <- Cphy_full[levs, levs, drop = FALSE]
+  Cphy <- Cphy + diag(jitter, nrow = nrow(Cphy))
+  list(
+    Cphy_inv = solve(Cphy),
+    log_det_Cphy = as.numeric(determinant(
+      Cphy,
+      logarithm = TRUE
+    )$modulus)
+  )
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `unique()`
@@ -2506,16 +2545,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## Design 47 follow-on (2026-05-18): sparse `phylo_vcv` IS the
       ## precomputed A^{-1} (from `pedigree_to_Ainv_sparse()` via the
       ## animal_scalar sugar, or a user-supplied sparse Ainv). The
-      ## propto C++ branch uses `Cphy_inv` directly; populate it from
-      ## the sparse Ainv and recover `log_det_Cphy = log|det(A)| =
-      ## -log|det(Ainv)|`. We densify here because the propto engine
-      ## path is dense; the speed gain from `pedigree_to_Ainv_sparse`
-      ## relative to `solve(pedigree_to_A(ped))` is in *construction*
-      ## (sparse Henderson rules) rather than runtime matvecs.
-      Ainv_sub <- phylo_vcv[levs, levs, drop = FALSE]
-      Cphy_inv <- as.matrix(Ainv_sub)
-      log_det_Cphy <- -as.numeric(Matrix::determinant(Ainv_sub,
-                                                      logarithm = TRUE)$modulus)
+      ## propto C++ branch uses `Cphy_inv` directly. Subsetting a
+      ## precision is only a marginal precision when the sparse Ainv is
+      ## already tip-only; augmented precision matrices must be inverted
+      ## before subsetting their marginal covariance.
+      sparse_propto <- .resolve_sparse_propto_precision(phylo_vcv, levs)
+      Cphy_inv <- sparse_propto$Cphy_inv
+      log_det_Cphy <- sparse_propto$log_det_Cphy
     } else {
       Cphy <- phylo_vcv[levs, levs, drop = FALSE]
       Cphy <- Cphy + diag(1e-8, nrow = nrow(Cphy)) ## numerical jitter

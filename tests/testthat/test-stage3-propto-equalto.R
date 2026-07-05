@@ -23,6 +23,61 @@ simulate_phylo_data <- function(n_sites = 50, n_species = 12, n_traits = 3,
   list(data = df, Cphy = Cphy, sim = sim)
 }
 
+test_that("Sparse propto precision resolver marginalizes extra precision nodes", {
+  node_names <- c("sp1", "sp2", "sp3", "sp4")
+  basis <- matrix(c(
+    1.2, 0.3, 0.2, 0.1,
+    0.0, 1.1, 0.4, 0.2,
+    0.2, 0.1, 1.0, 0.3,
+    0.1, 0.3, 0.2, 0.9
+  ), nrow = 4L, byrow = TRUE)
+  C_full <- crossprod(basis) + diag(c(0.8, 0.7, 0.9, 0.6))
+  dimnames(C_full) <- list(node_names, node_names)
+  Ainv_full <- Matrix::Matrix(solve(C_full), sparse = TRUE)
+  levs <- c("sp2", "sp4")
+
+  resolved <- gllvmTMB:::.resolve_sparse_propto_precision(Ainv_full, levs)
+  C_tip <- C_full[levs, levs, drop = FALSE] + diag(1e-8, length(levs))
+  wrong_precision_subset <- as.matrix(Ainv_full[levs, levs, drop = FALSE])
+
+  expect_equal(
+    unname(resolved$Cphy_inv),
+    unname(solve(C_tip)),
+    tolerance = 1e-8
+  )
+  expect_equal(
+    unname(resolved$log_det_Cphy),
+    unname(as.numeric(determinant(C_tip, logarithm = TRUE)$modulus)),
+    tolerance = 1e-8
+  )
+  expect_false(isTRUE(all.equal(
+    unname(resolved$Cphy_inv),
+    unname(wrong_precision_subset),
+    tolerance = 1e-6
+  )))
+})
+
+test_that("Sparse propto precision resolver preserves tip-only precision path", {
+  levs <- c("sp2", "sp4")
+  C_tip <- matrix(c(1.5, 0.35, 0.35, 1.1), nrow = 2L)
+  dimnames(C_tip) <- list(levs, levs)
+  Ainv_tip <- Matrix::Matrix(solve(C_tip), sparse = TRUE)
+  Ainv_tip <- Ainv_tip[rev(levs), rev(levs), drop = FALSE]
+
+  resolved <- gllvmTMB:::.resolve_sparse_propto_precision(Ainv_tip, levs)
+
+  expect_equal(
+    unname(resolved$Cphy_inv),
+    unname(solve(C_tip)),
+    tolerance = 1e-10
+  )
+  expect_equal(
+    unname(resolved$log_det_Cphy),
+    unname(as.numeric(determinant(C_tip, logarithm = TRUE)$modulus)),
+    tolerance = 1e-10
+  )
+})
+
 test_that("Stage 3: propto() matches glmmTMB log-likelihood exactly", {
   skip_if_not_glmmTMB()
   s <- simulate_phylo_data()

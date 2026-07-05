@@ -33867,3 +33867,51 @@ warnings; binomial, Beta, and ordinal focused family tests passed through the
 compiled path. This is a numerical-safety repair only: no family
 parameterisation, link, likelihood formula, public API, or interval claim
 changed.
+
+## 2026-07-05 -- Sparse propto precision marginalization (#636)
+
+Goal: close the local robustness issue where the sparse `propto()` adapter
+subsets a precision matrix and treats that submatrix as the marginal precision.
+That is only valid for an exact tip-only row set; sparse precision matrices with
+extra nodes must be inverted to covariance before subsetting the fitted species.
+
+Edits:
+
+- Added `.resolve_sparse_propto_precision()` in `R/fit-multi.R`.
+- Preserved the existing exact tip-only sparse `Ainv` route.
+- For extra-node sparse `Ainv`, inverted the full precision, subset the
+  marginal covariance to the fitted species levels, added the same small jitter
+  as the dense adapter, and inverted that submatrix for `Cphy_inv`.
+- Added pure matrix regression tests to `test-stage3-propto-equalto.R` showing
+  that the old precision-subset result differs from the correct marginal
+  precision when extra nodes are present.
+- Updated validation-debt rows `PHY-04` and `ANI-08` with the issue #636 guard.
+
+Commands:
+
+```sh
+git status --short --branch
+git rev-parse --short HEAD
+gh pr list --state open --limit 20
+git log --all --oneline --since="6 hours ago"
+rg -n "^\\.[A-Za-z0-9_]+ <- function|use_propto|Ainv_sub|Cphy_inv|log_det_Cphy" R/fit-multi.R
+Rscript --vanilla -e 'invisible(parse("R/fit-multi.R")); invisible(parse("tests/testthat/test-stage3-propto-equalto.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-stage3-propto-equalto.R", reporter = "summary")'
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-pedigree-sparse-ainv-engine.R", reporter = "summary")'
+NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-phylo-vcv-A-aliases.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load-all-ok\n")'
+git diff --check
+gh issue view 636 --repo itchyshin/gllvmTMB --json number,title,state,url
+rg -n "Ainv_sub|Subsetting a precision|precision.*submatrix|sparse.*propto" R/fit-multi.R tests/testthat/test-stage3-propto-equalto.R docs/design/35-validation-debt-register.md
+rg -n "partial support|ready to expose|bootstrap rescue|source-specific.*support|mixed-family CI" docs/dev-log/dashboard docs/design docs/dev-log/check-log.md
+```
+
+Outcome: parse passed; focused `test-stage3-propto-equalto.R` passed with one
+pre-existing glmmTMB non-PD-Hessian skip in the combined smoke cell; sparse
+pedigree Ainv tests passed; dense/sparse phylo A/Ainv alias tests passed;
+`load_all()` passed; `git diff --check` passed. The targeted sparse-propto scan
+found only the new resolver, tests, and validation-register wording. The broader
+claim-audit scan found historical guard/dashboard language only; this slice does
+not change public support, interval, source-specific `lv`, mixed-family CI, or
+compute claims. Issue #636 remains open upstream until the local fix is pushed
+or included in a PR.

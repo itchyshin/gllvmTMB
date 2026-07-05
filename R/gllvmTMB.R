@@ -1148,10 +1148,10 @@ miss_control <- function(
 
 #' Detect glmmTMB-style covariance-structure terms in a formula
 #'
-#' Walks the formula RHS and reports which of `rr`, `diag`, `propto`,
-#' `equalto`, `spde`, `exp`, `gau`, `ar1`, `ou`, `cs`, `toep`, `us`
-#' appear as function calls. Used by [gllvmTMB()] to decide which
-#' Stage's machinery a formula needs.
+#' Walks the formula RHS and reports covariance-structure function calls. The
+#' glmmTMB spatial names `exp`, `gau`, `ar1`, `ou`, `cs`, `toep`, and `us` are
+#' reported only when they look like covariance terms with a bar argument, not
+#' when they are ordinary fixed-effect transformations such as `exp(x)`.
 #'
 #' @param formula A formula.
 #' @return Character vector of term names found.
@@ -1160,6 +1160,25 @@ miss_control <- function(
 detect_covstruct_terms <- function(formula) {
   rhs <- formula[[length(formula)]]
   found <- character(0)
+  supported_covstruct <- c(
+    "rr",
+    "diag",
+    "propto",
+    "equalto",
+    "spde",
+    "phylo_rr",
+    "phylo_slope"
+  )
+  reserved_bar_covstruct <- c("exp", "gau", "ar1", "ou", "cs", "toep", "us")
+  has_bar_call <- function(e) {
+    if (!is.call(e)) {
+      return(FALSE)
+    }
+    if (identical(e[[1L]], as.name("|"))) {
+      return(TRUE)
+    }
+    any(vapply(as.list(e)[-1L], has_bar_call, logical(1)))
+  }
   walk <- function(e) {
     if (is.call(e)) {
       ## Defensive: only treat `e[[1L]]` as a function name when it is a
@@ -1169,25 +1188,8 @@ detect_covstruct_terms <- function(formula) {
       ## rewrite) — must not crash this walk.
       head <- e[[1L]]
       fn <- if (is.name(head)) as.character(head) else ""
-      if (
-        fn %in%
-          c(
-            "rr",
-            "diag",
-            "propto",
-            "equalto",
-            "spde",
-            "phylo_rr",
-            "phylo_slope",
-            "exp",
-            "gau",
-            "ar1",
-            "ou",
-            "cs",
-            "toep",
-            "us"
-          )
-      ) {
+      if (fn %in% supported_covstruct ||
+          (fn %in% reserved_bar_covstruct && has_bar_call(e))) {
         found <<- c(found, fn)
       }
       ## Bar syntax `(... | g)`: detected as the parens wrapping a `|`

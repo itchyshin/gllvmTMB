@@ -90,6 +90,28 @@ test_that("gllvmTMB(): unsupported covstruct (us / cs / ar1) errors", {
     gllvmTMB(value ~ 0 + trait + ar1(0 + trait | site), data = sim$data),
     regexp = "not yet supported"
   )
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + exp(0 + trait | site), data = sim$data),
+    regexp = "not yet supported"
+  )
+})
+
+test_that("gllvmTMB(): exp() fixed-effect transforms are not treated as covstructs", {
+  sim <- make_small_sim()
+  sim$data$env_temp <- seq(-0.5, 0.5, length.out = nrow(sim$data))
+  detected <- gllvmTMB:::detect_covstruct_terms(
+    value ~ 0 + trait + (0 + trait):exp(env_temp) +
+      rr(0 + trait | site, d = 1)
+  )
+  expect_false("exp" %in% detected)
+  expect_true("rr" %in% detected)
+
+  fit <- gllvmTMB(
+    value ~ 0 + trait + (0 + trait):exp(env_temp) +
+      latent(0 + trait | site, d = 1),
+    data = sim$data
+  )
+  expect_s3_class(fit, "gllvmTMB_multi")
 })
 
 # ---- family argument -----------------------------------------------------

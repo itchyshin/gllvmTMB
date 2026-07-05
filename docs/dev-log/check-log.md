@@ -33962,3 +33962,48 @@ passed. No open PR lane was returned before shared register/log edits. This is
 a sparse-prior correctness repair only: no formula grammar, likelihood family,
 public interval, source-specific `lv`, or compute claim changed. Issue #612
 remains open upstream until the local fix is pushed or included in a PR.
+
+## 2026-07-05 -- Fixed-effect exp() transform covstruct detector guard (#590)
+
+Goal: close the local parser bug where `detect_covstruct_terms()` treated any
+nested `exp()` call as a reserved glmmTMB-style covariance structure, causing
+legitimate fixed-effect transforms like `(0 + trait):exp(env)` to abort before
+model parsing.
+
+Edits:
+
+- Updated `detect_covstruct_terms()` in `R/gllvmTMB.R` so reserved glmmTMB
+  spatial names (`exp`, `gau`, `ar1`, `ou`, `cs`, `toep`, `us`) are reported
+  only when the call contains a bar expression and therefore looks like a
+  covariance-structure term.
+- Preserved fail-loud errors for bar-style reserved covariance names such as
+  `exp(0 + trait | site)`.
+- Added `test-gllvmTMB-args.R` coverage for the detector and a public
+  `gllvmTMB()` fit with a fixed-effect `exp(env_temp)` transform.
+- Updated validation-debt row `FG-02` with the issue #590 parser evidence.
+
+Commands:
+
+```sh
+gh issue view 590 --repo itchyshin/gllvmTMB --json number,title,state,body,url
+rg -n "detect_covstruct_terms|cov_names|unsupported.*cov|Found .* formula|not yet supported|\\bexp\\b|\\bgau\\b|\\bar1\\b|\\bou\\b|\\btoep\\b|\\bus\\b" R/gllvmTMB.R R/parse-multi-formula.R R/brms-sugar.R R/parsing.R tests/testthat/test-gllvmTMB-args.R tests/testthat/test-canonical-keywords.R
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); print(gllvmTMB:::detect_covstruct_terms(value ~ 0 + trait + (0 + trait):exp(env))); print(gllvmTMB:::detect_covstruct_terms(value ~ 0 + trait + us(0 + trait | site)))'
+gh pr list --state open --limit 20
+git log --all --oneline --since="6 hours ago" -- R/gllvmTMB.R tests/testthat/test-gllvmTMB-args.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task
+Rscript --vanilla -e 'invisible(parse("R/gllvmTMB.R")); invisible(parse("tests/testthat/test-gllvmTMB-args.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); print(gllvmTMB:::detect_covstruct_terms(value ~ 0 + trait + (0 + trait):exp(env) + rr(0 + trait | site, d = 1))); print(gllvmTMB:::detect_covstruct_terms(value ~ 0 + trait + exp(0 + trait | site)))'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-gllvmTMB-args.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-canonical-keywords.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-formula-grammar-smoke.R", reporter = "summary")'
+```
+
+Outcome: before the fix the detector returned `"exp"` for `(0 + trait):exp(env)`.
+After the fix, the detector returns no `"exp"` for fixed-effect transforms and
+still returns `"exp"` for bar-style `exp(0 + trait | site)`. Parse passed;
+`test-gllvmTMB-args.R` passed with four existing no-covstruct skips;
+`test-canonical-keywords.R` passed with three existing INLA skips;
+`test-formula-grammar-smoke.R` passed. This is a parser false-positive repair
+only: no formula grammar widening beyond ordinary fixed-effect transforms, no
+reserved spatial covariance implementation, no likelihood, interval, or compute
+claim changed. Issue #590 remains open upstream until the local fix is pushed
+or included in a PR.

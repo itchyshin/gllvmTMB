@@ -223,7 +223,13 @@ extract_Omega <- function(
   ## to Omega after summing the tier-wise covariances.
   for (tier in tiers) {
     out <- suppressMessages(
-      extract_Sigma(fit, level = tier, part = "total", link_residual = "none")
+      extract_Sigma(
+        fit,
+        level = tier,
+        part = "total",
+        link_residual = "none",
+        .skip_warn = TRUE
+      )
     )
     if (is.null(out)) {
       next

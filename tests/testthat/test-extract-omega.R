@@ -39,6 +39,50 @@ test_that("extract_Omega() with auto-detected tiers includes B and W (no phylo h
   expect_false("phy" %in% out$tiers_used)
 })
 
+test_that("extract_Omega() internal auto-detected tiers do not warn as deprecated aliases", {
+  fake <- structure(
+    list(
+      use = list(rr_B = TRUE, rr_W = TRUE),
+      n_traits = 2L,
+      data = data.frame(
+        trait = factor(c("a", "b"), levels = c("a", "b"))
+      ),
+      trait_col = "trait"
+    ),
+    class = c("gllvmTMB_multi", "gllvmTMB")
+  )
+  seen <- new.env(parent = emptyenv())
+  seen$levels <- character(0)
+  seen$skip_warn <- logical(0)
+  sigma <- diag(c(1, 2), nrow = 2L)
+  dimnames(sigma) <- list(c("a", "b"), c("a", "b"))
+
+  testthat::local_mocked_bindings(
+    extract_Sigma = function(fit,
+                             level,
+                             part,
+                             link_residual,
+                             .skip_warn = FALSE,
+                             ...) {
+      seen$levels <- c(seen$levels, level)
+      seen$skip_warn <- c(seen$skip_warn, isTRUE(.skip_warn))
+      if (!isTRUE(.skip_warn)) {
+        cli::cli_warn(
+          "{.code level = \"{level}\"} is deprecated.",
+          class = "lifecycle_warning_deprecated"
+        )
+      }
+      list(Sigma = sigma, note = paste("mock", level))
+    },
+    .package = "gllvmTMB"
+  )
+
+  expect_no_warning(out <- extract_Omega(fake, link_residual = "none"))
+  expect_equal(out$tiers_used, c("B", "W"))
+  expect_equal(seen$levels, c("B", "W"))
+  expect_true(all(seen$skip_warn))
+})
+
 test_that("extract_Omega errors when no covariance tiers are available", {
   ## Construct a fit with no rr/diag at all (shouldn't happen normally,
   ## but test the error path)

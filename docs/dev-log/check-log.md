@@ -4,6 +4,44 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-05 03:34 MDT -- extract_Omega internal tier warning guard
+
+Branch: `codex/r-bridge-grouped-dispersion`; local extractor truth-lock.
+No push or PR.
+
+Guard: `extract_Omega()` auto-detects internal tiers as `B` / `W`, but
+those names are not user-supplied. The internal call into `extract_Sigma()`
+must therefore suppress legacy-alias lifecycle warnings while preserving
+explicit user-facing deprecation warnings elsewhere.
+
+Implemented:
+
+- Added `.skip_warn = TRUE` to the internal `extract_Sigma()` call inside
+  the `extract_Omega()` tier loop.
+- Added a pure mocked regression test proving auto-detected `B` / `W`
+  tiers pass `.skip_warn = TRUE` and do not warn.
+- Updated EXT-03 in the validation-debt register with the local issue #587
+  closeout boundary.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/extract-omega.R")); invisible(parse("tests/testthat/test-extract-omega.R")); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-extract-omega.R")'
+```
+
+Outcome: passed, 25 assertions, 0 failures, 0 warnings, 0 skips.
+
+Not run:
+
+- No full `devtools::test()`, pkgdown, R CMD check, or new compute; this is
+  a narrow extractor-warning guard.
+
 ## 2026-07-05 02:42 MDT -- Gamma unit-tier rho profile canary refresh
 
 Branch: `codex/r-bridge-grouped-dispersion`; local hard-family profile

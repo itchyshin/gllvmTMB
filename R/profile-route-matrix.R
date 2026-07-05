@@ -535,14 +535,14 @@
       "Sigma", "cluster", "profile", "partial",
       "direct_diag_sigma_profile:theta_diag_species",
       "RE-11",
-      "Diagonal-only Sigma_cluster profile/Wald token is wired through the direct log-SD tier.",
+      "Diagonal-only Sigma_cluster profile/Wald token is wired through the direct log-SD tier; a fitted Gaussian canary profiles finite diagonal rows.",
       "Bootstrap calibration and any non-diagonal cluster covariance claim remain separate gates."
     ),
     .profile_route_row(
       "Sigma", "cluster2", "profile", "partial",
       "direct_diag_sigma_profile:theta_diag_cluster2",
       "RE-11",
-      "Diagonal-only Sigma_cluster2 profile/Wald token is wired through the direct log-SD tier.",
+      "Diagonal-only Sigma_cluster2 profile/Wald token is wired through the direct log-SD tier; a fitted Gaussian canary profiles finite diagonal rows.",
       "Bootstrap calibration and any non-diagonal cluster2 covariance claim remain separate gates."
     ),
     .profile_route_row(

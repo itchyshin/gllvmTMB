@@ -4,6 +4,47 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-05 03:38 MDT -- Cluster Sigma profile canary
+
+Branch: `codex/r-bridge-grouped-dispersion`; local profile-route evidence.
+No push or PR.
+
+Guard: the route matrix already had pure tests for `Sigma_cluster` /
+`Sigma_cluster2`, but the diagonal matrix-token profile route needed a fitted
+Gaussian canary before treating it as more than ledger plumbing.
+
+Implemented:
+
+- Added a fitted Gaussian crossed fixture in `test-profile-route-matrix.R` with
+  `unique(0 + trait | species)` and `unique(0 + trait | year)`, routed through
+  `cluster = "species"` and `cluster2 = "year"`.
+- The canary profiles `confint(..., parm = "Sigma_cluster", method =
+  "profile")` and `confint(..., parm = "Sigma_cluster2", method = "profile")`.
+- It asserts convergence, PD Hessian, active `diag_species` / `diag_cluster2`,
+  finite diagonal profile rows, structural-zero off-diagonals, and a loud
+  bootstrap gate for diagonal cluster Sigma tiers.
+- Updated `.profile_route_matrix()`, Design 73, and CI-11 wording to record the
+  fitted-canary boundary without promoting bootstrap or calibration claims.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("tests/testthat/test-profile-route-matrix.R")); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R")'
+```
+
+Outcome: passed, 301 assertions, 0 failures, 0 warnings, 0 skips.
+
+Not run:
+
+- No full `devtools::test()`, pkgdown, R CMD check, or empirical interval
+  calibration.
+
 ## 2026-07-05 03:34 MDT -- extract_Omega internal tier warning guard
 
 Branch: `codex/r-bridge-grouped-dispersion`; local extractor truth-lock.

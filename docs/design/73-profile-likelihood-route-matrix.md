@@ -76,7 +76,10 @@ Two clarifications matter for future profile-function work:
   `Sigma_cluster` / `Sigma_cluster2` matrix tokens are diagonal-only wrappers
   around that same log-SD route. Their off-diagonal covariance rows are fixed
   structural zeros and are labelled `method = "structural_zero"`; off-diagonal
-  correlations are structural zeros and must not receive fake intervals.
+  correlations are structural zeros and must not receive fake intervals. The
+  2026-07-05 fitted Gaussian canary profiles both `Sigma_cluster` and
+  `Sigma_cluster2` diagonal rows on one crossed fixture; this is route evidence,
+  not bootstrap or coverage calibration.
 - `unique_cluster` and `unique_cluster2` are now valid variance-proportion
   components. They enter the all-tier denominator as diagonal variance only;
   this is not a new shared-loading, correlation, or full covariance claim.

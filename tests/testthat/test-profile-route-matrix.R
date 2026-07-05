@@ -650,3 +650,105 @@ test_that("Sigma_cluster and Sigma_cluster2 routes use diagonal-only interval bl
     "not wired for diagonal cluster Sigma tiers"
   )
 })
+
+test_that("fitted Gaussian Sigma_cluster and Sigma_cluster2 profile canary is finite", {
+  set.seed(7105L)
+  traits <- c("a", "b")
+  grid <- expand.grid(
+    species = seq_len(8L),
+    year = seq_len(6L),
+    trait_idx = seq_along(traits),
+    rep = seq_len(2L)
+  )
+  grid$trait <- factor(traits[grid$trait_idx], levels = traits)
+  grid$species <- factor(grid$species)
+  grid$year <- factor(grid$year)
+  grid$obs <- factor(seq_len(nrow(grid)))
+  grid$obs2 <- factor(seq_len(nrow(grid)))
+
+  sd_species <- c(0.45, 0.55)
+  sd_year <- c(0.35, 0.40)
+  species_re <- vapply(
+    seq_along(traits),
+    function(t) stats::rnorm(nlevels(grid$species), 0, sd_species[t]),
+    numeric(nlevels(grid$species))
+  )
+  year_re <- vapply(
+    seq_along(traits),
+    function(t) stats::rnorm(nlevels(grid$year), 0, sd_year[t]),
+    numeric(nlevels(grid$year))
+  )
+  eta <- 1 +
+    species_re[cbind(as.integer(grid$species), grid$trait_idx)] +
+    year_re[cbind(as.integer(grid$year), grid$trait_idx)]
+  grid$value <- eta + stats::rnorm(nrow(grid), 0, 0.25)
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 +
+      trait +
+      unique(0 + trait | species) +
+      unique(0 + trait | year),
+    data = grid,
+    family = gaussian(),
+    unit = "obs",
+    unit_obs = "obs2",
+    cluster = "species",
+    cluster2 = "year"
+  )))
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(isTRUE(fit$sd_report$pdHess))
+  expect_true(isTRUE(fit$use$diag_species))
+  expect_true(isTRUE(fit$use$diag_cluster2))
+
+  ci_cluster <- suppressMessages(confint(
+    fit,
+    parm = "Sigma_cluster",
+    method = "profile"
+  ))
+  ci_cluster2 <- suppressMessages(confint(
+    fit,
+    parm = "Sigma_cluster2",
+    method = "profile"
+  ))
+
+  expect_equal(
+    ci_cluster$parameter,
+    c(
+      "Sigma_cluster[a,a]",
+      "Sigma_cluster[a,b]",
+      "Sigma_cluster[b,b]"
+    )
+  )
+  expect_equal(
+    ci_cluster2$parameter,
+    c(
+      "Sigma_cluster2[a,a]",
+      "Sigma_cluster2[a,b]",
+      "Sigma_cluster2[b,b]"
+    )
+  )
+  expect_equal(
+    ci_cluster$method,
+    c("profile", "structural_zero", "profile")
+  )
+  expect_equal(
+    ci_cluster2$method,
+    c("profile", "structural_zero", "profile")
+  )
+  expect_true(all(is.finite(ci_cluster$estimate)))
+  expect_true(all(is.finite(ci_cluster2$estimate)))
+  expect_true(all(is.finite(ci_cluster$lower)))
+  expect_true(all(is.finite(ci_cluster$upper)))
+  expect_true(all(is.finite(ci_cluster2$lower)))
+  expect_true(all(is.finite(ci_cluster2$upper)))
+  expect_equal(ci_cluster$lower[2L], 0)
+  expect_equal(ci_cluster$upper[2L], 0)
+  expect_equal(ci_cluster2$lower[2L], 0)
+  expect_equal(ci_cluster2$upper[2L], 0)
+
+  expect_error(
+    confint(fit, parm = "Sigma_cluster", method = "bootstrap", nsim = 3L),
+    "not wired for diagonal cluster Sigma tiers"
+  )
+})

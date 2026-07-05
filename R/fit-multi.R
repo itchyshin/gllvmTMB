@@ -1681,12 +1681,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort("cbind(successes, failures): rows with zero trials are not allowed.")
   } else {
     y <- as.numeric(y_raw)
-    ## Optional API (B): when binomial rows are present, `weights = n_trials`
-    ## is interpreted as the per-row trial count (alternative glmmTMB API).
+    ## Optional API (B): when binomial / beta-binomial rows are present,
+    ## `weights = n_trials` is interpreted as the per-row trial count
+    ## (alternative glmmTMB API).
     ## For non-binomial rows we instead route `weights` to the lme4-style
     ## per-observation likelihood multiplier (`weights_i` below). The
     ## decision per-row is made just before tmb_data is built.
-    has_binom <- any(family_id_vec == 1L)
+    has_binom <- any(family_id_vec %in% c(1L, 8L))
     if (has_binom && !is.null(weights) && is.numeric(weights) &&
         length(weights) == nrow(data)) {
       n_trials <- as.numeric(weights)
@@ -1723,9 +1724,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
   ## ---- lme4 / glmmTMB-style observation weights -------------------------
   ## For each row, dispatch on family:
-  ##   * binomial (fid 1): weights_i = 1 (the user-supplied `weights` is
-  ##     already absorbed into `n_trials` above as the trial count, so
-  ##     applying it again would double-count it).
+  ##   * binomial / beta-binomial (fid 1 / 8): weights_i = 1 (the
+  ##     user-supplied `weights` is already absorbed into `n_trials`
+  ##     above as the trial count, so applying it again would double-count it).
   ##   * non-binomial: weights_i = weights[i] when `weights` is supplied
   ##     (lme4 / glmmTMB convention: per-row log-likelihood multiplier).
   ## Default `weights = NULL` produces a length-n_obs vector of 1.0 — the
@@ -1742,7 +1743,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(weights < 0))
       cli::cli_abort("`weights` must be non-negative.")
     weights_i <- as.numeric(weights)
-    weights_i[family_id_vec == 1L] <- 1.0
+    weights_i[family_id_vec %in% c(1L, 8L)] <- 1.0
   } else {
     weights_i <- rep(1.0, n_obs)
   }

@@ -34576,3 +34576,40 @@ Not run:
 - No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro, or
   DRAC compute. This is interval-output labelling and route truth-locking, not
   interval calibration.
+
+## 2026-07-05 -- beta-binomial weights-as-trials guard
+
+Goal: close issue #634 by making the single-column beta-binomial API interpret
+`weights = n_trials` as trial counts, matching binomial semantics, instead of
+leaving `n_trials = 1` and applying the weights as row likelihood multipliers.
+
+Edits:
+
+- Updated `R/fit-multi.R` so family ids `1` and `8` both trigger the
+  weights-as-trials branch for single-column responses.
+- Updated `weights_i` dispatch so binomial and beta-binomial rows both get
+  `weights_i = 1` after the user-supplied weights have been absorbed into
+  `n_trials`.
+- Added a focused beta-binomial regression to `test-lme4-style-weights.R`.
+- Updated validation-debt row `FAM-05`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/fit-multi.R")); invisible(parse("tests/testthat/test-lme4-style-weights.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-lme4-style-weights.R", desc = "Beta-binomial: weights = n_trials is not double-applied")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-lme4-style-weights.R")'
+```
+
+Results:
+
+- Parse check: `parse-ok`.
+- Focused beta-binomial regression: 3 pass, 0 fail, 0 skip.
+- Full `test-lme4-style-weights.R`: 17 pass, 0 fail, 2 expected CRAN skips.
+
+Not run:
+
+- No recovery grid, profile/bootstrap interval calibration, broad
+  `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro, or DRAC
+  compute. This is a likelihood-contract guard for an already covered family,
+  not a new beta-binomial capability claim.

@@ -219,6 +219,40 @@ test_that("Binomial: weights = n_trials matches cbind(succ, fail) (no double-app
 })
 
 # ----------------------------------------------------------------------
+# Test 5b: beta-binomial inherits the same trial-count semantics.
+# The beta-binomial likelihood also consumes successes plus n_trials. A
+# single-column response with weights must therefore route weights to
+# n_trials, not to the per-row likelihood multiplier.
+test_that("Beta-binomial: weights = n_trials is not double-applied", {
+  set.seed(7L)
+  n <- 40L
+  trait_levels <- c("a", "b")
+  df <- data.frame(
+    site         = rep(factor(sprintf("s%02d", seq_len(n))), each = 2L),
+    species      = factor(rep("placeholder", 2L * n)),
+    trait        = factor(rep(trait_levels, n), levels = trait_levels),
+    site_species = factor(rep(sprintf("s%02d_sp", seq_len(n)), each = 2L)),
+    x            = rep(stats::rnorm(n), each = 2L)
+  )
+  n_trials_vec <- rep(8L, nrow(df))
+  p <- stats::plogis(-0.1 + 0.35 * df$x)
+  df$value <- stats::rbinom(nrow(df), size = n_trials_vec, prob = p)
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + (0 + trait):x +
+      latent(0 + trait | site, d = 1, residual = FALSE),
+    data    = df,
+    family  = betabinomial(),
+    weights = n_trials_vec,
+    silent  = TRUE
+  )))
+
+  expect_true(all(fit$tmb_data$family_id_vec == 8L))
+  expect_equal(fit$tmb_data$n_trials, n_trials_vec)
+  expect_true(all(fit$tmb_data$weights_i == 1))
+})
+
+# ----------------------------------------------------------------------
 # Test 6: mixed-family fit with weights — per-row dispatch.
 # Two traits: trait_1 = Gaussian (likelihood-multiplier), trait_2 =
 # binomial (trial-count). One `weights` vector flows in. We verify that:

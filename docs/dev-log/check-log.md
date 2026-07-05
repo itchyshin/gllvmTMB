@@ -34796,3 +34796,81 @@ Not run:
 - No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro,
   DRAC, or interval/calibration compute. This is an internal truth-lock guard
   for runtime family/link ids.
+
+## 2026-07-05 -- gllvmTMB completion surface audit
+
+Goal: quantify the current Ultra-Plan progress after the first truth-lock
+repairs and avoid chasing stale issue rows as if they were live branch bugs.
+This is an audit-only checkpoint: no package API, formula grammar, likelihood,
+profile algorithm, dashboard metric, or public claim changed.
+
+Findings:
+
+- The local branch was clean at `14c44ac2` and ahead of origin by 182 commits.
+- The practical estimate after this sweep is about 40% of the current
+  overnight sprint and about 15% of the full gllvmTMB completion Ultra-Plan.
+  The full plan is closer to 2-3 focused weeks than 3 days if "done" means
+  tests, docs, claim audit, CI/release truth, and calibration gates.
+- Missing/mixed v1 routing and guard tests pass in focused mode; recovery and
+  broad calibration cells remain heavy-gated.
+- The profile route matrix explicitly covers unit, unit_obs, cluster,
+  cluster2, phy, spatial, named kernel, and augmented structural split tiers.
+  The current truth is not "all profile intervals exist": unit/unit_obs/phy
+  have several derived routes, cluster/cluster2 are diagonal-only with
+  structural-zero rho intervals blocked, spatial remains partial/planned for
+  several derived totals, and augmented structural tiers remain blocked except
+  the `rho:unit_slope` selected-entry canary.
+
+Commands:
+
+```sh
+git status --short --branch
+git rev-parse --short HEAD
+rg -n '^\\| [A-Z0-9-]+ \\|.*\\| `(partial|blocked|opt-in|planned)` \\|' docs/design/35-validation-debt-register.md
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-missing-response-gaussian.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-missing-response-traits.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-missing-data-robustfix.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-stage37-mixed-family.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-missing-predictor-gaussian.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-missing-predictor-binary.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-missing-predictor-ordered.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-missing-predictor-categorical.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-missing-predictor-phylo.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-profile-ci.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-confint-derived.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-profile-derived-curves.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-confint-lambda.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-confint-bootstrap.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-profile-derived-refit.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-profile-proportions.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-sigma-profile-bootstrap-controls.R")'
+rg -n "unit_obs|cluster2|cluster|tier|level|unit_slope|phylo|spatial|animal|kernel" R/z-confint-gllvmTMB.R R/profile-derived.R R/profile-route-matrix.R R/extract-correlations.R R/extract-omega.R tests/testthat/test-profile-route-matrix.R tests/testthat/test-confint-derived.R tests/testthat/test-profile-derived-curves.R tests/testthat/test-profile-proportions.R tests/testthat/test-confint-lambda.R
+```
+
+Results:
+
+- `test-missing-response-gaussian.R`: 0 fail, 9 expected heavy skips.
+- `test-missing-response-traits.R`: 0 fail, 7 expected heavy skips.
+- `test-missing-data-robustfix.R`: 17 pass, 5 expected heavy skips.
+- `test-stage37-mixed-family.R`: 13 pass.
+- `test-missing-predictor-gaussian.R`: 22 pass, 21 expected heavy skips.
+- `test-missing-predictor-binary.R`: 7 pass, 7 expected heavy skips.
+- `test-missing-predictor-ordered.R`: 6 pass, 8 expected heavy skips.
+- `test-missing-predictor-categorical.R`: 6 pass, 10 expected heavy skips.
+- `test-missing-predictor-phylo.R`: 5 pass, 7 expected heavy skips.
+- `test-profile-ci.R`: 0 fail, 11 expected heavy skips.
+- `test-profile-route-matrix.R`: 282 pass.
+- `test-confint-derived.R`: 0 fail, 35 expected heavy skips.
+- `test-profile-derived-curves.R`: 5 pass, 26 expected heavy skips.
+- `test-confint-lambda.R`: 13 pass, 11 expected heavy skips.
+- `test-confint-bootstrap.R`: 0 fail, 7 expected heavy skips.
+- `test-profile-derived-refit.R`: 3 pass.
+- `test-profile-proportions.R`: 0 fail, 18 expected heavy skips.
+- `test-sigma-profile-bootstrap-controls.R`: 0 fail, 1 expected heavy skip.
+
+Not run:
+
+- No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro,
+  DRAC, or profile/bootstrap calibration denominator. This checkpoint is a
+  focused local truth audit, not coverage evidence or release readiness.

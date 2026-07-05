@@ -1781,6 +1781,33 @@ test_that("fixed-rho sensitivity grid separates cross signal from block-null but
   }
 })
 
+test_that("profile_cross_rho resolves tied logLik best rho to a scalar first maximum", {
+  A_H <- diag(2)
+  A_P <- diag(2)
+  rownames(A_H) <- colnames(A_H) <- c("H1", "H2")
+  rownames(A_P) <- colnames(A_P) <- c("P1", "P2")
+  W <- matrix(
+    c(1, 0.2, 0.2, 1),
+    nrow = 2,
+    dimnames = list(rownames(A_H), rownames(A_P))
+  )
+  dat <- data.frame(y = c(1, 2, 3, 4), x = c(0, 1, 0, 1))
+  prof <- gllvmTMB::profile_cross_rho(
+    A_H,
+    A_P,
+    W,
+    rho = c(0, 0.25, 0.5),
+    refit = function(K, rho) stats::lm(y ~ x, data = dat)
+  )
+
+  expect_equal(sum(prof$is_best), 1L)
+  expect_equal(which(prof$is_best), 1L)
+  expect_equal(attr(prof, "best_rho"), 0)
+  expect_equal(length(attr(prof, "best_rho")), 1L)
+  expect_true(all(prof$relative_logLik == 0))
+  expect_true(all(prof$delta_deviance == 0))
+})
+
 test_that("Poisson two-kernel coevolution smoke constructs finite component Gammas", {
   skip_if_not_heavy()
   testthat::skip_on_cran()

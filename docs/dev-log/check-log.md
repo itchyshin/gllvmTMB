@@ -32917,3 +32917,28 @@ Outcome: parse passed; non-heavy profile CI file skipped as expected; targeted
 heavy latent-total Sigma Wald guard passed; pure-diag Sigma profile/Wald block
 passed; profile-to-bootstrap control regression passed. This is an inference
 honesty repair, not a new Wald approximation for reduced-rank total Sigma.
+
+## 2026-07-04 -- profile_cross_rho tie guard
+
+Goal: close issue #643 by keeping `profile_cross_rho()` best-rho output scalar
+when multiple rho grid values have tied log likelihoods.
+
+Edits:
+
+- Changed best-row selection to deterministic first maximum in supplied rho
+  order.
+- Updated the roxygen return contract to state the scalar tie rule.
+- Added a fast rho-insensitive `lm()` regression where all log likelihoods tie.
+- Updated the COE-04 validation addendum.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/kernel-helpers.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-two-kernel.R", reporter = "summary", desc = "profile_cross_rho resolves tied logLik best rho to a scalar first maximum")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE); cat("document-ok\n")'
+```
+
+Outcome: parse passed; targeted `profile_cross_rho()` tie test passed;
+documentation regenerated. This is fixed-kernel sensitivity plumbing only, not
+in-engine rho estimation or interval coverage.

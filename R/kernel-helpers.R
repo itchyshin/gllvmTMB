@@ -146,7 +146,8 @@ make_cross_kernel <- function(A_H, A_P, W, rho = 0.5, eps = 1e-8) {
 #' @return A data frame of class `gllvmTMB_cross_rho_profile` with columns
 #'   `rho`, `logLik`, `relative_logLik`, `delta_deviance`, `is_best`,
 #'   `convergence`, `pd_hessian`, `status`, and `error`, plus any metric
-#'   columns returned by `metrics`.
+#'   columns returned by `metrics`. Attribute `"best_rho"` is a scalar; ties
+#'   are resolved by the first maximum in the supplied `rho` order.
 #'
 #' @examples
 #' A_H <- diag(2)
@@ -236,7 +237,7 @@ profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
     max_ll <- max(out$logLik[ok])
     out$relative_logLik[ok] <- out$logLik[ok] - max_ll
     out$delta_deviance[ok] <- 2 * (max_ll - out$logLik[ok])
-    best <- which(ok & out$logLik == max_ll)
+    best <- which(ok)[which.max(out$logLik[ok])]
     out$is_best[best] <- TRUE
     best_rho <- out$rho[best]
   }

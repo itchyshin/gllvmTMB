@@ -252,6 +252,12 @@ and requires sensitivity; a residualized-plus-opposed tip kernel is
 `near_orthogonal` and a separable candidate. This is pre-fit diagnostic
 evidence for the Paper 2 raw-vs-residualized `W` decision only.
 
+COE-04 addendum (2026-07-04): `profile_cross_rho()` now resolves tied
+log-likelihood maxima deterministically by the first maximum in the supplied
+rho order, so `is_best` marks one row and `attr(best_rho)` remains scalar.
+This is fixed-kernel profile/sensitivity plumbing only, not in-engine rho
+estimation or interval coverage.
+
 ### Section 7 — Mixed-family fits
 
 Row-owner: **Boole + Fisher + Emmy** (mixed-family is the

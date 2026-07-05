@@ -72,6 +72,28 @@ $$
 \sigma^2_{d,t} = \text{Var}[\eta_t \mid \text{family-specific structural noise}]
 $$
 
+**Decomposition principle (maintainer, restated 2026-07-05).** At the lowest
+level (the observation residual), the per-trait diagonal is
+`Psi = unique_variance + link_specific_variance`, and for almost every family
+exactly one term is non-zero:
+
+- **Gaussian** — *unique only* (the estimated `sigma^2_eps`); link-specific $= 0$
+  (identity link).
+- **Non-Gaussian** (binomial, ordinal_probit, plain Poisson, gamma, beta,
+  nbinom, delta) — *link-specific only* (the $\sigma^2_d$ below); the estimated
+  unique term is $0$ (the link's implicit scale IS the residual — this is why the
+  default auto-`Psi` is dropped for a pure-binary/ordinal/delta fit).
+- **Overdispersed Poisson — BOTH, and it is the ONLY distribution that carries
+  both**: a *separate estimated OLRE* (unique variance) on top of the Poisson
+  link residual `log1p(1/mu)`. The other overdispersed families **bake** the
+  overdispersion into a single analytic $\sigma^2_d$ (`nbinom2` $= \log(1 + 1/\mu
+  + \phi)$, tweedie $= \log(1 + \phi\,\mu^{p-2})$), so they have no separate
+  unique term.
+
+(Caution: this is the *observation-level* residual. The *between-unit* `Psi`
+`theta_diag_B` in a `latent()`/`indep()` term is a distinct, genuinely
+identifiable random-effect variance — do not conflate the two.)
+
 This `link_residual_rule` is family-specific. The well-known
 cases:
 

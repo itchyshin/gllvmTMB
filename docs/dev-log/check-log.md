@@ -4,6 +4,65 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-04 20:47 MDT -- Profile route matrix truth-lock
+
+Branch: `codex/r-bridge-grouped-dispersion`; local profile-route
+truth-lock. No push or PR.
+
+Guard: the package must not imply that every point extractor or direct
+TMB parameter profile is a calibrated profile-likelihood route for the
+full covariance/derived target. This slice centralises the route policy
+before any more profile helpers are added.
+
+Implemented:
+
+- Added internal `.profile_route_levels()`, `.profile_route_matrix()`,
+  `.validate_profile_route_matrix()`, and `.profile_route_status()`.
+- Added direct `profile_targets()` labels for `sd_cluster[...]` and
+  `sd_cluster2[...]`, while preserving the legacy `sd_phy_unique[...]`
+  label for `theta_diag_species`.
+- Recorded current boundaries: `Sigma_cluster` / `Sigma_cluster2`
+  matrix tokens are planned, cluster correlations are structural
+  point-only zeros, spatial and mixed/source routes remain partial, and
+  augmented split profile targets remain blocked until symbolic targets
+  are declared.
+- Added Design 73 and validation-debt row CI-11 for route-ledger
+  coverage only.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'parse("R/profile-route-matrix.R"); parse("R/profile-targets.R"); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R", reporter = "summary")'
+```
+
+Outcome: passed, 41 assertions, 0 failures.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-targets.R", reporter = "summary")'
+```
+
+Outcome: passed, 31 assertions, 0 failures.
+
+```sh
+git diff --check
+```
+
+Outcome: passed.
+
+Not run:
+
+- Full `devtools::check()` or heavy profile calibration. This is a
+  route-ledger and direct-target-label slice, not a likelihood-engine or
+  coverage-calibration slice.
+- Totoro/DRAC compute, source-specific `lv` exposure, mixed-family CI
+  promotion, or augmented split profile implementation.
+
 ## 2026-07-04 17:14 MDT -- Julia bridge ordinal drift closure
 
 Branch: `codex/r-bridge-grouped-dispersion`; local bridge truth-lock cleanup.

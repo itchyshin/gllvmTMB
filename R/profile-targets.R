@@ -79,6 +79,18 @@
     transformation = "exp"
   ),
   list(
+    tmb_parameter = "theta_diag_species",
+    label_prefix = "sd_cluster",
+    target_class = "variance",
+    transformation = "exp"
+  ),
+  list(
+    tmb_parameter = "theta_diag_cluster2",
+    label_prefix = "sd_cluster2",
+    target_class = "variance",
+    transformation = "exp"
+  ),
+  list(
     tmb_parameter = "log_sd_phy_diag",
     label_prefix = "sd_phy_diag",
     target_class = "variance",
@@ -275,10 +287,23 @@
 
 ## Find a registry entry by TMB name; NULL if not registered.
 .profile_target_lookup <- function(tmb_name) {
-  for (entry in .profile_target_registry) {
-    if (entry$tmb_parameter == tmb_name) return(entry)
+  hits <- .profile_target_lookup_all(tmb_name)
+  if (length(hits) == 0L) {
+    return(NULL)
   }
-  NULL
+  hits[[1L]]
+}
+
+## Find all registry entries by TMB name. Some TMB blocks have a legacy
+## label plus a clearer tier label; keep both as direct profile aliases.
+.profile_target_lookup_all <- function(tmb_name) {
+  hits <- list()
+  for (entry in .profile_target_registry) {
+    if (entry$tmb_parameter == tmb_name) {
+      hits[[length(hits) + 1L]] <- entry
+    }
+  }
+  hits
 }
 
 ## Validate the controlled vocabularies. Errors with a typed
@@ -493,40 +518,42 @@ profile_targets <- function(object, ready_only = FALSE) {
   ## per parameter block).
   rows <- list()
   for (tmb_name in unique(par_names)) {
-    entry <- .profile_target_lookup(tmb_name)
-    if (is.null(entry)) {
+    entries <- .profile_target_lookup_all(tmb_name)
+    if (length(entries) == 0L) {
       next
     } # not in registry; skip silently
     idx_block <- which(par_names == tmb_name)
     block_length <- length(idx_block)
-    for (k in seq_along(idx_block)) {
-      i <- idx_block[k]
-      link_est <- unname(par[i])
-      est <- .profile_target_transform(link_est, entry$transformation)
-      parm_label <- .profile_target_label(entry$label_prefix, k, block_length)
-      scale_str <- if (
-        entry$transformation %in%
-          c("lambda_packed")
-      ) {
-        "link"
-      } else {
-        "natural"
+    for (entry in entries) {
+      for (k in seq_along(idx_block)) {
+        i <- idx_block[k]
+        link_est <- unname(par[i])
+        est <- .profile_target_transform(link_est, entry$transformation)
+        parm_label <- .profile_target_label(entry$label_prefix, k, block_length)
+        scale_str <- if (
+          entry$transformation %in%
+            c("lambda_packed")
+        ) {
+          "link"
+        } else {
+          "natural"
+        }
+        profile_note <- if (has_tmb_obj) "ready" else "tmb_object_required"
+        rows[[length(rows) + 1L]] <- data.frame(
+          parm = parm_label,
+          target_class = entry$target_class,
+          tmb_parameter = tmb_name,
+          index = if (block_length == 1L) NA_integer_ else k,
+          estimate = est,
+          link_estimate = link_est,
+          scale = scale_str,
+          transformation = entry$transformation,
+          target_type = "direct",
+          profile_ready = has_tmb_obj,
+          profile_note = profile_note,
+          stringsAsFactors = FALSE
+        )
       }
-      profile_note <- if (has_tmb_obj) "ready" else "tmb_object_required"
-      rows[[length(rows) + 1L]] <- data.frame(
-        parm = parm_label,
-        target_class = entry$target_class,
-        tmb_parameter = tmb_name,
-        index = if (block_length == 1L) NA_integer_ else k,
-        estimate = est,
-        link_estimate = link_est,
-        scale = scale_str,
-        transformation = entry$transformation,
-        target_type = "direct",
-        profile_ready = has_tmb_obj,
-        profile_note = profile_note,
-        stringsAsFactors = FALSE
-      )
     }
   }
 

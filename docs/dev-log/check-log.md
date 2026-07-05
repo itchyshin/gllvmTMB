@@ -32439,3 +32439,45 @@ Outcome: both passed.
 Known limitation:
 
 - `test-coevolution-two-kernel.R` and release-level checks were not run.
+
+## 2026-07-04 -- Roxygen link warning cleanup
+
+Goal: start release-level hygiene by running `devtools::document()` and fixing
+avoidable roxygen link warnings.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+First outcome: completed, but emitted unresolved link warnings for internal/noRd
+helper names (`load_mixed_family_fixture()`, `fit_mixed_family_fixture()`,
+`parse_multi_formula()`) and bracketed interval text parsed as links.
+
+Implemented:
+
+- Changed internal/noRd helper references from link syntax to code font.
+- Rewrote `[0, 1]` roxygen text as plain interval prose.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Second outcome: completed with no warning output beyond package loading.
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/data-mixed-family.R")); invisible(parse("R/fit-multi.R")); invisible(parse("R/loading-uncertainty-helpers.R")); invisible(parse("R/phylo-signal-ci.R")); cat("parse-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+git diff --check
+```
+
+Outcome: passed.
+
+Known limitation:
+
+- Internal roxygen comment cleanup only; no generated Rd changed.

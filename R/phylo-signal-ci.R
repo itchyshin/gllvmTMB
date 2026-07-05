@@ -179,7 +179,7 @@
 #'   fixed-parameter scale, then symmetric Wald on the logit-H^2 scale
 #'   (with delta-method SE on logit) and back-transform via [plogis()].
 #'   At H^2 near 0 or 1 the logit blows up; the path falls back to
-#'   symmetric Wald on the H^2 scale clipped to [0, 1].
+#'   symmetric Wald on the H^2 scale clipped to the interval 0 to 1.
 #'
 #' @param fit A fit returned by [gllvmTMB()] with a phylogenetic
 #'   component (`phylo_latent()` or `phylo_unique()`).

@@ -45,8 +45,8 @@
 #' Internal builder for the M1 mixed-family fixture. Returns a list with
 #' the simulated data frame, the DGP truth (`Lambda_B`, `psi_B`,
 #' per-trait family assignments), and a ready-to-use `family_list` argument
-#' for `gllvmTMB()`. Does NOT fit the model — see
-#' [load_mixed_family_fixture()] for the load + build flow.
+#' for `gllvmTMB()`. Does NOT fit the model -- see
+#' `load_mixed_family_fixture()` for the load + build flow.
 #'
 #' @param n_families Integer, 3 or 5. Selects the 3-family
 #'   (Gaussian + binomial + Poisson) or 5-family (+ Gamma + nbinom2)
@@ -179,7 +179,7 @@
 #' + Poisson) or 5-family (+ Gamma + nbinom2) M1 fixture. Loads from
 #' the cached RDS at `inst/extdata/mixed-family-fixture.rds` for fast
 #' CI access. Tests that need a fitted model call
-#' [fit_mixed_family_fixture()] on the result.
+#' `fit_mixed_family_fixture()` on the result.
 #'
 #' @param n_families Integer, 3 or 5. Selects the 3-family
 #'   (Gaussian + binomial + Poisson) or 5-family (+ Gamma + nbinom2)
@@ -190,7 +190,7 @@
 #'   for `gllvmTMB()`), and `family_var` (the column name used for
 #'   per-row family dispatch).
 #'
-#' @seealso [fit_mixed_family_fixture()] to build a fit from the fixture.
+#' @seealso `fit_mixed_family_fixture()` to build a fit from the fixture.
 #'
 #' @keywords internal
 #' @noRd

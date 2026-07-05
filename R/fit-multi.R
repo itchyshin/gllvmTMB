@@ -60,7 +60,7 @@
 #' and optimises with `nlminb()`.
 #'
 #' @inheritParams gllvmTMB
-#' @param parsed The output of [parse_multi_formula()].
+#' @param parsed The output of `parse_multi_formula()`.
 #' @keywords internal
 #' @noRd
 gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,

@@ -245,7 +245,7 @@
 #' @param threshold_rho threshold on the standardised loading scale
 #'   (e.g. 0.30 for Comrey-Lee). Scalar.
 #'
-#' @return numeric vector of retention probabilities in [0, 1].
+#' @return numeric vector of retention probabilities between 0 and 1.
 #'
 #' @keywords internal
 #' @noRd

@@ -76,9 +76,9 @@ components). Components are by name (\code{"shared_unit"},
 \code{"unique_unit"}, \code{"shared_unit_obs"},
 \code{"unique_unit_obs"}, \code{"shared_phy"},
 \code{"unique_phy"}, \code{"link_residual"}). Routes to
-\code{\link[=profile_ci_proportions]{profile_ci_proportions()}}. Profile-only;
-\code{"wald"} / \code{"bootstrap"} error with a pointer to
-\code{\link[=extract_proportions]{extract_proportions()}}.
+\code{\link[=profile_ci_proportions]{profile_ci_proportions()}} for \code{"profile"} and the companion
+proportion Wald/bootstrap helpers for \code{"wald"} /
+\code{"bootstrap"}.
 \item An integer index vector or character vector of fixed-effect
 term names (same as the standard \code{confint()} interface).
 \item Missing (default) -- all fixed-effect parameters.

@@ -629,7 +629,9 @@
 }
 
 ## Internal helper: dispatch `confint(fit, parm = "phylo_signal[:...]")`.
-## Currently profile-only; wald / bootstrap error with a clear message.
+## Routes to profile_ci_phylo_signal() for method = "profile" and to the
+## companion phylogenetic-signal Wald/bootstrap helpers for method =
+## "wald" / "bootstrap".
 .confint_phylo_signal <- function(object, parm, level, method, nsim = 500L, seed = NULL, ...) {
   trait_names <- levels(object$data[[object$trait_col]])
   trait_idx <- .parse_pertrait_parm(parm, "phylo_signal", trait_names)
@@ -886,8 +888,8 @@
 }
 
 ## Dispatch `confint(fit, parm = "proportion[:...]")`.
-## Routes to profile_ci_proportions() for method = "profile";
-## wald / bootstrap error with a pointer to extract_proportions().
+## Routes to profile_ci_proportions() for method = "profile" and to the
+## scalar proportion Wald/bootstrap helpers for method = "wald" / "bootstrap".
 .confint_proportion <- function(object, parm, level, method, nsim = 500L, seed = NULL, ...) {
   trait_names <- levels(object$data[[object$trait_col]])
   parsed <- .parse_proportion_parm(parm, trait_names)
@@ -1182,9 +1184,9 @@
 #'       \code{"unique_unit"}, \code{"shared_unit_obs"},
 #'       \code{"unique_unit_obs"}, \code{"shared_phy"},
 #'       \code{"unique_phy"}, \code{"link_residual"}). Routes to
-#'       [profile_ci_proportions()]. Profile-only;
-#'       \code{"wald"} / \code{"bootstrap"} error with a pointer to
-#'       [extract_proportions()].
+#'       [profile_ci_proportions()] for \code{"profile"} and the companion
+#'       proportion Wald/bootstrap helpers for \code{"wald"} /
+#'       \code{"bootstrap"}.
 #'     \item An integer index vector or character vector of fixed-effect
 #'       term names (same as the standard \code{confint()} interface).
 #'     \item Missing (default) -- all fixed-effect parameters.

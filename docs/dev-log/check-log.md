@@ -31915,3 +31915,47 @@ Known limitation:
 - The next derived-CI matrix rows are still `icc`, `rho`, `proportion`, spatial
   total-covariance profile behavior, and non-Gaussian/mixed-family unavailable
   statuses.
+
+## 2026-07-04 -- Derived-CI matrix row: confint docs truth for phylo/proportion
+
+Goal: continue the derived-CI route matrix with a documentation truth-lock.
+The code already routed `confint(..., parm = "phylo_signal", method =
+"wald" / "bootstrap")` and `confint(..., parm = "proportion", method =
+"wald" / "bootstrap")`, but comments / roxygen still contained older
+profile-only wording.
+
+Implemented:
+
+- Updated the internal `.confint_phylo_signal()` comment to name its
+  profile/Wald/bootstrap routing.
+- Updated the `.confint_proportion()` comment and `confint.gllvmTMB_multi()`
+  roxygen text to say proportion tokens support profile, Wald, and bootstrap
+  routes.
+- Regenerated `man/confint.gllvmTMB_multi.Rd`.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/z-confint-gllvmTMB.R")); cat("parse-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Outcome: passed; regenerated `man/confint.gllvmTMB_multi.Rd` and emitted the
+same unrelated unresolved-link warnings already seen in earlier documentation
+runs.
+
+```sh
+rg -n "Profile-only|wald / bootstrap error|proportion.*Profile-only|proportion.*extract_proportions\\(\\)" R/z-confint-gllvmTMB.R man/confint.gllvmTMB_multi.Rd
+```
+
+Outcome: no stale proportion / phylogenetic-signal profile-only wording remains.
+
+Known limitation:
+
+- Documentation truth only; no route implementation or interval-calibration
+  claim changed.

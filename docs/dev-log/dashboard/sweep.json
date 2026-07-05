@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-04 17:14 MDT",
+  "updated": "2026-07-04 20:32 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,12 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-04 20:32 MDT",
+      "who": "Completion branch consolidation",
+      "status": "guard",
+      "text": "Current local branch codex/r-bridge-grouped-dispersion is clean at 72e5081d and ahead of origin by 118 commits. The review package now has local no-manual check 0/0/0, pkgdown check, heavy coevolution prototype/recovery/two-kernel checks, focused bootstrap/derived/profile/plot/rotation checks, and live R-to-GLLVM.jl bridge test coverage. This is a local consolidation checkpoint, not pushed GitHub CI, not PR review, not v1.0 completion, and not a reason to widen source-specific lv, mixed-family CI, or unique= Julia parity claims."
+    },
     {
       "when": "2026-07-04 17:14 MDT",
       "who": "R+Julia bridge ordinal drift closure",
@@ -263,6 +269,12 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-07-04 20:32 MDT",
+      "who": "Local review-package evidence",
+      "status": "guard",
+      "text": "Focused local checks are banked in check-log and after-task notes: devtools::check(args = \"--no-manual\") passed 0 errors, 0 warnings, 0 notes after the spatial(unique) documentation fix; pkgdown::check_pkgdown() passed; git diff --check passed; heavy coevolution two-kernel passed; and test-julia-bridge.R passed in configured live mode after prepending ~/.juliaup/bin to PATH and pointing GLLVM_JL_PATH at the local GLLVM.jl checkout. Remaining boundary: branch is local/unpushed, so GitHub CI and PR review are not counted."
+    },
     {
       "when": "2026-07-04 17:14 MDT",
       "who": "Live bridge contract tests",

@@ -32577,3 +32577,29 @@ Outcome: `gllvmTMB` and `GLLVM.jl` worktrees both clean after tests.
 Known limitation:
 
 - Local validation only; no GitHub CI because the branch was not pushed.
+
+## 2026-07-04 -- Mission Control consolidation checkpoint
+
+Goal: make the visible local Mission Control board show the forest-level review
+checkpoint after the completion branch local evidence sweep, without changing
+capability metrics or widening any claim.
+
+Edits:
+
+- Added a top Active work row for the local completion-branch consolidation.
+- Added a top Evidence row summarising the local review-package checks.
+- Kept the row status as `guard`: this is local evidence, not pushed GitHub CI,
+  PR review, v1.0 completion, or support promotion.
+
+Commands:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool >/dev/null
+```
+
+Outcome: JSON validated, Mission Control served at `http://127.0.0.1:8770/`,
+and the in-app browser preview showed the new Completion branch consolidation
+row at the top of Active work.

@@ -217,6 +217,25 @@ test_that("correlation plots can use bootstrap_Sigma correlation intervals", {
     plot_data$border_colour == gllvmTMB:::.gtmb_plot_palette[["ink"]]
   ))
   expect_silent(print(p_ell))
+
+  boot_B_only <- boot
+  boot_B_only$point_est <- boot$point_est["R_B"]
+  boot_B_only$ci_lower <- boot$ci_lower["R_B"]
+  boot_B_only$ci_upper <- boot$ci_upper["R_B"]
+  boot_B_only$level <- "B"
+  p_partial <- suppressMessages(plot(
+    fit,
+    type = "correlation",
+    boot = boot_B_only
+  ))
+  partial_data <- attr(p_partial, "gllvmTMB_data")
+  missing_rows <- partial_data$interval_status == "missing"
+  expect_true(any(missing_rows))
+  expect_true(all(partial_data$interval_method[missing_rows] == "missing"))
+  expect_equal(
+    attr(p_partial, "gllvmTMB_meta")$interval_status,
+    "partial"
+  )
 })
 
 test_that("plot(type = 'loadings') returns a faceted ggplot with both levels", {

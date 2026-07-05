@@ -464,6 +464,7 @@ plot.gllvmTMB_multi <- function(
     error = function(e) NULL
   )
   if (is.null(boot_tab) || nrow(boot_tab) == 0L) {
+    tab$interval_method <- "missing"
     tab$interval_status <- "missing"
     return(tab)
   }
@@ -484,6 +485,7 @@ plot.gllvmTMB_multi <- function(
     boot_tab$interval_status[hit],
     "missing"
   )
+  tab$interval_method[!has_hit] <- "missing"
   tab
 }
 

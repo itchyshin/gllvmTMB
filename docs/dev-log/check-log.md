@@ -32131,3 +32131,42 @@ Known limitation:
 - This is fail-loud selector behavior only; it does not add new interval
   methods.
 - Live GLLVM.jl bridge tests were not run locally.
+
+## 2026-07-04 -- Correlation plot missing interval method metadata
+
+Goal: address issue #702. When a bootstrap object did not cover a requested
+correlation tier or row, `.correlation_merge_bootstrap_intervals()` set
+`interval_status = "missing"` but could leave `interval_method = "none"`.
+
+Implemented:
+
+- Missing tier-level bootstrap intervals now set both `interval_status` and
+  `interval_method` to `"missing"`.
+- Row-level key misses inside a non-empty bootstrap table also set
+  `interval_method = "missing"`.
+- Added a plot regression using a B-only bootstrap object and checking the
+  missing W-tier rows.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/plot-gllvmTMB.R")); invisible(parse("tests/testthat/test-plot-gllvmTMB.R")); cat("parse-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-plot-gllvmTMB.R", reporter = "summary")'
+```
+
+Outcome: passed; `plot-gllvmTMB` completed with no failures.
+
+```sh
+git diff --check
+```
+
+Outcome: passed.
+
+Known limitation:
+
+- Metadata consistency only; no new bootstrap calibration or batching change.

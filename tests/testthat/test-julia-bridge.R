@@ -779,10 +779,17 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
     )]
   )
   expect_equal(cmp$error, cmp$estimate - cmp$truth)
-  expect_error(
-    extract_correlations(fit, tier = "unit"),
-    "GJL-GATE-CORRELATION-INTERVALS"
-  )
+  ## engine = 'julia' bridge fits return POINT-ONLY correlation rows: the
+  ## point estimate is always available, but intervals are NA with
+  ## interval_status = "none" (validation_row "JUL-01A"). The claim boundary
+  ## is held by refusing to *fabricate* intervals, not by refusing the point.
+  ## (plot_correlations() still gates below, since it needs interval rows.)
+  cor_jul <- suppressMessages(extract_correlations(fit, tier = "unit"))
+  expect_s3_class(cor_jul, "data.frame")
+  expect_true(all(is.na(cor_jul$lower)))
+  expect_true(all(is.na(cor_jul$upper)))
+  expect_equal(unique(cor_jul$interval_status), "none")
+  expect_equal(unique(cor_jul$validation_row), "JUL-01A")
   if (requireNamespace("ggplot2", quietly = TRUE)) {
     expect_error(
       plot_correlations(fit),

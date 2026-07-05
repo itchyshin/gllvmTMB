@@ -998,7 +998,17 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #' grid (alongside [spatial_scalar()] and [spatial_unique()]).
 #'
 #' Internally this rewrites to `spde(form, .spatial_latent = TRUE, d = K)`
-#' and toggles the TMB template's `spde_lv_k` switch to K. The C++ kernel
+#' and toggles the TMB template's `spde_lv_k` switch to K. With
+#' `unique = TRUE`, the same SPDE tier also keeps the per-trait
+#' `omega_spde` fields active, giving
+#' \eqn{\boldsymbol\Sigma_{\mathrm{spa}} =
+#' \boldsymbol\Lambda_{\mathrm{spa}}\boldsymbol\Lambda_{\mathrm{spa}}^\top +
+#' \boldsymbol\Psi_{\mathrm{spa}}}. The default `unique = FALSE` preserves
+#' the older low-rank-only path. Legacy
+#' `spatial_latent(...) + spatial_unique(...)` is accepted as compatibility
+#' syntax for the same total-covariance decomposition.
+#'
+#' The C++ kernel
 #' then reads a packed lower-triangular `Lambda_spde` and K shared spatial
 #' fields `omega_spde_lv` (each prior \eqn{\mathrm{N}(\mathbf{0},
 #' \mathbf{Q}^{-1})} where \eqn{\mathbf{Q}} is the SPDE precision built
@@ -1022,6 +1032,10 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   factor `0 + trait`; RHS is the `coords` placeholder symbol).
 #' @param d Integer; number of spatial latent factors (rank K). Defaults
 #'   to 1.
+#' @param unique Logical; include a per-trait unique spatial diagonal
+#'   companion. `FALSE` preserves the old low-rank-only
+#'   `spatial_latent()` path; `TRUE` fits the total spatial covariance
+#'   \eqn{\Lambda\Lambda^\top + \Psi}.
 #' @param coords Character; the column-name pair of spatial coordinates
 #'   in `data` (e.g. `c("lon", "lat")`). Resolved by the parser when
 #'   supplied as keyword argument; `NULL` when the orientation expresses
@@ -1046,7 +1060,8 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   )
 #' }
 #' @export
-spatial_latent <- function(formula, d = 1, coords = NULL, mesh = NULL) {
+spatial_latent <- function(formula, d = 1, unique = FALSE,
+                           coords = NULL, mesh = NULL) {
   invisible(NULL)
 }
 
@@ -1900,11 +1915,13 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
   ) {
     return(invisible(NULL))
   }
-  lhs <- bar[[2L]]
+  lhs <- .strip_lhs_parens(bar[[2L]])
   ## Match exactly the same shape detection the phylo()/spatial() wrappers
   ## use (df76c705 / 8b1ddc92): `1` (intercept-only) or `0 + trait`
   ## (per-trait intercepts). Anything else is augmented LHS, not yet
-  ## supported by the engine.
+  ## supported by the engine. Enclosing parens around the LHS (e.g.
+  ## `indep((0 + trait) | site)`) are stripped first so they don't cause
+  ## a false-positive augmented-LHS classification (#626).
   is_intercept_only <- (is.numeric(lhs) && length(lhs) == 1L && lhs == 1) ||
     (is.symbol(lhs) && identical(as.character(lhs), "1"))
   is_zero_plus_trait <- is.call(lhs) &&
@@ -2010,6 +2027,14 @@ normalise_spatial_orientation <- function(e) {
     ))
   }
   if (is.name(lhs) && is.name(rhs)) {
+    if (!identical(as.character(rhs), "trait")) {
+      cli::cli_abort(c(
+        "{.fn {fn}} bar must be {.code 0 + trait | coords}.",
+        "i" = "Got LHS = {.code {deparse(lhs)}}, RHS = {.code {deparse(rhs)}}.",
+        "x" = "Only the deprecated orientation {.code coords | trait} may use a bare-name LHS/RHS pair.",
+        ">" = "Use {.code {fn}(0 + trait | coords)} for the canonical spatial orientation."
+      ))
+    }
     ## Deprecated `coords | trait` orientation -- flip and warn (once).
     ## lifecycle::deprecate_warn() doesn't process cli markup in
     ## `details`, so we use plain backticks here for legibility.
@@ -2113,6 +2138,25 @@ rewrite_canonical_aliases <- function(formula) {
     }
     args[nms %in% keep & nzchar(nms)]
   }
+  .named_or_positional_arg <- function(e, name, position, default = NULL) {
+    nm <- names(e)
+    if (!is.null(nm)) {
+      named_idx <- which(!is.na(nm) & nm == name)
+      if (length(named_idx) > 0L) {
+        return(e[[named_idx[[1L]]]])
+      }
+    }
+    if (length(e) >= position) {
+      pos_name <- ""
+      if (!is.null(nm) && length(nm) >= position && !is.na(nm[[position]])) {
+        pos_name <- nm[[position]]
+      }
+      if (!nzchar(pos_name)) {
+        return(e[[position]])
+      }
+    }
+    default
+  }
   ## HARD GUARD: source-specific `lv = ~ env` (predictor-informed latent means)
   ## is reserved for ordinary latent() only; it must fail loud on source
   ## keywords, never be silently dropped.
@@ -2151,7 +2195,14 @@ rewrite_canonical_aliases <- function(formula) {
         "i" = "{.code type = \"proportional\"} is planned but not implemented in 0.2.x."
       ))
     }
-    type <- match.arg(type_expr, c("exact", "proportional"))
+    if (!type_expr %in% c("exact", "proportional")) {
+      cli::cli_abort(c(
+        "{.fn {fn}} does not recognise {.val {type_expr}} as a {.arg type}.",
+        "i" = "{.arg type} must be one of {.val exact} or {.val proportional}.",
+        ">" = "Use {.code {fn}(V = V, type = \"exact\")}."
+      ))
+    }
+    type <- type_expr
     if (identical(type, "proportional")) {
       cli::cli_abort(c(
         "{.code {fn}(type = \"proportional\")} is planned but not implemented.",
@@ -3343,8 +3394,21 @@ rewrite_canonical_aliases <- function(formula) {
       ## fit-multi.R flips the cpp template's `spde_lv_k` switch to d and
       ## allocates Lambda_spde (T x K_S) plus K_S shared spatial fields.
       if (fn == "spatial_latent") {
-        nm <- names(e)
-        d_val <- if (!is.null(nm) && "d" %in% nm) e[[which(nm == "d")]] else 1L
+        d_val <- .named_or_positional_arg(e, "d", 3L, default = 1L)
+        unique_arg <- .named_or_positional_arg(
+          e, "unique", 4L, default = FALSE
+        )
+        unique_val <- tryCatch(
+          eval(unique_arg, envir = parent.frame()),
+          error = function(err) unique_arg
+        )
+        if (!is.logical(unique_val) || length(unique_val) != 1L ||
+            is.na(unique_val)) {
+          cli::cli_abort(c(
+            "{.arg unique} in {.fn spatial_latent} must be a literal {.code TRUE} or {.code FALSE}.",
+            ">" = "Use {.code spatial_latent(..., unique = TRUE)} for the total spatial covariance {.code Lambda Lambda^T + Psi}, or omit it for the low-rank-only path."
+          ))
+        }
         extras <- .pass_through_extras(e, c("coords", "mesh"))
         ## Design 64 §3: augmented spatial_latent(1 + x | coords, d) random
         ## regression. `spatial_latent` normally renames to `spde` reading ONLY
@@ -3372,6 +3436,7 @@ rewrite_canonical_aliases <- function(formula) {
               list(
                 .spatial_latent_augmented = TRUE,
                 d = d_val,
+                .spatial_unique_diag = unique_val,
                 lhs_form = lhs_form$lhs_form,
                 slope_col = lhs_form$slope_col
               ),
@@ -3382,7 +3447,8 @@ rewrite_canonical_aliases <- function(formula) {
         }
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
-          list(.spatial_latent = TRUE, d = d_val),
+          list(.spatial_latent = TRUE, d = d_val,
+               .spatial_unique_diag = unique_val),
           extras
         ))
         return(new_call)
@@ -3726,6 +3792,15 @@ scan_for_deprecated <- function(rhs) {
     meta = list(new = "meta_V", args = "V = V"),
     gr = list(new = "phylo_scalar", args = "species")
   )
+  ## A bar as the first argument (e.g. `phylo(0 + trait | species, ...)`) marks
+  ## the documented mode-dispatch calling convention, which is first-class and
+  ## must NOT receive the legacy bare-`phylo(species)` alias deprecation.
+  is_bar_first_arg <- function(e) {
+    length(e) >= 2L &&
+      is.call(e[[2L]]) &&
+      identical(e[[2L]][[1L]], as.name("|")) &&
+      length(e[[2L]]) == 3L
+  }
   walk <- function(e) {
     if (is.call(e)) {
       ## Only a bare-symbol head (e.g. `spatial`) names a keyword. For a
@@ -3750,6 +3825,11 @@ scan_for_deprecated <- function(rhs) {
               ">" = "Update existing code to spatial_unique() to keep the rank explicit."
             )
           )
+        } else if (fn == "phylo" && is_bar_first_arg(e)) {
+          ## `phylo(0 + trait | species, mode = ..., d = ..., tree = ...)` is the
+          ## documented first-class mode-dispatch form, NOT the legacy
+          ## `phylo(species)` alias -- do not emit the deprecation here. The
+          ## unconditional recursion below still walks its arguments.
         } else if (fn %in% names(deprecated_map)) {
           d <- deprecated_map[[fn]]
           .gllvmTMB_warn_keyword_deprecated(fn, d$new, d$args, d$guidance)

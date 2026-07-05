@@ -736,7 +736,31 @@ test_that("augmented latent unique= argument sets the diagonal-companion marker"
 })
 
 test_that("augmented latent residual= is a soft-deprecated alias for unique=", {
-  withr::local_options(lifecycle_verbosity = "warning")
+  ## tests/testthat/setup.R sets gllvmTMB.quiet_grammar_notes = TRUE suite-wide
+  ## so the one-shot fire-on-use grammar notices don't trip unrelated
+  ## expect_silent()/expect_no_warning() assertions elsewhere; re-enable it
+  ## locally to observe the residual= alias warning (same idiom as
+  ## test-latent-unique-rename.R's "residual = ) is a soft-deprecated alias"
+  ## test).
+  withr::local_options(
+    lifecycle_verbosity = "warning",
+    gllvmTMB.quiet_grammar_notes = FALSE
+  )
+
+  ## The residual= -> unique= alias warning fires once per R session via
+  ## gllvmTMB's own env-based tracker (.gllvmTMB_deprecation_seen, see
+  ## .gllvmTMB_warn_latent_residual_alias() in R/brms-sugar.R), not
+  ## lifecycle::deprecate_warn(). Reset the tracker so the warning is
+  ## guaranteed to fire here regardless of whether an earlier test in the
+  ## suite already triggered it, and restore it afterwards (same pattern
+  ## as test-latent-unique-rename.R's reset_gllvmTMB_dep_seen()).
+  seen <- get(".gllvmTMB_deprecation_seen", envir = asNamespace("gllvmTMB"))
+  saved <- as.list(seen, all.names = TRUE)
+  withr::defer({
+    rlang::env_unbind(seen, rlang::env_names(seen))
+    rlang::env_bind(seen, !!!saved)
+  })
+  rlang::env_unbind(seen, rlang::env_names(seen))
 
   expect_warning(
     off_cs <- gllvmTMB:::parse_multi_formula(
@@ -744,7 +768,7 @@ test_that("augmented latent residual= is a soft-deprecated alias for unique=", {
         value ~ 0 + trait + latent(1 + temperature | individual, d = 2, residual = FALSE)
       )
     )$covstructs[[1L]],
-    class = "lifecycle_warning_deprecated"
+    regexp = "renamed|soft-deprecated alias"
   )
   expect_true(isFALSE(off_cs$extra$.latent_augmented_unique))
 })

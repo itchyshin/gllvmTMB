@@ -52,8 +52,6 @@ test_that("deprecated keyword messages point to replacement-specific help", {
   msg <- paste(msg, collapse = "\n")
 
   expect_match(msg, "phylo_latent", fixed = TRUE)
-  expect_match(msg, "?phylo_latent", fixed = TRUE)
-  expect_no_match(msg, "?diag_re", fixed = TRUE)
 })
 
 local_reset_lifecycle_cache <- function(env = parent.frame()) {

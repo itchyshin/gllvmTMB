@@ -142,6 +142,12 @@ lognormal <- function(link = "log") {
 #' generalized gamma is a flexible distribution that outperforms alternatives
 #' when modelling catch rate data. ICES Journal of Marine Science 82(4):
 #' fsaf040. \doi{10.1093/icesjms/fsaf040}.
+#'
+#' @details `gengamma()`, the families ending in `_mix()`,
+#'   `truncated_nbinom1()`, `censored_poisson()`, and delta families built from
+#'   those constructors are exported for API continuity, but are not admitted by
+#'   the current multivariate `gllvmTMB()` engine. Fits with those families fail
+#'   loudly as unsupported until likelihood wiring and recovery tests land.
 
 gengamma <- function(link = "log") {
   linktemp <- substitute(link)

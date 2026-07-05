@@ -34874,3 +34874,56 @@ Not run:
 - No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro,
   DRAC, or profile/bootstrap calibration denominator. This checkpoint is a
   focused local truth audit, not coverage evidence or release readiness.
+
+## 2026-07-05 -- constructor-only family boundary truth lock
+
+Goal: remove a stale family-registry overclaim where exported constructors for
+mixture, `gengamma()`, `truncated_nbinom1()`, and `censored_poisson()` could
+read as current multivariate engine support. This is a truth-lock slice: no
+likelihood, family id, exported constructor, or admission surface changed.
+
+Edits:
+
+- Updated `docs/design/02-family-registry.md` so the family table distinguishes
+  fit-admitted families from constructor-only compatibility surface.
+- Changed mixture, `gengamma()`, `truncated_nbinom1()`, and
+  `censored_poisson()` registry statuses from stale `claimed` wording to
+  `blocked constructor-only`; marked admitted truncated Poisson / truncated
+  NB2 as `partial`.
+- Tightened validation-debt rows `FAM-15` and `FAM-16` so admitted truncated
+  count families are separate from constructor-only blocked families.
+- Added a roxygen/Rd note explaining that these constructors are exported for
+  API continuity but not admitted by the current multivariate `gllvmTMB()`
+  engine.
+- Extended `test-enum-runtime-ids.R` so constructor-only families must fail
+  loudly with `Unsupported family` before runtime admission.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/families.R")); invisible(parse("tests/testthat/test-enum-runtime-ids.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-enum-runtime-ids.R")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+rg -n "Lognormal mixture|Gamma mixture|Generalised Gamma|Negative binomial 2 mixture|Truncated nbinom1|Censored Poisson|gamma_mix|lognormal_mix|nbinom2_mix|gengamma|censored_poisson|truncated_nbinom1" docs/design/02-family-registry.md docs/design/35-validation-debt-register.md R/families.R man/families.Rd tests/testthat/test-enum-runtime-ids.R
+rg -n "mixture.*claimed|gengamma.*claimed|truncated_nbinom1.*claimed|censored_poisson.*claimed|claimed.*mixture|claimed.*gengamma|claimed.*truncated_nbinom1|claimed.*censored" docs/design R man tests/testthat
+Rscript --vanilla -e 'tools::checkRd("man/families.Rd")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-enum-runtime-ids.R")'
+git diff --check
+```
+
+Results:
+
+- Parse check: `parse-ok`.
+- `test-enum-runtime-ids.R`: 9 pass, 0 fail, 0 warn, 0 skip.
+- `devtools::document(quiet = TRUE)`: wrote `families.Rd`.
+- Stale-claim audit found the intended blocked constructor-only wording and no
+  stale mixture/gengamma/truncated_nbinom1/censored `claimed` row.
+- `tools::checkRd("man/families.Rd")` reported existing non-ASCII citation
+  page-range warnings in the references; no malformed Rd error was reported.
+- `git diff --check` passed.
+
+Not run:
+
+- No `devtools::test()`, `devtools::check()`, pkgdown build, likelihood
+  admission, simulation recovery, Totoro, or DRAC. This slice only locks the
+  current unsupported-family truth.

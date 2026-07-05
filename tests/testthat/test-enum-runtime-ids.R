@@ -29,3 +29,32 @@ test_that("internal enum mirrors multivariate runtime ids", {
     "censored_poisson", "truncated_nbinom1"
   ) %in% names(family_enum)))
 })
+
+test_that("constructor-only families fail loud before runtime admission", {
+  df <- data.frame(
+    individual = factor(rep(seq_len(4), each = 2)),
+    trait = factor(rep(c("a", "b"), times = 4), levels = c("a", "b")),
+    value = rep(1:2, times = 4)
+  )
+  blocked <- list(
+    gamma_mix = gamma_mix(),
+    lognormal_mix = lognormal_mix(),
+    nbinom2_mix = nbinom2_mix(),
+    gengamma = gengamma(),
+    truncated_nbinom1 = truncated_nbinom1(),
+    censored_poisson = censored_poisson()
+  )
+
+  for (nm in names(blocked)) {
+    expect_error(
+      suppressMessages(suppressWarnings(gllvmTMB(
+        value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+        data = df,
+        site = "individual",
+        family = blocked[[nm]]
+      ))),
+      regexp = "Unsupported family",
+      info = nm
+    )
+  }
+})

@@ -118,10 +118,12 @@ one lives in `meta_V()`-context discussions only.
 
 ## Family registry — per-family table
 
-The table below lists every family currently exported from
-`gllvmTMB`. The **link-residual rule** column points at the
-specific function path in `R/extract-sigma.R` where the formula
-is implemented; Phase 0B verifies each.
+The table below lists every family constructor currently exported from
+`gllvmTMB`. The **Status** column distinguishes fit-admitted families
+from constructor-only compatibility surface. A constructor being exported
+does not by itself mean `gllvmTMB()` currently admits that family in the
+multivariate TMB engine. The validation-debt register is the source of
+truth for whether a family is `covered`, `partial`, or `blocked`.
 
 ### Continuous families
 
@@ -130,10 +132,10 @@ is implemented; Phase 0B verifies each.
 | Gaussian | `gaussian()` (base R) | `mu`, `sigma` | identity, log | $\mathbb{R}$ | claimed |
 | Student-t | `student()` | `mu`, `sigma`, `nu` | identity, log, logm2 | $\mathbb{R}$ | claimed |
 | Lognormal | `lognormal()` | `mu`, `sigma` | identity (of $\log y$), log | $(0, \infty)$ | claimed |
-| Lognormal mixture | `lognormal_mix()` | `mu`, `sigma`, mixture weights | identity, log, logit | $(0, \infty)$ | claimed |
+| Lognormal mixture | `lognormal_mix()` | `mu`, `sigma`, mixture weights | identity, log, logit | $(0, \infty)$ | blocked constructor-only |
 | Gamma | `Gamma()` (base R) | `mu`, `sigma` | log, log | $(0, \infty)$ | claimed |
-| Gamma mixture | `gamma_mix()` | `mu`, `sigma`, mixture weights | log, log, logit | $(0, \infty)$ | claimed |
-| Generalised Gamma | `gengamma()` | `mu`, `sigma`, `nu` | log, log, log | $(0, \infty)$ | claimed |
+| Gamma mixture | `gamma_mix()` | `mu`, `sigma`, mixture weights | log, log, logit | $(0, \infty)$ | blocked constructor-only |
+| Generalised Gamma | `gengamma()` | `mu`, `sigma`, `nu` | log, log, log | $(0, \infty)$ | blocked constructor-only |
 | Tweedie | `tweedie()` | `mu`, `sigma`, `p` | log, log, logitp (constrained $1 < p < 2$) | $[0, \infty)$ with point mass at 0 | claimed |
 
 ### Bounded continuous families
@@ -151,11 +153,11 @@ is implemented; Phase 0B verifies each.
 | Poisson | `poisson()` (base R) | `mu` | log | $\{0, 1, 2, \ldots\}$ | claimed |
 | Negative binomial 1 | `nbinom1()` | `mu`, `sigma` | log, log | $\{0, 1, 2, \ldots\}$ | claimed |
 | Negative binomial 2 | `nbinom2()` | `mu`, `sigma` (overdispersion) | log, log | $\{0, 1, 2, \ldots\}$ | claimed |
-| Negative binomial 2 mixture | `nbinom2_mix()` | `mu`, `sigma`, mixture weights | log, log, logit | $\{0, 1, 2, \ldots\}$ | claimed |
-| Truncated Poisson | `truncated_poisson()` | `mu` | log | $\{1, 2, 3, \ldots\}$ (no zeros) | claimed |
-| Truncated nbinom1 | `truncated_nbinom1()` | `mu`, `sigma` | log, log | $\{1, 2, 3, \ldots\}$ | claimed |
-| Truncated nbinom2 | `truncated_nbinom2()` | `mu`, `sigma` | log, log | $\{1, 2, 3, \ldots\}$ | claimed |
-| Censored Poisson | `censored_poisson()` | `mu` | log | $\{0, 1, 2, \ldots\}$ with interval censoring | claimed |
+| Negative binomial 2 mixture | `nbinom2_mix()` | `mu`, `sigma`, mixture weights | log, log, logit | $\{0, 1, 2, \ldots\}$ | blocked constructor-only |
+| Truncated Poisson | `truncated_poisson()` | `mu` | log | $\{1, 2, 3, \ldots\}$ (no zeros) | partial |
+| Truncated nbinom1 | `truncated_nbinom1()` | `mu`, `sigma` | log, log | $\{1, 2, 3, \ldots\}$ | blocked constructor-only |
+| Truncated nbinom2 | `truncated_nbinom2()` | `mu`, `sigma` | log, log | $\{1, 2, 3, \ldots\}$ | partial |
+| Censored Poisson | `censored_poisson()` | `mu` | log | $\{0, 1, 2, \ldots\}$ with interval censoring | blocked constructor-only |
 
 ### Ordinal families
 
@@ -348,7 +350,7 @@ NOT in the registry today:
 - **Jason** scouts new families against the published literature
   (is this family novel or replicating existing software?).
 - **Rose** audits the public scope statements ("nbinom2 is
-  `claimed`; truncated_nbinom1 also `claimed`; multinomial is
-  `planned`") for honesty.
+  `claimed`; truncated_nbinom1 / mixture / gengamma constructors are
+  blocked constructor-only; multinomial is `planned`) for honesty.
 - **Ada** ratifies the per-family status when Phase 0B verifies
   evidence.

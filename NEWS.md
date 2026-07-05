@@ -3,6 +3,18 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Cluster variance-proportion routing (2026-07-04)
+
+* `extract_proportions()` now includes diagonal extra-grouping components
+  `unique_cluster` and `unique_cluster2` when `cluster` / `cluster2` tiers are
+  present, and `confint(parm = "proportion:unique_cluster")` /
+  `confint(parm = "proportion:unique_cluster2")` route through the existing
+  profile and Wald proportion machinery. Bootstrap refits now preserve
+  `cluster` / `cluster2` arguments, but this is denominator plumbing for
+  diagonal grouping tiers, not coverage calibration or a non-diagonal
+  covariance/correlation claim. Spatial proportion components remain gated
+  pending a separate spatial denominator design.
+
 ## Julia bridge ordinal Wald CI and residual closure (2026-07-04)
 
 * Closed the last current R/Julia bridge capability drift rows for the narrowed

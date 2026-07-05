@@ -38,7 +38,7 @@ This design is implemented as the internal route ledger
 | Correlation `rho` | unit, unit_obs, phy; spatial is partial | cluster/cluster2 correlations are structural zeros, not interval targets |
 | Repeatability | direct diag-only ratio route | full low-rank repeatability profile is not covered |
 | Phylogenetic signal | two-component phylo signal direct profile | richer PGLLVM decompositions use labelled numeric Wald fallback |
-| Proportions | unit, unit_obs, phy components | cluster, cluster2, and spatial denominator components are planned, not covered |
+| Proportions | unit, unit_obs, phy components; cluster and cluster2 diagonal components are partial | spatial denominator components are planned, not covered |
 | Augmented split targets | none yet | symbolic target table required before implementation |
 
 ## Current Route Snapshot
@@ -53,8 +53,8 @@ share.
 | --- | --- | --- | --- | --- | --- | --- |
 | `unit` | covered | partial | covered | covered | covered | repeatability partial |
 | `unit_obs` | covered | partial | covered | covered | covered | - |
-| `cluster` | covered | partial | not applicable | point-only | planned | diagonal tier only |
-| `cluster2` | covered | partial | not applicable | point-only | planned | diagonal tier only |
+| `cluster` | covered | partial | not applicable | point-only | partial | diagonal tier only |
+| `cluster2` | covered | partial | not applicable | point-only | partial | diagonal tier only |
 | `phy` | covered | partial | covered | covered | covered | phylogenetic signal partial |
 | `spatial` | covered | partial | planned | partial | planned | total spatial covariance needs heavy gate |
 | `unit_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
@@ -74,6 +74,9 @@ Two clarifications matter for future profile-function work:
   `Sigma_cluster` / `Sigma_cluster2` matrix tokens are diagonal-only wrappers
   around that same log-SD route. Their off-diagonal correlations are structural
   zeros and must not receive fake intervals.
+- `unique_cluster` and `unique_cluster2` are now valid variance-proportion
+  components. They enter the all-tier denominator as diagonal variance only;
+  this is not a new shared-loading, correlation, or full covariance claim.
 
 ## ARIA
 
@@ -104,8 +107,9 @@ blocked to covered unless it has direct code and validation-register evidence.
 
 1. Add simulate-refit bootstrap calibration for `Sigma_cluster` and
    `Sigma_cluster2` only after a denominator-preserving design gate.
-2. Add cluster/cluster2/spatial components to profile proportions with a
-   denominator-preserving test.
+2. Add spatial shared/unique components to profile proportions only after a
+   spatial denominator design covers `spatial_latent(unique = TRUE)` and legacy
+   spatial compatibility syntax.
 3. Repair hard-family profile stability, especially Gamma unit-tier rho
    failures, before broader claims.
 4. Write a symbolic target table before any augmented structural split profile

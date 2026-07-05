@@ -52,6 +52,15 @@ test_that("profile route matrix records current cluster and cluster2 boundaries"
   c2_rho <- gllvmTMB:::.profile_route_status("rho", "cluster2", routes = routes)
   expect_equal(cluster_rho$status, "point_only")
   expect_equal(c2_rho$status, "point_only")
+
+  cluster_prop <- gllvmTMB:::.profile_route_status("proportion", "cluster", routes = routes)
+  c2_prop <- gllvmTMB:::.profile_route_status("proportion", "cluster2", routes = routes)
+  spatial_prop <- gllvmTMB:::.profile_route_status("proportion", "spatial", routes = routes)
+  expect_equal(cluster_prop$status, "partial")
+  expect_equal(c2_prop$status, "partial")
+  expect_match(cluster_prop$route, "unique_cluster")
+  expect_match(c2_prop$route, "unique_cluster2")
+  expect_equal(spatial_prop$status, "planned")
 })
 
 test_that("profile route matrix keeps augmented split profile routes blocked", {

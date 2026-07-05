@@ -186,6 +186,8 @@
       unique_unit     = pull_diag_var("sd_B"),
       shared_unit_obs = pull_LLt_diag("Lambda_W"),
       unique_unit_obs = pull_diag_var("sd_W"),
+      unique_cluster  = pull_diag_var("sd_q"),
+      unique_cluster2 = pull_diag_var("sd_c2"),
       shared_phy      = pull_LLt_diag("Lambda_phy"),
       unique_phy      = pull_diag_var("sd_phy_diag"),
       link_residual   = rep(0, T),  ## handled separately below
@@ -443,8 +445,10 @@
   ## --- Set up the refit closure (parallels bootstrap_Sigma()) ---------
   formula <- .reconstruct_multi_formula(fit)
   trait <- fit$trait_col
-  site <- fit$unit_col
-  species <- fit$species_col
+  unit <- fit$unit_col
+  unit_obs <- fit$unit_obs_col
+  cluster <- fit$cluster_col %||% fit$species_col
+  cluster2 <- fit$cluster2_col
   family <- if (!is.null(fit$family_input)) fit$family_input else fit$family
   data <- fit$data
   resp <- all.vars(fit$formula)[1]
@@ -479,8 +483,10 @@
         formula = formula,
         data = dat,
         trait = trait,
-        site = site,
-        species = species,
+        unit = unit,
+        unit_obs = unit_obs,
+        cluster = cluster,
+        cluster2 = cluster2,
         family = family,
         silent = TRUE
       ),

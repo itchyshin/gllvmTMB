@@ -33594,3 +33594,48 @@ Outcome: parse passed; route-matrix tests passed; cluster2 focused tests passed
 with the expected heavy recovery skip. A small live profile smoke also returned
 `Sigma_cluster` rows successfully. Bootstrap remains intentionally blocked for
 these diagonal cluster matrix tokens.
+
+## 2026-07-04 -- Cluster variance-proportion denominator routing
+
+Goal: let the extra diagonal grouping tiers enter the all-tier variance
+proportion denominator without widening spatial or augmented split claims.
+
+Edits:
+
+- Added `unique_cluster` and `unique_cluster2` components to
+  `extract_proportions()` when `diag_species` / `diag_cluster2` are active.
+- Added the same component names to `proportion:*` token parsing, Wald
+  report-based reconstruction, and profile target functions.
+- Forwarded canonical `unit`, `unit_obs`, `cluster`, and `cluster2` arguments
+  through the proportion bootstrap refit path; this is route plumbing, not
+  calibration evidence.
+- Updated the route matrix and Design 73 so cluster/cluster2 proportions move
+  from `planned` to `partial`; spatial proportions remain planned.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/extract-omega.R")); invisible(parse("R/proportions-ci.R")); invisible(parse("R/profile-derived.R")); invisible(parse("R/z-confint-gllvmTMB.R")); invisible(parse("R/profile-route-matrix.R")); invisible(parse("tests/testthat/test-proportions-cluster-components.R")); invisible(parse("tests/testthat/test-profile-route-matrix.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-proportions-cluster-components.R")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R")'
+```
+
+Ad-hoc live smokes:
+
+```sh
+Rscript --vanilla - <<'RS'
+devtools::load_all(quiet = TRUE)
+## Small crossed Gaussian cluster + cluster2 fixture:
+## extract_proportions(..., link_residual = "none") returned unique_cluster
+## and unique_cluster2 rows; confint(..., parm = "proportion:unique_cluster",
+## method = "wald") returned finite [0, 1] bounds.
+## A selected profile row also returned a bounded interval.
+## A tiny bootstrap route smoke ran, with the expected conditional-simulation
+## warning for diag_species / diag_cluster2 random-effect tiers.
+RS
+```
+
+Outcome: parse passed; pure cluster-proportion component tests passed; route
+matrix tests passed. The live smokes support route plumbing only, not
+coverage calibration.

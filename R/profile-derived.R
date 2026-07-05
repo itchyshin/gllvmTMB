@@ -768,9 +768,10 @@ profile_ci_correlation <- function(
 ## ---- Variance proportions: fix-and-refit profile -------------------------
 ## extract_proportions(fit) returns per-trait variance partitions across all
 ## components (shared_unit, unique_unit, shared_unit_obs, unique_unit_obs,
-## shared_phy, unique_phy, link_residual). profile_ci_proportions() supplies
-## profile-likelihood CIs for each (trait, component) by Lagrange-style
-## fix-and-refit on the proportion itself (not the raw numerator).
+## unique_cluster, unique_cluster2, shared_phy, unique_phy, link_residual).
+## profile_ci_proportions() supplies profile-likelihood CIs for each
+## (trait, component) by Lagrange-style fix-and-refit on the proportion itself
+## (not the raw numerator).
 ##
 ## The constraint is on `p_c,t(theta) = component_c,t(theta) / sum_c' component_c',t(theta)`,
 ## with the denominator floated across all tiers and the link-residual
@@ -795,6 +796,8 @@ profile_ci_correlation <- function(
   ix_diag_B  <- which(par_names == "theta_diag_B")
   ix_rr_W    <- which(par_names == "theta_rr_W")
   ix_diag_W  <- which(par_names == "theta_diag_W")
+  ix_diag_cluster <- which(par_names == "theta_diag_species")
+  ix_diag_cluster2 <- which(par_names == "theta_diag_cluster2")
   ix_rr_phy  <- which(par_names == "theta_rr_phy")
   ix_diag_phy <- which(par_names == "log_sd_phy_diag")
 
@@ -806,6 +809,8 @@ profile_ci_correlation <- function(
   use_diag_B <- isTRUE(fit$use$diag_B)
   use_rr_W   <- isTRUE(fit$use$rr_W)
   use_diag_W <- isTRUE(fit$use$diag_W)
+  use_diag_cluster <- isTRUE(fit$use$diag_species)
+  use_diag_cluster2 <- isTRUE(fit$use$diag_cluster2)
   use_rr_phy <- isTRUE(fit$use$phylo_rr)
   use_diag_phy <- isTRUE(fit$use$phylo_diag)
 
@@ -870,6 +875,16 @@ profile_ci_correlation <- function(
     unique_unit_obs = if (use_diag_W && length(ix_diag_W) > 0L) {
       function(par) exp(2 * par[ix_diag_W][trait_idx])
     } else NULL,
+    unique_cluster = if (
+      use_diag_cluster && length(ix_diag_cluster) > 0L
+    ) {
+      function(par) exp(2 * par[ix_diag_cluster][trait_idx])
+    } else NULL,
+    unique_cluster2 = if (
+      use_diag_cluster2 && length(ix_diag_cluster2) > 0L
+    ) {
+      function(par) exp(2 * par[ix_diag_cluster2][trait_idx])
+    } else NULL,
     shared_phy = if (use_rr_phy && length(ix_rr_phy) > 0L) {
       function(par) {
         L <- build_Lambda(par[ix_rr_phy], p = T, rank = d_phy)
@@ -903,6 +918,12 @@ profile_ci_correlation <- function(
     }
     if (use_diag_W && length(ix_diag_W) > 0L) {
       s <- s + exp(2 * par[ix_diag_W][trait_idx])
+    }
+    if (use_diag_cluster && length(ix_diag_cluster) > 0L) {
+      s <- s + exp(2 * par[ix_diag_cluster][trait_idx])
+    }
+    if (use_diag_cluster2 && length(ix_diag_cluster2) > 0L) {
+      s <- s + exp(2 * par[ix_diag_cluster2][trait_idx])
     }
     if (use_rr_phy && length(ix_rr_phy) > 0L) {
       L <- build_Lambda(par[ix_rr_phy], p = T, rank = d_phy)

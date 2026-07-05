@@ -459,8 +459,9 @@ extract_phylo_signal <- function(
 #'
 #' For each trait, returns the proportion of total latent variance
 #' attributable to each component present in the model:
-#' shared (rr) and unique (diag) at each tier (B, W, phy), plus
-#' optionally the binomial link's implicit residual.
+#' shared (rr) and unique (diag) at each tier (unit, unit_obs, phy), diagonal
+#' cluster / cluster2 components when present, plus optionally the binomial
+#' link's implicit residual.
 #'
 #' This is the most general proportion-decomposition function in the
 #' package. [extract_phylo_signal()] is the focused PGLLVM
@@ -482,7 +483,8 @@ extract_phylo_signal <- function(
 #'   with one row per (trait, component); `"wide"` returns one row per
 #'   trait with one column per component.
 #' @return Long format: data frame with columns `trait`, `component`
-#'   (e.g. `"shared_unit"`, `"unique_unit"`, `"shared_phy"`, `"link_residual"`),
+#'   (e.g. `"shared_unit"`, `"unique_unit"`, `"unique_cluster"`,
+#'   `"shared_phy"`, `"link_residual"`),
 #'   `variance` (the absolute variance), `proportion` (the share of
 #'   the total). Wide format: data frame with one column per component
 #'   plus a `total_variance` column; the per-trait proportions sum to 1.
@@ -559,6 +561,25 @@ extract_proportions <- function(
       part = "unique"
     ))
     if (!is.null(out)) add_comp("unique_unit_obs", out$s)
+  }
+  ## Extra diagonal grouping tiers. These have no shared/rr component in the
+  ## current engine, so they enter the all-tier denominator as unique-only
+  ## components.
+  if (isTRUE(fit$use$diag_species)) {
+    out <- suppressMessages(extract_Sigma(
+      fit,
+      level = "cluster",
+      part = "unique"
+    ))
+    if (!is.null(out)) add_comp("unique_cluster", out$s)
+  }
+  if (isTRUE(fit$use$diag_cluster2)) {
+    out <- suppressMessages(extract_Sigma(
+      fit,
+      level = "cluster2",
+      part = "unique"
+    ))
+    if (!is.null(out)) add_comp("unique_cluster2", out$s)
   }
   ## Optional per-trait link-implicit residual (family-aware: gaussian/
   ## lognormal contribute 0; binomial/poisson/Gamma each contribute their

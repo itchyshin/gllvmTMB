@@ -324,18 +324,18 @@
       "Coverage calibration remains separate."
     ),
     .profile_route_row(
-      "proportion", "cluster", "profile", "planned",
-      "component_missing_from_profile_proportions",
-      "RE-11",
-      "Cluster variance can contribute to denominators but is not yet a profiled component.",
-      "Add shared denominator rows for cluster and cluster2 together."
+      "proportion", "cluster", "profile", "partial",
+      "fix_refit:unique_cluster",
+      "RE-11;CI-11",
+      "Cluster variance enters extract_proportions() and profile/Wald proportion routing as unique_cluster.",
+      "Bootstrap refits preserve cluster arguments, but calibration and non-diagonal cluster claims remain out of scope."
     ),
     .profile_route_row(
-      "proportion", "cluster2", "profile", "planned",
-      "component_missing_from_profile_proportions",
-      "RE-11",
-      "Cluster2 variance can contribute to denominators but is not yet a profiled component.",
-      "Add shared denominator rows for cluster and cluster2 together."
+      "proportion", "cluster2", "profile", "partial",
+      "fix_refit:unique_cluster2",
+      "RE-11;CI-11",
+      "Cluster2 variance enters extract_proportions() and profile/Wald proportion routing as unique_cluster2.",
+      "Bootstrap refits preserve cluster2 arguments, but calibration and non-diagonal cluster2 claims remain out of scope."
     ),
     .profile_route_row(
       "proportion", "spatial", "profile", "planned",

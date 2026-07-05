@@ -27,7 +27,8 @@ trait with one column per component.}
 }
 \value{
 Long format: data frame with columns \code{trait}, \code{component}
-(e.g. \code{"shared_unit"}, \code{"unique_unit"}, \code{"shared_phy"}, \code{"link_residual"}),
+(e.g. \code{"shared_unit"}, \code{"unique_unit"}, \code{"unique_cluster"},
+\code{"shared_phy"}, \code{"link_residual"}),
 \code{variance} (the absolute variance), \code{proportion} (the share of
 the total). Wide format: data frame with one column per component
 plus a \code{total_variance} column; the per-trait proportions sum to 1.
@@ -42,8 +43,9 @@ distribution-specific latent residual).
 \description{
 For each trait, returns the proportion of total latent variance
 attributable to each component present in the model:
-shared (rr) and unique (diag) at each tier (B, W, phy), plus
-optionally the binomial link's implicit residual.
+shared (rr) and unique (diag) at each tier (unit, unit_obs, phy), diagonal
+cluster / cluster2 components when present, plus optionally the binomial
+link's implicit residual.
 }
 \details{
 This is the most general proportion-decomposition function in the

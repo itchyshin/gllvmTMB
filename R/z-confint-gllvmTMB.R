@@ -943,6 +943,8 @@
     "unique_unit",
     "shared_unit_obs",
     "unique_unit_obs",
+    "unique_cluster",
+    "unique_cluster2",
     "shared_phy",
     "unique_phy",
     "link_residual"

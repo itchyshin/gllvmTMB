@@ -705,12 +705,12 @@
           "RE-03;RE-12;SPA-08;SPA-09;SPA-10;PHY-11..18"
         },
         if (is_unit_slope_rho) {
-          "Gaussian selected-entry rho:unit_slope profile canary is wired; calibration and broader augmented targets remain blocked."
+          "Gaussian selected-entry rho:unit_slope profile canary is wired with known-DGP truth-inclusion evidence; calibration and broader augmented targets remain blocked."
         } else {
           "Point extraction/recovery may exist, and Design 74 declares the symbolic target, but profile CIs are not implemented or calibrated."
         },
         if (is_unit_slope_rho) {
-          "Run known-DGP and boundary calibration before promoting beyond a canary."
+          "Run boundary and empirical calibration before promoting beyond a canary."
         } else {
           target$profile_gate
         }

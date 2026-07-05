@@ -61,14 +61,16 @@ uses `kappa` (`sd / (sqrt(4*pi) * kappa)` or variance divided by
 The first canary is Gaussian `unit_slope` selected-entry `rho`, exposed through
 `rho:unit_slope:i,j`. It targets the lower triangle of
 `cov2cor(Sigma_unit_slope)` over the interleaved `2T` coefficient vector. The
-route is still partial: it has parser/target plumbing and focused route tests,
-but no coverage calibration and no non-Gaussian claim.
+route is still partial: it has parser/target plumbing, focused route tests, and
+one known-DGP Gaussian truth-inclusion profile test, but no boundary calibration,
+empirical coverage calibration, or non-Gaussian claim.
 
 The gate for any selected route is:
 
 1. Parse-level target name and flattening order are stable.
 2. A pure test proves the requested token maps to the intended target entry.
-3. A small known-DGP Gaussian integration test recovers the point target.
+3. A small known-DGP Gaussian integration test recovers the point target and
+   checks truth inclusion for the selected profile interval.
 4. Profile output is finite, labelled, and honest about one-sided or failed
    endpoints.
 5. Boundary handling is explicit for variance near zero and correlations near

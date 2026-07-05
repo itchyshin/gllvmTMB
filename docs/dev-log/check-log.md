@@ -33739,3 +33739,31 @@ python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
 
 Outcome: both dashboard JSON files validate. Mission Control now shows the
 current completion-profile hardening checkpoint without widening any claim.
+
+## 2026-07-04 -- Unit-slope rho known-DGP profile canary
+
+Goal: move the Gaussian `rho:unit_slope:i,j` profile route from parser/plumbing
+evidence to one direct known-DGP truth-inclusion canary while keeping it
+`partial`.
+
+Edits:
+
+- Extended the existing Gaussian ordinary random-regression recovery test to
+  call `confint(fit, parm = "rho:unit_slope:1,2", method = "profile")`.
+- Checked that the returned selected-entry profile interval has finite bounds
+  and contains the known DGP correlation from `cov2cor(Sigma_unit_slope)`.
+- Updated the profile route matrix, Design 73, Design 74, and CI-07/CI-11
+  validation-debt wording to say known-DGP evidence is present but boundary and
+  empirical calibration remain gated.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/profile-route-matrix.R")); invisible(parse("tests/testthat/test-ordinary-latent-random-regression.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R", reporter = "summary")'
+env NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-ordinary-latent-random-regression.R", reporter = "summary")'
+```
+
+Outcome: parse passed; profile route-matrix tests passed; focused ordinary
+latent random-regression tests passed with the new profile canary. This is not
+empirical coverage calibration, boundary calibration, or non-Gaussian support.

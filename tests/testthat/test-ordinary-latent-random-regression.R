@@ -313,6 +313,25 @@ test_that("ordinary Gaussian latent random regression recovers default augmented
   expect_lt(max(abs(shared - truth_shared)), 0.08)
   expect_lt(max(abs(sqrt(unique) - sd_aug)), 0.08)
   expect_lt(max(abs(total - truth_total)), 0.08)
+
+  truth_R <- stats::cov2cor(truth_total)
+  ci <- suppressMessages(confint(
+    fit,
+    parm = "rho:unit_slope:1,2",
+    method = "profile"
+  ))
+  bounds <- unname(ci[1L, ])
+  truth_rho <- unname(truth_R[1L, 2L])
+
+  expect_equal(rownames(ci), "rho:unit_slope:1,2")
+  expect_true(all(is.finite(bounds)))
+  expect_true(
+    bounds[1L] <= truth_rho && truth_rho <= bounds[2L],
+    info = sprintf(
+      "Known-DGP rho:unit_slope:1,2 truth %.3f outside profile CI [%.3f, %.3f]",
+      truth_rho, bounds[1L], bounds[2L]
+    )
+  )
 })
 
 test_that("ordinary unique-only random regression fits Gaussian diagonal augmented covariance", {

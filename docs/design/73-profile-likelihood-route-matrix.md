@@ -80,7 +80,8 @@ Two clarifications matter for future profile-function work:
 - Design 74 now declares the augmented structural split targets and flattening
   conventions. This does not promote any augmented split profile interval route:
   only the Gaussian selected-entry `rho:unit_slope:i,j` canary is wired, and it
-  remains `partial` until known-DGP and boundary calibration evidence land.
+  remains `partial` after one known-DGP truth-inclusion test because boundary
+  and empirical calibration evidence are still missing.
 
 ## ARIA
 
@@ -118,6 +119,7 @@ blocked to covered unless it has direct code and validation-register evidence.
 3. Repair hard-family profile stability, especially Gamma unit-tier rho
    failures, before broader claims.
 4. Use Design 74 as the target source for the first augmented Gaussian canary,
-   now the selected `rho:unit_slope:i,j` route; keep `Sigma_unit_slope`,
-   augmented proportions, source-specific slope routes, and non-Gaussian
-   augmented profile claims blocked.
+   now the selected `rho:unit_slope:i,j` route with one known-DGP
+   truth-inclusion test; keep `Sigma_unit_slope`, augmented proportions,
+   source-specific slope routes, and non-Gaussian augmented profile claims
+   blocked.

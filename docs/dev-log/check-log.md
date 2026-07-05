@@ -34908,6 +34908,8 @@ rg -n "Lognormal mixture|Gamma mixture|Generalised Gamma|Negative binomial 2 mix
 rg -n "mixture.*claimed|gengamma.*claimed|truncated_nbinom1.*claimed|censored_poisson.*claimed|claimed.*mixture|claimed.*gengamma|claimed.*truncated_nbinom1|claimed.*censored" docs/design R man tests/testthat
 Rscript --vanilla -e 'tools::checkRd("man/families.Rd")'
 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-enum-runtime-ids.R")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-truncated-recovery.R")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-matrix-truncated.R")'
 git diff --check
 ```
 
@@ -34920,6 +34922,10 @@ Results:
   stale mixture/gengamma/truncated_nbinom1/censored `claimed` row.
 - `tools::checkRd("man/families.Rd")` reported existing non-ASCII citation
   page-range warnings in the references; no malformed Rd error was reported.
+- `test-truncated-recovery.R` under `GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true`:
+  15 pass, 0 fail, 0 warn, 0 skip.
+- `test-matrix-truncated.R` under `GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true`:
+  30 pass, 0 fail, 0 warn, 0 skip.
 - `git diff --check` passed.
 
 Not run:

@@ -60,6 +60,8 @@ rg -n "Lognormal mixture|Gamma mixture|Generalised Gamma|Negative binomial 2 mix
 rg -n "mixture.*claimed|gengamma.*claimed|truncated_nbinom1.*claimed|censored_poisson.*claimed|claimed.*mixture|claimed.*gengamma|claimed.*truncated_nbinom1|claimed.*censored" docs/design R man tests/testthat
 Rscript --vanilla -e 'tools::checkRd("man/families.Rd")'
 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-enum-runtime-ids.R")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-truncated-recovery.R")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-matrix-truncated.R")'
 git diff --check
 ```
 
@@ -71,6 +73,8 @@ Results:
 - Stale-claim audit found only intended blocked constructor-only wording.
 - `tools::checkRd("man/families.Rd")` returned existing non-ASCII citation
   warnings from reference page ranges.
+- Heavy `test-truncated-recovery.R`: 15 pass, 0 fail, 0 warn, 0 skip.
+- Heavy `test-matrix-truncated.R`: 30 pass, 0 fail, 0 warn, 0 skip.
 - `git diff --check`: clean.
 
 ## 5. Tests of the Tests

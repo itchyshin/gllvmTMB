@@ -41,6 +41,39 @@ This design is implemented as the internal route ledger
 | Proportions | unit, unit_obs, phy components | cluster, cluster2, and spatial denominator components are planned, not covered |
 | Augmented split targets | none yet | symbolic target table required before implementation |
 
+## Current Route Snapshot
+
+This is the operating truth for the profile route matrix as of 2026-07-04. It
+separates direct parameter profiles from derived intervals, because a direct
+profile of a log-SD or scale parameter is not the same claim as a calibrated
+profile interval for a derived covariance matrix, correlation, or variance
+share.
+
+| Level | Direct SD / scale | `Sigma` | Communality | `rho` | Proportion | Other |
+| --- | --- | --- | --- | --- | --- | --- |
+| `unit` | covered | partial | covered | covered | covered | repeatability partial |
+| `unit_obs` | covered | partial | covered | covered | covered | - |
+| `cluster` | covered | planned | not applicable | point-only | planned | diagonal tier only |
+| `cluster2` | covered | planned | not applicable | point-only | planned | diagonal tier only |
+| `phy` | covered | partial | covered | covered | covered | phylogenetic signal partial |
+| `spatial` | covered | partial | planned | partial | planned | total spatial covariance needs heavy gate |
+| `unit_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
+| `phy_unique_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
+| `phy_dep` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
+| `phy_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
+| `spde_base_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
+| `spde_dep` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
+| `spde_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
+
+Two clarifications matter for future profile-function work:
+
+- `profile_targets()` may expose a direct parameter, such as
+  `sigma_phy_slope`, without making the augmented split covariance, correlation,
+  or denominator target profile-ready.
+- `cluster` and `cluster2` can have direct diagonal SD profiles, but their
+  off-diagonal correlations are structural zeros and must not receive fake
+  intervals.
+
 ## ARIA
 
 Aim: centralize the route truth so future code can dispatch from one ledger.

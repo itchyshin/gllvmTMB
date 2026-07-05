@@ -58,13 +58,14 @@ test_that("profile route matrix keeps augmented split profile routes blocked", {
     "unit_slope", "phy_unique_slope", "phy_dep", "phy_slope",
     "spde_base_slope", "spde_dep", "spde_slope"
   )
+  split_estimands <- c("Sigma", "communality", "rho", "proportion")
 
   for (lvl in split_levels) {
-    sigma_route <- gllvmTMB:::.profile_route_status("Sigma", lvl, routes = routes)
-    rho_route <- gllvmTMB:::.profile_route_status("rho", lvl, routes = routes)
-    expect_equal(sigma_route$status, "blocked", label = lvl)
-    expect_equal(rho_route$status, "blocked", label = lvl)
-    expect_match(sigma_route$next_gate, "symbolic target", fixed = TRUE)
+    for (estimand in split_estimands) {
+      route <- gllvmTMB:::.profile_route_status(estimand, lvl, routes = routes)
+      expect_equal(route$status, "blocked", label = paste(estimand, lvl))
+      expect_match(route$next_gate, "symbolic target", fixed = TRUE)
+    }
   }
 })
 

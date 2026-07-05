@@ -33527,3 +33527,29 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 Outcome: parse passed; the focused bridge test file passed. Thirteen live
 GLLVM.jl integration sections skipped because `GLLVM_JL_PATH` was not
 configured. This is a postfit robustness fix only.
+
+## 2026-07-04 -- Profile route-matrix checkpoint
+
+Goal: make the profile-likelihood route map explicit enough to guide the next
+uncertainty slices across unit, unit_obs, cluster, cluster2, source, and
+augmented split tiers.
+
+Edits:
+
+- Updated Design 73 with the current route snapshot by level and estimand.
+- Clarified that direct parameter profiles, such as `sd_cluster` or
+  `sigma_phy_slope`, do not imply profile-ready derived `Sigma`, `rho`,
+  communality, or proportion targets.
+- Tightened the route-matrix regression so all augmented split estimands
+  (`Sigma`, communality, `rho`, and proportions) remain blocked until a
+  symbolic target table exists.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/profile-route-matrix.R")); invisible(parse("tests/testthat/test-profile-route-matrix.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R", reporter = "summary")'
+```
+
+Outcome: parse passed; the focused route-matrix test file passed. No capability
+status moved to covered.

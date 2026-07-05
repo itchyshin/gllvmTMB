@@ -34289,3 +34289,46 @@ Not run:
 - No broad `devtools::check()`, pkgdown rebuild, Totoro, or DRAC compute. This
   is a focused interval-boundary guard, not an interval-calibration or release
   slice.
+
+## 2026-07-05 -- spatial/phylo dispatch deprecation scanner guard
+
+Goal: close issue #629 by stopping `scan_for_deprecated()` from warning on
+documented `spatial()` mode-dispatch and `phylo()` bar-dispatch calls.
+
+Edits:
+
+- Added scanner helpers that distinguish legacy `spatial()` alias calls from
+  first-class mode-dispatch calls.
+- `spatial(1 | site, mesh = mesh)` and
+  `spatial(0 + trait | coords, mode = "latent", d = K, mesh = mesh)` no longer
+  emit the old `spatial() -> spatial_unique()` deprecation warning.
+- `phylo(0 + trait | species, mode = "latent", d = K, tree = tree)` no longer
+  emits the old `phylo() -> phylo_scalar()` deprecation message.
+- Legacy aliases still warn: `spatial(0 + trait | coords)` and `phylo(species)`.
+- Updated the spatial deprecation test wording and validation-debt row `FG-13`.
+
+Commands:
+
+```sh
+gh issue view 629 --json number,title,state,body,url
+Rscript --vanilla -e 'invisible(parse("R/brms-sugar.R")); invisible(parse("tests/testthat/test-scan-deprecated-namespace.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-scan-deprecated-namespace.R")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-spatial-mode-dispatch.R")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-spatial-deprecation.R")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-spatial-orientation-parser.R")'
+```
+
+Results:
+
+- `test-scan-deprecated-namespace.R`: 11 pass, 0 fail, 0 skip.
+- `test-spatial-mode-dispatch.R`: 12 pass, 0 fail, 0 skip under
+  `NOT_CRAN=true`.
+- `test-spatial-deprecation.R`: 7 pass, 0 fail, 0 skip under
+  `NOT_CRAN=true`.
+- `test-spatial-orientation-parser.R`: 6 pass, 0 fail, 0 skip.
+
+Not run:
+
+- No roxygen regeneration, pkgdown rebuild, broad `devtools::check()`, Totoro,
+  or DRAC compute. This is a pure parser/deprecation-scanner guard; no model
+  likelihood or public syntax changed.

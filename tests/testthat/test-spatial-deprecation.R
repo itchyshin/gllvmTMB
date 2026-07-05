@@ -1,5 +1,5 @@
-## spatial() -> spatial_unique() deprecation shim, introduced at gllvmTMB
-## 0.1.2. Calling spatial() should:
+## Legacy spatial() -> spatial_unique() deprecation shim, introduced at
+## gllvmTMB 0.1.2. Calling the no-mode legacy alias should:
 ##   (a) emit a lifecycle deprecation warning (lifecycle::deprecate_warn),
 ##   (b) route to the same internal handler as spatial_unique() (i.e.
 ##       fit identically), and
@@ -7,7 +7,11 @@
 ##       (not "spatial") because the canonical name is now the
 ##       unique-rank one in the 3 x 3 grid.
 ##
-## Both formula orientations are accepted: the canonical
+## The documented mode-dispatch form `spatial(..., mode = ...)` is not
+## deprecated; see `test-spatial-mode-dispatch.R` and the pure scanner
+## tests in `test-scan-deprecated-namespace.R`.
+##
+## Both legacy formula orientations are accepted: the canonical
 ## `spatial_unique(0 + trait | coords)` and the deprecated
 ## `spatial_unique(coords | trait)`. The latter triggers a separate
 ## lifecycle warning at gllvmTMB 0.1.4 (orientation flip); see
@@ -40,7 +44,7 @@ local_reset_lifecycle_cache <- function(env = parent.frame()) {
   invisible(NULL)
 }
 
-test_that("spatial() emits a lifecycle deprecation warning", {
+test_that("legacy spatial() alias emits a lifecycle deprecation warning", {
   ## lifecycle::deprecate_warn() fires each deprecation only ONCE PER SESSION
   ## by default: it records signalled ids in lifecycle's internal
   ## `deprecation_env` and returns early on subsequent hits. Re-running this

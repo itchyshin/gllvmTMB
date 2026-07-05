@@ -3525,6 +3525,36 @@ scan_for_deprecated <- function(rhs) {
       see = "{.code ?phylo_scalar}"
     )
   )
+  has_named_arg <- function(e, arg) {
+    nms <- names(as.list(e))
+    !is.null(nms) && arg %in% nms
+  }
+  is_bar_first_arg <- function(e) {
+    length(e) >= 2L &&
+      is.call(e[[2L]]) &&
+      identical(e[[2L]][[1L]], as.name("|")) &&
+      length(e[[2L]]) == 3L
+  }
+  is_intercept_only_bar_lhs <- function(e) {
+    if (!is_bar_first_arg(e)) {
+      return(FALSE)
+    }
+    lhs <- e[[2L]][[2L]]
+    (is.numeric(lhs) && length(lhs) == 1L && lhs == 1) ||
+      (is.symbol(lhs) && identical(as.character(lhs), "1"))
+  }
+  spatial_call_is_legacy_alias <- function(e) {
+    if (!is_bar_first_arg(e)) {
+      return(TRUE)
+    }
+    ## `spatial()` is now a documented mode-dispatch wrapper for bar
+    ## calls with an intercept-only LHS, explicit mode, or explicit mesh.
+    ## Only the older no-mode/no-mesh bar aliases should receive the
+    ## spatial -> spatial_unique deprecation warning.
+    !(is_intercept_only_bar_lhs(e) ||
+        has_named_arg(e, "mode") ||
+        has_named_arg(e, "mesh"))
+  }
   walk <- function(e) {
     if (is.call(e)) {
       ## Only a bare-symbol head (e.g. `spatial`) names a keyword. For a
@@ -3540,6 +3570,12 @@ scan_for_deprecated <- function(rhs) {
         ## standard tidyverse deprecation tooling and the `lifecycle`
         ## verbosity option.
         if (fn == "spatial") {
+          if (!spatial_call_is_legacy_alias(e)) {
+            for (i in seq_along(e)[-1L]) {
+              walk(e[[i]])
+            }
+            return(invisible(NULL))
+          }
           lifecycle::deprecate_warn(
             when = "0.1.2",
             what = "spatial()",
@@ -3549,6 +3585,11 @@ scan_for_deprecated <- function(rhs) {
               ">" = "Update existing code to spatial_unique() to keep the rank explicit."
             )
           )
+        } else if (fn == "phylo" && is_bar_first_arg(e)) {
+          for (i in seq_along(e)[-1L]) {
+            walk(e[[i]])
+          }
+          return(invisible(NULL))
         } else if (fn %in% names(deprecated_map)) {
           d <- deprecated_map[[fn]]
           .gllvmTMB_warn_keyword_deprecated(

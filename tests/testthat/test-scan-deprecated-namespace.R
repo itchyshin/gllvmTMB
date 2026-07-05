@@ -56,6 +56,78 @@ test_that("deprecated keyword messages point to replacement-specific help", {
   expect_no_match(msg, "?diag_re", fixed = TRUE)
 })
 
+local_reset_lifecycle_cache <- function(env = parent.frame()) {
+  dep_env <- tryCatch(
+    get("deprecation_env", envir = asNamespace("lifecycle")),
+    error = function(e) NULL
+  )
+  if (is.null(dep_env) || !is.environment(dep_env)) {
+    return(invisible(NULL))
+  }
+  saved <- as.list(dep_env, all.names = TRUE)
+  withr::defer(
+    {
+      rlang::env_unbind(dep_env, rlang::env_names(dep_env))
+      rlang::env_bind(dep_env, !!!saved)
+    },
+    envir = env
+  )
+  rlang::env_unbind(dep_env, rlang::env_names(dep_env))
+  invisible(NULL)
+}
+
+test_that("spatial mode-dispatch calls do not emit legacy alias deprecation", {
+  withr::local_options(lifecycle_verbosity = "warning")
+  local_reset_lifecycle_cache()
+
+  expect_warning(
+    gllvmTMB:::scan_for_deprecated(quote(spatial(1 | site, mesh = mesh))),
+    NA
+  )
+  expect_warning(
+    gllvmTMB:::scan_for_deprecated(
+      quote(spatial(0 + trait | coords, mode = "latent", d = 2, mesh = mesh))
+    ),
+    NA
+  )
+})
+
+test_that("legacy spatial alias still emits the spatial_unique deprecation", {
+  withr::local_options(lifecycle_verbosity = "warning")
+  local_reset_lifecycle_cache()
+
+  expect_warning(
+    gllvmTMB:::scan_for_deprecated(quote(spatial(0 + trait | coords))),
+    regexp = "spatial_unique"
+  )
+})
+
+test_that("phylo mode-dispatch calls do not emit legacy alias deprecation", {
+  seen <- gllvmTMB:::.gllvmTMB_deprecation_seen
+  if (exists("phylo", envir = seen, inherits = FALSE)) {
+    rm("phylo", envir = seen)
+  }
+
+  expect_message(
+    gllvmTMB:::scan_for_deprecated(
+      quote(phylo(0 + trait | species, mode = "latent", d = 2, tree = tree))
+    ),
+    NA
+  )
+})
+
+test_that("legacy phylo alias still points to phylo_scalar", {
+  seen <- gllvmTMB:::.gllvmTMB_deprecation_seen
+  if (exists("phylo", envir = seen, inherits = FALSE)) {
+    rm("phylo", envir = seen)
+  }
+
+  expect_message(
+    gllvmTMB:::scan_for_deprecated(quote(phylo(species))),
+    regexp = "phylo_scalar"
+  )
+})
+
 test_that("desugar_brms_sugar does not crash on namespace-qualified (::) calls", {
   withr::local_envvar(c("_R_CHECK_LENGTH_1_CONDITION_" = "true"))
   # End-to-end of the pure-AST path: scan (Pass 0) + canonical-alias

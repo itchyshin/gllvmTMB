@@ -257,12 +257,25 @@ extract_communality <- function(
     return(profile_ci_communality(fit, tier = level, level = conf_level))
   }
   if (method == "wald") {
-    ## Wald CI is approximate via delta method on a non-linear function
-    ## of multiple parameters. Defer to bootstrap with a note.
-    cli::cli_inform(
-      "Wald CI for communality is not implemented (delta method on a non-linear function); falling back to {.val bootstrap}."
-    )
-    method <- "bootstrap"
+    rows <- lapply(seq_along(trait_names), function(t) {
+      ci_t <- .communality_wald_ci(
+        fit,
+        tier = .canonical_level_name(level),
+        trait_idx = t,
+        level = conf_level,
+        link_residual = link_residual
+      )
+      data.frame(
+        trait = trait_names[t],
+        tier = level,
+        c2 = unname(ci_t["estimate"]),
+        lower = unname(ci_t["lower"]),
+        upper = unname(ci_t["upper"]),
+        method = "wald",
+        stringsAsFactors = FALSE
+      )
+    })
+    return(do.call(rbind, rows))
   }
   ## bootstrap
   boot <- suppressMessages(bootstrap_Sigma(

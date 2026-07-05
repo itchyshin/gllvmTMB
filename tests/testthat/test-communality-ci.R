@@ -68,6 +68,39 @@ test_that(".communality_wald_ci() returns finite (lower, upper) bracketing c2_ha
 })
 
 
+## ---- Public extractor Wald route ---------------------------------
+
+test_that("extract_communality(method = 'wald') uses Wald rather than bootstrap fallback", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  obj <- make_communality_binary_fit()
+
+  tbl <- NULL
+  expect_message(
+    tbl <- extract_communality(
+      obj$fit,
+      level = "unit",
+      link_residual = "none",
+      ci = TRUE,
+      method = "wald"
+    ),
+    NA
+  )
+  expect_s3_class(tbl, "data.frame")
+  expect_equal(unique(tbl$method), "wald")
+  expect_equal(unique(tbl$tier), "B")
+  expect_equal(nrow(tbl), obj$T)
+
+  helper <- gllvmTMB:::.communality_wald_ci(
+    obj$fit, tier = "unit", trait_idx = 1L, level = 0.95,
+    link_residual = "none"
+  )
+  expect_equal(tbl$c2[[1]], unname(helper["estimate"]), tolerance = 1e-8)
+  expect_equal(tbl$lower[[1]], unname(helper["lower"]), tolerance = 1e-8)
+  expect_equal(tbl$upper[[1]], unname(helper["upper"]), tolerance = 1e-8)
+})
+
+
 ## ---- Bootstrap CI: finite, brackets the point estimate ------------
 
 test_that(".communality_bootstrap_ci() with nsim = 50 returns finite (lower, upper)", {

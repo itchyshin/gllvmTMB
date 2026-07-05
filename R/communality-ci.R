@@ -42,7 +42,13 @@
 #'
 #' @keywords internal
 #' @noRd
-.communality_wald_ci <- function(fit, tier, trait_idx, level = 0.95) {
+.communality_wald_ci <- function(
+  fit,
+  tier,
+  trait_idx,
+  level = 0.95,
+  link_residual = c("auto", "none")
+) {
   if (!inherits(fit, "gllvmTMB_multi"))
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   if (!is.numeric(level) || length(level) != 1L ||
@@ -51,6 +57,7 @@
   if (!is.numeric(trait_idx) || length(trait_idx) != 1L)
     cli::cli_abort("{.arg trait_idx} must be a single integer.")
   trait_idx <- as.integer(trait_idx)
+  link_residual <- match.arg(link_residual)
 
   tier_in <- tier
   tier <- .normalise_level(tier, arg_name = "tier")
@@ -118,7 +125,7 @@
   ## variance depends on parameters (e.g. lognormal-Poisson) we are
   ## ignoring the second-order contribution, consistent with how
   ## `bootstrap_Sigma()` summarises its draws.
-  link_resid_vec <- if (tier == "phy") {
+  link_resid_vec <- if (tier == "phy" || identical(link_residual, "none")) {
     rep(0, T_n)
   } else {
     tryCatch(

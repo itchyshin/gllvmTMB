@@ -281,7 +281,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-02 | `extract_Sigma_B / W` legacy aliases | `covered` | `test-sigma-rename.R` | slated for `deprecate_soft()` 0.3.0 |
 | EXT-03 | `extract_Omega()` cross-tier | `covered` | `test-extract-omega.R` | |
 | EXT-04 | `extract_correlations()` 4 methods | `covered` (Fisher-z + Wald) / `partial` (profile + bootstrap on mixed-family) | `test-fisher-z-correlations.R`, `test-confint-bootstrap.R` | |
-| EXT-05 | `extract_communality()` | `covered` | `test-extractors.R`, `test-extractors-extra.R`, `test-derived-phylo-ci-audit.R` | Unit / unit_obs communalities remain covered; 2026-07-04 adds the phylogenetic-tier point route (`level = "phy"`) for `diag(Lambda_phy Lambda_phy') / diag(Lambda_phy Lambda_phy' + Psi_phy)`, guarded by the Ayumi #14 regression fixture. |
+| EXT-05 | `extract_communality()` | `covered` | `test-extractors.R`, `test-extractors-extra.R`, `test-derived-phylo-ci-audit.R`, `test-communality-ci.R` | Unit / unit_obs communalities remain covered; 2026-07-04 adds the phylogenetic-tier point route (`level = "phy"`) for `diag(Lambda_phy Lambda_phy') / diag(Lambda_phy Lambda_phy' + Psi_phy)`, guarded by the Ayumi #14 regression fixture. The extractor `ci = TRUE, method = "wald"` route now uses the scalar delta-method helper directly instead of the old bootstrap fallback. |
 | EXT-06 | `extract_repeatability()` | `covered` | `test-extractors-extra.R` | |
 | EXT-07 | `extract_phylo_signal()` | `covered` | `test-extractors-extra.R`, `test-extract-omega.R` | |
 | EXT-08 | `extract_residual_split()` | `covered` | `test-extract-omega.R`, `test-extractors-extra.R` | |

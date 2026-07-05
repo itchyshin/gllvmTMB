@@ -31857,3 +31857,61 @@ Follow-on noted for the next derived-CI matrix audit:
   Wald routing, but `extract_communality(ci = TRUE, method = "wald")` still
   uses the older bootstrap fallback message. Decide whether to route it through
   `.communality_wald_ci()` in the next audit slice.
+
+## 2026-07-04 -- Derived-CI matrix row: extractor communality Wald route
+
+Goal: continue the Phase 1 derived-CI route matrix audit with the smallest
+live inconsistency found after the Ayumi #14 repair. `confint(..., parm =
+"communality:...", method = "wald")` had a scalar Wald route, but
+`extract_communality(ci = TRUE, method = "wald")` still printed an old
+"not implemented" message and fell back to bootstrap.
+
+Implemented:
+
+- `.communality_wald_ci()` now accepts `link_residual = "auto" / "none"` so
+  extractor calls can match the point-estimate denominator requested by the
+  user.
+- `extract_communality(ci = TRUE, method = "wald")` now loops over traits and
+  calls `.communality_wald_ci()` directly instead of falling through to the
+  bootstrap path.
+- The extractor passes canonical tier names into the helper, avoiding an
+  internal legacy-`B` warning leak.
+- EXT-05 now records the extractor Wald route as covered by
+  `test-communality-ci.R`.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/communality-ci.R")); invisible(parse("R/extractors.R")); invisible(parse("tests/testthat/test-communality-ci.R")); cat("parse-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); cat("load-ok\n")'
+```
+
+Outcome: passed before the final warning-cleanup patch; the focused
+`test_file()` below reloaded the package after the patch.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-communality-ci.R", reporter = "summary")'
+```
+
+First run outcome: failed the new no-message assertion because default binomial
+`link_residual = "auto"` emits the expected link-residual variance message, and
+the extractor passed internal tier `B` into the helper, causing a legacy-warning
+leak.
+
+Fix: the regression now requests `link_residual = "none"` for the no-message
+check, and the extractor passes `.canonical_level_name(level)` into the helper.
+
+Second run outcome: passed; `communality-ci: ................................`.
+
+Known limitation:
+
+- This is route consistency, not new interval calibration. CI-08 / CI-10 remain
+  unchanged.
+- The next derived-CI matrix rows are still `icc`, `rho`, `proportion`, spatial
+  total-covariance profile behavior, and non-Gaussian/mixed-family unavailable
+  statuses.

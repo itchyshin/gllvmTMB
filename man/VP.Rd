@@ -19,7 +19,8 @@ active component of the model: between-unit shared (\code{latent_B}),
 between-unit unique (\code{unique_B}), within-unit shared (\code{latent_W}),
 within-unit unique (\code{unique_W}), phylogenetic (\code{phylo_scalar} /
 \code{phylo_latent}), non-phylogenetic species, spatial (\code{spatial}), and
-Gaussian residual.
+Gaussian/lognormal observation residual where present. Non-Gaussian
+link-implicit residual shares are handled by \code{\link[=extract_proportions]{extract_proportions()}}.
 }
 \details{
 Mirrors \code{gllvm::VP()} / \code{gllvm::plotVP()}.

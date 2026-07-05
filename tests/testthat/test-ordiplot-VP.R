@@ -20,6 +20,38 @@ make_rrB_fit <- function(seed = 1, d = 2, n_traits = 3) {
   suppressMessages(suppressWarnings(gllvmTMB(fmla, data = sim$data)))
 }
 
+make_fake_vp_fit <- function(family_ids, sd_B = rep(1, length(family_ids)),
+                             sigma_eps = 1) {
+  trait_levels <- paste0("trait_", seq_along(family_ids))
+  data <- data.frame(
+    trait = factor(rep(trait_levels, each = 2L), levels = trait_levels)
+  )
+  list(
+    use = list(
+      rr_B = FALSE,
+      diag_B = TRUE,
+      rr_W = FALSE,
+      diag_W = FALSE,
+      diag_species = FALSE,
+      phylo_rr = FALSE,
+      phylo_diag = FALSE,
+      propto = FALSE
+    ),
+    report = list(
+      sd_B = sd_B,
+      sigma_eps = sigma_eps
+    ),
+    n_traits = length(family_ids),
+    data = data,
+    trait_col = "trait",
+    tmb_data = list(
+      family_id_vec = rep(as.integer(family_ids), each = 2L),
+      link_id_vec = rep(0L, length(family_ids) * 2L),
+      trait_id = rep(seq_along(family_ids) - 1L, each = 2L)
+    )
+  )
+}
+
 # =================== ordiplot ===========================================
 
 test_that("ordiplot(): runs and returns scores+loadings invisibly", {
@@ -106,10 +138,35 @@ test_that("VP(): only active components are columns", {
   expect_false("rr_W" %in% colnames(M))
 })
 
-test_that("VP(): residual column always present (Gaussian noise)", {
+test_that("VP(): residual column is present for Gaussian noise", {
   fit <- make_rrB_fit(seed = 29, d = 2)
   M <- VP(fit)
   expect_true("residual" %in% colnames(M))
+})
+
+test_that("VP(): pure Poisson fit does not add a fake Gaussian residual", {
+  fit <- make_fake_vp_fit(family_ids = c(2L, 2L), sd_B = c(1, 2), sigma_eps = 1)
+  M <- VP(fit)
+  expect_false("residual" %in% colnames(M))
+  expect_equal(colnames(M), "diag_B")
+  expect_equal(unname(M[, "diag_B"]), c(1, 1))
+})
+
+test_that("VP(): mixed Gaussian and Poisson residual shares are trait-specific", {
+  fit <- make_fake_vp_fit(family_ids = c(0L, 2L), sd_B = c(1, 2), sigma_eps = 1)
+  M <- VP(fit)
+  expect_true("residual" %in% colnames(M))
+  expect_equal(M["trait_1", "diag_B"], 0.5)
+  expect_equal(M["trait_1", "residual"], 0.5)
+  expect_equal(M["trait_2", "diag_B"], 1)
+  expect_equal(M["trait_2", "residual"], 0)
+})
+
+test_that("VP(): lognormal uses sigma_eps as the observation residual", {
+  fit <- make_fake_vp_fit(family_ids = 3L, sd_B = 1, sigma_eps = 1)
+  M <- VP(fit)
+  expect_equal(M["trait_1", "diag_B"], 0.5)
+  expect_equal(M["trait_1", "residual"], 0.5)
 })
 
 test_that("VP(): rr_B + diag_B fit has both columns", {

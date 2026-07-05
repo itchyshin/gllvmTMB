@@ -32942,3 +32942,31 @@ Rscript --vanilla -e 'devtools::document(quiet = TRUE); cat("document-ok\n")'
 Outcome: parse passed; targeted `profile_cross_rho()` tie test passed;
 documentation regenerated. This is fixed-kernel sensitivity plumbing only, not
 in-engine rho estimation or interval coverage.
+
+## 2026-07-04 -- VP non-Gaussian residual semantics
+
+Goal: close issue #615 by preventing `VP()` from adding a fake Gaussian
+`sigma_eps^2` residual share to non-Gaussian traits where `sigma_eps` is
+reported but not an observation-scale residual.
+
+Edits:
+
+- Added `.vp_residual_per_trait()` to identify Gaussian/lognormal observation
+  residual variance by trait.
+- Kept the legacy `residual` column for Gaussian/lognormal rows.
+- Removed the residual column for pure Poisson fake-fit coverage and made
+  mixed Gaussian/Poisson residual shares trait-specific.
+- Updated `VP()` roxygen and regenerated `man/VP.Rd`.
+- Added validation row EXT-32.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/output-methods.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-ordiplot-VP.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE); cat("document-ok\n")'
+```
+
+Outcome: parse passed; VP/ordiplot tests passed; documentation regenerated.
+This repairs the legacy `VP()` residual semantics only. Family-aware
+latent-scale link residual variance remains covered by `extract_proportions()`.

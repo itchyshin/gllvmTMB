@@ -250,7 +250,8 @@ ordiplot.gllvmTMB_multi <- function(
 #' between-unit unique (`unique_B`), within-unit shared (`latent_W`),
 #' within-unit unique (`unique_W`), phylogenetic (`phylo_scalar` /
 #' `phylo_latent`), non-phylogenetic species, spatial (`spatial`), and
-#' Gaussian residual.
+#' Gaussian/lognormal observation residual where present. Non-Gaussian
+#' link-implicit residual shares are handled by [extract_proportions()].
 #'
 #' Mirrors `gllvm::VP()` / `gllvm::plotVP()`.
 #'
@@ -294,10 +295,57 @@ VP <- function(fit) {
     lam <- exp(unname(fit$opt$par["loglambda_phy"]))
     comps$propto <- rep(lam, fit$n_traits)
   }
-  ## Add Gaussian residual
-  comps$residual <- rep(as.numeric(fit$report$sigma_eps)^2, fit$n_traits)
+  ## Add only the legacy observation-scale residual represented by sigma_eps.
+  ## For count, binary, Gamma, Beta, ordinal, and NB families, sigma_eps is
+  ## either mapped off or has a family-specific meaning; extract_proportions()
+  ## is the canonical family-aware latent-scale variance-share helper.
+  residual_var <- .vp_residual_per_trait(fit)
+  if (any(residual_var > 0)) {
+    comps$residual <- residual_var
+  }
+
+  if (length(comps) == 0L) {
+    trait_names <- levels(fit$data[[fit$trait_col]])
+    return(matrix(
+      numeric(0),
+      nrow = fit$n_traits,
+      ncol = 0L,
+      dimnames = list(trait_names, character(0))
+    ))
+  }
 
   M <- do.call(cbind, comps)
   rownames(M) <- levels(fit$data[[fit$trait_col]])
   M / rowSums(M)
+}
+
+.vp_residual_per_trait <- function(fit) {
+  trait_names <- levels(fit$data[[fit$trait_col]])
+  Tn <- length(trait_names)
+  out <- numeric(Tn)
+  names(out) <- trait_names
+
+  sigma_eps <- as.numeric(fit$report$sigma_eps %||% numeric(0))
+  if (!length(sigma_eps) || !is.finite(sigma_eps[1L]) || sigma_eps[1L] <= 0) {
+    return(out)
+  }
+
+  fids <- fit$tmb_data$family_id_vec %||% rep(0L, Tn)
+  tids <- fit$tmb_data$trait_id %||% (seq_along(fids) - 1L)
+  tids_obs <- as.integer(tids) + 1L
+
+  for (t in seq_len(Tn)) {
+    rows_t <- which(tids_obs == t)
+    if (!length(rows_t)) next
+    fams_t <- fids[rows_t]
+    fams_t <- fams_t[is.finite(fams_t)]
+    if (!length(fams_t)) next
+    fams_uniq <- unique(as.integer(fams_t))
+    tab <- tabulate(match(as.integer(fams_t), fams_uniq))
+    fid <- fams_uniq[which.max(tab)]
+    if (fid %in% c(0L, 3L)) {
+      out[t] <- sigma_eps[1L]^2
+    }
+  }
+  out
 }

@@ -32,8 +32,8 @@ does NOT do" section), see
   2026-06-18, `unique()` / `*_unique()` are soft-deprecated
   compatibility syntax: new standalone diagonal examples use
   `indep()` / `*_indep()`, ordinary `latent()` now carries Psi by
-  default, and `latent(..., residual = FALSE)` requests the old
-  no-residual subset. Paired explicit-Psi examples and source-specific
+  default, and `latent(..., unique = FALSE)` requests the old
+  low-rank-only subset. Paired explicit-Psi examples and source-specific
   `*_unique()` forms remain accepted as compatibility syntax until
   their own fold/removal slices land.
 - Design 65 adds the generic dense-kernel quartet outside that

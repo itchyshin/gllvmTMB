@@ -156,7 +156,7 @@ test_that("profile_communality no-Psi error shows the actionable hint", {
 
   expect_error(
     gllvmTMB::profile_communality(fit, tier = "unit"),
-    "residual = FALSE"
+    "unique = FALSE"
   )
 })
 

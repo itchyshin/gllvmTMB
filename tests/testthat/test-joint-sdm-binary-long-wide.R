@@ -4,7 +4,7 @@
 ##   Symbol       Keyword                         DGP draw
 ##   alpha_t      0 + trait                       fixed known intercepts
 ##   beta_t       (0 + trait):env_1               fixed known slopes
-##   u_st         latent(0 + trait | site, d = 1, residual = FALSE) z_s Lambda_t
+##   u_st         latent(0 + trait | site, d = 1, unique = FALSE) z_s Lambda_t
 ##   y_st         family = binomial()             Bernoulli(logit^-1(eta_st))
 ##
 ## The fixture is a complete site x species grid. Species are the response
@@ -61,7 +61,7 @@ test_that("binary JSDM long and traits() wide calls are likelihood-equivalent", 
   ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
 
   fit_long <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + (0 + trait):env_1 + latent(0 + trait | site, d = 1, residual = FALSE),
+    value ~ 0 + trait + (0 + trait):env_1 + latent(0 + trait | site, d = 1, unique = FALSE),
     data = fixture$long,
     trait = "trait",
     unit = "site",
@@ -71,7 +71,7 @@ test_that("binary JSDM long and traits() wide calls are likelihood-equivalent", 
 
   fit_wide <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(trait_1, trait_2, trait_3, trait_4) ~
-      1 + env_1 + latent(1 | site, d = 1, residual = FALSE),
+      1 + env_1 + latent(1 | site, d = 1, unique = FALSE),
     data = fixture$wide,
     unit = "site",
     family = binomial(),

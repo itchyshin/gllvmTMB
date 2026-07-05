@@ -69,7 +69,7 @@ target is the trait covariance
 `Sigma = Lambda Lambda^T + Psi`, where `Lambda` contains the shared
 latent loadings and `Psi` is the diagonal trait-specific variance.
 In current ordinary `latent()` models, that diagonal `Psi` companion is
-included by default; `latent(..., residual = FALSE)` requests the older
+included by default; `latent(..., unique = FALSE)` requests the older
 no-Psi subset, and explicit `unique()` remains compatibility syntax.
 
 Use this alignment while reading the diagnostics:

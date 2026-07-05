@@ -51,7 +51,7 @@ was present. Ordinary \code{latent()} now includes the diagonal
 \eqn{\boldsymbol\Psi} companion by default, so the decomposition is the
 default instead of a two-keyword spelling.
 
-Set \code{latent(..., residual = FALSE)} only when you deliberately want the
+Set \code{latent(..., unique = FALSE)} only when you deliberately want the
 no-residual subset where communality reaches 1 by construction.
 }
 

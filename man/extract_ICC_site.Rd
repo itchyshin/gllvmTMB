@@ -25,7 +25,7 @@ Calls \code{\link[=extract_Sigma]{extract_Sigma()}} internally for both levels w
 so the diagonal of each \eqn{\boldsymbol\Sigma} includes the
 \eqn{\boldsymbol\Psi} component when it is present. Ordinary \code{latent()}
 includes \eqn{\boldsymbol\Psi} by default; if either level uses
-\code{latent(..., residual = FALSE)}, the corresponding advisory message
+\code{latent(..., unique = FALSE)}, the corresponding advisory message
 fires and the ICC is computed against the no-Psi diagonal.
 
 For binomial fits the implicit link residual is included in the

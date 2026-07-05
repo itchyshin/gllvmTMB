@@ -50,7 +50,7 @@ deprecation message themselves; not part of the public API.}
 For \code{part = "total"} or \code{"shared"}: a list with components
 \code{Sigma} (T x T matrix), \code{R} (T x T correlation matrix; only for
 \code{"total"}), \code{level}, \code{part}, and \code{note} (character vector of
-advisory messages, e.g. about a no-Psi \code{residual = FALSE} fit).
+advisory messages, e.g. about a no-Psi \code{unique = FALSE} fit).
 
 For \code{part = "unique"}: a list with \code{s} (length-T named numeric
 vector of unique variances), \code{level}, \code{part}, \code{note}.
@@ -87,7 +87,7 @@ uses (Bartholomew et al. 2011).
 \subsection{When a fit has no Psi component}{
 
 If the formula deliberately uses
-\code{latent(0 + trait | unit, d = K, residual = FALSE)}, the engine fits only the
+\code{latent(0 + trait | unit, d = K, unique = FALSE)}, the engine fits only the
 \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component. Calling
 \code{extract_Sigma(fit, level, part = "total")} then returns just the shared
 component. This is useful for no-residual / rotation-invariant checks, but it
@@ -98,7 +98,7 @@ with a too-small denominator).
 
 For Gaussian / lognormal / Gamma fits this function emits an advisory note
 when a reduced-rank tier has no Psi component. Use the ordinary
-\code{latent(..., residual = TRUE)} default for
+\code{latent(..., unique = TRUE)} default for
 \eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}; the
 explicit \code{latent() + unique()} spelling remains compatibility syntax only.
 

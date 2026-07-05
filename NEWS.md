@@ -3,6 +3,22 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Ordinary `latent()`: `residual =` renamed to `unique =` (2026-07-05)
+
+* The ordinary intercept-only `latent()` argument `residual =` is renamed to
+  `unique =` (same meaning, same default `TRUE`), unifying the name with the
+  source latents (`spatial_latent(..., unique = …)`, `phylo_latent`) and the
+  augmented random-regression form. `latent(0 + trait | unit, unique = FALSE)`
+  requests the low-rank-only / rotation-invariant subset. `residual =` keeps
+  working as a **soft-deprecated alias** (emits `lifecycle::deprecate_warn()` and
+  maps to `unique =`) and will be removed in a later release. Package examples,
+  articles, the keyword grid, and roxygen now use `unique =`.
+* **Scope boundary.** IN: the ordinary-latent argument rename with a working
+  alias — a naming change only, no default / likelihood / covariance behaviour
+  change (`unique = TRUE` == the old `residual = TRUE`). PLANNED: source-tier
+  default alignment (`phylo_latent()` / `spatial_latent()` currently default
+  `unique = FALSE`) is a separate follow-up.
+
 ## Augmented latent `unique =` opt-out (2026-07-05)
 
 * The augmented random-regression form `latent(1 + x | unit)` (and its long

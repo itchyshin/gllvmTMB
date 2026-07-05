@@ -77,7 +77,7 @@ test_that("unique-family soft deprecation keeps compatibility rewrites", {
   expect_match(f_kernel_txt, ".kernel_mode = \"unique\"", fixed = TRUE)
 })
 
-test_that("ordinary latent auto-emits Psi unless residual is FALSE", {
+test_that("ordinary latent auto-emits Psi unless unique is FALSE", {
   withr::local_options(lifecycle_verbosity = "quiet")
 
   f_fold <- gllvmTMB:::rewrite_canonical_aliases(
@@ -91,7 +91,7 @@ test_that("ordinary latent auto-emits Psi unless residual is FALSE", {
   expect_true(isTRUE(p_fold$covstructs[[2L]]$extra$.latent_psi))
 
   f_no_resid <- gllvmTMB:::rewrite_canonical_aliases(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2, residual = FALSE)
+    value ~ 0 + trait + latent(0 + trait | site, d = 2, unique = FALSE)
   )
   p_no_resid <- gllvmTMB:::parse_multi_formula(f_no_resid)
   expect_equal(
@@ -99,6 +99,26 @@ test_that("ordinary latent auto-emits Psi unless residual is FALSE", {
     "rr"
   )
   expect_false("residual" %in% names(p_no_resid$covstructs[[1L]]$extra))
+  expect_false("unique" %in% names(p_no_resid$covstructs[[1L]]$extra))
+})
+
+## The residual= -> unique= deprecation warning is asserted once in
+## test-ordinary-latent-random-regression.R (the shared resolver
+## .gllvmTMB_resolve_latent_unique). lifecycle throttles the warning once per
+## session per id, so a second assertion elsewhere would be order-dependent;
+## here we only check the alias maps to the no-Psi behaviour (warning silenced).
+test_that("ordinary latent residual= alias maps to the unique = FALSE no-Psi fold", {
+  withr::local_options(lifecycle_verbosity = "quiet")
+
+  p_alias <- gllvmTMB:::parse_multi_formula(
+    gllvmTMB:::desugar_brms_sugar(
+      value ~ 0 + trait + latent(0 + trait | site, d = 2, residual = FALSE)
+    )
+  )
+  expect_equal(
+    vapply(p_alias$covstructs, `[[`, character(1), "kind"),
+    "rr"
+  )
 })
 
 test_that("ordinary latent Psi fold matches the explicit compatibility pair", {

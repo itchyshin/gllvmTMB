@@ -44,7 +44,7 @@
 #' \eqn{\boldsymbol\Psi} companion by default, so the decomposition is the
 #' default instead of a two-keyword spelling.
 #'
-#' Set `latent(..., residual = FALSE)` only when you deliberately want the
+#' Set `latent(..., unique = FALSE)` only when you deliberately want the
 #' no-residual subset where communality reaches 1 by construction.
 #'
 #' ## When you do *not* need `unique()`

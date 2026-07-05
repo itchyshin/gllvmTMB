@@ -32,7 +32,7 @@ test_that("Gamma(link='log') fits and recovers trait intercepts at modest n", {
   )
 
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | individual, d = 2, residual = FALSE),
+    value ~ 0 + trait + latent(0 + trait | individual, d = 2, unique = FALSE),
     data   = df,
     site   = "individual",
     family = Gamma(link = "log")
@@ -110,7 +110,7 @@ test_that("Gamma errors on default inverse link (must use log)", {
   )
   expect_error(
     suppressMessages(suppressWarnings(gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | individual, d = 1, residual = FALSE),
+      value ~ 0 + trait + latent(0 + trait | individual, d = 1, unique = FALSE),
       data = df, site = "individual", family = Gamma()
     ))),
     regexp = "log link"
@@ -126,7 +126,7 @@ test_that("Gamma errors on non-positive observed y", {
   )
   expect_error(
     suppressMessages(suppressWarnings(gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | individual, d = 1, residual = FALSE),
+      value ~ 0 + trait + latent(0 + trait | individual, d = 1, unique = FALSE),
       data = df, site = "individual", family = Gamma(link = "log")
     ))),
     regexp = "strictly positive"

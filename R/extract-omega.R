@@ -435,7 +435,7 @@ extract_phylo_signal <- function(
   ## Build advisory if any component is structurally zero
   if (sum(Psi_diag) == 0) {
     cli::cli_inform(
-      "Psi_non = 0 across all traits. For the ordinary non-phylogenetic species tier, use default `latent(0 + trait | species, d = K)` to include Psi; `latent(..., residual = FALSE)` is the explicit no-Psi subset."
+      "Psi_non = 0 across all traits. For the ordinary non-phylogenetic species tier, use default `latent(0 + trait | species, d = K)` to include Psi; `latent(..., unique = FALSE)` is the explicit no-Psi subset."
     )
   }
 

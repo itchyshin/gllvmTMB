@@ -21,7 +21,7 @@
 ## All tests gated by `skip_on_cran()` because the mixed-family fit
 ## takes ~5-15 seconds.
 
-make_mixed_family_fit <- function(seed = 2025L, residual = TRUE) {
+make_mixed_family_fit <- function(seed = 2025L, unique = TRUE) {
   set.seed(seed)
   sim <- gllvmTMB::simulate_site_trait(
     n_sites = 40, n_species = 10, n_traits = 3,
@@ -47,10 +47,10 @@ make_mixed_family_fit <- function(seed = 2025L, residual = TRUE) {
   family_list <- list(gaussian(), binomial(), poisson())
   attr(family_list, "family_var") <- "family"
 
-  form <- if (isTRUE(residual)) {
+  form <- if (isTRUE(unique)) {
     value ~ 0 + trait + latent(0 + trait | site, d = 2)
   } else {
-    value ~ 0 + trait + latent(0 + trait | site, d = 2, residual = FALSE)
+    value ~ 0 + trait + latent(0 + trait | site, d = 2, unique = FALSE)
   }
 
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -131,10 +131,10 @@ test_that("extract_correlations() default matches link_residual = 'auto'", {
 
 ## ---- 4: extract_Sigma() with part = 'unique' on a no-Psi fit ----------
 
-test_that("extract_Sigma(part = 'unique') returns a zero-Psi diagonal on residual=FALSE fit", {
+test_that("extract_Sigma(part = 'unique') returns a zero-Psi diagonal on unique = FALSE fit", {
   skip_on_cran()
-  fit <- make_mixed_family_fit(residual = FALSE)
-  ## The fit deliberately requests latent(..., residual = FALSE), so the Psi
+  fit <- make_mixed_family_fit(unique = FALSE)
+  ## The fit deliberately requests latent(..., unique = FALSE), so the Psi
   ## diagonal is the zero vector. `extract_Sigma(part = 'unique')` exposes the
   ## diagonal as the `$s` slot of length T (not a matrix).
   S <- suppressMessages(gllvmTMB::extract_Sigma(
@@ -143,7 +143,7 @@ test_that("extract_Sigma(part = 'unique') returns a zero-Psi diagonal on residua
   expect_true("s" %in% names(S))
   expect_length(S$s, 3L)
   expect_true(is.numeric(S$s))
-  ## With residual = FALSE, the Psi diagonal is structurally zero for all three
+  ## With unique = FALSE, the Psi diagonal is structurally zero for all three
   ## traits.
   expect_equal(unname(S$s), rep(0, 3L), tolerance = 1e-10)
 })

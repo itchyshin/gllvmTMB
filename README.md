@@ -201,7 +201,7 @@ where `Lambda` is the shared-axis loading matrix (set by
 `latent(..., d = K)`) and `psi` (the Greek letter Psi, matching the
 factor-analysis / SEM convention) is the trait-specific
 residual variance. Ordinary `latent()` includes that `Psi`
-companion by default; `latent(..., residual = FALSE)` requests the
+companion by default; `latent(..., unique = FALSE)` requests the
 old no-residual subset.
 
 ## Current Status

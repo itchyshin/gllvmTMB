@@ -37,7 +37,7 @@ use `indep()` so the intent is visible in the formula.
 ```{r early-fit-pattern, eval = FALSE}
 fit_no_psi <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | individual, d = 2, residual = FALSE),
+    latent(0 + trait | individual, d = 2, unique = FALSE),
   data = df, trait = "trait", unit = "individual"
 )
 
@@ -105,7 +105,7 @@ data-generating block.
 The truth has both a shared low-rank component and a trait-specific Psi
 diagonal. Fit the same data two ways:
 
-* `Model A`: `latent(0 + trait | individual, d = 2, residual = FALSE)` (no Psi)
+* `Model A`: `latent(0 + trait | individual, d = 2, unique = FALSE)` (no Psi)
 * `Model B`: `latent(0 + trait | individual, d = 2)` (default Psi)
 
 ```{r setup}
@@ -155,7 +155,7 @@ The long-format formulas are:
 covex$edge_cases$latent_only$formula_long
 formula_long_full <- value ~ 0 + trait + latent(0 + trait | individual, d = 2)
 formula_long_no_psi <- value ~ 0 + trait +
-  latent(0 + trait | individual, d = 2, residual = FALSE)
+  latent(0 + trait | individual, d = 2, unique = FALSE)
 
 formula_long_full
 ```
@@ -222,12 +222,12 @@ ext_B <- extract_Sigma(fit_B, level = "unit", part = "total")
 ```
 
 Notice that the call on `fit_A` emits a one-shot **advisory**
-explaining that `residual = FALSE` returns
+explaining that `unique = FALSE` returns
 $\hat{\boldsymbol\Sigma} = \Lambda\Lambda^\top$ without Psi (we suppressed the
 message above for clean output but the message is also stored in `ext_A$note`).
 
 ```{r show-note}
-ext_A$note  # advisory: no Psi because residual = FALSE
+ext_A$note  # advisory: no Psi because unique = FALSE
 ```
 
 ## The correlations side by side
@@ -240,7 +240,7 @@ cmp_A <- compare_Sigma_table(
   measure = "correlation",
   entries = "upper"
 )
-cmp_A$comparison <- "Model A: residual = FALSE"
+cmp_A$comparison <- "Model A: unique = FALSE"
 
 cmp_B <- compare_Sigma_table(
   fit_B,
@@ -478,7 +478,7 @@ Nakagawa, Johnson & Schielzeth 2017).
 
 | You want… | You need | Notes |
 |---|---|---|
-| Cross-trait correlations on a Gaussian / lognormal / Gamma fit | ordinary `latent()` at every level | Use `residual = FALSE` only for the no-Psi subset; otherwise correlations are inflated. |
+| Cross-trait correlations on a Gaussian / lognormal / Gamma fit | ordinary `latent()` at every level | Use `unique = FALSE` only for the no-Psi subset; otherwise correlations are inflated. |
 | Correlations on a binary fit | `latent()` only; `link_residual = "auto"` for marginal scale | Implicit residual depends on link (π²/3, 1, π²/6). |
 | Phylogenetic decomposition | `phylo_latent() + phylo_unique()` for the phylogenetic tier; add ordinary `latent()` for the non-phylogenetic species tier | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `diag(psi)` pieces. |
 | Communality | `extract_communality(fit)` + the right Psi-carrying pattern | Communality formula uses Σ; needs full Σ to be meaningful. |

@@ -212,7 +212,7 @@ with
 
 Ordinary `latent()` includes its diagonal $\boldsymbol{\Psi}$ companion by
 default, so the between-site and within-site decompositions below do not need
-an explicit `unique()` term. Use `latent(..., residual = FALSE)` only for the
+an explicit `unique()` term. Use `latent(..., unique = FALSE)` only for the
 older no-Psi subset.
 
 ```{r fit-m1}

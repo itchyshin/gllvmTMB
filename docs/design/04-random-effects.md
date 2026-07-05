@@ -44,7 +44,7 @@ discipline, adapted for the multi-trait stacked grammar):
 4. **`latent(0 + trait | g, d = K)` reduced-rank** loadings plus
    the ordinary diagonal Psi companion by default. The `glmmTMB::rr()`
    machinery (McGillycuddy et al. 2025) is adapted to the
-   trait-stacked grammar; `residual = FALSE` requests the old
+   trait-stacked grammar; `unique = FALSE` requests the old
    no-Psi subset. **Status: `claimed`**.
 5. **Explicit `latent + unique` paired decomposition** producing
    $\Sigma = \Lambda\Lambda^\top + \Psi$. This remains compatibility
@@ -182,7 +182,7 @@ $$
 This is the **headline decomposition** named in
 `docs/design/00-vision.md`. In the current ordinary API, the same
 decomposition is emitted by `latent(0 + trait | g, d = K)` alone.
-Write `latent(..., residual = FALSE)` only for the no-Psi subset, and
+Write `latent(..., unique = FALSE)` only for the no-Psi subset, and
 write `latent(..., common = TRUE)` for one shared ordinary diagonal
 Psi value across traits. The explicit `latent + unique` pair remains
 compatibility syntax. See `01-formula-grammar.md` for the pairing

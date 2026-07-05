@@ -113,7 +113,7 @@ trait-specific component.
 
 **Diagnosis.** First check what the extractor is designed to return.
 In this example, the formula requests the no-Psi subset with
-`latent(..., residual = FALSE)`, so `extract_Sigma(level = "unit")`
+`latent(..., unique = FALSE)`, so `extract_Sigma(level = "unit")`
 returns the `latent()`-implied between-unit covariance
 $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$, **not** the marginal
 observational variance
@@ -131,7 +131,7 @@ sim <- simulate_site_trait(
   psi_B  = rep(0, 3), beta = matrix(0, 3, 2), seed = 1
 )
 fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 2, residual = FALSE),
+  value ~ 0 + trait + latent(0 + trait | site, d = 2, unique = FALSE),
   data = sim$data, trait = "trait"
 )
 
@@ -145,7 +145,7 @@ round(rbind(diag_LLt_true  = diag(LLt_true),
 **Rule of thumb.** *Name the estimand before judging the estimate.
 For this example, compare `extract_Sigma(level = "unit")` to
 $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$ because the formula requested
-`residual = FALSE`. If the scientific target includes trait-specific
+`unique = FALSE`. If the scientific target includes trait-specific
 diagonal $\boldsymbol\Psi$, use the default `latent()` fit and inspect
 `extract_Sigma(level = "unit", part = "total")$Sigma`. The residual
 `sigma_eps` is reported separately in `fit$report$sigma_eps`; do not silently

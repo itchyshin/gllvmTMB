@@ -26,7 +26,7 @@ two principles:
    diagonal Psi companion by default, so the usual decomposition is
    $\Sigma = \Lambda\Lambda^\top + \Psi$. Users who deliberately want
    the no-residual / rotation-invariant subset write
-   `latent(..., residual = FALSE)`. Source-specific latent-Psi folds
+   `latent(..., unique = FALSE)`. Source-specific latent-Psi folds
    remain future slices.
 
 ## Status map
@@ -78,13 +78,13 @@ support from end-to-end verification:
 | `gllvmTMB(traits(t1, t2, ...) ~ ..., data = df_wide)` | **covered** | Wide-format entry point. The `traits(...)` LHS marker triggers internal pivot to long; long+wide `logLik` agreement is part of the contract. Test evidence: `test-traits-keyword.R`, `test-wide-weights-matrix.R` (validation-debt register FG-01, FG-03; Phase 0B promotion 2026-05-16). |
 | `gllvmTMB_wide(Y, ...)` | **partial / soft-deprecated in 0.2.0** | Legacy matrix-in wrapper. It remains exported for migration and matrix-first workflows, but new examples use `gllvmTMB(traits(...) ~ ..., data = df_wide)` instead. |
 | `0 + trait` and `(0 + trait):x` | **covered** | Long-form trait-stacked fixed-effect grammar. Test evidence: `test-stage1-stacked-fixed-effects.R`, `test-canonical-keywords.R` (via validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
-| `latent(0 + trait \| g, d = K)` | **covered / ordinary Psi folded** | Reduced-rank loadings plus the default diagonal $\boldsymbol\Psi$ companion for $T$ traits across grouping factor `g`, rank $K \le T$. Use `residual = FALSE` for the old no-residual subset; use `common = TRUE` for one shared ordinary $\psi$ across traits. Test evidence: `test-stage2-rr-diag.R`, `test-keyword-grid.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (validation-debt register FG-04 / FG-06; Phase 0B promotion 2026-05-16; ordinary latent-Psi fold and common-Psi re-home slices 2026-06-18). |
+| `latent(0 + trait \| g, d = K)` | **covered / ordinary Psi folded** | Reduced-rank loadings plus the default diagonal $\boldsymbol\Psi$ companion for $T$ traits across grouping factor `g`, rank $K \le T$. Use `unique = FALSE` for the old no-residual subset; use `common = TRUE` for one shared ordinary $\psi$ across traits. Test evidence: `test-stage2-rr-diag.R`, `test-keyword-grid.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (validation-debt register FG-04 / FG-06; Phase 0B promotion 2026-05-16; ordinary latent-Psi fold and common-Psi re-home slices 2026-06-18). |
 | `latent(1 + x \| unit, d = K)` / long-form equivalents | **partial / Gaussian covered** | Ordinary individual-level Gaussian random-regression decomposition over the augmented `(intercept, slope) x trait` coefficient vector. The Gaussian engine reports `Lambda_aug Lambda_aug^T`, the default augmented diagonal `Psi_B,aug`, and their total through `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`. Explicit `+ unique(1 + x \| unit)` remains accepted as compatibility syntax, and standalone augmented `unique()` remains the diagonal-only compatibility mode. Test evidence: `test-ordinary-latent-random-regression.R` (parser, long fit, `traits(...)` wide fit, Gaussian default composition and recovery, explicit compatibility composition, explicit compatibility diagonal fit, Poisson latent-only smoke, rank / unit_obs / mismatched-slope / Gaussian-only guards). Non-Gaussian augmented `unique()` remains guarded, and non-Gaussian augmented `latent()` stays low-rank-only. |
 | `unique(0 + trait \| g)` | **covered / soft-deprecated compatibility** | Trait-diagonal $\boldsymbol\Psi$ on grouping factor `g`. New standalone diagonal code should use `indep(0 + trait \| g)`, with `common = TRUE` when one shared marginal variance is intended. Test evidence: `test-stage2-rr-diag.R`, `test-cross-sectional-unique.R`, `test-unique-family-deprecation.R` (validation-debt register FG-05; Phase 0B promotion 2026-05-16; lifecycle warning slice 2026-06-18). |
 | `latent + unique` paired | **covered / soft-deprecated compatibility** | The explicit-Psi spelling remains accepted, but ordinary `latent()` now auto-emits $\boldsymbol\Psi$ by default. This compatibility pair should be migrated to `latent()` alone; paired legacy `unique(..., common = TRUE)` should migrate to ordinary intercept-only `latent(..., common = TRUE)`. Test evidence: `test-stage2-rr-diag.R`, `test-mixed-response-sigma.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (validation-debt register FG-06; Phase 0B promotion 2026-05-16; lifecycle warning, ordinary fold, and common-Psi re-home slices 2026-06-18). |
 | `indep(0 + trait \| g)` | **covered** | Explicit marginal / independent mode; same diagonal covariance as standalone `unique()` and always used alone. `indep(..., common = TRUE)` is the covered scalar marginal-only replacement for standalone `unique(..., common = TRUE)`. Test evidence: `test-canonical-keywords.R` (standalone equivalence with `unique()`, including `common = TRUE`), `test-stage3-propto-equalto.R` (Gaussian) + `test-formula-grammar-smoke.R` (binomial) (validation-debt register FG-07; Phase 0B.2 promotion 2026-05-16; common re-home slice 2026-06-18). |
 | `dep(0 + trait \| g)` | **covered** | Fully unstructured trait covariance estimated directly. Test evidence: `test-stage3-propto-equalto.R` (Gaussian) + `test-formula-grammar-smoke.R` (Poisson) (validation-debt register FG-08; Phase 0B.2 promotion 2026-05-16). |
-| `(omit)` ↔ scalar covariance | **covered / source-specific only** | For ordinary `latent()`, omission now means default Psi is included; write `residual = FALSE` for no ordinary Psi. For source-specific rows, omitting `*_unique` / `*_indep` / `*_dep` still means no trait-specific term on that correlation source. Test evidence: `test-stage2-rr-diag.R` (`latent(..., residual = FALSE)` matches glmmTMB `rr()`), `test-canonical-keywords.R` (source-specific latent-only fits) (Phase 0B.3 promotion 2026-05-16; ordinary fold slice 2026-06-18). |
+| `(omit)` ↔ scalar covariance | **covered / source-specific only** | For ordinary `latent()`, omission now means default Psi is included; write `unique = FALSE` for no ordinary Psi. For source-specific rows, omitting `*_unique` / `*_indep` / `*_dep` still means no trait-specific term on that correlation source. Test evidence: `test-stage2-rr-diag.R` (`latent(..., unique = FALSE)` matches glmmTMB `rr()`), `test-canonical-keywords.R` (source-specific latent-only fits) (Phase 0B.3 promotion 2026-05-16; ordinary fold slice 2026-06-18). |
 | `phylo_latent(species, d = K, tree = tree)` | **covered** | Reduced-rank phylogenetic loadings using sparse $A^{-1}$. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16). |
 | `phylo_unique(species, tree = tree)` | **covered / soft-deprecated compatibility** | Trait-diagonal $\boldsymbol\Psi_\text{phy}$ scaled by phylogenetic covariance. New standalone diagonal code should use `phylo_indep(0 + trait \| species)`. Paired explicit-Psi forms remain accepted until the latent-Psi fold/removal slice lands. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R`, `test-unique-family-deprecation.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16; lifecycle warning slice 2026-06-18). |
 | `phylo_unique(1 + x \| species)` / `phylo_unique(0 + trait + (0 + trait):x \| species)` | **claimed** | Phase 56.3 parser bridge plus Phase 56.4 Gaussian anchor-cell evidence for augmented-LHS phylogenetic random regression. Parser classification and two-column `Z_phy_aug` construction are exercised by `test-phase56-3-phylo-unique-parser.R`; recovery, wide-long byte-identity, and the forced-`n_lhs_cols` negative test are exercised by `test-phylo-unique-slope-gaussian.R`. This row stays `claimed` until Phase 56.6 walks the validation-debt register / NEWS / article surface. |
@@ -146,7 +146,7 @@ gllvmTMB(
 
 The long form makes the trait-stacked grammar visible row by row.
 The default ordinary `latent()` term reads as the full
-`Lambda Lambda^T + Psi` decomposition; add `residual = FALSE` only for
+`Lambda Lambda^T + Psi` decomposition; add `unique = FALSE` only for
 the deliberate no-Psi subset.
 
 ### Wide format via the `traits(...)` LHS helper
@@ -264,7 +264,7 @@ trait covariance):
   estimated directly with $T(T+1)/2$ free entries.
 - **latent** → reduced-rank loadings $\Lambda \in \mathbb{R}^{T \times K}$
   with $K \le T$. Ordinary `latent()` now implies
-  $\Lambda\Lambda^\top + \Psi$ by default; `residual = FALSE`
+  $\Lambda\Lambda^\top + \Psi$ by default; `unique = FALSE`
   requests $\Lambda\Lambda^\top$ only.
 
 **Row meanings** (the source of correlation across the grouping
@@ -300,13 +300,13 @@ lavaan). On the public API:
   for explicit $\boldsymbol\Psi$.
 
 **Transition rule**: ordinary `latent(...)` alone now gives the
-decomposition above. `latent(..., residual = FALSE)` gives the old
+decomposition above. `latent(..., unique = FALSE)` gives the old
 $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ subset. `unique(...)`
 alone remains diagonal-only compatibility syntax and should migrate to
 `indep(...)` for new standalone marginal models; write
 `indep(..., common = TRUE)` for the scalar standalone marginal model.
 For the paired ordinary scalar Psi decomposition, migrate legacy
-`latent(..., residual = FALSE) + unique(..., common = TRUE)` to
+`latent(..., unique = FALSE) + unique(..., common = TRUE)` to
 `latent(..., common = TRUE)`.
 
 The older pairing rule still applies to source-specific
@@ -335,7 +335,7 @@ Random effects use the same `0 + trait` convention:
 ```r
 latent(0 + trait | site, d = 2)         # Lambda_B Lambda_B^T + Psi_B
 latent(0 + trait | site, d = 2,
-       residual = FALSE)                # Lambda_B Lambda_B^T only
+       unique = FALSE)                  # Lambda_B Lambda_B^T only
 indep(0 + trait | site)                 # standalone diagonal marginal tier
 ```
 

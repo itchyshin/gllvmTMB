@@ -69,7 +69,7 @@ extract_Sigma_W <- function(fit) {
 #' so the diagonal of each \eqn{\boldsymbol\Sigma} includes the
 #' \eqn{\boldsymbol\Psi} component when it is present. Ordinary `latent()`
 #' includes \eqn{\boldsymbol\Psi} by default; if either level uses
-#' `latent(..., residual = FALSE)`, the corresponding advisory message
+#' `latent(..., unique = FALSE)`, the corresponding advisory message
 #' fires and the ICC is computed against the no-Psi diagonal.
 #'
 #' For binomial fits the implicit link residual is included in the
@@ -135,13 +135,13 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'
 #' ## Caveat: communality with no-Psi fits
 #'
-#' If the fit uses `latent(..., residual = FALSE)` at the requested
+#' If the fit uses `latent(..., unique = FALSE)` at the requested
 #' level, then \eqn{\boldsymbol\Psi = \mathbf 0} and `c_t^2 = 1` for
 #' every trait. This is mathematically correct for the no-residual
 #' subset but tells you nothing about trait integration. The
 #' [extract_Sigma()] advisory message will fire to flag this. To get
 #' meaningful communalities, use ordinary `latent()` with the default
-#' `residual = TRUE`.
+#' `unique = TRUE`.
 #'
 #' For binomial fits the link-specific implicit residual (\eqn{\pi^2/3}
 #' for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the

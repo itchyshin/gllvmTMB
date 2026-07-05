@@ -139,7 +139,7 @@ test_that("`unique(..., common = TRUE)` ties trait variances to one shared param
   ## With `common = TRUE`, all traits should share one sd_B value.
   fit_common <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 2, residual = FALSE) +
+            latent(0 + trait | site, d = 2, unique = FALSE) +
             unique(0 + trait | site, common = TRUE),
     data = sim$data, unit = "site"
   )))
@@ -151,7 +151,7 @@ test_that("`unique(..., common = TRUE)` ties trait variances to one shared param
   ## Free version has T-1 more parameters.
   fit_free <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 2, residual = FALSE) +
+            latent(0 + trait | site, d = 2, unique = FALSE) +
             unique(0 + trait | site),
     data = sim$data, unit = "site"
   )))
@@ -171,9 +171,9 @@ test_that("`unique(..., common = TRUE)` works at the W tier too", {
   )
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 2, residual = FALSE) +
+            latent(0 + trait | site, d = 2, unique = FALSE) +
             unique(0 + trait | site) +
-            latent(0 + trait | site_species, d = 1, residual = FALSE) +
+            latent(0 + trait | site_species, d = 1, unique = FALSE) +
             unique(0 + trait | site_species, common = TRUE),
     data = sim$data
   )))
@@ -192,7 +192,7 @@ test_that("latent(common = TRUE) is the paired common-Psi replacement", {
   ))
   fit_legacy_common <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 2, residual = FALSE) +
+            latent(0 + trait | site, d = 2, unique = FALSE) +
             unique(0 + trait | site, common = TRUE),
     data = df, unit = "site"
   )))
@@ -217,10 +217,10 @@ test_that("latent(common = TRUE) rejects removed or augmented Psi targets", {
   expect_error(
     gllvmTMB::gllvmTMB(
       value ~ 0 + trait +
-              latent(0 + trait | site, d = 2, residual = FALSE, common = TRUE),
+              latent(0 + trait | site, d = 2, unique = FALSE, common = TRUE),
       data = df, unit = "site"
     ),
-    regexp = "requires.*residual = TRUE"
+    regexp = "requires.*unique = TRUE"
   )
 
   expect_error(

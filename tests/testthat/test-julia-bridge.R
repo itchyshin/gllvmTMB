@@ -1586,7 +1586,7 @@ test_that("gllvmTMB fit-time Julia CI controls route through the bridge", {
   )
 
   fit <- gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE),
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
     data = df,
     trait = "trait",
     unit = "unit",
@@ -1648,7 +1648,7 @@ test_that("gllvmTMB fit-time Julia CI controls gate response masks", {
 
   expect_error(
     gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE),
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
       data = df,
       trait = "trait",
       unit = "unit",
@@ -1697,7 +1697,7 @@ test_that("gllvmTMB fit-time Julia CI controls preserve fixed-effect X", {
   )
 
   fit <- gllvmTMB(
-    value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, residual = FALSE),
+    value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, unique = FALSE),
     data = df,
     trait = "trait",
     unit = "unit",
@@ -1718,7 +1718,7 @@ test_that("gllvmTMB fit-time Julia CI controls preserve fixed-effect X", {
 
 test_that("gllvmTMB fit-time CI controls keep unsupported rows explicit", {
   df <- make_long()
-  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE)
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
   expect_error(
     gllvmTMB(
       f,
@@ -1766,7 +1766,7 @@ test_that("engine = 'julia' rejects non reduced-rank covariance terms", {
     gllvmTMB(
       value ~ 0 +
         trait +
-        latent(0 + trait | unit, d = 2, residual = FALSE) +
+        latent(0 + trait | unit, d = 2, unique = FALSE) +
         unique(0 + trait | unit),
       data = df,
       trait = "trait",
@@ -1779,8 +1779,8 @@ test_that("engine = 'julia' rejects non reduced-rank covariance terms", {
     gllvmTMB(
       value ~ 0 +
         trait +
-        latent(0 + trait | unit, d = 1, residual = FALSE) +
-        latent(0 + trait | unit, d = 1, residual = FALSE),
+        latent(0 + trait | unit, d = 1, unique = FALSE) +
+        latent(0 + trait | unit, d = 1, unique = FALSE),
       data = df,
       trait = "trait",
       unit = "unit",
@@ -1831,7 +1831,7 @@ test_that("engine = 'julia' main dispatch marshals cbind binomial trials", {
 
   fit <- gllvmTMB(
     cbind(success, failure) ~ 0 + trait +
-      latent(0 + trait | unit, d = 1, residual = FALSE),
+      latent(0 + trait | unit, d = 1, unique = FALSE),
     data = df,
     trait = "trait",
     unit = "unit",
@@ -1854,7 +1854,7 @@ test_that("engine = 'julia' main dispatch marshals cbind binomial trials", {
   expect_error(
     gllvmTMB(
       cbind(success, failure) ~ 0 + trait + x +
-        latent(0 + trait | unit, d = 1, residual = FALSE),
+        latent(0 + trait | unit, d = 1, unique = FALSE),
       data = transform(df, x = stats::rnorm(nrow(df))),
       trait = "trait",
       unit = "unit",
@@ -1866,7 +1866,7 @@ test_that("engine = 'julia' main dispatch marshals cbind binomial trials", {
   expect_error(
     gllvmTMB(
       cbind(success, failure) ~ 0 + trait +
-        latent(0 + trait | unit, d = 1, residual = FALSE),
+        latent(0 + trait | unit, d = 1, unique = FALSE),
       data = df,
       trait = "trait",
       unit = "unit",
@@ -1882,7 +1882,7 @@ test_that("engine = 'julia' keeps unsupported response-mask rows explicit", {
   df <- df[-1L, , drop = FALSE] # drop one (trait, unit) cell -> unbalanced
   expect_error(
     gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | unit, d = 2, residual = FALSE),
+      value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = FALSE),
       data = df,
       trait = "trait",
       unit = "unit",
@@ -1895,7 +1895,7 @@ test_that("engine = 'julia' keeps unsupported response-mask rows explicit", {
   df$x <- stats::rnorm(nrow(df))
   expect_error(
     gllvmTMB(
-      value ~ 0 + trait + x + latent(0 + trait | unit, d = 2, residual = FALSE),
+      value ~ 0 + trait + x + latent(0 + trait | unit, d = 2, unique = FALSE),
       data = df,
       trait = "trait",
       unit = "unit",
@@ -1913,7 +1913,7 @@ test_that("engine = 'julia' rejects duplicated trait-unit response cells", {
 
   expect_error(
     gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE),
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
       data = df,
       trait = "trait",
       unit = "unit",
@@ -1930,7 +1930,7 @@ test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
 
   expect_error(
     gllvmTMB(
-      value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, residual = FALSE),
+      value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, unique = FALSE),
       data = df,
       trait = "trait",
       unit = "unit",
@@ -1941,7 +1941,7 @@ test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
   )
   expect_error(
     gllvmTMB(
-      value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, residual = FALSE),
+      value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, unique = FALSE),
       data = df,
       trait = "trait",
       unit = "unit",
@@ -1952,7 +1952,7 @@ test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
   )
   expect_error(
     gllvmTMB(
-      value ~ trait + x + latent(0 + trait | unit, d = 1, residual = FALSE),
+      value ~ trait + x + latent(0 + trait | unit, d = 1, unique = FALSE),
       data = df,
       trait = "trait",
       unit = "unit",
@@ -1967,7 +1967,7 @@ test_that("engine argument is validated by match.arg", {
   df <- make_long()
   expect_error(
     gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | unit, d = 2, residual = FALSE),
+      value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = FALSE),
       data = df,
       trait = "trait",
       unit = "unit",
@@ -2096,7 +2096,7 @@ test_that("gllvm_julia_fit keeps response masks gated", {
 
 test_that("engine = 'julia' main dispatch keeps non-Gaussian fixed-effect X gated", {
   skip_if_no_julia()
-  f <- value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, residual = FALSE)
+  f <- value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, unique = FALSE)
 
   for (case in julia_fixed_x_cases()) {
     x <- seq(-0.9, 0.9, length.out = ncol(case$Y))
@@ -2157,7 +2157,7 @@ test_that("NB1 grouped rows remain gated in the current live bridge", {
 
 test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and keeps native parity scoped", {
   skip_if_no_julia()
-  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE)
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
   for (case in julia_grouped_dispersion_cases()[c("nb2", "beta", "gamma")]) {
     df <- julia_bridge_matrix_to_long(case$Y)
     fit_jl <- gllvmTMB(
@@ -2303,7 +2303,7 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
 
 test_that("engine = 'julia' main dispatch keeps response masks gated", {
   skip_if_no_julia()
-  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE)
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
   cases <- julia_response_mask_cases()[c(
     "poisson",
     "negbinomial",
@@ -2369,7 +2369,7 @@ test_that("engine = 'julia' main dispatch keeps mixed-family vectors gated", {
 
   expect_error(
     gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE),
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
       data = df,
       trait = "trait",
       unit = "unit",
@@ -2491,7 +2491,7 @@ test_that("engine = 'julia' main dispatch supports post-fit no-X CIs", {
       family = binomial()
     )
   )
-  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE)
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
 
   for (case in cases) {
     df <- julia_bridge_matrix_to_long(case$Y)
@@ -2562,7 +2562,7 @@ test_that("engine = 'julia' main dispatch supports fit-time no-X CIs", {
       family = binomial()
     )
   )
-  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE)
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
 
   for (case in cases) {
     df <- julia_bridge_matrix_to_long(case$Y)
@@ -2592,7 +2592,7 @@ test_that("engine = 'julia' main dispatch supports fit-time no-X CIs", {
 test_that("engine = 'julia' Gaussian no-X postfit is internally usable", {
   skip_if_no_julia()
   df <- make_long(n_unit = 40L, seed = 7L)
-  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, residual = FALSE)
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
   fit_jl <- gllvmTMB(
     f,
     data = df,

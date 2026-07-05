@@ -4,7 +4,13 @@
 \alias{latent}
 \title{Latent-factor (reduced-rank) random effect: \code{latent(0 + trait | g, d = K)}}
 \usage{
-latent(formula, d = 1, residual = TRUE, common = FALSE)
+latent(
+  formula,
+  d = 1,
+  unique = TRUE,
+  common = FALSE,
+  residual = lifecycle::deprecated()
+)
 }
 \arguments{
 \item{formula}{\code{0 + trait | g} style formula (LHS is the response
@@ -12,14 +18,19 @@ factor, typically \code{0 + trait}; RHS is the grouping factor).}
 
 \item{d}{Integer; number of latent factors.}
 
-\item{residual}{Logical; \code{TRUE} (default) auto-includes the diagonal
+\item{unique}{Logical; \code{TRUE} (default) auto-includes the diagonal
 trait-unique \eqn{\boldsymbol\Psi} companion. Set \code{FALSE} for the
-no-residual / rotation-invariant subset.}
+low-rank-only / rotation-invariant subset. Renamed from \code{residual} in
+gllvmTMB 0.2.0.}
 
 \item{common}{Logical; \code{FALSE} (default) estimates one diagonal
 \eqn{\boldsymbol\Psi} variance per trait. \code{TRUE} ties the default ordinary
 diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
-traits. Only applies when \code{residual = TRUE}.}
+traits. Only applies when \code{unique = TRUE}.}
+
+\item{residual}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Soft-deprecated alias for
+\code{unique}; passing \verb{residual =} emits a deprecation warning and is mapped to
+\verb{unique =}.}
 }
 \value{
 A formula marker; never evaluated.
@@ -43,10 +54,10 @@ with the diagonal \eqn{\boldsymbol\Psi} companion included automatically:
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{value ~ 0 + trait + latent(0 + trait | unit, d = 2)
 }\if{html}{\out{</div>}}
 
-Set \code{residual = FALSE} for the old no-residual subset.
+Set \code{unique = FALSE} for the old low-rank-only / rotation-invariant subset.
 For a scalar diagonal \eqn{\boldsymbol\Psi} companion shared across traits,
 use \code{common = TRUE}; this replaces the legacy paired
-\code{latent(..., residual = FALSE) + unique(..., common = TRUE)} spelling for
+\code{latent(..., unique = FALSE) + unique(..., common = TRUE)} spelling for
 ordinary intercept-only latent terms.
 
 For the augmented random-regression form -- \code{latent(1 + x | g)} (wide) or

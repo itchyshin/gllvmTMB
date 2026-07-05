@@ -340,7 +340,7 @@ shared axes plus a diagonal `Psi` companion. The full between-unit
 piece is now `latent(0 + trait | site, d = K)`, and the within-unit
 piece substitutes the within-unit grouping column (e.g. `site_species`
 for site × species data, or the value passed via `unit_obs = "..."`
-for other domains). Use `latent(..., residual = FALSE)` only when you
+for other domains). Use `latent(..., unique = FALSE)` only when you
 want the no-Psi subset, and use `indep()` for standalone diagonal tiers.
 
 ## 7. Final formula assembly

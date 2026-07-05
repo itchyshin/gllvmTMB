@@ -89,12 +89,12 @@ formula_wide <- traits(
   latent(1 | individual, d = 2)
 
 formula_latent_only_long <- value ~ 0 + trait +
-  latent(0 + trait | individual, d = 2, residual = FALSE)
+  latent(0 + trait | individual, d = 2, unique = FALSE)
 
 formula_latent_only_wide <- traits(
   boldness, exploration, activity, aggression, sociability
 ) ~ 1 +
-  latent(1 | individual, d = 2, residual = FALSE)
+  latent(1 | individual, d = 2, unique = FALSE)
 
 alignment <- data.frame(
   symbol = c("Sigma", "Lambda", "Psi / psi", "R", "communality"),
@@ -133,7 +133,7 @@ edge_cases <- list(
     formula_long = formula_latent_only_long,
     formula_wide = formula_latent_only_wide,
     failure_mode = paste(
-      "With residual = FALSE, the diagonal of Sigma contains only",
+      "With unique = FALSE, the diagonal of Sigma contains only",
       "Lambda Lambda^T, so correlations are inflated when the",
       "true data-generating process has trait-specific variance."
     )

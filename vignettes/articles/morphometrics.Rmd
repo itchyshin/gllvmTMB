@@ -276,7 +276,7 @@ plot_Sigma_comparison(corr_compare, measure = "correlation")
 > between-unit covariance
 > $\boldsymbol\Sigma_B = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
 > — the sum of the reduced-rank shared component and the diagonal
-> unique component. If you request `latent(..., residual = FALSE)`,
+> unique component. If you request `latent(..., unique = FALSE)`,
 > $\boldsymbol\Psi = 0$ and you get only
 > $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$, which understates the
 > diagonal for this data-generating process. The default `latent()` fit

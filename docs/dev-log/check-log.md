@@ -35839,3 +35839,43 @@ baseline was 0/0/0 at `4d8f7589`; change is localized with focused + regression
 green. Full check belongs in the pre-commit/pre-push gate. Independent opus
 adversarial review dispatched; commit waits on its verdict + Shinichi go. No
 push/PR/merge.
+
+### 2026-07-05 -- Slice 2b: ordinary latent residual= -> unique= rename + cascade
+
+Goal:
+
+- Decision 1 (Shinichi): unify the ordinary `latent()` argument `residual =` to
+  `unique =` (same meaning/default; `residual =` soft-deprecated alias), and
+  cascade the rename through every document and webpage. Multi-agent cascade
+  verified by multiple Haiku scouts.
+
+Changes:
+
+- `R/brms-sugar.R` (`.gllvmTMB_resolve_latent_unique()` shared resolver;
+  ordinary desugar branch reads `unique =`; constructor `unique = TRUE` +
+  `residual = lifecycle::deprecated()`; roxygen), `man/latent.Rd`.
+- Cascade (3 sonnet subagents + 3 Haiku verify scouts, all clean): 7
+  `vignettes/articles/*.Rmd`, `README.md`, `AGENTS.md`, `CLAUDE.md`,
+  `docs/design/{01,04,35}-*.md`, R roxygen/cli in
+  `extract-sigma/extractors/unique-keyword/profile-derived-curves/extract-omega.R`,
+  `NEWS.md` (2b entry + scope boundary).
+- 12 test files migrated `residual=`->`unique=`; fixed sed over-reach on the
+  `test-mixed-family-extractor.R` helper param (`isTRUE(residual)`->`isTRUE(unique)`);
+  single order-robust deprecation-warning assertion (throttle is once-per-session,
+  not overridden by verbosity options); surgically rewrote the saved fixture
+  `inst/extdata/examples/covariance-edge-cases-example.rds` formulas
+  (`residual=FALSE`->`unique=FALSE`, no refit) + `data-raw` source.
+
+Commands / results:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet=TRUE)'   # clean
+# full devtools::test():
+Rscript --vanilla -e 'pkgload::load_all(); devtools::test()'
+#   -> PASS=3960 FAIL=0 WARN=0 SKIP=747  (ALL GREEN)
+```
+
+Not run (deliberate): `devtools::check()` and
+`pkgdown::build_articles(lazy = FALSE)` -- the pre-commit/pre-deploy gate; the
+rename is name-only with a working alias, and full `devtools::test()` is the
+authoritative gate. No push/PR/merge.

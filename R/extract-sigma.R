@@ -386,7 +386,7 @@ link_residual_per_trait <- function(fit) {
 #' ## When a fit has no Psi component
 #'
 #' If the formula deliberately uses
-#' `latent(0 + trait | unit, d = K, residual = FALSE)`, the engine fits only the
+#' `latent(0 + trait | unit, d = K, unique = FALSE)`, the engine fits only the
 #' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component. Calling
 #' `extract_Sigma(fit, level, part = "total")` then returns just the shared
 #' component. This is useful for no-residual / rotation-invariant checks, but it
@@ -397,7 +397,7 @@ link_residual_per_trait <- function(fit) {
 #'
 #' For Gaussian / lognormal / Gamma fits this function emits an advisory note
 #' when a reduced-rank tier has no Psi component. Use the ordinary
-#' `latent(..., residual = TRUE)` default for
+#' `latent(..., unique = TRUE)` default for
 #' \eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}; the
 #' explicit `latent() + unique()` spelling remains compatibility syntax only.
 #'
@@ -523,7 +523,7 @@ link_residual_per_trait <- function(fit) {
 #' @return For `part = "total"` or `"shared"`: a list with components
 #'   `Sigma` (T x T matrix), `R` (T x T correlation matrix; only for
 #'   `"total"`), `level`, `part`, and `note` (character vector of
-#'   advisory messages, e.g. about a no-Psi `residual = FALSE` fit).
+#'   advisory messages, e.g. about a no-Psi `unique = FALSE` fit).
 #'
 #'   For `part = "unique"`: a list with `s` (length-T named numeric
 #'   vector of unique variances), `level`, `part`, `note`.
@@ -662,7 +662,7 @@ extract_Sigma <- function(
     if (identical(part, "unique") && !has_unique) {
       cli::cli_abort(c(
         "Fit has no augmented ordinary diagonal Psi term for {.code part = \"unique\"}.",
-        ">" = "Use the default {.code latent(1 + x | unit, d = K)} fit to estimate {.code Psi_B,aug}; only use {.code latent(..., residual = FALSE)} for the no-Psi subset."
+        ">" = "Use the default {.code latent(1 + x | unit, d = K)} fit to estimate {.code Psi_B,aug}; only use {.code latent(..., unique = FALSE)} for the no-Psi subset."
       ))
     }
     slope_col <- fit$use$rr_B_slope_col %||%
@@ -1266,8 +1266,8 @@ extract_Sigma <- function(
           "unique variance is not modelled, so correlations from this matrix ",
           "overstate cross-trait coupling. For the standard decomposition ",
           "Sigma = Lambda Lambda^T + Psi, use ordinary `latent()` with its ",
-          "default `residual = TRUE`; `latent(..., residual = FALSE)` is the ",
-          "explicit no-residual subset."
+          "default `unique = TRUE`; `latent(..., unique = FALSE)` is the ",
+          "explicit low-rank-only subset."
         )
       )
     }

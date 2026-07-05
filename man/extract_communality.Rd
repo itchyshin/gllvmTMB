@@ -64,13 +64,13 @@ by default; explicit \code{latent() + unique()} remains compatibility
 syntax.
 \subsection{Caveat: communality with no-Psi fits}{
 
-If the fit uses \code{latent(..., residual = FALSE)} at the requested
+If the fit uses \code{latent(..., unique = FALSE)} at the requested
 level, then \eqn{\boldsymbol\Psi = \mathbf 0} and \code{c_t^2 = 1} for
 every trait. This is mathematically correct for the no-residual
 subset but tells you nothing about trait integration. The
 \code{\link[=extract_Sigma]{extract_Sigma()}} advisory message will fire to flag this. To get
 meaningful communalities, use ordinary \code{latent()} with the default
-\code{residual = TRUE}.
+\code{unique = TRUE}.
 
 For binomial fits the link-specific implicit residual (\eqn{\pi^2/3}
 for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the

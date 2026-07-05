@@ -33361,3 +33361,31 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 Outcome: parse passed; focused `test-loading-ci-bootstrap.R` passed with the
 new pure scale-guard regression executed and the expected heavy bootstrap-fit
 rows skipped. This is a robustness guard, not bootstrap calibration evidence.
+
+## 2026-07-04 -- Shared correlation bootstrap across tiers
+
+Goal: close issue #670 by making `extract_correlations(method = "bootstrap",
+tier = "all")` run one `bootstrap_Sigma(what = "R")` call for all
+bootstrappable requested tiers instead of rerunning identical refits once per
+tier.
+
+Edits:
+
+- Hoisted the correlation bootstrap call out of the per-tier loop.
+- Kept unsupported tiers, currently spatial/SPDE, on the explicit
+  Wald/Fisher-z fallback path.
+- Added a mock-based regression proving a B/W `tier = "all"` request calls
+  `bootstrap_Sigma()` once with `level = c("unit", "unit_obs")`.
+- Updated CI-09 to record the runtime-plumbing guard without changing
+  calibration status.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/extract-correlations.R")); cat("parse-ok\n")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-fisher-z-correlations.R", reporter = "summary")'
+```
+
+Outcome: parse passed; the focused `test-fisher-z-correlations.R` file passed
+with `NOT_CRAN=true`. This reduces redundant refits but does not promote any
+new bootstrap calibration claim.

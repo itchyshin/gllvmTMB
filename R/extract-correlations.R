@@ -391,6 +391,28 @@ extract_correlations <- function(
     }
   }
 
+  boot_R <- NULL
+  if (method == "bootstrap") {
+    boot_levels <- unique(intersect(tier, c("B", "W", "phy")))
+    if (length(boot_levels) > 0L) {
+      boot_R <- suppressMessages(bootstrap_Sigma(
+        fit,
+        n_boot = as.integer(nsim),
+        level = vapply(
+          boot_levels,
+          .canonical_level_name,
+          character(1L),
+          USE.NAMES = FALSE
+        ),
+        what = "R",
+        conf = level,
+        link_residual = link_residual,
+        seed = seed,
+        progress = FALSE
+      ))
+    }
+  }
+
   ## Build pairs for each tier
   results <- vector("list", length(tier))
   for (k in seq_along(tier)) {
@@ -432,7 +454,7 @@ extract_correlations <- function(
     n_pairs <- nrow(pairs)
     out_rows <- vector("list", n_pairs)
     if (method == "bootstrap") {
-      ## Run bootstrap once for the tier and pull out per-pair entries
+      ## Use the shared bootstrap object and pull out per-tier pair entries.
       lvl_b <- if (tk == "phy") "phy" else tk
       boot_levels <- intersect(c("B", "W", "phy"), lvl_b)
       if (length(boot_levels) == 0L) {
@@ -450,18 +472,8 @@ extract_correlations <- function(
           method_label = "wald"
         )
       } else {
-        boot <- suppressMessages(bootstrap_Sigma(
-          fit,
-          n_boot = as.integer(nsim),
-          level = .canonical_level_name(lvl_b),
-          what = "R",
-          conf = level,
-          link_residual = link_residual,
-          seed = seed,
-          progress = FALSE
-        ))
-        Rb_lo <- boot$ci_lower[[paste0("R_", lvl_b)]]
-        Rb_hi <- boot$ci_upper[[paste0("R_", lvl_b)]]
+        Rb_lo <- boot_R$ci_lower[[paste0("R_", lvl_b)]]
+        Rb_hi <- boot_R$ci_upper[[paste0("R_", lvl_b)]]
         for (m in seq_len(n_pairs)) {
           i <- pairs[m, 1L]
           j <- pairs[m, 2L]

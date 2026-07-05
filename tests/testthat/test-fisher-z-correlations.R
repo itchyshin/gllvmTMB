@@ -149,3 +149,54 @@ test_that("Fisher-z CIs are guaranteed inside [-1, 1] for any rho", {
   expect_true(all(cors$lower >= -1, na.rm = TRUE))
   expect_true(all(cors$upper <= 1, na.rm = TRUE))
 })
+
+test_that("extract_correlations bootstrap is shared across requested tiers", {
+  skip_on_cran()
+  fit <- make_tiny_BW_fit_fz()
+  calls <- list()
+  fake_ci <- function(value) {
+    matrix(
+      value,
+      nrow = fit$n_traits,
+      ncol = fit$n_traits,
+      dimnames = list(levels(fit$data[[fit$trait_col]]),
+                      levels(fit$data[[fit$trait_col]]))
+    )
+  }
+
+  testthat::local_mocked_bindings(
+    bootstrap_Sigma = function(fit, n_boot, level, what, conf,
+                               link_residual, seed, progress) {
+      calls[[length(calls) + 1L]] <<- list(
+        n_boot = n_boot,
+        level = level,
+        what = what,
+        conf = conf,
+        link_residual = link_residual,
+        seed = seed,
+        progress = progress
+      )
+      list(
+        ci_lower = list(R_B = fake_ci(-0.25), R_W = fake_ci(-0.15)),
+        ci_upper = list(R_B = fake_ci(0.25), R_W = fake_ci(0.15))
+      )
+    },
+    .package = "gllvmTMB"
+  )
+
+  cors <- suppressMessages(gllvmTMB::extract_correlations(
+    fit,
+    tier = "all",
+    method = "bootstrap",
+    nsim = 7L,
+    seed = 123L
+  ))
+
+  expect_length(calls, 1L)
+  expect_equal(calls[[1L]]$n_boot, 7L)
+  expect_equal(calls[[1L]]$level, c("unit", "unit_obs"))
+  expect_equal(calls[[1L]]$what, "R")
+  expect_equal(calls[[1L]]$seed, 123L)
+  expect_setequal(unique(cors$tier), c("B", "W"))
+  expect_true(all(cors$method == "bootstrap"))
+})

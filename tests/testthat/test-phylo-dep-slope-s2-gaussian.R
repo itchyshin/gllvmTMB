@@ -29,6 +29,27 @@ skip_if_not_dep_s2_deps <- function() {
   testthat::skip_if_not_installed("TMB")
 }
 
+test_that("phylo_dep s=2 rejects duplicate slope covariates before design expansion", {
+  withr::local_options(lifecycle_verbosity = "quiet")
+
+  expect_error(
+    gllvmTMB:::desugar_brms_sugar(
+      value ~ 0 + trait + phylo_dep(1 + x1 + x1 | species)
+    ),
+    regexp = "Duplicate slope covariates|rank deficient|x1"
+  )
+
+  expect_error(
+    gllvmTMB:::desugar_brms_sugar(
+      value ~ 0 + trait +
+        phylo_dep(
+          0 + trait + (0 + trait):x1 + (0 + trait):x1 | species
+        )
+    ),
+    regexp = "Duplicate slope covariates|rank deficient|x1"
+  )
+})
+
 ## Known PD lower-triangular Cholesky factor of the (1+s)T x (1+s)T Sigma_b
 ## (column-major lower-tri incl diag). For s = 2, T = 2 => C = 6. Diagonal
 ## entries set the (intercept, slope1, slope2) marginal scales per trait;

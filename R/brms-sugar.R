@@ -1664,6 +1664,20 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## Recognise the WIDE multi-slope LHS `1 + x1 + x2 + ...` (s >= 1 plain
 ## covariate names after the leading intercept `1`). Returns the ordered
 ## character vector of slope columns, or NULL when the shape does not match.
+.assert_distinct_slope_cols <- function(cols) {
+  dups <- unique(cols[duplicated(cols)])
+  if (length(dups)) {
+    dup_label <- paste(dups, collapse = ", ")
+    cli::cli_abort(c(
+      "Duplicate slope covariates are not allowed in augmented LHS terms.",
+      "x" = "Repeated slope column(s): {.field {dup_label}}.",
+      "i" = "Each slope column creates a separate random-effect block; duplicates make the design rank deficient.",
+      ">" = "Use each slope covariate once, for example {.code 1 + x1 + x2 | group}."
+    ))
+  }
+  invisible(cols)
+}
+
 .match_wide_intercept_slopes <- function(lhs) {
   terms <- .flatten_lhs_plus(lhs)
   if (length(terms) < 2L || !.is_one_lhs(terms[[1L]])) {
@@ -1676,6 +1690,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     }
     cols <- c(cols, as.character(term))
   }
+  .assert_distinct_slope_cols(cols)
   cols
 }
 
@@ -1705,6 +1720,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     }
     cols <- c(cols, as.character(sc))
   }
+  .assert_distinct_slope_cols(cols)
   cols
 }
 

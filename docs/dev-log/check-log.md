@@ -33281,3 +33281,31 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 Outcome: parse passed; focused augmented-LHS guard tests passed with the
 expected CRAN-mode skips for heavier fit rows. This is parser truth hardening
 only; it does not add a new random-slope capability.
+
+## 2026-07-04 -- Duplicate slope covariate guard
+
+Goal: close issue #625 by rejecting repeated augmented-LHS slope columns before
+the phylo-dep multi-slope route expands them into duplicated random-effect
+design blocks.
+
+Edits:
+
+- Added `.assert_distinct_slope_cols()` to the augmented-LHS classifier path.
+- Applied the check to both wide `1 + x1 + x2` and long
+  `0 + trait + (0 + trait):x1 + ...` slope matchers.
+- Added a pure parser regression for duplicate wide and long `phylo_dep()`
+  slope terms.
+- Updated RE-03 to record the malformed-input guard while leaving the row
+  `partial`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/brms-sugar.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-phylo-dep-slope-s2-gaussian.R", reporter = "summary")'
+```
+
+Outcome: parse passed; the focused `phylo_dep` s=2 test file passed its pure
+parser assertions and skipped the expected heavy recovery rows. This is
+rank-deficiency guard hardening only; it does not promote non-Gaussian s >= 2
+or broader random-slope inference.

@@ -121,6 +121,46 @@
   invisible(NULL)
 }
 
+## Resolve the augmented `latent(..., unique = )` fold argument from a parsed
+## call. `unique = TRUE` (default) keeps the augmented diagonal Psi companion
+## (the per-trait unique variance on the interleaved intercept/slope vector);
+## `unique = FALSE` requests the rotation-invariant low-rank-only subset. The
+## legacy `residual = ` spelling is a soft-deprecated alias (Slice 2b unifies
+## the ordinary `latent()` argument the same way).
+.gllvmTMB_resolve_augmented_unique <- function(e) {
+  unique_arg <- e[["unique"]]
+  residual_arg <- e[["residual"]]
+  if (!is.null(residual_arg)) {
+    if (!is.null(unique_arg)) {
+      cli::cli_abort(c(
+        "Pass only one of {.arg unique} or the deprecated {.arg residual} to {.fn latent}.",
+        ">" = "Use {.arg unique} for new code."
+      ))
+    }
+    lifecycle::deprecate_warn(
+      when = "0.2.0",
+      what = I("The `residual` argument of augmented `latent()`"),
+      with = I("the `unique` argument"),
+      details = c(
+        "i" = "The augmented diagonal Psi companion is now controlled by `unique = ` (default `TRUE`).",
+        ">" = "Replace `residual = FALSE` with `unique = FALSE`."
+      ),
+      id = "gllvmTMB-latent-augmented-residual"
+    )
+    unique_arg <- residual_arg
+  }
+  if (is.null(unique_arg)) {
+    return(TRUE)
+  }
+  if (!is.logical(unique_arg) || length(unique_arg) != 1L || is.na(unique_arg)) {
+    cli::cli_abort(c(
+      "{.arg unique} in augmented {.fn latent} must be a literal {.code TRUE} or {.code FALSE}.",
+      ">" = "Use {.code latent(1 + x | g, d = K, unique = FALSE)} for the low-rank-only subset."
+    ))
+  }
+  unique_arg
+}
+
 #' Phylogenetic random effect: lme4-bar mode-dispatch wrapper
 #'
 #' `phylo()` is a unified entry point for the package's five canonical
@@ -418,6 +458,17 @@ meta <- function(value, sampling_var) {
 #' use `common = TRUE`; this replaces the legacy paired
 #' `latent(..., residual = FALSE) + unique(..., common = TRUE)` spelling for
 #' ordinary intercept-only latent terms.
+#'
+#' For the augmented random-regression form -- `latent(1 + x | g)` (wide) or
+#' `latent(0 + trait + (0 + trait):x | g)` (long) -- the per-trait
+#' unique-variance diagonal \eqn{\boldsymbol\Psi} companion is likewise on by
+#' default and is controlled by `unique = TRUE` (the default) or
+#' `unique = FALSE` (the low-rank-only, rotation-invariant subset). On this
+#' augmented form `residual =` is a soft-deprecated alias for `unique =`. For
+#' non-Gaussian families the estimated diagonal stays off and the family/link
+#' latent-scale residual is used instead (see the `link_residual` argument of
+#' [extract_Sigma()]); the free intercept-slope correlation lives in the shared
+#' reduced-rank block and is unaffected by `unique`.
 #'
 #' @param formula `0 + trait | g` style formula (LHS is the response
 #'   factor, typically `0 + trait`; RHS is the grouping factor).
@@ -2712,11 +2763,13 @@ rewrite_canonical_aliases <- function(formula) {
 	              }
 	            }
 	            d_arg <- .named_or_positional_arg(e, "d", 3L, default = 1L)
+	            unique_arg <- .gllvmTMB_resolve_augmented_unique(e)
 	            return(as.call(c(
 	              list(as.name("rr"), bar),
 	              list(
 	                d = d_arg,
 	                .latent_augmented = TRUE,
+	                .latent_augmented_unique = unique_arg,
 	                lhs_form = lhs_form$lhs_form,
                 slope_col = lhs_form$slope_col
               )

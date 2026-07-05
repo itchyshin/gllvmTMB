@@ -617,3 +617,88 @@ test_that("ordinary augmented unique random regression is Gaussian-only for now"
     regexp = "Gaussian responses only"
   )
 })
+
+## ---- Slice 2a (#608): augmented latent unique= opt-out ---------------------
+## Decisions (Shinichi 2026-07-05): unify on `unique=`, default TRUE, keep the
+## free intercept-slope correlation in the rr_B_slope block. The augmented
+## `latent(1 + x | g)` parser previously returned a bare rr() and ignored the
+## fold argument, so users could not opt out of the Gaussian default diagonal.
+
+test_that("augmented latent unique= argument sets the diagonal-companion marker", {
+  withr::local_options(lifecycle_verbosity = "quiet")
+
+  aug_cs <- function(form) {
+    gllvmTMB:::parse_multi_formula(
+      gllvmTMB:::desugar_brms_sugar(form)
+    )$covstructs[[1L]]
+  }
+
+  ## Default: unique companion on (marker TRUE, not FALSE).
+  default_cs <- aug_cs(
+    value ~ 0 + trait + latent(1 + temperature | individual, d = 2)
+  )
+  expect_true(isTRUE(default_cs$extra$.latent_augmented))
+  expect_true(isTRUE(default_cs$extra$.latent_augmented_unique))
+
+  ## Explicit opt-out.
+  off_cs <- aug_cs(
+    value ~ 0 + trait + latent(1 + temperature | individual, d = 2, unique = FALSE)
+  )
+  expect_true(isFALSE(off_cs$extra$.latent_augmented_unique))
+
+  ## Explicit opt-in (long form too).
+  on_cs <- aug_cs(
+    value ~ 0 +
+      trait +
+      latent(0 + trait + (0 + trait):temperature | individual, d = 2, unique = TRUE)
+  )
+  expect_true(isTRUE(on_cs$extra$.latent_augmented_unique))
+})
+
+test_that("augmented latent residual= is a soft-deprecated alias for unique=", {
+  withr::local_options(lifecycle_verbosity = "warning")
+
+  expect_warning(
+    off_cs <- gllvmTMB:::parse_multi_formula(
+      gllvmTMB:::desugar_brms_sugar(
+        value ~ 0 + trait + latent(1 + temperature | individual, d = 2, residual = FALSE)
+      )
+    )$covstructs[[1L]],
+    class = "lifecycle_warning_deprecated"
+  )
+  expect_true(isFALSE(off_cs$extra$.latent_augmented_unique))
+})
+
+test_that("augmented latent unique = FALSE suppresses the diagonal companion but keeps the free correlation", {
+  testthat::skip_on_cran()
+  withr::local_options(lifecycle_verbosity = "quiet")
+  fx <- make_ordinary_latent_rr_fixture()
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 +
+      trait +
+      (0 + trait):temperature +
+      latent(0 + trait + (0 + trait):temperature | individual, d = 2, unique = FALSE),
+    data = fx$data,
+    trait = "trait",
+    unit = "individual",
+    unit_obs = "session_id",
+    control = gllvmTMBcontrol(
+      se = FALSE,
+      optimizer = "optim",
+      optArgs = list(method = "BFGS")
+    )
+  )))
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_identical(fit$tmb_data$use_rr_B_slope, 1L)
+  ## The opt-out: no augmented diagonal companion even though the fit is Gaussian.
+  expect_identical(fit$tmb_data$use_diag_B_slope, 0L)
+  expect_false(isTRUE(fit$use$diag_B_slope_default))
+
+  ## The free intercept-slope correlation lives in the rr block, so it survives
+  ## the opt-out: the shared augmented covariance has a non-zero intercept-slope
+  ## off-diagonal for trait 1.
+  shared <- extract_Sigma(fit, level = "unit_slope", part = "shared")$Sigma
+  expect_gt(abs(shared[1L, 2L]), 0)
+})

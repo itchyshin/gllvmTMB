@@ -3,6 +3,28 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Augmented latent `unique =` opt-out (2026-07-05)
+
+* The augmented random-regression form `latent(1 + x | unit)` (and its long
+  `latent(0 + trait + (0 + trait):x | unit)` spelling) now honours a `unique =`
+  argument. `unique = TRUE` (the default) keeps the per-trait unique-variance
+  diagonal \eqn{\boldsymbol\Psi} companion for Gaussian fits; `unique = FALSE`
+  requests the low-rank-only, rotation-invariant subset. Previously the
+  augmented form silently ignored the fold argument, so there was no way to opt
+  out of the Gaussian default diagonal (issue #608). The free intercept-slope
+  correlation is carried by the shared reduced-rank block and is unaffected by
+  `unique`. For non-Gaussian families the estimated diagonal stays off and the
+  family/link latent-scale residual is used instead (binomial-probit 1,
+  binomial-logit `pi^2/3`, and so on). On this augmented form `residual =` is a
+  soft-deprecated alias for `unique =`.
+* **Scope boundary.** IN: the `unique =` opt-out on the augmented ordinary
+  `latent()` form, with Gaussian recovery evidence in
+  `test-ordinary-latent-random-regression.R`. PARTIAL/PLANNED: unifying the
+  ordinary intercept-only `latent(residual = )` argument to `unique =` across
+  all forms, and the source-tier (`phylo_latent()` / `spatial_latent()`)
+  default, are separate follow-up changes not included here. Empirical interval
+  calibration for augmented targets remains gated (register CI-11 / RE-12).
+
 ## Gamma dispersion decoupling (2026-07-05)
 
 * Native R/TMB `Gamma(link = "log")` fits now estimate per-trait

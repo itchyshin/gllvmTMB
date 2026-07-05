@@ -48,6 +48,17 @@ For a scalar diagonal \eqn{\boldsymbol\Psi} companion shared across traits,
 use \code{common = TRUE}; this replaces the legacy paired
 \code{latent(..., residual = FALSE) + unique(..., common = TRUE)} spelling for
 ordinary intercept-only latent terms.
+
+For the augmented random-regression form -- \code{latent(1 + x | g)} (wide) or
+\code{latent(0 + trait + (0 + trait):x | g)} (long) -- the per-trait
+unique-variance diagonal \eqn{\boldsymbol\Psi} companion is likewise on by
+default and is controlled by \code{unique = TRUE} (the default) or
+\code{unique = FALSE} (the low-rank-only, rotation-invariant subset). On this
+augmented form \verb{residual =} is a soft-deprecated alias for \verb{unique =}. For
+non-Gaussian families the estimated diagonal stays off and the family/link
+latent-scale residual is used instead (see the \code{link_residual} argument of
+\code{\link[=extract_Sigma]{extract_Sigma()}}); the free intercept-slope correlation lives in the shared
+reduced-rank block and is unaffected by \code{unique}.
 }
 \seealso{
 \code{\link[=unique]{unique()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \link{diag_re}, \code{\link[=extract_Sigma]{extract_Sigma()}}.

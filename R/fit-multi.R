@@ -487,9 +487,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   use_rr_B_slope <- length(rr_B_slope_idx) > 0L
   use_diag_B_slope <- length(diag_B_slope_idx) > 0L
+  ## The augmented Psi companion is on by default for Gaussian augmented
+  ## `latent()` (the unique-variance diagonal), unless the user opted out with
+  ## `unique = FALSE` (marker `.latent_augmented_unique = FALSE`). Non-Gaussian
+  ## rows keep the estimated diagonal off and rely on the family/link-specific
+  ## latent-scale residual instead (D-28).
   diag_B_slope_is_default <- use_rr_B_slope &&
     !use_diag_B_slope &&
-    !any(family_id_vec != 0L)
+    !any(family_id_vec != 0L) &&
+    !identical(
+      parsed$covstructs[[rr_B_slope_idx[1L]]]$extra$.latent_augmented_unique,
+      FALSE
+    )
   if (diag_B_slope_is_default) {
     use_diag_B_slope <- TRUE
   }

@@ -35582,3 +35582,260 @@ Results:
   because `GLLVM_JL_PATH` was not configured.
 - No files changed during the test pack; this note records validation evidence
   only.
+
+### 2026-07-05 -- Inference route truth matrix (Design 75, read-only audit)
+
+Goal:
+
+- Day-1 truth-lock artefact for the completion arc: build the
+  estimand x tier x method inference-route truth matrix that Design 73 leaves
+  collapsed on the method axis, grounded in the code ledger and the dispatch
+  layer, not memory.
+
+Changes:
+
+- Added `docs/design/75-inference-route-truth-matrix.md`. No R code, likelihood,
+  formula grammar, validation-register status, or public-facing wording changed.
+
+Structural findings recorded in Design 75:
+
+- `.profile_route_matrix()` emits `method = "profile"` on every row; Wald and
+  bootstrap live only in the dispatch layer (`confint()` /
+  `extract_*(ci = TRUE)`), and estimated-likelihood / fixed-nuisance LR is
+  unimplemented across `R/` and `src/`.
+- The matrix records Wald / profile-LR / estimated-likelihood / bootstrap per
+  (tier, estimand) as covered / partial / opt-in / fallback / point_only /
+  not_applicable / blocked / planned, with validation-row IDs.
+
+Commands / evidence:
+
+```sh
+gh pr list --state open --limit 20
+git log --all --oneline --since='6 hours ago' --max-count=20
+rg -n "partial support|ready to expose|pdHess passed|mixed-family CI|source-specific.*lv|bootstrap rescue" R docs tests man NEWS.md
+rg -in "estimated.?likelihood|fixed.?nuisance|profile_out_nuisance" R src   # empty: confirmed absent
+rg -n "method <- match.arg" R/z-confint-gllvmTMB.R R/extractors.R
+```
+
+Results:
+
+- No open PRs; all recent commits are on `codex/r-bridge-grouped-dispersion`
+  (no lane collision on `docs/dev-log/check-log.md` or `docs/design/`).
+- Stale-wording scan clean: the only `mixed-family CI` hit is a NEWS
+  not-supported disclaimer.
+- Estimated-likelihood / fixed-nuisance LR confirmed absent from `R/` and
+  `src/`; it is `planned` across the whole matrix.
+- Not run (deliberate): `devtools::check()`, `pkgdown::check_pkgdown()`, and any
+  test file -- this slice is a read-only design audit that touches no code.
+
+Review gate:
+
+- Before any Design 75 cell informs user-facing wording or a validation-register
+  status change, Rose (overclaim), Fisher (uncertainty logic), and Noether
+  (symbolic <-> R <-> TMB) must review the affected rows. No push/PR/merge from
+  this local branch without maintainer authorization.
+
+### 2026-07-05 -- Missing / mixed-family claim-boundary audit (read-only)
+
+Goal:
+
+- Day-2 completion-arc audit: check the missing-data and mixed-family surface
+  for claim-boundary integrity against the guards "no mixed-family CI claims"
+  and "state v1 vs planned v2 honestly"; confirm `na_mask` retention under
+  `missing = "include"`.
+
+Changes:
+
+- Added `docs/dev-log/after-task/2026-07-05-missing-mixed-claim-boundary-audit.md`.
+  No R code, likelihood, grammar, design doc, or validation-register status
+  changed.
+
+Findings (both confirmatory -- no overclaim found):
+
+- Mixed-family CIs: MIX-04/MIX-08 `covered` is route/infrastructure existence,
+  not calibration. Design 57 is route-only; `test-m1-4` defers coverage to
+  "M3.3"; `R/bootstrap-sigma.R` docstring labels non-Gaussian/mixed-family
+  bootstrap calibration `PARTIAL`/`PLANNED`; MIX-10 delta/hurdle stays
+  `blocked`. Guard intact; consistent with Design 75 and Design 61.
+- Missing data: 33 `MIS-*` rows map to ~28 covered / 3 partial (MIS-03/07/09) /
+  1 deferred-v2 (MIS-32). `na_mask` retention is implemented in
+  `R/weights-shape.R` (`normalise_weights(drop_masked = FALSE)`, masked cells
+  -> finite 0 sentinel, all rows retained) and asserted in
+  `tests/testthat/test-missing-data-robustfix.R:376-378`. No covered row
+  advertises missing-data interval calibration.
+
+Optional hardening recorded (not defects): add an explicit interval-status
+field to MIX-04/MIX-08 (`route-only; calibration = CI-08/CI-10`); confirm the
+`MIS-*` ID sequence is gap-free.
+
+Commands / evidence:
+
+```sh
+# two read-only Explore sub-agents over:
+#   docs/design/{57,68,69,70}-*.md, docs/design/35-validation-debt-register.md,
+#   R/{weights-shape,bootstrap-sigma,extract-correlations}.R,
+#   tests/testthat/test-m1-4-*, test-m1-8-*, test-check-auto-residual.R,
+#   test-missing-data-robustfix.R
+```
+
+Not run (deliberate): any test file, `devtools::check()`,
+`pkgdown::check_pkgdown()` -- read-only audit, no code changed. No push/PR/merge.
+
+### 2026-07-05 -- Non-Gaussian safety audit (read-only)
+
+Goal:
+
+- Day-3b completion-arc audit: confirm the non-Gaussian safety surface
+  (positivity, Gamma dispersion decoupling, per-family residuals, AD-safe
+  ordinal clamp, Gaussian-only REML) against the hard guards.
+
+Changes:
+
+- Added `docs/dev-log/after-task/2026-07-05-non-gaussian-safety-audit.md`.
+  No R code, C++, likelihood, design doc, or register status changed.
+
+Findings (confirmatory -- all five items correct/safe, fail-loud):
+
+- Positivity: `R/fit-multi.R:2010-2020` aborts observed lognormal/Gamma
+  `y <= 0`, masked sentinels exempt (`& !masked_response`);
+  `test-family-lognormal.R:46-60`.
+- Gamma #622: `src/gllvmTMB.cpp:1948-1958` uses only `log_phi_gamma(t)`, no
+  `sigma_eps` leak; `test-family-gamma.R:57-100` mixed independence.
+- Per-family residual: `link_residual_per_trait()` maps each fid to its own
+  formula; `test-link-residual-15-family-fixture.R` (per-fid references).
+- Ordinal #658: `CppAD::CondExpLt` clamp at `src/gllvmTMB.cpp:2100`;
+  `test-ordinal-probit.R`.
+- REML: `R/fit-multi.R:1951-1985` fail-loud gate on any non-Gaussian;
+  `test-gaussian-reml.R:100-149`.
+
+Scope: boundary/guard audit of named risk classes, not adversarial fuzz or
+coverage calibration. Correctness truth-lock (Phases 1-4) complete as audit.
+
+Not run (deliberate): any test file, `devtools::check()`,
+`pkgdown::check_pkgdown()` -- read-only audit, no code changed. No push/PR/merge.
+
+### 2026-07-05 -- Structural random-slope guard audit (read-only)
+
+Goal:
+
+- Day-3 completion-arc audit: map the structural random-slope grammar and
+  extractor shape-safety guards for silent-drop / misinterpretation risk,
+  against the guard "source-specific `lv = ~ env` must stay fail-loud."
+
+Changes:
+
+- Added `docs/dev-log/after-task/2026-07-05-structural-slope-guard-audit.md`.
+  No R code, likelihood, grammar, design doc, or register status changed.
+
+Findings (confirmatory -- all five named risk classes solid):
+
+- Duplicate slope covariates fail loud (`.assert_distinct_slope_cols()`,
+  `R/brms-sugar.R:1667-1679`; `test-phylo-dep-slope-s2-gaussian.R:32-50`).
+- Parenthesized/malformed augmented LHS handled correctly / rejected
+  (`.strip_lhs_parens()`; `test-augmented-lhs-guard.R`,
+  `test-spatial-latent-slope-gaussian.R:263-268`).
+- Source-specific `lv = ~ env` fails loud across ~20 keywords
+  (`.abort_source_specific_lv()`, `R/brms-sugar.R:2044-2064`;
+  `test-canonical-keywords.R:235-266`).
+- Spatial malformed LHS/orientation fails loud; deprecated `coords | trait`
+  flipped-with-warning, never silently reinterpreted
+  (`normalise_spatial_orientation()`; `test-spatial-orientation-parser.R`).
+- Extractor shape-safety solid: augmented block dimension checks + cli_abort on
+  mismatch (`test-phylo-dep-slope-s2-gaussian.R:279-311`).
+
+Scope: audits the named risk classes with test-backed evidence; not an
+exhaustive parser fuzz. No guard hole found; structural-slope Codex work is
+capability expansion, not repair.
+
+### 2026-07-05 -- Green baseline + unique-fold arc learning (#608 = Slice 2)
+
+Context: Codex is out ~3 days; maintainer handed Claude the live-implementation
+lane too, with the hard guards unchanged (no push/PR/merge without Shinichi; no
+source-specific lv; no mixed-family CI; no non-Gaussian REML; no pdHess=calib).
+
+Baseline (the biggest unknown since dff9b363, never rerun):
+
+```sh
+Rscript --vanilla -e 'devtools::test(reporter=testthat::SummaryReporter$new())'   # captured via results df
+Rscript --vanilla -e 'devtools::check(args="--no-manual", error_on="never", quiet=TRUE)'
+```
+
+Results:
+
+- Default `devtools::test()` GREEN: 248 files, 1587 tests, 3947 pass, 0 fail,
+  0 warn, 0 error, 747 skip (heavy/opt-in gated behind GLLVMTMB_HEAVY_TESTS=1).
+- `devtools::check(--no-manual)` GREEN: 0 errors / 0 warnings / 0 notes.
+- Heavy recovery suite (GLLVMTMB_HEAVY_TESTS=1) launched separately to
+  evidence-lock recovery; result recorded when it lands.
+
+Register hardening: added explicit interval-status clarifications to MIX-04 and
+MIX-08 (route-only; calibration = CI-08/CI-10; no calibrated mixed-family CI
+claimed). MIS-01..33 sequence confirmed gap-free.
+
+Issue reconciliation + correction: a doc-grep reconciliation flagged #608 and
+#679 as unaddressed native correctness issues. Verified against code: **#679 is
+already fixed** locally (c37eea34, joint-MLE baseline in
+`.profile_curve_delta_deviance()`, test at test-profile-derived-curves.R:129-144)
+-- the grep missed it because the commit did not cite the issue number. Lesson:
+verify open-issue status against code/commits, not doc mentions. #640/#680/#697
+are Julia-parity (quiet lane); #705 is a feature idea.
+
+`unique=` arc learning (from `2026-06-12-slice1-latent-psi-fold-brief.md`,
+`2026-06-12-unique-removal-codereview.md`, D-28, and the code): the `unique`
+family was folded into `latent`'s default Psi; `unique = TRUE` is a level-general
+fold argument (adds per-trait Psi diagonal at any tier); `sigma_eps`
+auto-suppression is a separate lowest-level-only consequence
+(fit-multi.R:3763-3780). #608 is the **unstarted Slice 2** (augmented
+`*_unique(1+x|g)` fold), documented and blocked on three maintainer decisions
+(naming unique vs residual + unify; default TRUE vs FALSE; free-correlation
+re-home). Decision brief: `docs/dev-log/2026-07-05-unique-fold-slice2-608-brief.md`.
+
+No R code, likelihood, grammar, or register status changed in this note. No
+push/PR/merge.
+
+Commands / evidence:
+
+```sh
+# one read-only Explore sub-agent over:
+#   R/{brms-sugar,extract-sigma,extractors,output-methods,rotate-loadings}.R,
+#   tests/testthat/test-{phylo-dep-slope-s2-gaussian,augmented-lhs-guard,
+#     canonical-keywords,spatial-orientation-parser,spatial-latent-slope-gaussian}.R
+```
+
+Not run (deliberate): any test file, `devtools::check()`,
+`pkgdown::check_pkgdown()` -- read-only audit, no code changed. No push/PR/merge.
+
+### 2026-07-05 -- Slice 2a: augmented latent unique= opt-out (#608, code change)
+
+Goal:
+
+- Build the augmented `latent(1 + x | unit)` `unique =` fold argument so the
+  Gaussian default per-trait unique diagonal can be opted out of, closing #608's
+  silent-ignore. Decisions (Shinichi): unify on `unique =`, default TRUE
+  (non-Gaussian estimated bit zero + link-specific residual), re-home the free
+  intercept-slope correlation.
+
+Changes:
+
+- `R/brms-sugar.R` (`.gllvmTMB_resolve_augmented_unique()` + augmented desugar
+  branch marker + `latent()` @details), `R/fit-multi.R`
+  (`diag_B_slope_is_default` honors the marker), `man/latent.Rd`, `NEWS.md`,
+  `tests/testthat/test-ordinary-latent-random-regression.R` (+3 tests).
+- After-task: `docs/dev-log/after-task/2026-07-05-slice2a-augmented-latent-unique-optout.md`.
+
+Commands / results:
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet=TRUE); testthat::test_file("tests/testthat/test-ordinary-latent-random-regression.R")'
+# 86 pass / 0 fail / 0 warn / 0 skip (TDD: RED marker=NULL first, then GREEN)
+# regression: test-augmented-lhs-guard 33/0, test-canonical-keywords 96/0/3skip,
+#             test-formula-grammar-smoke 28/0, test-keyword-grid 59/0
+Rscript --vanilla -e 'devtools::document(quiet=TRUE)'   # clean
+# local recovery: 25/25 converged, bias <=0.01 on rho + unique variances
+```
+
+Not run (deliberate): full `devtools::test()` / `devtools::check()` re-run --
+baseline was 0/0/0 at `4d8f7589`; change is localized with focused + regression
+green. Full check belongs in the pre-commit/pre-push gate. Independent opus
+adversarial review dispatched; commit waits on its verdict + Shinichi go. No
+push/PR/merge.

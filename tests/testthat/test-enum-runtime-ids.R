@@ -26,7 +26,9 @@ test_that("internal enum mirrors multivariate runtime ids", {
   expect_equal(link_enum, runtime_link)
   expect_false(any(c(
     "gamma_mix", "lognormal_mix", "nbinom2_mix", "gengamma",
-    "censored_poisson", "truncated_nbinom1"
+    "censored_poisson", "truncated_nbinom1", "delta_gamma_mix",
+    "delta_lognormal_mix", "delta_gengamma", "delta_truncated_nbinom1",
+    "delta_truncated_nbinom2", "delta_beta"
   ) %in% names(family_enum)))
 })
 
@@ -42,7 +44,13 @@ test_that("constructor-only families fail loud before runtime admission", {
     nbinom2_mix = nbinom2_mix(),
     gengamma = gengamma(),
     truncated_nbinom1 = truncated_nbinom1(),
-    censored_poisson = censored_poisson()
+    censored_poisson = censored_poisson(),
+    delta_gamma_mix = delta_gamma_mix(),
+    delta_lognormal_mix = delta_lognormal_mix(),
+    delta_gengamma = delta_gengamma(),
+    delta_truncated_nbinom1 = delta_truncated_nbinom1(),
+    delta_truncated_nbinom2 = delta_truncated_nbinom2(),
+    delta_beta = delta_beta()
   )
 
   for (nm in names(blocked)) {
@@ -53,7 +61,7 @@ test_that("constructor-only families fail loud before runtime admission", {
         site = "individual",
         family = blocked[[nm]]
       ))),
-      regexp = "Unsupported family",
+      regexp = "Unsupported (delta )?family",
       info = nm
     )
   }

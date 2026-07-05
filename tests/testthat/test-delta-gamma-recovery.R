@@ -5,7 +5,7 @@
 ##   p_pres(it) = invlogit(eta_it);  presence ~ Bernoulli(p_pres)
 ##   pos | presence = 1: y_it ~ Gamma(shape = 1/phi^2, scale = exp(eta) * phi^2)
 ##   so E(y | pres) = exp(eta), CV(y | pres) = phi.
-## Fit: family = delta_gamma()
+## Fit: fixed-effect family = delta_gamma()
 ##
 ## Biological motivation: delta-gamma is a fisheries / survey biomass
 ## family for non-negative continuous data with an exact zero point
@@ -54,7 +54,7 @@ test_that("delta_gamma converges and recovers trait intercepts + per-trait phi",
   expect_true(all(df$value >= 0))
 
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+    value ~ 0 + trait,
     data   = df,
     site   = "individual",
     family = delta_gamma()
@@ -89,7 +89,7 @@ test_that("delta_gamma rejects negative response", {
   )
   expect_error(
     suppressMessages(gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+      value ~ 0 + trait,
       data = df, site = "individual", family = delta_gamma()
     )),
     regexp = "non-negative"
@@ -119,7 +119,7 @@ test_that("delta_gamma accepts string entry family = 'delta_gamma'", {
   )
 
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+    value ~ 0 + trait,
     data = df, site = "individual", family = "delta_gamma"
   )))
   expect_equal(fit$tmb_data$family_id_vec[1], 13L)
@@ -132,7 +132,7 @@ test_that("delta_gamma poisson-link parameterisation is rejected", {
       data.frame(individual = factor(1:10),
                  trait      = factor(rep("a", 10)),
                  value      = c(rep(0, 3), runif(7, 0.1, 5))),
-      formula = value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+      formula = value ~ 0 + trait,
       site = "individual",
       family = delta_gamma(type = "poisson-link")
     )),

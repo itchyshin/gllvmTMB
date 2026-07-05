@@ -238,24 +238,28 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## $delta flag rather than by name so future delta_<x> additions can
     ## extend the switch without surprising existing code.
     if (isTRUE(f$delta)) {
-      if (!isTRUE(f$type == "standard"))
+      delta_type <- if (is.null(f$type)) "standard" else f$type
+      if (!isTRUE(delta_type == "standard"))
         cli::cli_abort(c(
           "{.fn delta_lognormal}/{.fn delta_gamma}: only the standard (logit/log) parameterisation is currently supported in the multivariate engine.",
           "i" = "Use {.code delta_lognormal()} or {.code delta_gamma()} (default {.code type = \"standard\"}).",
           "*" = "{.code type = \"poisson-link\"} is on the roadmap."
         ))
+      delta_id <- if (identical(f$family, c("binomial", "lognormal"))) {
+        12L
+      } else if (identical(f$family, c("binomial", "Gamma"))) {
+        13L
+      } else {
+        cli::cli_abort(c(
+          "Unsupported delta family: {.val {paste(f$family, collapse = '/')}}.",
+          "i" = "Currently supported delta families: {.code delta_lognormal()}, {.code delta_gamma()}."
+        ))
+      }
       if (!identical(f$link[1], "logit"))
         cli::cli_abort("delta_lognormal/delta_gamma: only logit (presence) is currently supported.")
       if (!identical(f$link[2], "log"))
         cli::cli_abort("delta_lognormal/delta_gamma: only log (positive component) is currently supported.")
-      if (identical(f$family, c("binomial", "lognormal")))
-        return(c(12L, 0L))
-      if (identical(f$family, c("binomial", "Gamma")))
-        return(c(13L, 0L))
-      cli::cli_abort(c(
-        "Unsupported delta family: {.val {paste(f$family, collapse = '/')}}.",
-        "i" = "Currently supported delta families: {.code delta_lognormal()}, {.code delta_gamma()}."
-      ))
+      return(c(delta_id, 0L))
     }
     fid <- switch(
       f$family,

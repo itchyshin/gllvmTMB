@@ -34967,3 +34967,70 @@ Additional results:
 - Stale evidence scan found no `FAM-18.*n/a`, `FAM-19.*n/a`, or
   mixture/gengamma `claimed` row beyond the intended Rose example wording.
 - `git diff --check` passed.
+
+### 2026-07-05 — Delta-family boundary truth lock
+
+Goal:
+
+- Reconcile the FAM-17 delta-family claim with the runtime truth. The old row
+  said "delta_* families (10 variants)" were covered even though the
+  multivariate engine admits only the standard `delta_lognormal()` and
+  `delta_gamma()` runtime ids.
+
+Changes:
+
+- Reordered the delta branch in `R/fit-multi.R` so unsupported delta
+  constructors first fail with the explicit `Unsupported delta family` boundary
+  instead of falling through to the admitted-pair link/type checks.
+- Expanded `test-enum-runtime-ids.R` to guard delta mixture, `delta_gengamma()`,
+  `delta_beta()`, and delta-truncated NB constructors as constructor-only
+  exports.
+- Updated `test-delta-gamma-recovery.R` and `test-delta-lognormal-recovery.R`
+  to exercise fixed-effect delta recovery, matching Design 62's boundary that
+  two-part families are response distributions, not latent/random/slope/tier
+  covariance claims.
+- Narrowed `docs/design/02-family-registry.md` and FAM-17 in
+  `docs/design/35-validation-debt-register.md` to: standard
+  `delta_lognormal()` / `delta_gamma()` fixed-effect routes are covered; all
+  other delta constructors are blocked constructor-only; latent/mixed-family
+  delta correlation remains not claimed.
+- Regenerated `man/families.Rd` from the tightened roxygen note.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/fit-multi.R")); invisible(parse("R/families.R")); invisible(parse("tests/testthat/test-enum-runtime-ids.R")); invisible(parse("tests/testthat/test-delta-gamma-recovery.R")); invisible(parse("tests/testthat/test-delta-lognormal-recovery.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-enum-runtime-ids.R")'
+Rscript --vanilla -e 'Sys.setenv(GLLVMTMB_HEAVY_TESTS="1", NOT_CRAN="true"); devtools::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-delta-gamma-recovery.R")'
+Rscript --vanilla -e 'Sys.setenv(GLLVMTMB_HEAVY_TESTS="1", NOT_CRAN="true"); devtools::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-delta-lognormal-recovery.R")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'tools::checkRd("man/families.Rd")'
+rg -n "delta_\\* families \\(10 variants\\)|fixed/ordinary latent|entire family group|planned \\(post-CRAN\\).*Delta-lognormal|covered.*latent.*delta|delta.*latent recovery" docs/design docs/dev-log README.md NEWS.md ROADMAP.md R tests/testthat
+git diff --check
+```
+
+Results:
+
+- Parse check: `parse-ok`.
+- `test-enum-runtime-ids.R`: 15 pass, 0 fail, 0 warn, 0 skip.
+- `test-delta-gamma-recovery.R` under heavy gate: 13 pass, 0 fail, 0 warn,
+  0 skip.
+- `test-delta-lognormal-recovery.R` under heavy gate: 13 pass, 0 fail,
+  0 warn, 0 skip.
+- `devtools::document(quiet = TRUE)`: wrote `families.Rd`.
+- `tools::checkRd("man/families.Rd")` reported only the existing non-ASCII
+  citation page-range warnings in references.
+- The stale scan still finds historical audit prose, but active truth files
+  now carry the narrowed FAM-17 boundary.
+- `git diff --check` passed.
+
+Boundary probe:
+
+- Before aligning the tests to Design 62, the old latent
+  `delta_lognormal()` recovery cell returned `convergence = 1` with
+  `pdHess = TRUE` and estimates inside the fixed/sigma tolerances. BFGS
+  changed the failure mode (`convergence = 0`, `pdHess = FALSE`) and multiple
+  starts did not rescue the latent claim. A fixed-effect fit on the same DGP
+  returned `convergence = 0`, `pdHess = TRUE`, `bfix.max.err = 0.033`, and
+  `sigma.max.err = 0.020`. Fisher/Rose verdict: count fixed-effect delta
+  recovery as covered, but do not count latent delta fits as support.

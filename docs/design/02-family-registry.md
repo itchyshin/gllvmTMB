@@ -165,9 +165,13 @@ truth for whether a family is `covered`, `partial`, or `blocked`.
 |--------|---------------|---------|-------|--------|--------|
 | Ordinal probit | `ordinal_probit()` | latent `mu`, `cutpoints` (vector) | probit (latent), identity (cutpoints on log-difference scale) | $\{1, 2, \ldots, K\}$ ordered categories | claimed |
 
-### Hurdle / delta families — DEFERRED to post-CRAN
+### Hurdle / delta families
 
-**Status: `planned (post-CRAN)`** for the entire family group.
+**Status:** the standard `delta_lognormal()` and `delta_gamma()` routes are
+admitted for fixed-effect recovery tests. Other exported delta
+constructors remain compatibility constructors only and must fail loudly until
+likelihood wiring, recovery tests, and the mixed-family latent-scale correlation
+contract are all defined.
 
 These two-stage families combine a binary occurrence component
 (`hu` = hurdle probability) with a positive-continuous component.
@@ -192,26 +196,24 @@ to post-CRAN, contingent on a derivation that gives a defensible
 single latent-residual value per delta family (or a principled
 two-component correlation reporting scheme).
 
-The engine code for these families exists (constructors,
-density-id mappings, TMB likelihood). The deferral is to the
-**public-API and validation-debt surface**, not to the engine.
-Users who want single-family delta-* fits today can use them at
-their own risk; cross-family correlation reporting on
-mixed-family fits that include a delta family is **rejected** by
-`check_auto_residual()`.
+The engine currently admits only the standard `delta_lognormal()` and
+`delta_gamma()` runtime ids. The other exported delta constructors are
+constructor-only compatibility surface for now. Cross-family correlation
+reporting on mixed-family fits that include a delta family remains
+**rejected** by `check_auto_residual()`.
 
 | Family | R constructor (engine has it) | Components | Public status |
 |--------|------------------------------|------------|---------------|
-| Delta-lognormal | `delta_lognormal()` | hurdle (binomial) + lognormal (positive) | planned (post-CRAN) |
-| Delta-lognormal mixture | `delta_lognormal_mix()` | hurdle + lognormal mixture | planned (post-CRAN) |
-| Delta-Gamma | `delta_gamma()` | hurdle + Gamma | planned (post-CRAN) |
-| Delta-Gamma mixture | `delta_gamma_mix()` | hurdle + Gamma mixture | planned (post-CRAN) |
-| Delta-Beta | `delta_beta()` | hurdle + Beta (on $(0, 1)$ proportions with point mass at 0) | planned (post-CRAN) |
-| Delta-gengamma | `delta_gengamma()` | hurdle + generalised Gamma | planned (post-CRAN) |
-| Delta-truncated nbinom1 | `delta_truncated_nbinom1()` | hurdle + truncated nbinom1 (positive counts) | planned (post-CRAN) |
-| Delta-truncated nbinom2 | `delta_truncated_nbinom2()` | hurdle + truncated nbinom2 | planned (post-CRAN) |
-| Delta Poisson-link Gamma | `delta_poisson_link_gamma()` | Thorson-style Poisson-link decomposition | planned (post-CRAN) |
-| Delta Poisson-link lognormal | `delta_poisson_link_lognormal()` | Thorson-style Poisson-link decomposition | planned (post-CRAN) |
+| Delta-lognormal | `delta_lognormal()` | hurdle (binomial) + lognormal (positive) | covered for fixed-effect standard parameterisation |
+| Delta-lognormal mixture | `delta_lognormal_mix()` | hurdle + lognormal mixture | blocked constructor-only |
+| Delta-Gamma | `delta_gamma()` | hurdle + Gamma | covered for fixed-effect standard parameterisation |
+| Delta-Gamma mixture | `delta_gamma_mix()` | hurdle + Gamma mixture | blocked constructor-only |
+| Delta-Beta | `delta_beta()` | hurdle + Beta (on $(0, 1)$ proportions with point mass at 0) | blocked constructor-only |
+| Delta-gengamma | `delta_gengamma()` | hurdle + generalised Gamma | blocked constructor-only |
+| Delta-truncated nbinom1 | `delta_truncated_nbinom1()` | hurdle + truncated nbinom1 (positive counts) | blocked constructor-only |
+| Delta-truncated nbinom2 | `delta_truncated_nbinom2()` | hurdle + truncated nbinom2 | blocked constructor-only |
+| Delta Poisson-link Gamma | `delta_poisson_link_gamma()` | Thorson-style Poisson-link decomposition | blocked deprecated constructor |
+| Delta Poisson-link lognormal | `delta_poisson_link_lognormal()` | Thorson-style Poisson-link decomposition | blocked deprecated constructor |
 
 ## Mixed-family support
 

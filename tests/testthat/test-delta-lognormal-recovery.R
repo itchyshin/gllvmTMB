@@ -5,7 +5,7 @@
 ##   p_pres(it) = invlogit(eta_it);  presence ~ Bernoulli(p_pres)
 ##   pos | presence = 1: log y_it ~ Normal(eta_it, sigma_lognormal)
 ##   eta_it = b_t (trait intercept under shared-predictor scheme)
-## Fit: family = delta_lognormal()
+## Fit: fixed-effect family = delta_lognormal()
 ##
 ## Biological motivation: delta-lognormal is the canonical fisheries CPUE /
 ## survey biomass family with bycatch zeros. Reference: Maunder & Punt
@@ -65,7 +65,7 @@ test_that("delta_lognormal converges and recovers trait intercepts + per-trait s
   expect_true(all(df$value >= 0))
 
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+    value ~ 0 + trait,
     data   = df,
     site   = "individual",
     family = delta_lognormal()
@@ -105,7 +105,7 @@ test_that("delta_lognormal rejects negative response", {
   )
   expect_error(
     suppressMessages(gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+      value ~ 0 + trait,
       data = df, site = "individual", family = delta_lognormal()
     )),
     regexp = "non-negative"
@@ -134,7 +134,7 @@ test_that("delta_lognormal accepts string entry family = 'delta_lognormal'", {
   )
 
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+    value ~ 0 + trait,
     data = df, site = "individual", family = "delta_lognormal"
   )))
   expect_equal(fit$tmb_data$family_id_vec[1], 12L)
@@ -147,7 +147,7 @@ test_that("delta_lognormal poisson-link parameterisation is rejected", {
       data.frame(individual = factor(1:10),
                  trait      = factor(rep("a", 10)),
                  value      = c(rep(0, 3), runif(7, 0.1, 5))),
-      formula = value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+      formula = value ~ 0 + trait,
       site = "individual",
       family = delta_lognormal(type = "poisson-link")
     )),

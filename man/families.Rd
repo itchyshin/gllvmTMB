@@ -145,11 +145,14 @@ parameter \code{gengamma_Q} (reported in \code{print()} or \code{summary()} as
 "Generalized gamma Q") approaches 0. If Q matches \code{phi} the distribution
 should be the gamma.
 
-\code{gengamma()}, the families ending in \verb{_mix()},
-\code{truncated_nbinom1()}, \code{censored_poisson()}, and delta families built from
-those constructors are exported for API continuity, but are not admitted by
-the current multivariate \code{gllvmTMB()} engine. Fits with those families fail
-loudly as unsupported until likelihood wiring and recovery tests land.
+\code{gengamma()}, the one-part families ending in \verb{_mix()},
+\code{truncated_nbinom1()}, \code{censored_poisson()}, and delta constructors other
+than the standard \code{delta_lognormal()} / \code{delta_gamma()} pair are exported
+for API continuity, but are not admitted by the current multivariate
+\code{gllvmTMB()} engine. This includes delta mixtures, \code{delta_gengamma()},
+\code{delta_beta()}, and delta-truncated negative-binomial constructors. Fits
+with those families fail loudly as unsupported until likelihood wiring and
+recovery tests land.
 
 The families ending in \verb{_mix()} are 2-component mixtures where each
 distribution has its own mean but a shared scale parameter.

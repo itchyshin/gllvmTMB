@@ -161,7 +161,7 @@ Row-owner: **Noether + Boole** (phylo-specific math + parser).
 
 | ID | Capability | Status | Test evidence | Notes |
 |----|------------|--------|---------------|-------|
-| PHY-01 | Hadfield & Nakagawa sparse A⁻¹ | `covered` | `test-phylo-hadfield.R` | M0 baseline |
+| PHY-01 | Hadfield & Nakagawa sparse A⁻¹ | `covered` | `test-phylo-hadfield.R` | M0 baseline. Issue #611 guard: the `phylo_tree` route now passes `log_det_A_phy_rr = sum(log(inverseA(tree)$dii))`, i.e. `log|A_aug|`, so the sparse tree path and dense `phylo_vcv` path agree on objective / logLik as well as MLEs. |
 | PHY-02 | `phylo_latent + phylo_unique` paired | `covered` | `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R` | M0 baseline |
 | PHY-03 | Three-piece phylo fallback | `covered` | `test-phylo-q-decomposition.R` | |
 | PHY-04 | `phylo_scalar(0 + trait \| sp)` | `covered` | `test-stage35-phylo-rr.R`, `test-phyloscalar-binary.R`, `test-stage3-propto-equalto.R` | Phase B-INF Lane 2 / B1 (Design 58): binary probit recovery on shared `sigma^2_phy_scalar` (3x band, n_sp = 40, 4 binary replicates per cell) + CI smoke (`confint(parm = "lambda_phy", method = "profile")` finite). Issue #636 guard: sparse `propto()` now preserves the tip-only precision path but, when sparse `Ainv` has extra nodes, inverts the full precision first, subsets the marginal covariance, and inverts that submatrix; `test-stage3-propto-equalto.R` checks the marginalization math directly. Note: `phylo_signal` parm does not apply -- the propto path sets `use$propto`, not `use$phylo_rr` / `use$phylo_diag`. |

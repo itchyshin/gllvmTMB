@@ -34714,3 +34714,43 @@ Not run:
 - No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro,
   DRAC, bootstrap calibration, or coverage simulation. This is a simulation
   input correctness fix for the existing `propto` / `phylo_scalar` route.
+
+## 2026-07-05 -- phylo_tree log-determinant sign guard
+
+Goal: close issue #611 locally by making the `phylo_tree` Hadfield sparse-Ainv
+route pass the same marginal log determinant sign as the dense `phylo_vcv`
+route. The bug affected reported objective / logLik / AIC / BIC constants, not
+the fitted MLEs.
+
+Edits:
+
+- Changed `log_det_A_phy_rr` on the `MCMCglmm::inverseA(phylo_tree)` path from
+  `-sum(log(inv$dii))` to `sum(log(inv$dii))`.
+- Corrected the inline comment to `log det A = sum(log(dii))`.
+- Tightened `test-phylo-hadfield.R` so the tree and dense paths must agree on
+  objective and `logLik()`, not only `Sigma_phy` and fixed effects.
+- Updated validation-debt row `PHY-01`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/fit-multi.R")); invisible(parse("tests/testthat/test-phylo-hadfield.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-phylo-hadfield.R")'
+rg -n "log_det_A_phy_rr <-|sum\\(log\\(inv\\$dii\\)\\)|issue #611|phylo_tree.*log|logLik|AIC|source-specific.*lv|mixed-family CI|interval calibration" R/fit-multi.R tests/testthat/test-phylo-hadfield.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-05-phylo-tree-logdet-sign.md
+git diff --check
+```
+
+Results:
+
+- Parse check: `parse-ok`.
+- `test-phylo-hadfield.R`: 15 pass, 0 fail, 0 warn, 0 skip.
+- Claim audit found the corrected sign, tree-vs-dense objective/logLik
+  regression, and boundary text only; no source-specific `lv`, mixed-family CI,
+  or interval-calibration claim.
+- `git diff --check` passed.
+
+Not run:
+
+- No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro,
+  DRAC, or interval/calibration compute. This is a phylo setup constant repair
+  with a focused tree-vs-dense equivalence regression.

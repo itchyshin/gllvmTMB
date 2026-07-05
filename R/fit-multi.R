@@ -2507,7 +2507,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         cli::cli_abort("phylo_tree tip labels do not cover all species levels.")
       inv <- MCMCglmm::inverseA(phylo_tree)
       Ainv_phy_rr      <- inv$Ainv          # already sparse (dgCMatrix)
-      log_det_A_phy_rr <- -sum(log(inv$dii)) # log det A = -sum(log(dii))
+      log_det_A_phy_rr <- sum(log(inv$dii)) # log det A = sum(log(dii))
       n_aug_phy        <- nrow(Ainv_phy_rr)
       ## Build the species_aug_id map: each observation row's species
       ## (1..n_species in the data factor) -> position in the augmented

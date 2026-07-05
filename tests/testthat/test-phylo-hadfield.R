@@ -88,6 +88,11 @@ test_that("phylo_tree and phylo_vcv paths give identical MLE", {
   )
   expect_equal(fit_h$opt$convergence, 0L)
   expect_equal(fit_d$opt$convergence, 0L)
+  ## The tree path augments the precision with internal nodes, but after
+  ## Laplace integration it is the same marginal model as dense tip Cphy.
+  expect_equal(fit_h$opt$objective, fit_d$opt$objective, tolerance = 1e-4)
+  expect_equal(as.numeric(logLik(fit_h)), as.numeric(logLik(fit_d)),
+               tolerance = 1e-4)
   ## Sigma_phy (= Lambda Lambda^T) must agree to TMB tolerance —
   ## Lambda_phy itself is identifiable only up to column rotation.
   expect_equal(fit_h$report$Sigma_phy, fit_d$report$Sigma_phy,

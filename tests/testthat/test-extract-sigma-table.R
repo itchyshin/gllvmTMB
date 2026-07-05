@@ -152,6 +152,24 @@ test_that("extract_Sigma_table handles unique components and multiple levels", {
   )
 })
 
+test_that("extract_Sigma_table unique part defaults to genuine Psi diagonals", {
+  fit <- make_sigma_table_fit()
+  tbl <- suppressMessages(extract_Sigma_table(
+    fit,
+    level = "unit",
+    part = "unique"
+  ))
+  s_unit <- suppressMessages(
+    extract_Sigma(fit, level = "unit", part = "unique")
+  )$s
+
+  expect_equal(nrow(tbl), fit$n_traits)
+  expect_true(all(tbl$diagonal))
+  expect_equal(unique(tbl$triangle), "diagonal")
+  expect_equal(unique(tbl$matrix), "Psi")
+  expect_equal(tbl$estimate, unname(s_unit))
+})
+
 test_that("extract_Sigma_table rejects correlation tables for non-total parts", {
   fit <- make_sigma_table_fit()
   expect_error(

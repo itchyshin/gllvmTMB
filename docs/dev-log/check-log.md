@@ -33207,3 +33207,26 @@ Outcome: parse passed; `test-extract-omega.R` passed; mixed-response rows
 remained skipped under CRAN mode while the edited file parsed. This is an
 extractor return-contract fix, not a new variance-partition capability or
 delta-family admission.
+
+## 2026-07-04 -- extract_Sigma_table unique-Psi diagonal rows
+
+Goal: close issue #664 by preventing `extract_Sigma_table(part = "unique")`
+from emitting fabricated off-diagonal zero-Psi rows under default entries.
+
+Edits:
+
+- Forced unique-part report tables to use diagonal entries for the Psi vector.
+- Added a regression for default `part = "unique"` without explicitly passing
+  `entries = "diag"`.
+- Updated validation row EXT-18.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/extract-sigma-table.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-extract-sigma-table.R", reporter = "summary")'
+```
+
+Outcome: parse passed; focused Sigma-table tests passed with the expected
+mixed-family link-residual row skipped under CRAN mode. This is report-table
+truth hardening only; it does not change `extract_Sigma()` itself.

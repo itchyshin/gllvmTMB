@@ -399,14 +399,17 @@ extract_Sigma_table <- function(
       mat <- diag(sigma$s, nrow = length(sigma$s))
       rownames(mat) <- colnames(mat) <- names(sigma$s)
       matrix_label <- "Psi"
+      table_entries <- "diag"
       scale <- "latent"
     } else if (identical(measure, "correlation")) {
       mat <- sigma$R
       matrix_label <- "R"
+      table_entries <- entries
       scale <- "correlation"
     } else {
       mat <- sigma$Sigma
       matrix_label <- "Sigma"
+      table_entries <- entries
       scale <- "latent"
     }
     validation_row <- if (inherits(fit, "gllvmTMB_julia")) {
@@ -419,7 +422,7 @@ extract_Sigma_table <- function(
       level = level_label,
       component = part,
       matrix_label = matrix_label,
-      entries = entries,
+      entries = table_entries,
       scale = scale,
       validation_row = validation_row
     )

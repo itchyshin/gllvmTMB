@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-04 20:32 MDT",
+  "updated": "2026-07-04 23:55 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -12,10 +12,10 @@
   },
   "active_work": [
     {
-      "when": "2026-07-04 20:32 MDT",
-      "who": "Completion branch consolidation",
+      "when": "2026-07-04 23:55 MDT",
+      "who": "Completion profile hardening",
       "status": "guard",
-      "text": "Current local branch codex/r-bridge-grouped-dispersion is clean at 72e5081d and ahead of origin by 118 commits. The review package now has local no-manual check 0/0/0, pkgdown check, heavy coevolution prototype/recovery/two-kernel checks, focused bootstrap/derived/profile/plot/rotation checks, and live R-to-GLLVM.jl bridge test coverage. This is a local consolidation checkpoint, not pushed GitHub CI, not PR review, not v1.0 completion, and not a reason to widen source-specific lv, mixed-family CI, or unique= Julia parity claims."
+      "text": "Current local branch codex/r-bridge-grouped-dispersion is clean at 52465135 and ahead of origin by 156 commits. The review package now has the augmented profile target table plus the first Gaussian selected-entry profile canary, rho:unit_slope:i,j, committed locally. This is partial route hardening only: Sigma_unit_slope, augmented proportions, source-specific augmented profiles, non-Gaussian augmented profiles, empirical calibration, pushed GitHub CI, PR review, v1.0 completion, source-specific lv widening, mixed-family CIs, and unique= Julia parity remain gated. No active compute is running."
     },
     {
       "when": "2026-07-04 17:14 MDT",

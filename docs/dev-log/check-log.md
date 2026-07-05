@@ -33714,3 +33714,28 @@ Outcome: documentation regenerated; parse passed; route-matrix tests passed;
 ordinary augmented random-regression focused tests passed under
 `NOT_CRAN=true`; whitespace clean. The canary is route-plumbing evidence only,
 not empirical coverage calibration.
+
+## 2026-07-04 -- Mission Control profile-canary refresh
+
+Goal: update the local operating board after the augmented profile target table
+and Gaussian `rho:unit_slope:i,j` profile canary landed locally.
+
+Edits:
+
+- Refreshed `docs/dev-log/dashboard/status.json` and `sweep.json` to point at
+  local commit `52465135` on `codex/r-bridge-grouped-dispersion`.
+- Kept dashboard metrics unchanged because the new route is partial canary
+  plumbing, not empirical coverage calibration.
+- Added explicit gates for `Sigma_unit_slope`, augmented proportions,
+  source-specific augmented profiles, non-Gaussian augmented profiles, mixed
+  CIs, unique= Julia parity, pushed CI, and v1.0 completion.
+
+Commands:
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+```
+
+Outcome: both dashboard JSON files validate. Mission Control now shows the
+current completion-profile hardening checkpoint without widening any claim.

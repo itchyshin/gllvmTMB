@@ -34007,3 +34007,35 @@ only: no formula grammar widening beyond ordinary fixed-effect transforms, no
 reserved spatial covariance implementation, no likelihood, interval, or compute
 claim changed. Issue #590 remains open upstream until the local fix is pushed
 or included in a PR.
+
+## 2026-07-05 -- extract_Sigma_table cluster2/kernel level discovery (#588)
+
+Goal: close issue #588 by making `extract_Sigma_table()` discover every
+tableable level that `extract_Sigma()` already supports for the `cluster2`
+diagonal tier and named `kernel_*()` tiers.
+
+Edits:
+
+- Added `cluster2` to `.sigma_available_levels()` when
+  `fit$use$diag_cluster2` is active.
+- Added fitted `fit$kernel_levels$name` entries to the same available-level
+  ledger, preserving named kernel table routing through `extract_Sigma()`.
+- Added a focused mocked regression in `test-extract-sigma-table.R` proving
+  `level = "all"` reaches both `cluster2` and a named kernel tier, and that a
+  direct named-kernel request returns the expected matrix entries.
+- Updated validation-debt row `EXT-18`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/extract-sigma-table.R")); invisible(parse("tests/testthat/test-extract-sigma-table.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-extract-sigma-table.R", reporter = "summary")'
+git diff --check
+```
+
+Not run:
+
+- No heavy coevolution/kernel recovery or cluster2 family sweep; this slice
+  only repairs table-level discovery and dispatch for already-supported point
+  extractors.

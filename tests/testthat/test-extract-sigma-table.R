@@ -170,6 +170,56 @@ test_that("extract_Sigma_table unique part defaults to genuine Psi diagonals", {
   expect_equal(tbl$estimate, unname(s_unit))
 })
 
+test_that("extract_Sigma_table discovers cluster2 and named kernel tiers", {
+  fake_fit <- structure(
+    list(
+      use = list(diag_cluster2 = TRUE),
+      kernel_levels = list(
+        name = "known",
+        internal_level = "kernel",
+        index = 1L,
+        rank = 1L,
+        has_latent = TRUE,
+        has_psi = FALSE
+      ),
+      data = data.frame(trait = factor(c("a", "b"), levels = c("a", "b"))),
+      trait_col = "trait"
+    ),
+    class = "gllvmTMB_multi"
+  )
+  expect_setequal(
+    gllvmTMB:::.sigma_available_levels(fake_fit),
+    c("cluster2", "known")
+  )
+
+  Sigma <- matrix(
+    c(1.0, 0.2, 0.2, 1.5),
+    2L,
+    dimnames = list(c("a", "b"), c("a", "b"))
+  )
+
+  with_mocked_bindings(
+    extract_Sigma = function(fit, level, part, link_residual, .skip_warn) {
+      list(
+        Sigma = Sigma,
+        R = stats::cov2cor(Sigma),
+        s = stats::setNames(diag(Sigma), rownames(Sigma)),
+        note = paste("mock", level)
+      )
+    },
+    .package = "gllvmTMB",
+    code = {
+      all_tbl <- extract_Sigma_table(fake_fit, level = "all")
+      kernel_tbl <- extract_Sigma_table(fake_fit, level = "known")
+    }
+  )
+
+  expect_setequal(all_tbl$level, c("cluster2", "known"))
+  expect_equal(unique(kernel_tbl$level), "known")
+  expect_equal(nrow(kernel_tbl), 3L)
+  expect_equal(kernel_tbl$estimate, Sigma[cbind(kernel_tbl$i, kernel_tbl$j)])
+})
+
 test_that("extract_Sigma_table rejects correlation tables for non-total parts", {
   fit <- make_sigma_table_fit()
   expect_error(

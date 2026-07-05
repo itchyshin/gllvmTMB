@@ -22,7 +22,14 @@
   if (isTRUE(fit$use$diag_species)) {
     available <- c(available, "cluster")
   }
-  available
+  if (isTRUE(fit$use$diag_cluster2)) {
+    available <- c(available, "cluster2")
+  }
+  kernel_names <- fit$kernel_levels$name %||% character(0)
+  if (length(kernel_names) > 0L) {
+    available <- c(available, as.character(kernel_names))
+  }
+  unique(available)
 }
 
 .empty_sigma_table <- function() {
@@ -260,9 +267,10 @@
 #'   bridge fit, or a [bootstrap_Sigma()] result.
 #' @param level Character vector of covariance levels, or `"all"` for every
 #'   level present in the fit. Canonical levels are `"unit"`, `"unit_obs"`,
-#'   `"cluster"`, `"phy"`, and `"spatial"`; legacy aliases `"B"`, `"W"`,
-#'   and `"spde"` are accepted. For `gllvmTMB_julia` objects, only `"unit"` is
-#'   currently routed; `"all"` maps to that tier.
+#'   `"cluster"`, `"cluster2"`, `"phy"`, and `"spatial"`; named
+#'   `kernel_*()` tiers are accepted by their fitted `name`; legacy aliases
+#'   `"B"`, `"W"`, and `"spde"` are accepted. For `gllvmTMB_julia` objects,
+#'   only `"unit"` is currently routed; `"all"` maps to that tier.
 #' @param part One of `"total"` (default), `"shared"`, or `"unique"`, passed
 #'   to [extract_Sigma()].
 #' @param measure One of `"covariance"` (default) or `"correlation"`.

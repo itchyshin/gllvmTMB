@@ -19,9 +19,10 @@ bridge fit, or a \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} result.}
 
 \item{level}{Character vector of covariance levels, or \code{"all"} for every
 level present in the fit. Canonical levels are \code{"unit"}, \code{"unit_obs"},
-\code{"cluster"}, \code{"phy"}, and \code{"spatial"}; legacy aliases \code{"B"}, \code{"W"},
-and \code{"spde"} are accepted. For \code{gllvmTMB_julia} objects, only \code{"unit"} is
-currently routed; \code{"all"} maps to that tier.}
+\code{"cluster"}, \code{"cluster2"}, \code{"phy"}, and \code{"spatial"}; named
+\verb{kernel_*()} tiers are accepted by their fitted \code{name}; legacy aliases
+\code{"B"}, \code{"W"}, and \code{"spde"} are accepted. For \code{gllvmTMB_julia} objects,
+only \code{"unit"} is currently routed; \code{"all"} maps to that tier.}
 
 \item{part}{One of \code{"total"} (default), \code{"shared"}, or \code{"unique"}, passed
 to \code{\link[=extract_Sigma]{extract_Sigma()}}.}

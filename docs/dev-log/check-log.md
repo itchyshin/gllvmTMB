@@ -34103,3 +34103,27 @@ Not run:
 
 - No named-kernel profile/confint implementation, token grammar, denominator
   design, or calibration sweep. This is route-ledger truth only.
+
+## 2026-07-05 -- bootstrap_Sigma auxiliary forwarding docs
+
+Goal: correct stale `bootstrap_Sigma()` documentation that said structured-fit
+auxiliary arguments were not forwarded during refits, even though the current
+implementation forwards stored `phylo_vcv`, `phylo_tree`, `mesh`, and
+`lambda_constraint` values when present.
+
+Edits:
+
+- Updated the roxygen caveat in `R/bootstrap-sigma.R`.
+- Regenerated `man/bootstrap_Sigma.Rd`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/bootstrap-sigma.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Not run:
+
+- No bootstrap behavior change and no bootstrap calibration sweep; this is a
+  documentation truth repair only.

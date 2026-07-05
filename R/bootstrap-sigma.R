@@ -125,10 +125,11 @@
 #'     Unsupported families fall back through the simulator's own
 #'     warning path.
 #'   \item Refits use the same `formula` reconstructed from
-#'     `fit$formula` and `fit$covstructs`. Auxiliary arguments such as
-#'     `phylo_vcv`, `mesh`, `lambda_constraint` are NOT currently
-#'     forwarded; pass `formula` and `extra_args` explicitly via the
-#'     low-level path if you need them.
+#'     `fit$formula` and `fit$covstructs`. Stored auxiliary fit arguments
+#'     needed by currently wired structured tiers (`phylo_vcv`,
+#'     `phylo_tree`, `mesh`, and `lambda_constraint`) are forwarded when
+#'     present on the fitted object. New structured engines may still need
+#'     their own forwarding gate before bootstrap CIs are advertised.
 #'   \item Convergence: replicates whose refit fails or whose
 #'     optimiser does not return `convergence == 0` are counted in
 #'     `n_failed` and excluded from CIs.

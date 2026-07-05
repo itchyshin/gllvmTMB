@@ -126,6 +126,23 @@ get_prop_curve <- function() {
 ##  Shape / class / column tests (one cached curve per family)
 ## ============================================================================
 
+test_that("profile-derived delta_deviance uses the joint MLE baseline", {
+  fit <- structure(
+    list(opt = list(objective = 10)),
+    class = "gllvmTMB_multi"
+  )
+  objective <- c(10.5, 11, 12)
+
+  expect_equal(
+    gllvmTMB:::.profile_curve_delta_deviance(objective, fit),
+    c(1, 2, 4)
+  )
+  expect_false(isTRUE(all.equal(
+    gllvmTMB:::.profile_curve_delta_deviance(objective, fit),
+    2 * (objective - min(objective))
+  )))
+})
+
 test_that("profile_repeatability(): shape, class, columns, n_grid rows", {
   skip_if_not_heavy()
   skip_if_not_installed("TMB")

@@ -94,6 +94,15 @@
   )
 }
 
+## All derived profile curves report LR distance from the joint MLE, not
+## from the best point on a finite candidate grid. The grid minimum can sit
+## above the MLE and would shrink delta_deviance, widening inverted CIs.
+#' @keywords internal
+#' @noRd
+.profile_curve_delta_deviance <- function(objective, fit) {
+  2 * (objective - as.numeric(fit$opt$objective))
+}
+
 ## ---- tmbprofile-based curve worker --------------------------------------
 ## For derived quantities expressible as a SINGLE linear combination of
 ## opt$par (repeatability, phylo_signal), the corresponding
@@ -362,7 +371,6 @@ profile_repeatability <- function(
     cli::cli_abort("{.arg trait_idx} must be integers in 1:{T}.")
   }
 
-  mle_nll <- as.numeric(fit$opt$objective)
   out_list <- vector("list", length(trait_idx))
   for (k in seq_along(trait_idx)) {
     t <- trait_idx[k]
@@ -385,7 +393,7 @@ profile_repeatability <- function(
       target = target_lab,
       profile_value = grid,
       objective = obj,
-      delta_deviance = 2 * (obj - mle_nll),
+      delta_deviance = .profile_curve_delta_deviance(obj, fit),
       estimate = R_hat,
       conf_level = conf_level,
       stringsAsFactors = FALSE,
@@ -471,7 +479,6 @@ profile_phylo_signal <- function(
     cli::cli_abort("{.arg trait_idx} must be integers in 1:{T}.")
   }
 
-  mle_nll <- as.numeric(fit$opt$objective)
   out_list <- vector("list", length(trait_idx))
   for (k in seq_along(trait_idx)) {
     t <- trait_idx[k]
@@ -492,7 +499,7 @@ profile_phylo_signal <- function(
       target = target_lab,
       profile_value = grid,
       objective = obj,
-      delta_deviance = 2 * (obj - mle_nll),
+      delta_deviance = .profile_curve_delta_deviance(obj, fit),
       estimate = H2_hat,
       conf_level = conf_level,
       stringsAsFactors = FALSE,
@@ -607,7 +614,7 @@ profile_communality <- function(
       target = target_lab,
       profile_value = grid,
       objective = obj,
-      delta_deviance = 2 * (obj - min(obj, na.rm = TRUE)),
+      delta_deviance = .profile_curve_delta_deviance(obj, fit),
       estimate = c2_hat,
       conf_level = conf_level,
       stringsAsFactors = FALSE,
@@ -803,16 +810,35 @@ profile_correlation <- function(
     target = target_lab,
     profile_value = grid,
     objective = obj,
-    delta_deviance = 2 * (obj - min(obj, na.rm = TRUE)),
+    delta_deviance = .profile_curve_delta_deviance(obj, fit),
     estimate = rho_hat,
     conf_level = conf_level,
     stringsAsFactors = FALSE,
     row.names = NULL
   )
+  refit_bounds <- tryCatch(
+    .profile_ci_via_refit(
+      fit,
+      target_fn,
+      q_hat = rho_hat,
+      level = conf_level,
+      q_lo_hint = max(rho_hat - 0.3, -0.999),
+      q_hi_hint = min(rho_hat + 0.3, 0.999),
+      q_lo_floor = -0.999,
+      q_hi_ceiling = 0.999
+    ),
+    error = function(e) list(lower = NA_real_, upper = NA_real_)
+  )
   attr(out, "n_grid") <- n_grid
   attr(out, "conf_level") <- conf_level
   attr(out, "quantity") <- "rho (correlation)"
   attr(out, "tier") <- tier
+  attr(out, "refit_bounds") <- data.frame(
+    target = target_lab,
+    lower = refit_bounds$lower,
+    upper = refit_bounds$upper,
+    stringsAsFactors = FALSE
+  )
   class(out) <- c("profile_correlation", "profile_derived", class(out))
   out
 }
@@ -901,6 +927,7 @@ profile_proportions <- function(
   }
 
   out_list <- list()
+  bounds_list <- list()
   for (comp in components) {
     for (t in trait_idx) {
       p_hat <- pt_mat[t, comp]
@@ -931,11 +958,30 @@ profile_proportions <- function(
         target = target_lab,
         profile_value = grid,
         objective = obj,
-        delta_deviance = 2 * (obj - min(obj, na.rm = TRUE)),
+        delta_deviance = .profile_curve_delta_deviance(obj, fit),
         estimate = p_hat,
         conf_level = conf_level,
         stringsAsFactors = FALSE,
         row.names = NULL
+      )
+      refit_bounds <- tryCatch(
+        .profile_ci_via_refit(
+          fit,
+          target_fn,
+          q_hat = p_hat,
+          level = conf_level,
+          q_lo_hint = max(p_hat - 0.3, q_floor),
+          q_hi_hint = min(p_hat + 0.3, q_ceil),
+          q_lo_floor = q_floor,
+          q_hi_ceiling = q_ceil
+        ),
+        error = function(e) list(lower = NA_real_, upper = NA_real_)
+      )
+      bounds_list[[length(bounds_list) + 1L]] <- data.frame(
+        target = target_lab,
+        lower = refit_bounds$lower,
+        upper = refit_bounds$upper,
+        stringsAsFactors = FALSE
       )
     }
   }
@@ -946,6 +992,7 @@ profile_proportions <- function(
   attr(out, "n_grid") <- n_grid
   attr(out, "conf_level") <- conf_level
   attr(out, "quantity") <- "proportion of variance"
+  attr(out, "refit_bounds") <- do.call(rbind, bounds_list)
   class(out) <- c("profile_proportions", "profile_derived", class(out))
   out
 }

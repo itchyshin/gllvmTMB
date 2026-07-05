@@ -32707,3 +32707,32 @@ curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool >/dev/null
 Outcome: JSON validated, Mission Control served at `http://127.0.0.1:8770/`,
 and the in-app browser preview showed the new Completion branch consolidation
 row at the top of Active work.
+
+## 2026-07-04 -- Profile-derived curve baseline repair
+
+Goal: repair the profile-derived curve LR baseline so repeatability,
+phylogenetic signal, communality, correlation, and variance-proportion curves
+measure `delta_deviance` from the joint MLE objective rather than from the best
+point on a finite candidate grid.
+
+Edits:
+
+- Added `.profile_curve_delta_deviance()` and routed all profile-derived curve
+  families through it.
+- Added refit-inversion bounds to correlation and variance-proportion curve
+  outputs so curve summaries remain aligned with the bracket-bisect profile CI
+  path.
+- Added a pure regression test for the joint-MLE baseline contract and updated
+  validation row CI-12.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/profile-derived-curves.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-derived-curves.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-derived-curves.R", reporter = "summary")'
+```
+
+Outcome: parse passed; quick profile-derived curve tests passed; heavy
+profile-derived curve tests passed. This is a curve-baseline and summary
+alignment repair only, not a new empirical calibration claim.

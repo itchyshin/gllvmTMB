@@ -35488,3 +35488,36 @@ Results:
   skipped as designed.
 - No code, API, likelihood, newdata simulation, prediction interval, or
   calibration claim changed in this reconciliation slice.
+
+### 2026-07-05 -- Focused validation pack after issue reconciliation
+
+Goal:
+
+- Re-run the focused local validation pack for the already-fixed issue cluster
+  before starting any larger Gamma/dispersion or missing-data implementation
+  slice.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-sigma-profile-bootstrap-controls.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-confint-lambda.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-extractors-extra.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-sigma-profile-bootstrap-controls.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'
+```
+
+Results:
+
+- `test-sigma-profile-bootstrap-controls.R`: default run skipped the heavy row;
+  heavy run passed four checks.
+- `test-confint-lambda.R`: non-heavy checks passed; heavy Lambda interval rows
+  skipped as designed.
+- `test-extractors-extra.R`: passed, including the expected residual-floor
+  informational message.
+- `test-profile-route-matrix.R`: passed.
+- `test-julia-bridge.R`: R-side checks passed; 13 live-GLLVM rows skipped
+  because `GLLVM_JL_PATH` was not configured.
+- No files changed during the test pack; this note records validation evidence
+  only.

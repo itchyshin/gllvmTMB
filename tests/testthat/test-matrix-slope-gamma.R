@@ -18,9 +18,7 @@
 ##
 ## Fixture (Honest-matrix discipline, Design 59): seed-controlled,
 ## log-link, gamma shape phi = 2 (=> CV = 1/sqrt(2) ~ 0.707, stored by the
-## engine in `report$sigma_eps`, NOT a `phi_gamma` slot -- the C++ template
-## at src/gllvmTMB.cpp:760 uses sigma_eps as the gamma CV with shape =
-## 1/CV^2; this is the gamma-phylo sibling's documented gotcha). Trait
+## engine in per-trait `report$phi_gamma`). Trait
 ## intercepts on the log scale near 0 so E(y) = exp(eta) ~ 1, 3 traits,
 ## STAR tree (identity VCV => species i.i.d. on the phylo side, the cleanest
 ## identifiable case). `x` is held IDENTICAL across traits within each
@@ -180,13 +178,13 @@ test_that("phylo_unique(1 + x | species) x Gamma(log) converges, pd_hessian TRUE
   expect_identical(fit$tmb_data$use_phylo_slope_correlated, 1L)
   expect_identical(fit$tmb_data$n_lhs_cols, 2L)
 
-  ## Confirm the gamma CV is carried in sigma_eps (NOT a phi_gamma slot):
+  ## Confirm the gamma CV is carried in per-trait phi_gamma:
   ## shape = phi = 2 => CV = 1/sqrt(2) ~ 0.707. Wide (3x) band, mean-dependent.
-  cv_hat   <- as.numeric(fit$report$sigma_eps)
+  cv_hat   <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
   cv_truth <- 1 / sqrt(fx$phi)
-  expect_true(is.finite(cv_hat))
-  expect_gt(cv_hat, cv_truth / 3)
-  expect_lt(cv_hat, cv_truth * 3)
+  expect_true(all(is.finite(cv_hat)))
+  expect_gt(min(cv_hat), cv_truth / 3)
+  expect_lt(max(cv_hat), cv_truth * 3)
 
   Sigma_hat <- slope_gamma_Sigma_b(fit)
   sigma2_int_hat   <- unname(Sigma_hat["intercept", "intercept"])

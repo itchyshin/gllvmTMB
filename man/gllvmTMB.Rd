@@ -383,25 +383,24 @@ the \code{site}-level term is now an additional, \emph{higher-level} random effe
 a residual at all. The dispatch table below records this explicitly for the
 configurations the engine supports today.
 
-For continuous-family responses (Gaussian, lognormal, Gamma) the
-engine has one residual scale parameter, \code{sigma_eps}. By default
-\code{sigma_eps} is \strong{estimated as a single shared scalar across all
-continuous-family rows}; per-trait residual variances only appear
-if you explicitly add a per-row \code{indep(...)} term or legacy \code{unique(...)}
-compatibility term. The dispatch is automatic:
+Gaussian and lognormal responses have one residual scale parameter,
+\code{sigma_eps}. Ordinary Gamma responses instead carry a per-trait shape
+\code{phi_gamma} (CV = \code{1 / sqrt(phi_gamma)}). Per-trait residual variances
+only appear if you explicitly add a per-row \code{indep(...)} term or legacy
+\code{unique(...)} compatibility term. The dispatch is automatic:
 
 \describe{
-\item{No per-row \code{indep} / \code{unique}, continuous families present}{One
-shared \code{sigma_eps} across all rows. \emph{Not} per-trait.}
-\item{No per-row \code{indep} / \code{unique}, no continuous families}{\code{sigma_eps}
-is mapped off; the family's intrinsic dispersion handles the
-residual.}
+\item{No per-row \code{indep} / \code{unique}, Gaussian/lognormal present}{One
+shared \code{sigma_eps} across Gaussian/lognormal rows. \emph{Not} per-trait.}
+\item{No per-row \code{indep} / \code{unique}, no Gaussian/lognormal rows}{\code{sigma_eps}
+is mapped off; the family's intrinsic dispersion handles the residual
+(for ordinary Gamma, \code{phi_gamma}).}
 \item{\code{indep(0 + trait | g)} where \code{g} has fewer levels than
 rows (e.g. \code{g = "site"})}{\code{sigma_eps} is still estimated as the
 row-level residual; the diagonal term adds a per-trait random
 effect at level \code{g} on top. Legacy \code{unique()} spelling is equivalent.}
 \item{\code{indep(0 + trait | obs)} at the per-row level (one
-level per row), continuous families fitted}{\code{sigma_eps} is
+level per row), Gaussian/lognormal rows fitted}{\code{sigma_eps} is
 auto-suppressed (mapped off, fixed at a tiny stabiliser); the
 T per-trait diagonal random effects \emph{are} the residual. A
 one-shot \code{cli::cli_inform} fires at fit time announcing the
@@ -414,11 +413,11 @@ delta families a warning is emitted (see "Per-family-aware OLRE
 selection" below). Legacy \code{unique()} spelling is equivalent.}
 }
 
-Mnemonic: continuous-family \code{sigma_eps} is the default; per-row
-\code{indep} / legacy \code{unique} replaces it with T per-trait residuals;
-non-per-row \code{indep} / legacy \code{unique} adds a higher-level random effect on top of
-\code{sigma_eps}; non-continuous families never carry \code{sigma_eps}
-regardless.
+Mnemonic: Gaussian/lognormal \code{sigma_eps} is the default; ordinary Gamma uses
+\code{phi_gamma}; per-row \code{indep} / legacy \code{unique} replaces the Gaussian/lognormal
+scalar residual with T per-trait residuals; non-per-row \code{indep} / legacy
+\code{unique} adds a higher-level random effect on top of the family residual;
+non-continuous families never carry \code{sigma_eps} regardless.
 
 \strong{Per-family-aware OLRE selection.} When
 \verb{indep(0 + trait | <unit_obs>)} (or legacy \code{unique()} spelling) is at

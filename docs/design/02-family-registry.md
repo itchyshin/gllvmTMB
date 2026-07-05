@@ -83,7 +83,7 @@ cases:
 | `binomial` | cloglog | $\pi^2 / 6 \approx 1.64$ |
 | `poisson` | log | depends on $\mu$; the trigamma-approximation $\sigma^2_d \approx \log(1 + 1/\mu)$ is the standard latent-Gaussian linearisation |
 | `nbinom2` | log | $\sigma^2_d = \log(1 + 1/\mu + \phi)$ where $\phi$ is the overdispersion |
-| `Gamma` | log | $\sigma^2_d = \psi'(1/\sigma^2_{\text{Gamma}})$ where $\psi'$ is the trigamma function |
+| `Gamma` | log | $\sigma^2_d = \psi'(\phi_{\gamma,t})$ where $\phi_{\gamma,t}$ is the per-trait shape and $\psi'$ is the trigamma function |
 | `Beta` | logit | $\sigma^2_d = \psi'(a) + \psi'(b)$ where $a, b$ are the beta shape parameters |
 | `lognormal` | identity (of log-y) | $0$ (since the linear predictor is on the log-y scale, this is just Gaussian on log-y) |
 | `ordinal_probit` | probit (latent) | $1$ (by construction; probit latent residual is unit-Gaussian) |
@@ -133,7 +133,7 @@ truth for whether a family is `covered`, `partial`, or `blocked`.
 | Student-t | `student()` | `mu`, `sigma`, `nu` | identity, log, logm2 | $\mathbb{R}$ | claimed |
 | Lognormal | `lognormal()` | `mu`, `sigma` | identity (of $\log y$), log | $(0, \infty)$ | claimed |
 | Lognormal mixture | `lognormal_mix()` | `mu`, `sigma`, mixture weights | identity, log, logit | $(0, \infty)$ | blocked constructor-only |
-| Gamma | `Gamma()` (base R) | `mu`, `sigma` | log, log | $(0, \infty)$ | claimed |
+| Gamma | `Gamma()` (base R) | `mu`, `sigma` (reported from per-trait `phi_gamma`) | log, log | $(0, \infty)$ | claimed |
 | Gamma mixture | `gamma_mix()` | `mu`, `sigma`, mixture weights | log, log, logit | $(0, \infty)$ | blocked constructor-only |
 | Generalised Gamma | `gengamma()` | `mu`, `sigma`, `nu` | log, log, log | $(0, \infty)$ | blocked constructor-only |
 | Tweedie | `tweedie()` | `mu`, `sigma`, `p` | log, log, logitp (constrained $1 < p < 2$) | $[0, \infty)$ with point mass at 0 | claimed |

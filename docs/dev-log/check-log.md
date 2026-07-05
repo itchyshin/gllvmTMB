@@ -4,6 +4,67 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-05 05:20 MDT -- Gamma phi decoupling
+
+Branch: `codex/r-bridge-grouped-dispersion`; local issue #622 repair.
+No push or PR.
+
+Guard: ordinary `Gamma(link = "log")` must not borrow the shared
+Gaussian/lognormal `sigma_eps`. Native R/TMB now estimates per-trait
+`phi_gamma`; mixed Gaussian/Gamma fits check that Gaussian residual SD and
+Gamma CV move independently.
+
+Implemented:
+
+- Added `log_phi_gamma` / `phi_gamma` to the TMB objective, fit parameters,
+  reports, link-residual path, simulation path, direct profile-target inventory,
+  and single-trait warm-starts.
+- Updated active Gamma tests (ordinary, unit, depth, slope, tiers, cluster2,
+  spatial, residual fixture) to use `phi_gamma`.
+- Narrowed Julia bridge wording so grouped-Gamma bridge parity is a follow-up
+  after the native parameterisation change.
+- Updated likelihood/family design docs, validation-debt rows, NEWS, roxygen,
+  and generated Rd.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'pkgbuild::compile_dll()'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-link-residual-15-family-fixture.R", reporter = "summary"); testthat::test_file("tests/testthat/test-family-gamma.R", reporter = "summary"); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-matrix-gamma-unit.R", reporter = "summary")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-gamma-recovery-depth.R", reporter = "summary")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-tiers-gamma.R", reporter = "summary")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-profile-targets.R", reporter = "summary")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-m3-4-warmstart-phi-clamp.R", reporter = "summary")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-cluster2-families.R", reporter = "summary")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-matrix-gamma-spatial.R", reporter = "summary")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-matrix-slope-gamma.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-stage37-mixed-family.R", reporter = "summary")'
+git diff --check
+```
+
+Outcome: all listed checks passed. `test-julia-bridge.R` passed the pure-R
+layer and skipped 13 live-GLLVM rows because `GLLVM_JL_PATH` was not
+configured.
+
+Claim audit:
+
+```sh
+rg -n "Gamma.*sigma_eps|sigma_eps.*Gamma|1 / sigma_eps|1/sigma_eps|shared Gamma grouped dispersion|native scalar-CV|Native per-trait Gamma CV/shape remains" R tests/testthat docs/design man README.md NEWS.md vignettes
+rg -n "Gamma CV.*sigma_eps|sigma_eps.*CV|CV.*sigma_eps|ordinary Gamma route still uses shared|ordinary native Gamma is still shared|native ordinary Gamma uses shared|Gamma.*sigma_eps|sigma_eps.*Gamma|1 / sigma_eps|1/sigma_eps|shared Gamma grouped dispersion|native scalar-CV|Native per-trait Gamma CV/shape remains" R tests/testthat docs/design NEWS.md man vignettes
+```
+
+Verdict: remaining active hits are intentional contrast wording for
+Gaussian/lognormal `sigma_eps` versus Gamma `phi_gamma`; stale active
+`sigma_eps`-as-Gamma-shape claims were removed. Historical after-task notes
+were not rewritten.
+
+Not run:
+
+- Full `devtools::check()`, `pkgdown::check_pkgdown()`, or live GLLVM.jl bridge
+  parity.
+
 ## 2026-07-05 03:45 MDT -- Lambda selected-profile pinned-entry guard
 
 Branch: `codex/r-bridge-grouped-dispersion`; local inference-safety repair.

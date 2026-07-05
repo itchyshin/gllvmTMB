@@ -20,7 +20,7 @@
 ##   1  binomial logit/probit/cloglog → pi^2/3, 1, pi^2/6
 ##   2  poisson              → log1p(1/mu_t)
 ##   3  lognormal            → 0
-##   4  Gamma                → trigamma(1 / sigma_eps^2)
+##   4  Gamma                → trigamma(phi_gamma)
 ##   5  nbinom2              → trigamma(phi_nbinom2)
 ##   6  tweedie              → log1p(phi * mu^(p-2))
 ##   7  Beta                 → trigamma(a_t) + trigamma(b_t)
@@ -106,11 +106,11 @@ test_that("family_id 3 (lognormal) returns 0", {
 
 ## ---- 4  Gamma ------------------------------------------------------------
 
-test_that("family_id 4 (Gamma, log link) returns trigamma(1 / sigma_eps^2)", {
-  ## sigma_eps = 0.5 -> shape nu = 1 / 0.25 = 4 -> trigamma(4)
+test_that("family_id 4 (Gamma, log link) returns trigamma(phi_gamma)", {
+  ## phi_gamma is the per-trait shape. shape = 4 -> trigamma(4).
   fit <- make_mock_single_family_fit(
     family_id    = 4L,
-    report_extra = list(sigma_eps = 0.5)
+    report_extra = list(phi_gamma = 4)
   )
   res <- gllvmTMB:::link_residual_per_trait(fit)
   expect_equal(unname(res), trigamma(4), tolerance = 1e-12)

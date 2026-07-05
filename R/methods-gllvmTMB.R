@@ -1072,15 +1072,15 @@ simulate.gllvmTMB_multi <- function(
   n <- length(eta)
   y <- numeric(n)
 
-  ## sigma_eps is scalar (shared across Gaussian + Gamma traits per the
-  ## C++ template at src/gllvmTMB.cpp:760, where Gamma uses sigma_eps as
-  ## the CV).
+  ## sigma_eps is scalar for Gaussian/lognormal traits. Ordinary Gamma uses
+  ## per-trait phi_gamma shape below.
   sigma_eps <- as.numeric(fit$report$sigma_eps)
   if (is.null(sigma_eps) || length(sigma_eps) == 0L) {
     sigma_eps <- exp(unname(fit$opt$par["log_sigma_eps"]))
     if (is.na(sigma_eps)) sigma_eps <- 1
   }
   sigma_eps <- sigma_eps[1L]
+  phi_gamma <- as.numeric(fit$report$phi_gamma %||% numeric(0L))
   phi_nbinom2 <- fit$report$phi_nbinom2 # length n_traits
   phi_nbinom1 <- fit$report$phi_nbinom1 # length n_traits
 
@@ -1132,11 +1132,11 @@ simulate.gllvmTMB_multi <- function(
       ## Lognormal — y = exp(eta + N(0, sigma_eps))
       y[i] <- exp(eta_i + stats::rnorm(1L, sd = sigma_eps))
     } else if (fid == 4L) {
-      ## Gamma, log link with sigma_eps as the CV
-      ## shape = 1/sigma_eps^2; scale = mu * sigma_eps^2; E(y) = mu.
+      ## Gamma, log link with per-trait shape phi_gamma.
+      ## scale = mu / shape; E(y) = mu.
       mu <- exp(eta_i)
-      shape <- 1 / (sigma_eps * sigma_eps)
-      scale <- mu * sigma_eps * sigma_eps
+      shape <- if (length(phi_gamma) >= tid_1) phi_gamma[tid_1] else 1
+      scale <- mu / shape
       y[i] <- stats::rgamma(1L, shape = shape, scale = scale)
     } else if (fid == 5L) {
       ## nbinom2, log link

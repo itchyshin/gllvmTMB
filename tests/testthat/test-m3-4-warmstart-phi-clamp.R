@@ -120,6 +120,31 @@ test_that("warmup on nbinom2 produces finite non-default initial log_phi", {
   expect_true(any(abs(warm$log_phi_nbinom2) > 1e-8))
 })
 
+test_that("warmup on Gamma produces finite per-trait log_phi_gamma", {
+  skip_if_not_heavy()
+  set.seed(12L)
+  trait <- factor(rep(c("a", "b"), each = 80L), levels = c("a", "b"))
+  shape <- c(a = 5, b = 9)
+  mu <- c(a = 2, b = 3)
+  y <- stats::rgamma(
+    length(trait),
+    shape = shape[as.character(trait)],
+    scale = mu[as.character(trait)] / shape[as.character(trait)]
+  )
+
+  warm <- gllvmTMB:::.gllvmTMB_single_trait_warmup(
+    trait_vec      = as.integer(trait),
+    y              = y,
+    family_per_row = rep(list(stats::Gamma(link = "log")), length(y)),
+    n_traits       = nlevels(trait),
+    verbose        = FALSE
+  )
+  expect_true(all(is.finite(warm$log_phi_gamma)))
+  expect_true(all(warm$log_phi_gamma <= log(100.0)))
+  expect_true(all(warm$log_phi_gamma >= log(0.01)))
+  expect_true(any(abs(warm$log_phi_gamma) > 1e-8))
+})
+
 # ---- (4) Phi-clamp: warmup with extreme y still produces clamped phi --
 
 test_that("phi clamp [0.01, 100] is applied to warmup output", {

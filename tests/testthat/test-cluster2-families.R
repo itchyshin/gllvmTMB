@@ -343,10 +343,10 @@ test_that("cluster2 x Gamma: cluster2 variance recovers (SD scale), CV ok", {
                  label = paste0("sd_c2[", t, "] (Gamma)"))
   }
 
-  ## gamma CV (sigma_eps) recovered, identified by within-cell reps.
-  cv_hat <- as.numeric(fit$report$sigma_eps)
-  expect_equal(cv_hat, cv_true, tolerance = 0.1,
-               label = "gamma CV stored in sigma_eps")
+  ## gamma CV recovered from per-trait phi_gamma, identified by within-cell reps.
+  cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
+  expect_equal(cv_hat, rep(cv_true, n_traits), tolerance = 0.1,
+               label = "gamma CV stored in per-trait phi_gamma")
 })
 
 ## ---- ordinal_probit -------------------------------------------------------

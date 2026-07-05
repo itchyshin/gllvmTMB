@@ -263,9 +263,9 @@ julia_grouped_dispersion_cases <- function() {
       parameter = "alpha",
       public = function(x) 1 / sqrt(x),
       phi = NULL,
-      native_report = "sigma_eps",
-      expected_df = 5L,
-      native_report_length = 1L
+      native_report = "phi_gamma",
+      expected_df = 6L,
+      native_report_length = 2L
     )
   )
 }
@@ -520,7 +520,7 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   ]))
   expect_true(caps$ci_no_x_wald[caps$family == "ordinal"])
   expect_false(caps$ci_no_x_profile[caps$family == "ordinal"])
-  expect_true(any(grepl("shared Gamma grouped dispersion", caps$notes)))
+  expect_true(any(grepl("grouped Gamma native parity remains a follow-up", caps$notes)))
   expect_true(any(grepl("per-trait ordinal cutpoints", caps$notes)))
   expect_true(all(caps$status == "partial"))
   expect_equal(caps$family[caps$missing_response], .GLLVM_JULIA_MASK_FAMILIES)

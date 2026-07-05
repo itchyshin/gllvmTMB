@@ -171,6 +171,12 @@
     transformation = "exp"
   ),
   list(
+    tmb_parameter = "log_phi_gamma",
+    label_prefix = "phi_gamma",
+    target_class = "dispersion",
+    transformation = "exp"
+  ),
+  list(
     tmb_parameter = "log_phi_tweedie",
     label_prefix = "phi_tweedie",
     target_class = "dispersion",

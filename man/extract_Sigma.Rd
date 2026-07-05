@@ -167,7 +167,7 @@ Schielzeth 2017):
 \code{binomial(link = "cloglog")}      \tab \eqn{\sigma^2_d = \pi^2/6 \approx 1.645} \cr
 \code{poisson(link = "log")}           \tab \eqn{\sigma^2_d = \log(1 + 1/\hat\mu_t)} (lognormal-Poisson approx.) \cr
 \code{lognormal(link = "log")}         \tab \eqn{\sigma^2_d = 0} (sigma_eps already models the log-scale residual) \cr
-\code{Gamma(link = "log")}             \tab \eqn{\sigma^2_d = \psi'(\hat\nu)} where \eqn{\hat\nu = 1/\hat\sigma_\varepsilon^2} is the shape \cr
+\code{Gamma(link = "log")}             \tab \eqn{\sigma^2_d = \psi'(\hat\nu)} where \eqn{\hat\nu = \hat\phi_{\gamma,t}} is the per-trait shape \cr
 \code{nbinom2(link = "log")}           \tab \eqn{\sigma^2_d = \psi'(\hat\phi)} where \eqn{\hat\phi} is the per-trait NB2 dispersion \cr
 \code{tweedie(link = "log")}           \tab \eqn{\sigma^2_d = \log(1 + \hat\phi \hat\mu_t^{\hat p - 2})} (delta method) \cr
 \code{Beta(link = "logit")}            \tab \eqn{\sigma^2_d = \psi'(\hat\mu_t \hat\phi) + \psi'((1 - \hat\mu_t)\hat\phi)} (Smithson & Verkuilen 2006) \cr

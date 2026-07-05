@@ -296,9 +296,9 @@ VP <- function(fit) {
     comps$propto <- rep(lam, fit$n_traits)
   }
   ## Add only the legacy observation-scale residual represented by sigma_eps.
-  ## For count, binary, Gamma, Beta, ordinal, and NB families, sigma_eps is
-  ## either mapped off or has a family-specific meaning; extract_proportions()
-  ## is the canonical family-aware latent-scale variance-share helper.
+  ## For non-Gaussian families, the legacy sigma_eps component is not the
+  ## canonical latent-scale residual; extract_proportions() is the
+  ## family-aware variance-share helper.
   residual_var <- .vp_residual_per_trait(fit)
   if (any(residual_var > 0)) {
     comps$residual <- residual_var

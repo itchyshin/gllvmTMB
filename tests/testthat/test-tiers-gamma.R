@@ -11,8 +11,7 @@
 ##
 ## DGP convention (both tests):
 ##   * log link, gamma shape phi = 2 -> CV = 1 / sqrt(phi) = 0.7071.
-##   * gamma CV is stored in `sigma_eps` (there is NO separate phi_gamma
-##     slot in the engine). For the CV to be identifiable the data need
+##   * gamma CV is stored as per-trait `phi_gamma` shape. For the CV to be identifiable the data need
 ##     within-cell replicates: with one observation per finest cell the
 ##     OLRE / tier variance and the gamma CV both try to explain the same
 ##     within-cell spread and the CV collapses. Every fixture below puts
@@ -38,7 +37,7 @@ test_that("Gamma x unit_obs: two-tier unique() converges (PD) and separates sd_B
   ##   unique(0 + trait | unit)     -> between-unit variance  (sd_B)
   ##   unique(0 + trait | unit_obs) -> within-unit OLRE       (sd_W)
   ## Each unit_obs cell carries `n_rep` replicate rows per trait so the
-  ## gamma CV (sigma_eps) is identified from the within-cell spread and
+  ## gamma CV is identified from the within-cell spread and
   ## the OLRE sits at the cell (not per-row) level. Gamma x OLRE is the
   ## hard combination flagged in the Phase B0 audit; here it is PD.
   set.seed(101)
@@ -110,10 +109,10 @@ test_that("Gamma x unit_obs: two-tier unique() converges (PD) and separates sd_B
                  label = paste0("sd_W[", t, "] (within-unit OLRE)"))
   }
 
-  ## --- gamma CV (sigma_eps) recovered: identified by within-cell reps ---
-  cv_hat <- as.numeric(fit$report$sigma_eps)
-  expect_equal(cv_hat, cv_true, tolerance = 0.1,
-               label = "gamma CV stored in sigma_eps")
+  ## --- gamma CV recovered: identified by within-cell reps ---
+  cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
+  expect_equal(cv_hat, rep(cv_true, Tn), tolerance = 0.1,
+               label = "gamma CV stored in per-trait phi_gamma")
 
   ## --- tiers separate: traits where the two true SDs differ are each
   ##     recovered closer to their OWN tier's truth than to the other's.
@@ -207,10 +206,10 @@ test_that("Gamma x cluster: third-slot unique() converges (PD) and recovers sd_q
                  label = paste0("sd_q[", t, "] (cluster tier)"))
   }
 
-  ## --- gamma CV (sigma_eps) recovered -----------------------------------
-  cv_hat <- as.numeric(fit$report$sigma_eps)
-  expect_equal(cv_hat, cv_true, tolerance = 0.1,
-               label = "gamma CV stored in sigma_eps")
+  ## --- gamma CV recovered -----------------------------------------------
+  cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
+  expect_equal(cv_hat, rep(cv_true, Tn), tolerance = 0.1,
+               label = "gamma CV stored in per-trait phi_gamma")
 
   ## --- extract_Sigma() cross-check at level = "cluster": $s = sd_q^2 ----
   s_clus <- suppressMessages(

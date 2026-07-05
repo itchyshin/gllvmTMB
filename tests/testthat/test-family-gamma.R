@@ -1,7 +1,7 @@
 ## Tests for the Gamma response family added to the multivariate engine.
-## DGP:  y_i ~ Gamma(shape, scale) with E(y) = mu = exp(eta), CV = sigma_eps
+## DGP:  y_i ~ Gamma(shape, scale) with E(y) = mu = exp(eta)
 ## Fit:  family = Gamma(link = "log")
-## Recovery: trait intercepts mu_t (on the log scale) and sigma_eps (CV)
+## Recovery: trait intercepts mu_t (on the log scale) and phi_gamma shape
 
 test_that("Gamma(link='log') fits and recovers trait intercepts at modest n", {
   set.seed(2025)
@@ -47,9 +47,58 @@ test_that("Gamma(link='log') fits and recovers trait intercepts at modest n", {
   expect_equal(length(bfix), Tn)
   expect_lt(max(abs(bfix - mu_eta_true)), 0.15)
 
-  # CV (sigma_eps) should be near the true value
-  cv_hat <- as.numeric(fit$report$sigma_eps)
-  expect_lt(abs(cv_hat - cv_true), 0.05)
+  # Gamma shape is per trait; CV = 1 / sqrt(phi_gamma).
+  phi_hat <- as.numeric(fit$report$phi_gamma)
+  expect_equal(length(phi_hat), Tn)
+  cv_hat <- 1 / sqrt(phi_hat)
+  expect_lt(max(abs(cv_hat - cv_true)), 0.05)
+})
+
+test_that("Gamma dispersion is decoupled from Gaussian sigma_eps in mixed fits", {
+  set.seed(622)
+  n <- 180
+  sigma_g <- 0.20
+  shape_gamma <- 9
+  df <- data.frame(
+    individual = factor(rep(seq_len(n), each = 2L)),
+    trait = factor(rep(c("gaussian", "gamma"), n),
+                   levels = c("gaussian", "gamma")),
+    family = factor(rep(c("g", "gm"), n), levels = c("g", "gm")),
+    value = NA_real_
+  )
+  is_g <- df$family == "g"
+  mu_g <- 1.5
+  mu_gamma <- 2.0
+  df$value[is_g] <- stats::rnorm(sum(is_g), mean = mu_g, sd = sigma_g)
+  df$value[!is_g] <- stats::rgamma(
+    sum(!is_g),
+    shape = shape_gamma,
+    scale = mu_gamma / shape_gamma
+  )
+
+  family_list <- list(g = gaussian(), gm = Gamma(link = "log"))
+  attr(family_list, "family_var") <- "family"
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait,
+    data = df,
+    site = "individual",
+    family = family_list,
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(any(fit$tmb_data$family_id_vec == 0L))
+  expect_true(any(fit$tmb_data$family_id_vec == 4L))
+  expect_true(is.finite(fit$report$sigma_eps))
+  expect_equal(length(fit$report$phi_gamma), 2L)
+
+  sigma_hat <- as.numeric(fit$report$sigma_eps)
+  gamma_shape_hat <- as.numeric(fit$report$phi_gamma)[2L]
+  gamma_cv_hat <- 1 / sqrt(gamma_shape_hat)
+
+  expect_lt(abs(sigma_hat - sigma_g), 0.08)
+  expect_lt(abs(gamma_cv_hat - 1 / sqrt(shape_gamma)), 0.08)
+  expect_gt(abs(sigma_hat - gamma_cv_hat), 0.05)
 })
 
 test_that("Gamma errors on default inverse link (must use log)", {

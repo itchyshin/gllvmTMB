@@ -54,7 +54,7 @@ drmTMB convention.
 | Family | Public scale | Internal scale | Direction |
 |--------|--------------|----------------|-----------|
 | `gaussian()` | `sigma` | residual SD | larger `sigma` ⇒ larger residual variance |
-| `Gamma(link = "log")` | `sigma` | shape $1/\sigma^2$ | larger `sigma` ⇒ larger coefficient of variation |
+| `Gamma(link = "log")` | `sigma` | per-trait shape $\phi_{\gamma,t} = 1/\sigma_t^2$ | larger `sigma` ⇒ larger coefficient of variation |
 | `Beta()` | `sigma` | precision $\phi = 1/\sigma^2$ | larger `sigma` ⇒ lower precision, larger variance |
 | `betabinomial()` | `sigma` | precision $\phi = 1/\sigma^2$ | larger `sigma` ⇒ more extra-binomial variation |
 | `nbinom1()` | `sigma` | size $\theta$ scaled by $\mu$ | larger `sigma` ⇒ more linear-mean overdispersion |
@@ -438,9 +438,10 @@ verification runs):
 ### Gamma
 
 - Status: `claimed`.
-- Parameters: `mu` (log), `sigma` (log; internal shape
-  $\alpha = 1/\sigma^2$, rate $\beta = \alpha / \mu$).
-- Density: Gamma with mean-CV parameterisation.
+- Parameters: `mu` (log), per-trait `phi_gamma` shape (log;
+  public CV / sigma is $1/\sqrt{\phi_{\gamma,t}}$; rate
+  $\beta_t = \phi_{\gamma,t} / \mu$).
+- Density: Gamma with mean-shape parameterisation and per-trait CV.
 - Comparator: `stats::dgamma`; `stats::glm(family = Gamma(link
   = "log"))` for the mean coefficients (note: base GLM and
   gllvmTMB estimate the Gamma dispersion differently; the test

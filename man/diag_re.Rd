@@ -141,8 +141,9 @@ non-phylogenetic species-level covariance). Their sum is
 
 \subsection{Per-row \code{indep()} / legacy \code{unique()} and \code{sigma_eps}: auto-suppression}{
 
-For Gaussian / lognormal / Gamma fits, the engine also estimates a
-single observation-scale residual \code{sigma_eps} (the sigma_eps of the response).
+For Gaussian / lognormal fits, the engine also estimates a
+single observation-scale residual \code{sigma_eps}. Ordinary Gamma uses
+per-trait \code{phi_gamma} shape (CV = \code{1 / sqrt(phi_gamma)}) instead.
 In new code, write observation-level diagonal residual terms as
 \code{indep(0 + trait | g)}. The legacy \code{unique(0 + trait | g)} spelling is
 still accepted as compatibility syntax. If that grouping \code{g} has \strong{one row
@@ -170,9 +171,11 @@ The same standalone diagonal tier has a slightly different meaning across
 families, depending on whether the response carries an observation-layer
 residual:
 
-For Gaussian / lognormal / Gamma fits, standalone \code{indep()} (or legacy
+For Gaussian / lognormal fits, standalone \code{indep()} (or legacy
 standalone \code{unique()}) estimates the trait-specific residual variance on
-the (log-)response scale. For binomial fits with probit / logit / cloglog
+the (log-)response scale. For ordinary Gamma, \code{indep()} is an additional
+latent-scale overdispersion tier on top of the per-trait shape. For
+binomial fits with probit / logit / cloglog
 links, the link function fixes a distribution-specific implicit residual;
 an explicit diagonal term is identifiable only when there are repeated rows
 per cell. For Poisson and other log-link families,

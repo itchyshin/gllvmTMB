@@ -3,11 +3,8 @@
 ##
 ## DGP (log link, seed-controlled):
 ##   * shape phi = 2  =>  gamma CV = 1 / sqrt(phi) ~ 0.7071, and the engine
-##     parametrises Gamma with `sigma_eps` AS the CV (shape = 1 / sigma_eps^2;
-##     see src/gllvmTMB.cpp fid 4 + R/extract-sigma.R:181-182). There is no
-##     separate `phi_gamma` slot for the non-delta Gamma family, so the
-##     dispersion-parameter ("phi_gamma") recovery check is on shape =
-##     1 / sigma_eps^2.
+##     parametrises ordinary Gamma with per-trait shape `phi_gamma`
+##     (CV = 1 / sqrt(phi_gamma); see src/gllvmTMB.cpp fid 4).
 ##   * trait log-intercepts c(0, 0.2, -0.2)  =>  natural-scale mean mu ~ 1.
 ##   * a shared per-unit latent factor (cross-trait covariance, so rho:unit
 ##     is defined for the latent-bearing cells) plus a per-trait per-unit
@@ -110,12 +107,12 @@ test_that("Gamma(log) x latent(d=1) unit-tier: converges, PD, recovers shape", {
   expect_true(isTRUE(fit$sd_report$pdHess))
   expect_true(isTRUE(fit$use$rr_B))
 
-  ## phi_gamma == shape == 1 / CV^2; mean-dependent => wide tolerance.
-  cv_hat <- as.numeric(fit$report$sigma_eps)
-  expect_lt(abs(cv_hat - .gamma_cv_true), 0.15)
+  ## phi_gamma == shape; CV = 1 / sqrt(phi_gamma).
+  cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
+  expect_lt(max(abs(cv_hat - .gamma_cv_true)), 0.15)
   shape_hat <- 1 / cv_hat^2
-  expect_gt(shape_hat, 1.0)
-  expect_lt(shape_hat, 4.0)
+  expect_gt(min(shape_hat), 1.0)
+  expect_lt(max(shape_hat), 4.0)
 
   ## CI smoke: rho:unit profile. This standalone d = 1 cell used to be the
   ## fragile Gamma profile canary. Keep the honest skip fallback if a future
@@ -148,11 +145,11 @@ test_that("Gamma(log) x unique unit-tier: converges, PD, recovers shape", {
   expect_true(isTRUE(fit$sd_report$pdHess))
   expect_true(isTRUE(fit$use$diag_B))
 
-  cv_hat <- as.numeric(fit$report$sigma_eps)
-  expect_lt(abs(cv_hat - .gamma_cv_true), 0.15)
+  cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
+  expect_lt(max(abs(cv_hat - .gamma_cv_true)), 0.15)
   shape_hat <- 1 / cv_hat^2
-  expect_gt(shape_hat, 1.0)
-  expect_lt(shape_hat, 4.0)
+  expect_gt(min(shape_hat), 1.0)
+  expect_lt(max(shape_hat), 4.0)
 
   ## rho:unit is not defined for a diagonal (unique) Sigma -- the engine
   ## errors by design ("no latent() term"). The CI smoke therefore does not
@@ -182,11 +179,11 @@ test_that("Gamma(log) x latent+unique unit-tier: converges, PD, shape + rho CI",
   expect_true(isTRUE(fit$sd_report$pdHess))
   expect_true(isTRUE(fit$use$rr_B) && isTRUE(fit$use$diag_B))
 
-  cv_hat <- as.numeric(fit$report$sigma_eps)
-  expect_lt(abs(cv_hat - .gamma_cv_true), 0.15)
+  cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
+  expect_lt(max(abs(cv_hat - .gamma_cv_true)), 0.15)
   shape_hat <- 1 / cv_hat^2
-  expect_gt(shape_hat, 1.0)
-  expect_lt(shape_hat, 4.0)
+  expect_gt(min(shape_hat), 1.0)
+  expect_lt(max(shape_hat), 4.0)
 
   ## CI smoke (primary): rho:unit profile is defined here (latent gives the
   ## cross-trait covariance, unique the per-trait nugget) and returns a
@@ -218,11 +215,11 @@ test_that("Gamma(log) x indep unit-tier: converges, PD, recovers shape", {
   expect_true(isTRUE(fit$sd_report$pdHess))
   expect_true(isTRUE(fit$use$indep_B))
 
-  cv_hat <- as.numeric(fit$report$sigma_eps)
-  expect_lt(abs(cv_hat - .gamma_cv_true), 0.15)
+  cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
+  expect_lt(max(abs(cv_hat - .gamma_cv_true)), 0.15)
   shape_hat <- 1 / cv_hat^2
-  expect_gt(shape_hat, 1.0)
-  expect_lt(shape_hat, 4.0)
+  expect_gt(min(shape_hat), 1.0)
+  expect_lt(max(shape_hat), 4.0)
 
   ## indep => diagonal Sigma; rho:unit undefined, engine errors by design.
   expect_error(
@@ -246,11 +243,11 @@ test_that("Gamma(log) x dep unit-tier: converges, PD, shape + rho CI", {
   expect_true(isTRUE(fit$sd_report$pdHess))
   expect_true(isTRUE(fit$use$dep_B))
 
-  cv_hat <- as.numeric(fit$report$sigma_eps)
-  expect_lt(abs(cv_hat - .gamma_cv_true), 0.15)
+  cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
+  expect_lt(max(abs(cv_hat - .gamma_cv_true)), 0.15)
   shape_hat <- 1 / cv_hat^2
-  expect_gt(shape_hat, 1.0)
-  expect_lt(shape_hat, 4.0)
+  expect_gt(min(shape_hat), 1.0)
+  expect_lt(max(shape_hat), 4.0)
 
   ## CI smoke: dep is full unstructured (= latent at d = n_traits), so the
   ## cross-trait correlation profile is defined and finite.
@@ -284,11 +281,11 @@ test_that("Gamma(log) x scalar unit-tier: converges, PD, recovers shape (wide)",
   ## the per-trait DGP (it pools the per-trait nugget into the gamma
   ## residual), so the CV is biased upward. Honest wider tolerance for the
   ## scalar cell -- still a real recovery, not a fake pass.
-  cv_hat <- as.numeric(fit$report$sigma_eps)
-  expect_lt(abs(cv_hat - .gamma_cv_true), 0.30)
+  cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
+  expect_lt(max(abs(cv_hat - .gamma_cv_true)), 0.30)
   shape_hat <- 1 / cv_hat^2
-  expect_gt(shape_hat, 0.8)
-  expect_lt(shape_hat, 4.0)
+  expect_gt(min(shape_hat), 0.8)
+  expect_lt(max(shape_hat), 4.0)
 
   ## A single shared scalar has no cross-trait Sigma matrix, so rho:unit is
   ## undefined; the engine cannot extract Sigma at the tier. Not applicable.

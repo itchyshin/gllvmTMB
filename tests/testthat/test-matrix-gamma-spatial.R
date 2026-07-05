@@ -8,8 +8,8 @@
 ##
 ## Family scope: Gamma is a MEAN-DEPENDENT family (the latent residual scale
 ## is not fixed by the link the way binomial-logit has pi^2/3 or
-## ordinal-probit has 1; the gamma CV `sigma_eps` is estimated alongside the
-## structural variances). Per the Phase B0 scoping memo
+## ordinal-probit has 1; the gamma CV is estimated through per-trait
+## `phi_gamma` alongside the structural variances). Per the Phase B0 scoping memo
 ## (docs/dev-log/audits/2026-05-26-phase-b0-nongaussian-scoping.md sec.2-3),
 ## mean-dependent families carry WIDER recovery tolerance than
 ## fixed-residual-scale families. We therefore do NOT make a tight B0
@@ -50,11 +50,11 @@ expect_gamma_spatial_fit_health <- function(fit) {
   testthat::expect_equal(fit$opt$convergence, 0L)
   testthat::expect_true(is.finite(fit$opt$objective))
   testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
-  ## Sanity: this really is the Gamma family (family_id 4) and the gamma CV
-  ## (sigma_eps) is finite -- guards against a silent family fallthrough
+  ## Sanity: this really is the Gamma family (family_id 4) and phi_gamma
+  ## is finite -- guards against a silent family fallthrough
   ## making the "gamma" claim hollow.
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], 4L)
-  testthat::expect_true(all(is.finite(as.numeric(fit$report$sigma_eps))))
+  testthat::expect_true(all(is.finite(as.numeric(fit$report$phi_gamma))))
 }
 
 ## Reusable CI smoke: at least one finite profile bound on one of the

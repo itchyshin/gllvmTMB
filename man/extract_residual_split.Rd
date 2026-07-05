@@ -63,7 +63,7 @@ Family \tab Link \tab \eqn{\sigma^2_d} \cr
 \code{binomial} \tab cloglog \tab \eqn{\pi^2/6 \approx 1.645} \cr
 \code{poisson} \tab log \tab \eqn{\log(1 + 1/\hat{\mu}_t)} (lognormal-Poisson approx.) \cr
 \code{lognormal} \tab log \tab 0 \cr
-\code{Gamma} \tab log \tab \eqn{\psi_1(\hat\nu)}, \eqn{\hat\nu = 1/\hat\sigma_\varepsilon^2} \cr
+\code{Gamma} \tab log \tab \eqn{\psi_1(\hat\nu)}, \eqn{\hat\nu = \hat\phi_{\gamma,t}} \cr
 \code{Beta} \tab logit \tab \eqn{\psi_1(\hat\mu_t \hat\phi) + \psi_1((1 - \hat\mu_t)\hat\phi)} (Smithson & Verkuilen 2006) \cr
 \code{betabinomial} \tab logit \tab \eqn{\pi^2/3 + \psi_1(\hat\mu_t \hat\phi) + \psi_1((1 - \hat\mu_t)\hat\phi)}
 }

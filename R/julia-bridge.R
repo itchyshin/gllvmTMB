@@ -579,8 +579,8 @@ gllvm_julia_capabilities <- function() {
   if (identical(family, "gamma")) {
     return(paste0(
       "single reduced-rank point route; default no-X Julia payload uses ",
-      "shared Gamma grouped dispersion to match current native scalar-CV ",
-      "Gamma; per-trait Gamma is a native-expansion follow-up; ",
+      "grouped Gamma dispersion; native R/TMB ordinary Gamma now uses ",
+      "per-trait phi_gamma, so grouped Gamma native parity remains a follow-up; ",
       mask_clause,
       cbind_clause,
       x_clause,

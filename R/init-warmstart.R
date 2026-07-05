@@ -13,8 +13,8 @@
 ## (psi, phi) ridge.
 ##
 ## Scope (v0.2.0):
-## - **Phi-bearing families only**: nbinom2 / nbinom1 / tweedie /
-##   beta / beta-binomial / truncated_nbinom2 / gamma_delta. For
+## - **Phi-bearing families only**: nbinom2 / nbinom1 / gamma /
+##   tweedie / beta / beta-binomial / truncated_nbinom2 / gamma_delta. For
 ##   other families the warm-up is a no-op.
 ## - **Univariate fit is intercept-only** (`y_t ~ 1`). Per Design 48
 ##   §2: "the univariate ($\hat\alpha_t$, $\hat\psi_t$, $\hat\phi_t$)
@@ -47,9 +47,9 @@
 #' @param n_traits Integer number of traits.
 #' @param verbose Logical; print one line per trait warmup.
 #' @return Named list of per-trait phi seeds:
-#'   `log_phi_nbinom2`, `log_phi_nbinom1`, `log_phi_tweedie`,
-#'   `log_phi_beta`, `log_phi_betabinom`, `log_phi_truncnb2`,
-#'   `log_phi_gamma_delta`
+#'   `log_phi_nbinom2`, `log_phi_nbinom1`, `log_phi_gamma`,
+#'   `log_phi_tweedie`, `log_phi_beta`, `log_phi_betabinom`,
+#'   `log_phi_truncnb2`, `log_phi_gamma_delta`
 #'   — each a length-`n_traits` numeric vector. Entries are the
 #'   default (0.0 or 1.0 per `tmb_params` defaults) for traits whose
 #'   family doesn't carry that phi parameter; entries are the
@@ -64,6 +64,7 @@
   out <- list(
     log_phi_nbinom2     = rep(0.0, n_traits),
     log_phi_nbinom1     = rep(0.0, n_traits),
+    log_phi_gamma       = rep(0.0, n_traits),
     log_phi_tweedie     = rep(0.0, n_traits),
     log_phi_beta        = rep(1.0, n_traits),
     log_phi_betabinom   = rep(1.0, n_traits),
@@ -95,6 +96,7 @@
       fam_nm,
       "nbinom2"            = "log_phi_nbinom2",
       "nbinom1"            = "log_phi_nbinom1",   # nbinom1 has its own phi slot
+      "Gamma"              = "log_phi_gamma",
       "tweedie"            = "log_phi_tweedie",
       "beta"               = "log_phi_beta",
       "betabinomial"       = "log_phi_betabinom",
@@ -111,6 +113,7 @@
   clamp <- function(x) pmax(pmin(x, log(100.0)), log(0.01))
   out$log_phi_nbinom2     <- clamp(out$log_phi_nbinom2)
   out$log_phi_nbinom1     <- clamp(out$log_phi_nbinom1)
+  out$log_phi_gamma       <- clamp(out$log_phi_gamma)
   out$log_phi_tweedie     <- clamp(out$log_phi_tweedie)
   out$log_phi_beta        <- clamp(out$log_phi_beta)
   out$log_phi_betabinom   <- clamp(out$log_phi_betabinom)
@@ -183,6 +186,16 @@
   }
   ## Tweedie: complex MLE; defer the warm-up (return NULL).
   if (family_name == "tweedie") return(NULL)
+  ## Gamma: phi = shape parameter; coefficient of variation = 1/sqrt(phi).
+  if (family_name == "Gamma") {
+    mu <- mean(y)
+    vv <- stats::var(y)
+    if (!is.finite(mu) || mu <= 0 || !is.finite(vv)) return(NULL)
+    cv2 <- vv / mu^2
+    if (!is.finite(cv2) || cv2 <= 0) return(NULL)
+    phi <- 1 / cv2
+    return(list(log_phi = log(phi)))
+  }
   ## Gamma (delta-gamma): phi = shape parameter; coefficient of
   ## variation = 1/sqrt(phi). For y > 0 only (delta-gamma's
   ## positive component), use the moment estimator.

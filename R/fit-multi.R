@@ -3180,11 +3180,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                       } else numeric(0L),
     u_re_int       = rep(0.0, u_re_int_len),
     log_sigma_re_int = if (use_re_int) rep(0.0, n_re_int_terms) else 0.0,
-    ## NB2 / NB1 / Tweedie per-trait dispersion. log(phi) starts at 0 (phi = 1);
+    ## NB2 / NB1 / Gamma / Tweedie per-trait dispersion. log(phi) starts at 0
+    ## (phi = 1; for Gamma this is shape, so CV = 1);
     ## logit(p) starts at 0 (p = 1.5, mid of the compound-Poisson regime).
     ## Design 48 phi-clamp ([0.01, 100]) applied below.
     log_phi_nbinom2  = .clamp_log_phi(rep(0.0, n_traits)),
     log_phi_nbinom1  = .clamp_log_phi(rep(0.0, n_traits)),
+    log_phi_gamma    = .clamp_log_phi(rep(0.0, n_traits)),
     log_phi_tweedie  = .clamp_log_phi(rep(0.0, n_traits)),
     logit_p_tweedie  = rep(0.0, n_traits),
     ## Beta / beta-binomial per-trait precision. log(phi) starts at 1.0 so
@@ -3669,13 +3671,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$u_re_int         <- factor(rep(NA_integer_, length(tmb_params$u_re_int)))
     tmb_map$log_sigma_re_int <- factor(rep(NA_integer_, length(tmb_params$log_sigma_re_int)))
   }
-  ## NB2 / Tweedie per-trait dispersion: only estimated when the corresponding
+  ## NB2 / Gamma / Tweedie per-trait dispersion: only estimated when the corresponding
   ## family appears in family_id_vec. For mixed-family fits (e.g., one trait
-  ## NB2, another Gaussian) we still allocate n_traits parameters but rely on
+  ## Gamma, another Gaussian) we still allocate n_traits parameters but rely on
   ## the data not invoking the unused ones; mapping off only happens when the
   ## family is entirely absent.
   any_nbinom2 <- any(family_id_vec == 5L)
   any_nbinom1 <- any(family_id_vec == 15L)
+  any_gamma   <- any(family_id_vec == 4L)
   any_tweedie <- any(family_id_vec == 6L)
   any_beta    <- any(family_id_vec == 7L)
   any_betabinom <- any(family_id_vec == 8L)
@@ -3685,6 +3688,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$log_phi_nbinom2 <- factor(rep(NA_integer_, n_traits))
   if (!any_nbinom1)
     tmb_map$log_phi_nbinom1 <- factor(rep(NA_integer_, n_traits))
+  if (!any_gamma)
+    tmb_map$log_phi_gamma <- factor(rep(NA_integer_, n_traits))
   if (!any_tweedie) {
     tmb_map$log_phi_tweedie <- factor(rep(NA_integer_, n_traits))
     tmb_map$logit_p_tweedie <- factor(rep(NA_integer_, n_traits))
@@ -3740,10 +3745,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!any_ordinal_probit ||
       sum(n_ordinal_cuts_per_trait) == 0L)
     tmb_map$ordinal_log_increments <- factor(NA_integer_)
-  ## sigma_eps is the noise-scale parameter for the *continuous* families
-  ## (gaussian fid 0, lognormal fid 3, gamma fid 4 with sigma_eps = CV).
+  ## sigma_eps is the noise-scale parameter for Gaussian/lognormal families
+  ## (fid 0 / 3). Ordinary Gamma (fid 4) has per-trait log_phi_gamma shape.
   ## Map it off and fix at log(1) only when NONE of those families is in use.
-  any_continuous <- any(family_id_vec %in% c(0L, 3L, 4L))
+  any_sigma_eps <- any(family_id_vec %in% c(0L, 3L))
   ## Detect whether a diagonal term is at per-row resolution (OLRE regime). We
   ## compute these flags up here so the per-family-aware OLRE selection
   ## block below can also use them.
@@ -3751,7 +3756,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   per_row_diag_W <- use_diag_W && length(unique(cell_W)) == n_obs
   cell_B <- paste(trait_id, site_id, sep = "_")
   per_row_diag_B <- use_diag_B && length(unique(cell_B)) == n_obs
-  if (!any_continuous) {
+  if (!any_sigma_eps) {
     tmb_map$log_sigma_eps <- factor(NA_integer_)
     tmb_params$log_sigma_eps <- 0
   } else {

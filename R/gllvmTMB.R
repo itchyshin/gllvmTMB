@@ -323,25 +323,24 @@
 #' a residual at all. The dispatch table below records this explicitly for the
 #' configurations the engine supports today.
 #'
-#' For continuous-family responses (Gaussian, lognormal, Gamma) the
-#' engine has one residual scale parameter, `sigma_eps`. By default
-#' `sigma_eps` is **estimated as a single shared scalar across all
-#' continuous-family rows**; per-trait residual variances only appear
-#' if you explicitly add a per-row `indep(...)` term or legacy `unique(...)`
-#' compatibility term. The dispatch is automatic:
+#' Gaussian and lognormal responses have one residual scale parameter,
+#' `sigma_eps`. Ordinary Gamma responses instead carry a per-trait shape
+#' `phi_gamma` (CV = `1 / sqrt(phi_gamma)`). Per-trait residual variances
+#' only appear if you explicitly add a per-row `indep(...)` term or legacy
+#' `unique(...)` compatibility term. The dispatch is automatic:
 #'
 #' \describe{
-#'   \item{No per-row `indep` / `unique`, continuous families present}{One
-#'     shared `sigma_eps` across all rows. *Not* per-trait.}
-#'   \item{No per-row `indep` / `unique`, no continuous families}{`sigma_eps`
-#'     is mapped off; the family's intrinsic dispersion handles the
-#'     residual.}
+#'   \item{No per-row `indep` / `unique`, Gaussian/lognormal present}{One
+#'     shared `sigma_eps` across Gaussian/lognormal rows. *Not* per-trait.}
+#'   \item{No per-row `indep` / `unique`, no Gaussian/lognormal rows}{`sigma_eps`
+#'     is mapped off; the family's intrinsic dispersion handles the residual
+#'     (for ordinary Gamma, `phi_gamma`).}
 #'   \item{\code{indep(0 + trait | g)} where `g` has fewer levels than
 #'     rows (e.g. `g = "site"`)}{`sigma_eps` is still estimated as the
 #'     row-level residual; the diagonal term adds a per-trait random
 #'     effect at level `g` on top. Legacy `unique()` spelling is equivalent.}
 #'   \item{\code{indep(0 + trait | obs)} at the per-row level (one
-#'     level per row), continuous families fitted}{`sigma_eps` is
+#'     level per row), Gaussian/lognormal rows fitted}{`sigma_eps` is
 #'     auto-suppressed (mapped off, fixed at a tiny stabiliser); the
 #'     T per-trait diagonal random effects *are* the residual. A
 #'     one-shot `cli::cli_inform` fires at fit time announcing the
@@ -354,11 +353,11 @@
 #'     selection" below). Legacy `unique()` spelling is equivalent.}
 #' }
 #'
-#' Mnemonic: continuous-family `sigma_eps` is the default; per-row
-#' `indep` / legacy `unique` replaces it with T per-trait residuals;
-#' non-per-row `indep` / legacy `unique` adds a higher-level random effect on top of
-#' `sigma_eps`; non-continuous families never carry `sigma_eps`
-#' regardless.
+#' Mnemonic: Gaussian/lognormal `sigma_eps` is the default; ordinary Gamma uses
+#' `phi_gamma`; per-row `indep` / legacy `unique` replaces the Gaussian/lognormal
+#' scalar residual with T per-trait residuals; non-per-row `indep` / legacy
+#' `unique` adds a higher-level random effect on top of the family residual;
+#' non-continuous families never carry `sigma_eps` regardless.
 #'
 #' **Per-family-aware OLRE selection.** When
 #' `indep(0 + trait | <unit_obs>)` (or legacy `unique()` spelling) is at

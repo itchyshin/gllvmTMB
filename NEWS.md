@@ -3,6 +3,17 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Gamma dispersion decoupling (2026-07-05)
+
+* Native R/TMB `Gamma(link = "log")` fits now estimate per-trait
+  `phi_gamma` shape parameters instead of aliasing Gamma CV to the shared
+  Gaussian/lognormal `sigma_eps` scalar. The fitted mean remains
+  `exp(eta)` and the public Gamma CV is `1 / sqrt(phi_gamma)`. This fixes
+  mixed Gaussian/Gamma fits where the Gaussian residual SD and Gamma shape
+  needed to move independently. The Julia grouped-Gamma bridge wording is
+  deliberately narrowed: grouped bridge transport remains gated for renewed
+  parity evidence after the native parameterisation change.
+
 ## Cluster variance-proportion routing (2026-07-04)
 
 * `extract_proportions()` now includes diagonal extra-grouping components

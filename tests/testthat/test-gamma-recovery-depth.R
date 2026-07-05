@@ -27,7 +27,7 @@
 ##   * intercepts: abs 0.30 -- the loosest core-family intercept band in the
 ##     recovery suite (test-nb2-recovery.R:48; gamma is mean-dependent so we
 ##     do NOT use the tighter 0.15 from test-family-gamma.R's no-RE fixture).
-##   * CV (sigma_eps): abs 0.15 -- the per-cell band from
+##   * CV (phi_gamma): abs 0.15 -- the per-cell band from
 ##     test-matrix-gamma-unit.R (mean-dependent => wide).
 ##   * Sigma_B diagonal (per-trait variance): 40% median relative -- the
 ##     smoke-grade structural band used by the matrix-ordinal sibling and
@@ -137,13 +137,13 @@ test_that("Gamma(log) joint depth: intercepts + CV + full between-unit Sigma (de
   }
   expect_lt(max(abs(bfix - fx$mu_eta)), 0.30)
 
-  ## (2) Gamma CV (sigma_eps) (inherited abs 0.15, matrix-gamma band).
-  cv_hat <- as.numeric(fit$report$sigma_eps)
-  if (abs(cv_hat - fx$cv) >= 0.15) {
+  ## (2) Gamma CV from per-trait phi_gamma (inherited abs 0.15, matrix-gamma band).
+  cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
+  if (max(abs(cv_hat - fx$cv)) >= 0.15) {
     skip(sprintf("Gamma CV out of band (dev %.3f); partial",
-                 abs(cv_hat - fx$cv)))
+                 max(abs(cv_hat - fx$cv))))
   }
-  expect_lt(abs(cv_hat - fx$cv), 0.15)
+  expect_lt(max(abs(cv_hat - fx$cv)), 0.15)
 
   ## (3) Between-unit Sigma_B: full unstructured T x T from the dep path.
   Sig_hat <- fit$report$Sigma_B

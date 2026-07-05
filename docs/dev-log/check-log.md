@@ -35263,3 +35263,71 @@ Focused validation results:
   informational message.
 - `test-julia-bridge.R`: default R-side checks passed; 13 live-GLLVM rows
   skipped because `GLLVM_JL_PATH` was not configured.
+
+### 2026-07-05 -- Review package validation gate
+
+Goal:
+
+- Turn the completion-branch review package from a map into local validation
+  evidence, then repair only current-state failures.
+
+Changes:
+
+- Made `tests/testthat/test-tmb-ad-safe-clamps.R` robust to `R CMD check`
+  installed-package layout by searching source-tree and `00_pkg_src`
+  candidates for `src/gllvmTMB.cpp`, then skipping only when the source file is
+  unavailable in that context.
+- Added
+  `docs/dev-log/after-task/2026-07-05-review-package-validation.md`.
+- Added a 2026-07-05 validation update to
+  `docs/dev-log/audits/2026-07-04-completion-branch-review-package-map.md`.
+
+Commands:
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-bootstrap.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-derived.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-targets.R", reporter = "summary")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-keyword-grid.R", reporter = "summary")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-ordinary-latent-random-regression.R", reporter = "summary")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-plot-gllvmTMB.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-plot-covariance-tables.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-rotate-compare-loadings.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-prototype.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-recovery.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-tmb-ad-safe-clamps.R", reporter = "summary")'
+git diff --check
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+```
+
+Results:
+
+- Heavy inference checks passed: `test-confint-bootstrap.R`,
+  `test-confint-derived.R`, and `test-profile-targets.R`.
+- Structural grammar checks passed with meaningful opt-in rows:
+  `test-keyword-grid.R` and `test-ordinary-latent-random-regression.R`;
+  `test-canonical-keywords.R` default run passed except expected INLA skips.
+- Plot/extractor checks passed: `test-plot-gllvmTMB.R`,
+  `test-plot-covariance-tables.R`, and `test-rotate-compare-loadings.R`.
+- Bounded coevolution checks passed under the heavy gate:
+  `test-coevolution-prototype.R` and `test-coevolution-recovery.R`.
+- `devtools::document(quiet = TRUE)` left the tree clean.
+- Dashboard JSON validation passed.
+- `pkgdown::check_pkgdown()` reported no problems.
+- First `devtools::check(args = "--no-manual", quiet = TRUE)` failed only
+  because `test-tmb-ad-safe-clamps.R` could not find `src/gllvmTMB.cpp` from
+  the installed-package test working directory.
+- Focused `test-tmb-ad-safe-clamps.R` passed after the source-path fix.
+- Final `devtools::check(args = "--no-manual", quiet = TRUE)` passed:
+  `0 errors`, `0 warnings`, `0 notes`.
+
+Not run:
+
+- Large `test-coevolution-two-kernel.R` heavy sweep, live `GLLVM_JL_PATH`
+  bridge tests, INLA-dependent spatial rows, vdiffr snapshots, Totoro/DRAC
+  calibration campaigns, or a full `GLLVMTMB_HEAVY_TESTS=1` all-file campaign.

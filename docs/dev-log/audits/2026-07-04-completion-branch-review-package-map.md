@@ -195,3 +195,34 @@ start from this map and either:
   "no public calibration claim" boundary.
 
 No push or PR action is authorized by this note.
+
+## 2026-07-05 Validation Update
+
+Head before this validation slice: `f0a84dc1`.
+
+The minimum review-map checks have now been run locally with opt-in gates where
+the default test files otherwise skip the meaningful rows:
+
+- Slice A inference truth-lock: `test-confint-bootstrap.R`,
+  `test-confint-derived.R`, and `test-profile-targets.R` passed under
+  `GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true`.
+- Slice B extractor/plotting: `test-plot-gllvmTMB.R`,
+  `test-plot-covariance-tables.R`, and `test-rotate-compare-loadings.R`
+  passed.
+- Slice C Julia bridge truth matrix: `test-julia-bridge.R` passed default
+  R-side checks; 13 live-GLLVM rows skipped because `GLLVM_JL_PATH` was not
+  configured.
+- Slice D formula grammar / structural guards: `test-canonical-keywords.R`
+  passed with only the expected INLA skips; `test-keyword-grid.R` and
+  `test-ordinary-latent-random-regression.R` passed under `NOT_CRAN=true`.
+- Slice E coevolution/kernel: `test-coevolution-prototype.R` and
+  `test-coevolution-recovery.R` passed under
+  `GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true`.
+- Slice F public docs/release gates: `devtools::document(quiet = TRUE)` left
+  the tree clean, dashboard JSON validated, `pkgdown::check_pkgdown()` reported
+  no problems, and `devtools::check(args = "--no-manual", quiet = TRUE)` passed
+  after fixing the source-audit test path for `R CMD check`.
+
+Not run: the large `test-coevolution-two-kernel.R` heavy sweep, live
+`GLLVM_JL_PATH` bridge tests, INLA-dependent spatial parser rows, vdiffr visual
+snapshots, and broad Totoro/DRAC calibration campaigns.

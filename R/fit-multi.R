@@ -1578,8 +1578,6 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
   X_fix <- stats::model.matrix(parsed$fixed, mf)
-  ## Strip an unwanted (Intercept) column if the user wrote `~1 + …`.
-  has_int <- "(Intercept)" %in% colnames(X_fix)
 
   y_raw <- stats::model.response(mf)
   ## Multi-trial binomial via Wilkinson `cbind(succ, fail) ~ ...`:
@@ -2546,7 +2544,6 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Build the mesh on the same long-format data passed to gllvmTMB()."
       ))
     n_mesh   <- ncol(mesh$A_st)
-    A_proj   <- Matrix::sparseMatrix(i = 1:1, j = 1:1, x = 0, dims = c(n_obs, n_mesh))
     A_proj   <- mesh$A_st
     spde_M0  <- mesh$spde$c0
     spde_M1  <- mesh$spde$g1
@@ -4381,7 +4378,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 .gllvmTMB_reclamp_start_par <- function(par) {
   nm <- names(par)
   if (is.null(nm)) return(par)
-  phi <- grepl("(^|\\.)log_phi", nm) | grepl("^log_phi", nm)
+  phi <- grepl("(^|\\.)log_phi", nm)
   if (any(phi)) {
     par[phi] <- pmax(pmin(par[phi], log(100.0)), log(0.01))
   }

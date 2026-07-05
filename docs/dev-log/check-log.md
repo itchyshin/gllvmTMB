@@ -33413,3 +33413,31 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 
 Outcome: parse passed; focused `test-extractors-extra.R` passed, including the
 new `extract_phylo_signal()` zero-denominator component regression.
+
+## 2026-07-04 -- Fit-multi cleanup issues #672, #673, #674
+
+Goal: close three confirmed cleanup issues in `R/fit-multi.R` without changing
+model semantics.
+
+Edits:
+
+- Removed the stale intercept-stripping comment and unused `has_int` assignment
+  after fixed-effect model-matrix construction (#672).
+- Removed a dead `A_proj` sparse allocation that was immediately overwritten by
+  `mesh$A_st` on SPDE paths (#673).
+- Simplified `.gllvmTMB_reclamp_start_par()` to the single `log_phi` regex that
+  already covers top-level and dotted parameter names (#674).
+- Added a pure regression that checks top-level and nested `log_phi` names are
+  still clamped while unrelated parameters are untouched.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/fit-multi.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-m3-4-warmstart-phi-clamp.R", reporter = "summary")'
+```
+
+Outcome: parse passed; the focused warmstart/phi-clamp test file passed for the
+new pure reclamp regression, with heavy recovery cases intentionally skipped
+because `GLLVMTMB_HEAVY_TESTS` was not set. No validation-debt status or public
+capability claim changed.

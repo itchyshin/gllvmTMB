@@ -144,6 +144,20 @@ test_that("phi clamp [0.01, 100] is applied to warmup output", {
   expect_true(warm$log_phi_nbinom2[1L] >= log(0.01))
 })
 
+test_that("start-parameter reclamp catches top-level and nested log_phi names", {
+  par <- c(
+    log_phi_nbinom2 = log(1000),
+    family.log_phi_beta = log(1e-4),
+    not_phi = 99
+  )
+
+  out <- gllvmTMB:::.gllvmTMB_reclamp_start_par(par)
+
+  expect_equal(out[["log_phi_nbinom2"]], log(100.0))
+  expect_equal(out[["family.log_phi_beta"]], log(0.01))
+  expect_equal(out[["not_phi"]], 99)
+})
+
 # ---- (5) Internal helper: univariate phi computation ------------------
 
 test_that(".gllvm_univariate_phi handles unsupported families gracefully", {

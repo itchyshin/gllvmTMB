@@ -32886,3 +32886,34 @@ GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(qui
 Outcome: parse passed; normal profile-derived curve tests passed; heavy
 profile-derived curve tests passed. This is a profile-curve inversion
 robustness repair only, not a new coverage or calibration claim.
+
+## 2026-07-04 -- Wald Sigma total-variance guard
+
+Goal: close issues #620 and #621 by preventing Wald Sigma rows from attaching
+residual/Psi-only theta-diagonal intervals to total-variance estimates when a
+reduced-rank `latent()` component is present.
+
+Edits:
+
+- Updated `.confint_sigma_wald()` so only pure-diagonal tiers fill diagonal
+  Wald bounds from `theta_diag_*`.
+- Kept latent-plus-diagonal total Sigma point estimates, but left lower/upper
+  as `NA` instead of reporting intervals for the wrong estimand.
+- Added heavy regression coverage for the latent-plus-diagonal guard and for
+  the pure-diagonal tier still receiving finite Wald bounds.
+- Updated validation row CI-01.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/z-confint-gllvmTMB.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-ci.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-ci.R", reporter = "summary", desc = "Wald Sigma_unit does not attach Psi-only bounds to latent total variance")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-ci.R", reporter = "summary", desc = "Profile on Sigma_unit (pure-diag tier) gives finite bounds")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-sigma-profile-bootstrap-controls.R", reporter = "summary")'
+```
+
+Outcome: parse passed; non-heavy profile CI file skipped as expected; targeted
+heavy latent-total Sigma Wald guard passed; pure-diag Sigma profile/Wald block
+passed; profile-to-bootstrap control regression passed. This is an inference
+honesty repair, not a new Wald approximation for reduced-rank total Sigma.

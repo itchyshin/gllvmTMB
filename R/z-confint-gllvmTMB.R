@@ -1648,9 +1648,11 @@ confint.gllvmTMB_multi <- function(
     ))
   }
 
-  ## Generic Sigma matrix Wald path: only diagonal entries get SE'd
-  ## (off-diagonals are non-linear functions of multiple parameters
-  ## and need delta-method which we defer to bootstrap or profile).
+  ## Generic Sigma matrix Wald path: only pure-diagonal tiers get SE'd.
+  ## When a reduced-rank latent component is present, the displayed
+  ## diagonal is total variance, Lambda Lambda' + Psi. The theta_diag_*
+  ## parameter is only the Psi part, so a theta_diag Wald interval would
+  ## be an interval for the wrong estimand.
   idx <- which(upper.tri(pe, diag = TRUE), arr.ind = TRUE)
   out <- data.frame(
     parameter = paste0(
@@ -1670,6 +1672,19 @@ confint.gllvmTMB_multi <- function(
   )
   ## Fill diagonal entries only
   diag_rows <- which(idx[, 1L] == idx[, 2L])
+  rr_used <- if (lvl == "B") {
+    isTRUE(object$use$rr_B)
+  } else {
+    isTRUE(object$use$rr_W)
+  }
+  diag_used <- if (lvl == "B") {
+    isTRUE(object$use$diag_B)
+  } else {
+    isTRUE(object$use$diag_W)
+  }
+  if (rr_used || !diag_used) {
+    return(out)
+  }
   ## On the log-SD scale of diag_<tier>, get the SE; transform back to var
   ix_diag <- which(names(object$opt$par) == paste0("theta_diag_", tier_label))
   if (length(ix_diag) >= length(diag_rows) && !is.null(object$sd_report)) {

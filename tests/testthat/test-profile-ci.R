@@ -172,6 +172,27 @@ test_that("confint(fit, method='bootstrap') for Sigma_unit works", {
   expect_true(all(grepl("^Sigma_unit\\[", ci_b$parameter)))
 })
 
+test_that("Wald Sigma_unit does not attach Psi-only bounds to latent total variance", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- make_tiny_BW_fit()
+  ci <- suppressMessages(confint(
+    fit,
+    parm = "Sigma_unit",
+    level = 0.95,
+    method = "wald"
+  ))
+  pieces <- strsplit(
+    sub("^[^[]+\\[([^,]+),([^]]+)\\]$", "\\1|\\2", ci$parameter),
+    "\\|"
+  )
+  diag_rows <- vapply(pieces, function(x) identical(x[1L], x[2L]), logical(1))
+  expect_equal(sum(diag_rows), 3L)
+  expect_true(all(is.finite(ci$estimate[diag_rows])))
+  expect_true(all(is.na(ci$lower[diag_rows])))
+  expect_true(all(is.na(ci$upper[diag_rows])))
+})
+
 ## ---- 5. Speed: profile is meaningfully faster than bootstrap -------------
 
 test_that("Profile CI for repeatability is faster than bootstrap", {
@@ -272,6 +293,14 @@ test_that("Profile on Sigma_unit (pure-diag tier) gives finite bounds", {
   expect_equal(length(diag_rows), 3L)
   expect_true(all(is.finite(ci$lower[diag_rows])))
   expect_true(all(is.finite(ci$upper[diag_rows])))
+  ci_wald <- confint(fit, parm = "Sigma_unit", method = "wald", level = 0.95)
+  diag_rows_wald <- which(grepl(
+    "trait_1,trait_1|trait_2,trait_2|trait_3,trait_3",
+    ci_wald$parameter
+  ))
+  expect_equal(length(diag_rows_wald), 3L)
+  expect_true(all(is.finite(ci_wald$lower[diag_rows_wald])))
+  expect_true(all(is.finite(ci_wald$upper[diag_rows_wald])))
   ## Off-diagonals are zero by construction in pure-diag tier
   off_rows <- setdiff(seq_len(nrow(ci)), diag_rows)
   expect_true(all(ci$estimate[off_rows] == 0))

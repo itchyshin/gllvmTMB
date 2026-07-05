@@ -201,6 +201,39 @@ test_that("public predictive plots carry auditable metadata", {
   expect_silent(ggplot2::ggplot_build(p_root))
 })
 
+test_that("auto rootogram max_count pools extreme simulated tails", {
+  draws <- list(
+    observed = c(0, 1, 2, 3),
+    simulations = matrix(
+      c(
+        0, 1, 2, 3,
+        0, 2, 3, 5000
+      ),
+      nrow = 4L,
+      ncol = 2L
+    ),
+    row_data = data.frame(
+      trait = rep("count_trait", 4L),
+      family = rep("poisson", 4L),
+      family_id = rep(2L, 4L),
+      stringsAsFactors = FALSE
+    )
+  )
+
+  dat <- NULL
+  expect_warning(
+    dat <- .gllvmTMB_rootogram_data(draws),
+    "Auto `max_count` for the rootogram was capped"
+  )
+
+  expect_equal(nrow(dat), 102L)
+  expect_true(">100" %in% as.character(dat$count_label))
+  expect_equal(
+    dat$expected[as.character(dat$count_label) == ">100"],
+    0.5
+  )
+})
+
 test_that("diagnostic_table exposes plot and residual metadata as tables", {
   skip_on_cran()
   testthat::skip_if_not_installed("ggplot2")

@@ -50,7 +50,9 @@ distribution conditional on fitted random-effect modes.}
 
 \item{max_count}{Optional upper count shown separately in \code{"rootogram"}.
 Counts larger than this value are pooled into a final \code{">max_count"}
-bin. Default \code{NULL} uses all observed and simulated count values.}
+bin. Default \code{NULL} chooses a bounded automatic display range and pools
+larger counts so that a single extreme simulated draw cannot create a
+very wide rootogram.}
 }
 \value{
 A \code{ggplot} object with diagnostic metadata attached in

@@ -33104,3 +33104,32 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 Outcome: parse passed; focused multi-start tests passed. Fit-heavy rows skipped
 under CRAN mode, while the new pure restart-selection row ran. This is restart
 provenance hardening only, not convergence-rate evidence for a start strategy.
+
+## 2026-07-04 -- Rootogram auto max-count cap
+
+Goal: close issue #693 by preventing one extreme fitted-model simulated count
+from creating thousands of empty rootogram bins when `max_count = NULL`.
+
+Edits:
+
+- Routed automatic rootogram count limits through
+  `.gllvmTMB_auto_rootogram_max_count()`.
+- Capped the automatic display range at 100 bins plus a pooled tail bin.
+- Preserved explicit user `max_count` control.
+- Updated `predictive_check()` documentation for the new automatic bounded
+  display contract.
+- Added a pure regression that pools a simulated count of 5000 into `>100`.
+- Updated validation row DIA-11.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/predictive-diagnostics.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-predictive-diagnostics.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE); cat("document-ok\n")'
+```
+
+Outcome: parse passed; focused predictive-diagnostics tests passed with the
+existing fit-heavy rows skipped under CRAN mode; documentation regenerated.
+This is diagnostic plotting hardening only, not a new formal residual test,
+rank proof, or interval-calibration claim.

@@ -48,7 +48,9 @@
 #'   distribution conditional on fitted random-effect modes.
 #' @param max_count Optional upper count shown separately in `"rootogram"`.
 #'   Counts larger than this value are pooled into a final `">max_count"`
-#'   bin. Default `NULL` uses all observed and simulated count values.
+#'   bin. Default `NULL` chooses a bounded automatic display range and pools
+#'   larger counts so that a single extreme simulated draw cannot create a
+#'   very wide rootogram.
 #' @return A `ggplot` object with diagnostic metadata attached in
 #'   `attr(plot, "gllvmTMB_diagnostic")`.
 #' @export
@@ -785,7 +787,7 @@ residuals.gllvmTMB_multi <- function(
   row_data <- draws$row_data[count_rows, , drop = FALSE]
 
   if (is.null(max_count)) {
-    max_count <- max(c(observed, simulations), na.rm = TRUE)
+    max_count <- .gllvmTMB_auto_rootogram_max_count(observed, simulations)
   }
   if (!is.finite(max_count) || max_count < 0 || max_count != floor(max_count)) {
     cli::cli_abort("{.arg max_count} must be a non-negative integer or NULL.")
@@ -831,6 +833,30 @@ residuals.gllvmTMB_multi <- function(
   out <- do.call(rbind, rows)
   rownames(out) <- NULL
   out
+}
+
+.gllvmTMB_auto_rootogram_max_count <- function(
+  observed,
+  simulations,
+  cap = 100L
+) {
+  raw_max <- max(c(observed, simulations), na.rm = TRUE)
+  if (!is.finite(raw_max)) {
+    return(raw_max)
+  }
+  if (raw_max <= cap) {
+    return(raw_max)
+  }
+  cli::cli_warn(c(
+    "Auto {.arg max_count} for the rootogram was capped at {cap}.",
+    "i" = paste0(
+      "Counts above ",
+      cap,
+      " are pooled into the tail bin; pass {.arg max_count} explicitly ",
+      "to override."
+    )
+  ))
+  cap
 }
 
 .gllvmTMB_count_bins <- function(x, max_count) {

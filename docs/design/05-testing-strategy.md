@@ -205,8 +205,9 @@ censored Poisson):**
 - 5-family fixture: + Gamma + nbinom2 (Phase 0B audit slice).
 - Within-trait family mixing rejected with the typed error
   class.
-- Delta/hurdle family in mixed-family list: rejected (Phase 0B
-  writes the `gllvmTMB_auto_residual_delta_undefined` test).
+- Delta/hurdle family in mixed-family list: handled route-only as of
+  2026-07-05 (see `02-family-registry.md` §Hurdle/delta); the planned
+  `gllvmTMB_auto_residual_delta_undefined` test/class was never written.
 
 ## Random-effects tests
 
@@ -357,8 +358,8 @@ When a test fails:
   simulation tests to ensure reproducibility.
 - Add a negative test when a rule should reject unsupported
   syntax (the `gllvmTMB_too_many_slopes`,
-  `gllvmTMB_auto_residual_incoherent`,
-  `gllvmTMB_auto_residual_delta_undefined` error classes).
+  `gllvmTMB_auto_residual_incoherent` error classes; the
+  once-planned `..._delta_undefined` class was never built).
 
 ## Test-file organisation
 

@@ -334,9 +334,11 @@ the implied trait covariance before correlation conversion.
   warned; the probit latent residual is already $1$ by
   construction, so the auto path over-counts. Users should set
   `link_residual = "none"` for clarity. See PR #104.
-- **Delta/hurdle families in mixed-family fits**: rejected; the
-  two-scales problem (see `02-family-registry.md`). Planned
-  safeguard `class = "gllvmTMB_auto_residual_delta_undefined"`.
+- **Delta/hurdle families in mixed-family fits**: handled route-only
+  as of 2026-07-05 (latent on the positive submodel only; see
+  `02-family-registry.md` §Hurdle/delta). The earlier "rejected" +
+  planned `class = "gllvmTMB_auto_residual_delta_undefined"` were never
+  built (no such class exists); delta is not auto-rejected.
 
 ## Per-family likelihood subsections
 

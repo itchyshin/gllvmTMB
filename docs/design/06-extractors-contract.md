@@ -288,10 +288,11 @@ makes mixed-family correlations meaningful.
 to pick the correct link-residual formula
 (see `docs/design/03-likelihoods.md` for the per-family
 table). For delta / hurdle families the latent-scale
-correlation is *not defined* and `link_residual = "auto"`
-errors with class
-`gllvmTMB_auto_residual_delta_undefined`
-(`check_auto_residual()` safeguard).
+correlation is defined on the **positive-part residual** as of
+2026-07-05 (latent on the positive submodel only; see
+`02-family-registry.md` §Hurdle/delta) and reported route-only;
+it is NOT auto-rejected (the once-planned
+`gllvmTMB_auto_residual_delta_undefined` safeguard was never built).
 
 **Method semantics**:
 
@@ -640,8 +641,9 @@ extractors that surface this argument:
 
 **Auto-safeguard** (`check_auto_residual()`, PR #104):
 
-- Errors when delta / hurdle family is present
-  (`class = "gllvmTMB_auto_residual_delta_undefined"`).
+- Does NOT error on delta / hurdle families (the once-planned
+  `gllvmTMB_auto_residual_delta_undefined` safeguard was never
+  built; delta is handled route-only as of 2026-07-05).
 - Warns when ordinal-probit family is present (the latent
   residual is fixed to 1 by construction; `auto` is OK
   but `none` is cleaner).

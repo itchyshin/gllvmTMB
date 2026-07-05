@@ -33133,3 +33133,25 @@ Outcome: parse passed; focused predictive-diagnostics tests passed with the
 existing fit-heavy rows skipped under CRAN mode; documentation regenerated.
 This is diagnostic plotting hardening only, not a new formal residual test,
 rank proof, or interval-calibration claim.
+
+## 2026-07-04 -- Communality profile no-Psi cli hint
+
+Goal: close issue #668 by ensuring the no-Psi communality profile error shows
+the actionable cli hint instead of silently storing it as condition metadata.
+
+Edits:
+
+- Converted the no-Psi `cli::cli_abort()` calls in `profile_ci_communality()`
+  and `profile_communality()` to named character-vector messages.
+- Added a pure regression that checks the `residual = FALSE` hint is visible.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/profile-derived.R")); invisible(parse("R/profile-derived-curves.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-derived-curves.R", reporter = "summary")'
+```
+
+Outcome: parse passed; focused profile-derived curve tests passed with the
+heavy profile grid rows skipped by `GLLVMTMB_HEAVY_TESTS`. This is error-message
+hardening only, not a new profile interval capability.

@@ -569,10 +569,10 @@ profile_communality <- function(
   ix_rr <- which(par_names == paste0("theta_rr_", tier))
   ix_diag <- which(par_names == paste0("theta_diag_", tier))
   if (length(ix_rr) == 0L || length(ix_diag) == 0L) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "Communality profiling requires a {.code latent()} tier with a {.code Psi} diagonal at tier {.val {tier}}.",
       "i" = "Ordinary {.code latent()} includes {.code Psi} by default; {.code latent(..., residual = FALSE)} is the explicit no-Psi subset."
-    )
+    ))
   }
   d_tier <- if (tier == "B") fit$d_B else fit$d_W
   n_traits <- length(ix_diag)

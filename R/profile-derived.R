@@ -532,10 +532,10 @@ profile_ci_communality <- function(
   ix_rr <- which(par_names == rr_name)
   ix_diag <- which(par_names == diag_name)
   if (length(ix_rr) == 0L || length(ix_diag) == 0L) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "Communality profiling requires a shared latent tier with an explicit diagonal Psi component at tier {.val {tier}}.",
       "i" = "Ordinary {.code latent()} includes {.code Psi} by default. For phylogenetic communality, pair {.code phylo_latent()} with {.code phylo_unique()} or use the folded {.code unique = TRUE} contract where available."
-    )
+    ))
   }
   d_tier <- switch(
     tier,

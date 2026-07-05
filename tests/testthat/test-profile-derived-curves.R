@@ -143,6 +143,23 @@ test_that("profile-derived delta_deviance uses the joint MLE baseline", {
   )))
 })
 
+test_that("profile_communality no-Psi error shows the actionable hint", {
+  fit <- structure(
+    list(
+      use = list(rr_B = TRUE, rr_W = FALSE),
+      opt = list(par = c(theta_rr_B = 0)),
+      data = data.frame(trait = factor("trait_1")),
+      trait_col = "trait"
+    ),
+    class = "gllvmTMB_multi"
+  )
+
+  expect_error(
+    gllvmTMB::profile_communality(fit, tier = "unit"),
+    "residual = FALSE"
+  )
+})
+
 test_that("profile_repeatability(): shape, class, columns, n_grid rows", {
   skip_if_not_heavy()
   skip_if_not_installed("TMB")

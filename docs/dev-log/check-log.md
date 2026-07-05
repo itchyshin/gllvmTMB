@@ -33017,8 +33017,9 @@ alignment repair only, not a new empirical calibration claim.
 
 ## 2026-07-04 -- Mixed-family named-list dispatch repair
 
-Goal: close issue #610 by making named mixed-family lists align by selector
-level before constructing `family_id_vec`, `link_id_vec`, and `family_per_row`.
+Goal: locally address issue #610 by making named mixed-family lists align by
+selector level before constructing `family_id_vec`, `link_id_vec`, and
+`family_per_row`.
 
 Edits:
 
@@ -35410,3 +35411,44 @@ Results:
 - `test-profile-route-matrix.R` passed.
 - No package API, likelihood code, source-specific `lv` grammar, mixed-family
   CI, or calibration claim changed.
+
+### 2026-07-05 -- Mixed-family name-guard truth lock
+
+Goal:
+
+- Tighten the Phase 2 missing/mixed correctness lane by making the named
+  mixed-family dispatch repair fail loud for duplicate or mismatched family
+  list names, and by correcting local-vs-public issue wording for #610.
+
+Changes:
+
+- Added Stage 37 tests for duplicate named mixed-family lists and mismatched
+  named-list levels.
+- Updated `docs/design/35-validation-debt-register.md` MIX-02 to say the
+  local branch addresses #610 while GitHub issue closure still waits for
+  push/PR/merge.
+- Audited the adjacent missing-response weight path and confirmed the current
+  `normalise_weights()` helper and wide-matrix tests already cover masked
+  cells under the include/drop boundary.
+
+Commands:
+
+```sh
+gh pr list --state open --limit 20
+git log --all --oneline --since='6 hours ago' --max-count=40
+gh issue view 610 --repo itchyshin/gllvmTMB --json number,title,state,url,labels
+gh issue list --repo itchyshin/gllvmTMB --state open --search 'mixed-family OR "mixed family"' --limit 10 --json number,title,state,url
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-stage37-mixed-family.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-weights-unified.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-wide-weights-matrix.R", reporter = "summary")'
+```
+
+Results:
+
+- No open PRs were listed by `gh pr list`.
+- Issue #610 is still open on GitHub, so local docs now avoid saying it is
+  publicly closed.
+- `test-stage37-mixed-family.R`, `test-weights-unified.R`, and
+  `test-wide-weights-matrix.R` passed.
+- No package API, likelihood code, formula grammar, mixed-family CI, missing
+  data capability, or calibration claim changed.

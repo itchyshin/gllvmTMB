@@ -86,6 +86,30 @@ test_that("Stage 37: partial mixed-family list names fail loudly", {
   )
 })
 
+test_that("Stage 37: duplicate mixed-family list names fail loudly", {
+  family_list <- list(g = gaussian(), g = poisson())
+  expect_error(
+    gllvmTMB:::.align_mixed_family_list(
+      family_list,
+      fam_levels = c("g", "p"),
+      fam_var = "family"
+    ),
+    "names must be unique"
+  )
+})
+
+test_that("Stage 37: mismatched mixed-family list names fail loudly", {
+  family_list <- list(g = gaussian(), z = poisson())
+  expect_error(
+    gllvmTMB:::.align_mixed_family_list(
+      family_list,
+      fam_levels = c("g", "p"),
+      fam_var = "family"
+    ),
+    "names must match"
+  )
+})
+
 test_that("Stage 37: scalar family still works (backward compatible)", {
   set.seed(7)
   sim <- simulate_site_trait(

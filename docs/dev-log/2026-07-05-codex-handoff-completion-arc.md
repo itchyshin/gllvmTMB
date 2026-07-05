@@ -61,6 +61,20 @@ residual, reported `interval_status = "route-only"`.
   gaussian + OD-Poisson.** Both are `fit-multi.R`, both need Codex's recovery
   loop (a mis-fix silently zeroes a legitimate variance; the test suite lacks a
   case for every legitimate non-Gaussian between-unit Ψ).
+- **FIX DIRECTION NOT YET CONFIRMED — recovery study required FIRST (Claude,
+  2026-07-05).** Do NOT blindly "zero the non-Gaussian Psi." A clarifying probe
+  with a genuinely non-zero binomial between-unit Psi (true 0.64, independent
+  per-trait, 80 units x 6 reps) still returns `pdHess = FALSE` and the Psi comes
+  back WEAKLY IDENTIFIED (~0.29 — not a clean zero, and not the true 0.64). So the
+  non-Gaussian between-unit Psi is NOT obviously a known-zero; it may be a
+  real-but-weakly-identified variance, in which case zeroing it destroys signal.
+  Codex's FIRST step is a proper recovery study (multiple seeds, known Psi from 0
+  up, per family; check recovery + pdHess): does the non-Gaussian B-tier Psi
+  recover when truly non-zero (=> the bug is in identification/estimation, fix
+  that, do NOT zero it), or is it genuinely unidentified even when non-zero (=>
+  the zero-it fix is right)? Only after that verdict should the two-gap gate
+  change land. This is the concrete reason it is not a tail-of-session edit — the
+  *direction itself* is unproven without the recovery loop.
 - **Delta two-part note (secondary):** the `src/gllvmTMB.cpp:2037` shared-eta
   (one `eta` drives both hurdle parts) is a *further* delta-specific factor for
   the correlation *scale* (positive-part residual), but the Ψ-gate above is the

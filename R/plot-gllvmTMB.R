@@ -1474,20 +1474,19 @@ plot.gllvmTMB_multi <- function(
   }
   level_label <- .canonical_level_name(level)
 
-  ord <- suppressMessages(extract_ordination(
-    fit,
-    level = level_label
-  ))
-  if (is.null(ord)) {
-    cli::cli_abort(
-      "No {.code latent()} term at level {.val {level_label}}; nothing to plot."
-    )
-  }
-
   rotation_info <- NULL
   ord_source <- "extract_ordination"
   rotation_status <- "rotation_ambiguous_loadings"
   if (rotation == "none") {
+    ord <- suppressMessages(extract_ordination(
+      fit,
+      level = level_label
+    ))
+    if (is.null(ord)) {
+      cli::cli_abort(
+        "No {.code latent()} term at level {.val {level_label}}; nothing to plot."
+      )
+    }
     L <- ord$loadings
     Sc <- ord$scores
   } else {

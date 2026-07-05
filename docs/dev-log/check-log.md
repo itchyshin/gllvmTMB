@@ -32170,3 +32170,124 @@ Outcome: passed.
 Known limitation:
 
 - Metadata consistency only; no new bootstrap calibration or batching change.
+
+## 2026-07-04 -- Consolidation cleanup for issues #703 and #704
+
+Goal: start the branch consolidation lane after the completion branch became too
+large to keep widening safely. Fix only low-risk cleanup issues and record the
+forest-level audit.
+
+Implemented:
+
+- `plot(type = "ordination", rotation != "none")` no longer performs a
+  throwaway `extract_ordination()` call before `rotate_loadings()`.
+- Added a regression that counts `extract_ordination()` calls and checks rotated
+  and raw ordination paths both extract once.
+- Corrected the `.fix_and_refit_nll()` comment: `nlminb()` currently
+  finite-differences the full penalised objective because no gradient argument
+  is passed.
+- Added `docs/dev-log/audits/2026-07-04-consolidation-surface-audit.md`.
+
+Audit commands:
+
+```sh
+gh pr list --state open --json number,title,headRefName,baseRefName,isDraft,updatedAt,url --jq '.[] | "#\(.number)\t\(.headRefName)->\(.baseRefName)\tdraft=\(.isDraft)\t\(.title)"'
+```
+
+Outcome: no open PRs reported.
+
+```sh
+git log --all --oneline --since="6 hours ago" --decorate
+git status --short --branch
+git log --oneline --no-merges origin/main..HEAD | wc -l
+git diff --shortstat origin/main...HEAD
+```
+
+Outcome: branch clean before the slice, ahead of origin by 111 commits; 173
+non-merge commits over `origin/main`; 514 files changed, 77853 insertions,
+16023 deletions.
+
+```sh
+Rscript --vanilla - <<'RS'
+pkgload::load_all(quiet = TRUE)
+ns <- asNamespace("gllvmTMB")
+cat("tidy_exported", "tidy" %in% getNamespaceExports("gllvmTMB"), "\n")
+cat("tidy_exists_inherits_false", exists("tidy", envir = ns, inherits = FALSE), "\n")
+cat("tidy_exists_inherits_true", exists("tidy", envir = ns, inherits = TRUE), "\n")
+cat("tidy_getExportedValue_ok", !inherits(try(getExportedValue("gllvmTMB", "tidy"), silent = TRUE), "try-error"), "\n")
+RS
+```
+
+Outcome: `tidy` is a valid `generics::tidy` re-export.
+
+```sh
+Rscript --vanilla - <<'RS'
+lines <- readLines("NAMESPACE", warn = FALSE)
+exports <- sort(sub(
+  "^export\\((.*)\\)$",
+  "\\1",
+  grep("^export\\(", lines, value = TRUE)
+))
+rd_files <- list.files("man", pattern = "[.]Rd$", full.names = TRUE)
+aliases <- unique(unlist(lapply(rd_files, function(f) {
+  x <- readLines(f, warn = FALSE)
+  hits <- grep("^\\\\alias\\{", x, value = TRUE)
+  sub("^\\\\alias\\{(.*)\\}$", "\\1", hits)
+})))
+missing_alias <- setdiff(exports, aliases)
+cat("namespace_exports", length(exports), "aliases", length(aliases), "\n")
+if (length(missing_alias)) {
+  cat("exports_without_alias:\n")
+  cat(paste(missing_alias, collapse = "\n"), "\n")
+} else {
+  cat("exports_without_alias: none\n")
+}
+RS
+```
+
+Outcome: 153 exports, 191 aliases, no exported function missing an Rd alias.
+
+```sh
+Rscript --vanilla - <<'RS'
+files <- list.files("R", pattern = "[.]R$", full.names = TRUE)
+rx <- "^([.A-Za-z][.A-Za-z0-9_]*)[[:space:]]*<-[[:space:]]*function[[:space:]]*[(]"
+defs <- do.call(rbind, lapply(files, function(f) {
+  x <- readLines(f, warn = FALSE)
+  hit <- grep(rx, x)
+  if (!length(hit)) return(NULL)
+  mm <- regexec(rx, x[hit])
+  name <- vapply(regmatches(x[hit], mm), `[`, character(1), 2)
+  data.frame(name = name, file = f, line = hit, stringsAsFactors = FALSE)
+}))
+dup <- defs[defs$name %in% names(which(table(defs$name) > 1)), ]
+cat("function_defs", nrow(defs), "duplicate_names", length(unique(dup$name)), "\n")
+if (nrow(dup)) print(dup[order(dup$name, dup$file, dup$line), ], row.names = FALSE)
+RS
+```
+
+Outcome: 599 scanned definitions, 0 duplicate top-level function names.
+
+Focused checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/profile-derived.R")); invisible(parse("R/plot-gllvmTMB.R")); invisible(parse("tests/testthat/test-plot-gllvmTMB.R")); cat("parse-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-plot-gllvmTMB.R", reporter = "summary")'
+```
+
+Outcome: passed; `plot-gllvmTMB` completed with no failures.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-proportions.R", reporter = "summary")'
+```
+
+Outcome: all tests skipped because `GLLVMTMB_HEAVY_TESTS=1` was not set.
+
+Known limitation:
+
+- This is consolidation cleanup only; no profile optimizer gradient path,
+  interval calibration, public capability, or formula grammar changed.

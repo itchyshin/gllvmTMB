@@ -277,9 +277,8 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
     }
     val + lambda * (q - q_0)^2
   }
-  ## Use TMB's analytical gradient for the NLL part, numerical gradient
-  ## via finite-difference for the penalty part. Falls back to fully
-  ## numerical gradient if obj$gr fails.
+  ## nlminb finite-differences the full penalised objective here. A mixed
+  ## analytic/numerical gradient path would need an explicit gradient argument.
   opt_pen <- tryCatch(
     stats::nlminb(start = par0, objective = fn_pen, control = control),
     error = function(e) {

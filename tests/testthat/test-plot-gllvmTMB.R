@@ -622,6 +622,40 @@ test_that("plot(type = 'ordination') can use rotated plot-ready axes", {
   expect_silent(print(p))
 })
 
+test_that("rotated ordination plot extracts ordination once", {
+  skip_if_no_ggplot2()
+  fit <- make_fake_ordination_fit(d = 2L)
+  n_extract <- 0L
+  original_extract <- get("extract_ordination", asNamespace("gllvmTMB"))
+
+  testthat::local_mocked_bindings(
+    extract_ordination = function(...) {
+      n_extract <<- n_extract + 1L
+      original_extract(...)
+    },
+    .package = "gllvmTMB"
+  )
+
+  p_rot <- suppressMessages(plot(
+    fit,
+    type = "ordination",
+    level = "unit",
+    rotation = "varimax"
+  ))
+  expect_s3_class(p_rot, "ggplot")
+  expect_equal(n_extract, 1L)
+
+  n_extract <- 0L
+  p_raw <- suppressMessages(plot(
+    fit,
+    type = "ordination",
+    level = "unit",
+    rotation = "none"
+  ))
+  expect_s3_class(p_raw, "ggplot")
+  expect_equal(n_extract, 1L)
+})
+
 test_that("plot(type = 'ordination') exposes biological sign anchors", {
   skip_if_no_ggplot2()
   fit <- make_fake_ordination_fit(d = 2L)

@@ -196,7 +196,7 @@ Row-owner: **Fisher + Boole** (meta-analysis with known V).
 |----|------------|--------|---------------|-------|
 | MET-01 | Single-V `meta_V(V = V)` (additive `type = "exact"` default) | `partial` | `test-formula-grammar-smoke.R`, `test-traits-keyword.R`, `test-gllvmTMB-args.R` | V-only named and positional parser forms verified; wide `traits(...)` marker preservation verified; single-V smoke only; direct `glmmTMB::equalto()` LL comparator still needed |
 | MET-02 | Block-V within-study correlation | `covered` | `test-block-V.R` | |
-| MET-03 | `meta_V(V = V, type = "proportional")` (Nakagawa 2022) | `blocked` | n/a | post-CRAN; parser errors explicitly rather than silently treating it as exact |
+| MET-03 | `meta_V(V = V, type = "proportional")` (Nakagawa 2022) | `blocked` | `test-formula-grammar-smoke.R` | post-CRAN; parser errors explicitly rather than silently treating it as exact; unrecognised `type` values now use the package cli diagnostic rather than base `match.arg()` |
 | MET-04 | `corvidae-two-stage` two-stage workflow | `partial` | n/a | article pulled to `dev/workshop-articles/` in PR-0C.PULL (Gaussian meta-analytical example; deferred per maintainer 2026-05-16 — restore once a live cross-check fixture exists) |
 
 ### Section 6.5 — Known-relatedness keyword family (animal models)

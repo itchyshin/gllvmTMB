@@ -158,6 +158,16 @@ test_that("start-parameter reclamp catches top-level and nested log_phi names", 
   expect_equal(out[["not_phi"]], 99)
 })
 
+test_that("residual-scale start uses floor for single-row residuals", {
+  expect_equal(gllvmTMB:::.gllvmTMB_log_sigma_eps_start(0), log(1e-3))
+  expect_equal(gllvmTMB:::.gllvmTMB_log_sigma_eps_start(numeric(0)), log(1e-3))
+  expect_equal(
+    gllvmTMB:::.gllvmTMB_log_sigma_eps_start(c(1, 1, 1)),
+    log(1e-3)
+  )
+  expect_true(is.finite(gllvmTMB:::.gllvmTMB_log_sigma_eps_start(c(1, 2, 3))))
+})
+
 # ---- (5) Internal helper: univariate phi computation ------------------
 
 test_that(".gllvm_univariate_phi handles unsupported families gracefully", {

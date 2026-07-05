@@ -2129,8 +2129,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   b_fix_init <- fit_lm$coefficients
   resid_init <- fit_lm$residuals
-  ## Guard against numerical zero residuals (degenerate single-row case).
-  log_sigma_eps_init <- log(max(stats::sd(resid_init), 1e-3))
+  log_sigma_eps_init <- .gllvmTMB_log_sigma_eps_start(resid_init)
 
   ## ---- Phase L: harvest per-term `tree = ...` / `vcv = ...` overrides -------
   ## Phase L (May 2026): users can now write
@@ -4374,6 +4373,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 }
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
+
+.gllvmTMB_log_sigma_eps_start <- function(resid, floor = 1e-3) {
+  sigma <- stats::sd(resid)
+  if (!is.finite(sigma)) sigma <- 0
+  log(max(sigma, floor))
+}
 
 .gllvmTMB_reclamp_start_par <- function(par) {
   nm <- names(par)

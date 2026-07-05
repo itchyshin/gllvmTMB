@@ -310,4 +310,10 @@ test_that("meta_V compatibility syntax and proportional type are handled explici
     ),
     "planned but not implemented"
   )
+  expect_error(
+    gllvmTMB:::desugar_brms_sugar(
+      value ~ 0 + trait + meta_V(V = V, type = "approximate")
+    ),
+    "does not recognise"
+  )
 })

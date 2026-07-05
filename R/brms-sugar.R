@@ -2049,7 +2049,15 @@ rewrite_canonical_aliases <- function(formula) {
         "i" = "{.code type = \"proportional\"} is planned but not implemented in 0.2.x."
       ))
     }
-    type <- match.arg(type_expr, c("exact", "proportional"))
+    valid_types <- c("exact", "proportional")
+    if (!type_expr %in% valid_types) {
+      cli::cli_abort(c(
+        "{.fn {fn}} does not recognise {.arg type} = {.val {type_expr}}.",
+        "i" = "{.code type = \"proportional\"} is planned but not implemented in 0.2.x.",
+        ">" = "Use {.code type = \"exact\"}."
+      ))
+    }
+    type <- type_expr
     if (identical(type, "proportional")) {
       cli::cli_abort(c(
         "{.code {fn}(type = \"proportional\")} is planned but not implemented.",

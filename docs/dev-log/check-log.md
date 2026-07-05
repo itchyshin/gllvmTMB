@@ -33472,3 +33472,31 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 Outcome: parse passed; focused `test-tidy-predict.R` passed with three expected
 CRAN skips. This is a point-prediction correctness fix only; it does not add
 prediction intervals, `newdata` simulation, or new response-family support.
+
+## 2026-07-04 -- Small robustness guards for #628 and #635
+
+Goal: close two small robustness issues without changing model semantics or
+advertised capability status.
+
+Edits:
+
+- Routed Gaussian residual-scale starts through
+  `.gllvmTMB_log_sigma_eps_start()` so one-row, empty, or constant residual
+  vectors use the intended `1e-3` floor rather than producing `NA`/`NaN` (#635).
+- Replaced the `meta_V(type = ...)` parser's internal `match.arg()` call with
+  an explicit cli diagnostic for unrecognised literal string values (#628).
+- Added pure regressions for the residual-scale floor and unknown
+  `meta_V(type = "approximate")`.
+- Updated MET-03 evidence wording while keeping proportional known-V blocked.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/fit-multi.R")); invisible(parse("R/brms-sugar.R")); invisible(parse("tests/testthat/test-formula-grammar-smoke.R")); invisible(parse("tests/testthat/test-m3-4-warmstart-phi-clamp.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-formula-grammar-smoke.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-m3-4-warmstart-phi-clamp.R", reporter = "summary")'
+```
+
+Outcome: parse passed; both focused test files passed. The warmstart file kept
+its expected heavy skips because `GLLVMTMB_HEAVY_TESTS` was not set. No new
+profile, bootstrap, or meta-analysis capability is claimed.

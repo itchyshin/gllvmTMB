@@ -360,8 +360,11 @@ method follows from that:
   model needs for identification, so the refit's Hessian is
   **non-positive-definite**. Per the `glmmTMB` convention, Wald CIs
   are `NA` in this case. We therefore use the **profile** path for
-  this plot: the LRT-inverted profile uses only log-likelihood values,
-  bypasses the pdHess gate, and yields valid CIs even at a non-PD fit.
+  this plot: the LRT-inverted profile uses only log-likelihood values
+  and bypasses the pdHess gate, so CIs are **available** even at a non-PD
+  fit where Wald is `NA`. This is availability, not a calibration claim —
+  coverage at a non-identified / boundary fit is not established, and
+  `pdHess` is never treated as CI evidence.
 - **`profile_retention`** keeps the pinning decision tied to a
   one-entry-at-a-time LRT. In this fixture it returns `r n_pins_pr`
   explicit pins. When that number is positive, the code below attempts

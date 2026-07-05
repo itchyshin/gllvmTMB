@@ -33155,3 +33155,27 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 Outcome: parse passed; focused profile-derived curve tests passed with the
 heavy profile grid rows skipped by `GLLVMTMB_HEAVY_TESTS`. This is error-message
 hardening only, not a new profile interval capability.
+
+## 2026-07-04 -- Deprecated keyword help pointers
+
+Goal: close issue #662 by making deprecated formula-keyword messages point to
+the replacement-specific help topic rather than always mentioning
+`?diag_re` / `latent()`.
+
+Edits:
+
+- Added a `see` field to the deprecated-keyword map.
+- Routed the replacement-specific pointer through
+  `.gllvmTMB_warn_keyword_deprecated()`.
+- Added a scanner regression proving `phylo_rr()` points to `?phylo_latent`
+  and no longer points to `?diag_re`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/brms-sugar.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-scan-deprecated-namespace.R", reporter = "summary")'
+```
+
+Outcome: parse passed; focused scanner tests passed. This is formula-message
+convention hardening only; no formula grammar or engine behavior changed.

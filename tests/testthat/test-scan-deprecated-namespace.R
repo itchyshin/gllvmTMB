@@ -36,6 +36,26 @@ test_that("scan_for_deprecated walks into the args of a :: call", {
   )
 })
 
+test_that("deprecated keyword messages point to replacement-specific help", {
+  seen <- gllvmTMB:::.gllvmTMB_deprecation_seen
+  if (exists("phylo_rr", envir = seen, inherits = FALSE)) {
+    rm("phylo_rr", envir = seen)
+  }
+  msg <- character()
+  withCallingHandlers(
+    gllvmTMB:::scan_for_deprecated(quote(phylo_rr(species, d = 2))),
+    message = function(cnd) {
+      msg <<- c(msg, conditionMessage(cnd))
+      invokeRestart("muffleMessage")
+    }
+  )
+  msg <- paste(msg, collapse = "\n")
+
+  expect_match(msg, "phylo_latent", fixed = TRUE)
+  expect_match(msg, "?phylo_latent", fixed = TRUE)
+  expect_no_match(msg, "?diag_re", fixed = TRUE)
+})
+
 test_that("desugar_brms_sugar does not crash on namespace-qualified (::) calls", {
   withr::local_envvar(c("_R_CHECK_LENGTH_1_CONDITION_" = "true"))
   # End-to-end of the pure-AST path: scan (Pass 0) + canonical-alias

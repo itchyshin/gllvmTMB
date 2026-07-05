@@ -83,7 +83,8 @@
   old,
   new_name,
   args = "...",
-  guidance = NULL
+  guidance = NULL,
+  see = NULL
 ) {
   if (!isTRUE(.gllvmTMB_deprecation_seen[[old]])) {
     ## Use our own env-based tracker only (no cli `.frequency = "once"`)
@@ -92,7 +93,11 @@
     msg <- c(
       "!" = "Formula keyword {.fn {old}} is a deprecated alias; use {.fn {new_name}} for new code.",
       "i" = "{.code {new_name}({args})} =/=> {.code {old}({args})}",
-      ">" = "Aliases will be dropped at the next minor release. See {.code ?diag_re} / {.fn latent}."
+      ">" = paste0(
+        "Aliases will be dropped at the next minor release. See ",
+        see %||% "{.code ?diag_re} / {.fn latent}",
+        "."
+      )
     )
     if (!is.null(guidance)) {
       msg <- c(msg, ">" = guidance)
@@ -3451,17 +3456,42 @@ rewrite_canonical_aliases <- function(formula) {
 ## the parser sees them -- so they appear in every formula post-desugar.
 scan_for_deprecated <- function(rhs) {
   deprecated_map <- list(
-    rr = list(new = "latent", args = "0 + trait | g, d = K"),
+    rr = list(
+      new = "latent",
+      args = "0 + trait | g, d = K",
+      see = "{.fn latent}"
+    ),
     diag = list(
       new = "indep",
       args = "0 + trait | g",
+      see = "{.code ?diag_re} / {.fn indep}",
       guidance = "Use ordinary latent(..., d = K) when you want the default shared + diagonal-Psi decomposition; explicit unique() remains compatibility syntax."
     ),
-    phylo_rr = list(new = "phylo_latent", args = "species, d = K"),
-    phylo = list(new = "phylo_scalar", args = "species"),
-    spde = list(new = "spatial_unique", args = "coords | trait"),
-    meta = list(new = "meta_V", args = "V = V"),
-    gr = list(new = "phylo_scalar", args = "species")
+    phylo_rr = list(
+      new = "phylo_latent",
+      args = "species, d = K",
+      see = "{.code ?phylo_latent}"
+    ),
+    phylo = list(
+      new = "phylo_scalar",
+      args = "species",
+      see = "{.code ?phylo_scalar}"
+    ),
+    spde = list(
+      new = "spatial_unique",
+      args = "coords | trait",
+      see = "{.code ?spatial_unique}"
+    ),
+    meta = list(
+      new = "meta_V",
+      args = "V = V",
+      see = "{.code ?meta_V}"
+    ),
+    gr = list(
+      new = "phylo_scalar",
+      args = "species",
+      see = "{.code ?phylo_scalar}"
+    )
   )
   walk <- function(e) {
     if (is.call(e)) {
@@ -3489,7 +3519,13 @@ scan_for_deprecated <- function(rhs) {
           )
         } else if (fn %in% names(deprecated_map)) {
           d <- deprecated_map[[fn]]
-          .gllvmTMB_warn_keyword_deprecated(fn, d$new, d$args, d$guidance)
+          .gllvmTMB_warn_keyword_deprecated(
+            fn,
+            d$new,
+            d$args,
+            d$guidance,
+            d$see
+          )
         }
       }
       for (i in seq_along(e)[-1L]) {

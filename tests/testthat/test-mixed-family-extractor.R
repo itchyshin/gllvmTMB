@@ -99,6 +99,11 @@ test_that("extract_correlations(link_residual = 'auto') adds per-family residual
   expect_true(is.data.frame(R_auto))
   expect_true(all(R_auto$trait_i != R_auto$trait_j))
   expect_gt(nrow(R_auto), 0L)
+  ## Claim-boundary marker: a mixed-family fit's correlation intervals are
+  ## route-only (coverage unestablished, CI-08 / CI-10) -- regardless of the
+  ## link_residual choice -- so the boundary is visible in-output.
+  expect_true(all(R_auto$interval_status == "route-only"))
+  expect_true(all(R_none$interval_status == "route-only"))
   ## Pair the data frames by (trait_i, trait_j) and compare correlations.
   key_auto <- paste(R_auto$trait_i, R_auto$trait_j, sep = "_")
   key_none <- paste(R_none$trait_i, R_none$trait_j, sep = "_")

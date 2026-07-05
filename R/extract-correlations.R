@@ -88,6 +88,23 @@
   out_rows
 }
 
+## Claim-boundary status of the correlation intervals returned by
+## extract_correlations(). All-Gaussian fits carry the nominal
+## fisher-z / profile / bootstrap intervals; any non-Gaussian or mixed-family
+## trait routes the correlation through the per-trait link-residual
+## approximation, so interval coverage is not yet established
+## (validation-register CI-08 / CI-10). Flag the latter as a computed route so
+## the boundary is visible in-output, consistent with the julia branch's
+## interval_status = "none".
+.correlation_interval_status <- function(fit) {
+  lr <- tryCatch(as.numeric(link_residual_per_trait(fit)),
+    error = function(e) NA_real_)
+  if (length(lr) == 0L || anyNA(lr)) {
+    return("route-only")
+  }
+  if (all(lr == 0)) "nominal" else "route-only"
+}
+
 ## Point-only correlation rows for an engine = 'julia' bridge fit.
 ##
 ## engine = 'julia' bridge fits expose the ordinary unit tier only and carry
@@ -317,13 +334,20 @@
 #'   \item{\code{correlation}}{Point estimate.}
 #'   \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
 #'   \item{\code{method}}{Method used to compute the CI.}
+#'   \item{\code{interval_status}}{Claim-boundary marker for the intervals:
+#'     \code{"nominal"} for all-Gaussian fits (the nominal fisher-z / profile /
+#'     bootstrap CIs); \code{"route-only"} for non-Gaussian or mixed-family fits,
+#'     whose correlation routes through the per-trait link-residual approximation
+#'     and whose interval coverage is not yet established (validation-register
+#'     CI-08 / CI-10); \code{"none"} for point-only \code{engine = "julia"}
+#'     fits. Lets the reader see the boundary without consulting the register.}
 #' }
 #'
 #' For an `engine = "julia"` bridge fit the frame additionally carries the
-#' point-only convention columns \code{interval_status} (\code{"none"}) and
-#' \code{validation_row} (\code{"JUL-01A"}), with \code{lower}/\code{upper}
-#' both \code{NA} and \code{method = "none"}; the base columns above are
-#' unchanged so the frame remains a superset of the normal-fit schema.
+#' \code{validation_row} (\code{"JUL-01A"}) column, with \code{lower}/\code{upper}
+#' both \code{NA}, \code{method = "none"}, and \code{interval_status = "none"};
+#' the base columns above are unchanged so the frame remains a superset of the
+#' normal-fit schema.
 #'
 #' @section Caveats:
 #' \itemize{
@@ -704,8 +728,16 @@ extract_correlations <- function(
       lower = numeric(0),
       upper = numeric(0),
       method = character(0),
+      interval_status = character(0),
       stringsAsFactors = FALSE
     )
+  } else {
+    ## Mark the claim-boundary status of these intervals: "nominal" for
+    ## all-Gaussian fits, "route-only" for non-Gaussian / mixed-family fits whose
+    ## coverage is not yet established (CI-08 / CI-10). Makes the boundary visible
+    ## in-output instead of relying on the register, and removes the
+    ## julia-vs-TMB inconsistency (julia already carries interval_status).
+    out$interval_status <- .correlation_interval_status(fit)
   }
   rownames(out) <- NULL
   out

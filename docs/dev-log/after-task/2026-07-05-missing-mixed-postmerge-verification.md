@@ -38,9 +38,13 @@ branch, by contrast, marks its point-only rows `interval_status = "none"`.
   marking machinery exists (julia uses it), is simply not applied to the
   mixed-family route, so uncalibrated mixed-family intervals are
   output-indistinguishable from calibrated Gaussian ones.
-- **Decision pending (Shinichi):** add `interval_status = "route-only"` /
-  `"uncalibrated"` to mixed-family (and any route-only) correlation intervals,
-  consistent with julia. Low-risk labelling column, no interval math. Recommended.
+- **RESOLVED — implemented** (Shinichi approved 2026-07-05). `extract_correlations()`
+  now stamps every path with `interval_status` via `.correlation_interval_status()`:
+  `"nominal"` for all-Gaussian fits, `"route-only"` for non-Gaussian / mixed-family
+  fits (coverage unestablished, CI-08 / CI-10), `"none"` for julia point-only. The
+  boundary is now visible in-output; the julia-vs-TMB inconsistency is removed.
+  Single injection point at the assembly; roxygen + Rd updated; tests assert
+  `nominal` (Gaussian) and `route-only` (mixed). Full suite PASS 4168 / FAIL 0.
 
 ### 3. MIX-10 delta/hurdle block — enforced, but the register's gate class is wrong 🔍
 
@@ -68,8 +72,7 @@ code (pre- or post-merge). The actual aborts in `check-auto-residual.R` are
 
 ## Known Residuals / Next Actions (milestone, not yet done)
 
-- Shinichi's call on the interval-status marker (finding 2), then implement
-  (small; Codex lane or scoped here).
+- ~~Interval-status marker (finding 2)~~ — DONE (approved + implemented).
 - Runtime-verify the delta/hurdle block (finding 3) + fix the register/audit
   class-name inaccuracy.
 - Re-confirm `na_mask` retention (`normalise_weights(drop_masked = FALSE)`) under

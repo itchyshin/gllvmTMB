@@ -102,13 +102,20 @@ names in new calls.}
 \item{\code{correlation}}{Point estimate.}
 \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
 \item{\code{method}}{Method used to compute the CI.}
+\item{\code{interval_status}}{Claim-boundary marker for the intervals:
+\code{"nominal"} for all-Gaussian fits (the nominal fisher-z / profile /
+bootstrap CIs); \code{"route-only"} for non-Gaussian or mixed-family fits,
+whose correlation routes through the per-trait link-residual approximation
+and whose interval coverage is not yet established (validation-register
+CI-08 / CI-10); \code{"none"} for point-only \code{engine = "julia"}
+fits. Lets the reader see the boundary without consulting the register.}
 }
 
 For an \code{engine = "julia"} bridge fit the frame additionally carries the
-point-only convention columns \code{interval_status} (\code{"none"}) and
-\code{validation_row} (\code{"JUL-01A"}), with \code{lower}/\code{upper}
-both \code{NA} and \code{method = "none"}; the base columns above are
-unchanged so the frame remains a superset of the normal-fit schema.
+\code{validation_row} (\code{"JUL-01A"}) column, with \code{lower}/\code{upper}
+both \code{NA}, \code{method = "none"}, and \code{interval_status = "none"};
+the base columns above are unchanged so the frame remains a superset of the
+normal-fit schema.
 }
 \description{
 Returns the implied cross-trait correlations from a fit returned by

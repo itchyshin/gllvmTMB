@@ -19,7 +19,15 @@
     fit$n_sites
   }
   if (is.null(n_eff_used) || n_eff_used < 4L) {
-    n_eff_used <- 30L
+    cli::cli_warn(
+      c(
+        "Cannot compute Fisher-z correlation intervals for tier {.val {tk}} from the fitted tier count.",
+        "x" = "The automatic effective sample size is missing or below 4.",
+        "i" = "Returning point correlations with unavailable interval bounds. Pass {.arg n_eff} explicitly if you have a defensible effective sample size."
+      ),
+      class = "gllvmTMB_fisher_z_n_eff_unavailable"
+    )
+    return(NA_integer_)
   }
   as.integer(n_eff_used)
 }
@@ -40,13 +48,30 @@
         correlation = rho,
         lower = NA_real_,
         upper = NA_real_,
-        method = method_label,
+        method = if (is.na(n_eff_used) || n_eff_used < 4L) {
+          "(unavailable)"
+        } else {
+          method_label
+        },
+        stringsAsFactors = FALSE
+      )
+      next
+    }
+    if (is.na(n_eff_used) || n_eff_used < 4L) {
+      out_rows[[m]] <- data.frame(
+        tier = tk,
+        trait_i = trait_names[i],
+        trait_j = trait_names[j],
+        correlation = rho,
+        lower = NA_real_,
+        upper = NA_real_,
+        method = "(unavailable)",
         stringsAsFactors = FALSE
       )
       next
     }
     zr <- atanh(rho)
-    se <- 1 / sqrt(max(n_eff_used - 3L, 1L))
+    se <- 1 / sqrt(n_eff_used - 3L)
     lo <- tanh(zr - z * se)
     hi <- tanh(zr + z * se)
     out_rows[[m]] <- data.frame(
@@ -131,9 +156,12 @@
 #'   \code{"phy"}, and \code{fit$n_sites} elsewhere -- adequate for
 #'   well-identified Gaussian fits, but can under-cover when latent
 #'   structure or non-Gaussian likelihood reduces the effective N
-#'   below the unit count. Set \code{n_eff} explicitly for non-trivial
-#'   structure (e.g. \code{n_eff = fit$n_species} for a binomial
-#'   joint-SDM where species mediates the cross-trait correlation).
+#'   below the unit count. If the automatic tier count is missing or below
+#'   4, Fisher-z rows return point correlations with unavailable interval
+#'   bounds rather than substituting an arbitrary sample size. Set
+#'   \code{n_eff} explicitly for non-trivial structure (e.g.
+#'   \code{n_eff = fit$n_species} for a binomial joint-SDM where species
+#'   mediates the cross-trait correlation).
 #' @param nsim Number of bootstrap replicates when
 #'   \code{method = "bootstrap"}. Default 500.
 #' @param seed Optional RNG seed for the bootstrap.

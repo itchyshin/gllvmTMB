@@ -298,7 +298,10 @@ errors with class
 - `fisher-z`: closed-form Fisher's z-transform CI on the
   fitted Pearson correlation, using the requested `n_eff`
   override or the extractor's tier-specific effective-size
-  heuristic.
+  heuristic. If the automatic tier count is missing or below 4,
+  the extractor returns point correlations with `NA` interval
+  bounds and `method = "(unavailable)"` rather than substituting
+  an arbitrary effective sample size.
 - `wald`: backward-compatible alias for `fisher-z`; the
   output `method` column preserves the user's requested label.
 - `profile`: profile-likelihood CI via

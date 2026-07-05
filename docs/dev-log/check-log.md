@@ -34237,3 +34237,55 @@ Not run:
 - No roxygen regeneration, pkgdown rebuild, broad `devtools::check()`, Totoro,
   or DRAC compute. This is a parser guard only; no formula examples or public
   syntax changed beyond rejecting a malformed ambiguous bar.
+
+## 2026-07-05 -- Fisher-z effective-N unavailable guard
+
+Goal: close issue #631 by removing the silent hard-coded effective sample size
+fallback in `extract_correlations(method = "fisher-z")`.
+
+Edits:
+
+- Replaced the old automatic `n_eff = 30` fallback with unavailable interval
+  semantics when the fitted tier count is missing or below 4.
+- Fisher-z rows now keep point correlations but return `lower = NA`,
+  `upper = NA`, and `method = "(unavailable)"` in that boundary case.
+- Added a classed warning telling callers to pass `n_eff` explicitly if they
+  have a defensible effective sample size.
+- Kept explicit `n_eff >= 4` accepted and covered by tests.
+- Updated `extract_correlations()` roxygen/Rd, extractor contract
+  documentation, and validation-debt rows `EXT-04` / `CI-09`.
+
+Commands:
+
+```sh
+gh issue view 631 --json number,title,state,body,labels,url
+Rscript --vanilla -e 'invisible(parse("R/extract-correlations.R")); invisible(parse("tests/testthat/test-fisher-z-correlations.R")); cat("parse-ok\n")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-fisher-z-correlations.R")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-derived.R")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-plot-covariance-tables.R")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-m1-4-extract-correlations-mixed-family.R")'
+tail -5 man/extract_correlations.Rd && grep -c '^\\keyword' man/extract_correlations.Rd
+rg -n "n_eff_used <- 30L|max\\(n_eff_used - 3L, 1L\\)|hard-coded 30|fabricat.*n_eff|magic 30" R tests/testthat man docs/design docs/dev-log/check-log.md docs/dev-log/after-task
+git diff --check
+```
+
+Results:
+
+- `test-fisher-z-correlations.R`: 31 pass, 0 fail, 0 skip under
+  `NOT_CRAN=true`.
+- `test-plot-covariance-tables.R`: 263 pass, 0 fail, 0 skip.
+- `test-confint-derived.R`: 33 expected heavy skips in the default local run.
+- `test-m1-4-extract-correlations-mixed-family.R`: 6 expected heavy skips in
+  the default local run.
+- Rd spot-check: `grep -c '^\\keyword' man/extract_correlations.Rd` returned
+  `0`; no accidental keyword garbage.
+- Stale fallback scan found no executable old fallback; the only hit was the
+  new validation-register note documenting that `n_eff = 30` was removed.
+- `git diff --check` passed.
+
+Not run:
+
+- No broad `devtools::check()`, pkgdown rebuild, Totoro, or DRAC compute. This
+  is a focused interval-boundary guard, not an interval-calibration or release
+  slice.

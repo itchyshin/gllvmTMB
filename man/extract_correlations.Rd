@@ -50,9 +50,12 @@ not yet routed. The default heuristic uses \code{fit$n_sites} for tier
 \code{"phy"}, and \code{fit$n_sites} elsewhere -- adequate for
 well-identified Gaussian fits, but can under-cover when latent
 structure or non-Gaussian likelihood reduces the effective N
-below the unit count. Set \code{n_eff} explicitly for non-trivial
-structure (e.g. \code{n_eff = fit$n_species} for a binomial
-joint-SDM where species mediates the cross-trait correlation).}
+below the unit count. If the automatic tier count is missing or below
+4, Fisher-z rows return point correlations with unavailable interval
+bounds rather than substituting an arbitrary sample size. Set
+\code{n_eff} explicitly for non-trivial structure (e.g.
+\code{n_eff = fit$n_species} for a binomial joint-SDM where species
+mediates the cross-trait correlation).}
 
 \item{nsim}{Number of bootstrap replicates when
 \code{method = "bootstrap"}. Default 500.}

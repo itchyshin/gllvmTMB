@@ -132,6 +132,43 @@ test_that("extract_correlations errors when n_eff < 4", {
   )
 })
 
+test_that("automatic n_eff below 4 returns unavailable Fisher-z intervals", {
+  skip_on_cran()
+  fit <- make_tiny_BW_fit_fz()
+  fit$n_sites <- 3L
+
+  expect_warning(
+    cors <- gllvmTMB::extract_correlations(
+      fit,
+      tier = "unit",
+      method = "fisher-z"
+    ),
+    class = "gllvmTMB_fisher_z_n_eff_unavailable"
+  )
+
+  expect_true(all(is.na(cors$lower)))
+  expect_true(all(is.na(cors$upper)))
+  expect_true(all(cors$method == "(unavailable)"))
+  expect_true(all(is.finite(cors$correlation)))
+})
+
+test_that("explicit n_eff override still permits the minimum Fisher-z interval", {
+  skip_on_cran()
+  fit <- make_tiny_BW_fit_fz()
+  fit$n_sites <- 3L
+
+  cors <- gllvmTMB::extract_correlations(
+    fit,
+    tier = "unit",
+    method = "fisher-z",
+    n_eff = 4L
+  )
+
+  expect_true(all(cors$method == "fisher-z"))
+  expect_true(all(is.finite(cors$lower)))
+  expect_true(all(is.finite(cors$upper)))
+})
+
 ## ---- 6. CIs stay bounded in [-1, 1] under all paths ----------------------
 
 test_that("Fisher-z CIs are guaranteed inside [-1, 1] for any rho", {

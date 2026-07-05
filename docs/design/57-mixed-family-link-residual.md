@@ -6,6 +6,19 @@
 **Phase**: B-mix-0 (per `~/.claude/plans/please-have-a-robust-elephant.md`, 2026-05-26 evening revision).
 **Supersedes**: nothing; companion to `docs/design/02-family-registry.md` (current `check_auto_residual()` deferral) and `docs/design/56-augmented-lhs-engine-stage3.md` (augmented-LHS engine surface).
 
+> **RESOLVED 2026-07-05 — see [Design 02 §Hurdle/delta](02-family-registry.md).**
+> The "two latent scales / correlation undefined" obstruction this memo works
+> around is lifted by constraining the latent to the **positive** submodel
+> (occurrence submodel fixed-effects-only) → a single latent scale → the
+> correlation residual is the **positive-part residual** (not the two-component
+> `σ²_positive + π²/3`, which stays for total-variance / repeatability). The
+> "`check_auto_residual()` **rejects** mixed-family delta" statements below are
+> **historical and inaccurate**: that function is a manual, opt-in diagnostic,
+> was never auto-wired into the fit/extract path, and the class
+> `gllvmTMB_auto_residual_delta_undefined` does not exist in the codebase.
+> Mixed-family delta correlation is now `partial` (route-only), not blocked. The
+> body below is retained as the historical design record.
+
 ## 1. Context and the problem
 
 When a `gllvmTMB` fit mixes families with different residual-scale semantics — for example:

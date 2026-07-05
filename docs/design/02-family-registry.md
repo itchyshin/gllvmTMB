@@ -177,30 +177,49 @@ These two-stage families combine a binary occurrence component
 (`hu` = hurdle probability) with a positive-continuous component.
 The `delta_*` prefix matches the `sdmTMB` convention.
 
-**Why deferred** (maintainer 2026-05-16):
+**Resolution** (maintainer, 2026-07-05 — supersedes the 2026-05-16 deferral):
 
-The latent-scale correlation contract — applying a per-family
-link residual to the latent diagonal so `extract_correlations()`
-can report mixed-family correlations on a common scale — is
-**currently undefined for two-stage hurdle/delta families**.
-Each delta family has *two* scales (binary occurrence on the
-probit/logit latent + continuous-positive on its own scale), and
-there is no clean way to collapse them into a single latent
-residual without losing information.
+The two-scale obstruction is removed by a modelling **constraint**: the latent
+(random-effect) structure attaches **only to the main / positive-continuous
+submodel**; the binary **occurrence (hurdle) submodel is fixed-effects only** and
+carries no random effects. A delta trait therefore contributes **one** latent
+scale — the positive part's — so cross-family latent correlations are
+well-defined, and the "defensible single latent-residual value" the deferral
+waited on is simply the **positive-part residual** (`sigma^2` on the log scale
+for `delta_lognormal`; `trigamma(shape)` for `delta_gamma`). The occurrence
+`pi^2/3` baseline lives on a scale with no shared latent and does **not** enter
+the correlation diagonal.
 
-Since latent-scale correlations on mixed-family fits is the
-package's headline differentiator (vision item 5), it would be
-dishonest to include delta families in the 0.2.0 advertised
-surface without first solving this. The families are deferred
-to post-CRAN, contingent on a derivation that gives a defensible
-single latent-residual value per delta family (or a principled
-two-component correlation reporting scheme).
+Note the resulting correlation is on the positive-continuous latent scale, i.e.
+**conditional on occurrence** — label it as such; it is not an unconditional
+response correlation.
 
-The engine currently admits only the standard `delta_lognormal()` and
-`delta_gamma()` runtime ids. The other exported delta constructors are
-constructor-only compatibility surface for now. Cross-family correlation
-reporting on mixed-family fits that include a delta family remains
-**rejected** by `check_auto_residual()`.
+Two residuals must therefore be distinguished for a delta trait:
+
+- **correlation / latent-scale context:** positive-part residual only (above);
+- **total-variance / repeatability context:** the two-component
+  `sigma^2_positive + pi^2/3` (law of total variance) currently in
+  `extract-sigma.R` stays correct for its own purpose.
+
+**Scope (0.2.0 arc, maintainer 2026-07-05).** Latent-on-main + the
+fixed-effects-only-occurrence constraint is buildable in this arc (live wiring is
+Codex lane): admit `latent()` random *intercepts* on a delta trait's positive
+part, **guard** against random effects on the occurrence submodel (random
+*slopes* are already blocked at `fit-multi.R:1495`), and use the positive-part
+residual in `extract_correlations()`. The resulting correlations carry
+`interval_status = "route-only"` (coverage unestablished, CI-08 / CI-10) until
+calibrated. **Post-CRAN:** allowing random effects on the *occurrence* part too
+(the genuine two-latent-scale case) needs a separate derivation — a
+2-dimensional latent contribution per delta trait, or a principled per-scale
+reporting scheme — and stays deferred.
+
+**Correction (2026-07-05).** Earlier notes said cross-family correlation on a
+delta mixed-family fit is "rejected by `check_auto_residual()`." That is
+inaccurate: `check_auto_residual()` is an `@export`ed **manual** diagnostic, is
+never auto-invoked by `gllvmTMB()` / `extract_*()`, and only aborts *within-trait*
+family mixing (class `gllvmTMB_auto_residual_incoherent`). There is **no**
+`gllvmTMB_auto_residual_delta_undefined` class and no automatic delta rejection.
+Under the resolution above, delta is **handled** (route-only), not rejected.
 
 | Family | R constructor (engine has it) | Components | Public status |
 |--------|------------------------------|------------|---------------|

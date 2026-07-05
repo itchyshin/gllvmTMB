@@ -57,7 +57,7 @@ share.
 | `cluster2` | covered | partial | not applicable | point-only | partial | diagonal tier only |
 | `phy` | covered | partial | covered | covered | covered | phylogenetic signal partial |
 | `spatial` | covered | partial | planned | partial | planned | total spatial covariance needs heavy gate |
-| `unit_slope` | not claimed | blocked | blocked | blocked | blocked | Design 74 target table declared; no profile implementation yet |
+| `unit_slope` | not claimed | blocked | blocked | partial | blocked | Gaussian selected-entry `rho:unit_slope:i,j` canary only |
 | `phy_unique_slope` | not claimed | blocked | not applicable | blocked | blocked | Design 74 target table declared; no profile implementation yet |
 | `phy_dep` | not claimed | blocked | not applicable | blocked | blocked | Design 74 target table declared; no profile implementation yet |
 | `phy_slope` | not claimed | blocked | blocked | blocked | blocked | Design 74 target table declared; no profile implementation yet |
@@ -79,8 +79,8 @@ Two clarifications matter for future profile-function work:
   this is not a new shared-loading, correlation, or full covariance claim.
 - Design 74 now declares the augmented structural split targets and flattening
   conventions. This does not promote any augmented split profile interval route:
-  every such row remains `blocked` until a later implementation slice directly
-  tests a selected target.
+  only the Gaussian selected-entry `rho:unit_slope:i,j` canary is wired, and it
+  remains `partial` until known-DGP and boundary calibration evidence land.
 
 ## ARIA
 
@@ -118,5 +118,6 @@ blocked to covered unless it has direct code and validation-register evidence.
 3. Repair hard-family profile stability, especially Gamma unit-tier rho
    failures, before broader claims.
 4. Use Design 74 as the target source for the first augmented Gaussian canary,
-   preferably a selected `unit_slope` `Sigma` or `rho` route; keep all other
-   augmented split targets blocked.
+   now the selected `rho:unit_slope:i,j` route; keep `Sigma_unit_slope`,
+   augmented proportions, source-specific slope routes, and non-Gaussian
+   augmented profile claims blocked.

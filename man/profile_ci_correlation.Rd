@@ -6,7 +6,7 @@
 \usage{
 profile_ci_correlation(
   fit,
-  tier = c("unit", "unit_obs", "phy", "spatial", "B", "W", "spde"),
+  tier = c("unit", "unit_slope", "unit_obs", "phy", "spatial", "B", "W", "spde"),
   i,
   j,
   level = 0.95
@@ -15,10 +15,13 @@ profile_ci_correlation(
 \arguments{
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
-\item{tier}{\code{"unit"}, \code{"unit_obs"}, \code{"phy"}, or \code{"spatial"}.
-Legacy aliases \code{"B"}, \code{"W"}, and \code{"spde"} are accepted.}
+\item{tier}{\code{"unit"}, \code{"unit_slope"}, \code{"unit_obs"}, \code{"phy"}, or
+\code{"spatial"}. Legacy aliases \code{"B"}, \code{"W"}, and \code{"spde"} are accepted.
+\code{"unit_slope"} is a selected-entry Gaussian canary for augmented
+ordinary random-regression coefficients.}
 
-\item{i, j}{Trait indices (1-based, \code{i < j}).}
+\item{i, j}{Trait indices (1-based, \code{i < j}). For \code{tier = "unit_slope"},
+these are augmented coefficient indices on the interleaved \verb{2T} vector.}
 
 \item{level}{Confidence level. Default 0.95.}
 }

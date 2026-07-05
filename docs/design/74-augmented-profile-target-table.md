@@ -12,9 +12,11 @@ Several augmented point extractors and recovery tests are already covered, but a
 point covariance read-out is not a calibrated likelihood-profile interval. This
 note is the target map that Design 73 requires before any implementation slice.
 
-No route is promoted by this design. Every augmented split profile target stays
-`blocked` in `.profile_route_matrix()` until a later slice implements one
-selected route, tests it directly, and runs the relevant calibration gate.
+This design promoted no route by itself. The follow-on canary now wires only
+Gaussian selected-entry `rho:unit_slope:i,j`; it is `partial`, not covered.
+Every other augmented split profile target stays `blocked` in
+`.profile_route_matrix()` until a later slice implements one selected route,
+tests it directly, and runs the relevant calibration gate.
 
 ## Shared Conventions
 
@@ -56,11 +58,11 @@ uses `kappa` (`sd / (sqrt(4*pi) * kappa)` or variance divided by
 
 ## Profile Gate
 
-The next implementation slice should choose exactly one canary surface. The
-recommended first canary is Gaussian `unit_slope` selected-entry `Sigma` or
-`rho`, because its estimator lives in the ordinary TMB block, the target shape is
-fully local, and no SPDE scale conversion or source-specific denominator is
-involved.
+The first canary is Gaussian `unit_slope` selected-entry `rho`, exposed through
+`rho:unit_slope:i,j`. It targets the lower triangle of
+`cov2cor(Sigma_unit_slope)` over the interleaved `2T` coefficient vector. The
+route is still partial: it has parser/target plumbing and focused route tests,
+but no coverage calibration and no non-Gaussian claim.
 
 The gate for any selected route is:
 
@@ -94,9 +96,10 @@ Risk: without this table, a future route could profile the wrong flattened entry
 or report a denominator borrowed from an intercept-only model.
 
 Implementation: add `.profile_augmented_target_table()` and pure route tests;
-update Design 73 and CI-11 to say targets are now declared but profile routes
-remain blocked.
+update Design 73 and CI-11 to say targets are now declared, with only
+`rho:unit_slope:i,j` promoted to a partial Gaussian canary.
 
 Assessment: `test-profile-route-matrix.R` must prove every augmented level and
-estimand has exactly one target row, and every augmented route in
-`.profile_route_matrix()` remains `blocked`.
+estimand has exactly one target row, that `rho:unit_slope:i,j` is the only
+partial augmented canary, and that all other augmented routes in
+`.profile_route_matrix()` remain `blocked`.

@@ -689,12 +689,31 @@
         ,
         drop = FALSE
       ]
+      is_unit_slope_rho <- identical(lvl, "unit_slope") &&
+        identical(est, "rho")
       rows[[length(rows) + 1L]] <- .profile_route_row(
-        est, lvl, "profile", "blocked",
-        paste0("augmented_split_target_table:", target$target_state),
-        "RE-03;RE-12;SPA-08;SPA-09;SPA-10;PHY-11..18",
-        "Point extraction/recovery may exist, and Design 74 declares the symbolic target, but profile CIs are not implemented or calibrated.",
-        target$profile_gate
+        est, lvl, "profile",
+        if (is_unit_slope_rho) "partial" else "blocked",
+        if (is_unit_slope_rho) {
+          "fix_refit:profile_ci_correlation:unit_slope_selected_entry"
+        } else {
+          paste0("augmented_split_target_table:", target$target_state)
+        },
+        if (is_unit_slope_rho) {
+          "RE-12;CI-11"
+        } else {
+          "RE-03;RE-12;SPA-08;SPA-09;SPA-10;PHY-11..18"
+        },
+        if (is_unit_slope_rho) {
+          "Gaussian selected-entry rho:unit_slope profile canary is wired; calibration and broader augmented targets remain blocked."
+        } else {
+          "Point extraction/recovery may exist, and Design 74 declares the symbolic target, but profile CIs are not implemented or calibrated."
+        },
+        if (is_unit_slope_rho) {
+          "Run known-DGP and boundary calibration before promoting beyond a canary."
+        } else {
+          target$profile_gate
+        }
       )
     }
   }

@@ -593,6 +593,8 @@
 
 ## Internal helper: parse "rho:<tier>:i,j[;k,l]" into list(tier, pairs)
 ## where pairs is an integer matrix with columns (i, j) and i < j.
+## `unit_slope` addresses the augmented ordinary coefficient vector, whose
+## valid numeric range is 1:(2 * n_traits).
 .parse_rho_parm <- function(parm, trait_names) {
   spec <- sub("^rho:", "", parm)
   ix_colon <- regexpr(":", spec, fixed = TRUE)
@@ -610,10 +612,12 @@
       i = "Tier is mandatory."
     ))
   }
-  if (!tier %in% c("unit", "unit_obs", "phy", "spatial", "B", "W", "spde")) {
+  if (!tier %in% c(
+    "unit", "unit_slope", "unit_obs", "phy", "spatial", "B", "W", "spde"
+  )) {
     cli::cli_abort(c(
       "Invalid tier {.val {tier}} in {.val {parm}}.",
-      i = "Correlation tiers: {.val unit}, {.val unit_obs}, {.val phy}, or {.val spatial} (legacy aliases {.val B} / {.val W} / {.val spde} also accepted)."
+      i = "Correlation tiers: {.val unit}, {.val unit_slope}, {.val unit_obs}, {.val phy}, or {.val spatial} (legacy aliases {.val B} / {.val W} / {.val spde} also accepted)."
     ))
   }
   pairs <- strsplit(pair_spec, ";", fixed = TRUE)[[1L]]
@@ -625,7 +629,11 @@
       i = "Expected at least one pair {.code i,j}."
     ))
   }
-  T <- length(trait_names)
+  T <- if (identical(tier, "unit_slope")) {
+    2L * length(trait_names)
+  } else {
+    length(trait_names)
+  }
   parts_list <- lapply(pairs, function(p) {
     bits <- strsplit(p, ",", fixed = TRUE)[[1L]]
     bits <- trimws(bits)
@@ -868,6 +876,13 @@
   parsed <- .parse_rho_parm(parm, trait_names)
   tier <- parsed$tier
   pairs <- parsed$pairs
+
+  if (identical(tier, "unit_slope") && method != "profile") {
+    cli::cli_abort(c(
+      "{.code rho:unit_slope} currently supports {.code method = \"profile\"} only.",
+      "i" = "Wald, Fisher-z, and bootstrap intervals for augmented ordinary random-regression correlations need separate gates."
+    ))
+  }
 
   n_pairs <- nrow(pairs)
   lo <- numeric(n_pairs)
@@ -1302,8 +1317,11 @@
 #'       Wald/bootstrap helpers for \code{"wald"} / \code{"bootstrap"}.
 #'     \item \code{"rho:<tier>:i,j"} (one pair) or
 #'       \code{"rho:<tier>:i,j;k,l"} (multiple pairs). Tier is one of
-#'       \code{"unit"} / \code{"unit_obs"} / \code{"phy"} /
-#'       \code{"spatial"} (legacy \code{"B"} / \code{"W"} / \code{"spde"}).
+#'       \code{"unit"} / \code{"unit_slope"} / \code{"unit_obs"} /
+#'       \code{"phy"} / \code{"spatial"} (legacy \code{"B"} / \code{"W"} /
+#'       \code{"spde"}). \code{"unit_slope"} indexes the augmented
+#'       \code{2T} coefficient vector by numeric position and is currently a
+#'       Gaussian selected-entry profile canary only.
 #'       Routes to [profile_ci_correlation()] (profile) or
 #'       [extract_correlations()] (\code{"fisher-z"} / \code{"wald"} /
 #'       \code{"bootstrap"}).

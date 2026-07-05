@@ -33668,3 +33668,49 @@ Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tes
 Outcome: parse passed; focused route-matrix tests passed. No public
 `confint()` route, Mission Control metric, or profile calibration claim was
 changed.
+
+## 2026-07-04 -- Unit-slope rho profile canary
+
+Goal: wire exactly one augmented structural profile canary after Design 74:
+Gaussian selected-entry `rho:unit_slope:i,j`.
+
+Edits:
+
+- Extended `profile_ci_correlation()` to accept `tier = "unit_slope"` and build
+  the target from `theta_rr_B_slope` / `theta_diag_B_slope` over the augmented
+  `2T` coefficient covariance.
+- Extended the `rho:*` parser and `confint()` dispatcher so
+  `parm = "rho:unit_slope:i,j"` works for `method = "profile"` only.
+- Kept the route Gaussian-only and fail-loud for non-Gaussian augmented
+  profiles.
+- Marked only `rho` / `unit_slope` as `partial` in the route matrix; all other
+  augmented split profile targets remain blocked.
+- Regenerated `man/profile_ci_correlation.Rd` and
+  `man/confint.gllvmTMB_multi.Rd`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'invisible(parse("R/profile-derived.R")); invisible(parse("R/z-confint-gllvmTMB.R")); invisible(parse("R/profile-route-matrix.R")); invisible(parse("tests/testthat/test-profile-route-matrix.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R", reporter = "summary")'
+env NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-ordinary-latent-random-regression.R", reporter = "summary")'
+git diff --check
+```
+
+Ad-hoc live smoke:
+
+```sh
+Rscript --vanilla - <<'RS'
+devtools::load_all(quiet = TRUE)
+## Small Gaussian latent(1 + temperature | individual) fixture.
+## confint(fit, parm = "rho:unit_slope:1,2", method = "profile")
+## returned finite bounds on an interior pair; a near-boundary pair returned a
+## labelled one-sided/failed endpoint rather than crashing.
+RS
+```
+
+Outcome: documentation regenerated; parse passed; route-matrix tests passed;
+ordinary augmented random-regression focused tests passed under
+`NOT_CRAN=true`; whitespace clean. The canary is route-plumbing evidence only,
+not empirical coverage calibration.

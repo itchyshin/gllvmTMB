@@ -57,8 +57,11 @@ Tier is one of \code{"unit"} / \code{"unit_obs"} / \code{"phy"}
 Wald/bootstrap helpers for \code{"wald"} / \code{"bootstrap"}.
 \item \code{"rho:<tier>:i,j"} (one pair) or
 \code{"rho:<tier>:i,j;k,l"} (multiple pairs). Tier is one of
-\code{"unit"} / \code{"unit_obs"} / \code{"phy"} /
-\code{"spatial"} (legacy \code{"B"} / \code{"W"} / \code{"spde"}).
+\code{"unit"} / \code{"unit_slope"} / \code{"unit_obs"} /
+\code{"phy"} / \code{"spatial"} (legacy \code{"B"} / \code{"W"} /
+\code{"spde"}). \code{"unit_slope"} indexes the augmented
+\code{2T} coefficient vector by numeric position and is currently a
+Gaussian selected-entry profile canary only.
 Routes to \code{\link[=profile_ci_correlation]{profile_ci_correlation()}} (profile) or
 \code{\link[=extract_correlations]{extract_correlations()}} (\code{"fisher-z"} / \code{"wald"} /
 \code{"bootstrap"}).

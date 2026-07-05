@@ -74,13 +74,38 @@ test_that("profile route matrix keeps augmented split profile routes blocked", {
   for (lvl in split_levels) {
     for (estimand in split_estimands) {
       route <- gllvmTMB:::.profile_route_status(estimand, lvl, routes = routes)
-      expect_equal(route$status, "blocked", label = paste(estimand, lvl))
-      expect_match(route$route, "augmented_split_target_table", fixed = TRUE)
-      expect_match(route$claim, "Design 74", fixed = TRUE)
-      expect_true(nzchar(route$next_gate))
-      expect_false(grepl("symbolic target table required", route$next_gate, fixed = TRUE))
+      if (identical(lvl, "unit_slope") && identical(estimand, "rho")) {
+        expect_equal(route$status, "partial", label = paste(estimand, lvl))
+        expect_match(route$route, "unit_slope_selected_entry", fixed = TRUE)
+        expect_match(route$claim, "canary", fixed = TRUE)
+      } else {
+        expect_equal(route$status, "blocked", label = paste(estimand, lvl))
+        expect_match(route$route, "augmented_split_target_table", fixed = TRUE)
+        expect_match(route$claim, "Design 74", fixed = TRUE)
+        expect_true(nzchar(route$next_gate))
+        expect_false(grepl("symbolic target table required", route$next_gate, fixed = TRUE))
+      }
     }
   }
+})
+
+test_that("profile route matrix marks only unit_slope rho as the augmented canary", {
+  routes <- gllvmTMB:::.profile_route_matrix()
+  augmented <- routes[
+    routes$level %in% c(
+      "unit_slope", "phy_unique_slope", "phy_dep", "phy_slope",
+      "spde_base_slope", "spde_dep", "spde_slope"
+    ) &
+      routes$estimand %in% c("Sigma", "communality", "rho", "proportion"),
+    ,
+    drop = FALSE
+  ]
+  partial <- augmented[augmented$status == "partial", , drop = FALSE]
+
+  expect_equal(nrow(partial), 1L)
+  expect_equal(partial$level, "unit_slope")
+  expect_equal(partial$estimand, "rho")
+  expect_match(partial$route, "profile_ci_correlation", fixed = TRUE)
 })
 
 test_that("augmented profile target table covers every split level and estimand", {
@@ -148,6 +173,117 @@ test_that("augmented communality table blocks non-loading structural modes", {
   expect_true(all(non_loading$target_state == "not_applicable_blocked"))
   expect_true(all(non_loading$numerator == "none"))
   expect_true(all(non_loading$denominator == "none"))
+})
+
+test_that("rho parser accepts unit_slope augmented coefficient indices", {
+  trait_names <- c("t1", "t2")
+
+  parsed <- gllvmTMB:::.parse_rho_parm("rho:unit_slope:1,4", trait_names)
+  expect_equal(parsed$tier, "unit_slope")
+  expect_equal(parsed$pairs, matrix(c(1L, 4L), nrow = 1L))
+
+  expect_error(
+    gllvmTMB:::.parse_rho_parm("rho:unit:1,4", trait_names),
+    "out of range"
+  )
+  expect_error(
+    gllvmTMB:::.parse_rho_parm("rho:unit_slope:1,5", trait_names),
+    "out of range"
+  )
+})
+
+test_that("unit_slope rho confint dispatch is profile-only", {
+  fake <- structure(
+    list(
+      data = data.frame(trait = factor(c("t1", "t2"))),
+      trait_col = "trait"
+    ),
+    class = "gllvmTMB_multi"
+  )
+
+  expect_error(
+    gllvmTMB:::.confint_rho(
+      fake,
+      parm = "rho:unit_slope:1,2",
+      level = 0.95,
+      method = "wald",
+      nsim = 10L,
+      seed = 1L
+    ),
+    "method = \"profile\""
+  )
+
+  testthat::local_mocked_bindings(
+    profile_ci_correlation = function(fit, tier, i, j, level) {
+      expect_equal(tier, "unit_slope")
+      expect_equal(c(i, j), c(1L, 2L))
+      expect_equal(level, 0.95)
+      c(estimate = 0.2, lower = -0.1, upper = 0.5)
+    },
+    .package = "gllvmTMB"
+  )
+  ci <- gllvmTMB:::.confint_rho(
+    fake,
+    parm = "rho:unit_slope:1,2",
+    level = 0.95,
+    method = "profile",
+    nsim = 10L,
+    seed = 1L
+  )
+  expect_equal(rownames(ci), "rho:unit_slope:1,2")
+  expect_equal(unname(ci[1, ]), c(-0.1, 0.5))
+})
+
+test_that("profile_ci_correlation targets augmented unit_slope parameters", {
+  par <- c(
+    theta_rr_B_slope = 0.7,
+    theta_rr_B_slope = 0.2,
+    theta_rr_B_slope = -0.1,
+    theta_rr_B_slope = 0.3,
+    theta_diag_B_slope = log(0.4),
+    theta_diag_B_slope = log(0.5),
+    theta_diag_B_slope = log(0.6),
+    theta_diag_B_slope = log(0.7)
+  )
+  fake <- structure(
+    list(
+      opt = list(par = par),
+      tmb_data = list(family_id_vec = 0L),
+      use = list(rr_B_slope = TRUE, diag_B_slope = TRUE),
+      d_B_slope = 1L,
+      n_traits = 2L,
+      data = data.frame(trait = factor(c("t1", "t2"))),
+      trait_col = "trait"
+    ),
+    class = "gllvmTMB_multi"
+  )
+  R <- diag(4L)
+  R[1L, 2L] <- R[2L, 1L] <- 0.25
+
+  testthat::local_mocked_bindings(
+    extract_Sigma = function(fit, level, part, link_residual, .skip_warn) {
+      expect_equal(level, "B_slope")
+      expect_equal(part, "total")
+      expect_equal(link_residual, "none")
+      list(R = R, Sigma = R)
+    },
+    .profile_ci_via_refit = function(fit, target_fn, q_hat, ...) {
+      expect_equal(q_hat, 0.25)
+      target <- target_fn(fit$opt$par, fit)
+      expect_true(is.finite(target))
+      expect_true(abs(target) <= 1)
+      list(lower = -0.2, upper = 0.6, estimate = q_hat)
+    },
+    .package = "gllvmTMB"
+  )
+
+  ci <- gllvmTMB::profile_ci_correlation(
+    fake,
+    tier = "unit_slope",
+    i = 1L,
+    j = 2L
+  )
+  expect_equal(unname(ci), c(0.25, -0.2, 0.6))
 })
 
 test_that("profile_targets exposes cluster and cluster2 direct SD aliases", {

@@ -634,9 +634,12 @@ profile_ci_communality <- function(
 #' fit has 60 of them across four covariance levels).
 #'
 #' @param fit A fit returned by [gllvmTMB()].
-#' @param tier `"unit"`, `"unit_obs"`, `"phy"`, or `"spatial"`.
-#'   Legacy aliases `"B"`, `"W"`, and `"spde"` are accepted.
-#' @param i,j Trait indices (1-based, `i < j`).
+#' @param tier `"unit"`, `"unit_slope"`, `"unit_obs"`, `"phy"`, or
+#'   `"spatial"`. Legacy aliases `"B"`, `"W"`, and `"spde"` are accepted.
+#'   `"unit_slope"` is a selected-entry Gaussian canary for augmented
+#'   ordinary random-regression coefficients.
+#' @param i,j Trait indices (1-based, `i < j`). For `tier = "unit_slope"`,
+#'   these are augmented coefficient indices on the interleaved `2T` vector.
 #' @param level Confidence level. Default 0.95.
 #' @return Length-3 numeric vector (`estimate`, `lower`, `upper`).
 #'
@@ -644,7 +647,9 @@ profile_ci_communality <- function(
 #' @export
 profile_ci_correlation <- function(
   fit,
-  tier = c("unit", "unit_obs", "phy", "spatial", "B", "W", "spde"),
+  tier = c(
+    "unit", "unit_slope", "unit_obs", "phy", "spatial", "B", "W", "spde"
+  ),
   i,
   j,
   level = 0.95
@@ -670,11 +675,31 @@ profile_ci_correlation <- function(
   if (is.null(Sigma_pt)) {
     cli::cli_abort("Could not extract Sigma at tier {.val {tier}}.")
   }
+  n_dim <- nrow(Sigma_pt$R)
+  if (i < 1L || j < 1L || i > n_dim || j > n_dim) {
+    cli::cli_abort(c(
+      "Correlation indices {.val {paste0(i, ',', j)}} out of range for tier {.val {tier}}.",
+      "i" = "Valid indices for this tier are 1:{n_dim}."
+    ))
+  }
   rho_hat <- Sigma_pt$R[i, j]
 
   ## Build target function from the tier's parameter blocks
   par_names <- names(fit$opt$par)
-  if (tier == "B") {
+  if (tier == "B_slope") {
+    fids <- fit$tmb_data$family_id_vec %||% 0L
+    if (any(fids != 0L)) {
+      cli::cli_abort(c(
+        "{.code rho:unit_slope} profile intervals are currently a Gaussian-only canary.",
+        "i" = "Non-Gaussian augmented ordinary random-regression profiles need a separate calibration gate."
+      ))
+    }
+    ix_rr <- which(par_names == "theta_rr_B_slope")
+    ix_diag <- which(par_names == "theta_diag_B_slope")
+    rank <- fit$d_B_slope
+    use_rr <- isTRUE(fit$use$rr_B_slope)
+    use_diag <- isTRUE(fit$use$diag_B_slope)
+  } else if (tier == "B") {
     ix_rr <- which(par_names == "theta_rr_B")
     ix_diag <- which(par_names == "theta_diag_B")
     rank <- fit$d_B
@@ -705,7 +730,7 @@ profile_ci_correlation <- function(
       "Tier {.val {tier}} has no {.code latent()} term; correlation profile not available."
     )
   }
-  n_traits <- fit$n_traits
+  n_traits <- n_dim
 
   build_Lambda <- function(theta_rr, p, rank) {
     L <- matrix(0, p, rank)

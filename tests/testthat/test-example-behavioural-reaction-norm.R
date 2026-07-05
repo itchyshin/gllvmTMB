@@ -95,7 +95,7 @@ test_that("behavioural reaction-norm example object has contract fields", {
     "unique\\(",
     paste(deparse(ex$formula_wide), collapse = " ")
   ))
-  expect_true("default diagonal Psi under latent()" %in% ex$alignment$keyword)
+  expect_true("latent() default Psi" %in% ex$alignment$keyword)
   expect_named(ex$fit_args, c("trait", "unit", "unit_obs", "family"))
   expect_named(
     ex$alignment,

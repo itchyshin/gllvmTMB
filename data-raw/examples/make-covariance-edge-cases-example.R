@@ -3,8 +3,9 @@
 ## Regenerate inst/extdata/examples/covariance-edge-cases-example.rds.
 ##
 ## The RDS stores a portable teaching fixture for covariance/correlation
-## edge cases: a Gaussian behavioural-syndrome dataset where latent-only
-## correlations are inflated unless the diagonal Psi component is included.
+## edge cases: a Gaussian behavioural-syndrome dataset where the historical
+## no-residual latent subset inflates correlations unless the diagonal Psi
+## component is included.
 ##
 ## Re-run from the repo root:
 ##   Rscript data-raw/examples/make-covariance-edge-cases-example.R
@@ -99,9 +100,9 @@ formula_latent_only_wide <- traits(
 alignment <- data.frame(
   symbol = c("Sigma", "Lambda", "Psi / psi", "R", "communality"),
   keyword = c(
-    "latent() default Psi",
+    "latent()",
     "latent(..., d = 2)",
-    "default latent() Psi",
+    "default latent() diagonal Psi; unique() compatibility spelling",
     "extract_Sigma(..., part = \"total\")$R",
     "extract_communality()"
   ),
@@ -141,7 +142,11 @@ edge_cases <- list(
   recommended = list(
     formula_long = formula_long,
     formula_wide = formula_wide,
-    rule = "Use default latent() when trait-specific variance is part of the estimand."
+    rule = paste(
+      "Use ordinary latent() when trait-specific diagonal Psi is part",
+      "of the estimand; unique() is compatibility syntax for older",
+      "explicit-Psi formulas."
+    )
   )
 )
 

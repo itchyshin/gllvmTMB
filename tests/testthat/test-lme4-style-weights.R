@@ -22,10 +22,10 @@ skip_if_not_installed("gllvmTMB")
 make_gauss <- function(seed = 1L) {
   ## Small Gaussian DGP: 30 sites x 4 traits, with a non-trivial residual
   ## sigma (the simulator's default sigma2_eps = 0.5). We deliberately
-  ## use a single low-rank `latent(d = 1)` term in the fit so the random-
-  ## effect structure does NOT absorb all data variability — that keeps
-  ## sigma_eps well above its numerical floor and makes weighted-vs-
-  ## unweighted differences detectable in both objective and SEs.
+  ## use the old no-residual low-rank subset explicitly. The default
+  ## ordinary `latent()` fit now includes a diagonal Psi companion; this
+  ## file is about row-weight semantics, not the Psi decomposition, so
+  ## the test fixture opts out with `unique = FALSE`.
   set.seed(seed)
   sim <- gllvmTMB::simulate_site_trait(
     n_sites = 30, n_species = 1, n_traits = 4,

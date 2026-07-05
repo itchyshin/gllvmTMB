@@ -129,8 +129,8 @@ Three-step rollout, dispatched as separate slices:
 - **Engine work**: `dev/m3-grid.R` calls
   `bootstrap_Sigma(fit, n_boot = B, level = "unit",
   link_residual = "none")` per rep. Replace the 20% RSE placeholder
-  with bootstrap percentile bounds on the fitted model covariance target
-  without link-residual additions.
+  with bootstrap percentile bounds on the fitted ordinary latent
+  covariance target without link-residual additions.
 - **Compute trade-off**: smoke runs B = 30 (fast). Production
   M3.3a-full runs B = 100. Total smoke: 15 × 10 × 30 × ~1.5 s
   ≈ 6750 s ≈ ~2 h. Production: 15 × 200 × 100 × ~1.5 s ≈ 450 000 s.

@@ -1,5 +1,5 @@
 make_ppc_diag_fit <- function(
-  family_name = c("gaussian", "poisson", "nbinom2"),
+  family_name = c("gaussian", "poisson", "nbinom2", "nbinom1", "Gamma"),
   seed = 1L
 ) {
   family_name <- match.arg(family_name)
@@ -21,6 +21,20 @@ make_ppc_diag_fit <- function(
       stats::rnbinom(n_ind * Tn, mu = exp(as.vector(eta)), size = 3),
       n_ind,
       Tn
+    ),
+    nbinom1 = matrix(
+      stats::rnbinom(n_ind * Tn, mu = exp(as.vector(eta)), size = 3),
+      n_ind,
+      Tn
+    ),
+    Gamma = matrix(
+      stats::rgamma(
+        n_ind * Tn,
+        shape = 4,
+        rate = 4 / exp(as.vector(eta))
+      ),
+      n_ind,
+      Tn
     )
   )
 
@@ -33,7 +47,9 @@ make_ppc_diag_fit <- function(
     family_name,
     gaussian = stats::gaussian(),
     poisson = stats::poisson(),
-    nbinom2 = gllvmTMB::nbinom2()
+    nbinom2 = gllvmTMB::nbinom2(),
+    nbinom1 = gllvmTMB::nbinom1(),
+    Gamma = stats::Gamma(link = "log")
   )
 
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -232,6 +248,81 @@ test_that("auto rootogram max_count pools extreme simulated tails", {
     dat$expected[as.character(dat$count_label) == ">100"],
     0.5
   )
+})
+
+test_that("exact rq_qq plot renders for an NB1 fit (DIA-11 display smoke)", {
+  skip_on_cran()
+  testthat::skip_if_not_installed("ggplot2")
+
+  ## NB1 (family_id 15) is an exact-CDF randomized-quantile family. This is a
+  ## display smoke only: it asserts the plot object renders and carries the
+  ## expected diagnostic metadata, not that the diagnostic is calibrated.
+  fit <- make_ppc_diag_fit("nbinom1", seed = 11L)
+  expect_true(all(fit$tmb_data$family_id_vec == 15L))
+
+  p <- predictive_check(
+    fit,
+    type = "rq_qq",
+    seed = 111L,
+    condition_on_RE = TRUE
+  )
+  expect_s3_class(p, "ggplot")
+  meta <- attr(p, "gllvmTMB_diagnostic")
+  expect_equal(meta$type, "rq_qq")
+  expect_equal(meta$method, "exact_family_cdf")
+  expect_equal(nrow(meta$data), length(fit$tmb_data$y))
+  expect_true(all(meta$data$status == "ok"))
+  expect_true(all(meta$data$family_id == 15L))
+  expect_true(all(is.finite(meta$data$residual)))
+  expect_silent(ggplot2::ggplot_build(p))
+})
+
+test_that("simulation-based plots render for a Gamma fit (DIA-11 display smoke)", {
+  skip_on_cran()
+  testthat::skip_if_not_installed("ggplot2")
+
+  ## Gamma (family_id 4) is outside the exact-CDF residual set, so this smoke
+  ## exercises the simulation-from-fitted-model display path (density overlay
+  ## and grouped statistic). It checks that valid plot objects are produced,
+  ## not that the displayed comparison is calibrated.
+  fit <- make_ppc_diag_fit("Gamma", seed = 12L)
+  expect_true(all(fit$tmb_data$family_id_vec == 4L))
+
+  p_density <- predictive_check(
+    fit,
+    type = "dens_overlay",
+    ndraws = 8L,
+    seed = 112L,
+    condition_on_RE = TRUE
+  )
+  expect_s3_class(p_density, "ggplot")
+  density_meta <- attr(p_density, "gllvmTMB_diagnostic")
+  expect_equal(density_meta$type, "dens_overlay")
+  expect_equal(density_meta$method, "simulation_from_fitted_model")
+  expect_true(all(
+    c(".row", "trait", "family", "draw", "value", "source") %in%
+      names(density_meta$data)
+  ))
+  expect_true(any(density_meta$data$source == "observed"))
+  expect_true(any(density_meta$data$source == "simulated"))
+  expect_silent(ggplot2::ggplot_build(p_density))
+
+  p_grouped <- predictive_check(
+    fit,
+    type = "stat_grouped",
+    ndraws = 8L,
+    seed = 113L,
+    condition_on_RE = TRUE,
+    stat = "mean"
+  )
+  expect_s3_class(p_grouped, "ggplot")
+  grouped_meta <- attr(p_grouped, "gllvmTMB_diagnostic")
+  expect_equal(grouped_meta$type, "stat_grouped")
+  expect_true(all(
+    c("group", "observed", "sim_median", "sim_low", "sim_high", "stat") %in%
+      names(grouped_meta$data)
+  ))
+  expect_silent(ggplot2::ggplot_build(p_grouped))
 })
 
 test_that("diagnostic_table exposes plot and residual metadata as tables", {

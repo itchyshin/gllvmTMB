@@ -13,8 +13,9 @@
 #' [indep()] instead; for the scalar standalone marginal case, use
 #' `indep(..., common = TRUE)`. Ordinary `latent()` now carries the diagonal
 #' \eqn{\boldsymbol\Psi} companion by default; paired `latent() + unique()`
-#' remains accepted as transition compatibility until the later removal
-#' slice lands. The legacy paired `unique(..., common = TRUE)` parsimony knob is
+#' remains accepted compatibility syntax. Removal is a later API-change
+#' decision while the parser and exports remain live. The legacy paired
+#' `unique(..., common = TRUE)` parsimony knob is
 #' still accepted as compatibility syntax; new ordinary intercept-only code
 #' should use `latent(..., common = TRUE)`.
 #'
@@ -54,24 +55,14 @@
 #'   scale (1 for probit, \eqn{\pi^2/3} for logit, \eqn{\pi^2/6} for
 #'   cloglog), which acts as the implicit unique component. Adding an
 #'   explicit `unique()` term on top is typically not identified.
-#' * **Phylogenetic shared term, three-piece fallback**. The
-#'   `phylo_latent(species, d = K)` term has no associated
-#'   `unique()` because the phylogenetic prior is already
-#'   structured on tip × tip via the tree; trait-specific *unique*
-#'   variance lives separately at the non-phylogenetic species
-#'   tier. This is the canonical fallback when the phylogenetic
-#'   uniqueness \eqn{\boldsymbol\Psi_{\text{phy}}} is not separately
-#'   identifiable (small `n_species`, weak phylogenetic signal,
-#'   single-replicate-per-tip).
-#' * **Phylogenetic shared term, paired four-component form**.
-#'   When \eqn{\boldsymbol\Psi_{\text{phy}}} IS separately
-#'   identifiable (typically crossed site × species with
-#'   `n_species` >= 100 and strong phylogenetic signal), pair
-#'   `phylo_latent()` with `phylo_unique(species)` following the
-#'   same `latent() + unique()` pattern used at the non-phylo
-#'   tier. The four-component paired form is canonical when both
-#'   \eqn{\boldsymbol\Psi} diagonals are identifiable; the
-#'   three-piece fallback above is the alternative. See
+#' * **Folded source-specific latent terms**. `phylo_latent()` and
+#'   `animal_latent()` now carry their source-specific diagonal
+#'   \eqn{\boldsymbol\Psi} companions by default, matching ordinary
+#'   `latent()`. Use `phylo_latent(..., unique = FALSE) + phylo_unique()`,
+#'   `animal_latent(..., unique = FALSE) + animal_unique()`, or
+#'   `kernel_latent(..., unique = FALSE) + kernel_unique()` only when
+#'   you need the explicit compatibility spelling. `spatial_latent()` keeps
+#'   its explicit `+ spatial_unique()` companion until its fold slice lands. See
 #'   `vignettes/articles/pitfalls.Rmd` section 5 and
 #'   `docs/dev-log/decisions.md` 2026-05-14 entry.
 #' * **Confirmatory factor models**. Sometimes domain knowledge tells
@@ -131,9 +122,8 @@
 #'
 #' ## Per-row `indep()` / legacy `unique()` and `sigma_eps`: auto-suppression
 #'
-#' For Gaussian / lognormal fits, the engine also estimates a
-#' single observation-scale residual `sigma_eps`. Ordinary Gamma uses
-#' per-trait `phi_gamma` shape (CV = `1 / sqrt(phi_gamma)`) instead.
+#' For Gaussian / lognormal / Gamma fits, the engine also estimates a
+#' single observation-scale residual `sigma_eps` (the sigma_eps of the response).
 #' In new code, write observation-level diagonal residual terms as
 #' `indep(0 + trait | g)`. The legacy `unique(0 + trait | g)` spelling is
 #' still accepted as compatibility syntax. If that grouping `g` has **one row
@@ -161,11 +151,9 @@
 #' families, depending on whether the response carries an observation-layer
 #' residual:
 #'
-#' For Gaussian / lognormal fits, standalone `indep()` (or legacy
+#' For Gaussian / lognormal / Gamma fits, standalone `indep()` (or legacy
 #' standalone `unique()`) estimates the trait-specific residual variance on
-#' the (log-)response scale. For ordinary Gamma, `indep()` is an additional
-#' latent-scale overdispersion tier on top of the per-trait shape. For
-#' binomial fits with probit / logit / cloglog
+#' the (log-)response scale. For binomial fits with probit / logit / cloglog
 #' links, the link function fixes a distribution-specific implicit residual;
 #' an explicit diagonal term is identifiable only when there are repeated rows
 #' per cell. For Poisson and other log-link families,

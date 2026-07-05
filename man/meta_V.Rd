@@ -35,6 +35,25 @@ The future proportional-sampling-variance mode will use
 \code{type = "proportional"}; in 0.2.x this value is deliberately
 rejected rather than silently treated as exact.
 }
+\examples{
+\dontrun{
+# Stage-2 meta-regression with a known per-row sampling-variance V.
+# Grounded in test-formula-grammar-smoke.R (MET-01).
+set.seed(131)
+df <- expand.grid(
+  site  = factor(seq_len(50)),
+  trait = factor(paste0("t", 1:3))
+)
+df$value <- rnorm(nrow(df), sd = 0.5)
+df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
+V <- diag(df$sampling_var)
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 1) +
+    meta_V(V = V, type = "exact"),
+  data = df, trait = "trait", unit = "site", known_V = V
+)
+}
+}
 \seealso{
 \code{\link[=meta_known_V]{meta_known_V()}} (deprecated alias); \code{\link[=block_V]{block_V()}};
 \code{\link[=gllvmTMB]{gllvmTMB()}}; vision doc "Planned extensions" for the future

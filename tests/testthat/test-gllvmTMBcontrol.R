@@ -135,3 +135,19 @@ test_that("gllvmTMBcontrol(): unknown ... arguments emit a warning", {
   expect_warning(gllvmTMBcontrol(newton_loops = 1),
                  regexp = "Extra arguments")
 })
+
+# ---- gllvmTMB() REML scalar guard (T13) ----------------------------------
+# The REML check is the first statement in gllvmTMB(); `formula` and `data`
+# are lazy and untouched before it, so a placeholder formula/data is enough
+# to reach the guard without fitting anything.
+
+test_that("gllvmTMB(): REML must be a single TRUE/FALSE", {
+  expect_error(
+    gllvmTMB(value ~ 0 + trait, data.frame(), REML = NA),
+    "must be a single", fixed = TRUE
+  )
+  expect_error(
+    gllvmTMB(value ~ 0 + trait, data.frame(), REML = c(TRUE, FALSE)),
+    "must be a single", fixed = TRUE
+  )
+})

@@ -23,8 +23,9 @@ A formula marker; never evaluated.
 Use \code{\link[=indep]{indep()}} for standalone marginal diagonal tiers, including
 \code{indep(..., common = TRUE)} for the scalar standalone marginal case.
 Ordinary \code{latent()} now carries \eqn{\boldsymbol\Psi} by default, so paired
-\code{latent() + unique()} remains accepted as transition compatibility until the
-later removal slice lands. The paired legacy \code{unique(..., common = TRUE)}
+\code{latent() + unique()} remains accepted compatibility syntax. Removal is a
+later API-change decision while the parser and exports remain live. The
+paired legacy \code{unique(..., common = TRUE)}
 parsimony knob remains accepted, but new ordinary intercept-only code should
 use \code{latent(..., common = TRUE)}.
 

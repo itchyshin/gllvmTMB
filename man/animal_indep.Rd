@@ -20,6 +20,32 @@ covariance. Engine-equivalent to \code{\link[=animal_unique]{animal_unique()}} b
 bar-form syntax; the \code{.indep} marker disambiguates printing.
 Mathematical parallel to \code{\link[=phylo_indep]{phylo_indep()}}.
 }
+\examples{
+\dontrun{
+# Independent per-trait animal-model intercepts via the bar form,
+# passing the dense relatedness matrix A directly.
+# Grounded in test-animal-keyword.R (ANI-03).
+ped <- data.frame(
+  id   = paste0("i", 1:12),
+  sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
+  dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+)
+A <- pedigree_to_A(ped)
+yvec <- as.numeric(MASS::mvrnorm(
+  1, mu = rep(0, 2 * 12),
+  Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
+))
+df <- data.frame(
+  species = factor(rep(ped$id, each = 2), levels = ped$id),
+  trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
+  value   = yvec
+)
+fit <- gllvmTMB(
+  value ~ 0 + trait + animal_indep(0 + trait | species, A = A),
+  data = df, family = gaussian()
+)
+}
+}
 \seealso{
 \code{\link[=animal_unique]{animal_unique()}}, \code{\link[=phylo_indep]{phylo_indep()}}.
 }

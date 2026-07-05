@@ -4,12 +4,16 @@
 \alias{animal_latent}
 \title{Reduced-rank animal-model latent factors: \code{animal_latent(id, d = K)}}
 \usage{
-animal_latent(id, d = 1, pedigree = NULL, A = NULL, Ainv = NULL)
+animal_latent(id, d = 1, unique = TRUE, pedigree = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
 \item{id}{Bare column name of the individual factor.}
 
 \item{d}{Number of latent factors (\eqn{K \le T}). Default 1.}
+
+\item{unique}{Logical; when \code{TRUE} (default), include the per-trait
+diagonal additive-genetic \eqn{\boldsymbol\Psi} companion. Use
+\code{unique = FALSE} for the older loadings-only subset.}
 
 \item{pedigree}{A 3-column data frame with columns \code{id}, \code{sire},
 \code{dam} (unknown parents encoded as \code{NA}). Converted internally
@@ -27,11 +31,14 @@ See \code{\link[=animal_scalar]{animal_scalar()}}.
 }
 \description{
 Reduced-rank decomposition of the additive-genetic covariance
-matrix using \eqn{K} latent factors:
-\eqn{\boldsymbol G \approx \boldsymbol\Lambda \boldsymbol\Lambda^\top}
+matrix using \eqn{K} latent factors plus, by default, a per-trait
+diagonal \eqn{\boldsymbol\Psi} companion:
+\eqn{\boldsymbol G =
+\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 with \eqn{\boldsymbol\Lambda} a \eqn{T \times K} loadings matrix
 (\eqn{T} = number of traits, \eqn{K \le T}). The latent factors
-themselves carry the \eqn{\mathbf A} structure across individuals.
+and diagonal companion both carry the same \eqn{\mathbf A} structure
+across individuals.
 }
 \details{
 This is the canonical "factor-analytic G-matrix" model from
@@ -39,6 +46,31 @@ quantitative genetics (Kirkpatrick & Meyer 2004; Meyer 2009; the
 WOMBAT method). Mathematical parallel to \code{\link[=phylo_latent]{phylo_latent()}} -- same
 engine path with a pedigree-derived relatedness matrix instead of
 phylogenetic VCV.
+}
+\examples{
+\dontrun{
+# Factor-analytic G-matrix (d latent factors plus diagonal Psi).
+# Grounded in test-animal-keyword.R (ANI-05).
+ped <- data.frame(
+  id   = paste0("i", 1:12),
+  sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
+  dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+)
+A <- pedigree_to_A(ped)
+yvec <- as.numeric(MASS::mvrnorm(
+  1, mu = rep(0, 2 * 12),
+  Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
+))
+df <- data.frame(
+  species = factor(rep(ped$id, each = 2), levels = ped$id),
+  trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
+  value   = yvec
+)
+fit <- gllvmTMB(
+  value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped),
+  data = df, family = gaussian()
+)
+}
 }
 \seealso{
 \code{\link[=animal_scalar]{animal_scalar()}}, \code{\link[=animal_unique]{animal_unique()}}, \code{\link[=phylo_latent]{phylo_latent()}}.

@@ -63,7 +63,7 @@ capability.
 |---|---|---|---|
 | <code>latent(0 + trait &#124; site, d)</code> | `glmmTMB::glmmTMB(rr())` | live in this article | log-likelihood match to 1e-4 on this Gaussian fixture |
 | <code>latent(0 + trait &#124; site, d)</code> (binary) | `gllvm::gllvm(num.lv)` | live when optional packages are installed | Procrustes-aligned $\boldsymbol{\Lambda}$ on one binary fixture |
-| default `latent()` diagonal `Psi` companion | `glmmTMB::glmmTMB(diag())` | live in this article | log-likelihood match to 1e-4 on this Gaussian fixture |
+| <code>indep(0 + trait &#124; site)</code> | `glmmTMB::glmmTMB(diag())` | live in this article | log-likelihood match to 1e-4 on this Gaussian fixture |
 | `phylo_scalar(species)` | `glmmTMB::glmmTMB(propto())` | tested (`test-stage3-propto-equalto.R`) | log-likelihood match to 1e-4 on the staged fixture |
 | `meta_V(V = V)` | `glmmTMB::glmmTMB(equalto())` | partial (`test-formula-grammar-smoke.R`, `test-gllvmTMB-args.R`) | parser / dimension / smoke coverage exists; direct equalto LL comparator remains MET-01 validation debt |
 

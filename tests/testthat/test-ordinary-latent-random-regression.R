@@ -334,6 +334,86 @@ test_that("ordinary Gaussian latent random regression recovers default augmented
   )
 })
 
+test_that("ordinary Poisson low-rank latent random regression recovers shared augmented covariance", {
+  ## RE-12 evidence: non-Gaussian (Poisson) low-rank augmented `latent()`
+  ## recovery. Latent-only (no `unique()` tier), rank-1 augmented loading,
+  ## so the recovery target is `Lambda_aug Lambda_aug^T`. This is the
+  ## low-rank non-Gaussian latent boundary; augmented `unique()` is
+  ## deliberately Gaussian-only (guarded elsewhere) and delta/hurdle are out
+  ## of scope, so neither is exercised here.
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  set.seed(9131L)
+  n_ind <- 80L
+  n_traits <- 3L
+  n_rep <- 8L
+  trait_levels <- paste0("t", seq_len(n_traits))
+  individuals <- paste0("id", seq_len(n_ind))
+  df <- expand.grid(
+    individual = factor(individuals, levels = individuals),
+    rep = seq_len(n_rep),
+    trait = factor(trait_levels, levels = trait_levels),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  df$session_id <- factor(paste(df$individual, df$rep, sep = "_"))
+  sessions <- unique(df[c("individual", "rep", "session_id")])
+  sessions$temperature <- stats::rnorm(nrow(sessions), sd = 0.8)
+  df <- merge(df, sessions, by = c("individual", "rep", "session_id"),
+              sort = FALSE)
+
+  ## Rank-1 augmented loading over (intercept, slope) x trait, so
+  ## Sigma_shared = Lambda_aug Lambda_aug^T has max entry ~0.30 -- well above
+  ## the recovery band, so a degenerate (near-zero) fit cannot pass.
+  Lambda_aug <- matrix(c(0.55, 0.30, -0.45, 0.22, 0.40, -0.28),
+                       nrow = 2L * n_traits, ncol = 1L)
+  z <- stats::rnorm(n_ind)
+  alpha <- c(1.6, 1.4, 1.8)    # log-link intercepts -> mean count ~ exp(1.6) ~ 5
+  beta <- c(0.15, -0.10, 0.12)
+  eta <- numeric(nrow(df))
+  for (o in seq_len(nrow(df))) {
+    tt <- as.integer(df$trait[o])
+    ii <- as.integer(df$individual[o])
+    base <- 2L * (tt - 1L)
+    coeff <- Lambda_aug[, 1L] * z[ii]
+    eta[o] <- alpha[tt] + beta[tt] * df$temperature[o] +
+      coeff[base + 1L] + coeff[base + 2L] * df$temperature[o]
+  }
+  df$value <- stats::rpois(nrow(df), lambda = exp(eta))
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + (0 + trait):temperature +
+      latent(0 + trait + (0 + trait):temperature | individual, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "individual",
+    unit_obs = "session_id",
+    family = poisson(),
+    control = gllvmTMBcontrol(
+      se = FALSE,
+      optimizer = "optim",
+      optArgs = list(method = "BFGS")
+    )
+  )))
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_identical(fit$tmb_data$use_rr_B_slope, 1L)
+
+  shared <- extract_Sigma(fit, level = "unit_slope", part = "shared")$Sigma
+  total <- extract_Sigma(fit, level = "unit_slope", part = "total")$Sigma
+  expect_equal(dim(shared), c(2L * n_traits, 2L * n_traits))
+
+  truth_shared <- Lambda_aug %*% t(Lambda_aug)
+  dimnames(truth_shared) <- dimnames(shared)
+
+  ## Count-family recovery band: with mean counts ~5 the rank-1 loading is
+  ## recovered to <0.06 across seeds 9131-9135; 0.08 matches the file's
+  ## Gaussian latent+unique recovery band and stays well under the ~0.30
+  ## signal (an honest count band, not a widened Gaussian tolerance).
+  expect_lt(max(abs(shared - truth_shared)), 0.08)
+  ## Latent-only fit: no unique tier, so total == shared.
+  expect_equal(total, shared, tolerance = 1e-8)
+})
+
 test_that("ordinary unique-only random regression fits Gaussian diagonal augmented covariance", {
   testthat::skip_on_cran()
   fx <- make_ordinary_latent_rr_fixture(seed = 9113L, n_ind = 16L, n_rep = 4L)
@@ -656,7 +736,31 @@ test_that("augmented latent unique= argument sets the diagonal-companion marker"
 })
 
 test_that("augmented latent residual= is a soft-deprecated alias for unique=", {
-  withr::local_options(lifecycle_verbosity = "warning")
+  ## tests/testthat/setup.R sets gllvmTMB.quiet_grammar_notes = TRUE suite-wide
+  ## so the one-shot fire-on-use grammar notices don't trip unrelated
+  ## expect_silent()/expect_no_warning() assertions elsewhere; re-enable it
+  ## locally to observe the residual= alias warning (same idiom as
+  ## test-latent-unique-rename.R's "residual = ) is a soft-deprecated alias"
+  ## test).
+  withr::local_options(
+    lifecycle_verbosity = "warning",
+    gllvmTMB.quiet_grammar_notes = FALSE
+  )
+
+  ## The residual= -> unique= alias warning fires once per R session via
+  ## gllvmTMB's own env-based tracker (.gllvmTMB_deprecation_seen, see
+  ## .gllvmTMB_warn_latent_residual_alias() in R/brms-sugar.R), not
+  ## lifecycle::deprecate_warn(). Reset the tracker so the warning is
+  ## guaranteed to fire here regardless of whether an earlier test in the
+  ## suite already triggered it, and restore it afterwards (same pattern
+  ## as test-latent-unique-rename.R's reset_gllvmTMB_dep_seen()).
+  seen <- get(".gllvmTMB_deprecation_seen", envir = asNamespace("gllvmTMB"))
+  saved <- as.list(seen, all.names = TRUE)
+  withr::defer({
+    rlang::env_unbind(seen, rlang::env_names(seen))
+    rlang::env_bind(seen, !!!saved)
+  })
+  rlang::env_unbind(seen, rlang::env_names(seen))
 
   expect_warning(
     off_cs <- gllvmTMB:::parse_multi_formula(
@@ -664,7 +768,7 @@ test_that("augmented latent residual= is a soft-deprecated alias for unique=", {
         value ~ 0 + trait + latent(1 + temperature | individual, d = 2, residual = FALSE)
       )
     )$covstructs[[1L]],
-    class = "lifecycle_warning_deprecated"
+    regexp = "renamed|soft-deprecated alias"
   )
   expect_true(isFALSE(off_cs$extra$.latent_augmented_unique))
 })

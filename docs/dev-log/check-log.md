@@ -23040,6 +23040,1570 @@ Deliberately not run:
   for this merge-only resolution. No package code, likelihood, formula grammar,
   examples, or generated Rd changed in this merge.
 
+## 2026-06-19 -- bridge admission split branch
+
+Created clean local bridge-admission split branch
+`codex/bridge-admission-split-20260619` in worktree
+`/tmp/gllvmtmb-bridge-admission-split`. The branch starts from main SHA
+`0567cd747b9e81fa694e846a6d155bf60e35e0b8` and restores only
+bridge-admission pathspecs from draft PR #489 head
+`03fdda1cedd325188448ffe58b42f09acbf69e61`.
+
+Excluded from this split lane: dashboard and mission-control files, recovery
+checkpoints, CRAN comments, power-pilot artifacts, broad process reports,
+article-estate work, TMB/co-evolution engine work, and the ordinary
+`latent()`/`unique()` Psi migration.
+
+Checks:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open; it was clean at `03fdda1` with visible
+  `ubuntu-latest (release)` and `recovery` checks successful.
+- Pre-edit lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits reported.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed; changed file set remained bridge-scoped.
+- Pure-R bridge/plot gate:
+  `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge|plot-covariance-tables", reporter = "summary")'`
+  -> exit code 0; 14 live-Julia rows skipped because `GLLVM_JL_PATH` was unset.
+- Pinned GLLVM.jl #101 checks in
+  `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`:
+  `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  -> `Pass 121 | Total 121`;
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `Pass 40 | Total 40`;
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `Pass 64 | Total 64`.
+- Live Julia-via-R bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> exit code 0; JuliaCall activated the pinned integration project and the
+  command completed with `Julia exit`.
+- Full local tests:
+  `Rscript --vanilla -e 'devtools::test()'`
+  -> `FAIL 0 | WARN 0 | SKIP 718 | PASS 3098`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- Preserved R CMD check:
+  `Rscript --vanilla -e 'rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-bridge-admission-split", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false"))'`
+  -> `0 errors | 1 warning | 0 notes`.
+- Warning scan:
+  `rg -n "ERROR|WARNING|NOTE|fixed-enum|R_ext/Boolean|unknown warning|whether package.*can be installed|Status" /tmp/gllvmtmb-rcmdcheck-bridge-admission-split/gllvmTMB.Rcheck/00check.log /tmp/gllvmtmb-rcmdcheck-bridge-admission-split/gllvmTMB.Rcheck/00install.out /tmp/gllvmtmb-rcmdcheck-bridge-admission-split/gllvmTMB.Rcheck/tests/testthat.Rout`
+  -> the only warning was the known Apple Clang / R header
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+
+Still not claimed:
+
+- No push, no staging, and no 3-OS matrix.
+- This local split does not mutate GLLVM.jl #101.
+- Bridge admission evidence is local to the split branch; it is not bridge
+  completion, release readiness, CRAN readiness, or scientific coverage.
+
+## 2026-06-19 -- bridge admission split validation refresh
+
+Branch: `codex/bridge-admission-split-20260619`
+
+Purpose:
+
+- Re-validate the local bridge-admission split as the next Big 4 lane, using
+  R-only, Julia-only, live Julia-via-R, full R tests, pkgdown, and R CMD check.
+- Record the remaining Shannon/Grace warning: the local split is scoped, but
+  PR #489 still points at the broader remote branch and the split branch has no
+  3-OS CI evidence.
+
+Pre-edit lane check before updating shared dev-log evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open; it still points at
+  `codex/r-bridge-grouped-dispersion`, is clean at pushed head `03fdda1`, and
+  has visible `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only `07181cf Split Julia bridge admission lane` was reported.
+
+Checks:
+
+- `git status --short --branch`
+  -> split worktree clean before evidence updates.
+- `git diff --check`
+  -> clean before evidence updates.
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge|plot-covariance-tables", reporter = "summary")'`
+  -> exit code 0; expected 14 live-Julia rows skipped.
+- In `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`:
+  `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  -> `Pass 121 | Total 121`;
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `Pass 40 | Total 40`;
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `Pass 64 | Total 64`;
+  `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  -> `Pass 83 | Total 83`;
+  `julia --project=. --startup-file=no test/test_bridge_x.jl`
+  -> `Pass 169 | Total 169`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> exit code 0; JuliaCall activated the pinned integration project and
+  completed with `Julia exit`.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> exit code 0 and completed with `DONE`; the only reported skips were
+  expected heavy/optional dependency skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-bridge-admission-split-rerun", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false"))'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|whether package.*can be installed|Status|install" /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-rerun`
+  -> confirmed the warning is the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+
+Agent input:
+
+- Grace/Bacon read-only audit returned `WARN`: local split scope passes, with
+  no observed dashboard, mission-control, article-estate, coevolution/TMB,
+  CRAN-comment, recovery-checkpoint, or ordinary `latent()` / `unique()` Psi
+  migration leakage. Remaining risks are process-state risks: PR #489 is still
+  the broader remote branch, and this split branch has no 3-OS CI evidence.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- PR #489 green still does not describe this local split branch.
+- No 3-OS CI has run on this split branch.
+- Bridge admission evidence is local and row-scoped. It is not bridge
+  completion, release readiness, CRAN readiness, or scientific coverage.
+
+## 2026-06-19 10:34 MDT -- bridge admission split wording and current validation
+
+Branch: `codex/bridge-admission-split-20260619`
+
+Purpose:
+
+- Tighten the bridge split wording so the lane describes an experimental
+  GLLVM.jl bridge fitting path, not a benchmarked acceleration path or a menu
+  of selectable Julia-side algorithms.
+- Refresh current branch validation after the wording and generated-Rd update.
+
+Pre-edit lane check before editing shared dev-log evidence:
+
+- `gh pr list --state open --limit 20 --json number,title,headRefName,updatedAt,url`
+  -> only draft PR #489 was open, still on
+  `codex/r-bridge-grouped-dispersion`.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent local split commits were `d7826f0`, `d5a2295`, and `07181cf`;
+  no separate active PR/agent collision was found for this split worktree.
+
+Changed:
+
+- Replaced `fast GLLVM.jl engine` / `Experimental acceleration path` wording
+  with `experimental GLLVM.jl bridge fitting path` in `NEWS.md`,
+  `R/gllvmTMB.R`, `R/julia-bridge.R`, and `_pkgdown.yml`.
+- Regenerated `man/gllvmTMB.Rd` with `devtools::document(quiet = TRUE)`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed; wrote `gllvmTMB.Rd`.
+- `rg -n "fast GLLVM|Experimental acceleration|acceleration path|accelerat" NEWS.md R/gllvmTMB.R R/julia-bridge.R _pkgdown.yml man/gllvmTMB.Rd man/gllvm_julia*.Rd docs/design/35-validation-debt-register.md`
+  -> no matches.
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge|plot-covariance-tables", reporter = "summary")'`
+  -> exit code 0; expected 14 live-Julia rows skipped.
+- Current GLLVM.jl #101 status check:
+  `gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,state,isDraft,mergeStateStatus,headRefName,headRefOid,baseRefName,baseRefOid,statusCheckRollup,updatedAt,url`
+  -> open draft, clean, head `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`;
+  current CI and Documenter checks were successful.
+- Julia-only checks in
+  `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`:
+  `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  -> `Pass 121 | Total 121`;
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `Pass 40 | Total 40`;
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `Pass 64 | Total 64`;
+  `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  -> `Pass 83 | Total 83`;
+  `julia --project=. --startup-file=no test/test_bridge_x.jl`
+  -> `Pass 169 | Total 169`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> exit code 0; JuliaCall activated the pinned integration project and
+  completed with `Julia exit`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> exit code 0; completed with `DONE`; reported skips were expected
+  heavy/optional dependency skips.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE, error_on = "never")'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|can be installed|Status" /private/tmp/gllvmtmb-rcmdcheck-bridge-admission-split-20260619-current/gllvmTMB.Rcheck/00check.log /private/tmp/gllvmtmb-rcmdcheck-bridge-admission-split-20260619-current/gllvmTMB.Rcheck/00install.out`
+  -> the only warning was the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+- `git diff --check`
+  -> clean after the wording/docs/evidence edits.
+
+Agent input:
+
+- Chandrasekhar / Grace read-only audit found the split clean and bridge-only
+  against `origin/main`, with no dashboard, mission-control, CRAN, recovery,
+  coevolution/TMB, article-estate, or ordinary `latent()` / `unique()` Psi
+  migration leakage. The audit recommended removing acceleration language,
+  which this slice did.
+
+Still not claimed:
+
+- No push, staging, or PR mutation.
+- GLLVM.jl #101 was inspected and tested locally but not mutated.
+- PR #489 green still describes the broader remote draft branch, not this local
+  split branch.
+- No 3-OS CI has run on this local split branch.
+- This is bridge-admission evidence only, not bridge completion, release
+  readiness, CRAN readiness, or scientific coverage.
+
+## 2026-06-19 16:06 MDT -- bridge admission split final local refresh
+
+Branch: `codex/bridge-admission-split-20260619`
+
+Purpose:
+
+- Re-run the bridge-admission split from the current clean worktree before
+  moving to the next Big 4 lane.
+- Keep the bridge claim bounded: local R, Julia, and Julia-via-R evidence is
+  strong, but no push, PR replacement, or 3-OS split-branch CI happened.
+
+Pre-edit lane check before updating shared dev-log evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open. It still points at
+  `codex/r-bridge-grouped-dispersion`, is clean at pushed head `03fdda1`, and
+  has visible `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent local split commits were `9bfe15c`, `af9940d`, `709eef0`,
+  `4a2449a`, and `e2dd41d`; no active PR collision was found for this local
+  bridge split edit.
+
+Current state:
+
+- `git status --short --branch`
+  -> clean before evidence edits.
+- `git diff --check`
+  -> clean before evidence edits.
+- `gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,state,isDraft,mergeStateStatus,headRefName,headRefOid,baseRefName,statusCheckRollup,updatedAt,url`
+  -> GLLVM.jl #101 is still open draft, clean, at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`; current visible CI/Documenter
+  checks are successful.
+
+Checks:
+
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge|plot-covariance-tables", reporter = "summary")'`
+  -> exit code 0; expected 14 live-Julia rows skipped.
+- In `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`:
+  `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  -> `Pass 121 | Total 121`;
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `Pass 40 | Total 40`;
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `Pass 64 | Total 64`;
+  `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  -> `Pass 83 | Total 83`;
+  `julia --project=. --startup-file=no test/test_bridge_x.jl`
+  -> `Pass 169 | Total 169`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> exit code 0; JuliaCall activated the pinned integration project and
+  completed with `Julia exit`.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> exit code 0 and completed with `DONE`; reported skips were expected
+  heavy/optional dependency skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false"))'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|can be installed|Status" /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619/gllvmTMB.Rcheck/00check.log /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619/gllvmTMB.Rcheck/00install.out /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619/gllvmTMB.Rcheck/tests/testthat.Rout`
+  -> the only warning was the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+- `rg -n "fast GLLVM|Experimental acceleration|acceleration path|accelerat|selectable Julia|bridge complete|bridge completion|release ready|release-ready|release readiness|scientific coverage|coverage passed" NEWS.md R/gllvmTMB.R R/julia-bridge.R _pkgdown.yml man/gllvmTMB.Rd man/gllvm_julia*.Rd docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-06-19-bridge-admission-split.md docs/dev-log/check-log.md`
+  -> expected guardrail/history hits only in check-log and after-task evidence;
+  no source or generated-reference wording reintroduced acceleration or
+  selectable-algorithm claims.
+
+Agent input:
+
+- Maxwell / Grace read-only audit returned `WARN`: the local split has no hard
+  scope leak and the bridge wording is acceptable, but landing remains blocked
+  by process evidence because this split branch has no PR and no 3-OS CI.
+  PR #489 still describes the older broader remote branch at `03fdda1`, not
+  local split head `e2dd41d`.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No replacement or mutation of PR #489.
+- No 3-OS CI has run on this local split branch.
+- This is bridge-admission evidence only, not bridge completion, release
+  readiness, CRAN readiness, or scientific coverage.
+
+## 2026-06-19 15:38 MDT -- coevolution fixed-rho metadata regression
+
+Branch: `codex/coevolution-engine-split-20260619`
+
+Purpose:
+
+- Fix Faraday's read-only audit finding that real fitted multi-kernel
+  `make_cross_kernel()` tiers could lose host/partner/fixed-`rho` metadata
+  after `R/fit-multi.R` subset and symmetrised `K`.
+- Preserve the fixed-rho point-extractor claim boundary:
+  `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Pre-edit lane check before updating shared dev-log/design evidence:
+
+- `gh pr list --state open`
+  -> only draft PR #489 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent local split commits only:
+  `af9940d`, `709eef0`, `4a2449a`, and `e2dd41d`.
+
+Implemented:
+
+- `R/kernel-helpers.R`: added `.cross_kernel_metadata_for_levels()`.
+- `R/fit-multi.R`: records `.cross_kernel_metadata(K)` before level alignment,
+  restricts host/partner defaults to fitted levels, and reattaches the metadata
+  to each stored `fit$kernel_matrices[[name]]`.
+- `tests/testthat/test-coevolution-two-kernel.R`: added a real fitted
+  `make_cross_kernel()` multi-kernel regression where
+  `predict_cross_covariance()` omits `row_levels` / `col_levels`, returns host
+  and partner defaults, reports fixed `rho = 0.55`, sets
+  `kernel_includes_rho = TRUE`, and keeps `fit$fit_health$max_gradient` finite.
+- `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`, and `NEWS.md`: aligned
+  KER-03 / COE-03 wording with the real-fit metadata repair.
+
+Checks:
+
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false"))'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|whether package.*can be installed|Status" /tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619/gllvmTMB.Rcheck/00check.log /tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619/gllvmTMB.Rcheck/00install.out /tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619/gllvmTMB.Rcheck/tests/testthat.Rout`
+  -> the only warning was the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+
+Stale / claim-boundary scan:
+
+- `rg -n "in-engine rho|rho estimation|rho interval|rho intervals|scientific coverage|release ready|release readiness|bridge complete|kernel_includes_rho" R/kernel-helpers.R R/fit-multi.R R/extract-sigma.R tests/testthat/test-coevolution-two-kernel.R docs/design/35-validation-debt-register.md docs/design/65-cross-lineage-coevolution-kernel.md NEWS.md`
+  -> expected guardrail and `kernel_includes_rho` hits only.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No bridge completion, release readiness, CRAN readiness, public article
+  placement, in-engine `rho`, `rho` intervals, formal Type-I/null calibration,
+  interval calibration, module uncertainty/rank calibration, or scientific
+  coverage completion.
+
+## 2026-06-19 -- coevolution fixed-kernel split test strengthening
+
+Branch: `codex/coevolution-engine-split-20260619`
+
+Purpose:
+
+- Close Descartes' immediate fixed multi-kernel engine review request by adding
+  a mixed-rank two-kernel offset guard and a numeric gradient threshold to the
+  real cross-kernel metadata regression.
+- Record Hypatia's test-coverage warning without promoting COE-04: this is
+  still fixed-kernel / fixed-rho point evidence, not mixed-family recovery,
+  formal null calibration, interval calibration, module/rank calibration, or
+  broad scientific coverage.
+
+Pre-edit lane check before updating shared dev-log evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open; it still points at
+  `codex/r-bridge-grouped-dispersion`, is clean, and has visible
+  `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent split/worktree commits were
+  `c061ce2`, `e2866f7`, `2da7505`, `9bfe15c`, `af9940d`, `709eef0`,
+  `4a2449a`, and the two power-pilot accumulation commits `22316dd` /
+  `895cbf9`.
+
+Implemented:
+
+- `tests/testthat/test-coevolution-two-kernel.R`: added a fast mixed-rank
+  two-kernel fit where named tier `phy` uses `d = 2` and named tier `non` uses
+  `d = 1`, then checked `fit$kernel_levels$rank`,
+  `dim(fit$report$Lambda_kernel)`, zero padding for the rank-1 tier, and
+  `extract_Sigma(..., part = "shared")` for both named kernels.
+- `tests/testthat/test-coevolution-two-kernel.R`: tightened the real
+  cross-kernel metadata regression to require
+  `fit$fit_health$max_gradient < 1e-3`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0.
+- `rg -n "COE-04.*covered|scientific coverage passed|release ready|bridge complete|in-engine rho|rho estimation|rho interval|mixed-family coverage|formal null|Type-I|interval calibration" README.md NEWS.md docs vignettes R tests`
+  -> expected guardrail/history/design hits only. Live source hits kept COE-03
+  / COE-04 partial and named fixed-rho, interval, null-calibration, and
+  mixed-family limits.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No bridge completion, release readiness, CRAN readiness, public article
+  placement, in-engine `rho`, `rho` intervals, formal Type-I/null calibration,
+  interval calibration, mixed-family recovery, module uncertainty/rank
+  calibration, or scientific coverage completion.
+
+## 2026-06-19 -- coevolution fixed-effect and shared-Sigma recovery gate
+
+Branch: `codex/coevolution-engine-split-20260619`
+
+Purpose:
+
+- Add the next narrow COE-04 evidence slice requested by the simulation audit:
+  near-orthogonal Gaussian recovery of planted trait intercepts and
+  component-specific shared-Sigma magnitudes.
+- Keep COE-04 partial. This is not mixed-family recovery, null calibration,
+  interval calibration, in-engine `rho`, module/rank calibration, or broad
+  scientific coverage.
+
+Pre-edit lane check before updating shared design/dev-log files:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open; it still points at
+  `codex/r-bridge-grouped-dispersion`, is clean, and has visible
+  `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent split/worktree commits were
+  `5c10ed8`, `c061ce2`, `e2866f7`, `2da7505`, `9bfe15c`, `af9940d`,
+  `709eef0`, `4a2449a`, and the two power-pilot accumulation commits
+  `22316dd` / `895cbf9`.
+
+Implemented:
+
+- `tests/testthat/test-coevolution-two-kernel.R`: added optional centered
+  latent fields to the shared two-component fixture and returned planted
+  `alpha`, `Sigma_phy`, and `Sigma_non` truth objects.
+- `tests/testthat/test-coevolution-two-kernel.R`: added the heavy test
+  `near-orthogonal Gaussian recovery covers fixed effects and shared Sigma magnitudes`.
+  It checks fixed-effect recovery within `0.20`, component shared-Sigma
+  Frobenius magnitude ratios between `0.65` and `1.25`, host/partner block
+  correlations above `0.90`, and absolute cross-block shape correlation above
+  `0.95`.
+- `docs/design/35-validation-debt-register.md` and
+  `docs/design/65-cross-lineage-coevolution-kernel.md`: recorded the new
+  fixed-effect/shared-Sigma evidence while leaving COE-04 `partial`.
+- Added
+  `docs/dev-log/after-task/2026-06-19-coevolution-fixed-effect-sigma-recovery.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0.
+- `rg -n "COE-04.*covered|scientific coverage passed|release ready|bridge complete|in-engine rho|rho estimation|rho interval|mixed-family coverage|formal null|Type-I|interval calibration|fixed effects and shared Sigma" README.md NEWS.md docs vignettes R tests`
+  -> expected guardrail/history/design hits plus the new test name only.
+- `git diff --check`
+  -> clean.
+
+Agent input:
+
+- Hume / Curie-Hypatia read-only review recommended this exact next gate: reuse
+  the near-orthogonal Gaussian fixture, return planted fixed effects and
+  shared-Sigma truth, and keep tolerances broad enough for a small deterministic
+  point-recovery gate.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No bridge completion, release readiness, CRAN readiness, public article
+  placement, Lambda recovery, in-engine `rho`, `rho` intervals, formal
+  Type-I/null calibration, interval calibration, mixed-family recovery, module
+  uncertainty/rank calibration, or scientific coverage completion.
+
+## 2026-06-19 17:19 MDT -- bridge admission split fresh validation after unique/Psi closeout
+
+Branch: `codex/bridge-admission-split-20260619`
+
+Purpose:
+
+- Reconfirm the clean bridge-admission split after the separate
+  `unique()` / ordinary `latent()` Psi split was committed locally as
+  `e2866f7`.
+- Keep the claim bounded: local R, Julia, and Julia-via-R evidence is fresh,
+  but no push, PR replacement, or split-branch 3-OS CI happened.
+
+Pre-edit lane check before updating shared dev-log evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open. It still points at
+  `codex/r-bridge-grouped-dispersion`, is clean at pushed head `03fdda1`, and
+  has visible `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were local split / power-pilot commits, including
+  `e2866f7`, `2da7505`, `9bfe15c`, `af9940d`, `709eef0`, `4a2449a`,
+  `22316dd`, and `895cbf9`; no active PR collision was found for this local
+  bridge split evidence edit.
+
+Current paired Julia state:
+
+- `gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,state,isDraft,mergeStateStatus,headRefName,headRefOid,baseRefName,statusCheckRollup,updatedAt,url`
+  -> GLLVM.jl #101 remains open draft, clean, at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`; visible CI and Documenter checks
+  are successful.
+
+Checks:
+
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge|plot-covariance-tables", reporter = "summary")'`
+  -> exit code 0; expected 14 live-Julia rows skipped.
+- In `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`:
+  `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  -> `Pass 121 | Total 121`;
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `Pass 40 | Total 40`;
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `Pass 64 | Total 64`;
+  `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  -> `Pass 83 | Total 83`;
+  `julia --project=. --startup-file=no test/test_bridge_x.jl`
+  -> `Pass 169 | Total 169`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> exit code 0; JuliaCall activated the pinned integration project and
+  completed with `Julia exit`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> exit code 0 and completed with `DONE`; reported skips were expected
+  heavy/optional dependency skips.
+- `Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false")); print(res); quit(status = if (length(res$errors)) 1 else 0)'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|can be installed|Status" /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn/gllvmTMB.Rcheck/00check.log /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn/gllvmTMB.Rcheck/00install.out /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn/gllvmTMB.Rcheck/tests/testthat.Rout`
+  -> the only warning was the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+
+Agent input:
+
+- Ohm / Grace-Shannon returned `FAIL` for pushing the current dirty mission
+  tree or treating PR #489 as current evidence. The recommended bridge-only
+  file set matches this local split branch: bridge code, bridge extractor/plot
+  gates, bridge-generated Rd, bridge tests, minimal `_pkgdown.yml`, `NEWS.md`,
+  JUL-01 / JUL-01A register rows, check-log, and one bridge after-task report.
+  The audit excludes coevolution/TMB files, the `unique()` / ordinary
+  `latent()` Psi migration, article estate files, dashboard/process bulk, and
+  unrelated recovery checkpoints.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No replacement or mutation of PR #489.
+- No 3-OS CI has run on this local split branch.
+- This is bridge-admission evidence only, not bridge completion, release
+  readiness, CRAN readiness, or scientific coverage.
+
+---
+
+## 2026-06-20 — Claude/Ada — re-verify GLLVM.jl #101 vs the R bridge (evidence)
+
+Handover DO NEXT #1. Confirm the wide bridge layer (#101) landed clean against
+the gllvmTMB R bridge. Pure config re-verification from clean `origin/main`
+worktrees; the held dirty branch `codex/r-bridge-grouped-dispersion` was NOT
+touched.
+
+Pre-edit lane check:
+- `gh pr list --state open` -> 0 open PRs.
+- `git log --all --oneline --since="6 hours ago"` -> only merged closure
+  batches / power-pilot / this session's worktree commits; no competing agent
+  edit to check-log / dev-log.
+
+Worktrees (clean):
+- GLLVM.jl `origin/main` `186af2d` -> `/private/tmp/gllvmjl-main` (detached).
+- gllvmTMB `origin/main` `b09f510` -> `/private/tmp/gllvmtmb-main` on branch
+  `claude/bridge-reverify-20260620`.
+
+Engine surface check (`/tmp/gllvmjl-instantiate.log`):
+- `julia --project=/private/tmp/gllvmjl-main -e 'using Pkg; Pkg.instantiate();
+  using GLLVM; ...'` -> exit 0; `GLLVM` precompiled (5 s); `bridge_fit defined:
+  true`; `bridge_capabilities defined: true` (the wide surface is on main, not
+  just the old integration tree).
+
+Live bridge suite (`/tmp/gllvmtmb-bridge-reverify.log`):
+- `PATH="$HOME/.juliaup/bin:$PATH" GLLVM_JL_PATH=/private/tmp/gllvmjl-main
+  Rscript --vanilla -e 'devtools::test(filter="julia-bridge",
+  reporter=c("summary"))'` -> exit 0.
+- Counted deterministically from the summary stream (progress region 100% `.`,
+  no `F`/`W`/`S`): **PASS 1228 | FAIL 0 | WARN 0 | SKIP 0**. SKIP 0 = all 14
+  live-Julia rows executed (vs the pure-R-only baseline that skips them). 1228
+  reproduces the post-#493 live count, now against the freshly-landed #101 main.
+
+Consistency:
+- `rg -n "JUL-01" docs/design/35-validation-debt-register.md` -> rows stay
+  `partial`; no promotion in this slice.
+
+Not claimed:
+- No register-row promotion (JUL-01/JUL-01A stay partial; row-owner + Rose +
+  maintainer call).
+- No 3-OS CI (routine PR CI is ubuntu-only by design; 3-OS is a pre-release gate).
+- No mutation of GLLVM.jl / #101; no scientific-parity / coverage / release claim.
+- This is in-sample bridge-routing parity evidence only.
+
+After-task: `docs/dev-log/after-task/2026-06-20-bridge-reverify-101.md`.
+
+---
+
+## 2026-06-20 — Claude/Ada — HELD-item reconciliation audit (read-only)
+
+Ran a 4-agent read-only ultracode audit (workflow `wf_d37991cd-a1e`, 100 tool
+calls) of the four maintainer-HELD items: the dirty branch
+`codex/r-bridge-grouped-dispersion`, GLLVM.jl #94, the GLLVM.jl divergent branch +
+J2, and the unique->Psi cascade `codex/unique-latent-psi-split-20260619`. Nothing
+merged/deleted/rebased. Findings + evidence-based recommendations (risk-tiered,
+all confidence high) synthesized in
+`docs/dev-log/2026-06-20-held-item-reconciliation-audit.md`.
+
+Headline: the only genuinely net-new gllvmTMB code in the dirty branch is two
+uncommitted exports (`extract_coevolution_modules` at R/extract-sigma.R:1574,
+`diagnose_kernel_separability` at R/kernel-helpers.R:311 + 5 helpers); the 120
+committed commits are mostly superseded (coev C++ byte-identical to #494; bridge
+subsumed by #492/#493). #94 + the divergent engine are conflict-heavy and largely
+superseded by #95/#99/#100/#101, with a few genuinely-unique pieces (GenPoisson /
+Student-t / truncated families / anova / diagnostics; structured-Schur/Poisson
+speed substrate) recommended as fresh narrow ports, not merges. The unique->Psi
+Psi-grammar lane is a real high-risk grammar change (no removal over-claim;
+soft-deprecation-compliant) needing maintainer grammar sign-off.
+
+Not claimed: no merge/rebase/delete of any HELD branch; no register promotion.
+
+## 2026-06-21 — Claude/Ada — close two open loops (#343 reps + fixed-`rho` decision)
+
+Two maintainer-chosen closures from the 2026-06-21 handover, on a fresh worktree off
+`origin/main` (`60fb621`), branch `claude/close-open-loops-20260621` (Codex's dirty
+`codex/r-bridge-grouped-dispersion` left untouched).
+
+**#343 (test-only).** `tests/testthat/test-multi-trial-binomial.R`: raised the
+recovery gate `R` 30→100 and the threshold `expect_gte(sum(ok), …)` 20→67 (same ~2/3
+proportion — the maintainer's "more reps" lever), and added a guard treating a
+non-finite `est`/`se` rep as a miss (`if (!is.finite(est[r]) || !is.finite(se[r]))
+next`). Raising R surfaced the real defect: a converged fit with a non-PD Hessian
+yields NaN SEs → `hits[r] <- as.integer(NA)` → a single NA poisons `sum(ok)`; this
+NA-leak (not the threshold margin) is the likely true cause of the ubuntu flake.
+Commands (worktree, `NOT_CRAN=true`): `devtools::load_all(compile=TRUE)` then
+`testthat::test_file("test-multi-trial-binomial.R")`. Result: R=100 **without** the
+guard → FAIL (`sum(ok)=NA`); **with** the guard → **0/5 failures**. Instrumented
+margin (seeds 101–200): null=0, nonconv=4, nan_se=2, finite=94, **sum(ok)=93/100**
+(threshold 67), 2-SE coverage among finite fits = 0.989. Not run: 3-OS CI (the
+ubuntu-specific flake cannot be reproduced on mac — PR CI is the real gate); the
+full heavy suite (this file is the only touched test).
+
+**Fixed-`rho` decision (docs).** Recorded the keep-fixed-`rho` / no-in-engine-`rho`
+decision in `docs/dev-log/decisions.md` (2026-06-21 entry) ratifying the #507 design
+note, and added a pointer in Design 65 C3.3 (`docs/design/65-cross-lineage-
+coevolution-kernel.md`). Parked loop closed; #361 left open (other C-items remain).
+
+After-task: `docs/dev-log/after-task/2026-06-21-close-open-loops.md`.
+Not claimed: no engine/grammar/family change; no register-row promotion; no merge of
+the Codex dirty branch; #361 not closed.
+
+## 2026-06-21 — Claude/Ada — fix failing pkgdown CI (reference-index gap)
+
+pkgdown failed 6/6 recent runs on `main` (R-CMD-check green throughout); the docs
+site was not redeploying. Failed build log (run 27904513029): `build_reference_index()`
+errored — `In _pkgdown.yml, 3 topics missing from index: "diagnose_kernel_separability",
+"extract_coevolution_modules", "profile_cross_rho_ci"`. These coevolution exports
+(#500, #506) were documented but never indexed. Fix (docs-only, fresh worktree off
+`origin/main` ca92ad6): added the 3 to `_pkgdown.yml` next to siblings —
+`profile_cross_rho_ci` + `diagnose_kernel_separability` under "Relatedness and spatial
+helpers"; `extract_coevolution_modules` under "Report-ready extractors". Verified:
+`Rscript -e 'pkgdown::check_pkgdown(".")'` → "✔ No problems found". Not run: full
+`build_site()` (slow; the `workflow_run` pkgdown run on the merge commit is the real
+gate). After-task: `docs/dev-log/after-task/2026-06-21-pkgdown-reference-index-fix.md`.
+Not claimed: no code/NAMESPACE/man change; no article-content or nav-structure change
+(that is the next, separate task).
+
+## 2026-06-21 — Claude/Ada — finish unique() article cleanup (last stale teaching spot)
+
+Scoped what standalone `unique()` cleanup remained in public docs on `main` after
+#505/#508. Read-only scan: `git grep -nE 'unique\([^)]*\|' origin/main --
+vignettes/articles README.md NEWS.md 'R/*.R'` (the `[^)]*\|` form matches the covstruct
+keyword `unique(... | ...)`, not base-R `unique(x)` dedup calls). Finding: the
+unique()->indep()/Psi cleanup is essentially complete. The landing page (README) already
+teaches "Psi = ordinary `latent()` by default" + `indep()` for standalone diagonals; the
+remaining article `unique(|)` mentions are intentional deprecated-keyword reference docs
+(api-keyword-grid grid row + per-cell example, both labeled "compatibility", prose steers
+to `indep()`), and NEWS entries are accurate release notes. Exactly ONE genuinely stale
+TEACHING spot: `pitfalls.Rmd:269`, a commented paired phylogenetic decomposition writing
+`latent(0 + trait | species, d = K_non) + unique(0 + trait | species)` — a Psi
+double-count under the new default (latent() carries Psi) and inconsistent with the
+article's own prose ("phylo_latent + phylo_unique + latent", 3 keywords). Fixed
+(comment-only): dropped the redundant `unique()` line + added a one-line note that
+`latent()` carries Psi by default. Not changed: api-keyword-grid — its `unique()` entries
+are correct deprecated-keyword reference docs; whether to demote `unique()` out of the
+primary grid is an editorial call deferred to the article/nav plan. Not run: render
+(change is comment-only; executable chunk unchanged).
+Not claimed: no grammar/likelihood change; no register promotion.
+
+## 2026-06-21 — Claude/Ada — latent-only migration: deep verification + grammar-contract fix (Stage B4)
+
+Maintainer asked to verify, carefully, that ordinary `latent()` delivers Sigma = Lambda Lambda^T
++ Psi correctly per family AND per grouping level before going `latent_*`-only (remove `*_unique()`).
+Ran a 3-perspective read-only sweep of origin/main (Noether+Gauss engine, Emmy+Fisher extractors,
+Curie+Boole tests/migration). Verified: (1) ordinary `latent()` auto-Psi is correct (sole
+`.auto_residual` emission at R/brms-sugar.R:2847, guarded `if (identical(fn,"latent"))`); (2) Sigma
+= Lambda Lambda^T + Psi correct per family (no double-count — between-group Psi and family dispersion
+are different levels; binary/#509, pure-ordinal/delta correctly skipped); (3) Sigma -> correlations
+for all families + mixed is delivered (extract_Sigma/correlations, link_residual="auto", M1.3-M1.8);
+(4) the 4 grouping levels are unit/unit_obs/cluster/cluster2 — non-Gaussian Psi IS estimated at the
+non-residual levels (proof: test-cluster2-families.R recovers Psi for all 7 wired families; RE-11),
+only unit_obs OLRE (non-Gaussian) + binary-#509 + pure-ordinal/delta skip. KEY FINDING: only
+ordinary `latent()` auto-carries Psi; `phylo_/spatial_/animal_/kernel_latent` do NOT yet
+(roxygen "latent-Psi folds remain future slices", R/brms-sugar.R:744,851) — so removing `*_unique()`
+now would break source-specific decompositions. Full program in the approved plan (staged: source
+Psi-folds -> hardening -> deprecation messaging -> articles -> removal LAST).
+
+Stage B4 (this PR, docs-only): fixed the stale pairing-rule narrative in
+`docs/design/01-formula-grammar.md` (the canonical grammar contract) — it said `latent(...)` alone
+-> Sigma = Lambda Lambda^T (no Psi), contradicting the doc's own table + AGENTS/CLAUDE. Now states:
+latent() alone (residual=TRUE default) -> Lambda Lambda^T + Psi; latent(residual=FALSE) -> Lambda
+Lambda^T; indep()/deprecated-unique() -> Psi; AND that the source-specific `*_latent` forms still
+require the explicit paired `*_unique()` (folds pending). Not run: no code change (design doc only).
+Not claimed: no engine/grammar/parser change; no `*_unique()` removal; engine Psi-folds (Stage A)
+are Codex's lane and maintainer-gated.
+
+## 2026-06-21 (Claude / Ada) — PR A: latent(residual=) -> latent(unique=) rename
+
+Branch `claude/latent-unique-rename-20260621` off origin/main 024a48b -> PR #518
+(grammar/API change; merge HELD for maintainer, not self-merged).
+
+Maintainer decisions: (a) name = `unique` (matches extract_Sigma part="unique");
+(b) keep `residual=` as a one-shot soft-deprecated alias. Both supplied -> error.
+Internal marker `.auto_residual` -> `.auto_unique` (8 sites, grep-verified).
+
+Checks:
+- `devtools::document(quiet=TRUE)` -> 5 man/*.Rd regenerated, NAMESPACE unchanged.
+- `devtools::check(document=FALSE, args="--no-manual", error_on="never")`
+  -> Status 1 ERROR, 1 WARNING, 0 NOTES; fast suite [FAIL 1 | WARN 13 | SKIP 745 | PASS 3384].
+  ERROR = test-block-V.R:117 env-only `equalto` (proof: `"equalto" %in%
+  getNamespaceExports("glmmTMB")` == FALSE; glmmTMB 1.1.11 vs TMB 1.9.21);
+  WARNING = R_ext/Boolean.h `-Wfixed-enum-extension` clang noise. Both pre-existing
+  on origin/main; diff touches neither path.
+- Targeted heavy `GLLVMTMB_HEAVY_TESTS=1`
+  test_dir(filter="unique-family-deprecation|latent-unique-rename|extract-sigma|keyword-grid")
+  -> all green (extract-sigma incl. m1-3 mixed-family + augmented-unique; keyword-grid;
+  fold<->pair byte-identity).
+
+Consistency audit (verbatim):
+- `rg -c "\.auto_residual" R src man` -> exit 1 (none).
+- `rg -c "\.auto_unique" R` -> fit-multi.R:6, julia-bridge.R:1, brms-sugar.R:1 (8).
+- `rg -n "residual\s*=\s*(TRUE|FALSE)" R vignettes README.md NEWS.md docs/design man`
+  -> only NEWS rename entry (intentional) + Stage-A fold design doc (deferred to PR B).
+- `rg -n "\bS_B\b|\bS_W\b" R` -> exit 1 (none).
+
+Deliberately NOT done: docs/design/2026-06-21-source-specific-latent-psi-fold.md
+left on `residual=`/`.auto_residual` (PR B's spec; reconciled there). No
+self-merge. After-task: docs/dev-log/after-task/2026-06-21-latent-unique-rename.md.
+
+## 2026-06-21 (Claude / Ada) — PR B: phylo_latent() unique= fold (supersedes #516)
+
+Branch claude/phylo-unique-fold-20260621 off origin/main c106df4 -> PR #519
+(grammar/default-meaning change; merge HELD for maintainer). Supersedes red #516.
+
+phylo_latent(species, d=K) now folds Psi_phy by default (unique=TRUE):
+Sigma_phy = Lambda Lambda^T (x) A + Psi_phy (x) A; unique=FALSE -> loadings-only.
+brms-sugar phylo fold block + fit-multi is_auto_phylo_psi dedup (.auto_unique);
+auto_unique_off_family gate extended to the phylo companion.
+
+Equivalence cascade fix (the #516 gap): compared phylo_latent set to unique=FALSE in
+test-kernel-equivalence.R:159, test-canonical-keywords.R:458, test-animal-keyword.R:182,
+test-matrix-animal-nongaussian.R:319/407.
+
+Checks:
+- devtools::document() -> man/phylo_latent.Rd regenerated.
+- devtools::check(args="--no-manual", env=NOT_CRAN) -> Status 1 ERROR 1 WARNING 0 NOTES;
+  fast suite [FAIL 1 | WARN 13 | SKIP 745 | PASS 3398]. ERROR = env-only glmmTMB::equalto
+  (same pre-existing item as #518). Ran the FULL check before push (the #516 trap).
+- Heavy GLLVMTMB_HEAVY_TESTS=1: fold 14/0, kernel-equivalence 38/0, canonical-keywords 61/0,
+  animal-keyword 32/0, matrix-animal-nongaussian 50/0 (all equivalence cascades green).
+
+Deferred to Stage B (per handover): bare-phylo_latent fire-on-use warning, AGENTS/CLAUDE
+grid note, validation-debt register row, per-family phylo recovery gates. NEXT SESSION IS
+CODEX: docs/dev-log/codex-handover-2026-06-21-latent-migration.md (spatial->animal->kernel
+folds via the §4 recipe; Codex runs the live fits/full check). After-task:
+docs/dev-log/after-task/2026-06-21-phylo-latent-unique-fold.md.
+
+## 2026-06-21 (Claude / Ada) — session close: #519 merged; Codex handover ready
+
+#518 (latent unique= rename) + #519 (phylo_latent unique= fold) MERGED to main
+(origin/main = f200b62); #516 CLOSED (superseded by #519). Stage A phylo slice done.
+
+NEXT SESSION = CODEX TEAM. Start from
+docs/dev-log/codex-handover-2026-06-21-latent-migration.md (refreshed to post-merge
+state). Next slice = spatial_latent (confirm the spde diagonal engine slot first),
+then animal_latent -> kernel_latent -> augmented phylo_latent(1+x|sp); then Stage B
+hardening (per-family recovery gates + deferred docs: bare-*_latent fire-on-use
+warning, AGENTS/CLAUDE grid note, validation-debt register row). Follow the §5 fold
+recipe; run the FULL devtools::check() before every push (the #516 trap). Merged
+worktrees (gllvmtmb-latent-unique, -phylo-unique-fold, -phylofold) safe to prune.
+
+## 2026-06-21 (Codex / Ada) — #523: binomial prevalence/loading diagnostic
+
+Branch `codex/ayumi-binary-diagnostics-20260621` off origin/main 8bba6a4.
+Package-side mirror of Ayumi-495/urbanisation_map#3.
+
+Implemented an additive `check_gllvmTMB()` row, `binomial_prevalence_loading`,
+for binomial fits. It reports the worst per-trait prevalence, fitted-probability
+saturation share, maximum loading, and loading size relative to the fitted
+loading scale. When the near-constant binary + dominant-loading/saturated-fit
+screen WARNs, the action says to remove or re-code the near-constant binary
+indicator; lowering rank alone will not resolve quasi-separation. The
+`weak_axis_unit` action now points to that same root cause when the binomial row
+warns. No likelihood, TMB engine, formula grammar, family, or NAMESPACE change.
+
+Checks so far:
+- `air format R/diagnose.R tests/testthat/test-sanity-multi.R` -> no output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> completed;
+  retained only `man/check_gllvmTMB.Rd` from generated docs, removed unrelated
+  local roxygen link churn.
+- `Rscript --vanilla -e 'devtools::test(filter = "sanity-multi", stop_on_failure = TRUE)'`
+  -> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 39 ]`.
+- Synthetic real-fit smoke:
+  `gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
+  family = binomial(link = "probit"), control = gllvmTMBcontrol(se = FALSE,
+  n_init = 2, init_jitter = 0.05))` on a 9-trait binary fixture with one
+  94-percent-prevalent item -> `binomial_prevalence_loading` WARN:
+  `item9 prevalence=0.94; max_loading=13.2; relative_loading=20; saturated_fit=0.94`.
+- `Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'`
+  -> `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3405 ]`, duration 512.9s.
+- `git diff --check` -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE, error_on = "never")'`
+  -> `0 errors | 1 warning | 0 notes`, duration 5m 15.3s. The warning was
+  reported at package-install check stage; the quiet check output did not leave
+  a discoverable `gllvmTMB.Rcheck` directory with the expanded warning text, and
+  this branch touches no compiled code.
+- `tail -5 man/check_gllvmTMB.Rd` -> help topic ends with the intended
+  `check_gllvmTMB(fit)` example close.
+- `grep -c '^\\keyword' man/check_gllvmTMB.Rd` -> `0`.
+- `gh pr list --state open --repo itchyshin/gllvmTMB` -> no open PRs listed.
+
+Consistency scans:
+- `rg -n "binomial_prevalence_loading|binary_prevalence_thresh|binary_saturation_prob_thresh|binary_saturation_share_thresh|loading_relative_thresh" R tests man NEWS.md docs/design/35-validation-debt-register.md`
+  -> implementation/test/Rd/NEWS/DIA-08 only.
+- `rg -n "near-constant binomial|near-constant binary|remove or re-code|lowering rank" R tests man NEWS.md docs/design/35-validation-debt-register.md`
+  -> action text aligned across implementation, test, NEWS, and DIA-08.
+- `rg -n "formal separation|calibrate interval|calibrat.*coverage|change the fitted likelihood|formula grammar|engine" NEWS.md R/diagnose.R docs/design/35-validation-debt-register.md`
+  -> new wording explicitly avoids proof/calibration/likelihood claims.
+- `rg -n "DIA-08|DIA-10|check_gllvmTMB\\(|binomial_prevalence_loading|near-constant" README.md ROADMAP.md NEWS.md docs/design docs/dev-log/known-limitations.md _pkgdown.yml R/diagnose.R man/check_gllvmTMB.Rd tests/testthat/test-sanity-multi.R`
+  -> no README/ROADMAP/pkgdown/known-limitations edit required for the narrow row.
+
+After-task report: `docs/dev-log/after-task/2026-06-21-binomial-prevalence-loading-diagnostic.md`.
+
+## 2026-06-21 (Codex / Ada) — spatial_latent unique= fold pre-edit blocker
+
+Branch/worktree: `/private/tmp/gllvmtmb-spatial-latent-psi-fold` on
+`codex/spatial-latent-psi-fold-20260621`, created from `origin/main`
+`a16611b` after `git fetch --all --prune`. Open PR scan before shared
+doc edits: `gh pr list --repo itchyshin/gllvmTMB --state open --json
+number,title,headRefName,baseRefName,author,url` -> `[]`. Recent-log
+scan: `git log --all --oneline --since="6 hours ago"` showed the
+already-merged latent unique / phylo unique / kickoff commits and no
+open PR collision. Clean merged `/private/tmp/gllvmtmb-*` worktrees
+were pruned; dirty mission-control checkout `codex/r-bridge-grouped-dispersion`
+was not touched.
+
+Pre-edit spatial check requested by the handover: confirm that the SPDE
+diagonal companion slot is wired before coding the `spatial_latent()`
+fold. Verdict: blocker. The current SPDE engine exposes alternate
+paths, not an additive `Lambda_spde Lambda_spde^T + Psi_spde` path.
+Evidence:
+
+- `R/fit-multi.R:997-1006` documents `spatial_latent()` as toggling
+  from the per-trait `omega_spde` path used by `spatial_unique()` /
+  `spatial_scalar()` to the low-rank `Lambda_spde x omega_spde_lv`
+  path.
+- `R/fit-multi.R:3495-3497` maps off `log_tau_spde` and `omega_spde`
+  when `use_spde && is_spatial_latent`, so the per-trait diagonal
+  spatial fields are not estimated in the low-rank fit.
+- `R/fit-multi.R:3947-3948` adds either `omega_spde` or
+  `omega_spde_lv` to the random vector, not both.
+- `src/gllvmTMB.cpp:1352-1412` branches on `spde_lv_k == 0` for
+  per-trait SPDE fields versus `spde_lv_k >= 1` for
+  `Lambda_spde * omega_spde_lv`, then reports `Sigma_spde =
+  Lambda_spde Lambda_spde^T` only in the low-rank branch.
+- `src/gllvmTMB.cpp:1669-1780` projects and adds either the per-trait
+  field or the low-rank latent field to `eta`, not their sum.
+- `R/extract-sigma.R:1158-1163` explicitly records that
+  `spatial_latent` has no per-trait unique component: no `S_spde`.
+
+Exact source scans run:
+
+- `rg -n "spde|spatial_unique|spatial_latent|use_spde|spatial_diag|spde_diag|auto_unique|is_auto_.*psi|auto_unique_off_family" R/fit-multi.R R/brms-sugar.R src/gllvmTMB.cpp tests/testthat`
+  -> confirms the split SPDE paths and no spatial auto-Psi machinery.
+- `rg -n "Sigma_spde|Lambda_spde|log_tau_spde|omega_spde|spatial_latent.*unique|spatial_unique.*latent|spde_lv_k" R/extract-sigma.R R/extract-correlations.R R/output-methods.R R/check-consistency.R tests/testthat`
+  -> confirms existing tests cover fit construction / Lambda shape /
+  smoke checks for paired `spatial_latent + spatial_unique`, but the
+  extractor states there is no `S_spde` component and tests do not prove
+  additive diagonal spatial Psi.
+
+Issue scan: `gh issue list --repo itchyshin/gllvmTMB --state open
+--search "spatial_latent OR spatial_unique OR latent unique" --limit 20
+--json number,title,url,state` returned broad status/roadmap issues
+#340, #361, #342, #348, #230, #341, #349, and #347; no dedicated
+spatial-fold blocker issue was found.
+
+Attempted parser probes using `devtools::load_all(".", compile = FALSE,
+quiet = TRUE)` for bare and paired `spatial_latent()` were interrupted
+after more than two minutes with no output; no result from those probes
+was used as evidence. Not run: RED G1-G4 tests, `devtools::test()`,
+`devtools::check()`, `devtools::document()`, or pkgdown, because the
+required engine precondition failed before code edits.
+
+Post-rebase closeout after #524 merged: rebased the blocker branch onto
+`origin/main` `04b7523`; resolved the append-only `docs/dev-log/check-log.md`
+conflict by keeping both the #523 diagnostic entry and this spatial blocker
+entry. `git diff --check` stayed clean. A full
+`Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE,
+error_on = "never")'` attempt was killed by the local process manager with exit
+137 after ~20 seconds and left no discoverable `.Rcheck` directory; no result
+from that killed check is used as validation. The branch is docs/dev-log-only and
+should use PR CI as the remote gate.
+
+Next safest action: maintainer decision. Either pause spatial and move
+to the next source fold with a wired diagonal companion (`animal_latent`
+or `kernel_latent`), or explicitly approve a true SPDE engine change
+that estimates and adds the per-trait `Psi_spde` companion alongside
+`Lambda_spde Lambda_spde^T`. The latter is a grammar/engine change and
+needs Boole/Gauss/Noether/Curie/Grace/Rose review plus updated design
+docs, recovery tests, validation-debt rows, and full `devtools::check()`
+before any push.
+
+## 2026-06-21 (Codex / Ada) -- animal_latent unique= fold
+
+Branch/worktree: `/private/tmp/gllvmtmb-animal-latent-psi-fold` on
+`codex/animal-latent-psi-fold-20260621`, created from `origin/main`
+`90a0762` after #525 merged. Open PR scan before shared dev-log/design edits:
+`gh pr list --repo itchyshin/gllvmTMB --state open` -> no open PRs. Recent-log
+scan: `git log --all --oneline --since='6 hours ago'` showed the already-merged
+#518-#525 sequence and no active collision.
+
+Implemented slice: `animal_latent(id, d = K, pedigree = ped)` now folds the
+additive-genetic diagonal `Psi_animal` companion by default (`unique = TRUE`) via
+the existing `phylo_rr(..., vcv = A)` path plus an automatic
+`.phylo_unique = TRUE, .auto_unique = TRUE` companion. `unique = FALSE` keeps
+the old loadings-only subset; explicit `animal_unique()` companions are deduped.
+No TMB or SPDE engine code changed.
+
+Exact validation commands and outcomes:
+
+- RED-first:
+  `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-animal-latent-unique-fold.R", reporter = "summary")'`
+  failed before implementation because the parser did not emit the automatic
+  companion and invalid `unique` values were not rejected.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` completed; unrelated
+  generated Rd churn was removed before staging.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-animal-latent-unique-fold.R", reporter = "summary")'`
+  -> PASS (`.................`).
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-animal-keyword.R", reporter = "summary")'`
+  -> PASS (`...................S..S`); skips were existing heavy ANI-09 and
+  missing Suggests-only `nadiv`.
+- `NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-matrix-animal-nongaussian.R", reporter = "summary")'`
+  -> PASS (`..................................................`).
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::test()'` -> PASS:
+  `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3422 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS:
+  `No problems found`.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` rendered the
+  touched animal / keyword-grid / vocabulary articles, then failed in existing
+  `vignettes/articles/lambda-constraint-suggest.Rmd` chunk
+  `profile-confidence-eye` because `loading_ci(fit_pr, level = "unit", method =
+  "wald")` correctly rejects a fit with no `lambda_constraint` pins. Detached
+  `origin/main` at `90a0762` reproduced the same failure with
+  `pkgdown::build_article("articles/lambda-constraint-suggest", lazy = FALSE)`;
+  recorded as pre-existing article render debt, not branch regression.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors, 1 warning, 0 notes`. Warning was local install/compiler noise:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group
+  '-Wfixed-enum-extension', ignored [-Wunknown-warning-option]`.
+- `git diff --check` -> PASS.
+- Rendered-Rd spot check:
+  `tail -5 man/animal_latent.Rd man/animal_unique.Rd man/diag_re.Rd man/phylo_unique.Rd man/spatial_unique.Rd`
+  and
+  `grep -c '^\\keyword' man/animal_latent.Rd man/animal_unique.Rd man/diag_re.Rd man/phylo_unique.Rd man/spatial_unique.Rd`
+  -> only the expected one `\keyword{internal}` in `man/diag_re.Rd`.
+
+Exact stale-wording scans:
+
+- `rg -n 'animal_latent\([^\n]*\)\s*\+\s*animal_unique|animal_latent\(d = K\) \+ animal_unique' R tests vignettes README.md NEWS.md docs AGENTS.md CLAUDE.md CONTRIBUTING.md`
+  -> intentional compatibility prose in this branch plus historical after-task
+  records; no live animal tutorial still teaches the paired spelling as primary.
+- `rg -n 'remaining `spatial_latent` / `animal_latent`|animal_latent.*future|source-specific latent-Psi folds remain future|source-specific paired compatibility pattern' AGENTS.md CLAUDE.md CONTRIBUTING.md NEWS.md docs vignettes R`
+  -> one historical after-task note only; no current source doc says animal is
+  still a future fold.
+- `rg -n '\.auto_residual|residual = TRUE|residual = FALSE|latent\([^\n]*residual' R tests vignettes README.md NEWS.md docs AGENTS.md CLAUDE.md CONTRIBUTING.md`
+  -> expected soft-deprecated ordinary `residual =` alias coverage and
+  historical notes; also surfaced live follow-up debt in
+  `vignettes/articles/pitfalls.Rmd` where phylo latent wording still says
+  loadings-only.
+- `rg -n '\bS_B\b|\bS_W\b|\\bf S' README.md NEWS.md docs/design vignettes R tests AGENTS.md CLAUDE.md CONTRIBUTING.md`
+  -> only the audit pattern in `docs/design/10-after-task-protocol.md`; no new
+  stale `S_B` / `S_W` notation.
+
+Issue ledger: searched open issues with
+`gh issue list --repo itchyshin/gllvmTMB --state open --search 'animal_latent OR animal_unique OR latent unique' --limit 20 --json number,title,url,state`
+and
+`gh issue list --repo itchyshin/gllvmTMB --state open --search 'lambda-constraint-suggest OR loading_ci OR profile-confidence-eye' --limit 20 --json number,title,url,state`.
+#526 remains the spatial blocker; #230/#340 are broad article/status trackers
+for the pre-existing article render debt. No issue closed; no new issue opened
+in this scoped animal PR.
+
+After-task report:
+`docs/dev-log/after-task/2026-06-21-animal-latent-unique-fold.md`.
+
+## 2026-06-21 -- kernel_latent default Psi fold
+
+Branch/worktree: `/private/tmp/gllvmtmb-kernel-latent-psi-fold` on
+`codex/kernel-latent-psi-fold-20260621`, stacked on the animal fold head
+`51c91be` while PR #527 is open. Open PR scan before shared dev-log/design
+edits: `gh pr list --state open` -> #527 only, the parent animal fold PR for
+this stacked local work. Recent-log scan:
+`git log --all --oneline --since="6 hours ago"` -> recent #525 merge,
+spatial-blocker record, Ayumi diagnostic merge, and #527 animal fold head; no
+unrelated open PR collision was found.
+
+Implemented slice: `kernel_latent(unit, K = A, d = q, name = "known")` now
+folds the dense-kernel diagonal `Psi_kernel` companion by default for one named
+kernel tier (`unique = TRUE`). `unique = FALSE` keeps the loadings-only route,
+and the explicit compatibility pair
+`kernel_latent(..., unique = FALSE) + kernel_unique()` remains byte-equivalent.
+For two or more named `kernel_latent()` tiers, auto-generated kernel Psi
+companions are pruned before the existing multi-kernel guard so the first
+multi-kernel engine wave remains latent-only. No TMB or SPDE engine code
+changed.
+
+Exact validation commands and outcomes:
+
+- RED-first:
+  `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-kernel-latent-unique-fold.R", reporter = "summary")'`
+  failed before implementation because the parser did not emit the automatic
+  kernel Psi companion, `unique = FALSE` did not select the loadings-only route,
+  and malformed `unique` values were not rejected.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` completed;
+  unrelated generated Rd churn was removed before staging.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-kernel-latent-unique-fold.R", reporter = "summary")'`
+  -> PASS (`kernel-latent-unique-fold: .......................`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-kernel-equivalence.R", reporter = "summary")'`
+  -> PASS (`kernel-equivalence: ......................................`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-two-kernel.R", reporter = "summary")'`
+  -> PASS under normal env; expected heavy gates skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-two-kernel.R", reporter = "summary")'`
+  first failed because one-kernel comparators inherited the new default Psi and
+  invalidated legacy latent-only likelihood-gap thresholds. After retargeting
+  those comparators to `unique = FALSE`, the same command passed.
+- `Rscript --vanilla -e 'devtools::test()'` -> PASS:
+  `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3445 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS:
+  `No problems found`.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` failed in the
+  known existing article-render debt:
+  `vignettes/articles/lambda-constraint-suggest.Rmd`, chunk
+  `profile-confidence-eye`, where `loading_ci(fit_pr, level = "unit", method =
+  "wald")` correctly rejects an unconstrained loading fit. This is not a kernel
+  fold regression.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  completed with `0 errors, 1 warning, 0 notes`. Warning was local
+  Apple-clang/R-header install noise:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group
+  '-Wfixed-enum-extension', ignored [-Wunknown-warning-option]`.
+- A plain persistent `rcmdcheck::rcmdcheck(args = "--no-manual")` errored
+  because local Suggests `mirt` and `nadiv` are not installed; the persistent
+  rerun
+  `_R_CHECK_FORCE_SUGGESTS_=false Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "never", check_dir = "check-force-suggests-false"); print(res)'`
+  completed with `0 errors, 1 warning, 0 notes`, the same local clang warning.
+- Rendered-Rd spot check:
+  `tail -5 man/kernel_latent.Rd && grep -c '^\\keyword' man/kernel_latent.Rd || true && tail -5 man/diag_re.Rd && grep -c '^\\keyword' man/diag_re.Rd || true`
+  -> `man/kernel_latent.Rd` had no keyword tag, and `man/diag_re.Rd` retained
+  its expected one `\keyword{internal}`.
+
+Exact stale-wording scans:
+
+- `rg -n 'remaining `spatial_latent` / `kernel_latent`|Dense-kernel latent-Psi folding remains|kernel_latent\(\.\.\.\) alone do|kernel_latent\(unit, K = A, d = q\) \+ kernel_unique|same dense `kernel_latent \+ kernel_unique` grammar|kernel_latent\(\) keep their explicit|kernel_latent\(\) remains next|kernel_latent` remains next' R docs/design NEWS.md tests/testthat man`
+  -> no matches; no current source says kernel is still pending or requires
+  paired syntax as primary.
+- `rg -n 'kernel_latent|kernel_unique|KER-02|KER-03|COE-03|unique = FALSE|spatial_latent' NEWS.md R/kernel-keywords.R R/unique-keyword.R R/extract-sigma.R man/kernel_latent.Rd man/diag_re.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/design/2026-06-21-source-specific-latent-psi-fold.md tests/testthat/test-kernel-latent-unique-fold.R tests/testthat/test-kernel-equivalence.R tests/testthat/test-coevolution-two-kernel.R`
+  -> expected current kernel fold references, loadings-only comparator
+  retargeting, multi-kernel latent-only limitations, and historical test
+  coverage references.
+- `rg -n '\bS_B\b|\bS_W\b|\\bf S' NEWS.md R/kernel-keywords.R R/unique-keyword.R man/kernel_latent.Rd man/diag_re.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/design/2026-06-21-source-specific-latent-psi-fold.md`
+  -> no matches.
+- `rg -n 'gllvmTMB\(' R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md`
+  -> expected package/news/design call sites; the new kernel roxygen example is
+  a wide `traits(...)` call and correctly omits `trait =`.
+- `rg -n 'meta_known_V|gllvmTMB_wide|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(' NEWS.md R/kernel-keywords.R R/unique-keyword.R man/kernel_latent.Rd man/diag_re.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md`
+  -> expected historical/deprecated-alias and internal-route references; no new
+  kernel user-facing primary example uses those aliases.
+- `rg -n 'in prep|in preparation' docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md NEWS.md R/kernel-keywords.R`
+  -> no matches.
+
+Issue ledger: inspected open issues with
+`gh issue list --repo itchyshin/gllvmTMB --state open --search 'kernel_latent OR kernel_unique OR KER-02 OR KER-03' --limit 20 --json number,title,url,state`
+-> #361 (generic kernel engine), #340 (capability matrix), and #526 (spatial
+blocker). Inspected
+`gh issue list --repo itchyshin/gllvmTMB --state open --search 'spatial_latent SPDE diagonal Psi' --limit 20 --json number,title,url,state`
+-> no direct matches beyond #526 found by the kernel query. Inspected
+`gh issue list --repo itchyshin/gllvmTMB --state open --search 'lambda-constraint-suggest OR loading_ci OR profile-confidence-eye' --limit 20 --json number,title,url,state`
+-> #230 and #340 for the pre-existing article-render debt. No issue closed; no
+new issue opened in this stacked local slice.
+
+After-task report:
+`docs/dev-log/after-task/2026-06-21-kernel-latent-psi-fold.md`.
+
+## 2026-06-22 -- kernel_latent post-#527 rebase validation
+
+Branch/worktree: `/private/tmp/gllvmtmb-kernel-latent-psi-fold` on
+`codex/kernel-latent-psi-fold-20260621`, rebased onto `origin/main`
+`b3fc729` after #527 merged. Maintainer approval arrived in chat as
+"yes"; #527 was merged with `gh pr merge 527 --merge --match-head-commit
+51c91be2a04a6ff498e902407b5b2a328f74ec69`. GitHub merge commit:
+`b3fc729a3cb6d4d2cce9e6a0e7431aeaa0914868`.
+
+Pre-edit / coordination check before the post-rebase dev-log/design edits:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]` after #527 merged.
+- `git log --all --oneline --since="6 hours ago"` ->
+  `b3fc729 Merge pull request #527 ...` plus unrelated
+  `2e6e225 power-pilot: accumulate reps (run 137)`.
+- `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url`
+  -> #527 main `R-CMD-check` was in progress before local validation and later
+  reported success; main `pkgdown` also completed successfully after the site
+  build and Pages deploy finished.
+
+Post-rebase validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> completed.
+  Roxygen regenerated unrelated Rd files under this local toolchain; those
+  mechanical diffs were trimmed back before staging so only `man/diag_re.Rd`
+  and `man/kernel_latent.Rd` remain in scope.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-kernel-latent-unique-fold.R", reporter = "summary")'`
+  -> PASS (`kernel-latent-unique-fold: .......................`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-kernel-equivalence.R", reporter = "summary")'`
+  -> PASS (`kernel-equivalence: ......................................`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-two-kernel.R", reporter = "summary")'`
+  -> PASS under normal env; expected heavy gates skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-two-kernel.R", reporter = "summary")'`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test()'` -> PASS:
+  `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3445 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS:
+  `No problems found`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> completed with `0 errors, 1 warning, 1 note` but returned nonzero
+  because warnings are treated as errors by this wrapper. The warning was the
+  known local Apple-clang/R-header warning; the note was local time
+  verification (`unable to verify current time`).
+- `Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "never", check_dir = "check-post-rebase"); print(res)'`
+  -> `1 error` because local Suggests `mirt` and `nadiv` are not installed.
+  This reproduces the known local Suggests caveat.
+- `_R_CHECK_FORCE_SUGGESTS_=false Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "never", check_dir = "check-post-rebase-force-suggests-false"); print(res)'`
+  -> completed with `0 errors, 1 warning, 0 notes`. The warning was the same
+  local Apple-clang/R-header install warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group
+  '-Wfixed-enum-extension', ignored [-Wunknown-warning-option]`.
+- `git diff --check` -> PASS.
+
+Generated check directories
+`check-post-rebase/` and `check-post-rebase-force-suggests-false/` were removed
+after recording the outcomes above.
+
+Rose / after-task audit after the rebase:
+
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); print(args(kernel_latent)); cat("\\nformals unique default:\\n"); print(formals(kernel_latent)$unique)'`
+  -> `kernel_latent(unit, K, d = 1, name = "kernel", unique = TRUE)`;
+  `formals(kernel_latent)$unique` -> `TRUE`.
+- `rg -n 'remaining `spatial_latent` / `kernel_latent`|Dense-kernel latent-Psi folding remains|kernel_latent\(\.\.\.\) alone do|kernel_latent\(unit, K = A, d = q\) \+ kernel_unique|same dense `kernel_latent \+ kernel_unique` grammar|kernel_latent\(\) keep their explicit|kernel_latent\(\) remains next|kernel_latent` remains next' R docs/design NEWS.md tests/testthat man`
+  -> no matches.
+- `rg -n '\bS_B\b|\bS_W\b|\\bf S' NEWS.md R/kernel-keywords.R R/unique-keyword.R man/kernel_latent.Rd man/diag_re.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/design/2026-06-21-source-specific-latent-psi-fold.md`
+  -> no matches.
+- `rg -n 'gllvmTMB\(' R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md`
+  -> expected call sites only; the new kernel example is wide
+  `traits(...)` syntax and does not need `trait =`.
+- `rg -n 'meta_known_V|gllvmTMB_wide|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(' NEWS.md R/kernel-keywords.R R/unique-keyword.R man/kernel_latent.Rd man/diag_re.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md _pkgdown.yml`
+  -> expected historical / deprecated-alias sections only; no new kernel
+  primary syntax uses these aliases.
+- `rg -n "kernel_latent|kernel_unique|kernel_indep|kernel_dep" _pkgdown.yml R/kernel-keywords.R man/kernel_latent.Rd`
+  -> `_pkgdown.yml` includes `kernel_latent`; generated `man/kernel_latent.Rd`
+  lists aliases for `kernel_latent`, `kernel_unique`, `kernel_indep`, and
+  `kernel_dep`.
+- `rg -nH "^#' @export" R/kernel-keywords.R R/unique-keyword.R`
+  -> four existing kernel exports in `R/kernel-keywords.R`; no new export
+  added.
+- `tail -5 man/kernel_latent.Rd && grep -c '^\\keyword' man/kernel_latent.Rd || true && tail -5 man/diag_re.Rd && grep -c '^\\keyword' man/diag_re.Rd || true`
+  -> no keyword tag in `man/kernel_latent.Rd`; expected one
+  `\keyword{internal}` in `man/diag_re.Rd`.
+- `rg -n "in prep|in preparation" docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md NEWS.md R/kernel-keywords.R`
+  -> no matches.
+
+Verdict: Rose PASS and after-task audit PASS for this PR surface. Remaining
+warnings are documented limitations, not publication inconsistencies:
+multi-kernel `kernel_latent()` remains latent-only in the first engine wave,
+explicit multi-kernel `kernel_unique()` Psi is deferred, `spatial_latent()` is
+blocked by #526, and `lambda-constraint-suggest.Rmd` article rendering remains
+separate pre-existing debt.
+
+## 2026-06-22 (Codex / Ada + Pat team) -- article accessibility and unique compatibility cleanup
+
+Branch/worktree: `/private/tmp/gllvmtmb-article-accessibility-20260622` on
+`codex/article-accessibility-unique-cleanup-20260622`, created from
+`origin/main` after #527 merged. The dirty mission-control checkout at
+`/Users/z3437171/Dropbox/Github Local/gllvmTMB` was not touched.
+
+Pre-edit coordination checks before shared-file edits:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,url,isDraft`
+  -> only open PR was draft #528
+  `codex/kernel-latent-psi-fold-20260621`, a separate kernel lane.
+- `git log --all --oneline --since="6 hours ago"` -> recent commits
+  `bfdab63` (kernel PR head), `b3fc729` (#527 merge), and unrelated
+  `2e6e225` power-pilot accumulation; no competing article edit detected.
+
+Implemented documentation slice:
+
+- Reworked the homepage and Getting Started opening to define
+  `Sigma = Lambda Lambda^T + Psi`, `Psi = diag(psi_1, ..., psi_T)`,
+  `Lambda`, and per-trait `psi_t` before readers encounter model-output
+  interpretation.
+- Promoted `gllvm-vocabulary` into the pkgdown Concepts path.
+- Moved `unique()` / source-specific `*_unique()` / `kernel_unique()` wording
+  to soft-deprecated or explicit-Psi compatibility language in public article
+  sources. New standalone diagonal examples now prefer `indep()` /
+  source-specific `*_indep()` where the current engine supports that route.
+- Kept one honest exception labelled as a guarded path:
+  random-regression augmented diagonal slopes still require ordinary
+  `unique(1 + x | unit)` for the current extractor path. After #528 merged,
+  cross-lineage kernel examples were updated to folded `kernel_latent()`.
+
+Subagent review used:
+
+- Pat / user_tester reviewed the landing page and Getting Started for applied
+  reader accessibility.
+- Rose / systems_auditor scanned `unique()` / `*_unique()` and Lambda/Psi
+  terminology.
+- pkgdown_editor reviewed navigation and learning-path risks.
+
+Exact validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load_all ok\n")'`
+  -> PASS (`load_all ok`).
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `Rscript --vanilla -e 'pkgdown::build_home(quiet = FALSE, new_process = FALSE)'`
+  -> failed because pkgdown 2.1.3 `build_home()` has no `new_process`
+  argument; rerun below used the supported signature.
+- `Rscript --vanilla -e 'pkgdown::build_home(quiet = FALSE); articles <- c("gllvmTMB", "articles/gllvm-vocabulary", "articles/api-keyword-grid", "articles/covariance-correlation"); for (a in articles) { message("BUILD ", a); pkgdown::build_article(a, lazy = FALSE, quiet = FALSE, new_process = FALSE) }'`
+  -> PASS; rendered `index.html`, `gllvmTMB`, `gllvm-vocabulary`,
+  `api-keyword-grid`, and `covariance-correlation`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/functional-biogeography", lazy = FALSE, quiet = FALSE, new_process = FALSE)'`
+  -> PASS after changing evaluated `phylo_indep(species, tree = tree)` to
+  `phylo_indep(0 + trait | species, tree = tree)`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/phylogenetic-gllvm", lazy = FALSE, quiet = FALSE, new_process = FALSE)'`
+  -> PASS after making the two-Psi helper calls explicit compatibility
+  examples (`eval = FALSE`), because those helpers still key on
+  `phylo_latent(..., unique = FALSE) + phylo_unique(...)`.
+- `Rscript --vanilla -e 'articles <- c("articles/profile-likelihood-ci", "articles/mixed-family-extractors", "articles/psychometrics-irt", "articles/pitfalls", "articles/random-regression-reaction-norms"); for (a in articles) { message("BUILD ", a); pkgdown::build_article(a, lazy = FALSE, quiet = FALSE, new_process = FALSE) }'`
+  -> rendered profile-likelihood, mixed-family, psychometrics, and pitfalls;
+  failed at `random-regression-reaction-norms` because the article requested
+  `extract_Sigma(level = "unit_slope", part = "unique")` without the current
+  explicit ordinary `unique()` random-regression companion.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/random-regression-reaction-norms", lazy = FALSE, quiet = FALSE, new_process = FALSE)'`
+  -> PASS after restoring `unique(1 + temperature | individual)` /
+  long-form equivalent and labelling it as a guarded compatibility path.
+- Earlier focused renders in this branch also passed for
+  `articles/model-selection-latent-rank`, `articles/morphometrics`,
+  `articles/choose-your-model`, `articles/stacked-trait-gllvm`,
+  `articles/ordinal-probit`, `articles/animal-model`, and
+  `articles/cross-lineage-coevolution`.
+- Post-#528 rebase update:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/cross-lineage-coevolution", lazy = FALSE, quiet = FALSE, new_process = FALSE)'`
+  -> PASS after replacing explicit `kernel_unique()` companions with the
+  folded `kernel_latent()` default from merged PR #528.
+- Post-#528 rebase lightweight gates:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS
+  (`No problems found`);
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load_all ok\n")'`
+  -> PASS (`load_all ok`);
+  `git diff --check HEAD~1..HEAD` -> PASS.
+- `git diff --check` -> PASS.
+
+Exact stale-wording scans:
+
+- ``rg -n 'Lamdba|depreciat|diag\(psi\)|diag\(\\boldsymbol\\Psi\)|mathrm\{diag\}\(\\boldsymbol\\Psi\)|the Greek letter Psi|trait-specific diagonal from `unique\(\)`|why `unique\(\)` matters|bare phylo_latent|loadings-only by default|Use `phylo_latent\(\) \+ phylo_unique|Use `animal_latent\(\) \+ animal_unique|Use `spatial_unique|append `spatial_unique|recommended when traits|unique\(\) matters|ordinary `latent\(\)` by default' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd``
+  -> no matches.
+- ``rg -n '`[a-z_]*unique\(|\b[a-z_]*unique\(' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd``
+  -> remaining hits manually reviewed; survivors are compatibility labels,
+  source tables, or guarded random-regression slope examples.
+- ``rg -n 'Sigma = Lambda|Lambda Lambda\^T|Psi|psi_t|loading matrix|trait-specific diagonal|soft-deprecated|compatibility' README.md vignettes/gllvmTMB.Rmd vignettes/articles/gllvm-vocabulary.Rmd vignettes/articles/covariance-correlation.Rmd``
+  -> confirmed the landing sources now define `Lambda`, `Psi`, and `psi_t`
+  in the intended reader-facing places.
+
+Not run:
+
+- Full `pkgdown::build_articles(lazy = FALSE)`, because the repository has the
+  known pre-existing `lambda-constraint-suggest.Rmd` unconstrained-loading
+  Wald-CI failure recorded in the animal/kernel logs. The touched
+  `lambda-constraint.Rmd` page was not fully rendered in this branch; an
+  exploratory render reached the expensive `vp-profile` chunk and was
+  interrupted rather than used as validation.
+- `devtools::test()` / `devtools::check()`, because this slice changed article,
+  README, and pkgdown navigation prose only; no R, TMB, Rd, or parser code was
+  edited.
+
+After-task report:
+`docs/dev-log/after-task/2026-06-22-article-accessibility-unique-cleanup.md`.
+
+## 2026-06-22 follow-up -- full article build after Lambda-suggestion guard
+
+Maintainer follow-up question: are all articles clean, and can the
+accessibility/article cleanup be implemented rather than left as a claim?
+
+Branch/worktree: `/private/tmp/gllvmtmb-article-accessibility-20260622` on
+`codex/article-accessibility-unique-cleanup-20260622`. The dirty
+mission-control checkout at `/Users/z3437171/Dropbox/Github Local/gllvmTMB`
+was not touched.
+
+Pre-edit coordination checks before updating shared docs / pkgdown config:
+
+- `gh pr list --state open`
+  -> only open PR was draft #529
+  `codex/article-accessibility-unique-cleanup-20260622`.
+- `git log --all --oneline --since="6 hours ago"`
+  -> current article PR head `af63c90`, #528 merge `1264fbb`, #528 branch head
+  `bfdab63`, #527 merge `b3fc729`, and unrelated power-pilot commit
+  `2e6e225`; no competing article edit detected.
+
+Implementation updates:
+
+- `vignettes/articles/lambda-constraint-suggest.Rmd`
+  now handles the current `profile_retention` fixture where the suggester
+  returns zero explicit pins. The article prints a diagnostic table instead of
+  calling `loading_ci()` on a rotation-ambiguous loading matrix, and the prose
+  explains that readers should use `Sigma` / communality or add confirmatory
+  pins before interpreting individual `Lambda` entries.
+- `_pkgdown.yml` now lists `gllvm-vocabulary` only once in the article index:
+  public Concepts yes, internal drafts no. The June 9 navigation decision still
+  keeps profile-CI, troubleshooting-profile, cross-lineage, JSDM, and other
+  technical pages buildable under `Internal drafts and technical notes`, not in
+  the public dropdown.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/lambda-constraint-suggest", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS; rendered `pkgdown-site/articles/lambda-constraint-suggest.html`.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> PASS. This full article render now clears the formerly recorded
+  `lambda-constraint-suggest` blocker and also renders the slow
+  `lambda-constraint` page through its profile chunk.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load_all ok\n")'`
+  -> PASS (`load_all ok`).
+- `git diff --check`
+  -> PASS.
+- `ruby -e 'require "yaml"; y=YAML.load_file("_pkgdown.yml"); h=Hash.new(0); y["articles"].each{|s| (s["contents"] || []).each{|c| h[c]+=1 }}; dup=h.select{|k,v| v>1}; abort("duplicate articles: #{dup.inspect}") unless dup.empty?; puts "pkgdown-article-nav-unique-ok"'`
+  -> PASS (`pkgdown-article-nav-unique-ok`).
+- ``rg -n 'Lamdba|depreciat|diag\(psi\)|diag\(\\boldsymbol\\Psi\)|mathrm\{diag\}\(\\boldsymbol\\Psi\)|the Greek letter Psi|trait-specific diagonal from `unique\(\)`|why `unique\(\)` matters|bare phylo_latent|loadings-only by default|Use `phylo_latent\(\) \+ phylo_unique|Use `animal_latent\(\) \+ animal_unique|Use `spatial_unique|append `spatial_unique|recommended when traits|unique\(\) matters|ordinary `latent\(\)` by default' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd``
+  -> no matches.
+- ``rg -n '`[a-z_]*unique\(|\b[a-z_]*unique\(' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd``
+  -> remaining hits manually reviewed; survivors are compatibility labels,
+  keyword tables, or guarded random-regression / source-specific compatibility
+  examples.
+- `rg -n 'No profile_retention Confidence Eye drawn|profile_retention returned 0 explicit pins|Plain-English vocabulary|Internal drafts and technical notes|gllvm-vocabulary.html|profile-likelihood-ci.html|troubleshooting-profile.html' pkgdown-site/articles/lambda-constraint-suggest.html pkgdown-site/articles/index.html pkgdown-site/articles/gllvmTMB.html pkgdown-site/index.html`
+  -> rendered HTML contains the zero-pin explanation, public vocabulary links,
+  and the intended internal technical article section.
+
+Generated cleanup:
+
+- Full article rendering left transient untracked files
+  `vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, and `vignettes/residual-qq-1.png`; these were removed
+  after validation and are not source artefacts.
+
+Not run:
+
+- `devtools::test()` and `devtools::check()` were not rerun in this follow-up;
+  the follow-up changed article prose and `_pkgdown.yml` navigation only.
+
+## 2026-06-22 follow-up -- first-screen equation accessibility
+
+Maintainer prompt: add a clean LaTeX version of the equations and more
+accessible explanation on the landing page and Getting Started page.
+
+Branch/worktree: `/private/tmp/gllvmtmb-article-accessibility-20260622` on
+`codex/article-accessibility-unique-cleanup-20260622`.
+
+Pre-edit coordination checks were already refreshed for this article/docs lane:
+
+- `gh pr list --state open`
+  -> only open PR was draft #529.
+- `git log --all --oneline --since="6 hours ago"`
+  -> current article PR head plus #528 / #527 merge history; no competing
+  article edit detected.
+
+Implementation updates:
+
+- `README.md` and `vignettes/gllvmTMB.Rmd` now show the first covariance
+  decomposition as rendered LaTeX:
+  `Sigma = Lambda Lambda^T + Psi`, with
+  `Psi = diag(psi_1, ..., psi_T)`.
+- Both pages keep a plain-English fallback:
+  "total trait covariance = shared multivariate structure +
+  response-specific variation."
+- The Getting Started page now tells first-time readers to read `Sigma` and
+  correlations before individual `Lambda` entries, because the raw loading
+  entries are rotation-dependent unless a rotation or confirmatory constraint is
+  chosen.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::build_home(quiet = FALSE); pkgdown::build_article("gllvmTMB", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS; rendered `pkgdown-site/index.html` and
+  `pkgdown-site/articles/gllvmTMB.html`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load_all ok\n")'`
+  -> PASS (`load_all ok`).
+- `git diff --check`
+  -> PASS.
+- `rg -n 'boldsymbol\{|operatorname\{diag\}|rotation-dependent|For a first fit, read' README.md vignettes/gllvmTMB.Rmd pkgdown-site/index.html pkgdown-site/articles/gllvmTMB.html`
+  -> confirmed the source and rendered HTML contain the LaTeX equation and
+  the `Lambda` interpretation guard.
+
+Rendered preview screenshots:
+
+- `/private/tmp/gllvmtmb-landing-latex-accessible.png`
+- `/private/tmp/gllvmtmb-get-started-latex-accessible.png`
+
+Generated cleanup:
+
+- The focused article render again left transient vignette PNGs
+  (`vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, `vignettes/residual-qq-1.png`); these were removed
+  after validation.
+
+## 2026-06-22 follow-up -- Getting Started model-first accessibility
+
+Maintainer correction: the landing page is fine, but Getting Started should not
+make `Sigma` feel like the model. `Sigma` is the covariance summary implied by
+the model, not the model itself. Pat and the pkgdown editor team reviewed the
+opening path before edits.
+
+Branch/worktree: `/private/tmp/gllvmtmb-article-accessibility-20260622` on
+`codex/article-accessibility-unique-cleanup-20260622`.
+
+Pre-edit coordination checks:
+
+- `gh pr list --state open`
+  -> only open PR was draft #529,
+  `codex/article-accessibility-unique-cleanup-20260622`.
+- `git log --all --oneline --since="6 hours ago"`
+  -> current article PR head `b2c0e0b`, #528 merge `1264fbb`, #528 branch head
+  `bfdab63`, #527 merge `b3fc729`; no competing article edit detected.
+
+Implementation updates:
+
+- `vignettes/gllvmTMB.Rmd` now opens with the actual Gaussian teaching model:
+  `y_it = alpha_t + lambda_t^T u_i + e_it`, with latent scores and
+  trait-specific diagonal variance defined before the covariance summary.
+- The covariance equation is now explicitly framed as
+  `Cov(y_i) = Sigma = Lambda Lambda^T + Psi`, i.e. the report-ready summary
+  implied by the latent part of the model.
+- The first-copy R call appears before the symbol glossary and uses clean
+  `latent(1 | individual, d = 2)` syntax.
+- The interpretation order now reads `Sigma` rows, truth `Sigma`,
+  communality, correlations, plots, then loadings and ordination.
+- `data-raw/examples/make-morphometrics-example.R` and
+  `inst/extdata/examples/morphometrics-example.rds` now label the decomposition
+  keyword as ordinary `latent()` and describe `Psi / psi` as the ordinary
+  `latent()` default, not `unique()`.
+- `vignettes/articles/morphometrics.Rmd` now prefers the worktree fixture over
+  an installed package fixture while rendering, removes the raw fit-object
+  print that exposed internal `unique_unit`, and describes `psi_t` as
+  trait-specific diagonal variance.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla data-raw/examples/make-morphometrics-example.R`
+  -> PASS; regenerated `inst/extdata/examples/morphometrics-example.rds`.
+- `Rscript --vanilla -e 'pkgdown::build_article("gllvmTMB", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS after the model-first rewrite and again after mobile equation
+  line-break polish.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-example-morphometrics.R", reporter = "summary")'`
+  -> PASS (`example-morphometrics: ..................................................`).
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/morphometrics", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS after the fixture lookup and raw-fit-print cleanup.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `git diff --check`
+  -> PASS.
+
+Rendered preview screenshots:
+
+- `/private/tmp/gllvmtmb-get-started-model-first-desktop.png`
+- `/private/tmp/gllvmtmb-get-started-model-first-mobile.png`
+
+Exact stale-wording / rendered-output scans:
+
+- `rg -n 'unique\(|latent\(\) \+ unique|unique_unit|trait-specific unique variance|model in one sentence|fitted Gaussian model starts|Read the covariance summaries first|Then inspect loadings|trait-specific diagonal variance' vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/morphometrics.html data-raw/examples/make-morphometrics-example.R`
+  -> no stale `unique()` / `unique_unit` / "model in one sentence" hits in
+  the two affected rendered articles; expected positive hits confirmed the new
+  model-first headings and diagonal-variance wording.
+- `rg -n 'formula_wide|Covstructs|latent\(1 \| individual' pkgdown-site/articles/gllvmTMB.html`
+  -> confirmed the rendered Getting Started formula output shows clean
+  `latent(1 | individual, d = 2)` and no `Covstructs` internal print.
+
+Generated cleanup:
+
+- Focused renders left transient untracked vignette PNGs
+  (`vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, `vignettes/residual-qq-1.png`); these were removed
+  after validation.
+
+Not run:
+
+- `devtools::test()` and `devtools::check()` were not rerun for this follow-up;
+  the changes are article prose, article chunk order, and a regenerated
+  teaching fixture label. The focused morphometrics fixture test and pkgdown
+  checks passed.
+
 ## 2026-06-17 -- mission-control evidence refresh after run 107
 
 Refreshed the tracked local mission-control data under

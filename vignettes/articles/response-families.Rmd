@@ -52,7 +52,7 @@ simulation check say otherwise.
 |---|---|---|---|---|
 | continuous, unbounded | `gaussian()` | identity | covered (FAM-01) | Default family. |
 | binary or binomial trials | `binomial()` | logit, probit, cloglog | covered (FAM-02--FAM-04) | Use `cbind(success, failure)` or `weights` for multi-trial binomial data. |
-| counts | `poisson()` | log | covered (FAM-06) | No dispersion parameter; add an observation-level `indep()` term only when an OLRE is identifiable. Legacy `unique()` spelling remains compatibility syntax. |
+| counts | `poisson()` | log | covered (FAM-06) | No dispersion parameter; add an observation-level `indep()` diagonal term only when that is identifiable. Legacy `unique()` spelling remains compatibility syntax. |
 | positive continuous, right-skewed | `lognormal()` | log | partial (FAM-11) | Use only when the response is strictly positive. |
 | positive continuous, constant CV | `Gamma(link = "log")` | log | partial (FAM-09) | Base R `Gamma()`, with log link in the engine. |
 | overdispersed counts | `nbinom2()` | log | covered (FAM-08) | NB2 variance grows quadratically with the mean. |
@@ -158,11 +158,11 @@ Poisson, Tweedie, beta-binomial, delta, and ordinal responses, the
 family determines the residual term that makes the reported
 covariance interpretable on the link scale.
 
-That is why family choice is not cosmetic. A Poisson count model and a
-Gaussian model can share the same default `latent()` formula, but they will
-not imply the same residual scale. Use `extract_Omega()` and
-`extract_Sigma()` after fitting, and read the extractor output on the scale
-implied by the family.
+That is why family choice is not cosmetic. A Poisson count model and
+a Gaussian model can share the same ordinary `latent()` formula but
+will not imply the same residual scale. Use `extract_Omega()` and
+`extract_Sigma()` after fitting, and read the extractor output on the
+scale implied by the family.
 
 Correlations need one extra sentence of caution. `extract_correlations()`
 reports correlations in the fitted covariance tier, not correlations

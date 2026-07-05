@@ -21,6 +21,31 @@ of a rank-\eqn{T} \eqn{\boldsymbol\Lambda} (i.e. the
 \code{\link[=animal_latent]{animal_latent()}} case with \eqn{K = T}). Mathematical parallel to
 \code{\link[=phylo_dep]{phylo_dep()}}.
 }
+\examples{
+\dontrun{
+# Full unstructured additive-genetic trait covariance (rank = n_traits).
+# Grounded in test-animal-keyword.R (ANI-04).
+ped <- data.frame(
+  id   = paste0("i", 1:12),
+  sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
+  dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+)
+A <- pedigree_to_A(ped)
+yvec <- as.numeric(MASS::mvrnorm(
+  1, mu = rep(0, 2 * 12),
+  Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
+))
+df <- data.frame(
+  species = factor(rep(ped$id, each = 2), levels = ped$id),
+  trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
+  value   = yvec
+)
+fit <- gllvmTMB(
+  value ~ 0 + trait + animal_dep(0 + trait | species, A = A),
+  data = df, family = gaussian()
+)
+}
+}
 \seealso{
 \code{\link[=animal_latent]{animal_latent()}}, \code{\link[=phylo_dep]{phylo_dep()}}.
 }

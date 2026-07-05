@@ -232,21 +232,12 @@ test_that("extract_Gamma slices the shared kernel Sigma block by trait names", {
 })
 
 test_that("extract_Gamma can return fixed-rho Gamma_effect when rho is recorded", {
-  Lambda <- matrix(
-    c(
-      1.00,
-      0.00,
-      0.45,
-      0.85,
-      0.75,
-      0.25,
-      -0.25,
-      0.90
-    ),
-    4,
-    2,
-    byrow = TRUE
-  )
+  Lambda <- matrix(c(
+    1.00, 0.00,
+    0.45, 0.85,
+    0.75, 0.25,
+    -0.25, 0.90
+  ), 4, 2, byrow = TRUE)
   rownames(Lambda) <- c("h_size", "h_defence", "p_size", "p_attack")
   fit <- .c2_fake_gamma_fit(Lambda, rho = 0.4)
 
@@ -281,21 +272,12 @@ test_that("extract_Gamma can return fixed-rho Gamma_effect when rho is recorded"
 })
 
 test_that("predict_cross_covariance multiplies Gamma_shape by fitted K entries", {
-  Lambda <- matrix(
-    c(
-      1.00,
-      0.00,
-      0.45,
-      0.85,
-      0.75,
-      0.25,
-      -0.25,
-      0.90
-    ),
-    4,
-    2,
-    byrow = TRUE
-  )
+  Lambda <- matrix(c(
+    1.00, 0.00,
+    0.45, 0.85,
+    0.75, 0.25,
+    -0.25, 0.90
+  ), 4, 2, byrow = TRUE)
   rownames(Lambda) <- c("h_size", "h_defence", "p_size", "p_attack")
 
   A_H <- matrix(c(1, 0.2, 0.2, 1), 2, 2)

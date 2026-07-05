@@ -60,7 +60,7 @@ $$
 $$
 
 where `Lambda` contains the shared latent loadings and `Psi` is the
-trait-specific diagonal included by default in ordinary `latent()`.
+trait-specific diagonal carried by ordinary `latent()`.
 
 ```{r example-data, eval = FALSE}
 rank_ex <- readRDS(system.file(
@@ -111,10 +111,10 @@ rank_ex$formula_wide
 
 ## Fit Candidate Ranks
 
-The diagonal baseline has no shared latent axis, so it uses `indep()`
-to make the standalone marginal-only intent explicit. The `d >= 1`
-candidates use the same fixed effects and the same default diagonal `Psi`
-component, changing only the rank of the `latent()` term.
+The diagonal baseline has no shared latent axis, so it uses `indep()`.
+The `d >= 1` candidates use the same fixed effects and ordinary
+`latent()` decomposition, changing only the rank of the shared
+`Lambda Lambda^T` term.
 
 ```{r rank-helpers}
 candidate_formula <- function(d) {
@@ -153,7 +153,7 @@ summarise_candidate <- function(fit, d) {
 
   data.frame(
     d = d,
-    model = if (d == 0L) "diagonal indep" else paste0("latent d = ", d),
+    model = if (d == 0L) "indep only" else paste0("latent d = ", d),
     logLik = as.numeric(ll),
     df = attr(ll, "df"),
     nobs = attr(ll, "nobs"),
@@ -430,8 +430,8 @@ Report the candidate set and the checks that constrained it.
 | Rotation-invariant summaries | `Sigma`, correlations, and communalities are safer than raw loading labels. |
 | Biological interpretation | A rank is useful only if the resulting summaries answer the study question. |
 
-This article covers a model-selection workflow for Gaussian default-`latent()`
-candidate ranks using base `AIC()` / `BIC()`,
+This article covers a model-selection workflow for Gaussian
+ordinary `latent()` candidate ranks using base `AIC()` / `BIC()`,
 `logLik()`, and `check_gllvmTMB()` (FG-04, FG-06, DIA-03, DIA-08,
 DIA-10), then shows a Gaussian-only `REML = TRUE` refit for the chosen
 rank (MIS-33).

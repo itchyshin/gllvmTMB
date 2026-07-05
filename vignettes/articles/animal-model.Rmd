@@ -120,19 +120,18 @@ $$
 $$
 
 `gllvmTMB` estimates $\boldsymbol G$ either as a full unstructured
-matrix (`animal_dep()`), a marginal per-trait diagonal model
-(`animal_indep()`), or as a reduced-rank factor-analytic
+matrix (`animal_dep()`), per-trait independent diagonal entries
+(`animal_indep()`; the older `animal_unique()` spelling remains
+soft-deprecated compatibility syntax), or as a reduced-rank factor-analytic
 parameterisation $\boldsymbol G \approx \boldsymbol\Lambda
 \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
-(`animal_latent()` paired with `animal_unique()`). In this article,
-`animal_unique()` is the explicit genetic Psi component in the paired
-decomposition; standalone diagonal teaching should use
-`animal_indep()` (`ANI-03`, `ANI-11`).
+(`animal_latent()`; use `unique = FALSE` only for the loadings-only
+subset).
 
 Because the `animal_*()` keywords are pure syntactic sugar over the
 `phylo_*()` engine path (only the relatedness-matrix input differs),
 these intercept structures are **family-general**: the per-trait
-`animal_unique()` / `animal_scalar()` decomposition recovers not only
+`animal_indep()` / `animal_scalar()` decomposition recovers not only
 under the Gaussian model used in the tutorials below, but also under
 the count, proportion, ordinal, and binomial response families the
 engine supports. The worked examples here are Gaussian for clarity;
@@ -275,17 +274,16 @@ df2 <- data.frame(
 head(df2)
 ```
 
-The full unstructured $\boldsymbol G$ is fit by pairing
-`animal_latent()` (the shared factor-analytic part) with
-`animal_unique()` (the trait-specific genetic Psi diagonal). At $d = T$, the
-paired form spans the full $T \times T$ space — equivalent to
-`animal_dep()` on a full $\boldsymbol G$.
+The full unstructured $\boldsymbol G$ is fit with `animal_dep()`.
+The factor-analytic alternative is `animal_latent()`, which now carries
+the shared factor-analytic part and the trait-specific diagonal
+$\boldsymbol\Psi$ by default. At $d = T$, the folded latent form spans
+the full $T \times T$ space, equivalent to `animal_dep()`.
 
 ```{r fit2}
 fit2 <- gllvmTMB(
   value ~ 0 + trait +
     animal_latent(id, d = 1, pedigree = ped) +
-    animal_unique(id, pedigree = ped) +
     indep(0 + trait | id),
   data = df2,
   trait = "trait",
@@ -296,8 +294,8 @@ fit2$opt$convergence
 ```
 
 The model has a one-factor genetic structure (`animal_latent(d = 1)`)
-plus per-trait genetic Psi (`animal_unique`), plus a non-genetic
-trait-level diagonal covariance (`indep(0 + trait | id)`). The
+with the default per-trait genetic diagonal, plus a non-genetic
+trait-level residual covariance (`indep(0 + trait | id)`). The
 genetic covariance matrix $\boldsymbol G$ is rotation-invariant and
 recovered by combining the shared and diagonal parts:
 
@@ -340,8 +338,8 @@ Runcie & Mukherjee 2013): approximate
 $\boldsymbol G \approx \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}
 + \boldsymbol\Psi$ where $\boldsymbol\Lambda$ is a $T \times d$
 loading matrix ($d \ll T$) and $\boldsymbol\Psi$ is diagonal. In
-`gllvmTMB` this is `animal_latent(d = K) + animal_unique()` — the
-same pairing as Tutorial 2, but with $d < T$.
+`gllvmTMB` this is `animal_latent(d = K)` — the same folded
+decomposition as Tutorial 2, but with $d < T$.
 
 The biological justification (Cheverud 1996; Wagner & Altenberg 1996;
 Runcie & Mukherjee 2013) is that organisms develop through a limited
@@ -387,7 +385,6 @@ df3 <- data.frame(
 fit3 <- gllvmTMB(
   value ~ 0 + trait +
     animal_latent(id, d = 1, pedigree = ped) +
-    animal_unique(id, pedigree = ped) +
     indep(0 + trait | id),
   data = df3,
   trait = "trait",
@@ -598,11 +595,13 @@ max(abs(as.numeric(fit_animal$opt$par) - as.numeric(fit_phylo$opt$par)))
 This single-shared-variance slope is the validated heritable-slope
 form. The richer **augmented** reaction-norm models also fit: the
 parser now routes an augmented `1 + x | id` left-hand side through the
-`animal_*()` keywords, with `animal_unique(1 + x | id)` driving the
-correlated $2 \times 2$ (intercept, slope) genetic engine (the
+`animal_*()` keywords, with the soft-deprecated compatibility spelling
+`animal_unique(1 + x | id)` driving the correlated $2 \times 2$
+(intercept, slope) genetic engine (the
 intercept-slope correlation estimated) and `animal_indep(1 + x | id)`
 the diagonal variant (correlation pinned to 0). Both are
-byte-equivalent to the corresponding `phylo_unique` / `phylo_indep`
+byte-equivalent to the corresponding soft-deprecated compatibility
+`phylo_unique` / first-line `phylo_indep`
 augmented fit with the relatedness matrix supplied as `vcv = A`, and
 `extract_Sigma(fit, level = "phy")` surfaces the assembled $2 \times 2$
 genetic covariance for the correlated `animal_unique(1 + x | id)` fit.
@@ -709,10 +708,12 @@ this:
   supported and validated ([Tutorial 4](#tutorial-4-heritable-reaction-norms-random-regression),
   register row **ANI-06**). The augmented intercept+slope forms also
   now route through the `animal_*()` keywords and **fit**:
+  the soft-deprecated compatibility spelling
   `animal_unique(1 + x | id)` drives the correlated $2 \times 2$
   (intercept, slope) genetic engine and `animal_indep(1 + x | id)` the
   diagonal variant, both byte-equivalent to the corresponding
-  `phylo_unique` / `phylo_indep` augmented fit with `vcv = A`.
+  soft-deprecated compatibility `phylo_unique` / first-line
+  `phylo_indep` augmented fit with `vcv = A`.
   `extract_Sigma(fit, level = "phy")` now returns the assembled
   $2 \times 2$ genetic covariance for the correlated
   `animal_unique(1 + x | id)` fit (register row **ANI-11**). The

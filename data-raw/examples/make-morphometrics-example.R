@@ -90,14 +90,14 @@ alignment <- data.frame(
   keyword = c(
     "latent()",
     "latent(..., d = 2)",
-    "default latent() diagonal Psi",
+    "ordinary latent() default",
     "extract_correlations()",
     "extract_communality()"
   ),
   dgp = c(
     "Lambda %*% t(Lambda) + Psi",
     "two morphology axes: size and shape",
-    "trait-specific unique variance",
+    "trait-specific diagonal variance",
     "cov2cor(Sigma)",
     "diag(Lambda Lambda^T) / diag(Sigma)"
   ),

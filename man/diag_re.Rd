@@ -21,8 +21,9 @@ syntax in gllvmTMB 0.2.0. For standalone marginal diagonal tiers, use
 \code{\link[=indep]{indep()}} instead; for the scalar standalone marginal case, use
 \code{indep(..., common = TRUE)}. Ordinary \code{latent()} now carries the diagonal
 \eqn{\boldsymbol\Psi} companion by default; paired \code{latent() + unique()}
-remains accepted as transition compatibility until the later removal
-slice lands. The legacy paired \code{unique(..., common = TRUE)} parsimony knob is
+remains accepted compatibility syntax. Removal is a later API-change
+decision while the parser and exports remain live. The legacy paired
+\code{unique(..., common = TRUE)} parsimony knob is
 still accepted as compatibility syntax; new ordinary intercept-only code
 should use \code{latent(..., common = TRUE)}.
 
@@ -62,24 +63,14 @@ link function fixes an implicit residual variance on the latent
 scale (1 for probit, \eqn{\pi^2/3} for logit, \eqn{\pi^2/6} for
 cloglog), which acts as the implicit unique component. Adding an
 explicit \code{unique()} term on top is typically not identified.
-\item \strong{Phylogenetic shared term, three-piece fallback}. The
-\code{phylo_latent(species, d = K)} term has no associated
-\code{unique()} because the phylogenetic prior is already
-structured on tip × tip via the tree; trait-specific \emph{unique}
-variance lives separately at the non-phylogenetic species
-tier. This is the canonical fallback when the phylogenetic
-uniqueness \eqn{\boldsymbol\Psi_{\text{phy}}} is not separately
-identifiable (small \code{n_species}, weak phylogenetic signal,
-single-replicate-per-tip).
-\item \strong{Phylogenetic shared term, paired four-component form}.
-When \eqn{\boldsymbol\Psi_{\text{phy}}} IS separately
-identifiable (typically crossed site × species with
-\code{n_species} >= 100 and strong phylogenetic signal), pair
-\code{phylo_latent()} with \code{phylo_unique(species)} following the
-same \code{latent() + unique()} pattern used at the non-phylo
-tier. The four-component paired form is canonical when both
-\eqn{\boldsymbol\Psi} diagonals are identifiable; the
-three-piece fallback above is the alternative. See
+\item \strong{Folded source-specific latent terms}. \code{phylo_latent()} and
+\code{animal_latent()} now carry their source-specific diagonal
+\eqn{\boldsymbol\Psi} companions by default, matching ordinary
+\code{latent()}. Use \code{phylo_latent(..., unique = FALSE) + phylo_unique()},
+\code{animal_latent(..., unique = FALSE) + animal_unique()}, or
+\code{kernel_latent(..., unique = FALSE) + kernel_unique()} only when
+you need the explicit compatibility spelling. \code{spatial_latent()} keeps
+its explicit \code{+ spatial_unique()} companion until its fold slice lands. See
 \code{vignettes/articles/pitfalls.Rmd} section 5 and
 \code{docs/dev-log/decisions.md} 2026-05-14 entry.
 \item \strong{Confirmatory factor models}. Sometimes domain knowledge tells
@@ -141,9 +132,8 @@ non-phylogenetic species-level covariance). Their sum is
 
 \subsection{Per-row \code{indep()} / legacy \code{unique()} and \code{sigma_eps}: auto-suppression}{
 
-For Gaussian / lognormal fits, the engine also estimates a
-single observation-scale residual \code{sigma_eps}. Ordinary Gamma uses
-per-trait \code{phi_gamma} shape (CV = \code{1 / sqrt(phi_gamma)}) instead.
+For Gaussian / lognormal / Gamma fits, the engine also estimates a
+single observation-scale residual \code{sigma_eps} (the sigma_eps of the response).
 In new code, write observation-level diagonal residual terms as
 \code{indep(0 + trait | g)}. The legacy \code{unique(0 + trait | g)} spelling is
 still accepted as compatibility syntax. If that grouping \code{g} has \strong{one row
@@ -171,11 +161,9 @@ The same standalone diagonal tier has a slightly different meaning across
 families, depending on whether the response carries an observation-layer
 residual:
 
-For Gaussian / lognormal fits, standalone \code{indep()} (or legacy
+For Gaussian / lognormal / Gamma fits, standalone \code{indep()} (or legacy
 standalone \code{unique()}) estimates the trait-specific residual variance on
-the (log-)response scale. For ordinary Gamma, \code{indep()} is an additional
-latent-scale overdispersion tier on top of the per-trait shape. For
-binomial fits with probit / logit / cloglog
+the (log-)response scale. For binomial fits with probit / logit / cloglog
 links, the link function fixes a distribution-specific implicit residual;
 an explicit diagonal term is identifiable only when there are repeated rows
 per cell. For Poisson and other log-link families,

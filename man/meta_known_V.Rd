@@ -26,6 +26,26 @@ item 4). Both names desugar identically; new code should prefer
 0.2.0 name; \code{meta_known_V} is retained as an alias for
 back-compatibility.
 }
+\examples{
+\dontrun{
+# Deprecated alias of meta_V(); both desugar identically (see
+# test-formula-grammar-smoke.R, where meta_V() / meta_known_V() expand
+# to the same parsed formula). New code should use meta_V(V = V).
+set.seed(131)
+df <- expand.grid(
+  site  = factor(seq_len(50)),
+  trait = factor(paste0("t", 1:3))
+)
+df$value <- rnorm(nrow(df), sd = 0.5)
+df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
+V <- diag(df$sampling_var)
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 1) +
+    meta_known_V(V = V),
+  data = df, trait = "trait", unit = "site", known_V = V
+)
+}
+}
 \seealso{
 \code{\link[=meta_V]{meta_V()}} (canonical name; preferred for new code);
 \code{\link[=meta]{meta()}} (older deprecated short alias); \code{\link[=block_V]{block_V()}};

@@ -122,7 +122,7 @@ test_that("kernel companion modes carry dense-K metadata through the parser", {
   expect_equal(p_dep$covstructs[[1L]]$extra$vcv, A)
 })
 
-test_that("kernel_latent alone is equivalent to dense phylo_latent vcv path", {
+test_that("kernel_latent(unique = FALSE) is equivalent to dense phylo_latent vcv path", {
   testthat::skip_if_not_installed("TMB")
 
   set.seed(12)
@@ -156,7 +156,7 @@ test_that("kernel_latent alone is equivalent to dense phylo_latent vcv path", {
   fit_phy <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(y1, y2, y3) ~
       1 +
-      phylo_latent(unit_id, d = 2, vcv = A),
+      phylo_latent(unit_id, d = 2, vcv = A, unique = FALSE),
     data = rows,
     unit = "row_id",
     cluster = "unit_id",
@@ -166,7 +166,7 @@ test_that("kernel_latent alone is equivalent to dense phylo_latent vcv path", {
   fit_kernel <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(y1, y2, y3) ~
       1 +
-      kernel_latent(unit_id, K = A, d = 2, name = "known"),
+      kernel_latent(unit_id, K = A, d = 2, name = "known", unique = FALSE),
     data = rows,
     unit = "row_id",
     cluster = "unit_id",

@@ -283,10 +283,14 @@ test_that("spatial_latent(unique = TRUE) carries the unique-diagonal parser mark
   expect_match(txt_low_rank, ".spatial_unique_diag = FALSE", fixed = TRUE)
 })
 
-test_that("latent structural helpers preserve documented positional control arguments", {
+test_that("latent-mode source helpers (spatial/animal/kernel) accept named control arguments (d, unique)", {
+  ## Source keywords attach a structure to the LATENT kind -- spatial <->
+  ## coords/mesh, animal <-> pedigree, kernel <-> K matrix -- and take the
+  ## low-rank / Psi control arguments `d` / `unique` by name, per the
+  ## documented grammar (CLAUDE.md / the articles).
   f_spatial <- gllvmTMB:::desugar_brms_sugar(
     value ~ 0 + trait +
-      spatial_latent(0 + trait | coords, 2, TRUE)
+      spatial_latent(0 + trait | coords, d = 2, unique = TRUE)
   )
   txt_spatial <- paste(deparse(f_spatial), collapse = " ")
   expect_match(txt_spatial, "spde", fixed = TRUE)
@@ -294,26 +298,64 @@ test_that("latent structural helpers preserve documented positional control argu
   expect_match(txt_spatial, ".spatial_unique_diag = TRUE", fixed = TRUE)
 
   f_animal <- gllvmTMB:::desugar_brms_sugar(
-    value ~ 0 + trait + animal_latent(species, 2, pedigree = ped)
+    value ~ 0 + trait + animal_latent(species, d = 2, pedigree = ped)
   )
   txt_animal <- paste(deparse(f_animal), collapse = " ")
   expect_match(txt_animal, "phylo_rr", fixed = TRUE)
   expect_match(txt_animal, "d = 2", fixed = TRUE)
 
-  f_indep <- gllvmTMB:::desugar_brms_sugar(
-    value ~ 0 + trait + indep(0 + trait | site, TRUE)
-  )
-  txt_indep <- paste(deparse(f_indep), collapse = " ")
-  expect_match(txt_indep, "diag", fixed = TRUE)
-  expect_match(txt_indep, "common = TRUE", fixed = TRUE)
-
   f_kernel <- gllvmTMB:::desugar_brms_sugar(
-    value ~ 0 + trait + kernel_latent(site, K = K, 2, name = "known")
+    value ~ 0 + trait + kernel_latent(site, K = K, d = 2, name = "known")
   )
   txt_kernel <- paste(deparse(f_kernel), collapse = " ")
   expect_match(txt_kernel, "phylo_rr", fixed = TRUE)
   expect_match(txt_kernel, "d = 2", fixed = TRUE)
   expect_match(txt_kernel, ".kernel_mode = \"latent\"", fixed = TRUE)
+})
+
+test_that("indep is a diagonal kind, distinct from latent (no low-rank part)", {
+  ## `indep` is one of the three main correlation kinds (latent / dep / indep),
+  ## NOT a latent helper: it desugars to a pure diagonal (`diag(.indep=TRUE)`),
+  ## carries no `d`/`unique` low-rank controls, and only takes `common` (shared
+  ## vs per-trait variance). It cannot carry a latent / low-rank block.
+  f_indep <- gllvmTMB:::desugar_brms_sugar(
+    value ~ 0 + trait + indep(0 + trait | site, common = TRUE)
+  )
+  txt_indep <- paste(deparse(f_indep), collapse = " ")
+  expect_match(txt_indep, "diag", fixed = TRUE)
+  expect_match(txt_indep, ".indep = TRUE", fixed = TRUE)
+  expect_match(txt_indep, "common = TRUE", fixed = TRUE)
+  ## No low-rank factor: the desugar must not introduce an `rr`/`spde` block.
+  expect_false(grepl("rr(", txt_indep, fixed = TRUE))
+  expect_false(grepl("spde", txt_indep, fixed = TRUE))
+})
+
+test_that("control args (d, unique, common) are first-class positional, equivalent to named", {
+  ## Positional control arguments desugar BYTE-IDENTICALLY to the named
+  ## spelling for every source-latent helper and for indep -- positional is a
+  ## first-class alternate spelling, not a tolerated accident. (Structure args
+  ## coords/tree/pedigree/K remain first-class positional/named as before.)
+  ds <- function(f) paste(deparse(gllvmTMB:::desugar_brms_sugar(f)), collapse = " ")
+  expect_identical(
+    ds(value ~ 0 + trait + spatial_latent(0 + trait | coords, 2, TRUE)),
+    ds(value ~ 0 + trait + spatial_latent(0 + trait | coords, d = 2, unique = TRUE))
+  )
+  expect_identical(
+    ds(value ~ 0 + trait + animal_latent(species, 2, pedigree = ped)),
+    ds(value ~ 0 + trait + animal_latent(species, d = 2, pedigree = ped))
+  )
+  expect_identical(
+    ds(value ~ 0 + trait + kernel_latent(site, K = K, 2, name = "known")),
+    ds(value ~ 0 + trait + kernel_latent(site, K = K, d = 2, name = "known"))
+  )
+  expect_identical(
+    ds(value ~ 0 + trait + phylo_latent(species, 2, tree = tree)),
+    ds(value ~ 0 + trait + phylo_latent(species, d = 2, tree = tree))
+  )
+  expect_identical(
+    ds(value ~ 0 + trait + indep(0 + trait | site, TRUE)),
+    ds(value ~ 0 + trait + indep(0 + trait | site, common = TRUE))
+  )
 })
 
 test_that("PGLLVM foot-gun: phylo_latent + latent/unique without `unit = species` errors", {
@@ -539,7 +581,7 @@ test_that("phylo_dep(0+trait|species) standalone fits identically to phylo_laten
     data = df, phylo_tree = tree, unit = "species"
   )))
   fit_latent <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + phylo_latent(species, d = 3),
+    value ~ 0 + trait + phylo_latent(species, d = 3, unique = FALSE),
     data = df, phylo_tree = tree, unit = "species"
   )))
   expect_equal(fit_dep$opt$convergence, 0L)

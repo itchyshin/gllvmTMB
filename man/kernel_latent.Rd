@@ -7,7 +7,7 @@
 \alias{kernel_dep}
 \title{Generic dense-kernel covariance keywords}
 \usage{
-kernel_latent(unit, K, d = 1, name = "kernel")
+kernel_latent(unit, K, d = 1, name = "kernel", unique = TRUE)
 
 kernel_unique(unit, K, name = "kernel")
 
@@ -26,33 +26,31 @@ path.}
 
 \item{name}{Character scalar used as the extractor level, e.g.
 \code{extract_Sigma(fit, level = "cross")}.}
+
+\item{unique}{Logical; \code{TRUE} (default) auto-includes the kernel-structured
+diagonal trait-specific \eqn{\boldsymbol\Psi} companion for a single
+dense-kernel tier. Set \code{FALSE} for the loadings-only subset.}
 }
 \value{
 A formula marker; never evaluated as a regular R function.
 }
 \description{
-\code{kernel_unique()} only: \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
-
-\code{kernel_unique()} is soft-deprecated as compatibility syntax in gllvmTMB
-0.2.0. Use \code{kernel_indep()} for standalone marginal diagonal dense-kernel
-tiers. The Paper 2 multi-kernel path remains latent-only; explicit
-kernel-level Psi is still deferred.
-
-\code{kernel_latent()} fits named latent random-effect tiers with user-supplied
+\code{kernel_latent()} fits named random-effect tiers with user-supplied
 between-unit covariance matrices \code{K}. The IN scope (\code{KER-02}) for one named
-dense-kernel tier is the phylo-equivalent path; compatibility tests still
-check that \code{kernel_latent(unit, K = A, d = q) + kernel_unique(unit, K = A)}
-matches \code{phylo_latent(unit, vcv = A, d = q) + phylo_unique(unit, vcv = A)}
-to less than \code{1e-6} for log likelihood and extracted \code{Sigma}. New examples
-should use \code{kernel_latent()} for shared latent structure and
-\code{kernel_indep()} for standalone diagonal dense-kernel tiers. The first
-multi-kernel scope (\code{KER-03}) accepts two or more fixed named
+dense-kernel tier is the phylo-equivalent path:
+\code{kernel_latent(unit, K = A, d = q)} now carries its kernel-structured
+diagonal \eqn{\boldsymbol\Psi} companion by default and must match
+\code{phylo_latent(unit, vcv = A, d = q)} to less than \code{1e-6} for log likelihood
+and extracted \code{Sigma}. The compatibility spelling
+\code{kernel_latent(..., unique = FALSE) + kernel_unique(...)} remains accepted.
+The first multi-kernel scope (\code{KER-03}) accepts two or more fixed named
 \code{kernel_latent()} tiers over the same grouping levels, each with its own
-\code{K}, loading matrix, and latent field. This Paper 2 first wave is
-latent-only: paired \code{kernel_unique()} Psi is deferred because explicit
-residual/Psi structure is a poor default for non-Gaussian and cross-family
-coevolution models. \code{kernel_dep()} remains single-tier only in this first
-wave.
+\code{K}, loading matrix, and latent field. This Paper 2 first wave remains
+latent-only: auto-generated kernel \eqn{\boldsymbol\Psi} companions are
+pruned for multi-kernel fits, and explicit paired \code{kernel_unique()} Psi is
+deferred because explicit residual/Psi structure is a poor default for
+non-Gaussian and cross-family coevolution models. \code{kernel_dep()} remains
+single-tier only in this first wave.
 
 The cross-lineage coevolution scope remains evidence-gated. IN (\code{COE-02}):
 users can pass one \code{K_star} from \code{\link[=make_cross_kernel]{make_cross_kernel()}} and extract the
@@ -81,7 +79,7 @@ fit <- gllvmTMB(
   cluster = "unit",
   family = gaussian()
 )
-extract_Sigma(fit, level = "known", part = "shared")
+extract_Sigma(fit, level = "known")
 }
 
 }

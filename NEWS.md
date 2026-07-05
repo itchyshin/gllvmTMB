@@ -80,6 +80,53 @@
   unregistered rows. This is bridge truth-contract cleanup, not v1.0 completion
   or coverage calibration.
 
+## `kernel_latent()` folds its diagonal Psi by default (2026-06-21)
+
+* `kernel_latent(unit, K = A, d = q, name = "known")` now carries its dense-kernel diagonal trait-specific `Psi_kernel` companion by default (`unique = TRUE`) for one named kernel tier, mirroring ordinary `latent()`, `phylo_latent()`, and `animal_latent()`: `Sigma_kernel = Lambda Lambda^T (x) A + Psi_kernel (x) A`. The paired `kernel_latent(..., unique = FALSE) + kernel_unique()` spelling remains accepted -- the auto-companion is deduped against an explicit `kernel_unique()`, byte-identical to the explicit pair. Use `kernel_latent(..., unique = FALSE)` for the loadings-only subset. IN (`KER-02`): parser emission, malformed-`unique` rejection, Gaussian fold equivalence, explicit-companion dedup, and loadings-only dense-phylo equivalence are covered by `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R`. PARTIAL (`KER-03` / `COE-03`): two-or-more named `kernel_latent()` tiers remain the existing latent-only multi-kernel engine; auto-generated kernel Psi companions are pruned for that path and explicit multi-kernel `kernel_unique()` Psi remains deferred. `spatial_latent()` is still blocked on the SPDE diagonal engine slot.
+
+## `animal_latent()` folds its diagonal Psi by default (2026-06-21)
+
+* `animal_latent(id, d = K, pedigree = ped)` now carries its additive-genetic diagonal trait-specific `Psi_animal` companion by default (`unique = TRUE`), mirroring ordinary `latent()` and `phylo_latent()`: `G = Lambda Lambda^T + Psi_animal`, with both parts scaled by the same relatedness matrix `A`. The paired `animal_latent(..., unique = FALSE) + animal_unique()` spelling remains accepted -- the auto-companion is deduped against an explicit `animal_unique()`, byte-identical to the explicit pair. Use `animal_latent(..., unique = FALSE)` for the loadings-only subset. IN (`ANI-05`): parser emission, Gaussian fold equivalence, explicit-companion dedup, and Gaussian/non-Gaussian loadings-only animal-vs-phylo equivalence are covered by `test-animal-latent-unique-fold.R`, `test-animal-keyword.R`, and `test-matrix-animal-nongaussian.R`. PARTIAL: augmented `animal_latent(1 + x | id)` slopes remain on their existing loadings-only slope engine for this Stage-A slice; `spatial_latent()` is blocked on the SPDE diagonal engine and `kernel_latent()` is handled by the follow-up kernel fold.
+
+## `check_gllvmTMB()` near-constant binomial diagnostic (2026-06-21)
+
+* `check_gllvmTMB()` now adds a `binomial_prevalence_loading` row when binomial traits are present, surfacing the worst per-trait prevalence, fitted-probability saturation, maximum loading, and loading size relative to the typical fitted loading scale. IN (`DIA-08`): this is a diagnostic screen for near-constant binary traits that can drive runaway loadings and weak latent-axis warnings. PARTIAL (`DIA-10`): it points users to remove or re-code near-constant indicators, but it does not calibrate interval coverage, prove separation formally, or change the fitted likelihood. This closes the package-side mirror of Ayumi-495/urbanisation_map#3 (#523).
+
+## `phylo_latent()` folds its diagonal Psi by default (2026-06-21)
+
+* `phylo_latent(species, d = K)` now carries its phylo-structured diagonal
+  trait-specific `Psi_phy` companion by default (`unique = TRUE`), mirroring
+  ordinary `latent()`: `Sigma_phy = Lambda Lambda^T (x) A + Psi_phy (x) A`. The
+  paired `phylo_latent(..., unique = FALSE) + phylo_unique()` spelling remains
+  accepted -- the auto-companion is deduped against an explicit `phylo_unique()`,
+  byte-identical to the explicit pair. Use `phylo_latent(..., unique = FALSE)`
+  for the loadings-only subset. Augmented `phylo_latent(1 + x | sp)` slopes and
+  the `phylo_indep` / `phylo_dep` mutual-exclusion paths are unchanged. The
+  remaining `spatial_latent` fold is blocked on the SPDE diagonal engine slot.
+
+## `latent(unique = ...)` argument rename (2026-06-21)
+
+* The `latent(..., residual = TRUE/FALSE)` argument shipped in 0.2.0 is renamed
+  to `latent(..., unique = TRUE/FALSE)`, matching `extract_Sigma(part = "unique")`
+  and the `unique()` keyword grid. Semantics are unchanged: `unique = TRUE`
+  (default) fits `Sigma = Lambda Lambda^T + Psi` (the diagonal trait-specific Psi
+  companion); `unique = FALSE` fits the loadings-only, rotation-invariant subset.
+  `residual =` is kept as a soft-deprecated alias that still works but emits a
+  one-shot deprecation warning; prefer `unique =` in new code. Ordinary `latent()`
+  is covered at every grouping level; source-specific Psi-fold slices are
+  progressing source by source.
+
+## Cross-lineage `rho` profile intervals (2026-06-20)
+
+* Added `profile_cross_rho_ci()`: turns a `profile_cross_rho()` grid into a
+  profile-likelihood confidence interval for the fixed cross-lineage correlation
+  `rho` (the `rho` set whose deviance excess stays below `qchisq(level, 1)`,
+  located by interpolating the profiled `delta_deviance` curve). Reports
+  `lower`/`upper`/`estimate` plus `lower_bounded`/`upper_bounded` flags so an
+  open bound on a too-sparse grid is explicit. This is fixed-`rho`
+  profile/sensitivity interval evidence, not in-engine `rho` estimation
+  (`COE-04` remains partial).
+
 ## `unique()` family soft deprecation (2026-06-18)
 
 * Added the first parser-level lifecycle slice for the `unique()` keyword
@@ -252,7 +299,10 @@
   covariance, avoiding the false impression that there is one universal total
   `Gamma`. For `make_cross_kernel()` tiers, `K_r[i, j]` already includes the
   supplied fixed `rho`, so the helper does not multiply by
-  `extract_Gamma(scale = "effect")`. High-overlap
+  `extract_Gamma(scale = "effect")`. Real fitted multi-kernel
+  `make_cross_kernel()` tiers retain host/partner metadata after level
+  alignment, so omitted `row_levels`/`col_levels` default to the cross-kernel
+  blocks and `kernel_includes_rho` reports `TRUE`. High-overlap
   kernel tiers now warn during fitting and again
   when `extract_Gamma(level = ...)` is called for an affected component, while
   still returning the diagnostic table and point block for inspection. A first
@@ -287,6 +337,9 @@
 * Added an `engine` argument to `gllvmTMB()` (`engine = c("tmb", "julia")`,
   default `"tmb"`). With `engine = "julia"` the fit is routed through the fast
   GLLVM.jl engine via JuliaCall (`R/julia-bridge.R`, calling `GLLVM.bridge_fit`).
+  With `engine = "julia"` the fit is routed through the
+  experimental GLLVM.jl bridge fitting path via JuliaCall (`R/julia-bridge.R`,
+  calling `GLLVM.bridge_fit`).
   IN (JUL-01): the bridge maps a single reduced-rank latent block
   (`latent(...)` -> `rr`) with per-trait intercepts for gaussian, poisson,
   binomial, nbinom2, nbinom1, beta, gamma, ordinal, and ordinal-probit rows.
@@ -360,6 +413,7 @@
 
 * Added the public `model-selection-latent-rank` article, "How many latent
   dimensions should I fit?", as a worked Gaussian default-`latent()` example
+  (also described as a worked Gaussian ordinary `latent()` example)
   for comparing candidate latent ranks. IN: the article uses a shipped
   deterministic teaching fixture with long and `traits(...)` wide formulas,
   compares a diagonal baseline and `d = 1`, `d = 2`, and `d = 3` candidates
@@ -408,6 +462,24 @@
   low-rank-only and non-Gaussian augmented `unique()` remains guarded. OUT: bare
   `(1 + x | g)` random slopes remain reserved, and delta / hurdle families stay
   outside this slope-covariance lane (FAM-17 / MIX-10).
+  individual-level Gaussian random-regression decomposition with the diagonal
+  `Psi_B,aug` companion included by default. IN: the parser routes the
+  augmented LHS to dedicated B-tier TMB blocks with `Lambda_aug` and
+  `Psi_B,aug` over the `2T` `(intercept, slope) x trait` coefficient vector,
+  and `extract_Sigma(level = "unit_slope", part = "shared" / "unique" /
+  "total")` returns `Lambda_aug Lambda_aug^T`, the augmented diagonal, or their
+  sum (RE-12). Evidence: `test-ordinary-latent-random-regression.R` now covers
+  parser classification, long and `traits(...)` wide fits, Gaussian default
+  composition, explicit `+ unique(1 + x | unit)` compatibility composition, a
+  deterministic Gaussian recovery fixture for the intercept-intercept,
+  slope-slope, and intercept-slope covariance blocks, the explicit diagonal
+  compatibility path, behavioural reaction-norm fixture long/wide agreement, a
+  Poisson latent-only smoke fit, the rank guard, `unit_obs` rejection,
+  mismatched-slope rejection, and the Gaussian-only augmented-`unique()` guard.
+  PARTIAL: non-Gaussian augmented `latent()` remains low-rank-only and
+  non-Gaussian augmented `unique()` remains guarded. OUT: bare `(1 + x | g)`
+  random slopes remain reserved, and delta / hurdle families stay outside this
+  slope-covariance lane (FAM-17 / MIX-10).
 
 ## Behavioural reaction-norm article kept internal pending reader review (#466, 2026-06-08)
 
@@ -420,6 +492,10 @@
   ordinary `latent()` random slopes with default diagonal `Psi_B,aug`;
   non-Gaussian augmented diagonal `Psi`, calibrated intervals for slope
   summaries, and the plain-language reader path remain open before promotion.
+  ordinary `latent()` random slopes with the default augmented diagonal Psi;
+  non-Gaussian augmented `unique()`,
+  calibrated intervals for slope summaries, and the plain-language reader path
+  remain open before promotion.
 
 ## Structured random-slope article kept internal pending the phylogenetic reader path (#341, 2026-06-08)
 
@@ -580,6 +656,7 @@ section further down.
 ### Inference
 
 * `gllvmTMB(REML = TRUE)` adds a narrow Gaussian-only restricted maximum-likelihood pilot. IN: ordinary Gaussian random-intercept fits and Gaussian covariance fits through default `latent()` (with explicit `latent() + unique()` retained as compatibility syntax) match `glmmTMB(..., REML = TRUE)` log-likelihoods and AIC degrees of freedom in `test-gaussian-reml.R` (MIS-33). PARTIAL: fixed-effect profile CIs are not available for REML fits; use Wald CIs or refit with `REML = FALSE` for ML profiling. PLANNED: non-Gaussian REML, observation weights, `miss_control(response = "include")`, and `mi()` predictor models remain guarded / deferred (MIS-32, MIS-33).
+* `gllvmTMB(REML = TRUE)` adds a narrow Gaussian-only restricted maximum-likelihood pilot. IN: ordinary Gaussian random-intercept fits and Gaussian ordinary `latent()` covariance fits match `glmmTMB(..., REML = TRUE)` log-likelihoods and AIC degrees of freedom in `test-gaussian-reml.R` (MIS-33). PARTIAL: fixed-effect profile CIs are not available for REML fits; use Wald CIs or refit with `REML = FALSE` for ML profiling. PLANNED: non-Gaussian REML, observation weights, `miss_control(response = "include")`, and `mi()` predictor models remain guarded / deferred (MIS-32, MIS-33).
 * Maximum-likelihood point estimates via TMB's Laplace approximation remain the default estimator.
 * Profile-likelihood confidence intervals for derived quantities
   (repeatability, communality, phylogenetic signal, pairwise
@@ -839,6 +916,7 @@ meta-analysis; `meta_known_V()` is the deprecated alias. Existing
 ### Canonical `confint()` Sigma names (2026-05-22)
 
 * **`confint()`** now accepts canonical Sigma parameter names `parm = "Sigma_unit"` and `parm = "Sigma_unit_obs"` alongside the legacy aliases `"Sigma_B"` and `"Sigma_W"` (CI-02 / CI-03; underlying extraction EXT-01). IN: users can request unit- and unit-observation covariance intervals with the same naming used by `extract_Sigma(level = "unit")` and `extract_Sigma(level = "unit_obs")`; returned `parameter` labels follow the requested `parm` so existing scripts keep their legacy labels. PARTIAL: profile intervals for full decomposed Sigma entries still fall back to bootstrap, and non-Gaussian bootstrap calibration remains experimental under EXT-13 / CI-10. PLANNED: richer derived-profile intervals and broader calibration evidence remain M3 work.
+* **`confint()`** now accepts canonical Sigma parameter names `parm = "Sigma_unit"` and `parm = "Sigma_unit_obs"` alongside the legacy aliases `"Sigma_B"` and `"Sigma_W"` (CI-02 / CI-03; underlying extraction EXT-01). IN: users can request unit- and unit-observation covariance intervals with the same naming used by `extract_Sigma(level = "unit")` and `extract_Sigma(level = "unit_obs")`; returned `parameter` labels follow the requested `parm` so existing scripts keep their legacy labels. PARTIAL: profile intervals for full ordinary latent Sigma entries still fall back to bootstrap, and non-Gaussian bootstrap calibration remains experimental under EXT-13 / CI-10. PLANNED: richer derived-profile intervals and broader calibration evidence remain M3 work.
 
 ### Inference, fitting robustness, and the validation milestone surface
 
@@ -849,6 +927,7 @@ meta-analysis; `meta_known_V()` is the deprecated alias. Existing
 ### Bootstrap covariance scale control (M3.3a, 2026-05-19)
 
 * **`bootstrap_Sigma()`** gains `link_residual = c("auto", "none")`, matching `extract_Sigma()` so bootstrap point estimates and refit summaries can either include family/link implicit residuals (`"auto"`, the existing default) or report the fitted model covariance without link-residual additions (`"none"`). IN: mixed-family bootstrap refits still preserve per-row family dispatch (MIX-08) and the default link-residual formulas remain covered (MIX-09). PARTIAL: non-Gaussian bootstrap inference remains experimental under EXT-13 / CI-08 / CI-10 until the M3 target-explicit grid is rerun with the corrected `Sigma_unit_diag` convention.
+* **`bootstrap_Sigma()`** gains `link_residual = c("auto", "none")`, matching `extract_Sigma()` so bootstrap point estimates and refit summaries can either include family/link implicit residuals (`"auto"`, the existing default) or report the fitted model-implied covariance only (`"none"`). IN: mixed-family bootstrap refits still preserve per-row family dispatch (MIX-08) and the default link-residual formulas remain covered (MIX-09). PARTIAL: non-Gaussian bootstrap inference remains experimental under EXT-13 / CI-08 / CI-10 until the M3 target-explicit grid is rerun with the corrected `Sigma_unit_diag` convention.
 
 ### New exports (Phase 1b validation milestone)
 

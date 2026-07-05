@@ -14,20 +14,36 @@ The main question is simple:
 > Which responses vary together, and how much of that variation is shared
 > versus response-specific?
 
-The first public examples start from the safest path: Gaussian
-stacked-trait models that split the trait covariance matrix into
-shared and trait-specific parts. Draft worked examples for behavioural
-reaction norms, structured slopes, and cross-lineage kernels stay internal
-until their reader paths are ready:
+Start with one ordinary Gaussian `latent()` model. It splits the
+trait covariance matrix into shared axes plus trait-specific variance:
 
-| Model piece | R syntax | What the reader should see |
+$$
+\boldsymbol{\Sigma}
+=
+\boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf T}
++
+\boldsymbol{\Psi},
+\qquad
+\boldsymbol{\Psi}
+=
+\operatorname{diag}(\psi_1,\ldots,\psi_T).
+$$
+
+In words: total trait covariance = shared multivariate structure +
+response-specific variation. Read the equation from left to right:
+
+| Model piece | R syntax | What it means |
 |---|---|---|
-| `Sigma` | `extract_Sigma_table(fit, level = "unit")` | The total covariance among traits, one report-ready row per entry. |
-| `Lambda Lambda^T` | `latent(..., d = K)` | Shared axes: traits that rise and fall together across units. |
-| `Psi` | ordinary `latent(...)` by default | Trait-specific variance left over after the shared axes. |
+| `Sigma` | `extract_Sigma_table(fit, level = "unit")` | The total covariance among traits, one report-ready row per entry. This is usually the first report-ready target. |
+| `Lambda` | `latent(..., d = K)` | The loading matrix: one row per trait and one column per latent axis. Its raw entries are rotation-dependent, so start interpretation from `Sigma`, correlations, or communality. |
+| `Lambda Lambda^T` | `extract_Sigma(fit, part = "shared")` | Shared axes: traits that rise and fall together across units. |
+| `Psi` | ordinary `latent(...)` by default | Trait-specific variance left over after the shared axes. Each diagonal entry is one `psi_t`. |
 
-So `Sigma = Lambda Lambda^T + Psi` means: total trait covariance =
-shared multivariate structure + response-specific variation.
+Use `latent(...)` for this decomposed model. Use `indep(...)` for a
+standalone diagonal baseline. `unique()` and the source-specific
+`*_unique()` functions are soft-deprecated compatibility syntax for
+older explicit diagonal-Psi formulas; they still work, but new examples
+should teach `latent()` defaults and `indep()` baselines instead.
 
 Most readers will start from a wide data frame: one row per unit, one
 column per trait. Use that shape directly with the `traits(...)` formula
@@ -42,19 +58,20 @@ paths reach the same stacked-trait model.
 | fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
 | see the full worked example | [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html) |
 | choose how many latent dimensions to fit | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) |
+| learn the symbols before reading equations | [gllvmTMB vocabulary](https://itchyshin.github.io/gllvmTMB/articles/gllvm-vocabulary.html) |
 | interpret `Sigma`, correlations, `Lambda`, `psi`, and communality | [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) |
 | choose formula keywords | [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html) |
 | check response-family status | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html) |
 | check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
 | diagnose hard fits | [Convergence and start values](https://itchyshin.github.io/gllvmTMB/articles/convergence-start-values.html) and [Common pitfalls](https://itchyshin.github.io/gllvmTMB/articles/pitfalls.html) |
 
-This is preview version `0.2.0` and the package is pre-CRAN. Advanced
-worked examples return to the public navbar only after their example data
-or exact syntax chunks, diagnostics, validation evidence, and rendered HTML
-review pass. Ordinary individual-level Gaussian reaction norms, structured
-random slopes, and cross-lineage coevolution remain buildable internal
-workflows until their plain-language reader paths are ready.
-Bare-bar `(1 + x | g)` slopes remain reserved.
+This is preview version `0.2.0` and the package is pre-CRAN. The public
+path above is deliberately bounded: first fit one ordinary Gaussian
+model, then interpret `Sigma`, correlations, loadings, and communality,
+then branch to diagnostics or keyword lookup. Advanced workflows return
+to the first-click path only after their example data, diagnostics,
+validation evidence, and rendered HTML review pass. Bare-bar
+`(1 + x | g)` slopes remain reserved.
 
 ## What "stacked-trait" Means
 
@@ -186,23 +203,28 @@ runnable long-to-wide pivot.
 
 In the wide call, `latent(1 | individual, d = 1)` estimates one shared
 latent axis across traits and, by default, the trait-specific residual
-variance left over after that shared axis. In the long call, the
-equivalent term is `latent(0 + trait | individual, d = 1)`. The fitted object reports
-ordination scores, loadings, Sigma rows, pairwise correlations, and per-trait
-communality.
+variance left over after that shared axis (its default diagonal Psi
+companion). In the long call, the equivalent term is
+`latent(0 + trait | individual, d = 1)`. Use `latent(..., unique = FALSE)`
+only when you deliberately want the old no-residual low-rank subset. The
+fitted object reports ordination scores, loadings, Sigma rows, pairwise
+correlations, and per-trait communality.
 
 In notation, the trait covariance the model fits is
 
 ```text
-Sigma = Lambda Lambda^T + diag(psi)
+Sigma = Lambda Lambda^T + Psi
+Psi = diag(psi_1, ..., psi_T)
 ```
 
 where `Lambda` is the shared-axis loading matrix (set by
-`latent(..., d = K)`) and `psi` (the Greek letter Psi, matching the
-factor-analysis / SEM convention) is the trait-specific
-residual variance. Ordinary `latent()` includes that `Psi`
-companion by default; `latent(..., unique = FALSE)` requests the
-old no-residual subset.
+`latent(..., d = K)`) and `Psi` (the Greek letter Psi, matching the
+factor-analysis / SEM convention) is the diagonal matrix of
+trait-specific residual variance carried by ordinary `latent()` by
+default; the scalar `psi_t` is the entry for trait `t`.
+`latent(..., unique = FALSE)` requests the old no-residual subset.
+Explicit `latent() + unique()` formulas remain soft-deprecated
+compatibility syntax for older examples.
 
 ## Current Status
 
@@ -216,12 +238,12 @@ and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 | Long and wide data | Both are supported through `gllvmTMB()`: long data use `value ~ ...` with `trait = "trait"`; wide data use `traits(...) ~ ...`. |
 | Missing response cells | Covered for long response rows and wide `traits(...)` cells: `NA` responses can be treated as unobserved unit-trait cells, with `predict_missing()` for the masked-response route (MIS-21 / MIS-24). |
 | Missing predictors | Covered for one explicitly modelled `mi()` predictor in the shipped v1 slices: Gaussian fixed, grouped, phylogenetic, binary, ordered, and unordered fixed-effect routes. Multiple `mi()` terms, non-Gaussian bounded/count predictors, and structured discrete predictor models remain planned (MIS-25..MIS-32). |
-| First worked model | Gaussian `latent()` with its default `Psi` companion is the safest public example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
-| Latent-rank choice | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) compares Gaussian `latent()` candidate ranks with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows. These criteria help route model choice within a fixed candidate set; they do not prove the biological rank or replace diagnostics. |
+| First worked model | Gaussian `latent()` with its default `Psi` companion is the safest public decomposition example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
+| Latent-rank choice | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) compares Gaussian ordinary `latent()` candidate ranks with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows. These criteria help route model choice within a fixed candidate set; they do not prove the biological rank or replace diagnostics. |
 | Formula keywords | The full 4 x 5 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |
 | Fitted diagnostics | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) shows the first post-fit triage. `check_gllvmTMB()` reports numerical fit health (DIA-08 / DIA-10). `predictive_check()`, `residuals()`, and `diagnostic_table()` provide fitted-model response diagnostics and report-ready diagnostic tables for the scoped Gaussian, Poisson, and NB2 paths (DIA-11 / DIA-12 / DIA-13). These are diagnostic displays, not posterior predictive checks or interval calibration. |
-| Advanced examples | Ordinary individual-level Gaussian reaction norms now have a buildable internal behavioural-syndrome draft with long and wide examples, diagnostics, and recovery figures; Gaussian `latent(1 + x | unit, d = K)` carries its diagonal `Psi` companion by default, while non-Gaussian augmented diagonal `Psi` remains guarded. Structured random slopes, cross-lineage coevolution, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries and stay out of the first-click public model guide until their reader paths are ready. |
+| Advanced examples | Ordinary individual-level Gaussian reaction norms now have a buildable internal behavioural-syndrome draft with long and wide examples, diagnostics, and recovery figures; Gaussian `latent(1 + x | unit, d = K)` carries its diagonal `Psi` companion by default, while non-Gaussian augmented diagonal `Psi` remains guarded. Structured random slopes, cross-lineage coevolution, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries and stay out of the first-click public model guide until their reader paths are explicitly promoted. |
 
 ## Current boundaries
 
@@ -237,6 +259,11 @@ belongs in `drmTMB`.
   through the single `gllvmTMB()` entry point. New examples and
   articles should use `traits(...)`; removal is a later API-change
   decision while the export remains live.
+- `unique()` and source-specific `*_unique()` functions remain
+  exported as compatibility syntax for explicit diagonal-Psi formulas.
+  New standalone diagonal examples should use `indep()` /
+  source-specific `*_indep()`, and ordinary decomposed examples should
+  rely on the default diagonal `Psi` carried by `latent()`.
 
 **Current boundaries and deferred work** (named here so user-facing
 prose does not overpromise):

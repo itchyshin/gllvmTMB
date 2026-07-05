@@ -28,8 +28,8 @@ A formula marker; never evaluated.
 \details{
 \code{spatial_unique()} is soft-deprecated as compatibility syntax in gllvmTMB
 0.2.0. Use \code{\link[=spatial_indep]{spatial_indep()}} for standalone marginal diagonal spatial
-fields. Paired explicit-Psi use remains accepted until the latent-Psi fold
-lands.
+fields. Paired explicit-Psi use remains accepted while the spatial
+latent-Psi fold remains a future slice.
 
 Canonical name for the SPDE / GMRF Matern spatial random field with
 \strong{one independent field per trait} (per-trait variance

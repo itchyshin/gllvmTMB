@@ -267,17 +267,15 @@ cors_b
 
 ### Phylogenetic signal $H^2$
 
-When the fit has a source-specific `phylo_unique(species)` diagonal
-and an ordinary default-`latent()` non-phylogenetic `Psi` diagonal,
-$H^2 = \sigma^2_{\mathrm{phy}} /
-(\sigma^2_{\mathrm{phy}} + \sigma^2_{\mathrm{non}})$ is profileable via
-a single linear contrast (analogous to repeatability). For richer
-3-component decompositions (PGLLVM with `phylo_latent + latent()`,
-where ordinary `latent()` carries the non-phylogenetic diagonal
-`Psi`), the extractor returns the point estimate with a
-`method = "wald(approx)"` flag in the output's method column. The
-constrained-refit profile for the 3-component case is a known gap;
-bootstrap is the recommended interim.
+When the fit has both `phylo_indep(species)` and
+`indep(0 + trait | species)`, $H^2 = \sigma^2_{\mathrm{phy}} /
+(\sigma^2_{\mathrm{phy}} + \sigma^2_{\mathrm{non}})$ is profileable via a
+single linear contrast (analogous to repeatability). For richer
+3-component decompositions (PGLLVM with
+`phylo_latent + latent`), the extractor returns the point
+estimate with a `method = "wald(approx)"` flag in the output's
+method column. The constrained-refit profile for the 3-component
+case is a known gap; bootstrap is the recommended interim.
 
 ## Speed comparison
 

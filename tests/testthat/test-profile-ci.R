@@ -313,3 +313,24 @@ test_that("Profile on Sigma_unit (pure-diag tier) gives finite bounds", {
   expect_true(all(ci_wald$upper[off_rows_wald] == 0))
   expect_true(all(ci_wald$method[off_rows_wald] == "structural_zero"))
 })
+
+## ---- .qchisq_threshold() level guard (T14, pure R) ---------------
+## Dot-internal helper: `level` must be a single number strictly inside
+## (0, 1). The "(0, 1)" text is rendered literally by cli.
+
+test_that(".qchisq_threshold() rejects out-of-range or non-scalar level", {
+  for (bad in list(1.2, 1, 0, -0.1)) {
+    expect_error(
+      gllvmTMB:::.qchisq_threshold(bad),
+      "must be a single value in (0, 1)", fixed = TRUE
+    )
+  }
+  expect_error(
+    gllvmTMB:::.qchisq_threshold(c(0.9, 0.95)),
+    "must be a single value in (0, 1)", fixed = TRUE
+  )
+  expect_error(
+    gllvmTMB:::.qchisq_threshold("x"),
+    "must be a single value in (0, 1)", fixed = TRUE
+  )
+})

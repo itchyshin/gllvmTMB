@@ -283,7 +283,7 @@
 #'   `"lower"`, `"offdiag"`, and `"diag"` return the corresponding subsets.
 #' @param link_residual Passed to [extract_Sigma()]. `"auto"` (default) adds
 #'   family/link implicit residual variances to non-Gaussian trait diagonals;
-#'   `"none"` returns only the fitted model covariance without link residuals.
+#'   `"none"` returns only the fitted model-implied covariance.
 #'
 #' @return A data frame with one row per requested entry and stable columns:
 #'   `estimand`, `trait_i`, `trait_j`, integer indices `i` and `j`, `level`,

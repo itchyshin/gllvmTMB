@@ -96,6 +96,60 @@ test_that("ordinal_probit (K = 3) recovers the single free cutpoint", {
   expect_lt(max(abs(cuts$tau_estimate - true_tau_2)), 0.25)
 })
 
+test_that("extract_cutpoints recovers planted tau across K in {2, 3, 4}", {
+  skip_on_cran()
+  ## EXT-10 breadth: three ordinal_probit traits sharing one fit, with
+  ## category counts K = 2, 3, 4 side by side. K = 2 has no free cutpoint
+  ## (only the fixed tau_1 = 0), K = 3 has one free cutpoint (tau_2), and
+  ## K = 4 has two (tau_2, tau_3). extract_cutpoints() must therefore omit
+  ## the binary trait entirely while recovering the planted thresholds for
+  ## the K = 3 and K = 4 traits. Same fixture pattern as the cells above:
+  ## threshold DGP y = 1 + sum(ystar > tau_k), latent sd = 1.
+  set.seed(404)
+  n_ind  <- 350L
+  trait_names <- c("k2", "k3", "k4")        # K = 2, 3, 4 respectively
+  true_intercept <- c(0.1, -0.2, 0.3)
+  true_tau_k3 <- 0.8                         # single free cutpoint
+  true_taus_k4 <- c(0.6, 1.3)                # two free cutpoints (tau_2, tau_3)
+
+  ystar_k2 <- stats::rnorm(n_ind, true_intercept[1], 1)
+  ystar_k3 <- stats::rnorm(n_ind, true_intercept[2], 1)
+  ystar_k4 <- stats::rnorm(n_ind, true_intercept[3], 1)
+  y_k2 <- 1L + (ystar_k2 > 0)                                  # K = 2
+  y_k3 <- 1L + (ystar_k3 > 0) + (ystar_k3 > true_tau_k3)        # K = 3
+  y_k4 <- 1L + (ystar_k4 > 0) +
+    (ystar_k4 > true_taus_k4[1]) + (ystar_k4 > true_taus_k4[2]) # K = 4
+
+  df <- data.frame(
+    individual = factor(rep(seq_len(n_ind), each = 3L)),
+    trait      = factor(rep(trait_names, n_ind), levels = trait_names),
+    value      = c(t(cbind(y_k2, y_k3, y_k4)))
+  )
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + unique(0 + trait | individual),
+    data   = df,
+    unit   = "individual",
+    family = ordinal_probit()
+  )))
+  expect_equal(fit$opt$convergence, 0L)
+  expect_equal(fit$tmb_data$family_id_vec[1], 14L)
+
+  cuts <- extract_cutpoints(fit)
+  ## 0 (k2) + 1 (k3) + 2 (k4) = 3 free-cutpoint rows.
+  expect_equal(nrow(cuts), 3L)
+  ## The binary (K = 2) trait contributes no cutpoint row.
+  expect_false("k2" %in% cuts$trait)
+  expect_equal(sort(unique(cuts$trait)), c("k3", "k4"))
+  expect_equal(cuts$cutpoint_index, c(2L, 2L, 3L))
+
+  ## Recovery against the planted truths, per trait.
+  cut_k3 <- cuts$tau_estimate[cuts$trait == "k3"]
+  cut_k4 <- cuts$tau_estimate[cuts$trait == "k4"]
+  expect_lt(abs(cut_k3 - true_tau_k3), 0.25)        # K = 3 tau_2
+  expect_lt(abs(cut_k4[1] - true_taus_k4[1]), 0.25) # K = 4 tau_2
+  expect_lt(abs(cut_k4[2] - true_taus_k4[2]), 0.30) # K = 4 tau_3 (looser)
+})
+
 test_that("ordinal_probit (K = 2) reduces to binomial(probit) byte-identically", {
   skip_on_cran()
   ## Hadfield (2015) eqn 10: K = 2 ordinal_probit IS the standard probit

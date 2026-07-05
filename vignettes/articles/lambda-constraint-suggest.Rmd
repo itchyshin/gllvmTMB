@@ -333,17 +333,20 @@ Reading the table:
   It tends to *under-prune* relative to biology, leaving cross-loadings
   free that biology would close. AIC penalises that mildly; BIC more
   strongly.
-- **profile_retention** is usually best on BIC -- its LRT-based pinning
-  is more aggressive than both varimax_threshold and biology, and
-  BIC's stronger parameter penalty rewards the extra parsimony when
-  the data don't strongly support every retained loading.
+- **profile_retention** is deliberately conservative. It returns
+  `r n_pins_pr` explicit pins in this fixture. If that count is zero,
+  the refit has the same parameter count as the exploratory baseline:
+  the one-at-a-time LRTs did not provide stable evidence for pinning
+  any individual loading to zero. In fixtures where profile retention
+  does pin entries, BIC may reward the extra parsimony.
 
 The honest comparison: the **simple** varimax_threshold and the
-**principled** profile_retention give *different* constraint patterns
-because they ask different questions ("is the point estimate big?"
-vs "does the data significantly reject zero?"). For most loadings
-they agree; the diagnostic interest is in entries where they
-disagree.
+**principled** profile_retention can give *different* constraint
+patterns because they ask different questions ("is the point estimate
+big?" vs "does the data significantly reject zero?"). The diagnostic
+interest is in both kinds of disagreement: entries one method pins and
+the other leaves free, and the valid case where the likelihood-based
+method leaves every entry free.
 
 ### Confidence Eye for the two data-driven refits
 
@@ -359,19 +362,20 @@ method follows from that:
   are `NA` in this case. We therefore use the **profile** path for
   this plot: the LRT-inverted profile uses only log-likelihood values,
   bypasses the pdHess gate, and yields valid CIs even at a non-PD fit.
-- **`profile_retention`** pins more entries in the full retained run -- more
-  aggressive in count -- but pins entries the LRT actually fails to
-  reject, which preserves identifiability. The refit's Hessian is PD,
-  so the default Wald (delta-method) path is available here. A few
-  probit-scale Wald estimates are still extreme in this small binary
-  fixture; the plot marks those entries at the display boundary rather
-  than drawing a full-height eye that would dominate the panel.
+- **`profile_retention`** keeps the pinning decision tied to a
+  one-entry-at-a-time LRT. In this fixture it returns `r n_pins_pr`
+  explicit pins. When that number is positive, the code below attempts
+  the default Wald (delta-method) Confidence Eye for the constrained
+  refit. When the number is zero, no per-entry `Lambda` CI is drawn:
+  the fitted covariance is still usable, but the loading matrix remains
+  rotation-ambiguous.
 
 The counterintuitive but real lesson: *more pins is not necessarily
-worse*. What matters is **which** entries you pin. Pinning small
-loadings by magnitude (varimax_threshold) can remove entries the
-identification depends on; pinning entries the data don't support
-(profile_retention) is safer.
+worse*, and *zero pins is not a rendering failure*. What matters is
+**which** entries you pin. Pinning small loadings by magnitude
+(varimax_threshold) can remove entries the identification depends on;
+likelihood-based retention may instead decide that no individual
+loading is safely removable at this sample size.
 
 A note on cost. The full profile path
 (`loading_ci(fit_vmx, method = "profile")`) would profile **every**
@@ -443,51 +447,90 @@ plot_loadings_confidence_eye(
 )
 ```
 
-```{r profile-confidence-eye, echo = FALSE, eval = FALSE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the profile_retention refit. Same encoding as the varimax_threshold plot above, but with the default Wald (delta-method) path: this refit is positive-definite. Profile retention pins more aggressively than varimax_threshold, so more entries are grey (pinned by the suggester to zero, no eye drawn). Off-scale Wald entries are shown as boundary points with no eye, because drawing their huge intervals would obscure the interpretable loadings.", fig.alt = "Per-species loadings from the profile_retention refit, displayed as eye-shaped polygons centred at the Wald estimate; pinned entries shown as grey points without an eye. A few extreme Wald entries are marked at the display boundary without an eye."}
-ci_pr <- flag_unreliable_loadings(
-  loading_ci(fit_pr, level = "unit", method = "wald"),
-  null_region = c(-0.1, 0.1)
-)
+```{r profile-confidence-eye, echo = FALSE, results = "asis", fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the profile_retention refit, drawn only when the suggested constraint contains explicit pins. Same encoding as the varimax_threshold plot above: eye-shaped polygons span the 95 percent Wald CI; grey points are pinned entries with no eye. If profile_retention returns no pins, the chunk prints a diagnostic table instead because per-entry Lambda CIs are not identified for an unconstrained exploratory loading matrix.", fig.alt = "Conditional output for the profile_retention refit. When profile_retention supplies explicit pins, the plot shows per-species loading estimates and Wald Confidence Eye intervals. When it supplies no pins, the article displays a table explaining that per-entry Lambda CIs are not drawn because the loading matrix remains rotation-ambiguous."}
+profile_constraint <- fit_pr$lambda_constraint$B
+if (is.null(profile_constraint)) {
+  profile_constraint <- fit_pr$lambda_constraint$unit
+}
+profile_has_pins <- !is.null(profile_constraint) &&
+  any(!is.na(profile_constraint))
 
-display_ylim <- c(-3, 3)
-off_scale <- !ci_pr$pinned &
-  (ci_pr$estimate < display_ylim[1] |
-   ci_pr$estimate > display_ylim[2] |
-   ci_pr$lower < display_ylim[1] - 3 * diff(display_ylim) |
-   ci_pr$upper > display_ylim[2] + 3 * diff(display_ylim))
+ci_pr <- NULL
+profile_eye_error <- NULL
+if (profile_has_pins) {
+  ci_pr_result <- tryCatch(
+    flag_unreliable_loadings(
+      loading_ci(fit_pr, level = "unit", method = "wald"),
+      null_region = c(-0.1, 0.1)
+    ),
+    error = function(e) e
+  )
+  if (is.data.frame(ci_pr_result)) {
+    ci_pr <- ci_pr_result
+  } else {
+    profile_eye_error <- conditionMessage(ci_pr_result)
+  }
+}
+profile_eye_available <- is.data.frame(ci_pr)
 
-ci_pr_display <- ci_pr
-ci_pr_display$estimate[off_scale & ci_pr$estimate < display_ylim[1]] <- display_ylim[1] + 0.08
-ci_pr_display$estimate[off_scale & ci_pr$estimate > display_ylim[2]] <- display_ylim[2] - 0.08
-ci_pr_display$se[off_scale] <- NA_real_
-ci_pr_display$lower[off_scale] <- NA_real_
-ci_pr_display$upper[off_scale] <- NA_real_
+if (profile_eye_available) {
+  display_ylim <- c(-3, 3)
+  off_scale <- !ci_pr$pinned &
+    (ci_pr$estimate < display_ylim[1] |
+     ci_pr$estimate > display_ylim[2] |
+     ci_pr$lower < display_ylim[1] - 3 * diff(display_ylim) |
+     ci_pr$upper > display_ylim[2] + 3 * diff(display_ylim))
 
-plot_loadings_confidence_eye(
-  ci_pr_display,
-  null_region = c(-0.1, 0.1),
-  ylim        = c(-3, 3)
-)
+  ci_pr_display <- ci_pr
+  ci_pr_display$estimate[off_scale & ci_pr$estimate < display_ylim[1]] <- display_ylim[1] + 0.08
+  ci_pr_display$estimate[off_scale & ci_pr$estimate > display_ylim[2]] <- display_ylim[2] - 0.08
+  ci_pr_display$se[off_scale] <- NA_real_
+  ci_pr_display$lower[off_scale] <- NA_real_
+  ci_pr_display$upper[off_scale] <- NA_real_
+
+  plot_loadings_confidence_eye(
+    ci_pr_display,
+    null_region = c(-0.1, 0.1),
+    ylim        = c(-3, 3)
+  )
+} else {
+  profile_eye_reason <- if (!profile_has_pins) {
+    paste0(
+      "profile_retention returned ", n_pins_pr,
+      " explicit pins; Lambda remains rotation-ambiguous."
+    )
+  } else {
+    paste0("loading_ci() declined to draw per-entry intervals: ", profile_eye_error)
+  }
+  knitr::kable(data.frame(
+    result = "No profile_retention Confidence Eye drawn",
+    reason = profile_eye_reason,
+    next_step = paste(
+      "Use extract_Sigma() or extract_communality() for rotation-invariant",
+      "summaries, or add confirmatory pins before interpreting individual",
+      "Lambda entries."
+    ),
+    check.names = FALSE
+  ))
+}
 ```
 
 A few things to read off:
 
-- The two plots show **different pin patterns**. `varimax_threshold`
-  pins by point-estimate magnitude after rotation; `profile_retention`
-  pins by LRT failure to reject zero. The pinned entries (grey) are
-  not the same set across the two plots -- comparison of which species
-  each method retains is itself diagnostic.
+- The two methods can show **different pin patterns**.
+  `varimax_threshold` pins by point-estimate magnitude after rotation;
+  `profile_retention` pins by LRT failure to reject zero. In this
+  fixture, the likelihood-based rule may return no pins at all, which
+  is itself diagnostic: the data did not justify zeroing individual
+  loadings under the conservative refit rule.
 - The **identifiability properties** differ. `varimax_threshold`'s
   refit has a non-PD Hessian at this fixture, so Wald CIs are
   unavailable and the varimax plot uses the profile path (which
-  bypasses the pdHess gate). `profile_retention`'s refit is
-  identifiable, so the default Wald path works. The boundary points in
-  the lower plot are not pins: they are extreme probit-scale Wald
-  entries, most visibly the `B_drought_4` loading on `LV2` in the full
-  retained run.
-  This is not a generic property of the methods -- at other fixtures
-  the situation can reverse -- but it is what happens at *this*
-  moderate-signal binary fixture.
+  bypasses the pdHess gate). If the `profile_retention` block above
+  shows a table rather than a plot, that is also a guardrail doing
+  useful work: per-entry `Lambda` intervals require explicit pins.
+  Without those pins, interpret `Sigma`, communality, or a
+  confirmatory refit instead.
 - gllvmTMB's NA-on-non-PD convention for Wald (matching `glmmTMB`) is
   doing visible work here: it forced the choice of the profile path
   for the varimax plot, rather than silently emitting CIs from a
@@ -524,10 +567,13 @@ Two further data-driven options:
 | You only need rotational identification, not data-driven sparsity | `convention = "lower_triangular"` or `"pin_top_one"` |
 | You'll rotate post-hoc and don't want any pins | `convention = "none"` |
 
-Whatever you choose, the result is a matrix you pass to a confirmatory
-refit via `lambda_constraint = list(unit = sug$constraint)`. After
-that, `loading_ci()` and the Confidence Eye plot apply just as in the
-confirmatory article, now on the data-driven constraint pattern.
+Whatever you choose, the result is a matrix you pass to a refit via
+`lambda_constraint = list(unit = sug$constraint)`. If the matrix
+contains explicit pins, `loading_ci()` and the Confidence Eye plot
+apply as in the confirmatory article, now on the data-driven
+constraint pattern. If the matrix is all `NA`, keep the refit for
+rotation-invariant summaries (`Sigma`, correlations, communality), but
+do not interpret individual `Lambda` entries as identified.
 
 ## See also
 

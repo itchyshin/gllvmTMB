@@ -70,9 +70,10 @@ form.
 formula grammar, the following five capabilities:
 
 1. **Multivariate GLMMs by reduced-rank regression** -- the
-   default `latent()` decomposition of trait covariance,
-   **Σ = ΛΛᵀ + Ψ**, exposed via a clean **4 × 5** covariance
-   keyword grid (see `docs/design/01-formula-grammar.md`).
+   ordinary `latent()` decomposition of trait covariance
+   (**Σ = ΛΛᵀ + Ψ** by default), exposed via a clean **4 × 5**
+   covariance keyword grid (see
+   `docs/design/01-formula-grammar.md`).
 2. **Phylogenetic + animal-model GLLVMs** via the same sparse
    `A^{-1}` machinery (Hadfield & Nakagawa 2010 trick). Both the
    `phylo_*` family (species-relatedness from a tree) and the
@@ -80,9 +81,9 @@ formula grammar, the following five capabilities:
    route through the same engine path — pedigrees and phylogenies
    are mathematically the same thing (a known relatedness matrix)
    with different biological sources. Reduced-rank latent factors
-   with either structure give factor-analytic G-matrix models
-   (Kirkpatrick & Meyer 2004; Meyer 2009) for quantitative
-   genetics.
+       with either structure give factor-analytic G-matrix models
+       (Kirkpatrick & Meyer 2004; Meyer 2009) for quantitative
+       genetics.
 3. **Spatial GLLVMs** via fast SPDE / GMRF precision matrices
    (inherited from `sdmTMB`; Lindgren et al. 2011). Multi-trait
    spatial fields, not just one trait at a time.
@@ -155,10 +156,9 @@ appropriate column name.
 ```r
 gllvmTMB(
   value ~ 0 + trait
-        + latent(0 + trait | site, d = 2)         # unit-tier share + diagonal
-        + latent(0 + trait | site_species, d = 1) # unit_obs share + diagonal
-        + phylo_latent(species, d = 1)            # phylogenetic share of unit
-        + phylo_unique(species),                  # phylogenetic trait-diagonal
+        + latent(0 + trait | site, d = 2)         # unit-tier shared + diagonal Psi
+        + latent(0 + trait | site_species, d = 1) # unit_obs shared + diagonal Psi
+        + phylo_latent(species, d = 1),           # phylogenetic shared + diagonal Psi
   data     = df,
   family   = gaussian(),
   trait    = "trait",          # long-format column holding trait factor
@@ -177,7 +177,7 @@ gllvmTMB(
   traits(trait_1, trait_2, trait_3) ~ 1
         + latent(1 | site, d = 2)
         + latent(1 | site_species, d = 1)
-        + phylo_latent(species, d = 1) + phylo_unique(species),
+        + phylo_latent(species, d = 1),
   data     = df_wide,
   family   = gaussian(),
   unit     = "site",

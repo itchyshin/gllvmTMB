@@ -609,3 +609,13 @@ test_that("profile_proportions(): unknown component errors", {
     "not present|Available"
   )
 })
+
+## ---- .invert_profile_derived() class guard (T15, pure R) ---------
+## Dot-internal helper: the input must be a profile_derived object.
+
+test_that(".invert_profile_derived() rejects a non-profile_derived input", {
+  expect_error(
+    gllvmTMB:::.invert_profile_derived(data.frame()),
+    "profile_derived", fixed = TRUE
+  )
+})

@@ -68,10 +68,10 @@ example_path <- system.file(
   package = "gllvmTMB"
 )
 example_path <- c(
-  example_path,
   file.path("inst", "extdata", "examples", "morphometrics-example.rds"),
   file.path("..", "inst", "extdata", "examples", "morphometrics-example.rds"),
-  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-example.rds")
+  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-example.rds"),
+  example_path
 )
 example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
 stopifnot(!is.na(example_path))
@@ -82,10 +82,10 @@ boot_r_path <- system.file(
   package = "gllvmTMB"
 )
 boot_r_path <- c(
-  boot_r_path,
   file.path("inst", "extdata", "examples", "morphometrics-bootstrap-r.rds"),
   file.path("..", "inst", "extdata", "examples", "morphometrics-bootstrap-r.rds"),
-  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-bootstrap-r.rds")
+  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-bootstrap-r.rds"),
+  boot_r_path
 )
 boot_r_path <- boot_r_path[nzchar(boot_r_path) & file.exists(boot_r_path)][1]
 stopifnot(!is.na(boot_r_path))
@@ -114,7 +114,7 @@ traits: body length, mass, wing chord, tarsus length, and bill depth.
 The true loading matrix has a *size* axis (factor 1, all positive:
 bigger birds tend to be bigger on every measurement) and a *shape*
 axis (factor 2, mixed signs: long-and-skinny vs. short-and-stocky).
-Each trait also has a trait-specific unique variance `psi`.
+Each trait also has a trait-specific diagonal variance $\psi_t$.
 
 ```{r sim-truth}
 round(Sigma_true, 2)
@@ -159,7 +159,7 @@ fit_wide_formula <- gllvmTMB(
 
 # The rest of the article uses the canonical long-format fit.
 fit <- fit_long
-fit
+as.numeric(logLik(fit))
 
 cat("Long/formula-wide logLik difference:",
     signif(abs(as.numeric(logLik(fit_long)) -
@@ -201,7 +201,9 @@ for trait $t$, $\mathbf{u}_i$ is a $d$-dimensional latent factor for
 individual $i$, and $\varepsilon_{it}$ is the trait-specific residual
 with variance $\psi_{tt}$. Ordinary `latent()` includes this diagonal
 $\boldsymbol\Psi$ term by default; the old explicit `+ unique()` spelling
-is retained as compatibility syntax. The implied
+is retained as compatibility syntax. Ordinary `latent()` carries those
+residual variances on the diagonal of $\boldsymbol\Psi$ by default. The
+implied
 between-individual trait covariance is
 
 $$
@@ -238,12 +240,35 @@ first, trait-specific variation second.
 > [Covariance & correlation article](covariance-correlation.html)
 > for the side-by-side comparison.
 
+> **The default $\boldsymbol\Psi$ with cross-sectional data.**
+> With cross-sectional data (one observation per individual per
+> trait), the `(trait, individual)` pair uniquely identifies every
+> row. gllvmTMB detects this automatically: it fixes
+> $\sigma_\varepsilon$ to a negligibly small constant (and prints an
+> `i Auto-suppressing sigma_eps: ...` message), so the default
+> $\boldsymbol\Psi$ term (carried by ordinary `latent()`)
+> absorbs the full observation-level residual and becomes the
+> trait-specific residual variance $\psi_t$. The confounding that would
+> arise if both $\sigma_\varepsilon$ and $\psi_t$ were estimated freely
+> is therefore resolved by construction — you do not need to choose
+> between them. With *longitudinal* data (multiple sessions per
+> individual), both terms are separately identified and can be
+> estimated without any auto-suppression; the $\boldsymbol\Psi$ term then
+> captures genuine between-individual trait-specific variance on top of
+> the latent structure. See the
+> [Covariance & correlation article](covariance-correlation.html)
+> for the side-by-side comparison.
+
 ```{r fit-psi-s}
 # Trait-specific unique variances (psi_t)
 psi_hat <- extract_Sigma(fit, level = "unit", part = "unique")$s
 cat("Estimated psi_t:", round(psi_hat, 3), "\n")
 cat("True      psi_t:", round(psi_true, 3), "\n")
 ```
+
+The extractor stores the diagonal entries in a vector named `s`. In
+the text we call the same entries `psi_t`, and the diagonal matrix they
+form is `Psi`.
 
 ## Recovered $\hat{\boldsymbol\Sigma}_B$ vs truth
 
@@ -282,6 +307,14 @@ plot_Sigma_comparison(corr_compare, measure = "correlation")
 > diagonal for this data-generating process. The default `latent()` fit
 > above includes $\boldsymbol\Psi$. Use `part = "shared"` / `part = "unique"`
 > to pull just one component.
+>
+> unique (trait-specific) component. Ordinary `latent()` carries
+> $\boldsymbol\Psi$ by default (as in the fit above), so the diagonal
+> is filled in correctly. If instead you fit with
+> `latent(..., unique = FALSE)`, then $\boldsymbol\Psi = 0$ and you
+> get only $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$, which
+> understates the diagonal. Use `part = "shared"` /
+> `part = "unique"` to pull just one component.
 
 ## Pairwise correlations and communality
 
@@ -341,6 +374,8 @@ claims belong in the simulation-grid articles, which remain under audit.
 
 ## Why default `latent()`? `dep` and `indep` on the same data
 
+## Why `latent()`? `dep` and `indep` on the same data
+
 The morphometric workflow uses ordinary `latent(d = K)` to
 estimate $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol{\Psi}$.
 Two alternative covstruct modes — `dep` (full unstructured $\boldsymbol\Sigma_B$
@@ -348,6 +383,9 @@ with $T(T+1)/2$ free entries) and `indep` (diagonal-only
 $\boldsymbol\Sigma_B = \mathrm{diag}(\sigma^2_1, \dots, \sigma^2_T)$, no
 cross-trait modelling) — are also valid keywords. Refit the same data
 under each to see what the user actually loses or gains.
+These are ordinary unit-tier keywords; source-specific forms such as
+`phylo_dep()` and `spatial_dep()` affect phylogenetic or spatial
+unit-tier covariance instead.
 
 ```{r dep-indep-compare, message = FALSE, warning = FALSE}
 fit_full_long <- gllvmTMB(
@@ -424,6 +462,9 @@ What this shows:
 - **`dep` and `latent(d = T)` both recover the saturated covariance
   surface** — the comparison is a useful check that the dense fit and the
   full-rank latent parameterisation agree on the covariance pattern.
+  `dep` is mathematically identical to `latent(d = T)` standalone —
+  same logL, same $\boldsymbol\Sigma_B$ to numerical precision. The two
+  keywords are aliases of the saturated unstructured fit.
 - **Reduced-rank `latent(d = 2)` with default $\boldsymbol\Psi$ matches the saturated fit
   within 0.1 nats of logL.** With $T = 5$ traits and a
   rank-2 truth, the rank constraint loses essentially no information
@@ -439,6 +480,14 @@ For this simulated rank-2 Gaussian truth, default `latent(d = 2)` and the
 saturated `dep` fit recover nearly the same covariance pattern, while
 `indep` cannot recover off-diagonal association because it sets those
 entries to zero by construction. Pick `latent(d = K)` when you have a
+strong rank-$K$ hypothesis (size + shape, here); fall back to `dep` if
+you suspect $K \approx T$ and want the saturated fit; reach for `indep`
+only when you genuinely believe traits are mutually independent.
+
+For this simulated rank-2 Gaussian truth, ordinary `latent()` and the
+saturated `dep` fit recover nearly the same covariance pattern, while
+`indep` cannot recover off-diagonal association because it sets those
+entries to zero by construction. Pick ordinary `latent()` when you have a
 strong rank-$K$ hypothesis (size + shape, here); fall back to `dep` if
 you suspect $K \approx T$ and want the saturated fit; reach for `indep`
 only when you genuinely believe traits are mutually independent.
@@ -530,5 +579,7 @@ HTML review pass.
 
 * [Covariance and correlation](covariance-correlation.html) — why
   diagonal $\boldsymbol\Psi$ matters for interpreting trait correlations.
+* [Covariance and correlation](covariance-correlation.html) — why
+  the diagonal `Psi` matters for interpreting trait correlations.
 * [Formula keyword grid](api-keyword-grid.html) — the syntax map for
   moving from this example to other covariance rows and modes.

@@ -194,7 +194,7 @@ rule's full mechanics.
 each trait gets its own variance and cross-trait covariance is
 fixed at zero. It is equivalent to standalone `unique(0 + trait |
 g)` and exists so users can say, unambiguously, "fit the diagonal
-model rather than the low-rank `latent()` decomposition":
+model rather than the ordinary `latent()` decomposition":
 
 $$
 \boldsymbol\Sigma_\text{indep} =
@@ -472,8 +472,9 @@ gllvmTMB(
   unit = "site"
 )
 
-# 1 random slope (RE-12). Status: partial: Gaussian latent() with
-# default diagonal Psi live; non-Gaussian augmented diagonal Psi guarded.
+# 1 random slope (RE-12). Status: partial: Gaussian ordinary latent() with
+# default diagonal Psi live; explicit augmented unique() remains
+# compatibility syntax and non-Gaussian augmented diagonal Psi is guarded.
 gllvmTMB(
   value ~ 0 + trait + (0 + trait):env +
     latent(0 + trait + (0 + trait):env | site, d = 2),
@@ -504,10 +505,10 @@ Same engine.
 
 ### Slope cap (parser-enforced)
 
-| Slopes inside ordinary augmented `latent()` / `unique()` | Status | Parser behaviour |
+| Slopes inside ordinary augmented `latent()` | Status | Parser behaviour |
 |---------------------------------|--------|------------------|
 | 0 | `covered` | accepted (current path) |
-| 1 | `partial` (RE-12) | accepted for ordinary Gaussian `latent()` with default diagonal Psi; non-Gaussian augmented diagonal Psi guarded |
+| 1 | `partial` (RE-12) | accepted for ordinary Gaussian `latent()` with default diagonal Psi; explicit augmented `unique()` is compatibility syntax and non-Gaussian augmented diagonal Psi is guarded |
 | 2 | `planned (post-RE-12)` | unsupported; revisit only after the single-slope Gaussian path and user-facing article are stable |
 | 3 | `planned (post-2-slopes)` | rejected; conditional on the 2-slope slice landing first |
 | 4+ | `rejected (long-term)` | always rejected; this combinatorial regime is not in scope |
@@ -625,7 +626,7 @@ analogues) move by validation-debt row, not by this ordinary RE-12
 slice. Current public status is:
 
 1. Ordinary Gaussian `latent(1 + x | unit, d = K)`: partial under RE-12.
-2. Ordinary non-Gaussian augmented diagonal Psi: guarded.
+2. Ordinary non-Gaussian augmented `unique(1 + x | unit)` / diagonal Psi: guarded.
 3. Structured `phylo_*()` / `spatial_*()` single-slope cells:
    covered where PHY-11..PHY-18 and SPA-08..SPA-10 say covered.
 4. Gaussian `phylo_dep(..., s = 2)`: covered under RE-03.

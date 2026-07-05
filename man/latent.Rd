@@ -4,13 +4,7 @@
 \alias{latent}
 \title{Latent-factor (reduced-rank) random effect: \code{latent(0 + trait | g, d = K)}}
 \usage{
-latent(
-  formula,
-  d = 1,
-  unique = TRUE,
-  common = FALSE,
-  residual = lifecycle::deprecated()
-)
+latent(formula, d = 1, unique = TRUE, common = FALSE)
 }
 \arguments{
 \item{formula}{\code{0 + trait | g} style formula (LHS is the response
@@ -19,18 +13,15 @@ factor, typically \code{0 + trait}; RHS is the grouping factor).}
 \item{d}{Integer; number of latent factors.}
 
 \item{unique}{Logical; \code{TRUE} (default) auto-includes the diagonal
-trait-unique \eqn{\boldsymbol\Psi} companion. Set \code{FALSE} for the
-low-rank-only / rotation-invariant subset. Renamed from \code{residual} in
-gllvmTMB 0.2.0.}
+trait-specific \eqn{\boldsymbol\Psi} companion
+(\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}).
+Set \code{FALSE} for the loadings-only / rotation-invariant subset. The former
+argument name \code{residual} is retained as a soft-deprecated alias.}
 
 \item{common}{Logical; \code{FALSE} (default) estimates one diagonal
 \eqn{\boldsymbol\Psi} variance per trait. \code{TRUE} ties the default ordinary
 diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 traits. Only applies when \code{unique = TRUE}.}
-
-\item{residual}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Soft-deprecated alias for
-\code{unique}; passing \verb{residual =} emits a deprecation warning and is mapped to
-\verb{unique =}.}
 }
 \value{
 A formula marker; never evaluated.
@@ -54,22 +45,27 @@ with the diagonal \eqn{\boldsymbol\Psi} companion included automatically:
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{value ~ 0 + trait + latent(0 + trait | unit, d = 2)
 }\if{html}{\out{</div>}}
 
-Set \code{unique = FALSE} for the old low-rank-only / rotation-invariant subset.
+Set \code{unique = FALSE} for the loadings-only subset.
 For a scalar diagonal \eqn{\boldsymbol\Psi} companion shared across traits,
 use \code{common = TRUE}; this replaces the legacy paired
 \code{latent(..., unique = FALSE) + unique(..., common = TRUE)} spelling for
 ordinary intercept-only latent terms.
-
-For the augmented random-regression form -- \code{latent(1 + x | g)} (wide) or
-\code{latent(0 + trait + (0 + trait):x | g)} (long) -- the per-trait
-unique-variance diagonal \eqn{\boldsymbol\Psi} companion is likewise on by
-default and is controlled by \code{unique = TRUE} (the default) or
-\code{unique = FALSE} (the low-rank-only, rotation-invariant subset). On this
-augmented form \verb{residual =} is a soft-deprecated alias for \verb{unique =}. For
-non-Gaussian families the estimated diagonal stays off and the family/link
-latent-scale residual is used instead (see the \code{link_residual} argument of
-\code{\link[=extract_Sigma]{extract_Sigma()}}); the free intercept-slope correlation lives in the shared
-reduced-rank block and is unaffected by \code{unique}.
+}
+\examples{
+\dontrun{
+# Long-format stacked traits: a 2-factor latent random effect at `site`.
+# Ordinary latent() carries its diagonal Psi by default
+# (Sigma = Lambda Lambda^T + diag(psi)).
+df <- simulate_site_trait(
+  n_sites = 30, n_species = 4, n_traits = 4,
+  mean_species_per_site = 4, seed = 42
+)$data
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2),
+  data = df, unit = "site"
+)
+extract_Sigma(fit)
+}
 }
 \seealso{
 \code{\link[=unique]{unique()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \link{diag_re}, \code{\link[=extract_Sigma]{extract_Sigma()}}.

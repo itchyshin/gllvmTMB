@@ -1,4 +1,22 @@
 local_reset_lifecycle_cache <- function(env = parent.frame()) {
+  ## Also clear gllvmTMB's own env-based one-shot warning tracker so the
+  ## surfacing cli_warn deprecations (unique-family + bare-latent Psi notice)
+  ## re-fire; these use this tracker, not lifecycle's deprecate_soft cache.
+  seen <- tryCatch(
+    get(".gllvmTMB_deprecation_seen", envir = asNamespace("gllvmTMB")),
+    error = function(e) NULL
+  )
+  if (is.environment(seen)) {
+    saved_seen <- as.list(seen, all.names = TRUE)
+    withr::defer(
+      {
+        rlang::env_unbind(seen, rlang::env_names(seen))
+        rlang::env_bind(seen, !!!saved_seen)
+      },
+      envir = env
+    )
+    rlang::env_unbind(seen, rlang::env_names(seen))
+  }
   dep_env <- tryCatch(
     get("deprecation_env", envir = asNamespace("lifecycle")),
     error = function(e) NULL
@@ -19,7 +37,8 @@ local_reset_lifecycle_cache <- function(env = parent.frame()) {
 }
 
 test_that("unique-family formula keywords emit soft lifecycle warnings", {
-  withr::local_options(lifecycle_verbosity = "warning")
+  withr::local_options(lifecycle_verbosity = "warning",
+                       gllvmTMB.quiet_grammar_notes = FALSE)
   local_reset_lifecycle_cache()
 
   expect_warning(
@@ -51,6 +70,24 @@ test_that("unique-family formula keywords emit soft lifecycle warnings", {
       value ~ 0 + trait + kernel_unique(unit, K = K, name = "known")
     ),
     regexp = "deprecated|compatibility syntax"
+  )
+})
+
+test_that("bare latent() (no explicit residual) fires the Psi-default notice", {
+  withr::local_options(gllvmTMB.quiet_grammar_notes = FALSE)
+  local_reset_lifecycle_cache()
+  expect_warning(
+    gllvmTMB:::rewrite_canonical_aliases(
+      value ~ 0 + trait + latent(0 + trait | site, d = 1)
+    ),
+    regexp = "per-trait|unique = FALSE|includes a per-trait"
+  )
+  # explicit unique = FALSE opts out (no auto-Psi, no notice)
+  local_reset_lifecycle_cache()
+  expect_no_warning(
+    gllvmTMB:::rewrite_canonical_aliases(
+      value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE)
+    )
   )
 })
 
@@ -88,7 +125,7 @@ test_that("ordinary latent auto-emits Psi unless unique is FALSE", {
     vapply(p_fold$covstructs, `[[`, character(1), "kind"),
     c("rr", "diag")
   )
-  expect_true(isTRUE(p_fold$covstructs[[2L]]$extra$.latent_psi))
+  expect_true(isTRUE(p_fold$covstructs[[2L]]$extra$.auto_unique))
 
   f_no_resid <- gllvmTMB:::rewrite_canonical_aliases(
     value ~ 0 + trait + latent(0 + trait | site, d = 2, unique = FALSE)

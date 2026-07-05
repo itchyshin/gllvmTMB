@@ -157,8 +157,7 @@ when `nlminb` struggles.
 **User-facing API** (Boole lead):
 
 ```r
-gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K) +
-           unique(0 + trait | unit),
+gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K),
          data = df,
          family = gaussian(),
          control = gllvmTMBcontrol(

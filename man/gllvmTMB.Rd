@@ -238,10 +238,10 @@ predictor-model formula (for Gaussian sugar, e.g. \code{x ~ z}) or an
 \item{silent}{Logical; suppress TMB and gllvmTMB chatter. Default \code{TRUE}.}
 
 \item{engine}{Character; \code{"tmb"} (default) fits with the native TMB engine,
-\code{"julia"} routes the fit to the fast GLLVM.jl engine via JuliaCall (see
-\code{R/julia-bridge.R}). The Julia path currently maps the unconstrained-
-ordination core (a single \code{latent()} block + per-trait intercepts) and
-errors on structures it does not yet support.}
+\code{"julia"} routes the fit through the experimental GLLVM.jl bridge fitting
+path via JuliaCall (see \code{R/julia-bridge.R}). The Julia path currently maps
+the unconstrained-ordination core (a single \code{latent()} block + per-trait
+intercepts) and errors on structures it does not yet support.}
 
 \item{ci_method}{Confidence-interval route requested at fit time for
 admitted \code{engine = "julia"} no-X rows. One of \code{"none"} (default),

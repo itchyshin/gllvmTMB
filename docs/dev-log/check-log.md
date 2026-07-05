@@ -33080,3 +33080,27 @@ Outcome: parse passed; focused coevolution tests passed with expected heavy
 skips because `GLLVMTMB_HEAVY_TESTS` was not set; documentation regenerated.
 This is COE-04 diagnostic hardening only, not new coevolution recovery or
 interval evidence.
+
+## 2026-07-04 -- Multi-start non-finite selection guard
+
+Goal: close issues #684 and #685 by ensuring non-finite restart objectives are
+recorded but never selected as the best optimizer result.
+
+Edits:
+
+- Extracted restart objectives through `.gllvmTMB_restart_objective()`.
+- Guarded best-optimizer selection with `is.finite(objective_i)`.
+- Centralized restart-history marking in `.gllvmTMB_select_restart_history()`.
+- Added pure regression coverage with `NaN`, `-Inf`, and finite objectives.
+- Updated validation row MIS-20.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/fit-multi.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-multi-start-sdreport-consistency.R", reporter = "summary")'
+```
+
+Outcome: parse passed; focused multi-start tests passed. Fit-heavy rows skipped
+under CRAN mode, while the new pure restart-selection row ran. This is restart
+provenance hardening only, not convergence-rate evidence for a start strategy.

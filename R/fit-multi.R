@@ -3962,9 +3962,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
       next
     }
+    objective_i <- .gllvmTMB_restart_objective(opt_i)
+    success_i <- is.finite(objective_i)
     if (isTRUE(control$verbose))
       cat(sprintf("  restart %d: -logLik = %.3f, conv = %s\n",
-                  i, opt_i$objective,
+                  i, objective_i,
                   ifelse(is.null(opt_i$convergence), "?", opt_i$convergence)))
     restart_history[[i]] <- .gllvmTMB_restart_history_row(
       restart = i,
@@ -3972,16 +3974,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       start_method = start_provenance$start_method,
       optimizer = control$optimizer,
       jitter_sd = if (i == 1L) 0 else control$init_jitter,
-      objective = opt_i$objective,
+      objective = objective_i,
       convergence = opt_i$convergence %||% NA_integer_,
       message = opt_i$message %||% "",
       elapsed_s = elapsed_s,
       iterations = opt_i$iterations %||% NA_integer_,
       evaluations = opt_i$evaluations %||% NA_integer_,
-      success = is.finite(opt_i$objective)
+      success = success_i
     )
-    if (opt_i$objective < best_obj) {
-      best_obj <- opt_i$objective
+    if (success_i && objective_i < best_obj) {
+      best_obj <- objective_i
       best_opt <- opt_i
     }
   }
@@ -3989,11 +3991,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (is.null(best_opt))
     cli::cli_abort("All {control$n_init} restarts failed.")
   opt <- best_opt
-  restart_history$selected <- FALSE
-  selectable <- which(restart_history$success &
-                        is.finite(restart_history$objective))
-  selected_idx <- selectable[which.min(restart_history$objective[selectable])]
-  restart_history$selected[selected_idx] <- TRUE
+  restart_history <- .gllvmTMB_select_restart_history(restart_history)
   start_provenance$selected_restart <- restart_history$restart[
     which(restart_history$selected)[1L]
   ]
@@ -4421,4 +4419,28 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     selected = FALSE,
     stringsAsFactors = FALSE
   )
+}
+
+.gllvmTMB_restart_objective <- function(opt) {
+  objective <- opt$objective
+  if (is.null(objective) || length(objective) == 0L) {
+    return(NA_real_)
+  }
+  as.numeric(objective)[[1L]]
+}
+
+.gllvmTMB_select_restart_history <- function(restart_history) {
+  restart_history$selected <- FALSE
+  selectable <- which(
+    restart_history$success &
+      is.finite(restart_history$objective)
+  )
+  if (!length(selectable)) {
+    cli::cli_abort("No successful restart has a finite objective.")
+  }
+  selected_idx <- selectable[
+    which.min(restart_history$objective[selectable])
+  ]
+  restart_history$selected[selected_idx] <- TRUE
+  restart_history
 }

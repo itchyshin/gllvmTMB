@@ -44,6 +44,80 @@ make_multistart_fit <- function(seed = 7L) {
   )))
 }
 
+test_that("restart selection ignores non-finite objectives", {
+  rows <- list(
+    gllvmTMB:::.gllvmTMB_restart_history_row(
+      restart = 1L,
+      start_label = "initial",
+      start_method = "default",
+      optimizer = "optim",
+      jitter_sd = 0,
+      objective = NaN,
+      convergence = 0L,
+      message = "nan",
+      elapsed_s = 0.1,
+      iterations = 1L,
+      evaluations = 1L,
+      success = FALSE
+    ),
+    gllvmTMB:::.gllvmTMB_restart_history_row(
+      restart = 2L,
+      start_label = "jitter",
+      start_method = "default",
+      optimizer = "optim",
+      jitter_sd = 0.2,
+      objective = 12,
+      convergence = 0L,
+      message = "",
+      elapsed_s = 0.2,
+      iterations = 2L,
+      evaluations = 2L,
+      success = TRUE
+    ),
+    gllvmTMB:::.gllvmTMB_restart_history_row(
+      restart = 3L,
+      start_label = "jitter",
+      start_method = "default",
+      optimizer = "optim",
+      jitter_sd = 0.2,
+      objective = 10,
+      convergence = 0L,
+      message = "",
+      elapsed_s = 0.3,
+      iterations = 3L,
+      evaluations = 3L,
+      success = TRUE
+    ),
+    gllvmTMB:::.gllvmTMB_restart_history_row(
+      restart = 4L,
+      start_label = "jitter",
+      start_method = "default",
+      optimizer = "optim",
+      jitter_sd = 0.2,
+      objective = -Inf,
+      convergence = 0L,
+      message = "degenerate",
+      elapsed_s = 0.4,
+      iterations = 4L,
+      evaluations = 4L,
+      success = FALSE
+    )
+  )
+  history <- do.call(rbind, rows)
+
+  selected <- gllvmTMB:::.gllvmTMB_select_restart_history(history)
+  expect_equal(selected$restart[selected$selected], 3L)
+  expect_false(selected$selected[selected$restart == 1L])
+  expect_false(selected$selected[selected$restart == 4L])
+
+  no_success <- history
+  no_success$success <- FALSE
+  expect_error(
+    gllvmTMB:::.gllvmTMB_select_restart_history(no_success),
+    "No successful restart"
+  )
+})
+
 ## ---- report consistency with opt$par ------------------------------------
 
 test_that("fit$report matches obj$report(fit$opt$par) after multi-start", {

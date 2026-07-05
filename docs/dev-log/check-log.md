@@ -33309,3 +33309,29 @@ Outcome: parse passed; the focused `phylo_dep` s=2 test file passed its pure
 parser assertions and skipped the expected heavy recovery rows. This is
 rank-deficiency guard hardening only; it does not promote non-Gaussian s >= 2
 or broader random-slope inference.
+
+## 2026-07-04 -- Reduced-rank Sigma Wald unavailable-bounds guard
+
+Goal: add direct regression evidence for the CI-01 boundary that
+`confint(parm = "Sigma_unit", method = "wald")` must not attach Psi-only
+`theta_diag` bounds to a reduced-rank total covariance target.
+
+Edits:
+
+- Added a heavy-gated regression in `test-confint-bootstrap.R` using the
+  existing `latent() + unique()` fixture.
+- Asserted that reduced-rank total `Sigma_unit` Wald rows keep finite point
+  estimates but return `NA` lower/upper bounds.
+- Updated CI-01 evidence to include `test-confint-bootstrap.R`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/z-confint-gllvmTMB.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'Sys.setenv(GLLVMTMB_HEAVY_TESTS = "1", NOT_CRAN = "true"); pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-bootstrap.R", reporter = "summary")'
+```
+
+Outcome: parse passed; the focused heavy `test-confint-bootstrap.R` file
+passed, including the new reduced-rank total-Sigma Wald unavailable-bounds
+regression. This preserves the CI-01 guard and does not promote reduced-rank
+total-Sigma Wald bounds.

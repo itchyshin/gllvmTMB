@@ -125,6 +125,25 @@ test_that("confint() keeps Sigma_B as a legacy alias", {
   expect_equal(canonical$method, legacy$method)
 })
 
+test_that("Sigma_unit Wald leaves reduced-rank total covariance bounds unavailable", {
+  skip_if_not_heavy()
+  skip_on_cran()
+
+  fit <- make_tiny_B_fit()
+  ci <- suppressMessages(confint(
+    fit,
+    parm = "Sigma_unit",
+    level = 0.95,
+    method = "wald"
+  ))
+
+  expect_s3_class(ci, "data.frame")
+  expect_true(all(grepl("^Sigma_unit\\[", ci$parameter)))
+  expect_true(all(is.finite(ci$estimate)))
+  expect_true(all(is.na(ci$lower)))
+  expect_true(all(is.na(ci$upper)))
+})
+
 test_that("confint(fit) without parm returns a matrix (Wald, fixed effects)", {
   skip_if_not_heavy()
   skip_on_cran()

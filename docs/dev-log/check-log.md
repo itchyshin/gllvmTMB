@@ -34039,3 +34039,39 @@ Not run:
 - No heavy coevolution/kernel recovery or cluster2 family sweep; this slice
   only repairs table-level discovery and dispatch for already-supported point
   extractors.
+
+## 2026-07-05 -- Derived profile refit finite-probe bracketing
+
+Goal: harden the shared derived-profile endpoint search used by
+`profile_ci_communality()`, `profile_ci_correlation()`, and
+`profile_ci_proportions()` so isolated failed constrained refits do not erase a
+later valid LR crossing on the same side of the MLE. This follows the same
+finite-point discipline already used by the profile-derived curve inverter.
+
+Edits:
+
+- Updated `.profile_ci_via_refit()` to keep a finite probe ledger on each side
+  of the fitted target, skip isolated failed probes, and continue expanding
+  toward the natural boundary.
+- Added a bounded fallback interpolation for cases where the two finite bracket
+  endpoints exist but `uniroot()` cannot traverse a rough non-Gaussian surface.
+- Added a pure regression in `test-profile-derived-refit.R` covering the
+  first-probe-fails/later-crossing case.
+- Updated validation-debt row `CI-12`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/profile-derived.R")); invisible(parse("tests/testthat/test-profile-derived-refit.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-derived-refit.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-matrix-gamma-unit.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-derived-curves.R", reporter = "summary")'
+git diff --check
+```
+
+Not run:
+
+- No broad coverage/ADEMP calibration, no new source-specific or augmented
+  profile route, and no mixed-family CI promotion. This is endpoint-search
+  reliability only.

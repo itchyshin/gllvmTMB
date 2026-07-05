@@ -318,7 +318,10 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   q_hi_hint = NULL,
   q_lo_floor = -Inf,
   q_hi_ceiling = Inf,
-  lambda = 1e6
+  lambda = 1e6,
+  max_expand = 8L,
+  root_tol = 0.005,
+  root_maxiter = 25L
 ) {
   crit <- .qchisq_threshold(level)
   mle_val <- as.numeric(fit$opt$objective)
@@ -338,102 +341,93 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
     q_hi_hint <- q_hat + 0.3
   }
 
-  ## Bracket on each side: try a small expanding sequence of trial points.
-  ## If we hit the parameter floor/ceiling and the profile still hasn't
-  ## crossed the chi-square threshold, the bound IS the parameter
-  ## boundary (matches the boundary semantic in `.profile_bounds()`).
+  interp_root <- function(q_in, e_in, q_out, e_out) {
+    vals <- c(q_in, e_in, q_out, e_out)
+    if (!all(is.finite(vals)) || e_out == e_in) {
+      return(q_out)
+    }
+    q_in + (0 - e_in) * (q_out - q_in) / (e_out - e_in)
+  }
+
+  root_between <- function(q_in, q_out, e_in, e_out) {
+    bound <- tryCatch(
+      stats::uniroot(
+        excess,
+        interval = sort(c(q_in, q_out)),
+        extendInt = "no",
+        tol = root_tol,
+        maxiter = root_maxiter
+      )$root,
+      error = function(e) NA_real_
+    )
+    if (is.finite(bound)) {
+      return(bound)
+    }
+    ## Rough non-Gaussian surfaces can contain isolated failed constrained
+    ## refits inside an otherwise valid bracket. Keep the bound finite by
+    ## interpolating between the two finite endpoints, mirroring the profile
+    ## curve inverter's finite-point rule.
+    interp_root(q_in, e_in, q_out, e_out)
+  }
+
+  ## Bracket on each side with a finite probe ledger. Isolated constrained
+  ## refit failures are skipped rather than allowed to erase a later valid
+  ## crossing. If finite probes reach the parameter floor/ceiling and the
+  ## profile still has not crossed the chi-square threshold, the bound IS the
+  ## parameter boundary (matches `.profile_bounds()` boundary semantics).
   find_bound <- function(direction) {
     if (direction == "lower") {
-      trial <- q_lo_hint
       step <- (q_hat - q_lo_hint)
       sign <- -1
       lim <- q_lo_floor
     } else {
-      trial <- q_hi_hint
       step <- (q_hi_hint - q_hat)
       sign <- 1
       lim <- q_hi_ceiling
     }
-    e_trial <- excess(trial)
-    if (is.na(e_trial)) {
-      ## First probe failed (refit at q_lo_hint or q_hi_hint did not
-      ## converge). Try directly at the parameter limit: if the
-      ## constrained refit at the boundary gives a finite excess that's
-      ## still negative, the bound IS the boundary. If the boundary
-      ## refit also fails, return NA (genuine refit failure).
-      e_lim <- if (is.finite(lim)) excess(lim) else NA_real_
-      if (!is.na(e_lim) && e_lim < 0) {
-        return(lim)
-      }
-      return(NA_real_)
+    step <- abs(step)
+    if (!is.finite(step) || step <= 0) {
+      step <- 0.3
     }
 
-    ## Case A: first probe already OUTSIDE the CI (excess > 0). The
-    ## true bound lies BETWEEN the hint and q_hat. excess(q_hat) is
-    ## approximately -crit (the MLE value of the target), so we have a
-    ## sign change in [hint, q_hat]. Use uniroot directly.
-    if (e_trial > 0) {
-      bound <- tryCatch(
-        stats::uniroot(
-          excess,
-          interval = sort(c(trial, q_hat)),
-          extendInt = "no",
-          tol = 0.005,
-          maxiter = 25
-        )$root,
-        error = function(e) NA_real_
-      )
-      return(bound)
+    max_expand <- as.integer(max_expand)
+    if (is.na(max_expand) || max_expand < 1L) {
+      max_expand <- 1L
+    }
+    trials <- q_hat + sign * step * (1.6 ^ seq.int(0L, max_expand - 1L))
+    if (direction == "lower") {
+      if (is.finite(lim)) {
+        trials <- pmax(trials, lim)
+        trials <- c(trials, lim)
+      }
+    } else if (is.finite(lim)) {
+      trials <- pmin(trials, lim)
+      trials <- c(trials, lim)
+    }
+    trials <- unique(trials)
+
+    q_inside <- q_hat
+    e_inside <- -crit
+    finite_probe_seen <- FALSE
+
+    for (trial in trials) {
+      e_trial <- excess(trial)
+      if (is.na(e_trial) || !is.finite(e_trial)) {
+        next
+      }
+      finite_probe_seen <- TRUE
+      if (e_trial >= 0) {
+        return(root_between(q_inside, trial, e_inside, e_trial))
+      }
+      q_inside <- trial
+      e_inside <- e_trial
     }
 
-    n_iter <- 0
-    at_boundary <- FALSE
-    while (!is.na(e_trial) && e_trial < 0 && n_iter < 6) {
-      trial_new <- q_hat + sign * (step * (1.6^n_iter))
-      if (direction == "lower" && trial_new < q_lo_floor) {
-        trial_new <- q_lo_floor
-        at_boundary <- TRUE
-      }
-      if (direction == "upper" && trial_new > q_hi_ceiling) {
-        trial_new <- q_hi_ceiling
-        at_boundary <- TRUE
-      }
-      e_new <- excess(trial_new)
-      if (is.na(e_new)) {
-        ## Mid-loop refit failure. If we were probing at the
-        ## parameter boundary, the bound IS the boundary (refits
-        ## near the limit are commonly singular). Otherwise NA.
-        if (at_boundary) {
-          return(lim)
-        }
-        return(NA_real_)
-      }
-      if (e_new >= 0) {
-        bound <- tryCatch(
-          stats::uniroot(
-            excess,
-            interval = sort(c(trial, trial_new)),
-            extendInt = "no",
-            tol = 0.005,
-            maxiter = 25
-          )$root,
-          error = function(e) NA_real_
-        )
-        return(bound)
-      }
-      ## Reached the parameter boundary and profile still flat: report
-      ## the boundary itself (CI extends to the natural limit).
-      if (at_boundary) {
-        return(lim)
-      }
-      trial <- trial_new
-      e_trial <- e_new
-      n_iter <- n_iter + 1
-    }
-    ## Iterations exhausted but we never reached the boundary either —
-    ## treat this as "profile too flat to bracket within the search
-    ## range"; return the boundary as the conservative answer.
-    if (is.finite(lim)) {
+    ## Iterations exhausted or the finite boundary was reached. If at least
+    ## one constrained refit on this side was valid, report the natural
+    ## boundary for a flat/one-sided profile. With no finite probe beyond the
+    ## MLE, report NA because the side genuinely failed.
+    if (finite_probe_seen && is.finite(lim)) {
       return(lim)
     }
     NA_real_

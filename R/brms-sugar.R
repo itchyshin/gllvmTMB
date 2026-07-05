@@ -1911,6 +1911,14 @@ normalise_spatial_orientation <- function(e) {
     ))
   }
   if (is.name(lhs) && is.name(rhs)) {
+    if (!identical(as.character(rhs), "trait")) {
+      cli::cli_abort(c(
+        "{.fn {fn}} bar must be {.code 0 + trait | coords}.",
+        "i" = "Got LHS = {.code {deparse(lhs)}}, RHS = {.code {deparse(rhs)}}.",
+        "x" = "Only the deprecated orientation {.code coords | trait} may use a bare-name LHS/RHS pair.",
+        ">" = "Use {.code {fn}(0 + trait | coords)} for the canonical spatial orientation."
+      ))
+    }
     ## Deprecated `coords | trait` orientation -- flip and warn (once).
     ## lifecycle::deprecate_warn() doesn't process cli markup in
     ## `details`, so we use plain backticks here for legibility.

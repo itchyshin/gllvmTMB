@@ -34199,3 +34199,41 @@ Not run:
   mock the `extract_Sigma()` return shape to isolate the `extract_Omega()`
   summation contract. No broad `devtools::check()`, pkgdown rebuild, Totoro, or
   DRAC compute was needed for this local extractor guard.
+
+## 2026-07-05 -- spatial orientation bare-name guard
+
+Goal: close the local parser repair for issue #627. `spatial_*()` should still
+accept the deprecated `coords | trait` orientation, but a malformed
+canonical-looking bare-name pair such as `sp | coords` should fail loud instead
+of being silently reinterpreted as the deprecated alias.
+
+Edits:
+
+- Tightened `normalise_spatial_orientation()` so only a bare-name RHS equal to
+  `trait` is treated as the deprecated `coords | trait` orientation.
+- Added pure parser tests proving `coords | trait` still normalises to
+  `0 + trait | coords`, `sp | coords` errors, and `spatial_indep()` remains
+  canonical-only.
+- Updated validation-debt row `FG-13`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'parse("R/brms-sugar.R"); parse("tests/testthat/test-spatial-orientation-parser.R"); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-spatial-orientation-parser.R")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-spatial-orientation.R")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-spatial-orientation.R")'
+git diff --check
+```
+
+Notes:
+
+- `test-spatial-orientation.R` skips by design unless `NOT_CRAN=true`; the
+  `NOT_CRAN=true` rerun passed all 16 assertions and verified the legacy alias
+  still gives byte-identical fits.
+
+Not run:
+
+- No roxygen regeneration, pkgdown rebuild, broad `devtools::check()`, Totoro,
+  or DRAC compute. This is a parser guard only; no formula examples or public
+  syntax changed beyond rejecting a malformed ambiguous bar.

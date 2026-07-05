@@ -48,6 +48,48 @@ build_derived_fixture <- function(seed = 42L) {
   list(fit = fit, T = 3L)
 }
 
+.unit_obs_profile_cache <- new.env(parent = emptyenv())
+
+## Build a small Gaussian fit with rr_W + diag_W at the observed-unit
+## tier and no unit-tier reduced-rank term. This is the fitted W-tier
+## canary for `communality:unit_obs` and `rho:unit_obs:i,j` profile
+## routes; the main fixture above only has diag_W at this tier.
+build_unit_obs_profile_fixture <- function(seed = 20260705L) {
+  if (!is.null(.unit_obs_profile_cache$fit)) {
+    return(list(
+      fit = .unit_obs_profile_cache$fit,
+      T = .unit_obs_profile_cache$T
+    ))
+  }
+  set.seed(seed)
+  s <- gllvmTMB::simulate_site_trait(
+    n_sites = 30L,
+    n_species = 5L,
+    n_traits = 3L,
+    mean_species_per_site = 4L,
+    Lambda_B = matrix(0, 3L, 1L),
+    Lambda_W = matrix(c(0.8, 0.45, -0.35), 3L, 1L),
+    psi_B = c(0.05, 0.05, 0.05),
+    psi_W = c(0.25, 0.35, 0.30),
+    beta = matrix(0, 3L, 2L),
+    seed = seed
+  )
+  fit <- suppressMessages(suppressWarnings(
+    gllvmTMB::gllvmTMB(
+      value ~ 0 +
+        trait +
+        latent(0 + trait | site_species, d = 1) +
+        unique(0 + trait | site_species),
+      data = s$data,
+      control = gllvmTMB::gllvmTMBcontrol(se = TRUE, n_init = 1),
+      silent = TRUE
+    )
+  ))
+  .unit_obs_profile_cache$fit <- fit
+  .unit_obs_profile_cache$T <- 3L
+  list(fit = fit, T = 3L)
+}
+
 ## ============================================================================
 ##  ICC / repeatability tokens
 ## ============================================================================
@@ -162,7 +204,11 @@ test_that("confint(fit, parm = 'icc') with method = 'bootstrap' returns matrix",
   skip_on_cran()
   fx <- build_derived_fixture()
   ci <- suppressMessages(confint(
-    fx$fit, parm = "icc", method = "bootstrap", nsim = 25L, seed = 1L
+    fx$fit,
+    parm = "icc",
+    method = "bootstrap",
+    nsim = 25L,
+    seed = 1L
   ))
   expect_true(is.matrix(ci))
   expect_equal(nrow(ci), fx$T)
@@ -315,8 +361,11 @@ test_that("confint(fit, parm = 'communality:unit', method = 'bootstrap') returns
   fx <- build_derived_fixture()
   res <- suppressMessages(suppressWarnings(
     confint(
-      fx$fit, parm = "communality:unit", method = "bootstrap",
-      nsim = 30L, seed = 42L
+      fx$fit,
+      parm = "communality:unit",
+      method = "bootstrap",
+      nsim = 30L,
+      seed = 42L
     )
   ))
   expect_true(is.matrix(res))
@@ -334,6 +383,30 @@ test_that("confint(fit, parm = 'communality:unit') bounds are within [0, 1]", {
   finite <- is.finite(ci)
   expect_true(all(ci[finite] >= -1e-3))
   expect_true(all(ci[finite] <= 1 + 1e-3))
+})
+
+test_that("confint(fit, parm = 'communality:unit_obs') profiles fitted W-tier latent covariance", {
+  skip_if_not_heavy()
+  skip_if_not_installed("TMB")
+  skip_on_cran()
+  fx <- build_unit_obs_profile_fixture()
+  expect_true(isTRUE(fx$fit$use$rr_W))
+  expect_true(isTRUE(fx$fit$use$diag_W))
+  expect_false(isTRUE(fx$fit$use$rr_B))
+  ci <- suppressMessages(suppressWarnings(
+    confint(
+      fx$fit,
+      parm = "communality:unit_obs:trait_1",
+      method = "profile"
+    )
+  ))
+  expect_true(is.matrix(ci))
+  expect_equal(nrow(ci), 1L)
+  expect_equal(rownames(ci), "communality:unit_obs:trait_1")
+  expect_true(all(is.finite(ci)))
+  expect_true(all(ci >= -1e-8))
+  expect_true(all(ci <= 1 + 1e-8))
+  expect_lte(ci[1L, 1L], ci[1L, 2L])
 })
 
 ## ============================================================================
@@ -441,6 +514,30 @@ test_that("confint(fit, parm = 'rho:unit:1,2', method = 'wald') aliases fisher-z
   expect_equal(ci_w, ci_f)
 })
 
+test_that("confint(fit, parm = 'rho:unit_obs') profiles fitted W-tier latent covariance", {
+  skip_if_not_heavy()
+  skip_if_not_installed("TMB")
+  skip_on_cran()
+  fx <- build_unit_obs_profile_fixture()
+  expect_true(isTRUE(fx$fit$use$rr_W))
+  expect_true(isTRUE(fx$fit$use$diag_W))
+  expect_false(isTRUE(fx$fit$use$rr_B))
+  ci <- suppressMessages(suppressWarnings(
+    confint(
+      fx$fit,
+      parm = "rho:unit_obs:1,2",
+      method = "profile"
+    )
+  ))
+  expect_true(is.matrix(ci))
+  expect_equal(nrow(ci), 1L)
+  expect_equal(rownames(ci), "rho:unit_obs:1,2")
+  expect_true(all(is.finite(ci)))
+  expect_true(all(ci >= -1 - 1e-8))
+  expect_true(all(ci <= 1 + 1e-8))
+  expect_lte(ci[1L, 1L], ci[1L, 2L])
+})
+
 ## ============================================================================
 ##  Return-shape invariants (cross-token)
 ## ============================================================================
@@ -450,10 +547,13 @@ test_that("All derived-quantity tokens return numeric matrices with 2 columns", 
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
-  ci_icc  <- suppressMessages(confint(fx$fit, parm = "icc", method = "wald"))
-  ci_com  <- suppressMessages(confint(fx$fit, parm = "communality:unit"))
-  ci_rho  <- suppressMessages(confint(fx$fit, parm = "rho:unit:1,2",
-                                       method = "fisher-z"))
+  ci_icc <- suppressMessages(confint(fx$fit, parm = "icc", method = "wald"))
+  ci_com <- suppressMessages(confint(fx$fit, parm = "communality:unit"))
+  ci_rho <- suppressMessages(confint(
+    fx$fit,
+    parm = "rho:unit:1,2",
+    method = "fisher-z"
+  ))
   expect_true(is.matrix(ci_icc) && is.numeric(ci_icc) && ncol(ci_icc) == 2L)
   expect_true(is.matrix(ci_com) && is.numeric(ci_com) && ncol(ci_com) == 2L)
   expect_true(is.matrix(ci_rho) && is.numeric(ci_rho) && ncol(ci_rho) == 2L)

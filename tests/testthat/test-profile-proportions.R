@@ -52,6 +52,44 @@ build_prop_fixture <- function(seed = 42L) {
   list(fit = fit, T = 3L)
 }
 
+.unit_obs_prop_fit_cache <- new.env(parent = emptyenv())
+
+build_unit_obs_prop_fixture <- function(seed = 20260705L) {
+  if (!is.null(.unit_obs_prop_fit_cache$fit)) {
+    return(list(
+      fit = .unit_obs_prop_fit_cache$fit,
+      T = .unit_obs_prop_fit_cache$T
+    ))
+  }
+  set.seed(seed)
+  s <- gllvmTMB::simulate_site_trait(
+    n_sites = 30L,
+    n_species = 5L,
+    n_traits = 3L,
+    mean_species_per_site = 4L,
+    Lambda_B = matrix(0, 3L, 1L),
+    Lambda_W = matrix(c(0.8, 0.45, -0.35), 3L, 1L),
+    psi_B = c(0.05, 0.05, 0.05),
+    psi_W = c(0.25, 0.35, 0.30),
+    beta = matrix(0, 3L, 2L),
+    seed = seed
+  )
+  fit <- suppressMessages(suppressWarnings(
+    gllvmTMB::gllvmTMB(
+      value ~ 0 +
+        trait +
+        latent(0 + trait | site_species, d = 1) +
+        unique(0 + trait | site_species),
+      data = s$data,
+      control = gllvmTMB::gllvmTMBcontrol(se = TRUE, n_init = 1),
+      silent = TRUE
+    )
+  ))
+  .unit_obs_prop_fit_cache$fit <- fit
+  .unit_obs_prop_fit_cache$T <- 3L
+  list(fit = fit, T = 3L)
+}
+
 ## Cached "full" profile-CI table on trait_1 (3 components present in
 ## the fixture). The five "inspection" tests below all read this one
 ## result, so the slow refit runs once per test session.
@@ -121,7 +159,8 @@ test_that("profile_ci_proportions(): bounds monotonic for all profiled rows (low
   skip_on_cran()
   tbl <- get_full_prop_tbl()
   ok <- tbl$method == "profile" &
-    is.finite(tbl$lower) & is.finite(tbl$upper)
+    is.finite(tbl$lower) &
+    is.finite(tbl$upper)
   ## At least the shared_unit row (the stable component) should profile
   ## cleanly. We assert monotonicity only where bounds are finite.
   expect_true(any(ok))
@@ -160,12 +199,62 @@ test_that("profile_ci_proportions(components = 'shared_unit', trait_idx = 1) fil
   fx <- build_prop_fixture()
   tbl <- suppressMessages(suppressWarnings(
     gllvmTMB::profile_ci_proportions(
-      fx$fit, components = "shared_unit", trait_idx = 1L
+      fx$fit,
+      components = "shared_unit",
+      trait_idx = 1L
     )
   ))
   expect_equal(nrow(tbl), 1L)
   expect_equal(as.character(tbl$component), "shared_unit")
   expect_equal(as.character(tbl$trait), "trait_1")
+})
+
+test_that("profile_ci_proportions() profiles shared and unique unit_obs components on a fitted W tier", {
+  skip_if_not_heavy()
+  skip_if_not_installed("TMB")
+  skip_on_cran()
+  fx <- build_unit_obs_prop_fixture()
+  expect_true(isTRUE(fx$fit$use$rr_W))
+  expect_true(isTRUE(fx$fit$use$diag_W))
+  expect_false(isTRUE(fx$fit$use$rr_B))
+  tbl <- suppressMessages(suppressWarnings(
+    gllvmTMB::profile_ci_proportions(
+      fx$fit,
+      components = c("shared_unit_obs", "unique_unit_obs"),
+      trait_idx = 1L
+    )
+  ))
+  expect_s3_class(tbl, "data.frame")
+  expect_setequal(
+    as.character(tbl$component),
+    c("shared_unit_obs", "unique_unit_obs")
+  )
+  expect_equal(as.character(tbl$trait), rep("trait_1", 2L))
+  ref <- suppressMessages(gllvmTMB::extract_proportions(
+    fx$fit,
+    format = "long"
+  ))
+  key_tbl <- paste(
+    as.character(tbl$trait),
+    as.character(tbl$component),
+    sep = "::"
+  )
+  key_ref <- paste(
+    as.character(ref$trait),
+    as.character(ref$component),
+    sep = "::"
+  )
+  idx <- match(key_tbl, key_ref)
+  expect_false(anyNA(idx))
+  expect_equal(tbl$proportion, ref$proportion[idx], tolerance = 1e-10)
+  ok <- tbl$method == "profile" &
+    is.finite(tbl$lower) &
+    is.finite(tbl$upper)
+  expect_true(any(ok))
+  expect_true(all(tbl$lower[ok] >= -1e-3))
+  expect_true(all(tbl$upper[ok] <= 1 + 1e-3))
+  expect_true(all(tbl$lower[ok] <= tbl$proportion[ok] + 1e-6))
+  expect_true(all(tbl$proportion[ok] <= tbl$upper[ok] + 1e-6))
 })
 
 ## ============================================================================
@@ -183,7 +272,9 @@ test_that("profile_ci_proportions(): unknown component errors with available lis
   expect_error(
     suppressMessages(suppressWarnings(
       gllvmTMB::profile_ci_proportions(
-        fx$fit, components = "shared_phy", trait_idx = 1L
+        fx$fit,
+        components = "shared_phy",
+        trait_idx = 1L
       )
     )),
     "not present|Available"
@@ -310,8 +401,11 @@ test_that("confint(fit, parm = 'proportion:shared_unit', method = 'bootstrap') r
   fx <- build_prop_fixture()
   res <- suppressMessages(suppressWarnings(
     confint(
-      fx$fit, parm = "proportion:shared_unit", method = "bootstrap",
-      nsim = 30L, seed = 42L
+      fx$fit,
+      parm = "proportion:shared_unit",
+      method = "bootstrap",
+      nsim = 30L,
+      seed = 42L
     )
   ))
   expect_true(is.matrix(res))

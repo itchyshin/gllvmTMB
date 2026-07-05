@@ -34332,3 +34332,57 @@ Not run:
 - No roxygen regeneration, pkgdown rebuild, broad `devtools::check()`, Totoro,
   or DRAC compute. This is a pure parser/deprecation-scanner guard; no model
   likelihood or public syntax changed.
+
+## 2026-07-05 -- fitted unit_obs derived-profile canary
+
+Goal: close the profile-route evidence gap where `unit_obs` derived-profile
+routes were mostly covered by route ledgers and pure logic rather than by a
+fitted observed-unit latent model.
+
+Edits:
+
+- Added a small Gaussian W-tier fixture with
+  `latent(0 + trait | site_species, d = 1) +
+  unique(0 + trait | site_species)` and no unit-tier reduced-rank term.
+- Added fitted profile-LR canaries for
+  `communality:unit_obs:trait_1` and `rho:unit_obs:1,2`.
+- Added a fitted variance-proportion canary for
+  `shared_unit_obs` and `unique_unit_obs` on the same W-tier route.
+- Updated validation-debt rows `CI-06` and `CI-11` to separate the new
+  `unit_obs` fitted evidence from the still-gated cluster / cluster2 /
+  augmented / non-Gaussian / source-specific profile claims.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("tests/testthat/test-confint-derived.R")); invisible(parse("tests/testthat/test-profile-proportions.R")); cat("parse-ok\n")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-proportions.R", desc = "profile_ci_proportions() profiles shared and unique unit_obs components on a fitted W tier")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-derived.R", desc = "confint(fit, parm = '\''communality:unit_obs'\'') profiles fitted W-tier latent covariance")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-derived.R", desc = "confint(fit, parm = '\''rho:unit_obs'\'') profiles fitted W-tier latent covariance")'
+air format tests/testthat/test-confint-derived.R tests/testthat/test-profile-proportions.R
+git diff --check
+```
+
+Results:
+
+- Parse check: `parse-ok`.
+- `profile_ci_proportions()` fitted `unit_obs` canary: 13 pass, 0 fail,
+  0 skip under `NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1`.
+- `communality:unit_obs` fitted profile canary: 10 pass, 0 fail, 0 skip under
+  `NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1`.
+- `rho:unit_obs` fitted profile canary: 10 pass, 0 fail, 0 skip under
+  `NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1`.
+- `git diff --check` passed.
+
+What did not go smoothly:
+
+- The first two selector attempts used `test_file(..., filter = "unit_obs")`,
+  which this local `testthat` did not support, and then `desc = "unit_obs"`,
+  which is exact-match rather than regex. Both attempts failed before executing
+  tests. The successful commands above use exact `desc` strings.
+
+Not run:
+
+- No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro, or
+  DRAC compute. This is a focused fitted canary for existing profile routes,
+  not interval calibration or a release gate.

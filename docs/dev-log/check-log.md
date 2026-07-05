@@ -35007,6 +35007,11 @@ Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
 Rscript --vanilla -e 'tools::checkRd("man/families.Rd")'
 rg -n "delta_\\* families \\(10 variants\\)|fixed/ordinary latent|entire family group|planned \\(post-CRAN\\).*Delta-lognormal|covered.*latent.*delta|delta.*latent recovery" docs/design docs/dev-log README.md NEWS.md ROADMAP.md R tests/testthat
 git diff --check
+python3 -m json.tool docs/dev-log/dashboard/status.json
+python3 -m json.tool docs/dev-log/dashboard/sweep.json
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool
+curl -s http://127.0.0.1:8770/sweep.json | python3 -m json.tool
 ```
 
 Results:
@@ -35023,6 +35028,11 @@ Results:
 - The stale scan still finds historical audit prose, but active truth files
   now carry the narrowed FAM-17 boundary.
 - `git diff --check` passed.
+- Mission Control JSON validation passed, the already-running local server
+  synced dashboard files, served `status.json` and `sweep.json` validated, and
+  the in-app browser at `http://127.0.0.1:8770/` showed the delta-family
+  truth-lock row with fixed-effect-only standard delta support and no active
+  compute.
 
 Boundary probe:
 

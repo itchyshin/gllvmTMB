@@ -33,6 +33,11 @@ Rscript --vanilla -e 'Sys.setenv(GLLVMTMB_HEAVY_TESTS="1", NOT_CRAN="true"); dev
 Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
 Rscript --vanilla -e 'tools::checkRd("man/families.Rd")'
 git diff --check
+python3 -m json.tool docs/dev-log/dashboard/status.json
+python3 -m json.tool docs/dev-log/dashboard/sweep.json
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool
+curl -s http://127.0.0.1:8770/sweep.json | python3 -m json.tool
 ```
 
 Results:
@@ -44,6 +49,10 @@ Results:
 - Rd regeneration succeeded; `checkRd()` reported only existing non-ASCII
   reference page-range warnings.
 - `git diff --check` passed.
+- Mission Control JSON validation passed, the local server synced the refreshed
+  dashboard files, served JSON validated, and the in-app browser showed the
+  delta-family truth-lock row with fixed-effect-only standard delta support and
+  no active compute.
 
 ## Boundary
 

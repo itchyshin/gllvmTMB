@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-05 03:06 MDT",
+  "updated": "2026-07-05 03:24 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -12,10 +12,10 @@
   },
   "active_work": [
     {
-      "when": "2026-07-05 03:06 MDT",
+      "when": "2026-07-05 03:24 MDT",
       "who": "gllvmTMB completion truth lock",
       "status": "guard",
-      "text": "Current local branch codex/r-bridge-grouped-dispersion is clean at 6bf0d79e and ahead of origin by 185 commits. Focused gllvmTMB completion work banked the surface audit, structural random-regression guard checks, constructor-only family boundary, and heavy truncated-family verification: enum/runtime guard 9 pass, profile route matrix 282 pass, augmented LHS guard 33 pass, ordinary latent random-regression 75 pass, truncated recovery 15 pass, and truncated matrix 30 pass. This is truth-lock and local focused evidence only: not release completion, not coverage calibration, not source-specific lv widening, not mixed-family CI support, not Julia parity, and not active compute."
+      "text": "Delta-family truth-lock slice is committed at 7433904e on codex/r-bridge-grouped-dispersion. Focused gllvmTMB completion work has now banked the surface audit, structural random-regression guard checks, constructor-only family boundary, heavy truncated-family verification, and the narrowed FAM-17 delta boundary: enum/runtime guard 15 pass, delta-gamma heavy fixed-effect recovery 13 pass, delta-lognormal heavy fixed-effect recovery 13 pass, profile route matrix 282 pass, augmented LHS guard 33 pass, ordinary latent random-regression 75 pass, truncated recovery 15 pass, and truncated matrix 30 pass. Delta support is standard delta_lognormal()/delta_gamma() fixed-effect only; delta mixtures, delta_gengamma(), delta_beta(), delta-truncated NB, Poisson-link delta, latent/random delta covariance, and mixed-family delta correlations remain blocked or out of scope. This is truth-lock and local focused evidence only: not release completion, not coverage calibration, not source-specific lv widening, not mixed-family CI support, not Julia parity, and not active compute."
     },
     {
       "when": "2026-07-04 17:14 MDT",

@@ -36,6 +36,10 @@ or this function.}
 \code{"scalar"}). Mandatory when LHS is \code{0 + trait}.}
 
 \item{d}{Latent rank for \code{mode = "latent"}. Default 1.}
+
+\item{unique}{Logical; for \code{mode = "latent"}, forward to
+\code{\link[=spatial_latent]{spatial_latent()}} to include the per-trait unique spatial diagonal
+companion. Ignored by the non-latent dispatch modes.}
 }
 \value{
 A formula marker; never evaluated.

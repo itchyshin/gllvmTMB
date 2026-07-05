@@ -32481,3 +32481,51 @@ Outcome: passed.
 Known limitation:
 
 - Internal roxygen comment cleanup only; no generated Rd changed.
+
+## 2026-07-04 -- Release hygiene check
+
+Goal: run release-level local checks after the focused review-package checks.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Outcome: completed cleanly after the roxygen-link cleanup.
+
+```sh
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+```
+
+Outcome: passed; `No problems found.`
+
+```sh
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+```
+
+First outcome: failed with one warning:
+
+- `checking Rd \usage sections ... WARNING`
+- `Undocumented arguments in Rd file 'spatial.Rd': 'unique'`
+
+Fix:
+
+- Added `@param unique` to the `spatial()` roxygen block in `R/brms-sugar.R`.
+- Regenerated docs; `man/spatial.Rd` gained the corresponding argument entry.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'invisible(parse("R/brms-sugar.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+git diff --check
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+```
+
+Outcome: documentation regenerated cleanly; parse passed; pkgdown passed; diff
+check passed; local R CMD check passed in 4m 26.1s with 0 errors, 0 warnings,
+0 notes.
+
+Known limitation:
+
+- Local checks only; no GitHub CI because this branch was not pushed.

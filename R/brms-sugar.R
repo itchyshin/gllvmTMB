@@ -1056,6 +1056,9 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #'   `"dep"`. Optional when LHS is `1` (defaults silently to
 #'   `"scalar"`). Mandatory when LHS is `0 + trait`.
 #' @param d Latent rank for `mode = "latent"`. Default 1.
+#' @param unique Logical; for `mode = "latent"`, forward to
+#'   [spatial_latent()] to include the per-trait unique spatial diagonal
+#'   companion. Ignored by the non-latent dispatch modes.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_scalar()], [spatial_unique()], [spatial_indep()],
 #'   [spatial_latent()], [spatial_dep()], [phylo()] (phylogenetic

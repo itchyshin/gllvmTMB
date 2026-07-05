@@ -11,6 +11,29 @@ Each item below has precise pointers + the acceptance check.
 
 ## 1. Delta mixed-family: build latent-on-main (Shinichi 2026-07-05, this arc)
 
+> **⚠️ FINAL CORRECTION (Claude, 2026-07-05) — read this first; it supersedes the
+> convergence sub-thread below.** The convergence "diagnosis" below (the non-PD
+> Hessian, the "non-Gaussian Ψ free at a zero boundary", the two-gap auto-Psi
+> gate fix at `fit-multi.R:922`/`:4093`, the Λ-rotation theory) **was built on a
+> spurious signal and is RETRACTED.** Root error: `fit$sdr` is `NULL` on a default
+> gllvmTMB fit (no `sdreport` stored), so my `isTRUE(fit$sdr$pdHess)` read
+> returned `FALSE` for *every* fit — including a clean gaussian+gaussian control.
+> There was **no measured non-PD Hessian**; I misread `isTRUE(NULL)`.
+>
+> **What actually survives (point-estimate evidence, independent of pdHess):**
+> (1) the non-Gaussian between-unit **Ψ is IDENTIFIABLE** — the confound-free
+> recovery study (`data-raw/diagnostics/2026-07-05-nongaussian-psi-recovery-study.R`,
+> `extract_Sigma(part="unique")`) shows it tracks truth (0→~0, 1.44→~1.2); (2)
+> these fits **converge** (`opt$convergence == 0`). So **do NOT zero the
+> non-Gaussian Ψ and do NOT widen the auto-Psi gate** — there is no evidence of a
+> bug there. **To actually assess convergence/identifiability, run with
+> `sdreport` (`se = TRUE` or `TMB::sdreport(fit$obj)`) and read a REAL `pdHess`.**
+> The original FAM-17 boundary note (`convergence = 1`, `pdHess = TRUE` — sdr WAS
+> computed there) is a *distinct* signal my probes never reproduced; Codex should
+> reproduce it properly (with sdreport) before any fix. The **design** items below
+> (positive-part residual, occurrence fixed-effects-only, route-only marking)
+> stand on their own — they are Design-02 decisions, not the retracted pdHess thread.
+
 Design of record: **Design 02 §Hurdle/delta** (Resolution block). Constraint:
 random effects on the **positive** submodel only; **occurrence submodel
 fixed-effects-only** → single latent scale → correlation on the positive-part

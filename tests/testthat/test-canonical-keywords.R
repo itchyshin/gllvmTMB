@@ -283,6 +283,39 @@ test_that("spatial_latent(unique = TRUE) carries the unique-diagonal parser mark
   expect_match(txt_low_rank, ".spatial_unique_diag = FALSE", fixed = TRUE)
 })
 
+test_that("latent structural helpers preserve documented positional control arguments", {
+  f_spatial <- gllvmTMB:::desugar_brms_sugar(
+    value ~ 0 + trait +
+      spatial_latent(0 + trait | coords, 2, TRUE)
+  )
+  txt_spatial <- paste(deparse(f_spatial), collapse = " ")
+  expect_match(txt_spatial, "spde", fixed = TRUE)
+  expect_match(txt_spatial, "d = 2", fixed = TRUE)
+  expect_match(txt_spatial, ".spatial_unique_diag = TRUE", fixed = TRUE)
+
+  f_animal <- gllvmTMB:::desugar_brms_sugar(
+    value ~ 0 + trait + animal_latent(species, 2, pedigree = ped)
+  )
+  txt_animal <- paste(deparse(f_animal), collapse = " ")
+  expect_match(txt_animal, "phylo_rr", fixed = TRUE)
+  expect_match(txt_animal, "d = 2", fixed = TRUE)
+
+  f_indep <- gllvmTMB:::desugar_brms_sugar(
+    value ~ 0 + trait + indep(0 + trait | site, TRUE)
+  )
+  txt_indep <- paste(deparse(f_indep), collapse = " ")
+  expect_match(txt_indep, "diag", fixed = TRUE)
+  expect_match(txt_indep, "common = TRUE", fixed = TRUE)
+
+  f_kernel <- gllvmTMB:::desugar_brms_sugar(
+    value ~ 0 + trait + kernel_latent(site, K = K, 2, name = "known")
+  )
+  txt_kernel <- paste(deparse(f_kernel), collapse = " ")
+  expect_match(txt_kernel, "phylo_rr", fixed = TRUE)
+  expect_match(txt_kernel, "d = 2", fixed = TRUE)
+  expect_match(txt_kernel, ".kernel_mode = \"latent\"", fixed = TRUE)
+})
+
 test_that("PGLLVM foot-gun: phylo_latent + latent/unique without `unit = species` errors", {
   set.seed(7)
   n_sp <- 20

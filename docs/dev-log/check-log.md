@@ -34613,3 +34613,62 @@ Not run:
   `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro, or DRAC
   compute. This is a likelihood-contract guard for an already covered family,
   not a new beta-binomial capability claim.
+
+## 2026-07-05 -- structural latent positional-control parser guard
+
+Goal: close the issue #582 silent-fallback class locally by making documented
+positional control arguments survive the formula rewrite for structural latent
+helpers instead of falling back to default rank/scalar settings.
+
+Edits:
+
+- Added a local `.named_or_positional_arg()` helper in `rewrite_canonical_aliases()`.
+- Routed positional `d` through ordinary augmented `latent()`, augmented
+  `phylo_latent()`, `animal_latent()`, `spatial_latent()`, and the single
+  named-`K` `kernel_latent()` path.
+- Routed positional `unique` through `spatial_latent()` and positional
+  `common` through `indep()`.
+- Added a parser-only regression in `test-canonical-keywords.R` covering
+  `spatial_latent(..., 2, TRUE)`, `animal_latent(..., 2, ...)`,
+  `indep(..., TRUE)`, and `kernel_latent(..., K = K, 2, ...)`.
+- Updated validation-debt register rows FG-07 / FG-13 / ANI-05 / KER-02 via a
+  parser addendum.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/brms-sugar.R")); invisible(parse("tests/testthat/test-canonical-keywords.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-canonical-keywords.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-animal-keyword.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-spatial-mode-dispatch.R")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-kernel-equivalence.R")'
+rg -n "issue #582|positional control|spatial_latent\\(0 \\+ trait \\| coords, 2|animal_latent\\(species, 2|indep\\(0 \\+ trait \\| site, TRUE|kernel_latent\\(site, K = K, 2|source-specific.*lv|mixed-family CI|interval calibration" R/brms-sugar.R tests/testthat/test-canonical-keywords.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-05-structural-latent-positional-controls.md
+git diff --check
+```
+
+Results:
+
+- Parse check: `parse-ok`.
+- `test-canonical-keywords.R`: 96 pass, 0 fail, 0 warn, 3 expected INLA skips.
+- `test-animal-keyword.R`: 10 pass, 0 fail, 0 warn, 7 expected CRAN skips.
+- `test-spatial-mode-dispatch.R`: 0 fail, 0 warn, 6 expected CRAN skips.
+- `test-kernel-equivalence.R`: 38 pass, 0 fail, 0 warn, 0 skip.
+- Claim audit found the intended issue #582 parser guard and boundary-language
+  hits only; no new source-specific `lv`, mixed-family CI, or interval
+  calibration promotion.
+- `git diff --check` passed.
+
+What did not go smoothly:
+
+- A first attempted `testthat::test_file(..., filter = ...)` used an argument
+  unsupported by this local testthat version.
+- A second attempted `test_file()` run omitted `pkgload::load_all(".")`, so it
+  tested the installed namespace and reproduced stale source-specific `lv` /
+  spatial-unique failures. The corrected harness loads the checkout first and
+  is green.
+
+Not run:
+
+- No `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro, DRAC, or
+  simulation/interval calibration. This is a formula-rewrite truth-lock, not a
+  new model capability or uncertainty claim.

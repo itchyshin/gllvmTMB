@@ -2022,6 +2022,25 @@ rewrite_canonical_aliases <- function(formula) {
     }
     args[nms %in% keep & nzchar(nms)]
   }
+  .named_or_positional_arg <- function(e, name, position, default = NULL) {
+    nm <- names(e)
+    if (!is.null(nm)) {
+      named_idx <- which(!is.na(nm) & nm == name)
+      if (length(named_idx) > 0L) {
+        return(e[[named_idx[[1L]]]])
+      }
+    }
+    if (length(e) >= position) {
+      pos_name <- ""
+      if (!is.null(nm) && length(nm) >= position && !is.na(nm[[position]])) {
+        pos_name <- nm[[position]]
+      }
+      if (!nzchar(pos_name)) {
+        return(e[[position]])
+      }
+    }
+    default
+  }
   .abort_source_specific_lv <- function(e, fn) {
     nm <- names(e)
     if (is.null(nm) || !"lv" %in% nm) {
@@ -2459,11 +2478,7 @@ rewrite_canonical_aliases <- function(formula) {
         ## to drive the block-diagonal reduced-rank latent-slope engine
         ## (use_phylo_latent_slope). No new C++; the vcv = A is forwarded.
         if (fn == "animal_latent") {
-          d_val <- if (!is.null(nm) && "d" %in% nm) {
-            e[[which(nm == "d")]]
-          } else {
-            1L
-          }
+          d_val <- .named_or_positional_arg(e, "d", 3L, default = 1L)
           ## Detect augmented bar.
           arg <- e[[2L]]
           arg_is_bar <- is.call(arg) &&
@@ -2627,7 +2642,7 @@ rewrite_canonical_aliases <- function(formula) {
           .kernel_mode = sub("^kernel_", "", fn)
         )
         if (fn == "kernel_latent") {
-          d_val <- if ("d" %in% nm) e[[which(nm == "d")]] else 1L
+          d_val <- .named_or_positional_arg(e, "d", 4L, default = 1L)
           return(as.call(c(
             list(as.name("phylo_rr"), unit_arg),
             list(d = d_val),
@@ -2696,8 +2711,7 @@ rewrite_canonical_aliases <- function(formula) {
 	                ))
 	              }
 	            }
-	            d_arg <- e[["d"]]
-	            if (is.null(d_arg)) d_arg <- 1L
+	            d_arg <- .named_or_positional_arg(e, "d", 3L, default = 1L)
 	            return(as.call(c(
 	              list(as.name("rr"), bar),
 	              list(
@@ -2734,8 +2748,7 @@ rewrite_canonical_aliases <- function(formula) {
               c("wide_intercept_slope", "long_intercept_slope")
           ) {
             species_arg <- bar[[3L]]
-            d_arg <- e[["d"]]
-            if (is.null(d_arg)) d_arg <- 1L
+            d_arg <- .named_or_positional_arg(e, "d", 3L, default = 1L)
             extra_args <- list(
               .latent_slope = TRUE,
               lhs_form = lhs_form$lhs_form,
@@ -3099,13 +3112,10 @@ rewrite_canonical_aliases <- function(formula) {
       ## fit-multi.R flips the cpp template's `spde_lv_k` switch to d and
       ## allocates Lambda_spde (T x K_S) plus K_S shared spatial fields.
       if (fn == "spatial_latent") {
-        nm <- names(e)
-        d_val <- if (!is.null(nm) && "d" %in% nm) e[[which(nm == "d")]] else 1L
-        unique_arg <- if (!is.null(nm) && "unique" %in% nm) {
-          e[[which(nm == "unique")]]
-        } else {
-          FALSE
-        }
+        d_val <- .named_or_positional_arg(e, "d", 3L, default = 1L)
+        unique_arg <- .named_or_positional_arg(
+          e, "unique", 4L, default = FALSE
+        )
         unique_val <- tryCatch(
           eval(unique_arg, envir = parent.frame()),
           error = function(err) unique_arg
@@ -3171,8 +3181,11 @@ rewrite_canonical_aliases <- function(formula) {
         ## Stage 2.5: fail-loud against augmented LHS.
         .assert_no_augmented_lhs(fn, e)
         extras <- list(.indep = TRUE)
-        if (!is.null(e[["common"]])) {
-          extras$common <- e[["common"]]
+        common_arg <- .named_or_positional_arg(
+          e, "common", 3L, default = NULL
+        )
+        if (!is.null(common_arg)) {
+          extras$common <- common_arg
         }
         new_call <- as.call(c(list(as.name("diag"), e[[2L]]), extras))
         return(new_call)

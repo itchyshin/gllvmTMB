@@ -100,6 +100,16 @@ Row-owner: **Boole** (formula-grammar parser).
 | FG-16 | `gllvmTMB_wide(Y, ...)` legacy constructor | `partial` | `test-gllvmTMB-wide.R`, `test-wide-weights-matrix.R` | soft-deprecated in 0.2.0; new examples use `traits(...)`; removal is a later API-change decision while export remains live |
 | FG-17 | Slash form `(1 \| g1/g2)` nesting | `blocked` | `test-augmented-lhs-guard.R` | parser rejects with snapshot-pinned error |
 
+Parser addendum (2026-07-05): `test-canonical-keywords.R` now guards the
+documented positional control arguments that issue #582 identified as a
+silent-fallback class: `spatial_latent(0 + trait | coords, 2, TRUE)` keeps
+`d = 2` plus the unique-spatial marker (FG-13 / SPA-02),
+`animal_latent(id, 2, ...)` keeps `d = 2` (ANI-05),
+`indep(0 + trait | unit, TRUE)` keeps `common = TRUE` (FG-07), and
+`kernel_latent(unit, K = K, 2, ...)` keeps `d = 2` (KER-02). This is
+parser-contract evidence only; it does not change family recovery,
+source-specific `lv`, interval-calibration, or mixed-family CI claims.
+
 ### Section 2 — Response families (15 advertised)
 
 Row-owner: **Gauss** (TMB likelihood per family).

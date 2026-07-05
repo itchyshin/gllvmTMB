@@ -35193,3 +35193,73 @@ Boundary probe:
   returned `convergence = 0`, `pdHess = TRUE`, `bfix.max.err = 0.033`, and
   `sigma.max.err = 0.020`. Fisher/Rose verdict: count fixed-effect delta
   recovery as covered, but do not count latent delta fits as support.
+
+### 2026-07-05 -- Open issue local reconciliation audit
+
+Goal:
+
+- Reconcile the stale remote-open GitHub issue surface against the current
+  local branch before adding more capability to the gllvmTMB completion arc.
+
+Changes:
+
+- Added `docs/dev-log/audits/2026-07-05-open-issue-local-reconciliation.md`.
+- Recorded the evidence that #606, #620/#621, #702, #696, #684/#685, #686,
+  #683, #642, and #668 are fixed locally even though GitHub still lists them
+  open.
+- Kept the next-work boundary explicit: this reconciliation does not close
+  issues, push a branch, change Mission Control, or claim interval calibration.
+
+Commands:
+
+```sh
+git status --short --branch
+git rev-parse --short HEAD
+gh issue list --repo itchyshin/gllvmTMB --state open --limit 80 --json number,title,labels,updatedAt --jq '.[] | "#\(.number) \(.title) [\([.labels[].name] | join(","))]"'
+gh issue view 606 --repo itchyshin/gllvmTMB --json number,title,body,comments
+gh issue view 702 --repo itchyshin/gllvmTMB --json number,title,body,comments
+gh issue view 696 --repo itchyshin/gllvmTMB --json number,title,body,comments
+gh issue view 684 --repo itchyshin/gllvmTMB --json number,title,body
+gh issue view 685 --repo itchyshin/gllvmTMB --json number,title,body
+gh issue view 686 --repo itchyshin/gllvmTMB --json number,title,body
+gh issue view 683 --repo itchyshin/gllvmTMB --json number,title,body
+gh issue view 642 --repo itchyshin/gllvmTMB --json number,title,body
+gh issue view 668 --repo itchyshin/gllvmTMB --json number,title,body
+rg -n "#620|#621|Sigma Wald|residual/Psi-only|latent.*Sigma.*Wald|confint_sigma_wald|total-Sigma" R/z-confint-gllvmTMB.R tests/testthat docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task
+rg -n "#606|Profile-to-bootstrap|nsim.*seed|bootstrap fallback|Falling back to.*bootstrap|user-supplied nsim|confint_sigma_profile" docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task tests/testthat R/z-confint-gllvmTMB.R
+rg -n "#642|#668|duplicate.*trait.*unit|duplicate.*unit.*trait|silently collapsed|response pivot|cli_abort.*hint|named.*\"i\"|hint bullet|long rows|duplicated\\(" R tests/testthat docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task
+```
+
+Results:
+
+- Branch clean at `0b95b1a6`, ahead of origin by 192 commits.
+- `gh pr list --repo itchyshin/gllvmTMB --state open` returned no open PR rows.
+- Current issue triage found the inspected tickets fixed locally and recorded
+  in code, tests, validation rows, and after-task reports.
+- No package code, generated documentation, dashboard JSON, Totoro job, DRAC
+  job, push, or PR action was performed.
+
+Focused validation pack:
+
+```sh
+git diff --check
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-sigma-profile-bootstrap-controls.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-confint-lambda.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-extractors-extra.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-sigma-profile-bootstrap-controls.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'
+```
+
+Focused validation results:
+
+- `git diff --check`: passed.
+- `test-sigma-profile-bootstrap-controls.R`: default run skipped the heavy row
+  as designed; heavy run passed 4 checks.
+- `test-profile-route-matrix.R`: passed.
+- `test-confint-lambda.R`: non-heavy checks passed; heavy rows skipped as
+  designed.
+- `test-extractors-extra.R`: passed with the expected residual-floor
+  informational message.
+- `test-julia-bridge.R`: default R-side checks passed; 13 live-GLLVM rows
+  skipped because `GLLVM_JL_PATH` was not configured.

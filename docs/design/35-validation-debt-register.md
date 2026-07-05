@@ -336,7 +336,7 @@ Row-owner: **Fisher** (inference completeness lead).
 | ID | Capability | Status | Test evidence | Notes |
 |----|------------|--------|---------------|-------|
 | CI-01 | Wald CI via `confint(method = "wald")` | `covered` | `test-tidy-predict.R`, `test-stage1-stacked-fixed-effects.R` | M0 baseline |
-| CI-02 | Profile CI via `confint(method = "profile")` (PR #109) | `covered` | `test-profile-ci.R`, `test-profile-targets.R` | |
+| CI-02 | Profile CI via `confint(method = "profile")` (PR #109) | `covered` | `test-profile-ci.R`, `test-profile-targets.R`, `test-confint-lambda.R` | 2026-07-04 adds pure regression coverage for Lambda profile return contracts: full-grid `confint(parm = "Lambda", method = "profile")` keeps a single vector `ci_status` column, and explicit pinned entries such as `Lambda:1,2` collapse to the known point with `ci_status = "pinned"` instead of returning all-`NA` rows. |
 | CI-03 | Bootstrap CI via `confint(method = "bootstrap")` (PR #109) | `covered` | `test-confint-bootstrap.R` | |
 | CI-04 | `profile_ci_repeatability()` (PR #105) | `covered` | `test-profile-ci.R` | |
 | CI-05 | `profile_ci_phylo_signal()` (PR #105) | `partial` for multi-component profile; covered for two-component profile and numeric-Wald fallback | `test-profile-ci.R`, `test-phylo-signal-ci.R`, `test-derived-phylo-ci-audit.R` | Two-component `phylo_diag + diag_species` remains direct profile via the log-SD contrast. For richer 3+ component PGLLVM fits, full fix-and-refit profile is still planned; the 2026-07-04 Ayumi #14 repair returns finite numerical delta-method Wald bounds labelled `wald(numeric)` instead of empty `NA` bounds. Do not describe 3+ phylogenetic-signal profile-LR as covered. |

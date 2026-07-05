@@ -4,6 +4,51 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-04 21:01 MDT -- Lambda profile return-contract repair
+
+Branch: `codex/r-bridge-grouped-dispersion`; local inference-safety
+repair for issues #605 and #695. No push or PR.
+
+Guard: Lambda profile intervals must preserve the documented
+`parameter`, `estimate`, `lower`, `upper`, `method`, `pd_hessian`,
+`ci_status` shape, and pinned Lambda entries must be reported as pinned
+points rather than as unavailable intervals.
+
+Implemented:
+
+- Added `.lambda_pinned_matrix()` so the full-grid and selected-entry
+  profile branches share the same pinning convention.
+- Flattened full-grid Lambda profile `ci_status` to a vector before
+  constructing the return data frame.
+- Made explicit pinned entries such as `Lambda:1,2` collapse to
+  `lower == estimate == upper` with `ci_status = "pinned"` when the
+  profile bounds table has no matching free-entry row.
+- Added pure mocked regression tests in `test-confint-lambda.R` so the
+  return-shape and pinned-entry contracts are checked without expensive
+  profile refits.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/z-confint-gllvmTMB.R")); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-lambda.R", reporter = "summary")'
+```
+
+Outcome: pure Lambda contract tests passed; existing heavy real-fit
+Lambda checks skipped unless `GLLVMTMB_HEAVY_TESTS=1`.
+
+Not run:
+
+- Full heavy Lambda profile refits; this slice repairs the return
+  contract and pinned-entry status handling with mocked profile curves.
+- Full `devtools::check()`, Totoro/DRAC compute, or any new interval
+  calibration claim.
+
 ## 2026-07-04 20:47 MDT -- Profile route matrix truth-lock
 
 Branch: `codex/r-bridge-grouped-dispersion`; local profile-route

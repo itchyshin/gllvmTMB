@@ -147,6 +147,24 @@
   m
 }
 
+## Internal helper (Stage 2): identify Lambda entries that are pinned by
+## a user-supplied constraint matrix or by the engine's strict upper
+## triangular convention in the first K rows.
+.lambda_pinned_matrix <- function(object, internal_level, n_traits, K) {
+  M_user <- object$lambda_constraint[[internal_level]]
+  is_pinned <- if (is.null(M_user)) {
+    matrix(FALSE, n_traits, K)
+  } else {
+    !is.na(M_user)
+  }
+  for (i in seq_len(min(n_traits, K))) {
+    for (j in seq_len(K)) {
+      if (j > i) is_pinned[i, j] <- TRUE
+    }
+  }
+  is_pinned
+}
+
 ## Internal helper (Stage 2): build the data.frame return value for
 ## `confint(fit, parm = \"Lambda:...\")`. Wald paths route through
 ## `loading_ci()` (which already enforces the pdHess gate -> NA + flag);
@@ -248,9 +266,10 @@
   }
 
   ## method == "profile": build curve(s) directly for the requested
-  ## entries, then invert. `loading_profile()` skips pinned entries by
-  ## construction; for `parm = "Lambda"` we include them as collapsed
-  ## point rows so the output row count matches the Wald paths.
+  ## entries, then invert. `loading_profile()` skips pinned entries when
+  ## `entries = NULL`; for `parm = "Lambda"` and explicit pinned entries
+  ## we include them as collapsed point rows so the output row count and
+  ## statuses match the Wald paths.
   prof <- loading_profile(
     fit = object,
     level = "unit",
@@ -282,19 +301,8 @@
   if (is.null(entries)) {
     ## Build the full grid of (i, k) entries; pinned ones (not present
     ## in `bounds`) collapse to point.
-    M_user <- object$lambda_constraint[["B"]]
-    is_pinned <- if (is.null(M_user)) {
-      matrix(FALSE, n_traits, K)
-    } else {
-      !is.na(M_user)
-    }
-    ## Engine pins the strict-upper-triangle of the first d rows
-    ## (mirror of `loading_profile()` so the displayed pinned set matches).
-    for (i in seq_len(min(n_traits, K))) {
-      for (j in seq_len(K)) {
-        if (j > i) is_pinned[i, j] <- TRUE
-      }
-    }
+    is_pinned <- .lambda_pinned_matrix(object, "B", n_traits, K)
+    is_pinned_vec <- as.vector(is_pinned)
     all_entries <- expand.grid(
       i = seq_len(n_traits),
       k = seq_len(K),
@@ -308,7 +316,7 @@
     estimate <- as.numeric(Lambda_mat)
     lower <- estimate
     upper <- estimate
-    ci_status <- ifelse(is_pinned, "pinned", "interval_unavailable")
+    ci_status <- ifelse(is_pinned_vec, "pinned", "interval_unavailable")
     ## Overwrite with profile bounds where available
     key_all <- paste(all_entries$i, all_entries$k, sep = ":")
     key_b <- paste(bounds$i, bounds$k, sep = ":")
@@ -331,6 +339,16 @@
 
   ## Specific entries requested: bounds row order matches `entries`
   ## (loading_profile preserves the order of `entries`).
+  is_pinned <- .lambda_pinned_matrix(object, "B", n_traits, K)
+  entry_pos <- entries[, 1L] + (entries[, 2L] - 1L) * n_traits
+  estimate <- as.numeric(Lambda_mat)[entry_pos]
+  pinned <- as.vector(is_pinned)[entry_pos]
+  lower <- rep(NA_real_, length(entry_pos))
+  upper <- rep(NA_real_, length(entry_pos))
+  ci_status <- ifelse(pinned, "pinned", "interval_unavailable")
+  lower[pinned] <- estimate[pinned]
+  upper[pinned] <- estimate[pinned]
+
   parameter <- sprintf(
     "Lambda[%s,%s]",
     trait_names[entries[, 1L]],
@@ -342,14 +360,19 @@
   key_req <- paste(entries[, 1L], entries[, 2L], sep = ":")
   key_b <- paste(bounds$i, bounds$k, sep = ":")
   idx <- match(key_req, key_b)
+  matched <- !is.na(idx)
+  estimate[matched] <- bounds$estimate[idx[matched]]
+  lower[matched] <- bounds$lower[idx[matched]]
+  upper[matched] <- bounds$upper[idx[matched]]
+  ci_status[matched] <- bounds$ci_status[idx[matched]]
   data.frame(
     parameter = parameter,
-    estimate = bounds$estimate[idx],
-    lower = bounds$lower[idx],
-    upper = bounds$upper[idx],
+    estimate = estimate,
+    lower = lower,
+    upper = upper,
     method = "profile",
     pd_hessian = pd_ok,
-    ci_status = bounds$ci_status[idx],
+    ci_status = ci_status,
     stringsAsFactors = FALSE,
     row.names = NULL
   )

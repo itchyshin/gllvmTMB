@@ -8,6 +8,32 @@
 
 ## ---- Helper: build the same confirmatory binary JSDM fit -----------
 
+make_fake_lambda_confint_fit <- function() {
+  Lambda <- matrix(
+    c(
+      1.00, 0.25, -0.15,
+      0.00, 0.80, 0.35
+    ),
+    nrow = 3L,
+    ncol = 2L
+  )
+  rownames(Lambda) <- paste0("trait_", 1:3)
+  colnames(Lambda) <- paste0("LV", 1:2)
+
+  structure(
+    list(
+      report = list(Lambda_B = Lambda),
+      lambda_constraint = list(B = matrix(NA_real_, 3L, 2L)),
+      sd_report = list(pdHess = TRUE),
+      trait_col = "trait",
+      data = data.frame(
+        trait = factor(paste0("trait_", 1:3), levels = paste0("trait_", 1:3))
+      )
+    ),
+    class = "gllvmTMB_multi"
+  )
+}
+
 build_fit_for_confint <- function(n_sites = 60L, seed = 20260527L) {
   set.seed(seed)
   species_names <- c(paste0("A_", 1:3), paste0("B_", 1:3), paste0("C_", 1:4))
@@ -40,6 +66,84 @@ build_fit_for_confint <- function(n_sites = 60L, seed = 20260527L) {
   )
   list(fit = fit, M = M, species = species_names)
 }
+
+## ---- Pure return-contract regressions --------------------------------
+
+test_that("Lambda full-grid profile keeps ci_status as a single vector column", {
+  fit <- make_fake_lambda_confint_fit()
+
+  with_mocked_bindings(
+    loading_profile = function(...) {
+      data.frame(dummy = 1)
+    },
+    .invert_profile_loadings = function(prof) {
+      data.frame(
+        i = c(1L, 2L, 3L),
+        k = c(1L, 1L, 2L),
+        estimate = c(1.00, 0.25, 0.35),
+        lower = c(0.80, 0.10, 0.20),
+        upper = c(1.20, 0.40, 0.50),
+        ci_status = rep("ok", 3L)
+      )
+    },
+    .package = "gllvmTMB",
+    code = {
+      ci <- gllvmTMB:::.confint_lambda(
+        fit,
+        parm = "Lambda",
+        level = 0.95,
+        method = "profile"
+      )
+    }
+  )
+
+  expect_s3_class(ci, "data.frame")
+  expect_equal(nrow(ci), 6L)
+  expect_true("ci_status" %in% names(ci))
+  expect_false(any(grepl("^ci_status\\.", names(ci))))
+  expect_equal(length(ci$ci_status), nrow(ci))
+  expect_equal(
+    ci$ci_status[ci$parameter == "Lambda[trait_1,LV2]"],
+    "pinned"
+  )
+})
+
+test_that("Lambda selected-entry profile collapses explicit pinned entries", {
+  fit <- make_fake_lambda_confint_fit()
+
+  with_mocked_bindings(
+    loading_profile = function(...) {
+      data.frame(dummy = 1)
+    },
+    .invert_profile_loadings = function(prof) {
+      data.frame(
+        i = integer(0),
+        k = integer(0),
+        estimate = numeric(0),
+        lower = numeric(0),
+        upper = numeric(0),
+        ci_status = character(0)
+      )
+    },
+    .package = "gllvmTMB",
+    code = {
+      ci <- gllvmTMB:::.confint_lambda(
+        fit,
+        parm = "Lambda:1,2",
+        level = 0.95,
+        method = "profile"
+      )
+    }
+  )
+
+  expect_s3_class(ci, "data.frame")
+  expect_equal(nrow(ci), 1L)
+  expect_equal(ci$parameter, "Lambda[trait_1,LV2]")
+  expect_equal(ci$estimate, 0)
+  expect_equal(ci$lower, 0)
+  expect_equal(ci$upper, 0)
+  expect_equal(ci$ci_status, "pinned")
+})
 
 ## ---- parm = "Lambda" returns all entries ----------------------------
 

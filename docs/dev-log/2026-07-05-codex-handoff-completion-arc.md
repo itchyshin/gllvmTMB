@@ -38,16 +38,17 @@ residual, reported `interval_status = "route-only"`.
 
 Design 75 says the slope tiers are interval-blocked (except the `rho:unit_slope`
 Gaussian canary). Profile layer is ENFORCED (`profile-derived.R:692` aborts
-non-Gaussian augmented profiles) — good. OPEN: the fisher-z / `extract_correlations`
-path at `tier = "unit_slope"`.
+non-Gaussian augmented profiles) — good.
 
-- **Confirm:** with a converging `latent(1 + x | individual, d = K)` fit, does
-  `extract_correlations(tier = "unit_slope")` REFUSE (per Design 75
-  `Sigma_unit_slope` blocked) or return marked intervals? If it returns, they are
-  at least `interval_status`-marked now (M2), but Design 75 wants them blocked —
-  decide refuse-vs-route-only (parallels the delta decision).
-- **Confirm:** `phy_*_slope` / `spde_*_slope` splits refuse intervals on every
-  method (Design 75 "all blocked").
+- **`unit_slope` fisher-z path — CONFIRMED 2026-07-05 (Claude, done):** a
+  converging augmented Gaussian fit's `extract_correlations(tier = "unit_slope")`
+  **refuses** ("No covariance tiers found"), does NOT fabricate intervals;
+  `extract_Sigma(unit_slope)` still returns the point covariance. Design 75's
+  `Sigma_unit_slope`-blocked holds across profile (abort) AND fisher-z (refuse).
+  No gap. (See the M3 kickoff note for the fixture/setup.)
+- **Still open (Codex):** confirm `phy_*_slope` / `spde_*_slope` splits refuse
+  intervals on every method (Design 75 "all blocked") — needs phylo/spatial
+  augmented fixtures.
 - Feeds **task #2** (ledger-reality sync: `.profile_route_matrix()` is
   profile-only; the wald/bootstrap/est-lik rows need this runtime evidence).
 

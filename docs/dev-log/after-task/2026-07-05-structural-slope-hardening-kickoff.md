@@ -35,17 +35,29 @@ fabricated. Unlike MIX-10, this claim boundary holds at the profile layer.
 `test-profile-route-matrix.R` (unit_slope Σ blocked; only `rho:unit_slope` is the
 `unit_slope_selected_entry` canary).
 
-### Open: the fisher-z / extract_correlations path at `unit_slope` ⬜
+### Confirmed: the fisher-z / extract_correlations path at `unit_slope` REFUSES ✅
 
-`.normalise_level` / `extract-sigma.R` (line 585) ACCEPTS `level = "unit_slope"`
-and `extract_Sigma` returns the 2T×2T covariance point there. Whether the DEFAULT
-`extract_correlations(tier = "unit_slope")` (fisher-z) then **fabricates**
-intervals (Design 75 says `Sigma_unit_slope` is blocked) or refuses is NOT yet
-confirmed — the runtime probe needs a converging augmented-latent fixture
-(`latent(1 + x | individual, d = K)`), which is Codex's live-fitting lane. If it
-returns fisher-z intervals, they are now at least `interval_status`-marked (M2
-marker: Gaussian augmented → `"nominal"`), but Design 75 wants them blocked — a
-potential MIX-10-class gap to confirm.
+Runtime probe DONE (2026-07-05, Claude — authorized to code). A converging
+augmented Gaussian fit
+(`value ~ 0 + trait + (0 + trait):temperature + latent(0 + trait + (0 + trait):temperature | individual, d = 2)`,
+via `make_ordinary_latent_rr_fixture()`, `convergence = 0`, `rr_B_slope = TRUE`)
+was built, then:
+
+- `extract_correlations(fit, tier = "unit_slope")` **REFUSES** with
+  `"No covariance tiers found in the fit."` — it does **not** fabricate
+  slope-tier fisher-z intervals. (The augmented fit exposes only the slope tier,
+  which the fisher-z correlation path does not treat as a standard correlation
+  tier, so nothing is produced.)
+- `extract_Sigma(fit, level = "unit_slope")` returns the 2T×2T point covariance
+  (Design 75 = point-extractable), confirming the fit is valid and the refusal
+  is specific to the *interval* path, not a broken fit.
+
+So Design 75's "`Sigma_unit_slope` intervals blocked" **holds at runtime across
+both paths**: the profile path aborts (`profile-derived.R:692`) and the fisher-z
+path refuses. No MIX-10-class gap here — the slope-tier interval boundary is
+enforced. (Setup note for reruns: the fit needs explicit
+`trait=`/`unit=`/`unit_obs=` args and the fixed `(0 + trait):x` slope term, or
+gllvmTMB defaults the unit column to `"site"` and errors.)
 
 ## Scoped M3 plan (remaining)
 

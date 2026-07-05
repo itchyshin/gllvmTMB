@@ -171,6 +171,14 @@ Row-owner: **Noether + Boole** (phylo-specific math + parser).
 | PHY-08 | `extract_communality()` $H^2 + C^2 + \psi^2 = 1$ partition | `covered` | `test-extractors.R`, `test-extractors-extra.R` | |
 | PHY-09 | Phylogenetic mode dispatch (paired vs three-piece) | `covered` | `test-phylo-mode-dispatch.R` | |
 | PHY-10 | Optional `phyloVCV` argument | `covered` | `test-phylo-vcv-optional.R` | |
+
+Phylo simulation addendum (2026-07-05): issue #596 is guarded in
+`test-stage3-propto-equalto.R`. The unconditional `propto()` / `phylo_scalar`
+simulation path now treats `lam_phy = exp(loglambda_phy)` as a variance
+multiplier (`sqrt(lam_phy)` on the standard phylogenetic draw), matching the
+TMB likelihood and extractor convention. This corrects bootstrap-style
+simulation input; it is not new bootstrap calibration evidence.
+
 | PHY-11 | `phylo_indep(1 + x \| sp)` augmented slope under **binomial** (probit + logit) | `covered` | `test-binomial-slope-recovery.R` | Issue #341 Track B. Activated by relaxing the Gaussian-only family guard in `R/fit-multi.R` to admit `family_id in {gaussian, binomial}`; **ZERO new C++** -- the augmented-slope engine is family-agnostic (`eta += b_phy_aug . Z_phy_aug` accumulated BEFORE the C++ family dispatch), and `phylo_indep` only pins `atanh_cor_b` to 0 via the TMB map. Diagonal-Sigma_b recovery on a 6-seed grid (truth `sigma^2_int = 0.4`, `sigma^2_slope = 0.3`, `rho = 0`): every seed conv == 0 + PD Hessian + `cor_b` held EXACTLY at 0; seed-averaged recovery within a 0.25 relative band -- probit mean (`sigma^2_int = 0.364` rel 0.09, `sigma^2_slope = 0.291` rel 0.03), logit mean (`sigma^2_int = 0.354` rel 0.12, `sigma^2_slope = 0.328` rel 0.09) (local measurement 2026-05-31: 15/15 expectations pass, 0 fail). The other non-Gaussian families (poisson / nbinom2 / Gamma / Beta / ordinal) were subsequently activated the same way (PHY-12..PHY-16); families OFF the allowlist (e.g. tweedie) stay reserved fail-loud (`test-matrix-slope-phylo-indep.R`, allowlist-boundary lock). |
 
 | PHY-12 | `phylo_indep(1 + x \| sp)` augmented slope under **poisson** (log) | `covered` | `test-phylo-indep-slope-nongaussian.R` | Issue #341 Track B. Same one-line family-allowlist relax as PHY-11 (runtime `family_id 2` added to the `R/fit-multi.R` guard); **ZERO new C++**. Diagonal-Sigma_b recovery, 6-seed grid (truth `sigma^2_int = 0.4`, `sigma^2_slope = 0.3`, `rho = 0`): every seed conv == 0 + PD Hessian + `family_id == 2` + `cor_b` held EXACTLY at 0; seed-mean within the **4x** band inherited from `test-matrix-slope-poisson.R` -- `sigma^2_int = 0.352` (ratio 0.88), `sigma^2_slope = 0.259` (ratio 0.86) (local measurement 2026-05-31). Activated only after this cell passed. |
@@ -312,7 +320,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-10 | `extract_cutpoints()` ordinal-probit | `partial` | `test-ordinal-probit.R` | smoke |
 | EXT-11 | `extract_proportions()` delta-family | `blocked` | n/a | post-CRAN |
 | EXT-12 | `extract_ICC_site()` legacy | `covered` | `test-extractors.R`, `test-extractors-extra.R` | superseded by `extract_repeatability()`; 2026-07-04 closes issue #683 by returning `NA`, not `NaN`, for zero total-variance denominators. |
-| EXT-13 | `bootstrap_Sigma()` | `covered` (Gaussian) / `partial` (non-Gaussian) | `test-bootstrap-Sigma.R` | M3.3b surface admission (Design 50) controls the next non-Gaussian evidence movement. Known-phi point diagnostics are not bootstrap coverage. |
+| EXT-13 | `bootstrap_Sigma()` | `covered` (Gaussian) / `partial` (non-Gaussian) | `test-bootstrap-Sigma.R`, `test-stage3-propto-equalto.R` | M3.3b surface admission (Design 50) controls the next non-Gaussian evidence movement. Known-phi point diagnostics are not bootstrap coverage. Issue #596 guard: `propto()` / `phylo_scalar` unconditional simulation now redraws the phylogenetic effect with variance `lam_phy * Cphy` (`sqrt(lam_phy)` scale), so bootstrap-style refits no longer receive `lam_phy^2 * Cphy` random effects. This is simulation-input correctness, not bootstrap interval calibration. |
 | EXT-14 | `getLoadings()` raw $\Lambda$ | `covered` | `test-rotate-compare-loadings.R` | rotation-variant; warn |
 | EXT-15 | `rotate_loadings()` varimax / promax | `covered` | `test-rotate-compare-loadings.R`, `test-rotation-advisory.R` | Rotation is for interpretation of loading columns; covariance, correlation, communality, and uniqueness remain the primary rotation-invariant summaries. `plot(type = "ordination")` exposes the same order/sign-anchor convention for biplots. |
 | EXT-16 | `getLV()` legacy ordination alias | `covered` | `test-extractors.R` | slated for `deprecate_soft()` 0.3.0 |

@@ -34672,3 +34672,45 @@ Not run:
 - No `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro, DRAC, or
   simulation/interval calibration. This is a formula-rewrite truth-lock, not a
   new model capability or uncertainty claim.
+
+## 2026-07-05 -- propto simulation lambda variance guard
+
+Goal: close issue #596 locally by making unconditional `propto()` /
+`phylo_scalar` simulation treat `lam_phy = exp(loglambda_phy)` as a variance
+multiplier, matching the TMB likelihood and extractor convention.
+
+Edits:
+
+- Updated `.simulate_eta_unconditional()` so the phylogenetic draw uses
+  `sqrt(lam_phy) * backsolve(chol(Cphy_inv), z)` rather than `lam_phy * ...`.
+- Corrected the nearby model comment from `lam_phy^2 * Cphy` to
+  `lam_phy * Cphy`.
+- Added a cheap parser-free regression in `test-stage3-propto-equalto.R` with
+  `Cphy = I` and `lam_phy = 4`, checking that the empirical latent-effect
+  variance is near 4 rather than the old near-16 failure.
+- Updated validation-debt rows `PHY-04` and `EXT-13`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/methods-gllvmTMB.R")); invisible(parse("tests/testthat/test-stage3-propto-equalto.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-stage3-propto-equalto.R")'
+rg -n "lam_phy\\^2|sqrt\\(lam_phy\\)|issue #596|bootstrap interval calibration|source-specific.*lv|mixed-family CI" R/methods-gllvmTMB.R tests/testthat/test-stage3-propto-equalto.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-07-05-propto-simulation-lambda-variance.md
+git diff --check
+```
+
+Results:
+
+- Parse check: `parse-ok`.
+- `test-stage3-propto-equalto.R`: 17 pass, 0 fail, 0 warn, 1 existing
+  glmmTMB non-PD skip.
+- Claim audit found the fixed `sqrt(lam_phy)` code path, issue #596 notes, and
+  intentional before/after boundary text only; no new source-specific `lv`,
+  mixed-family CI, or bootstrap interval calibration claim.
+- `git diff --check` passed.
+
+Not run:
+
+- No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro,
+  DRAC, bootstrap calibration, or coverage simulation. This is a simulation
+  input correctness fix for the existing `propto` / `phylo_scalar` route.

@@ -78,6 +78,37 @@ test_that("Sparse propto precision resolver preserves tip-only precision path", 
   )
 })
 
+test_that("Stage 3: propto simulation uses lambda as variance, not sd", {
+  n_species <- 40L
+  n_draw <- 1000L
+  lambda <- 4
+  fit <- list(
+    X_fix_names = character(0),
+    opt = list(par = numeric(0)),
+    use = list(
+      rr_B = FALSE, diag_B = FALSE,
+      rr_W = FALSE, diag_W = FALSE,
+      propto = TRUE
+    ),
+    tmb_data = list(
+      X_fix = matrix(numeric(0), n_species, 0L),
+      trait_id = rep(0L, n_species),
+      n_traits = 1L,
+      species_id = seq_len(n_species) - 1L,
+      n_species = n_species,
+      Cphy_inv = diag(n_species)
+    ),
+    report = list(lam_phy = lambda)
+  )
+
+  set.seed(596)
+  eta_draws <- replicate(n_draw, gllvmTMB:::.simulate_eta_unconditional(fit))
+  empirical_var <- stats::var(as.numeric(eta_draws))
+
+  expect_gt(empirical_var, 3.6)
+  expect_lt(empirical_var, 4.4)
+})
+
 test_that("Stage 3: propto() matches glmmTMB log-likelihood exactly", {
   skip_if_not_glmmTMB()
   s <- simulate_phylo_data()

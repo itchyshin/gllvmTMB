@@ -1235,7 +1235,7 @@ simulate.gllvmTMB_multi <- function(
   }
 
   ## propto: single-factor phylogeny via Cphy precision matrix --------
-  ## p_phy ~ MVN(0, lam_phy^2 * Cphy) per trait, where Cphy = inv(Cphy_inv).
+  ## p_phy ~ MVN(0, lam_phy * Cphy) per trait, where Cphy = inv(Cphy_inv).
   ## Sample: chol(Cphy_inv) = U => P = U^T U. If z ~ N(0,1) then
   ## u = backsolve(U, z) has Cov(u) = (U^T U)^{-1} = P^{-1} = Cphy.
   if (isTRUE(fit$use$propto)) {
@@ -1246,7 +1246,7 @@ simulate.gllvmTMB_multi <- function(
     U <- chol(P)
     p_phy_new <- matrix(0, n_species, n_traits)
     for (t in seq_len(n_traits)) {
-      p_phy_new[, t] <- lam_phy * backsolve(U, stats::rnorm(n_species))
+      p_phy_new[, t] <- sqrt(lam_phy) * backsolve(U, stats::rnorm(n_species))
     }
     eta <- eta + p_phy_new[cbind(sp_id, trait_id)]
   }

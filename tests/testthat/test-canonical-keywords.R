@@ -330,6 +330,34 @@ test_that("indep is a diagonal kind, distinct from latent (no low-rank part)", {
   expect_false(grepl("spde", txt_indep, fixed = TRUE))
 })
 
+test_that("control args (d, unique, common) are first-class positional, equivalent to named", {
+  ## Positional control arguments desugar BYTE-IDENTICALLY to the named
+  ## spelling for every source-latent helper and for indep -- positional is a
+  ## first-class alternate spelling, not a tolerated accident. (Structure args
+  ## coords/tree/pedigree/K remain first-class positional/named as before.)
+  ds <- function(f) paste(deparse(gllvmTMB:::desugar_brms_sugar(f)), collapse = " ")
+  expect_identical(
+    ds(value ~ 0 + trait + spatial_latent(0 + trait | coords, 2, TRUE)),
+    ds(value ~ 0 + trait + spatial_latent(0 + trait | coords, d = 2, unique = TRUE))
+  )
+  expect_identical(
+    ds(value ~ 0 + trait + animal_latent(species, 2, pedigree = ped)),
+    ds(value ~ 0 + trait + animal_latent(species, d = 2, pedigree = ped))
+  )
+  expect_identical(
+    ds(value ~ 0 + trait + kernel_latent(site, K = K, 2, name = "known")),
+    ds(value ~ 0 + trait + kernel_latent(site, K = K, d = 2, name = "known"))
+  )
+  expect_identical(
+    ds(value ~ 0 + trait + phylo_latent(species, 2, tree = tree)),
+    ds(value ~ 0 + trait + phylo_latent(species, d = 2, tree = tree))
+  )
+  expect_identical(
+    ds(value ~ 0 + trait + indep(0 + trait | site, TRUE)),
+    ds(value ~ 0 + trait + indep(0 + trait | site, common = TRUE))
+  )
+})
+
 test_that("PGLLVM foot-gun: phylo_latent + latent/unique without `unit = species` errors", {
   set.seed(7)
   n_sp <- 20

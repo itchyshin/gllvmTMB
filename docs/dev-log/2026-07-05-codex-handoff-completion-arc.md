@@ -88,6 +88,26 @@ residual, reported `interval_status = "route-only"`.
   Ψ (test with `d = 0` / Ψ-only, or a controlled Λ). A clean per-trait,
   multi-seed recovery study settles both; the direction is now *leaning* confirmed,
   not merely unknown.
+- **✅ RESOLVED — confound-free study REVERSES the direction: DO NOT zero the Ψ
+  (Claude, 2026-07-05).** Ran the clean study (`data-raw/diagnostics/2026-07-05-nongaussian-psi-recovery-study.R`):
+  an **explicit `indep(0 + trait | unit)` diagonal** (pure Ψ — no rank-1 Λ
+  rotation; explicit, so *not* auto-Psi-gated) + per-trait extraction via
+  `extract_Sigma(part = "unique")`. The binomial between-unit **Ψ TRACKS the
+  truth**: true 0.00 → recovered ~0.03, 0.49 → ~0.45, 1.44 → ~1.2 (gaussian Ψ
+  stable ~0.35). **The non-Gaussian B-tier Ψ is IDENTIFIABLE** — zeroing it would
+  destroy a real, recoverable variance. So:
+  - **The two-gap gate change is the WRONG fix. Do not widen the auto-Psi skip to
+    non-Gaussian.** The D-28 "non-Gaussian residual = 0" is the *observation*
+    (W-tier) level; the *between-unit* (B-tier) Ψ is a legitimate variance.
+  - The `latent()` `pdHess = FALSE` (the original symptom) is the **rank-1 Λ
+    rotational indeterminacy** (the earlier "Ψ stuck ~0.3" was Λ absorbing the
+    between-unit signal), plus weak Hessian curvature — **not** Ψ
+    unidentifiability. Point estimates recover; SEs are the weak part → use
+    profile CIs, per the existing pattern (never pdHess as CI evidence).
+  - Codex's real task shifts to the **Λ-side low-rank identifiability** in
+    non-Gaussian `latent()` fits (standard rotation/anchoring), not a Ψ gate.
+    This is the save: the confound-free study stopped a plausible-but-wrong
+    "zero the variance" change from landing.
 - **Delta two-part note (secondary):** the `src/gllvmTMB.cpp:2037` shared-eta
   (one `eta` drives both hurdle parts) is a *further* delta-specific factor for
   the correlation *scale* (positive-part residual), but the Ψ-gate above is the

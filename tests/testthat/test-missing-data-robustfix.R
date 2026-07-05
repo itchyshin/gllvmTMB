@@ -108,6 +108,18 @@ test_that("BUG-1 rank-deficient mi() impute design is rejected cleanly", {
   list(fit = fit, data = sim$data)
 }
 
+test_that("per-row inverse link returns lognormal conditional mean, not median", {
+  eta <- c(log(2), log(3))
+  out <- gllvmTMB:::.apply_linkinv_per_row(
+    eta,
+    family_id = c(3L, 2L),
+    link_id = c(0L, 0L),
+    sigma_eps = 0.8
+  )
+  expect_equal(out[1], exp(eta[1] + 0.5 * 0.8^2))
+  expect_equal(out[2], exp(eta[2]))
+})
+
 test_that("BUG-2 predict(type='response') uses per-row inverse link (mixed family)", {
   skip_if_not_heavy()
   mm <- .rf_make_mixed_family_fit()

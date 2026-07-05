@@ -32970,3 +32970,31 @@ Rscript --vanilla -e 'devtools::document(quiet = TRUE); cat("document-ok\n")'
 Outcome: parse passed; VP/ordiplot tests passed; documentation regenerated.
 This repairs the legacy `VP()` residual semantics only. Family-aware
 latent-scale link residual variance remains covered by `extract_proportions()`.
+
+## 2026-07-04 -- Lognormal response prediction mean repair
+
+Goal: close issue #614 by making per-row response-scale prediction return the
+lognormal conditional mean, not the log-scale median.
+
+Edits:
+
+- Threaded `sigma_eps` through `.apply_linkinv_per_row()`.
+- Special-cased family id 3 so response predictions use
+  `exp(eta + sigma_eps^2 / 2)`.
+- Kept ordinary log-link families on `exp(eta)`.
+- Added a pure regression that checks lognormal against Poisson in the same
+  helper call.
+- Updated validation row FAM-11.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/methods-gllvmTMB.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-missing-data-robustfix.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-missing-data-robustfix.R", reporter = "summary", desc = "BUG-2 predict(type='response') uses per-row inverse link (mixed family)")'
+```
+
+Outcome: parse passed; normal missing-data robustness tests passed; targeted
+heavy mixed-family response prediction test passed. This repairs lognormal
+response-scale point prediction only, not delta-lognormal or uncertainty
+prediction.

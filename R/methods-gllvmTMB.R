@@ -191,12 +191,19 @@
 ## WRONG inverse link to every non-first-family cell (BUG-1 / issue #399). The
 ## conditional-mean inverse link per link_id: identity (0) -> eta; logit (0 for
 ## binomial fid) -> plogis; probit (1) -> pnorm; cloglog (2) -> 1 - exp(-exp);
-## log (the default for fid 2/3/4/5/6/10-13/15) -> exp. fids whose mean is on
-## the link scale (none here) pass through. Length(eta) MUST equal
-## length(family_id) == length(link_id).
-.apply_linkinv_per_row <- function(eta, family_id, link_id) {
+## log (the default for fid 2/4/5/6/10-13/15) -> exp. Lognormal (fid 3)
+## returns its conditional mean exp(eta + sigma_eps^2 / 2), not the median
+## exp(eta). fids whose mean is on the link scale (none here) pass through.
+## Length(eta) MUST equal length(family_id) == length(link_id).
+.apply_linkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL) {
   n <- length(eta)
   out <- eta
+  sigma_eps <- as.numeric(sigma_eps %||% 0)
+  sigma_eps <- if (length(sigma_eps) && is.finite(sigma_eps[1L])) {
+    sigma_eps[1L]
+  } else {
+    0
+  }
   for (i in seq_len(n)) {
     fid <- family_id[i]
     lid <- link_id[i]
@@ -217,8 +224,12 @@
       ## ordinal_probit carries no single-row response mean; keep the latent
       ## (probit) scale rather than fabricate one.
       out[i] <- stats::pnorm(e)
+    } else if (fid == 3L) {
+      ## lognormal: eta is the mean on the log scale, so exp(eta) is the
+      ## median; the conditional response mean includes sigma_eps^2 / 2.
+      out[i] <- exp(e + 0.5 * sigma_eps^2)
     } else {
-      ## log-link families (poisson, lognormal, Gamma, nbinom1/2, tweedie,
+      ## log-link families (poisson, Gamma, nbinom1/2, tweedie,
       ## truncated, delta): the conditional mean is exp(eta).
       out[i] <- exp(e)
     }
@@ -1464,7 +1475,12 @@ predict.gllvmTMB_multi <- function(
       ## Training-row prediction: eta is row-aligned with family_id_vec /
       ## link_id_vec (both length n_obs).
       if (!is.null(fid_vec) && length(fid_vec) == nrow(out)) {
-        out$est <- .apply_linkinv_per_row(out$est, fid_vec, lid_vec)
+        out$est <- .apply_linkinv_per_row(
+          out$est,
+          fid_vec,
+          lid_vec,
+          sigma_eps = object$report$sigma_eps
+        )
       } else if (!is.null(object$family$linkinv)) {
         out$est <- object$family$linkinv(out$est)
       }
@@ -1492,7 +1508,10 @@ predict.gllvmTMB_multi <- function(
         ## first trait's link (NA trait index).
         tr_out[is.na(tr_out)] <- 1L
         out$est <- .apply_linkinv_per_row(
-          out$est, fid_by_trait[tr_out], lid_by_trait[tr_out]
+          out$est,
+          fid_by_trait[tr_out],
+          lid_by_trait[tr_out],
+          sigma_eps = object$report$sigma_eps
         )
       } else if (!is.null(object$family$linkinv)) {
         out$est <- object$family$linkinv(out$est)

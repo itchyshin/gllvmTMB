@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-05 03:24 MDT",
+  "updated": "2026-07-05 04:35 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -12,10 +12,10 @@
   },
   "active_work": [
     {
-      "when": "2026-07-05 03:24 MDT",
+      "when": "2026-07-05 04:35 MDT",
       "who": "gllvmTMB completion truth lock",
       "status": "guard",
-      "text": "Delta-family truth-lock slice is committed at 7433904e on codex/r-bridge-grouped-dispersion. Focused gllvmTMB completion work has now banked the surface audit, structural random-regression guard checks, constructor-only family boundary, heavy truncated-family verification, and the narrowed FAM-17 delta boundary: enum/runtime guard 15 pass, delta-gamma heavy fixed-effect recovery 13 pass, delta-lognormal heavy fixed-effect recovery 13 pass, profile route matrix 282 pass, augmented LHS guard 33 pass, ordinary latent random-regression 75 pass, truncated recovery 15 pass, and truncated matrix 30 pass. Delta support is standard delta_lognormal()/delta_gamma() fixed-effect only; delta mixtures, delta_gengamma(), delta_beta(), delta-truncated NB, Poisson-link delta, latent/random delta covariance, and mixed-family delta correlations remain blocked or out of scope. This is truth-lock and local focused evidence only: not release completion, not coverage calibration, not source-specific lv widening, not mixed-family CI support, not Julia parity, and not active compute."
+      "text": "Current local branch codex/r-bridge-grouped-dispersion is clean at 97712555 and ahead of origin by 194 commits. Focused gllvmTMB completion work has now banked the surface audit, structural random-regression guard checks, constructor-only family boundary, heavy truncated/delta-family verification, open-issue reconciliation, and a review-package validation pass. Meaningful opt-in/heavy checks passed for confint bootstrap, derived confint, profile targets, keyword grid, ordinary latent random-regression, plot/extractor slices, and bounded coevolution prototype/recovery; pkgdown::check_pkgdown() passed; final devtools::check(args = \"--no-manual\", quiet = TRUE) passed 0 errors, 0 warnings, 0 notes after the source-clamp audit was made check-safe. This is local review-readiness evidence only: not release completion, not coverage calibration, not source-specific lv widening, not mixed-family CI support, not Julia parity, and not active compute."
     },
     {
       "when": "2026-07-04 17:14 MDT",
@@ -270,10 +270,10 @@
   ],
   "evidence": [
     {
-      "when": "2026-07-04 20:32 MDT",
+      "when": "2026-07-05 04:35 MDT",
       "who": "Local review-package evidence",
       "status": "guard",
-      "text": "Focused local checks are banked in check-log and after-task notes: devtools::check(args = \"--no-manual\") passed 0 errors, 0 warnings, 0 notes after the spatial(unique) documentation fix; pkgdown::check_pkgdown() passed; git diff --check passed; heavy coevolution two-kernel passed; and test-julia-bridge.R passed in configured live mode after prepending ~/.juliaup/bin to PATH and pointing GLLVM_JL_PATH at the local GLLVM.jl checkout. Remaining boundary: branch is local/unpushed, so GitHub CI and PR review are not counted."
+      "text": "Focused local review-package checks are banked in check-log and after-task notes. The current validation pass added heavy/opt-in confint bootstrap, derived confint, profile-target, keyword-grid, ordinary latent random-regression, plot/extractor, and bounded coevolution prototype/recovery checks; pkgdown::check_pkgdown() reported no problems; git diff --check passed; final devtools::check(args = \"--no-manual\", quiet = TRUE) passed 0 errors, 0 warnings, 0 notes after the source-clamp audit was made check-safe. Earlier live bridge and large-compute rows remain separate evidence. Remaining boundary: branch is local/unpushed, so GitHub CI and PR review are not counted for the current completion branch."
     },
     {
       "when": "2026-07-04 17:14 MDT",
@@ -285,7 +285,7 @@
       "when": "2026-07-03 13:39 MDT",
       "who": "PR #706 merge evidence",
       "status": "covered",
-      "text": "PR #706 is merged: https://github.com/itchyshin/gllvmTMB/pull/706. Merge commit 42a1995d includes the source-specific unique/Psi fold; pre-merge checks on head 1727270c were green across routine PR checks plus manual macOS, Ubuntu, and Windows R-CMD-check dispatch. The post-merge main R-CMD-check run 28679944062 is in progress at this board refresh."
+      "text": "PR #706 is merged: https://github.com/itchyshin/gllvmTMB/pull/706. Merge commit 42a1995d includes the source-specific unique/Psi fold; pre-merge checks on head 1727270c were green across routine PR checks plus manual macOS, Ubuntu, and Windows R-CMD-check dispatch. The post-merge main R-CMD-check run 28679944062 completed successfully at 2026-07-03T19:43:51Z."
     },
     {
       "when": "2026-07-03 13:21 MDT",
@@ -511,12 +511,12 @@
   "ci_runs": [
     {
       "workflow": "R-CMD-check",
-      "status": "in_progress",
-      "conclusion": "",
+      "status": "success",
+      "conclusion": "success",
       "branch": "main",
       "head": "42a1995d",
       "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/28679944062",
-      "link_label": "post-#706 run 28679944062"
+      "link_label": "post-#706 run 28679944062 passed"
     },
     {
       "workflow": "R-CMD-check",

@@ -35331,3 +35331,48 @@ Not run:
 - Large `test-coevolution-two-kernel.R` heavy sweep, live `GLLVM_JL_PATH`
   bridge tests, INLA-dependent spatial rows, vdiffr snapshots, Totoro/DRAC
   calibration campaigns, or a full `GLLVMTMB_HEAVY_TESTS=1` all-file campaign.
+
+### 2026-07-05 -- Mission Control review-validation refresh
+
+Goal:
+
+- Bring the local Mission Control board in line with the current completion
+  branch validation state after the review-package check gate.
+
+Changes:
+
+- Refreshed `docs/dev-log/dashboard/status.json` and
+  `docs/dev-log/dashboard/sweep.json` to show the local branch clean at
+  `97712555`, ahead of origin by 194 commits.
+- Updated the active local completion row to record the review-package
+  validation pass and final `devtools::check(args = "--no-manual")` result.
+- Verified GitHub Actions run `28679944062` for PR #706 and changed the
+  board from in-progress to successful.
+- Left Mission Control metrics unchanged because no new capability row was
+  promoted.
+
+Commands:
+
+```sh
+gh run view 28679944062 --repo itchyshin/gllvmTMB --json status,conclusion,headSha,displayTitle,createdAt,updatedAt,url
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+git diff --check
+sh tools/start-mission-control.sh --background
+curl -s http://127.0.0.1:8770/status.json | python3 -m json.tool >/dev/null
+curl -s http://127.0.0.1:8770/status.json | python3 -c 'import json,sys; j=json.load(sys.stdin); print(j.get("updated")); print(j.get("active_work",[{}])[0].get("text","")[:260]); print(j.get("evidence",[{}])[0].get("text","")[:260])'
+curl -s http://127.0.0.1:8770/sweep.json | python3 -c 'import json,sys; j=json.load(sys.stdin); print(j.get("updated")); print(j.get("ci_runs",[{}])[0])'
+```
+
+Results:
+
+- PR #706 post-merge R-CMD-check run `28679944062` is completed with
+  conclusion `success` at `2026-07-03T19:43:51Z`.
+- Dashboard JSON validation passed for both `status.json` and `sweep.json`.
+- `git diff --check` passed.
+- Mission Control was already available at `http://127.0.0.1:8770/`; the
+  server script synced refreshed files to `/tmp/gllvm-dashboard` and
+  `/private/tmp/gllvm-dashboard`.
+- Live `status.json` and `sweep.json` endpoints show the refreshed timestamp
+  `2026-07-05 04:35 MDT`, the current local branch state, and PR #706 as
+  successful.

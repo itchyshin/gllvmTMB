@@ -34754,3 +34754,45 @@ Not run:
 - No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro,
   DRAC, or interval/calibration compute. This is a phylo setup constant repair
   with a focused tree-vs-dense equivalence regression.
+
+## 2026-07-05 -- runtime enum truth mirror
+
+Goal: close issue #676 locally by making `R/enum.R` stop advertising the stale
+sdmTMB / single-response family and link ids. The table is still internal, but
+future accidental internal use now points at the same multivariate runtime ids
+as `family_to_id()` and the TMB switch comments.
+
+Edits:
+
+- Replaced the stale generated-enum comment with a runtime-mirror warning.
+- Updated `.valid_family` to the live multivariate ids: gaussian 0, binomial 1,
+  poisson 2, lognormal 3, Gamma 4, nbinom2 5, tweedie 6, Beta 7,
+  betabinomial 8, student 9, truncated_poisson 10, truncated_nbinom2 11,
+  delta_lognormal 12, delta_gamma 13, ordinal_probit 14, and nbinom1 15.
+- Reduced `.valid_link` to the only link ids currently consumed by the engine:
+  binomial logit 0, probit 1, and cloglog 2.
+- Added `test-enum-runtime-ids.R` so stale mixture, gengamma,
+  censored_poisson, and truncated_nbinom1 ids cannot silently reappear.
+- Updated validation-debt row `FAM-07` to replace the obsolete maintenance
+  warning with the repaired enum mirror evidence.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/enum.R")); invisible(parse("tests/testthat/test-enum-runtime-ids.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-enum-runtime-ids.R")'
+rg -n "Enum mirror repaired|test-enum-runtime-ids|sdmTMB:::make_enum" docs/design/35-validation-debt-register.md R/enum.R tests/testthat/test-enum-runtime-ids.R
+```
+
+Results:
+
+- Parse check: `parse-ok`.
+- `test-enum-runtime-ids.R`: 3 pass, 0 fail, 0 warn, 0 skip.
+- Stale-warning audit found only the repaired `FAM-07` note and the new test
+  reference; the old sdmTMB enum warning is gone.
+
+Not run:
+
+- No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro,
+  DRAC, or interval/calibration compute. This is an internal truth-lock guard
+  for runtime family/link ids.

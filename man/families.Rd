@@ -123,10 +123,10 @@ by passing \code{family} as a list of family objects and adding a selector
 column to \code{data} that chooses which family applies to each row.
 
 By default the selector column is named \code{"family"}. To use a different
-column name, set \code{attr(family, "family_var") <- "colname"}. For
-reproducibility, make the selector a factor whose levels are in the
-same order as the \code{family} list. The length of \code{family} must match the
-number of distinct selector levels.
+column name, set \code{attr(family, "family_var") <- "colname"}. Named family
+lists are aligned by name to the selector levels. Unnamed lists keep the
+legacy convention that list order must match the selector levels. The length
+of \code{family} must match the number of distinct selector levels.
 }
 
 \subsection{Delta-family defaults}{

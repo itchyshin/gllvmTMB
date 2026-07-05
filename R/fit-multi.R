@@ -52,6 +52,37 @@
   )
 }
 
+.align_mixed_family_list <- function(family, fam_levels, fam_var) {
+  family_names <- names(family)
+  if (is.null(family_names)) {
+    return(family)
+  }
+
+  if (any(!nzchar(family_names))) {
+    cli::cli_abort(c(
+      "Mixed-family {.arg family} lists must be either fully named or fully unnamed.",
+      "i" = "Use names that match the levels of {.var {fam_var}}, or order an unnamed list to match those levels."
+    ))
+  }
+  if (anyDuplicated(family_names)) {
+    cli::cli_abort("Mixed-family {.arg family} list names must be unique.")
+  }
+
+  missing_levels <- setdiff(fam_levels, family_names)
+  extra_names <- setdiff(family_names, fam_levels)
+  if (length(missing_levels) > 0L || length(extra_names) > 0L) {
+    cli::cli_abort(c(
+      "Mixed-family {.arg family} list names must match the levels of {.var {fam_var}}.",
+      "x" = "Missing family entries for: {paste(missing_levels, collapse = ', ')}",
+      "x" = "Unused family entries for: {paste(extra_names, collapse = ', ')}"
+    ))
+  }
+
+  out <- family[match(fam_levels, family_names)]
+  attr(out, "family_var") <- fam_var
+  out
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `unique()`
@@ -85,6 +116,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##   * a single family object (as before): same family for all rows.
   ##   * a list of family objects + a `family_var` column in `data` whose
   ##     factor / integer levels pick the family per row (galamm-style).
+  ##     Named lists are aligned by name; unnamed lists retain the legacy
+  ##     convention that list order matches the selector levels.
   ##
   ## family_to_id() returns BOTH a family-id and a link-id integer:
   ##   family_id: 0 = gaussian, 1 = binomial, 2 = poisson,
@@ -224,13 +257,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "Mixed-family fit needs a {.var {fam_var}} column in {.arg data}.",
         "i" = "Set {.code attr(family, 'family_var') <- 'colname'} or include a {.var family} column."
       ))
-    fl_pairs <- vapply(family, family_to_id, integer(2))
-    fids     <- fl_pairs[1, ]
-    lids     <- fl_pairs[2, ]
     fam_levels <- if (is.factor(data[[fam_var]])) levels(data[[fam_var]])
                   else sort(unique(as.character(data[[fam_var]])))
     if (length(fam_levels) != length(family))
       cli::cli_abort("length(family) must match the number of distinct levels in {.var {fam_var}}.")
+    family <- .align_mixed_family_list(family, fam_levels, fam_var)
+    fl_pairs <- vapply(family, family_to_id, integer(2))
+    fids     <- fl_pairs[1, ]
+    lids     <- fl_pairs[2, ]
     fam_idx       <- match(as.character(data[[fam_var]]), fam_levels)
     family_id_vec <- fids[fam_idx]
     link_id_vec   <- lids[fam_idx]

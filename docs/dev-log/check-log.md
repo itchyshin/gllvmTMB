@@ -32736,3 +32736,36 @@ GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(qui
 Outcome: parse passed; quick profile-derived curve tests passed; heavy
 profile-derived curve tests passed. This is a curve-baseline and summary
 alignment repair only, not a new empirical calibration claim.
+
+## 2026-07-04 -- Mixed-family named-list dispatch repair
+
+Goal: close issue #610 by making named mixed-family lists align by selector
+level before constructing `family_id_vec`, `link_id_vec`, and `family_per_row`.
+
+Edits:
+
+- Added `.align_mixed_family_list()` in `R/fit-multi.R`.
+- Kept unnamed mixed-family lists backward-compatible: list order still matches
+  selector levels.
+- Made partially named mixed-family lists fail loudly.
+- Updated family documentation and generated Rd to explain the named-list
+  contract.
+- Added a Stage 37 regression with a deliberately out-of-order named list.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/fit-multi.R")); invisible(parse("R/families.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-stage37-mixed-family.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-m1-2-mixed-family-fixture.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-mixed-family-extractor.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-traits-keyword.R", reporter = "summary")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE); cat("document-ok\n")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-m1-2-mixed-family-fixture.R", reporter = "summary")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-mixed-family-extractor.R", reporter = "summary")'
+```
+
+Outcome: parse passed; Stage 37 mixed-family tests passed; fixture/extractor
+heavy mixed-family checks passed; traits parser tests passed; documentation
+regenerated. This is a correctness repair for existing mixed-family dispatch,
+not a mixed-family interval or calibration promotion.

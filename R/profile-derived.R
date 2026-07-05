@@ -155,10 +155,12 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
 #' sigma2_non)` is a 2-component ratio profileable via a single linear
 #' contrast (`log_sd_phy_diag[t] - theta_diag_species[t]`).
 #'
-#' For richer 3-component decompositions (PGLLVM with phylo_latent plus
-#' a species-level latent decomposition with Psi), we currently return Wald CIs with a
-#' note; full profile would require fix-and-refit on the multi-component
-#' constraint and is logged as a future enhancement.
+#' For richer 3-component decompositions (PGLLVM with `phylo_latent()` plus
+#' a species-level latent decomposition with Psi), full profile requires
+#' fix-and-refit on the multi-component constraint and remains planned. The
+#' current `method = "profile"` entry point returns the existing numerical
+#' delta-method Wald bounds with a clear `method = "wald(numeric)"` label
+#' rather than returning empty bounds.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param trait_idx Integer index of the trait, or `NULL` for all.
@@ -238,22 +240,10 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
     return(do.call(rbind, out_list))
   }
 
-  ## Fallback: Wald via delta method on H^2. We keep the existing point
-  ## estimate from extract_phylo_signal and approximate the CI from the
-  ## sd_report covariance of the constituent log-SDs.
-  ps <- extract_phylo_signal(fit)
-  out <- data.frame(
-    trait = trait_names[trait_idx],
-    H2 = ps$H2[trait_idx],
-    lower = NA_real_,
-    upper = NA_real_,
-    method = "wald(approx)",
-    stringsAsFactors = FALSE
-  )
   cli::cli_inform(
-    "Multi-component (3+) phylogenetic signal CIs require fix-and-refit; not implemented in Phase K. Returning point estimates with method = {.val wald(approx)}."
+    "Multi-component (3+) phylogenetic signal profile CIs require fix-and-refit and are not implemented yet. Returning numerical delta-method Wald bounds with method = {.val wald(numeric)}."
   )
-  out
+  .phylo_signal_wald_ci(fit, trait_idx = trait_idx, level = level)
 }
 
 ## ---- Lagrange-style fix-and-refit penalty driver --------------------------
@@ -473,8 +463,8 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param level Confidence level. Default 0.95.
-#' @param tier `"unit"` or `"unit_obs"`. Legacy aliases `"B"` and `"W"` are
-#'   accepted.
+#' @param tier `"unit"`, `"unit_obs"`, or `"phy"`. Legacy aliases `"B"` and
+#'   `"W"` are accepted.
 #' @param trait_idx Integer index of trait, or `NULL` for all.
 #' @return A data frame with columns `trait`, `tier`, `c2`, `lower`,
 #'   `upper`, `method`.
@@ -483,7 +473,7 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
 #' @export
 profile_ci_communality <- function(
   fit,
-  tier = c("unit", "unit_obs", "B", "W"),
+  tier = c("unit", "unit_obs", "phy", "B", "W"),
   trait_idx = NULL,
   level = 0.95
 ) {
@@ -492,15 +482,23 @@ profile_ci_communality <- function(
   }
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
-  rr_used <- if (tier == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
-  diag_used <- if (tier == "B") {
-    isTRUE(fit$use$diag_B)
-  } else {
-    isTRUE(fit$use$diag_W)
-  }
+  rr_used <- switch(
+    tier,
+    B = isTRUE(fit$use$rr_B),
+    W = isTRUE(fit$use$rr_W),
+    phy = isTRUE(fit$use$phylo_rr),
+    FALSE
+  )
+  diag_used <- switch(
+    tier,
+    B = isTRUE(fit$use$diag_B),
+    W = isTRUE(fit$use$diag_W),
+    phy = isTRUE(fit$use$phylo_diag),
+    FALSE
+  )
   if (!rr_used) {
     cli::cli_abort(
-      "Communality at tier {.val {tier}} requires a {.code latent()} term in the fit."
+      "Communality at tier {.val {tier}} requires a shared latent term in the fit."
     )
   }
   trait_names <- levels(fit$data[[fit$trait_col]])
@@ -520,15 +518,32 @@ profile_ci_communality <- function(
   ## Per-trait target function: re-build Lambda from theta_rr_<tier> and
   ## sigma2_t from theta_diag_<tier>; return c2_t.
   par_names <- names(fit$opt$par)
-  ix_rr <- which(par_names == paste0("theta_rr_", tier))
-  ix_diag <- which(par_names == paste0("theta_diag_", tier))
+  rr_name <- switch(
+    tier,
+    B = "theta_rr_B",
+    W = "theta_rr_W",
+    phy = "theta_rr_phy"
+  )
+  diag_name <- switch(
+    tier,
+    B = "theta_diag_B",
+    W = "theta_diag_W",
+    phy = "log_sd_phy_diag"
+  )
+  ix_rr <- which(par_names == rr_name)
+  ix_diag <- which(par_names == diag_name)
   if (length(ix_rr) == 0L || length(ix_diag) == 0L) {
     cli::cli_abort(
-      "Communality profiling requires a {.code latent()} tier with a {.code Psi} diagonal at tier {.val {tier}}.",
-      "i" = "Ordinary {.code latent()} includes {.code Psi} by default; {.code latent(..., residual = FALSE)} is the explicit no-Psi subset."
+      "Communality profiling requires a shared latent tier with an explicit diagonal Psi component at tier {.val {tier}}.",
+      "i" = "Ordinary {.code latent()} includes {.code Psi} by default. For phylogenetic communality, pair {.code phylo_latent()} with {.code phylo_unique()} or use the folded {.code unique = TRUE} contract where available."
     )
   }
-  d_tier <- if (tier == "B") fit$d_B else fit$d_W
+  d_tier <- switch(
+    tier,
+    B = fit$d_B,
+    W = fit$d_W,
+    phy = fit$d_phy
+  )
   n_traits <- length(ix_diag)
   ## Length expected for theta_rr: n_traits * d - d*(d-1)/2 (lower-tri packed)
   expected_nt <- n_traits * d_tier - d_tier * (d_tier - 1) / 2

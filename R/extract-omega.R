@@ -308,8 +308,9 @@ extract_Omega <- function(
 #'   Only used when `ci = TRUE`. For 2-component decompositions
 #'   (phylo_unique vs species-level diagonal component only) profile uses a linear
 #'   contrast; for 3-component decompositions (PGLLVM with
-#'   phylo_latent plus a species-level latent decomposition with Psi) the profile path is
-#'   not yet implemented and falls back to the point estimate.
+#'   phylo_latent plus a species-level latent decomposition with Psi) the full
+#'   profile path is not yet implemented and falls back to numerical
+#'   delta-method Wald bounds labelled `"wald(numeric)"`.
 #' @param nsim Number of bootstrap replicates when
 #'   `method = "bootstrap"`. Default 500.
 #' @param seed Optional RNG seed for the bootstrap.

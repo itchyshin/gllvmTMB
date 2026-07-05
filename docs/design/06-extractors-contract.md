@@ -324,18 +324,21 @@ c_t^2 =
 \frac{(\Lambda\Lambda^\top)_{tt}}{\Sigma_{tt}},
 $$
 
-for the requested `level` (`unit` / internal `B`, or `unit_obs` / internal
-`W`). When `ci = TRUE`, the return is a `data.frame` with columns `trait`,
-`tier`, `c2`, `lower`, `upper`, and `method`.
+for the requested `level` (`unit` / internal `B`, `unit_obs` / internal
+`W`, or `phy`). For `level = "phy"` the target is phylogenetic-tier
+communality, `diag(Lambda_phy Lambda_phy') / diag(Lambda_phy Lambda_phy' +
+Psi_phy)`, not whole-model phylogenetic signal. When `ci = TRUE`, the return
+is a `data.frame` with columns `trait`, `tier`, `c2`, `lower`, `upper`, and
+`method`.
 
 For fitted `gllvmTMB_multi` objects, `method = "profile"` delegates to
 `profile_ci_communality()`, while `method = "bootstrap"` runs
 `bootstrap_Sigma(..., what = "communality")` and returns the resulting
 percentile bounds. For existing `bootstrap_Sigma()` objects that already
-contain `communality_B` / `communality_W` summaries, `extract_communality()`
-reuses the stored point estimates and percentile bounds without rerunning
-bootstrap refits (EXT-21). This bootstrap-object path is intentionally a
-reporting bridge; it does not compute new intervals.
+contain `communality_B` / `communality_W` / `communality_phy` summaries,
+`extract_communality()` reuses the stored point estimates and percentile
+bounds without rerunning bootstrap refits (EXT-21). This bootstrap-object path
+is intentionally a reporting bridge; it does not compute new intervals.
 
 The companion `plot(type = "communality", boot = boot)` path uses the same
 stored `communality` summaries to overlay `c^2` boundary intervals on the

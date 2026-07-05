@@ -23,9 +23,11 @@ but no species-level \code{latent()} term, \code{H^2 = sigma2_phy / (sigma2_phy 
 contrast (\code{log_sd_phy_diag[t] - theta_diag_species[t]}).
 }
 \details{
-For richer 3-component decompositions (PGLLVM with phylo_latent plus
-a species-level latent decomposition with Psi), we currently return Wald CIs with a
-note; full profile would require fix-and-refit on the multi-component
-constraint and is logged as a future enhancement.
+For richer 3-component decompositions (PGLLVM with \code{phylo_latent()} plus
+a species-level latent decomposition with Psi), full profile requires
+fix-and-refit on the multi-component constraint and remains planned. The
+current \code{method = "profile"} entry point returns the existing numerical
+delta-method Wald bounds with a clear \code{method = "wald(numeric)"} label
+rather than returning empty bounds.
 }
 \keyword{internal}

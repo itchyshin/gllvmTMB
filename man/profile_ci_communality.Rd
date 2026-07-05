@@ -6,7 +6,7 @@
 \usage{
 profile_ci_communality(
   fit,
-  tier = c("unit", "unit_obs", "B", "W"),
+  tier = c("unit", "unit_obs", "phy", "B", "W"),
   trait_idx = NULL,
   level = 0.95
 )
@@ -14,8 +14,8 @@ profile_ci_communality(
 \arguments{
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
-\item{tier}{\code{"unit"} or \code{"unit_obs"}. Legacy aliases \code{"B"} and \code{"W"} are
-accepted.}
+\item{tier}{\code{"unit"}, \code{"unit_obs"}, or \code{"phy"}. Legacy aliases \code{"B"} and
+\code{"W"} are accepted.}
 
 \item{trait_idx}{Integer index of trait, or \code{NULL} for all.}
 

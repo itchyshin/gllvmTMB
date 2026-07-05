@@ -478,10 +478,10 @@
       i = "Expected {.code \"communality:<tier>\"} or {.code \"communality:<tier>:<trait>\"}; tier is mandatory."
     ))
   }
-  if (!tier %in% c("unit", "unit_obs", "B", "W")) {
+  if (!tier %in% c("unit", "unit_obs", "phy", "B", "W")) {
     cli::cli_abort(c(
       "Invalid tier {.val {tier}} in {.val {parm}}.",
-      i = "Communality tiers: {.val unit} or {.val unit_obs} (legacy aliases {.val B} / {.val W} also accepted)."
+      i = "Communality tiers: {.val unit}, {.val unit_obs}, or {.val phy} (legacy aliases {.val B} / {.val W} also accepted)."
     ))
   }
   trait_idx <- NULL
@@ -661,10 +661,8 @@
 }
 
 ## Internal helper: dispatch `confint(fit, parm = "communality:tier[:trait]")`.
-## Currently profile-only; wald / bootstrap error with a pointer to
-## `extract_communality()` (which has its own wald-demote-to-bootstrap
-## logic and bootstrap path, but only for the per-tier table — not the
-## per-trait token we expose here).
+## Routes to profile_ci_communality() for profile, and scalar Wald/bootstrap
+## helpers for wald/bootstrap.
 .confint_communality <- function(object, parm, level, method, nsim = 500L, seed = NULL, ...) {
   trait_names <- levels(object$data[[object$trait_col]])
   parsed <- .parse_communality_parm(parm, trait_names)
@@ -1157,13 +1155,17 @@
 #'       Stage 3a of the unified profile-CI framework.
 #'     \item \code{"phylo_signal"} / \code{"phylo_signal:<trait>"} etc.
 #'       -- same grammar as \code{"icc"}. Routes to
-#'       [profile_ci_phylo_signal()]. Profile-only; \code{"wald"} /
-#'       \code{"bootstrap"} error with a clear message.
+#'       [profile_ci_phylo_signal()] for \code{"profile"} and the companion
+#'       Wald/bootstrap helpers for \code{"wald"} / \code{"bootstrap"}.
+#'       For multi-component fits, \code{"profile"} falls back to numerical
+#'       Wald bounds with an explicit method label until the full
+#'       fix-and-refit profile is implemented.
 #'     \item \code{"communality:<tier>"} (one tier, all traits) or
 #'       \code{"communality:<tier>:<trait>"} (one tier, one trait).
-#'       Tier is one of \code{"unit"} / \code{"unit_obs"} (legacy
-#'       \code{"B"} / \code{"W"}). Routes to [profile_ci_communality()].
-#'       Profile-only.
+#'       Tier is one of \code{"unit"} / \code{"unit_obs"} / \code{"phy"}
+#'       (legacy \code{"B"} / \code{"W"}). Routes to
+#'       [profile_ci_communality()] for \code{"profile"} and the companion
+#'       Wald/bootstrap helpers for \code{"wald"} / \code{"bootstrap"}.
 #'     \item \code{"rho:<tier>:i,j"} (one pair) or
 #'       \code{"rho:<tier>:i,j;k,l"} (multiple pairs). Tier is one of
 #'       \code{"unit"} / \code{"unit_obs"} / \code{"phy"} /
@@ -1470,7 +1472,7 @@ confint.gllvmTMB_multi <- function(
     return(.confint_sigma_wald(object, parm, level))
   }
   ## profile
-  .confint_sigma_profile(object, parm, level)
+  .confint_sigma_profile(object, parm, level, nsim = nsim, seed = seed)
 }
 
 #' @keywords internal
@@ -1630,7 +1632,7 @@ confint.gllvmTMB_multi <- function(
 
 #' @keywords internal
 #' @noRd
-.confint_sigma_profile <- function(object, parm, level) {
+.confint_sigma_profile <- function(object, parm, level, nsim, seed) {
   ## Profile path on Sigma matrices.
   ##
   ## For sigma_phy (per-trait SDs from log_sd_phy_diag), TMB::tmbprofile()
@@ -1739,13 +1741,13 @@ confint.gllvmTMB_multi <- function(
     "Profile CIs on {parm} entries when {.code latent()} is present require fix-and-refit on a non-linear function of multiple rotation-equivalent parameters and are unstable.",
     "i" = "Falling back to {.code method = \"bootstrap\"}; pass {.code nsim} to control replicate count."
   ))
-  ## Reuse the bootstrap path with default nsim
+  ## Reuse the bootstrap path with the caller's controls.
   return(.confint_sigma_bootstrap(
     object,
     parm,
     level,
-    nsim = 200L,
-    seed = NULL
+    nsim = nsim,
+    seed = seed
   ))
 }
 

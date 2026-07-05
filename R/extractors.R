@@ -143,8 +143,9 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'   also accepted when it contains `communality` summaries; in that case the
 #'   function reuses the stored point estimates and percentile bounds rather
 #'   than refitting.
-#' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
-#'   Legacy aliases `"B"` and `"W"` are accepted with a deprecation warning.
+#' @param level `"unit"` (between-unit), `"unit_obs"` (within-unit), or
+#'   `"phy"` (phylogenetic tier). Legacy aliases `"B"` and `"W"` are accepted
+#'   with a deprecation warning.
 #' @param link_residual For binomial fits: `"auto"` (default) adds the
 #'   link-specific implicit residual to the denominator; `"none"` returns
 #'   communalities on the fitted model covariance scale without link-residual
@@ -190,7 +191,7 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' @export
 extract_communality <- function(
   fit,
-  level = c("unit", "unit_obs", "B", "W"),
+  level = c("unit", "unit_obs", "phy", "B", "W"),
   link_residual = c("auto", "none"),
   ci = FALSE,
   conf_level = 0.95,
@@ -210,7 +211,13 @@ extract_communality <- function(
       "Provide a fit returned by {.fun gllvmTMB} or a {.cls bootstrap_Sigma} object."
     )
   }
-  rr_used <- if (level == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
+  rr_used <- switch(
+    level,
+    B = isTRUE(fit$use$rr_B),
+    W = isTRUE(fit$use$rr_W),
+    phy = isTRUE(fit$use$phylo_rr),
+    FALSE
+  )
   if (!rr_used) {
     return(NULL)
   }

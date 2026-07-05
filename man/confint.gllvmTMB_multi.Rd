@@ -49,13 +49,17 @@ trait by name), \code{"icc:<t1>;<t2>"} (multiple by name), or
 Stage 3a of the unified profile-CI framework.
 \item \code{"phylo_signal"} / \code{"phylo_signal:<trait>"} etc.
 -- same grammar as \code{"icc"}. Routes to
-\code{\link[=profile_ci_phylo_signal]{profile_ci_phylo_signal()}}. Profile-only; \code{"wald"} /
-\code{"bootstrap"} error with a clear message.
+\code{\link[=profile_ci_phylo_signal]{profile_ci_phylo_signal()}} for \code{"profile"} and the companion
+Wald/bootstrap helpers for \code{"wald"} / \code{"bootstrap"}.
+For multi-component fits, \code{"profile"} falls back to numerical
+Wald bounds with an explicit method label until the full
+fix-and-refit profile is implemented.
 \item \code{"communality:<tier>"} (one tier, all traits) or
 \code{"communality:<tier>:<trait>"} (one tier, one trait).
-Tier is one of \code{"unit"} / \code{"unit_obs"} (legacy
-\code{"B"} / \code{"W"}). Routes to \code{\link[=profile_ci_communality]{profile_ci_communality()}}.
-Profile-only.
+Tier is one of \code{"unit"} / \code{"unit_obs"} / \code{"phy"}
+(legacy \code{"B"} / \code{"W"}). Routes to
+\code{\link[=profile_ci_communality]{profile_ci_communality()}} for \code{"profile"} and the companion
+Wald/bootstrap helpers for \code{"wald"} / \code{"bootstrap"}.
 \item \code{"rho:<tier>:i,j"} (one pair) or
 \code{"rho:<tier>:i,j;k,l"} (multiple pairs). Tier is one of
 \code{"unit"} / \code{"unit_obs"} / \code{"phy"} /

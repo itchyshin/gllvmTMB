@@ -3,7 +3,7 @@
 ##
 ##   c^2_t = (Lambda Lambda^T)_{tt} / Sigma_{tt}
 ##
-## at one tier (B / unit or W / unit_obs). Profile-likelihood CIs are
+## at one tier (B / unit, W / unit_obs, or phy). Profile-likelihood CIs are
 ## already provided by [profile_ci_communality()]; the helpers here add
 ## the two remaining methods so that the `confint(parm, method)` surface
 ## is programmatically complete (Phase B-INF Lane 1, A1).
@@ -31,7 +31,8 @@
 #'
 #' @param fit A multivariate `gllvmTMB()` fit with a `latent()` term at
 #'   the requested tier.
-#' @param tier `"unit"`, `"unit_obs"`, or the legacy aliases `"B"` / `"W"`.
+#' @param tier `"unit"`, `"unit_obs"`, `"phy"`, or the legacy aliases
+#'   `"B"` / `"W"`.
 #' @param trait_idx Integer index of the trait (1-based).
 #' @param level Confidence level. Default 0.95.
 #'
@@ -53,21 +54,30 @@
 
   tier_in <- tier
   tier <- .normalise_level(tier, arg_name = "tier")
-  if (!tier %in% c("B", "W"))
+  if (!tier %in% c("B", "W", "phy"))
     cli::cli_abort(
-      "Communality is defined for tiers {.val unit} / {.val unit_obs}; got {.val {tier_in}}."
+      "Communality is defined for tiers {.val unit}, {.val unit_obs}, or {.val phy}; got {.val {tier_in}}."
     )
 
-  rr_used <- if (tier == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
-  diag_used <- if (tier == "B")
-    isTRUE(fit$use$diag_B) else isTRUE(fit$use$diag_W)
+  rr_used <- switch(
+    tier,
+    B = isTRUE(fit$use$rr_B),
+    W = isTRUE(fit$use$rr_W),
+    phy = isTRUE(fit$use$phylo_rr)
+  )
+  diag_used <- switch(
+    tier,
+    B = isTRUE(fit$use$diag_B),
+    W = isTRUE(fit$use$diag_W),
+    phy = isTRUE(fit$use$phylo_diag)
+  )
   if (!rr_used)
     cli::cli_abort(
       "Communality at tier {.val {tier_in}} requires a {.code latent()} term."
     )
   if (!diag_used)
     cli::cli_abort(
-      "Communality Wald CI at tier {.val {tier_in}} requires a diagonal Psi component (per-trait residual variance). Use the default {.fn latent} fit; {.code latent(..., residual = FALSE)} is the no-Psi subset."
+      "Communality Wald CI at tier {.val {tier_in}} requires a diagonal Psi component (per-trait unique variance). Use the default {.fn latent} fit for ordinary tiers; for the phylogenetic tier, pair {.fn phylo_latent} with {.fn phylo_unique} or use the folded {.code unique = TRUE} contract where available."
     )
 
   trait_names <- levels(fit$data[[fit$trait_col]])
@@ -83,8 +93,18 @@
       i = "Refit so {.code fit$sd_report} is populated."
     ))
 
-  lam_name <- paste0("Lambda_", tier)
-  sd_name  <- paste0("sd_", tier)
+  lam_name <- switch(
+    tier,
+    B = "Lambda_B",
+    W = "Lambda_W",
+    phy = "Lambda_phy"
+  )
+  sd_name <- switch(
+    tier,
+    B = "sd_B",
+    W = "sd_W",
+    phy = "sd_phy_diag"
+  )
   rep0 <- fit$report
   if (is.null(rep0[[lam_name]]) || is.null(rep0[[sd_name]]))
     cli::cli_abort(
@@ -98,10 +118,14 @@
   ## variance depends on parameters (e.g. lognormal-Poisson) we are
   ## ignoring the second-order contribution, consistent with how
   ## `bootstrap_Sigma()` summarises its draws.
-  link_resid_vec <- tryCatch(
-    link_residual_per_trait(fit),
-    error = function(e) rep(0, T_n)
-  )
+  link_resid_vec <- if (tier == "phy") {
+    rep(0, T_n)
+  } else {
+    tryCatch(
+      link_residual_per_trait(fit),
+      error = function(e) rep(0, T_n)
+    )
+  }
   link_resid_t <- if (length(link_resid_vec) >= trait_idx)
     unname(link_resid_vec[trait_idx]) else 0
   if (!is.finite(link_resid_t)) link_resid_t <- 0
@@ -205,12 +229,17 @@
 
   tier_in <- tier
   tier <- .normalise_level(tier, arg_name = "tier")
-  if (!tier %in% c("B", "W"))
+  if (!tier %in% c("B", "W", "phy"))
     cli::cli_abort(
-      "Communality is defined for tiers {.val unit} / {.val unit_obs}; got {.val {tier_in}}."
+      "Communality is defined for tiers {.val unit}, {.val unit_obs}, or {.val phy}; got {.val {tier_in}}."
     )
 
-  rr_used <- if (tier == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
+  rr_used <- switch(
+    tier,
+    B = isTRUE(fit$use$rr_B),
+    W = isTRUE(fit$use$rr_W),
+    phy = isTRUE(fit$use$phylo_rr)
+  )
   if (!rr_used)
     cli::cli_abort(
       "Communality at tier {.val {tier_in}} requires a {.code latent()} term."

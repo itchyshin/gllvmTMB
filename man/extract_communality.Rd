@@ -6,7 +6,7 @@
 \usage{
 extract_communality(
   fit,
-  level = c("unit", "unit_obs", "B", "W"),
+  level = c("unit", "unit_obs", "phy", "B", "W"),
   link_residual = c("auto", "none"),
   ci = FALSE,
   conf_level = 0.95,
@@ -21,8 +21,9 @@ also accepted when it contains \code{communality} summaries; in that case the
 function reuses the stored point estimates and percentile bounds rather
 than refitting.}
 
-\item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
-Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
+\item{level}{\code{"unit"} (between-unit), \code{"unit_obs"} (within-unit), or
+\code{"phy"} (phylogenetic tier). Legacy aliases \code{"B"} and \code{"W"} are accepted
+with a deprecation warning.}
 
 \item{link_residual}{For binomial fits: \code{"auto"} (default) adds the
 link-specific implicit residual to the denominator; \code{"none"} returns

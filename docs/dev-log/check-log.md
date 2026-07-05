@@ -31646,3 +31646,214 @@ Consistency boundary:
 - No source-specific `lv = ~ env` exposure.
 - No mixed-family CI, X, X_lv, or mask promotion.
 - No Totoro/DRAC compute launched.
+
+## 2026-07-04 -- Sigma profile fallback controls and compute escalation plan
+
+Goal: start the `gllvmTMB` completion arc with a narrow Phase 1 inference
+safety repair, and make the Ultra-Plan explicit about when local, Totoro, and
+DRAC compute should be used.
+
+Implemented:
+
+- `confint(..., parm = "Sigma_unit", method = "profile", nsim = ..., seed = ...)`
+  now forwards `nsim` and `seed` through `.confint_sigma_profile()` when the
+  nonlinear full-Sigma profile path falls back to bootstrap.
+- Added a regression test in `test-sigma-profile-bootstrap-controls.R` that mocks
+  `bootstrap_Sigma()` and verifies the fallback receives the caller's `nsim`
+  and `seed`.
+- Updated the completion Ultra-Plan with a compute escalation ladder:
+  local focused checks first, Totoro for fast diagnostics up to the agreed
+  shared-host footprint, and DRAC for frozen-design claim evidence.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/z-confint-gllvmTMB.R")); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-sigma-profile-bootstrap-controls.R", reporter = "summary")'
+```
+
+Outcome: passed; 4 assertion dots, 0 failures.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "matrix-gamma-unit", reporter = "summary")'
+```
+
+Outcome: passed locally; the old Gamma heavy file is not currently reproducing
+as a local blocker on this branch.
+
+Issue ledger:
+
+- Open issue #606 matches this local fix:
+  <https://github.com/itchyshin/gllvmTMB/issues/606>.
+
+Known limitation:
+
+- The full `profile-ci` file remains too heavy for this quick slice; the broad
+  file run was interrupted during the pre-existing full-Sigma bootstrap fallback
+  test, then replaced by the targeted mocked regression file above.
+- No validation-debt row moved, no interval-calibration claim changed, and no
+  remote compute was launched.
+
+## 2026-07-04 -- Derived phylogenetic CI audit from Ayumi issue #14
+
+Goal: fold the real-world Ayumi
+<https://github.com/Ayumi-495/avian_trait_scales/issues/14> report into the
+Phase 1 inference-safety gate before broad function re-testing. The issue
+showed that a three-tier phylogenetic fit had no usable interval for two key
+derived quantities: multi-component `profile_ci_phylo_signal()` returned
+`NA` bounds with `method = "wald(approx)"`, and `profile_ci_communality()` /
+`confint(..., parm = "communality:phy")` had no `phy` tier route.
+
+Implemented:
+
+- `profile_ci_phylo_signal()` now keeps the two-component profile path, but
+  for richer 3+ component fits it returns the existing numerical delta-method
+  Wald bounds via `.phylo_signal_wald_ci()` and labels the method
+  `wald(numeric)` instead of returning empty bounds.
+- `extract_communality()`, `profile_ci_communality()`,
+  `.communality_wald_ci()`, `.communality_bootstrap_ci()`, and
+  `confint(..., parm = "communality:phy:<trait>")` now admit phylogenetic-tier
+  communality.
+- `bootstrap_Sigma()` summary collection now stores `communality_phy` when
+  `level = "phy"` and `what = "communality"` are requested.
+- The completion Ultra-Plan now includes a derived-CI route matrix gate across
+  `profile_ci_*()`, extractor `ci = TRUE`, `confint(parm = ...)`, and bootstrap
+  collectors.
+- Validation-debt rows now narrow `CI-05`: two-component phylogenetic-signal
+  profile is covered, but true 3+ component profile-LR remains planned; the
+  admitted 3+ fallback is numerical Wald, not profile-LR.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/profile-derived.R")); invisible(parse("R/extractors.R")); invisible(parse("R/communality-ci.R")); invisible(parse("R/bootstrap-sigma.R")); invisible(parse("R/z-confint-gllvmTMB.R")); invisible(parse("R/extract-omega.R")); invisible(parse("tests/testthat/test-derived-phylo-ci-audit.R")); cat("parse-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Outcome: regenerated `man/extract_phylo_signal.Rd`,
+`man/extract_communality.Rd`, `man/confint.gllvmTMB_multi.Rd`,
+`man/profile_ci_phylo_signal.Rd`, and `man/profile_ci_communality.Rd`; emitted
+the same pre-existing unresolved-link warnings in unrelated topics.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-derived-phylo-ci-audit.R", reporter = "summary")'
+```
+
+Outcome: passed; 24 assertion dots, 0 failures.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-phylo-signal-ci.R", reporter = "summary")'
+```
+
+Outcome: passed with the known conditional-simulation warning from the
+bootstrap path.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-bootstrap-Sigma.R", reporter = "summary")'
+```
+
+Outcome: passed with the expected `{future}`-not-installed skip for the
+parallel-shape comparison.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-communality-ci.R", reporter = "summary")'
+```
+
+Outcome: passed.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-derived.R", reporter = "summary")'
+```
+
+Outcome: all tests skipped without the heavy gate. A heavy run of the same file
+was manually interrupted after several minutes in existing slow profile
+branches; no failure was observed before interruption.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-extract-communality-bootstrap.R", reporter = "summary")'
+```
+
+Outcome: all tests skipped without the heavy gate.
+
+```sh
+git diff --check
+```
+
+Outcome: passed with no output.
+
+Claim audit:
+
+```sh
+rg -n "wald\\(approx\\)|point estimates with method|profile-only;|Profile-only|communality.*unit_obs.*B.*W|Communality tiers:.*unit.*unit_obs" R man docs/design tests/testthat -S
+```
+
+Outcome: no stale phylogenetic-signal empty-fallback wording remains. Remaining
+hits are expected `proportion` profile-only wording and the updated
+communality tier list including `phy`.
+
+Known limitation:
+
+- This does not implement true 3+ component profile-LR for phylogenetic signal.
+  It provides a useful, honestly labelled numerical-Wald fallback and keeps the
+  true profile-LR route planned.
+- No interval-calibration row moved; CI-08 / CI-10 remain separate coverage
+  gates.
+- No Totoro or DRAC compute was launched.
+
+Closeout checks after the focused regression files were isolated:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/profile-derived.R")); invisible(parse("R/extractors.R")); invisible(parse("R/communality-ci.R")); invisible(parse("R/bootstrap-sigma.R")); invisible(parse("R/z-confint-gllvmTMB.R")); invisible(parse("R/extract-omega.R")); invisible(parse("tests/testthat/test-sigma-profile-bootstrap-controls.R")); invisible(parse("tests/testthat/test-derived-phylo-ci-audit.R")); cat("parse-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); cat("load-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+Rscript --vanilla -e 'files <- c("man/confint.gllvmTMB_multi.Rd", "man/extract_communality.Rd", "man/extract_phylo_signal.Rd", "man/profile_ci_communality.Rd", "man/profile_ci_phylo_signal.Rd"); invisible(lapply(files, tools::checkRd)); cat("checkRd-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-sigma-profile-bootstrap-controls.R", reporter = "summary")'
+```
+
+Outcome: passed; `sigma-profile-bootstrap-controls: ....`.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-derived-phylo-ci-audit.R", reporter = "summary")'
+```
+
+Outcome: passed; `derived-phylo-ci-audit: ........................`.
+
+```sh
+rg -n "wald\\(approx\\)|3\\+.*profile.*covered|profile-LR.*covered|partial support|ready to expose|source-specific.*lv|mixed-family CI|pdHess passed|bootstrap rescue|lower\\s*=\\s*NA|upper\\s*=\\s*NA" R/profile-derived.R R/communality-ci.R R/bootstrap-sigma.R R/z-confint-gllvmTMB.R R/extractors.R R/extract-omega.R docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-07-04-derived-phylo-ci-audit.md docs/dev-log/after-task/2026-07-04-sigma-profile-bootstrap-controls.md docs/dev-log/while-away/2026-07-04-gllvmtmb-completion-ultra-plan.md tests/testthat/test-derived-phylo-ci-audit.R tests/testthat/test-sigma-profile-bootstrap-controls.R man/confint.gllvmTMB_multi.Rd man/extract_communality.Rd man/extract_phylo_signal.Rd man/profile_ci_communality.Rd man/profile_ci_phylo_signal.Rd
+```
+
+Outcome: no new unsupported profile-LR, source-specific `lv`, mixed-family CI,
+or bootstrap-rescue claims in the touched files. Remaining `NA` interval hits
+are existing sentinel / unavailable-endpoint code paths or deliberate
+description of the old Ayumi #14 failure.
+
+Follow-on noted for the next derived-CI matrix audit:
+
+- `confint(..., parm = "communality:...", method = "wald")` now has scalar
+  Wald routing, but `extract_communality(ci = TRUE, method = "wald")` still
+  uses the older bootstrap fallback message. Decide whether to route it through
+  `.communality_wald_ci()` in the next audit slice.

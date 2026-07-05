@@ -406,12 +406,12 @@ bootstrap_Sigma <- function(
     if ("R" %in% what) {
       out[[paste0("R_", lvl)]] <- sigma_call$R
     }
-    if ("communality" %in% what && lvl %in% c("B", "W")) {
+    if ("communality" %in% what && lvl %in% c("B", "W", "phy")) {
       cm <- tryCatch(
         extract_communality(
           fit,
           level = .canonical_level_name(lvl),
-          link_residual = link_residual
+          link_residual = if (lvl == "phy") "none" else link_residual
         ),
         error = function(e) NULL
       )

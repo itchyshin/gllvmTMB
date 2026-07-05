@@ -74,8 +74,9 @@ Two clarifications matter for future profile-function work:
   or denominator target profile-ready.
 - `cluster` and `cluster2` can have direct diagonal SD profiles, and the
   `Sigma_cluster` / `Sigma_cluster2` matrix tokens are diagonal-only wrappers
-  around that same log-SD route. Their off-diagonal correlations are structural
-  zeros and must not receive fake intervals.
+  around that same log-SD route. Their off-diagonal covariance rows are fixed
+  structural zeros and are labelled `method = "structural_zero"`; off-diagonal
+  correlations are structural zeros and must not receive fake intervals.
 - `unique_cluster` and `unique_cluster2` are now valid variance-proportion
   components. They enter the all-tier denominator as diagonal variance only;
   this is not a new shared-loading, correlation, or full covariance claim.

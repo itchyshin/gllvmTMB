@@ -27,8 +27,13 @@
 ## Internal helper: accepted sigma-type parm tokens.
 .sigma_parm_tokens <- function() {
   c(
-    "Sigma_unit", "Sigma_unit_obs", "Sigma_cluster", "Sigma_cluster2",
-    "Sigma_B", "Sigma_W", "sigma_phy"
+    "Sigma_unit",
+    "Sigma_unit_obs",
+    "Sigma_cluster",
+    "Sigma_cluster2",
+    "Sigma_B",
+    "Sigma_W",
+    "sigma_phy"
   )
 }
 
@@ -135,6 +140,19 @@
   paste0("theta_diag_", info$internal)
 }
 
+## Internal helper: label off-diagonal entries that are fixed at zero by a
+## diagonal-only Sigma tier. These are not profiled/Wald-estimated intervals.
+.mark_structural_sigma_zeros <- function(out, idx) {
+  off_rows <- which(idx[, 1L] != idx[, 2L])
+  if (length(off_rows) > 0L) {
+    out$estimate[off_rows] <- 0
+    out$lower[off_rows] <- 0
+    out$upper[off_rows] <- 0
+    out$method[off_rows] <- "structural_zero"
+  }
+  out
+}
+
 ## Internal helper: recognise sigma-type parm tokens.
 .is_sigma_parm <- function(parm) {
   !missing(parm) &&
@@ -197,8 +215,7 @@
   })
   m <- do.call(rbind, parts_list)
   storage.mode(m) <- "integer"
-  out_of_range <- m[, 1L] < 1L | m[, 1L] > n_traits |
-    m[, 2L] < 1L | m[, 2L] > K
+  out_of_range <- m[, 1L] < 1L | m[, 1L] > n_traits | m[, 2L] < 1L | m[, 2L] > K
   if (any(out_of_range)) {
     bad <- which(out_of_range)
     cli::cli_abort(c(
@@ -240,7 +257,15 @@
 ##   `upper`, `method`, `pd_hessian`, `ci_status`. Pinned entries are
 ##   included when `parm = "Lambda"` (lower == upper == estimate,
 ##   ci_status == "pinned") so the row order is stable across methods.
-.confint_lambda <- function(object, parm, level, method, nsim = 500L, seed = NULL, ...) {
+.confint_lambda <- function(
+  object,
+  parm,
+  level,
+  method,
+  nsim = 500L,
+  seed = NULL,
+  ...
+) {
   method <- match.arg(method, c("wald", "wald_asym", "profile", "bootstrap"))
 
   Lambda_mat <- object$report[["Lambda_B"]]
@@ -347,8 +372,12 @@
   if (is.null(trait_names)) {
     trait_names <- rownames(object$lambda_constraint[["B"]])
   }
-  if (is.null(trait_names) && !is.null(object$trait_col) &&
-      !is.null(object$data) && !is.null(object$data[[object$trait_col]])) {
+  if (
+    is.null(trait_names) &&
+      !is.null(object$trait_col) &&
+      !is.null(object$data) &&
+      !is.null(object$data[[object$trait_col]])
+  ) {
     trait_names <- levels(object$data[[object$trait_col]])
   }
   if (is.null(trait_names)) {
@@ -612,9 +641,19 @@
       i = "Tier is mandatory."
     ))
   }
-  if (!tier %in% c(
-    "unit", "unit_slope", "unit_obs", "phy", "spatial", "B", "W", "spde"
-  )) {
+  if (
+    !tier %in%
+      c(
+        "unit",
+        "unit_slope",
+        "unit_obs",
+        "phy",
+        "spatial",
+        "B",
+        "W",
+        "spde"
+      )
+  ) {
     cli::cli_abort(c(
       "Invalid tier {.val {tier}} in {.val {parm}}.",
       i = "Correlation tiers: {.val unit}, {.val unit_slope}, {.val unit_obs}, {.val phy}, or {.val spatial} (legacy aliases {.val B} / {.val W} / {.val spde} also accepted)."
@@ -766,7 +805,15 @@
 ## Routes to profile_ci_phylo_signal() for method = "profile" and to the
 ## companion phylogenetic-signal Wald/bootstrap helpers for method =
 ## "wald" / "bootstrap".
-.confint_phylo_signal <- function(object, parm, level, method, nsim = 500L, seed = NULL, ...) {
+.confint_phylo_signal <- function(
+  object,
+  parm,
+  level,
+  method,
+  nsim = 500L,
+  seed = NULL,
+  ...
+) {
   trait_names <- levels(object$data[[object$trait_col]])
   trait_idx <- .parse_pertrait_parm(parm, "phylo_signal", trait_names)
   if (is.null(trait_idx)) {
@@ -776,14 +823,21 @@
   tbl <- switch(
     method,
     profile = profile_ci_phylo_signal(
-      fit = object, trait_idx = trait_idx, level = level
+      fit = object,
+      trait_idx = trait_idx,
+      level = level
     ),
     wald = .phylo_signal_wald_ci(
-      fit = object, trait_idx = trait_idx, level = level
+      fit = object,
+      trait_idx = trait_idx,
+      level = level
     ),
     bootstrap = .phylo_signal_bootstrap_ci(
-      fit = object, trait_idx = trait_idx,
-      level = level, nsim = nsim, seed = seed
+      fit = object,
+      trait_idx = trait_idx,
+      level = level,
+      nsim = nsim,
+      seed = seed
     ),
     cli::cli_abort(c(
       "Method {.val {method}} not implemented for {.code phylo_signal}.",
@@ -799,7 +853,15 @@
 ## Internal helper: dispatch `confint(fit, parm = "communality:tier[:trait]")`.
 ## Routes to profile_ci_communality() for profile, and scalar Wald/bootstrap
 ## helpers for wald/bootstrap.
-.confint_communality <- function(object, parm, level, method, nsim = 500L, seed = NULL, ...) {
+.confint_communality <- function(
+  object,
+  parm,
+  level,
+  method,
+  nsim = 500L,
+  seed = NULL,
+  ...
+) {
   trait_names <- levels(object$data[[object$trait_col]])
   parsed <- .parse_communality_parm(parm, trait_names)
   tier <- parsed$tier
@@ -815,38 +877,54 @@
   tbl <- switch(
     method,
     profile = suppressWarnings(profile_ci_communality(
-      fit = object, tier = tier, trait_idx = trait_idx, level = level
+      fit = object,
+      tier = tier,
+      trait_idx = trait_idx,
+      level = level
     )),
-    wald = do.call(rbind, lapply(trait_idx, function(t) {
-      v <- .communality_wald_ci(
-        fit = object, tier = tier, trait_idx = t, level = level
-      )
-      ## A1 returns a named numeric vector; wrap in a 1-row data frame
-      ## matching the profile path's column layout so downstream
-      ## indexing (`tbl$lower`, `tbl$upper`, `tbl$trait`) just works.
-      data.frame(
-        trait = trait_names[t],
-        c2 = unname(v["estimate"]),
-        lower = unname(v["lower"]),
-        upper = unname(v["upper"]),
-        method = "wald",
-        stringsAsFactors = FALSE
-      )
-    })),
-    bootstrap = do.call(rbind, lapply(trait_idx, function(t) {
-      v <- .communality_bootstrap_ci(
-        fit = object, tier = tier, trait_idx = t,
-        level = level, nsim = nsim, seed = seed
-      )
-      data.frame(
-        trait = trait_names[t],
-        c2 = unname(v["estimate"]),
-        lower = unname(v["lower"]),
-        upper = unname(v["upper"]),
-        method = "bootstrap",
-        stringsAsFactors = FALSE
-      )
-    })),
+    wald = do.call(
+      rbind,
+      lapply(trait_idx, function(t) {
+        v <- .communality_wald_ci(
+          fit = object,
+          tier = tier,
+          trait_idx = t,
+          level = level
+        )
+        ## A1 returns a named numeric vector; wrap in a 1-row data frame
+        ## matching the profile path's column layout so downstream
+        ## indexing (`tbl$lower`, `tbl$upper`, `tbl$trait`) just works.
+        data.frame(
+          trait = trait_names[t],
+          c2 = unname(v["estimate"]),
+          lower = unname(v["lower"]),
+          upper = unname(v["upper"]),
+          method = "wald",
+          stringsAsFactors = FALSE
+        )
+      })
+    ),
+    bootstrap = do.call(
+      rbind,
+      lapply(trait_idx, function(t) {
+        v <- .communality_bootstrap_ci(
+          fit = object,
+          tier = tier,
+          trait_idx = t,
+          level = level,
+          nsim = nsim,
+          seed = seed
+        )
+        data.frame(
+          trait = trait_names[t],
+          c2 = unname(v["estimate"]),
+          lower = unname(v["lower"]),
+          upper = unname(v["upper"]),
+          method = "bootstrap",
+          stringsAsFactors = FALSE
+        )
+      })
+    ),
     cli::cli_abort(c(
       "Method {.val {method}} not implemented for {.code communality}.",
       i = "Available: {.val profile}, {.val wald}, {.val bootstrap}."
@@ -1033,7 +1111,15 @@
 ## Dispatch `confint(fit, parm = "proportion[:...]")`.
 ## Routes to profile_ci_proportions() for method = "profile" and to the
 ## scalar proportion Wald/bootstrap helpers for method = "wald" / "bootstrap".
-.confint_proportion <- function(object, parm, level, method, nsim = 500L, seed = NULL, ...) {
+.confint_proportion <- function(
+  object,
+  parm,
+  level,
+  method,
+  nsim = 500L,
+  seed = NULL,
+  ...
+) {
   trait_names <- levels(object$data[[object$trait_col]])
   parsed <- .parse_proportion_parm(parm, trait_names)
   ## Phase B-INF Lane 1 A2 (2026-05-28): wald + bootstrap routes added.
@@ -1055,7 +1141,9 @@
       fit = object,
       components = parsed$components,
       trait_idx = parsed$trait_idx,
-      level = level, nsim = nsim, seed = seed
+      level = level,
+      nsim = nsim,
+      seed = seed
     ),
     cli::cli_abort(c(
       "Method {.val {method}} not implemented for {.code proportion}.",
@@ -1262,8 +1350,10 @@
 #'     returns a tidy \code{data.frame} with columns \code{parameter},
 #'     \code{estimate}, \code{lower}, \code{upper}, \code{method}. Profile is
 #'     computed element-wise via [TMB::tmbprofile()] for the diagonal entries;
-#'     off-diagonals fall back to bootstrap (full Sigma sampling) since they mix
-#'     two parameters in a non-linear way.
+#'     structural-zero off-diagonal entries in pure-diagonal tiers are labelled
+#'     \code{"structural_zero"}; off-diagonals for reduced-rank tiers fall back
+#'     to bootstrap (full Sigma sampling) since they mix two parameters in a
+#'     non-linear way.
 #'   \item \strong{Fixed effects / variance components} -- when \code{parm}
 #'     is missing, an integer index, or a character vector of fixed-effect
 #'     term names, returns a numeric matrix with rows = parameters and
@@ -1359,9 +1449,11 @@
 #'   \item \strong{Sigma path} -- a \code{data.frame} with columns
 #'     \code{parameter} (character, e.g. \code{"Sigma_unit[t1,t1]"}),
 #'     \code{estimate} (point estimate), \code{lower}, \code{upper}, and
-#'     \code{method} (the method used for that row). The parameter prefix
-#'     follows the requested \code{parm}, so legacy calls still return
-#'     legacy \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
+#'     \code{method} (the method used for that row, or
+#'     \code{"structural_zero"} for off-diagonal entries that are fixed at
+#'     zero by a diagonal-only tier). The parameter prefix follows the
+#'     requested \code{parm}, so legacy calls still return legacy
+#'     \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
 #'   \item \strong{Lambda path} -- a \code{data.frame} with columns
 #'     \code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"}),
 #'     \code{estimate}, \code{lower}, \code{upper}, \code{method},
@@ -1791,7 +1883,7 @@ confint.gllvmTMB_multi <- function(
       out$upper[diag_rows] <- var_hi
     }
   }
-  out
+  .mark_structural_sigma_zeros(out, idx)
 }
 
 #' @keywords internal
@@ -1885,11 +1977,8 @@ confint.gllvmTMB_multi <- function(
       out$lower[diag_rows] <- diag_block$lower
       out$upper[diag_rows] <- diag_block$upper
     }
-    ## Off-diagonals are zero by construction in pure-diag tier
-    off_rows <- which(idx[, 1L] != idx[, 2L])
-    out$lower[off_rows] <- 0
-    out$upper[off_rows] <- 0
-    return(out)
+    ## Off-diagonals are fixed zero by construction in pure-diag tiers.
+    return(.mark_structural_sigma_zeros(out, idx))
   }
 
   ## rr present (with or without diag): full Sigma is rotation-equivalent

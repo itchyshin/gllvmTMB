@@ -304,4 +304,12 @@ test_that("Profile on Sigma_unit (pure-diag tier) gives finite bounds", {
   ## Off-diagonals are zero by construction in pure-diag tier
   off_rows <- setdiff(seq_len(nrow(ci)), diag_rows)
   expect_true(all(ci$estimate[off_rows] == 0))
+  expect_true(all(ci$lower[off_rows] == 0))
+  expect_true(all(ci$upper[off_rows] == 0))
+  expect_true(all(ci$method[off_rows] == "structural_zero"))
+  off_rows_wald <- setdiff(seq_len(nrow(ci_wald)), diag_rows_wald)
+  expect_true(all(ci_wald$estimate[off_rows_wald] == 0))
+  expect_true(all(ci_wald$lower[off_rows_wald] == 0))
+  expect_true(all(ci_wald$upper[off_rows_wald] == 0))
+  expect_true(all(ci_wald$method[off_rows_wald] == "structural_zero"))
 })

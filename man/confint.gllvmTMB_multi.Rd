@@ -104,9 +104,11 @@ value (e.g. \code{50}) during development or testing.}
 \item \strong{Sigma path} -- a \code{data.frame} with columns
 \code{parameter} (character, e.g. \code{"Sigma_unit[t1,t1]"}),
 \code{estimate} (point estimate), \code{lower}, \code{upper}, and
-\code{method} (the method used for that row). The parameter prefix
-follows the requested \code{parm}, so legacy calls still return
-legacy \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
+\code{method} (the method used for that row, or
+\code{"structural_zero"} for off-diagonal entries that are fixed at
+zero by a diagonal-only tier). The parameter prefix follows the
+requested \code{parm}, so legacy calls still return legacy
+\code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
 \item \strong{Lambda path} -- a \code{data.frame} with columns
 \code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"}),
 \code{estimate}, \code{lower}, \code{upper}, \code{method},
@@ -170,8 +172,10 @@ Main parm-class dispatch paths:
 returns a tidy \code{data.frame} with columns \code{parameter},
 \code{estimate}, \code{lower}, \code{upper}, \code{method}. Profile is
 computed element-wise via \code{\link[TMB:tmbprofile]{TMB::tmbprofile()}} for the diagonal entries;
-off-diagonals fall back to bootstrap (full Sigma sampling) since they mix
-two parameters in a non-linear way.
+structural-zero off-diagonal entries in pure-diagonal tiers are labelled
+\code{"structural_zero"}; off-diagonals for reduced-rank tiers fall back
+to bootstrap (full Sigma sampling) since they mix two parameters in a
+non-linear way.
 \item \strong{Fixed effects / variance components} -- when \code{parm}
 is missing, an integer index, or a character vector of fixed-effect
 term names, returns a numeric matrix with rows = parameters and

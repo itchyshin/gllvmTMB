@@ -3,60 +3,125 @@ test_that("profile route levels cover peer, source, and augmented split tiers", 
 
   expect_s3_class(levels, "data.frame")
   expect_equal(anyDuplicated(levels$level), 0L)
-  expect_true(all(c(
-    "unit", "unit_obs", "cluster", "cluster2", "phy", "spatial"
-  ) %in% levels$level))
+  expect_true(all(
+    c(
+      "unit",
+      "unit_obs",
+      "cluster",
+      "cluster2",
+      "phy",
+      "spatial"
+    ) %in%
+      levels$level
+  ))
   expect_true("kernel_named" %in% levels$level)
-  expect_true(all(c(
-    "unit_slope", "phy_unique_slope", "phy_dep", "phy_slope",
-    "spde_base_slope", "spde_dep", "spde_slope"
-  ) %in% levels$level))
+  expect_true(all(
+    c(
+      "unit_slope",
+      "phy_unique_slope",
+      "phy_dep",
+      "phy_slope",
+      "spde_base_slope",
+      "spde_dep",
+      "spde_slope"
+    ) %in%
+      levels$level
+  ))
 })
 
 test_that("profile route matrix has controlled keys and statuses", {
   routes <- gllvmTMB:::.profile_route_matrix()
 
   expect_s3_class(routes, "data.frame")
-  expect_true(all(c(
-    "estimand", "level", "method", "status", "route",
-    "validation_row", "claim", "next_gate"
-  ) %in% names(routes)))
+  expect_true(all(
+    c(
+      "estimand",
+      "level",
+      "method",
+      "status",
+      "route",
+      "validation_row",
+      "claim",
+      "next_gate"
+    ) %in%
+      names(routes)
+  ))
   expect_equal(
     anyDuplicated(paste(routes$estimand, routes$level, routes$method)),
     0L
   )
-  expect_true(all(routes$status %in% c(
-    "covered", "partial", "fallback", "planned",
-    "blocked", "point_only", "not_applicable"
-  )))
+  expect_true(all(
+    routes$status %in%
+      c(
+        "covered",
+        "partial",
+        "fallback",
+        "planned",
+        "blocked",
+        "point_only",
+        "not_applicable"
+      )
+  ))
   expect_no_error(gllvmTMB:::.validate_profile_route_matrix(routes))
 })
 
 test_that("profile route matrix records current cluster and cluster2 boundaries", {
   routes <- gllvmTMB:::.profile_route_matrix()
 
-  cluster_sd <- gllvmTMB:::.profile_route_status("direct_sd", "cluster", routes = routes)
-  c2_sd <- gllvmTMB:::.profile_route_status("direct_sd", "cluster2", routes = routes)
+  cluster_sd <- gllvmTMB:::.profile_route_status(
+    "direct_sd",
+    "cluster",
+    routes = routes
+  )
+  c2_sd <- gllvmTMB:::.profile_route_status(
+    "direct_sd",
+    "cluster2",
+    routes = routes
+  )
   expect_equal(cluster_sd$status, "covered")
   expect_equal(c2_sd$status, "covered")
   expect_match(cluster_sd$route, "theta_diag_species")
   expect_match(c2_sd$route, "theta_diag_cluster2")
 
-  cluster_sigma <- gllvmTMB:::.profile_route_status("Sigma", "cluster", routes = routes)
-  c2_sigma <- gllvmTMB:::.profile_route_status("Sigma", "cluster2", routes = routes)
+  cluster_sigma <- gllvmTMB:::.profile_route_status(
+    "Sigma",
+    "cluster",
+    routes = routes
+  )
+  c2_sigma <- gllvmTMB:::.profile_route_status(
+    "Sigma",
+    "cluster2",
+    routes = routes
+  )
   expect_equal(cluster_sigma$status, "partial")
   expect_equal(c2_sigma$status, "partial")
   expect_match(cluster_sigma$route, "theta_diag_species")
   expect_match(c2_sigma$route, "theta_diag_cluster2")
 
-  cluster_rho <- gllvmTMB:::.profile_route_status("rho", "cluster", routes = routes)
+  cluster_rho <- gllvmTMB:::.profile_route_status(
+    "rho",
+    "cluster",
+    routes = routes
+  )
   c2_rho <- gllvmTMB:::.profile_route_status("rho", "cluster2", routes = routes)
   expect_equal(cluster_rho$status, "point_only")
   expect_equal(c2_rho$status, "point_only")
 
-  cluster_prop <- gllvmTMB:::.profile_route_status("proportion", "cluster", routes = routes)
-  c2_prop <- gllvmTMB:::.profile_route_status("proportion", "cluster2", routes = routes)
-  spatial_prop <- gllvmTMB:::.profile_route_status("proportion", "spatial", routes = routes)
+  cluster_prop <- gllvmTMB:::.profile_route_status(
+    "proportion",
+    "cluster",
+    routes = routes
+  )
+  c2_prop <- gllvmTMB:::.profile_route_status(
+    "proportion",
+    "cluster2",
+    routes = routes
+  )
+  spatial_prop <- gllvmTMB:::.profile_route_status(
+    "proportion",
+    "spatial",
+    routes = routes
+  )
   expect_equal(cluster_prop$status, "partial")
   expect_equal(c2_prop$status, "partial")
   expect_match(cluster_prop$route, "unique_cluster")
@@ -68,28 +133,41 @@ test_that("profile route matrix records named kernel interval boundaries", {
   routes <- gllvmTMB:::.profile_route_matrix()
 
   kernel_sd <- gllvmTMB:::.profile_route_status(
-    "direct_sd", "kernel_named", routes = routes
+    "direct_sd",
+    "kernel_named",
+    routes = routes
   )
   kernel_sigma <- gllvmTMB:::.profile_route_status(
-    "Sigma", "kernel_named", routes = routes
+    "Sigma",
+    "kernel_named",
+    routes = routes
   )
   kernel_comm <- gllvmTMB:::.profile_route_status(
-    "communality", "kernel_named", routes = routes
+    "communality",
+    "kernel_named",
+    routes = routes
   )
   kernel_rho <- gllvmTMB:::.profile_route_status(
-    "rho", "kernel_named", routes = routes
+    "rho",
+    "kernel_named",
+    routes = routes
   )
   kernel_prop <- gllvmTMB:::.profile_route_status(
-    "proportion", "kernel_named", routes = routes
+    "proportion",
+    "kernel_named",
+    routes = routes
   )
 
-  expect_true(all(c(
-    kernel_sd$status,
-    kernel_sigma$status,
-    kernel_comm$status,
-    kernel_rho$status,
-    kernel_prop$status
-  ) == "blocked"))
+  expect_true(all(
+    c(
+      kernel_sd$status,
+      kernel_sigma$status,
+      kernel_comm$status,
+      kernel_rho$status,
+      kernel_prop$status
+    ) ==
+      "blocked"
+  ))
   expect_match(kernel_sigma$route, "extract_Sigma_point_only", fixed = TRUE)
   expect_match(kernel_rho$route, "extract_Sigma_table", fixed = TRUE)
   expect_match(
@@ -102,8 +180,13 @@ test_that("profile route matrix records named kernel interval boundaries", {
 test_that("profile route matrix keeps augmented split profile routes blocked", {
   routes <- gllvmTMB:::.profile_route_matrix()
   split_levels <- c(
-    "unit_slope", "phy_unique_slope", "phy_dep", "phy_slope",
-    "spde_base_slope", "spde_dep", "spde_slope"
+    "unit_slope",
+    "phy_unique_slope",
+    "phy_dep",
+    "phy_slope",
+    "spde_base_slope",
+    "spde_dep",
+    "spde_slope"
   )
   split_estimands <- c("Sigma", "communality", "rho", "proportion")
 
@@ -119,7 +202,11 @@ test_that("profile route matrix keeps augmented split profile routes blocked", {
         expect_match(route$route, "augmented_split_target_table", fixed = TRUE)
         expect_match(route$claim, "Design 74", fixed = TRUE)
         expect_true(nzchar(route$next_gate))
-        expect_false(grepl("symbolic target table required", route$next_gate, fixed = TRUE))
+        expect_false(grepl(
+          "symbolic target table required",
+          route$next_gate,
+          fixed = TRUE
+        ))
       }
     }
   }
@@ -128,10 +215,16 @@ test_that("profile route matrix keeps augmented split profile routes blocked", {
 test_that("profile route matrix marks only unit_slope rho as the augmented canary", {
   routes <- gllvmTMB:::.profile_route_matrix()
   augmented <- routes[
-    routes$level %in% c(
-      "unit_slope", "phy_unique_slope", "phy_dep", "phy_slope",
-      "spde_base_slope", "spde_dep", "spde_slope"
-    ) &
+    routes$level %in%
+      c(
+        "unit_slope",
+        "phy_unique_slope",
+        "phy_dep",
+        "phy_slope",
+        "spde_base_slope",
+        "spde_dep",
+        "spde_slope"
+      ) &
       routes$estimand %in% c("Sigma", "communality", "rho", "proportion"),
     ,
     drop = FALSE
@@ -147,17 +240,32 @@ test_that("profile route matrix marks only unit_slope rho as the augmented canar
 test_that("augmented profile target table covers every split level and estimand", {
   targets <- gllvmTMB:::.profile_augmented_target_table()
   split_levels <- c(
-    "unit_slope", "phy_unique_slope", "phy_dep", "phy_slope",
-    "spde_base_slope", "spde_dep", "spde_slope"
+    "unit_slope",
+    "phy_unique_slope",
+    "phy_dep",
+    "phy_slope",
+    "spde_base_slope",
+    "spde_dep",
+    "spde_slope"
   )
   split_estimands <- c("Sigma", "communality", "rho", "proportion")
 
   expect_s3_class(targets, "data.frame")
-  expect_true(all(c(
-    "level", "estimand", "target_state", "point_route", "target_shape",
-    "flatten_order", "numerator", "denominator", "validation_row",
-    "profile_gate"
-  ) %in% names(targets)))
+  expect_true(all(
+    c(
+      "level",
+      "estimand",
+      "target_state",
+      "point_route",
+      "target_shape",
+      "flatten_order",
+      "numerator",
+      "denominator",
+      "validation_row",
+      "profile_gate"
+    ) %in%
+      names(targets)
+  ))
   expect_equal(nrow(targets), length(split_levels) * length(split_estimands))
   expect_equal(
     anyDuplicated(paste(targets$level, targets$estimand)),
@@ -182,7 +290,11 @@ test_that("augmented profile target table preserves shape distinctions", {
   expect_match(row("unit_slope")$denominator, "no intercept-only", fixed = TRUE)
 
   expect_match(row("phy_unique_slope")$target_shape, "2_by_2", fixed = TRUE)
-  expect_match(row("phy_unique_slope")$flatten_order, "block-local", fixed = TRUE)
+  expect_match(
+    row("phy_unique_slope")$flatten_order,
+    "block-local",
+    fixed = TRUE
+  )
 
   expect_match(row("phy_dep")$target_shape, "(1+s)T", fixed = TRUE)
   expect_match(row("phy_dep")$flatten_order, "interleaved", fixed = TRUE)
@@ -200,7 +312,8 @@ test_that("augmented communality table blocks non-loading structural modes", {
   targets <- gllvmTMB:::.profile_augmented_target_table()
   non_loading <- targets[
     targets$estimand == "communality" &
-      targets$level %in% c("phy_unique_slope", "phy_dep", "spde_base_slope", "spde_dep"),
+      targets$level %in%
+        c("phy_unique_slope", "phy_dep", "spde_base_slope", "spde_dep"),
     ,
     drop = FALSE
   ]
@@ -339,13 +452,22 @@ test_that("profile_targets exposes cluster and cluster2 direct SD aliases", {
   )
 
   targets <- gllvmTMB::profile_targets(fake)
-  expect_true(all(c(
-    "sd_cluster[1]", "sd_cluster[2]",
-    "sd_cluster2[1]", "sd_cluster2[2]"
-  ) %in% targets$parm))
-  expect_true(all(c(
-    "sd_phy_unique[1]", "sd_phy_unique[2]"
-  ) %in% targets$parm))
+  expect_true(all(
+    c(
+      "sd_cluster[1]",
+      "sd_cluster[2]",
+      "sd_cluster2[1]",
+      "sd_cluster2[2]"
+    ) %in%
+      targets$parm
+  ))
+  expect_true(all(
+    c(
+      "sd_phy_unique[1]",
+      "sd_phy_unique[2]"
+    ) %in%
+      targets$parm
+  ))
   direct <- targets[targets$parm %in% c("sd_cluster[1]", "sd_cluster2[1]"), ]
   expect_equal(direct$profile_note, rep("tmb_object_required", 2L))
 })
@@ -403,9 +525,13 @@ test_that("Sigma_cluster and Sigma_cluster2 routes use diagonal-only interval bl
       list(Sigma = sigma_cluster)
     },
     .tmbprofile_block = function(object, parameter, level, transform, ...) {
-      expect_true(parameter %in% c(
-        "theta_diag_species", "theta_diag_cluster2"
-      ))
+      expect_true(
+        parameter %in%
+          c(
+            "theta_diag_species",
+            "theta_diag_cluster2"
+          )
+      )
       data.frame(
         parameter = paste0(parameter, "[", 1:2, "]"),
         estimate = c(0.16, 0.25),
@@ -432,21 +558,34 @@ test_that("Sigma_cluster and Sigma_cluster2 routes use diagonal-only interval bl
     seed = 1L
   )
 
-  expect_equal(ci_cluster$parameter, c(
-    "Sigma_cluster[a,a]",
-    "Sigma_cluster[a,b]",
-    "Sigma_cluster[b,b]"
-  ))
+  expect_equal(
+    ci_cluster$parameter,
+    c(
+      "Sigma_cluster[a,a]",
+      "Sigma_cluster[a,b]",
+      "Sigma_cluster[b,b]"
+    )
+  )
   expect_equal(ci_cluster$estimate, c(0.16, 0, 0.25))
   expect_equal(ci_cluster$lower, c(0.08, 0, 0.12))
   expect_equal(ci_cluster$upper, c(0.40, 0, 0.55))
-  expect_true(all(ci_cluster$method == "profile"))
+  expect_equal(
+    ci_cluster$method,
+    c("profile", "structural_zero", "profile")
+  )
 
-  expect_equal(ci_cluster2$parameter, c(
-    "Sigma_cluster2[a,a]",
-    "Sigma_cluster2[a,b]",
-    "Sigma_cluster2[b,b]"
-  ))
+  expect_equal(
+    ci_cluster2$parameter,
+    c(
+      "Sigma_cluster2[a,a]",
+      "Sigma_cluster2[a,b]",
+      "Sigma_cluster2[b,b]"
+    )
+  )
+  expect_equal(
+    ci_cluster2$method,
+    c("profile", "structural_zero", "profile")
+  )
 
   ci_wald <- gllvmTMB:::.confint_sigma_wald(
     fake_fit,
@@ -455,7 +594,9 @@ test_that("Sigma_cluster and Sigma_cluster2 routes use diagonal-only interval bl
   )
   expect_equal(ci_wald$parameter, ci_cluster$parameter)
   expect_true(all(is.finite(ci_wald$lower[c(1L, 3L)])))
-  expect_true(all(is.na(ci_wald$lower[2L])))
+  expect_equal(ci_wald$lower[2L], 0)
+  expect_equal(ci_wald$upper[2L], 0)
+  expect_equal(ci_wald$method[2L], "structural_zero")
   expect_error(
     gllvmTMB:::.confint_sigma_bootstrap(
       fake_fit,

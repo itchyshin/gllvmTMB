@@ -34386,3 +34386,64 @@ Not run:
 - No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro, or
   DRAC compute. This is a focused fitted canary for existing profile routes,
   not interval calibration or a release gate.
+
+## 2026-07-05 -- structural-zero Sigma interval labelling
+
+Goal: make pure-diagonal Sigma interval outputs tell the same truth as the
+profile route matrix: diagonal rows use the requested interval method, while
+off-diagonal covariance rows are fixed structural zeros, not profile/Wald
+calculations.
+
+Edits:
+
+- Added `.mark_structural_sigma_zeros()` in `R/z-confint-gllvmTMB.R`.
+- `confint(..., parm = "Sigma_*", method = "profile")` and
+  `method = "wald"` now label pure-diagonal off-diagonal rows with
+  `method = "structural_zero"` and bounds `0, 0`.
+- Updated `confint.gllvmTMB_multi()` roxygen and regenerated
+  `man/confint.gllvmTMB_multi.Rd`.
+- Tightened `test-profile-route-matrix.R` for `Sigma_cluster` /
+  `Sigma_cluster2` and `test-profile-ci.R` for pure-diagonal `Sigma_unit`.
+- Updated Design 73 and validation-debt row `CI-11`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/z-confint-gllvmTMB.R")); invisible(parse("tests/testthat/test-profile-route-matrix.R")); invisible(parse("tests/testthat/test-profile-ci.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R", desc = "Sigma_cluster and Sigma_cluster2 routes use diagonal-only interval blocks")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-ci.R", desc = "Profile on Sigma_unit (pure-diag tier) gives finite bounds")'
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+tail -5 man/confint.gllvmTMB_multi.Rd && { grep -c '^\\keyword' man/confint.gllvmTMB_multi.Rd || true; }
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-ci.R")'
+rg -n "structural_zero|structural zero|Sigma_cluster.*profile|Sigma_cluster2.*profile|off-diagonal.*profile|off-diagonals fall back" R/z-confint-gllvmTMB.R man/confint.gllvmTMB_multi.Rd docs/design/73-profile-likelihood-route-matrix.md docs/design/35-validation-debt-register.md tests/testthat/test-profile-route-matrix.R tests/testthat/test-profile-ci.R docs/dev-log/check-log.md
+git diff --check
+```
+
+Results:
+
+- Parse check: `parse-ok`.
+- Focused `Sigma_cluster` / `Sigma_cluster2` route test: 24 pass, 0 fail,
+  0 skip.
+- Focused pure-diagonal `Sigma_unit` heavy test: 15 pass, 0 fail, 0 skip under
+  `NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1`.
+- `devtools::document(quiet = TRUE)` rewrote `man/confint.gllvmTMB_multi.Rd`.
+- Rd spot-check returned `0` `\keyword{}` lines.
+- Full `test-profile-route-matrix.R`: 279 pass, 0 fail, 0 skip.
+- Default `test-profile-ci.R`: 11 expected heavy skips, 0 fail.
+- Claim scan found the new structural-zero wording and the expected
+  reduced-rank fallback wording; no stale text promoted cluster/cluster2
+  off-diagonal profile support.
+- `git diff --check` passed before the log/report closeout.
+
+What did not go smoothly:
+
+- `air format` line-wrapped more of `R/z-confint-gllvmTMB.R` and
+  `test-profile-route-matrix.R` than this truth repair strictly needed. The
+  logic change remains narrow, but the final diff is less compact than ideal.
+
+Not run:
+
+- No broad `devtools::test()`, `devtools::check()`, pkgdown rebuild, Totoro, or
+  DRAC compute. This is interval-output labelling and route truth-locking, not
+  interval calibration.

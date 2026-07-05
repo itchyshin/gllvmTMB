@@ -34075,3 +34075,31 @@ Not run:
 - No broad coverage/ADEMP calibration, no new source-specific or augmented
   profile route, and no mixed-family CI promotion. This is endpoint-search
   reliability only.
+
+## 2026-07-05 -- Named kernel profile route truth-lock
+
+Goal: make the profile route matrix explicitly represent fitted named
+`kernel_*()` tiers as point-extractable but interval-blocked, matching the
+council audit that `extract_Sigma()` is broader than public `confint()` /
+profile routing.
+
+Edits:
+
+- Added `kernel_named` to `.profile_route_levels()`.
+- Added blocked `direct_sd`, `Sigma`, `communality`, `rho`, and `proportion`
+  profile rows for named kernel tiers.
+- Added pure route-matrix tests proving all named-kernel interval routes remain
+  blocked.
+- Updated Design 73 and validation-debt row `CI-11`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/profile-route-matrix.R")); invisible(parse("tests/testthat/test-profile-route-matrix.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R", reporter = "summary")'
+```
+
+Not run:
+
+- No named-kernel profile/confint implementation, token grammar, denominator
+  design, or calibration sweep. This is route-ledger truth only.

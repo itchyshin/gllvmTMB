@@ -6,6 +6,7 @@ test_that("profile route levels cover peer, source, and augmented split tiers", 
   expect_true(all(c(
     "unit", "unit_obs", "cluster", "cluster2", "phy", "spatial"
   ) %in% levels$level))
+  expect_true("kernel_named" %in% levels$level)
   expect_true(all(c(
     "unit_slope", "phy_unique_slope", "phy_dep", "phy_slope",
     "spde_base_slope", "spde_dep", "spde_slope"
@@ -61,6 +62,41 @@ test_that("profile route matrix records current cluster and cluster2 boundaries"
   expect_match(cluster_prop$route, "unique_cluster")
   expect_match(c2_prop$route, "unique_cluster2")
   expect_equal(spatial_prop$status, "planned")
+})
+
+test_that("profile route matrix records named kernel interval boundaries", {
+  routes <- gllvmTMB:::.profile_route_matrix()
+
+  kernel_sd <- gllvmTMB:::.profile_route_status(
+    "direct_sd", "kernel_named", routes = routes
+  )
+  kernel_sigma <- gllvmTMB:::.profile_route_status(
+    "Sigma", "kernel_named", routes = routes
+  )
+  kernel_comm <- gllvmTMB:::.profile_route_status(
+    "communality", "kernel_named", routes = routes
+  )
+  kernel_rho <- gllvmTMB:::.profile_route_status(
+    "rho", "kernel_named", routes = routes
+  )
+  kernel_prop <- gllvmTMB:::.profile_route_status(
+    "proportion", "kernel_named", routes = routes
+  )
+
+  expect_true(all(c(
+    kernel_sd$status,
+    kernel_sigma$status,
+    kernel_comm$status,
+    kernel_rho$status,
+    kernel_prop$status
+  ) == "blocked"))
+  expect_match(kernel_sigma$route, "extract_Sigma_point_only", fixed = TRUE)
+  expect_match(kernel_rho$route, "extract_Sigma_table", fixed = TRUE)
+  expect_match(
+    kernel_prop$claim,
+    "not part of the current variance-proportion denominator",
+    fixed = TRUE
+  )
 })
 
 test_that("profile route matrix keeps augmented split profile routes blocked", {

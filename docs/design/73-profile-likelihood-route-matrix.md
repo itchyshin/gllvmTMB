@@ -26,6 +26,7 @@ This design is implemented as the internal route ledger
 | `cluster2` | second extra diagonal grouping tier | diagonal `T` | direct log-SD profile label covered; diagonal-only `Sigma_cluster2` token partial |
 | `phy` | phylogenetic source tier | `T x T` | partial/covered depending on target; multi-component `H2` profile remains partial |
 | `spatial` | SPDE source tier | `T x T` | partial; total spatial covariance profile needs a heavy gate |
+| `kernel_named` | fitted named `kernel_*()` tier | `T x T` | blocked for profile/confint; point covariance can be extracted by fitted name |
 | augmented split tiers | unit/source random-regression blocks | split or augmented block | Design 74 declares target symbols; profile routes remain blocked until implementation and calibration gates |
 
 ## Estimand Routes
@@ -57,6 +58,7 @@ share.
 | `cluster2` | covered | partial | not applicable | point-only | partial | diagonal tier only |
 | `phy` | covered | partial | covered | covered | covered | phylogenetic signal partial |
 | `spatial` | covered | partial | planned | partial | planned | total spatial covariance needs heavy gate |
+| `kernel_named` | blocked | blocked | blocked | blocked | blocked | point extraction only through `extract_Sigma()` / `extract_Sigma_table()` |
 | `unit_slope` | not claimed | blocked | blocked | partial | blocked | Gaussian selected-entry `rho:unit_slope:i,j` canary only |
 | `phy_unique_slope` | not claimed | blocked | not applicable | blocked | blocked | Design 74 target table declared; no profile implementation yet |
 | `phy_dep` | not claimed | blocked | not applicable | blocked | blocked | Design 74 target table declared; no profile implementation yet |
@@ -77,6 +79,10 @@ Two clarifications matter for future profile-function work:
 - `unique_cluster` and `unique_cluster2` are now valid variance-proportion
   components. They enter the all-tier denominator as diagonal variance only;
   this is not a new shared-loading, correlation, or full covariance claim.
+- Named `kernel_*()` tiers are extractor-visible but interval-blocked. The
+  route matrix therefore records `kernel_named` as a point-extraction boundary:
+  no public `Sigma_<kernel>`, `rho:<kernel>`, communality, or proportion profile
+  token exists until a kernel-specific target and denominator design is written.
 - Design 74 now declares the augmented structural split targets and flattening
   conventions. This does not promote any augmented split profile interval route:
   only the Gaussian selected-entry `rho:unit_slope:i,j` canary is wired, and it
@@ -116,9 +122,11 @@ blocked to covered unless it has direct code and validation-register evidence.
 2. Add spatial shared/unique components to profile proportions only after a
    spatial denominator design covers `spatial_latent(unique = TRUE)` and legacy
    spatial compatibility syntax.
-3. Repair hard-family profile stability, especially Gamma unit-tier rho
+3. Add named-kernel interval routing only after a selected kernel target,
+   token grammar, denominator convention, and calibration gate are declared.
+4. Repair hard-family profile stability, especially Gamma unit-tier rho
    failures, before broader claims.
-4. Use Design 74 as the target source for the first augmented Gaussian canary,
+5. Use Design 74 as the target source for the first augmented Gaussian canary,
    now the selected `rho:unit_slope:i,j` route with one known-DGP
    truth-inclusion test; keep `Sigma_unit_slope`, augmented proportions,
    source-specific slope routes, and non-Gaussian augmented profile claims

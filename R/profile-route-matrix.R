@@ -19,6 +19,7 @@
       "cluster2",
       "phy",
       "spatial",
+      "kernel_named",
       "unit_slope",
       "phy_unique_slope",
       "phy_dep",
@@ -34,6 +35,7 @@
       "peer_diagonal",
       "source",
       "source",
+      "source_named",
       "augmented_peer",
       "augmented_source",
       "augmented_source",
@@ -49,6 +51,7 @@
       "cluster2",
       "phy",
       "spatial",
+      "kernel_levels$name",
       "B_slope",
       "phy",
       "phy",
@@ -64,6 +67,7 @@
       "diag_T",
       "T_by_T",
       "T_by_T",
+      "T_by_T_named_kernel",
       "slope_block",
       "intercept_slope_2_by_2",
       "full_augmented",
@@ -79,6 +83,7 @@
       "Second extra diagonal grouping tier, engine block theta_diag_cluster2.",
       "Source-specific phylogenetic tier; intercept-only total covariance is extractable.",
       "Source-specific SPDE tier; intercept-only total covariance is extractable.",
+      "Named kernel tier; point covariance can be extracted by fitted kernel name.",
       "Ordinary augmented latent random-regression tier.",
       "Phylogenetic independent augmented slope tier.",
       "Phylogenetic full augmented dependency tier.",
@@ -488,6 +493,13 @@
       "Do not infer total spatial covariance calibration from scale profiles."
     ),
     .profile_route_row(
+      "direct_sd", "kernel_named", "profile", "blocked",
+      "no_profile_targets_for_named_kernel_tiers",
+      "COE-04;CI-11",
+      "Named kernel tiers may have point covariance extraction, but no direct profile target labels are exposed.",
+      "Declare kernel-specific direct parameters and tests before adding profile targets."
+    ),
+    .profile_route_row(
       "Sigma", "unit", "profile", "partial",
       "diag_only_direct_else_bootstrap_fallback",
       "CI-02;CI-03",
@@ -528,6 +540,13 @@
       "CI-07;SPA-02;SPA-04",
       "Spatial scale and selected correlation profile routes exist.",
       "Total spatial covariance profile still needs a heavy gate."
+    ),
+    .profile_route_row(
+      "Sigma", "kernel_named", "profile", "blocked",
+      "extract_Sigma_point_only_no_confint_token",
+      "COE-04;CI-11",
+      "Named kernel Sigma blocks can be inspected as point estimates through extract_Sigma()/extract_Sigma_table(), but no confint Sigma token is wired.",
+      "Add a named-kernel Sigma token, symbolic target, and focused recovery/calibration gate before exposing intervals."
     ),
     .profile_route_row(
       "communality", "unit", "profile", "covered",
@@ -572,6 +591,13 @@
       "No route unless a new cluster2 latent tier is designed."
     ),
     .profile_route_row(
+      "communality", "kernel_named", "profile", "blocked",
+      "extractor_denominator_not_declared_for_named_kernel",
+      "COE-04;CI-11",
+      "Named kernel point covariance exists, but kernel communality profile targets and denominators are not declared.",
+      "Define kernel-specific shared/unique numerator and denominator semantics before implementation."
+    ),
+    .profile_route_row(
       "rho", "unit", "profile", "covered",
       "fix_refit:profile_ci_correlation",
       "CI-07",
@@ -612,6 +638,13 @@
       "RE-11",
       "Diagonal cluster2 correlations are zero by construction.",
       "No profile interval should be fabricated for structural zeros."
+    ),
+    .profile_route_row(
+      "rho", "kernel_named", "profile", "blocked",
+      "point_correlation_via_extract_Sigma_table_only",
+      "COE-04;CI-11",
+      "Named kernel correlations can be computed from point Sigma tables, but profile_ci_correlation()/confint() cannot request kernel names.",
+      "Add named-kernel rho token parsing and direct tests before exposing profile intervals."
     ),
     .profile_route_row(
       "repeatability", "unit", "profile", "partial",
@@ -668,6 +701,13 @@
       "SPA-02",
       "Spatial total covariance can be extracted but is not yet in profile proportions.",
       "Add SPDE shared/unique components only after a spatial denominator design."
+    ),
+    .profile_route_row(
+      "proportion", "kernel_named", "profile", "blocked",
+      "component_missing_from_profile_proportions",
+      "COE-04;CI-11",
+      "Named kernel components are not part of the current variance-proportion denominator.",
+      "Define multi-kernel denominator semantics before adding profile proportions."
     )
   )
 

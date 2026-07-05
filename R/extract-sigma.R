@@ -10,6 +10,23 @@
 ## explicit sigma^2_d / sigma^2_e / sigma^2_total decomposition
 ## (Nakagawa & Schielzeth 2010; Nakagawa, Johnson & Schielzeth 2017).
 
+.safe_cov2cor <- function(Sigma, names = rownames(Sigma)) {
+  Sigma <- as.matrix(Sigma)
+  D <- sqrt(diag(Sigma))
+  ok <- is.finite(D) & D > 0
+  R <- matrix(NA_real_, nrow = nrow(Sigma), ncol = ncol(Sigma))
+  if (any(ok)) {
+    R[ok, ok] <- Sigma[ok, ok, drop = FALSE] / outer(D[ok], D[ok])
+  }
+  if (!is.null(names)) {
+    rownames(R) <- colnames(R) <- names
+  } else {
+    rownames(R) <- rownames(Sigma)
+    colnames(R) <- colnames(Sigma)
+  }
+  R
+}
+
 ## ---------------------------------------------------------------------------
 ## Per-trait link-implicit residual variance.
 ##
@@ -718,13 +735,7 @@ extract_Sigma <- function(
     } else {
       Sigma_shared + diag(S_unique, nrow = n_aug)
     }
-    D <- sqrt(diag(Sigma))
-    R <- if (all(is.finite(D)) && all(D > 0)) {
-      Sigma / outer(D, D)
-    } else {
-      NA * Sigma
-    }
-    rownames(R) <- colnames(R) <- aug_names
+    R <- .safe_cov2cor(Sigma, aug_names)
     return(list(
       Sigma = Sigma,
       R = R,
@@ -779,13 +790,7 @@ extract_Sigma <- function(
     )
     dep_names <- as.vector(row_block)
     rownames(Sigma) <- colnames(Sigma) <- dep_names
-    D <- sqrt(diag(Sigma))
-    R <- if (all(is.finite(D)) && all(D > 0)) {
-      Sigma / outer(D, D)
-    } else {
-      NA * Sigma
-    }
-    rownames(R) <- colnames(R) <- dep_names
+    R <- .safe_cov2cor(Sigma, dep_names)
     return(list(
       Sigma = Sigma,
       R = R,
@@ -847,12 +852,7 @@ extract_Sigma <- function(
     )
     slope_names <- c("intercept", "slope")
     rownames(Sigma) <- colnames(Sigma) <- slope_names
-    D <- sqrt(diag(Sigma))
-    R <- if (all(is.finite(D)) && all(D > 0)) {
-      Sigma / outer(D, D)
-    } else {
-      NA * Sigma
-    }
+    R <- .safe_cov2cor(Sigma, slope_names)
     rownames(R) <- colnames(R) <- slope_names
     return(list(
       Sigma = Sigma,
@@ -917,12 +917,7 @@ extract_Sigma <- function(
     )
     field_names <- c("intercept", "slope")
     rownames(Sigma) <- colnames(Sigma) <- field_names
-    D <- sqrt(diag(Sigma))
-    R <- if (all(is.finite(D)) && all(D > 0)) {
-      Sigma / outer(D, D)
-    } else {
-      NA * Sigma
-    }
+    R <- .safe_cov2cor(Sigma, field_names)
     rownames(R) <- colnames(R) <- field_names
     kappa_note <- if (length(kappa_s) >= 1L && is.finite(kappa_s[1L])) {
       sprintf(
@@ -976,13 +971,7 @@ extract_Sigma <- function(
       paste0("slope.", trait_names)
     ))
     rownames(Sigma) <- colnames(Sigma) <- dep_names
-    D <- sqrt(diag(Sigma))
-    R <- if (all(is.finite(D)) && all(D > 0)) {
-      Sigma / outer(D, D)
-    } else {
-      NA * Sigma
-    }
-    rownames(R) <- colnames(R) <- dep_names
+    R <- .safe_cov2cor(Sigma, dep_names)
     return(list(
       Sigma = Sigma,
       R = R,
@@ -1384,9 +1373,7 @@ extract_Sigma <- function(
     if (any(link_resid_per_trait != 0)) {
       diag(Sigma) <- diag(Sigma) + link_resid_per_trait
     }
-    D <- sqrt(diag(Sigma))
-    R <- if (all(D > 0)) Sigma / outer(D, D) else NA * Sigma
-    rownames(R) <- colnames(R) <- trait_names
+    R <- .safe_cov2cor(Sigma, trait_names)
     out <- list(
       Sigma = Sigma,
       R = R,

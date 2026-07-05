@@ -32827,3 +32827,35 @@ GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(qui
 Outcome: parse passed; lognormal and Gamma family tests passed; heavy
 missing-response sentinel tests passed. This is an input-domain guard only, not
 a new family recovery, interval, or calibration claim.
+
+## 2026-07-04 -- Extractor zero-boundary guard repair
+
+Goal: close issues #681, #682, and #683 by making covariance/correlation,
+variance-share, and legacy ICC extractors degrade locally at zero-variance
+boundaries instead of returning whole-matrix `NA` or user-visible `NaN`.
+
+Edits:
+
+- Added `.safe_cov2cor()` and routed `extract_Sigma()` / `extract_Omega()`
+  correlation construction through it.
+- Added `.safe_variance_proportion_matrix()` so zero total-variance rows in
+  `extract_proportions()` return `NA`, not `NaN`.
+- Added `.safe_icc_ratio()` so `extract_ICC_site()` returns `NA` for zero
+  total-variance denominators.
+- Added pure boundary regressions in `test-extractors-extra.R` and updated the
+  validation register rows EXT-01, EXT-03, EXT-12, and EXT-31.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/extract-sigma.R")); invisible(parse("R/extract-omega.R")); invisible(parse("R/extractors.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-extractors-extra.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-extractors.R", reporter = "summary")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-mixed-response-sigma.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-proportions-ci.R", reporter = "summary")'
+```
+
+Outcome: parse passed; pure extractor boundary tests passed; base extractor
+tests passed; NOT_CRAN mixed-response Sigma tests passed; heavy proportions CI
+tests passed. This is a boundary-summary correctness repair only, not a new
+delta/hurdle, interval, or calibration claim.

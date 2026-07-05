@@ -108,9 +108,17 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
   }
   vB <- diag(B$Sigma)
   vW <- diag(W$Sigma)
-  icc <- vB / (vB + vW)
+  icc <- .safe_icc_ratio(vB, vW)
   names(icc) <- levels(fit$data[[fit$trait_col]])
   icc
+}
+
+.safe_icc_ratio <- function(vB, vW) {
+  denom <- vB + vW
+  out <- rep(NA_real_, length(denom))
+  ok <- is.finite(denom) & denom > 0
+  out[ok] <- vB[ok] / denom[ok]
+  out
 }
 
 #' Communality of each trait

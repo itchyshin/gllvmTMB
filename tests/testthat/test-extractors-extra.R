@@ -66,6 +66,46 @@ test_that("extract_Sigma_W(): non-multi fit errors", {
   )
 })
 
+test_that("safe covariance-to-correlation keeps non-degenerate submatrix", {
+  Sigma <- matrix(
+    c(
+      4, 1, 0,
+      1, 9, 0,
+      0, 0, 0
+    ),
+    nrow = 3,
+    byrow = TRUE,
+    dimnames = list(c("a", "b", "c"), c("a", "b", "c"))
+  )
+  R <- gllvmTMB:::.safe_cov2cor(Sigma)
+  expect_equal(R["a", "b"], 1 / 6)
+  expect_equal(R["a", "a"], 1)
+  expect_equal(R["b", "b"], 1)
+  expect_true(all(is.na(R["c", ])))
+  expect_true(all(is.na(R[, "c"])))
+})
+
+test_that("safe variance proportions and ICC return NA for zero denominators", {
+  M <- matrix(
+    c(
+      2, 1,
+      0, 0
+    ),
+    nrow = 2,
+    byrow = TRUE,
+    dimnames = list(c("a", "b"), c("shared", "unique"))
+  )
+  P <- gllvmTMB:::.safe_variance_proportion_matrix(M)
+  expect_equal(P["a", ], c(shared = 2 / 3, unique = 1 / 3))
+  expect_true(all(is.na(P["b", ])))
+  expect_false(any(is.nan(P)))
+
+  icc <- gllvmTMB:::.safe_icc_ratio(c(2, 0), c(2, 0))
+  expect_equal(icc[1], 0.5)
+  expect_true(is.na(icc[2]))
+  expect_false(any(is.nan(icc)))
+})
+
 # ---- clean degradation when covstruct absent -----------------------------
 
 test_that("extract_Sigma_B(): NULL when neither rr_B nor diag_B is in the fit", {

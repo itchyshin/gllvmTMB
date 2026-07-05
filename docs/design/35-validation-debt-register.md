@@ -277,9 +277,9 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 
 | ID | Capability | Status | Test evidence | Notes |
 |----|------------|--------|---------------|-------|
-| EXT-01 | `extract_Sigma(level, part)` | `covered` | `test-extract-sigma.R`, `test-extractors.R` | rotation-invariant |
+| EXT-01 | `extract_Sigma(level, part)` | `covered` | `test-extract-sigma.R`, `test-extractors.R`, `test-extractors-extra.R` | rotation-invariant; 2026-07-04 closes issue #682 boundary handling by preserving the non-degenerate covariance-to-correlation submatrix and returning `NA` only for zero-variance rows/columns. |
 | EXT-02 | `extract_Sigma_B / W` legacy aliases | `covered` | `test-sigma-rename.R` | slated for `deprecate_soft()` 0.3.0 |
-| EXT-03 | `extract_Omega()` cross-tier | `covered` | `test-extract-omega.R` | |
+| EXT-03 | `extract_Omega()` cross-tier | `covered` | `test-extract-omega.R`, `test-extractors-extra.R` | 2026-07-04 routes correlation conversion through the same safe zero-variance boundary helper as `extract_Sigma()`. |
 | EXT-04 | `extract_correlations()` 4 methods | `covered` (Fisher-z + Wald) / `partial` (profile + bootstrap on mixed-family / structured tiers) | `test-fisher-z-correlations.R`, `test-confint-bootstrap.R`, `test-spatial-depindep-binary.R` | 2026-07-04 factors the Fisher-z/Wald row builder and guards the SPDE spatial `method = "bootstrap"` request: because `bootstrap_Sigma()` does not yet resample spatial tiers, the extractor returns explicit Wald fallback rows with a message instead of empty output or fake bootstrap support. |
 | EXT-05 | `extract_communality()` | `covered` | `test-extractors.R`, `test-extractors-extra.R`, `test-derived-phylo-ci-audit.R`, `test-communality-ci.R` | Unit / unit_obs communalities remain covered; 2026-07-04 adds the phylogenetic-tier point route (`level = "phy"`) for `diag(Lambda_phy Lambda_phy') / diag(Lambda_phy Lambda_phy' + Psi_phy)`, guarded by the Ayumi #14 regression fixture. The extractor `ci = TRUE, method = "wald"` route now uses the scalar delta-method helper directly instead of the old bootstrap fallback. |
 | EXT-06 | `extract_repeatability()` | `covered` | `test-extractors-extra.R` | |
@@ -288,7 +288,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-09 | `extract_ordination()` | `covered` | `test-ordiplot-VP.R`, `test-ordiplot-multi.R` | rotation-variant; warn |
 | EXT-10 | `extract_cutpoints()` ordinal-probit | `partial` | `test-ordinal-probit.R` | smoke |
 | EXT-11 | `extract_proportions()` delta-family | `blocked` | n/a | post-CRAN |
-| EXT-12 | `extract_ICC_site()` legacy | `covered` | `test-extractors.R` | superseded by `extract_repeatability()` |
+| EXT-12 | `extract_ICC_site()` legacy | `covered` | `test-extractors.R`, `test-extractors-extra.R` | superseded by `extract_repeatability()`; 2026-07-04 closes issue #683 by returning `NA`, not `NaN`, for zero total-variance denominators. |
 | EXT-13 | `bootstrap_Sigma()` | `covered` (Gaussian) / `partial` (non-Gaussian) | `test-bootstrap-Sigma.R` | M3.3b surface admission (Design 50) controls the next non-Gaussian evidence movement. Known-phi point diagnostics are not bootstrap coverage. |
 | EXT-14 | `getLoadings()` raw $\Lambda$ | `covered` | `test-rotate-compare-loadings.R` | rotation-variant; warn |
 | EXT-15 | `rotate_loadings()` varimax / promax | `covered` | `test-rotate-compare-loadings.R`, `test-rotation-advisory.R` | Rotation is for interpretation of loading columns; covariance, correlation, communality, and uniqueness remain the primary rotation-invariant summaries. `plot(type = "ordination")` exposes the same order/sign-anchor convention for biplots. |
@@ -307,6 +307,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-28 | `extract_rotated_loadings_table()` report-ready rotated loading rows | `covered` | `test-rotate-compare-loadings.R` | Row-first table over `rotate_loadings()` for ordination reports and figures; includes rotation, axis-ordering, sign-anchor, anchor-trait, raw axis-variance/share, and raw/standardized loading scale metadata. Point-estimate helper only; no loading uncertainty intervals. |
 | EXT-29 | `plot_rotated_loadings()` rotated loading matrix helper | `covered` | `test-rotate-compare-loadings.R` | Plots fitted-model or `extract_rotated_loadings_table()` rows as a report-ready loading matrix with rotation/sign/loading-scale metadata preserved in `gllvmTMB_meta` / `gllvmTMB_data`; point-estimate visual helper only, no loading uncertainty intervals. |
 | EXT-30 | `plot_correlations()` heatmap / ellipse matrix styles | `covered` | `test-plot-covariance-tables.R`, `test-plot-visual-snapshots.R` | Adds matrix-style correlation heatmap and ellipse/oval views over fitted-model, `bootstrap_Sigma()`, or `extract_correlations()` rows, with full/lower/upper triangle controls, diagonal control, optional estimate/CI labels, `matrix_layout = "estimate_ci"` for upper estimates plus lower interval bounds, `matrix_layout = "levels"` for two-level upper/lower matrices such as `unit` over `unit_obs`, and significance outlines/stars for supplied intervals that exclude zero. Snapshot guards cover the estimate-CI heatmap and two-level ellipse matrix layouts. Plotting helper only; it does not compute intervals or calibrate uncertainty. |
+| EXT-31 | `extract_proportions()` zero-denominator boundary | `covered` | `test-extractors-extra.R`, `test-mixed-response-sigma.R`, `test-proportions-ci.R` | 2026-07-04 closes issue #681 for the existing ordinary variance-share surface by returning `NA`, not `NaN`, when a trait has zero total variance. This does not unblock the separate delta-family row EXT-11. |
 
 ### Section 9 — Diagnostics
 

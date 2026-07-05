@@ -254,9 +254,7 @@ extract_Omega <- function(
       )
     }
   }
-  D <- sqrt(diag(Omega))
-  R_Omega <- if (all(D > 0)) Omega / outer(D, D) else NA * Omega
-  rownames(R_Omega) <- colnames(R_Omega) <- trait_names
+  R_Omega <- .safe_cov2cor(Omega, trait_names)
   out <- list(
     Omega = Omega,
     R_Omega = R_Omega,
@@ -575,7 +573,7 @@ extract_proportions <- function(
   M <- do.call(cbind, comps)
   rownames(M) <- trait_names
   total <- rowSums(M)
-  P <- M / total
+  P <- .safe_variance_proportion_matrix(M)
 
   if (format == "long") {
     out <- data.frame(
@@ -597,4 +595,14 @@ extract_proportions <- function(
   attr(out, "format") <- format
   attr(out, "components") <- colnames(M)
   out
+}
+
+.safe_variance_proportion_matrix <- function(M) {
+  total <- rowSums(M)
+  P <- M / total
+  bad <- !is.finite(total) | total <= 0
+  if (any(bad)) {
+    P[bad, ] <- NA_real_
+  }
+  P
 }

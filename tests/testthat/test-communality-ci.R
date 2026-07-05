@@ -167,8 +167,8 @@ test_that(".communality_wald_ci() errors clearly on bad inputs", {
                                     trait_idx = obj$T + 5L),
     "trait_idx"
   )
-  ## A tier outside the supported set (phy / spatial / cluster) is
-  ## rejected before any numerical work.
+  ## The phy tier is supported in principle, but this fixture has no
+  ## phylogenetic communality report items.
   expect_error(
     gllvmTMB:::.communality_wald_ci(obj$fit, tier = "phy", trait_idx = 1L)
   )

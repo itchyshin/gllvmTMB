@@ -661,34 +661,6 @@ nobs.gllvmTMB_multi <- function(object, ...) {
   }
 }
 
-#' Fixed-effect confidence intervals for a fitted gllvmTMB model
-#'
-#' @param object A fit returned by [gllvmTMB()].
-#' @param parm Optional integer or character vector of parameter
-#'   names (matched against the fixed-effect terms).
-#' @param level Confidence level (default 0.95).
-#' @param ... Unused.
-#' @return A matrix with rows = parameters and columns = the lower and
-#'   upper bounds of the Wald CI.
-#' @export
-confint.gllvmTMB_multi <- function(object, parm, level = 0.95, ...) {
-  td <- tidy(object, "fixed", conf.int = TRUE, conf.level = level)
-  if (!missing(parm)) {
-    if (is.numeric(parm)) {
-      td <- td[parm, , drop = FALSE]
-    } else {
-      td <- td[match(parm, td$term), , drop = FALSE]
-    }
-  }
-  out <- as.matrix(td[, c("conf.low", "conf.high")])
-  rownames(out) <- td$term
-  colnames(out) <- c(
-    sprintf("%.1f %%", 100 * (1 - level) / 2),
-    sprintf("%.1f %%", 100 * (1 + level) / 2)
-  )
-  out
-}
-
 #' Tidy a fitted gllvmTMB model
 #'
 #' Returns a tibble (or data.frame) of either the fixed-effect coefficient

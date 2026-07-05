@@ -11,10 +11,14 @@
 ##   method = "bootstrap"               -- parametric bootstrap via
 ##                                          bootstrap_Sigma()
 ##
-## Two parameter-class dispatch paths:
+## Main parameter-class dispatch paths:
 ##   parm = "Sigma_unit" | "Sigma_unit_obs" | "sigma_phy"
 ##        (legacy aliases: "Sigma_B", "Sigma_W")
 ##                                                      -> bootstrap or profile
+##   parm = "Lambda" | "Lambda:i,j"              -> loading_ci/loading_profile
+##   parm = "icc" | "phylo_signal" |
+##          "communality:*" | "rho:*" |
+##          "proportion:*"                       -> derived-summary helpers
 ##   parm = character/integer/missing            -> Wald / profile on
 ##                                                   fixed effects + var
 ##                                                   components
@@ -1116,7 +1120,7 @@
 #' experimental under EXT-13 / CI-10. PLANNED, richer derived-profile intervals
 #' and broader calibration evidence remain M3 work.
 #'
-#' Two parm-class dispatch paths:
+#' Main parm-class dispatch paths:
 #'
 #' \itemize{
 #'   \item \strong{Sigma matrices} -- when \code{parm} is one of
@@ -1132,6 +1136,11 @@
 #'     term names, returns a numeric matrix with rows = parameters and
 #'     columns = lower / upper bounds (same shape as
 #'     [stats::confint()]). Method choice applies.
+#'   \item \strong{Lambda and derived summaries} -- \code{"Lambda..."},
+#'     \code{"icc..."}, \code{"phylo_signal..."}, \code{"communality..."},
+#'     \code{"rho..."}, and \code{"proportion..."} tokens dispatch to their
+#'     corresponding loading, profile, Wald, or bootstrap helper where that
+#'     route is implemented.
 #' }
 #'
 #' @param object A fit returned by [gllvmTMB()].
@@ -1219,11 +1228,13 @@
 #'     \code{lower}/\code{upper} are \code{NA} and \code{ci_status}
 #'     flags the reason).
 #'   \item \strong{Derived-quantity path} (\code{"icc"} /
-#'     \code{"phylo_signal"} / \code{"communality"} / \code{"rho"}) --
+#'     \code{"phylo_signal"} / \code{"communality"} / \code{"rho"} /
+#'     \code{"proportion"}) --
 #'     a numeric matrix with two columns named after the requested
 #'     \code{level} (e.g. \code{"2.5 \%"} / \code{"97.5 \%"}) and
 #'     rownames identifying the entry, e.g. \code{"icc:trait_1"},
-#'     \code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}.
+#'     \code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}, or
+#'     \code{"proportion:shared_unit:trait_1"}.
 #'   \item \strong{Fixed-effects / variance-component path} -- a numeric
 #'     matrix with rownames = parameter names and two columns named
 #'     \code{"2.5 \%"} / \code{"97.5 \%"} (or the analogous quantiles for

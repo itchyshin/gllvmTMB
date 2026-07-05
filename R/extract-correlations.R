@@ -4,6 +4,65 @@
 ## phy / spatial),
 ## with four CI methods: fisher-z / profile / Wald alias / bootstrap.
 
+.correlation_fisher_n_eff <- function(fit, tk, n_eff) {
+  if (!is.null(n_eff)) {
+    return(as.integer(n_eff))
+  }
+
+  n_eff_used <- if (tk == "B") {
+    fit$n_sites
+  } else if (tk == "W") {
+    fit$n_site_species
+  } else if (tk == "phy") {
+    fit$n_species
+  } else {
+    fit$n_sites
+  }
+  if (is.null(n_eff_used) || n_eff_used < 4L) {
+    n_eff_used <- 30L
+  }
+  as.integer(n_eff_used)
+}
+
+.correlation_fisher_rows <- function(R, pairs, trait_names, tk, level,
+                                     n_eff_used, method_label) {
+  z <- stats::qnorm(1 - (1 - level) / 2)
+  out_rows <- vector("list", nrow(pairs))
+  for (m in seq_len(nrow(pairs))) {
+    i <- pairs[m, 1L]
+    j <- pairs[m, 2L]
+    rho <- R[i, j]
+    if (is.na(rho) || abs(rho) >= 1) {
+      out_rows[[m]] <- data.frame(
+        tier = tk,
+        trait_i = trait_names[i],
+        trait_j = trait_names[j],
+        correlation = rho,
+        lower = NA_real_,
+        upper = NA_real_,
+        method = method_label,
+        stringsAsFactors = FALSE
+      )
+      next
+    }
+    zr <- atanh(rho)
+    se <- 1 / sqrt(max(n_eff_used - 3L, 1L))
+    lo <- tanh(zr - z * se)
+    hi <- tanh(zr + z * se)
+    out_rows[[m]] <- data.frame(
+      tier = tk,
+      trait_i = trait_names[i],
+      trait_j = trait_names[j],
+      correlation = rho,
+      lower = lo,
+      upper = hi,
+      method = method_label,
+      stringsAsFactors = FALSE
+    )
+  }
+  out_rows
+}
+
 #' Cross-trait correlations with confidence intervals
 #'
 #' Returns the implied cross-trait correlations from a fit returned by
@@ -34,7 +93,10 @@
 #'     \code{\link{bootstrap_Sigma}}. Slowest (full sampling
 #'     distribution); use when a fitted model gives useful point estimates
 #'     but Hessian- or profile-based intervals are not the right uncertainty
-#'     summary.
+#'     summary. Structured tiers not yet resampled by
+#'     \code{\link{bootstrap_Sigma}}, currently the SPDE spatial tier, return
+#'     an explicit Wald/Fisher-z fallback with a message rather than fake
+#'     bootstrap support.
 #' }
 #'
 #' For T traits at one tier, there are T(T-1)/2 unique correlations.
@@ -61,11 +123,12 @@
 #' @param n_eff Optional positive integer (>= 4): override the
 #'   effective sample size used in Fisher's
 #'   \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}}
-#'   formula. Only consulted for \code{method \%in\% c("fisher-z",
-#'   "wald")}. The default heuristic uses \code{fit$n_sites} for tier
+#'   formula. Consulted for \code{method \%in\% c("fisher-z", "wald")}
+#'   and for explicit Wald fallback rows when a requested bootstrap tier is
+#'   not yet routed. The default heuristic uses \code{fit$n_sites} for tier
 #'   \code{"B"} (\code{"unit"}), \code{fit$n_site_species} for
 #'   \code{"W"} (\code{"unit_obs"}), \code{fit$n_species} for
-#'   \code{"phy"}, and \code{fit$n_sites} elsewhere — adequate for
+#'   \code{"phy"}, and \code{fit$n_sites} elsewhere -- adequate for
 #'   well-identified Gaussian fits, but can under-cover when latent
 #'   structure or non-Gaussian likelihood reduces the effective N
 #'   below the unit count. Set \code{n_eff} explicitly for non-trivial
@@ -377,7 +440,15 @@ extract_correlations <- function(
         cli::cli_inform(
           "Bootstrap not implemented for tier {.val {tk}}; falling back to Wald."
         )
-        method_used <- "wald"
+        out_rows <- .correlation_fisher_rows(
+          R = R,
+          pairs = pairs,
+          trait_names = trait_names,
+          tk = tk,
+          level = level,
+          n_eff_used = .correlation_fisher_n_eff(fit, tk, n_eff),
+          method_label = "wald"
+        )
       } else {
         boot <- suppressMessages(bootstrap_Sigma(
           fit,
@@ -443,53 +514,15 @@ extract_correlations <- function(
       ## response reduces effective N). Use n_eff override for
       ## non-trivial structure; profile or bootstrap for gold standard.
       ## See dev/design/09-fisher-z-wald-correlations.md.
-      if (!is.null(n_eff)) {
-        n_eff_used <- n_eff
-      } else {
-        n_eff_used <- if (tk == "B") {
-          fit$n_sites
-        } else if (tk == "W") {
-          fit$n_site_species
-        } else if (tk == "phy") {
-          fit$n_species
-        } else {
-          fit$n_sites
-        }
-        if (is.null(n_eff_used) || n_eff_used < 4L) n_eff_used <- 30L
-      }
-      z <- stats::qnorm(1 - (1 - level) / 2)
-      for (m in seq_len(n_pairs)) {
-        i <- pairs[m, 1L]
-        j <- pairs[m, 2L]
-        rho <- R[i, j]
-        if (is.na(rho) || abs(rho) >= 1) {
-          out_rows[[m]] <- data.frame(
-            tier = tk,
-            trait_i = trait_names[i],
-            trait_j = trait_names[j],
-            correlation = rho,
-            lower = NA_real_,
-            upper = NA_real_,
-            method = out_method_label,
-            stringsAsFactors = FALSE
-          )
-          next
-        }
-        zr <- atanh(rho)
-        se <- 1 / sqrt(max(n_eff_used - 3L, 1L))
-        lo <- tanh(zr - z * se)
-        hi <- tanh(zr + z * se)
-        out_rows[[m]] <- data.frame(
-          tier = tk,
-          trait_i = trait_names[i],
-          trait_j = trait_names[j],
-          correlation = rho,
-          lower = lo,
-          upper = hi,
-          method = out_method_label,
-          stringsAsFactors = FALSE
-        )
-      }
+      out_rows <- .correlation_fisher_rows(
+        R = R,
+        pairs = pairs,
+        trait_names = trait_names,
+        tk = tk,
+        level = level,
+        n_eff_used = .correlation_fisher_n_eff(fit, tk, n_eff),
+        method_label = out_method_label
+      )
     }
     results[[k]] <- do.call(rbind, out_rows)
   }

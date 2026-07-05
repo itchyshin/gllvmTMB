@@ -42,11 +42,12 @@ See Details.}
 \item{n_eff}{Optional positive integer (>= 4): override the
 effective sample size used in Fisher's
 \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}}
-formula. Only consulted for \code{method \%in\% c("fisher-z",
-"wald")}. The default heuristic uses \code{fit$n_sites} for tier
+formula. Consulted for \code{method \%in\% c("fisher-z", "wald")}
+and for explicit Wald fallback rows when a requested bootstrap tier is
+not yet routed. The default heuristic uses \code{fit$n_sites} for tier
 \code{"B"} (\code{"unit"}), \code{fit$n_site_species} for
 \code{"W"} (\code{"unit_obs"}), \code{fit$n_species} for
-\code{"phy"}, and \code{fit$n_sites} elsewhere — adequate for
+\code{"phy"}, and \code{fit$n_sites} elsewhere -- adequate for
 well-identified Gaussian fits, but can under-cover when latent
 structure or non-Gaussian likelihood reduces the effective N
 below the unit count. Set \code{n_eff} explicitly for non-trivial
@@ -128,7 +129,10 @@ the canonical name. Kept for scripts that filter on
 \code{\link{bootstrap_Sigma}}. Slowest (full sampling
 distribution); use when a fitted model gives useful point estimates
 but Hessian- or profile-based intervals are not the right uncertainty
-summary.
+summary. Structured tiers not yet resampled by
+\code{\link{bootstrap_Sigma}}, currently the SPDE spatial tier, return
+an explicit Wald/Fisher-z fallback with a message rather than fake
+bootstrap support.
 }
 
 For T traits at one tier, there are T(T-1)/2 unique correlations.

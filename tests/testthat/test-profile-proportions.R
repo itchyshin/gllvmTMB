@@ -284,7 +284,7 @@ test_that(".parse_proportion_parm accepts bracketed indices on the trait portion
 })
 
 ## ============================================================================
-##  Method handling: wald / bootstrap error early (no refit)
+##  Method handling: Wald / bootstrap routes
 ## ============================================================================
 
 test_that("confint(fit, parm = 'proportion:shared_unit', method = 'wald') returns finite bounds", {

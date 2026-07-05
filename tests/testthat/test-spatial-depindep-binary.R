@@ -194,4 +194,29 @@ test_that("spatial_dep(0 + trait | site) fits on binary probit; CI smoke + extra
   expect_true(all(c("tier", "trait_i", "trait_j", "correlation",
                     "lower", "upper") %in% names(cor_df)))
   expect_true(all(is.finite(cor_df$correlation)))
+
+  ## bootstrap_Sigma() does not yet carry an SPDE correlation bootstrap.
+  ## The extractor must therefore return the explicit Wald/Fisher-z
+  ## fallback rows instead of an empty data frame or mislabeled bootstrap
+  ## support.
+  cor_boot <- NULL
+  expect_message(
+    cor_boot <- suppressWarnings(gllvmTMB::extract_correlations(
+      fit,
+      tier   = "spatial",
+      method = "bootstrap",
+      nsim = 3L,
+      seed = 20260704L,
+      link_residual = "none"
+    )),
+    "falling back to Wald"
+  )
+  expect_s3_class(cor_boot, "data.frame")
+  expect_equal(nrow(cor_boot), nrow(cor_df))
+  expect_true(all(cor_boot$method == "wald"))
+  expect_true(all(is.finite(cor_boot$correlation)))
+  finite_bounds <- is.finite(cor_boot$lower) & is.finite(cor_boot$upper)
+  expect_true(any(finite_bounds))
+  expect_true(all(cor_boot$lower[finite_bounds] >= -1))
+  expect_true(all(cor_boot$upper[finite_bounds] <= 1))
 })

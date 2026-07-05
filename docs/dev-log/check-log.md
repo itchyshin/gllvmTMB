@@ -31959,3 +31959,94 @@ Known limitation:
 
 - Documentation truth only; no route implementation or interval-calibration
   claim changed.
+
+## 2026-07-04 -- Derived-CI matrix row: spatial correlation bootstrap fallback
+
+Goal: continue the route-matrix audit with a forest-level consolidation pass.
+`extract_correlations(tier = "spatial", method = "bootstrap")` advertised a
+fallback when `bootstrap_Sigma()` could not resample SPDE tiers, but the branch
+only emitted a message and could return an empty result. The same pass found a
+shadowed old fixed-effect-only `confint.gllvmTMB_multi()` definition that was
+polluting the generated help page.
+
+Implemented:
+
+- Factored Fisher-z/Wald correlation row construction into internal helpers.
+- Spatial/SPDE bootstrap requests now return labelled `method = "wald"` rows
+  with the existing explicit fallback message, not an empty frame or fake
+  bootstrap support.
+- Removed the older shadowed `confint.gllvmTMB_multi()` stub from
+  `R/methods-gllvmTMB.R`; the route-matrix method in `R/z-confint-gllvmTMB.R`
+  is now the only definition.
+- Regenerated `man/extract_correlations.Rd` and
+  `man/confint.gllvmTMB_multi.Rd`.
+- Updated `docs/design/06-extractors-contract.md`,
+  `docs/design/35-validation-debt-register.md`, and two stale test comments.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/methods-gllvmTMB.R")); invisible(parse("R/extract-correlations.R")); invisible(parse("R/z-confint-gllvmTMB.R")); cat("parse-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Outcome: passed; regenerated `man/extract_correlations.Rd` and
+`man/confint.gllvmTMB_multi.Rd` with the same unrelated unresolved-link warnings
+seen earlier in this session.
+
+```sh
+Rscript --vanilla -e 'tools::checkRd("man/extract_correlations.Rd"); tools::checkRd("man/confint.gllvmTMB_multi.Rd"); cat("rd-ok\n")'
+```
+
+Outcome: passed.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-fisher-z-correlations.R", reporter = "summary")'
+```
+
+Outcome: passed; `fisher-z-correlations: ................`.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-spatial-depindep-binary.R", reporter = "summary")'
+```
+
+First run outcome: failed because the new test assigned the return value of
+`expect_message()` instead of assigning inside it.
+
+Fix: moved `cor_boot <- ...` inside `expect_message()`.
+
+Second run outcome: passed; `spatial-depindep-binary: ...........................`.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-proportions.R", reporter = "summary")'
+```
+
+Outcome: passed; `profile-proportions: ........................................`.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-derived.R", reporter = "summary")'
+```
+
+Outcome: passed; completed with no failures.
+
+```sh
+rg -n "Two parameter-class dispatch paths|Two parm-class dispatch paths|Profile-only|wald / bootstrap error early|outside the supported set|T x T.*attribute.*confint|from the bootstrap distribution|Fixed-effect confidence intervals|proportion.*omit|spatial bootstrap.*covered|elsewhere --" R/z-confint-gllvmTMB.R R/extract-correlations.R tests/testthat/test-profile-proportions.R tests/testthat/test-communality-ci.R docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md man/confint.gllvmTMB_multi.Rd man/extract_correlations.Rd
+```
+
+Outcome: no stale hits.
+
+```sh
+git diff --check
+```
+
+Outcome: passed.
+
+Known limitation:
+
+- This is a fallback/route truth fix, not spatial bootstrap calibration.
+- CI-07 remains partial for spatial total-covariance profile intervals.

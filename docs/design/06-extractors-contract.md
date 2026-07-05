@@ -271,11 +271,11 @@ function-first roadmap is the validation gate.
 
 ### 2. Decomposition family
 
-#### `extract_correlations(fit, method = c("Fisher-z", "Wald", "profile", "bootstrap"), link_residual = c("auto", "none"), level)`
+#### `extract_correlations(fit, method = c("fisher-z", "wald", "profile", "bootstrap"), link_residual = c("auto", "none"), level)`
 
-**Return**: a `T x T` correlation matrix (point estimate)
-with attribute `confint` carrying the lower / upper bounds
-in the chosen method.
+**Return**: a tidy data frame with one row per requested
+upper-triangular trait pair and columns `tier`, `trait_i`,
+`trait_j`, `correlation`, `lower`, `upper`, and `method`.
 
 The `link_residual = "auto"` default invokes the per-family
 link-residual computation (`R/extract-sigma.R`
@@ -295,13 +295,19 @@ errors with class
 
 **Method semantics**:
 
-- `Fisher-z`: closed-form Fisher's z-transform CI on
-  Pearson correlations from the bootstrap distribution.
-- `Wald`: Wald CI on the latent-scale correlation
-  parameter (cheapest; under-covers near $\pm 1$).
+- `fisher-z`: closed-form Fisher's z-transform CI on the
+  fitted Pearson correlation, using the requested `n_eff`
+  override or the extractor's tier-specific effective-size
+  heuristic.
+- `wald`: backward-compatible alias for `fisher-z`; the
+  output `method` column preserves the user's requested label.
 - `profile`: profile-likelihood CI via
   `profile_ci_correlation()` (Phase 1b PR #122).
 - `bootstrap`: bootstrap CI from `bootstrap_Sigma()`.
+  Structured tiers that `bootstrap_Sigma()` does not yet
+  resample, currently the SPDE spatial tier, return an explicit
+  Wald/Fisher-z fallback with a message rather than fake
+  bootstrap support.
 
 For structured tiers, `extract_correlations()` inherits the
 `extract_Sigma(level = ..., part = "total")` contract. In particular,

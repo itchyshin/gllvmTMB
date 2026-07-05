@@ -12,7 +12,8 @@
 ##                                          bootstrap_Sigma()
 ##
 ## Main parameter-class dispatch paths:
-##   parm = "Sigma_unit" | "Sigma_unit_obs" | "sigma_phy"
+##   parm = "Sigma_unit" | "Sigma_unit_obs" |
+##          "Sigma_cluster" | "Sigma_cluster2" | "sigma_phy"
 ##        (legacy aliases: "Sigma_B", "Sigma_W")
 ##                                                      -> bootstrap or profile
 ##   parm = "Lambda" | "Lambda:i,j"              -> loading_ci/loading_profile
@@ -25,7 +26,10 @@
 
 ## Internal helper: accepted sigma-type parm tokens.
 .sigma_parm_tokens <- function() {
-  c("Sigma_unit", "Sigma_unit_obs", "Sigma_B", "Sigma_W", "sigma_phy")
+  c(
+    "Sigma_unit", "Sigma_unit_obs", "Sigma_cluster", "Sigma_cluster2",
+    "Sigma_B", "Sigma_W", "sigma_phy"
+  )
 }
 
 ## Internal helper: return display and extraction metadata for a sigma-type
@@ -39,28 +43,60 @@
       level = "unit",
       internal = "B",
       key = "Sigma_B",
-      phy = FALSE
+      phy = FALSE,
+      diag_param = "theta_diag_B",
+      rr_flag = "rr_B",
+      diag_flag = "diag_B"
     ),
     Sigma_unit_obs = list(
       display = "Sigma_unit_obs",
       level = "unit_obs",
       internal = "W",
       key = "Sigma_W",
-      phy = FALSE
+      phy = FALSE,
+      diag_param = "theta_diag_W",
+      rr_flag = "rr_W",
+      diag_flag = "diag_W"
+    ),
+    Sigma_cluster = list(
+      display = "Sigma_cluster",
+      level = "cluster",
+      internal = "cluster",
+      key = "Sigma_cluster",
+      phy = FALSE,
+      diag_param = "theta_diag_species",
+      rr_flag = NULL,
+      diag_flag = "diag_species"
+    ),
+    Sigma_cluster2 = list(
+      display = "Sigma_cluster2",
+      level = "cluster2",
+      internal = "cluster2",
+      key = "Sigma_cluster2",
+      phy = FALSE,
+      diag_param = "theta_diag_cluster2",
+      rr_flag = NULL,
+      diag_flag = "diag_cluster2"
     ),
     Sigma_B = list(
       display = "Sigma_B",
       level = "unit",
       internal = "B",
       key = "Sigma_B",
-      phy = FALSE
+      phy = FALSE,
+      diag_param = "theta_diag_B",
+      rr_flag = "rr_B",
+      diag_flag = "diag_B"
     ),
     Sigma_W = list(
       display = "Sigma_W",
       level = "unit_obs",
       internal = "W",
       key = "Sigma_W",
-      phy = FALSE
+      phy = FALSE,
+      diag_param = "theta_diag_W",
+      rr_flag = "rr_W",
+      diag_flag = "diag_W"
     ),
     sigma_phy = list(
       display = "sigma_phy",
@@ -71,6 +107,32 @@
     ),
     NULL
   )
+}
+
+## Internal helper: whether a sigma tier has a reduced-rank component.
+.sigma_info_rr_used <- function(object, info) {
+  flag <- info$rr_flag
+  if (is.null(flag)) {
+    return(FALSE)
+  }
+  isTRUE(object$use[[flag]])
+}
+
+## Internal helper: whether a sigma tier has a direct diagonal component.
+.sigma_info_diag_used <- function(object, info) {
+  flag <- info$diag_flag
+  if (is.null(flag)) {
+    return(FALSE)
+  }
+  isTRUE(object$use[[flag]])
+}
+
+## Internal helper: log-SD parameter block for a diagonal sigma tier.
+.sigma_info_diag_param <- function(info) {
+  if (!is.null(info$diag_param)) {
+    return(info$diag_param)
+  }
+  paste0("theta_diag_", info$internal)
 }
 
 ## Internal helper: recognise sigma-type parm tokens.
@@ -1162,8 +1224,10 @@
 #' Scope boundary: IN, fixed-effect and direct-parameter intervals use the
 #' requested \code{method} where supported (CI-01, CI-02), and Sigma-matrix
 #' intervals accept canonical \code{parm = "Sigma_unit"} /
-#' \code{"Sigma_unit_obs"} names plus legacy \code{"Sigma_B"} /
-#' \code{"Sigma_W"} aliases (CI-02, CI-03; underlying extraction EXT-01).
+#' \code{"Sigma_unit_obs"} names, diagonal extra-grouping
+#' \code{"Sigma_cluster"} / \code{"Sigma_cluster2"} names, plus legacy
+#' \code{"Sigma_B"} / \code{"Sigma_W"} aliases (CI-02, CI-03; underlying
+#' extraction EXT-01).
 #' PARTIAL, profile intervals for full decomposed Sigma entries fall back to
 #' bootstrap because those entries are nonlinear functions of rotation-equivalent
 #' loadings and diagonal \eqn{\Psi}; non-Gaussian bootstrap calibration remains
@@ -1174,8 +1238,10 @@
 #'
 #' \itemize{
 #'   \item \strong{Sigma matrices} -- when \code{parm} is one of
-#'     \code{"Sigma_unit"}, \code{"Sigma_unit_obs"}, or \code{"sigma_phy"}
-#'     (legacy aliases \code{"Sigma_B"} and \code{"Sigma_W"} still work),
+#'     \code{"Sigma_unit"}, \code{"Sigma_unit_obs"},
+#'     \code{"Sigma_cluster"}, \code{"Sigma_cluster2"}, or
+#'     \code{"sigma_phy"} (legacy aliases \code{"Sigma_B"} and
+#'     \code{"Sigma_W"} still work),
 #'     returns a tidy \code{data.frame} with columns \code{parameter},
 #'     \code{estimate}, \code{lower}, \code{upper}, \code{method}. Profile is
 #'     computed element-wise via [TMB::tmbprofile()] for the diagonal entries;
@@ -1198,6 +1264,11 @@
 #'   \itemize{
 #'     \item \code{"Sigma_unit"} -- between-unit trait covariance matrix.
 #'     \item \code{"Sigma_unit_obs"} -- within-unit trait covariance matrix.
+#'     \item \code{"Sigma_cluster"} and \code{"Sigma_cluster2"} --
+#'       diagonal covariance matrices for the first and second extra grouping
+#'       tiers. \code{"profile"} and \code{"wald"} return diagonal variance
+#'       intervals; \code{"bootstrap"} is intentionally blocked until a
+#'       simulate-refit calibration gate is added for these tiers.
 #'     \item \code{"sigma_phy"} -- per-trait phylogenetic standard deviations.
 #'     \item Legacy aliases \code{"Sigma_B"} and \code{"Sigma_W"}, retained
 #'       for existing scripts.
@@ -1539,6 +1610,13 @@ confint.gllvmTMB_multi <- function(
 .confint_sigma_bootstrap <- function(object, parm, level, nsim, seed) {
   info <- .sigma_parm_info(parm)
   lvl <- info$internal
+  if (info$level %in% c("cluster", "cluster2")) {
+    cli::cli_abort(c(
+      "{.code confint(..., parm = {.val {parm}}, method = \"bootstrap\")} is not wired for diagonal cluster Sigma tiers.",
+      "i" = "Use {.code method = \"profile\"} or {.code method = \"wald\"} for diagonal variance entries.",
+      ">" = "A simulate-refit bootstrap for {.code Sigma_cluster} / {.code Sigma_cluster2} needs a separate calibration gate."
+    ))
+  }
 
   boot <- bootstrap_Sigma(
     fit = object,
@@ -1610,7 +1688,6 @@ confint.gllvmTMB_multi <- function(
   ## point-estimate diagonal and SE on diagonal-only entries.
   info <- .sigma_parm_info(parm)
   lvl <- info$internal
-  tier_label <- if (lvl == "phy") "phy" else lvl
   Sigma_pt <- suppressMessages(extract_Sigma(
     object,
     level = info$level,
@@ -1672,21 +1749,13 @@ confint.gllvmTMB_multi <- function(
   )
   ## Fill diagonal entries only
   diag_rows <- which(idx[, 1L] == idx[, 2L])
-  rr_used <- if (lvl == "B") {
-    isTRUE(object$use$rr_B)
-  } else {
-    isTRUE(object$use$rr_W)
-  }
-  diag_used <- if (lvl == "B") {
-    isTRUE(object$use$diag_B)
-  } else {
-    isTRUE(object$use$diag_W)
-  }
+  rr_used <- .sigma_info_rr_used(object, info)
+  diag_used <- .sigma_info_diag_used(object, info)
   if (rr_used || !diag_used) {
     return(out)
   }
   ## On the log-SD scale of diag_<tier>, get the SE; transform back to var
-  ix_diag <- which(names(object$opt$par) == paste0("theta_diag_", tier_label))
+  ix_diag <- which(names(object$opt$par) == .sigma_info_diag_param(info))
   if (length(ix_diag) >= length(diag_rows) && !is.null(object$sd_report)) {
     se_vec <- tryCatch(
       sqrt(diag(object$sd_report$cov.fixed))[ix_diag],
@@ -1712,9 +1781,10 @@ confint.gllvmTMB_multi <- function(
   ## For sigma_phy (per-trait SDs from log_sd_phy_diag), TMB::tmbprofile()
   ## is direct -- one parameter per trait.
   ##
-  ## For Sigma_unit / Sigma_unit_obs with only diag_<tier> (no latent), profile on
-  ## theta_diag_<tier> gives per-trait variance; off-diagonals are zero
-  ## by construction. This is the cleanest profile case.
+  ## For Sigma_unit / Sigma_unit_obs / Sigma_cluster / Sigma_cluster2 with
+  ## only diag_<tier> (no latent), profile on theta_diag_<tier> gives per-trait
+  ## variance; off-diagonals are zero by construction. This is the cleanest
+  ## profile case.
   ##
   ## For Sigma_unit / Sigma_unit_obs with latent + diag, the total Sigma_t,t and
   ## off-diagonals are non-linear functions of multiple parameters
@@ -1757,25 +1827,17 @@ confint.gllvmTMB_multi <- function(
     return(df_log)
   }
 
-  ## For Sigma_unit / Sigma_unit_obs: profile diagonal on theta_diag_<tier> when
-  ## that gives the full diagonal (no rr at this tier).
-  rr_used <- if (lvl == "B") {
-    isTRUE(object$use$rr_B)
-  } else {
-    isTRUE(object$use$rr_W)
-  }
-  diag_used <- if (lvl == "B") {
-    isTRUE(object$use$diag_B)
-  } else {
-    isTRUE(object$use$diag_W)
-  }
+  ## For diagonal-only tiers: profile diagonal on theta_diag_<tier> when that
+  ## gives the full diagonal (no rr at this tier).
+  rr_used <- .sigma_info_rr_used(object, info)
+  diag_used <- .sigma_info_diag_used(object, info)
   idx <- which(upper.tri(pe, diag = TRUE), arr.ind = TRUE)
 
   if (!rr_used && diag_used) {
     ## Pure diag tier: per-trait variance is identifiable and direct profile
     diag_block <- .tmbprofile_block(
       object,
-      paste0("theta_diag_", lvl),
+      .sigma_info_diag_param(info),
       level = level,
       transform = function(x) exp(2 * x)
     )

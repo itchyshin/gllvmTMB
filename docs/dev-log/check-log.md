@@ -33553,3 +33553,44 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 
 Outcome: parse passed; the focused route-matrix test file passed. No capability
 status moved to covered.
+
+## 2026-07-04 -- Diagonal cluster Sigma interval tokens
+
+Goal: wire public `Sigma_cluster` and `Sigma_cluster2` `confint()` tokens as
+diagonal-only wrappers around the existing direct cluster log-SD profile route,
+without claiming full cluster covariance calibration.
+
+Edits:
+
+- Added `Sigma_cluster` / `Sigma_cluster2` to the sigma `confint()` parameter
+  metadata with explicit `theta_diag_species` / `theta_diag_cluster2` blocks.
+- Routed Wald/profile cluster Sigma intervals through the diagonal tier
+  metadata, rather than the ordinary `B/W` covariance path.
+- Made bootstrap requests for these diagonal cluster matrix tokens fail loudly
+  until a simulate-refit calibration gate is designed.
+- Updated Design 73 and CI-11 to record the new state as `partial`, not
+  `covered`.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/z-confint-gllvmTMB.R")); invisible(parse("R/profile-route-matrix.R")); invisible(parse("tests/testthat/test-profile-route-matrix.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R")'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-cluster2-rename.R")'
+```
+
+Ad-hoc live smoke:
+
+```sh
+Rscript --vanilla - <<'RS'
+devtools::load_all(quiet = TRUE)
+## Small crossed Gaussian fixture; profile smoke only, not calibration.
+## confint(..., parm = "Sigma_cluster", method = "profile") returned the
+## diagonal rows plus a structural-zero off-diagonal row.
+RS
+```
+
+Outcome: parse passed; route-matrix tests passed; cluster2 focused tests passed
+with the expected heavy recovery skip. A small live profile smoke also returned
+`Sigma_cluster` rows successfully. Bootstrap remains intentionally blocked for
+these diagonal cluster matrix tokens.

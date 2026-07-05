@@ -22,8 +22,8 @@ This design is implemented as the internal route ledger
 | --- | --- | --- | --- |
 | `unit` | ordinary between-unit covariance | `T x T` | partial for total `Sigma`; covered for direct log-SD, communality, and rho routes |
 | `unit_obs` | observation / within-unit covariance | `T x T` | partial for total `Sigma`; covered for direct log-SD, communality, and rho routes |
-| `cluster` | first extra diagonal grouping tier | diagonal `T` | direct log-SD profile label covered; matrix `Sigma_cluster` token planned |
-| `cluster2` | second extra diagonal grouping tier | diagonal `T` | direct log-SD profile label covered; matrix `Sigma_cluster2` token planned |
+| `cluster` | first extra diagonal grouping tier | diagonal `T` | direct log-SD profile label covered; diagonal-only `Sigma_cluster` token partial |
+| `cluster2` | second extra diagonal grouping tier | diagonal `T` | direct log-SD profile label covered; diagonal-only `Sigma_cluster2` token partial |
 | `phy` | phylogenetic source tier | `T x T` | partial/covered depending on target; multi-component `H2` profile remains partial |
 | `spatial` | SPDE source tier | `T x T` | partial; total spatial covariance profile needs a heavy gate |
 | augmented split tiers | unit/source random-regression blocks | split or augmented block | blocked for profile until target symbols are declared |
@@ -53,8 +53,8 @@ share.
 | --- | --- | --- | --- | --- | --- | --- |
 | `unit` | covered | partial | covered | covered | covered | repeatability partial |
 | `unit_obs` | covered | partial | covered | covered | covered | - |
-| `cluster` | covered | planned | not applicable | point-only | planned | diagonal tier only |
-| `cluster2` | covered | planned | not applicable | point-only | planned | diagonal tier only |
+| `cluster` | covered | partial | not applicable | point-only | planned | diagonal tier only |
+| `cluster2` | covered | partial | not applicable | point-only | planned | diagonal tier only |
 | `phy` | covered | partial | covered | covered | covered | phylogenetic signal partial |
 | `spatial` | covered | partial | planned | partial | planned | total spatial covariance needs heavy gate |
 | `unit_slope` | not claimed | blocked | blocked | blocked | blocked | symbolic target table required |
@@ -70,9 +70,10 @@ Two clarifications matter for future profile-function work:
 - `profile_targets()` may expose a direct parameter, such as
   `sigma_phy_slope`, without making the augmented split covariance, correlation,
   or denominator target profile-ready.
-- `cluster` and `cluster2` can have direct diagonal SD profiles, but their
-  off-diagonal correlations are structural zeros and must not receive fake
-  intervals.
+- `cluster` and `cluster2` can have direct diagonal SD profiles, and the
+  `Sigma_cluster` / `Sigma_cluster2` matrix tokens are diagonal-only wrappers
+  around that same log-SD route. Their off-diagonal correlations are structural
+  zeros and must not receive fake intervals.
 
 ## ARIA
 
@@ -90,8 +91,8 @@ blocked to covered unless it has direct code and validation-register evidence.
 
 ## Stop Rules
 
-- Do not describe direct `sd_cluster` or `sd_cluster2` profiles as full
-  `Sigma_cluster` or `Sigma_cluster2` profile support.
+- Do not describe direct `sd_cluster` / `sd_cluster2` profiles or diagonal-only
+  `Sigma_cluster` / `Sigma_cluster2` wrappers as full covariance support.
 - Do not fabricate intervals for structural-zero cluster correlations.
 - Do not use `pdHess = TRUE` as interval calibration evidence.
 - Do not profile augmented split tiers until the target symbols, flattening
@@ -101,9 +102,8 @@ blocked to covered unless it has direct code and validation-register evidence.
 
 ## Next Gates
 
-1. Add `Sigma_cluster` and `Sigma_cluster2` matrix tokens only if a public
-   matrix route is needed; these are diagonal-only wrappers around direct
-   log-SD profiles.
+1. Add simulate-refit bootstrap calibration for `Sigma_cluster` and
+   `Sigma_cluster2` only after a denominator-preserving design gate.
 2. Add cluster/cluster2/spatial components to profile proportions with a
    denominator-preserving test.
 3. Repair hard-family profile stability, especially Gamma unit-tier rho

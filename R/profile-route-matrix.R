@@ -177,18 +177,18 @@
       "Target-explicit full-Sigma profile needs a separate gate."
     ),
     .profile_route_row(
-      "Sigma", "cluster", "profile", "planned",
-      "direct_log_sd_exists_no_Sigma_token",
+      "Sigma", "cluster", "profile", "partial",
+      "direct_diag_sigma_profile:theta_diag_species",
       "RE-11",
-      "Point extraction and direct SD profile exist; Sigma_cluster confint token is not wired.",
-      "Add a Sigma_cluster token and diagonal-only tests if a public matrix route is needed."
+      "Diagonal-only Sigma_cluster profile/Wald token is wired through the direct log-SD tier.",
+      "Bootstrap calibration and any non-diagonal cluster covariance claim remain separate gates."
     ),
     .profile_route_row(
-      "Sigma", "cluster2", "profile", "planned",
-      "direct_log_sd_exists_no_Sigma_token",
+      "Sigma", "cluster2", "profile", "partial",
+      "direct_diag_sigma_profile:theta_diag_cluster2",
       "RE-11",
-      "Point extraction and direct SD profile exist; Sigma_cluster2 confint token is not wired.",
-      "Add a Sigma_cluster2 token and diagonal-only tests if a public matrix route is needed."
+      "Diagonal-only Sigma_cluster2 profile/Wald token is wired through the direct log-SD tier.",
+      "Bootstrap calibration and any non-diagonal cluster2 covariance claim remain separate gates."
     ),
     .profile_route_row(
       "Sigma", "phy", "profile", "partial",

@@ -21,6 +21,11 @@
 \itemize{
 \item \code{"Sigma_unit"} -- between-unit trait covariance matrix.
 \item \code{"Sigma_unit_obs"} -- within-unit trait covariance matrix.
+\item \code{"Sigma_cluster"} and \code{"Sigma_cluster2"} --
+diagonal covariance matrices for the first and second extra grouping
+tiers. \code{"profile"} and \code{"wald"} return diagonal variance
+intervals; \code{"bootstrap"} is intentionally blocked until a
+simulate-refit calibration gate is added for these tiers.
 \item \code{"sigma_phy"} -- per-trait phylogenetic standard deviations.
 \item Legacy aliases \code{"Sigma_B"} and \code{"Sigma_W"}, retained
 for existing scripts.
@@ -140,8 +145,10 @@ distribution).
 Scope boundary: IN, fixed-effect and direct-parameter intervals use the
 requested \code{method} where supported (CI-01, CI-02), and Sigma-matrix
 intervals accept canonical \code{parm = "Sigma_unit"} /
-\code{"Sigma_unit_obs"} names plus legacy \code{"Sigma_B"} /
-\code{"Sigma_W"} aliases (CI-02, CI-03; underlying extraction EXT-01).
+\code{"Sigma_unit_obs"} names, diagonal extra-grouping
+\code{"Sigma_cluster"} / \code{"Sigma_cluster2"} names, plus legacy
+\code{"Sigma_B"} / \code{"Sigma_W"} aliases (CI-02, CI-03; underlying
+extraction EXT-01).
 PARTIAL, profile intervals for full decomposed Sigma entries fall back to
 bootstrap because those entries are nonlinear functions of rotation-equivalent
 loadings and diagonal \eqn{\Psi}; non-Gaussian bootstrap calibration remains
@@ -152,8 +159,10 @@ Main parm-class dispatch paths:
 
 \itemize{
 \item \strong{Sigma matrices} -- when \code{parm} is one of
-\code{"Sigma_unit"}, \code{"Sigma_unit_obs"}, or \code{"sigma_phy"}
-(legacy aliases \code{"Sigma_B"} and \code{"Sigma_W"} still work),
+\code{"Sigma_unit"}, \code{"Sigma_unit_obs"},
+\code{"Sigma_cluster"}, \code{"Sigma_cluster2"}, or
+\code{"sigma_phy"} (legacy aliases \code{"Sigma_B"} and
+\code{"Sigma_W"} still work),
 returns a tidy \code{data.frame} with columns \code{parameter},
 \code{estimate}, \code{lower}, \code{upper}, \code{method}. Profile is
 computed element-wise via \code{\link[TMB:tmbprofile]{TMB::tmbprofile()}} for the diagonal entries;

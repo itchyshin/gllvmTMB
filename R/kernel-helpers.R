@@ -146,8 +146,7 @@ make_cross_kernel <- function(A_H, A_P, W, rho = 0.5, eps = 1e-8) {
 #' @return A data frame of class `gllvmTMB_cross_rho_profile` with columns
 #'   `rho`, `logLik`, `relative_logLik`, `delta_deviance`, `is_best`,
 #'   `convergence`, `pd_hessian`, `status`, and `error`, plus any metric
-#'   columns returned by `metrics`. Attribute `"best_rho"` is a scalar; ties
-#'   are resolved by the first maximum in the supplied `rho` order.
+#'   columns returned by `metrics`.
 #'
 #' @examples
 #' A_H <- diag(2)
@@ -237,7 +236,7 @@ profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
     max_ll <- max(out$logLik[ok])
     out$relative_logLik[ok] <- out$logLik[ok] - max_ll
     out$delta_deviance[ok] <- 2 * (max_ll - out$logLik[ok])
-    best <- which(ok)[which.max(out$logLik[ok])]
+    best <- which(ok & out$logLik == max_ll)
     out$is_best[best] <- TRUE
     best_rho <- out$rho[best]
   }
@@ -262,106 +261,98 @@ profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
   out
 }
 
-#' Diagnose fixed-kernel separability before fitting
+#' Profile-likelihood interval for the cross-lineage `rho`
 #'
 #' @description
-#' `diagnose_kernel_separability()` compares two or more dense fixed kernels on
-#' the same levels before they are used in a multi-kernel coevolution model. It
-#' is a pre-fit claim-boundary helper for Design 65 / `COE-04`: when candidate
-#' kernels are highly overlapping, component-specific `Gamma` blocks are weak
-#' evidence and should be treated as descriptive unless simulations justify the
-#' split.
+#' Turns a [profile_cross_rho()] grid into a profile-likelihood confidence
+#' interval for the fixed cross-lineage correlation `rho`. The interval is the
+#' set of `rho` values whose deviance excess `2 * (logLik_max - logLik)` stays
+#' below `qchisq(level, df = 1)`; the bounds are located by linear interpolation
+#' of the profiled `delta_deviance` curve between the two grid points that
+#' bracket each crossing. Use a `rho` grid dense enough to bracket the crossings
+#' (a coarse 3-4 point sensitivity grid is usually too sparse for a calibrated
+#' interval). When the profiled curve does not rise above the threshold on one
+#' side within the supplied grid, that bound is reported as the grid edge and
+#' flagged unbounded (`lower_bounded` / `upper_bounded` `FALSE`) -- widen the grid.
 #'
-#' IN (`COE-04` partial): use this helper to screen candidate `K_phy` and
-#' `K_tip` definitions, including raw-network and residualized-network choices,
-#' before fitting `kernel_latent(..., name = ...)` tiers. PARTIAL: this is a
-#' diagnostic, not recovery evidence, interval calibration, or an in-engine
-#' identifiability proof.
+#' This is profile/sensitivity interval evidence on a *fixed*-`rho` refit grid,
+#' not in-engine `rho` estimation (Design 65 C3.3; `COE-04` remains partial).
 #'
-#' @param ... Two or more named numeric square kernel matrices. If dimnames are
-#'   present, kernels are aligned to the first kernel's level order before
-#'   comparison; otherwise they are compared by raw position.
-#' @param thresholds Named numeric vector with entries `near_orthogonal` and
-#'   `high`. Similarity below `near_orthogonal` is labelled
-#'   `"near_orthogonal"`; similarity below `high` is `"moderate"`; similarity
-#'   at or above `high` is `"high"`.
+#' @param profile A `gllvmTMB_cross_rho_profile` data frame from
+#'   [profile_cross_rho()] (needs the `rho` and `delta_deviance` columns).
+#' @param level Confidence level in `(0, 1)`; default `0.95`.
 #'
-#' @return A list of class `gllvmTMB_kernel_separability` with:
-#' \describe{
-#'   \item{similarity}{A symmetric matrix of off-diagonal Frobenius-style
-#'     similarities between kernels.}
-#'   \item{pairs}{A data frame with pair labels, similarity, overlap class, and
-#'     a conservative recommendation.}
-#'   \item{thresholds}{The thresholds used for the classes.}
-#'   \item{note}{A short claim-boundary note.}
-#' }
+#' @return A list with `estimate` (the grid `rho` with the highest `logLik`),
+#'   `lower`, `upper`, `level`, `lower_bounded`, `upper_bounded`, and the
+#'   deviance `threshold`. Bounds are clamped to the `rho` domain `[-1, 1]`.
 #'
-#' @examples
-#' A_H <- diag(2)
-#' A_P <- diag(2)
-#' rownames(A_H) <- colnames(A_H) <- c("H1", "H2")
-#' rownames(A_P) <- colnames(A_P) <- c("P1", "P2")
-#' W_phy <- matrix(c(1, 0.2, 0.2, 1), 2, 2,
-#'   dimnames = list(rownames(A_H), rownames(A_P)))
-#' W_tip <- matrix(c(0.2, 1, 1, 0.2), 2, 2,
-#'   dimnames = list(rownames(A_H), rownames(A_P)))
-#' K_phy <- make_cross_kernel(A_H, A_P, W_phy, rho = 0.5)
-#' K_tip <- make_cross_kernel(A_H, A_P, W_tip, rho = 0.5)
-#' diagnose_kernel_separability(phy = K_phy, tip = K_tip)
-#'
+#' @seealso [profile_cross_rho()], [make_cross_kernel()]
 #' @export
-diagnose_kernel_separability <- function(...,
-                                         thresholds = c(
-                                           near_orthogonal = 0.25,
-                                           high = 0.70
-                                         )) {
-  kernels <- list(...)
-  if (length(kernels) < 2L) {
-    cli::cli_abort("Provide at least two kernel matrices in {.arg ...}.")
+profile_cross_rho_ci <- function(profile, level = 0.95) {
+  if (!is.data.frame(profile) ||
+      !all(c("rho", "delta_deviance") %in% names(profile))) {
+    cli::cli_abort(c(
+      "{.arg profile} must be a data frame from {.fn profile_cross_rho}.",
+      "i" = "It needs the {.field rho} and {.field delta_deviance} columns."
+    ))
   }
-  names(kernels) <- .kernel_separability_names(kernels)
-  thresholds <- .kernel_separability_thresholds(thresholds)
-  kernels <- stats::setNames(lapply(
-    seq_along(kernels),
-    function(i) .kernel_separability_matrix(kernels[[i]], names(kernels)[[i]])
-  ), names(kernels))
+  if (!is.numeric(level) || length(level) != 1L || is.na(level) ||
+      level <= 0 || level >= 1) {
+    cli::cli_abort("{.arg level} must be a single number in (0, 1).")
+  }
+  ok <- is.finite(profile$rho) & is.finite(profile$delta_deviance)
+  d <- profile[ok, c("rho", "delta_deviance"), drop = FALSE]
+  d <- d[order(d$rho), , drop = FALSE]
+  if (nrow(d) < 2L) {
+    cli::cli_abort(
+      "Need at least two finite profile points to form an interval; got {nrow(d)}."
+    )
+  }
+  crit <- stats::qchisq(level, df = 1)
+  best_i <- which.min(d$delta_deviance)
+  est <- d$rho[best_i]
+  dd <- d$delta_deviance
+  rr <- d$rho
 
-  kernels <- .kernel_separability_align(kernels)
+  interp <- function(r1, d1, r2, d2) {
+    if (!is.finite(d2 - d1) || d2 == d1) return(r1)
+    r1 + (crit - d1) * (r2 - r1) / (d2 - d1)
+  }
 
-  n_tiers <- length(kernels)
-  sim <- diag(1, n_tiers)
-  dimnames(sim) <- list(names(kernels), names(kernels))
-  rows <- list()
-  k <- 1L
-  for (i in seq_len(n_tiers - 1L)) {
-    for (j in seq.int(i + 1L, n_tiers)) {
-      value <- .kernel_pair_similarity(kernels[[i]], kernels[[j]])
-      overlap_class <- .kernel_separability_class(value, thresholds)
-      sim[i, j] <- sim[j, i] <- value
-      rows[[k]] <- data.frame(
-        level_1 = names(kernels)[[i]],
-        level_2 = names(kernels)[[j]],
-        similarity = value,
-        overlap_class = overlap_class,
-        recommendation = .kernel_separability_recommendation(overlap_class),
-        stringsAsFactors = FALSE
-      )
-      k <- k + 1L
+  ## Lower bound: nearest threshold crossing below the best grid point.
+  lower <- rr[1]
+  lower_bounded <- FALSE
+  if (best_i > 1L) {
+    for (j in best_i:2L) {
+      if (dd[j - 1L] >= crit && dd[j] <= crit) {
+        lower <- interp(rr[j - 1L], dd[j - 1L], rr[j], dd[j])
+        lower_bounded <- TRUE
+        break
+      }
+    }
+  }
+  ## Upper bound: nearest threshold crossing above the best grid point.
+  upper <- rr[nrow(d)]
+  upper_bounded <- FALSE
+  if (best_i < nrow(d)) {
+    for (j in best_i:(nrow(d) - 1L)) {
+      if (dd[j] <= crit && dd[j + 1L] >= crit) {
+        upper <- interp(rr[j], dd[j], rr[j + 1L], dd[j + 1L])
+        upper_bounded <- TRUE
+        break
+      }
     }
   }
 
-  out <- list(
-    similarity = sim,
-    pairs = do.call(rbind, rows),
-    thresholds = thresholds,
-    note = paste(
-      "Off-diagonal Frobenius-style similarity between fixed kernel tiers.",
-      "High overlap means component-specific Gamma_shape separation is weak evidence;",
-      "report one network-conditioned covariance unless simulations justify the split."
-    )
+  list(
+    estimate = est,
+    lower = max(-1, min(1, lower)),
+    upper = max(-1, min(1, upper)),
+    level = level,
+    lower_bounded = lower_bounded,
+    upper_bounded = upper_bounded,
+    threshold = crit
   )
-  class(out) <- "gllvmTMB_kernel_separability"
-  out
 }
 
 .cross_kernel_metadata <- function(K) {
@@ -381,6 +372,20 @@ diagnose_kernel_separability <- function(...,
     return(NA_real_)
   }
   as.numeric(meta$rho)
+}
+
+.cross_kernel_metadata_for_levels <- function(meta, levels) {
+  if (is.null(meta)) {
+    return(NULL)
+  }
+  out <- meta
+  if (!is.null(out$host_levels)) {
+    out$host_levels <- levels[levels %in% out$host_levels]
+  }
+  if (!is.null(out$partner_levels)) {
+    out$partner_levels <- levels[levels %in% out$partner_levels]
+  }
+  out
 }
 
 .cross_kernel_as_matrix <- function(x, arg, square = TRUE) {
@@ -522,6 +527,110 @@ diagnose_kernel_separability <- function(...,
   do.call(rbind, filled)
 }
 
+#' Diagnose fixed-kernel separability before fitting
+#'
+#' @description
+#' `diagnose_kernel_separability()` compares two or more dense fixed kernels on
+#' the same levels before they are used in a multi-kernel coevolution model. It
+#' is a pre-fit claim-boundary helper for Design 65 / `COE-04`: when candidate
+#' kernels are highly overlapping, component-specific `Gamma` blocks are weak
+#' evidence and should be treated as descriptive unless simulations justify the
+#' split.
+#'
+#' IN (`COE-04` partial): use this helper to screen candidate `K_phy` and
+#' `K_tip` definitions, including raw-network and residualized-network choices,
+#' before fitting `kernel_latent(..., name = ...)` tiers. PARTIAL: this is a
+#' diagnostic, not recovery evidence, interval calibration, or an in-engine
+#' identifiability proof.
+#'
+#' @param ... Two or more named numeric square kernel matrices with the same
+#'   dimensions and level order.
+#' @param thresholds Named numeric vector with entries `near_orthogonal` and
+#'   `high`. Similarity below `near_orthogonal` is labelled
+#'   `"near_orthogonal"`; similarity below `high` is `"moderate"`; similarity
+#'   at or above `high` is `"high"`.
+#'
+#' @return A list of class `gllvmTMB_kernel_separability` with:
+#' \describe{
+#'   \item{similarity}{A symmetric matrix of off-diagonal Frobenius-style
+#'     similarities between kernels.}
+#'   \item{pairs}{A data frame with pair labels, similarity, overlap class, and
+#'     a conservative recommendation.}
+#'   \item{thresholds}{The thresholds used for the classes.}
+#'   \item{note}{A short claim-boundary note.}
+#' }
+#'
+#' @examples
+#' A_H <- diag(2)
+#' A_P <- diag(2)
+#' rownames(A_H) <- colnames(A_H) <- c("H1", "H2")
+#' rownames(A_P) <- colnames(A_P) <- c("P1", "P2")
+#' W_phy <- matrix(c(1, 0.2, 0.2, 1), 2, 2,
+#'   dimnames = list(rownames(A_H), rownames(A_P)))
+#' W_tip <- matrix(c(0.2, 1, 1, 0.2), 2, 2,
+#'   dimnames = list(rownames(A_H), rownames(A_P)))
+#' K_phy <- make_cross_kernel(A_H, A_P, W_phy, rho = 0.5)
+#' K_tip <- make_cross_kernel(A_H, A_P, W_tip, rho = 0.5)
+#' diagnose_kernel_separability(phy = K_phy, tip = K_tip)
+#'
+#' @export
+diagnose_kernel_separability <- function(...,
+                                         thresholds = c(
+                                           near_orthogonal = 0.25,
+                                           high = 0.70
+                                         )) {
+  kernels <- list(...)
+  if (length(kernels) < 2L) {
+    cli::cli_abort("Provide at least two kernel matrices in {.arg ...}.")
+  }
+  names(kernels) <- .kernel_separability_names(kernels)
+  thresholds <- .kernel_separability_thresholds(thresholds)
+  kernels <- stats::setNames(lapply(
+    seq_along(kernels),
+    function(i) .kernel_separability_matrix(kernels[[i]], names(kernels)[[i]])
+  ), names(kernels))
+
+  dims <- lapply(kernels, dim)
+  if (!all(vapply(dims, identical, logical(1), dims[[1L]]))) {
+    cli::cli_abort("All kernels must have the same dimensions.")
+  }
+
+  n_tiers <- length(kernels)
+  sim <- diag(1, n_tiers)
+  dimnames(sim) <- list(names(kernels), names(kernels))
+  rows <- list()
+  k <- 1L
+  for (i in seq_len(n_tiers - 1L)) {
+    for (j in seq.int(i + 1L, n_tiers)) {
+      value <- .kernel_pair_similarity(kernels[[i]], kernels[[j]])
+      overlap_class <- .kernel_separability_class(value, thresholds)
+      sim[i, j] <- sim[j, i] <- value
+      rows[[k]] <- data.frame(
+        level_1 = names(kernels)[[i]],
+        level_2 = names(kernels)[[j]],
+        similarity = value,
+        overlap_class = overlap_class,
+        recommendation = .kernel_separability_recommendation(overlap_class),
+        stringsAsFactors = FALSE
+      )
+      k <- k + 1L
+    }
+  }
+
+  out <- list(
+    similarity = sim,
+    pairs = do.call(rbind, rows),
+    thresholds = thresholds,
+    note = paste(
+      "Off-diagonal Frobenius-style similarity between fixed kernel tiers.",
+      "High overlap means component-specific Gamma_shape separation is weak evidence;",
+      "report one network-conditioned covariance unless simulations justify the split."
+    )
+  )
+  class(out) <- "gllvmTMB_kernel_separability"
+  out
+}
+
 .kernel_separability_names <- function(kernels) {
   nms <- names(kernels)
   if (is.null(nms)) {
@@ -565,61 +674,6 @@ diagnose_kernel_separability <- function(...,
   }
   storage.mode(x) <- "double"
   (x + t(x)) / 2
-}
-
-.kernel_separability_level_names <- function(K, name) {
-  rn <- rownames(K)
-  cn <- colnames(K)
-  if (is.null(rn) && is.null(cn)) {
-    return(NULL)
-  }
-  if (is.null(rn) || is.null(cn) || !identical(rn, cn)) {
-    cli::cli_abort(
-      "Row names and column names of kernel {.val {name}} must match."
-    )
-  }
-  if (anyNA(rn) || any(!nzchar(rn))) {
-    cli::cli_abort("Kernel {.val {name}} has empty or missing level names.")
-  }
-  if (anyDuplicated(rn)) {
-    cli::cli_abort("Kernel {.val {name}} has duplicated level names.")
-  }
-  rn
-}
-
-.kernel_separability_align <- function(kernels) {
-  dims <- lapply(kernels, dim)
-  if (!all(vapply(dims, identical, logical(1), dims[[1L]]))) {
-    cli::cli_abort("All kernels must have the same dimensions.")
-  }
-
-  level_names <- Map(
-    .kernel_separability_level_names,
-    kernels,
-    names(kernels)
-  )
-  has_names <- vapply(level_names, Negate(is.null), logical(1))
-  if (!any(has_names)) {
-    return(kernels)
-  }
-  if (!all(has_names)) {
-    cli::cli_abort(
-      "All kernels must either carry matching dimnames or all be unnamed."
-    )
-  }
-
-  reference <- level_names[[1L]]
-  aligned <- vector("list", length(kernels))
-  for (i in seq_along(kernels)) {
-    current <- level_names[[i]]
-    if (!setequal(current, reference)) {
-      cli::cli_abort(
-        "Kernel {.val {names(kernels)[[i]]}} must have the same level set as kernel {.val {names(kernels)[[1L]]}}."
-      )
-    }
-    aligned[[i]] <- kernels[[i]][reference, reference, drop = FALSE]
-  }
-  stats::setNames(aligned, names(kernels))
 }
 
 .kernel_pair_similarity <- function(K_1, K_2) {

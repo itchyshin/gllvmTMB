@@ -47,7 +47,7 @@ test_that("covariance edge-case example object has matching long and wide shapes
   expect_equal(colnames(ex$truth$Sigma), traits)
 })
 
-test_that("covariance edge-case long and wide fits agree and show diagonal-Psi effect", {
+test_that("covariance edge-case long and wide fits agree and show Psi effect", {
   ex <- load_covariance_edge_cases_example()
   ctl <- gllvmTMBcontrol(se = FALSE)
 

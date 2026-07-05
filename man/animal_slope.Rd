@@ -27,6 +27,30 @@ environmental gradient. Mathematical parallel to \code{\link[=phylo_slope]{phylo
 the engine recycles the same \eqn{\mathbf A^{-1}} prepared by
 \code{\link[=animal_scalar]{animal_scalar()}} / \code{\link[=animal_latent]{animal_latent()}}.
 }
+\examples{
+\dontrun{
+# Additive-genetic random regression: one heritable slope variance on a
+# continuous covariate x, slopes correlated by the relatedness matrix A.
+# Grounded in test-animal-slope-recovery.R (ANI-06).
+ped <- data.frame(
+  id   = paste0("i", 1:12),
+  sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
+  dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+)
+A <- pedigree_to_A(ped)
+df <- expand.grid(
+  species = factor(rownames(A), levels = rownames(A)),
+  trait   = factor(c("t1", "t2", "t3")),
+  rep     = 1:5
+)
+df$x <- rnorm(nrow(df))
+df$value <- rnorm(nrow(df))
+fit <- gllvmTMB(
+  value ~ 0 + trait + animal_slope(x | species, A = A),
+  data = df, unit = "species", cluster = "species"
+)
+}
+}
 \seealso{
 \code{\link[=animal_scalar]{animal_scalar()}}, \code{\link[=animal_latent]{animal_latent()}}, \code{\link[=phylo_slope]{phylo_slope()}}.
 }

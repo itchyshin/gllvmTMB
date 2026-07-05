@@ -14,8 +14,10 @@
 ##
 ## The "clean quartet" for explicit covstruct intent:
 ##
-##   * `latent(...)`        --- shared cross-trait covariance (Sigma_shared = Lambda Lambda^T)
-##   * `unique(...)`        --- trait-specific residual paired with `latent()` (Sigma_unique = Psi)
+##   * `latent(...)`        --- shared cross-trait covariance plus default Psi
+##                              (Sigma = Lambda Lambda^T + Psi)
+##   * `unique(...)`        --- standalone diagonal compatibility syntax, or
+##                              explicit-Psi compatibility when paired
 ##   * `indep(...)`         --- per-trait marginal variance, no decomposition (Sigma = diag(sigma^2_t))
 ##   * `dep(...)`           --- full unstructured cross-trait covariance (Sigma free, PSD via Cholesky)
 ##
@@ -40,7 +42,8 @@
 ##   --------------------------------             ----------------------------
 ##   latent(0 + trait | g, d = K)                 rr(0 + trait | g, d = K)
 ##   unique(0 + trait | g)                        diag(0 + trait | g)
-##   phylo_latent(species, d = K)                 phylo_rr(species, d = K)
+##   phylo_latent(species, d = K)                 phylo_rr(species, d = K) +
+##                                                auto phylo_unique companion
 ##   phylo_scalar(species)                        phylo(species)
 ##   phylo_unique(species)                        phylo_rr(species, d = T) +
 ##                                                lambda_constraint = diag(NA, T)
@@ -83,8 +86,7 @@
   old,
   new_name,
   args = "...",
-  guidance = NULL,
-  see = NULL
+  guidance = NULL
 ) {
   if (!isTRUE(.gllvmTMB_deprecation_seen[[old]])) {
     ## Use our own env-based tracker only (no cli `.frequency = "once"`)
@@ -93,11 +95,7 @@
     msg <- c(
       "!" = "Formula keyword {.fn {old}} is a deprecated alias; use {.fn {new_name}} for new code.",
       "i" = "{.code {new_name}({args})} =/=> {.code {old}({args})}",
-      ">" = paste0(
-        "Aliases will be dropped at the next minor release. See ",
-        see %||% "{.code ?diag_re} / {.fn latent}",
-        "."
-      )
+      ">" = "Aliases will be dropped at the next minor release. See {.code ?diag_re} / {.fn latent}."
     )
     if (!is.null(guidance)) {
       msg <- c(msg, ">" = guidance)
@@ -109,56 +107,65 @@
 }
 
 .gllvmTMB_warn_unique_family_deprecated <- function(fn) {
-  lifecycle::deprecate_soft(
-    when = "0.2.0",
-    what = I(sprintf("The `%s()` formula keyword", fn)),
-    details = c(
-      "i" = "`unique()` / `*_unique()` are compatibility syntax while Psi moves into the latent-family grammar.",
-      ">" = "For standalone diagonal tiers, use `indep()` / `*_indep()`; ordinary `latent()` now carries Psi by default, while source-specific folds and removal remain future slices."
-    ),
-    id = sprintf("gllvmTMB-unique-family-%s", fn)
-  )
+  ## Surfacing soft-deprecation. lifecycle::deprecate_soft() is SILENT for
+  ## indirect (in-package) callers like this rewrite walk, so the user never
+  ## sees it in a real fit. Use the package's own env-based one-shot tracker +
+  ## cli_warn so the warning actually fires on use (maintainer 2026-06-20:
+  ## loud fire-on-use for the unique() / *_unique() soft-deprecation).
+  if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    return(invisible(NULL))
+  }
+  key <- sprintf("unique-family-%s", fn)
+  if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
+    cli::cli_warn(c(
+      "!" = "Formula keyword {.fn {fn}} is soft-deprecated as of gllvmTMB 0.2.0 (compatibility syntax).",
+      "i" = "{.fn unique} / {.fn *_unique} are compatibility syntax while {.field Psi} moves into the latent-family grammar.",
+      ">" = "For standalone diagonal tiers use {.fn indep} / {.fn *_indep}; ordinary {.fn latent} now carries {.field Psi} by default."
+    ))
+    .gllvmTMB_deprecation_seen[[key]] <- TRUE
+  }
   invisible(NULL)
 }
 
-## Resolve the `latent(..., unique = )` argument from a parsed call. `unique =
-## TRUE` (default) keeps the per-trait unique-variance diagonal Psi companion;
-## `unique = FALSE` requests the rotation-invariant low-rank-only subset. The
-## legacy `residual = ` spelling is a soft-deprecated alias. Shared by the
-## ordinary intercept-only and the augmented random-regression `latent`
-## branches.
-.gllvmTMB_resolve_latent_unique <- function(e) {
-  unique_arg <- e[["unique"]]
-  residual_arg <- e[["residual"]]
-  if (!is.null(residual_arg)) {
-    if (!is.null(unique_arg)) {
-      cli::cli_abort(c(
-        "Pass only one of {.arg unique} or the deprecated {.arg residual} to {.fn latent}.",
-        ">" = "Use {.arg unique} for new code."
-      ))
-    }
-    lifecycle::deprecate_warn(
-      when = "0.2.0",
-      what = I("The `residual` argument of `latent()`"),
-      with = I("the `unique` argument"),
-      details = c(
-        "i" = "The diagonal Psi companion is now controlled by `unique = ` (default `TRUE`).",
-        ">" = "Replace `residual = FALSE` with `unique = FALSE`."
-      ),
-      id = "gllvmTMB-latent-residual"
-    )
-    unique_arg <- residual_arg
+## One-shot fire-on-use notice for the bare-latent() meaning change: ordinary
+## latent() now carries the per-trait Psi by DEFAULT (was Lambda-only). This is a
+## silent behavior change for existing analyses, flagged as the key hazard in the
+## design doc (2026-06-12-latent-psi-fold-design.md §7); maintainer (2026-06-20)
+## locked the loud fire-on-use option. Fires only when residual= was NOT passed.
+.gllvmTMB_warn_latent_default_psi <- function() {
+  if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    return(invisible(NULL))
   }
-  if (is.null(unique_arg)) {
-    return(TRUE)
-  }
-  if (!is.logical(unique_arg) || length(unique_arg) != 1L || is.na(unique_arg)) {
-    cli::cli_abort(c(
-      "{.arg unique} in {.fn latent} must be a literal {.code TRUE} or {.code FALSE}.",
-      ">" = "Use {.code latent(..., unique = FALSE)} for the low-rank-only subset."
+  key <- "latent-default-psi"
+  if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
+    cli::cli_warn(c(
+      "!" = "Ordinary {.fn latent} now includes a per-trait {.field Psi} by default (Sigma = Lambda Lambda^T + Psi).",
+      "i" = "This changed in gllvmTMB 0.2.0; earlier {.fn latent} was loadings-only (Lambda Lambda^T).",
+      ">" = "Pass {.code latent(..., unique = FALSE)} for the old rotation-invariant loadings-only fit."
     ))
+    .gllvmTMB_deprecation_seen[[key]] <- TRUE
   }
-  unique_arg
+  invisible(NULL)
+}
+
+## One-shot fire-on-use notice for the `residual` -> `unique` argument rename on
+## ordinary latent(). The `residual =` argument shipped in 0.2.0 (#505) and was
+## renamed to `unique =` (matches extract_Sigma(part = "unique")); `residual`
+## still works as a soft-deprecated alias.
+.gllvmTMB_warn_latent_residual_alias <- function() {
+  if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    return(invisible(NULL))
+  }
+  key <- "latent-residual-alias"
+  if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
+    cli::cli_warn(c(
+      "!" = "The {.arg residual} argument of {.fn latent} was renamed to {.arg unique} in gllvmTMB 0.2.0.",
+      "i" = "{.arg residual} is retained as a soft-deprecated alias and may be removed in a future release.",
+      ">" = "Use {.code latent(..., unique = ...)} instead."
+    ))
+    .gllvmTMB_deprecation_seen[[key]] <- TRUE
+  }
+  invisible(NULL)
 }
 
 #' Phylogenetic random effect: lme4-bar mode-dispatch wrapper
@@ -453,42 +460,43 @@ meta <- function(value, sampling_var) {
 #' ```r
 #' value ~ 0 + trait + latent(0 + trait | unit, d = 2)
 #' ```
-#' Set `unique = FALSE` for the old low-rank-only / rotation-invariant subset.
+#' Set `unique = FALSE` for the loadings-only subset.
 #' For a scalar diagonal \eqn{\boldsymbol\Psi} companion shared across traits,
 #' use `common = TRUE`; this replaces the legacy paired
 #' `latent(..., unique = FALSE) + unique(..., common = TRUE)` spelling for
 #' ordinary intercept-only latent terms.
 #'
-#' For the augmented random-regression form -- `latent(1 + x | g)` (wide) or
-#' `latent(0 + trait + (0 + trait):x | g)` (long) -- the per-trait
-#' unique-variance diagonal \eqn{\boldsymbol\Psi} companion is likewise on by
-#' default and is controlled by `unique = TRUE` (the default) or
-#' `unique = FALSE` (the low-rank-only, rotation-invariant subset). On this
-#' augmented form `residual =` is a soft-deprecated alias for `unique =`. For
-#' non-Gaussian families the estimated diagonal stays off and the family/link
-#' latent-scale residual is used instead (see the `link_residual` argument of
-#' [extract_Sigma()]); the free intercept-slope correlation lives in the shared
-#' reduced-rank block and is unaffected by `unique`.
-#'
 #' @param formula `0 + trait | g` style formula (LHS is the response
 #'   factor, typically `0 + trait`; RHS is the grouping factor).
 #' @param d Integer; number of latent factors.
 #' @param unique Logical; `TRUE` (default) auto-includes the diagonal
-#'   trait-unique \eqn{\boldsymbol\Psi} companion. Set `FALSE` for the
-#'   low-rank-only / rotation-invariant subset. Renamed from `residual` in
-#'   gllvmTMB 0.2.0.
+#'   trait-specific \eqn{\boldsymbol\Psi} companion
+#'   (\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}).
+#'   Set `FALSE` for the loadings-only / rotation-invariant subset. The former
+#'   argument name `residual` is retained as a soft-deprecated alias.
 #' @param common Logical; `FALSE` (default) estimates one diagonal
 #'   \eqn{\boldsymbol\Psi} variance per trait. `TRUE` ties the default ordinary
 #'   diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 #'   traits. Only applies when `unique = TRUE`.
-#' @param residual `r lifecycle::badge("deprecated")` Soft-deprecated alias for
-#'   `unique`; passing `residual =` emits a deprecation warning and is mapped to
-#'   `unique =`.
 #' @return A formula marker; never evaluated.
 #' @seealso [unique()], [phylo_latent()], [diag_re], [extract_Sigma()].
+#' @examples
+#' \dontrun{
+#' # Long-format stacked traits: a 2-factor latent random effect at `site`.
+#' # Ordinary latent() carries its diagonal Psi by default
+#' # (Sigma = Lambda Lambda^T + diag(psi)).
+#' df <- simulate_site_trait(
+#'   n_sites = 30, n_species = 4, n_traits = 4,
+#'   mean_species_per_site = 4, seed = 42
+#' )$data
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
+#'   data = df, unit = "site"
+#' )
+#' extract_Sigma(fit)
+#' }
 #' @export
-latent <- function(formula, d = 1, unique = TRUE, common = FALSE,
-                   residual = lifecycle::deprecated()) {
+latent <- function(formula, d = 1, unique = TRUE, common = FALSE) {
   invisible(NULL)
 }
 
@@ -500,8 +508,9 @@ latent <- function(formula, d = 1, unique = TRUE, common = FALSE,
 #' Use [indep()] for standalone marginal diagonal tiers, including
 #' `indep(..., common = TRUE)` for the scalar standalone marginal case.
 #' Ordinary `latent()` now carries \eqn{\boldsymbol\Psi} by default, so paired
-#' `latent() + unique()` remains accepted as transition compatibility until the
-#' later removal slice lands. The paired legacy `unique(..., common = TRUE)`
+#' `latent() + unique()` remains accepted compatibility syntax. Removal is a
+#' later API-change decision while the parser and exports remain live. The
+#' paired legacy `unique(..., common = TRUE)`
 #' parsimony knob remains accepted, but new ordinary intercept-only code should
 #' use `latent(..., common = TRUE)`.
 #'
@@ -579,6 +588,12 @@ NULL
 #'
 #' @param species Unquoted column name for the species factor.
 #' @param d Integer; number of phylogenetic latent factors.
+#' @param unique Logical; `TRUE` (default) auto-includes the
+#'   phylo-structured diagonal trait-specific \eqn{\boldsymbol\Psi_{phy}}
+#'   companion, folding the paired `phylo_latent() + phylo_unique()` into a
+#'   single term (\eqn{\boldsymbol\Sigma_{phy} = \boldsymbol\Lambda
+#'   \boldsymbol\Lambda^\top \otimes \mathbf{A} + \boldsymbol\Psi_{phy} \otimes
+#'   \mathbf{A}}). Set `FALSE` for the loadings-only / rotation-invariant subset.
 #' @param tree An `ape::phylo` object. **Canonical.** Use this if
 #'   you have a tree.
 #' @param vcv A tip-only phylogenetic correlation matrix
@@ -620,6 +635,7 @@ NULL
 phylo_latent <- function(
   species,
   d = 1,
+  unique = TRUE,
   tree = NULL,
   vcv = NULL,
   A = NULL,
@@ -758,8 +774,8 @@ phylo_scalar <- function(
 #'
 #' `phylo_unique()` is soft-deprecated as compatibility syntax in gllvmTMB
 #' 0.2.0. Use [phylo_indep()] for standalone marginal diagonal phylogenetic
-#' tiers. Paired explicit-Psi use remains accepted until the latent-Psi fold
-#' lands.
+#' tiers. Paired explicit-Psi use remains accepted; [phylo_latent()] now
+#' carries this diagonal companion by default.
 #'
 #' Canonical name for the **D independent** phylogenetic random
 #' intercepts. Each trait \eqn{t} gets its own variance
@@ -788,14 +804,15 @@ phylo_scalar <- function(
 #'     \eqn{\boldsymbol\Lambda_{\text{phy}}}. The diagonal entries of
 #'     \eqn{\boldsymbol\Lambda_{\text{phy}}} are the per-trait
 #'     phylogenetic SDs. This path stays for backward compatibility.}
-#'   \item{**Paired with `phylo_latent()`** (paired PGLLVM, recommended)}{
-#'     When written together with `phylo_latent(species, d = K)`, the
+#'   \item{**Paired with `phylo_latent(..., unique = FALSE)`** (compatibility)}{
+#'     When written together with `phylo_latent(species, d = K, unique = FALSE)`, the
 #'     two terms co-fit as **separate covariance components**:
 #'     \deqn{\boldsymbol\Sigma_\text{phy} \;=\; \underbrace{\boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}}_{\text{shared (rank K)}} \;+\; \underbrace{\boldsymbol\Psi_\text{phy}}_{\text{per-trait unique}}.}
 #'     \eqn{\boldsymbol\Lambda_\text{phy}} is filled by the rank-K shared
 #'     latent factors; \eqn{\boldsymbol\Psi_\text{phy}} carries
 #'     the per-trait phylogenetic variances not absorbed by the K shared
-#'     axes. This is the manuscript-aligned PGLLVM decomposition
+#'     axes. Bare `phylo_latent(species, d = K)` now fits this same
+#'     manuscript-aligned PGLLVM decomposition by default
 #'     (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et
 #'     al. 2025). Replication (multiple sites per species) is required
 #'     to break the Psi_phy / Psi_non confound at the species level.}
@@ -865,8 +882,8 @@ phylo_unique <- function(
 #'
 #' `spatial_unique()` is soft-deprecated as compatibility syntax in gllvmTMB
 #' 0.2.0. Use [spatial_indep()] for standalone marginal diagonal spatial
-#' fields. Paired explicit-Psi use remains accepted until the latent-Psi fold
-#' lands.
+#' fields. Paired explicit-Psi use remains accepted while the spatial
+#' latent-Psi fold remains a future slice.
 #'
 #' Canonical name for the SPDE / GMRF Matern spatial random field with
 #' **one independent field per trait** (per-trait variance
@@ -981,17 +998,7 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #' grid (alongside [spatial_scalar()] and [spatial_unique()]).
 #'
 #' Internally this rewrites to `spde(form, .spatial_latent = TRUE, d = K)`
-#' and toggles the TMB template's `spde_lv_k` switch to K. With
-#' `unique = TRUE`, the same SPDE tier also keeps the per-trait
-#' `omega_spde` fields active, giving
-#' \eqn{\boldsymbol\Sigma_{\mathrm{spa}} =
-#' \boldsymbol\Lambda_{\mathrm{spa}}\boldsymbol\Lambda_{\mathrm{spa}}^\top +
-#' \boldsymbol\Psi_{\mathrm{spa}}}. The default `unique = FALSE` preserves
-#' the older low-rank-only path. Legacy
-#' `spatial_latent(...) + spatial_unique(...)` is accepted as compatibility
-#' syntax for the same total-covariance decomposition.
-#'
-#' The C++ kernel
+#' and toggles the TMB template's `spde_lv_k` switch to K. The C++ kernel
 #' then reads a packed lower-triangular `Lambda_spde` and K shared spatial
 #' fields `omega_spde_lv` (each prior \eqn{\mathrm{N}(\mathbf{0},
 #' \mathbf{Q}^{-1})} where \eqn{\mathbf{Q}} is the SPDE precision built
@@ -1015,10 +1022,6 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   factor `0 + trait`; RHS is the `coords` placeholder symbol).
 #' @param d Integer; number of spatial latent factors (rank K). Defaults
 #'   to 1.
-#' @param unique Logical; include a per-trait unique spatial diagonal
-#'   companion. `FALSE` preserves the old low-rank-only
-#'   `spatial_latent()` path; `TRUE` fits the total spatial covariance
-#'   \eqn{\Lambda\Lambda^\top + \Psi}.
 #' @param coords Character; the column-name pair of spatial coordinates
 #'   in `data` (e.g. `c("lon", "lat")`). Resolved by the parser when
 #'   supplied as keyword argument; `NULL` when the orientation expresses
@@ -1043,8 +1046,7 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   )
 #' }
 #' @export
-spatial_latent <- function(formula, d = 1, unique = FALSE,
-                           coords = NULL, mesh = NULL) {
+spatial_latent <- function(formula, d = 1, coords = NULL, mesh = NULL) {
   invisible(NULL)
 }
 
@@ -1117,9 +1119,6 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #'   `"dep"`. Optional when LHS is `1` (defaults silently to
 #'   `"scalar"`). Mandatory when LHS is `0 + trait`.
 #' @param d Latent rank for `mode = "latent"`. Default 1.
-#' @param unique Logical; for `mode = "latent"`, forward to
-#'   [spatial_latent()] to include the per-trait unique spatial diagonal
-#'   companion. Ignored by the non-latent dispatch modes.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_scalar()], [spatial_unique()], [spatial_indep()],
 #'   [spatial_latent()], [spatial_dep()], [phylo()] (phylogenetic
@@ -1154,8 +1153,7 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #'                        unit  = "site",
 #'                        mesh  = mesh)
 #' }
-spatial <- function(formula, mesh = NULL, coords = NULL, mode = NULL, d = 1,
-                    unique = FALSE) {
+spatial <- function(formula, mesh = NULL, coords = NULL, mode = NULL, d = 1) {
   ## Marker function. Body unused -- never called at evaluation time.
   invisible(NULL)
 }
@@ -1179,6 +1177,25 @@ spatial <- function(formula, mesh = NULL, coords = NULL, mode = NULL, d = 1,
 #' @seealso [meta_V()] (canonical name; preferred for new code);
 #'   [meta()] (older deprecated short alias); [block_V()];
 #'   [gllvmTMB()].
+#' @examples
+#' \dontrun{
+#' # Deprecated alias of meta_V(); both desugar identically (see
+#' # test-formula-grammar-smoke.R, where meta_V() / meta_known_V() expand
+#' # to the same parsed formula). New code should use meta_V(V = V).
+#' set.seed(131)
+#' df <- expand.grid(
+#'   site  = factor(seq_len(50)),
+#'   trait = factor(paste0("t", 1:3))
+#' )
+#' df$value <- rnorm(nrow(df), sd = 0.5)
+#' df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
+#' V <- diag(df$sampling_var)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
+#'     meta_known_V(V = V),
+#'   data = df, trait = "trait", unit = "site", known_V = V
+#' )
+#' }
 #' @export
 #' @keywords internal
 meta_known_V <- function(V, type = "exact") {
@@ -1212,6 +1229,24 @@ meta_known_V <- function(V, type = "exact") {
 #' @seealso [meta_known_V()] (deprecated alias); [block_V()];
 #'   [gllvmTMB()]; vision doc "Planned extensions" for the future
 #'   `meta_V(type = "proportional")` mode (Nakagawa 2022).
+#' @examples
+#' \dontrun{
+#' # Stage-2 meta-regression with a known per-row sampling-variance V.
+#' # Grounded in test-formula-grammar-smoke.R (MET-01).
+#' set.seed(131)
+#' df <- expand.grid(
+#'   site  = factor(seq_len(50)),
+#'   trait = factor(paste0("t", 1:3))
+#' )
+#' df$value <- rnorm(nrow(df), sd = 0.5)
+#' df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
+#' V <- diag(df$sampling_var)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
+#'     meta_V(V = V, type = "exact"),
+#'   data = df, trait = "trait", unit = "site", known_V = V
+#' )
+#' }
 #' @export
 meta_V <- function(V, type = "exact") {
   invisible(NULL)
@@ -1720,20 +1755,6 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## Recognise the WIDE multi-slope LHS `1 + x1 + x2 + ...` (s >= 1 plain
 ## covariate names after the leading intercept `1`). Returns the ordered
 ## character vector of slope columns, or NULL when the shape does not match.
-.assert_distinct_slope_cols <- function(cols) {
-  dups <- unique(cols[duplicated(cols)])
-  if (length(dups)) {
-    dup_label <- paste(dups, collapse = ", ")
-    cli::cli_abort(c(
-      "Duplicate slope covariates are not allowed in augmented LHS terms.",
-      "x" = "Repeated slope column(s): {.field {dup_label}}.",
-      "i" = "Each slope column creates a separate random-effect block; duplicates make the design rank deficient.",
-      ">" = "Use each slope covariate once, for example {.code 1 + x1 + x2 | group}."
-    ))
-  }
-  invisible(cols)
-}
-
 .match_wide_intercept_slopes <- function(lhs) {
   terms <- .flatten_lhs_plus(lhs)
   if (length(terms) < 2L || !.is_one_lhs(terms[[1L]])) {
@@ -1746,7 +1767,6 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     }
     cols <- c(cols, as.character(term))
   }
-  .assert_distinct_slope_cols(cols)
   cols
 }
 
@@ -1776,7 +1796,6 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     }
     cols <- c(cols, as.character(sc))
   }
-  .assert_distinct_slope_cols(cols)
   cols
 }
 
@@ -1791,7 +1810,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 .gllvmTMB_lhs_form <- function(lhs) {
   info <- .gllvmTMB_lhs_form_multi(lhs)
   if (
-    info$lhs_form %in% c("wide_intercept_slope", "long_intercept_slope") &&
+    info$lhs_form %in%
+      c("wide_intercept_slope", "long_intercept_slope") &&
       length(info$slope_cols) != 1L
   ) {
     return(list(lhs_form = "unsupported", slope_col = NULL, slope_cols = NULL))
@@ -1808,7 +1828,11 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 .gllvmTMB_lhs_form_multi <- function(lhs) {
   lhs <- .strip_lhs_parens(lhs)
   if (.is_one_lhs(lhs) || .is_zero_plus_trait(lhs)) {
-    return(list(lhs_form = "intercept_only", slope_col = NULL, slope_cols = NULL))
+    return(list(
+      lhs_form = "intercept_only",
+      slope_col = NULL,
+      slope_cols = NULL
+    ))
   }
   wide_cols <- .match_wide_intercept_slopes(lhs)
   if (!is.null(wide_cols)) {
@@ -1857,7 +1881,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
   ) {
     return(invisible(NULL))
   }
-  lhs <- .strip_lhs_parens(bar[[2L]])
+  lhs <- bar[[2L]]
   ## Match exactly the same shape detection the phylo()/spatial() wrappers
   ## use (df76c705 / 8b1ddc92): `1` (intercept-only) or `0 + trait`
   ## (per-trait intercepts). Anything else is augmented LHS, not yet
@@ -1967,14 +1991,6 @@ normalise_spatial_orientation <- function(e) {
     ))
   }
   if (is.name(lhs) && is.name(rhs)) {
-    if (!identical(as.character(rhs), "trait")) {
-      cli::cli_abort(c(
-        "{.fn {fn}} bar must be {.code 0 + trait | coords}.",
-        "i" = "Got LHS = {.code {deparse(lhs)}}, RHS = {.code {deparse(rhs)}}.",
-        "x" = "Only the deprecated orientation {.code coords | trait} may use a bare-name LHS/RHS pair.",
-        ">" = "Use {.code {fn}(0 + trait | coords)} for the canonical spatial orientation."
-      ))
-    }
     ## Deprecated `coords | trait` orientation -- flip and warn (once).
     ## lifecycle::deprecate_warn() doesn't process cli markup in
     ## `details`, so we use plain backticks here for legibility.
@@ -2078,46 +2094,6 @@ rewrite_canonical_aliases <- function(formula) {
     }
     args[nms %in% keep & nzchar(nms)]
   }
-  .named_or_positional_arg <- function(e, name, position, default = NULL) {
-    nm <- names(e)
-    if (!is.null(nm)) {
-      named_idx <- which(!is.na(nm) & nm == name)
-      if (length(named_idx) > 0L) {
-        return(e[[named_idx[[1L]]]])
-      }
-    }
-    if (length(e) >= position) {
-      pos_name <- ""
-      if (!is.null(nm) && length(nm) >= position && !is.na(nm[[position]])) {
-        pos_name <- nm[[position]]
-      }
-      if (!nzchar(pos_name)) {
-        return(e[[position]])
-      }
-    }
-    default
-  }
-  .abort_source_specific_lv <- function(e, fn) {
-    nm <- names(e)
-    if (is.null(nm) || !"lv" %in% nm) {
-      return(invisible(NULL))
-    }
-    cli::cli_abort(c(
-      "{.arg lv} is reserved for ordinary {.fn latent} only.",
-      "x" = "{.fn {fn}} does not currently support predictor-informed latent means.",
-      "i" = "Source-specific {.arg lv} support needs a separate structural-dependence gate; silently dropping {.arg lv} is not allowed.",
-      ">" = "Remove {.code lv = ~ ...} from {.fn {fn}}, or use the supported structural random-slope syntax such as {.code {fn}(1 + env | group, d = K)} when that route is validated for the source."
-    ))
-  }
-  .source_specific_lv_keywords <- c(
-    "phylo", "phylo_scalar", "phylo_unique", "phylo_indep",
-    "phylo_latent", "phylo_dep", "phylo_rr", "phylo_slope",
-    "spatial", "spatial_scalar", "spatial_unique", "spatial_indep",
-    "spatial_latent", "spatial_dep", "spde",
-    "animal_scalar", "animal_unique", "animal_indep",
-    "animal_latent", "animal_dep", "animal_slope",
-    "kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep"
-  )
   .meta_type <- function(e, fn) {
     nm <- names(e)
     type_idx <- if (is.null(nm)) integer(0L) else which(nm == "type")
@@ -2132,15 +2108,7 @@ rewrite_canonical_aliases <- function(formula) {
         "i" = "{.code type = \"proportional\"} is planned but not implemented in 0.2.x."
       ))
     }
-    valid_types <- c("exact", "proportional")
-    if (!type_expr %in% valid_types) {
-      cli::cli_abort(c(
-        "{.fn {fn}} does not recognise {.arg type} = {.val {type_expr}}.",
-        "i" = "{.code type = \"proportional\"} is planned but not implemented in 0.2.x.",
-        ">" = "Use {.code type = \"exact\"}."
-      ))
-    }
-    type <- type_expr
+    type <- match.arg(type_expr, c("exact", "proportional"))
     if (identical(type, "proportional")) {
       cli::cli_abort(c(
         "{.code {fn}(type = \"proportional\")} is planned but not implemented.",
@@ -2226,9 +2194,6 @@ rewrite_canonical_aliases <- function(formula) {
   rewrite <- function(e) {
     if (is.call(e)) {
       fn <- as.character(e[[1L]])
-      if (fn %in% .source_specific_lv_keywords) {
-        .abort_source_specific_lv(e, fn)
-      }
       ## `spatial(formula, mode = ..., mesh = ..., coords = ..., d = ...)`
       ## -> one of spatial_scalar / spatial_unique / spatial_indep /
       ## spatial_latent / spatial_dep based on (LHS, mode). Design 07
@@ -2374,11 +2339,8 @@ rewrite_canonical_aliases <- function(formula) {
           }
           if (mode_str == "latent") {
             d_use <- if (is.null(d_arg)) 1 else d_arg
-            unique_use <- e[["unique"]]
-            if (is.null(unique_use)) unique_use <- FALSE
             new_call <- as.call(c(
-              list(as.name("spatial_latent"), bar, d = d_use,
-                   unique = unique_use),
+              list(as.name("spatial_latent"), bar, d = d_use),
               extras
             ))
             return(rewrite(new_call))
@@ -2528,13 +2490,20 @@ rewrite_canonical_aliases <- function(formula) {
           return(new_call)
         }
         ## animal_latent(id, d = K, ...) -> phylo_rr(id, d = K, vcv = A)
+        ##                                 + phylo_rr(id, .phylo_unique = TRUE,
+        ##                                            .auto_unique = TRUE, vcv = A)
+        ## by default. `unique = FALSE` preserves the older loadings-only route.
         ## For an augmented intercept+slope bar (`1 + x | id` or the long form
         ## `0 + trait + (0 + trait):x | id`) the route mirrors `phylo_latent`
         ## (Design 56 Sec. 9.5a): the `.latent_slope` marker tells fit-multi.R
         ## to drive the block-diagonal reduced-rank latent-slope engine
         ## (use_phylo_latent_slope). No new C++; the vcv = A is forwarded.
         if (fn == "animal_latent") {
-          d_val <- .named_or_positional_arg(e, "d", 3L, default = 1L)
+          d_val <- if (!is.null(nm) && "d" %in% nm) {
+            e[[which(nm == "d")]]
+          } else {
+            1L
+          }
           ## Detect augmented bar.
           arg <- e[[2L]]
           arg_is_bar <- is.call(arg) &&
@@ -2565,7 +2534,29 @@ rewrite_canonical_aliases <- function(formula) {
             list(d = d_val),
             list(vcv = vcv_expr)
           ))
-          return(new_call)
+          unique_arg <- e[["unique"]]
+          if (is.null(unique_arg)) {
+            unique_arg <- TRUE
+          }
+          if (
+            !is.logical(unique_arg) ||
+              length(unique_arg) != 1L ||
+              is.na(unique_arg)
+          ) {
+            cli::cli_abort(c(
+              "{.arg unique} in {.fn animal_latent} must be a literal {.code TRUE} or {.code FALSE}.",
+              ">" = "Use {.code animal_latent(..., unique = FALSE)} for the loadings-only subset."
+            ))
+          }
+          if (isFALSE(unique_arg)) {
+            return(new_call)
+          }
+          psi_call <- as.call(c(
+            list(as.name("phylo_rr"), e[[2L]]),
+            list(.phylo_unique = TRUE, .auto_unique = TRUE),
+            list(vcv = vcv_expr)
+          ))
+          return(call("+", new_call, psi_call))
         }
         ## animal_indep(0 + trait | id, ...) -> phylo_rr(id, .phylo_unique = TRUE,
         ##                                               .indep = TRUE, vcv = A)
@@ -2698,12 +2689,38 @@ rewrite_canonical_aliases <- function(formula) {
           .kernel_mode = sub("^kernel_", "", fn)
         )
         if (fn == "kernel_latent") {
-          d_val <- .named_or_positional_arg(e, "d", 4L, default = 1L)
-          return(as.call(c(
+          d_val <- if ("d" %in% nm) e[[which(nm == "d")]] else 1L
+          unique_arg <- if ("unique" %in% nm) {
+            e[[which(nm == "unique")]]
+          } else {
+            TRUE
+          }
+          if (
+            !is.logical(unique_arg) ||
+              length(unique_arg) != 1L ||
+              is.na(unique_arg)
+          ) {
+            cli::cli_abort(c(
+              "{.arg unique} in {.fn kernel_latent} must be a literal {.code TRUE} or {.code FALSE}.",
+              ">" = "Use {.code kernel_latent(..., unique = FALSE)} for the loadings-only subset."
+            ))
+          }
+          latent_call <- as.call(c(
             list(as.name("phylo_rr"), unit_arg),
             list(d = d_val),
             kernel_meta
-          )))
+          ))
+          if (isFALSE(unique_arg)) {
+            return(latent_call)
+          }
+          psi_kernel_meta <- kernel_meta
+          psi_kernel_meta$.kernel_mode <- "unique"
+          psi_call <- as.call(c(
+            list(as.name("phylo_rr"), unit_arg),
+            list(.phylo_unique = TRUE, .auto_unique = TRUE),
+            psi_kernel_meta
+          ))
+          return(call("+", latent_call, psi_call))
         }
         if (fn == "kernel_unique") {
           .gllvmTMB_warn_unique_family_deprecated(fn)
@@ -2737,45 +2754,82 @@ rewrite_canonical_aliases <- function(formula) {
         ## B-tier latent engine whose loading matrix has (intercept, slope) x
         ## trait rows, so intercept-slope covariance is estimable. Unsupported
         ## augmented forms still hit the old guard below.
-	        if (
-	          identical(fn, "latent") &&
-	            length(e) >= 2L &&
-	            is.call(e[[2L]]) &&
-	            identical(e[[2L]][[1L]], as.name("|")) &&
-	            length(e[[2L]]) == 3L
-	        ) {
-	          bar <- e[[2L]]
-	          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
-	          if (
-	            lhs_form$lhs_form %in%
-	              c("wide_intercept_slope", "long_intercept_slope")
-	          ) {
-	            common_arg <- e[["common"]]
-	            if (!is.null(common_arg)) {
-	              if (!is.logical(common_arg) || length(common_arg) != 1L ||
-	                  is.na(common_arg)) {
-	                cli::cli_abort(c(
-	                  "{.arg common} in {.fn latent} must be a literal {.code TRUE} or {.code FALSE}.",
-	                  ">" = "Use {.code common = TRUE} only for intercept-only ordinary {.fn latent} terms."
-	                ))
-	              }
-	              if (isTRUE(common_arg)) {
-	                cli::cli_abort(c(
-	                  "{.code common = TRUE} is not implemented for augmented ordinary {.fn latent} random-regression slopes.",
-	                  "i" = "The augmented diagonal has separate intercept and slope entries for each trait.",
-	                  ">" = "Use {.code latent(0 + trait | unit, d = K, common = TRUE)} for intercept-only scalar Psi, or omit {.arg common} for augmented reaction-norm fits."
-	                ))
-	              }
-	            }
-	            d_arg <- .named_or_positional_arg(e, "d", 3L, default = 1L)
-	            unique_arg <- .gllvmTMB_resolve_latent_unique(e)
-	            return(as.call(c(
-	              list(as.name("rr"), bar),
-	              list(
-	                d = d_arg,
-	                .latent_augmented = TRUE,
-	                .latent_augmented_unique = unique_arg,
-	                lhs_form = lhs_form$lhs_form,
+        if (
+          identical(fn, "latent") &&
+            length(e) >= 2L &&
+            is.call(e[[2L]]) &&
+            identical(e[[2L]][[1L]], as.name("|")) &&
+            length(e[[2L]]) == 3L
+        ) {
+          bar <- e[[2L]]
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          if (
+            lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            common_arg <- e[["common"]]
+            if (!is.null(common_arg)) {
+              if (
+                !is.logical(common_arg) ||
+                  length(common_arg) != 1L ||
+                  is.na(common_arg)
+              ) {
+                cli::cli_abort(c(
+                  "{.arg common} in {.fn latent} must be a literal {.code TRUE} or {.code FALSE}.",
+                  ">" = "Use {.code common = TRUE} only for intercept-only ordinary {.fn latent} terms."
+                ))
+              }
+              if (isTRUE(common_arg)) {
+                cli::cli_abort(c(
+                  "{.code common = TRUE} is not implemented for augmented ordinary {.fn latent} random-regression slopes.",
+                  "i" = "The augmented diagonal has separate intercept and slope entries for each trait.",
+                  ">" = "Use {.code latent(0 + trait | unit, d = K, common = TRUE)} for intercept-only scalar Psi, or omit {.arg common} for augmented reaction-norm fits."
+                ))
+              }
+            }
+            d_arg <- e[["d"]]
+            if (is.null(d_arg)) {
+              d_arg <- 1L
+            }
+            ## #608: honour unique= (default TRUE) / residual= alias on the
+            ## augmented ordinary latent form. unique = FALSE opts out of the
+            ## per-trait unique-variance diagonal companion; the engine's
+            ## diag_B_slope_is_default gate reads the marker below.
+            aug_unique_supplied <- "unique" %in% names(e)
+            aug_residual_supplied <- "residual" %in% names(e)
+            if (aug_unique_supplied && aug_residual_supplied) {
+              cli::cli_abort(c(
+                "Supply only one of {.arg unique} and {.arg residual} to {.fn latent}.",
+                "i" = "{.arg residual} is a soft-deprecated alias for {.arg unique}.",
+                ">" = "Use {.code latent(..., unique = ...)}."
+              ))
+            }
+            if (aug_residual_supplied) {
+              .gllvmTMB_warn_latent_residual_alias()
+              aug_unique_arg <- e[["residual"]]
+            } else {
+              aug_unique_arg <- e[["unique"]]
+            }
+            if (is.null(aug_unique_arg)) {
+              aug_unique_arg <- TRUE
+            }
+            if (
+              !is.logical(aug_unique_arg) ||
+                length(aug_unique_arg) != 1L ||
+                is.na(aug_unique_arg)
+            ) {
+              cli::cli_abort(c(
+                "{.arg unique} in {.fn latent} must be a literal {.code TRUE} or {.code FALSE}.",
+                ">" = "Use {.code latent(1 + x | g, d = K, unique = FALSE)} for the low-rank-only subset."
+              ))
+            }
+            return(as.call(c(
+              list(as.name("rr"), bar),
+              list(
+                d = d_arg,
+                .latent_augmented = TRUE,
+                .latent_augmented_unique = aug_unique_arg,
+                lhs_form = lhs_form$lhs_form,
                 slope_col = lhs_form$slope_col
               )
             )))
@@ -2806,7 +2860,10 @@ rewrite_canonical_aliases <- function(formula) {
               c("wide_intercept_slope", "long_intercept_slope")
           ) {
             species_arg <- bar[[3L]]
-            d_arg <- .named_or_positional_arg(e, "d", 3L, default = 1L)
+            d_arg <- e[["d"]]
+            if (is.null(d_arg)) {
+              d_arg <- 1L
+            }
             extra_args <- list(
               .latent_slope = TRUE,
               lhs_form = lhs_form$lhs_form,
@@ -2870,50 +2927,128 @@ rewrite_canonical_aliases <- function(formula) {
           spatial_unique = "spde",
           spatial = "spde"
         )
-	        if (identical(fn, "spatial_unique")) {
-	          .gllvmTMB_warn_unique_family_deprecated(fn)
-	        }
-	        new_call <- e
-	        new_call[[1L]] <- as.name(target)
-	        if (identical(fn, "latent")) {
-	          unique_arg <- .gllvmTMB_resolve_latent_unique(e)
+        if (identical(fn, "spatial_unique")) {
+          .gllvmTMB_warn_unique_family_deprecated(fn)
+        }
+        new_call <- e
+        new_call[[1L]] <- as.name(target)
+        if (identical(fn, "latent")) {
+          ## `unique =` is the canonical argument (matches
+          ## extract_Sigma(part = "unique")). `residual =` is a soft-deprecated
+          ## alias for the argument shipped in 0.2.0 (#505); it routes to `unique`.
+          unique_supplied <- "unique" %in% names(e)
+          residual_supplied <- "residual" %in% names(e)
+          if (unique_supplied && residual_supplied) {
+            cli::cli_abort(c(
+              "Supply only one of {.arg unique} and {.arg residual} to {.fn latent}.",
+              "i" = "{.arg residual} is a soft-deprecated alias for {.arg unique}.",
+              ">" = "Use {.code latent(..., unique = ...)}."
+            ))
+          }
+          if (residual_supplied) {
+            .gllvmTMB_warn_latent_residual_alias()
+            unique_arg <- e[["residual"]]
+          } else {
+            unique_arg <- e[["unique"]]
+          }
+          if (is.null(unique_arg)) {
+            unique_arg <- TRUE
+          }
+          if (
+            !is.logical(unique_arg) ||
+              length(unique_arg) != 1L ||
+              is.na(unique_arg)
+          ) {
+            cli::cli_abort(c(
+              "{.arg unique} in {.fn latent} must be a literal {.code TRUE} or {.code FALSE}.",
+              ">" = "Use {.code latent(..., unique = FALSE)} for the loadings-only subset."
+            ))
+          }
 
-	          common_arg <- e[["common"]]
-	          if (is.null(common_arg)) common_arg <- FALSE
-	          if (!is.logical(common_arg) || length(common_arg) != 1L ||
-	              is.na(common_arg)) {
-	            cli::cli_abort(c(
-	              "{.arg common} in {.fn latent} must be a literal {.code TRUE} or {.code FALSE}.",
-	              ">" = "Use {.code latent(..., common = TRUE)} for one shared ordinary Psi variance across traits."
-	            ))
-	          }
-	          new_call_names <- names(new_call)
-	          if (!is.null(new_call_names)) {
-	            drop_args <- new_call_names %in% c("unique", "residual", "common")
-	            if (any(drop_args)) {
-	              new_call <- new_call[!drop_args]
-	            }
-	          }
+          common_arg <- e[["common"]]
+          if (is.null(common_arg)) {
+            common_arg <- FALSE
+          }
+          if (
+            !is.logical(common_arg) ||
+              length(common_arg) != 1L ||
+              is.na(common_arg)
+          ) {
+            cli::cli_abort(c(
+              "{.arg common} in {.fn latent} must be a literal {.code TRUE} or {.code FALSE}.",
+              ">" = "Use {.code latent(..., common = TRUE)} for one shared ordinary Psi variance across traits."
+            ))
+          }
+          new_call_names <- names(new_call)
+          if (!is.null(new_call_names)) {
+            drop_args <- new_call_names %in% c("unique", "residual", "common")
+            if (any(drop_args)) {
+              new_call <- new_call[!drop_args]
+            }
+          }
 
-	          if (isFALSE(unique_arg) && isTRUE(common_arg)) {
-	            cli::cli_abort(c(
-	              "{.arg common} in {.fn latent} requires {.code unique = TRUE}.",
-	              "i" = "{.code common = TRUE} ties the default diagonal Psi companion; {.code unique = FALSE} removes that companion.",
-	              ">" = "Use {.code latent(..., common = TRUE)} or {.code latent(..., unique = FALSE)}, not both."
-	            ))
-	          }
-	          if (isFALSE(unique_arg)) {
-	            return(new_call)
-	          }
-	          psi_extras <- list(.latent_psi = TRUE)
-	          if (isTRUE(common_arg)) {
-	            psi_extras$common <- TRUE
-	          }
-	          psi_call <- as.call(c(list(as.name("diag"), e[[2L]]), psi_extras))
-	          return(call("+", new_call, psi_call))
-	        }
-	        return(new_call)
-	      }
+          if (isFALSE(unique_arg) && isTRUE(common_arg)) {
+            cli::cli_abort(c(
+              "{.arg common} in {.fn latent} requires {.code unique = TRUE}.",
+              "i" = "{.code common = TRUE} ties the default diagonal Psi companion; {.code unique = FALSE} removes that companion.",
+              ">" = "Use {.code latent(..., common = TRUE)} or {.code latent(..., unique = FALSE)}, not both."
+            ))
+          }
+          if (isFALSE(unique_arg)) {
+            return(new_call)
+          }
+          ## Bare latent() (neither unique= nor residual= given) now carries Psi
+          ## by default: one-shot fire-on-use notice of the silent behavior change.
+          if (!unique_supplied && !residual_supplied) {
+            .gllvmTMB_warn_latent_default_psi()
+          }
+          psi_extras <- list(.auto_unique = TRUE)
+          if (isTRUE(common_arg)) {
+            psi_extras$common <- TRUE
+          }
+          psi_call <- as.call(c(list(as.name("diag"), e[[2L]]), psi_extras))
+          return(call("+", new_call, psi_call))
+        }
+        ## Phylo latent-Psi fold (Stage A): mirror the ordinary latent() fold for
+        ## the phylogenetic tier so phylo_latent(d=K) + phylo_unique() collapses to
+        ## a single phylo_latent(d=K, unique = TRUE). The auto-companion is the
+        ## phylo-structured diagonal Psi_phy (x) A, i.e. phylo_rr(species,
+        ## .phylo_unique = TRUE, .auto_unique = TRUE), NOT a plain diag. Augmented
+        ## phylo_latent(1 + x | sp) is handled+returned earlier (.latent_slope), so
+        ## this only sees the intercept-only form.
+        if (identical(fn, "phylo_latent")) {
+          unique_arg <- e[["unique"]]
+          if (is.null(unique_arg)) {
+            unique_arg <- TRUE
+          }
+          if (
+            !is.logical(unique_arg) ||
+              length(unique_arg) != 1L ||
+              is.na(unique_arg)
+          ) {
+            cli::cli_abort(c(
+              "{.arg unique} in {.fn phylo_latent} must be a literal {.code TRUE} or {.code FALSE}.",
+              ">" = "Use {.code phylo_latent(..., unique = FALSE)} for the loadings-only subset."
+            ))
+          }
+          new_call_names <- names(new_call)
+          if (!is.null(new_call_names)) {
+            drop_args <- new_call_names %in% "unique"
+            if (any(drop_args)) new_call <- new_call[!drop_args]
+          }
+          if (isFALSE(unique_arg)) {
+            return(new_call)
+          }
+          phy_psi_extras <- .pass_through_extras(e, c("tree", "vcv"))
+          psi_call <- as.call(c(
+            list(as.name("phylo_rr"), e[[2L]]),
+            list(.phylo_unique = TRUE, .auto_unique = TRUE),
+            phy_psi_extras
+          ))
+          return(call("+", new_call, psi_call))
+        }
+        return(new_call)
+      }
       ## `unique(form, common = bool)` -> `diag(form, common = bool)`
       if (fn == "unique") {
         .gllvmTMB_warn_unique_family_deprecated(fn)
@@ -3162,21 +3297,8 @@ rewrite_canonical_aliases <- function(formula) {
       ## fit-multi.R flips the cpp template's `spde_lv_k` switch to d and
       ## allocates Lambda_spde (T x K_S) plus K_S shared spatial fields.
       if (fn == "spatial_latent") {
-        d_val <- .named_or_positional_arg(e, "d", 3L, default = 1L)
-        unique_arg <- .named_or_positional_arg(
-          e, "unique", 4L, default = FALSE
-        )
-        unique_val <- tryCatch(
-          eval(unique_arg, envir = parent.frame()),
-          error = function(err) unique_arg
-        )
-        if (!is.logical(unique_val) || length(unique_val) != 1L ||
-            is.na(unique_val)) {
-          cli::cli_abort(c(
-            "{.arg unique} in {.fn spatial_latent} must be a literal {.code TRUE} or {.code FALSE}.",
-            ">" = "Use {.code spatial_latent(..., unique = TRUE)} for the total spatial covariance {.code Lambda Lambda^T + Psi}, or omit it for the low-rank-only path."
-          ))
-        }
+        nm <- names(e)
+        d_val <- if (!is.null(nm) && "d" %in% nm) e[[which(nm == "d")]] else 1L
         extras <- .pass_through_extras(e, c("coords", "mesh"))
         ## Design 64 §3: augmented spatial_latent(1 + x | coords, d) random
         ## regression. `spatial_latent` normally renames to `spde` reading ONLY
@@ -3204,7 +3326,6 @@ rewrite_canonical_aliases <- function(formula) {
               list(
                 .spatial_latent_augmented = TRUE,
                 d = d_val,
-                .spatial_unique_diag = unique_val,
                 lhs_form = lhs_form$lhs_form,
                 slope_col = lhs_form$slope_col
               ),
@@ -3215,8 +3336,7 @@ rewrite_canonical_aliases <- function(formula) {
         }
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
-          list(.spatial_latent = TRUE, d = d_val,
-               .spatial_unique_diag = unique_val),
+          list(.spatial_latent = TRUE, d = d_val),
           extras
         ))
         return(new_call)
@@ -3231,11 +3351,8 @@ rewrite_canonical_aliases <- function(formula) {
         ## Stage 2.5: fail-loud against augmented LHS.
         .assert_no_augmented_lhs(fn, e)
         extras <- list(.indep = TRUE)
-        common_arg <- .named_or_positional_arg(
-          e, "common", 3L, default = NULL
-        )
-        if (!is.null(common_arg)) {
-          extras$common <- common_arg
+        if (!is.null(e[["common"]])) {
+          extras$common <- e[["common"]]
         }
         new_call <- as.call(c(list(as.name("diag"), e[[2L]]), extras))
         return(new_call)
@@ -3551,73 +3668,18 @@ rewrite_canonical_aliases <- function(formula) {
 ## the parser sees them -- so they appear in every formula post-desugar.
 scan_for_deprecated <- function(rhs) {
   deprecated_map <- list(
-    rr = list(
-      new = "latent",
-      args = "0 + trait | g, d = K",
-      see = "{.fn latent}"
-    ),
+    rr = list(new = "latent", args = "0 + trait | g, d = K"),
     diag = list(
       new = "indep",
       args = "0 + trait | g",
-      see = "{.code ?diag_re} / {.fn indep}",
       guidance = "Use ordinary latent(..., d = K) when you want the default shared + diagonal-Psi decomposition; explicit unique() remains compatibility syntax."
     ),
-    phylo_rr = list(
-      new = "phylo_latent",
-      args = "species, d = K",
-      see = "{.code ?phylo_latent}"
-    ),
-    phylo = list(
-      new = "phylo_scalar",
-      args = "species",
-      see = "{.code ?phylo_scalar}"
-    ),
-    spde = list(
-      new = "spatial_unique",
-      args = "coords | trait",
-      see = "{.code ?spatial_unique}"
-    ),
-    meta = list(
-      new = "meta_V",
-      args = "V = V",
-      see = "{.code ?meta_V}"
-    ),
-    gr = list(
-      new = "phylo_scalar",
-      args = "species",
-      see = "{.code ?phylo_scalar}"
-    )
+    phylo_rr = list(new = "phylo_latent", args = "species, d = K"),
+    phylo = list(new = "phylo_scalar", args = "species"),
+    spde = list(new = "spatial_unique", args = "coords | trait"),
+    meta = list(new = "meta_V", args = "V = V"),
+    gr = list(new = "phylo_scalar", args = "species")
   )
-  has_named_arg <- function(e, arg) {
-    nms <- names(as.list(e))
-    !is.null(nms) && arg %in% nms
-  }
-  is_bar_first_arg <- function(e) {
-    length(e) >= 2L &&
-      is.call(e[[2L]]) &&
-      identical(e[[2L]][[1L]], as.name("|")) &&
-      length(e[[2L]]) == 3L
-  }
-  is_intercept_only_bar_lhs <- function(e) {
-    if (!is_bar_first_arg(e)) {
-      return(FALSE)
-    }
-    lhs <- e[[2L]][[2L]]
-    (is.numeric(lhs) && length(lhs) == 1L && lhs == 1) ||
-      (is.symbol(lhs) && identical(as.character(lhs), "1"))
-  }
-  spatial_call_is_legacy_alias <- function(e) {
-    if (!is_bar_first_arg(e)) {
-      return(TRUE)
-    }
-    ## `spatial()` is now a documented mode-dispatch wrapper for bar
-    ## calls with an intercept-only LHS, explicit mode, or explicit mesh.
-    ## Only the older no-mode/no-mesh bar aliases should receive the
-    ## spatial -> spatial_unique deprecation warning.
-    !(is_intercept_only_bar_lhs(e) ||
-        has_named_arg(e, "mode") ||
-        has_named_arg(e, "mesh"))
-  }
   walk <- function(e) {
     if (is.call(e)) {
       ## Only a bare-symbol head (e.g. `spatial`) names a keyword. For a
@@ -3633,12 +3695,6 @@ scan_for_deprecated <- function(rhs) {
         ## standard tidyverse deprecation tooling and the `lifecycle`
         ## verbosity option.
         if (fn == "spatial") {
-          if (!spatial_call_is_legacy_alias(e)) {
-            for (i in seq_along(e)[-1L]) {
-              walk(e[[i]])
-            }
-            return(invisible(NULL))
-          }
           lifecycle::deprecate_warn(
             when = "0.1.2",
             what = "spatial()",
@@ -3648,20 +3704,9 @@ scan_for_deprecated <- function(rhs) {
               ">" = "Update existing code to spatial_unique() to keep the rank explicit."
             )
           )
-        } else if (fn == "phylo" && is_bar_first_arg(e)) {
-          for (i in seq_along(e)[-1L]) {
-            walk(e[[i]])
-          }
-          return(invisible(NULL))
         } else if (fn %in% names(deprecated_map)) {
           d <- deprecated_map[[fn]]
-          .gllvmTMB_warn_keyword_deprecated(
-            fn,
-            d$new,
-            d$args,
-            d$guidance,
-            d$see
-          )
+          .gllvmTMB_warn_keyword_deprecated(fn, d$new, d$args, d$guidance)
         }
       }
       for (i in seq_along(e)[-1L]) {

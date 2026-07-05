@@ -787,7 +787,21 @@ profile_ci_correlation <- function(
     q_lo_floor = -0.999,
     q_hi_ceiling = 0.999
   )
-  c(estimate = rho_hat, lower = bounds$lower, upper = bounds$upper)
+  ## Boundary guarantee: a confidence interval must contain its own point
+  ## estimate. When the latent-scale correlation MLE sits at the natural
+  ## boundary (|rho_hat| = 1 -- e.g. a rank-1 latent block where
+  ## Sigma = Lambda Lambda^T is rank-deficient), the refit grid is floored /
+  ## ceiled just inside +/-0.999 and cannot represent the MLE, so the
+  ## boundary-side bound can be returned on the wrong side of rho_hat
+  ## (lower > estimate, or upper < estimate). Clamp finite bounds so
+  ## lower <= estimate <= upper always holds: the boundary side collapses to
+  ## rho_hat = +/-1, which is the standard pinned-parameter CI semantic (the
+  ## data are consistent with the correlation right up to the boundary).
+  lower <- bounds$lower
+  upper <- bounds$upper
+  if (is.finite(lower)) lower <- min(lower, rho_hat)
+  if (is.finite(upper)) upper <- max(upper, rho_hat)
+  c(estimate = rho_hat, lower = lower, upper = upper)
 }
 
 ## ---- Variance proportions: fix-and-refit profile -------------------------

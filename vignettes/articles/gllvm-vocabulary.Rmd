@@ -70,10 +70,12 @@ variance, $\boldsymbol{\Psi}$, $\psi_t$)** &mdash; The trait-specific
 part of the variance that the latent factors don't explain. Each
 trait has its own diagonal entry $\psi_t$; the matrix
 $\boldsymbol{\Psi} = \mathrm{diag}(\psi_1, \ldots, \psi_T)$ is
-diagonal by construction. Ordinary `latent()` fits include this
-diagonal companion by default; the older `unique()` keyword remains
-accepted as compatibility spelling for an explicit $\boldsymbol\Psi$
-component.
+diagonal by construction. Ordinary `latent()` carries this
+$\boldsymbol{\Psi}$ by default; `latent(..., unique = FALSE)` drops it
+to give the loadings-only subset, and a separate diagonal-only tier is
+written with `indep()`. The older `unique()` / `*_unique()` functions
+remain soft-deprecated compatibility syntax for explicit diagonal-Psi
+formulas.
 *Math*: $\boldsymbol{\Sigma} = \boldsymbol{\Lambda}
 \boldsymbol{\Lambda}^{\top} + \boldsymbol{\Psi}$ (factor
 decomposition); $\psi_t$ is the $t$-th diagonal of
@@ -251,11 +253,10 @@ The multi-trait analogue of $V_A$: a $T \times T$ matrix of
 additive-genetic covariances between traits. A factor-analytic
 $\mathbf{G} = \boldsymbol{\Lambda}_g \boldsymbol{\Lambda}_g^\top
 + \boldsymbol{\Psi}$ (Kirkpatrick & Meyer 2004; Meyer 2009;
-Runcie & Mukherjee 2013) is the target of
-`animal_latent(individual, d = K, pedigree = ped) +
-animal_unique(individual, pedigree = ped)`. The animal-model worked
-example stays under article-council review until the larger pedigree
-fixture and truth-recovery evidence are ready.
+Runcie & Mukherjee 2013) is exactly what `animal_latent(individual,
+d = K, pedigree = ped)` fits by default. Worked example:
+[Animal model: heritability and genetic
+covariance](animal-model.html).
 
 **Reaction norm / random regression** &mdash; A model where
 individuals carry a slope on an environmental gradient and those

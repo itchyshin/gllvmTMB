@@ -82,9 +82,9 @@ Per replicate, the DGP samples a fresh
 $\boldsymbol\Lambda_{\mathrm{true}} \sim \mathrm{Uniform}(-1.5, 1.5)^{5 \times d}$
 and $\boldsymbol\psi_{\mathrm{true}} \sim \mathrm{Gamma}(2, 2)^5$,
 simulates 60 units × 5 traits from that truth, fits `gllvmTMB` with
-the matching default-`latent()` formula and family, and records whether
-the fit's profile-CI on each per-trait $\psi_t$ contains the generative
-truth $\boldsymbol\psi_{\mathrm{true}, t}$.
+the matching ordinary `latent()` formula and family, and records
+whether the fit's profile-CI on each per-trait $\psi_t$ contains
+the generative truth $\boldsymbol\psi_{\mathrm{true}, t}$.
 Per-family non-Gaussian responses: binomial uses `rbinom(size = 1)`;
 nbinom2 uses `rnbinom(mu, size = phi)` with `phi ~ Gamma(5, 5)`;
 ordinal-probit uses 4 categories with quantile-spaced cutpoints.
@@ -252,5 +252,5 @@ Out of scope for M3 entirely:
 - [Troubleshooting profile](troubleshooting-profile.html) — common
   patterns when profile coverage is unexpectedly low.
 - [Animal model](animal-model.html) — quantitative-genetic worked
-  example using the same default-`latent()` diagonal-`Psi` machinery
-  this article audits.
+  example using the same ordinary `latent()` machinery this
+  article validates.

@@ -29,8 +29,8 @@ A formula marker; never evaluated.
 \details{
 \code{phylo_unique()} is soft-deprecated as compatibility syntax in gllvmTMB
 0.2.0. Use \code{\link[=phylo_indep]{phylo_indep()}} for standalone marginal diagonal phylogenetic
-tiers. Paired explicit-Psi use remains accepted until the latent-Psi fold
-lands.
+tiers. Paired explicit-Psi use remains accepted; \code{\link[=phylo_latent]{phylo_latent()}} now
+carries this diagonal companion by default.
 
 Canonical name for the \strong{D independent} phylogenetic random
 intercepts. Each trait \eqn{t} gets its own variance
@@ -58,14 +58,15 @@ internally as \code{phylo_latent(species, d = T)} with a diagonal
 \eqn{\boldsymbol\Lambda_{\text{phy}}}. The diagonal entries of
 \eqn{\boldsymbol\Lambda_{\text{phy}}} are the per-trait
 phylogenetic SDs. This path stays for backward compatibility.}
-\item{\strong{Paired with \code{phylo_latent()}} (paired PGLLVM, recommended)}{
-When written together with \code{phylo_latent(species, d = K)}, the
+\item{\strong{Paired with \code{phylo_latent(..., unique = FALSE)}} (compatibility)}{
+When written together with \code{phylo_latent(species, d = K, unique = FALSE)}, the
 two terms co-fit as \strong{separate covariance components}:
 \deqn{\boldsymbol\Sigma_\text{phy} \;=\; \underbrace{\boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}}_{\text{shared (rank K)}} \;+\; \underbrace{\boldsymbol\Psi_\text{phy}}_{\text{per-trait unique}}.}
 \eqn{\boldsymbol\Lambda_\text{phy}} is filled by the rank-K shared
 latent factors; \eqn{\boldsymbol\Psi_\text{phy}} carries
 the per-trait phylogenetic variances not absorbed by the K shared
-axes. This is the manuscript-aligned PGLLVM decomposition
+axes. Bare \code{phylo_latent(species, d = K)} now fits this same
+manuscript-aligned PGLLVM decomposition by default
 (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et
 al. 2025). Replication (multiple sites per species) is required
 to break the Psi_phy / Psi_non confound at the species level.}

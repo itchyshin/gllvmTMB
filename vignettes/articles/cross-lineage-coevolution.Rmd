@@ -60,17 +60,19 @@ contribution and are deliberate about what the current engine does and does
 not yet certify.
 
 Scope boundary: **IN** (`COE-02`, `KER-02`), this article fits one named dense
-kernel tier with `kernel_latent()` and extracts the cross-lineage shared block
-with `extract_Gamma()`. **PARTIAL** (`COE-03`, `COE-04`), tests now cover
-latent-only two-kernel fixtures and kernel-separability diagnostics, including
-a raw-versus-residualized reciprocal-dependence screen for present-day/tip
-matching. The article therefore describes the two-component Paper 2 estimand,
-but still teaches only a fixed-kernel, point-estimate workflow. The current
-Paper 2 first-wave syntax is latent-only; `kernel_unique()` remains
-soft-deprecated compatibility syntax for older explicit-Psi fixtures and
-equivalence tests. **PLANNED**, in-engine `rho` estimation, calibrated
-intervals, module uncertainty, rank calibration, formal null thresholds, and
-broader recovery grids remain later Design 65 work.
+kernel tier with folded `kernel_latent()` and extracts the cross-lineage
+shared block with `extract_Gamma()`. **PARTIAL** (`COE-03`, `COE-04`), tests
+now cover latent-only two-kernel fixtures and kernel-separability
+diagnostics, including a raw-versus-residualized reciprocal-dependence screen
+for present-day/tip matching. The article therefore describes the
+two-component Paper 2 estimand, but still teaches only a fixed-kernel,
+point-estimate workflow. The current Paper 2 first-wave syntax is latent-only
+(the folded default estimates both `Lambda Lambda^T` and the diagonal `Psi`
+at the named kernel tier); `kernel_unique()` remains soft-deprecated
+compatibility syntax for older explicit-Psi fixtures and equivalence tests.
+**PLANNED**, in-engine `rho` estimation, calibrated intervals, module
+uncertainty, rank calibration, formal null thresholds, and broader recovery
+grids remain later Design 65 work.
 
 The target Paper 2 identity separates two cross-lineage covariance sources:
 
@@ -305,18 +307,16 @@ The full coevolution analysis is three steps:
 
 1. **Build** `K* <- make_cross_kernel(A_H, A_P, W, rho)`.
 2. **Fit** `kernel_latent(species, K = K_star, d = 2, name = "cross")`
-   on the block-`NA` stacked `Y*`.
+   on the block-`NA` stacked `Y*`; the ordinary folded default estimates
+   both `Lambda Lambda^T` and the diagonal `Psi` at this named kernel tier.
 3. **Extract** `extract_Gamma(fit, level = "cross", row_traits, col_traits)`.
 4. **Summarise modules** with `extract_coevolution_modules()` when a
    standardized host-axis / partner-axis decomposition is useful.
 
 `kernel_latent()` estimates the shared reduced-rank `Lambda Lambda^T`
-covariance attached to `K*`, and that shared component is the source of
-`Gamma`. The name `"cross"` is the level that `extract_Sigma()`,
-`extract_Gamma()`, and `extract_coevolution_modules()` read back. Explicit
-`kernel_unique()` can still reproduce older Gaussian C2 fixtures as
-compatibility syntax, but it is no longer the first-line coevolution teaching
-path.
+covariance attached to `K*` plus the trait-specific diagonal `Psi` at the
+same named tier. The name `"cross"` is the level that `extract_Sigma()` and
+`extract_Gamma()` read back.
 
 The wide `traits(...)` call names the four response columns on the
 left-hand side:
@@ -556,6 +556,39 @@ rho_results <- profile_cross_rho(
   }
 )
 rho_results
+```
+
+`profile_cross_rho()` wraps the fixed-kernel refit loop and returns a
+`gllvmTMB_cross_rho_profile` data frame with `rho`, `logLik`, `pd_hessian`,
+and any `metrics` columns already assembled. The equivalent manual version,
+useful when you want the intermediate `K_rho` kernels or a custom summary
+shape, builds the same table by hand:
+
+```{r rho-grid-manual, eval = FALSE}
+rho_results_manual <- lapply(rho_grid, function(rho) {
+  K_rho <- make_cross_kernel(coev$A_H, coev$A_P, coev$W, rho = rho)
+  fit_rho <- gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~ 1 +
+      kernel_latent(species, K = K_rho, d = 2, name = "cross"),
+    data = coev$data_wide,
+    unit = "row_id",
+    cluster = "species",
+    family = gaussian(),
+    control = gllvmTMBcontrol(se = FALSE)
+  )
+  data.frame(
+    rho       = rho,
+    logLik    = as.numeric(logLik(fit_rho)),
+    pd_hess   = isTRUE(fit_rho$fit_health$pd_hessian),
+    gamma_cor = abs(cor(
+      as.vector(extract_Gamma(fit_rho, level = "cross",
+                             row_traits = coev$truth$host_traits,
+                             col_traits = coev$truth$partner_traits)),
+      as.vector(coev$truth$Gamma)
+    ))
+  )
+})
+do.call(rbind, rho_results_manual)
 ```
 
 A representative profile from data generated at `rho = 0.65` looks like the

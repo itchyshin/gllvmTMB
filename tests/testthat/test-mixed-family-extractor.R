@@ -129,7 +129,25 @@ test_that("extract_correlations() default matches link_residual = 'auto'", {
   expect_equal(R_default$correlation, R_auto$correlation, tolerance = 1e-10)
 })
 
-## ---- 4: extract_Sigma() with part = 'unique' on a no-Psi fit ----------
+## ---- 4: extract_Sigma() with part = 'unique' on an ordinary latent fit -----
+
+test_that("extract_Sigma(part = 'unique') returns the default Psi diagonal on an ordinary latent fit", {
+  skip_on_cran()
+  fit <- make_mixed_family_fit()
+  ## Ordinary `latent()` now includes its diagonal Psi companion by
+  ## default. `extract_Sigma(part = 'unique')` exposes that diagonal as
+  ## the `$s` slot of length T (not a matrix).
+  S <- suppressMessages(gllvmTMB::extract_Sigma(
+    fit, level = "unit", part = "unique"
+  ))
+  expect_true("s" %in% names(S))
+  expect_length(S$s, 3L)
+  expect_true(is.numeric(S$s))
+  expect_true(all(is.finite(S$s)))
+  expect_true(all(S$s > 0))
+})
+
+## ---- 5: extract_Sigma() with part = 'unique' on a no-Psi fit ----------
 
 test_that("extract_Sigma(part = 'unique') returns a zero-Psi diagonal on unique = FALSE fit", {
   skip_on_cran()

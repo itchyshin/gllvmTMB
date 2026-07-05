@@ -58,7 +58,7 @@ is far from noise: it carries information about plasticity, context
 dependence, and measurement bias, and must be modelled explicitly
 rather than discarded (Westneat et al. 2015).
 
-A **two-level GLLVM** with default `latent()` at both the between-
+A **two-level GLLVM** with ordinary `latent()` at both the between-
 and within-individual tiers is the natural tool here. At the between-
 individual tier it estimates a low-rank personality structure (the
 syndrome). At the within-individual tier it estimates a lability
@@ -372,12 +372,12 @@ $$
 
 In the `gllvmTMB` formula:
 
-- `latent(0 + trait | individual, d = 2)` fits $\boldsymbol{\Lambda}_B$
-  and the individual scores $\mathbf{Z}_B$, with the diagonal
-  $\boldsymbol{\Psi}_B$ included by default.
-- `latent(0 + trait | session_id, d = 1)` fits $\boldsymbol{\Lambda}_W$
-  and the session scores $\mathbf{Z}_W$, with the diagonal
-  $\boldsymbol{\Psi}_W$ included by default.
+- `latent(0 + trait | individual, d = 2)` fits
+  $\boldsymbol{\Lambda}_B$, the diagonal $\boldsymbol{\Psi}_B$, and
+  the individual scores $\mathbf{Z}_B$.
+- `latent(0 + trait | session_id, d = 1)` fits
+  $\boldsymbol{\Lambda}_W$, the diagonal $\boldsymbol{\Psi}_W$, and
+  the session scores $\mathbf{Z}_W$.
 
 The `unit = "individual"` argument tells the engine which column
 defines the between-individual grouping, and `unit_obs = "session_id"`
@@ -390,8 +390,8 @@ fit_control <- gllvmTMBcontrol(
 
 fit <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | individual, d = 2) +   # between-individual personality axes
-          latent(0 + trait | session_id, d = 1),    # within-individual lability axis
+          latent(0 + trait | individual, d = 2) +   # between-individual axes + Psi_B
+          latent(0 + trait | session_id, d = 1),    # within-individual axis + Psi_W
   data     = df,
   trait    = "trait",
   unit     = "individual",

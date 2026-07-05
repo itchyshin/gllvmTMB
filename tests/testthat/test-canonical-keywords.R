@@ -539,7 +539,7 @@ test_that("phylo_dep(0+trait|species) standalone fits identically to phylo_laten
     data = df, phylo_tree = tree, unit = "species"
   )))
   fit_latent <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + phylo_latent(species, d = 3),
+    value ~ 0 + trait + phylo_latent(species, d = 3, unique = FALSE),
     data = df, phylo_tree = tree, unit = "species"
   )))
   expect_equal(fit_dep$opt$convergence, 0L)

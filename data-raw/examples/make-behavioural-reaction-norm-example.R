@@ -126,7 +126,8 @@ for (o in seq_len(nrow(data_long))) {
   base <- 2L * (trait_index - 1L)
 
   unit_coefficients <-
-    Lambda_unit_slope[, 1L] * z_B[individual_index] + q_B[, individual_index]
+    Lambda_unit_slope[, 1L] * z_B[individual_index] +
+    q_B[, individual_index]
 
   eta[o] <-
     alpha[trait] +
@@ -210,8 +211,8 @@ alignment <- data.frame(
   keyword = c(
     "0 + trait + (0 + trait):temperature",
     "latent(1 + temperature | individual, d = 1)",
-    "default diagonal Psi under latent()",
-    "latent()",
+    "default Psi from latent(1 + temperature | individual, d = 1)",
+    "latent() default Psi",
     "latent(1 | session_id, d = 1)",
     "extract_Sigma(level = \"unit_slope\")"
   ),

@@ -23,24 +23,28 @@ Model Builder.
   `kernel_latent()` outside the source-specific 4 x 5 grid. In C1 it
   must remain phylo-equivalent for dense `K` inputs to less than
   `1e-6` before any C2 coevolution advertising.
-- As of 2026-06-18, `unique()` / source-specific `*_unique()` /
+- As of 2026-06-21, `unique()` / source-specific `*_unique()` /
   `kernel_unique()` are soft-deprecated compatibility syntax. New
   standalone diagonal examples use `indep()` / source-specific
-  `*_indep()` / `kernel_indep()`. Ordinary `latent()` now carries its
-  diagonal Psi companion by default; `latent(..., unique = FALSE)`
-  requests the old low-rank-only subset. Paired explicit-Psi forms and
-  source-specific / kernel `*_unique()` forms remain accepted as
-  compatibility syntax; do not claim removal while the parser and
-  exports remain live.
+  `*_indep()` / `kernel_indep()`. Ordinary `latent()`,
+  `phylo_latent()`, and `animal_latent()` now carry their diagonal Psi
+  companions by default; `*_latent(..., unique = FALSE)` requests the
+  old loadings-only subset for those folded terms (`residual =` is a
+  soft-deprecated alias for ordinary `latent()` only). Paired
+  explicit-Psi forms and source-specific / kernel `*_unique()` forms
+  remain accepted as compatibility syntax; do not claim removal while
+  the parser and exports remain live.
 - The ordinary decomposition mode is `latent`:
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
   Psi, lowercase psi for the per-trait scalar entries; see
   `decisions.md` 2026-05-14 notation reversal). The old
-  no-residual / rotation-invariant subset is
-  `latent(..., unique = FALSE)`. Source-specific decompositions such
-  as `phylo_latent() + phylo_unique()` and `spatial_latent() +
-  spatial_unique()` remain explicit-pair compatibility syntax until
-  their own fold slices land. Standalone `unique` is the marginal /
+  loadings-only / rotation-invariant subset is
+  `latent(..., unique = FALSE)`. The same default-fold rule now holds
+  for `phylo_latent()` and `animal_latent()`; their explicit
+  `*_latent(..., unique = FALSE) + *_unique()` forms remain accepted
+  compatibility syntax. `spatial_latent() + spatial_unique()` and
+  `kernel_latent() + kernel_unique()` remain explicit-pair syntax
+  until their own fold slices land. Standalone `unique` is the marginal /
   independent mode (Sigma = diag(psi_t^2)) and is equivalent to
   `indep`; new standalone code should use `indep`. `dep` alone is the
   full unstructured Sigma.

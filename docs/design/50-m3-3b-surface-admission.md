@@ -59,7 +59,7 @@ method labels:
 | `ci_method` | `bootstrap`, `profile`, `wald`, or `none`. |
 | `ci_level` | Usually 0.95. |
 | `fit_phi_mode` | `estimated`, `known`, or `not_applicable`. |
-| `link_residual` | `none` for latent + unique `Sigma_unit_diag` promotion checks. |
+| `link_residual` | `none` for ordinary latent `Sigma_unit_diag` promotion checks. |
 | `n_boot`, `n_cores_boot` | Explicit even when `n_boot = 0`. |
 | `seed_base` | Seed family for reproducibility. |
 

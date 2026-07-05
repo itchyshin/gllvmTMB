@@ -246,7 +246,7 @@ Do not mix `ordinal_probit()` with another family within the same
 trait. Cutpoints are trait-level parameters, so all rows for an
 ordinal trait must belong to the ordinal-probit family.
 
-Observation-level `unique()` residuals are structurally unidentifiable
+Observation-level `indep()` residuals are structurally unidentifiable
 for ordinal-probit traits. The threshold model fixes the residual
 scale at 1, and an extra observation-level scale factor can be absorbed
 by the cutpoints. The engine maps that observation-level component off

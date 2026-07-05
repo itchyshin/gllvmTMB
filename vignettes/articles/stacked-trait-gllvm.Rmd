@@ -49,9 +49,9 @@ needed several separate analyses for:
 
 1. **Between-site functional integration**: do trait values *covary*
    across sites? When site A is high in trait 1, is it also high in
-   trait 2? (default `latent()` on `site`)
+   trait 2? (ordinary `latent()` on `site`)
 2. **Within-site functional integration**: when site A's species
-   deviate from site A's average, do those deviations covary? (default
+   deviate from site A's average, do those deviations covary? (ordinary
    `latent()` on `site_species`)
 3. **Phylogenetic signal**: is some of the species-level variance
    driven by shared ancestry? (`phylo_scalar(species)`)
@@ -59,7 +59,7 @@ needed several separate analyses for:
    phylogeny? (`indep(species)`)
 5. **Residual spatial autocorrelation**: do nearby sites' trait values
    look similar after accounting for the predictors and the
-   above? (`spatial_unique(coords)`)
+   above? (`spatial_indep(coords)`)
 
 The corresponding decomposition is
 
@@ -130,8 +130,8 @@ str(df)
 mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.07)
 
 fit <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
-          spatial_unique(0 + trait | coords, mesh = mesh) +
+          value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
+          spatial_indep(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
           latent(0 + trait | site_species, d = 1) +
           indep(0 + trait | species) +
@@ -144,22 +144,23 @@ fit <- gllvmTMB(
 Each formula term carries a specific role:
 
 - `0 + trait + (0 + trait):env_*` -- trait-specific intercepts and slopes.
-- `spatial_unique(0 + trait | coords)` -- fast SPDE spatial term using
+- `spatial_indep(0 + trait | coords)` -- fast marginal diagonal SPDE spatial term using
   the precomputed `mesh`. Replaces the slow dense
   `glmmTMB::glmmTMB(... + exp(coords + 0 | trait))` /
   `... + gau(...)` paths.
-- `latent(0 + trait | site, d = 2)` -- global reduced-rank + diagonal
-  covariance giving
+- `latent(0 + trait | site, d = 2)` -- global reduced-rank axes plus
+  the per-trait diagonal that ordinary `latent()` carries by default,
+  giving
   $\boldsymbol{\Sigma}_{\text{unit}} = \boldsymbol{\Lambda}_B \boldsymbol{\Lambda}_B^\top + \boldsymbol{\Psi}_B$.
-- `latent(0 + trait | site_species, d = 1)` -- local reduced-rank +
-  diagonal covariance giving
+- `latent(0 + trait | site_species, d = 1)` -- local reduced-rank axis
+  plus its default per-trait diagonal, giving
   $\boldsymbol{\Sigma}_{\text{unit\_obs}} = \boldsymbol{\Lambda}_W \boldsymbol{\Lambda}_W^\top + \boldsymbol{\Psi}_W$.
 - `indep(0 + trait | species)` -- non-phylogenetic species term
   $q_{it}$.
 - `phylo_scalar(species, vcv = Cphy)` -- phylogenetic random effect
   $p_{it}$ using an in-keyword `vcv = Cphy` argument.
 
-Default `latent()` is the canonical decomposition mode; see
+Ordinary `latent()` is the canonical decomposition mode; see
 [the GLLVM vocabulary article](gllvm-vocabulary.html) for the term
 glossary and [the API keyword grid](api-keyword-grid.html) for the
 full $3\times 5$ keyword grid that organises the formula language.
@@ -206,13 +207,13 @@ stage-2 `meta_V(V = V)` fit.
 
 ## 5. Cross-validation against `glmmTMB`
 
-For the non-spatial covstructs (`latent()`, `unique()`,
+For the non-spatial covstructs (`latent()`, `indep()`,
 `phylo_scalar()`, `meta_V()` -- which map internally to
 `glmmTMB`'s `rr` / `diag` / `propto` / `equalto`),
 `gllvmTMB`'s log-likelihood matches `glmmTMB::glmmTMB()` exactly to
 TMB tolerance; see `tests/testthat/test-stage[2-3]-*.R` in the source
 for worked examples. The advantage over `glmmTMB` is that the same fit
-can include `spatial_unique(0 + trait | coords)` for sparse-precision
+can include `spatial_indep(0 + trait | coords)` for sparse-precision
 spatial fields, which is dramatically faster than `exp()` / `gau()`
 on more than a few hundred sites (Anderson et al. 2025).
 

@@ -226,8 +226,7 @@ named in `00-vision.md`.
 ```r
 gllvmTMB(
   value ~ 0 + trait + (0 + trait):env +
-    latent(0 + trait | site, d = 2) +
-    unique(0 + trait | site),
+    latent(0 + trait | site, d = 2),
   data = df_long,
   family = list(gaussian(), binomial(), poisson()),
   trait = "trait",

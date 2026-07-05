@@ -40,8 +40,7 @@ list or one-row data frame of additional scalar summaries, such as a
 A data frame of class \code{gllvmTMB_cross_rho_profile} with columns
 \code{rho}, \code{logLik}, \code{relative_logLik}, \code{delta_deviance}, \code{is_best},
 \code{convergence}, \code{pd_hessian}, \code{status}, and \code{error}, plus any metric
-columns returned by \code{metrics}. Attribute \code{"best_rho"} is a scalar; ties
-are resolved by the first maximum in the supplied \code{rho} order.
+columns returned by \code{metrics}.
 }
 \description{
 \code{profile_cross_rho()} formalises the fixed-kernel sensitivity workflow for

@@ -8,7 +8,7 @@ extract_Sigma(
   fit,
   level = c("unit", "unit_slope", "unit_obs", "phy", "phy_slope", "spatial",
     "spde_slope", "cluster", "cluster2", "B", "B_slope", "W", "spde"),
-  part = c("total", "shared", "unique"),
+  part = c("total", "shared", "unique", "psi"),
   link_residual = c("auto", "none"),
   .skip_warn = FALSE
 )
@@ -27,7 +27,9 @@ remain gated for Julia bridge extractors.}
 \code{"B"}, \code{"W"}, and \code{"spde"} are accepted with a soft-deprecation
 message.}
 
-\item{part}{One of \code{"total"} (default), \code{"shared"}, \code{"unique"}.}
+\item{part}{One of \code{"total"} (default), \code{"shared"}, \code{"unique"}. \code{"psi"}
+is an alias for \code{"unique"} (the per-trait residual Psi diagonal, now
+folded into \code{latent()} by default).}
 
 \item{link_residual}{For non-Gaussian fits. \code{"auto"} (default) adds a
 per-trait link-specific implicit residual variance to the diagonal of

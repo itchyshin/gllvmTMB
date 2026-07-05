@@ -83,9 +83,8 @@ Omega = Lambda_phy Lambda_phy^T + Lambda_non Lambda_non^T + Psi
 ```
 
 with a single non-tier-specific diagonal `Psi` (the only
-trait-specific diagonal matrix in the fit; ordinary `latent()` now
-emits this non-phylogenetic `Psi` companion by default, while explicit
-`unique()` is compatibility syntax).
+unique-variance matrix in the fit; ordinary species-level `latent()`
+now carries this diagonal companion by default).
 
 ## R Syntax Alignment
 
@@ -93,8 +92,8 @@ emits this non-phylogenetic `Psi` companion by default, while explicit
 |---|---|---|
 | Trait intercepts | `value ~ 0 + trait` | `traits(t1, t2) ~ 1` |
 | Phylogenetic shared covariance | `phylo_latent(species, d = K, tree = tree)` | same |
-| Phylogenetic diagonal Psi compatibility | `phylo_unique(species, tree = tree)` | same |
-| Non-phylogenetic shared + diagonal Psi | `latent(0 + trait \| species, d = K_non)` | `latent(1 \| species, d = K_non)` |
+| Phylogenetic unique diagonal | `phylo_unique(species, tree = tree)` | same |
+| Non-phylogenetic shared covariance plus diagonal Psi | `latent(0 + trait \| species, d = K_non)` | `latent(1 \| species, d = K_non)` |
 | Non-phylogenetic standalone diagonal | `indep(0 + trait \| species)` | `indep(1 \| species)` |
 | Full phylogenetic fallback | `phylo_dep(0 + trait \| species, tree = tree)` | `phylo_dep(1 \| species, tree = tree)` |
 
@@ -103,8 +102,8 @@ already name their phylogenetic axis, so the `traits(...)` RHS expander
 leaves them unchanged. Bar-style covariance terms such as
 `latent(1 | species)`, `indep(1 | species)`, and
 `phylo_dep(1 | species)` expand to the explicit trait-stacked form.
-The older `unique(1 | species)` spelling remains accepted as
-compatibility syntax.
+The soft-deprecated compatibility spelling `unique(1 | species)`
+expands the same way.
 
 ## Current Implementation Map
 
@@ -140,7 +139,7 @@ There are three different success levels:
 1. The model converges with finite likelihood.
 2. The total `Sigma_phy` and `Sigma_non` are stable enough to
    interpret.
-3. The split into `Lambda Lambda^T` and `S` is stable across ranks,
+3. The split into `Lambda Lambda^T` and `Psi` is stable across ranks,
    starts, and reasonable comparator fits.
 
 Level 2 is usually the biological target. Level 3 is more fragile,

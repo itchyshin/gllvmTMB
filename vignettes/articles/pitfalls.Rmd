@@ -45,7 +45,7 @@ vignette for the long/wide equivalence check.
 > claim that these are the only models where the checks matter.
 > IN: explicit long-format calls (`FG-02`), the wide `traits(...)`
 > interface referenced from Get Started (`FG-03`), Gaussian
-> `latent()` / `unique()` covariance examples (`FAM-01`, `FG-04`,
+> `latent()` / `indep()` covariance examples (`FAM-01`, `FG-04`,
 > `FG-05`, `FG-06`), `extract_Sigma()` (`EXT-01`), loading rotation
 > and constraint helpers (`EXT-14`, `EXT-15`, `LAM-04`), paired and
 > three-piece phylogenetic decompositions (`PHY-02`, `PHY-03`,
@@ -137,7 +137,7 @@ fit <- gllvmTMB(
 
 S_hat    <- extract_Sigma(fit, level = "unit")$Sigma
 LLt_true <- tcrossprod(sim$truth$Lambda_B)
-# Compare to LL^T (the right target) - not to LL^T + sigma^2 I
+# Compare to LL^T (the right target here, since psi_B = 0) - not to LL^T + sigma^2 I
 round(rbind(diag_LLt_true  = diag(LLt_true),
             diag_Sigma_hat = diag(S_hat)), 2)
 ```
@@ -146,7 +146,9 @@ round(rbind(diag_LLt_true  = diag(LLt_true),
 For this example, compare `extract_Sigma(level = "unit")` to
 $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$ because the formula requested
 `unique = FALSE`. If the scientific target includes trait-specific
-diagonal $\boldsymbol\Psi$, use the default `latent()` fit and inspect
+diagonal $\boldsymbol\Psi$, use the default `latent()` fit -- or add a
+separate diagonal tier with `+ indep(0 + trait | site)` to the
+`unique = FALSE` formula -- and inspect
 `extract_Sigma(level = "unit", part = "total")$Sigma`. The residual
 `sigma_eps` is reported separately in `fit$report$sigma_eps`; do not silently
 mix it into a between-unit covariance target.*
@@ -161,8 +163,10 @@ not contain, the fit has to put that variation somewhere. In this
 example, `simulate_site_trait()` ships with sensible defaults that
 include random environmental fixed effects
 ($\beta_{tk} \sim \mathcal{N}(0, 0.5^2)$) and a per-trait diagonal
-$psi_B$. If your fitted model has no environmental term and no
-diagonal $\boldsymbol\Psi$ component, that variance has nowhere to go and gets
+$psi_B$. Ordinary `latent()` carries the per-trait $\boldsymbol\Psi$
+by default, so it can absorb the diagonal; but if your fitted model
+has no environmental term -- or uses `latent(..., unique = FALSE)`,
+which drops the diagonal -- that variance has nowhere to go and gets
 absorbed into $\hat{\boldsymbol\Lambda}_B$. This is the general
 failure mode: the fitted model can answer a different question from
 the data-generating story even when the optimizer behaved correctly.
@@ -187,7 +191,8 @@ formula. For this latent-only example, set
 `psi_B = rep(0, n_traits)`. If you want those components in the data,
 include them in the formula too: `+ (0 + trait):env_1` and ordinary
 default `latent(0 + trait | site, d = K)` for the diagonal
-$\boldsymbol\Psi$ companion.*
+$\boldsymbol\Psi$ companion, or a separate diagonal tier
+`+ indep(0 + trait | site)` if `latent()` uses `unique = FALSE`.*
 
 ## 4. Interpret identifiable summaries, not arbitrary coordinates
 
@@ -235,21 +240,20 @@ not separately recoverable.
 
 **Diagnosis.** The general issue is identifiability: do not ask the
 data to separate more variance pieces than the design can support.
-For any `latent()`, `unique()`, `indep()`, `dep()`, or `*_scalar()`
+For any `latent()`, compatibility `unique()`, `indep()`, `dep()`, or `*_scalar()`
 choice, first name the covariance tier, decide which diagonal variance
 is separately identifiable, and use scalar shortcuts only when a shared
 variance is the estimand. The phylogenetic example below is one
 instance. A bare
-`phylo_latent(species, d = K)` is the no-residual reduced-rank subset
--- it captures a shared phylogenetic axis but has no diagonal for
-trait-specific phylogenetic variance. A bare `phylo_scalar()` fits a
+`phylo_latent(species, d = K)` now carries its diagonal `Psi` by
+default; use `phylo_latent(..., unique = FALSE)` only for the
+no-residual reduced-rank subset. A bare `phylo_scalar()` fits a
 single shared scalar $\lambda$ multiplying a free trait correlation
 matrix, so only the product $\lambda \cdot \rho_{tt'}$ is
 identifiable. Neither bare form is a per-trait phylogenetic-variance
 recovery model.
 
-The **fully paired phylogenetic decomposition** pairs four
-components:
+The **folded phylogenetic decomposition** pairs four components:
 
 $$
 \Sigma_{\text{phy}} = \Lambda_{\text{phy}}\Lambda_{\text{phy}}^{\!\top} + \boldsymbol\Psi_{\text{phy}}, \qquad
@@ -262,10 +266,11 @@ set.seed(1)
 tree <- ape::rcoal(15)
 tree$tip.label <- paste0("sp", seq_len(15))
 
-# Fully paired phylogenetic decomposition:
+# Folded phylogenetic decomposition (ordinary and phylogenetic `latent()`
+# carry diagonal Psi by default, so neither tier needs a separate
+# separate diagonal term):
 #   value ~ 0 + trait +
 #     phylo_latent(species, d = K_phy, tree = tree) +
-#     phylo_unique(species, tree = tree) +
 #     latent(0 + trait | species, d = K_non)
 
 # Single-scalar simplification (only when trait correlations are
@@ -274,14 +279,14 @@ tree$tip.label <- paste0("sp", seq_len(15))
 ```
 
 **Rule of thumb.** *Start from the scientific target and the design.
-Use the paired four-piece decomposition
-(`phylo_latent + phylo_unique + latent`) only when **both
+Use the paired four-component decomposition
+(`phylo_latent + latent`, each with default `Psi`) only when **both
 $\boldsymbol{\Psi}$ diagonals are identifiable**, typically with
 crossed replication, enough species, and strong phylogenetic signal.
 Reserve `phylo_scalar()` for the simpler case where a single shared
 phylogenetic variance and trait correlations are the inferential
-target. The four-piece form is what `extract_phylo_signal()`
-decomposes into $H^2 + C^2_{\text{non}} + \psi^2 = 1$. The worked
+target. The four-component form is what `extract_phylo_signal()`
+decomposes into $H^2 + C^2_{\text{non}} + \Psi = 1$. The worked
 phylogenetic article is under audit until its helper, validation
 rows, and rendered HTML review pass.*
 
@@ -289,8 +294,10 @@ rows, and rendered HTML review pass.*
 not separately identifiable from $\Lambda_{\text{phy}}
 \Lambda_{\text{phy}}^{\!\top}$ -- common in small `n_species`,
 weak phylogenetic signal, or single-replicate-per-tip data --
-drop the `phylo_unique()` term and let the species-level
-ordinary `latent()` carry the only $\boldsymbol{\Psi}$ in the fit. The model then has
+turn off the phylogenetic diagonal with
+`phylo_latent(..., unique = FALSE)`. Then let the species-level
+ordinary `latent()`, which carries $\boldsymbol{\Psi}$ by default,
+supply the only $\boldsymbol{\Psi}$ in the fit. The model then has
 three pieces:*
 
 $$

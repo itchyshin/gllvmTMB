@@ -4,12 +4,27 @@
 \alias{phylo_latent}
 \title{Reduced-rank phylogenetic latent factors: \code{phylo_latent(species, d = K)}}
 \usage{
-phylo_latent(species, d = 1, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
+phylo_latent(
+  species,
+  d = 1,
+  unique = TRUE,
+  tree = NULL,
+  vcv = NULL,
+  A = NULL,
+  Ainv = NULL
+)
 }
 \arguments{
 \item{species}{Unquoted column name for the species factor.}
 
 \item{d}{Integer; number of phylogenetic latent factors.}
+
+\item{unique}{Logical; \code{TRUE} (default) auto-includes the
+phylo-structured diagonal trait-specific \eqn{\boldsymbol\Psi_{phy}}
+companion, folding the paired \code{phylo_latent() + phylo_unique()} into a
+single term (\eqn{\boldsymbol\Sigma_{phy} = \boldsymbol\Lambda
+\boldsymbol\Lambda^\top \otimes \mathbf{A} + \boldsymbol\Psi_{phy} \otimes
+\mathbf{A}}). Set \code{FALSE} for the loadings-only / rotation-invariant subset.}
 
 \item{tree}{An \code{ape::phylo} object. \strong{Canonical.} Use this if
 you have a tree.}

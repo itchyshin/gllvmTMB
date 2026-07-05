@@ -152,14 +152,14 @@ animal_X(id, pedigree = ped)  ≡  animal_X(id, A = pedigree_to_A(ped))
 |---|---|---|---|
 | `phylo_*` | bare `species` (or bar-form for `_indep`/`_dep`/`_slope`) | `tree = phy` OR `vcv = C` OR **`A = A`** OR **`Ainv = Ainv`** (`A` / `Ainv` aliases shipped 2026-05-17) | `d = K` on `_latent` |
 | `spatial_*` | bar-form `0 + trait \| coords` | `mesh = mesh` (SPDE) | `d = K` on `_latent` |
-| `animal_*` | bare `id` (or bar-form for `_indep`/`_dep`/`_slope`) | `pedigree = ped` OR `A = A` OR `Ainv = Ainv` | `d = K` on `_latent` |
+| `animal_*` | bare `id` (or bar-form for `_indep`/`_dep`/`_slope`) | `pedigree = ped` OR `A = A` OR `Ainv = Ainv` | `d = K`, `unique = TRUE/FALSE` on `_latent` |
 
 ## 7. Test contract
 
 | Capability | Test file | What's pinned |
 |---|---|---|
 | `pedigree_to_A()` Henderson formula sanity | `test-animal-keyword.R` (1-2) | A_ii = 1 + F_i; full-sib A = 0.5; parent-offspring A = 0.5; founder pairs A = 0; topology error |
-| `animal_*(pedigree=)` ≡ `phylo_*(vcv = A)` byte-equivalence | `test-animal-keyword.R` (3-7) | logLik agreement to 1e-6 on `animal_scalar`, `_unique`, `_indep`, `_dep`, `_latent` |
+| `animal_*(pedigree=)` ≡ `phylo_*(vcv = A)` byte-equivalence | `test-animal-keyword.R`, `test-matrix-animal-nongaussian.R`, `test-animal-latent-unique-fold.R` | logLik agreement to 1e-6 on `animal_scalar`, `_unique`, `_indep`, `_dep`, `_latent`; `animal_latent()` default-fold equivalence to `animal_latent(..., unique = FALSE) + animal_unique()` |
 | Three input forms agree | `test-animal-keyword.R` (8) | `animal_scalar(pedigree=)` ≡ `(A=)` ≡ `(Ainv=)` |
 | `nadiv::makeAinv()` cross-check | `test-animal-keyword.R` (9) | gracefully skip if `nadiv` not installed; otherwise A agrees within 1e-8 |
 

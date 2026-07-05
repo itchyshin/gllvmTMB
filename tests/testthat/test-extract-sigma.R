@@ -75,7 +75,7 @@ test_that("extract_Sigma part='unique' returns named numeric vector of length T"
   expect_true(all(out$s >= 0))
 })
 
-test_that("extract_Sigma with residual=FALSE emits the no-Psi advisory note", {
+test_that("extract_Sigma with unique=FALSE emits the no-Psi advisory note", {
   fit <- make_fit_B_rr_only()
   expect_message(
     extract_Sigma(fit, level = "unit", part = "total"),

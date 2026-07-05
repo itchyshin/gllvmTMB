@@ -16,7 +16,7 @@ small PR.
 ## §1 — The "true $H^2$" includes $\psi_{\text{phy}}$
 
 Phylogenetic signal canonically refers to the proportion of trait
-variance correlated with the tree. In the **two-U PGLLVM** parameterisation
+variance correlated with the tree. In the **two-Psi PGLLVM** parameterisation
 (Hadfield & Nakagawa 2010 sparse $A^{-1}$, ratified in
 [`docs/design/03-phylogenetic-gllvm.md`](03-phylogenetic-gllvm.md)),
 two distinct random-effect structures contribute to phylogenetic
@@ -44,7 +44,7 @@ not the numerator.
 
 ## §2 — The current 3-component partition (what the redesign replaces)
 
-For a fit with `phylo_latent + latent(species) + unique(species)`:
+For a fit with `phylo_latent + latent(species)`:
 
 $$V_\eta[t] = \underbrace{\Sigma_{\text{phy}}[t,t]}_{\text{phylo, lumped}} + \underbrace{\Sigma^{(\text{latent})}_{\text{non}}[t,t]}_{\text{non-phylo factor}} + \underbrace{\psi_{\text{non}}[t]}_{\text{non-phylo unique}}$$
 
@@ -97,24 +97,30 @@ a note that $C^2_{\text{non}}$ depends on $d_{\text{non}}$.
 
 ### `partition = "full4"` (NEW — four-component decomposition)
 
-When the model includes BOTH `phylo_unique` and `unique(species)`,
-the full latent-tier decomposition is identifiable (per the
-2026-05-13 phylo-q-decomposition empirical work):
+When the model includes `phylo_unique()` and an ordinary non-phylogenetic
+`latent(species)` term with its default diagonal `Psi` companion, the full
+latent-tier decomposition is identifiable (per the 2026-05-13
+phylo-q-decomposition empirical work). The legacy explicit
+`unique(species)` companion remains accepted compatibility syntax for the
+non-phylogenetic `Psi`:
 
 $$V_\eta[t] = (\Lambda_{\text{phy}}\Lambda^\top_{\text{phy}})_{tt} + \psi_{\text{phy}}[t] + (\Lambda_{\text{non}}\Lambda^\top_{\text{non}})_{tt} + \psi_{\text{non}}[t]$$
 
 Output columns: `trait`, `H2_phy_latent`, `H2_phy_unique`,
 `C2_non_latent`, `psi_non_unique`, `V_eta`. Sum to 1.
 
-Useful for the "two-U PGLLVM" pattern documented in
+Useful for the "two-Psi PGLLVM" pattern documented in
 `03-phylogenetic-gllvm.md`: separates phylo factor structure from
 phylo trait-specific magnitude, AND non-phylo factor from non-phylo
 trait-specific. Errors with a helpful message when both
-`phylo_unique` and `unique(species)` are not fit:
+`phylo_unique()` and the ordinary non-phylogenetic `latent(species)` term
+are not fit:
 
-> `partition = "full4"` requires both `phylo_unique(...)` and
-> `unique(0 + trait | species)` in the formula. Refit with both
-> terms, or use `partition = "fa3"` for the 3-component fallback.
+> `partition = "full4"` requires `phylo_unique(...)` and an ordinary
+> `latent(0 + trait | species, d = K)` species-level term with its default
+> diagonal `Psi` companion. Legacy explicit `unique(0 + trait | species)`
+> formulas are still accepted as compatibility syntax. Refit with the
+> missing tier, or use `partition = "fa3"` for the 3-component fallback.
 
 ## §4 — Migration plan
 
@@ -133,7 +139,7 @@ Mitigation:
 2. **In the deprecation message**, point users at the
    `partition = "phylo2"` default + the `"fa3"` opt-in. Note that
    `"full4"` is the new richest decomposition for users with the
-   two-U PGLLVM formula.
+   two-Psi PGLLVM formula.
 3. **After the deprecation window** (next minor release), flip the
    default to `"phylo2"`.
 
@@ -146,11 +152,13 @@ When this redesign lands as a discrete pre-CRAN PR:
 2. **`partition = "fa3"`** byte-identical to current output (the
    M1.7 test in `tests/testthat/test-m1-7-extract-omega-phylo-signal-mixed-family.R`
    continues to pass under the new `partition` argument).
-3. **`partition = "full4"`** on a two-U PGLLVM fit (the
+3. **`partition = "full4"`** on a two-Psi PGLLVM fit (the
    phylo-q-decomposition fixture from `test-phylo-q-decomposition.R`):
    all four components sum to 1; phylo_unique component identifiable.
 4. **`partition = "full4"` error message** when the formula doesn't
-   have both `phylo_unique` and `unique(species)`.
+   have `phylo_unique()` plus an ordinary species-level `latent()` term
+   carrying its default diagonal `Psi` companion. Legacy explicit
+   `unique(species)` remains accepted as compatibility syntax.
 5. **Soft-deprecation warning** fires exactly once per session when
    `partition` is missing from the call.
 
@@ -176,7 +184,7 @@ The following are NOT part of this redesign:
 - `R/extract-omega.R` — `extract_phylo_signal()` source (current implementation).
 - `tests/testthat/test-m1-7-extract-omega-phylo-signal-mixed-family.R` — tests of the current 3-component partition (M1.7).
 - `tests/testthat/test-phylo-q-decomposition.R` — empirical identifiability work on `phylo_unique + unique(species)`.
-- `docs/design/03-phylogenetic-gllvm.md` — Hadfield & Nakagawa (2010) sparse $A^{-1}$ + the two-U PGLLVM pattern.
+- `docs/design/03-phylogenetic-gllvm.md` — Hadfield & Nakagawa (2010) sparse $A^{-1}$ + the two-Psi PGLLVM pattern.
 - `docs/dev-log/audits/2026-05-17-link-residual-design-decision.md` — parallel design audit on $\pi^2/3$ vs observation-level link residuals; same audit pattern.
 
 ## §8 — References

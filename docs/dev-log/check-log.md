@@ -4,6 +4,100 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-05 02:10 MDT -- Cluster rho route fail-loud guard
+
+Branch: `codex/r-bridge-grouped-dispersion`; local profile-route
+truth-lock. No push or PR.
+
+Guard: `cluster` and `cluster2` are diagonal-only tiers. Their
+off-diagonal correlations are structural zeros / point-reporting
+boundaries, not likelihood-profile targets. `confint(..., parm =
+"rho:cluster:...")`, `confint(..., parm = "rho:cluster2:...")`, and
+direct `profile_ci_correlation(..., tier = "cluster" / "cluster2")`
+must fail loud instead of looking like an accepted interval route.
+
+Implemented:
+
+- Added `.profile_abort_point_only_rho()` so the public correlation
+  profile helpers report the route-matrix status (`point_only`) and the
+  structural-zero reason in one place.
+- Allowed the `rho:<tier>:i,j` parser to recognise `cluster` and
+  `cluster2`, then immediately routed those tiers to the fail-loud
+  guard. This keeps the error aligned with the route ledger rather than
+  treating the tier as a spelling mistake.
+- Updated `profile_ci_correlation()` and its generated Rd topic to make
+  the `cluster` / `cluster2` point-only boundary explicit.
+- Added pure route tests in `test-profile-route-matrix.R` for
+  `rho:cluster`, `rho:cluster2`, and direct `profile_ci_correlation()`
+  calls.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'parse("R/profile-route-matrix.R"); parse("R/z-confint-gllvmTMB.R"); parse("R/profile-derived.R"); cat("parse-ok\n")'
+```
+
+Outcome: parse succeeded.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-route-matrix.R")'
+```
+
+Outcome: passed, 282 assertions, 0 failures, 0 warnings, 0 skips.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-ci.R")'
+```
+
+Outcome: 0 failures / 0 warnings / 11 expected heavy-test skips.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-derived.R")'
+```
+
+Outcome: 0 failures / 0 warnings / 35 expected heavy-test skips.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+```
+
+Outcome: regenerated `man/profile_ci_correlation.Rd`.
+
+```sh
+git diff --check
+```
+
+Outcome: clean.
+
+Issue / claim scans:
+
+```sh
+gh issue list --state open --search "rho cluster cluster2 profile confint" --limit 20
+```
+
+Outcome: no matching open issue.
+
+```sh
+rg -n "rho:cluster|rho:cluster2|cluster correlations|structural-zero point|structural zero point|profile route matrix|point_only" R man tests/testthat docs/design docs/dev-log/check-log.md README.md NEWS.md ROADMAP.md | head -n 160
+```
+
+Outcome: new guard hits plus intentional route-matrix/check-log
+boundary wording only.
+
+```sh
+rg -n "ready to expose|partial support|pdHess.*calibrated|mixed-family CI|source-specific lv|rho:cluster|rho:cluster2" R man tests/testthat docs/design docs/dev-log/check-log.md README.md NEWS.md ROADMAP.md | head -n 160
+```
+
+Outcome: no new promotion wording. Hits for mixed-family CI and
+partial-support language are existing guard / historical wording; the
+new `rho:cluster` / `rho:cluster2` hits are fail-loud tests.
+
+Not run:
+
+- Full `devtools::check()`, pkgdown, or heavy profile calibration.
+- Totoro/DRAC compute, source-specific `lv` exposure, mixed-family CI
+  promotion, or any new interval-calibration claim.
+
 ## 2026-07-04 21:01 MDT -- Lambda profile return-contract repair
 
 Branch: `codex/r-bridge-grouped-dispersion`; local inference-safety

@@ -129,6 +129,48 @@ test_that("profile route matrix records current cluster and cluster2 boundaries"
   expect_equal(spatial_prop$status, "planned")
 })
 
+test_that("cluster and cluster2 rho requests fail loud as structural-zero point routes", {
+  fake <- structure(
+    list(
+      data = data.frame(trait = factor(c("a", "b"))),
+      trait_col = "trait"
+    ),
+    class = "gllvmTMB_multi"
+  )
+
+  expect_error(
+    gllvmTMB:::.confint_rho(
+      fake,
+      parm = "rho:cluster:1,2",
+      level = 0.95,
+      method = "profile",
+      nsim = 10L,
+      seed = 1L
+    ),
+    "structural zeros"
+  )
+  expect_error(
+    gllvmTMB:::.confint_rho(
+      fake,
+      parm = "rho:cluster2:1,2",
+      level = 0.95,
+      method = "wald",
+      nsim = 10L,
+      seed = 1L
+    ),
+    "point_only"
+  )
+  expect_error(
+    gllvmTMB::profile_ci_correlation(
+      fake,
+      tier = "cluster",
+      i = 1L,
+      j = 2L
+    ),
+    "profile route matrix"
+  )
+})
+
 test_that("profile route matrix records named kernel interval boundaries", {
   routes <- gllvmTMB:::.profile_route_matrix()
 

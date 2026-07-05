@@ -628,8 +628,10 @@ profile_ci_communality <- function(
 #' fit has 60 of them across four covariance levels).
 #'
 #' @param fit A fit returned by [gllvmTMB()].
-#' @param tier `"unit"`, `"unit_slope"`, `"unit_obs"`, `"phy"`, or
-#'   `"spatial"`. Legacy aliases `"B"`, `"W"`, and `"spde"` are accepted.
+#' @param tier `"unit"`, `"unit_slope"`, `"unit_obs"`, `"cluster"`,
+#'   `"cluster2"`, `"phy"`, or `"spatial"`. Legacy aliases `"B"`, `"W"`,
+#'   and `"spde"` are accepted. `"cluster"` and `"cluster2"` fail loud as
+#'   diagonal-only structural-zero point routes; they are not profile targets.
 #'   `"unit_slope"` is a selected-entry Gaussian canary for augmented
 #'   ordinary random-regression coefficients.
 #' @param i,j Trait indices (1-based, `i < j`). For `tier = "unit_slope"`,
@@ -642,7 +644,8 @@ profile_ci_communality <- function(
 profile_ci_correlation <- function(
   fit,
   tier = c(
-    "unit", "unit_slope", "unit_obs", "phy", "spatial", "B", "W", "spde"
+    "unit", "unit_slope", "unit_obs", "cluster", "cluster2",
+    "phy", "spatial", "B", "W", "spde"
   ),
   i,
   j,
@@ -653,6 +656,9 @@ profile_ci_correlation <- function(
   }
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
+  if (tier %in% c("cluster", "cluster2")) {
+    .profile_abort_point_only_rho(tier)
+  }
   if (i >= j) {
     cli::cli_abort("Provide {.arg i} < {.arg j}.")
   }

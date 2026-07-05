@@ -123,6 +123,24 @@
 
 #' @keywords internal
 #' @noRd
+.profile_abort_point_only_rho <- function(tier, parm = NULL) {
+  tier <- .canonical_level_name(tier)
+  route <- .profile_route_status("rho", tier)
+  token <- if (!is.null(parm)) {
+    paste0(" for ", parm)
+  } else {
+    ""
+  }
+  cli::cli_abort(c(
+    "Profile correlation intervals are not available{token}.",
+    "i" = "The profile route matrix marks tier {.val {tier}} rho as {.val {route$status}}.",
+    "i" = "Cluster and cluster2 tiers are diagonal-only; off-diagonal correlations are structural zeros, not likelihood-profile targets.",
+    ">" = "Use {.fn extract_Sigma_table} for point covariance/correlation reporting, and keep interval claims blocked until a dedicated route is implemented."
+  ))
+}
+
+#' @keywords internal
+#' @noRd
 .profile_augmented_target_row <- function(
   level,
   estimand,

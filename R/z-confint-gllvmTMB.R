@@ -647,6 +647,8 @@
         "unit",
         "unit_slope",
         "unit_obs",
+        "cluster",
+        "cluster2",
         "phy",
         "spatial",
         "B",
@@ -656,7 +658,7 @@
   ) {
     cli::cli_abort(c(
       "Invalid tier {.val {tier}} in {.val {parm}}.",
-      i = "Correlation tiers: {.val unit}, {.val unit_slope}, {.val unit_obs}, {.val phy}, or {.val spatial} (legacy aliases {.val B} / {.val W} / {.val spde} also accepted)."
+      i = "Correlation tiers: {.val unit}, {.val unit_slope}, {.val unit_obs}, {.val cluster}, {.val cluster2}, {.val phy}, or {.val spatial} (legacy aliases {.val B} / {.val W} / {.val spde} also accepted)."
     ))
   }
   pairs <- strsplit(pair_spec, ";", fixed = TRUE)[[1L]]
@@ -960,6 +962,9 @@
       "{.code rho:unit_slope} currently supports {.code method = \"profile\"} only.",
       "i" = "Wald, Fisher-z, and bootstrap intervals for augmented ordinary random-regression correlations need separate gates."
     ))
+  }
+  if (tier %in% c("cluster", "cluster2")) {
+    .profile_abort_point_only_rho(tier, parm = parm)
   }
 
   n_pairs <- nrow(pairs)

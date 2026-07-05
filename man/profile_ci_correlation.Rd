@@ -6,7 +6,8 @@
 \usage{
 profile_ci_correlation(
   fit,
-  tier = c("unit", "unit_slope", "unit_obs", "phy", "spatial", "B", "W", "spde"),
+  tier = c("unit", "unit_slope", "unit_obs", "cluster", "cluster2", "phy", "spatial",
+    "B", "W", "spde"),
   i,
   j,
   level = 0.95
@@ -15,8 +16,10 @@ profile_ci_correlation(
 \arguments{
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
-\item{tier}{\code{"unit"}, \code{"unit_slope"}, \code{"unit_obs"}, \code{"phy"}, or
-\code{"spatial"}. Legacy aliases \code{"B"}, \code{"W"}, and \code{"spde"} are accepted.
+\item{tier}{\code{"unit"}, \code{"unit_slope"}, \code{"unit_obs"}, \code{"cluster"},
+\code{"cluster2"}, \code{"phy"}, or \code{"spatial"}. Legacy aliases \code{"B"}, \code{"W"},
+and \code{"spde"} are accepted. \code{"cluster"} and \code{"cluster2"} fail loud as
+diagonal-only structural-zero point routes; they are not profile targets.
 \code{"unit_slope"} is a selected-entry Gaussian canary for augmented
 ordinary random-regression coefficients.}
 

@@ -84,7 +84,7 @@ Omega = Lambda_phy Lambda_phy^T + Lambda_non Lambda_non^T + Psi
 
 with a single non-tier-specific diagonal `Psi` (the only
 unique-variance matrix in the fit; ordinary species-level `latent()`
-now carries this diagonal companion by default).
+carries this diagonal companion by default).
 
 ## R Syntax Alignment
 
@@ -92,6 +92,7 @@ now carries this diagonal companion by default).
 |---|---|---|
 | Trait intercepts | `value ~ 0 + trait` | `traits(t1, t2) ~ 1` |
 | Phylogenetic shared covariance | `phylo_latent(species, d = K, tree = tree)` | same |
+| Phylogenetic shared covariance plus diagonal Psi | `phylo_latent(species, d = K, tree = tree, unique = TRUE)` | same |
 | Phylogenetic unique diagonal | `phylo_unique(species, tree = tree)` | same |
 | Non-phylogenetic shared covariance plus diagonal Psi | `latent(0 + trait \| species, d = K_non)` | `latent(1 \| species, d = K_non)` |
 | Non-phylogenetic standalone diagonal | `indep(0 + trait \| species)` | `indep(1 \| species)` |
@@ -109,9 +110,9 @@ expands the same way.
 
 - `phylo_latent(species, d = K, tree = tree)` activates the
   reduced-rank phylogenetic block (`use$phylo_rr`).
-- `phylo_unique(species, tree = tree)` paired with `phylo_latent()`
-  activates the phylogenetic diagonal block (`use$phylo_diag`) as
-  explicit-Psi compatibility syntax.
+- `phylo_latent(..., unique = TRUE)`, or the compatibility pair
+  `phylo_latent(..., unique = FALSE) + phylo_unique(species, tree = tree)`,
+  activates the phylogenetic diagonal block (`use$phylo_diag`).
 - `phylo_unique(species)` alone is retained as the legacy diagonal
   phylogenetic mode; new standalone phylogenetic diagonal code should use
   `phylo_indep()`.

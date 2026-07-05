@@ -1,8 +1,8 @@
-test_that("kernel_latent() emits an automatic kernel Psi companion by default", {
+test_that("kernel_latent(unique = TRUE) emits an automatic kernel Psi companion", {
   A <- diag(3)
   rownames(A) <- colnames(A) <- paste0("u", seq_len(3))
 
-  f <- ~ 1 + kernel_latent(unit_id, K = A, d = 2, name = "known")
+  f <- ~ 1 + kernel_latent(unit_id, K = A, d = 2, name = "known", unique = TRUE)
   environment(f) <- environment()
   p <- gllvmTMB:::parse_multi_formula(
     gllvmTMB:::rewrite_canonical_aliases(f)
@@ -23,7 +23,7 @@ test_that("kernel_latent() emits an automatic kernel Psi companion by default", 
   expect_equal(p$covstructs[[2L]]$extra$vcv, A)
 })
 
-test_that("kernel_latent(unique = FALSE) keeps the loadings-only route", {
+test_that("kernel_latent() default keeps the loadings-only route", {
   A <- diag(3)
   rownames(A) <- colnames(A) <- paste0("u", seq_len(3))
 
@@ -32,8 +32,7 @@ test_that("kernel_latent(unique = FALSE) keeps the loadings-only route", {
       unit_id,
       K = A,
       d = 2,
-      name = "known",
-      unique = FALSE
+      name = "known"
     )
   environment(f) <- environment()
   p <- gllvmTMB:::parse_multi_formula(
@@ -60,7 +59,7 @@ test_that("kernel_latent() rejects malformed unique values", {
   )
 })
 
-test_that("kernel_latent() folded default is equivalent to explicit pair", {
+test_that("kernel_latent(unique = TRUE) is equivalent to explicit pair", {
   testthat::skip_if_not_installed("TMB")
 
   set.seed(31)
@@ -94,7 +93,7 @@ test_that("kernel_latent() folded default is equivalent to explicit pair", {
   fit_default <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(y1, y2, y3) ~
       1 +
-      kernel_latent(unit_id, K = A, d = 2, name = "known"),
+      kernel_latent(unit_id, K = A, d = 2, name = "known", unique = TRUE),
     data = rows,
     unit = "row_id",
     cluster = "unit_id",
@@ -138,5 +137,38 @@ test_that("kernel_latent() folded default is equivalent to explicit pair", {
       )$Sigma
     ),
     tolerance = 1e-6
+  )
+})
+
+test_that("kernel_latent(unique = TRUE) + explicit kernel_unique() errors as duplicate Psi", {
+  testthat::skip_if_not_installed("TMB")
+
+  n_unit <- 5L
+  unit_levels <- paste0("u", seq_len(n_unit))
+  A <- matrix(0.2, n_unit, n_unit)
+  diag(A) <- 1
+  rownames(A) <- colnames(A) <- unit_levels
+  rows <- expand.grid(
+    unit_id = unit_levels,
+    rep_id = seq_len(2L),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  rows$row_id <- factor(seq_len(nrow(rows)))
+  rows$unit_id <- factor(rows$unit_id, levels = unit_levels)
+  rows$y1 <- stats::rnorm(nrow(rows))
+  rows$y2 <- stats::rnorm(nrow(rows))
+  expect_error(
+    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      traits(y1, y2) ~ 1 +
+        kernel_latent(unit_id, K = A, d = 1, name = "known", unique = TRUE) +
+        kernel_unique(unit_id, K = A, name = "known"),
+      data = rows,
+      unit = "row_id",
+      cluster = "unit_id",
+      family = stats::gaussian(),
+      control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
+    ))),
+    "Duplicate source-specific"
   )
 })

@@ -359,7 +359,7 @@ list(true_LL  = round(Lambda_true %*% t(Lambda_true), 2),
 
 Ordination places individuals on the two latent axes:
 
-```{r ord, fig.cap = "Individual scores on the two latent trait axes."}
+```{r ord2, fig.cap = "Individual scores on the two latent trait axes."}
 ord <- extract_ordination(fit, level = "unit")
 plot(ord$scores[, 1], ord$scores[, 2], pch = 19, col = "steelblue",
      xlab = "LV 1", ylab = "LV 2",

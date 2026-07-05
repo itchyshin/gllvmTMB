@@ -289,9 +289,6 @@ nbinom2 <- function(link = "log") {
     linktemp <- link
   }
 
-  v <- function(mu, theta) {
-
-  }
   x <- c(list(family = "nbinom2", link = linktemp), stats)
   add_to_family(x)
 }
@@ -523,10 +520,11 @@ delta_gamma <- function(link1,
 delta_gamma_mix <- function(link1 = "logit", link2 = "log", p_extreme = NULL) {
   f1 <- binomial(link = link1)
   f2 <- gamma_mix(link = link2)
-  structure(list(f1, f2, delta = TRUE, link = c("logit", "log"),
+  structure(list(f1, f2, delta = TRUE, link = c(link1, link2),
        family = c("binomial", "gamma_mix"),
        p_extreme = p_extreme,
-       clean_name = "delta_gamma_mix(link1 = 'logit', link2 = 'log')"), class = "family")
+       clean_name = sprintf("delta_gamma_mix(link1 = '%s', link2 = '%s')",
+                            link1, link2)), class = "family")
 }
 
 #' @export
@@ -616,9 +614,10 @@ delta_lognormal_mix <- function(link1, link2 = "log", type = c("standard", "pois
 delta_truncated_nbinom2 <- function(link1 = "logit", link2 = "log") {
   f1 <- binomial(link = link1)
   f2 <- truncated_nbinom2(link = link2)
-  structure(list(f1, f2, delta = TRUE, link = c("logit", "log"),
+  structure(list(f1, f2, delta = TRUE, link = c(link1, link2),
     family = c("binomial", "truncated_nbinom2"),
-    clean_name = "delta_truncated_nbinom2(link1 = 'logit', link2 = 'log')"), class = "family")
+    clean_name = sprintf("delta_truncated_nbinom2(link1 = '%s', link2 = '%s')",
+                         link1, link2)), class = "family")
 }
 
 #' @export
@@ -628,9 +627,10 @@ delta_truncated_nbinom2 <- function(link1 = "logit", link2 = "log") {
 delta_truncated_nbinom1 <- function(link1 = "logit", link2 = "log") {
   f1 <- binomial(link = link1)
   f2 <- truncated_nbinom1(link = link2)
-  structure(list(f1, f2, delta = TRUE, link = c("logit", "log"),
+  structure(list(f1, f2, delta = TRUE, link = c(link1, link2),
     family = c("binomial", "truncated_nbinom1"),
-    clean_name = "delta_truncated_nbinom1(link1 = 'logit', link2 = 'log')"), class = "family")
+    clean_name = sprintf("delta_truncated_nbinom1(link1 = '%s', link2 = '%s')",
+                         link1, link2)), class = "family")
 }
 
 #' @rdname families
@@ -686,9 +686,10 @@ betabinomial <- function(link = "logit") {
 delta_beta <- function(link1 = "logit", link2 = "logit") {
   f1 <- binomial(link = link1)
   f2 <- Beta(link = link2)
-  structure(list(f1, f2, delta = TRUE, link = c("logit", "logit"),
+  structure(list(f1, f2, delta = TRUE, link = c(link1, link2),
        family = c("binomial", "Beta"),
-       clean_name = "delta_beta(link1 = 'logit', link2 = 'logit')"), class = "family")
+       clean_name = sprintf("delta_beta(link1 = '%s', link2 = '%s')",
+                            link1, link2)), class = "family")
 }
 
 #' Ordinal-probit threshold family for the multivariate engine

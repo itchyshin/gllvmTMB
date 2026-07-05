@@ -17,77 +17,122 @@ template:
 
 navbar:
   structure:
-    left:  [intro, articles, roadmap, reference, news]
+    left:  [intro, model_guides, concepts, diagnostics, developer, roadmap, reference, news]
     right: [search, github]
   components:
-    articles:
-      text: Articles
+    model_guides:
+      text: Model Guides
       menu:
-      - text: Model guide
-      - text: Morphometrics
+      - text: First Gaussian morphology model
         href: articles/morphometrics.html
       - text: Choosing latent rank
         href: articles/model-selection-latent-rank.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
-      - text: Concepts
+      - text: Confirmatory loadings
+        href: articles/lambda-constraint.html
+      - text: Suggesting Lambda constraint
+        href: articles/lambda-constraint-suggest.html
+      - text: Handling missing data
+        href: articles/missing-data.html
+    concepts:
+      text: Concepts
+      menu:
       - text: Plain-English vocabulary
         href: articles/gllvm-vocabulary.html
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
       - text: Formula keyword grid
         href: articles/api-keyword-grid.html
+      - text: Fixed predictor effects
+        href: articles/fixed-effect-zero-constraints.html
       - text: Response families
         href: articles/response-families.html
-      - text: Methods
+    diagnostics:
+      text: Diagnostics & Validation
+      menu:
+      - text: Screen binary traits before fitting
+        href: articles/pre-fit-response-screening.html
       - text: Can I trust this fit?
         href: articles/fit-diagnostics.html
       - text: Convergence and start values
         href: articles/convergence-start-values.html
+      - text: Profile-likelihood confidence intervals
+        href: articles/profile-likelihood-ci.html
+      - text: Troubleshooting profile-likelihood CIs
+        href: articles/troubleshooting-profile.html
       - text: Common pitfalls
         href: articles/pitfalls.html
-      - text: Handling missing data
-        href: articles/missing-data.html
-      - text: Technical reference
-      - text: Profile-likelihood CIs
-        href: articles/profile-likelihood-ci.html
-      - text: Troubleshooting profile CIs
-        href: articles/troubleshooting-profile.html
-      - text: Vocabulary glossary
-        href: articles/gllvm-vocabulary.html
+    developer:
+      text: Developer Notes
+      menu:
+      - text: Under-audit model drafts
+      - text: Data-shape flowchart
+        href: articles/data-shape-flowchart.html
+      - text: How to choose your model
+        href: articles/choose-your-model.html
+      - text: Animal model
+        href: articles/animal-model.html
+      - text: Phylogenetic trait covariance
+        href: articles/phylogenetic-gllvm.html
+      - text: Behavioural reaction norms
+        href: articles/random-regression-reaction-norms.html
+      - text: Structured non-Gaussian slopes
+        href: articles/random-slopes-nongaussian.html
+      - text: Cross-lineage coevolution kernels
+        href: articles/cross-lineage-coevolution.html
+      - text: Behavioural syndromes
+        href: articles/behavioural-syndromes.html
+      - text: Mixed-family extractor notes
+        href: articles/mixed-family-extractors.html
+      - text: Ordinal-probit traits
+        href: articles/ordinal-probit.html
+      - text: Stacked-trait GLLVM note
+        href: articles/stacked-trait-gllvm.html
+      - text: Functional biogeography capstone
+        href: articles/functional-biogeography.html
+      - text: Psychometrics / IRT draft
+        href: articles/psychometrics-irt.html
+      - text: Validation and comparison notes
+      - text: Cross-package validation
+        href: articles/cross-package-validation.html
+      - text: Simulation recovery
+        href: articles/simulation-recovery-validated.html
+      - text: Simulation verification
+        href: articles/simulation-verification.html
     roadmap:
       text: Roadmap
       href: articles/roadmap.html
 
 articles:
-  - title: Model guide
+  - title: Model Guides
     contents:
     - articles/morphometrics
     - articles/model-selection-latent-rank
     - articles/joint-sdm
+    - articles/lambda-constraint
+    - articles/lambda-constraint-suggest
+    - articles/missing-data
 
   - title: Concepts
     contents:
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
     - articles/api-keyword-grid
+    - articles/fixed-effect-zero-constraints
     - articles/response-families
 
-  - title: Methods
+  - title: Diagnostics and validation
     contents:
+    - articles/pre-fit-response-screening
     - articles/fit-diagnostics
     - articles/convergence-start-values
-    - articles/pitfalls
-    - articles/missing-data
-
-  - title: Technical reference
-    contents:
     - articles/profile-likelihood-ci
     - articles/troubleshooting-profile
-    - articles/gllvm-vocabulary
+    - articles/pitfalls
 
-  - title: Internal drafts and technical notes
-    desc: Buildable pages kept out of the public dropdown until their evidence and reader path are ready. These are direct-link references for maintainers, not first-stop tutorials.
+  - title: Under-audit model drafts
+    desc: Buildable pages kept out of the first-click model-guide path until their evidence, examples, and rendered reader path are ready. They remain direct-link references for maintainers and contributors.
     contents:
     - articles/data-shape-flowchart
     - articles/choose-your-model
@@ -102,9 +147,13 @@ articles:
     - articles/mixed-family-extractors
     - articles/ordinal-probit
     - articles/stacked-trait-gllvm
-    - articles/cross-package-validation
     - articles/functional-biogeography
     - articles/psychometrics-irt
+
+  - title: Developer validation notes
+    desc: Validation, comparator, and project-state pages for maintainers. These are not first-stop tutorials.
+    contents:
+    - articles/cross-package-validation
     - articles/simulation-recovery-validated
     - articles/simulation-verification
     - articles/roadmap
@@ -245,6 +294,7 @@ reference:
     - extract_phylo_signal
     - extract_proportions
     - extract_ordination
+    - extract_lv_effects
     - extract_rotated_loadings_table
     - extract_cutpoints
 
@@ -273,6 +323,9 @@ reference:
   - title: First-line diagnostics and uncertainty
     desc: Start here before interpreting covariance, ordination, or interval estimates
     contents:
+    - screen_gllvmTMB
+    - screen_control
+    - screen_table
     - check_gllvmTMB
     - gllvmTMB_diagnose
     - predictive_check

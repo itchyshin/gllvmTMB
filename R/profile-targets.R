@@ -397,7 +397,7 @@
   }
 
   ## Derived rows can never be profile_ready.
-  derived_ready <- df$target_type == "derived" & isTRUE(df$profile_ready)
+  derived_ready <- df$target_type == "derived" & (df$profile_ready %in% TRUE)
   if (any(derived_ready)) {
     cli::cli_abort(
       c(
@@ -610,7 +610,7 @@ profile_targets <- function(object, ready_only = FALSE) {
   .validate_profile_targets(out)
 
   if (isTRUE(ready_only)) {
-    out <- out[isTRUE(out$profile_ready) | out$profile_ready, , drop = FALSE]
+    out <- out[which(out$profile_ready), , drop = FALSE]
   }
 
   out

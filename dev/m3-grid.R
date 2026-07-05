@@ -31,7 +31,14 @@
 
 ## ---- Constants --------------------------------------------------------
 
-M3_FAMILIES <- c("gaussian", "binomial", "nbinom2", "ordinal_probit", "mixed")
+M3_FAMILIES <- c(
+  "gaussian",
+  "binomial",
+  "nbinom2",
+  "ordinal_probit",
+  "mixed",
+  "binomial_probit"
+)
 M3_CONTROL_FAMILIES <- c("poisson")
 M3_SUPPORTED_FAMILIES <- unique(c(M3_FAMILIES, M3_CONTROL_FAMILIES))
 
@@ -79,6 +86,10 @@ m3_target_method <- function(target, n_boot = NULL) {
 
 m3_family_seed_index <- function(family) {
   match(family, M3_SUPPORTED_FAMILIES)
+}
+
+m3_is_binary_family <- function(family) {
+  family %in% c("binomial", "binomial_probit")
 }
 
 m3_rep_index_range <- function(
@@ -389,16 +400,16 @@ m3_sample_truth <- function(
   ## is fixed at pi^2/3 (logit) or 1 (probit) by construction. The
   ## DGP must NOT include psi in the truth for binomial traits, and
   ## `m3_simulate_response` must NOT add `e_unique` for those rows.
-  ## This applies to family == "binomial" (all traits binomial) and
-  ## to binomial rows inside family == "mixed". psi is still drawn
-  ## (for record-keeping in $psi) but the truth Sigma uses
-  ## psi_effective (zeroed for binomial rows).
+  ## This applies to family == "binomial" / "binomial_probit" (all
+  ## traits binomial) and to binomial rows inside family == "mixed".
+  ## psi is still drawn (for record-keeping in $psi) but the truth Sigma
+  ## uses psi_effective (zeroed for binomial rows).
   ##
   ## Cross-ref: docs/dev-log/audits/2026-05-25-jason-cross-package-binomial-sigma-scout.md
   ## §3.2 + §4 — N-sweep falsified small-n hypothesis; the gap was
   ## a DGP-vs-fitter scale mismatch from including psi in binary truth.
   psi_effective <- psi
-  psi_effective[row_family == "binomial"] <- 0
+  psi_effective[m3_is_binary_family(row_family)] <- 0
 
   ## Regression guard (maintainer 2026-05-25): a future m3-grid edit
   ## must NOT silently re-introduce a free `psi` component for binary
@@ -410,7 +421,7 @@ m3_sample_truth <- function(
   ## stopifnot below fails loudly if that invariant breaks.
   stopifnot(
     "m3-grid binomial-psi invariant violated: psi_effective must be 0 for binomial rows. See PR #263 + the maintainer 2026-05-25 design ruling." = all(
-      psi_effective[row_family == "binomial"] == 0
+      psi_effective[m3_is_binary_family(row_family)] == 0
     )
   )
 
@@ -502,6 +513,11 @@ m3_simulate_response <- function(truth) {
       gaussian = eta_t +
         stats::rnorm(n_units, sd = truth$nuisance$sigma_eps %||% 0.5),
       binomial = stats::rbinom(n_units, size = 1L, prob = stats::plogis(eta_t)),
+      binomial_probit = stats::rbinom(
+        n_units,
+        size = 1L,
+        prob = stats::pnorm(eta_t)
+      ),
       poisson = {
         mu_t <- exp(pmin(pmax(eta_t, -10), 10))
         stats::rpois(n_units, lambda = mu_t)
@@ -937,6 +953,7 @@ m3_run_cell <- function(
         family,
         gaussian = stats::gaussian(),
         binomial = stats::binomial(),
+        binomial_probit = stats::binomial(link = "probit"),
         poisson = stats::poisson(),
         nbinom2 = gllvmTMB::nbinom2(),
         ordinal_probit = gllvmTMB::ordinal_probit(),

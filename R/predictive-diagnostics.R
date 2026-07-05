@@ -323,6 +323,12 @@ residuals.gllvmTMB_multi <- function(
 ) {
   scale <- match.arg(scale)
   if (!is.null(seed)) {
+    if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      .old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+      on.exit(assign(".Random.seed", .old_seed, envir = globalenv()), add = TRUE)
+    } else {
+      on.exit(suppressWarnings(rm(".Random.seed", envir = globalenv())), add = TRUE)
+    }
     set.seed(seed)
   }
 
@@ -476,6 +482,12 @@ residuals.gllvmTMB_multi <- function(
     condition_on_RE = condition_on_RE
   )
   if (!is.null(seed)) {
+    if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      .old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+      on.exit(assign(".Random.seed", .old_seed, envir = globalenv()), add = TRUE)
+    } else {
+      on.exit(suppressWarnings(rm(".Random.seed", envir = globalenv())), add = TRUE)
+    }
     set.seed(seed + 1L)
   }
 
@@ -1108,7 +1120,8 @@ residuals.gllvmTMB_multi <- function(
     "11" = "truncated_nbinom2",
     "12" = "delta_lognormal",
     "13" = "delta_gamma",
-    "14" = "ordinal_probit"
+    "14" = "ordinal_probit",
+    "15" = "nbinom1"
   )
   out <- unname(labels[as.character(family_id)])
   out[is.na(out)] <- paste0("family_id_", family_id[is.na(out)])

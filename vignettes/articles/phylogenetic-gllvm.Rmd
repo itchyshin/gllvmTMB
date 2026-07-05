@@ -1,6 +1,6 @@
 ---
 title: "Phylogenetic trait covariance"
-tier: 3 # internal biological worked-example draft until reader/evidence review passes
+tier: 3 # under-audit phylogenetic reader path; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -24,13 +24,17 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Internal article gate.** This is a candidate Tier 1 comparative-methods
-> worked example, but it is not ready for the public article dropdown. The page
-> stays internal until the phylogenetic/non-phylogenetic reader path, validation
-> row bridge, figures, diagnostics, and rendered HTML pass article-council
-> review. Start with [Morphometrics](morphometrics.html),
-> [Covariance and correlation](covariance-correlation.html), or
-> [Formula keyword grid](api-keyword-grid.html) for the current public path.
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the phylogenetic reader
+> path. It is not a first-stop tutorial. Start with
+> [Get started](gllvmTMB.html), [First Gaussian morphology model](morphometrics.html),
+> and [Covariance and correlation](covariance-correlation.html) before
+> using this page for `phylo_*()` syntax.
+>
+> This is a candidate Tier 1 comparative-methods worked example, but it is
+> not ready for the public article dropdown. The page stays internal until
+> the phylogenetic/non-phylogenetic reader path, validation row bridge,
+> figures, diagnostics, and rendered HTML pass article-council review.
 
 This article is for a comparative-methods reader with several traits
 measured once per species. The working question is: can we separate
@@ -50,7 +54,7 @@ g_{\mathrm{non}} \sim
 \mathrm{MVN}(0, \Sigma_{\mathrm{non}} \otimes I).
 $$
 
-The phylogenetic tier uses folded `phylo_latent()`, and the ordinary
+The phylogenetic tier uses `phylo_latent(..., unique = TRUE)`, and the ordinary
 non-phylogenetic tier uses `latent()` for the same
 shared-plus-diagonal-Psi target:
 
@@ -109,7 +113,7 @@ library(ape)
 We simulate three traits on 30 species. The truth has four
 components, matching the paired decomposition in the theory section:
 a phylogenetic shared axis (`Lambda_phy`), a phylogenetic diagonal
-component (`psi_phy`, carried by default by `phylo_latent()`), a
+component (`psi_phy`, carried by `phylo_latent(..., unique = TRUE)`), a
 non-phylogenetic shared axis (`Lambda_non`),
 and a non-phylogenetic diagonal component (`psi_non`). This small
 example is meant to show syntax and extraction, not to be a full
@@ -171,7 +175,7 @@ compact covariance syntax.
 # Long format (canonical)
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    phylo_latent(species, d = 1, tree = tree) +
+    phylo_latent(species, d = 1, tree = tree, unique = TRUE) +
     latent(0 + trait | species, d = 1),
   data = df,
   trait = "trait",
@@ -182,7 +186,7 @@ fit_long <- gllvmTMB(
 # Wide data-frame format (same model with compact formula syntax)
 fit_wide <- gllvmTMB(
   traits(trait_1, trait_2, trait_3) ~ 1 +
-    phylo_latent(species, d = 1, tree = tree) +
+    phylo_latent(species, d = 1, tree = tree, unique = TRUE) +
     latent(1 | species, d = 1),
   data = df_wide,
   unit = "species",
@@ -198,8 +202,8 @@ cat("Long/wide logLik difference:",
 ```
 
 The two forms dispatch to the same long-format engine. In this model,
-`phylo_latent(species, d = 1, tree = tree)` estimates the shared
-phylogenetic axis and its default trait-specific phylogenetic diagonal,
+`phylo_latent(species, d = 1, tree = tree, unique = TRUE)` estimates the shared
+phylogenetic axis and its trait-specific phylogenetic diagonal,
 while `latent(1 | species, d = 1)` in the wide formula (expanding to
 `latent(0 + trait | species, d = 1)` in the long form) estimates the
 shared non-phylogenetic axis and its ordinary diagonal `Psi` companion.
@@ -361,8 +365,8 @@ or visual inspection flag the paired form as over-parameterised.
 
 Communality `c_t^2` is the fraction of a trait's within-tier variance
 explained by the shared latent axis. It is defined when the tier has
-both a shared latent component and a diagonal `Psi` component; default
-`phylo_latent()` and default ordinary `latent()` give us those pieces
+both a shared latent component and a diagonal `Psi` component;
+`phylo_latent(..., unique = TRUE)` and default ordinary `latent()` give us those pieces
 on the phylogenetic and non-phylogenetic sides.
 
 ```{r communality}
@@ -518,7 +522,7 @@ together:
 ```{r reaction-norm-combined}
 fit_rn_latent <- gllvmTMB(
   value ~ 0 + trait +
-    phylo_latent(species, d = 1, tree = tree_rn) +
+    phylo_latent(species, d = 1, tree = tree_rn, unique = TRUE) +
     phylo_slope(env | species, tree = tree_rn),
   data = rn,
   unit = "species"
@@ -727,8 +731,8 @@ The helper functions currently recognise the explicit compatibility
 spelling for a two-Psi phylogenetic fit:
 `phylo_latent(..., unique = FALSE) + phylo_unique(...)`. That spelling
 is retained for old formulas and diagnostic workflows, but it is no
-longer the first teaching path now that folded `phylo_latent()` carries
-its own diagonal `Psi`. The calls below show the compatibility
+longer the first teaching path now that `phylo_latent(..., unique = TRUE)`
+carries its own diagonal `Psi`. The calls below show the compatibility
 diagnostic route and are not evaluated by this article.
 
 ```{r compare-two-psi-compat, eval = FALSE}
@@ -767,7 +771,7 @@ benchmark for off-diagonal cross-trait structure.
 
 ## When to simplify
 
-The folded `phylo_latent()` plus ordinary `latent()` model is useful
+The folded `phylo_latent(..., unique = TRUE)` plus ordinary `latent()` model is useful
 when the question is about phylogenetically conserved
 trait syndromes alongside non-phylogenetic shared-axis structure.
 Simplify when the data do not identify the splits the model asks for:

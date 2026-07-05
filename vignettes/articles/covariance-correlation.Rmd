@@ -1,11 +1,12 @@
 ---
-title: "Covariance and correlation: when Psi matters"
+title: "Covariance and correlation: the model behind Sigma"
+tier: 2 # technical reference for Sigma, Lambda, Psi, correlations, and communality
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Covariance and correlation: when Psi matters}
+  %\VignetteIndexEntry{Covariance and correlation: the model behind Sigma}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -23,21 +24,36 @@ knitr::opts_chunk$set(
 )
 ```
 
-Suppose you want between-individual correlations among behaviours such as
-boldness, exploration, activity, aggression, and sociability. Ordinary
-`latent()` now fits the full decomposed covariance,
-$\Lambda\Lambda^\top + \Psi$, so trait-specific variance stays in the
-denominator of the correlation matrix by default.
+This page is for the reader who has fitted a multivariate model and now asks:
+which traits vary together, and are the reported correlations too large if the
+model leaves out trait-specific variance?
+
+Start from the model, not from the covariance matrix. For a Gaussian
+stacked-trait GLLVM, the teaching model for individual `i` and trait `t` is
+
+$$
+y_{it} = \mu_t + \boldsymbol{\lambda}_t^{\!\top}\mathbf{u}_i + \varepsilon_{it},
+\qquad
+\mathbf{u}_i \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_d), \quad
+\varepsilon_{it} \sim \mathcal{N}(0, \psi_{tt}).
+$$
+
+The model has three moving parts. `mu_t` is the trait mean,
+`u_i` is the individual's latent position on the shared axes,
+and `psi_tt` is trait-specific variance left over after those shared
+axes are fitted. `Sigma` is not the model itself; it is the trait
+covariance implied by that model.
+
+In ordinary `latent()` fits, gllvmTMB estimates both the shared
+loading part and the diagonal Psi part by default. Use
+`latent(..., unique = FALSE)` only when you deliberately want the
+older loadings-only subset for a sensitivity check or compatibility
+comparison.
 
 This article is about `Psi` in a decomposed `latent()` model. It is not a
 recommendation to use standalone `unique()` as the first diagonal model. When
 the goal is a standalone marginal-only diagonal covariance, new examples should
 use `indep()` so the intent is visible in the formula.
-
-`latent()` now includes the diagonal Psi term by default, so trait-specific
-variance stays in the denominator of the correlation matrix. Use
-`latent(..., unique = FALSE)` only when you deliberately want the older
-no-residual low-rank subset.
 
 ```{r early-fit-pattern, eval = FALSE}
 fit_no_residual <- gllvmTMB(
@@ -64,45 +80,47 @@ fit_latent_default <- gllvmTMB(
 )
 ```
 
-## The decomposition
+## From model to Sigma
 
-For the default ordinary `latent()` model, the implied trait covariance is
+The fitted model above implies a covariance matrix for any covariance tier
+you extract. For the ordinary `latent()` model, the implied trait covariance is
 
 $$
-\boldsymbol\Sigma_\text{level} \;=\; \underbrace{\boldsymbol\Lambda_\text{level} \boldsymbol\Lambda_\text{level}^{\!\top}}_{\text{shared low-rank}} \;+\; \underbrace{\boldsymbol\Psi_\text{level}}_{\text{trait-specific diagonal}},
+\boldsymbol\Sigma_\text{level} \;=\; \underbrace{\boldsymbol\Lambda_\text{level} \boldsymbol\Lambda_\text{level}^{\!\top}}_{\text{shared low-rank}} \;+\; \underbrace{\boldsymbol\Psi_\text{level}}_{\text{trait-specific diagonal}}
 $$
 
-where `level` names the covariance tier being extracted, such as `unit`
-for between-individual covariance or `unit_obs` for within-individual or
-observation-level covariance. $\boldsymbol\Lambda$ is the $T \times K$
-loading matrix (from the `latent()` term) and $\boldsymbol\Psi$ is the
-$T \times T$ diagonal matrix of trait-specific variances that ordinary
-`latent()` now carries by default. Older explicit formulas with
-`latent() + unique()` remains soft-deprecated compatibility syntax for
-the same decomposition.
-The correlation matrix is then
+Here `level` names the covariance tier being extracted: `unit` for
+between-individual covariance, `unit_obs` for within-individual or
+observation-level covariance, and other tier names for structured terms.
+$\boldsymbol\Lambda$ is the $T \times K$ loading matrix from the
+`latent()` term. $\boldsymbol\Psi$ is the $T \times T$ diagonal matrix of
+trait-specific variances. Older explicit formulas with `latent() + unique()`
+remain soft-deprecated compatibility syntax for the same decomposition.
+
+The correlation matrix is a standardised version of `Sigma`:
 
 $$
 \mathbf R \;=\; \mathbf D^{-1/2}\,\boldsymbol\Sigma\,\mathbf D^{-1/2},
 \qquad \mathbf D \;=\; \mathrm{diag}(\boldsymbol\Sigma).
 $$
 
-Both pieces matter: the diagonal of $\boldsymbol\Sigma$ is
-$(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}$ — the
-sum of squared loadings *plus* the trait-specific unique variance.
-Drop $\boldsymbol\Psi$ and the diagonal shrinks; the off-diagonals stay the
-same; $\mathbf R$ swells.
+Both pieces matter. The diagonal of $\boldsymbol\Sigma$ is
+$(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}$: the
+sum of squared loadings plus the trait-specific diagonal variance. Drop
+$\boldsymbol\Psi$ and the diagonal shrinks; the off-diagonals stay the same;
+the reported correlations get inflated.
 
-Read the equation beside the R syntax:
+Read the model beside the R syntax and the report-ready summary:
 
-| Symbol | R syntax or extractor | Plain meaning |
+| Object | R syntax or extractor | What the reader should report |
 |---|---|---|
-| `level` | `level = "unit"` or `level = "unit_obs"` | Which covariance tier you are extracting. |
-| $\boldsymbol\Lambda_\text{level}$ | `latent(..., d = K)` | The `K` loading axes that create shared cross-trait covariance. |
-| $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ | `extract_Sigma_table(fit, level = "unit", part = "shared")` | The covariance explained by the shared latent axes only. |
-| $\boldsymbol\Psi_\text{level}$ and $\psi_{tt}$ | default `latent()` Psi; `extract_Sigma_table(fit, level = "unit", part = "unique")` | Trait-specific variance that stays in the denominator of correlations. |
-| $\boldsymbol\Sigma_\text{level}$ | `latent(...)`; `extract_Sigma_table(fit, level = "unit", part = "total")` | The full trait covariance matrix used for reporting. |
-| $\mathbf R$ | `extract_correlations(fit, tier = "unit")` or `$R` from `extract_Sigma()` | The correlation matrix after standardising $\boldsymbol\Sigma$. |
+| Gaussian model | `value ~ 0 + trait + latent(0 + trait | individual, d = 2)` | A reduced-rank multivariate model for the observed traits. |
+| `level` | `level = "unit"` or `level = "unit_obs"` | Which covariance tier the summary belongs to. |
+| $\boldsymbol\Lambda_\text{level}$ | `latent(..., d = K)` | Shared axes: traits that rise and fall together across units. |
+| $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ | `extract_Sigma_table(fit, level = "unit", part = "shared")` | Shared covariance explained by the latent axes only. |
+| $\boldsymbol\Psi_\text{level}$ and $\psi_{tt}$ | default `latent()` Psi; `extract_Sigma_table(fit, level = "unit", part = "unique")` | Trait-specific variance that keeps correlation denominators honest. |
+| $\boldsymbol\Sigma_\text{level}$ | `extract_Sigma_table(fit, level = "unit", part = "total")` | Full trait covariance: shared structure plus trait-specific variance. |
+| $\mathbf R$ | `extract_correlations(fit, tier = "unit")` or `$R` from `extract_Sigma()` | The correlation matrix after standardising full $\boldsymbol\Sigma$. |
 
 ## A side-by-side demonstration
 
@@ -111,8 +129,8 @@ is `data-raw/examples/make-covariance-edge-cases-example.R`; the article uses
 the shipped object so the first thing the reader sees is the model, not a long
 data-generating block.
 
-The truth has both a shared low-rank component and a trait-specific Psi
-diagonal. Fit the same data two ways:
+The truth has both a shared low-rank component and a trait-specific diagonal
+Psi component. Fit the same data two ways:
 
 * `Model A`: `latent(0 + trait | individual, d = 2, unique = FALSE)` (no Psi)
 * `Model B`: `latent(0 + trait | individual, d = 2)` (default Psi)
@@ -176,11 +194,9 @@ The wide data-frame formula expresses the same recommended model through the
 `traits(...)` left-hand side:
 
 ```{r formula-wide}
-formula_wide_full <- traits(
-  boldness, exploration, activity, aggression, sociability
-) ~ 1 + latent(1 | individual, d = 2)
-
-formula_wide_full
+form_B_wide <- traits(boldness, exploration, activity, aggression, sociability) ~
+  1 + latent(1 | individual, d = 2)
+form_B_wide
 ```
 
 ```{r fit}
@@ -205,7 +221,7 @@ fit_B <- gllvmTMB(
 )
 
 fit_B_wide <- gllvmTMB(
-  formula_wide_full,
+  form_B_wide,
   data = df_wide,
   unit = covex$fit_args$unit,
   family = covex$fit_args$family,
@@ -321,7 +337,7 @@ If you need a matrix for algebra checks, use `extract_Sigma()` directly:
 # Lambda Lambda^T alone (the "shared" component)
 extract_Sigma(fit_B, level = "unit", part = "shared")$Sigma |> round(2)
 
-# psi -- trait-specific unique variances (the "unique" component)
+# psi -- trait-specific diagonal variances (the `part = "unique"` component)
 extract_Sigma(fit_B, level = "unit", part = "unique")$s |> round(2)
 
 # Sigma_unit = Lambda Lambda^T + Psi (the "total" -- what you usually want)
@@ -357,7 +373,7 @@ For a reader-facing table, the alignment is:
 |---|---|---|
 | $c_t^2$ | `extract_communality(fit, level = "unit")` | Fraction of trait `t` variance explained by the shared latent axes. |
 | numerator | `extract_Sigma(fit, level = "unit", part = "shared")` diagonal | Shared variance for trait `t`. |
-| denominator | `extract_Sigma(fit, level = "unit", part = "total")` diagonal | Shared variance plus trait-specific unique variance. |
+| denominator | `extract_Sigma(fit, level = "unit", part = "total")` diagonal | Shared variance plus trait-specific diagonal variance. |
 
 **The catch**: with no-residual latent fits, $\psi_{tt} = 0$ for every trait by
 construction, so $c_t^2 = 1$ for every trait — the communality is
@@ -386,7 +402,7 @@ plot_correlations(
   corr_B,
   style = "heatmap",
   matrix_layout = "estimate_ci",
-  title = "Default latent trait correlations",
+  title = "Ordinary latent trait correlations",
   caption = "Fill shows estimates; lower labels show supplied Fisher-z bounds."
 )
 ```
@@ -473,9 +489,9 @@ $\boldsymbol\Sigma_{\text{unit\_obs}} = \boldsymbol\Lambda_{\text{unit\_obs}} \b
 
 ## Observation-level random effects for non-Gaussian fits
 
-For overdispersed Poisson and similar count families, the latent-scale
-"unique component" is recovered by adding an observation-level random
-effect (OLRE; Nakagawa & Schielzeth 2010):
+For overdispersed Poisson and similar count families, a latent-scale
+diagonal component can be represented by adding an observation-level
+random effect (OLRE; Nakagawa & Schielzeth 2010):
 
 $$
 \ln \lambda_{ij} = \eta_{ij} + e_{ij}, \qquad e_{ij} \sim \mathcal N(0, \sigma_e^2).
@@ -495,10 +511,10 @@ Nakagawa, Johnson & Schielzeth 2017).
 |---|---|---|
 | Cross-trait correlations on a Gaussian / lognormal / Gamma fit | ordinary `latent()` at every level | `latent(..., unique = FALSE)` omits Psi and can inflate correlations. |
 | Correlations on a binary fit | `latent()` only; `link_residual = "auto"` for marginal scale | Implicit residual depends on link (π²/3, 1, π²/6). |
-| Phylogenetic decomposition | folded `phylo_latent()` for the phylogenetic tier; ordinary `latent()` for the non-phylogenetic species tier; explicit `*_unique()` pairs only as compatibility spellings | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `Psi` pieces. |
+| Phylogenetic decomposition | folded `phylo_latent(..., unique = TRUE)` for the phylogenetic tier; ordinary `latent()` for the non-phylogenetic species tier; explicit `*_unique()` pairs only as compatibility spellings | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `Psi` pieces. |
 | Communality | `extract_communality(fit)` + the right Psi-aware pattern | Communality formula uses Σ; needs full Σ to be meaningful. |
 | `Lambda Lambda^T` only | `extract_Sigma(fit, part = "shared")` | Useful for ordination. |
-| `Psi` / `psi` only | `extract_Sigma(fit, part = "unique")` | Trait-specific unique variances as a vector. |
+| `Psi` / `psi` only | `extract_Sigma(fit, part = "unique")` | Trait-specific diagonal variances as a vector. |
 
 ## See also
 

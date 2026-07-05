@@ -174,6 +174,55 @@ test_that("predict() returns one row per training observation", {
   expect_true(all(c("site", "species", "trait", "est") %in% names(pf)))
 })
 
+test_that("predict(type = 'response') uses per-trait inverse links", {
+  skip_on_cran()
+  set.seed(29)
+  sim <- simulate_site_trait(
+    n_sites = 20, n_species = 3, n_traits = 3,
+    mean_species_per_site = 4,
+    Lambda_B = matrix(c(0.6, 0.4, -0.3), 3, 1),
+    seed = 29
+  )
+  sim$data$value[sim$data$trait == "trait_2"] <-
+    as.numeric(rbinom(sum(sim$data$trait == "trait_2"), 1, 0.35))
+  sim$data$value[sim$data$trait == "trait_3"] <-
+    as.numeric(rpois(sum(sim$data$trait == "trait_3"), 1.8))
+  sim$data$family <- factor(
+    c("gaussian", "binomial", "poisson")[as.integer(sim$data$trait)],
+    levels = c("gaussian", "binomial", "poisson")
+  )
+  fams <- list(gaussian(), binomial(), poisson())
+  attr(fams, "family_var") <- "family"
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + (0 + trait):env_1 + indep(0 + trait | site),
+    data = sim$data,
+    family = fams
+  )))
+
+  link <- predict(fit, type = "link")
+  resp <- suppressMessages(predict(fit, type = "response"))
+  expect_equal(nrow(link), nrow(resp))
+  expect_equal(link$est, as.numeric(fit$report$eta), tolerance = 1e-8)
+
+  tr <- as.character(link[[fit$trait_col]])
+  expected <- link$est
+  expected[tr == "trait_2"] <- plogis(expected[tr == "trait_2"])
+  expected[tr == "trait_3"] <- exp(expected[tr == "trait_3"])
+  expect_equal(resp$est, expected, tolerance = 1e-8)
+  expect_gt(min(resp$est[tr == "trait_2"]), 0)
+  expect_lt(max(resp$est[tr == "trait_2"]), 1)
+  expect_gte(min(resp$est[tr == "trait_3"]), 0)
+
+  nd <- sim$data[c(1L, 2L, 3L), ]
+  new_link <- predict(fit, newdata = nd, type = "link", re_form = ~0)
+  new_resp <- predict(fit, newdata = nd, type = "response", re_form = ~0)
+  new_tr <- as.character(new_link[[fit$trait_col]])
+  new_expected <- new_link$est
+  new_expected[new_tr == "trait_2"] <- plogis(new_expected[new_tr == "trait_2"])
+  new_expected[new_tr == "trait_3"] <- exp(new_expected[new_tr == "trait_3"])
+  expect_equal(new_resp$est, new_expected, tolerance = 1e-8)
+})
+
 test_that("predict(newdata) emits a notice about random-effect handling", {
   sim <- simulate_site_trait(
     n_sites = 30, n_species = 8, n_traits = 3,

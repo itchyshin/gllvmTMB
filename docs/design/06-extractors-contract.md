@@ -63,7 +63,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `extract_residual_split(fit)` | c | cl | cl | cl | OLRE $\sigma^2_d / \sigma^2_e / \sigma^2_{\text{total}}$ |
 | `extract_ordination(fit, level)` | c | cl | cl | cl | factor scores (rotation-invariant up to orthogonal transform) |
 | `extract_proportions(fit)` | r | r | r | r | delta-family conditional probability — reserved (post-CRAN; depends on delta-family support) |
-| `extract_cutpoints(fit)` | r | r | cl | r | ordinal-probit thresholds only (single-family ordinal) |
+| `extract_cutpoints(fit)` | r | r | cl | r | ordinal-probit thresholds, including mixed-family fits with ordinal traits |
 | `extract_ICC_site(fit)` | c | cl | cl | cl | legacy ICC; superseded by `extract_repeatability()` |
 | `bootstrap_Sigma(fit, n_boot, level, what, link_residual)` | c | cl | cl | cl | parametric-bootstrap path |
 | `getLoadings(fit, level, rotate)` | c | cl | cl | cl | raw or rotated $\Lambda$ matrix |
@@ -80,6 +80,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `tmbprofile_wrapper(fit, target)` | c | cl | cl | cl | Phase 1b PR #109 |
 | `confint_inspect(fit, parameter)` | c | cl | cl | cl | Phase 1b PR #121 |
 | `coverage_study(fit, R)` | c | cl | cl | r | Phase 1b PR #120 |
+| `extract_lv_effects(fit, level, type)` | cl | p | p | p | Design 73 C1 extractor for admitted ordinary unit-tier `latent(..., lv = ~ x)` fits; default public output is the axis / CLV coefficient (`alpha`), with `B_lv = Lambda alpha^T` available as the induced trait-scale effect; calibrated intervals remain gated |
 | `compare_loadings(fit1, fit2)` | c | cl | cl | cl | legacy; for two-stage cross-checks |
 | `compare_dep_vs_two_psi(fit)` | c | r | r | r | legacy task-label (PR #40 logic) |
 | `compare_indep_vs_two_psi(fit)` | c | r | r | r | legacy task-label |
@@ -410,6 +411,42 @@ loadings or ordinations carries a rotation-disclaimer
 caption (`getLoadings()` and `rotate_loadings()` already
 warn explicitly).
 
+Design 73 adds a C1
+`component = c("total", "mean", "innovation")` argument for
+predictor-informed latent-score fits. In that regime, `"mean"` returns
+`M alpha`, `"innovation"` returns the fitted innovation `e_hat`, and
+`"total"` returns `M alpha + e_hat`. The live C1 surface is ordinary
+unit-tier Gaussian plus pure binomial logit/probit/cloglog on the TMB
+path, plus a narrow complete-response Gaussian and binomial
+logit/probit/cloglog Julia bridge point route. Other Julia bridge rows
+still accept only `component = "total"`.
+
+#### `extract_lv_effects(fit, level = "unit", type = "axis_effect")`
+
+**Status**: C1 extractor for admitted ordinary unit-tier
+`latent(..., lv = ~ x)` fits; Wald SEs are available only when
+`se = TRUE` yields a positive-definite `sdreport()`.
+
+For `latent(..., lv = ~ x)` fits, this extractor returns the
+predictor-informed latent-score effects. The default public return is
+`type = "axis_effect"`, a row-first table for the axis / CLV coefficient
+`alpha` with columns `level`, `axis`, `predictor`, `estimate`,
+`std.error`, `lower`, `upper`, `rotation_status`,
+`uncertainty_status`, and `validation_row`. Axis-effect intervals are
+conditional on the fitted loading constraint and axis orientation.
+`type = "trait_effect"` returns the induced trait-scale slope surface
+$B_\text{lv} = \Lambda\alpha^\top$ with columns `level`, `trait`,
+`predictor`, `estimate`, `std.error`, `lower`, `upper`,
+`uncertainty_status`, and `validation_row`. Axis-scale `std.error`
+values are copied from the fixed-parameter `alpha_lv_B` block when
+available; trait-scale `std.error` values are copied from the TMB
+delta-method `ADREPORT(B_lv_unit)` output. Both are labelled
+`wald_sdreport_no_ci_validation` because coverage calibration remains
+target- and regime-specific. Narrow Julia bridge `X_lv` rows return
+point-estimate `alpha_lv`/`lv_effects` rows unless a retained Wald
+payload is present; bridge interval payloads are reader plumbing only
+until the named Julia bridge CI rows pass.
+
 #### `getLoadings(fit, level = "unit", rotate = c("none", "varimax", "promax"))`
 
 **Return**: a `T x d` matrix of loadings ($\Lambda$). Row
@@ -467,9 +504,10 @@ for fits where at least one trait has
 `family = ordinal_probit()`. Errors with class
 `gllvmTMB_extract_cutpoints_not_ordinal` otherwise.
 
-Reserved for non-Gaussian and mixed-family — those regimes
-require the per-trait family interrogation that is the M1
-audit (slice 1.1).
+Covered for ordinal-probit traits, including mixed-family fits
+where only some traits are ordinal. Non-ordinal fits fail loudly
+with the class above rather than returning an empty or ambiguous
+threshold table.
 
 #### `extract_proportions(fit)`
 
@@ -617,6 +655,8 @@ contract:
 | `bootstrap_Sigma` | ✅ yes | resamples $\Sigma$, not $\Lambda$ |
 | `getLoadings`, `rotate_loadings` | ❌ no | $\Lambda$ identity; warn |
 | `extract_ordination`, `getLV` | ❌ no | factor scores; warn |
+| `extract_lv_effects(type = "trait_effect")` | ✅ yes, after Design 73 implementation | reports $B_\text{lv} = \Lambda\alpha^\top$ |
+| `extract_lv_effects(type = "axis_effect")` | ❌ no, after Design 73 implementation | raw `alpha`; warn |
 | `compare_loadings` | partial | uses Procrustes alignment |
 
 The rotation-disclaimer caption (Darwin's rotational-
@@ -661,8 +701,8 @@ does NOT do. From this contract:
   parameters / their transformations.
 - **No fitted-scale / response-scale conversion**:
   `extract_*()` always returns on the latent (link) scale.
-  Response-scale outputs are M2 work
-  (`predict(type = "response")`).
+  Response-scale fitted values belong to `predict(type = "response")`,
+  which dispatches by row / trait for mixed-family fits.
 - **No probability-output for delta / hurdle**:
   `extract_proportions()` is reserved for the post-CRAN
   delta-family extension.

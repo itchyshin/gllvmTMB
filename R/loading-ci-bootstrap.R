@@ -265,7 +265,7 @@
   upper[pinned]      <- est[pinned]
   ci_status[pinned]  <- "pinned"
 
-  data.frame(
+  out <- data.frame(
     trait      = factor(rep(trait_names, times = d), levels = trait_names),
     axis       = factor(rep(axis_names,  each  = n_traits), levels = axis_names),
     estimate   = est,
@@ -278,4 +278,16 @@
     ci_status  = ci_status,
     stringsAsFactors = FALSE
   )
+  ## Surface the count of dropped replicates so intervals built from a small
+  ## surviving fraction are not mistaken for fully reliable ones (mirrors
+  ## .phylo_signal_bootstrap_ci, which also attaches attr(out, "n_failed")).
+  attr(out, "n_failed") <- n_failed
+  if (n_failed > 0L) {
+    n_total <- ncol(boot_entries)
+    cli::cli_warn(c(
+      "{n_failed} of {n_total} loading bootstrap refit{?s} failed or were rejected and are excluded from the CIs.",
+      "i" = "Percentile intervals are computed from the {n_total - n_failed} surviving replicate{?s}."
+    ))
+  }
+  out
 }

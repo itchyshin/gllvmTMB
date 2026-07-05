@@ -7,24 +7,17 @@
 phylo_latent(
   species,
   d = 1,
-  unique = TRUE,
   tree = NULL,
   vcv = NULL,
   A = NULL,
-  Ainv = NULL
+  Ainv = NULL,
+  unique = FALSE
 )
 }
 \arguments{
 \item{species}{Unquoted column name for the species factor.}
 
 \item{d}{Integer; number of phylogenetic latent factors.}
-
-\item{unique}{Logical; \code{TRUE} (default) auto-includes the
-phylo-structured diagonal trait-specific \eqn{\boldsymbol\Psi_{phy}}
-companion, folding the paired \code{phylo_latent() + phylo_unique()} into a
-single term (\eqn{\boldsymbol\Sigma_{phy} = \boldsymbol\Lambda
-\boldsymbol\Lambda^\top \otimes \mathbf{A} + \boldsymbol\Psi_{phy} \otimes
-\mathbf{A}}). Set \code{FALSE} for the loadings-only / rotation-invariant subset.}
 
 \item{tree}{An \code{ape::phylo} object. \strong{Canonical.} Use this if
 you have a tree.}
@@ -40,6 +33,14 @@ argument naming (M2.8b, 2026-05-17). Supply one of \code{tree},
 \item{Ainv}{Sparse precision matrix (inverse of \code{A}). Densified
 via \code{solve()} internally for v0.2.0; sparse direct engine
 path is a v0.3.0 follow-up.}
+
+\item{unique}{Logical; \code{TRUE} auto-includes the
+phylo-structured diagonal trait-specific \eqn{\boldsymbol\Psi_{phy}}
+companion, folding the paired \code{phylo_latent() + phylo_unique()} into a
+single term (\eqn{\boldsymbol\Sigma_{phy} = \boldsymbol\Lambda
+\boldsymbol\Lambda^\top \otimes \mathbf{A} + \boldsymbol\Psi_{phy} \otimes
+\mathbf{A}}). The default \code{FALSE} preserves the loadings-only /
+rotation-invariant subset.}
 }
 \value{
 A formula marker; never evaluated.

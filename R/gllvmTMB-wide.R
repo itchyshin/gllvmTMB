@@ -131,6 +131,16 @@ gllvmTMB_wide <- function(
       )
     )
   )
+  ## Validate the latent rank up front: as.integer() would otherwise silently
+  ## truncate a non-integer d, and d = 0/-1/NA/length>1 would splice a bad value
+  ## into the formula text and fail opaquely (#637).
+  if (length(d) != 1L || !is.finite(d) || d < 1 || d != round(d)) {
+    cli::cli_abort(c(
+      "{.arg d} (latent rank) must be a single positive integer.",
+      "x" = "Got: {.val {d}}."
+    ))
+  }
+  d <- as.integer(d)
   if (!is.matrix(Y) && !is.data.frame(Y)) {
     cli::cli_abort("Y must be a matrix or data frame.")
   }
@@ -169,6 +179,9 @@ gllvmTMB_wide <- function(
     },
     n_units = n_sites,
     n_traits = n_species,
+    ## Always pass the NA mask (both modes) so the weights/Y NA-alignment is
+    ## validated; in include mode the normaliser keeps masked cells with a
+    ## finite sentinel rather than flowing their NA into validation (#589).
     na_mask = is.na(Y),
     drop_masked = drop_na_cells
   )

@@ -1,6 +1,6 @@
 ---
 title: "Stacked-trait GLLVMs with gllvmTMB"
-tier: 3 # superseded by Get Started plus Morphometrics until rewritten
+tier: 3 # retire-candidate draft; likely absorbed by Get Started later
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -24,6 +24,14 @@ knitr::opts_chunk$set(
   warning    = FALSE
 )
 ```
+
+> **Developer Note -- retire candidate.** This page is buildable and
+> linked from Developer Notes so maintainers can audit the older
+> stacked-trait teaching path. It is not the current first-stop
+> tutorial. Start with [Get started](gllvmTMB.html),
+> [First Gaussian morphology model](morphometrics.html), and
+> [Covariance and correlation](covariance-correlation.html); this page
+> may later be merged into those public guides.
 
 ```{r setup}
 library(gllvmTMB)
@@ -80,7 +88,7 @@ The reduced-rank decomposition $\Sigma = \boldsymbol{\Lambda}\boldsymbol{\Lambda
 is the stacked-trait GLLVM workhorse (Hui et al. 2017,
 *Methods in Ecology and Evolution*; Niku et al. 2017,
 *Environmental and Ecological Statistics*) using $\boldsymbol{\Psi}$ for
-the diagonal trait-unique-variance matrix (factor-analysis / SEM
+the diagonal trait-specific variance matrix (factor-analysis / SEM
 convention; Bollen 1989, Mulaik 2010). The SPDE-mesh spatial term
 $r_{st}$ is inherited from `sdmTMB` (Anderson et al. 2025,
 *Journal of Open Source Software*).

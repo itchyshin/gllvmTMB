@@ -79,28 +79,29 @@ support from end-to-end verification:
 | `gllvmTMB_wide(Y, ...)` | **partial / soft-deprecated in 0.2.0** | Legacy matrix-in wrapper. It remains exported for migration and matrix-first workflows, but new examples use `gllvmTMB(traits(...) ~ ..., data = df_wide)` instead. |
 | `0 + trait` and `(0 + trait):x` | **covered** | Long-form trait-stacked fixed-effect grammar. Test evidence: `test-stage1-stacked-fixed-effects.R`, `test-canonical-keywords.R` (via validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
 | `latent(0 + trait \| g, d = K)` | **covered / ordinary Psi folded** | Reduced-rank loadings plus the default diagonal $\boldsymbol\Psi$ companion for $T$ traits across grouping factor `g`, rank $K \le T$. Use `unique = FALSE` for the old no-residual subset; use `common = TRUE` for one shared ordinary $\psi$ across traits. Test evidence: `test-stage2-rr-diag.R`, `test-keyword-grid.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (validation-debt register FG-04 / FG-06; Phase 0B promotion 2026-05-16; ordinary latent-Psi fold and common-Psi re-home slices 2026-06-18). |
+| `latent(..., lv = ~ x)` | **partial / C1** | Predictor-informed latent-score means. Design 73 now admits ordinary unit-tier `latent()` fits for Gaussian and pure binomial logit/probit/cloglog responses with unit-level `X_lv_B`, TMB `alpha_lv_B`, the zero-mean innovation retained, and point-estimate `B_lv_unit = Lambda alpha^T` extractor support. This is smoke/algebra evidence plus focused native Gaussian recovery and small standard-link binary `B_lv` recovery gates, not interval calibration or broad recovery. Random terms, offsets, `mi()`, smooths, response/trait columns, exact fixed-RHS overlap, nonconstant within-unit predictors, rank-deficient designs, `REML = TRUE`, unsupported non-Gaussian families, unsupported tiers, augmented random-regression combinations, and source-specific / kernel forms still reject until their validation rows move (validation-debt register FG-18 / RE-13 / EXT-31 / LV-01..LV-07). |
 | `latent(1 + x \| unit, d = K)` / long-form equivalents | **partial / Gaussian covered** | Ordinary individual-level Gaussian random-regression decomposition over the augmented `(intercept, slope) x trait` coefficient vector. The Gaussian engine reports `Lambda_aug Lambda_aug^T`, the default augmented diagonal `Psi_B,aug`, and their total through `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`. Explicit `+ unique(1 + x \| unit)` remains accepted as compatibility syntax, and standalone augmented `unique()` remains the diagonal-only compatibility mode. Test evidence: `test-ordinary-latent-random-regression.R` (parser, long fit, `traits(...)` wide fit, Gaussian default composition and recovery, explicit compatibility composition, explicit compatibility diagonal fit, Poisson latent-only smoke, rank / unit_obs / mismatched-slope / Gaussian-only guards). Non-Gaussian augmented `unique()` remains guarded, and non-Gaussian augmented `latent()` stays low-rank-only. |
 | `unique(0 + trait \| g)` | **covered / soft-deprecated compatibility** | Trait-diagonal $\boldsymbol\Psi$ on grouping factor `g`. New standalone diagonal code should use `indep(0 + trait \| g)`, with `common = TRUE` when one shared marginal variance is intended. Test evidence: `test-stage2-rr-diag.R`, `test-cross-sectional-unique.R`, `test-unique-family-deprecation.R` (validation-debt register FG-05; Phase 0B promotion 2026-05-16; lifecycle warning slice 2026-06-18). |
 | `latent + unique` paired | **covered / soft-deprecated compatibility** | The explicit-Psi spelling remains accepted, but ordinary `latent()` now auto-emits $\boldsymbol\Psi$ by default. This compatibility pair should be migrated to `latent()` alone; paired legacy `unique(..., common = TRUE)` should migrate to ordinary intercept-only `latent(..., common = TRUE)`. Test evidence: `test-stage2-rr-diag.R`, `test-mixed-response-sigma.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (validation-debt register FG-06; Phase 0B promotion 2026-05-16; lifecycle warning, ordinary fold, and common-Psi re-home slices 2026-06-18). |
 | `indep(0 + trait \| g)` | **covered** | Explicit marginal / independent mode; same diagonal covariance as standalone `unique()` and always used alone. `indep(..., common = TRUE)` is the covered scalar marginal-only replacement for standalone `unique(..., common = TRUE)`. Test evidence: `test-canonical-keywords.R` (standalone equivalence with `unique()`, including `common = TRUE`), `test-stage3-propto-equalto.R` (Gaussian) + `test-formula-grammar-smoke.R` (binomial) (validation-debt register FG-07; Phase 0B.2 promotion 2026-05-16; common re-home slice 2026-06-18). |
 | `dep(0 + trait \| g)` | **covered** | Fully unstructured trait covariance estimated directly. Test evidence: `test-stage3-propto-equalto.R` (Gaussian) + `test-formula-grammar-smoke.R` (Poisson) (validation-debt register FG-08; Phase 0B.2 promotion 2026-05-16). |
-| `(omit)` ↔ scalar covariance | **covered / source-specific only** | For ordinary `latent()`, omission now means default Psi is included; write `unique = FALSE` for no ordinary Psi. For source-specific rows, omitting `*_unique` / `*_indep` / `*_dep` still means no trait-specific term on that correlation source. Test evidence: `test-stage2-rr-diag.R` (`latent(..., unique = FALSE)` matches glmmTMB `rr()`), `test-canonical-keywords.R` (source-specific latent-only fits) (Phase 0B.3 promotion 2026-05-16; ordinary fold slice 2026-06-18). |
-| `phylo_latent(species, d = K, tree = tree)` | **covered / phylo Psi folded** | Reduced-rank phylogenetic loadings plus the default phylo-structured diagonal $\boldsymbol\Psi_\text{phy}$ companion using sparse $A^{-1}$. Use `unique = FALSE` for the loadings-only subset; the explicit `phylo_latent(..., unique = FALSE) + phylo_unique()` pair remains accepted compatibility syntax. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R`, `test-phylo-latent-unique-fold.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16; phylo latent-Psi fold 2026-06-21). |
+| `(omit)` ↔ scalar covariance | **covered** | Omitting `indep()`/`dep()` chooses the ordinary keyword default. For `latent()`, that default now includes the diagonal Psi companion; use `unique = FALSE` for the old no-residual subset. Test evidence: `test-stage2-rr-diag.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (Phase 0B.3 promotion 2026-05-16; ordinary latent-Psi fold 2026-06-18). |
+| `phylo_latent(species, d = K, tree = tree)` / `phylo_latent(..., unique = TRUE)` | **covered / explicit phylo Psi fold** | Bare `phylo_latent()` is reduced-rank phylogenetic loadings using sparse $A^{-1}$; `unique = TRUE` adds the phylo-structured diagonal $\boldsymbol\Psi_\text{phy}$ companion. The explicit `phylo_latent(..., unique = FALSE) + phylo_unique()` pair remains accepted compatibility syntax; duplicate `unique = TRUE + phylo_unique()` errors. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R`, `test-phylo-latent-unique-fold.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16; phylo latent-Psi fold 2026-06-21; explicit source-Psi contract 2026-07-03). |
 | `phylo_unique(species, tree = tree)` | **covered / soft-deprecated compatibility** | Trait-diagonal $\boldsymbol\Psi_\text{phy}$ scaled by phylogenetic covariance. New standalone diagonal code should use `phylo_indep(0 + trait \| species)`. Paired explicit-Psi forms remain accepted until the latent-Psi fold/removal slice lands. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R`, `test-unique-family-deprecation.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16; lifecycle warning slice 2026-06-18). |
 | `phylo_unique(1 + x \| species)` / `phylo_unique(0 + trait + (0 + trait):x \| species)` | **claimed** | Phase 56.3 parser bridge plus Phase 56.4 Gaussian anchor-cell evidence for augmented-LHS phylogenetic random regression. Parser classification and two-column `Z_phy_aug` construction are exercised by `test-phase56-3-phylo-unique-parser.R`; recovery, wide-long byte-identity, and the forced-`n_lhs_cols` negative test are exercised by `test-phylo-unique-slope-gaussian.R`. This row stays `claimed` until Phase 56.6 walks the validation-debt register / NEWS / article surface. |
 | `phylo_scalar(species, vcv = Cphy)` | **covered** | Single trait-scalar phylogenetic random effect; the simplest phylogenetic mixed-model form. Test evidence: `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (dense-vcv path) (validation-debt register PHY-04; Phase 0B.2 promotion 2026-05-16). |
 | `phylo_indep` / `phylo_dep` | **covered** | Marginal-only phylogenetic trait covariance (`phylo_indep`, equivalent to `phylo_unique`) and full-rank phylogenetic latent covariance (`phylo_dep`, equivalent to `phylo_latent(..., d = n_traits)`). Test evidence: `test-canonical-keywords.R`, `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (both forms) (validation-debt register PHY-05; Phase 0B.2 promotion 2026-05-16). |
-| `animal_latent(id, d = K, pedigree = ped)` | **covered / animal Psi folded** | Reduced-rank additive-genetic loadings plus the default diagonal $\boldsymbol\Psi_\text{animal}$ companion on the same relatedness matrix $A$. Use `unique = FALSE` for the loadings-only subset; the explicit `animal_latent(..., unique = FALSE) + animal_unique()` pair remains accepted compatibility syntax. Test evidence: `test-animal-keyword.R`, `test-matrix-animal-nongaussian.R`, `test-animal-latent-unique-fold.R` (validation-debt register ANI-05; animal latent-Psi fold 2026-06-21). |
+| `animal_latent(id, d = K, pedigree = ped)` / `animal_latent(..., unique = TRUE)` | **covered / explicit animal Psi fold** | Bare `animal_latent()` is reduced-rank additive-genetic loadings on the same relatedness matrix $A$; `unique = TRUE` adds the diagonal $\boldsymbol\Psi_\text{animal}$ companion. The explicit `animal_latent(..., unique = FALSE) + animal_unique()` pair remains accepted compatibility syntax; duplicate `unique = TRUE + animal_unique()` errors. Test evidence: `test-animal-keyword.R`, `test-matrix-animal-nongaussian.R`, `test-animal-latent-unique-fold.R` (validation-debt register ANI-05; animal latent-Psi fold 2026-06-21; explicit source-Psi contract 2026-07-03). |
 | `spatial_latent(0 + trait \| sites, d = K, unique = TRUE, mesh = mesh)` or `spatial_latent(0 + trait \| sites, d = K, unique = TRUE, coords = c("lon", "lat"))` and siblings | **partial / Gaussian total-covariance fold covered** | Spatial analogues of the phylo keywords. Grouping factor is `sites`; spatial geometry supplied via either `mesh = make_mesh(...)` or `coords = c("lon", "lat")` (engine builds the mesh internally). `spatial_latent(..., unique = FALSE)` is the old low-rank-only path, while `unique = TRUE` estimates the total spatial covariance $\Sigma_\text{spde} = \Lambda_\text{spde}\Lambda_\text{spde}^\top + \Psi_\text{spde}$ by keeping both shared and per-trait SPDE fields active. Legacy `spatial_latent(...) + spatial_unique(...)` remains accepted as compatibility syntax for the same unique fold. See "Spatial axis convention" below. Test evidence: `test-keyword-grid.R` (parser marker, both random blocks, total extractor, rank-1 total correlations not forced to `+/-1`), `test-spatial-latent-recovery.R` (low-rank path), `test-stage4-spde.R` (spatial_unique), `test-formula-grammar-smoke.R` (spatial_indep, spatial_dep, spatial_scalar) (validation-debt register SPA-03, SPA-04; Phase 0B.2 promotion 2026-05-16). Validation-debt register SPA-02 remains `partial` until heavy profile/family coverage lands. |
-| `kernel_latent(unit, K = A, d = q, name = "known") + kernel_unique(unit, K = A, name = "known")` | **covered / kernel Psi folded** | Generic dense-kernel reduced-rank loadings plus the default kernel-structured diagonal $\boldsymbol\Psi_\text{kernel}$ companion for one named user-supplied matrix `K`. Use `unique = FALSE` for the loadings-only subset; the explicit `kernel_latent(..., unique = FALSE) + kernel_unique()` pair remains accepted compatibility syntax, and `kernel_unique()` alone warns as compatibility syntax; the Paper 2 multi-kernel path remains latent-only and keeps explicit kernel-level Psi deferred. C1 routes through the phylo-equivalent dense `vcv` path and exposes the tier via `extract_Sigma(level = "known")`. Test evidence: `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R` check parser emission, malformed-`unique` rejection, default-vs-explicit-pair equivalence, and dense `phylo_latent(..., vcv = A)` equivalence to less than `1e-6`; `test-unique-family-deprecation.R` covers the lifecycle warning (validation-debt register KER-02; Design 65 C1; kernel latent-Psi fold 2026-06-21). |
+| `kernel_latent(unit, K = A, d = q, name = "known")` / `kernel_latent(..., unique = TRUE)` | **covered / explicit kernel Psi fold** | Bare `kernel_latent()` is generic dense-kernel reduced-rank loadings for one named user-supplied matrix `K`; `unique = TRUE` adds the kernel-structured diagonal $\boldsymbol\Psi_\text{kernel}$ companion. The explicit `kernel_latent(..., unique = FALSE) + kernel_unique()` pair remains accepted compatibility syntax, and `kernel_unique()` alone warns as compatibility syntax; duplicate `unique = TRUE + kernel_unique()` errors; the Paper 2 multi-kernel path remains latent-only and keeps explicit kernel-level Psi deferred. C1 routes through the phylo-equivalent dense `vcv` path and exposes the tier via `extract_Sigma(level = "known")`. Test evidence: `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R` check parser emission, malformed-`unique` rejection, explicit-vs-pair equivalence, and dense `phylo_latent(..., vcv = A)` equivalence to less than `1e-6`; `test-unique-family-deprecation.R` covers the lifecycle warning (validation-debt register KER-02; Design 65 C1; kernel latent-Psi fold 2026-06-21; explicit source-Psi contract 2026-07-03). |
 | `kernel_indep(unit, K = A)` / `kernel_dep(unit, K = A)` | **covered** | Generic dense-kernel marginal-only and full-rank companion modes. C1 fit equivalence is covered in `test-kernel-equivalence.R` against `phylo_indep(..., vcv = A)` and `phylo_dep(..., vcv = A)`; the engine route is the same phylo-equivalent dense `vcv` slot used by `kernel_latent()` / `kernel_unique()` (validation-debt register KER-02; Design 65 C1). |
 | `meta_V(V = V)` | **partial** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form and V-only parser compatibility), `test-traits-keyword.R` (wide `traits(...)` preservation), and `test-block-V.R` (block-V helper) (validation-debt register MET-01, MET-02). The legacy `meta_known_V(V = V)` is retained as a deprecated alias; both names desugar identically in the parser. Single-V inference validation remains partial under MET-01. |
 | `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
 | `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 4 × 5 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
 | `(1 + x \| g)` ordinary random slope outside a structural keyword | **reserved** | Bare-bar random slopes remain rejected by `parse_re_int_call()`. Ordinary random regression is keyworded through `latent(1 + x \| unit, d = K)`; structured sources keep their own `phylo_*()` / `spatial_*()` forms. |
 | `(1 \| g1/g2)` slash-form nested random effects | **rejected** | Not parsed. Use globally unique level names instead (see "Crossed-vs-nested" below). |
-| `latent(0 + trait \| g) + lambda_constraint = list(B = M)` | **covered (Gaussian)** | Confirmatory factor analysis on the latent loadings; pins specific entries of $\boldsymbol\Lambda$. Test evidence: `test-lambda-constraint.R` asserts pinned-entry values within `1e-8` tolerance for diagonal-pin, off-diagonal-pin-to-zero, off-diagonal-pin-to-non-zero, W-level, and simultaneous B+W pin cases (validation-debt register LAM-01, LAM-02; Phase 0B.3 promotion 2026-05-16). Phase M2 verifies on binary (LAM-03 stays partial until M2.3). |
-| `suggest_lambda_constraint(fit)` | **covered (Gaussian)** | Helper that recommends constraint matrices. Test evidence: `test-suggest-lambda-constraint.R` asserts the helper returns well-typed `T x d` matrices with correct upper-triangle pinning, dimension, row/column names, and `usage_hint` for `lower_triangular` and `pin_top_one` conventions across `K = 1, 2, 3` (validation-debt register LAM-04 Gaussian regime; Phase 0B.3 promotion 2026-05-16). Phase M2 verifies on binary at $n_\text{items} \in \{10, 20, 50\}$, $d \in \{1, 2, 3\}$ (LAM-04 binary stays partial until M2.4). |
+| `latent(0 + trait \| g) + lambda_constraint = list(B = M)` | **covered (Gaussian and binary IRT)** | Confirmatory factor analysis on the latent loadings; pins specific entries of $\boldsymbol\Lambda$. Test evidence: `test-lambda-constraint.R` asserts pinned-entry values within `1e-8` tolerance for diagonal-pin, off-diagonal-pin-to-zero, off-diagonal-pin-to-non-zero, W-level, and simultaneous B+W pin cases (validation-debt register LAM-01, LAM-02; Phase 0B.3 promotion 2026-05-16). `test-m2-3-lambda-constraint-binary.R` plus mirt and galamm cross-checks cover binary IRT fits (LAM-03). |
+| `suggest_lambda_constraint(fit)` / `suggest_lambda_constraints(fit)` | **covered (Gaussian and binary IRT)** | Helper that recommends constraint matrices, plus a plural comparison wrapper for threshold / Wald / profile conventions. Test evidence: `test-suggest-lambda-constraint.R` asserts well-typed `T x d` matrices with correct upper-triangle pinning, dimension, row/column names, and `usage_hint` for `lower_triangular` and `pin_top_one` conventions across `K = 1, 2, 3`; `test-m2-4-suggest-lambda-constraint-binary.R` covers the binary suggester→fit recovery cycle at $n_\text{items} \in \{10, 20, 50\}$, $d \in \{1, 2, 3\}$ (validation-debt register LAM-04). |
 | `meta_V(V = V, type = "proportional")` | **planned (post-CRAN)** | Unification of known-additive and proportional sampling-variance forms per Nakagawa 2022 EcoLetters. See vision doc "Planned extensions". |
 | `weights = w` argument | **planned (post-CRAN)** | glmmTMB-style row-weights, separate from `meta_V()`. See vision doc "Planned extensions". |
 
@@ -173,6 +174,7 @@ The compact RHS shorthand is:
 | `1` | `0 + trait` |
 | `env` | `(0 + trait):env` |
 | `latent(1 \| g, d = K)` | `latent(0 + trait \| g, d = K)` |
+| `latent(1 \| g, d = K, lv = ~ x_lv)` | `latent(0 + trait \| g, d = K, lv = ~ x_lv)` for the current ordinary unit-tier C1 surface |
 | `latent(1 + env \| g, d = K)` | `latent(0 + trait + (0 + trait):env \| g, d = K)` |
 | `indep(1 \| g)` | `indep(0 + trait \| g)` |
 | `dep(1 \| g)` | `dep(0 + trait \| g)` |
@@ -317,27 +319,79 @@ decomposition. The constrained submodels are:
 - `indep(...)` / soft-deprecated `unique(...)` alone →
   $\boldsymbol\Sigma = \boldsymbol\Psi$ (diagonal-only; no shared axes).
 
-**Transition rule**: ordinary `latent(...)` alone now gives the
-decomposition above. `latent(..., unique = FALSE)` gives the old
-$\boldsymbol\Lambda\boldsymbol\Lambda^\top$ subset. `unique(...)`
-alone remains diagonal-only compatibility syntax and should migrate to
-`indep(...)` for new standalone marginal models; write
-`indep(..., common = TRUE)` for the scalar standalone marginal model.
-For the paired ordinary scalar Psi decomposition, migrate legacy
+**Transition rule (ordinary `latent()`)**: `unique(...)` alone remains
+diagonal-only compatibility syntax and should migrate to `indep(...)`
+for new standalone marginal models; write `indep(..., common = TRUE)`
+for the scalar standalone marginal model. For the paired ordinary
+scalar Psi decomposition, migrate legacy
 `latent(..., unique = FALSE) + unique(..., common = TRUE)` to
 `latent(..., common = TRUE)`.
 
-`phylo_latent(...)`, `animal_latent(...)`, and `kernel_latent(...)`
-now carry their source-structured diagonal $\boldsymbol\Psi$ companions by default
-(`unique = TRUE`), like ordinary `latent()`: use
-`*_latent(..., unique = FALSE)` for the loadings-only subset, and the
-explicit `*_latent(..., unique = FALSE) + *_unique()` pair remains accepted
-(the auto-companion is deduped against it). Multi-kernel fits with two or more
-named `kernel_latent()` tiers remain the existing latent-only first wave; their
-auto-generated kernel-Psi companions are pruned before the multi-kernel engine
-gate. The remaining source-specific decomposition `spatial_latent +
-spatial_unique` still uses the **explicit paired spelling** because the SPDE
-diagonal companion engine slot is blocked.
+Source-specific and kernel latent terms are loadings-only by default:
+`phylo_latent(...)`, `animal_latent(...)`,
+`spatial_latent(...)`, and `kernel_latent(...)` with no `unique`
+argument give $\boldsymbol\Sigma =
+\boldsymbol\Lambda\boldsymbol\Lambda^\top$. Set
+`*_latent(..., unique = TRUE)` for the source-tier decomposition
+$\boldsymbol\Sigma =
+\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$.
+The explicit pair `*_latent(..., unique = FALSE) + *_unique()`
+remains accepted as compatibility syntax. The duplicate pair
+`*_latent(..., unique = TRUE) + *_unique()` is rejected as
+double-counting the same diagonal $\boldsymbol\Psi$. Multi-kernel fits
+with two or more named `kernel_latent()` tiers remain the existing
+latent-only first wave; explicit multi-kernel `kernel_unique()` Psi
+remains deferred. The spatial source is the remaining exception: the
+total-covariance decomposition `spatial_latent + spatial_unique` still
+relies on the **explicit paired spelling** because the SPDE diagonal
+companion engine slot is blocked, and its total-covariance fold stays
+`partial` under SPA-02 (see the keyword table above).
+
+## Predictor-informed latent-score means (`lv = ~ ...`)
+
+Design 73 adds a term-local `lv` argument for ordinary `latent()`
+terms. The argument is a one-sided fixed-effect formula for the mean
+of the latent scores:
+
+```r
+latent(1 | unit, d = 2, lv = ~ reporting_quality + policy_used)
+```
+
+The intended ordinary unit-tier Gaussian model is:
+
+$$
+\eta_{it} = X_{it}\beta + \lambda_t^\top z_i + q_{it},
+\quad
+z_i = M_i\alpha + e_i,\quad e_i \sim N(0, I_K),
+$$
+
+with $\Sigma_\text{unit} = \Lambda\Lambda^\top + \Psi$ and the
+trait-scale estimand
+$B_\text{lv} = \Lambda\alpha^\top$. The outer `latent()` term still
+supplies the latent-score innovation `e_i`; `lv` does not replace the
+innovation with a mean-only reduced-rank model.
+
+The current runtime supports the ordinary unit-tier C1 surface:
+it stores the formula as `extra$lv_formula` on the reduced-rank term,
+keeps the auto-added diagonal `Psi` companion free of `lv` metadata,
+builds unit-level `X_lv_B`, estimates `alpha_lv_B`, preserves the
+zero-mean innovation, and reports the trait-scale `B_lv_unit` point
+estimate. Focused native TMB Gaussian recovery now exists for `B_lv`
+and `Sigma`, but interval calibration and broad family recovery remain
+gated. The following stay rejected or planned:
+
+- random terms, offsets, `mi()`, smooth terms, response columns, or
+  trait columns inside `lv`;
+- predictors that vary within the grouping level of the outer
+  `latent()` term;
+- exact overlap between fixed-effect RHS predictors and `lv`
+  predictors;
+- `REML = TRUE`, unsupported non-Gaussian families, augmented random-regression
+  combinations, `unit_obs`, `cluster`, `cluster2`, `phylo_*`,
+  `animal_*`, `spatial_*`, and `kernel_*` forms.
+
+See `docs/design/73-predictor-informed-latent-scores.md` for the
+math, implementation stages, validation rows, and extractor contract.
 
 ## Long-format trait-stacked grammar
 
@@ -533,7 +587,7 @@ favour of the in-keyword `vcv = Cphy` argument since 0.2.0.
 ```r
 gllvmTMB(
   value ~ 0 + trait +
-    phylo_latent(species, d = 1, tree = tree) +
+    phylo_latent(species, d = 1, tree = tree, unique = FALSE) +
     phylo_unique(species, tree = tree),
   data = df,
   cluster = "species"

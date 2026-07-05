@@ -9,7 +9,7 @@ loading_profile(
   level = c("unit", "unit_obs"),
   entries = NULL,
   n_grid = 11L,
-  grid_extent = 10,
+  grid_extent = 6,
   conf_level = 0.95
 )
 }

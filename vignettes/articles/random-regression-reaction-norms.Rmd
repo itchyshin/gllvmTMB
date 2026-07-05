@@ -25,11 +25,14 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Internal article gate.** This page is not yet in the public article menu.
-> It is a working behavioural-syndrome example for Gaussian individual-level
-> reaction norms. The fitted examples below are point-estimate teaching
-> evidence; public promotion still needs browser review and a final uncertainty
-> review.
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the Gaussian
+> individual-level reaction-norm path. It is not a first-stop tutorial
+> and still needs a plain-language reader pass before promotion to
+> Model Guides.
+>
+> The fitted examples below are point-estimate teaching evidence; public
+> promotion still needs browser review and a final uncertainty review.
 
 This draft fits an individual-level random-regression GLLVM for a behavioural
 syndrome question. The unit is the **individual**, the repeated occasion is

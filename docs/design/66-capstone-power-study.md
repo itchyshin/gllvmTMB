@@ -24,6 +24,18 @@ Design 35 (validation-debt register -- rows CI-08, CI-10, FAM-*, RE-*,
 ANI-*), Design 65 (cross-lineage coevolution kernel -- Gamma; scope
 question in section 12).
 
+**2026-06-23 scaling gate:** the current pilot is diagnostic only. Do
+not launch a broad Totoro/DRAC campaign or promote `CI-08` / `CI-10`
+until the pilot audit and metric-repair slices resolve the remaining
+issues: pre-2026-06-24 binary logit-harness artifacts must not be read
+as true `binomial_probit` evidence, ordinal-probit cells must produce
+primary coverage rows or be excluded from the confirmatory core,
+`signal = 0` diagnostics must not be described as Type-I error for
+positive `Sigma_unit_diag` targets, and decision aggregates must report
+MCSE with explicit fit-health denominators. The first compute step after that
+audit is an immutable-chunk smoke ladder, not the full `n_sim = 2000`
+grid.
+
 **Backed by (verified on origin/main):** PR #364 (merged 2026-05-31,
 `fix(m3): coverage gate keys on Sigma_unit_diag bootstrap, not psi
 proxy`); PR #366 (merged 2026-05-31, RE-09 within-unit latent()+unique()
@@ -116,6 +128,14 @@ between-unit structure is absent (signal = 0), the rejection rate of the
 "structure present" decision is at or below the nominal alpha (target ~=
 0.05 within MCSE). *Falsified* if the false-positive rate is materially
 inflated.
+
+**Current audit caveat (2026-06-23).** The existing pilot's
+`signal = 0` cells should not yet be interpreted as H4 evidence for
+`Sigma_unit_diag`, because total diagonal variance can remain positive
+when the shared latent loading signal is absent. The Type-I target must
+be a pre-specified structure-present decision, such as off-diagonal
+correlation, a variance-share component, or another explicitly defined
+null, before the metric is used in the capstone.
 
 **Non-claims (state explicitly in the paper).** (i) We do not claim
 asymptotic coverage at n = 10,000; the anchor is the moderate field-study
@@ -255,8 +275,11 @@ Rationale for the level choices:
 - **n_species 50/150:** brackets the Boettiger et al. (2012) low-power
   regime (n=50) and a comfortable regime (n=150) so H3's power curve has
   a visible rise.
-- **Signal {0, moderate, strong}:** the 0 level *is* the Type-I error
-  cell (H4); moderate/strong trace the power curve (H3).
+- **Signal {0, moderate, strong}:** the 0 level is the signal-absent
+  condition needed for the future H4 Type-I target, but the current
+  Phase-1 `Sigma_unit_diag` pilot reports it only as a signal-zero
+  coverage diagnostic. It is not a Type-I error estimate until a
+  structure-detection rejection rule is specified.
 
 ### 4.3 Tier 1 -- Family-completion extension (nice-to-have)
 
@@ -301,11 +324,46 @@ them; this is a correctness constraint, not a power-tuning choice.
 
 Reuse the M3 seed discipline: a per-dispatch `seed_base` (distinct per
 run to avoid collision, per the workflow input help) plus deterministic
-per-cell/per-rep derivation inside `m3_run_cell()`. Persist the long
-per-replicate grid (`*-grid.rds`) and the per-cell summary
-(`*-summary.rds`) exactly as `dev/precompute-m3-grid.R` already does, so
-every failed fit, seed, and CI is auditable (Williams et al. 2024
-transparency items; Design 42 sec.1).
+per-cell/per-rep derivation inside `m3_run_cell()`. The Phase-1
+accumulation driver writes a per-shard manifest before fitting. Each
+manifest row records the source SHA, workflow run id/number, shard,
+cell, current accumulated-store path, future immutable chunk path,
+planned replicate count, batch seed base, and `rep_seed` range. The
+persist/status path validates the merged manifest for duplicate output
+paths, duplicate chunk paths, overlapping per-cell replicate windows,
+and overlapping seed ranges before treating the store as auditable.
+For future immutable-chunk array jobs, `--mode=chunk` runs the active
+rows in a chunk manifest and writes one RDS per planned chunk, while
+`--mode=chunk-audit` reads the written manifests and requires every
+planned chunk file to exist and be non-empty before any aggregation
+step proceeds. `--mode=chunk-aggregate` is the derived single-writer
+step: it rereads the validated chunks, checks that each file's `rep`
+values match the manifest window, rejects duplicate
+`cell_id`/`rep`/`trait_id`/`target` rows, and writes per-cell aggregate
+RDS files under `_chunk-aggregate/`. Effective per-cell seed blocks are
+separated by a fixed stride larger than the intended batch size after
+the harness family/d seed offset is applied, so same-run cells do not
+share `rep_seed` values.
+
+Persist the long per-replicate grid (`<cell-id>.rds`) and rebuild
+`pilot-index.rds` as a derived cache from those per-cell files. The
+manifest plus per-cell grids, not the shared index, are the audit trail
+for every failed fit, seed, and CI (Williams et al. 2024 transparency
+items; Design 42 sec.1). The first Totoro/DRAC smoke step is
+manifest-only: `dev/power-pilot-smoke.sh` runs with
+`SMOKE_STAGE=manifest`, or `dev/power-pilot-slurm-smoke.sh` writes and
+optionally submits the same manifest-only smoke as a SLURM job. It
+parses the fixed audit-mini grid, writes the manifest, validates unique
+immutable chunk destinations, and exits before fitting. Before any real
+SLURM submission, prepare the remote checkout on the login node with
+`dev/power-pilot-drac-setup.sh`: it creates a version-pinned user R
+library, installs this checkout into that library, and verifies
+`library(gllvmTMB)`. The default library convention is project storage
+when `$PROJECT` is set, otherwise a scratch smoke library when
+`$SCRATCH` is set, with `$HOME/.local/R/<R version>` as the final
+fallback. Scratch libraries are purgeable and are for smoke setup only;
+private account and quota paths are deliberately not recorded in this
+public design note.
 
 ---
 
@@ -466,14 +524,15 @@ provides the pieces. Explicit reuse map (verified on origin/main):
 |---|---|---|
 | DGP / truth | `m3_make_truth()`, `m3_simulate_response()` | extend to phylo/spatial/animal between-unit structure (M3 currently builds the within-trait `Sigma_unit` truth; the RE-source axis needs a between-unit covariance `K` injected) |
 | Cell runner | `m3_run_cell()` (targets, n_boot, seeds) | parametrize the RE source/mode + signal-strength axes |
-| Estimands + gate | `coverage_primary` / `primary_gate_status` on `Sigma_unit_diag` bootstrap (PR #364) | add a power/Type-I decision rule (reject "structure present") -- the one genuinely new performance measure |
+| Estimands + gate | `coverage_primary` / `primary_gate_status` on `Sigma_unit_diag` bootstrap (PR #364) | add a target-aligned detection / false-positive decision rule (reject "structure present") -- the one genuinely new performance measure |
 | Signal knobs | `--lambda-scale`, `--psi-scale`, `--phi`, `--n-units`, `--n-traits`, `--d` (precompute CLI) | wire a signal-strength factor (incl. the 0 / null level for H4) |
 | Convergence filtering | `pd_hessian_rate`, `sdreport_ok_rate`, `boot_fail_rate`, restart cols | none (reuse) |
 | Persistence | `*-grid.rds` + `*-summary.rds` writers | none (reuse) |
 | Dispatch | `.github/workflows/m3-production-grid.yaml` (matrix shards) | replace GHA matrix with a cluster array job for production; keep GHA for pilot + aggregation |
 
 The new code surface is: (a) a between-unit-`K` DGP extension, (b) a
-signal-strength + null factor, (c) a power/Type-I decision rule, (d) a
+signal-strength + null factor, (c) a target-aligned detection /
+false-positive decision rule, (d) a
 cluster array-job driver. None of it touches the engine lane.
 
 **Build it test-first** (the repo's TDD discipline): a smoke at n_sim =
@@ -598,27 +657,23 @@ direct consequence for the grid and the compute.
   (CI-10) are the Tier-1 family-completion EXTENSION (section 4.3), not
   the core. nbinom1 (FAM-07) stays out (review-branch-wired).
 
-  *Pilot harness note (binomial link).* The validated `m3_run_cell`
-  harness on origin/main realizes "binomial" with the LOGIT link in
-  both the DGP (`plogis`) and the fit (`stats::binomial()`); there is no
-  binomial(probit) path in the cell runner yet. The Phase-1 PILOT
-  therefore validates the binomial coverage path via the existing logit
-  harness and DEFERS the one-line probit-link swap to the Phase-2 core
-  grid (this section already names binomial-probit as the intended core
-  family; section 4.2). The pilot grid records the intended link
-  (`link_intended = "probit"`) alongside the harness link
-  (`link_harness = "logit"`) for traceability. Wiring probit into
-  `m3_run_cell` (DGP `pnorm` + `binomial(link = "probit")`) is a small,
-  bounded Phase-2 prerequisite, tracked against this decision -- it is
-  deliberately NOT done in the pilot to keep the driver a thin reuse of
-  the validated harness rather than a DGP modification.
+  *Pilot harness note (binomial link).* The current `m3_run_cell`
+  harness has a true `binomial_probit` path: the DGP uses `pnorm()` and
+  the fit uses `stats::binomial(link = "probit")`. Older Phase-1 pilot
+  artifacts, including the first fir scheduled smoke jobs recorded on
+  2026-06-24, used the existing binary LOGIT harness behind
+  `binomial_probit` cell IDs and saved
+  `evidence_family = "binomial_logit_harness"` for traceability. Those
+  older artifacts remain scheduler/plumbing evidence only and must not
+  be reinterpreted as true binomial-probit validation evidence.
 
 - **L-g (signal parametrization) -- between-unit variance share; levels
   0 / 0.2 / 0.5 (resolves Q-g).** "Signal" is operationalized as the
   **between-unit (latent) variance share of total latent variance**:
   `share = trace(Lambda Lambda^T) / (trace(Lambda Lambda^T) + trace(Psi))`
-  per trait, in expectation. The three levels are **0.0 (null;
-  Type-I / coverage-under-null), 0.2 (moderate), 0.5 (strong)**. In the
+  per trait, in expectation. The three levels are **0.0 (signal-zero
+  coverage diagnostic for the positive `Sigma_unit_diag` target, not
+  Type-I error), 0.2 (moderate), 0.5 (strong)**. In the
   M3 DGP this maps to `lambda_scale` via
   `lambda_scale = sqrt( (s/(1-s)) / (d * 0.75) )` (derivation in
   `dev/m3-pilot-launch.R::pilot_signal_to_lambda_scale`), holding the
@@ -644,9 +699,101 @@ reimplement any of it). Entry points:
   that errors is logged + marked failed + skipped, never crashing the
   batch), and ASCII-logging.
 - `pilot_status(results_dir)` -- summarizes done / pending / failed and
-  the preliminary 94%/95% coverage (signal > 0) and null/Type-I proxy
-  (signal = 0) numbers available so far.
+  the preliminary 94%/95% coverage (signal > 0) plus the signal-zero
+  coverage diagnostic (signal = 0) available so far. The signal-zero
+  diagnostic is not a Type-I error or power claim for `Sigma_unit_diag`.
+- `pilot_build_manifest()` / `pilot_assert_manifest()` -- record and
+  validate the planned per-shard chunks before fitting. The manifest
+  catches duplicate output paths, duplicate chunk paths, overlapping
+  per-cell replicate windows, and overlapping seed ranges before the
+  store is persisted or summarized.
+- `pilot_audit_mini_cell_ids()` / `dev/power-pilot-run.R
+  --mode=audit-mini` -- write a manifest-only four-cell smoke for
+  gaussian, nbinom2, true `binomial_probit`, and ordinal-probit. It
+  uses the moderate `d = 1`, `n_units = 50`, `signal = 0.2` row for
+  each family, plans two chunk reps with `n_boot = 0` by default, and
+  launches no fits. This is the audit-mini gate before broader local or
+  DRAC volume; it is still smoke evidence until the corrected harness is
+  rerun at the intended replication depth.
+- `pilot_run_audit_mini_manifest()` / `dev/power-pilot-run.R
+  --mode=audit-mini-run` -- run the same fixed four-cell manifest as
+  immutable chunk outputs, with `n_boot = 0` by default. Use this only
+  as a tiny local execution smoke after the manifest-only gate; it still
+  does not mutate `pilot-index.rds`, submit DRAC/SLURM work, or start a
+  production campaign.
+- `dev/power-pilot-smoke.sh` -- wrap the audit-mini ladder in one
+  shell entry point for humans and future job scripts. The default
+  `SMOKE_STAGE=all` path runs a one-rep, no-bootstrap local/Totoro
+  smoke through manifest, immutable chunk writing, chunk audit, chunk
+  aggregation, and chunk-aggregate reporting. `SMOKE_STAGE=manifest` is
+  the DRAC-login-safe step: it parses and validates the fixed four-cell
+  manifest but launches no fits. Fit-running stages (`run` and `all`)
+  are for local/Totoro or scheduled compute jobs, not DRAC login nodes.
+  The wrapper sets `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, and
+  `MKL_NUM_THREADS` to 1 by default and still does not submit SLURM
+  work, use GPUs, mutate `pilot-index.rds`, or start the production
+  campaign.
+- `dev/power-pilot-drac-setup.sh` -- login-node setup for the first
+  DRAC/fir smoke checkout. It loads the selected R and Julia modules,
+  creates a version-pinned user R library, installs the current checkout
+  with Depends/Imports/LinkingTo dependencies, and verifies
+  `gllvmTMB` is visible from `.libPaths()`. `DRAC_EXTRA_MODULES` carries
+  cluster-specific system libraries such as udunits/GDAL/GEOS/PROJ when
+  `fmesher`/`sf` need them. It submits no jobs and records no private
+  allocation/account path in the repository.
+- `dev/power-pilot-slurm-smoke.sh` -- write, validate, or submit a
+  conservative SLURM wrapper around `dev/power-pilot-smoke.sh`. The
+  default `SLURM_ACTION=test` calls `sbatch --test-only`; actual
+  submission requires `SLURM_ACTION=submit`. The default
+  `SLURM_STAGE=manifest` is the first DRAC-safe smoke and launches no
+  fits. Fit-running stages such as `SLURM_STAGE=all` are only for
+  scheduled compute jobs after the manifest smoke passes. The wrapper is
+  CPU-only, loads R and Julia modules explicitly, prepends the prepared
+  user R library, checks that `gllvmTMB` is installed before running the
+  smoke, sets BLAS/OpenMP threads to one, and does not start the
+  production `n_sim = 2000` campaign.
 
-Phase 2 (HPC, n_sim = 2000, the full core grid + the probit-link swap)
+  Fir scheduled smoke evidence (2026-06-24, source
+  `7c675dd33d58f4dfd633cacfbf05e62c0e168d61`) now covers the first two
+  CPU-only scheduled fit steps after the manifest-only gate. Job
+  `45626865` ran `SLURM_STAGE=all`, `N_SIM_STEP=1`, `N_SIM_CAP=1`,
+  `N_BOOT=0` against
+  `$SCRATCH/gllvmtmb-power-pilot-smoke-fit-nboot0-20260624T164759Z`;
+  it completed with exit code 0, four active manifest rows, four chunk
+  files, four aggregate files, and no `pilot-index.rds`. Job `45627388`
+  repeated the same ladder with `N_BOOT=2` against
+  `$SCRATCH/gllvmtmb-power-pilot-smoke-fit-nboot2-20260624T165402Z`;
+  it also completed with exit code 0 and the same immutable artifact
+  shape. This is reproducibility / scheduler plumbing evidence only:
+  these jobs pre-date the true probit harness swap, so their
+  `binomial_probit` cell remains labelled by `binomial_logit_harness`;
+  the `N_BOOT=2` report flagged non-PD diagnostics for the binomial and
+  nbinom2 cells, ordinal-probit still lacked a primary interval row, and
+  `CI-08` / `CI-10` remain partial.
+- `pilot_run_chunk_manifest()` / `dev/power-pilot-run.R --mode=chunk`
+  -- run the active rows from a chunk manifest, reindex each chunk's
+  `rep` column into the planned per-cell window, add chunk provenance
+  fields, and write one immutable RDS file per planned chunk. This is
+  the future array-task writer; it does not update `pilot-index.rds` or
+  combine chunks.
+- `pilot_assert_chunk_outputs()` / `dev/power-pilot-run.R
+  --mode=chunk-audit` -- validate the future immutable-chunk output
+  set after array tasks finish and before aggregation. This requires
+  every planned active chunk file to exist and be non-empty; it does
+  not launch fits and does not replace the current accumulated-store
+  driver.
+- `pilot_collect_chunk_aggregates()` / `dev/m3-pilot-report.R
+  --emit-issues --chunk-aggregate` -- read the per-cell RDS files
+  written under `_chunk-aggregate/` after immutable chunks have been
+  validated and aggregated. This is an explicit report source, not an
+  automatic scan, so legacy accumulated stores and derived chunk
+  aggregates cannot be double-counted by accident. It reuses the same
+  MCSE, denominator, fit-health, and evidence-label reducer as
+  `pilot_collect()`, and still does not mutate `pilot-index.rds`.
+- For manifest-only compute smoke tests, `dev/power-pilot-run.R
+  --mode=preflight --output-mode=chunk` validates the future immutable
+  chunk destinations without launching fits.
+
+Phase 2 (HPC, n_sim = 2000, the full core grid)
 reuses the same harness with a cluster array-job driver (section 9); the
 pilot driver and its results directory are the bridge.

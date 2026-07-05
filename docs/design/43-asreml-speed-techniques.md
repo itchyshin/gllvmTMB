@@ -9,6 +9,16 @@ reference material; single-trait warmup has since moved from this
 borrowable-technique list into the implemented M3.4 mitigation
 recorded in Design 48 and MIS-16 / MIS-17.
 
+**2026-06-23 sibling-team update:** HSquared/DRM scouting reinforces the
+measure-first rule. Borrow scale-aware convergence diagnostics, sparse
+trace discipline, provenance fields, and evidence ladders. Do not borrow
+HSquared-style AI-REML language outside exact Gaussian restricted
+likelihoods, do not add METIS or other sparse-ordering dependencies
+until a local profile shows ordering/factorisation is the bottleneck,
+and describe non-Gaussian GLLVM speedups by their actual method family
+(ML/Laplace, observed-information, Fisher/natural-gradient,
+reverse-mode, or implicit-Laplace-adjoint).
+
 ## 1. Why this document exists
 
 Maintainer ask 2026-05-17: *"is there any coding techniques you
@@ -68,7 +78,7 @@ Numbered for cross-reference; status reflects gllvmTMB v0.2.0.
 |---|---|---|---|
 | 1 | **AI-REML** (Average Information matrix instead of Fisher) | Gilmour, Thompson & Cullis (1995) *Biometrics* 51:1440 | **Not applicable in v0.2.0** — we use ML via TMB autodiff. When REML lands post-0.2.0 (Gaussian-only per README), AI-REML's step rule is the canonical fast outer-loop. TMB's exact autodiff gradient is already a strong starting point; an AI-style Hessian approximation may not be net-faster. |
 | 2 | **Sparse A⁻¹ direct engine path** (Henderson-Quaas) | Henderson (1976) *Biometrics* 32:69; Quaas (1976) *Biometrics* | **Already planned: ANI-08 in validation-debt register, v0.3.0**. We densify A⁻¹ internally in v0.2.0; ASReml takes sparse A⁻¹ directly. Biggest single win for n_species > 500. Implementation pattern: pass sparse A⁻¹ as `Eigen::SparseMatrix<double>` into the TMB template; reuse `MCMCglmm`'s convention. |
-| 3 | **Factor-analytic G matrix (FA-RR)** | Smith, Cullis & Gilmour (2001) *Crop Sci.* 41:1138; Runcie & Mukherjee (2013) *Genetics* 194:753 | **Already implemented**: `animal_latent(d = K)` now carries the diagonal Psi companion by default and is exactly FA-G; `animal_latent(..., unique = FALSE) + animal_unique()` remains the explicit compatibility spelling. Confirmed in `vignettes/articles/animal-model.Rmd` Tutorial 3. |
+| 3 | **Factor-analytic G matrix (FA-RR)** | Smith, Cullis & Gilmour (2001) *Crop Sci.* 41:1138; Runcie & Mukherjee (2013) *Genetics* 194:753 | **Already implemented**: `animal_latent(d = K, unique = TRUE)` carries the diagonal Psi companion and is the FA-G decomposition; default `animal_latent(d = K)` is loadings-only. `animal_latent(..., unique = FALSE) + animal_unique()` remains the explicit compatibility spelling. Confirmed in `vignettes/articles/animal-model.Rmd` Tutorial 3. |
 | 4 | **Single-trait warmup → multi-trait fit** | ASReml-R user guide (Butler 2017, §5.4) — standard workflow | **Implemented for M3.4 phi starts**. `gllvmTMBcontrol(init_strategy = "single_trait_warmup")` now fits intercept-only univariate GLMs per trait and seeds matching `log_phi_*` entries before `MakeADFun()`. Covered by MIS-16 / `test-m3-4-warmstart-phi-clamp.R`. Per-trait `b_fix`, ordinal cutpoints, and delta-family secondary-parameter warmups remain deferred. |
 | 5 | **Variance-ratio (γ) parameterisation** | Searle, Casella & McCulloch (1992) §6 | **Alternative parameterisation, not implemented**. ASReml's outer loop optimises over γ = σ²_random / σ²_residual rather than absolute variances. More stable near σ²_random → 0. Could be a `gllvmTMB.control(parameterisation = "gamma")` mode. Lower priority than #4 — TMB's log-variance parameterisation already handles boundaries reasonably. |
 | 6 | **Sparse Cholesky reordering (AMD / MMD)** | Davis (2006) "Direct Methods for Sparse Linear Systems" §7 (CHOLMOD reference) | **Likely already optimal**. TMB uses CHOLMOD under the hood, which applies AMD by default. ASReml uses MMD. Both are O(n^{3/2}) on regular sparsity patterns. Would need to profile gllvmTMB on the n > 500 phylo/pedigree regime to confirm CHOLMOD's default is fine; deferred until ANI-08 implementation surfaces a real bottleneck. |

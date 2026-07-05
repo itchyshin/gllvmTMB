@@ -25,19 +25,23 @@ with the live package.
 
 | Group | Article | Purpose | Status |
 |---|---|---|---|
-| Model guide | `articles/morphometrics` | First complete Gaussian worked example. | Visible; final rendered figure/prose audit passed. |
-| Model guide | `articles/model-selection-latent-rank` | Choosing candidate latent rank with AIC/BIC beside diagnostics. | Visible after 2026-06-09 model-selection slice; Gaussian `latent() + unique()` teaching fixture only, not universal rank-selection calibration. |
-| Model guide | `articles/joint-sdm` | Binary JSDM worked example. | Visible; binary caveats and diagnostics remain under active audit. |
+| Model Guides | `articles/morphometrics` | First complete Gaussian worked example. | Visible; final rendered figure/prose audit passed. |
+| Model Guides | `articles/model-selection-latent-rank` | Choosing candidate latent rank with AIC/BIC beside diagnostics. | Visible after 2026-06-09 model-selection slice; Gaussian ordinary-`latent()` teaching fixture only, not universal rank-selection calibration. |
+| Model Guides | `articles/joint-sdm` | Binary JSDM worked example. | Visible; binary caveats and diagnostics remain under active audit. |
+| Model Guides | `articles/lambda-constraint` | Confirmatory loading constraints for binary species distributions. | Visible loading-constraint guide; keep binary scope and interval caveats explicit. |
+| Model Guides | `articles/lambda-constraint-suggest` | Data-driven loading-constraint suggestion companion. | Visible technical companion; zero-pin and profile-retention diagnostics stay explicit. |
+| Model Guides | `articles/missing-data` | Missing response and scoped missing-predictor workflows. | Visible; engine naming and predictor scope stay bounded by MIS rows. |
+| Concepts | `articles/gllvm-vocabulary` | Plain-English glossary for package terms. | Visible after 2026-06-22 article-accessibility slice. |
 | Concepts | `articles/covariance-correlation` | Explain `Sigma`, correlations, `Lambda`, `psi`, communality. | Visible; final rendered figure/prose audit passed. |
 | Concepts | `articles/api-keyword-grid` | Formula keyword syntax map. | Visible; technical reference closeout passed. |
 | Concepts | `articles/response-families` | Supported families and validation status. | Visible; technical reference closeout passed. |
-| Methods | `articles/fit-diagnostics` | First post-fit triage before interpreting fitted models. | Visible after 2026-06-09 diagnostics-article slice; diagnostic-only claims tied to DIA-08 / DIA-10 / DIA-11 / DIA-12 / DIA-13. |
-| Methods | `articles/convergence-start-values` | Hard-fit survival guide. | Visible; final wording audit passed. |
-| Technical reference | `articles/profile-likelihood-ci` | Profile / bootstrap / Wald interval mechanics and caveats. | Visible Tier 2 reference after the 2026-06-18 methods-reference placement slice; must continue to distinguish API coverage from calibrated coverage. |
-| Technical reference | `articles/troubleshooting-profile` | Profile-interval failure modes and remedies. | Visible Tier 2 companion reference after the 2026-06-18 methods-reference placement slice. |
-| Technical reference | `articles/gllvm-vocabulary` | Plain-English terminology glossary for public articles. | Visible Tier 2 glossary after the 2026-06-18 entry-path placement slice; hidden worked-example links removed. |
-| Methods | `articles/pitfalls` | Common mistakes and fixes. | Visible; final prose audit passed. |
-| Methods | `articles/missing-data` | Missing response and scoped missing-predictor workflows. | Visible; engine naming and predictor scope stay bounded by MIS rows. |
+| Diagnostics & Validation | `articles/fit-diagnostics` | First post-fit triage before interpreting fitted models. | Visible after 2026-06-09 diagnostics-article slice; diagnostic-only claims tied to DIA-08 / DIA-10 / DIA-11 / DIA-12 / DIA-13. |
+| Diagnostics & Validation | `articles/convergence-start-values` | Hard-fit survival guide. | Visible; final wording audit passed. |
+| Diagnostics & Validation | `articles/profile-likelihood-ci` | Profile / bootstrap / Wald interval mechanics and caveats. | Visible Tier 2 reference after the 2026-06-18 methods-reference placement slice; must continue to distinguish API coverage from calibrated coverage. |
+| Diagnostics & Validation | `articles/troubleshooting-profile` | Profile-interval failure modes and remedies. | Visible Tier 2 companion reference after the 2026-06-18 methods-reference placement slice. |
+| Diagnostics & Validation | `articles/gllvm-vocabulary` | Plain-English terminology glossary for public articles. | Visible Tier 2 glossary after the 2026-06-18 entry-path placement slice; hidden worked-example links removed. |
+| Diagnostics & Validation | `articles/pitfalls` | Common mistakes and fixes. | Visible; final prose audit passed. |
+| Diagnostics & Validation | `articles/missing-data` | Missing response and scoped missing-predictor workflows. | Visible; engine naming and predictor scope stay bounded by MIS rows. |
 
 Hidden pages remain on disk. They must not be routed from the landing
 page or visible articles as recommended next steps until their return
@@ -48,7 +52,7 @@ conditions pass.
 | Slice | Work | Owner lenses | Done when |
 |---|---|---|---|
 | 1 | Roadmap archive and new dashboard | Ada, Rose, Grace | Old roadmap archived; this dashboard renders through `articles/roadmap`. |
-| 2 | Curated pkgdown nav | Ada, Grace, Rose | `_pkgdown.yml` shows Model guide / Concepts / Methods only; Roadmap stays top-nav only; restored articles move out of the internal bucket only after status sync. |
+| 2 | Curated pkgdown nav | Ada, Grace, Rose | `_pkgdown.yml` shows Model Guides / Concepts / Diagnostics & Validation / Developer Notes; Roadmap stays top-nav for readers and appears only under Developer validation notes for pkgdown index completeness; under-audit pages are labelled as developer notes rather than first-stop tutorials. |
 | 3 | Landing page cleanup | Pat, Darwin, Rose | First screen routes to the curated public path and does not advertise hidden pages as ready. |
 | 4 | Get Started cleanup | Pat, Boole, Grace | Beginner path shows long and wide fits early without a page-long DGP block. |
 | 5 | Public article safety fixes | Rose, Boole, Fisher | Public articles use `trait = "trait"` in long fits, stable `Psi/psi` notation, and no hidden-page next-step links. |

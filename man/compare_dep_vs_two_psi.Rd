@@ -39,8 +39,11 @@ entries if the alt fit failed.}
 \code{Sigma_non}, columns \code{rmse} (Frobenius RMSE between joint and
 dep), \code{dep_mag} (Frobenius magnitude of the dep estimate),
 \code{rel_disagreement} (\code{rmse / dep_mag}), and \code{flag}
-(\code{rel_disagreement > threshold}).}
-\item{\code{flag}}{Logical: \code{TRUE} if any component is flagged.}
+(\code{rel_disagreement > threshold}, or \code{NA} when the alt refit
+failed so the component could not be tested).}
+\item{\code{flag}}{Logical: \code{TRUE} if any component is flagged, \code{FALSE}
+if all tested components agreed, \code{NA} if nothing could be tested
+(distinguishes agreement from a failed refit).}
 \item{\code{threshold}}{The threshold used.}
 \item{\code{alt_fit}}{The refit \code{gllvmTMB_multi} object (or \code{NULL} on
 failure), retained so users can inspect convergence and pull

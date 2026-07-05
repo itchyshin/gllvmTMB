@@ -106,6 +106,9 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(d_B);               // rank of between-site rr term (>= 1 if used)
   DATA_INTEGER(d_W);               // rank of within-site rr term  (>= 1 if used)
   DATA_INTEGER(use_rr_B);          // 1/0
+  DATA_INTEGER(use_lv_B);          // 1/0 predictor-informed mean for B-tier scores
+  DATA_INTEGER(n_lv_B);            // columns in X_lv_B (>= 1 stub when inactive)
+  DATA_MATRIX(X_lv_B);             // n_sites x n_lv_B unit-level score-mean design
   DATA_INTEGER(use_diag_B);        // 1/0
   DATA_INTEGER(use_rr_W);          // 1/0
   DATA_INTEGER(use_diag_W);        // 1/0
@@ -159,11 +162,12 @@ Type objective_function<Type>::operator()()
   //     absorbed into Lambda_spde for identifiability, mirroring
   //     phylo_latent), and a T x K_S loading matrix Lambda_spde drives all
   //     traits via eta(o) += sum_k Lambda_spde(t, k) * (A_proj * omega_spde_lv.col(k))(o).
-  //     If spde_lv_unique == 1, the per-trait omega_spde fields are also
-  //     active, giving Lambda_spde Lambda_spde' + diag(Psi_spde).
+  //     If spde_lv_unique == 1, an additional per-trait omega_spde block is
+  //     kept alive on the same Q_base with its own tau_t scale, giving
+  //     Sigma_spde = Lambda_spde Lambda_spde' + diag(Psi_spde).
   DATA_INTEGER(use_spde);
   DATA_INTEGER(spde_lv_k);         // 0 = per-trait path; >=1 = K-rank loadings path
-  DATA_INTEGER(spde_lv_unique);    // 1 = add per-trait unique fields to spatial_latent
+  DATA_INTEGER(spde_lv_unique);    // 1 = spatial_latent(..., unique = TRUE)
   DATA_INTEGER(n_mesh);
   (void)n_mesh;                    // retained in the data contract for mesh sanity checks in R
   DATA_SPARSE_MATRIX(A_proj);      // n_obs x n_mesh
@@ -466,6 +470,7 @@ Type objective_function<Type>::operator()()
   // length = d_B + (n_traits - d_B) * d_B = n_traits*d_B - d_B*(d_B-1)/2
   PARAMETER_VECTOR(theta_rr_B);
   PARAMETER_MATRIX(z_B);                         // d_B x n_sites spherical N(0, I)
+  PARAMETER_MATRIX(alpha_lv_B);                  // n_lv_B x d_B score-mean coefficients
   // Augmented between-site random regression:
   // Lambda_B_slope is C x d_B_slope where C = 2*n_traits for the single
   // intercept+slope path. Rows are interleaved by trait:
@@ -774,6 +779,39 @@ Type objective_function<Type>::operator()()
     REPORT(Lambda_B);
     matrix<Type> Sigma_B = Lambda_B * Lambda_B.transpose();
     REPORT(Sigma_B);
+  }
+
+  // -------- Predictor-informed B-tier latent-score mean -------------------
+  // Design 73 C1: z_i = X_lv_B(i, .) alpha_lv_B + e_i, e_i ~ N(0, I).
+  // The existing z_B parameter remains the zero-mean innovation e_i; the score
+  // entering eta is the total mean-plus-innovation score U_B_total.
+  matrix<Type> U_lv_mean_B(std::max(n_sites, 1), std::max(d_B, 1));
+  matrix<Type> U_B_total(std::max(n_sites, 1), std::max(d_B, 1));
+  U_lv_mean_B.setZero();
+  U_B_total.setZero();
+  if (use_lv_B == 1) {
+    if (use_rr_B != 1)
+      error("gllvmTMB_multi: use_lv_B requires use_rr_B");
+    if (X_lv_B.rows() != n_sites || X_lv_B.cols() != n_lv_B)
+      error("gllvmTMB_multi: X_lv_B must be n_sites x n_lv_B");
+    if (alpha_lv_B.rows() != n_lv_B || alpha_lv_B.cols() != d_B)
+      error("gllvmTMB_multi: alpha_lv_B must be n_lv_B x d_B");
+    for (int s = 0; s < n_sites; s++) {
+      for (int k = 0; k < d_B; k++) {
+        Type mean_sk = Type(0.0);
+        for (int h = 0; h < n_lv_B; h++) {
+          mean_sk += X_lv_B(s, h) * alpha_lv_B(h, k);
+        }
+        U_lv_mean_B(s, k) = mean_sk;
+        U_B_total(s, k) = mean_sk + z_B(k, s);
+      }
+    }
+    matrix<Type> B_lv_unit = Lambda_B * alpha_lv_B.transpose();
+    REPORT(alpha_lv_B);
+    REPORT(U_lv_mean_B);
+    REPORT(U_B_total);
+    REPORT(B_lv_unit);
+    ADREPORT(B_lv_unit);
   }
 
   // -------- Construct augmented Lambda_B_slope (C x d_B_slope) ----------
@@ -1375,8 +1413,8 @@ Type objective_function<Type>::operator()()
   //     omega_spde_lv with prior GMRF(Q_base) (tau == 1, scale absorbed
   //     into Lambda_spde for identifiability), and a packed
   //     lower-triangular Lambda_spde (n_traits x K_S) loading matrix.
-  //     With spde_lv_unique == 1, per-trait omega_spde fields are added
-  //     as the diagonal Psi_spde companion.
+  //     If spde_lv_unique == 1, also keep the per-trait omega_spde block as
+  //     the diagonal Psi_spde companion.
   matrix<Type> Lambda_spde(n_traits, std::max(spde_lv_k, 1));
   Lambda_spde.setZero();
   if (use_spde == 1) {
@@ -1386,8 +1424,7 @@ Type objective_function<Type>::operator()()
     Eigen::SparseMatrix<Type> Q_base =
       kappa4 * spde_M0 + Type(2.0) * kappa2 * spde_M1 + spde_M2;
     if (spde_lv_k == 0 || spde_lv_unique == 1) {
-      // Per-trait path, either standalone spatial_unique/scalar or the
-      // unique diagonal companion to spatial_latent(unique = TRUE).
+      // Per-trait path, or diagonal Psi companion for spatial_latent(unique=TRUE).
       for (int t = 0; t < n_traits; t++) {
         Type tau = exp(log_tau_spde(t));
         vector<Type> omega_t = omega_spde.col(t);
@@ -1764,7 +1801,10 @@ Type objective_function<Type>::operator()()
     int ss = site_species_id(o);
     if (use_rr_B == 1) {
       Type u_B_st = 0;
-      for (int k = 0; k < d_B; k++) u_B_st += Lambda_B(t, k) * z_B(k, s);
+      for (int k = 0; k < d_B; k++) {
+        Type score_k = (use_lv_B == 1) ? U_B_total(s, k) : z_B(k, s);
+        u_B_st += Lambda_B(t, k) * score_k;
+      }
       eta(o) += u_B_st;
     }
     if (use_rr_B_slope == 1) {

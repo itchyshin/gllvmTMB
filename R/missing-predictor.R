@@ -567,7 +567,16 @@ gll_extract_impute_phylo_intercept <- function(formula, env = parent.frame()) {
   tree <- NULL
   tree_pos <- which(arg_names == "tree")
   if (length(tree_pos) == 1L) {
-    tree <- tryCatch(eval(args[[tree_pos]], envir = env), error = function(e) NULL)
+    tree <- tryCatch(eval(args[[tree_pos]], envir = env), error = function(e) e)
+    if (inherits(tree, "error")) {
+      ## A mistyped / unbound tree used to become NULL while tree_supplied stayed
+      ## TRUE, silently falling back to the response tree. Fail loudly (#646).
+      cli::cli_abort(c(
+        "Could not evaluate the {.arg tree} argument of {.fn phylo} in the {.fn mi} predictor model.",
+        "x" = conditionMessage(tree),
+        ">" = "Check that the tree object exists and is spelled correctly."
+      ))
+    }
   }
   fixed_terms <- rhs_terms[!is_phylo]
   fixed_rhs <- gll_rebuild_additive_rhs(fixed_terms)
@@ -1166,6 +1175,16 @@ gll_binary_mi_response <- function(x, variable) {
     return(list(value = value, levels = lv))
   }
   if (is.logical(x)) {
+    ## Require both FALSE and TRUE among the observed values, matching the
+    ## two-distinct-level guard on the factor/character/numeric branches (#647).
+    lv <- sort(unique(x[observed]))
+    if (length(lv) != 2L) {
+      cli::cli_abort(c(
+        "The binary {.fn mi} slice requires exactly two predictor levels.",
+        "x" = "Logical predictor {.val {variable}} has {length(lv)} observed level{?s}: {.val {lv}}.",
+        "i" = "Both {.code FALSE} and {.code TRUE} must appear among the observed values."
+      ))
+    }
     return(list(value = as.numeric(x), levels = c("FALSE", "TRUE")))
   }
   if (is.character(x)) {
@@ -1410,26 +1429,6 @@ gll_ordinal_raw_from_cutpoints <- function(cutpoints) {
   c(cutpoints[[1L]], log(spacings))
 }
 
-## Cumulative-logit cell probability matrix (PORT drmTMB drm_ordinal_probability_
-## matrix): rows = units, cols = K categories, given eta_x and cutpoints.
-gll_ordered_probability_matrix <- function(eta, cutpoints) {
-  n_category <- length(cutpoints) + 1L
-  out <- matrix(NA_real_, nrow = length(eta), ncol = n_category)
-  out[, 1L] <- stats::plogis(cutpoints[[1L]] - eta)
-  if (n_category > 2L) {
-    for (k in 2:(n_category - 1L)) {
-      upper <- stats::plogis(cutpoints[[k]] - eta)
-      lower <- stats::plogis(cutpoints[[k - 1L]] - eta)
-      out[, k] <- upper - lower
-    }
-  }
-  out[, n_category] <- stats::plogis(
-    cutpoints[[n_category - 1L]] - eta,
-    lower.tail = FALSE
-  )
-  pmax(out, .Machine$double.eps)
-}
-
 ## Build the ORDERED missing-predictor model (Phase 5b, ADAPT drmTMB
 ## drm_build_ordinal_missing_predictor_model). Like the binary builder it does
 ## the UNIT-level reduction + broadcast-constancy guards, but: the response is
@@ -1450,7 +1449,13 @@ gll_build_ordered_mi_model <- function(setup, data_long, unit_id, mi_col,
     return(gll_empty_mi_model())
   }
   n_obs <- nrow(data_long)
-  n_units <- length(unique(unit_id))
+  ## Re-factor unit_id to a contiguous 0..K-1 index so an unused interior
+  ## factor level (a "gap") cannot push the raw code `unit_id[o] + 1L` past
+  ## the allocated first_row/seen length (#597/#598/#599). Mirrors the
+  ## Gaussian path's gll_resolve_mi_latent_level().
+  uf <- factor(unit_id)
+  unit_id <- as.integer(uf) - 1L
+  n_units <- nlevels(uf)
   first_row <- integer(n_units)
   seen <- logical(n_units)
   for (o in seq_len(n_obs)) {
@@ -1744,7 +1749,13 @@ gll_build_unordered_mi_model <- function(setup, data_long, unit_id, mi_col,
     return(gll_empty_mi_model())
   }
   n_obs <- nrow(data_long)
-  n_units <- length(unique(unit_id))
+  ## Re-factor unit_id to a contiguous 0..K-1 index so an unused interior
+  ## factor level (a "gap") cannot push the raw code `unit_id[o] + 1L` past
+  ## the allocated first_row/seen length (#597/#598/#599). Mirrors the
+  ## Gaussian path's gll_resolve_mi_latent_level().
+  uf <- factor(unit_id)
+  unit_id <- as.integer(uf) - 1L
+  n_units <- nlevels(uf)
   first_row <- integer(n_units)
   seen <- logical(n_units)
   for (o in seq_len(n_obs)) {
@@ -1946,7 +1957,13 @@ gll_build_binary_mi_model <- function(setup, data_long, unit_id, mi_col,
     return(gll_empty_mi_model())
   }
   n_obs <- nrow(data_long)
-  n_units <- length(unique(unit_id))
+  ## Re-factor unit_id to a contiguous 0..K-1 index so an unused interior
+  ## factor level (a "gap") cannot push the raw code `unit_id[o] + 1L` past
+  ## the allocated first_row/seen length (#597/#598/#599). Mirrors the
+  ## Gaussian path's gll_resolve_mi_latent_level().
+  uf <- factor(unit_id)
+  unit_id <- as.integer(uf) - 1L
+  n_units <- nlevels(uf)
   ## First long row of each unit -- the representative row for the unit-level x.
   first_row <- integer(n_units)
   seen <- logical(n_units)
@@ -2398,8 +2415,12 @@ gll_finalize_mi <- function(missing_data, par_list, model, sdr = NULL,
       pred$value <- mi_prob
       pred$conditional_probability <- mi_prob[model$missing_index]
     } else {
-      ## No report available (e.g. SE-only path failure): fall back to NA.
-      pred$value <- as.numeric(model$x_unit)
+      ## No report available (e.g. SE-only path failure): observed values stand,
+      ## but the MISSING units have no estimate -- report NA, not the SAFE
+      ## sentinel placeholder (0/1) that filled x_unit for the fit (#648).
+      v <- as.numeric(model$x_unit)
+      v[model$missing_index] <- NA_real_
+      pred$value <- v
       pred$conditional_probability <- rep(NA_real_, length(model$missing_index))
     }
     missing_data$predictors[[model$variable]] <- pred

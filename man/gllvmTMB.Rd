@@ -20,6 +20,7 @@ gllvmTMB(
   phylo_tree = NULL,
   known_V = NULL,
   lambda_constraint = NULL,
+  Xcoef_fixed = NULL,
   control = gllvmTMBcontrol(),
   missing = miss_control(),
   impute = NULL,
@@ -218,6 +219,18 @@ minimum statistical identification scaffold when you have no
 biological hypothesis. Deprecated legacy element names \code{B} and \code{W}
 are still accepted (with a one-shot soft deprecation message) and
 map to \code{unit} and \code{unit_obs} respectively.}
+
+\item{Xcoef_fixed}{Optional named numeric vector of fixed-effect
+coefficient constraints. Names must match the expanded fixed-effect
+design columns (\code{fit$X_fix_names}); values must currently be \code{0},
+pinning those coefficients exactly at structural zero. Use this when a
+predictor is meaningful for some responses but should be fixed at zero
+for others. Native TMB fits use a parameter map; admitted
+\code{engine = "julia"} fixed-effect-X rows pass the same zero mask to
+GLLVM.jl. This is ML-only: \code{REML = TRUE} stops loudly. Native fitted
+objects still report all fixed-effect rows; pinned rows have
+\code{estimate = 0}, \code{std.error = NA}, and \code{status = "fixed"} in
+\code{tidy(fit, "fixed")}.}
 
 \item{control}{Output of \code{gllvmTMBcontrol()}.}
 

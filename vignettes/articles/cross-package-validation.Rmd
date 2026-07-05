@@ -1,6 +1,6 @@
 ---
 title: "Cross-package validation: gllvmTMB vs glmmTMB and gllvm"
-tier: 3 # internal comparator ledger until Phase 5.5 evidence is complete
+tier: 3 # developer validation note, not a first-stop tutorial; internal comparator ledger until Phase 5.5 evidence is complete
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -27,7 +27,10 @@ knitr::opts_chunk$set(
 > **Internal article gate.** This page is a Tier 3 comparator ledger while
 > Phase 5.5 external validation is incomplete. It keeps the current glmmTMB and
 > gllvm agreement checks visible, but it is not a public proof that every shared
-> covariance structure or inference workflow has been validated.
+> covariance structure or inference workflow has been validated. It is not a
+> first-stop tutorial: start with [Get started](gllvmTMB.html),
+> [First Gaussian morphology model](morphometrics.html), and
+> [Can I trust this fit?](fit-diagnostics.html) before using this page.
 
 A package is only useful if its answers can be trusted. This internal article
 shows the comparator checks that are already wired into local examples or

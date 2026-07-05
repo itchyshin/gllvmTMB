@@ -6851,6 +6851,219 @@ Deliberately not run:
 - No issue was updated or closed from this spec. Issue action requires live
   issue reads and implementation evidence.
 
+## 2026-07-04 -- Remaining twin-review fixes in already-modified files
+
+Branch: `fix/remaining-cumulative-file-fixes` (from `origin/main`). The
+campaign fixes for `families.R` (#665), `bootstrap-sigma.R` (#624/#661/#698),
+`missing-predictor.R` (#597/#598/#599/#646/#647/#648) and
+`plot-loadings-confidence-eye.R` (#600/#601/#616/#617) were layered onto the
+already-landed fixes (#671/#669/#700/#691) via a 3-way merge (base 42a1995d),
+verified to preserve every landed fix and add each new one. `load_all` OK.
+No likelihood/family/grammar/C++ change.
+## 2026-07-04 -- Remaining clean-file twin-review fixes (batch)
+
+Branch: `fix/remaining-clean-file-guards` (from `origin/main`). 12 R files
+untouched by the earlier merged PRs (#707-712), so each preserved fix from
+the campaign manifest applies cleanly with no conflict.
+
+Issues: #602, #594, #613, #666, #699, #655, #637, #619, #609, #633, #584,
+#583, #585, #688, #649, #591, #592, #650. Each fix was individually validated
+during the campaign (load_all + targeted tests); this batch re-confirms
+integration.
+
+Checks (macOS, R 4.6.0, NOT_CRAN=true): `pkgload::load_all` OK with all 12
+files. No likelihood/family/grammar/C++ change. The remaining manifest fixes
+in files already modified by #707-712 (families #665, bootstrap-sigma
+#624/#661, missing-predictor #646/#647/#648, confidence-eye #600/#601/#616/#617)
+are landed separately to apply on top of those merges.
+
+## 2026-07-04 -- family-label and mesh helper fixes (#630/#595)
+
+Branch: `codex/family-label-mesh-fixes` from `origin/main` at
+`42a1995d`. Scope: Groups B and C from the Claude pending-fixes
+manifest. `check_auto_residual()` now names family id 15 as `nbinom1`,
+and `make_mesh(type = "cutoff", convex = ... / concave = ...)` now uses
+the observed coordinate matrix on the cutoff path. No family dispatch,
+likelihood, formula grammar, SPDE engine, or C++ change.
+## 2026-07-04 -- meta/pedigree helper bug fixes (#656/#657/#607/#623)
+
+Branch: `codex/meta-pedigree-pd-fixes` from `origin/main` at
+`42a1995d`. Scope: Groups A and D from the Claude pending-fixes
+manifest. `block_V()` now enforces the compound-symmetric
+positive-definite lower bound for each study block, and
+`pedigree_to_A()` now handles selfing plus warns on referenced-but-
+absent parents. No formula grammar, likelihood, family, C++, or sparse
+pedigree engine change.
+
+Commands run with `NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1`:
+
+```sh
+Rscript --vanilla - <<'RS'
+devtools::load_all(quiet = TRUE)
+stopifnot(identical(gllvmTMB:::.family_name_from_id(15L), "nbinom1"))
+set.seed(595)
+df <- data.frame(x = runif(40), y = runif(40))
+mesh <- make_mesh(df, c("x", "y"), cutoff = 0.1, type = "cutoff", convex = 0.1)
+stopifnot(inherits(mesh, "sdmTMBmesh"), inherits(mesh$mesh, "fm_mesh_2d"), nrow(mesh$mesh$loc) > 0)
+cat("family id 15 ->", gllvmTMB:::.family_name_from_id(15L), "\n")
+cat("mesh vertices", nrow(mesh$mesh$loc), "\n")
+RS
+Rscript --vanilla -e 'devtools::test(filter = "mesh|check-auto-residual", reporter = "summary")'
+git diff --check
+```
+
+Outcome: passed. Family id 15 printed `nbinom1`; the cutoff+convex mesh
+smoke returned an `sdmTMBmesh` with an `fm_mesh_2d` payload and 61 mesh
+vertices; existing `check-auto-residual` and `mesh` tests passed.
+`git diff --check` passed with no output.
+
+Formatting note: `air format R/check-auto-residual.R R/mesh.R` was run,
+but the broad `R/mesh.R` reflow was discarded to keep this PR to the
+one-line behavioural mesh fix. The final diff is the narrow copied
+manifest diff.
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-block-v-pd.R", reporter = "summary"); testthat::test_file("tests/testthat/test-block-V.R", reporter = "summary"); testthat::test_file("tests/testthat/test-pedigree-to-A-inbreeding.R", reporter = "summary")'
+```
+
+Outcome: passed. `test-block-v-pd.R` 6 expectations, existing
+`test-block-V.R` 19 expectations, and
+`test-pedigree-to-A-inbreeding.R` 7 expectations.
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "animal-keyword", reporter = "summary")'
+```
+
+Outcome: passed; one pre-existing skip because `nadiv` is not installed
+(`pedigree_to_A() matches nadiv::makeAinv()`).
+
+```sh
+air format R/animal-keyword.R R/two-stage.R tests/testthat/test-block-v-pd.R tests/testthat/test-pedigree-to-A-inbreeding.R
+git diff --check
+```
+
+Outcome: format completed; `git diff --check` passed with no output.
+
+Rose / pre-publish and pkgdown checks for the NEWS entry:
+
+```sh
+rg -n "check_auto_residual|family id|nbinom1|make_mesh|cutoff|convex|concave|SPDE|formula grammar|likelihood" NEWS.md R/check-auto-residual.R R/mesh.R tests/testthat/test-check-auto-residual.R tests/testthat/test-mesh.R man _pkgdown.yml docs/design
+rg -n "gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|\\bS_B\\b|\\bS_W\\b|\\\\bf S|trio" NEWS.md R/check-auto-residual.R R/mesh.R
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+```
+
+Outcome: new NEWS text is scoped to diagnostic labelling and cutoff
+mesh construction, with excluded likelihood / dispatch / SPDE /
+grammar surfaces named explicitly. Broader `rg` hits were pre-existing
+NEWS/history or generated-doc references. `pkgdown::check_pkgdown()`
+reported "No problems found."
+rg -n "block_V|pedigree_to_A|meta_V|pedigree_to_Ainv_sparse|animal-keyword|positive-definite|selfing|absent" NEWS.md R/animal-keyword.R R/two-stage.R man _pkgdown.yml docs/design tests/testthat/test-block-v-pd.R tests/testthat/test-pedigree-to-A-inbreeding.R
+rg -n "gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|\\bS_B\\b|\\bS_W\\b|\\\\bf S|trio" NEWS.md R/animal-keyword.R R/two-stage.R tests/testthat/test-block-v-pd.R tests/testthat/test-pedigree-to-A-inbreeding.R
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+```
+
+Outcome: new NEWS text is scoped to the two helper contracts and names
+the excluded grammar/likelihood/sparse-pedigree/animal-engine surfaces;
+`pkgdown::check_pkgdown()` reported "No problems found." Broader hits in
+the `rg` output were pre-existing NEWS/history or generated-doc matches,
+not new claims from this branch.
+
+Attempted but deliberately stopped:
+
+```sh
+Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'
+```
+
+Outcome: interrupted after about 14 minutes with no final summary and no
+worktree artefacts. It had emitted only the roxygen2 version-mismatch
+notice and was still inside `Rcmd check gllvmTMB_0.2.0.tar.gz --as-cran
+--no-manual --no-manual`. Do not count this as a passed package check.
+
+## 2026-07-03 -- Issue-clearing campaign: Claude batches + Codex handoff
+
+**@Codex**: the twin-review issue-clearing campaign is underway. Claude
+has landed the LOW-RISK R fixes in files byte-identical to `origin/main`
+as review-ready PRs (maintainer-gated merges):
+
+- PR #707 -- plotting robustness guards (#651, #667, #689, #690, #691, #692).
+- PR #708 -- dead code + profile-target validator (#618, #669, #671, #675, #700, #701).
+- PR #709 -- diagnostics/bootstrap (#603, #644, #652).
+
+The work that needs the live R/TMB + Julia toolchain, touches Codex-churned
+files (`fit-multi.R`, `z-confint-gllvmTMB.R`, `extract-*.R`,
+`methods-gllvmTMB.R`, `output-methods.R`, `julia-bridge.R`,
+`extract-correlations.R`, `kernel-helpers.R`, `plot-covariance-tables.R`),
+or is HIGH-RISK (likelihood/family/C++/Julia numerics) is handed to you in
+`docs/dev-log/handover/2026-07-03-claude-to-codex-numeric-waves.md`:
+Part A (churned-file R bugs), Part B (37 GLLVM.jl REAL issues), Part C
+(twin divergences -- GATED on the maintainer's canonical-side ruling; matrix
+in the campaign plan). PLAUSIBLE verdicts: 43 REAL, 3 INTENDED (#142, #148,
+#680), 2 ALREADY-FIXED (#144, #694).
+## 2026-07-03 -- Diagnostic + bootstrap robustness (twin-review batch 3)
+
+Branch: `fix/diagnostics-bootstrap-robustness` (from `origin/main`;
+touched files byte-identical to `origin/main`).
+
+Scope: #603 (nbinom1 id-15 label in `.gllvmTMB_family_label_from_id`),
+#652 (save/restore `.Random.seed` around the two seeded residual
+helpers), #644 (surface `attr(out, "n_failed")` + warn from the loading
+bootstrap). `R/predictive-diagnostics.R`, `R/loading-ci-bootstrap.R`.
+No likelihood/family/grammar/C++ change. `withr` is only in Suggests,
+so the RNG save/restore uses the base-R `.Random.seed` on.exit idiom.
+
+Checks (macOS, R 4.6.0, NOT_CRAN=true):
+
+```r
+testthat::test_file("tests/testthat/test-diagnostics-family-label.R")  # 3 pass (new)
+testthat::test_file("tests/testthat/test-predictive-diagnostics.R")    # no regressions
+testthat::test_file("tests/testthat/test-loading-ci-bootstrap.R")      # no regressions
+## 2026-07-03 -- Dead-code + validator cleanup (twin-review batch 2)
+
+Branch: `fix/dead-code-cleanup` (from `origin/main`; all touched files
+byte-identical to `origin/main`, isolated from the in-flight Codex branch).
+
+Scope: #618/#675 (vector-`isTRUE()` bugs in `R/profile-targets.R`), #701
+(remove dead `R/parsing.R`), #700 (remove unused
+`gll_ordered_probability_matrix()` in `R/missing-predictor.R`), #671
+(remove empty `nbinom2()` `v()` stub in `R/families.R`), #669 (remove
+no-op inner `withCallingHandlers()` in `R/bootstrap-sigma.R`). All dead
+code verified caller-free by repo-wide grep before removal. No
+likelihood/family/grammar/C++ change.
+
+Checks (macOS, R 4.6.0, `pkgload::load_all` OK after removals):
+
+```r
+# NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1
+testthat::test_file("tests/testthat/test-profile-targets.R")            # 32 pass
+testthat::test_file("tests/testthat/test-profile-targets-validator.R")  # 2 pass (new)
+gllvmTMB::nbinom2(); gllvmTMB::nbinom1()   # family constructors still build
+```
+
+rg patterns used for the dead-code confirmation:
+`parse_formula|make_indices|add_model_index|barnames`,
+`gll_ordered_probability_matrix` (no callers outside their own defs).
+
+## 2026-07-03 -- Plotting robustness guards (twin-review batch 1)
+
+Branch: `fix/robustness-guards-plotting` (cut from `origin/main` to
+stay isolated from the in-flight `codex/r-bridge-grouped-dispersion`
+branch; the touched plotting files are byte-identical to `origin/main`).
+
+Scope: robustness guards on plotting helpers for the twin code-review
+issues #651/#692 (rotated-loadings all-NA trait), #667 (per-facet
+value-label threshold), #691 (`null_region` validation), #689/#690
+(NA-safe repeatability ordering and ordination arrow scaling). No
+likelihood, family, grammar, or C++ change. Files: `R/plot-rotated-loadings.R`,
+`R/plot-loadings-confidence-eye.R`, `R/plot-gllvmTMB.R`, new test
+`tests/testthat/test-plot-robustness-guards.R`.
+
+Checks (macOS, R 4.6.0, `pkgload::load_all`):
+
+```r
+testthat::test_file("tests/testthat/test-plot-robustness-guards.R")  # 7 pass
+testthat::test_file("tests/testthat/test-rotate-compare-loadings.R") # 84 pass
+testthat::test_file("tests/testthat/test-plot-gllvmTMB.R")           # all pass
+testthat::test_file("tests/testthat/test-plot-visual-snapshots.R")   # 11 skip (vdiffr absent)
+```
+
 ## 2026-05-10 -- drmTMB-parity match exposes unstated tidyselect
 
 Scope:
@@ -24438,6 +24651,8 @@ Validation commands and outcomes:
   -> PASS (`load_all ok`).
 - `git diff --check`
   -> PASS.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-25-lv-effect-sdreport-se.md`
+  -> PASS; no output.
 - `ruby -e 'require "yaml"; y=YAML.load_file("_pkgdown.yml"); h=Hash.new(0); y["articles"].each{|s| (s["contents"] || []).each{|c| h[c]+=1 }}; dup=h.select{|k,v| v>1}; abort("duplicate articles: #{dup.inspect}") unless dup.empty?; puts "pkgdown-article-nav-unique-ok"'`
   -> PASS (`pkgdown-article-nav-unique-ok`).
 - ``rg -n 'Lamdba|depreciat|diag\(psi\)|diag\(\\boldsymbol\\Psi\)|mathrm\{diag\}\(\\boldsymbol\\Psi\)|the Greek letter Psi|trait-specific diagonal from `unique\(\)`|why `unique\(\)` matters|bare phylo_latent|loadings-only by default|Use `phylo_latent\(\) \+ phylo_unique|Use `animal_latent\(\) \+ animal_unique|Use `spatial_unique|append `spatial_unique|recommended when traits|unique\(\) matters|ordinary `latent\(\)` by default' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd``
@@ -37443,3 +37658,4919 @@ Not run (deliberate): `devtools::check()` and
 `pkgdown::build_articles(lazy = FALSE)` -- the pre-commit/pre-deploy gate; the
 rename is name-only with a working alias, and full `devtools::test()` is the
 authoritative gate. No push/PR/merge.
+## 2026-06-22 -- pkgdown navigation taxonomy
+
+Maintainer requested implementation of the Pat/Rose/Grace navigation plan after
+PR #529. PR #529 was green and mergeable, so it was marked ready and merged
+first. New work continued in
+`/private/tmp/gllvmtmb-pkgdown-nav-taxonomy-20260622` on
+`codex/pkgdown-nav-taxonomy-20260622`, rebased onto merged `origin/main`.
+
+Implementation:
+
+- `_pkgdown.yml` now splits the article navbar into `Model Guides`,
+  `Concepts`, `Diagnostics & Validation`, and `Developer Notes`.
+- Article index groups now mirror the reader-purpose taxonomy and keep
+  under-audit pages in Developer Notes rather than the first-click model path.
+- `ROADMAP.md` now names the four-menu taxonomy and records why Roadmap is
+  top-nav for readers but still listed under Developer validation notes for
+  pkgdown index completeness.
+- `vignettes/articles/covariance-correlation.Rmd` no longer prints the stale
+  stored wide formula with `+ unique(1 | individual)`; it defines the current
+  clean `traits(...) ~ 1 + latent(...)` formula directly.
+- `vignettes/articles/data-shape-flowchart.Rmd` now uses `\mathrm{...}` instead
+  of `\rm`, removing MathML warnings from the rendered page.
+
+Coordination / merge checks:
+
+- `git status --short --branch` in the article-accessibility worktree
+  -> clean on `codex/article-accessibility-unique-cleanup-20260622`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url,isDraft`
+  -> only #529, draft, clean, Ubuntu R-CMD-check success.
+- `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url`
+  -> #529 head `b9348e8` R-CMD-check success; unrelated main power-pilot run
+  still in progress.
+- `gh pr ready 529 && gh pr merge 529 --merge --delete-branch`
+  -> PASS; #529 merged as `1e85f09163d5e37d11ca16349535c01b7391cb20`.
+- `git fetch origin` in the nav worktree, then
+  `git stash push -m nav-taxonomy-wip -- _pkgdown.yml && git rebase origin/main && git stash pop`
+  -> PASS; nav worktree rebased onto merged #529 main before final edits.
+- Pre-edit lane check before shared docs:
+  `gh pr list --state open --limit 20 --json number,title,headRefName,updatedAt,isDraft,url,mergeStateStatus,statusCheckRollup`
+  -> `[]`.
+- Pre-edit lane check:
+  `git log --all --oneline --since="6 hours ago" -- _pkgdown.yml ROADMAP.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/recovery-checkpoints AGENTS.md CLAUDE.md CONTRIBUTING.md docs/design DESCRIPTION inst/COPYRIGHTS`
+  -> recent article/kernel work only; no competing nav edit.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> first run failed because `articles/roadmap` was missing from the index.
+  After adding Roadmap under Developer validation notes, rerun PASS
+  (`No problems found`).
+- `ruby -e 'require "yaml"; y=YAML.load_file("_pkgdown.yml"); h=Hash.new{|hh,k|hh[k]=[]}; (y["articles"]||[]).each{|s| (s["contents"]||[]).each{|c| h[c] << s["title"] }}; dup=h.select{|k,v| v.size>1}; abort("duplicate articles: #{dup.inspect}") unless dup.empty?; files=Dir["vignettes/articles/*.Rmd"].map{|f| File.basename(f,".Rmd")}; listed=h.keys.map{|x| x.sub(%r{^articles/},"")}; missing=(files-listed).sort; extra=(listed-files).sort; abort("missing from article index: #{missing.inspect}") unless missing.empty?; abort("extra in article index: #{extra.inspect}") unless extra.empty?; puts "pkgdown-article-nav-unique-ok"'`
+  -> PASS (`pkgdown-article-nav-unique-ok`).
+- `Rscript --vanilla -e 'pkgdown::build_home(quiet = FALSE); pkgdown::build_article("gllvmTMB", lazy = FALSE, new_process = FALSE, quiet = FALSE); get("build_articles_index", envir = asNamespace("pkgdown"))(pkg = "."); articles <- c("articles/morphometrics", "articles/gllvm-vocabulary", "articles/fit-diagnostics", "articles/data-shape-flowchart", "articles/cross-package-validation"); for (a in articles) { message("BUILD ", a); pkgdown::build_article(a, lazy = FALSE, new_process = FALSE, quiet = FALSE) }'`
+  -> PASS; rendered home, Get Started, article index, and representative pages
+  from all nav groups. Initial `data-shape-flowchart` render warned on `\rm`;
+  fixed and rerendered with:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/data-shape-flowchart", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS without MathML warnings.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/covariance-correlation", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS after replacing stale rendered wide-formula output.
+- `rg -n 'Model Guides|Concepts|Diagnostics &amp; Validation|Developer Notes|Under-audit model drafts|Developer validation notes|First Gaussian morphology model|Plain-English vocabulary|Can I trust this fit\?|Data-shape flowchart|Cross-package validation' pkgdown-site/index.html pkgdown-site/articles/index.html pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/morphometrics.html pkgdown-site/articles/gllvm-vocabulary.html pkgdown-site/articles/fit-diagnostics.html pkgdown-site/articles/data-shape-flowchart.html pkgdown-site/articles/cross-package-validation.html pkgdown-site/articles/covariance-correlation.html`
+  -> PASS; rendered HTML contains all four nav groups and Developer Notes
+  section labels.
+- `rg -n 'latent\(\) \+ unique|latent\([^\n]*\) \+ unique|unique_unit|gllvmTMB_wide\(|Lamdba|depreciat|deprecicat|trait-specific unique variance|why `unique\(\)` matters|loadings-only by default|Use `phylo_latent\(\) \+ phylo_unique|Use `animal_latent\(\) \+ animal_unique|Use `spatial_unique|append `spatial_unique|\+ unique\(1 \| individual\)' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd ROADMAP.md _pkgdown.yml pkgdown-site/index.html pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/covariance-correlation.html`
+  -> PASS with only expected compatibility hits in README and
+  `covariance-correlation`; no `unique_unit`, misspellings, or rendered old
+  `+ unique(1 | individual)` first-copy output remained.
+- `git diff --check`
+  -> PASS.
+
+Generated cleanup:
+
+- Focused renders created transient untracked vignette PNGs
+  (`vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, `vignettes/residual-qq-1.png`); removed after
+  validation.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "pkgdown article navigation" --limit 20 --json number,title,url,state,labels`
+  -> #230 and #347 are relevant and remain open.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "accessibility unique article" --limit 20 --json number,title,url,state,labels`
+  -> #230 relevant.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "roadmap articles" --limit 20 --json number,title,url,state,labels`
+  -> #230 and #347 relevant; #340/#349 broad roadmap issues not directly
+  changed by this PR.
+
+Not run:
+
+- `devtools::test()` and `devtools::check()` were not rerun because this PR
+  changes pkgdown navigation, roadmap prose, and article rendering/prose only;
+  no R code, TMB, parser, roxygen, generated Rd, or tests changed.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-pkgdown-nav-taxonomy.md`.
+
+## 2026-06-22 -- Developer Notes direct-link accessibility labels
+
+Follow-up after PR #530. The navbar now separates Developer Notes from the
+public learning path; this slice makes direct-linked Developer Notes pages say
+the same thing on the page itself.
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-article-directlink-accessibility-20260622`
+  on `codex/article-directlink-accessibility-20260622`.
+
+Pre-edit coordination checks:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`; no open PR overlap.
+- `git log --all --oneline --since='6 hours ago'`
+  -> recent merged #527/#528/#529/#530 sequence only, plus power-pilot work;
+  no competing article direct-link branch detected.
+
+Implementation:
+
+- Added `tier: 3` metadata and first-screen "Developer Note -- under audit"
+  callouts to all pages in the `Under-audit model drafts` article-index group.
+- Added `tier: 3` metadata and first-screen "Developer validation note"
+  callouts to the validation-note pages.
+- Added `tier: 2` metadata to the rendered Roadmap article to clarify that it
+  is a top-nav reference page, not a tutorial.
+- Updated stale direct-link wording in `random-regression-reaction-norms.Rmd`
+  from "not yet in the public article menu" to the current Developer Notes
+  status.
+- Replaced prose uses of "unique-tier" / "unique variance" with "diagonal Psi"
+  wording where the text describes model variance rather than the
+  `part = "unique"` extractor keyword or a compatibility syntax note.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `ruby -e 'require "yaml"; y=YAML.load_file("_pkgdown.yml"); groups=y["articles"].select{|s| ["Under-audit model drafts", "Developer validation notes"].include?(s["title"])}; groups.each{|s| puts "## #{s["title"]}"; s["contents"].each{|slug| f="vignettes/#{slug}.Rmd"; txt=File.read(f); tier=txt[/^tier:.*$/,0]||"MISSING tier"; label=txt.include?("Developer Note -- under audit") || txt.include?("Developer Note -- retire candidate") || txt.include?("Developer validation note") || txt.include?("tier: 2 # rendered roadmap"); puts "#{slug}: #{tier} | label=#{label}" }}'`
+  -> PASS; every Developer Notes page has tier metadata and a direct-link
+  label.
+- `ruby -e 'require "yaml"; y=YAML.load_file("_pkgdown.yml"); groups=y["articles"].select{|s| ["Under-audit model drafts", "Developer validation notes"].include?(s["title"])}; bad=[]; groups.each{|s| s["contents"].each{|slug| f="vignettes/#{slug}.Rmd"; txt=File.read(f); ok=txt.include?("Developer Note -- under audit") || txt.include?("Developer Note -- retire candidate") || txt.include?("Developer validation note") || txt.include?("tier: 2 # rendered roadmap"); bad << slug unless ok }}; abort("missing direct-link labels: #{bad.join(", ")}") unless bad.empty?; puts "developer-notes-direct-link-labels-ok"'`
+  -> PASS (`developer-notes-direct-link-labels-ok`).
+- `Rscript --vanilla -e 'articles <- c("articles/data-shape-flowchart", "articles/animal-model", "articles/stacked-trait-gllvm", "articles/cross-package-validation", "articles/simulation-verification", "articles/covariance-correlation", "articles/troubleshooting-profile"); for (a in articles) { message("BUILD ", a); pkgdown::build_article(a, lazy = FALSE, new_process = FALSE, quiet = FALSE) }'`
+  -> PASS; rendered representative path-finder, model-draft,
+  retire-candidate, validation-note, concept, and diagnostics pages.
+- `rg -n 'Developer Note|under audit|retire candidate|first-stop tutorial|Developer validation note' pkgdown-site/articles/data-shape-flowchart.html pkgdown-site/articles/animal-model.html pkgdown-site/articles/stacked-trait-gllvm.html pkgdown-site/articles/cross-package-validation.html pkgdown-site/articles/simulation-verification.html`
+  -> PASS; rendered HTML contains the new direct-link labels.
+- `rg -n 'unique-tier|unique variance|unique variances|trait-specific unique|unique-variance|Preview -|Status -|Internal status -|not yet in the public article menu|public article menu|Lamdba|depreciat|deprecicat' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd ROADMAP.md _pkgdown.yml`
+  -> PASS for this slice; no stale "unique variance" / misspelling /
+  public-menu wording remained. Existing profile-CI preview text with a Unicode
+  dash is outside this ASCII scan and was not changed.
+- `rg -n 'latent\(\) \+ unique|latent\([^\n]*\) \+ unique|unique_unit|loadings-only by default|\+ unique\(1 \| individual\)' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd ROADMAP.md _pkgdown.yml`
+  -> PASS with only expected explicit compatibility notes in README and
+  `covariance-correlation.Rmd`; no `unique_unit`, first-path old formula, or
+  stale loadings-default claim.
+- `git diff --check`
+  -> PASS.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'article accessibility Developer Notes direct link' --limit 20 --json number,title,url,state,labels`
+  -> no direct-link-specific issue.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'pkgdown article accessibility' --limit 20 --json number,title,url,state,labels`
+  -> #230 is relevant and remains open.
+- `gh issue view 347 --repo itchyshin/gllvmTMB --json number,title,url,state,labels`
+  -> #347 is the broader article-completion tracker and remains open.
+
+Not run:
+
+- `devtools::test()` and `devtools::check()` were not run; this is article
+  metadata/prose only, with no R code, parser, TMB, roxygen, generated Rd, or
+  tests changed.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-developer-notes-direct-link-accessibility.md`.
+
+## 2026-06-22 -- Covariance/correlation model-first accessibility
+
+Follow-up after PR #531. This slice makes the Concepts article
+`vignettes/articles/covariance-correlation.Rmd` open from the fitted Gaussian
+teaching model before introducing `Sigma`, so readers see that `Sigma` is an
+implied covariance summary rather than the model itself.
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-covariance-correlation-accessibility-20260622`
+  on `codex/covariance-correlation-accessibility-20260622`.
+
+Pre-edit coordination checks:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,statusCheckRollup --limit 20`
+  -> `[]`; no open PR overlap before the slice.
+- `git log --all --oneline --since='6 hours ago' --decorate`
+  -> recent merged #529/#530/#531 sequence only, plus the unrelated
+  `origin/power-pilot-results` branch; no competing covariance/correlation
+  article edit detected.
+- Reran before shared dev-log edits:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,statusCheckRollup --limit 20`
+  -> `[]`.
+
+Implementation:
+
+- Renamed the article to `Covariance and correlation: the model behind Sigma`.
+- Added Tier-2 metadata for the Concepts article.
+- Rewrote the opening around the Gaussian stacked-trait teaching model
+  `y_it = mu_t + lambda_t^T u_i + epsilon_it`, with `u_i ~ N(0, I_d)` and
+  `epsilon_it ~ N(0, psi_tt)`.
+- Made the key teaching point explicit: `Sigma` is the covariance implied by
+  the model, not the model itself.
+- Reframed `Lambda`, `Psi`, `Sigma`, and `R` in a model/syntax/reporting table.
+- Reworded the OLRE section from "unique component" to "diagonal component".
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/covariance-correlation", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS; rendered `pkgdown-site/articles/covariance-correlation.html`.
+- `rg -n "Latent \+ unique|unique component|unique variance|trait-specific unique|gllvmTMB_wide|Lamdba|depreciat|depriciat|loadings-only by default|latent\(\) now includes|no-residual low-rank" vignettes/articles/covariance-correlation.Rmd`
+  -> PASS; no matches.
+- `rg -n "gllvmTMB_wide|meta_known_V|diag\(U\)|diag\(S\)|\\bf S|\bS_B\b|\bS_W\b|profile-likelihood default|removed in 0\.2\.0|primary new-user API|\bphylo\(|\bgr\(|\bmeta\(|phylo_rr\(" vignettes/articles/covariance-correlation.Rmd`
+  -> PASS; no matches.
+- `rg -n "gllvmTMB\(" vignettes/articles/covariance-correlation.Rmd`
+  -> PASS with manual check; long-data examples include `trait =`, and the
+  wide example uses `traits(...)` through `gllvmTMB()`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `rg -n "Covariance and correlation: the model behind Sigma|Start from the model|Sigma is not the model itself|Ordinary latent trait correlations" pkgdown-site/articles/covariance-correlation.html`
+  -> PASS for title, opening, and updated plot title. The `Sigma is not...`
+  sentence is line-wrapped in HTML, so this exact alternative did not appear
+  as a single-line match.
+- `git diff --check`
+  -> PASS.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "covariance-correlation OR covariance correlation OR Sigma Lambda Psi OR article accessibility" --json number,title,url,labels,updatedAt --limit 20`
+  -> #230 and #347 are the relevant documentation/article-track issues and
+  remain open.
+- `gh issue view 230 --repo itchyshin/gllvmTMB --json number,title,url,state,labels`
+  -> #230 `Article surface reset and user-first tooling gate`, open.
+- `gh issue view 347 --repo itchyshin/gllvmTMB --json number,title,url,state,labels`
+  -> #347 `[roadmap] Article completion (public learning path)`, open.
+
+Not run:
+
+- `devtools::test()` and `devtools::check()` were not run; this is one
+  article prose/rendering slice with no R code, parser, TMB, roxygen,
+  generated Rd, tests, or pkgdown navigation changes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-covariance-correlation-model-first-accessibility.md`.
+
+## 2026-06-22 -- screen_gllvmTMB pre-fit response screening
+
+Implemented `screen_gllvmTMB()` as a formula-aware pre-fit response screen for
+candidate binary/binomial traits before fitting a stacked-trait GLLVM. This is
+the pre-fit companion to the Ayumi-495/urbanisation_map#3 large-loading
+diagnostic lane; it does not select variables, remove traits, prove
+identifiability, solve separation, choose rank, or guarantee convergence.
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-pre-fit-response-screen-20260622`
+  on `codex/pre-fit-response-screen-20260622`.
+
+Pre-edit coordination checks before shared dev-log edits:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent merged #531/#532 documentation-accessibility sequence only:
+  `a47a870`, `7298451`, `387c35b`, `4fd2ac8`; no competing dev-log/design
+  edit detected.
+
+Implementation:
+
+- Added exported `screen_control()`, `screen_gllvmTMB()`, `screen_table()`,
+  and `print.gllvmTMB_screen`.
+- Reused the existing `traits(...)` wide-to-long path, long `trait =` path,
+  response-missing row drop, weight normalisation, fixed-effect model matrix,
+  parsed covariance terms, and requested latent-rank metadata.
+- Implemented binary/binomial v1 support for Bernoulli, logical binary,
+  `cbind(success, failure)`, and flat successes with `weights = n_trials`.
+- Added trait, pair, unit, design, recommendation, summary, and settings
+  tables.
+- Added duplicate/complement, near-duplicate, high-phi/Jaccard,
+  denominator-aware prevalence/minority-count, fixed-effect-rank,
+  one-level-unit, and `d >= n_traits` checks.
+- Added `vignettes/articles/pre-fit-response-screening.Rmd`.
+- Added design note `docs/design/2026-06-22-pre-fit-response-screening.md`.
+- Added validation-debt row `DIA-14`, NEWS entry, and pkgdown article/reference
+  navigation.
+- Posted the separate maintainer-approved accessible reply to Ayumi at
+  `https://github.com/Ayumi-495/urbanisation_map/issues/1#issuecomment-4773564655`.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; generated `man/screen_control.Rd`, `man/screen_gllvmTMB.Rd`, and
+  `man/screen_table.Rd`. Unrelated roxygen-version link/format churn in older
+  Rd files was restored before staging.
+- `Rscript --vanilla -e 'devtools::test(filter = "screen")'`
+  -> PASS after final threshold wiring:
+  `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 34 ]`.
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> PASS after final threshold wiring:
+  `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3479 ]`. The warnings are existing
+  broad-suite warnings (Julia bridge and multi-trial-binomial `sdreport`
+  `NaNs produced`), not from `test-screen-gllvmTMB.R`.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); rmarkdown::render("vignettes/articles/pre-fit-response-screening.Rmd", output_dir = tempfile("screen-article-"), quiet = FALSE)'`
+  -> PASS; rendered the new article through the development package state.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", document = FALSE, quiet = FALSE, error_on = "never")'`
+  -> PASS after the malformed-support test addition, with known local install
+  warning only:
+  `0 errors, 1 warning, 0 notes`; warning text was
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); df <- data.frame(unit = factor(seq_len(100000)), trait = factor("indicator"), y = c(rep(1,1000), rep(0,99000))); print(system.time(scr <- screen_gllvmTMB(y ~ 1, df, unit = "unit", trait = "trait", family = binomial()))); print(screen_table(scr, "traits")[, c("status", "minority_count", "prevalence")])'`
+  -> PASS; 100000-row smoke ran in about 0.5 seconds and returned `INFO`,
+  `minority_count = 1000`, `prevalence = 0.01`.
+- `rg -n "selects variables|automatic deletion|guarantees convergence|proves identifiability|validated item selection|separation solved|choose variables|choose_variables|bad item|failed trait|depreciat|Lamdba|gllvmTMB_wide" R/screen-gllvmTMB.R tests/testthat/test-screen-gllvmTMB.R vignettes/articles/pre-fit-response-screening.Rmd docs/design/2026-06-22-pre-fit-response-screening.md NEWS.md man/screen_gllvmTMB.Rd man/screen_control.Rd man/screen_table.Rd _pkgdown.yml docs/design/35-validation-debt-register.md`
+  -> PASS for this slice; matches were only existing `gllvmTMB_wide()`
+  soft-deprecation notes in NEWS/register.
+- `rg -n "screen_gllvmTMB|screen_control|screen_table|pre-fit-response-screening|DIA-14" NAMESPACE _pkgdown.yml NEWS.md R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd man/screen_control.Rd man/screen_table.Rd docs/design/35-validation-debt-register.md docs/design/2026-06-22-pre-fit-response-screening.md vignettes/articles/pre-fit-response-screening.Rmd`
+  -> PASS; exports, pkgdown reference entries, article entry, design note, NEWS,
+  and validation row are linked.
+- `for f in man/screen_gllvmTMB.Rd man/screen_control.Rd man/screen_table.Rd; do echo "$f keywords=$(grep -c '^\\\\keyword' "$f")"; tail -5 "$f"; done`
+  -> PASS; no accidental `\keyword{}` spam.
+- `git diff --check`
+  -> PASS.
+
+Not run:
+
+- Heavy tests with `GLLVMTMB_HEAVY_TESTS=1`; this PR adds an R-level
+  diagnostic/documentation slice and the heavy model-recovery matrix is outside
+  the v1 screen scope.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-pre-fit-response-screening.md`.
+
+GitHub closeout:
+
+- Commit `40a876c` pushed to `codex/pre-fit-response-screen-20260622`.
+- Draft PR #533 opened:
+  `https://github.com/itchyshin/gllvmTMB/pull/533`.
+- GitHub Actions R-CMD-check run `27990468804` completed successfully on
+  Ubuntu:
+  `https://github.com/itchyshin/gllvmTMB/actions/runs/27990468804`.
+
+Final plan-tightening addendum:
+
+- Added the remaining literature anchors named in the approved plan to the
+  article/design-note evidence boundary: UCLA OARC separation FAQ, Mansournia
+  et al. (2018), `mirt::itemstats()`, SAS IRT overview, `detectseparation`,
+  `recipes::step_nzv()`, `recipes::step_corr()`, and Raykov (2008).
+- Added deterministic test grids for:
+  - `n = 20, 50, 200, 1000, 100000` crossed with prevalence
+    `0, .001, .005, .01, .05, .5, .95, .99, 1`;
+  - pairwise discordant counts `0, 1, 5, 10, 50, 500`.
+- Updated validation-register row `DIA-14` so those grids are now recorded as
+  covered evidence; the row remains partial for non-binary modules, optional
+  comparator checks, and high-dimensional performance benchmarks.
+- Pre-edit coordination checks before this shared dev-log/design addendum:
+  - `gh pr list --repo itchyshin/gllvmTMB --state open`
+    -> one open PR, this branch only: #533
+    `codex/pre-fit-response-screen-20260622`.
+  - `git log --all --oneline --since="6 hours ago"`
+    -> `ec686ee`, `40a876c`, and the already-merged docs sequence
+    `a47a870`, `7298451`; no competing design/dev-log edit detected.
+- `air format tests/testthat/test-screen-gllvmTMB.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "screen")'`
+  -> PASS: `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 40 ]`.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); rmarkdown::render("vignettes/articles/pre-fit-response-screening.Rmd", output_dir = tempfile("screen-article-final-"), quiet = FALSE)'`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> PASS: `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3485 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `rg -n "selects variables|automatic deletion|guarantees convergence|proves identifiability|validated item selection|separation solved|choose variables|choose_variables|bad item|failed trait|depreciat|Lamdba|gllvmTMB_wide" R/screen-gllvmTMB.R tests/testthat/test-screen-gllvmTMB.R vignettes/articles/pre-fit-response-screening.Rmd docs/design/2026-06-22-pre-fit-response-screening.md NEWS.md man/screen_gllvmTMB.Rd man/screen_control.Rd man/screen_table.Rd _pkgdown.yml docs/design/35-validation-debt-register.md`
+  -> PASS for this slice; matches were only the existing intentional
+  `gllvmTMB_wide()` soft-deprecation notes in NEWS/register.
+- `rg -n "Mansournia|Geroldinger|Greenland|Heinze|UCLA OARC|SAS364|An X|Yung|detectseparation|itemstats|step_nzv|step_corr|Raykov|0, 1, 5, 10, 50, 500|100000" vignettes/articles/pre-fit-response-screening.Rmd docs/design/2026-06-22-pre-fit-response-screening.md tests/testthat/test-screen-gllvmTMB.R`
+  -> PASS; confirmed literature anchors and grid-count evidence are present.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", document = FALSE, quiet = FALSE, error_on = "never")'`
+  -> PASS with the known local Apple-clang/R-header install warning:
+  `0 errors, 1 warning, 0 notes`.
+
+## 2026-06-22 -- validation ledger EXT-10 / LAM-02 cleanup
+
+Goal: continue the evidence-led validation-register cleanup after PR #533
+merged by promoting only rows where existing tests already exceed old
+smoke/partial wording.
+
+Implementation:
+
+- Updated `EXT-10` from `partial` / smoke to `covered`, citing
+  `test-ordinal-probit.R` and `test-ordinal-recovery-depth.R`.
+- Updated `LAM-02` from `partial` / smoke-only to `covered`, citing
+  `test-lambda-constraint.R`.
+- Updated `docs/design/06-extractors-contract.md` so
+  `extract_cutpoints()` is covered for ordinal-probit traits in mixed-family
+  fits and non-ordinal fits fail loudly.
+- Updated `docs/design/01-formula-grammar.md` to remove stale LAM-03/LAM-04
+  future-partial wording; the grammar table now agrees with the register that
+  binary IRT lambda constraints and lambda-suggester workflows are covered.
+- Recounted the leading-status register tally as `171/23/0/7` over 201 rows,
+  with an explicit caution that `EXT-04`, `EXT-13`, `DIA-11`, and `DIA-12`
+  still carry partial sub-scopes.
+
+Pre-edit coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,statusCheckRollup,url --limit 20`
+  -> PASS; no open PRs after #533 merged.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS; recent commits were the just-merged #533 sequence and no competing
+  design/dev-log edit was detected.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "ordinal-probit|ordinal-recovery-depth|lambda-constraint", stop_on_failure = TRUE)'`
+  -> PASS: `[ FAIL 0 | WARN 0 | SKIP 8 | PASS 96 ]`; skips are expected heavy
+  binary/lambda and ordinal-depth cells.
+- `GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "ordinal-recovery-depth", stop_on_failure = TRUE)'`
+  -> PASS: `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 12 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS: `No problems found.`
+- `rg -n "LAM-03 stays partial|LAM-04.*stays partial|M2 verifies on binary|EXT-10.*partial|LAM-02.*partial|ordinal cutpoint smoke EXT-10|lambda_constraint.*smoke LAM-02|extract_cutpoints.*smoke|lambda_constraint.*smoke only|ordinal-probit thresholds only \\(single-family ordinal\\)|Reserved for non-Gaussian and mixed-family|167/20/0/7|194 capability rows" docs/design docs/dev-log/after-task tests/testthat -g '*.md' -g '*.R'`
+  -> PASS for live files; the only remaining hit is a historical
+  2026-05-16 after-task preview noting that LAM-03 was partial before M2.3.
+- `rg -n "EXT-10|LAM-02|LAM-03|LAM-04|171/23/0/7|201 capability rows|covered \\(Gaussian and binary IRT\\)|mixed-family fits" docs/design/35-validation-debt-register.md docs/design/06-extractors-contract.md docs/design/01-formula-grammar.md docs/dev-log/after-task/2026-06-22-validation-ledger-ext10-lam02.md`
+  -> PASS; live register, extractor contract, and formula grammar agree.
+- `git diff --check`
+  -> PASS.
+
+Not run:
+
+- Full `devtools::test()` and `devtools::check()`. This is a docs/register-only
+  cleanup on the just-merged PR #533 base; focused tests directly cover the
+  promoted rows, and #533 already passed the broad local and GitHub gates.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-validation-ledger-ext10-lam02.md`.
+
+## 2026-06-22 -- validation ledger MIS-07 predict coverage
+
+Goal: walk the stale `MIS-07` validation-register row for
+`predict.gllvmTMB_multi()` from partial to covered where existing behaviour and
+new focused tests support the claim.
+
+Implementation:
+
+- Added a focused mixed-family `predict(type = "response")` test in
+  `tests/testthat/test-tidy-predict.R`.
+- The new test covers training-row `type = "link"` alignment with
+  `fit$report$eta`, per-trait inverse-link response predictions for mixed
+  Gaussian / binomial / Poisson fits, and `newdata` response-scale dispatch via
+  the training trait's link.
+- Updated the `predict.gllvmTMB_multi()` roxygen description and regenerated
+  `man/predict.gllvmTMB_multi.Rd`.
+- Updated `docs/design/06-extractors-contract.md` to remove the stale
+  "response-scale outputs are M2 work" statement; response-scale fitted values
+  now live in `predict(type = "response")`.
+- Promoted `MIS-07` in `docs/design/35-validation-debt-register.md` from
+  `partial` to `covered` and updated the leading-status tally to
+  `172/22/0/7` over 201 rows.
+
+Pre-edit coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url`
+  -> PASS; no open PRs after #534 merged.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS; recent shared-file edits were the just-merged #533 / #534 sequence
+  from this session, with no competing design/dev-log edit detected.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "tidy-predict|missing-data-robustfix|integration-tour", stop_on_failure = TRUE)'`
+  -> PASS: `[ FAIL 0 | WARN 0 | SKIP 5 | PASS 64 ]`; skips are existing heavy
+  missing-data robustfix blocks.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/predict.gllvmTMB_multi.Rd`. Other roxygen-version
+  Rd churn was deliberately excluded from the staged slice.
+- `Rscript --vanilla -e 'devtools::test(filter = "tidy-predict", stop_on_failure = TRUE)'`
+  -> PASS: `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 35 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS: `No problems found.`
+- `Rscript --vanilla -e 'res <- devtools::check(args = "--no-manual", document = FALSE, check_dir = "/private/tmp/gllvmtmb-predict-validation-check", error_on = "never", quiet = FALSE); print(res)'`
+  -> PASS with the known local Apple-clang/R-header install warning:
+  `0 errors, 1 warning, 0 notes`. The warning is
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+
+Stale scans:
+
+- `rg -n "MIS-07.*partial|family-aware predict typed outputs is M2|Response-scale outputs are M2 work|predict / plot dispatchers MIS-07/09|171/23/0/7|response-scale outputs are M2" docs/design R man tests/testthat -g '*.md' -g '*.R' -g '*.Rd'`
+  -> PASS for live docs / R / Rd / tests after this slice; historical
+  after-task reports were not rewritten.
+- `rg -n "MIS-07|predict\\(type = \"response\"\\)|per-trait inverse link|row.?s own trait/family inverse link|172/22/0/7" docs/design/35-validation-debt-register.md docs/design/06-extractors-contract.md R/methods-gllvmTMB.R man/predict.gllvmTMB_multi.Rd tests/testthat/test-tidy-predict.R docs/dev-log/after-task/2026-06-22-predict-validation-mis07.md`
+  -> PASS; row, docs, roxygen/Rd, and tests agree on the scoped claim.
+- `git diff --check`
+  -> PASS.
+
+Not run:
+
+- Full `devtools::test()`. The local `devtools::check()` ran the package
+  test suite through `testthat.R` and completed with only the known local
+  install warning above.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-predict-validation-mis07.md`.
+
+## 2026-06-22 -- Xcoef_fixed structural-zero fixed-effect coefficients
+
+Goal: add a narrow native-TMB route for pinning selected expanded
+fixed-effect coefficients at structural zero, while keeping REML,
+non-zero fixed values, and the Julia twin explicitly gated.
+
+Implementation:
+
+- Added `Xcoef_fixed` to `gllvmTMB()`, passed through the wide
+  `traits(...)` rewrite and into `gllvmTMB_multi_fit()`.
+- Added `R/xcoef-fixed.R` to validate the named numeric vector against
+  `fit$X_fix_names`, require zero values, reject duplicate / unknown /
+  non-finite entries, reject `REML = TRUE`, and build a TMB `map` for
+  `b_fix`.
+- Pinned fixed coefficients are set to zero in the starting vector,
+  removed from the free TMB parameter vector, retained in the fitted
+  object's coefficient table, and reported with `status = "fixed"`,
+  `std.error = NA`, and `NA` fixed-effect CIs.
+- Added an explicit `engine = "julia"` gate until the paired GLLVM.jl
+  coefficient mask exists.
+- Added validation-debt row `MIS-34` and updated the leading-status
+  tally to `173/22/0/7` over 202 rows, with `MIS-34` carrying the
+  explicit native-covered / Julia-partial sub-scope.
+
+Pre-edit coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,author,updatedAt`
+  -> PASS; no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS; recent commits were this session's merged PRs #533, #534,
+  and #535 plus one unrelated power-pilot artifact commit; no competing
+  shared-file edit was detected.
+
+Validation commands and outcomes:
+
+- `gh run view 27998401037 --repo itchyshin/gllvmTMB --json status,conclusion,url,jobs`
+  -> PASS; post-merge #535 `R-CMD-check / ubuntu-latest (release)` run
+  completed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/gllvmTMB.Rd`. Unrelated roxygen-version Rd
+  churn was deliberately excluded from the diff.
+- `air format R/xcoef-fixed.R tests/testthat/test-xcoef-fixed.R R/gllvmTMB.R R/fit-multi.R R/methods-gllvmTMB.R R/z-confint-gllvmTMB.R`
+  -> PASS, but the first run reformatted large legacy files; the
+  existing-file formatting churn was reverted and only the new helper /
+  test formatting was retained.
+- `Rscript --vanilla -e 'devtools::test(filter = "xcoef-fixed", reporter = "summary", stop_on_failure = TRUE)'`
+  -> PASS: `xcoef-fixed: ................`.
+- `Rscript --vanilla -e 'devtools::test(filter = "xcoef-fixed|profile-targets|tidy|confint", reporter = "summary", stop_on_failure = TRUE)'`
+  -> PASS; no failures. Existing heavy-profile tests were skipped by
+  their normal `GLLVMTMB_HEAVY_TESTS` gate.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary", stop_on_failure = TRUE)'`
+  -> PASS; no failures. Summary reported 10 warnings: one existing
+  Julia bridge default-Psi warning and nine existing multi-trial
+  binomial `NaNs produced` warnings.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS: `No problems found.`
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", document = FALSE, check_dir = "/private/tmp/gllvmtmb-xcoef-fixed-zero-check", error_on = "never", quiet = FALSE)'`
+  -> PASS with the known local Apple-clang/R-header install warning:
+  `0 errors, 1 warning, 0 notes`. The warning is
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+- `Rscript --vanilla - <<'RS' ... confint(fit, method = 'profile') ... RS`
+  -> PASS; direct profile-CI smoke confirmed the fixed `traitb:x` row
+  receives `NA` profile bounds rather than shifted free-parameter bounds.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'source("/Users/z3437171/shinichi-brain/tools/check-after-task.R"); main_check_after_task("docs/dev-log/after-task/2026-06-23-power-pilot-chunk-runner.md")'`
+  -> PASS; `after-task structure check passed`.
+
+Stale scans:
+
+- `rg -n "Xcoef_fixed|structural-zero|non-zero fixed|engine = \"julia\" structural-zero|Julia twin|guarantee|guarantees|automatic coefficient|beta to zero|fix beta|fixed-effect coefficients" NEWS.md R man tests docs/design/35-validation-debt-register.md`
+  -> PASS; hits were the intended new `Xcoef_fixed` implementation /
+  docs plus unrelated existing uses of "guarantee" in other validated
+  contexts.
+- `rg -n "Xcoef_fixed.*covered|covered.*Xcoef_fixed|Julia.*covered|engine = \"julia\".*covered|non-zero fixed values.*implemented|guarantees convergence|proves identifiability|automatic deletion|selects variables" NEWS.md R man tests docs/design/35-validation-debt-register.md || true`
+  -> PASS; hits were the intended `MIS-34` scoped coverage statements
+  and the earlier `screen_gllvmTMB()` overclaim guard, not stale claims
+  that Julia masks or non-zero fixed values are implemented.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "Xcoef_fixed OR structural-zero OR beta zero OR coefficient zero" --json number,title,url,state,updatedAt --limit 20`
+  -> no dedicated zero-coefficient issue found; broad roadmap/status
+  issues were returned but not directly advanced.
+- `gh issue view 488 --repo itchyshin/gllvmTMB --json number,title,url,state,body,comments`
+  -> inspected as the relevant Julia bridge-gate drift ledger. This PR
+  deliberately adds a conservative `engine = "julia"` stop for
+  `Xcoef_fixed`; it does not close #488 and should be followed by a
+  paired GLLVM.jl coefficient-mask slice.
+
+Not run:
+
+- `pkgdown::build_articles(lazy = FALSE)`: no article or formula-parser
+  examples changed.
+- Live GLLVM.jl twin tests: the R PR deliberately gates Julia rather
+  than claiming paired support before the Julia mask exists.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-xcoef-fixed-zero.md`.
+
+## 2026-06-23 -- Xcoef_fixed Julia bridge and user article
+
+Goal: finish the paired fixed-zero coefficient lane by routing
+`Xcoef_fixed` through admitted `engine = "julia"` fixed-effect-X rows,
+documenting the user story that some predictors only make sense for
+some responses, and keeping the native TMB support from 2026-06-22
+unchanged.
+
+Implementation:
+
+- Merged paired GLLVM.jl PR #114
+  (`https://github.com/itchyshin/GLLVM.jl/pull/114`), which supplies
+  the Julia-side positional zero-mask route used by this R bridge slice.
+- Removed the temporary `engine = "julia"` stop for `Xcoef_fixed` when
+  an admitted fixed-effect covariate design exists.
+- `gllvm_julia_fit()` now accepts `coef_fixed`, validates it against
+  `dim(X)[3]`, and passes fixed entries to GLLVM.jl through the
+  `options$coef_fixed` index-to-zero dictionary route. This avoids the
+  JuliaCall length-1 logical-vector-to-scalar issue.
+- `.gllvmTMB_julia_dispatch()` now normalises the named R-side
+  `Xcoef_fixed` vector against expanded fixed-effect column names,
+  passes the positional mask, and stores `fit$X_fix_names` and
+  `fit$Xcoef_fixed` on Julia-backed fits.
+- `coef.gllvmTMB_julia()` now exposes `gamma_status` /
+  `mean_coef_status` when returned by the Julia bridge.
+- Added `vignettes/articles/fixed-effect-zero-constraints.Rmd` and a
+  pkgdown Concepts entry, explaining that this is trait-specific
+  mean-structure control, not response screening or loading constraints.
+- Updated `NEWS.md`, `man/gllvmTMB.Rd`, `man/gllvm_julia_fit.Rd`, and
+  validation-debt row `MIS-34`.
+
+Pre-edit coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,author,updatedAt`
+  -> PASS; no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS; only unrelated local power-pilot commits were visible.
+
+Validation commands and outcomes:
+
+- `gh pr merge 114 --repo itchyshin/GLLVM.jl --merge --delete-branch`
+  -> PASS; GLLVM.jl PR #114 merged at
+  `00804c2994c4ffda30ec9ee8cdf6541e3337c50d`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE)'`
+  -> PASS.
+- `air format R/gllvmTMB.R R/julia-bridge.R tests/testthat/test-xcoef-fixed.R tests/testthat/test-julia-bridge.R`
+  -> PASS; unrelated formatting churn was subsequently trimmed back.
+- `Rscript --vanilla -e 'devtools::test(filter = "xcoef-fixed|julia-bridge")'`
+  -> PASS after cleanup: `FAIL 0 | WARN 1 | SKIP 16 | PASS 414`.
+  The single warning is the existing once-per-session Julia default-Psi
+  bridge warning in `test-julia-bridge.R:1754`, not the fixed-zero route.
+- `GLLVM_JL_PATH=/private/tmp/gllvmjl-xcoef-fixed-zero-20260622 Rscript --vanilla -e "devtools::load_all(quiet = TRUE); testthat::test_file('tests/testthat/test-julia-bridge.R', desc = \"engine = 'julia' main dispatch routes Xcoef_fixed to live GLLVM.jl\")"`
+  -> PASS after cleanup: `FAIL 0 | WARN 0 | SKIP 0 | PASS 5`.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated relevant help pages. Unrelated roxygen-version
+  Rd churn was excluded from the diff.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/fixed-effect-zero-constraints", lazy = FALSE, new_process = FALSE)'`
+  -> PASS; rendered the new article against the current source package.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS: `No problems found.`
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> PASS: `FAIL 0 | WARN 10 | SKIP 746 | PASS 3515`. Warnings were
+  the existing Julia bridge default-Psi warning plus the existing
+  multi-trial binomial `NaNs produced` warnings from `summary.sdreport()`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> completed with `0 errors, 1 warning, 1 note`; `devtools` exits
+  non-zero on warnings. The note was `unable to verify current time`.
+  The warning was reproduced with `R CMD INSTALL -l "$tmp_lib" --preclean .`
+  and is the known local Apple-clang / RcppEigen / R-header install
+  warning stack, including `xcrun --show-sdk-version` status 1 and
+  `R_ext/Boolean.h:62:36: warning: unknown warning group
+  '-Wfixed-enum-extension'`.
+- `R CMD INSTALL -l "$tmp_lib" --preclean .`
+  -> PASS; install completed with the known local compiler warnings above.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "engine = \"julia\".*Xcoef_fixed|Xcoef_fixed.*engine = \"julia\".*stop|not yet available for .*engine = \"julia\"|structural-zero coefficient masks remain follow-up|selects variables|automatic deletion|guarantees convergence|proves identifiability|validated item selection|separation solved" R tests vignettes NEWS.md docs/design man _pkgdown.yml`
+  -> PASS; no stale overclaim or old Julia-gate wording hits.
+- `rg -n "beta = 0|fixed predictor effects|Fix predictor effects|Xcoef_fixed|coef_fixed|gamma_status|mean_coef_status" R tests vignettes NEWS.md docs/design man _pkgdown.yml`
+  -> PASS; hits were intended implementation, docs, tests, and register
+  entries plus unrelated pre-existing `beta` comments in old tests.
+
+Not claimed:
+
+- The full live `test-julia-bridge.R` under `GLLVM_JL_PATH` is not
+  claimed as green in this slice; only the new live fixed-zero dispatch
+  smoke was run and passed. Older live bridge parity failures remain
+  outside this PR.
+- Julia per-trait intercept pinning, non-zero fixed values, REML, and
+  unsupported Julia fixed-effect-X families remain gated in `MIS-34`.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-xcoef-fixed-julia-bridge.md`.
+
+## 2026-06-23 -- JSDM response-screening article polish and scope boundaries
+
+Goal: implement the council plan after PR #537 by clarifying that
+`screen_gllvmTMB()` flags binary/binomial JSDM responses for inspection and
+sensitivity analysis, not automatic species removal, and by adding explicit
+row-backed scope wording to the fixed-effect zero-constraint article.
+
+Implementation:
+
+- Confirmed PR #537 was merged and started a fresh worktree from updated
+  `origin/main` at `e2b9440`.
+- Updated `vignettes/articles/pre-fit-response-screening.Rmd` with `DIA-14`
+  scope wording, binary JSDM site/species framing, a documented
+  `suppressWarnings()` rationale, softer `FAIL` guidance, and literature-backed
+  language that rare species are not automatically discarded.
+- Updated `R/screen-gllvmTMB.R` roxygen and regenerated
+  `man/screen_gllvmTMB.Rd` so the examples mirror the advisory-only scope.
+- Updated `vignettes/articles/fixed-effect-zero-constraints.Rmd` with explicit
+  `MIS-34` IN / gated wording, keeping it focused on trait-specific
+  mean-structure control rather than screening, response deletion, variable
+  selection, loading constraints, or rank selection.
+- Added `docs/dev-log/spikes/2026-06-23-ayumi-jsdm-screening-draft.md` with a
+  draft GitHub response tagging `@Ayumi-495`; it was not posted.
+
+Coordination and branch-state commands:
+
+- `gh pr view 537 --repo itchyshin/gllvmTMB --json number,state,mergeCommit,url,title`
+  -> PASS; PR #537 is `MERGED` at
+  `e2b94409dca50a268aab582bffa9f350178aadc9`.
+- `git worktree add -b codex/jsdm-screen-polish-20260623 /private/tmp/gllvmtmb-jsdm-screen-polish-20260623 origin/main`
+  -> PASS; new worktree created from fresh `origin/main`.
+- `git status --short --branch`
+  -> PASS before edits; branch was clean at `origin/main`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,author,updatedAt`
+  -> PASS; no open PRs after #537 merge.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS; visible recent gllvmTMB commits were #537 merge, #537 head, and one
+  unrelated local `power-pilot` commit outside this slice.
+- `gh issue list --repo Ayumi-495/urbanisation_map --state open --limit 20 --json number,title,url,updatedAt`
+  -> PASS; inspected open issues #3 and #1 for draft-comment context.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/screen_gllvmTMB.Rd`. Unrelated roxygen churn in
+  other Rd files was excluded from the diff.
+- `tail -5 man/screen_gllvmTMB.Rd`
+  -> PASS; generated help ends in the expected references block.
+- `grep -c '^\\keyword' man/screen_gllvmTMB.Rd`
+  -> PASS; returned `0`, so no misplaced roxygen keyword spillover.
+- `LC_ALL=C rg -n "[^\x00-\x7F]" R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd docs/dev-log/spikes/2026-06-23-ayumi-jsdm-screening-draft.md`
+  -> PASS; no non-ASCII hits after edits.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/pre-fit-response-screening", lazy = FALSE, new_process = FALSE)'`
+  -> PASS; targeted screening article rendered.
+- `Rscript --vanilla -e 'pkgdown::clean_site(force = TRUE); devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/pre-fit-response-screening", lazy = FALSE, new_process = FALSE); pkgdown::build_article("articles/fixed-effect-zero-constraints", lazy = FALSE, new_process = FALSE)'`
+  -> PASS; both touched articles rendered sequentially after removing an ignored
+  `pkgdown-site/` collision from an earlier parallel render attempt.
+- `Rscript --vanilla -e 'devtools::test(filter = "screen-gllvmTMB|xcoef-fixed|julia-bridge")'`
+  -> PASS with existing warning: `FAIL 0 | WARN 1 | SKIP 16 | PASS 454`.
+  The warning is the existing once-per-session Julia ordinary-`latent()` Psi
+  bridge warning in `test-julia-bridge.R:1754`.
+- `git diff --check`
+  -> PASS.
+- `rg -n "DIA-14|MIS-34" NEWS.md vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd docs/design/35-validation-debt-register.md`
+  -> PASS; intended row references are present in touched articles, NEWS, and
+  the register.
+- `rg -n "automatic deletion|remove species|guarantees convergence|proves identifiability|selects variables|gllvmTMB_wide|meta_known_V|trio|diag\\(U\\)|\\\\bf S|S_B|S_W" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd docs/dev-log/spikes/2026-06-23-ayumi-jsdm-screening-draft.md _pkgdown.yml`
+  -> PASS; no stale-overclaim hits.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS: `No problems found.`
+- Rose pre-publish audit commands:
+  - `rg -n "Scope boundary|DIA-14|MIS-34|IN|PARTIAL|PLANNED|gated" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd`
+    -> PASS; touched public prose and roxygen/Rd cite the relevant row-backed
+    scope boundaries.
+  - `rg -n "gllvmTMB\\(|screen_gllvmTMB\\(" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd`
+    -> PASS; examples use wide `traits(...)` where appropriate and the long
+    screening call passes `trait = "indicator"`.
+  - `rg -n "trio|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(|profile-likelihood default|diag\\(U\\)|U_phy|U_non|\\\\bf S|S_B|S_W|gllvmTMB_wide|meta_known_V|automatic deletion|response deletion|selects variables|guarantees convergence|proves identifiability" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd`
+    -> PASS with one intended negative-scope hit:
+    `fixed-effect-zero-constraints.Rmd` says the feature is "not ... response
+    deletion".
+  - `Rscript --vanilla -e 'print(names(formals(gllvmTMB::screen_gllvmTMB))); print("Xcoef_fixed" %in% names(formals(gllvmTMB::gllvmTMB)))'`
+    -> PASS; `screen_gllvmTMB()` formals are unchanged and the installed
+    package now exposes `Xcoef_fixed`.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> first run failed in `fixed-effect-zero-constraints.Rmd` because the
+  separately launched pkgdown process loaded an older installed `gllvmTMB`
+  without `Xcoef_fixed`.
+- `Rscript --vanilla -e '"Xcoef_fixed" %in% names(formals(gllvmTMB::gllvmTMB))'`
+  -> initially `FALSE`, confirming the stale installed package.
+- `Rscript --vanilla -e 'devtools::install(quick = TRUE, upgrade = "never", quiet = TRUE)'`
+  -> PASS; installed this source checkout locally for the broad pkgdown render.
+- `Rscript --vanilla -e '"Xcoef_fixed" %in% names(formals(gllvmTMB::gllvmTMB))'`
+  -> `TRUE` after install.
+- `Rscript --vanilla -e 'pkgdown::clean_site(force = TRUE); pkgdown::build_articles(lazy = FALSE)'`
+  -> re-run progressed past the touched fixed-effect article but was manually
+  interrupted after a long unrelated `lambda-constraint.Rmd` render with the
+  child R process still using CPU. Targeted renders for the two touched
+  articles are the claimed article-render evidence for this slice.
+
+Behavior check:
+
+- The article calls were run with and without `suppressWarnings()` before
+  editing. The wide call emits the ordinary one-shot `latent()` Psi-default
+  warning. The wrapper was kept and explained in prose so the rendered article
+  stays focused while interactive users are still told to read warnings.
+
+Not claimed:
+
+- No behavior or API change.
+- No non-binary screening module, Julia screening parity, separation solver,
+  item-response comparator, variable selection, response deletion, or automatic
+  rare-species removal rule.
+- The draft comment for `@Ayumi-495` has not been posted.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-jsdm-screening-scope-polish.md`.
+
+## 2026-06-23 -- Mid-term truth sync and scout packet
+
+Scope:
+
+- Implemented the safe first slice of the mid-term capability/compute
+  plan after merging the approved PR #538, without refreshing the
+  dashboard, editing issue #340, or launching Totoro/DRAC jobs.
+- Corrected the validation-register headline from `172/22/0/7 over
+  201 rows` to `173/22/0/7 over 202 rows`.
+- Added source-truth notes for capability status, capstone scaling gates,
+  and ASReml/HSquared/DRM transfer boundaries.
+- Added `docs/dev-log/audits/2026-06-23-midterm-capability-compute-scout.md`.
+
+Coordination commands and outcomes:
+
+- `git status --short --branch`
+  -> WARN in the Dropbox checkout: dirty mission-control tree on
+  `codex/r-bridge-grouped-dispersion`, ahead 56. No edits were made
+  there.
+- `gh pr view 538 --repo itchyshin/gllvmTMB --json number,title,state,isDraft,mergeStateStatus,headRefName,baseRefName,statusCheckRollup,url`
+  -> PASS before merge; PR #538 open, non-draft, clean, Ubuntu R-CMD-check
+  success.
+- `gh pr merge 538 --repo itchyshin/gllvmTMB --merge --delete-branch --match-head-commit 3a15adf2a6170b49d4a2e456909cf3dd6ed9a0c3`
+  -> PASS; PR #538 merged at `475cd7a`.
+- `git fetch origin --prune`
+  -> PASS; `origin/main` advanced to `475cd7a`.
+- `git rebase origin/main`
+  -> PASS after resolving the append-only `docs/dev-log/check-log.md`
+  conflict by keeping both the #538 entry and this truth-scout entry.
+- `gh issue view 340 --repo itchyshin/gllvmTMB --json number,title,state,body,updatedAt,url`
+  -> PASS; issue body still carries the old 2026-06-03 register tally
+  and must be refreshed later from the register.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url,files --limit 20`
+  -> PASS before merge; only #538 open. This branch avoids #538 article
+  files.
+- `git log --all --oneline --since='6 hours ago' --decorate --date=short`
+  -> WARN; recent remote activity includes the #537 merge, #538 branch,
+  and power-pilot result commits. No competing local edit was made in
+  this clean worktree; #538 overlap is limited to append-only
+  `check-log` / after-task files.
+
+Validation commands and outcomes:
+
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'tools::md5sum(c("docs/design/35-validation-debt-register.md", "docs/design/61-capability-status.md", "docs/design/66-capstone-power-study.md", "docs/design/43-asreml-speed-techniques.md"))'`
+  -> PASS; touched design files are readable by R.
+- `Rscript --vanilla -e 'source("/Users/z3437171/shinichi-brain/tools/check-after-task.R"); main_check_after_task("docs/dev-log/after-task/2026-06-23-midterm-truth-scout.md")'`
+  -> PASS; after-task structure check passed.
+
+Stale scans:
+
+- `rg -n "172/22/0/7|201 rows|166 C|193 rows|Register tally now" docs/design docs/dev-log README.md NEWS.md _pkgdown.yml`
+  -> WARN; current stale headline fixed. Historical `193 rows` hits
+  remain in older snapshot/provenance sections.
+- `rg -n "automatic removal|automatic deletion|guarantees convergence|proves identifiability" docs/design docs/dev-log README.md NEWS.md vignettes R man`
+  -> WARN; hits are old dev-log scan records and this check-log entry,
+  not live user-facing overclaims in touched prose.
+- `rg -n "AI-REML|REML" docs/design/43-asreml-speed-techniques.md docs/design/61-capability-status.md docs/design/66-capstone-power-study.md docs/dev-log/audits/2026-06-23-midterm-capability-compute-scout.md`
+  -> PASS; hits are bounded to Gaussian-only or do-not-borrow wording.
+- `rg -n "Type-I proxy|coverage-under-null|signal = 0|binomial_probit|coverage_primary" docs/design/66-capstone-power-study.md dev/m3-pilot-launch.R dev/m3-pilot-report.R`
+  -> WARN; stale `Type-I proxy` / `coverage-under-null` wording remains
+  in `dev/m3-pilot-launch.R` and is explicitly deferred to the pilot
+  metric-audit slice.
+
+Not claimed:
+
+- No package behavior changed.
+- No validation row moved.
+- PR #538 was merged after Shinichi approved the first packet.
+- Mission control and issue #340 were not refreshed.
+- No Totoro or DRAC login/submission was attempted.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-midterm-truth-scout.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot run 144 snapshot audit
+
+Maintainer request: after merging the clean truth lane, keep moving through the
+mid-term plan without launching broad simulations. This slice freezes run 144
+as a diagnostic audit snapshot only.
+
+Setup and coordination:
+- `git worktree add -b codex/power-pilot-audit-20260623
+  /private/tmp/gllvmtmb-power-pilot-audit-20260623 origin/main`
+  -> clean worktree at `88b8fa85`.
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json
+  number,title,headRefName,isDraft,url,mergeStateStatus,statusCheckRollup`
+  -> `[]`.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> showed #537, #538, #539 merges and `origin/power-pilot-results` at
+  `6f0be960`.
+
+Snapshot evidence:
+- `git ls-tree -r --name-only origin/power-pilot-results`
+  -> 48 per-cell result RDS files plus `dev/m3-pilot-results/pilot-index.rds`.
+- `git show --stat --oneline --decorate --no-renames
+  origin/power-pilot-results -1`
+  -> `6f0be960 power-pilot: accumulate reps (run 144)`, 48 binary cell files
+  changed plus `pilot-index.rds`.
+- `git show --no-patch --format='%H%n%P%n%an <%ae>%n%aI%n%cn <%ce>%n%cI%n%s'
+  origin/power-pilot-results`
+  -> result SHA `6f0be9607ccaf507d42814c9371f614b3a3da946`, parent
+  `ac166a0cebfb8505ba4f4bfc7ae33d737b6de9d5`, commit time
+  `2026-06-23T14:19:01Z`.
+- `gh run list --repo itchyshin/gllvmTMB --workflow 'Power pilot sweep'
+  --limit 20 --json databaseId,number,displayTitle,workflowName,headBranch,headSha,status,conclusion,createdAt,updatedAt,event,url`
+  -> run 144 success at source SHA `43e643b8`; run 145 already in progress.
+- `gh run view 28022283502 --repo itchyshin/gllvmTMB --json jobs`
+  -> 51 jobs, all success; first start `2026-06-23T11:17:06Z`, last completion
+  `2026-06-23T14:25:18Z`.
+
+Read-only result-store checks:
+- `git show origin/power-pilot-results:dev/m3-pilot-results/pilot-index.rds
+  >/tmp/pilot-index-run144.rds && Rscript --vanilla -e 'idx <- readRDS(...)'`
+  -> index is `48 x 9`, `sum_n_sim = 273576`, and all rows have
+  `status == "done"` even though cap completion is not reached for 47 cells.
+- `mkdir -p /tmp/pilot-run144-store && git archive origin/power-pilot-results
+  dev/m3-pilot-results | tar -x -C /tmp/pilot-run144-store`
+  plus `Rscript --vanilla -e '... pilot_accum_status(..., n_sim_cap=10000);
+  df <- pilot_collect(...) ...'`
+  -> 1 / 48 cells complete, 273,576 / 480,000 reps, `ALL_COMPLETE=FALSE`,
+  48 collected cells, and 28 flagged cells.
+- `Rscript --vanilla -e '... aggregate(is.na(coverage_primary) ~ family, df,
+  sum) ...'`
+  -> all 12 missing `coverage_primary` rows are `ordinal_probit`.
+- `Rscript --vanilla -e '... print(out[, keep]); ...'`
+  -> compact per-cell table printed; signal coverage mean 0.752, 3 / 24 pass
+  94%, 2 / 24 pass 95%, null mean coverage 0.424, 28 flagged cells.
+- `git show origin/power-pilot-results:dev/m3-pilot-results/binomial_probit-d1-n50-sig0p2.rds
+  >/tmp/binom-cell.rds && Rscript --vanilla -e 'x <- readRDS(...)'`
+  -> per-replicate rows include `rep_seed`, `seed_base`, fit-health,
+  sdreport, and bootstrap fields, but no durable run/session manifest.
+
+Implemented:
+- Added `docs/dev-log/audits/2026-06-23-power-pilot-run144-snapshot-audit.md`.
+- Added `docs/dev-log/after-task/2026-06-23-power-pilot-run144-snapshot-audit.md`.
+- Recorded run 144 as diagnostic only. `CI-08` and `CI-10` remain partial.
+
+Validation after writing:
+- `Rscript --vanilla -e 'source("/Users/z3437171/shinichi-brain/tools/check-after-task.R"); main_check_after_task("docs/dev-log/after-task/2026-06-23-power-pilot-run144-snapshot-audit.md")'`
+  -> PASS; after-task structure check passed.
+- `git diff --check`
+  -> PASS.
+- `rg -n "pending at report creation|CI-08|CI-10|binomial_probit|coverage_primary|zero-exclusion|Type-I|DRAC|MCSE|session" docs/dev-log/audits/2026-06-23-power-pilot-run144-snapshot-audit.md docs/dev-log/after-task/2026-06-23-power-pilot-run144-snapshot-audit.md`
+  -> PASS for intended audit coverage; found the expected row IDs,
+  target-mismatch terms, coverage fields, and gate wording. The only
+  `pending at report creation` hit is the recorded scan command itself,
+  not a stale status claim.
+
+Not claimed:
+- No simulation was launched.
+- No Totoro, DRAC, SLURM, or GPU check was attempted.
+- No package behavior, workflow, validation register, README, NEWS, article,
+  roxygen, generated Rd, or pkgdown navigation changed.
+
+## 2026-06-23 (Codex / Ada) — Power pilot metric repair
+
+Scope:
+
+- Repaired reporting semantics only. No likelihood, DGP, estimator, bootstrap
+  interval, workflow volume, or compute launch changed.
+- Added `evidence_family = "binomial_logit_harness"` while preserving existing
+  `binomial_probit-*` cell IDs.
+- Added explicit denominators and MCSE columns to `pilot_collect()` output:
+  attempted fits, converged fits, optimizer-converged fits, PD-Hessian fits,
+  sdreport-usable fits, bootstrap attempts, coverage-eligible rows,
+  coverage MCSE, zero-exclusion denominator/MCSE, and failure-rate MCSEs.
+- Reworded signal-zero rows as coverage diagnostics, not Type-I/power.
+- Updated the workflow status table to show MCSE, denominator, evidence label,
+  and fit-health rates when `pilot_collect()` is available.
+
+Coordination:
+
+- `git worktree add -b codex/power-pilot-metric-repair-20260623 /private/tmp/gllvmtmb-power-pilot-metric-repair-20260623 origin/main`
+  -> clean worktree from #540 merge commit `850963d9`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url --limit 20`
+  -> PASS before shared dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent work is #537-#540 plus `origin/power-pilot-results` run 144.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-report.R")); invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-report.R")); cat("parse ok\n")'`
+  -> PASS.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-report.R")'`
+  -> PASS; 23 expectations.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-report|m3-grid-summary")'`
+  -> PASS; 23 passed, 13 existing heavy M3 summary tests skipped behind
+  `GLLVMTMB_HEAVY_TESTS`.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-launch.R"); source("dev/m3-pilot-report.R"); df <- pilot_collect(results_dirs = "/tmp/pilot-run144-metric-repair/dev/m3-pilot-results"); ...'`
+  -> PASS on archived run-144 results; 48 cells collected and new columns
+  populated.
+- `Rscript --vanilla dev/power-pilot-run.R --mode=status --results-dir=/tmp/pilot-run144-metric-repair/dev/m3-pilot-results --n-sim-cap=10000 --status-out=/tmp/pilot-status-metric-repair.md`
+  -> PASS on archived run-144 results; status output used signal-zero
+  diagnostic wording and wrote the richer board table.
+- One-cell status smoke using `/tmp/pilot-one-cell-store`
+  -> PASS; all binomial rows, including cells without stored result rows,
+  displayed `binomial_logit_harness`.
+- `rg -n "Type-I proxy|coverage-under-null|null/Type-I|power/Type-I" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS; no matches after the repair.
+- `git diff --check`
+  -> PASS.
+
+Not claimed:
+
+- True binary probit is still not implemented.
+- Ordinal-probit coverage is still unresolved.
+- No durable run/session manifest was added.
+- No simulation, Totoro check, DRAC login, SLURM job, or GPU check was run.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-metric-repair.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot manifest and seed audit
+
+Scope:
+
+- Added a no-fit manifest layer for the Design 66 Phase-1 power pilot.
+- Each shard now writes `_manifests/shard-<n>.csv` before fitting. Rows
+  record source SHA, workflow run id/number, shard, cell, result path,
+  planned replicate count, batch seed base, and `rep_seed` min/max.
+- The slice/persist/status path carries and validates manifests for duplicate
+  output paths, duplicate chunk IDs, invalid seed ranges, and overlapping seed
+  ranges.
+- Corrected the pilot seed map so the effective `rep_seed` ranges are spaced
+  after the harness family/d seed offset is applied. The first all-48 no-fit
+  audit failed before this correction, catching a real cross-family overlap.
+- Updated Design 66 and stale signal-zero wording. `signal = 0` remains only a
+  signal-zero coverage diagnostic in the current `Sigma_unit_diag` pilot.
+
+Coordination:
+
+- `git worktree add -b codex/power-pilot-manifest-20260623 /private/tmp/gllvmtmb-power-pilot-manifest-20260623 origin/main`
+  -> clean worktree from #541 merge commit `f98db0e7`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> PASS before shared dev-log/design edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work is #537-#541 plus the run-144 pilot result branch.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS; 22 expectations.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 45 expectations across manifest/report tests.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-launch.R"); mf <- pilot_build_manifest(n_sim_step = 200L, n_sim_cap = 2000L, seed_base = 144L, results_dir = tempfile("pilot-manifest-all-"), n_boot = 0L, shard = 1L, n_shards = 1L, source_sha = "sha"); pilot_assert_manifest(mf); cat(sprintf("manifest ok: %d rows; seed range %d-%d\n", nrow(mf), min(mf$rep_seed_min), max(mf$rep_seed_max)))'`
+  -> PASS after seed-map correction; 48 manifest rows, seed range
+  `721370001-721840200`. This command failed before the correction with an
+  overlapping seed-range error.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-launch.R"); rd <- tempfile("pilot-store-"); sd <- tempfile("pilot-slice-"); dir.create(rd); grid <- pilot_grid(); ord <- order(grid$cell_id); cell <- grid$cell_id[ord][1L]; mf <- pilot_build_manifest(cell_ids = cell, n_sim_step = 2L, n_sim_cap = 10L, seed_base = 147L, results_dir = rd, n_boot = 0L, shard = 1L, n_shards = 48L, source_sha = "slice-smoke"); pilot_write_manifest(mf, rd, shard = 1L); out <- system2("Rscript", c("--vanilla", "dev/power-pilot-run.R", "--mode=slice", "--shard=1", "--n-shards=48", paste0("--results-dir=", rd), paste0("--slice-dir=", sd)), stdout = TRUE, stderr = TRUE); stopifnot(file.exists(file.path(sd, "_manifests", "shard-1.csv"))); cat(paste(out, collapse = "\n"), "\n"); cat("slice manifest copied\n"); unlink(c(rd, sd), recursive = TRUE, force = TRUE)'`
+  -> PASS; slice mode copied `_manifests/shard-1.csv` without launching fits.
+- `Rscript --vanilla dev/power-pilot-run.R --mode=status --results-dir=/tmp/gllvmtmb-empty-manifest-store --n-sim-cap=10 --status-out=/tmp/gllvmtmb-empty-manifest-status.md`
+  -> PASS; `manifest_ok=true`. The warning about no existing results
+  directory is expected for this artificial empty-store smoke.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `rg -n "Type-I proxy|coverage-under-null|null/Type-I|power/Type-I|0 level \\*is\\* the Type-I|signal-zero Type-I" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS; no matches.
+- `rg -n "pilot_build_manifest|pilot_assert_manifest|duplicate output paths|overlapping seed ranges|pilot-index.rds.*source of truth|manifest" dev/m3-pilot-launch.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS for intended manifest coverage. The old `pilot-index.rds` source-of-truth
+  wording was found and replaced with derived-cache wording.
+- `rg -n "source of truth|pilot-index|index.*truth|derived cache" dev/m3-pilot-launch.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS after header repair; remaining hits describe `pilot-index.rds` as a
+  local resume cache / derived cache.
+- `git diff --check`
+  -> PASS.
+
+Not claimed:
+
+- No fits, simulations, Totoro check, DRAC login, SLURM job, or GPU check was
+  launched.
+- This does not yet convert the pilot to immutable per-task chunk files; it adds
+  manifest validation around the current per-cell accumulated store.
+- True binary probit and ordinal-probit coverage repair remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-manifest-seed-audit.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot chunk preflight
+
+Scope:
+
+- Added future immutable chunk destinations to the Phase-1 pilot manifest
+  while preserving the current GitHub accumulated per-cell store.
+- Added `dev/power-pilot-run.R --mode=preflight --output-mode=chunk` so
+  Totoro/DRAC can run the first smoke as manifest parse + destination audit
+  only, with no calls to `m3_run_cell()`.
+- Extended manifest validation to catch duplicate `chunk_path` values as well
+  as duplicate chunk IDs, duplicate current output paths, invalid seed ranges,
+  and overlapping seed ranges.
+- Updated Design 66 wording to keep the boundary explicit: this prepares the
+  immutable chunk lane but does not launch compute or replace the current
+  accumulated writer.
+
+Coordination:
+
+- `git fetch origin main --prune && git worktree list --porcelain | rg 'gllvmtmb-power-pilot-chunks-20260623|codex/power-pilot-chunks-20260623' || true && gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url && git log --all --oneline --since="6 hours ago"`
+  -> PASS before shared dev-log/design edits; no open PRs and recent history
+  was #537 through #542.
+- `git worktree add -b codex/power-pilot-chunks-20260623 /private/tmp/gllvmtmb-power-pilot-chunks-20260623 origin/main`
+  -> clean worktree from #542 merge commit `7effa8a2`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS after rooting the CLI smoke at the resolved repo root; 42
+  expectations, 0 skips. GitHub R-CMD-check run `28050578137` then failed
+  because this test used bare `Rscript`; R CMD check requires an explicit path
+  (see Writing R Extensions 1.6). The test was fixed to use
+  `file.path(R.home("bin"), "Rscript")`.
+- `rm -rf /tmp/gllvmtmb-preflight-all48 && Rscript --vanilla dev/power-pilot-run.R --mode=preflight --shard=1 --n-shards=1 --n-sim-step=200 --n-sim-cap=2000 --seed-base=150 --results-dir=/tmp/gllvmtmb-preflight-all48 --n-boot=0 --output-mode=chunk && find /tmp/gllvmtmb-preflight-all48 -maxdepth 3 -type f -print | sort`
+  -> PASS; wrote 48 manifest rows and 48 active chunks; the only file printed
+  was `/tmp/gllvmtmb-preflight-all48/_manifests/shard-1.csv`.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 65 expectations.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "Type-I proxy|coverage-under-null|null/Type-I|power/Type-I|0 level \\*is\\* the Type-I|signal-zero Type-I" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS; no matches.
+- `rg -n "pilot-index\\.rds.*source of truth|source of truth.*pilot-index|index.*source of truth|shared index.*audit trail|derived cache|local resume cache" dev/m3-pilot-launch.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS; remaining hits describe `pilot-index.rds` as a local resume cache
+  or derived cache, and the manifest/per-cell grids as the audit trail.
+- `rg -n "mode=preflight|output-mode=chunk|chunk_path|chunk destinations|without launching fits|before fitting|m3_run_cell\\(" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended coverage.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no matches.
+
+Not claimed:
+
+- No fits, simulations, Totoro login, DRAC login, SLURM job, or GPU check was
+  launched.
+- The current GitHub pilot still accumulates into per-cell stores; this slice
+  only prepares and validates future immutable chunk destinations.
+- True binary probit, ordinal coverage repair, DRAC environment checks, and
+  production `n_sim = 2000` remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-preflight.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot chunk output audit
+
+Scope:
+
+- Added an audit layer for future immutable chunk outputs in the Design 66
+  power pilot. This is a no-fit guardrail for dependent aggregation jobs, not
+  a DRAC launch or a replacement for the current GitHub accumulated-store
+  writer.
+- Extended manifest validation to reject overlapping per-cell replicate
+  windows, in addition to duplicate chunk IDs/paths and overlapping seed
+  ranges.
+- Added `pilot_assert_chunk_outputs()` and
+  `dev/power-pilot-run.R --mode=chunk-audit`, which read written manifests and
+  require every planned active chunk file to exist and be non-empty.
+- Updated Design 66 wording so the mid-term compute plan now distinguishes:
+  preflight destination validation, chunk output audit, and later aggregation.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url`
+  -> PASS before shared dev-log/design edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS; recent history was the expected #538 through #543 sequence, with
+  #543 merged at `366441ed`.
+- `git worktree add -b codex/power-pilot-chunk-aggregate-20260623 /private/tmp/gllvmtmb-power-pilot-chunk-aggregate-20260623 origin/main`
+  -> clean worktree from post-#543 `origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS after suppressing the expected `system2()` warning in the intentional
+  CLI failure test; 57 expectations, 0 warnings/skips.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 80 expectations.
+- `rm -rf /tmp/gllvmtmb-chunk-audit-missing && Rscript --vanilla dev/power-pilot-run.R --mode=preflight --shard=1 --n-shards=1 --n-sim-step=2 --n-sim-cap=10 --seed-base=154 --results-dir=/tmp/gllvmtmb-chunk-audit-missing --n-boot=0 --output-mode=chunk >/tmp/gllvmtmb-chunk-audit-preflight.out 2>&1 && set +e; Rscript --vanilla dev/power-pilot-run.R --mode=chunk-audit --results-dir=/tmp/gllvmtmb-chunk-audit-missing >/tmp/gllvmtmb-chunk-audit-missing.out 2>&1; audit_status=$?; set -e; cat /tmp/gllvmtmb-chunk-audit-preflight.out; cat /tmp/gllvmtmb-chunk-audit-missing.out; echo "chunk_audit_exit=$audit_status"; test "$audit_status" -ne 0; rg -q "Missing pilot chunk output" /tmp/gllvmtmb-chunk-audit-missing.out`
+  -> PASS; preflight wrote 48 planned chunk rows and chunk-audit exited 1
+  with `Missing pilot chunk output`.
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "mode=chunk-audit|pilot_assert_chunk_outputs|Overlapping pilot replicate windows|Missing pilot chunk output|Empty pilot chunk output|found no manifest rows" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended chunk-audit coverage.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no matches.
+
+What did not go smoothly:
+
+- A manual shell smoke first failed because `status` is a read-only zsh
+  variable; rerun with `audit_status` passed. This was shell syntax, not a
+  package failure.
+- The first missing-manifest CLI test emitted a `system2()` warning for the
+  expected nonzero exit; the test now suppresses that expected warning and
+  checks the status/message directly.
+
+Not claimed:
+
+- No fits, simulations, Totoro login, DRAC login, SLURM job, GPU check, or
+  `n_sim = 2000` production run was launched.
+- No chunk writer or result aggregator was added; this slice only validates
+  the manifest and the presence/non-empty state of planned chunk files.
+- True binary probit, ordinal coverage repair, MCSE denominator expansion,
+  and DRAC environment checks remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-output-audit.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot immutable chunk runner
+
+Scope:
+
+- Added the first runnable immutable-chunk writer for the Design 66 power
+  pilot. `pilot_run_chunk_manifest()` consumes active `output_mode = "chunk"`
+  manifest rows, calls `m3_run_cell()`, reindexes `rep` into the planned
+  per-cell replicate window, tags chunk provenance fields, and writes one RDS
+  file per chunk.
+- Added `dev/power-pilot-run.R --mode=chunk`, which builds/writes the chunk
+  manifest, runs active chunk rows, and immediately validates them with
+  `pilot_assert_chunk_outputs()`.
+- Added `lambda_scale` to the manifest schema so chunk runs do not need to
+  rediscover the signal-to-loading-scale mapping from the grid.
+- Updated the Design 66 compute ladder wording to separate preflight,
+  chunk writing, chunk-output audit, and later aggregation.
+
+Coordination:
+
+- `git fetch origin main --prune && gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url && git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared dev-log/design edits; no open PRs, recent history was
+  the expected #538 through #544 sequence, with #544 merged at `72f24154`.
+- `git worktree add -b codex/power-pilot-chunk-runner-20260623 /private/tmp/gllvmtmb-power-pilot-chunk-runner-20260623 origin/main`
+  -> clean worktree from post-#544 `origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS after fixing the new test to inspect the returned chunk-audit table
+  instead of expecting literal `TRUE`; 85 expectations.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 108 expectations.
+- `rm -rf /tmp/gllvmtmb-chunk-runner-smoke && Rscript --vanilla dev/power-pilot-run.R --mode=chunk --shard=1 --n-shards=48 --n-sim-step=1 --n-sim-cap=5 --seed-base=157 --results-dir=/tmp/gllvmtmb-chunk-runner-smoke --n-boot=0 --dry-run=true >/tmp/gllvmtmb-chunk-runner-smoke.out 2>&1 && Rscript --vanilla dev/power-pilot-run.R --mode=chunk-audit --results-dir=/tmp/gllvmtmb-chunk-runner-smoke >>/tmp/gllvmtmb-chunk-runner-smoke.out 2>&1 && cat /tmp/gllvmtmb-chunk-runner-smoke.out && find /tmp/gllvmtmb-chunk-runner-smoke -type f | sort`
+  -> PASS; wrote one real chunk RDS and one manifest CSV, then
+  `chunk-audit` validated one planned chunk output.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "mode=chunk|pilot_run_chunk_manifest|lambda_scale|chunk_rows|pilot_chunk_id|pilot_assert_chunk_outputs" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended chunk-runner coverage.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML|pilot-index\\.rds.*chunk.*writer|chunk.*writer.*pilot-index\\.rds" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no matches.
+
+What did not go smoothly:
+
+- The first focused test run failed because the new test expected
+  `pilot_assert_chunk_outputs()` to return `TRUE`; the helper correctly returns
+  an audit data frame. The assertion now checks the audit table.
+
+Not claimed:
+
+- No Totoro login, DRAC login, SLURM job, GPU check, production campaign, or
+  `n_sim = 2000` run was launched.
+- No chunk aggregator or index rebuilder for immutable chunks was added.
+- True binary probit, ordinal coverage repair, denominator/MCSE expansion, and
+  DRAC environment checks remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-runner.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot immutable chunk aggregator
+
+Scope:
+
+- Added the derived single-writer aggregation step for immutable power-pilot
+  chunks. `pilot_read_chunk_outputs()` rereads validated chunk files,
+  verifies chunk/cell/campaign metadata, and requires each chunk's observed
+  `rep` values to match its manifest `rep_start`/`rep_end` window.
+- Added `pilot_aggregate_chunk_outputs()`, which rejects duplicate
+  `pilot_cell_id`/`rep`/`trait_id`/`target` rows and writes per-cell aggregate
+  RDS files under `_chunk-aggregate/`.
+- Added `dev/power-pilot-run.R --mode=chunk-aggregate` with GitHub-output
+  counters for aggregate success, cell count, row count, and aggregate
+  directory.
+- Updated the Design 66 compute ladder to place `chunk-aggregate` after
+  `chunk-audit` and before any future reporting/index rebuild step.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url && git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared dev-log/design edits; no open PRs, recent history was
+  the expected #538 through #545 sequence, with #545 merged at `fccc89c5`.
+- `git status --short --branch`
+  -> clean branch start in
+  `/private/tmp/gllvmtmb-power-pilot-chunk-aggregator-20260623` on
+  `codex/power-pilot-chunk-aggregator-20260623...origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> first run FAIL because the new test helper could not see the sourced dev
+  functions in testthat's per-test environment; fixed by resolving helpers from
+  `parent.frame()`. Second run PASS; 107 expectations.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 130 expectations.
+- `rm -rf /tmp/gllvmtmb-chunk-aggregate-smoke && Rscript --vanilla dev/power-pilot-run.R --mode=chunk --shard=1 --n-shards=48 --n-sim-step=1 --n-sim-cap=5 --seed-base=162 --results-dir=/tmp/gllvmtmb-chunk-aggregate-smoke --n-boot=0 --dry-run=true >/tmp/gllvmtmb-chunk-aggregate-smoke.out 2>&1 && Rscript --vanilla dev/power-pilot-run.R --mode=chunk-audit --results-dir=/tmp/gllvmtmb-chunk-aggregate-smoke >>/tmp/gllvmtmb-chunk-aggregate-smoke.out 2>&1 && Rscript --vanilla dev/power-pilot-run.R --mode=chunk-aggregate --results-dir=/tmp/gllvmtmb-chunk-aggregate-smoke >>/tmp/gllvmtmb-chunk-aggregate-smoke.out 2>&1 && cat /tmp/gllvmtmb-chunk-aggregate-smoke.out && find /tmp/gllvmtmb-chunk-aggregate-smoke -type f | sort`
+  -> PASS; wrote one real chunk RDS, validated it, and wrote one per-cell
+  aggregate RDS with five trait rows.
+
+Stale scans:
+
+- `rg -n "mode=chunk-aggregate|pilot_aggregate_chunk_outputs|pilot_read_chunk_outputs|pilot_assert_unique_chunk_rows|PILOT_CHUNK_AGGREGATE_DIR|_chunk-aggregate|chunk_aggregate" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended aggregation coverage.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML|pilot-index\\.rds.*chunk.*aggregate|chunk.*aggregate.*pilot-index\\.rds|concurrent.*aggregate" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no matches.
+
+Not claimed:
+
+- No Totoro login, DRAC login, SLURM job, GPU check, production campaign, or
+  `n_sim = 2000` run was launched.
+- This slice does not rebuild `pilot-index.rds` from immutable chunks and does
+  not add report/MCSE aggregation over the per-cell chunk aggregates.
+- True binary probit, ordinal coverage repair, denominator/MCSE expansion, and
+  DRAC environment checks remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-chunk-aggregator.md`.
+
+## 2026-06-23 (Codex / Ada) — Power pilot aggregate report reader
+
+Scope:
+
+- Added an explicit read-only report path for immutable chunk aggregates.
+  `pilot_chunk_aggregate_results_dirs()` resolves `_chunk-aggregate/` stores
+  from parent pilot result directories, and
+  `pilot_collect_chunk_aggregates()` sends those per-cell aggregate RDS files
+  through the existing `pilot_collect()` reducer.
+- Added `dev/m3-pilot-report.R --emit-issues --chunk-aggregate` so the GitHub
+  issue-summary line can read aggregate stores after the chunk-audit and
+  chunk-aggregate steps.
+- Added `--chunk-aggregate` support for the scoring-audit CLI path by resolving
+  the aggregate directory before calling `pilot_scoring_audit()`.
+- Updated the Design 66 compute ladder to state that aggregate reporting is an
+  explicit source and does not mutate `pilot-index.rds`.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url && git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared design/dev-log edits; no open PRs, recent history was
+  the expected #538 through #546 sequence, with #546 merged at `0d2c2ea1`.
+- `git status --short --branch`
+  -> clean branch start in
+  `/private/tmp/gllvmtmb-power-pilot-aggregate-report-20260623` on
+  `codex/power-pilot-aggregate-report-20260623...origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-report.R")); invisible(parse("tests/testthat/test-m3-pilot-report.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-report.R")'`
+  -> first run FAIL because the CLI smoke inherited testthat's working
+  directory and the script could not auto-source `dev/m3-grid.R`; fixed by
+  running the CLI smoke from the repo root. Second run PASS; 33 expectations.
+- `air format dev/m3-pilot-report.R tests/testthat/test-m3-pilot-report.R`
+  -> PASS.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 140 expectations.
+- `rm -rf /tmp/gllvmtmb-aggregate-report-smoke && Rscript --vanilla dev/power-pilot-run.R --mode=chunk --shard=1 --n-shards=48 --n-sim-step=1 --n-sim-cap=5 --seed-base=162 --results-dir=/tmp/gllvmtmb-aggregate-report-smoke --n-boot=0 --dry-run=true >/tmp/gllvmtmb-aggregate-report-smoke.out 2>&1 && Rscript --vanilla dev/power-pilot-run.R --mode=chunk-audit --results-dir=/tmp/gllvmtmb-aggregate-report-smoke >>/tmp/gllvmtmb-aggregate-report-smoke.out 2>&1 && Rscript --vanilla dev/power-pilot-run.R --mode=chunk-aggregate --results-dir=/tmp/gllvmtmb-aggregate-report-smoke >>/tmp/gllvmtmb-aggregate-report-smoke.out 2>&1 && Rscript --vanilla dev/m3-pilot-report.R --emit-issues --chunk-aggregate --results-dir=/tmp/gllvmtmb-aggregate-report-smoke >>/tmp/gllvmtmb-aggregate-report-smoke.out 2>&1 && cat /tmp/gllvmtmb-aggregate-report-smoke.out && find /tmp/gllvmtmb-aggregate-report-smoke -type f | sort`
+  -> PASS; wrote one chunk, audited it, aggregated it, and emitted an aggregate
+  issue summary of `none` from `_chunk-aggregate/`.
+
+Stale scans:
+
+- `rg -n "pilot_collect_chunk_aggregates|pilot_chunk_aggregate_results_dirs|--chunk-aggregate|_chunk-aggregate|PILOT_CHUNK_AGGREGATE_DIR" dev/m3-pilot-report.R tests/testthat/test-m3-pilot-report.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended aggregate-report coverage.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML|pilot-index\\.rds.*(write|mutate|update|rebuild)|automatic.*chunk.*scan|double-count" dev/m3-pilot-report.R tests/testthat/test-m3-pilot-report.R docs/design/66-capstone-power-study.md`
+  -> PASS for no DRAC/SLURM/GPU/production/AI-REML overclaim, no
+  `pilot-index.rds` mutation wording, and no automatic chunk-scan wording.
+  Expected `double-counted` guardrail matches appeared in the new aggregate
+  report helper/design note and in an older row-deduplication helper comment.
+
+Not claimed:
+
+- No Totoro login, DRAC login, SLURM job, GPU check, production campaign, or
+  `n_sim = 2000` run was launched.
+- This slice does not rebuild `pilot-index.rds`, change pilot metric semantics,
+  or move validation rows.
+- True binary probit, ordinal coverage repair, and final power/Type-I metric
+  semantics remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-aggregate-report-reader.md`.
+
+## 2026-06-23 (Codex / Ada) -- Power pilot audit-mini manifest
+
+Scope:
+
+- Added `pilot_audit_mini_grid()`, `pilot_audit_mini_cell_ids()`, and
+  `pilot_build_audit_mini_manifest()` as a manifest-only gate before broader
+  local or DRAC simulation volume.
+- Added `dev/power-pilot-run.R --mode=audit-mini` to write and validate a
+  four-cell chunk manifest and then exit before fitting.
+- The audit-mini cells are gaussian, nbinom2, the current `binomial_probit`
+  label carried by `binomial_logit_harness`, and ordinal-probit at `d = 1`,
+  `n_units = 50`, `signal = 0.2`, `n_sim_step = 2`, `n_boot = 0` by default.
+- Updated Design 66 to describe this as a smoke gate, not as true
+  binomial-probit evidence or DRAC production launch.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url && git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared design/dev-log edits; no open PRs, recent history was
+  the expected #538 through #547 sequence, with #547 merged at `654591e9`.
+- `git status --short --branch`
+  -> clean branch start in
+  `/private/tmp/gllvmtmb-power-pilot-audit-mini-manifest-20260623` on
+  `codex/power-pilot-audit-mini-manifest-20260623...origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`. An earlier parse run caught a mistaken `}` closing the
+  new test; fixed before logging.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS after fixing the manifest order to preserve the audit-mini family
+  order; 129 expectations.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 162 expectations.
+- `rm -rf /tmp/gllvmtmb-audit-mini-smoke && Rscript --vanilla dev/power-pilot-run.R --mode=audit-mini --seed-base=170 --results-dir=/tmp/gllvmtmb-audit-mini-smoke > /tmp/gllvmtmb-audit-mini-smoke.out 2>&1 && cat /tmp/gllvmtmb-audit-mini-smoke.out && find /tmp/gllvmtmb-audit-mini-smoke -type f | sort && Rscript --vanilla -e 'm <- read.csv("/tmp/gllvmtmb-audit-mini-smoke/_manifests/shard-1.csv"); print(m[, c("cell_id", "family_label", "evidence_family", "output_mode", "n_reps_planned", "n_boot")])'`
+  -> PASS; wrote exactly `_manifests/shard-1.csv`, reported four active
+  chunks, preserved the intended family order, and created no fit result RDS
+  files.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "audit-mini|pilot_audit_mini|audit_mini|binomial_logit_harness|binomial_probit|ordinal_probit" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended audit-mini and existing family-label matches.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML|validated binomial-probit|probit support|pilot-index\\.rds.*(write|mutate|update|rebuild)" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no DRAC/SLURM/GPU/production/AI-REML overclaim, no validated
+  binomial-probit wording, and no `pilot-index.rds` mutation wording.
+
+Not claimed:
+
+- No Totoro login, DRAC login, SLURM job, GPU check, production campaign, or
+  `n_sim = 2000` run was launched.
+- This slice launches no fits, changes no DGP, changes no likelihood, and
+  changes no scoring metric.
+- True binary probit, ordinal coverage repair, denominator/MCSE expansion, and
+  DRAC environment checks remain separate slices.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-audit-mini-manifest.md`.
+
+## 2026-06-23 (Codex / Ada) -- Power pilot audit-mini runner
+
+Scope:
+
+- Added `pilot_run_audit_mini_manifest()` as the execution companion to the
+  audit-mini manifest gate. It builds the same fixed four-cell chunk manifest,
+  writes it, runs the active immutable chunks through `pilot_run_chunk_manifest()`,
+  and audits the chunk files.
+- Added `dev/power-pilot-run.R --mode=audit-mini-run` for a local tiny
+  execution smoke after the manifest-only `--mode=audit-mini` gate.
+- Updated Design 66 to state that this runner is local-smoke only: it does not
+  mutate `pilot-index.rds`, submit DRAC/SLURM work, or start production volume.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url && git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared design/dev-log edits; no open PRs, recent history was
+  the expected #539 through #548 sequence, with #548 merged at `2b6ede35`.
+- `git status --short --branch`
+  -> clean branch start in
+  `/private/tmp/gllvmtmb-power-pilot-audit-mini-runner-20260623` on
+  `codex/power-pilot-audit-mini-runner-20260623...origin/main`.
+
+Validation:
+
+- `Rscript --vanilla -e 'invisible(parse("dev/m3-pilot-launch.R")); invisible(parse("dev/power-pilot-run.R")); invisible(parse("tests/testthat/test-m3-pilot-manifest.R")); cat("parse ok\n")'`
+  -> PASS; `parse ok`.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS; 143 expectations.
+- `air format dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-pilot-manifest|m3-pilot-report")'`
+  -> PASS; 176 expectations.
+- `rm -rf /tmp/gllvmtmb-audit-mini-run-smoke && OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla dev/power-pilot-run.R --mode=audit-mini-run --seed-base=171 --n-sim-step=1 --n-sim-cap=1 --n-boot=0 --results-dir=/tmp/gllvmtmb-audit-mini-run-smoke > /tmp/gllvmtmb-audit-mini-run-smoke.out 2>&1 && cat /tmp/gllvmtmb-audit-mini-run-smoke.out && find /tmp/gllvmtmb-audit-mini-run-smoke -type f | sort && Rscript --vanilla -e 'm <- read.csv("/tmp/gllvmtmb-audit-mini-run-smoke/_manifests/shard-1.csv"); print(m[, c("cell_id", "family_label", "evidence_family", "output_mode", "n_reps_planned", "n_boot")]); cat("chunk files=", length(list.files("/tmp/gllvmtmb-audit-mini-run-smoke/_chunks", pattern = "[.]rds$", recursive = TRUE)), "\n")'`
+  -> PASS; ran one local no-bootstrap rep for each of the four audit-mini
+  cells, wrote four immutable chunk files, and emitted `n_errored=0`.
+- `OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla dev/power-pilot-run.R --mode=chunk-audit --results-dir=/tmp/gllvmtmb-audit-mini-run-smoke >> /tmp/gllvmtmb-audit-mini-run-smoke.out 2>&1 && OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla dev/power-pilot-run.R --mode=chunk-aggregate --results-dir=/tmp/gllvmtmb-audit-mini-run-smoke >> /tmp/gllvmtmb-audit-mini-run-smoke.out 2>&1 && OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla dev/m3-pilot-report.R --emit-issues --chunk-aggregate --results-dir=/tmp/gllvmtmb-audit-mini-run-smoke >> /tmp/gllvmtmb-audit-mini-run-smoke.out 2>&1 && tail -80 /tmp/gllvmtmb-audit-mini-run-smoke.out && find /tmp/gllvmtmb-audit-mini-run-smoke/_chunk-aggregate -type f | sort`
+  -> PASS; chunk audit validated four planned outputs, chunk aggregate wrote
+  four per-cell aggregate files and 20 rows, and the issue line flagged two
+  one-rep nonPD cells (`binomial_probit` and `nbinom2`). This is expected
+  diagnostic noise from the tiny smoke, not power evidence.
+
+Stale scans:
+
+- `rg -n "audit-mini-run|pilot_run_audit_mini_manifest|audit_mini_chunk_output_rows|pilot-index\\.rds|DRAC|SLURM|production campaign|n_sim = 2000|AI-REML|validated binomial-probit|probit support" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS for intended new runner matches plus existing Design 66 boundary
+  language around `n_sim = 2000`, DRAC, and `pilot-index.rds`.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(run|launch|submitted)|GPU|production launch|n_sim = 2000.*started|AI-REML|validated binomial-probit|probit support|pilot-index\\.rds.*(write|mutate|update|rebuild)" dev/m3-pilot-launch.R dev/power-pilot-run.R tests/testthat/test-m3-pilot-manifest.R docs/design/66-capstone-power-study.md`
+  -> PASS; no DRAC/SLURM/GPU/production/AI-REML overclaim, no validated
+  binomial-probit wording, and no `pilot-index.rds` mutation wording.
+
+Not claimed:
+
+- No DRAC login, SLURM job, GPU check, production campaign, or `n_sim = 2000`
+  run was launched.
+- This slice changes no DGP, likelihood, scoring metric, interval definition,
+  or validation row status.
+- The local one-rep smoke is not coverage, power, or Type-I evidence.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-audit-mini-runner.md`.
+
+## 2026-06-23 (Codex / Ada) -- Power pilot smoke wrapper
+
+Scope:
+
+- Added `dev/power-pilot-smoke.sh`, a small shell wrapper for the
+  immutable audit-mini ladder. The default `SMOKE_STAGE=all` path runs
+  manifest, local one-rep `audit-mini-run`, chunk audit, chunk aggregate,
+  and chunk-aggregate reporting with `n_boot = 0`.
+- Added a `SMOKE_STAGE=manifest` path for DRAC-login-safe manifest parsing:
+  it validates the four-cell audit-mini manifest and launches no fits.
+- Updated Design 66 to separate login-node-safe manifest checks from
+  fit-running local/Totoro or scheduled-compute smoke stages.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url`
+  -> PASS before shared design/dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS; recent history was the expected #542 through #549 power-pilot
+  readiness sequence, with #549 merged at `51f8fe7d`.
+- `git status --short --branch`
+  -> clean branch start in
+  `/private/tmp/gllvmtmb-power-pilot-smoke-runbook-20260624` on
+  `codex/power-pilot-smoke-runbook-20260624...origin/main`.
+
+Validation:
+
+- `bash -n dev/power-pilot-smoke.sh`
+  -> PASS.
+- `SMOKE_STAGE=manifest SEED_BASE=172 RESULTS_DIR=/tmp/gllvmtmb-smoke-wrapper-manifest bash dev/power-pilot-smoke.sh`
+  -> PASS; wrote only `_manifests/shard-1.csv` and launched no fits.
+- `rm -rf /tmp/gllvmtmb-smoke-wrapper-all && RESULTS_DIR=/tmp/gllvmtmb-smoke-wrapper-all SEED_BASE=173 N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=0 bash dev/power-pilot-smoke.sh`
+  -> PASS; ran the four-cell local smoke, chunk audit, chunk aggregate, and
+  chunk-aggregate report. The report may flag one-rep nonPD cells; those are
+  diagnostic smoke noise, not power or coverage evidence.
+- `git diff --check`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "power-pilot-smoke|SMOKE_STAGE|DRAC-login-safe|login nodes|SLURM|GPU|production campaign|n_sim = 2000|pilot-index\\.rds|AI-REML" dev/power-pilot-smoke.sh docs/design/66-capstone-power-study.md`
+  -> PASS for intended wrapper, boundary, and thread-cap wording.
+- `rg -n "DRAC.*(run|launch|fit|submitted)|SLURM.*(submitted|sbatch)|GPU.*(enabled|tested)|production launch|n_sim = 2000.*started|AI-REML|validated binomial-probit|probit support|pilot-index\\.rds.*(write|mutate|update|rebuild)" dev/power-pilot-smoke.sh docs/design/66-capstone-power-study.md`
+  -> PASS with no matches; reran with `|| echo "no red-flag matches"` and
+  got `no red-flag matches`.
+
+Not claimed:
+
+- No SSH login, DRAC login-node fit, SLURM submission, GPU check, production
+  campaign, or `n_sim = 2000` run was launched.
+- This slice changes no DGP, likelihood, scoring metric, interval definition,
+  or validation row status.
+- The one-rep local wrapper smoke is not coverage, power, or Type-I evidence.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-smoke-wrapper.md`.
+
+## 2026-06-23 (Codex / Ada) -- Power pilot SLURM smoke wrapper
+
+Scope:
+
+- Added `dev/power-pilot-slurm-smoke.sh`, a conservative SLURM wrapper
+  around `dev/power-pilot-smoke.sh`.
+- The default path is `SLURM_ACTION=test` and `SLURM_STAGE=manifest`:
+  it writes an sbatch file and asks SLURM to validate it with
+  `sbatch --test-only`, launching no fits and queueing no job.
+- Actual submission is opt-in via `SLURM_ACTION=submit`; fit-running
+  stages remain scheduled-compute-only and CPU-only.
+- Updated Design 66 to describe the first DRAC smoke as manifest-only,
+  with fit-running SLURM stages gated until after the manifest smoke.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,author,updatedAt`
+  -> PASS before shared design/dev-log edits; no open PRs.
+- `git log --all --oneline --since='6 hours ago' --decorate`
+  -> PASS; recent history was the expected power-pilot readiness sequence.
+- `git fetch origin --prune`
+  -> PASS; `origin/main` advanced to the merged smoke-wrapper head
+  `73051316`.
+- `git worktree add -b codex/power-pilot-slurm-smoke-20260624 /private/tmp/gllvmtmb-slurm-smoke-fir-20260624 origin/main`
+  -> PASS; fresh clean worktree from current `origin/main`.
+
+Validation:
+
+- `ssh -G fir | rg '^(hostname|user|identityfile|port) '`
+  -> PASS; `fir` resolves to the DRAC host alias.
+- Read-only `fir` login/environment probe
+  -> PASS; SLURM was available, `/scratch` and `/project` existed, and
+  `module load r/4.5.0 julia/1.12.5` exposed `Rscript` and `julia`.
+  Private quota/account details were not persisted in this public log.
+- `bash -n dev/power-pilot-slurm-smoke.sh`
+  -> PASS.
+- `rm -rf /tmp/gllvmtmb-slurm-smoke-write && SLURM_ACTION=write RESULTS_DIR=/tmp/gllvmtmb-slurm-smoke-write SLURM_STAGE=manifest SEED_BASE=181 bash dev/power-pilot-slurm-smoke.sh && bash -n /tmp/gllvmtmb-slurm-smoke-write/_slurm/power-pilot-smoke.sbatch`
+  -> PASS; wrote a manifest-stage sbatch file and the generated job
+  script parsed cleanly.
+- `ssh -o BatchMode=yes -o ConnectTimeout=12 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null fir 'sbatch --test-only' < /tmp/gllvmtmb-slurm-smoke-write/_slurm/power-pilot-smoke.sbatch`
+  -> PASS; `fir` SLURM accepted the script as a dry-run/test-only job.
+- `ssh -o BatchMode=yes -o ConnectTimeout=12 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null fir 'squeue -u "$USER" -h -o "%i|%t|%M|%D|%R|%j" | head -n 20'`
+  -> PASS; no jobs were queued by the test-only validation.
+
+Stale scans:
+
+- `rg -n "SLURM|sbatch|DRAC|GPU|production campaign|n_sim = 2000|AI-REML|validated binomial-probit|probit support" dev/power-pilot-slurm-smoke.sh docs/design/66-capstone-power-study.md`
+  -> PASS for intended SLURM/DRAC boundary wording and existing
+  `n_sim = 2000` planning references.
+- `rg -n "GPU.*(enabled|tested)|production launch|n_sim = 2000.*started|AI-REML|validated binomial-probit|probit support|pilot-index\\.rds.*(write|mutate|update|rebuild)" dev/power-pilot-slurm-smoke.sh docs/design/66-capstone-power-study.md || true`
+  -> PASS; no red-flag matches.
+
+Not claimed:
+
+- No DRAC fit, SLURM submission, package install, GPU check, production
+  campaign, or `n_sim = 2000` run was launched.
+- This slice changes no DGP, likelihood, scoring metric, interval
+  definition, or validation row status.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-23-power-pilot-slurm-smoke.md`.
+
+## 2026-06-24 (Codex / Ada) -- fir SLURM library + manifest smoke
+
+Scope:
+
+- Added `dev/power-pilot-drac-setup.sh`, a login-node helper that prepares a
+  version-pinned fir R library, installs the current checkout, and verifies
+  `gllvmTMB` before scheduled smoke jobs run.
+- Extended `dev/power-pilot-slurm-smoke.sh` with `R_LIBS_USER_DIR`,
+  `DRAC_EXTRA_MODULES`, and `SLURM_CHECK_PACKAGE` so submitted jobs can use
+  the prepared library and fail before smoke execution if the package is not
+  visible.
+- Updated Design 66 to record the package-library convention and the
+  manifest-only fir stop line without recording private account or quota
+  details.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared design/dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> PASS before shared design/dev-log edits; recent remote history was the
+  expected `power-pilot-results` accumulator commits only.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 10 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> observed `full-check` run `28088698708` completed as `cancelled`
+  because Windows was cancelled after macOS and Ubuntu had passed; scheduled
+  Power pilot sweep run `28093240971` was still queued/running on main and
+  was not used as validation evidence.
+
+Validation:
+
+- `bash -n dev/power-pilot-drac-setup.sh && bash -n dev/power-pilot-slurm-smoke.sh && git diff --check`
+  -> PASS.
+- `rm -rf /tmp/gllvmtmb-slurm-lib-write && SLURM_ACTION=write RESULTS_DIR=/tmp/gllvmtmb-slurm-lib-write SLURM_STAGE=manifest SCRATCH=/tmp/gllvmtmb-scratch DRAC_EXTRA_MODULES='StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0' SEED_BASE=182 bash dev/power-pilot-slurm-smoke.sh && bash -n /tmp/gllvmtmb-slurm-lib-write/_slurm/power-pilot-smoke.sbatch && sed -n '1,80p' /tmp/gllvmtmb-slurm-lib-write/_slurm/power-pilot-smoke.sbatch`
+  -> PASS; generated manifest sbatch script parsed cleanly and showed the
+  compatible fir module stack plus the prepared R library path.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS; 143 expectations.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-report.R")'`
+  -> PASS; 33 expectations.
+- fir setup discovery: copying the checkout to the home filesystem failed
+  with remote I/O errors, so the checkout was placed under scratch instead.
+  A first package setup without extra system-library modules failed at
+  `units`/`sf`/`fmesher`; loading
+  `StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0`
+  exposed the needed `udunits`, GDAL, GEOS, and PROJ configuration.
+- `DRAC_EXTRA_MODULES="StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0" R_LIBS_USER_DIR="$SCRATCH/gllvmtmb-r-libs/4.5.0" bash dev/power-pilot-drac-setup.sh`
+  -> PASS on fir from the scratch checkout; final lines included
+  `gllvmTMB_version=0.2.0` and `ready`.
+- `ssh fir 'set -euo pipefail; cd "$SCRATCH/gllvmTMB-fir-slurm-library-smoke"; module load StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0 r/4.5.0 julia/1.12.5; export R_LIBS_USER="$SCRATCH/gllvmtmb-r-libs/4.5.0"; export R_LIBS="$R_LIBS_USER${R_LIBS:+:$R_LIBS}"; Rscript --vanilla -e '\''cat("gllvmTMB_available=", requireNamespace("gllvmTMB", quietly = TRUE), "\n", sep = ""); if (requireNamespace("gllvmTMB", quietly = TRUE)) cat("gllvmTMB_version=", as.character(utils::packageVersion("gllvmTMB")), "\n", sep = "")'\'''`
+  -> PASS; `gllvmTMB_available=TRUE`, `gllvmTMB_version=0.2.0`.
+- `ssh fir 'set -euo pipefail; cd "$SCRATCH/gllvmTMB-fir-slurm-library-smoke"; RESULTS_DIR="$SCRATCH/gllvmtmb-power-pilot-smoke-manifest-20260624-codex"; rm -rf "$RESULTS_DIR"; DRAC_EXTRA_MODULES="StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0" R_LIBS_USER_DIR="$SCRATCH/gllvmtmb-r-libs/4.5.0" SLURM_ACTION=test SLURM_STAGE=manifest RESULTS_DIR="$RESULTS_DIR" SEED_BASE=184 bash dev/power-pilot-slurm-smoke.sh'`
+  -> PASS; `sbatch --test-only` accepted the manifest job.
+- `ssh fir 'set -euo pipefail; cd "$SCRATCH/gllvmTMB-fir-slurm-library-smoke"; RESULTS_DIR="$SCRATCH/gllvmtmb-power-pilot-smoke-manifest-20260624-codex"; DRAC_EXTRA_MODULES="StdEnv/2023 gcc/12.3 udunits/2.2.28 gdal/3.9.1 geos/3.12.0 proj/9.2.0" R_LIBS_USER_DIR="$SCRATCH/gllvmtmb-r-libs/4.5.0" SLURM_ACTION=submit SLURM_STAGE=manifest RESULTS_DIR="$RESULTS_DIR" SEED_BASE=184 bash dev/power-pilot-slurm-smoke.sh'`
+  -> PASS; submitted batch job `45601426`.
+- `ssh fir 'set -euo pipefail; JOB=45601426; for i in $(seq 1 60); do line=$(squeue -j "$JOB" -h -o "%i|%T|%M|%D|%R" || true); if [[ -z "$line" ]]; then break; fi; echo "squeue=$line"; sleep 5; done; sacct -j "$JOB" --format=JobID,JobName,State,Elapsed,ExitCode%20 -P || true'`
+  -> PASS; the job waited in `PENDING` with reason `Priority`, then ran on
+  `fc30555` and completed in 4 seconds with `ExitCode 0:0`.
+- `ssh fir 'set -euo pipefail; RESULTS_DIR="$SCRATCH/gllvmtmb-power-pilot-smoke-manifest-20260624-codex"; find "$RESULTS_DIR" -maxdepth 4 -type f | sort; sed -n "1,220p" "$RESULTS_DIR"/_slurm/gllvmtmb-smoke-45601426.out; if [[ -s "$RESULTS_DIR"/_slurm/gllvmtmb-smoke-45601426.err ]]; then sed -n "1,220p" "$RESULTS_DIR"/_slurm/gllvmtmb-smoke-45601426.err; else echo "<empty>"; fi; find "$RESULTS_DIR" -type f \( -path "*/_chunks/*" -o -name "*.rds" -o -name "*.RData" \) -print | sort'`
+  -> PASS; result tree contained only `_manifests/shard-1.csv`, the sbatch
+  file, and SLURM stdout/stderr. The non-manifest scan returned no files.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-24-fir-slurm-library-manifest-smoke.md`
+  -> PASS.
+- `after-task-audit` skill checklist
+  -> PASS; code paths, Design 66 wording, test evidence, stale scans, and
+  validation-row boundaries are aligned. No formula grammar, likelihood,
+  roxygen, Rd, vignette, NEWS, public API, or validation-debt row changed.
+
+Stale scans:
+
+- `rg -n "power-pilot-drac-setup|R_LIBS_USER_DIR|DRAC_EXTRA_MODULES|SLURM_CHECK_PACKAGE|SLURM_ACTION|SLURM_STAGE|fir|udunits|GDAL|GEOS|PROJ|GPU|production campaign|n_sim = 2000|CI-08|CI-10|AI-REML" dev/power-pilot-drac-setup.sh dev/power-pilot-slurm-smoke.sh docs/design/66-capstone-power-study.md`
+  -> PASS for intended helper, wrapper, fir-module, and Design 66 boundary
+  wording.
+- `rg -n "GPU.*(enabled|tested)|production launch|n_sim = 2000.*started|AI-REML|validated binomial-probit|probit support|pilot-index\\.rds.*(write|mutate|update|rebuild)|CI-08.*covered|CI-10.*covered|Type-I error for Sigma_unit_diag" dev/power-pilot-drac-setup.sh dev/power-pilot-slurm-smoke.sh docs/design/66-capstone-power-study.md || true`
+  -> PASS; no red-flag matches.
+
+Not claimed:
+
+- No tiny fit smoke, bootstrap smoke, GPU check, broad DRAC/Totoro setup,
+  production campaign, or `n_sim = 2000` run was launched.
+- This slice changes no DGP, likelihood, scoring metric, interval definition,
+  validation row, user-facing formula syntax, or public R API.
+- The manifest-only fir job is compute-plumbing evidence only. It is not
+  coverage, power, Type-I, or probit-link validation evidence.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-fir-slurm-library-manifest-smoke.md`.
+
+## 2026-06-24 (Codex / Ada) -- capability-first ultraplan audit packet
+
+Scope:
+
+- Added a capability-first two-hour audit packet under
+  `docs/dev-log/audits/2026-06-24-capability-first-two-hour-packet.md`.
+- Recorded the next safest slices after PR #552: tiny scheduled fir fit smoke,
+  optional tiny bootstrap smoke, true binomial-probit repair, ordinal coverage
+  decision, and core-grid analysis scaffold.
+- Prepared fir SLURM command packets for `SLURM_STAGE=all` but did not run or
+  submit them.
+- Triage-read `/Users/z3437171/Desktop/speed.txt` into benchmark-first speed
+  spikes; the NotebookLM URL redirected to Google login, so those citation
+  leads remain unverified in this session.
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared dev-log edits; recent history in the clean worktree was
+  `7c675dd` only.
+- `git status --short --branch`
+  -> PASS before edits; clean `main...origin/main`.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 8 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> post-merge R-CMD-check `28111548411` success, post-merge pkgdown
+  `28111605400` success, scheduled Power pilot sweep `28106026686` still
+  in progress.
+
+Audit inputs:
+
+- `sed -n '1,260p' docs/design/66-capstone-power-study.md`
+  -> inspected Design 66 pilot/core-grid contract.
+- `sed -n '1,260p' docs/design/50-m3-3b-surface-admission.md`
+  -> inspected surface-admission contract.
+- `rg -n "^CI-08|^CI-10|^EXT-13|^EXT-04|JUL-01|JUL-01A|FAM-15|FAM-16|COE-03|COE-04|RE-12|RE-03|FG-13|FG-14|MET-01|MET-04|ANI-09|ANI-10|MIS-07|MIS-09|LAM-02|EXT-10|DIA-11|DIA-12|DIA-14|FG-17|FAM-18|FAM-19|MET-03|MIX-10|EXT-11|MIS-32" docs/design/35-validation-debt-register.md`
+  -> inspected the capability rows named by the plan.
+- `sed -n '90,240p' dev/m3-pilot-launch.R`
+  -> inspected pilot family/link/signal/grid definitions.
+- `sed -n '490,940p' dev/m3-pilot-launch.R`
+  -> inspected manifest, chunk, and artifact guards.
+- `sed -n '260,620p' dev/m3-pilot-report.R`
+  -> inspected denominators, MCSE, and zero-exclusion semantics.
+- `sed -n '1,260p' dev/power-pilot-slurm-smoke.sh`
+  -> inspected SLURM wrapper boundaries and variables.
+- `sed -n '1,220p' dev/power-pilot-drac-setup.sh`
+  -> inspected DRAC setup helper and fir library convention.
+- `sed -n '1,260p' /Users/z3437171/Desktop/speed.txt`
+  -> inspected speed-note synthesis.
+
+Stale scans:
+
+- `rg -n "Type-I proxy|coverage-under-null|null/Type-I|power/Type-I|signal-zero Type-I|Type-I error for Sigma_unit_diag" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS; current source/report wording keeps signal-zero output diagnostic.
+- `rg -n "binomial_probit|binomial_logit_harness|zero-exclusion|coverage_mcse|coverage_eligible" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml tests/testthat/test-m3-pilot-report.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS; current source labels the binomial logit harness while preserving
+  old `binomial_probit-*` cell IDs.
+- `rg -n "GPU.*(enabled|tested)|production launch|n_sim = 2000.*started|validated binomial-probit|probit support|CI-08.*covered|CI-10.*covered" docs/dev-log/audits/2026-06-24-capability-first-two-hour-packet.md`
+  -> PASS after edits; no hard-stop overclaim in the new audit packet.
+
+Not claimed:
+
+- No DRAC submission, fit, bootstrap, GPU check, production campaign, Julia
+  parity widening, validation-row promotion, DGP change, likelihood change, or
+  public API change was made.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-capability-first-ultraplan-audit.md`.
+
+## 2026-06-24 (Codex / Ada) -- fir scheduled fit and bootstrap smoke
+
+Scope:
+
+- Ran the next CPU-only fir SLURM smoke steps after the manifest-only
+  infrastructure PR.
+- Submitted one scheduled tiny fit smoke with `SLURM_STAGE=all`,
+  `N_SIM_STEP=1`, `N_SIM_CAP=1`, `N_BOOT=0`.
+- After inspecting that output, submitted one scheduled tiny bootstrap smoke
+  with `N_BOOT=2`.
+- Updated Design 66 and this check log with smoke evidence only. No validation
+  rows, source code, tests, public examples, roxygen, Rd, NEWS, README,
+  vignette, or pkgdown navigation changed.
+
+Coordination and local gates:
+
+- `git fetch origin --prune`
+  -> PASS.
+- `git status --short --branch`
+  -> clean base before this sitting except for the existing audit packet files
+  on `codex/capability-first-audit-20260624`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared doc edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared doc edits; recent history was only `7c675dd`.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 8 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> post-merge R-CMD-check `28111548411` success, pkgdown `28111605400`
+  success, scheduled Power pilot sweep `28106026686` still in progress.
+- `bash -n dev/power-pilot-slurm-smoke.sh dev/power-pilot-drac-setup.sh dev/power-pilot-smoke.sh`
+  -> PASS.
+- `RESULTS_DIR=/tmp/gllvmtmb-local-slurm-write-check R_LIBS_USER_DIR=/tmp/gllvmtmb-local-r-lib SLURM_ACTION=write SLURM_STAGE=all SLURM_TIME=01:00:00 N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=0 bash dev/power-pilot-slurm-smoke.sh`
+  -> PASS; wrote the expected sbatch file.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R"); testthat::test_file("tests/testthat/test-m3-pilot-report.R")'`
+  -> PASS; 143 + 33 expectations.
+- `ssh fir '... command -v sbatch; command -v srun; command -v sinfo; ...'`
+  -> PASS; fir reachable and SLURM commands present.
+- `ssh fir '... R_LIBS_USER="$SCRATCH/gllvmtmb-r-libs/4.5.0" Rscript --vanilla -e "requireNamespace(\"gllvmTMB\")" ...'`
+  -> PASS; prepared scratch R library exposes `gllvmTMB` 0.2.0.
+- Local/remote `sha256sum` comparison for the smoke wrapper, setup helper,
+  runner, launcher, and report scripts
+  -> PASS; fir source copy matched the clean local source.
+
+Remote smoke evidence:
+
+- fir `SLURM_ACTION=test SLURM_STAGE=all N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=0`
+  -> PASS; `sbatch --test-only` accepted the job.
+- fir `SLURM_ACTION=submit SLURM_STAGE=all N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=0`
+  -> PASS; job `45626865` completed with exit code `0:0`, elapsed
+  `00:00:08`, four active manifest rows, four chunk files, four aggregate
+  files, source SHA `7c675dd33d58f4dfd633cacfbf05e62c0e168d61`, and no
+  `pilot-index.rds`.
+- fir `SLURM_ACTION=test SLURM_STAGE=all N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=2`
+  -> PASS; `sbatch --test-only` accepted the job.
+- fir `SLURM_ACTION=submit SLURM_STAGE=all N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=2`
+  -> PASS; job `45627388` completed with exit code `0:0`, elapsed
+  `00:00:08`, four active manifest rows, four chunk files, four aggregate
+  files, source SHA `7c675dd33d58f4dfd633cacfbf05e62c0e168d61`, and no
+  `pilot-index.rds`.
+- The `N_BOOT=2` issue line was
+  `binomial_probit-d1-n50-sig0p2 nonPD 100%; nbinom2-d1-n50-sig0p2 nonPD 100%`.
+  Ordinal-probit had `ci_available = FALSE`. This is expected smoke-diagnostic
+  evidence and is not a validation promotion.
+
+Stale scans:
+
+- `rg -n "Type-I proxy|coverage-under-null|null/Type-I|power/Type-I|signal-zero Type-I|Type-I error for Sigma_unit_diag" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml`
+  -> PASS before this report; signal-zero wording remains diagnostic.
+- `rg -n "binomial_probit|binomial_logit_harness|zero-exclusion|coverage_mcse|coverage_eligible" dev/m3-pilot-launch.R dev/m3-pilot-report.R dev/power-pilot-run.R docs/design/66-capstone-power-study.md .github/workflows/power-pilot-sweep.yaml tests/testthat/test-m3-pilot-report.R tests/testthat/test-m3-pilot-manifest.R`
+  -> PASS before this report; binomial-probit cell IDs still carry explicit
+  `binomial_logit_harness` evidence.
+- `rg -n "GPU.*(enabled|tested)|production launch|n_sim = 2000.*started|validated binomial-probit|probit support|CI-08.*covered|CI-10.*covered" docs/design/66-capstone-power-study.md`
+  -> PASS after edits; no new overclaim in the updated Design 66 prose.
+
+Not claimed:
+
+- No GPU work, production campaign, broad DRAC/Totoro launch, validation-row
+  promotion, Julia parity widening, DGP change, likelihood change, public API
+  change, or login-node fitting was made.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-fir-scheduled-fit-bootstrap-smoke.md`.
+
+## 2026-06-24 (Codex / Ada) -- true binomial-probit pilot harness
+
+Scope:
+
+- Patched the M3/power-pilot harness so `binomial_probit` is a real
+  harness family rather than a probit-labelled logit-harness cell.
+- The DGP now uses `pnorm(eta)` and the fit path uses
+  `stats::binomial(link = "probit")`.
+- Updated audit-mini metadata so current manifests record
+  `harness_family = "binomial_probit"`, `evidence_family =
+  "binomial_probit"`, and `link_harness = "probit"`.
+- Preserved the historical boundary: pre-2026-06-24 fir smoke artifacts
+  remain scheduler/plumbing evidence labelled by
+  `binomial_logit_harness`; they must not be reinterpreted as true
+  binomial-probit validation evidence.
+
+Coordination and mainline state:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared dev-log / after-task edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared dev-log / after-task edits; recent history was
+  `b08b146`, `3f76530`, and `7c675dd`.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 8 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> observed R-CMD-check run `28120675137` success for `b08b146`,
+  pkgdown run `28120717889` still in progress, scheduled Power pilot
+  sweep run `28118670213` queued, and older scheduled sweep run
+  `28106026686` success. No scheduled sweep output was used as
+  validation evidence.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "probit OR power pilot OR CI-08 OR CI-10" --limit 20 --json number,title,url,updatedAt`
+  -> inspected the relevant roadmap / board surface.
+- `gh issue view 349 --repo itchyshin/gllvmTMB --json number,title,state,url,body,updatedAt`
+  -> inspected the Power-simulation capstone issue; this slice advances
+  the 66.4 probit-swap prerequisite but does not close the issue.
+- `gh issue view 346 --repo itchyshin/gllvmTMB --json number,title,state,url,body,updatedAt`
+  -> inspected the Simulation / coverage framework issue.
+- `gh issue view 340 --repo itchyshin/gllvmTMB --json number,title,state,url,body,updatedAt`
+  -> inspected the capability matrix board; `CI-08` and `CI-10` remain
+  partial.
+
+Implementation / targeted tests:
+
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-launch.R"); g <- pilot_audit_mini_grid(); print(g[, c("family_label", "harness_family", "evidence_family", "link_harness")]); stopifnot(g$harness_family[3] == "binomial_probit", g$evidence_family[3] == "binomial_probit", g$link_harness[3] == "probit")'`
+  -> PASS; audit-mini now reports true probit harness/evidence metadata
+  for the third core cell.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-manifest.R")'`
+  -> PASS; 147 expectations.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-pilot-report.R")'`
+  -> PASS; 39 expectations, including one direct
+  `m3_run_cell(family = "binomial_probit", n_reps = 1, n_boot = 0,
+  se = FALSE)` smoke.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-m3-grid-summary.R")'`
+  -> PASS by opt-in skip; 14 skipped because `GLLVMTMB_HEAVY_TESTS` was
+  not set.
+- `SMOKE_STAGE=all RESULTS_DIR=/tmp/gllvmtmb-true-probit-smoke-20260624 N_SIM_STEP=1 N_SIM_CAP=1 N_BOOT=0 SEED_BASE=191 bash dev/power-pilot-smoke.sh`
+  -> PASS; local audit-mini smoke wrote manifest, chunk, aggregate, and
+  report artifacts. The binomial row carried
+  `cell_id = binomial_probit-d1-n50-sig0p2`,
+  `harness_family = binomial_probit`, `evidence_family =
+  binomial_probit`, and `n_boot = 0`. Tiny-run report diagnostics
+  flagged non-PD for binomial-probit and nbinom2; this was not promoted.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-24-true-binomial-probit-harness.md`
+  -> PASS.
+
+Stale scans:
+
+- `rg -n "All 5 families|binomial_logit_harness|There is no binomial\\(probit\\)|logit harness|DEFERS|not true binomial-probit|probit-link swap" dev tests docs/design/66-capstone-power-study.md`
+  -> PASS; remaining hits are intentional historical-boundary notes for
+  old result stores and fir smoke artifacts.
+- `rg -n "binomial_probit|link_harness|evidence_family|pnorm|plogis|stats::binomial\\(" dev/m3-grid.R dev/m3-pilot-launch.R dev/precompute-m3-grid.R tests/testthat/test-m3-pilot-manifest.R tests/testthat/test-m3-pilot-report.R docs/design/66-capstone-power-study.md`
+  -> PASS; current implementation/test/design paths show `pnorm` DGP,
+  probit fit, and true-probit manifest metadata.
+
+Not claimed:
+
+- No DRAC submission, GPU work, production campaign, broad DRAC/Totoro
+  setup, Julia parity widening, public API change, package likelihood
+  change, roxygen/Rd change, vignette change, NEWS change, validation-row
+  promotion, or scheduled-sweep evidence promotion was made.
+- `CI-08` and `CI-10` remain partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-true-binomial-probit-harness.md`.
+
+## 2026-06-24 -- Predictor-informed latent-score design spec
+
+Branch: `codex/lv-predictor-design-20260624`
+
+Goal:
+
+- Create the design/spec source of truth for a future
+  `latent(..., lv = ~ x)` capability before parser or TMB
+  implementation work.
+- Keep the feature blocked/planned until parser, TMB, extractor, and
+  Gaussian recovery gates move.
+
+Coordination and mainline state:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared design / dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before closeout; recent shared-file history was the merged
+  power-pilot lane: `1018c62`, `b08b146`, and `7c675dd`, plus local
+  closed branches.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 8 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> current main R-CMD-check run `28122717337` and pkgdown run
+  `28123499603` succeeded on `1018c62`. Scheduled Power pilot sweep
+  runs `28125143612` and `28118670213` were pending/in progress and not
+  used as evidence.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "latent lv OR constrained ordination OR predictor-informed OR GLLVM.jl parity" --limit 20 --json number,title,url,updatedAt`
+  -> located capability board #340 and adjacent bridge/article issues.
+- `gh issue view 340 --repo itchyshin/gllvmTMB --json number,title,state,url,updatedAt,body`
+  -> inspected capability board. No row promotion.
+- `gh issue view 347 --repo itchyshin/gllvmTMB --json number,title,state,url,updatedAt,body`
+  -> inspected article-completion issue; not changed by this design PR.
+- `gh issue view 488 --repo itchyshin/gllvmTMB --json number,title,state,url,updatedAt,body`
+  -> inspected Julia bridge-gate drift issue; not changed by this design
+  PR.
+
+Prior-art sources inspected:
+
+- `https://jenniniku.github.io/gllvm/reference/gllvm.html`
+  -> checked `gllvm` arguments `num.lv.c`, `num.RR`, and `lv.formula`.
+- `https://jenniniku.github.io/gllvm/articles/vignette6.html`
+  -> checked concurrent, constrained, and partial ordination wording and
+  the fixed-formula / latent-formula overlap boundary.
+- `https://lavaan.ugent.be/tutorial/syntax1.html`
+  -> checked broad SEM syntax precedent for separating measurement
+  relations from latent-variable regressions.
+- `https://rdrr.io/cran/boral/man/boral.html`
+  -> checked comparison-package context only; no `gllvmTMB` claim is
+  derived from `boral`.
+
+Design changes:
+
+- Added `docs/design/73-predictor-informed-latent-scores.md` as the
+  source-of-truth design for the future model
+  `z_i = M_i alpha + e_i`, `e_i ~ N(0, I_K)`, with
+  `B_lv = Lambda alpha'` as the primary trait-scale estimand.
+- Updated `docs/design/01-formula-grammar.md`,
+  `docs/design/03-likelihoods.md`, `docs/design/04-random-effects.md`,
+  `docs/design/05-testing-strategy.md`,
+  `docs/design/06-extractors-contract.md`,
+  `docs/design/35-validation-debt-register.md`, and
+  `docs/design/61-capability-status.md`.
+- Added blocked validation rows `FG-18`, `RE-13`, `EXT-31`, and
+  `LV-01` through `LV-07`.
+- Added recovery checkpoint
+  `docs/dev-log/recovery-checkpoints/2026-06-24-lv-predictor-main-lane-handoff.md`.
+
+Checks and stale scans:
+
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no pkgdown problems found.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-24-lv-predictor-design-spec.md`
+  -> PASS.
+- `rg -n "latent\\([^\\n]*lv\\s*=|predictor-informed|latent-score mean|B_lv|LV-0[1-7]|FG-18|RE-13|EXT-31" docs R tests/testthat vignettes README.md NEWS.md`
+  -> PASS; hits are the intended Design 73 surface, validation rows,
+  linked design-doc updates, and the lane recovery checkpoint.
+- `rg -n "REML|AI-REML|Gaussian-only|non-Gaussian.*REML|REML.*non-Gaussian" docs/design/73-predictor-informed-latent-scores.md docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md`
+  -> PASS; hits keep `REML = TRUE` rejected for `lv` and preserve the
+  Gaussian-only REML / AI-REML boundary.
+- `rg -n "Julia|GLLVM.jl|parity|engine = \"julia\"|engine = 'julia'" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md`
+  -> PASS; hits are row-backed Julia bridge boundaries and Design 73's
+  explicit no-broad-parity statement.
+- `rg -n "residual = FALSE|residual score|old no-residual|unique = FALSE" docs/design/73-predictor-informed-latent-scores.md docs/design/01-formula-grammar.md`
+  -> PASS; Design 73 uses current `unique = FALSE` wording, and remaining
+  no-residual references are existing formula-grammar context.
+
+Not claimed:
+
+- No parser/TMB implementation, package runtime change, R API export,
+  roxygen/Rd change, vignette/article/README/NEWS change, pkgdown
+  navigation change, validation-row promotion, Julia bridge admission,
+  DRAC job, GPU work, production simulation, or non-Gaussian REML claim
+  was made.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-lv-predictor-design-spec.md`.
+
+## 2026-06-24 -- Predictor-informed latent-score runtime guard
+
+Branch: `codex/lv-parser-guard-20260624`
+
+Goal:
+
+- Prevent the reserved Design 73 surface `latent(..., lv = ~ x)` from
+  being silently accepted and ignored before the real parser/TMB/extractor
+  implementation exists.
+- Keep `FG-18`, `RE-13`, `EXT-31`, and `LV-01` through `LV-07` blocked.
+
+Coordination and mainline state:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared design/dev-log edits; no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> PASS before shared design/dev-log edits; current main is
+  `16d92b2 docs: specify predictor-informed latent scores (#555)`.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 10 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> PASS before PR closeout; R-CMD-check run `28129990711`
+  succeeded on `16d92b2`, pkgdown run `28130029193` was still in
+  progress, and Power pilot sweep runs `28130468525` / `28125143612`
+  were pending/in progress and not used as evidence.
+- `gh run watch 28130029193 --repo itchyshin/gllvmTMB --exit-status`
+  -> stopped manually after repeated in-progress `Build site` status;
+  no failure observed.
+- `gh run view 28130029193 --repo itchyshin/gllvmTMB --json status,conclusion,createdAt,updatedAt,url,jobs`
+  -> PASS; run remained `in_progress` in `Build site`.
+
+Runtime finding:
+
+- Current `origin/main` preserved `lv = ~ x` in parsed covstruct
+  metadata, but `gllvmTMB()` then fit the ordinary latent model and
+  ignored `lv`.
+- Added an early `fit_multi()` guard that aborts when any parsed
+  covstruct carries `extra$lv`, before TMB construction.
+
+Files changed:
+
+- `R/fit-multi.R`
+- `tests/testthat/test-lv-parser-guard.R`
+- `docs/design/01-formula-grammar.md`
+- `docs/design/03-likelihoods.md`
+- `docs/design/35-validation-debt-register.md`
+- `docs/design/61-capability-status.md`
+- `docs/design/73-predictor-informed-latent-scores.md`
+
+Checks run:
+
+- `air format R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no output, but it reformatted legacy `R/fit-multi.R`
+  broadly. The formatter churn was restored to `HEAD`, and only the
+  guard patch was reapplied.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-lv-parser-guard.R")'`
+  -> PASS; 5 pass, 0 fail, 0 warn, 0 skip.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); for (f in c("tests/testthat/test-latent-unique-rename.R", "tests/testthat/test-brms-sugar.R", "tests/testthat/test-ordinary-latent-random-regression.R")) testthat::test_file(f)'`
+  -> PASS; `test-latent-unique-rename.R` 6 pass; `test-brms-sugar.R`
+  5 pass with expected once-per-session deprecation messages;
+  `test-ordinary-latent-random-regression.R` 23 pass, 8 expected skips.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); df <- expand.grid(unit = paste0("u", 1:3), trait = paste0("t", 1:2), KEEP.OUT.ATTRS = FALSE); df$value <- rnorm(nrow(df)); df$x <- rep(c(0,1,2), each = 2); tryCatch(gllvmTMB(value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~ x), data = df, unit = "unit", trait = "trait", control = gllvmTMBcontrol(se = FALSE)), error = function(e) { message("ERROR: ", conditionMessage(e)); quit(status = 0) }); quit(status = 1)'`
+  -> PASS; errors with "reserved for Design 73 predictor-informed latent
+  scores" and names `FG-18`, `RE-13`, and `LV-01`.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-24-lv-parser-guard.md`
+  -> PASS.
+
+Consistency scans:
+
+- `rg -n "latent\\([^\\n]*lv\\s*=|predictor-informed|latent-score mean|B_lv|LV-0[1-7]|FG-18|RE-13|EXT-31" docs R tests/testthat vignettes README.md NEWS.md`
+  -> PASS; hits are Design 73, blocked validation rows, the new
+  runtime guard, the new guard tests, and prior Design 73 dev-log
+  artifacts.
+- `rg -n "no parser|no accepted parser|fail-loud guard|silently ignore|not implemented yet|not live" docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; current hits distinguish fail-loud guard evidence from
+  accepted parser/TMB runtime support.
+- `rg -n "REML|AI-REML|Gaussian-only|non-Gaussian.*REML|REML.*non-Gaussian" docs/design/73-predictor-informed-latent-scores.md docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; hits preserve the Gaussian-only REML boundary and keep
+  `REML = TRUE` rejected for the planned `lv` lane.
+- `rg -n "Julia|GLLVM\\.jl|parity|engine = \"julia\"|engine = 'julia'" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; hits remain row-backed Julia bridge boundaries and do not
+  imply broad `lv` parity.
+
+Not claimed:
+
+- No accepted `lv` parser surface, TMB likelihood path, ADREPORT,
+  extractor, Gaussian recovery, non-Gaussian support, Julia bridge
+  support, roxygen/Rd change, vignette/article/README/NEWS change,
+  validation-row promotion, DRAC job, GPU work, production simulation,
+  or non-Gaussian REML claim was made.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-lv-parser-guard.md`.
+
+## 2026-06-24 -- Predictor-informed latent-score parser/API preflight
+
+Branch: `codex/lv-parser-api-preflight-20260624`
+
+Goal:
+
+- Extend the Design 73 `latent(..., lv = ~ x)` reservation from a coarse
+  fail-loud runtime guard to a typed parser/API preflight for ordinary
+  Gaussian unit-tier `latent()`.
+- Validate and prepare the future unit-level `X_lv_B` design, then abort
+  before TMB construction.
+- Keep `FG-18`, `RE-13`, `EXT-31`, and `LV-01` through `LV-07` blocked.
+
+Coordination and mainline state:
+
+- `git status --short --branch && git diff --stat`
+  -> PASS after compaction recovery; dirty files were only this slice.
+- `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-06-24-lv-predictor-main-lane-handoff.md`
+  -> PASS; confirmed the Design 73 source contract and hard scope.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS before shared-file edits; no open PRs.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 10 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> PASS; post-#556 R-CMD-check run `28133069989` succeeded on
+  `6667a3203a6d46d202ec7ce37be1f4d0f2643898`; pkgdown run
+  `28133663663` was still in progress and not used as validation
+  evidence; Power pilot sweep runs remained separate and were not used.
+- `git log --all --oneline --since='6 hours ago' --decorate`
+  -> PASS; no collision detected before shared design/dev-log edits.
+
+Implementation:
+
+- Added `lv = NULL` to `latent()` and regenerated `man/latent.Rd`.
+- Rewrote ordinary `latent(..., lv = ~ x)` metadata to
+  `extra$lv_formula` on the reduced-rank term only; the auto-added
+  diagonal `Psi` companion does not receive `lv` metadata.
+- Added `R/lv-predictor.R` with `gll_prepare_lv_predictor_setup()`,
+  validating the ordinary Gaussian unit-tier surface and constructing
+  one-row-per-unit `X_lv_B`.
+- Replaced the coarse `fit_multi()` `extra$lv` guard with
+  validation-and-abort preflight before TMB construction.
+- Rejected unsupported surfaces and malformed `lv` formulas early:
+  random terms, offsets, `mi()`, smooths, response/trait columns,
+  missing columns, exact fixed-effect overlap, nonconstant-within-unit
+  predictors, unused unit levels, rank-deficient designs, `REML = TRUE`,
+  non-Gaussian families, unsupported tiers, augmented random-regression
+  combinations, ordinary diagonal aliases, source-specific forms, spatial /
+  animal / deprecated aliases, and kernel forms.
+- Updated NEWS, Design 73-linked docs, and validation rows without
+  promoting any row.
+
+Checks run:
+
+- `air format R/lv-predictor.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no output. Formatter intentionally stayed off legacy
+  `R/fit-multi.R` and `R/brms-sugar.R` to avoid broad churn.
+- `Rscript --vanilla -e 'devtools::test(filter = "^lv-parser-guard$")'`
+  -> PASS; 38 pass, 0 fail, 0 warn, 0 skip.
+- `Rscript --vanilla -e 'devtools::test(filter = "^(lv-parser-guard|latent-unique-rename|latent-rank-guard|brms-sugar|formula-grammar-smoke|canonical-keywords|traits-keyword|ordinary-latent-random-regression|kernel-latent-unique-fold|phylo-latent-unique-fold|animal-latent-unique-fold|stage2-rr-diag|mixed-response-sigma)$")'`
+  -> PASS; 346 pass, 6 skip, 1 warning. Skips were INLA absent,
+  one glmmTMB non-PD Hessian skip, and two heavy recovery/matrix skips.
+  The warning was the existing `level = "B"` deprecation path in
+  `extract_Omega()`.
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> PASS before the final unsupported-keyword broadening; 3737 pass,
+  747 skip, 10 warnings, 0 fail. Warnings were existing
+  numerical/deprecation/Julia-bridge warnings, not new `lv` preflight
+  failures. Current-tip coverage after the broadening was checked by
+  the focused/expanded suites above and the `devtools::check()` run
+  below.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/latent.Rd`. Unrelated roxygen2 churn in
+  other generated Rd files was restored out of the diff.
+- `tail -5 man/latent.Rd; printf 'keyword_count='; grep -c '^\\\\keyword' man/latent.Rd || true`
+  -> PASS; tail shows the expected `\\seealso{}` close, and
+  `keyword_count=0`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no problems found.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> PARTIAL / STOPPED. The render reached and wrote the main
+  `articles/gllvmTMB.html` plus several earlier articles, then spent
+  about 17 minutes in the later `lambda-constraint.Rmd` article and
+  spawned `tools/run-structured-re-q4-location-slope-bootstrap-budget-probe.R`.
+  Because that heavy probe is outside this `lv` parser/API slice, the
+  article-only gate was interrupted; the orphaned probe process was
+  terminated and generated vignette images were removed from the
+  worktree.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> WARN; 0 errors, 1 warning, 0 notes. The warning was the local
+  Apple clang / R header diagnostic:
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = FALSE, error_on = "never", check_dir = "/private/tmp/gllvmtmb-lv-parser-api-preflight-check")'`
+  -> WARN; reproduced the same 0-error / 1-warning / 0-note result and
+  preserved logs in
+  `/private/tmp/gllvmtmb-lv-parser-api-preflight-check/gllvmTMB.Rcheck`.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-24-lv-parser-api-preflight.md`
+  -> PASS; no output.
+
+Consistency scans:
+
+- `rg -n "latent\\([^\\n]*lv\\s*=|lv_formula|X_lv_B|predictor-informed|latent-score mean|B_lv|LV-0[1-7]|FG-18|RE-13|EXT-31" docs R tests/testthat NEWS.md man/latent.Rd`
+  -> PASS; hits are the intended Design 73 parser/API surface, blocked
+  rows, helper code, tests, NEWS, and linked status/design text.
+- `rg -n "latent\\([^\\n]*lv\\s*=|lv\\s*=\\s*~|lv_formula|X_lv_B" README.md vignettes R tests docs NEWS.md man/latent.Rd`
+  -> PASS; no `README.md` or `vignettes` `lv` examples exist to
+  cascade in this slice. Hits are the intended R helper, tests,
+  design/dev-log, NEWS, and `man/latent.Rd` surfaces.
+- `rg -n "REML|AI-REML|Gaussian-only|non-Gaussian.*REML|REML.*non-Gaussian" docs/design/73-predictor-informed-latent-scores.md docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md R/lv-predictor.R R/fit-multi.R tests/testthat/test-lv-parser-guard.R NEWS.md`
+  -> PASS; hits preserve the Gaussian-only REML boundary and keep
+  `REML = TRUE` rejected for `lv`.
+- `rg -n "Julia|GLLVM\\.jl|parity|engine = \"julia\"|engine = 'julia'" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md NEWS.md`
+  -> PASS; hits keep the Julia bridge language row-backed and do not
+  imply broad `lv` parity.
+- `rg -n "No accepted parser|reserved-surface fail-loud guard only|accepted parser|implemented model|TMB construction|ADREPORT|extract_lv_effects|alpha_lv_B" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md NEWS.md R/lv-predictor.R R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS after patching `RE-13`; remaining hits correctly say this
+  aborts before TMB construction and has no ADREPORT/extractor path yet.
+
+Not claimed:
+
+- No TMB likelihood path, `alpha_lv_B`, ADREPORT, extractor, Gaussian
+  recovery, non-Gaussian support, tier-expanded support, structured-source
+  support, Julia bridge support, validation-row promotion, DRAC job, GPU
+  work, production simulation, or non-Gaussian REML claim was made.
+- A final code-read found that `phylo_unique(..., lv = ~ x)` could silently
+  drop the reserved metadata before the preflight saw it. The rewriter now
+  rejects the broader unsupported keyword family immediately, and the final
+  focused/expanded test counts include `unique()` and `phylo_unique()`
+  coverage for that edge.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-lv-parser-api-preflight.md`.
+## 2026-06-24 — Design 73 C1 TMB/extractor slice (`codex/lv-tmb-plumbing-20260624`)
+
+Scope:
+
+- Implemented the first fitted `latent(..., lv = ~ x)` slice for ordinary
+  Gaussian unit-tier `latent()` models only.
+- Added `use_lv_B`, `n_lv_B`, `X_lv_B`, `alpha_lv_B`,
+  `U_lv_mean_B`, `U_B_total`, and `B_lv_unit` plumbing while preserving
+  the zero-mean innovation and ordinary `Psi` companion.
+- Added `extract_lv_effects()` and
+  `extract_ordination(component = c("total", "innovation", "mean"))`.
+- Updated row-backed docs/status to keep the slice partial: no Gaussian
+  recovery, interval calibration, missing-response compatibility,
+  non-Gaussian support, tier/source expansion, or Julia parity claimed.
+
+Coordination and GitHub state:
+
+- `git status --short --branch`
+  -> PASS; active worktree
+  `/private/tmp/gllvmtmb-lv-tmb-plumbing-20260624` on
+  `codex/lv-tmb-plumbing-20260624`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; no open PRs before this slice.
+- `gh run view 28137682170 --repo itchyshin/gllvmTMB --json databaseId,workflowName,status,conclusion,headSha,createdAt,updatedAt,url`
+  -> PASS; post-#557 main R-CMD-check completed `success` on
+  `0b3da99d982f79e35b1c8f273261d78280d32c20`.
+
+Implementation and docs:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; wrote `NAMESPACE`, `man/extract_ordination.Rd`, and
+  `man/extract_lv_effects.Rd`. Unrelated roxygen2 refreshes in
+  `man/add_utm_columns.Rd`, `man/extract_correlations.Rd`,
+  `man/gllvmTMB-package.Rd`, `man/make_mesh.Rd`,
+  `man/phylo_latent.Rd`, and `man/reexports.Rd` were restored out of
+  the diff.
+- `air format R/extractors.R R/lv-predictor.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no output.
+
+Tests and checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "^lv-parser-guard$")'`
+  -> PASS after the final compatibility/default-Psi patch; 113 pass,
+  0 fail, 0 warn, 0 skip. The focused LV suite now includes the
+  loadings-only `unique = FALSE` path and the ordinary default
+  `latent()` path with its Psi companion (`use_diag_B = TRUE`).
+- `Rscript --vanilla -e 'devtools::test(filter = "^(extractors|extractors-extra|rotate-compare-loadings|julia-bridge)$")'`
+  -> PASS; 535 pass, 16 skip, 1 warning, 0 fail. Skips were expected
+  local `GLLVM.jl` path skips. The warning was the existing Julia
+  bridge ordinary-`latent()` Psi advisory.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no problems found.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = FALSE, error_on = "never", check_dir = "/private/tmp/gllvmtmb-lv-tmb-plumbing-check")'`
+  -> WARN; 0 errors, 1 warning, 0 notes. The warning was the known
+  local Apple clang/R header diagnostic:
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+  The check log is preserved at
+  `/private/tmp/gllvmtmb-lv-tmb-plumbing-check/gllvmTMB.Rcheck/00check.log`;
+  testthat inside R CMD check was OK (`[131s/149s]`).
+- `git diff --check`
+  -> PASS before and after the broad check cleanup.
+
+Consistency scans:
+
+- `rg -n "latent\\([^\\n]*lv\\s*=|lv\\s*=\\s*~|predictor-informed|latent-score|B_lv|LV-0[1-7]|FG-18|RE-13|EXT-31" README.md ROADMAP.md docs/dev-log/known-limitations.md docs/design NEWS.md vignettes _pkgdown.yml R tests/testthat man/extract_ordination.Rd man/extract_lv_effects.Rd`
+  -> PASS after patching stale design docs; hits are the intended C1
+  partial story, blocked follow-up rows, implementation, tests, and
+  generated help. No README/vignette example was added.
+- `rg -n "planned / blocked|blocked / planned|no parser|no TMB runtime|no runtime claim|before TMB construction|aborts before TMB|planned first implementation|future unit-level|not implemented yet|no exported function|no implemented likelihood" docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/04-random-effects.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md NEWS.md R/lv-predictor.R R/fit-multi.R`
+  -> PASS; remaining hits are the historical Design 73 parser stage and
+  the fit preflight comment for unsupported regimes.
+- `rg -n "REML|AI-REML|Gaussian-only|non-Gaussian.*REML|REML.*non-Gaussian" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md NEWS.md R/lv-predictor.R R/fit-multi.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; `REML = TRUE` remains rejected for `lv`, and non-Gaussian
+  REML wording stays guarded.
+- `rg -n "Julia|GLLVM\\.jl|parity|engine = \\\"julia\\\"|engine = 'julia'" docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md NEWS.md R/extractors.R`
+  -> PASS; Julia language remains row-backed and does not claim `lv`
+  parity.
+- `rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design | head -n 80`
+  -> PASS/manual spot-check; no new long-format user example was added
+  without `trait =`.
+- `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|meta_known_V|gllvmTMB_wide|full.*rejected|only diagonal|planned.*implemented|No accepted parser|reserved-surface fail-loud guard only" README.md ROADMAP.md NEWS.md docs vignettes R tests/testthat`
+  -> REVIEWED; hits are known compatibility/historical/dev-log mentions
+  or unrelated existing aliases, not new `lv` overclaims in touched
+  user-facing files.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "latent lv OR predictor-informed OR latent-score" --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; no dedicated Design 73 issue. Broad related issues:
+  #340 capability board, #346 simulation/coverage framework, #349
+  power-simulation capstone. None closed by this smoke/algebra slice.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "Design 73 OR LV-01 OR LV-02 OR extract_lv_effects" --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; same broad roadmap/capability issues only.
+
+Not claimed:
+
+- No validation row was moved to `covered`.
+- No Gaussian recovery grid, CI/status calibration, DRAC/Totoro run,
+  GPU work, production simulation, non-Gaussian `lv`, expanded tier,
+  structured-source `lv`, or Julia `lv` parity was claimed.
+- Additional TMB-review smoke after the PR opened confirmed convergence
+  and finite fitted-point gradients on the loadings-only path
+  (`max_abs_gradient = 0.0004014055`) and exact report identities for
+  `B_lv_unit = Lambda_B alpha_lv_B^T`, `U_B_total = U_lv_mean_B + z_B`,
+  and `total = innovation + mean`. A larger default-Psi fixture confirmed
+  the same identities with `use_diag_B = TRUE`; the deterministic fixture
+  was added to `test-lv-parser-guard.R`.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-24-lv-tmb-extractor-c1.md`.
+## 2026-06-25 -- LV binary-probit C1 admission (Codex)
+
+Worktree: `/private/tmp/gllvmtmb-lv-binary-probit-20260625`
+Branch: `codex/lv-binary-probit-20260625`
+Base: `origin/main` at `d26b5eb` (`latent lv: add Gaussian C1 TMB path (#558)`)
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; no open `gllvmTMB` PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> REVIEWED; only the merged Gaussian LV C1 commit was relevant.
+
+Implementation:
+
+- Relaxed the Design 73 `lv` family guard from Gaussian-only to
+  Gaussian plus pure `binomial(link = "probit")` only. Binary logit,
+  cloglog, ordinal, count, Gamma, Beta, mixed-family, and delta/hurdle
+  `lv` fits remain blocked under `LV-05`.
+- Passed `link_id_vec` into `gll_prepare_lv_predictor_setup()` so the
+  binary admission is link-specific rather than all-binomial.
+- Added a CRAN-safe multi-trial binomial-probit fixture to
+  `test-lv-parser-guard.R` that checks convergence, finite reports,
+  family/link IDs, `total = innovation + mean`, and trait-scale
+  `B_lv = Lambda alpha^T` recovery.
+- Updated NEWS and Design 01/03/04/05/06/35/61/73 plus
+  `man/extract_lv_effects.Rd` so `LV-05` is partial for pure
+  binomial-probit only. No public README/vignette example was added.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "^lv-parser-guard$")'`
+  -> PASS before docs update; 135 pass, 0 fail, 0 warn, 0 skip.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/extract_lv_effects.Rd`. Unrelated roxygen
+  churn in `man/add_utm_columns.Rd`, `man/extract_correlations.Rd`,
+  `man/gllvmTMB-package.Rd`, `man/make_mesh.Rd`, `man/phylo_latent.Rd`,
+  and `man/reexports.Rd` was removed from the diff.
+- `Rscript --vanilla -e 'devtools::test(filter = "^lv-parser-guard$")'`
+  -> PASS after docs/Rd update; 135 pass, 0 fail, 0 warn, 0 skip.
+- `Rscript --vanilla -e 'devtools::test(filter = "^(lv-parser-guard|formula-grammar-smoke)$")'`
+  -> PASS; 162 pass, 0 fail, 0 warn, 0 skip.
+- `air format R/brms-sugar.R R/extractors.R R/lv-predictor.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "^(extractors|extractors-extra|rotate-compare-loadings)$")'`
+  -> PASS; 136 pass, 0 fail, 0 warn, 0 skip.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no problems found.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> PASS. The full article rebuild completed; the two Lambda
+  constraint/profile articles were the slow path. Generated scratch
+  PNGs under `vignettes/` were removed before commit.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = FALSE, error_on = "never", check_dir = "/private/tmp/gllvmtmb-lv-binary-probit-check")'`
+  -> PASS with 0 errors, 1 warning, 1 note. The warning is the local
+  Apple clang / R header warning group (`R_ext/Boolean.h:
+  -Wfixed-enum-extension`) with Eigen unused-variable warnings in
+  `00install.out`; the note is `unable to verify current time`.
+  Testthat inside R CMD check was OK (`[141s/157s]`).
+- `git diff --check`
+  -> PASS.
+
+Consistency scans:
+
+- `rg -n 'ordinary Gaussian unit-tier|partial / Gaussian C1|non-Gaussian support|LV-05.*remain|planned or blocked rows|Gaussian-only unit-tier|ordinary Gaussian only|non-Gaussian families, unsupported tiers' NEWS.md R docs/design tests/testthat man | head -n 120`
+  -> REVIEWED; remaining hits are deliberate Gaussian row labels
+  (`LV-01`), broad-gate language, or the updated `LV-05` partial row.
+- `rg -n 'binomial-probit|link_id_vec|family_id_vec|B_lv|LV-05' R/lv-predictor.R R/fit-multi.R R/extractors.R tests/testthat/test-lv-parser-guard.R docs/design/35-validation-debt-register.md NEWS.md`
+  -> REVIEWED; hits match the new pure binomial-probit C1 admission and
+  blocked broader-family wording.
+
+Not claimed:
+
+- No binary logit/cloglog, Bernoulli single-trial depth, ordinal, count,
+  Gamma, Beta, mixed-family, delta/hurdle, missing-response, interval,
+  CI-08/CI-10, Julia bridge parity, DRAC, GPU, or production simulation
+  claim moved.
+- GLLVM.jl PR #115 was merged after all its checks passed, freeing the
+  one-PR-at-a-time slot for this R-side binary-probit PR after the
+  final local audit.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-25-lv-binary-probit-c1.md`.
+## 2026-06-25 -- LV binary standard-link C1 admission (Codex)
+
+Worktree: `/private/tmp/gllvmtmb-lv-binary-links-20260625`
+Branch: `codex/lv-binary-links-20260625`
+Base: `origin/main` at `865bab77119d2546781e7fe7aa146e51d3945467`
+(`lv: admit binomial-probit score predictors (#559)`)
+
+Coordination:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; no open `gllvmTMB` PRs.
+- `git log --all --oneline --since='6 hours ago' -- docs/design docs/dev-log/check-log.md docs/dev-log/after-task R tests NEWS.md | head -50`
+  -> REVIEWED; only the merged probit slice touched this lane.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "latent lv OR predictor-informed OR latent-score" --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; broad capability/simulation issues only (#340, #346,
+  #348, #349, #526, #230), no dedicated issue to close.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "LV-05 OR binary OR binomial logit probit cloglog" --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; broad roadmap/support issues only (#340, #341, #343,
+  #348, #332, #437), no dedicated issue to close.
+
+Implementation:
+
+- Broadened the Design 73 `lv` family/link guard from pure
+  binomial-probit to pure `binomial()` with the package's three standard
+  binary links: logit (`link_id = 0`), probit (`link_id = 1`), and
+  cloglog (`link_id = 2`).
+- Generalized the deterministic multi-trial binary fixture in
+  `test-lv-parser-guard.R` so logit, probit, and cloglog each get their
+  own seed, intercepts, inverse-link DGP, convergence/gradient gate, and
+  trait-scale `B_lv = Lambda alpha^T` recovery tolerance.
+- Updated `extract_lv_effects()` so admitted binary `lv` fits report
+  `validation_row = "EXT-31; LV-05"` while Gaussian `lv` fits keep
+  `EXT-31; LV-01`.
+- Updated NEWS and Design 01/03/04/05/06/35/61/73 to describe the
+  pure-binomial standard-link C1 surface and keep Bernoulli depth,
+  intervals, other families, mixed-family fits, missing-response
+  compatibility, tier/source expansion, and Julia parity gated.
+
+Checks:
+
+- `air format R/extractors.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no output.
+- `Rscript --vanilla -e 'parse("R/lv-predictor.R"); parse("R/extractors.R"); parse("tests/testthat/test-lv-parser-guard.R"); cat("parse ok\n")'`
+  -> PASS; parsed cleanly.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); testthat::test_file("tests/testthat/test-lv-parser-guard.R")'`
+  -> PASS; 185 pass, 0 fail, 0 warn, 0 skip.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); testthat::test_file("tests/testthat/test-extractors.R")'`
+  -> PASS; 17 pass, 0 fail, 0 warn, 0 skip.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); testthat::test_file("tests/testthat/test-multi-trial-binomial.R"); testthat::test_file("tests/testthat/test-m2-2a-binary-recovery.R")'`
+  -> PASS/expected skips; multi-trial binomial 5 pass, 3 CRAN skips;
+  M2.2a binary recovery 5 expected heavy skips.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); cat("pkgload ok\n")'`
+  -> PASS.
+- `R CMD build --no-build-vignettes .`
+  -> PASS; built `gllvmTMB_0.2.0.tar.gz`, then moved it to
+  `/private/tmp/gllvmtmb-binary-links-check-current/`.
+- `R_LIBS=/private/tmp/gllvmtmb-install-lib-4.6:/private/tmp/gllvmtmb-r-lib-4.6:/Library/Frameworks/R.framework/Versions/4.6/Resources/library R_LIBS_USER=/private/tmp/gllvmtmb-empty-r-user-lib R CMD check --no-manual --no-build-vignettes /private/tmp/gllvmtmb-binary-links-check-current/gllvmTMB_0.2.0.tar.gz`
+  -> BLOCKED; local R 4.6.0 segfaulted during `checking package
+  namespace information` before package tests, through
+  `requireNamespace("gllvm", quietly = TRUE)` and TMB namespace loading.
+  This reproduces the local broad-check blocker; source-tree targeted
+  tests above are the usable evidence in this R stack.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); if (!requireNamespace("pkgdown", quietly = TRUE)) stop("pkgdown not available in this R library stack"); pkgdown::check_pkgdown()'`
+  -> BLOCKED; `pkgdown` is not installed in the active R 4.6 library stack.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); if (!requireNamespace("devtools", quietly = TRUE)) stop("devtools not available in this R library stack"); devtools::test(filter = "^lv-parser-guard$")'`
+  -> BLOCKED; `devtools` is not installed in the active R 4.6 library stack.
+- `git diff --check`
+  -> PASS.
+
+Consistency scans:
+
+- `rg -n 'pure binomial-probit|binomial-probit is admitted|binary logit/cloglog|logit/cloglog.*blocked|unsupported non-Gaussian families/links|other non-Gaussian links/families|probit only|binomial-probit only|single-family binomial\(link = "probit"\)' NEWS.md R docs/design tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no stale probit-only wording remains in the touched Design 73
+  surfaces.
+- `rg -n "binomial-probit|logit/probit/cloglog|standard binary links|standard-link binary|LV-05|validation_row" NEWS.md R docs/design tests/testthat/test-lv-parser-guard.R | head -220`
+  -> REVIEWED; remaining `binomial-probit` hits are older unrelated
+  binary/slope design history or existing binary completeness docs, not
+  new Design 73 `lv` overclaims.
+- `rg -n "validation_row = \"EXT-31; LV-01\"|validation_row = \"EXT-31; LV-05\"|LV-05" R/extractors.R tests/testthat/test-lv-parser-guard.R docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md`
+  -> PASS; binary extractor rows are tested as `LV-05`, Gaussian rows as
+  `LV-01`, and the validation register carries the matching partial
+  row.
+
+Not claimed:
+
+- No Bernoulli single-trial binary depth, interval calibration,
+  CI-08/CI-10 promotion, ordinal/count/Gamma/Beta/mixed-family/delta
+  or hurdle `lv`, missing-response compatibility, tier/source expansion,
+  Julia bridge parity, DRAC run, GPU work, production simulation, or
+  non-Gaussian REML claim moved.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-25-lv-binary-standard-links-c1.md`.
+
+2026-06-25 - LV binary standard-link C1 naming cleanup
+
+Context:
+
+- Maintainer flagged that `B_lv` can read like old "between" naming.
+  Public prose should lead with "latent-predictor trait effect" and use
+  `B_lv` only as the compact math/internal label.
+
+Changes:
+
+- Updated `NEWS.md`, `docs/design/06-extractors-contract.md`, and
+  `docs/design/73-predictor-informed-latent-scores.md` to describe the
+  primary public estimand as the latent-predictor trait effect, with
+  `B_lv = Lambda alpha^T` retained as the math notation.
+- Updated the PR body draft at
+  `/private/tmp/gllvmtmb-lv-binary-links-pr-body.md` with the same
+  wording.
+
+Checks:
+
+- `git diff --check`
+  -> PASS.
+
+2026-06-25 - LV effect sdreport SE extraction
+
+Context:
+
+- Follow-up to the Design 73 `latent(..., lv = ~ x)` lane after Ayumi's
+  applied binary-probit smoke issue. The goal was to expose existing
+  TMB `ADREPORT(B_lv_unit)` standard errors through
+  `extract_lv_effects()` only when `se = TRUE` gives a
+  positive-definite `sdreport()`, while keeping interval/coverage
+  claims gated.
+- Worktree: `/private/tmp/gllvmtmb-lv-next-20260625`.
+- Branch: `codex/lv-effect-sdreport-se-20260625`.
+
+Changes:
+
+- `R/extractors.R`: `extract_lv_effects(type = "trait_effect")` now
+  fills `std.error` from `summary(fit$sd_report, "report")` rows named
+  `B_lv_unit` when `fit$sd_report$pdHess` is true and the SEs are
+  finite. Otherwise it returns `NA` SEs with specific
+  `sdreport_*_no_lv_se` or `sdreport_*_lv_se` status labels.
+- `tests/testthat/test-lv-parser-guard.R`: added an `se = TRUE`
+  positive-definite sdreport fixture and a test comparing extractor
+  estimates/SEs to the TMB report table.
+- NEWS, Design 06/35/61/73, and `man/extract_lv_effects.Rd` now say
+  Wald SEs are available from `ADREPORT(B_lv_unit)` under the sdreport
+  gate, but intervals and coverage remain validation-gated.
+
+Checks:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; no open `gllvmTMB` PRs before shared-doc edits.
+- `git log --all --oneline --since='6 hours ago'`
+  -> REVIEWED; only recent commit in this worktree was
+  `4a4c468 lv: admit binary standard links (#560)`.
+- `air format R/extractors.R tests/testthat/test-lv-parser-guard.R`
+  -> PASS; no output.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); testthat::test_file("tests/testthat/test-lv-parser-guard.R")'`
+  -> FIRST RUN FAILED with 3 failures because the deterministic algebra
+  fixture produced `pdHess = FALSE` and non-finite `B_lv_unit` SEs;
+  rerun after switching the SE test to the stochastic Gaussian fixture
+  and adding a two-predictor `lv = ~ x + z` matrix-order check
+  -> PASS; 199 pass, 0 fail, 0 warn, 0 skip.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); pkgload::load_all(".", helpers = FALSE, attach_testthat = TRUE, quiet = TRUE); testthat::test_file("tests/testthat/test-extractors.R")'`
+  -> PASS; 17 pass, 0 fail, 0 warn, 0 skip.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'parse("R/extractors.R"); parse("tests/testthat/test-lv-parser-guard.R"); cat("parse ok\n")'`
+  -> PASS; parsed cleanly.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); devtools::document(quiet = TRUE)'`
+  -> BLOCKED; `devtools` is not installed in the active R 4.6 library
+  stack.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); roxygen2::roxygenise(".", roclets = "rd")'`
+  -> BLOCKED; `roxygen2` is not installed in the active R 4.6 library
+  stack.
+- `tail -n 8 man/extract_lv_effects.Rd`
+  -> PASS; generated Rd details paragraph matches roxygen.
+- `grep -c '^\\keyword' man/extract_lv_effects.Rd`
+  -> PASS; printed `0`, no stray keyword entries.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-r-lib-4.6", .libPaths())); if (!requireNamespace("pkgdown", quietly = TRUE)) stop("pkgdown not available in this R library stack"); pkgdown::check_pkgdown()'`
+  -> BLOCKED; `pkgdown` is not installed in the active R 4.6 library
+  stack.
+- `git diff --check`
+  -> PASS.
+
+Consistency scans:
+
+- `rg -n 'std\.error.*NA|standard errors are `?NA|standard errors are NA|point_estimate_only_no_ci_validation|standard errors and interval|ADREPORT uncertainty|no_lv_se|wald_sdreport_no_ci_validation|B_lv_unit' NEWS.md docs/design/06-extractors-contract.md docs/design/73-predictor-informed-latent-scores.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md man/extract_lv_effects.Rd R/extractors.R tests/testthat/test-lv-parser-guard.R`
+  -> REVIEWED; stale `extract_lv_effects()` "SE is always NA" wording
+  is removed. Remaining `no_lv_se` hits are intentional status labels;
+  unrelated `Xcoef_fixed` `std.error = NA` wording remains correct.
+- `rg --files tests/testthat | rg 'extract|lv'`
+  -> REVIEWED; selected `test-lv-parser-guard.R` for the feature path
+  and `test-extractors.R` for extractor-neighbour coverage.
+- `sed -n '512,532p' R/extractors.R && sed -n '36,46p' man/extract_lv_effects.Rd`
+  -> REVIEWED; roxygen and generated Rd details agree.
+
+Issue ledger:
+
+- `gh issue view 8 --repo Ayumi-495/urbanisation_map --json number,title,state,url,updatedAt,comments`
+  -> REVIEWED; maintainer comment posted at
+  `https://github.com/Ayumi-495/urbanisation_map/issues/8#issuecomment-4802757622`,
+  promising to write again once SE support is available.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'lv OR latent predictor OR extract_lv_effects' --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; no dedicated `extract_lv_effects()` SE issue found.
+
+Not claimed:
+
+- No confidence intervals, profile/bootstrap intervals, coverage
+  calibration, CI-08/CI-10 promotion, Bernoulli single-trial depth,
+  ordinal/count/Gamma/Beta/mixed-family support, tier/source expansion,
+  Julia bridge parity, DRAC run, GPU work, production simulation, or
+  non-Gaussian REML claim moved.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-25-lv-effect-sdreport-se.md`.
+
+2026-06-25 - R bridge Gaussian predictor-informed latent-score X_lv route
+
+Context:
+
+- Follow-up to the Design 73 `latent(..., lv = ~ x)` lane after the TMB
+  Gaussian, binary-standard-link, and sdreport-SE slices landed.
+- Goal: use the already-landed `GLLVM.jl` Gaussian `X_lv` bridge endpoint from
+  the R bridge without claiming broad Julia parity.
+- Worktree: `/private/tmp/gllvmtmb-lv-julia-bridge-20260625`.
+- Branch: `codex/lv-julia-bridge-20260625`.
+- Paired Julia checkout for direct engine tests:
+  `/private/tmp/gllvmjl-lv-next-20260625` at
+  `2396380fc118adcac5a841f38289329ead92ad5b`.
+
+Changes:
+
+- `R/julia-bridge.R`: added `X_lv` transport to `gllvm_julia_fit()` and
+  `.gllvmTMB_julia_dispatch()` for complete-response Gaussian rows only. Added
+  `predictor_informed_lv` to `gllvm_julia_capabilities()` and new gate ids
+  `GJL-GATE-XLV-FAMILY`, `GJL-GATE-XLV-CI`, `GJL-GATE-MASK-XLV`, and
+  `GJL-GATE-X-XLV`.
+- `R/extractors.R`: allowed `gllvmTMB_julia` objects to route
+  `extract_ordination(component = "mean" / "innovation")` and
+  `extract_lv_effects()` when retained Gaussian `X_lv` payloads exist.
+- `tests/testthat/test-julia-bridge.R`: added pure-R mock coverage for
+  payload extraction, direct-wrapper gates, main-dispatch `X_lv` construction,
+  unsupported main-dispatch combinations, and a live JuliaCall smoke that skips
+  when JuliaCall is absent.
+- NEWS, Design 06/35/61/73, and affected Rd files now say the Julia bridge
+  route is Gaussian, complete-response, no fixed-effect `X`, no mask, no CI,
+  point-estimate only, and not broad parity.
+
+Checks:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; no open `gllvmTMB` PRs before shared-doc edits.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> REVIEWED; no concurrent shared-file edits found in this worktree after
+  fast-forwarding to `origin/main`.
+- `gh run view 28196337855 --repo itchyshin/gllvmTMB --json databaseId,workflowName,status,conclusion,headSha,url,jobs`
+  -> PASS after waiting; post-#561 pkgdown completed successfully at
+  `9c59d9efafc5ac6d49b1a3d72ce28e886a390e05`.
+- `air format R/julia-bridge.R R/extractors.R tests/testthat/test-julia-bridge.R`
+  -> PASS; no output.
+- `Rscript --vanilla -e 'invisible(parse(file="R/julia-bridge.R")); invisible(parse(file="R/extractors.R")); invisible(parse(file="tests/testthat/test-julia-bridge.R")); cat("parse-ok\n")'`
+  -> PASS; printed `parse-ok`.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'`
+  -> PASS; pure-R bridge tests passed. Live JuliaCall tests skipped because
+  `JuliaCall` is not installed; one existing once-per-session warning about
+  dropping auto-Psi for `engine = "julia"` was shown.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-lv-parser-guard.R", reporter = "summary")'`
+  -> PASS; all Design 73 parser/extractor tests passed. Existing
+  auto-suppressed `sigma_eps` informational message was shown.
+- `julia --project=/private/tmp/gllvmjl-lv-next-20260625 -e 'import Pkg; Pkg.instantiate()'`
+  -> PASS; instantiated the local clean Julia project, precompiled `GLLVM`,
+  and left the Julia checkout clean.
+- `julia --project=/private/tmp/gllvmjl-lv-next-20260625 /private/tmp/gllvmjl-lv-next-20260625/test/test_bridge_lv_predictor.jl`
+  -> PASS; 19 pass.
+- `julia --project=/private/tmp/gllvmjl-lv-next-20260625 /private/tmp/gllvmjl-lv-next-20260625/test/test_bridge_capabilities.jl`
+  -> PASS; 42 pass.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'if (!requireNamespace("devtools", quietly = TRUE)) stop("devtools not available"); devtools::document(quiet = TRUE)'`
+  -> BLOCKED; `devtools` is not installed in the active R 4.6 temp library.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'if (!requireNamespace("roxygen2", quietly = TRUE)) stop("roxygen2 not available"); roxygen2::roxygenise(".", roclets = "rd")'`
+  -> BLOCKED; `roxygen2` is not installed in the active R 4.6 temp library.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'if (!requireNamespace("pkgdown", quietly = TRUE)) stop("pkgdown not available"); pkgdown::check_pkgdown()'`
+  -> BLOCKED; `pkgdown` is not installed in the active R 4.6 temp library.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 R CMD check --no-manual --no-build-vignettes .`
+  -> LOCAL TOOLING FAILURE before tests; R 4.6.0 `R CMD check` rejected this
+  working tree DESCRIPTION as missing legacy `Author`/`Maintainer` fields
+  even though the package uses `Authors@R`. Generated `..Rcheck/` was removed.
+- `git diff --check`
+  -> PASS.
+
+Consistency scans:
+
+- `rg -n "no Julia bridge parity|Julia bridge parity|component = \"total\"|Julia bridge fits accept only|do not yet expose predictor-informed|not admitted for GLLVM.jl bridge|X_lv|predictor_informed_lv" NEWS.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R R/extractors.R man/*.Rd tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; stale hard refusal wording was removed. Remaining
+  `component = "total"` and `Julia bridge parity` hits are scoped boundary
+  statements for non-`X_lv` bridge rows or broad parity.
+- `rg -n "std\\.error = NA|julia_bridge_point_estimate_only_no_ci_validation|wald_sdreport_no_ci_validation|GJL-GATE-XLV|predictor_informed_lv" NEWS.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R R/extractors.R man/*.Rd tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; point-only Julia bridge uncertainty labels and new gate ids are
+  present where expected.
+
+Not claimed:
+
+- No Julia binary/non-Gaussian `X_lv`, no mixed-family `X_lv`, no response-mask
+  `X_lv`, no simultaneous fixed-effect `X` plus `X_lv`, no Julia `X_lv` CIs, no
+  Gaussian recovery promotion, no CI-08/CI-10 promotion, no DRAC/GPU work, and
+  no broad native-vs-Julia parity claim moved.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-25-r-bridge-lv-gaussian-point.md`.
+
+2026-06-26 - R bridge binary X_lv route closeout
+
+Context:
+
+- Worktree: `/private/tmp/gllvmtmb-lv-binary-julia-bridge-20260626`.
+- Branch: `codex/lv-binary-julia-bridge-20260626`.
+- Paired GLLVM.jl worktree:
+  `/private/tmp/gllvmjl-binomial-xlv-20260625`, branch
+  `codex/binomial-xlv-20260625`.
+- Goal: widen the narrow Design 73 Julia bridge `X_lv` point route from
+  Gaussian-only to complete-response binomial logit/probit/cloglog rows,
+  without admitting masks, fixed-effect `X` plus `X_lv`, mixed families, CIs,
+  or broad R-Julia parity.
+
+Coordination / GitHub state:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; `[]`.
+- `git log --all --oneline --since="6 hours ago" -- AGENTS.md CLAUDE.md ROADMAP.md CONTRIBUTING.md docs/dev-log/check-log.md docs/design docs/dev-log/after-task inst/COPYRIGHTS DESCRIPTION`
+  -> PASS; no concurrent shared-file edits found before dev-log edits.
+- `gh pr list --repo itchyshin/GLLVM.jl --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; draft PR #113 remains open and `DIRTY` on
+  `claude/studentt-105-20260620`, so the Julia binary-`X_lv` branch stays
+  pushed but no new GLLVM.jl PR was opened in this slice.
+
+Implementation summary:
+
+- `R/julia-bridge.R` maps `binomial(link = "logit")` to `binomial`,
+  `binomial(link = "probit")` to `binomial_probit`, and
+  `binomial(link = "cloglog")` to `binomial_cloglog`.
+- `.GLLVM_JULIA_XLV_FAMILIES` now admits only `gaussian`, `binomial`,
+  `binomial_probit`, and `binomial_cloglog` for predictor-informed latent-score
+  bridge rows.
+- Existing gates remain live for CI/profile/bootstrap requests, response masks
+  plus `X_lv`, fixed-effect `X` plus `X_lv`, mixed-family `X_lv`, and other
+  non-Gaussian `X_lv` rows.
+- `extract_lv_effects()` docs and Design 73/status/register docs now state that
+  Gaussian and binomial logit/probit/cloglog bridge rows are point-only with
+  `std.error = NA` and
+  `julia_bridge_point_estimate_only_no_ci_validation`.
+
+R checks:
+
+- `air format R/julia-bridge.R R/extractors.R tests/testthat/test-julia-bridge.R`
+  -> PASS; no output.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'roxygen2::roxygenise()'`
+  -> PASS; only existing unresolved-link warnings in `data-mixed-family.R`,
+  `fit-multi.R`, `loading-uncertainty-helpers.R`, and `phylo-signal-ci.R`.
+- `Rscript --vanilla -e 'invisible(parse("R/julia-bridge.R")); invisible(parse("R/extractors.R")); invisible(parse("tests/testthat/test-julia-bridge.R")); cat("parse-ok\n")'`
+  -> PASS before closeout; printed `parse-ok`.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgload::load_all(export_all = TRUE, helpers = TRUE, quiet = TRUE); Sys.unsetenv("GLLVM_JL_PATH"); res <- testthat::test_file("tests/testthat/test-julia-bridge.R"); failed <- vapply(res, function(x) any(x$results$failed), logical(1)); if (any(failed)) quit(status = 1)'`
+  -> PASS; `FAIL 0 | WARN 1 | SKIP 18 | PASS 480`. The warning was the
+  existing once-per-session auto-Psi bridge message; live Julia rows skipped
+  because `GLLVM_JL_PATH` was unset for CRAN-style checking.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgload::load_all(export_all = TRUE, helpers = TRUE, quiet = TRUE); res <- testthat::test_file("tests/testthat/test-lv-parser-guard.R"); failed <- vapply(res, function(x) any(x$results$failed), logical(1)); if (any(failed)) quit(status = 1)'`
+  -> PASS; `FAIL 0 | WARN 0 | SKIP 0 | PASS 199`.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgload::load_all(export_all = TRUE, helpers = TRUE, quiet = TRUE); res <- testthat::test_file("tests/testthat/test-extractors.R"); failed <- vapply(res, function(x) any(x$results$failed), logical(1)); if (any(failed)) quit(status = 1)'`
+  -> PASS; `FAIL 0 | WARN 0 | SKIP 0 | PASS 17`.
+- Standalone live R-to-Julia binary `X_lv` smoke with
+  `GLLVM_JL_PATH=/private/tmp/gllvmjl-binomial-xlv-20260625`
+  -> PASS before stop checkpoint; logit, probit, and cloglog printed
+  `live-binary-xlv-ok`. Julia printed an existing
+  `LogExpFunctionsInverseFunctionsExt` warning under Julia 1.10 but continued.
+- Full live `tests/testthat/test-julia-bridge.R` with
+  `GLLVM_JL_PATH=/private/tmp/gllvmjl-binomial-xlv-20260625`
+  -> REVIEWED before stop checkpoint; `FAIL 10 | WARN 1 | SKIP 0 | PASS 1351`.
+  The failures were pre-existing grouped-dispersion/Gaussian parity rows; the
+  new binary `X_lv` live test did not fail.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'Sys.unsetenv("GLLVM_JL_PATH"); devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> FINAL PASS after installing optional test dependencies `ape` and
+  `MCMCglmm` into the temp library; `0 errors | 0 warnings | 0 notes`.
+  Two earlier attempts failed only because first `ape`, then `MCMCglmm`, were
+  absent from the temp library.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found`.
+- `git diff --check`
+  -> PASS.
+- `for f in man/extract_lv_effects.Rd man/gllvm_julia_fit.Rd; do printf '%s\n' "--- $f"; tail -5 "$f"; printf 'keyword_count='; grep -c '^\\keyword' "$f" || true; done`
+  -> PASS; both touched Rd files closed cleanly and `keyword_count=0`.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6:/private/tmp/gllvmtmb-install-lib-4.6:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'files <- c("man/extract_lv_effects.Rd", "man/gllvm_julia_fit.Rd"); for (f in files) { cat("--", f, "--\n"); tools::checkRd(f) }; cat("rd-check-ok\n")'`
+  -> PASS; printed `rd-check-ok`.
+
+GLLVM.jl checks:
+
+- `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  -> PASS before closeout; 83 pass.
+- `julia --project=. --startup-file=no test/test_bridge_lv_predictor.jl`
+  -> PASS before closeout; 94 pass.
+- `julia --project=. --startup-file=no test/test_binomial_fit.jl`
+  -> PASS before closeout; 8 pass.
+- `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> PASS before closeout; 64 pass.
+- `julia --project=. --startup-file=no -e 'using Pkg; Pkg.test()'`
+  -> PASS after rerun; `GLLVM.jl | 4629 pass, 1 broken, 4630 total,
+  49m24.9s`.
+- `julia --project=docs --startup-file=no docs/make.jl`
+  -> INITIAL TOOLING FAILURE; docs environment was not instantiated.
+- `julia --project=docs --startup-file=no -e 'using Pkg; Pkg.instantiate()'`
+  -> TOOLING FAILURE; docs env expected local unregistered `GLLVM`.
+- `julia --project=docs --startup-file=no -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); include("docs/make.jl")'`
+  -> PASS; Documenter/Vitepress built locally. Existing local-link warnings,
+  default Vitepress asset warnings, npm audit warnings, and deployment-skip
+  warnings were reported; the worktree stayed clean.
+
+Consistency scans:
+
+- `rg -n 'Gaussian Julia bridge|complete-response Gaussian|Gaussian .*X_lv|non-Gaussian/binary|binary/non-Gaussian|unsupported Julia bridge `X_lv`' NEWS.md R docs/design man tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; expected row-specific Gaussian hits remain for the Gaussian
+  bridge test title and `LV-01`. Stale binary/non-Gaussian hard-refusal wording
+  was removed or narrowed to "other non-Gaussian" rows.
+- `rg -n 'binomial_probit|binomial_cloglog|predictor_informed_lv|julia_bridge_point_estimate_only_no_ci_validation|GJL-GATE-XLV|std\.error = NA|component = "mean"|component = "innovation"' NEWS.md R/julia-bridge.R R/extractors.R man/extract_lv_effects.Rd man/gllvm_julia_fit.Rd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; binary link labels, point-only uncertainty labels, gate IDs, and
+  score-component language appear in the expected implementation, help, design,
+  and test surfaces.
+
+Not claimed:
+
+- No Julia `X_lv` CIs, no response-mask `X_lv`, no fixed-effect `X` plus
+  `X_lv`, no mixed-family `X_lv`, no ordinal/count/Gamma/Beta/delta-hurdle
+  `X_lv`, no Bernoulli single-trial depth, no Gaussian recovery grid, no
+  CI-08/CI-10 promotion, no DRAC/GPU work, and no broad R-Julia parity claim.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-26-r-bridge-binary-xlv.md`.
+
+2026-06-25 - R bridge Gaussian X_lv route pre-PR audit refresh
+
+Context:
+
+- Continuation after app update / context refresh. Same worktree:
+  `/private/tmp/gllvmtmb-lv-julia-bridge-20260625`; same branch:
+  `codex/lv-julia-bridge-20260625`.
+- Added a direct-wrapper help example for `gllvm_julia_fit(X_lv = ...)` so the
+  new exported argument is represented in both roxygen and the synced Rd file.
+
+GitHub / coordination refresh:
+
+- `git fetch origin --prune`
+  -> PASS; no output.
+- `git status --short --branch`
+  -> REVIEWED; branch still based on `origin/main` at `9c59d9e` with only the
+  expected modified files and the new after-task report.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> REVIEWED; no new conflicting shared-doc edits after the branch point.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; `[]`.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 10 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle,url`
+  -> REVIEWED; main R-CMD-check run `28195571078` and pkgdown run
+  `28196337855` are green at `9c59d9e`. Scheduled Power pilot sweep run
+  `28190721828` is still in progress and an older scheduled sweep
+  `28177773826` failed; neither is used as validation-promotion evidence.
+
+Post-example checks:
+
+- `air format R/julia-bridge.R R/extractors.R tests/testthat/test-julia-bridge.R`
+  -> PASS.
+- `Rscript --vanilla -e 'invisible(parse(file="R/julia-bridge.R")); invisible(parse(file="R/extractors.R")); invisible(parse(file="tests/testthat/test-julia-bridge.R")); cat("parse-ok\n")'`
+  -> PASS; printed `parse-ok`.
+- `git diff --check`
+  -> PASS.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'`
+  -> PASS; local live JuliaCall rows skipped because `{JuliaCall}` is not
+  installed; existing once-per-session auto-Psi bridge warning was shown.
+- `R_LIBS=/private/tmp/gllvmtmb-r-lib-4.6 Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-lv-parser-guard.R", reporter = "summary")'`
+  -> PASS.
+- `julia --project=/private/tmp/gllvmjl-lv-next-20260625 /private/tmp/gllvmjl-lv-next-20260625/test/test_bridge_lv_predictor.jl`
+  -> PASS; 19 pass.
+- `julia --project=/private/tmp/gllvmjl-lv-next-20260625 /private/tmp/gllvmjl-lv-next-20260625/test/test_bridge_capabilities.jl`
+  -> PASS; 42 pass.
+
+Rendered-Rd spot-check:
+
+- `for f in man/gllvm_julia_fit.Rd man/gllvm_julia_capabilities.Rd man/extract_ordination.Rd man/extract_lv_effects.Rd; do printf '%s\n' "--- $f"; tail -5 "$f"; printf 'keyword_count='; grep -c '^\\keyword' "$f" || true; done`
+  -> PASS; tails close cleanly and all four touched Rd files report
+  `keyword_count=0`.
+
+Consistency scan:
+
+- `rg -n "X_lv|predictor_informed_lv|julia_bridge_point_estimate_only_no_ci_validation|GJL-GATE-XLV|component = \"mean\"|component = \"innovation\"" NEWS.md R/julia-bridge.R R/extractors.R man/gllvm_julia_fit.Rd man/gllvm_julia_capabilities.Rd man/extract_ordination.Rd man/extract_lv_effects.Rd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; new argument, capability column, gate IDs, point-only labels,
+  and component names are present in the expected source/help/design/test
+  surfaces.
+
+2026-06-28 - Design 73 LV-02 native Gaussian recovery gate
+
+Context:
+
+- Work happened in clean worktree `/private/tmp/gllvmtmb-lv-native-gaussian`
+  on branch `codex/lv-native-gaussian-validation-20260628`, not the dirty
+  Dropbox checkout.
+- `git worktree add -b codex/lv-native-gaussian-validation-20260628 /private/tmp/gllvmtmb-lv-native-gaussian origin/main`
+  -> PASS; clean worktree based on `origin/main` at `791f2abc`.
+- Implemented the first focused native TMB Gaussian recovery gate for ordinary
+  unit-tier Design 73 predictor-informed latent scores. This moves `LV-02`
+  from `blocked` to `partial`, not `covered`.
+
+Coordination / lane checks:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; one open PR: #564
+  `claude/xlv-bridge-closeout`, non-draft, `mergeStateStatus = CLEAN`,
+  updated `2026-06-27T00:20:44Z`.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> REVIEWED; no output, no recent local branch collision found.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "Design 73 OR LV-02 OR latent lv OR predictor-informed latent" --json number,title,state,url,updatedAt --limit 20`
+  -> REVIEWED; broader tracker hits were #526, #348, #346, #349, and #340;
+  no dedicated LV-02 issue was found or closed.
+
+Implemented:
+
+- Added `tests/testthat/test-lv-gaussian-recovery.R` with the symbolic
+  alignment table for `z_i = x_i alpha + e_i`,
+  `B_lv = Lambda alpha'`, and `Sigma_unit = Lambda Lambda' + Psi`.
+- The CRAN-safe rank-1 DGP checks convergence, positive-definite
+  `sdreport()`, finite `ADREPORT(B_lv_unit)` SEs, extractor/report SE
+  agreement, independent manual delta-method SEs for `B_lv`, primary
+  trait-scale `B_lv` recovery, secondary total-`Sigma` recovery, and finite
+  non-negative `Psi`.
+- The heavy rank-2 DGP checks rotation-stable `B_lv` and `Sigma` recovery
+  while deliberately avoiding raw `alpha` or raw `Lambda` as pass/fail targets.
+- Updated `NEWS.md`, `docs/design/01-formula-grammar.md`,
+  `docs/design/03-likelihoods.md`, `docs/design/04-random-effects.md`,
+  `docs/design/05-testing-strategy.md`,
+  `docs/design/06-extractors-contract.md`,
+  `docs/design/35-validation-debt-register.md`,
+  `docs/design/61-capability-status.md`, and
+  `docs/design/73-predictor-informed-latent-scores.md` so they say focused
+  Gaussian recovery is partial while interval calibration, Bernoulli
+  single-trial depth, missing responses, other non-Gaussian families,
+  mixed-family rows, source-specific `lv`, Julia CIs, and broad parity remain
+  gated.
+- Recounted the validation register with the status-token scan below:
+  213 rows, 173 covered, 30 partial, 0 opt-in, and 10 blocked.
+
+Checks:
+
+- `air format tests/testthat/test-lv-gaussian-recovery.R`
+  -> PASS; no output.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-gaussian-recovery", reporter = "summary")'`
+  -> PASS; `lv-gaussian-recovery: ................S`, with the heavy rank-2
+  test skipped behind `GLLVMTMB_HEAVY_TESTS=1`.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "lv-gaussian-recovery", reporter = "summary")'`
+  -> PASS; `lv-gaussian-recovery: .............................`.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> PASS with 18 live-Julia skips because `{JuliaCall}` is not installed and
+  the expected once-per-session Julia-bridge `Psi` warning.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found.`
+- `git diff --check`
+  -> PASS.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> FAIL in the full test suite: 20 failures, 17 warnings, 820 skips,
+  3615 passes. Failures were existing phylo/tree rows requiring `{MCMCglmm}`
+  in the built-check environment (for example `test-augmented-lhs-guard.R`,
+  `test-canonical-keywords.R`, `test-formula-grammar-smoke.R`,
+  `test-keyword-grid.R`, `test-ordinal-probit.R`,
+  `test-phylo-latent-slope-gaussian.R`, and `test-traits-keyword.R`), not the
+  new LV Gaussian recovery test.
+- `mkdir -p /private/tmp/gllvmtmb-check-lib && R_LIBS_USER=/private/tmp/gllvmtmb-check-lib Rscript --vanilla -e '.libPaths(c(Sys.getenv("R_LIBS_USER"), .libPaths())); install.packages("MCMCglmm", repos = "https://cloud.r-project.org")'`
+  -> PASS; installed binary `{MCMCglmm}` plus dependencies into the temporary
+  library.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m 2.6s with 0 errors, 0 warnings, and
+  0 notes. `devtools::check()` still reported the local roxygen2 8.0.0 vs
+  declared 7.3.2 mismatch and therefore did not re-document; no roxygen/Rd
+  files changed in this slice.
+- `printf 'rows='; rg '^\| [A-Z]+-[0-9A-Z]+ \|' docs/design/35-validation-debt-register.md | wc -l; printf 'covered='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `covered' docs/design/35-validation-debt-register.md | wc -l; printf 'partial='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `partial' docs/design/35-validation-debt-register.md | wc -l; printf 'blocked='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `blocked' docs/design/35-validation-debt-register.md | wc -l; printf 'opt-in='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `opt-in' docs/design/35-validation-debt-register.md | wc -l`
+  -> REVIEWED; `rows=213`, `covered=173`, `partial=30`, `blocked=10`,
+  `opt-in=0`.
+
+Consistency scans:
+
+- `rg -n 'not yet a recovery-validated|not yet Gaussian recovery|not Gaussian recovery|Gaussian recovery.*pending|small Gaussian.*smoke/algebra|no Gaussian recovery grid|recovery and interval evidence\s+remain pending|LV-02.*blocked' NEWS.md docs/design docs/dev-log/known-limitations.md README.md ROADMAP.md`
+  -> PASS; no stale hits after the design-doc updates.
+- `rg -n 'lv =|predictor-informed|latent-score mean|B_lv|LV-0[1-7]|FG-18|RE-13|EXT-31' NEWS.md docs/design README.md ROADMAP.md docs/dev-log/known-limitations.md tests/testthat/test-lv-gaussian-recovery.R`
+  -> REVIEWED; expected hits show `LV-02` as partial, `LV-03` / `LV-06` /
+  `LV-07` as blocked, and source-specific `lv` still rejected.
+- `rg -n 'complete|covered|validated|interval calibration|coverage|wald_sdreport_no_ci_validation|julia_bridge_point_estimate_only_no_ci_validation|Bernoulli single-trial|mixed-family|phylo_latent\([^\n]*lv|spatial_latent\([^\n]*lv|kernel_latent\([^\n]*lv' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/design/04-random-effects.md docs/design/06-extractors-contract.md`
+  -> REVIEWED; the new Gaussian recovery language is partial/gated, Wald SEs
+  remain labelled no-CI-validation, Julia `X_lv` stays point-only, and
+  source-specific / mixed-family `lv` rows remain rejected or planned.
+
+Not run:
+
+- Full standalone `devtools::test()` outside the successful R CMD check,
+  `devtools::document()`, full `pkgdown::build_articles(lazy = FALSE)`,
+  DRAC/SLURM coverage arrays, and any GLLVM.jl PR #127 fix. This slice is the
+  native TMB Gaussian recovery gate, not interval calibration, phylo grammar,
+  or the held R-bridge branch merge.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-native-gaussian-recovery.md`.
+
+Post-rebase coordination refresh:
+
+- `gh pr view 564 --repo itchyshin/gllvmTMB --json state,mergedAt,mergeCommit,url,number,title`
+  -> PASS; #564 is `MERGED` at `2026-06-28T13:29:59Z` with merge commit
+  `aa5d1980c36ceab93b10942145249d14472985d8`.
+- `git fetch origin main`
+  -> PASS; `origin/main` advanced from `791f2abc` to `aa5d1980`.
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; `[]`, no open PRs before publishing the native Gaussian LV-02
+  branch.
+- `git rebase origin/main`
+  -> PASS; native Gaussian LV-02 branch rebased cleanly from `29201a65` to
+  `034ac679` on top of #564's merge commit.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-gaussian-recovery", reporter = "summary")'`
+  -> PASS after rebase; `lv-gaussian-recovery: ................S`, with the
+  heavy rank-2 test skipped behind `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS after rebase; `No problems found.`
+- `git diff --check`
+  -> PASS after rebase.
+
+## 2026-06-28 08:46 MDT -- LV-02 Gaussian Wald coverage harness
+
+Scope:
+
+- Added the dev-only native TMB ordinary Gaussian Wald coverage harness for
+  `latent(..., lv = ~ x)`: `dev/lv-wald-coverage.R`.
+- Added harness tests for grid/task seeds, failed-fit denominators, MCSE
+  formulas, and an opt-in live fit smoke:
+  `tests/testthat/test-lv-wald-coverage-harness.R`.
+- Updated Design 73, the validation-debt register, and capability status to
+  state that coverage infrastructure exists but 500-rep calibration evidence
+  does not.
+
+Coordination / pre-edit lane check:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> PASS; `[]`, no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> REVIEWED; recent commits were the just-merged LV slices:
+  `3c063aa2`, `412dd172`, `aa5d1980`, `556bf6aa`.
+- `git fetch origin main`
+  -> PASS.
+
+Checks:
+
+- `air format dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> PASS; no output.
+- `Rscript --vanilla -e 'invisible(parse("dev/lv-wald-coverage.R")); invisible(parse("tests/testthat/test-lv-wald-coverage-harness.R")); cat("parse-ok\n")'`
+  -> PASS; `parse-ok`.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; `lv-wald-coverage-harness: ..................S`, with the live
+  fit smoke skipped because `GLLVMTMB_LV_WALD_SMOKE` was not set.
+- `GLLVMTMB_LV_WALD_SMOKE=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; `lv-wald-coverage-harness: ........................`.
+- `Rscript --vanilla - <<'RS' ... source('dev/lv-wald-coverage.R'); lv_wald_coverage_cli(c('--mode=preflight', '--n-reps=2', '--seed-base=20260628', ...)); lv_wald_coverage_cli(c('--mode=cell', '--cell=gaussian-d1-n72-t3', '--n-reps=2', ...)); ... RS`
+  -> PASS; temp pilot wrote the plan RDS/CSV, two per-replicate RDS files,
+  long RDS/CSV, summary RDS/CSV, and `session-info.txt`. Summary had
+  `n_attempted = 2`, `n_eligible = 2`, `coverage = 1`, nominal coverage MCSE
+  `0.1541104`, and `production_n_reps_met = FALSE` for all three trait
+  targets. This is a file-pipeline smoke only, not calibration evidence.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-gaussian-recovery", reporter = "summary")'`
+  -> PASS; `lv-gaussian-recovery: ................S`, with the heavy rank-2
+  test skipped behind `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS.
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found.`
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m 33.8s with 0 errors, 0 warnings, and
+  0 notes. As in the prior slice, `devtools::check()` reported the local
+  roxygen2 8.0.0 vs declared 7.3.2 mismatch and did not re-document; no
+  roxygen/Rd files were intended in this dev-harness slice.
+
+Consistency scans:
+
+- `rg -n 'LV-02.*covered|latent\(lv\).*complete|coverage (passed|validated|calibrated)|calibrated CIs|500-rep.*(passed|complete|validated)' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> REVIEWED; expected hits only: Design 61 says no 500-rep calibration
+  evidence, and the register's general pre-existing rule says scientific
+  coverage passed is not the same as release readiness.
+- `rg -n 'wald_sdreport_no_ci_validation|infrastructure, not coverage calibration|not coverage evidence|not covered|partial|blocked|500-rep|MCSE|failed-fit denominators' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> REVIEWED; expected hits show LV rows still partial/blocked, Wald SEs still
+  labelled no-CI-validation, and the coverage harness explicitly framed as
+  infrastructure rather than calibration evidence.
+- `printf 'rows='; rg '^\| [A-Z]+-[0-9A-Z]+ \|' docs/design/35-validation-debt-register.md | wc -l; printf 'covered='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `covered' docs/design/35-validation-debt-register.md | wc -l; printf 'partial='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `partial' docs/design/35-validation-debt-register.md | wc -l; printf 'blocked='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `blocked' docs/design/35-validation-debt-register.md | wc -l; printf 'opt-in='; rg '^\| [A-Z]+-[0-9A-Z]+ \|.*\| `opt-in' docs/design/35-validation-debt-register.md | wc -l`
+  -> REVIEWED; `rows=213`, `covered=173`, `partial=30`, `blocked=10`,
+  `opt-in=0`.
+
+Not run:
+
+- The production Gaussian Wald coverage grid (`>= 500` reps/cell), profile or
+  bootstrap rescue intervals, DRAC/SLURM arrays, Bernoulli single-trial depth,
+  missing-response/factor-runtime cells, GLLVM.jl PR #127, and the held R
+  bridge branches. This slice adds the native TMB Gaussian Wald coverage
+  runner and pilot checks only.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-coverage-harness.md`.
+
+Post-report checks:
+
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-28-lv-wald-coverage-harness.md`
+  -> PASS.
+- `git diff --check`
+  -> PASS after the check-log and after-task edits.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS after the check-log and after-task edits;
+  `lv-wald-coverage-harness: ..................S`.
+- After a final seed-index robustness tweak in `dev/lv-wald-coverage.R`,
+  reran `air format dev/lv-wald-coverage.R`, `Rscript --vanilla -e
+  'invisible(parse("dev/lv-wald-coverage.R")); cat("parse-ok\n")'`,
+  `Rscript --vanilla -e 'devtools::test(filter =
+  "lv-wald-coverage-harness", reporter = "summary")'`, and
+  `git diff --check` -> all PASS.
+
+## 2026-06-28 - R bridge Poisson `latent(lv = ~ x)` point route
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-poisson-xlv-r-20260628`
+- `codex/poisson-xlv-r-bridge-20260628`, created from `origin/main`
+  at `10bd368d1b54daa9b2210b817e44059b78ce4201`.
+- Cherry-picked held branch commit
+  `1404783 feat(julia-bridge): admit Poisson X_lv on the R engine='julia' route`
+  as local commit `4812ec2`.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft`
+  -> PASS; `[]`, no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> REVIEWED; recent entries were the already-merged LV slices
+  `10bd368`, `49ee528`, `3c063aa`, `412dd17`, `aa5d198`, and `556bf6a`.
+
+Implemented:
+
+- Added Poisson to the narrow R-to-Julia bridge `X_lv` family set for
+  complete-response `latent(..., unique = FALSE, lv = ~ x)` point fits.
+- Added a mocked main-dispatch Poisson `X_lv` route test in
+  `tests/testthat/test-julia-bridge.R`; unsupported-family bridge tests now
+  use `Gamma(link = "log")` so Poisson is no longer the fail-loud probe.
+- Updated runtime capability notes, gate messages, roxygen, generated Rd,
+  `NEWS.md`, Design 73, Design 61, and validation-debt rows `FG-18`,
+  `RE-13`, `EXT-31`, `JUL-01` / `JUL-01A`, and `LV-05`.
+
+Checks:
+
+- `Rscript --vanilla -e 'invisible(parse(file="R/julia-bridge.R")); invisible(parse(file="tests/testthat/test-julia-bridge.R")); cat("parse-ok\n")'`
+  -> PASS; `parse-ok`.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'`
+  -> PASS; one expected warning about Julia bridge `unique = FALSE`, and 18
+  live JuliaCall tests skipped because `{JuliaCall}` is not installed.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> PASS; same expected warning and 18 JuliaCall skips.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; wrote `man/gllvm_julia_fit.Rd`. Existing roxygen warnings about
+  unresolved `MCMCglmm`, fixture-helper, `parse_multi_formula`, and `[0, 1]`
+  links were printed; no new `X_lv` warning was introduced.
+- `rg -n 'X_lv|Gaussian, Poisson|binomial logit/probit|non-Gaussian `X_lv`|keyword' man/gllvm_julia_fit.Rd R/julia-bridge.R`
+  -> REVIEWED; roxygen and Rd now both state Gaussian, Poisson, and binomial
+  standard-link `X_lv` bridge rows.
+- `tail -5 man/gllvm_julia_fit.Rd`
+  -> REVIEWED; file ends cleanly.
+- `grep -c '^\\keyword' man/gllvm_julia_fit.Rd`
+  -> REVIEWED; printed `0`, confirming no accidental keyword spill.
+- `git diff --check`
+  -> PASS.
+- `rg -n 'complete-response Gaussian and binomial|Gaussian and binomial logit/probit/cloglog `engine = "julia"`|ordinal, count|Other non-Gaussian `X_lv`|count/Gamma/Beta|unsupported non-Gaussian families|complete Gaussian and binomial|Routed only for complete Gaussian and|latent\\(lv\\).*complete|coverage (passed|validated|calibrated)|calibrated CIs|500-rep.*(passed|complete|validated)' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R man/gllvm_julia_fit.Rd tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; expected hits only: "Other non-Gaussian `X_lv` rows beyond
+  Poisson..." gates, Design 61's explicit "no 500-rep interval calibration",
+  and historical "coverage passed" cautions.
+- `rg -n 'Gaussian, Poisson, and binomial|bridge-only Poisson|native count-family|julia_bridge_point_estimate_only_no_ci_validation|GJL-GATE-XLV|LV-0[1-7]|JUL-01|JUL-01A' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; expected hits show the Poisson bridge route is point-only and
+  `LV-02`, `LV-03`, `LV-06`, and `LV-07` remain partial/blocked.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library; Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found.`
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library; Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m 1s with 0 errors, 0 warnings, and
+  0 notes. As in the prior slice, `devtools::check()` did not re-document
+  because local roxygen2 8.0.0 differs from declared 7.3.2; documentation was
+  regenerated explicitly before the check.
+- `mkdir -p /private/tmp/gllvmtmb-r-live-lib && Rscript --vanilla -e 'install.packages("JuliaCall", lib="/private/tmp/gllvmtmb-r-live-lib", repos="https://cloud.r-project.org", quiet=TRUE)'`
+  -> PASS; installed temporary `JuliaCall` 0.17.6 and `rjson`.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library; export GLLVM_JL_PATH=/private/tmp/gllvmjl-phylo-xlv; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla - <<'RS' ... live Poisson X_lv smoke ... RS`
+  -> PASS; printed `live-poisson-xlv-ok` and
+  `family=poisson model=poisson_xlv_rr lv_effects=3x1`. Julia emitted a noisy
+  `LogExpFunctionsInverseFunctionsExt` precompile error
+  (`UndefVarError: loglogistic not defined`) before continuing; all R-side
+  payload and extractor checks passed. The live GLLVM.jl target was
+  `/private/tmp/gllvmjl-phylo-xlv` at local commit `bcf2680`.
+- `gh pr checks 568 --repo itchyshin/gllvmTMB --watch --interval 30`
+  -> PASS; GitHub `ubuntu-latest (release)` R-CMD-check passed in 13m9s.
+
+Not run:
+
+- Coverage/calibration grids, profile/bootstrap intervals, response-mask
+  `X_lv`, fixed-effect `X + X_lv`, mixed-family `X_lv`, NB/Gamma/Beta `X_lv`,
+  or source-specific/phylo `lv`.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-r-bridge-poisson-xlv.md`.
+
+## 2026-06-28 - R bridge NB2 / Gamma / Beta `latent(lv = ~ x)` point routes
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-nbgammabeta-xlv-r-20260628`
+- `codex/nbgammabeta-xlv-r-bridge-20260628`, created from `origin/main`
+  at `7ba0890e8083417d67560bcf2186556f9fad0df5` after #568 merged.
+- Ported held branch commits
+  `67158e9 feat(julia-bridge): admit NB2/Gamma/Beta X_lv on the R engine='julia' route`
+  and `b940a96 test(julia-bridge): guard NB2/Gamma/Beta X_lv mocked test with skip_if_not_installed(glmmTMB)`.
+
+Pre-edit lane check:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,statusCheckRollup,url`
+  -> PASS; `[]`, no open gllvmTMB PRs after #568 merged.
+- `git log --all --oneline --since="6 hours ago"`
+  -> REVIEWED; recent entries were the current LV arc merges and held-branch
+  commits.
+
+Implemented:
+
+- Added `negbinomial`, `gamma`, and `beta` to the narrow R-to-Julia bridge
+  `X_lv` family set for complete-response
+  `latent(..., unique = FALSE, lv = ~ x)` point fits.
+- Added a mocked main-dispatch NB2 / Gamma / Beta `X_lv` route test in
+  `tests/testthat/test-julia-bridge.R`; unsupported-family bridge tests use
+  `nbinom1()` so NB2/Gamma/Beta are no longer fail-loud probes.
+- Updated runtime capability notes, gate messages, roxygen, generated Rd,
+  `NEWS.md`, Design 73, Design 61, and validation-debt rows `FG-18`,
+  `RE-13`, `EXT-31`, `JUL-01` / `JUL-01A`, and partial `LV-05`.
+- Added t-based small-sample intervals as a future Gaussian coverage comparator
+  in Design 61, without claiming validation.
+
+Checks:
+
+- `Rscript --vanilla -e 'invisible(parse(file="R/julia-bridge.R")); invisible(parse(file="tests/testthat/test-julia-bridge.R")); cat("parse-ok\n")'`
+  -> PASS; `parse-ok`.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'`
+  -> PASS; one expected Julia bridge `unique = FALSE` warning and 18
+  `{JuliaCall}` skips.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated `man/gllvm_julia_fit.Rd`. Existing roxygen unresolved-link
+  warnings were unrelated to `X_lv`.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> PASS; same expected warning and 18 `{JuliaCall}` skips.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library; export GLLVM_JL_PATH=/private/tmp/gllvmjl-phylo-xlv; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla - <<'RS' ... live NB2/Gamma/Beta X_lv smoke ... RS`
+  -> PASS; printed `live-nbgammabeta-xlv-ok` for `nbinom2`, `gamma`, and
+  `beta`, with models `negbinomial_xlv_rr`, `gamma_xlv_rr`, and `beta_xlv_rr`
+  and `lv_effects = 3x1`. Julia emitted the known
+  `LogExpFunctionsInverseFunctionsExt` precompile error before continuing.
+- `rg -n 'Gaussian, Poisson, and binomial|Poisson and binomial|Poisson, and binomial|beyond Poisson|count/Gamma/Beta|NB/Gamma/Beta|other non-Gaussian bridge families|ordinal/NB/Gamma/Beta|Named Julia bridge rows now exist only for the complete-response Gaussian, Poisson' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R man/gllvm_julia_fit.Rd tests/testthat/test-julia-bridge.R`
+  -> PASS; no hits after `EXT-31` was updated.
+- `rg -n 'coverage (passed|validated|calibrated)|calibrated CIs|500-rep.*(passed|complete|validated)|t-based.*(passed|validated|calibrated)|t-Wald.*(passed|validated|calibrated)' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md R/julia-bridge.R man/gllvm_julia_fit.Rd tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; expected cautionary hits only. Design 61 says 500-rep
+  calibration evidence has not landed and t-based intervals are future
+  candidate work.
+- `git diff --check`
+  -> PASS.
+- `export NOT_CRAN=true; Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found.`
+- `export NOT_CRAN=true; Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m 9.7s with 0 errors, 0 warnings, and
+  0 notes.
+- `gh run view 28332014688 --repo itchyshin/gllvmTMB --json status,conclusion,jobs`
+  -> PASS; main-branch #568 merge check `ubuntu-latest (release)` passed in
+  13m15s on commit `7ba0890`.
+
+Not run:
+
+- Coverage/calibration grids, profile/bootstrap intervals, t-based interval
+  coverage, response-mask `X_lv`, fixed-effect `X + X_lv`, mixed-family
+  `X_lv`, NB1/ordinal `X_lv`, native count-family `lv`, or source-specific/
+  phylo `lv`.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-r-bridge-nbgammabeta-xlv.md`.
+
+## 2026-06-29 - R bridge `X_lv` Wald CI reader plumbing
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-xlv-ci-reader-20260628`
+- `codex/xlv-ci-reader-rebase-probe-20260628`, rebased onto `origin/main`
+  at `1d15e01dcca30de27ab94f80024cd9b4c6f91d1f` after #569 merged.
+- Opened as draft PR #570:
+  <https://github.com/itchyshin/gllvmTMB/pull/570>.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --limit 20 --json number,title,headRefName,mergeStateStatus,isDraft,url`
+  -> REVIEWED; PR #570 was the only open gllvmTMB PR before this audit-only
+  entry.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md docs/dev-log/after-task`
+  -> PASS; no recent shared-file edits in those paths.
+
+Implemented:
+
+- Surfaced retained Julia bridge `X_lv` Wald payloads through
+  `extract_lv_effects()` as finite `std.error`, `lower`, and `upper` rows.
+- Kept `ci_method = "none"` point-only rows labelled
+  `julia_bridge_point_estimate_only_no_ci_validation`.
+- Labelled Wald reader rows `julia_bridge_wald_delta_method`.
+- Kept profile/bootstrap `X_lv` intervals, response masks with `X_lv`,
+  fixed-effect `X + X_lv`, mixed-family `X_lv`, source-specific `lv`, and
+  calibrated bridge interval coverage outside the claim.
+
+Checks:
+
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library; export GLLVM_JL_PATH=/private/tmp/gllvmjl-phylo-xlv; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", desc = "extract_lv_effects surfaces Wald X_lv CIs and preserves the NA path")'`
+  -> PASS; 15 assertions, 0 failures, 0 warnings, 0 skips.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library; export GLLVM_JL_PATH=/private/tmp/gllvmjl-phylo-xlv; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", desc = "gllvmTMB routes Gaussian X_lv Wald CIs through the Julia bridge")'`
+  -> PASS; 7 assertions, 0 failures, 0 warnings, 0 skips. Julia emitted the
+  known local `LogExpFunctionsInverseFunctionsExt` precompile error
+  (`UndefVarError: loglogistic not defined`) before continuing.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library; export GLLVM_JL_PATH=/private/tmp/gllvmjl-phylo-xlv; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> FAIL; full live-Julia check ran `test-julia-bridge.R` live parity tests
+  and failed on pre-existing grouped-dispersion df/native parity and Gaussian
+  TMB-vs-Julia Sigma/logLik comparisons. These failures are not introduced by
+  the CI-reader patch.
+- `export NOT_CRAN=true; export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library; unset GLLVM_JL_PATH; export PATH="$HOME/.juliaup/bin:$PATH"; Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; CI-shaped R CMD check completed in 5m 10.1s with 0 errors,
+  0 warnings, and 0 notes. Local roxygen2 8.0.0 differs from declared 7.3.2,
+  so `devtools::check()` did not re-document during the check.
+- `export R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library; Rscript --vanilla -e 'files <- c("man/extract_lv_effects.Rd", "man/gllvmTMB_julia-methods.Rd", "man/gllvm_julia_fit.Rd"); for (f in files) { cat("--", f, "--\n"); tools::checkRd(f) }; cat("rd-check-ok\n")'`
+  -> PASS; `rd-check-ok`.
+- `for f in man/extract_lv_effects.Rd man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd; do printf '%s\n' "--- $f"; tail -5 "$f"; printf 'keyword_count='; grep -c '^\\keyword' "$f" || true; done`
+  -> PASS; all files ended cleanly and `keyword_count=0`.
+- `rg -n 'coverage (passed|validated|calibrated)|calibrated CIs|500-rep.*(passed|complete|validated)|profile/bootstrap.*X_lv|julia_bridge_point_estimate_only_no_ci_validation|julia_bridge_wald_delta_method|Wald.*payload' R/extractors.R R/julia-bridge.R man/extract_lv_effects.Rd man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd tests/testthat/test-julia-bridge.R`
+  -> REVIEWED; expected hits only. Changed prose says Wald payloads are
+  reader output, not calibrated coverage, and profile/bootstrap `X_lv` rows
+  remain not admitted.
+- `git diff --check`
+  -> PASS before this audit-only docs entry.
+- `gh pr checks 570`
+  -> PASS before this audit-only docs entry; `ubuntu-latest (release)` passed
+  in 13m43s.
+
+Not run:
+
+- `devtools::document()`, because local roxygen2 8.0.0 differs from declared
+  7.3.2 and the branch already includes generated Rd.
+- `pkgdown::check_pkgdown()`, because this branch touches existing reference
+  topics but not pkgdown navigation or articles.
+- Coverage/calibration grids, profile/bootstrap `X_lv` intervals,
+  response-mask `X_lv`, fixed-effect `X + X_lv`, mixed-family `X_lv`,
+  source-specific `lv`, or phylo grammar support.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-r-bridge-xlv-ci-reader.md`.
+
+## 2026-06-28 -- LV Gaussian Wald t comparator
+
+Scope:
+
+- added a small-N `wald_t_unit` comparator to the ordinary Gaussian
+  `latent(..., lv = ~ x)` `B_lv` coverage harness;
+- kept the existing normal-critical Wald row as `wald_z`;
+- kept the output long over `interval_method`, so the production grid can
+  compare methods without rerunning fits;
+- kept `LV-02` partial: this is harness plumbing, not coverage calibration.
+
+Implemented:
+
+- `dev/lv-wald-coverage.R` now defines `LV_WALD_INTERVAL_METHODS`,
+  validates `--interval-methods`, computes normal and unit-df t critical
+  values, records `critical_df` / `critical_df_source`, and summarises by
+  `cell_id`, `target_id`, and `interval_method`.
+- `tests/testthat/test-lv-wald-coverage-harness.R` now checks the critical
+  values, invalid-method guard, method-split denominators, and opt-in live
+  smoke shape.
+- `docs/design/35-validation-debt-register.md`,
+  `docs/design/61-capability-status.md`, and
+  `docs/design/73-predictor-informed-latent-scores.md` now state that the
+  comparator exists while interval calibration remains pending.
+
+Checks:
+
+- `air format dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> PASS.
+- `Rscript --vanilla -e 'invisible(parse("dev/lv-wald-coverage.R")); cat("parse-ok\n")'`
+  -> PASS.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS with the opt-in fit smoke skipped.
+- `GLLVMTMB_LV_WALD_SMOKE=true NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS.
+- Initial CLI smoke failed because raw `Rscript dev/lv-wald-coverage.R` could
+  not find an installed `gllvmTMB` package. Added `lv_wald_ensure_package()`
+  to load the source checkout with `pkgload::load_all(".")` when available.
+- `rm -rf /tmp/gllvmtmb-lv-t-coverage-smoke-seed2 && GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=gaussian-d1-n72-t3 --n-reps=1 --seed-base=2 --rep-start=1 --rep-end=1 --results-dir=/tmp/gllvmtmb-lv-t-coverage-smoke-seed2`
+  -> PASS; summary contained six rows, three `B_lv` targets by two interval
+  methods, with one converged / PD-Hessian / sdreport-ok / CI-available
+  replicate per method.
+- `git diff --check`
+  -> PASS.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m34.4s with 0 errors, 0 warnings, and
+  0 notes. As in the prior slices, `devtools::check()` did not re-document
+  because local roxygen2 8.0.0 differs from declared 7.3.2; no roxygen files
+  changed in this slice.
+- `rg -n 'wald_t_unit|interval_method|critical_df|passes_coverage_band|passes_wald_coverage_band' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> REVIEWED; expected implementation/test hits only.
+- `rg -n 'coverage (passed|validated|calibrated)|calibrated intervals|complete.*coverage|t-based.*(validated|covered|calibrated)|t-critical.*(validated|covered|calibrated)' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-06-28-lv-wald-coverage-harness.md`
+  -> REVIEWED; no new t-based calibration claim.
+- `rg -n '500-rep|500 reps|500L|production_n_reps|LV_WALD_DEFAULT_N_REPS|MCSE|failed-fit|denominator' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/after-task/2026-06-28-lv-wald-coverage-harness.md`
+  -> REVIEWED; production evidence still requires >=500 reps/cell and
+  denominator accounting.
+- `rg -n 'B_lv|alpha|Lambda|rotation|raw axis|ADREPORT|sdreport' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/design/35-validation-debt-register.md`
+  -> REVIEWED; interval target remains trait-scale `B_lv`.
+
+Not run:
+
+- The 500-rep coverage grid, profile/bootstrap rescue, binomial/non-Gaussian
+  interval grids, mixed-family rows, masks, `X + X_lv`, and source-specific
+  `lv` intervals.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-t-comparator.md`.
+
+## 2026-06-28 -- LV Gaussian Wald SLURM launcher
+
+Scope:
+
+- added `dev/lv-wald-coverage-slurm.sh`, a dev-only wrapper for the
+  ordinary Gaussian `latent(..., lv = ~ x)` `B_lv` coverage campaign;
+- default action is `SLURM_ACTION=test`, so login-node use writes the
+  preflight plan and sbatch file and calls `sbatch --test-only`;
+- submit action runs one seed per `SLURM_ARRAY_TASK_ID` through the existing
+  `dev/lv-wald-coverage.R --mode=task` path;
+- summary action collects finished replicate RDS files through the existing
+  `--mode=summarise` path;
+- `LV-02` remains partial: this is launch infrastructure, not coverage
+  evidence.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- 'dev/lv-wald-coverage*.sh' dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/check-log.md docs/dev-log/after-task docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; known LV bridge / coverage commits only.
+
+Implementation:
+
+- `dev/lv-wald-coverage-slurm.sh` computes the array task count by sourcing
+  `dev/lv-wald-coverage.R` and calling `lv_wald_coverage_grid()`.
+- Default `N_REPS=500` over the four current Gaussian cells yields 2,000 array
+  tasks.
+- The generated sbatch file sets one CPU thread, records stdout/stderr under
+  `_slurm`, loads configured R/optional Julia modules when `module` exists, and
+  runs `GLLVMTMB_LV_WALD_COVERAGE_CLI=true Rscript --vanilla
+  dev/lv-wald-coverage.R --mode=task --task-id="$SLURM_ARRAY_TASK_ID" ...`.
+
+Checks:
+
+- `bash -n dev/lv-wald-coverage-slurm.sh`
+  -> PASS.
+- `rm -rf /tmp/gllvmtmb-lv-wald-slurm-write && SLURM_ACTION=write RESULTS_DIR=/tmp/gllvmtmb-lv-wald-slurm-write N_REPS=500 bash dev/lv-wald-coverage-slurm.sh`
+  -> PASS; wrote `lv-wald-coverage-plan.csv` / `.rds` and
+  `_slurm/lv-wald-coverage.sbatch`, with `n_reps=500`, `total_tasks=2000`,
+  and `array=1-2000`.
+- `Rscript --vanilla -e 'p <- read.csv("/tmp/gllvmtmb-lv-wald-slurm-write/lv-wald-coverage-plan.csv"); stopifnot(nrow(p) == 2000L, length(unique(p$task_id)) == 2000L, all(table(p$cell_id) == 500L)); print(table(p$cell_id)); cat("plan-ok\n")'`
+  -> PASS; each of `gaussian-d1-n72-t3`, `gaussian-d1-n144-t3`,
+  `gaussian-d2-n96-t4`, and `gaussian-d2-n160-t4` had exactly 500 tasks.
+- `rg -n '#SBATCH --array=1-2000|--mode=task|SLURM_ARRAY_TASK_ID|--n-reps="500"|--seed-base="20260628"|--interval-methods="wald_z,wald_t_unit"|--results-dir="/tmp/gllvmtmb-lv-wald-slurm-write"' /tmp/gllvmtmb-lv-wald-slurm-write/_slurm/lv-wald-coverage.sbatch`
+  -> PASS; generated sbatch routes one array task to one task-mode replicate
+  with both interval methods.
+- `rm -rf /tmp/gllvmtmb-lv-wald-slurm-write-small && SLURM_ACTION=write RESULTS_DIR=/tmp/gllvmtmb-lv-wald-slurm-write-small N_REPS=3 SLURM_ARRAY_LIMIT=2 bash dev/lv-wald-coverage-slurm.sh && rg -n '#SBATCH --array=1-12%2' /tmp/gllvmtmb-lv-wald-slurm-write-small/_slurm/lv-wald-coverage.sbatch`
+  -> PASS; concurrency cap is written as `%2`.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS with the opt-in live fit smoke skipped.
+- `git diff --check`
+  -> PASS.
+- `rg -n 'coverage (passed|validated|calibrated)|calibrated intervals|complete.*coverage|SLURM.*(passed|coverage evidence|calibrated)|t-based.*(validated|covered|calibrated)|t-critical.*(validated|covered|calibrated)' dev/lv-wald-coverage-slurm.sh docs/design/35-validation-debt-register.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/after-task/2026-06-28-lv-wald-slurm-launcher.md docs/dev-log/check-log.md`
+  -> REVIEWED; expected partial/gated wording and historical check-log
+  cautions only. No SLURM production or t-critical calibration claim was added.
+- `rg -n 'LV-02|one-seed|array task|SLURM_ACTION|500|2000|wald_z|wald_t_unit|partial|not coverage|not production evidence' dev/lv-wald-coverage-slurm.sh docs/design/35-validation-debt-register.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/after-task/2026-06-28-lv-wald-slurm-launcher.md docs/dev-log/check-log.md`
+  -> REVIEWED; expected launcher, plan-size, paired-interval-method, and
+  `LV-02` partial-boundary hits.
+
+Not run:
+
+- Totoro fit checks: non-interactive SSH failed with
+  `Permission denied (publickey,password)`.
+- DRAC submission: Fir, Nibi, and tamIA required keyboard-interactive MFA.
+- The 500-rep production array, profile/bootstrap rescue, binomial/non-Gaussian
+  intervals, mixed-family rows, masks, `X + X_lv`, and source-specific `lv`
+  intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun because this slice changes only dev shell launch infrastructure
+  plus design/dev-log prose. The immediately prior t-comparator branch check
+  passed 0 errors, 0 warnings, and 0 notes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-slurm-launcher.md`.
+
+## 2026-06-28 -- LV Gaussian Wald local pilot
+
+Scope:
+
+- ran a local, non-production pilot of the ordinary Gaussian
+  `latent(..., lv = ~ x)` `B_lv` coverage harness across all four current
+  Gaussian cells;
+- exercised both interval methods, `wald_z` and `wald_t_unit`;
+- verified output shape and denominator accounting before the >=500 reps/cell
+  production campaign;
+- kept `LV-02` partial: four reps/cell is pilot evidence only, not interval
+  calibration.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- dev/lv-wald-coverage.R dev/lv-wald-coverage-slurm.sh tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/check-log.md docs/dev-log/after-task docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; only this queued Gaussian coverage branch had touched the same
+  files recently.
+
+Checks:
+
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-pilot-20260628; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=gaussian-d1-n72-t3 --n-reps=4 --seed-base=20260628 --rep-start=1 --rep-end=4 --interval-methods=wald_z,wald_t_unit --results-dir=/tmp/gllvmtmb-lv-wald-local-pilot-20260628`
+  -> PASS; wrote six summary rows for the one-cell pilot, with four eligible
+  rows per target and method. `production_n_reps_met` was `FALSE`.
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true Rscript --vanilla - <<'RS' ... RS`
+  -> PASS; ran four reps/cell over all four cells and wrote long and summary
+  CSV/RDS files under `/tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628`.
+- `wc -l /tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-long.csv /tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-summary.csv`
+  -> PASS; 113 long CSV lines and 29 summary CSV lines, meaning 112 long rows
+  and 28 summary rows after headers.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-summary.csv"); cat("rows", nrow(s), "\n"); print(s[, c("cell_id", "target_id", "interval_method", "n_attempted", "n_converged", "n_eligible", "coverage", "coverage_mcse", "production_n_reps_met", "passes_coverage_band")], row.names = FALSE)'`
+  -> PASS; summary had 28 rows, all `n_attempted = 4`, all `n_converged = 4`,
+  and all `n_eligible = 4` except `gaussian-d2-n96-t4`, where replicate 3 had
+  `pd_hessian = FALSE` and per-target `n_eligible = 3`. All
+  `production_n_reps_met` and `passes_coverage_band` values were `FALSE`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-lv-wald-local-pilot-allcells-20260628/lv-wald-coverage-long.csv"); print(subset(x, !eligible | !ci_available | !fit_converged | !sdreport_ok)[, c("cell_id", "rep", "target_id", "interval_method", "fit_converged", "pd_hessian", "sdreport_ok", "ci_available", "eligible")], row.names = FALSE)'`
+  -> PASS; the only ineligible rows were `gaussian-d2-n96-t4`, replicate 3,
+  all four `B_lv` targets and both interval methods. The fit converged and
+  `sdreport_ok` was true, but `pd_hessian` was false, so CI rows were not
+  eligible.
+- `git diff --check`
+  -> PASS.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; the opt-in live fit smoke remained skipped.
+
+Not run:
+
+- The >=500 reps/cell production coverage campaign.
+- DRAC submission, profile/bootstrap rescue, binomial/non-Gaussian interval
+  grids, mixed-family rows, masks, `X + X_lv`, and source-specific `lv`
+  intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun because this slice changed only dev-log evidence prose. The
+  immediately prior t-comparator branch check passed R CMD check with 0
+  errors, 0 warnings, and 0 notes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-29 -- LV Gaussian t-critical branch rebase check
+
+Scope:
+
+- rebased the queued ordinary Gaussian `latent(..., lv = ~ x)` Wald coverage
+  branch onto current `origin/main` after the Julia-bridge Poisson,
+  NB2/Gamma/Beta, and CI-reader branches had landed;
+- retained the local r500 native Gaussian evidence and the paired
+  `wald_z` / `wald_t_unit` comparator rows while keeping Julia bridge interval
+  calibration out of scope;
+- verified that the branch is PR-ready under the one-open-PR discipline.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --json number,title,headRefName,url,isDraft`
+  -> REVIEWED; no open gllvmTMB PRs.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md`
+  -> REVIEWED; only this Gaussian coverage stack and the already-merged CI
+  reader closeout had touched the check-log recently.
+
+Checks:
+
+- `git status --short --branch`
+  -> PASS; `codex/lv-gaussian-t-coverage-20260628` was clean and five commits
+  ahead of current `origin/main` after the rebase.
+- `rg -n '<<<<<<<|=======|>>>>>>>' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/check-log.md || true`
+  -> REVIEWED; the only hit was an older logged `git grep` command, not an
+  active conflict marker.
+- `git diff --check`
+  -> PASS; no whitespace errors.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; focused coverage-harness tests completed with 27 assertions and
+  one intentional opt-in fit-smoke skip.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m11.1s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+
+Not run:
+
+- `devtools::document()` and `pkgdown::check_pkgdown()`; the rebase changed no
+  roxygen, README, vignette, article, or pkgdown navigation files.
+- Binomial, non-Gaussian, mixed-family, mask, `X + X_lv`, source-specific
+  `lv`, or Julia bridge interval coverage grids.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-28 -- LV Gaussian Wald local r500 coverage grid
+
+Scope:
+
+- ran the ordinary Gaussian native TMB `B_lv` Wald grid at 500 reps/cell
+  locally after Totoro remained unavailable non-interactively;
+- emitted both `wald_z` and `wald_t_unit` intervals for the four current
+  Gaussian cells;
+- committed compact evidence artifacts for the summary, excluded replicates,
+  and t-vs-z comparison;
+- moved `LV-02` to covered on this queued branch only; the broader LV arc rows
+  remain partial.
+
+Checks:
+
+- `ssh -o BatchMode=yes -o ConnectTimeout=12 totoro 'hostname; pwd; uname -a; command -v Rscript || true; command -v git || true; command -v julia || true'`
+  -> FAIL; `Permission denied (publickey,password)`.
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-r500-20260628; NOT_CRAN=true nice -n 10 Rscript --vanilla - <<'RS' ... RS`
+  -> PASS; completed in 26.94 minutes, attempted 500 fits/cell across the four
+  Gaussian cells, and emitted both `wald_z` and `wald_t_unit` rows.
+- `wc -l /tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-long.csv /tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv`
+  -> PASS; 14,001 long CSV lines and 29 summary CSV lines, meaning 14,000
+  long rows and 28 summary rows after headers.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv"); cat("summary rows", nrow(s), "\n"); cat("all_production", all(s$production_n_reps_met), "all_pass_band", all(s$passes_coverage_band), "\n"); print(aggregate(cbind(n_attempted,n_converged,n_eligible) ~ cell_id + interval_method, s, unique), row.names=FALSE); print(range(s$coverage)); print(range(s$coverage_mcse));'`
+  -> PASS; all rows had `production_n_reps_met = TRUE` and
+  `passes_coverage_band = TRUE`; coverage ranged 0.9269--0.9610 and MCSE
+  ranged 0.0088--0.0119.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-long.csv"); bad <- subset(x, !eligible | !ci_available | !fit_converged | !sdreport_ok | !pd_hessian); cat("long rows", nrow(x), "bad rows", nrow(bad), "\n"); print(aggregate(rep ~ cell_id + interval_method, unique(bad[, c("cell_id", "interval_method", "rep")]), length), row.names=FALSE); print(unique(bad[, c("cell_id", "rep", "rep_seed", "fit_converged", "pd_hessian", "sdreport_ok", "ci_available", "eligible", "fit_convergence_code", "max_gradient")]), row.names=FALSE)'`
+  -> PASS; all optimizer fits converged and all `sdreport_ok` values were
+  true, but non-PD Hessians made 47 fitted replicates ineligible: 13 in
+  `gaussian-d1-n72-t3`, 13 in `gaussian-d2-n96-t4`, and 21 in
+  `gaussian-d2-n160-t4`.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r500-20260628/lv-wald-coverage-summary.csv"); z <- subset(s, interval_method == "wald_z")[, c("cell_id","target_id","coverage","coverage_mcse","n_eligible")]; t <- subset(s, interval_method == "wald_t_unit")[, c("cell_id","target_id","coverage","coverage_mcse","n_eligible")]; names(z)[3:5] <- c("coverage_z","mcse_z","n_eligible_z"); names(t)[3:5] <- c("coverage_t","mcse_t","n_eligible_t"); m <- merge(z, t, by=c("cell_id","target_id")); m$delta_t_minus_z <- m$coverage_t - m$coverage_z; print(m[order(m$cell_id, m$target_id), ], row.names=FALSE); print(summary(m$delta_t_minus_z)); cat("t better count", sum(m$delta_t_minus_z > 0), "equal", sum(m$delta_t_minus_z == 0), "worse", sum(m$delta_t_minus_z < 0), "\n")'`
+  -> PASS; `wald_t_unit` exceeded `wald_z` for 12 of 14 target rows, tied for
+  two, and was never worse. The improvement range was 0.0020--0.0063 where
+  positive.
+- `mkdir -p docs/dev-log/artifacts/lv-wald-coverage` plus generated artifact
+  extraction from `/tmp/gllvmtmb-lv-wald-local-r500-20260628`
+  -> PASS; wrote `2026-06-28-local-r500-summary.csv`,
+  `2026-06-28-local-r500-excluded-replicates.csv`, and
+  `2026-06-28-local-r500-t-vs-z.csv`.
+
+Not run:
+
+- DRAC submission; local r500 evidence was used because Totoro/DRAC remained
+  unavailable non-interactively.
+- Binomial/non-Gaussian interval grids, mixed-family rows, masks, `X + X_lv`,
+  Julia bridge CIs, and source-specific `lv` intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun yet after the evidence-doc updates.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-28 -- LV Gaussian Wald local r25 pilot
+
+Scope:
+
+- ran a larger local pilot of the ordinary Gaussian
+  `latent(..., lv = ~ x)` `B_lv` coverage harness across all four current
+  Gaussian cells;
+- used 25 reps/cell with both `wald_z` and `wald_t_unit`;
+- treated the output as fit-health / denominator / t-vs-z shape evidence only;
+- kept `LV-02` partial at the r25 pilot stage because the production bar
+  remained >=500 reps/cell with MCSE and failed-fit denominators. This r25
+  entry is superseded by the local r500 evidence entry.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- dev/lv-wald-coverage.R dev/lv-wald-coverage-slurm.sh tests/testthat/test-lv-wald-coverage-harness.R docs/dev-log/check-log.md docs/dev-log/after-task docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; only this queued Gaussian coverage branch had touched the same
+  files recently.
+
+Checks:
+
+- `rm -rf /tmp/gllvmtmb-lv-wald-local-r25-20260628; NOT_CRAN=true Rscript --vanilla - <<'RS' ... RS`
+  -> PASS with one `sqrt(diag(cov))` NaN warning during sdreport extraction;
+  wrote long and summary CSV/RDS files under
+  `/tmp/gllvmtmb-lv-wald-local-r25-20260628`.
+- `wc -l /tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-long.csv /tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv`
+  -> PASS; 701 long CSV lines and 29 summary CSV lines, meaning 700 long rows
+  and 28 summary rows after headers.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv"); cat("summary rows", nrow(s), "\n"); print(s[, c("cell_id", "target_id", "interval_method", "n_attempted", "n_converged", "n_eligible", "coverage", "coverage_mcse", "production_n_reps_met", "passes_coverage_band")], row.names = FALSE)'`
+  -> PASS; all 28 target/method rows had `n_attempted = 25` and
+  `n_converged = 25`; rank-1 cells had `n_eligible = 25`, while both rank-2
+  cells had `n_eligible = 24` because one replicate per rank-2 cell was
+  non-PD. All `production_n_reps_met` and `passes_coverage_band` values
+  remained `FALSE`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-long.csv"); bad <- subset(x, !eligible | !ci_available | !fit_converged | !sdreport_ok | !pd_hessian); cat("long rows", nrow(x), "bad rows", nrow(bad), "\n"); print(unique(bad[, c("cell_id", "rep", "rep_seed", "interval_method", "fit_converged", "pd_hessian", "sdreport_ok", "ci_available", "eligible", "fit_convergence_code", "max_gradient")]), row.names = FALSE)'`
+  -> PASS; the only excluded replicates were `gaussian-d2-n96-t4` rep 3 and
+  `gaussian-d2-n160-t4` rep 6. Both optimizer runs had convergence code 0 and
+  `sdreport_ok = TRUE`, but `pd_hessian = FALSE`, so CI rows were not
+  eligible.
+- `Rscript --vanilla -e 's <- read.csv("/tmp/gllvmtmb-lv-wald-local-r25-20260628/lv-wald-coverage-summary.csv"); z <- subset(s, interval_method == "wald_z")[, c("cell_id","target_id","coverage","n_eligible")]; t <- subset(s, interval_method == "wald_t_unit")[, c("cell_id","target_id","coverage","n_eligible")]; names(z)[3:4] <- c("coverage_z","n_eligible_z"); names(t)[3:4] <- c("coverage_t","n_eligible_t"); m <- merge(z, t, by=c("cell_id","target_id")); m$delta_t_minus_z <- m$coverage_t - m$coverage_z; print(m[order(m$cell_id, m$target_id), ], row.names = FALSE); print(table(m$delta_t_minus_z))'`
+  -> PASS; `wald_t_unit` exceeded `wald_z` for two of 14 target rows by 0.04,
+  and matched `wald_z` for the other 12 target rows. This is descriptive
+  pilot behaviour, not calibration evidence.
+
+Not run:
+
+- The >=500 reps/cell production coverage campaign.
+- DRAC/Totoro production execution: non-interactive Totoro SSH still failed
+  with `Permission denied (publickey,password)`.
+- Profile/bootstrap rescue, binomial/non-Gaussian interval grids,
+  mixed-family rows, masks, `X + X_lv`, and source-specific `lv` intervals.
+- `devtools::document()`, `pkgdown::check_pkgdown()`, and full R CMD check:
+  not rerun in the r25 slice because it changed only dev-log evidence prose.
+  Full R CMD check was rerun after the later r500 evidence update.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-28 -- LV Gaussian Wald r500 branch full check
+
+Scope:
+
+- reran package-level validation on the queued Gaussian r500 branch after the
+  compact r500 artifacts, validation-register update, Design 73 update, and
+  after-task/check-log evidence updates landed;
+- this makes the branch ready for a PR once #569 clears the one-open-PR gate.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; only PR #569 was open, non-draft, and merge-clean.
+- `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/artifacts/lv-wald-coverage dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> REVIEWED; only this queued Gaussian coverage branch had touched the
+  same files recently.
+
+Checks:
+
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-check-lib:/Users/z3437171/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m46.7s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+
+Not run:
+
+- `devtools::document()` and `pkgdown::check_pkgdown()`; no roxygen,
+  README, vignette, article, or pkgdown navigation file changed in this
+  queued evidence update.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-28-lv-wald-local-pilot.md`.
+
+## 2026-06-29 -- LV Bernoulli single-trial depth branch rebase check
+
+Scope:
+
+- rebased the queued ordinary `latent(..., lv = ~ x)` Bernoulli depth branch
+  onto current `origin/main` after the Gaussian t-comparator PR #571 landed;
+- kept the claim to pure single-trial binomial/Bernoulli standard links
+  (`logit`, `probit`, `cloglog`) with complete responses and no interval
+  calibration;
+- verified the branch locally while respecting the one-open-PR / main-CI
+  pacing gate.
+
+Pre-edit lane check:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-29-lv-bernoulli-depth.md tests/testthat/test-lv-bernoulli-depth.R`
+  -> REVIEWED; only this queued Bernoulli branch had touched the new test file.
+
+Checks:
+
+- `git rebase origin/main`
+  -> PASS; branch rebased cleanly after PR #571, with top commit
+  `6c068367 test(lv): add Bernoulli single-trial depth gate`.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-bernoulli-depth", reporter = "summary")'`
+  -> PASS; focused Bernoulli depth tests completed with no failures.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; parser guard remained green with the existing informational
+  sigma-eps auto-suppression message.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m01.1s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `gh run list --repo itchyshin/gllvmTMB --limit 5 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url,createdAt`
+  -> REVIEWED; the post-merge main `R-CMD-check` run for #571 was still
+  `in_progress`, so no new PR was opened from this branch yet.
+- `git diff --check`
+  -> PASS; no whitespace errors.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-29-lv-bernoulli-depth.md`
+  -> PASS; validator returned successfully.
+- `rg -n "latent\\([^\\n]*lv\\s*=|lv\\s*=\\s*~|predictor-informed|B_lv|LV-0[1-7]" tests/testthat/test-lv-bernoulli-depth.R docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-29-lv-bernoulli-depth.md`
+  -> REVIEWED; expected hits are in the test, check-log, and after-task only.
+- `rg -n "coverage|interval|Wald|profile|bootstrap" tests/testthat/test-lv-bernoulli-depth.R docs/dev-log/after-task/2026-06-29-lv-bernoulli-depth.md`
+  -> REVIEWED; interval language is limited to explicit "not claimed" scope
+  boundaries.
+
+Not run:
+
+- Bernoulli interval coverage, missing-response Bernoulli rows, ordinal
+  binary-like rows, non-binomial families, mixed-family cells, masks,
+  `X + X_lv`, source-specific `lv`, or Julia bridge interval calibration.
+- `devtools::document()` and `pkgdown::check_pkgdown()`; this branch adds only
+  a test file plus dev-log evidence records, with no roxygen, README,
+  vignette, article, or pkgdown navigation changes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-bernoulli-depth.md`.
+
+## 2026-06-29 -- LV source-specific fail-loud guard branch check
+
+Scope:
+
+- rebased the queued source-specific `latent(..., lv = ~ x)` guard branch
+  onto current `origin/main` after PR #572 merged;
+- added a focused test proving ordinary unit-tier `latent()` preserves `lv`
+  metadata while source-specific phylo, animal, spatial, kernel, and
+  deprecated/internal aliases cannot carry `lv` silently;
+- kept the claim to fail-loud grammar protection only. This is not
+  source-specific `lv` support or phylo Model A R exposure.
+
+Pre-edit lane check:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; no open gllvmTMB PRs after PR #572 merged.
+- `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-29-lv-source-specific-guard.md tests/testthat/test-lv-source-specific-guard.R tests/testthat/test-lv-parser-guard.R`
+  -> REVIEWED; only this queued source-guard branch and the just-merged
+  Bernoulli branch had touched nearby LV files.
+
+Checks:
+
+- `git rebase origin/main`
+  -> PASS; branch rebased cleanly after PR #572, with top commits
+  `d4e898b3` and `4560c876`.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-source-specific-guard", reporter = "summary")'`
+  -> PASS; focused source-specific guard tests completed with no failures.
+  Expected lifecycle messages appeared for deprecated aliases `rr()`,
+  `diag()`, `phylo_rr()`, and `spde()`.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; parser guard remained green with the existing informational
+  sigma-eps auto-suppression message.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 5m05.8s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `git diff --check`
+  -> PASS; no whitespace errors.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-29-lv-source-specific-guard.md`
+  -> PASS; validator returned successfully.
+- `rg -n "phylo_latent\\([^\\n]*lv|animal_latent\\([^\\n]*lv|spatial_latent\\([^\\n]*lv|kernel_latent\\([^\\n]*lv|LV-07|source-specific" tests/testthat/test-lv-source-specific-guard.R docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-29-lv-source-specific-guard.md`
+  -> REVIEWED; expected hits are rejected syntax and boundary wording only.
+- `rg -n "source-specific.*support|phylo.*support|Model A.*R exposure|complete|coverage" tests/testthat/test-lv-source-specific-guard.R docs/dev-log/after-task/2026-06-29-lv-source-specific-guard.md`
+  -> REVIEWED; support/completion language is limited to explicit rejected or
+  not-yet-exposed boundaries.
+
+Not run:
+
+- `devtools::document()` and `pkgdown::check_pkgdown()`; this branch adds only
+  a test file plus dev-log evidence records, with no roxygen, README,
+  vignette, article, or pkgdown navigation changes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-source-specific-guard.md`.
+
+## 2026-06-29 -- LV factor predictor runtime branch rebase check
+
+Scope:
+
+- rebased the queued ordinary `latent(..., lv = ~ habitat)` factor-predictor
+  runtime branch onto current `origin/main` after PR #573 merged and its
+  post-merge R-CMD-check/pkgdown gates passed;
+- kept the claim to ordinary unit-tier Gaussian `latent()` with observed,
+  complete, factor-valued LV predictors;
+- added runtime/recovery evidence for the trait-by-factor effect
+  `B_lv = Lambda alpha^T`, plus rare nonempty factor-level and empty-level
+  preflight behaviour.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,url`
+  -> REVIEWED; no open gllvmTMB PRs after PR #573 merged.
+- `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/after-task tests/testthat R docs/design/35-validation-debt-register.md`
+  -> REVIEWED; recent nearby work was limited to the merged source-specific
+  guard and Bernoulli LV depth slices.
+
+Checks:
+
+- `git fetch origin main`
+  -> PASS; fetched current `main`.
+- `git rebase origin/main`
+  -> PASS; branch rebased cleanly after PR #573, with top commit
+  `5108c5d4 test(lv): add factor predictor runtime gate`.
+- `git diff --check origin/main...HEAD`
+  -> PASS; no whitespace errors before evidence edits.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-factor-runtime", reporter = "summary")'`
+  -> PASS; focused factor-runtime tests completed with no failures.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; parser guard remained green with the existing informational
+  sigma-eps auto-suppression message.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m45.6s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "lv latent factor" --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned issue #348 only.
+- `gh issue view 348 --repo itchyshin/gllvmTMB --json number,title,state,url,labels,body`
+  -> REVIEWED; #348 is the non-Gaussian family-validation umbrella and does
+  not need a comment or closure for this ordinary Gaussian factor-runtime
+  test slice.
+- `rg -n "LV-04|factor.*lv|factor.*LV|lv.*factor|predictor-informed|FG-18|RE-13|EXT-31|LV-05" docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md ROADMAP.md NEWS.md README.md docs/dev-log/known-limitations.md | head -n 220`
+  -> REVIEWED; expected hits are the Design 73 status files, NEWS scope
+  boundary, and validation rows. No README, roadmap, or known-limitations
+  promotion is required for this test/evidence slice.
+- `rg -n "until Bernoulli|Bernoulli single-trial depth,|no Bernoulli single-trial depth|Bernoulli binary depth|factor-predictor runtime smoke" docs/design/35-validation-debt-register.md docs/design/61-capability-status.md`
+  -> PASS; no stale pre-PR #572 or pre-factor-runtime wording remains in the
+  current status rows.
+- `rg -n "LV-04.*(covered|complete|calibrated)|factor-valued.*(covered|complete|calibrated)|factor-valued.*interval|factor-predictor.*(covered|complete|calibrated)|factor-predictor.*interval|source-specific.*factor-valued|phylo.*factor-valued|mixed-family.*factor-valued|non-Gaussian.*factor-valued" docs/design/35-validation-debt-register.md docs/design/61-capability-status.md tests/testthat/test-lv-factor-runtime.R`
+  -> REVIEWED; hits are explicit limitations or partial-row boundaries, not
+  promoted claims.
+- `rg -n "lv\\s*=\\s*~\\s*habitat|factor predictor|factor-valued|B_lv|LV-04" tests/testthat/test-lv-factor-runtime.R docs/dev-log/after-task/2026-06-29-lv-factor-runtime.md`
+  -> REVIEWED; expected hits are the new factor-runtime DGP/test and
+  after-task evidence only.
+- `rg -n "factor.*support|complete|coverage|interval|non-Gaussian|mixed-family|source-specific|phylo" tests/testthat/test-lv-factor-runtime.R docs/dev-log/after-task/2026-06-29-lv-factor-runtime.md`
+  -> REVIEWED; broad support/completion words appear only in explicit scope
+  boundaries, limitations, and validation records.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-29-lv-factor-runtime.md`
+  -> PASS; validator returned successfully.
+- `git diff --check`
+  -> PASS; no whitespace errors after evidence edits.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-29-lv-missing-response.md`
+  -> PASS; validator returned successfully.
+
+Not run:
+
+- Factor-predictor interval coverage, non-Gaussian factor predictors,
+  missing LV predictors, missing responses with factors, mixed-family cells,
+  masks, `X + X_lv`, source-specific `lv`, or phylo Model A factor
+  predictors.
+- `devtools::document()` and `pkgdown::check_pkgdown()`; this branch adds a
+  test file plus validation-register / capability-status / dev-log evidence
+  records, with no roxygen, README, vignette, article, generated Rd, or
+  pkgdown navigation changes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-factor-runtime.md`.
+
+## 2026-06-29 -- LV missing-response compatibility branch rebase check
+
+Scope:
+
+- rebased the queued ordinary Gaussian `latent(..., lv = ~ x)` missing-response
+  branch onto current `origin/main` after PR #574 merged;
+- kept the claim to ordinary unit-tier Gaussian native TMB fits where `lv`
+  predictors are observed, complete, and constant within unit;
+- moved `LV-03` from `blocked` to `partial` with evidence for response masks
+  only, not missing `lv` predictors, `mi()` inside `lv`, non-Gaussian masks,
+  mixed-family masks, bridge masks, tiers, or structured sources.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,url,updatedAt`
+  -> REVIEWED; no open gllvmTMB PRs after PR #574 merged.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md docs/dev-log/after-task tests/testthat R docs/design/35-validation-debt-register.md docs/design/61-capability-status.md`
+  -> REVIEWED; recent nearby work was limited to merged Bernoulli, source
+  guard, and factor-runtime LV slices.
+
+Checks:
+
+- `git fetch origin +refs/heads/main:refs/remotes/origin/main`
+  -> PASS; refreshed `origin/main` at `5e708740`.
+- `git rebase origin/main`
+  -> PASS; branch rebased cleanly, with top commit
+  `b829e6ac test(lv): add missing-response compatibility gate`.
+- `git diff --check origin/main...HEAD`
+  -> PASS; no whitespace errors before evidence edits.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-missing-response", reporter = "summary")'`
+  -> PASS; focused missing-response tests completed with no failures.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; parser guard remained green with the existing informational
+  sigma-eps auto-suppression message.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m49.3s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `gh run view 28414994265 --repo itchyshin/gllvmTMB --json status,conclusion,workflowName,event,headSha,createdAt,updatedAt,url,jobs`
+  -> PASS; PR #574 post-merge pkgdown completed successfully at
+  2026-06-30T02:19:25Z after the long `Build site` step.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "lv missing response" --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned issue #348 only.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "latent missing response" --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned #332, #361, #348, #230, #347, #349, and #346.
+- `gh issue view 332 --repo itchyshin/gllvmTMB --json number,title,state,url,labels,body`
+  -> REVIEWED; #332 is the missing-data umbrella and is not closed by this
+  narrow LV observed-predictor mask slice.
+- `gh issue view 348 --repo itchyshin/gllvmTMB --json number,title,state,url,labels,body`
+  -> REVIEWED; #348 is the non-Gaussian family-validation umbrella and is not
+  advanced or closed by this ordinary Gaussian mask slice.
+- `rg -n 'no missing-response compatibility|Future tests must show|LV-03.*blocked|missing-response compatibility, Julia|missing-response compatibility,|response masks with `X_lv`|response mask, and no calibrated CIs' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md NEWS.md README.md ROADMAP.md docs/dev-log/known-limitations.md`
+  -> REVIEWED; remaining hits are bridge-boundary wording in the Julia bridge
+  addendum / Design 73 / NEWS and the intentionally complete-response bridge
+  clause in capability status, not stale `LV-03` blocked wording.
+- `rg -n 'LV-03.*covered|missing-response.*covered|response-mask compatibility.*covered|missing-response.*complete|non-Gaussian.*response masks.*validated|mixed-family.*response masks.*validated|Julia.*response mask.*admit|bridge.*response mask.*admit|missing `lv` predictors.*validated|mi\(\).*inside `lv`.*validated' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-lv-missing-response.R`
+  -> REVIEWED; hits are explicit ordinary-Gaussian limited evidence or
+  limitation language. No broad mask / missing-predictor support is claimed.
+- `rg -n "LV-03|missing response|missing-response|response mask|miss_control\\(response = \\\"include\\\"\\)|is_y_observed|X_lv_B|test-lv-missing-response" docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md ROADMAP.md NEWS.md README.md docs/dev-log/known-limitations.md tests/testthat/test-lv-missing-response.R | head -n 260`
+  -> REVIEWED; expected hits show `LV-03` partial evidence, public NEWS
+  bridge/missing-response boundaries, and the new test.
+- `git diff --check`
+  -> PASS; no whitespace errors after evidence edits.
+
+Not run:
+
+- Missing `lv` predictors, `mi()` inside `lv`, non-Gaussian response masks,
+  factor-valued masks, mixed-family masks, Julia bridge masks with `X_lv`,
+  source/tier masks, or interval coverage.
+- `devtools::document()` and `pkgdown::check_pkgdown()`; this branch adds a
+  test file plus validation-register / capability-status / design / dev-log
+  evidence records, with no roxygen, README, vignette, article, generated Rd,
+  or pkgdown navigation changes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-missing-response.md`.
+
+## 2026-06-29 -- LV X + X_lv fixed-effect guard branch check
+
+Scope:
+
+- rebased the queued `X + X_lv` guard branch onto current `origin/main` after
+  PR #575 merged and its post-merge main/pkgdown gates passed;
+- changed the Design 73 C1 preflight from rejecting only exact fixed/LV
+  overlap to rejecting any ordinary fixed-effect RHS covariate when
+  `latent(..., lv = ~ x)` is present;
+- kept the claim to fail-loud grammar protection only. This is not combined
+  `X + X_lv` support.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> REVIEWED; no open gllvmTMB PRs after PR #575 merged.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md docs/dev-log/after-task tests/testthat R docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; nearby LV edits were the recently merged Bernoulli, source
+  guard, factor-runtime, and missing-response slices.
+- `gh run view 28417152793 --repo itchyshin/gllvmTMB --json status,conclusion,updatedAt,createdAt,headSha,url,jobs`
+  -> PASS; PR #575 post-merge pkgdown completed successfully on `86188d69`.
+
+Checks:
+
+- `git fetch origin +refs/heads/main:refs/remotes/origin/main --prune`
+  -> PASS.
+- `git rebase origin/main`
+  -> PASS; branch rebased cleanly, with top commit
+  `917c214f fix(lv): reject fixed effects beside predictor-informed scores`.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; focused parser guard completed with no failures. The existing
+  sigma-eps auto-suppression informational message appeared.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no pkgdown reference/navigation problems found.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::build_article("gllvmTMB", lazy = FALSE, new_process = FALSE); pkgdown::build_article("articles/fixed-effect-zero-constraints", lazy = FALSE, new_process = FALSE); pkgdown::build_article("articles/covariance-correlation", lazy = FALSE, new_process = FALSE)'`
+  -> PASS; targeted article smoke rendered the package vignette plus the two
+  neighbouring public articles. Disposable vignette PNGs were removed after
+  inspection.
+- Earlier full article-estate probe:
+  `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> first attempt failed before rendering because the package was not
+  installed in the subprocess; after
+  `devtools::install(quick = TRUE, dependencies = FALSE, upgrade = FALSE, quiet = TRUE)`,
+  the second run rendered many articles and was manually stopped after spending
+  too long in unrelated `lambda-constraint.Rmd`. This is recorded as partial
+  article-estate evidence, not a full-site proof.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m45.5s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `git diff --check`
+  -> PASS; no whitespace errors.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-29-lv-x-guard.md`
+  -> PASS; validator returned successfully.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'X_lv fixed effect' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'Design 73 fixed-effect lv' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'latent lv fixed' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348, the broad non-Gaussian
+  family-validation umbrella, which is not advanced or closed by this
+  fixed-effect guard slice.
+
+Rose / stale wording scans:
+
+- `rg -n 'FG-18|RE-13|EXT-31|LV-0[1-7]|JUL-01|JUL-01A|IN for this slice|PARTIAL / GATED|X \+ X_lv|fixed-effect RHS|factor-predictor|response-mask|missing `lv` predictors' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md | head -n 260`
+  -> REVIEWED; hits show the row IDs and narrow fail-loud boundary.
+- `rg -n 'not yet Bernoulli|Bernoulli single-trial.*gated|missing-response compatibility, factor-predictor runtime|factor-predictor runtime recovery, native count-family|500-rep coverage grids.*remain gated|fixed-effect overlap checks|exact fixed-effect overlap is rejected|LV-03.*blocked|LV-04.*blocked|response-mask compatibility.*blocked|X \+ X_lv.*(covered|validated|admitted|supported)|combined fixed-effect `X \+ X_lv` fits.*(covered|validated|admitted|supported)' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; the only hit was the expected `EXT-31` limitation row, not a
+  promoted `X + X_lv` claim.
+- `rg -n 'gllvmTMB_wide|meta_known_V|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(|\bS_B\b|\bS_W\b|\\bf S|in prep|in preparation' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits are historical/compatibility mentions (`gllvmTMB_wide`,
+  `meta_known_V`, `block_V`, `phylo_rr`, and `phylo()` in missing-predictor
+  rows), not new stale LV wording.
+- `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | head -n 220`
+  -> REVIEWED; this branch adds no new `gllvmTMB()` examples. Touched
+  NEWS/design text does not introduce long-format calls requiring a new
+  `trait =` audit.
+
+Not run:
+
+- `devtools::document()`; no roxygen, generated Rd, NAMESPACE, or exported
+  function docs changed.
+- Full `pkgdown::build_articles(lazy = FALSE)` to completion; the broad run
+  was stopped in the unrelated expensive `lambda-constraint.Rmd` path, so only
+  targeted article smoke plus `pkgdown::check_pkgdown()` are claimed.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-x-guard.md`.
+
+## 2026-06-29 -- LV native non-Gaussian fail-loud guard
+
+Scope: queued-ready Design 73 LV guard branch
+`codex/lv-native-nongaussian-guard-20260628`. This slice adds and records
+top-level native TMB rejection tests for unsupported non-binomial
+`latent(..., lv = ~ x)` families. It does not admit native count-family,
+continuous-positive, truncated, beta-binomial, delta, mixed-family, interval,
+source/tier, or bridge-parity support.
+
+Pre-edit lane check:
+
+- `date '+%Y-%m-%d %H:%M %Z' && gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,url && git log --all --oneline --since='6 hours ago' -- NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/check-log.md docs/dev-log/after-task tests/testthat/test-lv-native-nongaussian-guard.R`
+  -> REVIEWED; local time was 2026-06-29 22:47 MDT, no open PRs were present,
+  and recent shared-file history showed the preceding LV guard/status slices.
+- `git fetch origin +refs/heads/main:refs/remotes/origin/main --prune && git rebase origin/main`
+  -> PASS; branch rebased cleanly onto main after PR #576.
+
+Checks:
+
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-native-nongaussian-guard", reporter = "summary")'`
+  -> PASS; 13 native non-Gaussian rejection cases passed.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; focused parser guard completed with no failures. The existing
+  sigma-eps auto-suppression informational message appeared.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no pkgdown reference/navigation problems found.
+- `git diff --check`
+  -> PASS; no whitespace errors.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m48.9s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'native non-Gaussian lv' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'latent lv non-Gaussian' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348, the broad family-validation
+  completion umbrella. This guard does not close #348.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'LV-05' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348. No issue was closed or commented on.
+
+Rose / stale wording scans:
+
+- `rg -n 'FG-18|RE-13|LV-05|test-lv-native-nongaussian-guard|native non-binomial|native count-family|unsupported native' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-lv-native-nongaussian-guard.R`
+  -> REVIEWED; hits show the new guard evidence on `FG-18`, `RE-13`, and
+  `LV-05`, with the native non-binomial path still blocked.
+- `rg -n 'native (count-family|non-binomial|non-Gaussian).*(admitted|supported|covered|validated)|NB1.*native.*lv.*(admitted|supported)|Poisson.*native.*lv.*(admitted|supported)|native non-binomial support' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits were the deliberate "not native non-binomial support" and
+  fail-loud/blocked wording, not a promoted support claim.
+- `rg -n 'gllvmTMB_wide|meta_known_V|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(|\bS_B\b|\bS_W\b|\\bf S|in prep|in preparation' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits are historical/compatibility mentions (`gllvmTMB_wide`,
+  `meta_known_V`, `block_V`, `phylo_rr`, and `phylo()` in missing-predictor
+  rows), not new stale LV wording.
+- `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | head -n 220`
+  -> REVIEWED; this branch adds no new `gllvmTMB()` examples. Touched
+  NEWS/design text does not introduce long-format calls requiring a new
+  `trait =` audit.
+
+Not run:
+
+- `devtools::document()`; no roxygen, generated Rd, NAMESPACE, or exported
+  function docs changed.
+- `pkgdown::build_articles(lazy = FALSE)`; this branch changes NEWS/design
+  prose and one focused test file, not article examples or parser/user-call
+  examples. `pkgdown::check_pkgdown()` is the claimed pkgdown gate.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-29-lv-native-nongaussian-guard.md`.
+
+## 2026-06-30 -- LV family/link boundary fail-loud guard
+
+Scope: queued-ready Design 73 LV guard branch
+`codex/lv-family-boundary-guard-20260628`. This slice adds and records top-level
+native TMB rejection tests for unsupported family/link boundaries:
+`stats::binomial(link = "cauchit")`, `ordinal_probit()`, and a mixed
+Gaussian/binomial/Poisson family list. It does not admit nonstandard binomial,
+ordinal, mixed-family, native count-family, interval, source/tier, or bridge
+parity support.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB`
+  -> REVIEWED; no open gllvmTMB PRs were present.
+- `git log --all --oneline --since="6 hours ago"`
+  -> REVIEWED; recent history showed the preceding LV guard/status slices and
+  this branch's first test commit.
+- `git fetch origin +refs/heads/main:refs/remotes/origin/main --prune && git rebase origin/main`
+  -> PASS; branch rebased cleanly onto current `origin/main` after PR #577.
+
+Checks:
+
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-family-boundary-guard", reporter = "summary")'`
+  -> PASS; 3 family-boundary rejection cases passed.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; focused parser guard completed with no failures. The existing
+  sigma-eps auto-suppression informational message appeared.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-native-nongaussian-guard", reporter = "summary")'`
+  -> PASS; 13 native non-Gaussian rejection cases passed.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no pkgdown reference/navigation problems found.
+- `git diff --check`
+  -> PASS; no whitespace errors before the report/check-log edit.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m46.2s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-30-lv-family-boundary-guard.md`
+  -> PASS; validator returned successfully.
+- `git diff --check`
+  -> PASS; no whitespace errors after the report/check-log edit.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'lv family boundary' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348, the broad family-validation umbrella.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'latent lv ordinal mixed' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'LV-05' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348. No issue was closed or commented on.
+
+Rose / stale wording scans:
+
+- `rg -n 'FG-18|RE-13|LV-05|test-lv-family-boundary-guard|binomial cauchit|ordinal-probit|mixed Gaussian/binomial/Poisson|nonstandard binomial|family/link' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-lv-family-boundary-guard.R`
+  -> REVIEWED; hits show the new guard evidence on `FG-18`, `RE-13`, and
+  `LV-05`, with nonstandard binomial, ordinal, and mixed-family support still
+  blocked.
+- `rg -n '(cauchit|ordinal|mixed-family|mixed family|family/list|family list).*(admitted|supported|covered|validated)|native.*(ordinal|mixed-family|cauchit).*(admitted|supported|covered|validated)|nonstandard binomial.*(admitted|supported|covered|validated)' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; the broad scan is noisy because older unrelated ordinal and
+  mixed-family rows exist, but the touched Design 73 and `LV-05` rows use
+  fail-loud/blocked wording, not support wording.
+- `rg -n 'gllvmTMB_wide|meta_known_V|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(|\bS_B\b|\bS_W\b|\\bf S|in prep|in preparation' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits are historical/compatibility mentions (`gllvmTMB_wide`,
+  `meta_known_V`, `block_V`, `phylo_rr`, and `phylo()` in missing-predictor
+  rows), not new stale LV wording.
+- `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | head -n 220`
+  -> REVIEWED; this branch adds no new user-facing `gllvmTMB()` examples.
+  Touched NEWS/design text does not introduce long-format calls requiring a new
+  `trait =` audit.
+
+Not run:
+
+- `devtools::document()`; no roxygen, generated Rd, NAMESPACE, or exported
+  function docs changed.
+- `pkgdown::build_articles(lazy = FALSE)`; this branch changes NEWS/design
+  prose and one focused test file, not article examples or parser/user-call
+  examples. `pkgdown::check_pkgdown()` is the claimed pkgdown gate.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-30-lv-family-boundary-guard.md`.
+
+## 2026-06-30 -- LV REML/lv-formula boundary fail-loud guard
+
+Scope: queued-ready Design 73 LV guard branch
+`codex/lv-reml-boundary-guard-20260628`. This slice adds and records top-level
+native TMB rejection tests for unsupported predictor-informed latent-score
+boundaries: `REML = TRUE`, `offset()`, `mi()`, smooth terms, and random-effect
+terms inside `lv`. It does not admit REML / AI-REML `lv`, richer `lv`
+formulas, missing `lv` predictors, offsets, smooths, random-effect terms, or
+any broader family/source/tier support.
+
+Pre-edit lane check:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,url,isDraft`
+  -> REVIEWED; no open gllvmTMB PRs were present.
+- `git log --all --oneline --since="6 hours ago" -- NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/check-log.md docs/dev-log/after-task tests/testthat/test-lv-reml-boundary-guard.R`
+  -> REVIEWED; recent history showed the preceding LV guard/status slices and
+  this branch's first two test commits.
+- `git fetch origin +refs/heads/main:refs/remotes/origin/main --prune && git rebase origin/main`
+  -> PASS; branch rebased cleanly onto current `origin/main` after PR #578.
+
+Checks:
+
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-reml-boundary-guard", reporter = "summary")'`
+  -> PASS; 5 REML/lv-formula boundary rejection cases passed.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard", reporter = "summary")'`
+  -> PASS; focused parser guard completed with no failures. The existing
+  sigma-eps auto-suppression informational message appeared.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-family-boundary-guard", reporter = "summary")'`
+  -> PASS; 3 neighbouring family-boundary rejection cases passed.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; no pkgdown reference/navigation problems found.
+- `git diff --check`
+  -> PASS; no whitespace errors before the report/check-log edit.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; R CMD check completed in 4m46.1s with 0 errors, 0 warnings, and
+  0 notes. As in earlier slices, `check()` did not re-document because local
+  roxygen2 8.0.0 differs from the declared 7.3.2.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'lv reml' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; returned only issue #348, the broad family-validation umbrella.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'lv formula boundary' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'LV-01' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue. No issue was closed or commented on.
+
+Rose / stale wording scans:
+
+- `rg -n 'FG-18|RE-13|LV-01|test-lv-reml-boundary-guard|REML = TRUE|offset\(\)|mi\(\)|smooth|random-effect|lv-formula|richer `lv`|fail-loud' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md tests/testthat/test-lv-reml-boundary-guard.R`
+  -> REVIEWED; hits show the new guard evidence on `FG-18`, `RE-13`, and
+  `LV-01`, with REML/lv-formula support still blocked.
+- `rg -n 'REML.*lv.*(admitted|supported|covered|validated)|richer.*lv.*formula.*(admitted|supported|covered|validated)|offset.*lv.*(admitted|supported|covered|validated)|mi\(\).*lv.*(admitted|supported|covered|validated)|smooth.*lv.*(admitted|supported|covered|validated)|random-effect.*lv.*(admitted|supported|covered|validated)' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; the broad scan is intentionally conservative and matched long
+  rows that also contain `covered` / `validated` evidence for other LV
+  subclaims, but the touched Design 73, capability-status, and register rows
+  say REML/richer `lv` formulas are fail-loud or blocked, not supported.
+- `rg -n 'gllvmTMB_wide|meta_known_V|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(|\bS_B\b|\bS_W\b|\\bf S|in prep|in preparation' NEWS.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits are historical/compatibility mentions (`gllvmTMB_wide`,
+  `meta_known_V`, `block_V`, `phylo_rr`, and `phylo()` in missing-predictor
+  rows), not new stale LV wording.
+- `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | head -n 220`
+  -> REVIEWED; this branch adds no new user-facing `gllvmTMB()` examples.
+  Touched NEWS/design text does not introduce long-format calls requiring a new
+  `trait =` audit.
+
+Not run:
+
+- `devtools::document()`; no roxygen, generated Rd, NAMESPACE, or exported
+  function docs changed.
+- `pkgdown::build_articles(lazy = FALSE)`; this branch changes NEWS/design
+  prose and one focused test file, not article examples or parser/user-call
+  examples. `pkgdown::check_pkgdown()` is the claimed pkgdown gate.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-30-lv-reml-boundary-guard.md`.
+
+## 2026-06-30 -- LV binomial Wald coverage harness
+
+Scope: clean gllvmTMB worktree
+`/private/tmp/gllvmtmb-lv-binomial-interval-20260630` on branch
+`codex/lv-binomial-interval-20260630`. This slice expands the Design 73
+native LV Wald coverage campaign infrastructure from the four already-audited
+Gaussian cells to include launch-ready pure-binomial logit/probit/cloglog
+cells. It does not claim binomial interval calibration.
+
+Pre-edit / coordination checks:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,url`
+  -> PASS; `[]`, no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago" -- dev/lv-wald-coverage.R dev/lv-wald-coverage-slurm.sh tests/testthat/test-lv-wald-coverage-harness.R docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/check-log.md docs/dev-log/after-task`
+  -> PASS; no recent commits touched the lane files in this worktree.
+
+Implemented:
+
+- `dev/lv-wald-coverage.R` now defines seven native cells: the existing four
+  Gaussian cells plus `binomial-logit-d1-n160-t3`,
+  `binomial-probit-d1-n160-t3`, and `binomial-cloglog-d1-n160-t3`.
+- Plan, replicate, and summary outputs now carry `family`, `link`, and
+  `n_trials` metadata; binomial cells use a multi-trial DGP and the same
+  trait-scale `B_lv = Lambda alpha^T` target.
+- Binomial cells fit native TMB
+  `cbind(success, failure) ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~x)`
+  with `se = TRUE`, `wald_z`, and `wald_t_unit` rows.
+- `dev/lv-wald-coverage-slurm.sh` now describes the default campaign as
+  7 x 500 reps.
+- Design 73, Design 61, and validation-debt row `LV-05` now say the binomial
+  interval cells are launch infrastructure only; no coverage artifact is
+  promoted.
+
+Checks:
+
+- `air format dev/lv-wald-coverage.R tests/testthat/test-lv-wald-coverage-harness.R`
+  -> PASS.
+- `Rscript --vanilla -e 'invisible(parse("dev/lv-wald-coverage.R")); invisible(parse("tests/testthat/test-lv-wald-coverage-harness.R")); cat("parse-ok\n")'`
+  -> PASS; printed `parse-ok`.
+- `git diff --check`
+  -> PASS before dev-log / after-task edits.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; `lv-wald-coverage-harness: ................................................SS`.
+- `GLLVMTMB_LV_WALD_SMOKE=true NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; live Gaussian and live binomial one-rep smokes both ran.
+- `rm -rf /tmp/gllvmtmb-lv-binomial-preflight-20260630; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla dev/lv-wald-coverage.R --mode=preflight --n-reps=2 --seed-base=20260630 --results-dir=/tmp/gllvmtmb-lv-binomial-preflight-20260630`
+  -> PASS; wrote 14 tasks: 8 Gaussian tasks and 6 binomial tasks.
+- `bash -n dev/lv-wald-coverage-slurm.sh`
+  -> PASS.
+- `rm -rf /tmp/gllvmtmb-lv-binomial-slurm-write-20260630; SLURM_ACTION=write RESULTS_DIR=/tmp/gllvmtmb-lv-binomial-slurm-write-20260630 N_REPS=2 SEED_BASE=20260630 bash dev/lv-wald-coverage-slurm.sh`
+  -> PASS; wrote `#SBATCH --array=1-14` for the 7-cell / 2-rep smoke plan.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'LV-05 binomial interval' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'latent lv interval coverage' --json number,title,state,url,labels --limit 20`
+  -> REVIEWED; no matching open issue. No issue was closed or commented on.
+
+Rose / stale wording scans:
+
+- `rg -n 'LV-05|binomial.*interval|launch-ready|coverage artifact|calibration|7 x 500|binomial-logit-d1-n160-t3|binomial-probit-d1-n160-t3|binomial-cloglog-d1-n160-t3' dev/lv-wald-coverage.R dev/lv-wald-coverage-slurm.sh tests/testthat/test-lv-wald-coverage-harness.R docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; expected hits show the new cell IDs and launch-only wording.
+- `rg -n 'binomial.*(covered|validated|calibrated).*interval|interval.*(covered|validated|calibrated).*binomial|LV-05.*covered|calibrated native binomial|500-rep.*binomial.*(passed|complete)' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md NEWS.md`
+  -> REVIEWED; no new binomial interval coverage claim.
+- `rg -n 'gllvmTMB\\(' R vignettes README.md NEWS.md docs/design | head -n 220`
+  -> REVIEWED; no new user-facing examples were added.
+
+Not run:
+
+- `devtools::document()`; no roxygen, generated Rd, NAMESPACE, or exported
+  function docs changed.
+- `pkgdown::check_pkgdown()` / `pkgdown::build_articles(lazy = FALSE)`; no
+  pkgdown navigation, vignettes, articles, or user-call examples changed.
+- `devtools::check()`; focused harness tests and CLI/launcher checks cover the
+  changed dev-only surface, and no package runtime/exported API changed.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-30-lv-binomial-wald-coverage-harness.md`.
+
+Post-report checks:
+
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-30-lv-binomial-wald-coverage-harness.md`
+  -> PASS.
+- `git diff --check`
+  -> PASS after dev-log / after-task edits.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS after dev-log / after-task edits; `lv-wald-coverage-harness:
+  ................................................SS`.
+
+## 2026-06-30 -- LV binomial Wald local r500 evidence
+
+Scope: clean gllvmTMB worktree
+`/private/tmp/gllvmtmb-lv-binomial-interval-20260630` on branch
+`codex/lv-binomial-interval-20260630`. This slice promotes the
+rank-1 multi-trial binomial logit/probit/cloglog Design 73 coverage cells from
+launch-ready infrastructure to narrow local r500 evidence.
+
+Pre-edit / coordination checks:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,updatedAt`
+  -> PASS; `[]`, no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago" -- docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/dev-log/check-log.md docs/dev-log/after-task`
+  -> REVIEWED; only the current harness commit touched this lane recently.
+
+Production runs:
+
+- `rm -rf /tmp/gllvmtmb-lv-binomial-r500-logit-20260630; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=binomial-logit-d1-n160-t3 --n-reps=500 --seed-base=20260630 --interval-methods=wald_z,wald_t_unit --results-dir=/tmp/gllvmtmb-lv-binomial-r500-logit-20260630`
+  -> PASS; 500/500 reps completed.
+- `rm -rf /tmp/gllvmtmb-lv-binomial-r500-probit-20260630; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=binomial-probit-d1-n160-t3 --n-reps=500 --seed-base=20260630 --interval-methods=wald_z,wald_t_unit --results-dir=/tmp/gllvmtmb-lv-binomial-r500-probit-20260630`
+  -> PASS; 500/500 reps completed.
+- `rm -rf /tmp/gllvmtmb-lv-binomial-r500-cloglog-20260630; GLLVMTMB_LV_WALD_COVERAGE_CLI=true NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla dev/lv-wald-coverage.R --mode=cell --cell=binomial-cloglog-d1-n160-t3 --n-reps=500 --seed-base=20260630 --interval-methods=wald_z,wald_t_unit --results-dir=/tmp/gllvmtmb-lv-binomial-r500-cloglog-20260630`
+  -> PASS; 500/500 reps completed.
+
+Aggregate and artifacts:
+
+- `Rscript --vanilla - <<'RS' ... RS`
+  -> PASS; aggregation across the three summary/long CSVs reported 18 summary
+  rows, `all_production TRUE`, `all_pass TRUE`, 9,000 long rows, and 0 bad
+  rows.
+- Artifact extraction to
+  `docs/dev-log/artifacts/lv-wald-coverage/2026-06-30-local-binomial-r500-*`
+  -> PASS; wrote 18 summary rows, one header-only excluded-replicate ledger,
+  nine t-vs-z comparator rows, and combined session info.
+- The committed evidence records coverage 0.920--0.952, MCSE
+  0.0096--0.0121, 1,500/1,500 optimizer-converged fits, 1,500/1,500
+  positive-definite Hessians, 1,500/1,500 usable `sdreport()` outputs, and
+  zero excluded replicates.
+
+Docs / register updates:
+
+- Design 73 now records the binomial local r500 result and artifact names.
+- Design 61 now says the native binomial interval subclaim is covered only for
+  the three rank-1 multi-trial standard-link cells.
+- Validation-debt rows `FG-18`, `RE-13`, `EXT-31`, and `LV-05` cite the
+  binomial r500 artifact. Rows `LV-01` and `LV-02` remain Gaussian-only rows.
+
+Rose / stale wording scans:
+
+- `rg -n 'LV-05|binomial.*interval|local.*binomial.*r500|coverage artifact|coverage band|0\.920|0\.952|2026-06-30-local-binomial' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; expected evidence and artifact hits.
+- `rg -n 'binomial.*(launch-ready|infrastructure only|not coverage evidence|no native binomial interval coverage|no calibrated native binomial)|native binomial.*(blocked|pending).*interval|500-rep.*binomial.*pending' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md NEWS.md`
+  -> PASS; no stale launch-only binomial interval wording in live status docs.
+- `rg -n 'native count-family.*(covered|validated|calibrated)|nonstandard binomial.*(covered|validated|calibrated)|ordinal.*lv.*(covered|validated|calibrated)|mixed-family.*lv.*(covered|validated|calibrated)|Julia.*(covered|validated|calibrated).*CI|calibrated Julia' docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md NEWS.md`
+  -> REVIEWED; broad hits were unrelated historical rows or rows that still
+  keep broader non-Gaussian / Julia CI support gated.
+- `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design | head -n 220`
+  -> REVIEWED; no user-facing examples changed in this slice.
+
+Not run yet:
+
+- `devtools::document()`; no roxygen, generated Rd, NAMESPACE, or exported
+  function docs changed.
+- `pkgdown::check_pkgdown()` / `pkgdown::build_articles(lazy = FALSE)`; no
+  pkgdown navigation, vignettes, articles, parser behaviour, or user-call
+  examples changed.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-30-lv-binomial-wald-local-r500.md`.
+
+Post-report checks:
+
+- `git diff --check`
+  -> PASS.
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-30-lv-binomial-wald-local-r500.md`
+  -> PASS.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary")'`
+  -> PASS; `lv-wald-coverage-harness:
+  ................................................SS`.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS; `0 errors | 0 warnings | 0 notes` in 5m 16s.
+
+## 2026-06-30 (Codex / Ada) -- `extract_lv_effects()` axis default and alpha SEs
+
+Scope: clean gllvmTMB worktree
+`/private/tmp/gllvmtmb-lv-axis-alpha-se-20260630` on branch
+`codex/lv-axis-alpha-se-20260630`. This slice responds to Ayumi's
+per-LV versus per-trait `extract_lv_effects()` comment by making
+`axis_effect` / `alpha` the default table and adding native TMB Wald SE / CI
+columns for alpha.
+
+Pre-edit / coordination checks:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,url`
+  -> PASS; `[]`, no open gllvmTMB PRs.
+- `git log --all --oneline --since="6 hours ago" -- R/extractors.R R/julia-bridge.R tests/testthat/test-lv-parser-guard.R tests/testthat/test-lv-gaussian-recovery.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md docs/design/06-extractors-contract.md NEWS.md`
+  -> REVIEWED; only recent relevant mainline hit was `f4f631dc test(lv):
+  record binomial interval evidence`.
+- `gh api repos/Ayumi-495/urbanisation_map/issues/comments/4845237642 --jq '{user:.user.login, created_at, body:.body}'`
+  -> REVIEWED; comment asks whether `axis_effect` should be the per-LV /
+  GLLVM-style default and notes missing alpha SEs. No reply was posted.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'extract_lv_effects alpha axis effect' --json number,title,state,url,labels --limit 20`
+  -> PASS; `[]`.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'latent lv alpha standard error' --json number,title,state,url,labels --limit 20`
+  -> PASS; `[]`.
+
+Implemented:
+
+- `R/extractors.R`: `extract_lv_effects()` now defaults to
+  `type = "axis_effect"` and adds `conf.level = 0.95`.
+- Native TMB axis effects now get `std.error`, `lower`, and `upper` from the
+  fixed-parameter `alpha_lv_B` rows in `summary(fit$sd_report, "fixed")` when
+  `se = TRUE` and the Hessian is positive-definite.
+- Native TMB trait effects still use `ADREPORT(B_lv_unit)` but now also return
+  Wald `lower` / `upper` columns.
+- `R/julia-bridge.R`: bridge rows now use the same default/schema. Existing
+  trait-effect Wald payloads are preserved; optional future `alpha_lv_se`,
+  `alpha_lv_lower`, and `alpha_lv_upper` payloads are normalised and surfaced.
+- Updated tests, roxygen/generated Rd, NEWS, extractor contract, validation
+  register, capability status, and Design 73.
+
+Validation:
+
+- `air format R/extractors.R R/julia-bridge.R tests/testthat/test-lv-parser-guard.R tests/testthat/test-lv-gaussian-recovery.R tests/testthat/test-julia-bridge.R tests/testthat/test-lv-factor-runtime.R tests/testthat/test-lv-bernoulli-depth.R tests/testthat/test-lv-missing-response.R`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-parser-guard|lv-gaussian-recovery|lv-factor-runtime|lv-bernoulli-depth|lv-missing-response|julia-bridge", reporter = "summary", stop_on_failure = TRUE)'`
+  -> PASS; 19 live Julia tests skipped because `{JuliaCall}` is not installed;
+  one rank-2 heavy recovery skipped because `GLLVMTMB_HEAVY_TESTS` was unset;
+  one existing Julia bridge Psi warning was emitted.
+- `Rscript --vanilla -e 'devtools::test(filter = "lv-wald-coverage-harness", reporter = "summary", stop_on_failure = TRUE)'`
+  -> PASS; two opt-in live fit smokes skipped.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS with pre-existing roxygen warnings for uninstalled `MCMCglmm` and
+  unresolved internal links; regenerated `man/extract_lv_effects.Rd`,
+  `man/gllvm_julia_fit.Rd`, and `man/gllvmTMB_julia-methods.Rd`.
+- `Rscript --vanilla -e 'files <- c("man/extract_lv_effects.Rd", "man/gllvm_julia_fit.Rd", "man/gllvmTMB_julia-methods.Rd"); for (f in files) { cat("--", f, "--\n"); tools::checkRd(f) }; cat("rd-check-ok\n")'`
+  -> PASS; `rd-check-ok`.
+- `git diff --check -- R/extractors.R R/julia-bridge.R tests/testthat/test-lv-parser-guard.R tests/testthat/test-lv-gaussian-recovery.R tests/testthat/test-julia-bridge.R NEWS.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md man/extract_lv_effects.Rd man/gllvm_julia_fit.Rd man/gllvmTMB_julia-methods.Rd`
+  -> PASS.
+
+Rose / stale wording scans:
+
+- `rg -n 'preferred.*B_lv|B_lv.*preferred|trait-scale table is the preferred|raw \`alpha\` only|extract_lv_effects\(fit, level = "unit", type = "trait_effect"\)|extract_lv_effects\(\) returns trait-scale|type = "axis_effect"\) \| ❌ no|point estimates only: \`std.error = NA\`|axis_effect.*diagnostic use' R docs/design NEWS.md man tests/testthat/test-lv*.R tests/testthat/test-julia-bridge.R`
+  -> PASS; no stale current-source hits. Historical after-task notes were left
+  unchanged.
+- `rg -n 'extract_lv_effects\(fit\)|extract_lv_effects\([^\n]*\)' tests/testthat/test-lv*.R tests/testthat/test-julia-bridge.R | head -120`
+  -> REVIEWED; bare default calls are now intentional axis-effect checks, while
+  B/trait-effect recovery checks call `type = "trait_effect"` explicitly.
+
+Not run:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`, and
+  article renders were not rerun in this slice. The change is extractor/API,
+  roxygen, tests, and status docs; no vignette code or pkgdown navigation was
+  touched.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-30-lv-axis-effect-se.md`.
+
+Post-report checks:
+
+- `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-06-30-lv-axis-effect-se.md`
+  -> PASS.
+- `git diff --check`
+  -> PASS.
+- `for f in man/extract_lv_effects.Rd man/gllvm_julia_fit.Rd man/gllvmTMB_julia-methods.Rd; do printf '%s\n' "--- $f"; tail -5 "$f"; printf 'keyword_count='; grep -c '^\\keyword' "$f" || true; done`
+  -> PASS; all three changed Rd files ended cleanly and had `keyword_count=0`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> FAIL in 4m 56s due to the default R library path lacking `MCMCglmm`.
+  Failure set was 20 phylo/animal tests aborting with
+  `MCMCglmm is required for the phylo_tree path` or
+  `phylo_vcv (or phylo_tree) is NULL`; not an alpha/B extractor regression.
+- `R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla - <<'RS' ... RS`
+  -> VERIFIED; project check libraries contain `MCMCglmm` and `JuliaCall`
+  (`TRUE`), while the default library path does not.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> PASS in 4m 54s; `0 errors | 0 warnings | 0 notes`.
+
+Pre-merge public-doc / pkgdown gate:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,url,mergeStateStatus --limit 20`
+  -> REVIEWED; PR #581 is the only open gllvmTMB PR and is ready/clean.
+- `git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-30-lv-axis-effect-se.md`
+  -> REVIEWED; only the current branch commit touched these files.
+- `NOT_CRAN=true R_LIBS=/private/tmp/gllvmtmb-r-live-lib:/private/tmp/gllvmtmb-check-lib:$HOME/Library/R/arm64/4.6/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found.`
+- `rg -n "extract_lv_effects|LV-AXIS|axis_effect|trait_effect|alpha_lv_B|B_lv_unit|std.error|conf.level" _pkgdown.yml NAMESPACE man/extract_lv_effects.Rd R/extractors.R`
+  -> PASS; source formals, generated Rd usage, NAMESPACE export, and
+  `_pkgdown.yml` reference entry agree.
+- `rg -n "trio|profile-likelihood default|unsupported.*implemented|implemented.*unsupported|gllvmTMB_wide|meta_known_V|\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(U\\)|U_phy|U_non|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(" NEWS.md R/extractors.R R/julia-bridge.R man/extract_lv_effects.Rd man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+  -> REVIEWED; hits are older compatibility / alias wording (`gllvmTMB_wide`,
+  `meta_known_V`, `block_V`) that is explicitly described as deprecated or
+  blocked, not a current `extract_lv_effects()` overclaim.
+
+## 2026-07-03 -- explicit source-specific `*_latent(unique = TRUE)` Psi fold
+
+Branch / worktree:
+
+- `codex/unique-latent-psi-fold`
+- `/private/tmp/gllvmtmb-unique-latent-psi-fold-20260703`
+
+Scope:
+
+- Implemented the explicit source/kernel contract:
+  `phylo_latent()`, `animal_latent()`, `spatial_latent()`, and
+  `kernel_latent()` remain loadings-only by default; `unique = TRUE` folds in
+  the source-specific diagonal Psi companion.
+- Kept `*_latent(..., unique = FALSE) + *_unique()` as compatibility syntax and
+  added duplicate-Psi errors for `*_latent(..., unique = TRUE) + *_unique()`.
+- Wired spatial latent-Psi through both SPDE random-effect blocks
+  (`omega_spde_lv` plus `omega_spde`) and reported total
+  `Sigma_spde = Lambda_spde Lambda_spde^T + diag(Psi_spde)`.
+
+Validation:
+
+- `gh pr list --state open --limit 20 --json number,title,headRefName,isDraft,url,mergeStateStatus`
+  -> PASS; no open PRs.
+- `git log --all --oneline --since="6 hours ago" -- AGENTS.md CLAUDE.md NEWS.md docs/design R src tests/testthat vignettes/articles man docs/dev-log/check-log.md docs/dev-log/after-task`
+  -> REVIEWED; recent commits were unrelated live bridge drift gates; no open
+  PR collision.
+- `pkgbuild::compile_dll()`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; regenerated changed Rd files. Roxygen emitted pre-existing
+  unresolved-link warnings for helper topics such as
+  `load_mixed_family_fixture`, `fit_mixed_family_fixture`,
+  `parse_multi_formula`, and `"0, 1"`.
+- `Rscript --vanilla -e 'devtools::test(filter = "phylo-latent-unique-fold|animal-latent-unique-fold|kernel-latent-unique-fold|spatial-latent-unique-fold", reporter = "summary")'`
+  -> PASS; one expected legacy `phylo_vcv =` deprecation message.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|keyword-grid|extract-sigma|profile-targets|confint-derived|profile-derived", reporter = "summary")'`
+  -> PASS. Skips were pre-existing: 3 INLA-missing spatial dep checks and
+  heavy gates requiring `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS; `No problems found`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual")'`
+  -> PASS in 4m 53.5s; `0 errors | 0 warnings | 1 note`. The note is the
+  existing `NEWS.md` version-title parsing note for older dated sections.
+- GitHub Actions routine PR checks for #706
+  -> PASS; `R-CMD-check / ubuntu-latest (release)` passed in 14m15s, and the
+  recovery workflows that fired for this PR all passed.
+- `gh workflow run R-CMD-check.yaml --ref codex/unique-latent-psi-fold -f full_matrix=true`
+  -> queued manual 3-OS run
+  `https://github.com/itchyshin/gllvmTMB/actions/runs/28677871029`.
+- Manual `R-CMD-check.yaml` workflow dispatch run `28677871029`
+  -> PASS on all three OSes: `macos-latest (release)` 10m23s,
+  `ubuntu-latest (release)` 13m17s, `windows-latest (release)` 16m34s.
+- `git diff --check`
+  -> PASS.
+
+Rose / stale wording scans:
+
+- ``rg -n 'folds.*by default|by default.*phylo_latent|phylo_latent\\(\\).*default|animal_latent\\(\\).*default|kernel_latent\\(\\).*default|spatial latent-Psi fold remains blocked|fold remains blocked|auto-companion.*dedup|explicit-companion dedup|default-vs-explicit|default phylo-structured|default diagonal.*phylo|default diagonal.*animal|source-specific.*by default|broader `\\*_unique\\(\\)` surface should become' AGENTS.md CLAUDE.md NEWS.md R docs/design vignettes/articles README.md man``
+  -> REVIEWED; remaining hits are intentional current contract, ordinary
+  `latent()` default Psi, historical superseding notes, or the updated
+  multi-kernel Psi boundary.
+- `rg -n 'unique = TRUE\\) \\+|unique = TRUE.*\\+ .*_unique|spatial_latent\\([^\\n]*unique = TRUE' AGENTS.md CLAUDE.md NEWS.md R docs/design vignettes/articles tests/testthat man`
+  -> REVIEWED; hits are intentional examples, duplicate-Psi guards, tests, and
+  valid article examples.
+- `rg -n 'pass_through_extras\\(e, c\\(\"tree\", \"vcv\"\\)' R/brms-sugar.R`
+  -> PASS; no stale phylo pass-through path omits `A` / `Ainv`.
+
+Not run:
+
+- `GLLVMTMB_HEAVY_TESTS=1` profile/bootstrap and broad recovery gates were not
+  run in this local slice.
+- Julia parity was not attempted; it remains a later PR.
+
+Issue ledger / after-task:
+
+- Inspected #526; it was already closed from the earlier spatial branch. This
+  branch strengthens and integrates the source/kernel-wide arc rather than
+  reclosing that issue.
+- After-task report:
+  `docs/dev-log/after-task/2026-07-03-unique-latent-psi-fold.md`.

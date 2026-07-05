@@ -62,6 +62,9 @@ if (!exists("pilot_grid", mode = "function")) {
 PILOT_FIGURE_DIR_DEFAULT <- "dev/m3-pilot-figures"
 PILOT_SUMMARY_MD_DEFAULT <- "dev/m3-pilot-summary.md"
 PILOT_SUMMARY_RDS_DEFAULT <- "dev/m3-pilot-summary.rds"
+if (!exists("PILOT_CHUNK_AGGREGATE_DIR", inherits = TRUE)) {
+  PILOT_CHUNK_AGGREGATE_DIR <- "_chunk-aggregate"
+}
 
 ## Gate thresholds (Design 66 locked: report BOTH the 94% audit gate and
 ## the stricter 95% gate). Mirrors pilot_accum_status().
@@ -97,11 +100,15 @@ PILOT_FLAG_CONV_FAIL_RATE <- 0.10
 ##     signal, lambda_scale  (joined from pilot_grid() when available)
 ##   - accumulated reps: n_sim (distinct draws kept after dedup)
 ##   - coverage: coverage_primary (from m3_summarise), and the both-gate
-##     pass flags passes_94 / passes_95 + primary_gate_status
+##     pass flags passes_94 / passes_95 + primary_gate_status, plus the
+##     coverage-eligible row denominator and per-replicate binomial MCSE
 ##   - zero_exclusion_rate: fraction of primary Sigma_unit_diag CIs excluding
 ##     zero. This is diagnostic only for the Phase-1 pilot because
 ##     signal == 0 still has a positive variance target; it is not a valid
 ##     Type-I or power estimand.
+##   - denominators + MCSEs: attempted fits, converged fits, PD-Hessian fits,
+##     sdreport-usable fits, bootstrap attempts, coverage-eligible rows, and
+##     MCSEs for the reported proportions.
 ##   - ISSUES: n_failed_fits, fit_failure_rate, n_nonPD, nonpd_rate,
 ##     n_conv_fail, conv_failure_rate, n_boot_failed, boot_fail_rate, flag
 ##
@@ -147,6 +154,49 @@ pilot_collect <- function(
   rownames(out) <- NULL
   ord <- order(out$family, out$d, out$n_units, out$signal, na.last = TRUE)
   out[ord, , drop = FALSE]
+}
+
+## Resolve explicit immutable-chunk aggregate stores from their parent pilot
+## result directories. The report layer does not auto-scan these subdirs from
+## pilot_collect() because legacy accumulated stores can coexist with derived
+## aggregate stores and must not be double-counted by accident.
+pilot_chunk_aggregate_results_dirs <- function(
+  results_dirs = "dev/m3-pilot-results",
+  aggregate_subdir = PILOT_CHUNK_AGGREGATE_DIR
+) {
+  stopifnot(length(results_dirs) >= 1L)
+  dirs <- file.path(results_dirs, aggregate_subdir)
+  dirs[dir.exists(dirs)]
+}
+
+## Collect per-cell reports from immutable chunk aggregates written by
+## pilot_aggregate_chunk_outputs(). This reuses the same MCSE, denominator,
+## fit-health, and evidence-label reducer as pilot_collect(); the only
+## difference is the explicit source directory.
+pilot_collect_chunk_aggregates <- function(
+  results_dirs = "dev/m3-pilot-results",
+  aggregate_subdir = PILOT_CHUNK_AGGREGATE_DIR,
+  index_file = "pilot-index.rds",
+  gate_94 = PILOT_GATE_94,
+  gate_95 = PILOT_GATE_95
+) {
+  aggregate_dirs <- pilot_chunk_aggregate_results_dirs(
+    results_dirs = results_dirs,
+    aggregate_subdir = aggregate_subdir
+  )
+  if (!length(aggregate_dirs)) {
+    warning(
+      "pilot_collect_chunk_aggregates(): no existing chunk aggregate dirs; ",
+      "returning empty table."
+    )
+    return(pilot_collect_empty())
+  }
+  pilot_collect(
+    results_dirs = aggregate_dirs,
+    index_file = index_file,
+    gate_94 = gate_94,
+    gate_95 = gate_95
+  )
 }
 
 ## Read and combine the long per-replicate grids from one or more stores.
@@ -266,32 +316,49 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
   }
   n_failed_fits <- NA_integer_
   fit_failure_rate <- NA_real_
+  n_converged_fits <- NA_integer_
   if (!is.na(fit_ok_col) && rep_key %in% names(g)) {
     per_draw_ok <- tapply(g[[fit_ok_col]], g[[rep_key]], function(x) {
       all(x %in% TRUE)
     })
     n_failed_fits <- sum(!per_draw_ok)
+    n_converged_fits <- sum(per_draw_ok %in% TRUE)
     fit_failure_rate <- mean(!per_draw_ok)
   }
+  fit_failure_mcse <- pilot_binomial_mcse(fit_failure_rate, n_sim)
 
   ## Non-PD Hessian: per-draw pd_hessian flag (from fit health). A draw
   ## is non-PD if its first row's pd_hessian is not TRUE.
   n_nonpd <- NA_integer_
   nonpd_rate <- NA_real_
+  n_pd_hessian <- NA_integer_
   if ("pd_hessian" %in% names(g) && rep_key %in% names(g)) {
     per_draw_pd <- tapply(g$pd_hessian, g[[rep_key]], function(x) {
       any(x %in% TRUE)
     })
     n_nonpd <- sum(!(per_draw_pd %in% TRUE))
+    n_pd_hessian <- sum(per_draw_pd %in% TRUE)
     nonpd_rate <- mean(!(per_draw_pd %in% TRUE))
   } else if (!is.na(pd_rate_summ)) {
     nonpd_rate <- 1 - pd_rate_summ
+  }
+  nonpd_mcse <- pilot_binomial_mcse(nonpd_rate, n_sim)
+
+  n_sdreport_ok <- NA_integer_
+  sdreport_ok_rate <- NA_real_
+  if ("sdreport_ok" %in% names(g) && rep_key %in% names(g)) {
+    per_draw_sd <- tapply(g$sdreport_ok, g[[rep_key]], function(x) {
+      any(x %in% TRUE)
+    })
+    n_sdreport_ok <- sum(per_draw_sd %in% TRUE)
+    sdreport_ok_rate <- mean(per_draw_sd %in% TRUE)
   }
 
   ## Convergence failure rate: the optimiser convergence code != 0 on a
   ## draw (distinct from fit_converged, which can also fold in CI health).
   n_conv_fail <- NA_integer_
   conv_failure_rate <- NA_real_
+  n_optimizer_converged <- NA_integer_
   if ("fit_convergence_code" %in% names(g) && rep_key %in% names(g)) {
     per_draw_conv <- tapply(
       g$fit_convergence_code,
@@ -302,20 +369,28 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
       }
     )
     n_conv_fail <- sum(per_draw_conv %in% FALSE)
+    n_optimizer_converged <- sum(per_draw_conv %in% TRUE)
     conv_failure_rate <- mean(per_draw_conv %in% FALSE)
   } else if (!is.na(fit_failure_rate)) {
     ## Fall back to the fit-failure rate as the convergence proxy.
     conv_failure_rate <- fit_failure_rate
     n_conv_fail <- n_failed_fits
+    n_optimizer_converged <- n_converged_fits
   }
+  conv_failure_mcse <- pilot_binomial_mcse(conv_failure_rate, n_sim)
 
   ## Bootstrap-CI failure: fraction of attempted boot reps that failed
   ## (already aggregated by m3_summarise as boot_fail_rate). Keep counts.
-  n_boot_failed <- NA_integer_
-  if ("n_boot_failed" %in% names(prim_rows) && nrow(prim_rows)) {
-    nb <- suppressWarnings(max(prim_rows$n_boot_failed, na.rm = TRUE))
-    if (is.finite(nb)) n_boot_failed <- as.integer(nb)
+  boot_counts <- pilot_boot_counts(prim_rows, rep_key)
+  n_boot_failed <- boot_counts$failed
+  n_boot_attempted <- boot_counts$attempted
+  if (!is.na(n_boot_attempted) && n_boot_attempted > 0L) {
+    boot_fail_rate <- n_boot_failed / n_boot_attempted
   }
+  boot_fail_mcse <- pilot_binomial_mcse(boot_fail_rate, n_boot_attempted)
+
+  coverage_eligible_n <- pilot_coverage_denominator(prim_rows)
+  coverage_mcse <- pilot_binomial_mcse(cov_p, n_sim)
 
   ## --- zero-exclusion diagnostic on the primary target ---
   ## This is the fraction of (converged, CI-available) draws whose primary
@@ -324,7 +399,13 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
   ## a positive variance target. Keep the legacy `power` alias so existing
   ## result stores / summaries remain readable while new text uses the
   ## target-aligned name.
-  zero_exclusion_rate <- pilot_rejection_rate(prim_rows)
+  zero_summary <- pilot_rejection_summary(prim_rows)
+  zero_exclusion_rate <- zero_summary$rate
+  zero_exclusion_n <- zero_summary$n
+  zero_exclusion_mcse <- pilot_binomial_mcse(
+    zero_exclusion_rate,
+    zero_exclusion_n
+  )
   power <- zero_exclusion_rate
 
   ## --- flag ---
@@ -348,10 +429,29 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
   data.frame(
     cell_id = cid,
     family = fam_label,
+    evidence_family = if (
+      !is.null(m) && nrow(m) && "evidence_family" %in% names(m)
+    ) {
+      m$evidence_family[1]
+    } else {
+      fam_label
+    },
     harness_family = if (!is.null(m) && nrow(m)) {
       m$harness_family[1]
     } else {
       (if ("family" %in% names(g)) g$family[1] else NA_character_)
+    },
+    link_intended = if (
+      !is.null(m) && nrow(m) && "link_intended" %in% names(m)
+    ) {
+      m$link_intended[1]
+    } else {
+      NA_character_
+    },
+    link_harness = if (!is.null(m) && nrow(m) && "link_harness" %in% names(m)) {
+      m$link_harness[1]
+    } else {
+      NA_character_
     },
     d = if (!is.null(m) && nrow(m)) {
       m$d[1]
@@ -370,20 +470,35 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
       (if ("lambda_scale" %in% names(g)) g$lambda_scale[1] else NA_real_)
     },
     n_sim = as.integer(n_sim),
+    n_attempted_fits = as.integer(n_sim),
+    n_converged_fits = as.integer(n_converged_fits),
+    n_optimizer_converged = as.integer(n_optimizer_converged),
+    n_pd_hessian = as.integer(n_pd_hessian),
+    n_sdreport_ok = as.integer(n_sdreport_ok),
+    n_boot_attempted = as.integer(n_boot_attempted),
+    coverage_eligible_n = as.integer(coverage_eligible_n),
     coverage_primary = cov_p,
+    coverage_mcse = coverage_mcse,
     passes_94 = if (is.na(cov_p)) NA else cov_p >= gate_94,
     passes_95 = if (is.na(cov_p)) NA else cov_p >= gate_95,
     primary_gate_status = gate_status,
     zero_exclusion_rate = zero_exclusion_rate,
+    zero_exclusion_n = as.integer(zero_exclusion_n),
+    zero_exclusion_mcse = zero_exclusion_mcse,
     power = power,
     n_failed_fits = as.integer(n_failed_fits),
     fit_failure_rate = fit_failure_rate,
+    fit_failure_mcse = fit_failure_mcse,
     n_nonPD = as.integer(n_nonpd),
     nonpd_rate = nonpd_rate,
+    nonpd_mcse = nonpd_mcse,
     n_conv_fail = as.integer(n_conv_fail),
     conv_failure_rate = conv_failure_rate,
+    conv_failure_mcse = conv_failure_mcse,
     n_boot_failed = as.integer(n_boot_failed),
     boot_fail_rate = boot_fail_rate,
+    boot_fail_mcse = boot_fail_mcse,
+    sdreport_ok_rate = sdreport_ok_rate,
     flag = flag,
     stringsAsFactors = FALSE
   )
@@ -402,13 +517,36 @@ pilot_primary_rows <- function(g) {
   g
 }
 
-## Rejection rate = fraction of converged, CI-available primary draws
-## whose CI excludes 0. NA when no usable interval rows.
-pilot_rejection_rate <- function(prim_rows) {
+pilot_coverage_denominator <- function(prim_rows) {
   if (is.null(prim_rows) || !nrow(prim_rows)) {
-    return(NA_real_)
+    return(0L)
   }
   ok <- rep(TRUE, nrow(prim_rows))
+  if ("trait_id" %in% names(prim_rows)) {
+    ok <- ok & !is.na(prim_rows$trait_id)
+  }
+  if ("fit_converged" %in% names(prim_rows)) {
+    ok <- ok & (prim_rows$fit_converged %in% TRUE)
+  }
+  if ("ci_available" %in% names(prim_rows)) {
+    ok <- ok & (prim_rows$ci_available %in% TRUE)
+  }
+  if ("covered" %in% names(prim_rows)) {
+    ok <- ok & !is.na(prim_rows$covered)
+  }
+  sum(ok, na.rm = TRUE)
+}
+
+## Rejection rate = fraction of converged, CI-available primary rows whose
+## CI excludes 0. NA when no usable interval rows.
+pilot_rejection_summary <- function(prim_rows) {
+  if (is.null(prim_rows) || !nrow(prim_rows)) {
+    return(list(rate = NA_real_, n = 0L))
+  }
+  ok <- rep(TRUE, nrow(prim_rows))
+  if ("trait_id" %in% names(prim_rows)) {
+    ok <- ok & !is.na(prim_rows$trait_id)
+  }
   if ("fit_converged" %in% names(prim_rows)) {
     ok <- ok & (prim_rows$fit_converged %in% TRUE)
   }
@@ -419,12 +557,57 @@ pilot_rejection_rate <- function(prim_rows) {
   hi <- prim_rows$ci_hi
   ok <- ok & is.finite(lo) & is.finite(hi)
   if (!any(ok)) {
-    return(NA_real_)
+    return(list(rate = NA_real_, n = 0L))
   }
   lo <- lo[ok]
   hi <- hi[ok]
   ## Reject H0: theta = 0 when 0 is OUTSIDE [lo, hi].
-  mean(!(lo <= 0 & 0 <= hi))
+  reject <- !(lo <= 0 & 0 <= hi)
+  list(rate = mean(reject), n = length(reject))
+}
+
+pilot_rejection_rate <- function(prim_rows) {
+  pilot_rejection_summary(prim_rows)$rate
+}
+
+pilot_boot_counts <- function(rows, rep_key) {
+  if (
+    is.null(rows) ||
+      !nrow(rows) ||
+      !"n_boot_failed" %in% names(rows) ||
+      !"n_boot" %in% names(rows) ||
+      !rep_key %in% names(rows)
+  ) {
+    return(list(failed = NA_integer_, attempted = NA_integer_))
+  }
+  by_rep <- split(rows, rows[[rep_key]], drop = TRUE)
+  failed <- vapply(
+    by_rep,
+    function(rep_df) {
+      x <- rep_df$n_boot_failed
+      if (all(is.na(x))) 0 else max(x, na.rm = TRUE)
+    },
+    numeric(1)
+  )
+  attempted <- vapply(
+    by_rep,
+    function(rep_df) {
+      x <- rep_df$n_boot
+      if (all(is.na(x))) 0 else max(x, na.rm = TRUE)
+    },
+    numeric(1)
+  )
+  list(
+    failed = as.integer(sum(failed, na.rm = TRUE)),
+    attempted = as.integer(sum(attempted, na.rm = TRUE))
+  )
+}
+
+pilot_binomial_mcse <- function(p, n) {
+  if (is.na(p) || is.na(n) || n <= 0L) {
+    return(NA_real_)
+  }
+  sqrt(p * (1 - p) / n)
 }
 
 ## Build the per-cell issue flag string ("" when nothing tripped).
@@ -449,26 +632,44 @@ pilot_collect_empty <- function() {
   data.frame(
     cell_id = character(0),
     family = character(0),
+    evidence_family = character(0),
     harness_family = character(0),
+    link_intended = character(0),
+    link_harness = character(0),
     d = integer(0),
     n_units = integer(0),
     signal = numeric(0),
     lambda_scale = numeric(0),
     n_sim = integer(0),
+    n_attempted_fits = integer(0),
+    n_converged_fits = integer(0),
+    n_optimizer_converged = integer(0),
+    n_pd_hessian = integer(0),
+    n_sdreport_ok = integer(0),
+    n_boot_attempted = integer(0),
+    coverage_eligible_n = integer(0),
     coverage_primary = numeric(0),
+    coverage_mcse = numeric(0),
     passes_94 = logical(0),
     passes_95 = logical(0),
     primary_gate_status = character(0),
     zero_exclusion_rate = numeric(0),
+    zero_exclusion_n = integer(0),
+    zero_exclusion_mcse = numeric(0),
     power = numeric(0),
     n_failed_fits = integer(0),
     fit_failure_rate = numeric(0),
+    fit_failure_mcse = numeric(0),
     n_nonPD = integer(0),
     nonpd_rate = numeric(0),
+    nonpd_mcse = numeric(0),
     n_conv_fail = integer(0),
     conv_failure_rate = numeric(0),
+    conv_failure_mcse = numeric(0),
     n_boot_failed = integer(0),
     boot_fail_rate = numeric(0),
+    boot_fail_mcse = numeric(0),
+    sdreport_ok_rate = numeric(0),
     flag = character(0),
     stringsAsFactors = FALSE
   )
@@ -995,9 +1196,20 @@ pilot_plot_coverage <- function(df) {
   if (!nrow(d)) {
     return(pilot_empty_plot("No coverage_primary values yet"))
   }
-  ## Binomial MCSE on the coverage proportion (n = accumulated reps).
-  n <- pmax(d$n_sim, 1L)
-  d$mcse <- sqrt(d$coverage_primary * (1 - d$coverage_primary) / n)
+  ## Conservative binomial MCSE on the coverage proportion, using the
+  ## independent replicate denominator. `coverage_eligible_n` is reported
+  ## separately because the coverage mean itself is computed over eligible
+  ## primary interval rows.
+  if ("coverage_mcse" %in% names(d)) {
+    d$mcse <- d$coverage_mcse
+  } else {
+    n <- if ("coverage_eligible_n" %in% names(d)) {
+      pmax(d$coverage_eligible_n, 1L)
+    } else {
+      pmax(d$n_sim, 1L)
+    }
+    d$mcse <- sqrt(d$coverage_primary * (1 - d$coverage_primary) / n)
+  }
   d$lower <- pmax(0, d$coverage_primary - 1.96 * d$mcse)
   d$upper <- pmin(1, d$coverage_primary + 1.96 * d$mcse)
   ## A readable per-cell y label (n / d / signal); family is the facet.
@@ -1051,7 +1263,7 @@ pilot_plot_coverage <- function(df) {
       title = "Interval coverage vs nominal gates need Monte Carlo uncertainty",
       subtitle = paste(
         "Points: accumulated coverage_primary (Sigma_unit_diag, bootstrap CI);",
-        "bars: 95% binomial MCSE. Lines: 94%/95% gates."
+        "bars: 95% replicate-level binomial MCSE. Lines: 94%/95% gates."
       ),
       x = "Empirical coverage",
       y = NULL,
@@ -1183,9 +1395,10 @@ pilot_record_lines <- function(
     sprintf("- Replicates accumulated (sum n_sim): %d", n_reps),
     if (nrow(cov_signal)) {
       sprintf(
-        "- Coverage (signal>0, %d cells): mean=%s  >=94%%: %d/%d  >=95%%: %d/%d",
+        "- Coverage (signal>0, %d cells): mean=%s  mean MCSE=%s  >=94%%: %d/%d  >=95%%: %d/%d",
         nrow(cov_signal),
         fmt(mean(cov_signal$coverage_primary)),
+        fmt(mean(cov_signal$coverage_mcse, na.rm = TRUE)),
         sum(cov_signal$passes_94, na.rm = TRUE),
         nrow(cov_signal),
         sum(cov_signal$passes_95, na.rm = TRUE),
@@ -1202,27 +1415,43 @@ pilot_record_lines <- function(
     lines,
     "## Results (per cell)",
     "",
-    paste(
-      "| cell | family | d | n | signal | n_sim | coverage |",
-      ">=94% | >=95% | zero-excl | fit-fail | nonPD | conv-fail |"
+    paste0(
+      "| cell | evidence | d | n | signal | n_sim | ci_rows | coverage |",
+      " cov_mcse | >=94% | >=95% | zero-excl | fit-fail | nonPD |",
+      " sdreport | boot-fail |"
     ),
-    paste(
-      "|------|--------|--:|--:|-------:|------:|---------:|",
-      ":---:|:---:|------:|--------:|------:|----------:|"
+    paste0(
+      "|------|----------|--:|--:|-------:|------:|--------:|---------:|",
+      "---------:|:---:|:---:|----------:|--------:|------:|---------:|----------:|"
     )
   )
   for (i in seq_len(n_cells)) {
     lines <- c(
       lines,
       sprintf(
-        "| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |",
+        paste0(
+          "| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |",
+          " %s | %s | %s | %s | %s |"
+        ),
         df$cell_id[i],
-        df$family[i],
+        if ("evidence_family" %in% names(df)) {
+          df$evidence_family[i]
+        } else {
+          df$family[i]
+        },
         ifelse(is.na(df$d[i]), "-", as.character(df$d[i])),
         ifelse(is.na(df$n_units[i]), "-", as.character(df$n_units[i])),
         fmt(df$signal[i], 1),
         as.character(df$n_sim[i]),
+        if ("coverage_eligible_n" %in% names(df)) {
+          as.character(df$coverage_eligible_n[i])
+        } else {
+          "-"
+        },
         fmt(df$coverage_primary[i]),
+        fmt(
+          if ("coverage_mcse" %in% names(df)) df$coverage_mcse[i] else NA_real_
+        ),
         ylab(df$passes_94[i]),
         ylab(df$passes_95[i]),
         fmt(
@@ -1234,7 +1463,12 @@ pilot_record_lines <- function(
         ),
         pct(df$fit_failure_rate[i]),
         pct(df$nonpd_rate[i]),
-        pct(df$conv_failure_rate[i])
+        if ("sdreport_ok_rate" %in% names(df)) {
+          pct(df$sdreport_ok_rate[i])
+        } else {
+          "-"
+        },
+        pct(df$boot_fail_rate[i])
       )
     )
   }
@@ -1381,7 +1615,11 @@ if (sys.nframe() == 0L && !interactive()) {
       fixed = TRUE
     )[[1]]
     df <- tryCatch(
-      pilot_collect(results_dirs = rdirs),
+      if ("--chunk-aggregate" %in% args) {
+        pilot_collect_chunk_aggregates(results_dirs = rdirs)
+      } else {
+        pilot_collect(results_dirs = rdirs)
+      },
       error = function(e) {
         ## Fail-soft: never break the summary job on a report error.
         cat("none\n")
@@ -1407,7 +1645,12 @@ if (sys.nframe() == 0L && !interactive()) {
       "--audit-rds",
       sub("\\.md$", ".rds", md_path)
     )
-    audit <- pilot_scoring_audit(results_dirs = rdirs, cell_ids = cells)
+    audit_dirs <- if ("--chunk-aggregate" %in% args) {
+      pilot_chunk_aggregate_results_dirs(results_dirs = rdirs)
+    } else {
+      rdirs
+    }
+    audit <- pilot_scoring_audit(results_dirs = audit_dirs, cell_ids = cells)
     pilot_scoring_audit_record(audit, md_path = md_path, rds_path = rds_path)
     quit(save = "no", status = 0L)
   }

@@ -121,7 +121,7 @@ trait whose communality estimate is unambiguous.
 **Causes**:
 
 - **Weak identifiability**. The shared latent structure and the
-  unique-variance diagonal are jointly identified only by the
+  diagonal Psi variances are jointly identified only by the
   off-diagonals of the implied $\boldsymbol{\Sigma}$; for a trait
   whose off-diagonals are noisy, individual communality is poorly
   pinned. Wald CIs hide this (they read the Hessian at the MLE,

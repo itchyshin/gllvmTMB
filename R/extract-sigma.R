@@ -1050,8 +1050,8 @@ extract_Sigma <- function(
     if (identical(part, "unique") && !has_unique) {
       cli::cli_abort(c(
         "Kernel tier {.val {kernel_level$name}} has no {.field Psi} component.",
-        "i" = "One named {.fn kernel_latent} tier carries {.field Psi} by default; the first multi-kernel engine wave remains latent-only.",
-        ">" = "For one kernel tier, refit with default {.fn kernel_latent} or the compatibility pair {.code kernel_latent(..., unique = FALSE) + kernel_unique(...)} before requesting {.code part = \"unique\"}."
+        "i" = "One named {.fn kernel_latent} tier carries {.field Psi} only when {.code unique = TRUE}; the first multi-kernel engine wave remains latent-only.",
+        ">" = "For one kernel tier, refit with {.code kernel_latent(..., unique = TRUE)} or the compatibility pair {.code kernel_latent(..., unique = FALSE) + kernel_unique(...)} before requesting {.code part = \"unique\"}."
       ))
     }
     if (has_shared) {
@@ -1196,15 +1196,16 @@ extract_Sigma <- function(
     if (isTRUE(fit$use$spatial_latent_unique) &&
         !is.null(fit$report$sd_spde_unique)) {
       S <- as.numeric(fit$report$sd_spde_unique)^2
+      names(S) <- trait_names
       notes <- c(
         notes,
-        "spatial_latent(unique = TRUE) reports total spatial covariance as Lambda_spde Lambda_spde^T + Psi_spde."
+        "spatial_latent tier includes a per-trait unique SPDE Psi companion; part = \"total\" uses Lambda_spde Lambda_spde^T + diag(Psi_spde)."
       )
     } else {
       S <- NULL
       notes <- c(
         notes,
-        "spatial_latent tier has no unique component (low-rank Lambda_spde Lambda_spde^T only)."
+        "spatial_latent tier has no unique component; part = \"total\" equals the shared low-rank Lambda_spde Lambda_spde^T."
       )
     }
   } else if (identical(level, "cluster")) {

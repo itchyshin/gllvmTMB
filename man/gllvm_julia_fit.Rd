@@ -10,6 +10,8 @@ gllvm_julia_fit(
   num.lv = 2L,
   N = NULL,
   X = NULL,
+  X_lv = NULL,
+  coef_fixed = NULL,
   mask = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
@@ -26,26 +28,50 @@ gllvm_julia_fit(
 
 \item{num.lv}{Number of latent variables (K).}
 
-\item{N}{Binomial trials (matrix or scalar), or \code{NULL}; formula-level
-\code{cbind(successes, failures)} binomial responses are marshalled to Julia as
-success counts plus this trial-count payload.}
+\item{N}{Binomial trials (matrix or scalar), or \code{NULL}.}
 
 \item{X}{Fixed-effect design (p x n x q array), or \code{NULL}. Routed for
-complete-response Gaussian bridge rows in the current R surface.}
+Gaussian and selected one-part non-Gaussian bridge families.}
+
+\item{X_lv}{Unit-level predictor-informed latent-score design
+(n x q_lv matrix), or \code{NULL}. Routed only for complete Gaussian, Poisson,
+NB2, Gamma, Beta, and binomial logit/probit/cloglog bridge rows with no
+fixed-effect \code{X}, no response mask, and \code{ci_method} in
+\code{c("none", "wald")}. The returned object
+carries point-estimate \code{alpha_lv}, \code{lv_effects}, \code{scores_mean}, and
+\code{scores_innovation} payloads; for \code{ci_method = "wald"} it additionally
+carries \code{lv_effects_se}, \code{lv_effects_lower}, and \code{lv_effects_upper}, which
+\code{\link[=extract_lv_effects]{extract_lv_effects()}} surfaces as finite \code{std.error}, \code{lower}, and
+\code{upper} when called with \code{type = "trait_effect"}. If future bridge payloads include
+\code{alpha_lv_se}, \code{alpha_lv_lower}, and \code{alpha_lv_upper},
+\code{\link[=extract_lv_effects]{extract_lv_effects()}} surfaces those on the default axis-effect table.
+These are bridge-reader Wald payloads, not calibrated coverage claims.
+Profile/bootstrap \code{X_lv} confidence intervals, NB1, ordinal, mixed-family,
+masked, and fixed-effect-X-plus-\code{X_lv} rows remain gated.}
+
+\item{coef_fixed}{Optional logical vector of length \code{dim(X)[3]}. \code{TRUE}
+entries are fixed at zero by the Julia bridge. Most R users should prefer
+the named \code{Xcoef_fixed} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}, which is translated to
+this positional mask after the expanded fixed-effect design is known.}
 
 \item{mask}{Optional logical response-observation mask with the same orientation
 as \code{y}; \code{TRUE} cells contribute to the likelihood and \code{FALSE} cells are
-ignored. Currently routed for selected one-part no-X point fits; CI,
-mixed-family, and fixed-effect-X mask parity remain gated.}
+ignored. Currently routed for one-part no-X non-Gaussian point fits, with
+masked no-X CI payloads for Poisson, Bernoulli binomial, NB2, NB1, Beta,
+and Gamma.}
 
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 
 \item{ci_method}{Confidence-interval route for admitted no-X bridge rows:
-Gaussian, Poisson, binomial, and grouped-dispersion NB2, NB1, Beta, and
-Gamma. One of \code{"none"} (default), \code{"wald"}, \code{"profile"}, or \code{"bootstrap"}.
-Complete-response fixed-effect-X CIs are routed only for Gaussian rows.
-Per-trait ordinal rows, mixed-family vectors, non-Gaussian X rows, and
-response-mask CI rows remain loud gates.}
+Gaussian, Poisson, Bernoulli binomial, and grouped-dispersion NB2, NB1,
+Beta, and Gamma. One of \code{"none"} (default), \code{"wald"}, \code{"profile"}, or
+\code{"bootstrap"}. Response-mask CIs are routed for the same non-ordinal
+non-Gaussian rows when \code{X = NULL}; complete-response fixed-effect-X CIs
+are routed for Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and
+Gamma. Predictor-informed \code{X_lv} rows admit \code{"wald"} confidence
+intervals. Per-trait ordinal rows, NB1-X rows, mixed-family vectors,
+profile/bootstrap \code{X_lv} rows, and response masks combined with
+fixed-effect X remain loud gates.}
 
 \item{ci_level}{Nominal confidence level when \code{ci_method != "none"}.}
 
@@ -64,4 +90,32 @@ list also carries flat CI fields consumed by \code{confint()}.
 }
 \description{
 Fit a GLLVM with the Julia engine (GLLVM.jl \code{bridge_fit}).
+}
+\examples{
+\dontrun{
+# Requires a local GLLVM.jl install (see [gllvm_julia_setup()]).
+# `y` is traits x units (p x n): two Gaussian traits, 40 units, K = 2.
+set.seed(1)
+y <- matrix(rnorm(2 * 40), nrow = 2)
+fit <- gllvm_julia_fit(y, family = "gaussian", num.lv = 2)
+fit$loglik
+fit$Sigma
+
+# Predictor-informed latent-score means are point-only on the bridge.
+rownames(y) <- paste0("trait", seq_len(nrow(y)))
+colnames(y) <- paste0("site", seq_len(ncol(y)))
+x <- seq(-1, 1, length.out = ncol(y))
+fit_lv <- gllvm_julia_fit(
+  y,
+  family = "gaussian",
+  num.lv = 1,
+  X_lv = matrix(x, ncol = 1, dimnames = list(colnames(y), "x"))
+)
+extract_lv_effects(fit_lv)
+
+# Wald confidence intervals for an admitted no-X row:
+fit_ci <- gllvm_julia_fit(
+  y, family = "gaussian", num.lv = 2, ci_method = "wald"
+)
+}
 }

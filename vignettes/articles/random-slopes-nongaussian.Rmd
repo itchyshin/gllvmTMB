@@ -1,6 +1,6 @@
 ---
 title: "Structured random slopes for non-Gaussian traits"
-tier: 3 # internal technical draft until structured-dependence reader review passes
+tier: 3 # under-audit structured-slope draft; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -33,6 +33,13 @@ knitr::opts_chunk$set(
   warning  = FALSE
 )
 ```
+
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the structured-slope
+> surface. It is not a first-stop tutorial. Start with
+> [Get started](gllvmTMB.html), [Formula keyword grid](api-keyword-grid.html),
+> and [Convergence and start values](convergence-start-values.html)
+> before using this page.
 
 A reaction norm is a slope: how a trait responds to an environmental
 gradient. The ordinary individual-level behavioural reaction-norm article is

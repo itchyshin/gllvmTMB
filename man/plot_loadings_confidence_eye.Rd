@@ -29,8 +29,10 @@ reliability via \code{\link[=flag_unreliable_loadings]{flag_unreliable_loadings(
 (no band drawn).}
 
 \item{sort_by}{Character, one of \code{"trait_order"} (the order of the
-\code{trait} factor, the default) or \code{"magnitude"} (absolute
-point-estimate magnitude, largest first within each axis facet).}
+\code{trait} factor, the default) or \code{"magnitude"}. Note \code{"magnitude"}
+applies a single \strong{global} trait ordering keyed by each trait's
+largest absolute loading across axes; the shared discrete x-axis
+cannot reorder traits within individual facets.}
 
 \item{ylim}{Optional length-2 numeric vector clipping the y-axis
 via \code{coord_cartesian()}. Useful when one degenerate loading

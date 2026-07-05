@@ -1,6 +1,6 @@
 ---
 title: "Simulation-based verification of gllvmTMB fits"
-tier: 3 # internal diagnostic draft until M3 target-explicit gates close
+tier: 3 # developer validation note, not a first-stop tutorial
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -24,7 +24,12 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Internal article gate.** This diagnostic draft is kept buildable for
+> **Developer validation note.** This page records the simulate-fit-check
+> workflow used to verify model claims. It is not a first-stop
+> tutorial. Start with [Get started](gllvmTMB.html),
+> [Can I trust this fit?](fit-diagnostics.html), and
+> [Troubleshooting profile-likelihood CIs](troubleshooting-profile.html)
+> before using this page. This diagnostic draft is kept buildable for
 > maintainers while M3 target-explicit simulation gates remain open. It is not
 > a public validation article and does not by itself make a fit release-ready
 > or scientifically covered.
@@ -84,7 +89,7 @@ library(gllvmTMB)
 The package's `simulate_site_trait()` is the canonical DGP for the
 worked examples. The truth here is hand-set: three traits with a
 shared rank-1 axis (Lambda_B = (0.8, 0.4, -0.3)) plus a
-trait-specific unique-variance diagonal (psi_B = (0.3, 0.3, 0.3)).
+trait-specific diagonal Psi variance (psi_B = (0.3, 0.3, 0.3)).
 
 ```{r sim}
 set.seed(1)

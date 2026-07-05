@@ -72,7 +72,7 @@ loading_profile <- function(fit,
                             level       = c("unit", "unit_obs"),
                             entries     = NULL,
                             n_grid      = 11L,
-                            grid_extent = 10,
+                            grid_extent = 6,
                             conf_level  = 0.95) {
 
   if (!inherits(fit, "gllvmTMB_multi"))
@@ -135,6 +135,15 @@ loading_profile <- function(fit,
   full_formula <- .reconstruct_multi_formula(fit)
   arg_canon <- if (internal_level == "B") "unit" else "unit_obs"
 
+  ## Forward the same auxiliary structure the bootstrap paths forward, so each
+  ## profile refit is the SAME model as the original fit (phylo correlation,
+  ## SPDE mesh, species grouping) rather than a mis-specified one (#594).
+  aux <- list(
+    phylo_vcv  = fit$phylo_vcv,
+    phylo_tree = fit$phylo_tree,
+    mesh       = fit$mesh
+  )
+  aux <- aux[!vapply(aux, is.null, logical(1))]
   ## One worker: refit with one entry pinned at value c, return -logLik.
   obj_at <- function(i, k, c) {
     M_test <- matrix(NA_real_, n_traits, K)
@@ -145,13 +154,22 @@ loading_profile <- function(fit,
       M_test[i, k] <- c
     }
     lc_test <- stats::setNames(list(M_test), arg_canon)
+    ## Preserve pins at the OTHER tier so its loadings are not re-estimated up
+    ## to an unidentified rotation (#613). fit$lambda_constraint is keyed by the
+    ## internal B/W name; translate to the public unit/unit_obs key.
+    other_internal <- if (internal_level == "B") "W" else "B"
+    if (!is.null(fit$lambda_constraint[[other_internal]])) {
+      other_canon <- if (other_internal == "B") "unit" else "unit_obs"
+      lc_test[[other_canon]] <- fit$lambda_constraint[[other_internal]]
+    }
     fit_test <- try(
-      gllvmTMB(
+      do.call(gllvmTMB, c(list(
         formula = full_formula, data = fit$data,
         family  = fit$family_input,
         trait   = fit$trait_col, unit = fit$unit_col,
+        species = fit$species_col,
         lambda_constraint = lc_test, silent = TRUE
-      ),
+      ), aux)),
       silent = TRUE
     )
     if (inherits(fit_test, "try-error") ||
@@ -358,6 +376,5 @@ plot.profile_loadings <- function(x, interval = TRUE, ...) {
 }
 
 
-## Small `%||%` if not already in NAMESPACE — guard against base R
-## versions earlier than 4.4 that lack it.
-`%||%` <- function(a, b) if (is.null(a)) b else a
+## `%||%` is defined once at package scope in R/fit-multi.R (#699 removed the
+## duplicate definition that used to live here).

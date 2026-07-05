@@ -92,29 +92,172 @@
   unregistered rows. This is bridge truth-contract cleanup, not v1.0 completion
   or coverage calibration.
 
-## `kernel_latent()` folds its diagonal Psi by default (2026-06-21)
+## Remaining clean-file robustness and correctness fixes (2026-07-04)
 
-* `kernel_latent(unit, K = A, d = q, name = "known")` now carries its dense-kernel diagonal trait-specific `Psi_kernel` companion by default (`unique = TRUE`) for one named kernel tier, mirroring ordinary `latent()`, `phylo_latent()`, and `animal_latent()`: `Sigma_kernel = Lambda Lambda^T (x) A + Psi_kernel (x) A`. The paired `kernel_latent(..., unique = FALSE) + kernel_unique()` spelling remains accepted -- the auto-companion is deduped against an explicit `kernel_unique()`, byte-identical to the explicit pair. Use `kernel_latent(..., unique = FALSE)` for the loadings-only subset. IN (`KER-02`): parser emission, malformed-`unique` rejection, Gaussian fold equivalence, explicit-companion dedup, and loadings-only dense-phylo equivalence are covered by `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R`. PARTIAL (`KER-03` / `COE-03`): two-or-more named `kernel_latent()` tiers remain the existing latent-only multi-kernel engine; auto-generated kernel Psi companions are pruned for that path and explicit multi-kernel `kernel_unique()` Psi remains deferred. `spatial_latent()` is still blocked on the SPDE diagonal engine slot.
+* A batch of twin code-review fixes in independent modules: the
+  anisotropy plot no longer duplicates every ellipse via vestigial
+  `maj1`/`min1` columns (#602); `loading_profile()` refits keep the
+  fit's phylo/spatial structure and the other tier's `lambda_constraint`,
+  and default to `grid_extent = 6` to match `loading_ci()` (#594, #613,
+  #666, #699); `simulate_site_trait()` errors when `sigma2_phy` is given
+  without `Cphy` (#655); `gllvmTMB_wide()` validates the latent rank `d`
+  (#637); `suggest_lambda_constraint()` (#619), the two-Psi cross-check
+  (#609, #633), boundary-diagnostic (#584) and Laplace-consistency (#583)
+  extractors, the mixed-family coverage-study refit (#585), the
+  formula-environment / positional-argument parser paths (#688, #649),
+  the delta-family and Beta warm-starts (#591, #592), and the correlation
+  covariance-table fill clamp (#650) all gained guards or corrections.
 
-## `animal_latent()` folds its diagonal Psi by default (2026-06-21)
+## Diagnostic and mesh helper bug fixes (2026-07-04)
 
-* `animal_latent(id, d = K, pedigree = ped)` now carries its additive-genetic diagonal trait-specific `Psi_animal` companion by default (`unique = TRUE`), mirroring ordinary `latent()` and `phylo_latent()`: `G = Lambda Lambda^T + Psi_animal`, with both parts scaled by the same relatedness matrix `A`. The paired `animal_latent(..., unique = FALSE) + animal_unique()` spelling remains accepted -- the auto-companion is deduped against an explicit `animal_unique()`, byte-identical to the explicit pair. Use `animal_latent(..., unique = FALSE)` for the loadings-only subset. IN (`ANI-05`): parser emission, Gaussian fold equivalence, explicit-companion dedup, and Gaussian/non-Gaussian loadings-only animal-vs-phylo equivalence are covered by `test-animal-latent-unique-fold.R`, `test-animal-keyword.R`, and `test-matrix-animal-nongaussian.R`. PARTIAL: augmented `animal_latent(1 + x | id)` slopes remain on their existing loadings-only slope engine for this Stage-A slice; `spatial_latent()` is blocked on the SPDE diagonal engine and `kernel_latent()` is handled by the follow-up kernel fold.
+* `check_auto_residual()` now labels internal family id `15` as
+  `nbinom1` instead of returning `NA` in diagnostic messages (#630).
+  IN: diagnostic family-name reporting only. No family dispatch,
+  likelihood, or response-family support change is included.
+* `make_mesh(type = "cutoff", convex = ... / concave = ...)` now passes
+  the observed coordinate matrix to `fmesher` instead of the k-means
+  centre object that is not created on the cutoff path (#595). IN:
+  cutoff mesh construction with nonconvex-hull boundaries. No SPDE
+  likelihood or spatial formula grammar change is included.
+## Meta-analysis and pedigree helper bug fixes (2026-07-04)
+
+* `block_V()` now rejects within-study correlations that would make a
+  compound-symmetric study block non-positive-definite. For a block of
+  size `m`, `rho_within` must satisfy `rho > -1/(m - 1)`; previously
+  some moderately negative values passed the broad `(-1, 1)` check and
+  produced an invalid known-covariance matrix for `meta_V()` (#656,
+  #657). IN: validation of the existing `block_V()` helper contract.
+  No formula grammar, likelihood, or `meta_V()` API change is included.
+* `pedigree_to_A()` now handles selfing by using `F_i = A[parent,parent] / 2`
+  when sire and dam are the same known individual, and warns when a
+  parent is referenced but absent from the `id` column instead of
+  silently treating that parent as an unrelated founder (#607, #623).
+  IN: dense pedigree relationship-matrix construction. No sparse
+  `pedigree_to_Ainv_sparse()` or animal-keyword engine change is included.
+## Diagnostic and bootstrap fixes (2026-07-03)
+
+* Fixed diagnostic and bootstrap reliability issues from the twin code
+  review. Randomized-quantile-residual and rootogram diagnostics now
+  label `nbinom1` (family id 15) correctly instead of `family_id_15`
+  (#603). Seeded residual/predictive-check helpers save and restore the
+  global RNG state, so a seeded diagnostic no longer overwrites the
+  caller's random stream (#652). Loading bootstrap CIs now expose the
+  count of dropped replicates via `attr(x, "n_failed")` and warn when
+  any refit failed, so intervals built from a small surviving fraction
+  are not mistaken for fully reliable ones (#644).
+## Dead-code and validator cleanup (2026-07-03)
+
+* Fixed a silently dead internal invariant check: `profile_targets()`
+  now actually enforces that derived targets are never `profile_ready`
+  (the guard used `isTRUE()` on a vector, which is always `FALSE`) and
+  its `ready_only = TRUE` filter drops `NA` rows cleanly (#618, #675).
+* Removed dead code with no callers: the unused `R/parsing.R`
+  helpers (#701), the never-wired `gll_ordered_probability_matrix()`
+  cumulative-logit helper (#700), an empty `nbinom2()` variance stub
+  (#671), and a no-op inner `withCallingHandlers()` error handler in
+  the Sigma bootstrap refit (#669).
+## Plotting robustness fixes (2026-07-03)
+
+* Hardened plotting helpers against degenerate inputs, from the twin
+  code review. `plot_rotated_loadings()` no longer errors when a trait's
+  loadings are all `NA` (#651, #692), and its default value-label
+  threshold now counts cells per facet rather than across all facets so
+  labels are not spuriously hidden on multi-level plots (#667).
+  `plot_loadings_confidence_eye()` validates `null_region` as a length-2
+  finite numeric vector (#691). Ordination arrow scaling and the
+  repeatability ordering in the integration plot no longer emit
+  `-Inf`/`NaN` or silently drop traits when scores or repeatabilities
+  are `NA` (#689, #690).
+
+## `extract_lv_effects()` defaults to axis effects (2026-06-30)
+
+* `extract_lv_effects()` now defaults to `type = "axis_effect"` so the first table is the axis / CLV coefficient `alpha`, matching the usual GLLVM constrained-ordination interpretation. Native TMB fits with `se = TRUE` and a positive-definite `sdreport()` now return `std.error`, `lower`, and `upper` for those alpha rows from the fixed-parameter `alpha_lv_B` block. `type = "trait_effect"` remains available for the induced trait-scale slope surface `B_lv = Lambda alpha^T` and now also includes Wald `lower` / `upper` columns when `ADREPORT(B_lv_unit)` SEs are available. These intervals are Wald summaries conditional on the fitted axis/loading convention; coverage calibration and source-specific LV rows remain gated.
+
+## `latent(lv = ...)` adds C1 predictor-informed latent-score means (2026-06-24)
+
+* `latent(..., lv = ~ x)` now has a C1 ordinary unit-tier implementation
+  for the Design 73 predictor-informed latent-score lane. The parser validates
+  a one-sided `lv` formula, builds unit-level `X_lv_B`, estimates
+  `alpha_lv_B`, preserves the zero-mean latent innovation, reports the
+  latent-predictor trait effect (`B_lv_unit = Lambda alpha^T` in the internal
+  math notation), and exposes point-estimate tables via `extract_lv_effects()`
+  plus `extract_ordination(component = c("total", "innovation", "mean"))`.
+  IN for this slice: ordinary Gaussian unit-tier smoke/algebra support on long
+  and `traits(...)` wide surfaces, with the ordinary `Psi` companion preserved;
+  focused native TMB Gaussian rank-1/rank-2 recovery evidence for
+  rotation-stable `B_lv` and `Sigma = Lambda Lambda^T + Psi`; pure
+  `binomial()` long-form support for logit, probit, and cloglog links with
+  small multi-trial latent-predictor trait-effect recovery/algebra gates;
+  `extract_lv_effects()` `std.error` values for trait-scale `B_lv` effects
+  when `se = TRUE` produces a positive-definite `sdreport()` for
+  `ADREPORT(B_lv_unit)`; a narrow Gaussian, Poisson, NB2, Gamma, Beta, and
+  binomial logit/probit/cloglog `engine = "julia"` point route for complete-response
+  `latent(..., unique = FALSE, lv = ~ x)` bridge fits with no fixed-effect `X`,
+  no response mask, no CIs, retained `X_lv`, `lv_effects`, `alpha_lv`,
+  `scores_mean`, and `scores_innovation` payloads; intercept-dropping
+  (`lv = ~ x` equals `lv = ~ 0 + x`); factor/rank preflight plus ordinary
+  Gaussian factor-predictor runtime/recovery and empty-level rejection;
+  ordinary Gaussian response-mask compatibility when `lv` predictors are
+  observed and complete; fixed-effect RHS guards that reject both overlapping
+  and non-overlapping `X + X_lv` formulas; and typed rejections for random
+  terms, offsets, `mi()`, smooth terms, response/trait columns, `REML = TRUE`,
+  unsupported native-TMB non-Gaussian families, unsupported Julia bridge
+  `X_lv` combinations, unsupported tiers, augmented random-regression
+  combinations, ordinary diagonal aliases, source-specific forms, and kernel
+  forms (`FG-18`, `RE-13`, `EXT-31`, `LV-01`, `LV-02`, `LV-03`, `LV-04`,
+  `LV-05`, `JUL-01`, `JUL-01A`; `test-lv-parser-guard.R`,
+  `test-lv-gaussian-recovery.R`, `test-lv-bernoulli-depth.R`,
+  `test-lv-native-nongaussian-guard.R`,
+  `test-lv-family-boundary-guard.R`,
+  `test-lv-reml-boundary-guard.R`, `test-lv-factor-runtime.R`,
+  `test-lv-missing-response.R`, `test-julia-bridge.R`). PARTIAL / GATED:
+  this is not broad
+  `latent(lv = ...)` completion; binomial, non-Gaussian, mixed-family,
+  factor-predictor, bridge, source/tier, and mask interval calibration remain
+  separate gates; Julia bridge `X_lv` rows are point-estimate only with
+  `std.error = NA` and `julia_bridge_point_estimate_only_no_ci_validation`;
+  missing `lv` predictors, `mi()` terms inside `lv`, non-Gaussian response
+  masks, mixed-family response masks, native count-family support,
+  ordinal/NB1/mixed-family/delta-hurdle bridge rows, combined fixed-effect
+  `X + X_lv` fits, tier-expanded support, structured-source support, and
+  broad Julia bridge parity remain gated under `LV-03`, `LV-05`, `LV-06`, and
+  `LV-07`.
+
+## `Xcoef_fixed` pins fixed-effect coefficients at zero (2026-06-22)
+
+* `gllvmTMB(..., Xcoef_fixed = c("traitB:x" = 0))` now pins selected expanded fixed-effect coefficients exactly at structural zero in ML fits. Use it when a predictor is meaningful for some responses but should be fixed at zero for others. Names match the post-`model.matrix()` fixed-effect columns (`fit$X_fix_names`); native TMB fits remove fixed entries from the free parameter vector through `map`, and admitted `engine = "julia"` fixed-effect-X rows pass the same zero mask to GLLVM.jl. Native `tidy(fit, "fixed")` reports pinned rows with `estimate = 0`, `std.error = NA`, and `status = "fixed"`. IN (`MIS-34`): exact zero pinning, df reduction, all-zero covariate-block equivalence to omitting the block, validation errors, and R-to-Julia mask routing are covered by `test-xcoef-fixed.R` and `test-julia-bridge.R`. PARTIAL / GATED: only zero constraints are implemented; REML, non-zero fixed values, Julia per-trait intercept pinning, and unsupported Julia fixed-effect-X families remain follow-up work.
+
+## `screen_gllvmTMB()` screens candidate responses before fitting (2026-06-22)
+
+* `screen_gllvmTMB()` adds a formula-aware pre-fit response screen for binary/binomial candidate traits before fitting a stacked-trait GLLVM. It reuses the wide `traits(...)` and long `trait =` preparation paths, reports denominator-aware prevalence and minority counts, flags constants, sparse minority outcomes, exact duplicate/complement pairs, fixed-effect rank deficiency, and `d >= n_traits`, and returns extractable `summary`, `traits`, `pairs`, `units`, `design`, `recommendations`, and `settings` tables via `screen_table()`. IN (`DIA-14`): Bernoulli, `cbind(success, failure)`, and `weights = n_trials` binomial screens are covered by `test-screen-gllvmTMB.R`. PARTIAL: this is advisory pre-fit screening only; it does not select variables, delete traits, solve separation, prove identifiability, choose rank, guarantee convergence, or cover non-binary modules yet. This is the pre-fit companion to the Ayumi-495/urbanisation_map#3 post-fit large-loading diagnostic work.
+
+## Source-specific `*_latent(unique = TRUE)` folds diagonal Psi explicitly (2026-07-03)
+
+* `phylo_latent()`, `animal_latent()`, `spatial_latent()`, and `kernel_latent()` now share one explicit source-tier contract: `*_latent(..., unique = TRUE)` means `Sigma_source = Lambda_source Lambda_source^T + Psi_source`, while the default `unique = FALSE` preserves the loadings-only path. This differs from ordinary `latent()`, which still carries Psi by default. The compatibility spelling `*_latent(..., unique = FALSE) + *_unique()` remains accepted; `*_latent(unique = TRUE) + *_unique()` now errors as duplicate Psi rather than silently deduping. IN (`FG-13`, `ANI-05`, `KER-02`): parser markers, malformed-`unique` rejection, spatial random-vector/report presence, Gaussian equivalence to the explicit pair, and rank-1 total-correlation non-degeneracy are covered by `test-spatial-latent-unique-fold.R`, `test-phylo-latent-unique-fold.R`, `test-animal-latent-unique-fold.R`, and `test-kernel-latent-unique-fold.R`. PARTIAL: broad non-Gaussian recovery, profile/bootstrap interval calibration, Julia parity, and multi-kernel explicit Psi remain later evidence gates.
+
+## `kernel_latent(unique = TRUE)` folds its diagonal Psi explicitly (2026-06-21; revised 2026-07-03)
+
+* `kernel_latent(unit, K = A, d = q, name = "known", unique = TRUE)` carries its dense-kernel diagonal trait-specific `Psi_kernel` companion for one named kernel tier: `Sigma_kernel = Lambda Lambda^T (x) A + Psi_kernel (x) A`. The default `kernel_latent(..., unique = FALSE)` is loadings-only, and the paired `kernel_latent(..., unique = FALSE) + kernel_unique()` spelling remains accepted as compatibility syntax. IN (`KER-02`): parser emission, malformed-`unique` rejection, Gaussian fold equivalence, duplicate-Psi rejection, and loadings-only dense-phylo equivalence are covered by `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R`. PARTIAL (`KER-03` / `COE-03`): two-or-more named `kernel_latent()` tiers remain the existing latent-only multi-kernel engine; explicit multi-kernel `kernel_unique()` Psi remains deferred.
+
+## `animal_latent(unique = TRUE)` folds its diagonal Psi explicitly (2026-06-21; revised 2026-07-03)
+
+* `animal_latent(id, d = K, pedigree = ped, unique = TRUE)` carries its additive-genetic diagonal trait-specific `Psi_animal` companion: `G = Lambda Lambda^T + Psi_animal`, with both parts scaled by the same relatedness matrix `A`. The default `animal_latent(..., unique = FALSE)` is loadings-only, and the paired `animal_latent(..., unique = FALSE) + animal_unique()` spelling remains accepted as compatibility syntax. IN (`ANI-05`): parser emission, Gaussian fold equivalence, duplicate-Psi rejection, and Gaussian/non-Gaussian loadings-only animal-vs-phylo equivalence are covered by `test-animal-latent-unique-fold.R`, `test-animal-keyword.R`, and `test-matrix-animal-nongaussian.R`. PARTIAL: augmented `animal_latent(1 + x | id)` slopes remain on their existing loadings-only slope engine for this Stage-A slice.
 
 ## `check_gllvmTMB()` near-constant binomial diagnostic (2026-06-21)
 
 * `check_gllvmTMB()` now adds a `binomial_prevalence_loading` row when binomial traits are present, surfacing the worst per-trait prevalence, fitted-probability saturation, maximum loading, and loading size relative to the typical fitted loading scale. IN (`DIA-08`): this is a diagnostic screen for near-constant binary traits that can drive runaway loadings and weak latent-axis warnings. PARTIAL (`DIA-10`): it points users to remove or re-code near-constant indicators, but it does not calibrate interval coverage, prove separation formally, or change the fitted likelihood. This closes the package-side mirror of Ayumi-495/urbanisation_map#3 (#523).
 
-## `phylo_latent()` folds its diagonal Psi by default (2026-06-21)
+## `phylo_latent(unique = TRUE)` folds its diagonal Psi explicitly (2026-06-21; revised 2026-07-03)
 
-* `phylo_latent(species, d = K)` now carries its phylo-structured diagonal
-  trait-specific `Psi_phy` companion by default (`unique = TRUE`), mirroring
-  ordinary `latent()`: `Sigma_phy = Lambda Lambda^T (x) A + Psi_phy (x) A`. The
-  paired `phylo_latent(..., unique = FALSE) + phylo_unique()` spelling remains
-  accepted -- the auto-companion is deduped against an explicit `phylo_unique()`,
-  byte-identical to the explicit pair. Use `phylo_latent(..., unique = FALSE)`
-  for the loadings-only subset. Augmented `phylo_latent(1 + x | sp)` slopes and
-  the `phylo_indep` / `phylo_dep` mutual-exclusion paths are unchanged. The
-  remaining `spatial_latent` fold is blocked on the SPDE diagonal engine slot.
+* `phylo_latent(species, d = K, unique = TRUE)` carries its phylo-structured diagonal
+  trait-specific `Psi_phy` companion:
+  `Sigma_phy = Lambda Lambda^T (x) A + Psi_phy (x) A`. The default
+  `phylo_latent(..., unique = FALSE)` is loadings-only, and the paired
+  `phylo_latent(..., unique = FALSE) + phylo_unique()` spelling remains
+  accepted as compatibility syntax. Duplicate
+  `phylo_latent(unique = TRUE) + phylo_unique()` now errors. Augmented
+  `phylo_latent(1 + x | sp)` slopes and the `phylo_indep` / `phylo_dep`
+  mutual-exclusion paths are unchanged.
 
 ## `latent(unique = ...)` argument rename (2026-06-21)
 

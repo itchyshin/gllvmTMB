@@ -1,6 +1,6 @@
 ---
 title: "Cross-lineage coevolution kernels"
-tier: 3 # internal methods draft until COE-04 and interval/rho gates close
+tier: 3 # under-audit kernel/co-evolution methods draft; visible as a Developer Note until COE-04 and interval/rho gates close
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -35,6 +35,14 @@ knitr::opts_chunk$set(
 )
 ```
 
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the kernel/co-evolution
+> path. It is not a first-stop tutorial. Start with
+> [Get started](gllvmTMB.html), [Covariance and correlation](covariance-correlation.html),
+> and [Formula keyword grid](api-keyword-grid.html). Treat the
+> coevolution workflow here as point-estimate methods evidence, not a
+> calibrated uncertainty tutorial.
+
 This article is a worked methods example for a comparative biologist with
 **two interacting lineages** -- hosts and parasites, plants and pollinators,
 or any mutualist/antagonist pair. The estimand is the **coevolution matrix**
@@ -64,15 +72,17 @@ kernel tier with folded `kernel_latent()` and extracts the cross-lineage
 shared block with `extract_Gamma()`. **PARTIAL** (`COE-03`, `COE-04`), tests
 now cover latent-only two-kernel fixtures and kernel-separability
 diagnostics, including a raw-versus-residualized reciprocal-dependence screen
-for present-day/tip matching. The article therefore describes the
+for present-day/tip matching. `rho` is supplied when `K*` is built (not
+estimated in the engine), and `extract_Gamma()` returns point estimates
+without calibrated intervals. The article therefore describes the
 two-component Paper 2 estimand, but still teaches only a fixed-kernel,
 point-estimate workflow. The current Paper 2 first-wave syntax is latent-only
 (the folded default estimates both `Lambda Lambda^T` and the diagonal `Psi`
 at the named kernel tier); `kernel_unique()` remains soft-deprecated
 compatibility syntax for older explicit-Psi fixtures and equivalence tests.
-**PLANNED**, in-engine `rho` estimation, calibrated intervals, module
-uncertainty, rank calibration, formal null thresholds, and broader recovery
-grids remain later Design 65 work.
+**PLANNED**, multiple simultaneous kernel tiers, in-engine `rho` estimation,
+calibrated intervals, module uncertainty, rank calibration, formal null
+thresholds, and broader recovery grids remain later Design 65 work.
 
 The target Paper 2 identity separates two cross-lineage covariance sources:
 
@@ -306,15 +316,16 @@ something.
 The full coevolution analysis is three steps:
 
 1. **Build** `K* <- make_cross_kernel(A_H, A_P, W, rho)`.
-2. **Fit** `kernel_latent(species, K = K_star, d = 2, name = "cross")`
-   on the block-`NA` stacked `Y*`; the ordinary folded default estimates
-   both `Lambda Lambda^T` and the diagonal `Psi` at this named kernel tier.
+2. **Fit** `kernel_latent(species, K = K_star, d = 2, name = "cross",
+   unique = TRUE)` on the block-`NA` stacked `Y*`; the explicit
+   `unique = TRUE` fold estimates both `Lambda Lambda^T` and the
+   diagonal `Psi` at this named kernel tier.
 3. **Extract** `extract_Gamma(fit, level = "cross", row_traits, col_traits)`.
 4. **Summarise modules** with `extract_coevolution_modules()` when a
    standardized host-axis / partner-axis decomposition is useful.
 
-`kernel_latent()` estimates the shared reduced-rank `Lambda Lambda^T`
-covariance attached to `K*` plus the trait-specific diagonal `Psi` at the
+`kernel_latent(..., unique = TRUE)` estimates the shared reduced-rank
+`Lambda Lambda^T` covariance attached to `K*` plus the trait-specific diagonal `Psi` at the
 same named tier. The name `"cross"` is the level that `extract_Sigma()` and
 `extract_Gamma()` read back.
 
@@ -326,7 +337,8 @@ ctrl <- gllvmTMBcontrol(se = TRUE)
 
 fit_cross <- gllvmTMB(
   traits(h_size, h_defence, p_size, p_attack) ~ 1 +
-    kernel_latent(species, K = K_star, d = 2, name = "cross"),
+    kernel_latent(species, K = K_star, d = 2, name = "cross",
+                  unique = TRUE),
   data = coev$data_wide,
   unit = "row_id",
   cluster = "species",
@@ -347,7 +359,8 @@ noise (the C2 fixture test asserts the wide/long `logLik` difference is below
 ```{r fit-long, eval = FALSE}
 fit_cross_long <- gllvmTMB(
   value ~ 0 + trait +
-    kernel_latent(species, K = K_star, d = 2, name = "cross"),
+    kernel_latent(species, K = K_star, d = 2, name = "cross",
+                  unique = TRUE),
   data = coev$data_long,
   trait = "trait",
   unit = "row_id",
@@ -373,7 +386,8 @@ model-comparison diagnostic, not as a calibrated likelihood-ratio test.
 ```{r fit-null, eval = FALSE}
 fit_null <- gllvmTMB(
   traits(h_size, h_defence, p_size, p_attack) ~ 1 +
-    kernel_latent(species, K = K_null, d = 2, name = "cross"),
+    kernel_latent(species, K = K_null, d = 2, name = "cross",
+                  unique = TRUE),
   data = coev$data_wide,
   unit = "row_id",
   cluster = "species",
@@ -569,7 +583,8 @@ rho_results_manual <- lapply(rho_grid, function(rho) {
   K_rho <- make_cross_kernel(coev$A_H, coev$A_P, coev$W, rho = rho)
   fit_rho <- gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~ 1 +
-      kernel_latent(species, K = K_rho, d = 2, name = "cross"),
+      kernel_latent(species, K = K_rho, d = 2, name = "cross",
+                    unique = TRUE),
     data = coev$data_wide,
     unit = "row_id",
     cluster = "species",

@@ -4,7 +4,16 @@
 \alias{phylo}
 \title{Phylogenetic random effect: lme4-bar mode-dispatch wrapper}
 \usage{
-phylo(formula, tree = NULL, vcv = NULL, mode = NULL, d = 1)
+phylo(
+  formula,
+  tree = NULL,
+  vcv = NULL,
+  mode = NULL,
+  d = 1,
+  unique = FALSE,
+  A = NULL,
+  Ainv = NULL
+)
 }
 \arguments{
 \item{formula}{An lme4-bar formula (\verb{<lhs> | <species_column>}) OR,
@@ -23,6 +32,15 @@ covariance structure (combined with \code{mode}, see Dispatch rules).}
 \code{"scalar"}). Mandatory when LHS is \code{0 + trait}.}
 
 \item{d}{Latent rank for \code{mode = "latent"}. Default 1.}
+
+\item{unique}{Logical; for \code{mode = "latent"}, \code{TRUE} includes the
+phylo-structured diagonal \eqn{\boldsymbol\Psi_{phy}} companion.
+The default \code{FALSE} preserves the loadings-only source-specific
+latent path.}
+
+\item{A}{Tip-level relatedness matrix; alias of \verb{vcv =}.}
+
+\item{Ainv}{Sparse precision matrix (inverse of \code{A}).}
 }
 \value{
 A formula marker; never evaluated.

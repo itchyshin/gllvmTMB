@@ -1,6 +1,6 @@
 ---
 title: "Simulation recovery: M3 smoke grid"
-tier: 3 # internal coverage triage until CI-08 and CI-10 pass
+tier: 3 # developer validation note, not a first-stop tutorial
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -26,9 +26,14 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Internal article gate.** This page is a Tier 3 coverage-triage article.
-> It shows the M3 smoke-grid machinery and the under-coverage pattern, but it
-> is not evidence that interval coverage has passed. CI-08 and CI-10 remain
+> **Developer validation note.** This page records simulation-recovery
+> evidence for maintainers and reviewers. It is not a first-stop
+> tutorial. Start with [Get started](gllvmTMB.html),
+> [Can I trust this fit?](fit-diagnostics.html), and
+> [Simulation-based verification](simulation-verification.html) before
+> using this page. It is a Tier 3 coverage-triage article: it shows the
+> M3 smoke-grid machinery and the under-coverage pattern, but it is not
+> evidence that interval coverage has passed. CI-08 and CI-10 remain
 > partial in the validation-debt register.
 
 This article is for a reader who wants to know **whether the confidence
@@ -50,8 +55,10 @@ The full M3 grid is described in
 5 family cells × 3 latent ranks × R = 200 replicates = 3000 fits,
 with profile-likelihood CIs on each free parameter. This article
 shows **the M3.3a smoke output** — a 15-cell × 10-rep version of
-that grid with **profile-likelihood CIs** on per-trait diagonal `Psi`
-variance $\psi_t = \mathrm{sd\_B}_t^2$. Treat the smoke output as triage
+that grid with **profile-likelihood CIs** on per-trait
+diagonal Psi variance $\psi_t = \mathrm{sd\_B}_t^2$. The M3.3
+production grid scales R = 10 to R = 200 (Monte Carlo error
+±15 pp → ±3 pp at the 95% level). Treat the smoke output as triage
 evidence: it shows which surfaces are hard, not that interval coverage is
 validated.
 
@@ -62,8 +69,8 @@ $\boldsymbol\Lambda_{\mathrm{true}} \sim \mathrm{Uniform}(-1.5, 1.5)^{5 \times d
 and $\boldsymbol\psi_{\mathrm{true}} \sim \mathrm{Gamma}(2, 2)^5$
 per replicate, then asks: does the fit's profile-likelihood CI
 on each per-trait $\psi_t$ contain the generative truth? $\psi_t$
-is the **rotation-invariant target** — it's the per-trait
-diagonal `Psi` variance, identifiable up to non-rotational sign +
+is the **rotation-invariant target** -- it is the per-trait
+diagonal Psi variance, identifiable up to non-rotational sign +
 permutation. The shared-Lambda contribution to the full
 $\Sigma_{\mathrm{unit}}$ diagonal is rotation-ambiguous on
 individual loading entries; the **communality** $c_t^2 =
@@ -161,7 +168,7 @@ single[, c("trait_id", "truth_psi", "est_psi",
            "ci_prof_lo", "ci_prof_hi", "covered_prof")]
 ```
 
-Each row is a trait's $\psi_t$ (per-trait unique variance) target.
+Each row is a trait's $\psi_t$ (per-trait diagonal Psi variance) target.
 `truth_psi` is the generative truth for that rep; `est_psi` is
 the point estimate; `ci_prof_lo` / `ci_prof_hi` are the 95 %
 profile-likelihood CI bounds; `covered_prof` is whether the CI

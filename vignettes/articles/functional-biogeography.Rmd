@@ -1,6 +1,6 @@
 ---
 title: "Functional biogeography: trait syndromes with optional spatial and phylogenetic controls"
-tier: 3 # final capstone draft until M3/CI/component evidence closes
+tier: 3 # under-audit capstone draft; visible as a Developer Note until M3/CI/component evidence closes
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -24,7 +24,15 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Internal article gate -- capstone composite fit is M3 milestone work.**
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the capstone
+> functional-biogeography path. It is not a first-stop tutorial. Start
+> with [Get started](gllvmTMB.html),
+> [First Gaussian morphology model](morphometrics.html), and
+> [Covariance and correlation](covariance-correlation.html) before
+> using this page.
+>
+> **Preview -- capstone composite fit is M3 milestone work.**
 >
 > The component keywords shown below have mixed validation status in the
 > [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md):
@@ -106,8 +114,8 @@ partitioning** distinction for spatial and phylogenetic terms.
 * **Partitioning models** (§3 and §4). Spatial and phylogenetic
   signals get their own reduced-rank covariance decomposition
   ($\boldsymbol{\Sigma}_R$, $\boldsymbol{\Sigma}_P$) via
-  `spatial_latent + spatial_unique` (explicit-Psi compatibility
-  spelling until the spatial fold lands) and folded `phylo_latent()`.
+  `spatial_latent(..., unique = TRUE)` and
+  `phylo_latent(..., unique = TRUE)`.
   The question shifts to: are
   syndromes *spatially structured* or *phylogenetically conserved*?
   These models are more data-demanding; treat them as sensitivity
@@ -498,8 +506,7 @@ and point at the dedicated articles for the worked fits.
 
 # §3 -- Spatial syndrome partitioning
 
-Add a `spatial_latent` term in addition to the explicit-Psi
-compatibility spelling `spatial_unique` to
+Use `spatial_latent(..., unique = TRUE)` to
 estimate $\boldsymbol{\Sigma}_R = \boldsymbol{\Lambda}_R\boldsymbol{\Lambda}_R^{\!\top} + \boldsymbol{\Psi}_R$,
 the spatial trait-covariance decomposition. Loadings on
 $\boldsymbol{\Lambda}_R$ tell you which traits hang together
@@ -508,8 +515,8 @@ $\boldsymbol{\Lambda}_R$ tell you which traits hang together
 ```r
 fit_M3 <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
-          spatial_latent(0 + trait | coords, d = 2, mesh = mesh) +
-          spatial_unique(0 + trait | coords, mesh = mesh) +
+          spatial_latent(0 + trait | coords, d = 2, mesh = mesh,
+                         unique = TRUE) +
           latent(0 + trait | site, d = 2) +
           latent(0 + trait | site_species, d = 1) +
           phylo_indep(0 + trait | species, tree = tree),
@@ -530,7 +537,7 @@ spatial variances. A worked example will appear in the planned
 # §4 -- Phylogenetic syndrome partitioning
 
 Symmetric to the spatial-partition model, but on the phylogeny side:
-use folded `phylo_latent()` to estimate
+use `phylo_latent(..., unique = TRUE)` to estimate
 $\boldsymbol{\Sigma}_P = \boldsymbol{\Lambda}_P\boldsymbol{\Lambda}_P^{\!\top} + \boldsymbol{\Psi}_P$,
 the phylogenetic two-piece decomposition. Loadings on
 $\boldsymbol{\Lambda}_P$ tell you which traits cluster together
@@ -542,7 +549,7 @@ fit_M4 <- gllvmTMB(
           spatial_indep(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
           latent(0 + trait | site_species, d = 1) +
-          phylo_latent(species, d = 2, tree = tree),
+          phylo_latent(species, d = 2, tree = tree, unique = TRUE),
   data = df,
   trait = "trait",
   cluster = "species",

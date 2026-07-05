@@ -214,6 +214,17 @@
 #'   biological hypothesis. Deprecated legacy element names `B` and `W`
 #'   are still accepted (with a one-shot soft deprecation message) and
 #'   map to `unit` and `unit_obs` respectively.
+#' @param Xcoef_fixed Optional named numeric vector of fixed-effect
+#'   coefficient constraints. Names must match the expanded fixed-effect
+#'   design columns (`fit$X_fix_names`); values must currently be `0`,
+#'   pinning those coefficients exactly at structural zero. Use this when a
+#'   predictor is meaningful for some responses but should be fixed at zero
+#'   for others. Native TMB fits use a parameter map; admitted
+#'   `engine = "julia"` fixed-effect-X rows pass the same zero mask to
+#'   GLLVM.jl. This is ML-only: `REML = TRUE` stops loudly. Native fitted
+#'   objects still report all fixed-effect rows; pinned rows have
+#'   `estimate = 0`, `std.error = NA`, and `status = "fixed"` in
+#'   `tidy(fit, "fixed")`.
 #' @param control Output of `gllvmTMBcontrol()`.
 #' @param missing Output of [miss_control()] configuring missing-data
 #'   handling. The default `miss_control()` (`response = "drop"`,
@@ -427,6 +438,7 @@ gllvmTMB <- function(
   phylo_tree = NULL,
   known_V = NULL,
   lambda_constraint = NULL,
+  Xcoef_fixed = NULL,
   control = gllvmTMBcontrol(),
   missing = miss_control(),
   impute = NULL,
@@ -504,6 +516,7 @@ gllvmTMB <- function(
       phylo_tree = phylo_tree,
       known_V = known_V,
       lambda_constraint = lambda_constraint,
+      Xcoef_fixed = Xcoef_fixed,
       control = control,
       missing = missing,
       impute = impute,
@@ -738,6 +751,8 @@ gllvmTMB <- function(
       unit_internal  = site,
       family         = family,
       weights        = weights,
+      REML           = REML,
+      Xcoef_fixed    = Xcoef_fixed,
       ci_method      = ci_method,
       ci_level       = ci_level,
       ci_nboot       = ci_nboot,
@@ -760,6 +775,7 @@ gllvmTMB <- function(
     known_V = known_V,
     mesh = mesh,
     lambda_constraint = lambda_constraint,
+    Xcoef_fixed = Xcoef_fixed,
     control = control,
     silent = silent,
     unit_obs = unit_obs,

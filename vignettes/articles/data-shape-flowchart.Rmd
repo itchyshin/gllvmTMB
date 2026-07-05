@@ -1,6 +1,6 @@
 ---
 title: "Data-shape flowchart: which worked example matches your data?"
-tier: 3 # internal routing draft until hidden example targets are reviewed
+tier: 3 # under-audit path-finder draft; visible as a Developer Note until hidden example targets are reviewed
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -19,11 +19,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Internal article gate.** This routing draft still points to several
-> worked-example pages that are under article-council review. Start with
-> [Get started](../articles/gllvmTMB.html),
-> [Morphometrics](morphometrics.html), or the
-> [Formula keyword grid](api-keyword-grid.html) until the biological
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the reader path. It is
+> not yet the package's first-stop path-finder, and it still points to
+> several worked-example pages that are under article-council review. If
+> you are new to `gllvmTMB`, start with [Get started](gllvmTMB.html), then
+> [First Gaussian morphology model](morphometrics.html) and
+> [gllvmTMB vocabulary](gllvm-vocabulary.html), until the biological
 > example set is promoted one article at a time.
 
 The `gllvmTMB` worked-example library covers many situations, and
@@ -170,7 +172,7 @@ When rows are individuals and you have a three-column pedigree
 canonical QG animal model: the random effect's covariance is the
 pedigree-derived additive-genetic relatedness matrix
 $\mathbf{A}$ (Henderson 1976). Pass the pedigree directly:
-`animal_latent(individual, d = K, pedigree = ped)`, or pre-compute
+`animal_latent(individual, d = K, pedigree = ped, unique = TRUE)`, or pre-compute
 with `pedigree_to_A(ped)` and pass `A =`. The full grid
 (`animal_scalar`, `_unique`, `_indep`, `_dep`, `_latent` plus
 `animal_slope` for random regression / reaction norms) mirrors

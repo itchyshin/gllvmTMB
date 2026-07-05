@@ -123,11 +123,9 @@ Bayesian posterior distribution for variance components.
 Unsupported families fall back through the simulator's own
 warning path.
 \item Refits use the same \code{formula} reconstructed from
-\code{fit$formula} and \code{fit$covstructs}. Stored auxiliary fit arguments
-needed by currently wired structured tiers (\code{phylo_vcv},
-\code{phylo_tree}, \code{mesh}, and \code{lambda_constraint}) are forwarded when
-present on the fitted object. New structured engines may still need
-their own forwarding gate before bootstrap CIs are advertised.
+\code{fit$formula} and \code{fit$covstructs}, and forward the fit's
+auxiliary structure (\code{phylo_vcv}, \code{phylo_tree}, \code{mesh},
+\code{lambda_constraint}) so each refit matches the original model.
 \item Convergence: replicates whose refit fails or whose
 optimiser does not return \code{convergence == 0} are counted in
 \code{n_failed} and excluded from CIs.

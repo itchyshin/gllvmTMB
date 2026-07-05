@@ -2031,6 +2031,12 @@ confint.gllvmTMB_multi <- function(
   ## Loop over b_fix entries via tmbprofile, label as the fixed-effect
   ## term names from $X_fix_names.
   ix <- which(names(object$opt$par) == "b_fix")
+  bfix <- .gllvmTMB_b_fix_table(object)
+  free <- if ("status" %in% names(bfix)) {
+    bfix$status != "fixed"
+  } else {
+    rep(TRUE, nrow(bfix))
+  }
   if (length(ix) == 0L) {
     ## No fixed effects -- return empty
     td <- tidy(object, "fixed", conf.int = TRUE, conf.level = level)
@@ -2056,6 +2062,13 @@ confint.gllvmTMB_multi <- function(
   est <- vapply(out, `[`, numeric(1), "estimate")
   lo <- vapply(out, `[`, numeric(1), "lower")
   hi <- vapply(out, `[`, numeric(1), "upper")
+  if (nrow(td) == length(free) && sum(free) == length(ix)) {
+    td$conf.low <- NA_real_
+    td$conf.high <- NA_real_
+    td$conf.low[free] <- lo
+    td$conf.high[free] <- hi
+    return(td)
+  }
   if (nrow(td) == length(ix)) {
     td$conf.low <- lo
     td$conf.high <- hi

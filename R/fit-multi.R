@@ -187,6 +187,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                known_V = NULL,
                                mesh = NULL,
                                lambda_constraint = NULL,
+                               Xcoef_fixed = NULL,
                                control, silent,
                                unit_obs = "site_species",
                                impute = NULL,
@@ -376,6 +377,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   groupings <- vapply(parsed$covstructs, function(cs) deparse(cs$group), character(1))
   kinds     <- vapply(parsed$covstructs, function(cs) cs$kind, character(1))
 
+  ## ---- Design 73 `lv = ~ ...` parser/API preflight -----------------------
+  ## Validate and prepare the unit-level X_lv_B design for the ordinary
+  ## Gaussian B-tier score-mean model. Unsupported regimes still fail here
+  ## before TMB construction.
+  lv_setup <- gll_prepare_lv_predictor_setup(
+    parsed = parsed,
+    data = data,
+    trait = trait,
+    site = site,
+    family_id_vec = family_id_vec,
+    link_id_vec = link_id_vec,
+    REML = REML
+  )
+  use_lv_B <- isTRUE(lv_setup$enabled)
+
   ## ---- Design 65 C3.2 two-Psi identifiability guardrail -----------------
   ## A two-kernel model carries two uniqueness tiers (e.g. a phylo cross-
   ## kernel `Psi_phy` plus a tip-level non-phylo `Psi_non`). The split of
@@ -429,8 +445,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     kernel_latent_names_for_fold[!is.na(kernel_latent_names_for_fold)]
   )
   if (length(kernel_latent_names_for_fold) > 1L && any(is_auto_kernel_unique)) {
-    ## Single dense-kernel `kernel_latent()` now folds its Psi companion by
-    ## default. The first multi-kernel engine wave is explicitly latent-only,
+    ## Single dense-kernel `kernel_latent(unique = TRUE)` folds its Psi
+    ## companion. The first multi-kernel engine wave is explicitly latent-only,
     ## so auto-generated kernel Psi companions are pruned before the C3.2
     ## explicit-Psi guard. User-written `kernel_unique()` terms remain visible
     ## to the guard below.
@@ -538,10 +554,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     explicit_groups <- explicit_diag_group[!is.na(explicit_diag_group)]
     drop_psi <- is_auto_psi & (groupings %in% explicit_groups)
   }
-  ## Same dedup for the phylo auto-companion: an explicit `phylo_unique()` at the
-  ## same grouping supersedes the `phylo_latent(unique = TRUE)` default, so
-  ## `phylo_latent(unique = TRUE) + phylo_unique()` is byte-identical to the
-  ## explicit pair (and avoids the >1 phylo_unique abort downstream).
+  ## Duplicate guard for source/kernel latent-Psi folds. The compatibility
+  ## spelling is `*_latent(unique = FALSE)` + `*_unique()`. If the user asks
+  ## for the folded Psi with `unique = TRUE` and also supplies an explicit
+  ## `*_unique()` companion, the model carries two diagonal Psi terms on the
+  ## same relatedness source; abort rather than silently dropping one.
   if (any(is_auto_phylo_psi)) {
     explicit_phylo_group <- vapply(seq_along(parsed$covstructs), function(i) {
       cs <- parsed$covstructs[[i]]
@@ -549,8 +566,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           !isTRUE(cs$extra$.auto_unique)) deparse(cs$group) else NA_character_
     }, character(1L))
     explicit_phylo_groups <- explicit_phylo_group[!is.na(explicit_phylo_group)]
-    drop_psi <- drop_psi |
-      (is_auto_phylo_psi & (groupings %in% explicit_phylo_groups))
+    duplicate_source_psi <- is_auto_phylo_psi & (groupings %in% explicit_phylo_groups)
+    if (any(duplicate_source_psi)) {
+      cli::cli_abort(c(
+        "Duplicate source-specific {.field Psi} terms were supplied.",
+        "i" = "Use either {.code *_latent(..., unique = TRUE)} or the compatibility pair {.code *_latent(..., unique = FALSE) + *_unique()}, not both.",
+        ">" = "The folded and explicit terms target the same diagonal covariance component."
+      ))
+    }
   }
   ## Per-family default gate: for a fit whose response is ENTIRELY
   ## ordinal_probit / delta (the design doc's Psi-"off" cells), drop the
@@ -1173,35 +1196,25 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       isTRUE(parsed$covstructs[[i]]$extra[[flag]]),
       logical(1L))
   }
-  spde_is_scalar_flag <- spde_flag(".spatial_scalar")
-  spde_is_latent_flag <- spde_flag(".spatial_latent")
-  spde_is_indep_flag <- spde_flag(".spatial_indep")
-  spde_is_dep_flag <- spde_flag(".dep")
-  spde_is_aug_flag <- spde_flag(".spatial_unique_augmented") |
-    spde_flag(".spatial_indep_augmented") |
-    spde_flag(".spatial_dep_augmented") |
-    spde_flag(".spatial_latent_augmented")
-  spde_is_plain_unique <- !spde_is_scalar_flag &
-    !spde_is_latent_flag &
-    !spde_is_indep_flag &
-    !spde_is_dep_flag &
-    !spde_is_aug_flag
   ## spatial_scalar(): rewrites to spde(form, .spatial_scalar = TRUE).
   ## We tie log_tau_spde across traits via the TMB map mechanism so the
   ## per-trait variances collapse to one shared scalar. No C++ change.
-  is_spatial_scalar <- any(spde_is_scalar_flag)
+  spde_is_scalar_flag <- spde_flag(".spatial_scalar")
+  is_spatial_scalar <- length(spde_idx) > 0L && any(spde_is_scalar_flag)
   ## spatial_latent(): rewrites to spde(form, .spatial_latent = TRUE, d = K).
   ## K_S shared SPDE fields drive all T traits via a T x K_S loading matrix
   ## Lambda_spde (the spatial analogue of phylo_latent's Lambda_phy). The
   ## TMB template provides a `spde_lv_k` switch that toggles between the
   ## per-trait omega_spde path (used by spatial_unique / spatial_scalar)
   ## and the low-rank Lambda_spde x omega_spde_lv path used here.
-  is_spatial_latent <- any(spde_is_latent_flag)
+  spde_is_latent_flag <- spde_flag(".spatial_latent")
+  is_spatial_latent <- length(spde_idx) > 0L && any(spde_is_latent_flag)
   ## spatial_indep(): rewrites to spde(form, .spatial_indep = TRUE).
   ## Same engine path as spatial_unique-alone (per-trait omega_spde with
   ## independent log_tau per trait). The .spatial_indep marker only changes
   ## the printed label and triggers the spatial_indep+spatial_latent guard.
-  is_spatial_indep <- any(spde_is_indep_flag)
+  spde_is_indep_flag <- spde_flag(".spatial_indep")
+  is_spatial_indep <- length(spde_idx) > 0L && any(spde_is_indep_flag)
   ## spatial_dep(): rewrites to spde(form, .spatial_latent = TRUE,
   ## d = n_traits, .dep = TRUE). Same engine path as
   ## spatial_latent(d = n_traits) standalone (full-rank packed-triangular
@@ -1210,6 +1223,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##   * spatial_dep + spatial_latent: over-parameterised (different rank)
   ##   * spatial_dep + spatial_unique: redundant (dep already includes diag)
   ##   * spatial_dep + spatial_indep:  redundant
+  spde_idx_for_dep <- spde_idx
+  spde_is_dep_flag <- spde_flag(".dep")
   is_spatial_dep <- any(spde_is_dep_flag)
   if (is_spatial_dep) {
     ## spatial_dep + spatial_latent: over-parameterised. Detect by counting
@@ -1225,7 +1240,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     ## spatial_dep + spatial_unique: redundant. spatial_unique = spde with
     ## no markers; detect any spde term with no dep/indep/latent/scalar flag.
-    spde_is_plain <- spde_is_plain_unique
+    spde_is_plain <- !spde_is_dep_flag & !spde_is_latent &
+      !spde_is_indep_flag &
+      !spde_is_scalar_flag
     if (any(spde_is_plain)) {
       cli::cli_abort(c(
         "{.fn spatial_dep} and {.fn spatial_unique} are redundant together.",
@@ -1262,19 +1279,33 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
   }
-  spde_latent_idx <- spde_idx[spde_is_latent_flag]
-  spde_latent_unique_arg <- if (length(spde_latent_idx) > 0L) {
-    any(vapply(spde_latent_idx, function(i)
-      isTRUE(parsed$covstructs[[i]]$extra[[".spatial_unique_diag"]]),
-      logical(1L)))
+  spde_is_aug_flag <- spde_flag(".spatial_unique_augmented") |
+    spde_flag(".spatial_indep_augmented") |
+    spde_flag(".spatial_latent_augmented") |
+    spde_flag(".spatial_dep_augmented")
+  spde_is_plain_unique <- if (length(spde_idx) > 0L) {
+    !spde_is_scalar_flag &
+      !spde_is_latent_flag &
+      !spde_is_indep_flag &
+      !spde_is_dep_flag &
+      !spde_is_aug_flag
   } else {
-    FALSE
+    logical(0L)
+  }
+  spde_latent_unique_flag <- spde_is_latent_flag &
+    spde_flag(".spatial_unique_diag")
+  if (is_spatial_latent && any(spde_latent_unique_flag) && any(spde_is_plain_unique)) {
+    cli::cli_abort(c(
+      "Duplicate spatial {.field Psi} terms were supplied.",
+      "i" = "Use either {.code spatial_latent(..., unique = TRUE)} or the compatibility pair {.code spatial_latent(..., unique = FALSE) + spatial_unique()}, not both.",
+      ">" = "The folded and explicit terms target the same diagonal SPDE component."
+    ))
   }
   use_spde_latent_diag <- is_spatial_latent &&
-    !is_spatial_dep &&
-    (spde_latent_unique_arg || any(spde_is_plain_unique))
+    (any(spde_latent_unique_flag) || any(spde_is_plain_unique))
   d_spde_lv <- if (is_spatial_latent) {
-    cs <- parsed$covstructs[[spde_latent_idx[1L]]]
+    latent_idx <- spde_idx[spde_is_latent_flag][1L]
+    cs <- parsed$covstructs[[latent_idx]]
     as.integer(cs$extra$d %||% 1L)
   } else 0L
   d_phy <- if (use_phylo_rr) {
@@ -1702,6 +1733,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   n_traits        <- nlevels(data[[trait]])
   n_sites         <- nlevels(data[[site]])
   n_site_species  <- nlevels(data[[ss_name]])
+  n_lv_B <- if (use_lv_B) {
+    ncol(lv_setup$X_lv_B)
+  } else {
+    1L
+  }
+  X_lv_B <- if (use_lv_B) {
+    unit_levels <- levels(data[[site]])
+    missing_lv_units <- setdiff(unit_levels, rownames(lv_setup$X_lv_B))
+    if (length(missing_lv_units) > 0L) {
+      cli::cli_abort(c(
+        "Internal error: the {.arg lv} unit-level design is missing unit level(s).",
+        "x" = "Missing level(s): {.val {missing_lv_units}}."
+      ))
+    }
+    unname(lv_setup$X_lv_B[unit_levels, , drop = FALSE])
+  } else {
+    matrix(0.0, nrow = max(n_sites, 1L), ncol = 1L)
+  }
 
   ## ---- Phase 2a: validate mi() BEFORE the design matrix -----------------
   ## gll_prepare_mi_setup is data-free; running it here fires the loud mi()
@@ -2378,6 +2427,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     fit_lm <- stats::lm.fit(X_fix, y)
   }
   b_fix_init <- fit_lm$coefficients
+  xcoef_fixed <- .normalise_Xcoef_fixed(
+    Xcoef_fixed = Xcoef_fixed,
+    x_names = colnames(X_fix),
+    REML = REML
+  )
+  if (isTRUE(xcoef_fixed$has_fixed)) {
+    fixed_idx <- which(xcoef_fixed$status == "fixed")
+    b_fix_init[fixed_idx] <- xcoef_fixed$init_fixed[fixed_idx]
+  }
   resid_init <- fit_lm$residuals
   log_sigma_eps_init <- .gllvmTMB_log_sigma_eps_start(resid_init)
 
@@ -3098,6 +3156,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_B              = as.integer(d_B),
     d_W              = as.integer(d_W),
     use_rr_B         = as.integer(use_rr_B),
+    use_lv_B         = as.integer(use_lv_B),
+    n_lv_B           = as.integer(n_lv_B),
+    X_lv_B           = X_lv_B,
     use_diag_B       = as.integer(use_diag_B),
     use_rr_W         = as.integer(use_rr_W),
     use_diag_W       = as.integer(use_diag_W),
@@ -3223,6 +3284,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_sigma_eps = log_sigma_eps_init,
     theta_rr_B   = if (use_rr_B) init_rr_theta(n_traits, d_B) else rep(0.0, theta_rr_B_len),
     z_B          = matrix(0, nrow = max(d_B, 1L), ncol = n_sites),
+    alpha_lv_B   = matrix(0, nrow = max(n_lv_B, 1L), ncol = max(d_B, 1L)),
     theta_rr_B_slope = if (use_rr_B_slope) {
                          init_rr_theta(n_lhs_cols_B_lat, d_B_slope)
                        } else {
@@ -3566,6 +3628,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
   ## ---- Map: zero-out unused parameters ---------------------------------
   tmb_map <- list()
+  if (isTRUE(xcoef_fixed$has_fixed)) {
+    tmb_map$b_fix <- xcoef_fixed$map
+  }
   ## Missing-predictor params are stubs when no mi() term is present: map both
   ## scalars off so TMB does not estimate them (x_mis is length 0 and simply
   ## stays out of the `random` set).
@@ -3593,6 +3658,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!use_rr_B) {
     tmb_map$theta_rr_B <- factor(rep(NA_integer_, length(tmb_params$theta_rr_B)))
     tmb_map$z_B        <- factor(rep(NA_integer_, length(tmb_params$z_B)))
+  }
+  if (!use_lv_B) {
+    tmb_map$alpha_lv_B <- factor(rep(NA_integer_, length(tmb_params$alpha_lv_B)))
   }
   if (!use_rr_B_slope) {
     tmb_map$theta_rr_B_slope <-
@@ -4444,6 +4512,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## augmented B-tier latent covariance over the
                           ## (intercept, slope) x trait coefficient vector.
                           rr_B_slope = isTRUE(use_rr_B_slope),
+                          lv_B = isTRUE(use_lv_B),
                           rr_B_slope_col =
                             if (use_rr_B_slope) rr_B_slope_xcol else NULL,
                           ## Augmented B-tier unique diagonal over the same
@@ -4475,8 +4544,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           phylo_unique   = isTRUE(is_phylo_unique),
                           spatial_scalar = isTRUE(is_spatial_scalar),
                           spatial_latent = isTRUE(is_spatial_latent),
-                          spatial_latent_unique =
-                            isTRUE(use_spde_latent_diag),
+                          spatial_latent_unique = isTRUE(use_spde_latent_diag),
                           ## "indep" mode (one of the quartet): marginal-
                           ## only canonical keywords. Engine path
                           ## identical to the matching unique() /
@@ -4562,6 +4630,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                        n_groups = re_int_n_groups,
                        offsets  = re_int_offsets
                      ) else NULL,
+      lv           = if (use_lv_B) list(
+                       level = "unit",
+                       formula = lv_setup$formula,
+                       formula_no_intercept = lv_setup$formula_no_intercept,
+                       X_lv_B = lv_setup$X_lv_B,
+                       X_lv_B_names = lv_setup$X_lv_B_names,
+                       unit_names = lv_setup$unit_names
+                     ) else NULL,
       d_phy        = d_phy,
       d_B_slope    = d_B_slope,
       d_spde_lv    = d_spde_lv,
@@ -4573,6 +4649,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       phylo_tree   = phylo_tree,
       X_fix        = X_fix,
       X_fix_names  = colnames(X_fix),
+      Xcoef_fixed  = xcoef_fixed,
       lambda_constraint     = lambda_constraint,
       needs_rotation_advice = needs_rotation_advice,
       restart_history = restart_history,

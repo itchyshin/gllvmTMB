@@ -93,8 +93,9 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'
 #' `animal_unique()` is soft-deprecated as compatibility syntax in gllvmTMB
 #' 0.2.0. Use [animal_indep()] for standalone marginal diagonal animal-model
-#' terms. Paired explicit-Psi use remains accepted; [animal_latent()] now
-#' carries this diagonal companion by default.
+#' terms. Paired explicit-Psi use remains accepted; use
+#' `animal_latent(..., unique = TRUE)` when the folded latent term itself
+#' should carry this diagonal companion.
 #'
 #' Canonical name for the **D independent** animal-model random
 #' intercept on a shared relatedness matrix \eqn{\mathbf A}. Each
@@ -192,8 +193,8 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' Reduced-rank animal-model latent factors: `animal_latent(id, d = K)`
 #'
 #' Reduced-rank decomposition of the additive-genetic covariance
-#' matrix using \eqn{K} latent factors plus, by default, a per-trait
-#' diagonal \eqn{\boldsymbol\Psi} companion:
+#' matrix using \eqn{K} latent factors. Set `unique = TRUE` to add a
+#' per-trait diagonal \eqn{\boldsymbol\Psi} companion:
 #' \eqn{\boldsymbol G =
 #' \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 #' with \eqn{\boldsymbol\Lambda} a \eqn{T \times K} loadings matrix
@@ -209,9 +210,9 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'
 #' @inheritParams animal_scalar
 #' @param d Number of latent factors (\eqn{K \le T}). Default 1.
-#' @param unique Logical; when `TRUE` (default), include the per-trait
-#'   diagonal additive-genetic \eqn{\boldsymbol\Psi} companion. Use
-#'   `unique = FALSE` for the older loadings-only subset.
+#' @param unique Logical; when `TRUE`, include the per-trait diagonal
+#'   additive-genetic \eqn{\boldsymbol\Psi} companion. The default `FALSE`
+#'   preserves the loadings-only subset.
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_unique()], [phylo_latent()].
 #' @examples
@@ -234,7 +235,8 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'   value   = yvec
 #' )
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped),
+#'   value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped,
+#'                                    unique = TRUE),
 #'   data = df, family = gaussian()
 #' )
 #' }
@@ -242,10 +244,10 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 animal_latent <- function(
   id,
   d = 1,
-  unique = TRUE,
   pedigree = NULL,
   A = NULL,
-  Ainv = NULL
+  Ainv = NULL,
+  unique = FALSE
 ) {
   invisible(NULL)
 }
@@ -455,15 +457,30 @@ pedigree_to_A <- function(pedigree) {
     }
   }
 
+  ## Parents that are referenced but absent from the id column are treated
+  ## as unrelated founders; warn rather than doing so silently (a missing
+  ## parent row is often a typo or an incomplete pedigree).
+  missing_sire <- !is.na(sires) & is.na(s_idx)
+  missing_dam <- !is.na(dams) & is.na(d_idx)
+  if (any(missing_sire) || any(missing_dam)) {
+    bad <- unique(c(sires[missing_sire], dams[missing_dam]))
+    cli::cli_warn(c(
+      "Some parents are referenced but absent from the {.field id} column; treating them as unrelated founders.",
+      "i" = "Missing parent id{?s}: {.val {bad}}.",
+      ">" = "Add a row for each such parent (with its own parents or {.code NA}) if it is a known individual."
+    ))
+  }
+
   A <- matrix(0, nrow = n, ncol = n, dimnames = list(ids, ids))
 
   for (i in seq_len(n)) {
     si <- s_idx[i]
     di <- d_idx[i]
     ## Diagonal A_ii = 1 + F_i where F_i = A_{sire,dam}/2 if both
-    ## parents known and (sire != dam); otherwise 0.
+    ## parents are known. This includes selfing (sire == dam), where
+    ## F_i = A_{p,p}/2; unknown-parent individuals get F_i = 0.
     F_i <- 0
-    if (!is.na(si) && !is.na(di) && si != di) {
+    if (!is.na(si) && !is.na(di)) {
       F_i <- A[si, di] / 2
     }
     A[i, i] <- 1 + F_i

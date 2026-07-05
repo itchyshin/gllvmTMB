@@ -76,6 +76,15 @@ discipline, adapted for the multi-trait stacked grammar):
     `spatial_*()` augmented keywords. **Status: mixed**: the covered
     `s = 1` cells and Gaussian `phylo_dep(..., s = 2)` live in the
     validation-debt register; non-Gaussian `s >= 2` remains partial.
+13. **Predictor-informed latent-score means**
+    `latent(..., lv = ~ x)` (Design 73). **Status: partial / C1**:
+    ordinary unit-tier Gaussian `latent()` now has parser, TMB smoke,
+    `B_lv_unit`, point-extractor support, and focused native recovery
+    evidence for rotation-stable `B_lv` and `Sigma`; pure binomial
+    logit/probit/cloglog is admitted with small trait-scale `B_lv`
+    recovery/algebra gates. Other non-Gaussian families, tier-expanded,
+    structured-source, missing-response, and interval variants remain
+    design rows until their own tests exist.
 
 ## Vocabulary
 
@@ -91,7 +100,8 @@ adding the `animal_*` row; per [`14-known-relatedness-keywords.md`](14-known-rel
 | 4 × 5 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Explicit marginal / independent trait covariance; diagonal, no off-diagonal |
 | 4 × 5 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
 | 4 × 5 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$) |
-| Random slope | `latent(1 + x \| unit, d = K)` / structured `phylo_*()` and `spatial_*()` slope keywords | Per-group random regression slope on covariate `x`; ordinary Gaussian `latent()` with default diagonal Psi is partial under RE-12, structured paths follow their validation rows |
+| Predictor-informed latent scores | `latent(..., lv = ~ x)` | Term-local fixed-effect mean for latent scores; Design 73, ordinary unit-tier C1 partial for Gaussian and pure binomial logit/probit/cloglog |
+| Random slope | `latent(1 + x \| unit, d = K)` / structured `phylo_*()` and `spatial_*()` slope keywords | Per-group random regression slope on covariate `x`; ordinary Gaussian default `latent()` path is partial under RE-12, structured paths follow their validation rows |
 | `meta_V` | `meta_V(V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. `meta_known_V()` is a deprecated alias. |
 
 ## Reduced-rank reparameterisation (`latent(...)`)
@@ -135,6 +145,46 @@ only up to rotation. The triangular-with-positive-diagonal
 parameterisation fixes the rotation. For post-hoc varimax /
 oblimin rotation on the loadings, see `rotate_loadings()` and
 the `lambda-constraint.Rmd` worked example.
+
+### C1 `lv = ~ ...` latent-score means
+
+Design 73 adds an `lv` argument on ordinary `latent()` for predictors
+of the latent-score mean:
+
+$$
+z_i = M_i\alpha + e_i,\qquad e_i \sim N(0, I_K).
+$$
+
+The ordinary unit-tier C1 target keeps the current `latent()`
+decomposition,
+
+$$
+\Sigma_\text{unit} = \Lambda\Lambda^\top + \Psi,
+$$
+
+and shifts the latent-score contribution in the linear predictor to
+$\lambda_t^\top(M_i\alpha + e_i)$. The innovation `e_i` is still a
+Laplace-integrated latent score. The primary trait-scale estimand is
+$B_\text{lv} = \Lambda\alpha^\top$, because raw `alpha` changes under
+latent-axis rotation.
+
+This is not an ordinary random slope. The syntax
+`latent(1 + x | unit, d = K)` estimates random intercept/slope
+covariance over the augmented `(intercept, slope) x trait` coefficient
+vector. The C1 `latent(1 | unit, d = K, lv = ~ x)` instead lets
+unit-level predictors explain the mean of the latent ecological axes
+while preserving a latent-score innovation. C1 must reject combined
+forms such as `latent(1 + x | unit, d = K, lv = ~ z)` until a separate
+design proves the target.
+
+Status: partial under `FG-18`, `RE-13`, `EXT-31`, `LV-01`, `LV-04`,
+and `LV-05`: ordinary Gaussian unit-tier smoke/algebra support exists
+with point extractors, pure binomial logit/probit/cloglog has small
+trait-scale `B_lv` recovery/algebra gates, and `LV-02` now records
+focused native TMB Gaussian recovery of `B_lv` plus `Sigma`. `LV-03`,
+`LV-06`, and `LV-07` remain blocked for missing-response,
+tier-expanded, and structured-source support; interval calibration and
+other non-Gaussian families remain gated under `LV-02` and `LV-05`.
 
 ### `lambda_constraint` for confirmatory factor analysis
 
@@ -279,8 +329,10 @@ $$
 $$
 
 `phylo_latent(species, d = K, tree = tree)` estimates
-$\boldsymbol\Lambda_\text{phy}$; `phylo_unique(species, tree = tree)`
-estimates the diagonal $\boldsymbol\Psi_\text{phy}$.
+$\boldsymbol\Lambda_\text{phy}$; `phylo_latent(..., unique = TRUE)`
+or the compatibility pair
+`phylo_latent(..., unique = FALSE) + phylo_unique(species, tree = tree)`
+adds the diagonal $\boldsymbol\Psi_\text{phy}$.
 
 ### Three-piece fallback
 

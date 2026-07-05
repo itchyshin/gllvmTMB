@@ -1,6 +1,6 @@
 ---
 title: "Ordinal-probit threshold traits"
-tier: 3 # internal threshold-trait technical draft until FAM-14 validation closes
+tier: 3 # under-audit ordinal family reference; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -19,8 +19,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Preview — `ordinal_probit` family validation is covered for the current
-> family-recovery row, but this article stays internal.**
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the ordinal-family
+> reader path. It is not a first-stop tutorial. Start with
+> [Get started](gllvmTMB.html) and [Response families](response-families.html)
+> before using this page.
+>
+> **Preview -- `ordinal_probit` family validation is M2 (Binary completeness) milestone work.**
 >
 > The `ordinal_probit()` family has covered family-recovery evidence
 > (FAM-14 in the

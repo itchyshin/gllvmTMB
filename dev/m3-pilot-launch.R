@@ -30,9 +30,11 @@
 ##     per-replicate data.frame from `m3_run_cell()`).
 ##   * An index at `<results_dir>/pilot-index.rds` records, per cell:
 ##     status (done|failed), n_sim, wall_s, coverage_primary, and (for
-##     failures) the error message. The index is the source of truth for
-##     "what is already done"; if it is absent it is rebuilt from the
-##     per-cell .rds files on disk.
+##     failures) the error message. The index is the local resume cache
+##     for "what is already done"; if it is absent it is rebuilt from the
+##     per-cell .rds files on disk. In the sharded workflow, per-cell
+##     grids plus per-shard manifests are the audit trail and the index
+##     is rebuilt as a derived cache by the single-writer persist job.
 ##   * Re-running skips cells already marked done (idempotent).
 ##   * A cell that errors is caught, logged, marked `failed`, and skipped
 ##     -- it never crashes the batch (failure-tolerant). Failed cells are
@@ -72,6 +74,21 @@ PILOT_RESULTS_DIR_DEFAULT <- "dev/m3-pilot-results"
 ## Index file name inside the results directory.
 PILOT_INDEX_FILE <- "pilot-index.rds"
 
+## Per-run manifest directory inside the results directory. Each shard writes
+## one CSV here; the persist job merges + validates them before rebuilding the
+## derived index.
+PILOT_MANIFEST_DIR <- "_manifests"
+
+## Planned immutable chunk output root. Current GitHub accumulation still writes
+## per-cell stores, but DRAC preflight uses this path to prove that future array
+## tasks can write one chunk per (campaign, cell, chunk) without shared files.
+PILOT_CHUNK_DIR <- "_chunks"
+
+## Derived per-cell aggregate output root for immutable chunk campaigns.
+## Aggregates are rebuilt from validated chunks; they are never written by
+## concurrent array tasks.
+PILOT_CHUNK_AGGREGATE_DIR <- "_chunk-aggregate"
+
 ## Per-cell fixed backbone (held constant across the pilot grid so the
 ## varied axes are interpretable). n_traits is fixed; n_units is a grid
 ## axis. These mirror the M3 defaults closely.
@@ -79,32 +96,50 @@ PILOT_N_TRAITS <- 5L
 
 ## Family map: Design 66 locked "core 4" confirmatory families ->
 ## the family strings the M3 harness (`m3_run_cell`) actually accepts.
-## NOTE (documented deviation): the harness's "binomial" path uses the
-## LOGIT link in both the DGP (plogis) and the fit (stats::binomial()).
-## There is no binomial(probit) path in `m3_run_cell` on origin/main.
-## The locked decision names binomial(probit); for the LOCAL PILOT we
-## validate the binomial coverage path via the existing logit harness
-## and DEFER the one-line probit-link swap to the Phase-2 core grid
-## (Design 66 sec. 4.2 already lists binomial-probit as a harness target
-## to reach). This keeps the pilot a thin reuse of the validated harness
-## rather than a DGP modification. The grid records the intended link in
-## `link_intended` for traceability.
+## `binomial_probit` is a harness family here: the DGP uses pnorm() and
+## the fit uses stats::binomial(link = "probit"). The older local pilot
+## used the logit harness behind the probit-labelled cell; result stores
+## that pre-date this slice remain identifiable through their saved
+## `evidence_family = "binomial_logit_harness"` metadata.
 PILOT_CORE4 <- data.frame(
   family_label = c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit"),
-  harness_family = c("gaussian", "nbinom2", "binomial", "ordinal_probit"),
+  harness_family = c("gaussian", "nbinom2", "binomial_probit", "ordinal_probit"),
+  evidence_family = c(
+    "gaussian",
+    "nbinom2",
+    "binomial_probit",
+    "ordinal_probit"
+  ),
   link_intended = c("identity", "log", "probit", "probit"),
-  link_harness = c("identity", "log", "logit", "probit"),
+  link_harness = c("identity", "log", "probit", "probit"),
   stringsAsFactors = FALSE
 )
 
 ## Signal axis (Design 66 locked decision): signal = between-unit
-## variance share of total latent variance. 0.0 (null, for Type-I /
-## coverage-under-null) / 0.2 (moderate) / 0.5 (strong).
+## variance share of total latent variance. 0.0 is a signal-zero coverage
+## diagnostic for the positive Sigma_unit_diag target, not a Type-I cell;
+## 0.2 is moderate and 0.5 is strong.
 PILOT_SIGNAL_LEVELS <- c(0.0, 0.2, 0.5)
 
 ## Latent rank and unit-count axes (small + large), Design 66 sec. 4.2.
 PILOT_D_LEVELS <- c(1L, 2L)
 PILOT_N_UNITS_LEVELS <- c(50L, 150L)
+
+## Audit-mini cells: one cheap representative moderate-signal cell per core
+## family, used before any broader local or DRAC volume.
+PILOT_AUDIT_MINI_FAMILIES <- c(
+  "gaussian",
+  "nbinom2",
+  "binomial_probit",
+  "ordinal_probit"
+)
+PILOT_AUDIT_MINI_D <- 1L
+PILOT_AUDIT_MINI_N_UNITS <- 50L
+PILOT_AUDIT_MINI_SIGNAL <- 0.2
+
+## Effective per-cell seed blocks must be farther apart than any per-batch
+## replicate block, otherwise cells can share rep_seed values.
+PILOT_CELL_SEED_STRIDE <- 10000L
 
 ## ---- Signal -> lambda_scale mapping -----------------------------------
 
@@ -164,12 +199,21 @@ pilot_grid <- function() {
     g$n_units,
     sub("\\.", "p", formatC(g$signal, format = "f", digits = 1))
   )
-  ## Deterministic per-cell seed base (distinct per cell to avoid seed
-  ## collision across cells; the harness derives per-rep seeds from it).
-  g$seed_base <- 660000L + seq_len(nrow(g))
-  ## Order columns; sort by family then d then n then signal for readability.
+  ## Sort by family then d then n then signal for readability before assigning
+  ## seed bases; this keeps the seed map stable under upstream expand.grid()
+  ## ordering changes.
+  g <- g[order(g$family_label, g$d, g$n_units, g$signal), ]
+  ## Deterministic per-cell seed base. m3_run_cell() adds a family/d offset
+  ## before adding the replicate index, so assign cell seed bases after
+  ## subtracting that offset. The resulting effective rep_seed bases are
+  ## exactly PILOT_CELL_SEED_STRIDE apart across the whole grid.
+  seed_offset <- 100000L * m3_family_seed_index(g$harness_family) + 1000L * g$d
+  g$seed_base <- 660000L +
+    seq_len(nrow(g)) * PILOT_CELL_SEED_STRIDE -
+    seed_offset
+  ## Order columns.
   g <- g[
-    order(g$family_label, g$d, g$n_units, g$signal),
+    seq_len(nrow(g)),
     c(
       "cell_id",
       "family_label",
@@ -178,6 +222,7 @@ pilot_grid <- function() {
       "n_units",
       "signal",
       "lambda_scale",
+      "evidence_family",
       "link_intended",
       "link_harness",
       "seed_base"
@@ -185,6 +230,110 @@ pilot_grid <- function() {
   ]
   rownames(g) <- NULL
   g
+}
+
+pilot_audit_mini_grid <- function() {
+  g <- pilot_grid()
+  keep <- g$family_label %in%
+    PILOT_AUDIT_MINI_FAMILIES &
+    g$d == PILOT_AUDIT_MINI_D &
+    g$n_units == PILOT_AUDIT_MINI_N_UNITS &
+    abs(g$signal - PILOT_AUDIT_MINI_SIGNAL) < sqrt(.Machine$double.eps)
+  out <- g[keep, , drop = FALSE]
+  missing <- setdiff(PILOT_AUDIT_MINI_FAMILIES, out$family_label)
+  if (length(missing)) {
+    stop(
+      "pilot_audit_mini_grid() missing representative family row(s): ",
+      paste(missing, collapse = ", ")
+    )
+  }
+  out <- out[match(PILOT_AUDIT_MINI_FAMILIES, out$family_label), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+pilot_audit_mini_cell_ids <- function() {
+  pilot_audit_mini_grid()$cell_id
+}
+
+pilot_build_audit_mini_manifest <- function(
+  n_sim_step = 2L,
+  n_sim_cap = 2L,
+  seed_base,
+  results_dir = PILOT_RESULTS_DIR_DEFAULT,
+  n_boot = 0L,
+  shard = 1L,
+  n_shards = 1L,
+  output_mode = c("chunk", "accumulate"),
+  source_sha = Sys.getenv("GITHUB_SHA", unset = NA_character_),
+  workflow_run_id = Sys.getenv("GITHUB_RUN_ID", unset = NA_character_),
+  workflow_run_number = Sys.getenv("GITHUB_RUN_NUMBER", unset = NA_character_)
+) {
+  output_mode <- match.arg(output_mode)
+  cell_ids <- pilot_audit_mini_cell_ids()
+  manifest <- pilot_build_manifest(
+    cell_ids = cell_ids,
+    n_sim_step = n_sim_step,
+    n_sim_cap = n_sim_cap,
+    seed_base = seed_base,
+    results_dir = results_dir,
+    n_boot = n_boot,
+    shard = shard,
+    n_shards = n_shards,
+    output_mode = output_mode,
+    source_sha = source_sha,
+    workflow_run_id = workflow_run_id,
+    workflow_run_number = workflow_run_number
+  )
+  manifest <- manifest[match(cell_ids, manifest$cell_id), , drop = FALSE]
+  rownames(manifest) <- NULL
+  manifest
+}
+
+pilot_run_audit_mini_manifest <- function(
+  n_sim_step = 2L,
+  n_sim_cap = 2L,
+  seed_base,
+  results_dir = PILOT_RESULTS_DIR_DEFAULT,
+  n_boot = 0L,
+  shard = 1L,
+  n_shards = 1L,
+  runner = m3_run_cell,
+  ci_level = PILOT_CI_LEVEL,
+  verbose = FALSE,
+  source_sha = Sys.getenv("GITHUB_SHA", unset = NA_character_),
+  workflow_run_id = Sys.getenv("GITHUB_RUN_ID", unset = NA_character_),
+  workflow_run_number = Sys.getenv("GITHUB_RUN_NUMBER", unset = NA_character_)
+) {
+  stopifnot(is.function(runner))
+  manifest <- pilot_build_audit_mini_manifest(
+    n_sim_step = n_sim_step,
+    n_sim_cap = n_sim_cap,
+    seed_base = seed_base,
+    results_dir = results_dir,
+    n_boot = n_boot,
+    shard = shard,
+    n_shards = n_shards,
+    output_mode = "chunk",
+    source_sha = source_sha,
+    workflow_run_id = workflow_run_id,
+    workflow_run_number = workflow_run_number
+  )
+  pilot_assert_manifest(manifest, require_unique_result_path = FALSE)
+  manifest_path <- pilot_write_manifest(manifest, results_dir, shard)
+  report <- pilot_run_chunk_manifest(
+    manifest,
+    runner = runner,
+    ci_level = ci_level,
+    verbose = verbose
+  )
+  audit <- pilot_assert_chunk_outputs(manifest)
+  list(
+    manifest = manifest,
+    manifest_path = manifest_path,
+    report = report,
+    audit = audit
+  )
 }
 
 ## ---- Index helpers ----------------------------------------------------
@@ -255,24 +404,29 @@ pilot_load_index <- function(results_dir) {
         }
         wall <- sum(s$mean_runtime_s * s$n_completed, na.rm = TRUE)
       }
-      if ("rep" %in% names(df)) nsim <- length(unique(df$rep))
+      if ("rep" %in% names(df)) {
+        nsim <- length(unique(df$rep))
+      }
       if ("n_boot" %in% names(df)) {
         nb <- suppressWarnings(max(df$n_boot, na.rm = TRUE))
         if (is.finite(nb)) nboot <- as.integer(nb)
       }
     }
-    idx <- rbind(idx, data.frame(
-      cell_id = cell_id,
-      status = "done",
-      n_sim = nsim,
-      n_boot = nboot,
-      wall_s = wall,
-      coverage_primary = cov_p,
-      primary_gate_status = gate %||% NA_character_,
-      error = NA_character_,
-      timestamp = NA_character_,
-      stringsAsFactors = FALSE
-    ))
+    idx <- rbind(
+      idx,
+      data.frame(
+        cell_id = cell_id,
+        status = "done",
+        n_sim = nsim,
+        n_boot = nboot,
+        wall_s = wall,
+        coverage_primary = cov_p,
+        primary_gate_status = gate %||% NA_character_,
+        error = NA_character_,
+        timestamp = NA_character_,
+        stringsAsFactors = FALSE
+      )
+    )
   }
   idx
 }
@@ -283,6 +437,797 @@ pilot_save_index <- function(idx, results_dir) {
   }
   saveRDS(idx, pilot_index_path(results_dir))
   invisible(idx)
+}
+
+pilot_manifest_dir <- function(results_dir) {
+  file.path(results_dir, PILOT_MANIFEST_DIR)
+}
+
+pilot_manifest_path <- function(results_dir, shard) {
+  file.path(pilot_manifest_dir(results_dir), sprintf("shard-%s.csv", shard))
+}
+
+pilot_chunk_dir <- function(results_dir) {
+  file.path(results_dir, PILOT_CHUNK_DIR)
+}
+
+pilot_chunk_path <- function(results_dir, campaign_id, cell_id, chunk_id) {
+  file.path(
+    pilot_chunk_dir(results_dir),
+    campaign_id,
+    cell_id,
+    paste0(chunk_id, ".rds")
+  )
+}
+
+pilot_chunk_aggregate_dir <- function(results_dir) {
+  file.path(results_dir, PILOT_CHUNK_AGGREGATE_DIR)
+}
+
+pilot_manifest_seed_range <- function(batch_seed_base, family, d, n_reps) {
+  if (!exists("m3_family_seed_index", mode = "function")) {
+    stop("pilot manifest needs m3_family_seed_index(); source dev/m3-grid.R.")
+  }
+  n_reps <- as.integer(n_reps)
+  if (is.na(n_reps) || n_reps < 1L) {
+    return(c(min = NA_integer_, max = NA_integer_))
+  }
+  offset <- 1000L * as.integer(d) + 100000L * m3_family_seed_index(family)
+  c(
+    min = as.integer(batch_seed_base + offset + 1L),
+    max = as.integer(batch_seed_base + offset + n_reps)
+  )
+}
+
+## Build the deterministic audit manifest for one shard/run before fitting.
+## This is intentionally side-effect free: it reads prior per-cell stores only
+## to record n_before and the planned step size.
+pilot_build_manifest <- function(
+  cell_ids = NULL,
+  n_sim_step = ACCUM_N_SIM_STEP_DEFAULT,
+  n_sim_cap = ACCUM_N_SIM_CAP_DEFAULT,
+  seed_base = NULL,
+  results_dir = PILOT_RESULTS_DIR_DEFAULT,
+  n_boot = PILOT_N_BOOT_DEFAULT,
+  seed_fn = pilot_accum_batch_seed,
+  shard = NA_integer_,
+  n_shards = NA_integer_,
+  output_mode = c("accumulate", "chunk"),
+  source_sha = Sys.getenv("GITHUB_SHA", unset = NA_character_),
+  workflow_run_id = Sys.getenv("GITHUB_RUN_ID", unset = NA_character_),
+  workflow_run_number = Sys.getenv("GITHUB_RUN_NUMBER", unset = NA_character_)
+) {
+  stopifnot(is.function(seed_fn))
+  output_mode <- match.arg(output_mode)
+  if (is.null(seed_base)) {
+    stop("pilot_build_manifest requires seed_base.")
+  }
+  n_sim_step <- as.integer(n_sim_step)
+  n_sim_cap <- as.integer(n_sim_cap)
+  seed_base <- as.integer(seed_base)
+  n_boot <- as.integer(n_boot)
+  if (is.na(seed_base) || seed_base < 0L) {
+    stop("seed_base must be a non-negative integer.")
+  }
+  if (is.na(n_sim_step) || n_sim_step < 1L) {
+    stop("n_sim_step must be a positive integer.")
+  }
+  if (is.na(n_sim_cap) || n_sim_cap < 1L) {
+    stop("n_sim_cap must be a positive integer.")
+  }
+
+  grid <- pilot_grid()
+  if (!is.null(cell_ids)) {
+    unknown <- setdiff(cell_ids, grid$cell_id)
+    if (length(unknown)) {
+      stop(
+        "unknown cell_ids requested: ",
+        paste(utils::head(unknown, 5L), collapse = ", ")
+      )
+    }
+    grid <- grid[grid$cell_id %in% cell_ids, , drop = FALSE]
+  }
+
+  campaign_id <- sprintf("power-pilot-seed-%s", seed_base)
+  rows <- vector("list", nrow(grid))
+  for (i in seq_len(nrow(grid))) {
+    cell <- grid[i, , drop = FALSE]
+    cid <- cell$cell_id
+    store_file <- paste0(cid, ".rds")
+    store_path <- file.path(results_dir, store_file)
+    prior <- if (file.exists(store_path)) {
+      tryCatch(readRDS(store_path), error = function(e) NULL)
+    } else {
+      NULL
+    }
+    n_before <- pilot_accum_count(prior)
+    n_reps_planned <- if (n_before >= n_sim_cap) {
+      0L
+    } else {
+      min(n_sim_step, n_sim_cap - n_before)
+    }
+    batch_seed_base <- seed_fn(seed_base, cell$seed_base)
+    seed_range <- pilot_manifest_seed_range(
+      batch_seed_base,
+      cell$harness_family,
+      cell$d,
+      n_reps_planned
+    )
+    rep_start <- if (n_reps_planned > 0L) n_before + 1L else NA_integer_
+    rep_end <- if (n_reps_planned > 0L) {
+      n_before + n_reps_planned
+    } else {
+      NA_integer_
+    }
+    chunk_id <- sprintf(
+      "seed%s-shard%s-%s-rep%s-%s",
+      seed_base,
+      shard,
+      cid,
+      ifelse(is.na(rep_start), "none", rep_start),
+      ifelse(is.na(rep_end), "none", rep_end)
+    )
+    chunk_file <- file.path(
+      PILOT_CHUNK_DIR,
+      campaign_id,
+      cid,
+      paste0(chunk_id, ".rds")
+    )
+    chunk_path <- pilot_chunk_path(results_dir, campaign_id, cid, chunk_id)
+    result_file <- if (identical(output_mode, "chunk")) {
+      chunk_file
+    } else {
+      store_file
+    }
+    result_path <- if (identical(output_mode, "chunk")) {
+      chunk_path
+    } else {
+      store_path
+    }
+    rows[[i]] <- data.frame(
+      campaign_id = campaign_id,
+      source_sha = as.character(source_sha),
+      workflow_run_id = as.character(workflow_run_id),
+      workflow_run_number = as.character(workflow_run_number),
+      shard = as.integer(shard),
+      n_shards = as.integer(n_shards),
+      chunk_id = chunk_id,
+      cell_id = cid,
+      family_label = cell$family_label,
+      harness_family = cell$harness_family,
+      evidence_family = cell$evidence_family,
+      d = as.integer(cell$d),
+      n_units = as.integer(cell$n_units),
+      signal = as.numeric(cell$signal),
+      lambda_scale = as.numeric(cell$lambda_scale),
+      output_mode = output_mode,
+      result_file = result_file,
+      result_path = result_path,
+      store_file = store_file,
+      store_path = store_path,
+      chunk_file = chunk_file,
+      chunk_path = chunk_path,
+      n_before = as.integer(n_before),
+      n_reps_planned = as.integer(n_reps_planned),
+      rep_start = as.integer(rep_start),
+      rep_end = as.integer(rep_end),
+      n_sim_cap = as.integer(n_sim_cap),
+      n_boot = as.integer(n_boot),
+      run_seed_base = as.integer(seed_base),
+      cell_seed_base = as.integer(cell$seed_base),
+      batch_seed_base = as.integer(batch_seed_base),
+      rep_seed_min = as.integer(seed_range[["min"]]),
+      rep_seed_max = as.integer(seed_range[["max"]]),
+      action = if (n_reps_planned > 0L) "advance" else "skip_at_cap",
+      stringsAsFactors = FALSE
+    )
+  }
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+pilot_write_manifest <- function(manifest, results_dir, shard) {
+  manifest_dir <- pilot_manifest_dir(results_dir)
+  if (!dir.exists(manifest_dir)) {
+    dir.create(manifest_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  path <- pilot_manifest_path(results_dir, shard)
+  utils::write.csv(manifest, path, row.names = FALSE, na = "")
+  invisible(path)
+}
+
+pilot_read_manifests <- function(results_dirs = PILOT_RESULTS_DIR_DEFAULT) {
+  results_dirs <- results_dirs[dir.exists(results_dirs)]
+  if (!length(results_dirs)) {
+    return(data.frame())
+  }
+  files <- unlist(
+    lapply(results_dirs, function(dir) {
+      list.files(
+        pilot_manifest_dir(dir),
+        pattern = "[.]csv$",
+        full.names = TRUE
+      )
+    }),
+    use.names = FALSE
+  )
+  if (!length(files)) {
+    return(data.frame())
+  }
+  rows <- lapply(files, function(path) {
+    out <- utils::read.csv(path, stringsAsFactors = FALSE)
+    out$manifest_file <- basename(path)
+    out
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+pilot_assert_manifest <- function(manifest, require_unique_result_path = TRUE) {
+  if (is.null(manifest) || !is.data.frame(manifest) || nrow(manifest) == 0L) {
+    return(invisible(TRUE))
+  }
+  required <- c(
+    "chunk_id",
+    "cell_id",
+    "result_path",
+    "n_reps_planned",
+    "rep_seed_min",
+    "rep_seed_max"
+  )
+  missing <- setdiff(required, names(manifest))
+  if (length(missing)) {
+    stop(
+      "Pilot manifest missing required columns: ",
+      paste(missing, collapse = ", ")
+    )
+  }
+  active <- manifest[manifest$n_reps_planned > 0L, , drop = FALSE]
+  if (!nrow(active)) {
+    return(invisible(TRUE))
+  }
+  dup_chunk <- active$chunk_id[duplicated(active$chunk_id)]
+  if (length(dup_chunk)) {
+    stop("Duplicate pilot manifest chunk_id: ", dup_chunk[[1]])
+  }
+  if (isTRUE(require_unique_result_path)) {
+    dup_path <- active$result_path[duplicated(active$result_path)]
+    if (length(dup_path)) {
+      stop("Duplicate pilot output paths in manifest: ", dup_path[[1]])
+    }
+  }
+  if ("chunk_path" %in% names(active)) {
+    bad_chunk_path <- is.na(active$chunk_path) | !nzchar(active$chunk_path)
+    if (any(bad_chunk_path)) {
+      stop(
+        "Missing pilot chunk path for chunk_id: ",
+        active$chunk_id[which(bad_chunk_path)[1]]
+      )
+    }
+    dup_chunk_path <- active$chunk_path[duplicated(active$chunk_path)]
+    if (length(dup_chunk_path)) {
+      stop("Duplicate pilot chunk paths in manifest: ", dup_chunk_path[[1]])
+    }
+  }
+  if (all(c("rep_start", "rep_end") %in% names(active))) {
+    bad_rep <- is.na(active$rep_start) |
+      is.na(active$rep_end) |
+      active$rep_start > active$rep_end
+    if (any(bad_rep)) {
+      stop(
+        "Invalid pilot replicate window for chunk_id: ",
+        active$chunk_id[which(bad_rep)[1]]
+      )
+    }
+    for (cid in unique(active$cell_id)) {
+      cell_rows <- active[active$cell_id == cid, , drop = FALSE]
+      if (nrow(cell_rows) < 2L) {
+        next
+      }
+      cell_rows <- cell_rows[
+        order(cell_rows$rep_start, cell_rows$rep_end),
+        ,
+        drop = FALSE
+      ]
+      prev_end <- cell_rows$rep_end[-nrow(cell_rows)]
+      next_start <- cell_rows$rep_start[-1L]
+      hit <- which(next_start <= prev_end)
+      if (length(hit)) {
+        stop(
+          "Overlapping pilot replicate windows for cell_id ",
+          cid,
+          ": ",
+          cell_rows$chunk_id[hit[[1]]],
+          " and ",
+          cell_rows$chunk_id[hit[[1]] + 1L]
+        )
+      }
+    }
+  }
+  active <- active[
+    order(active$rep_seed_min, active$rep_seed_max),
+    ,
+    drop = FALSE
+  ]
+  bad_seed <- is.na(active$rep_seed_min) |
+    is.na(active$rep_seed_max) |
+    active$rep_seed_min > active$rep_seed_max
+  if (any(bad_seed)) {
+    stop(
+      "Invalid pilot seed range for chunk_id: ",
+      active$chunk_id[which(bad_seed)[1]]
+    )
+  }
+  if (nrow(active) >= 2L) {
+    prev_max <- active$rep_seed_max[-nrow(active)]
+    next_min <- active$rep_seed_min[-1L]
+    hit <- which(next_min <= prev_max)
+    if (length(hit)) {
+      stop(
+        "Overlapping pilot seed ranges: ",
+        active$chunk_id[hit[[1]]],
+        " and ",
+        active$chunk_id[hit[[1]] + 1L]
+      )
+    }
+  }
+  invisible(TRUE)
+}
+
+pilot_assert_chunk_outputs <- function(manifest, require_all = TRUE) {
+  if (is.null(manifest) || !is.data.frame(manifest) || nrow(manifest) == 0L) {
+    return(data.frame())
+  }
+  required <- c("chunk_id", "cell_id", "chunk_path", "n_reps_planned")
+  missing <- setdiff(required, names(manifest))
+  if (length(missing)) {
+    stop(
+      "Pilot chunk audit missing required columns: ",
+      paste(missing, collapse = ", ")
+    )
+  }
+  pilot_assert_manifest(manifest, require_unique_result_path = FALSE)
+  active <- manifest[manifest$n_reps_planned > 0L, , drop = FALSE]
+  if (!nrow(active)) {
+    return(data.frame())
+  }
+  exists <- file.exists(active$chunk_path)
+  size_bytes <- rep(NA_real_, nrow(active))
+  if (any(exists)) {
+    size_bytes[exists] <- file.info(active$chunk_path[exists])$size
+  }
+  audit <- data.frame(
+    chunk_id = active$chunk_id,
+    cell_id = active$cell_id,
+    chunk_path = active$chunk_path,
+    n_reps_planned = as.integer(active$n_reps_planned),
+    exists = exists,
+    size_bytes = size_bytes,
+    stringsAsFactors = FALSE
+  )
+  if (isTRUE(require_all)) {
+    missing_file <- which(!audit$exists)
+    if (length(missing_file)) {
+      stop(
+        "Missing pilot chunk output: ",
+        audit$chunk_id[missing_file[[1]]],
+        " at ",
+        audit$chunk_path[missing_file[[1]]]
+      )
+    }
+    empty_file <- which(
+      audit$exists & (is.na(audit$size_bytes) | audit$size_bytes <= 0)
+    )
+    if (length(empty_file)) {
+      stop(
+        "Empty pilot chunk output: ",
+        audit$chunk_id[empty_file[[1]]],
+        " at ",
+        audit$chunk_path[empty_file[[1]]]
+      )
+    }
+  }
+  audit
+}
+
+pilot_run_chunk_manifest <- function(
+  manifest,
+  runner = m3_run_cell,
+  ci_level = PILOT_CI_LEVEL,
+  verbose = FALSE
+) {
+  stopifnot(is.function(runner))
+  pilot_assert_manifest(manifest, require_unique_result_path = FALSE)
+  report <- data.frame(
+    chunk_id = character(0),
+    cell_id = character(0),
+    status = character(0),
+    n_reps = integer(0),
+    chunk_path = character(0),
+    size_bytes = numeric(0),
+    wall_s = numeric(0),
+    error = character(0),
+    stringsAsFactors = FALSE
+  )
+  if (is.null(manifest) || !is.data.frame(manifest) || nrow(manifest) == 0L) {
+    return(report)
+  }
+  required <- c(
+    "campaign_id",
+    "chunk_id",
+    "cell_id",
+    "harness_family",
+    "d",
+    "n_units",
+    "signal",
+    "lambda_scale",
+    "chunk_path",
+    "n_before",
+    "n_reps_planned",
+    "rep_start",
+    "rep_end",
+    "n_boot",
+    "run_seed_base",
+    "batch_seed_base"
+  )
+  missing <- setdiff(required, names(manifest))
+  if (length(missing)) {
+    stop(
+      "Pilot chunk runner missing required columns: ",
+      paste(missing, collapse = ", ")
+    )
+  }
+  active <- manifest[manifest$n_reps_planned > 0L, , drop = FALSE]
+  if (!nrow(active)) {
+    return(report)
+  }
+  bad_mode <- if ("output_mode" %in% names(active)) {
+    active$output_mode != "chunk"
+  } else {
+    rep(TRUE, nrow(active))
+  }
+  if (any(bad_mode)) {
+    stop(
+      "Pilot chunk runner requires output_mode = 'chunk' for chunk_id: ",
+      active$chunk_id[which(bad_mode)[1]]
+    )
+  }
+
+  for (i in seq_len(nrow(active))) {
+    row <- active[i, , drop = FALSE]
+    n_reps <- as.integer(row$n_reps_planned)
+    n_before <- as.integer(row$n_before)
+    if (!is.finite(n_before) || n_before < 0L) {
+      stop("Invalid pilot chunk n_before for chunk_id: ", row$chunk_id)
+    }
+    if (!nzchar(row$chunk_path)) {
+      stop("Missing pilot chunk path for chunk_id: ", row$chunk_id)
+    }
+    dir.create(dirname(row$chunk_path), recursive = TRUE, showWarnings = FALSE)
+
+    cat(sprintf(
+      paste0(
+        "[chunk] RUN  %s: %d reps (cell=%s n_before=%d; ",
+        "family=%s d=%d n=%d signal=%.1f seed_base=%d)\n"
+      ),
+      row$chunk_id,
+      n_reps,
+      row$cell_id,
+      n_before,
+      row$harness_family,
+      as.integer(row$d),
+      as.integer(row$n_units),
+      as.numeric(row$signal),
+      as.integer(row$batch_seed_base)
+    ))
+
+    t0 <- Sys.time()
+    res <- tryCatch(
+      runner(
+        family = row$harness_family,
+        d = as.integer(row$d),
+        n_reps = n_reps,
+        seed_base = as.integer(row$batch_seed_base),
+        n_units = as.integer(row$n_units),
+        n_traits = PILOT_N_TRAITS,
+        lambda_scale = as.numeric(row$lambda_scale),
+        targets = "Sigma_unit_diag",
+        n_boot = as.integer(row$n_boot),
+        ci_level = ci_level,
+        verbose = verbose
+      ),
+      error = function(e) e
+    )
+    wall <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+    if (inherits(res, "error")) {
+      msg <- conditionMessage(res)
+      msg <- iconv(msg, to = "ASCII", sub = "?")
+      msg <- gsub("[\r\n]+", " ", msg)
+      report <- rbind(
+        report,
+        data.frame(
+          chunk_id = row$chunk_id,
+          cell_id = row$cell_id,
+          status = "error",
+          n_reps = 0L,
+          chunk_path = row$chunk_path,
+          size_bytes = NA_real_,
+          wall_s = wall,
+          error = msg,
+          stringsAsFactors = FALSE
+        )
+      )
+      stop("Pilot chunk runner failed for chunk_id ", row$chunk_id, ": ", msg)
+    }
+    if (!is.data.frame(res)) {
+      stop(
+        "Pilot chunk runner returned non-data-frame for chunk_id: ",
+        row$chunk_id
+      )
+    }
+
+    res <- pilot_reindex_reps(res, n_before)
+    res$pilot_campaign_id <- row$campaign_id
+    res$pilot_chunk_id <- row$chunk_id
+    res$pilot_cell_id <- row$cell_id
+    res$pilot_rep_start <- as.integer(row$rep_start)
+    res$pilot_rep_end <- as.integer(row$rep_end)
+    res$pilot_run_seed_base <- as.integer(row$run_seed_base)
+    res$pilot_batch_seed_base <- as.integer(row$batch_seed_base)
+
+    saveRDS(res, row$chunk_path)
+    size_bytes <- file.info(row$chunk_path)$size
+    out_reps <- pilot_accum_count(res)
+    cat(sprintf(
+      "[chunk] OK   %s in %.1fs: wrote %d rep(s) to %s\n",
+      row$chunk_id,
+      wall,
+      out_reps,
+      row$chunk_path
+    ))
+    report <- rbind(
+      report,
+      data.frame(
+        chunk_id = row$chunk_id,
+        cell_id = row$cell_id,
+        status = "written",
+        n_reps = as.integer(out_reps),
+        chunk_path = row$chunk_path,
+        size_bytes = as.numeric(size_bytes),
+        wall_s = wall,
+        error = NA_character_,
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+
+  rownames(report) <- NULL
+  report
+}
+
+pilot_bind_rows_union <- function(rows) {
+  rows <- Filter(Negate(is.null), rows)
+  if (!length(rows)) {
+    return(data.frame())
+  }
+  cols <- unique(unlist(lapply(rows, names), use.names = FALSE))
+  rows <- lapply(rows, function(x) {
+    missing <- setdiff(cols, names(x))
+    for (nm in missing) {
+      x[[nm]] <- NA
+    }
+    x[, cols, drop = FALSE]
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+pilot_read_chunk_outputs <- function(manifest, require_all = TRUE) {
+  pilot_assert_chunk_outputs(manifest, require_all = require_all)
+  if (is.null(manifest) || !is.data.frame(manifest) || nrow(manifest) == 0L) {
+    return(data.frame())
+  }
+  active <- manifest[manifest$n_reps_planned > 0L, , drop = FALSE]
+  if (!nrow(active)) {
+    return(data.frame())
+  }
+  required_manifest <- c(
+    "campaign_id",
+    "chunk_id",
+    "cell_id",
+    "chunk_path",
+    "rep_start",
+    "rep_end"
+  )
+  missing_manifest <- setdiff(required_manifest, names(active))
+  if (length(missing_manifest)) {
+    stop(
+      "Pilot chunk aggregate missing manifest columns: ",
+      paste(missing_manifest, collapse = ", ")
+    )
+  }
+
+  chunks <- vector("list", nrow(active))
+  for (i in seq_len(nrow(active))) {
+    row <- active[i, , drop = FALSE]
+    chunk <- tryCatch(readRDS(row$chunk_path), error = function(e) e)
+    if (inherits(chunk, "error")) {
+      stop(
+        "Cannot read pilot chunk output for chunk_id ",
+        row$chunk_id,
+        ": ",
+        conditionMessage(chunk)
+      )
+    }
+    if (!is.data.frame(chunk) || !nrow(chunk)) {
+      stop("Pilot chunk output is not a non-empty data frame: ", row$chunk_id)
+    }
+    missing_chunk <- setdiff(c("rep", "trait_id"), names(chunk))
+    if (length(missing_chunk)) {
+      stop(
+        "Pilot chunk output missing required columns for chunk_id ",
+        row$chunk_id,
+        ": ",
+        paste(missing_chunk, collapse = ", ")
+      )
+    }
+
+    expected_reps <- seq.int(as.integer(row$rep_start), as.integer(row$rep_end))
+    observed_reps <- sort(unique(as.integer(chunk$rep)))
+    if (!identical(observed_reps, expected_reps)) {
+      stop(
+        "Pilot chunk rows do not match manifest replicate window for chunk_id ",
+        row$chunk_id,
+        ": expected rep ",
+        paste(expected_reps, collapse = ","),
+        "; got ",
+        paste(observed_reps, collapse = ",")
+      )
+    }
+
+    if ("pilot_chunk_id" %in% names(chunk)) {
+      vals <- unique(as.character(chunk$pilot_chunk_id))
+      vals <- vals[!is.na(vals)]
+      if (!identical(vals, as.character(row$chunk_id))) {
+        stop("Pilot chunk_id metadata mismatch for chunk_id: ", row$chunk_id)
+      }
+    } else {
+      chunk$pilot_chunk_id <- as.character(row$chunk_id)
+    }
+    if ("pilot_cell_id" %in% names(chunk)) {
+      vals <- unique(as.character(chunk$pilot_cell_id))
+      vals <- vals[!is.na(vals)]
+      if (!identical(vals, as.character(row$cell_id))) {
+        stop("Pilot cell_id metadata mismatch for chunk_id: ", row$chunk_id)
+      }
+    } else {
+      chunk$pilot_cell_id <- as.character(row$cell_id)
+    }
+    if ("pilot_campaign_id" %in% names(chunk)) {
+      vals <- unique(as.character(chunk$pilot_campaign_id))
+      vals <- vals[!is.na(vals)]
+      if (!identical(vals, as.character(row$campaign_id))) {
+        stop("Pilot campaign_id metadata mismatch for chunk_id: ", row$chunk_id)
+      }
+    } else {
+      chunk$pilot_campaign_id <- as.character(row$campaign_id)
+    }
+    chunk$pilot_chunk_path <- as.character(row$chunk_path)
+    chunks[[i]] <- chunk
+  }
+
+  pilot_bind_rows_union(chunks)
+}
+
+pilot_assert_unique_chunk_rows <- function(chunks) {
+  required <- c("pilot_cell_id", "rep", "trait_id")
+  missing <- setdiff(required, names(chunks))
+  if (length(missing)) {
+    stop(
+      "Pilot chunk aggregate missing duplicate-key columns: ",
+      paste(missing, collapse = ", ")
+    )
+  }
+  key_cols <- required
+  if ("target" %in% names(chunks)) {
+    key_cols <- c(key_cols, "target")
+  }
+  key_df <- chunks[, key_cols, drop = FALSE]
+  keys <- do.call(
+    paste,
+    c(lapply(key_df, as.character), sep = "\r")
+  )
+  dup <- which(duplicated(keys))
+  if (length(dup)) {
+    i <- dup[[1]]
+    key_values <- vapply(
+      key_cols,
+      function(col) as.character(chunks[[col]][i]),
+      character(1)
+    )
+    stop(
+      "Duplicate pilot chunk aggregate rows for key: ",
+      paste(
+        sprintf("%s=%s", key_cols, key_values),
+        collapse = ", "
+      )
+    )
+  }
+  invisible(TRUE)
+}
+
+pilot_aggregate_chunk_outputs <- function(
+  manifest,
+  aggregate_dir = NULL,
+  write = FALSE
+) {
+  chunks <- pilot_read_chunk_outputs(manifest, require_all = TRUE)
+  report <- data.frame(
+    cell_id = character(0),
+    n_chunks = integer(0),
+    n_rows = integer(0),
+    n_reps = integer(0),
+    rep_min = integer(0),
+    rep_max = integer(0),
+    aggregate_path = character(0),
+    size_bytes = numeric(0),
+    stringsAsFactors = FALSE
+  )
+  if (!nrow(chunks)) {
+    return(list(report = report, cells = list()))
+  }
+  pilot_assert_unique_chunk_rows(chunks)
+  if (isTRUE(write)) {
+    if (is.null(aggregate_dir) || !nzchar(aggregate_dir)) {
+      stop("aggregate_dir is required when write = TRUE.")
+    }
+    dir.create(aggregate_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  cells <- split(chunks, chunks$pilot_cell_id)
+  out_cells <- vector("list", length(cells))
+  names(out_cells) <- names(cells)
+  for (cid in names(cells)) {
+    cell <- cells[[cid]]
+    order_cols <- intersect(c("rep", "trait_id", "target"), names(cell))
+    if (length(order_cols)) {
+      ord <- do.call(order, cell[, order_cols, drop = FALSE])
+      cell <- cell[ord, , drop = FALSE]
+    }
+    rownames(cell) <- NULL
+    out_cells[[cid]] <- cell
+
+    aggregate_path <- if (isTRUE(write)) {
+      file.path(aggregate_dir, paste0(cid, ".rds"))
+    } else {
+      NA_character_
+    }
+    size_bytes <- NA_real_
+    if (isTRUE(write)) {
+      saveRDS(cell, aggregate_path)
+      size_bytes <- as.numeric(file.info(aggregate_path)$size)
+    }
+    reps <- sort(unique(as.integer(cell$rep)))
+    report <- rbind(
+      report,
+      data.frame(
+        cell_id = cid,
+        n_chunks = length(unique(cell$pilot_chunk_id)),
+        n_rows = nrow(cell),
+        n_reps = length(reps),
+        rep_min = min(reps),
+        rep_max = max(reps),
+        aggregate_path = aggregate_path,
+        size_bytes = size_bytes,
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+  rownames(report) <- NULL
+  list(report = report, cells = out_cells)
 }
 
 ## Upsert a single cell row into the index (replace any existing row for
@@ -386,18 +1331,21 @@ run_next_pilot_batch <- function(
       msg <- iconv(msg, to = "ASCII", sub = "?")
       msg <- gsub("[\r\n]+", " ", msg)
       cat(sprintf("[pilot] FAILED cell %s after %.1fs: %s\n", cid, wall, msg))
-      idx <- pilot_index_upsert(idx, data.frame(
-        cell_id = cid,
-        status = "failed",
-        n_sim = n_sim,
-        n_boot = as.integer(n_boot),
-        wall_s = wall,
-        coverage_primary = NA_real_,
-        primary_gate_status = NA_character_,
-        error = msg,
-        timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
-        stringsAsFactors = FALSE
-      ))
+      idx <- pilot_index_upsert(
+        idx,
+        data.frame(
+          cell_id = cid,
+          status = "failed",
+          n_sim = n_sim,
+          n_boot = as.integer(n_boot),
+          wall_s = wall,
+          coverage_primary = NA_real_,
+          primary_gate_status = NA_character_,
+          error = msg,
+          timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+          stringsAsFactors = FALSE
+        )
+      )
       pilot_save_index(idx, results_dir)
       batch_results <- c(batch_results, paste0(cid, "[FAIL]"))
       next
@@ -415,18 +1363,21 @@ run_next_pilot_batch <- function(
         gate <- prim$primary_gate_status[1]
       }
     }
-    idx <- pilot_index_upsert(idx, data.frame(
-      cell_id = cid,
-      status = "done",
-      n_sim = n_sim,
-      n_boot = as.integer(n_boot),
-      wall_s = wall,
-      coverage_primary = cov_p,
-      primary_gate_status = gate %||% NA_character_,
-      error = NA_character_,
-      timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
-      stringsAsFactors = FALSE
-    ))
+    idx <- pilot_index_upsert(
+      idx,
+      data.frame(
+        cell_id = cid,
+        status = "done",
+        n_sim = n_sim,
+        n_boot = as.integer(n_boot),
+        wall_s = wall,
+        coverage_primary = cov_p,
+        primary_gate_status = gate %||% NA_character_,
+        error = NA_character_,
+        timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+        stringsAsFactors = FALSE
+      )
+    )
     pilot_save_index(idx, results_dir)
     cat(sprintf(
       "[pilot] OK cell %s in %.1fs (coverage_primary=%s)\n",
@@ -460,14 +1411,14 @@ run_next_pilot_batch <- function(
 ## ---- Status helper ----------------------------------------------------
 
 ## pilot_status: summarize done / pending / failed across the pilot grid,
-## plus preliminary coverage / power numbers available so far.
+## plus preliminary coverage / zero-exclusion diagnostics available so far.
 ##
 ## Returns (invisibly) a list with `$counts`, `$cells` (the per-cell
 ## index joined to the grid), and `$coverage` / `$power` summaries. Also
 ## prints a compact ASCII report. "Coverage" cells are signal > 0 (the
-## primary Sigma_unit_diag coverage claim); "power/Type-I" reporting uses
-## the signal = 0 null cells (coverage-under-null is the Type-I proxy --
-## a full reject-rate power rule is a Phase-2 addition, Design 66 sec. 9).
+## primary Sigma_unit_diag coverage claim). Signal == 0 cells are reported
+## only as signal-zero coverage diagnostics because the Sigma_unit_diag target
+## remains positive; they are not Type-I error or power cells.
 pilot_status <- function(
   results_dir = PILOT_RESULTS_DIR_DEFAULT,
   gate_94 = 0.94,
@@ -485,7 +1436,14 @@ pilot_status <- function(
 
   ## Join grid <- index for the per-cell view.
   cells <- merge(
-    grid[, c("cell_id", "family_label", "d", "n_units", "signal")],
+    grid[, c(
+      "cell_id",
+      "family_label",
+      "evidence_family",
+      "d",
+      "n_units",
+      "signal"
+    )],
     idx[, c(
       "cell_id",
       "status",
@@ -522,7 +1480,7 @@ pilot_status <- function(
     ,
     drop = FALSE
   ]
-  ## Null cells (signal == 0): coverage-under-null = Type-I proxy.
+  ## Signal-zero cells: coverage on the positive Sigma_unit_diag target.
   null_cells <- cells[
     cells$status == "done" &
       cells$signal == 0 &
@@ -566,12 +1524,14 @@ pilot_status <- function(
   }
   if (nrow(null_cells)) {
     cat(sprintf(
-      "preliminary null/Type-I proxy (signal=0, %d cells): mean coverage-under-null=%.3f\n",
+      "preliminary signal-zero coverage diagnostic (signal=0, %d cells): mean coverage=%.3f\n",
       nrow(null_cells),
       mean(null_cells$coverage_primary)
     ))
   } else {
-    cat("preliminary null/Type-I proxy (signal=0): <no done cells yet>\n")
+    cat(
+      "preliminary signal-zero coverage diagnostic (signal=0): <no done cells yet>\n"
+    )
   }
 
   invisible(list(
@@ -626,9 +1586,12 @@ pilot_status <- function(
 ## being added to the cell seed_base, guaranteeing disjoint seed blocks
 ## across runs. m3_run_cell derives rep_seed = seed_base + 1000*d +
 ## 100000*family_index + r, so a single batch spans < ~1.3e6 of seed
-## space (cell seed_base <= 6.6e5, plus 100000*family_index <= 5e5, plus
-## 1000*d + r); a 5e6 stride leaves a wide margin so blocks never
-## overlap. R seeds are 32-bit, so batch_seed_base MUST stay inside the
+## space (cell seed_base < 1.2e6, plus 100000*family_index <= 5e5, plus
+## 1000*d + r); a 5e6 stride leaves a wide margin so run-number blocks
+## never overlap. Per-cell seed bases are separated by
+## PILOT_CELL_SEED_STRIDE so same-run cells also do not share rep_seed
+## values after the harness family/d seed offset is added. R seeds are
+## 32-bit, so batch_seed_base MUST stay inside the
 ## signed-int range; with this stride the base stays in range for run
 ## numbers up to ~400 (~33 days at the 2h cadence -- well beyond the
 ## 1-week campaign). pilot_accum_batch_seed() folds defensively if a
@@ -826,15 +1789,18 @@ run_accumulate_pilot_batch <- function(
         n_before,
         n_sim_cap
       ))
-      report <- rbind(report, data.frame(
-        cell_id = cid,
-        action = "skip_at_cap",
-        n_before = n_before,
-        n_after = n_before,
-        coverage_primary = NA_real_,
-        error = NA_character_,
-        stringsAsFactors = FALSE
-      ))
+      report <- rbind(
+        report,
+        data.frame(
+          cell_id = cid,
+          action = "skip_at_cap",
+          n_before = n_before,
+          n_after = n_before,
+          coverage_primary = NA_real_,
+          error = NA_character_,
+          stringsAsFactors = FALSE
+        )
+      )
       next
     }
 
@@ -903,42 +1869,53 @@ run_accumulate_pilot_batch <- function(
       } else {
         list(coverage_primary = NA_real_, primary_gate_status = NA_character_)
       }
-      idx <- pilot_index_upsert(idx, data.frame(
-        cell_id = cid,
-        status = status,
-        n_sim = n_before,
-        n_boot = as.integer(n_boot),
-        wall_s = wall,
-        coverage_primary = prior_sum$coverage_primary,
-        primary_gate_status = prior_sum$primary_gate_status %||% NA_character_,
-        error = msg,
-        timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
-        stringsAsFactors = FALSE
-      ))
+      idx <- pilot_index_upsert(
+        idx,
+        data.frame(
+          cell_id = cid,
+          status = status,
+          n_sim = n_before,
+          n_boot = as.integer(n_boot),
+          wall_s = wall,
+          coverage_primary = prior_sum$coverage_primary,
+          primary_gate_status = prior_sum$primary_gate_status %||%
+            NA_character_,
+          error = msg,
+          timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+          stringsAsFactors = FALSE
+        )
+      )
       pilot_save_index(idx, results_dir)
-      report <- rbind(report, data.frame(
-        cell_id = cid,
-        action = "error",
-        n_before = n_before,
-        n_after = n_before,
-        coverage_primary = prior_sum$coverage_primary,
-        error = msg,
-        stringsAsFactors = FALSE
-      ))
+      report <- rbind(
+        report,
+        data.frame(
+          cell_id = cid,
+          action = "error",
+          n_before = n_before,
+          n_after = n_before,
+          coverage_primary = prior_sum$coverage_primary,
+          error = msg,
+          stringsAsFactors = FALSE
+        )
+      )
       next
     }
 
     ## Success: renumber the new batch's reps above the prior max, then
     ## combine with the prior stored grid.
     prior_max_rep <- if (
-      !is.null(prior) && is.data.frame(prior) && "rep" %in% names(prior) &&
+      !is.null(prior) &&
+        is.data.frame(prior) &&
+        "rep" %in% names(prior) &&
         nrow(prior)
     ) {
       suppressWarnings(max(prior$rep, na.rm = TRUE))
     } else {
       0L
     }
-    if (!is.finite(prior_max_rep)) prior_max_rep <- 0L
+    if (!is.finite(prior_max_rep)) {
+      prior_max_rep <- 0L
+    }
     res <- pilot_reindex_reps(res, prior_max_rep)
 
     combined <- if (is.null(prior)) {
@@ -955,18 +1932,21 @@ run_accumulate_pilot_batch <- function(
     prim <- pilot_summarise_primary(combined)
     status <- if (n_after >= n_sim_cap) "done" else "pending"
 
-    idx <- pilot_index_upsert(idx, data.frame(
-      cell_id = cid,
-      status = status,
-      n_sim = n_after,
-      n_boot = as.integer(n_boot),
-      wall_s = wall,
-      coverage_primary = prim$coverage_primary,
-      primary_gate_status = prim$primary_gate_status %||% NA_character_,
-      error = NA_character_,
-      timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
-      stringsAsFactors = FALSE
-    ))
+    idx <- pilot_index_upsert(
+      idx,
+      data.frame(
+        cell_id = cid,
+        status = status,
+        n_sim = n_after,
+        n_boot = as.integer(n_boot),
+        wall_s = wall,
+        coverage_primary = prim$coverage_primary,
+        primary_gate_status = prim$primary_gate_status %||% NA_character_,
+        error = NA_character_,
+        timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+        stringsAsFactors = FALSE
+      )
+    )
     pilot_save_index(idx, results_dir)
     cat(sprintf(
       "[accum] OK   %s in %.1fs: n_sim %d -> %d (%s); coverage_primary=%s\n",
@@ -981,15 +1961,18 @@ run_accumulate_pilot_batch <- function(
         formatC(prim$coverage_primary, format = "f", digits = 3)
       )
     ))
-    report <- rbind(report, data.frame(
-      cell_id = cid,
-      action = if (status == "done") "advanced_to_cap" else "advanced",
-      n_before = n_before,
-      n_after = n_after,
-      coverage_primary = prim$coverage_primary,
-      error = NA_character_,
-      stringsAsFactors = FALSE
-    ))
+    report <- rbind(
+      report,
+      data.frame(
+        cell_id = cid,
+        action = if (status == "done") "advanced_to_cap" else "advanced",
+        n_before = n_before,
+        n_after = n_after,
+        coverage_primary = prim$coverage_primary,
+        error = NA_character_,
+        stringsAsFactors = FALSE
+      )
+    )
   }
 
   fail_rate <- if (n_attempted > 0L) n_errored / n_attempted else 0
@@ -1027,7 +2010,14 @@ pilot_accum_status <- function(
   idx <- pilot_load_index(results_dir)
 
   cells <- merge(
-    grid[, c("cell_id", "family_label", "d", "n_units", "signal")],
+    grid[, c(
+      "cell_id",
+      "family_label",
+      "evidence_family",
+      "d",
+      "n_units",
+      "signal"
+    )],
     idx[, c(
       "cell_id",
       "status",
@@ -1102,12 +2092,12 @@ pilot_accum_status <- function(
   }
   if (nrow(null_cells)) {
     cat(sprintf(
-      "null/Type-I proxy (signal=0, %d cells): mean coverage-under-null=%.3f\n",
+      "signal-zero coverage diagnostic (signal=0, %d cells): mean coverage=%.3f\n",
       nrow(null_cells),
       mean(null_cells$coverage_primary)
     ))
   } else {
-    cat("null/Type-I proxy (signal=0): <no reps yet>\n")
+    cat("signal-zero coverage diagnostic (signal=0): <no reps yet>\n")
   }
 
   invisible(list(

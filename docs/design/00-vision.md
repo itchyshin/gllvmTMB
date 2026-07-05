@@ -158,7 +158,7 @@ gllvmTMB(
   value ~ 0 + trait
         + latent(0 + trait | site, d = 2)         # unit-tier shared + diagonal Psi
         + latent(0 + trait | site_species, d = 1) # unit_obs shared + diagonal Psi
-        + phylo_latent(species, d = 1),           # phylogenetic shared + diagonal Psi
+        + phylo_latent(species, d = 1, unique = TRUE), # phylogenetic shared + diagonal Psi
   data     = df,
   family   = gaussian(),
   trait    = "trait",          # long-format column holding trait factor
@@ -177,7 +177,7 @@ gllvmTMB(
   traits(trait_1, trait_2, trait_3) ~ 1
         + latent(1 | site, d = 2)
         + latent(1 | site_species, d = 1)
-        + phylo_latent(species, d = 1),
+        + phylo_latent(species, d = 1, unique = TRUE),
   data     = df_wide,
   family   = gaussian(),
   unit     = "site",

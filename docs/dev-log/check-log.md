@@ -32529,3 +32529,51 @@ check passed; local R CMD check passed in 4m 26.1s with 0 errors, 0 warnings,
 Known limitation:
 
 - Local checks only; no GitHub CI because this branch was not pushed.
+
+## 2026-07-04 -- Live bridge and two-kernel checks
+
+Goal: close the remaining focused review-package evidence gaps: the larger
+coevolution two-kernel file and the live R-to-GLLVM.jl bridge tests.
+
+Commands:
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-two-kernel.R", reporter = "summary")'
+```
+
+Outcome: passed.
+
+```sh
+GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl" NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'
+```
+
+First outcome: failed before bridge logic because `JuliaCall::julia_setup()`
+could not find Julia. The probe inside the warnings was
+`bash -l -c 'which julia'` with status 1.
+
+```sh
+PATH="$HOME/.juliaup/bin:$PATH" bash -l -c 'which julia; julia --version'
+PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'cat(Sys.which("julia"), "\n"); system("bash -l -c \"which julia; julia --version\"")'
+```
+
+Outcome: both probes found `/Users/z3437171/.juliaup/bin/julia`; Julia version
+was 1.10.0.
+
+```sh
+PATH="$HOME/.juliaup/bin:$PATH" GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl" NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'
+```
+
+Outcome: passed. The run activated the local `GLLVM.jl` project and completed
+the live bridge tests.
+
+Post-check state:
+
+```sh
+git status --short --branch
+```
+
+Outcome: `gllvmTMB` and `GLLVM.jl` worktrees both clean after tests.
+
+Known limitation:
+
+- Local validation only; no GitHub CI because the branch was not pushed.

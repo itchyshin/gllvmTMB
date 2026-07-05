@@ -32336,3 +32336,81 @@ Known limitation:
 
 - This is a review map only; no code, package tests, dashboard refresh, push, or
   PR action.
+
+## 2026-07-04 -- Review package focused checks
+
+Goal: execute the first focused local checks named in the completion branch
+review package map.
+
+Commands and outcomes:
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-bootstrap.R", reporter = "summary")'
+```
+
+Outcome: all tests skipped without `GLLVMTMB_HEAVY_TESTS=1`.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-bootstrap.R", reporter = "summary")'
+```
+
+Outcome: passed.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-derived.R", reporter = "summary")'
+```
+
+Outcome: all tests skipped without `GLLVMTMB_HEAVY_TESTS=1`.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-confint-derived.R", reporter = "summary")'
+```
+
+Outcome: passed.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-profile-targets.R", reporter = "summary")'
+```
+
+Outcome: passed.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-plot-covariance-tables.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-rotate-compare-loadings.R", reporter = "summary")'
+```
+
+Outcome: both passed.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'
+```
+
+Outcome: pure bridge tests passed; 13 live GLLVM.jl tests skipped because
+`GLLVM_JL_PATH` was not configured.
+
+```sh
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-keyword-grid.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-ordinary-latent-random-regression.R", reporter = "summary")'
+```
+
+First outcome: too weak; tests skipped under CRAN-like defaults.
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-canonical-keywords.R", reporter = "summary")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-keyword-grid.R", reporter = "summary")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-ordinary-latent-random-regression.R", reporter = "summary")'
+```
+
+Outcome: all passed; canonical-keywords had three INLA-only spatial skips.
+
+```sh
+python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null
+python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null
+```
+
+Outcome: both JSON files valid.
+
+Known limitation:
+
+- Live GLLVM.jl tests, coevolution/kernel focused checks, `pkgdown`, and
+  `devtools::check()` remain unrun in this slice.

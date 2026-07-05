@@ -32414,3 +32414,28 @@ Known limitation:
 
 - Live GLLVM.jl tests, coevolution/kernel focused checks, `pkgdown`, and
   `devtools::check()` remain unrun in this slice.
+
+## 2026-07-04 -- Coevolution focused checks
+
+Goal: run the coevolution/kernel focused checks from the completion branch
+review package map.
+
+Commands:
+
+```sh
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-prototype.R", reporter = "summary")'
+NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-recovery.R", reporter = "summary")'
+```
+
+Outcome: both passed non-heavy checks but skipped the heavy recovery cells.
+
+```sh
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-prototype.R", reporter = "summary")'
+GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-recovery.R", reporter = "summary")'
+```
+
+Outcome: both passed.
+
+Known limitation:
+
+- `test-coevolution-two-kernel.R` and release-level checks were not run.

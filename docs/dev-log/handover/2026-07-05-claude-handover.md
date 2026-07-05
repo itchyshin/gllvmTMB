@@ -226,3 +226,144 @@ Autonomous clean-context variant with a budget cap:
 cd "/Users/z3437171/Dropbox/Github Local/gllvmTMB"
 claude -p "Rehydrate from docs/dev-log/handover/2026-07-05-claude-handover.md + AGENTS.md + CLAUDE.md, then prepare the next gllvmTMB completion slice plan around profile-route truth. Do not push, open PRs, or edit likelihood/formula grammar without maintainer approval." --max-budget-usd 10
 ```
+
+
+---
+
+# Session Handoff: completion-arc — merge landed + M1–M5 audited + delta/D-28 resolved
+Meta: 2026-07-05 13:48 MDT · from Claude · target Claude (next session) · repo `gllvmTMB`
+
+You are Claude, picking up from the previous Claude session (Codex is out ~3 days —
+Shinichi said "you own the project"). **This env compiles and runs live R/TMB** — I ran
+real fits this session (merge suite, recovery studies). So the "live-implementation" items
+below are YOURS to do, not blocked on Codex. Start from repo files, not chat.
+
+## Critical Context (read or you'll go wrong)
+
+1. **Branch `codex/r-bridge-grouped-dispersion` @ `ba60185f`, PUSHED (local == origin).**
+   The 99-conflict fold-arc merge (main → this branch) is DONE: full suite **4168/0**,
+   R CMD check **0/0/0** (skipping vignettes + missing Suggests), adopted onto live as a
+   `--no-ff` merge commit. It is **273 commits ahead of main**.
+2. **Hard guard — do NOT push to `main` / open a PR-to-main / merge without Shinichi.**
+   Branch pushes for backup ARE authorized (that's why origin is current). The big
+   273-commit PR-to-main is deferred to Shinichi.
+3. **THE pdHess GOTCHA (I burned several commits on this — see Gotchas).** On a default
+   gllvmTMB fit `fit$sdr` is `NULL`, so `isTRUE(fit$sdr$pdHess)` is `FALSE` for EVERY fit.
+   It is NOT a convergence signal. To check a Hessian, run `sdreport` (`se = TRUE` /
+   `TMB::sdreport(fit$obj)`).
+
+## What Was Accomplished
+
+- **The merge** (bulk of the session): 99 conflicts → green → check 0/0/0 → adopted → pushed.
+  Guards re-layered (source `lv=` abort, spatial trait-anchor, phylo mode-dispatch, dup-slope),
+  #608/#626/#628/#643 re-applied, `spatial_latent(unique=)` SPDE fold restored, positional
+  control args restored.
+- **M1 truth matrix — DONE + verified** ([Design 75](../../design/75-inference-route-truth-matrix.md)):
+  all tiers × Wald/profile/est-lik/bootstrap, covered/partial/blocked/planned, RE-*/CI-* IDs.
+- **M2 missing/mixed** — D-28 verified; **`interval_status` marker SHIPPED** in
+  `extract_correlations()` (nominal / route-only / none; `R/extract-correlations.R`); MIX-10
+  "blocked" exposed as never-wired; **delta resolved** (Shinichi's design, below) across
+  Design 02/57 + register + README/NEWS/ROADMAP/2 vignettes.
+- **M3 slope** — `unit_slope` fisher-z block runtime-CONFIRMED (refuses, no fabrication);
+  profile canary enforced (`profile-derived.R:692`); phy/spde generalize by the same path.
+- **M4 non-Gaussian** — D-28 residuals + auto-Psi + OLRE audited. Chased a phantom
+  "non-convergence" (the pdHess NULL bug) → RETRACTED (see Gotchas). Solid: the non-Gaussian
+  **between-unit Ψ is identifiable** (recovery study).
+- **M5 release** — user-facing status-drift swept (NEWS/README/ROADMAP/2 vignettes, pdHess
+  overclaim softened, `man/` clean).
+- **D-28 principle made explicit** (Design 02 Link Residual Contract + `~/.claude/memory/`):
+  lowest-level Ψ = unique + link-specific; **OD-Poisson is the ONLY family with both.**
+
+## Current Working State
+
+- **Working:** everything committed + pushed; suite green; check 0/0/0; branch == origin.
+- **In progress / next (yours — live R/TMB OK):** delta latent-on-main wiring; the real
+  FAM-17 boundary reproduction *with sdreport*; phy/spde slope runtime airtighten; pkgdown
+  render-check; Mission Control refresh; register CI-08/CI-10 promotion once evidenced.
+- **Blocked on Shinichi:** the push-to-main / PR decision.
+
+## Key Decisions & Rationale
+
+- **Delta mixed-family = HANDLED (route-only), not blocked.** Latent on the **positive**
+  submodel only; occurrence submodel **fixed-effects-only** → single latent scale →
+  correlation on the **positive-part residual**; reported `interval_status="route-only"`.
+  ([Design 02 §Hurdle/delta].) Post-CRAN: RE on the occurrence part (two-scale case).
+- **interval_status marker** — makes calibration boundary visible in-output (nominal vs
+  route-only vs none). Additive column; verified claim-safe.
+- **D-28 / OD-Poisson** — see above; OD-Poisson uniquely carries both because it adds a
+  separate estimated OLRE on top of the Poisson link residual (others bake overdispersion in).
+
+## Files Created / Modified
+
+107 commits since `4d8f7589`; ~64 docs, 45 tests, 29 vignettes, 29 man, 17 `R/`, 4 data-raw.
+Full list: `git diff --name-only 4d8f7589..HEAD`. Highest-signal:
+- `R/extract-correlations.R` (interval_status marker), `R/brms-sugar.R` (guards + positional),
+  `R/fit-multi.R`, `R/kernel-helpers.R`, `R/extract-sigma.R`.
+- Design: `02-family-registry.md` (delta resolution + D-28 principle), `35-validation-debt-register.md`
+  (MIX-10 → partial), `57-mixed-family-link-residual.md` (banner), `75-inference-route-truth-matrix.md`.
+- Dev-log: [Codex handoff](../2026-07-05-codex-handoff-completion-arc.md) (live-fit items, with
+  the pdHess RETRACTION banner), [session closure](../after-task/2026-07-05-completion-arc-session-closure.md)
+  (state of the arc), after-task notes (merge / missing-mixed / structural-slope).
+- `data-raw/diagnostics/2026-07-05-nongaussian-psi-recovery-study.R` (reusable recovery study).
+- This handover doc.
+
+## Next Immediate Steps (ordered)
+
+1. **Rehydrate** (below) + spawn the review lens (Rose) before any claim.
+2. **Reproduce the real FAM-17 delta boundary WITH `sdreport`** (`se = TRUE`) before touching
+   any convergence code — the earlier "bug" was the pdHess-NULL phantom. Use the recovery
+   study script as the seed; run a gaussian control first.
+3. If a real convergence issue exists: it's Λ-side low-rank identifiability, NOT the Ψ (do
+   NOT zero the non-Gaussian between-unit Ψ — it's identifiable).
+4. Delta latent-on-main wiring per Design 02 (positive-part residual; occurrence guard).
+5. phy/spde slope-tier runtime airtighten; pkgdown; Mission Control.
+6. Surface the **push-to-main decision** to Shinichi.
+
+## Blockers / Open Questions
+
+- Does a real (sdreport-confirmed) delta latent convergence problem exist? Unproven — the
+  earlier signal was spurious.
+- Shinichi's push-to-main / PR call (273 commits ahead).
+
+## Gotchas & Failed Approaches (do NOT retry)
+
+- **`isTRUE(fit$sdr$pdHess)` is a PHANTOM on default fits** (`fit$sdr` is `NULL`). I built a
+  multi-commit "non-Gaussian Ψ gate" diagnosis on it — all retracted. Rule: verify the object
+  exists; run a control case EARLY; trust recovery-vs-truth over second-order flags.
+- **Do NOT "zero the non-Gaussian Ψ"** — the confound-free recovery study shows it recovers.
+- **Do NOT hand one subagent a broad multi-file task** — `general-purpose` subagents (which
+  have the Agent tool) hallucinate an orchestrator role. Scope ≤~5 files, forbid spawning.
+- The register's `gllvmTMB_auto_residual_delta_undefined` class **does not exist** — swept out.
+
+## How to Resume
+
+Fresh Claude session, from repo root:
+```
+claude "Rehydrate from docs/dev-log/handover/2026-07-05-claude-handover.md (last section) +
+the AGENTS.md snapshot, read the session-closure + Codex-handoff notes, spawn Rose, then
+continue with the Next Immediate Steps. This env runs live R/TMB. Do NOT push to main / open
+a PR without Shinichi. pdHess check needs sdreport."
+```
+Read order: this doc → [session closure](../after-task/2026-07-05-completion-arc-session-closure.md)
+→ [Codex handoff](../2026-07-05-codex-handoff-completion-arc.md) (has the retraction banner) →
+AGENTS.md/CLAUDE.md. `~/.claude/memory/memory_summary.md` carries the D-28 principle + this
+session's corrections.
+
+## Mission / Goals (the durable "why")
+
+Finish the gllvmTMB R/TMB **completion arc** — evidence-locked M1–M5 (profile-route truth,
+missing/mixed, structural-slope hardening, non-Gaussian safety, release-hardening) — BEFORE
+reopening Julia/GLLVM.jl parity. Claude leads audits/design/claim-boundary/prose; here Claude
+also runs the live R/TMB (env compiles). Guards: no push/PR-to-main without Shinichi; no
+mixed-family CI claims; no pdHess as calibrated-CI evidence; no Julia-parity broadening.
+
+## Mission control
+
+| Milestone | State | Next actor |
+|---|---|---|
+| Fold-arc merge | ✅ green (4168/0), check 0/0/0, pushed | Shinichi (push-to-main call) |
+| M1 truth matrix | ✅ done (Design 75, verified) | — |
+| M2 missing/mixed | ✅ design + marker shipped; delta wiring pending | next Claude (live) |
+| M3 structural slope | ✅ unit_slope confirmed; phy/spde pending | next Claude (live) |
+| M4 non-Gaussian safety | ✅ audited; pdHess thread retracted; Ψ identifiable | next Claude (sdreport repro) |
+| M5 release-hardening | ✅ prose swept; pkgdown/Mission Control pending | next Claude (live) |

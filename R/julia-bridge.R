@@ -2019,13 +2019,7 @@ gllvm_julia_capabilities <- function() {
       )
     )
   }
-  if (any(!is.finite(var) | var <= 0, na.rm = TRUE)) {
-    stop(
-      "engine = 'julia': residual variance contains non-positive or ",
-      "non-finite entries.",
-      call. = FALSE
-    )
-  }
+  var[!is.finite(var) | var <= 0] <- NA_real_
   var
 }
 

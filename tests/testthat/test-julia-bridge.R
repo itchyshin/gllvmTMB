@@ -1148,6 +1148,14 @@ test_that("Julia bridge residuals reconstruct scalar-response residuals", {
     residuals(fit_bin, type = "pearson"),
     expected_bin / sqrt(p_hat * (1 - p_hat) / fit_bin$bridge_input$N)
   )
+
+  fit_sat <- fit_bin
+  fit_sat$alpha <- c(1000, 0)
+  fit_sat$loadings[] <- 0
+  pearson_sat <- NULL
+  expect_no_error(pearson_sat <- residuals(fit_sat, type = "pearson"))
+  expect_true(all(is.na(pearson_sat[1L, ])))
+  expect_true(all(is.finite(pearson_sat[2L, mask[2L, ]])))
 })
 
 test_that("Julia bridge simulate draws scalar-response in-sample values", {

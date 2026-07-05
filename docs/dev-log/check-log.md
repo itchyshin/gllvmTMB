@@ -33500,3 +33500,30 @@ Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("test
 Outcome: parse passed; both focused test files passed. The warmstart file kept
 its expected heavy skips because `GLLVMTMB_HEAVY_TESTS` was not set. No new
 profile, bootstrap, or meta-analysis capability is claimed.
+
+## 2026-07-04 -- Julia bridge Pearson residual degeneracy guard (#641)
+
+Goal: keep one saturated or otherwise degenerate Pearson-residual cell from
+aborting the whole R-side Julia bridge residual matrix.
+
+Edits:
+
+- Changed `.gllvm_julia_residual_variance()` so individual non-positive or
+  non-finite residual-variance cells become `NA_real_` instead of triggering a
+  global stop.
+- Added a pure bridge regression where a binomial row has `plogis(eta) == 1`
+  exactly; Pearson residuals now return `NA` for that row while finite cells in
+  the other row remain usable.
+- Updated the JUL-01 register addendum without widening the partial bridge
+  claim.
+
+Commands:
+
+```sh
+Rscript --vanilla -e 'invisible(parse("R/julia-bridge.R")); invisible(parse("tests/testthat/test-julia-bridge.R")); cat("parse-ok\n")'
+Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R", reporter = "summary")'
+```
+
+Outcome: parse passed; the focused bridge test file passed. Thirteen live
+GLLVM.jl integration sections skipped because `GLLVM_JL_PATH` was not
+configured. This is a postfit robustness fix only.

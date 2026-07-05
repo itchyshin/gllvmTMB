@@ -570,6 +570,14 @@ replacing the vector with all `NA`. The pure bridge regression lives in
 `test-julia-bridge.R`. This is a payload-shape guard only; it does not widen
 Julia bridge family, CI, mask, mixed-family, or structured-term support.
 
+JUL-01 Pearson residual degeneracy addendum (2026-07-04): issue #641 is closed
+for the R-side bridge postfit surface. `.gllvm_julia_residual_variance()` now
+marks individual non-positive or non-finite Pearson variance cells as
+`NA_real_` instead of aborting the whole residual call. The pure bridge
+regression covers a saturated binomial row where `plogis(eta)` is exactly one.
+This is a postfit robustness guard only; it does not widen Julia bridge family,
+CI, mask, mixed-family, or structured-term support.
+
 ## What this register does NOT do
 
 - **It does not replace the test files.** Every `covered`

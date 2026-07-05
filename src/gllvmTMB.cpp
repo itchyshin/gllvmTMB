@@ -60,6 +60,14 @@ Type gll_log1mexp(Type log_p)
 }
 
 template <class Type>
+Type gll_clamp(Type x, Type lower, Type upper)
+{
+  x = CppAD::CondExpLt(x, lower, lower, x);
+  x = CppAD::CondExpGt(x, upper, upper, x);
+  return x;
+}
+
+template <class Type>
 Type gll_log_inv_logit_diff(Type upper, Type lower)
 {
   // log( F(upper) - F(lower) ) for upper > lower, stable form (drm_log_inv_
@@ -1925,8 +1933,7 @@ Type objective_function<Type>::operator()()
       }
       // Numerical safety: clip away from 0/1 to prevent log(0).
       Type tiny = Type(1e-12);
-      p = (p < tiny)            ? tiny           : p;
-      p = (p > Type(1.0) - tiny) ? Type(1.0) - tiny : p;
+      p = gll_clamp(p, tiny, Type(1.0) - tiny);
       ll += dbinom(y(o), n_trials(o), p, true);
     } else if (fid == 2) {
       // Poisson, log link
@@ -1975,8 +1982,7 @@ Type objective_function<Type>::operator()()
       Type b_b   = (Type(1.0) - mu_b) * phi_b;
       Type tiny_y = Type(1e-12);
       Type y_safe = y(o);
-      y_safe = (y_safe < tiny_y)            ? tiny_y           : y_safe;
-      y_safe = (y_safe > Type(1.0) - tiny_y) ? Type(1.0) - tiny_y : y_safe;
+      y_safe = gll_clamp(y_safe, tiny_y, Type(1.0) - tiny_y);
       Type ld = lgamma(phi_b) - lgamma(a_b) - lgamma(b_b)
               + (a_b - Type(1.0)) * log(y_safe)
               + (b_b - Type(1.0)) * log(Type(1.0) - y_safe);
@@ -2087,7 +2093,7 @@ Type objective_function<Type>::operator()()
       }
       Type p_k = upper_p - lower_p;
       Type tiny_p = Type(1e-12);
-      p_k = (p_k < tiny_p) ? tiny_p : p_k;
+      p_k = CppAD::CondExpLt(p_k, tiny_p, tiny_p, p_k);
       ll += log(p_k);
     } else if (fid == 15) {
       // NB1 (negative binomial, type 1), log link.

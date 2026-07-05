@@ -33831,3 +33831,39 @@ passed; `test-traits-keyword.R` passed with one existing CRAN-gated skip;
 `test-canonical-keywords.R` passed with three existing INLA skips. This is a
 parser truth-lock only: no TMB likelihood, extractor, inference, or new public
 capability was added.
+
+## 2026-07-05 -- AD-safe probability clamps in TMB likelihood (#658)
+
+Goal: close the local C++ likelihood robustness issue where probability clamps
+used AD-value ternary branches that can be frozen at tape construction time.
+
+Edits:
+
+- Added `gll_clamp()` using `CppAD::CondExpLt` / `CppAD::CondExpGt`.
+- Replaced the binomial probability clamp and Beta response clamp with
+  `gll_clamp()`.
+- Replaced the ordinal category-probability lower clamp with
+  `CppAD::CondExpLt`.
+- Added `test-tmb-ad-safe-clamps.R` as a source-level regression guard against
+  reintroducing the exact AD-driven ternary clamp patterns.
+- Updated validation-debt rows `FAM-02`, `FAM-03`, `FAM-04`, `FAM-10`, and
+  `FAM-14` with the issue #658 evidence.
+
+Commands:
+
+```sh
+gh issue view 658 --repo itchyshin/gllvmTMB --json number,title,state,body,url
+rg -n "\\?\\s*[^:]+:|CondExp|tiny|p_k|y_safe|p =" src/gllvmTMB.cpp
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-tmb-ad-safe-clamps.R", reporter = "summary")'
+Rscript --vanilla -e 'pkgbuild::compile_dll()'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-tmb-ad-safe-clamps.R", reporter = "summary")'
+env NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-multi-trial-binomial.R", reporter = "summary")'
+env NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-beta-recovery.R", reporter = "summary")'
+env NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-ordinal-probit.R", reporter = "summary")'
+```
+
+Outcome: source guard passed; DLL compiled successfully with only upstream Eigen
+warnings; binomial, Beta, and ordinal focused family tests passed through the
+compiled path. This is a numerical-safety repair only: no family
+parameterisation, link, likelihood formula, public API, or interval claim
+changed.

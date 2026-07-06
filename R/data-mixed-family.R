@@ -64,7 +64,6 @@
                                         seed = 20260517L) {
   n_families <- as.integer(match.arg(as.character(n_families),
                                      choices = c("3", "5")))
-  n_sites  <- 60L
 
   ## Three-tier fixture design (maintainer 2026-05-17):
   ## - 3-family: T = 3 traits across 3 unique families, d = 1.
@@ -77,7 +76,15 @@
   ## the simulated data. The `family_list` passed to gllvmTMB() has
   ## one entry per UNIQUE family (3 or 5), and gllvmTMB dispatches
   ## per-row via `attr(family_list, "family_var") = "family"`.
+  ##
+  ## n_sites is set per-branch, not shared: the 3-family / d = 1
+  ## surface is well-identified and converges at n_sites = 60, but a
+  ## data-size sweep (2026-07-06, issue #715) showed the 5-family /
+  ## T = 8 / d = 2 surface false-converges at n_sites = 60 (conv = 1,
+  ## a loading blows up to ~110) and only converges
+  ## genuinely at n_sites >= 200; 240 is used for headroom.
   if (n_families == 3L) {
+    n_sites        <- 60L
     families       <- c("gaussian", "binomial", "poisson")
     trait_families <- families       # one trait per family
     n_traits       <- 3L
@@ -88,6 +95,7 @@
                        nrow = n_traits, ncol = d_B, byrow = TRUE)
     psi_B    <- rep(0.3, n_traits)
   } else {  # n_families == 5L  →  T = 8, d = 2
+    n_sites        <- 240L
     families       <- c("gaussian", "binomial", "poisson", "Gamma", "nbinom2")
     trait_families <- c("gaussian", "gaussian",
                         "binomial", "binomial",

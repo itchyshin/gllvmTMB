@@ -374,6 +374,54 @@ test_that("diagnostic_table exposes plot and residual metadata as tables", {
   expect_true(all(c("trait", "status", "residual") %in% names(plot_data)))
 })
 
+test_that(".gllvmTMB_hessian_rank reports NA rank instead of erroring on a non-finite covariance", {
+  # Regression for the animal-model pkgdown break: a converged fit can return a
+  # non-finite sdreport covariance (NaN standard errors from weak
+  # identifiability). qr() aborts on non-finite input
+  # ("NA/NaN/Inf in foreign function call"), so the rank helper must degrade to
+  # an undefined rank -- which check_gllvmTMB() renders as a WARN row -- rather
+  # than let a diagnostic crash on an otherwise-usable fit.
+  nan_rank <- .gllvmTMB_hessian_rank(
+    list(sd_report = list(cov.fixed = matrix(c(1, NaN, NaN, 1), 2, 2)))
+  )
+  expect_true(is.na(nan_rank$rank))
+  expect_equal(nan_rank$dimension, 2L)
+
+  inf_rank <- .gllvmTMB_hessian_rank(
+    list(sd_report = list(cov.fixed = matrix(c(1, Inf, Inf, 1), 2, 2)))
+  )
+  expect_true(is.na(inf_rank$rank))
+
+  # a finite covariance still returns a real rank
+  finite_rank <- .gllvmTMB_hessian_rank(list(sd_report = list(cov.fixed = diag(2))))
+  expect_equal(finite_rank$rank, 2L)
+  expect_equal(finite_rank$dimension, 2L)
+})
+
+test_that("diagnostic_table check_gllvmTMB surfaces a recorded check error as a row", {
+  # Defense in depth: if check_gllvmTMB() errored for a fit (its message is
+  # captured in fit_health_error), the check table must surface an ERROR row
+  # rather than abort -- one failing fit cannot break a whole report or pkgdown
+  # article that tabulates several fits together.
+  err_rows <- .gllvmTMB_diagnostic_check_table(list(
+    check_gllvmTMB = NULL,
+    fit_health_error = c(
+      check_gllvmTMB = "NA/NaN/Inf in foreign function call (arg 1)"
+    )
+  ))
+  expect_s3_class(err_rows, "data.frame")
+  expect_equal(nrow(err_rows), 1L)
+  expect_equal(err_rows$status, "ERROR")
+  expect_true(grepl("NA/NaN/Inf", err_rows$message))
+  expect_true(all(c("component", "status", "message") %in% names(err_rows)))
+
+  # with no attached check table AND no recorded error, misuse still aborts
+  expect_error(
+    .gllvmTMB_diagnostic_check_table(list(check_gllvmTMB = NULL)),
+    "check_gllvmTMB"
+  )
+})
+
 test_that("exact residuals retain non-finite and unsupported rows", {
   skip_on_cran()
 

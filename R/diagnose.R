@@ -141,10 +141,17 @@
   if (nrow(cov_fixed) == 0L || ncol(cov_fixed) == 0L) {
     return(list(rank = NA_integer_, dimension = NA_integer_))
   }
-  list(
-    rank = qr(cov_fixed, tol = tol)$rank,
-    dimension = ncol(cov_fixed)
-  )
+  dimension <- ncol(cov_fixed)
+  # A converged fit can still yield a non-finite fixed-effect covariance
+  # (e.g. NaN standard errors from a weakly identified sdreport). qr() aborts
+  # on non-finite input ("NA/NaN/Inf in foreign function call"), so report an
+  # undefined rank -- which the caller renders as a WARN row -- rather than
+  # letting a diagnostic crash on an otherwise-usable fit.
+  if (!all(is.finite(cov_fixed))) {
+    return(list(rank = NA_integer_, dimension = dimension))
+  }
+  rank <- tryCatch(qr(cov_fixed, tol = tol)$rank, error = function(e) NA_integer_)
+  list(rank = rank, dimension = dimension)
 }
 
 .gllvmTMB_report_matrix <- function(object, name) {

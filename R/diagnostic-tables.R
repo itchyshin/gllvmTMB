@@ -120,10 +120,26 @@ diagnostic_table <- function(
 
 .gllvmTMB_diagnostic_check_table <- function(meta) {
   check <- meta$check_gllvmTMB
-  if (!is.data.frame(check)) {
-    cli::cli_abort("No {.fn check_gllvmTMB} table is attached to {.arg x}.")
+  if (is.data.frame(check)) {
+    return(.gllvmTMB_plain_diagnostic_data_frame(check))
   }
-  .gllvmTMB_plain_diagnostic_data_frame(check)
+  # If check_gllvmTMB() was attempted but errored for this fit (its message is
+  # captured in fit_health_error), surface the failure as a single diagnostic
+  # row rather than aborting: one failing fit must not break a whole report or
+  # pkgdown article that tabulates several fits together.
+  check_error <- unname(meta$fit_health_error["check_gllvmTMB"])
+  if (length(check_error) == 1L && !is.na(check_error) && nzchar(check_error)) {
+    return(.gllvmTMB_plain_diagnostic_data_frame(data.frame(
+      component = "check_gllvmTMB",
+      status = "ERROR",
+      value = NA_character_,
+      threshold = NA_character_,
+      message = paste0("check_gllvmTMB() could not be computed: ", check_error),
+      action = "inspect convergence, sdreport, and identifiability for this fit",
+      stringsAsFactors = FALSE
+    )))
+  }
+  cli::cli_abort("No {.fn check_gllvmTMB} table is attached to {.arg x}.")
 }
 
 .gllvmTMB_plain_diagnostic_data_frame <- function(x) {

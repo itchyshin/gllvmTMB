@@ -32,6 +32,30 @@
   stats::qchisq(level, df = 1L) / 2
 }
 
+#' @keywords internal
+#' @noRd
+## t-based profile cutoff (D-12 / drmTMB#680; maintainer directive 2026-07-06:
+## "if you are doing profiling, consider t-based"). Replaces the chi-square
+## reference qchisq(level, 1) with its small-sample t analogue
+## qt((1+level)/2, df)^2, so the profile-deviance threshold widens for finite
+## df and converges to the chi-square cutoff as df -> Inf. Returned on the
+## (L_max - L_constrained) scale (divided by 2), matching .qchisq_threshold and
+## the .profile_ci_via_refit `crit` contract. df is per-target (caller supplies
+## e.g. a between-unit residual df); adaptive/per-target df is a future refinement.
+.qt_threshold <- function(level, df) {
+  if (!is.numeric(level) || length(level) != 1L || level <= 0 || level >= 1) {
+    cli::cli_abort(
+      "{.arg level} must be a single value in (0, 1); got {level}."
+    )
+  }
+  if (!is.numeric(df) || length(df) != 1L || !is.finite(df) || df <= 0) {
+    cli::cli_abort(
+      "{.arg df} must be a single positive finite value; got {df}."
+    )
+  }
+  stats::qt((1 + level) / 2, df = df)^2 / 2
+}
+
 ## ---- Identify a non-random parameter index --------------------------------
 ## tmbprofile() expects an integer index into the *non-random* parameter
 ## vector (= opt$par; what TMB calls `obj$par`), or a name (matched to

@@ -314,6 +314,7 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   target_fn,
   q_hat,
   level = 0.95,
+  crit = NULL,
   q_lo_hint = NULL,
   q_hi_hint = NULL,
   q_lo_floor = -Inf,
@@ -323,7 +324,9 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   root_tol = 0.005,
   root_maxiter = 25L
 ) {
-  crit <- .qchisq_threshold(level)
+  ## Default reference is chi-square_1 (on the L_max - L_c scale); callers may
+  ## pass a t-based crit via .qt_threshold(level, df) (D-12 t-based profiling).
+  if (is.null(crit)) crit <- .qchisq_threshold(level)
   mle_val <- as.numeric(fit$opt$objective)
   ## Build a fast deviance-excess function for uniroot
   excess <- function(q_0) {

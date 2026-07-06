@@ -3,9 +3,10 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 For the current Claude handoff, also read
-`docs/dev-log/handover/2026-07-06-claude-handover.md` (reconciliation-
-stabilization close-out + the Option A arc ultra-plan kickoff) before
-starting new work.
+`docs/dev-log/handover/2026-07-06-claude-handover-modelA.md` (the structured ×
+X_lv arc RE-SCOPED to the orthogonal Model A, which already composes + recovers
+`B_lv` in R — the remaining work is the t-based profile + bootstrap CI) before
+starting new work. Its authoritative model record is `docs/design/76-structured-xlv-phylo.md` §7 UPDATE.
 
 ## Project Identity
 

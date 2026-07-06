@@ -495,6 +495,42 @@ the R capability is real.
 **Status:** decision recorded; `LV-08` stays `blocked` until the ADEMP gate
 passes. No engine code in this pass — implementation is the next slice.
 
+### UPDATE (Shinichi, 2026-07-06 later same day): **orthogonal Model A**, and it already composes in R
+
+Two decisions refine the arc after checking prior work (GLLVM.jl + the brain) and
+an empirical test — both material enough to record here so §1/§4 above are not
+read as the current target:
+
+1. **Model choice = orthogonal "Model A" (port the de-risked GLLVM.jl design), not
+   the interacting model of §1/§4.** Verified from GLLVM.jl `src/likelihood.jl`
+   (branch `claude/phylo-xlv-modelA-20260627`, lines 405-408, 485-505): the
+   predictor informs the **ordinary** latent score (`z_total = X_lv·α + z_innov`,
+   `z_innov ~ N(0,I)` — the Design-73 latent already in gllvmTMB R), and phylogeny
+   is a **separate, orthogonal** trait-covariance term (`y_adj = y − Λ_B(X_lv α)′`,
+   then the phylo marginal on the residual). Predictor and phylogeny do **not**
+   interact; `B_lv = Λ_B·α^T` is the ordinary estimand. The interacting model of
+   §1/§4 (predictor informs a phylogenetically-structured score, `e ~ MVN(0,A)`) is
+   the **deferred alternative**, not this arc.
+2. **It already works in R — the HIGH-RISK likelihood slice is obsolete.** The grammar
+   `latent(0+trait|species, d=K, lv=~x) + phylo_latent(0+trait|species, d=Kφ)`
+   fits today (converged) and recovers `B_lv` (test 2026-07-06: truth
+   0.90/0.72/−0.54/0.45/0.27 → 0.81/0.69/−0.46/0.44/0.25). **No new TMB likelihood
+   and no grammar change** — Model A composes two existing capabilities. The parser
+   slice (S2) that admitted `phylo_latent(lv=~x)` was for the interacting model and
+   is reverted.
+
+**Re-scoped arc (all R-side inference; low-risk):** the remaining work is the `B_lv`
+**CI trio** — **profile is the hero, with a t-based cutoff** (maintainer directive
+2026-07-06, twice; D-12 / task #22; `.qt_threshold(level, df)` replacing the plain
+`qchisq` at `R/profile-ci.R`, per-target/adaptive df reconciled with the DRM t-df
+thread + Self-Liang boundary) plus a parametric bootstrap — and the **ADEMP
+recovery/coverage gate re-run at adequately-powered `n`** (the GLLVM.jl Model A was
+parked only on an under-powered `p=80,K=2,λ=0.5` cell — the #715 data-size lesson,
+not an engine limit). The Wald leg is currently `NA` here (non-PD Hessian from the
+mild ordinary-vs-phylo latent-variance trade-off on the shared `species` grouping),
+which is exactly the "pdHess≠failure → route CIs through profile/bootstrap" case.
+`LV-08` still stays `blocked` until the ADEMP gate passes and Rose audits the claim.
+
 ---
 
 ## Reviewer checklist

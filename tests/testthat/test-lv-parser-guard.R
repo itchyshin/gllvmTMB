@@ -827,12 +827,8 @@ test_that("non-ordinary latent lv surfaces fail before metadata is dropped", {
     ),
     regexp = "ordinary|LV-07|does not support"
   )
-  expect_error(
-    gllvmTMB:::desugar_brms_sugar(
-      value ~ 0 + trait + phylo_latent(unit, d = 1, vcv = A, lv = ~x)
-    ),
-    regexp = "ordinary|LV-07|does not support"
-  )
+  ## phylo_latent(..., lv = ~ x) is now admitted at parse (Design 76 / S2) --
+  ## covered by test-lv-source-specific-guard.R; other source-specific latents stay fail-loud.
   expect_error(
     gllvmTMB:::desugar_brms_sugar(
       value ~ 0 + trait + kernel_latent(unit, K = A, d = 1, lv = ~x)

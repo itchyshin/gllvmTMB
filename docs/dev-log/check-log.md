@@ -42574,3 +42574,43 @@ Issue ledger / after-task:
   reclosing that issue.
 - After-task report:
   `docs/dev-log/after-task/2026-07-03-unique-latent-psi-fold.md`.
+
+## 2026-07-06 — reconciliation-merge stabilization (Ada; Claude)
+
+Landed on `main`: `50cefb12` (check_gllvmTMB qr-guard + graceful degradation +
+tests), `4fbdc64c` (FAM-17 evidence-record + EXT order), `852016bf` (Design 76
+structured x X_lv + LV-08), `3c6cbecb` (heavy interval_status drift fix),
+`afc768d9` (two article fixes), `22c93e87` (dashboard refresh).
+
+Commands run (local, live R on the Mac):
+
+- `devtools::test(filter = "predictive-diagnostics")`
+  -> `[ FAIL 0 | PASS 153 ]` (incl. 2 new regression tests: the non-finite
+  `qr(cov.fixed)` guard and the `diagnostic_table` graceful-degradation path).
+- Reproduced the animal-model `diagnostic-table` chunk in full RNG order
+  -> 16-row table, all four fits PASS. Isolated fits passed; only the full
+  sequence (fit2/bivariate-G, NaN sdreport SEs -> `qr` abort) reproduced.
+- `devtools::install(quick = TRUE)` then a full `pkgdown::build_article`
+  enumeration of all 34 articles -> all build clean.
+- Heavy cluster (`GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true`): `test-profile-ci` +
+  `test-m1-4-extract-correlations-mixed-family` after the drift fix -> FAIL 0;
+  #715 (5-family false-convergence) and #716 (Gamma warmup) reproduced.
+- `python3 -m json.tool` on dashboard `status.json` + `sweep.json` -> valid.
+- `git diff --check` -> clean.
+- CI batch `22c93e87`: R-CMD-check run `28800565232` -> success; pkgdown run
+  `28801551939` -> `Build site` PASSED (all 34 articles on CI),
+  `actions/deploy-pages@v4` FAILED transiently ("Deployment failed, try again
+  later"). Site build green; Pages deploy re-triggered by the closure push.
+
+Not run:
+
+- #715 / #716 engine regressions were TRACKED, not fixed; their heavy tests are
+  left honestly failing (no skips). A pre-merge baseline recompile to settle
+  regression-vs-pre-existing for #715 was out of scope.
+
+Issue ledger / after-task:
+
+- Closed #681, #663 (ledger sync); created #715, #716 (engine-regression
+  tracking) -- both maintainer-authorized.
+- After-task report:
+  `docs/dev-log/after-task/2026-07-06-reconciliation-stabilization.md`.

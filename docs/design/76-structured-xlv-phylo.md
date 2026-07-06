@@ -457,31 +457,43 @@ itself.
   already lives, without touching the R public surface or the likelihood.
   **Con:** slower to a user-facing feature; two-package coordination overhead.
 
-### Recommendation (Noether + Fisher + Curie; **Shinichi decides**)
+### DECISION (Shinichi, 2026-07-06): **Option A** — build it in gllvmTMB (R) first
 
-**Recommend Option C as the immediate next step, with Option A as the explicit
-follow-on once a population-`B_lv` profile route clears the Julia-side ADEMP
-gate.** Reasoning:
+Recorded maintainer decision. My earlier draft leaned **Option C** (Julia-first)
+on *risk* grounds; Shinichi corrected the priority: **finish gllvmTMB (R) first;
+Julia parity and the article come at the end** (the standing 2026-06-27 steer —
+structured × X_lv is the headline R feature, phylo_\* first; F/G last). So the
+arc proceeds as **Option A**.
 
-1. The single largest honesty gap is scale: the frozen evidence covers a
-   *realized `eta`-scale* target, and the *population* `B_lv` route is the one
-   that was retired with negative evidence (2.1). Re-earning population-`B_lv`
-   coverage on the Julia side first -- where the DRAC/Totoro harness and the
-   proven `B_eta_realized` tooling already exist -- de-risks the R likelihood
-   change before we touch the grammar. This respects Design rule 5 (evidence on
-   a known DGP *before* the axis is added) and the `serial_gates`
-   no-inheritance rule.
-2. Option C ships durable artifacts now (this design doc, the `LV-08` row, the
-   alignment contract) without any high-risk change, keeping the maintainer's
-   want on an explicit, gated path rather than parked-and-forgotten.
-3. Option A remains the destination; it should be enacted the moment the
-   population-`B_lv` Julia gate passes and the maintainer authorizes the R
-   grammar + likelihood change with Gauss/Noether sign-off.
+**What de-risked it:** the population-`B_lv` identifiability fear (§2.1, the
+retired route) is now understood as a **data-size / power problem, not a
+fundamental blocker.** The gllvmTMB #715 diagnosis (2026-07-06) showed a
+5-family mixed non-Gaussian latent fit false-converging and blowing a loading to
+−110 at `n_sites = 60`, but **converging with sane loadings at `n_sites ≥ 200`**
+— same DGP, same engine, only `n` changed. Non-Gaussian carries less information
+per observation, so it needs bigger samples; that is the extra condition Option A
+must respect. (See the second-brain LESSONS "sample-size vs algorithm-failure"
+entry and register row FAM/LV notes.)
 
-Whichever option the maintainer chooses, the non-negotiables are: profile is
-the hero interval method with a boundary-corrected reference (D-12); Gaussian
-is the mandatory first cell; no Gaussian-to-non-Gaussian inheritance; and no
-public wording before the ADEMP gate and a Rose claim audit.
+**First implementation slice (Gaussian phylo, behind the ADEMP gate):**
+1. Parser: admit `phylo_*(..., lv = ~ x)` for the **Gaussian** path only (lift
+   the Section 3 reject for that one cell; all other rejections preserved).
+2. TMB: the Gaussian phylo `B_lv = Λ_phy α^T` likelihood, preserving the sparse
+   `A^{-1}` GMRF prior (Gauss/Noether sign-off; `checkConsistency()`).
+3. Extractor: `extract_lv_effects()` / `extract_ordination()` on the phylo cell.
+4. **ADEMP gate with adequately-powered DGPs** — Gaussian first; the recovery /
+   coverage campaign must size `n` to the family + latent rank (the #715 lesson
+   is a hard input to the gate, not an afterthought); profile is the hero
+   interval with the Self–Liang boundary reference; ≥ 500 reps/cell, MCSE reported.
+
+**Non-negotiables (unchanged):** profile is the hero interval method with a
+boundary-corrected reference (D-12); Gaussian is the mandatory first cell; no
+Gaussian-to-non-Gaussian inheritance; no public wording before the ADEMP gate
+passes and Rose audits the claim. Julia parity (F) + the article (G) come after
+the R capability is real.
+
+**Status:** decision recorded; `LV-08` stays `blocked` until the ADEMP gate
+passes. No engine code in this pass — implementation is the next slice.
 
 ---
 

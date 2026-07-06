@@ -100,7 +100,7 @@
       tolower(fam_nm),
       "nbinom2"            = "log_phi_nbinom2",
       "nbinom1"            = "log_phi_nbinom1",   # nbinom1 has its own phi slot
-      "Gamma"              = "log_phi_gamma",
+      "gamma"              = "log_phi_gamma",
       "tweedie"            = "log_phi_tweedie",
       "beta"               = "log_phi_beta",
       "betabinomial"       = "log_phi_betabinom",
@@ -197,7 +197,7 @@
   ## Tweedie: complex MLE; defer the warm-up (return NULL).
   if (family_name == "tweedie") return(NULL)
   ## Gamma: phi = shape parameter; coefficient of variation = 1/sqrt(phi).
-  if (family_name == "Gamma") {
+  if (family_name == "gamma") {
     mu <- mean(y)
     vv <- stats::var(y)
     if (!is.finite(mu) || mu <= 0 || !is.finite(vv)) return(NULL)

@@ -112,3 +112,39 @@ Earlier push (`4fbdc64c`), then this batch:
 - **Sub-agent output verified by file ground-truth** (caught the `CLAUDE.md`
   commit and the 13 real regressions the "benign drift" hypothesis would have missed).
 - **CI-pacing**: batched pushes, no push during an active CI run.
+
+---
+
+## Follow-on (same session, 2026-07-06): #715 + #716 fixed, arc decided, doctrine recorded
+
+After landing the batch above, the maintainer directed "do all of what you
+recommended" and taught a durable, recurring lesson.
+
+- **Sample-size doctrine recorded (maintainer's priority).** Non-convergence /
+  "phantom breaks" (false convergence, `pdHess=FALSE`, loading blow-ups) are
+  usually an *information* problem, not an algorithm failure; non-Gaussian needs
+  bigger data; test data-size before blaming the engine. Recorded in the second
+  brain (`memory/LESSONS.md`, beside the pdHess lesson) and
+  `~/.claude/memory/memory_summary.md`.
+- **#715 fixed** (`973044d3`) — the 5-family false-convergence was an
+  **under-powered fixture**, not an engine bug. A data-size sweep confirmed the
+  same DGP converges cleanly at `n_sites ≥ 200` (it blew a loading to −110 at
+  n=60). Rebuilt the fixture at n=240; heavy m1-3/4/5/8 now all `failed=0`
+  (28/108/14/31). No assertion changes needed. **#715 closed.**
+- **#716 fixed** (`e62e4265`) — two Gamma case-mismatch bugs (`tolower()` vs a
+  capital `"Gamma"` label) in `R/init-warmstart.R` left `log_phi_gamma` at 0;
+  lowercased both. m3-4 heavy 27/0. **#716 closed.**
+- **Structured × X_lv arc decided** (`0da56860`) — the maintainer corrected my
+  Option-C draft to **Option A** (build in gllvmTMB R first; Julia parity +
+  article last), de-risked by the #715 finding (identifiability blow-ups are
+  data-size limits, not fundamental). Design 76 §7 records the decision + the
+  first Gaussian-phylo slice; `LV-08` stays `blocked` until the ADEMP gate.
+- **New issue #717 filed** — the heavy m1-4 profile path emits ~36k
+  vector-recycling warnings on rank-1 (±1 boundary) 3-family correlations
+  (pre-existing; the test passes, but it is a real code smell). Not blocking;
+  tracked separately.
+
+Net: the **13 real heavy regressions** from the batch above are now **all fixed**
+(#715 clears the 12 five-family failures; #716 clears the m3-4 warmup). #717 is a
+*new*, separate, non-blocking warning issue. CI batch `973044d3`: R-CMD-check +
+pkgdown expected green (fixture / warmup / docs only; the heavy tests run nightly).

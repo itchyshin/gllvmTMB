@@ -17,6 +17,7 @@ knitr::opts_chunk$set(
   comment  = "#>",
   eval     = TRUE
 )
+library(gllvmTMB)
 ```
 
 > **Developer Note -- under audit.** This page is buildable and linked

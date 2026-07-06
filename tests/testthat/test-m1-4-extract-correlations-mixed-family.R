@@ -22,7 +22,7 @@ expect_valid_correlations_df <- function(df, expected_rows) {
   expect_s3_class(df, "data.frame")
   expect_setequal(names(df),
                   c("tier", "trait_i", "trait_j", "correlation",
-                    "lower", "upper", "method"))
+                    "lower", "upper", "method", "interval_status"))
   expect_equal(nrow(df), expected_rows)
   ## Correlations are in [-1, 1]; CI brackets the point estimate (allowing
   ## for finite-sample boundary effects where one side may equal NA).
@@ -172,7 +172,7 @@ test_that("extract_correlations() method = 'bootstrap' on 5-family fixture (M1.4
   expect_s3_class(df, "data.frame")
   expect_setequal(names(df),
                   c("tier", "trait_i", "trait_j", "correlation",
-                    "lower", "upper", "method"))
+                    "lower", "upper", "method", "interval_status"))
   expect_equal(nrow(df), choose(8L, 2L))
   expect_true(all(df$method == "bootstrap"))
   expect_true(all(df$correlation >= -1 - 1e-8 & df$correlation <= 1 + 1e-8))
@@ -211,7 +211,7 @@ test_that("extract_correlations() method = 'bootstrap' all-pairs shape on 3-fami
   expect_s3_class(df, "data.frame")
   expect_setequal(names(df),
                   c("tier", "trait_i", "trait_j", "correlation",
-                    "lower", "upper", "method"))
+                    "lower", "upper", "method", "interval_status"))
   expect_equal(nrow(df), choose(3L, 2L))
   expect_true(all(df$method == "bootstrap"))
   expect_true(all(df$correlation >= -1 - 1e-8 & df$correlation <= 1 + 1e-8))
@@ -241,7 +241,7 @@ test_that("extract_correlations() method = 'bootstrap' single-pair shape on 3-fa
     expect_s3_class(df, "data.frame")
     expect_setequal(names(df),
                     c("tier", "trait_i", "trait_j", "correlation",
-                      "lower", "upper", "method"))
+                      "lower", "upper", "method", "interval_status"))
     expect_equal(nrow(df), 1L)
     expect_true(all(df$method == "bootstrap"))
     expect_true(all(df$correlation >= -1 - 1e-8 & df$correlation <= 1 + 1e-8))

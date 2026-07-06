@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-05 04:35 MDT",
+  "updated": "2026-07-06 08:45 MDT",
   "metrics": {
     "covered": 18,
     "partial": 3,
@@ -11,6 +11,24 @@
     "label": "LV arc coverage rows"
   },
   "active_work": [
+    {
+      "when": "2026-07-06 08:45 MDT",
+      "who": "pkgdown crash guard + article fixes",
+      "status": "covered",
+      "text": "pkgdown was RED on main: check_gllvmTMB() crashed via qr() on a non-finite sdreport covariance from a bivariate-G animal fit, was swallowed to NULL, and diagnostic_table() then aborted the whole site build. Fixed by 50cefb12 (guard: return NA rank instead of letting qr() crash; surface a recorded check error as an ERROR row instead of aborting the report) plus regression tests, pushed to main. Fixing that advanced the build to two more broken articles -- both article-authoring bugs, NOT engine bugs -- fixed in afc768d9: lambda-constraint-suggest.Rmd (an eval=FALSE chunk's output was quoted live inline, plus a merge-dropped eval=FALSE on a live-computed chunk) and ordinal-probit.Rmd (missing library(gllvmTMB)). All 34 articles now build clean locally. pkgdown: RED -> GREEN."
+    },
+    {
+      "when": "2026-07-06 08:45 MDT",
+      "who": "Nightly heavy full-check triage",
+      "status": "guard",
+      "text": "The nightly full-check (GLLVMTMB_HEAVY_TESTS=1) had 27 failures. 13 were benign schema drift: extract_correlations() gained a trailing interval_status column (feat 16c532ee) and skip_if_not_heavy tests were never updated for it -- fixed in 3c6cbecb. The remaining 13 are genuine engine regressions, TRACKED NOT FIXED: issue #715 (OPEN) -- the 5-family mixed-family fixture false-converges (convergence=1 \"false convergence (8)\", max|gradient|=0.094, pd_hessian=FALSE, Lambda_B runaway to -34.48 against a truth range of [-0.5, 1.0]), a Lambda-side low-rank identifiability blow-up hitting 12 failures across test-m1-3/4/5/8-*-mixed-family.R; and issue #716 (OPEN) -- Gamma single-trait warmup returns trivial log_phi_gamma=c(0,0) instead of a real per-trait seed, 1 failure in test-m3-4-warmstart-phi-clamp.R. Heavy full-check remains PARTIAL: schema drift fixed, but 2 engine regressions are still red. Do not show heavy as green."
+    },
+    {
+      "when": "2026-07-06 08:45 MDT",
+      "who": "FAM-17 correction + ledger sync + structured X_lv arc opened",
+      "status": "guard",
+      "text": "FAM-17 register caveat corrected (4fbdc64c): the 2026-07-05 boundary caveat read the phantom fit$sdr$pdHess (a NULL field that silently reads FALSE), not the real fit$sd_report$pdHess; a 6-seed reproduction converges cleanly 6/6, so the boundary did not reproduce and no convergence fix is warranted. Issues #681 and #663 closed (ledger sync; both were prior extract_proportions() correctness fixes, already resolved). Separately, a NEXT ARC was OPENED at a design checkpoint only (852016bf, docs/design/76-structured-xlv-phylo.md, register row LV-08 status=blocked): structured x X_lv (phylo_*) -- predictor-informed latent betas B_lv = Lambda_phy alpha^T under phylogeny. The doc reconciles the frozen GLLVM.jl Gate 0-3 evidence, which covers ONLY the revised realized eta-scale B_eta_realized target, NOT the population B_lv that was retired with negative evidence -- and recommends Option C (Julia-first: re-earn population-B_lv coverage on the Julia side before any R change), explicitly maintainer-gated / PARKED by default. No capability is promoted: the R grammar phylo_*(..., lv=~x) stays fail-loud (PR #573/#577 guards), and GLLVM.jl PR #127 stays parked."
+    },
     {
       "when": "2026-07-05 04:35 MDT",
       "who": "gllvmTMB completion truth lock",

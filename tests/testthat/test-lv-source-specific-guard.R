@@ -18,6 +18,8 @@ test_that("ordinary latent lv desugars but source-specific lv fails loudly", {
   )
 
   unsupported <- list(
+    phylo_latent = value ~
+      0 + trait + phylo_latent(unit, d = 1, vcv = A, lv = ~x),
     phylo_unique = value ~
       0 + trait + phylo_unique(unit, vcv = A, lv = ~x),
     animal_latent = value ~
@@ -56,55 +58,6 @@ test_that("ordinary latent lv desugars but source-specific lv fails loudly", {
       info = keyword
     )
   }
-})
-
-test_that("Gaussian phylo_latent(..., lv = ~ x) is admitted at parse (Design 76 / S2)", {
-  ## phylo_latent lv desugars (no longer rejected at parse) and carries
-  ## lv_formula on a phylo_rr covstruct. The Gaussian-only + fittability gate is
-  ## enforced downstream in gll_prepare_lv_predictor_setup (still fail-loud until S3).
-  f <- suppressWarnings(gllvmTMB:::desugar_brms_sugar(
-    value ~ 0 + trait + phylo_latent(0 + trait | species, d = 2, lv = ~x)
-  ))
-  parsed <- gllvmTMB:::parse_multi_formula(f)
-  lv_terms <- which(vapply(
-    parsed$covstructs,
-    function(cs) !is.null(cs$extra[["lv_formula"]]) || !is.null(cs$extra[["lv"]]),
-    logical(1L)
-  ))
-  expect_length(lv_terms, 1L)
-  expect_identical(parsed$covstructs[[lv_terms]]$kind, "phylo_rr")
-  expect_identical(
-    as.character(gllvmTMB:::gll_lv_formula(parsed$covstructs[[lv_terms]])),
-    c("~", "x")
-  )
-
-  ## unique = TRUE: exactly one term (the phylo_rr main term) carries lv; the
-  ## auto Psi_phy companion stays lv-free.
-  f_unique <- suppressWarnings(gllvmTMB:::desugar_brms_sugar(
-    value ~ 0 + trait + phylo_latent(0 + trait | species, d = 2, unique = TRUE, lv = ~x)
-  ))
-  parsed_u <- gllvmTMB:::parse_multi_formula(f_unique)
-  n_lv <- sum(vapply(
-    parsed_u$covstructs,
-    function(cs) !is.null(cs$extra[["lv_formula"]]) || !is.null(cs$extra[["lv"]]),
-    logical(1L)
-  ))
-  expect_gte(length(parsed_u$covstructs), 2L)
-  expect_identical(n_lv, 1L)
-
-  ## Not yet fittable: downstream setup fail-louds (kind is phylo_rr, not rr) until S3.
-  dat <- data.frame(
-    species = factor(rep(paste0("u", 1:4), each = 2L), levels = paste0("u", 1:4)),
-    trait = factor(rep(c("t1", "t2"), 4L), levels = c("t1", "t2")),
-    value = seq_len(8L) / 10, x = rep(c(-1, 0, 1, 2), each = 2L)
-  )
-  expect_error(
-    gllvmTMB:::gll_prepare_lv_predictor_setup(
-      parsed = parsed, data = dat, trait = "trait", site = "species",
-      family_id_vec = rep(0L, nrow(dat)), link_id_vec = rep(0L, nrow(dat))
-    ),
-    regexp = "ordinary unit-tier|limited to ordinary"
-  )
 })
 
 test_that("deprecated/internal covariance aliases cannot carry lv silently", {

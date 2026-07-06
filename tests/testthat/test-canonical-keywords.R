@@ -237,6 +237,7 @@ test_that("source-specific latent lv predictors fail loudly", {
     value ~ 0 + trait + phylo_scalar(species, lv = ~env),
     value ~ 0 + trait + phylo_unique(species, lv = ~env),
     value ~ 0 + trait + phylo_indep(0 + trait | species, lv = ~env),
+    value ~ 0 + trait + phylo_latent(species, d = 1, lv = ~env),
     value ~ 0 + trait + phylo_dep(0 + trait | species, lv = ~env),
     value ~ 0 + trait + phylo(0 + trait | species, mode = "latent", lv = ~env),
     value ~ 0 + trait + spatial_scalar(0 + trait | site, lv = ~env),

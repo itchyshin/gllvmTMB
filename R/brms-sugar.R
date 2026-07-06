@@ -2204,13 +2204,9 @@ rewrite_canonical_aliases <- function(formula) {
       ">" = "Remove {.code lv = ~ ...} from {.fn {fn}}, or use the supported structural random-slope syntax such as {.code {fn}(1 + env | group, d = K)} when that route is validated for the source."
     ))
   }
-  ## Design 76 / S2: `phylo_latent(..., lv = ~ x)` is admitted at parse; the
-  ## Gaussian-only restriction is enforced downstream (R/lv-predictor.R). Every
-  ## other source-specific `lv` stays fail-loud here; other `*_latent` sources
-  ## join the admitted set only when their own ADEMP gate lands.
   .source_specific_lv_keywords <- c(
     "phylo", "phylo_scalar", "phylo_unique", "phylo_indep",
-    "phylo_dep", "phylo_rr", "phylo_slope",
+    "phylo_latent", "phylo_dep", "phylo_rr", "phylo_slope",
     "spatial", "spatial_scalar", "spatial_unique", "spatial_indep",
     "spatial_latent", "spatial_dep", "spde",
     "animal_scalar", "animal_unique", "animal_indep",
@@ -2353,6 +2349,7 @@ rewrite_canonical_aliases <- function(formula) {
               "phylo_scalar",
               "phylo_unique",
               "phylo_indep",
+              "phylo_latent",
               "phylo_dep",
               "animal_scalar",
               "animal_unique",
@@ -3237,12 +3234,6 @@ rewrite_canonical_aliases <- function(formula) {
           if (!is.null(new_call_names)) {
             drop_args <- new_call_names %in% "unique"
             if (any(drop_args)) new_call <- new_call[!drop_args]
-          }
-          ## Design 76 / S2: thread `lv = ~ x` onto the phylo_rr main term as
-          ## `lv_formula` (mirrors ordinary latent()); the auto Psi_phy companion
-          ## below stays lv-free (intercept-only).
-          if (.has_named_arg(e, "lv")) {
-            new_call[["lv_formula"]] <- e[["lv"]]
           }
           if (isFALSE(unique_arg)) {
             return(new_call)

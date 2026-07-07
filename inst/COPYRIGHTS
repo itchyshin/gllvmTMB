@@ -68,3 +68,18 @@
 ##     ORCID: 0000-0001-7415-1010)
 ##   * Kasper Kristensen (TMB anisotropy R example,
 ##     https://github.com/kaskr/adcomp)
+##
+## Sparse phylogenetic precision builder (R/phylo-tree-precision.R)
+##
+## The tree -> sparse A^{-1} construction in R/phylo-tree-precision.R
+## (`.gllvm_phylo_tree_precision()` and its validators
+## `.gllvm_validate_phylo_tree()` / `.gllvm_validate_phylo_species()` /
+## `.gllvm_phylo_node_depths()` / `.gllvm_phylo_augmented_node_labels()`)
+## is ported from the univariate sister package drmTMB
+## (R/phylo-utils.R: `drm_phylo_augmented_precision()` and helpers).
+## It uses only `ape` + `Matrix` and replaces the earlier
+## MCMCglmm::inverseA() call on the `phylo_latent(tree = ...)` path, so
+## MCMCglmm is no longer required to turn a tree into A^{-1}. Both
+## gllvmTMB and drmTMB are GPL-3 by Shinichi Nakagawa (same-author
+## reuse); the algorithm is the standard Hadfield & Nakagawa (2010)
+## sparse phylogenetic inverse.

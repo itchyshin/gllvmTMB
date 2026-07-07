@@ -3,6 +3,17 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## `phylo_latent(tree = ...)` no longer requires MCMCglmm (2026-07-06)
+
+* Building the sparse phylogenetic precision `A^{-1}` from a tree is now done by
+  gllvmTMB's own `ape` + `Matrix` routine (`.gllvm_phylo_tree_precision()`,
+  ported from the sister package drmTMB) instead of `MCMCglmm::inverseA()`. So a
+  `phylo_latent(0 + trait | species, d = K, tree = tree)` fit no longer needs the
+  (heavy) **MCMCglmm** package installed — it is a `Suggests`, still used only by
+  the pedigree/animal (`animal_*(..., pedigree = ...)`) path. The fit is
+  numerically identical to the previous MCMCglmm path (objective / `B_lv` /
+  `log det A` all match to floating-point tolerance).
+
 ## Confidence intervals for predictor-informed latent-score effects `B_lv` (2026-07-06)
 
 * New `profile_ci_lv_effects()` — likelihood-**profile** confidence intervals for the

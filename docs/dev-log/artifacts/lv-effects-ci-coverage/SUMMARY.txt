@@ -1,0 +1,3 @@
+gauss-S100-K1          attempted=500 converged=500 ci=500 | coverage=0.950 (MCSE 0.0097) width=0.289 | prod>=500: TRUE
+gauss-S200-K1          attempted=500 converged=500 ci=500 | coverage=0.962 (MCSE 0.0086) width=0.159 | prod>=500: TRUE
+gauss-S60-K1-smalln    attempted=500 converged=500 ci=500 | coverage=0.952 (MCSE 0.0096) width=0.249 | prod>=500: TRUE

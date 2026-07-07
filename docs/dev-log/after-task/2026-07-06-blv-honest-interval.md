@@ -77,3 +77,42 @@ All on branch `claude/blv-profile-ci` (built on `origin/main` after the earlier 
   was fixed, not papered over. REML/gradient/bootstrap all validated by recovery-to-truth + coverage.
 - Backward-compatible: analytic gradient + `simulate()` extension leave existing callers unchanged
   (regression suites green). Non-Gaussian `lv` REML stays blocked.
+
+---
+
+## UPDATE (2026-07-06, later — production coverage + MCMCglmm-free tree path)
+
+Two things landed after the merge of PR #720 (the CI trio), both on branch `claude/drop-mcmcglmm`:
+
+**1. Production coverage gate PASSED (rank-1 Gaussian).** The ≥500-rep/cell campaign ran on Totoro
+(≤100 cores; `OPENBLAS_NUM_THREADS=1`). Artifacts pulled to
+`docs/dev-log/artifacts/lv-effects-ci-coverage/` (`SUMMARY.txt` + per-cell aggregated CSVs). All three
+rank-1 cells sit on **nominal 0.95**, 500/500 converged, inside the 0.92–0.98 band:
+
+| Cell | Coverage | MCSE | Reps | Mean width |
+|---|---|---|---|---|
+| gauss-S60-K1-smalln | **0.952** | 0.0096 | 500/500 | 0.249 |
+| gauss-S100-K1 | **0.950** | 0.0097 | 500/500 | 0.289 |
+| gauss-S200-K1 | **0.962** | 0.0086 | 500/500 | 0.159 |
+
+The earlier local proof's small-`n` under-coverage (0.925 at S=60, 120 reps) was a **denominator
+artefact** — at 500 reps S=60 is 0.952. The profile `B_lv` interval is honestly calibrated.
+**Honesty boundary (unchanged):** this is the **orthogonal Model A ordinary `B_lv`** (with an
+orthogonal `phylo_latent` term present), **not** the interacting `LV-08` estimand — **`LV-08` stays
+`blocked`**. The rank-2 hard cell (S=200,K=2) was still running at close.
+
+**2. MCMCglmm is no longer required to turn a tree into `A^{-1}`** (the maintainer's ask — "Emily was
+surprised we don't have such a function… we can create our own"). Ported drmTMB's
+`drm_phylo_augmented_precision()` → `.gllvm_phylo_tree_precision()` (`R/phylo-tree-precision.R`, `ape`
++ `Matrix` only; provenance in `inst/COPYRIGHTS`), and swapped it into the `phylo_latent(tree=)` path
+in `R/fit-multi.R`. Validated **numerically identical** to the old `MCMCglmm::inverseA()` fit
+(objective diff 3e-10, `B_lv` diff 3e-7, `log det A` + `n_aug=78` match); phylo/animal test suite 242
+pass / 0 fail. Commits `52bd9e98` (builder + test) + `30e3b6ec` (engine swap + COPYRIGHTS + NEWS).
+
+**Follow-ups opened by this update:**
+- **animal / spatial / kernel orthogonal families** are the same generic machinery (profile is
+  family-agnostic; bootstrap needs each RE tier taught to `simulate()`) — each is a bounded
+  compose-+-coverage slice, not new inference code. See the roadmap note in Design 76.
+- **Full MCMCglmm removal:** the `animal_*` pedigree path (`R/animal-keyword.R`) still calls
+  `MCMCglmm::inverseA`; drmTMB has `drm_pedigree_additive_relationship` to port next.
+- Rank-2 `B_lv` coverage cell + general-rank analytic gradient (perf) still pending.

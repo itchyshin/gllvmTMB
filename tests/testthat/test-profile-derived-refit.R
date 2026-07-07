@@ -11,7 +11,7 @@ test_that(".profile_ci_via_refit skips failed edge probes before bracketing", {
   }
 
   with_mocked_bindings(
-    .fix_and_refit_nll = function(fit, target_fn, q_0, lambda) {
+    .fix_and_refit_nll = function(fit, target_fn, q_0, lambda, ...) {
       excess <- excess_curve(q_0)
       if (is.na(excess)) {
         return(NA_real_)

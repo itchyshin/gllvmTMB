@@ -103,11 +103,14 @@ gll_prepare_lv_predictor_setup <- function(
       ">" = "Use {.code latent(0 + trait | {site}, d = K, lv = ~ x)} without an augmented LHS."
     ))
   }
-  if (isTRUE(REML)) {
+  ## REML gives unbiased variance components for Gaussian lv/Model A fits and
+  ## reuses the existing Gaussian REML engine (R/fit-multi.R; matches drmTMB's
+  ## Gaussian-only REML). Non-Gaussian lv REML needs its own derivation.
+  if (isTRUE(REML) && !all(family_id_vec == 0L)) {
     cli::cli_abort(c(
-      "{.arg lv} does not support {.arg REML = TRUE} in this C1 slice.",
-      "i" = "Design 73 starts with ML for admitted ordinary unit-tier fits.",
-      ">" = "Use {.code REML = FALSE}; REML support needs a separate derivation and validation row."
+      "{.arg lv} supports {.arg REML = TRUE} only for Gaussian fits.",
+      "i" = "REML for non-Gaussian predictor-informed latent scores needs a separate derivation and validation row.",
+      ">" = "Use {.code REML = FALSE} for non-Gaussian {.arg lv} fits."
     ))
   }
   if (length(link_id_vec) != length(family_id_vec)) {

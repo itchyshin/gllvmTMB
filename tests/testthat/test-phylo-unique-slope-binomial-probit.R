@@ -214,7 +214,11 @@ test_that("phylo_unique augmented binomial(probit) fit recovers Sigma_b", {
 test_that("phylo_unique augmented binomial(probit) fit aborts when n_lhs_cols is forced to 1", {
   skip_if_not_phylo_unique_slope_deps()
 
-  fx <- make_phylo_unique_slope_fixture(n_sp = 10L, n_rep = 2L)
+  ## Robust default fixture (n_sp = 60): the tiny n_sp = 10 fit is knife-edge and
+  ## flakes on Linux under any Ainv reimplementation (a 1e-14 difference tips
+  ## convergence). This guard only needs a converged fit to corrupt, so fixture
+  ## size is incidental. (phylo_unique(slope) is slated for deprecation.)
+  fx <- make_phylo_unique_slope_fixture()
   fit <- fit_phylo_unique_slope_pair(fx)$long
   tmb_data <- fit$tmb_data
   tmb_data$n_lhs_cols <- 1L

@@ -2,11 +2,14 @@
 
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
-For the current Claude handoff, also read
-`docs/dev-log/handover/2026-07-06-claude-handover-modelA.md` (the structured ×
-X_lv arc RE-SCOPED to the orthogonal Model A, which already composes + recovers
-`B_lv` in R — the remaining work is the t-based profile + bootstrap CI) before
-starting new work. Its authoritative model record is `docs/design/76-structured-xlv-phylo.md` §7 UPDATE.
+For the current Claude handoff, read
+`docs/dev-log/handover/2026-07-07-claude-handover.md` (START HERE). The Model A
+`B_lv` interval arc **and** the full MCMCglmm removal are DONE and merged to
+`main` (PRs #720/#721/#722); the next arcs are the maintainer-directed
+**`*_unique` deprecation** (grammar change → needs sign-off) and the full-check
+mixed-family fix (issue #723). The Model A record is
+`docs/design/76-structured-xlv-phylo.md` §7 UPDATE; `LV-09` (orthogonal Model A)
+is delivered, `LV-08` (interacting) stays blocked.
 
 ## Project Identity
 

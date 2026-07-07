@@ -2695,6 +2695,24 @@ rewrite_canonical_aliases <- function(formula) {
                 c("wide_intercept_slope", "long_intercept_slope")
             ) {
               species_arg <- arg[[3L]]
+              ## Augmented animal_latent(1 + x | id) is loadings-only by default.
+              ## `unique = TRUE` folds in the augmented intercept-slope companion,
+              ## byte-identical to the explicit pair
+              ##   animal_latent(1 + x | id) + animal_unique(1 + x | id).
+              ## The companion is the same phylo_slope covstruct animal_unique()
+              ## builds for the augmented form (Design 77, unique= complete arc).
+              unique_arg <- e[["unique"]]
+              if (is.null(unique_arg)) unique_arg <- FALSE
+              if (
+                !is.logical(unique_arg) ||
+                  length(unique_arg) != 1L ||
+                  is.na(unique_arg)
+              ) {
+                cli::cli_abort(c(
+                  "{.arg unique} in {.fn animal_latent} must be a literal {.code TRUE} or {.code FALSE}.",
+                  ">" = "Use {.code animal_latent(..., unique = FALSE)} for the loadings-only subset."
+                ))
+              }
               new_call <- as.call(c(
                 list(as.name("phylo_rr"), species_arg),
                 list(d = d_val),
@@ -2705,7 +2723,20 @@ rewrite_canonical_aliases <- function(formula) {
                 ),
                 list(vcv = vcv_expr)
               ))
-              return(new_call)
+              if (isFALSE(unique_arg)) {
+                return(new_call)
+              }
+              ## unique = TRUE: fold in the augmented intercept-slope companion.
+              psi_call <- as.call(c(
+                list(as.name("phylo_slope"), arg),
+                list(
+                  .phylo_unique_augmented = TRUE,
+                  lhs_form = lhs_form$lhs_form,
+                  slope_col = lhs_form$slope_col
+                ),
+                list(vcv = vcv_expr)
+              ))
+              return(call("+", new_call, psi_call))
             }
           }
           new_call <- as.call(c(
@@ -3046,22 +3077,54 @@ rewrite_canonical_aliases <- function(formula) {
               c("wide_intercept_slope", "long_intercept_slope")
           ) {
             species_arg <- bar[[3L]]
+            ## Augmented phylo_latent(1 + x | sp) is loadings-only by default.
+            ## `unique = TRUE` folds in the augmented intercept-slope companion,
+            ## byte-identical to the explicit pair
+            ##   phylo_latent(1 + x | sp) + phylo_unique(1 + x | sp).
+            ## The companion is the same phylo_slope covstruct phylo_unique()
+            ## builds for the augmented form (Design 77, unique= complete arc).
+            unique_arg <- e[["unique"]]
+            if (is.null(unique_arg)) unique_arg <- FALSE
+            if (
+              !is.logical(unique_arg) ||
+                length(unique_arg) != 1L ||
+                is.na(unique_arg)
+            ) {
+              cli::cli_abort(c(
+                "{.arg unique} in {.fn phylo_latent} must be a literal {.code TRUE} or {.code FALSE}.",
+                ">" = "Use {.code phylo_latent(..., unique = FALSE)} for the loadings-only subset."
+              ))
+            }
             d_arg <- .named_or_positional_arg(e, "d", 3L, default = 1L)
-            extra_args <- list(
-              .latent_slope = TRUE,
-              lhs_form = lhs_form$lhs_form,
-              slope_col = lhs_form$slope_col
-            )
-            ## Preserve a user-supplied tree / vcv / A / Ainv on the rewrite.
+            ## User-supplied tree / vcv / A / Ainv, shared by both folded pieces.
+            src_extras <- list()
             for (a in c("tree", "vcv", "A", "Ainv")) {
-              if (!is.null(e[[a]])) extra_args[[a]] <- e[[a]]
+              if (!is.null(e[[a]])) src_extras[[a]] <- e[[a]]
             }
             new_call <- as.call(c(
               list(as.name("phylo_rr"), species_arg),
               list(d = d_arg),
-              extra_args
+              list(
+                .latent_slope = TRUE,
+                lhs_form = lhs_form$lhs_form,
+                slope_col = lhs_form$slope_col
+              ),
+              src_extras
             ))
-            return(new_call)
+            if (isFALSE(unique_arg)) {
+              return(new_call)
+            }
+            ## unique = TRUE: fold in the augmented intercept-slope companion.
+            psi_call <- as.call(c(
+              list(as.name("phylo_slope"), bar),
+              list(
+                .phylo_unique_augmented = TRUE,
+                lhs_form = lhs_form$lhs_form,
+                slope_col = lhs_form$slope_col
+              ),
+              src_extras
+            ))
+            return(call("+", new_call, psi_call))
           }
         }
         ## Design 60 §3.4: augmented spatial_unique(1 + x | coords) random

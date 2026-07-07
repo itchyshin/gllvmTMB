@@ -75,6 +75,39 @@ test_that("phylo_latent() default is loadings-only (parser, no companion)", {
   expect_false(grepl(".auto_unique", txt, fixed = TRUE))
 })
 
+test_that("phylo_latent(1 + x | sp, unique = TRUE) folds in the augmented companion (parser)", {
+  withr::local_options(
+    lifecycle_verbosity = "quiet",
+    gllvmTMB.quiet_grammar_notes = TRUE
+  )
+  ## unique = TRUE folds to the loadings-only slope PLUS the augmented
+  ## intercept-slope companion -- the same two covstructs as the explicit pair
+  ## phylo_latent(1 + x | sp) + phylo_unique(1 + x | sp). Fit-level byte
+  ## identity is gated heavily (Codex); here we assert the parser emits both
+  ## folded pieces and that they match the explicit pair's terms.
+  fold <- paste(deparse(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + phylo_latent(1 + x | species, unique = TRUE)
+  )), collapse = " ")
+  expect_match(fold, ".latent_slope = TRUE", fixed = TRUE)
+  expect_match(fold, ".phylo_unique_augmented = TRUE", fixed = TRUE)
+
+  ## Same covstruct terms as the explicit pair (the fold only adds an outer
+  ## additive grouping, which formula expansion flattens).
+  pair <- paste(deparse(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + phylo_latent(1 + x | species) +
+      phylo_unique(1 + x | species)
+  )), collapse = " ")
+  norm <- function(s) gsub("[[:space:]()]", "", s)
+  expect_equal(norm(fold), norm(pair))
+
+  ## unique = FALSE / absent stay loadings-only (no companion).
+  bare <- paste(deparse(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + phylo_latent(1 + x | species, unique = FALSE)
+  )), collapse = " ")
+  expect_match(bare, ".latent_slope = TRUE", fixed = TRUE)
+  expect_false(grepl(".phylo_unique_augmented", bare, fixed = TRUE))
+})
+
 ## ---- Fitting byte-identity gates (adapted from the #516 slice) --------------
 
 # Stage-35 phylo DGP enriched with a per-trait phylogenetic diagonal Psi_phy so

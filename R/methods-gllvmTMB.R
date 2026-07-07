@@ -1179,7 +1179,10 @@ simulate.gllvmTMB_multi <- function(
 #' @keywords internal
 #' @noRd
 .check_simulate_unconditional <- function(fit) {
-  handled <- c("rr_B", "diag_B", "rr_W", "diag_W", "propto")
+  handled <- c(
+    "rr_B", "diag_B", "rr_W", "diag_W", "propto",
+    "lv_B", "phylo_rr", "diag_species"
+  )
   active <- names(fit$use)[vapply(fit$use, isTRUE, logical(1))]
   unhandled <- setdiff(active, handled)
   list(
@@ -1206,11 +1209,18 @@ simulate.gllvmTMB_multi <- function(
     if (isTRUE(fit$use$rr_B)) {
       d_B <- fit$tmb_data$d_B
       Lambda_B <- fit$report$Lambda_B # (n_traits x d_B)
-      z_B_new <- matrix(stats::rnorm(d_B * n_sites), d_B, n_sites)
-      ## eta[i] += sum_k Lambda_B[t_i, k] * z_B[k, s_i]
+      score_B <- matrix(stats::rnorm(d_B * n_sites), d_B, n_sites)
+      ## Predictor-informed latent scores (lv): the fitted mean X_lv alpha is
+      ## deterministic, so add it to the redrawn innovation before the loading
+      ## map. This is what a parametric B_lv bootstrap needs to span the effect.
+      if (isTRUE(fit$use$lv_B)) {
+        U_lv_mean_B <- as.matrix(fit$report$U_lv_mean_B) # (n_sites x d_B)
+        score_B <- score_B + t(U_lv_mean_B)
+      }
+      ## eta[i] += sum_k Lambda_B[t_i, k] * score_B[k, s_i]
       contrib <- rowSums(
         Lambda_B[trait_id, , drop = FALSE] *
-          t(z_B_new[, site_id, drop = FALSE])
+          t(score_B[, site_id, drop = FALSE])
       )
       eta <- eta + contrib
     }
@@ -1259,6 +1269,38 @@ simulate.gllvmTMB_multi <- function(
       p_phy_new[, t] <- sqrt(lam_phy) * backsolve(U, stats::rnorm(n_species))
     }
     eta <- eta + p_phy_new[cbind(sp_id, trait_id)]
+  }
+
+  ## phylo_rr: reduced-rank phylogenetic latent factors. g_phy[, k] ~ MVN(0, A)
+  ## on the augmented node set (precision Ainv_phy_rr = A^{-1}); mapped to obs via
+  ## species_aug_id and the phylo loadings Lambda_phy. Draw via the precision
+  ## Cholesky: backsolve(chol(A^{-1}), z) has covariance (A^{-1})^{-1} = A.
+  if (isTRUE(fit$use$phylo_rr)) {
+    d_phy <- fit$tmb_data$d_phy
+    n_aug <- fit$tmb_data$n_aug_phy
+    Lambda_phy <- fit$report$Lambda_phy # (n_traits x d_phy)
+    U_phy <- chol(as.matrix(fit$tmb_data$Ainv_phy_rr))
+    sp_aug_id <- fit$tmb_data$species_aug_id + 1L
+    g_phy_new <- matrix(0, n_aug, max(d_phy, 1L))
+    for (k in seq_len(d_phy)) {
+      g_phy_new[, k] <- backsolve(U_phy, stats::rnorm(n_aug))
+    }
+    contrib <- rowSums(
+      Lambda_phy[trait_id, , drop = FALSE] *
+        g_phy_new[sp_aug_id, , drop = FALSE]
+    )
+    eta <- eta + contrib
+  }
+
+  ## diag_species: non-phylogenetic species random effect (Stage-3, cpp l.959):
+  ## q_sp[t, s] ~ N(0, sd_q[t]) iid over (trait, species).
+  if (isTRUE(fit$use$diag_species)) {
+    sp_id <- fit$tmb_data$species_id + 1L
+    n_species <- fit$tmb_data$n_species
+    sd_q <- as.numeric(fit$report$sd_q) # length n_traits
+    q_new <- matrix(stats::rnorm(n_traits * n_species), n_traits, n_species)
+    q_new <- q_new * sd_q
+    eta <- eta + q_new[cbind(trait_id, sp_id)]
   }
 
   eta

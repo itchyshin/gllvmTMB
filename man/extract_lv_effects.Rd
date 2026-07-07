@@ -8,7 +8,9 @@ extract_lv_effects(
   fit,
   level = "unit",
   type = c("axis_effect", "trait_effect"),
-  conf.level = 0.95
+  conf.level = 0.95,
+  method = c("wald", "profile", "bootstrap"),
+  ...
 )
 }
 \arguments{
@@ -20,8 +22,19 @@ extract_lv_effects(
 coefficients on the latent-axis scale. \code{"trait_effect"} returns
 \eqn{\mathbf B_{\mathrm{lv}}} on the trait linear-predictor scale.}
 
-\item{conf.level}{Confidence level for Wald intervals when finite standard
-errors are available.}
+\item{conf.level}{Confidence level for the interval (Wald, or the
+confidence level passed to the profile / bootstrap CI).}
+
+\item{method}{Interval method for \code{type = "trait_effect"} (\eqn{\mathbf
+B_{\mathrm{lv}}}): \code{"wald"} (default, delta-method inline), \code{"profile"}
+(the featured/hero method -- \code{\link[=profile_ci_lv_effects]{profile_ci_lv_effects()}}, with a small-sample
+t reference), or \code{"bootstrap"} (calibration/fallback --
+\code{\link[=bootstrap_ci_lv_effects]{bootstrap_ci_lv_effects()}}). \code{"profile"}/\code{"bootstrap"} require
+\code{type = "trait_effect"}.}
+
+\item{...}{Passed to \code{\link[=profile_ci_lv_effects]{profile_ci_lv_effects()}} (e.g. \code{trait}, \code{predictor},
+\code{reference}, \code{df}) or \code{\link[=bootstrap_ci_lv_effects]{bootstrap_ci_lv_effects()}} (e.g. \code{n_boot}, \code{seed},
+\code{n_cores}) when \code{method} is \code{"profile"} / \code{"bootstrap"}.}
 }
 \value{
 A data frame. For \code{type = "axis_effect"}, columns are \code{level},

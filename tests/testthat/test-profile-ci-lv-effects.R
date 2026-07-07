@@ -64,4 +64,21 @@ test_that("profile_ci_lv_effects closes, covers B_lv, and t is wider than chisq 
   expect_true(truth >= res_t$lower && truth <= res_t$upper)   # covers the known B_lv
   ## t reference (df = 28) is wider than the chi-square reference.
   expect_gt(res_t$upper - res_t$lower, res_c$upper - res_c$lower)
+
+  ## Reachable via the standard extractor API (method = "profile" / "bootstrap").
+  via_extract <- extract_lv_effects(
+    fit, type = "trait_effect", method = "profile", trait = 1, predictor = 1
+  )
+  expect_equal(via_extract$lower, res_t$lower, tolerance = 1e-6)
+  expect_equal(via_extract$upper, res_t$upper, tolerance = 1e-6)
+  expect_identical(via_extract$method, "profile")
+  boot_rows <- extract_lv_effects(
+    fit, type = "trait_effect", method = "bootstrap", n_boot = 15, seed = 1
+  )
+  expect_identical(unique(boot_rows$method), "bootstrap")
+  ## profile / bootstrap require the trait-scale effect.
+  expect_error(
+    extract_lv_effects(fit, type = "axis_effect", method = "profile"),
+    regexp = "trait_effect"
+  )
 })

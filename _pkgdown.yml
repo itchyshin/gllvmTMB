@@ -332,6 +332,8 @@ reference:
     - diagnostic_table
     - residuals.gllvmTMB_multi
     - bootstrap_Sigma
+    - profile_ci_lv_effects
+    - bootstrap_ci_lv_effects
     - confint_inspect
     - profile_repeatability
     - profile_phylo_signal

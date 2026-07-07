@@ -45,6 +45,36 @@ test_that("spatial_latent(unique = ) validates a literal logical scalar", {
   )
 })
 
+test_that("spatial_latent(1 + x | coords, unique = TRUE) folds to the augmented pair (parser)", {
+  withr::local_options(
+    lifecycle_verbosity = "quiet",
+    gllvmTMB.quiet_grammar_notes = TRUE
+  )
+  ## Augmented fold desugars to the loadings-only slope + the spatial_unique
+  ## companion -- both SPDE slope engines (use_spde_latent_slope + use_spde_slope),
+  ## byte-identical to the explicit pair. Fit-level byte-identity is gated heavily
+  ## (Codex); here assert the parser emits both engine markers and matches the pair.
+  fold <- paste(deparse(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + spatial_latent(1 + x | coords, d = 1, unique = TRUE)
+  )), collapse = " ")
+  expect_match(fold, ".spatial_latent_augmented = TRUE", fixed = TRUE)
+  expect_match(fold, ".spatial_unique_augmented = TRUE", fixed = TRUE)
+
+  pair <- paste(deparse(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + spatial_latent(1 + x | coords, d = 1) +
+      spatial_unique(1 + x | coords)
+  )), collapse = " ")
+  norm <- function(s) gsub("[[:space:]()]", "", s)
+  expect_equal(norm(fold), norm(pair))
+
+  ## unique = FALSE / absent stay loadings-only (no companion).
+  bare <- paste(deparse(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + spatial_latent(1 + x | coords, d = 1)
+  )), collapse = " ")
+  expect_match(bare, ".spatial_latent_augmented = TRUE", fixed = TRUE)
+  expect_false(grepl(".spatial_unique_augmented", bare, fixed = TRUE))
+})
+
 .spatial_unique_fold_fixture <- function(seed = 20260703L) {
   set.seed(seed)
   sim <- gllvmTMB::simulate_site_trait(

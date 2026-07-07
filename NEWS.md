@@ -12,9 +12,12 @@
   **silently dropped** at the augmented form (only the loadings-only slope was fit).
   `unique = FALSE` / absent stay loadings-only, and the ordination fold is unchanged.
   This completes the `unique =` fold for `phylo` / `animal` / `kernel` / ordinary `latent`.
-* `spatial_latent(1 + x | coords, unique = TRUE)` still **errors** (rather than silently
-  dropping): its SPDE companion needs an engine-level additive slot, tracked as a C++
-  arc in `docs/design/77-augmented-latent-unique-fold.md`.
+* `spatial_latent(1 + x | coords, unique = TRUE)` now **folds too**: it desugars to the
+  loadings-only slope + the `spatial_unique()` companion, co-activating both SPDE slope
+  engines (`use_spde_latent_slope` + `use_spde_slope`). Verified identifiable (converges +
+  recovers on the fold's own DGP) and byte-identical in `logLik` to the explicit pair. The
+  augmented `unique =` fold is now complete for **every** source — ordinary, `phylo`,
+  `animal`, `spatial`, and `kernel`.
 * `*_unique` deprecation note: bare-diagonal `*_unique(group)` folds to `*_indep(group)`;
   the augmented random-slope `*_unique(1 + x | group)` is now equivalently spelled
   `*_latent(1 + x | group, unique = TRUE)`. `indep()` is **not** an equivalent — it fixes

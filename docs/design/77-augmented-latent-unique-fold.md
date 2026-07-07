@@ -1,10 +1,10 @@
 # Design 77 — Augmented `*_latent(unique = TRUE)` fold consistency
 
-**Status:** 2026-07-07 — `phylo`/`animal` augmented fold **WIRED** (loadings + the
-existing `phylo_slope(.phylo_unique_augmented)` companion == the explicit pair);
-`kernel`/ordinary `latent` already fold; **`spatial` is the next arc — C++**
-(starting kit below). Footgun fix (fail-loud) was the interim that restored the
-design's intended guard.
+**Status:** 2026-07-07 — **COMPLETE for every source.** `phylo`/`animal` fold via the
+`phylo_slope` companion; `kernel`/ordinary `latent` already folded; **`spatial` now folds
+too** — parser-only, both SPDE slope engines co-active, identifiable, byte-identical to the
+explicit pair (see the RESOLVED section below). 10/10 augmented cells. The footgun fix
+(fail-loud) was the interim that restored the design's intended guard.
 **Owner:** Claude (finding + phylo/animal wiring), Codex (heavy fold-fit verification; spatial C++).
 **Relates to:** Design 56 (augmented-LHS engine) §5.3; the `*_unique` deprecation
 (the augmented migration target depends on this fold being wired).
@@ -94,23 +94,44 @@ SPDE path *switches representations* rather than composing an additive companion
   `use_spde_slope <- FALSE` in `R/fit-multi.R`; a 404-line
   `tests/testthat/test-spde-slope-base-engine.R` already exists. Parser not
   activated yet.
-- **The additive slot may already be in C++** — `src/gllvmTMB.cpp` (~L156-168)
-  documents `spde_lv_k` (0 = per-trait fields / `spatial_unique`; ≥1 = low-rank
-  `spatial_latent`) **and** a `spde_lv_unique` flag: *"If `spde_lv_unique == 1`,
-  an additional per-trait `omega_spde` block is [added on top of the low-rank
-  fields]."* That is exactly the additive `Lambda Lambda^T + Psi` fold slot.
-  **First step: confirm whether `spde_lv_unique` is wired + tested or dormant** —
-  the 2026-06-21 blocker said "engine confirmation needed," but this flag suggests
-  the mechanism may already be present.
-- **Design target** (`2026-06-21-source-specific-latent-psi-fold.md:58`):
-  `spatial_latent(coords, d = K, unique = TRUE)` →
-  `spde(coords, d = K) + spde(coords, .spatial_unique = TRUE, .auto_unique = TRUE)`.
-- **Related branches to diff before starting:** `agent/spatial-slope-base`,
-  `agent/spatial-dep-latent-slope(s)`, `agent/ci-spde-density-fix`, and the
-  `codex/spatial-latent-psi-fold-20260621` arc (PR #525) that recorded the blocker.
+### RESOLVED 2026-07-07 — the ordination spatial fold is DONE; the 2026-06-21 blocker is stale
 
-**Gap to close:** confirm/activate `spde_lv_unique` (low-rank + per-trait additive
-in one fit), set `use_spde_slope` / companion routing, wire the parser
-(`spatial_latent(1 + x | coords, unique = TRUE)` and the ordination form → set the
-flag), add recovery + byte-identity tests. Replace the spatial fail-loud with the
-fold only once a fit recovers to truth.
+The verify-first sweep found the additive slot is **wired end-to-end**, and the
+**ordination** spatial fold already fits:
+
+- **C++** — `src/gllvmTMB.cpp` `DATA_INTEGER(spde_lv_unique)` (L170) with **five live
+  usage sites** in the likelihood (L1416, L1426, L1466, L1750, L1851) that keep the
+  per-trait `omega_spde` block when `spde_lv_unique == 1` (the additive
+  `Lambda Lambda^T + Psi`).
+- **R** — `R/fit-multi.R:1304` sets `use_spde_latent_diag` from the
+  `.spatial_unique_diag` marker, and L3183 passes `spde_lv_unique = as.integer(...)`.
+- **Test** — `tests/testthat/test-spatial-latent-unique-fold.R` **fits, converges**
+  (`convergence == 0`), asserts `diag(Sigma_shared) + Psi_spde_unique == diag(Sigma_total)`,
+  and `fold logLik == explicit-pair logLik` (byte-identity). Passes clean (TMB installed,
+  not skipped).
+
+So `spatial_latent(0 + trait | coords, d = K, unique = TRUE)` is **done and on main**.
+The 2026-06-21 blocker ("additive sum not wired") predates the `spde_lv_unique` work.
+
+### RESOLVED 2026-07-07 (evening) — the augmented spatial fold is PARSER-ONLY, not C++
+
+An identifiability recovery study corrected the earlier "genuine engine work" read (which
+was drawn *before* running the study — a lesson in itself). The augmented fold is
+`spatial_latent(1+x|coords, unique=TRUE)` =
+`spatial_latent(1+x|coords) + spatial_unique(1+x|coords)` — the loadings-only latent slope
+(`use_spde_latent_slope`) **+** the augmented `spatial_unique` companion (`use_spde_slope`,
+`omega_spde_aug`). **Both engines already exist and co-activate:** the explicit pair fits
+with `use_spde_latent_slope = 1` and `use_spde_slope = 1`. And the model is **identifiable** —
+on data generated from the fold's own two random fields (Matern GP) it converges
+(`conv = 0`) and the fold is **byte-identical in `logLik` to the explicit pair** (ΔLL = 0).
+(An earlier probe with a *deterministic* signal gave `conv = 1`: a DGP-mismatch artifact,
+not unidentifiability — hence the recovery study, not a convergence flag, arbitrated.)
+
+So it is **parser-only**, the same story as phylo/animal. Wired in `R/brms-sugar.R`
+(`spatial_latent` branch): `unique = TRUE` at the augmented LHS desugars to
+`spde(.spatial_latent_augmented) + spde(.spatial_unique_augmented)`; the fail-loud is gone.
+Parser test in `tests/testthat/test-spatial-latent-unique-fold.R`; the heavy multi-seed
+recovery-to-truth gate goes to Codex.
+
+**The augmented `unique =` fold is now complete for every source** — ordinary, `phylo`,
+`animal`, `spatial`, `kernel` (the ordination fold was already complete). 10/10 cells.

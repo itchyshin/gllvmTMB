@@ -42614,3 +42614,27 @@ Issue ledger / after-task:
   tracking) -- both maintainer-authorized.
 - After-task report:
   `docs/dev-log/after-task/2026-07-06-reconciliation-stabilization.md`.
+
+## 2026-07-07 — unique= augmented fold merged (#725); heavy-fit + spatial C++ → Codex (Claude / Ada)
+
+**Landed on main (`81be2ad2`, PR #725):** `phylo_latent`/`animal_latent(1 + x | grp, unique = TRUE)`
+now **fold** to loadings + the augmented `phylo_slope(.phylo_unique_augmented)` companion —
+byte-structurally identical to the explicit pair `*_latent(1+x|grp) + *_unique(1+x|grp)`. Previously
+`unique = TRUE` was silently dropped at the augmented form. Completes the `unique=` fold for
+phylo / animal / kernel / ordinary latent. Parser tests assert `norm(fold) == norm(pair)` in
+`test-{phylo,animal}-latent-unique-fold.R`; the `*_latent-unique-fold` + deprecation/keyword suites
+are green locally; #725 CI green (recovery + ubuntu-latest).
+
+**→ Codex, two asks:**
+
+1. **Heavy fold-vs-pair fit byte-identity** (`GLLVMTMB_HEAVY_TESTS=1`): a Gaussian augmented DGP where
+   the `*_latent(1+x|grp, unique=TRUE)` fit == the `*_latent(1+x|grp) + *_unique(1+x|grp)` fit
+   (`logLik` + `extract_Sigma`), mirroring the ordination-form byte-identity gate in
+   `test-phylo-latent-unique-fold.R`. Parser equivalence is proven; the fit-level gate is yours.
+2. **Spatial C++ arc** — `spatial_latent(1 + x | coords, unique = TRUE)` still fails loud *by design*
+   (SPDE representation switch). Starting kit in `docs/design/77-augmented-latent-unique-fold.md`:
+   the dormant `fba7e691` scaffolding (`Sigma_field (x) Q^-1`, `use_spde_slope <- FALSE`,
+   `test-spde-slope-base-engine.R`) and the `spde_lv_unique` flag already on main
+   (`src/gllvmTMB.cpp:156-168`). **First confirm whether `spde_lv_unique` is wired vs dormant** — the
+   2026-06-21 blocker predates a clean check. Diff `agent/spatial-slope-base`,
+   `agent/spatial-dep-latent-slope(s)`, and PR #525 before writing anything.

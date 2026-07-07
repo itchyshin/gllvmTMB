@@ -3611,11 +3611,33 @@ rewrite_canonical_aliases <- function(formula) {
               c("wide_intercept_slope", "long_intercept_slope")
           ) {
             if (isTRUE(unique_val)) {
-              cli::cli_abort(c(
-                "{.code spatial_latent(..., unique = TRUE)} is not implemented for augmented spatial random-regression LHS yet.",
-                "i" = "The folded spatial Psi companion is available for intercept-only {.fn spatial_latent} terms.",
-                ">" = "Use {.code spatial_latent(0 + trait | coords, d = K, unique = TRUE)} or omit {.arg unique} for the augmented loadings-only slope path."
+              ## Augmented fold: spatial_latent(1 + x | coords, unique = TRUE)
+              ## desugars to the loadings-only slope + the augmented
+              ## spatial_unique companion -- both SPDE slope engines
+              ## (use_spde_latent_slope + use_spde_slope) co-active, identifiable
+              ## (recovers on the fold's own DGP), and byte-identical to the
+              ## explicit pair (Design 77, unique= complete arc).
+              loadings_call <- as.call(c(
+                list(as.name("spde"), bar),
+                list(
+                  .spatial_latent_augmented = TRUE,
+                  d = d_val,
+                  .spatial_unique_diag = FALSE,
+                  lhs_form = lhs_form$lhs_form,
+                  slope_col = lhs_form$slope_col
+                ),
+                extras
               ))
+              companion_call <- as.call(c(
+                list(as.name("spde"), bar),
+                list(
+                  .spatial_unique_augmented = TRUE,
+                  lhs_form = lhs_form$lhs_form,
+                  slope_col = lhs_form$slope_col
+                ),
+                extras
+              ))
+              return(call("+", loadings_call, companion_call))
             }
             new_call <- as.call(c(
               list(as.name("spde"), bar),

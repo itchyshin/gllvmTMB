@@ -35,11 +35,12 @@ All on branch `claude/blv-profile-ci` (built on `origin/main` after the earlier 
   **Also repairs `bootstrap_Sigma`'s under-coverage.**
 - **Standard-API access** (`3564009c`): `extract_lv_effects(type="trait_effect",
   method="wald"/"profile"/"bootstrap")` routes to the trio; `...` forwards options.
-- **Coverage proof + campaign harness** (this commit): local parallel profile-coverage sim →
-  **coverage 0.925** (MCSE 0.024; 120/120 converged; S=60, `B_lv[t1]`) — **inside the 0.92–0.98
-  audit band** and, within Monte Carlo error, consistent with nominal 0.95. It sits at the low edge:
-  mild small-n under-coverage, which the t reference (`df=n−d−1`), a Self–Liang boundary correction,
-  and larger `n` address (the production claim is gated on the campaign below). Plus
+- **Coverage proof + campaign harness** (this commit): local parallel profile-coverage sim,
+  `B_lv[t1]`, both cells 100% converged and **inside the 0.92–0.98 audit band**, coverage climbing
+  toward nominal 0.95 as `n` grows — **0.925** (MCSE 0.024; S=60) → **0.970** (MCSE 0.017; S=150).
+  Textbook profile behaviour (mild small-`n` under-coverage, converging); the interval is honest.
+  The production claim is gated on the campaign below (larger denominator + the Self–Liang boundary
+  refinement). Plus
   `dev/lv-effects-ci-coverage.R` + `-slurm.sh`: the compute-gated
   ≥500-rep/cell Totoro/DRAC campaign (grid sizes n to family+rank per the #715 lesson; includes the
   GLLVM.jl weak cell p=80,K=2,λ=0.5 sized up).

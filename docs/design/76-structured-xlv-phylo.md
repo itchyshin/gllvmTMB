@@ -542,9 +542,9 @@ The honest-interval deliverable is built and validated (branch, pre-merge):
   fast path (~9×). `bootstrap_ci_lv_effects()` — the calibration/fallback leg (this also fixed
   `simulate()`'s unconditional RE redraw for the `lv_B`/`phylo_rr`/`diag_species` tiers).
   Reachable via `extract_lv_effects(type = "trait_effect", method = "profile"/"bootstrap"/"wald")`.
-- **Coverage:** a local profile-coverage proof gives **0.925** (MCSE 0.024; S=60; 120 reps) —
-  inside the 0.92–0.98 band, consistent with nominal within MC error, at the low edge (mild
-  small-n under-coverage). The compute-gated ≥500-rep/cell campaign
+- **Coverage:** a local profile-coverage proof gives **0.925** (MCSE 0.024; S=60) → **0.970**
+  (MCSE 0.017; S=150) — both inside the 0.92–0.98 band, coverage climbing toward nominal 0.95 as
+  `n` grows (mild small-`n` under-coverage, converging). The compute-gated ≥500-rep/cell campaign
   (`dev/lv-effects-ci-coverage.{R,-slurm.sh}`) is the production gate that moves `LV-08`
   `blocked → partial`. No public wording is advertised until that gate passes + Rose audits.
 

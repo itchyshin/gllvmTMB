@@ -194,7 +194,14 @@
     cli::cli_abort("{.arg tree} branch lengths must be positive to build sparse precision.")
   }
   n_total <- info$n_tip + info$n_node
-  included_nodes <- setdiff(seq_len(n_total), info$root)
+  ## Order augmented nodes internal-first, tips-last -- matching the convention
+  ## MCMCglmm::inverseA() used ("tips live at the end") that the downstream fit
+  ## and its seed-tuned tests were built around. Node ordering never changes the
+  ## fitted model (the internal nodes are marginalised), but keeping tips last
+  ## makes this builder a numerical drop-in for the previous MCMCglmm path so the
+  ## sparse-Cholesky trajectory of fragile fits is unchanged.
+  internal_nodes <- setdiff(seq.int(info$n_tip + 1L, n_total), info$root)
+  included_nodes <- c(internal_nodes, seq_len(info$n_tip))
   node_index <- integer(n_total)
   node_index[included_nodes] <- seq_along(included_nodes)
   n_aug <- length(included_nodes)

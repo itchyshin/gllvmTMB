@@ -18,6 +18,12 @@ test_that(".gllvm_phylo_tree_precision matches ape::vcv on the tips (no MCMCglmm
     expect_equal(nrow(p$precision), 2L * n - 2L)
     expect_true(Matrix::isSymmetric(p$precision))
 
+    ## Tips-last convention: tips occupy the FINAL n augmented positions
+    ## (internal nodes first). This mirrors MCMCglmm::inverseA()'s ordering so
+    ## the builder is a numerical drop-in; reordering silently tips fragile
+    ## seed-tuned fits (e.g. small-n binomial(probit)) into non-convergence.
+    expect_setequal(p$tip_node_index, (nrow(p$precision) - n + 1L):nrow(p$precision))
+
     ## invert -> restrict to tips -> compare to the phylo correlation
     A <- solve(as.matrix(p$precision))
     A_tip <- A[p$tip_node_index, p$tip_node_index]

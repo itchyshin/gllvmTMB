@@ -1170,3 +1170,123 @@ profile_ci_proportions <- function(
   }
   do.call(rbind, out_rows)
 }
+
+## ---- Profile CI for predictor-informed latent-score effects B_lv ----------
+
+#' Profile confidence intervals for predictor-informed latent-score effects
+#'
+#' Likelihood-profile confidence intervals for the trait-scale effects
+#' \eqn{B_{lv} = \Lambda_B \alpha^\top} of a predictor-informed latent term
+#' (\code{latent(..., lv = ~ x)}), obtained by inverting the likelihood-ratio
+#' test for each selected entry via constrained refit. Profile is the featured
+#' CI method for \eqn{B_{lv}} (maintainer doctrine D-12): it respects the
+#' asymmetry and boundary behaviour that a Wald interval misses, and it works
+#' where the Hessian is not positive-definite. The default reference is the
+#' small-sample \strong{t} cutoff (\code{qt((1+level)/2, df)^2}); pass
+#' \code{reference = "chisq"} for the asymptotic \eqn{\chi^2_1} cutoff.
+#'
+#' `B_lv` is rotation-invariant, so it is a valid recovery/inference target for
+#' any latent rank; the raw loadings and raw \eqn{\alpha} are not.
+#'
+#' @param fit A fitted \code{gllvmTMB} model with a predictor-informed latent
+#'   term. REML fits are recommended (unbiased variance components).
+#' @param trait,predictor Optional integer indices selecting entries of
+#'   \eqn{B_{lv}} (traits x predictors); default is every entry.
+#' @param level Confidence level (default \code{0.95}).
+#' @param reference \code{"t"} (default, small-sample) or \code{"chisq"}.
+#' @param df Optional degrees of freedom for the \code{"t"} reference; default
+#'   is the between-unit residual df \eqn{n_{units} - d - 1}.
+#'
+#' @return A data frame with one row per selected entry: \code{trait},
+#'   \code{predictor}, \code{estimate}, \code{lower}, \code{upper},
+#'   \code{level}, \code{method}, \code{reference}, \code{df}.
+#'
+#' @seealso [extract_lv_effects()], [profile_ci_correlation()].
+#' @export
+profile_ci_lv_effects <- function(fit,
+                                  trait = NULL,
+                                  predictor = NULL,
+                                  level = 0.95,
+                                  reference = c("t", "chisq"),
+                                  df = NULL) {
+  reference <- match.arg(reference)
+  B_hat <- fit$report[["B_lv_unit"]]
+  if (is.null(B_hat)) {
+    cli::cli_abort(c(
+      "{.fn profile_ci_lv_effects} needs a predictor-informed latent term.",
+      "i" = "Fit with {.code latent(0 + trait | unit, d = K, lv = ~ x)}."
+    ))
+  }
+  B_hat <- as.matrix(B_hat)
+  n_tr <- nrow(B_hat)
+  n_pr <- ncol(B_hat)
+  d_B <- tryCatch(ncol(as.matrix(fit$report[["Lambda_B"]])), error = function(e) 1L)
+
+  if (identical(reference, "t") && is.null(df)) {
+    n_units <- suppressWarnings(nrow(fit$lv[["X_lv_B"]]))
+    if (is.null(n_units) || is.na(n_units)) {
+      n_units <- suppressWarnings(nrow(as.matrix(fit$report[["U_lv_mean_B"]])))
+    }
+    if (is.null(n_units) || is.na(n_units)) {
+      cli::cli_abort(c(
+        "Could not infer the {.arg df} for the t reference.",
+        ">" = "Pass {.arg df} explicitly (e.g. {.code df = n_units - d - 1})."
+      ))
+    }
+    df <- max(1L, n_units - d_B - 1L)
+  }
+  crit <- if (identical(reference, "t")) {
+    .qt_threshold(level, df)
+  } else {
+    .qchisq_threshold(level)
+  }
+
+  ## B_lv = Lambda_B alpha^T is a pure function of the FIXED params. For rank 1
+  ## it is theta_rr_B[t] * alpha_lv_B[j] (fast, no inner solve); for higher rank
+  ## fall back to the engine report at the constrained par (exact, slower).
+  nm <- names(fit$opt$par)
+  idx_th <- which(nm == "theta_rr_B")
+  idx_al <- which(nm == "alpha_lv_B")
+  make_target <- function(ti, pj) {
+    force(ti); force(pj)
+    if (d_B == 1L && length(idx_th) == n_tr && length(idx_al) >= n_pr) {
+      function(par, fit) par[idx_th[ti]] * par[idx_al[pj]]
+    } else {
+      function(par, fit) {
+        fit$tmb_obj$fn(par)
+        as.numeric(as.matrix(fit$tmb_obj$report()[["B_lv_unit"]])[ti, pj])
+      }
+    }
+  }
+
+  trait_ids <- if (is.null(trait)) seq_len(n_tr) else as.integer(trait)
+  pred_ids <- if (is.null(predictor)) seq_len(n_pr) else as.integer(predictor)
+  tr_names <- rownames(B_hat) %||% paste0("trait", seq_len(n_tr))
+  pr_names <- colnames(B_hat) %||% paste0("lv", seq_len(n_pr))
+
+  rows <- list()
+  for (ti in trait_ids) {
+    for (pj in pred_ids) {
+      bounds <- .profile_ci_via_refit(
+        fit,
+        make_target(ti, pj),
+        q_hat = B_hat[ti, pj],
+        level = level,
+        crit = crit
+      )
+      rows[[length(rows) + 1L]] <- data.frame(
+        trait = tr_names[ti],
+        predictor = pr_names[pj],
+        estimate = B_hat[ti, pj],
+        lower = bounds$lower,
+        upper = bounds$upper,
+        level = level,
+        method = "profile",
+        reference = reference,
+        df = if (identical(reference, "t")) df else NA_real_,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  do.call(rbind, rows)
+}

@@ -113,6 +113,20 @@ pass / 0 fail. Commits `52bd9e98` (builder + test) + `30e3b6ec` (engine swap + C
 - **animal / spatial / kernel orthogonal families** are the same generic machinery (profile is
   family-agnostic; bootstrap needs each RE tier taught to `simulate()`) — each is a bounded
   compose-+-coverage slice, not new inference code. See the roadmap note in Design 76.
-- **Full MCMCglmm removal:** the `animal_*` pedigree path (`R/animal-keyword.R`) still calls
-  `MCMCglmm::inverseA`; drmTMB has `drm_pedigree_additive_relationship` to port next.
 - Rank-2 `B_lv` coverage cell + general-rank analytic gradient (perf) still pending.
+
+## UPDATE (2026-07-06, later still — full MCMCglmm removal complete)
+
+The `animal_*(pedigree=)` path is now also MCMCglmm-free, so **no gllvmTMB runtime path calls
+MCMCglmm** (it stays a `Suggests` test oracle). New `.gllvm_pedigree_precision()`
+(`R/pedigree-precision.R`, `Matrix`-only): reuses drmTMB's pedigree standardisation / topological
+order / dense tabular relatedness for inbreeding `F`, then assembles the sparse `A^{-1}` directly
+via Henderson (1976) / Quaas (1976). Reproduces `MCMCglmm::inverseA(ped)$Ainv` **exactly**
+(max|diff| `0e+00`, non-inbred + inbred `F=0.25`), order-invariant, genuinely sparse. `pedigree=/A=/Ainv=`
+agreement + sparse-Ainv engine fits pass; new `test-pedigree-precision.R` (15 checks). Roxygen
+de-claimed the old "never forms dense A / O(n)" promise (the inbreeding step forms dense A;
+Meuwissen–Luo `O(n)` inbreeding is a noted future optimisation). Commit `17ec79d3`, PR #721.
+
+**Cross-package finding:** drmTMB's own pedigree precision inverts densely (`chol2inv`), so
+gllvmTMB's true-sparse Quaas builder is an improvement drmTMB could back-port — filed as
+`itchyshin/drmTMB#740`. (drmTMB is already MCMCglmm-free; this is purely a sparsity gain.)

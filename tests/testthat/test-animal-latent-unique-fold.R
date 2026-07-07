@@ -64,6 +64,36 @@ test_that("animal_latent(unique = ) validates a literal logical scalar", {
   )
 })
 
+test_that("animal_latent(1 + x | id, unique = TRUE) folds in the augmented companion (parser)", {
+  withr::local_options(
+    lifecycle_verbosity = "quiet",
+    gllvmTMB.quiet_grammar_notes = TRUE
+  )
+  ## unique = TRUE folds to the loadings-only slope PLUS the augmented
+  ## companion -- the same two covstructs as the explicit pair
+  ## animal_latent(1 + x | id) + animal_unique(1 + x | id). Fit-level byte
+  ## identity is gated heavily (Codex); assert the parser emits both pieces.
+  fold <- paste(deparse(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + animal_latent(1 + x | species, A = A, unique = TRUE)
+  )), collapse = " ")
+  expect_match(fold, ".latent_slope = TRUE", fixed = TRUE)
+  expect_match(fold, ".phylo_unique_augmented = TRUE", fixed = TRUE)
+
+  pair <- paste(deparse(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + animal_latent(1 + x | species, A = A) +
+      animal_unique(1 + x | species, A = A)
+  )), collapse = " ")
+  norm <- function(s) gsub("[[:space:]()]", "", s)
+  expect_equal(norm(fold), norm(pair))
+
+  ## unique = FALSE stays loadings-only (no companion).
+  bare <- paste(deparse(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + animal_latent(1 + x | species, A = A, unique = FALSE)
+  )), collapse = " ")
+  expect_match(bare, ".latent_slope = TRUE", fixed = TRUE)
+  expect_false(grepl(".phylo_unique_augmented", bare, fixed = TRUE))
+})
+
 ## ---- Fitting byte-identity gates -------------------------------------------
 
 .sim_animal_fold <- function(n_ind = 24L, T = 3L, K = 1L, seed = 20260621L) {

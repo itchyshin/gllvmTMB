@@ -59,6 +59,15 @@ use `latent()` itself: it carries the diagonal `Psi` companion by
 default. `unique()` and `*_unique()` are soft-deprecated compatibility
 syntax for explicit diagonal-Psi formulas.
 
+For the **augmented random-slope** companion `*_unique(1 + x | group)`
+(a shared intercept–slope covariance, not the diagonal `Psi`), the folded
+spelling `*_latent(1 + x | group, unique = TRUE)` is equivalent for `phylo`
+and `animal`: it desugars to the explicit pair
+`*_latent(1 + x | group) + *_unique(1 + x | group)`. `indep()` is **not** an
+equivalent — it fixes the intercept–slope correlation to zero. The
+`spatial_latent(1 + x | coords, unique = TRUE)` fold is not yet available
+(it errors; the SPDE companion needs an engine-level slot).
+
 Status labels during the public-surface reset:
 
 | row | Public status | Validation note |

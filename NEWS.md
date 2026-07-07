@@ -3,6 +3,23 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Augmented `*_latent(unique = TRUE)` now folds in the source companion (2026-07-07)
+
+* At the augmented random-regression form `*_latent(1 + x | group, unique = TRUE)`,
+  `phylo_latent()` and `animal_latent()` now **fold in the augmented intercept–slope
+  companion** — identical to writing the explicit pair
+  `*_latent(1 + x | group) + *_unique(1 + x | group)`. Previously `unique = TRUE` was
+  **silently dropped** at the augmented form (only the loadings-only slope was fit).
+  `unique = FALSE` / absent stay loadings-only, and the ordination fold is unchanged.
+  This completes the `unique =` fold for `phylo` / `animal` / `kernel` / ordinary `latent`.
+* `spatial_latent(1 + x | coords, unique = TRUE)` still **errors** (rather than silently
+  dropping): its SPDE companion needs an engine-level additive slot, tracked as a C++
+  arc in `docs/design/77-augmented-latent-unique-fold.md`.
+* `*_unique` deprecation note: bare-diagonal `*_unique(group)` folds to `*_indep(group)`;
+  the augmented random-slope `*_unique(1 + x | group)` is now equivalently spelled
+  `*_latent(1 + x | group, unique = TRUE)`. `indep()` is **not** an equivalent — it fixes
+  the intercept–slope correlation to zero.
+
 ## `phylo_latent(tree = ...)` and `animal_*(pedigree = ...)` no longer require MCMCglmm (2026-07-06)
 
 * The sparse phylogenetic precision `A^{-1}` from a **tree** is now built by

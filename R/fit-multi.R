@@ -2718,30 +2718,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_any_phy_term) {
     if (!is.null(phylo_tree)) {
       ## --- Stage 40: TRUE Hadfield sparse-A^-1 trick ----------------------
-      ## A^-1 is built over tips + internal nodes via MCMCglmm::inverseA.
-      ## At n_tips = 1000 this gives ~6k non-zeros instead of ~676k (113x
-      ## sparser); the speedup is realised in TMB's sparse matvecs.
-      if (!requireNamespace("MCMCglmm", quietly = TRUE))
-        cli::cli_abort(c(
-          "{.pkg MCMCglmm} is required for the {.code phylo_tree} path.",
-          "i" = "Install it via {.code install.packages('MCMCglmm')}, ",
-          "i" = "or pass {.arg phylo_vcv} instead (legacy dense path)."
-        ))
+      ## A^-1 is built over tips + internal nodes directly from the tree via
+      ## .gllvm_phylo_tree_precision() (ported from drmTMB; ape + Matrix only --
+      ## no MCMCglmm dependency). At n_tips = 1000 this gives ~6k non-zeros
+      ## instead of ~676k (113x sparser); the speedup is realised in TMB's
+      ## sparse matvecs. correlation = TRUE matches MCMCglmm::inverseA's default
+      ## unit-root-to-tip scaling (the phylo variance parameter absorbs the scale).
       if (!inherits(phylo_tree, "phylo"))
         cli::cli_abort("{.arg phylo_tree} must be an {.cls ape::phylo} tree.")
       levs <- levels(data[[species]])
       if (!all(levs %in% phylo_tree$tip.label))
         cli::cli_abort("phylo_tree tip labels do not cover all species levels.")
-      inv <- MCMCglmm::inverseA(phylo_tree)
-      Ainv_phy_rr      <- inv$Ainv          # already sparse (dgCMatrix)
-      log_det_A_phy_rr <- sum(log(inv$dii)) # log det A = sum(log(dii))
+      phy_prec <- .gllvm_phylo_tree_precision(phylo_tree, correlation = TRUE)
+      Ainv_phy_rr      <- phy_prec$precision            # sparse dgCMatrix
+      log_det_A_phy_rr <- -phy_prec$log_det_precision   # log det A = -log det A^-1
       n_aug_phy        <- nrow(Ainv_phy_rr)
       ## Build the species_aug_id map: each observation row's species
       ## (1..n_species in the data factor) -> position in the augmented
-      ## A^-1. Tips live at the END of inv$node.names.
+      ## A^-1. Tips carry their tip labels in the precision row names.
       tip_to_aug <- match(levs, rownames(Ainv_phy_rr))
       if (anyNA(tip_to_aug))
-        cli::cli_abort("Internal: tip names not all found in inverseA(tree)$Ainv rownames.")
+        cli::cli_abort("Internal: tip names not all found in the phylo precision row names.")
       species_aug_id <- tip_to_aug[species_id + 1L] - 1L  # 0-indexed for C++
     } else if (inherits(phylo_vcv, "sparseMatrix")) {
       ## --- Sparse Ainv direct engine path (Design 47 follow-on,

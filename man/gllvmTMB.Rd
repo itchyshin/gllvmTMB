@@ -196,11 +196,14 @@ technical justification.}
 each \verb{phylo_*()} keyword (e.g. \code{phylo_latent(species, d = K, tree = tree)}); this argument is the older outer-level fallback and is
 slated for soft deprecation. When supplied (in either form) the
 \verb{phylo_*()} terms build a sparse \eqn{\mathbf{A}^{-1}} over tips + internal
-nodes via \code{MCMCglmm::inverseA(tree)} (Hadfield & Nakagawa 2010,
-appendix eqs. 26-29). The result is \verb{~5n} non-zeros for an \code{n}-tip
-tree, vs \code{n^2} for the dense path. \strong{This is the recommended
-path} at any \code{n_species}; the speedup grows to ~24× at
-\code{n_species = 1000}. Requires the \code{MCMCglmm} package.}
+nodes natively, using only \pkg{ape} and \pkg{Matrix} -- \strong{no
+\code{MCMCglmm} dependency}. The construction is the deterministic
+Hadfield & Nakagawa (2010) sparse phylogenetic inverse (appendix
+eqs. 26-29), adopted from that method and ported from the sister
+package drmTMB (see \code{inst/COPYRIGHTS}). The result is \verb{~5n}
+non-zeros for an \code{n}-tip tree, vs \code{n^2} for the dense path. \strong{This is
+the recommended path} at any \code{n_species}; the speedup grows to ~24× at
+\code{n_species = 1000}.}
 
 \item{known_V}{Optional list of block-diagonal sampling-error matrices
 \code{V_t}. Used by the \code{equalto()} two-stage workflow when sampling-error

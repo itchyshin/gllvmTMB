@@ -542,11 +542,24 @@ The honest-interval deliverable is built and validated (branch, pre-merge):
   fast path (~9×). `bootstrap_ci_lv_effects()` — the calibration/fallback leg (this also fixed
   `simulate()`'s unconditional RE redraw for the `lv_B`/`phylo_rr`/`diag_species` tiers).
   Reachable via `extract_lv_effects(type = "trait_effect", method = "profile"/"bootstrap"/"wald")`.
-- **Coverage:** a local profile-coverage proof gives **0.925** (MCSE 0.024; S=60) → **0.970**
-  (MCSE 0.017; S=150) — both inside the 0.92–0.98 band, coverage climbing toward nominal 0.95 as
-  `n` grows (mild small-`n` under-coverage, converging). The compute-gated ≥500-rep/cell campaign
-  (`dev/lv-effects-ci-coverage.{R,-slurm.sh}`) is the production gate that moves `LV-08`
-  `blocked → partial`. No public wording is advertised until that gate passes + Rose audits.
+- **Coverage — production gate PASSED (rank-1 Gaussian).** The compute-gated ≥500-rep/cell
+  campaign (`dev/lv-effects-ci-coverage.{R,-slurm.sh}`; per-rep artifacts + `SUMMARY.txt` under
+  `docs/dev-log/artifacts/lv-effects-ci-coverage/`) ran on Totoro and gives **nominal profile
+  coverage across `n`**, all 500/500 reps converged and inside the 0.92–0.98 band:
+  - S=60 (small-`n`): **0.952** (MCSE 0.0096); S=100: **0.950** (MCSE 0.0097); S=200: **0.962**
+    (MCSE 0.0086). Coverage sits on nominal 0.95 at every size — the earlier local proof's mild
+    small-`n` under-coverage was a denominator artefact, resolved at ≥500 reps.
+  - **Scope of this claim (honesty boundary):** this is the **orthogonal Model A ordinary `B_lv`**
+    interval — the predictor-informed *ordinary* latent effect recovered *with an orthogonal
+    `phylo_latent(tree=)` term present in the model*. It is **NOT** the interacting `LV-08`
+    estimand (`B_lv = Λ_phy·α^T`, predictor-informed phylo innovations). **`LV-08` therefore STAYS
+    `blocked`** — the orthogonal Model A is the delivered, de-risked alternative, not LV-08. The
+    rank-2 hard cell (S=200, K=2) is still running; non-Gaussian and the animal/spatial/kernel
+    orthogonal families are separate future slices (§ below). No public wording until Rose re-audits.
+- **Tree → `A^{-1}` no longer needs MCMCglmm.** The `phylo_latent(tree=)` path now builds the sparse
+  phylogenetic precision with a native port of drmTMB's `drm_phylo_augmented_precision()`
+  (`R/phylo-tree-precision.R`, `ape` + `Matrix` only), validated numerically identical to the old
+  `MCMCglmm::inverseA()` fit (objective diff 3e-10, `B_lv` diff 3e-7, `log det A` + `n_aug` match).
 
 ---
 

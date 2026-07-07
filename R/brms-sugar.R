@@ -299,12 +299,13 @@ phylo <- function(
 #'
 #' When the user supplies `phylo_tree` (an `ape::phylo` object), the
 #' implementation builds the sparse inverse \eqn{\mathbf{A}_{\mathrm{phy}}^{-1}}
-#' over tips + internal nodes via `MCMCglmm::inverseA(tree)` and
-#' evaluates the prior through the quadratic form
+#' over tips + internal nodes natively (only \pkg{ape} + \pkg{Matrix}, **no
+#' `MCMCglmm` dependency**) and evaluates the prior through the quadratic form
 #' \eqn{g^\top \mathbf{A}_{\mathrm{phy}}^{-1} g}, exploiting tree-topology
-#' sparsity (Hadfield & Nakagawa 2010 *Journal of Evolutionary
-#' Biology* 23:494-508; Hadfield 2010 *Journal of Statistical Software*
-#' 33(2):1-22). When the user supplies only `phylo_vcv` (the dense
+#' sparsity. The construction is the deterministic Hadfield & Nakagawa (2010)
+#' algorithm (*Journal of Evolutionary Biology* 23:494-508), adopted from that
+#' method; see Hadfield (2010) *Journal of Statistical Software* 33(2):1-22 for
+#' the MCMCglmm reference implementation it is validated against. When the user supplies only `phylo_vcv` (the dense
 #' tip-only covariance matrix), the package falls back to inverting it
 #' densely via `Matrix::solve()` -- correct, but does not exploit
 #' sparsity.

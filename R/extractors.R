@@ -567,8 +567,17 @@ extract_ordination <- function(
 #' @param type `"axis_effect"` returns raw \eqn{\boldsymbol\alpha}
 #'   coefficients on the latent-axis scale. `"trait_effect"` returns
 #'   \eqn{\mathbf B_{\mathrm{lv}}} on the trait linear-predictor scale.
-#' @param conf.level Confidence level for Wald intervals when finite standard
-#'   errors are available.
+#' @param conf.level Confidence level for the interval (Wald, or the
+#'   confidence level passed to the profile / bootstrap CI).
+#' @param method Interval method for `type = "trait_effect"` (\eqn{\mathbf
+#'   B_{\mathrm{lv}}}): `"wald"` (default, delta-method inline), `"profile"`
+#'   (the featured/hero method -- [profile_ci_lv_effects()], with a small-sample
+#'   t reference), or `"bootstrap"` (calibration/fallback --
+#'   [bootstrap_ci_lv_effects()]). `"profile"`/`"bootstrap"` require
+#'   `type = "trait_effect"`.
+#' @param ... Passed to [profile_ci_lv_effects()] (e.g. `trait`, `predictor`,
+#'   `reference`, `df`) or [bootstrap_ci_lv_effects()] (e.g. `n_boot`, `seed`,
+#'   `n_cores`) when `method` is `"profile"` / `"bootstrap"`.
 #'
 #' @return A data frame. For `type = "axis_effect"`, columns are `level`,
 #'   `axis`, `predictor`, `estimate`, `std.error`, `lower`, `upper`,
@@ -584,9 +593,12 @@ extract_lv_effects <- function(
   fit,
   level = "unit",
   type = c("axis_effect", "trait_effect"),
-  conf.level = 0.95
+  conf.level = 0.95,
+  method = c("wald", "profile", "bootstrap"),
+  ...
 ) {
   type <- match.arg(type)
+  method <- match.arg(method)
   conf.level <- .lv_effects_conf_level(conf.level)
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
@@ -621,6 +633,25 @@ extract_lv_effects <- function(
     predictor_names <- paste0("x", seq_len(ncol(fit$lv$X_lv_B)))
   }
   validation_row <- .lv_effects_validation_row(fit)
+
+  ## Profile / bootstrap CIs apply to the trait-scale effect B_lv
+  ## (type = "trait_effect"). Profile is the featured/hero method (D-12);
+  ## bootstrap is the calibration/fallback leg. Wald (default) stays inline.
+  if (!identical(method, "wald")) {
+    if (!identical(type, "trait_effect")) {
+      cli::cli_abort(c(
+        "{.code method = {.val {method}}} applies to {.code type = \"trait_effect\"} (B_lv).",
+        "i" = "Use {.code type = \"trait_effect\"}, or {.code method = \"wald\"} for axis effects."
+      ))
+    }
+    ci <- switch(
+      method,
+      profile = profile_ci_lv_effects(fit, level = conf.level, ...),
+      bootstrap = bootstrap_ci_lv_effects(fit, conf = conf.level, ...)
+    )
+    ci$validation_row <- validation_row
+    return(ci)
+  }
 
   if (identical(type, "trait_effect")) {
     B_lv <- fit$report$B_lv_unit

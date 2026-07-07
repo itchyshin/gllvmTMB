@@ -261,6 +261,7 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   target_fn,
   q_0,
   lambda = 1e6,
+  target_grad = NULL,
   control = list(eval.max = 100, iter.max = 100, rel.tol = 1e-7)
 ) {
   obj <- fit$tmb_obj
@@ -277,10 +278,29 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
     }
     val + lambda * (q - q_0)^2
   }
-  ## nlminb finite-differences the full penalised objective here. A mixed
-  ## analytic/numerical gradient path would need an explicit gradient argument.
+  ## When the caller supplies an analytic gradient of the target quantity, drive
+  ## nlminb with the exact penalised gradient (TMB's own gradient + the penalty
+  ## term) instead of finite-differencing the whole objective -- an order-of-
+  ## magnitude speedup for derived-quantity profiles. Falls back to finite
+  ## differences when target_grad is NULL (existing behaviour for other profiles).
+  gr_pen <- if (is.null(target_grad)) {
+    NULL
+  } else {
+    function(par) {
+      g <- tryCatch(as.numeric(obj$gr(par)), error = function(e) NULL)
+      q <- as.numeric(target_fn(par, fit))
+      dq <- tryCatch(as.numeric(target_grad(par, fit)), error = function(e) NULL)
+      if (is.null(g) || is.null(dq) || anyNA(g) || anyNA(dq) ||
+            is.na(q) || !is.finite(q)) {
+        return(rep(0, length(par)))
+      }
+      g + 2 * lambda * (q - q_0) * dq
+    }
+  }
   opt_pen <- tryCatch(
-    stats::nlminb(start = par0, objective = fn_pen, control = control),
+    stats::nlminb(
+      start = par0, objective = fn_pen, gradient = gr_pen, control = control
+    ),
     error = function(e) {
       NULL
     }
@@ -315,6 +335,7 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   q_hat,
   level = 0.95,
   crit = NULL,
+  target_grad = NULL,
   q_lo_hint = NULL,
   q_hi_hint = NULL,
   q_lo_floor = -Inf,
@@ -330,7 +351,9 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   mle_val <- as.numeric(fit$opt$objective)
   ## Build a fast deviance-excess function for uniroot
   excess <- function(q_0) {
-    nll <- .fix_and_refit_nll(fit, target_fn, q_0, lambda = lambda)
+    nll <- .fix_and_refit_nll(
+      fit, target_fn, q_0, lambda = lambda, target_grad = target_grad
+    )
     if (is.na(nll)) {
       return(NA_real_)
     }
@@ -1247,15 +1270,31 @@ profile_ci_lv_effects <- function(fit,
   nm <- names(fit$opt$par)
   idx_th <- which(nm == "theta_rr_B")
   idx_al <- which(nm == "alpha_lv_B")
+  fast_rank1 <- d_B == 1L && length(idx_th) == n_tr && length(idx_al) >= n_pr
   make_target <- function(ti, pj) {
     force(ti); force(pj)
-    if (d_B == 1L && length(idx_th) == n_tr && length(idx_al) >= n_pr) {
+    if (fast_rank1) {
       function(par, fit) par[idx_th[ti]] * par[idx_al[pj]]
     } else {
       function(par, fit) {
         fit$tmb_obj$fn(par)
         as.numeric(as.matrix(fit$tmb_obj$report()[["B_lv_unit"]])[ti, pj])
       }
+    }
+  }
+  ## Analytic gradient of B_lv[ti, pj] = theta_rr_B[ti] * alpha_lv_B[pj] w.r.t.
+  ## the fixed parameter vector (rank 1). Drives the constrained refit far faster
+  ## than finite differences; NULL (finite-diff) for the higher-rank fallback.
+  make_grad <- function(ti, pj) {
+    force(ti); force(pj)
+    if (!fast_rank1) {
+      return(NULL)
+    }
+    function(par, fit) {
+      g <- numeric(length(par))
+      g[idx_th[ti]] <- par[idx_al[pj]]
+      g[idx_al[pj]] <- par[idx_th[ti]]
+      g
     }
   }
 
@@ -1272,7 +1311,8 @@ profile_ci_lv_effects <- function(fit,
         make_target(ti, pj),
         q_hat = B_hat[ti, pj],
         level = level,
-        crit = crit
+        crit = crit,
+        target_grad = make_grad(ti, pj)
       )
       rows[[length(rows) + 1L]] <- data.frame(
         trait = tr_names[ti],

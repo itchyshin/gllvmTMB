@@ -83,3 +83,23 @@
 ## gllvmTMB and drmTMB are GPL-3 by Shinichi Nakagawa (same-author
 ## reuse); the algorithm is the standard Hadfield & Nakagawa (2010)
 ## sparse phylogenetic inverse.
+##
+## Sparse pedigree precision builder (R/pedigree-precision.R)
+##
+## The pedigree -> sparse A^{-1} construction in R/pedigree-precision.R
+## (`.gllvm_pedigree_precision()` and its helpers
+## `.gllvm_standardize_pedigree()` / `.gllvm_normalize_pedigree_parent()` /
+## `.gllvm_pedigree_topological_order()` /
+## `.gllvm_pedigree_additive_relationship()`) reuses the pedigree
+## standardisation, missing-parent normalisation, topological ordering,
+## and dense tabular relatedness method ported from the univariate sister
+## package drmTMB (R/phylo-utils.R: `drm_standardize_pedigree()`,
+## `drm_normalize_pedigree_parent()`, `drm_pedigree_topological_order()`,
+## `drm_pedigree_additive_relationship()`), which never depended on
+## MCMCglmm. The sparse A^{-1} is then assembled on top via the standard
+## Henderson (1976) / Quaas (1976) inverse rules. It uses only `Matrix`
+## and replaces the earlier MCMCglmm::inverseA() call in
+## `pedigree_to_Ainv_sparse()`, so MCMCglmm is no longer required to turn
+## a pedigree into A^{-1}. Both gllvmTMB and drmTMB are GPL-3 by Shinichi
+## Nakagawa (same-author reuse). The result is validated to reproduce
+## `MCMCglmm::inverseA()` (Hadfield 2010) exactly, including inbreeding.

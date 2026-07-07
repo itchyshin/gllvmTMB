@@ -3,16 +3,20 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
-## `phylo_latent(tree = ...)` no longer requires MCMCglmm (2026-07-06)
+## `phylo_latent(tree = ...)` and `animal_*(pedigree = ...)` no longer require MCMCglmm (2026-07-06)
 
-* Building the sparse phylogenetic precision `A^{-1}` from a tree is now done by
-  gllvmTMB's own `ape` + `Matrix` routine (`.gllvm_phylo_tree_precision()`,
-  ported from the sister package drmTMB) instead of `MCMCglmm::inverseA()`. So a
-  `phylo_latent(0 + trait | species, d = K, tree = tree)` fit no longer needs the
-  (heavy) **MCMCglmm** package installed — it is a `Suggests`, still used only by
-  the pedigree/animal (`animal_*(..., pedigree = ...)`) path. The fit is
-  numerically identical to the previous MCMCglmm path (objective / `B_lv` /
-  `log det A` all match to floating-point tolerance).
+* The sparse phylogenetic precision `A^{-1}` from a **tree** is now built by
+  gllvmTMB's own `ape` + `Matrix` routine (`.gllvm_phylo_tree_precision()`), and the
+  sparse **pedigree** precision `A^{-1}` by a native Henderson/Quaas routine
+  (`.gllvm_pedigree_precision()`, behind `pedigree_to_Ainv_sparse()`). Both are
+  `Matrix`-only and adapted from the sister package drmTMB, which never depended on
+  MCMCglmm (see `inst/COPYRIGHTS`); neither path calls `MCMCglmm::inverseA()` any more.
+* **No gllvmTMB model fit requires MCMCglmm.** It remains a `Suggests`, used only as a
+  reference oracle in the test suite (skipped if not installed) — not a runtime
+  dependency. Both replacements are validated against the previous MCMCglmm path: the
+  tree `A^{-1}` matches to floating-point tolerance (objective / `B_lv` / `log det A`),
+  and the pedigree `A^{-1}` reproduces `MCMCglmm::inverseA(ped)$Ainv` exactly —
+  including inbreeding — while staying genuinely sparse.
 
 ## Confidence intervals for predictor-informed latent-score effects `B_lv` (2026-07-06)
 

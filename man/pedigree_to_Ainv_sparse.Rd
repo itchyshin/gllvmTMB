@@ -2,7 +2,7 @@
 % Please edit documentation in R/animal-keyword.R
 \name{pedigree_to_Ainv_sparse}
 \alias{pedigree_to_Ainv_sparse}
-\title{Sparse pedigree inverse-A via Henderson-Quaas (MCMCglmm engine)}
+\title{Sparse pedigree inverse-A via Henderson-Quaas (MCMCglmm-free)}
 \usage{
 pedigree_to_Ainv_sparse(pedigree)
 }
@@ -18,12 +18,19 @@ individual IDs. Sparse storage; typical density is
 }
 \description{
 Builds the sparse precision matrix \eqn{\mathbf A^{-1}} for an animal-
-model pedigree directly, \strong{without} ever forming the dense
-\eqn{n \times n} relatedness matrix \eqn{\mathbf A}. For wild
-pedigrees with \eqn{n_{\text{individuals}} > 500} this is the
-canonical fast path; storage is \eqn{O(n)} rather than \eqn{O(n^2)}
-and the fit is \eqn{O(n)} rather than \eqn{O(n^3)}. Internally wraps
-\code{\link[MCMCglmm:inverseA]{MCMCglmm::inverseA()}}.
+model pedigree using only \pkg{Matrix} -- \strong{no \code{MCMCglmm} dependency}.
+The returned \eqn{\mathbf A^{-1}} is genuinely sparse (typical density
+\eqn{O(1/n)}), so the TMB fit is \eqn{O(n)} rather than \eqn{O(n^3)} --
+this is the canonical fast path for wild pedigrees with
+\eqn{n_{\text{individuals}} > 500}. The construction is the standard
+Henderson (1976) / Quaas (1976) sparse inverse: inbreeding coefficients
+\eqn{F} are derived from the dense tabular relatedness matrix, then
+\eqn{\mathbf A^{-1}} is assembled directly from the per-individual
+Mendelian sampling variances. It reproduces
+\code{MCMCglmm::inverseA(pedigree)$Ainv} exactly. (The current inbreeding
+step forms the dense \eqn{n \times n} \eqn{\mathbf A}, an \eqn{O(n^2)}
+one-time cost; a Meuwissen-Luo \eqn{O(n)} inbreeding recursion is a
+future optimisation for very large pedigrees.)
 }
 \details{
 Usage pattern (sparse pre-CRAN; auto-routing follow-on PR):
@@ -34,11 +41,10 @@ fit  <- gllvmTMB(value ~ 0 + trait +
                  data = df, unit = "id", cluster = "id")
 }\if{html}{\out{</div>}}
 
-The pedigree must follow MCMCglmm's column convention:
-\strong{(id, sire, dam)} in that order, OR named columns matching
-\code{id}/\code{animal}, \code{sire}/\code{father}, \code{dam}/\code{mother} for by-name lookup.
-Unknown parents are encoded as \code{NA} or \code{0}. Founders (both parents
-unknown) are treated as unrelated.
+The pedigree follows the conventional \strong{(id, sire, dam)} column
+order, OR named columns matching \code{id}/\code{animal}, \code{sire}/\code{father},
+\code{dam}/\code{mother} for by-name lookup. Unknown parents are encoded as
+\code{NA} or \code{0}. Founders (both parents unknown) are treated as unrelated.
 }
 \examples{
 \dontrun{
@@ -57,12 +63,15 @@ Henderson, C. R. (1976). A simple method for computing the inverse
 of a numerator relationship matrix used in prediction of breeding
 values. \emph{Biometrics} 32: 69-83.
 
+Quaas, R. L. (1976). Computing the diagonal elements and inverse of a
+large numerator relationship matrix. \emph{Biometrics} 32: 949-953.
+
 Hadfield, J. D. (2010). MCMC methods for multi-response generalised
-linear mixed models: the MCMCglmm R package. \emph{Journal of
-Statistical Software} 33: 1-22.
+linear mixed models: the MCMCglmm R package. \emph{Journal of Statistical
+Software} 33: 1-22. (The \code{MCMCglmm::inverseA()} reference
+implementation this builder is validated against.)
 }
 \seealso{
 \code{\link[=pedigree_to_A]{pedigree_to_A()}} for the dense companion;
-\code{\link[=animal_scalar]{animal_scalar()}} and siblings for the keyword family;
-\code{\link[MCMCglmm:inverseA]{MCMCglmm::inverseA()}} for the underlying algorithm.
+\code{\link[=animal_scalar]{animal_scalar()}} and siblings for the keyword family.
 }

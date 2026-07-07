@@ -500,15 +500,22 @@ pedigree_to_A <- function(pedigree) {
 }
 
 
-#' Sparse pedigree inverse-A via Henderson-Quaas (MCMCglmm engine)
+#' Sparse pedigree inverse-A via Henderson-Quaas (MCMCglmm-free)
 #'
 #' Builds the sparse precision matrix \eqn{\mathbf A^{-1}} for an animal-
-#' model pedigree directly, **without** ever forming the dense
-#' \eqn{n \times n} relatedness matrix \eqn{\mathbf A}. For wild
-#' pedigrees with \eqn{n_{\text{individuals}} > 500} this is the
-#' canonical fast path; storage is \eqn{O(n)} rather than \eqn{O(n^2)}
-#' and the fit is \eqn{O(n)} rather than \eqn{O(n^3)}. Internally wraps
-#' [MCMCglmm::inverseA()].
+#' model pedigree using only \pkg{Matrix} -- **no `MCMCglmm` dependency**.
+#' The returned \eqn{\mathbf A^{-1}} is genuinely sparse (typical density
+#' \eqn{O(1/n)}), so the TMB fit is \eqn{O(n)} rather than \eqn{O(n^3)} --
+#' this is the canonical fast path for wild pedigrees with
+#' \eqn{n_{\text{individuals}} > 500}. The construction is the standard
+#' Henderson (1976) / Quaas (1976) sparse inverse: inbreeding coefficients
+#' \eqn{F} are derived from the dense tabular relatedness matrix, then
+#' \eqn{\mathbf A^{-1}} is assembled directly from the per-individual
+#' Mendelian sampling variances. It reproduces
+#' `MCMCglmm::inverseA(pedigree)$Ainv` exactly. (The current inbreeding
+#' step forms the dense \eqn{n \times n} \eqn{\mathbf A}, an \eqn{O(n^2)}
+#' one-time cost; a Meuwissen-Luo \eqn{O(n)} inbreeding recursion is a
+#' future optimisation for very large pedigrees.)
 #'
 #' Usage pattern (sparse pre-CRAN; auto-routing follow-on PR):
 #'
@@ -519,11 +526,10 @@ pedigree_to_A <- function(pedigree) {
 #'                  data = df, unit = "id", cluster = "id")
 #' ```
 #'
-#' The pedigree must follow MCMCglmm's column convention:
-#' **(id, sire, dam)** in that order, OR named columns matching
-#' `id`/`animal`, `sire`/`father`, `dam`/`mother` for by-name lookup.
-#' Unknown parents are encoded as `NA` or `0`. Founders (both parents
-#' unknown) are treated as unrelated.
+#' The pedigree follows the conventional **(id, sire, dam)** column
+#' order, OR named columns matching `id`/`animal`, `sire`/`father`,
+#' `dam`/`mother` for by-name lookup. Unknown parents are encoded as
+#' `NA` or `0`. Founders (both parents unknown) are treated as unrelated.
 #'
 #' @param pedigree A 3-column data frame: `id` (or `animal`),
 #'   `sire` (or `father`), `dam` (or `mother`).
@@ -532,16 +538,19 @@ pedigree_to_A <- function(pedigree) {
 #'   individual IDs. Sparse storage; typical density is
 #'   \eqn{O(1/n)}.
 #' @seealso [pedigree_to_A()] for the dense companion;
-#'   [animal_scalar()] and siblings for the keyword family;
-#'   [MCMCglmm::inverseA()] for the underlying algorithm.
+#'   [animal_scalar()] and siblings for the keyword family.
 #' @references
 #' Henderson, C. R. (1976). A simple method for computing the inverse
 #' of a numerator relationship matrix used in prediction of breeding
 #' values. *Biometrics* 32: 69-83.
 #'
+#' Quaas, R. L. (1976). Computing the diagonal elements and inverse of a
+#' large numerator relationship matrix. *Biometrics* 32: 949-953.
+#'
 #' Hadfield, J. D. (2010). MCMC methods for multi-response generalised
-#' linear mixed models: the MCMCglmm R package. *Journal of
-#' Statistical Software* 33: 1-22.
+#' linear mixed models: the MCMCglmm R package. *Journal of Statistical
+#' Software* 33: 1-22. (The `MCMCglmm::inverseA()` reference
+#' implementation this builder is validated against.)
 #' @export
 #' @examples
 #' \dontrun{
@@ -555,13 +564,6 @@ pedigree_to_A <- function(pedigree) {
 #' dim(Ainv)    # 6 x 6
 #' }
 pedigree_to_Ainv_sparse <- function(pedigree) {
-  if (!requireNamespace("MCMCglmm", quietly = TRUE)) {
-    cli::cli_abort(c(
-      "{.pkg MCMCglmm} is required for {.fn pedigree_to_Ainv_sparse}.",
-      "i" = "Install via {.code install.packages('MCMCglmm')}.",
-      ">" = "Alternative: use the dense path via {.code pedigree_to_A(pedigree)} and pass as {.arg A = .} to the animal_* keyword."
-    ))
-  }
   if (!is.data.frame(pedigree) || ncol(pedigree) < 3L) {
     cli::cli_abort(c(
       "{.arg pedigree} must be a data frame with at least 3 columns.",
@@ -599,16 +601,13 @@ pedigree_to_Ainv_sparse <- function(pedigree) {
   ped_std$sire[ped_std$sire %in% c("0", "")] <- NA_character_
   ped_std$dam[ped_std$dam %in% c("0", "")] <- NA_character_
 
-  inv <- MCMCglmm::inverseA(ped_std)
-  ## inv$Ainv is dgCMatrix; rownames inherit from the standardised
-  ## pedigree but MCMCglmm leaves colnames NULL. Mirror rownames into
-  ## colnames so character-subset `Ainv[levs, levs, drop = FALSE]` in
-  ## the fit-multi.R sparse engine path works.
-  Ainv <- inv$Ainv
-  if (is.null(colnames(Ainv))) {
-    colnames(Ainv) <- rownames(Ainv)
-  }
-  Ainv
+  ## MCMCglmm-free sparse A^{-1} (Henderson/Quaas). Returns a dgCMatrix with
+  ## id row/colnames so the fit-multi.R sparse engine's `Ainv[levs, levs]`
+  ## by-name subset works. See R/pedigree-precision.R.
+  .gllvm_pedigree_precision(data.frame(
+    id = ped_std$animal, dam = ped_std$dam, sire = ped_std$sire,
+    stringsAsFactors = FALSE
+  ))
 }
 
 

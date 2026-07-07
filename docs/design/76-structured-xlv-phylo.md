@@ -531,6 +531,23 @@ mild ordinary-vs-phylo latent-variance trade-off on the shared `species` groupin
 which is exactly the "pdHess≠failure → route CIs through profile/bootstrap" case.
 `LV-08` still stays `blocked` until the ADEMP gate passes and Rose audits the claim.
 
+### Implementation status (2026-07-06, branch `claude/blv-profile-ci`)
+
+The honest-interval deliverable is built and validated (branch, pre-merge):
+
+- **REML** for the Gaussian `lv`/Model A path (unbiased variance components; reuses the
+  existing Gaussian REML engine, drmTMB-parallel). Non-Gaussian `lv` REML stays blocked.
+- **`profile_ci_lv_effects()`** — the featured/hero `B_lv` CI (invert the LR test via
+  constrained refit) with a **t reference** (`df = n_units − d − 1`) and an analytic-gradient
+  fast path (~9×). `bootstrap_ci_lv_effects()` — the calibration/fallback leg (this also fixed
+  `simulate()`'s unconditional RE redraw for the `lv_B`/`phylo_rr`/`diag_species` tiers).
+  Reachable via `extract_lv_effects(type = "trait_effect", method = "profile"/"bootstrap"/"wald")`.
+- **Coverage:** a local profile-coverage proof gives **0.925** (MCSE 0.024; S=60; 120 reps) —
+  inside the 0.92–0.98 band, consistent with nominal within MC error, at the low edge (mild
+  small-n under-coverage). The compute-gated ≥500-rep/cell campaign
+  (`dev/lv-effects-ci-coverage.{R,-slurm.sh}`) is the production gate that moves `LV-08`
+  `blocked → partial`. No public wording is advertised until that gate passes + Rose audits.
+
 ---
 
 ## Reviewer checklist

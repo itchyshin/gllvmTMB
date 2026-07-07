@@ -3,6 +3,26 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Confidence intervals for predictor-informed latent-score effects `B_lv` (2026-07-06)
+
+* New `profile_ci_lv_effects()` — likelihood-**profile** confidence intervals for the
+  trait-scale effects `B_lv = Lambda_B alpha^T` of a `latent(..., lv = ~ x)` term, the
+  featured/hero method (invert the LR test per entry via constrained refit), with a
+  small-sample **t** reference by default (`df = n_units - d - 1`; `reference = "chisq"`
+  for the asymptotic cutoff). Works where the Hessian is not positive-definite.
+* New `bootstrap_ci_lv_effects()` — parametric percentile bootstrap for `B_lv`
+  (the calibration/fallback leg), parallel via `future.apply`, REML preserved.
+* `extract_lv_effects(type = "trait_effect", method = ...)` now routes the interval
+  through `"wald"` (default), `"profile"`, or `"bootstrap"`.
+* `latent(..., lv = ~ x)` **Gaussian** fits now accept `REML = TRUE` (unbiased variance
+  components; the mean fixed effects are integrated out, matching drmTMB's Gaussian-only
+  REML). Non-Gaussian `lv` REML remains blocked.
+* `simulate()`'s unconditional (parametric-bootstrap) path now redraws the predictor-informed
+  (`lv`), reduced-rank phylogenetic (`phylo_latent`), and non-phylogenetic species
+  (`diag_species`) random-effect tiers. Previously these fell back to a conditional draw
+  (random effects held fixed), which under-covered; this also corrects `bootstrap_Sigma()`
+  intervals for models with those tiers.
+
 ## `extract_correlations()`: in-output interval calibration status (2026-07-05)
 
 * `extract_correlations()` now returns an `interval_status` column marking the

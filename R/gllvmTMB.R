@@ -184,11 +184,14 @@
 #'   tree)`); this argument is the older outer-level fallback and is
 #'   slated for soft deprecation. When supplied (in either form) the
 #'   `phylo_*()` terms build a sparse \eqn{\mathbf{A}^{-1}} over tips + internal
-#'   nodes via `MCMCglmm::inverseA(tree)` (Hadfield & Nakagawa 2010,
-#'   appendix eqs. 26-29). The result is `~5n` non-zeros for an `n`-tip
-#'   tree, vs `n^2` for the dense path. **This is the recommended
-#'   path** at any `n_species`; the speedup grows to ~24× at
-#'   `n_species = 1000`. Requires the `MCMCglmm` package.
+#'   nodes natively, using only \pkg{ape} and \pkg{Matrix} -- **no
+#'   `MCMCglmm` dependency**. The construction is the deterministic
+#'   Hadfield & Nakagawa (2010) sparse phylogenetic inverse (appendix
+#'   eqs. 26-29), adopted from that method and ported from the sister
+#'   package drmTMB (see `inst/COPYRIGHTS`). The result is `~5n`
+#'   non-zeros for an `n`-tip tree, vs `n^2` for the dense path. **This is
+#'   the recommended path** at any `n_species`; the speedup grows to ~24× at
+#'   `n_species = 1000`.
 #' @param phylo_vcv (legacy global) Optional tip-only `n_species ×
 #'   n_species` phylogenetic correlation matrix. The canonical syntax
 #'   is `vcv =` inside each `phylo_*()` keyword. **`r lifecycle::badge("superseded")`** —

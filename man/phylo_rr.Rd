@@ -30,12 +30,13 @@ a lower-triangular \verb{n_traits x d} loading matrix. Mathematically:
 
 When the user supplies \code{phylo_tree} (an \code{ape::phylo} object), the
 implementation builds the sparse inverse \eqn{\mathbf{A}_{\mathrm{phy}}^{-1}}
-over tips + internal nodes via \code{MCMCglmm::inverseA(tree)} and
-evaluates the prior through the quadratic form
+over tips + internal nodes natively (only \pkg{ape} + \pkg{Matrix}, \strong{no
+\code{MCMCglmm} dependency}) and evaluates the prior through the quadratic form
 \eqn{g^\top \mathbf{A}_{\mathrm{phy}}^{-1} g}, exploiting tree-topology
-sparsity (Hadfield & Nakagawa 2010 \emph{Journal of Evolutionary
-Biology} 23:494-508; Hadfield 2010 \emph{Journal of Statistical Software}
-33(2):1-22). When the user supplies only \code{phylo_vcv} (the dense
+sparsity. The construction is the deterministic Hadfield & Nakagawa (2010)
+algorithm (\emph{Journal of Evolutionary Biology} 23:494-508), adopted from that
+method; see Hadfield (2010) \emph{Journal of Statistical Software} 33(2):1-22 for
+the MCMCglmm reference implementation it is validated against. When the user supplies only \code{phylo_vcv} (the dense
 tip-only covariance matrix), the package falls back to inverting it
 densely via \code{Matrix::solve()} -- correct, but does not exploit
 sparsity.

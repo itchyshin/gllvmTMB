@@ -333,6 +333,28 @@ extract_Omega <- function(
 #' `latent(..., unique = FALSE)` subset), \eqn{\psi_t = 0} for all traits and a
 #' `cli::cli_inform()` advisory fires.
 #'
+#' @section Which variances enter the denominator:
+#' `V_eta` is the **species-level** latent variance: only components whose
+#' grouping is the `cluster` column contribute. Concretely
+#' \eqn{V_\eta = \sigma^2_{phy} + \sigma^2_{non}}, where \eqn{\sigma^2_{non}}
+#' collects the *species-grouped* non-phylogenetic variance.
+#'
+#' * When `unit == cluster` (the usual `unit = "species"` setup) the ordinary
+#'   `latent()` term and its `Psi` companion are species-level, so both enter.
+#' * When `unit != cluster` (a crossed `site x species` design) `Lambda_B` and
+#'   its `Psi` are **site**-level and do **not** enter; the species-level
+#'   non-phylogenetic variance is the cluster-tier `q_it` term
+#'   (`indep(0 + trait | <cluster>)`, reported as `sd_q^2`).
+#'
+#' This is a definitional choice (maintainer ruling, 2026-07-08). **Other
+#' defensible definitions exist** — for instance a *total*-variance denominator
+#' that also absorbs site-level variation, which would give a smaller `H2` for
+#' the same fit. Before 2026-07-08 this function used the unit tier
+#' unconditionally, which silently reported `H2 = 1` for every trait in a
+#' crossed design because the `q_it` variance was never read. Compare
+#' [extract_proportions()] if you want every component reported separately
+#' rather than folded into a species-level ratio.
+#'
 #' @param fit A fit returned by [gllvmTMB()] with a `phylo_latent()` term.
 #' @param ci Logical. When `TRUE`, adds confidence-interval columns to
 #'   the output for the H^2 column. Default `FALSE` for backward
@@ -400,18 +422,25 @@ extract_phylo_signal <- function(
     part = "total",
     link_residual = "none"
   ))
-  ## Sigma_non,shared = Lambda_B Lambda_B^T (the species-level rr term)
-  out_share <- suppressMessages(extract_Sigma(
-    fit,
-    level = "unit",
-    part = "shared"
-  ))
-  ## Psi_non = Psi_B (the species-level diag term)
-  out_uniq <- suppressMessages(extract_Sigma(
-    fit,
-    level = "unit",
-    part = "unique"
-  ))
+  ## H^2's denominator is the SPECIES-level latent variance, so only components
+  ## living on the cluster/species grouping may enter it (maintainer ruling
+  ## 2026-07-08). The unit-tier pieces (`Lambda_B`, `sd_B`) are species-level
+  ## only when `unit == cluster`; in a crossed `site x species` design they are
+  ## site-level. Previously both were taken unconditionally from `level = "unit"`,
+  ## which in a crossed design read `Psi = 0` and reported `H2 = 1` for every
+  ## trait while the `q_it` variance sat unread at the cluster tier.
+  unit_is_cluster <- identical(
+    as.character(fit$unit_col),
+    as.character(fit$cluster_col %||% fit$species_col)
+  )
+
+  ## Sigma_non,shared = Lambda_B Lambda_B^T -- species-level only when the
+  ## ordinary latent sits on the species grouping.
+  out_share <- if (unit_is_cluster) {
+    suppressMessages(extract_Sigma(fit, level = "unit", part = "shared"))
+  } else {
+    NULL
+  }
 
   Sigma_phy <- if (!is.null(out_phy)) {
     diag(out_phy$Sigma)
@@ -423,7 +452,22 @@ extract_phylo_signal <- function(
   } else {
     rep(0, fit$n_traits)
   }
-  Psi_diag <- if (!is.null(out_uniq)) out_uniq$s else rep(0, fit$n_traits)
+
+  ## Psi_non: the non-phylogenetic per-trait diagonal AT THE SPECIES GROUPING.
+  ## Tier-claiming (R/fit-multi.R) guarantees at most one of `sd_B` / `sd_q` is
+  ## populated there, so this is a selection, not a sum.
+  Psi_diag <- rep(0, fit$n_traits)
+  if (unit_is_cluster) {
+    out_uniq <- suppressMessages(extract_Sigma(
+      fit,
+      level = "unit",
+      part = "unique"
+    ))
+    if (!is.null(out_uniq)) Psi_diag <- as.numeric(out_uniq$s)
+  } else if (isTRUE(fit$use$diag_species)) {
+    ## The cluster-tier `q_it` term (Nakagawa et al. functional biogeography).
+    Psi_diag <- as.numeric(fit$report$sd_q)^2
+  }
 
   V_eta <- Sigma_phy + Sigma_non_s + Psi_diag
   phylo_parts <- .safe_phylo_signal_components(
@@ -434,9 +478,17 @@ extract_phylo_signal <- function(
 
   ## Build advisory if any component is structurally zero
   if (sum(Psi_diag) == 0) {
-    cli::cli_inform(
-      "Psi_non = 0 across all traits. For the ordinary non-phylogenetic species tier, use default `latent(0 + trait | species, d = K)` to include Psi; `latent(..., unique = FALSE)` is the explicit no-Psi subset."
-    )
+    if (unit_is_cluster) {
+      cli::cli_inform(
+        "Psi_non = 0 across all traits. For the ordinary non-phylogenetic species tier, use default `latent(0 + trait | species, d = K)` to include Psi; `latent(..., unique = FALSE)` is the explicit no-Psi subset."
+      )
+    } else {
+      cli::cli_inform(c(
+        "Psi_non = 0 across all traits.",
+        "i" = "{.arg unit} ({.val {fit$unit_col}}) differs from {.arg cluster} ({.val {fit$cluster_col}}), so only species-grouped components enter {.field V_eta}.",
+        ">" = "Add {.code indep(0 + trait | {fit$cluster_col})} for a non-phylogenetic species-level diagonal (the q_it term)."
+      ))
+    }
   }
 
   pe_df <- data.frame(

@@ -71,9 +71,9 @@ Full detail: [`docs/dev-log/after-task/2026-07-07-unique-keyword-removal-closeou
 ---
 
 ## Current Working State
-- **Working / green:** `origin/main` @ `2307d81a`. Keyword grep-to-zero holds on the taught surface (only the
-  single deprecation notice at `api-keyword-grid.Rmd:65`). `profile_ci_lv_effects()`, `bootstrap_ci_lv_effects()`,
-  `extract_lv_effects()` all defined + exported.
+- **Working / green:** `origin/main` @ `342ca37d`, **working tree clean, zero blocking open PRs.** Keyword
+  grep-to-zero holds on the taught surface (only the single deprecation notice at `api-keyword-grid.Rmd:65`).
+  `profile_ci_lv_effects()`, `bootstrap_ci_lv_effects()`, `extract_lv_effects()` all defined + exported.
 - **In progress:** nothing. The arc is closed.
 - **Not started:** the ADEMP coverage campaign (below).
 - **Stale docs (tracked, #14):** `docs/dev-log/2026-07-06-option-a-xlv-phylo-execution-plan.md` and
@@ -129,18 +129,24 @@ Diff base `2fae2de5` → `origin/main` (**89 files**). Grouped:
 4. **Settle the open t-df question** with the maintainer *before* the campaign: profile cutoff `df` default
    `n_units − d − 1` vs per-target/adaptive `df_eff`. It changes every interval you're about to measure.
 5. **Only then**: close `CI-08` / `CI-10`; promote `LV-08` **strictly on delivered evidence** (Rose audit).
-6. **Housekeeping:** revise (or mark superseded) the two stale interacting-model docs (#14); add a `NEWS.md`
-   line for the **print-label** user-visible string change; triage the two stale open PRs below.
+6. **Housekeeping:** revise (or mark superseded) the two stale interacting-model docs (#14). *(The PR triage and
+   the `NEWS.md` print-label line were completed 2026-07-08 — see Closed below.)*
 
 ## Blockers / Open Questions
-- 🔴 **Maintainer — t-df choice** (step 4). Blocks meaningful coverage numbers.
+- 🔴 **Maintainer — t-df choice** (step 4). Blocks meaningful coverage numbers. **Settle this BEFORE the
+  campaign runs** — it changes every interval the campaign measures.
 - 🔴 **Maintainer — compute venue** for the ADEMP campaign (Totoro vs DRAC).
-- 🟡 **Stale open PRs**: [#724](https://github.com/itchyshin/gllvmTMB/pull/724) ("next arc = `*_unique`
-  deprecation" — that arc is now **done**) and [#726](https://github.com/itchyshin/gllvmTMB/pull/726)
-  (`unique=` fold after-task + Codex handoff). Both predate the merge; triage/close or merge.
 - 🟡 **`choose-your-model.Rmd` level-1 table** (rows ~134/136, ~135/137) has near-duplicate rows differing in
   `latent` vs `indep` at `unit_obs`. Left untouched — may be intentional. Maintainer's call.
-- 🟡 **`NEWS.md`** does not yet describe the print-label change (a user-visible string change).
+
+### Closed on 2026-07-08 (after this doc's first draft — do not re-open)
+- ✅ **#730** (this handover + `CLAUDE.md` pointer) **merged**.
+- ✅ **#724 CLOSED, not merged** — it announced the now-finished `*_unique` arc *and* would have regressed the
+  `CLAUDE.md` pointer back to it. Its counterpart doc `2026-07-07-claude-handover-unique-removal.md` is already
+  on `main`, so no history was lost.
+- ✅ **#726** (`unique=` fold after-task + check-log) **merged**.
+- ⏳ **`NEWS.md`** print-label + runtime-message entry is in **[#731](https://github.com/itchyshin/gllvmTMB/pull/731)**
+  (docs-only; merges on green). If it is still open when you read this, merge it — it blocks nothing.
 
 ## Gotchas & Failed Approaches (do not retry)
 - **Do NOT rebuild the interacting model / re-add S2.** Model A composes existing capabilities.
@@ -162,7 +168,7 @@ Diff base `2fae2de5` → `origin/main` (**89 files**). Grouped:
 
 | Item | State |
 |---|---|
-| Repo / branch | `gllvmTMB` @ `origin/main` = `2307d81a` |
+| Repo / branch | `gllvmTMB` @ `origin/main` = `342ca37d` · tree clean · no blocking open PRs |
 | CI (merged HEAD) | R CMD check ✓ · 6× recovery ✓ · recovery-depth ✓ |
 | Just shipped | `unique()` keyword removed from taught+rendered surface (#728) + `choose-your-model` dedup (#729) |
 | `B_lv` CI trio | **BUILT + exported on main** — Wald ✓ · profile ✓ (`4c7c7dd0`) · bootstrap ✓ (`1f09dee2`); analytic gradient ✓ (`4c22b721`) |

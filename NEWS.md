@@ -3,6 +3,61 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Bug fix: `extract_phylo_signal()` no longer reports `H2 = 1` in crossed designs (2026-07-08)
+
+* **Bug (fixed).** In a crossed `site x species` design (`unit != cluster`) —
+  the configuration the `q_it` functional-biogeography framework prescribes —
+  `extract_phylo_signal()` built `V_eta` from
+  `extract_Sigma(level = "unit", part = "unique")`. That is the **unit** tier, but
+  the species-level diagonal lives at the **cluster** tier (`sd_q`). The extractor
+  therefore read `Psi = 0` and reported **`H2 = 1.00` for every trait** — while the
+  `q_it` variance sat estimated and unread. Reproduced on the package's own fixture
+  DGP (`sigma2_phy = 1.5`, `q_it = 0.7`, true `H2 = 0.682`): the old code returned
+  `H2 = 1` for all traits; it now returns values scattered around the truth.
+* **`V_eta` is now explicitly the species-level latent variance.** Only components
+  whose grouping is the `cluster` column enter the denominator. When
+  `unit == cluster` the ordinary `latent()` term and its `Psi` are species-level and
+  both enter; when `unit != cluster` they are *site*-level and are excluded, and the
+  species-level non-phylogenetic variance is the cluster-tier `q_it` term.
+* **This is a definitional choice, and other defensible definitions exist** — e.g. a
+  *total*-variance denominator that also absorbs site-level variation, which would
+  give a smaller `H2` for the same fit. The choice is documented under
+  `?extract_phylo_signal`. Use `extract_proportions()` if you want every component
+  reported separately rather than folded into a species-level ratio.
+* The two independent `H2` code paths (`extract_phylo_signal()` and the CI kernel
+  behind `method = "wald"` / `"bootstrap"`) previously disagreed on which variances
+  entered `V_eta`. They now agree exactly, and a regression test enforces it.
+
+## Bug fix: per-trait diagonals no longer double-count when `unit == cluster` (2026-07-08)
+
+* **Bug (fixed).** When the `unit` and `cluster` grouping columns were the **same**
+  column — the standard phylogenetic setup `unit = "species"`, and therefore the
+  default `latent(0 + trait | species, unique = TRUE)` — a **single** per-trait
+  diagonal term materialised **two** engine slots: the unit-tier diagonal (`sd_B`)
+  *and* the cluster-tier diagonal (`sd_q`, the `q_it` term). Both were added to the
+  linear predictor at the identical `(trait, group)` index, so they collapsed to one
+  `N(0, sd_B^2 + sd_q^2)` draw. **Only the sum was identified.**
+* **Symptoms.** The Hessian gained exactly `n_traits` flat directions, so `pdHess`
+  was `FALSE` and **every Wald standard error silently became `NA`** (including
+  `extract_lv_effects()`). The split between the two blocks was arbitrary — the
+  likelihood is flat along it to `~1e-9` — yet `extract_Sigma(level = "unit")`,
+  `extract_communality()`, `extract_repeatability()`, `extract_phylo_signal()` and
+  `VP()` each read **one block alone**, so each reported roughly **half** the
+  per-trait `Psi`.
+* **Fix.** A `diag` covstruct is now claimed by exactly **one** tier. Crossed
+  `site x species` designs (`unit != cluster`, the `q_it` term of the
+  functional-biogeography framework) are **unchanged** — there the cluster-grouped
+  term is never claimed by the unit tier.
+* **What changes for you.** Fits with `unit == cluster` now have `n_traits` fewer
+  parameters, a positive-definite Hessian, **working Wald SEs and CIs**, and
+  `extract_Sigma(level = "unit", part = "unique")` returns the **whole** `Psi`
+  rather than an arbitrary half. `extract_Sigma(level = "cluster")` on such a fit
+  now aborts with a clear message instead of returning the other half.
+* **Point estimates are unaffected.** The removed direction is a pure nuisance
+  ridge: `B_lv = Lambda_B alpha^T` is exactly invariant along it, and profile
+  likelihood intervals are unchanged to five decimal places. Previously banked
+  `B_lv` coverage evidence remains valid.
+
 ## `unique()` / `*_unique()` keyword removed from the taught surface (2026-07-07)
 
 * The `unique()` / `*_unique()` **keyword** spelling is no longer part of the

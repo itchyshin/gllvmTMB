@@ -703,7 +703,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     idx <- which(kinds == "diag" & groupings == ss_name & !diag_is_unique_augmented)
     length(idx) > 0L && isTRUE(parsed$covstructs[[idx[1L]]]$extra$common)
   })
-  use_diag_species <- any(kinds == "diag" & groupings == species)
+  ## A `diag` covstruct on the unit grouping is already consumed by the unit
+  ## tier (`use_diag_B` / `s_B`, scaled by `sd_B`). When `unit == cluster` the
+  ## SAME covstruct also satisfied the cluster predicate below and materialised
+  ## the cluster slot (`use_diag_species` / `q_sp`, scaled by `sd_q`), adding
+  ## two independent N(0, sd) draws at the identical `(trait, group)` index
+  ## (src/gllvmTMB.cpp:1821 vs :1839). Only the variance SUM `sd_B^2 + sd_q^2`
+  ## is then identified: the split is arbitrary (walking it 50/50 -> 95/5 at
+  ## fixed sum moves the objective by ~1e-9), the Hessian gains `n_traits`
+  ## exactly-flat directions so `pdHess` is FALSE and every Wald SE becomes NA,
+  ## and `extract_Sigma()` / `extract_communality()` / `extract_repeatability()`
+  ## / `extract_phylo_signal()` / `VP()` each report one arbitrary half.
+  ## Claim each covstruct for exactly one tier. Crossed `site x species`
+  ## designs (the `q_it` term, see the foot-gun note above) are unaffected:
+  ## there a cluster-grouped covstruct is never claimed by the unit tier.
+  diag_claimed_by_B <- kinds == "diag" & groupings == site &
+    !diag_is_unique_augmented
+  use_diag_species <- any(kinds == "diag" & groupings == species &
+                            !diag_claimed_by_B)
   ## ---- cluster2: a SECOND independent diagonal grouping slot ------------
   ## A renamed copy of the `cluster` (diag_species / q_sp) tier on a
   ## distinct grouping column, so a user can fit two crossed/nested plain

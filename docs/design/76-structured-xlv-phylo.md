@@ -526,10 +526,29 @@ read as the current target:
 thread + Self-Liang boundary) plus a parametric bootstrap — and the **ADEMP
 recovery/coverage gate re-run at adequately-powered `n`** (the GLLVM.jl Model A was
 parked only on an under-powered `p=80,K=2,λ=0.5` cell — the #715 data-size lesson,
-not an engine limit). The Wald leg is currently `NA` here (non-PD Hessian from the
+not an engine limit). ~~The Wald leg is currently `NA` here (non-PD Hessian from the
 mild ordinary-vs-phylo latent-variance trade-off on the shared `species` grouping),
-which is exactly the "pdHess≠failure → route CIs through profile/bootstrap" case.
+which is exactly the "pdHess≠failure → route CIs through profile/bootstrap" case.~~
 `LV-08` still stays `blocked` until the ADEMP gate passes and Rose audits the claim.
+
+> **CORRECTION (2026-07-08).** The struck-through attribution above is **wrong**, and
+> the `NA` Wald leg is **fixed**. The non-PD Hessian had nothing to do with an
+> ordinary-vs-phylo latent-variance trade-off: `theta_rr_B`, `theta_rr_phy` and
+> `alpha_lv_B` carry **exactly zero weight** in the Hessian's null space. The true
+> cause was a **double-counted per-trait diagonal**: at `unit == cluster` (which
+> Model A always has, since `unit = "species"`) one `diag` covstruct materialised both
+> the unit-tier (`sd_B`) and cluster-tier (`sd_q`) slots at the same `(trait, group)`
+> index, giving `n_traits` exactly-flat directions. Fixed by tier-claiming in
+> `R/fit-multi.R`; `pdHess` is now `TRUE`, the condition number drops from `2.4e6` to
+> `1.5e2`, and `extract_lv_effects()` returns finite Wald SEs. The profile interval is
+> unchanged to five decimal places (`B_lv` is exactly invariant along the removed
+> ridge), so `LV-09`'s coverage evidence stands.
+>
+> **Consequence for this design:** the `B_lv` CI trio really is a **trio** — Wald is
+> available, not structurally absent. The `"pdHess ≠ failure"` doctrine remains true in
+> general, but it must not be used to *explain away* a singular Hessian: check which
+> parameters span the null space before accepting any causal story for `pdHess = FALSE`.
+> Evidence: `docs/dev-log/after-task/2026-07-08-diag-tier-alias-fix.md`.
 
 ### Implementation status (2026-07-06, branch `claude/blv-profile-ci`)
 

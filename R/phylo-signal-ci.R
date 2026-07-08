@@ -77,10 +77,25 @@
 ## diag(sigma2_diag_species) (`sd_q^2`) when `diag_species` is fit at
 ## the non-unit cluster grouping. We pull the per-trait diagonals via
 ## `obj$report()` keys that mirror `extract_phylo_signal()` directly.
+##
+## The denominator is the SPECIES-level latent variance (maintainer ruling
+## 2026-07-08): only components living on the cluster/species grouping enter it.
+## `unit_is_cluster` decides whether the unit-tier pieces (`Lambda_B`, `sd_B`)
+## are species-level. See `extract_phylo_signal()` for the alternative
+## definitions that were considered and not taken.
 
 #' @keywords internal
 #' @noRd
-.phylo_signal_H2_from_report <- function(rep_list, T) {
+.phylo_signal_unit_is_cluster <- function(fit) {
+  identical(
+    as.character(fit$unit_col),
+    as.character(fit$cluster_col %||% fit$species_col)
+  )
+}
+
+#' @keywords internal
+#' @noRd
+.phylo_signal_H2_from_report <- function(rep_list, T, unit_is_cluster) {
   ## Sigma_phy diagonal (T-vector). Mirrors extract_phylo_signal() in
   ## R/extract-omega.R: Lambda_phy %*% t(Lambda_phy) plus sd_phy_diag^2
   ## when present (paired phylo_latent + phylo_unique compatibility case).
@@ -98,20 +113,29 @@
   if (!is.null(sd_phy_diag)) {
     Sigma_phy_diag <- Sigma_phy_diag + as.numeric(sd_phy_diag)^2
   }
-  ## Non-phylo shared (Sigma_B from Lambda_B).
-  L_B <- rep_list[["Lambda_B"]]
-  Sigma_non_shared <- if (!is.null(L_B)) {
-    L_B <- as.matrix(L_B)
-    diag(L_B %*% t(L_B))
-  } else {
-    rep(0, T)
+  ## Non-phylo shared (Sigma_B from Lambda_B). `Lambda_B` sits at the UNIT tier,
+  ## so it is a *species-level* component only when `unit == cluster`. In a crossed
+  ## `site x species` design it is site-level and must not enter a species-level
+  ## H^2 denominator (maintainer ruling 2026-07-08; see `extract_phylo_signal()`).
+  Sigma_non_shared <- rep(0, T)
+  if (unit_is_cluster) {
+    L_B <- rep_list[["Lambda_B"]]
+    if (!is.null(L_B)) {
+      L_B <- as.matrix(L_B)
+      Sigma_non_shared <- diag(L_B %*% t(L_B))
+    }
   }
-  ## Non-phylo unique: sum sd_B^2 (diag_B at unit tier) and sd_q^2
-  ## (diag_species at species cluster). Either or both may be present.
+  ## Non-phylo unique Psi at the SPECIES grouping. Exactly one diagonal slot can
+  ## be populated there (tier-claiming, R/fit-multi.R): `sd_B` when the ordinary
+  ## latent's Psi sits on the species grouping (`unit == cluster`), otherwise
+  ## `sd_q` (the cluster-tier `q_it` term). Summing both is defensive -- after
+  ## tier-claiming they are never simultaneously populated at the same grouping.
   Psi_non_diag <- rep(0, T)
-  sd_B <- rep_list[["sd_B"]]
-  if (!is.null(sd_B)) {
-    Psi_non_diag <- Psi_non_diag + as.numeric(sd_B)^2
+  if (unit_is_cluster) {
+    sd_B <- rep_list[["sd_B"]]
+    if (!is.null(sd_B)) {
+      Psi_non_diag <- Psi_non_diag + as.numeric(sd_B)^2
+    }
   }
   sd_q <- rep_list[["sd_q"]]
   if (!is.null(sd_q)) {
@@ -138,13 +162,14 @@
 #' @keywords internal
 #' @noRd
 .phylo_signal_jacobian <- function(fit, T, eps = 1e-6) {
+  uic <- .phylo_signal_unit_is_cluster(fit)
   obj <- fit$tmb_obj
   par_best <- obj$env$last.par.best
   random_idx <- if (length(obj$env$random) > 0L) obj$env$random else integer(0)
   fixed_idx <- setdiff(seq_along(par_best), random_idx)
   ## H^2 at the MLE.
   rep_base <- obj$report(par_best)
-  H2_base <- .phylo_signal_H2_from_report(rep_base, T = T)
+  H2_base <- .phylo_signal_H2_from_report(rep_base, T = T, unit_is_cluster = uic)
   n_par <- length(fixed_idx)
   J <- matrix(0, T, n_par)
   for (p in seq_len(n_par)) {
@@ -154,7 +179,7 @@
     if (is.null(rep_plus)) {
       next
     }
-    H2_plus <- .phylo_signal_H2_from_report(rep_plus, T = T)
+    H2_plus <- .phylo_signal_H2_from_report(rep_plus, T = T, unit_is_cluster = uic)
     J[, p] <- (H2_plus - H2_base) / eps
   }
   list(H2 = H2_base, J = J)
@@ -225,10 +250,11 @@
   ## Point estimate from the same report quantities used by the
   ## numerical-Jacobian path (so the centre lines up with the CI). For
   ## the simple 2-component case this matches plogis(lincomb) too.
+  uic <- .phylo_signal_unit_is_cluster(fit)
   obj <- fit$tmb_obj
   par_best <- obj$env$last.par.best
   rep_base <- obj$report(par_best)
-  H2_hat <- .phylo_signal_H2_from_report(rep_base, T = T)
+  H2_hat <- .phylo_signal_H2_from_report(rep_base, T = T, unit_is_cluster = uic)
 
   if (has_simple_2comp) {
     ix_phy <- .phylo_signal_par_indices(fit, "log_sd_phy_diag")
@@ -295,10 +321,11 @@
   alpha <- 1 - level
   zcrit <- stats::qnorm(1 - alpha / 2)
   if (is.null(H2_hat)) {
+    uic <- .phylo_signal_unit_is_cluster(fit)
     obj <- fit$tmb_obj
     par_best <- obj$env$last.par.best
     rep_base <- obj$report(par_best)
-    H2_hat <- .phylo_signal_H2_from_report(rep_base, T = T)
+    H2_hat <- .phylo_signal_H2_from_report(rep_base, T = T, unit_is_cluster = uic)
   }
   jac <- tryCatch(
     .phylo_signal_jacobian(fit, T = T),
@@ -398,9 +425,10 @@
     trait_idx <- seq_len(T)
   }
   ## Point estimate via report (matches Wald + handles unit != species).
+  uic <- .phylo_signal_unit_is_cluster(fit)
   obj_pe <- fit$tmb_obj
   rep_pe <- obj_pe$report(obj_pe$env$last.par.best)
-  H2_hat <- .phylo_signal_H2_from_report(rep_pe, T = T)
+  H2_hat <- .phylo_signal_H2_from_report(rep_pe, T = T, unit_is_cluster = uic)
 
   ## Reconstruct the original formula (via the same helper bootstrap_Sigma
   ## uses; lives in R/bootstrap-sigma.R).
@@ -481,7 +509,7 @@
       {
         obj_b <- out$tmb_obj
         rep_b <- obj_b$report(obj_b$env$last.par.best)
-        .phylo_signal_H2_from_report(rep_b, T = T)
+        .phylo_signal_H2_from_report(rep_b, T = T, unit_is_cluster = uic)
       },
       error = function(e) rep(NA_real_, T)
     )

@@ -72,6 +72,31 @@ diagonal Psi companion by default. If the species-tier Psi is absent (a
 \code{latent(..., unique = FALSE)} subset), \eqn{\psi_t = 0} for all traits and a
 \code{cli::cli_inform()} advisory fires.
 }
+\section{Which variances enter the denominator}{
+
+\code{V_eta} is the \strong{species-level} latent variance: only components whose
+grouping is the \code{cluster} column contribute. Concretely
+\eqn{V_\eta = \sigma^2_{phy} + \sigma^2_{non}}, where \eqn{\sigma^2_{non}}
+collects the \emph{species-grouped} non-phylogenetic variance.
+\itemize{
+\item When \code{unit == cluster} (the usual \code{unit = "species"} setup) the ordinary
+\code{latent()} term and its \code{Psi} companion are species-level, so both enter.
+\item When \code{unit != cluster} (a crossed \verb{site x species} design) \code{Lambda_B} and
+its \code{Psi} are \strong{site}-level and do \strong{not} enter; the species-level
+non-phylogenetic variance is the cluster-tier \code{q_it} term
+(\verb{indep(0 + trait | <cluster>)}, reported as \code{sd_q^2}).
+}
+
+This is a definitional choice (maintainer ruling, 2026-07-08). \strong{Other
+defensible definitions exist} — for instance a \emph{total}-variance denominator
+that also absorbs site-level variation, which would give a smaller \code{H2} for
+the same fit. Before 2026-07-08 this function used the unit tier
+unconditionally, which silently reported \code{H2 = 1} for every trait in a
+crossed design because the \code{q_it} variance was never read. Compare
+\code{\link[=extract_proportions]{extract_proportions()}} if you want every component reported separately
+rather than folded into a species-level ratio.
+}
+
 \examples{
 \dontrun{
 fit <- gllvmTMB(

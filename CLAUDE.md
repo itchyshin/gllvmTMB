@@ -191,6 +191,3 @@ Anderson, Eric Ward, Philina English, and Lewis Barnett.
 Selective reuse of A-inverse phylogenetic or further SPDE speed
 modules from sister packages requires provenance notes in
 `inst/COPYRIGHTS` and tests around the ported behaviour.
-
-<!-- shinichi-hub -->
-@/Users/z3437171/Dropbox/Github Local/Shinichi/AGENTS.md

@@ -26,8 +26,7 @@ A formula marker; never evaluated.
 }
 \description{
 Canonical name for \strong{T per-trait phylogenetic variances coupled by
-the phylo correlation matrix \eqn{\mathbf A}}. Mathematically
-identical to \code{phylo_unique(species)} standalone; standalone =
+the phylo correlation matrix \eqn{\mathbf A}}; standalone =
 T univariate phylogenetic mixed models stacked.
 }
 \details{
@@ -40,8 +39,7 @@ are otherwise independent.
 
 Use \code{phylo_indep()} for an explicit marginal-only phylogenetic fit
 (no cross-trait phylogenetic decomposition). Use
-\code{phylo_latent(..., unique = TRUE)} or the compatibility pair
-\code{phylo_latent(..., unique = FALSE) + phylo_unique()} for the paired
+\code{phylo_latent(..., unique = TRUE)} for the paired
 phylogenetic decomposition
 \eqn{\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}}\boldsymbol\Lambda_{\text{phy}}^\top + \boldsymbol\Psi_{\text{phy}}}.
 \subsection{Mutual exclusion with \code{phylo_latent()}}{
@@ -86,6 +84,6 @@ form stacked across traits matches their PGLMM Eq. 3.
 }
 }
 \seealso{
-\code{\link[=phylo_unique]{phylo_unique()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=phylo_dep]{phylo_dep()}}, \code{\link[=indep]{indep()}},
+\code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=phylo_dep]{phylo_dep()}}, \code{\link[=indep]{indep()}},
 \code{\link[=spatial_indep]{spatial_indep()}}, \code{\link[=extract_Sigma]{extract_Sigma()}}.
 }

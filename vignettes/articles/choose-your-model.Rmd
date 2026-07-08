@@ -184,8 +184,8 @@ A phylogenetic random effect is appropriate when species (or other
 taxa) appear repeatedly in your data and closely related taxa are
 likely to share trait values for evolutionary reasons. The
 canonical phylogenetic decomposition pairs four components: a
-phylogenetic shared low-rank axis (`phylo_latent`), a
-phylogenetic trait-specific diagonal (`phylo_unique`), a
+phylogenetic shared low-rank axis and a phylogenetic trait-specific
+diagonal (both carried by `phylo_latent(..., unique = TRUE)`), a
 non-phylogenetic shared axis (`latent`), and the ordinary diagonal
 `Psi` companion included by default in `latent()`. The full
 decomposition reads
@@ -213,8 +213,7 @@ example.
 | Rows are not phylogenetically structured (e.g. individuals from one species, or sites without taxonomic identity). | Nothing. |
 | Phylogenetic structure with one shared phylogenetic variance per trait (simplest phylo model). | `+ phylo_scalar(species, vcv = Cphy)` |
 | Folded phylogenetic decomposition (when traits can be both phylogenetically and non-phylogenetically correlated). | `+ phylo_latent(species, d = K_phy, tree = tree, unique = TRUE) + latent(0 + trait \| species, d = K_non)` |
-| **Explicit phylogenetic-Psi decomposition** (compatibility spelling; use only when the phylogenetic diagonal component is separately identifiable). | `+ phylo_latent(species, d = K_phy, tree = tree) + phylo_unique(species, tree = tree) + latent(0 + trait \| species, d = K_non)` |
-| Many species (n > ~200) and you want speed. | (same paired form) with `tree = tree` (sparse $A^{-1}$ trick); much faster than `vcv = Cphy` at this scale. |
+| Many species (n > ~200) and you want speed. | (same folded form) with `tree = tree` (sparse $A^{-1}$ trick); much faster than `vcv = Cphy` at this scale. |
 
 The crossover where the sparse $A^{-1}$ path overtakes the dense
 path sits around `n_species ≈ 150-200`. Above that, the speedup is
@@ -246,8 +245,7 @@ input forms:
 + animal_latent(individual, d = K, Ainv = Ainv_matrix, unique = TRUE)
 ```
 
-The full 5-keyword grid (`animal_scalar`, soft-deprecated
-compatibility `animal_unique`, `animal_indep`, `animal_dep`,
+The full 4-keyword grid (`animal_scalar`, `animal_indep`, `animal_dep`,
 `animal_latent`) plus the random-
 regression `animal_slope(x | individual)` mirror their `phylo_*`
 siblings 1-to-1. Use the animal family for quantitative-genetics
@@ -312,14 +310,14 @@ the pedigree instead of the tree).
 > [capability status](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/61-capability-status.md)
 > and validation-debt register:
 >
-> - **Correlated intercept–slope reaction norms.** The richer
->   soft-deprecated compatibility spelling
->   `phylo_unique(1 + x | species)`, which estimates a 2×2
->   intercept/slope covariance (slope variance *and* the
->   intercept–slope correlation), now routes, fits, and surfaces that
->   2×2 via `extract_Sigma(fit, level = "phy")` (register `ANI-11`,
->   Gaussian). The pedigree twin compatibility spelling
->   `animal_unique(1 + x | id)` is the same engine. (§7e shows it run.)
+> - **Correlated intercept–slope reaction norms.** The folded
+>   `phylo_latent(1 + x | species, unique = TRUE)` estimates the
+>   phylogenetic reaction-norm covariance `Sigma = Lambda Lambda^T + Psi`
+>   over the (intercept, slope) coefficients — including the
+>   intercept–slope correlation — and surfaces it via
+>   `extract_Sigma(fit, level = "phy")` (register `ANI-11`, Gaussian).
+>   The pedigree twin `animal_latent(1 + x | id, unique = TRUE)` is the
+>   same engine. (§7e shows it run.)
 > - **Structured slope modes** `phylo_indep` / `phylo_dep` /
 >   `phylo_latent` (and their `spatial_*` analogues) all ship with
 >   built engines and Gaussian recovery. The diagonal `phylo_indep`
@@ -443,8 +441,8 @@ fit_jsdm <- gllvmTMB(
 
 ### 7c. Add phylogeny
 
-Rung 2: the canonical paired phylogenetic decomposition combines
-`phylo_latent + phylo_unique` (the phy side) with
+Rung 2: the canonical folded phylogenetic decomposition combines
+`phylo_latent(unique = TRUE)` (the phy side) with
 ordinary `latent()` (the non-phy side, including its default diagonal
 `Psi`). With a tree in hand, prefer
 `tree = tree` (in-keyword) for the sparse $A^{-1}$ path. See
@@ -585,15 +583,16 @@ The richer correlated intercept–slope form fits and surfaces its 2×2
 only to keep this page to a single worked fit:
 
 ```{r ex-slope-aug, eval = FALSE}
-# Soft-deprecated compatibility spelling: phylo_unique(1 + x | species)
-# fits a 2x2 (intercept, slope) phylo covariance with a free
-# intercept-slope correlation; read it back via extract_Sigma(level = "phy").
-# animal_unique(1 + x | id) is the pedigree compatibility twin.
+# Folded phylogenetic reaction-norm covariance: phylo_latent(1 + x | species,
+# unique = TRUE) estimates Sigma = Lambda Lambda^T + Psi over the
+# (intercept, slope) coefficients; read it back via extract_Sigma(level = "phy").
+# animal_latent(1 + x | id, unique = TRUE) is the pedigree twin.
 fit_rr_aug <- gllvmTMB(
-  value ~ 0 + trait + phylo_unique(0 + trait + (0 + trait):x | species),
+  value ~ 0 + trait +
+    phylo_latent(0 + trait + (0 + trait):x | species, d = 1, unique = TRUE),
   data = df_rr, phylo_tree = tree, unit = "species"
 )
-extract_Sigma(fit_rr_aug, level = "phy")   # 2x2 (intercept, slope)
+extract_Sigma(fit_rr_aug, level = "phy")   # phylo reaction-norm Sigma
 ```
 
 ### 7f. Three-level cluster tier

@@ -27,20 +27,20 @@ Canonical name for the SPDE / GMRF Matern spatial random field with
 range parameter \eqn{\kappa}. Each trait carries its own independent
 field draw on the mesh, but every trait's field has the same marginal
 variance and the same correlation length. Implementation: the same
-SPDE engine as \code{\link[=spatial_unique]{spatial_unique()}}, with the per-trait
+SPDE engine as \code{\link[=spatial_indep]{spatial_indep()}}, with the per-trait
 \code{log_tau_spde} parameters tied via TMB's \code{map} mechanism so they
 collapse to a single estimable scalar.
 }
 \details{
 Use this when domain knowledge (or parsimony) says all traits should
 share the same amount of spatial structure. Compare to
-\code{\link[=spatial_unique]{spatial_unique()}} (D independent variances) and \code{\link[=spatial_latent]{spatial_latent()}}
+\code{\link[=spatial_indep]{spatial_indep()}} (D independent variances) and \code{\link[=spatial_latent]{spatial_latent()}}
 (K-dim factor decomposition).
 }
 \section{Formula orientation}{
 
 The canonical orientation is \code{0 + trait | coords} (parallel to
-\code{\link[=latent]{latent()}} / \code{\link[=unique]{unique()}} and glmmTMB's spatial keywords). The
+\code{\link[=latent]{latent()}} / \code{\link[=indep]{indep()}} and glmmTMB's spatial keywords). The
 earlier orientation \code{coords | trait} is accepted as a deprecated
 alias and emits a one-shot \code{lifecycle::deprecate_warn()} per session
 (introduced at gllvmTMB 0.1.4).
@@ -62,5 +62,5 @@ alias and emits a one-shot \code{lifecycle::deprecate_warn()} per session
 }
 }
 \seealso{
-\code{\link[=spatial_unique]{spatial_unique()}}, \code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spde]{spde()}} (deprecated alias).
+\code{\link[=spatial_indep]{spatial_indep()}}, \code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spde]{spde()}} (deprecated alias).
 }

@@ -11,8 +11,8 @@ extract_Omega(fit, tiers = NULL, link_residual = c("auto", "none"))
 
 \item{tiers}{Character vector. Subset of \code{c("B", "W", "phy")}. Default
 \code{NULL} auto-detects: includes \code{"phy"} if \code{phylo_latent()} is in the
-formula, \code{"B"} if any \code{latent()}/\code{unique()} at \code{unit}, \code{"W"} if any
-\code{latent()}/\code{unique()} at \code{unit_obs}.}
+formula, \code{"B"} if any \code{latent()}/\code{indep()} at \code{unit}, \code{"W"} if any
+\code{latent()}/\code{indep()} at \code{unit_obs}.}
 
 \item{link_residual}{For non-Gaussian fits: \code{"auto"} (default) adds a
 per-trait link-specific implicit residual to the diagonal of the

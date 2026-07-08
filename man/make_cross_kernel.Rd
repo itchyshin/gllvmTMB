@@ -35,7 +35,8 @@ positive-semidefinite matrix
 and \code{A_P} are within-lineage relatedness matrices and \code{C_HP} is the
 cross-lineage bridge induced by the association matrix \code{W}. The PARTIAL
 scope (\code{COE-01}) is the prototype path: use \code{K_star} through the
-existing \code{phylo_latent(..., vcv = K_star) + phylo_unique(..., vcv = K_star)} engine. The generic \verb{kernel_*()} surface (\code{KER-02}) and
+existing \code{phylo_latent(..., vcv = K_star, unique = TRUE)} engine. The
+generic \verb{kernel_*()} surface (\code{KER-02}) and
 validated \code{extract_Gamma()} coevolution gate (\code{COE-02}) are now covered
 separately; this helper only builds the input kernel.
 }

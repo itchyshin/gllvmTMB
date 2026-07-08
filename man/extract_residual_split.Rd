@@ -37,8 +37,7 @@ within-unit residual covariance \eqn{\boldsymbol{\Psi}_W}.
 }
 \details{
 The function detects whether the fit includes a genuine observation-level
-random effect: normally a per-row \verb{indep(0 + trait | <obs-level>)} term,
-with the legacy \code{unique()} spelling still accepted as compatibility syntax.
+random effect: normally a per-row \verb{indep(0 + trait | <obs-level>)} term.
 When every (trait, obs) cell has one row per observation level per trait,
 \code{sigma2_e} is populated; otherwise it is zero.
 \subsection{Terminology note}{

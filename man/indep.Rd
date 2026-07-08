@@ -18,10 +18,9 @@ A formula marker; never evaluated.
 }
 \description{
 Canonical name for the \strong{always-alone marginal-only} per-trait
-diagonal variance term. Mathematically identical to
-\code{unique(0 + trait | g)} standalone (both produce
+diagonal variance term, producing
 \eqn{\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)} with identity
-off-diagonals); the keyword choice is documentary, not operational.
+off-diagonals.
 }
 \details{
 The package's covstruct API organises around two mutually exclusive
@@ -38,12 +37,11 @@ with no cross-trait decomposition: \eqn{\boldsymbol\Sigma = \mathrm{diag}(\sigma
 Use \code{indep()} when you want to commit to the marginal-only
 interpretation explicitly. Ordinary \code{latent()} now carries the
 diagonal Psi companion by default when you want the cross-trait
-decomposition; \code{unique()} standalone (e.g. for observation-level random
-effects in mixed-response fits) remains compatibility syntax.
+decomposition.
 
 For a scalar marginal-only tier with one variance shared by all traits,
 use \code{common = TRUE}. This is the non-deprecated standalone replacement for
-legacy \code{unique(..., common = TRUE)} when no \code{latent()} term is paired on the
+the legacy scalar diagonal spelling when no \code{latent()} term is paired on the
 same grouping.
 \subsection{Mutual exclusion with \code{latent()}}{
 
@@ -72,6 +70,6 @@ fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site, common = TRUE),
 }
 }
 \seealso{
-\code{\link[=unique]{unique()}}, \code{\link[=latent]{latent()}}, \code{\link[=phylo_indep]{phylo_indep()}}, \code{\link[=spatial_indep]{spatial_indep()}},
+\code{\link[=latent]{latent()}}, \code{\link[=phylo_indep]{phylo_indep()}}, \code{\link[=spatial_indep]{spatial_indep()}},
 \code{\link[=extract_Sigma]{extract_Sigma()}}.
 }

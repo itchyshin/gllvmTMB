@@ -37,13 +37,14 @@ documentary.
   \boldsymbol\Sigma_{\text{phy}} \otimes \mathbf{A}_{\text{phy}}).}
 
 Use \code{phylo_dep()} when you want an explicit full-unstructured
-cross-trait phylogenetic covariance fit. Use \code{phylo_latent()} paired
-with \code{phylo_unique()} for the rank-reduced paired phylogenetic decomposition. Use
+cross-trait phylogenetic covariance fit. Use
+\code{phylo_latent(..., unique = TRUE)} for the rank-reduced paired
+phylogenetic decomposition. Use
 \code{phylo_indep()} for the marginal-only per-trait variance fit.
-\subsection{Mutual exclusion with \code{phylo_latent()} / \code{phylo_unique()} / \code{phylo_indep()}}{
+\subsection{Mutual exclusion with \code{phylo_latent()} / \code{phylo_indep()}}{
 
 Combining \code{phylo_dep(0 + trait | species)} with \code{phylo_latent} is
-\strong{over-parameterised}; combining with \code{phylo_unique} or
+\strong{over-parameterised}; combining with
 \code{phylo_indep} is \strong{redundant} (\code{phylo_dep} already includes the
 diagonal). The parser raises \code{cli::cli_abort()} in any of these
 cases.
@@ -74,6 +75,6 @@ Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-
 }
 }
 \seealso{
-\code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=phylo_unique]{phylo_unique()}}, \code{\link[=phylo_indep]{phylo_indep()}},
+\code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=phylo_indep]{phylo_indep()}},
 \code{\link[=dep]{dep()}}, \code{\link[=spatial_dep]{spatial_dep()}}, \code{\link[=extract_Sigma]{extract_Sigma()}}.
 }

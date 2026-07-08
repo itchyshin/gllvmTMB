@@ -37,7 +37,7 @@ gllvmTMB(
 \arguments{
 \item{formula}{A glmmTMB-style formula, e.g.
 \code{value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip}.
-Fixed effects and any of the 4 x 5 keyword-grid covstructs above are
+Fixed effects and any of the 4 x 4 keyword-grid covstructs above are
 supported (plus \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, and \code{\link[=meta_V]{meta_V()}}).}
 
 \item{data}{A data frame. With an ordinary response LHS such as
@@ -65,8 +65,7 @@ systematic mapping. Default \code{"site"}.}
 \item{unit_obs}{Name of the column holding the \strong{within-unit}
 grouping factor — one level per (unit, replicate) cell — used by
 \code{latent(0 + trait | unit_obs, ...)} and
-\code{indep(0 + trait | unit_obs)} for the W-tier covariance. Legacy
-\code{unique(0 + trait | unit_obs)} remains accepted as compatibility syntax.
+\code{indep(0 + trait | unit_obs)} for the W-tier covariance.
 Default \code{"site_species"} (the conventional name in joint species
 distribution modelling; safe for site × species data). For other
 domains pass e.g. \code{unit_obs = "obs"} for behavioural syndromes.}
@@ -104,7 +103,7 @@ diagonal grouping only -- it carries no phylogenetic or spatial
 correlation (those stay bound to \code{cluster} / \code{coords}). A
 \verb{indep(0 + trait | <cluster2 col>)} term then fits a per-trait
 variance at this second grouping, exactly as \code{cluster} does at the
-third slot. Legacy \code{unique()} spelling remains compatibility syntax.
+third slot.
 Example: \code{cluster = "site"}, \code{cluster2 = "year"} to fit
 a site variance and a year variance simultaneously. As with the
 other slots, nesting is not enforced (crossed and nested both fit).
@@ -113,7 +112,7 @@ The cluster2 column must be disjoint from the \code{unit} / \code{unit_obs} /
 column matches).}
 
 \item{family}{A \code{family} object. The multivariate engine
-(formulas with \code{latent()}, \code{unique()}, etc.) supports \code{gaussian()},
+(formulas with \code{latent()}, \code{indep()}, etc.) supports \code{gaussian()},
 \code{binomial()} (logit / probit / cloglog), \code{poisson()} (log link),
 \code{\link[=ordinal_probit]{ordinal_probit()}} (the gllvmTMB-native ordinal threshold family
 with sigma_d = 1 fixed exactly; no delta-method approximation),
@@ -299,29 +298,30 @@ the same trait covariance, pairwise correlations, shared latent axes,
 and trait-specific variance. The formula syntax also supports fixed
 effects plus covariance-structure keywords organised by
 \emph{correlation source} (none / animal / phylo / spatial) and
-\emph{mode} (scalar / unique / indep / dep / latent):
+\emph{mode} (scalar / indep / dep / latent):
 }
 \details{
-\tabular{llllll}{
-\strong{source \\ mode} \tab \strong{scalar} \tab \strong{unique} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
-\emph{none}    \tab (omit)             \tab \code{\link[=unique]{unique()}}         \tab \code{\link[=indep]{indep()}}         \tab \code{\link[=dep]{dep()}}         \tab \code{\link[=latent]{latent()}}         \cr
-\emph{animal}  \tab \code{\link[=animal_scalar]{animal_scalar()}}  \tab \code{\link[=animal_unique]{animal_unique()}}  \tab \code{\link[=animal_indep]{animal_indep()}}  \tab \code{\link[=animal_dep]{animal_dep()}}  \tab \code{\link[=animal_latent]{animal_latent()}}  \cr
-\emph{phylo}   \tab \code{\link[=phylo_scalar]{phylo_scalar()}}   \tab \code{\link[=phylo_unique]{phylo_unique()}}   \tab \code{\link[=phylo_indep]{phylo_indep()}}   \tab \code{\link[=phylo_dep]{phylo_dep()}}   \tab \code{\link[=phylo_latent]{phylo_latent()}}   \cr
-\emph{spatial} \tab \code{\link[=spatial_scalar]{spatial_scalar()}} \tab \code{\link[=spatial_unique]{spatial_unique()}} \tab \code{\link[=spatial_indep]{spatial_indep()}} \tab \code{\link[=spatial_dep]{spatial_dep()}} \tab \code{\link[=spatial_latent]{spatial_latent()}} \cr
+\tabular{lllll}{
+\strong{source \\ mode} \tab \strong{scalar} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
+\emph{none}    \tab (omit)             \tab \code{\link[=indep]{indep()}}         \tab \code{\link[=dep]{dep()}}         \tab \code{\link[=latent]{latent()}}         \cr
+\emph{animal}  \tab \code{\link[=animal_scalar]{animal_scalar()}}  \tab \code{\link[=animal_indep]{animal_indep()}}  \tab \code{\link[=animal_dep]{animal_dep()}}  \tab \code{\link[=animal_latent]{animal_latent()}}  \cr
+\emph{phylo}   \tab \code{\link[=phylo_scalar]{phylo_scalar()}}   \tab \code{\link[=phylo_indep]{phylo_indep()}}   \tab \code{\link[=phylo_dep]{phylo_dep()}}   \tab \code{\link[=phylo_latent]{phylo_latent()}}   \cr
+\emph{spatial} \tab \code{\link[=spatial_scalar]{spatial_scalar()}} \tab \code{\link[=spatial_indep]{spatial_indep()}} \tab \code{\link[=spatial_dep]{spatial_dep()}} \tab \code{\link[=spatial_latent]{spatial_latent()}} \cr
 }
 
-The four "quartet" modes (\code{unique} / \code{indep} / \code{dep} / \code{latent})
-encode covstruct intent under a strict always-paired-vs-always-alone
-convention:
+The three covariance modes (\code{indep} / \code{dep} / \code{latent}) encode
+covstruct intent across traits:
 \itemize{
-\item \code{latent + unique} (paired) — the \strong{compatibility decomposition} spelling:
-\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}.
-Ordinary \code{latent()} now carries \eqn{\boldsymbol\Psi} by default, so new
-standalone diagonal code should use \code{indep()}; \code{unique()} remains accepted
-as legacy compatibility syntax.
-\item \code{indep} (alone) — the \strong{marginal-only} mode: each trait gets its
-own variance, no cross-trait covariance.
-\item \code{dep} (alone) — the \strong{full unstructured} mode: \eqn{\boldsymbol\Sigma}
+\item \code{latent} — the \strong{decomposition} mode
+\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}:
+a low-rank shared part plus a diagonal \eqn{\boldsymbol\Psi} companion.
+Ordinary \code{latent()} carries \eqn{\boldsymbol\Psi} by default; the
+\verb{unique =} argument controls it (\code{latent(..., unique = FALSE)} for the
+loadings-only subset, \verb{*_latent(..., unique = TRUE)} to fold the
+\eqn{\boldsymbol\Psi} companion into a source-specific term).
+\item \code{indep} — the \strong{marginal-only} mode: each trait gets its own
+variance, no cross-trait covariance.
+\item \code{dep} — the \strong{full unstructured} mode: \eqn{\boldsymbol\Sigma}
 is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 }
 
@@ -335,13 +335,13 @@ one-paragraph tour of each cell.
 \code{gllvmTMB()} parses the glmmTMB-style formula, converts wide
 \code{\link[=traits]{traits()}} input to the same internal stacked-trait representation as
 explicit long data, and dispatches to the underlying TMB template.
-Covariance-structure terms (\code{latent()}, \code{unique()}, \code{propto()},
+Covariance-structure terms (\code{latent()}, \code{indep()}, \code{propto()},
 \code{equalto()}, \code{spatial()}) are processed by extending the formula parser
 and the TMB template.
 
 Per the manuscript, when stacking traits one should set
 \code{dispformula = ~ 0} so that no implicit residual variance competes
-with structured \verb{unique(0 + trait | …)} terms. \code{gllvmTMB()} enforces
+with structured \verb{indep(0 + trait | …)} terms. \code{gllvmTMB()} enforces
 this internally.
 
 \strong{Multi-trial binomial}. The TMB engine evaluates \code{dbinom(y, n_trials, p)}
@@ -391,7 +391,7 @@ non-negative.
 counts as residual variance shifts as you add levels to the model.
 In a Gaussian fit without a per-row diagonal term, the residual is row-level
 noise captured by a single shared \code{sigma_eps}. Once you add a per-row
-\code{indep(0 + trait | obs)} term (or legacy \code{unique()} compatibility spelling),
+\code{indep(0 + trait | obs)} term,
 the \emph{row-level} residual is now T per-trait random-effect variances and
 \code{sigma_eps} is auto-suppressed to avoid double-counting. If you also add a
 site-level diagonal term on top, the row-level term remains the residual and
@@ -402,11 +402,11 @@ configurations the engine supports today.
 Gaussian and lognormal responses have one residual scale parameter,
 \code{sigma_eps}. Ordinary Gamma responses instead carry a per-trait shape
 \code{phi_gamma} (CV = \code{1 / sqrt(phi_gamma)}). Per-trait residual variances
-only appear if you explicitly add a per-row \code{indep(...)} term or legacy
-\code{unique(...)} compatibility term. The dispatch is automatic:
+only appear if you explicitly add a per-row \code{indep(...)} term.
+The dispatch is automatic:
 
 \describe{
-\item{No per-row \code{indep} / \code{unique}, Gaussian/lognormal present}{One
+\item{No per-row \code{indep}, Gaussian/lognormal present}{One
 shared \code{sigma_eps} across Gaussian/lognormal rows. \emph{Not} per-trait.}
 \item{No per-row \code{indep} / \code{unique}, no Gaussian/lognormal rows}{\code{sigma_eps}
 is mapped off; the family's intrinsic dispersion handles the residual
@@ -414,19 +414,19 @@ is mapped off; the family's intrinsic dispersion handles the residual
 \item{\code{indep(0 + trait | g)} where \code{g} has fewer levels than
 rows (e.g. \code{g = "site"})}{\code{sigma_eps} is still estimated as the
 row-level residual; the diagonal term adds a per-trait random
-effect at level \code{g} on top. Legacy \code{unique()} spelling is equivalent.}
+effect at level \code{g} on top.}
 \item{\code{indep(0 + trait | obs)} at the per-row level (one
 level per row), Gaussian/lognormal rows fitted}{\code{sigma_eps} is
 auto-suppressed (mapped off, fixed at a tiny stabiliser); the
 T per-trait diagonal random effects \emph{are} the residual. A
 one-shot \code{cli::cli_inform} fires at fit time announcing the
-auto-suppression. Legacy \code{unique()} spelling is equivalent.}
+auto-suppression.}
 \item{\code{indep(0 + trait | obs)} at the per-row level,
 non-Gaussian or mixed-family fit}{Treated as observation-level
 random effects (OLRE). For Bernoulli traits the OLRE is
 statistically unidentifiable and is mapped off; for hurdle /
 delta families a warning is emitted (see "Per-family-aware OLRE
-selection" below). Legacy \code{unique()} spelling is equivalent.}
+selection" below).}
 }
 
 Mnemonic: Gaussian/lognormal \code{sigma_eps} is the default; ordinary Gamma uses
@@ -436,7 +436,7 @@ scalar residual with T per-trait residuals; non-per-row \code{indep} / legacy
 non-continuous families never carry \code{sigma_eps} regardless.
 
 \strong{Per-family-aware OLRE selection.} When
-\verb{indep(0 + trait | <unit_obs>)} (or legacy \code{unique()} spelling) is at
+\verb{indep(0 + trait | <unit_obs>)} is at
 per-row resolution, i.e. one row per \verb{(trait, unit_obs)} cell, the resulting
 per-trait random effects on the linear predictor are an observation-level
 random effect (OLRE). The engine now decides per trait what to do with the

@@ -19,7 +19,7 @@ coordinate placeholder (typically \code{coords} or \code{site}); the LHS
 determines the covariance structure (combined with \code{mode}, see
 Dispatch rules). For backward compatibility, \code{0 + trait | coords}
 and \code{coords | trait} (no \code{mode}) also work as deprecated aliases
-of \code{spatial_unique}.}
+for the per-trait diagonal spatial field.}
 
 \item{mesh}{A \code{fmesher} mesh constructed via \code{\link[=make_mesh]{make_mesh()}}. \strong{Canonical.}
 Required for the new dispatch path; optional for the legacy
@@ -61,7 +61,6 @@ Hadfield A^-1).
 \tabular{lll}{
    Form \tab Mode default \tab Rewrites to \cr
    \verb{spatial(1 \| site)} \tab \code{"scalar"} \tab \verb{spatial_scalar(0 + trait \| coords)} \cr
-   \verb{spatial(0 + trait \| coords, mode = "diag")} \tab (mandatory) \tab \verb{spatial_unique(0 + trait \| coords)} \cr
    \verb{spatial(0 + trait \| coords, mode = "indep")} \tab (mandatory) \tab \verb{spatial_indep(0 + trait \| coords)} \cr
    \verb{spatial(0 + trait \| coords, mode = "latent", d = K)} \tab (mandatory) \tab \verb{spatial_latent(0 + trait \| coords, d = K)} \cr
    \verb{spatial(0 + trait \| coords, mode = "dep")} \tab (mandatory) \tab \verb{spatial_dep(0 + trait \| coords)} \cr
@@ -81,7 +80,7 @@ parser refuses to silently default.
 
 Legacy bare-formula calls \code{spatial(0 + trait | coords)} and
 \code{spatial(coords | trait)} (no \code{mode} argument) continue to work as
-deprecated aliases of \code{spatial_unique(0 + trait | coords)} (with an
+deprecated aliases for the per-trait diagonal spatial field (with an
 additional orientation-flip lifecycle warning for the pre-0.1.4
 orientation). The legacy form rewrites to \code{spde()} internally,
 picking up the SPDE mesh from the top-level \verb{mesh =} argument to
@@ -134,7 +133,7 @@ fit_legacy <- gllvmTMB(value ~ 0 + trait + spatial(0 + trait | coords),
 }
 }
 \seealso{
-\code{\link[=spatial_scalar]{spatial_scalar()}}, \code{\link[=spatial_unique]{spatial_unique()}}, \code{\link[=spatial_indep]{spatial_indep()}},
+\code{\link[=spatial_scalar]{spatial_scalar()}}, \code{\link[=spatial_indep]{spatial_indep()}},
 \code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spatial_dep]{spatial_dep()}}, \code{\link[=phylo]{phylo()}} (phylogenetic
 parallel), \code{\link[=spde]{spde()}} (deeper deprecated alias).
 }

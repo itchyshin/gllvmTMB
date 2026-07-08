@@ -240,7 +240,7 @@ not separately recoverable.
 
 **Diagnosis.** The general issue is identifiability: do not ask the
 data to separate more variance pieces than the design can support.
-For any `latent()`, compatibility `unique()`, `indep()`, `dep()`, or `*_scalar()`
+For any `latent()`, `indep()`, `dep()`, or `*_scalar()`
 choice, first name the covariance tier, decide which diagonal variance
 is separately identifiable, and use scalar shortcuts only when a shared
 variance is the estimand. The phylogenetic example below is one

@@ -43,9 +43,7 @@ compact wide shorthand. \code{1} expands to the trait-specific intercepts
 \code{(0 + trait):env_temp}; and \code{latent(1 | individual)} expands to
 the long covariance syntax \code{latent(0 + trait | individual)}.
 Ordinary \code{latent()} includes its \eqn{\boldsymbol\Psi} companion by
-default; the soft-deprecated explicit \code{unique(1 | individual)}
-compatibility spelling still expands to \code{unique(0 + trait | individual)}.
-The same \code{1 | group} shorthand is recognised for \code{indep()},
+default. The same \code{1 | group} shorthand is recognised for \code{indep()},
 \code{dep()}, bar-style \code{phylo_indep()} / \code{phylo_dep()}, and the
 \verb{spatial_*()} keywords. Species-axis phylogenetic keywords such as
 \code{phylo_latent(species, d = K)} already name their phylogenetic axis

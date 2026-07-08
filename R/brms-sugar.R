@@ -3975,8 +3975,8 @@ rewrite_canonical_aliases <- function(formula) {
 ##   diag      -> use indep() for standalone diagonal terms
 ##   phylo_rr  -> use phylo_latent()
 ##   phylo     -> use phylo_scalar()
-##   spde      -> use spatial_unique()
-##   spatial   -> use spatial_unique() (lifecycle::deprecate_warn at 0.1.2)
+##   spde      -> use spatial_indep()
+##   spatial   -> use spatial_indep() (lifecycle::deprecate_warn at 0.1.2)
 ##   meta      -> use meta_V()
 ##   gr        -> use phylo_scalar() (or propto() power-user)
 ##   propto    -> internal; users should use phylo_scalar / phylo_latent
@@ -3991,11 +3991,11 @@ scan_for_deprecated <- function(rhs) {
     diag = list(
       new = "indep",
       args = "0 + trait | g",
-      guidance = "Use ordinary latent(..., d = K) when you want the default shared + diagonal-Psi decomposition; explicit unique() remains compatibility syntax."
+      guidance = "Use ordinary latent(..., d = K) for the default shared + diagonal-Psi decomposition, or indep(0 + trait | g) for a standalone diagonal."
     ),
     phylo_rr = list(new = "phylo_latent", args = "species, d = K"),
     phylo = list(new = "phylo_scalar", args = "species"),
-    spde = list(new = "spatial_unique", args = "coords | trait"),
+    spde = list(new = "spatial_indep", args = "coords | trait"),
     meta = list(new = "meta_V", args = "V = V"),
     gr = list(new = "phylo_scalar", args = "species")
   )
@@ -4026,10 +4026,10 @@ scan_for_deprecated <- function(rhs) {
           lifecycle::deprecate_warn(
             when = "0.1.2",
             what = "spatial()",
-            with = "spatial_unique()",
+            with = "spatial_indep()",
             details = c(
-              "i" = "spatial(coords | trait) is now an alias for spatial_unique(0 + trait | coords), the unique cell of the 4 x 5 keyword grid.",
-              ">" = "Update existing code to spatial_unique() to keep the rank explicit."
+              "i" = "spatial(coords | trait) is now an alias for spatial_indep(0 + trait | coords).",
+              ">" = "Update existing code to spatial_indep() to keep the rank explicit."
             )
           )
         } else if (fn == "phylo" && is_bar_first_arg(e)) {

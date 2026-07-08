@@ -20,7 +20,7 @@ A formula marker; never evaluated as a call.
 }
 \description{
 \strong{Deprecated alias.} Engine-internal name; users should write
-\code{\link[=spatial_unique]{spatial_unique()}} (or one of the other \code{\link[=spatial_scalar]{spatial_scalar()}} /
+\code{\link[=spatial_indep]{spatial_indep()}} (or one of the other \code{\link[=spatial_scalar]{spatial_scalar()}} /
 \code{\link[=spatial_latent]{spatial_latent()}} keywords) in formulas. Kept for backward
 compatibility and to document the underlying Matérn / SPDE kernel.
 }
@@ -41,7 +41,7 @@ The SPDE construction approximates a \strong{Matérn covariance function}:
 
 where \eqn{\nu} is the smoothness parameter, \eqn{\kappa > 0} is the
 inverse-range parameter, and \eqn{K_{\nu}} is the modified Bessel
-function of the second kind. \code{gllvmTMB::spatial_unique()} (and its
+function of the second kind. \code{gllvmTMB::spatial_indep()} (and its
 siblings \code{spatial_scalar()} / \code{spatial_latent()}) use
 \strong{\eqn{\alpha = 2}} in the Lindgren–Rue–Lindström operator, which
 (in 2 spatial dimensions) corresponds to \strong{\eqn{\nu = 1}}.
@@ -50,7 +50,7 @@ siblings \code{spatial_scalar()} / \code{spatial_latent()}) use
 often default to:\tabular{llll}{
    Kernel \tab \eqn{\nu} \tab Smoothness \tab Used by \cr
    Exponential \tab \eqn{1/2} \tab non-differentiable \tab \code{glmmTMB::exp()}, \code{metafor::SPEXP}, \verb{brms::gp(... cov="exponential")} \cr
-   \strong{Matérn (this engine)} \tab \strong{\eqn{1}} \tab once mean-square differentiable \tab \code{gllvmTMB::spatial_unique()}, \code{sdmTMB::sdmTMB(spatial="on")}, \code{INLA::inla.spde2.matern()} \cr
+   \strong{Matérn (this engine)} \tab \strong{\eqn{1}} \tab once mean-square differentiable \tab \code{gllvmTMB::spatial_indep()}, \code{sdmTMB::sdmTMB(spatial="on")}, \code{INLA::inla.spde2.matern()} \cr
    Matérn 3/2 \tab \eqn{3/2} \tab once differentiable \tab not implemented here \cr
    Matérn 5/2 \tab \eqn{5/2} \tab twice differentiable \tab not implemented here \cr
    Squared-exponential / Gaussian \tab \eqn{\infty} \tab infinitely smooth \tab \verb{brms::gp(... cov="exp_quad")} \cr
@@ -61,7 +61,7 @@ Matérn \eqn{\nu = 1} is the \emph{de facto} standard for spatial
 ecological data: smooth enough to be sensible for organisms or
 processes that vary continuously in space, but rough enough to
 capture genuinely fine-scale variation. It is also the default of
-every R-INLA and sdmTMB workflow, so \code{spatial_unique()} results
+every R-INLA and sdmTMB workflow, so \code{spatial_indep()} results
 compare cleanly against those packages.
 }
 
@@ -95,7 +95,7 @@ size — that's the speed advantage over \code{glmmTMB::exp()}'s dense
 
 \subsection{Reduced-rank spatial loadings (\code{spatial_latent()})}{
 
-\code{\link[=spatial_unique]{spatial_unique()}} gives one \emph{independent} field per trait. The
+\code{\link[=spatial_indep]{spatial_indep()}} gives one \emph{independent} field per trait. The
 reduced-rank analogue — \eqn{K} shared spatial fields driving all
 \eqn{T} traits via a \eqn{T \times K} loading matrix
 \eqn{\boldsymbol\Lambda_{\mathrm{spa}}}, exactly what \code{\link[=phylo_latent]{phylo_latent()}}
@@ -118,7 +118,7 @@ coordinate columns of \code{data}:
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{df$pos <- glmmTMB::numFactor(df$lon, df$lat)   # only if comparing
 mesh   <- make_mesh(df, c("lon", "lat"), cutoff = 0.07)
 fit    <- gllvmTMB(
-  value ~ 0 + trait + spatial_unique(0 + trait | coords),
+  value ~ 0 + trait + spatial_indep(0 + trait | coords),
   data  = df,
   trait = "trait",
   unit  = "site",
@@ -133,7 +133,7 @@ The actual coordinate column names live in the \code{mesh} object (see
 \code{\link[=make_mesh]{make_mesh()}}); the \code{coords} token in the formula is just a
 placeholder. The pre-0.1.4 orientation \code{coords | trait} is also
 accepted but emits a one-shot lifecycle deprecation warning per
-session; see \code{\link[=spatial_unique]{spatial_unique()}}.
+session; see \code{\link[=spatial_indep]{spatial_indep()}}.
 }
 }
 \examples{
@@ -145,7 +145,7 @@ s <- simulate_site_trait(
 )
 df   <- s$data
 mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.07)
-fit  <- gllvmTMB(value ~ 0 + trait + spatial_unique(0 + trait | coords),
+fit  <- gllvmTMB(value ~ 0 + trait + spatial_indep(0 + trait | coords),
                  data  = df,
                  trait = "trait",
                  unit  = "site",

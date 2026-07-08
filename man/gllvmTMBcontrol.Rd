@@ -23,7 +23,7 @@ gllvmTMBcontrol(
 \arguments{
 \item{d_B, d_W}{Latent dimensions for the between-unit and within-unit
 reduced-rank components. Set to a positive integer to enable
-\code{latent()} / \code{unique()} covariance structures at the corresponding tier.}
+\code{latent()} / \code{indep()} covariance structures at the corresponding tier.}
 
 \item{spde_mode}{\code{"per_trait"} (default) fits one independent SPDE field
 per trait when a \code{spatial()} term is present; \code{"shared"} fits one shared
@@ -70,7 +70,7 @@ to residual-start latent scores. Default
 
 \item{start_from}{Optional fitted \code{gllvmTMB} object, usually a simpler
 model such as one \code{latent()} tier or an independent diagonal model
-(\code{indep()}, with legacy \code{unique()} compatibility). Any estimated TMB
+(\code{indep()}). Any estimated TMB
 parameters with shapes matching the current model are copied into the
 starting parameter list before optimisation.
 This implements the "fit simpler, then use it as starting values"

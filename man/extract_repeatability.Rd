@@ -37,9 +37,9 @@ Returns the per-trait repeatability
 \eqn{R_t = \sigma^2_{B,t} / (\sigma^2_{B,t} + \sigma^2_{W,t})} for a
 fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with both unit- and observation-level diagonal
 variance components. In new ordinary formulas those diagonal components are
-usually supplied by default \code{latent()} terms or explicit \code{indep()} terms;
-older \code{unique()} formulas remain compatibility syntax. Also known as the
-intraclass correlation coefficient (ICC) at the unit level.
+usually supplied by default \code{latent()} terms or explicit \code{indep()} terms.
+Also known as the intraclass correlation coefficient (ICC) at the unit
+level.
 }
 \section{Method choice}{
 

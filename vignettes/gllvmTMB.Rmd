@@ -177,9 +177,7 @@ long form.
 
 Fit a `d = 2` reduced-rank GLLVM with ordinary `latent()` at the
 individual level — the shared low-rank structure plus trait-specific
-unique variance. The older explicit `latent() + unique()` spelling
-remains compatibility syntax, but new ordinary examples can use
-`latent()` alone:
+unique variance, which ordinary `latent()` carries by default:
 
 ```{r fit-call}
 morph$formula_wide

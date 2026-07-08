@@ -106,7 +106,7 @@ depth; **blocked** = needs a mathematical derivation or different scope.
 |---|---|---|---|
 | `phylo_slope(x | species)` | covered / legacy | PHY-06, RE-02 | Single shared phylogenetic slope variance; retained for compatibility, not used in new public articles. |
 | `animal_slope(x | id)` | covered / legacy | ANI-06 | Pedigree-facing alias for the same legacy slope machinery; not the public ordinary reaction-norm target. |
-| `phylo_unique(1 + x | species)` / `animal_unique(1 + x | id)` | covered | ANI-11 | Correlated 2 x 2 intercept+slope block with `extract_Sigma(level = "phy")` read-out. |
+| `phylo_latent(1 + x | species, unique = TRUE)` / `animal_latent(1 + x | id, unique = TRUE)` | covered | ANI-11, PHY-17 | Folded taught spelling: reduced-rank slope (PHY-17) plus the correlated intercept+slope Psi companion (ANI-11; the deprecated standalone `*_unique` spelling is the validated companion). Read out via `extract_Sigma(level = "phy")`. |
 | `phylo_indep(1 + x | species)` | covered | PHY-11..PHY-16 | Diagonal intercept+slope block; correlation pinned to zero; core families admitted. |
 | `phylo_latent(1 + x | species, d = 1)` | covered | PHY-17 | Block-diagonal reduced-rank random slope; no intercept-slope correlation. |
 | `phylo_dep(1 + x | species)` | covered | PHY-18 | Full unstructured 2T x 2T intercept+slope covariance across traits. |

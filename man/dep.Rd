@@ -73,6 +73,6 @@ fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = T),
 }
 }
 \seealso{
-\code{\link[=latent]{latent()}}, \code{\link[=unique]{unique()}}, \code{\link[=indep]{indep()}}, \code{\link[=phylo_dep]{phylo_dep()}},
+\code{\link[=latent]{latent()}}, \code{\link[=indep]{indep()}}, \code{\link[=phylo_dep]{phylo_dep()}},
 \code{\link[=spatial_dep]{spatial_dep()}}, \code{\link[=extract_Sigma]{extract_Sigma()}}.
 }

@@ -528,9 +528,10 @@ test_that("print(fit) labels phylo_indep distinctly from phylo_unique", {
     data = df, phylo_tree = tree, unit = "species"
   )))
   printed <- capture.output(print(fit))
-  ## The printed Covstructs line should mention "phylo_indep" — not the
-  ## generic "phylo_unique".
+  ## Diagonal phylogenetic terms print as the canonical keyword-free
+  ## "phylo_indep" (the deprecated "phylo_unique" spelling is no longer shown).
   expect_true(any(grepl("phylo_indep", printed)))
+  expect_false(any(grepl("phylo_unique", printed)))
 })
 
 ## ============================================================

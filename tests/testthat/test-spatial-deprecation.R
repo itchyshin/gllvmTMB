@@ -109,7 +109,7 @@ test_that("spatial() and spatial_unique() produce identical fits", {
   expect_equal(length(fit_old$opt$par), length(fit_new$opt$par))
 })
 
-test_that("printed covstruct label is spatial_unique (not spatial)", {
+test_that("printed covstruct label is spatial_indep (not spatial)", {
   set.seed(1)
   sim <- gllvmTMB::simulate_site_trait(
     n_sites = 30, n_species = 1, n_traits = 2,
@@ -120,13 +120,15 @@ test_that("printed covstruct label is spatial_unique (not spatial)", {
   df <- sim$data
   mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.1)
 
+  ## Fit via the deprecated spatial_unique() spelling; diagonal covstructs now
+  ## print their canonical keyword-free label spatial_indep (same engine).
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + spatial_unique(0 + trait | coords),
     data = df, mesh = mesh, silent = TRUE)))
   out <- capture.output(print(fit))
   cov_line <- grep("Covstructs:", out, value = TRUE)
-  expect_match(cov_line, "spatial_unique",
-               info = "Print should show the canonical name spatial_unique.")
+  expect_match(cov_line, "spatial_indep",
+               info = "Print should show the canonical name spatial_indep.")
   expect_false(grepl("\\bspatial\\b(?! [_a-z])", cov_line, perl = TRUE),
                info = "Print should NOT show the bare 'spatial' label.")
 })

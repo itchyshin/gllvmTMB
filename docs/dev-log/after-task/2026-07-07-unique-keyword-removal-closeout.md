@@ -117,18 +117,19 @@ messages** across `fit-multi.R`, `extract-sigma.R`, `profile-derived.R`, `profil
 - Verified: `load_all()` + `document()` clean; **no test asserts on any removed fragment** (grep of
   `expect_*`/snapshots; the one column-ref assertion uses lenient alternatives preserved by the rewrite).
 
-## 🔴 Third open item (maintainer decision) — print-label leak (verified)
-`R/methods-gllvmTMB.R:339-347` maps diagonal covstructs to `"unique"`-flavored **display labels** by
+## Third item — print-label leak (FIXED, maintainer-approved 2026-07-08)
+`R/methods-gllvmTMB.R:339-347` mapped diagonal covstructs to `"unique"`-flavored **display labels** by
 default. Empirically confirmed: a folded `phylo_latent(species, d = 1, tree = tree, unique = TRUE)` fit
-**prints its companion as `"phylo_unique"`** (from the default map at line 345 — `use` carries only
-`phylo_rr` + `phylo_diag`, no sub-flag). So the deprecated keyword leaks into the fit's print/summary
-output for a user who wrote the fold. **Not fixed:** the map's comment (350-353) documents an
-intentional design ("surfaces the indep form *when the user wrote it*", default = unique), so inverting
-it to default-`indep` is a print-API change that also changes what existing explicit-`phylo_unique`
-fits render — a maintainer call. Recommended: default diagonal labels → `indep`-flavored
-(`phylo_diag`→`phylo_indep`, `spde`→`spatial_indep`, `diag_W`→`indep_unit_obs`, `diag_species`→`indep_*`),
-update the comment, and keep the explicit-`phylo_unique` sub-flag override only if a fit that *explicitly*
-used the keyword should still echo it.
+**printed its companion as `"phylo_unique"`**. Maintainer approved the fix ("get rid of phylo_unique"):
+default diagonal labels now print their canonical keyword-free `indep` name for BOTH folded fits and
+fits that used the deprecated `unique()` / `*_unique()` spelling — `diag_B`→`indep_unit`,
+`diag_W`→`indep_unit_obs`, `diag_species`→`indep_*`, `phylo_diag`→`phylo_indep`, the
+explicit-`phylo_unique` sub-flag override→`phylo_indep`, `spde`→`spatial_indep`. Comments updated.
+Verified: the folded fit now prints `phylo_latent` + `phylo_indep` (no `phylo_unique`). Tests updated to
+the new behavior — `test-spatial-deprecation.R` (asserts `spatial_indep`, passes 7/7) and
+`test-canonical-keywords.R` (asserts `phylo_indep` present + `phylo_unique` absent, passes). The
+`"unique variance"` proportion-component names (`shared_unit;unique_unit`) are a distinct concept, left
+untouched.
 
 ## Rose gate — two open items (🔴 need maintainer decision; NOT arc regressions)
 1. **Pre-existing defects in `choose-your-model.Rmd`** (verified pre-existing via `git diff` — my edits

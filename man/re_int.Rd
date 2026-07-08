@@ -32,7 +32,7 @@ future release.}
 \item \code{(1 + x | group)} — correlated intercept + slope. \strong{Coming in a
 future release.}
 \item \code{(0 + trait | group)} — trait-specific random intercepts. Use the
-existing \code{unique()} / \code{latent()} covstructs for that pattern.
+existing \code{indep()} / \code{latent()} covstructs for that pattern.
 }
 
 If you write any of these unsupported forms, \code{gllvmTMB()} aborts with a

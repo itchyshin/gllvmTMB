@@ -8,8 +8,8 @@
 #' and `A_P` are within-lineage relatedness matrices and `C_HP` is the
 #' cross-lineage bridge induced by the association matrix `W`. The PARTIAL
 #' scope (`COE-01`) is the prototype path: use `K_star` through the
-#' existing `phylo_latent(..., vcv = K_star) + phylo_unique(..., vcv =
-#' K_star)` engine. The generic `kernel_*()` surface (`KER-02`) and
+#' existing `phylo_latent(..., vcv = K_star, unique = TRUE)` engine. The
+#' generic `kernel_*()` surface (`KER-02`) and
 #' validated `extract_Gamma()` coevolution gate (`COE-02`) are now covered
 #' separately; this helper only builds the input kernel.
 #'

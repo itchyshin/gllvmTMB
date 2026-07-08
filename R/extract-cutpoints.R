@@ -44,7 +44,7 @@
 #' @examples
 #' \dontrun{
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + phylo_unique(species, tree = tree),
+#'   value ~ 0 + trait + phylo_indep(species, tree = tree),
 #'   data    = ordinal_dat,
 #'   trait   = "trait",
 #'   unit    = "individual",

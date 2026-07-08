@@ -102,7 +102,7 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
     cli::cli_abort(c(
       "Repeatability requires both {.code theta_diag_B} and {.code theta_diag_W} in the fit.",
       "i" = "Refit with ordinary {.code latent(0 + trait | <unit>, d = K)} and {.code latent(0 + trait | <obs>, d = K)} tiers so each tier has default diagonal Psi.",
-      ">" = "Use explicit {.code unique(0 + trait | ...)} only for legacy diag-only compatibility fits."
+      ">" = "Use {.code indep(0 + trait | ...)} for standalone diagonal tiers."
     ))
   }
   T <- length(ix_B)
@@ -150,7 +150,7 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
 
 #' Profile-likelihood CI for per-trait phylogenetic signal H^2
 #'
-#' For fits with `phylo_unique(species)` and `indep(0 + trait | species)`
+#' For fits with `phylo_indep(species)` and `indep(0 + trait | species)`
 #' but no species-level `latent()` term, `H^2 = sigma2_phy / (sigma2_phy +
 #' sigma2_non)` is a 2-component ratio profileable via a single linear
 #' contrast (`log_sd_phy_diag[t] - theta_diag_species[t]`).
@@ -178,7 +178,7 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!has_phy) {
     cli::cli_abort(c(
       "Phylogenetic signal requires a phylogenetic component.",
-      "i" = "Refit with {.code phylo_latent()} or {.code phylo_unique()}."
+      "i" = "Refit with {.code phylo_latent()}."
     ))
   }
   trait_names <- levels(fit$data[[fit$trait_col]])
@@ -554,7 +554,7 @@ profile_ci_communality <- function(
   if (length(ix_rr) == 0L || length(ix_diag) == 0L) {
     cli::cli_abort(c(
       "Communality profiling requires a shared latent tier with an explicit diagonal Psi component at tier {.val {tier}}.",
-      "i" = "Ordinary {.code latent()} includes {.code Psi} by default. For phylogenetic communality, pair {.code phylo_latent()} with {.code phylo_unique()} or use the folded {.code unique = TRUE} contract where available."
+      "i" = "Ordinary {.code latent()} includes {.code Psi} by default. For phylogenetic communality, use the folded {.code phylo_latent(..., unique = TRUE)} contract."
     ))
   }
   d_tier <- switch(

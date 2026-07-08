@@ -39,9 +39,7 @@
 #' `(0 + trait):env_temp`; and `latent(1 | individual)` expands to
 #' the long covariance syntax `latent(0 + trait | individual)`.
 #' Ordinary `latent()` includes its \eqn{\boldsymbol\Psi} companion by
-#' default; the soft-deprecated explicit `unique(1 | individual)`
-#' compatibility spelling still expands to `unique(0 + trait | individual)`.
-#' The same `1 | group` shorthand is recognised for `indep()`,
+#' default. The same `1 | group` shorthand is recognised for `indep()`,
 #' `dep()`, bar-style `phylo_indep()` / `phylo_dep()`, and the
 #' `spatial_*()` keywords. Species-axis phylogenetic keywords such as
 #' `phylo_latent(species, d = K)` already name their phylogenetic axis

@@ -60,8 +60,7 @@ other traits via the latent factors. Bounded between 0 and 1. Calls
 \code{\link[=extract_Sigma]{extract_Sigma()}} internally for the chosen level, so the diagonal
 uses the full \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi}
 decomposition. Ordinary \code{latent()} includes \eqn{\boldsymbol\Psi}
-by default; explicit \code{latent() + unique()} remains compatibility
-syntax.
+by default.
 \subsection{Caveat: communality with no-Psi fits}{
 
 If the fit uses \code{latent(..., unique = FALSE)} at the requested

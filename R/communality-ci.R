@@ -84,7 +84,7 @@
     )
   if (!diag_used)
     cli::cli_abort(
-      "Communality Wald CI at tier {.val {tier_in}} requires a diagonal Psi component (per-trait unique variance). Use the default {.fn latent} fit for ordinary tiers; for the phylogenetic tier, pair {.fn phylo_latent} with {.fn phylo_unique} or use the folded {.code unique = TRUE} contract where available."
+      "Communality Wald CI at tier {.val {tier_in}} requires a diagonal Psi component (per-trait unique variance). Use the default {.fn latent} fit for ordinary tiers; for the phylogenetic tier, use the folded {.code phylo_latent(..., unique = TRUE)} contract."
     )
 
   trait_names <- levels(fit$data[[fit$trait_col]])

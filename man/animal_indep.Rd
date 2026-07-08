@@ -16,8 +16,8 @@ See \code{\link[=animal_scalar]{animal_scalar()}}.
 }
 \description{
 Per-trait animal-model random intercepts with no cross-trait
-covariance. Engine-equivalent to \code{\link[=animal_unique]{animal_unique()}} but uses the
-bar-form syntax; the \code{.indep} marker disambiguates printing.
+covariance, using the bar-form syntax; the \code{.indep} marker
+disambiguates printing.
 Mathematical parallel to \code{\link[=phylo_indep]{phylo_indep()}}.
 }
 \examples{
@@ -47,5 +47,5 @@ fit <- gllvmTMB(
 }
 }
 \seealso{
-\code{\link[=animal_unique]{animal_unique()}}, \code{\link[=phylo_indep]{phylo_indep()}}.
+\code{\link[=phylo_indep]{phylo_indep()}}.
 }

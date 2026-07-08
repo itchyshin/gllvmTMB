@@ -29,7 +29,7 @@ intercept. Each trait carries an independent length-\code{n_species} draw
 \eqn{\mathbf p_t \sim \mathcal{N}(\mathbf{0}, \sigma^{2}_{\text{phy}}\,\mathbf{C}_{\text{phy}})}
 with \strong{one shared scaling} \eqn{\sigma^{2}_{\text{phy}}} across all
 traits. Formerly \code{phylo(species)} -- same engine, new name. Compare to
-\code{\link[=phylo_unique]{phylo_unique()}} (D independent variances) and \code{\link[=phylo_latent]{phylo_latent()}}
+\code{\link[=phylo_indep]{phylo_indep()}} (D independent variances) and \code{\link[=phylo_latent]{phylo_latent()}}
 (K-dim factor decomposition).
 }
 \details{
@@ -59,6 +59,6 @@ for the full discussion of the two paths.
 }
 }
 \seealso{
-\code{\link[=phylo_unique]{phylo_unique()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=phylo_indep]{phylo_indep()}},
+\code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=phylo_indep]{phylo_indep()}},
 \code{\link[=phylo_dep]{phylo_dep()}}, \code{\link[=phylo]{phylo()}} (deprecated alias).
 }

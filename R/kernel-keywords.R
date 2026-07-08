@@ -7,8 +7,9 @@
 #' `kernel_latent(unit, K = A, d = q, unique = TRUE)` carries its
 #' kernel-structured diagonal \eqn{\boldsymbol\Psi} companion and must match
 #' `phylo_latent(unit, vcv = A, d = q, unique = TRUE)` to less than `1e-6`
-#' for log likelihood and extracted `Sigma`. The compatibility spelling
-#' `kernel_latent(..., unique = FALSE) + kernel_unique(...)` remains accepted.
+#' for log likelihood and extracted `Sigma`. The soft-deprecated
+#' compatibility spelling `kernel_latent(..., unique = FALSE) +
+#' kernel_unique(...)` remains accepted.
 #' The first multi-kernel scope (`KER-03`) accepts two or more fixed named
 #' `kernel_latent()` tiers over the same grouping levels, each with its own
 #' `K`, loading matrix, and latent field. This Paper 2 first wave remains

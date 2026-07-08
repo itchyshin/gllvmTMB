@@ -1480,7 +1480,7 @@ gllvm_julia_capabilities <- function() {
   }
 
   note <- c(
-    "engine = 'julia': extract_Sigma() reports the ordinary unit tier only; unique(), unit_obs, and structured tiers are not present in this bridge row."
+    "engine = 'julia': extract_Sigma() reports the ordinary unit tier only; the diagonal, unit_obs, and structured tiers are not present in this bridge row."
   )
   if (link_residual == "auto") {
     note <- c(

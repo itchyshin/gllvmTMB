@@ -316,15 +316,16 @@
 ## phylo_rr and phylo_diag are printed as their respective canonical
 ## keywords.
 ##
-## The printed label uses the canonical-keyword name so the user sees the
-## term they actually typed in the formula. Resolution happens in
-## .resolve_covstruct_labels() below, which inspects the sub-flags
+## The printed label uses the canonical-keyword name. Diagonal terms print as
+## their canonical `indep` spelling regardless of whether the user wrote the
+## deprecated `unique()` / `*_unique()` form (same engine). Resolution happens
+## in .resolve_covstruct_labels() below, which inspects the sub-flags
 ## (`phylo_unique`, `spatial_scalar`, `spatial_latent`) before mapping the
 ## engine flag (`phylo_rr`, `spde`, `phylo_diag`) to a label.
 .covstruct_label <- function(name, cluster_col = NULL) {
   ## `cluster_col` (when supplied) tunes the cluster-tier label so the
   ## printed name reflects the user's third-slot column (e.g.
-  ## `unique_population` instead of `unique_species` when
+  ## `indep_population` instead of `indep_species` when
   ## `cluster = "population"`).
   ## Stage 4 of dev/design/02-sigma-naming.md (2026-05-08): the
   ## printed labels now use the canonical user-facing names that match
@@ -334,23 +335,22 @@
   switch(
     name,
     rr_B = "latent_unit",
-    diag_B = "unique_unit",
+    diag_B = "indep_unit",
     rr_W = "latent_unit_obs",
-    diag_W = "unique_unit_obs",
+    diag_W = "indep_unit_obs",
     diag_species = paste0(
-      "unique_",
+      "indep_",
       if (!is.null(cluster_col)) cluster_col else "species"
     ),
     phylo_rr = "phylo_latent",
-    phylo_diag = "phylo_unique",
-    phylo_unique = "phylo_unique",
-    spde = "spatial_unique",
+    phylo_diag = "phylo_indep",
+    phylo_unique = "phylo_indep",
+    spde = "spatial_indep",
     spatial_scalar = "spatial_scalar",
     spatial_latent = "spatial_latent",
-    ## "indep" mode (quartet): marginal-only canonical keywords. Same
-    ## engine as the matching unique() / phylo_unique() /
-    ## spatial_unique() standalone; the label dispatch surfaces the
-    ## indep form when the user wrote it.
+    ## "indep" mode (quartet): marginal-only canonical keywords -- the
+    ## canonical printed form for every diagonal term, including fits that
+    ## used the deprecated unique() / *_unique() spelling (same engine).
     indep_B = "indep_unit",
     indep_W = "indep_unit_obs",
     indep_cluster = paste0(

@@ -36,8 +36,8 @@ path is a v0.3.0 follow-up.}
 
 \item{unique}{Logical; \code{TRUE} auto-includes the
 phylo-structured diagonal trait-specific \eqn{\boldsymbol\Psi_{phy}}
-companion, folding the paired \code{phylo_latent() + phylo_unique()} into a
-single term (\eqn{\boldsymbol\Sigma_{phy} = \boldsymbol\Lambda
+companion, folding the shared rank-K loadings and the diagonal
+companion into a single term (\eqn{\boldsymbol\Sigma_{phy} = \boldsymbol\Lambda
 \boldsymbol\Lambda^\top \otimes \mathbf{A} + \boldsymbol\Psi_{phy} \otimes
 \mathbf{A}}). The default \code{FALSE} preserves the loadings-only /
 rotation-invariant subset.}
@@ -103,6 +103,6 @@ and multi-trait models for continuous and categorical characters.
 \emph{J. Evol. Biol.} 23: 494-508. \doi{10.1111/j.1420-9101.2009.01915.x}
 }
 \seealso{
-\code{\link[=phylo_scalar]{phylo_scalar()}}, \code{\link[=phylo_unique]{phylo_unique()}}, \code{\link[=phylo_indep]{phylo_indep()}},
+\code{\link[=phylo_scalar]{phylo_scalar()}}, \code{\link[=phylo_indep]{phylo_indep()}},
 \code{\link[=phylo_dep]{phylo_dep()}}, \code{\link[=phylo_rr]{phylo_rr()}} (deprecated alias).
 }

@@ -43,8 +43,8 @@ Founder individuals (both parents unknown) are assumed unrelated
 and non-inbred: \eqn{A_{founder, founder} = 1}.
 
 Users typically don't call \code{pedigree_to_A()} directly -- pass
-\code{pedigree = ped} to an \code{\link[=animal_scalar]{animal_scalar()}} / \code{\link[=animal_unique]{animal_unique()}} /
-\code{\link[=animal_latent]{animal_latent()}} / \code{\link[=animal_indep]{animal_indep()}} / \code{\link[=animal_dep]{animal_dep()}} keyword in
+\code{pedigree = ped} to an \code{\link[=animal_scalar]{animal_scalar()}} / \code{\link[=animal_latent]{animal_latent()}} /
+\code{\link[=animal_indep]{animal_indep()}} / \code{\link[=animal_dep]{animal_dep()}} keyword in
 the formula, and the keyword's parser handles the conversion
 internally. This function is exported as a public helper for users
 who want the matrix for their own diagnostics (e.g. inspection of

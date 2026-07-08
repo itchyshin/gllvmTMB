@@ -51,8 +51,7 @@ with the diagonal \eqn{\boldsymbol\Psi} companion included automatically:
 
 Set \code{unique = FALSE} for the loadings-only subset.
 For a scalar diagonal \eqn{\boldsymbol\Psi} companion shared across traits,
-use \code{common = TRUE}; this replaces the legacy paired
-\code{latent(..., unique = FALSE) + unique(..., common = TRUE)} spelling for
+use \code{common = TRUE}; this replaces the older two-term spelling for
 ordinary intercept-only latent terms.
 }
 \examples{
@@ -72,5 +71,5 @@ extract_Sigma(fit)
 }
 }
 \seealso{
-\code{\link[=unique]{unique()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \link{diag_re}, \code{\link[=extract_Sigma]{extract_Sigma()}}.
+\code{\link[=indep]{indep()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \link{diag_re}, \code{\link[=extract_Sigma]{extract_Sigma()}}.
 }

@@ -69,7 +69,7 @@ block and are ignored. (The unit / unit_obs tiers return \code{NULL} for a
 dep-only fit, as it carries no between/within-unit covariance term.)
 
 For an ordinary individual-level random-regression fit with
-\code{latent(1 + x | unit, d = K)}, \code{unique(1 + x | unit)}, or their long-form
+\code{latent(1 + x | unit, d = K)}, \code{indep(1 + x | unit)}, or their long-form
 equivalents, call with \code{level = "unit_slope"}: the result is the augmented
 \verb{2T x 2T} covariance over trait-specific intercept and slope coefficients,
 with row names \verb{intercept.<trait>} and \verb{slope.<x>.<trait>}. As for
@@ -101,8 +101,7 @@ with a too-small denominator).
 For Gaussian / lognormal / Gamma fits this function emits an advisory note
 when a reduced-rank tier has no Psi component. Use the ordinary
 \code{latent(..., unique = TRUE)} default for
-\eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}; the
-explicit \code{latent() + unique()} spelling remains compatibility syntax only.
+\eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}.
 
 For non-Gaussian families (binomial, Poisson, Gamma) the latent-scale
 residual variance has a closed-form approximation that should be added

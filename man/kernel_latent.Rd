@@ -41,8 +41,8 @@ dense-kernel tier is the phylo-equivalent path:
 \code{kernel_latent(unit, K = A, d = q, unique = TRUE)} carries its
 kernel-structured diagonal \eqn{\boldsymbol\Psi} companion and must match
 \code{phylo_latent(unit, vcv = A, d = q, unique = TRUE)} to less than \code{1e-6}
-for log likelihood and extracted \code{Sigma}. The compatibility spelling
-\code{kernel_latent(..., unique = FALSE) + kernel_unique(...)} remains accepted.
+for log likelihood and extracted \code{Sigma}. The soft-deprecated
+compatibility spelling \code{kernel_latent(..., unique = FALSE) + kernel_unique(...)} remains accepted.
 The first multi-kernel scope (\code{KER-03}) accepts two or more fixed named
 \code{kernel_latent()} tiers over the same grouping levels, each with its own
 \code{K}, loading matrix, and latent field. This Paper 2 first wave remains

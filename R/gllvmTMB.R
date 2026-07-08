@@ -8,28 +8,29 @@
 #' and trait-specific variance. The formula syntax also supports fixed
 #' effects plus covariance-structure keywords organised by
 #' \emph{correlation source} (none / animal / phylo / spatial) and
-#' \emph{mode} (scalar / unique / indep / dep / latent):
+#' \emph{mode} (scalar / indep / dep / latent):
 #'
-#' \tabular{llllll}{
-#'   \strong{source \\ mode} \tab \strong{scalar} \tab \strong{unique} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
-#'   \emph{none}    \tab (omit)             \tab [unique()]         \tab [indep()]         \tab [dep()]         \tab [latent()]         \cr
-#'   \emph{animal}  \tab [animal_scalar()]  \tab [animal_unique()]  \tab [animal_indep()]  \tab [animal_dep()]  \tab [animal_latent()]  \cr
-#'   \emph{phylo}   \tab [phylo_scalar()]   \tab [phylo_unique()]   \tab [phylo_indep()]   \tab [phylo_dep()]   \tab [phylo_latent()]   \cr
-#'   \emph{spatial} \tab [spatial_scalar()] \tab [spatial_unique()] \tab [spatial_indep()] \tab [spatial_dep()] \tab [spatial_latent()] \cr
+#' \tabular{lllll}{
+#'   \strong{source \\ mode} \tab \strong{scalar} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
+#'   \emph{none}    \tab (omit)             \tab [indep()]         \tab [dep()]         \tab [latent()]         \cr
+#'   \emph{animal}  \tab [animal_scalar()]  \tab [animal_indep()]  \tab [animal_dep()]  \tab [animal_latent()]  \cr
+#'   \emph{phylo}   \tab [phylo_scalar()]   \tab [phylo_indep()]   \tab [phylo_dep()]   \tab [phylo_latent()]   \cr
+#'   \emph{spatial} \tab [spatial_scalar()] \tab [spatial_indep()] \tab [spatial_dep()] \tab [spatial_latent()] \cr
 #' }
 #'
-#' The four "quartet" modes (`unique` / `indep` / `dep` / `latent`)
-#' encode covstruct intent under a strict always-paired-vs-always-alone
-#' convention:
+#' The three covariance modes (`indep` / `dep` / `latent`) encode
+#' covstruct intent across traits:
 #'
-#' * `latent + unique` (paired) — the **compatibility decomposition** spelling:
-#'   \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}.
-#'   Ordinary `latent()` now carries \eqn{\boldsymbol\Psi} by default, so new
-#'   standalone diagonal code should use `indep()`; `unique()` remains accepted
-#'   as legacy compatibility syntax.
-#' * `indep` (alone) — the **marginal-only** mode: each trait gets its
-#'   own variance, no cross-trait covariance.
-#' * `dep` (alone) — the **full unstructured** mode: \eqn{\boldsymbol\Sigma}
+#' * `latent` — the **decomposition** mode
+#'   \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}:
+#'   a low-rank shared part plus a diagonal \eqn{\boldsymbol\Psi} companion.
+#'   Ordinary `latent()` carries \eqn{\boldsymbol\Psi} by default; the
+#'   `unique =` argument controls it (`latent(..., unique = FALSE)` for the
+#'   loadings-only subset, `*_latent(..., unique = TRUE)` to fold the
+#'   \eqn{\boldsymbol\Psi} companion into a source-specific term).
+#' * `indep` — the **marginal-only** mode: each trait gets its own
+#'   variance, no cross-trait covariance.
+#' * `dep` — the **full unstructured** mode: \eqn{\boldsymbol\Sigma}
 #'   is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 #'
 #' Plus the supporting [phylo_slope()] / [animal_slope()] (random
@@ -41,7 +42,7 @@
 #'
 #' @param formula A glmmTMB-style formula, e.g.
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
-#'   Fixed effects and any of the 4 x 5 keyword-grid covstructs above are
+#'   Fixed effects and any of the 4 x 4 keyword-grid covstructs above are
 #'   supported (plus [phylo_slope()], [animal_slope()], and [meta_V()]).
 #' @param data A data frame. With an ordinary response LHS such as
 #'   `value ~ ...`, `data` is long: one row per `(unit, trait)`
@@ -65,8 +66,7 @@
 #' @param unit_obs Name of the column holding the **within-unit**
 #'   grouping factor — one level per (unit, replicate) cell — used by
 #'   `latent(0 + trait | unit_obs, ...)` and
-#'   `indep(0 + trait | unit_obs)` for the W-tier covariance. Legacy
-#'   `unique(0 + trait | unit_obs)` remains accepted as compatibility syntax.
+#'   `indep(0 + trait | unit_obs)` for the W-tier covariance.
 #'   Default `"site_species"` (the conventional name in joint species
 #'   distribution modelling; safe for site × species data). For other
 #'   domains pass e.g. `unit_obs = "obs"` for behavioural syndromes.
@@ -105,7 +105,7 @@
 #'   correlation (those stay bound to `cluster` / `coords`). A
 #'   `indep(0 + trait | <cluster2 col>)` term then fits a per-trait
 #'   variance at this second grouping, exactly as `cluster` does at the
-#'   third slot. Legacy `unique()` spelling remains compatibility syntax.
+#'   third slot.
 #'   Example: `cluster = "site"`, `cluster2 = "year"` to fit
 #'   a site variance and a year variance simultaneously. As with the
 #'   other slots, nesting is not enforced (crossed and nested both fit).
@@ -115,7 +115,7 @@
 #' @param species (deprecated) alias for `cluster`. Kept for
 #'   backward compatibility. Use `cluster = ...` in new code.
 #' @param family A `family` object. The multivariate engine
-#'   (formulas with `latent()`, `unique()`, etc.) supports `gaussian()`,
+#'   (formulas with `latent()`, `indep()`, etc.) supports `gaussian()`,
 #'   `binomial()` (logit / probit / cloglog), `poisson()` (log link),
 #'   [ordinal_probit()] (the gllvmTMB-native ordinal threshold family
 #'   with sigma_d = 1 fixed exactly; no delta-method approximation),
@@ -272,13 +272,13 @@
 #' `gllvmTMB()` parses the glmmTMB-style formula, converts wide
 #' [traits()] input to the same internal stacked-trait representation as
 #' explicit long data, and dispatches to the underlying TMB template.
-#' Covariance-structure terms (`latent()`, `unique()`, `propto()`,
+#' Covariance-structure terms (`latent()`, `indep()`, `propto()`,
 #' `equalto()`, `spatial()`) are processed by extending the formula parser
 #' and the TMB template.
 #'
 #' Per the manuscript, when stacking traits one should set
 #' `dispformula = ~ 0` so that no implicit residual variance competes
-#' with structured `unique(0 + trait | …)` terms. `gllvmTMB()` enforces
+#' with structured `indep(0 + trait | …)` terms. `gllvmTMB()` enforces
 #' this internally.
 #'
 #' **Multi-trial binomial**. The TMB engine evaluates `dbinom(y, n_trials, p)`
@@ -329,7 +329,7 @@
 #' counts as residual variance shifts as you add levels to the model.
 #' In a Gaussian fit without a per-row diagonal term, the residual is row-level
 #' noise captured by a single shared `sigma_eps`. Once you add a per-row
-#' `indep(0 + trait | obs)` term (or legacy `unique()` compatibility spelling),
+#' `indep(0 + trait | obs)` term,
 #' the *row-level* residual is now T per-trait random-effect variances and
 #' `sigma_eps` is auto-suppressed to avoid double-counting. If you also add a
 #' site-level diagonal term on top, the row-level term remains the residual and
@@ -340,11 +340,11 @@
 #' Gaussian and lognormal responses have one residual scale parameter,
 #' `sigma_eps`. Ordinary Gamma responses instead carry a per-trait shape
 #' `phi_gamma` (CV = `1 / sqrt(phi_gamma)`). Per-trait residual variances
-#' only appear if you explicitly add a per-row `indep(...)` term or legacy
-#' `unique(...)` compatibility term. The dispatch is automatic:
+#' only appear if you explicitly add a per-row `indep(...)` term.
+#' The dispatch is automatic:
 #'
 #' \describe{
-#'   \item{No per-row `indep` / `unique`, Gaussian/lognormal present}{One
+#'   \item{No per-row `indep`, Gaussian/lognormal present}{One
 #'     shared `sigma_eps` across Gaussian/lognormal rows. *Not* per-trait.}
 #'   \item{No per-row `indep` / `unique`, no Gaussian/lognormal rows}{`sigma_eps`
 #'     is mapped off; the family's intrinsic dispersion handles the residual
@@ -352,19 +352,19 @@
 #'   \item{\code{indep(0 + trait | g)} where `g` has fewer levels than
 #'     rows (e.g. `g = "site"`)}{`sigma_eps` is still estimated as the
 #'     row-level residual; the diagonal term adds a per-trait random
-#'     effect at level `g` on top. Legacy `unique()` spelling is equivalent.}
+#'     effect at level `g` on top.}
 #'   \item{\code{indep(0 + trait | obs)} at the per-row level (one
 #'     level per row), Gaussian/lognormal rows fitted}{`sigma_eps` is
 #'     auto-suppressed (mapped off, fixed at a tiny stabiliser); the
 #'     T per-trait diagonal random effects *are* the residual. A
 #'     one-shot `cli::cli_inform` fires at fit time announcing the
-#'     auto-suppression. Legacy `unique()` spelling is equivalent.}
+#'     auto-suppression.}
 #'   \item{\code{indep(0 + trait | obs)} at the per-row level,
 #'     non-Gaussian or mixed-family fit}{Treated as observation-level
 #'     random effects (OLRE). For Bernoulli traits the OLRE is
 #'     statistically unidentifiable and is mapped off; for hurdle /
 #'     delta families a warning is emitted (see "Per-family-aware OLRE
-#'     selection" below). Legacy `unique()` spelling is equivalent.}
+#'     selection" below).}
 #' }
 #'
 #' Mnemonic: Gaussian/lognormal `sigma_eps` is the default; ordinary Gamma uses
@@ -374,7 +374,7 @@
 #' non-continuous families never carry `sigma_eps` regardless.
 #'
 #' **Per-family-aware OLRE selection.** When
-#' `indep(0 + trait | <unit_obs>)` (or legacy `unique()` spelling) is at
+#' `indep(0 + trait | <unit_obs>)` is at
 #' per-row resolution, i.e. one row per `(trait, unit_obs)` cell, the resulting
 #' per-trait random effects on the linear predictor are an observation-level
 #' random effect (OLRE). The engine now decides per trait what to do with the
@@ -908,7 +908,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'
 #' @param d_B,d_W Latent dimensions for the between-unit and within-unit
 #'   reduced-rank components. Set to a positive integer to enable
-#'   `latent()` / `unique()` covariance structures at the corresponding tier.
+#'   `latent()` / `indep()` covariance structures at the corresponding tier.
 #' @param spde_mode `"per_trait"` (default) fits one independent SPDE field
 #'   per trait when a `spatial()` term is present; `"shared"` fits one shared
 #'   SPDE field with trait-specific scalar loadings.
@@ -947,7 +947,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   `list(method = NULL, jitter.sd = 0)` keeps the historical starts.
 #' @param start_from Optional fitted `gllvmTMB` object, usually a simpler
 #'   model such as one `latent()` tier or an independent diagonal model
-#'   (`indep()`, with legacy `unique()` compatibility). Any estimated TMB
+#'   (`indep()`). Any estimated TMB
 #'   parameters with shapes matching the current model are copied into the
 #'   starting parameter list before optimisation.
 #'   This implements the "fit simpler, then use it as starting values"

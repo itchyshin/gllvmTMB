@@ -81,5 +81,5 @@ fit <- gllvmTMB(
 }
 \seealso{
 \code{\link[=animal_scalar]{animal_scalar()}}, \code{\link[=animal_indep]{animal_indep()}}, \code{\link[=animal_latent]{animal_latent()}},
-\code{\link[=animal_dep]{animal_dep()}}, \code{\link[=phylo_unique]{phylo_unique()}}.
+\code{\link[=animal_dep]{animal_dep()}}, \code{\link[=phylo_indep]{phylo_indep()}}.
 }

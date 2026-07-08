@@ -36,8 +36,7 @@ knitr::opts_chunk$set(
 >
 > The component keywords shown below have mixed validation status in the
 > [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md):
-> ordinary default-`latent()` covariance is `covered` (FG-04..FG-06), explicit
-> `unique()` remains compatibility syntax where shown, `phylo_*` is
+> ordinary default-`latent()` covariance is `covered` (FG-04..FG-06), `phylo_*` is
 > `covered` for the main decomposition rows (FG-12 / PHY-01..PHY-03),
 > while the `spatial_*` family rollup and `meta_V` remain `partial` in the
 > current validation depth (FG-13 and FG-14 / MET-01). Spatial scalar,
@@ -221,7 +220,7 @@ with
 
 Ordinary `latent()` includes its diagonal $\boldsymbol{\Psi}$ companion by
 default, so the between-site and within-site decompositions below do not need
-an explicit `unique()` term. Use `latent(..., unique = FALSE)` only for the
+a separate diagonal term. Use `latent(..., unique = FALSE)` only for the
 older no-Psi subset.
 
 ```{r fit-m1}
@@ -273,8 +272,7 @@ Three things to watch for in any core-model fit, each a separate identifiability
 > per (`site`, `species`, `trait`) triple), only the *sum*
 > $\boldsymbol{\Sigma}_W^{*} = \boldsymbol{\Sigma}_W + \mathrm{diag}(\sigma^2_\delta)$
 > is identified. The engine handles this by auto-suppressing
-> `sigma_eps` to a tiny floor whenever a per-row `indep()` term (or
-> legacy `unique()` compatibility spelling) is
+> `sigma_eps` to a tiny floor whenever a per-row `indep()` term is
 > present (you'll see a one-shot inform when the core model fits).
 > Replication within cell -- multiple individuals of the same
 > species at the same site, or repeated visits -- is the design

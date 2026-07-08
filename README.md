@@ -39,11 +39,10 @@ response-specific variation. Read the equation from left to right:
 | `Lambda Lambda^T` | `extract_Sigma(fit, part = "shared")` | Shared axes: traits that rise and fall together across units. |
 | `Psi` | ordinary `latent(...)` by default | Trait-specific variance left over after the shared axes. Each diagonal entry is one `psi_t`. |
 
-Use `latent(...)` for this decomposed model. Use `indep(...)` for a
-standalone diagonal baseline. `unique()` and the source-specific
-`*_unique()` functions are soft-deprecated compatibility syntax for
-older explicit diagonal-Psi formulas; they still work, but new examples
-should teach `latent()` defaults and `indep()` baselines instead.
+Use `latent(...)` for this decomposed model, and `indep(...)` for a
+standalone diagonal baseline. (The older `unique()` / `*_unique()`
+keyword spelling still parses but is soft-deprecated; new code uses
+`indep()` or the `unique =` argument on `latent()`.)
 
 Most readers will start from a wide data frame: one row per unit, one
 column per trait. Use that shape directly with the `traits(...)` formula
@@ -222,9 +221,7 @@ where `Lambda` is the shared-axis loading matrix (set by
 factor-analysis / SEM convention) is the diagonal matrix of
 trait-specific residual variance carried by ordinary `latent()` by
 default; the scalar `psi_t` is the entry for trait `t`.
-`latent(..., unique = FALSE)` requests the old no-residual subset.
-Explicit `latent() + unique()` formulas remain soft-deprecated
-compatibility syntax for older examples.
+`latent(..., unique = FALSE)` requests the loadings-only subset.
 
 ## Current Status
 
@@ -240,7 +237,7 @@ and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 | Missing predictors | Covered for one explicitly modelled `mi()` predictor in the shipped v1 slices: Gaussian fixed, grouped, phylogenetic, binary, ordered, and unordered fixed-effect routes. Multiple `mi()` terms, non-Gaussian bounded/count predictors, and structured discrete predictor models remain planned (MIS-25..MIS-32). |
 | First worked model | Gaussian `latent()` with its default `Psi` companion is the safest public decomposition example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
 | Latent-rank choice | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) compares Gaussian ordinary `latent()` candidate ranks with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows. These criteria help route model choice within a fixed candidate set; they do not prove the biological rank or replace diagnostics. |
-| Formula keywords | The full 4 x 5 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
+| Formula keywords | The full 4 x 4 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |
 | Fitted diagnostics | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) shows the first post-fit triage. `check_gllvmTMB()` reports numerical fit health (DIA-08 / DIA-10). `predictive_check()`, `residuals()`, and `diagnostic_table()` provide fitted-model response diagnostics and report-ready diagnostic tables for the scoped Gaussian, Poisson, and NB2 paths (DIA-11 / DIA-12 / DIA-13). These are diagnostic displays, not posterior predictive checks or interval calibration. |
 | Advanced examples | Ordinary individual-level Gaussian reaction norms now have a buildable internal behavioural-syndrome draft with long and wide examples, diagnostics, and recovery figures; Gaussian `latent(1 + x | unit, d = K)` carries its diagonal `Psi` companion by default, while non-Gaussian augmented diagonal `Psi` remains guarded. Structured random slopes, cross-lineage coevolution, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries and stay out of the first-click public model guide until their reader paths are explicitly promoted. |
@@ -259,11 +256,10 @@ belongs in `drmTMB`.
   through the single `gllvmTMB()` entry point. New examples and
   articles should use `traits(...)`; removal is a later API-change
   decision while the export remains live.
-- `unique()` and source-specific `*_unique()` functions remain
-  exported as compatibility syntax for explicit diagonal-Psi formulas.
-  New standalone diagonal examples should use `indep()` /
-  source-specific `*_indep()`, and ordinary decomposed examples should
-  rely on the default diagonal `Psi` carried by `latent()`.
+- The `unique()` / `*_unique()` keyword spelling is soft-deprecated
+  (still exported for old formulas). Use `indep()` / `*_indep()` for a
+  standalone diagonal, and the `unique =` argument on `latent()` /
+  `*_latent()` for the diagonal `Psi` companion.
 
 **Current boundaries and deferred work** (named here so user-facing
 prose does not overpromise):
@@ -284,8 +280,9 @@ prose does not overpromise):
   `latent(1 + x | unit, d = K)` / long-form equivalent is implemented under
   RE-12 and extracts with
   `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`.
-  Explicit augmented `unique(1 + x | unit)` remains Gaussian-only compatibility
-  syntax, while the non-Gaussian ordinary latent path has smoke evidence only
+  The augmented ordinary diagonal-`Psi` slope
+  (`latent(1 + x | unit, unique = TRUE)`) is Gaussian-only, while the
+  non-Gaussian ordinary latent path has smoke evidence only
   and stays low-rank-only. One structured random slope
   (`s = 1`) is covered
   across the phylogenetic and spatial grid for the core families. Gaussian
@@ -354,7 +351,7 @@ package author, written against the TMB API.
   2.0) is the established multivariate GLLVM / ordination package,
   with variational, extended-variational, and Laplace approximation
   paths plus a matrix-in API; `gllvmTMB` is the TMB-Laplace
-  alternative with stacked-trait formula grammar, the 4 x 5 keyword
+  alternative with stacked-trait formula grammar, the 4 x 4 keyword
   grid, and issue-tracked validation for its phylogenetic / spatial
   covariance paths.
 - `MCMCglmm` and `brms` are Bayesian alternatives for multivariate

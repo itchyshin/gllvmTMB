@@ -39,7 +39,7 @@ reports K - 1 cutpoints as \verb{Intercept[1..K-1]}.
 \examples{
 \dontrun{
 fit <- gllvmTMB(
-  value ~ 0 + trait + phylo_unique(species, tree = tree),
+  value ~ 0 + trait + phylo_indep(species, tree = tree),
   data    = ordinal_dat,
   trait   = "trait",
   unit    = "individual",

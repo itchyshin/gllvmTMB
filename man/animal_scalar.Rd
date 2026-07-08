@@ -70,7 +70,7 @@ fit <- gllvmTMB(
 
 }
 \seealso{
-\code{\link[=animal_unique]{animal_unique()}}, \code{\link[=animal_indep]{animal_indep()}}, \code{\link[=animal_latent]{animal_latent()}},
+\code{\link[=animal_indep]{animal_indep()}}, \code{\link[=animal_latent]{animal_latent()}},
 \code{\link[=animal_dep]{animal_dep()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=phylo_scalar]{phylo_scalar()}},
 \code{\link[=meta_V]{meta_V()}} (sampling variance, distinct from relatedness).
 }

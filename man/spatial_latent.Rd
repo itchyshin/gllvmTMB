@@ -34,7 +34,7 @@ Canonical name for the reduced-rank spatial random effect: K shared
 SPDE fields drive all T traits via a T x K loading matrix
 \eqn{\boldsymbol\Lambda_{\mathrm{spa}}}. The spatial analogue of
 \code{\link[=phylo_latent]{phylo_latent()}} and the third cell of the spatial column of the API
-grid (alongside \code{\link[=spatial_scalar]{spatial_scalar()}} and \code{\link[=spatial_unique]{spatial_unique()}}).
+grid (alongside \code{\link[=spatial_scalar]{spatial_scalar()}} and \code{\link[=spatial_indep]{spatial_indep()}}).
 }
 \details{
 Internally this rewrites to \code{spde(form, .spatial_latent = TRUE, d = K)}
@@ -44,9 +44,9 @@ and toggles the TMB template's \code{spde_lv_k} switch to K. With
 \eqn{\boldsymbol\Sigma_{\mathrm{spa}} =
 \boldsymbol\Lambda_{\mathrm{spa}}\boldsymbol\Lambda_{\mathrm{spa}}^\top +
 \boldsymbol\Psi_{\mathrm{spa}}}. The default \code{unique = FALSE} preserves
-the older low-rank-only path. Legacy
-\code{spatial_latent(...) + spatial_unique(...)} is accepted as compatibility
-syntax for the same total-covariance decomposition.
+the older low-rank-only path. The earlier two-term companion spelling
+is accepted as compatibility syntax for the same total-covariance
+decomposition.
 
 The C++ kernel
 then reads a packed lower-triangular \code{Lambda_spde} and K shared spatial
@@ -64,7 +64,7 @@ or post-hoc rotate via \code{\link[=rotate_loadings]{rotate_loadings()}}.
 \section{Formula orientation}{
 
 The canonical orientation is \code{0 + trait | coords} (parallel to
-\code{\link[=latent]{latent()}} / \code{\link[=unique]{unique()}} and glmmTMB's spatial keywords). The
+\code{\link[=latent]{latent()}} / \code{\link[=indep]{indep()}} and glmmTMB's spatial keywords). The
 earlier orientation \code{coords | trait} is accepted as a deprecated
 alias and emits a one-shot \code{lifecycle::deprecate_warn()} per session
 (introduced at gllvmTMB 0.1.4).
@@ -87,5 +87,5 @@ alias and emits a one-shot \code{lifecycle::deprecate_warn()} per session
 }
 }
 \seealso{
-\code{\link[=spatial_unique]{spatial_unique()}}, \code{\link[=spatial_scalar]{spatial_scalar()}}, \code{\link[=phylo_latent]{phylo_latent()}}.
+\code{\link[=spatial_indep]{spatial_indep()}}, \code{\link[=spatial_scalar]{spatial_scalar()}}, \code{\link[=phylo_latent]{phylo_latent()}}.
 }

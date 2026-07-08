@@ -34,7 +34,7 @@ the reduced-rank between-unit component. Set to \code{NULL} (default) to omit.}
 
 \item{Lambda_W}{Optional \code{n_traits} x \code{d_W} within-unit loading matrix for
 the reduced-rank observation-level component (matching a default
-\code{latent()} term, or an explicit compatibility \code{unique()} term, on the
+\code{latent()} term, or an explicit \code{latent(unique = TRUE)} term, on the
 within-unit grouping). Set to \code{NULL} (default) to omit.}
 
 \item{psi_B}{Optional length-\code{n_traits} vector of trait-specific

@@ -24,7 +24,7 @@ compatibility.}
 
 \item{method}{One of \code{"profile"} (default), \code{"wald"}, \code{"bootstrap"}.
 Only used when \code{ci = TRUE}. For 2-component decompositions
-(phylo_unique vs species-level diagonal component only) profile uses a linear
+(a phylo diagonal vs species-level diagonal component only) profile uses a linear
 contrast; for 3-component decompositions (PGLLVM with
 phylo_latent plus a species-level latent decomposition with Psi) the full
 profile path is not yet implemented and falls back to numerical
@@ -55,8 +55,8 @@ Interpretation:
 \describe{
 \item{\eqn{H_t^2}}{phylogenetic signal — proportion of between-
 species latent variance attributable to phylogenetically structured
-variation ("evolutionary conservatism"). When the model includes
-both \code{phylo_latent()} and \code{phylo_unique()}, \eqn{\boldsymbol\Sigma_\text{phy}}
+variation ("evolutionary conservatism"). When the model uses the folded
+\code{phylo_latent(..., unique = TRUE)} decomposition, \eqn{\boldsymbol\Sigma_\text{phy}}
 is the sum \eqn{\boldsymbol\Lambda_\text{phy} \boldsymbol\Lambda_\text{phy}^{\!\top} + \boldsymbol\Psi_\text{phy}}
 and \eqn{H_t^2} reflects the \emph{total} phylogenetic variance.}
 \item{\eqn{C^2_{\text{non},t}}}{non-phylogenetic communality —
@@ -66,9 +66,10 @@ axes ("coordinated tip-level lability" across traits).}
 by any shared axis ("relative modularity").}
 }
 
-Requires \code{phylo_latent()} (and optionally \code{phylo_unique()}) plus
-species-level \code{latent()} AND \code{unique()} in the fit. If \code{unique()} at
-the species tier is missing, \eqn{\psi_t = 0} for all traits and a
+Requires \code{phylo_latent()} (optionally with \code{unique = TRUE} for a
+phylogenetic Psi) plus a species-level \code{latent()} term, which carries its
+diagonal Psi companion by default. If the species-tier Psi is absent (a
+\code{latent(..., unique = FALSE)} subset), \eqn{\psi_t = 0} for all traits and a
 \code{cli::cli_inform()} advisory fires.
 }
 \examples{

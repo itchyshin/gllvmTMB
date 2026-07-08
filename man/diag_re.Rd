@@ -225,7 +225,7 @@ residual within-individual phenotypic variation.
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}} — pull \eqn{\boldsymbol\Sigma},
 \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}, or
-\eqn{\boldsymbol\Psi} from the fit; \code{\link[=phylo_scalar]{phylo_scalar()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=spatial_unique]{spatial_unique()}},
+\eqn{\boldsymbol\Psi} from the fit; \code{\link[=phylo_scalar]{phylo_scalar()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=spatial_indep]{spatial_indep()}},
 \code{\link[=re_int]{re_int()}}.
 }
 \keyword{internal}

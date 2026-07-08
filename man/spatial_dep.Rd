@@ -42,10 +42,10 @@ Same convention as the rest of the \verb{spatial_*} keywords: the
 canonical orientation is \code{0 + trait | coords} (LHS = trait factor,
 RHS = the \code{coords} placeholder). \code{spatial_dep} is born with this
 orientation; the legacy \code{coords | trait} form is not accepted.
-\subsection{Mutual exclusion with \code{spatial_latent()} / \code{spatial_unique()} / \code{spatial_indep()}}{
+\subsection{Mutual exclusion with \code{spatial_latent()} / \code{spatial_indep()}}{
 
 Combining \code{spatial_dep(0 + trait | coords)} with \code{spatial_latent} is
-\strong{over-parameterised}; combining with \code{spatial_unique} or
+\strong{over-parameterised}; combining with
 \code{spatial_indep} is \strong{redundant}. The parser raises
 \code{cli::cli_abort()} in any of these cases.
 }
@@ -67,6 +67,6 @@ Combining \code{spatial_dep(0 + trait | coords)} with \code{spatial_latent} is
 }
 }
 \seealso{
-\code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spatial_unique]{spatial_unique()}}, \code{\link[=spatial_indep]{spatial_indep()}},
+\code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spatial_indep]{spatial_indep()}},
 \code{\link[=dep]{dep()}}, \code{\link[=phylo_dep]{phylo_dep()}}, \code{\link[=extract_Sigma]{extract_Sigma()}}.
 }

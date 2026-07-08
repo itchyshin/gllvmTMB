@@ -24,8 +24,7 @@ A formula marker; never evaluated.
 }
 \description{
 Canonical name for \strong{T per-trait spatial fields coupled by the SPDE
-precision matrix \eqn{\mathbf Q}}. Mathematically identical to
-\code{spatial_unique(0 + trait | coords)} standalone; standalone =
+precision matrix \eqn{\mathbf Q}}; standalone =
 T univariate spatial fits stacked.
 }
 \details{
@@ -70,6 +69,6 @@ with \code{spatial_unique} is redundant and also errors.
 }
 }
 \seealso{
-\code{\link[=spatial_unique]{spatial_unique()}}, \code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=indep]{indep()}},
+\code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=indep]{indep()}},
 \code{\link[=phylo_indep]{phylo_indep()}}, \code{\link[=extract_Sigma]{extract_Sigma()}}.
 }

@@ -19,8 +19,7 @@
 #' within-unit residual covariance \eqn{\boldsymbol{\Psi}_W}.
 #'
 #' The function detects whether the fit includes a genuine observation-level
-#' random effect: normally a per-row `indep(0 + trait | <obs-level>)` term,
-#' with the legacy `unique()` spelling still accepted as compatibility syntax.
+#' random effect: normally a per-row `indep(0 + trait | <obs-level>)` term.
 #' When every (trait, obs) cell has one row per observation level per trait,
 #' `sigma2_e` is populated; otherwise it is zero.
 #'
@@ -160,8 +159,8 @@ extract_residual_split <- function(fit) {
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param tiers Character vector. Subset of `c("B", "W", "phy")`. Default
 #'   `NULL` auto-detects: includes `"phy"` if `phylo_latent()` is in the
-#'   formula, `"B"` if any `latent()`/`unique()` at `unit`, `"W"` if any
-#'   `latent()`/`unique()` at `unit_obs`.
+#'   formula, `"B"` if any `latent()`/`indep()` at `unit`, `"W"` if any
+#'   `latent()`/`indep()` at `unit_obs`.
 #' @param link_residual For non-Gaussian fits: `"auto"` (default) adds a
 #'   per-trait link-specific implicit residual to the diagonal of the
 #'   summed `Omega` (once, not per tier — see "Family-aware link residuals"
@@ -317,8 +316,8 @@ extract_Omega <- function(
 #' \describe{
 #'   \item{\eqn{H_t^2}}{phylogenetic signal — proportion of between-
 #'     species latent variance attributable to phylogenetically structured
-#'     variation ("evolutionary conservatism"). When the model includes
-#'     both `phylo_latent()` and `phylo_unique()`, \eqn{\boldsymbol\Sigma_\text{phy}}
+#'     variation ("evolutionary conservatism"). When the model uses the folded
+#'     `phylo_latent(..., unique = TRUE)` decomposition, \eqn{\boldsymbol\Sigma_\text{phy}}
 #'     is the sum \eqn{\boldsymbol\Lambda_\text{phy} \boldsymbol\Lambda_\text{phy}^{\!\top} + \boldsymbol\Psi_\text{phy}}
 #'     and \eqn{H_t^2} reflects the *total* phylogenetic variance.}
 #'   \item{\eqn{C^2_{\text{non},t}}}{non-phylogenetic communality —
@@ -328,9 +327,10 @@ extract_Omega <- function(
 #'     by any shared axis ("relative modularity").}
 #' }
 #'
-#' Requires `phylo_latent()` (and optionally `phylo_unique()`) plus
-#' species-level `latent()` AND `unique()` in the fit. If `unique()` at
-#' the species tier is missing, \eqn{\psi_t = 0} for all traits and a
+#' Requires `phylo_latent()` (optionally with `unique = TRUE` for a
+#' phylogenetic Psi) plus a species-level `latent()` term, which carries its
+#' diagonal Psi companion by default. If the species-tier Psi is absent (a
+#' `latent(..., unique = FALSE)` subset), \eqn{\psi_t = 0} for all traits and a
 #' `cli::cli_inform()` advisory fires.
 #'
 #' @param fit A fit returned by [gllvmTMB()] with a `phylo_latent()` term.
@@ -340,7 +340,7 @@ extract_Omega <- function(
 #' @param conf_level Confidence level when `ci = TRUE`. Default 0.95.
 #' @param method One of `"profile"` (default), `"wald"`, `"bootstrap"`.
 #'   Only used when `ci = TRUE`. For 2-component decompositions
-#'   (phylo_unique vs species-level diagonal component only) profile uses a linear
+#'   (a phylo diagonal vs species-level diagonal component only) profile uses a linear
 #'   contrast; for 3-component decompositions (PGLLVM with
 #'   phylo_latent plus a species-level latent decomposition with Psi) the full
 #'   profile path is not yet implemented and falls back to numerical
@@ -385,7 +385,7 @@ extract_phylo_signal <- function(
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   if (!has_phy) {
     cli::cli_abort(c(
-      "Fit has no {.code phylo_latent()} or {.code phylo_unique()} term.",
+      "Fit has no {.code phylo_latent()} term.",
       "i" = "Phylogenetic-signal proportions require a phylogenetic component."
     ))
   }

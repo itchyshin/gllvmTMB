@@ -59,8 +59,8 @@ objects, known truth, and readouts:
 | Question | Model object | Code section | Readout |
 |---|---|---|---|
 | What fraction of phenotypic variance is additive genetic? | `animal_scalar(id, pedigree = ped)` | `fit1`, `h1` | $V_A$, $V_R$, and $h^2$ against simulation truth |
-| Is there a genetic covariance between two traits? | `animal_latent(id, d = 1)` + `animal_unique(id)` | `fit2`, `G2` | genetic covariance and correlation table against `G_true` |
-| Can a low-rank genetic axis summarize three traits? | rank-1 `animal_latent()` + explicit genetic `animal_unique()` | `fit3`, `G3`, `G3-correlation` | fitted `Sigma_phy`, loadings, and genetic-correlation heatmap |
+| Is there a genetic covariance between two traits? | `animal_latent(id, d = 1, unique = TRUE)` | `fit2`, `G2` | genetic covariance and correlation table against `G_true` |
+| Can a low-rank genetic axis summarize three traits? | rank-1 `animal_latent(unique = TRUE)` | `fit3`, `G3`, `G3-correlation` | fitted `Sigma_phy`, loadings, and genetic-correlation heatmap |
 | Is the slope of a reaction norm heritable? | `animal_scalar()` + `animal_slope(x | id)` | `rr-fit`, `rr-recovery`, `rr-equiv` | slope variance, BLUP/truth correlation, and animal/phylo equivalence |
 | Is the fitted model numerically usable? | `check_gllvmTMB()` through `diagnostic_table()` | `diagnostic-table` | optimizer, gradient, `sdreport`, and Hessian rows |
 
@@ -72,9 +72,9 @@ rows are multi-matrix animal models and cross-package agreement
 (`ANI-09`, `ANI-10`): this article shows an idiom and local simulated
 truth, not MCMCglmm/WOMBAT/ASReml agreement. PLANNED or guarded rows
 include richer trait-specific reaction-norm LHS forms and broader
-non-Gaussian calibration. `animal_unique()` is used here only as the
-source-specific explicit genetic `Psi` term in paired decompositions;
-standalone diagonal teaching uses `animal_indep()`.
+non-Gaussian calibration. The genetic diagonal `Psi` is carried by the
+folded `animal_latent(..., unique = TRUE)`; standalone diagonal teaching
+uses `animal_indep()`.
 
 ## Variance partition
 
@@ -128,8 +128,7 @@ $$
 
 `gllvmTMB` estimates $\boldsymbol G$ either as a full unstructured
 matrix (`animal_dep()`), per-trait independent diagonal entries
-(`animal_indep()`; the older `animal_unique()` spelling remains
-soft-deprecated compatibility syntax), or as a reduced-rank factor-analytic
+(`animal_indep()`), or as a reduced-rank factor-analytic
 parameterisation $\boldsymbol G \approx \boldsymbol\Lambda
 \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
 (`animal_latent(..., unique = TRUE)`; omit `unique = TRUE` only for the
@@ -602,19 +601,20 @@ max(abs(as.numeric(fit_animal$opt$par) - as.numeric(fit_phylo$opt$par)))
 This single-shared-variance slope is the validated heritable-slope
 form. The richer **augmented** reaction-norm models also fit: the
 parser now routes an augmented `1 + x | id` left-hand side through the
-`animal_*()` keywords, with the soft-deprecated compatibility spelling
-`animal_unique(1 + x | id)` driving the correlated $2 \times 2$
-(intercept, slope) genetic engine (the
-intercept-slope correlation estimated) and `animal_indep(1 + x | id)`
+`animal_*()` keywords, with the folded
+`animal_latent(1 + x | id, unique = TRUE)` estimating the correlated
+genetic covariance `Sigma = Lambda Lambda^T + Psi` over the
+(intercept, slope) coefficients (the intercept-slope correlation
+estimated) and `animal_indep(1 + x | id)`
 the diagonal variant (correlation pinned to 0). Both are
-byte-equivalent to the corresponding soft-deprecated compatibility
-`phylo_unique` / first-line `phylo_indep`
+byte-equivalent to the corresponding folded
+`phylo_latent(unique = TRUE)` / first-line `phylo_indep`
 augmented fit with the relatedness matrix supplied as `vcv = A`, and
-`extract_Sigma(fit, level = "phy")` surfaces the assembled $2 \times 2$
-genetic covariance for the correlated `animal_unique(1 + x | id)` fit.
-The trait-specific and reduced-rank slope structures
-(`animal_dep()` / `animal_latent()` and the trait-augmented
-`(0 + trait + trait:x | id)` left-hand side) remain a follow-up (see
+`extract_Sigma(fit, level = "phy")` surfaces the assembled
+genetic covariance for the correlated
+`animal_latent(1 + x | id, unique = TRUE)` fit.
+The full-unstructured `animal_dep()` slope and the trait-augmented
+`(0 + trait + trait:x | id)` left-hand side remain a follow-up (see
 [What's not yet supported](#whats-not-yet-supported)).
 
 ## Fit-health diagnostics
@@ -715,19 +715,19 @@ this:
   supported and validated ([Tutorial 4](#tutorial-4-heritable-reaction-norms-random-regression),
   register row **ANI-06**). The augmented intercept+slope forms also
   now route through the `animal_*()` keywords and **fit**:
-  the soft-deprecated compatibility spelling
-  `animal_unique(1 + x | id)` drives the correlated $2 \times 2$
-  (intercept, slope) genetic engine and `animal_indep(1 + x | id)` the
-  diagonal variant, both byte-equivalent to the corresponding
-  soft-deprecated compatibility `phylo_unique` / first-line
+  the folded
+  `animal_latent(1 + x | id, unique = TRUE)` estimates the correlated
+  genetic covariance `Sigma = Lambda Lambda^T + Psi` over the
+  (intercept, slope) coefficients and `animal_indep(1 + x | id)` the
+  diagonal variant, both byte-equivalent to the corresponding folded
+  `phylo_latent(unique = TRUE)` / first-line
   `phylo_indep` augmented fit with `vcv = A`.
   `extract_Sigma(fit, level = "phy")` now returns the assembled
-  $2 \times 2$ genetic covariance for the correlated
-  `animal_unique(1 + x | id)` fit (register row **ANI-11**). The
-  remaining follow-up is the trait-specific and reduced-rank slope
-  structures (`animal_dep()` /
-  `animal_latent()` and the trait-augmented
-  `(0 + trait + trait:x | id)` left-hand side; Meyer & Hill 1997),
+  genetic covariance for the correlated
+  `animal_latent(1 + x | id, unique = TRUE)` fit (register row **ANI-11**). The
+  remaining follow-up is the full-unstructured `animal_dep()` slope
+  and the trait-augmented
+  `(0 + trait + trait:x | id)` left-hand side (Meyer & Hill 1997),
   whose dedicated engine paths remain a v0.3.0 follow-up.
 
 For these post-v0.2.0 needs the workhorse alternatives are

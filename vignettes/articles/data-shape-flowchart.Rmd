@@ -211,6 +211,6 @@ Real data often fits more than one branch. Some examples:
   decision tree (this page is the data-shape-first companion).
 - [gllvmTMB vocabulary](gllvm-vocabulary.html) -- plain-English
   glossary for the terms used in each branch.
-- [API keyword grid](api-keyword-grid.html) -- the 4x5 covariance
+- [API keyword grid](api-keyword-grid.html) -- the 4x4 covariance
   keyword reference (animal · phylo · spatial · none × scalar ·
-  unique · indep · dep · latent).
+  indep · dep · latent).

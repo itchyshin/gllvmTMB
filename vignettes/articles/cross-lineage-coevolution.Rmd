@@ -78,8 +78,7 @@ without calibrated intervals. The article therefore describes the
 two-component Paper 2 estimand, but still teaches only a fixed-kernel,
 point-estimate workflow. The current Paper 2 first-wave syntax is latent-only
 (the folded default estimates both `Lambda Lambda^T` and the diagonal `Psi`
-at the named kernel tier); `kernel_unique()` remains soft-deprecated
-compatibility syntax for older explicit-Psi fixtures and equivalence tests.
+at the named kernel tier).
 **PLANNED**, multiple simultaneous kernel tiers, in-engine `rho` estimation,
 calibrated intervals, module uncertainty, rank calibration, formal null
 thresholds, and broader recovery grids remain later Design 65 work.
@@ -128,7 +127,7 @@ K_{HP}^{T} & A_P
 = (\Lambda\Lambda^{T}) \otimes K^*.
 $$
 
-Older explicit-Psi compatibility fits add a diagonal `kernel_unique()` term at
+Older explicit-Psi compatibility fits added a separate diagonal companion at
 the same named tier. The current article teaches the latent-only first wave,
 because the Paper 2 multi-kernel path deliberately defers explicit
 kernel-level `Psi`.

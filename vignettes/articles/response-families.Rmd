@@ -54,7 +54,7 @@ simulation check say otherwise.
 |---|---|---|---|---|
 | continuous, unbounded | `gaussian()` | identity | covered (FAM-01) | Default family. |
 | binary or binomial trials | `binomial()` | logit, probit, cloglog | covered (FAM-02--FAM-04) | Use `cbind(success, failure)` or `weights` for multi-trial binomial data. |
-| counts | `poisson()` | log | covered (FAM-06) | No dispersion parameter; add an observation-level `indep()` diagonal term only when that is identifiable. Legacy `unique()` spelling remains compatibility syntax. |
+| counts | `poisson()` | log | covered (FAM-06) | No dispersion parameter; add an observation-level `indep()` diagonal term only when that is identifiable. |
 | positive continuous, right-skewed | `lognormal()` | log | partial (FAM-11) | Use only when the response is strictly positive. |
 | positive continuous, constant CV | `Gamma(link = "log")` | log | partial (FAM-09) | Base R `Gamma()`, with log link in the engine. |
 | overdispersed counts | `nbinom2()` | log | covered (FAM-08) | NB2 variance grows quadratically with the mean. |
@@ -69,8 +69,7 @@ simulation check say otherwise.
 | ordered categories with `K >= 3` | `ordinal_probit()` | probit | covered (FAM-14); article still internal | Threshold model with latent residual variance fixed at 1; the ordinal worked article is under audit for extractor depth, intervals, and public placement. |
 
 Use this table as a likelihood lookup. For covariance keywords, see
-[Formula keyword grid](api-keyword-grid.html). In that grid, `unique()`
-remains compatibility/external-Psi syntax (`FG-05`) and `indep()` is the
+[Formula keyword grid](api-keyword-grid.html). In that grid, `indep()` is the
 documentary standalone diagonal spelling (`FG-07`). Binary species,
 mixed-family, and other non-Gaussian worked examples are under audit until
 their example objects, diagnostics, and validation caveats are ready.
@@ -111,8 +110,7 @@ another supported likelihood. The covariance keyword grammar stays
 the same, but the diagonal keyword choice should still match the
 model interpretation: ordinary `latent()` already includes the diagonal
 Psi component by default; use `indep()` for standalone marginal diagonal tiers
-and identifiable observation-level random effects. Use `unique()` only as
-compatibility syntax.
+and identifiable observation-level random effects.
 
 ## Mixed-Family Fits
 

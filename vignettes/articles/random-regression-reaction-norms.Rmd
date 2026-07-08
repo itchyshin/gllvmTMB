@@ -70,10 +70,9 @@ RE-12 non-Gaussian augmented path, calibrated interval coverage for derived
 slope and repeatability summaries (`CI-08`, `CI-10`), and model-choice
 evidence for when the augmented reaction-norm model should replace a simpler
 between/within model. PLANNED or guarded rows include non-Gaussian augmented
-diagonal `Psi` support and delta/hurdle-family extensions. `unique()` appears
-only in the deliberately failing compatibility-boundary chunk; the fitted
+diagonal `Psi` support and delta/hurdle-family extensions. The fitted
 Gaussian examples use default `latent()` with its diagonal `Psi_B,aug`
-companion.
+companion; the non-Gaussian boundary is described in the closing section.
 
 ## Setup
 
@@ -167,10 +166,9 @@ within the same repeated measurement.
 The same model can be fitted from long or wide data. The long form is
 canonical because it makes the `(individual, session_id, trait)` rows
 explicit. The wide `traits(...)` form is the compact equivalent for
-readers whose data already have one row per repeated session. The
-augmented random-regression diagonal still uses the explicit ordinary
-`unique()` compatibility spelling; this is a guarded slope-specific
-path, not the first-line syntax for ordinary `latent()` examples.
+readers whose data already have one row per repeated session. For
+Gaussian fits the augmented random-regression diagonal `Psi` companion
+is carried by default by `latent(1 + x | unit)`.
 
 ```{r fit}
 rr$formula_long
@@ -517,34 +515,32 @@ differences at each temperature value?
 
 ## Current non-Gaussian boundary
 
-The ordinary augmented `latent()` random-regression path in
-this article is Gaussian. The low-rank augmented `latent()` path can
-currently fit ordinary non-Gaussian random slopes in a smoke-test
-regime, but adding the augmented diagonal `unique()` component is still
-guarded for non-Gaussian families. Here `unique()` is the
-soft-deprecated explicit-Psi compatibility spelling used to demonstrate
-the guard; it is not a first-line example.
+The augmented `latent()` random-regression path in this article is
+Gaussian. For Gaussian fits, `latent(1 + x | unit)` carries the
+augmented diagonal `Psi` companion by default (its `unique = TRUE`
+default). The low-rank augmented `latent()` path can also fit ordinary
+non-Gaussian random slopes in a smoke-test regime, but the augmented
+diagonal `Psi` companion is currently implemented for **Gaussian
+responses only**.
+
+For a non-Gaussian reaction-norm analysis today, fit the low-rank
+augmented `latent()` part explicitly with `unique = FALSE` and treat it
+as early evidence:
 
 ```{r nongaussian-boundary, eval = FALSE}
-# This intentionally errors today; unique() is the compatibility spelling
-# being guarded here.
 gllvmTMB(
   value ~ 0 + trait + (0 + trait):temperature +
-    latent(0 + trait + (0 + trait):temperature | individual, d = 1) +
-    unique(0 + trait + (0 + trait):temperature | individual),
+    latent(0 + trait + (0 + trait):temperature | individual,
+           d = 1, unique = FALSE),
   data = count_data_long,
   trait = "trait",
   unit = "individual",
   unit_obs = "session_id",
   family = poisson()
 )
-#> Error: Augmented ordinary diagonal-compatibility random-regression slopes
-#> are currently implemented for Gaussian responses only.
 ```
 
-For a non-Gaussian reaction-norm analysis today, either fit the
-augmented `latent()` part without `unique()` and treat it as early
-evidence, or stay with the established non-slope ordinary `latent()`
+Alternatively, stay with the established non-slope ordinary `latent()`
 between/within model. Do not switch to `phylo_*()` or `spatial_*()`
 syntax unless the scientific model genuinely contains phylogenetic or
 spatial dependence.

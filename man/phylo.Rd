@@ -58,7 +58,6 @@ alias matching the lme4 / brms / drmTMB convention.
 \tabular{lll}{
    Form \tab Mode default \tab Rewrites to \cr
    \verb{phylo(1 \| species)} \tab \code{"scalar"} \tab \code{phylo_scalar(species)} \cr
-   \verb{phylo(0 + trait \| species, mode = "diag")} \tab (mandatory) \tab \code{phylo_unique(species)} \cr
    \verb{phylo(0 + trait \| species, mode = "indep")} \tab (mandatory) \tab \verb{phylo_indep(0 + trait \| species)} \cr
    \verb{phylo(0 + trait \| species, mode = "latent", d = K)} \tab (mandatory) \tab \code{phylo_latent(species, d = K)} \cr
    \verb{phylo(0 + trait \| species, mode = "dep")} \tab (mandatory) \tab \verb{phylo_dep(0 + trait \| species)} \cr
@@ -135,6 +134,6 @@ fit_legacy <- gllvmTMB(value ~ 0 + trait + phylo(species),
 }
 }
 \seealso{
-\code{\link[=phylo_scalar]{phylo_scalar()}}, \code{\link[=phylo_unique]{phylo_unique()}}, \code{\link[=phylo_indep]{phylo_indep()}},
+\code{\link[=phylo_scalar]{phylo_scalar()}}, \code{\link[=phylo_indep]{phylo_indep()}},
 \code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=phylo_dep]{phylo_dep()}}.
 }

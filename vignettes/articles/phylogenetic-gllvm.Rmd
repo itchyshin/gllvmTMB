@@ -69,10 +69,10 @@ $$
 Here `Lambda` is the shared low-rank structure and `Psi` is the
 trait-specific diagonal variance. The "two-Psi" nickname refers to
 this paired phylogenetic and non-phylogenetic decomposition (two
-`Psi` diagonals, one at each tier). Use `phylo_unique()` in this
-paired sense when the data can identify a separate phylogenetic
-diagonal; ordinary `latent()` already includes the non-phylogenetic
-diagonal `Psi` companion by default. For a standalone marginal
+`Psi` diagonals, one at each tier). `phylo_latent(..., unique = TRUE)`
+carries the phylogenetic diagonal `Psi` companion; ordinary `latent()`
+already includes the non-phylogenetic diagonal `Psi` companion by
+default. For a standalone marginal
 phylogenetic diagonal model, use `phylo_indep()`; for a standalone
 non-phylogenetic diagonal tier, use `indep()` (`FG-05`--`FG-07`).
 
@@ -82,7 +82,7 @@ This draft follows one comparative question through five checks:
 
 | Question | Model object | Code section | Readout |
 |---|---|---|---|
-| Is trait covariance phylogenetically conserved? | `phylo_latent()` + `phylo_unique()` | `fit`, `extract-phy` | `Sigma_phy` shared, diagonal, and total rows |
+| Is trait covariance phylogenetically conserved? | `phylo_latent(unique = TRUE)` | `fit`, `extract-phy` | `Sigma_phy` shared, diagonal, and total rows |
 | Is there residual species-level covariance not explained by the tree? | ordinary `latent()` at the species tier | `fit`, `extract-non` | `Sigma_non` shared, diagonal, and total rows |
 | Do long and wide data give the same likelihood? | long `value ~ ...` and wide `traits(...) ~ ...` calls | `fit` | long/wide log-likelihood difference |
 | Is the fitted model numerically usable? | `check_gllvmTMB()` through `diagnostic_table()` | `diagnostic-table` | optimizer, gradient, `sdreport`, and Hessian rows |
@@ -561,10 +561,10 @@ structure is simply unavailable -- it is not silently approximated):
   on a non-Gaussian family it fails loud rather than silently
   approximate (`PHY-18` -- the unstructured cross-(intercept,slope)
   covariance is not yet identifiable off Gaussian). For a correlated
-  (intercept, slope) augmented phylogenetic random regression, the
-  soft-deprecated compatibility spelling
-  `phylo_unique(1 + x | species)` additionally surfaces its
-  2x2 via `extract_Sigma(level = "phy")`.
+  (intercept, slope) augmented phylogenetic random regression, the folded
+  `phylo_latent(1 + x | species, unique = TRUE)` estimates
+  `Sigma = Lambda Lambda^T + Psi` over the (intercept, slope)
+  coefficients and surfaces it via `extract_Sigma(level = "phy")`.
 - **Calibrated intervals on the slope variance.** The point estimate
   of `sigma_slope` is what this section demonstrates; calibrated
   confidence-interval coverage for slope variances has not been
@@ -577,10 +577,10 @@ structure is simply unavailable -- it is not silently approximated):
   (`PHY-18`). Treat non-Gaussian `phylo_dep` slopes as not yet
   delivered.
 
-If you need a correlated (intercept, slope) covariance, the current
-compatibility spelling is `phylo_unique(1 + x | species)`, which fits
-family-generally and surfaces the 2x2 via `extract_Sigma(level =
-"phy")`. If your question
+If you need a correlated (intercept, slope) covariance, use the folded
+`phylo_latent(1 + x | species, unique = TRUE)`, which estimates
+`Sigma = Lambda Lambda^T + Psi` over the (intercept, slope) coefficients
+and surfaces it via `extract_Sigma(level = "phy")`. If your question
 genuinely needs trait-specific reaction-norm LHS spellings or a
 non-Gaussian full-unstructured `phylo_dep` slope, those remain
 reserved (fail-loud) rather than features to reach for now.
@@ -727,20 +727,15 @@ the number of traits grows). The cross-check functions refit the
 data under the independent and dependent baselines and compare each
 component's implied total covariance against the two-Psi fit.
 
-The helper functions currently recognise the explicit compatibility
-spelling for a two-Psi phylogenetic fit:
-`phylo_latent(..., unique = FALSE) + phylo_unique(...)`. That spelling
-is retained for old formulas and diagnostic workflows, but it is no
-longer the first teaching path now that `phylo_latent(..., unique = TRUE)`
-carries its own diagonal `Psi`. The calls below show the compatibility
-diagnostic route and are not evaluated by this article.
+The helper functions operate on a folded two-Psi phylogenetic fit —
+`phylo_latent(..., unique = TRUE)` carrying its own diagonal `Psi`. The
+calls below show the diagnostic route and are not evaluated by this
+article.
 
-```{r compare-two-psi-compat, eval = FALSE}
-fit_two_psi_compat <- gllvmTMB(
+```{r compare-two-psi, eval = FALSE}
+fit_two_psi <- gllvmTMB(
   value ~ 0 + trait +
-    phylo_latent(species, d = 1, tree = tree,
-                 unique = FALSE) +
-    phylo_unique(species, tree = tree) +
+    phylo_latent(species, d = 1, tree = tree, unique = TRUE) +
     latent(0 + trait | species, d = 1),
   data = df,
   trait = "trait",
@@ -748,11 +743,11 @@ fit_two_psi_compat <- gllvmTMB(
   cluster = "species"
 )
 
-diag_indep <- compare_indep_vs_two_psi(fit_two_psi_compat)
+diag_indep <- compare_indep_vs_two_psi(fit_two_psi)
 diag_indep$agreement
 diag_indep$flag
 
-diag_dep <- compare_dep_vs_two_psi(fit_two_psi_compat)
+diag_dep <- compare_dep_vs_two_psi(fit_two_psi)
 diag_dep$agreement
 diag_dep$flag
 ```
@@ -809,7 +804,6 @@ diagnostics flag.
   *individuals* with a known pedigree rather than *species* with a
   phylogeny, swap `phylo_*()` for the parallel `animal_*()` family
   ([`animal_scalar`](../reference/animal_scalar.html),
-  [`animal_unique`](../reference/animal_unique.html) compatibility spelling,
   [`animal_indep`](../reference/animal_indep.html),
   [`animal_dep`](../reference/animal_dep.html),
   [`animal_latent`](../reference/animal_latent.html), and

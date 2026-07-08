@@ -70,7 +70,7 @@ target is the trait covariance
 latent loadings and `Psi` is the diagonal trait-specific variance.
 In current ordinary `latent()` models, that diagonal `Psi` companion is
 included by default; `latent(..., unique = FALSE)` requests the older
-no-Psi subset, and explicit `unique()` remains compatibility syntax.
+no-Psi subset.
 
 Use this alignment while reading the diagnostics:
 

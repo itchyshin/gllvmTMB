@@ -170,7 +170,7 @@
 
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
-#' Called by [gllvmTMB()] when the formula contains `latent()` or `unique()`
+#' Called by [gllvmTMB()] when the formula contains `latent()` or `indep()`
 #' covstruct terms. Constructs the TMB data + parameter lists, calls
 #' `TMB::MakeADFun()` against the runtime-compiled `gllvmTMB_multi` DLL,
 #' and optimises with `nlminb()`.

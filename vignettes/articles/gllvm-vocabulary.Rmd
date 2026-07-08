@@ -73,9 +73,7 @@ $\boldsymbol{\Psi} = \mathrm{diag}(\psi_1, \ldots, \psi_T)$ is
 diagonal by construction. Ordinary `latent()` carries this
 $\boldsymbol{\Psi}$ by default; `latent(..., unique = FALSE)` drops it
 to give the loadings-only subset, and a separate diagonal-only tier is
-written with `indep()`. The older `unique()` / `*_unique()` functions
-remain soft-deprecated compatibility syntax for explicit diagonal-Psi
-formulas.
+written with `indep()`.
 *Math*: $\boldsymbol{\Sigma} = \boldsymbol{\Lambda}
 \boldsymbol{\Lambda}^{\top} + \boldsymbol{\Psi}$ (factor
 decomposition); $\psi_t$ is the $t$-th diagonal of
@@ -304,9 +302,9 @@ and well-behaved on $[-1, 1]$.
 
 - [Get started](../articles/gllvmTMB.html) -- the current public entry
   path for the first model.
-- [API keyword grid](api-keyword-grid.html) -- the 4x5 covariance
+- [API keyword grid](api-keyword-grid.html) -- the 4x4 covariance
   keyword reference (animal · phylo · spatial · none × scalar ·
-  unique · indep · dep · latent).
+  indep · dep · latent).
 - [Covariance vs correlation](covariance-correlation.html) -- when
   to report $\boldsymbol{\Sigma}$ versus its correlation
   $\boldsymbol{R}$.

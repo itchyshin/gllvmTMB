@@ -34,7 +34,7 @@
 #'   the reduced-rank between-unit component. Set to `NULL` (default) to omit.
 #' @param Lambda_W Optional `n_traits` x `d_W` within-unit loading matrix for
 #'   the reduced-rank observation-level component (matching a default
-#'   `latent()` term, or an explicit compatibility `unique()` term, on the
+#'   `latent()` term, or an explicit `latent(unique = TRUE)` term, on the
 #'   within-unit grouping). Set to `NULL` (default) to omit.
 #' @param psi_B Optional length-`n_traits` vector of trait-specific
 #'   between-unit variances. (Lowercase psi matches the factor-analysis

@@ -183,7 +183,6 @@
 #' | Form                                            | Mode default | Rewrites to                                |
 #' |-------------------------------------------------|--------------|--------------------------------------------|
 #' | `phylo(1 \| species)`                           | `"scalar"`   | `phylo_scalar(species)`                    |
-#' | `phylo(0 + trait \| species, mode = "diag")`    | (mandatory)  | `phylo_unique(species)`                    |
 #' | `phylo(0 + trait \| species, mode = "indep")`   | (mandatory)  | `phylo_indep(0 + trait \| species)`        |
 #' | `phylo(0 + trait \| species, mode = "latent", d = K)` | (mandatory) | `phylo_latent(species, d = K)`        |
 #' | `phylo(0 + trait \| species, mode = "dep")`     | (mandatory)  | `phylo_dep(0 + trait \| species)`          |
@@ -234,7 +233,7 @@
 #' @param A Tip-level relatedness matrix; alias of `vcv =`.
 #' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
-#' @seealso [phylo_scalar()], [phylo_unique()], [phylo_indep()],
+#' @seealso [phylo_scalar()], [phylo_indep()],
 #'   [phylo_latent()], [phylo_dep()].
 #' @export
 #' @examples
@@ -479,8 +478,7 @@ meta <- function(value, sampling_var) {
 #' ```
 #' Set `unique = FALSE` for the loadings-only subset.
 #' For a scalar diagonal \eqn{\boldsymbol\Psi} companion shared across traits,
-#' use `common = TRUE`; this replaces the legacy paired
-#' `latent(..., unique = FALSE) + unique(..., common = TRUE)` spelling for
+#' use `common = TRUE`; this replaces the older two-term spelling for
 #' ordinary intercept-only latent terms.
 #'
 #' @param formula `0 + trait | g` style formula (LHS is the response
@@ -499,7 +497,7 @@ meta <- function(value, sampling_var) {
 #'   score means. Current releases validate the parser surface and then stop
 #'   before fitting; no runtime support is implemented yet.
 #' @return A formula marker; never evaluated.
-#' @seealso [unique()], [phylo_latent()], [diag_re], [extract_Sigma()].
+#' @seealso [indep()], [phylo_latent()], [diag_re], [extract_Sigma()].
 #' @examples
 #' \dontrun{
 #' # Long-format stacked traits: a 2-factor latent random effect at `site`.
@@ -610,8 +608,8 @@ NULL
 #' @param d Integer; number of phylogenetic latent factors.
 #' @param unique Logical; `TRUE` auto-includes the
 #'   phylo-structured diagonal trait-specific \eqn{\boldsymbol\Psi_{phy}}
-#'   companion, folding the paired `phylo_latent() + phylo_unique()` into a
-#'   single term (\eqn{\boldsymbol\Sigma_{phy} = \boldsymbol\Lambda
+#'   companion, folding the shared rank-K loadings and the diagonal
+#'   companion into a single term (\eqn{\boldsymbol\Sigma_{phy} = \boldsymbol\Lambda
 #'   \boldsymbol\Lambda^\top \otimes \mathbf{A} + \boldsymbol\Psi_{phy} \otimes
 #'   \mathbf{A}}). The default `FALSE` preserves the loadings-only /
 #'   rotation-invariant subset.
@@ -627,7 +625,7 @@ NULL
 #'   via `solve()` internally for v0.2.0; sparse direct engine
 #'   path is a v0.3.0 follow-up.
 #' @return A formula marker; never evaluated.
-#' @seealso [phylo_scalar()], [phylo_unique()], [phylo_indep()],
+#' @seealso [phylo_scalar()], [phylo_indep()],
 #'   [phylo_dep()], [phylo_rr()] (deprecated alias).
 #' @references Hadfield JD, Nakagawa S (2010). General quantitative
 #'   genetic methods for comparative biology: phylogenies, taxonomies
@@ -740,7 +738,7 @@ phylo_slope <- function(formula) {
 #' \eqn{\mathbf p_t \sim \mathcal{N}(\mathbf{0}, \sigma^{2}_{\text{phy}}\,\mathbf{C}_{\text{phy}})}
 #' with **one shared scaling** \eqn{\sigma^{2}_{\text{phy}}} across all
 #' traits. Formerly `phylo(species)` -- same engine, new name. Compare to
-#' [phylo_unique()] (D independent variances) and [phylo_latent()]
+#' [phylo_indep()] (D independent variances) and [phylo_latent()]
 #' (K-dim factor decomposition).
 #'
 #' Pass the phylogeny via `tree = phylo` (canonical, sparse \eqn{\mathbf{A}^{-1}};
@@ -757,7 +755,7 @@ phylo_slope <- function(formula) {
 #'   argument naming (M2.8b, 2026-05-17).
 #' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
-#' @seealso [phylo_unique()], [phylo_latent()], [phylo_indep()],
+#' @seealso [phylo_latent()], [phylo_indep()],
 #'   [phylo_dep()], [phylo()] (deprecated alias).
 #' @examples
 #' \dontrun{
@@ -966,18 +964,18 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
 #' range parameter \eqn{\kappa}. Each trait carries its own independent
 #' field draw on the mesh, but every trait's field has the same marginal
 #' variance and the same correlation length. Implementation: the same
-#' SPDE engine as [spatial_unique()], with the per-trait
+#' SPDE engine as [spatial_indep()], with the per-trait
 #' `log_tau_spde` parameters tied via TMB's `map` mechanism so they
 #' collapse to a single estimable scalar.
 #'
 #' Use this when domain knowledge (or parsimony) says all traits should
 #' share the same amount of spatial structure. Compare to
-#' [spatial_unique()] (D independent variances) and [spatial_latent()]
+#' [spatial_indep()] (D independent variances) and [spatial_latent()]
 #' (K-dim factor decomposition).
 #'
 #' @section Formula orientation:
 #' The canonical orientation is `0 + trait | coords` (parallel to
-#' [latent()] / [unique()] and glmmTMB's spatial keywords). The
+#' [latent()] / [indep()] and glmmTMB's spatial keywords). The
 #' earlier orientation `coords | trait` is accepted as a deprecated
 #' alias and emits a one-shot `lifecycle::deprecate_warn()` per session
 #' (introduced at gllvmTMB 0.1.4).
@@ -991,7 +989,7 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
 #' @param mesh Optional `fmesher` mesh object built via [make_mesh()]. If
 #'   `NULL`, the engine constructs a default mesh from `coords`.
 #' @return A formula marker; never evaluated.
-#' @seealso [spatial_unique()], [spatial_latent()], [spde()] (deprecated alias).
+#' @seealso [spatial_indep()], [spatial_latent()], [spde()] (deprecated alias).
 #' @examples
 #' \dontrun{
 #'   sim <- simulate_site_trait(
@@ -1017,7 +1015,7 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #' SPDE fields drive all T traits via a T x K loading matrix
 #' \eqn{\boldsymbol\Lambda_{\mathrm{spa}}}. The spatial analogue of
 #' [phylo_latent()] and the third cell of the spatial column of the API
-#' grid (alongside [spatial_scalar()] and [spatial_unique()]).
+#' grid (alongside [spatial_scalar()] and [spatial_indep()]).
 #'
 #' Internally this rewrites to `spde(form, .spatial_latent = TRUE, d = K)`
 #' and toggles the TMB template's `spde_lv_k` switch to K. With
@@ -1026,9 +1024,9 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #' \eqn{\boldsymbol\Sigma_{\mathrm{spa}} =
 #' \boldsymbol\Lambda_{\mathrm{spa}}\boldsymbol\Lambda_{\mathrm{spa}}^\top +
 #' \boldsymbol\Psi_{\mathrm{spa}}}. The default `unique = FALSE` preserves
-#' the older low-rank-only path. Legacy
-#' `spatial_latent(...) + spatial_unique(...)` is accepted as compatibility
-#' syntax for the same total-covariance decomposition.
+#' the older low-rank-only path. The earlier two-term companion spelling
+#' is accepted as compatibility syntax for the same total-covariance
+#' decomposition.
 #'
 #' The C++ kernel
 #' then reads a packed lower-triangular `Lambda_spde` and K shared spatial
@@ -1045,7 +1043,7 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'
 #' @section Formula orientation:
 #' The canonical orientation is `0 + trait | coords` (parallel to
-#' [latent()] / [unique()] and glmmTMB's spatial keywords). The
+#' [latent()] / [indep()] and glmmTMB's spatial keywords). The
 #' earlier orientation `coords | trait` is accepted as a deprecated
 #' alias and emits a one-shot `lifecycle::deprecate_warn()` per session
 #' (introduced at gllvmTMB 0.1.4).
@@ -1065,7 +1063,7 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #' @param mesh Optional `fmesher` mesh object built via [make_mesh()]. If
 #'   `NULL`, the engine constructs a default mesh from `coords`.
 #' @return A formula marker; never evaluated.
-#' @seealso [spatial_unique()], [spatial_scalar()], [phylo_latent()].
+#' @seealso [spatial_indep()], [spatial_scalar()], [phylo_latent()].
 #' @examples
 #' \dontrun{
 #'   sim <- simulate_site_trait(
@@ -1105,7 +1103,6 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #' | Form                                                 | Mode default | Rewrites to                                |
 #' |------------------------------------------------------|--------------|--------------------------------------------|
 #' | `spatial(1 \| site)`                                 | `"scalar"`   | `spatial_scalar(0 + trait \| coords)`      |
-#' | `spatial(0 + trait \| coords, mode = "diag")`        | (mandatory)  | `spatial_unique(0 + trait \| coords)`      |
 #' | `spatial(0 + trait \| coords, mode = "indep")`       | (mandatory)  | `spatial_indep(0 + trait \| coords)`       |
 #' | `spatial(0 + trait \| coords, mode = "latent", d = K)` | (mandatory) | `spatial_latent(0 + trait \| coords, d = K)` |
 #' | `spatial(0 + trait \| coords, mode = "dep")`         | (mandatory)  | `spatial_dep(0 + trait \| coords)`         |
@@ -1121,7 +1118,7 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #' @section Backward compatibility:
 #' Legacy bare-formula calls `spatial(0 + trait | coords)` and
 #' `spatial(coords | trait)` (no `mode` argument) continue to work as
-#' deprecated aliases of `spatial_unique(0 + trait | coords)` (with an
+#' deprecated aliases for the per-trait diagonal spatial field (with an
 #' additional orientation-flip lifecycle warning for the pre-0.1.4
 #' orientation). The legacy form rewrites to `spde()` internally,
 #' picking up the SPDE mesh from the top-level `mesh =` argument to
@@ -1143,7 +1140,7 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #'   determines the covariance structure (combined with `mode`, see
 #'   Dispatch rules). For backward compatibility, `0 + trait | coords`
 #'   and `coords | trait` (no `mode`) also work as deprecated aliases
-#'   of `spatial_unique`.
+#'   for the per-trait diagonal spatial field.
 #' @param mesh A `fmesher` mesh constructed via [make_mesh()]. **Canonical.**
 #'   Required for the new dispatch path; optional for the legacy
 #'   bare-formula form (where the mesh is passed at the top level of
@@ -1159,7 +1156,7 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #' @param unique Logical; forwarded to [spatial_latent()] when
 #'   `mode = "latent"`. The default `FALSE` keeps the low-rank-only path.
 #' @return A formula marker; never evaluated.
-#' @seealso [spatial_scalar()], [spatial_unique()], [spatial_indep()],
+#' @seealso [spatial_scalar()], [spatial_indep()],
 #'   [spatial_latent()], [spatial_dep()], [phylo()] (phylogenetic
 #'   parallel), [spde()] (deeper deprecated alias).
 #' @export
@@ -1305,10 +1302,9 @@ meta_V <- function(V, type = "exact") {
 #' Per-trait marginal variance: `indep(0 + trait | g)`
 #'
 #' Canonical name for the **always-alone marginal-only** per-trait
-#' diagonal variance term. Mathematically identical to
-#' `unique(0 + trait | g)` standalone (both produce
+#' diagonal variance term, producing
 #' \eqn{\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)} with identity
-#' off-diagonals); the keyword choice is documentary, not operational.
+#' off-diagonals.
 #'
 #' The package's covstruct API organises around two mutually exclusive
 #' modes, distinguished by convention:
@@ -1324,12 +1320,11 @@ meta_V <- function(V, type = "exact") {
 #' Use `indep()` when you want to commit to the marginal-only
 #' interpretation explicitly. Ordinary `latent()` now carries the
 #' diagonal Psi companion by default when you want the cross-trait
-#' decomposition; `unique()` standalone (e.g. for observation-level random
-#' effects in mixed-response fits) remains compatibility syntax.
+#' decomposition.
 #'
 #' For a scalar marginal-only tier with one variance shared by all traits,
 #' use `common = TRUE`. This is the non-deprecated standalone replacement for
-#' legacy `unique(..., common = TRUE)` when no `latent()` term is paired on the
+#' the legacy scalar diagonal spelling when no `latent()` term is paired on the
 #' same grouping.
 #'
 #' ## Mutual exclusion with `latent()`
@@ -1346,7 +1341,7 @@ meta_V <- function(V, type = "exact") {
 #' @param common `FALSE` (default) for trait-specific marginal variances;
 #'   `TRUE` to tie all traits to one shared variance at this grouping tier.
 #' @return A formula marker; never evaluated.
-#' @seealso [unique()], [latent()], [phylo_indep()], [spatial_indep()],
+#' @seealso [latent()], [phylo_indep()], [spatial_indep()],
 #'   [extract_Sigma()].
 #' @export
 #' @examples
@@ -1371,8 +1366,7 @@ indep <- function(formula, common = FALSE) {
 #' Per-trait phylogenetic marginal variance: `phylo_indep(0 + trait | species)`
 #'
 #' Canonical name for **T per-trait phylogenetic variances coupled by
-#' the phylo correlation matrix \eqn{\mathbf A}**. Mathematically
-#' identical to `phylo_unique(species)` standalone; standalone =
+#' the phylo correlation matrix \eqn{\mathbf A}**; standalone =
 #' T univariate phylogenetic mixed models stacked.
 #'
 #' Each trait \eqn{t} gets its own variance
@@ -1384,8 +1378,7 @@ indep <- function(formula, common = FALSE) {
 #'
 #' Use `phylo_indep()` for an explicit marginal-only phylogenetic fit
 #' (no cross-trait phylogenetic decomposition). Use
-#' `phylo_latent(..., unique = TRUE)` or the compatibility pair
-#' `phylo_latent(..., unique = FALSE) + phylo_unique()` for the paired
+#' `phylo_latent(..., unique = TRUE)` for the paired
 #' phylogenetic decomposition
 #' \eqn{\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}}\boldsymbol\Lambda_{\text{phy}}^\top + \boldsymbol\Psi_{\text{phy}}}.
 #'
@@ -1418,7 +1411,7 @@ indep <- function(formula, common = FALSE) {
 #'   argument naming (M2.8b, 2026-05-17).
 #' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
-#' @seealso [phylo_unique()], [phylo_latent()], [phylo_dep()], [indep()],
+#' @seealso [phylo_latent()], [phylo_dep()], [indep()],
 #'   [spatial_indep()], [extract_Sigma()].
 #' @references
 #' * **Williams et al.** (2025) Phylogenetic generalised linear mixed
@@ -1450,8 +1443,7 @@ phylo_indep <- function(
 #' Per-trait spatial marginal field: `spatial_indep(0 + trait | coords)`
 #'
 #' Canonical name for **T per-trait spatial fields coupled by the SPDE
-#' precision matrix \eqn{\mathbf Q}**. Mathematically identical to
-#' `spatial_unique(0 + trait | coords)` standalone; standalone =
+#' precision matrix \eqn{\mathbf Q}**; standalone =
 #' T univariate spatial fits stacked.
 #'
 #' Each trait \eqn{t} gets its own variance
@@ -1487,7 +1479,7 @@ phylo_indep <- function(
 #' @param mesh Optional `fmesher` mesh object built via [make_mesh()]. If
 #'   `NULL`, the engine constructs a default mesh from `coords`.
 #' @return A formula marker; never evaluated.
-#' @seealso [spatial_unique()], [spatial_latent()], [indep()],
+#' @seealso [spatial_latent()], [indep()],
 #'   [phylo_indep()], [extract_Sigma()].
 #' @examples
 #' \dontrun{
@@ -1559,7 +1551,7 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL) {
 #' @param formula `0 + trait | g` style formula (LHS is the trait
 #'   factor, typically `0 + trait`; RHS is the grouping factor).
 #' @return A formula marker; never evaluated.
-#' @seealso [latent()], [unique()], [indep()], [phylo_dep()],
+#' @seealso [latent()], [indep()], [phylo_dep()],
 #'   [spatial_dep()], [extract_Sigma()].
 #' @export
 #' @examples
@@ -1594,14 +1586,15 @@ dep <- function(formula) {
 #'   \boldsymbol\Sigma_{\text{phy}} \otimes \mathbf{A}_{\text{phy}}).}
 #'
 #' Use `phylo_dep()` when you want an explicit full-unstructured
-#' cross-trait phylogenetic covariance fit. Use `phylo_latent()` paired
-#' with `phylo_unique()` for the rank-reduced paired phylogenetic decomposition. Use
+#' cross-trait phylogenetic covariance fit. Use
+#' `phylo_latent(..., unique = TRUE)` for the rank-reduced paired
+#' phylogenetic decomposition. Use
 #' `phylo_indep()` for the marginal-only per-trait variance fit.
 #'
-#' ## Mutual exclusion with `phylo_latent()` / `phylo_unique()` / `phylo_indep()`
+#' ## Mutual exclusion with `phylo_latent()` / `phylo_indep()`
 #'
 #' Combining `phylo_dep(0 + trait | species)` with `phylo_latent` is
-#' **over-parameterised**; combining with `phylo_unique` or
+#' **over-parameterised**; combining with
 #' `phylo_indep` is **redundant** (`phylo_dep` already includes the
 #' diagonal). The parser raises `cli::cli_abort()` in any of these
 #' cases.
@@ -1620,7 +1613,7 @@ dep <- function(formula) {
 #'   argument naming (M2.8b, 2026-05-17).
 #' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
-#' @seealso [phylo_latent()], [phylo_unique()], [phylo_indep()],
+#' @seealso [phylo_latent()], [phylo_indep()],
 #'   [dep()], [spatial_dep()], [extract_Sigma()].
 #' @examples
 #' \dontrun{
@@ -1666,10 +1659,10 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL) {
 #' RHS = the `coords` placeholder). `spatial_dep` is born with this
 #' orientation; the legacy `coords | trait` form is not accepted.
 #'
-#' ## Mutual exclusion with `spatial_latent()` / `spatial_unique()` / `spatial_indep()`
+#' ## Mutual exclusion with `spatial_latent()` / `spatial_indep()`
 #'
 #' Combining `spatial_dep(0 + trait | coords)` with `spatial_latent` is
-#' **over-parameterised**; combining with `spatial_unique` or
+#' **over-parameterised**; combining with
 #' `spatial_indep` is **redundant**. The parser raises
 #' `cli::cli_abort()` in any of these cases.
 #'
@@ -1683,7 +1676,7 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL) {
 #' @param mesh Optional `fmesher` mesh object built via [make_mesh()]. If
 #'   `NULL`, the engine constructs a default mesh from `coords`.
 #' @return A formula marker; never evaluated.
-#' @seealso [spatial_latent()], [spatial_unique()], [spatial_indep()],
+#' @seealso [spatial_latent()], [spatial_indep()],
 #'   [dep()], [phylo_dep()], [extract_Sigma()].
 #' @examples
 #' \dontrun{

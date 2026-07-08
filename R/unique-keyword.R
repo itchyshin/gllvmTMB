@@ -185,7 +185,7 @@
 #' @return A formula marker; never evaluated as a call.
 #' @seealso [extract_Sigma()] — pull \eqn{\boldsymbol\Sigma},
 #'   \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}, or
-#'   \eqn{\boldsymbol\Psi} from the fit; [phylo_scalar()], [phylo_latent()], [spatial_unique()],
+#'   \eqn{\boldsymbol\Psi} from the fit; [phylo_scalar()], [phylo_latent()], [spatial_indep()],
 #'   [re_int()].
 #' @references
 #'   * **Bartholomew, Knott & Moustaki** (2011) *Latent Variable Models

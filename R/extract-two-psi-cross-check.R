@@ -80,9 +80,10 @@
 #' Pull a one-element formula slot from the ${\tt covstructs}$ list of a fit
 #'
 #' Identifies which component (phylo or non-phylo) currently contains a
-#' two-psi pair (`phylo_latent + phylo_unique`, or `latent + unique` /
-#' `unique` alone at the cluster tier). Used by the cross-check
-#' diagnostics to confirm the supplied fit really is a two-psi fit.
+#' two-psi decomposition (a folded `phylo_latent(..., unique = TRUE)`, or a
+#' folded `latent(..., unique = TRUE)` / standalone `indep()` at the cluster
+#' tier). Used by the cross-check diagnostics to confirm the supplied fit
+#' really is a two-psi fit.
 #'
 #' @keywords internal
 #' @noRd
@@ -400,8 +401,8 @@
 #' [compare_indep_vs_two_psi()].
 #'
 #' @param fit_two_psi A joint two-psi fit returned by [gllvmTMB()], e.g.
-#'   one produced by `gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = K_phy) +
-#'             phylo_unique(species) + indep(0 + trait | species), ...)`.
+#'   one produced by `gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = K_phy, unique = TRUE) +
+#'             indep(0 + trait | species), ...)`.
 #'   The cross-check refits the same data and family with
 #'   `phylo_dep + dep` and compares.
 #' @param threshold Numeric (default `0.10`): relative-disagreement
@@ -473,8 +474,8 @@
 #' tree$tip.label <- paste0("sp", seq_len(200))
 #' Cphy <- ape::vcv(tree, corr = TRUE)
 #' fit  <- gllvmTMB(
-#'   value ~ 0 + trait + phylo_latent(species, d = 1) +
-#'           phylo_unique(species) + indep(0 + trait | species),
+#'   value ~ 0 + trait + phylo_latent(species, d = 1, unique = TRUE) +
+#'           indep(0 + trait | species),
 #'   data      = df,
 #'   trait     = "trait",
 #'   unit      = "species",

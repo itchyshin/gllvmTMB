@@ -168,10 +168,8 @@ as.numeric(logLik(fit_long) - logLik(fit_wide))
 The example uses `indep()` because it is fast and stable for a small
 article fixture. For phylogenetic ordinal traits, replace it with
 `phylo_indep(species, tree = tree)` or another source-specific covariance
-keyword after checking the relevant validation row. Source-specific
-`*_unique()` syntax remains compatibility spelling for explicit `Psi` in
-paired decompositions, not the primary standalone diagonal teaching form.
-The family does not change the 4 x 5 covariance keyword grammar.
+keyword after checking the relevant validation row.
+The family does not change the 4 x 4 covariance keyword grammar.
 
 ## Cutpoints
 

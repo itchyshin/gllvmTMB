@@ -210,7 +210,6 @@ reference:
     - spatial_dep
     - spatial_latent
     - kernel_latent
-    - kernel_unique
     - kernel_indep
     - kernel_dep
     - meta_V

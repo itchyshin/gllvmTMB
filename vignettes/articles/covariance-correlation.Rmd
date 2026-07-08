@@ -51,7 +51,7 @@ older loadings-only subset for a sensitivity check or compatibility
 comparison.
 
 This article is about `Psi` in a decomposed `latent()` model. It is not a
-recommendation to use standalone `unique()` as the first diagonal model. When
+recommendation to use a standalone diagonal term as the first model. When
 the goal is a standalone marginal-only diagonal covariance, new examples should
 use `indep()` so the intent is visible in the formula.
 
@@ -94,8 +94,7 @@ between-individual covariance, `unit_obs` for within-individual or
 observation-level covariance, and other tier names for structured terms.
 $\boldsymbol\Lambda$ is the $T \times K$ loading matrix from the
 `latent()` term. $\boldsymbol\Psi$ is the $T \times T$ diagonal matrix of
-trait-specific variances. Older explicit formulas with `latent() + unique()`
-remain soft-deprecated compatibility syntax for the same decomposition.
+trait-specific variances.
 
 The correlation matrix is a standardised version of `Sigma`:
 
@@ -511,7 +510,7 @@ Nakagawa, Johnson & Schielzeth 2017).
 |---|---|---|
 | Cross-trait correlations on a Gaussian / lognormal / Gamma fit | ordinary `latent()` at every level | `latent(..., unique = FALSE)` omits Psi and can inflate correlations. |
 | Correlations on a binary fit | `latent()` only; `link_residual = "auto"` for marginal scale | Implicit residual depends on link (π²/3, 1, π²/6). |
-| Phylogenetic decomposition | folded `phylo_latent(..., unique = TRUE)` for the phylogenetic tier; ordinary `latent()` for the non-phylogenetic species tier; explicit `*_unique()` pairs only as compatibility spellings | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `Psi` pieces. |
+| Phylogenetic decomposition | folded `phylo_latent(..., unique = TRUE)` for the phylogenetic tier; ordinary `latent()` for the non-phylogenetic species tier | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `Psi` pieces. |
 | Communality | `extract_communality(fit)` + the right Psi-aware pattern | Communality formula uses Σ; needs full Σ to be meaningful. |
 | `Lambda Lambda^T` only | `extract_Sigma(fit, part = "shared")` | Useful for ordination. |
 | `Psi` / `psi` only | `extract_Sigma(fit, part = "unique")` | Trait-specific diagonal variances as a vector. |

@@ -53,7 +53,7 @@
 #'   that the parser rewrites internally to the canonical
 #'   [phylo_scalar()] path (which is family-agnostic at the math level).
 #'
-#' @seealso [animal_unique()], [animal_indep()], [animal_latent()],
+#' @seealso [animal_indep()], [animal_latent()],
 #'   [animal_dep()], [animal_slope()], [phylo_scalar()],
 #'   [meta_V()] (sampling variance, distinct from relatedness).
 #'
@@ -119,7 +119,7 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @inheritParams animal_scalar
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_indep()], [animal_latent()],
-#'   [animal_dep()], [phylo_unique()].
+#'   [animal_dep()], [phylo_indep()].
 #' @examples
 #' \dontrun{
 #' # Per-trait independent additive-genetic variances on a shared A.
@@ -152,14 +152,14 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' Independent per-trait animal-model random intercepts: `animal_indep(0 + trait | id)`
 #'
 #' Per-trait animal-model random intercepts with no cross-trait
-#' covariance. Engine-equivalent to [animal_unique()] but uses the
-#' bar-form syntax; the `.indep` marker disambiguates printing.
+#' covariance, using the bar-form syntax; the `.indep` marker
+#' disambiguates printing.
 #' Mathematical parallel to [phylo_indep()].
 #'
 #' @param formula An lme4-bar formula of the form `0 + trait | id`.
 #' @param pedigree,A,Ainv See [animal_scalar()].
 #' @return See [animal_scalar()].
-#' @seealso [animal_unique()], [phylo_indep()].
+#' @seealso [phylo_indep()].
 #' @examples
 #' \dontrun{
 #' # Independent per-trait animal-model intercepts via the bar form,
@@ -214,7 +214,7 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'   additive-genetic \eqn{\boldsymbol\Psi} companion. The default `FALSE`
 #'   preserves the loadings-only subset.
 #' @return See [animal_scalar()].
-#' @seealso [animal_scalar()], [animal_unique()], [phylo_latent()].
+#' @seealso [animal_scalar()], [animal_indep()], [phylo_latent()].
 #' @examples
 #' \dontrun{
 #' # Factor-analytic G-matrix (d latent factors plus diagonal Psi).
@@ -359,8 +359,8 @@ animal_slope <- function(formula) {
 #' and non-inbred: \eqn{A_{founder, founder} = 1}.
 #'
 #' Users typically don't call `pedigree_to_A()` directly -- pass
-#' `pedigree = ped` to an [animal_scalar()] / [animal_unique()] /
-#' [animal_latent()] / [animal_indep()] / [animal_dep()] keyword in
+#' `pedigree = ped` to an [animal_scalar()] / [animal_latent()] /
+#' [animal_indep()] / [animal_dep()] keyword in
 #' the formula, and the keyword's parser handles the conversion
 #' internally. This function is exported as a public helper for users
 #' who want the matrix for their own diagnostics (e.g. inspection of

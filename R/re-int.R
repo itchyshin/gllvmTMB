@@ -22,7 +22,7 @@
 #' * `(1 + x | group)` — correlated intercept + slope. **Coming in a
 #'   future release.**
 #' * `(0 + trait | group)` — trait-specific random intercepts. Use the
-#'   existing `unique()` / `latent()` covstructs for that pattern.
+#'   existing `indep()` / `latent()` covstructs for that pattern.
 #'
 #' If you write any of these unsupported forms, `gllvmTMB()` aborts with a
 #' message naming the unsupported form rather than silently fitting the

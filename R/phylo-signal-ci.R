@@ -182,7 +182,7 @@
 #'   symmetric Wald on the H^2 scale clipped to the interval 0 to 1.
 #'
 #' @param fit A fit returned by [gllvmTMB()] with a phylogenetic
-#'   component (`phylo_latent()` or `phylo_unique()`).
+#'   component (`phylo_latent()` or `phylo_indep()`).
 #' @param trait_idx Integer vector of 1-based trait indices, or `NULL`
 #'   (default) for all traits.
 #' @param level Confidence level. Default 0.95.

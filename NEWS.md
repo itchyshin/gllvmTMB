@@ -3,6 +3,21 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## `unique()` / `*_unique()` keyword removed from the taught surface (2026-07-07)
+
+* The `unique()` / `*_unique()` **keyword** spelling is no longer part of the
+  documented covariance-keyword grid, which is now the **4x4** grid
+  `scalar / indep / dep / latent` (was 4x5). The keyword still **parses** as
+  soft-deprecated compatibility syntax — old formulas keep running — but it is no
+  longer taught or shown in the reference grid, the API keyword-grid article, the
+  function documentation, or the README.
+* The `unique =` **argument** is unchanged and canonical: `latent(..., unique = FALSE)`
+  for the loadings-only subset, and `*_latent(..., unique = TRUE)` to fold the
+  diagonal `Psi` companion (including the augmented random-slope form). For a
+  standalone marginal-only diagonal, use `indep()` / `*_indep()`.
+* The `*_unique()` functions remain exported, grouped under a "Soft-deprecated
+  covariance compatibility syntax" section in the reference index.
+
 ## Augmented `*_latent(unique = TRUE)` now folds in the source companion (2026-07-07)
 
 * At the augmented random-regression form `*_latent(1 + x | group, unique = TRUE)`,

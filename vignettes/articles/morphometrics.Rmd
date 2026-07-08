@@ -200,8 +200,7 @@ where $\boldsymbol{\lambda}_t \in \mathbb{R}^d$ is the loading vector
 for trait $t$, $\mathbf{u}_i$ is a $d$-dimensional latent factor for
 individual $i$, and $\varepsilon_{it}$ is the trait-specific residual
 with variance $\psi_{tt}$. Ordinary `latent()` includes this diagonal
-$\boldsymbol\Psi$ term by default; the old explicit `+ unique()` spelling
-is retained as compatibility syntax. Ordinary `latent()` carries those
+$\boldsymbol\Psi$ term by default. Ordinary `latent()` carries those
 residual variances on the diagonal of $\boldsymbol\Psi$ by default. The
 implied
 between-individual trait covariance is
@@ -232,7 +231,7 @@ first, trait-specific variation second.
 > becomes the trait-specific residual variance $\psi_t$. The confounding
 > that would arise if both $\sigma_\varepsilon$ and $\psi_t$ were estimated
 > freely is therefore resolved by construction — you do not need to add
-> `unique()` for this default latent model. With *longitudinal* data
+> a separate diagonal term for this default latent model. With *longitudinal* data
 > (multiple sessions per individual), both terms are separately identified
 > and can be estimated without any auto-suppression; the diagonal
 > $\boldsymbol\Psi$ term then captures genuine between-individual

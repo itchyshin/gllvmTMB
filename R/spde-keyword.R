@@ -7,7 +7,7 @@
 #' Spatial reduced-rank Gaussian random field per trait (Matérn, SPDE/GMRF)
 #'
 #' \strong{Deprecated alias.} Engine-internal name; users should write
-#' [spatial_unique()] (or one of the other [spatial_scalar()] /
+#' [spatial_indep()] (or one of the other [spatial_scalar()] /
 #' [spatial_latent()] keywords) in formulas. Kept for backward
 #' compatibility and to document the underlying Matérn / SPDE kernel.
 #'
@@ -28,7 +28,7 @@
 #'
 #' where \eqn{\nu} is the smoothness parameter, \eqn{\kappa > 0} is the
 #' inverse-range parameter, and \eqn{K_{\nu}} is the modified Bessel
-#' function of the second kind. `gllvmTMB::spatial_unique()` (and its
+#' function of the second kind. `gllvmTMB::spatial_indep()` (and its
 #' siblings `spatial_scalar()` / `spatial_latent()`) use
 #' **\eqn{\alpha = 2}** in the Lindgren–Rue–Lindström operator, which
 #' (in 2 spatial dimensions) corresponds to **\eqn{\nu = 1}**.
@@ -39,7 +39,7 @@
 #' | Kernel | \eqn{\nu} | Smoothness | Used by |
 #' |---|---|---|---|
 #' | Exponential | \eqn{1/2} | non-differentiable | `glmmTMB::exp()`, `metafor::SPEXP`, `brms::gp(... cov="exponential")` |
-#' | **Matérn (this engine)** | **\eqn{1}** | once mean-square differentiable | `gllvmTMB::spatial_unique()`, `sdmTMB::sdmTMB(spatial="on")`, `INLA::inla.spde2.matern()` |
+#' | **Matérn (this engine)** | **\eqn{1}** | once mean-square differentiable | `gllvmTMB::spatial_indep()`, `sdmTMB::sdmTMB(spatial="on")`, `INLA::inla.spde2.matern()` |
 #' | Matérn 3/2 | \eqn{3/2} | once differentiable | not implemented here |
 #' | Matérn 5/2 | \eqn{5/2} | twice differentiable | not implemented here |
 #' | Squared-exponential / Gaussian | \eqn{\infty} | infinitely smooth | `brms::gp(... cov="exp_quad")` |
@@ -48,7 +48,7 @@
 #' ecological data: smooth enough to be sensible for organisms or
 #' processes that vary continuously in space, but rough enough to
 #' capture genuinely fine-scale variation. It is also the default of
-#' every R-INLA and sdmTMB workflow, so `spatial_unique()` results
+#' every R-INLA and sdmTMB workflow, so `spatial_indep()` results
 #' compare cleanly against those packages.
 #'
 #' ## How the model is parameterised
@@ -79,7 +79,7 @@
 #'
 #' ## Reduced-rank spatial loadings (`spatial_latent()`)
 #'
-#' [spatial_unique()] gives one *independent* field per trait. The
+#' [spatial_indep()] gives one *independent* field per trait. The
 #' reduced-rank analogue — \eqn{K} shared spatial fields driving all
 #' \eqn{T} traits via a \eqn{T \times K} loading matrix
 #' \eqn{\boldsymbol\Lambda_{\mathrm{spa}}}, exactly what [phylo_latent()]
@@ -102,7 +102,7 @@
 #' df$pos <- glmmTMB::numFactor(df$lon, df$lat)   # only if comparing
 #' mesh   <- make_mesh(df, c("lon", "lat"), cutoff = 0.07)
 #' fit    <- gllvmTMB(
-#'   value ~ 0 + trait + spatial_unique(0 + trait | coords),
+#'   value ~ 0 + trait + spatial_indep(0 + trait | coords),
 #'   data  = df,
 #'   trait = "trait",
 #'   unit  = "site",
@@ -117,7 +117,7 @@
 #' [make_mesh()]); the `coords` token in the formula is just a
 #' placeholder. The pre-0.1.4 orientation `coords | trait` is also
 #' accepted but emits a one-shot lifecycle deprecation warning per
-#' session; see [spatial_unique()].
+#' session; see [spatial_indep()].
 #'
 #' @param coords A formula-token placeholder. The actual coordinate
 #'   columns are read from `mesh` (the second argument to
@@ -146,7 +146,7 @@
 #' )
 #' df   <- s$data
 #' mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.07)
-#' fit  <- gllvmTMB(value ~ 0 + trait + spatial_unique(0 + trait | coords),
+#' fit  <- gllvmTMB(value ~ 0 + trait + spatial_indep(0 + trait | coords),
 #'                  data  = df,
 #'                  trait = "trait",
 #'                  unit  = "site",

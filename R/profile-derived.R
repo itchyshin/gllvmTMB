@@ -150,7 +150,7 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
 
 #' Profile-likelihood CI for per-trait phylogenetic signal H^2
 #'
-#' For fits with `phylo_unique(species)` and `indep(0 + trait | species)`
+#' For fits with `phylo_indep(species)` and `indep(0 + trait | species)`
 #' but no species-level `latent()` term, `H^2 = sigma2_phy / (sigma2_phy +
 #' sigma2_non)` is a 2-component ratio profileable via a single linear
 #' contrast (`log_sd_phy_diag[t] - theta_diag_species[t]`).

@@ -12,9 +12,9 @@
 #' \eqn{R_t = \sigma^2_{B,t} / (\sigma^2_{B,t} + \sigma^2_{W,t})} for a
 #' fit returned by [gllvmTMB()] with both unit- and observation-level diagonal
 #' variance components. In new ordinary formulas those diagonal components are
-#' usually supplied by default `latent()` terms or explicit `indep()` terms;
-#' older `unique()` formulas remain compatibility syntax. Also known as the
-#' intraclass correlation coefficient (ICC) at the unit level.
+#' usually supplied by default `latent()` terms or explicit `indep()` terms.
+#' Also known as the intraclass correlation coefficient (ICC) at the unit
+#' level.
 #'
 #' @param fit A fit returned by \code{\link{gllvmTMB}}. A
 #'   \code{bootstrap_Sigma} object is also accepted when it contains an

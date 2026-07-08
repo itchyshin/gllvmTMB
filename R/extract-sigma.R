@@ -398,8 +398,7 @@ link_residual_per_trait <- function(fit) {
 #' For Gaussian / lognormal / Gamma fits this function emits an advisory note
 #' when a reduced-rank tier has no Psi component. Use the ordinary
 #' `latent(..., unique = TRUE)` default for
-#' \eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}; the
-#' explicit `latent() + unique()` spelling remains compatibility syntax only.
+#' \eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}.
 #'
 #' For non-Gaussian families (binomial, Poisson, Gamma) the latent-scale
 #' residual variance has a closed-form approximation that should be added
@@ -542,7 +541,7 @@ link_residual_per_trait <- function(fit) {
 #'   dep-only fit, as it carries no between/within-unit covariance term.)
 #'
 #'   For an ordinary individual-level random-regression fit with
-#'   `latent(1 + x | unit, d = K)`, `unique(1 + x | unit)`, or their long-form
+#'   `latent(1 + x | unit, d = K)`, `indep(1 + x | unit)`, or their long-form
 #'   equivalents, call with `level = "unit_slope"`: the result is the augmented
 #'   `2T x 2T` covariance over trait-specific intercept and slope coefficients,
 #'   with row names `intercept.<trait>` and `slope.<x>.<trait>`. As for

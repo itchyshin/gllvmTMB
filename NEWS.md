@@ -17,6 +17,18 @@
   standalone marginal-only diagonal, use `indep()` / `*_indep()`.
 * The `*_unique()` functions remain exported, grouped under a "Soft-deprecated
   covariance compatibility syntax" section in the reference index.
+* **Printed covariance-structure labels are now keyword-free** (user-visible string
+  change). `print()` and `summary()` label diagonal covariance terms with their
+  canonical `indep` names — `phylo_indep`, `spatial_indep`, `indep_unit`,
+  `indep_unit_obs`, `indep_<cluster>` — for **both** folded
+  `*_latent(..., unique = TRUE)` fits and fits written with the deprecated
+  `unique()` / `*_unique()` spelling (same engine). Previously a folded
+  `phylo_latent(..., unique = TRUE)` fit printed its companion as `phylo_unique`.
+* **Runtime messages no longer teach the keyword.** Deprecation targets and cli
+  hints now point to `indep()` / `*_indep()` or the `unique =` argument — for
+  example, the legacy `spatial()` and `spde()` aliases now migrate to
+  `spatial_indep()` rather than the soft-deprecated `spatial_unique()`. Diagnostics
+  that report what you actually wrote still name the term you used.
 
 ## Augmented `*_latent(unique = TRUE)` now folds in the source companion (2026-07-07)
 

@@ -169,7 +169,16 @@ test_that("phylo q decomposition: sigma2_Q recovered within 50% relative error",
     data    = s$data,
     cluster = "species"
   )))
-  expect_equal(fit$opt$convergence, 0L)
+  ## NOT `expect_equal(fit$opt$convergence, 0L)`. This six-tier crossed model has a
+  ## flat likelihood near the optimum, so PORT/nlminb returns 1 = "false convergence
+  ## (8)" under `LC_COLLATE = "C"` (which testthat and `R CMD check` both set) and
+  ## 0 = "relative convergence (4)" under a typical interactive locale -- from the
+  ## SAME data and the SAME optimum. Collation orders the `site_species` factor
+  ## levels, which orders the random effects, which changes sparse-Cholesky rounding.
+  ## Objective agrees to 1e-6, and the gradient is actually SMALLER (1.95e-2 vs
+  ## 4.69e-2) in the "failing" case. A 10x iteration budget is byte-identical, so
+  ## raising `iter.max` fixes nothing. See tests/testthat/setup.R.
+  expect_converged(fit)
 
   ## Non-phylo species variance lives in `theta_diag_species` via the q_sp
   ## random effect. The cpp REPORTs the per-trait SDs as `sd_q`.

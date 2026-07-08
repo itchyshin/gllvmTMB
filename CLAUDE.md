@@ -3,10 +3,16 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 For the current Claude handoff, also read
-`docs/dev-log/handover/2026-07-06-claude-handover-modelA.md` (the structured ×
-X_lv arc RE-SCOPED to the orthogonal Model A, which already composes + recovers
-`B_lv` in R — the remaining work is the t-based profile + bootstrap CI) before
-starting new work. Its authoritative model record is `docs/design/76-structured-xlv-phylo.md` §7 UPDATE.
+`docs/dev-log/handover/2026-07-08-claude-handover.md` before starting new work.
+The `unique()` keyword-removal arc is CLOSED + merged (#728, #729). The `B_lv` CI
+trio (Wald / profile / bootstrap) is **already BUILT and exported on `main`** —
+do not rebuild it; the branches `claude/blv-profile-ci` and
+`claude/xlv-phylo-gaussian` are `ahead 0` (superseded, not parked). Structured ×
+X_lv is the orthogonal **Model A**, which already composes + recovers `B_lv` in R
+(authoritative model record: `docs/design/76-structured-xlv-phylo.md` §7 UPDATE).
+The remaining work is the **calibrated-interval evidence** (ADEMP coverage;
+`CI-08` / `CI-10` are open/failing gates). Earlier context:
+`docs/dev-log/handover/2026-07-06-claude-handover-modelA.md`.
 
 ## Project Identity
 

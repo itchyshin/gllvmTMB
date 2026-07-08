@@ -48,34 +48,48 @@ options(gllvmTMB.quiet_grammar_notes = TRUE)
 # budget 10x changes nothing (byte-identical objective and iteration count), so a
 # larger `iter.max` is a no-op, not a fix.
 #
-# So: accept 0, and accept PORT's "false convergence" ONLY when the gradient is
-# genuinely small. Reject anything else. This is the repo's standing discipline --
-# trust recovery-to-truth over second-order flags.
+# So: judge the fit on `fit$fit_health$converged` -- the package's scale-free
+# gradient verdict (R/diagnose.R, added 2026-07-08) -- NOT on `fit$opt$convergence`
+# or `pd_hessian`. This is the repo's standing discipline: trust recovery-to-truth
+# over second-order flags. The two helpers below are the single source of truth for
+# "is this fit usable?" in the test suite.
 #
-# NOTE: 377 assertions across 184 test files still use the bare
-# `expect_equal(fit$opt$convergence, 0L)` form and share this fragility. Migrating
-# them is a separate, maintainer-approved sweep; this helper is the migration target.
-expect_converged <- function(fit, grad_tol = 0.1) {
-  conv <- fit$opt$convergence
-  msg <- fit$opt$message
-  if (is.null(msg)) msg <- ""
-  gmax <- tryCatch(
-    max(abs(fit$tmb_obj$gr(fit$opt$par))),
-    error = function(e) NA_real_
-  )
-  ok <- isTRUE(conv == 0L) ||
-    (isTRUE(conv == 1L) &&
-      grepl("false convergence", msg, fixed = TRUE) &&
-      isTRUE(gmax < grad_tol))
+# NOTE: ~377 assertions across ~184 test files still use the bare
+# `expect_equal(fit$opt$convergence, 0L)` form and share the locale fragility above.
+# Migrating those is a separate mechanical sweep; `expect_converged()` is the target.
+
+# Predicate for skip-guards: TRUE iff the fit reached a usable optimum. Reads the
+# package verdict; falls back to recomputing the scaled gradient if the field is
+# absent (e.g. an older fit object). Never TRUE when the gradient is unavailable.
+.fit_converged <- function(fit) {
+  v <- tryCatch(fit$fit_health$converged, error = function(e) NULL)
+  if (is.logical(v) && length(v) == 1L && !is.na(v)) {
+    return(isTRUE(v))
+  }
+  ## Fallback: recompute the scaled gradient directly (mirrors R/diagnose.R).
+  g <- tryCatch(max(abs(fit$tmb_obj$gr(fit$opt$par))), error = function(e) NA_real_)
+  obj <- tryCatch(fit$opt$objective, error = function(e) NA_real_)
+  if (is.na(g) || is.na(obj)) return(FALSE)
+  isTRUE(g / (1 + abs(obj)) < 1e-3)
+}
+
+# Assertion wrapper for the predicate. Prefer this over
+# `expect_equal(fit$opt$convergence, 0L)` and over `expect_true(pd_hessian)` as a
+# proxy for a good fit.
+expect_converged <- function(fit) {
+  h <- tryCatch(fit$fit_health, error = function(e) NULL)
   testthat::expect(
-    ok,
+    .fit_converged(fit),
     sprintf(
       paste0(
-        "Optimiser did not reach a usable optimum: convergence = %s, ",
-        "message = '%s', |grad|_inf = %.3e (tolerance %.2g)."
+        "Fit did not reach a usable optimum: converged = %s, scaled_gradient = %s, ",
+        "raw convergence code = %s, pd_hessian = %s."
       ),
-      conv, msg, gmax, grad_tol
+      isTRUE(h$converged), signif(h$scaled_gradient %||% NA_real_, 3),
+      h$convergence %||% NA, isTRUE(h$pd_hessian)
     )
   )
   invisible(fit)
 }
+
+`%||%` <- function(a, b) if (is.null(a)) b else a

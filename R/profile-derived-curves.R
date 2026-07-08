@@ -361,7 +361,7 @@ profile_repeatability <- function(
     cli::cli_abort(c(
       "Repeatability requires both {.code theta_diag_B} and {.code theta_diag_W} in the fit.",
       "i" = "Refit with ordinary {.code latent(0 + trait | <unit>, d = K)} and {.code latent(0 + trait | <obs>, d = K)} tiers so each tier has default diagonal Psi.",
-      ">" = "Use explicit {.code unique(0 + trait | ...)} only for legacy diag-only compatibility fits."
+      ">" = "Use {.code indep(0 + trait | ...)} for standalone diagonal tiers."
     ))
   }
   T <- length(ix_B)
@@ -452,7 +452,7 @@ profile_phylo_signal <- function(
   if (!has_phy) {
     cli::cli_abort(c(
       "Phylogenetic signal requires a phylogenetic component.",
-      "i" = "Refit with {.code phylo_latent()} or {.code phylo_unique()}."
+      "i" = "Refit with {.code phylo_latent()}."
     ))
   }
   has_simple_2comp <-

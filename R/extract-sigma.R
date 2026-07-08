@@ -838,7 +838,7 @@ extract_Sigma <- function(
     rho_v <- as.numeric(fit$report$cor_b)
     if (length(sd_b) != 2L) {
       cli::cli_abort(paste0(
-        "phylo_unique/indep augmented-slope fit has no reported {.code sd_b} ",
+        "The augmented correlated phylo slope fit has no reported {.code sd_b} ",
         "of length 2 (the 1 + x | species correlated intercept+slope path)."
       ))
     }
@@ -863,7 +863,7 @@ extract_Sigma <- function(
       level = "phy_unique_slope",
       part = "slope",
       note = paste0(
-        "phylo_unique/indep(1 + x | species): 2x2 (intercept, slope) ",
+        "Augmented phylo slope (1 + x | species): 2x2 (intercept, slope) ",
         "covariance shared across traits, assembled from the closed-form ",
         "report$sd_b (D = diag(sd_b)) and report$cor_b ",
         "(R = [[1, cor_b], [cor_b, 1]]) as Sigma = D R D. The ",
@@ -903,7 +903,7 @@ extract_Sigma <- function(
     kappa_s <- as.numeric(fit$report$kappa_s)
     if (length(sd_b) != 2L) {
       cli::cli_abort(paste0(
-        "spatial_unique/indep slope fit has no reported {.code sd_spde_b} ",
+        "The augmented correlated spatial slope fit has no reported {.code sd_spde_b} ",
         "of length 2 (the 1 + x | coords correlated intercept+slope path)."
       ))
     }
@@ -942,7 +942,7 @@ extract_Sigma <- function(
       level = "spde_base_slope",
       part = "slope",
       note = paste0(
-        "spatial_unique/indep(1 + x | coords): 2x2 cross-field covariance ",
+        "Augmented spatial slope (1 + x | coords): 2x2 cross-field covariance ",
         "Sigma_field over the (intercept, slope) SPDE fields, on the SPDE ",
         "parameterisation scale (tau absorbed, NOT per-site marginal). ",
         kappa_note,
@@ -1050,7 +1050,7 @@ extract_Sigma <- function(
       cli::cli_abort(c(
         "Kernel tier {.val {kernel_level$name}} has no {.field Psi} component.",
         "i" = "One named {.fn kernel_latent} tier carries {.field Psi} only when {.code unique = TRUE}; the first multi-kernel engine wave remains latent-only.",
-        ">" = "For one kernel tier, refit with {.code kernel_latent(..., unique = TRUE)} or the compatibility pair {.code kernel_latent(..., unique = FALSE) + kernel_unique(...)} before requesting {.code part = \"unique\"}."
+        ">" = "For one kernel tier, refit with {.code kernel_latent(..., unique = TRUE)} before requesting {.code part = \"unique\"}."
       ))
     }
     if (has_shared) {
@@ -1081,7 +1081,7 @@ extract_Sigma <- function(
     has_phy_diag <- isTRUE(fit$use$phylo_diag)
     if (!has_phy_rr && !has_phy_diag) {
       cli::cli_abort(
-        "Fit has no {.code phylo_latent()} or {.code phylo_unique()} term -- nothing to extract at level {.val phy}."
+        "Fit has no {.code phylo_latent()} term -- nothing to extract at level {.val phy}."
       )
     }
     if (has_phy_rr) {
@@ -1100,7 +1100,7 @@ extract_Sigma <- function(
       if (!isTRUE(fit$use$phylo_unique)) {
         notes <- c(
           notes,
-          "Phylogenetic tier is currently latent-only (Lambda_phy Lambda_phy^T). To add a unique component, refit with `+ phylo_unique(species)`."
+          "Phylogenetic tier is currently latent-only (Lambda_phy Lambda_phy^T). To add a diagonal Psi component, refit with `phylo_latent(species, d = K, unique = TRUE)`."
         )
       }
     }
@@ -1214,15 +1214,15 @@ extract_Sigma <- function(
     ## component at this tier in the current engine, so L stays NULL.
     if (!isTRUE(fit$use$diag_species)) {
       cli::cli_abort(c(
-        "Fit has no {.code unique(0 + trait | <cluster_col>)} term -- nothing to extract at level {.val cluster}.",
-        "i" = "Add a {.code unique(0 + trait | {fit$cluster_col %||% 'species'})} term to the formula to use this tier."
+        "Fit has no {.code indep(0 + trait | <cluster_col>)} term -- nothing to extract at level {.val cluster}.",
+        "i" = "Add an {.code indep(0 + trait | {fit$cluster_col %||% 'species'})} term to the formula to use this tier."
       ))
     }
     L <- NULL
     S <- as.numeric(fit$report$sd_q)^2
     notes <- c(
       notes,
-      "Cluster (third-slot) tier extracts the unique() diagonal at the cluster level."
+      "Cluster (third-slot) tier extracts the per-trait diagonal at the cluster level."
     )
   } else if (identical(level, "cluster2")) {
     ## cluster2 (second independent diagonal grouping) tier: extracts the
@@ -1231,20 +1231,20 @@ extract_Sigma <- function(
     ## only at this tier (no latent / rr component), so L stays NULL.
     if (!isTRUE(fit$use$diag_cluster2)) {
       cli::cli_abort(c(
-        "Fit has no {.code unique(0 + trait | <cluster2_col>)} term -- nothing to extract at level {.val cluster2}.",
-        "i" = "Pass {.code cluster2 = \"<col>\"} to {.fn gllvmTMB} and add a {.code unique(0 + trait | {fit$cluster2_col %||% '<col>'})} term to use this tier."
+        "Fit has no {.code indep(0 + trait | <cluster2_col>)} term -- nothing to extract at level {.val cluster2}.",
+        "i" = "Pass {.code cluster2 = \"<col>\"} to {.fn gllvmTMB} and add an {.code indep(0 + trait | {fit$cluster2_col %||% '<col>'})} term to use this tier."
       ))
     }
     L <- NULL
     S <- as.numeric(fit$report$sd_c2)^2
     notes <- c(
       notes,
-      "cluster2 (second diagonal grouping) tier extracts the unique() diagonal at the cluster2 level."
+      "cluster2 (second diagonal grouping) tier extracts the per-trait diagonal at the cluster2 level."
     )
   } else {
     cli::cli_abort(c(
       "Custom {.arg level = {.val {level}}} is not yet supported.",
-      "i" = "The engine supports three {.code latent()/unique()} tiers ({.val B}, {.val W}, {.val cluster}) plus {.val cluster2}, {.val phy} and {.val spde} for keyword-driven covariance terms."
+      "i" = "The engine supports three {.code latent()/indep()} tiers ({.val B}, {.val W}, {.val cluster}) plus {.val cluster2}, {.val phy} and {.val spde} for keyword-driven covariance terms."
     ))
   }
 

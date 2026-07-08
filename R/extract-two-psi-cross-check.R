@@ -115,7 +115,7 @@
   if (!.is_two_psi_fit(fit_two_psi)) {
     cli::cli_abort(c(
       "{.arg fit_two_psi} does not look like a joint two-psi fit.",
-      "i" = "Expected both {.code phylo_latent(species, d = K)} and {.code phylo_unique(species)} in the formula.",
+      "i" = "Expected a folded {.code phylo_latent(species, d = K, unique = TRUE)} term in the formula.",
       ">" = "Refit with both terms before calling the cross-check."
     ))
   }

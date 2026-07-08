@@ -54,7 +54,7 @@
   if (!has_phy) {
     cli::cli_abort(c(
       "Phylogenetic signal requires a phylogenetic component.",
-      "i" = "Refit with {.code phylo_latent()} or {.code phylo_unique()}."
+      "i" = "Refit with {.code phylo_latent()}."
     ))
   }
   invisible(TRUE)

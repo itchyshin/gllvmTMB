@@ -664,7 +664,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cli::cli_abort(c(
       "Do not combine augmented ordinary diagonal-compatibility random-regression slopes with an intercept-only {.fn unique} term at the same {.arg unit} tier.",
       "i" = "The augmented term already includes trait-specific intercept and slope rows.",
-      ">" = "For new code, use one {.code latent(1 + x | unit, d = K)} term for the default shared + diagonal-Psi reaction norm; explicit {.code unique(1 + x | unit)} remains compatibility syntax for diagonal-only augmented fits."
+      ">" = "For new code, use one {.code latent(1 + x | unit, d = K)} term for the default shared + diagonal-Psi reaction norm."
     ))
   }
   ## `common = TRUE` parsimony mode: when the user passes
@@ -833,8 +833,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## skips, nbinom1 is removed from all slope allowlists. Other families stay
       ## reserved fail-loud.
       cli::cli_abort(c(
-        "Augmented {.fn spatial_unique} / {.fn spatial_indep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
-        "i" = "Other families for the augmented {.code spatial_unique(1 + x | coords)} / {.code spatial_indep(1 + x | coords)} 2x2 cross-field slope are reserved (Design 60 sections 3.4-3.5, Design 64; SPA-08).",
+        "Augmented {.fn spatial_indep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+        "i" = "Other families for the augmented 2x2 cross-field spatial slope are reserved (Design 60 sections 3.4-3.5, Design 64; SPA-08).",
         ">" = "Use a validated family for the augmented SPDE random-regression fit."
       ))
     }
@@ -1115,7 +1115,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn phylo_dep} and {.fn phylo_latent} are over-parameterised together.",
         "i" = "Both {.code phylo_dep(0 + trait | species)} and {.code phylo_latent(species, d = K)} appear in the formula.",
-        ">" = "Use {.fn phylo_dep} alone for the full unstructured cross-trait phylogenetic fit, or use {.code phylo_latent + phylo_unique} (paired) for the paired phylogenetic decomposition. They cannot coexist."
+        ">" = "Use {.fn phylo_dep} alone for the full unstructured cross-trait phylogenetic fit, or the folded {.code phylo_latent(..., unique = TRUE)} for the phylogenetic decomposition. They cannot coexist."
       ))
     }
     if (any(phy_is_unique & !phy_is_indep & !phy_is_kernel_multi)) {
@@ -1150,7 +1150,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn phylo_indep} and {.fn phylo_latent} are over-parameterised together.",
         "i" = "Both {.code phylo_indep(0 + trait | species)} and {.code phylo_latent(species, d = K)} appear in the formula.",
-        ">" = "Use {.fn phylo_indep} alone for the marginal-only phylogenetic fit, or use {.code phylo_latent + phylo_unique} (paired) for the paired phylogenetic decomposition. They cannot coexist."
+        ">" = "Use {.fn phylo_indep} alone for the marginal-only phylogenetic fit, or the folded {.code phylo_latent(..., unique = TRUE)} for the phylogenetic decomposition. They cannot coexist."
       ))
     }
     ## phylo_indep + phylo_unique: redundant (both produce diag(sigma^2_phy,t)).
@@ -1235,7 +1235,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn spatial_dep} and {.fn spatial_latent} are over-parameterised together.",
         "i" = "Both {.code spatial_dep(0 + trait | coords)} and {.code spatial_latent(0 + trait | coords, d = K)} appear in the formula.",
-        ">" = "Use {.fn spatial_dep} alone for the full unstructured cross-trait spatial fit, or use {.fn spatial_latent} (with optional {.fn spatial_unique}) for the rank-reduced decomposition. They cannot coexist."
+        ">" = "Use {.fn spatial_dep} alone for the full unstructured cross-trait spatial fit, or use {.fn spatial_latent} (with optional {.code unique = TRUE}) for the rank-reduced decomposition. They cannot coexist."
       ))
     }
     ## spatial_dep + spatial_unique: redundant. spatial_unique = spde with
@@ -1263,7 +1263,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cli::cli_abort(c(
       "{.fn spatial_indep} and {.fn spatial_latent} are over-parameterised together.",
       "i" = "Both {.code spatial_indep(0 + trait | coords)} and {.code spatial_latent(0 + trait | coords, d = K)} appear in the formula.",
-      ">" = "Use {.fn spatial_indep} alone for the marginal-only spatial fit, or use {.fn spatial_latent} (with optional {.fn spatial_unique} for unshared per-trait residual) for the decomposition. They cannot coexist."
+      ">" = "Use {.fn spatial_indep} alone for the marginal-only spatial fit, or use {.fn spatial_latent} (with optional {.code unique = TRUE} for unshared per-trait residual) for the decomposition. They cannot coexist."
     ))
   }
   if (is_spatial_indep && !is_spatial_dep) {
@@ -1297,7 +1297,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (is_spatial_latent && any(spde_latent_unique_flag) && any(spde_is_plain_unique)) {
     cli::cli_abort(c(
       "Duplicate spatial {.field Psi} terms were supplied.",
-      "i" = "Use either {.code spatial_latent(..., unique = TRUE)} or the compatibility pair {.code spatial_latent(..., unique = FALSE) + spatial_unique()}, not both.",
+      "i" = "Supplied both the folded {.code spatial_latent(..., unique = TRUE)} and a separate explicit diagonal spatial term; keep only the folded form.",
       ">" = "The folded and explicit terms target the same diagonal SPDE component."
     ))
   }
@@ -1385,7 +1385,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cli::cli_abort(c(
       "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
       "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
-      ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for any other non-Gaussian augmented phylogenetic random regression, or {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit."
+      ">" = "Use {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit; the correlated augmented reaction norm is validated only for the families listed above."
     ))
   }
   ## phylo_dep(1 + x | species) augmented-slope scope (Design 56 §9.5c):
@@ -1493,7 +1493,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cli::cli_abort(c(
       "{.fn phylo_latent} random slopes are not yet supported for this family.",
       "i" = "Augmented {.code phylo_latent(1 + x | species, d = K)} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
-      ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for any other non-Gaussian augmented phylogenetic random regression."
+      ">" = "Use {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit; the correlated augmented reaction norm is validated only for the families listed above."
     ))
   }
   d_phy_slope <- if (use_phylo_latent_slope) {
@@ -1657,9 +1657,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     if (species_diag && !identical(site, species)) {
       cli::cli_inform(c(
-        "i" = "{.code phylo_unique({species}) + indep(0 + trait | {species})} at {.code unit = {.val {site}}} fits the {.val {species}}-level non-phylogenetic variance via the {.code diag | {species}} ({.code q_sp}) engine slot.",
+        "i" = "{.code phylo_indep({species}) + indep(0 + trait | {species})} at {.code unit = {.val {site}}} fits the {.val {species}}-level non-phylogenetic variance via the {.code diag | {species}} ({.code q_sp}) engine slot.",
         "*" = "This is the {.code p_it + q_it} decomposition of the Nakagawa et al. functional-biogeography model. Joint identifiability is empirically reasonable at {.code n_species >= 100} with strong phylogenetic signal: {.code sigma2_Q} recovers within ~10% relative error; {.code sigma2_P} within ~50% (per-trait estimates can be noisy). Compare the fit without the standalone species-level diagonal term to the fit with it to confirm both terms contribute on your data.",
-        ">" = "Use {.fn indep} for new standalone non-phylogenetic diagonal terms; explicit ordinary {.fn unique} remains compatibility syntax."
+        ">" = "Use {.fn indep} for standalone non-phylogenetic diagonal terms."
       ), .frequency = "once",
          .frequency_id = "gllvmTMB-phylo-q-decomposition-inform")
     }
@@ -2892,12 +2892,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "Unsupported augmented spatial random-regression LHS.",
         "i" = "Got LHS form {.val {spde_slope_lhs_form}}.",
-        ">" = "Use {.code spatial_unique(1 + x | coords)} or {.code spatial_unique(0 + trait + (0 + trait):x | coords)}."
+        ">" = "Use {.code spatial_indep(1 + x | coords)} or the folded {.code spatial_latent(1 + x | coords, unique = TRUE)}."
       ))
     }
     if (!spde_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
-        "{.code spatial_unique(1 + {spde_slope_xcol} | coords)} references column {.val {spde_slope_xcol}}, which is not in {.arg data}.",
+        "The augmented spatial random-regression term references column {.val {spde_slope_xcol}}, which is not in {.arg data}.",
         "i" = "Add the covariate column to the data frame."
       ))
     }
@@ -3039,7 +3039,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "Unsupported augmented phylogenetic random-regression LHS.",
         "i" = "Got LHS form {.val {phylo_slope_lhs_form}}.",
-        ">" = "Use {.code phylo_unique(1 + x | species)} or {.code phylo_unique(0 + trait + (0 + trait):x | species)}."
+        ">" = "Use {.code phylo_indep(1 + x | species)} or the folded {.code phylo_latent(1 + x | species, unique = TRUE)}."
       ))
     }
     Z_phy_aug[, 1L, 1L] <- 1.0
@@ -3125,7 +3125,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     if (!diag_B_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
-        "{.code unique(1 + {diag_B_slope_xcol} | {site})} references column {.val {diag_B_slope_xcol}}, which is not in {.arg data}.",
+        "The augmented ordinary random-regression term references column {.val {diag_B_slope_xcol}}, which is not in {.arg data}.",
         "i" = "Add the covariate column to the data frame."
       ))
     }
@@ -3561,7 +3561,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         }
       }
     } else if (isTRUE(control$verbose)) {
-      cat("  start_method='indep': skipped (no paired unique() terms to fit)\n")
+      cat("  start_method='indep': skipped (no paired diagonal terms to fit)\n")
     }
   }
   if (identical(start_method$method, "res")) {
@@ -3724,7 +3724,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Implemented entirely via lambda_packed_map(); no TMB change needed.
   if (use_phylo_rr && is_phylo_unique) {
     if (!is.null(lambda_constraint$phy))
-      cli::cli_abort("phylo_unique() supplies its own diagonal lambda_constraint and is incompatible with a user-supplied {.code lambda_constraint$phy}. Use {.fn phylo_latent} for the general case.")
+      cli::cli_abort("This diagonal phylogenetic term supplies its own diagonal lambda_constraint and is incompatible with a user-supplied {.code lambda_constraint$phy}. Use {.fn phylo_latent} for the general case.")
     diag_constraint <- matrix(NA_real_, nrow = n_traits, ncol = d_phy)
     ## Pin the strict lower triangle to 0 (diagonal stays NA = free).
     for (j in seq_len(d_phy)) {
@@ -4008,7 +4008,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_inform(c(
         "i" = paste0(
           "Auto-suppressing {.code sigma_eps}: ",
-          "{.code indep(0 + trait | ", level_lab, ")} (or legacy {.code unique()} spelling) is at the per-row level, so it already absorbs the observation residual."
+          "{.code indep(0 + trait | ", level_lab, ")} is at the per-row level, so it already absorbs the observation residual."
         ),
         "*" = "Fixed at {.val {signif(small_eps, 3)}} (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term."
       ))

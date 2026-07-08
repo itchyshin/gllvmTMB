@@ -98,6 +98,38 @@ grep -rnE "^#'.*(unique\(|_unique\()" R/ | grep -vE "unique = " \
   | grep -vE "R/(unique-keyword|animal-keyword|kernel-keywords|brms-sugar|spde-keyword)\.R"   # empty
 ```
 
+## Runtime-message sweep (2nd pass — the taught+rendered surface is more than vignettes)
+Rose flagged 2 cli hints; a Rose-principle grep found the keyword in **~30 user-facing R runtime
+messages** across `fit-multi.R`, `extract-sigma.R`, `profile-derived.R`, `profile-derived-curves.R`,
+`phylo-signal-ci.R`, `extract-omega.R`, `communality-ci.R`, `extract-two-psi-cross-check.R`,
+`julia-bridge.R`. Swept by category:
+- **Teachable suggestions** ("Refit with / Use / Add a / paired / with optional `*_unique()`") →
+  redirected to `phylo_latent(..., unique = TRUE)` / `phylo_indep` / `indep`. (~22 edits.)
+- **Family-general hints** (`fit-multi.R:1388,1496`): redirect would be *wrong* (fold isn't
+  family-general) → reworded to the valid `phylo_indep(0 + trait | species)` fallback + the family
+  limitation, keyword-free.
+- **Column-ref diagnostics** (`fit-multi.R:2900,3128`) that hardcoded `spatial_unique`/`unique` →
+  generalized (also a correctness fix: they'd mislabel a user who wrote `spatial_indep`/the fold).
+- **KEPT (intentional):** "you wrote X" duplicate/redundancy diagnostics (`fit-multi.R:502,986,1022,
+  1123/1124,1139,1165/1167,1248/1249,1276/1278,2588,2851`) — they name the user's *actual* formula
+  input, so naming the (compat, still-parsing) keyword is correct. Internal parser allow-lists
+  (`traits-keyword.R`, `missing-predictor.R`), `.phylo_unique` markers, and base `unique()` untouched.
+- Verified: `load_all()` + `document()` clean; **no test asserts on any removed fragment** (grep of
+  `expect_*`/snapshots; the one column-ref assertion uses lenient alternatives preserved by the rewrite).
+
+## 🔴 Third open item (maintainer decision) — print-label leak (verified)
+`R/methods-gllvmTMB.R:339-347` maps diagonal covstructs to `"unique"`-flavored **display labels** by
+default. Empirically confirmed: a folded `phylo_latent(species, d = 1, tree = tree, unique = TRUE)` fit
+**prints its companion as `"phylo_unique"`** (from the default map at line 345 — `use` carries only
+`phylo_rr` + `phylo_diag`, no sub-flag). So the deprecated keyword leaks into the fit's print/summary
+output for a user who wrote the fold. **Not fixed:** the map's comment (350-353) documents an
+intentional design ("surfaces the indep form *when the user wrote it*", default = unique), so inverting
+it to default-`indep` is a print-API change that also changes what existing explicit-`phylo_unique`
+fits render — a maintainer call. Recommended: default diagonal labels → `indep`-flavored
+(`phylo_diag`→`phylo_indep`, `spde`→`spatial_indep`, `diag_W`→`indep_unit_obs`, `diag_species`→`indep_*`),
+update the comment, and keep the explicit-`phylo_unique` sub-flag override only if a fit that *explicitly*
+used the keyword should still echo it.
+
 ## Rose gate — two open items (🔴 need maintainer decision; NOT arc regressions)
 1. **Pre-existing defects in `choose-your-model.Rmd`** (verified pre-existing via `git diff` — my edits
    are at hunks 184/213/246/312/443/585, none at 355-380): a headerless/broken table at ~365-366 +

@@ -385,7 +385,7 @@ extract_phylo_signal <- function(
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   if (!has_phy) {
     cli::cli_abort(c(
-      "Fit has no {.code phylo_latent()} or {.code phylo_unique()} term.",
+      "Fit has no {.code phylo_latent()} term.",
       "i" = "Phylogenetic-signal proportions require a phylogenetic component."
     ))
   }

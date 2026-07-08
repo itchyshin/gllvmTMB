@@ -90,13 +90,15 @@ test_that("spatial mode-dispatch calls do not emit legacy alias deprecation", {
   )
 })
 
-test_that("legacy spatial alias still emits the spatial_unique deprecation", {
+test_that("legacy spatial alias still emits the spatial_indep deprecation", {
   withr::local_options(lifecycle_verbosity = "warning")
   local_reset_lifecycle_cache()
 
+  ## spatial() now migrates to the canonical spatial_indep() (not the
+  ## soft-deprecated spatial_unique()); the alias deprecation still fires.
   expect_warning(
     gllvmTMB:::scan_for_deprecated(quote(spatial(0 + trait | coords))),
-    regexp = "spatial_unique"
+    regexp = "spatial_indep"
   )
 })
 

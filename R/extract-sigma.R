@@ -656,13 +656,13 @@ extract_Sigma <- function(
     if (!has_shared && !has_unique) {
       cli::cli_abort(c(
         "Fit has no augmented ordinary random-regression term -- nothing to extract at level {.val unit_slope}.",
-        "i" = "Use {.code level = \"unit\"} for an intercept-only {.fn latent} / {.fn unique} fit."
+        "i" = "Use {.code level = \"unit\"} for an intercept-only {.fn latent} / {.fn indep} fit."
       ))
     }
     if (identical(part, "shared") && !has_shared) {
       cli::cli_abort(c(
         "Fit has no augmented ordinary {.fn latent} random-regression term for {.code part = \"shared\"}.",
-        ">" = "Use {.code latent(1 + x | unit, d = K)} to estimate {.code Lambda_aug Lambda_aug^T}, or request {.code part = \"unique\"} for an augmented {.fn unique}-only fit."
+        ">" = "Use {.code latent(1 + x | unit, d = K)} to estimate {.code Lambda_aug Lambda_aug^T}, or request {.code part = \"unique\"} for an augmented diagonal-only fit."
       ))
     }
     if (identical(part, "unique") && !has_unique) {

@@ -526,7 +526,7 @@ extract_correlations <- function(
   if (length(available) == 0L) {
     cli::cli_abort(c(
       "No covariance tiers found in the fit.",
-      "i" = "Add a {.code latent() / indep() / phylo_*() / spatial_*()} term to the formula; explicit {.fn unique} remains compatibility syntax where a diagonal Psi term is still needed."
+      "i" = "Add a {.code latent() / indep() / phylo_*() / spatial_*()} term to the formula."
     ))
   }
 

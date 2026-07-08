@@ -117,6 +117,15 @@ messages** across `fit-multi.R`, `extract-sigma.R`, `profile-derived.R`, `profil
 - Verified: `load_all()` + `document()` clean; **no test asserts on any removed fragment** (grep of
   `expect_*`/snapshots; the one column-ref assertion uses lenient alternatives preserved by the rewrite).
 
+**Second pass (CI-caught).** My first grep matched only the literal `unique(` form and **missed the cli
+`{.fn unique}` / `{.fn spatial_unique}` spelling** — ~15 more messages. R CMD check on CI caught the one
+consequence (`test-scan-deprecated-namespace.R:97` asserted the `spatial()` warning says `spatial_unique`;
+my redirect made it say `spatial_indep`). Swept the `{.fn …}` form too (`fit-multi.R` 665/696/697/1570/
+1589/1625/1679/2588/2851/3123/4191, `extract-sigma.R` 659/665, `extract-correlations.R:529`,
+`extract-sigma-table.R:361`) and updated the test. **Lesson:** grep both the `keyword(` and cli `{.fn keyword}`
+forms; and `gh pr checks --watch` can exit 0 on a stale run — always re-read `gh pr checks` for the HEAD
+commit before merging (that re-read is what caught this).
+
 ## Third item — print-label leak (FIXED, maintainer-approved 2026-07-08)
 `R/methods-gllvmTMB.R:339-347` mapped diagonal covstructs to `"unique"`-flavored **display labels** by
 default. Empirically confirmed: a folded `phylo_latent(species, d = 1, tree = tree, unique = TRUE)` fit

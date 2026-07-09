@@ -137,9 +137,12 @@ fit_slope_spatial_indep <- function(fx, family) {
 ## the gaussian-only guard until SPA-08 (#427) admitted these families.
 expect_slope_spatial_indep_health_and_diag <- function(fit, n_traits,
                                                        expected_id) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  ## Usable optimum by the scale-free verdict (not the raw convergence code, not
+  ## pd_hessian -- see setup.R / brain LESSONS 0c). pd_hessian is reported as a
+  ## raw diagnostic but is NOT the pass/fail signal: a benign SPDE variance-range
+  ## ridge leaves it FALSE at a good optimum.
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], expected_id)
   testthat::expect_true(isTRUE(fit$use$spde_slope))
 
@@ -186,10 +189,16 @@ run_slope_spatial_indep_family <- function(fixture_family, fit_family,
       label, label, gsub("\n", " ", msg)
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  ## Skip ONLY on genuine non-convergence (the scale-free verdict), NOT on a
+  ## non-PD Hessian: a benign flat ridge (e.g. the SPDE variance-range
+  ## near-confounding) leaves pd_hessian FALSE at a perfectly good optimum, and
+  ## the diagonal-contract checks below are profile-/report-based, not Wald, so
+  ## they do not need a PD Hessian. Gating on pd_hessian here parked converged
+  ## cells as "partial" (audit 2026-07-08). The genuinely non-convergent cells
+  ## (large scaled gradient) still skip.
+  if (!.fit_converged(fit)) {
     testthat::skip(sprintf(
-      "%s: spatial_indep(1 + x | site) did not converge with PD Hessian; SLOPE-spatial-indep(%s) stays partial pending bigger n / different seed",
+      "%s: spatial_indep(1 + x | site) did not converge (scaled gradient above tolerance); SLOPE-spatial-indep(%s) stays partial pending bigger n / different seed",
       label, label
     ))
   }

@@ -1,55 +1,55 @@
-## Tests of the test helper `expect_converged()` (tests/testthat/setup.R).
+## Tests of the test helpers `.fit_converged()` (predicate) and `expect_converged()`
+## (assertion) in tests/testthat/setup.R.
 ##
-## The helper exists because `fit$opt$convergence` is nlminb's PORT stopping code,
-## not a verdict on the optimum, and which code it returns can flip with the
-## collation locale (see the long note in setup.R). It must therefore accept PORT's
-## benign "false convergence (8)" -- but ONLY when the gradient is genuinely small.
-##
-## A guard that cannot fail proves nothing, so these are the power tests. No model
-## fits here: `expect_converged()` only touches `$opt` and `$tmb_obj$gr`.
+## They exist because `fit$opt$convergence` and `pd_hessian` are second-order flags
+## that lie (brain LESSONS 0c); the helpers delegate to the package's scale-free
+## verdict `fit$fit_health$converged`. A guard that cannot fail proves nothing, so
+## these are the power tests -- they must REJECT as well as ACCEPT. No model fits
+## here: the helpers only read `$fit_health` (or fall back to `$opt` + `$tmb_obj$gr`).
 
-fake_fit <- function(convergence, message = "", grad = 1e-6) {
-  list(
-    opt = list(convergence = convergence, message = message, par = c(a = 0)),
-    tmb_obj = list(gr = function(par) grad)
-  )
+fake_fit <- function(converged = NULL, scaled_gradient = NA_real_,
+                     convergence = NA_integer_, pd_hessian = NA,
+                     objective = NULL, grad = NULL) {
+  fh <- list(converged = converged, scaled_gradient = scaled_gradient,
+             convergence = convergence, pd_hessian = pd_hessian)
+  out <- list(fit_health = fh)
+  ## Optional raw pieces for exercising the fallback path (no fit_health$converged).
+  if (!is.null(objective) || !is.null(grad)) {
+    out$opt <- list(objective = objective %||% NA_real_, par = c(a = 0))
+    out$tmb_obj <- list(gr = function(par) grad %||% NA_real_)
+  }
+  out
 }
+`%||%` <- function(a, b) if (is.null(a)) b else a
 
-test_that("expect_converged() accepts a clean convergence", {
-  expect_success(expect_converged(fake_fit(0L, "relative convergence (4)", 1e-6)))
-  ## convergence 0 is accepted regardless of gradient -- the optimiser said so.
-  expect_success(expect_converged(fake_fit(0L, "relative convergence (4)", 1e3)))
+test_that(".fit_converged reads the package verdict", {
+  expect_true(.fit_converged(fake_fit(converged = TRUE)))
+  expect_false(.fit_converged(fake_fit(converged = FALSE)))
+  ## The verdict is authoritative even when the raw flags disagree with it:
+  ## converged despite a non-zero raw code and a non-PD Hessian (the benign ridge).
+  expect_true(.fit_converged(fake_fit(converged = TRUE, convergence = 1L, pd_hessian = FALSE)))
+  ## and NOT converged despite a clean raw code + PD (a fit that stopped short).
+  expect_false(.fit_converged(fake_fit(converged = FALSE, convergence = 0L, pd_hessian = TRUE)))
 })
 
-test_that("expect_converged() accepts PORT 'false convergence' ONLY with a small gradient", {
-  ## The real case: nlminb stops on a flat surface but the gradient is small.
-  expect_success(
-    expect_converged(fake_fit(1L, "false convergence (8)", 1.95e-2))
-  )
-  ## Same status code, but a large gradient -- this is a genuinely bad stop.
-  expect_failure(
-    expect_converged(fake_fit(1L, "false convergence (8)", 5.0))
-  )
+test_that(".fit_converged is NA-safe: a missing/NA verdict is never a silent pass", {
+  expect_false(.fit_converged(fake_fit(converged = NA)))
+  ## No fit_health$converged at all, and no fallback material -> FALSE, not TRUE.
+  expect_false(.fit_converged(list(fit_health = list())))
 })
 
-test_that("expect_converged() rejects real non-convergence", {
-  ## convergence 1 with a different PORT message is not the benign flat-surface case.
-  expect_failure(
-    expect_converged(fake_fit(1L, "iteration limit reached without convergence (10)", 1e-6))
-  )
-  ## Any other non-zero status is rejected outright.
-  expect_failure(expect_converged(fake_fit(2L, "singular convergence (7)", 1e-6)))
-  expect_failure(expect_converged(fake_fit(51L, "", 1e-6)))
+test_that(".fit_converged falls back to the scaled gradient when the verdict is absent", {
+  ## fit_health$converged NULL -> recompute max|grad| / (1 + |objective|) < 1e-3.
+  small <- fake_fit(converged = NULL, objective = 3.7e4, grad = 1.9e-2)  # scaled 5e-7
+  big   <- fake_fit(converged = NULL, objective = 1e2,   grad = 5.0)     # scaled 5e-2
+  expect_true(.fit_converged(small))
+  expect_false(.fit_converged(big))
 })
 
-test_that("expect_converged() rejects a fit whose gradient cannot be evaluated", {
-  bad <- fake_fit(1L, "false convergence (8)")
-  bad$tmb_obj$gr <- function(par) stop("boom")
-  ## gmax becomes NA -> isTRUE(NA < tol) is FALSE -> fails, rather than passing silently.
-  expect_failure(expect_converged(bad))
-})
-
-test_that("expect_converged() honours grad_tol", {
-  expect_failure(expect_converged(fake_fit(1L, "false convergence (8)", 0.5), grad_tol = 0.1))
-  expect_success(expect_converged(fake_fit(1L, "false convergence (8)", 0.5), grad_tol = 1.0))
+test_that("expect_converged passes on a good fit and fails on a bad one", {
+  expect_success(expect_converged(fake_fit(converged = TRUE, scaled_gradient = 5e-7)))
+  expect_failure(expect_converged(fake_fit(converged = FALSE, scaled_gradient = 5e-2)))
+  ## benign ridge: converged TRUE though pd_hessian FALSE -> passes (the whole point).
+  expect_success(expect_converged(
+    fake_fit(converged = TRUE, scaled_gradient = 9e-7, convergence = 0L, pd_hessian = FALSE)))
 })

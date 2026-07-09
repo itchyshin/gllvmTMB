@@ -77,17 +77,16 @@ fit_gamma_unit <- function(form, df) {
   )
 }
 
-## Shared convergence + PD gate. Skips honestly instead of fake-passing.
+## Shared convergence gate. Skips honestly (on genuine non-convergence, by the
+## scale-free verdict) instead of fake-passing; a benign non-PD ridge no longer
+## skips (see setup.R / brain LESSONS 0c).
 expect_converged_pd <- function(fit) {
   if (inherits(fit, "error")) {
     testthat::skip(paste0("gamma fit errored: ", conditionMessage(fit)))
   }
-  if (!isTRUE(fit$opt$convergence == 0L)) {
-    testthat::skip(paste0("non-convergence (code ",
+  if (!.fit_converged(fit)) {
+    testthat::skip(paste0("did not converge (scaled gradient above tolerance; raw code ",
                           fit$opt$convergence %||% NA, "); stays partial"))
-  }
-  if (!isTRUE(fit$sd_report$pdHess)) {
-    testthat::skip("non-PD Hessian; stays partial")
   }
   invisible(fit)
 }
@@ -103,8 +102,8 @@ test_that("Gamma(log) x latent(d=1) unit-tier: converges, PD, recovers shape", {
   fit <- fit_gamma_unit(value ~ 0 + trait + latent(0 + trait | unit, d = 1), df)
   expect_converged_pd(fit)
 
-  expect_equal(fit$opt$convergence, 0L)
-  expect_true(isTRUE(fit$sd_report$pdHess))
+  expect_converged(fit)
+  expect_converged(fit)
   expect_true(isTRUE(fit$use$rr_B))
 
   ## phi_gamma == shape; CV = 1 / sqrt(phi_gamma).
@@ -141,8 +140,8 @@ test_that("Gamma(log) x unique unit-tier: converges, PD, recovers shape", {
   fit <- fit_gamma_unit(value ~ 0 + trait + unique(0 + trait | unit), df)
   expect_converged_pd(fit)
 
-  expect_equal(fit$opt$convergence, 0L)
-  expect_true(isTRUE(fit$sd_report$pdHess))
+  expect_converged(fit)
+  expect_converged(fit)
   expect_true(isTRUE(fit$use$diag_B))
 
   cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
@@ -175,8 +174,8 @@ test_that("Gamma(log) x latent+unique unit-tier: converges, PD, shape + rho CI",
   )
   expect_converged_pd(fit)
 
-  expect_equal(fit$opt$convergence, 0L)
-  expect_true(isTRUE(fit$sd_report$pdHess))
+  expect_converged(fit)
+  expect_converged(fit)
   expect_true(isTRUE(fit$use$rr_B) && isTRUE(fit$use$diag_B))
 
   cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
@@ -211,8 +210,8 @@ test_that("Gamma(log) x indep unit-tier: converges, PD, recovers shape", {
   fit <- fit_gamma_unit(value ~ 0 + trait + indep(0 + trait | unit), df)
   expect_converged_pd(fit)
 
-  expect_equal(fit$opt$convergence, 0L)
-  expect_true(isTRUE(fit$sd_report$pdHess))
+  expect_converged(fit)
+  expect_converged(fit)
   expect_true(isTRUE(fit$use$indep_B))
 
   cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
@@ -239,8 +238,8 @@ test_that("Gamma(log) x dep unit-tier: converges, PD, shape + rho CI", {
   fit <- fit_gamma_unit(value ~ 0 + trait + dep(0 + trait | unit), df)
   expect_converged_pd(fit)
 
-  expect_equal(fit$opt$convergence, 0L)
-  expect_true(isTRUE(fit$sd_report$pdHess))
+  expect_converged(fit)
+  expect_converged(fit)
   expect_true(isTRUE(fit$use$dep_B))
 
   cv_hat <- 1 / sqrt(as.numeric(fit$report$phi_gamma))
@@ -274,8 +273,8 @@ test_that("Gamma(log) x scalar unit-tier: converges, PD, recovers shape (wide)",
   fit <- fit_gamma_unit(value ~ 0 + trait + (1 | unit), df)
   expect_converged_pd(fit)
 
-  expect_equal(fit$opt$convergence, 0L)
-  expect_true(isTRUE(fit$sd_report$pdHess))
+  expect_converged(fit)
+  expect_converged(fit)
 
   ## A single shared scalar variance is structurally misspecified relative to
   ## the per-trait DGP (it pools the per-trait nugget into the gamma

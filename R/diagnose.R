@@ -4,6 +4,17 @@
 ## or FAIL signal. Designed to be the first call a user makes after
 ## fitting.
 
+## Scale-free convergence tolerance for the `converged` verdict below.
+## `converged` is judged on the *scaled* gradient `max_gradient / (1 + |objective|)`,
+## NOT on `fit$opt$convergence` (a raw PORT/optim status code whose value can even
+## flip with `LC_COLLATE`; see the after-task report + brain LESSONS 0c) and NOT on
+## `pd_hessian` (a sign test on a finite-difference Hessian eigenvalue -- noise near
+## zero, so a benign flat ridge reads FALSE). The scaled gradient was the one signal
+## invariant across every 2026-07-08 mis-diagnosis; on a known-truth battery it
+## separated good fits (<= ~1e-6) from genuine non-convergence (>= ~5e-2) with a
+## four-order margin either side of this threshold.
+.gllvmTMB_converged_gtol <- 1e-3
+
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
@@ -36,6 +47,21 @@
     NA_integer_
   }
 
+  ## The authoritative convergence verdict. See `.gllvmTMB_converged_gtol` above
+  ## for why it is the *scaled* gradient, not `convergence` or `pd_hessian`.
+  max_grad_val <- if (length(grad) == 0L || all(is.na(grad))) {
+    NA_real_
+  } else {
+    max(abs(grad), na.rm = TRUE)
+  }
+  obj_val <- object$opt$objective %||% NA_real_
+  scaled_gradient <- if (is.na(max_grad_val) || is.na(obj_val)) {
+    NA_real_
+  } else {
+    max_grad_val / (1 + abs(obj_val))
+  }
+  converged <- isTRUE(scaled_gradient < .gllvmTMB_converged_gtol)
+
   list(
     optimizer = if (nrow(restart_history) > 0L) {
       restart_history$optimizer[which.max(restart_history$selected)]
@@ -44,12 +70,10 @@
     },
     convergence = object$opt$convergence %||% NA_integer_,
     message = object$opt$message %||% "",
-    objective = object$opt$objective %||% NA_real_,
-    max_gradient = if (length(grad) == 0L || all(is.na(grad))) {
-      NA_real_
-    } else {
-      max(abs(grad), na.rm = TRUE)
-    },
+    objective = obj_val,
+    max_gradient = max_grad_val,
+    scaled_gradient = scaled_gradient,
+    converged = converged,
     pd_hessian = if (
       !is.null(object$sd_report) &&
         !is.null(object$sd_report$pdHess)

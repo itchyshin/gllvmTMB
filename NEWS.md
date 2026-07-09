@@ -3,6 +3,24 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## `fit_health$converged`: a scale-free convergence verdict (2026-07-08)
+
+* `fit$fit_health` gains two fields: **`converged`** (logical, the authoritative
+  "did the fit reach a usable optimum?" verdict) and **`scaled_gradient`**
+  (`max_gradient / (1 + |objective|)`). `converged` is `TRUE` when the scaled
+  gradient is below a small threshold.
+* **Why a new field.** `fit$opt$convergence` is the optimiser's raw status code
+  (`nlminb`'s PORT codes; `optim`'s), and its value can differ for the *same*
+  optimum depending on the optimiser and even the collation locale
+  (`LC_COLLATE`) — it answers "did my stopping rule fire cleanly?", not "is this
+  a good fit?". `pd_hessian` is a positive-definiteness flag whose sign near zero
+  is finite-difference noise, so a benign flat ridge (e.g. reduced-rank rotation
+  indeterminacy) reads `FALSE` on a perfectly good optimum. `converged` is judged
+  on the gradient, which is invariant to both. The raw `convergence` and
+  `pd_hessian` fields are unchanged and still reported.
+* No change to fitting, the likelihood, or `fit$opt`. This is an additive
+  diagnostic field.
+
 ## Bug fix: `extract_phylo_signal()` no longer reports `H2 = 1` in crossed designs (2026-07-08)
 
 * **Bug (fixed).** In a crossed `site x species` design (`unit != cluster`) —

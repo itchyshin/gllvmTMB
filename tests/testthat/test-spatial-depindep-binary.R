@@ -64,9 +64,9 @@ make_spatial_binary_fixture <- function(n_sites = 80L, n_traits = 3L,
 }
 
 expect_binary_spatial_fit_health <- function(fit) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
 }
 
 ## ---------------------------------------------------------------
@@ -95,8 +95,7 @@ test_that("spatial_indep(0 + trait | site) fits on binary probit; pd_hessian TRU
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("spatial_indep binary probit fit did not converge with PD Hessian; SPA-04 stays partial pending bigger n / different seed")
   }
 
@@ -142,8 +141,7 @@ test_that("spatial_dep(0 + trait | site) fits on binary probit; CI smoke + extra
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("spatial_dep binary probit fit did not converge with PD Hessian; SPA-04 stays partial pending bigger n / different seed")
   }
 

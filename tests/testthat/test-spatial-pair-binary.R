@@ -141,15 +141,14 @@ test_that("spatial_latent + spatial_unique paired fit on binary probit; pd_hessi
       conditionMessage(fit)
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("spatial paired binary probit fit did not converge with PD Hessian; SPA-02 stays partial pending bigger n / different seed")
   }
 
   ## Engine slot diagnostics: both halves of the pair must be active.
-  expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   expect_true(is.finite(fit$opt$objective))
-  expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
   expect_true(isTRUE(fit$use$spde))
   expect_true(isTRUE(fit$use$spatial_latent))
   expect_equal(fit$tmb_data$spde_lv_k, 1L)

@@ -73,6 +73,8 @@ jobs:
               "tests/testthat/test-ordinal-recovery-depth.R"
             )
             total_fail <- 0L
+            total_pass <- 0L
+            total_skip <- 0L
             for (f in files) {
               res <- testthat::test_file(
                 f, reporter = "summary", stop_on_failure = FALSE
@@ -80,6 +82,8 @@ jobs:
               df <- as.data.frame(res)
               n_fail <- sum(df$failed) + sum(as.integer(df$error))
               total_fail <- total_fail + n_fail
+              total_pass <- total_pass + sum(df$passed)
+              total_skip <- total_skip + sum(df$skipped)
               cat(sprintf(
                 "\n%s: %d failed, %d errored, %d skipped across %d tests\n",
                 f, sum(df$failed), sum(as.integer(df$error)),
@@ -93,7 +97,7 @@ jobs:
                 }
               }
             }
-            if (total_fail > 0L) {
+            if (total_fail > 0L || (total_pass == 0L && total_skip > 0L)) {
               stop(sprintf(
                 "gamma/ordinal recovery-depth suite had %d failed expectation(s)/error(s) -- failing the CI gate",
                 total_fail

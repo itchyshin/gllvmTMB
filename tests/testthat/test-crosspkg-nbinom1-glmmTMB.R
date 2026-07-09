@@ -121,8 +121,7 @@ test_that("gllvmTMB and glmmTMB agree on per-trait intercepts for nbinom1(log) +
     value ~ 0 + trait + (1 | site),
     data = df, family = gllvmTMB::nbinom1()
   )))
-  if (!identical(fit_gllvm$opt$convergence, 0L) ||
-        !isTRUE(fit_gllvm$sd_report$pdHess)) {
+  if (!.fit_converged(fit_gllvm)) {
     skip("gllvmTMB 2-trait nbinom1 fit did not converge / Hessian not PD")
   }
 
@@ -160,8 +159,7 @@ test_that("gllvmTMB and glmmTMB agree on shared random-intercept SD for nbinom1 
     value ~ 0 + trait + (1 | site),
     data = df, family = gllvmTMB::nbinom1()
   )))
-  if (!identical(fit_gllvm$opt$convergence, 0L) ||
-        !isTRUE(fit_gllvm$sd_report$pdHess)) {
+  if (!.fit_converged(fit_gllvm)) {
     skip("gllvmTMB 2-trait nbinom1 fit did not converge / Hessian not PD")
   }
 
@@ -204,8 +202,7 @@ test_that("gllvmTMB and glmmTMB agree on per-trait nbinom1 dispersion phi (cross
     value ~ 0 + trait + (1 | site),
     data = df, family = gllvmTMB::nbinom1()
   )))
-  if (!identical(fit_gllvm$opt$convergence, 0L) ||
-        !isTRUE(fit_gllvm$sd_report$pdHess)) {
+  if (!.fit_converged(fit_gllvm)) {
     skip("gllvmTMB 2-trait nbinom1 fit did not converge / Hessian not PD")
   }
 

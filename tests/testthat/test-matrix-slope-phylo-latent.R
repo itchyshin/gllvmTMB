@@ -168,9 +168,9 @@ slope_latent_path_is_live <- function(fit) {
 expect_slope_latent_recovery_and_ci <- function(fit, fx, var_band, rho_abs,
                                                 row_tag) {
   ## ---- Fit health -----------------------------------------------------
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
 
   ## ---- Latent slope structure recovery --------------------------------
   ## The reduced-rank latent slope is BLOCK-DIAGONAL across the LHS columns
@@ -257,7 +257,7 @@ run_slope_phylo_latent_cell <- function(emit, family, var_band, rho_abs,
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB object"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) || !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     testthat::skip(sprintf(
       "phylo_latent(1 + x | sp, d = 1) x %s fit did not converge with PD Hessian; %s stays partial pending bigger n / different seed",
       fam_label, row_tag

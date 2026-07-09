@@ -119,11 +119,11 @@ test_that("Gamma(log) joint depth: intercepts + CV + full between-unit Sigma (de
     skip(paste0("Gamma depth fit errored: ", conditionMessage(fit),
                 "; board #340 stays partial for gamma"))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) || !isTRUE(fit$sd_report$pdHess)) {
+  if (!.fit_converged(fit)) {
     skip("Gamma depth fit non-convergent / non-PD; board #340 stays partial")
   }
 
-  expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   expect_equal(fit$tmb_data$family_id_vec[1L], 4L)
   expect_true(isTRUE(fit$use$dep_B))
 

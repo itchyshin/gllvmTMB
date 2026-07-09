@@ -222,9 +222,7 @@ test_that("phylo_dep s=2 Gaussian fit recovers the (1+s)T x (1+s)T Sigma_b", {
     control = gllvmTMB::gllvmTMBcontrol(se = TRUE)
   )))
 
-  if (!(isTRUE(fit$opt$convergence == 0L) &&
-          is.finite(fit$opt$objective) &&
-          isTRUE(fit$fit_health$pd_hessian))) {
+  if (!.fit_converged(fit)) {
     testthat::skip(paste0(
       "phylo_dep(1 + x1 + x2 | sp) Gaussian s=2 did not converge with PD ",
       "Hessian at n_sp=140; RE-03 stays partial pending bigger n / seed ",

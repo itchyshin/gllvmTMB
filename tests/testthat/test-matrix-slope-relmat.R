@@ -133,9 +133,9 @@ fit_slope_relmat_phylo_pair <- function(fx, family) {
 }
 
 expect_slope_relmat_fit_health <- function(fit, family_id) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
   testthat::expect_equal(fit$tmb_data$family_id_vec[1], family_id)
 }
 
@@ -186,12 +186,9 @@ relmat_pair_ready_or_skip <- function(pair, row_label) {
                        else simpleError("wrong class"))
     ))
   }
-  if (!isTRUE(pair$phylo$opt$convergence == 0L) ||
-        !isTRUE(pair$phylo$fit_health$pd_hessian) ||
-        !isTRUE(pair$relmat$opt$convergence == 0L) ||
-        !isTRUE(pair$relmat$fit_health$pd_hessian)) {
+  if (!.fit_converged(pair$phylo) || !.fit_converged(pair$relmat)) {
     testthat::skip(sprintf(
-      "relmat/phylo slope did not converge with PD Hessian; %s stays partial pending bigger n / different seed",
+      "relmat/phylo slope did not converge (scaled gradient above tolerance); %s stays partial pending bigger n / different seed",
       row_label
     ))
   }

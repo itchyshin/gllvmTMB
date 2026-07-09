@@ -148,7 +148,7 @@ test_that("simulate_unit_trait(): a gllvmTMB fit recovers between-unit Lambda_B"
   ## Recovery is honest-skipped on non-convergence / non-PD Hessian, mirroring
   ## the other heavy recovery cells in the suite -- a borderline fit must not
   ## red the --as-cran gate.
-  if (!identical(fit$opt$convergence, 0L) || !isTRUE(fit$sd_report$pdHess)) {
+  if (!.fit_converged(fit)) {
     skip("simulate_unit_trait recovery fit did not converge / Hessian not PD")
   }
 

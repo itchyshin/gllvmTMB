@@ -77,8 +77,7 @@ test_that("binomial(logit) recovers Sigma at d=1 (FAM-02 / M2.2-A)", {
     data   = fx$data,
     family = binomial()  # default logit
   )))
-  expect_equal(fit$opt$convergence, 0L,
-               info = "binomial(logit) fit did not converge at n=200, d=1")
+  expect_converged(fit)  # binomial(logit) at n=200, d=1
 
   Sigma_truth <- true_Sigma(Lam, psi, sigma2_d = pi^2 / 3)
   Sigma_est   <- suppressMessages(gllvmTMB::extract_Sigma(
@@ -113,7 +112,7 @@ test_that("binomial(probit) recovers Sigma at d=1 (FAM-03 / M2.2-A)", {
     data   = fx$data,
     family = binomial(link = "probit")
   )))
-  expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
 
   ## Probit identification: latent residual variance = 1 by construction.
   Sigma_truth <- true_Sigma(Lam, psi, sigma2_d = 1)
@@ -149,7 +148,7 @@ test_that("binomial(cloglog) recovers Sigma at d=1 (FAM-04 / M2.2-A)", {
     data   = fx$data,
     family = binomial(link = "cloglog")
   )))
-  expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
 
   ## Cloglog residual variance = pi^2 / 6 (standard extreme-value).
   Sigma_truth <- true_Sigma(Lam, psi, sigma2_d = pi^2 / 6)
@@ -179,7 +178,7 @@ test_that("link_residual_per_trait() returns expected values per binomial link (
       data   = fx$data,
       family = binomial(link = link)
     )))
-    if (fit$opt$convergence != 0L) {
+    if (!.fit_converged(fit)) {
       skip(sprintf("binomial(%s) fit did not converge at n=100; rerun with bigger n.", link))
     }
     expected <- switch(link,
@@ -221,9 +220,7 @@ test_that("link_residual_per_trait() returns 1 for ordinal_probit fits (FAM-14 /
     ))),
     error = function(e) e
   )
-  if (inherits(fit, "error") ||
-      !inherits(fit, "gllvmTMB_multi") ||
-      fit$opt$convergence != 0L) {
+  if (!.fit_converged(fit)) {
     skip("ordinal_probit smoke fixture did not converge in M2.2-A; deeper recovery is covered by test-ordinal-probit.R")
   }
   actual <- gllvmTMB:::link_residual_per_trait(fit)

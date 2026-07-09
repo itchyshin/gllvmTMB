@@ -124,7 +124,7 @@ skip_unless_healthy_nbinom1 <- function(fit, cell) {
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) || !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     testthat::skip(sprintf(
       paste0("%s nbinom1 unit fit did not converge with PD Hessian; FAM-07 ",
              "stays partial pending bigger n / different seed"),
@@ -140,9 +140,9 @@ skip_unless_healthy_nbinom1 <- function(fit, cell) {
 ## phi_tweedie); we read it defensively so the check survives whatever the
 ## eventual wiring names it.
 expect_nbinom1_unit_health <- function(fit, fx) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
 
   phi_field <- intersect(
     c("phi_nbinom1", "phi_nb1", "phi_nbinom"),

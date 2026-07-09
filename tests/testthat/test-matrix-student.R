@@ -114,7 +114,7 @@ skip_unless_healthy_student <- function(fit, cell) {
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) || !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     testthat::skip(sprintf(
       paste0("%s student unit fit did not converge with PD Hessian; FAM-12 ",
              "stays partial pending bigger n / different seed"),
@@ -129,9 +129,9 @@ skip_unless_healthy_student <- function(fit, cell) {
 ## df > 1 (the TMB constraint df = 1 + exp(.)), and df loosely identified in
 ## [2, 30] around the true 5 (matching test-student-recovery.R).
 expect_student_unit_health <- function(fit, fx) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], 9L)  # student-t
 
   sigma_hat <- as.numeric(fit$report$sigma_student)

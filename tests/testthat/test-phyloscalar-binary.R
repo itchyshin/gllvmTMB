@@ -100,9 +100,9 @@ make_phyloscalar_binary_fixture <- function(n_sp = 40L,
 }
 
 expect_binary_phyloscalar_fit_health <- function(fit) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
 }
 
 ## ---------------------------------------------------------------
@@ -129,8 +129,7 @@ test_that("phylo_scalar(species) fits on binary probit; sigma^2_phy_scalar recov
       conditionMessage(fit)
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("phylo_scalar binary probit fit did not converge with PD Hessian; PHY-04 stays partial pending bigger n / different seed")
   }
 

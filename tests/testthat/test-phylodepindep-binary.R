@@ -78,9 +78,9 @@ make_phylo_binary_fixture <- function(n_sp = 40L, n_traits = 3L,
 }
 
 expect_binary_phylo_fit_health <- function(fit) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
 }
 
 ## ---------------------------------------------------------------
@@ -107,8 +107,7 @@ test_that("phylo_indep(0 + trait | species) fits on binary probit; pd_hessian TR
       conditionMessage(fit)
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("phylo_indep binary probit fit did not converge with PD Hessian; PHY-05 stays partial pending bigger n / different seed")
   }
 
@@ -158,8 +157,7 @@ test_that("phylo_dep(0 + trait | species) fits on binary probit; CI smoke + extr
       conditionMessage(fit)
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("phylo_dep binary probit fit did not converge with PD Hessian; PHY-05 stays partial pending bigger n / different seed")
   }
 

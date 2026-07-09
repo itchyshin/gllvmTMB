@@ -74,9 +74,9 @@ make_spatial_scalar_binary_fixture <- function(n_sites = 60L,
 }
 
 expect_binary_spatial_scalar_fit_health <- function(fit) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
 }
 
 ## ---------------------------------------------------------------
@@ -105,8 +105,7 @@ test_that("spatial_scalar(0 + trait | site) fits on binary probit; tau tied; tau
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("spatial_scalar binary probit fit did not converge with PD Hessian; SPA-03 stays partial pending bigger n / different seed")
   }
 

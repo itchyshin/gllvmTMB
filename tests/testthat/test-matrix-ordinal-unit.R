@@ -152,9 +152,9 @@ make_diagonal_fixture <- function(seed = 919191L,
 ## Shared health gate -- convergence, finite objective, PD Hessian, and the
 ## ordinal family id (14). Returns TRUE if healthy; the caller skips on FALSE.
 expect_ordinal_unit_health <- function(fit) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], 14L)
   ## sigma_d^2 = 1 EXACTLY (no trigamma correction) -- the defining ordinal
   ## property, asserted tightly since it is fixed by construction.
@@ -180,7 +180,7 @@ test_that("ordinal_probit x latent(0 + trait | unit, d = 1): recovery + rho:unit
     skip(sprintf("ordinal latent(d=1) fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) || !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("ordinal latent(d=1) fit did not converge with PD Hessian; FG-07/08/09 (ordinal) stays partial")
   }
 
@@ -238,7 +238,7 @@ test_that("ordinal_probit x unique(0 + trait | unit): per-trait variance recover
     skip(sprintf("ordinal unique fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) || !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("ordinal unique fit did not converge with PD Hessian; FG-07/08/09 (ordinal) stays partial")
   }
 
@@ -293,7 +293,7 @@ test_that("ordinal_probit x latent + unique (paired): both slots; recovery + rho
     skip(sprintf("ordinal latent + unique fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) || !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("ordinal latent + unique paired fit did not converge with PD Hessian; FG-07/08/09 (ordinal) stays partial")
   }
 
@@ -348,7 +348,7 @@ test_that("ordinal_probit x indep(0 + trait | unit): indep_B marker + variance r
     skip(sprintf("ordinal indep fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) || !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("ordinal indep fit did not converge with PD Hessian; FG-07/08/09 (ordinal) stays partial")
   }
 
@@ -392,7 +392,7 @@ test_that("ordinal_probit x dep(0 + trait | unit): full-unstructured slot + rho:
     skip(sprintf("ordinal dep fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) || !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("ordinal dep fit did not converge with PD Hessian; FG-07/08/09 (ordinal) stays partial")
   }
 
@@ -453,7 +453,7 @@ test_that("ordinal_probit x scalar (unique common = TRUE): single shared varianc
     skip(sprintf("ordinal scalar (common = TRUE) fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) || !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("ordinal scalar fit did not converge with PD Hessian; FG-07/08/09 (ordinal) stays partial")
   }
 

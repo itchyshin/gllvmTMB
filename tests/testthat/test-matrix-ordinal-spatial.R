@@ -62,9 +62,9 @@ skip_if_not_ordinal_spatial_deps <- function() {
 }
 
 expect_ordinal_spatial_fit_health <- function(fit) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
   ## Confirm the response really is ordinal_probit (family_id 14) -- guards
   ## against a silent family fallthrough making the "ordinal" claim hollow.
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], 14L)
@@ -256,8 +256,7 @@ test_that("ordinal_probit: spatial_latent(d=1) + spatial_unique paired fits; pd_
       conditionMessage(fit)
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("ordinal spatial_latent + spatial_unique did not converge with PD Hessian; SPA-02(ordinal) stays partial pending bigger n / different seed")
   }
 
@@ -311,8 +310,7 @@ test_that("ordinal_probit: spatial_scalar(0 + trait | site) fits; tau tied; tau_
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("ordinal spatial_scalar did not converge with PD Hessian; SPA-03(ordinal) stays partial pending bigger n / different seed")
   }
 
@@ -404,8 +402,7 @@ test_that("ordinal_probit: spatial_indep(0 + trait | site) fits; pd_hessian TRUE
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("ordinal spatial_indep did not converge with PD Hessian; SPA-04(ordinal) stays partial pending bigger n / different seed")
   }
 
@@ -456,8 +453,7 @@ test_that("ordinal_probit: spatial_dep(0 + trait | site) fits; pd_hessian TRUE; 
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("ordinal spatial_dep did not converge with PD Hessian; SPA-04(ordinal) stays partial pending bigger n / different seed")
   }
 

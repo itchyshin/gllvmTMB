@@ -139,9 +139,9 @@ make_slope_spatial_latent_fixture <- function(n_sites = 100L, n_traits = 3L,
 ## skip at the construction stage before these run).
 ## ---------------------------------------------------------------------------
 expect_slope_spatial_latent_fit_health <- function(fit, family_id) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
   ## Guard against a silent family fallthrough making the family claim hollow.
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], family_id)
   ## The augmented spatial-latent SLOPE path must be the one that was taken.
@@ -237,8 +237,7 @@ run_slope_spatial_latent_cell <- function(family_obj, family_id, response_fun,
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     testthat::skip(sprintf(
       "%s: spatial_latent(1 + x | site, d = 1) did not converge with PD Hessian; stays partial pending bigger n / different seed",
       row_label

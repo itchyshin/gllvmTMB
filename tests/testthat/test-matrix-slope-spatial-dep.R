@@ -17,15 +17,16 @@
 ## `spatial_dep(1 + x | site)` covstruct through the unstructured 2T x 2T field
 ## covariance Sigma_field). The Gaussian sibling
 ## `test-spatial-dep-slope-gaussian.R` validates that engine + its density
-## self-check. For NON-GAUSSIAN responses, however, this cell is RESERVED
-## gaussian-only in R/fit-multi.R: the use_spde_dep_slope family-id allowlist is
-## c(0L). Empirically the full unstructured cross-field block is non-PD for all
-## seven non-Gaussian families at this fixture's n_sites (the spatial analogue
-## of phylo_dep / PHY-18 -- an identifiability limit, not a wiring gap), so each
-## non-Gaussian family constructs straight into the gaussian-only fail-loud:
-##   "`spatial_dep` random slopes are validated for `gaussian()` only ..."
-## and honest-SKIPs at construction. We do NOT relax the formula or widen any
-## band to force a fit, and we NEVER fake-pass.
+## self-check. For NON-GAUSSIAN responses: these families ARE ADMITTED -- the
+## use_spde_dep_slope family-id allowlist is c(0,1,2,4,5,7,14,15) since SPA-10
+## (R/fit-multi.R ~811), NOT the old gaussian-only c(0L). They CONSTRUCT; but the
+## full unstructured 2T x 2T cross-field block genuinely fails to converge at this
+## fixture's n_sites (verified 2026-07-08: binomial-probit |grad|_inf ~ 2e2, min
+## Hessian eig ~ -8e5, and even the gaussian control fails here -- the spatial
+## analogue of phylo_dep / PHY-18, an identifiability/data-size limit, not a wiring
+## gap). Each such cell therefore honest-SKIPs on the scale-free convergence verdict
+## (`!.fit_converged(fit)`), NOT on a construction reject. We do NOT relax the
+## formula or widen any band to force a fit, and we NEVER fake-pass.
 ##
 ## Why keep the file then? It is a LIVE TRIPWIRE on the matrix cell. Each
 ## `test_that` attempts the exact target construction
@@ -186,9 +187,9 @@ fit_slope_spatial_dep <- function(fx, family) {
 }
 
 expect_slope_spatial_fit_health <- function(fit) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
 }
 
 ## CI smoke (shared): at least one finite profile bound on one upper-tri
@@ -229,18 +230,19 @@ slope_spatial_ci_smoke_ok <- function(fit, n_traits) {
 ## Hessian and run the CI smoke. `expected_family_id` guards against a silent
 ## family fallthrough making the family claim hollow once fits run.
 ##
-## CURRENT EXPECTED PATH FOR NON-GAUSSIAN: the full unstructured 2T x 2T
-## field-covariance dep slope is RESERVED gaussian-only in R/fit-multi.R (the
-## use_spde_dep_slope family-id allowlist is c(0L)). The non-Gaussian families
-## are non-PD at this fixture's n_sites -- the spatial analogue of phylo_dep /
-## PHY-18 -- so each constructs straight into the gaussian-only fail-loud and
-## honest-skips here. The cell stays partial; it is NEVER forced green.
+## CURRENT EXPECTED PATH FOR NON-GAUSSIAN: the seven non-Gaussian families ARE
+## ADMITTED (use_spde_dep_slope allowlist c(0,1,2,4,5,7,14,15), SPA-10) and
+## CONSTRUCT; but the full unstructured 2T x 2T field-covariance block genuinely
+## fails to converge at this fixture's n_sites -- the spatial analogue of
+## phylo_dep / PHY-18, an identifiability/data-size limit, not a wiring gap. So
+## each honest-skips on the convergence verdict (`!.fit_converged(fit)`) below,
+## not on a construction reject. The cell stays partial; it is NEVER forced green.
 run_slope_spatial_dep_cell <- function(fx, family, family_label,
                                        expected_family_id) {
   fit <- tryCatch(fit_slope_spatial_dep(fx, family), error = function(e) e)
   if (inherits(fit, "error") || !inherits(fit, "gllvmTMB_multi")) {
     testthat::skip(sprintf(
-      "%s spatial_dep(1 + x | site) fit failed to construct (non-Gaussian augmented unstructured-field dep slope reserved gaussian-only; non-PD identifiability): %s",
+      "%s spatial_dep(1 + x | site) fit failed to construct (unstructured-field dep slope; admitted by SPA-10 but non-PD identifiability at this n_sites): %s",
       family_label,
       if (inherits(fit, "error")) {
         gsub("[\r\n]+", " ", conditionMessage(fit))
@@ -249,8 +251,7 @@ run_slope_spatial_dep_cell <- function(fx, family, family_label,
       }
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     testthat::skip(sprintf(
       "%s spatial_dep(1 + x | site) did not converge with PD Hessian; (spatial_dep x slope x %s) stays partial pending bigger n / different seed",
       family_label, family_label

@@ -105,7 +105,7 @@ skip_unless_healthy_betabinom <- function(fit, cell) {
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) || !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     testthat::skip(sprintf(
       paste0("%s betabinomial unit fit did not converge with PD Hessian; ",
              "FAM-05 stays partial pending bigger n / different seed"),
@@ -118,9 +118,9 @@ skip_unless_healthy_betabinom <- function(fit, cell) {
 ## Common per-cell health + betabinomial dispersion finiteness assertions.
 ## phi_betabinom is per-trait; all entries must be finite and positive.
 expect_betabinom_unit_health <- function(fit, fx) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], 8L)  # betabinomial
 
   phi_hat <- as.numeric(fit$report$phi_betabinom)

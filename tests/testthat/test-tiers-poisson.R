@@ -79,7 +79,7 @@ test_that("unit_obs tier (poisson OLRE): recovers sigma2_unit + sigma2_unit_obs 
   ))
 
   ## Honest skip on non-convergence -- never fake-pass.
-  if (!identical(fit$opt$convergence, 0L) || !isTRUE(fit$sd_report$pdHess)) {
+  if (!.fit_converged(fit)) {
     skip("poisson unit_obs OLRE fixture did not converge / Hessian not PD")
   }
 
@@ -160,7 +160,7 @@ test_that("cluster tier (poisson): `cluster =` argument recovers cluster-level v
   ))
 
   ## Honest skip on non-convergence -- never fake-pass.
-  if (!identical(fit$opt$convergence, 0L) || !isTRUE(fit$sd_report$pdHess)) {
+  if (!.fit_converged(fit)) {
     skip("poisson cluster fixture did not converge / Hessian not PD")
   }
 

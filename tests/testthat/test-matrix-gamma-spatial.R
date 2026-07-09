@@ -47,9 +47,9 @@ skip_if_not_gamma_spatial_deps <- function() {
 }
 
 expect_gamma_spatial_fit_health <- function(fit) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
   ## Sanity: this really is the Gamma family (family_id 4) and phi_gamma
   ## is finite -- guards against a silent family fallthrough
   ## making the "gamma" claim hollow.
@@ -229,8 +229,7 @@ test_that("Gamma: spatial_latent(d=1) + spatial_unique paired fits; pd_hessian T
       conditionMessage(fit)
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("Gamma spatial_latent + spatial_unique did not converge with PD Hessian; SPA-02(gamma) stays partial pending bigger n / different seed")
   }
 
@@ -282,8 +281,7 @@ test_that("Gamma: spatial_scalar(0 + trait | site) fits; tau tied; tau_spde prof
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("Gamma spatial_scalar did not converge with PD Hessian; SPA-03(gamma) stays partial pending bigger n / different seed")
   }
 
@@ -358,8 +356,7 @@ test_that("Gamma: spatial_indep(0 + trait | site) fits; pd_hessian TRUE", {
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("Gamma spatial_indep did not converge with PD Hessian; SPA-04(gamma) stays partial pending bigger n / different seed")
   }
 
@@ -409,8 +406,7 @@ test_that("Gamma: spatial_dep(0 + trait | site) fits; pd_hessian TRUE; CI smoke 
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("Gamma spatial_dep did not converge with PD Hessian; SPA-04(gamma) stays partial pending bigger n / different seed")
   }
 

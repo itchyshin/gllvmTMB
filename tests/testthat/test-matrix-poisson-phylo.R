@@ -41,9 +41,9 @@ skip_if_not_poisson_phylo_deps <- function() {
 }
 
 expect_poisson_phylo_fit_health <- function(fit) {
-  testthat::expect_equal(fit$opt$convergence, 0L)
+  expect_converged(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_converged(fit)
 }
 
 ## ---------------------------------------------------------------
@@ -128,8 +128,7 @@ test_that("phylo_latent + phylo_unique (paired) on Poisson: fit converges; total
       conditionMessage(fit)
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("phylo_latent + phylo_unique poisson fit did not converge with PD Hessian; PHY-04/05 (poisson) stays partial pending bigger n / different seed")
   }
 
@@ -248,8 +247,7 @@ test_that("phylo_scalar(species) on Poisson: fit converges; sigma^2_phy_scalar r
       conditionMessage(fit)
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("phylo_scalar poisson fit did not converge with PD Hessian; PHY-04 (poisson) stays partial pending bigger n / different seed")
   }
 
@@ -371,8 +369,7 @@ test_that("phylo_indep(0 + trait | species) on Poisson: fit converges; extract_c
       conditionMessage(fit)
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("phylo_indep poisson fit did not converge with PD Hessian; PHY-05 (poisson) stays partial pending bigger n / different seed")
   }
 
@@ -424,8 +421,7 @@ test_that("phylo_dep(0 + trait | species) on Poisson: fit converges; rho:phy pro
       conditionMessage(fit)
     ))
   }
-  if (!isTRUE(fit$opt$convergence == 0L) ||
-        !isTRUE(fit$fit_health$pd_hessian)) {
+  if (!.fit_converged(fit)) {
     skip("phylo_dep poisson fit did not converge with PD Hessian; PHY-05 (poisson) stays partial pending bigger n / different seed")
   }
 

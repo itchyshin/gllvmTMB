@@ -3,16 +3,19 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 For the current Claude handoff, also read
-`docs/dev-log/handover/2026-07-08-claude-handover.md` before starting new work.
-The `unique()` keyword-removal arc is CLOSED + merged (#728, #729). The `B_lv` CI
-trio (Wald / profile / bootstrap) is **already BUILT and exported on `main`** —
-do not rebuild it; the branches `claude/blv-profile-ci` and
-`claude/xlv-phylo-gaussian` are `ahead 0` (superseded, not parked). Structured ×
-X_lv is the orthogonal **Model A**, which already composes + recovers `B_lv` in R
-(authoritative model record: `docs/design/76-structured-xlv-phylo.md` §7 UPDATE).
-The remaining work is the **calibrated-interval evidence** (ADEMP coverage;
-`CI-08` / `CI-10` are open/failing gates). Earlier context:
-`docs/dev-log/handover/2026-07-06-claude-handover-modelA.md`.
+`docs/dev-log/handover/2026-07-09-claude-handover.md` before starting new work.
+Two UNPUSHED local branches hold the live work: `claude/converged-verdict`
+(verified flag-class fix — the suite now judges fits on a scale-free convergence
+verdict, not `convergence`/`pd_hessian`) and `claude/blv-coverage-campaign`
+(rebuilt B_lv ADEMP coverage runner). **Do not push either without maintainer
+OK.** Structured × X_lv is the orthogonal **Model A** (`latent(lv=~x) +
+phylo_latent`), which composes + recovers `B_lv` in R (authoritative record:
+`docs/design/76-structured-xlv-phylo.md` §7). The remaining v1.0 work is the
+**B_lv calibrated-interval evidence** (ADEMP coverage) — the runner is ready but
+NOT run at scale; the rank-2 cell needs the LR-at-truth pivot first. NOTE: `CI-08`
+/ `CI-10` are a **different estimand** (Sigma_unit coverage / mixed-family CIs),
+NOT the B_lv gap — do not conflate. Earlier context:
+`docs/dev-log/handover/2026-07-08-claude-handover.md`.
 
 ## Project Identity
 

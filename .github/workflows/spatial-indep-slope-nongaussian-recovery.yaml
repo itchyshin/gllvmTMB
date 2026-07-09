@@ -69,6 +69,15 @@ jobs:
             )
             df <- as.data.frame(res)
             n_fail <- sum(df$failed) + sum(as.integer(df$error))
+            n_skip <- sum(df$skipped); n_pass <- sum(df$passed)
+            ## Vacuity guard (audit 2026-07-08): a recovery gate that exercises no
+            ## cell -- everything skipped -- must not report green.
+            if (n_pass == 0L && n_skip > 0L) {
+              stop(sprintf(
+                "recovery gate exercised no cell: %d passed, %d skipped, %d failed/errored -- a gate that skips everything must not pass",
+                n_pass, n_skip, n_fail
+              ))
+            }
             cat(sprintf(
               "\nspatial_indep non-Gaussian suite: %d failed, %d errored, %d skipped across %d tests\n",
               sum(df$failed), sum(as.integer(df$error)),

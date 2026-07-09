@@ -75,6 +75,8 @@ jobs:
               "tests/testthat/test-animal-dep-slope-gaussian.R"
             )
             n_fail_total <- 0L
+            n_pass_total <- 0L
+            n_skip_total <- 0L
             for (f in files) {
               res <- testthat::test_file(
                 f, reporter = "summary", stop_on_failure = FALSE
@@ -82,6 +84,8 @@ jobs:
               df <- as.data.frame(res)
               n_fail <- sum(df$failed) + sum(as.integer(df$error))
               n_fail_total <- n_fail_total + n_fail
+              n_pass_total <- n_pass_total + sum(df$passed)
+              n_skip_total <- n_skip_total + sum(df$skipped)
               cat(sprintf(
                 "\n%s: %d failed, %d errored, %d skipped across %d tests\n",
                 basename(f), sum(df$failed), sum(as.integer(df$error)),
@@ -97,7 +101,7 @@ jobs:
                 cat("Skipped cells: none\n")
               }
             }
-            if (n_fail_total > 0L) {
+            if (n_fail_total > 0L || (n_pass_total == 0L && n_skip_total > 0L)) {
               stop(sprintf(
                 "slope-grid residual recovery suite had %d failed expectation(s)/error(s) -- failing the CI gate",
                 n_fail_total

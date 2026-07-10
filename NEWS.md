@@ -1,7 +1,10 @@
-# gllvmTMB (development version)
+# gllvmTMB 1.0.0
 
-* (Post-0.2.0 development. New user-facing changes are recorded here;
-  the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
+* First stable release. Consolidates the multivariate stacked-trait GLLVM
+  engine (families, phylogenetic `A^-1`, spatial SPDE, `Sigma = Lambda
+  Lambda^T + diag(Psi)`, the wide/long formula API, and the Design 06
+  extractors) into a working, honest, R-only package. The entries below record
+  the user-facing changes landed during the development cycle.
 
 ## Arc E: `engine = "julia"` robustness and honesty fixes (2026-07-09)
 

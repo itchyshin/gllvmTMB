@@ -200,14 +200,16 @@ trait data: one beak length per species, not multiple replicates per
 species per site), the one-shot fit above is **poorly informed about
 between-site covariance** -- the data simply don't contain enough
 sites-of-the-same-species to estimate global functional integration
-directly. The recommended workflow is a **two-stage analysis**:
+directly. A **two-stage analysis** is the intended workflow:
 
 * **Stage 1**: fit one `gllvmTMB()` model per trait with
   `value ~ 0 + site + phylo_scalar(species, vcv = Cphy)`,
   returning site-level estimates with their sampling variances.
 * **Stage 2**: fit the multivariate model on the stage-1 estimates
   using `meta_V(V = V)` so the stage-1 sampling
-  uncertainty propagates into the stage-2 covariance estimates.
+  uncertainty propagates into the stage-2 covariance estimates
+  (single-V `meta_V()` inference validation is still partial --
+  see validation-debt register FG-14 / MET-01).
 
 Both stages use direct `gllvmTMB()` calls, with the stage-1
 per-trait estimates and their sampling variances feeding the

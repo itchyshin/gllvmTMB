@@ -58,9 +58,10 @@ keyword. Ordinary `latent()` carries `Psi` by default; use
 `*_latent(..., unique = TRUE)` to fold the `Psi` companion into a
 source-specific term. This includes the augmented random-slope form
 `*_latent(1 + x | group, unique = TRUE)`, which folds in the intercept–slope
-companion for **every** source (ordinary, `phylo`, `animal`, `spatial`,
-`kernel`). For a standalone marginal-only diagonal, use `indep()` /
-`*_indep()`.
+companion for the ordinary, `phylo`, and `animal` sources. The spatial
+augmented fold (`spatial_latent(1 + x, unique = TRUE)`) remains partial
+(FG-13) and the kernel augmented fold is future work (FG-06). For a
+standalone marginal-only diagonal, use `indep()` / `*_indep()`.
 
 The older `unique()` / `*_unique()` **keyword** spelling is soft-deprecated:
 old formulas still parse, but new code should use `indep()` (standalone

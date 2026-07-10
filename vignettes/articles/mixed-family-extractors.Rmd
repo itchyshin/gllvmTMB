@@ -254,9 +254,12 @@ Bootstrap and Fisher-z CIs target the same surface
 (correlation on $\Sigma_\text{total}$). The
 `method = "profile"` path operates on a different (rotation-
 invariant) target — the rank-$d$ factor structure
-$\Lambda\Lambda^\top$ — and is recommended when you need
-inference on the latent factor pattern rather than on the
-observable-scale correlation.
+$\Lambda\Lambda^\top$ — and addresses the latent factor
+pattern rather than the observable-scale correlation; like the
+other interval routes on this page it is a route-only
+demonstration whose mixed-family coverage is uncalibrated
+(CI-10, currently failing the gate), not yet a calibrated
+inference route.
 
 ## Communality: how much variance is explained by the latent factor?
 

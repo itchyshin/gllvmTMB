@@ -24,10 +24,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Preview — Gaussian validated; mixed-family extension is M3 milestone work.**
+> **Preview — Gaussian interval routes validated; empirical coverage is M3/CI-08 work.**
 >
-> Profile, Wald, and bootstrap CIs are end-to-end-validated for
-> the ordinary Gaussian interval paths (CI-02..CI-06 `covered` in the
+> Profile, Wald, and bootstrap CIs are end-to-end route-tested
+> (`covered`; empirical coverage remains CI-08) for
+> the ordinary Gaussian interval paths (CI-02, CI-03, CI-04, CI-06
+> `covered`; CI-05 `covered` only for the two-component phylo-signal
+> profile, in the
 > [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
 > The ordinary / phylogenetic low-rank-plus-diagonal correlation-profile
 > paths have covered evidence under CI-07, but spatial total-covariance
@@ -38,7 +41,7 @@ knitr::opts_chunk$set(
 > **Scope boundary.** This page is a Tier 2 technical reference for
 > interval APIs on already-fitted models. IN: Wald, profile, and
 > bootstrap CI routes with covered Gaussian evidence are represented
-> by CI-01..CI-06, the covered parts of CI-07, and EXT-13 (Gaussian)
+> by CI-01..CI-04 and CI-06, the covered parts of CI-05 and CI-07, and EXT-13 (Gaussian)
 > in the validation-debt register. PARTIAL: spatial total-covariance
 > correlation profiles, empirical coverage, and mixed-family interval
 > calibration remain CI-07, CI-08, and CI-10 work. PLANNED: this page
@@ -50,8 +53,9 @@ default for the ratio-quantity extractors (`extract_repeatability()`,
 `extract_communality()`, `extract_phylo_signal()`). Profile likelihood
 is fast (TMB's C++ inner optim warm-started from the joint MLE),
 respects the skewness of variance-component sampling distributions
-(Wald CIs do not), and gives accurate coverage near boundaries (where
-Wald often breaks down).
+(Wald CIs do not), and is expected on theory to track coverage better
+near boundaries than Wald (empirical coverage for these fits is still
+under validation -- CI-08).
 
 **Note** for cross-trait correlations specifically:
 [`extract_correlations()`](../reference/extract_correlations.html)
@@ -81,8 +85,8 @@ with three values:
 | Method | Speed | Coverage | When |
 |---|---|---|---|
 | `"wald"` | fastest | poor near boundary, assumes symmetry | small-N quick check |
-| `"profile"` *(default for derived ratio quantities)* | fast | accurate, respects skewness | most cases |
-| `"bootstrap"` | slowest | accurate, full sampling distribution | non-monotone profile, full-$\boldsymbol\Sigma$ sampling |
+| `"profile"` *(default for derived ratio quantities)* | fast | asymptotically accurate, respects skewness | most cases |
+| `"bootstrap"` | slowest | asymptotically accurate, full sampling distribution | non-monotone profile, full-$\boldsymbol\Sigma$ sampling |
 
 The default `method = "profile"` is based on the maintainer's
 observation that parametric bootstrap was ~10-50x slower than the

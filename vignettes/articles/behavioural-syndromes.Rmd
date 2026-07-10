@@ -544,7 +544,7 @@ motivational pattern.
 # For Gaussian responses, sigma_eps^2 is absorbed into s_Wt^2 (not separately
 # identifiable), so it lives inside (Sigma_W)_tt -- this matches R_true above.
 rep_df <- extract_repeatability(fit)
-cat("\nEstimated repeatabilities (R_t) with 95% CIs:\n")
+cat("\nEstimated repeatabilities (R_t) with Wald 95% intervals (nominal only; coverage not yet calibrated -- gate CI-08 open):\n")
 print(rep_df)
 cat("\nTrue repeatabilities:\n")
 print(round(R_true, 3))
@@ -729,7 +729,10 @@ cat("\nMean absolute error in repeatability:", round(mean(abs(tab$R_hat - tab$R_
 ```
 
 Estimated repeatabilities fall within a reasonable band of the true
-values. The communality estimates quantify the syndrome strength: a
+values. The `R_lower` / `R_upper` columns are Wald delta-method bounds
+whose empirical coverage is not yet validated (`CI-08` / `CI-10`), so
+read them as approximate rather than calibrated 95% intervals. The
+communality estimates quantify the syndrome strength: a
 communality of 0.6 on `boldness` means that 60% of the stable
 between-individual variance in boldness is shared with other traits
 via the two personality axes — the kind of shared between-individual

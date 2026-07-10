@@ -61,7 +61,7 @@ graph TD
   C2 -->|Yes| C5[joint-sdm<br/>SPDE / mesh, presence-absence]
   C4 -->|No| C6[functional-biogeography<br/>Trait integration, between + within site]
   C4 -->|Yes| C7[behavioural-syndromes<br/>Repeatability, between vs within individual]
-  D --> D1{Items mix Likert + binary + counts?}
+  D --> D1{Items mix Likert + binary?}
   D1 -->|Yes| D2[psychometrics-irt<br/>+ mixed-response<br/>CFA + per-row family dispatch]
   D1 -->|No| D3[psychometrics-irt<br/>CFA with one item family]
   E --> E1[corvidae-two-stage<br/>Stage-1 per-trait fits, stage-2 meta-V]
@@ -160,11 +160,14 @@ list(...)` dispatch as `mixed-response`.
 
 **Species-level constants** (corvidae-two-stage) &mdash; When each
 species has one trait value (no within-species replication), the
-one-shot stacked-trait GLLVM is poorly informed. The recommended
+one-shot stacked-trait GLLVM is poorly informed. The intended
 workflow is two-stage: (1) per-trait univariate fits to extract
 site-level estimates and their SEs; (2) a multivariate
-meta-regression on the stage-1 estimates using `meta_V(V = V)` to
-propagate the stage-1 uncertainty into the stage-2 covariance.
+meta-regression on the stage-1 estimates using `meta_V(V = V)`,
+which carries the stage-1 sampling variances into the stage-2
+covariance. Single-V `meta_V()` inference is currently smoke-tested
+only (correctness cross-check pending) and the corvidae two-stage
+worked example is deferred until a live cross-check fixture exists.
 
 **Pedigree available — animal-model quantitative genetics** &mdash;
 When rows are individuals and you have a three-column pedigree
@@ -192,14 +195,21 @@ Real data often fits more than one branch. Some examples:
 - **Site x species + phylogeny + spatial**: use the
   [functional-biogeography](functional-biogeography.html) article as
   the base (between/within decomposition), then add a `phylo_*()`
-  term plus a `spatial_*()` term. The keyword grid composes; each
-  tier gets its own paired decomposition.
+  term plus a `spatial_*()` term. The keyword grid is designed to
+  compose, with each tier contributing its own decomposition; note
+  that the spatial total/paired decomposition is currently validated
+  for Gaussian smoke only (SPA-02), and a combined phylo + spatial
+  paired-decomposition fit is not yet in the validated example set.
 - **Mixed-family + CFA structure**: combine the
   [mixed-family](mixed-family-extractors.html) recipe (per-row `family =
   list(...)`) with the
   [lambda-constraint](lambda-constraint.html) recipe (pinned
-  off-pattern entries). Both arguments accept their pieces
-  simultaneously.
+  off-pattern entries). The two arguments are independent inputs, so
+  they can be supplied in the same call; however, this mixed-family +
+  `lambda_constraint` combination -- and count (Poisson) items in a
+  CFA -- is not yet in the validated example set (`lambda_constraint`
+  is validated for single-family Gaussian and binary confirmatory
+  fits only).
 - **IRT + repeated measures**: the
   [behavioural-syndromes](behavioural-syndromes.html) example
   generalises trivially; the "individual" is now "respondent" and

@@ -46,7 +46,7 @@ Internally profiles the linear contrast
 When the within-unit variance is near zero (R close to 1) the
 constrained log-likelihood is flat as \code{theta_diag_W -> -Inf} and the
 upper bound on R is reported as \strong{1} (the natural boundary). Same
-applies symmetrically for R close to 0 → lower bound \strong{0}. \code{NA} is
+applies symmetrically for R close to 0 -> lower bound \strong{0}. \code{NA} is
 reserved for genuine profile failure (e.g. tmbprofile() error or too
 few points to bracket the threshold).
 }

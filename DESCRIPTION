@@ -39,7 +39,6 @@ Imports:
     lifecycle,
     Matrix,
     methods,
-    reformulas,
     rlang,
     stats,
     tidyselect,

@@ -1,11 +1,13 @@
 ## Rotation of the gllvmTMB loading matrix after fitting.
 ##
-## The lifted glmmTMB rr() machinery enforces lower-triangular Lambda
-## with a free-positive diagonal. That removes rotation and sign
-## indeterminacy at the cost of interpretability — the columns of
-## Lambda are not the most "interpretable" factors in any factor-
-## analysis sense. After fitting, users typically want a varimax (or
-## promax) rotation to produce factors with simple structure.
+## The lifted glmmTMB rr() machinery enforces a lower-triangular Lambda.
+## Its diagonal is free-SIGNED (not pinned positive at fit time), so the raw
+## loadings still carry sign / rotation indeterminacy; extract_ordination()
+## returns them un-canonicalized by default (unlike GLLVM.jl, which pins a
+## sign convention). Resolve it on demand with rotate_loadings(sign_anchor =
+## "auto"). Separately, the columns of Lambda are not the most "interpretable"
+## factors in any factor-analysis sense. After fitting, users typically want a
+## varimax (or promax) rotation to produce factors with simple structure.
 ##
 ## `gllvm` exposes `getLoadings()` so users can rotate manually;
 ## `galamm` supports confirmatory specification but no rotation;

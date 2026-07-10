@@ -644,27 +644,6 @@ profile_ci_communality <- function(
 ## rho_ij = Sigma_ij / sqrt(Sigma_ii * Sigma_jj). Profile via fix-and-refit
 ## using the same penalty driver.
 
-#' Profile-likelihood CI for one cross-trait correlation
-#'
-#' For a fit returned by [gllvmTMB()], computes the profile-likelihood
-#' confidence interval for one cross-trait correlation
-#' \eqn{\rho_{ij} = \Sigma_{ij} / \sqrt{\Sigma_{ii}\Sigma_{jj}}} at one
-#' covariance level. Cross-trait correlations are first-class outputs of the
-#' factor-analytic decomposition and need accurate CIs at scale (a 6-trait
-#' fit has 60 of them across four covariance levels).
-#'
-#' @param fit A fit returned by [gllvmTMB()].
-#' @param tier `"unit"`, `"unit_slope"`, `"unit_obs"`, `"cluster"`,
-#'   `"cluster2"`, `"phy"`, or `"spatial"`. Legacy aliases `"B"`, `"W"`,
-#'   and `"spde"` are accepted. `"cluster"` and `"cluster2"` fail loud as
-#'   diagonal-only structural-zero point routes; they are not profile targets.
-#'   `"unit_slope"` is a selected-entry Gaussian canary for augmented
-#'   ordinary random-regression coefficients.
-#' @param i,j Trait indices (1-based, `i < j`). For `tier = "unit_slope"`,
-#'   these are augmented coefficient indices on the interleaved `2T` vector.
-#' @param level Confidence level. Default 0.95.
-#' @return Length-3 numeric vector (`estimate`, `lower`, `upper`).
-#'
 ## Expand a mapped diagonal (Psi) parameter block back to one value per trait.
 ## A TMB `map` can collapse or fix entries: the common-diagonal case maps every
 ## trait to one shared level, and the mixed-family auto-Psi skip pins
@@ -699,6 +678,27 @@ profile_ci_communality <- function(
   full
 }
 
+#' Profile-likelihood CI for one cross-trait correlation
+#'
+#' For a fit returned by [gllvmTMB()], computes the profile-likelihood
+#' confidence interval for one cross-trait correlation
+#' \eqn{\rho_{ij} = \Sigma_{ij} / \sqrt{\Sigma_{ii}\Sigma_{jj}}} at one
+#' covariance level. Cross-trait correlations are first-class outputs of the
+#' factor-analytic decomposition and need accurate CIs at scale (a 6-trait
+#' fit has 60 of them across four covariance levels).
+#'
+#' @param fit A fit returned by [gllvmTMB()].
+#' @param tier `"unit"`, `"unit_slope"`, `"unit_obs"`, `"cluster"`,
+#'   `"cluster2"`, `"phy"`, or `"spatial"`. Legacy aliases `"B"`, `"W"`,
+#'   and `"spde"` are accepted. `"cluster"` and `"cluster2"` fail loud as
+#'   diagonal-only structural-zero point routes; they are not profile targets.
+#'   `"unit_slope"` is a selected-entry Gaussian canary for augmented
+#'   ordinary random-regression coefficients.
+#' @param i,j Trait indices (1-based, `i < j`). For `tier = "unit_slope"`,
+#'   these are augmented coefficient indices on the interleaved `2T` vector.
+#' @param level Confidence level. Default 0.95.
+#' @return Length-3 numeric vector (`estimate`, `lower`, `upper`).
+#'
 #' @keywords internal
 #' @export
 profile_ci_correlation <- function(

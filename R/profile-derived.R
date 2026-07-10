@@ -1258,6 +1258,17 @@ profile_ci_proportions <- function(
 #' `B_lv` is rotation-invariant, so it is a valid recovery/inference target for
 #' any latent rank; the raw loadings and raw \eqn{\alpha} are not.
 #'
+#' `r lifecycle::badge("experimental")`
+#'
+#' @section Interval calibration:
+#' \eqn{B_{lv}} point recovery is validated, but formal interval **coverage** is
+#' not yet certified for the profile method: register gates `CI-08` / `CI-10`
+#' remain open. Documented coverage evidence currently exists only for Wald
+#' intervals on ordinary unit-tier Gaussian and standard-link binomial fits
+#' (see [extract_lv_effects()]). Treat these profile bounds as well-motivated
+#' but not coverage-certified for other families or mixed-family fits until the
+#' coverage campaign lands; see `docs/design/61-capability-status.md`.
+#'
 #' @param fit A fitted \code{gllvmTMB} model with a predictor-informed latent
 #'   term. REML fits are recommended (unbiased variance components).
 #' @param trait,predictor Optional integer indices selecting entries of

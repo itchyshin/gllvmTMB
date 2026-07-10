@@ -46,7 +46,20 @@ small-sample \strong{t} cutoff (\code{qt((1+level)/2, df)^2}); pass
 \details{
 \code{B_lv} is rotation-invariant, so it is a valid recovery/inference target for
 any latent rank; the raw loadings and raw \eqn{\alpha} are not.
+
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
+\section{Interval calibration}{
+
+\eqn{B_{lv}} point recovery is validated, but formal interval \strong{coverage} is
+not yet certified for the profile method: register gates \code{CI-08} / \code{CI-10}
+remain open. Documented coverage evidence currently exists only for Wald
+intervals on ordinary unit-tier Gaussian and standard-link binomial fits
+(see \code{\link[=extract_lv_effects]{extract_lv_effects()}}). Treat these profile bounds as well-motivated
+but not coverage-certified for other families or mixed-family fits until the
+coverage campaign lands; see \code{docs/design/61-capability-status.md}.
+}
+
 \seealso{
 \code{\link[=extract_lv_effects]{extract_lv_effects()}}, \code{\link[=profile_ci_correlation]{profile_ci_correlation()}}.
 }

@@ -14,6 +14,17 @@
 #' preserved), and extracts \eqn{B_{lv}}; the CI is the empirical percentile
 #' interval across converged replicates.
 #'
+#' `r lifecycle::badge("experimental")`
+#'
+#' @section Interval calibration:
+#' \eqn{B_{lv}} point recovery is validated, but formal interval **coverage** is
+#' not yet certified for the parametric bootstrap: register gates `CI-08` /
+#' `CI-10` remain open. Documented coverage evidence currently exists only for
+#' Wald intervals on ordinary unit-tier Gaussian and standard-link binomial fits
+#' (see [extract_lv_effects()]). Treat these percentile bounds as approximate
+#' for other families or mixed-family fits until the coverage campaign lands;
+#' see `docs/design/61-capability-status.md`.
+#'
 #' @param fit A fitted \code{gllvmTMB} model with a predictor-informed latent term.
 #' @param n_boot Number of bootstrap replicates (default 200).
 #' @param conf Confidence level (default 0.95).

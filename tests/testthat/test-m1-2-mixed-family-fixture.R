@@ -43,7 +43,7 @@ test_that("5-family fixture loads from cache with expected shape (M1.2; T=8 d=2)
                    c("gaussian", "binomial", "poisson", "Gamma", "nbinom2"))
   expect_equal(fx$truth$n_traits, 8L)
   expect_equal(fx$truth$d_B, 2L)
-  expect_equal(nrow(fx$data), 60L * 8L)
+  expect_equal(nrow(fx$data), 240L * 8L)  # 5-family T=8/d=2 fixture is n_sites=240 (#715 rebuild)
   expect_identical(levels(fx$data$family),
                    c("gaussian", "binomial", "poisson", "Gamma", "nbinom2"))
   ## 8 traits split as (gaussian x 2, binomial x 2, poisson x 2, Gamma x 1, nbinom2 x 1)
@@ -110,12 +110,13 @@ test_that("each fixture family has a non-degenerate value distribution (M1.2)", 
                 info = sprintf(
                   "%d-family: every family must have sd(value) > 0.1; got %s",
                   k, paste(round(spread, 3), collapse = " / ")))
-    ## Each *trait* (not family) has exactly 60 observations
-    ## (one row per (site, trait) pair). Families with multiple
-    ## traits (5-family has gaussian/binomial/poisson x 2 each)
-    ## therefore have 60 or 120 observations depending on count.
+    ## Each *trait* has one row per (site, trait) pair, so the per-trait count
+    ## equals n_sites for that fixture tier: 60 for the well-identified
+    ## 3-family surface, 240 for the 5-family T=8/d=2 surface (rebuilt at
+    ## n_sites=240 for identifiability -- #715, R/data-mixed-family.R).
+    expected_n <- if (k >= 5L) 240L else 60L
     trait_counts <- tapply(fx$data$value, fx$data$trait, length)
-    expect_true(all(trait_counts == 60L),
-                info = sprintf("%d-family: each trait should have 60 obs", k))
+    expect_true(all(trait_counts == expected_n),
+                info = sprintf("%d-family: each trait should have %d obs", k, expected_n))
   }
 })

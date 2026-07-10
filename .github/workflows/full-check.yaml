@@ -29,7 +29,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Ubuntu-only for the nightly schedule + workflow_dispatch (Actions-minute
+  # discipline; #723 -- the Windows leg was hitting the 120-min timeout every
+  # night). The full 3-OS matrix still runs on every release tag (push: tags v*).
+  matrix-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      config: ${{ steps.set.outputs.config }}
+    steps:
+      - id: set
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo 'config=[{"os":"ubuntu-latest","r":"release"},{"os":"macos-latest","r":"release"},{"os":"windows-latest","r":"release"}]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'config=[{"os":"ubuntu-latest","r":"release"}]' >> "$GITHUB_OUTPUT"
+          fi
+
   full-check:
+    needs: matrix-setup
     runs-on: ${{ matrix.config.os }}
     # The heavy suite (~190 TMB fits) is slow; give the slowest runner headroom.
     timeout-minutes: 120
@@ -39,10 +56,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config:
-          - {os: ubuntu-latest, r: release}
-          - {os: macos-latest, r: release}
-          - {os: windows-latest, r: release}
+        config: ${{ fromJSON(needs.matrix-setup.outputs.config) }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}

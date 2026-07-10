@@ -4205,7 +4205,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Skipping the default between-unit {.field Psi} for {n_psi_skip} single-trial binary trait{?s}: it is unidentified when each (trait, unit) cell has one 0/1 observation (the link's implicit scale is the residual).",
         "i" = "Trait{?s} affected: {.val {psi_skipped_labs}}.",
         "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off. Pass multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) to recover identifiability, or add an explicit {.fn indep} term."
-      ))
+      ), .frequency = "once",
+         .frequency_id = "gllvmTMB-psi-skip-single-trial-binary")
     }
   }
 

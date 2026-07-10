@@ -1299,7 +1299,7 @@ gllvm_julia_capabilities <- function() {
     )
   }
   fam <- object$families %||% object$family %||% character()
-  if (all(fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES)) {
+  if (length(fam) > 0L && all(fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES)) {
     alpha[!is.finite(alpha)] <- 0
   }
   if (any(!is.finite(alpha))) {
@@ -2225,7 +2225,17 @@ gllvm_julia_capabilities <- function() {
     dispersion <- rep(dispersion, p)
   }
   if (length(dispersion) != p) {
-    dispersion <- rep(NA_real_, p)
+    stop(
+      "engine = 'julia': dispersion payload has length ",
+      length(dispersion),
+      " but ",
+      p,
+      " traits were expected; the mixed-family dispersion vector must be ",
+      "per-trait (length ",
+      p,
+      ") or a single scalar.",
+      call. = FALSE
+    )
   }
   dispersion
 }
@@ -2313,13 +2323,17 @@ gllvm_julia_capabilities <- function() {
       )
     )
   }
-  if (any(!is.finite(var) | var <= 0, na.rm = TRUE)) {
+  degenerate <- !is.finite(var) | var <= 0
+  if (all(degenerate)) {
     stop(
-      "engine = 'julia': residual variance contains non-positive or ",
-      "non-finite entries.",
+      "engine = 'julia': residual variance is non-positive or non-finite ",
+      "for every cell; Pearson residuals cannot be computed.",
       call. = FALSE
     )
   }
+  ## A saturated cell (e.g. binomial mu = 1) has a legitimately zero variance;
+  ## blank those cells to NA rather than aborting the whole matrix.
+  var[degenerate] <- NA_real_
   var
 }
 
@@ -2595,6 +2609,9 @@ gllvm_julia_fit <- function(
   y <- as.matrix(y)
   if (isTRUE(units_are_rows)) {
     y <- t(y)
+    if (!is.null(N) && !is.null(dim(N))) {
+      N <- t(N)
+    }
   }
   if (!is.null(mask)) {
     mask <- as.matrix(mask)
@@ -3344,9 +3361,30 @@ confint.gllvmTMB_julia <- function(
   }
   if (!missing(parm)) {
     if (is.numeric(parm)) {
+      bad <- parm < 1L | parm > nrow(payload) | parm != as.integer(parm)
+      if (any(bad, na.rm = TRUE) || anyNA(parm)) {
+        stop(
+          "Out-of-range `parm` index/indices: ",
+          paste(parm[is.na(bad) | bad], collapse = ", "),
+          "; the CI payload has ",
+          nrow(payload),
+          " rows.",
+          call. = FALSE
+        )
+      }
       payload <- payload[parm, , drop = FALSE]
     } else {
       idx <- match(parm, payload$term)
+      if (anyNA(idx)) {
+        stop(
+          "Unknown `parm` value(s): ",
+          paste(parm[is.na(idx)], collapse = ", "),
+          ". Available terms: ",
+          paste(payload$term, collapse = ", "),
+          ".",
+          call. = FALSE
+        )
+      }
       payload <- payload[idx, , drop = FALSE]
     }
   }
@@ -3625,6 +3663,13 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   units <- levels(fu)
   p <- length(traits)
   n <- length(units)
+  if (anyDuplicated(cbind(as.integer(ft), as.integer(fu)))) {
+    stop(
+      "engine = 'julia': duplicated (trait, unit) cells in the long data; ",
+      "the stacked-trait matrix requires exactly one row per trait-unit.",
+      call. = FALSE
+    )
+  }
   Y <- matrix(NA_real_, p, n, dimnames = list(traits, units))
   Y[cbind(as.integer(ft), as.integer(fu))] <- yv
   response_mask <- !is.na(Y)

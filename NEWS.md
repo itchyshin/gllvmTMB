@@ -3,6 +3,25 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Arc E: `engine = "julia"` robustness and honesty fixes (2026-07-09)
+
+* `confint()` on an `engine = "julia"` fit now errors on an unknown `parm`
+  name or an out-of-range numeric index instead of silently returning `NA`
+  rows (#660).
+* `residuals()` / `simulate()` on a Julia-bridge fit no longer abort globally
+  when a single cell has a legitimately zero variance (e.g. a saturated
+  binomial cell); those cells return `NA`, and only an all-degenerate matrix
+  errors (#641).
+* `engine = "julia"` now rejects duplicated `(trait, unit)` rows in long data
+  rather than silently collapsing them in the response pivot (#642).
+* A mixed-family dispersion payload of the wrong length now errors instead of
+  being silently replaced with `NA`, which had masked payload-shape errors
+  (#696).
+* A matrix of binomial trials `N` is now transposed alongside `y` under
+  `units_are_rows = TRUE` (#593).
+* An empty family vector is no longer treated as all-ordinal, so a non-finite
+  prediction intercept is caught rather than silently zeroed (#640).
+
 ## `fit_health$converged`: a scale-free convergence verdict (2026-07-08)
 
 * `fit$fit_health` gains two fields: **`converged`** (logical, the authoritative

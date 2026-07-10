@@ -4070,3 +4070,106 @@ test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {
   expect_equal(sigma_jl_auto$R, sigma_jl$R, tolerance = 1e-10)
   expect_s3_class(fit_jl, "gllvmTMB_julia")
 })
+
+# ---- Arc E ground-truthed pure-R guards (2026-07-09) ----------------------
+
+test_that(".gllvm_julia_alpha errors on non-finite alpha when the family vector is empty (#640)", {
+  # An absent family vector must not be treated as all-ordinal (all(x %in% y) is
+  # TRUE for a length-0 x), which used to silently zero the non-finite alpha.
+  expect_error(
+    .gllvm_julia_alpha(list(alpha = c(0.2, NaN)), 2L),
+    "must be finite"
+  )
+})
+
+test_that(".gllvm_julia_alpha still zeroes non-finite alpha for all-ordinal families", {
+  obj <- list(alpha = c(0.2, NaN), families = c("ordinal_probit", "ordinal_probit"))
+  expect_equal(.gllvm_julia_alpha(obj, 2L), c(0.2, 0))
+})
+
+test_that(".gllvm_julia_dispersion_vector errors on a length-mismatched payload (#696)", {
+  expect_error(
+    .gllvm_julia_dispersion_vector(list(dispersion = c(1, 2, 3)), 2L),
+    "length 3"
+  )
+})
+
+test_that(".gllvm_julia_dispersion_vector broadcasts a scalar and NA-fills an absent payload", {
+  expect_equal(.gllvm_julia_dispersion_vector(list(dispersion = 4), 3L), c(4, 4, 4))
+  expect_equal(.gllvm_julia_dispersion_vector(list(), 2L), c(NA_real_, NA_real_))
+})
+
+test_that(".gllvm_julia_residual_variance blanks a saturated cell to NA, not a global abort (#641)", {
+  mu <- matrix(c(0.5, 1.0), nrow = 1L) # p = 1, n = 2; the second cell is saturated
+  v <- .gllvm_julia_residual_variance(list(), "binomial", mu)
+  expect_equal(v[1L, 1L], 0.25)
+  expect_true(is.na(v[1L, 2L]))
+})
+
+test_that(".gllvm_julia_residual_variance still errors when every cell is degenerate", {
+  mu <- matrix(c(1.0, 1.0), nrow = 1L)
+  expect_error(
+    .gllvm_julia_residual_variance(list(), "binomial", mu),
+    "every cell"
+  )
+})
+
+test_that("confint.gllvmTMB_julia errors on an unknown character parm (#660)", {
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  expect_error(confint(fit, parm = "no_such_term"), "Unknown `parm`")
+})
+
+test_that("confint.gllvmTMB_julia errors on an out-of-range numeric parm (#660)", {
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  expect_error(confint(fit, parm = 99L), "Out-of-range")
+})
+
+test_that("confint.gllvmTMB_julia still returns a matched term (#660)", {
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  ci <- confint(fit, parm = "theta[1]")
+  expect_equal(rownames(ci), "theta[1]")
+})
+
+test_that("engine = 'julia' rejects duplicated (trait, unit) long rows (#642)", {
+  df <- make_long(n_unit = 3L, traits = c("t1", "t2"))
+  df <- rbind(df, df[1L, , drop = FALSE]) # duplicate the first (trait, unit) cell
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = gaussian(),
+      engine = "julia"
+    ),
+    "duplicated \\(trait, unit\\)"
+  )
+})
+
+test_that("gllvm_julia_fit transposes a matrix N under units_are_rows = TRUE (#593)", {
+  skip_if_not_installed("JuliaCall")
+  captured <- new.env(parent = emptyenv())
+  testthat::local_mocked_bindings(gllvm_julia_setup = function(...) invisible(NULL))
+  testthat::local_mocked_bindings(
+    julia_call = function(...) {
+      captured$args <- list(...)
+      stop("__captured__")
+    },
+    .package = "JuliaCall"
+  )
+  y <- matrix(c(1, 0, 1, 0, 1, 1), nrow = 3L, ncol = 2L) # n = 3 units x p = 2 traits
+  N <- matrix(c(4, 5, 6, 7, 8, 9), nrow = 3L, ncol = 2L)
+  expect_error(
+    gllvm_julia_fit(
+      y = y,
+      family = "binomial",
+      num.lv = 1L,
+      N = N,
+      units_are_rows = TRUE
+    ),
+    "__captured__"
+  )
+  expect_equal(dim(captured$args$y), c(2L, 3L))
+  expect_equal(dim(captured$args$N), c(2L, 3L))
+  expect_equal(unname(captured$args$N), unname(t(N)))
+})

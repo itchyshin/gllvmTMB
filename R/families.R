@@ -722,6 +722,14 @@ delta_beta <- function(link1 = "logit", link2 = "logit") {
 #' `cutpoint_{K-1}`). This differs from `brms::cumulative()`, which
 #' reports K - 1 cutpoints as `Intercept[1..K-1]`.
 #'
+#' Cross-engine note: `gllvmTMB`'s `ordinal_probit()` is a probit
+#' threshold model (unit latent variance; Hadfield 2015), whereas
+#' `GLLVM.jl`'s ordinal family is a cumulative-*logit* model. Cutpoints
+#' and loadings therefore live on different link scales (differing by a
+#' factor of roughly \eqn{\pi / \sqrt{3}}) and must not be compared
+#' across engines at machine tolerance; the `engine = "julia"` bridge
+#' maps probit to probit and does not route a logit ordinal response.
+#'
 #' @param link Always `"probit"`; provided for API symmetry with the
 #'   other family constructors.
 #'

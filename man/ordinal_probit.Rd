@@ -44,6 +44,14 @@ Convention: the engine follows Hadfield's notation (\eqn{\tau_1 = 0}
 fixed, K - 2 free cutpoints reported as \code{cutpoint_2}, ...,
 \verb{cutpoint_\{K-1\}}). This differs from \code{brms::cumulative()}, which
 reports K - 1 cutpoints as \verb{Intercept[1..K-1]}.
+
+Cross-engine note: \code{gllvmTMB}'s \code{ordinal_probit()} is a probit
+threshold model (unit latent variance; Hadfield 2015), whereas
+\code{GLLVM.jl}'s ordinal family is a cumulative-\emph{logit} model. Cutpoints
+and loadings therefore live on different link scales (differing by a
+factor of roughly \eqn{\pi / \sqrt{3}}) and must not be compared
+across engines at machine tolerance; the \code{engine = "julia"} bridge
+maps probit to probit and does not route a logit ordinal response.
 }
 \examples{
 ordinal_probit()

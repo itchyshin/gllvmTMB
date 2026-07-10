@@ -87,16 +87,25 @@
   old,
   new_name,
   args = "...",
-  guidance = NULL
+  guidance = NULL,
+  see = NULL
 ) {
   if (!isTRUE(.gllvmTMB_deprecation_seen[[old]])) {
     ## Use our own env-based tracker only (no cli `.frequency = "once"`)
     ## so that test code can re-trigger the warning by unbinding the
     ## tracker entry without fighting cli's internal frequency cache.
+    ## Point the closing line at the actual replacement's help topic when the
+    ## caller supplies one; fall back to the generic reduced-rank pointer only
+    ## for the rr/diag keywords, where it is on-topic.
+    see_line <- if (!is.null(see)) {
+      sprintf("Aliases will be dropped at the next minor release. See {.code ?%s}.", see)
+    } else {
+      "Aliases will be dropped at the next minor release. See {.code ?diag_re} / {.fn latent}."
+    }
     msg <- c(
       "!" = "Formula keyword {.fn {old}} is a deprecated alias; use {.fn {new_name}} for new code.",
       "i" = "{.code {new_name}({args})} =/=> {.code {old}({args})}",
-      ">" = "Aliases will be dropped at the next minor release. See {.code ?diag_re} / {.fn latent}."
+      ">" = see_line
     )
     if (!is.null(guidance)) {
       msg <- c(msg, ">" = guidance)
@@ -3993,11 +4002,11 @@ scan_for_deprecated <- function(rhs) {
       args = "0 + trait | g",
       guidance = "Use ordinary latent(..., d = K) for the default shared + diagonal-Psi decomposition, or indep(0 + trait | g) for a standalone diagonal."
     ),
-    phylo_rr = list(new = "phylo_latent", args = "species, d = K"),
-    phylo = list(new = "phylo_scalar", args = "species"),
-    spde = list(new = "spatial_indep", args = "coords | trait"),
-    meta = list(new = "meta_V", args = "V = V"),
-    gr = list(new = "phylo_scalar", args = "species")
+    phylo_rr = list(new = "phylo_latent", args = "species, d = K", see = "phylo_latent"),
+    phylo = list(new = "phylo_scalar", args = "species", see = "phylo_scalar"),
+    spde = list(new = "spatial_indep", args = "coords | trait", see = "spatial_indep"),
+    meta = list(new = "meta_V", args = "V = V", see = "meta_V"),
+    gr = list(new = "phylo_scalar", args = "species", see = "phylo_scalar")
   )
   ## A bar as the first argument (e.g. `phylo(0 + trait | species, ...)`) marks
   ## the documented mode-dispatch calling convention, which is first-class and
@@ -4007,6 +4016,22 @@ scan_for_deprecated <- function(rhs) {
       is.call(e[[2L]]) &&
       identical(e[[2L]][[1L]], as.name("|")) &&
       length(e[[2L]]) == 3L
+  }
+  ## `spatial()` is a documented first-class mode-dispatch wrapper (the spatial
+  ## parallel of `phylo()`): a scalar `spatial(1 | site)` and any bar-form call
+  ## carrying an explicit `mode =` dispatch to a canonical `spatial_*()` keyword
+  ## and must NOT receive the legacy `spatial() -> spatial_indep()` alias
+  ## deprecation. Only a legacy bare form (`spatial(0 + trait | coords)` with no
+  ## mode, or the old `spatial(coords | trait)` orientation) is the deprecated
+  ## alias.
+  spatial_is_firstclass <- function(e) {
+    if (!is_bar_first_arg(e)) {
+      return(FALSE)
+    }
+    lhs <- e[[2L]][[2L]]
+    is_scalar <- identical(lhs, 1) || identical(lhs, 1L)
+    has_mode <- "mode" %in% names(e)
+    is_scalar || has_mode
   }
   walk <- function(e) {
     if (is.call(e)) {
@@ -4022,7 +4047,7 @@ scan_for_deprecated <- function(rhs) {
         ## use lifecycle's deprecate_warn so it integrates with the
         ## standard tidyverse deprecation tooling and the `lifecycle`
         ## verbosity option.
-        if (fn == "spatial") {
+        if (fn == "spatial" && !spatial_is_firstclass(e)) {
           lifecycle::deprecate_warn(
             when = "0.1.2",
             what = "spatial()",
@@ -4032,6 +4057,9 @@ scan_for_deprecated <- function(rhs) {
               ">" = "Update existing code to spatial_indep() to keep the rank explicit."
             )
           )
+        } else if (fn == "spatial") {
+          ## first-class mode-dispatch form (`spatial(1 | site)` or an explicit
+          ## `mode =`): dispatched downstream, no deprecation here.
         } else if (fn == "phylo" && is_bar_first_arg(e)) {
           ## `phylo(0 + trait | species, mode = ..., d = ..., tree = ...)` is the
           ## documented first-class mode-dispatch form, NOT the legacy
@@ -4039,7 +4067,7 @@ scan_for_deprecated <- function(rhs) {
           ## unconditional recursion below still walks its arguments.
         } else if (fn %in% names(deprecated_map)) {
           d <- deprecated_map[[fn]]
-          .gllvmTMB_warn_keyword_deprecated(fn, d$new, d$args, d$guidance)
+          .gllvmTMB_warn_keyword_deprecated(fn, d$new, d$args, d$guidance, d$see)
         }
       }
       for (i in seq_along(e)[-1L]) {

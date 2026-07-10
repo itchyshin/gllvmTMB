@@ -20,26 +20,14 @@ knitr::opts_chunk$set(
 library(gllvmTMB)
 ```
 
-> **Developer Note -- under audit.** This page is buildable and linked
-> from Developer Notes so maintainers can audit the ordinal-family
-> reader path. It is not a first-stop tutorial. Start with
+> **Developer Note -- under audit.** This page is a buildable technical
+> draft linked from Developer Notes so maintainers can audit the
+> ordinal-family reader path; it is not a first-stop tutorial. Start with
 > [Get started](gllvmTMB.html) and [Response families](response-families.html)
-> before using this page.
->
-> **Preview -- `ordinal_probit` family validation is M2 (Binary completeness) milestone work.**
->
-> The `ordinal_probit()` family has covered family-recovery evidence
-> (FAM-14 in the
-> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
-> This page is still not a public worked example because cutpoint extractor
-> depth, interval examples, and reader/browser review remain open.
-
-**Internal article gate.** This page is a Tier 3 technical draft while
-the ordinal article surface is under audit. It now contains a compact
-runnable long/wide example, cutpoint extraction, latent-scale Sigma extraction,
-and fit-health diagnostics. It is not a public worked example, an ordinal
-interval-coverage claim, or a claim that ordinal randomized-quantile residuals
-are available for exact-CDF diagnostics.
+> before using this page. It contains a compact runnable long/wide example,
+> cutpoint extraction, latent-scale Sigma extraction, and fit-health
+> diagnostics, but it is not yet a public worked example: interval
+> calibration and exact-CDF ordinal residual diagnostics remain open.
 
 Use `ordinal_probit()` when a trait is ordered categorical with at
 least three categories and the scientific target is a latent continuous
@@ -79,13 +67,15 @@ This internal draft answers five threshold-trait reference questions:
 | Is the tiny fit numerically usable? | `check_gllvmTMB()` | `Diagnostics` | optimizer, gradient, sdreport, and Hessian rows |
 | What should readers avoid? | family and residual-scale guardrails | `Guardrails` | no `K = 2` threshold model, no mixed family within one ordinal trait, no OLRE residual scale |
 
-Scope boundary: IN evidence includes `FAM-14` family-recovery coverage and
-the runnable local article fixture below. PARTIAL rows include ordinal
-cutpoint extractor depth (`EXT-10`), ordinal bridge CI endpoints, and any
-profile/bootstrap interval claims for ordinal cutpoints or variance
-components. PLANNED or guarded work includes broader applied examples,
-ordinal exact-CDF residual diagnostics, interval calibration, and final
-article placement review. Until those land, this page stays internal.
+Scope boundary: IN evidence includes family-recovery coverage, cutpoint
+extractor depth (planted-threshold recovery across `K = 2, 3, 4`, including
+mixed-family fits), and the runnable local article fixture below. PARTIAL
+rows include ordinal bridge CI endpoints and any profile/bootstrap interval
+claims for ordinal cutpoints or variance components. PLANNED or guarded work
+includes broader applied examples, ordinal exact-CDF residual diagnostics,
+interval calibration, and final article placement review. Until those land,
+this page stays internal.
+<!-- register: FAM-14 (family recovery) and EXT-10 (cutpoint extractor depth) both covered; see docs/design/35-validation-debt-register.md -->
 
 ## Fit The Family
 
@@ -169,7 +159,7 @@ The example uses `indep()` because it is fast and stable for a small
 article fixture. For phylogenetic ordinal traits, replace it with
 `phylo_indep(species, tree = tree)` or another source-specific covariance
 keyword after checking the relevant validation row.
-The family does not change the 4 x 4 covariance keyword grammar.
+The family does not change the 4 x 5 covariance keyword grammar.
 
 ## Cutpoints
 
@@ -188,10 +178,11 @@ cuts <- extract_cutpoints(fit_long)
 cuts
 ```
 
-The returned rows are one row per `(trait, cutpoint)` pair. A
-four-category trait has two reported cutpoints, `cutpoint_2` and
-`cutpoint_3`; the first threshold `tau_1 = 0` is fixed and is not
-reported as an estimated parameter.
+The returned rows are one row per `(trait, cutpoint)` pair. This `K = 3`
+fixture estimates one free cutpoint per trait, reported as `cutpoint_2`;
+the first threshold `tau_1 = 0` is fixed and is not reported as an
+estimated parameter. As a hypothetical, a four-category (`K = 4`) trait
+would instead report two cutpoints, `cutpoint_2` and `cutpoint_3`.
 
 This differs from `brms::cumulative()`, which reports `K - 1`
 cutpoints under a different location convention. The two conventions

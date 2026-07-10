@@ -272,16 +272,6 @@ n_pins_pr
 cat(sug_pr$note, "\n")
 ```
 
-```{r suggest-profile-retention-fallback, include = FALSE}
-# The chunk above is display-only in routine builds (eval = FALSE), but the
-# prose below quotes its `n_pins` count inline. This fallback supplies the
-# real value computed on this exact fixture (set.seed(20260527);
-# profile_retention, retention_prob = 0.90 => 19 pins) so the inline
-# references render honestly without paying the ~260 s suggester cost.
-# Re-running the chunk above overrides this with a live value.
-if (!exists("n_pins_pr")) n_pins_pr <- 19L
-```
-
 ### Refit and model comparison
 
 Refit with the suggested constraint, then compare on LRT / AIC / BIC
@@ -343,12 +333,12 @@ Reading the table:
   It tends to *under-prune* relative to biology, leaving cross-loadings
   free that biology would close. AIC penalises that mildly; BIC more
   strongly.
-- **profile_retention** is deliberately conservative. It returns
-  `r n_pins_pr` explicit pins in this fixture. If that count is zero,
-  the refit has the same parameter count as the exploratory baseline:
-  the one-at-a-time LRTs did not provide stable evidence for pinning
-  any individual loading to zero. In fixtures where profile retention
-  does pin entries, BIC may reward the extra parsimony.
+- **profile_retention** is deliberately conservative. It pins an entry
+  only when the one-at-a-time LRT provides stable evidence against that
+  loading. If it returns no pins, the refit has the same parameter count
+  as the exploratory baseline: the LRTs did not provide stable evidence
+  for pinning any individual loading to zero. In fixtures where profile
+  retention does pin entries, BIC may reward the extra parsimony.
 
 The honest comparison: the **simple** varimax_threshold and the
 **principled** profile_retention can give *different* constraint
@@ -376,12 +366,11 @@ method follows from that:
   coverage at a non-identified / boundary fit is not established, and
   `pdHess` is never treated as CI evidence.
 - **`profile_retention`** keeps the pinning decision tied to a
-  one-entry-at-a-time LRT. In this fixture it returns `r n_pins_pr`
-  explicit pins. When that number is positive, the code below attempts
-  the default Wald (delta-method) Confidence Eye for the constrained
-  refit. When the number is zero, no per-entry `Lambda` CI is drawn:
-  the fitted covariance is still usable, but the loading matrix remains
-  rotation-ambiguous.
+  one-entry-at-a-time LRT. When it returns explicit pins, the code below
+  attempts the default Wald (delta-method) Confidence Eye for the
+  constrained refit. When it returns none, no per-entry `Lambda` CI is
+  drawn: the fitted covariance is still usable, but the loading matrix
+  remains rotation-ambiguous.
 
 The counterintuitive but real lesson: *more pins is not necessarily
 worse*, and *zero pins is not a rendering failure*. What matters is

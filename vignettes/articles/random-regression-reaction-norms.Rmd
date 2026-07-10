@@ -25,14 +25,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Developer Note -- under audit.** This page is buildable and linked
-> from Developer Notes so maintainers can audit the Gaussian
-> individual-level reaction-norm path. It is not a first-stop tutorial
-> and still needs a plain-language reader pass before promotion to
-> Model Guides.
->
-> The fitted examples below are point-estimate teaching evidence; public
-> promotion still needs browser review and a final uncertainty review.
+> **Developer Note -- under audit.** This page is a buildable draft for
+> maintainers auditing the Gaussian individual-level reaction-norm path.
+> It is not a first-stop tutorial: the fitted examples are point-estimate
+> teaching evidence, and the page still needs a plain-language reader pass
+> and a final uncertainty review before promotion to Model Guides.
 
 This draft fits an individual-level random-regression GLLVM for a behavioural
 syndrome question. The unit is the **individual**, the repeated occasion is
@@ -59,20 +56,19 @@ checks:
 | Which covariance blocks answer the biological question? | `extract_Sigma(level = "unit_slope")` | `extract-sigma`, `composition` | intercept-intercept, slope-slope, and intercept-slope blocks |
 | Does this teaching fixture recover the known covariance? | generated example truth | `recovery-data`, `recovery-plot` | relative Frobenius error and estimate-versus-truth plot |
 | How does repeatability change over temperature? | fitted augmented covariance plus occasion covariance | `repeatability-data`, `repeatability-plot` | trait-specific repeatability curves against simulation truth |
-| Is the point fit numerically usable? | `check_gllvmTMB()` | `diagnostics` | optimizer and gradient rows; `sdreport`/Hessian warn because `se = FALSE` |
+| Is the point fit numerically usable? | `check_gllvmTMB()` | `diagnostics` | optimizer, gradient, and boundary rows (standard-error rows skipped because `se = FALSE`) |
 
-Scope boundary: IN rows are ordinary Gaussian augmented random-regression
-syntax and extraction for `latent(1 + x | unit, d = K)` (`RE-12`), basic
-fit-health rows (`DIA-08`), `extract_Sigma()` (`EXT-01`), point-estimate Sigma
-table/plot helpers (`EXT-18`, `EXT-27` where used elsewhere), and
-repeatability extraction concepts (`EXT-06`). PARTIAL rows are the broader
-RE-12 non-Gaussian augmented path, calibrated interval coverage for derived
-slope and repeatability summaries (`CI-08`, `CI-10`), and model-choice
-evidence for when the augmented reaction-norm model should replace a simpler
-between/within model. PLANNED or guarded rows include non-Gaussian augmented
-diagonal `Psi` support and delta/hurdle-family extensions. The fitted
-Gaussian examples use default `latent()` with its diagonal `Psi_B,aug`
-companion; the non-Gaussian boundary is described in the closing section.
+What this draft covers: ordinary Gaussian augmented random-regression
+syntax and extraction for `latent(1 + x | unit, d = K)`, basic fit-health
+diagnostics, `extract_Sigma()`, the point-estimate covariance table and plot
+helpers, and repeatability extraction. What it does not yet cover: the
+non-Gaussian augmented path, calibrated interval coverage for derived slope and
+repeatability summaries, and model-choice evidence for when the augmented
+reaction-norm model should replace a simpler between/within model.
+Non-Gaussian augmented diagonal `Psi` support and delta/hurdle-family
+extensions are planned. The fitted Gaussian examples use default `latent()`
+with its diagonal `Psi_B,aug` companion; the non-Gaussian boundary is
+described in the closing section.
 
 ## Setup
 
@@ -86,7 +82,8 @@ library(ggplot2)
 We use a prepared example object so the article starts with the data,
 truth, formulas, and biological question rather than a long simulation
 script. The generator is shipped in the repository as
-`data-raw/examples/make-behavioural-reaction-norm-example.R`.
+[`data-raw/examples/make-behavioural-reaction-norm-example.R`](https://github.com/itchyshin/gllvmTMB/blob/main/data-raw/examples/make-behavioural-reaction-norm-example.R),
+so the simulation truth is reproducible.
 
 ```{r example-data, eval = FALSE}
 rr <- readRDS(system.file(
@@ -227,9 +224,10 @@ latent(1 + temperature | individual, d = 1)
 
 The article uses `se = FALSE` so the vignette renders quickly. That
 means the diagnostic table below is a point-estimate fit check, not a
-curvature-based interval claim. Optimizer and gradient rows should pass before
-interpreting the point estimates; `sdreport` and Hessian rows are expected to
-warn in this draft because standard-error calculation is deliberately skipped.
+curvature-based interval claim. We show the optimizer, gradient, and boundary
+rows, which should pass before interpreting the point estimates; the
+standard-error rows (`sdreport`, Hessian) are omitted here because
+standard-error calculation is deliberately skipped for speed.
 
 ```{r diagnostics}
 diag_tbl <- check_gllvmTMB(fit)
@@ -238,9 +236,7 @@ diag_tbl[
     "optimizer_convergence",
     "max_gradient",
     "boundary_flags",
-    "boundary_sigma_eps",
-    "sdreport",
-    "pd_hessian"
+    "boundary_sigma_eps"
   ),
   c("component", "status", "value", "message")
 ]

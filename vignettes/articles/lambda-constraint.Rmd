@@ -813,10 +813,10 @@ ggplot() +
 
 How to read this:
 
-- Two species (`B_drought_1`, `C_free_1`) have **two-sided CIs** --
+- Some of the three demo species have **two-sided CIs** --
   the profile likelihood crosses the $\chi^2$ cutoff on both sides
   of the point estimate. These are the cleanest summaries.
-- Four species have **one-sided CIs** -- the profile crosses the
+- Others have **one-sided CIs** -- the profile crosses the
   cutoff on one side but not the other within the grid extent. The
   unreached side is reported as `NA` (the profile didn't bracket the
   cutoff at all) or as the proportion boundary `0`/`1` (the profile

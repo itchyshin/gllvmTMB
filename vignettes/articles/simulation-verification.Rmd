@@ -176,15 +176,15 @@ should mirror the DGP's structure.
 ### 3b. Trait-factor level order silently mis-aligned
 
 Long-format data has a `trait` factor column. R defaults to
-alphabetical level ordering. If your DGP `Lambda_B` is indexed in
-the order you simulated traits in (e.g. `("length", "mass",
-"wing")`) but the data frame's trait factor sorts alphabetically
-to `("length", "mass", "wing")` -- ok that order matches -- but
-`("Beak.Length", "Beak.Width", "Beak.Depth", "Tarsus.Length")`
-sorts to alphabetical `("Beak.Depth", "Beak.Length", "Beak.Width",
-"Tarsus.Length")`. Then `Sigma_fit` and `Sigma_truth` have rows in
-different orders. Recovery looks broken when only the row labels
-are misaligned.
+alphabetical level ordering. Suppose your DGP `Lambda_B` is indexed
+in the order you simulated the traits, `("mass", "length",
+"wing")`, but you build the trait factor without setting `levels`.
+R sorts the levels alphabetically to `("length", "mass", "wing")`,
+so the fitted `Sigma_fit` comes back with its rows and columns in
+that alphabetical order while `Sigma_truth` is still in simulation
+order. The two matrices are then a row/column permutation of each
+other, and recovery looks broken when only the labels are
+misaligned.
 
 **Fix**: when building the long-format data frame, set
 `levels = trait_names` explicitly on the trait factor so the
@@ -211,8 +211,10 @@ fitted `Lambda_B` on the response scale will look like a 1000%
 recovery error. The package's
 [`extract_correlations(link_residual = "auto")`](../reference/extract_correlations.html)
 default adds the family-specific latent-scale residual to the
-implied $\boldsymbol\Sigma$ diagonal before computing correlations;
-the recovery target should live on the same scale.
+implied $\boldsymbol\Sigma$ diagonal before computing correlations
+(currently for the validated families -- Gaussian and binomial with
+logit/probit/cloglog links); the recovery target should live on the
+same scale.
 
 **Fix**: do all comparisons on the latent linear-predictor scale.
 
@@ -265,8 +267,14 @@ reporting.)
 
 `coverage_study(fit, n_reps = 30L)` is the audit's recommended
 empirical-coverage check: simulate, refit, count CI hit rate
-against the original fit's estimates, flag any rows below the
-audit's `>= 94%` exit gate. See
+against the original fit's estimates, and **flag** any target whose
+rate falls below the audit's `>= 94%` gate. Treat it as a
+diagnostic that surfaces sub-gate targets, not one the package is
+expected to clear everywhere: the package-wide coverage gate is
+still open, and the most recent production run cleared only 2 of 15
+cells. <!-- validation-debt register CI-08 (single-family) / CI-10 (mixed-family); docs/design/35-validation-debt-register.md --> So expect flagged rows,
+and read them as "this target is not yet coverage-calibrated"
+rather than an engine failure. See
 [`coverage_study()`](../reference/coverage_study.html).
 
 ```{r coverage, eval = FALSE}
@@ -317,8 +325,13 @@ A fit has passed verification when:
    huge SEs).
 2. `check_identifiability()` shows no spurious-factor collapse.
 3. `gllvmTMB_check_consistency()` reports `"centred"`.
-4. `coverage_study()` shows `passes_94pct = TRUE` on every target
-   that matters for the paper.
+4. `coverage_study()` has been run on the targets that matter for
+   the paper and any sub-gate (`passes_94pct = FALSE`) rows are
+   understood and disclosed -- the package-wide `>= 94%` gate is
+   still open, so flagged targets are expected, not automatically
+   disqualifying.
+   <!-- validation-debt register CI-08 / CI-10; docs/design/35-validation-debt-register.md -->
+
 5. `confint_inspect()` on the headline parameters shows
    well-behaved (`"quadratic"`) profile curves.
 
@@ -330,8 +343,6 @@ becomes suspect.
 
 - [Choose your model](choose-your-model.html) -- pick the right
   model before you verify it.
-- [Data-shape flowchart](data-shape-flowchart.html) -- which
-  worked example matches your data.
 - [Profile-likelihood CIs](profile-likelihood-ci.html) -- the CI
   machinery being audited.
 - [Troubleshooting profile-likelihood CIs](troubleshooting-profile.html)

@@ -24,40 +24,18 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Developer Note -- under audit.** This page is buildable and linked
-> from Developer Notes so maintainers can audit the model-choice path.
-> It is not yet the package's beginner model guide. If you are new to
-> `gllvmTMB`, start with [Get started](gllvmTMB.html),
+> **Developer Note -- under audit; start here only if you already know
+> `gllvmTMB`.** This page is buildable and linked from Developer Notes so
+> maintainers can audit the model-choice path; it is not yet the package's
+> beginner model guide, and several linked worked examples remain internal.
+> If you are new to `gllvmTMB`, start with [Get started](gllvmTMB.html),
 > [First Gaussian morphology model](morphometrics.html), and
-> [Formula keyword grid](api-keyword-grid.html) before using this
-> decision tree.
->
-> **Current status -- validated rungs are runnable here; two
-> capabilities are scoped honestly.**
->
-> This page is a Tier 3 routing draft while several linked examples remain
-> internal. The runnable chunks below exercise named formula rungs on small
-> fixtures, but the page is not yet a public decision guide. Two things on this
-> page are deliberately bounded by the
+> [Formula keyword grid](api-keyword-grid.html) before using this decision
+> tree. Two capabilities are deliberately bounded against the
 > [capability status](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/61-capability-status.md):
->
-> - **Random-regression slopes.** Section 7e showcases phylogenetic
->   random slopes (`phylo_slope`, Gaussian and core families) with
->   recovery evidence; the pedigree parallel `animal_slope` is now
->   recovery-validated too (register `ANI-06`, byte-equivalent to
->   `phylo_slope(vcv = A)` to 1e-5). The structured slope modes
->   (`phylo_indep/dep/latent` and their spatial analogues) all ship
->   with built engines and Gaussian recovery; the diagonal
->   (`phylo_indep`) and reduced-rank (`phylo_latent`, `spatial_latent`)
->   modes additionally cover core non-Gaussian families, while the
->   full-unstructured `_dep` modes stay **Gaussian-only** with
->   non-Gaussian reserved (fail-loud) pending identifiability work.
->   Section 5 gives the per-mode status.
-> - **Confidence intervals.** Section 8 explains the Wald / profile /
->   bootstrap choice. The *machinery* runs for all three, but
->   **calibrated coverage is an open gate** outside Gaussian
->   single-tier fits at $d = 1$ and $d = 3$ (`CI-08`, `CI-10`); the section says so plainly
->   rather than implying the intervals are validated everywhere.
+> the per-mode reach of random-regression slopes (§5) and the open coverage
+> gate on confidence intervals (§8). Each section states its own bounds
+> plainly where it is used.
 
 `gllvmTMB` covers a large model space — one, two, or three nested
 observational levels, optional phylogenetic structure, optional
@@ -83,6 +61,12 @@ option, which gives you a piece of the formula or the call. By
 the end of section 6 you have all the pieces; section 7 shows the
 canonical assembled formulas for the most common combinations, and
 section 8 covers confidence intervals.
+
+This article routes you to a *model*: it turns questions about your
+data into a formula, including which input shape to use (long vs
+wide). For the full reference of individual formula keywords and their
+arguments, see the
+[Formula keyword grid](api-keyword-grid.html).
 
 The six questions:
 
@@ -133,8 +117,6 @@ whether your data have **one** observational level or **two**.
 | One row per individual / site, with several traits as columns. Use the wide path directly, or reshape to long. | One: `unit` | <code>latent(0 + trait &#124; unit)</code> (long) / <code>latent(1 &#124; unit, d = K)</code> (wide via `traits()`) | [Morphometrics](morphometrics.html) (individuals × continuous traits) |
 | Sites that each contain multiple species, with traits measured for each (site, species) combination; or repeated measures per individual; or papers with multiple items each. | Two: `unit` (between) and `unit_obs` (within) | <code>latent(0 + trait &#124; unit)</code> *and* <code>latent(0 + trait &#124; unit_obs)</code> when both tiers need a shared-plus-diagonal decomposition | [Behavioural syndromes](behavioural-syndromes.html) and [Functional biogeography](functional-biogeography.html) |
 | The within-unit rows themselves nest inside a higher grouping — e.g. observations within individuals within populations, or items within papers within research groups. | Three: `cluster` > `unit` > `unit_obs` | add <code>indep(0 + trait &#124; cluster)</code> for a standalone diagonal cluster tier | §7f (worked example below) |
-| Sites that each contain multiple species, with traits measured for each (site, species) combination; or repeated measures per individual; or papers with multiple items each. | Two: `unit` (between) and `unit_obs` (within) | <code>latent(0 + trait &#124; unit)</code> *and* <code>indep(0 + trait &#124; unit_obs)</code> | [Behavioural syndromes](behavioural-syndromes.html) and [Functional biogeography](functional-biogeography.html) |
-| The within-unit rows themselves nest inside a higher grouping — e.g. observations within individuals within populations, or items within papers within research groups. | Three: `cluster` > `unit` > `unit_obs` | add <code>indep(0 + trait &#124; cluster)</code> on top of the two-level pair | §7f (worked example below) |
 
 If you have a single observational level, the `unit` column can be
 called anything (`individual`, `site`, `study`, `paper`); pass its
@@ -285,7 +267,7 @@ slope variance is the quantity you want to estimate (Meyer & Hill
 |---|---|---|
 | Slopes do not vary by group, or you have no covariate of interest. | Nothing — keep the intercept-only structure from §1–§4. | — |
 | **Per-species slope on `x`, structured by the phylogeny** (one shared slope variance, slopes correlated through the tree). | <code>+ phylo_slope(x &#124; species, tree = tree)</code> | `unit = "species"` |
-| Per-individual slope on `x`, structured by a **pedigree** (the quantitative-genetic heritable reaction norm). | <code>+ animal_slope(x &#124; id)</code> with a relatedness matrix `A` | `phylo_vcv = A`, `unit = "id"` |
+| Per-individual slope on `x`, structured by a **pedigree** (the quantitative-genetic heritable reaction norm). | <code>+ animal_slope(x &#124; id, A = A)</code> with a relatedness matrix `A` | `unit = "id"` |
 
 `phylo_slope(x | species)` is the **validated** entry point: it fits
 one phylogenetically-structured slope variance and per-species
@@ -549,8 +531,8 @@ data.frame(
 The recovered slope SD sits close to the simulated $\sqrt{0.4}
 \approx 0.63$, and the fitted per-species slopes correlate strongly
 with the truth. For a **pedigree** instead of a tree, swap in
-`animal_slope(x | id)` and pass the relatedness matrix as
-`phylo_vcv = A`; that pedigree path is recovery-validated (register
+`animal_slope(x | id, A = A)`, passing the relatedness matrix
+in-keyword; that pedigree path is recovery-validated (register
 `ANI-06`, byte-equivalent to `phylo_slope(vcv = A)` to 1e-5).
 
 The richer correlated intercept–slope form fits and surfaces its 2×2
@@ -565,8 +547,8 @@ only to keep this page to a single worked fit:
 # animal_latent(1 + x | id, unique = TRUE) is the pedigree twin.
 fit_rr_aug <- gllvmTMB(
   value ~ 0 + trait +
-    phylo_latent(0 + trait + (0 + trait):x | species, d = 1, unique = TRUE),
-  data = df_rr, phylo_tree = tree, unit = "species"
+    phylo_latent(0 + trait + (0 + trait):x | species, d = 1, tree = tree, unique = TRUE),
+  data = df_rr, unit = "species"
 )
 extract_Sigma(fit_rr_aug, level = "phy")   # phylo reaction-norm Sigma
 ```

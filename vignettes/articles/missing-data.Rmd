@@ -79,19 +79,18 @@ This article documents the missing-data layer as it stands today and sketches
 the planned extensions, so the reader can see the design as a whole.
 Read the status tags literally:
 
-- **SHIPPED (default, complete-case; MIS-23).** Under the default `miss_control()`
+- **SHIPPED (default, complete-case).** Under the default `miss_control()`
   (`response = "drop"`, `predictor = "fail"`, `engine = "laplace"`) the layer is
   an exact no-op: a missing *response* cell drops its row before the likelihood
   is built, and a missing *predictor* is an error. A complete-data fit is
   identical to one built before the layer existed.
-- **SHIPPED (Phase 1, the response mask; MIS-21 / MIS-24).** `miss_control(response =
+- **SHIPPED (Phase 1, the response mask).** `miss_control(response =
   "include")` retains rows with a missing response cell, builds the
   `is_y_observed` mask so masked cells contribute zero to the likelihood, keeps
   original-row accounting in `fit$missing_data`, adjusts `nobs()` to the
   likelihood-contributing cells, and exposes `predict_missing()` for the masked
   response cells.
-- **SHIPPED (Phase 2a, one Gaussian fixed-covariate missing predictor; MIS-25 /
-  MIS-26).** A
+- **SHIPPED (Phase 2a, one Gaussian fixed-covariate missing predictor).** A
   single continuous, unit-level missing predictor declared with `mi(x)` plus
   `missing = miss_control(predictor = "model")` and a fixed-effect Gaussian
   covariate model supplied through `impute = list(x = x ~ z)` (bare-formula
@@ -99,24 +98,24 @@ Read the status tags literally:
   missing value is a latent quantity integrated out by the Laplace
   approximation; `imputed()` returns its conditional mode (EBLUP) and standard
   error, and the registry lives at `fit$missing_data$predictors`.
-- **SHIPPED (Phase 2b, one grouped-covariate missing predictor; MIS-27).** The Phase 2a
+- **SHIPPED (Phase 2b, one grouped-covariate missing predictor).** The Phase 2a
   Gaussian predictor model extended with a single grouped random intercept,
   `impute = list(x = x ~ z + (1 | group))`. The grouped effect is a
   covariate-model random intercept (one unit-level value per group), kept
   independent of the response-model random effects; everything else matches
   Phase 2a.
-- **SHIPPED (Phase 3, phylogenetic species-level missing predictor; MIS-28).** A
+- **SHIPPED (Phase 3, phylogenetic species-level missing predictor).** A
   species-level Gaussian missing predictor whose covariate model carries a
   phylogenetic intercept, `impute = list(x = x ~ phylo(1 | species, tree =
   tree))`. The `phylo(1 | species, tree =)` token both keys the species-level
-  broadcast (the Phase 2c machinery: one latent per missing species, broadcast
-  to its observation rows) and adds a phylo-structured intercept on the
-  covariate mean. The field borrows strength across related species and
-  degrades gracefully toward the independent (Phase 2c) model when phylogenetic
+  broadcast (one latent per missing species, broadcast to its observation rows)
+  and adds a phylo-structured intercept on the covariate mean. The field borrows
+  strength across related species and degrades gracefully toward the
+  independent, non-phylogenetic species-level model when phylogenetic
   signal is weak; `phylo_signal_mi()` reports the effective signal and flags the
   weak case (Section 5c). Intercept-only covariate model; the Level-2 joint
   field (`correlate_with = "response"`) remains Phase 4.
-- **SHIPPED (Phase 5a, one binary missing predictor; MIS-29).** A single two-level
+- **SHIPPED (Phase 5a, one binary missing predictor).** A single two-level
   (binary) missing predictor declared with `mi(x)` and a fixed-effect
   Bernoulli-logit covariate model supplied through
   `impute = list(x = impute_model(x ~ z, family = binomial()))`. This is the
@@ -126,7 +125,7 @@ Read the status tags literally:
   probability `P(x = 1 | y, z)` (not a Laplace mode). The binary covariate model
   is fixed-effect only in v1: a grouped, level-keyed, or phylogenetic binary
   predictor model errors.
-- **SHIPPED (Phase 5b, one ordered missing predictor; MIS-30).** A single ordered
+- **SHIPPED (Phase 5b, one ordered missing predictor).** A single ordered
   categorical missing predictor (an ordered factor with three or more levels, or
   integer scores) declared with `mi(x)` and a fixed-effect cumulative-logit
   covariate model supplied through
@@ -137,7 +136,7 @@ Read the status tags literally:
   category score** (with the per-level probabilities in the registry). The
   ordered covariate model keeps K-1 free cutpoints and is fixed-effect only in
   v1; a grouped, level-keyed, or phylogenetic ordered predictor model errors.
-- **SHIPPED (Phase 5c, one unordered missing predictor; MIS-31).** A single unordered
+- **SHIPPED (Phase 5c, one unordered missing predictor).** A single unordered
   categorical missing predictor (an unordered factor, character, or integer
   scores with three or more levels) declared with `mi(x)` and a fixed-effect
   baseline-category (multinomial) softmax covariate model supplied through
@@ -149,7 +148,7 @@ Read the status tags literally:
   registry), and the likelihood is invariant to which level is the baseline. The
   unordered covariate model is fixed-effect only in v1; a grouped, level-keyed,
   or phylogenetic unordered predictor model errors.
-- **PLANNED (MIS-32).** Spatial / relatedness / animal covariate models for `mi()` and
+- **PLANNED.** Spatial / relatedness / animal covariate models for `mi()` and
   the Level-2 joint field (Phase 4); and the remaining non-Gaussian missing
   predictors -- bounded/continuous non-Gaussian such as beta, and counts
   (Poisson / NB). These routes are sketched below with their phase tags.
@@ -197,15 +196,15 @@ families are planned.
 
 | Missing-data case | Route | Boundary / phase |
 | --- | --- | --- |
-| Missing trait cell (any family) | `missing = miss_control(response = "include")` | All predictors, grouping variables, offsets, weights, and structured-effect inputs must be complete for that row (Phase 1, shipped; MIS-21 / MIS-24). |
-| One missing continuous predictor, fixed covariate model | `traits(y1, y2) ~ mi(body_mass) + z` with `impute = list(body_mass = body_mass ~ z)` | The `mi()` variable must be numeric; one Gaussian covariate model; no multiple missing predictors yet (Phase 2a, shipped; MIS-25 / MIS-26). |
-| One missing continuous predictor, grouped covariate model | As above with `impute = list(body_mass = body_mass ~ z + (1 | site))` | One grouped random intercept in the predictor model; independent of response random effects (Phase 2b, shipped; MIS-27). |
-| Species-level missing predictor, phylogenetic covariate model | `impute = list(body_mass = body_mass ~ phylo(1 | species, tree = tree))` | Species-level value broadcast to observation rows; intercept-only phylo covariate model; degrades gracefully when signal is weak (Phase 3, shipped; MIS-28). |
+| Missing trait cell (any family) | `missing = miss_control(response = "include")` | All predictors, grouping variables, offsets, weights, and structured-effect inputs must be complete for that row (Phase 1, shipped). |
+| One missing continuous predictor, fixed covariate model | `traits(y1, y2) ~ mi(body_mass) + z` with `impute = list(body_mass = body_mass ~ z)` | The `mi()` variable must be numeric; one Gaussian covariate model; no multiple missing predictors yet (Phase 2a, shipped). |
+| One missing continuous predictor, grouped covariate model | As above with `impute = list(body_mass = body_mass ~ z + (1 | site))` | One grouped random intercept in the predictor model; independent of response random effects (Phase 2b, shipped). |
+| Species-level missing predictor, phylogenetic covariate model | `impute = list(body_mass = body_mass ~ phylo(1 | species, tree = tree))` | Species-level value broadcast to observation rows; intercept-only phylo covariate model; degrades gracefully when signal is weak (Phase 3, shipped). |
 | Spatial / relatedness / animal covariate model; Level-2 joint field | `impute = list(... = ... ~ spatial(...))`, `relmat()`, `animal()`, or `correlate_with = "response"` | Non-phylo structured covariate models and the joint response-covariate field (Phase 4, planned). |
-| One missing binary predictor, fixed covariate model | `traits(y1, y2) ~ z + mi(x)` with `impute = list(x = impute_model(x ~ z, family = binomial()))` | Exact two-state summation, no latent `x_mis`; `imputed()` returns `P(x = 1 | y, z)`; fixed-effect covariate model only (Phase 5a, shipped; MIS-29). |
-| One missing ordered predictor, fixed covariate model | `traits(y1, y2) ~ z + mi(x)` with `impute = list(x = impute_model(x ~ z, family = cumulative_logit()))` | Exact K-state summation, no latent `x_mis`; `imputed()` returns the expected category score; K-1 free cutpoints; fixed-effect covariate model only (Phase 5b, shipped; MIS-30). |
-| One missing unordered predictor, fixed covariate model | `traits(y1, y2) ~ z + mi(x)` with `impute = list(x = impute_model(x ~ z, family = categorical()))` | Exact K-state summation, no latent `x_mis`; `imputed()` returns the modal category; baseline-softmax prior; fixed-effect covariate model only (Phase 5c, shipped; MIS-31). |
-| Other non-Gaussian missing predictor | `impute_model(family = )` with a bounded or count family | Beta / bounded, Poisson / NB -- later work (planned; MIS-32). |
+| One missing binary predictor, fixed covariate model | `traits(y1, y2) ~ z + mi(x)` with `impute = list(x = impute_model(x ~ z, family = binomial()))` | Exact two-state summation, no latent `x_mis`; `imputed()` returns `P(x = 1 | y, z)`; fixed-effect covariate model only (Phase 5a, shipped). |
+| One missing ordered predictor, fixed covariate model | `traits(y1, y2) ~ z + mi(x)` with `impute = list(x = impute_model(x ~ z, family = cumulative_logit()))` | Exact K-state summation, no latent `x_mis`; `imputed()` returns the expected category score; K-1 free cutpoints; fixed-effect covariate model only (Phase 5b, shipped). |
+| One missing unordered predictor, fixed covariate model | `traits(y1, y2) ~ z + mi(x)` with `impute = list(x = impute_model(x ~ z, family = categorical()))` | Exact K-state summation, no latent `x_mis`; `imputed()` returns the modal category; baseline-softmax prior; fixed-effect covariate model only (Phase 5c, shipped). |
+| Other non-Gaussian missing predictor | `impute_model(family = )` with a bounded or count family | Beta / bounded, Poisson / NB -- later work (planned). |
 
 The `gllvmTMB` response matrix is **multivariate**: a single fit can have many
 trait columns and many species.
@@ -305,7 +304,7 @@ row-accounting and diagnostics.
 ```{r inspect-metadata}
 # nobs(fit_resp)                     # likelihood-contributing cells
 # fit_resp$missing_data$counts       # see field table below
-# fit_resp$missing_data$slice        # implementation slice, e.g. "Phase1-s2"
+# fit_resp$missing_data$slice        # internal implementation-slice tag
 # head(fit_resp$missing_data$original_row)
 # fit_resp$missing_data$observed_y   # logical mask over the model rows
 ```
@@ -314,8 +313,8 @@ The most useful fields are:
 
 | Field | Meaning |
 | --- | --- |
-| `slice` | Implementation slice tag (the response mask ships as `"Phase1-s2"`). |
-| `contract_version` | Shared-contract version with `drmTMB`, e.g. `"59-v1"`. |
+| `slice` | Internal implementation-slice tag (bookkeeping; not needed for analysis). |
+| `contract_version` | Internal shared-contract version with `drmTMB` (bookkeeping). |
 | `response_policy` | Whether response rows/cells were dropped (`"drop"`) or masked (`"include"`). |
 | `predictor_policy` | Whether missing predictors fail (`"fail"`) or are modelled (`"model"`). |
 | `original_row` | Row indices in the user's original data frame. |
@@ -450,13 +449,13 @@ and `categorical()` are now exported and callable.
 
 | Family | `impute` covariate model | Integration | `imputed()` output | Status | Section |
 | --- | --- | --- | --- | --- | --- |
-| Gaussian (continuous) | `x ~ z` (bare = Gaussian) or `impute_model(x ~ z)` | latent + Laplace | conditional mode (EBLUP) + SE | **shipped (2a; MIS-26)** | 5a |
-| Gaussian + grouped intercept | `x ~ z + (1 \| group)` | latent + Laplace | EBLUP + SE | **shipped (2b; MIS-27)** | 5b |
-| Gaussian + phylogenetic | `x ~ phylo(1 \| species, tree =)` | latent + Laplace + GMRF (`Ainv`) | EBLUP + SE; `phylo_signal_mi()` | **shipped (3; MIS-28)** | 5c |
-| Binary | `impute_model(x ~ z, family = binomial())` | exact 2-state sum (no latent) | conditional prob `P(x = 1 \| y, z)` | **shipped (5a; MIS-29)** | 5d |
-| Ordered | `impute_model(x ~ z, family = cumulative_logit())` | exact K-state sum (no latent) | expected category score + level probs | **shipped (5b; MIS-30)** | 5f |
-| Unordered | `impute_model(x ~ z, family = categorical())` | exact K-state sum (no latent) | modal category + level probs | **shipped (5c; MIS-31)** | 5g |
-| Beta / proportion | `impute_model(x ~ z, family = beta())` | quadrature (bounded) | conditional mean | planned (MIS-32) | 5h |
+| Gaussian (continuous) | `x ~ z` (bare = Gaussian) or `impute_model(x ~ z)` | latent + Laplace | conditional mode (EBLUP) + SE | **shipped (2a)** | 5a |
+| Gaussian + grouped intercept | `x ~ z + (1 \| group)` | latent + Laplace | EBLUP + SE | **shipped (2b)** | 5b |
+| Gaussian + phylogenetic | `x ~ phylo(1 \| species, tree =)` | latent + Laplace + GMRF (`Ainv`) | EBLUP + SE; `phylo_signal_mi()` | **shipped (3)** | 5c |
+| Binary | `impute_model(x ~ z, family = binomial())` | exact 2-state sum (no latent) | conditional prob `P(x = 1 \| y, z)` | **shipped (5a)** | 5d |
+| Ordered | `impute_model(x ~ z, family = cumulative_logit())` | exact K-state sum (no latent) | expected category score + level probs | **shipped (5b)** | 5f |
+| Unordered | `impute_model(x ~ z, family = categorical())` | exact K-state sum (no latent) | modal category + level probs | **shipped (5c)** | 5g |
+| Beta / proportion | `impute_model(x ~ z, family = beta())` | quadrature (bounded) | conditional mean | planned | 5h |
 
 The three Gaussian rows share the **continuous** route (a latent `x_mis`
 integrated out by Laplace; `imputed()` reports an EBLUP conditional mode with a
@@ -602,8 +601,8 @@ This is the flagship case for ecology and is now **shipped**: a missing
 species-level predictor whose covariate model inherits phylogenetic structure.
 The `phylo(1 | species, tree = tree)` token in the `impute` formula does two
 things at once -- it keys the **species-level broadcast** (one latent value per
-missing species, broadcast to that species' observation rows; the Phase 2c
-machinery) and adds a **phylo-structured intercept** on the covariate mean, so a
+missing species, broadcast to that species' observation rows) and adds a
+**phylo-structured intercept** on the covariate mean, so a
 missing species' predictor borrows strength from its phylogenetic neighbours
 rather than only from the global mean. The covariate model is intercept-only on
 the phylo side; an ordinary observed covariate may still be added
@@ -661,8 +660,8 @@ Even the most accurate method tested by Johnson et al. (2021) gave inaccurate
 estimates under strong missingness bias, and a "significant" signal test is not
 the same as *strong* signal (Molina-Venegas 2024).
 The implementation is built to respect this. As the phylo standard deviation
-goes to zero the covariate model **degrades gracefully** toward the independent
-(non-phylogenetic) Phase 2c model -- with no separate code path -- and
+goes to zero the covariate model **degrades gracefully** toward the independent,
+non-phylogenetic species-level model -- with no separate code path -- and
 `phylo_signal_mi()` flags the weak case so a too-weak signal does not pass
 silently.
 Trait databases are also typically MNAR (missing not at random): rare species
@@ -767,10 +766,6 @@ animal-model (`animal()`) covariate structures, and enables the Level-2 joint
 field where the predictor model explicitly shares a structured field with the
 response model (with eigenvector-fixed-effect orthogonalisation to guard
 against structured confounding; Dupont, Marques and Kneib 2023).
-
-```{r missing-predictor-phase4}
-# FILL: Phase 4 -- spatial, relmat, animal, multi-source, Level-2 joint field.
-```
 
 ### 5f. Ordered predictor, exact K-state summation (Phase 5b, shipped)
 
@@ -1083,8 +1078,8 @@ each completed dataset, pool) is the bridge when both are wanted.
 
 The design deliberately keeps several features out of scope for the shipped
 Phase 1 through Phase 3 plus Phase 5a/5b/5c layer, independent of which phases
-have shipped. Unless another row is named, these deferred boundaries are tracked
-as MIS-32 in the validation-debt register:
+have shipped. These deferred boundaries are tracked in the validation-debt
+register:
 
 - EM, profile, and REML missing-data engines are not implemented.
   `engine = "laplace"` is the only v1 option; `"em"` and `"profile"` are

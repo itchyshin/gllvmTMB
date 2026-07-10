@@ -136,13 +136,18 @@ loadings-only subset).
 
 Because the `animal_*()` keywords are pure syntactic sugar over the
 `phylo_*()` engine path (only the relatedness-matrix input differs),
-these intercept structures are **family-general**: the per-trait
-`animal_indep()` / `animal_scalar()` decomposition recovers not only
-under the Gaussian model used in the tutorials below, but also under
-the count, proportion, ordinal, and binomial response families the
-engine supports. The worked examples here are Gaussian for clarity;
-switch `family =` to fit the same genetic structures on a
-non-Gaussian trait.
+these intercept structures are **family-general** by construction:
+because the intercept $\eta$ is accumulated before family dispatch,
+the same per-trait `animal_indep()` / `animal_scalar()` decomposition
+can be *fit* under the count, proportion, ordinal, and binomial
+response families the engine supports as well as the Gaussian model
+used in the tutorials below. Point-estimate recovery of these two
+structures is validated for the Gaussian case (`ANI-01`, `ANI-03`);
+non-Gaussian recovery of the desugared `phylo_*` structures is
+documented so far for binary probit (`PHY-04`, `PHY-05`), with broader
+non-Gaussian recovery and calibration planned. The worked examples
+here are Gaussian for clarity; switch `family =` to fit the same
+genetic structures on a non-Gaussian trait.
 
 ## Setup
 

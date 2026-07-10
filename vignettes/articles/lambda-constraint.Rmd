@@ -550,9 +550,14 @@ ci <- loading_ci(fit_con, level = "unit")
 head(ci, 10)
 ```
 
-Pinned entries have `se = 0` exactly (they're not random variables --
-the constraint nailed them down). Free entries inherit the SE from
-TMB's `sdreport` covariance restricted to the loading parameters.
+When the fitted Hessian is positive-definite, pinned entries have
+`se = 0` exactly (they're not random variables -- the constraint
+nailed them down) and free entries inherit the SE from TMB's
+`sdreport` covariance restricted to the loading parameters. In this
+fixture the Hessian is non-positive-definite (see the Confidence Eye
+section), so `loading_ci()` returns `se`/`lower`/`upper` as `NA` with
+`ci_status = "not_available_non_positive_definite_hessian"`; the table
+above illustrates the output shape, not usable Wald intervals.
 
 ### Reliability classification
 
@@ -575,12 +580,13 @@ table(
 )
 ```
 
-Read this table as: of the 40 Lambda entries, 12 are pinned by
-construction (no inference is being made about them); among the 28
-free entries, the data support a non-trivial loading for roughly half
-and leave the rest indistinguishable from "biologically negligible."
-That is much closer to honest scientific reporting than the
-point-estimate-only bar chart.
+Read this table as: pinned entries carry no inference, and each free
+entry is classified reliable/unreliable by whether its CI excludes the
+null region -- *when* Wald intervals are available. In this
+non-positive-definite fixture every free entry's CI is `NA`, so the
+classification collapses to the pinned bucket; a genuine reliability
+split needs a positive-definite fit, and per-entry interval calibration
+itself remains an open gate (`CI-08`/`CI-10`).
 
 ### Symmetric vs asymmetric Wald
 
@@ -865,7 +871,13 @@ The validation-debt rows `LAM-01`, `LAM-03`, `LAM-04` are at
 - $d = 3$ at `n_items = 10` is the documented boundary -- the
   suggester may not always stabilise; check `fit_health$pd_hessian`.
 - This article's fixture (`n_species = 20`, `d = 2`, `n_sites = 40`)
-  is inside the validated regime.
+  matches the validated `(n_items, d)` grid for point recovery
+  (`LAM-03`: `n_items` $\in \{20, 50\} \times d \in \{1, 2\}$, validated
+  at `n_resp` $\approx 400$--$500$). It sits well below that sample
+  size (`n_sites = 40`, chosen to make leakage visible), and the
+  validated regime does not certify fit health or interval calibration
+  -- consistent with this fixture's non-positive-definite Hessian (see
+  the Confidence Eye section).
 
 ## When *not* to use `lambda_constraint`
 

@@ -251,9 +251,11 @@ The multi-trait analogue of $V_A$: a $T \times T$ matrix of
 additive-genetic covariances between traits. A factor-analytic
 $\mathbf{G} = \boldsymbol{\Lambda}_g \boldsymbol{\Lambda}_g^\top
 + \boldsymbol{\Psi}$ (Kirkpatrick & Meyer 2004; Meyer 2009;
-Runcie & Mukherjee 2013) is exactly what `animal_latent(individual,
-d = K, pedigree = ped, unique = TRUE)` fits. Worked example:
-[Animal model: heritability and genetic
+Runcie & Mukherjee 2013) is the structure `animal_latent(individual,
+d = K, pedigree = ped, unique = TRUE)` specifies (parser/Psi-fold
+covered by ANI-05; genetic-covariance recovery still outstanding).
+The animal-model page is an under-audit Developer Note, not yet a
+public worked example: see [Animal model: heritability and genetic
 covariance](animal-model.html).
 
 **Reaction norm / random regression** &mdash; A model where

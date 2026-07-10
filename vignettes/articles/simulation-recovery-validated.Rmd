@@ -132,7 +132,7 @@ for (i in seq_len(nrow(fam_avg))) {
 Interpretation:
 
 - **Gaussian** and **binomial** profile CIs land near nominal at
-  smoke scale — the inference machinery works on the
+  smoke scale — the inference machinery appears to work on the
   well-conditioned cases.
 - **Ordinal-probit**, **mixed-family**, and especially
   **nbinom2** under-cover — these are real, not placeholder
@@ -181,8 +181,10 @@ runs; what M3.3a surfaces is the **inference-quality pattern**:
 
 - **Gaussian** (avg 0.95 coverage; ~0.7s per fit): near-nominal at
   smoke scale, as expected for the well-conditioned baseline.
-- **Binomial** (avg 0.95; ~0.7-1s): also near-nominal. Profile CIs
-  correctly handle the bounded-likelihood geometry.
+- **Binomial** (avg 0.95; ~0.7-1s): also near-nominal. At smoke
+  scale the profile CIs appear to handle the bounded-likelihood
+  geometry; binomial has not cleared the M3.3 production coverage
+  gate (CI-08).
 - **Ordinal-probit** (avg 0.75; ~1-1.5s): under-covers. K-1
   cutpoints per trait + small n = harder identifiability. M3.4
   will diagnose whether single-trait warmup helps.
@@ -260,4 +262,5 @@ Out of scope for M3 entirely:
   patterns when profile coverage is unexpectedly low.
 - [Animal model](animal-model.html) — quantitative-genetic worked
   example using the same ordinary `latent()` machinery this
-  article validates.
+  article exercises (point recovery; interval coverage remains
+  open under CI-08/CI-10).

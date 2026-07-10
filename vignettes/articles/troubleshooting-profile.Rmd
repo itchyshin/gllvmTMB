@@ -204,7 +204,9 @@ Bootstrap is ~10-30x slower than profile per derived quantity, but
 it's a different inference method altogether: it doesn't depend on
 the Laplace approximation being a good fit at every grid point of
 the profile walk. For a single canonical fit you plan to publish,
-500 bootstrap reps takes minutes and gives the gold-standard CI.
+500 bootstrap reps takes minutes and gives a robust bootstrap
+interval that doesn't depend on the profile converging (empirical
+coverage is not yet calibrated across families -- see CI-08/CI-10).
 
 ## See also
 

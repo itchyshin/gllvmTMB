@@ -665,6 +665,40 @@ profile_ci_communality <- function(
 #' @param level Confidence level. Default 0.95.
 #' @return Length-3 numeric vector (`estimate`, `lower`, `upper`).
 #'
+## Expand a mapped diagonal (Psi) parameter block back to one value per trait.
+## A TMB `map` can collapse or fix entries: the common-diagonal case maps every
+## trait to one shared level, and the mixed-family auto-Psi skip pins
+## `theta_diag_B[t] = log(1e-6)` and maps single-trial binary traits off
+## (R/fit-multi.R). In the skip case the free vector in `fit$opt$par` is shorter
+## than `n_traits` and neither scalar nor full length, so scattering it back by
+## position recycles and mis-assembles Sigma (issue #717). Reconstruct the full
+## per-trait vector: free traits take their estimated value via the map level;
+## mapped-off traits keep the engine's pinned start value (negligible Psi).
+.expand_mapped_diag <- function(fit, name, free_vals, n_traits) {
+  map <- fit$tmb_map[[name]]
+  if (is.null(map)) {
+    ## No map: the free block is already one value per trait, or a single
+    ## shared value to recycle across traits.
+    if (length(free_vals) == 1L) {
+      return(rep(free_vals, n_traits))
+    }
+    return(free_vals)
+  }
+  lvl <- as.integer(map) # length n_traits; NA marks a fixed / mapped-off trait
+  fixed <- tryCatch(
+    as.numeric(fit$tmb_obj$env$parameters[[name]]),
+    error = function(e) NULL
+  )
+  full <- if (!is.null(fixed) && length(fixed) == n_traits) {
+    fixed
+  } else {
+    rep(log(1e-6), n_traits)
+  }
+  ok <- !is.na(lvl) & lvl >= 1L & lvl <= length(free_vals)
+  full[ok] <- free_vals[lvl[ok]]
+  full
+}
+
 #' @keywords internal
 #' @export
 profile_ci_correlation <- function(
@@ -757,6 +791,16 @@ profile_ci_correlation <- function(
     )
   }
   n_traits <- n_dim
+  ## Name of the diagonal (Psi) parameter block for this tier, used to reconcile
+  ## a TMB-mapped free vector back to one value per trait (#717).
+  diag_name <- switch(
+    tier,
+    B_slope = "theta_diag_B_slope",
+    B = "theta_diag_B",
+    W = "theta_diag_W",
+    phy = "log_sd_phy_diag",
+    "log_tau_spde"
+  )
 
   build_Lambda <- function(theta_rr, p, rank) {
     L <- matrix(0, p, rank)
@@ -790,7 +834,10 @@ profile_ci_correlation <- function(
     LLt <- L %*% t(L)
     Sigma <- LLt
     if (use_diag) {
-      th_diag <- par[ix_diag]
+      ## Reconcile the (possibly TMB-mapped) free diagonal block back to one
+      ## value per trait before adding it to diag(Sigma); a mixed-family fit
+      ## carries fewer free theta_diag_B entries than traits (#717).
+      th_diag <- .expand_mapped_diag(fit, diag_name, par[ix_diag], n_traits)
       if (tier == "spde") {
         diag(Sigma) <- diag(Sigma) + exp(-2 * th_diag)
       } else {

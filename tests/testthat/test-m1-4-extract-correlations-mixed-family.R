@@ -81,10 +81,25 @@ test_that("extract_correlations() method = 'profile' on 3-family fixture (M1.4 /
   ## Profile is slower than Fisher-z / Wald (~repeated refit per pair).
   ## 3-family has T = 3 → 3 pairs; budget ~30-60 s.
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
-  df <- suppressMessages(extract_correlations(
-    fit, tier = "unit", method = "profile",
-    link_residual = "auto"
-  ))
+  ## #717: on this mixed-family (single-trial binary) fixture the engine maps
+  ## some theta_diag_B entries off, so the profile refit used to recycle the
+  ## shorter free vector against diag(Sigma) -- a ~36k-warning flood plus a
+  ## mis-assembled Sigma. Capture warnings and assert the recycle is gone.
+  warns <- character()
+  df <- withCallingHandlers(
+    suppressMessages(extract_correlations(
+      fit, tier = "unit", method = "profile",
+      link_residual = "auto"
+    )),
+    warning = function(w) {
+      warns <<- c(warns, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_false(
+    any(grepl("longer object length", warns, fixed = TRUE)),
+    info = "profile correlation must not recycle the mapped theta_diag_B (#717)"
+  )
   expect_valid_correlations_df(df, 3L)
   expect_true(all(df$method == "profile"))
 })

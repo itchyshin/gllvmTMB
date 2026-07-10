@@ -22,6 +22,17 @@
 * An empty family vector is no longer treated as all-ordinal, so a non-finite
   prediction intercept is caught rather than silently zeroed (#640).
 
+## Arc E: clearer keyword-deprecation guidance (2026-07-09)
+
+* The documented first-class `spatial()` mode-dispatch forms —
+  `spatial(1 | site)` and any `spatial(..., mode = ...)` call — no longer emit
+  the legacy `spatial() -> spatial_indep()` alias deprecation. The function's
+  own examples previously self-deprecated and pointed users at a different
+  model; the legacy bare form still warns (#629).
+* Keyword-deprecation messages now point at the replacement's own help topic
+  (e.g. `?phylo_latent`, `?meta_V`, `?spatial_indep`) instead of the generic
+  `?diag_re` / `latent()` pointer for every keyword (#662).
+
 ## `fit_health$converged`: a scale-free convergence verdict (2026-07-08)
 
 * `fit$fit_health` gains two fields: **`converged`** (logical, the authoritative

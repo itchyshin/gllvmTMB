@@ -36,7 +36,7 @@ test_that("scan_for_deprecated walks into the args of a :: call", {
   )
 })
 
-test_that("deprecated keyword messages point to replacement-specific help", {
+test_that("deprecated keyword messages point to replacement-specific help (#662)", {
   seen <- gllvmTMB:::.gllvmTMB_deprecation_seen
   if (exists("phylo_rr", envir = seen, inherits = FALSE)) {
     rm("phylo_rr", envir = seen)
@@ -51,7 +51,10 @@ test_that("deprecated keyword messages point to replacement-specific help", {
   )
   msg <- paste(msg, collapse = "\n")
 
-  expect_match(msg, "phylo_latent", fixed = TRUE)
+  ## The closing ">" pointer now references the actual replacement's help
+  ## topic, not the generic reduced-rank `?diag_re` (#662).
+  expect_match(msg, "?phylo_latent", fixed = TRUE)
+  expect_no_match(msg, "diag_re", fixed = TRUE)
 })
 
 local_reset_lifecycle_cache <- function(env = parent.frame()) {
@@ -74,19 +77,21 @@ local_reset_lifecycle_cache <- function(env = parent.frame()) {
   invisible(NULL)
 }
 
-test_that("spatial mode-dispatch calls do not emit legacy alias deprecation", {
+test_that("spatial mode-dispatch calls do not emit legacy alias deprecation (#629)", {
   withr::local_options(lifecycle_verbosity = "warning")
   local_reset_lifecycle_cache()
 
-  expect_warning(
-    gllvmTMB:::scan_for_deprecated(quote(spatial(1 | site, mesh = mesh))),
-    NA
+  ## `expect_no_warning()` rather than `expect_warning(., NA)`: the latter can
+  ## pass vacuously when lifecycle's once-per-session cache has already spent
+  ## the warning, masking a regression. The cache reset above makes the call
+  ## re-trigger, so a genuine no-warning is required.
+  expect_no_warning(
+    gllvmTMB:::scan_for_deprecated(quote(spatial(1 | site, mesh = mesh)))
   )
-  expect_warning(
+  expect_no_warning(
     gllvmTMB:::scan_for_deprecated(
       quote(spatial(0 + trait | coords, mode = "latent", d = 2, mesh = mesh))
-    ),
-    NA
+    )
   )
 })
 

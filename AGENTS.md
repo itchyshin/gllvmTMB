@@ -423,3 +423,5 @@ section.
 
 <!-- shinichi-hub -->
 > Read first — personal operating contract & second brain (house rules, memory, agents): /Users/z3437171/Dropbox/Github Local/Shinichi/AGENTS.md  (repo rules override the hub where they differ)
+<!-- shinichi-hub -->
+> Read \`~/shinichi-brain/AGENTS.md\` first; this repository's rules override the personal hub where they differ.

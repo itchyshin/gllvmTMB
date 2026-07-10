@@ -86,7 +86,7 @@
 #' When the within-unit variance is near zero (R close to 1) the
 #' constrained log-likelihood is flat as `theta_diag_W -> -Inf` and the
 #' upper bound on R is reported as **1** (the natural boundary). Same
-#' applies symmetrically for R close to 0 → lower bound **0**. `NA` is
+#' applies symmetrically for R close to 0 -> lower bound **0**. `NA` is
 #' reserved for genuine profile failure (e.g. tmbprofile() error or too
 #' few points to bracket the threshold).
 #'

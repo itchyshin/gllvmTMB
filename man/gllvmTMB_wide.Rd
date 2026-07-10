@@ -54,7 +54,7 @@ in \code{weights} (the only meaningful alignment); a mismatch errors.
 Use this for meta-analytic / per-cell-uncertainty weighting.
 \item single positive numeric (length 1): broadcast to all cells.
 Disambiguation when \code{nrow(Y) == ncol(Y)}: \code{length(dim(weights))}
-decides — \code{NULL} (1-d) → vector, row-broadcast; \code{c(n, m)} (2-d) →
+decides -- \code{NULL} (1-d) -> vector, row-broadcast; \code{c(n, m)} (2-d) ->
 per-cell. Values must be non-negative and finite (NA-aligned cells
 excepted). For binomial trial-count semantics use an explicit long-data
 \code{\link[=gllvmTMB]{gllvmTMB()}} call with \code{weights = n_trials} instead.

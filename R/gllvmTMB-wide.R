@@ -53,7 +53,7 @@
 #'     Use this for meta-analytic / per-cell-uncertainty weighting.
 #'   * single positive numeric (length 1): broadcast to all cells.
 #'   Disambiguation when `nrow(Y) == ncol(Y)`: `length(dim(weights))`
-#'   decides — `NULL` (1-d) → vector, row-broadcast; `c(n, m)` (2-d) →
+#'   decides -- `NULL` (1-d) -> vector, row-broadcast; `c(n, m)` (2-d) ->
 #'   per-cell. Values must be non-negative and finite (NA-aligned cells
 #'   excepted). For binomial trial-count semantics use an explicit long-data
 #'   [gllvmTMB()] call with `weights = n_trials` instead.

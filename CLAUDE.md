@@ -2,17 +2,19 @@
 
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
-For the current Claude handoff, also read
-`docs/dev-log/handover/2026-07-08-claude-handover.md` before starting new work.
-The `unique()` keyword-removal arc is CLOSED + merged (#728, #729). The `B_lv` CI
-trio (Wald / profile / bootstrap) is **already BUILT and exported on `main`** —
-do not rebuild it; the branches `claude/blv-profile-ci` and
-`claude/xlv-phylo-gaussian` are `ahead 0` (superseded, not parked). Structured ×
-X_lv is the orthogonal **Model A**, which already composes + recovers `B_lv` in R
-(authoritative model record: `docs/design/76-structured-xlv-phylo.md` §7 UPDATE).
-The remaining work is the **calibrated-interval evidence** (ADEMP coverage;
-`CI-08` / `CI-10` are open/failing gates). Earlier context:
-`docs/dev-log/handover/2026-07-06-claude-handover-modelA.md`.
+For the current Claude handoff, read
+`docs/dev-log/handover/2026-07-09-claude-handover-arcs.md` and the CRAN-first
+ultra-plan at `~/.claude/plans/misty-snacking-papert.md` before starting new work.
+**v1.0 = a clean CRAN release, R-only** (Julia parity, the paper, and the
+paper-grade coverage campaign are all post-1.0). Arc B (functional-phylogeography)
+and Arc C (missing-data) are **DONE / already shipped**; the remaining v1.0 work is
+the honest-surface / register sweep (Arc E) + release mechanics (Arc A) + the CRAN
+blockers. **Three big backlog items were found ALREADY-BUILT on 2026-07-09 (#588
+cluster2 extraction, the #723 27-failure cluster, the whole missing-data layer) —
+re-verify any "unbuilt" arc/issue against `main` before building.** The `B_lv` CI
+trio is built; **`phylo_latent(unique=TRUE)` = structured + DIAGONAL ψ, NOT a
+non-phylo ordination** (that is a second `latent` term). The morning
+`2026-07-09-claude-handover.md` (B_lv coverage campaign) is superseded.
 
 ## Project Identity
 

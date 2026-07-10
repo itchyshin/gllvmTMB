@@ -3,18 +3,22 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 For the current Claude handoff, read
-`docs/dev-log/handover/2026-07-09-claude-handover-arcs.md` and the CRAN-first
-ultra-plan at `~/.claude/plans/misty-snacking-papert.md` before starting new work.
-**v1.0 = a clean CRAN release, R-only** (Julia parity, the paper, and the
-paper-grade coverage campaign are all post-1.0). Arc B (functional-phylogeography)
-and Arc C (missing-data) are **DONE / already shipped**; the remaining v1.0 work is
-the honest-surface / register sweep (Arc E) + release mechanics (Arc A) + the CRAN
-blockers. **Three big backlog items were found ALREADY-BUILT on 2026-07-09 (#588
-cluster2 extraction, the #723 27-failure cluster, the whole missing-data layer) —
-re-verify any "unbuilt" arc/issue against `main` before building.** The `B_lv` CI
-trio is built; **`phylo_latent(unique=TRUE)` = structured + DIAGONAL ψ, NOT a
-non-phylo ordination** (that is a second `latent` term). The morning
-`2026-07-09-claude-handover.md` (B_lv coverage campaign) is superseded.
+`docs/dev-log/handover/2026-07-10-claude-handover.md` before starting new work.
+**gllvmTMB is 1.0.0 on `main` (`e4188105`), cross-OS verified, but NOT submitted
+to CRAN** — all five v1.0 arcs (A–E) are done and merged (#737–#745); local
+`--as-cran` is 0E/0W/0N, the 3-OS `R CMD check` passed, and the full test suite is
+0 failures / 4478 pass. **The one thing NOT done — and the next session's job — is
+the one-by-one human review of the pkgdown pages and the function docs WITH
+Shinichi** (slow, deliberate; not a batch rewrite). The automated article cleanup
+is **open PR #746** (2 cut, 26 improved, pkgdown reorganised); the QG
+`animal-model` cut-vs-keep call is open. The issue closeout is staged at
+`dev/issue-closeout-2026-07-10.sh` (Shinichi runs it; the agent is safety-blocked
+from bulk closes). CRAN submission is Shinichi's act. Post-1.0: Julia parity, the
+paper, the full coverage campaign. Earlier arc detail:
+`docs/dev-log/handover/2026-07-09-claude-handover-arcs.md`; ultra-plan at
+`~/.claude/plans/misty-snacking-papert.md`.
+**`phylo_latent(unique=TRUE)` = structured + DIAGONAL ψ, NOT a non-phylo
+ordination** (that is a second `latent` term) — a standing guard.
 
 ## Project Identity
 

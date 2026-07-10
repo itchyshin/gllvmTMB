@@ -1,9 +1,10 @@
 # cran-comments
 
-> **Draft (2026-06-16).** First CRAN submission of `gllvmTMB`. The PDF-manual
-> Unicode warning, DOI notes, and Julia bridge namespace note exposed by earlier
-> checks have been **fixed on this branch** (see "R CMD check results" below).
-> A final release-branch `--as-cran` rerun is still required before submission.
+> **Draft (2026-07-09) — gllvmTMB 1.0.0.** First CRAN submission of `gllvmTMB`.
+> A fresh local `--as-cran` run on this release branch is **clean: 0 errors,
+> 0 warnings, 0 notes** (see "R CMD check results" below). The earlier PDF-manual
+> Unicode warning, DOI notes, Julia bridge namespace note, unused-import note,
+> NEWS heading note, and an undeclared test dependency have all been resolved.
 > `cran-comments.md` is listed in `.Rbuildignore`, so it is not part of the built
 > package.
 
@@ -13,22 +14,27 @@ This is a **new submission** — `gllvmTMB` is not yet on CRAN.
 
 ## Test environments
 
-* local: macOS (Apple), R 4.5.2 — `devtools::check(args = "--no-manual")`
+* local: macOS (Apple), R 4.6.0 — `devtools::check(args = "--as-cran")`
 * GitHub Actions (recommended before submit): ubuntu-latest / macos-latest /
   windows-latest, R release + devel
 
 ## R CMD check results
 
-The earlier `--as-cran` run (NAMESPACE/man regenerated so the `engine = "julia"`
-bridge exports register) reported **0 errors | 2 warnings | 3 notes**. The
-current draft branch check at PR #489 head `b0fe50a` reports
-**0 errors | 1 warning | 1 note**:
+A fresh local `--as-cran` run on the 1.0.0 release branch reports
+**0 errors | 0 warnings | 0 notes**:
 
 ```r
-GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = FALSE, error_on = "never")'
+Rscript -e 'devtools::check(args = c("--as-cran", "--no-tests", "--no-build-vignettes"), error_on = "never")'
+# Status: OK  (0 errors | 0 warnings | 0 notes)
 ```
 
-GitHub Actions R-CMD-check on `ubuntu-latest` also passes at `b0fe50a`.
+(`--no-tests` / `--no-build-vignettes` keep the structural check fast; the test
+suite and vignettes are exercised separately by the GitHub Actions
+R-CMD-check matrix.) On CRAN's incoming feasibility checks a single "New
+submission" NOTE is expected.
+
+The items below were flagged by earlier checks and are now **all resolved**;
+they are retained here as a record of what changed.
 
 **Warnings**
 
@@ -50,19 +56,22 @@ GitHub Actions R-CMD-check on `ubuntu-latest` also passes at `b0fe50a`.
    three `\doi{}`-form URLs in `diag_re.Rd` / `spde.Rd` were converted from
    `\url{https://doi.org/...}` to `\doi{}`. All five DOIs were confirmed to
    resolve via `doi.org`.
-2. *NEWS.md* — R cannot extract version info from the topic-style `##` section
-   titles. Pre-existing; reorganise under version headers or explicitly accept
-   the NOTE in the final submission.
+2. *NEWS.md* — **FIXED.** R could not extract version info because the top
+   section header was `# gllvmTMB (development version)` (no version), which
+   made the parser fall back to the dated `##` topic sub-headers. Naming the
+   release section `# gllvmTMB 1.0.0` gives the parser a version and the
+   sub-headers are read as subsections; `tools:::.build_news_db_from_package_NEWS_md()`
+   now parses clean.
 3. *Non-standard file* `gllvmTMB-manual.tex` — was a leftover artifact of the
    earlier failed PDF build; resolved now that the PDF manual builds.
 4. *R code namespace note* — **FIXED.** The Julia bridge S3 methods now import
    `stats::coef`, `stats::fitted`, and `stats::setNames`; the current check has
    `checking R code for possible problems ... OK`.
 
-**Submission readiness:** branch evidence is now 0 errors with only the known
-local compiler warning and the NEWS heading NOTE. Remaining before submit: a
-final release-branch `--as-cran` rerun, including CRAN incoming checks, and a
-maintainer decision on the pre-existing NEWS.md NOTE (reorganise vs accept).
+**Submission readiness:** the local `--as-cran` structural check is clean
+(0/0/0). Remaining before submit: a full GitHub Actions `R-CMD-check` matrix run
+(3-OS, with tests and vignettes) and a final `--as-cran` including CRAN incoming
+feasibility, where the only expected note is the standard "New submission".
 
 ## Downstream dependencies
 

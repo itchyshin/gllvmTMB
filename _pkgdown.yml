@@ -29,10 +29,6 @@ navbar:
         href: articles/model-selection-latent-rank.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
-      - text: Confirmatory loadings
-        href: articles/lambda-constraint.html
-      - text: Suggesting Lambda constraint
-        href: articles/lambda-constraint-suggest.html
       - text: Handling missing data
         href: articles/missing-data.html
     concepts:
@@ -67,8 +63,6 @@ navbar:
       text: Developer Notes
       menu:
       - text: Under-audit model drafts
-      - text: Data-shape flowchart
-        href: articles/data-shape-flowchart.html
       - text: How to choose your model
         href: articles/choose-your-model.html
       - text: Animal model
@@ -87,8 +81,6 @@ navbar:
         href: articles/mixed-family-extractors.html
       - text: Ordinal-probit traits
         href: articles/ordinal-probit.html
-      - text: Stacked-trait GLLVM note
-        href: articles/stacked-trait-gllvm.html
       - text: Functional biogeography capstone
         href: articles/functional-biogeography.html
       - text: Psychometrics / IRT draft
@@ -110,8 +102,6 @@ articles:
     - articles/morphometrics
     - articles/model-selection-latent-rank
     - articles/joint-sdm
-    - articles/lambda-constraint
-    - articles/lambda-constraint-suggest
     - articles/missing-data
 
   - title: Concepts
@@ -134,7 +124,6 @@ articles:
   - title: Under-audit model drafts
     desc: Buildable pages kept out of the first-click model-guide path until their evidence, examples, and rendered reader path are ready. They remain direct-link references for maintainers and contributors.
     contents:
-    - articles/data-shape-flowchart
     - articles/choose-your-model
     - articles/animal-model
     - articles/phylogenetic-gllvm
@@ -146,7 +135,6 @@ articles:
     - articles/lambda-constraint-suggest
     - articles/mixed-family-extractors
     - articles/ordinal-probit
-    - articles/stacked-trait-gllvm
     - articles/functional-biogeography
     - articles/psychometrics-irt
 
@@ -368,6 +356,38 @@ reference:
     - flag_unreliable_loadings
     - plot_loadings_confidence_eye
     - plot.profile_loadings
+
+  - title: Profile-likelihood confidence intervals
+    desc: Likelihood-profile CIs for derived quantities; interval calibration is validated for common Gaussian cases and experimental elsewhere (see the article)
+    contents:
+    - profile_ci_repeatability
+    - profile_ci_communality
+    - profile_ci_correlation
+    - profile_ci_phylo_signal
+    - profile_ci_proportions
+
+  - title: Deprecated and compatibility aliases
+    desc: Soft-deprecated spellings and gllvm-style accessors retained for migration; new code should prefer the canonical keywords and extract_*() functions
+    contents:
+    - gr
+    - meta
+    - meta_known_V
+    - phylo_rr
+    - spde
+    - gllvmTMB_wide
+    - extract_Sigma_B
+    - extract_Sigma_W
+    - extract_ICC_site
+    - extract_residual_split
+    - VP
+    - delta_poisson_link_gamma
+    - delta_poisson_link_lognormal
+    - gengamma
+    - getLV
+    - getLoadings
+    - getResidualCor
+    - getResidualCov
+    - ordiplot
 
 ## news.releases intentionally omitted: the v0.2.0 git tag (416f8e4) and the
 ## GitHub release "gllvmTMB 0.2.0 — first public release" now exist, but the

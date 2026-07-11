@@ -137,11 +137,13 @@ library(ggplot2)
 > because it keeps `site`, `species`, and `site_species` visible for the
 > crossed ecological interpretation.
 
-A 60-site, 30-species, 6-trait fixture with mean 5 species per site
-(`r as.character(round(60 * 5))` rows-ish) gives both the core
-syndrome model and the adjusted model enough information to recover
-the simulation truth on the largest covariance entries. The DGP
-includes:
+A 40-site, 18-species, 6-trait fixture with mean 5 species per site
+(`r as.character(round(40 * 5))` rows-ish) is an intentionally small,
+fast-to-build illustration: it sits **below** the identifiability
+thresholds in the sample-size guidance box in §2 (see also the M3
+coverage gate), so read the fits below as showing what the model
+*expresses* on the largest covariance entries, not as calibrated
+recovery evidence. The DGP includes:
 
 * a rank-2 between-site truth ($d_B = 2$): two trait syndromes with
   opposite signs across the two trait blocks (1-3 vs 4-6);
@@ -253,9 +255,10 @@ Sigma_M1_rows[, c("level", "trait_i", "trait_j",
                   "estimate", "interval_status")]
 ```
 
-The block structure is recovered: traits 1-3 covary positively,
+The fit illustrates the block structure: traits 1-3 covary positively,
 traits 4-6 covary positively, and the two blocks covary negatively --
-matching the rank-2 simulation truth. Per-trait communality
+tracking the rank-2 simulation truth (on this below-threshold fixture,
+treat this as expressibility rather than calibrated recovery). Per-trait communality
 $c^2_{B,t} = (\boldsymbol{\Lambda}_B \boldsymbol{\Lambda}_B^{\!\top})_{tt} / (\boldsymbol{\Sigma}_B)_{tt}$
 and the site-level ICC
 $R^{(\text{site})}_t = (\boldsymbol{\Sigma}_B)_{tt} / [(\boldsymbol{\Sigma}_B)_{tt} + (\boldsymbol{\Sigma}_W)_{tt}]$:
@@ -456,7 +459,7 @@ negatively correlated -- is *the same* under the core and adjusted models. That 
 desired finding. It tells the reader the syndrome was **not** a
 geography or ancestry artefact: even after controlling for the
 spatial and phylogenetic structure that the data carry, the same two
-syndromes survive.
+syndromes persist in this illustration.
 
 If the comparison instead showed the adjusted model's $\mathbf{R}_B$ flattening
 (syndrome erased) or shifting sign (syndrome reversed), you would
@@ -490,10 +493,10 @@ for which.
 > Don't add tiers your data can't support: gllvmTMB makes complex
 > models *expressible*, but **expressibility is not
 > identifiability**. A formal regime map across all four models in the ladder is in
-> preparation (`dev/design/11-identifiability-regime-map.md`); a
+> preparation (not yet in the repo); a
 > dedicated article will follow once the simulation grid completes.
 
-# §3 -- Extensions: when space and phylogeny become the target
+# Extensions: when space and phylogeny become the target
 
 When the question is about space or phylogeny *itself* -- "are
 syndromes spatially structured?", "is one of the syndromes

@@ -104,10 +104,12 @@ $$
 $$
 
 Both pieces matter. The diagonal of $\boldsymbol\Sigma$ is
-$(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}$: the
-sum of squared loadings plus the trait-specific diagonal variance. Drop
-$\boldsymbol\Psi$ and the diagonal shrinks; the off-diagonals stay the same;
-the reported correlations get inflated.
+$(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}$ — the
+sum of squared loadings plus the trait-specific diagonal variance — while
+the off-diagonals depend only on $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$.
+The correlation divides those off-diagonals by the diagonal scale, so
+whether $\boldsymbol\Psi$ is present in the diagonal sets the scale of every
+reported correlation.
 
 Read the model beside the R syntax and the report-ready summary:
 
@@ -406,11 +408,10 @@ plot_correlations(
 )
 ```
 
-Read this as a formatted table, not as a new uncertainty calculation. IN
-under EXT-30: the matrix view is a display helper for rows returned by
-`extract_correlations()`. PARTIAL/OUT under EXT-30: the plot does not
-bootstrap, profile, or calibrate uncertainty; it only shows the interval
-columns already present in `corr_B`.
+Read this as a formatted table, not as a new uncertainty calculation. It
+is a display of the rows returned by `extract_correlations()`: it does not
+bootstrap, profile, or calibrate uncertainty — it only renders the
+Fisher-z interval columns already present in `corr_B`.
 
 ### Site-level / individual-level ICC
 
@@ -427,7 +428,7 @@ $\Sigma_{\text{unit\_obs}} = \Lambda_{\text{unit\_obs}} \Lambda_{\text{unit\_obs
 that diagonal Psi at each level by default, so each level needs its own
 `latent()` term for $R_t$ to be honest.
 
-In gllvmTMB this is
+In gllvmTMB this is (pattern, not run in this article)
 
 ```r
 extract_ICC_site(fit)
@@ -458,8 +459,8 @@ extract_Sigma(fit_binary, level = "unit", part = "total",
 For continuous traits, the recommended starting pattern is ordinary
 `latent()`, which includes the diagonal Psi companion by default. For count, mixed-family,
 phylogenetic, and spatial fits, use the same idea only after checking
-the corresponding validation-row status; those worked examples remain
-under audit during the public-surface reset.
+that the fit converged; see the corresponding family article for worked
+examples.
 
 ## Two-level (between + within) models: two `latent()` terms
 
@@ -490,7 +491,8 @@ $\boldsymbol\Sigma_{\text{unit\_obs}} = \boldsymbol\Lambda_{\text{unit\_obs}} \b
 
 For overdispersed Poisson and similar count families, a latent-scale
 diagonal component can be represented by adding an observation-level
-random effect (OLRE; Nakagawa & Schielzeth 2010):
+random effect (OLRE; Nakagawa & Schielzeth 2010). The pattern is
+described here but not run in this article:
 
 $$
 \ln \lambda_{ij} = \eta_{ij} + e_{ij}, \qquad e_{ij} \sim \mathcal N(0, \sigma_e^2).

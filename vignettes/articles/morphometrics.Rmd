@@ -199,8 +199,7 @@ $$
 where $\boldsymbol{\lambda}_t \in \mathbb{R}^d$ is the loading vector
 for trait $t$, $\mathbf{u}_i$ is a $d$-dimensional latent factor for
 individual $i$, and $\varepsilon_{it}$ is the trait-specific residual
-with variance $\psi_{tt}$. Ordinary `latent()` includes this diagonal
-$\boldsymbol\Psi$ term by default. Ordinary `latent()` carries those
+with variance $\psi_{tt}$. Ordinary `latent()` carries those
 residual variances on the diagonal of $\boldsymbol\Psi$ by default. The
 implied
 between-individual trait covariance is
@@ -236,25 +235,6 @@ first, trait-specific variation second.
 > and can be estimated without any auto-suppression; the diagonal
 > $\boldsymbol\Psi$ term then captures genuine between-individual
 > trait-specific variance on top of the latent structure. See the
-> [Covariance & correlation article](covariance-correlation.html)
-> for the side-by-side comparison.
-
-> **The default $\boldsymbol\Psi$ with cross-sectional data.**
-> With cross-sectional data (one observation per individual per
-> trait), the `(trait, individual)` pair uniquely identifies every
-> row. gllvmTMB detects this automatically: it fixes
-> $\sigma_\varepsilon$ to a negligibly small constant (and prints an
-> `i Auto-suppressing sigma_eps: ...` message), so the default
-> $\boldsymbol\Psi$ term (carried by ordinary `latent()`)
-> absorbs the full observation-level residual and becomes the
-> trait-specific residual variance $\psi_t$. The confounding that would
-> arise if both $\sigma_\varepsilon$ and $\psi_t$ were estimated freely
-> is therefore resolved by construction — you do not need to choose
-> between them. With *longitudinal* data (multiple sessions per
-> individual), both terms are separately identified and can be
-> estimated without any auto-suppression; the $\boldsymbol\Psi$ term then
-> captures genuine between-individual trait-specific variance on top of
-> the latent structure. See the
 > [Covariance & correlation article](covariance-correlation.html)
 > for the side-by-side comparison.
 
@@ -306,14 +286,6 @@ plot_Sigma_comparison(corr_compare, measure = "correlation")
 > diagonal for this data-generating process. The default `latent()` fit
 > above includes $\boldsymbol\Psi$. Use `part = "shared"` / `part = "unique"`
 > to pull just one component.
->
-> unique (trait-specific) component. Ordinary `latent()` carries
-> $\boldsymbol\Psi$ by default (as in the fit above), so the diagonal
-> is filled in correctly. If instead you fit with
-> `latent(..., unique = FALSE)`, then $\boldsymbol\Psi = 0$ and you
-> get only $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$, which
-> understates the diagonal. Use `part = "shared"` /
-> `part = "unique"` to pull just one component.
 
 ## Pairwise correlations and communality
 
@@ -372,8 +344,6 @@ recovers the known truth. Broader coverage and interval-calibration
 claims belong in the simulation-grid articles, which remain under audit.
 
 ## Why default `latent()`? `dep` and `indep` on the same data
-
-## Why `latent()`? `dep` and `indep` on the same data
 
 The morphometric workflow uses ordinary `latent(d = K)` to
 estimate $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol{\Psi}$.
@@ -483,14 +453,6 @@ strong rank-$K$ hypothesis (size + shape, here); fall back to `dep` if
 you suspect $K \approx T$ and want the saturated fit; reach for `indep`
 only when you genuinely believe traits are mutually independent.
 
-For this simulated rank-2 Gaussian truth, ordinary `latent()` and the
-saturated `dep` fit recover nearly the same covariance pattern, while
-`indep` cannot recover off-diagonal association because it sets those
-entries to zero by construction. Pick ordinary `latent()` when you have a
-strong rank-$K$ hypothesis (size + shape, here); fall back to `dep` if
-you suspect $K \approx T$ and want the saturated fit; reach for `indep`
-only when you genuinely believe traits are mutually independent.
-
 ## What the latent factors mean
 
 Every factor model has a rotational ambiguity: $\boldsymbol\Lambda$ and
@@ -578,7 +540,5 @@ HTML review pass.
 
 * [Covariance and correlation](covariance-correlation.html) — why
   diagonal $\boldsymbol\Psi$ matters for interpreting trait correlations.
-* [Covariance and correlation](covariance-correlation.html) — why
-  the diagonal `Psi` matters for interpreting trait correlations.
 * [Formula keyword grid](api-keyword-grid.html) — the syntax map for
   moving from this example to other covariance rows and modes.

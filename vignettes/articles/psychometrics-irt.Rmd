@@ -24,33 +24,21 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Developer Note -- under audit.** This page is buildable and linked
-> from Developer Notes so maintainers can audit the psychometrics/IRT
-> path. It is not a first-stop tutorial. Start with
+<!--
+Provenance (maintainer bookkeeping, not reader-facing):
+covered register rows FAM-02 (binomial-logit), MIX-01/02 (per-row
+mixed-family dispatch), LAM-03 (binary loading constraints), EXT-27
+(point-estimate Sigma heatmaps); FAM-14 (polytomous mixed-family)
+remains partial. Slated for re-authoring in the M2.5 slice against the
+rewrite-prep pedagogy contract (docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md).
+-->
+
+> **Preview -- under audit.** This page is buildable and linked from
+> Developer Notes so maintainers can audit the psychometrics/IRT path.
+> It is not a first-stop tutorial and is slated for re-authoring once
+> binary IRT validation lands. Start with
 > [Get started](gllvmTMB.html), [Lambda constraints](lambda-constraint.html),
 > and [Response families](response-families.html) before using this page.
->
-> **Preview -- slated for re-authoring in M2.5 after binary IRT validation.**
->
-> The current article uses `lambda_constraint` for binary IRT
-> (LAM-03 `covered` in the
-> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
-> The **M2.5** slice re-writes this article against that validated
-> machinery and the rewrite-prep pedagogy contract. See the
-> [rewrite-prep handoff](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md)
-> for the rewrite contract.
-
-Scope boundary: **IN** are long-format Gaussian + binary CFA examples
-using covered binomial-logit machinery (FAM-02), per-row mixed-family
-dispatch (MIX-01 / MIX-02), binary confirmatory loading constraints
-(LAM-03), and point-estimate Sigma heatmaps (EXT-27). **PARTIAL** is
-the broader M2.5 teaching surface: the live `mirt` comparator chunk,
-the "Stay Laplacian" pedagogy note, and the final binary-IRT rewrite
-remain in the rewrite-prep contract. **DEFERRED** here are
-polytomous mixed-family IRT examples (FAM-14 remains partial) and
-modification-index workflows. This page is not the final IRT article:
-it stays Preview/internal until the binary lambda/JSDM article is
-coherent and the `mirt` comparator path is explicitly designed.
 
 `gllvmTMB` is mostly developed for ecological data, but the underlying
 GLLVM machinery is the same one used in psychometrics, item-response
@@ -72,7 +60,7 @@ of the [Lambda-constraint pedagogy](lambda-constraint.html) applied
 to a CFA pattern (block-diagonal off-pattern zeros) rather than the
 exploratory lower-triangular convention.
 
-## The setup
+## The measurement model
 
 Imagine a survey with $n = 200$ respondents and 6 items:
 
@@ -285,6 +273,10 @@ fit_cfa <- gllvmTMB(
   lambda_constraint = list(unit = cnst_cfa)
 )
 
+# `$report$Lambda_B` is an internal TMB report field, read here for a
+# compact matrix view. The exported accessor is
+# `extract_rotated_loadings_table(fit_cfa, level = "unit", method = "none")`,
+# which returns the same loadings as a tidy data frame.
 L_cfa <- fit_cfa$report$Lambda_B
 rownames(L_cfa) <- item_names; colnames(L_cfa) <- c("attention", "mood")
 round(L_cfa, 2)
@@ -302,10 +294,13 @@ data.frame(
 )
 ```
 
-The pinned-zero pattern is held exactly during fitting, and the free
-entries recover their true values to within ~0.1 at this sample size.
-This is the GALAMM-style confirmatory loading workflow (Sorensen
-2024) that the package supports natively.
+The pinned-zero pattern is held exactly during fitting, and for this
+one simulated dataset the free entries land close to their true
+values. This is a single illustrative draw, not a coverage study --
+the calibrated recovery evidence lives in the package's validation
+suite rather than in this fixture. This is the GALAMM-style
+confirmatory loading workflow (Sorensen 2024) that the package
+supports natively.
 
 ## Likelihood-ratio test: is the CFA structure supported?
 

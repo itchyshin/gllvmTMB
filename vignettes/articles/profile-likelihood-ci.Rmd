@@ -24,29 +24,17 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Preview — Gaussian interval routes validated; empirical coverage is M3/CI-08 work.**
->
-> Profile, Wald, and bootstrap CIs are end-to-end route-tested
-> (`covered`; empirical coverage remains CI-08) for
-> the ordinary Gaussian interval paths (CI-02, CI-03, CI-04, CI-06
-> `covered`; CI-05 `covered` only for the two-component phylo-signal
-> profile, in the
-> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
-> The ordinary / phylogenetic low-rank-plus-diagonal correlation-profile
-> paths have covered evidence under CI-07, but spatial total-covariance
-> correlations remain partial.
-> Extension to non-Gaussian and mixed-family fits is **M3**
-> milestone work.
+<!-- Provenance: Gaussian interval routes covered under CI-01..CI-07 and
+EXT-13; empirical coverage (CI-08/CI-10), spatial total-covariance
+correlation profiles, and mixed-family calibration remain open; see the
+validation-debt register docs/design/35-validation-debt-register.md. -->
 
-> **Scope boundary.** This page is a Tier 2 technical reference for
-> interval APIs on already-fitted models. IN: Wald, profile, and
-> bootstrap CI routes with covered Gaussian evidence are represented
-> by CI-01..CI-04 and CI-06, the covered parts of CI-05 and CI-07, and EXT-13 (Gaussian)
-> in the validation-debt register. PARTIAL: spatial total-covariance
-> correlation profiles, empirical coverage, and mixed-family interval
-> calibration remain CI-07, CI-08, and CI-10 work. PLANNED: this page
-> does not add a new interval method, move validation rows, or claim
-> broad release/scientific coverage.
+> **Scope.** This is a Tier 2 technical reference for the interval APIs on
+> already-fitted models. The Gaussian interval routes are validated;
+> empirical coverage is still under study, and non-Gaussian / mixed-family
+> calibration is future work. See the
+> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)
+> for the detailed status of each route.
 
 `gllvmTMB` uses **profile-likelihood confidence intervals** as the
 default for the ratio-quantity extractors (`extract_repeatability()`,
@@ -55,7 +43,14 @@ is fast (TMB's C++ inner optim warm-started from the joint MLE),
 respects the skewness of variance-component sampling distributions
 (Wald CIs do not), and is expected on theory to track coverage better
 near boundaries than Wald (empirical coverage for these fits is still
-under validation -- CI-08).
+under validation).
+
+Note that the profile advantage demonstrated below is on **individual
+variance components** (via `tmbprofile_wrapper()`). For derived *ratio*
+quantities such as repeatability or $H^2$ on a full-$\boldsymbol\Sigma$
+fit, the profile route currently falls back to Wald (delta-method) and
+labels its output accordingly; the worked examples make this explicit
+where it happens.
 
 **Note** for cross-trait correlations specifically:
 [`extract_correlations()`](../reference/extract_correlations.html)
@@ -277,7 +272,7 @@ When the fit has both `phylo_indep(species)` and
 single linear contrast (analogous to repeatability). For richer
 3-component decompositions (PGLLVM with
 `phylo_latent + latent`), the extractor returns the point
-estimate with a `method = "wald(approx)"` flag in the output's
+estimate with a `method = "wald(numeric)"` flag in the output's
 method column. The constrained-refit profile for the 3-component
 case is a known gap; bootstrap is the recommended interim.
 
@@ -313,7 +308,9 @@ Profile likelihood assumes the constrained optimum is unique
    fit via `tmbstan::tmbstan(fit$tmb_obj)`) gives the joint
    distribution.
 
-For these cases, switch to `method = "bootstrap"`.
+For these cases, switch to `method = "bootstrap"`. See
+[Troubleshooting profile CIs](troubleshooting-profile.html) for the full
+catalogue of failure cases and how to diagnose them.
 
 ## Related TMB tools
 

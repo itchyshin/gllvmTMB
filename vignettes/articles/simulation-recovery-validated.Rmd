@@ -56,7 +56,7 @@ The full M3 grid is described in
 with profile-likelihood CIs on each free parameter. This article
 shows **the M3.3a smoke output** — a 15-cell × 10-rep version of
 that grid with **profile-likelihood CIs** on per-trait
-diagonal Psi variance $\psi_t = \mathrm{sd\_B}_t^2$. The M3.3
+diagonal Psi variance $\psi_t$. The M3.3
 production grid scales R = 10 to R = 200 (Monte Carlo error
 ±15 pp → ±3 pp at the 95% level). Treat the smoke output as triage
 evidence: it shows which surfaces are hard, not that interval coverage is
@@ -102,6 +102,10 @@ ordinal-probit uses 4 categories with quantile-spaced cutpoints.
 artefact <- readRDS(m3_smoke_rds)
 artefact$meta[c("label", "gllvmTMB_ver", "n_cells", "n_reps", "elapsed_s")]
 ```
+
+The `gllvmTMB_ver` field stamps the package version the smoke artefact was
+generated under; it records the artefact's provenance and is not necessarily
+the version of the installed package rendering this page.
 
 ## Per-cell coverage summary
 

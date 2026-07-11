@@ -27,19 +27,15 @@ knitr::opts_chunk$set(
 > diagnostics implemented in Design 49: `check_gllvmTMB()`,
 > `fit$fit_health`, `fit$restart_history`, `fit$start_provenance`,
 > protected or skipped `TMB::sdreport()` status, and
-> `gllvmTMBcontrol(se = FALSE)`. The validation-debt register marks
-> `check_gllvmTMB()` and the `se = FALSE` point-estimate path as
-> covered (DIA-08, DIA-10), while a deterministic in-fit
-> `sdreport()` failure fixture remains partial (DIA-09). The
-> `extract_Sigma_table()` display used below is covered as a
-> point-estimate table view (EXT-18).
-> Bootstrap and profile uncertainty are follow-up paths when Wald SEs
-> are unsafe, but they have limits: bootstrap evidence depends on
-> successful refits, and profile intervals apply only to supported
-> scalar targets with stable profiles. Those claims trace to EXT-13,
-> CI-02, and CI-03, with non-Gaussian bootstrap still partial.
-> Start-method convergence-rate claims are still M3.3a/M3.4 evidence
-> work, not default-policy claims.
+> `gllvmTMBcontrol(se = FALSE)`. `check_gllvmTMB()`, the `se = FALSE`
+> point-estimate path, and the `extract_Sigma_table()` display used
+> below are validated point-estimate views. Bootstrap and profile
+> uncertainty are follow-up paths when Wald SEs are unsafe, but they
+> have limits: bootstrap evidence depends on successful refits (and
+> non-Gaussian bootstrap is still being validated), and profile
+> intervals apply only to supported scalar targets with stable
+> profiles. Start-method convergence-rate recommendations are
+> experimental and not yet promoted as defaults.
 
 Some multivariate latent models are hard because the likelihood has
 several plausible basins, weakly identified variance splits, or a
@@ -155,17 +151,17 @@ failure.
 After the numerical triage, inspect the fitted response distribution
 before leaning on covariance interpretation. `residuals(fit,
 type = "randomized_quantile")` and `predictive_check(fit,
-type = "rq_qq")` are IN for the scoped DIA-11 / DIA-12 Gaussian,
-Poisson, and NB2 diagnostic paths. They are PARTIAL in the same sense
-as the fit-health table: useful for surfacing mismatch, not proof of
-interval calibration, latent-rank adequacy, or Bayesian posterior
-prediction.
+type = "rq_qq")` are available for the scoped Gaussian, Poisson, and
+NB2 diagnostic paths. They serve the same role as the fit-health
+table: useful for surfacing mismatch, not proof of interval
+calibration, latent-rank adequacy, or Bayesian posterior prediction.
 
 ## Choose A Start Strategy
 
-Start values are opt-in tools. The default remains conservative until
-M3.3a/M3.4 simulations show which strategies improve recovery across
-families and ranks.
+Start values are opt-in tools. The default remains conservative, and
+the strategies below are experimental: their recovery benefit across
+families and ranks is not yet established by simulation, so treat the
+table as a menu of things to try on a hard fit, not a proven policy.
 
 | Situation | Control |
 |---|---|
@@ -215,10 +211,9 @@ it is not a cure for an unstable fitted surface. Laptops often have
 enough cores to make bootstrap practical, so `bootstrap_Sigma()`
 exposes `n_cores`.
 
-The current validation register marks `bootstrap_Sigma()` covered for
-Gaussian fits and partial for non-Gaussian fits (EXT-13). Treat a
-non-Gaussian bootstrap as an audit trail until its family-specific row
-moves to covered.
+`bootstrap_Sigma()` is validated for Gaussian fits; for non-Gaussian
+fits it is still being validated. Treat a non-Gaussian bootstrap as an
+audit trail until its family-specific coverage is confirmed.
 
 ```{r bootstrap, eval = FALSE}
 boot <- bootstrap_Sigma(
@@ -255,10 +250,9 @@ The output method column should be read literally: if it says
 was `"profile"`.
 
 The generic `confint(method = "profile")` and
-`confint(method = "bootstrap")` routes are covered in the validation
-register (CI-02, CI-03). Target-specific profile helpers are narrower:
-check `profile_targets(fit)` before treating a derived quantity as
-profile-ready.
+`confint(method = "bootstrap")` routes are validated. Target-specific
+profile helpers are narrower: check `profile_targets(fit)` before
+treating a derived quantity as profile-ready.
 
 ## Troubleshooting Ladder
 
@@ -281,40 +275,7 @@ Use this order when a hard model does not give clean inference:
 10. If the target still changes across starts, simplify rank or
    covariance structure before making a scientific claim.
 
-## What Is Next
-
-Implemented now:
-
-- machine-readable fit health via `check_gllvmTMB()` and
-  `fit$fit_health`;
-- restart history and start provenance;
-- protected or skipped `sdreport()` status;
-- `gllvmTMBcontrol(se = FALSE)` for point-estimate-first hard fits;
-- fitted-response diagnostics through `predictive_check()` and
-  `residuals()` for the scoped DIA-11 / DIA-12 family paths;
-- explicit controls for multistart, jitter, residual starts,
-  independent starts, manual starts, single-trait warmup, and
-  `optim(BFGS)`.
-
-Partial:
-
-- direct in-fit `sdreport()` failure tests are still hard to trigger
-  deterministically in a small test, so DIA-09 remains partial;
-- non-Gaussian start-method recommendations are available but not yet
-  promoted as defaults.
-
-Planned:
-
-- the M3.3a target-explicit pilot will compare Gaussian, `nbinom2`,
-  mixed-family, and two-level Gaussian fits using the new diagnostic
-  fields;
-- larger stress lanes will decide whether `nbinom2` fragility is a
-  model-identifiability problem or a start/diagnostic problem;
-- profile and bootstrap workflows will gain stronger target-parallel
-  tooling for local multicore and larger compute runs;
-- simulation diagnostic plots will show convergence, `pdHess`,
-  objective spread, selected-start frequency, coverage, and failed
-  refits by family and start strategy.
+## The Bottom Line
 
 The carry-forward principle is that hard fits need honest triage. A
 weak Hessian should change the uncertainty workflow, not automatically

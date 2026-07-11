@@ -53,8 +53,12 @@ $i$ is the latent vector for unit $i$.
 **Loading (loadings, weight, factor loading, $\Lambda_{t,k}$)**
 &mdash; The strength with which trait $t$ depends on latent factor
 $k$. A high $|\Lambda_{t,k}|$ means trait $t$ moves with factor
-$k$; a near-zero loading means it doesn't. Loadings are what you
-read off the columns of `fit$report$Lambda_B`.
+$k$; a near-zero loading means it doesn't. Because the raw loading
+matrix is identifiable only up to rotation (see *Rotational
+ambiguity* below), read shared structure through the rotation-
+invariant accessors (`extract_Sigma()`, `extract_communality()`)
+or an explicit post-hoc rotation rather than off the raw loading
+entries.
 *Math*: $\boldsymbol{\Lambda}$ is the $T \times d$ loading matrix;
 $\Lambda_{t,k}$ is the entry in row $t$, column $k$.
 
@@ -77,8 +81,10 @@ written with `indep()`.
 *Math*: $\boldsymbol{\Sigma} = \boldsymbol{\Lambda}
 \boldsymbol{\Lambda}^{\top} + \boldsymbol{\Psi}$ (factor
 decomposition); $\psi_t$ is the $t$-th diagonal of
-$\boldsymbol{\Psi}$ and the per-trait derived scalar reported by
-`extract_phylo_signal()`.
+$\boldsymbol{\Psi}$. (Do not confuse this raw covariance diagonal
+with the normalized per-trait uniqueness *proportion* that
+`extract_phylo_signal()` reports, which divides through by the
+trait's latent variance.)
 
 **Implied trait covariance ($\boldsymbol{\Sigma}$, $\boldsymbol{\Sigma}_{\mathrm{unit}}$,
 between-trait covariance)** &mdash; The $T \times T$ covariance matrix
@@ -252,17 +258,19 @@ additive-genetic covariances between traits. A factor-analytic
 $\mathbf{G} = \boldsymbol{\Lambda}_g \boldsymbol{\Lambda}_g^\top
 + \boldsymbol{\Psi}$ (Kirkpatrick & Meyer 2004; Meyer 2009;
 Runcie & Mukherjee 2013) is the structure `animal_latent(individual,
-d = K, pedigree = ped, unique = TRUE)` specifies (parser/Psi-fold
-covered by ANI-05; genetic-covariance recovery still outstanding).
+d = K, pedigree = ped, unique = TRUE)` specifies (the parser and
+Psi-fold are validated; multi-trait genetic-covariance recovery is
+not yet).
 The animal-model page is an under-audit Developer Note, not yet a
 public worked example: see [Animal model: heritability and genetic
 covariance](animal-model.html).
 
 **Reaction norm / random regression** &mdash; A model where
 individuals carry a slope on an environmental gradient and those
-slopes are heritable (correlated by $\mathbf{A}$). In gllvmTMB it
-is `animal_slope(x | individual, pedigree = ped)`. Used to quantify
-heritable variation in phenotypic plasticity.
+slopes are heritable (correlated by $\mathbf{A}$). In gllvmTMB the
+legacy syntax is `animal_slope(x | individual, pedigree = ped)`;
+this is not yet the public ordinary reaction-norm target. Used to
+quantify heritable variation in phenotypic plasticity.
 
 **A vs V naming boundary** &mdash; In gllvmTMB, **A** (and its
 inverse **Ainv**) is reserved for *relatedness* covariance —

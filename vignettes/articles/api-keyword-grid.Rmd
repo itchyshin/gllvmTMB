@@ -27,18 +27,18 @@ across traits. The four correlation rows go from finest-grained
 (individual pedigree) to broadest (geography).
 
 > **Scope boundary.** This page is a technical lookup for the formula
-> grammar, not a worked validation article. IN: the long and wide formula
-> grammar, `traits(...)` expansion, the core ordinary `latent()` path
-> with default diagonal $\boldsymbol\Psi$, the four `animal_*()` keywords,
-> and the main
-> `phylo_*()` sparse A^-1 route have covered rows (FG-01--FG-06, FG-12, ANI-01--ANI-05,
-> ANI-07--ANI-08, PHY-01--PHY-03, PHY-09--PHY-10, MIS-02, MIS-11).
-> PARTIAL: standalone diagonal/full/slope and recovery-depth surfaces
-> remain partial where the register says so (FG-07--FG-09, FG-13--FG-15,
-> PHY-04--PHY-06, SPA-02--SPA-04, MET-01, MET-04, ANI-06, ANI-09--ANI-10).
-> PLANNED or blocked: proportional `meta_V()` is blocked (MET-03), and
-> phylogenetic, spatial, animal, and meta-analysis worked examples stay
-> hidden until their article-specific return conditions pass.
+> grammar, not a worked validation article. The long and wide formula
+> grammar, `traits(...)` expansion, the ordinary `latent()` path with
+> default diagonal $\boldsymbol\Psi$, the `animal_*()` keywords, and the
+> phylogenetic and spatial keyword families are validated for their core
+> paths. A few surfaces are still under validation at greater recovery
+> depth — notably the standalone diagonal, full, and slope forms on the
+> no-prefix row, the augmented spatial `latent(unique = TRUE)` fold, and
+> the exact single-V meta-analytic path — and proportional `meta_V()` is
+> not yet available. Phylogenetic, spatial, animal, and meta-analysis
+> worked examples stay hidden until their article-specific gates pass.
+> The per-capability validation status lives in the validation-debt
+> register.
 
 | correlation \ mode | scalar | indep | dep | latent |
 |---|---|---|---|---|
@@ -59,8 +59,8 @@ keyword. Ordinary `latent()` carries `Psi` by default; use
 source-specific term. This includes the augmented random-slope form
 `*_latent(1 + x | group, unique = TRUE)`, which folds in the intercept–slope
 companion for the ordinary, `phylo`, and `animal` sources. The spatial
-augmented fold (`spatial_latent(1 + x, unique = TRUE)`) remains partial
-(FG-13) and the kernel augmented fold is future work (FG-06). For a
+augmented fold (`spatial_latent(1 + x, unique = TRUE)`) is still under
+validation and the kernel augmented fold is future work. For a
 standalone marginal-only diagonal, use `indep()` / `*_indep()`.
 
 The older `unique()` / `*_unique()` **keyword** spelling is soft-deprecated:
@@ -70,13 +70,15 @@ the grid above.
 
 Status labels during the public-surface reset:
 
-| row | Public status | Validation note |
-|---|---|---|
-| none | covered for long/wide grammar and the ordinary Gaussian `latent()` path with default $\boldsymbol\Psi$; standalone `indep()` and `dep()` are partial outside that core, and the scalar cell has no public no-prefix keyword | FG-01--FG-06 and FAM-01 covered; FG-07--FG-09 partial |
-| animal | covered for the five covariance keywords and A/Ainv helper path; `animal_slope()` and cross-package agreement remain partial | ANI-01--ANI-05, ANI-07, and ANI-08 covered; ANI-06, ANI-09, and ANI-10 partial |
-| phylo | covered for the main paired decomposition and sparse A^-1 route; scalar, marginal-only, saturated, and slope paths are partial at the current validation depth | FG-12 and PHY-01--PHY-03 covered; PHY-04--PHY-06 partial |
-| spatial | covered for mesh construction, mode dispatch, orientation, and legacy-alias deprecation; covariance recovery depth remains partial | SPA-01 and SPA-05--SPA-07 covered; SPA-02--SPA-04 partial |
-| meta_V | partial for exact single-V workflows, covered for block-V construction, blocked for proportional mode | MET-01 partial; MET-02 covered; MET-03 blocked; MET-04 partial |
+| row | Public status |
+|---|---|
+| none | covered for long/wide grammar and the ordinary Gaussian `latent()` path with default $\boldsymbol\Psi$; standalone `indep()` and `dep()` are partial outside that core, and the scalar cell has no public no-prefix keyword |
+| animal | covered for the five covariance keywords, the A/Ainv helper path, and `animal_slope()`; cross-package agreement remains partial |
+| phylo | covered for the main paired decomposition, the sparse A^-1 route, and the scalar, marginal-only, saturated, and slope paths |
+| spatial | covered for mesh construction, mode dispatch, orientation, scalar/marginal-only/saturated recovery, and legacy-alias deprecation; the augmented `spatial_latent(unique = TRUE)` total-covariance recovery remains partial |
+| meta_V | partial for exact single-V workflows, covered for block-V construction, blocked for proportional mode |
+
+The per-capability validation status lives in the validation-debt register.
 
 Use this page as a grammar lookup. For a worked example, start with
 [`morphometrics`](morphometrics.html) for non-phylogenetic
@@ -138,9 +140,7 @@ accept the **A** (or **Ainv**) argument for *relatedness*. The
 separate `meta_V(V = V)` keyword accepts **V** for
 *sampling variance* in meta-analysis. These are mathematically
 distinct (relatedness covariance vs measurement-error variance),
-and the argument naming keeps them visually separated. See
-[`docs/design/14-known-relatedness-keywords.md`](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
-§3 for the full rule.
+and the argument naming keeps them visually separated.
 
 No-prefix keywords such as `latent()`, `indep()`, and `dep()` use
 independent group effects. The animal row uses
@@ -275,8 +275,9 @@ spatial_latent(0 + trait | site, d = 2, mesh = mesh, unique = TRUE)
 
 The spatial row uses the SPDE/GMRF approximation inherited from
 `sdmTMB`. Prefer `spatial_indep()` for a marginal-only spatial
-diagonal, and `spatial_latent(..., unique = TRUE)` for the folded
-shared-plus-Psi spatial decomposition.
+diagonal. The folded `spatial_latent(..., unique = TRUE)`
+shared-plus-Psi spatial decomposition is accepted grammar, but its
+total-covariance recovery is still under validation.
 
 ## Helpers Outside The Grid
 
@@ -288,16 +289,15 @@ covariate `x`. It is an extension hook, not one of the five covariance
 modes.
 
 `animal_slope(x | id)` adds the animal-model analogue: a random slope
-whose groups are related by a pedigree, `A`, or `Ainv`. It is parser
-accepted, but the validation register still marks recovery depth as
-partial (ANI-06).
+whose groups are related by a pedigree, `A`, or `Ainv`. Its recovery is
+validated against the matching `phylo_slope()` call.
 
 `meta_V(V = V)` adds known sampling covariance for
 meta-analytic workflows. It uses a user-supplied covariance matrix
 rather than one of the grid's estimated correlation rows. Exact
-single-V workflows are partial (MET-01), block-V construction is
-covered (MET-02), and proportional known-V mode is blocked until a
-post-CRAN validation path lands (MET-03).
+single-V workflows are still under validation, block-V construction is
+covered, and proportional known-V mode is not yet available (it awaits
+a post-CRAN validation path).
 
 ## What Not To Combine
 

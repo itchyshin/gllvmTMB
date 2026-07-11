@@ -2,8 +2,14 @@
 
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
-For the current Claude handoff, read
-`docs/dev-log/handover/2026-07-11-claude-handover.md` before starting new work.
+For the current handoff, read
+`docs/dev-log/handover/2026-07-11-codex-handover.md` (Claude→Codex, PM; supersedes
+the AM `2026-07-11-claude-handover.md`) before starting new work. Branch
+`claude/release-0.5.0` is PUSHED with the doc-honesty cleanups (pages 4–6, LV +
+register sweeps, reference/roxygen sweep, `validation_row` print-fix); the
+`1.0.0 → 0.5.0` version correction (PR #748) is MERGED to `main`. Standing rule:
+reader-facing content shows only what makes sense to the reader — no internal
+register codes on any surface (articles, reference/roxygen, NEWS, printed output).
 **gllvmTMB's first CRAN release is `0.5.0`, NOT 1.0 (D-42, 2026-07-11) — 1.0 is
 reserved for the capability-maturity milestone (complete surface + full story +
 committed-stable API), mirroring drmTMB's D-40.** The engineering (all five arcs

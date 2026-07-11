@@ -26,22 +26,40 @@ not met (Julia parity, the paper, the coverage campaign all still ahead).
   clean. Repo previously carried three version numbers (1.0.0 / 0.2.0 / 0.2.0) — now
   unified to 0.5.0.
 
-## The live task — the reason for today (NOT done)
+## The live task — the one-by-one doc walk (IN PROGRESS)
 
-**The one-by-one human review of the pkgdown pages and function docs, WITH
-Shinichi** — slow, deliberate, page by page; not a batch rewrite. This is where the
-honesty-fencing lands and where 0.5.0 becomes CRAN-*ready*:
+**Method (Shinichi's chosen workflow):** for each pkgdown page, run a **Pat / Rose /
+Fisher** review panel (a `Workflow`: new-user/CRAN, claim-vs-evidence honesty,
+statistical correctness), reusing a **shared estate-map** built once from the
+landing-page skim (no re-skim per page). Present the three comment sets + a
+consolidation; Shinichi decides; fix on his call; commit per page. Give him the live
+`/articles/<slug>.html` link for each page (live = pre-fix deploy until rebuilt).
 
-- intervals framed **recovery-only**, not coverage-calibrated;
-- delta/hurdle latent-scale correlation stated **unsupported** ("do not advertise");
-- the mis-slugged `simulation-recovery-validated` article (its own banner already
-  says it is NOT coverage-validated) — repo-wide rename is a maintainer call;
-- the `api-keyword-grid` 4×4-vs-4×5 arity contradiction vs CLAUDE.md/_pkgdown.yml;
-- `choose-your-model` still routing readers to internal-draft pages;
-- `response-families.Rmd` renders zero numbers (global `eval=FALSE`).
+**Standing checks every page must pass** (the estate-map carries these):
+- **Honesty fencing:** every interval marked recovery-grade / coverage NOT calibrated
+  (CI-08/CI-10); diagnostics are displays, not calibration; delta/hurdle latent-scale
+  correlation = do-not-advertise.
+- **No register-code leak:** `MIS-*/DIA-*/RE-*/MET-*/MIX-10/CI-08/10` belong only in
+  tier-3b/register, never reader-facing prose.
+- **Orientation:** the NOT-PCA/NMDS contrast (model-based ordination) where a page
+  shows ordination; raw loadings paired with the rotation caveat + `getLoadings()`,
+  not `fit$report$*`; EXPERIMENTAL / 0.5.0 / pre-CRAN stated IN PROSE.
+- **⭐ Stale / time-relevant content (Shinichi, standing, 2026-07-11):** flag anything
+  that was accurate when written but now needs updating — internal dev-process leaks
+  ("under audit", "rendered HTML review pass"), "coming soon" / roadmap tables, old
+  version refs, superseded claims. First instance: the morphometrics "What this
+  article does not cover" rung table (trimmed to a plain scope sentence).
+- **Grid is 4×4** (reconciled); the `unique()` deprecation history stays out of reader
+  docs.
 
-Open alongside: **PR #746** (automated article cleanup — 2 cut, 26 improved, pkgdown
-reorganised) and the QG **`animal-model`** cut/keep call.
+**Progress:** Page 1 Landing (README, `e9dbe709`) · Page 2 Get-started (`70ad03fd`) ·
+Page 3 Morphometrics (`2db7ff4d`) — all panel'd + fixed. **Next: Page 4** per the
+reader path (model-selection-latent-rank, then joint-sdm / covariance-correlation).
+
+Open alongside: the QG **`animal-model`** cut/keep call; the mis-slugged
+`simulation-recovery-validated` article (repo-wide rename is a maintainer act);
+`choose-your-model` routing to internal-draft pages. PR #746 is **merged** (into main
+and the release branch).
 
 ## Maintainer acts pending (Shinichi's, not the agent's)
 

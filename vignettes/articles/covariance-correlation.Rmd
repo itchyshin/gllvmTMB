@@ -310,8 +310,8 @@ and correlations at the right magnitude.
 ## Report-ready Sigma rows
 
 For reports, make the row object first. Each covariance target is one
-tidy row with trait names, matrix part, estimate, interval placeholders,
-and validation status:
+tidy row with trait names, matrix part, estimate, and interval
+placeholders:
 
 ```{r sigma-table-rows}
 sigma_rows_B <- extract_Sigma_table(

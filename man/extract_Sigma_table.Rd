@@ -47,7 +47,9 @@ A data frame with one row per requested entry and stable columns:
 \code{component}, \code{matrix}, \code{estimate}, \code{lower}, \code{upper}, \code{interval_method},
 \code{interval_status}, \code{scale}, \code{validation_row}, \code{diagonal}, and
 \code{triangle}. Interval columns are \code{NA} with \code{interval_method = "none"}
-because this helper is point-estimate only.
+because this helper is point-estimate only. \code{validation_row} is an
+internal provenance column and is hidden when the table is printed; it
+remains available via \code{x$validation_row}.
 }
 \description{
 \code{extract_Sigma()} returns matrices because that is the most convenient

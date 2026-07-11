@@ -290,7 +290,9 @@
 #'   `component`, `matrix`, `estimate`, `lower`, `upper`, `interval_method`,
 #'   `interval_status`, `scale`, `validation_row`, `diagonal`, and
 #'   `triangle`. Interval columns are `NA` with `interval_method = "none"`
-#'   because this helper is point-estimate only.
+#'   because this helper is point-estimate only. `validation_row` is an
+#'   internal provenance column and is hidden when the table is printed; it
+#'   remains available via `x$validation_row`.
 #' @seealso [extract_Sigma()] for the underlying matrix extractor;
 #'   [extract_correlations()] for pairwise correlation intervals;
 #'   [bootstrap_Sigma()] for bootstrap uncertainty.
@@ -332,12 +334,12 @@ extract_Sigma_table <- function(
         "i" = "Bootstrap summaries currently store total Sigma and R entries."
       ))
     }
-    return(.sigma_table_from_bootstrap(
+    return(.reportable_table(.sigma_table_from_bootstrap(
       boot = fit,
       level = level,
       measure = measure,
       entries = entries
-    ))
+    )))
   }
 
   if (!inherits(fit, "gllvmTMB_multi") && !inherits(fit, "gllvmTMB_julia")) {
@@ -442,7 +444,7 @@ extract_Sigma_table <- function(
   }
   rownames(out) <- NULL
   attr(out, "notes") <- notes
-  out
+  .reportable_table(out)
 }
 
 #' Compare fitted Sigma-table rows with a known truth matrix

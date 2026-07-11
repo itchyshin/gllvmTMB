@@ -427,12 +427,12 @@ extract_correlations <- function(
     ## extract_Sigma_table(fit, measure = "correlation"). The correlation
     ## matrix is read via the documented point-only route
     ## extract_Sigma(fit, level = "unit", part = "total")$R.
-    return(.extract_correlations_julia_point(
+    return(.reportable_table(.extract_correlations_julia_point(
       fit = fit,
       tier = tier,
       pair = pair,
       link_residual = link_residual
-    ))
+    )))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
@@ -740,5 +740,5 @@ extract_correlations <- function(
     out$interval_status <- .correlation_interval_status(fit)
   }
   rownames(out) <- NULL
-  out
+  .reportable_table(out)
 }

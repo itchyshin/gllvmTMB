@@ -50,24 +50,24 @@ extractors to recover the trait-covariance structure on a common,
 comparable latent scale.
 
 Scope boundary: **IN** are long-format mixed-family fits whose
-families have a defined latent residual scale (MIX-01..MIX-09) and
-report-ready extraction from fitted objects (DIA-13). **PARTIAL** are
-profile and bootstrap uncertainty summaries on mixed-family targets
-(CI-10 / EXT-04), and, as of the 2026-07-05 design decision, delta /
-hurdle mixed-family latent-scale correlations (MIX-10): these are
+families have a defined latent residual scale, and report-ready
+extraction from fitted objects (including diagnostic metadata
+tables). **PARTIAL** are profile and bootstrap uncertainty summaries
+on mixed-family targets, and, as of the 2026-07-05 design decision,
+delta / hurdle mixed-family latent-scale correlations: these are
 now designed and route-only under a constraint (latent structure on
 the positive/continuous submodel only; the occurrence submodel is
 fixed-effects-only), but their interval coverage is not yet
-calibrated (CI-08 / CI-10).
+calibrated (see the validation-debt register).
 
 The broader family map is:
 
 | Family group | This page does | Status for public teaching |
 |---|---|---|
-| Gaussian, binomial, Poisson | Fits all three together in the runnable fixture and extracts latent-scale Sigma, correlations, communality, and bootstrap Sigma examples | Internal worked extractor draft; rows `MIX-01`--`MIX-09` supply the current evidence |
+| Gaussian, binomial, Poisson | Fits all three together in the runnable fixture and extracts latent-scale Sigma, correlations, communality, and bootstrap Sigma examples | Internal worked extractor draft; the long-format engine and extractor surfaces used here supply the current evidence |
 | Negative binomial and beta/proportion | Shares the same one-part latent-residual logic, but this page does not yet include a runnable NB/beta fixture | Needs a broader mixed-response teaching pass before public promotion |
-| Delta and hurdle families | Names the route-only boundary only | `MIX-10` is designed and route-only (positive-part latent scale, occurrence fixed-effects-only) but not yet shippable: its mixed-family interval coverage is uncalibrated (CI-08 / CI-10) |
-| Mixture families | Not taught here | Remain outside this article until their validation rows move |
+| Delta and hurdle families | Names the route-only boundary only | Designed and route-only (positive-part latent scale, occurrence fixed-effects-only) but not yet shippable: its mixed-family interval coverage is uncalibrated |
+| Mixture families | Not taught here | Remain outside this article until their validation status advances |
 
 This article is long-format only because the teaching fixture uses
 per-row `family_var` dispatch. A wide-data companion needs a separate
@@ -84,19 +84,19 @@ mixed-family GLLVM, which summaries live on a common latent scale?
 | Is the fit in a usable diagnostic state? | randomized-quantile residual metadata | `diagnostic-status` | row-status counts and compact fit-health PASS/WARN counts |
 | What is the mixed-family covariance target? | `extract_Sigma_table(..., link_residual = "auto")` | `sigma` | total latent-scale covariance rows with interval status |
 | What correlations can a reader plot? | `plot_Sigma_heatmap()` | `corr` | point-estimate correlation heatmap including family-specific link residuals |
-| Which interval paths are available but partial? | `extract_correlations()` and `bootstrap_Sigma()` | `corr-fisher`, `corr-bootstrap`, `bootstrap` | Fisher-z and bootstrap examples with CI-10 boundary |
+| Which interval paths are available but partial? | `extract_correlations()` and `bootstrap_Sigma()` | `corr-fisher`, `corr-bootstrap`, `bootstrap` | Fisher-z and bootstrap examples, with calibrated interval coverage not yet established |
 
-Scope boundary by row: `MIX-01`--`MIX-09` cover the long-format engine and
-extractor surfaces used here; `DIA-13` covers diagnostic metadata tables;
-`EXT-01`, `EXT-05`, `EXT-06`, `EXT-13`, `EXT-18`, and `EXT-27` cover the
-extractor and point-plot helpers this page demonstrates. `CI-10` remains
-partial, so the interval examples are API demonstrations, not calibrated
-mixed-family coverage proof. `MIX-10` is `partial`: delta and hurdle
-mixed-family latent-scale correlations are now designed and route-only
-(latent structure constrained to the positive/continuous submodel, with
-the occurrence submodel fixed-effects-only), but their interval coverage
-is not yet calibrated (CI-08 / CI-10), so this remains a route-only
-design, not a shipped inference capability.
+Scope boundary: the long-format engine and extractor surfaces used here
+are covered, as are the diagnostic metadata tables and the extractor
+and point-plot helpers this page demonstrates. Calibrated interval
+coverage remains partial, so the interval examples are API
+demonstrations, not calibrated mixed-family coverage proof. Delta and
+hurdle mixed-family latent-scale correlations are partial: they are
+now designed and route-only (latent structure constrained to the
+positive/continuous submodel, with the occurrence submodel
+fixed-effects-only), but their interval coverage is not yet
+calibrated, so this remains a route-only design, not a shipped
+inference capability.
 
 ## The setup
 
@@ -257,7 +257,7 @@ $\Lambda\Lambda^\top$ — and addresses the latent factor
 pattern rather than the observable-scale correlation; like the
 other interval routes on this page it is a route-only
 demonstration whose mixed-family coverage is uncalibrated
-(CI-10, currently failing the gate), not yet a calibrated
+(currently failing the calibration gate), not yet a calibrated
 inference route.
 
 ## Communality: how much variance is explained by the latent factor?
@@ -308,15 +308,15 @@ are validated in the register but are not shown on this page.
 
 | Capability | Register status |
 |---|---|
-| Mixed-family engine acceptance (`family = list(...)`) | covered (MIX-01, MIX-02) |
-| `extract_Sigma()` on mixed-family | covered (MIX-03) |
-| `extract_correlations()` Fisher-z + Wald <!-- Wald validated in register (MIX-04); this page demonstrates Fisher-z and bootstrap only --> | covered (MIX-04) |
-| `extract_communality()` on mixed-family | covered (MIX-05) |
-| `extract_repeatability()` on mixed-family | covered (MIX-06; M1.6 added the per-family `sigma2_d` to vW) |
-| `extract_Omega()` cross-tier | covered (MIX-07) |
-| `bootstrap_Sigma()` per-row family preserved | covered (MIX-08) |
-| `simulate.gllvmTMB_multi()` family-aware draws | covered (MIS-05; 6 families) |
-| Delta / hurdle mixed-family latent-scale correlations | partial (MIX-10; route-only design accepted, interval coverage uncalibrated -- CI-08 / CI-10) |
+| Mixed-family engine acceptance (`family = list(...)`) | covered |
+| `extract_Sigma()` on mixed-family | covered |
+| `extract_correlations()` Fisher-z + Wald <!-- Wald validated in register (MIX-04); this page demonstrates Fisher-z and bootstrap only --> | covered |
+| `extract_communality()` on mixed-family | covered |
+| `extract_repeatability()` on mixed-family | covered (the per-family `sigma2_d` was added to vW) |
+| `extract_Omega()` cross-tier | covered |
+| `bootstrap_Sigma()` per-row family preserved | covered |
+| `simulate.gllvmTMB_multi()` family-aware draws | covered (6 families) |
+| Delta / hurdle mixed-family latent-scale correlations | partial (route-only design accepted, interval coverage uncalibrated) |
 
 See the
 [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)

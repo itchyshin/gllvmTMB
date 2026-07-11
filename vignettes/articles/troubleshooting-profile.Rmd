@@ -22,20 +22,20 @@ knitr::opts_chunk$set(
 > **Scope boundary.** This page is a troubleshooting reference for
 > already-fitted profile-likelihood CI workflows. IN: Gaussian
 > profile-CI routing for direct and derived targets, plus the
-> diagnostic helpers named below, are covered by CI-02, CI-03,
-> DIA-01, DIA-03, and DIA-05 in the
-> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md).
-> PARTIAL: non-Gaussian and mixed-family profile/bootstrap calibration
-> remains M3 work (CI-08, CI-10, EXT-13). PLANNED: this page does not
-> add a new interval method or move validation rows; it tells readers
-> what to try when the existing profile path is fragile.
+> diagnostic helpers named below, are covered (see the
+> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)
+> for the underlying validation status). PARTIAL: non-Gaussian and
+> mixed-family profile/bootstrap calibration remains future work.
+> PLANNED: this page does not add a new interval method or move
+> validation rows; it tells readers what to try when the existing
+> profile path is fragile.
 
 [Profile-likelihood confidence intervals](profile-likelihood-ci.html)
 are the package's default for variance components, communalities,
 and phylogenetic signal. They are expected on theory to track
 coverage better near boundaries than Wald, respect skewness, and
 avoid the symmetry assumption of Wald CIs (empirical coverage for
-these fits is still under validation -- CI-08). **But they can fail.** This article catalogues the four
+these fits is still under validation). **But they can fail.** This article catalogues the four
 failure modes that show up in practice and what to do about each.
 
 If a profile call returns `NA` for one or both bounds, an
@@ -137,8 +137,7 @@ trait whose communality estimate is unambiguous.
 
 1. The profile is **right** here, not the Wald CI. Trust the wider
    interval and report it as the honest precision (theory-defensible;
-   empirical coverage across families is still under validation --
-   CI-08).
+   empirical coverage across families is still under validation).
 2. Confirm with [`check_identifiability(fit, sim_reps = 100L)`](../reference/check_identifiability.html):
    if the per-trait Procrustes residual for that loading column is
    large, the corresponding communality estimate is genuinely
@@ -175,7 +174,7 @@ the Wald CI.
 
 1. **Trust the profile**. Wald assumes symmetry the profile does
    not (theory-defensible; empirical coverage across families is
-   still under validation -- CI-08).
+   still under validation).
 2. Plot the profile curve directly: call
    [`TMB::tmbprofile(fit$tmb_obj, name = ...)`](https://kaskr.github.io/adcomp/_book/Profiling.html)
    and `plot()` the returned object. (The wrapper itself returns
@@ -211,7 +210,7 @@ the Laplace approximation being a good fit at every grid point of
 the profile walk. For a single canonical fit you plan to publish,
 500 bootstrap reps takes minutes and gives a robust bootstrap
 interval that doesn't depend on the profile converging (empirical
-coverage is not yet calibrated across families -- see CI-08/CI-10).
+coverage is not yet calibrated across families).
 
 ## See also
 

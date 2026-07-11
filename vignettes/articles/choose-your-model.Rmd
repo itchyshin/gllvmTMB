@@ -291,7 +291,8 @@ the pedigree instead of the tree).
 >   phylogenetic reaction-norm covariance `Sigma = Lambda Lambda^T + Psi`
 >   over the (intercept, slope) coefficients — including the
 >   intercept–slope correlation — and surfaces it via
->   `extract_Sigma(fit, level = "phy")` (register `ANI-11`, Gaussian).
+>   `extract_Sigma(fit, level = "phy")` (Gaussian only; see the
+>   validation-debt register).
 >   The pedigree twin `animal_latent(1 + x | id, unique = TRUE)` is the
 >   same engine. (§7e shows it run.)
 > - **Structured slope modes** `phylo_indep` / `phylo_dep` /
@@ -302,8 +303,8 @@ the pedigree instead of the tree).
 >   several non-Gaussian families. The full-unstructured `phylo_dep` /
 >   `spatial_dep` slopes are **Gaussian-only**, with non-Gaussian
 >   reserved (fail-loud) until the unstructured cross-(intercept,slope)
->   covariance is shown identifiable (`PHY-18`, `SPA-10`).
-> - **`animal_slope` recovery** is **validated** (register `ANI-06`):
+>   covariance is shown identifiable.
+> - **`animal_slope` recovery** is **validated**:
 >   byte-equivalent to `phylo_slope(vcv = A)` to 1e-5 over the recovery
 >   grid. Treat its Gaussian point estimates as covered, not
 >   provisional.
@@ -532,12 +533,12 @@ The recovered slope SD sits close to the simulated $\sqrt{0.4}
 \approx 0.63$, and the fitted per-species slopes correlate strongly
 with the truth. For a **pedigree** instead of a tree, swap in
 `animal_slope(x | id, A = A)`, passing the relatedness matrix
-in-keyword; that pedigree path is recovery-validated (register
-`ANI-06`, byte-equivalent to `phylo_slope(vcv = A)` to 1e-5).
+in-keyword; that pedigree path is recovery-validated (byte-equivalent
+to `phylo_slope(vcv = A)` to 1e-5).
 
 The richer correlated intercept–slope form fits and surfaces its 2×2
 (intercept, slope) covariance through `extract_Sigma(fit, level =
-"phy")` (register `ANI-11`, Gaussian). It is shown here **not run**
+"phy")` (Gaussian only). It is shown here **not run**
 only to keep this page to a single worked fit:
 
 ```{r ex-slope-aug, eval = FALSE}
@@ -675,9 +676,9 @@ or for a ratio quantity like repeatability that lives in $[0, 1]$.
 > cleared the 94% coverage gate, in a single diagnostic run not yet
 > promoted.** A production
 > coverage study found most other Gaussian cells below the 94% target
-> (`CI-08`), and **mixed-family** (e.g. Gaussian + binomial)
+> and **mixed-family** (e.g. Gaussian + binomial)
 > communality/correlation coverage collapses to 0.55–0.82
-> (`CI-10`) — a known engine deficiency, not a near-complete feature.
+> — a known engine deficiency, not a near-complete feature.
 > Treat intervals on mixed-family fits, and on high-dimensional
 > Gaussian fits, as **indicative rather than calibrated**; prefer
 > bootstrap and report the method you used. See the

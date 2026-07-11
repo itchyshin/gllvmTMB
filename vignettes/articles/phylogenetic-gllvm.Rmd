@@ -548,9 +548,9 @@ structure is simply unavailable -- it is not silently approximated):
   single-variance `phylo_slope` path, the augmented diagonal slope
   `phylo_indep(1 + x | species)` now fits and recovers across the core
   families (Gaussian; binomial probit/logit; Poisson; negative
-  binomial; Gamma; Beta; ordinal -- register `PHY-06`, `PHY-11`..`PHY-16`).
+  binomial; Gamma; Beta; ordinal -- see the validation-debt register).
   The reduced-rank `phylo_latent(1 + x | species)` slope is likewise
-  validated across that family set (`PHY-17`). The richer
+  validated across that family set. The richer
   *trait-specific* spelling `phylo_indep(0 + trait + trait:x | species)`
   is recognised by the parser but **reserved for a future release**: it
   **fails loud** (the parser reports that an "LHS richer than
@@ -558,7 +558,7 @@ structure is simply unavailable -- it is not silently approximated):
   unvalidated fit. The full-unstructured `phylo_dep(1 + x | species)`
   augmented slope is validated for `gaussian()` only in this release;
   on a non-Gaussian family it fails loud rather than silently
-  approximate (`PHY-18` -- the unstructured cross-(intercept,slope)
+  approximate (the unstructured cross-(intercept,slope)
   covariance is not yet identifiable off Gaussian). For a correlated
   (intercept, slope) augmented phylogenetic random regression, the folded
   `phylo_latent(1 + x | species, unique = TRUE)` estimates
@@ -572,8 +572,8 @@ structure is simply unavailable -- it is not silently approximated):
   path.** The diagonal `phylo_indep` and reduced-rank `phylo_latent`
   augmented slopes now recover across the core families (above); the
   remaining reserve is the full-unstructured `phylo_dep(1 + x |
-  species)` slope, which is Gaussian-only and fails loud off Gaussian
-  (`PHY-18`). Treat non-Gaussian `phylo_dep` slopes as not yet
+  species)` slope, which is Gaussian-only and fails loud off Gaussian.
+  Treat non-Gaussian `phylo_dep` slopes as not yet
   delivered.
 
 If you need a correlated (intercept, slope) covariance, use the folded

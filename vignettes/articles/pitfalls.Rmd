@@ -43,18 +43,17 @@ vignette for the long/wide equivalence check.
 > already-advertised workflows, not a new capability announcement.
 > The examples illustrate general diagnostic checks; they are not a
 > claim that these are the only models where the checks matter.
-> IN: explicit long-format calls (`FG-02`), the wide `traits(...)`
-> interface referenced from Get Started (`FG-03`), Gaussian
-> `latent()` / `indep()` covariance examples (`FAM-01`, `FG-04`,
-> `FG-05`, `FG-06`), `extract_Sigma()` (`EXT-01`), loading rotation
-> and constraint helpers (`EXT-14`, `EXT-15`, `LAM-04`), paired and
-> three-piece phylogenetic decompositions (`PHY-02`, `PHY-03`,
-> `PHY-07`), and the A/Ainv relatedness path for animal-style
-> examples (`ANI-01`, `ANI-07`, `ANI-08`). PARTIAL: `phylo_scalar()`
+> Covered: explicit long-format calls, the wide `traits(...)`
+> interface referenced from Get Started, Gaussian
+> `latent()` / `indep()` covariance examples, `extract_Sigma()`,
+> loading rotation and constraint helpers, paired and
+> three-piece phylogenetic decompositions, and the A/Ainv relatedness
+> path for animal-style examples. Partial: `phylo_scalar()`
 > and exact single-V `meta_V(V = V)` are shown as caveats rather than
-> fully validated workflow recommendations (`PHY-04`, `MET-01`).
-> PLANNED/BLOCKED: proportional known-V mode is not presented as a
-> current workflow (`MET-03`).
+> fully validated workflow recommendations.
+> Planned/blocked: proportional known-V mode is not presented as a
+> current workflow. (See the validation-debt register for the
+> per-capability validation status.)
 
 ```{r setup}
 library(gllvmTMB)
@@ -311,8 +310,8 @@ pieces in the paired form above, three pieces here, more if you
 add `spatial_*` or extra latent tiers). The number of pieces
 follows from the keywords in the formula. `gllvmTMB(... +
 phylo_latent(..., unique = FALSE) + latent, ...)` is a three-piece fallback for
-this case. The validation evidence for this fallback is
-tracked under `PHY-03`; future worked phylogenetic examples should
+this case. This fallback is one of the covered paired phylogenetic
+decompositions noted above; future worked phylogenetic examples should
 present this as one concrete case of the broader identifiability
 check, not as a special rule for one model family.*
 

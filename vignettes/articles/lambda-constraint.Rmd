@@ -586,7 +586,8 @@ null region -- *when* Wald intervals are available. In this
 non-positive-definite fixture every free entry's CI is `NA`, so the
 classification collapses to the pinned bucket; a genuine reliability
 split needs a positive-definite fit, and per-entry interval calibration
-itself remains an open gate (`CI-08`/`CI-10`).
+itself remains an open gate: calibrated interval coverage is not yet
+established (see the validation-debt register).
 
 ### Symmetric vs asymmetric Wald
 
@@ -861,9 +862,9 @@ plus cross-package agreement with `mirt` and `galamm`
 `suggest_lambda_constraint()` is validated in
 `tests/testthat/test-m2-4-suggest-lambda-constraint-binary.R`.
 
-The validation-debt rows `LAM-01`, `LAM-03`, `LAM-04` are at
-`covered` for binary
-(see [`docs/design/35-validation-debt-register.md`](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
+Parameter recovery, and cross-package agreement, for the confirmatory
+binary `lambda_constraint` mechanism are covered
+(see [the validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
 
 **Practical regime**:
 
@@ -872,7 +873,7 @@ The validation-debt rows `LAM-01`, `LAM-03`, `LAM-04` are at
   suggester may not always stabilise; check `fit_health$pd_hessian`.
 - This article's fixture (`n_species = 20`, `d = 2`, `n_sites = 40`)
   matches the validated `(n_items, d)` grid for point recovery
-  (`LAM-03`: `n_items` $\in \{20, 50\} \times d \in \{1, 2\}$, validated
+  (`n_items` $\in \{20, 50\} \times d \in \{1, 2\}$, validated
   at `n_resp` $\approx 400$--$500$). It sits well below that sample
   size (`n_sites = 40`, chosen to make leakage visible), and the
   validated regime does not certify fit health or interval calibration

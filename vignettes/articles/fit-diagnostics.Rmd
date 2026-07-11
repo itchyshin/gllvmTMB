@@ -253,11 +253,11 @@ is still a modelling choice, continue to
 That article compares one ML candidate set with AIC/BIC and uses REML
 only after a Gaussian model has been chosen.
 
-This page covers the public diagnostic path that is currently backed by
-the validation register: fit health and no-SE status (DIA-08, DIA-10),
+This page covers the public diagnostic path that is currently validated
+(see the validation-debt register): fit health and no-SE status,
 fitted-model predictive diagnostics and residuals for the scoped
-Gaussian / Poisson / NB2 rows (DIA-11, DIA-12), and report-ready
-metadata tables (DIA-13). It does not calibrate confidence intervals,
+Gaussian / Poisson / NB2 rows, and report-ready
+metadata tables. It does not calibrate confidence intervals,
 prove the latent rank, run formal residual tests, or draw from a
 Bayesian posterior. Exact residual support for delta, hurdle,
 truncated, ordinal, and mixture-family rows remains outside this

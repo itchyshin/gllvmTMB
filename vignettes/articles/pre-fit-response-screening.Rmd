@@ -29,10 +29,10 @@ rank, prove identifiability, or guarantee convergence. It builds the same long r
 shape that `gllvmTMB()` would use, then reports data and formula conditions that
 are easy to miss before fitting.
 
-Scope boundary (`DIA-14`): the current screen covers binary and binomial
+Scope boundary: the current screen covers binary and binomial
 candidate responses before fitting. It is advisory only. Non-binary modules,
 optional `detectseparation` / `mirt` comparator checks, and high-dimensional
-systematic-map benchmarks remain planned.
+systematic-map benchmarks remain planned (see the validation-debt register).
 
 The first screen is for binary and binomial responses. This is the place where
 complete or quasi-complete separation is most visible: a constant, rare,

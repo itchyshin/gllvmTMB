@@ -84,10 +84,10 @@ The scope is deliberately single-slope:
 
 | Claim | Status |
 |---|---|
-| Structured random regression with one covariate, `1 + x` (`s = 1`) | **Covered** for the core phylogenetic and spatial grid (PHY-11..PHY-18, SPA-08..SPA-10, ANI-11..ANI-12) |
-| Gaussian `phylo_dep(1 + x1 + x2 | species)` (`s = 2`) | **Covered** under RE-03 for the structured phylogenetic dependent path |
-| Non-Gaussian `phylo_dep(..., s >= 2)` | **Partial**; fail-loud guarded while RE-03 diagnostics continue |
-| Delta, hurdle, and two-stage zero-inflated families | **Blocked / out of scope** for latent-scale slope covariance (FAM-17, MIX-10) |
+| Structured random regression with one covariate, `1 + x` (`s = 1`) | **Covered** for the core phylogenetic, spatial, and animal-model grid |
+| Gaussian `phylo_dep(1 + x1 + x2 | species)` (`s = 2`) | **Covered** for the structured phylogenetic dependent path |
+| Non-Gaussian `phylo_dep(..., s >= 2)` | **Partial**; fail-loud guarded while diagnostics continue |
+| Delta, hurdle, and two-stage zero-inflated families | **Blocked / out of scope** for latent-scale slope covariance |
 | Confidence intervals on slope variances | **Not calibrated here**; this article reports point estimates and recovery bands, not coverage guarantees |
 
 ## Reader path and scope
@@ -103,14 +103,14 @@ This draft is a structured-dependence map rather than a first-use tutorial:
 | Where is the spatial twin? | `spatial_indep(1 + x | coords)` | `spatial-poisson` | exact shipped syntax and validation-cell recovery prose |
 
 Scope boundary: IN rows are the one-covariate structured random-slope grid
-for phylogenetic, spatial, and animal paths (`PHY-11`--`PHY-18`,
-`SPA-08`--`SPA-10`, `ANI-11`, `ANI-12`) and fit-health diagnostics
-(`DIA-08`). PARTIAL rows include non-Gaussian `s >= 2` dependent slopes under
-`RE-03` and interval coverage for slope summaries (`CI-08`, `CI-10`). BLOCKED
-or out-of-scope rows are delta, hurdle, and zero-inflated slope covariance
-families (`FAM-17`, `MIX-10`). Treat the build-time examples as syntax and
-point-fit demonstrations; the heavy validation prose names recovery bands, not
-calibrated uncertainty.
+for phylogenetic, spatial, and animal paths and fit-health diagnostics.
+PARTIAL rows include non-Gaussian `s >= 2` dependent slopes and interval
+coverage for slope summaries, which is not yet calibrated. BLOCKED or
+out-of-scope rows are delta, hurdle, and zero-inflated slope covariance
+families. Treat the build-time examples as syntax and point-fit
+demonstrations; the heavy validation prose names recovery bands, not
+calibrated uncertainty (see the
+[validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
 
 ## The augmented-slope grammar
 
@@ -462,7 +462,7 @@ Families covered for each cell: `gaussian`, `poisson`, `nbinom1`,
 in new public examples.
 
 This table covers one random-slope covariate. Gaussian
-`phylo_dep(1 + x1 + x2 | species)` has its own RE-03 evidence, but the
+`phylo_dep(1 + x1 + x2 | species)` has its own recovery evidence, but the
 non-Gaussian `s >= 2` path remains guarded until that separate gate
 clears.
 

@@ -33,8 +33,8 @@ knitr::opts_chunk$set(
 > [Simulation-based verification](simulation-verification.html) before
 > using this page. It is a Tier 3 coverage-triage article: it shows the
 > M3 smoke-grid machinery and the under-coverage pattern, but it is not
-> evidence that interval coverage has passed. CI-08 and CI-10 remain
-> partial in the validation-debt register.
+> evidence that interval coverage has passed. Package-wide interval
+> coverage remains incomplete.
 
 This article is for a reader who wants to know **whether the confidence
 intervals reported by `gllvmTMB()` actually contain the truth at their nominal
@@ -153,8 +153,8 @@ A future recovery pass must:
 2. Diagnose and reduce replicate-fit failures before any result is promoted.
 3. Use target-explicit coverage surfaces, including total `Sigma_unit[tt]`
    where Design 50 requires it.
-4. Land a diagnostic report beside the production artefact before moving
-   CI-08 or CI-10.
+4. Land a diagnostic report beside the production artefact before promoting
+   either the single-family or mixed-family coverage claim.
 5. Extend coverage to derived quantities (communality,
    repeatability, phylo signal) — M3.5.
 
@@ -187,8 +187,7 @@ runs; what M3.3a surfaces is the **inference-quality pattern**:
   smoke scale, as expected for the well-conditioned baseline.
 - **Binomial** (avg 0.95; ~0.7-1s): also near-nominal. At smoke
   scale the profile CIs appear to handle the bounded-likelihood
-  geometry; binomial has not cleared the M3.3 production coverage
-  gate (CI-08).
+  geometry; binomial has not cleared the production coverage gate.
 - **Ordinal-probit** (avg 0.75; ~1-1.5s): under-covers. K-1
   cutpoints per trait + small n = harder identifiability. M3.4
   will diagnose whether single-trait warmup helps.
@@ -240,8 +239,9 @@ Per Design 42 §6 honest-scope boundaries, the M3 milestone covers:
   repeatability, phylogenetic signal.
 - **M3 close gate (M3.7):** Ada + Shannon coordination audit.
 
-CI-08 and CI-10 remain partial. This page must not be used as release
-readiness, broad interval calibration, or scientific coverage evidence.
+Single-family and mixed-family interval coverage remain partial. This page
+must not be used as release readiness, broad interval calibration, or
+scientific coverage evidence.
 
 Out of scope for M3 entirely:
 
@@ -266,5 +266,4 @@ Out of scope for M3 entirely:
   patterns when profile coverage is unexpectedly low.
 - [Animal model](animal-model.html) — quantitative-genetic worked
   example using the same ordinary `latent()` machinery this
-  article exercises (point recovery; interval coverage remains
-  open under CI-08/CI-10).
+  article exercises (point recovery; interval coverage remains open).

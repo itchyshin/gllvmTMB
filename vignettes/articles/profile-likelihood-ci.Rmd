@@ -24,11 +24,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-<!-- Provenance: Gaussian interval routes covered under CI-01..CI-07 and
-EXT-13; empirical coverage (CI-08/CI-10), spatial total-covariance
-correlation profiles, and mixed-family calibration remain open; see the
-validation-debt register docs/design/35-validation-debt-register.md. -->
-
 > **Scope.** This is a Tier 2 technical reference for the interval APIs on
 > already-fitted models. The Gaussian interval routes are validated;
 > empirical coverage is still under study, and non-Gaussian / mixed-family

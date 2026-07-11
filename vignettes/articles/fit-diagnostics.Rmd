@@ -26,8 +26,8 @@ knitr::opts_chunk$set(
 
 Before interpreting a fitted GLLVM, separate two questions. Did the
 optimizer find a numerically healthy point estimate? Does the fitted
-response distribution show an obvious mismatch to the observed stacked
-traits? This article answers those questions for a small count example
+response distribution show an obvious mismatch to the three behavioural
+responses arranged in long format? This article answers those questions for a small count example
 before moving on to covariance, ordination, repeatability, or interval
 claims.
 
@@ -129,14 +129,30 @@ signif(
 )
 ```
 
-That last number should be close to zero: the two calls reach the same
-stacked-trait likelihood.
+The observed difference is about `2.14e-09`, which is negligible at the
+reported precision: the two calls reach the same stacked-trait likelihood.
 
 ## Read Fit Health
 
-`check_gllvmTMB()` returns a machine-readable fit-health table. Start
-there before interpreting coefficients, latent variables, or covariance
-summaries.
+The authoritative convergence verdict is `fit$fit_health$converged`. It uses
+the largest absolute gradient divided by `1 + abs(objective)`, so the gradient
+is judged relative to the scale of the fitted objective. Values below `1e-3`
+count as a usable optimum. Raw optimizer codes, the unscaled maximum gradient,
+and Hessian curvature remain supporting evidence rather than substitutes for
+that verdict.
+
+```{r convergence-verdict}
+data.frame(
+  converged = isTRUE(fit$fit_health$converged),
+  scaled_gradient = signif(fit$fit_health$scaled_gradient, 4),
+  threshold = 1e-3
+)
+```
+
+`check_gllvmTMB()` returns the detailed, machine-readable fit-health table used
+in simulations, tests, and reports. `gllvmTMB_diagnose()` instead prints a
+guided narrative for an interactive first look. Start with either one before
+interpreting coefficients, latent variables, or covariance summaries.
 
 ```{r fit-health}
 health <- check_gllvmTMB(fit)
@@ -154,10 +170,32 @@ health[
 ]
 ```
 
+These six displayed rows pass for this example. The full table contains more
+checks, so always inspect every warning rather than treating a selected subset
+as the whole verdict. Here are all non-passing rows, including their thresholds,
+meaning, and suggested action.
+
+```{r fit-health-warnings}
+health[
+  health$status != "PASS",
+  c("component", "status", "value", "threshold", "message", "action")
+]
+```
+
+In this fit, the two warnings describe the same feature: the fitted
+trait-specific diagonal standard deviation is almost zero. The simulation
+planted a shared latent component without an additional trait-specific
+between-individual component, so a boundary estimate is plausible here. It
+still matters for interpretation: this example supports a shared axis, but it
+does not demonstrate recovery of a separate diagonal variance. “Mapped off”
+means a parameter was deliberately fixed or excluded from the fitted model,
+rather than estimated near zero.
+
 Read the rows literally. Optimizer and gradient rows speak to the
 point estimate. `sdreport` and `pd_hessian` speak to Hessian-based
 standard errors and Wald-style inference. A weak-axis row says a
-latent variable may be hard to interpret; it does not by itself prove
+latent variable explains only a small share of the fitted common covariance
+and may therefore be hard to interpret; it does not by itself prove
 that the fitted response distribution is wrong.
 
 `boundary_sigma_eps` checks the continuous-family residual scale when
@@ -167,8 +205,9 @@ does not apply when the model or response family maps that parameter
 off.
 
 The same table records intentionally skipped standard errors. A no-SE
-fit can still be useful for point estimates or refit-based uncertainty,
-but it should not be reported as if Wald standard errors were computed.
+fit can still be useful for point estimates or refit-based uncertainty, such
+as a bootstrap that repeatedly fits the model to new samples, but it should not
+be reported as if Wald standard errors were computed.
 
 ```{r no-se-health}
 fit_no_se <- gllvmTMB(
@@ -194,10 +233,15 @@ before making scientific claims.
 
 ## Check Response Diagnostics
 
-Numerical convergence is not enough. For Gaussian, Poisson, and NB2
-rows, `residuals(type = "randomized_quantile")` computes exact
-family-CDF residuals. `diagnostic_table()` turns the attached metadata
-into ordinary data frames for reports and articles.
+Numerical convergence is not enough. For Gaussian, Poisson, and NB2 rows,
+`residuals(type = "randomized_quantile")` evaluates each fitted family's
+cumulative distribution function at the observed response. These are exact
+CDF calculations at the fitted parameter values and fitted random-effect modes,
+but they do not propagate parameter, refit, or random-effect uncertainty and
+are not a formal calibration test. NB1 uses the same implemented exact-CDF
+route and has a display smoke test, but it has not yet reached the same depth of
+evidence as Gaussian, Poisson, and NB2. `diagnostic_table()` turns the attached
+metadata into ordinary data frames for reports and articles.
 
 ```{r residual-table}
 rq <- residuals(
@@ -222,6 +266,12 @@ usable residual. If a row is marked `unsupported_family`,
 `missing_response`, or `nonfinite_observed`, keep that status in the
 report rather than silently dropping the row.
 
+The Q-Q points below stay broadly near the reference line through the centre,
+but the alarm and forage panels depart in the upper tail. The display is useful
+because it does not turn a mostly straight pattern into a blanket pass: those
+tails deserve inspection, and the plot is not evidence that the latent rank or
+uncertainty estimates are calibrated.
+
 ```{r residual-qq, fig.cap = "Randomized-quantile residual Q-Q check for the fitted Poisson GLLVM. This is a fitted-model diagnostic display, not interval calibration, latent-rank proof, or a Bayesian posterior predictive check."}
 predictive_check(
   fit,
@@ -230,15 +280,21 @@ predictive_check(
 )
 ```
 
-For count models, a rootogram is often easier to read than a Q-Q plot.
-Bars near zero mean the observed and fitted-model simulated count
-frequencies are similar on the square-root scale.
+For Poisson and NB2 count models, a rootogram is often easier to read than a
+Q-Q plot. Bars near zero mean the observed and fitted-model simulated count
+frequencies are similar on the square-root scale. The simulations default to
+`condition_on_RE = TRUE`, so they condition on the fitted random-effect modes;
+they check the fitted response pattern, not the marginal random-effect
+distribution. The plot below shows noticeable alternating discrepancies,
+especially for forage counts 3 and 5. They do not all point in one direction,
+but they are large enough to investigate rather than dismiss. Simulation noise
+remains, even with the larger draw count used here.
 
-```{r rootogram, fig.cap = "Rootogram comparing observed behavioural counts with fitted-model simulations. Large systematic departures would point to a response-family, link, covariate, or random-effect mismatch."}
+```{r rootogram, fig.cap = "Rootogram comparing observed behavioural counts with simulations conditional on the fitted random-effect modes. Persistent departures can flag a response-family, link, covariate, offset, or fitted-linear-predictor mismatch; this display does not test the marginal random-effect distribution."}
 predictive_check(
   fit,
   type = "rootogram",
-  ndraws = 40,
+  ndraws = 200,
   seed = 20260609,
   max_count = 7L
 )
@@ -251,11 +307,11 @@ stamp.
 
 | What you see | What it means | Next step |
 |---|---|---|
-| Optimizer, gradient, `sdreport`, and `pd_hessian` all pass | The numerical fit is a reasonable starting point | Inspect `Sigma`, correlations, ordination, or fitted effects. |
+| The four numerical rows shown above all pass | The numerical fit is a reasonable starting point, provided the remaining rows contain no unexplained warnings | Inspect every non-PASS row, then inspect `Sigma`, correlations, ordination, or fitted effects. |
 | Optimizer or gradient rows warn/fail | The point estimate may be unstable | Try more starts, rescaling, simpler rank, or an alternative optimizer. |
-| `sdreport` or `pd_hessian` warns | Standard errors or Wald intervals are degraded | Keep point estimates visible; route uncertainty to profile/bootstrap where supported. |
+| `sdreport` or `pd_hessian` warns | Wald uncertainty is unavailable or local curvature may be unreliable | Inspect the scientific target and use a supported profile or refit-based bootstrap route where available. |
 | Residual rows have non-`ok` status | Some rows were not diagnosed | Inspect missing values, non-finite responses, and family support. |
-| Q-Q or rootogram shows systematic structure | The fitted response distribution may be wrong | Revisit family, link, covariates, offsets, or random-effect structure. |
+| Q-Q or rootogram shows systematic structure | The fitted conditional response pattern may be wrong | Revisit family, link, covariates, offsets, or the fitted linear predictor; investigate random effects separately. |
 
 If the fit-health and response checks are acceptable but the latent rank
 is still a modelling choice, continue to
@@ -264,9 +320,11 @@ That article compares one ML candidate set with AIC/BIC and uses REML
 only after a Gaussian model has been chosen.
 
 This page covers fit health and no-SE status, fitted-model predictive
-diagnostics and residuals for the scoped Gaussian, Poisson, and NB2
-rows, and report-ready metadata tables. It does not calibrate confidence intervals,
-prove the latent rank, run formal residual tests, or draw from a
-Bayesian posterior. Exact residual support for delta, hurdle,
-truncated, ordinal, and mixture-family rows remains outside this
-article's current claims.
+diagnostics and residuals for Gaussian, Poisson, and NB2 rows, and report-ready
+metadata tables. NB1 uses an implemented exact-CDF route, but its evidence is
+currently shallower than for those three families.
+
+The page does not calibrate confidence intervals, prove the latent rank, run
+formal residual tests, test the marginal random-effect distribution, or draw
+from a Bayesian posterior. Exact residual support for delta, hurdle, truncated,
+ordinal, and mixture-family rows remains outside its current claims.

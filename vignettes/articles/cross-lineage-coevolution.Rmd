@@ -1,6 +1,6 @@
 ---
 title: "Cross-lineage coevolution kernels"
-tier: 3 # under-audit kernel/co-evolution methods draft; visible as a Developer Note until COE-04 and interval/rho gates close
+tier: 3 # under-audit kernel/co-evolution methods draft; visible as a Developer Note until recovery and interval/rho gates close
 output:
   rmarkdown::html_vignette:
     toc: true

@@ -45,7 +45,7 @@ navbar:
       - text: Response families
         href: articles/response-families.html
     diagnostics:
-      text: Diagnostics & Validation
+      text: Diagnostics
       menu:
       - text: Screen binary traits before fitting
         href: articles/pre-fit-response-screening.html

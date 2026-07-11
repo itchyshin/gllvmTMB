@@ -25,10 +25,6 @@ family controls the link function, the distributional variance, and
 the link-scale residual term that `extract_Sigma()` and
 `extract_Omega()` use when reporting non-Gaussian covariance.
 
-<!-- Register provenance: validated = FAM-01..FAM-14; truncated-count partial = FAM-15;
-     delta standard hurdle = FAM-17; mixed-family delta/hurdle latent-scale = MIX-10
-     (route-only, uncalibrated per CI-08/CI-10); unmapped constructors = FAM-16, FAM-18, FAM-19. -->
-
 > **Scope boundary.** This page is a technical lookup for families that
 > the multivariate engine maps through `family_to_id()` and for exported
 > constructors that are intentionally not advertised as current

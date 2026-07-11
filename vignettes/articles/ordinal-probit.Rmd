@@ -75,8 +75,6 @@ claims for ordinal cutpoints or variance components. PLANNED or guarded work
 includes broader applied examples, ordinal exact-CDF residual diagnostics,
 interval calibration, and final article placement review. Until those land,
 this page stays internal.
-<!-- register: FAM-14 (family recovery) and EXT-10 (cutpoint extractor depth) both covered; see docs/design/35-validation-debt-register.md -->
-
 ## Fit The Family
 
 This small fixture has two ordinal traits scored as `1`, `2`, or `3`.

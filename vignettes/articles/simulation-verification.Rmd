@@ -272,7 +272,7 @@ rate falls below the audit's `>= 94%` gate. Treat it as a
 diagnostic that surfaces sub-gate targets, not one the package is
 expected to clear everywhere: the package-wide coverage gate is
 still open, and the most recent production run cleared only 2 of 15
-cells. <!-- validation-debt register CI-08 (single-family) / CI-10 (mixed-family); docs/design/35-validation-debt-register.md --> So expect flagged rows,
+cells. So expect flagged rows,
 and read them as "this target is not yet coverage-calibrated"
 rather than an engine failure. See
 [`coverage_study()`](../reference/coverage_study.html).
@@ -330,7 +330,6 @@ A fit has passed verification when:
    understood and disclosed -- the package-wide `>= 94%` gate is
    still open, so flagged targets are expected, not automatically
    disqualifying.
-   <!-- validation-debt register CI-08 / CI-10; docs/design/35-validation-debt-register.md -->
 
 5. `confint_inspect()` on the headline parameters shows
    well-behaved (`"quadratic"`) profile curves.

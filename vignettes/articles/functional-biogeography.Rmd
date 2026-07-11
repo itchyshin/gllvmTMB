@@ -34,19 +34,17 @@ knitr::opts_chunk$set(
 >
 > **Preview -- capstone composite fit is M3 milestone work.**
 >
-> The component keywords shown below have mixed validation status in the
-> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md):
-> ordinary default-`latent()` covariance is `covered` (FG-04..FG-06), `phylo_*` is
-> `covered` for the main decomposition rows (FG-12 / PHY-01..PHY-03),
-> while the `spatial_*` family rollup and `meta_V` remain `partial` in the
-> current validation depth (FG-13 and FG-14 / MET-01). Spatial scalar,
-> independent, and full-rank paths have covered smoke/recovery rows
-> (SPA-03..SPA-04), but the reduced-rank spatial latent plus unique
-> total-covariance path remains partial (SPA-02), including derived
-> profile intervals for total spatial correlations (CI-07).
+> The component keywords shown below have mixed validation status. Ordinary
+> default-`latent()` covariance and the main `phylo_*` decompositions have
+> recovery evidence. The `spatial_*` family rollup and `meta_V` remain partial.
+> Spatial scalar, independent, and full-rank paths have smoke or recovery
+> evidence, but the reduced-rank spatial latent-plus-unique total-covariance
+> path remains partial, including derived profile intervals for total spatial
+> correlations.
 > The full six-piece kitchen-sink composite's identifiability and
 > interpretability on real data is **M3** milestone work
-> (R >= 200 empirical-coverage gate), and CI-08 / CI-10 remain partial.
+> (at least 200 replicates for empirical coverage), and broad single-family
+> and mixed-family interval coverage remains partial.
 > Treat this as an internal method demo until M3 closes.
 
 The replicated site--species--trait GLLVM is the canonical

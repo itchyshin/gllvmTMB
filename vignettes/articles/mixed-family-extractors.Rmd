@@ -310,7 +310,7 @@ are validated in the register but are not shown on this page.
 |---|---|
 | Mixed-family engine acceptance (`family = list(...)`) | covered |
 | `extract_Sigma()` on mixed-family | covered |
-| `extract_correlations()` Fisher-z + Wald <!-- Wald validated in register (MIX-04); this page demonstrates Fisher-z and bootstrap only --> | covered |
+| `extract_correlations()` Fisher-z + Wald | covered; this page demonstrates Fisher-z and bootstrap only |
 | `extract_communality()` on mixed-family | covered |
 | `extract_repeatability()` on mixed-family | covered (the per-family `sigma2_d` was added to vW) |
 | `extract_Omega()` cross-tier | covered |

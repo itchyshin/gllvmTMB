@@ -24,15 +24,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-<!--
-Provenance (maintainer bookkeeping, not reader-facing):
-covered register rows FAM-02 (binomial-logit), MIX-01/02 (per-row
-mixed-family dispatch), LAM-03 (binary loading constraints), EXT-27
-(point-estimate Sigma heatmaps); FAM-14 (polytomous mixed-family)
-remains partial. Slated for re-authoring in the M2.5 slice against the
-rewrite-prep pedagogy contract (docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md).
--->
-
 > **Preview -- under audit.** This page is buildable and linked from
 > Developer Notes so maintainers can audit the psychometrics/IRT path.
 > It is not a first-stop tutorial and is slated for re-authoring once

@@ -39,7 +39,7 @@ final cross-page navigation, link, render, and stale-wording audit.
 | `model-selection-latent-rank.Rmd` | 1 | SHIP | reviewed | Rank-selection claims fenced to the demonstrated fixture. |
 | `joint-sdm.Rmd` | 1 | SHIP | reviewed | Binary JSDM orientation and honesty fixes applied. |
 | `covariance-correlation.Rmd` | 2 | SHIP | reviewed | Covariance/correlation framing and interval boundaries applied. |
-| `fit-diagnostics.Rmd` | diagnostics | SHIP | reviewed | Live render passed; diagnostics and figure gates passed; no calibration claim. |
+| `fit-diagnostics.Rmd` | diagnostics | SHIP | panel fixes applied; maintainer visual check pending | Pat, Fisher, and Rose recommendations applied: authoritative convergence verdict, every warning exposed and interpreted, conditional-diagnostic scope, family-evidence boundary, plot interpretation, and responsive navigation. |
 | `convergence-start-values.Rmd` | diagnostics | SHIP | reviewed | Live render passed; public diagnostic route, start-method scope, and inference boundaries checked against code/tests. |
 | `pre-fit-response-screening.Rmd` | diagnostics | SHIP | reviewed | Live wide/long screens passed; advisory thresholds and separation boundary checked against implementation/tests. |
 
@@ -93,7 +93,7 @@ the article dispositions are settled:
 |---|---|---|
 | `README.md` / landing page | reader route, version/lifecycle wording, no stale or internal claims | reviewed once; final estate check pending |
 | `_pkgdown.yml` navbar and article index | only retained reader routes visible; no developer drafts in search/navigation | pending |
-| desktop navbar breakpoint | at 1024 px, all navigation and search remain visible without horizontal overflow | BLOCKED: navbar requires about 1312 px and pushes search off-screen |
+| desktop navbar breakpoint | at 1024 px, all navigation and search remain visible without horizontal overflow | source fix applied; browser verification passed at 1024 px and 390 px; final full-site render pending |
 | exported roxygen and `man/*.Rd` | source/Rd agreement, useful examples, no internal register codes or stale claims | initial code sweep done; semantic review pending |
 | `NEWS.md` / Changelog | plain-language release history without internal register codes | in progress; not committed as complete |
 | printed examples and extractor tables | no hidden internal columns or provenance keys in rendered output | implementation present; full render verification pending |

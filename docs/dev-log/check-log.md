@@ -42765,3 +42765,80 @@ Verification:
   scrolling remains available where long object names require it. The separate
   site-navbar overflow remains an estate blocker.
 - `git diff --check` -> PASS.
+
+## 2026-07-11 — page 7 three-reviewer recommendations applied (Codex)
+
+Maintainer direction:
+
+- Applied every recommendation from the Pat, Fisher, and Rose page-7 reviews.
+- Established a reader-facing zero-code rule: validation-register IDs and
+  similar internal bookkeeping must not appear on any public page.
+- Release work remains paused; this is documentation cleanup, not a release
+  readiness claim.
+
+Page-7 changes:
+
+- Added the authoritative `fit$fit_health$converged` verdict and its scaled
+  gradient, with the `1e-3` threshold and distinction from raw optimizer and
+  Hessian signals.
+- Distinguished the machine-readable `check_gllvmTMB()` table from the guided
+  interactive `gllvmTMB_diagnose()` narrative.
+- Printed every non-PASS row with value, threshold, meaning, and action; the two
+  boundary warnings are now interpreted against the simulated data-generating
+  process rather than hidden behind `WARN 2`.
+- Defined mapped-off parameters, weak axes, and refit-based uncertainty in
+  reader language.
+- Scoped exact family-CDF residuals to fitted parameters and fitted
+  random-effect modes; separated the stronger Gaussian/Poisson/NB2 evidence
+  from the implemented but shallower NB1 display route.
+- Reframed the rootogram as a conditional fitted-response check, raised its
+  draw count from 40 to 200, and interpreted the visible Q-Q and rootogram
+  departures instead of presenting a generic good-fit example.
+- Changed the public navbar label from `Diagnostics & Validation` to
+  `Diagnostics`.
+- Added a responsive navbar collapse below 1280 px so the menu and search stay
+  reachable on small laptops and phones.
+
+Reader-surface code sweep:
+
+- Removed remaining validation-register IDs from all vignette/article sources,
+  including hidden HTML comments and Tier-3 developer drafts.
+- Replaced visible register references with plain statements of what has
+  evidence, what remains partial, and what comparator or calibration work is
+  missing.
+- Kept internal design registers, developer logs, tests, and implementation
+  comments unchanged.
+
+Commands and outcomes:
+
+- `gh pr list --state open` and
+  `git log --all --oneline --since='6 hours ago' --decorate -20`
+  -> REVIEWED before editing shared dev-log files; no competing page-7 edit.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/fit-diagnostics", lazy = FALSE)'`
+  -> PASS after the first implementation and again after the final prose/plot
+  interpretation pass.
+- Browser DOM inspection -> PASS: authoritative verdict rendered as
+  `converged = TRUE`, `scaled_gradient = 8.995e-09`, threshold `0.001`; all two
+  WARN rows render with values, thresholds, messages, and actions.
+- Browser responsive checks with the updated source CSS copied into the local
+  preview -> PASS: at 1024 px, navbar collapses with zero page overflow; at
+  390 px, the toggle and search are reachable and document scroll width equals
+  viewport width.
+- Figure-quality review of the regenerated Q-Q plot and 200-draw rootogram
+  -> PASS for legibility and honest diagnostic framing. The prose now calls out
+  the upper-tail Q-Q departures and the larger alternating rootogram bars.
+- `rg -n --glob '*.Rmd' --glob '*.md' --glob '*.qmd' '\\b[A-Z]{2,6}-[0-9]{1,3}\\b' README.md NEWS.md vignettes | grep -Ev 'UTF-8|GPL-'`
+  -> PASS; zero validation-register IDs on these reader surfaces.
+- `rg -n '\\b[A-Z]{2,6}-[0-9]{1,3}\\b' man`
+  -> PASS; zero validation-register IDs in generated help pages.
+- `Rscript --vanilla -e 'pkgdown::build_site(lazy = TRUE)'`
+  -> STOPPED at existing pkgdown metadata gates: `functional-biogeography`
+  remains deliberately absent from the article index and
+  `print.gllvmTMB_reportable_table` is not yet placed in the reference index.
+  This was not treated as a page-7 failure or silently bypassed.
+
+Not done:
+
+- No commit, push, PR, merge, tag, or release action was taken.
+- The page remains pending the maintainer's visual decision before a local
+  commit and before moving to the next page.

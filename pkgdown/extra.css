@@ -171,3 +171,46 @@ img.logo {
 html {
   scroll-padding-top: 8rem;
 }
+
+/* The full desktop navigation needs more horizontal room than Bootstrap's
+   default `lg` breakpoint allows. Collapse it below 1280px so search and the
+   menu toggle remain reachable on tablets, small laptops, and phones. */
+@media (max-width: 1279.98px) {
+  .navbar.navbar-expand-lg {
+    flex-wrap: wrap;
+  }
+
+  .navbar.navbar-expand-lg .navbar-toggler {
+    display: block;
+  }
+
+  .navbar.navbar-expand-lg .navbar-collapse {
+    flex-basis: 100%;
+    flex-grow: 1;
+    align-items: center;
+  }
+
+  .navbar.navbar-expand-lg .navbar-collapse:not(.show) {
+    display: none !important;
+  }
+
+  .navbar.navbar-expand-lg .navbar-collapse.show,
+  .navbar.navbar-expand-lg .navbar-collapse.collapsing {
+    display: block !important;
+  }
+
+  .navbar.navbar-expand-lg .navbar-nav {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .navbar.navbar-expand-lg .navbar-nav .dropdown-menu {
+    position: static;
+  }
+
+  .navbar.navbar-expand-lg form[role="search"],
+  .navbar.navbar-expand-lg .search-form {
+    width: 100%;
+    margin: 0.5rem 0;
+  }
+}

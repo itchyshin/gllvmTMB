@@ -66,10 +66,6 @@ objects, known truth, and readouts:
 | Is the slope of a reaction norm heritable? | `animal_scalar()` + `animal_slope(x | id)` | `rr-fit`, `rr-recovery`, `rr-equiv` | slope variance, BLUP/truth correlation, and animal/phylo equivalence |
 | Is the fitted model numerically usable? | `check_gllvmTMB()` through `diagnostic_table()` | `diagnostic-table` | optimizer, gradient, `sdreport`, and Hessian rows |
 
-<!-- Provenance for maintainers: IN rows ANI-01..ANI-08 (single-A animal
-keyword family), ANI-11/ANI-12 (augmented reaction-norm readouts),
-DIA-08 (fit-health); PARTIAL rows ANI-09/ANI-10 (multi-matrix models,
-cross-package agreement). See docs/design/35-validation-debt-register.md. -->
 Scope: the examples cover the animal keyword family over a single
 pedigree-derived relatedness matrix, augmented reaction-norm readouts,
 and basic fit-health tables. Multi-matrix animal models and formal

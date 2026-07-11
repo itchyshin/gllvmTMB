@@ -68,7 +68,7 @@ capability.
 | <code>latent(0 + trait &#124; site, d)</code> (binary) | `gllvm::gllvm(num.lv)` | live when optional packages are installed | Procrustes-aligned $\boldsymbol{\Lambda}$ on one binary fixture |
 | <code>indep(0 + trait &#124; site)</code> | `glmmTMB::glmmTMB(diag())` | live in this article | log-likelihood match to 1e-4 on this Gaussian fixture |
 | `phylo_scalar(species)` | `glmmTMB::glmmTMB(propto())` | tested (`test-stage3-propto-equalto.R`) | log-likelihood match to 1e-4 on the staged fixture |
-| `meta_V(V = V)` | `glmmTMB::glmmTMB(equalto())` | partial (`test-formula-grammar-smoke.R`, `test-gllvmTMB-args.R`) | parser / dimension / smoke coverage exists; direct equalto LL comparator remains MET-01 validation debt |
+| `meta_V(V = V)` | `glmmTMB::glmmTMB(equalto())` | partial (`test-formula-grammar-smoke.R`, `test-gllvmTMB-args.R`) | parser, dimension, and smoke coverage exists; a direct equalto log-likelihood comparator is still missing |
 
 ## Setup
 
@@ -339,7 +339,7 @@ release claims:
    `gllvm`'s `confint()` is Wald only.
    `galamm::confint()` is documented as *"Currently only 'Wald'
    is available"*. This is a real design direction, but coverage remains
-   row-specific: CI-08 and CI-10 still block broad interval-coverage claims,
+   row-specific: empirical coverage is not yet broad enough for package-wide claims,
    especially for mixed-family and difficult boundary regimes.
 
 ## `phylo_scalar()` / `meta_V()`: existing test agreement
@@ -350,8 +350,7 @@ The `propto` (phylogenetic) covstruct matches
 For known-V meta-analysis, the current public keyword is
 `meta_V(V = V)`; the older `meta_known_V()` spelling remains only as a
 deprecated alias. Parser / dimension / smoke coverage is live, but a
-direct `glmmTMB::equalto()` log-likelihood comparator remains MET-01
-validation debt.
+direct `glmmTMB::equalto()` log-likelihood comparator remains to be added.
 
 ## See also
 

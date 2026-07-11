@@ -30,6 +30,11 @@ observational level (individuals), several continuous traits per
 individual, and shared low-rank covariance between traits. No
 phylogeny, no spatial structure, no nesting. This article walks
 through that model end-to-end.
+
+`gllvmTMB` is experimental and pre-CRAN (version 0.5.0): the surface may
+change, and the recovery numbers and intervals below are illustrative,
+not validated coverage.
+
 The working question is simple: if five body measurements are all
 partly driven by size and shape, can a rank-2 GLLVM recover that
 shared structure and still leave trait-specific variation on the
@@ -251,6 +256,10 @@ form is `Psi`.
 
 ## Recovered $\hat{\boldsymbol\Sigma}_B$ vs truth
 
+The numbers below describe this one simulated draw of `r n_ind`
+individuals — descriptive recovery on a single dataset, not repeated
+sampling (see the scope note further down).
+
 ```{r recover-once}
 Sigma_hat <- extract_Sigma(fit, level = "unit")$Sigma
 round(Sigma_hat, 2)
@@ -292,7 +301,10 @@ plot_Sigma_comparison(corr_compare, measure = "correlation")
 For inference on individual cross-trait correlations or per-trait
 communality, the canonical extractors return tidy data frames.
 `extract_correlations()` defaults to `method = "fisher-z"` (fast
-Fisher-transform Wald CI; bounds guaranteed in $[-1, 1]$).
+Fisher-transform Wald CI; bounds guaranteed in $[-1, 1]$). These are
+nominal intervals — their empirical coverage is not calibrated for this
+model, so read them as recovery-grade illustration, not validated
+coverage.
 The table is useful for reporting exact numbers; the plot shows which
 trait pairs have the strongest evidence of positive or negative
 association. Communality point estimates are enough for this first
@@ -314,7 +326,7 @@ plot_correlations(morph_boot_R, tier = "unit", style = "eye", sort = "trait")
 In this teaching fit, all unit-tier trait correlations are positive, so
 the figure mainly ranks their strength along the shared size axis. Tight
 confidence eyes near 1 are supplied by the cached bootstrap object
-(`n_boot = `r morph_boot_R$n_boot`, failed refits =
+(n_boot = `r morph_boot_R$n_boot`, failed refits =
 `r morph_boot_R$n_failed`). Treat this as a rendered plotting example;
 final inference should use a bootstrap size chosen for the study rather
 than the article's lightweight fixture.
@@ -322,7 +334,9 @@ than the article's lightweight fixture.
 The same cached intervals can be shown as a matrix-style ellipse plot.
 Here the shape and fill show the sign and strength of each correlation;
 black borders and stars mark pairs whose supplied bootstrap interval does
-not cross zero.
+not cross zero. The stars are a display convention on the cached fixture's
+percentile intervals, not a calibrated significance test — choose a
+bootstrap size for the study before drawing inferential conclusions.
 
 ```{r ci-correlation-ellipse, fig.width = 6.6, fig.height = 5.2, fig.cap = "Ellipse view of the same cached between-individual correlation intervals. Ellipse tilt and colour show the fitted correlation; black borders and stars mark bootstrap percentile intervals that do not cross zero."}
 plot(fit, type = "correlation_ellipse", level = "unit", boot = morph_boot_R)
@@ -431,9 +445,8 @@ What this shows:
 - **`dep` and `latent(d = T)` both recover the saturated covariance
   surface** — the comparison is a useful check that the dense fit and the
   full-rank latent parameterisation agree on the covariance pattern.
-  `dep` is mathematically identical to `latent(d = T)` standalone —
-  same logL, same $\boldsymbol\Sigma_B$ to numerical precision. The two
-  keywords are aliases of the saturated unstructured fit.
+  `dep` and `latent(d = T)` give the same saturated fit here — numerically
+  equal logL and $\boldsymbol\Sigma_B$ on this fixture.
 - **Reduced-rank `latent(d = 2)` with default $\boldsymbol\Psi$ matches the saturated fit
   within 0.1 nats of logL.** With $T = 5$ traits and a
   rank-2 truth, the rank constraint loses essentially no information
@@ -511,6 +524,13 @@ plot(
   )
 ```
 
+This ordination comes from the fitted covariance model
+($\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$):
+unlike PCA or NMDS, the axes are model parameters with uncertainty, not an
+eigen- or distance-decomposition of the raw data, and the grey points are
+*predicted* latent scores (empirical-Bayes conditional modes of
+$\mathbf{u}_i$), not observed coordinates.
+
 The biplot shows the trait loadings on the two latent axes. In a
 real morphometric study, the first axis usually picks up *overall
 size*, with all traits loading positively — the famous "general
@@ -521,20 +541,11 @@ fitted covariance.
 
 ## What this article does *not* cover
 
-This is the bottom rung of the ladder. The next rungs are under audit
-until their example objects, diagnostics, and rendered HTML reviews pass:
-
-| Rung | New piece | Article |
-|---|---|---|
-| 1 | Discrete (binary) responses, individuals as sites | Under audit: joint SDM example object and binary validation caveats. |
-| 2 | Phylogenetic dependence between rows | Under audit: phylogenetic helper, split covariance, validation rows. |
-| 3 | Spatial dependence between rows | Under audit: spatial helper, diagnostics, figure review. |
-| 4 | Two observational levels (between- and within-unit) | Under audit: behavioural-syndrome example object and repeatability. |
-| 5 | All of the above at once | Under audit: final functional-biogeography capstone. |
-
-Use this table as a map of what is deliberately *not* public yet. Each
-rung returns only after its example object, diagnostics, and rendered
-HTML review pass.
+This is the simplest case on the complexity ladder. Richer models —
+binary / [joint species distribution](joint-sdm.html) responses,
+phylogenetic and spatial dependence between rows, and two-level
+between/within designs — build on this same `latent()` foundation and are
+covered in their own guides as they become public.
 
 ## See also
 

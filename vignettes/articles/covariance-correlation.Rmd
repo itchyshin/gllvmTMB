@@ -28,6 +28,10 @@ This page is for the reader who has fitted a multivariate model and now asks:
 which traits vary together, and are the reported correlations too large if the
 model leaves out trait-specific variance?
 
+gllvmTMB is experimental (version 0.5.0, pre-CRAN); the covariance, correlation,
+and communality extractors described here are part of that experimental surface,
+and their interval machinery is still maturing.
+
 Start from the model, not from the covariance matrix. For a Gaussian
 stacked-trait GLLVM, the teaching model for individual `i` and trait `t` is
 
@@ -43,6 +47,12 @@ The model has three moving parts. `mu_t` is the trait mean,
 and `psi_tt` is trait-specific variance left over after those shared
 axes are fitted. `Sigma` is not the model itself; it is the trait
 covariance implied by that model.
+
+The shared axes are identified only up to an orthogonal rotation and sign flip,
+so the individual loadings $\boldsymbol{\lambda}_t$ are not uniquely defined. But
+$\boldsymbol\Lambda\boldsymbol\Lambda^{\!\top}$ — and therefore $\boldsymbol\Sigma$,
+the correlations, and communality — are rotation-invariant, and are the
+quantities to report.
 
 In ordinary `latent()` fits, gllvmTMB estimates both the shared
 loading part and the diagonal Psi part by default. Use
@@ -363,10 +373,13 @@ $$
 c_t^2 \;=\; \frac{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt}}{\boldsymbol\Sigma_{tt}} \;=\; \frac{\sum_{\ell=1}^d \Lambda_{t\ell}^2}{\sum_{\ell=1}^d \Lambda_{t\ell}^2 + \psi_{tt}}.
 $$
 
-This is the proportion of trait $t$'s variance that is *shared* with
-the other traits via the latent factors. It is bounded between 0 and 1
-and is a proportion-of-variance summary, analogous in scale to $h^2$
-(heritability) or $R^2$.
+This is the fraction of trait $t$'s variance explained by the shared latent
+variables. It is bounded between 0 and 1 and is a proportion-of-variance
+summary, analogous in scale to $h^2$ (heritability) or $R^2$. Like the other
+$\boldsymbol\Sigma$-derived summaries it is a model-based factor-analytic
+quantity of the fitted GLLVM — computed from the fitted covariance
+decomposition, not a PCA or exploratory-factor-analysis eigen-decomposition of
+the raw data.
 
 For a reader-facing table, the alignment is:
 
@@ -411,7 +424,11 @@ plot_correlations(
 Read this as a formatted table, not as a new uncertainty calculation. It
 is a display of the rows returned by `extract_correlations()`: it does not
 bootstrap, profile, or calibrate uncertainty — it only renders the
-Fisher-z interval columns already present in `corr_B`.
+Fisher-z interval columns already present in `corr_B`. Those bounds are
+themselves nominal Fisher-z (Wald-on-$z$) intervals: their empirical coverage
+has not been calibrated and they are not recovery-grade validated for
+gllvmTMB's latent covariances, so read them as an uncertainty display, not a
+validated interval.
 
 ### Site-level / individual-level ICC
 

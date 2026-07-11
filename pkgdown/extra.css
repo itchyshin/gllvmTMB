@@ -153,20 +153,21 @@ img.logo {
   }
 }
 
-/* --- Fixed-top navbar overlap fix (site-wide) --------------------------- */
+/* --- Fixed-top navbar spacing (site-wide) ------------------------------- */
 /* The pkgdown navbar renders as Bootstrap `.fixed-top` (position: fixed), so
-   it is pulled out of normal flow and overlays the top of every page —
-   clipping the page-header heading, the home-page logo, and the right-hand
-   table of contents underneath it. Make the navbar sticky instead: it still
-   stays visible while scrolling, but sits in normal flow at the top of the
-   page so nothing is clipped. `scroll-padding-top` keeps in-page anchor
-   links clear of the navbar too. */
-.navbar.fixed-top {
-  position: -webkit-sticky;
-  position: sticky;
-  top: 0;
+   it overlays the top of every page. Its height varies with viewport width
+   (it wraps to two lines on narrower desktops, ~123px), yet pkgdown offsets
+   the content by only a fixed ~56px — so the page header, home logo, and the
+   right-hand table of contents get clipped underneath the navbar at those
+   widths. Push the main content and sidebar clear of the navbar on desktop
+   (mirrors drmTMB's spacing), and keep in-page anchor links clear too. */
+@media (min-width: 992px) {
+  body > .container .row > main,
+  body > .container .row > aside {
+    margin-top: 8rem;
+  }
 }
 
 html {
-  scroll-padding-top: 4.5rem;
+  scroll-padding-top: 8rem;
 }

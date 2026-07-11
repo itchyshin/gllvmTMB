@@ -34,17 +34,19 @@ or trait per species, and a 0/1 response for absence/presence. The
 model uses `latent()` to estimate a low-rank residual co-occurrence
 structure across species after `env_1` is accounted for.
 
-Scope boundary. IN: the long and `traits(...)` wide formula paths
-(FG-02, FG-03), standalone `latent(0 + trait | site, d = K)` (FG-04),
-and binomial-logit response fits (FAM-02), with the package fixture
-checked by `test-example-joint-sdm.R` and
-`test-joint-sdm-binary-long-wide.R`. PARTIAL: calibrated interval
-coverage for covariance-derived quantities remains under CI-08 /
-CI-10, so this article treats Fisher-z intervals as useful diagnostics
-but not final coverage claims. OUT OF SCOPE: single-species spatial
-SDMs belong in `sdmTMB`; multivariate spatial fields via
-`spatial_*()` are a later advanced article, not a prerequisite for
-this JSDM example.
+gllvmTMB is experimental (version 0.5.0, pre-CRAN); the modelling API
+and especially the interval and coverage machinery for
+covariance-derived quantities below may still change.
+
+Scope boundary. IN: the long-format and wide `traits(...)` formula
+paths, a standalone `latent(0 + trait | site, d = K)` term, and
+binomial-logit occurrence fits, each exercised by the package test
+suite. PARTIAL: calibrated interval coverage for covariance-derived
+quantities is not yet established, so this article treats the Fisher-z
+intervals here as model-based uncertainty diagnostics, not certified
+coverage. OUT OF SCOPE: single-species spatial SDMs belong in
+`sdmTMB`; multivariate spatial fields via `spatial_*()` are a later
+advanced article, not a prerequisite for this JSDM example.
 
 ## Setup
 
@@ -197,8 +199,7 @@ than the default species-distribution workflow.
 `gllvmTMB` supports that confirmatory path with
 `lambda_constraint = list(unit = M)`, where `NA` means "estimate this
 loading" and a number means "pin this loading during fitting." Binary
-IRT-style loading constraints are covered by the LAM-03 and LAM-04
-validation rows, but an ecology-first JSDM article should introduce
+IRT-style loading constraints are covered by the package's binary loading-constraint tests, but an ecology-first JSDM article should introduce
 them only as an optional follow-up after the reader understands
 correlations, $\boldsymbol\Sigma$, and ordination.
 
@@ -235,7 +236,7 @@ here as model-based uncertainty summaries, not as a claim that every
 binary or mixed-family covariance interval has reached nominal
 coverage. See the
 [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)
-(CI-08, CI-10) for the live status.
+for the live status.
 
 ```{r jsdm-cor}
 corr_rows <- extract_correlations(
@@ -396,16 +397,25 @@ Two honest limitations on the ICC CI in the current build:
 
 These gaps are the open-coverage story flagged above: the estimands
 compute, but calibrated interval machinery on the binary and
-mixed-family scales is still in progress (CI-08, CI-10). Report the
+mixed-family scales is still in progress. Report the
 point estimate and the method used; avoid presenting these intervals
 as coverage-certified.
 
 ## Ordination biplot
 
-Site scores on the two latent axes, with species loadings shown as
-arrows. Axes are residual co-occurrence after `env_1` has been
-accounted for; species loading in the same direction tend to
-co-occur (after accounting for the environment).
+Site scores on the two latent variables (LV1, LV2), with species
+loadings shown as arrows. This is *model-based* ordination: LV1 and
+LV2 are the latent variables of a fitted GLLVM, estimated jointly with
+the `env_1` regression — not a variance-maximising PCA, a
+distance-based NMDS embedding, or a covariate-constrained CCA/RDA of
+the raw occurrence matrix. The plotted site scores are predicted
+(empirical-Bayes) conditional modes of the residual site states
+$u_i$: shrunk toward zero, and carrying prediction uncertainty the
+point display does not show. The rotation-invariant interpretation
+target is the model-implied residual co-occurrence
+$\boldsymbol\Sigma_B$ (defined above), not the axis coordinates
+themselves — species loading in the same direction tend to co-occur
+after `env_1` is accounted for.
 
 ```{r jsdm-biplot, fig.width = 6.5, fig.height = 5, fig.cap = "Ordination biplot from the fitted binary JSDM, using varimax-rotated and sign-anchored site scores and species loadings. Loading orientation and sign are not identifiable; the model-implied Sigma and correlations remain the rotation-invariant interpretation target.", fig.alt = "Two-dimensional ordination biplot showing site scores as points and species loading arrows after accounting for the environmental predictor. Species arrows in similar directions indicate similar residual co-occurrence patterns, but loading sign and rotation are arbitrary."}
 plot(
@@ -559,7 +569,7 @@ reportable only after the orientation choice is explicit.
 
 * [Morphometrics](morphometrics.html) — Gaussian stacked-trait analogue with ordinary `latent()`.
 * [Choosing latent rank](model-selection-latent-rank.html) — how to compare candidate values of `d`.
-* Loading-constraint helpers — `?confirmatory_lambda` and `?suggest_lambda_constraint` are available for scoped loading-diagnostics work; the full public loading-constraint teaching path is still under article-council review.
+* Loading-constraint helpers — `?confirmatory_lambda` and `?suggest_lambda_constraint` are available for scoped loading-diagnostics work; a fuller worked example is planned for a future article.
 * [`vignette("response-families")`](response-families.html) — full table of supported families and the per-family $\sigma^2_d$.
 
 ## References

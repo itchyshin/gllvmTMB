@@ -40,7 +40,7 @@ final cross-page navigation, link, render, and stale-wording audit.
 | `joint-sdm.Rmd` | 1 | SHIP | reviewed | Binary JSDM orientation and honesty fixes applied. |
 | `covariance-correlation.Rmd` | 2 | SHIP | reviewed | Covariance/correlation framing and interval boundaries applied. |
 | `fit-diagnostics.Rmd` | diagnostics | SHIP | panel fixes applied; maintainer visual check pending | Pat, Fisher, and Rose recommendations applied: authoritative convergence verdict, every warning exposed and interpreted, conditional-diagnostic scope, family-evidence boundary, plot interpretation, and responsive navigation. |
-| `convergence-start-values.Rmd` | diagnostics | SHIP | reviewed | Live render passed; public diagnostic route, start-method scope, and inference boundaries checked against code/tests. |
+| `convergence-start-values.Rmd` | diagnostics | SHIP | panel fixes applied; maintainer visual check pending | Fisher, Rose, and Pat recommendations applied: scaled-gradient verdict, separate baseline/no-SE fits, convergence/inference/identifiability lanes, symptom-linked starts, restart interpretation, and narrower bootstrap scope. |
 | `pre-fit-response-screening.Rmd` | diagnostics | SHIP | reviewed | Live wide/long screens passed; advisory thresholds and separation boundary checked against implementation/tests. |
 
 ## B. Confirmed public keepers still requiring individual review

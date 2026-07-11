@@ -42842,3 +42842,71 @@ Not done:
 - No commit, push, PR, merge, tag, or release action was taken.
 - The page remains pending the maintainer's visual decision before a local
   commit and before moving to the next page.
+
+## 2026-07-11 — page 8 three-reviewer recommendations applied (Codex)
+
+Maintainer direction:
+
+- Applied the consolidated Fisher, Rose, and Pat recommendations to
+  `vignettes/articles/convergence-start-values.Rmd`.
+- Preserved the reader-facing zero-code rule; validation-register IDs remain
+  internal and do not appear in the source or rendered page.
+- Stopped before commit so the maintainer can inspect the rendered result.
+
+Changes:
+
+- Shortened the title to “Convergence and hard fits” and defined a likelihood
+  basin at first use.
+- Replaced the opening `se = FALSE` fit with a normal `se = TRUE` baseline and
+  added a separately named `fit_no_se` demonstration.
+- Evaluated both long and `traits(...)` wide calls; their rendered likelihood
+  difference is exactly zero at the shown precision.
+- Displayed the authoritative `fit$fit_health$converged` verdict with scaled
+  gradient, threshold, raw gradient, objective, and optimizer code.
+- Corrected the gradient explanation from curvature/flatness to first-order
+  stationarity.
+- Replaced the full six-column health-table print with a compact component,
+  status, and value table organized into convergence, Hessian-inference, and
+  identifiability/interpretation lanes.
+- Interpreted the actual baseline: stationary point, matching restart
+  objectives, available `sdreport`, full reported rank, and a real
+  `pd_hessian = FALSE` curvature warning.
+- Added a bounded “Convergence is not identifiability” section with the
+  Gaussian-only, computationally expensive `check_identifiability()` route.
+- Named the actual default—one `nlminb` fit with historical starts and
+  `se = TRUE`—and tied each alternative start strategy to an observable
+  symptom.
+- Explained that lower restart objectives are preferred, equal displayed
+  objectives do not prove identical solutions, and cross-start comparisons
+  should prefer rotation-invariant `Sigma` over raw `Lambda`.
+- Narrowed the bootstrap claim to simulate-refit contract and plumbing tests,
+  started with a 25-replicate one-core smoke test, and added Monte Carlo
+  endpoint and failed-refit guidance.
+- Added runnable longer-budget `nlminb` syntax and narrowed the dispersion
+  warmup description to fitted-`phi` families, especially NB1/NB2.
+
+Commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/convergence-start-values", lazy = FALSE)'`
+  -> PASS after the main rewrite and after the final rendered-output
+  interpretation pass.
+- Rendered baseline -> `converged = TRUE`, scaled gradient `1.603e-08`, raw
+  maximum gradient `1.033e-06`, objective `63.4643`, optimizer code `0`;
+  `pd_hessian = FALSE` remains visible and interpreted.
+- Rendered long/wide comparison -> exact zero likelihood difference at shown
+  precision.
+- Browser DOM and mobile checks -> PASS: revised title and all new sections
+  present, required links resolve, 390 px viewport equals 390 px document
+  scroll width, and navbar toggle remains visible.
+- Reader-code scan over the source and rendered HTML -> PASS; zero internal
+  validation-register IDs.
+- Stale wording/default scan -> PASS for old design labels, bare `validated`,
+  validation-debt wording, old wide wrapper, obsolete notation, and the former
+  gradient/bootstrapping claims.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- No commit, push, PR, merge, tag, or release action was taken for page 8.
+- Full-site rendering remains deferred until page dispositions and individual
+  reviews are complete.

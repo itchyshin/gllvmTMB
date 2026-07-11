@@ -1,11 +1,11 @@
 ---
-title: "Convergence, identifiability, and start values"
+title: "Convergence and hard fits"
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Convergence, identifiability, and start values}
+  %\VignetteIndexEntry{Convergence and hard fits}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -24,8 +24,9 @@ knitr::opts_chunk$set(
 ```
 
 Some multivariate latent models are hard because the likelihood has
-several plausible basins, weakly identified variance splits, or a
-flat curvature direction near a boundary. The practical question is
+several plausible basins—a basin is a local solution reached from one set of
+starting values—weakly identified variance splits, or a flat curvature
+direction near a boundary. The practical question is
 therefore not just "did the optimizer print convergence code 0?" but
 "which part of the fit is healthy, which part is weak, and what should
 I try next?"
@@ -39,14 +40,14 @@ depend on successful refits, and profile intervals apply only to supported
 targets with stable profiles. The start strategies below are options to try,
 not established defaults or universal convergence recommendations.
 
-The most important rule is simple: `pdHess = FALSE` means
-Hessian-based standard errors and naive Wald intervals are unsafe. It
-does not automatically mean the point estimates, fitted values,
-likelihood, or rotation-invariant covariance summaries are useless.
-When the point estimate is scientifically useful but the Hessian is
-weak, fit with `se = FALSE` or keep the degraded `sdreport()` status
-visible, then route uncertainty to bootstrap or supported profile
-workflows and report failed refits or fallback methods honestly.
+The most important distinction is simple. `fit$fit_health$converged` is the
+package's point-stationarity verdict. By contrast, `pd_hessian` in the health
+table reports TMB's `pdHess` curvature result. `FALSE` means Wald uncertainty
+may be unreliable; `NA` after `se = FALSE` means the Hessian was not computed.
+Neither result automatically makes fitted values, likelihoods, or
+rotation-invariant covariance summaries useless. A benign rotation ridge can
+also produce weak curvature, so inspect the scientific target before choosing
+a profile or refit-based bootstrap route.
 
 ```{r setup}
 library(gllvmTMB)
@@ -93,7 +94,7 @@ fit <- gllvmTMB(
   data = df_long,
   trait = "trait",
   unit = "site",
-  control = gllvmTMBcontrol(se = FALSE, n_init = 2, init_jitter = 0.05)
+  control = gllvmTMBcontrol(n_init = 2, init_jitter = 0.05)
 )
 ```
 
@@ -101,7 +102,7 @@ The same model can be written with the wide data-frame formula
 interface. This route is useful when your data start as one row per
 unit and one column per trait.
 
-```{r wide-form, eval = FALSE}
+```{r wide-form}
 df_wide <- stats::reshape(
   df_long[c("site", "trait", "value")],
   idvar = "site", timevar = "trait", direction = "wide"
@@ -113,34 +114,63 @@ fit_wide <- gllvmTMB(
     latent(1 | site, d = 1),
   data = df_wide,
   unit = "site",
-  control = gllvmTMBcontrol(se = FALSE, n_init = 2, init_jitter = 0.05)
+  control = gllvmTMBcontrol(n_init = 2, init_jitter = 0.05)
 )
+
+signif(abs(as.numeric(logLik(fit)) - as.numeric(logLik(fit_wide))), 3)
 ```
+
+The printed difference is exactly zero at the shown precision, so the long and
+wide calls reached the same likelihood for this example. That agreement does
+not replace the health checks below.
 
 ## Read fit health
 
-`check_gllvmTMB()` returns a stable table. It is designed for users,
-tests, and simulation scripts so they do not have to parse optimizer
-messages by hand.
+Start with the authoritative point-stationarity verdict. It divides the largest
+absolute gradient by `1 + abs(objective)`, then compares that scaled gradient
+with `1e-3`. The raw optimizer code and unscaled gradient remain supporting
+diagnostics.
 
 ```{r diagnose}
-check_gllvmTMB(fit)
+data.frame(
+  converged = isTRUE(fit$fit_health$converged),
+  scaled_gradient = signif(fit$fit_health$scaled_gradient, 4),
+  threshold = 1e-3,
+  raw_max_gradient = signif(fit$fit_health$max_gradient, 4),
+  objective = signif(fit$fit_health$objective, 6),
+  optimizer_code = fit$fit_health$convergence
+)
+
+health <- check_gllvmTMB(fit)
+triage_components <- c(
+  "optimizer_convergence", "max_gradient", "sdreport", "pd_hessian",
+  "hessian_rank", "restart_history", "boundary_flags", "weak_axis_unit",
+  "near_zero_psi_unit"
+)
+health[
+  health$component %in% triage_components,
+  c("component", "status", "value")
+]
 ```
 
-The components have different meanings:
+Read the components in three lanes:
 
-| Component | What it answers | Typical next action |
-|---|---|---|
-| optimizer convergence | Did the optimizer report a clean stop? | If not, try more starts, a longer optimizer budget, or `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))`. |
-| max gradient | Is the objective flat at the reported optimum? | Rescale predictors, simplify the model, or compare optimizers. |
-| `pdHess` | Is local curvature positive definite for Hessian-based inference? | If false, avoid naive Wald intervals and inspect boundary or rank flags. |
-| `sdreport` | Did `TMB::sdreport()` produce standard errors? | If skipped or failed, keep point estimates but route uncertainty elsewhere. |
-| restart history | Did several starts reach the same basin? | Use the objective spread to decide whether starts are stable. |
-| boundary flags | Are variance or loading parameters near a boundary? | Try a lower rank, simpler covariance structure, or profile the target. |
+| Lane | Components | What it answers | Typical next action |
+|---|---|---|---|
+| Convergence | optimizer code, scaled gradient, restart history | Is the selected point sufficiently stationary, and did starts find competing objective values? | Try more starts, rescale predictors, or compare optimizers. |
+| Hessian-based inference | `sdreport`, `pd_hessian`, Hessian rank, fixed-effect SE | Is local curvature usable for Wald uncertainty? | If unavailable or weak, inspect the target and use a supported profile or bootstrap route. |
+| Identifiability and interpretation | weak axes, boundary flags, near-zero `Psi`, rotation convention | Is a covariance component or latent axis weak, redundant, or convention-dependent? | Compare lower rank, simpler covariance, and rotation-invariant `Sigma`; use the advanced identifiability check when appropriate. |
 
-This separation matters. A fit can have useful point estimates while
-`sdreport` is skipped or while `pdHess` is false. The diagnosis should
-tell the user what is degraded, not flatten every warning into model
+In this baseline fit, the scaled-gradient verdict is `TRUE`, both restarts reach
+the same displayed objective, `sdreport` is available, and the reported Hessian
+rank is full. However, `pd_hessian` is `FALSE`. That combination says the
+selected point is stationary but local curvature still warns against a blanket
+Wald-uncertainty claim. It does not by itself prove either model failure or a
+benign rotation ridge; inspect the target and its profile or refit behaviour.
+
+This separation matters. A fit can be stationary while Wald uncertainty is
+unavailable, or it can have a positive-definite Hessian while an extra latent
+axis remains scientifically weak. Do not flatten every warning into model
 failure.
 
 After the numerical triage, inspect the fitted response distribution
@@ -153,48 +183,86 @@ calibration, latent-rank adequacy, or Bayesian posterior prediction.
 The worked diagnostic sequence is shown in
 [Can I trust this fit?](fit-diagnostics.html).
 
+## Convergence is not identifiability
+
+Convergence asks whether optimization reached a sufficiently stationary point.
+Identifiability asks whether the data can distinguish the parameters or latent
+structure being interpreted. Raw `Lambda` loadings also depend on a rotation
+convention, whereas `Sigma` is rotation invariant and is therefore the safer
+cross-start comparison.
+
+For Gaussian fits, `check_identifiability()` provides an advanced simulate-and-
+refit check of loading recovery. It is computationally expensive, supports only
+the Gaussian route in this release, and is not a routine certificate for every
+model. Start with a small run to budget the cost before increasing the number of
+replicates.
+
+```{r identifiability, eval = FALSE}
+id_check <- check_identifiability(
+  fit,
+  sim_reps = 20,
+  tier = "B",
+  seed = 1
+)
+id_check
+```
+
 ## Choose a start strategy
 
-Start values are opt-in tools. The default remains conservative, and
-the strategies below are experimental: their recovery benefit across
+Start values are opt-in tools. The actual default is one `nlminb` fit using
+historical starts with `se = TRUE`. The strategies below are experimental:
+their recovery benefit across
 families and ranks is not yet established by simulation, so treat the
 table as a menu of things to try on a hard fit, not a proven policy.
 
-| Situation | Control |
-|---|---|
-| Routine fit | `gllvmTMBcontrol()` |
-| Suspect local optima | `gllvmTMBcontrol(n_init = 5, init_jitter = 0.1)` |
-| Non-Gaussian reduced-rank fit | `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))` |
-| Gaussian two-level ordinary latent covariance fit | `gllvmTMBcontrol(start_method = list(method = "indep"))` |
-| Known simpler model is available | `gllvmTMBcontrol(start_from = simpler_fit)` |
-| Count-family dispersion is unstable | `gllvmTMBcontrol(init_strategy = "single_trait_warmup")` |
-| `nlminb` reports a suspicious stop | `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))` |
-| Point estimate is needed but SE calculation is unreliable | `gllvmTMBcontrol(se = FALSE)` |
+| What you observe | Strategy | Control |
+|---|---|---|
+| No warning or competing objective yet | Use the default first | `gllvmTMBcontrol()` |
+| Starts reach different objective values | Add restarts and modest jitter | `gllvmTMBcontrol(n_init = 5, init_jitter = 0.1)` |
+| A non-Gaussian reduced-rank fit repeatedly stops poorly | Seed loadings and scores from residual structure | `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))` |
+| A Gaussian two-level latent fit is sensitive to its initial covariance | Warm-start from the matching independent model | `gllvmTMBcontrol(start_method = list(method = "indep"))` |
+| A scientifically sensible simpler fit is already available | Copy compatible starting parameters | `gllvmTMBcontrol(start_from = simpler_fit)` |
+| A fitted `phi` parameter is unstable, especially for NB1/NB2 | Warm up dispersion trait by trait | `gllvmTMBcontrol(init_strategy = "single_trait_warmup")` |
+| `nlminb` does not reach a stationary point | Compare `optim` with BFGS | `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))` |
+| Point estimates are stable but Wald calculation is the fragile step | Deliberately skip standard errors | `gllvmTMBcontrol(se = FALSE)` |
 
 For a difficult model, start with more than one restart and inspect
-`fit$restart_history`:
+`fit$restart_history`. This is currently a low-level fitted-object diagnostic
+field, so its columns may evolve during the experimental lifecycle.
 
 ```{r restart-history}
 fit$restart_history[, c("restart", "start_method", "objective",
                         "convergence", "selected")]
 ```
 
-Do not privilege a start method simply because it converged. Compare
-the objective value, the diagnostics, and the scientific summaries.
-Reduced-rank likelihoods can converge cleanly in an inferior basin.
+Lower objective values are preferred. Here the two displayed objectives are
+equal at the shown precision and restart 1 is selected. That supports, but does
+not prove, that the starts reached the same solution. Do not privilege a start
+simply because it converged: compare the selected fit's scaled-gradient verdict
+and rotation-invariant targets such as `Sigma`. Compare raw `Lambda` only after
+alignment or rotation handling.
 
 ## Use no-SE fits honestly
 
-`gllvmTMBcontrol(se = FALSE)` intentionally skips `TMB::sdreport()`.
-This mirrors the workflow used for difficult TMB-family models: keep
-the point estimate, record that Hessian-based standard errors were not
-computed, and obtain uncertainty from a refit-based method.
+`gllvmTMBcontrol(se = FALSE)` intentionally skips `TMB::sdreport()`. Use it only
+after an ordinary fit has shown that point estimates are stable but
+standard-error calculation is the fragile step. The skipped status is `NA`, not evidence
+that a computed Hessian was non-positive-definite.
 
 ```{r se-false-status}
-fit_health <- check_gllvmTMB(fit)
+fit_no_se <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | site, d = 1),
+  data = df_long,
+  trait = "trait",
+  unit = "site",
+  control = gllvmTMBcontrol(se = FALSE, n_init = 2, init_jitter = 0.05)
+)
+
+fit_health <- check_gllvmTMB(fit_no_se)
 fit_health[
   fit_health$component %in% c("sdreport", "pd_hessian", "max_fixed_se"),
-  c("component", "status", "message")
+  c("component", "status", "value", "message")
 ]
 ```
 
@@ -202,7 +270,7 @@ This option is not a way to hide convergence problems. It is a way to
 avoid making Hessian-based uncertainty claims when the Hessian path is
 the fragile part of the workflow.
 
-## Bootstrap with multiple cores
+## Bootstrap after a one-core smoke test
 
 Bootstrap refits the model many times. It is one practical uncertainty
 path when `pdHess` is
@@ -210,28 +278,31 @@ false, when `sdreport()` fails, or when the target is nonlinear, but
 it is not a cure for an unstable fitted surface. `bootstrap_Sigma()`
 exposes `n_cores` so independent refits can run in parallel.
 
-The Gaussian `bootstrap_Sigma()` route has direct contract and recovery
-tests, but this article does not claim uniform interval coverage across
-all targets. Non-Gaussian and mixed-family refit plumbing is shallower;
+The Gaussian `bootstrap_Sigma()` route has direct simulate-refit contract and
+plumbing tests, but this article does not claim uniform interval coverage
+across all targets. Non-Gaussian and mixed-family refit plumbing is shallower;
 treat those intervals as an audit trail until the relevant family and
 target have coverage evidence.
 
 ```{r bootstrap, eval = FALSE}
-boot <- bootstrap_Sigma(
+boot_smoke <- bootstrap_Sigma(
   fit,
-  n_boot = 200,
+  n_boot = 25,
   level = "unit",
   what = c("Sigma", "R", "communality"),
   seed = 1,
-  n_cores = 4
+  n_cores = 1
 )
 
-boot$n_failed
-extract_Sigma_table(boot, level = "unit", entries = "upper")
+boot_smoke$n_failed
+extract_Sigma_table(boot_smoke, level = "unit", entries = "upper")
 ```
 
-Use `n_cores = 1` for the first smoke test. Once the model refits
-cleanly, increase `n_cores` and record the failure count. A bootstrap
+The 25-replicate call is only a plumbing smoke test. Once the model refits
+cleanly, increase to at least 200 replicates and optionally use multiple cores.
+Even 200 is illustrative for percentile endpoints because only a handful of
+draws determine each tail; increase `n_boot` further for final reporting and
+check that endpoints are stable. Always record the failure count. A bootstrap
 CI with many failed refits is a diagnostic result, not just an
 inconvenience; report the failure count and simplify the model before
 treating the interval as a stable uncertainty summary.
@@ -277,7 +348,8 @@ Use this order when a hard model does not give clean inference:
 7. Try independent or simpler-model starts for Gaussian two-level
    models.
 8. Try `optimizer = "optim"` with `optArgs = list(method = "BFGS")`, or a
-   longer `nlminb` budget.
+   longer `nlminb` budget such as
+   `gllvmTMBcontrol(optArgs = list(control = list(eval.max = 5000, iter.max = 4000)))`.
 9. If point estimates are stable but `pdHess` remains false, use
    bootstrap or profile uncertainty.
 10. If the target still changes across starts, simplify rank or

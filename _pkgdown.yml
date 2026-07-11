@@ -81,8 +81,6 @@ navbar:
         href: articles/mixed-family-extractors.html
       - text: Ordinal-probit traits
         href: articles/ordinal-probit.html
-      - text: Functional biogeography capstone
-        href: articles/functional-biogeography.html
       - text: Psychometrics / IRT draft
         href: articles/psychometrics-irt.html
       - text: Validation and comparison notes
@@ -135,7 +133,6 @@ articles:
     - articles/lambda-constraint-suggest
     - articles/mixed-family-extractors
     - articles/ordinal-probit
-    - articles/functional-biogeography
     - articles/psychometrics-irt
 
   - title: Developer validation notes

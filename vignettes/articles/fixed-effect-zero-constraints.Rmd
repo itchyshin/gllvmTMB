@@ -145,7 +145,7 @@ unsure whether a binary response should enter the model at all, start with
 `screen_gllvmTMB()` instead.
 
 `Xcoef_fixed` is also not a loading constraint. Use loading constraints when
-you want to control which responses define a latent axis. Use `Xcoef_fixed`
+you want to control which responses define a latent variable. Use `Xcoef_fixed`
 when you want to control which predictors enter each response's mean.
 
 The current implementation supports exact zero constraints in ML fits. Native

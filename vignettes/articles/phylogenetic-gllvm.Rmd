@@ -363,7 +363,7 @@ or visual inspection flag the paired form as over-parameterised.
 ## Communality (within each tier)
 
 Communality `c_t^2` is the fraction of a trait's within-tier variance
-explained by the shared latent axis. It is defined when the tier has
+explained by the shared latent variable. It is defined when the tier has
 both a shared latent component and a diagonal `Psi` component;
 `phylo_latent(..., unique = TRUE)` and default ordinary `latent()` give us those pieces
 on the phylogenetic and non-phylogenetic sides.

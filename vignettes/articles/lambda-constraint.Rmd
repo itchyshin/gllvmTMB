@@ -33,7 +33,7 @@ knitr::opts_chunk$set(
 ## Why this article exists
 
 Joint species distribution models (JSDMs) factor a multi-species
-community into shared latent axes plus species-specific loadings on
+community into shared latent variables plus species-specific loadings on
 those axes (Pollock *et al.* 2014; Warton *et al.* 2015; Niku *et al.*
 2017, 2019). The fitted loading matrix $\boldsymbol{\Lambda}$ is the
 biological story: which species respond to which latent gradient and
@@ -47,7 +47,7 @@ axes is not the orientation suggested by your biology (Niku *et al.*
 2019; Tobler *et al.* 2019).
 
 When you have **prior knowledge** about which species should (or
-should not) load on which latent axes, you can encode that knowledge
+should not) load on which latent variables, you can encode that knowledge
 directly as zero pins on $\boldsymbol{\Lambda}$. The model becomes
 *confirmatory* rather than *exploratory*, and the axes inherit a fixed
 biological meaning (Norberg *et al.* 2019 discuss confirmatory JSDM

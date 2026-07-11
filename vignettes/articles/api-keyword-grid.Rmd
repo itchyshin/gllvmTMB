@@ -91,7 +91,7 @@ level.
 | scalar | one shared variance for all traits | every trait should have the same group-level scale |
 | indep | a standalone diagonal covariance with no cross-trait covariance | you want to state marginal-only intent explicitly |
 | dep | a full unstructured positive-definite `Sigma` | the number of traits is small enough for a saturated covariance |
-| latent | low-rank shared covariance `Lambda Lambda^T`; ordinary no-prefix `latent()` also includes the diagonal `Psi` companion by default | a few latent axes should explain cross-trait association while retaining trait-specific variance |
+| latent | low-rank shared covariance `Lambda Lambda^T`; ordinary no-prefix `latent()` also includes the diagonal `Psi` companion by default | a few latent variables should explain cross-trait association while retaining trait-specific variance |
 
 For ordinary no-prefix models, `latent()` is the default decomposed model:
 
@@ -105,7 +105,7 @@ The same alignment appears in the worked articles:
 | Goal | Long syntax | Wide syntax | Mathematical target |
 |---|---|---|---|
 | decomposed covariance | `latent(0 + trait | unit, d = K)` | `latent(1 | unit, d = K)` | $\Sigma = \Lambda \Lambda^\top + \Psi$ |
-| shared latent axes only | `latent(0 + trait | unit, d = K, unique = FALSE)` | `latent(1 | unit, d = K, unique = FALSE)` | $\Lambda \Lambda^\top$ |
+| shared latent variables only | `latent(0 + trait | unit, d = K, unique = FALSE)` | `latent(1 | unit, d = K, unique = FALSE)` | $\Lambda \Lambda^\top$ |
 | marginal-only diagonal | `indep(0 + trait | unit)` | `indep(1 | unit)` | diagonal $\Sigma$ with no cross-trait covariance |
 | saturated covariance | `dep(0 + trait | unit)` | `dep(1 | unit)` | full unstructured $\Sigma$ |
 

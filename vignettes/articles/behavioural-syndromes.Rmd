@@ -84,7 +84,7 @@ The example follows one biological question through five checks:
 | Do sessions carry shared behavioural state? | Within-individual latent tier, `latent(0 + trait \| session_id, d = 1)` | `fit` | `Sigma_W`, within-individual correlations |
 | Do long and wide data give the same likelihood? | Long `value ~ ...` call and wide `traits(...) ~ ...` call | `fit` and `fit-wide` | long/wide log-likelihood difference |
 | Is the fitted model numerically usable? | `check_gllvmTMB()` through `diagnostic_table()` | `diagnostic-table` | optimizer, gradient, `sdreport`, and Hessian rows |
-| Did the example recover the planted syndrome? | Estimated versus true latent axes and covariance entries | `recovery` and `recovery-sigma` | Procrustes correlations and truth-comparison plot |
+| Did the example recover the planted syndrome? | Estimated versus true latent variables and covariance entries | `recovery` and `recovery-sigma` | Procrustes correlations and truth-comparison plot |
 
 Read the diagnostic table before interpreting the plots. If a fit-health
 row warns or fails, the biological sections become a debugging target rather
@@ -612,7 +612,7 @@ ggplot(scores_df, aes(LV1, LV2)) +
 ```
 
 Each point is one individual's position on the two between-individual
-latent axes. Individuals with high LV1 scores are more proactive
+latent variables. Individuals with high LV1 scores are more proactive
 (bolder, faster to explore, quicker to emerge) and those with high LV2
 scores are more aggressive and active. The cloud of points covers the
 full fitted personality space, showing that the simulated example
@@ -748,7 +748,7 @@ The two-level GLLVM answers three distinct questions simultaneously:
    behaviours co-vary systematically across individuals.
 
 2. **Personality axes** — the loading matrix $\hat{\boldsymbol{\Lambda}}_B$
-   identifies the latent dimensions organising that syndrome, and the
+   identifies the latent variables organising that syndrome, and the
    ordination scores place individuals along those dimensions.
 
 3. **Lability structure** — the within-individual correlations

@@ -80,7 +80,7 @@ Most systematic-map data start wide: one row per review and one column per
 indicator. Use the same `traits(...)` left-hand side that you would use in a
 wide `gllvmTMB()` call.
 
-Here `latent(1 | review, d = 2)` requests two ordinary unit-tier latent axes
+Here `latent(1 | review, d = 2)` requests two ordinary unit-tier latent variables
 for the review or site units. The screen uses that requested rank when checking
 whether the candidate response block is too small or too redundant; it is not
 checking phylogenetic, spatial, or meta-analytic covariance tiers.
@@ -126,7 +126,7 @@ Recommendations are written as actions to inspect, not automatic decisions.
 For example, a near-universal indicator may be scientifically central. In that
 case, report why it stays in the first latent block and run a sensitivity model.
 If it is only a coding artefact, recode it, collapse it with a related item, or
-keep it descriptive instead of making it define a latent axis.
+keep it descriptive instead of making it define a latent variable.
 
 ```{r recommendations}
 screen_table(scr, "recommendations")

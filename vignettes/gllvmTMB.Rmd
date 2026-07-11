@@ -99,13 +99,13 @@ $$
 
 In words: total trait covariance = shared multivariate structure +
 response-specific variation. `Lambda` collects the trait loadings: one
-row per trait and one column per latent axis. The product
+row per trait and one column per latent variable. The product
 `Lambda Lambda^T` is the shared covariance created by those axes. `Psi`
 is the diagonal matrix of trait-specific variance left over after the
 shared axes. Ordinary `latent()` estimates both pieces by default.
 
 For a first fit, read `Sigma`, correlations, and communality before
-reading individual `Lambda` entries. The latent axes can be flipped or
+reading individual `Lambda` entries. The latent variables can be flipped or
 turned without changing the covariance they imply, so raw loading
 columns need a rotation or confirmatory constraint before they become a
 biological story.
@@ -114,7 +114,7 @@ biological story.
 
 We have `n` individuals, each measured on `T` morphological traits
 across a few sessions. The biological question: do the traits covary
-on a small number of latent axes (e.g. a body-size axis, a shape
+on a small number of latent variables (e.g. a body-size axis, a shape
 axis)? With one observational level and modest repetition, ordinary
 `latent()` estimates both the shared low-rank component and the
 trait-specific diagonal `Psi`. No spatial or phylogenetic structure
@@ -352,7 +352,7 @@ round(Lambda_hat, 3)
 ```
 
 Do not over-interpret the signs of these unrotated loadings. Use them
-as a quick look at the latent axes, then use `Sigma`, correlations, and
+as a quick look at the latent variables, then use `Sigma`, correlations, and
 communality for report-ready interpretation unless you have chosen a
 rotation or confirmatory constraint.
 

@@ -458,7 +458,7 @@ A worked reading of these cells:
   through the association structure, to large-bodied partner species -- a
   size-matching signal.
 - **`h_size` x `p_attack`** carries the sign of the size-versus-attack
-  coupling for hosts; read it as the covariance the shared latent axes induce
+  coupling for hosts; read it as the covariance the shared latent variables induce
   between host body size and partner attack investment.
 - **`h_defence` row** couples host defence investment to both partner traits
   with the pattern set by row 2 of `Lambda_H`; each cell is the covariance

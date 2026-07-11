@@ -44,7 +44,7 @@ Mean-fill and single imputation invent values and then treat them as if they
 were observed, understating uncertainty and distorting the covariance
 structure that an ordination or a phylogenetic model is trying to estimate.
 For structured ecological data--shared species means, phylogenetic covariance,
-spatial fields, latent axes--these ad-hoc fixes are particularly damaging
+spatial fields, latent variables--these ad-hoc fixes are particularly damaging
 because they sever exactly the correlations the model exists to exploit.
 `gllvmTMB` instead keeps the missingness *inside* the likelihood: nothing is
 deleted and nothing is invented, and the uncertainty that missingness creates
@@ -257,7 +257,7 @@ This example creates a small trait matrix with deliberate missing cells (kept
 Cross-trait borrowing still operates on the retained rows because the latent
 structure is shared across all cells in a row.
 A row where trait 1 is missing but traits 2 and 3 are observed still
-contributes to the species means and latent axes for all traits.
+contributes to the species means and latent variables for all traits.
 
 The analogy with `drmTMB` partial bivariate pairs (where one of `y1`/`y2` can
 be observed) generalises here: an observed cell informs its own trait
@@ -335,7 +335,7 @@ correlation is weakly identified and `gllvmTMB` will warn.
 
 Missing response cells have predicted values from the fitted model: each masked
 cell is reconstructed from the row's own predictors and the shared latent
-structure (species means, latent axes, structured fields) that the rest of the
+structure (species means, latent variables, structured fields) that the rest of the
 data identifies. This is a model-based conditional expectation given whatever is
 observed for that row, not a value read back from row-local response
 information; even an all-missing row is reconstructed this way, borrowing
@@ -1039,7 +1039,7 @@ This is also why the covariate model is **level-aware** rather than a generic
 default. A missing species-level trait is imputed with a phylogenetic
 covariate model (`phylo()`); a missing site-level covariate is imputed with a
 spatial one (`spatial()`); an animal-model or relatedness structure
-(`animal()`, `relmat()`) or the shared latent axes can play the same role. The
+(`animal()`, `relmat()`) or the shared latent variables can play the same role. The
 imputation model inherits the biological covariance of the analysis it serves--
 but it is declared explicitly per predictor, not silently copied from the
 response model, so the inheritance is visible and auditable.

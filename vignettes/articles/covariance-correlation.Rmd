@@ -118,7 +118,7 @@ Read the model beside the R syntax and the report-ready summary:
 | Gaussian model | `value ~ 0 + trait + latent(0 + trait | individual, d = 2)` | A reduced-rank multivariate model for the observed traits. |
 | `level` | `level = "unit"` or `level = "unit_obs"` | Which covariance tier the summary belongs to. |
 | $\boldsymbol\Lambda_\text{level}$ | `latent(..., d = K)` | Shared axes: traits that rise and fall together across units. |
-| $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ | `extract_Sigma_table(fit, level = "unit", part = "shared")` | Shared covariance explained by the latent axes only. |
+| $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ | `extract_Sigma_table(fit, level = "unit", part = "shared")` | Shared covariance explained by the latent variables only. |
 | $\boldsymbol\Psi_\text{level}$ and $\psi_{tt}$ | default `latent()` Psi; `extract_Sigma_table(fit, level = "unit", part = "unique")` | Trait-specific variance that keeps correlation denominators honest. |
 | $\boldsymbol\Sigma_\text{level}$ | `extract_Sigma_table(fit, level = "unit", part = "total")` | Full trait covariance: shared structure plus trait-specific variance. |
 | $\mathbf R$ | `extract_correlations(fit, tier = "unit")` or `$R` from `extract_Sigma()` | The correlation matrix after standardising full $\boldsymbol\Sigma$. |
@@ -372,7 +372,7 @@ For a reader-facing table, the alignment is:
 
 | Symbol | R output | Interpretation |
 |---|---|---|
-| $c_t^2$ | `extract_communality(fit, level = "unit")` | Fraction of trait `t` variance explained by the shared latent axes. |
+| $c_t^2$ | `extract_communality(fit, level = "unit")` | Fraction of trait `t` variance explained by the shared latent variables. |
 | numerator | `extract_Sigma(fit, level = "unit", part = "shared")` diagonal | Shared variance for trait `t`. |
 | denominator | `extract_Sigma(fit, level = "unit", part = "total")` diagonal | Shared variance plus trait-specific diagonal variance. |
 

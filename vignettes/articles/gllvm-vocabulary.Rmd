@@ -96,7 +96,7 @@ target as tidy rows. It is **rotation-invariant**, even though the
 underlying $\boldsymbol{\Lambda}$ is not.
 
 **Communality ($c_t^2$, $h_t^2$)** &mdash; The fraction of trait
-$t$'s total within-tier variance that the shared latent axis
+$t$'s total within-tier variance that the shared latent variable
 explains: $c_t^2 = (\boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\top})_{tt}
 / \Sigma_{tt}$. Values near 1 mean trait $t$ is dominated by the
 shared structure; near 0 means the trait is mostly idiosyncratic

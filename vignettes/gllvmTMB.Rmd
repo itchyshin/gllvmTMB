@@ -298,7 +298,10 @@ Pairwise trait correlations with 95% Fisher-z Wald confidence
 intervals. `method = "fisher-z"` is the default and keeps bounds in
 `[-1, 1]`; `method = "profile"` and `method = "bootstrap"` are slower
 alternatives for follow-up articles, and `method = "wald"` is kept as
-an alias of `"fisher-z"`:
+an alias of `"fisher-z"`. These are nominal Fisher-z Wald intervals:
+they are useful diagnostics, but their empirical coverage is not
+calibrated (CI-08/CI-10), so read them as recovery-grade, not as
+validated coverage.
 
 ```{r cor}
 corr_rows <- extract_correlations(fit, tier = "unit")
@@ -312,11 +315,10 @@ correlation matrix:
 plot_correlations(corr_rows, sort = "magnitude")
 ```
 
-The matrix form is IN under EXT-30 as a display over the same rows:
-the upper triangle shows point estimates, and the lower triangle shows
-the finite Fisher-z interval bounds supplied by
-`extract_correlations()`. OUT for EXT-30: the plot does not compute or
-calibrate uncertainty itself.
+The matrix form is a display over the same rows: the upper triangle
+shows point estimates, and the lower triangle shows the finite Fisher-z
+interval bounds supplied by `extract_correlations()`. The plot does not
+compute or calibrate uncertainty itself.
 
 ```{r cor-matrix, fig.width = 7.4, fig.height = 5.1, fig.cap = "Trait correlation matrix from the first fitted model. Upper-triangle cells show Fisher-z point estimates; lower-triangle cells show finite 95% interval bounds."}
 plot_correlations(
@@ -335,9 +337,9 @@ $\boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf T}$ is identified
 directly from the data; raw loading columns can change sign or rotate.
 
 ```{r loadings}
-Lambda_hat <- fit$report$Lambda_B
+Lambda_hat <- getLoadings(fit, level = "unit")
 rownames(Lambda_hat) <- paste0("trait_", seq_len(n_traits))
-colnames(Lambda_hat) <- paste0("LV", seq_len(2))
+colnames(Lambda_hat) <- paste0("LV", seq_len(ncol(Lambda_hat)))
 round(Lambda_hat, 3)
 ```
 

@@ -776,6 +776,6 @@ For these post-v0.2.0 needs the workhorse alternatives are
   $\boldsymbol\Lambda$, $\boldsymbol\Sigma$, $h^2$, and the rotation
   ambiguity.
 - [Choose your model](choose-your-model.html) — decision tree across
-  the 4×5 covariance keyword grid.
+  the 4 x 4 covariance keyword grid.
 - [Pitfalls](pitfalls.html) — the **A** (relatedness) vs **V**
   (sampling variance) naming distinction and other gotchas.

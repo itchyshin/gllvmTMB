@@ -14,6 +14,35 @@ The main question is simple:
 > Which responses vary together, and how much of that variation is shared
 > versus response-specific?
 
+Unlike PCA or NMDS, `gllvmTMB` estimates the latent structure **inside a
+likelihood**: the loadings, correlations, and communalities it reports carry
+model-based uncertainty, rather than coming from a distance matrix or an
+eigen-decomposition. It is model-based ordination, fitted jointly with a
+per-response GLM family.
+
+## Start Here
+
+| If you want to... | Read this |
+|---|---|
+| fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
+| see the full worked example | [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html) |
+| choose how many latent dimensions to fit | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) |
+| learn the symbols before reading equations | [gllvmTMB vocabulary](https://itchyshin.github.io/gllvmTMB/articles/gllvm-vocabulary.html) |
+| interpret `Sigma`, correlations, `Lambda`, `psi`, and communality | [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) |
+| choose formula keywords | [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html) |
+| check response-family status | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html) |
+| check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
+| diagnose hard fits | [Convergence and start values](https://itchyshin.github.io/gllvmTMB/articles/convergence-start-values.html) and [Common pitfalls](https://itchyshin.github.io/gllvmTMB/articles/pitfalls.html) |
+
+`gllvmTMB` is version `0.5.0`, pre-CRAN, and lifecycle **experimental**: the
+formula grammar, defaults, and extractor output may still change before the API
+is committed-stable. The public path above is deliberately bounded — fit one
+ordinary Gaussian model, then interpret `Sigma`, correlations, loadings, and
+communality, then branch to diagnostics or keyword lookup. Bare-bar
+`(1 + x | g)` slopes remain reserved.
+
+## What the model does
+
 Start with one ordinary Gaussian `latent()` model. It splits the
 trait covariance matrix into shared axes plus trait-specific variance:
 
@@ -40,37 +69,13 @@ response-specific variation. Read the equation from left to right:
 | `Psi` | ordinary `latent(...)` by default | Trait-specific variance left over after the shared axes. Each diagonal entry is one `psi_t`. |
 
 Use `latent(...)` for this decomposed model, and `indep(...)` for a
-standalone diagonal baseline. (The older `unique()` / `*_unique()`
-keyword spelling still parses but is soft-deprecated; new code uses
-`indep()` or the `unique =` argument on `latent()`.)
+standalone diagonal baseline.
 
 Most readers will start from a wide data frame: one row per unit, one
 column per trait. Use that shape directly with the `traits(...)` formula
 marker. If your data are already stacked long, use the same `gllvmTMB()`
 entry point with `value ~ ...`, `trait =`, and `unit =`. Internally, both
 paths reach the same stacked-trait model.
-
-## Start Here
-
-| If you want to... | Read this |
-|---|---|
-| fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
-| see the full worked example | [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html) |
-| choose how many latent dimensions to fit | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) |
-| learn the symbols before reading equations | [gllvmTMB vocabulary](https://itchyshin.github.io/gllvmTMB/articles/gllvm-vocabulary.html) |
-| interpret `Sigma`, correlations, `Lambda`, `psi`, and communality | [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) |
-| choose formula keywords | [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html) |
-| check response-family status | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html) |
-| check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
-| diagnose hard fits | [Convergence and start values](https://itchyshin.github.io/gllvmTMB/articles/convergence-start-values.html) and [Common pitfalls](https://itchyshin.github.io/gllvmTMB/articles/pitfalls.html) |
-
-This is version `0.5.0` and the package is pre-CRAN. The public
-path above is deliberately bounded: first fit one ordinary Gaussian
-model, then interpret `Sigma`, correlations, loadings, and communality,
-then branch to diagnostics or keyword lookup. Advanced workflows return
-to the first-click path only after their example data, diagnostics,
-validation evidence, and rendered HTML review pass. Bare-bar
-`(1 + x | g)` slopes remain reserved.
 
 ## What "stacked-trait" Means
 
@@ -120,10 +125,7 @@ fit <- gllvmTMB(
 
 fit
 extract_communality(fit, level = "unit")
-sigma_rows <- extract_Sigma_table(fit, level = "unit")
-sigma_rows
-corr_rows <- extract_correlations(fit, tier = "unit")
-plot_correlations(corr_rows)
+extract_Sigma_table(fit, level = "unit")
 ```
 
 You need R 4.1.0 or newer and a working compiler toolchain because
@@ -153,94 +155,43 @@ one response per row.
            data = df_long, trait = "trait", unit = "unit")
   ```
 
-Predictors go into the formula in either form. Both paths reach
-the same stacked-trait model and produce byte-identical fits.
+Predictors go into the formula in either form. Both paths reach the same
+stacked-trait model and produce the same fit (identical log-likelihood and
+estimates). The [Get started](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html)
+vignette shows the runnable wide/long equivalence.
 
-Missing response cells are allowed. IN (MIS-21 / MIS-24): in a wide
-`traits(...)` data frame, an `NA` trait value can be treated as an
-unobserved unit-trait cell; in long data, an `NA` in the response column
-is treated the same way. The other observed traits for that unit stay in
-the likelihood, and `predict_missing()` reconstructs masked response
-cells when `missing = miss_control(response = "include")` is used.
-Missing predictors default to fail-loud, but one explicitly modelled
-`mi()` predictor is supported through `missing =
-miss_control(predictor = "model")` and `impute = list(...)` for the
-covered v1 slices (MIS-25..MIS-31). Ordinary missing grouping variables,
-offsets, weights, or design-matrix values still error because the model
-cannot build that row.
-
-## Tiny example
-
-A one-level Gaussian GLLVM with shared and trait-specific covariance
-is:
-
-```r
-fit <- gllvmTMB(
-  traits(bill_length, body_mass, wing_length) ~ 1 +
-    latent(1 | individual, d = 1),
-  data = df_wide,       # wide: one row per observation occasion
-  unit = "individual"   # between-unit grouping
-)
-```
-
-The same model in long form -- one row per `(individual, trait)`
-observation -- uses explicit trait indicators:
-
-```r
-fit_long <- gllvmTMB(
-  value ~ 0 + trait +
-    latent(0 + trait | individual, d = 1),
-  data  = df_long,      # long: one row per (individual, trait)
-  trait = "trait",      # column holding the trait factor
-  unit  = "individual"
-)
-```
-
-Both calls reach the same stacked-trait model and produce
-byte-identical fits. See the Get Started vignette for the
-runnable long-to-wide pivot.
-
-In the wide call, `latent(1 | individual, d = 1)` estimates one shared
-latent axis across traits and, by default, the trait-specific residual
-variance left over after that shared axis (its default diagonal Psi
-companion). In the long call, the equivalent term is
-`latent(0 + trait | individual, d = 1)`. Use `latent(..., unique = FALSE)`
-only when you deliberately want the old no-residual low-rank subset. The
-fitted object reports ordination scores, loadings, Sigma rows, pairwise
-correlations, and per-trait communality.
-
-In notation, the trait covariance the model fits is
-
-```text
-Sigma = Lambda Lambda^T + Psi
-Psi = diag(psi_1, ..., psi_T)
-```
-
-where `Lambda` is the shared-axis loading matrix (set by
-`latent(..., d = K)`) and `Psi` (the Greek letter Psi, matching the
-factor-analysis / SEM convention) is the diagonal matrix of
-trait-specific residual variance carried by ordinary `latent()` by
-default; the scalar `psi_t` is the entry for trait `t`.
-`latent(..., unique = FALSE)` requests the loadings-only subset.
+Missing response cells are allowed. In a wide `traits(...)` data frame,
+an `NA` trait value can be treated as an unobserved unit-trait cell; in
+long data, an `NA` in the response column is treated the same way. The
+other observed traits for that unit stay in the likelihood, and
+`predict_missing()` reconstructs masked response cells when
+`missing = miss_control(response = "include")` is used. Missing predictors
+default to fail-loud, but one explicitly modelled `mi()` predictor is
+supported through `missing = miss_control(predictor = "model")` and
+`impute = list(...)` for the covered Gaussian, grouped, phylogenetic,
+binary, ordered, and unordered fixed-effect routes. Ordinary missing
+grouping variables, offsets, weights, or design-matrix values still error
+because the model cannot build that row.
 
 ## Current Status
 
-The public site is intentionally small while `gllvmTMB` is pre-CRAN.
-Use the table below as the homepage version; the detailed evidence lives in
-the [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)
+The public site is intentionally small while `gllvmTMB` is pre-CRAN and
+experimental. Use the table below as the homepage version; the detailed,
+row-by-row evidence lives in the
+[validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)
 and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 
 | Surface | Current message |
 |---|---|
 | Long and wide data | Both are supported through `gllvmTMB()`: long data use `value ~ ...` with `trait = "trait"`; wide data use `traits(...) ~ ...`. |
-| Missing response cells | Covered for long response rows and wide `traits(...)` cells: `NA` responses can be treated as unobserved unit-trait cells, with `predict_missing()` for the masked-response route (MIS-21 / MIS-24). |
-| Missing predictors | Covered for one explicitly modelled `mi()` predictor in the shipped v1 slices: Gaussian fixed, grouped, phylogenetic, binary, ordered, and unordered fixed-effect routes. Multiple `mi()` terms, non-Gaussian bounded/count predictors, and structured discrete predictor models remain planned (MIS-25..MIS-32). |
+| Missing response cells | Supported for long response rows and wide `traits(...)` cells: `NA` responses can be treated as unobserved unit-trait cells, with `predict_missing()` for the masked-response route. |
+| Missing predictors | Supported for one explicitly modelled `mi()` predictor: Gaussian fixed, grouped, phylogenetic, binary, ordered, and unordered fixed-effect routes. Multiple `mi()` terms, non-Gaussian bounded/count predictors, and structured discrete predictor models are planned. |
 | First worked model | Gaussian `latent()` with its default `Psi` companion is the safest public decomposition example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
 | Latent-rank choice | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) compares Gaussian ordinary `latent()` candidate ranks with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows. These criteria help route model choice within a fixed candidate set; they do not prove the biological rank or replace diagnostics. |
 | Formula keywords | The full 4 x 4 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |
-| Fitted diagnostics | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) shows the first post-fit triage. `check_gllvmTMB()` reports numerical fit health (DIA-08 / DIA-10). `predictive_check()`, `residuals()`, and `diagnostic_table()` provide fitted-model response diagnostics and report-ready diagnostic tables for the scoped Gaussian, Poisson, and NB2 paths (DIA-11 / DIA-12 / DIA-13). These are diagnostic displays, not posterior predictive checks or interval calibration. |
-| Advanced examples | Ordinary individual-level Gaussian reaction norms now have a buildable internal behavioural-syndrome draft with long and wide examples, diagnostics, and recovery figures; Gaussian `latent(1 + x | unit, d = K)` carries its diagonal `Psi` companion by default, while non-Gaussian augmented diagonal `Psi` remains guarded. Structured random slopes, cross-lineage coevolution, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries and stay out of the first-click public model guide until their reader paths are explicitly promoted. |
+| Fitted diagnostics | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) shows the first post-fit triage. `check_gllvmTMB()` reports numerical fit health; `predictive_check()`, `residuals()`, and `diagnostic_table()` provide fitted-model response diagnostics for the scoped Gaussian, Poisson, and NB2 paths. These are diagnostic displays, not posterior predictive checks or interval calibration. |
+| Advanced examples | Structured random slopes, cross-lineage coevolution, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries and stay out of the first-click public model guide until their reader paths are explicitly promoted. |
 
 ## Current boundaries
 
@@ -249,64 +200,26 @@ models belong in `glmmTMB`; spatial single-response models belong
 in `sdmTMB`; one- or two-response distributional regression
 belongs in `drmTMB`.
 
-**Soft-deprecated in 0.2.0:**
+**Not yet in this release** (named here so user-facing prose does not
+overpromise):
 
-- The legacy matrix wrapper `gllvmTMB_wide(Y, ...)` remains
-  exported but is superseded by the formula-API `traits(...)` LHS
-  through the single `gllvmTMB()` entry point. New examples and
-  articles should use `traits(...)`; removal is a later API-change
-  decision while the export remains live.
-- The `unique()` / `*_unique()` keyword spelling is soft-deprecated
-  (still exported for old formulas). Use `indep()` / `*_indep()` for a
-  standalone diagonal, and the `unique =` argument on `latent()` /
-  `*_latent()` for the diagonal `Psi` companion.
+- **Mixed-family latent-scale correlations for delta / hurdle families.**
+  Designed but not advertised: the cross-family correlation is route-only
+  and its coverage is uncalibrated.
+- **Plain bare-bar random slopes `(1 + x | g)`.** Reserved. The keyworded
+  Gaussian reaction-norm decomposition `latent(1 + x | unit, d = K)` (and its
+  long-form equivalent) is available and extracts with
+  `extract_Sigma(level = "unit_slope", ...)`.
+- **Proportional `meta_V()`.** Only the additive exact known-V mode ships.
+- **SPDE barrier meshes and broader REML.** A narrow Gaussian-only `REML = TRUE`
+  pilot ships; non-Gaussian, weighted, and missing-data REML remain later work.
+- **Zero-inflated / hurdle / two-stage delta families with latent-scale
+  correlations.** Two-sub-model families have two latent scales, so a single
+  latent-scale correlation is ambiguous; deferred until a clean reporting
+  convention is agreed.
 
-**Current boundaries and deferred work** (named here so user-facing
-prose does not overpromise):
-
-- **Mixed-family latent-scale correlations with delta / hurdle
-  families.** Designed, not yet shipped. Per Design 02 (2026-07-05),
-  a delta trait participates via the latent on its **positive**
-  submodel only (the occurrence/zero-inflation submodel is
-  fixed-effects-only), giving a single latent scale and a
-  correlation reported `interval_status = "route-only"`; the live
-  fit is gated on a convergence/identifiability fix (MIX-10). It is
-  **not** auto-rejected — the earlier `check_auto_residual()` block
-  and class `gllvmTMB_auto_residual_delta_undefined` were never
-  wired (no such class exists).
-- **Ordinary random slopes through `(1 + x | g)` syntax.** Plain,
-  non-structured bare-bar random slopes remain reserved. The keyworded
-  ordinary Gaussian reaction-norm decomposition
-  `latent(1 + x | unit, d = K)` / long-form equivalent is implemented under
-  RE-12 and extracts with
-  `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`.
-  The augmented ordinary diagonal-`Psi` slope
-  (`latent(1 + x | unit, unique = TRUE)`) is Gaussian-only, while the
-  non-Gaussian ordinary latent path has smoke evidence only
-  and stays low-rank-only. One structured random slope
-  (`s = 1`) is covered
-  across the phylogenetic and spatial grid for the core families. Gaussian
-  `phylo_dep(1 + x1 + x2 | g)` is covered under RE-03. Non-Gaussian
-  `phylo_dep(..., s >= 2)` remains fail-loud guarded pending the RE-03
-  diagnostic gate.
-- **`meta_V(type = "proportional")`** — Nakagawa (2022) unifying
-  weighted-regression / meta-analysis
-  mode; the current implemented mode is additive `type = "exact"`
-  known-V (MET-03).
-- **SPDE barrier meshes, broader REML estimation, storage controls.**
-  A narrow Gaussian-only `REML = TRUE` pilot is implemented; non-Gaussian,
-  weighted, and missing-data REML remain later work.
-- **Zero-inflated / hurdle / two-stage delta families with
-  latent-scale correlations.** Two-sub-model families have two
-  latent scales (the zero-inflation logit + the count log; or
-  the hurdle binary + the conditional-positive scale); the
-  latent-scale correlation matrix is therefore ambiguous and
-  requires reporting two correlations rather than one.
-  Deferred indefinitely until a clean reporting convention is
-  agreed.
-
-For the complete row-by-row scope ledger including diagnostic
-status and interval status, see the
+For the complete row-by-row scope ledger, including diagnostic and interval
+status, see the
 [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md).
 
 ## Citation and acknowledgements
@@ -355,9 +268,10 @@ package author, written against the TMB API.
   grid, and issue-tracked validation for its phylogenetic / spatial
   covariance paths.
 - `MCMCglmm` and `brms` are Bayesian alternatives for multivariate
-  phylogenetic / multi-response models; `gllvmTMB` returns ML
-  point estimates with profile / Wald / bootstrap CIs and runs
-  in seconds-to-minutes rather than minutes-to-hours.
+  phylogenetic / multi-response models; `gllvmTMB` returns ML point
+  estimates with profile / Wald / bootstrap intervals (recovery-grade
+  point-interval reporting; empirical coverage is not yet calibrated)
+  at ML rather than MCMC cost.
 
 A full scope comparison and decision matrix lives in
 [`docs/design/04-sister-package-scope.md`](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/04-sister-package-scope.md)

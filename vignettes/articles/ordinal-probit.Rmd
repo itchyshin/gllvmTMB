@@ -159,7 +159,7 @@ The example uses `indep()` because it is fast and stable for a small
 article fixture. For phylogenetic ordinal traits, replace it with
 `phylo_indep(species, tree = tree)` or another source-specific covariance
 keyword after checking the relevant validation row.
-The family does not change the 4 x 5 covariance keyword grammar.
+The family does not change the 4 x 4 covariance keyword grammar.
 
 ## Cutpoints
 

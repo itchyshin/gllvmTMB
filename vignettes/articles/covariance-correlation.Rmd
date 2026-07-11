@@ -521,7 +521,6 @@ Nakagawa, Johnson & Schielzeth 2017).
 
 * [Pitfalls](pitfalls.html) — common mistakes including correlation inflation
 * [`?latent`](../reference/latent.html) — the ordinary Psi-carrying latent keyword
-* [`?unique`](../reference/unique.html) — soft-deprecated compatibility syntax for the explicit diagonal Psi term
 * [`?extract_Sigma`](../reference/extract_Sigma.html) — the unified extractor
 * [`?suggest_lambda_constraint`](../reference/suggest_lambda_constraint.html) — a helper for confirmatory loading structures
 * [Formula keyword grid](api-keyword-grid.html) — syntax map for moving from this decomposition to other covariance rows

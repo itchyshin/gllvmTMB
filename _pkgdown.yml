@@ -178,7 +178,7 @@ reference:
     - print.summary.gllvmTMB_julia
 
   - title: First-line covariance keywords
-    desc: Formula keywords to teach first for the 4 x 5 grid; soft-deprecated explicit-Psi compatibility aliases are grouped below
+    desc: Formula keywords to teach first for the 4 x 4 grid; explicit-Psi compatibility aliases are grouped below
     contents:
     - latent
     - indep

@@ -63,11 +63,6 @@ augmented fold (`spatial_latent(1 + x, unique = TRUE)`) is still under
 validation and the kernel augmented fold is future work. For a
 standalone marginal-only diagonal, use `indep()` / `*_indep()`.
 
-The older `unique()` / `*_unique()` **keyword** spelling is soft-deprecated:
-old formulas still parse, but new code should use `indep()` (standalone
-diagonal) or the `unique =` argument (folded `Psi`). It is no longer part of
-the grid above.
-
 Status labels during the public-surface reset:
 
 | row | Public status |

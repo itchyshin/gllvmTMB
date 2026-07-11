@@ -29,16 +29,17 @@ rank, prove identifiability, or guarantee convergence. It builds the same long r
 shape that `gllvmTMB()` would use, then reports data and formula conditions that
 are easy to miss before fitting.
 
-Scope boundary: the current screen covers binary and binomial
-candidate responses before fitting. It is advisory only. Non-binary modules,
-optional `detectseparation` / `mirt` comparator checks, and high-dimensional
-systematic-map benchmarks remain planned (see the validation-debt register).
+`gllvmTMB` 0.5.0 is a pre-CRAN release with an experimental lifecycle.
+The current screen covers binary and binomial candidate responses before
+fitting and is advisory only. It does not screen non-binary response families
+or run external separation or item-response comparators.
 
 The first screen is for binary and binomial responses. This is the place where
-complete or quasi-complete separation is most visible: a constant, rare,
-near-universal, duplicated, or nearly deterministic indicator can produce a
-very large fitted loading later. The screen makes those risks visible before
-the loading matrix is interpreted.
+risk conditions associated with complete or quasi-complete separation are most
+visible: a constant, rare, near-universal, duplicated, or nearly deterministic
+indicator can produce a very large fitted loading later. The screen reports
+those data conditions; it does not fit a separation model or prove that
+separation will occur.
 
 ## Setup
 
@@ -119,7 +120,11 @@ binary indicators on paired review rows. These are pre-fit data conditions, not
 fitted-model diagnostics.
 
 ```{r pairs}
-screen_table(scr, "pairs")
+pairs <- screen_table(scr, "pairs")
+pairs[, c(
+  "trait_i", "trait_j", "status", "severity",
+  "discordant_n", "phi", "action"
+)]
 ```
 
 Recommendations are written as actions to inspect, not automatic decisions.
@@ -129,7 +134,8 @@ If it is only a coding artefact, recode it, collapse it with a related item, or
 keep it descriptive instead of making it define a latent variable.
 
 ```{r recommendations}
-screen_table(scr, "recommendations")
+recommendations <- screen_table(scr, "recommendations")
+recommendations[, c("scope", "status", "action", "trait", "evidence")]
 ```
 
 ## Long-data screen
@@ -159,7 +165,10 @@ scr_long <- suppressWarnings(screen_gllvmTMB(
   family = binomial("probit")
 ))
 
-screen_table(scr_long, "traits")
+long_traits <- screen_table(scr_long, "traits")
+long_traits[, c(
+  "trait", "status", "n_valid", "prevalence", "minority_count"
+)]
 ```
 
 The wide and long calls reach the same stacked-trait screen. Use whichever data
@@ -187,7 +196,8 @@ After fitting, still run `check_gllvmTMB()`. Pre-fit screening and fitted-model
 diagnostics answer different questions. `screen_gllvmTMB()` catches candidate
 indicator risks before fitting; `check_gllvmTMB()` catches large fitted
 loadings, weak axes, optimizer status, and uncertainty-health symptoms after
-fitting.
+fitting. The full sequence is shown in
+[Can I trust this fit?](fit-diagnostics.html).
 
 ## Evidence base
 

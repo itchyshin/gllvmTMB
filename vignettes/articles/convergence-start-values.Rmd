@@ -23,26 +23,21 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Scope boundary.** This article covers the robust-modeling
-> diagnostics implemented in Design 49: `check_gllvmTMB()`,
-> `fit$fit_health`, `fit$restart_history`, `fit$start_provenance`,
-> protected or skipped `TMB::sdreport()` status, and
-> `gllvmTMBcontrol(se = FALSE)`. `check_gllvmTMB()`, the `se = FALSE`
-> point-estimate path, and the `extract_Sigma_table()` display used
-> below are validated point-estimate views. Bootstrap and profile
-> uncertainty are follow-up paths when Wald SEs are unsafe, but they
-> have limits: bootstrap evidence depends on successful refits (and
-> non-Gaussian bootstrap is still being validated), and profile
-> intervals apply only to supported scalar targets with stable
-> profiles. Start-method convergence-rate recommendations are
-> experimental and not yet promoted as defaults.
-
 Some multivariate latent models are hard because the likelihood has
 several plausible basins, weakly identified variance splits, or a
 flat curvature direction near a boundary. The practical question is
 therefore not just "did the optimizer print convergence code 0?" but
 "which part of the fit is healthy, which part is weak, and what should
 I try next?"
+
+`gllvmTMB` 0.5.0 is a pre-CRAN release with an experimental lifecycle.
+This article covers `check_gllvmTMB()`, restart history, protected or
+skipped `TMB::sdreport()` status, and `gllvmTMBcontrol(se = FALSE)`.
+Bootstrap and profile uncertainty are follow-up paths when Wald standard
+errors are unsafe, but they have narrower evidence: bootstrap summaries
+depend on successful refits, and profile intervals apply only to supported
+targets with stable profiles. The start strategies below are options to try,
+not established defaults or universal convergence recommendations.
 
 The most important rule is simple: `pdHess = FALSE` means
 Hessian-based standard errors and naive Wald intervals are unsafe. It
@@ -58,7 +53,7 @@ library(gllvmTMB)
 set.seed(20260519)
 ```
 
-## Fit A Small Model
+## Fit a small model
 
 The example below uses a two-trait Gaussian model. The scientific
 target is the trait covariance
@@ -122,7 +117,7 @@ fit_wide <- gllvmTMB(
 )
 ```
 
-## Read Fit Health
+## Read fit health
 
 `check_gllvmTMB()` returns a stable table. It is designed for users,
 tests, and simulation scripts so they do not have to parse optimizer
@@ -136,7 +131,7 @@ The components have different meanings:
 
 | Component | What it answers | Typical next action |
 |---|---|---|
-| optimizer convergence | Did the optimizer report a clean stop? | If not, try more starts, a longer optimizer budget, or `optim(BFGS)`. |
+| optimizer convergence | Did the optimizer report a clean stop? | If not, try more starts, a longer optimizer budget, or `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))`. |
 | max gradient | Is the objective flat at the reported optimum? | Rescale predictors, simplify the model, or compare optimizers. |
 | `pdHess` | Is local curvature positive definite for Hessian-based inference? | If false, avoid naive Wald intervals and inspect boundary or rank flags. |
 | `sdreport` | Did `TMB::sdreport()` produce standard errors? | If skipped or failed, keep point estimates but route uncertainty elsewhere. |
@@ -155,8 +150,10 @@ type = "rq_qq")` are available for the scoped Gaussian, Poisson, and
 NB2 diagnostic paths. They serve the same role as the fit-health
 table: useful for surfacing mismatch, not proof of interval
 calibration, latent-rank adequacy, or Bayesian posterior prediction.
+The worked diagnostic sequence is shown in
+[Can I trust this fit?](fit-diagnostics.html).
 
-## Choose A Start Strategy
+## Choose a start strategy
 
 Start values are opt-in tools. The default remains conservative, and
 the strategies below are experimental: their recovery benefit across
@@ -186,7 +183,7 @@ Do not privilege a start method simply because it converged. Compare
 the objective value, the diagnostics, and the scientific summaries.
 Reduced-rank likelihoods can converge cleanly in an inferior basin.
 
-## Use No-SE Fits Honestly
+## Use no-SE fits honestly
 
 `gllvmTMBcontrol(se = FALSE)` intentionally skips `TMB::sdreport()`.
 This mirrors the workflow used for difficult TMB-family models: keep
@@ -194,26 +191,30 @@ the point estimate, record that Hessian-based standard errors were not
 computed, and obtain uncertainty from a refit-based method.
 
 ```{r se-false-status}
-fit$fit_health$sdreport_ok
-fit$sdreport_error
+fit_health <- check_gllvmTMB(fit)
+fit_health[
+  fit_health$component %in% c("sdreport", "pd_hessian", "max_fixed_se"),
+  c("component", "status", "message")
+]
 ```
 
 This option is not a way to hide convergence problems. It is a way to
 avoid making Hessian-based uncertainty claims when the Hessian path is
 the fragile part of the workflow.
 
-## Bootstrap With Multiple Cores
+## Bootstrap with multiple cores
 
-Bootstrap is slower than Wald intervals because it refits the model
-many times. It is one practical uncertainty path when `pdHess` is
+Bootstrap refits the model many times. It is one practical uncertainty
+path when `pdHess` is
 false, when `sdreport()` fails, or when the target is nonlinear, but
-it is not a cure for an unstable fitted surface. Laptops often have
-enough cores to make bootstrap practical, so `bootstrap_Sigma()`
-exposes `n_cores`.
+it is not a cure for an unstable fitted surface. `bootstrap_Sigma()`
+exposes `n_cores` so independent refits can run in parallel.
 
-`bootstrap_Sigma()` is validated for Gaussian fits; for non-Gaussian
-fits it is still being validated. Treat a non-Gaussian bootstrap as an
-audit trail until its family-specific coverage is confirmed.
+The Gaussian `bootstrap_Sigma()` route has direct contract and recovery
+tests, but this article does not claim uniform interval coverage across
+all targets. Non-Gaussian and mixed-family refit plumbing is shallower;
+treat those intervals as an audit trail until the relevant family and
+target have coverage evidence.
 
 ```{r bootstrap, eval = FALSE}
 boot <- bootstrap_Sigma(
@@ -235,11 +236,11 @@ CI with many failed refits is a diagnostic result, not just an
 inconvenience; report the failure count and simplify the model before
 treating the interval as a stable uncertainty summary.
 
-## Profile When The Target Is Scalar
+## Profile when the target is scalar
 
-Profile likelihood is often faster than bootstrap for scalar targets
-such as repeatability, communality, selected correlations, or a
-single variance share. Use it when the target has a stable profile
+Profile likelihood is a targeted route for scalar quantities such as
+repeatability, communality, selected correlations, or a single variance
+share. Use it when the target has a stable profile
 and the model is not bouncing between likelihood basins. It is not a
 general substitute for bootstrap across every derived table entry.
 
@@ -250,11 +251,17 @@ The output method column should be read literally: if it says
 was `"profile"`.
 
 The generic `confint(method = "profile")` and
-`confint(method = "bootstrap")` routes are validated. Target-specific
-profile helpers are narrower: check `profile_targets(fit)` before
-treating a derived quantity as profile-ready.
+`confint(method = "bootstrap")` routes are contract-tested, but route
+availability is not the same as empirical interval calibration.
+Target-specific profile helpers are narrower: check
+`profile_targets(fit)` before treating a derived quantity as
+profile-ready, and read the returned method and status literally.
+For the interval workflow, continue to
+[Profile-likelihood confidence intervals](profile-likelihood-ci.html);
+for failed or irregular profiles, use
+[Troubleshooting profile-likelihood CIs](troubleshooting-profile.html).
 
-## Troubleshooting Ladder
+## Troubleshooting ladder
 
 Use this order when a hard model does not give clean inference:
 
@@ -269,13 +276,14 @@ Use this order when a hard model does not give clean inference:
 6. Try residual starts for non-Gaussian reduced-rank models.
 7. Try independent or simpler-model starts for Gaussian two-level
    models.
-8. Try `optim(BFGS)` or a longer `nlminb` budget.
+8. Try `optimizer = "optim"` with `optArgs = list(method = "BFGS")`, or a
+   longer `nlminb` budget.
 9. If point estimates are stable but `pdHess` remains false, use
    bootstrap or profile uncertainty.
 10. If the target still changes across starts, simplify rank or
    covariance structure before making a scientific claim.
 
-## The Bottom Line
+## The bottom line
 
 The carry-forward principle is that hard fits need honest triage. A
 weak Hessian should change the uncertainty workflow, not automatically

@@ -42638,3 +42638,130 @@ are green locally; #725 CI green (recovery + ubuntu-latest).
    (`src/gllvmTMB.cpp:156-168`). **First confirm whether `spde_lv_unique` is wired vs dormant** — the
    2026-06-21 blocker predates a clean check. Diff `agent/spatial-slope-base`,
    `agent/spatial-dep-latent-slope(s)`, and PR #525 before writing anything.
+
+## 2026-07-11 — pkgdown estate inventory and page 7 fit-diagnostics review (Codex)
+
+Release/PR work was paused at the maintainer's direction. Code completion is not
+release completion: every reader-facing page and package-documentation surface must
+be dispositioned, reviewed, rendered, and visually checked before 0.5.0 proceeds.
+
+Files changed in this slice:
+
+- `docs/dev-log/audits/2026-07-11-pkgdown-estate-disposition.md`
+- `vignettes/articles/fit-diagnostics.Rmd`
+- `docs/dev-log/check-log.md`
+
+Commands and outcomes:
+
+- `gh pr list --state open --limit 20`
+  -> REVIEWED; PR #747 is an older handover PR. No competing PR edits the new
+  disposition ledger or page-7 article.
+- `git log --all --oneline --since='6 hours ago' --decorate`
+  -> REVIEWED before editing shared dev-log files.
+- Estate inventory over `vignettes/gllvmTMB.Rmd` and all 32
+  `vignettes/articles/*.Rmd`
+  -> 33 documents total: 5 previously reviewed, 11 confirmed public keepers
+  pending at inventory time, and 17 pages requiring an explicit
+  ship/merge/hide/cut/rewrite decision.
+- `rg -n '\\b[A-Z]{2,5}-[0-9]+\\b' vignettes/articles/fit-diagnostics.Rmd | grep -vE 'UTF-8|GPL-'`
+  -> PASS; no internal validation-register codes in the article.
+- `rg -n -i 'under audit|coming soon|\\bvalidated\\b|validation-debt|1\\.0\\.0|on CRAN|stable release|\\$report\\$' vignettes/articles/fit-diagnostics.Rmd`
+  -> PASS after edits; no stale lifecycle, internal-register, completion, or
+  direct-report-field wording remains.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/fit-diagnostics", lazy = FALSE)'`
+  -> PASS; all live chunks ran and `articles/fit-diagnostics.html` was written.
+- Rendered DOM inspection
+  -> PASS for title, lifecycle statement, long/wide fits, fit-health output,
+  no-SE warning path, residual tables, forward links, and closing limitations.
+- Figure-quality gate on rendered `residual-qq-1.png` and `rootogram-1.png`
+  -> PASS; readable facets and labels, appropriate reference structures, honest
+  diagnostic framing, and no unsupported uncertainty encoding.
+- Responsive navbar measurement at 1440, 1024, and 768 px
+  -> SITE BLOCKER recorded. At 1024 px, navbar content has approximately
+  1312 px scroll width and pushes the search field fully off-screen. At 1440 px
+  it fits; at 768 px the collapsed navigation activates.
+- `git diff --check`
+  -> PASS before article rendering.
+
+Not run:
+
+- Full-site render, reference audit, and release checks remain deliberately
+  deferred until article dispositions and individual page reviews are complete.
+- No PR was opened, no changes were pushed, and no release-readiness claim was made.
+
+### Page 8 — convergence, identifiability, and start values
+
+Source and evidence checks:
+
+- Read `vignettes/articles/convergence-start-values.Rmd` end to end.
+- Cross-checked `gllvmTMBcontrol()` formals and normalization in
+  `R/gllvmTMB.R`, start plumbing in `R/fit-multi.R`, and the fit-health
+  implementation in `R/diagnose.R`.
+- Cross-checked the validation-debt evidence for `check_gllvmTMB()`,
+  `se = FALSE`, residual/independent starts, warm starts, restart history,
+  bootstrap routing, and profile routes.
+
+Edits:
+
+- Replaced the internal Design-49 opening with the reader's hard-fit question
+  and the 0.5.0 pre-CRAN experimental lifecycle boundary.
+- Removed unsupported bare `validated` wording and distinguished route/contract
+  tests from empirical interval calibration.
+- Removed the stale claim that an `extract_Sigma_table()` display appeared below.
+- Replaced a direct `fit$fit_health` field reach-in with the public
+  `check_gllvmTMB()` table.
+- Replaced non-copyable `optim(BFGS)` shorthand with the actual
+  `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))`
+  syntax.
+- Added forward links to the fit-diagnostics, profile-CI, and profile-
+  troubleshooting pages.
+
+Verification:
+
+- Internal-code/stale-wording scans -> PASS.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/convergence-start-values", lazy = FALSE)'`
+  -> PASS with live chunks.
+- Rendered output -> PASS: the no-SE fit visibly reports WARN rows rather than
+  hiding unavailable Hessian/Wald information; restart history contains two
+  matching objective values; all three tables fit within the 1024 px content
+  column without horizontal overflow.
+- Forward-link DOM check -> PASS for all three linked articles.
+- `git diff --check` -> PASS.
+
+### Page 9 — screen binary traits before fitting
+
+Source and evidence checks:
+
+- Read `vignettes/articles/pre-fit-response-screening.Rmd` end to end.
+- Cross-checked default thresholds and status/action rules in
+  `R/screen-gllvmTMB.R`.
+- Cross-checked malformed-binomial, sparse-trait, duplicate/complement,
+  denominator-ladder, association, long/wide parity, design-risk, and
+  unsupported-family tests in `tests/testthat/test-screen-gllvmTMB.R`.
+- Cross-checked the separate post-fit binomial prevalence/loading diagnostic
+  in `R/diagnose.R` and `tests/testthat/test-sanity-multi.R`.
+
+Edits:
+
+- Removed the internal validation-register and planned-comparator wording.
+- Added the 0.5.0 pre-CRAN experimental lifecycle statement.
+- Reworded separation language: the screen reports observable risk conditions;
+  it does not fit a separation model or prove formal separation.
+- Added the handoff to the post-fit diagnostics article.
+- Narrowed rendered pair, recommendation, and long-trait output to the columns
+  a reader needs for a decision; the underlying API objects are unchanged.
+
+Verification:
+
+- Internal-code/stale-wording scans -> PASS.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/pre-fit-response-screening", lazy = FALSE)'`
+  -> PASS with live wide and long examples.
+- Rendered DOM scan -> PASS; no internal validation-row codes appear.
+- Rendered output check -> PASS: constant, sparse, duplicate, and complement
+  conditions remain explicit; displayed output is narrower and retains status,
+  evidence, and action fields.
+- Post-fit link check -> PASS for `fit-diagnostics.html`.
+- 1024 px content check -> PASS for the article body; minor code-block horizontal
+  scrolling remains available where long object names require it. The separate
+  site-navbar overflow remains an estate blocker.
+- `git diff --check` -> PASS.

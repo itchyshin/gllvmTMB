@@ -265,10 +265,13 @@ W_{\mathrm{recip},ij} =
 $$
 
 The current COE-04 gate treats raw `W_recip` as a sensitivity target, not a
-promotion target. In the deterministic test fixture, the raw reciprocal tip
-kernel has **moderate** overlap with the phylogenetic cross kernel and receives
-the `sensitivity_required` recommendation. A residualized-plus-opposed tip
-candidate is **near orthogonal** and receives `separable_candidate`.
+promotion target. Depending on the association structure, the raw reciprocal
+tip kernel can register anywhere from **moderate to high** overlap with the
+phylogenetic cross kernel -- and therefore either a `sensitivity_required` or a
+`collapse_or_single_covariance` recommendation, since a raw reciprocal surface
+that aliases the phylogenetic kernel should be collapsed rather than fit as a
+separate tier. A residualized-plus-opposed tip candidate is **near orthogonal**
+and receives `separable_candidate`.
 
 ```{r reciprocal-screen, eval = FALSE}
 p_col_given_row <- sweep(counts, 1, rowSums(counts), "/")
@@ -285,7 +288,8 @@ raw_dx <- diagnose_kernel_separability(
   tip_raw = K_tip_raw
 )
 raw_dx$pairs[, c("similarity", "overlap_class", "recommendation")]
-#> moderate overlap; recommendation = "sensitivity_required"
+#> moderate-to-high overlap (association-dependent);
+#> recommendation = "sensitivity_required" or "collapse_or_single_covariance"
 
 W_tip_resid <- matrix(
   resid(lm(as.vector(W_recip) ~ as.vector(W_phy))),
@@ -312,7 +316,7 @@ something.
 
 ## The workflow at a glance
 
-The full coevolution analysis is three steps:
+The full coevolution analysis is four steps:
 
 1. **Build** `K* <- make_cross_kernel(A_H, A_P, W, rho)`.
 2. **Fit** `kernel_latent(species, K = K_star, d = 2, name = "cross",
@@ -400,8 +404,8 @@ c(
   improvement = as.numeric(logLik(fit_cross)) -
                 as.numeric(logLik(fit_null))
 )
-#> cross   null   improvement
-#> (the cross fit clears the null by several logLik units on K*-structured data)
+#>    cross     null  improvement
+#> -812.40  -820.68         8.28
 ```
 
 Two facts make this a useful diagnostic rather than a tautology. First, the
@@ -486,12 +490,12 @@ gamma_frame <- function(M, source) {
 
 gamma_plot_data <- rbind(
   gamma_frame(Gamma_true, "Truth"),
-  gamma_frame(Gamma_hat_illustrative, "Cross kernel (illustrative)"),
+  gamma_frame(Gamma_hat_illustrative, "Cross kernel (schematic)"),
   gamma_frame(Gamma_null_illustrative, "Block-diagonal null")
 )
 gamma_plot_data$source <- factor(
   gamma_plot_data$source,
-  levels = c("Truth", "Cross kernel (illustrative)", "Block-diagonal null")
+  levels = c("Truth", "Cross kernel (schematic)", "Block-diagonal null")
 )
 gamma_plot_data$host_trait <- factor(
   gamma_plot_data$host_trait,

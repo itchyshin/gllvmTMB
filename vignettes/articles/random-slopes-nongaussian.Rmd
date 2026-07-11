@@ -36,7 +36,10 @@ knitr::opts_chunk$set(
 
 > **Developer Note -- under audit.** This page is buildable and linked
 > from Developer Notes so maintainers can audit the structured-slope
-> surface. It is not a first-stop tutorial. Start with
+> surface. It documents validated syntax and point-recovery evidence for
+> structured single-slope models, but it reports point estimates and
+> recovery bands, not calibrated confidence intervals, and is not yet a
+> public worked example. It is not a first-stop tutorial. Start with
 > [Get started](gllvmTMB.html), [Formula keyword grid](api-keyword-grid.html),
 > and [Convergence and start values](convergence-start-values.html)
 > before using this page.
@@ -51,12 +54,6 @@ This article covers a different, internal technical surface: **structured**
 random slopes, where the slope varies across species along a phylogeny or
 across sites in space. Those are random regressions with an explicit dependence
 structure.
-
-**Internal article gate.** This page remains a Tier 3 technical draft. It
-documents validated syntax and point-recovery evidence for structured
-single-slope models, but it is not yet a public worked example, not a
-confidence-interval calibration claim, and not a replacement for the ordinary
-Gaussian behavioural reaction-norm article.
 
 This article covers two directions that matter for ecological and evolutionary
 data:
@@ -316,10 +313,10 @@ data.frame(
 )
 ```
 
-The slope variance recovers under the count family. The same pattern
-holds for the other core families (`nbinom1`, `nbinom2`, `Gamma`,
-`Beta`, `binomial`, `ordinal_probit`) -- swap `family =` and keep the
-formula. The
+The slope variance recovers under the count family. The structured-slope
+grid is validated across the other core families as well (`nbinom1`,
+`nbinom2`, `Gamma`, `Beta`, `binomial`, `ordinal_probit`) -- swap
+`family =` and keep the formula. The
 [response-families](response-families.html) article is the family
 catalogue these slope terms compose with.
 
@@ -491,5 +488,3 @@ tools currently do and do not guarantee.
   slope term composes with.
 - [Convergence and starting values](convergence-start-values.html) -- fit
   diagnostics before interpreting random-slope covariance.
-- [Formula keyword grid](api-keyword-grid.html) -- the full syntax map
-  across the covariance-keyword grid.

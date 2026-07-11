@@ -24,12 +24,15 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Developer Note -- under audit.** This page is buildable and linked
-> from Developer Notes so maintainers can audit the pedigree reader
-> path. It is not a first-stop tutorial. Start with
-> [Get started](gllvmTMB.html), [First Gaussian morphology model](morphometrics.html),
-> and [Covariance and correlation](covariance-correlation.html) before
-> using this page for animal-model syntax.
+> **Developer Note -- under audit.** This page is a buildable
+> quantitative-genetic draft, linked from Developer Notes so maintainers
+> can audit the pedigree reader path. It is not a first-stop tutorial;
+> start with [Get started](gllvmTMB.html),
+> [First Gaussian morphology model](morphometrics.html), and
+> [Covariance and correlation](covariance-correlation.html) first. The
+> examples below are runnable Gaussian fixtures with known simulation
+> truth and extractor readouts, not a broad calibration study or a
+> cross-package agreement proof.
 
 This article is for an evolutionary or ecological reader with
 phenotypes measured on individuals whose genealogy is known
@@ -43,13 +46,12 @@ question (Henderson 1976; Kruuk 2004; Wilson *et al.* 2010). In
 indexed parallel to the phylogenetic `phylo_*()` family, routed
 through the same engine path (Hadfield & Nakagawa 2010).
 
-**Internal article gate.** This page remains an internal Tier 3 draft
-until the animal-model reader path has the same rendered evidence as
-the public Tier 1 examples. The examples below are runnable Gaussian
-fixtures with known simulation truth, diagnostic rows, and extractor
-readouts; they are not a broad calibration study, cross-package
-agreement proof, bridge-completion claim, release-readiness claim, or
-scientific-coverage completion claim.
+Where [Phylogenetic trait covariance](phylogenetic-gllvm.html) uses a
+species tree to structure covariance among species, this page uses a
+**pedigree-derived relatedness matrix $\boldsymbol A$** among individuals
+to estimate **heritability** and the among-trait **genetic covariance
+(G) matrix** — the quantitative-genetic quantities the phylogenetic
+page does not cover.
 
 ## Reader path and scope
 
@@ -64,17 +66,18 @@ objects, known truth, and readouts:
 | Is the slope of a reaction norm heritable? | `animal_scalar()` + `animal_slope(x | id)` | `rr-fit`, `rr-recovery`, `rr-equiv` | slope variance, BLUP/truth correlation, and animal/phylo equivalence |
 | Is the fitted model numerically usable? | `check_gllvmTMB()` through `diagnostic_table()` | `diagnostic-table` | optimizer, gradient, `sdreport`, and Hessian rows |
 
-Scope boundary: IN rows are the animal keyword family over a single
-pedigree-derived relatedness matrix (`ANI-01`--`ANI-08`), augmented
-correlated and full-unstructured animal reaction-norm readouts
-(`ANI-11`, `ANI-12`), and basic fit-health tables (`DIA-08`). PARTIAL
-rows are multi-matrix animal models and cross-package agreement
-(`ANI-09`, `ANI-10`): this article shows an idiom and local simulated
-truth, not MCMCglmm/WOMBAT/ASReml agreement. PLANNED or guarded rows
-include richer trait-specific reaction-norm LHS forms and broader
-non-Gaussian calibration. The genetic diagonal `Psi` is carried by the
-folded `animal_latent(..., unique = TRUE)`; standalone diagonal teaching
-uses `animal_indep()`.
+<!-- Provenance for maintainers: IN rows ANI-01..ANI-08 (single-A animal
+keyword family), ANI-11/ANI-12 (augmented reaction-norm readouts),
+DIA-08 (fit-health); PARTIAL rows ANI-09/ANI-10 (multi-matrix models,
+cross-package agreement). See docs/design/35-validation-debt-register.md. -->
+Scope: the examples cover the animal keyword family over a single
+pedigree-derived relatedness matrix, augmented reaction-norm readouts,
+and basic fit-health tables. Multi-matrix animal models and formal
+cross-package agreement (MCMCglmm/WOMBAT/ASReml) are out of scope here —
+this article shows the idiom and local simulated truth, not a
+cross-package proof. The genetic diagonal $\boldsymbol\Psi$ is carried by
+the folded `animal_latent(..., unique = TRUE)`; standalone diagonal
+teaching uses `animal_indep()`.
 
 ## Variance partition
 
@@ -142,10 +145,9 @@ the same per-trait `animal_indep()` / `animal_scalar()` decomposition
 can be *fit* under the count, proportion, ordinal, and binomial
 response families the engine supports as well as the Gaussian model
 used in the tutorials below. Point-estimate recovery of these two
-structures is validated for the Gaussian case (`ANI-01`, `ANI-03`);
-non-Gaussian recovery of the desugared `phylo_*` structures is
-documented so far for binary probit (`PHY-04`, `PHY-05`), with broader
-non-Gaussian recovery and calibration planned. The worked examples
+structures is validated for the Gaussian case; non-Gaussian recovery of
+the desugared `phylo_*` structures is documented so far for binary
+probit, with broader non-Gaussian recovery and calibration planned. The worked examples
 here are Gaussian for clarity; switch `family =` to fit the same
 genetic structures on a non-Gaussian trait.
 
@@ -604,23 +606,11 @@ max(abs(as.numeric(fit_animal$opt$par) - as.numeric(fit_phylo$opt$par)))
 ```
 
 This single-shared-variance slope is the validated heritable-slope
-form. The richer **augmented** reaction-norm models also fit: the
-parser now routes an augmented `1 + x | id` left-hand side through the
-`animal_*()` keywords, with the folded
-`animal_latent(1 + x | id, unique = TRUE)` estimating the correlated
-genetic covariance `Sigma = Lambda Lambda^T + Psi` over the
-(intercept, slope) coefficients (the intercept-slope correlation
-estimated) and `animal_indep(1 + x | id)`
-the diagonal variant (correlation pinned to 0). Both are
-byte-equivalent to the corresponding folded
-`phylo_latent(unique = TRUE)` / first-line `phylo_indep`
-augmented fit with the relatedness matrix supplied as `vcv = A`, and
-`extract_Sigma(fit, level = "phy")` surfaces the assembled
-genetic covariance for the correlated
-`animal_latent(1 + x | id, unique = TRUE)` fit.
-The full-unstructured `animal_dep()` slope and the trait-augmented
-`(0 + trait + trait:x | id)` left-hand side remain a follow-up (see
-[What's not yet supported](#whats-not-yet-supported)).
+form. The richer **augmented** intercept+slope reaction-norm models
+also fit and route through the `animal_*()` keywords; see
+[What's not yet supported](#whats-not-yet-supported) for their status,
+along with the full-unstructured `animal_dep()` slope and
+trait-augmented follow-ups.
 
 ## Fit-health diagnostics
 
@@ -714,22 +704,23 @@ this:
   2010): a second pedigree-indexed random effect with its own
   variance. Estimating $V_{\mathrm A}$, $V_{\mathrm C}$, and their
   covariance requires *two* simultaneous A-matrix terms in the same
-  fit. Tracked as register row **ANI-09**.
+  fit.
 - **Augmented (structured) reaction norms.** The
   single-shared-variance heritable slope `animal_slope(x | id)` is
-  supported and validated ([Tutorial 4](#tutorial-4-heritable-reaction-norms-random-regression),
-  register row **ANI-06**). The augmented intercept+slope forms also
+  supported and validated ([Tutorial 4](#tutorial-4-heritable-reaction-norms-random-regression)).
+  The augmented intercept+slope forms also
   now route through the `animal_*()` keywords and **fit**:
   the folded
   `animal_latent(1 + x | id, unique = TRUE)` estimates the correlated
   genetic covariance `Sigma = Lambda Lambda^T + Psi` over the
   (intercept, slope) coefficients and `animal_indep(1 + x | id)` the
-  diagonal variant, both byte-equivalent to the corresponding folded
+  diagonal variant, both routing through the same engine as the
+  corresponding folded
   `phylo_latent(unique = TRUE)` / first-line
   `phylo_indep` augmented fit with `vcv = A`.
   `extract_Sigma(fit, level = "phy")` now returns the assembled
   genetic covariance for the correlated
-  `animal_latent(1 + x | id, unique = TRUE)` fit (register row **ANI-11**). The
+  `animal_latent(1 + x | id, unique = TRUE)` fit. The
   remaining follow-up is the full-unstructured `animal_dep()` slope
   and the trait-augmented
   `(0 + trait + trait:x | id)` left-hand side (Meyer & Hill 1997),

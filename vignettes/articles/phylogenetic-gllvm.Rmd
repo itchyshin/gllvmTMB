@@ -74,7 +74,7 @@ carries the phylogenetic diagonal `Psi` companion; ordinary `latent()`
 already includes the non-phylogenetic diagonal `Psi` companion by
 default. For a standalone marginal
 phylogenetic diagonal model, use `phylo_indep()`; for a standalone
-non-phylogenetic diagonal tier, use `indep()` (`FG-05`--`FG-07`).
+non-phylogenetic diagonal tier, use `indep()`.
 
 ## Reader path and scope
 
@@ -89,17 +89,16 @@ This draft follows one comparative question through five checks:
 | Are the phylogenetic and non-phylogenetic totals interpretable? | `extract_Sigma_table()` + `plot_Sigma_heatmap()` | `extract-total-correlations` | side-by-side total-correlation heatmaps |
 | When should the model be simplified? | three-piece fallback and two-Psi cross-checks | `fallback`, `compare-indep`, `compare-dep` | diagnostics and baseline disagreement flags |
 
-Scope boundary: IN rows are the paired phylogenetic decomposition
-(`PHY-02`), three-piece fallback (`PHY-03`), phylogenetic independent and
-dependent baselines (`PHY-05`), Gaussian phylogenetic slope demonstration
-(`PHY-06`), `extract_phylo_signal()` and communality summaries (`PHY-07`,
-`PHY-08`, `EXT-05`, `EXT-07`), report-ready Sigma tables and heatmaps
-(`EXT-18`, `EXT-27`), and fit-health table support (`DIA-08`). PARTIAL
-rows are interval/calibration displays for broader covariance summaries and
-profile/bootstrap coverage; point estimates in this article should not be read
-as calibrated uncertainty. PLANNED or guarded rows include richer
-trait-specific reaction-norm LHS forms and broad non-Gaussian uncertainty
-claims.
+Scope boundary: this article covers the paired phylogenetic decomposition,
+the three-piece fallback, the phylogenetic independent and dependent
+baselines, a Gaussian phylogenetic slope demonstration,
+`extract_phylo_signal()` and communality summaries, report-ready Sigma
+tables and heatmaps, and fit-health table support. Interval and calibration
+displays for broader covariance summaries and profile/bootstrap coverage are
+still under development, so point estimates in this article should not be read
+as calibrated uncertainty. Richer trait-specific reaction-norm forms and
+broad non-Gaussian uncertainty claims are planned or guarded rather than
+delivered.
 
 ## Setup
 

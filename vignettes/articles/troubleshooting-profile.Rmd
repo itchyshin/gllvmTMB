@@ -31,10 +31,11 @@ knitr::opts_chunk$set(
 > what to try when the existing profile path is fragile.
 
 [Profile-likelihood confidence intervals](profile-likelihood-ci.html)
-are the package's default for variance components, repeatabilities,
-communalities, and phylogenetic signal. They are accurate near
-boundaries, respect skewness, and avoid the symmetry assumption of
-Wald CIs. **But they can fail.** This article catalogues the four
+are the package's default for variance components, communalities,
+and phylogenetic signal. They are expected on theory to track
+coverage better near boundaries than Wald, respect skewness, and
+avoid the symmetry assumption of Wald CIs (empirical coverage for
+these fits is still under validation -- CI-08). **But they can fail.** This article catalogues the four
 failure modes that show up in practice and what to do about each.
 
 If a profile call returns `NA` for one or both bounds, an
@@ -135,7 +136,9 @@ trait whose communality estimate is unambiguous.
 **What to do**:
 
 1. The profile is **right** here, not the Wald CI. Trust the wider
-   interval and report it as the honest precision.
+   interval and report it as the honest precision (theory-defensible;
+   empirical coverage across families is still under validation --
+   CI-08).
 2. Confirm with [`check_identifiability(fit, sim_reps = 100L)`](../reference/check_identifiability.html):
    if the per-trait Procrustes residual for that loading column is
    large, the corresponding communality estimate is genuinely
@@ -171,11 +174,13 @@ the Wald CI.
 **What to do**:
 
 1. **Trust the profile**. Wald assumes symmetry the profile does
-   not.
-2. Plot the profile curve via the underlying
-   [`TMB::tmbprofile()`](https://kaskr.github.io/adcomp/_book/Profiling.html)
-   call (the wrapper returns the underlying object's
-   `parameters`, `value` columns; pass them to `plot()`). A
+   not (theory-defensible; empirical coverage across families is
+   still under validation -- CI-08).
+2. Plot the profile curve directly: call
+   [`TMB::tmbprofile(fit$tmb_obj, name = ...)`](https://kaskr.github.io/adcomp/_book/Profiling.html)
+   and `plot()` the returned object. (The wrapper itself returns
+   only `estimate`/`lower`/`upper`, not the profile grid, so call
+   `TMB::tmbprofile()` yourself to get a curve to plot.) A
    visibly skewed or kinked curve confirms the disagreement is
    real, not numerical.
 3. For correlations specifically, use
@@ -219,6 +224,8 @@ coverage is not yet calibrated across families -- see CI-08/CI-10).
   [`gllvmTMB_diagnose()`](../reference/gllvmTMB_diagnose.html) --
   generic fit diagnostics that surface boundary-pinned components
   and rotational concerns.
+- [Convergence and start values](convergence-start-values.html) --
+  boundary and convergence guidance relevant to failure mode 1.
 - [Pitfalls](pitfalls.html) -- broader catalogue of model-fitting
   gotchas.
 - **Self, S. G. & Liang, K.-Y. (1987)** Asymptotic properties of

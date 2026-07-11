@@ -370,10 +370,11 @@ reference:
     - plot.profile_loadings
 
 ## news.releases intentionally omitted: the v0.2.0 git tag (416f8e4) and the
-## GitHub release "gllvmTMB 0.2.0 — first public release" now exist, but the
-## `releases:` block stays parked pending the CRAN-submission decision (the
-## release identity is still being settled; DESCRIPTION reads 0.2.0 while NEWS
-## still heads "(development version)"). Re-adding `releases:` is a maintainer call.
+## GitHub release "gllvmTMB 0.2.0 — first public release" exist; the first CRAN
+## release is numbered 0.5.0 (D-42, 2026-07-11 — 1.0 is reserved for the
+## capability-maturity milestone). DESCRIPTION and NEWS now read 0.5.0; the
+## `releases:` block stays parked until the v0.5.0 tag / GitHub release are cut.
+## Re-adding `releases:` is a maintainer call.
 ##
 ## In the meantime, the navbar "News" dropdown will show only the
 ## "Changelog" entry (NEWS.md) — which is the correct pre-release UX.

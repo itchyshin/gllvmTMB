@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# gllvmTMB v1.0.0 issue closeout -- generated 2026-07-09 for maintainer sign-off.
+# gllvmTMB v0.5.0 issue closeout -- generated 2026-07-09 for maintainer sign-off.
 # REVIEW then run. Posts public comments and closes issues. (Agent GitHub-write was safety-blocked.)
 set +e
 
@@ -77,32 +77,32 @@ gh issue close 696 -c "Fixed on \`main\` via #741 (Arc E pure-R fix sweep). See 
 gh issue close 717 -c "Fixed on \`main\` via #741 (Arc E pure-R fix sweep). See docs/dev-log/after-task/2026-07-09-arc-e-groundtruth.md."
 gh issue close 680 -c "Fixed on \`main\` via #741 (Arc E pure-R fix sweep). See docs/dev-log/after-task/2026-07-09-arc-e-groundtruth.md."
 gh issue close 697 -c "Fixed on \`main\` via #741 (Arc E pure-R fix sweep). See docs/dev-log/after-task/2026-07-09-arc-e-groundtruth.md."
-gh issue close 486 -c "Resolved on \`main\`: the residual --as-cran items were cleared in #742 and the 1.0.0 check is now 0/0/0."
+gh issue close 486 -c "Resolved on \`main\`: the residual --as-cran items were cleared in #742 and the 0.5.0 check is now 0/0/0."
 
 echo '== 3. Close resolved / stale / superseded =='
 gh issue close 723 -c "Resolved (#739): the nightly full-check is green again. Closing."
 gh issue close 437 -c "Resolved: stale 2026-06-03 coordination snapshot, superseded. Closing."
-gh issue close 344 -c "Resolved: superseded by the v1.0.0 CRAN prep (local --as-cran 0/0/0). Closing."
+gh issue close 344 -c "Resolved: superseded by the v0.5.0 CRAN prep (local --as-cran 0/0/0). Closing."
 
 echo '== 4. Defer roadmap / post-1.0 trackers (comment, keep open) =='
-gh issue comment 340 -b "Triaged for v1.0.0: **deferred to post-1.0** — roadmap tracker. Not a v1.0 blocker."
-gh issue comment 341 -b "Triaged for v1.0.0: **deferred to post-1.0** — random-slope completion (post-1.0). Not a v1.0 blocker."
-gh issue comment 342 -b "Triaged for v1.0.0: **deferred to post-1.0** — cluster2 4th grouping tier — post-1.0 engine change. Not a v1.0 blocker."
-gh issue comment 343 -b "Triaged for v1.0.0: **deferred to post-1.0** — CI/engineering-health tracker. Not a v1.0 blocker."
-gh issue comment 345 -b "Triaged for v1.0.0: **deferred to post-1.0** — CRAN readiness now (1.0.0); paper post-1.0. Not a v1.0 blocker."
-gh issue comment 346 -b "Triaged for v1.0.0: **deferred to post-1.0** — simulation/coverage framework — post-1.0. Not a v1.0 blocker."
-gh issue comment 347 -b "Triaged for v1.0.0: **deferred to post-1.0** — article-completion tracker. Not a v1.0 blocker."
-gh issue comment 348 -b "Triaged for v1.0.0: **deferred to post-1.0** — family-validation completion tracker. Not a v1.0 blocker."
-gh issue comment 349 -b "Triaged for v1.0.0: **deferred to post-1.0** — power-simulation capstone — post-1.0. Not a v1.0 blocker."
-gh issue comment 361 -b "Triaged for v1.0.0: **deferred to post-1.0** — generic kernel_*() coevolution — post-1.0. Not a v1.0 blocker."
-gh issue comment 332 -b "Triaged for v1.0.0: **deferred to post-1.0** — missing-data contract — P1/P2 shipped, rest post-1.0. Not a v1.0 blocker."
-gh issue comment 336 -b "Triaged for v1.0.0: **deferred to post-1.0** — missing-data P2b — post-1.0. Not a v1.0 blocker."
-gh issue comment 337 -b "Triaged for v1.0.0: **deferred to post-1.0** — missing-data P2c — post-1.0. Not a v1.0 blocker."
-gh issue comment 338 -b "Triaged for v1.0.0: **deferred to post-1.0** — missing-data P3 phylo mi() — post-1.0. Not a v1.0 blocker."
-gh issue comment 488 -b "Triaged for v1.0.0: **deferred to post-1.0** — engine=julia bridge audit — post-1.0 (parity is post-1.0). Not a v1.0 blocker."
-gh issue comment 565 -b "Triaged for v1.0.0: **deferred to post-1.0** — z→t Wald advisory — informs post-1.0 coverage; not a v1.0 blocker. Not a v1.0 blocker."
-gh issue comment 705 -b "Triaged for v1.0.0: **deferred to post-1.0** — matrix-free REML for large data — feasibility, post-1.0. Not a v1.0 blocker."
-gh issue comment 230 -b "Kept OPEN as **active v1.0.0 scope**: the pkgdown site needs a serious audit + article/topic consolidation before tagging 1.0.0 (maintainer, 2026-07-09). This issue is the tracker for that pass."
-gh issue comment 324 -b "Triaged for v1.0.0: **deferred to post-1.0** — Pólya-scout persona — process/tooling proposal, out of v1.0 package scope. Not a v1.0 blocker."
+gh issue comment 340 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — roadmap tracker. Not a 0.5.0 blocker."
+gh issue comment 341 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — random-slope completion (post-1.0). Not a 0.5.0 blocker."
+gh issue comment 342 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — cluster2 4th grouping tier — post-1.0 engine change. Not a 0.5.0 blocker."
+gh issue comment 343 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — CI/engineering-health tracker. Not a 0.5.0 blocker."
+gh issue comment 345 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — CRAN readiness now (0.5.0); paper post-1.0 milestone. Not a 0.5.0 blocker."
+gh issue comment 346 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — simulation/coverage framework — post-1.0. Not a 0.5.0 blocker."
+gh issue comment 347 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — article-completion tracker. Not a 0.5.0 blocker."
+gh issue comment 348 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — family-validation completion tracker. Not a 0.5.0 blocker."
+gh issue comment 349 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — power-simulation capstone — post-1.0. Not a 0.5.0 blocker."
+gh issue comment 361 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — generic kernel_*() coevolution — post-1.0. Not a 0.5.0 blocker."
+gh issue comment 332 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — missing-data contract — P1/P2 shipped, rest post-1.0. Not a 0.5.0 blocker."
+gh issue comment 336 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — missing-data P2b — post-1.0. Not a 0.5.0 blocker."
+gh issue comment 337 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — missing-data P2c — post-1.0. Not a 0.5.0 blocker."
+gh issue comment 338 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — missing-data P3 phylo mi() — post-1.0. Not a 0.5.0 blocker."
+gh issue comment 488 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — engine=julia bridge audit — post-1.0 (parity is post-1.0). Not a 0.5.0 blocker."
+gh issue comment 565 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — z→t Wald advisory — informs post-1.0 coverage; not a 0.5.0 blocker."
+gh issue comment 705 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — matrix-free REML for large data — feasibility, post-1.0. Not a 0.5.0 blocker."
+gh issue comment 230 -b "Kept OPEN as **active v0.5.0 scope**: the pkgdown site needs a serious audit + article/topic consolidation before tagging 0.5.0 (maintainer, 2026-07-09). This issue is the tracker for that pass."
+gh issue comment 324 -b "Triaged for v0.5.0: **deferred (post-0.5.0)** — Pólya-scout persona — process/tooling proposal, out of v0.5.0 package scope. Not a 0.5.0 blocker."
 
 echo 'Done -- all 94 open issues addressed (closed or deferred).'

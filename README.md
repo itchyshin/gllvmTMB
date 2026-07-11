@@ -64,7 +64,7 @@ paths reach the same stacked-trait model.
 | check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
 | diagnose hard fits | [Convergence and start values](https://itchyshin.github.io/gllvmTMB/articles/convergence-start-values.html) and [Common pitfalls](https://itchyshin.github.io/gllvmTMB/articles/pitfalls.html) |
 
-This is preview version `0.2.0` and the package is pre-CRAN. The public
+This is version `0.5.0` and the package is pre-CRAN. The public
 path above is deliberately bounded: first fit one ordinary Gaussian
 model, then interpret `Sigma`, correlations, loadings, and communality,
 then branch to diagnostics or keyword lookup. Advanced workflows return
@@ -316,7 +316,7 @@ dependency papers it builds on. Run `citation("gllvmTMB")` for
 formatted entries; the curated list is:
 
 - **gllvmTMB**: Nakagawa S (2026). *gllvmTMB: Fit Multivariate
-  Models from Wide Response Data.* R package version 0.2.0.
+  Models from Wide Response Data.* R package version 0.5.0.
   <https://itchyshin.github.io/gllvmTMB/>
 - **TMB engine**: Kristensen K, Nielsen A, Berg CW, Skaug H,
   Bell BM (2016). *TMB: Automatic Differentiation and Laplace

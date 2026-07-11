@@ -1,6 +1,6 @@
 # cran-comments
 
-> **Draft (2026-07-09) — gllvmTMB 1.0.0.** First CRAN submission of `gllvmTMB`.
+> **Draft (2026-07-11) — gllvmTMB 0.5.0.** First CRAN submission of `gllvmTMB`.
 > A fresh local `--as-cran` run on this release branch is **clean: 0 errors,
 > 0 warnings, 0 notes** (see "R CMD check results" below). The earlier PDF-manual
 > Unicode warning, DOI notes, Julia bridge namespace note, unused-import note,
@@ -20,7 +20,7 @@ This is a **new submission** — `gllvmTMB` is not yet on CRAN.
 
 ## R CMD check results
 
-A fresh local `--as-cran` run on the 1.0.0 release branch reports
+A fresh local `--as-cran` run on the 0.5.0 release branch reports
 **0 errors | 0 warnings | 0 notes**:
 
 ```r
@@ -59,7 +59,7 @@ they are retained here as a record of what changed.
 2. *NEWS.md* — **FIXED.** R could not extract version info because the top
    section header was `# gllvmTMB (development version)` (no version), which
    made the parser fall back to the dated `##` topic sub-headers. Naming the
-   release section `# gllvmTMB 1.0.0` gives the parser a version and the
+   release section `# gllvmTMB 0.5.0` gives the parser a version and the
    sub-headers are read as subsections; `tools:::.build_news_db_from_package_NEWS_md()`
    now parses clean.
 3. *Non-standard file* `gllvmTMB-manual.tex` — was a leftover artifact of the

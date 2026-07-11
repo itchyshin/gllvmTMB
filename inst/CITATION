@@ -15,12 +15,12 @@ bibentry(
     person("Shinichi", "Nakagawa")
   ),
   year     = "2026",
-  note     = "R package version 0.2.0; methods paper in preparation",
+  note     = "R package version 0.5.0; methods paper in preparation",
   url      = "https://itchyshin.github.io/gllvmTMB/",
   textVersion = paste(
     "Nakagawa S (2026).",
     "gllvmTMB: Fit Multivariate Models from Wide Response Data.",
-    "R package version 0.2.0; methods paper in preparation.",
+    "R package version 0.5.0; methods paper in preparation.",
     "https://itchyshin.github.io/gllvmTMB/"
   ),
   header   = paste(

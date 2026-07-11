@@ -3,18 +3,22 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 For the current Claude handoff, read
-`docs/dev-log/handover/2026-07-10-claude-handover.md` before starting new work.
-**gllvmTMB is 1.0.0 on `main` (`e4188105`), cross-OS verified, but NOT submitted
-to CRAN** — all five v1.0 arcs (A–E) are done and merged (#737–#745); local
-`--as-cran` is 0E/0W/0N, the 3-OS `R CMD check` passed, and the full test suite is
-0 failures / 4478 pass. **The one thing NOT done — and the next session's job — is
-the one-by-one human review of the pkgdown pages and the function docs WITH
-Shinichi** (slow, deliberate; not a batch rewrite). The automated article cleanup
-is **open PR #746** (2 cut, 26 improved, pkgdown reorganised); the QG
-`animal-model` cut-vs-keep call is open. The issue closeout is staged at
-`dev/issue-closeout-2026-07-10.sh` (Shinichi runs it; the agent is safety-blocked
-from bulk closes). CRAN submission is Shinichi's act. Post-1.0: Julia parity, the
-paper, the full coverage campaign. Earlier arc detail:
+`docs/dev-log/handover/2026-07-11-claude-handover.md` before starting new work.
+**gllvmTMB's first CRAN release is `0.5.0`, NOT 1.0 (D-42, 2026-07-11) — 1.0 is
+reserved for the capability-maturity milestone (complete surface + full story +
+committed-stable API), mirroring drmTMB's D-40.** The engineering (all five arcs
+A–E, merged #737–#745, on `main` `e4188105`) is cross-OS verified — local
+`--as-cran` 0E/0W/0N, 3-OS `R CMD check` passed, 4478 tests / 0 failures — but the
+package is NOT submitted to CRAN. **The one thing NOT done — and the next session's
+job — is the one-by-one human review of the pkgdown pages and the function docs
+WITH Shinichi** (slow, deliberate; not a batch rewrite), where the honesty-fencing
+lands (intervals framed recovery-only; delta/hurdle latent-scale correlation "do
+not advertise"). The automated article cleanup is **open PR #746** (2 cut, 26
+improved, pkgdown reorganised); the QG `animal-model` cut-vs-keep call is open. The
+issue closeout is staged at `dev/issue-closeout-2026-07-10.sh` (Shinichi runs it —
+reword its version strings to 0.5.0 first; the agent is safety-blocked from bulk
+closes). CRAN submission is Shinichi's act. Toward the 1.0 maturity milestone:
+Julia parity, the paper, the full coverage campaign. Earlier arc detail:
 `docs/dev-log/handover/2026-07-09-claude-handover-arcs.md`; ultra-plan at
 `~/.claude/plans/misty-snacking-papert.md`.
 **`phylo_latent(unique=TRUE)` = structured + DIAGONAL ψ, NOT a non-phylo

@@ -62,10 +62,11 @@ columns filled in.
 \details{
 Scope boundary: IN, the helper is a report-ready point-estimate table for
 the same covariance and correlation matrices returned by \code{\link[=extract_Sigma]{extract_Sigma()}}
-(EXT-18; backed by EXT-01 and MIX-03 for the underlying extractor; JUL-01A
-for admitted \code{engine = "julia"} unit-tier bridge rows), and a bootstrap
-interval table when \code{fit} is a \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} result (EXT-20). PARTIAL,
-\code{gllvmTMB_julia} objects currently expose only the ordinary unit tier and no
+(covered by the package's Sigma-table validation tests, including the
+underlying extractor and admitted \code{engine = "julia"} unit-tier bridge
+rows), and a bootstrap interval table when \code{fit} is a \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}
+result (also covered by the package's Sigma-table validation tests).
+PARTIAL, \code{gllvmTMB_julia} objects currently expose only the ordinary unit tier and no
 interval-bearing table rows. Bootstrap intervals cover the summaries already
 present in the bootstrap object and do not add profile or Wald intervals.
 PLANNED, richer interval joins remain future plotting infrastructure.

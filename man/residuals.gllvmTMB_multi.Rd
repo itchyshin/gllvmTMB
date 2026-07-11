@@ -57,7 +57,7 @@ implemented.
 Rows are retained even when a residual cannot be computed. Inspect the
 \code{status} column before treating residuals as complete.
 
-Scope boundary (DIA-12): IN, exact family-CDF randomized-quantile
+Scope boundary: IN, exact family-CDF randomized-quantile
 residuals for Gaussian, Poisson, and NB2 rows plus simulation-rank
 residuals from fitted-model draws. PARTIAL, unsupported families are
 retained with row status rather than promoted to exact residual

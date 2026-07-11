@@ -29,7 +29,7 @@
 #' confidence-interval bounds. It answers the question "is this
 #' profile well-behaved?" before the user interprets the bound.
 #'
-#' Scope boundary (DIA-07 / CI-02): IN, direct profile-curve inspection
+#' Scope boundary: IN, direct profile-curve inspection
 #' for profile-ready targets from [profile_targets()]. PARTIAL, derived
 #' summaries such as communalities and correlations are inspected
 #' through their `extract_*(method = "profile")` helpers. PLANNED,

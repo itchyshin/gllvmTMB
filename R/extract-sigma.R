@@ -1405,10 +1405,10 @@ extract_Sigma <- function(
 #' [extract_Sigma()] to give the row-lineage by column-lineage block
 #' `Gamma_shape = Lambda_row Lambda_col^T`. In the Design 65 coevolution
 #' path, `level` is the named `kernel_*()` tier, `row_traits` are the host
-#' traits, and `col_traits` are the partner traits. IN (`COE-02`): this
+#' traits, and `col_traits` are the partner traits. This
 #' is a point-estimate extractor for the shared covariance block of a
-#' fitted dense-kernel model. IN (`COE-03` / `COE-04`, fixed-rho scale):
-#' when the fitted kernel tier was built from [make_cross_kernel()],
+#' fitted dense-kernel model, covered by the package's validation tests at the
+#' fixed-rho scale: when the fitted kernel tier was built from [make_cross_kernel()],
 #' `scale = "effect"` returns `Gamma_effect = rho * Gamma_shape` using the
 #' fixed `rho` recorded on that kernel. PARTIAL: uncertainty for `Gamma` is
 #' not yet reported by this helper; use bootstrap workflows when interval
@@ -1539,7 +1539,8 @@ extract_Gamma <- function(
 #' shape-scale `Gamma` and does not multiply by `extract_Gamma(scale =
 #' "effect")`.
 #'
-#' IN (`COE-03` / `COE-04`): fixed dense `kernel_latent()` tiers store their
+#' Fixed dense `kernel_latent()` tiers, covered by the package's validation
+#' tests, store their
 #' aligned `K` matrices on the fit, and this helper returns point estimates for
 #' named species/lineage pairs. PARTIAL: it does not estimate `rho`, produce
 #' intervals, calibrate null thresholds, or combine components into a universal
@@ -1899,7 +1900,8 @@ print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
 #' `R = Sigma_row^{-1/2} Gamma Sigma_col^{-1/2}` from the shared covariance
 #' returned by [extract_Sigma()], then applies a singular-value decomposition.
 #'
-#' IN (`COE-04`): this is a point-estimate derived-output helper for fitted
+#' This is a point-estimate derived-output helper, covered by the package's
+#' validation tests, for fitted
 #' dense-kernel coevolution models whose component-specific `Gamma` blocks are
 #' already extractable with [extract_Gamma()]. PARTIAL: it does not report
 #' uncertainty, choose the biological rank, estimate `rho`, or calibrate null

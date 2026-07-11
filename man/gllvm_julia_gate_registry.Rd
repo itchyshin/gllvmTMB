@@ -8,10 +8,10 @@ gllvm_julia_gate_registry()
 }
 \value{
 A data frame with gate id, status, source, reason, representative
-test file, GitHub issue, and validation-row linkage. Rows with
-\code{validation_row = "JUL-01"} belong to the lean bridge admission surface;
-rows with \code{validation_row = "JUL-01A"} belong to raw unit-tier
-covariance/extractor boundaries.
+test file, GitHub issue, and validation-row linkage. The \code{validation_row}
+column links each row to an internal validation-register entry: rows
+tied to the lean bridge admission surface are distinguished from rows
+tied to raw unit-tier covariance/extractor boundaries.
 }
 \description{
 \code{gllvm_julia_gate_registry()} reports the deliberate \code{engine = "julia"}

@@ -54,7 +54,7 @@ and optional loading-standardization conventions are recorded in columns
 instead of left inside a matrix.
 }
 \details{
-Scope: IN (EXT-28), fitted \code{latent()} components at \code{level = "unit"} or
+Scope: covered for fitted \code{latent()} components at \code{level = "unit"} or
 \code{level = "unit_obs"} with raw or standardized point-estimate loadings.
 PARTIAL: this table does not attach uncertainty intervals to loadings.
 PLANNED: bootstrap or simulation-based uncertainty can be layered on top in

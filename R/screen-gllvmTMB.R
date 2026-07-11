@@ -62,9 +62,9 @@ screen_control <- function(
 #' response and formula conditions before fitting a stacked-trait GLLVM.
 #' The screen is advisory: it does not fit the model, remove traits, choose
 #' a latent rank, prove identifiability, or guarantee convergence.
-#' This is validation row `DIA-14`: binary/binomial screening is implemented,
-#' while non-binary modules, optional comparator checks, and high-dimensional
-#' benchmarks remain planned.
+#' Binary/binomial screening is implemented, while non-binary modules,
+#' optional comparator checks, and high-dimensional benchmarks remain
+#' planned (see the validation-debt register).
 #'
 #' The first implemented module covers binomial traits. It distinguishes
 #' Bernoulli responses from multi-trial binomial responses, reports the

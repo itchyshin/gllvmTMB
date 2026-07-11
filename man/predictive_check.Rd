@@ -71,7 +71,7 @@ from \code{\link[=check_gllvmTMB]{check_gllvmTMB()}}, and \code{fit$fit_health} 
 in \code{attr(plot, "gllvmTMB_diagnostic")} so the figure can be audited
 without reverse-engineering ggplot layers.
 
-Scope boundary (DIA-11 / DIA-12): IN, fitted-model predictive plots
+Scope boundary: IN, fitted-model predictive plots
 and residual Q-Q/rootogram helpers for \code{gllvmTMB_multi} fits, with
 exact randomized-quantile residuals for Gaussian, Poisson, and NB2
 rows and a simulation-rank fallback. PARTIAL, these are diagnostic

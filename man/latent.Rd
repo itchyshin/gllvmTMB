@@ -26,8 +26,8 @@ traits. Only applies when \code{unique = TRUE}.}
 \item{lv}{One-sided formula for Design 73 predictor-informed latent score
 means. Runtime support is limited to ordinary unit-tier
 \code{latent(..., lv = ~ x)}, and only Gaussian and pure binomial
-(logit/probit/cloglog) fits are currently admitted (C1, \code{partial};
-LV-02 covered). Source-specific \verb{*_latent(..., lv = ~ x)} forms are
+(logit/probit/cloglog) fits are currently admitted (partial coverage,
+validated for the ordinary-latent case). Source-specific \verb{*_latent(..., lv = ~ x)} forms are
 parsed and then fail loud (not yet fittable).}
 }
 \value{

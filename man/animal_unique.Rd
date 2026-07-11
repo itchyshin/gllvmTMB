@@ -57,7 +57,7 @@ through the same augmented engine as \code{\link[=phylo_unique]{phylo_unique()}}
 \examples{
 \dontrun{
 # Per-trait independent additive-genetic variances on a shared A.
-# Grounded in test-animal-keyword.R (ANI-02).
+# Grounded in test-animal-keyword.R.
 ped <- data.frame(
   id   = paste0("i", 1:12),
   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),

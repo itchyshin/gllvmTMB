@@ -32,7 +32,7 @@ diagnostic rows, residual rows, row-status counts, or fit-health table
 without inspecting object attributes directly.
 }
 \details{
-Scope boundary (DIA-13): IN, table extraction from existing
+Scope boundary: IN, table extraction from existing
 \code{attr(x, "gllvmTMB_diagnostic")} metadata on \code{predictive_check()}
 plots and diagnostic residual data frames. PARTIAL, this helper does
 not compute new diagnostics, refit models, run formal residual tests,

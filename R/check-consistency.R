@@ -40,7 +40,7 @@
 #' counts, weakly identified random effects) or the data don't constrain
 #' the random effects well.
 #'
-#' Scope boundary (DIA-02): IN, local Laplace-consistency diagnostics
+#' Scope boundary: IN, local Laplace-consistency diagnostics
 #' for a fitted model. PARTIAL, this is a diagnostic signal rather than
 #' a substitute for bootstrap, profile, or external Bayesian
 #' calibration. PLANNED, broader calibration evidence belongs to the M3

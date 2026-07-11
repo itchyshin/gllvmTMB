@@ -63,7 +63,7 @@ example \code{b_fix[1]}, \code{sigma_eps}, or \code{sd_B[2]}) and can be passed 
 correlations) are computed by the matching \code{extract_*(method = "profile")} extractor, not by \code{confint()} directly; the
 \code{profile_note} column points the user at the right extractor.
 
-Scope boundary (MIS-15 / CI-02): IN, the controlled vocabulary and
+Scope boundary: IN, the controlled vocabulary and
 direct-profile routing are covered for fitted models with retained
 TMB objects. PARTIAL, derived targets depend on the corresponding
 extractor profile method. PLANNED, broader target-explicit profile

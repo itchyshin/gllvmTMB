@@ -2,15 +2,15 @@
 #'
 #' @description
 #' `make_cross_kernel()` builds the block relatedness matrix for the C0
-#' coevolution prototype. The IN scope (`KER-01`) is a correlation-scale
+#' coevolution prototype. What is covered here is building a correlation-scale
 #' positive-semidefinite matrix
 #' `K_star = rbind(cbind(A_H, C_HP), cbind(t(C_HP), A_P))`, where `A_H`
 #' and `A_P` are within-lineage relatedness matrices and `C_HP` is the
-#' cross-lineage bridge induced by the association matrix `W`. The PARTIAL
-#' scope (`COE-01`) is the prototype path: use `K_star` through the
+#' cross-lineage bridge induced by the association matrix `W`. What is only
+#' partially covered is the prototype path: use `K_star` through the
 #' existing `phylo_latent(..., vcv = K_star, unique = TRUE)` engine. The
-#' generic `kernel_*()` surface (`KER-02`) and
-#' validated `extract_Gamma()` coevolution gate (`COE-02`) are now covered
+#' generic `kernel_*()` surface and the
+#' validated `extract_Gamma()` coevolution gate are now covered
 #' separately; this helper only builds the input kernel.
 #'
 #' @param A_H,A_P Numeric square correlation matrices for the host and
@@ -125,8 +125,8 @@ make_cross_kernel <- function(A_H, A_P, W, rho = 0.5, eps = 1e-8) {
 #' `refit(K, rho, ...)` function for each grid value, and returns a tidy
 #' likelihood table.
 #'
-#' IN (`COE-03` / `COE-04`): this is a fixed-kernel profile workflow for
-#' comparing defended `rho` values. PARTIAL: `rho` is still not a TMB parameter,
+#' What is covered: this is a fixed-kernel profile workflow for
+#' comparing defended `rho` values. What is only partially covered: `rho` is still not a TMB parameter,
 #' this helper does not estimate `rho`, and it does not produce confidence
 #' intervals or null calibration.
 #'
@@ -277,8 +277,9 @@ profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
 #'
 #' This is screening-grade profile/sensitivity interval evidence on a
 #' *fixed*-`rho` refit grid, not in-engine `rho` estimation (Design 65 C3.3;
-#' `COE-04` remains partial). Its coverage has **not** been calibrated, so do
-#' not report it as a validated confidence interval.
+#' this remains only partially covered by validation). Its coverage has
+#' **not** been calibrated, so do not report it as a validated confidence
+#' interval.
 #'
 #' @param profile A `gllvmTMB_cross_rho_profile` data frame from
 #'   [profile_cross_rho()] (needs the `rho` and `delta_deviance` columns).
@@ -534,16 +535,17 @@ profile_cross_rho_ci <- function(profile, level = 0.95) {
 #' @description
 #' `diagnose_kernel_separability()` compares two or more dense fixed kernels on
 #' the same levels before they are used in a multi-kernel coevolution model. It
-#' is a pre-fit claim-boundary helper for Design 65 / `COE-04`: when candidate
+#' is a pre-fit claim-boundary helper for Design 65 (only partially covered by
+#' validation): when candidate
 #' kernels are highly overlapping, component-specific `Gamma` blocks are weak
 #' evidence and should be treated as descriptive unless simulations justify the
 #' split.
 #'
-#' IN (`COE-04` partial): use this helper to screen candidate `K_phy` and
+#' What is covered (partially): use this helper to screen candidate `K_phy` and
 #' `K_tip` definitions, including raw-network and residualized-network choices,
-#' before fitting `kernel_latent(..., name = ...)` tiers. PARTIAL: this is a
-#' diagnostic, not recovery evidence, interval calibration, or an in-engine
-#' identifiability proof.
+#' before fitting `kernel_latent(..., name = ...)` tiers. What is not covered:
+#' this is a diagnostic, not recovery evidence, interval calibration, or an
+#' in-engine identifiability proof.
 #'
 #' @param ... Two or more named numeric square kernel matrices with the same
 #'   dimensions and level order.

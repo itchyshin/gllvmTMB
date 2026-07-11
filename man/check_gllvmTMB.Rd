@@ -68,14 +68,14 @@ diagnostics. It is the machine-readable companion to
 where parsing printed messages would be brittle.
 }
 \details{
-Scope boundary (DIA-08 / DIA-10): IN, optimisation and
-inference-risk signals for fitted models, including latent-axis
-rotation, weak-axis, near-zero \code{psi}, residual-scale boundary
-flags, a binomial near-constant/loading/saturation screen, and the
-intentional \code{gllvmTMBcontrol(se = FALSE)} point-estimate path.
-PARTIAL, the table does not calibrate interval coverage, prove
+Scope boundary: covered are optimisation and inference-risk signals
+for fitted models, including latent-axis rotation, weak-axis,
+near-zero \code{psi}, residual-scale boundary flags, a binomial
+near-constant/loading/saturation screen, and the intentional
+\code{gllvmTMBcontrol(se = FALSE)} point-estimate path. Partially
+covered: the table does not calibrate interval coverage, prove
 formal separation, or prove the selected latent rank by itself.
-PLANNED, target-explicit M3 simulations and
+Planned: target-explicit simulations and
 \code{\link[=check_identifiability]{check_identifiability()}} decide when broader interval or
 rank-selection claims move beyond diagnostic status.
 

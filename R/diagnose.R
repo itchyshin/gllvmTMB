@@ -483,14 +483,14 @@
 #' [gllvmTMB_diagnose()]: use this in simulations, tests, and reports
 #' where parsing printed messages would be brittle.
 #'
-#' Scope boundary (DIA-08 / DIA-10): IN, optimisation and
-#' inference-risk signals for fitted models, including latent-axis
-#' rotation, weak-axis, near-zero `psi`, residual-scale boundary
-#' flags, a binomial near-constant/loading/saturation screen, and the
-#' intentional `gllvmTMBcontrol(se = FALSE)` point-estimate path.
-#' PARTIAL, the table does not calibrate interval coverage, prove
+#' Scope boundary: covered are optimisation and inference-risk signals
+#' for fitted models, including latent-axis rotation, weak-axis,
+#' near-zero `psi`, residual-scale boundary flags, a binomial
+#' near-constant/loading/saturation screen, and the intentional
+#' `gllvmTMBcontrol(se = FALSE)` point-estimate path. Partially
+#' covered: the table does not calibrate interval coverage, prove
 #' formal separation, or prove the selected latent rank by itself.
-#' PLANNED, target-explicit M3 simulations and
+#' Planned: target-explicit simulations and
 #' [check_identifiability()] decide when broader interval or
 #' rank-selection claims move beyond diagnostic status.
 #'
@@ -858,10 +858,10 @@ check_gllvmTMB <- function(
 #' signal. Use [check_gllvmTMB()] when you need the same fit-health
 #' checks as a stable table for scripts or reports.
 #'
-#' Scope boundary (DIA-05 / DIA-08 / DIA-10): IN, first-line
-#' convergence, Hessian, standard-error, restart, and rotation
-#' diagnostics. PARTIAL, it reports risks and summaries but does not
-#' replace profile, bootstrap, or simulation calibration. PLANNED, M3
+#' Scope boundary: covered are first-line convergence, Hessian,
+#' standard-error, restart, and rotation diagnostics. Partially
+#' covered: it reports risks and summaries but does not replace
+#' profile, bootstrap, or simulation calibration. Planned:
 #' target-explicit validation will decide which interval warnings can
 #' be promoted to broader guarantees.
 #'

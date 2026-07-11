@@ -306,8 +306,8 @@
 #' fixed-effect design values still error because the model cannot construct a
 #' design row; explicitly modelled missing predictors use `mi(x)`,
 #' `miss_control(predictor = "model")`, and `impute = list(...)`.
-#' These contracts are covered by MIS-21 / MIS-24 for responses and
-#' MIS-25..MIS-32 for predictors.
+#' These contracts are covered by the package's missing-data validation tests,
+#' both for responses and for predictors.
 #'
 #' **Delta (hurdle) families.** `delta_lognormal()` and `delta_gamma()`
 #' use a *single* linear predictor for both components: presence is

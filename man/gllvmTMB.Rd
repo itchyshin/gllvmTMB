@@ -369,8 +369,8 @@ before validation. Ordinary missing predictors, grouping variables, or
 fixed-effect design values still error because the model cannot construct a
 design row; explicitly modelled missing predictors use \code{mi(x)},
 \code{miss_control(predictor = "model")}, and \code{impute = list(...)}.
-These contracts are covered by MIS-21 / MIS-24 for responses and
-MIS-25..MIS-32 for predictors.
+These contracts are covered by the package's missing-data validation tests,
+both for responses and for predictors.
 
 \strong{Delta (hurdle) families.} \code{delta_lognormal()} and \code{delta_gamma()}
 use a \emph{single} linear predictor for both components: presence is

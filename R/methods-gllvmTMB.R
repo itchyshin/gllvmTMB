@@ -1316,7 +1316,7 @@ simulate.gllvmTMB_multi <- function(
 #' loadings. For report tables use [check_gllvmTMB()]; for a broader
 #' human-readable summary use [gllvmTMB_diagnose()].
 #'
-#' Scope boundary (DIA-01): IN, fast numerical and loading-shape checks
+#' Scope boundary: IN, fast numerical and loading-shape checks
 #' for fitted models. PARTIAL, a PASS here does not prove interval
 #' calibration or latent-rank identifiability. PLANNED, use
 #' [check_identifiability()] and M3 calibration workflows for those

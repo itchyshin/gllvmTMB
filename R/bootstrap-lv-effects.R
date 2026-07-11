@@ -18,8 +18,7 @@
 #'
 #' @section Interval calibration:
 #' \eqn{B_{lv}} point recovery is validated, but formal interval **coverage** is
-#' not yet certified for the parametric bootstrap: register gates `CI-08` /
-#' `CI-10` remain open. Documented coverage evidence currently exists only for
+#' not yet certified for the parametric bootstrap. Documented coverage evidence currently exists only for
 #' Wald intervals on ordinary unit-tier Gaussian and standard-link binomial fits
 #' (see [extract_lv_effects()]). Treat these percentile bounds as approximate
 #' for other families or mixed-family fits until the coverage campaign lands;

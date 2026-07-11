@@ -56,8 +56,10 @@ Segments in these plots are comparison residuals, not confidence intervals.
 \details{
 Scope boundary: IN, the helper plots \code{\link[=compare_Sigma_table]{compare_Sigma_table()}} rows or builds
 them from a fitted model / Sigma table plus one supplied truth matrix
-(EXT-26; built on EXT-25). PARTIAL, it is a visual comparison helper only:
-it does not run simulations, compute intervals, or validate calibration.
+(covered by the package's comparison-table validation tests, which build on
+the underlying Sigma-table extraction tests). PARTIAL, it is a visual
+comparison helper only: it does not run simulations, compute intervals, or
+validate calibration.
 PLANNED, article-specific simulation summaries and richer calibration plots
 remain future work.
 }

@@ -58,8 +58,9 @@ available in the returned plot data but are not displayed.
 Scope boundary: IN, the helper plots point-estimate heatmaps from
 \code{\link[=extract_Sigma_table]{extract_Sigma_table()}} rows or extracts those rows from a fit returned by
 \code{\link[=gllvmTMB]{gllvmTMB()}}, an admitted \code{engine = "julia"} bridge fit, or from a
-\code{bootstrap_Sigma} object (EXT-27; built on EXT-18 / EXT-20 / JUL-01A).
-PARTIAL, it does not display interval bounds or compare fitted values to
+\code{bootstrap_Sigma} object (covered by the package's heatmap validation
+tests, which build on the underlying extractor-contract and Julia-bridge
+fit tests). PARTIAL, it does not display interval bounds or compare fitted values to
 known truth. Use \code{\link[=plot_Sigma_table]{plot_Sigma_table()}} for interval forests or confidence
 eyes, and \code{\link[=plot_Sigma_comparison]{plot_Sigma_comparison()}} for estimate-vs-truth displays. PLANNED,
 vdiffr snapshots and richer multi-model layout helpers remain future figure

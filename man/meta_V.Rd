@@ -38,7 +38,7 @@ rejected rather than silently treated as exact.
 \examples{
 \dontrun{
 # Stage-2 meta-regression with a known per-row sampling-variance V.
-# Grounded in test-formula-grammar-smoke.R (MET-01).
+# Grounded in test-formula-grammar-smoke.R.
 set.seed(131)
 df <- expand.grid(
   site  = factor(seq_len(50)),

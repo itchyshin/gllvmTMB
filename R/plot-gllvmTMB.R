@@ -22,9 +22,9 @@
 #'     the correlation. This is the Figure-3-style alternative to the tile
 #'     heatmap. Optional `boot` intervals mark correlations whose interval
 #'     does not cross zero with black borders and stars. These bootstrap
-#'     intervals are recovery-grade, not coverage-calibrated (CI-08/CI-10):
-#'     read a marked cell as "the interval excludes zero at the fitted
-#'     point", not as a calibrated significance test.}
+#'     intervals are recovery-grade, and their coverage properties are not
+#'     yet established: read a marked cell as "the interval excludes zero
+#'     at the fitted point", not as a calibrated significance test.}
 #'   \item{`"loadings"`}{Tile heatmap of `Lambda_B` (and `Lambda_W` if
 #'     present), faceted by level. Rows = traits, columns = factors.
 #'     Pinned cells (from `lambda_constraint`) are drawn with a heavy

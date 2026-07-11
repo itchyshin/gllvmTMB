@@ -77,8 +77,9 @@ leaves interval columns as placeholders.
 \details{
 Scope boundary: IN, the helper plots point-estimate rows from
 \code{\link[=extract_Sigma_table]{extract_Sigma_table()}} or extracts those rows from a fit returned by
-\code{\link[=gllvmTMB]{gllvmTMB()}} or an admitted \code{engine = "julia"} bridge fit (EXT-19; built on
-EXT-18 / JUL-01A). PARTIAL, interval columns are displayed when present and
+\code{\link[=gllvmTMB]{gllvmTMB()}} or an admitted \code{engine = "julia"} bridge fit (covered by the
+package's extractor-contract validation tests, including the Julia-bridge
+fit path). PARTIAL, interval columns are displayed when present and
 finite, but this helper does not compute Sigma intervals. PLANNED,
 uncertainty propagation for arbitrary Sigma entries belongs in
 bootstrap/profile infrastructure.

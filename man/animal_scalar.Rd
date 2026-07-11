@@ -46,7 +46,7 @@ follow-up).
 \examples{
 \dontrun{
 # Pedigree-derived additive-genetic relatedness; single shared
-# variance across traits. Grounded in test-animal-keyword.R (ANI-01).
+# variance across traits. Grounded in test-animal-keyword.R.
 ped <- data.frame(
   id   = paste0("i", 1:12),
   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),

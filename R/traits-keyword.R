@@ -96,8 +96,8 @@
 #'   formula and dispatches to the wide-format pivot pre-pass.
 #' @seealso [gllvmTMB()] for model fitting. The legacy
 #'   matrix wrapper `gllvmTMB_wide(Y, ...)` is soft-deprecated in
-#'   0.2.0 (validation-debt register rows FG-16 and MIS-03);
-#'   wide-data examples now use the `traits(...)` LHS through
+#'   0.2.0 (see the validation-debt register for the migration
+#'   tracking entries); wide-data examples now use the `traits(...)` LHS through
 #'   [gllvmTMB()]. The source-tree contract is
 #'   `docs/design/01-formula-grammar.md`.
 #' @examples

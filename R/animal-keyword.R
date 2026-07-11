@@ -60,7 +60,7 @@
 #' @examples
 #' \dontrun{
 #' # Pedigree-derived additive-genetic relatedness; single shared
-#' # variance across traits. Grounded in test-animal-keyword.R (ANI-01).
+#' # variance across traits. Grounded in test-animal-keyword.R.
 #' ped <- data.frame(
 #'   id   = paste0("i", 1:12),
 #'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
@@ -123,7 +123,7 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @examples
 #' \dontrun{
 #' # Per-trait independent additive-genetic variances on a shared A.
-#' # Grounded in test-animal-keyword.R (ANI-02).
+#' # Grounded in test-animal-keyword.R.
 #' ped <- data.frame(
 #'   id   = paste0("i", 1:12),
 #'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
@@ -164,7 +164,7 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' \dontrun{
 #' # Independent per-trait animal-model intercepts via the bar form,
 #' # passing the dense relatedness matrix A directly.
-#' # Grounded in test-animal-keyword.R (ANI-03).
+#' # Grounded in test-animal-keyword.R.
 #' ped <- data.frame(
 #'   id   = paste0("i", 1:12),
 #'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
@@ -218,7 +218,7 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @examples
 #' \dontrun{
 #' # Factor-analytic G-matrix (d latent factors plus diagonal Psi).
-#' # Grounded in test-animal-keyword.R (ANI-05).
+#' # Grounded in test-animal-keyword.R.
 #' ped <- data.frame(
 #'   id   = paste0("i", 1:12),
 #'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
@@ -267,7 +267,7 @@ animal_latent <- function(
 #' @examples
 #' \dontrun{
 #' # Full unstructured additive-genetic trait covariance (rank = n_traits).
-#' # Grounded in test-animal-keyword.R (ANI-04).
+#' # Grounded in test-animal-keyword.R.
 #' ped <- data.frame(
 #'   id   = paste0("i", 1:12),
 #'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
@@ -315,7 +315,7 @@ animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' \dontrun{
 #' # Additive-genetic random regression: one heritable slope variance on a
 #' # continuous covariate x, slopes correlated by the relatedness matrix A.
-#' # Grounded in test-animal-slope-recovery.R (ANI-06).
+#' # Grounded in test-animal-slope-recovery.R.
 #' ped <- data.frame(
 #'   id   = paste0("i", 1:12),
 #'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),

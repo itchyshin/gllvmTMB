@@ -2,7 +2,7 @@
 #'
 #' @description
 #' `kernel_latent()` fits named random-effect tiers with user-supplied
-#' between-unit covariance matrices `K`. The IN scope (`KER-02`) for one named
+#' between-unit covariance matrices `K`. The covered scope for one named
 #' dense-kernel tier is the phylo-equivalent path:
 #' `kernel_latent(unit, K = A, d = q, unique = TRUE)` carries its
 #' kernel-structured diagonal \eqn{\boldsymbol\Psi} companion and must match
@@ -10,7 +10,7 @@
 #' for log likelihood and extracted `Sigma`. The soft-deprecated
 #' compatibility spelling `kernel_latent(..., unique = FALSE) +
 #' kernel_unique(...)` remains accepted.
-#' The first multi-kernel scope (`KER-03`) accepts two or more fixed named
+#' The first multi-kernel scope accepts two or more fixed named
 #' `kernel_latent()` tiers over the same grouping levels, each with its own
 #' `K`, loading matrix, and latent field. This Paper 2 first wave remains
 #' latent-only: auto-generated kernel \eqn{\boldsymbol\Psi} companions are
@@ -19,10 +19,10 @@
 #' non-Gaussian and cross-family coevolution models. `kernel_dep()` remains
 #' single-tier only in this first wave.
 #'
-#' The cross-lineage coevolution scope remains evidence-gated. IN (`COE-02`):
+#' The cross-lineage coevolution scope remains evidence-gated. Covered:
 #' users can pass one `K_star` from [make_cross_kernel()] and extract the
-#' host-partner shared covariance block with [extract_Gamma()]. PARTIAL
-#' (`COE-03`): fixed two-component named-kernel fits are available for
+#' host-partner shared covariance block with [extract_Gamma()]. Partial:
+#' fixed two-component named-kernel fits are available for
 #' component-specific `Gamma_shape` extraction, but explicit Psi, kernel-
 #' separation recovery, `rho` estimation/profiling, and interval calibration
 #' remain future gates. The broader `*_unique()` teaching/API surface is kept

@@ -991,11 +991,12 @@
 #'
 #' Scope boundary: IN, the helper plots tidy cross-trait correlation rows from
 #' [extract_correlations()], extracts those rows from a fit returned by
-#' [gllvmTMB()] (EXT-19; built on EXT-04/EXT-18 extractor contracts), or
-#' converts `bootstrap_Sigma()` correlation summaries to the same plotting
-#' schema (EXT-24). Matrix heatmaps and ellipse/oval displays, including
-#' upper-estimate/lower-CI and two-level upper/lower layouts, are
-#' point-estimate summaries with optional numeric interval labels (EXT-30).
+#' [gllvmTMB()] (this is covered by the package's extractor-contract
+#' validation tests), or converts `bootstrap_Sigma()` correlation summaries to
+#' the same plotting schema (also covered by those tests). Matrix heatmaps and
+#' ellipse/oval displays, including upper-estimate/lower-CI and two-level
+#' upper/lower layouts, are point-estimate summaries with optional numeric
+#' interval labels (covered separately).
 #' PARTIAL, the plot does not compute new intervals; it displays whatever
 #' interval method the input rows already contain. PLANNED, matrix-style visual
 #' comparisons against known truth remain article code rather than part of this
@@ -1364,8 +1365,10 @@ plot_correlations <- function(
 #'
 #' Scope boundary: IN, the helper plots [compare_Sigma_table()] rows or builds
 #' them from a fitted model / Sigma table plus one supplied truth matrix
-#' (EXT-26; built on EXT-25). PARTIAL, it is a visual comparison helper only:
-#' it does not run simulations, compute intervals, or validate calibration.
+#' (covered by the package's comparison-table validation tests, which build on
+#' the underlying Sigma-table extraction tests). PARTIAL, it is a visual
+#' comparison helper only: it does not run simulations, compute intervals, or
+#' validate calibration.
 #' PLANNED, article-specific simulation summaries and richer calibration plots
 #' remain future work.
 #'
@@ -1694,8 +1697,9 @@ plot_Sigma_comparison <- function(
 #'
 #' Scope boundary: IN, the helper plots point-estimate rows from
 #' [extract_Sigma_table()] or extracts those rows from a fit returned by
-#' [gllvmTMB()] or an admitted `engine = "julia"` bridge fit (EXT-19; built on
-#' EXT-18 / JUL-01A). PARTIAL, interval columns are displayed when present and
+#' [gllvmTMB()] or an admitted `engine = "julia"` bridge fit (covered by the
+#' package's extractor-contract validation tests, including the Julia-bridge
+#' fit path). PARTIAL, interval columns are displayed when present and
 #' finite, but this helper does not compute Sigma intervals. PLANNED,
 #' uncertainty propagation for arbitrary Sigma entries belongs in
 #' bootstrap/profile infrastructure.
@@ -2034,8 +2038,9 @@ plot_Sigma_table <- function(
 #' Scope boundary: IN, the helper plots point-estimate heatmaps from
 #' [extract_Sigma_table()] rows or extracts those rows from a fit returned by
 #' [gllvmTMB()], an admitted `engine = "julia"` bridge fit, or from a
-#' `bootstrap_Sigma` object (EXT-27; built on EXT-18 / EXT-20 / JUL-01A).
-#' PARTIAL, it does not display interval bounds or compare fitted values to
+#' `bootstrap_Sigma` object (covered by the package's heatmap validation
+#' tests, which build on the underlying extractor-contract and Julia-bridge
+#' fit tests). PARTIAL, it does not display interval bounds or compare fitted values to
 #' known truth. Use [plot_Sigma_table()] for interval forests or confidence
 #' eyes, and [plot_Sigma_comparison()] for estimate-vs-truth displays. PLANNED,
 #' vdiffr snapshots and richer multi-model layout helpers remain future figure

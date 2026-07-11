@@ -37,7 +37,8 @@ matrices inside the article.
 }
 \details{
 Scope boundary: IN, the helper compares fitted or precomputed
-\code{extract_Sigma_table()} rows against one supplied truth matrix (EXT-25).
+\code{extract_Sigma_table()} rows against one supplied truth matrix (covered
+by the package's Sigma-table validation tests).
 PARTIAL, it is a table helper only: it does not compute uncertainty,
 simulate data, or validate calibration. For the first visual comparison
 layer, use \code{\link[=plot_Sigma_comparison]{plot_Sigma_comparison()}}; richer article-specific calibration
@@ -59,7 +60,7 @@ rows <- data.frame(
   interval_method = "none",
   interval_status = "none",
   scale = "correlation",
-  validation_row = "EXT-18",
+  validation_row = "internal-provenance-id",
   diagonal = FALSE,
   triangle = "upper"
 )

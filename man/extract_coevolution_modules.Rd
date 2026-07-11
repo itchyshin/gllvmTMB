@@ -45,7 +45,8 @@ For a named coevolution kernel tier, the helper computes
 \verb{R = Sigma_row^\{-1/2\} Gamma Sigma_col^\{-1/2\}} from the shared covariance
 returned by \code{\link[=extract_Sigma]{extract_Sigma()}}, then applies a singular-value decomposition.
 
-IN (\code{COE-04}): this is a point-estimate derived-output helper for fitted
+This is a point-estimate derived-output helper, covered by the package's
+validation tests, for fitted
 dense-kernel coevolution models whose component-specific \code{Gamma} blocks are
 already extractable with \code{\link[=extract_Gamma]{extract_Gamma()}}. PARTIAL: it does not report
 uncertainty, choose the biological rank, estimate \code{rho}, or calibrate null

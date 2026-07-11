@@ -52,8 +52,8 @@ any latent rank; the raw loadings and raw \eqn{\alpha} are not.
 \section{Interval calibration}{
 
 \eqn{B_{lv}} point recovery is validated, but formal interval \strong{coverage} is
-not yet certified for the profile method: register gates \code{CI-08} / \code{CI-10}
-remain open. Documented coverage evidence currently exists only for Wald
+not yet certified for the profile method: the relevant validation-register
+gates remain open. Documented coverage evidence currently exists only for Wald
 intervals on ordinary unit-tier Gaussian and standard-link binomial fits
 (see \code{\link[=extract_lv_effects]{extract_lv_effects()}}). Treat these profile bounds as well-motivated
 but not coverage-certified for other families or mixed-family fits until the

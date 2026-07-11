@@ -73,10 +73,10 @@ plus Hessian-eigenvalue rank checks. Returns an object of class
 \code{gllvmTMB_identifiability} with components \verb{$recovery}, \verb{$loadings},
 \verb{$hessian}, and \verb{$flags}.
 
-Scope boundary (DIA-03): IN, Gaussian simulate-refit loading
-identifiability checks. PARTIAL, non-Gaussian and mixed-family
-support is not yet implemented. PLANNED, broader family coverage
-belongs to the Phase 1b / M3 validation path.
+Scope boundary: covered for Gaussian simulate-refit loading
+identifiability checks. Non-Gaussian and mixed-family support is not
+yet implemented; broader family coverage is planned for the Phase 1b
+/ M3 validation path.
 
 The canonical case this catches that no other diagnostic does is a
 \strong{spurious extra factor masquerading as identified}: when \code{d_B} is

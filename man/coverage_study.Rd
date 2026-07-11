@@ -89,7 +89,7 @@ tests Procrustes-aligned loading recovery). Per the audit's Phase
 parameters that matter is the recommended fit-specific check before
 treating CIs as publication-ready.
 
-Scope boundary (CI-08 / CI-10): IN, the helper returns reproducible
+Scope boundary: covered, the helper returns reproducible
 coverage summaries for a fitted model and the requested direct
 profile targets. PARTIAL, package-level production calibration has
 not yet passed for every family, dimension, and target surface.

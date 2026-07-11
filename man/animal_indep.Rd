@@ -24,7 +24,7 @@ Mathematical parallel to \code{\link[=phylo_indep]{phylo_indep()}}.
 \dontrun{
 # Independent per-trait animal-model intercepts via the bar form,
 # passing the dense relatedness matrix A directly.
-# Grounded in test-animal-keyword.R (ANI-03).
+# Grounded in test-animal-keyword.R.
 ped <- data.frame(
   id   = paste0("i", 1:12),
   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),

@@ -36,14 +36,14 @@ A formula marker; never evaluated as a regular R function.
 }
 \description{
 \code{kernel_latent()} fits named random-effect tiers with user-supplied
-between-unit covariance matrices \code{K}. The IN scope (\code{KER-02}) for one named
+between-unit covariance matrices \code{K}. The covered scope for one named
 dense-kernel tier is the phylo-equivalent path:
 \code{kernel_latent(unit, K = A, d = q, unique = TRUE)} carries its
 kernel-structured diagonal \eqn{\boldsymbol\Psi} companion and must match
 \code{phylo_latent(unit, vcv = A, d = q, unique = TRUE)} to less than \code{1e-6}
 for log likelihood and extracted \code{Sigma}. The soft-deprecated
 compatibility spelling \code{kernel_latent(..., unique = FALSE) + kernel_unique(...)} remains accepted.
-The first multi-kernel scope (\code{KER-03}) accepts two or more fixed named
+The first multi-kernel scope accepts two or more fixed named
 \code{kernel_latent()} tiers over the same grouping levels, each with its own
 \code{K}, loading matrix, and latent field. This Paper 2 first wave remains
 latent-only: auto-generated kernel \eqn{\boldsymbol\Psi} companions are
@@ -52,10 +52,10 @@ deferred because explicit residual/Psi structure is a poor default for
 non-Gaussian and cross-family coevolution models. \code{kernel_dep()} remains
 single-tier only in this first wave.
 
-The cross-lineage coevolution scope remains evidence-gated. IN (\code{COE-02}):
+The cross-lineage coevolution scope remains evidence-gated. Covered:
 users can pass one \code{K_star} from \code{\link[=make_cross_kernel]{make_cross_kernel()}} and extract the
-host-partner shared covariance block with \code{\link[=extract_Gamma]{extract_Gamma()}}. PARTIAL
-(\code{COE-03}): fixed two-component named-kernel fits are available for
+host-partner shared covariance block with \code{\link[=extract_Gamma]{extract_Gamma()}}. Partial:
+fixed two-component named-kernel fits are available for
 component-specific \code{Gamma_shape} extraction, but explicit Psi, kernel-
 separation recovery, \code{rho} estimation/profiling, and interval calibration
 remain future gates. The broader \verb{*_unique()} teaching/API surface is kept

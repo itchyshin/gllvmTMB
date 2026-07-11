@@ -84,7 +84,7 @@ the curve, the MLE, the chi-squared threshold, and the resulting
 confidence-interval bounds. It answers the question "is this
 profile well-behaved?" before the user interprets the bound.
 
-Scope boundary (DIA-07 / CI-02): IN, direct profile-curve inspection
+Scope boundary: IN, direct profile-curve inspection
 for profile-ready targets from \code{\link[=profile_targets]{profile_targets()}}. PARTIAL, derived
 summaries such as communalities and correlations are inspected
 through their \code{extract_*(method = "profile")} helpers. PLANNED,

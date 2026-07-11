@@ -207,7 +207,8 @@
 #'
 #' Scope boundary: IN, the helper plots point-estimate rotated loading rows
 #' from [extract_rotated_loadings_table()] for fitted `latent()` components
-#' (EXT-29; built on EXT-28). PARTIAL, the plot does not compute or display
+#' (this builds on the package's rotated-loadings extraction validation).
+#' PARTIAL, the plot does not compute or display
 #' loading uncertainty intervals and does not make rotated axes uniquely
 #' biological. PLANNED, bootstrap- or simulation-aligned loading uncertainty
 #' remains a later inference slice.

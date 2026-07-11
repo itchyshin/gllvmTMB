@@ -57,7 +57,7 @@ phylogenetic VCV.
 \examples{
 \dontrun{
 # Factor-analytic G-matrix (d latent factors plus diagonal Psi).
-# Grounded in test-animal-keyword.R (ANI-05).
+# Grounded in test-animal-keyword.R.
 ped <- data.frame(
   id   = paste0("i", 1:12),
   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),

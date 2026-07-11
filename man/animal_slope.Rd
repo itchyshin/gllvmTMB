@@ -31,7 +31,7 @@ the engine recycles the same \eqn{\mathbf A^{-1}} prepared by
 \dontrun{
 # Additive-genetic random regression: one heritable slope variance on a
 # continuous covariate x, slopes correlated by the relatedness matrix A.
-# Grounded in test-animal-slope-recovery.R (ANI-06).
+# Grounded in test-animal-slope-recovery.R.
 ped <- data.frame(
   id   = paste0("i", 1:12),
   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),

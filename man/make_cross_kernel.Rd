@@ -29,15 +29,15 @@ host-partner bridge.
 }
 \description{
 \code{make_cross_kernel()} builds the block relatedness matrix for the C0
-coevolution prototype. The IN scope (\code{KER-01}) is a correlation-scale
+coevolution prototype. What is covered here is building a correlation-scale
 positive-semidefinite matrix
 \code{K_star = rbind(cbind(A_H, C_HP), cbind(t(C_HP), A_P))}, where \code{A_H}
 and \code{A_P} are within-lineage relatedness matrices and \code{C_HP} is the
-cross-lineage bridge induced by the association matrix \code{W}. The PARTIAL
-scope (\code{COE-01}) is the prototype path: use \code{K_star} through the
+cross-lineage bridge induced by the association matrix \code{W}. What is only
+partially covered is the prototype path: use \code{K_star} through the
 existing \code{phylo_latent(..., vcv = K_star, unique = TRUE)} engine. The
-generic \verb{kernel_*()} surface (\code{KER-02}) and
-validated \code{extract_Gamma()} coevolution gate (\code{COE-02}) are now covered
+generic \verb{kernel_*()} surface and the
+validated \code{extract_Gamma()} coevolution gate are now covered
 separately; this helper only builds the input kernel.
 }
 \examples{

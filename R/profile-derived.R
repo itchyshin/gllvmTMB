@@ -1262,8 +1262,8 @@ profile_ci_proportions <- function(
 #'
 #' @section Interval calibration:
 #' \eqn{B_{lv}} point recovery is validated, but formal interval **coverage** is
-#' not yet certified for the profile method: register gates `CI-08` / `CI-10`
-#' remain open. Documented coverage evidence currently exists only for Wald
+#' not yet certified for the profile method: the relevant validation-register
+#' gates remain open. Documented coverage evidence currently exists only for Wald
 #' intervals on ordinary unit-tier Gaussian and standard-link binomial fits
 #' (see [extract_lv_effects()]). Treat these profile bounds as well-motivated
 #' but not coverage-certified for other families or mixed-family fits until the

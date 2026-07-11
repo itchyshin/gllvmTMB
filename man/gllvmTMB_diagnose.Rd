@@ -39,10 +39,10 @@ signal. Use \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} when you need the sa
 checks as a stable table for scripts or reports.
 }
 \details{
-Scope boundary (DIA-05 / DIA-08 / DIA-10): IN, first-line
-convergence, Hessian, standard-error, restart, and rotation
-diagnostics. PARTIAL, it reports risks and summaries but does not
-replace profile, bootstrap, or simulation calibration. PLANNED, M3
+Scope boundary: covered are first-line convergence, Hessian,
+standard-error, restart, and rotation diagnostics. Partially
+covered: it reports risks and summaries but does not replace
+profile, bootstrap, or simulation calibration. Planned:
 target-explicit validation will decide which interval warnings can
 be promoted to broader guarantees.
 }

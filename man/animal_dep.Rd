@@ -24,7 +24,7 @@ of a rank-\eqn{T} \eqn{\boldsymbol\Lambda} (i.e. the
 \examples{
 \dontrun{
 # Full unstructured additive-genetic trait covariance (rank = n_traits).
-# Grounded in test-animal-keyword.R (ANI-04).
+# Grounded in test-animal-keyword.R.
 ped <- data.frame(
   id   = paste0("i", 1:12),
   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),

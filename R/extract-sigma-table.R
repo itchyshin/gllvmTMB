@@ -249,10 +249,11 @@
 #'
 #' Scope boundary: IN, the helper is a report-ready point-estimate table for
 #' the same covariance and correlation matrices returned by [extract_Sigma()]
-#' (EXT-18; backed by EXT-01 and MIX-03 for the underlying extractor; JUL-01A
-#' for admitted `engine = "julia"` unit-tier bridge rows), and a bootstrap
-#' interval table when `fit` is a [bootstrap_Sigma()] result (EXT-20). PARTIAL,
-#' `gllvmTMB_julia` objects currently expose only the ordinary unit tier and no
+#' (covered by the package's Sigma-table validation tests, including the
+#' underlying extractor and admitted `engine = "julia"` unit-tier bridge
+#' rows), and a bootstrap interval table when `fit` is a [bootstrap_Sigma()]
+#' result (also covered by the package's Sigma-table validation tests).
+#' PARTIAL, `gllvmTMB_julia` objects currently expose only the ordinary unit tier and no
 #' interval-bearing table rows. Bootstrap intervals cover the summaries already
 #' present in the bootstrap object and do not add profile or Wald intervals.
 #' PLANNED, richer interval joins remain future plotting infrastructure.
@@ -455,7 +456,8 @@ extract_Sigma_table <- function(
 #' matrices inside the article.
 #'
 #' Scope boundary: IN, the helper compares fitted or precomputed
-#' `extract_Sigma_table()` rows against one supplied truth matrix (EXT-25).
+#' `extract_Sigma_table()` rows against one supplied truth matrix (covered
+#' by the package's Sigma-table validation tests).
 #' PARTIAL, it is a table helper only: it does not compute uncertainty,
 #' simulate data, or validate calibration. For the first visual comparison
 #' layer, use [plot_Sigma_comparison()]; richer article-specific calibration
@@ -490,7 +492,7 @@ extract_Sigma_table <- function(
 #'   interval_method = "none",
 #'   interval_status = "none",
 #'   scale = "correlation",
-#'   validation_row = "EXT-18",
+#'   validation_row = "internal-provenance-id",
 #'   diagonal = FALSE,
 #'   triangle = "upper"
 #' )

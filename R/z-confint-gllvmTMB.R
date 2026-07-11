@@ -1347,16 +1347,17 @@
 #' }
 #'
 #' Scope boundary: IN, fixed-effect and direct-parameter intervals use the
-#' requested \code{method} where supported (CI-01, CI-02), and Sigma-matrix
+#' requested \code{method} where supported, and Sigma-matrix
 #' intervals accept canonical \code{parm = "Sigma_unit"} /
 #' \code{"Sigma_unit_obs"} names, diagonal extra-grouping
 #' \code{"Sigma_cluster"} / \code{"Sigma_cluster2"} names, plus legacy
-#' \code{"Sigma_B"} / \code{"Sigma_W"} aliases (CI-02, CI-03; underlying
-#' extraction EXT-01).
+#' \code{"Sigma_B"} / \code{"Sigma_W"} aliases (the underlying
+#' extraction is covered by the package's validation tests).
 #' PARTIAL, profile intervals for full decomposed Sigma entries fall back to
 #' bootstrap because those entries are nonlinear functions of rotation-equivalent
 #' loadings and diagonal \eqn{\Psi}; non-Gaussian bootstrap calibration remains
-#' experimental under EXT-13 / CI-10. PLANNED, richer derived-profile intervals
+#' experimental and coverage is not yet fully established (see the
+#' validation-debt register). PLANNED, richer derived-profile intervals
 #' and broader calibration evidence remain M3 work.
 #'
 #' Main parm-class dispatch paths:

@@ -49,8 +49,8 @@ Design 65 cross-lineage kernels. It rebuilds \code{K_star} with
 \code{refit(K, rho, ...)} function for each grid value, and returns a tidy
 likelihood table.
 
-IN (\code{COE-03} / \code{COE-04}): this is a fixed-kernel profile workflow for
-comparing defended \code{rho} values. PARTIAL: \code{rho} is still not a TMB parameter,
+What is covered: this is a fixed-kernel profile workflow for
+comparing defended \code{rho} values. What is only partially covered: \code{rho} is still not a TMB parameter,
 this helper does not estimate \code{rho}, and it does not produce confidence
 intervals or null calibration.
 }

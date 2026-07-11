@@ -32,16 +32,17 @@ a conservative recommendation.}
 \description{
 \code{diagnose_kernel_separability()} compares two or more dense fixed kernels on
 the same levels before they are used in a multi-kernel coevolution model. It
-is a pre-fit claim-boundary helper for Design 65 / \code{COE-04}: when candidate
+is a pre-fit claim-boundary helper for Design 65 (only partially covered by
+validation): when candidate
 kernels are highly overlapping, component-specific \code{Gamma} blocks are weak
 evidence and should be treated as descriptive unless simulations justify the
 split.
 
-IN (\code{COE-04} partial): use this helper to screen candidate \code{K_phy} and
+What is covered (partially): use this helper to screen candidate \code{K_phy} and
 \code{K_tip} definitions, including raw-network and residualized-network choices,
-before fitting \code{kernel_latent(..., name = ...)} tiers. PARTIAL: this is a
-diagnostic, not recovery evidence, interval calibration, or an in-engine
-identifiability proof.
+before fitting \code{kernel_latent(..., name = ...)} tiers. What is not covered:
+this is a diagnostic, not recovery evidence, interval calibration, or an
+in-engine identifiability proof.
 }
 \examples{
 A_H <- diag(2)

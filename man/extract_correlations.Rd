@@ -21,7 +21,8 @@ extract_correlations(
 (\code{engine = "julia"}) fits expose the ordinary unit tier only and carry no
 correlation-interval payload, so they return point-only rows: the same
 schema with \code{lower} and \code{upper} set to \code{NA}, \code{method = "none"},
-\code{interval_status = "none"}, and \code{validation_row = "JUL-01A"}, mirroring
+\code{interval_status = "none"}, and an internal provenance marker for the
+Julia bridge tier in \code{validation_row}, mirroring
 \code{\link[=extract_Sigma_table]{extract_Sigma_table()}} with \code{measure = "correlation"}. Use
 \code{engine = "tmb"} when you need correlation confidence intervals.}
 
@@ -106,13 +107,15 @@ names in new calls.}
 \code{"nominal"} for all-Gaussian fits (the nominal fisher-z / profile /
 bootstrap CIs); \code{"route-only"} for non-Gaussian or mixed-family fits,
 whose correlation routes through the per-trait link-residual approximation
-and whose interval coverage is not yet established (validation-register
-CI-08 / CI-10); \code{"none"} for point-only \code{engine = "julia"}
-fits. Lets the reader see the boundary without consulting the register.}
+and whose interval coverage is not yet established (see the
+validation-debt register); \code{"none"} for point-only
+\code{engine = "julia"} fits. Lets the reader see the boundary without
+consulting the register.}
 }
 
-For an \code{engine = "julia"} bridge fit the frame additionally carries the
-\code{validation_row} (\code{"JUL-01A"}) column, with \code{lower}/\code{upper}
+For an \code{engine = "julia"} bridge fit the frame additionally carries a
+\code{validation_row} column recording an internal provenance marker for
+that bridge tier, with \code{lower}/\code{upper}
 both \code{NA}, \code{method = "none"}, and \code{interval_status = "none"};
 the base columns above are unchanged so the frame remains a superset of the
 normal-fit schema.

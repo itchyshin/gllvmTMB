@@ -505,8 +505,8 @@ meta <- function(value, sampling_var) {
 #' @param lv One-sided formula for Design 73 predictor-informed latent score
 #'   means. Runtime support is limited to ordinary unit-tier
 #'   `latent(..., lv = ~ x)`, and only Gaussian and pure binomial
-#'   (logit/probit/cloglog) fits are currently admitted (C1, `partial`;
-#'   LV-02 covered). Source-specific `*_latent(..., lv = ~ x)` forms are
+#'   (logit/probit/cloglog) fits are currently admitted (partial coverage,
+#'   validated for the ordinary-latent case). Source-specific `*_latent(..., lv = ~ x)` forms are
 #'   parsed and then fail loud (not yet fittable).
 #' @return A formula marker; never evaluated.
 #' @seealso [indep()], [phylo_latent()], [diag_re], [extract_Sigma()].
@@ -1287,7 +1287,7 @@ meta_known_V <- function(V, type = "exact") {
 #' @examples
 #' \dontrun{
 #' # Stage-2 meta-regression with a known per-row sampling-variance V.
-#' # Grounded in test-formula-grammar-smoke.R (MET-01).
+#' # Grounded in test-formula-grammar-smoke.R.
 #' set.seed(131)
 #' df <- expand.grid(
 #'   site  = factor(seq_len(50)),

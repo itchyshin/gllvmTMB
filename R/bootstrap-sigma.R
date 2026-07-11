@@ -51,12 +51,11 @@
 #' \eqn{R_t = (\Sigma_\mathrm{unit})_{tt} /
 #' [(\Sigma_\mathrm{unit})_{tt} + (\Sigma_\mathrm{unit\_obs})_{tt}]}.
 #'
-#' Scope boundary (EXT-13 / CI-03 / CI-10): IN, Gaussian bootstrap
-#' summaries and mixed-family refit plumbing covered by current tests.
-#' PARTIAL, non-Gaussian bootstrap calibration remains experimental
-#' until the M3 target-explicit grid is rerun. PLANNED, production
-#' calibration evidence for mixed-family intervals remains future M3
-#' work.
+#' Scope boundary (see the validation-debt register): Gaussian bootstrap
+#' summaries and mixed-family refit plumbing are covered by current tests.
+#' Non-Gaussian bootstrap calibration remains experimental until the M3
+#' target-explicit grid is rerun, and production calibration evidence for
+#' mixed-family intervals remains future M3 work.
 #'
 #' Each bootstrap replicate (1) draws a new response vector from
 #' `simulate(fit, nsim = 1)`, (2) refits the model with the same formula

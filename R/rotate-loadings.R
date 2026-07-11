@@ -222,7 +222,7 @@ rotate_loadings <- function(
 #' and optional loading-standardization conventions are recorded in columns
 #' instead of left inside a matrix.
 #'
-#' Scope: IN (EXT-28), fitted `latent()` components at `level = "unit"` or
+#' Scope: covered for fitted `latent()` components at `level = "unit"` or
 #' `level = "unit_obs"` with raw or standardized point-estimate loadings.
 #' PARTIAL: this table does not attach uncertainty intervals to loadings.
 #' PLANNED: bootstrap or simulation-based uncertainty can be layered on top in

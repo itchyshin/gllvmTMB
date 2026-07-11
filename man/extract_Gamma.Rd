@@ -28,10 +28,10 @@ A numeric matrix with rows \code{row_traits} and columns \code{col_traits}.
 \code{\link[=extract_Sigma]{extract_Sigma()}} to give the row-lineage by column-lineage block
 \verb{Gamma_shape = Lambda_row Lambda_col^T}. In the Design 65 coevolution
 path, \code{level} is the named \verb{kernel_*()} tier, \code{row_traits} are the host
-traits, and \code{col_traits} are the partner traits. IN (\code{COE-02}): this
+traits, and \code{col_traits} are the partner traits. This
 is a point-estimate extractor for the shared covariance block of a
-fitted dense-kernel model. IN (\code{COE-03} / \code{COE-04}, fixed-rho scale):
-when the fitted kernel tier was built from \code{\link[=make_cross_kernel]{make_cross_kernel()}},
+fitted dense-kernel model, covered by the package's validation tests at the
+fixed-rho scale: when the fitted kernel tier was built from \code{\link[=make_cross_kernel]{make_cross_kernel()}},
 \code{scale = "effect"} returns \code{Gamma_effect = rho * Gamma_shape} using the
 fixed \code{rho} recorded on that kernel. PARTIAL: uncertainty for \code{Gamma} is
 not yet reported by this helper; use bootstrap workflows when interval

@@ -1,6 +1,6 @@
-# gllvmTMB 1.0.0
+# gllvmTMB 0.5.0
 
-* First stable release. Consolidates the multivariate stacked-trait GLLVM
+* First CRAN release. Consolidates the multivariate stacked-trait GLLVM
   engine (families, phylogenetic `A^-1`, spatial SPDE, `Sigma = Lambda
   Lambda^T + diag(Psi)`, the wide/long formula API, and the Design 06
   extractors) into a working, honest, R-only package. The entries below record
@@ -860,7 +860,7 @@
 
 * **`spatial_latent(1 + x | site, d)`** augmented reduced-rank random slopes (SPA-09) now recover non-skipped under **all seven** supported families -- gaussian, binomial (probit/logit), poisson, nbinom2, Gamma, Beta, and ordinal_probit -- completing the block-diagonal spatial-latent slope cell alongside the already-complete `spatial_indep` (SPA-08) and `spatial_dep` (SPA-10) modes. The three count/probit/ordinal families that previously honest-skipped at the default fixture were a finite-sample **power** artifact, not non-identifiability: they identify cleanly at `n_sites = 150`, confirmed by the new `spatial-latent-slope-nongaussian-recovery` CI gate (`0 failed, 0 errored, 0 skipped across 7 tests`). No engine change -- the families were already on the `use_spde_latent_slope` allowlist; only the heavy test fixture's site count was raised.
 
-# gllvmTMB 0.2.0 (first CRAN release)
+# gllvmTMB 0.2.0 (first public release)
 
 First public release of `gllvmTMB`, a Template Model Builder (TMB)
 engine for stacked-trait generalised linear latent variable models

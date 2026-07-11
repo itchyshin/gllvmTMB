@@ -24,17 +24,28 @@ knitr::opts_chunk$set(
 )
 ```
 
-Before interpreting a latent axis, choose the rank you are willing to
-defend. This article asks a practical question: when the same
-multi-trait data can be fitted with one latent dimension, two latent
-dimensions, or a richer rank, how do AIC, BIC, fit health, and
-biological interpretability help decide which model to report?
+Before interpreting a latent variable (LV), choose the rank you are
+willing to defend. This article asks a practical question: when the same
+multi-trait data can be fitted with one, two, or more latent variables
+(LVs), how do AIC, BIC, fit health, and biological interpretability help
+decide which model to report?
+
+This is model-based rank selection — comparing penalised marginal
+likelihoods of fitted GLLVMs — not a PCA or NMDS scree rule that picks
+dimensions by variance explained. The LVs here are random effects of a
+fitted covariance model (below), not an eigen-decomposition of the raw
+data, so "how many LVs?" is answered by penalised likelihood and fit
+health rather than a scree plot or a variance-explained cutoff.
+
+gllvmTMB 0.5.0 is experimental and not yet on CRAN; the criteria and
+recovery numbers below orient a workflow on one simulated fixture and
+are not backed by validated coverage.
 
 The example simulates five continuous traits with two planted latent
-dimensions. We fit candidate ranks with `gllvmTMB()`, compare their
+variables. We fit candidate ranks with `gllvmTMB()`, compare their
 information criteria, check numerical health, and interpret the chosen
 model as a rank-conditional summary rather than proof that nature has
-exactly two hidden axes.
+exactly two hidden LVs.
 
 A safe reporting order is: first check numerical and response
 diagnostics; next compare one ML candidate set with AIC/BIC; then
@@ -111,7 +122,7 @@ rank_ex$formula_wide
 
 ## Fit Candidate Ranks
 
-The diagonal baseline has no shared latent axis, so it uses `indep()`.
+The diagonal baseline has no shared latent variable, so it uses `indep()`.
 The `d >= 1` candidates use the same fixed effects and ordinary
 `latent()` decomposition, changing only the rank of the shared
 `Lambda Lambda^T` term.
@@ -303,9 +314,10 @@ table.
 ## Interpret The Selected Model
 
 After choosing a rank, interpret invariant summaries first. `Sigma`,
-correlations, and communalities do not depend on how the latent axes
-are rotated. Raw loading columns are useful for exploratory labels, but
-with `d > 1` their signs and rotations need care.
+correlations, and communalities do not depend on how the latent
+variables are rotated. Raw loading columns (obtained with
+`getLoadings()`) are useful for exploratory labels, but with `d > 1`
+their signs and rotations need care.
 
 ```{r sigma-recovery}
 Sigma_hat <- extract_Sigma(fit_selected, level = "unit", part = "total")$Sigma
@@ -354,7 +366,10 @@ ggplot(sigma_compare, aes(truth, estimate, shape = type, colour = type)) +
 The selected rank recovers the planted covariance pattern in this
 fixture. That statement is narrower than "AIC/BIC proved the true
 rank." It means the selected fitted model is a useful summary of this
-candidate set and this simulated data-generating mechanism.
+candidate set and this simulated data-generating mechanism. These are
+recovery numbers on a single deterministic fixture — a display of
+behaviour on this data-generating mechanism, not empirical coverage
+across replicate simulations.
 
 ## Refit The Selected Gaussian Model With REML
 
@@ -411,11 +426,14 @@ signif(
 The ML and REML log-likelihoods answer different questions, so do not
 mix them in the AIC/BIC table. Use one estimator consistently for a
 candidate set, and report which estimator produced the final
-covariance summaries. In the current release, `REML = TRUE` is guarded
+covariance summaries. In gllvmTMB 0.5.0, `REML = TRUE` is guarded
 to Gaussian fits without observation weights, retained missing response
 cells, or `mi()` predictor models. Fixed-effect profile confidence
 intervals are also ML-only; use Wald intervals or refit with
-`REML = FALSE` before profiling fixed effects.
+`REML = FALSE` before profiling fixed effects. Both the Wald and profile
+intervals are nominal, first-order approximations whose empirical
+coverage is not yet calibrated for these models, so treat them as
+indicative rather than validated.
 
 ## What To Report
 
@@ -432,9 +450,8 @@ Report the candidate set and the checks that constrained it.
 
 This article covers a model-selection workflow for Gaussian
 ordinary `latent()` candidate ranks using base `AIC()` / `BIC()`,
-`logLik()`, and `check_gllvmTMB()` (FG-04, FG-06, DIA-03, DIA-08,
-DIA-10), then shows a Gaussian-only `REML = TRUE` refit for the chosen
-rank (MIS-33).
+`logLik()`, and `check_gllvmTMB()` fit-health rows, then shows a
+Gaussian-only `REML = TRUE` refit for the chosen rank.
 It does not validate AIC/BIC as universally correct latent-rank
 selectors, calibrate confidence intervals, compare likelihoods from
 different fitting approximations, or advertise REML for non-Gaussian,

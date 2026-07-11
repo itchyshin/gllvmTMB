@@ -34,6 +34,10 @@ checks the equivalent long-data call, and extracts the covariance,
 correlation, communality, and ordination summaries a reader normally
 wants first.
 
+`gllvmTMB` is experimental and pre-CRAN (version 0.5.0): the formula
+grammar, defaults, and reported summaries and intervals may still
+change before the API is committed-stable.
+
 The fitted Gaussian model starts with observations, not with the
 covariance matrix. For each individual and trait, the teaching model is:
 
@@ -198,7 +202,7 @@ as.numeric(logLik(fit))
 If your workflow already stores one row per `(individual, trait)`
 observation, use the same entry point with the long formula and explicit
 `trait =` argument. Internally the wide formula pivots to this stacked
-form, so the fits are byte-identical:
+form, so the two calls fit the same model — the log-likelihoods agree:
 
 ```{r fit-long}
 morph$formula_long
@@ -273,7 +277,11 @@ teaching example can show what the fitted model is trying to recover:
 round(truth$Sigma, 2)
 ```
 
-Ordination of individuals on the two latent axes:
+Ordination of individuals on the two latent axes. These axes come from
+the fitted latent model
+($\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$),
+not an eigen-decomposition of the raw data — this is model-based
+ordination, not PCA or NMDS:
 
 ```{r ord, fig.cap = "Individual scores on the two latent trait axes."}
 ord <- extract_ordination(fit, level = "unit")
@@ -300,7 +308,7 @@ intervals. `method = "fisher-z"` is the default and keeps bounds in
 alternatives for follow-up articles, and `method = "wald"` is kept as
 an alias of `"fisher-z"`. These are nominal Fisher-z Wald intervals:
 they are useful diagnostics, but their empirical coverage is not
-calibrated (CI-08/CI-10), so read them as recovery-grade, not as
+calibrated, so read them as recovery-grade, not as
 validated coverage.
 
 ```{r cor}
@@ -355,16 +363,6 @@ is what should agree; the full `Sigma` diagonal also includes `Psi`.
 ```{r cov}
 list(true_LL  = round(Lambda_true %*% t(Lambda_true), 2),
      fitted_LL = round(Lambda_hat  %*% t(Lambda_hat),  2))
-```
-
-Ordination places individuals on the two latent axes:
-
-```{r ord2, fig.cap = "Individual scores on the two latent trait axes."}
-ord <- extract_ordination(fit, level = "unit")
-plot(ord$scores[, 1], ord$scores[, 2], pch = 19, col = "steelblue",
-     xlab = "LV 1", ylab = "LV 2",
-     main = "Individuals on latent trait axes")
-abline(h = 0, v = 0, lty = 2, col = "grey70")
 ```
 
 That is the whole first model: trait-specific intercepts, individual

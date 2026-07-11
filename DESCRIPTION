@@ -1,7 +1,7 @@
 Type: Package
 Package: gllvmTMB
 Title: Fit Multivariate Models from Wide Response Data
-Version: 1.0.0
+Version: 0.5.0
 Authors@R:
     person("Shinichi", "Nakagawa", , "itchyshin@gmail.com",
            role = c("aut", "cre", "cph"),

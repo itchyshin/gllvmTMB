@@ -2,7 +2,7 @@
 % Please edit documentation in R/kernel-helpers.R
 \name{profile_cross_rho_ci}
 \alias{profile_cross_rho_ci}
-\title{Profile-likelihood interval for the cross-lineage \code{rho}}
+\title{Profile sensitivity interval for the cross-lineage \code{rho}}
 \usage{
 profile_cross_rho_ci(profile, level = 0.95)
 }
@@ -18,7 +18,7 @@ A list with \code{estimate} (the grid \code{rho} with the highest \code{logLik})
 deviance \code{threshold}. Bounds are clamped to the \code{rho} domain \verb{[-1, 1]}.
 }
 \description{
-Turns a \code{\link[=profile_cross_rho]{profile_cross_rho()}} grid into a profile-likelihood confidence
+Turns a \code{\link[=profile_cross_rho]{profile_cross_rho()}} grid into a profile-likelihood sensitivity
 interval for the fixed cross-lineage correlation \code{rho}. The interval is the
 set of \code{rho} values whose deviance excess \code{2 * (logLik_max - logLik)} stays
 below \code{qchisq(level, df = 1)}; the bounds are located by linear interpolation
@@ -29,8 +29,10 @@ interval). When the profiled curve does not rise above the threshold on one
 side within the supplied grid, that bound is reported as the grid edge and
 flagged unbounded (\code{lower_bounded} / \code{upper_bounded} \code{FALSE}) -- widen the grid.
 
-This is profile/sensitivity interval evidence on a \emph{fixed}-\code{rho} refit grid,
-not in-engine \code{rho} estimation (Design 65 C3.3; \code{COE-04} remains partial).
+This is screening-grade profile/sensitivity interval evidence on a
+\emph{fixed}-\code{rho} refit grid, not in-engine \code{rho} estimation (Design 65 C3.3;
+\code{COE-04} remains partial). Its coverage has \strong{not} been calibrated, so do
+not report it as a validated confidence interval.
 }
 \seealso{
 \code{\link[=profile_cross_rho]{profile_cross_rho()}}, \code{\link[=make_cross_kernel]{make_cross_kernel()}}

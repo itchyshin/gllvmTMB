@@ -261,10 +261,10 @@ profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
   out
 }
 
-#' Profile-likelihood interval for the cross-lineage `rho`
+#' Profile sensitivity interval for the cross-lineage `rho`
 #'
 #' @description
-#' Turns a [profile_cross_rho()] grid into a profile-likelihood confidence
+#' Turns a [profile_cross_rho()] grid into a profile-likelihood sensitivity
 #' interval for the fixed cross-lineage correlation `rho`. The interval is the
 #' set of `rho` values whose deviance excess `2 * (logLik_max - logLik)` stays
 #' below `qchisq(level, df = 1)`; the bounds are located by linear interpolation
@@ -275,8 +275,10 @@ profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
 #' side within the supplied grid, that bound is reported as the grid edge and
 #' flagged unbounded (`lower_bounded` / `upper_bounded` `FALSE`) -- widen the grid.
 #'
-#' This is profile/sensitivity interval evidence on a *fixed*-`rho` refit grid,
-#' not in-engine `rho` estimation (Design 65 C3.3; `COE-04` remains partial).
+#' This is screening-grade profile/sensitivity interval evidence on a
+#' *fixed*-`rho` refit grid, not in-engine `rho` estimation (Design 65 C3.3;
+#' `COE-04` remains partial). Its coverage has **not** been calibrated, so do
+#' not report it as a validated confidence interval.
 #'
 #' @param profile A `gllvmTMB_cross_rho_profile` data frame from
 #'   [profile_cross_rho()] (needs the `rho` and `delta_deviance` columns).

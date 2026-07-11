@@ -23,9 +23,12 @@ argument name \code{residual} is retained as a soft-deprecated alias.}
 diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 traits. Only applies when \code{unique = TRUE}.}
 
-\item{lv}{Reserved one-sided formula for Design 73 predictor-informed latent
-score means. Current releases validate the parser surface and then stop
-before fitting; no runtime support is implemented yet.}
+\item{lv}{One-sided formula for Design 73 predictor-informed latent score
+means. Runtime support is limited to ordinary unit-tier
+\code{latent(..., lv = ~ x)}, and only Gaussian and pure binomial
+(logit/probit/cloglog) fits are currently admitted (C1, \code{partial};
+LV-02 covered). Source-specific \verb{*_latent(..., lv = ~ x)} forms are
+parsed and then fail loud (not yet fittable).}
 }
 \value{
 A formula marker; never evaluated.

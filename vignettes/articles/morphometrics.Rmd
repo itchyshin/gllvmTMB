@@ -306,14 +306,6 @@ plot_Sigma_comparison(corr_compare, measure = "correlation")
 > diagonal for this data-generating process. The default `latent()` fit
 > above includes $\boldsymbol\Psi$. Use `part = "shared"` / `part = "unique"`
 > to pull just one component.
->
-> unique (trait-specific) component. Ordinary `latent()` carries
-> $\boldsymbol\Psi$ by default (as in the fit above), so the diagonal
-> is filled in correctly. If instead you fit with
-> `latent(..., unique = FALSE)`, then $\boldsymbol\Psi = 0$ and you
-> get only $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$, which
-> understates the diagonal. Use `part = "shared"` /
-> `part = "unique"` to pull just one component.
 
 ## Pairwise correlations and communality
 
@@ -372,8 +364,6 @@ recovers the known truth. Broader coverage and interval-calibration
 claims belong in the simulation-grid articles, which remain under audit.
 
 ## Why default `latent()`? `dep` and `indep` on the same data
-
-## Why `latent()`? `dep` and `indep` on the same data
 
 The morphometric workflow uses ordinary `latent(d = K)` to
 estimate $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol{\Psi}$.

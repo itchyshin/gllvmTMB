@@ -502,9 +502,12 @@ meta <- function(value, sampling_var) {
 #'   \eqn{\boldsymbol\Psi} variance per trait. `TRUE` ties the default ordinary
 #'   diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 #'   traits. Only applies when `unique = TRUE`.
-#' @param lv Reserved one-sided formula for Design 73 predictor-informed latent
-#'   score means. Current releases validate the parser surface and then stop
-#'   before fitting; no runtime support is implemented yet.
+#' @param lv One-sided formula for Design 73 predictor-informed latent score
+#'   means. Runtime support is limited to ordinary unit-tier
+#'   `latent(..., lv = ~ x)`, and only Gaussian and pure binomial
+#'   (logit/probit/cloglog) fits are currently admitted (C1, `partial`;
+#'   LV-02 covered). Source-specific `*_latent(..., lv = ~ x)` forms are
+#'   parsed and then fail loud (not yet fittable).
 #' @return A formula marker; never evaluated.
 #' @seealso [indep()], [phylo_latent()], [diag_re], [extract_Sigma()].
 #' @examples

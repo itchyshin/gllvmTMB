@@ -37,7 +37,7 @@ the link-scale residual term that `extract_Sigma()` and
 > response-scale correlations remain outside this article's advertised
 > interpretation boundary (FAM-17), and mixed-family delta/hurdle
 > latent-scale correlations (MIX-10) are designed and route-only --
-> pending a convergence fix -- rather than an interpretation readers can
+> uncalibrated (CI-08/CI-10) -- rather than an interpretation readers can
 > use today. Exported constructors that are not mapped by
 > `family_to_id()` remain outside the public multivariate engine surface
 > until their validation rows move (FAM-07, FAM-16, FAM-18, FAM-19).
@@ -64,8 +64,8 @@ simulation check say otherwise.
 | continuous with heavy tails | `student()` | identity | partial (FAM-12) | Degrees of freedom can be estimated or fixed. |
 | positive counts, no zeros | `truncated_poisson()` | log | partial (FAM-15) | Requires integer responses `y >= 1`. |
 | overdispersed positive counts, no zeros | `truncated_nbinom2()` | log | partial (FAM-15) | Requires integer responses `y >= 1`. |
-| non-negative continuous with exact zeros | `delta_lognormal()` | logit + log | undefined for response-scale interpretation (FAM-17); mixed-family latent-scale correlation is designed and route-only, pending a convergence fix (MIX-10, `partial`) | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
-| non-negative continuous with exact zeros | `delta_gamma()` | logit + log | undefined for response-scale interpretation (FAM-17); mixed-family latent-scale correlation is designed and route-only, pending a convergence fix (MIX-10, `partial`) | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
+| non-negative continuous with exact zeros | `delta_lognormal()` | logit + log | undefined for response-scale interpretation (FAM-17); mixed-family latent-scale correlation is designed and route-only but uncalibrated (MIX-10, `partial`) | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
+| non-negative continuous with exact zeros | `delta_gamma()` | logit + log | undefined for response-scale interpretation (FAM-17); mixed-family latent-scale correlation is designed and route-only but uncalibrated (MIX-10, `partial`) | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
 | ordered categories with `K >= 3` | `ordinal_probit()` | probit | covered (FAM-14); article still internal | Threshold model with latent residual variance fixed at 1; the ordinal worked article is under audit for extractor depth, intervals, and public placement. |
 
 Use this table as a likelihood lookup. For covariance keywords, see
@@ -147,9 +147,9 @@ Use non-delta, one-link families for public mixed-family examples for
 now. Delta and hurdle families are deliberately not used in the
 mixed-family example path here: MIX-10 is designed and route-only
 (latent structure constrained to the positive/continuous submodel,
-with the occurrence submodel fixed-effects-only), but it is not yet
-shippable -- a probe found latent delta-lognormal recovery landing on
-a convergence boundary, so the live fit awaits a fix.
+with the occurrence submodel fixed-effects-only), but it is not
+advertised: the positive-part latent-scale correlation is route-only
+and its coverage is uncalibrated (CI-08/CI-10).
 
 ## Scale And Extraction
 

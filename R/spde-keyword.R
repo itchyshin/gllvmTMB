@@ -74,8 +74,7 @@
 #' resulting matrix is sparse (each row has a small constant number of
 #' non-zeros), so TMB's sparse Cholesky scales linearly with mesh
 #' size — that's the speed advantage over `glmmTMB::exp()`'s dense
-#' \eqn{n \times n} covariance matrix
-#' (see `vignette("spde-vs-glmmTMB")` for the live benchmark).
+#' \eqn{n \times n} covariance matrix.
 #'
 #' ## Reduced-rank spatial loadings (`spatial_latent()`)
 #'
@@ -129,7 +128,7 @@
 #' @return A formula marker; never evaluated as a call.
 #' @export
 #' @keywords internal
-#' @seealso [make_mesh()], [add_utm_columns()], `vignette("spde-vs-glmmTMB")`
+#' @seealso [make_mesh()], [add_utm_columns()]
 #' @references
 #'   Lindgren, F., Rue, H. & Lindström, J. (2011). An explicit link
 #'   between Gaussian fields and Gaussian Markov random fields: the

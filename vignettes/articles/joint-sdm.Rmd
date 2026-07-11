@@ -361,16 +361,6 @@ $$
       \psi_{B,t} + \pi^2/3}.
 $$
 
-With `latent()` and no separate diagonal companion at the unit level
-there is no estimated $\boldsymbol\Psi$, so `extract_communality(level = "unit",
-link_residual = "auto")` returns exactly this ratio — the
-proportion of the latent-liability variance that the shared factors
-explain. (This is *not* the between-vs-within `extract_repeatability()`
-ICC, which needs paired between- and within-unit diagonal tiers such as
-`indep(0 + trait | site) + indep(0 + trait | site_species)`; a single-trial occurrence matrix has
-no within-site replication for that, so `extract_repeatability()`
-and `extract_ICC_site()` are not applicable to this fit.)
-
 For this single-trial Bernoulli JSDM, the unit-level `latent()` term
 estimates $\boldsymbol\Psi_B$ and `link_residual = "auto"` adds the fixed
 logistic residual variance. Therefore

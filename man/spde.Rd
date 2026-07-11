@@ -89,8 +89,7 @@ fmesher-built finite-element mass and stiffness matrices. The
 resulting matrix is sparse (each row has a small constant number of
 non-zeros), so TMB's sparse Cholesky scales linearly with mesh
 size — that's the speed advantage over \code{glmmTMB::exp()}'s dense
-\eqn{n \times n} covariance matrix
-(see \code{vignette("spde-vs-glmmTMB")} for the live benchmark).
+\eqn{n \times n} covariance matrix.
 }
 
 \subsection{Reduced-rank spatial loadings (\code{spatial_latent()})}{
@@ -163,6 +162,6 @@ Methodology)} \strong{73}(4): 423–498.
 \doi{10.1111/j.1467-9868.2011.00777.x}
 }
 \seealso{
-\code{\link[=make_mesh]{make_mesh()}}, \code{\link[=add_utm_columns]{add_utm_columns()}}, \code{vignette("spde-vs-glmmTMB")}
+\code{\link[=make_mesh]{make_mesh()}}, \code{\link[=add_utm_columns]{add_utm_columns()}}
 }
 \keyword{internal}

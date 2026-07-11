@@ -249,6 +249,13 @@ reference:
     - plot_anisotropy2
 
   - title: Response families
+    desc: >
+      Response distributions the multivariate engine fits. Several constructors
+      below are exported for API continuity but fail loud until their
+      validation rows move (`censored_poisson`, `gengamma`, the `*_mix`
+      mixtures, `truncated_nbinom1`, and the delta mixture / gengamma /
+      truncated-NB forms). See the "Response families" article for the
+      covered-vs-blocked split.
     contents:
     - Families
     - Beta
@@ -273,9 +280,16 @@ reference:
     - delta_truncated_nbinom1
     - betabinomial
     - delta_beta
+    - ordinal_probit
+
+  - title: Predictor-model families (imputation)
+    desc: >
+      Not response families: these tag the submodel for a categorical or
+      ordered *predictor* under multiple imputation (`impute_model()` /
+      `mi()`), not a response distribution.
+    contents:
     - categorical
     - cumulative_logit
-    - ordinal_probit
 
   - title: Report-ready extractors
     desc: Recover covariance, correlation, ordination, repeatability, communality, phylogenetic signal, and variance proportions

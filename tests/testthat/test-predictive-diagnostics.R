@@ -225,6 +225,20 @@ test_that("public predictive plots carry auditable metadata", {
   expect_silent(ggplot2::ggplot_build(p_root))
 })
 
+test_that("rootogram includes NB1 count rows (T1.4 regression)", {
+  skip_on_cran()
+  fit <- make_ppc_diag_fit("nbinom1", seed = 61L)
+  ## Before the fix, .gllvmTMB_rootogram_data filtered family_id %in% c(2, 5)
+  ## only, so an all-NB1 fit hit "requires Poisson or NB2 rows".
+  p_root <- predictive_check(
+    fit, type = "rootogram", ndraws = 8L, seed = 62L,
+    condition_on_RE = TRUE, max_count = 8L
+  )
+  expect_s3_class(p_root, "ggplot")
+  root_meta <- attr(p_root, "gllvmTMB_diagnostic")
+  expect_true(all(root_meta$data$family == "nbinom1"))
+})
+
 test_that("auto rootogram max_count pools extreme simulated tails", {
   draws <- list(
     observed = c(0, 1, 2, 3),

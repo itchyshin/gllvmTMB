@@ -788,7 +788,7 @@ residuals.gllvmTMB_multi <- function(
   dat <- .gllvmTMB_rootogram_data(draws, max_count = max_count)
   if (nrow(dat) == 0L) {
     cli::cli_abort(c(
-      "{.arg type = \"rootogram\"} requires Poisson or NB2 rows.",
+      "{.arg type = \"rootogram\"} requires Poisson, NB1, or NB2 rows.",
       "i" = "Use {.arg type = \"rq_qq\"} for exact residual Q-Q checks on other families."
     ))
   }
@@ -812,7 +812,7 @@ residuals.gllvmTMB_multi <- function(
 
 .gllvmTMB_rootogram_data <- function(draws, max_count = NULL) {
   count_rows <- draws$row_data$family_id %in%
-    c(2L, 5L) &
+    c(2L, 5L, 15L) &
     is.finite(draws$observed) &
     draws$observed >= 0 &
     draws$observed == floor(draws$observed)

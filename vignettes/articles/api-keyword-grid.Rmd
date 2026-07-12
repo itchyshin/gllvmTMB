@@ -35,7 +35,7 @@ replication, trait count, and the scientific covariance question still matter.
   a sparse Gaussian Markov random field (GMRF) approximation so nearby
   locations can be correlated.
 - **`kernel_`:** levels are related through a supplied dense covariance matrix
-  `K`. These helpers sit outside the source-specific grid.
+  `K` — the generic dense-matrix source (the fifth grid row).
 
 These sources are alternatives based on study design, not a progression from
 fine to broad scale. Add a source prefix only when that structured relationship
@@ -43,48 +43,69 @@ is part of the estimand.
 
 ### 2. What trait covariance is needed?
 
-- **`scalar`:** one shared trait-scale variance multiplier and zero cross-trait
-  covariance. For a structured source, each trait has its own field or draw;
-  its marginal variance across grouping levels also reflects the diagonal of
-  the supplied relationship or covariance operator.
-- **`indep`:** separate marginal variance for each trait and zero cross-trait
-  covariance. Use this for a diagonal model.
+There are **three fundamental cross-trait structures**, from simplest to richest:
+
+- **`indep`:** a separate marginal variance for each trait and zero cross-trait
+  covariance — a diagonal model. Its parsimony modifier `common = TRUE` ties all
+  trait variances to **one shared value** (the *scalar* special case).
 - **`dep`:** a full unstructured trait covariance with (T(T+1)/2) covariance
   parameters. Use only when trait count and grouping-level replication support
   a saturated covariance.
-- **`latent`:** a parsimonious cross-trait covariance represented by (d) LVs.
-  Use when a few shared dimensions are scientifically plausible.
+- **`latent`:** a parsimonious reduced-rank cross-trait covariance
+  \(\boldsymbol\Lambda\boldsymbol\Lambda^{\mathsf T}\) represented by (d) latent
+  variables. Its modifier `unique = TRUE` adds the trait-diagonal \(\Psi\)
+  companion.
+
+**`scalar` and `unique` are modifiers, not separate modes.** `scalar` is
+`indep` with the variances tied to one shared value; `unique` is `latent` with
+its diagonal-\(\Psi\) companion. This mirrors how the deprecated `unique()`
+keyword now lives as `latent(unique = TRUE)`. For convenience the tied-variance
+model also has named keywords — `scalar()`, `phylo_scalar()`, `animal_scalar()`,
+`spatial_scalar()`, `kernel_scalar()` — which fit exactly the same model as the
+corresponding `indep(..., common = TRUE)`.
+
 All fitted keyword covariances are random-effect covariances on the model's
 linear-predictor or latent scale. They are not automatically response-scale
 covariances for non-Gaussian traits.
 
-## The four-mode grid
+## The 5 × 3 grid
 
-The rows are correlation sources across grouping levels. The columns are trait
-covariance modes: scalar, independent, dependent, and latent.
+The rows are the five correlation **sources** across grouping levels; the
+columns are the three fundamental trait-covariance **modes**. Every cell is a
+live keyword. The *scalar* and *unique* sub-cases are modifiers, listed under
+the table.
 
 <div class="table-responsive">
-<table class="table table-striped" style="min-width: 720px;">
-<caption>Source-specific covariance keyword grid</caption>
+<table class="table table-striped" style="min-width: 640px;">
+<caption>Source × mode covariance keyword grid</caption>
 <thead><tr>
-<th>Source</th><th>Scalar</th><th>Independent</th><th>Dependent</th><th>Latent</th>
+<th>Source</th><th>Independent</th><th>Dependent</th><th>Latent</th>
 </tr></thead>
 <tbody>
-<tr><th>none</th><td>(omit)</td><td><code>indep()</code></td>
+<tr><th>none</th><td><code>indep()</code></td>
 <td><code>dep()</code></td><td><code>latent()</code></td></tr>
-<tr><th>animal</th><td><code>animal_scalar()</code></td>
-<td><code>animal_indep()</code></td><td><code>animal_dep()</code></td><td><code>animal_latent()</code></td></tr>
-<tr><th>phylogenetic</th><td><code>phylo_scalar()</code></td>
-<td><code>phylo_indep()</code></td><td><code>phylo_dep()</code></td><td><code>phylo_latent()</code></td></tr>
-<tr><th>spatial</th><td><code>spatial_scalar()</code></td>
-<td><code>spatial_indep()</code></td><td><code>spatial_dep()</code></td><td><code>spatial_latent()</code></td></tr>
+<tr><th>animal</th><td><code>animal_indep()</code></td>
+<td><code>animal_dep()</code></td><td><code>animal_latent()</code></td></tr>
+<tr><th>phylogenetic</th><td><code>phylo_indep()</code></td>
+<td><code>phylo_dep()</code></td><td><code>phylo_latent()</code></td></tr>
+<tr><th>spatial</th><td><code>spatial_indep()</code></td>
+<td><code>spatial_dep()</code></td><td><code>spatial_latent()</code></td></tr>
+<tr><th>kernel</th><td><code>kernel_indep()</code></td>
+<td><code>kernel_dep()</code></td><td><code>kernel_latent()</code></td></tr>
 </tbody>
 </table>
 </div>
 
-There is no no-prefix scalar keyword: omitting a multi-trait covariance term
-means that no such term is fitted. For a diagonal ordinary model with equal
-variances, use `indep(..., common = TRUE)`.
+**Scalar (one shared variance).** Add `common = TRUE` to any `indep` term —
+e.g. `indep(0 + trait | g, common = TRUE)` — or use the equivalent convenience
+keyword `scalar()`, `phylo_scalar()`, `animal_scalar()`, `spatial_scalar()`, or
+`kernel_scalar()`. Omitting a multi-trait covariance term entirely means no such
+term is fitted.
+
+**Unique (diagonal-\(\Psi\) companion).** Add `unique = TRUE` to a `latent`
+term (see the latent default below). The standalone `unique()` keyword is
+soft-deprecated in favour of `indep()` (for a plain diagonal) and
+`latent(unique = TRUE)` (for the paired companion).
 
 ## What the modes estimate
 
@@ -104,9 +125,9 @@ The clearest ordering-free definition is
 \]
 
 where $\boldsymbol\Sigma_T$ is the trait covariance implied by the selected
-mode: $\sigma^2\mathbf I_T$ for `scalar`,
-$\mathrm{diag}(\psi_1,\ldots,\psi_T)$ for `indep`, a free
-$\boldsymbol\Sigma_T$ for `dep`, and
+mode: $\mathrm{diag}(\psi_1,\ldots,\psi_T)$ for `indep`
+(collapsing to the shared $\sigma^2\mathbf I_T$ under the `common = TRUE` /
+scalar modifier), a free $\boldsymbol\Sigma_T$ for `dep`, and
 $\boldsymbol\Lambda\boldsymbol\Lambda^{\mathsf T}$ with an optional
 $\boldsymbol\Psi$ companion for `latent`. This elementwise form does not depend
 on whether software stacks traits or grouping levels first.
@@ -216,12 +237,14 @@ top-level `mesh =` argument to `gllvmTMB()`. A source-valid formula still needs
 enough locations and spatial spread to identify range and covariance
 parameters.
 
-## Dense kernels outside the grid
+## Dense kernels (the fifth grid row)
 
-A supplied dense covariance matrix uses the separate kernel interface; there is
-no `kernel_scalar()`.
+A supplied dense covariance matrix `K` is the generic dense-matrix source. Its
+keywords follow the same grid as the other sources, plus the tied-variance
+`kernel_scalar()`.
 
 ```{r kernel-syntax, eval = FALSE}
+kernel_scalar(unit_id, K = K, name = "known")   # one shared variance x K
 kernel_indep(unit_id, K = K, name = "known")
 kernel_dep(unit_id, K = K, name = "known")
 kernel_latent(unit_id, K = K, d = 2, name = "known")

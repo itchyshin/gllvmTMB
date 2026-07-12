@@ -1,5 +1,6 @@
 ---
 title: "Get started with gllvmTMB"
+description: "Fit the smallest Gaussian multivariate model, inspect numerical health, and read covariance before moving to a specialist guide."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -34,9 +35,9 @@ checks the equivalent long-data call, and extracts the covariance,
 correlation, communality, and ordination summaries a reader normally
 wants first.
 
-`gllvmTMB` is experimental and pre-CRAN (version 0.5.0): the formula
-grammar, defaults, and reported summaries and intervals may still
-change before the API is committed-stable.
+`gllvmTMB` has an experimental lifecycle: the formula grammar,
+defaults, and reported summaries and intervals may still change as
+the API matures.
 
 The fitted Gaussian model starts with observations, not with the
 covariance matrix. For each individual and trait, the teaching model is:
@@ -244,20 +245,36 @@ health <- check_gllvmTMB(fit)
 health[, c("component", "status", "message", "action")]
 ```
 
-For this Gaussian teaching fit, randomized-quantile residuals are exact
-family-CDF residuals. The table keeps every observation row and records
-whether the residual could be computed.
+Each individual-trait cell has one observation, and the fitted diagonal
+`Psi` term is indexed at that same cell resolution. Exact conditional Gaussian
+residuals would therefore be almost zero and would make a misleadingly perfect
+Q-Q plot. Instead, use simulation-rank residuals from new fitted-model draws
+with random effects regenerated (`condition_on_RE = FALSE`).
 
 ```{r residual-table}
-rq <- residuals(fit, type = "randomized_quantile", seed = 1)
+rq <- residuals(
+  fit,
+  type = "simulation_rank",
+  nsim = 199,
+  seed = 1,
+  condition_on_RE = FALSE
+)
 head(rq[, c("trait", "family", "observed", "residual", "status")], 8)
+stopifnot(diff(range(rq$residual, na.rm = TRUE)) > 1)
 ```
 
 Use the plot as a quick fitted-response check before turning to
 covariance interpretation:
 
-```{r residual-qq, fig.width = 6.2, fig.height = 4.2, fig.cap = "Randomized-quantile residual Q-Q check for the fitted Gaussian morphometrics model. The plot is a fitted-model diagnostic display, not interval calibration or a posterior predictive check."}
-predictive_check(fit, type = "rq_qq", seed = 1)
+```{r residual-qq, fig.width = 6.2, fig.height = 4.2, out.extra='class="wide-scientific-figure"', fig.cap = "Marginal simulation-rank residual Q-Q check for the fitted Gaussian morphometrics model. New random effects are generated for each fitted-model draw. The plot is a diagnostic display, not interval calibration or a posterior predictive check."}
+predictive_check(
+  fit,
+  type = "rq_qq",
+  residual_type = "simulation_rank",
+  nsim = 199,
+  seed = 1,
+  condition_on_RE = FALSE
+)
 ```
 
 ## Read the covariance summaries first
@@ -302,14 +319,11 @@ variance shared with the others:
 extract_communality(fit, "unit")
 ```
 
-Pairwise trait correlations with 95% Fisher-z Wald confidence
-intervals. `method = "fisher-z"` is the default and keeps bounds in
-`[-1, 1]`; `method = "profile"` and `method = "bootstrap"` are slower
-alternatives for follow-up articles, and `method = "wald"` is kept as
-an alias of `"fisher-z"`. These are nominal Fisher-z Wald intervals:
-they are useful diagnostics, but their empirical coverage is not
-calibrated, so read them as recovery-grade, not as
-validated coverage.
+Pairwise trait correlations are point estimates by default. This is the safest
+general summary because interval calibration depends on the fitted target and
+model. `method = "fisher-z"` adds fast heuristic bounds, while profile and
+bootstrap routes are slower and remain target-specific rather than universally
+calibrated.
 
 ```{r cor}
 corr_rows <- extract_correlations(fit, tier = "unit")
@@ -319,7 +333,7 @@ corr_rows
 For reports, plot the same tidy rows instead of hand-indexing a
 correlation matrix:
 
-```{r cor-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Pairwise trait correlations from the first fitted model. Points are Fisher-z estimates; horizontal segments are finite 95% interval bounds."}
+```{r cor-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Pairwise point estimates of trait correlations from the first fitted model. No interval bounds are requested in this first-fit view."}
 plot_correlations(corr_rows, sort = "magnitude")
 ```
 
@@ -328,11 +342,12 @@ shows point estimates, and the lower triangle shows the finite Fisher-z
 interval bounds supplied by `extract_correlations()`. The plot does not
 compute or calibrate uncertainty itself.
 
-```{r cor-matrix, fig.width = 7.4, fig.height = 5.1, fig.cap = "Trait correlation matrix from the first fitted model. Upper-triangle cells show Fisher-z point estimates; lower-triangle cells show finite 95% interval bounds."}
+```{r cor-matrix, fig.width = 7.4, fig.height = 5.1, out.extra='class="wide-scientific-figure"', fig.cap = "Point estimates of trait correlations from the first fitted model. The matrix is descriptive; interval routes are target-specific and opt-in."}
 plot_correlations(
   corr_rows,
   style = "heatmap",
-  matrix_layout = "estimate_ci",
+  matrix_layout = "by_level",
+  label_type = "estimate",
   title = "First-model trait correlations"
 )
 ```
@@ -368,6 +383,25 @@ list(true_LL  = round(Lambda_true %*% t(Lambda_true), 2),
 That is the whole first model: trait-specific intercepts, individual
 latent scores, loadings from those scores to traits, and the diagonal
 `Psi` carried by ordinary `latent()`.
+
+## Choose your next guide
+
+The next step depends on the question, not on adding every available model
+component:
+
+- **Interpret covariance:** continue with
+  [Individual morphometrics](morphometrics.html) for a fuller Gaussian worked
+  example.
+- **Check the fit:** use [Can I trust this fit?](fit-diagnostics.html) before
+  relying on coefficients, covariance, or uncertainty.
+- **Choose a specialised model:** use the [Articles chooser](index.html) to
+  select repeated behaviours, reaction norms, binary occurrence,
+  phylogenetic covariance, missing data, rank selection, or a technical
+  reference.
+
+Family, grouping structure, covariance source, covariance mode, missingness,
+and latent rank answer different scientific questions. Add only the pieces the
+sampling design and estimand require.
 
 ## Acknowledgements
 

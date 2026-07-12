@@ -1,5 +1,6 @@
 ---
 title: "Covariance and correlation: the model behind Sigma"
+description: "Use as a technical reference for Sigma, Lambda, Psi, liability-scale residual conventions, and the limits of covariance comparisons."
 tier: 2 # technical reference for Sigma, Lambda, Psi, correlations, and communality
 output:
   rmarkdown::html_vignette:
@@ -28,9 +29,9 @@ This page is for the reader who has fitted a multivariate model and now asks:
 which traits vary together, and are the reported correlations too large if the
 model leaves out trait-specific variance?
 
-gllvmTMB is experimental (version 0.5.0, pre-CRAN); the covariance, correlation,
-and communality extractors described here are part of that experimental surface,
-and their interval machinery is still maturing.
+The covariance, correlation, and communality extractors described here
+are part of the package's experimental surface, and their interval
+machinery is still maturing.
 
 Start from the model, not from the covariance matrix. For a Gaussian
 stacked-trait GLLVM, the teaching model for individual `i` and trait `t` is
@@ -426,9 +427,9 @@ is a display of the rows returned by `extract_correlations()`: it does not
 bootstrap, profile, or calibrate uncertainty — it only renders the
 Fisher-z interval columns already present in `corr_B`. Those bounds are
 themselves nominal Fisher-z (Wald-on-$z$) intervals: their empirical coverage
-has not been calibrated and they are not recovery-grade validated for
+has not been calibrated and they do not establish repeated-sampling coverage for
 gllvmTMB's latent covariances, so read them as an uncertainty display, not a
-validated interval.
+calibrated interval.
 
 ### Site-level / individual-level ICC
 

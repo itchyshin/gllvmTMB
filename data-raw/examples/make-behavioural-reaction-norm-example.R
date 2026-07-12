@@ -42,13 +42,18 @@ sessions$session_id <- factor(
   paste(sessions$individual, sessions$session, sep = "_")
 )
 
-temperature_grid <- rep(
-  seq(-1.2, 1.2, length.out = n_sessions_per_individual),
-  times = n_individuals
+planned_temperature_C <- seq(
+  12,
+  28,
+  length.out = n_sessions_per_individual
 )
-sessions$temperature <- as.numeric(scale(
-  temperature_grid + stats::rnorm(nrow(sessions), sd = 0.12)
-))
+sessions$temperature_C <-
+  planned_temperature_C[sessions$session] +
+  stats::rnorm(nrow(sessions), sd = 0.6)
+temperature_center_C <- mean(sessions$temperature_C)
+temperature_scale_C <- stats::sd(sessions$temperature_C)
+sessions$temperature <-
+  (sessions$temperature_C - temperature_center_C) / temperature_scale_C
 
 data_long <- sessions[rep(seq_len(nrow(sessions)), each = n_traits), ]
 data_long$trait <- factor(
@@ -145,12 +150,19 @@ data_wide <- stats::reshape(
       "individual",
       "session",
       "session_id",
+      "temperature_C",
       "temperature",
       "trait",
       "value"
     )
   ],
-  idvar = c("individual", "session", "session_id", "temperature"),
+  idvar = c(
+    "individual",
+    "session",
+    "session_id",
+    "temperature_C",
+    "temperature"
+  ),
   timevar = "trait",
   direction = "wide"
 )
@@ -249,6 +261,9 @@ example <- list(
     seed = seed,
     n_individuals = n_individuals,
     n_sessions_per_individual = n_sessions_per_individual,
+    planned_temperature_C = planned_temperature_C,
+    temperature_center_C = temperature_center_C,
+    temperature_scale_C = temperature_scale_C,
     trait_names = trait_names,
     augmented_names = augmented_names,
     d_B = d_B,

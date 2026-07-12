@@ -39,8 +39,8 @@ A **unit** is the entity carrying the multivariate response: for example, a
 site, individual, species, or study. A **grouping key** is a data column that
 identifies which observations share a random-effect or covariance component.
 In `gllvmTMB()`, `unit` identifies the between-unit level, `unit_obs` identifies
-within-unit replicate cells, `cluster` supplies a third ordinary or structured
-grouping, and optional `cluster2` supplies a second plain diagonal grouping.
+within-unit replicate cells, `cluster` supplies a further ordinary or structured
+grouping, and optional `cluster2` supplies an additional plain-diagonal grouping.
 These are modelling roles rather than fixed biological meanings: the columns
 that fill them depend on the study design.
 

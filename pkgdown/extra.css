@@ -114,7 +114,7 @@ img.logo {
   .template-home main {
     width: calc(100vw - 1.5rem);
     max-width: calc(100vw - 1.5rem);
-    overflow-x: hidden;
+    overflow-x: visible;
   }
 
   .page-header img.logo {
@@ -128,28 +128,29 @@ img.logo {
     width: 156px;
   }
 
-  .template-home table.table,
-  .template-home table.table thead,
-  .template-home table.table tbody,
-  .template-home table.table tr,
-  .template-home table.table th,
-  .template-home table.table td {
+  .template-home table.table {
     display: block;
     width: 100%;
+    min-width: 0;
+    table-layout: auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
+}
 
-  .template-home table.table thead {
-    display: none;
-  }
+/* Selected matrix and multi-panel figures retain a readable drawing width on
+   phones. Their figure container scrolls horizontally instead of shrinking
+   labels to illegibility. Simple single-panel figures keep normal responsive
+   scaling. */
+.figure {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
-  .template-home table.table tr {
-    border-top: 1px solid #dee2e6;
-    padding: 0.35rem 0;
-  }
-
-  .template-home table.table td {
-    border: 0;
-    padding: 0.25rem 0;
+@media (max-width: 767.98px) {
+  .figure img.wide-scientific-figure {
+    width: 680px;
+    max-width: none;
   }
 }
 
@@ -161,15 +162,19 @@ img.logo {
    right-hand table of contents get clipped underneath the navbar at those
    widths. Push the main content and sidebar clear of the navbar on desktop
    (mirrors drmTMB's spacing), and keep in-page anchor links clear too. */
-@media (min-width: 992px) {
+html {
+  scroll-padding-top: 4.5rem;
+}
+
+@media (min-width: 992px) and (max-width: 1279.98px) {
   body > .container .row > main,
   body > .container .row > aside {
     margin-top: 8rem;
   }
-}
 
-html {
-  scroll-padding-top: 8rem;
+  html {
+    scroll-padding-top: 8rem;
+  }
 }
 
 /* The full desktop navigation needs more horizontal room than Bootstrap's

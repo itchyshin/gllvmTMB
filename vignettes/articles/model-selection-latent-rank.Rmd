@@ -1,5 +1,6 @@
 ---
 title: "How many latent dimensions should I fit?"
+description: "Compare predeclared Gaussian latent ranks with ML information criteria and fit-health checks, then refit the selected covariance model deliberately."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -37,9 +38,9 @@ fitted covariance model (below), not an eigen-decomposition of the raw
 data, so "how many LVs?" is answered by penalised likelihood and fit
 health rather than a scree plot or a variance-explained cutoff.
 
-gllvmTMB 0.5.0 is experimental and not yet on CRAN; the criteria and
-recovery numbers below orient a workflow on one simulated fixture and
-are not backed by validated coverage.
+The criteria and recovery numbers below orient a workflow on one
+simulated fixture; they are not backed by a repeated-sampling coverage
+study for this target.
 
 The example simulates five continuous traits with two planted latent
 variables. We fit candidate ranks with `gllvmTMB()`, compare their
@@ -426,14 +427,14 @@ signif(
 The ML and REML log-likelihoods answer different questions, so do not
 mix them in the AIC/BIC table. Use one estimator consistently for a
 candidate set, and report which estimator produced the final
-covariance summaries. In gllvmTMB 0.5.0, `REML = TRUE` is guarded
-to Gaussian fits without observation weights, retained missing response
+covariance summaries. `REML = TRUE` is currently guarded to Gaussian
+fits without observation weights, retained missing response
 cells, or `mi()` predictor models. Fixed-effect profile confidence
 intervals are also ML-only; use Wald intervals or refit with
 `REML = FALSE` before profiling fixed effects. Both the Wald and profile
 intervals are nominal, first-order approximations whose empirical
 coverage is not yet calibrated for these models, so treat them as
-indicative rather than validated.
+indicative rather than a calibrated decision rule.
 
 ## What To Report
 
@@ -456,9 +457,11 @@ It does not validate AIC/BIC as universally correct latent-rank
 selectors, calibrate confidence intervals, compare likelihoods from
 different fitting approximations, or advertise REML for non-Gaussian,
 weighted, retained-missing-response, or `mi()` predictor fits.
-For deeper Gaussian simulate-refit rank checks, use
-`check_identifiability()`; for fitted response diagnostics, start with
-[Can I trust this fit?](fit-diagnostics.html).
+For fitted response diagnostics, start with
+[Can I trust this fit?](fit-diagnostics.html). To evaluate the rank-selection
+procedure itself, use a separate target-explicit simulation study with known
+generating ranks; simulating only from the selected fitted model cannot answer
+whether a lower rank generated the data.
 
 ## References
 

@@ -279,11 +279,11 @@
           </tr>
           <tr>
             <td class="src"><b>kernel</b><div class="note">dense K, off-grid</div></td>
-            <td><span class="p-na">—</span></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_scalar()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_indep()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_dep()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_latent()</span></span></td>
-            <td style="text-align:left"><span class="tag t-tested">tested</span><div class="note">all three recovery-tested (Σ<sub>T</sub> ⊗ K to truth); phylo-equiv to &lt;1e-6</div></td>
+            <td style="text-align:left"><span class="tag t-tested">tested</span><div class="note">all four recovery-tested (Σ<sub>T</sub> ⊗ K to truth); phylo-equiv to &lt;1e-6</div></td>
           </tr>
         </tbody>
       </table>
@@ -455,7 +455,7 @@
         <li><b>Categorical needs major development</b> — nominal support is early-stage, not a usable path yet.</li>
         <li><b>REML is a Gaussian-only pilot.</b> Non-Gaussian, weighted, and missing-data REML are later work.</li>
         <li><b>Delta / hurdle latent-scale correlation</b> awaits a reporting convention (two response scales) — a design gap, not a bug.</li>
-        <li><b>Grammar symmetry:</b> <code>scalar()</code> (no-prefix) has landed — intercept-only, tested, byte-identical to <code>indep(common = TRUE)</code>. <code>kernel_scalar()</code> and the correlated-vs-uncorrelated (<code>|</code> / <code>||</code>) random-slope axis remain to build (see Design 79).</li>
+        <li><b>Grammar symmetry:</b> <code>scalar()</code> (no-prefix) and <code>kernel_scalar()</code> have landed — intercept-only, recovery-tested; both grid rows' scalar cells are now live. The correlated-vs-uncorrelated (<code>|</code> / <code>||</code>) random-slope axis is the remaining build (see Design 79).</li>
       </ul>
     </div>
 

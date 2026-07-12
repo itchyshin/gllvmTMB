@@ -489,6 +489,27 @@
         </tbody>
       </table>
     </div>
+
+    <h3 class="subhead">Estimation methods — the calibration ladder</h3>
+    <p class="lead">
+      Why extraction is point-only: the tools that would certify a <b>calibrated</b>
+      variance component (Design 80's "Bar 3") are not all in the engine yet.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Method</th><th>What it buys</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><th>ML (Laplace)</th><td>the shipped default — point estimates + fixed-effect recovery (Bar&nbsp;1–2); the RE&nbsp;SD is downward-biased at small cluster <i>n</i></td><td><span class="tag t-taught">default · all families</span></td></tr>
+          <tr><th>REML</th><td>reduces small-cluster variance bias (integrated-likelihood Laplace)</td><td><span class="tag t-exp">Gaussian-only pilot</span></td></tr>
+          <tr><th>AGHQ</th><td>the path to calibrated / unbiased variance components (Bar&nbsp;3) — most critical for the logit/binary families (binomial, ordinal, beta) where the Laplace bias bites hardest</td><td><span class="tag t-gone">planned · not in engine</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      The ladder follows <code>docs/design/80-nongaussian-re-evidence-bars.md</code>. A large
+      ML-vs-REML gap is the cheap diagnostic that flags the small-cluster regime where the
+      variance estimate is untrustworthy — the natural hook for the AGHQ work.
+    </p>
   </section>
 
   <!-- RANDOM SLOPES + SPECIAL -->

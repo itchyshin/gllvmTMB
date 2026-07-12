@@ -212,6 +212,7 @@ reference:
     - extract_phylo_signal
     - extract_proportions
     - extract_ordination
+    - extract_loadings
     - extract_lv_effects
     - extract_rotated_loadings_table
     - extract_cutpoints

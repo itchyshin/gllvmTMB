@@ -360,7 +360,7 @@ $\boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf T}$ is identified
 directly from the data; raw loading columns can change sign or rotate.
 
 ```{r loadings}
-Lambda_hat <- getLoadings(fit, level = "unit")
+Lambda_hat <- extract_loadings(fit, level = "unit")
 rownames(Lambda_hat) <- paste0("trait_", seq_len(n_traits))
 colnames(Lambda_hat) <- paste0("LV", seq_len(ncol(Lambda_hat)))
 round(Lambda_hat, 3)

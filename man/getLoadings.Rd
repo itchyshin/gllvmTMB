@@ -24,7 +24,8 @@ An \verb{n_traits × d} numeric matrix.
 \description{
 Returns the trait loading matrix from a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. This
 is a small compatibility wrapper around \code{\link[=extract_ordination]{extract_ordination()}} for readers
-familiar with \code{gllvm::getLoadings()}.
+familiar with \code{gllvm::getLoadings()}. The canonical snake_case spelling in
+this package is \code{\link[=extract_loadings]{extract_loadings()}}, which forwards here.
 }
 \examples{
 \dontrun{

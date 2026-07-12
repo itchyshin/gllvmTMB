@@ -10,7 +10,8 @@
 #'
 #' Returns the trait loading matrix from a fit returned by [gllvmTMB()]. This
 #' is a small compatibility wrapper around [extract_ordination()] for readers
-#' familiar with `gllvm::getLoadings()`.
+#' familiar with `gllvm::getLoadings()`. The canonical snake_case spelling in
+#' this package is [extract_loadings()], which forwards here.
 #'
 #' @param fit A fitted multivariate model returned by [gllvmTMB()]. Admitted
 #'   `engine = "julia"` bridge fits expose raw unit-tier loadings and scores;
@@ -65,6 +66,31 @@ getLoadings <- function(
     return(ord$loadings)
   }
   rotate_loadings(fit, .canonical_level_name(level), rotate)$Lambda
+}
+
+#' Extract the trait loading matrix
+#'
+#' Returns the trait loading matrix from a fit returned by [gllvmTMB()]. This is
+#' the canonical snake_case accessor in the `extract_*()` family; [getLoadings()]
+#' is an accepted compatibility spelling for readers coming from `gllvm`. Both
+#' return the same matrix.
+#'
+#' @inheritParams getLoadings
+#' @return An `n_traits x d` numeric matrix.
+#' @seealso [extract_ordination()] for scores and loadings together;
+#'   [getLoadings()] for the `gllvm`-style spelling.
+#' @export
+#' @examples
+#' \dontrun{
+#' extract_loadings(fit, level = "unit", rotate = "varimax")
+#' }
+extract_loadings <- function(
+  fit,
+  level = "unit",
+  rotate = c("none", "varimax", "promax")
+) {
+  rotate <- match.arg(rotate)
+  getLoadings(fit, level = level, rotate = rotate)
 }
 
 #' Extract latent-variable scores from a fitted multivariate model

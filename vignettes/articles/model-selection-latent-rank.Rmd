@@ -317,7 +317,7 @@ table.
 After choosing a rank, interpret invariant summaries first. `Sigma`,
 correlations, and communalities do not depend on how the latent
 variables are rotated. Raw loading columns (obtained with
-`getLoadings()`) are useful for exploratory labels, but with `d > 1`
+`extract_loadings()`) are useful for exploratory labels, but with `d > 1`
 their signs and rotations need care.
 
 ```{r sigma-recovery}

@@ -280,6 +280,23 @@ test_that("getLoadings(rotate='promax'): runs and returns matrix", {
   expect_equal(dim(prx), c(fit$n_traits, fit$d_B))
 })
 
+test_that("extract_loadings(): snake_case alias matches getLoadings()", {
+  fit <- make_small_rrB_fit(seed = 23, d = 2)
+  expect_identical(
+    suppressMessages(extract_loadings(fit, "unit")),
+    suppressMessages(getLoadings(fit, "unit"))
+  )
+  expect_identical(
+    extract_loadings(fit, "unit", rotate = "varimax"),
+    getLoadings(fit, "unit", rotate = "varimax")
+  )
+  ## Default rotate resolves to "none" without a partial-match warning.
+  expect_identical(
+    suppressMessages(extract_loadings(fit, "unit")),
+    suppressMessages(extract_loadings(fit, "unit", rotate = "none"))
+  )
+})
+
 test_that("getLV(level='unit'): returns NULL when no rr_B in fit", {
   fit <- make_diag_only_fit()
   expect_null(getLV(fit, "unit"))

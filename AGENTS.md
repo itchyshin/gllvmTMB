@@ -4,6 +4,13 @@
 generalised linear latent variable models (GLLVMs) using Template
 Model Builder.
 
+> **⚠ Compute & CI — D-50 (2026-07-12).** Simulation / recovery / power / coverage campaigns run on
+> **Totoro or DRAC**, **never GitHub Actions**, and their outputs are **never stored as GitHub
+> artifacts** (Actions storage is a hard 2 GB/month cap that this repo's ~15 recovery/power-sweep
+> workflows had nearly filled — 9,534 artifacts). Campaign results stay **local** + in the repo dev-log.
+> GitHub Actions here is for **package checks + docs only**, with **short artifact retention**. (Hub
+> `AGENTS.md` Compute section · shinichi-brain `DECISIONS.md` D-50.)
+
 ## Core Scope
 
 - The package fits multi-response models on long-format data: one row

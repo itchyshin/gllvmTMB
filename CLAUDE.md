@@ -3,8 +3,9 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 For the current handoff, read
-`docs/dev-log/handover/2026-07-11-codex-handover.md` (Claude→Codex, PM; supersedes
-the AM `2026-07-11-claude-handover.md`) before starting new work. Branch
+`docs/dev-log/handover/2026-07-12-claude-handover-covariance.md` (Claude→Claude,
+evening; the covariance-mode grammar campaign — Design 79/80, `scalar()`/
+`kernel_scalar()`, `indep(1+x)` per-trait) before starting new work. Branch
 `claude/release-0.5.0` is PUSHED with the doc-honesty cleanups (pages 4–6, LV +
 register sweeps, reference/roxygen sweep, `validation_row` print-fix); the
 `1.0.0 → 0.5.0` version correction (PR #748) is MERGED to `main`. Standing rule:

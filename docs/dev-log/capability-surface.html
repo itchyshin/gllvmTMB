@@ -13,6 +13,7 @@
     --accent-wash:#eeeafc;
     /* semantic tiers */
     --taught:    #1f9d63;   --taught-wash:#e6f4ec;
+    --tested:    #5cb85c;   --tested-wash:#eaf6ea;
     --avail:     #c07d14;   --avail-wash: #f8efdc;
     --exp:       #6c7385;   --exp-wash:   #edeef2;
     --gone:      #b23b52;   --gone-wash:  #f7e7ea;
@@ -25,6 +26,7 @@
       --ink-faint:#8b849c; --line:#2e2940; --line-soft:#26212f;
       --accent:#a394f5; --accent-ink:#c3b8fb; --accent-wash:#241d3d;
       --taught:#4cc78a; --taught-wash:#16301f;
+      --tested:#79d17d; --tested-wash:#173a1e;
       --avail:#e0a94a; --avail-wash:#332711;
       --exp:#9aa1b4; --exp-wash:#232631;
       --gone:#e2758c; --gone-wash:#331a20;
@@ -44,6 +46,7 @@
     --ink-faint:#837d96; --line:#e5e2ee; --line-soft:#efedf5;
     --accent:#5b46d9; --accent-ink:#4534b0; --accent-wash:#eeeafc;
     --taught:#1f9d63; --taught-wash:#e6f4ec;
+    --tested:#5cb85c; --tested-wash:#eaf6ea;
     --avail:#c07d14; --avail-wash:#f8efdc;
     --exp:#6c7385; --exp-wash:#edeef2;
     --gone:#b23b52; --gone-wash:#f7e7ea;
@@ -95,6 +98,7 @@
   .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px;
     margin-right: 7px; vertical-align: baseline; transform: translateY(1px); }
   .s-taught { background: var(--taught); }
+  .s-tested { background: var(--tested); }
   .s-avail  { background: var(--avail); }
   .s-exp    { background: var(--exp); }
   .s-gone   { background: var(--gone); }
@@ -136,6 +140,7 @@
     white-space: nowrap;
   }
   .t-taught { background: var(--taught-wash); color: var(--taught); }
+  .t-tested { background: var(--tested-wash); color: var(--tested); }
   .t-avail  { background: var(--avail-wash);  color: var(--avail); }
   .t-exp    { background: var(--exp-wash);    color: var(--exp); }
   .t-gone   { background: var(--gone-wash);   color: var(--gone); }
@@ -147,6 +152,7 @@
   .cell .k { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
   .pip { width: 8px; height: 8px; border-radius: 50%; flex: none; }
   .p-taught { background: var(--taught); }
+  .p-tested { background: var(--tested); }
   .p-avail  { background: var(--avail); }
   .p-na     { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; }
 
@@ -216,8 +222,9 @@
   </div>
 
   <div class="legend">
-    <span><span class="swatch s-taught"></span><b>Taught</b> — worked article + runnable, numerically-inspected workflow</span>
-    <span><span class="swatch s-avail"></span><b>Available · point-only</b> — live API, recovery/point evidence; intervals not calibrated</span>
+    <span><span class="swatch s-taught"></span><b>Taught</b> — worked article + passing tests</span>
+    <span><span class="swatch s-tested"></span><b>Tested</b> — passing recovery/health tests; no worked article (yet)</span>
+    <span><span class="swatch s-avail"></span><b>Available · point-only</b> — live API, no systematic recovery test</span>
     <span><span class="swatch s-exp"></span><b>Experimental</b> — partial route, fail-loud guards</span>
     <span><span class="swatch s-gone"></span><b>Withdrawn / deferred</b> — out of the 0.5.0 exported/public surface</span>
   </div>
@@ -228,8 +235,9 @@
     <p class="lead">
       Two decisions: what relates the grouping levels (source, down the side) and what trait
       covariance holds at that level (mode, across the top). Every cell is live API. The pip
-      marks evidence depth: a <b>worked article</b> backs the source, or the route is
-      <b>available point-only</b>. <code>Cov(b<sub>gt</sub>, b<sub>g't'</sub>) = Σ<sub>T,tt'</sub> K<sub>gg'</sub></code>.
+      marks evidence depth: a <b>worked article</b> backs the cell (taught), <b>passing
+      recovery tests</b> back it (tested), or the route is <b>available point-only</b>.
+      <code>Cov(b<sub>gt</sub>, b<sub>g't'</sub>) = Σ<sub>T,tt'</sub> K<sub>gg'</sub></code>.
     </p>
     <div class="scroll">
       <table class="grid">
@@ -239,43 +247,43 @@
         <tbody>
           <tr>
             <td class="src"><b>none</b><div class="note">ordinary RE</div></td>
-            <td><span class="p-na">—</span></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">scalar()</span></span></td>
             <td><span class="cell"><span class="pip p-taught"></span><span class="k">indep()</span></span></td>
             <td><span class="cell"><span class="pip p-taught"></span><span class="k">dep()</span></span></td>
             <td><span class="cell"><span class="pip p-taught"></span><span class="k">latent()</span></span></td>
-            <td style="text-align:left"><span class="tag t-taught">taught</span><div class="note">Gaussian <code>latent()</code> is the hero example</div></td>
+            <td style="text-align:left"><span class="tag t-taught">taught</span><div class="note">Gaussian <code>latent()</code> is the hero; <code>scalar()</code> new + tested</div></td>
           </tr>
           <tr>
             <td class="src"><b>phylogenetic</b><div class="note">tree / vcv / A</div></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">phylo_scalar()</span></span></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">phylo_indep()</span></span></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">phylo_dep()</span></span></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">phylo_scalar()</span></span></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">phylo_indep()</span></span></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">phylo_dep()</span></span></td>
             <td><span class="cell"><span class="pip p-taught"></span><span class="k">phylo_latent()</span></span></td>
-            <td style="text-align:left"><span class="tag t-taught">taught</span><div class="note"><code>phylo_latent(unique=TRUE)</code> Λ/Ψ split</div></td>
+            <td style="text-align:left"><span class="tag t-taught">taught</span><div class="note"><code>phylo_latent</code> taught (Λ/Ψ split); scalar/indep/dep recovery-tested</div></td>
           </tr>
           <tr>
             <td class="src"><b>animal</b><div class="note">pedigree / A / Ainv</div></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">animal_scalar()</span></span></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">animal_indep()</span></span></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">animal_dep()</span></span></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">animal_latent()</span></span></td>
-            <td style="text-align:left"><span class="tag t-avail">point-only</span><div class="note">QG heritability guide deferred</div></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">animal_scalar()</span></span></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">animal_indep()</span></span></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">animal_dep()</span></span></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">animal_latent()</span></span></td>
+            <td style="text-align:left"><span class="tag t-tested">tested</span><div class="note">recovery-tested; QG heritability article deferred</div></td>
           </tr>
           <tr>
             <td class="src"><b>spatial</b><div class="note">mesh / SPDE GMRF</div></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">spatial_scalar()</span></span></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">spatial_indep()</span></span></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">spatial_dep()</span></span></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">spatial_latent()</span></span></td>
-            <td style="text-align:left"><span class="tag t-avail">point-only</span><div class="note">range/scale need spatial spread</div></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">spatial_scalar()</span></span></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">spatial_indep()</span></span></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">spatial_dep()</span></span></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">spatial_latent()</span></span></td>
+            <td style="text-align:left"><span class="tag t-tested">tested</span><div class="note">recovery-tested across modes; range/scale need spatial spread</div></td>
           </tr>
           <tr>
             <td class="src"><b>kernel</b><div class="note">dense K, off-grid</div></td>
             <td><span class="p-na">—</span></td>
             <td><span class="cell"><span class="pip p-avail"></span><span class="k">kernel_indep()</span></span></td>
             <td><span class="cell"><span class="pip p-avail"></span><span class="k">kernel_dep()</span></span></td>
-            <td><span class="cell"><span class="pip p-avail"></span><span class="k">kernel_latent()</span></span></td>
-            <td style="text-align:left"><span class="tag t-avail">point-only</span><div class="note">phylo-equivalent for dense K to &lt;1e-6</div></td>
+            <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_latent()</span></span></td>
+            <td style="text-align:left"><span class="tag t-tested">tested</span><div class="note"><code>kernel_latent</code> recovery-tested (phylo-equiv to &lt;1e-6); indep/dep point-only</div></td>
           </tr>
         </tbody>
       </table>
@@ -285,7 +293,8 @@
       <b>indep</b> = per-trait diagonal · <b>dep</b> = full unstructured Σ<sub>T</sub> (T(T+1)/2 params) ·
       <b>latent</b> = ΛΛ<sup>T</sup> with optional diagonal Ψ companion. Ordinary <code>latent()</code>
       carries Ψ by default; source/kernel latent terms are loadings-only unless <code>unique = TRUE</code>.
-      There is no no-prefix <code>scalar</code>; omitting a term fits none.
+      The no-prefix <code>scalar()</code> ties all trait variances to one shared value
+      (byte-identical to <code>indep(0 + trait | g, common = TRUE)</code>); intercept-only for now.
     </p>
   </section>
 
@@ -446,7 +455,7 @@
         <li><b>Categorical needs major development</b> — nominal support is early-stage, not a usable path yet.</li>
         <li><b>REML is a Gaussian-only pilot.</b> Non-Gaussian, weighted, and missing-data REML are later work.</li>
         <li><b>Delta / hurdle latent-scale correlation</b> awaits a reporting convention (two response scales) — a design gap, not a bug.</li>
-        <li><b>Grammar symmetry:</b> <code>scalar()</code> for the no-prefix source and <code>kernel_scalar()</code> — the approved 0.5.0 addition — are not yet in the grid.</li>
+        <li><b>Grammar symmetry:</b> <code>scalar()</code> (no-prefix) has landed — intercept-only, tested, byte-identical to <code>indep(common = TRUE)</code>. <code>kernel_scalar()</code> and the correlated-vs-uncorrelated (<code>|</code> / <code>||</code>) random-slope axis remain to build (see Design 79).</li>
       </ul>
     </div>
 
@@ -560,9 +569,11 @@
   <footer>
     <b>Operating surface — refresh from source before treating as current evidence.</b>
     Reconciled 2026-07-12 against <code>NEWS.md</code> (0.5.0), <code>api-keyword-grid.Rmd</code>,
-    <code>README.md</code> support boundary, the <code>NAMESPACE</code> family exports, and the
-    2026-07-12 Phase-0 code audit on branch <code>claude/release-0.5.0</code>. Tiers reflect the
-    honesty contract: intervals are recovery/point evidence, not coverage certificates.
+    the <code>NAMESPACE</code> exports, and the fit-verified S0 semantics census (Design 79 §7).
+    The <b>tested</b> tier marks cells with passing recovery/health tests but no worked article;
+    phylo/animal/spatial and kernel_latent flipped amber→tested from that census (the grammar was
+    live, the tests already existed — the label was stale). Tiers reflect the honesty contract:
+    intervals are recovery/point evidence, not coverage certificates.
     <b>0.5.0 is being built to a finished, focused scope before CRAN</b> — core families
     (gaussian/poisson/nbinom1/nbinom2/binomial) × ordinary/phylo/spatial, full slopes — not a thin
     submission. Baseline <code>--as-cran</code> = 0E/0W/1N; Tier-1 bugs fixed. Live campaign status:

@@ -1,7 +1,6 @@
-## Parametric bootstrap CIs for B_lv, and the unconditional-simulate redraw of the
-## Model A tiers (lv_B / phylo_rr / diag_species) it depends on. A conditional
-## simulate (REs fixed) would give absurdly narrow, non-covering intervals; the
-## redraw is what makes the bootstrap honest.
+## Internal prototype checks for the B_lv bootstrap and the unconditional
+## simulation redraw it depends on. The interval helper is not a public route:
+## failed-refit accounting and repeated-sampling evidence are incomplete.
 
 make_modelA_fit <- function(S = 40L, T = 4L, seed = 20260706L, reml = TRUE) {
   withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE, lifecycle_verbosity = "quiet")
@@ -60,18 +59,4 @@ test_that("unconditional simulate() redraws the Model A tiers (no conditional fa
   ## Unconditional draws vary across replicates (RE tiers redrawn, not fixed).
   col_sds <- apply(Y, 1, stats::sd)
   expect_true(mean(col_sds) > 0.1)
-})
-
-test_that("bootstrap_ci_lv_effects gives wide, covering B_lv intervals (heavy)", {
-  skip_if_not_heavy()
-  skip_on_cran()
-  obj <- make_modelA_fit(S = 40L, T = 4L)
-  res <- bootstrap_ci_lv_effects(obj$fit, n_boot = 40, conf = 0.95, seed = 42, n_cores = 2)
-  expect_s3_class(res, "data.frame")
-  expect_identical(unique(res$method), "bootstrap")
-  expect_true(all(is.finite(res$lower) & is.finite(res$upper)))
-  ## Honest (not the ~0-width conditional-simulate bug): widths are substantial.
-  expect_true(mean(res$upper - res$lower) > 0.2)
-  ## Covers the known B_lv on this fixed-seed fixture.
-  expect_true(all(obj$truth >= res$lower & obj$truth <= res$upper))
 })

@@ -16,7 +16,7 @@ phylo_scalar(species, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 
 \item{A}{Tip-level relatedness matrix (\verb{n_species x n_species})
 -- alias of \verb{vcv =}, aligned with the \verb{animal_*} family's
-argument naming (M2.8b, 2026-05-17).}
+argument naming.}
 
 \item{Ainv}{Sparse precision matrix (inverse of \code{A}).}
 }

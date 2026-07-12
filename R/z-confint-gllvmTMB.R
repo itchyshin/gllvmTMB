@@ -484,12 +484,11 @@
   )
 }
 
-## ---- Stage 3a: derived-quantity parm tokens (2026-05-27) -----------------
+## ---- Derived-quantity parm tokens ---------------------------------------
 ## Routes `parm = "icc[:...]"`, `"phylo_signal[:...]"`,
 ## `"communality:tier[:trait]"`, and `"rho:tier:i,j[;k,l]"` through the
-## existing derived-quantity helpers (extract_repeatability /
-## profile_ci_repeatability, profile_ci_phylo_signal,
-## profile_ci_communality, extract_correlations / profile_ci_correlation).
+## supported derived-quantity helpers. Nonlinear penalty profiles and the
+## diagonal-only ratio formerly labelled repeatability are withdrawn.
 ## Mirrors the Stage 2 Lambda template: strict regex anchors on the
 ## recognizers, parser helpers that return the args to forward, dispatcher
 ## helpers that build a numeric matrix with `<lo>%` / `<hi>%` colnames.
@@ -720,8 +719,7 @@
       ))
     }
     if (i > j) {
-      ## Canonicalise to i < j; the underlying profile_ci_correlation
-      ## requires i < j.
+      ## Canonicalise to i < j for stable pair labels.
       c(j, i)
     } else {
       c(i, j)
@@ -779,10 +777,9 @@
 }
 
 ## Internal helper: dispatch `confint(fit, parm = "icc[:...]")`.
-## Routes to extract_repeatability() for wald / bootstrap and to
-## profile_ci_repeatability() for profile (the latter is the cheaper
-## per-trait path that bypasses extract_repeatability()'s honest-fallback
-## Wald demotion). Returns a numeric matrix with rownames `icc:<trait>`.
+## Routes to extract_repeatability() for Wald / bootstrap. The former profile
+## token estimated only a diagonal-companion ratio rather than canonical
+## full-Sigma repeatability, so it is withdrawn.
 .confint_icc <- function(object, parm, level, method, nsim, seed, ...) {
   trait_names <- levels(object$data[[object$trait_col]])
   trait_idx <- .parse_pertrait_parm(parm, "icc", trait_names)
@@ -791,11 +788,11 @@
   }
 
   if (method == "profile") {
-    tbl <- profile_ci_repeatability(
-      fit = object,
-      trait_idx = trait_idx,
-      level = level
-    )
+    cli::cli_abort(c(
+      "A profile interval for canonical full-covariance repeatability is not currently available.",
+      "i" = "The former profile token estimated only a diagonal-companion ratio and omitted shared latent variance.",
+      ">" = "Request {.code method = \"wald\"} or {.code method = \"bootstrap\"}, and report the method's limitations."
+    ), class = "gllvmTMB_repeatability_profile_withdrawn")
   } else if (method %in% c("wald", "bootstrap")) {
     tbl <- suppressMessages(extract_repeatability(
       fit = object,
@@ -809,7 +806,7 @@
   } else {
     cli::cli_abort(c(
       "Method {.val {method}} not supported for {.code icc}.",
-      i = "Available: {.val profile}, {.val wald}, {.val bootstrap}."
+      i = "Available: {.val wald}, {.val bootstrap}."
     ))
   }
   out <- cbind(as.numeric(tbl$lower), as.numeric(tbl$upper))
@@ -868,8 +865,7 @@
 }
 
 ## Internal helper: dispatch `confint(fit, parm = "communality:tier[:trait]")`.
-## Routes to profile_ci_communality() for profile, and scalar Wald/bootstrap
-## helpers for wald/bootstrap.
+## Routes to scalar Wald/bootstrap helpers. Explicit profile requests abort.
 .confint_communality <- function(
   object,
   parm,
@@ -893,12 +889,11 @@
   ## profile path.
   tbl <- switch(
     method,
-    profile = suppressWarnings(profile_ci_communality(
-      fit = object,
-      tier = tier,
-      trait_idx = trait_idx,
-      level = level
-    )),
+    profile = cli::cli_abort(c(
+      "Nonlinear profile intervals for communality are not currently available.",
+      "i" = "The penalty-based constrained-refit prototype has been withdrawn pending an exact constraint solver and diagnostic contract.",
+      ">" = "Request {.code method = \"wald\"} or {.code method = \"bootstrap\"}, and report the method's limitations."
+    ), class = "gllvmTMB_nonlinear_profile_withdrawn"),
     wald = do.call(
       rbind,
       lapply(trait_idx, function(t) {
@@ -944,7 +939,7 @@
     ),
     cli::cli_abort(c(
       "Method {.val {method}} not implemented for {.code communality}.",
-      i = "Available: {.val profile}, {.val wald}, {.val bootstrap}."
+      i = "Available: {.val wald}, {.val bootstrap}."
     ))
   )
   ## Preserve the user-supplied tier in the row labels (the underlying
@@ -962,21 +957,19 @@
 }
 
 ## Internal helper: dispatch `confint(fit, parm = "rho:tier:i,j[;k,l]")`.
-## Routes to extract_correlations() for fisher-z / wald / bootstrap, and
-## profile_ci_correlation() for profile (the latter is cheaper than
-## going through extract_correlations(method = "profile") when only
-## specific pairs are requested).
+## Routes to extract_correlations() for Fisher-z / Wald / bootstrap. Explicit
+## profile requests abort.
 .confint_rho <- function(object, parm, level, method, nsim, seed, ...) {
   trait_names <- levels(object$data[[object$trait_col]])
   parsed <- .parse_rho_parm(parm, trait_names)
   tier <- parsed$tier
   pairs <- parsed$pairs
 
-  if (identical(tier, "unit_slope") && method != "profile") {
+  if (identical(tier, "unit_slope")) {
     cli::cli_abort(c(
-      "{.code rho:unit_slope} currently supports {.code method = \"profile\"} only.",
-      "i" = "Wald, Fisher-z, and bootstrap intervals for augmented ordinary random-regression correlations need separate gates."
-    ))
+      "Correlation intervals for {.code rho:unit_slope} are not currently available.",
+      "i" = "The former penalty-profile canary has been withdrawn; Wald, Fisher-z, and bootstrap routes also lack supporting evidence."
+    ), class = "gllvmTMB_nonlinear_profile_withdrawn")
   }
   if (tier %in% c("cluster", "cluster2")) {
     .profile_abort_point_only_rho(tier, parm = parm)
@@ -988,20 +981,11 @@
   rn <- character(n_pairs)
 
   if (method == "profile") {
-    for (m in seq_len(n_pairs)) {
-      i <- pairs[m, 1L]
-      j <- pairs[m, 2L]
-      ci <- profile_ci_correlation(
-        fit = object,
-        tier = tier,
-        i = i,
-        j = j,
-        level = level
-      )
-      lo[m] <- unname(ci["lower"])
-      hi[m] <- unname(ci["upper"])
-      rn[m] <- sprintf("rho:%s:%d,%d", tier, i, j)
-    }
+    cli::cli_abort(c(
+      "Nonlinear profile intervals for correlations are not currently available.",
+      "i" = "The penalty-based constrained-refit prototype has been withdrawn pending an exact constraint solver and diagnostic contract.",
+      ">" = "Request {.code method = \"fisher-z\"} or {.code method = \"bootstrap\"}, and report the method's limitations."
+    ), class = "gllvmTMB_nonlinear_profile_withdrawn")
   } else if (method %in% c("fisher-z", "wald", "bootstrap")) {
     ## extract_correlations() returns all pairs at the tier; loop per
     ## requested pair and match the row.
@@ -1030,7 +1014,7 @@
   } else {
     cli::cli_abort(c(
       "Method {.val {method}} not supported for {.code rho}.",
-      i = "Available: {.val profile}, {.val fisher-z}, {.val wald}, {.val bootstrap}."
+      i = "Available: {.val fisher-z}, {.val wald}, {.val bootstrap}."
     ))
   }
   out <- cbind(lo, hi)
@@ -1039,9 +1023,8 @@
   out
 }
 
-## ---- Stage 3b (2026-05-27): proportion parm tokens -----------------------
-## Routes `parm = "proportion[:component[:trait]]"` and variants through
-## `profile_ci_proportions()`. Grammar:
+## ---- Proportion parm tokens ----------------------------------------------
+## Parses `parm = "proportion[:component[:trait]]"` and variants. Grammar:
 ##   * "proportion"                                -> all components, all traits
 ##   * "proportion:<component>"                    -> one component, all traits
 ##   * "proportion:<component>:<trait>"            -> one (component, trait)
@@ -1129,8 +1112,7 @@
 }
 
 ## Dispatch `confint(fit, parm = "proportion[:...]")`.
-## Routes to profile_ci_proportions() for method = "profile" and to the
-## scalar proportion Wald/bootstrap helpers for method = "wald" / "bootstrap".
+## Routes to scalar Wald/bootstrap helpers. Explicit profile requests abort.
 .confint_proportion <- function(
   object,
   parm,
@@ -1145,12 +1127,11 @@
   ## Phase B-INF Lane 1 A2 (2026-05-28): wald + bootstrap routes added.
   tbl <- switch(
     method,
-    profile = profile_ci_proportions(
-      fit = object,
-      components = parsed$components,
-      trait_idx = parsed$trait_idx,
-      level = level
-    ),
+    profile = cli::cli_abort(c(
+      "Nonlinear profile intervals for variance proportions are not currently available.",
+      "i" = "The penalty-based constrained-refit prototype has been withdrawn pending an exact constraint solver and diagnostic contract.",
+      ">" = "Request {.code method = \"wald\"} or {.code method = \"bootstrap\"}, and report the method's limitations."
+    ), class = "gllvmTMB_nonlinear_profile_withdrawn"),
     wald = .proportions_wald_ci(
       fit = object,
       components = parsed$components,
@@ -1167,7 +1148,7 @@
     ),
     cli::cli_abort(c(
       "Method {.val {method}} not implemented for {.code proportion}.",
-      i = "Available: {.val profile}, {.val wald}, {.val bootstrap}.",
+      i = "Available: {.val wald}, {.val bootstrap}.",
       ">" = "For point estimates of the proportion decomposition see {.fn extract_proportions}."
     ))
   )
@@ -1213,14 +1194,14 @@
 .confint_profile_targets <- function(object, parm, level, ...) {
   targets <- profile_targets(object, ready_only = FALSE)
   chosen <- targets[targets$parm %in% as.character(parm), , drop = FALSE]
-  ## Filter out derived rows with a typed message pointing at the
-  ## right extractor.
+  ## Derived rows are no longer part of profile_targets(), but keep a defensive
+  ## error for older serialized inventories.
   derived_rows <- chosen[chosen$target_type == "derived", , drop = FALSE]
   if (nrow(derived_rows) > 0L) {
     derived_pointers <- derived_rows$parm
     cli::cli_abort(c(
       "Profile CIs for {length(derived_pointers)} derived target{?s} ({.val {derived_pointers}}) are not produced by {.fn confint}.",
-      "i" = "Use the matching {.fn extract_*} extractor with {.code method = \"profile\"} instead. See {.fn profile_targets} for the full mapping."
+      "i" = "Nonlinear derived-target profile routes are withheld from the public release."
     ))
   }
   not_ready <- chosen[!chosen$profile_ready, , drop = FALSE]
@@ -1335,30 +1316,28 @@
 #' choices:
 #'
 #' \itemize{
-#'   \item \code{method = "profile"} (\strong{new default in Phase K}):
-#'     profile-likelihood CIs via \code{TMB::tmbprofile()} +
-#'     \code{stats::uniroot()}. Accurate, respects skewness, fast for
-#'     individual parameters.
+#'   \item \code{method = "profile"} (default): profile-likelihood bounds via
+#'     \code{TMB::tmbprofile()} + \code{stats::uniroot()}. A successful
+#'     numerical route can represent asymmetric likelihood shape, but its
+#'     reference distribution and coverage remain target-specific.
 #'   \item \code{method = "wald"}: Gaussian-approximation CIs from
 #'     \code{sd_report}. Fastest; poor near boundaries.
-#'   \item \code{method = "bootstrap"}: parametric bootstrap via
-#'     \code{bootstrap_Sigma()}. Slowest; most flexible (full sampling
-#'     distribution).
+#'   \item \code{method = "bootstrap"}: fitted-model parametric bootstrap via
+#'     \code{bootstrap_Sigma()}. Slowest; inspect failed refits, Monte Carlo
+#'     resolution, and whether simulation covers every active model component.
 #' }
 #'
-#' Scope boundary: IN, fixed-effect and direct-parameter intervals use the
-#' requested \code{method} where supported, and Sigma-matrix
+#' Fixed-effect and direct-parameter intervals use the requested \code{method}
+#' where supported, and Sigma-matrix
 #' intervals accept canonical \code{parm = "Sigma_unit"} /
 #' \code{"Sigma_unit_obs"} names, diagonal extra-grouping
 #' \code{"Sigma_cluster"} / \code{"Sigma_cluster2"} names, plus legacy
-#' \code{"Sigma_B"} / \code{"Sigma_W"} aliases (the underlying
-#' extraction is covered by the package's validation tests).
-#' PARTIAL, profile intervals for full decomposed Sigma entries fall back to
+#' \code{"Sigma_B"} / \code{"Sigma_W"} aliases. Profile intervals for full
+#' decomposed Sigma entries fall back to
 #' bootstrap because those entries are nonlinear functions of rotation-equivalent
-#' loadings and diagonal \eqn{\Psi}; non-Gaussian bootstrap calibration remains
-#' experimental and coverage is not yet fully established (see the
-#' validation-debt register). PLANNED, richer derived-profile intervals
-#' and broader calibration evidence remain M3 work.
+#' loadings and diagonal \eqn{\Psi}. Non-Gaussian bootstrap and broader
+#' derived-target coverage are not universally calibrated; inspect the returned
+#' method and the target-specific article before reporting bounds.
 #'
 #' Main parm-class dispatch paths:
 #'
@@ -1383,8 +1362,8 @@
 #'   \item \strong{Lambda and derived summaries} -- \code{"Lambda..."},
 #'     \code{"icc..."}, \code{"phylo_signal..."}, \code{"communality..."},
 #'     \code{"rho..."}, and \code{"proportion..."} tokens dispatch to their
-#'     corresponding loading, profile, Wald, or bootstrap helper where that
-#'     route is implemented.
+#'     corresponding direct-profile, Wald, or bootstrap helper where that route
+#'     is implemented. Nonlinear penalty-profile prototypes are withheld.
 #' }
 #'
 #' @param object A fit returned by [gllvmTMB()].
@@ -1403,16 +1382,17 @@
 #'     \item \code{"Lambda"} (all free entries of \code{Lambda_unit}),
 #'       \code{"Lambda:i,j"} (single entry), or \code{"Lambda:i,j;k,l"}
 #'       (multiple entries, semicolon-separated). Routes to
-#'       [loading_ci()] / [loading_profile()] (Stage 2 of the unified
-#'       profile-CI framework). For these tokens the method choices are
+#'       [loading_ci()] / [loading_profile()]. For these tokens the method
+#'       choices are
 #'       \code{c("wald", "wald_asym", "profile")} with default
 #'       \code{"wald"}.
 #'     \item \code{"icc"} (all traits), \code{"icc:<trait_name>"} (one
 #'       trait by name), \code{"icc:<t1>;<t2>"} (multiple by name), or
 #'       \code{"icc:[1,3]"} (1-based trait indices). Routes to
-#'       [profile_ci_repeatability()] (for \code{method = "profile"}) or
-#'       [extract_repeatability()] (\code{"wald"} / \code{"bootstrap"}).
-#'       Stage 3a of the unified profile-CI framework.
+#'       [extract_repeatability()] with \code{"wald"} (default) or
+#'       \code{"bootstrap"}. The former profile token is withdrawn because it
+#'       estimated a diagonal-only ratio rather than canonical full-covariance
+#'       repeatability.
 #'     \item \code{"phylo_signal"} / \code{"phylo_signal:<trait>"} etc.
 #'       -- same grammar as \code{"icc"}. Routes to
 #'       [profile_ci_phylo_signal()] for \code{"profile"} and the companion
@@ -1423,19 +1403,18 @@
 #'     \item \code{"communality:<tier>"} (one tier, all traits) or
 #'       \code{"communality:<tier>:<trait>"} (one tier, one trait).
 #'       Tier is one of \code{"unit"} / \code{"unit_obs"} / \code{"phy"}
-#'       (legacy \code{"B"} / \code{"W"}). Routes to
-#'       [profile_ci_communality()] for \code{"profile"} and the companion
-#'       Wald/bootstrap helpers for \code{"wald"} / \code{"bootstrap"}.
+#'       (legacy \code{"B"} / \code{"W"}). Defaults to Wald; bootstrap is
+#'       available explicitly. The nonlinear profile prototype is withheld.
 #'     \item \code{"rho:<tier>:i,j"} (one pair) or
 #'       \code{"rho:<tier>:i,j;k,l"} (multiple pairs). Tier is one of
 #'       \code{"unit"} / \code{"unit_slope"} / \code{"unit_obs"} /
 #'       \code{"phy"} / \code{"spatial"} (legacy \code{"B"} / \code{"W"} /
 #'       \code{"spde"}). \code{"unit_slope"} indexes the augmented
 #'       \code{2T} coefficient vector by numeric position and is currently a
-#'       Gaussian selected-entry profile canary only.
-#'       Routes to [profile_ci_correlation()] (profile) or
+#'       not currently an interval target. Other tiers route to
 #'       [extract_correlations()] (\code{"fisher-z"} / \code{"wald"} /
-#'       \code{"bootstrap"}).
+#'       \code{"bootstrap"}); Fisher-z is the default for this \code{confint()}
+#'       token. The nonlinear profile prototype is withheld.
 #'     \item \code{"proportion"} (all components, all traits),
 #'       \code{"proportion:<component>"} (one component, all traits),
 #'       \code{"proportion:<component>:<trait>"} (one (component, trait)),
@@ -1445,10 +1424,9 @@
 #'       \code{"unique_unit"}, \code{"shared_unit_obs"},
 #'       \code{"unique_unit_obs"}, \code{"unique_cluster"},
 #'       \code{"unique_cluster2"}, \code{"shared_phy"},
-#'       \code{"unique_phy"}, \code{"link_residual"}). Routes to
-#'       [profile_ci_proportions()] for \code{"profile"} and the companion
-#'       proportion Wald/bootstrap helpers for \code{"wald"} /
-#'       \code{"bootstrap"}.
+#'       \code{"unique_phy"}, \code{"link_residual"}). Defaults to Wald;
+#'       bootstrap is available explicitly. The nonlinear profile prototype is
+#'       withheld.
 #'     \item An integer index vector or character vector of fixed-effect
 #'       term names (same as the standard \code{confint()} interface).
 #'     \item Missing (default) -- all fixed-effect parameters.
@@ -1478,8 +1456,8 @@
 #'   \item \strong{Lambda path} -- a \code{data.frame} with columns
 #'     \code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"}),
 #'     \code{estimate}, \code{lower}, \code{upper}, \code{method},
-#'     \code{pd_hessian}, and \code{ci_status} (the last two from the
-#'     Stage 1 convention: when \code{pdHess = FALSE} on a Wald path,
+#'     \code{pd_hessian}, and \code{ci_status}. When \code{pdHess = FALSE}
+#'     on a Wald path,
 #'     \code{lower}/\code{upper} are \code{NA} and \code{ci_status}
 #'     flags the reason).
 #'   \item \strong{Derived-quantity path} (\code{"icc"} /
@@ -1535,7 +1513,7 @@
 #' ci_unit <- confint(fit, parm = "Sigma_unit")
 #' ci_unit
 #'
-#' ## Bootstrap CIs (slow, more accurate for non-monotone cases)
+#' ## Bootstrap route (slow; inspect failed refits and target calibration)
 #' ci_unit_boot <- confint(fit, parm = "Sigma_unit", method = "bootstrap",
 #'                         nsim = 200, seed = 42)
 #'
@@ -1578,21 +1556,20 @@ confint.gllvmTMB_multi <- function(
     ))
   }
 
-  ## ---- Stage 3a: derived-quantity tokens (2026-05-27) ----------------------
+  ## ---- Derived-quantity tokens --------------------------------------------
   ## `parm = "icc[:...]"`, `"phylo_signal[:...]"`,
   ## `"communality:tier[:trait]"`, and `"rho:tier:i,j[;k,l]"` route to
-  ## profile_ci_repeatability / extract_repeatability,
-  ## profile_ci_phylo_signal, profile_ci_communality, and
-  ## profile_ci_correlation / extract_correlations respectively.
-  ## Default method for these tokens is `"profile"` (the base default),
-  ## so we keep the outer `method` argument as-is and let each helper
-  ## error if a non-supported method is requested. We intercept the
+  ## extract_repeatability, profile_ci_phylo_signal, and the supported communality / correlation /
+  ## proportion interval helpers. Nonlinear penalty profiles are withheld, so
+  ## communality and proportion default to Wald and rho defaults to Fisher-z;
+  ## explicit method = "profile" errors with a release-boundary explanation.
+  ## We intercept the
   ## icc / rho branches BEFORE the outer `match.arg(method)` so that
   ## `extract_correlations()`'s `"fisher-z"` method (which is not in
   ## the base set) is forwardable. The `match.arg()` below validates
   ## the base set for all later branches.
   if (.is_icc_parm(parm)) {
-    method_icc <- if ("method" %in% names(match.call())) method else "profile"
+    method_icc <- if ("method" %in% names(match.call())) method else "wald"
     return(.confint_icc(
       object,
       parm = parm,
@@ -1616,7 +1593,7 @@ confint.gllvmTMB_multi <- function(
     ))
   }
   if (.is_communality_parm(parm)) {
-    method_co <- if ("method" %in% names(match.call())) method else "profile"
+    method_co <- if ("method" %in% names(match.call())) method else "wald"
     return(.confint_communality(
       object,
       parm = parm,
@@ -1628,7 +1605,7 @@ confint.gllvmTMB_multi <- function(
     ))
   }
   if (.is_rho_parm(parm)) {
-    method_rho <- if ("method" %in% names(match.call())) method else "profile"
+    method_rho <- if ("method" %in% names(match.call())) method else "fisher-z"
     return(.confint_rho(
       object,
       parm = parm,
@@ -1640,7 +1617,7 @@ confint.gllvmTMB_multi <- function(
     ))
   }
   if (.is_proportion_parm(parm)) {
-    method_prop <- if ("method" %in% names(match.call())) method else "profile"
+    method_prop <- if ("method" %in% names(match.call())) method else "wald"
     return(.confint_proportion(
       object,
       parm = parm,

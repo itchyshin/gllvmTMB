@@ -65,6 +65,20 @@ test_that("profile route matrix has controlled keys and statuses", {
   expect_no_error(gllvmTMB:::.validate_profile_route_matrix(routes))
 })
 
+test_that("every nonlinear profile route is withheld without a public helper name", {
+  routes <- gllvmTMB:::.profile_route_matrix()
+  nonlinear <- routes$estimand %in% c("communality", "rho", "proportion") &
+    routes$method == "profile"
+  active_interval <- nonlinear &
+    !routes$status %in% c("point_only", "not_applicable")
+
+  expect_true(all(routes$status[active_interval] == "blocked"))
+  expect_true(all(routes$route[active_interval] ==
+    "withheld_nonlinear_penalty_profile"))
+  expect_true(all(routes$validation_row[active_interval] == ""))
+  expect_false(any(grepl("profile_ci_|fix_refit", routes$route[nonlinear])))
+})
+
 test_that("profile route matrix records current cluster and cluster2 boundaries", {
   routes <- gllvmTMB:::.profile_route_matrix()
 
@@ -122,11 +136,11 @@ test_that("profile route matrix records current cluster and cluster2 boundaries"
     "spatial",
     routes = routes
   )
-  expect_equal(cluster_prop$status, "partial")
-  expect_equal(c2_prop$status, "partial")
-  expect_match(cluster_prop$route, "unique_cluster")
-  expect_match(c2_prop$route, "unique_cluster2")
-  expect_equal(spatial_prop$status, "planned")
+  expect_equal(cluster_prop$status, "blocked")
+  expect_equal(c2_prop$status, "blocked")
+  expect_match(cluster_prop$route, "withheld_nonlinear")
+  expect_match(c2_prop$route, "withheld_nonlinear")
+  expect_equal(spatial_prop$status, "blocked")
 })
 
 test_that("cluster and cluster2 rho requests fail loud as structural-zero point routes", {
@@ -161,7 +175,7 @@ test_that("cluster and cluster2 rho requests fail loud as structural-zero point 
     "point_only"
   )
   expect_error(
-    gllvmTMB::profile_ci_correlation(
+    gllvmTMB:::profile_ci_correlation(
       fake,
       tier = "cluster",
       i = 1L,
@@ -211,12 +225,8 @@ test_that("profile route matrix records named kernel interval boundaries", {
       "blocked"
   ))
   expect_match(kernel_sigma$route, "extract_Sigma_point_only", fixed = TRUE)
-  expect_match(kernel_rho$route, "extract_Sigma_table", fixed = TRUE)
-  expect_match(
-    kernel_prop$claim,
-    "not part of the current variance-proportion denominator",
-    fixed = TRUE
-  )
+  expect_identical(kernel_rho$route, "withheld_nonlinear_penalty_profile")
+  expect_identical(kernel_prop$route, "withheld_nonlinear_penalty_profile")
 })
 
 test_that("profile route matrix keeps augmented split profile routes blocked", {
@@ -235,12 +245,10 @@ test_that("profile route matrix keeps augmented split profile routes blocked", {
   for (lvl in split_levels) {
     for (estimand in split_estimands) {
       route <- gllvmTMB:::.profile_route_status(estimand, lvl, routes = routes)
-      if (identical(lvl, "unit_slope") && identical(estimand, "rho")) {
-        expect_equal(route$status, "partial", label = paste(estimand, lvl))
-        expect_match(route$route, "unit_slope_selected_entry", fixed = TRUE)
-        expect_match(route$claim, "canary", fixed = TRUE)
+      expect_equal(route$status, "blocked", label = paste(estimand, lvl))
+      if (grepl("withheld_nonlinear", route$route, fixed = TRUE)) {
+        expect_match(route$route, "withheld_nonlinear", fixed = TRUE)
       } else {
-        expect_equal(route$status, "blocked", label = paste(estimand, lvl))
         expect_match(route$route, "augmented_split_target_table", fixed = TRUE)
         expect_match(route$claim, "Design 74", fixed = TRUE)
         expect_true(nzchar(route$next_gate))
@@ -254,7 +262,7 @@ test_that("profile route matrix keeps augmented split profile routes blocked", {
   }
 })
 
-test_that("profile route matrix marks only unit_slope rho as the augmented canary", {
+test_that("profile route matrix has no augmented partial profile canary", {
   routes <- gllvmTMB:::.profile_route_matrix()
   augmented <- routes[
     routes$level %in%
@@ -273,10 +281,7 @@ test_that("profile route matrix marks only unit_slope rho as the augmented canar
   ]
   partial <- augmented[augmented$status == "partial", , drop = FALSE]
 
-  expect_equal(nrow(partial), 1L)
-  expect_equal(partial$level, "unit_slope")
-  expect_equal(partial$estimand, "rho")
-  expect_match(partial$route, "profile_ci_correlation", fixed = TRUE)
+  expect_equal(nrow(partial), 0L)
 })
 
 test_that("rho parser contract mirrors profile route matrix boundaries", {
@@ -303,10 +308,7 @@ test_that("rho parser contract mirrors profile route matrix boundaries", {
     expect_equal(parsed$tier, tier, label = tier)
     level <- accepted[[tier]]
     route <- gllvmTMB:::.profile_route_status("rho", level, routes = routes)
-    expect_true(
-      route$status %in% c("covered", "partial", "point_only"),
-      label = tier
-    )
+    expect_true(route$status %in% c("blocked", "point_only"), label = tier)
   }
 
   blocked_tiers <- c(
@@ -355,7 +357,7 @@ test_that("communality parser contract mirrors profile route matrix boundaries",
       accepted[[tier]],
       routes = routes
     )
-    expect_equal(route$status, "covered", label = tier)
+    expect_equal(route$status, "blocked", label = tier)
   }
 
   unavailable <- c("cluster", "cluster2")
@@ -512,7 +514,7 @@ test_that("rho parser accepts unit_slope augmented coefficient indices", {
   )
 })
 
-test_that("unit_slope rho confint dispatch is profile-only", {
+test_that("unit_slope rho confint dispatch is unavailable", {
   fake <- structure(
     list(
       data = data.frame(trait = factor(c("t1", "t2"))),
@@ -530,31 +532,22 @@ test_that("unit_slope rho confint dispatch is profile-only", {
       nsim = 10L,
       seed = 1L
     ),
-    "method = \"profile\""
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
   )
-
-  testthat::local_mocked_bindings(
-    profile_ci_correlation = function(fit, tier, i, j, level) {
-      expect_equal(tier, "unit_slope")
-      expect_equal(c(i, j), c(1L, 2L))
-      expect_equal(level, 0.95)
-      c(estimate = 0.2, lower = -0.1, upper = 0.5)
-    },
-    .package = "gllvmTMB"
+  expect_error(
+    gllvmTMB:::.confint_rho(
+      fake,
+      parm = "rho:unit_slope:1,2",
+      level = 0.95,
+      method = "profile",
+      nsim = 10L,
+      seed = 1L
+    ),
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
   )
-  ci <- gllvmTMB:::.confint_rho(
-    fake,
-    parm = "rho:unit_slope:1,2",
-    level = 0.95,
-    method = "profile",
-    nsim = 10L,
-    seed = 1L
-  )
-  expect_equal(rownames(ci), "rho:unit_slope:1,2")
-  expect_equal(unname(ci[1, ]), c(-0.1, 0.5))
 })
 
-test_that("profile_ci_correlation targets augmented unit_slope parameters", {
+test_that("internal correlation prototype still targets augmented unit_slope parameters", {
   par <- c(
     theta_rr_B_slope = 0.7,
     theta_rr_B_slope = 0.2,
@@ -597,7 +590,7 @@ test_that("profile_ci_correlation targets augmented unit_slope parameters", {
     .package = "gllvmTMB"
   )
 
-  ci <- gllvmTMB::profile_ci_correlation(
+  ci <- gllvmTMB:::profile_ci_correlation(
     fake,
     tier = "unit_slope",
     i = 1L,

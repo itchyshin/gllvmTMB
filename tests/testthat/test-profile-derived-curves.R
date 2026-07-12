@@ -1,8 +1,8 @@
-## Stage 3c of the profile-CI unified framework (2026-05-28):
-## drmTMB-parity profile curves for derived quantities. Tests the new
-## profile_X() functions that return LR-curve data.frames mirroring
-## loading_profile()'s shape, plus the shared plot.profile_derived()
-## S3 method.
+## Internal prototype tests for derived-quantity penalty curves. These helpers
+## are deliberately accessed with `:::` because the nonlinear routes and the
+## diagonal-only ratio once labelled repeatability are withdrawn from the public
+## release. These checks preserve development evidence only; they are not a
+## release or coverage gate.
 ##
 ## The Lagrange-refit machinery (.fix_and_refit_nll() in
 ## R/profile-derived.R) is slow: ~0.5-2 s per grid point on the
@@ -56,7 +56,7 @@ get_rep_curve <- function() {
   }
   fx <- build_curve_fixture()
   out <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_repeatability(
+    gllvmTMB:::profile_repeatability(
       fx$fit,
       trait_idx = 1L,
       n_grid = 9L,
@@ -73,7 +73,7 @@ get_com_curve <- function() {
   }
   fx <- build_curve_fixture()
   out <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_communality(
+    gllvmTMB:::profile_communality(
       fx$fit,
       tier = "unit",
       trait_idx = 1L,
@@ -91,7 +91,7 @@ get_rho_curve <- function() {
   }
   fx <- build_curve_fixture()
   out <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_correlation(
+    gllvmTMB:::profile_correlation(
       fx$fit,
       tier = "unit",
       i = 1L,
@@ -110,7 +110,7 @@ get_prop_curve <- function() {
   }
   fx <- build_curve_fixture()
   out <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_proportions(
+    gllvmTMB:::profile_proportions(
       fx$fit,
       components = "shared_unit",
       trait_idx = 1L,
@@ -155,7 +155,7 @@ test_that("profile_communality no-Psi error shows the actionable hint", {
   )
 
   expect_error(
-    gllvmTMB::profile_communality(fit, tier = "unit"),
+    gllvmTMB:::profile_communality(fit, tier = "unit"),
     "unique = FALSE"
   )
 })
@@ -269,7 +269,7 @@ test_that("profile_repeatability(): delta_deviance >= 0 and estimate matches ext
   ## (same as profile_ci_repeatability). We compare against the
   ## inversion endpoint's estimate.
   rep_ci <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_ci_repeatability(fx$fit, trait_idx = 1L)
+    gllvmTMB:::profile_ci_repeatability(fx$fit, trait_idx = 1L)
   ))
   expect_equal(unique(out$estimate), rep_ci$R, tolerance = 1e-6)
 })
@@ -369,7 +369,7 @@ test_that("profile_repeatability(): grid-inverted bounds agree with profile_ci_r
   out <- get_rep_curve()
   inv <- invert_curve(out)
   ref <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_ci_repeatability(fx$fit, trait_idx = 1L)
+    gllvmTMB:::profile_ci_repeatability(fx$fit, trait_idx = 1L)
   ))
   ## Compare lower/upper. NA-tolerance: if either side reports
   ## infinity (one-sided boundary), skip that side -- the curve
@@ -395,7 +395,7 @@ test_that("profile_communality(): grid-inverted bounds agree with profile_ci_com
   out <- get_com_curve()
   inv <- invert_curve(out)
   ref <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_ci_communality(fx$fit, tier = "unit", trait_idx = 1L)
+    gllvmTMB:::profile_ci_communality(fx$fit, tier = "unit", trait_idx = 1L)
   ))
   if (is.finite(inv$lower) && is.finite(ref$lower)) {
     expect_lt(abs(inv$lower - ref$lower), 1e-2)
@@ -416,7 +416,7 @@ test_that("profile_correlation(): grid-inverted bounds agree with profile_ci_cor
   out <- get_rho_curve()
   inv <- invert_curve(out)
   ref <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_ci_correlation(fx$fit, tier = "unit", i = 1L, j = 2L)
+    gllvmTMB:::profile_ci_correlation(fx$fit, tier = "unit", i = 1L, j = 2L)
   ))
   ref_lower <- unname(ref["lower"])
   ref_upper <- unname(ref["upper"])
@@ -439,7 +439,7 @@ test_that("profile_proportions(): grid-inverted bounds agree with profile_ci_pro
   out <- get_prop_curve()
   inv <- invert_curve(out)
   ref <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_ci_proportions(
+    gllvmTMB:::profile_ci_proportions(
       fx$fit, components = "shared_unit", trait_idx = 1L
     )
   ))
@@ -529,7 +529,7 @@ test_that("profile_repeatability(): errors when fit has no theta_diag_W", {
   ))
   expect_error(
     suppressMessages(suppressWarnings(
-      gllvmTMB::profile_repeatability(fit_no_w)
+      gllvmTMB:::profile_repeatability(fit_no_w)
     )),
     "theta_diag_B|theta_diag_W"
   )
@@ -555,7 +555,7 @@ test_that("profile_correlation(): errors when i == j", {
   fx <- build_curve_fixture()
   expect_error(
     suppressMessages(suppressWarnings(
-      gllvmTMB::profile_correlation(
+      gllvmTMB:::profile_correlation(
         fx$fit, tier = "unit", i = 1L, j = 1L
       )
     )),
@@ -572,7 +572,7 @@ test_that("profile_correlation(): canonicalises i > j to i < j", {
   ## We use a tiny n_grid = 3 to keep this cheap; only the labelling is
   ## under test.
   out <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_correlation(
+    gllvmTMB:::profile_correlation(
       fx$fit, tier = "unit", i = 2L, j = 1L,
       n_grid = 3L, grid_extent = 4
     )
@@ -587,7 +587,7 @@ test_that("profile_proportions(): link_residual in components errors", {
   fx <- build_curve_fixture()
   expect_error(
     suppressMessages(suppressWarnings(
-      gllvmTMB::profile_proportions(
+      gllvmTMB:::profile_proportions(
         fx$fit, components = "link_residual", trait_idx = 1L
       )
     )),
@@ -602,7 +602,7 @@ test_that("profile_proportions(): unknown component errors", {
   fx <- build_curve_fixture()
   expect_error(
     suppressMessages(suppressWarnings(
-      gllvmTMB::profile_proportions(
+      gllvmTMB:::profile_proportions(
         fx$fit, components = "shared_phy", trait_idx = 1L
       )
     )),

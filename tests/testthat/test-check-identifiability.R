@@ -62,7 +62,7 @@ make_mock_fit <- function(family_id_vec = 0L) {
 test_that("check_identifiability() errors on non-fit input", {
   skip_if_not_heavy()
   expect_error(
-    gllvmTMB::check_identifiability(list(foo = 1), sim_reps = 10L),
+    gllvmTMB:::check_identifiability(list(foo = 1), sim_reps = 10L),
     "fit returned by `gllvmTMB\\(\\)`"
   )
 })
@@ -71,11 +71,11 @@ test_that("check_identifiability() rejects sim_reps < 2", {
   skip_if_not_heavy()
   fit <- make_mock_fit()
   expect_error(
-    gllvmTMB::check_identifiability(fit, sim_reps = 1L),
+    gllvmTMB:::check_identifiability(fit, sim_reps = 1L),
     "sim_reps"
   )
   expect_error(
-    gllvmTMB::check_identifiability(fit, sim_reps = NA_integer_),
+    gllvmTMB:::check_identifiability(fit, sim_reps = NA_integer_),
     "sim_reps"
   )
 })
@@ -84,15 +84,15 @@ test_that("check_identifiability() rejects alpha outside (0, 1)", {
   skip_if_not_heavy()
   fit <- make_mock_fit()
   expect_error(
-    gllvmTMB::check_identifiability(fit, sim_reps = 10L, alpha = 0),
+    gllvmTMB:::check_identifiability(fit, sim_reps = 10L, alpha = 0),
     "alpha"
   )
   expect_error(
-    gllvmTMB::check_identifiability(fit, sim_reps = 10L, alpha = 1),
+    gllvmTMB:::check_identifiability(fit, sim_reps = 10L, alpha = 1),
     "alpha"
   )
   expect_error(
-    gllvmTMB::check_identifiability(fit, sim_reps = 10L, alpha = -0.1),
+    gllvmTMB:::check_identifiability(fit, sim_reps = 10L, alpha = -0.1),
     "alpha"
   )
 })
@@ -102,7 +102,7 @@ test_that("check_identifiability() errors on non-Gaussian fits (V1 scope)", {
   ## family_id 1 = binomial
   fit <- make_mock_fit(family_id_vec = c(0L, 1L, 0L))
   expect_error(
-    gllvmTMB::check_identifiability(fit, sim_reps = 10L),
+    gllvmTMB:::check_identifiability(fit, sim_reps = 10L),
     class = "gllvmTMB_check_identifiability_nongaussian"
   )
 })
@@ -114,7 +114,7 @@ test_that("check_identifiability() warns when parallel = TRUE", {
   fit <- make_mock_fit(family_id_vec = c(0L, 1L))
   expect_warning(
     expect_error(
-      gllvmTMB::check_identifiability(fit, sim_reps = 10L, parallel = TRUE),
+      gllvmTMB:::check_identifiability(fit, sim_reps = 10L, parallel = TRUE),
       class = "gllvmTMB_check_identifiability_nongaussian"
     ),
     "parallel"
@@ -154,7 +154,7 @@ test_that("check_identifiability() returns the expected list structure (smoke te
   skip_on_ci() ## sim-refit loop is too slow for routine CI; gate to local
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(
+    gllvmTMB:::check_identifiability(
       fit,
       sim_reps = 10L,
       seed = 42L,
@@ -185,7 +185,7 @@ test_that("check_identifiability() $recovery has the documented columns", {
   skip_on_ci()
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(
+    gllvmTMB:::check_identifiability(
       fit,
       sim_reps = 10L,
       seed = 7L,
@@ -219,7 +219,7 @@ test_that("check_identifiability() $loadings is a named list of T x d matrices",
   skip_on_ci()
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(
+    gllvmTMB:::check_identifiability(
       fit,
       sim_reps = 10L,
       seed = 19L,
@@ -243,7 +243,7 @@ test_that("check_identifiability() $hessian has one row per replicate with docum
   skip_on_ci()
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(
+    gllvmTMB:::check_identifiability(
       fit,
       sim_reps = 10L,
       seed = 3L,
@@ -269,7 +269,7 @@ test_that("check_identifiability() $flags is a subset of the documented set", {
   skip_on_ci()
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(
+    gllvmTMB:::check_identifiability(
       fit,
       sim_reps = 10L,
       seed = 31L,
@@ -293,7 +293,7 @@ test_that("print.gllvmTMB_identifiability() runs without error", {
   skip_on_ci()
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(
+    gllvmTMB:::check_identifiability(
       fit,
       sim_reps = 10L,
       seed = 5L,

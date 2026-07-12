@@ -64,9 +64,12 @@ from the joint MLE — typically order-of-magnitude faster than refitting
 under a constraint in pure R.
 }
 \details{
-For non-linear derived quantities (ICC, communality, repeatability,
-correlations, phylogenetic signal H^2), see the helpers in
-\code{R/profile-derived.R}.
+This wrapper profiles direct TMB parameters and fixed linear combinations.
+Nonlinear targets such as communality, full-covariance repeatability, and
+correlations are not routed through this function. The phylogenetic-signal
+extractor documents its narrower two-component profile route; other
+nonlinear extractors state explicitly when only Wald, bootstrap, or point
+estimates are available.
 }
 \section{Boundary behaviour}{
 

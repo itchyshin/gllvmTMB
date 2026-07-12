@@ -2,14 +2,11 @@
 % Please edit documentation in R/kernel-keywords.R
 \name{kernel_latent}
 \alias{kernel_latent}
-\alias{kernel_unique}
 \alias{kernel_indep}
 \alias{kernel_dep}
 \title{Generic dense-kernel covariance keywords}
 \usage{
 kernel_latent(unit, K, d = 1, name = "kernel", unique = FALSE)
-
-kernel_unique(unit, K, name = "kernel")
 
 kernel_indep(unit, K, name = "kernel")
 
@@ -18,9 +15,8 @@ kernel_dep(unit, K, name = "kernel")
 \arguments{
 \item{unit}{Unquoted grouping column whose levels align with \code{rownames(K)}.}
 
-\item{K}{Numeric dense positive-semidefinite covariance/correlation matrix.
-In C1 this routes through the existing phylo-equivalent dense \code{vcv}
-path.}
+\item{K}{Numeric dense positive-semidefinite covariance or correlation
+matrix aligned to the grouping levels.}
 
 \item{d}{Integer latent rank for \code{kernel_latent()}.}
 
@@ -35,31 +31,21 @@ tier. The default \code{FALSE} preserves the loadings-only subset.}
 A formula marker; never evaluated as a regular R function.
 }
 \description{
-\code{kernel_latent()} fits named random-effect tiers with user-supplied
-between-unit covariance matrices \code{K}. The covered scope for one named
-dense-kernel tier is the phylo-equivalent path:
-\code{kernel_latent(unit, K = A, d = q, unique = TRUE)} carries its
-kernel-structured diagonal \eqn{\boldsymbol\Psi} companion and must match
-\code{phylo_latent(unit, vcv = A, d = q, unique = TRUE)} to less than \code{1e-6}
-for log likelihood and extracted \code{Sigma}. The soft-deprecated
-compatibility spelling \code{kernel_latent(..., unique = FALSE) + kernel_unique(...)} remains accepted.
-The first multi-kernel scope accepts two or more fixed named
-\code{kernel_latent()} tiers over the same grouping levels, each with its own
-\code{K}, loading matrix, and latent field. This Paper 2 first wave remains
-latent-only: auto-generated kernel \eqn{\boldsymbol\Psi} companions are
-pruned for multi-kernel fits, and explicit paired \code{kernel_unique()} Psi is
-deferred because explicit residual/Psi structure is a poor default for
-non-Gaussian and cross-family coevolution models. \code{kernel_dep()} remains
-single-tier only in this first wave.
+\code{kernel_latent()} fits a named random-effect tier with a user-supplied
+between-unit covariance matrix \code{K}. For one named tier,
+\code{unique = TRUE} adds a kernel-structured diagonal
+\eqn{\boldsymbol\Psi} companion; the default \code{FALSE} is loadings-only.
+Two or more named \code{kernel_latent()} tiers may share the same grouping levels,
+each with its own \code{K}, loading matrix, and latent field. Multi-kernel fits are
+loadings-only: \code{unique = TRUE} and \code{kernel_dep()} are not available in that
+combination. Similar kernels can be
+weakly separable, so use \code{\link[=diagnose_kernel_separability]{diagnose_kernel_separability()}} before assigning a
+distinct interpretation to each component.
 
-The cross-lineage coevolution scope remains evidence-gated. Covered:
-users can pass one \code{K_star} from \code{\link[=make_cross_kernel]{make_cross_kernel()}} and extract the
-host-partner shared covariance block with \code{\link[=extract_Gamma]{extract_Gamma()}}. Partial:
-fixed two-component named-kernel fits are available for
-component-specific \code{Gamma_shape} extraction, but explicit Psi, kernel-
-separation recovery, \code{rho} estimation/profiling, and interval calibration
-remain future gates. The broader \verb{*_unique()} teaching/API surface is kept
-for compatibility now and should be redesigned/deprecated after this arc.
+A matrix returned by \code{\link[=make_cross_kernel]{make_cross_kernel()}} is treated as a fixed supplied
+covariance. The model does not estimate its association structure or bridge
+strength. \code{\link[=extract_Gamma]{extract_Gamma()}} returns descriptive point summaries; it does not
+provide calibrated intervals or establish a causal evolutionary process.
 }
 \examples{
 \dontrun{

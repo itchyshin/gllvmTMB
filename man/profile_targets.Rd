@@ -18,14 +18,13 @@ A data frame with one row per target and the following
 columns:
 \describe{
 \item{\code{parm}}{User-facing target label, e.g. \code{b_fix[1]},
-\code{sigma_eps}, \code{sd_B[2]}, \code{communality}.}
+\code{sigma_eps}, or \code{sd_B[2]}.}
 \item{\code{target_class}}{One of \code{fixed_effect}, \code{variance},
-\code{dispersion}, \code{loading_packed}, \code{threshold}, \code{scaling},
-\code{derived}.}
+\code{dispersion}, \code{loading_packed}, \code{threshold}, or \code{scaling}.}
 \item{\code{tmb_parameter}}{TMB-side parameter name (matches
-\code{names(fit$opt$par)}). \code{NA} for derived targets.}
+\code{names(fit$opt$par)}).}
 \item{\code{index}}{1-based index within the TMB parameter vector.
-\code{NA} for scalars and derived targets.}
+\code{NA} for scalars.}
 \item{\code{estimate}}{Point estimate on the natural scale (e.g.
 \code{sigma_eps = exp(log_sigma_eps)}).}
 \item{\code{link_estimate}}{Point estimate on the optimisation
@@ -34,15 +33,12 @@ scale (the TMB internal scale).}
 transformation) or \code{"link"} (for raw packed entries).}
 \item{\code{transformation}}{One of \code{linear_predictor}, \code{exp},
 \code{logit}, \code{logit_p_tweedie}, \code{lambda_packed},
-\code{ordinal_threshold}, \code{derived_group_scale},
-\code{unstructured_corr}.}
-\item{\code{target_type}}{Either \code{"direct"} or \code{"derived"}.}
+or \code{ordinal_threshold}.}
+\item{\code{target_type}}{Always \code{"direct"} for currently returned rows.}
 \item{\code{profile_ready}}{\code{TRUE} iff the target can be passed
 directly to \code{confint(fit, parm = ..., method = "profile")}.}
 \item{\code{profile_note}}{One of \code{ready}, \code{tmb_object_required},
-\code{missing_tmb_parameter}, \code{derived_target},
-\code{derived_unstructured_correlation},
-\code{latent_rotation_ambiguous}.}
+\code{missing_tmb_parameter}, or \code{latent_rotation_ambiguous}.}
 }
 }
 \description{
@@ -50,29 +46,22 @@ directly to \code{confint(fit, parm = ..., method = "profile")}.}
 diagnose or script profile confidence intervals. Most users should
 start with \code{\link[=confint.gllvmTMB_multi]{confint.gllvmTMB_multi()}} or a report-ready extractor
 such as \code{\link[=extract_correlations]{extract_correlations()}}. This helper tells you which
-\code{parm} labels can be profiled directly and which derived summaries
-should be routed through an extractor.
+\code{parm} labels can be profiled directly.
 }
 \details{
 The returned tidy data frame has one row per profile target and
 records whether the target is profile-ready and, if not, why.
 Direct targets correspond to a single TMB parameter element (for
 example \code{b_fix[1]}, \code{sigma_eps}, or \code{sd_B[2]}) and can be passed to
-\code{confint(fit, parm = ..., method = "profile")}. Derived targets
-(communality, repeatability, phylogenetic signal, trait
-correlations) are computed by the matching \code{extract_*(method = "profile")} extractor, not by \code{confint()} directly; the
-\code{profile_note} column points the user at the right extractor.
+\code{confint(fit, parm = ..., method = "profile")}. Nonlinear derived targets
+are excluded because their former penalty-profile routes are withheld.
 
 Scope boundary: IN, the controlled vocabulary and
-direct-profile routing are covered for fitted models with retained
-TMB objects. PARTIAL, derived targets depend on the corresponding
-extractor profile method. PLANNED, broader target-explicit profile
-calibration remains M3 work.
+direct-profile routing is covered for fitted models with retained TMB
+objects. Broader target-explicit profile calibration remains future work.
 
-The output's controlled vocabularies for \code{target_type},
-\code{profile_note}, and \code{transformation} mirror drmTMB's
-\code{profile_targets()} to keep the broader TMB-package family
-consistent. gllvmTMB-specific additions are documented inline.
+The output uses a controlled vocabulary for direct target classes,
+transformations, and readiness notes.
 }
 \examples{
 \dontrun{
@@ -89,8 +78,7 @@ profile_targets(fit, ready_only = TRUE)
 \seealso{
 \code{\link[=confint.gllvmTMB_multi]{confint.gllvmTMB_multi()}} for the routing of
 \code{method = c("wald", "profile")},
-\code{\link[=tmbprofile_wrapper]{tmbprofile_wrapper()}} for direct-parameter profiling, and
-\code{\link[=extract_communality]{extract_communality()}}, \code{\link[=extract_repeatability]{extract_repeatability()}},
-\code{\link[=extract_phylo_signal]{extract_phylo_signal()}}, \code{\link[=extract_correlations]{extract_correlations()}} for derived-
-target profile CIs.
+\code{\link[=tmbprofile_wrapper]{tmbprofile_wrapper()}} for direct-parameter profiling. For nonlinear
+summaries, consult the relevant extractor; a method token does not imply
+that a profile interval is currently available.
 }

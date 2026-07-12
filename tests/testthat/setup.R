@@ -48,21 +48,23 @@ options(gllvmTMB.quiet_grammar_notes = TRUE)
 # budget 10x changes nothing (byte-identical objective and iteration count), so a
 # larger `iter.max` is a no-op, not a fix.
 #
-# So: judge the fit on `fit$fit_health$converged` -- the package's scale-free
-# gradient verdict (R/diagnose.R, added 2026-07-08) -- NOT on `fit$opt$convergence`
-# or `pd_hessian`. This is the repo's standing discipline: trust recovery-to-truth
-# over second-order flags. The two helpers below are the single source of truth for
-# "is this fit usable?" in the test suite.
+# Recovery fixtures sometimes need to distinguish a stationary fitted scenario
+# from a fully clean public fit. The helper below deliberately checks only the
+# objective-scaled stationarity diagnostic; it must not be used as a public
+# convergence certificate. Tests that make inference claims must inspect the
+# optimiser code, raw gradient, and Hessian/SE health separately.
 #
 # NOTE: ~377 assertions across ~184 test files still use the bare
 # `expect_equal(fit$opt$convergence, 0L)` form and share the locale fragility above.
-# Migrating those is a separate mechanical sweep; `expect_converged()` is the target.
+# Migrating those is a separate mechanical sweep; `expect_stationary_for_recovery_test()` is the target.
 
-# Predicate for skip-guards: TRUE iff the fit reached a usable optimum. Reads the
-# package verdict; falls back to recomputing the scaled gradient if the field is
-# absent (e.g. an older fit object). Never TRUE when the gradient is unavailable.
-.fit_converged <- function(fit) {
-  v <- tryCatch(fit$fit_health$converged, error = function(e) NULL)
+# Predicate for recovery-test skip guards only. Never TRUE when the diagnostic
+# is unavailable.
+.fit_stationary_for_recovery_test <- function(fit) {
+  v <- tryCatch(
+    fit$fit_health$stationary_by_scaled_gradient,
+    error = function(e) NULL
+  )
   if (is.logical(v) && length(v) == 1L && !is.na(v)) {
     return(isTRUE(v))
   }
@@ -70,19 +72,20 @@ options(gllvmTMB.quiet_grammar_notes = TRUE)
   g <- tryCatch(max(abs(fit$tmb_obj$gr(fit$opt$par))), error = function(e) NA_real_)
   obj <- tryCatch(fit$opt$objective, error = function(e) NA_real_)
   if (is.na(g) || is.na(obj)) return(FALSE)
-  isTRUE(g / (1 + abs(obj)) < 1e-3)
+  isTRUE(
+    g / (1 + abs(obj)) < gllvmTMB:::.gllvmTMB_converged_gtol
+  )
 }
 
-# Assertion wrapper for the predicate. Prefer this over
-# `expect_equal(fit$opt$convergence, 0L)` and over `expect_true(pd_hessian)` as a
-# proxy for a good fit.
-expect_converged <- function(fit) {
+# Assertion wrapper for the recovery-test predicate. This does not assert that a
+# fit is ready for interpretation or inference.
+expect_stationary_for_recovery_test <- function(fit) {
   h <- tryCatch(fit$fit_health, error = function(e) NULL)
   testthat::expect(
-    .fit_converged(fit),
+    .fit_stationary_for_recovery_test(fit),
     sprintf(
       paste0(
-        "Fit did not reach a usable optimum: converged = %s, scaled_gradient = %s, ",
+        "Fit did not reach the recovery-test stationarity threshold: converged = %s, scaled_gradient = %s, ",
         "raw convergence code = %s, pd_hessian = %s."
       ),
       isTRUE(h$converged), signif(h$scaled_gradient %||% NA_real_, 3),

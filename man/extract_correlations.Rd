@@ -2,14 +2,14 @@
 % Please edit documentation in R/extract-correlations.R
 \name{extract_correlations}
 \alias{extract_correlations}
-\title{Cross-trait correlations with confidence intervals}
+\title{Extract cross-trait correlations}
 \usage{
 extract_correlations(
   fit,
   tier = "all",
   pair = NULL,
   level = 0.95,
-  method = c("fisher-z", "profile", "wald", "bootstrap"),
+  method = c("none", "fisher-z", "profile", "wald", "bootstrap"),
   n_eff = NULL,
   nsim = 500L,
   seed = NULL,
@@ -21,9 +21,7 @@ extract_correlations(
 (\code{engine = "julia"}) fits expose the ordinary unit tier only and carry no
 correlation-interval payload, so they return point-only rows: the same
 schema with \code{lower} and \code{upper} set to \code{NA}, \code{method = "none"},
-\code{interval_status = "none"}, and an internal provenance marker for the
-Julia bridge tier in \code{validation_row}, mirroring
-\code{\link[=extract_Sigma_table]{extract_Sigma_table()}} with \code{measure = "correlation"}. Use
+and \code{interval_status = "none"}. Use
 \code{engine = "tmb"} when you need correlation confidence intervals.}
 
 \item{tier}{Character vector. Use \code{"all"} (the default) to request
@@ -38,27 +36,29 @@ Default \code{NULL} (all pairs).}
 
 \item{level}{Confidence level in (0, 1). Default 0.95.}
 
-\item{method}{One of \code{"fisher-z"} (default), \code{"profile"},
+\item{method}{One of \code{"none"} (default), \code{"fisher-z"},
 \code{"wald"} (alias of \code{"fisher-z"}), or \code{"bootstrap"}.
-See Details.}
+The accepted \code{"profile"} token is withdrawn and stops with an
+explanation. See Details.}
 
 \item{n_eff}{Optional positive integer (>= 4): override the
 effective sample size used in Fisher's
 \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}}
-formula. Consulted for \code{method \%in\% c("fisher-z", "wald")}
+formula. This is a user-supplied sensitivity parameter, not an estimated
+effective sample size. It is consulted for
+\code{method \%in\% c("fisher-z", "wald")}
 and for explicit Wald fallback rows when a requested bootstrap tier is
 not yet routed. The default heuristic uses \code{fit$n_sites} for tier
 \code{"B"} (\code{"unit"}), \code{fit$n_site_species} for
 \code{"W"} (\code{"unit_obs"}), \code{fit$n_species} for
-\code{"phy"}, and \code{fit$n_sites} elsewhere -- adequate for
-well-identified Gaussian fits, but can under-cover when latent
-structure or non-Gaussian likelihood reduces the effective N
-below the unit count. If the automatic tier count is missing or below
+\code{"phy"}, and \code{fit$n_sites} elsewhere. These counts are only
+transparent heuristics: grouped, phylogenetic, spatial, latent, and
+non-Gaussian structure can make the iid Fisher variance inappropriate.
+If the automatic tier count is missing or below
 4, Fisher-z rows return point correlations with unavailable interval
 bounds rather than substituting an arbitrary sample size. Set
-\code{n_eff} explicitly for non-trivial structure (e.g.
-\code{n_eff = fit$n_species} for a binomial joint-SDM where species
-mediates the cross-trait correlation).}
+\code{n_eff} only when the analysis supplies a defensible target-specific
+rationale, and report that rationale.}
 
 \item{nsim}{Number of bootstrap replicates when
 \code{method = "bootstrap"}. Default 500.}
@@ -69,7 +69,7 @@ mediates the cross-trait correlation).}
 variance on the diagonal of the implied \eqn{\boldsymbol\Sigma} before
 computing correlations:
 \describe{
-\item{\code{"auto"} (default, Phase 1b 2026-05-15)}{For
+\item{\code{"auto"} (default)}{For
 non-Gaussian fits, add the link-specific implicit residual
 (e.g. \eqn{\pi^2/3} for binomial-logit; \eqn{1} for probit;
 \code{trigamma()} terms for Gamma / NB2 / Beta / etc.) to the
@@ -103,22 +103,16 @@ names in new calls.}
 \item{\code{correlation}}{Point estimate.}
 \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
 \item{\code{method}}{Method used to compute the CI.}
-\item{\code{interval_status}}{Claim-boundary marker for the intervals:
-\code{"nominal"} for all-Gaussian fits (the nominal fisher-z / profile /
-bootstrap CIs); \code{"route-only"} for non-Gaussian or mixed-family fits,
-whose correlation routes through the per-trait link-residual approximation
-and whose interval coverage is not yet established (see the
-validation-debt register); \code{"none"} for point-only
-\code{engine = "julia"} fits. Lets the reader see the boundary without
-consulting the register.}
+\item{\code{interval_status}}{Claim-boundary marker:
+\code{"none"} for point-only output,
+\code{"heuristic_unvalidated"} for Fisher-z/Wald bounds, and
+\code{"target_specific_uncalibrated"} for bootstrap bounds. The
+bootstrap route computes intervals, but this function does not certify
+their frequentist coverage for the fitted target.}
 }
 
-For an \code{engine = "julia"} bridge fit the frame additionally carries a
-\code{validation_row} column recording an internal provenance marker for
-that bridge tier, with \code{lower}/\code{upper}
-both \code{NA}, \code{method = "none"}, and \code{interval_status = "none"};
-the base columns above are unchanged so the frame remains a superset of the
-normal-fit schema.
+For an \code{engine = "julia"} bridge fit, \code{lower}/\code{upper} are
+\code{NA}, \code{method = "none"}, and \code{interval_status = "none"}.
 }
 \description{
 Returns the implied cross-trait correlations from a fit returned by
@@ -126,22 +120,27 @@ Returns the implied cross-trait correlations from a fit returned by
 names \code{"unit"}, \code{"unit_obs"}, \code{"phy"}, and
 \code{"spatial"}; legacy aliases \code{"B"}, \code{"W"}, and
 \code{"spde"} still work. The helper returns 95\% (or other-level)
-confidence intervals. Four method names are
-supported via the \code{method} argument:
+point estimates by default. Fisher-z and bootstrap intervals can be
+requested explicitly with the \code{method} argument; the former profile
+token is retained only to return a clear withdrawal error:
 }
 \details{
 \itemize{
-\item \code{"fisher-z"} (default): Fisher's z-transform Wald CI.
+\item \code{"none"} (default): point correlations only. No universal
+interval calibration has been established across covariance tiers,
+families, and targets.
+\item \code{"fisher-z"}: Fisher's z-transform heuristic interval.
 Computes \eqn{\hat z = \mathrm{atanh}(\hat\rho)},
 \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}},
 constructs the CI on z, then back-transforms via
 \eqn{\tanh(\cdot)} (so bounds are guaranteed inside \eqn{[-1, 1]}).
-Fast (seconds for any T) and reasonable for most fits.
-See \code{n_eff} for the effective-sample-size override.
-\item \code{"profile"}: profile-likelihood CI via fix-and-refit.
-Most accurate for skewed sampling distributions, but slow
-(\eqn{O(T(T-1)/2)} constrained refits per call). Use for
-final, publication-grade CIs on small T.
+Fast (seconds for any T), but the classical iid-correlation variance is
+not a calibrated mixed-model standard error. Treat these bounds as a
+sensitivity display and see \code{n_eff}.
+\item \code{"profile"}: withdrawn. The nonlinear penalty-profile
+prototype did not yet provide a sufficiently strict constraint and
+constrained-optimizer diagnostic contract. This token stops with an
+explanation rather than returning bounds.
 \item \code{"wald"}: backward-compat alias of \code{"fisher-z"}
 with the same numerics. Emits a one-shot inform pointing at
 the canonical name. Kept for scripts that filter on
@@ -163,11 +162,8 @@ cross-trait correlations to report.
 \section{Caveats}{
 
 \itemize{
-\item For tiers with \code{latent()} only and small ranks, the
-profile path can be unstable due to rotation indeterminacy of the
-factor model (the implied Sigma is identifiable but the split into
-\code{Lambda Lambda^T} and \code{S} is not). Fall back to
-\code{method = "bootstrap"} when the profile fails.
+\item The former nonlinear penalty-profile route is withheld pending an
+exact constraint solver and explicit constrained-fit diagnostics.
 \item Bootstrap uses \code{\link{bootstrap_Sigma}} refits and is the
 practical fallback when point estimates are useful but Hessian- or
 profile-based intervals are unavailable. Inspect bootstrap warnings,
@@ -191,13 +187,11 @@ fit <- gllvmTMB(
   trait = "trait",
   unit  = "site"
 )
-## Default Fisher-z Wald CIs (fast, bounded inside \eqn{[-1, 1]}).
+## Default: point correlations only.
 cors <- extract_correlations(fit, tier = "unit")
-## With n_eff override (e.g. for binomial joint-SDM where species
-## count is the relevant effective N).
-cors2 <- extract_correlations(fit, tier = "unit", n_eff = 6L)
-## Profile-likelihood (slow but accurate for skewed sampling).
-cors_p <- extract_correlations(fit, tier = "unit", method = "profile")
+## Opt-in Fisher-z sensitivity bounds with an explicitly justified n_eff.
+cors2 <- extract_correlations(fit, tier = "unit", method = "fisher-z",
+                               n_eff = 60L)
 ## Bootstrap (B = 200).
 cors_b <- extract_correlations(fit, tier = "unit", method = "bootstrap",
                                nsim = 200, seed = 42)

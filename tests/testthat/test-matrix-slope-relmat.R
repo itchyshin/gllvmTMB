@@ -133,9 +133,9 @@ fit_slope_relmat_phylo_pair <- function(fx, family) {
 }
 
 expect_slope_relmat_fit_health <- function(fit, family_id) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_equal(fit$tmb_data$family_id_vec[1], family_id)
 }
 
@@ -186,7 +186,7 @@ relmat_pair_ready_or_skip <- function(pair, row_label) {
                        else simpleError("wrong class"))
     ))
   }
-  if (!.fit_converged(pair$phylo) || !.fit_converged(pair$relmat)) {
+  if (!.fit_stationary_for_recovery_test(pair$phylo) || !.fit_stationary_for_recovery_test(pair$relmat)) {
     testthat::skip(sprintf(
       "relmat/phylo slope did not converge (scaled gradient above tolerance); %s stays partial pending bigger n / different seed",
       row_label

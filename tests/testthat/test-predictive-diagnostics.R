@@ -72,11 +72,19 @@ test_that("exact randomized-quantile residuals work on Gaussian, Poisson, and NB
 
   for (nm in names(fits)) {
     fit <- fits[[nm]]
-    res <- stats::residuals(
+    residual_call <- function() stats::residuals(
       fit,
       type = "randomized_quantile",
       seed = 100L
     )
+    if (identical(nm, "gaussian")) {
+      expect_warning(
+        res <- residual_call(),
+        class = "gllvmTMB_conditional_residual_saturated"
+      )
+    } else {
+      res <- residual_call()
+    }
     expect_s3_class(res, "data.frame")
     expect_equal(nrow(res), length(fit$tmb_data$y))
     expect_true(all(
@@ -107,12 +115,12 @@ test_that("exact randomized-quantile residuals work on Gaussian, Poisson, and NB
     expect_type(res_meta$fit_health, "list")
     expect_s3_class(res_meta$fit_health_status, "data.frame")
 
-    p <- predictive_check(
+    p <- suppressWarnings(predictive_check(
       fit,
       type = "rq_qq",
       seed = 101L,
       condition_on_RE = TRUE
-    )
+    ))
     expect_s3_class(p, "ggplot")
     meta <- attr(p, "gllvmTMB_diagnostic")
     expect_equal(meta$type, "rq_qq")
@@ -427,10 +435,13 @@ test_that("exact residuals retain non-finite and unsupported rows", {
 
   fit <- make_ppc_diag_fit("gaussian", seed = 6L)
   fit$tmb_data$y[1] <- Inf
-  res <- stats::residuals(
-    fit,
-    type = "randomized_quantile",
-    seed = 105L
+  expect_warning(
+    res <- stats::residuals(
+      fit,
+      type = "randomized_quantile",
+      seed = 105L
+    ),
+    "Exact conditional Gaussian residuals are not informative"
   )
 
   expect_equal(nrow(res), length(fit$tmb_data$y))
@@ -440,10 +451,13 @@ test_that("exact residuals retain non-finite and unsupported rows", {
 
   fit$tmb_data$y[1] <- 0
   fit$tmb_data$family_id_vec[1] <- 7L
-  res_unsupported <- stats::residuals(
-    fit,
-    type = "randomized_quantile",
-    seed = 106L
+  expect_warning(
+    res_unsupported <- stats::residuals(
+      fit,
+      type = "randomized_quantile",
+      seed = 106L
+    ),
+    "Exact conditional Gaussian residuals are not informative"
   )
   expect_equal(res_unsupported$status[1], "unsupported_family")
   expect_true(is.na(res_unsupported$residual[1]))

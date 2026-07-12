@@ -161,9 +161,11 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'   confidence-interval columns; when `FALSE` (the default), returns a
 #'   plain named numeric vector for backward compatibility.
 #' @param conf_level Confidence level when `ci = TRUE`. Default 0.95.
-#' @param method One of `"profile"` (default), `"wald"`, `"bootstrap"`.
-#'   Only used when `ci = TRUE`. Prefer profile or Wald-style intervals where
-#'   available; bootstrap is a slower option for deliberate sampling checks.
+#' @param method One of `"wald"` (default), `"bootstrap"`, or `"profile"`.
+#'   Only used when `ci = TRUE`. The nonlinear penalty-profile prototype is
+#'   currently withheld from the public release; requesting `"profile"` stops
+#'   with an explanation. Bootstrap is a slower simulation-and-refit option and
+#'   is not automatically coverage-calibrated.
 #' @param nsim Number of bootstrap replicates when `method = "bootstrap"`.
 #'   Default 500.
 #' @param seed Optional RNG seed for the bootstrap.
@@ -189,8 +191,8 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'   )
 #'   ## Per-trait between-unit communality.
 #'   extract_communality(fit, level = "unit")
-#'   ## With profile-likelihood CIs.
-#'   extract_communality(fit, level = "unit", ci = TRUE)
+#'   ## With delta-method Wald CIs.
+#'   extract_communality(fit, level = "unit", ci = TRUE, method = "wald")
 #'   boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
 #'                           what = "communality", progress = FALSE)
 #'   extract_communality(boot, level = "unit", ci = TRUE)
@@ -202,7 +204,7 @@ extract_communality <- function(
   link_residual = c("auto", "none"),
   ci = FALSE,
   conf_level = 0.95,
-  method = c("profile", "wald", "bootstrap"),
+  method = c("wald", "bootstrap", "profile"),
   nsim = 500L,
   seed = NULL
 ) {
@@ -259,9 +261,14 @@ extract_communality <- function(
     return(out_pe)
   }
 
-  ## CI path
+  ## CI path. The former nonlinear penalty-profile route could accept loose
+  ## constraints and unconverged refits, so it is not a public release route.
   if (method == "profile") {
-    return(profile_ci_communality(fit, tier = level, level = conf_level))
+    cli::cli_abort(c(
+      "Nonlinear profile intervals for communality are not currently available.",
+      "i" = "The penalty-based constrained-refit prototype has been withdrawn pending an exact constraint solver and calibration evidence.",
+      ">" = "Use {.code ci = FALSE} for point estimates, or request {.code method = \"wald\"} or {.code method = \"bootstrap\"} and report their limitations."
+    ), class = "gllvmTMB_nonlinear_profile_withdrawn")
   }
   if (method == "wald") {
     rows <- lapply(seq_along(trait_names), function(t) {
@@ -430,7 +437,7 @@ extract_communality <- function(
 #' @param component Score component to return. `"total"` returns the latent
 #'   score entering the linear predictor. `"innovation"` returns the zero-mean
 #'   latent innovation. `"mean"` returns the predictor-informed score mean and
-#'   is non-zero only for Design 73 `latent(..., lv = ~ x)` fits.
+#'   is non-zero only for `latent(..., lv = ~ x)` fits.
 #' @return A list with `scores` (units or within-unit observations in rows,
 #'   latent axes in columns) and `loadings` (traits in rows, axes in columns).
 #'
@@ -553,13 +560,14 @@ extract_ordination <- function(
 #' `sdreport()` when available. Axis-effect SEs come from the fixed-parameter
 #' block for `alpha_lv_B`; trait-effect SEs come from TMB's delta-method
 #' `ADREPORT(B_lv_unit)` output. `lower` and `upper` are Wald intervals using
-#' `conf.level`; coverage calibration remains validation-gated. For Gaussian,
+#' `conf.level`. Broad repeated-sampling coverage has not been established, so
+#' finite bounds remain experimental rather than nominally calibrated. For Gaussian,
 #' Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog
 #' `engine = "julia"` bridge fits, `ci_method = "none"` exposes point estimates
 #' only (`std.error`, `lower`, and `upper` are `NA`). When the bridge supplies a
-#' retained Wald payload, `extract_lv_effects()` surfaces finite `std.error`,
-#' `lower`, and `upper`. Those Julia bridge values are Wald payload reader
-#' output, not coverage-calibrated intervals.
+#' retained delta-method uncertainty data, `extract_lv_effects()` surfaces
+#' finite `std.error`, `lower`, and `upper`. Those Julia bridge values are not
+#' coverage-calibrated intervals.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param level Currently `"unit"` only. Legacy alias `"B"` is accepted.
@@ -568,22 +576,21 @@ extract_ordination <- function(
 #'   \eqn{\mathbf B_{\mathrm{lv}}} on the trait linear-predictor scale.
 #' @param conf.level Confidence level for the interval (Wald, or the
 #'   confidence level passed to the profile / bootstrap CI).
-#' @param method Interval method for `type = "trait_effect"` (\eqn{\mathbf
-#'   B_{\mathrm{lv}}}): `"wald"` (default, delta-method inline), `"profile"`
-#'   (the featured/hero method -- [profile_ci_lv_effects()], with a small-sample
-#'   t reference), or `"bootstrap"` (calibration/fallback --
-#'   [bootstrap_ci_lv_effects()]). `"profile"`/`"bootstrap"` require
-#'   `type = "trait_effect"`.
-#' @param ... Passed to [profile_ci_lv_effects()] (e.g. `trait`, `predictor`,
-#'   `reference`, `df`) or [bootstrap_ci_lv_effects()] (e.g. `n_boot`, `seed`,
-#'   `n_cores`) when `method` is `"profile"` / `"bootstrap"`.
+#' @param method Interval method. `"wald"` is the only current public route.
+#'   The nonlinear profile and predictor-effect bootstrap prototypes are
+#'   withheld until constrained-fit diagnostics, failed-refit accounting, and
+#'   repeated-sampling coverage evidence are available.
+#' @param ... Reserved for future interval routes; currently unused.
 #'
 #' @return A data frame. For `type = "axis_effect"`, columns are `level`,
 #'   `axis`, `predictor`, `estimate`, `std.error`, `lower`, `upper`,
-#'   `rotation_status`, `uncertainty_status`, and `validation_row`. For
+#'   `rotation_status` and `uncertainty_status`. For
 #'   `type = "trait_effect"`, columns are `level`, `trait`, `predictor`,
-#'   `estimate`, `std.error`, `lower`, `upper`, `uncertainty_status`, and
-#'   `validation_row`.
+#'   `estimate`, `std.error`, `lower`, `upper`, and `uncertainty_status`.
+#'   The `uncertainty_status` field states why standard errors are unavailable
+#'   (for example, skipped `sdreport()`, a non-positive-definite Hessian, or
+#'   non-finite standard errors) or labels finite Wald bounds as not yet
+#'   coverage-calibrated.
 #'
 #' @seealso [extract_ordination()]
 #'
@@ -625,33 +632,19 @@ extract_lv_effects <- function(
       "i" = "Fit an admitted ordinary unit-tier model with {.code latent(..., lv = ~ x)}."
     ))
   }
+  if (!identical(method, "wald")) {
+    cli::cli_abort(c(
+      "{.code method = {.val {method}}} is not currently available for predictor-informed latent effects.",
+      "i" = "The profile and bootstrap prototypes have been withdrawn from the public release because their constrained-fit and failed-refit diagnostics are incomplete.",
+      ">" = "Use {.code method = \"wald\"} only as an experimental delta-method summary, and do not treat it as coverage-calibrated."
+    ), class = "gllvmTMB_lv_interval_withdrawn")
+  }
 
   trait_names <- levels(fit$data[[fit$trait_col]])
   predictor_names <- fit$lv$X_lv_B_names %||% colnames(fit$lv$X_lv_B)
   if (is.null(predictor_names) || length(predictor_names) == 0L) {
     predictor_names <- paste0("x", seq_len(ncol(fit$lv$X_lv_B)))
   }
-  validation_row <- .lv_effects_validation_row(fit)
-
-  ## Profile / bootstrap CIs apply to the trait-scale effect B_lv
-  ## (type = "trait_effect"). Profile is the featured/hero method (D-12);
-  ## bootstrap is the calibration/fallback leg. Wald (default) stays inline.
-  if (!identical(method, "wald")) {
-    if (!identical(type, "trait_effect")) {
-      cli::cli_abort(c(
-        "{.code method = {.val {method}}} applies to {.code type = \"trait_effect\"} (B_lv).",
-        "i" = "Use {.code type = \"trait_effect\"}, or {.code method = \"wald\"} for axis effects."
-      ))
-    }
-    ci <- switch(
-      method,
-      profile = profile_ci_lv_effects(fit, level = conf.level, ...),
-      bootstrap = bootstrap_ci_lv_effects(fit, conf = conf.level, ...)
-    )
-    ci$validation_row <- validation_row
-    return(ci)
-  }
-
   if (identical(type, "trait_effect")) {
     B_lv <- fit$report$B_lv_unit
     if (is.null(B_lv)) {
@@ -687,7 +680,6 @@ extract_lv_effects <- function(
       lower = interval$lower,
       upper = interval$upper,
       uncertainty_status = se_info$status,
-      validation_row = validation_row,
       stringsAsFactors = FALSE
     )
   } else {
@@ -725,7 +717,6 @@ extract_lv_effects <- function(
       upper = interval$upper,
       rotation_status = "axis_scale_rotation_dependent",
       uncertainty_status = se_info$status,
-      validation_row = validation_row,
       stringsAsFactors = FALSE
     )
   }
@@ -816,18 +807,4 @@ extract_lv_effects <- function(
     upper[finite] <- estimate[finite] + z * std.error[finite]
   }
   list(lower = lower, upper = upper)
-}
-
-.lv_effects_validation_row <- function(fit) {
-  family_id_vec <- fit$tmb_data$family_id_vec
-  link_id_vec <- fit$tmb_data$link_id_vec
-  if (
-    length(family_id_vec) > 0L &&
-      length(link_id_vec) > 0L &&
-      all(family_id_vec == 1L) &&
-      all(link_id_vec %in% c(0L, 1L, 2L))
-  ) {
-    return("EXT-31; LV-05")
-  }
-  "EXT-31; LV-01"
 }

@@ -157,9 +157,9 @@ fit_slope_spatial <- function(fx, family) {
 ## stated family id, and a finite augmented slope-variance profile CI OR a
 ## non-degenerate spatial correlation frame. Never widened.
 expect_slope_spatial_smoke <- function(fit, expected_family_id) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], expected_family_id)
 
   ## Augmented SPDE correlated-slope path active with 2 LHS columns (intercept
@@ -221,7 +221,7 @@ run_slope_spatial_family <- function(family, expected_family_id, emit,
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     testthat::skip("spatial_unique(1 + x | site) fit did not converge with PD Hessian; cell stays partial pending bigger n / different seed")
   }
   expect_slope_spatial_smoke(fit, expected_family_id)

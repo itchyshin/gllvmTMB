@@ -119,8 +119,8 @@ make_cross_kernel <- function(A_H, A_P, W, rho = 0.5, eps = 1e-8) {
 #' Profile fixed cross-lineage rho values
 #'
 #' @description
-#' `profile_cross_rho()` formalises the fixed-kernel sensitivity workflow for
-#' Design 65 cross-lineage kernels. It rebuilds `K_star` with
+#' `profile_cross_rho()` formalises a fixed-kernel sensitivity workflow for
+#' cross-lineage kernels. It rebuilds `K_star` with
 #' [make_cross_kernel()] over a user-supplied `rho` grid, calls a caller-supplied
 #' `refit(K, rho, ...)` function for each grid value, and returns a tidy
 #' likelihood table.
@@ -276,8 +276,8 @@ profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
 #' flagged unbounded (`lower_bounded` / `upper_bounded` `FALSE`) -- widen the grid.
 #'
 #' This is screening-grade profile/sensitivity interval evidence on a
-#' *fixed*-`rho` refit grid, not in-engine `rho` estimation (Design 65 C3.3;
-#' this remains only partially covered by validation). Its coverage has
+#' *fixed*-`rho` refit grid, not in-engine `rho` estimation. Direct validation
+#' of this route remains partial, and its coverage has
 #' **not** been calibrated, so do not report it as a validated confidence
 #' interval.
 #'
@@ -534,9 +534,9 @@ profile_cross_rho_ci <- function(profile, level = 0.95) {
 #'
 #' @description
 #' `diagnose_kernel_separability()` compares two or more dense fixed kernels on
-#' the same levels before they are used in a multi-kernel coevolution model. It
-#' is a pre-fit claim-boundary helper for Design 65 (only partially covered by
-#' validation): when candidate
+#' the same levels before they are used in a multi-kernel model. It is a pre-fit
+#' diagnostic rather than evidence that the components are separately
+#' identifiable: when candidate
 #' kernels are highly overlapping, component-specific `Gamma` blocks are weak
 #' evidence and should be treated as descriptive unless simulations justify the
 #' split.

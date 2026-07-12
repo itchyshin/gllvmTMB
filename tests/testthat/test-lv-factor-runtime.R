@@ -89,7 +89,7 @@ expect_lv_factor_runtime_reports <- function(fit, truth) {
 
 expect_lv_factor_runtime_recovery <- function(fit, truth, b_tol) {
   effects <- extract_lv_effects(fit, type = "trait_effect")
-  expect_equal(unique(effects$validation_row), "EXT-31; LV-01")
+  expect_false("validation_row" %in% names(effects))
   expect_equal(
     unique(effects$uncertainty_status),
     "sdreport_skipped_no_lv_se"

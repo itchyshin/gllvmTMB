@@ -15,8 +15,9 @@ modelled missing predictor.}
 \item{threshold}{Effective-lambda threshold below which the signal is flagged
 as weak (default \code{0.1}).}
 
-\item{warn}{Logical; when \code{TRUE}, emit an EBLUP-language warning for the weak
-case. Default \code{FALSE} (the function returns the statistic silently).}
+\item{warn}{Logical; when \code{TRUE}, warn against over-interpreting conditional
+modes when phylogenetic signal is weak. Default \code{FALSE} (the function
+returns the statistic silently).}
 }
 \value{
 A list with \code{variable}, \code{lambda} (effective Pagel lambda), \code{sd_x},
@@ -45,6 +46,6 @@ independent model). This is a verification / interpretation aid, not part of
 the fit; it does not change estimates.
 }
 \seealso{
-\code{\link[=imputed]{imputed()}} for the EBLUPs; \code{\link[=gllvmTMB]{gllvmTMB()}} for the \verb{impute =} phylo
+\code{\link[=imputed]{imputed()}} for conditional modes; \code{\link[=gllvmTMB]{gllvmTMB()}} for the \verb{impute =} phylo
 covariate model.
 }

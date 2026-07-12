@@ -137,9 +137,9 @@ fit_slope_beta <- function(fx) {
 }
 
 expect_slope_beta_fit_health <- function(fit) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   ## Sanity: this really is the Beta family (family_id 7) and phi is finite.
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], 7L)
   testthat::expect_true(all(is.finite(as.numeric(fit$report$phi_beta))))
@@ -203,7 +203,7 @@ test_that("Beta: phylo_unique(1 + x | sp) augmented fit converges, PD Hessian, r
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("Beta phylo_unique(1 + x | sp) did not converge with PD Hessian; RE-02(beta) stays partial pending bigger n / different seed")
   }
 
@@ -249,7 +249,7 @@ test_that("Beta: phylo_unique(1 + x | sp) augmented fit yields a finite slope-va
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("Beta phylo_unique(1 + x | sp) did not converge with PD Hessian; RE-02(beta) CI smoke stays partial")
   }
 

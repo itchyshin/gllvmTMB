@@ -1,16 +1,12 @@
-## Profile-target inventory for `gllvmTMB_multi` fits (P1a audit
-## response 2026-05-15). Pattern mirrored from drmTMB's
-## `R/profile.R::profile_targets()` per the cross-team learning
-## scan in PR #109.
+## Direct profile-target inventory for `gllvmTMB_multi` fits.
 ##
 ## A "profile target" is anything a user might want a profile-
 ## likelihood confidence interval on. Direct targets correspond to
 ## a single TMB-parameter element and can be profiled via
 ## `TMB::tmbprofile()` (wrapped by `tmbprofile_wrapper()`). Derived
-## targets (communality, repeatability, phylogenetic signal,
-## cross-trait correlations) are constructed from one or more direct
-## targets and require a different machinery (the package's
-## `extract_*(method = "profile")` family or `bootstrap_Sigma()`).
+## Nonlinear derived targets are intentionally absent because their former
+## penalty-profile routes are withheld. The simple two-component phylogenetic
+## signal route is documented separately.
 ##
 ## The controlled vocabularies on `target_type`, `profile_note`, and
 ## `transformation` are mirrored from drmTMB so the broader TMB-
@@ -242,30 +238,12 @@
 
 ## ---- Derived targets registry ------------------------------------------
 
-## Each derived target points the user at the specific extractor that
-## supports `method = "profile"` (or `"bootstrap"`).
-.derived_target_registry <- list(
-  list(
-    parm = "communality",
-    extractor = "extract_communality(method = \"profile\")",
-    profile_note = "derived_target"
-  ),
-  list(
-    parm = "repeatability",
-    extractor = "extract_repeatability(method = \"profile\")",
-    profile_note = "derived_target"
-  ),
-  list(
-    parm = "phylo_signal_H2",
-    extractor = "extract_phylo_signal()",
-    profile_note = "derived_target"
-  ),
-  list(
-    parm = "trait_correlation",
-    extractor = "extract_correlations(method = \"profile\")",
-    profile_note = "derived_unstructured_correlation"
-  )
-)
+## Nonlinear derived-target penalty profiles and the diagonal-only ratio once
+## labelled repeatability are withheld from the public release. Keep this
+## registry empty so profile_targets() is an honest inventory of direct TMB
+## parameter targets only. The separate two-component phylogenetic-signal helper
+## remains documented at its own entry point rather than being generalized here.
+.derived_target_registry <- list()
 
 ## ---- Internal helpers ---------------------------------------------------
 
@@ -340,13 +318,11 @@
     )
   }
 
-  ok_target_type <- c("direct", "derived")
+  ok_target_type <- "direct"
   ok_profile_note <- c(
     "ready",
     "tmb_object_required",
     "missing_tmb_parameter",
-    "derived_target",
-    "derived_unstructured_correlation",
     "latent_rotation_ambiguous"
   )
   ok_transformation <- c(
@@ -355,9 +331,7 @@
     "logit",
     "logit_p_tweedie",
     "lambda_packed",
-    "ordinal_threshold",
-    "derived_group_scale",
-    "unstructured_corr"
+    "ordinal_threshold"
   )
 
   bad_tt <- setdiff(df$target_type, ok_target_type)
@@ -396,18 +370,6 @@
     )
   }
 
-  ## Derived rows can never be profile_ready.
-  derived_ready <- df$target_type == "derived" & (df$profile_ready %in% TRUE)
-  if (any(derived_ready)) {
-    cli::cli_abort(
-      c(
-        "Internal: derived rows must have profile_ready = FALSE.",
-        "x" = "Offending parm: {.val {df$parm[derived_ready]}}"
-      ),
-      class = "gllvmTMB_profile_targets_invalid"
-    )
-  }
-
   ## No duplicate parm labels.
   dup_parm <- df$parm[duplicated(df$parm)]
   if (length(dup_parm) > 0L) {
@@ -431,29 +393,21 @@
 #' diagnose or script profile confidence intervals. Most users should
 #' start with [confint.gllvmTMB_multi()] or a report-ready extractor
 #' such as [extract_correlations()]. This helper tells you which
-#' `parm` labels can be profiled directly and which derived summaries
-#' should be routed through an extractor.
+#' `parm` labels can be profiled directly.
 #'
 #' The returned tidy data frame has one row per profile target and
 #' records whether the target is profile-ready and, if not, why.
 #' Direct targets correspond to a single TMB parameter element (for
 #' example `b_fix[1]`, `sigma_eps`, or `sd_B[2]`) and can be passed to
-#' `confint(fit, parm = ..., method = "profile")`. Derived targets
-#' (communality, repeatability, phylogenetic signal, trait
-#' correlations) are computed by the matching `extract_*(method =
-#' "profile")` extractor, not by `confint()` directly; the
-#' `profile_note` column points the user at the right extractor.
+#' `confint(fit, parm = ..., method = "profile")`. Nonlinear derived targets
+#' are excluded because their former penalty-profile routes are withheld.
 #'
 #' Scope boundary: IN, the controlled vocabulary and
-#' direct-profile routing are covered for fitted models with retained
-#' TMB objects. PARTIAL, derived targets depend on the corresponding
-#' extractor profile method. PLANNED, broader target-explicit profile
-#' calibration remains M3 work.
+#' direct-profile routing is covered for fitted models with retained TMB
+#' objects. Broader target-explicit profile calibration remains future work.
 #'
-#' The output's controlled vocabularies for `target_type`,
-#' `profile_note`, and `transformation` mirror drmTMB's
-#' `profile_targets()` to keep the broader TMB-package family
-#' consistent. gllvmTMB-specific additions are documented inline.
+#' The output uses a controlled vocabulary for direct target classes,
+#' transformations, and readiness notes.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param ready_only If `TRUE`, return only rows with
@@ -464,14 +418,13 @@
 #'   columns:
 #'   \describe{
 #'     \item{`parm`}{User-facing target label, e.g. `b_fix[1]`,
-#'       `sigma_eps`, `sd_B[2]`, `communality`.}
+#'       `sigma_eps`, or `sd_B[2]`.}
 #'     \item{`target_class`}{One of `fixed_effect`, `variance`,
-#'       `dispersion`, `loading_packed`, `threshold`, `scaling`,
-#'       `derived`.}
+#'       `dispersion`, `loading_packed`, `threshold`, or `scaling`.}
 #'     \item{`tmb_parameter`}{TMB-side parameter name (matches
-#'       `names(fit$opt$par)`). `NA` for derived targets.}
+#'       `names(fit$opt$par)`).}
 #'     \item{`index`}{1-based index within the TMB parameter vector.
-#'       `NA` for scalars and derived targets.}
+#'       `NA` for scalars.}
 #'     \item{`estimate`}{Point estimate on the natural scale (e.g.
 #'       `sigma_eps = exp(log_sigma_eps)`).}
 #'     \item{`link_estimate`}{Point estimate on the optimisation
@@ -480,23 +433,19 @@
 #'       transformation) or `"link"` (for raw packed entries).}
 #'     \item{`transformation`}{One of `linear_predictor`, `exp`,
 #'       `logit`, `logit_p_tweedie`, `lambda_packed`,
-#'       `ordinal_threshold`, `derived_group_scale`,
-#'       `unstructured_corr`.}
-#'     \item{`target_type`}{Either `"direct"` or `"derived"`.}
+#'       or `ordinal_threshold`.}
+#'     \item{`target_type`}{Always `"direct"` for currently returned rows.}
 #'     \item{`profile_ready`}{`TRUE` iff the target can be passed
 #'       directly to `confint(fit, parm = ..., method = "profile")`.}
 #'     \item{`profile_note`}{One of `ready`, `tmb_object_required`,
-#'       `missing_tmb_parameter`, `derived_target`,
-#'       `derived_unstructured_correlation`,
-#'       `latent_rotation_ambiguous`.}
+#'       `missing_tmb_parameter`, or `latent_rotation_ambiguous`.}
 #'   }
 #'
 #' @seealso [confint.gllvmTMB_multi()] for the routing of
 #'   `method = c("wald", "profile")`,
-#'   [tmbprofile_wrapper()] for direct-parameter profiling, and
-#'   [extract_communality()], [extract_repeatability()],
-#'   [extract_phylo_signal()], [extract_correlations()] for derived-
-#'   target profile CIs.
+#'   [tmbprofile_wrapper()] for direct-parameter profiling. For nonlinear
+#'   summaries, consult the relevant extractor; a method token does not imply
+#'   that a profile interval is currently available.
 #'
 #' @examples
 #' \dontrun{
@@ -561,31 +510,6 @@ profile_targets <- function(object, ready_only = FALSE) {
         )
       }
     }
-  }
-
-  ## Append derived-target rows (always profile_ready = FALSE; user
-  ## is directed to the matching extractor).
-  for (d in .derived_target_registry) {
-    rows[[length(rows) + 1L]] <- data.frame(
-      parm = d$parm,
-      target_class = "derived",
-      tmb_parameter = NA_character_,
-      index = NA_integer_,
-      estimate = NA_real_,
-      link_estimate = NA_real_,
-      scale = NA_character_,
-      transformation = if (
-        d$profile_note == "derived_unstructured_correlation"
-      ) {
-        "unstructured_corr"
-      } else {
-        "derived_group_scale"
-      },
-      target_type = "derived",
-      profile_ready = FALSE,
-      profile_note = d$profile_note,
-      stringsAsFactors = FALSE
-    )
   }
 
   if (length(rows) == 0L) {

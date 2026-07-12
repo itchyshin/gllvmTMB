@@ -30,6 +30,5 @@ human-readable summary use \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}
 Scope boundary: IN, fast numerical and loading-shape checks
 for fitted models. PARTIAL, a PASS here does not prove interval
 calibration or latent-rank identifiability. PLANNED, use
-\code{\link[=check_identifiability]{check_identifiability()}} and M3 calibration workflows for those
-heavier questions.
+target-explicit known-DGP simulation studies for those heavier questions.
 }

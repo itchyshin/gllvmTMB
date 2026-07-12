@@ -28,13 +28,14 @@ K-category trait therefore estimates K - 2 free cutpoints.
 \details{
 Because \eqn{\varepsilon} has unit variance by construction, the
 link-residual variance \eqn{\sigma^2_d = 1} \emph{exactly} (no trigamma
-correction needed). This is the central selling point of
-\code{ordinal_probit()} for phylogenetic / threshold-trait analyses:
-variance components estimated on the latent scale are directly
-comparable to those of a continuous trait, giving the
-Dempster-Lerner heritability formula
-\eqn{H^2 = \sigma^2_{\text{phy}} / (\sigma^2_{\text{phy}} + 1)}
-without approximation.
+correction needed). This fixes the ordinal liability scale; it does not make
+an ordinal response directly comparable with an observed continuous response
+without an explicit scale definition. In the special two-component model
+containing only phylogenetic variance plus the unit probit residual, the
+liability-scale ratio is
+\eqn{H^2 = \sigma^2_{\text{phy}} / (\sigma^2_{\text{phy}} + 1)}.
+Any additional fitted variance component belongs in the denominator, so do
+not use that shortcut for richer models.
 
 Hadfield (2015) eqn 10 shows that the K = 2 case reduces exactly to
 \code{binomial(link = "probit")}, so use \code{binomial()} for binary outcomes

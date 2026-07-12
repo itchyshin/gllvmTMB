@@ -70,8 +70,7 @@ is well-identified, its implied total Sigma matches the unstructured
 baseline; when it isn't, the diagnostic flags the disagreement and
 the user knows to relax the rank or revisit identifiability.
 
-Cross-check intent corresponds to the maintainer's three-levels-of-
-success framing (\code{dev/two-psi-rewrite-plan.md}):
+The cross-check separates three questions:
 
 \describe{
 \item{Level 1: can we fit?}{Both fits converged.}

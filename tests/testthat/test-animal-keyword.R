@@ -433,7 +433,9 @@ test_that("pedigree_to_A() matches nadiv::makeAinv() when nadiv is installed", {
   ## nadiv::makeAinv requires pedigree as a 3-col data.frame with
   ## name conventions id, dam, sire (note dam/sire order may differ)
   ped_nadiv <- ped[, c("id", "dam", "sire")]
-  Ainv_nadiv <- as.matrix(nadiv::makeAinv(ped_nadiv)$Ainv)
+  Ainv_nadiv <- suppressWarnings(
+    as.matrix(nadiv::makeAinv(ped_nadiv)$Ainv)
+  )
   A_nadiv <- solve(Ainv_nadiv)
   ## Both should report the same A (up to row/col permutation).
   ## nadiv reorders the pedigree; reindex to match.

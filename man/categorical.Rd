@@ -13,8 +13,7 @@ A \code{gllvmTMB_impute_family} object for the \code{family} argument of
 \description{
 \code{categorical()} declares the predictor-model family for an \strong{unordered
 categorical} missing predictor used inside \code{mi()} with
-\code{impute_model(family = categorical())} (Phase 5c, the gllvmTMB analogue of
-the drmTMB MD6c path). The missing unordered predictor is marginalised
+\code{impute_model(family = categorical())}. The missing unordered predictor is marginalised
 EXACTLY by a finite-state baseline-category softmax sum over its \code{K}
 categories (\code{K >= 3}); there is no latent variable. The predictor link is a
 baseline-category softmax with the FIRST level as baseline
@@ -30,8 +29,7 @@ uses \code{\link[=binomial]{binomial()}} (the binary route) and an ordered predi
 }
 \details{
 This is a predictor-model family tag consumed by \code{impute_model(family = )},
-NOT a response family for \code{\link[=gllvmTMB]{gllvmTMB()}}. It is named and shaped to align with
-the drmTMB \code{categorical()} constructor (the shared missing-data contract).
+NOT a response family for \code{\link[=gllvmTMB]{gllvmTMB()}}.
 }
 \examples{
 impute_model(habitat ~ z, family = categorical())

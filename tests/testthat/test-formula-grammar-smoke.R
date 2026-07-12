@@ -308,7 +308,7 @@ test_that("meta_V compatibility syntax and proportional type are handled explici
     gllvmTMB:::desugar_brms_sugar(
       value ~ 0 + trait + meta_V(V = V, type = "proportional")
     ),
-    "planned but not implemented"
+    "not implemented"
   )
   expect_error(
     gllvmTMB:::desugar_brms_sugar(

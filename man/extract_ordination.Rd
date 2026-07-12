@@ -24,7 +24,7 @@ Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 \item{component}{Score component to return. \code{"total"} returns the latent
 score entering the linear predictor. \code{"innovation"} returns the zero-mean
 latent innovation. \code{"mean"} returns the predictor-informed score mean and
-is non-zero only for Design 73 \code{latent(..., lv = ~ x)} fits.}
+is non-zero only for \code{latent(..., lv = ~ x)} fits.}
 }
 \value{
 A list with \code{scores} (units or within-unit observations in rows,

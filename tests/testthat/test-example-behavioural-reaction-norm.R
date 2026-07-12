@@ -113,13 +113,60 @@ test_that("behavioural reaction-norm example has repeated-measures shapes", {
   expect_equal(nlevels(ex$data_long$session_id), n_sessions)
   expect_equal(nrow(ex$data_long), n_sessions * length(traits))
   expect_true(all(
-    c("individual", "session", "session_id", "temperature", traits) %in%
+    c(
+      "individual",
+      "session",
+      "session_id",
+      "temperature_C",
+      "temperature",
+      traits
+    ) %in%
       names(ex$data_wide)
   ))
   expect_equal(nrow(ex$data_wide), n_sessions)
   expect_equal(dim(ex$truth$Sigma), c(2L * length(traits), 2L * length(traits)))
   expect_equal(rownames(ex$truth$Sigma), ex$truth$augmented_names)
   expect_equal(colnames(ex$truth$Sigma), ex$truth$augmented_names)
+})
+
+test_that("every individual traverses the planned temperature gradient", {
+  ex <- load_behavioural_reaction_norm_example()
+  design <- unique(ex$data_long[
+    c("individual", "session", "temperature_C", "temperature")
+  ])
+
+  by_individual <- split(design, design$individual)
+  expect_true(all(vapply(
+    by_individual,
+    function(x) length(unique(x$session)) == ex$truth$n_sessions_per_individual,
+    logical(1)
+  )))
+
+  within_sd_C <- vapply(
+    by_individual,
+    function(x) stats::sd(x$temperature_C),
+    numeric(1)
+  )
+  within_range_C <- vapply(
+    by_individual,
+    function(x) diff(range(x$temperature_C)),
+    numeric(1)
+  )
+  individual_means_C <- vapply(
+    by_individual,
+    function(x) mean(x$temperature_C),
+    numeric(1)
+  )
+
+  expect_gt(min(within_sd_C), 5)
+  expect_gt(min(within_range_C), 14)
+  expect_lt(stats::sd(individual_means_C), 0.5)
+  expect_equal(
+    design$temperature,
+    (design$temperature_C - ex$truth$temperature_center_C) /
+      ex$truth$temperature_scale_C,
+    tolerance = 1e-12
+  )
 })
 
 test_that("behavioural reaction-norm long and wide fits agree and recover truth", {
@@ -172,11 +219,101 @@ test_that("behavioural reaction-norm long and wide fits agree and recover truth"
   expect_lt(norm(total - truth, "F") / norm(truth, "F"), 0.30)
   expect_lt(max(abs(total - truth)), 0.15)
 
-  unit_obs <- extract_Sigma(fit_long, level = "unit_obs", part = "shared")$Sigma
+  intercept_names <- paste0("intercept.", ex$truth$trait_names)
+  slope_names <- paste0("slope.temperature.", ex$truth$trait_names)
+  error <- total - truth
+  expect_lt(
+    norm(error[intercept_names, intercept_names], "F") /
+      norm(truth[intercept_names, intercept_names], "F"),
+    0.30
+  )
+  expect_lt(
+    norm(error[slope_names, slope_names], "F") /
+      norm(truth[slope_names, slope_names], "F"),
+    0.30
+  )
+  expect_lt(
+    norm(error[intercept_names, slope_names], "F") /
+      norm(truth[intercept_names, slope_names], "F"),
+    0.30
+  )
+
+  fixed <- tidy(fit_long, effects = "fixed")
+  fitted_slopes <- fixed$estimate[grepl(":temperature$", fixed$term)]
+  expect_equal(length(fitted_slopes), length(ex$truth$beta))
+  expect_lt(max(abs(fitted_slopes - unname(ex$truth$beta))), 0.05)
+
+  unit_obs <- extract_Sigma(
+    fit_long,
+    level = "unit_obs",
+    part = "total"
+  )$Sigma
+  unit_obs_truth <- ex$truth$Sigma_unit_obs +
+    diag(ex$truth$sigma_eps^2, nrow = length(ex$truth$trait_names))
   expect_equal(
     dim(unit_obs),
     c(length(ex$truth$trait_names), length(ex$truth$trait_names))
   )
+  expect_lt(
+    norm(unit_obs - unit_obs_truth, "F") / norm(unit_obs_truth, "F"),
+    0.10
+  )
+
+  design <- unique(ex$data_long[c("individual", "temperature")])
+  support <- split(design$temperature, design$individual)
+  x_grid <- seq(
+    max(vapply(support, min, numeric(1))),
+    min(vapply(support, max, numeric(1))),
+    length.out = 50
+  )
+  repeatability_error <- numeric(0)
+  for (trait in ex$truth$trait_names) {
+    intercept <- paste0("intercept.", trait)
+    slope <- paste0("slope.temperature.", trait)
+    fitted_between <-
+      total[intercept, intercept] +
+      2 * x_grid * total[intercept, slope] +
+      x_grid^2 * total[slope, slope]
+    true_between <-
+      truth[intercept, intercept] +
+      2 * x_grid * truth[intercept, slope] +
+      x_grid^2 * truth[slope, slope]
+    fitted_repeatability <- fitted_between /
+      (fitted_between + unit_obs[trait, trait])
+    true_repeatability <- true_between /
+      (true_between + unit_obs_truth[trait, trait])
+    repeatability_error <- c(
+      repeatability_error,
+      fitted_repeatability - true_repeatability
+    )
+  }
+  expect_lt(mean(abs(repeatability_error)), 0.03)
+  expect_lt(max(abs(repeatability_error)), 0.06)
+})
+
+test_that("behavioural reaction-norm audited fit passes curvature checks", {
+  ex <- load_behavioural_reaction_norm_example()
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    ex$formula_long,
+    data = ex$data_long,
+    trait = ex$fit_args$trait,
+    unit = ex$fit_args$unit,
+    unit_obs = ex$fit_args$unit_obs,
+    family = ex$fit_args$family,
+    control = gllvmTMBcontrol(se = TRUE)
+  )))
+
+  health <- check_gllvmTMB(fit)
+  required <- c(
+    "optimizer_convergence",
+    "max_gradient",
+    "sdreport",
+    "pd_hessian",
+    "hessian_rank",
+    "boundary_flags"
+  )
+  expect_setequal(intersect(health$component, required), required)
+  expect_true(all(health$status[match(required, health$component)] == "PASS"))
 })
 
 test_that("behavioural reaction-norm recovery figure data are plot-ready", {

@@ -26,8 +26,8 @@ A numeric matrix with rows \code{row_traits} and columns \code{col_traits}.
 \description{
 \code{extract_Gamma()} slices the shared covariance matrix returned by
 \code{\link[=extract_Sigma]{extract_Sigma()}} to give the row-lineage by column-lineage block
-\verb{Gamma_shape = Lambda_row Lambda_col^T}. In the Design 65 coevolution
-path, \code{level} is the named \verb{kernel_*()} tier, \code{row_traits} are the host
+\verb{Gamma_shape = Lambda_row Lambda_col^T}. In a fitted cross-lineage kernel
+model, \code{level} is the named \verb{kernel_*()} tier, \code{row_traits} are the host
 traits, and \code{col_traits} are the partner traits. This
 is a point-estimate extractor for the shared covariance block of a
 fitted dense-kernel model, covered by the package's validation tests at the

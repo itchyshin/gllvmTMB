@@ -93,6 +93,38 @@ test_that("extract_Sigma with unique=FALSE emits the no-Psi advisory note", {
   expect_equal(out$Sigma, shared$Sigma, tolerance = 1e-10)
 })
 
+test_that("extract_Sigma does not call a phylo_dep covariance latent-only", {
+  skip_if_not_installed("ape")
+  set.seed(20260711)
+  n_species <- 24L
+  n_traits <- 3L
+  tree <- ape::rcoal(n_species)
+  tree$tip.label <- paste0("sp", seq_len(n_species))
+  dat <- expand.grid(
+    species = tree$tip.label,
+    trait = paste0("trait_", seq_len(n_traits)),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  dat$species <- factor(dat$species, levels = tree$tip.label)
+  dat$trait <- factor(dat$trait, levels = paste0("trait_", seq_len(n_traits)))
+  dat$value <- stats::rnorm(nrow(dat))
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree),
+    data = dat,
+    trait = "trait",
+    unit = "species",
+    control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  )))
+
+  expect_no_message(
+    out <- extract_Sigma(fit, level = "phy", part = "total")
+  )
+  expect_false(any(grepl("latent-only", out$note, fixed = TRUE)))
+  expect_equal(dim(out$Sigma), c(n_traits, n_traits))
+})
+
 test_that("extract_Sigma_B / extract_Sigma_W backward-compat wrappers work", {
   fit <- make_fit_BW_diag()
   out_B <- suppressMessages(extract_Sigma_B(fit))

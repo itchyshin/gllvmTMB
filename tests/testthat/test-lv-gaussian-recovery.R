@@ -154,7 +154,7 @@ expect_lv_gaussian_recovery <- function(
     unique(effects$uncertainty_status),
     "wald_sdreport_no_ci_validation"
   )
-  expect_equal(unique(effects$validation_row), "EXT-31; LV-01")
+  expect_false("validation_row" %in% names(effects))
   b_abs_error <- max(abs(
     matrix(effects$estimate, nrow = fit$n_traits) - truth$B_lv
   ))

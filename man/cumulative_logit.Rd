@@ -13,8 +13,7 @@ A \code{gllvmTMB_impute_family} object for the \code{family} argument of
 \description{
 \code{cumulative_logit()} declares the predictor-model family for an \strong{ordered
 categorical} missing predictor used inside \code{mi()} with
-\code{impute_model(family = cumulative_logit())} (Phase 5b, the gllvmTMB analogue
-of the drmTMB MD6b path). The missing ordered predictor is marginalised
+\code{impute_model(family = cumulative_logit())}. The missing ordered predictor is marginalised
 EXACTLY by a finite-state cumulative-logit sum over its \code{K} categories
 (\code{K >= 3}); there is no latent variable. The predictor link is cumulative
 \strong{logit}, with \code{K - 1} free cutpoints \verb{c_1 < ... < c_\{K-1\}} and a cell
@@ -26,9 +25,7 @@ uses \code{\link[=binomial]{binomial()}} (the binary route).
 }
 \details{
 This is a predictor-model family tag consumed by \code{impute_model(family = )},
-NOT a response family for \code{\link[=gllvmTMB]{gllvmTMB()}}. It is named and shaped to align with
-the drmTMB \code{cumulative_logit()} constructor (the shared missing-data
-contract). The predictor cumulative-logit link is DISTINCT from the
+NOT a response family for \code{\link[=gllvmTMB]{gllvmTMB()}}. The predictor cumulative-logit link is DISTINCT from the
 \code{\link[=ordinal_probit]{ordinal_probit()}} RESPONSE family (a probit threshold model).
 }
 \examples{

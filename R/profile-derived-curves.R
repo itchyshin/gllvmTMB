@@ -323,9 +323,8 @@
 #' [loading_profile()] so it can be passed to the shared
 #' [plot.profile_derived()] S3 method.
 #'
-#' This is the parallel CURVE endpoint to the existing bracket-bisect
-#' INVERSION endpoint [profile_ci_repeatability()]. The two are
-#' independent: this returns the LR curve data, that returns CI bounds.
+#' This is the internal curve counterpart to the withheld diagonal-ratio
+#' `profile_ci_repeatability()` prototype.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param trait_idx Integer vector of trait indices, or `NULL` for all.
@@ -340,10 +339,10 @@
 #'   `profile_value`, `objective`, `delta_deviance`, `estimate`,
 #'   `conf_level`.
 #'
-#' @seealso [profile_ci_repeatability()] (CI bounds endpoint),
-#'   [plot.profile_derived()] (LR-curve plot method).
+#' @seealso [plot.profile_derived()] (LR-curve plot method).
 #'
-#' @export
+#' @keywords internal
+#' @noRd
 profile_repeatability <- function(
   fit,
   trait_idx = NULL,
@@ -524,8 +523,8 @@ profile_phylo_signal <- function(
 #' For each requested trait at a given covariance tier, sweep over a
 #' grid of candidate values of communality
 #' \eqn{c^2_t = (\Lambda \Lambda^\top)_{tt} / \Sigma_{tt}} and refit
-#' the model under each constraint. Parallel CURVE endpoint to
-#' [profile_ci_communality()].
+#' the model under each constraint. Internal curve counterpart to the withheld
+#' `profile_ci_communality()` prototype.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param tier `"unit"` or `"unit_obs"` (legacy `"B"`/`"W"` accepted).
@@ -538,9 +537,8 @@ profile_phylo_signal <- function(
 #' @return A data.frame of class `profile_communality`,
 #'   `profile_derived`, `data.frame`.
 #'
-#' @seealso [profile_ci_communality()], [plot.profile_derived()].
-#'
-#' @export
+#' @keywords internal
+#' @noRd
 profile_communality <- function(
   fit,
   tier = c("unit", "unit_obs", "B", "W"),
@@ -671,7 +669,8 @@ profile_communality <- function(
 #' Sweep over a grid of candidate values of the cross-trait correlation
 #' \eqn{\rho_{ij} = \Sigma_{ij} / \sqrt{\Sigma_{ii}\Sigma_{jj}}} at one
 #' covariance tier, refit under each constraint, and return the LR
-#' curve. Parallel CURVE endpoint to [profile_ci_correlation()].
+#' curve. Internal curve counterpart to the withheld
+#' `profile_ci_correlation()` prototype.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param tier `"unit"`, `"unit_obs"`, `"phy"`, or `"spatial"` (legacy
@@ -686,9 +685,8 @@ profile_communality <- function(
 #' @return A data.frame of class `profile_correlation`,
 #'   `profile_derived`, `data.frame`.
 #'
-#' @seealso [profile_ci_correlation()], [plot.profile_derived()].
-#'
-#' @export
+#' @keywords internal
+#' @noRd
 profile_correlation <- function(
   fit,
   tier = c("unit", "unit_obs", "phy", "spatial", "B", "W", "spde"),
@@ -852,8 +850,8 @@ profile_correlation <- function(
 #'
 #' For each `(trait, component)` produced by [extract_proportions()],
 #' sweep over a grid of candidate proportion values, refit under each
-#' constraint, and return the LR curves. Parallel CURVE endpoint to
-#' [profile_ci_proportions()].
+#' constraint, and return the LR curves. Internal curve counterpart to the
+#' withheld `profile_ci_proportions()` prototype.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param components Character vector of component names to include
@@ -870,9 +868,8 @@ profile_correlation <- function(
 #' @return A data.frame of class `profile_proportions`,
 #'   `profile_derived`, `data.frame`.
 #'
-#' @seealso [profile_ci_proportions()], [plot.profile_derived()].
-#'
-#' @export
+#' @keywords internal
+#' @noRd
 profile_proportions <- function(
   fit,
   components = NULL,
@@ -1005,10 +1002,10 @@ profile_proportions <- function(
 #' Plot a profile-derived LR curve
 #'
 #' S3 method dispatched on the `profile_derived` parent class shared by
-#' the five derived-quantity curve objects returned from
-#' [profile_repeatability()], [profile_phylo_signal()],
-#' [profile_communality()], [profile_correlation()], and
-#' [profile_proportions()]. Mirrors [plot.profile_loadings()]: dotted
+#' the public derived-quantity curve object returned from
+#' [profile_phylo_signal()]. The diagonal-companion ratio and nonlinear
+#' communality, correlation, and proportion curve prototypes are internal and
+#' withheld from the public release. Mirrors [plot.profile_loadings()]: dotted
 #' chisq cutoff hline, solid grey vline at the estimate, dashed grey
 #' vlines at the inverted CI bounds (when `interval = TRUE`), blue
 #' curve with white-filled points, faceted by `target` with free

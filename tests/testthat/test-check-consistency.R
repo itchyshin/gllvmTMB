@@ -91,7 +91,7 @@ test_that("diagnostics flags are drawn from the documented set", {
     gllvmTMB::gllvmTMB_check_consistency(fit, n_sim = 10L, seed = 1)
   ))
   documented <- c(
-    "centred",
+    "no_centring_warning",
     "marginal_score_non_centred",
     "joint_score_non_centred",
     "information_matrix_singular",

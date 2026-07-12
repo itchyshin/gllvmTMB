@@ -17,8 +17,8 @@ to \strong{A} via Henderson's recursive formula. Only one of
 \item{A}{Dense relatedness matrix (\eqn{n \times n}); rownames /
 colnames must match levels of \code{id}.}
 
-\item{Ainv}{Sparse precision matrix (inverse of A). Currently
-densified for v0.2.0; sparse engine path is a v0.3.0 follow-up.}
+\item{Ainv}{Precision matrix (inverse of A). Sparse matrix inputs are
+preserved for the sparse engine route.}
 }
 \value{
 See \code{\link[=animal_scalar]{animal_scalar()}}.

@@ -33,7 +33,7 @@ make_tiny_fit_for_cov <- function(seed = 1L) {
 test_that("coverage_study() errors on non-fit input", {
   skip_if_not_heavy()
   expect_error(
-    gllvmTMB::coverage_study(list(foo = 1), n_reps = 5L),
+    gllvmTMB:::coverage_study(list(foo = 1), n_reps = 5L),
     "fit returned by `gllvmTMB\\(\\)`"
   )
 })
@@ -42,7 +42,7 @@ test_that("coverage_study() rejects n_reps < 2", {
   skip_if_not_heavy()
   fit <- structure(list(tmb_obj = NULL), class = "gllvmTMB_multi")
   expect_error(
-    gllvmTMB::coverage_study(fit, n_reps = 1L),
+    gllvmTMB:::coverage_study(fit, n_reps = 1L),
     "n_reps"
   )
 })
@@ -52,7 +52,7 @@ test_that("coverage_study() rejects unknown parm labels", {
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   expect_error(
-    gllvmTMB::coverage_study(
+    gllvmTMB:::coverage_study(
       fit,
       parm = c("sigma_eps", "not_real"),
       n_reps = 3L
@@ -68,7 +68,7 @@ test_that("coverage_study() returns the documented structure", {
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::coverage_study(
+    gllvmTMB:::coverage_study(
       fit,
       parm = c("sigma_eps", "sd_B[1]"),
       n_reps = 5L,
@@ -119,7 +119,7 @@ test_that("Wald CI on sigma_eps passes the 94% gate on a tiny well-identified fi
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::coverage_study(
+    gllvmTMB:::coverage_study(
       fit,
       parm = "sigma_eps",
       n_reps = 10L,
@@ -143,7 +143,7 @@ test_that("coverage_study() default parm omits lambda_packed (rotation-ambiguous
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::coverage_study(
+    gllvmTMB:::coverage_study(
       fit,
       n_reps = 3L,
       methods = "wald",
@@ -164,7 +164,7 @@ test_that("print.gllvmTMB_coverage_study runs without error", {
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::coverage_study(
+    gllvmTMB:::coverage_study(
       fit,
       parm = "sigma_eps",
       n_reps = 3L,

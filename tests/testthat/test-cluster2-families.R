@@ -97,7 +97,7 @@ test_that("cluster2 x gaussian: cluster2 variance recovers (SD scale)", {
 
   fit <- .fit_c2(grid, gaussian())
 
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("gaussian cluster2 fixture did not converge / Hessian not PD")
   }
   expect_equal(fit$tmb_data$family_id_vec[1], 0L)
@@ -138,7 +138,7 @@ test_that("cluster2 x poisson: cluster2 variance recovers (count band)", {
 
   fit <- .fit_c2(grid, poisson())
 
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("poisson cluster2 fixture did not converge / Hessian not PD")
   }
   expect_equal(fit$tmb_data$family_id_vec[1], 2L)
@@ -179,7 +179,7 @@ test_that("cluster2 x binomial: cluster2 variance recovers (binary band)", {
 
   fit <- .fit_c2(grid, binomial())
 
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("binomial cluster2 fixture did not converge / Hessian not PD")
   }
   expect_equal(fit$tmb_data$family_id_vec[1], 1L)
@@ -224,7 +224,7 @@ test_that("cluster2 x nbinom2: cluster2 variance recovers, phi finite", {
 
   fit <- .fit_c2(grid, nbinom2())
 
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("nbinom2 cluster2 fixture did not converge / Hessian not PD")
   }
   expect_equal(fit$tmb_data$family_id_vec[1], 5L)
@@ -277,7 +277,7 @@ test_that("cluster2 x beta: cluster2 variance recovers, phi separates", {
 
   fit <- .fit_c2(grid, Beta())
 
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("beta cluster2 fixture did not converge / Hessian not PD")
   }
   expect_equal(fit$tmb_data$family_id_vec[1], 7L)
@@ -325,7 +325,7 @@ test_that("cluster2 x Gamma: cluster2 variance recovers (SD scale), CV ok", {
 
   fit <- .fit_c2(grid, Gamma(link = "log"))
 
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("Gamma cluster2 fixture did not converge / Hessian not PD")
   }
   expect_equal(fit$tmb_data$family_id_vec[1], 4L)
@@ -397,7 +397,7 @@ test_that("cluster2 x ordinal_probit: cluster2 variance recovers (SD scale)", {
     cluster2 = "c2"
   )))
 
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("ordinal_probit cluster2 fixture did not converge / Hessian not PD")
   }
   expect_equal(fit$tmb_data$family_id_vec[1], 14L)

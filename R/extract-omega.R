@@ -346,8 +346,8 @@ extract_Omega <- function(
 #'   non-phylogenetic variance is the cluster-tier `q_it` term
 #'   (`indep(0 + trait | <cluster>)`, reported as `sd_q^2`).
 #'
-#' This is a definitional choice (maintainer ruling, 2026-07-08). **Other
-#' defensible definitions exist** — for instance a *total*-variance denominator
+#' The denominator is defined at the species level. **Other defensible
+#' definitions exist** — for instance a *total*-variance denominator
 #' that also absorbs site-level variation, which would give a smaller `H2` for
 #' the same fit. Before 2026-07-08 this function used the unit tier
 #' unconditionally, which silently reported `H2 = 1` for every trait in a

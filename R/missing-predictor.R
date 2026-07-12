@@ -31,15 +31,16 @@
 #' predictor model; use `impute_model()` when an explicit predictor family is
 #' wanted.
 #'
-#' Supported v1 predictor models are one modelled missing predictor at a time.
+#' The current interface fits one modelled missing predictor at a time.
 #' A Gaussian predictor (`gaussian()`, or a bare formula) is treated as a latent
 #' quantity integrated out by the Laplace approximation and may use fixed
 #' covariates, one grouped random intercept, or one phylogenetic structured
-#' intercept. Discrete predictors are fixed-effect only: `binomial(link =
+#' intercept. A Gaussian predictor that lives at a coarser observed level can
+#' declare that level with `mi_group(group)` in the predictor formula. Discrete
+#' predictors are fixed-effect only: `binomial(link =
 #' "logit")` uses exact two-state summation, [cumulative_logit()] uses exact
 #' ordered K-state summation, and [categorical()] uses exact unordered K-state
-#' softmax summation. Other predictor families are rejected until their
-#' likelihood and recovery gates ship.
+#' softmax summation. Other predictor families are rejected explicitly.
 #'
 #' @param formula Two-sided predictor-model formula. The left-hand side must be
 #'   the same variable used inside `mi()`.
@@ -50,6 +51,7 @@
 #'
 #' @return A `gllvmTMB_impute_model` object for the `impute` argument of
 #'   [gllvmTMB()].
+#' @aliases mi mi_group
 #' @seealso [gllvmTMB()] for the `impute =` argument, [cumulative_logit()] for
 #'   an ordered categorical predictor model, and [miss_control()] for the
 #'   `predictor = "model"` switch.
@@ -78,8 +80,7 @@ impute_model <- function(formula, family = stats::gaussian()) {
 #'
 #' `cumulative_logit()` declares the predictor-model family for an **ordered
 #' categorical** missing predictor used inside `mi()` with
-#' `impute_model(family = cumulative_logit())` (Phase 5b, the gllvmTMB analogue
-#' of the drmTMB MD6b path). The missing ordered predictor is marginalised
+#' `impute_model(family = cumulative_logit())`. The missing ordered predictor is marginalised
 #' EXACTLY by a finite-state cumulative-logit sum over its `K` categories
 #' (`K >= 3`); there is no latent variable. The predictor link is cumulative
 #' **logit**, with `K - 1` free cutpoints `c_1 < ... < c_{K-1}` and a cell
@@ -90,9 +91,7 @@ impute_model <- function(formula, family = stats::gaussian()) {
 #' uses [binomial()] (the binary route).
 #'
 #' This is a predictor-model family tag consumed by `impute_model(family = )`,
-#' NOT a response family for [gllvmTMB()]. It is named and shaped to align with
-#' the drmTMB `cumulative_logit()` constructor (the shared missing-data
-#' contract). The predictor cumulative-logit link is DISTINCT from the
+#' NOT a response family for [gllvmTMB()]. The predictor cumulative-logit link is DISTINCT from the
 #' [ordinal_probit()] RESPONSE family (a probit threshold model).
 #'
 #' @return A `gllvmTMB_impute_family` object for the `family` argument of
@@ -117,8 +116,7 @@ cumulative_logit <- function() {
 #'
 #' `categorical()` declares the predictor-model family for an **unordered
 #' categorical** missing predictor used inside `mi()` with
-#' `impute_model(family = categorical())` (Phase 5c, the gllvmTMB analogue of
-#' the drmTMB MD6c path). The missing unordered predictor is marginalised
+#' `impute_model(family = categorical())`. The missing unordered predictor is marginalised
 #' EXACTLY by a finite-state baseline-category softmax sum over its `K`
 #' categories (`K >= 3`); there is no latent variable. The predictor link is a
 #' baseline-category softmax with the FIRST level as baseline
@@ -133,8 +131,7 @@ cumulative_logit <- function() {
 #' [cumulative_logit()].
 #'
 #' This is a predictor-model family tag consumed by `impute_model(family = )`,
-#' NOT a response family for [gllvmTMB()]. It is named and shaped to align with
-#' the drmTMB `categorical()` constructor (the shared missing-data contract).
+#' NOT a response family for [gllvmTMB()].
 #'
 #' @return A `gllvmTMB_impute_family` object for the `family` argument of
 #'   [impute_model()].
@@ -198,7 +195,7 @@ gll_impute_family_type <- function(family) {
   cli::cli_abort(c(
     "Unsupported missing-predictor family {.val {label}}.",
     "i" = "This version fits the Gaussian ({.code gaussian()} or a bare {.code x ~ z} formula), binary ({.code binomial(link = \"logit\")}), ordered ({.fn cumulative_logit}), and unordered ({.fn categorical}) fixed-effect predictor models.",
-    "i" = "Count families and continuous non-Gaussian families arrive in later slices."
+    "i" = "Count families and continuous non-Gaussian families are not supported."
   ))
 }
 
@@ -257,15 +254,15 @@ gll_prepare_mi_setup <- function(rhs, impute, missing) {
   }
   if (length(mi_calls) != 1L) {
     cli::cli_abort(c(
-      "The v1 missing-predictor layer requires exactly one {.fn mi} term in the location formula.",
+      "The missing-predictor model requires exactly one {.fn mi} term in the location formula.",
       "x" = "Found {length(mi_calls)} {.fn mi} term{?s}."
     ))
   }
   mi_call <- mi_calls[[1L]]
   if (length(mi_call) != 2L || !is.symbol(mi_call[[2L]])) {
     cli::cli_abort(c(
-      "The v1 {.fn mi} layer supports only a bare predictor, such as {.code mi(x)}.",
-      "x" = "Transformations, interactions inside {.fn mi}, and multiple missing predictors are planned later."
+      "{.fn mi} supports only a bare predictor, such as {.code mi(x)}.",
+      "x" = "Transformations, interactions inside {.fn mi}, and multiple missing predictors are not supported."
     ))
   }
   variable <- as.character(mi_call[[2L]])
@@ -279,7 +276,7 @@ gll_prepare_mi_setup <- function(rhs, impute, missing) {
   ]
   if (!identical(mi_term_labels, mi_label)) {
     cli::cli_abort(c(
-      "The v1 {.fn mi} layer supports {.fn mi} only as a simple additive location term.",
+      "{.fn mi} is supported only as a simple additive location term.",
       "x" = "Use syntax like {.code y ~ z + mi(x)}, not interactions or transformed {.fn mi} terms."
     ))
   }
@@ -383,9 +380,9 @@ gll_extract_impute_random_intercept <- function(formula) {
   }
   if (sum(is_bar) != 1L) {
     cli::cli_abort(c(
-      "The grouped {.arg impute} slice supports only one random-intercept term.",
+      "The grouped {.arg impute} model supports only one random-intercept term.",
       "x" = "Found {sum(is_bar)} random-effect term{?s}.",
-      "i" = "Use a single {.code (1 | group)}; multiple covariate random effects arrive in a later phase."
+      "i" = "Use a single {.code (1 | group)}; multiple covariate random effects are not supported."
     ))
   }
   random_term <- gll_unwrap_parentheses(rhs_terms[[which(is_bar)]])
@@ -449,7 +446,7 @@ gll_extract_impute_group_level <- function(formula) {
   }
   if (sum(is_group) != 1L) {
     cli::cli_abort(c(
-      "The group-level {.arg impute} slice supports only one {.fn mi_group} marker.",
+      "The group-level {.arg impute} model supports only one {.fn mi_group} marker.",
       "x" = "Found {sum(is_group)} {.fn mi_group} marker{?s}.",
       "i" = "Use a single {.code mi_group(group)}; the missing predictor lives at one level."
     ))
@@ -510,7 +507,7 @@ gll_extract_impute_phylo_intercept <- function(formula, env = parent.frame()) {
   }
   if (sum(is_phylo) != 1L) {
     cli::cli_abort(c(
-      "The phylogenetic {.arg impute} slice supports only one {.fn phylo} term.",
+      "The phylogenetic {.arg impute} model supports only one {.fn phylo} term.",
       "x" = "Found {sum(is_phylo)} {.fn phylo} marker{?s}.",
       "i" = "Use a single {.code phylo(1 | species, tree = tree)}; the covariate model carries one structured field."
     ))
@@ -544,7 +541,7 @@ gll_extract_impute_phylo_intercept <- function(formula, env = parent.frame()) {
     cli::cli_abort(c(
       "The phylogenetic {.arg impute} covariate model supports only a structured INTERCEPT.",
       "x" = "Found {.code phylo({deparse(bar[[2L]])} | {deparse(bar[[3L]])})}; use {.code phylo(1 | species, tree = tree)}.",
-      "i" = "Structured covariate slopes arrive in a later phase."
+      "i" = "Structured covariate slopes are not supported."
     ))
   }
   group_expr <- bar[[3L]]
@@ -558,7 +555,7 @@ gll_extract_impute_phylo_intercept <- function(formula, env = parent.frame()) {
   if ("correlate_with" %in% arg_names) {
     cli::cli_abort(c(
       "A joint response-covariate phylogenetic field ({.code correlate_with}) is not supported.",
-      "i" = "Phase 3 ships the independent covariate field only; the joint (eigenvector-orthogonalized) field is deferred to Phase 4.",
+      "i" = "Only an independent covariate field is supported; a joint response-covariate field is not.",
       "i" = "Remove {.code correlate_with} to use the independent {.code phylo(1 | species, tree = tree)} covariate model."
     ))
   }
@@ -609,7 +606,7 @@ gll_validate_single_impute_formula <- function(impute, variable) {
   }
   if (!is.list(impute) || length(impute) != 1L) {
     cli::cli_abort(
-      "{.arg impute} must be a one-element named list for the v1 missing-predictor layer."
+      "{.arg impute} must be a one-element named list for the missing-predictor model."
     )
   }
   name <- names(impute)
@@ -695,7 +692,7 @@ gll_validate_single_impute_formula <- function(impute, variable) {
     cli::cli_abort(c(
       "Structured {.arg impute} covariate models are not yet supported.",
       "x" = "Found structured marker{?s}: {.val {structured_markers}}.",
-      "i" = "The {.fn mi} slice fits fixed effects, one grouped intercept, or a {.fn phylo} intercept; spatial / animal / relmat covariate models arrive in a later phase."
+      "i" = "The {.fn mi} model fits fixed effects, one grouped intercept, or a {.fn phylo} intercept; spatial, animal, and relmat covariate models are not supported."
     ))
   }
   ## Phase 2b: pull at most ONE grouped random intercept (1|group) off the RHS.
@@ -705,7 +702,7 @@ gll_validate_single_impute_formula <- function(impute, variable) {
   fixed_formula <- extracted$fixed_formula
   if ("." %in% all.names(fixed_formula[[3L]], functions = FALSE, unique = TRUE)) {
     cli::cli_abort(
-      "The {.arg impute} slice requires explicit predictor names; {.code .} is not supported."
+      "The {.arg impute} model requires explicit predictor names; {.code .} is not supported."
     )
   }
   ## GAP-1: a grouped covariate random intercept (1 | group) combined with an
@@ -723,7 +720,7 @@ gll_validate_single_impute_formula <- function(impute, variable) {
     cli::cli_abort(c(
       "A grouped covariate random intercept combined with an explicit level key is not supported.",
       "x" = "Found both {.code (1 | {extracted$random$group})} and {.code {combo_with}} in the {.arg impute} formula.",
-      "i" = "Use either a grouped random intercept (Phase 2b) OR a level key ({.fn mi_group} / {.fn phylo}), not both, in this version."
+      "i" = "Use either a grouped random intercept or a level key ({.fn mi_group} / {.fn phylo}), not both."
     ))
   }
   ## Phase 5a/5b/5c (design 68 sec.7.3 / sec.7.4, drmTMB "fixed effects only"
@@ -747,7 +744,7 @@ gll_validate_single_impute_formula <- function(impute, variable) {
       cli::cli_abort(c(
         "The {fam_label} {.fn mi} predictor model is fixed-effect only in this version.",
         "x" = "A grouped, level-keyed ({.fn mi_group}), or structured ({.fn phylo}) covariate model is not supported for a discrete missing predictor.",
-        "i" = "Use a fixed-effect covariate model; grouped / structured discrete predictor models arrive in a later slice."
+        "i" = "Use a fixed-effect covariate model; grouped and structured discrete predictor models are not supported."
       ))
     }
   }
@@ -1033,7 +1030,7 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
   X_x <- X_full[first_row, , drop = FALSE]
   if (sum(observed) <= ncol(X_x)) {
     cli::cli_abort(c(
-      "The Gaussian {.arg impute} model is weakly identified for the v1 {.fn mi} layer.",
+      "The Gaussian {.arg impute} model is weakly identified.",
       "x" = "It has {sum(observed)} observed {.code {setup$variable}} unit value{?s} and {ncol(X_x)} fixed-effect coefficient{?s}.",
       "i" = "Use a simpler predictor model or supply more observed predictor values."
     ))
@@ -1049,7 +1046,7 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
   n_xcol <- ncol(X_x_obs)
   if (x_rank < n_xcol) {
     cli::cli_abort(c(
-      "The Gaussian {.arg impute} model design is rank-deficient for the v1 {.fn mi} layer.",
+      "The Gaussian {.arg impute} model design is rank-deficient.",
       "x" = "The observed-unit covariate design has rank {x_rank} but {n_xcol} column{?s} (collinear or redundant {.arg impute} covariates).",
       "i" = "Drop the collinear or redundant predictors from the {.arg impute} formula."
     ))
@@ -1157,17 +1154,17 @@ gll_binary_mi_response <- function(x, variable) {
   if (is.factor(x)) {
     if (is.ordered(x)) {
       cli::cli_abort(c(
-        "The binary {.fn mi} slice does not accept an ordered factor predictor.",
+        "The binary {.fn mi} model does not accept an ordered factor predictor.",
         "x" = "Predictor {.val {variable}} is an ordered factor.",
-        "i" = "An ordered missing predictor uses {.fn cumulative_logit} (a later slice); a binary one needs a two-level unordered factor, logical, or 0/1 numeric."
+        "i" = "An ordered missing predictor uses {.fn cumulative_logit}; a binary one needs a two-level unordered factor, logical, or 0/1 numeric."
       ))
     }
     lv <- levels(x)
     if (length(lv) != 2L) {
       cli::cli_abort(c(
-        "The binary {.fn mi} slice requires exactly two predictor levels.",
+        "The binary {.fn mi} model requires exactly two predictor levels.",
         "x" = "Predictor {.val {variable}} has {length(lv)} level{?s}: {.val {lv}}.",
-        "i" = "Use {.fn categorical} for an unordered predictor with more than two levels (a later slice)."
+        "i" = "Use {.fn categorical} for an unordered predictor with more than two levels."
       ))
     }
     value <- as.numeric(as.integer(x) - 1L)
@@ -1180,7 +1177,7 @@ gll_binary_mi_response <- function(x, variable) {
     lv <- sort(unique(x[observed]))
     if (length(lv) != 2L) {
       cli::cli_abort(c(
-        "The binary {.fn mi} slice requires exactly two predictor levels.",
+        "The binary {.fn mi} model requires exactly two predictor levels.",
         "x" = "Logical predictor {.val {variable}} has {length(lv)} observed level{?s}: {.val {lv}}.",
         "i" = "Both {.code FALSE} and {.code TRUE} must appear among the observed values."
       ))
@@ -1191,9 +1188,9 @@ gll_binary_mi_response <- function(x, variable) {
     lv <- sort(unique(x[observed]))
     if (length(lv) != 2L) {
       cli::cli_abort(c(
-        "The binary {.fn mi} slice requires exactly two predictor levels.",
+        "The binary {.fn mi} model requires exactly two predictor levels.",
         "x" = "Predictor {.val {variable}} has {length(lv)} observed level{?s}: {.val {lv}}.",
-        "i" = "Use {.fn categorical} for an unordered predictor with more than two levels (a later slice)."
+        "i" = "Use {.fn categorical} for an unordered predictor with more than two levels."
       ))
     }
     value <- as.numeric(match(x, lv) - 1L)
@@ -1205,9 +1202,9 @@ gll_binary_mi_response <- function(x, variable) {
     if (length(values) != 2L || any(!is.finite(values)) ||
           !identical(as.numeric(values), c(0, 1))) {
       cli::cli_abort(c(
-        "The binary {.fn mi} slice requires a two-level or 0/1-like predictor.",
+        "The binary {.fn mi} model requires a two-level or 0/1-like predictor.",
         "x" = "Predictor {.val {variable}} has observed value{?s} {.val {values}}.",
-        "i" = "Use {.fn categorical} for an unordered predictor with more than two levels (a later slice)."
+        "i" = "Use {.fn categorical} for an unordered predictor with more than two levels."
       ))
     }
     value <- as.numeric(x)
@@ -1215,7 +1212,7 @@ gll_binary_mi_response <- function(x, variable) {
     return(list(value = value, levels = as.character(values)))
   }
   cli::cli_abort(c(
-    "The binary {.fn mi} slice supports logical, two-level factor, character, or 0/1 numeric predictors.",
+    "The binary {.fn mi} model supports logical, two-level factor, character, or 0/1 numeric predictors.",
     "x" = "Predictor {.val {variable}} has class {.val {class(x)}}."
   ))
 }
@@ -1243,7 +1240,7 @@ gll_ordered_mi_response <- function(x, variable) {
     cli::cli_abort(c(
       "Ordered missing-predictor models require an ordered predictor.",
       "x" = "Predictor {.val {variable}} is an unordered factor.",
-      "i" = "Use {.code ordered({variable})} for {.fn cumulative_logit} predictor models, or use {.fn categorical} for unordered predictor models (a later slice)."
+      "i" = "Use {.code ordered({variable})} for {.fn cumulative_logit} predictor models, or use {.fn categorical} for unordered predictor models."
     ))
   }
   if (!is.numeric(x) && !is.integer(x)) {
@@ -1296,7 +1293,7 @@ gll_validate_ordered_mi <- function(value, levels, variable) {
     cli::cli_abort(c(
       "Every ordered predictor category must appear at least once among observed values.",
       "x" = "Predictor {.val {variable}} has empty observed categor{?y/ies}: {.val {empty}}.",
-      "i" = "Drop unused ordered-factor levels or combine sparse categories before fitting the ordered {.fn mi} slice."
+      "i" = "Drop unused ordered-factor levels or combine sparse categories before fitting the ordered {.fn mi} model."
     ))
   }
   list(value = as.numeric(value), levels = levels)
@@ -1386,7 +1383,7 @@ gll_validate_unordered_mi <- function(value, levels, variable) {
     cli::cli_abort(c(
       "Every unordered predictor category must appear at least once among observed values.",
       "x" = "Predictor {.val {variable}} has empty observed categor{?y/ies}: {.val {empty}}.",
-      "i" = "Drop unused factor levels or combine sparse categories before fitting the unordered {.fn mi} slice."
+      "i" = "Drop unused factor levels or combine sparse categories before fitting the unordered {.fn mi} model."
     ))
   }
   list(value = as.numeric(value), levels = levels)
@@ -1563,7 +1560,7 @@ gll_build_ordered_mi_model <- function(setup, data_long, unit_id, mi_col,
   n_parameter <- ncol(X_x) + n_state - 1L
   if (sum(observed) <= n_parameter) {
     cli::cli_abort(c(
-      "The ordered {.arg impute} model is weakly identified for the ordered {.fn mi} slice.",
+      "The ordered {.arg impute} model is weakly identified.",
       "x" = "It has {sum(observed)} observed {.code {setup$variable}} value{?s} and {n_parameter} predictor-model parameter{?s}.",
       "i" = "Use a simpler predictor model, combine sparse categories, or supply more observed ordered predictor values."
     ))
@@ -1573,7 +1570,7 @@ gll_build_ordered_mi_model <- function(setup, data_long, unit_id, mi_col,
     x_rank <- qr(X_x_obs)$rank
     if (x_rank < ncol(X_x_obs)) {
       cli::cli_abort(c(
-        "The ordered {.arg impute} model design is rank-deficient for the ordered {.fn mi} slice.",
+        "The ordered {.arg impute} model design is rank-deficient.",
         "x" = "The observed-unit covariate design has rank {x_rank} but {ncol(X_x_obs)} column{?s}.",
         "i" = "Drop the collinear or redundant predictors from the {.arg impute} formula."
       ))
@@ -1860,7 +1857,7 @@ gll_build_unordered_mi_model <- function(setup, data_long, unit_id, mi_col,
   n_parameter <- ncol(X_x) * (n_state - 1L)
   if (sum(observed) <= n_parameter) {
     cli::cli_abort(c(
-      "The categorical {.arg impute} model is weakly identified for the unordered {.fn mi} slice.",
+      "The categorical {.arg impute} model is weakly identified.",
       "x" = "It has {sum(observed)} observed {.code {setup$variable}} value{?s} and {n_parameter} predictor-model coefficient{?s}.",
       "i" = "Use a simpler predictor model, combine sparse categories, or supply more observed categorical predictor values."
     ))
@@ -1870,7 +1867,7 @@ gll_build_unordered_mi_model <- function(setup, data_long, unit_id, mi_col,
     x_rank <- qr(X_x_obs)$rank
     if (x_rank < ncol(X_x_obs)) {
       cli::cli_abort(c(
-        "The categorical {.arg impute} model design is rank-deficient for the unordered {.fn mi} slice.",
+        "The categorical {.arg impute} model design is rank-deficient.",
         "x" = "The observed-unit covariate design has rank {x_rank} but {ncol(X_x_obs)} column{?s}.",
         "i" = "Drop the collinear or redundant predictors from the {.arg impute} formula."
       ))
@@ -2058,7 +2055,7 @@ gll_build_binary_mi_model <- function(setup, data_long, unit_id, mi_col,
   ## observed binary values than covariate-model coefficients.
   if (sum(observed) <= ncol(X_x)) {
     cli::cli_abort(c(
-      "The binary {.arg impute} model is weakly identified for the first discrete {.fn mi} slice.",
+      "The binary {.arg impute} model is weakly identified.",
       "x" = "It has {sum(observed)} observed {.code {setup$variable}} value{?s} and {ncol(X_x)} fixed-effect coefficient{?s}.",
       "i" = "Use a simpler predictor model or supply more observed binary predictor values."
     ))
@@ -2067,7 +2064,7 @@ gll_build_binary_mi_model <- function(setup, data_long, unit_id, mi_col,
   x_rank <- qr(X_x_obs)$rank
   if (x_rank < ncol(X_x_obs)) {
     cli::cli_abort(c(
-      "The binary {.arg impute} model design is rank-deficient for the first discrete {.fn mi} slice.",
+      "The binary {.arg impute} model design is rank-deficient.",
       "x" = "The observed-unit covariate design has rank {x_rank} but {ncol(X_x_obs)} column{?s}.",
       "i" = "Drop the collinear or redundant predictors from the {.arg impute} formula."
     ))
@@ -2380,9 +2377,9 @@ gll_mi_metadata <- function(model) {
   stats::setNames(list(out), model$variable)
 }
 
-## Fill the conditional_mode (x_mis EBLUP) into the registry. When an sdreport
+## Fill the x_mis conditional mode into the registry. When an sdreport
 ## is available, the conditional mode is taken from `sdr$par.random` so the
-## EBLUP and its standard error come from the SAME inner solve (TMB's
+## mode and its standard error come from the SAME inner solve (TMB's
 ## sdreport re-solves the inner Laplace problem, so a fresh parList(opt$par)
 ## can differ from the sdreport modes at the inner-solver tolerance ~1e-4 --
 ## sourcing both from sdr keeps them mutually consistent). Without an sdreport,
@@ -2525,7 +2522,7 @@ gll_finalize_mi <- function(missing_data, par_list, model, sdr = NULL,
     x_mis <- as.numeric(par_list$x_mis)
   }
   missing_data$predictors[[model$variable]]$conditional_mode <- x_mis
-  ## Also expose the full unit-level x (observed + EBLUP) for rows = "all".
+  ## Also expose the full unit-level x (observed + conditional mode) for rows = "all".
   x_unit_full <- as.numeric(model$x_unit)
   if (length(model$missing_index) > 0L) {
     x_unit_full[model$missing_index] <- x_mis
@@ -2542,28 +2539,31 @@ gll_finalize_mi <- function(missing_data, par_list, model, sdr = NULL,
 #' `missing = miss_control(predictor = "model")`), `imputed()` returns a fitted
 #' summary of each missing predictor value. For a **continuous Gaussian**
 #' predictor (`impute_model(x ~ z)`), the `estimate` is the conditional mode
-#' (EBLUP) with a conditional standard error from the joint Hessian. For a
-#' **binary** predictor (`impute_model(x ~ z, family = binomial())`), the
+#' with a local Gaussian/Laplace conditional standard error from the joint
+#' Hessian. For a **binary** predictor
+#' (`impute_model(x ~ z, family = binomial())`), the
 #' `estimate` is the conditional probability `P(x = 1 | y, z)` from the exact
 #' two-state marginalisation, `std_error` is `NA` (the discrete route reports a
 #' fitted distribution, not a single mode with a Hessian SE), and
 #' `uncertainty_status` is `"discrete_no_se"`.
 #'
-#' The missing predictor is a unit-level quantity, so `imputed()` returns one
-#' row per missing **unit** value (not one per long-format model row). The
-#' Gaussian estimates are empirical best linear unbiased predictions, not
-#' posterior summaries.
+#' The missing predictor lives at a declared unit or coarser grouping level, so
+#' `imputed()` returns one row per missing level value (not one per long-format
+#' model row). The
+#' Gaussian estimates are conditional modes, not conditional means, multiple-
+#' imputation draws, or posterior summaries.
 #'
-#' **Row identifiers.** The `original_row` and `model_row` columns are
+#' **Join keys and row identifiers.** `level` names the unit or coarser group
+#' at which the missing predictor lives, and `level_id` gives its value. Join
+#' results back to the data using that pair. The `original_row` and `model_row`
+#' columns are
 #' **latent-level ordinals** (the 1-based index of the missing unit / group in
 #' the covariate model's latent level), *not* indices into the rows of the data
 #' frame you passed to [gllvmTMB()]. They coincide with original data rows only
 #' in the narrow wide-`traits()` case where each unit is a single row; off the
 #' wide path (long data, or a coarser `mi_group()` level) they index the latent
 #' level, not the data. This differs from [predict_missing()], whose
-#' `original_row` is the pre-mask row index in the original data. Join `imputed()`
-#' output back to your data on the unit / group identifier, not on these
-#' ordinals.
+#' `original_row` maps to the supplied long- or wide-data row.
 #'
 #' @param object A `gllvmTMB` fit.
 #' @param variable Optional missing-predictor name. The default uses the only
@@ -2575,8 +2575,10 @@ gll_finalize_mi <- function(missing_data, par_list, model, sdr = NULL,
 #'   a successful [TMB::sdreport()] result.
 #' @param ... Reserved for future extractor options.
 #'
-#' @return A data frame with `variable`, `original_row`, `model_row`,
-#'   `observed`, `estimate`, `std_error`, `source`, and `uncertainty_status`.
+#' @return A data frame with `variable`, `level`, `level_id`, `original_row`,
+#'   `model_row`, `observed`, `estimate`, `std_error`, `source`, and
+#'   `uncertainty_status`. `level_id` is character so the same column can hold
+#'   unit, group, or phylogenetic-tip labels.
 #' @export
 imputed <- function(object, ...) {
   UseMethod("imputed")
@@ -2670,8 +2672,31 @@ imputed.gllvmTMB <- function(
     "conditional_mode"
   }
   source <- ifelse(observed[unit_index], "observed", missing_source)
+  level_name <- if (isTRUE(predictor$group_level$enabled)) {
+    predictor$group_level$group
+  } else {
+    object$unit_col %||% "unit"
+  }
+  mi_unit_id <- object$tmb_data$mi_unit_id
+  first_model_row <- if (length(mi_unit_id) > 0L) {
+    match(seq_along(observed) - 1L, as.integer(mi_unit_id))
+  } else {
+    rep(NA_integer_, length(observed))
+  }
+  level_id <- rep(NA_character_, length(observed))
+  if (
+    level_name %in% names(object$data) &&
+      length(first_model_row) == length(observed)
+  ) {
+    usable <- !is.na(first_model_row)
+    level_id[usable] <- as.character(
+      object$data[[level_name]][first_model_row[usable]]
+    )
+  }
   out <- data.frame(
     variable = rep(variable, length(unit_index)),
+    level = rep(level_name, length(unit_index)),
+    level_id = level_id[unit_index],
     original_row = as.integer(unit_index),
     model_row = as.integer(unit_index),
     observed = observed[unit_index],
@@ -2685,7 +2710,7 @@ imputed.gllvmTMB <- function(
   out
 }
 
-## Conditional SE for the x_mis EBLUPs from sdreport's random-effect block
+## Conditional SE for x_mis modes from sdreport's random-effect block
 ## (drm_imputed_missing_predictor_se). When no sdreport is present, NA.
 gll_imputed_missing_predictor_se <- function(object, n_missing, se) {
   if (n_missing == 0L) {
@@ -2763,12 +2788,13 @@ gll_standard_error_status <- function(object) {
 #'   modelled missing predictor.
 #' @param threshold Effective-lambda threshold below which the signal is flagged
 #'   as weak (default `0.1`).
-#' @param warn Logical; when `TRUE`, emit an EBLUP-language warning for the weak
-#'   case. Default `FALSE` (the function returns the statistic silently).
+#' @param warn Logical; when `TRUE`, warn against over-interpreting conditional
+#'   modes when phylogenetic signal is weak. Default `FALSE` (the function
+#'   returns the statistic silently).
 #'
 #' @return A list with `variable`, `lambda` (effective Pagel lambda), `sd_x`,
 #'   `sigma_x`, `weak` (logical), and `threshold`.
-#' @seealso [imputed()] for the EBLUPs; [gllvmTMB()] for the `impute =` phylo
+#' @seealso [imputed()] for conditional modes; [gllvmTMB()] for the `impute =` phylo
 #'   covariate model.
 #' @export
 phylo_signal_mi <- function(object, variable = NULL, threshold = 0.1,

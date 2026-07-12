@@ -30,8 +30,8 @@ side within the supplied grid, that bound is reported as the grid edge and
 flagged unbounded (\code{lower_bounded} / \code{upper_bounded} \code{FALSE}) -- widen the grid.
 
 This is screening-grade profile/sensitivity interval evidence on a
-\emph{fixed}-\code{rho} refit grid, not in-engine \code{rho} estimation (Design 65 C3.3;
-this remains only partially covered by validation). Its coverage has
+\emph{fixed}-\code{rho} refit grid, not in-engine \code{rho} estimation. Direct validation
+of this route remains partial, and its coverage has
 \strong{not} been calibrated, so do not report it as a validated confidence
 interval.
 }

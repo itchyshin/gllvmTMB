@@ -9,7 +9,7 @@ plot_correlations(
   tier = "all",
   pair = NULL,
   level = 0.95,
-  method = c("fisher-z", "profile", "wald", "bootstrap"),
+  method = c("none", "fisher-z", "profile", "wald", "bootstrap"),
   n_eff = NULL,
   nsim = 500L,
   seed = NULL,

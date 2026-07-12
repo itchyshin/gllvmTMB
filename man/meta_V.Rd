@@ -13,8 +13,8 @@ exact-additive fits, pass the actual matrix via the top-level
 the marker and keeps the syntax aligned with \code{drmTMB::meta_V()}.}
 
 \item{type}{Sampling-covariance mode. \code{"exact"} is implemented.
-\code{"proportional"} is reserved for the planned post-CRAN extension
-and currently fails loud in the formula parser.}
+\code{"proportional"} is not implemented and fails clearly in the formula
+parser rather than being treated as exact.}
 }
 \value{
 A formula marker; never evaluated.
@@ -23,22 +23,19 @@ A formula marker; never evaluated.
 Canonical formula keyword for the known-sampling-error term in
 two-stage meta-regression workflows. The name makes it explicit
 that what is "known" is the \strong{V} matrix (the sampling-error
-covariance). Renamed from \code{\link[=meta_known_V]{meta_known_V()}} in 0.2.0 per vision
-item 4 (2026-05-16); the older name is retained as a deprecated
-alias. Both names desugar identically in the formula parser.
+covariance). \code{\link[=meta_known_V]{meta_known_V()}} is retained as a soft-deprecated alias; both
+names desugar identically in the formula parser.
 }
 \details{
 Pass the matrix \code{V} via the top-level \code{known_V = V} argument to
 \code{\link[=gllvmTMB]{gllvmTMB()}} when using the exact-additive (default) form. For
 block-diagonal within-study correlation, build \code{V} via \code{\link[=block_V]{block_V()}}.
-The future proportional-sampling-variance mode will use
-\code{type = "proportional"}; in 0.2.x this value is deliberately
-rejected rather than silently treated as exact.
+\code{type = "proportional"} is not implemented and is deliberately rejected
+rather than silently treated as exact.
 }
 \examples{
 \dontrun{
-# Stage-2 meta-regression with a known per-row sampling-variance V.
-# Grounded in test-formula-grammar-smoke.R.
+# Two-stage meta-regression with a known per-row sampling-variance V.
 set.seed(131)
 df <- expand.grid(
   site  = factor(seq_len(50)),
@@ -56,6 +53,5 @@ fit <- gllvmTMB(
 }
 \seealso{
 \code{\link[=meta_known_V]{meta_known_V()}} (deprecated alias); \code{\link[=block_V]{block_V()}};
-\code{\link[=gllvmTMB]{gllvmTMB()}}; vision doc "Planned extensions" for the future
-\code{meta_V(type = "proportional")} mode (Nakagawa 2022).
+\code{\link[=gllvmTMB]{gllvmTMB()}}.
 }

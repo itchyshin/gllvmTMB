@@ -25,7 +25,7 @@
 ## Hessian eig ~ -8e5, and even the gaussian control fails here -- the spatial
 ## analogue of phylo_dep / PHY-18, an identifiability/data-size limit, not a wiring
 ## gap). Each such cell therefore honest-SKIPs on the scale-free convergence verdict
-## (`!.fit_converged(fit)`), NOT on a construction reject. We do NOT relax the
+## (`!.fit_stationary_for_recovery_test(fit)`), NOT on a construction reject. We do NOT relax the
 ## formula or widen any band to force a fit, and we NEVER fake-pass.
 ##
 ## Why keep the file then? It is a LIVE TRIPWIRE on the matrix cell. Each
@@ -187,9 +187,9 @@ fit_slope_spatial_dep <- function(fx, family) {
 }
 
 expect_slope_spatial_fit_health <- function(fit) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
 }
 
 ## CI smoke (shared): at least one finite profile bound on one upper-tri
@@ -235,7 +235,7 @@ slope_spatial_ci_smoke_ok <- function(fit, n_traits) {
 ## CONSTRUCT; but the full unstructured 2T x 2T field-covariance block genuinely
 ## fails to converge at this fixture's n_sites -- the spatial analogue of
 ## phylo_dep / PHY-18, an identifiability/data-size limit, not a wiring gap. So
-## each honest-skips on the convergence verdict (`!.fit_converged(fit)`) below,
+## each honest-skips on the convergence verdict (`!.fit_stationary_for_recovery_test(fit)`) below,
 ## not on a construction reject. The cell stays partial; it is NEVER forced green.
 run_slope_spatial_dep_cell <- function(fx, family, family_label,
                                        expected_family_id) {
@@ -251,7 +251,7 @@ run_slope_spatial_dep_cell <- function(fx, family, family_label,
       }
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     testthat::skip(sprintf(
       "%s spatial_dep(1 + x | site) did not converge with PD Hessian; (spatial_dep x slope x %s) stays partial pending bigger n / different seed",
       family_label, family_label

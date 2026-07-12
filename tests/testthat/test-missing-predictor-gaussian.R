@@ -206,7 +206,7 @@ test_that("mi() Gaussian predictor model validates the Phase 2a boundary", {
     )),
     "only one"
   )
-  ## Structured covariate model (phylo/relmat; Phase 3) is rejected.
+  ## A continuous predictor cannot be routed through the binary family.
   expect_error(
     suppressMessages(gllvmTMB(
       value ~ 0 + trait + mi(x),
@@ -215,7 +215,7 @@ test_that("mi() Gaussian predictor model validates the Phase 2a boundary", {
       missing = miss_control(predictor = "model"),
       control = gllvmTMBcontrol(se = FALSE)
     )),
-    "later"
+    "requires a two-level"
   )
 })
 
@@ -301,11 +301,13 @@ test_that("imputed() reports Phase 2a missing-predictor conditional modes", {
   expect_s3_class(out, "data.frame")
   expect_named(
     out,
-    c("variable", "original_row", "model_row", "observed",
+    c("variable", "level", "level_id", "original_row", "model_row", "observed",
       "estimate", "std_error", "source", "uncertainty_status")
   )
   ## One EBLUP per missing UNIT (site), not per long row.
   expect_equal(out$variable, rep("x", length(d$missing_site)))
+  expect_identical(out$level, rep("site", length(d$missing_site)))
+  expect_identical(out$level_id, as.character(d$missing_site))
   expect_identical(out$original_row, d$missing_site)
   expect_identical(out$model_row, d$missing_site)
   expect_false(any(out$observed))
@@ -335,6 +337,8 @@ test_that("imputed(rows = 'all') returns every retained predictor unit", {
   ## "all" returns one row per UNIT (the covariate-model rows are units).
   expect_identical(nrow(out), n_units)
   expect_identical(out$original_row, seq_len(n_units))
+  expect_identical(out$level, rep("site", n_units))
+  expect_identical(out$level_id, as.character(seq_len(n_units)))
   expect_identical(out$observed, observed_unit)
   expect_equal(out$estimate[observed_unit], x_unit[observed_unit],
                tolerance = 1e-12)
@@ -1095,6 +1099,8 @@ test_that("group-level mi(): the imputed x is one per-group value broadcast to e
   ## are groups), with observed regions labelled observed.
   out <- imputed(fit, rows = "all")
   expect_identical(nrow(out), d$n_region)
+  expect_identical(out$level, rep("region", d$n_region))
+  expect_identical(out$level_id, as.character(seq_len(d$n_region)))
   observed_region <- !(seq_len(d$n_region) %in% d$missing_region)
   expect_identical(out$observed, observed_region)
   ## Observed regions return the (constant) region-level x exactly.

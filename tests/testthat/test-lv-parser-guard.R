@@ -381,8 +381,7 @@ test_that("latent lv C1 engine reports score-mean quantities", {
       "std.error",
       "lower",
       "upper",
-      "uncertainty_status",
-      "validation_row"
+      "uncertainty_status"
     )
   )
   expect_equal(nrow(trait_effect), fit$n_traits)
@@ -400,7 +399,7 @@ test_that("latent lv C1 engine reports score-mean quantities", {
     unique(trait_effect$uncertainty_status),
     "sdreport_skipped_no_lv_se"
   )
-  expect_equal(unique(trait_effect$validation_row), "EXT-31; LV-01")
+  expect_false("validation_row" %in% names(trait_effect))
   expect_named(
     axis_effect,
     c(
@@ -412,8 +411,7 @@ test_that("latent lv C1 engine reports score-mean quantities", {
       "lower",
       "upper",
       "rotation_status",
-      "uncertainty_status",
-      "validation_row"
+      "uncertainty_status"
     )
   )
   expect_equal(axis_effect, extract_lv_effects(fit, type = "axis_effect"))
@@ -429,7 +427,7 @@ test_that("latent lv C1 engine reports score-mean quantities", {
     unique(axis_effect$uncertainty_status),
     "sdreport_skipped_no_lv_se"
   )
-  expect_equal(unique(axis_effect$validation_row), "EXT-31; LV-01")
+  expect_false("validation_row" %in% names(axis_effect))
   expect_error(
     extract_lv_effects(fit, level = "unit_obs"),
     regexp = "currently supports only"
@@ -630,7 +628,7 @@ test_that("latent lv admits binomial standard links and recovers B_lv", {
     expect_lv_smoke_reports(fit)
 
     trait_effect <- extract_lv_effects(fit, type = "trait_effect")
-    expect_equal(unique(trait_effect$validation_row), "EXT-31; LV-05")
+    expect_false("validation_row" %in% names(trait_effect))
     b_hat <- stats::setNames(trait_effect$estimate, trait_effect$trait)
     b_truth <- stats::setNames(truth$B_lv, levels(data$trait))
     abs_err <- max(abs(b_hat[names(b_truth)] - b_truth))

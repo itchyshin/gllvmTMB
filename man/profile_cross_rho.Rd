@@ -43,8 +43,8 @@ A data frame of class \code{gllvmTMB_cross_rho_profile} with columns
 columns returned by \code{metrics}.
 }
 \description{
-\code{profile_cross_rho()} formalises the fixed-kernel sensitivity workflow for
-Design 65 cross-lineage kernels. It rebuilds \code{K_star} with
+\code{profile_cross_rho()} formalises a fixed-kernel sensitivity workflow for
+cross-lineage kernels. It rebuilds \code{K_star} with
 \code{\link[=make_cross_kernel]{make_cross_kernel()}} over a user-supplied \code{rho} grid, calls a caller-supplied
 \code{refit(K, rho, ...)} function for each grid value, and returns a tidy
 likelihood table.

@@ -48,15 +48,14 @@
 #'
 #' This is a complementary signal to [sanity_multi()] (which checks
 #' Hessian definiteness, gradient magnitude, convergence flags) and
-#' to [check_identifiability()] (which checks Procrustes-aligned
-#' loading recovery across simulate-refit replicates). Slower than
-#' both -- `n_sim` likelihood evaluations -- but the only diagnostic
+#' to a target-explicit known-DGP study of rank-selection behaviour. Slower
+#' than the first-line checks -- `n_sim` likelihood evaluations -- but the only diagnostic
 #' that targets the **Laplace approximation itself** rather than
 #' the optimisation outcome or the parameter identification.
 #'
-#' If the marginal score is centred (`p_value > 0.05`), the
-#' Laplace approximation is locally appropriate for the fit's
-#' random-effects structure. If it is not (`p_value <= 0.05` or
+#' A large marginal-score p-value is an absence of evidence against
+#' centring in this finite simulation; it is not a certificate that the
+#' Laplace approximation is accurate. If the result is small (`p_value <= 0.05`) or
 #' large flagged-parameter list), consider:
 #'
 #' * Refitting with a richer random-effects structure (so the
@@ -98,7 +97,9 @@
 #'     \item{`$n_sim`}{The `n_sim` actually run.}
 #'     \item{`$threshold`}{The marginal-bias threshold used.}
 #'     \item{`$diagnostics`}{Character vector of one or more of:
-#'       `"centred"` (well-behaved), `"marginal_score_non_centred"`,
+#'       `"no_centring_warning"` (the finite simulation did not detect
+#'       non-centring; this is not an accuracy certificate),
+#'       `"marginal_score_non_centred"`,
 #'       `"joint_score_non_centred"`,
 #'       `"information_matrix_singular"` (TMB couldn't invert it;
 #'       interpret with caution), `"marginal_p_value_unavailable"`
@@ -110,7 +111,6 @@
 #'   }
 #'
 #' @seealso [sanity_multi()] (structural / convergence checks),
-#'   [check_identifiability()] (Procrustes-based loadings recovery),
 #'   [check_auto_residual()] (mixed-family safeguard),
 #'   [gllvmTMB_diagnose()] (holistic fit summary),
 #'   [TMB::checkConsistency()] (the underlying TMB call).
@@ -215,12 +215,12 @@ gllvmTMB_check_consistency <- function(
   ## When the marginal p-value is NA AND no other flag fires (no
   ## singular-matrix warning, no per-parameter bias > threshold),
   ## the test is inconclusive: report that explicitly rather than
-  ## falsely claiming "centred".
+  ## falsely claiming that the score is proved centred.
   if (is.na(marginal_p) && length(flags) == 0L) {
     flags <- "marginal_p_value_unavailable"
   }
   if (length(flags) == 0L) {
-    flags <- "centred"
+    flags <- "no_centring_warning"
   }
 
   out <- list(
@@ -248,9 +248,9 @@ print.gllvmTMB_check_consistency <- function(x, ...) {
     "*" = "Marginal-score p-value: {if (is.na(x$marginal_p_value)) 'NA (information matrix singular)' else signif(x$marginal_p_value, 3)}",
     "*" = "Joint-score p-value:    {if (is.na(x$joint_p_value)) 'NA (estimate = FALSE; pass estimate = TRUE to compute)' else signif(x$joint_p_value, 3)}"
   ))
-  if (identical(x$diagnostics, "centred")) {
-    cli::cli_alert_success(
-      "Marginal score is centred at zero; the Laplace approximation is locally appropriate for this fit."
+  if (identical(x$diagnostics, "no_centring_warning")) {
+    cli::cli_alert_info(
+      "This finite simulation did not detect score non-centring. It does not certify Laplace accuracy or interval calibration."
     )
   } else {
     cli::cli_alert_warning(

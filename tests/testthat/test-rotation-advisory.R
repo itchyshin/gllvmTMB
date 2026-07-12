@@ -66,6 +66,39 @@ test_that("rr B fit with d = 1 does NOT trigger advisory (no rotational ambiguit
   expect_false(isTRUE(fit$needs_rotation_advice$B))
 })
 
+test_that("phylo_dep is not diagnosed as a rotation-ambiguous latent fit", {
+  skip_if_not_installed("ape")
+  set.seed(20260711)
+  n_species <- 24L
+  n_traits <- 3L
+  tree <- ape::rcoal(n_species)
+  tree$tip.label <- paste0("sp", seq_len(n_species))
+  dat <- expand.grid(
+    species = tree$tip.label,
+    trait = paste0("trait_", seq_len(n_traits)),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  dat$species <- factor(dat$species, levels = tree$tip.label)
+  dat$trait <- factor(dat$trait, levels = paste0("trait_", seq_len(n_traits)))
+  dat$value <- stats::rnorm(nrow(dat))
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree),
+    data = dat,
+    trait = "trait",
+    unit = "species",
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+
+  expect_false(isTRUE(fit$needs_rotation_advice$phy))
+  health <- check_gllvmTMB(fit)
+  expect_false(any(health$component %in% c(
+    "rotation_convention_phylo",
+    "weak_axis_phylo"
+  )))
+})
+
 test_that("getLoadings(rotate = 'none') emits the informational message", {
   set.seed(1)
   s <- simulate_site_trait(

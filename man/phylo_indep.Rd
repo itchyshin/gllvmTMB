@@ -7,8 +7,8 @@
 phylo_indep(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
-\item{formula}{\code{0 + trait | species} style formula. The LHS must be
-\code{0 + trait} (the trait factor); the RHS is the species column.}
+\item{formula}{Intercept-only \code{0 + trait | species}, or the supported
+one-covariate intercept-and-slope form described above.}
 
 \item{tree}{An \code{ape::phylo} object. \strong{Canonical.}}
 
@@ -17,7 +17,7 @@ phylo_indep(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 
 \item{A}{Tip-level relatedness matrix (\verb{n_species x n_species})
 -- alias of \verb{vcv =}, aligned with the \verb{animal_*} family's
-argument naming (M2.8b, 2026-05-17).}
+argument naming.}
 
 \item{Ainv}{Sparse precision matrix (inverse of \code{A}).}
 }
@@ -46,17 +46,15 @@ phylogenetic decomposition
 
 Combining \code{phylo_indep(0 + trait | species)} with
 \code{phylo_latent(species, d = K)} is \strong{over-parameterised} and the
-parser raises a \code{cli::cli_abort()}. Combining \code{phylo_indep} with
-\code{phylo_unique} is redundant and also errors.
+parser raises a \code{cli::cli_abort()}.
 }
 
-\subsection{Future extensibility}{
+\subsection{Intercept-and-slope form}{
 
-The formula syntax \code{phylo_indep(0 + trait + trait:x | species)} is
-reserved as a future path for \strong{trait-specific phylogenetic random
-slopes} on covariate \code{x}. The parser recognises the syntax but the
-engine currently supports only the simple \code{0 + trait | species} form;
-richer LHS expressions are deferred.
+A single-covariate random regression uses
+\code{phylo_indep(1 + x | species)} in wide syntax or
+\code{phylo_indep(0 + trait + (0 + trait):x | species)} in explicit long syntax.
+It estimates an intercept--slope block with their correlation fixed to zero.
 
 Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-1}}) or
 \code{vcv = Cphy} (\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}}, dense). See

@@ -31,9 +31,9 @@ a conservative recommendation.}
 }
 \description{
 \code{diagnose_kernel_separability()} compares two or more dense fixed kernels on
-the same levels before they are used in a multi-kernel coevolution model. It
-is a pre-fit claim-boundary helper for Design 65 (only partially covered by
-validation): when candidate
+the same levels before they are used in a multi-kernel model. It is a pre-fit
+diagnostic rather than evidence that the components are separately
+identifiable: when candidate
 kernels are highly overlapping, component-specific \code{Gamma} blocks are weak
 evidence and should be treated as descriptive unless simulations justify the
 split.

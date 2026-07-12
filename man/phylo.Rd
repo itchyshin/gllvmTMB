@@ -27,7 +27,7 @@ covariance structure (combined with \code{mode}, see Dispatch rules).}
 \item{vcv}{A tip-only phylogenetic correlation matrix
 (\verb{n_species x n_species}). Legacy / superseded.}
 
-\item{mode}{One of \code{"scalar"} / \code{"diag"} / \code{"indep"} / \code{"latent"} /
+\item{mode}{One of \code{"scalar"} / \code{"indep"} / \code{"latent"} /
 \code{"dep"}. Optional when LHS is \code{1} (defaults silently to
 \code{"scalar"}). Mandatory when LHS is \code{0 + trait}.}
 
@@ -46,12 +46,12 @@ latent path.}
 A formula marker; never evaluated.
 }
 \description{
-\code{phylo()} is a unified entry point for the package's five canonical
-phylogenetic keywords (\code{phylo_scalar}, \code{phylo_unique}, \code{phylo_indep},
-\code{phylo_latent}, \code{phylo_dep}). It accepts an lme4-bar formula on the
+\code{phylo()} is a unified entry point for the package's four taught
+phylogenetic modes (\code{phylo_scalar}, \code{phylo_indep}, \code{phylo_latent},
+\code{phylo_dep}). It accepts an lme4-bar formula on the
 first argument and dispatches to the appropriate canonical keyword
 based on the LHS shape and the optional \code{mode = ...} argument. The
-five canonical keywords stay first-class -- \code{phylo()} is an additive
+four current keywords stay first-class -- \code{phylo()} is an additive
 alias matching the lme4 / brms / drmTMB convention.
 }
 \section{Dispatch rules}{
@@ -67,8 +67,8 @@ alias matching the lme4 / brms / drmTMB convention.
 When the LHS expands to a single column (\code{1}, intercept-only), \code{mode}
 is degenerate: it defaults silently to \code{"scalar"}, and explicit
 \code{mode = "scalar"} is accepted (no warning). When the LHS is
-\code{0 + trait}, \code{mode} is \strong{mandatory} -- choosing between \code{"diag"} /
-\code{"indep"} / \code{"latent"} / \code{"dep"} is a meaningful decision (per-trait
+\code{0 + trait}, \code{mode} is \strong{mandatory} -- choosing between \code{"indep"} /
+\code{"latent"} / \code{"dep"} is a meaningful decision (per-trait
 diagonal vs reduced-rank decomposition vs full unstructured) and the
 parser refuses to silently default.
 }
@@ -82,12 +82,12 @@ continue to work as deprecated aliases of \code{phylo_scalar(species)} /
 covariance from the top-level \verb{phylo_vcv =} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}.
 }
 
-\section{Augmented LHS (Stage 3, not yet shipped)}{
+\section{Intercept-and-slope terms}{
 
-Augmented LHS forms -- \code{1 + x} (intercept + slope), \code{0 + trait + (0 + trait):x}
-(per-trait intercepts + per-trait slopes on covariate \code{x}), \code{x || species}
-(uncorrelated) -- are reserved for Design 07 Stage 3 engine work. The
-parser currently raises an error pointing at this status.
+The unified \code{phylo()} wrapper is limited to intercept-only trait covariance.
+For an intercept and one or more slopes, use an explicit structured mode
+such as \code{phylo_indep()}, \code{phylo_latent()}, or \code{phylo_dep()}; unsupported LHS
+forms fail with a message showing the accepted syntax.
 }
 
 \section{Cross-package coexistence}{
@@ -108,9 +108,9 @@ fit_s <- gllvmTMB(value ~ 0 + trait + phylo(1 | species, tree = tree),
                   trait   = "trait",
                   unit    = "species",
                   cluster = "species")
-# Per-trait phylogenetic variances on shared A (= phylo_unique)
+# Per-trait independent phylogenetic variances on shared A
 fit_u <- gllvmTMB(value ~ 0 + trait +
-                    phylo(0 + trait | species, mode = "diag", tree = tree),
+                    phylo(0 + trait | species, mode = "indep", tree = tree),
                   data    = df,
                   trait   = "trait",
                   unit    = "species",

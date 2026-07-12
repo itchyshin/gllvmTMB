@@ -193,16 +193,19 @@ test_that("family_id 9 (student-t, df > 2) returns sigma^2 * df / (df - 2)", {
   expect_equal(unname(res), 2)
 })
 
-test_that("family_id 9 (student-t, df = 2) warns and falls back to sigma^2", {
+test_that("family_id 9 (student-t, df = 2) warns and returns NA", {
   fit <- make_mock_single_family_fit(
     family_id    = 9L,
     report_extra = list(sigma_student = 1.5, df_student = 2)
   )
   expect_warning(
-    res <- gllvmTMB:::link_residual_per_trait(fit),
-    "Student-t df"
+    expect_warning(
+      res <- gllvmTMB:::link_residual_per_trait(fit),
+      "Student-t df"
+    ),
+    "Link-scale residual variance is unavailable"
   )
-  expect_equal(unname(res), 1.5^2)
+  expect_true(is.na(unname(res)))
 })
 
 ## ---- 10 Truncated Poisson ------------------------------------------------

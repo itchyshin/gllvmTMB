@@ -122,11 +122,11 @@ test_that("ordinal_probit joint depth: intercepts + cutpoints + full between-uni
     skip(paste0("ordinal depth fit errored: ", conditionMessage(fit),
                 "; board #340 stays partial for ordinal"))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("ordinal depth fit non-convergent / non-PD; board #340 stays partial")
   }
 
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   expect_equal(fit$tmb_data$family_id_vec[1L], 14L)
   expect_true(isTRUE(fit$use$dep_B))
   ## sigma_d^2 = 1 exactly -- the defining ordinal property.

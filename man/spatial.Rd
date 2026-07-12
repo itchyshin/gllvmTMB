@@ -31,7 +31,7 @@ columns correspond to the spatial grouping. The mesh actually
 used is whatever is passed to the \code{mesh} argument of \code{\link[=gllvmTMB]{gllvmTMB()}}
 or this function.}
 
-\item{mode}{One of \code{"scalar"} / \code{"diag"} / \code{"indep"} / \code{"latent"} /
+\item{mode}{One of \code{"scalar"} / \code{"indep"} / \code{"latent"} /
 \code{"dep"}. Optional when LHS is \code{1} (defaults silently to
 \code{"scalar"}). Mandatory when LHS is \code{0 + trait}.}
 
@@ -44,12 +44,12 @@ or this function.}
 A formula marker; never evaluated.
 }
 \description{
-\code{spatial()} is a unified entry point for the package's five canonical
-spatial keywords (\code{spatial_scalar}, \code{spatial_unique}, \code{spatial_indep},
-\code{spatial_latent}, \code{spatial_dep}). It accepts an lme4-bar formula on
+\code{spatial()} is a unified entry point for the package's four taught
+spatial modes (\code{spatial_scalar}, \code{spatial_indep}, \code{spatial_latent},
+\code{spatial_dep}). It accepts an lme4-bar formula on
 the first argument and dispatches to the appropriate canonical
 keyword based on the LHS shape and the optional \code{mode = ...} argument.
-The five canonical keywords stay first-class -- \code{spatial()} is an
+The four current keywords stay first-class -- \code{spatial()} is an
 additive alias matching the lme4 / brms / drmTMB convention.
 }
 \details{
@@ -70,8 +70,8 @@ Hadfield A^-1).
 When the LHS expands to a single column (\code{1}, intercept-only), \code{mode}
 is degenerate: it defaults silently to \code{"scalar"}, and explicit
 \code{mode = "scalar"} is accepted (no warning). When the LHS is
-\code{0 + trait}, \code{mode} is \strong{mandatory} -- choosing between \code{"diag"} /
-\code{"indep"} / \code{"latent"} / \code{"dep"} is a meaningful decision (per-trait
+\code{0 + trait}, \code{mode} is \strong{mandatory} -- choosing between \code{"indep"} /
+\code{"latent"} / \code{"dep"} is a meaningful decision (per-trait
 marginal vs reduced-rank decomposition vs full unstructured) and the
 parser refuses to silently default.
 }
@@ -87,12 +87,12 @@ picking up the SPDE mesh from the top-level \verb{mesh =} argument to
 \code{\link[=gllvmTMB]{gllvmTMB()}}.
 }
 
-\section{Augmented LHS (Stage 3, not yet shipped)}{
+\section{Intercept-and-slope terms}{
 
-Augmented LHS forms -- \code{1 + x} (intercept + slope), \code{0 + trait + (0 + trait):x}
-(per-trait intercepts + per-trait slopes on covariate \code{x}), \code{x || coords}
-(uncorrelated) -- are reserved for Design 07 Stage 3 engine work. The
-parser currently raises an error pointing at this status.
+The unified \code{spatial()} wrapper is limited to intercept-only trait
+covariance. For an intercept and slope, use an explicit structured mode such
+as \code{spatial_indep()}, \code{spatial_latent()}, or \code{spatial_dep()}; unsupported LHS
+forms fail with a message showing the accepted syntax.
 }
 
 \section{Cross-package coexistence}{
@@ -110,9 +110,9 @@ fit_s <- gllvmTMB(value ~ 0 + trait + spatial(1 | site, mesh = mesh),
                   data  = df,
                   trait = "trait",
                   unit  = "site")
-# Per-trait independent fields on shared mesh (= spatial_unique)
+# Per-trait independent fields on a shared mesh
 fit_u <- gllvmTMB(value ~ 0 + trait +
-                    spatial(0 + trait | coords, mode = "diag",
+                    spatial(0 + trait | coords, mode = "indep",
                             mesh = mesh),
                   data  = df,
                   trait = "trait",

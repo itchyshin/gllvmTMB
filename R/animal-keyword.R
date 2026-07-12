@@ -34,9 +34,8 @@
 #' Mathematical parallel to [phylo_scalar()] -- same engine path; the
 #' only difference is that **A** is supplied via `pedigree =` (a
 #' 3-column data frame: id, sire, dam), `A =` (dense \eqn{n \times n}
-#' relatedness matrix), or `Ainv =` (sparse precision; densified
-#' internally for v0.2.0 -- sparse-Ainv direct engine path is a v0.3.0
-#' follow-up).
+#' relatedness matrix), or `Ainv =` (precision matrix). Sparse `Ainv`
+#' inputs use the sparse precision route.
 #'
 #' @param id Bare column name of the individual factor.
 #' @param pedigree A 3-column data frame with columns `id`, `sire`,
@@ -45,8 +44,8 @@
 #'   `pedigree`, `A`, or `Ainv` should be given.
 #' @param A Dense relatedness matrix (\eqn{n \times n}); rownames /
 #'   colnames must match levels of `id`.
-#' @param Ainv Sparse precision matrix (inverse of A). Currently
-#'   densified for v0.2.0; sparse engine path is a v0.3.0 follow-up.
+#' @param Ainv Precision matrix (inverse of A). Sparse matrix inputs are
+#'   preserved for the sparse engine route.
 #'
 #' @return Used inside a [gllvmTMB()] formula. Returns `invisible(NULL)`
 #'   when called outside a formula -- the keyword is a syntactic marker
@@ -367,10 +366,9 @@ animal_slope <- function(formula) {
 #' inbreeding coefficients or pre-computation for repeated fits).
 #'
 #' For very large pedigrees (\eqn{n > 5000}) the cubic-time cost of
-#' Henderson recursion becomes noticeable; a sparse-`Ainv` direct
-#' engine path is a v0.3.0 follow-up. For comparison against
-#' established implementations, see `nadiv::makeAinv()` (sparse
-#' \eqn{\mathbf A^{-1}}).
+#' constructing a dense \eqn{\mathbf A} can become noticeable. When a sparse
+#' precision is available, pass it directly with `Ainv =`; for comparison
+#' against established implementations, see `nadiv::makeAinv()`.
 #'
 #' @param pedigree A data frame with one row per individual and
 #'   columns identifying the individual, sire, and dam. **Column
@@ -514,10 +512,9 @@ pedigree_to_A <- function(pedigree) {
 #' Mendelian sampling variances. It reproduces
 #' `MCMCglmm::inverseA(pedigree)$Ainv` exactly. (The current inbreeding
 #' step forms the dense \eqn{n \times n} \eqn{\mathbf A}, an \eqn{O(n^2)}
-#' one-time cost; a Meuwissen-Luo \eqn{O(n)} inbreeding recursion is a
-#' future optimisation for very large pedigrees.)
+#' one-time cost.)
 #'
-#' Usage pattern (sparse pre-CRAN; auto-routing follow-on PR):
+#' Usage:
 #'
 #' ```r
 #' Ainv <- pedigree_to_Ainv_sparse(ped)

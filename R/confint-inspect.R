@@ -12,8 +12,8 @@
 ##    + a ggplot showing profile shape + MLE + CI bounds for visual
 ##    verification ('does this profile look quadratic or skewed?')."
 ##
-## Companion to the existing troubleshooting article
-## `vignettes/articles/troubleshooting-profile.Rmd` (PR #115, merged).
+## Companion to the profile-route and troubleshooting section in
+## `vignettes/articles/profile-likelihood-ci.Rmd`.
 
 #' Inspect profile confidence-interval shape for a fitted model
 #'
@@ -26,40 +26,38 @@
 #' It returns the full profile-likelihood curve, the deviance bounds,
 #' and (when `ggplot2` is available) a `ggplot` visualisation showing
 #' the curve, the MLE, the chi-squared threshold, and the resulting
-#' confidence-interval bounds. It answers the question "is this
-#' profile well-behaved?" before the user interprets the bound.
+#' confidence-interval bounds. It surfaces a small set of numerical shape
+#' warnings before the user interprets the bound; the returned label is not a
+#' goodness or calibration certificate.
 #'
-#' Scope boundary: IN, direct profile-curve inspection
-#' for profile-ready targets from [profile_targets()]. PARTIAL, derived
-#' summaries such as communalities and correlations are inspected
-#' through their `extract_*(method = "profile")` helpers. PLANNED,
-#' broader target-explicit profile calibration remains M3 work.
+#' This helper inspects direct profile-ready targets from
+#' [profile_targets()]. Nonlinear derived targets such as communality,
+#' repeatability, and trait
+#' correlation do not currently have a public profile-inspection route. A
+#' working direct curve does not establish empirical interval coverage for
+#' every model class.
 #'
-#' Common failure modes to look for in the returned plot
-#' (cross-referenced in the
-#' [troubleshooting-profile](https://itchyshin.github.io/gllvmTMB/articles/troubleshooting-profile.html)
-#' vignette):
+#' Common patterns to look for in the returned plot (see the
+#' [profile-likelihood article](https://itchyshin.github.io/gllvmTMB/articles/profile-likelihood-ci.html)):
 #'
-#' * **Quadratic + symmetric near the MLE**: Wald and profile agree.
-#'   Either method is fine.
-#' * **Asymmetric / skewed**: Wald is wrong; the profile bound is
-#'   right.
-#' * **Flat at the MLE**: weak identifiability; the profile is right
-#'   and the Wald CI hides the flatness.
-#' * **Hits the parameter range bound on one side**:
-#'   `bounds$lower = -Inf` or `bounds$upper = Inf`. Boundary
-#'   parameter (variance pinned at 0) or unidentified upper tail.
-#' * **No crossing at all**: `bounds$lower = bounds$upper = NA`. The
-#'   profile didn't converge. Use bootstrap uncertainty through
-#'   [bootstrap_Sigma()] or the matching extractor bootstrap method.
+#' * **Quadratic and approximately symmetric near the MLE**: Wald and profile
+#'   may agree closely for this target.
+#' * **Asymmetric or skewed**: inspect the endpoint status and constrained-fit
+#'   stability before preferring either interval.
+#' * **Flat near the MLE**: the target may be weakly informed, or the numerical
+#'   profile may need closer inspection.
+#' * **Hits a parameter-range bound**: interpret the endpoint on the target's
+#'   transformed scale and distinguish a natural boundary from a truncated
+#'   search.
+#' * **No usable crossing**: treat the endpoint as unavailable; do not replace
+#'   it automatically with bootstrap output unless simulation, refits, failed
+#'   replicate counts, and Monte Carlo resolution are credible for that target.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param parm Character. A single profile-target label from
 #'   [profile_targets()]. Examples: `"sigma_eps"`, `"sd_B[1]"`,
-#'   `"phi_nbinom2[2]"`, `"b_fix[1]"`. For derived targets
-#'   (communality, repeatability, phylogenetic signal, trait
-#'   correlations), use the matching `extract_*(method = "profile")`
-#'   extractor instead -- those produce their own typed diagnostics.
+#'   `"phi_nbinom2[2]"`, `"b_fix[1]"`. Derived targets are not accepted by
+#'   this direct-parameter diagnostic.
 #' @param level Confidence level. Default `0.95`.
 #' @param ystep Profile grid spacing on the deviance scale, passed
 #'   to [TMB::tmbprofile()]. Default `0.5`.
@@ -95,7 +93,8 @@
 #'       Wald bounds (dashed vertical lines for comparison). `NULL`
 #'       if `ggplot2` is not installed.}
 #'     \item{`$diagnostics`}{Named character vector flagging any of:
-#'       `"quadratic"` (well-behaved), `"asymmetric"` (skewed,
+#'       `"no_heuristic_warning"` (none of this helper's shape warnings fired;
+#'       this does not prove a quadratic profile), `"asymmetric"` (skewed,
 #'       Wald-vs-profile disagrees), `"flat_at_mle"`,
 #'       `"hits_lower_bound"`, `"hits_upper_bound"`,
 #'       `"no_lower_crossing"`, `"no_upper_crossing"`,
@@ -105,12 +104,9 @@
 #'
 #' @seealso [confint.gllvmTMB_multi()] (the corresponding CI
 #'   extractor; same `parm` vocabulary), [profile_targets()] (the
-#'   target inventory), [tmbprofile_wrapper()] (the lower-level
-#'   profile API),
-#'   the
-#'   [troubleshooting-profile](https://itchyshin.github.io/gllvmTMB/articles/troubleshooting-profile.html)
-#'   vignette (the four failure-mode catalogue this function
-#'   helps diagnose).
+#'   target inventory), [tmbprofile_wrapper()] (the lower-level profile API),
+#'   and the
+#'   [profile-likelihood article](https://itchyshin.github.io/gllvmTMB/articles/profile-likelihood-ci.html).
 #'
 #' @examples
 #' \dontrun{
@@ -150,12 +146,6 @@ confint_inspect <- function(
     cli::cli_abort(c(
       "No matching profile target found for {.val {parm}}.",
       "i" = "See {.code profile_targets(fit)} for the full inventory."
-    ))
-  }
-  if (row$target_type == "derived") {
-    cli::cli_abort(c(
-      "{.fn confint_inspect} does not handle derived targets ({.val {parm}}).",
-      "i" = "Use the matching {.fn extract_*} extractor with {.code method = \"profile\"} (see {.code profile_targets(fit)} {.field profile_note} column)."
     ))
   }
   if (!row$profile_ready) {
@@ -356,9 +346,9 @@ confint_inspect <- function(
   if (max(dev_drop, na.rm = TRUE) < 1) {
     flags <- c(flags, "flat_at_mle")
   }
-  ## If no flags fire, the profile is well-behaved.
+  ## Absence of these heuristic warnings is not proof of a quadratic profile.
   if (length(flags) == 0L) {
-    flags <- "quadratic"
+    flags <- "no_heuristic_warning"
   }
 
   ## ---- Build the ggplot (optional) -----------------------------------
@@ -405,9 +395,9 @@ confint_inspect <- function(
 
   p <- ggplot2::ggplot(
     curve,
-    ggplot2::aes_string(
-      x = "parm_value_natural",
-      y = "deviance_drop"
+    ggplot2::aes(
+      x = .data$parm_value_natural,
+      y = .data$deviance_drop
     )
   ) +
     ggplot2::geom_line() +
@@ -496,11 +486,13 @@ print.gllvmTMB_confint_inspect <- function(x, ...) {
   cli::cli_h2("Estimate + CI")
   print(x$bounds)
   cli::cli_h2("Diagnostics")
-  if (identical(x$diagnostics, "quadratic")) {
-    cli::cli_alert_success("Profile is well-behaved (quadratic / symmetric).")
+  if (identical(x$diagnostics, "no_heuristic_warning")) {
+    cli::cli_alert_info(
+      "No heuristic shape warning fired. Inspect the curve directly; this does not prove quadratic shape or calibrated coverage."
+    )
   } else {
     cli::cli_alert_warning(
-      "Profile shape flags: {.val {x$diagnostics}}. See {.run vignette(\"troubleshooting-profile\", package = \"gllvmTMB\")} for the failure-mode catalogue."
+      "Profile shape flags: {.val {x$diagnostics}}. See the {.emph Troubleshoot the interval that came back} section of the profile-likelihood article for the decision path."
     )
   }
   if (!is.null(x$plot)) {

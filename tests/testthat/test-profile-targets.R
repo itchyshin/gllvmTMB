@@ -3,9 +3,9 @@
 ##
 ## Mirrors drmTMB's controlled-vocabulary discipline (per the
 ## 2026-05-15 cross-team scan in PR #109): every row in the
-## inventory must have a `target_type` in {direct, derived}, a
+## inventory must have a direct `target_type`, a
 ## `profile_note` in the allowed set, and a `transformation` in the
-## allowed set. Derived rows can never be profile-ready.
+## allowed set. Withdrawn nonlinear derived routes are not inventoried.
 
 make_tiny_fit_for_pt <- function(seed = 1L) {
   set.seed(seed)
@@ -51,15 +51,13 @@ test_that("profile_targets() returns the documented columns", {
   expect_true(all(expected_cols %in% colnames(pt)))
 })
 
-test_that("profile_targets() rows split into direct and derived", {
+test_that("profile_targets() inventories direct targets only", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   pt <- gllvmTMB::profile_targets(fit)
   expect_true(any(pt$target_type == "direct"))
-  expect_true(any(pt$target_type == "derived"))
-  ## All derived rows are not profile-ready (drmTMB invariant).
-  expect_true(all(!pt$profile_ready[pt$target_type == "derived"]))
+  expect_false(any(pt$target_type == "derived"))
 })
 
 test_that("profile_targets() direct rows for this fixture include b_fix, sigma_eps, sd_B, Lambda_B_packed", {
@@ -74,16 +72,14 @@ test_that("profile_targets() direct rows for this fixture include b_fix, sigma_e
   expect_true(any(grepl("^Lambda_B_packed\\[", direct_parms)))
 })
 
-test_that("profile_targets() derived rows include the four canonical extractors", {
+test_that("profile_targets() excludes withdrawn derived profile routes", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   pt <- gllvmTMB::profile_targets(fit)
-  derived_parms <- pt$parm[pt$target_type == "derived"]
-  expect_true("communality" %in% derived_parms)
-  expect_true("repeatability" %in% derived_parms)
-  expect_true("phylo_signal_H2" %in% derived_parms)
-  expect_true("trait_correlation" %in% derived_parms)
+  expect_false(any(c(
+    "communality", "repeatability", "phylo_signal_H2", "trait_correlation"
+  ) %in% pt$parm))
 })
 
 test_that("profile_targets(ready_only = TRUE) filters out non-ready rows", {
@@ -106,13 +102,11 @@ test_that("profile_targets() controlled vocabularies are respected (no internal 
   expect_no_error({
     pt <- gllvmTMB::profile_targets(fit)
   })
-  ok_target_type <- c("direct", "derived")
+  ok_target_type <- "direct"
   ok_profile_note <- c(
     "ready",
     "tmb_object_required",
     "missing_tmb_parameter",
-    "derived_target",
-    "derived_unstructured_correlation",
     "latent_rotation_ambiguous"
   )
   ok_transformation <- c(
@@ -121,9 +115,7 @@ test_that("profile_targets() controlled vocabularies are respected (no internal 
     "logit",
     "logit_p_tweedie",
     "lambda_packed",
-    "ordinal_threshold",
-    "derived_group_scale",
-    "unstructured_corr"
+    "ordinal_threshold"
   )
   expect_true(all(pt$target_type %in% ok_target_type))
   expect_true(all(pt$profile_note %in% ok_profile_note))
@@ -162,13 +154,13 @@ test_that("confint(method = 'profile') accepts profile_targets() labels for dire
   expect_gt(ci["sigma_eps", 1], 0)
 })
 
-test_that("confint() on a derived target errors loudly", {
+test_that("explicit nonlinear profile request errors loudly", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   expect_error(
     stats::confint(fit, parm = "communality", method = "profile"),
-    "derived target"
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
   )
 })
 

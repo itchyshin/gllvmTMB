@@ -52,6 +52,6 @@ the observed-response cells. This equals
 \code{fit$missing_data$counts$likelihood_rows} and the \code{nobs} attribute of
 \code{\link[=logLik]{logLik()}}. Under the default \code{miss_control(response = "drop")} every fitted
 row is observed, so it equals \code{length(fit$tmb_data$y)}; under
-\code{response = "include"} the masked rows are excluded (design 59 sec.4b: the
-original-row counts live in \code{fit$missing_data}, never in \code{nobs()}).
+\code{response = "include"} the masked rows are excluded. Original-row counts
+live in \code{fit$missing_data}, never in \code{nobs()}.
 }

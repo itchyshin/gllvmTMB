@@ -290,7 +290,7 @@ test_that("spatial_latent(unique = TRUE) keeps shared and unique SPDE fields", {
   expect_true(all(abs(off_diag) < 0.99),
               info = "Rank-1 total spatial correlations must not be forced to +/-1 when Psi_spde is active.")
 
-  prof <- suppressMessages(suppressWarnings(gllvmTMB::profile_correlation(
+  prof <- suppressMessages(suppressWarnings(gllvmTMB:::profile_correlation(
     fit,
     tier = "spatial",
     i = 1L,

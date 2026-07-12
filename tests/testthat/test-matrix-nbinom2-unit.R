@@ -102,7 +102,7 @@ skip_unless_healthy_nb2 <- function(fit, cell, row) {
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     testthat::skip(sprintf(
       "%s nbinom2 unit fit did not converge with PD Hessian; %s stays partial pending bigger n / different seed",
       cell, row
@@ -113,9 +113,9 @@ skip_unless_healthy_nb2 <- function(fit, cell, row) {
 
 ## Common per-cell health assertions once the gate has passed.
 expect_nb2_unit_health <- function(fit) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], 5L)  # nbinom2
 }
 

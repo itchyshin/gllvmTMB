@@ -45,11 +45,9 @@ family/link implicit residual variances to non-Gaussian trait diagonals;
 A data frame with one row per requested entry and stable columns:
 \code{estimand}, \code{trait_i}, \code{trait_j}, integer indices \code{i} and \code{j}, \code{level},
 \code{component}, \code{matrix}, \code{estimate}, \code{lower}, \code{upper}, \code{interval_method},
-\code{interval_status}, \code{scale}, \code{validation_row}, \code{diagonal}, and
+\code{interval_status}, \code{scale}, \code{diagonal}, and
 \code{triangle}. Interval columns are \code{NA} with \code{interval_method = "none"}
-because this helper is point-estimate only. \code{validation_row} is an
-internal provenance column and is hidden when the table is printed; it
-remains available via \code{x$validation_row}.
+because this helper is point-estimate only.
 }
 \description{
 \code{extract_Sigma()} returns matrices because that is the most convenient
@@ -60,16 +58,10 @@ plot helpers can work without hand-indexing matrices. It can also turn a
 columns filled in.
 }
 \details{
-Scope boundary: IN, the helper is a report-ready point-estimate table for
-the same covariance and correlation matrices returned by \code{\link[=extract_Sigma]{extract_Sigma()}}
-(covered by the package's Sigma-table validation tests, including the
-underlying extractor and admitted \code{engine = "julia"} unit-tier bridge
-rows), and a bootstrap interval table when \code{fit} is a \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}
-result (also covered by the package's Sigma-table validation tests).
-PARTIAL, \code{gllvmTMB_julia} objects currently expose only the ordinary unit tier and no
-interval-bearing table rows. Bootstrap intervals cover the summaries already
-present in the bootstrap object and do not add profile or Wald intervals.
-PLANNED, richer interval joins remain future plotting infrastructure.
+The helper reshapes the same covariance and correlation matrices returned by
+\code{\link[=extract_Sigma]{extract_Sigma()}}. A \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} object can supply interval columns.
+Julia bridge fits currently expose only point estimates for the ordinary unit
+tier. The helper does not create profile or Wald intervals.
 
 The table is a point-estimate view over \code{\link[=extract_Sigma]{extract_Sigma()}}. It does not
 compute confidence intervals from a fitted model directly. Use

@@ -60,9 +60,9 @@ skip_if_not_nb2_spatial_deps <- function() {
 }
 
 expect_nb2_spatial_fit_health <- function(fit) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   ## Sanity: this really is the nbinom2 family (family_id 5) and the
   ## overdispersion phi is reported and finite (mean-dependent family => no
   ## tight band here).
@@ -242,7 +242,7 @@ test_that("nbinom2: spatial_latent(d=1) + spatial_unique paired fits; pd_hessian
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("nbinom2 spatial_latent + spatial_unique did not converge with PD Hessian; SPA-02(nbinom2) stays partial pending bigger n / different seed")
   }
 
@@ -296,7 +296,7 @@ test_that("nbinom2: spatial_scalar(0 + trait | site) fits; tau tied; tau_spde pr
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("nbinom2 spatial_scalar did not converge with PD Hessian; SPA-03(nbinom2) stays partial pending bigger n / different seed")
   }
 
@@ -372,7 +372,7 @@ test_that("nbinom2: spatial_indep(0 + trait | site) fits; pd_hessian TRUE", {
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("nbinom2 spatial_indep did not converge with PD Hessian; SPA-04(nbinom2) stays partial pending bigger n / different seed")
   }
 
@@ -424,7 +424,7 @@ test_that("nbinom2: spatial_dep(0 + trait | site) fits; pd_hessian TRUE; CI smok
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("nbinom2 spatial_dep did not converge with PD Hessian (BORDERLINE per Phase B0 memo 3.2); SPA-04(nbinom2) stays partial pending bigger n / different seed")
   }
 

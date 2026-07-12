@@ -119,11 +119,11 @@ test_that("Gamma(log) joint depth: intercepts + CV + full between-unit Sigma (de
     skip(paste0("Gamma depth fit errored: ", conditionMessage(fit),
                 "; board #340 stays partial for gamma"))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("Gamma depth fit non-convergent / non-PD; board #340 stays partial")
   }
 
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   expect_equal(fit$tmb_data$family_id_vec[1L], 4L)
   expect_true(isTRUE(fit$use$dep_B))
 

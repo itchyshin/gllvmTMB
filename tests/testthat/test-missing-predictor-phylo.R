@@ -254,6 +254,9 @@ test_that("phylo mi(): one latent per missing SPECIES (not per long row)", {
   par <- fit$tmb_obj$env$parList(fit$opt$par)
   expect_length(par$x_mis, length(miss_species))
   expect_identical(reg$model_row, miss_species)
+  imp <- imputed(fit)
+  expect_identical(imp$level, rep("species", length(miss_species)))
+  expect_identical(imp$level_id, paste0("sp", miss_species))
 
   ## The covariate phylo field g_x lives on the augmented phylogeny
   ## (n_aug_phy = 2*n_tips - 1 rows >= n_species), one column.

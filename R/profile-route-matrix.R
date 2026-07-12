@@ -549,14 +549,14 @@
       "Sigma", "phy", "profile", "partial",
       "direct_phy_diag_or_derived_total",
       "CI-05;CI-07;PHY-05",
-      "Phylogenetic direct diagonal and selected derived routes exist.",
+      "Phylogenetic direct diagonal and the separately documented phylogenetic-signal route exist.",
       "Full total-covariance profile calibration is not complete."
     ),
     .profile_route_row(
       "Sigma", "spatial", "profile", "partial",
-      "scale_profile_and_selected_rho_smoke",
+      "direct_spatial_scale_profile",
       "CI-07;SPA-02;SPA-04",
-      "Spatial scale and selected correlation profile routes exist.",
+      "The direct spatial scale parameter can be profiled.",
       "Total spatial covariance profile still needs a heavy gate."
     ),
     .profile_route_row(
@@ -665,11 +665,11 @@
       "Add named-kernel rho token parsing and direct tests before exposing profile intervals."
     ),
     .profile_route_row(
-      "repeatability", "unit", "profile", "partial",
-      "lincomb_diag_only:profile_ci_repeatability",
+      "repeatability", "unit", "profile", "blocked",
+      "withheld_diag_only_ratio_not_full_repeatability",
       "CI-04",
-      "The direct profile route covers the diag-only ratio, not the full low-rank total Sigma ratio.",
-      "Full repeatability profile needs target-explicit total Sigma constraints."
+      "The former direct contrast estimated only the diagonal-companion ratio and omitted shared latent variance.",
+      "Implement a target-explicit full-Sigma repeatability constraint before restoring a profile route."
     ),
     .profile_route_row(
       "phylo_signal", "phy", "profile", "partial",
@@ -777,6 +777,26 @@
   }
 
   out <- do.call(rbind, rows)
+  ## Release boundary (2026-07-11): the nonlinear quadratic-penalty driver did
+  ## not enforce a sufficiently tight constraint or expose a complete
+  ## constrained-optimizer status ledger. Keep the historical row inventory,
+  ## but normalize every affected public route to blocked until an exact
+  ## constraint solver and calibration gate replace the prototype.
+  nonlinear <- out$estimand %in% c("communality", "rho", "proportion") &
+    out$method == "profile" &
+    !out$status %in% c("point_only", "not_applicable")
+  out$status[nonlinear] <- "blocked"
+  out$route[nonlinear] <- "withheld_nonlinear_penalty_profile"
+  out$validation_row[nonlinear] <- ""
+  out$claim[nonlinear] <- paste(
+    "The former penalty-profile prototype remains internal;",
+    "the public extractor and confint routes stop with an explanation."
+  )
+  out$next_gate[nonlinear] <- paste(
+    "Implement an exact or demonstrably tight constraint, require usable",
+    "constrained optimisation, expose failures, and establish target-specific",
+    "coverage before restoring the route."
+  )
   .validate_profile_route_matrix(out)
   out
 }

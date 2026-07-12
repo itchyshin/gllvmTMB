@@ -34,14 +34,12 @@
 
 #' @keywords internal
 #' @noRd
-## t-based profile cutoff (D-12 / drmTMB#680; maintainer directive 2026-07-06:
-## "if you are doing profiling, consider t-based"). Replaces the chi-square
-## reference qchisq(level, 1) with its small-sample t analogue
-## qt((1+level)/2, df)^2, so the profile-deviance threshold widens for finite
-## df and converges to the chi-square cutoff as df -> Inf. Returned on the
-## (L_max - L_constrained) scale (divided by 2), matching .qchisq_threshold and
-## the .profile_ci_via_refit `crit` contract. df is per-target (caller supplies
-## e.g. a between-unit residual df); adaptive/per-target df is a future refinement.
+## Optional t-based sensitivity cutoff. This substitutes
+## qt((1 + level) / 2, df)^2 for the standard chi-square reference, widening the
+## profile-deviance threshold for finite df and approaching chi-square as
+## df -> Inf. It is not a generally calibrated small-sample profile-likelihood
+## correction for gllvmTMB. Callers must require an explicit, scientifically
+## justified df and label the result as a sensitivity analysis.
 .qt_threshold <- function(level, df) {
   if (!is.numeric(level) || length(level) != 1L || level <= 0 || level >= 1) {
     cli::cli_abort(
@@ -176,9 +174,12 @@
 #' from the joint MLE — typically order-of-magnitude faster than refitting
 #' under a constraint in pure R.
 #'
-#' For non-linear derived quantities (ICC, communality, repeatability,
-#' correlations, phylogenetic signal H^2), see the helpers in
-#' `R/profile-derived.R`.
+#' This wrapper profiles direct TMB parameters and fixed linear combinations.
+#' Nonlinear targets such as communality, full-covariance repeatability, and
+#' correlations are not routed through this function. The phylogenetic-signal
+#' extractor documents its narrower two-component profile route; other
+#' nonlinear extractors state explicitly when only Wald, bootstrap, or point
+#' estimates are available.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param name Either:

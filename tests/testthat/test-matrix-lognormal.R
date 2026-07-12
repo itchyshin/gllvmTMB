@@ -104,7 +104,7 @@ skip_unless_healthy_lognormal <- function(fit, cell) {
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     testthat::skip(sprintf(
       "%s lognormal unit fit did not converge with PD Hessian; FAM-11 stays partial",
       cell
@@ -117,9 +117,9 @@ skip_unless_healthy_lognormal <- function(fit, cell) {
 ## free log-scale residual SD as `sigma_eps`; both convergence and a PD Hessian
 ## are required, and the log-scale residual SD must be finite and positive.
 expect_lognormal_unit_health <- function(fit, fx) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], 3L)  # lognormal
 
   sigma_eps_hat <- as.numeric(fit$report$sigma_eps)

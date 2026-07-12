@@ -996,8 +996,7 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
   ## S2 (GJL-GATE-CORRELATION-INTERVALS, JUL-01A): extract_correlations() no
   ## longer aborts for a gllvmTMB_julia fit. It returns point-only rows that
   ## are a superset of the normal-fit schema -- the base columns plus the
-  ## point-only convention columns interval_status / validation_row, mirroring
-  ## extract_Sigma_table(measure = "correlation").
+  ## point-only interval_status column.
   cors <- suppressMessages(extract_correlations(fit, tier = "unit"))
   expect_s3_class(cors, "data.frame")
   expect_true(all(
@@ -1027,12 +1026,12 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
       match(cors$trait_j, colnames(sig_R))
     )]
   )
-  ## interval columns are NA; status column == "none"; JUL-01A label
+  ## interval columns are NA and status is explicitly point-only
   expect_true(all(is.na(cors$lower)))
   expect_true(all(is.na(cors$upper)))
   expect_equal(unique(cors$method), "none")
   expect_equal(unique(cors$interval_status), "none")
-  expect_equal(unique(cors$validation_row), "JUL-01A")
+  expect_false("validation_row" %in% names(cors))
   ## tier = "all" routes the same unit tier (no abort)
   cors_all <- suppressMessages(extract_correlations(fit, tier = "all"))
   expect_equal(nrow(cors_all), choose(fit$n_traits, 2L))
@@ -2039,17 +2038,20 @@ test_that("gllvmTMB fit-time Julia CI controls route through the bridge", {
     }
   )
 
-  fit <- gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
-    data = df,
-    trait = "trait",
-    unit = "unit",
-    family = poisson(),
-    engine = "julia",
-    ci_method = "profile",
-    ci_level = 0.8,
-    ci_nboot = 9L,
-    ci_seed = 88L
+  expect_warning(
+    fit <- gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = poisson(),
+      engine = "julia",
+      ci_method = "profile",
+      ci_level = 0.8,
+      ci_nboot = 9L,
+      ci_seed = 88L
+    ),
+    "does not support the trait-specific Psi"
   )
 
   expect_s3_class(fit, "gllvmTMB_julia")

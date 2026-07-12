@@ -109,10 +109,9 @@
 ##     variables. Psychological Methods 11, 54-71.
 ##     doi:10.1037/1082-989X.11.1.54
 ##
-## Returns a numeric vector of length n_traits, one entry per trait. If a
-## trait carries rows from multiple families (rare; row-level mixing would
-## be unusual within a single trait), the modal family is used and a warning
-## fires.
+## Returns a numeric vector of length n_traits, one entry per trait. A trait
+## with multiple families or links is not reduced to a modal shortcut: its
+## residual variance is returned as NA with a warning.
 link_residual_per_trait <- function(fit) {
   trait_names <- levels(fit$data[[fit$trait_col]])
   Tn <- length(trait_names)
@@ -128,23 +127,22 @@ link_residual_per_trait <- function(fit) {
   for (t in seq_len(Tn)) {
     rows_t <- which(tids_obs == t)
     if (length(rows_t) == 0L) {
-      out[t] <- 0
+      out[t] <- NA_real_
       next
     }
     fams_t <- fids[rows_t]
     fids_uniq <- unique(fams_t)
     if (length(fids_uniq) > 1L) {
-      tab <- tabulate(match(fams_t, fids_uniq))
-      modal <- fids_uniq[which.max(tab)]
       warning(
         sprintf(
-          "Trait '%s' has rows from multiple families (%s); using the modal family for the link-residual.",
+          "Trait '%s' has rows from multiple families (%s); no single link-residual variance is defined.",
           trait_names[t],
           paste(fids_uniq, collapse = ", ")
         ),
         call. = FALSE
       )
-      fid <- modal
+      out[t] <- NA_real_
+      next
     } else {
       fid <- fids_uniq
     }
@@ -155,16 +153,15 @@ link_residual_per_trait <- function(fit) {
       # binomial
       lid_t <- unique(lids[rows_t])
       if (length(lid_t) > 1L) {
-        ## Mixed binomial links inside a single trait -- pick the modal one.
-        tab <- tabulate(match(lids[rows_t], lid_t))
-        lid_t <- lid_t[which.max(tab)]
         warning(
           sprintf(
-            "Trait '%s' has multiple binomial links; using the modal one.",
+            "Trait '%s' has multiple binomial links; no single link-residual variance is defined.",
             trait_names[t]
           ),
           call. = FALSE
         )
+        out[t] <- NA_real_
+        next
       }
       out[t] <- switch(
         as.character(lid_t),
@@ -179,10 +176,10 @@ link_residual_per_trait <- function(fit) {
       ## Use exp(eta) averaged across the trait's rows as the per-trait
       ## fitted mean. (Nakagawa & Schielzeth 2010, Table 2.)
       if (is.null(eta) || length(eta) < max(rows_t)) {
-        out[t] <- 0
+        out[t] <- NA_real_
       } else {
         mu_t <- mean(exp(eta[rows_t]))
-        out[t] <- if (is.finite(mu_t) && mu_t > 0) log1p(1 / mu_t) else 0
+        out[t] <- if (is.finite(mu_t) && mu_t > 0) log1p(1 / mu_t) else NA_real_
       }
     } else if (fid == 3L) {
       # lognormal, log link
@@ -213,13 +210,13 @@ link_residual_per_trait <- function(fit) {
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
       p_t <- if (length(p_vec) >= t) p_vec[t] else p_vec[1]
       if (is.null(eta) || length(eta) < max(rows_t)) {
-        out[t] <- 0
+        out[t] <- NA_real_
       } else {
         mu_t <- mean(exp(eta[rows_t]))
         out[t] <- if (is.finite(mu_t) && mu_t > 0) {
           log1p(phi_t * mu_t^(p_t - 2))
         } else {
-          0
+          NA_real_
         }
       }
     } else if (fid == 7L) {
@@ -230,7 +227,7 @@ link_residual_per_trait <- function(fit) {
       phi_vec <- as.numeric(fit$report$phi_beta %||% rep(1, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
       if (is.null(eta) || length(eta) < max(rows_t)) {
-        out[t] <- 0
+        out[t] <- NA_real_
       } else {
         mu_t <- mean(stats::plogis(eta[rows_t]))
         ## Clamp mu_t away from 0 and 1 before forming a_t, b_t. Without
@@ -255,7 +252,7 @@ link_residual_per_trait <- function(fit) {
       phi_vec <- as.numeric(fit$report$phi_betabinom %||% rep(1, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
       if (is.null(eta) || length(eta) < max(rows_t)) {
-        out[t] <- pi^2 / 3
+        out[t] <- NA_real_
       } else {
         mu_t <- mean(stats::plogis(eta[rows_t]))
         ## Same mu_t clamp as the Beta branch above; without it a
@@ -273,8 +270,7 @@ link_residual_per_trait <- function(fit) {
       ## Variance of a Student-t with scale sigma and df > 2 is
       ## sigma^2 * df / (df - 2). For df <= 2 the variance is undefined
       ## (Lange et al. 1989 JASA 84:881-896; Pinheiro et al. 2001 CSDA
-      ## 38:367-386); fall back to sigma^2 with a warning so downstream
-      ## extractors still produce a finite Sigma.
+      ## 38:367-386). Return NA rather than fabricating a finite variance.
       sigma_vec <- as.numeric(fit$report$sigma_student %||% rep(1, Tn))
       df_vec <- as.numeric(fit$report$df_student %||% rep(Inf, Tn))
       sigma_t <- if (length(sigma_vec) >= t) sigma_vec[t] else sigma_vec[1]
@@ -284,14 +280,13 @@ link_residual_per_trait <- function(fit) {
       } else {
         warning(
           sprintf(
-            "Student-t df = %.3g for trait '%s' is <= 2; variance is undefined. Using sigma^2 = %.3g as a fallback.",
+            "Student-t df = %.3g for trait '%s' is <= 2; variance is undefined, so link-scale covariance summaries return NA.",
             df_t,
-            trait_names[t],
-            sigma_t^2
+            trait_names[t]
           ),
           call. = FALSE
         )
-        out[t] <- sigma_t^2
+        out[t] <- NA_real_
       }
     } else if (fid == 10L) {
       # truncated_poisson, log link
@@ -299,10 +294,10 @@ link_residual_per_trait <- function(fit) {
       ## The truncation correction is small in regimes with mu_t >= 1
       ## (Cameron & Trivedi 2013, Regression Analysis of Count Data, ch. 4).
       if (is.null(eta) || length(eta) < max(rows_t)) {
-        out[t] <- 0
+        out[t] <- NA_real_
       } else {
         mu_t <- mean(exp(eta[rows_t]))
-        out[t] <- if (is.finite(mu_t) && mu_t > 0) log1p(1 / mu_t) else 0
+        out[t] <- if (is.finite(mu_t) && mu_t > 0) log1p(1 / mu_t) else NA_real_
       }
     } else if (fid == 11L) {
       # truncated_nbinom2, log link
@@ -333,11 +328,11 @@ link_residual_per_trait <- function(fit) {
       # ordinal_probit
       ## Wright/Falconer/Hadfield threshold model: the latent residual is
       ## standard normal by construction (epsilon ~ N(0, 1)), so
-      ## sigma_d^2 = 1 EXACTLY -- no trigamma / delta-method approximation
-      ## is needed. This is the central selling point of ordinal_probit
-      ## for phylogenetic / threshold-trait analyses: variance components
-      ## fitted on the latent scale are directly comparable to those of a
-      ## continuous trait (Hadfield 2015 MEE 6:706-714; Felsenstein 2005,
+      ## sigma_d^2 = 1 EXACTLY under the probit-liability convention -- no
+      ## trigamma / delta-method approximation is needed. This defines the
+      ## ordinal latent scale; it does not by itself make estimates directly
+      ## comparable with an observed continuous response (Hadfield 2015 MEE
+      ## 6:706-714; Felsenstein 2005,
       ## 2012; Dempster & Lerner 1950; Falconer & Mackay 1996).
       out[t] <- 1
     } else if (fid == 15L) {
@@ -358,18 +353,27 @@ link_residual_per_trait <- function(fit) {
       phi_vec <- as.numeric(fit$report$phi_nbinom1 %||% rep(1, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
       if (is.null(eta) || length(eta) < max(rows_t)) {
-        out[t] <- 0
+        out[t] <- NA_real_
       } else {
         mu_t <- mean(exp(eta[rows_t]))
         out[t] <- if (is.finite(mu_t) && mu_t > 0) {
           log1p((1 + phi_t) / mu_t)
         } else {
-          0
+          NA_real_
         }
       }
     } else {
-      out[t] <- 0
+      out[t] <- NA_real_
     }
+  }
+  if (anyNA(out)) {
+    warning(
+      sprintf(
+        "Link-scale residual variance is unavailable for trait(s): %s. Returning NA rather than substituting a finite value.",
+        paste(names(out)[is.na(out)], collapse = ", ")
+      ),
+      call. = FALSE
+    )
   }
   out
 }
@@ -389,11 +393,10 @@ link_residual_per_trait <- function(fit) {
 #' `latent(0 + trait | unit, d = K, unique = FALSE)`, the engine fits only the
 #' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component. Calling
 #' `extract_Sigma(fit, level, part = "total")` then returns just the shared
-#' component. This is useful for no-residual / rotation-invariant checks, but it
-#' **understates the diagonal** of the usual covariance decomposition. Any
-#' correlations computed from this incomplete
-#' \eqn{\hat{\boldsymbol\Sigma}} are systematically inflated (the same numerator
-#' with a too-small denominator).
+#' component. This is useful for an intentionally loadings-only target. It should
+#' not be described as a full latent-liability covariance unless the relevant
+#' family/link residual is also included. Whether the diagonal is incomplete
+#' depends on the estimand and response family.
 #'
 #' For Gaussian / lognormal / Gamma fits this function emits an advisory note
 #' when a reduced-rank tier has no Psi component. Use the ordinary
@@ -425,8 +428,10 @@ link_residual_per_trait <- function(fit) {
 #' ## Caveat: `"shared"` vs `"unique"` partition is only weakly identified
 #'
 #' The total \eqn{\boldsymbol\Sigma_\text{tier} = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
-#' is rotation-invariant and well-identified, so `part = "total"` is
-#' well-identified. But the *split* between \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}
+#' is rotation-invariant, so `part = "total"` avoids arbitrary loading rotation.
+#' Rotation invariance does not guarantee that the data identify every covariance
+#' entry; fit health, sample design, and uncertainty still matter. The *split*
+#' between \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}
 #' and \eqn{\boldsymbol\Psi} is only weakly identified -- different optimiser
 #' starts can flow trait \eqn{t}'s variance more into the shared
 #' (`"shared"`) or unique (`"unique"`) component, with the same total
@@ -447,10 +452,9 @@ link_residual_per_trait <- function(fit) {
 #'
 #' For non-Gaussian responses each row carries an implicit observation-level
 #' residual on the latent (link) scale. Adding it to the per-trait diagonal
-#' of \eqn{\boldsymbol\Sigma} is what makes cross-family Sigma comparable on
-#' the same (latent) scale: without this adjustment, binomial diagonals are
-#' too small relative to a Gaussian latent of comparable variance and the
-#' implied cross-family correlations are inflated.
+#' of \eqn{\boldsymbol\Sigma} defines one family-specific latent-scale convention.
+#' It can make the denominator explicit, but it does not make different response
+#' families directly commensurate without additional scientific assumptions.
 #'
 #' Per-family formulas (Nakagawa & Schielzeth 2010; Nakagawa, Johnson &
 #' Schielzeth 2017):
@@ -469,8 +473,8 @@ link_residual_per_trait <- function(fit) {
 #'   `betabinomial(link = "logit")`    \tab \eqn{\sigma^2_d = \pi^2/3 + \psi'(\hat\mu_t \hat\phi) + \psi'((1 - \hat\mu_t)\hat\phi)}
 #' }
 #'
-#' For mixed-family fits the residual is computed *per trait* from the
-#' family of the rows belonging to that trait, then added to the diagonal
+#' For mixed-family fits the residual is computed *per trait* when that trait has
+#' one unambiguous family/link, then added to the diagonal
 #' of \eqn{\boldsymbol\Sigma} entry-by-entry. The default
 #' `link_residual = "auto"` applies this; `"none"` returns the fitted model
 #' covariance without link-residual additions
@@ -490,7 +494,7 @@ link_residual_per_trait <- function(fit) {
 #' \eqn{\boldsymbol\Sigma_\text{phy}} from `phylo_latent()`. If a future
 #' release adds 3+ latent tiers, `level = "<colname>"` will dispatch to the
 #' corresponding tier without API change. For now, custom strings error
-#' with a clear roadmap message.
+#' with a clear unsupported-level message.
 #'
 #' @param fit A fit returned by [gllvmTMB()]. Admitted `engine = "julia"`
 #'   bridge fits expose the ordinary unit tier only: `link_residual = "none"`
@@ -509,7 +513,7 @@ link_residual_per_trait <- function(fit) {
 #' @param link_residual For non-Gaussian fits. `"auto"` (default) adds a
 #'   per-trait link-specific implicit residual variance to the diagonal of
 #'   `Sigma`, giving the marginal latent-scale interpretation; in mixed-
-#'   family fits each trait gets the residual implied by *its* family/link
+#'   family fits each unambiguous trait gets the residual implied by its family/link
 #'   (see "Family-aware link residuals" below for the full table).
 #'   `"none"` returns the fitted model covariance without link-residual additions
 #'   (\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi} where a
@@ -529,8 +533,8 @@ link_residual_per_trait <- function(fit) {
 #'   For `part = "unique"`: a list with `s` (length-T named numeric
 #'   vector of unique variances), `level`, `part`, `note`.
 #'
-#'   For a `phylo_dep(1 + x1 + ... + xs | species)` fit (Design 56 Sec. 9.5c,
-#'   s >= 1), call with `level = "phy"`: the result is the single full
+#'   For a `phylo_dep(1 + x1 + ... + xs | species)` fit with one or more
+#'   slopes, call with `level = "phy"`: the result is the single full
 #'   unstructured `(1+s)T x (1+s)T` covariance over the trait-stacked
 #'   (intercept, slope_1, ..., slope_s) random-effect columns -- a list with
 #'   `Sigma` and `R` carrying INTERLEAVED dimnames (per trait:
@@ -1097,7 +1101,10 @@ extract_Sigma <- function(
       S <- as.numeric(fit$report$sd_phy_diag)^2
     } else {
       S <- NULL
-      if (!isTRUE(fit$use$phylo_unique)) {
+      if (
+        !isTRUE(fit$use$phylo_unique) &&
+          !isTRUE(fit$use$phylo_dep)
+      ) {
         notes <- c(
           notes,
           "Phylogenetic tier is currently latent-only (Lambda_phy Lambda_phy^T). To add a diagonal Psi component, refit with `phylo_latent(species, d = K, unique = TRUE)`."
@@ -1403,8 +1410,8 @@ extract_Sigma <- function(
 #' @description
 #' `extract_Gamma()` slices the shared covariance matrix returned by
 #' [extract_Sigma()] to give the row-lineage by column-lineage block
-#' `Gamma_shape = Lambda_row Lambda_col^T`. In the Design 65 coevolution
-#' path, `level` is the named `kernel_*()` tier, `row_traits` are the host
+#' `Gamma_shape = Lambda_row Lambda_col^T`. In a fitted cross-lineage kernel
+#' model, `level` is the named `kernel_*()` tier, `row_traits` are the host
 #' traits, and `col_traits` are the partner traits. This
 #' is a point-estimate extractor for the shared covariance block of a
 #' fitted dense-kernel model, covered by the package's validation tests at the

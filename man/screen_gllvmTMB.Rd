@@ -47,9 +47,9 @@ report-ready tables.
 response and formula conditions before fitting a stacked-trait GLLVM.
 The screen is advisory: it does not fit the model, remove traits, choose
 a latent rank, prove identifiability, or guarantee convergence.
-Binary/binomial screening is implemented, while non-binary modules,
-optional comparator checks, and high-dimensional benchmarks remain
-planned (see the validation-debt register).
+Binary/binomial screening is implemented. Non-binary modules, optional
+comparator checks, and high-dimensional benchmarks are not currently part
+of this function.
 }
 \details{
 The first implemented module covers binomial traits. It distinguishes

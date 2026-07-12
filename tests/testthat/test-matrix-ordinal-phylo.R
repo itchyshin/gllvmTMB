@@ -108,9 +108,9 @@ make_ordinal_phylo_fixture <- function(n_sp = 50L,
 }
 
 expect_ordinal_phylo_fit_health <- function(fit) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   ## Confirm the response really is ordinal_probit (family_id 14) -- guards
   ## against a silent family fallthrough making the "ordinal" claim hollow.
   testthat::expect_equal(fit$tmb_data$family_id_vec[1], 14L)
@@ -192,7 +192,7 @@ test_that("phylo_latent + phylo_unique paired fits on ordinal_probit; pd_hessian
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_latent + phylo_unique ordinal_probit fit did not converge with PD Hessian; PHY-04/05 stays partial pending bigger n / different seed")
   }
 
@@ -229,7 +229,7 @@ test_that("phylo_scalar fits on ordinal_probit; sigma^2_phy recovers within 2.5x
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_scalar ordinal_probit fit did not converge with PD Hessian; PHY-04 stays partial pending bigger n / different seed")
   }
 
@@ -306,7 +306,7 @@ test_that("phylo_indep(0 + trait | species) fits on ordinal_probit; pd_hessian T
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_indep ordinal_probit fit did not converge with PD Hessian; PHY-05 stays partial pending bigger n / different seed")
   }
 
@@ -342,7 +342,7 @@ test_that("phylo_dep(0 + trait | species) fits on ordinal_probit; CI smoke + phy
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_dep ordinal_probit fit did not converge with PD Hessian; PHY-05 stays partial pending bigger n / different seed")
   }
 

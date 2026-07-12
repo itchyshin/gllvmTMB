@@ -137,9 +137,9 @@ fit_slope_poisson <- function(fx) {
 }
 
 expect_slope_poisson_fit_health <- function(fit) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
 }
 
 ## Transformed-Wald CI on a scalar log-SD / atanh-correlation entry of the
@@ -179,7 +179,7 @@ test_that("phylo_unique(1 + x | sp) x poisson: converges + PD Hessian; recovers 
       if (inherits(fit, "error")) conditionMessage(fit) else "wrong class"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_unique(1 + x | sp) poisson fit did not converge with PD Hessian; RE-02 (poisson) stays partial pending bigger n / different seed")
   }
 
@@ -236,7 +236,7 @@ test_that("phylo_unique(1 + x | sp) x poisson: augmented recovery is seed-stable
   fx <- make_slope_poisson_fixture()
 
   fit1 <- tryCatch(fit_slope_poisson(fx), error = function(e) e)
-  if (!.fit_converged(fit1)) {
+  if (!.fit_stationary_for_recovery_test(fit1)) {
     skip("phylo_unique(1 + x | sp) poisson fit did not converge with PD Hessian; RE-02 (poisson) seed-stability stays partial")
   }
   fit2 <- fit_slope_poisson(fx)
@@ -255,7 +255,7 @@ test_that("phylo_unique(1 + x | sp) x poisson: CI smoke -- a finite bound on the
   fx <- make_slope_poisson_fixture()
 
   fit <- tryCatch(fit_slope_poisson(fx), error = function(e) e)
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_unique(1 + x | sp) poisson fit did not converge with PD Hessian; RE-02 (poisson) CI smoke stays partial")
   }
 

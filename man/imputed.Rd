@@ -25,35 +25,40 @@ observed predictor values labelled as observed.}
 a successful \code{\link[TMB:sdreport]{TMB::sdreport()}} result.}
 }
 \value{
-A data frame with \code{variable}, \code{original_row}, \code{model_row},
-\code{observed}, \code{estimate}, \code{std_error}, \code{source}, and \code{uncertainty_status}.
+A data frame with \code{variable}, \code{level}, \code{level_id}, \code{original_row},
+\code{model_row}, \code{observed}, \code{estimate}, \code{std_error}, \code{source}, and
+\code{uncertainty_status}. \code{level_id} is character so the same column can hold
+unit, group, or phylogenetic-tip labels.
 }
 \description{
 For a \code{\link[=gllvmTMB]{gllvmTMB()}} fit with a modelled missing predictor (\code{mi(x)} plus
 \code{missing = miss_control(predictor = "model")}), \code{imputed()} returns a fitted
 summary of each missing predictor value. For a \strong{continuous Gaussian}
 predictor (\code{impute_model(x ~ z)}), the \code{estimate} is the conditional mode
-(EBLUP) with a conditional standard error from the joint Hessian. For a
-\strong{binary} predictor (\code{impute_model(x ~ z, family = binomial())}), the
+with a local Gaussian/Laplace conditional standard error from the joint
+Hessian. For a \strong{binary} predictor
+(\code{impute_model(x ~ z, family = binomial())}), the
 \code{estimate} is the conditional probability \code{P(x = 1 | y, z)} from the exact
 two-state marginalisation, \code{std_error} is \code{NA} (the discrete route reports a
 fitted distribution, not a single mode with a Hessian SE), and
 \code{uncertainty_status} is \code{"discrete_no_se"}.
 }
 \details{
-The missing predictor is a unit-level quantity, so \code{imputed()} returns one
-row per missing \strong{unit} value (not one per long-format model row). The
-Gaussian estimates are empirical best linear unbiased predictions, not
-posterior summaries.
+The missing predictor lives at a declared unit or coarser grouping level, so
+\code{imputed()} returns one row per missing level value (not one per long-format
+model row). The
+Gaussian estimates are conditional modes, not conditional means, multiple-
+imputation draws, or posterior summaries.
 
-\strong{Row identifiers.} The \code{original_row} and \code{model_row} columns are
+\strong{Join keys and row identifiers.} \code{level} names the unit or coarser group
+at which the missing predictor lives, and \code{level_id} gives its value. Join
+results back to the data using that pair. The \code{original_row} and \code{model_row}
+columns are
 \strong{latent-level ordinals} (the 1-based index of the missing unit / group in
 the covariate model's latent level), \emph{not} indices into the rows of the data
 frame you passed to \code{\link[=gllvmTMB]{gllvmTMB()}}. They coincide with original data rows only
 in the narrow wide-\code{traits()} case where each unit is a single row; off the
 wide path (long data, or a coarser \code{mi_group()} level) they index the latent
 level, not the data. This differs from \code{\link[=predict_missing]{predict_missing()}}, whose
-\code{original_row} is the pre-mask row index in the original data. Join \code{imputed()}
-output back to your data on the unit / group identifier, not on these
-ordinals.
+\code{original_row} maps to the supplied long- or wide-data row.
 }

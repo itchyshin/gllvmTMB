@@ -2,7 +2,7 @@
 ## Phase K: extract_correlations() is a first-class user-facing extractor
 ## for the implied trait correlations at each level (unit / unit_obs /
 ## phy / spatial),
-## with four CI methods: fisher-z / profile / Wald alias / bootstrap.
+## with point-only output by default and four opt-in CI routes.
 
 .correlation_fisher_n_eff <- function(fit, tk, n_eff) {
   if (!is.null(n_eff)) {
@@ -96,13 +96,14 @@
 ## (validation-register CI-08 / CI-10). Flag the latter as a computed route so
 ## the boundary is visible in-output, consistent with the julia branch's
 ## interval_status = "none".
-.correlation_interval_status <- function(fit) {
-  lr <- tryCatch(as.numeric(link_residual_per_trait(fit)),
-    error = function(e) NA_real_)
-  if (length(lr) == 0L || anyNA(lr)) {
-    return("route-only")
+.correlation_interval_status <- function(method) {
+  if (identical(method, "none")) {
+    return("none")
   }
-  if (all(lr == 0)) "nominal" else "route-only"
+  if (method %in% c("fisher-z", "wald")) {
+    return("heuristic_unvalidated")
+  }
+  "target_specific_uncalibrated"
 }
 
 ## Point-only correlation rows for an engine = 'julia' bridge fit.
@@ -112,9 +113,8 @@
 ## still guards the interval-dependent plot_correlations() path). This helper
 ## returns the same data-frame schema extract_correlations() returns for a
 ## normal fit -- tier / trait_i / trait_j / correlation / lower / upper /
-## method -- with the interval columns set to NA and the point-only convention
-## columns interval_status = "none" and validation_row = "JUL-01A" appended,
-## mirroring extract_Sigma_table(fit, measure = "correlation") exactly. The
+## method -- with the interval columns set to NA and interval_status = "none"
+## appended. The
 ## correlation matrix is read via the documented point-only route
 ## extract_Sigma(fit, level = "unit", part = "total")$R.
 .extract_correlations_julia_point <- function(
@@ -197,7 +197,6 @@
       upper = numeric(0),
       method = character(0),
       interval_status = character(0),
-      validation_row = character(0),
       stringsAsFactors = FALSE
     ))
   }
@@ -211,35 +210,39 @@
     upper = NA_real_,
     method = "none",
     interval_status = "none",
-    validation_row = "JUL-01A",
     stringsAsFactors = FALSE
   )
   rownames(out) <- NULL
   out
 }
 
-#' Cross-trait correlations with confidence intervals
+#' Extract cross-trait correlations
 #'
 #' Returns the implied cross-trait correlations from a fit returned by
 #' [gllvmTMB()] at one or more covariance levels. Use the canonical input
 #' names \code{"unit"}, \code{"unit_obs"}, \code{"phy"}, and
 #' \code{"spatial"}; legacy aliases \code{"B"}, \code{"W"}, and
 #' \code{"spde"} still work. The helper returns 95% (or other-level)
-#' confidence intervals. Four method names are
-#' supported via the \code{method} argument:
+#' point estimates by default. Fisher-z and bootstrap intervals can be
+#' requested explicitly with the \code{method} argument; the former profile
+#' token is retained only to return a clear withdrawal error:
 #'
 #' \itemize{
-#'   \item \code{"fisher-z"} (default): Fisher's z-transform Wald CI.
+#'   \item \code{"none"} (default): point correlations only. No universal
+#'     interval calibration has been established across covariance tiers,
+#'     families, and targets.
+#'   \item \code{"fisher-z"}: Fisher's z-transform heuristic interval.
 #'     Computes \eqn{\hat z = \mathrm{atanh}(\hat\rho)},
 #'     \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}},
 #'     constructs the CI on z, then back-transforms via
 #'     \eqn{\tanh(\cdot)} (so bounds are guaranteed inside \eqn{[-1, 1]}).
-#'     Fast (seconds for any T) and reasonable for most fits.
-#'     See \code{n_eff} for the effective-sample-size override.
-#'   \item \code{"profile"}: profile-likelihood CI via fix-and-refit.
-#'     Most accurate for skewed sampling distributions, but slow
-#'     (\eqn{O(T(T-1)/2)} constrained refits per call). Use for
-#'     final, publication-grade CIs on small T.
+#'     Fast (seconds for any T), but the classical iid-correlation variance is
+#'     not a calibrated mixed-model standard error. Treat these bounds as a
+#'     sensitivity display and see \code{n_eff}.
+#'   \item \code{"profile"}: withdrawn. The nonlinear penalty-profile
+#'     prototype did not yet provide a sufficiently strict constraint and
+#'     constrained-optimizer diagnostic contract. This token stops with an
+#'     explanation rather than returning bounds.
 #'   \item \code{"wald"}: backward-compat alias of \code{"fisher-z"}
 #'     with the same numerics. Emits a one-shot inform pointing at
 #'     the canonical name. Kept for scripts that filter on
@@ -262,9 +265,7 @@
 #'   (`engine = "julia"`) fits expose the ordinary unit tier only and carry no
 #'   correlation-interval payload, so they return point-only rows: the same
 #'   schema with `lower` and `upper` set to `NA`, `method = "none"`,
-#'   `interval_status = "none"`, and an internal provenance marker for the
-#'   Julia bridge tier in `validation_row`, mirroring
-#'   [extract_Sigma_table()] with `measure = "correlation"`. Use
+#'   and `interval_status = "none"`. Use
 #'   `engine = "tmb"` when you need correlation confidence intervals.
 #' @param tier Character vector. Use \code{"all"} (the default) to request
 #'   every level present in the fit. Canonical inputs are \code{"unit"},
@@ -275,26 +276,28 @@
 #'   When supplied, only that pair is returned for each requested tier.
 #'   Default \code{NULL} (all pairs).
 #' @param level Confidence level in (0, 1). Default 0.95.
-#' @param method One of \code{"fisher-z"} (default), \code{"profile"},
+#' @param method One of \code{"none"} (default), \code{"fisher-z"},
 #'   \code{"wald"} (alias of \code{"fisher-z"}), or \code{"bootstrap"}.
-#'   See Details.
+#'   The accepted \code{"profile"} token is withdrawn and stops with an
+#'   explanation. See Details.
 #' @param n_eff Optional positive integer (>= 4): override the
 #'   effective sample size used in Fisher's
 #'   \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}}
-#'   formula. Consulted for \code{method \%in\% c("fisher-z", "wald")}
+#'   formula. This is a user-supplied sensitivity parameter, not an estimated
+#'   effective sample size. It is consulted for
+#'   \code{method \%in\% c("fisher-z", "wald")}
 #'   and for explicit Wald fallback rows when a requested bootstrap tier is
 #'   not yet routed. The default heuristic uses \code{fit$n_sites} for tier
 #'   \code{"B"} (\code{"unit"}), \code{fit$n_site_species} for
 #'   \code{"W"} (\code{"unit_obs"}), \code{fit$n_species} for
-#'   \code{"phy"}, and \code{fit$n_sites} elsewhere -- adequate for
-#'   well-identified Gaussian fits, but can under-cover when latent
-#'   structure or non-Gaussian likelihood reduces the effective N
-#'   below the unit count. If the automatic tier count is missing or below
+#'   \code{"phy"}, and \code{fit$n_sites} elsewhere. These counts are only
+#'   transparent heuristics: grouped, phylogenetic, spatial, latent, and
+#'   non-Gaussian structure can make the iid Fisher variance inappropriate.
+#'   If the automatic tier count is missing or below
 #'   4, Fisher-z rows return point correlations with unavailable interval
 #'   bounds rather than substituting an arbitrary sample size. Set
-#'   \code{n_eff} explicitly for non-trivial structure (e.g.
-#'   \code{n_eff = fit$n_species} for a binomial joint-SDM where species
-#'   mediates the cross-trait correlation).
+#'   \code{n_eff} only when the analysis supplies a defensible target-specific
+#'   rationale, and report that rationale.
 #' @param nsim Number of bootstrap replicates when
 #'   \code{method = "bootstrap"}. Default 500.
 #' @param seed Optional RNG seed for the bootstrap.
@@ -302,7 +305,7 @@
 #'   variance on the diagonal of the implied \eqn{\boldsymbol\Sigma} before
 #'   computing correlations:
 #'   \describe{
-#'     \item{\code{"auto"} (default, Phase 1b 2026-05-15)}{For
+#'     \item{\code{"auto"} (default)}{For
 #'       non-Gaussian fits, add the link-specific implicit residual
 #'       (e.g. \eqn{\pi^2/3} for binomial-logit; \eqn{1} for probit;
 #'       \code{trigamma()} terms for Gamma / NB2 / Beta / etc.) to the
@@ -335,30 +338,21 @@
 #'   \item{\code{correlation}}{Point estimate.}
 #'   \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
 #'   \item{\code{method}}{Method used to compute the CI.}
-#'   \item{\code{interval_status}}{Claim-boundary marker for the intervals:
-#'     \code{"nominal"} for all-Gaussian fits (the nominal fisher-z / profile /
-#'     bootstrap CIs); \code{"route-only"} for non-Gaussian or mixed-family fits,
-#'     whose correlation routes through the per-trait link-residual approximation
-#'     and whose interval coverage is not yet established (see the
-#'     validation-debt register); \code{"none"} for point-only
-#'     \code{engine = "julia"} fits. Lets the reader see the boundary without
-#'     consulting the register.}
+#'   \item{\code{interval_status}}{Claim-boundary marker:
+#'     \code{"none"} for point-only output,
+#'     \code{"heuristic_unvalidated"} for Fisher-z/Wald bounds, and
+#'     \code{"target_specific_uncalibrated"} for bootstrap bounds. The
+#'     bootstrap route computes intervals, but this function does not certify
+#'     their frequentist coverage for the fitted target.}
 #' }
 #'
-#' For an `engine = "julia"` bridge fit the frame additionally carries a
-#' \code{validation_row} column recording an internal provenance marker for
-#' that bridge tier, with \code{lower}/\code{upper}
-#' both \code{NA}, \code{method = "none"}, and \code{interval_status = "none"};
-#' the base columns above are unchanged so the frame remains a superset of the
-#' normal-fit schema.
+#' For an `engine = "julia"` bridge fit, \code{lower}/\code{upper} are
+#' \code{NA}, \code{method = "none"}, and \code{interval_status = "none"}.
 #'
 #' @section Caveats:
 #' \itemize{
-#'   \item For tiers with \code{latent()} only and small ranks, the
-#'     profile path can be unstable due to rotation indeterminacy of the
-#'     factor model (the implied Sigma is identifiable but the split into
-#'     \code{Lambda Lambda^T} and \code{S} is not). Fall back to
-#'     \code{method = "bootstrap"} when the profile fails.
+#'   \item The former nonlinear penalty-profile route is withheld pending an
+#'     exact constraint solver and explicit constrained-fit diagnostics.
 #'   \item Bootstrap uses \code{\link{bootstrap_Sigma}} refits and is the
 #'     practical fallback when point estimates are useful but Hessian- or
 #'     profile-based intervals are unavailable. Inspect bootstrap warnings,
@@ -386,13 +380,11 @@
 #'   trait = "trait",
 #'   unit  = "site"
 #' )
-#' ## Default Fisher-z Wald CIs (fast, bounded inside \eqn{[-1, 1]}).
+#' ## Default: point correlations only.
 #' cors <- extract_correlations(fit, tier = "unit")
-#' ## With n_eff override (e.g. for binomial joint-SDM where species
-#' ## count is the relevant effective N).
-#' cors2 <- extract_correlations(fit, tier = "unit", n_eff = 6L)
-#' ## Profile-likelihood (slow but accurate for skewed sampling).
-#' cors_p <- extract_correlations(fit, tier = "unit", method = "profile")
+#' ## Opt-in Fisher-z sensitivity bounds with an explicitly justified n_eff.
+#' cors2 <- extract_correlations(fit, tier = "unit", method = "fisher-z",
+#'                                n_eff = 60L)
 #' ## Bootstrap (B = 200).
 #' cors_b <- extract_correlations(fit, tier = "unit", method = "bootstrap",
 #'                                nsim = 200, seed = 42)
@@ -402,7 +394,7 @@ extract_correlations <- function(
   tier = "all",
   pair = NULL,
   level = 0.95,
-  method = c("fisher-z", "profile", "wald", "bootstrap"),
+  method = c("none", "fisher-z", "profile", "wald", "bootstrap"),
   n_eff = NULL,
   nsim = 500L,
   seed = NULL,
@@ -426,8 +418,7 @@ extract_correlations <- function(
     ## carry no correlation-interval payload. Rather than abort, return the
     ## same data-frame schema as a normal fit with the interval columns set
     ## to NA and the point-only convention columns
-    ## (interval_status = "none", validation_row = "JUL-01A") mirrored from
-    ## extract_Sigma_table(fit, measure = "correlation"). The correlation
+    ## (interval_status = "none"). The correlation
     ## matrix is read via the documented point-only route
     ## extract_Sigma(fit, level = "unit", part = "total")$R.
     return(.reportable_table(.extract_correlations_julia_point(
@@ -441,6 +432,13 @@ extract_correlations <- function(
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
   method <- match.arg(method)
+  if (identical(method, "profile")) {
+    cli::cli_abort(c(
+      "Nonlinear profile intervals for correlations are not currently available.",
+      "i" = "The penalty-based constrained-refit prototype has been withdrawn pending an exact constraint solver and calibration evidence.",
+      ">" = "Use the point-only default, or request {.code method = \"fisher-z\"} or {.code method = \"bootstrap\"} and report their limitations."
+    ), class = "gllvmTMB_nonlinear_profile_withdrawn")
+  }
 
   ## Phase 1b 2026-05-15: the default of `link_residual` changed from
   ## "none" to "auto". For non-Gaussian fits, the new default adds the
@@ -636,6 +634,22 @@ extract_correlations <- function(
 
     n_pairs <- nrow(pairs)
     out_rows <- vector("list", n_pairs)
+    if (method == "none") {
+      for (m in seq_len(n_pairs)) {
+        i <- pairs[m, 1L]
+        j <- pairs[m, 2L]
+        out_rows[[m]] <- data.frame(
+          tier = tk,
+          trait_i = trait_names[i],
+          trait_j = trait_names[j],
+          correlation = R[i, j],
+          lower = NA_real_,
+          upper = NA_real_,
+          method = "none",
+          stringsAsFactors = FALSE
+        )
+      }
+    }
     if (method == "bootstrap") {
       ## Use the shared bootstrap object and pull out per-tier pair entries.
       lvl_b <- if (tk == "phy") "phy" else tk
@@ -673,42 +687,14 @@ extract_correlations <- function(
         }
       }
     }
-    if (method == "profile") {
-      for (m in seq_len(n_pairs)) {
-        i <- pairs[m, 1L]
-        j <- pairs[m, 2L]
-        ci <- tryCatch(
-          profile_ci_correlation(
-            fit,
-            tier = .canonical_level_name(tk),
-            i = i,
-            j = j,
-            level = level
-          ),
-          error = function(e) {
-            c(estimate = R[i, j], lower = NA_real_, upper = NA_real_)
-          }
-        )
-        out_rows[[m]] <- data.frame(
-          tier = tk,
-          trait_i = trait_names[i],
-          trait_j = trait_names[j],
-          correlation = unname(ci["estimate"]),
-          lower = unname(ci["lower"]),
-          upper = unname(ci["upper"]),
-          method = "profile",
-          stringsAsFactors = FALSE
-        )
-      }
-    }
     if (method == "fisher-z") {
       ## Fisher z-transform Wald CI: z = atanh(rho), SE_z =
       ## 1/sqrt(n_eff - 3), CI on z, tanh-back to bounded [-1, 1] CI on
       ## rho. The classical Fisher 1915 formula; approximate for mixed
       ## models (under-covers when latent structure or non-Gaussian
       ## response reduces effective N). Use n_eff override for
-      ## non-trivial structure; profile or bootstrap for gold standard.
-      ## See dev/design/09-fisher-z-wald-correlations.md.
+      ## non-trivial structure. Neither this heuristic nor bootstrap is a
+      ## universal calibration certificate.
       out_rows <- .correlation_fisher_rows(
         R = R,
         pairs = pairs,
@@ -735,12 +721,7 @@ extract_correlations <- function(
       stringsAsFactors = FALSE
     )
   } else {
-    ## Mark the claim-boundary status of these intervals: "nominal" for
-    ## all-Gaussian fits, "route-only" for non-Gaussian / mixed-family fits whose
-    ## coverage is not yet established (CI-08 / CI-10). Makes the boundary visible
-    ## in-output instead of relying on the register, and removes the
-    ## julia-vs-TMB inconsistency (julia already carries interval_status).
-    out$interval_status <- .correlation_interval_status(fit)
+    out$interval_status <- .correlation_interval_status(out_method_label)
   }
   rownames(out) <- NULL
   .reportable_table(out)

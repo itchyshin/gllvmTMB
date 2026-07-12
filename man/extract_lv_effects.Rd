@@ -25,24 +25,23 @@ coefficients on the latent-axis scale. \code{"trait_effect"} returns
 \item{conf.level}{Confidence level for the interval (Wald, or the
 confidence level passed to the profile / bootstrap CI).}
 
-\item{method}{Interval method for \code{type = "trait_effect"} (\eqn{\mathbf
-B_{\mathrm{lv}}}): \code{"wald"} (default, delta-method inline), \code{"profile"}
-(the featured/hero method -- \code{\link[=profile_ci_lv_effects]{profile_ci_lv_effects()}}, with a small-sample
-t reference), or \code{"bootstrap"} (calibration/fallback --
-\code{\link[=bootstrap_ci_lv_effects]{bootstrap_ci_lv_effects()}}). \code{"profile"}/\code{"bootstrap"} require
-\code{type = "trait_effect"}.}
+\item{method}{Interval method. \code{"wald"} is the only current public route.
+The nonlinear profile and predictor-effect bootstrap prototypes are
+withheld until constrained-fit diagnostics, failed-refit accounting, and
+repeated-sampling coverage evidence are available.}
 
-\item{...}{Passed to \code{\link[=profile_ci_lv_effects]{profile_ci_lv_effects()}} (e.g. \code{trait}, \code{predictor},
-\code{reference}, \code{df}) or \code{\link[=bootstrap_ci_lv_effects]{bootstrap_ci_lv_effects()}} (e.g. \code{n_boot}, \code{seed},
-\code{n_cores}) when \code{method} is \code{"profile"} / \code{"bootstrap"}.}
+\item{...}{Reserved for future interval routes; currently unused.}
 }
 \value{
 A data frame. For \code{type = "axis_effect"}, columns are \code{level},
 \code{axis}, \code{predictor}, \code{estimate}, \code{std.error}, \code{lower}, \code{upper},
-\code{rotation_status}, \code{uncertainty_status}, and \code{validation_row}. For
+\code{rotation_status} and \code{uncertainty_status}. For
 \code{type = "trait_effect"}, columns are \code{level}, \code{trait}, \code{predictor},
-\code{estimate}, \code{std.error}, \code{lower}, \code{upper}, \code{uncertainty_status}, and
-\code{validation_row}.
+\code{estimate}, \code{std.error}, \code{lower}, \code{upper}, and \code{uncertainty_status}.
+The \code{uncertainty_status} field states why standard errors are unavailable
+(for example, skipped \code{sdreport()}, a non-positive-definite Hessian, or
+non-finite standard errors) or labels finite Wald bounds as not yet
+coverage-calibrated.
 }
 \description{
 For a predictor-informed ordinary latent fit, \code{latent(..., lv = ~ x)} uses
@@ -62,13 +61,14 @@ For native TMB fits, \code{std.error} is populated from a positive-definite
 \code{sdreport()} when available. Axis-effect SEs come from the fixed-parameter
 block for \code{alpha_lv_B}; trait-effect SEs come from TMB's delta-method
 \code{ADREPORT(B_lv_unit)} output. \code{lower} and \code{upper} are Wald intervals using
-\code{conf.level}; coverage calibration remains validation-gated. For Gaussian,
+\code{conf.level}. Broad repeated-sampling coverage has not been established, so
+finite bounds remain experimental rather than nominally calibrated. For Gaussian,
 Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog
 \code{engine = "julia"} bridge fits, \code{ci_method = "none"} exposes point estimates
 only (\code{std.error}, \code{lower}, and \code{upper} are \code{NA}). When the bridge supplies a
-retained Wald payload, \code{extract_lv_effects()} surfaces finite \code{std.error},
-\code{lower}, and \code{upper}. Those Julia bridge values are Wald payload reader
-output, not coverage-calibrated intervals.
+retained delta-method uncertainty data, \code{extract_lv_effects()} surfaces
+finite \code{std.error}, \code{lower}, and \code{upper}. Those Julia bridge values are not
+coverage-calibrated intervals.
 }
 \seealso{
 \code{\link[=extract_ordination]{extract_ordination()}}

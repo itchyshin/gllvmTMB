@@ -104,7 +104,7 @@ test_that("phylo_unique + unique(0+trait|species) at unit != species fits withou
     )))
   })
   expect_s3_class(fit, "gllvmTMB_multi")
-  expect_converged(fit)  # scale-free verdict, not the platform-flaky nlminb code (#723)
+  expect_stationary_for_recovery_test(fit)  # scale-free verdict, not the platform-flaky nlminb code (#723)
 })
 
 ## ----------------------------------------------------------------------
@@ -131,7 +131,7 @@ test_that("phylo q decomposition: sigma2_P recovered (per-trait mean) at n_speci
     data    = s$data,
     cluster = "species"
   )))
-  expect_converged(fit)  # scale-free verdict, not the platform-flaky nlminb code (#723)
+  expect_stationary_for_recovery_test(fit)  # scale-free verdict, not the platform-flaky nlminb code (#723)
 
   ## phylo_unique standalone (in the phylogeny side) routes through phylo_rr
   ## with diagonal Lambda; sigma^2_P,t lives on diag(Lambda_phy %*% t(Lambda_phy)).
@@ -178,7 +178,7 @@ test_that("phylo q decomposition: sigma2_Q recovered within 50% relative error",
   ## Objective agrees to 1e-6, and the gradient is actually SMALLER (1.95e-2 vs
   ## 4.69e-2) in the "failing" case. A 10x iteration budget is byte-identical, so
   ## raising `iter.max` fixes nothing. See tests/testthat/setup.R.
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
 
   ## Non-phylo species variance lives in `theta_diag_species` via the q_sp
   ## random effect. The cpp REPORTs the per-trait SDs as `sd_q`.
@@ -242,7 +242,7 @@ test_that("two-U pattern (phylo_latent + phylo_unique at unit = species) still f
       data = df
     )))
   })
-  expect_converged(fit)  # scale-free verdict, not the platform-flaky nlminb code (#723)
+  expect_stationary_for_recovery_test(fit)  # scale-free verdict, not the platform-flaky nlminb code (#723)
   expect_true(isTRUE(fit$use$phylo_rr))
   expect_true(isTRUE(fit$use$phylo_diag))
 })
@@ -313,5 +313,5 @@ test_that("phylo_unique + unique(species) at unit = species fits (established tw
       unit = "species"
     )))
   })
-  expect_converged(fit)  # scale-free verdict, not the platform-flaky nlminb code (#723)
+  expect_stationary_for_recovery_test(fit)  # scale-free verdict, not the platform-flaky nlminb code (#723)
 })

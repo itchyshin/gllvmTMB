@@ -10,7 +10,7 @@ extract_communality(
   link_residual = c("auto", "none"),
   ci = FALSE,
   conf_level = 0.95,
-  method = c("profile", "wald", "bootstrap"),
+  method = c("wald", "bootstrap", "profile"),
   nsim = 500L,
   seed = NULL
 )
@@ -36,9 +36,11 @@ plain named numeric vector for backward compatibility.}
 
 \item{conf_level}{Confidence level when \code{ci = TRUE}. Default 0.95.}
 
-\item{method}{One of \code{"profile"} (default), \code{"wald"}, \code{"bootstrap"}.
-Only used when \code{ci = TRUE}. Prefer profile or Wald-style intervals where
-available; bootstrap is a slower option for deliberate sampling checks.}
+\item{method}{One of \code{"wald"} (default), \code{"bootstrap"}, or \code{"profile"}.
+Only used when \code{ci = TRUE}. The nonlinear penalty-profile prototype is
+currently withheld from the public release; requesting \code{"profile"} stops
+with an explanation. Bootstrap is a slower simulation-and-refit option and
+is not automatically coverage-calibrated.}
 
 \item{nsim}{Number of bootstrap replicates when \code{method = "bootstrap"}.
 Default 500.}
@@ -91,8 +93,8 @@ denominator by default; pass \code{link_residual = "none"} to suppress.
   )
   ## Per-trait between-unit communality.
   extract_communality(fit, level = "unit")
-  ## With profile-likelihood CIs.
-  extract_communality(fit, level = "unit", ci = TRUE)
+  ## With delta-method Wald CIs.
+  extract_communality(fit, level = "unit", ci = TRUE, method = "wald")
   boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
                           what = "communality", progress = FALSE)
   extract_communality(boot, level = "unit", ci = TRUE)

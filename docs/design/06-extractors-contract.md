@@ -496,6 +496,24 @@ Legacy alias for `extract_ordination(fit)`. Kept through
 
 ### 4. Family-specific extractors
 
+#### `predict_missing(fit, type)` and `imputed(fit, rows, se)`
+
+`predict_missing()` returns one row per masked response cell. Its stable fields
+are `original_row`, `model_row`, the available unit / cluster / trait identity
+columns, and `est`. For explicit long input, `original_row` is the supplied
+long-data row. For a `traits()` wide-data call, it is the supplied wide-data
+row before stacking; `model_row` remains the internal stacked-cell row.
+Synthetic placeholder grouping columns are not returned.
+
+`imputed()` returns one row per missing predictor level (or every level with
+`rows = "all"`). Its stable fields are `variable`, `level`, `level_id`,
+`original_row`, `model_row`, `observed`, `estimate`, `std_error`, `source`, and
+`uncertainty_status`. `level` and `level_id` are the public join key. The row
+fields are latent-level ordinals and are not general data-row keys. Binary
+`estimate` is the conditional probability of state 1; ordered and unordered
+routes return only their one-number public summaries, not per-level
+probability vectors.
+
 #### `extract_cutpoints(fit)`
 
 **Return**: a `T x (K - 1)` matrix of ordered cutpoints
@@ -573,8 +591,8 @@ Low-level wrapper around `TMB::tmbprofile()` consulted by
 
 **Return**: a `data.frame` of (parameter grid, deviance,
 excess-over-threshold) + a ggplot showing profile shape.
-Used by `troubleshooting-profile.Rmd` to visualise
-profile-curve anatomy.
+Used by `profile-likelihood-ci.Rmd` to visualise profile-curve anatomy and
+distinguish natural boundaries, unavailable endpoints, and numerical failure.
 
 #### `coverage_study(fit, R, families, dims)` (PR #120)
 

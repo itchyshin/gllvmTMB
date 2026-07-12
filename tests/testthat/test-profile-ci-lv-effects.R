@@ -1,9 +1,25 @@
-## Profile CIs for predictor-informed latent-score effects B_lv (D-12 hero
-## method), with the small-sample t reference. The heavy case builds the Model A
-## composition (ordinary predictor-informed latent + a separate phylo term),
-## fits it REML (unbiased variance components), and checks the profile interval
-## closes, covers a known B_lv, and is wider under the t reference than chi-square.
+## Internal prototype checks for predictor-informed latent-score effects B_lv.
+## The public route is withheld until the nonlinear constraint and status
+## contracts are redesigned.
 
+test_that("withdrawn inference and Julia registry helpers are not exported", {
+  exports <- getNamespaceExports("gllvmTMB")
+  withdrawn <- c(
+    "bootstrap_ci_lv_effects",
+    "profile_ci_communality",
+    "profile_ci_correlation",
+    "profile_ci_lv_effects",
+    "profile_ci_proportions",
+    "profile_ci_repeatability",
+    "profile_communality",
+    "profile_correlation",
+    "profile_proportions",
+    "profile_repeatability",
+    "gllvm_julia_capabilities",
+    "gllvm_julia_gate_registry"
+  )
+  expect_length(intersect(withdrawn, exports), 0L)
+})
 test_that("profile_ci_lv_effects errors without a predictor-informed latent term", {
   withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE, lifecycle_verbosity = "quiet")
   set.seed(1)
@@ -21,64 +37,50 @@ test_that("profile_ci_lv_effects errors without a predictor-informed latent term
   expect_error(profile_ci_lv_effects(fit), regexp = "predictor-informed latent")
 })
 
-test_that("profile_ci_lv_effects closes, covers B_lv, and t is wider than chisq (heavy)", {
-  skip_if_not_heavy()
-  skip_on_cran()
-  withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE, lifecycle_verbosity = "quiet")
-  set.seed(20260706)
-  S <- 30L; T <- 5L
-  tree <- ape::rcoal(S); tree$tip.label <- paste0("sp", seq_len(S))
-  A <- ape::vcv(tree, corr = TRUE); LA <- t(chol(A))
-  LambdaB <- matrix(c(1.0, 0.8, -0.6, 0.5, 0.3), T, 1)
-  alpha <- 0.9
-  LambdaPhy <- matrix(c(0.7, -0.5, 0.4, 0.6, 0.2), T, 1)
-  beta <- stats::rnorm(T, 0, 0.5); x <- stats::rnorm(S)
-  zB <- matrix(x, S, 1) * alpha + matrix(stats::rnorm(S), S, 1)
-  gphy <- LA %*% matrix(stats::rnorm(S), S, 1)
-  eta <- matrix(beta, S, T, byrow = TRUE) + zB %*% t(LambdaB) + gphy %*% t(LambdaPhy)
-  y <- eta + matrix(stats::rnorm(S * T, 0, 0.5), S, T)
-  df <- data.frame(
-    species = factor(rep(tree$tip.label, times = T), levels = tree$tip.label),
-    trait = factor(rep(paste0("t", seq_len(T)), each = S)),
-    value = as.vector(y), x = rep(x, times = T)
+test_that("profile_ci_lv_effects defaults to chi-square and requires explicit t df", {
+  fit <- structure(
+    list(
+      report = list(
+        B_lv_unit = matrix(0.4, 1, 1, dimnames = list("t1", "x")),
+        Lambda_B = matrix(1, 1, 1)
+      ),
+      opt = list(par = c(theta_rr_B = 1, alpha_lv_B = 0.4))
+    ),
+    class = "gllvmTMB_multi"
   )
-  fit <- suppressMessages(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | species, d = 1, lv = ~x) +
-      phylo_latent(0 + trait | species, d = 1, tree = tree),
-    data = df, unit = "species", trait = "trait", family = gaussian(), REML = TRUE,
-    control = gllvmTMB::gllvmTMBcontrol(se = TRUE, optimizer = "optim",
-                                        optArgs = list(method = "BFGS"))
-  ))
-  expect_equal(fit$opt$convergence, 0L)
-
-  res_t <- profile_ci_lv_effects(fit, trait = 1, predictor = 1, reference = "t")
-  res_c <- profile_ci_lv_effects(fit, trait = 1, predictor = 1, reference = "chisq")
-  truth <- LambdaB[1, 1] * alpha
-
-  expect_s3_class(res_t, "data.frame")
-  expect_identical(res_t$method, "profile")
-  expect_identical(res_t$reference, "t")
-  expect_equal(res_t$df, S - 1L - 1L)                    # n_units - d - 1
-  expect_true(is.finite(res_t$lower) && is.finite(res_t$upper))
-  expect_true(res_t$lower < res_t$estimate && res_t$estimate < res_t$upper)
-  expect_true(truth >= res_t$lower && truth <= res_t$upper)   # covers the known B_lv
-  ## t reference (df = 28) is wider than the chi-square reference.
-  expect_gt(res_t$upper - res_t$lower, res_c$upper - res_c$lower)
-
-  ## Reachable via the standard extractor API (method = "profile" / "bootstrap").
-  via_extract <- extract_lv_effects(
-    fit, type = "trait_effect", method = "profile", trait = 1, predictor = 1
+  testthat::local_mocked_bindings(
+    .profile_ci_via_refit = function(...) list(lower = 0.1, upper = 0.8),
+    .package = "gllvmTMB"
   )
-  expect_equal(via_extract$lower, res_t$lower, tolerance = 1e-6)
-  expect_equal(via_extract$upper, res_t$upper, tolerance = 1e-6)
-  expect_identical(via_extract$method, "profile")
-  boot_rows <- extract_lv_effects(
-    fit, type = "trait_effect", method = "bootstrap", n_boot = 15, seed = 1
-  )
-  expect_identical(unique(boot_rows$method), "bootstrap")
-  ## profile / bootstrap require the trait-scale effect.
+
+  default <- profile_ci_lv_effects(fit)
+  expect_identical(default$reference, "chisq")
+  expect_true(is.na(default$df))
   expect_error(
-    extract_lv_effects(fit, type = "axis_effect", method = "profile"),
-    regexp = "trait_effect"
+    profile_ci_lv_effects(fit, reference = "t"),
+    regexp = "requires an explicit.*df"
+  )
+  sensitivity <- profile_ci_lv_effects(fit, reference = "t", df = 12)
+  expect_identical(sensitivity$reference, "t")
+  expect_equal(sensitivity$df, 12)
+})
+
+test_that("extract_lv_effects rejects withdrawn profile and bootstrap routes", {
+  fit <- structure(
+    list(
+      use = list(lv_B = TRUE),
+      data = data.frame(trait = factor("t1")),
+      trait_col = "trait",
+      lv = list(X_lv_B = matrix(1, 1, 1, dimnames = list(NULL, "x")))
+    ),
+    class = "gllvmTMB_multi"
+  )
+  expect_error(
+    extract_lv_effects(fit, type = "trait_effect", method = "profile"),
+    class = "gllvmTMB_lv_interval_withdrawn"
+  )
+  expect_error(
+    extract_lv_effects(fit, type = "trait_effect", method = "bootstrap"),
+    class = "gllvmTMB_lv_interval_withdrawn"
   )
 })

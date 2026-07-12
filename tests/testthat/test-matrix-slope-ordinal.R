@@ -130,9 +130,9 @@ make_slope_ordinal_fixture <- function(seed = 505L,
 }
 
 expect_slope_ordinal_fit_health <- function(fit) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   ## Confirm the response really is ordinal_probit (family_id 14) -- guards
   ## against a silent family fallthrough making the "ordinal" claim hollow.
   testthat::expect_equal(fit$tmb_data$family_id_vec[1], 14L)
@@ -214,7 +214,7 @@ test_that("phylo_unique(1 + x | sp) x ordinal_probit recovers Sigma_b within 2.5
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_unique(1 + x | sp) ordinal_probit fit did not converge with PD Hessian; RE-02 / PHY-06 stays partial pending bigger n / different seed")
   }
 
@@ -275,7 +275,7 @@ test_that("phylo_unique(1 + x | sp) x ordinal_probit CI smoke: rho:phy profile O
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_unique(1 + x | sp) ordinal_probit fit did not converge with PD Hessian; CI smoke stays partial pending bigger n / different seed")
   }
 

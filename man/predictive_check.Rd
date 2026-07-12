@@ -60,8 +60,7 @@ A \code{ggplot} object with diagnostic metadata attached in
 }
 \description{
 \code{predictive_check()} compares the observed stacked-trait response to
-draws from the fitted model. It is the public version of the diagnostic
-prototype from issue #222, but keeps the frequentist semantics explicit:
+draws from the fitted model. The frequentist semantics are explicit:
 these are fitted-model predictive checks, not Bayesian posterior
 predictive checks.
 }

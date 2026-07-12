@@ -16,7 +16,8 @@ predict_missing(object, type = c("link", "response"), ...)
 }
 \value{
 A data frame with one row per masked response cell, with columns:
-\code{original_row} (the pre-mask row index in the original data),
+\code{original_row} (the supplied long-data row or the supplied wide-data row
+before \code{traits()} stacking),
 \code{model_row} (the row index into the fitted long-format data / response),
 the unit / cluster / trait identifier columns, and \code{est} (the prediction
 on the requested scale). A complete-data fit (no masked cells) returns a
@@ -31,13 +32,12 @@ their model-based predictions and the original-row / cell accounting from
 \code{fit$missing_data}.
 }
 \details{
-This is the \strong{responses} extractor of the missing-data layer (design 59
-sec.4): missing responses are \emph{predicted / reconstructed} (a fitted value),
+Missing responses are \emph{predicted / reconstructed} as fitted values,
 not latent covariates. The separate \code{\link[=imputed]{imputed()}} extractor returns modelled
 missing \strong{predictors} from supported \code{mi()} fits.
 The point predictions here are the fitted linear predictor (\code{type = "link"})
-or its inverse-link response (\code{type = "response"}); standard errors of the
-reconstruction are deferred to a later slice.
+or its inverse-link response (\code{type = "response"}). Reconstruction standard
+errors and prediction intervals are not currently returned.
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}}, \code{\link[=miss_control]{miss_control()}}, \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}}.

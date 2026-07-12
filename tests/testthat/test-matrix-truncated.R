@@ -149,7 +149,7 @@ skip_unless_healthy_ztpois <- function(fit, cell) {
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     testthat::skip(sprintf(
       paste0("%s truncated_poisson unit fit did not converge with PD Hessian ",
              "(convergence=%s, pd_hessian=%s); FAM-15 stays partial pending ",
@@ -162,9 +162,9 @@ skip_unless_healthy_ztpois <- function(fit, cell) {
 
 ## Common per-cell health + zero-truncation family-id assertions.
 expect_ztpois_unit_health <- function(fit) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], 10L)  # truncated_poisson
   ## A healthy structural fit should carry no boundary collapse flag.
   testthat::expect_length(fit$fit_health$boundary_flags, 0L)

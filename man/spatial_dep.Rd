@@ -16,8 +16,9 @@ in \code{data} (e.g. \code{c("lon", "lat")}). Resolved by the parser when
 supplied as keyword argument; \code{NULL} when the orientation expresses
 the coordinates via the formula RHS.}
 
-\item{mesh}{Optional \code{fmesher} mesh object built via \code{\link[=make_mesh]{make_mesh()}}. If
-\code{NULL}, the engine constructs a default mesh from \code{coords}.}
+\item{mesh}{An \code{fmesher} mesh object built via \code{\link[=make_mesh]{make_mesh()}}. It may be
+supplied here or through the top-level \verb{mesh =} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}.
+The engine does not construct a mesh automatically from \code{coords}.}
 }
 \value{
 A formula marker; never evaluated.
@@ -57,9 +58,10 @@ Combining \code{spatial_dep(0 + trait | coords)} with \code{spatial_latent} is
     n_sites = 30, n_species = 6, mean_species_per_site = 5,
     spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1
   )
+  mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
   fit <- gllvmTMB(
     value ~ 0 + trait +
-            spatial_dep(0 + trait | site, coords = c("lon", "lat")),
+            spatial_dep(0 + trait | site, mesh = mesh),
     data  = sim$data,
     trait = "trait",
     unit  = "site"

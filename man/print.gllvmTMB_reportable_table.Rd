@@ -15,9 +15,8 @@
 \code{x}, invisibly.
 }
 \description{
-Prints the reader-facing columns of a report-ready table (as returned by
-\code{\link[=extract_Sigma_table]{extract_Sigma_table()}} and \code{\link[=extract_correlations]{extract_correlations()}}), hiding internal
-provenance columns such as \code{validation_row} from display. The hidden columns
-remain in the object and are accessible with \code{x$validation_row} or
-\code{as.data.frame(x)}.
+Prints the reader-facing columns of a report-ready table returned by
+\code{\link[=extract_Sigma_table]{extract_Sigma_table()}} or \code{\link[=extract_correlations]{extract_correlations()}}. The complete object is
+returned invisibly for programmatic use.
 }
+\keyword{internal}

@@ -29,11 +29,10 @@ Henderson (1976) / Quaas (1976) sparse inverse: inbreeding coefficients
 Mendelian sampling variances. It reproduces
 \code{MCMCglmm::inverseA(pedigree)$Ainv} exactly. (The current inbreeding
 step forms the dense \eqn{n \times n} \eqn{\mathbf A}, an \eqn{O(n^2)}
-one-time cost; a Meuwissen-Luo \eqn{O(n)} inbreeding recursion is a
-future optimisation for very large pedigrees.)
+one-time cost.)
 }
 \details{
-Usage pattern (sparse pre-CRAN; auto-routing follow-on PR):
+Usage:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{Ainv <- pedigree_to_Ainv_sparse(ped)
 fit  <- gllvmTMB(value ~ 0 + trait +

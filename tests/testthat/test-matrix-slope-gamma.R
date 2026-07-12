@@ -129,9 +129,9 @@ fit_slope_gamma <- function(fx) {
 }
 
 expect_slope_gamma_fit_health <- function(fit) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   ## Confirm the response really is gamma (family_id 4) -- guards against a
   ## silent family fallthrough making the "gamma" claim hollow.
   testthat::expect_equal(fit$tmb_data$family_id_vec[1], 4L)
@@ -168,7 +168,7 @@ test_that("phylo_unique(1 + x | species) x Gamma(log) converges, pd_hessian TRUE
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_unique(1 + x | species) gamma(log) fit did not converge with PD Hessian; slope-gamma cell stays partial pending bigger n / different seed")
   }
 
@@ -235,7 +235,7 @@ test_that("phylo_unique(1 + x | species) x Gamma(log) CI smoke: slope-variance p
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_unique(1 + x | species) gamma(log) fit did not converge with PD Hessian; CI smoke not attempted, slope-gamma cell stays partial")
   }
 

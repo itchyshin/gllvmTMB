@@ -147,14 +147,14 @@ test_that("phylo_unique(1 + x | sp) x binomial-probit recovers Sigma_b and a slo
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB object"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_unique(1 + x | sp) binomial-probit fit did not converge with PD Hessian; RE-02 / PHY-06(probit) stay partial pending bigger n / different seed")
   }
 
   ## ---- Fit health -----------------------------------------------------
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
 
   ## ---- Recovery on the augmented 2x2 Sigma_b -------------------------
   ## report$sd_b = exp(log_sd_b) (col 1 = intercept, col 2 = slope; see

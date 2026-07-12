@@ -40,9 +40,9 @@ Used inside a \code{gllvmTMB()} formula:
 Reuses the same \eqn{\mathbf A_{\text{phy}}^{-1}} as
 \code{\link[=phylo_latent]{phylo_latent()}} (sparse via \verb{phylo_tree =}, dense via
 \verb{phylo_vcv =}); only one tree / VCV is needed even with both terms.
-\subsection{Scope (initial release)}{
+\subsection{Scope}{
 
-This first cut supports:
+This helper supports:
 \itemize{
 \item \strong{One} continuous covariate \code{x} (a single column name).
 \item \strong{One} shared slope variance \eqn{\sigma^2_{\text{slope}}}.
@@ -50,8 +50,8 @@ This first cut supports:
 for every trait of species \eqn{i}).
 }
 
-Multi-covariate / per-trait / reduced-rank phylogenetic random
-slopes are on the roadmap.
+For trait-specific intercept-and-slope covariance, use the corresponding
+augmented \code{phylo_indep()}, \code{phylo_latent()}, or \code{phylo_dep()} syntax.
 }
 }
 \examples{

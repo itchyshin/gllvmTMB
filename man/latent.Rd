@@ -23,11 +23,11 @@ argument name \code{residual} is retained as a soft-deprecated alias.}
 diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 traits. Only applies when \code{unique = TRUE}.}
 
-\item{lv}{One-sided formula for Design 73 predictor-informed latent score
-means. Runtime support is limited to ordinary unit-tier
+\item{lv}{One-sided formula for predictor-informed latent-score means.
+Runtime support is limited to ordinary unit-tier
 \code{latent(..., lv = ~ x)}, and only Gaussian and pure binomial
 (logit/probit/cloglog) fits are currently admitted (partial coverage,
-validated for the ordinary-latent case). Source-specific \verb{*_latent(..., lv = ~ x)} forms are
+supported for the ordinary-latent case). Source-specific \verb{*_latent(..., lv = ~ x)} forms are
 parsed and then fail loud (not yet fittable).}
 }
 \value{

@@ -75,9 +75,8 @@ near-constant/loading/saturation screen, and the intentional
 \code{gllvmTMBcontrol(se = FALSE)} point-estimate path. Partially
 covered: the table does not calibrate interval coverage, prove
 formal separation, or prove the selected latent rank by itself.
-Planned: target-explicit simulations and
-\code{\link[=check_identifiability]{check_identifiability()}} decide when broader interval or
-rank-selection claims move beyond diagnostic status.
+Planned: target-explicit known-DGP simulations decide when broader
+interval or rank-selection claims move beyond diagnostic status.
 
 A \code{WARN} row, including \code{pdHess = FALSE}, means that Wald standard
 errors or curvature-based inference need more care; it is not by

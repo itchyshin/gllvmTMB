@@ -16,21 +16,22 @@ miss_control(
 a missing response are removed before the likelihood is built. \code{"include"}
 keeps those rows, builds an observed-response mask (\code{is_y_observed}), and
 contributes nothing to the likelihood for the masked rows -- the
-frequentist observed-data likelihood. The fit is identical to the
-complete-case fit on the observed rows, but the original-row accounting is
-preserved (see \code{fit$missing_data}).}
+frequentist observed-data likelihood. For the supported routes, the
+observed-response likelihood contribution matches the corresponding
+observed rows, while cell identity is preserved for \code{\link[=predict_missing]{predict_missing()}}.}
 
 \item{predictor}{How to treat missing \strong{predictors} (covariates).
 \code{"fail"} (the default): a missing value in the fixed-effect design matrix
 is an error, exactly as today. \code{"model"} treats a missing predictor
 declared with \code{mi(x)} as a latent variable integrated out by the Laplace
 approximation, with its covariate model supplied via the \verb{impute =}
-argument of \code{\link[=gllvmTMB]{gllvmTMB()}}. The v1 shipped routes are one modelled predictor
+argument of \code{\link[=gllvmTMB]{gllvmTMB()}}. The current routes fit one modelled predictor
 at a time: Gaussian fixed-effect, grouped-intercept, or phylogenetic-
 intercept covariate models, plus fixed-effect binary, ordered, and
 unordered discrete predictors.}
 
-\item{engine}{The estimation engine. v1 ships \code{"laplace"} only (TMB Laplace
+\item{engine}{The estimation engine. The supported value is \code{"laplace"}
+(TMB Laplace
 approximation). \code{"em"} (the Gaussian-only EM special case) and \code{"profile"}
 are \strong{reserved names, not yet supported}.}
 }
@@ -39,8 +40,7 @@ A named list with elements \code{response}, \code{predictor}, and \code{engine}.
 }
 \description{
 Configures how \code{\link[=gllvmTMB]{gllvmTMB()}} treats missing \strong{responses} and missing
-\strong{predictors}. This is the v1 surface of the model-based missing-data
-layer (design 59). Pass the result to the \verb{missing =} argument of
+\strong{predictors}. Pass the result to the \verb{missing =} argument of
 \code{\link[=gllvmTMB]{gllvmTMB()}}.
 }
 \details{
@@ -48,8 +48,8 @@ There is deliberately \strong{no} \code{estimator} argument in \code{miss_contro
 estimator choice belongs to \code{\link[=gllvmTMB]{gllvmTMB()}}. The default \code{gllvmTMB()} fit uses
 ML; \code{gllvmTMB(REML = TRUE)} is a Gaussian-only pilot and does not yet combine
 with \code{miss_control(response = "include")} or \code{mi()} predictor models. There
-is \strong{no} MI ("multiple imputation") engine here; multiple imputation is the
-separate \code{pigauto} workflow (design 59 sec.1b).
+is \strong{no} MI ("multiple imputation") engine here; multiple imputation is a
+separate workflow.
 
 Under the default \code{miss_control(response = "drop", predictor = "fail", engine = "laplace")} the missing-data layer is an exact no-op: a complete-
 data fit is byte-identical to a fit built before this layer existed.

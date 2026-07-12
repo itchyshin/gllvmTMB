@@ -60,7 +60,6 @@ rows <- data.frame(
   interval_method = "none",
   interval_status = "none",
   scale = "correlation",
-  validation_row = "internal-provenance-id",
   diagonal = FALSE,
   triangle = "upper"
 )

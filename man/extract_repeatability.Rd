@@ -21,7 +21,9 @@ point estimates and percentile bounds rather than refitting.}
 \item{level}{Confidence level. Default 0.95.}
 
 \item{method}{One of \code{"profile"} (default), \code{"wald"},
-\code{"bootstrap"}.}
+\code{"bootstrap"}. A profile request currently returns a clearly
+labelled Wald interval because the full-covariance repeatability target
+does not yet have a defensible profile implementation.}
 
 \item{nsim}{Number of bootstrap replicates when
 \code{method = "bootstrap"}. Default 500.}
@@ -44,8 +46,10 @@ level.
 \section{Method choice}{
 
 \itemize{
-\item \code{"profile"}: profile-likelihood CI via the linear contrast
-\eqn{2(\theta_B - \theta_W)} in TMB::tmbprofile(). Fast and accurate.
+\item \code{"profile"}: requests a profile interval, but currently falls
+back to the same full-covariance Wald calculation described below. The
+returned \code{method} is \code{"wald"}; it is never relabelled as a
+profile interval.
 \item \code{"wald"}: Gaussian-approximation CI via the delta method
 on \code{plogis(2*(theta_B - theta_W))}.
 \item \code{"bootstrap"}: parametric bootstrap via \code{bootstrap_Sigma()}.

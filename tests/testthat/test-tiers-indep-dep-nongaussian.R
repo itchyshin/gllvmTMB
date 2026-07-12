@@ -110,7 +110,7 @@ test_that("indep(0 + trait | unit) recovers per-trait diagonal variances under p
   ))
 
   ## Honest skip on non-convergence -- never fake-pass.
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("indep() poisson fixture did not converge / Hessian not PD")
   }
 
@@ -150,7 +150,7 @@ test_that("dep(0 + trait | unit) recovers the unstructured covariance under pois
     )
   ))
 
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("dep() poisson fixture did not converge / Hessian not PD")
   }
 

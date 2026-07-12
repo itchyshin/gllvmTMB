@@ -50,9 +50,9 @@ skip_if_not_poisson_spatial_deps <- function() {
 }
 
 expect_poisson_spatial_fit_health <- function(fit) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   ## Sanity: this really is the Poisson family (family_id 2). Poisson has no
   ## dispersion parameter, so there is no phi to check.
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], 2L)
@@ -230,7 +230,7 @@ test_that("Poisson: spatial_latent(d=1) + spatial_unique paired fits; pd_hessian
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("Poisson spatial_latent + spatial_unique did not converge with PD Hessian; SPA-02(poisson) stays partial pending bigger n / different seed")
   }
 
@@ -282,7 +282,7 @@ test_that("Poisson: spatial_scalar(0 + trait | site) fits; tau tied; tau_spde pr
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("Poisson spatial_scalar did not converge with PD Hessian; SPA-03(poisson) stays partial pending bigger n / different seed")
   }
 
@@ -357,7 +357,7 @@ test_that("Poisson: spatial_indep(0 + trait | site) fits; pd_hessian TRUE", {
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("Poisson spatial_indep did not converge with PD Hessian; SPA-04(poisson) stays partial pending bigger n / different seed")
   }
 
@@ -407,7 +407,7 @@ test_that("Poisson: spatial_dep(0 + trait | site) fits; pd_hessian TRUE; CI smok
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("Poisson spatial_dep did not converge with PD Hessian; SPA-04(poisson) stays partial pending bigger n / different seed")
   }
 

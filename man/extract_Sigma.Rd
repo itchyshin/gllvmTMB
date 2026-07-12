@@ -34,7 +34,7 @@ folded into \code{latent()} by default).}
 \item{link_residual}{For non-Gaussian fits. \code{"auto"} (default) adds a
 per-trait link-specific implicit residual variance to the diagonal of
 \code{Sigma}, giving the marginal latent-scale interpretation; in mixed-
-family fits each trait gets the residual implied by \emph{its} family/link
+family fits each unambiguous trait gets the residual implied by its family/link
 (see "Family-aware link residuals" below for the full table).
 \code{"none"} returns the fitted model covariance without link-residual additions
 (\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi} where a
@@ -57,8 +57,8 @@ advisory messages, e.g. about a no-Psi \code{unique = FALSE} fit).
 For \code{part = "unique"}: a list with \code{s} (length-T named numeric
 vector of unique variances), \code{level}, \code{part}, \code{note}.
 
-For a \code{phylo_dep(1 + x1 + ... + xs | species)} fit (Design 56 Sec. 9.5c,
-s >= 1), call with \code{level = "phy"}: the result is the single full
+For a \code{phylo_dep(1 + x1 + ... + xs | species)} fit with one or more
+slopes, call with \code{level = "phy"}: the result is the single full
 unstructured \verb{(1+s)T x (1+s)T} covariance over the trait-stacked
 (intercept, slope_1, ..., slope_s) random-effect columns -- a list with
 \code{Sigma} and \code{R} carrying INTERLEAVED dimnames (per trait:
@@ -92,11 +92,10 @@ If the formula deliberately uses
 \code{latent(0 + trait | unit, d = K, unique = FALSE)}, the engine fits only the
 \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component. Calling
 \code{extract_Sigma(fit, level, part = "total")} then returns just the shared
-component. This is useful for no-residual / rotation-invariant checks, but it
-\strong{understates the diagonal} of the usual covariance decomposition. Any
-correlations computed from this incomplete
-\eqn{\hat{\boldsymbol\Sigma}} are systematically inflated (the same numerator
-with a too-small denominator).
+component. This is useful for an intentionally loadings-only target. It should
+not be described as a full latent-liability covariance unless the relevant
+family/link residual is also included. Whether the diagonal is incomplete
+depends on the estimand and response family.
 
 For Gaussian / lognormal / Gamma fits this function emits an advisory note
 when a reduced-rank tier has no Psi component. Use the ordinary
@@ -130,8 +129,10 @@ diagonal of \eqn{\boldsymbol\Psi}).}
 \subsection{Caveat: \code{"shared"} vs \code{"unique"} partition is only weakly identified}{
 
 The total \eqn{\boldsymbol\Sigma_\text{tier} = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
-is rotation-invariant and well-identified, so \code{part = "total"} is
-well-identified. But the \emph{split} between \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}
+is rotation-invariant, so \code{part = "total"} avoids arbitrary loading rotation.
+Rotation invariance does not guarantee that the data identify every covariance
+entry; fit health, sample design, and uncertainty still matter. The \emph{split}
+between \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}
 and \eqn{\boldsymbol\Psi} is only weakly identified -- different optimiser
 starts can flow trait \eqn{t}'s variance more into the shared
 (\code{"shared"}) or unique (\code{"unique"}) component, with the same total
@@ -153,10 +154,9 @@ the variance-decomposition consistency checks in
 
 For non-Gaussian responses each row carries an implicit observation-level
 residual on the latent (link) scale. Adding it to the per-trait diagonal
-of \eqn{\boldsymbol\Sigma} is what makes cross-family Sigma comparable on
-the same (latent) scale: without this adjustment, binomial diagonals are
-too small relative to a Gaussian latent of comparable variance and the
-implied cross-family correlations are inflated.
+of \eqn{\boldsymbol\Sigma} defines one family-specific latent-scale convention.
+It can make the denominator explicit, but it does not make different response
+families directly commensurate without additional scientific assumptions.
 
 Per-family formulas (Nakagawa & Schielzeth 2010; Nakagawa, Johnson &
 Schielzeth 2017):
@@ -175,8 +175,8 @@ Schielzeth 2017):
 \code{betabinomial(link = "logit")}    \tab \eqn{\sigma^2_d = \pi^2/3 + \psi'(\hat\mu_t \hat\phi) + \psi'((1 - \hat\mu_t)\hat\phi)}
 }
 
-For mixed-family fits the residual is computed \emph{per trait} from the
-family of the rows belonging to that trait, then added to the diagonal
+For mixed-family fits the residual is computed \emph{per trait} when that trait has
+one unambiguous family/link, then added to the diagonal
 of \eqn{\boldsymbol\Sigma} entry-by-entry. The default
 \code{link_residual = "auto"} applies this; \code{"none"} returns the fitted model
 covariance without link-residual additions
@@ -197,7 +197,7 @@ with a soft-deprecation message.
 \eqn{\boldsymbol\Sigma_\text{phy}} from \code{phylo_latent()}. If a future
 release adds 3+ latent tiers, \code{level = "<colname>"} will dispatch to the
 corresponding tier without API change. For now, custom strings error
-with a clear roadmap message.
+with a clear unsupported-level message.
 }
 }
 \examples{

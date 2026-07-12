@@ -44,12 +44,12 @@ test_that("confint_inspect() errors on missing or multi-element parm", {
   )
 })
 
-test_that("confint_inspect() errors on a derived target", {
+test_that("confint_inspect() excludes withdrawn derived targets", {
   skip_on_cran()
   fit <- make_tiny_fit_for_inspect()
   expect_error(
     gllvmTMB::confint_inspect(fit, parm = "communality"),
-    "does not handle derived targets"
+    "No matching profile target"
   )
 })
 
@@ -109,8 +109,8 @@ test_that("sigma_eps profile is well-behaved and matches Wald to within 10%", {
   res <- suppressMessages(suppressWarnings(
     gllvmTMB::confint_inspect(fit, parm = "sigma_eps")
   ))
-  ## Diagnostic should flag the profile as quadratic / well-behaved.
-  expect_equal(res$diagnostics, "quadratic")
+  ## No heuristic warning is not a quadratic-shape certificate.
+  expect_equal(res$diagnostics, "no_heuristic_warning")
   ## Profile bounds are finite and positive (variance components > 0).
   expect_true(is.finite(res$bounds$lower_natural))
   expect_true(is.finite(res$bounds$upper_natural))

@@ -7,8 +7,7 @@
 #' Fitted-model predictive checks for a multivariate `gllvmTMB` fit
 #'
 #' `predictive_check()` compares the observed stacked-trait response to
-#' draws from the fitted model. It is the public version of the diagnostic
-#' prototype from issue #222, but keeps the frequentist semantics explicit:
+#' draws from the fitted model. The frequentist semantics are explicit:
 #' these are fitted-model predictive checks, not Bayesian posterior
 #' predictive checks.
 #'
@@ -357,6 +356,32 @@ residuals.gllvmTMB_multi <- function(
   sigma_eps <- .gllvmTMB_sigma_eps(object)
   phi_nbinom2 <- object$report$phi_nbinom2
   phi_nbinom1 <- object$report$phi_nbinom1
+
+  ## A Gaussian diagonal random effect indexed at the same resolution as the
+  ## observed trait-cell can absorb the observation residual, with sigma_eps
+  ## mapped to a tiny fixed value. Conditional exact-CDF residuals then collapse
+  ## near zero and are not a goodness-of-fit check. Warn and direct users to the
+  ## marginal simulation-rank route rather than displaying an automatically
+  ## perfect Q-Q plot.
+  trait_col <- object$trait_col
+  per_row_diag <- function(flag, group_col) {
+    isTRUE(flag) && !is.null(group_col) && group_col %in% names(object$data) &&
+      nrow(unique(object$data[c(trait_col, group_col)])) == nrow(object$data)
+  }
+  gaussian_per_row_diag <- any(row_meta$family_id == 0L) &&
+    (
+      per_row_diag(object$use$diag_B, object$unit_col) ||
+        per_row_diag(object$use$diag_W, object$unit_obs_col)
+    )
+  if (gaussian_per_row_diag) {
+    cli::cli_warn(
+      c(
+        "Exact conditional Gaussian residuals are not informative when a diagonal random effect is indexed at the observed trait-cell resolution.",
+        "i" = "Use {.code type = \"simulation_rank\"} with {.code condition_on_RE = FALSE} to inspect marginal fitted-model draws."
+      ),
+      class = "gllvmTMB_conditional_residual_saturated"
+    )
+  }
 
   for (i in seq_len(n)) {
     y_i <- observed[i]

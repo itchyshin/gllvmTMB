@@ -107,13 +107,13 @@ test_that("nbinom1 x indep(0 + trait | unit): converges, PD Hessian, indep_B fla
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("nbinom1 x indep(unit) did not converge with PD Hessian; FAM-07 (unit indep) stays partial pending bigger n / different seed")
   }
 
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   expect_equal(fit$tmb_data$family_id_vec[1L], 15L)   # nbinom1 family id
 
   ## indep is the diagonal structure with the .indep marker; the use-flag
@@ -198,13 +198,13 @@ test_that("nbinom1 x phylo_unique(species): converges, PD Hessian, phi finite, t
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("nbinom1 x phylo_unique did not converge with PD Hessian; FAM-07 (phylo_unique) stays partial pending bigger n / different seed")
   }
 
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   expect_equal(fit$tmb_data$family_id_vec[1L], 15L)   # nbinom1 family id
 
   ## phylo_unique(species) canonicalises to the reduced-rank phylo path:
@@ -303,13 +303,13 @@ test_that("nbinom1 x spatial_unique(0 + trait | site): converges, PD Hessian, ph
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("nbinom1 x spatial_unique did not converge with PD Hessian; FAM-07 (spatial_unique) stays partial pending bigger n / different seed")
   }
 
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   expect_equal(fit$tmb_data$family_id_vec[1L], 15L)   # nbinom1 family id
 
   ## Per-trait independent SPDE fields: the per-trait SPDE block flag.

@@ -25,7 +25,7 @@
 ## simulate.gllvmTMB_multi() method is extended to handle family-specific
 ## response draws beyond the current Gaussian-noise path.
 
-#' Run advanced simulate-refit identifiability checks
+#' Internal prototype for simulate-refit loading-stability studies
 #'
 #' `check_identifiability()` is an advanced validation helper, not the
 #' first diagnostic to run after every model. Start with
@@ -99,7 +99,8 @@
 #' @seealso [sanity_multi()], [gllvmTMB_diagnose()],
 #'   [check_auto_residual()], [bootstrap_Sigma()].
 #'
-#' @export
+#' @keywords internal
+#' @noRd
 check_identifiability <- function(
   fit,
   sim_reps = 100L,

@@ -1,9 +1,9 @@
 ## Parametric bootstrap CIs for predictor-informed latent-score trait effects
 ## B_lv = Lambda_B alpha^T. Simulate responses from the fitted model, refit with
 ## the same formula (preserving tree / mesh / REML), extract B_lv, and return
-## percentile intervals. The calibration/fallback leg of the Wald/profile/
-## bootstrap trio (maintainer doctrine D-12): bootstrap is the calibration layer
-## where a profile will not close or the Hessian is not positive-definite.
+## percentile intervals. This is a separate simulation-and-refit route, not an
+## automatic calibration layer: its coverage depends on the fitted generative
+## model, successful refits, and enough Monte Carlo replicates.
 
 #' Parametric bootstrap confidence intervals for predictor-informed latent effects
 #'
@@ -17,12 +17,11 @@
 #' `r lifecycle::badge("experimental")`
 #'
 #' @section Interval calibration:
-#' \eqn{B_{lv}} point recovery is validated, but formal interval **coverage** is
-#' not yet certified for the parametric bootstrap. Documented coverage evidence currently exists only for
-#' Wald intervals on ordinary unit-tier Gaussian and standard-link binomial fits
-#' (see [extract_lv_effects()]). Treat these percentile bounds as approximate
-#' for other families or mixed-family fits until the coverage campaign lands;
-#' see `docs/design/61-capability-status.md`.
+#' Software tests exercise this simulation-and-refit route, but broad empirical
+#' interval coverage has not been established. Percentile bounds depend on a
+#' credible fitted generative model, successful refits, and enough replicates to
+#' estimate the requested tails. Treat small bootstrap runs as software checks,
+#' not inferential evidence.
 #'
 #' @param fit A fitted \code{gllvmTMB} model with a predictor-informed latent term.
 #' @param n_boot Number of bootstrap replicates (default 200).
@@ -35,8 +34,8 @@
 #'   \code{predictor}, \code{estimate}, \code{lower}, \code{upper}, \code{level},
 #'   \code{method}, \code{n_boot} (converged replicates used).
 #'
-#' @seealso [profile_ci_lv_effects()], [extract_lv_effects()], [bootstrap_Sigma()].
-#' @export
+#' @keywords internal
+#' @noRd
 bootstrap_ci_lv_effects <- function(fit,
                                     n_boot = 200,
                                     conf = 0.95,

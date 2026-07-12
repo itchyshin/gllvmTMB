@@ -1,5 +1,5 @@
 ## Per-trait repeatability with confidence intervals.
-## Phase K: extract_repeatability() is the canonical user-facing function
+## extract_repeatability() is the canonical user-facing function
 ## for the per-trait repeatability/ICC R_t = sigma2_B / (sigma2_B + sigma2_W),
 ## with three method choices: profile / Wald / bootstrap.
 ##
@@ -22,7 +22,9 @@
 #'   point estimates and percentile bounds rather than refitting.
 #' @param level Confidence level. Default 0.95.
 #' @param method One of \code{"profile"} (default), \code{"wald"},
-#'   \code{"bootstrap"}.
+#'   \code{"bootstrap"}. A profile request currently returns a clearly
+#'   labelled Wald interval because the full-covariance repeatability target
+#'   does not yet have a defensible profile implementation.
 #' @param nsim Number of bootstrap replicates when
 #'   \code{method = "bootstrap"}. Default 500.
 #' @param seed Optional RNG seed for the bootstrap.
@@ -31,8 +33,10 @@
 #'
 #' @section Method choice:
 #' \itemize{
-#'   \item \code{"profile"}: profile-likelihood CI via the linear contrast
-#'     \eqn{2(\theta_B - \theta_W)} in TMB::tmbprofile(). Fast and accurate.
+#'   \item \code{"profile"}: requests a profile interval, but currently falls
+#'     back to the same full-covariance Wald calculation described below. The
+#'     returned \code{method} is \code{"wald"}; it is never relabelled as a
+#'     profile interval.
 #'   \item \code{"wald"}: Gaussian-approximation CI via the delta method
 #'     on \code{plogis(2*(theta_B - theta_W))}.
 #'   \item \code{"bootstrap"}: parametric bootstrap via \code{bootstrap_Sigma()}.
@@ -98,7 +102,7 @@ extract_repeatability <- function(
       cli::cli_inform(c(
         "!" = "{.code method = \"profile\"} for full-{.field Sigma} repeatability is not yet implemented; falling back to {.code method = \"wald\"}.",
         "i" = "The output's {.field method} column will report {.val wald} so the actual computation is honest.",
-        ">" = "Proper profile-likelihood CI (Lagrange-style fix-and-refit on the ratio constraint) is a Phase K follow-up. For an empirical CI use {.code method = \"bootstrap\"}."
+        ">" = "A full-covariance profile requires a target-explicit constrained fit. For an empirical CI use {.code method = \"bootstrap\"}."
       ))
       options(gllvmTMB.repeatability_profile_note_shown = TRUE)
     }

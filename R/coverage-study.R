@@ -31,7 +31,7 @@
 ##   - coverage_study()               -- slow: empirical CI coverage
 ##   - confint_inspect()              -- visual profile verification
 
-#' Run an advanced empirical coverage study for a fitted model
+#' Internal prototype for fitted-model interval simulations
 #'
 #' `coverage_study()` is an advanced validation helper for interval
 #' calibration, not a first-use diagnostic. Start with
@@ -122,9 +122,8 @@
 #' @seealso [profile_targets()] (the parm vocabulary),
 #'   [confint.gllvmTMB_multi()] (the CI machinery being audited),
 #'   [confint_inspect()] (visual diagnosis when coverage falls
-#'   short), [check_identifiability()] and
-#'   [gllvmTMB_check_consistency()] (complementary
-#'   simulation-based validations).
+#'   short), and [gllvmTMB_check_consistency()] (a complementary
+#'   simulation-based diagnostic).
 #'
 #' @examples
 #' \dontrun{
@@ -139,7 +138,8 @@
 #' # >= 94% empirical-coverage exit gate.
 #' }
 #'
-#' @export
+#' @keywords internal
+#' @noRd
 coverage_study <- function(
   fit,
   parm = NULL,
@@ -391,7 +391,7 @@ print.gllvmTMB_coverage_study <- function(x, ...) {
         "{n_fail} of {nrow(x$coverage)} (parm x method) rows fall short of 94%."
       )
       cli::cli_text(
-        "Common diagnoses (see {.run vignette(\"troubleshooting-profile\", package = \"gllvmTMB\")}): boundary parameter, weak identifiability, non-quadratic profile, mis-specified model. Use {.fn confint_inspect} for visual confirmation."
+        "Common diagnoses include a natural boundary, weak identification, an irregular profile, or a mismatched model. Use {.fn confint_inspect} for direct-target curve inspection and the profile-likelihood article for the decision table."
       )
     }
   }

@@ -2,6 +2,8 @@
 % Please edit documentation in R/missing-predictor.R
 \name{impute_model}
 \alias{impute_model}
+\alias{mi}
+\alias{mi_group}
 \title{Predictor model for a missing covariate used inside \code{mi()}}
 \usage{
 impute_model(formula, family = stats::gaussian())
@@ -27,14 +29,15 @@ predictor model; use \code{impute_model()} when an explicit predictor family is
 wanted.
 }
 \details{
-Supported v1 predictor models are one modelled missing predictor at a time.
+The current interface fits one modelled missing predictor at a time.
 A Gaussian predictor (\code{gaussian()}, or a bare formula) is treated as a latent
 quantity integrated out by the Laplace approximation and may use fixed
 covariates, one grouped random intercept, or one phylogenetic structured
-intercept. Discrete predictors are fixed-effect only: \code{binomial(link = "logit")} uses exact two-state summation, \code{\link[=cumulative_logit]{cumulative_logit()}} uses exact
+intercept. A Gaussian predictor that lives at a coarser observed level can
+declare that level with \code{mi_group(group)} in the predictor formula. Discrete
+predictors are fixed-effect only: \code{binomial(link = "logit")} uses exact two-state summation, \code{\link[=cumulative_logit]{cumulative_logit()}} uses exact
 ordered K-state summation, and \code{\link[=categorical]{categorical()}} uses exact unordered K-state
-softmax summation. Other predictor families are rejected until their
-likelihood and recovery gates ship.
+softmax summation. Other predictor families are rejected explicitly.
 }
 \examples{
 impute_model(x ~ z)

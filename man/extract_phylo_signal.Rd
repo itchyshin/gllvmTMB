@@ -87,8 +87,8 @@ non-phylogenetic variance is the cluster-tier \code{q_it} term
 (\verb{indep(0 + trait | <cluster>)}, reported as \code{sd_q^2}).
 }
 
-This is a definitional choice (maintainer ruling, 2026-07-08). \strong{Other
-defensible definitions exist} — for instance a \emph{total}-variance denominator
+The denominator is defined at the species level. \strong{Other defensible
+definitions exist} — for instance a \emph{total}-variance denominator
 that also absorbs site-level variation, which would give a smaller \code{H2} for
 the same fit. Before 2026-07-08 this function used the unit tier
 unconditionally, which silently reported \code{H2 = 1} for every trait in a

@@ -132,8 +132,8 @@ test_that("poisson x latent(unit, d=1): converges, PD, recovers rank-1 loading s
   reason <- .unhealthy_reason(fit)
   if (!is.null(reason)) skip(reason)
 
-  expect_converged(fit)
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
+  expect_stationary_for_recovery_test(fit)
 
   ## Recovery: the rank-1 loading reproduces the true sign pattern up to a
   ## global sign flip (factor loadings are identified only up to reflection).
@@ -165,8 +165,8 @@ test_that("poisson x unique(unit): converges, PD, recovers positive diag w/ corr
   reason <- .unhealthy_reason(fit)
   if (!is.null(reason)) skip(reason)
 
-  expect_converged(fit)
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
+  expect_stationary_for_recovery_test(fit)
 
   ## Recovery: per-trait between-unit variances are finite and positive, and
   ## the largest variance sits on the trait with the largest true variance.
@@ -198,8 +198,8 @@ test_that("poisson x latent(unit, d=1) + unique(unit): converges, PD, recovers b
   reason <- .unhealthy_reason(fit)
   if (!is.null(reason)) skip(reason)
 
-  expect_converged(fit)
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
+  expect_stationary_for_recovery_test(fit)
   ## Both engine slots are active.
   expect_true(isTRUE(fit$use$rr_B) && isTRUE(fit$use$diag_B))
 
@@ -228,8 +228,8 @@ test_that("poisson x indep(unit): converges, PD, sets indep marker, recovers pos
   reason <- .unhealthy_reason(fit)
   if (!is.null(reason)) skip(reason)
 
-  expect_converged(fit)
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
+  expect_stationary_for_recovery_test(fit)
   ## indep dispatch flag distinguishes it from a plain unique() fit.
   expect_true(isTRUE(fit$use$indep_B))
 
@@ -255,8 +255,8 @@ test_that("poisson x dep(unit): converges, PD, recovers off-diagonal correlation
   reason <- .unhealthy_reason(fit)
   if (!is.null(reason)) skip(reason)
 
-  expect_converged(fit)
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
+  expect_stationary_for_recovery_test(fit)
   ## dep dispatch flag (full unstructured Sigma_B).
   expect_true(isTRUE(fit$use$dep_B))
 
@@ -285,8 +285,8 @@ test_that("poisson x scalar/unique(common=TRUE) (unit): converges, PD, ties one 
   reason <- .unhealthy_reason(fit)
   if (!is.null(reason)) skip(reason)
 
-  expect_converged(fit)
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
+  expect_stationary_for_recovery_test(fit)
 
   ## Recovery of the scalar CONSTRAINT: a single shared variance across all
   ## traits (every per-trait sd_B exactly tied), and positive.

@@ -18,10 +18,10 @@ A \code{ggplot} object.
 }
 \description{
 S3 method dispatched on the \code{profile_derived} parent class shared by
-the five derived-quantity curve objects returned from
-\code{\link[=profile_repeatability]{profile_repeatability()}}, \code{\link[=profile_phylo_signal]{profile_phylo_signal()}},
-\code{\link[=profile_communality]{profile_communality()}}, \code{\link[=profile_correlation]{profile_correlation()}}, and
-\code{\link[=profile_proportions]{profile_proportions()}}. Mirrors \code{\link[=plot.profile_loadings]{plot.profile_loadings()}}: dotted
+the public derived-quantity curve object returned from
+\code{\link[=profile_phylo_signal]{profile_phylo_signal()}}. The diagonal-companion ratio and nonlinear
+communality, correlation, and proportion curve prototypes are internal and
+withheld from the public release. Mirrors \code{\link[=plot.profile_loadings]{plot.profile_loadings()}}: dotted
 chisq cutoff hline, solid grey vline at the estimate, dashed grey
 vlines at the inverted CI bounds (when \code{interval = TRUE}), blue
 curve with white-filled points, faceted by \code{target} with free

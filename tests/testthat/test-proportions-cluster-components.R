@@ -64,6 +64,15 @@ test_that("cluster proportion target functions use the full all-tier denominator
       n_traits = 2L,
       data = data.frame(trait = factor(c("a", "b"), levels = c("a", "b"))),
       trait_col = "trait",
+      tmb_data = list(
+        family_id_vec = c(0L, 0L),
+        link_id_vec = c(0L, 0L),
+        trait_id = 0:1
+      ),
+      report = list(
+        eta = c(0, 0),
+        sigma_eps = 1
+      ),
       use = list(
         diag_species = TRUE,
         diag_cluster2 = TRUE

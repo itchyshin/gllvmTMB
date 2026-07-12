@@ -42,8 +42,8 @@ identity correlation: \eqn{\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)}.
 }
 
 Use \code{dep()} when you want to commit to the full unstructured
-interpretation explicitly. Maintainer's framing: this is just a
-standard multivariate response model. Computational scope: tractable
+interpretation explicitly. This is a standard multivariate response
+covariance model. Computational scope: tractable
 for \eqn{T \le \sim 30} with the default optimiser; for larger
 \eqn{T}, prefer \code{latent(d = K)} with \eqn{K \ll T} as the
 rank-reduced approximation.

@@ -91,7 +91,7 @@
 #' few points to bracket the threshold).
 #'
 #' @keywords internal
-#' @export
+#' @noRd
 profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
@@ -345,8 +345,9 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   root_tol = 0.005,
   root_maxiter = 25L
 ) {
-  ## Default reference is chi-square_1 (on the L_max - L_c scale); callers may
-  ## pass a t-based crit via .qt_threshold(level, df) (D-12 t-based profiling).
+  ## Default reference is chi-square_1 (on the L_max - L_c scale). The internal
+  ## B_lv prototype can pass an explicit t-sensitivity cutoff, but that route is
+  ## not exported or taught.
   if (is.null(crit)) crit <- .qchisq_threshold(level)
   mle_val <- as.numeric(fit$opt$objective)
   ## Build a fast deviance-excess function for uniroot
@@ -489,7 +490,7 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
 #'   `upper`, `method`.
 #'
 #' @keywords internal
-#' @export
+#' @noRd
 profile_ci_communality <- function(
   fit,
   tier = c("unit", "unit_obs", "phy", "B", "W"),
@@ -700,7 +701,7 @@ profile_ci_communality <- function(
 #' @return Length-3 numeric vector (`estimate`, `lower`, `upper`).
 #'
 #' @keywords internal
-#' @export
+#' @noRd
 profile_ci_correlation <- function(
   fit,
   tier = c(
@@ -1088,7 +1089,7 @@ profile_ci_correlation <- function(
 #'
 #' @section Implementation notes:
 #' `shared_*` and `unique_*` components are profiled via the shared
-#' [profile_ci_communality()] driver `.profile_ci_via_refit()` applied
+#' internal `profile_ci_communality()` driver `.profile_ci_via_refit()` applied
 #' to a custom target function that returns the (trait, component)
 #' proportion as a function of all model parameters. For
 #' `link_residual`, fixed-scale families (Gaussian, binomial with any
@@ -1098,11 +1099,10 @@ profile_ci_correlation <- function(
 #' Gamma, Tweedie, ...) are not yet profiled and return `NA` bounds
 #' with `method = "(unavailable)"`.
 #'
-#' @seealso [extract_proportions()], [profile_ci_communality()],
-#'   [profile_ci_correlation()].
+#' @seealso [extract_proportions()].
 #'
 #' @keywords internal
-#' @export
+#' @noRd
 profile_ci_proportions <- function(
   fit,
   components = NULL,
@@ -1248,12 +1248,12 @@ profile_ci_proportions <- function(
 #' Likelihood-profile confidence intervals for the trait-scale effects
 #' \eqn{B_{lv} = \Lambda_B \alpha^\top} of a predictor-informed latent term
 #' (\code{latent(..., lv = ~ x)}), obtained by inverting the likelihood-ratio
-#' test for each selected entry via constrained refit. Profile is the featured
-#' CI method for \eqn{B_{lv}} (maintainer doctrine D-12): it respects the
-#' asymmetry and boundary behaviour that a Wald interval misses, and it works
-#' where the Hessian is not positive-definite. The default reference is the
-#' small-sample \strong{t} cutoff (\code{qt((1+level)/2, df)^2}); pass
-#' \code{reference = "chisq"} for the asymptotic \eqn{\chi^2_1} cutoff.
+#' test for each selected entry via constrained refit. Unlike a delta-method
+#' Wald interval, this route follows the fitted likelihood away from the point
+#' estimate and does not use the target's local Hessian approximation. The
+#' constrained refits must still be numerically stable, and a computed interval
+#' is not evidence of repeated-sampling calibration. The default reference is
+#' the standard asymptotic \eqn{\chi^2_1} likelihood-ratio cutoff.
 #'
 #' `B_lv` is rotation-invariant, so it is a valid recovery/inference target for
 #' any latent rank; the raw loadings and raw \eqn{\alpha} are not.
@@ -1261,34 +1261,37 @@ profile_ci_proportions <- function(
 #' `r lifecycle::badge("experimental")`
 #'
 #' @section Interval calibration:
-#' \eqn{B_{lv}} point recovery is validated, but formal interval **coverage** is
-#' not yet certified for the profile method: the relevant validation-register
-#' gates remain open. Documented coverage evidence currently exists only for Wald
-#' intervals on ordinary unit-tier Gaussian and standard-link binomial fits
-#' (see [extract_lv_effects()]). Treat these profile bounds as well-motivated
-#' but not coverage-certified for other families or mixed-family fits until the
-#' coverage campaign lands; see `docs/design/61-capability-status.md`.
+#' Software tests exercise the profile route, but broad empirical interval
+#' coverage has not been established. Treat the returned bounds as experimental,
+#' especially for small samples, boundary targets, non-Gaussian likelihoods, and
+#' mixed-family fits. A finite interval only shows that the constrained numerical
+#' profile crossed the requested cutoff.
 #'
 #' @param fit A fitted \code{gllvmTMB} model with a predictor-informed latent
-#'   term. REML fits are recommended (unbiased variance components).
+#'   term.
 #' @param trait,predictor Optional integer indices selecting entries of
 #'   \eqn{B_{lv}} (traits x predictors); default is every entry.
 #' @param level Confidence level (default \code{0.95}).
-#' @param reference \code{"t"} (default, small-sample) or \code{"chisq"}.
-#' @param df Optional degrees of freedom for the \code{"t"} reference; default
-#'   is the between-unit residual df \eqn{n_{units} - d - 1}.
+#' @param reference \code{"chisq"} (default) for the standard asymptotic
+#'   likelihood-ratio cutoff, or \code{"t"} for an explicit sensitivity
+#'   analysis using \code{qt((1 + level) / 2, df)^2}. The t-based option is not
+#'   a calibrated finite-sample correction for this model.
+#' @param df Degrees of freedom supplied by the user when
+#'   \code{reference = "t"}. There is no generally justified automatic rule for
+#'   this target, so the function does not infer \code{df} from the number of
+#'   units or latent dimensions.
 #'
 #' @return A data frame with one row per selected entry: \code{trait},
 #'   \code{predictor}, \code{estimate}, \code{lower}, \code{upper},
 #'   \code{level}, \code{method}, \code{reference}, \code{df}.
 #'
-#' @seealso [extract_lv_effects()], [profile_ci_correlation()].
-#' @export
+#' @keywords internal
+#' @noRd
 profile_ci_lv_effects <- function(fit,
                                   trait = NULL,
                                   predictor = NULL,
                                   level = 0.95,
-                                  reference = c("t", "chisq"),
+                                  reference = c("chisq", "t"),
                                   df = NULL) {
   reference <- match.arg(reference)
   B_hat <- fit$report[["B_lv_unit"]]
@@ -1304,17 +1307,11 @@ profile_ci_lv_effects <- function(fit,
   d_B <- tryCatch(ncol(as.matrix(fit$report[["Lambda_B"]])), error = function(e) 1L)
 
   if (identical(reference, "t") && is.null(df)) {
-    n_units <- suppressWarnings(nrow(fit$lv[["X_lv_B"]]))
-    if (is.null(n_units) || is.na(n_units)) {
-      n_units <- suppressWarnings(nrow(as.matrix(fit$report[["U_lv_mean_B"]])))
-    }
-    if (is.null(n_units) || is.na(n_units)) {
-      cli::cli_abort(c(
-        "Could not infer the {.arg df} for the t reference.",
-        ">" = "Pass {.arg df} explicitly (e.g. {.code df = n_units - d - 1})."
-      ))
-    }
-    df <- max(1L, n_units - d_B - 1L)
+    cli::cli_abort(c(
+      "The t-based sensitivity analysis requires an explicit {.arg df}.",
+      "i" = "There is no generally justified automatic degrees-of-freedom rule for {.code B_lv}.",
+      ">" = "Use the default {.code reference = \"chisq\"}, or supply a scientifically justified {.arg df} and report it as a sensitivity analysis."
+    ))
   }
   crit <- if (identical(reference, "t")) {
     .qt_threshold(level, df)

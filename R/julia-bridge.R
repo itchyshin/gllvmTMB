@@ -247,7 +247,8 @@
 #'   tied to raw unit-tier covariance/extractor boundaries.
 #' @examples
 #' head(gllvm_julia_gate_registry())
-#' @export
+#' @keywords internal
+#' @noRd
 gllvm_julia_gate_registry <- function() {
   .gllvm_julia_gate_registry()
 }
@@ -327,7 +328,8 @@ gllvm_julia_setup <- function(
 #'   the boundary recorded in `notes`.
 #' @examples
 #' head(gllvm_julia_capabilities())
-#' @export
+#' @keywords internal
+#' @noRd
 gllvm_julia_capabilities <- function() {
   families <- .GLLVM_JULIA_BRIDGE_FAMILIES
   notes <- vapply(families, .gllvm_julia_capability_note, character(1))

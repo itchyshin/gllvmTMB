@@ -43,7 +43,9 @@ but |0.5| is generally beyond noise for \code{n_sim = 100}).}
 \item{\verb{$n_sim}}{The \code{n_sim} actually run.}
 \item{\verb{$threshold}}{The marginal-bias threshold used.}
 \item{\verb{$diagnostics}}{Character vector of one or more of:
-\code{"centred"} (well-behaved), \code{"marginal_score_non_centred"},
+\code{"no_centring_warning"} (the finite simulation did not detect
+non-centring; this is not an accuracy certificate),
+\code{"marginal_score_non_centred"},
 \code{"joint_score_non_centred"},
 \code{"information_matrix_singular"} (TMB couldn't invert it;
 interpret with caution), \code{"marginal_p_value_unavailable"}
@@ -79,15 +81,14 @@ validation workflow.
 
 This is a complementary signal to \code{\link[=sanity_multi]{sanity_multi()}} (which checks
 Hessian definiteness, gradient magnitude, convergence flags) and
-to \code{\link[=check_identifiability]{check_identifiability()}} (which checks Procrustes-aligned
-loading recovery across simulate-refit replicates). Slower than
-both -- \code{n_sim} likelihood evaluations -- but the only diagnostic
+to a target-explicit known-DGP study of rank-selection behaviour. Slower
+than the first-line checks -- \code{n_sim} likelihood evaluations -- but the only diagnostic
 that targets the \strong{Laplace approximation itself} rather than
 the optimisation outcome or the parameter identification.
 
-If the marginal score is centred (\code{p_value > 0.05}), the
-Laplace approximation is locally appropriate for the fit's
-random-effects structure. If it is not (\code{p_value <= 0.05} or
+A large marginal-score p-value is an absence of evidence against
+centring in this finite simulation; it is not a certificate that the
+Laplace approximation is accurate. If the result is small (\code{p_value <= 0.05}) or
 large flagged-parameter list), consider:
 \itemize{
 \item Refitting with a richer random-effects structure (so the
@@ -114,7 +115,6 @@ res$flagged_parameters
 }
 \seealso{
 \code{\link[=sanity_multi]{sanity_multi()}} (structural / convergence checks),
-\code{\link[=check_identifiability]{check_identifiability()}} (Procrustes-based loadings recovery),
 \code{\link[=check_auto_residual]{check_auto_residual()}} (mixed-family safeguard),
 \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}} (holistic fit summary),
 \code{\link[TMB:checkConsistency]{TMB::checkConsistency()}} (the underlying TMB call).

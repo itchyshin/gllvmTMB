@@ -47,8 +47,9 @@ test_that("extract_correlations accepts method = 'fisher-z'", {
       "interval_status")
   )
   expect_true(all(cors$method == "fisher-z"))
-  ## Claim-boundary marker: an all-Gaussian fit carries nominal intervals.
-  expect_true(all(cors$interval_status == "nominal"))
+  ## The iid Fisher variance is a transparent heuristic, not a calibrated
+  ## mixed-model interval.
+  expect_true(all(cors$interval_status == "heuristic_unvalidated"))
   expect_true(all(cors$correlation >= -1 & cors$correlation <= 1))
   expect_true(all(cors$lower >= -1 & cors$lower <= 1))
   expect_true(all(cors$upper >= -1 & cors$upper <= 1))
@@ -56,13 +57,16 @@ test_that("extract_correlations accepts method = 'fisher-z'", {
   expect_true(all(cors$upper >= cors$correlation - 1e-6))
 })
 
-## ---- 2. New default is "fisher-z" (not "profile") -------------------------
+## ---- 2. Default is point-only ---------------------------------------------
 
-test_that("extract_correlations default method is now 'fisher-z'", {
+test_that("extract_correlations default method is point-only", {
   skip_on_cran()
   fit <- make_tiny_BW_fit_fz()
   cors_default <- gllvmTMB::extract_correlations(fit, tier = "unit")
-  expect_true(all(cors_default$method == "fisher-z"))
+  expect_true(all(cors_default$method == "none"))
+  expect_true(all(cors_default$interval_status == "none"))
+  expect_true(all(is.na(cors_default$lower)))
+  expect_true(all(is.na(cors_default$upper)))
 })
 
 ## ---- 3. "wald" remains a backward-compat alias of "fisher-z" -------------

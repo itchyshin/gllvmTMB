@@ -32,16 +32,17 @@ for existing scripts.
 \item \code{"Lambda"} (all free entries of \code{Lambda_unit}),
 \code{"Lambda:i,j"} (single entry), or \code{"Lambda:i,j;k,l"}
 (multiple entries, semicolon-separated). Routes to
-\code{\link[=loading_ci]{loading_ci()}} / \code{\link[=loading_profile]{loading_profile()}} (Stage 2 of the unified
-profile-CI framework). For these tokens the method choices are
+\code{\link[=loading_ci]{loading_ci()}} / \code{\link[=loading_profile]{loading_profile()}}. For these tokens the method
+choices are
 \code{c("wald", "wald_asym", "profile")} with default
 \code{"wald"}.
 \item \code{"icc"} (all traits), \code{"icc:<trait_name>"} (one
 trait by name), \code{"icc:<t1>;<t2>"} (multiple by name), or
 \code{"icc:[1,3]"} (1-based trait indices). Routes to
-\code{\link[=profile_ci_repeatability]{profile_ci_repeatability()}} (for \code{method = "profile"}) or
-\code{\link[=extract_repeatability]{extract_repeatability()}} (\code{"wald"} / \code{"bootstrap"}).
-Stage 3a of the unified profile-CI framework.
+\code{\link[=extract_repeatability]{extract_repeatability()}} with \code{"wald"} (default) or
+\code{"bootstrap"}. The former profile token is withdrawn because it
+estimated a diagonal-only ratio rather than canonical full-covariance
+repeatability.
 \item \code{"phylo_signal"} / \code{"phylo_signal:<trait>"} etc.
 -- same grammar as \code{"icc"}. Routes to
 \code{\link[=profile_ci_phylo_signal]{profile_ci_phylo_signal()}} for \code{"profile"} and the companion
@@ -52,19 +53,18 @@ fix-and-refit profile is implemented.
 \item \code{"communality:<tier>"} (one tier, all traits) or
 \code{"communality:<tier>:<trait>"} (one tier, one trait).
 Tier is one of \code{"unit"} / \code{"unit_obs"} / \code{"phy"}
-(legacy \code{"B"} / \code{"W"}). Routes to
-\code{\link[=profile_ci_communality]{profile_ci_communality()}} for \code{"profile"} and the companion
-Wald/bootstrap helpers for \code{"wald"} / \code{"bootstrap"}.
+(legacy \code{"B"} / \code{"W"}). Defaults to Wald; bootstrap is
+available explicitly. The nonlinear profile prototype is withheld.
 \item \code{"rho:<tier>:i,j"} (one pair) or
 \code{"rho:<tier>:i,j;k,l"} (multiple pairs). Tier is one of
 \code{"unit"} / \code{"unit_slope"} / \code{"unit_obs"} /
 \code{"phy"} / \code{"spatial"} (legacy \code{"B"} / \code{"W"} /
 \code{"spde"}). \code{"unit_slope"} indexes the augmented
 \code{2T} coefficient vector by numeric position and is currently a
-Gaussian selected-entry profile canary only.
-Routes to \code{\link[=profile_ci_correlation]{profile_ci_correlation()}} (profile) or
+not currently an interval target. Other tiers route to
 \code{\link[=extract_correlations]{extract_correlations()}} (\code{"fisher-z"} / \code{"wald"} /
-\code{"bootstrap"}).
+\code{"bootstrap"}); Fisher-z is the default for this \code{confint()}
+token. The nonlinear profile prototype is withheld.
 \item \code{"proportion"} (all components, all traits),
 \code{"proportion:<component>"} (one component, all traits),
 \code{"proportion:<component>:<trait>"} (one (component, trait)),
@@ -74,10 +74,9 @@ components). Components are by name (\code{"shared_unit"},
 \code{"unique_unit"}, \code{"shared_unit_obs"},
 \code{"unique_unit_obs"}, \code{"unique_cluster"},
 \code{"unique_cluster2"}, \code{"shared_phy"},
-\code{"unique_phy"}, \code{"link_residual"}). Routes to
-\code{\link[=profile_ci_proportions]{profile_ci_proportions()}} for \code{"profile"} and the companion
-proportion Wald/bootstrap helpers for \code{"wald"} /
-\code{"bootstrap"}.
+\code{"unique_phy"}, \code{"link_residual"}). Defaults to Wald;
+bootstrap is available explicitly. The nonlinear profile prototype is
+withheld.
 \item An integer index vector or character vector of fixed-effect
 term names (same as the standard \code{confint()} interface).
 \item Missing (default) -- all fixed-effect parameters.
@@ -112,8 +111,8 @@ requested \code{parm}, so legacy calls still return legacy
 \item \strong{Lambda path} -- a \code{data.frame} with columns
 \code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"}),
 \code{estimate}, \code{lower}, \code{upper}, \code{method},
-\code{pd_hessian}, and \code{ci_status} (the last two from the
-Stage 1 convention: when \code{pdHess = FALSE} on a Wald path,
+\code{pd_hessian}, and \code{ci_status}. When \code{pdHess = FALSE}
+on a Wald path,
 \code{lower}/\code{upper} are \code{NA} and \code{ci_status}
 flags the reason).
 \item \strong{Derived-quantity path} (\code{"icc"} /
@@ -137,30 +136,28 @@ choices:
 }
 \details{
 \itemize{
-\item \code{method = "profile"} (\strong{new default in Phase K}):
-profile-likelihood CIs via \code{TMB::tmbprofile()} +
-\code{stats::uniroot()}. Accurate, respects skewness, fast for
-individual parameters.
+\item \code{method = "profile"} (default): profile-likelihood bounds via
+\code{TMB::tmbprofile()} + \code{stats::uniroot()}. A successful
+numerical route can represent asymmetric likelihood shape, but its
+reference distribution and coverage remain target-specific.
 \item \code{method = "wald"}: Gaussian-approximation CIs from
 \code{sd_report}. Fastest; poor near boundaries.
-\item \code{method = "bootstrap"}: parametric bootstrap via
-\code{bootstrap_Sigma()}. Slowest; most flexible (full sampling
-distribution).
+\item \code{method = "bootstrap"}: fitted-model parametric bootstrap via
+\code{bootstrap_Sigma()}. Slowest; inspect failed refits, Monte Carlo
+resolution, and whether simulation covers every active model component.
 }
 
-Scope boundary: IN, fixed-effect and direct-parameter intervals use the
-requested \code{method} where supported, and Sigma-matrix
+Fixed-effect and direct-parameter intervals use the requested \code{method}
+where supported, and Sigma-matrix
 intervals accept canonical \code{parm = "Sigma_unit"} /
 \code{"Sigma_unit_obs"} names, diagonal extra-grouping
 \code{"Sigma_cluster"} / \code{"Sigma_cluster2"} names, plus legacy
-\code{"Sigma_B"} / \code{"Sigma_W"} aliases (the underlying
-extraction is covered by the package's validation tests).
-PARTIAL, profile intervals for full decomposed Sigma entries fall back to
+\code{"Sigma_B"} / \code{"Sigma_W"} aliases. Profile intervals for full
+decomposed Sigma entries fall back to
 bootstrap because those entries are nonlinear functions of rotation-equivalent
-loadings and diagonal \eqn{\Psi}; non-Gaussian bootstrap calibration remains
-experimental and coverage is not yet fully established (see the
-validation-debt register). PLANNED, richer derived-profile intervals
-and broader calibration evidence remain M3 work.
+loadings and diagonal \eqn{\Psi}. Non-Gaussian bootstrap and broader
+derived-target coverage are not universally calibrated; inspect the returned
+method and the target-specific article before reporting bounds.
 
 Main parm-class dispatch paths:
 
@@ -185,8 +182,8 @@ columns = lower / upper bounds (same shape as
 \item \strong{Lambda and derived summaries} -- \code{"Lambda..."},
 \code{"icc..."}, \code{"phylo_signal..."}, \code{"communality..."},
 \code{"rho..."}, and \code{"proportion..."} tokens dispatch to their
-corresponding loading, profile, Wald, or bootstrap helper where that
-route is implemented.
+corresponding direct-profile, Wald, or bootstrap helper where that route
+is implemented. Nonlinear penalty-profile prototypes are withheld.
 }
 }
 \section{References}{
@@ -226,7 +223,7 @@ fit <- gllvmTMB(
 ci_unit <- confint(fit, parm = "Sigma_unit")
 ci_unit
 
-## Bootstrap CIs (slow, more accurate for non-monotone cases)
+## Bootstrap route (slow; inspect failed refits and target calibration)
 ci_unit_boot <- confint(fit, parm = "Sigma_unit", method = "bootstrap",
                         nsim = 200, seed = 42)
 

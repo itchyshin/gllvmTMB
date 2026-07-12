@@ -4,16 +4,13 @@
 ## or FAIL signal. Designed to be the first call a user makes after
 ## fitting.
 
-## Scale-free convergence tolerance for the `converged` verdict below.
-## `converged` is judged on the *scaled* gradient `max_gradient / (1 + |objective|)`,
-## NOT on `fit$opt$convergence` (a raw PORT/optim status code whose value can even
-## flip with `LC_COLLATE`; see the after-task report + brain LESSONS 0c) and NOT on
-## `pd_hessian` (a sign test on a finite-difference Hessian eigenvalue -- noise near
-## zero, so a benign flat ridge reads FALSE). The scaled gradient was the one signal
-## invariant across every 2026-07-08 mis-diagnosis; on a known-truth battery it
-## separated good fits (<= ~1e-6) from genuine non-convergence (>= ~5e-2) with a
-## four-order margin either side of this threshold.
-.gllvmTMB_converged_gtol <- 1e-3
+## Conservative stationarity tolerance. The objective-scaled gradient remains a
+## descriptive diagnostic, but it cannot by itself certify convergence because
+## its value changes with arbitrary additive/replicate scaling of the objective.
+## `converged` therefore requires the optimiser's success code, a finite objective,
+## and a small unscaled maximum gradient. Hessian health remains a separate
+## inference diagnostic rather than part of this point-stationarity flag.
+.gllvmTMB_converged_gtol <- 1e-2
 
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
@@ -47,8 +44,7 @@
     NA_integer_
   }
 
-  ## The authoritative convergence verdict. See `.gllvmTMB_converged_gtol` above
-  ## for why it is the *scaled* gradient, not `convergence` or `pd_hessian`.
+  ## Separate descriptive stationarity signals from the conservative conjunction.
   max_grad_val <- if (length(grad) == 0L || all(is.na(grad))) {
     NA_real_
   } else {
@@ -60,7 +56,14 @@
   } else {
     max_grad_val / (1 + abs(obj_val))
   }
-  converged <- isTRUE(scaled_gradient < .gllvmTMB_converged_gtol)
+  stationary_by_scaled_gradient <- isTRUE(
+    scaled_gradient < .gllvmTMB_converged_gtol
+  )
+  stationary_by_gradient <- isTRUE(max_grad_val < .gllvmTMB_converged_gtol)
+  optimizer_converged <- isTRUE(identical(object$opt$convergence, 0L))
+  converged <- isTRUE(
+    optimizer_converged && is.finite(obj_val) && stationary_by_gradient
+  )
 
   list(
     optimizer = if (nrow(restart_history) > 0L) {
@@ -73,6 +76,9 @@
     objective = obj_val,
     max_gradient = max_grad_val,
     scaled_gradient = scaled_gradient,
+    stationary_by_scaled_gradient = stationary_by_scaled_gradient,
+    stationary_by_gradient = stationary_by_gradient,
+    optimizer_converged = optimizer_converged,
     converged = converged,
     pd_hessian = if (
       !is.null(object$sd_report) &&
@@ -199,6 +205,15 @@
   )
   out <- list()
   for (spec in specs) {
+    ## `phylo_dep()` reuses the Lambda_phy storage block for a constrained
+    ## full-covariance factor. Its columns are not exchangeable latent axes,
+    ## so rotation and weak-axis diagnostics do not apply.
+    if (
+      identical(spec$level, "phylo") &&
+        isTRUE(object$use$phylo_dep)
+    ) {
+      next
+    }
     L <- .gllvmTMB_report_matrix(object, spec$lambda)
     if (is.null(L)) {
       next
@@ -490,9 +505,8 @@
 #' `gllvmTMBcontrol(se = FALSE)` point-estimate path. Partially
 #' covered: the table does not calibrate interval coverage, prove
 #' formal separation, or prove the selected latent rank by itself.
-#' Planned: target-explicit simulations and
-#' [check_identifiability()] decide when broader interval or
-#' rank-selection claims move beyond diagnostic status.
+#' Planned: target-explicit known-DGP simulations decide when broader
+#' interval or rank-selection claims move beyond diagnostic status.
 #'
 #' A `WARN` row, including `pdHess = FALSE`, means that Wald standard
 #' errors or curvature-based inference need more care; it is not by
@@ -754,9 +768,9 @@ check_gllvmTMB <- function(
           weak_axis_thresh,
           paste0(spec$lambda, " column share of shared loading energy"),
           if (isTRUE(binomial_warn)) {
-            "if driven by a high-loading near-constant binary trait, remove or re-code that indicator; otherwise compare lower rank and inspect check_identifiability()"
+            "if driven by a high-loading near-constant binary trait, remove or re-code that indicator; otherwise compare lower ranks and use known-DGP simulations to evaluate the selection rule"
           } else {
-            "compare lower rank, inspect check_identifiability(), and avoid over-interpreting weak axes"
+            "compare lower ranks, inspect fit stability, and avoid over-interpreting weak axes"
           }
         ))
       )

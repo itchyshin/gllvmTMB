@@ -102,9 +102,9 @@ make_gamma_phylo_fixture <- function(n_sp = 50L,
 }
 
 expect_gamma_phylo_fit_health <- function(fit) {
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   ## Confirm the response really is gamma (family_id 4) — guards against a
   ## silent family fallthrough making the "gamma" claim hollow.
   testthat::expect_equal(fit$tmb_data$family_id_vec[1], 4L)
@@ -175,7 +175,7 @@ test_that("phylo_latent + phylo_unique paired fits on Gamma(log); pd_hessian TRU
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_latent + phylo_unique gamma(log) fit did not converge with PD Hessian; PHY-04/05 stays partial pending bigger n / different seed")
   }
 
@@ -212,7 +212,7 @@ test_that("phylo_scalar fits on Gamma(log); sigma^2_phy recovers within 3x band;
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_scalar gamma(log) fit did not converge with PD Hessian; PHY-04 stays partial pending bigger n / different seed")
   }
 
@@ -287,7 +287,7 @@ test_that("phylo_indep(0 + trait | species) fits on Gamma(log); pd_hessian TRUE;
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_indep gamma(log) fit did not converge with PD Hessian; PHY-05 stays partial pending bigger n / different seed")
   }
 
@@ -323,7 +323,7 @@ test_that("phylo_dep(0 + trait | species) fits on Gamma(log); CI smoke + phy cor
       conditionMessage(fit)
     ))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("phylo_dep gamma(log) fit did not converge with PD Hessian; PHY-05 stays partial pending bigger n / different seed")
   }
 

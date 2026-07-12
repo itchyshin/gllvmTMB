@@ -96,8 +96,7 @@
 #'   formula and dispatches to the wide-format pivot pre-pass.
 #' @seealso [gllvmTMB()] for model fitting. The legacy
 #'   matrix wrapper `gllvmTMB_wide(Y, ...)` is soft-deprecated in
-#'   0.2.0 (see the validation-debt register for the migration
-#'   tracking entries); wide-data examples now use the `traits(...)` LHS through
+#'   0.2.0; wide-data examples now use the `traits(...)` LHS through
 #'   [gllvmTMB()]. The source-tree contract is
 #'   `docs/design/01-formula-grammar.md`.
 #' @examples
@@ -308,7 +307,7 @@ is_traits_lhs <- function(formula) {
 
 ## ---- Internal: rewrite a `traits(...)` LHS formula to long format -------
 ##
-## Returns a list with three elements:
+## Returns the rewritten fit inputs plus source-row provenance:
 ##   * formula_long: the rewritten formula with LHS = `.y_wide_`
 ##   * data_long:    the long-format data frame
 ##   * weights_long: the replicated weights vector (or NULL)
@@ -438,6 +437,13 @@ rewrite_traits_lhs <- function(
   ## (assertthat::assert_that(is.data.frame), [[<- assignments) are
   ## tibble-agnostic but plain df is the conservative default.
   data_long <- as.data.frame(data_long, stringsAsFactors = FALSE)
+  ## Map each stacked cell back to the row of the user-supplied wide data.
+  ## pivot_longer() uses row-major order here (traits vary within source row).
+  ## Under response = "drop", remove the same NA cells as the pivot.
+  source_row <- rep(seq_len(nrow(data)), each = length(trait_cols))
+  if (drop_na_cells) {
+    source_row <- source_row[!as.vector(t(is.na(as.matrix(data[trait_cols]))))]
+  }
 
   if (n_NA_in_traits > 0L) {
     if (drop_na_cells) {
@@ -469,6 +475,7 @@ rewrite_traits_lhs <- function(
     data_long = data_long,
     weights_long = weights_long,
     trait_cols = trait_cols,
+    source_row = as.integer(source_row),
     ## Under response = "include" no cell is dropped (NA cells are kept and
     ## masked); n_dropped reflects the cells actually removed from the stack.
     n_dropped = if (drop_na_cells) n_NA_in_traits else 0L

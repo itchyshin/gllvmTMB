@@ -247,16 +247,10 @@
 #' [bootstrap_Sigma()] result into the same row schema with bootstrap interval
 #' columns filled in.
 #'
-#' Scope boundary: IN, the helper is a report-ready point-estimate table for
-#' the same covariance and correlation matrices returned by [extract_Sigma()]
-#' (covered by the package's Sigma-table validation tests, including the
-#' underlying extractor and admitted `engine = "julia"` unit-tier bridge
-#' rows), and a bootstrap interval table when `fit` is a [bootstrap_Sigma()]
-#' result (also covered by the package's Sigma-table validation tests).
-#' PARTIAL, `gllvmTMB_julia` objects currently expose only the ordinary unit tier and no
-#' interval-bearing table rows. Bootstrap intervals cover the summaries already
-#' present in the bootstrap object and do not add profile or Wald intervals.
-#' PLANNED, richer interval joins remain future plotting infrastructure.
+#' The helper reshapes the same covariance and correlation matrices returned by
+#' [extract_Sigma()]. A [bootstrap_Sigma()] object can supply interval columns.
+#' Julia bridge fits currently expose only point estimates for the ordinary unit
+#' tier. The helper does not create profile or Wald intervals.
 #'
 #' The table is a point-estimate view over [extract_Sigma()]. It does not
 #' compute confidence intervals from a fitted model directly. Use
@@ -289,11 +283,9 @@
 #' @return A data frame with one row per requested entry and stable columns:
 #'   `estimand`, `trait_i`, `trait_j`, integer indices `i` and `j`, `level`,
 #'   `component`, `matrix`, `estimate`, `lower`, `upper`, `interval_method`,
-#'   `interval_status`, `scale`, `validation_row`, `diagonal`, and
+#'   `interval_status`, `scale`, `diagonal`, and
 #'   `triangle`. Interval columns are `NA` with `interval_method = "none"`
-#'   because this helper is point-estimate only. `validation_row` is an
-#'   internal provenance column and is hidden when the table is printed; it
-#'   remains available via `x$validation_row`.
+#'   because this helper is point-estimate only.
 #' @seealso [extract_Sigma()] for the underlying matrix extractor;
 #'   [extract_correlations()] for pairwise correlation intervals;
 #'   [bootstrap_Sigma()] for bootstrap uncertainty.
@@ -492,7 +484,6 @@ extract_Sigma_table <- function(
 #'   interval_method = "none",
 #'   interval_status = "none",
 #'   scale = "correlation",
-#'   validation_row = "internal-provenance-id",
 #'   diagonal = FALSE,
 #'   triangle = "upper"
 #' )

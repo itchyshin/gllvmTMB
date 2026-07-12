@@ -13,24 +13,21 @@ exact-additive fits, pass the actual matrix via the top-level
 the marker and keeps the syntax aligned with \code{drmTMB::meta_V()}.}
 
 \item{type}{Sampling-covariance mode. \code{"exact"} is implemented.
-\code{"proportional"} is reserved for the planned post-CRAN extension
-and currently fails loud in the formula parser.}
+\code{"proportional"} is not implemented and fails clearly in the formula
+parser rather than being treated as exact.}
 }
 \value{
 A formula marker; never evaluated.
 }
 \description{
-Deprecated alias for \code{\link[=meta_V]{meta_V()}} (renamed 2026-05-16 per vision
-item 4). Both names desugar identically; new code should prefer
-\code{meta_V(V = V)}. The shorter \code{meta_V} is the canonical
-0.2.0 name; \code{meta_known_V} is retained as an alias for
-back-compatibility.
+Soft-deprecated alias for \code{\link[=meta_V]{meta_V()}}. Both names desugar identically; new
+code should use \code{meta_V(V = V)}. \code{meta_known_V()} remains available for
+backward compatibility.
 }
 \examples{
 \dontrun{
-# Deprecated alias of meta_V(); both desugar identically (see
-# test-formula-grammar-smoke.R, where meta_V() / meta_known_V() expand
-# to the same parsed formula). New code should use meta_V(V = V).
+# Deprecated alias of meta_V(); both desugar identically.
+# New code should use meta_V(V = V).
 set.seed(131)
 df <- expand.grid(
   site  = factor(seq_len(50)),

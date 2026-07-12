@@ -18,10 +18,8 @@ confint_inspect(
 
 \item{parm}{Character. A single profile-target label from
 \code{\link[=profile_targets]{profile_targets()}}. Examples: \code{"sigma_eps"}, \code{"sd_B[1]"},
-\code{"phi_nbinom2[2]"}, \code{"b_fix[1]"}. For derived targets
-(communality, repeatability, phylogenetic signal, trait
-correlations), use the matching \code{extract_*(method = "profile")}
-extractor instead -- those produce their own typed diagnostics.}
+\code{"phi_nbinom2[2]"}, \code{"b_fix[1]"}. Derived targets are not accepted by
+this direct-parameter diagnostic.}
 
 \item{level}{Confidence level. Default \code{0.95}.}
 
@@ -62,7 +60,8 @@ chi-squared threshold, profile bounds (vertical lines), and
 Wald bounds (dashed vertical lines for comparison). \code{NULL}
 if \code{ggplot2} is not installed.}
 \item{\verb{$diagnostics}}{Named character vector flagging any of:
-\code{"quadratic"} (well-behaved), \code{"asymmetric"} (skewed,
+\code{"no_heuristic_warning"} (none of this helper's shape warnings fired;
+this does not prove a quadratic profile), \code{"asymmetric"} (skewed,
 Wald-vs-profile disagrees), \code{"flat_at_mle"},
 \code{"hits_lower_bound"}, \code{"hits_upper_bound"},
 \code{"no_lower_crossing"}, \code{"no_upper_crossing"},
@@ -81,32 +80,32 @@ direct profile target.
 It returns the full profile-likelihood curve, the deviance bounds,
 and (when \code{ggplot2} is available) a \code{ggplot} visualisation showing
 the curve, the MLE, the chi-squared threshold, and the resulting
-confidence-interval bounds. It answers the question "is this
-profile well-behaved?" before the user interprets the bound.
+confidence-interval bounds. It surfaces a small set of numerical shape
+warnings before the user interprets the bound; the returned label is not a
+goodness or calibration certificate.
 
-Scope boundary: IN, direct profile-curve inspection
-for profile-ready targets from \code{\link[=profile_targets]{profile_targets()}}. PARTIAL, derived
-summaries such as communalities and correlations are inspected
-through their \code{extract_*(method = "profile")} helpers. PLANNED,
-broader target-explicit profile calibration remains M3 work.
+This helper inspects direct profile-ready targets from
+\code{\link[=profile_targets]{profile_targets()}}. Nonlinear derived targets such as communality,
+repeatability, and trait
+correlation do not currently have a public profile-inspection route. A
+working direct curve does not establish empirical interval coverage for
+every model class.
 
-Common failure modes to look for in the returned plot
-(cross-referenced in the
-\href{https://itchyshin.github.io/gllvmTMB/articles/troubleshooting-profile.html}{troubleshooting-profile}
-vignette):
+Common patterns to look for in the returned plot (see the
+\href{https://itchyshin.github.io/gllvmTMB/articles/profile-likelihood-ci.html}{profile-likelihood article}):
 \itemize{
-\item \strong{Quadratic + symmetric near the MLE}: Wald and profile agree.
-Either method is fine.
-\item \strong{Asymmetric / skewed}: Wald is wrong; the profile bound is
-right.
-\item \strong{Flat at the MLE}: weak identifiability; the profile is right
-and the Wald CI hides the flatness.
-\item \strong{Hits the parameter range bound on one side}:
-\code{bounds$lower = -Inf} or \code{bounds$upper = Inf}. Boundary
-parameter (variance pinned at 0) or unidentified upper tail.
-\item \strong{No crossing at all}: \code{bounds$lower = bounds$upper = NA}. The
-profile didn't converge. Use bootstrap uncertainty through
-\code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} or the matching extractor bootstrap method.
+\item \strong{Quadratic and approximately symmetric near the MLE}: Wald and profile
+may agree closely for this target.
+\item \strong{Asymmetric or skewed}: inspect the endpoint status and constrained-fit
+stability before preferring either interval.
+\item \strong{Flat near the MLE}: the target may be weakly informed, or the numerical
+profile may need closer inspection.
+\item \strong{Hits a parameter-range bound}: interpret the endpoint on the target's
+transformed scale and distinguish a natural boundary from a truncated
+search.
+\item \strong{No usable crossing}: treat the endpoint as unavailable; do not replace
+it automatically with bootstrap output unless simulation, refits, failed
+replicate counts, and Monte Carlo resolution are credible for that target.
 }
 }
 \examples{
@@ -126,10 +125,7 @@ inspect$plot         # ggplot of the profile curve
 \seealso{
 \code{\link[=confint.gllvmTMB_multi]{confint.gllvmTMB_multi()}} (the corresponding CI
 extractor; same \code{parm} vocabulary), \code{\link[=profile_targets]{profile_targets()}} (the
-target inventory), \code{\link[=tmbprofile_wrapper]{tmbprofile_wrapper()}} (the lower-level
-profile API),
-the
-\href{https://itchyshin.github.io/gllvmTMB/articles/troubleshooting-profile.html}{troubleshooting-profile}
-vignette (the four failure-mode catalogue this function
-helps diagnose).
+target inventory), \code{\link[=tmbprofile_wrapper]{tmbprofile_wrapper()}} (the lower-level profile API),
+and the
+\href{https://itchyshin.github.io/gllvmTMB/articles/profile-likelihood-ci.html}{profile-likelihood article}.
 }

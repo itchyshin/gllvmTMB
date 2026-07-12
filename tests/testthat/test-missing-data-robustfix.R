@@ -403,7 +403,7 @@ test_that("NIT-8 imputed() still returns the documented columns", {
     control = gllvmTMBcontrol(se = FALSE)
   )))
   imp <- imputed(fit)
-  expect_true(all(c("variable", "original_row", "model_row", "observed",
+  expect_true(all(c("variable", "level", "level_id", "original_row", "model_row", "observed",
                     "estimate", "std_error", "source",
                     "uncertainty_status") %in% names(imp)))
 })

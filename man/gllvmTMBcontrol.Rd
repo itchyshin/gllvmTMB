@@ -47,8 +47,7 @@ the starting parameter vector across the \code{n_init} restarts.
 Default 0.3.}
 
 \item{init_strategy}{One of \code{"default"} (current behaviour) or
-\code{"single_trait_warmup"}. The warmup option (Design 48 Mitigation A
-for M3.4 boundary regimes) fits an intercept-only univariate GLM
+\code{"single_trait_warmup"}. The warmup option fits an intercept-only univariate GLM
 per trait — with that trait's family — and seeds the matching
 \verb{log_phi_*} entries before \code{MakeADFun()}. Recommended for count
 families (especially \code{nbinom2}) where the default initialisation

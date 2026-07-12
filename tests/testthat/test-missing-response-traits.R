@@ -224,7 +224,8 @@ test_that("predict_missing() returns the masked cells with predictions", {
   # A prediction column with finite values.
   expect_true("est" %in% names(pm))
   expect_true(all(is.finite(pm$est)))
-  # original_row + model_row indices recoverable and correct.
+  # original_row maps to the supplied WIDE row; model_row maps to the stacked
+  # engine row.
   expect_true(all(c("original_row", "model_row") %in% names(pm)))
   expected_model_row <- sort(vapply(seq_len(nrow(sc$na_cells)), function(k) {
     r <- as.integer(sc$na_cells$row[k])
@@ -232,9 +233,7 @@ test_that("predict_missing() returns the masked cells with predictions", {
     (r - 1L) * n_traits + t
   }, integer(1L)))
   expect_setequal(pm$model_row, expected_model_row)
-  # original_row is the row index into the engine's (long) data; under
-  # response="include" no row is dropped, so it equals model_row.
-  expect_setequal(pm$original_row, expected_model_row)
+  expect_setequal(pm$original_row, as.integer(sc$na_cells$row))
   # The (unit, trait) cell identity survives the pivot: the unit column maps
   # each masked cell back to its wide-data row, and the trait column names the
   # missing trait. THIS is the cell-identity guarantee (audit critical risk).
@@ -271,7 +270,10 @@ test_that("residuals() is NA exactly at the masked cells", {
 
   fit_inc <- .fit_wide(wide_na, trait_cols, miss_control(response = "include"))
 
-  res <- residuals(fit_inc, type = "randomized_quantile", seed = 1)
+  expect_warning(
+    res <- residuals(fit_inc, type = "randomized_quantile", seed = 1),
+    "not informative"
+  )
   masked <- which(fit_inc$tmb_data$is_y_observed == 0L)
   # The residual column is NA at the masked rows and finite (mostly) elsewhere.
   expect_true(all(is.na(res$residual[masked])))

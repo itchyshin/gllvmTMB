@@ -721,8 +721,8 @@ logLik.gllvmTMB_multi <- function(object, ...) {
 #' `fit$missing_data$counts$likelihood_rows` and the `nobs` attribute of
 #' [logLik()]. Under the default `miss_control(response = "drop")` every fitted
 #' row is observed, so it equals `length(fit$tmb_data$y)`; under
-#' `response = "include"` the masked rows are excluded (design 59 sec.4b: the
-#' original-row counts live in `fit$missing_data`, never in `nobs()`).
+#' `response = "include"` the masked rows are excluded. Original-row counts
+#' live in `fit$missing_data`, never in `nobs()`.
 #' @exportS3Method stats::nobs
 nobs.gllvmTMB_multi <- function(object, ...) {
   ## Prefer the shared-contract count (drmTMB-aligned likelihood_rows) when the
@@ -1319,8 +1319,7 @@ simulate.gllvmTMB_multi <- function(
 #' Scope boundary: IN, fast numerical and loading-shape checks
 #' for fitted models. PARTIAL, a PASS here does not prove interval
 #' calibration or latent-rank identifiability. PLANNED, use
-#' [check_identifiability()] and M3 calibration workflows for those
-#' heavier questions.
+#' target-explicit known-DGP simulation studies for those heavier questions.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param gradient_thresh Maximum allowed absolute gradient component.
@@ -1632,13 +1631,12 @@ predict.gllvmTMB_multi <- function(
 #' their model-based predictions and the original-row / cell accounting from
 #' `fit$missing_data`.
 #'
-#' This is the **responses** extractor of the missing-data layer (design 59
-#' sec.4): missing responses are *predicted / reconstructed* (a fitted value),
+#' Missing responses are *predicted / reconstructed* as fitted values,
 #' not latent covariates. The separate [imputed()] extractor returns modelled
 #' missing **predictors** from supported `mi()` fits.
 #' The point predictions here are the fitted linear predictor (`type = "link"`)
-#' or its inverse-link response (`type = "response"`); standard errors of the
-#' reconstruction are deferred to a later slice.
+#' or its inverse-link response (`type = "response"`). Reconstruction standard
+#' errors and prediction intervals are not currently returned.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param type One of `"link"` (default; the linear predictor) or
@@ -1646,7 +1644,8 @@ predict.gllvmTMB_multi <- function(
 #' @param ... Unused.
 #'
 #' @return A data frame with one row per masked response cell, with columns:
-#'   `original_row` (the pre-mask row index in the original data),
+#'   `original_row` (the supplied long-data row or the supplied wide-data row
+#'   before `traits()` stacking),
 #'   `model_row` (the row index into the fitted long-format data / response),
 #'   the unit / cluster / trait identifier columns, and `est` (the prediction
 #'   on the requested scale). A complete-data fit (no masked cells) returns a
@@ -1686,11 +1685,22 @@ predict_missing <- function(object, type = c("link", "response"), ...) {
   if (length(original_row) != n_model) {
     original_row <- seq_len(n_model)
   }
+  wide_source_row <- object$traits_meta$source_row
+  if (
+    identical(object$traits_meta$input_shape, "wide_data_frame") &&
+      length(wide_source_row) == n_model
+  ) {
+    original_row <- as.integer(wide_source_row)
+  }
 
   ## Cell identifiers: reuse the user's column names where available.
   unit_lbl <- object$unit_col %||% "site"
   trait_lbl <- object$trait_col %||% "trait"
   cluster_lbl <- object$cluster_col %||% object$species_col
+  cluster_is_placeholder <- !is.null(cluster_lbl) &&
+    cluster_lbl %in% names(object$data) &&
+    length(object$data[[cluster_lbl]]) > 0L &&
+    all(as.character(object$data[[cluster_lbl]]) == "placeholder")
 
   base <- data.frame(
     original_row = original_row,
@@ -1702,7 +1712,7 @@ predict_missing <- function(object, type = c("link", "response"), ...) {
   }
   if (
     !is.null(cluster_lbl) && cluster_lbl %in% names(object$data) &&
-      !identical(cluster_lbl, unit_lbl)
+      !identical(cluster_lbl, unit_lbl) && !cluster_is_placeholder
   ) {
     base[[cluster_lbl]] <- object$data[[cluster_lbl]]
   }

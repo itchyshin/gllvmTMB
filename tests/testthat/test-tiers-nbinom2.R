@@ -79,11 +79,11 @@ test_that("nbinom2 x unit_obs: unit + OLRE tiers fit, phi finite, tiers separate
   )))
 
   ## --- Convergence + PD Hessian gate (SKIP-honest) ---------------------
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("nbinom2 x unit_obs fit did not reach a PD Hessian on seed 202.")
   }
-  expect_converged(fit)
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
+  expect_stationary_for_recovery_test(fit)
   expect_equal(fit$tmb_data$family_id_vec[1], 5L)   # nbinom2 family id
 
   ## --- phi finite + positive, near truth band -------------------------
@@ -171,11 +171,11 @@ test_that("nbinom2 x cluster: 3-level fit, phi finite, cluster variance recovers
   )))
 
   ## --- Convergence + PD Hessian gate (SKIP-honest) ---------------------
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("nbinom2 x cluster fit did not reach a PD Hessian on seed 22.")
   }
-  expect_converged(fit)
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
+  expect_stationary_for_recovery_test(fit)
   expect_equal(fit$tmb_data$family_id_vec[1], 5L)   # nbinom2 family id
 
   ## The third grouping slot is registered as the cluster tier.

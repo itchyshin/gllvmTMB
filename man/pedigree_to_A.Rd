@@ -51,10 +51,9 @@ who want the matrix for their own diagnostics (e.g. inspection of
 inbreeding coefficients or pre-computation for repeated fits).
 
 For very large pedigrees (\eqn{n > 5000}) the cubic-time cost of
-Henderson recursion becomes noticeable; a sparse-\code{Ainv} direct
-engine path is a v0.3.0 follow-up. For comparison against
-established implementations, see \code{nadiv::makeAinv()} (sparse
-\eqn{\mathbf A^{-1}}).
+constructing a dense \eqn{\mathbf A} can become noticeable. When a sparse
+precision is available, pass it directly with \verb{Ainv =}; for comparison
+against established implementations, see \code{nadiv::makeAinv()}.
 }
 \seealso{
 \code{\link[=animal_scalar]{animal_scalar()}} and siblings.

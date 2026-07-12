@@ -23,15 +23,14 @@
 
 #' Print a report-ready gllvmTMB covariance/correlation table
 #'
-#' Prints the reader-facing columns of a report-ready table (as returned by
-#' [extract_Sigma_table()] and [extract_correlations()]), hiding internal
-#' provenance columns such as `validation_row` from display. The hidden columns
-#' remain in the object and are accessible with `x$validation_row` or
-#' `as.data.frame(x)`.
+#' Prints the reader-facing columns of a report-ready table returned by
+#' [extract_Sigma_table()] or [extract_correlations()]. The complete object is
+#' returned invisibly for programmatic use.
 #'
 #' @param x A `gllvmTMB_reportable_table` object.
 #' @param ... Passed to the data-frame print method.
 #' @return `x`, invisibly.
+#' @keywords internal
 #' @exportS3Method print gllvmTMB_reportable_table
 print.gllvmTMB_reportable_table <- function(x, ...) {
   visible <- x

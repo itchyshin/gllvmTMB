@@ -27,12 +27,11 @@ you have a tree.}
 
 \item{A}{Tip-level relatedness matrix (\verb{n_species x n_species})
 -- alias of \verb{vcv =}, aligned with the \verb{animal_*} family's
-argument naming (M2.8b, 2026-05-17). Supply one of \code{tree},
+argument naming. Supply one of \code{tree},
 \code{vcv}, or \code{A} / \code{Ainv}.}
 
-\item{Ainv}{Sparse precision matrix (inverse of \code{A}). Densified
-via \code{solve()} internally for v0.2.0; sparse direct engine
-path is a v0.3.0 follow-up.}
+\item{Ainv}{Precision matrix (inverse of \code{A}). Sparse inputs are preserved
+for the sparse precision route.}
 
 \item{unique}{Logical; \code{TRUE} auto-includes the
 phylo-structured diagonal trait-specific \eqn{\boldsymbol\Psi_{phy}}
@@ -54,26 +53,20 @@ Formerly \code{phylo_rr(species, d = K)} -- same engine, new name.
 
 Pass the phylogeny inside the keyword via one of two arguments:
 \itemize{
-\item \strong{\code{tree = phylo}} (canonical, recommended) -- the full
-\code{ape::phylo} object. Triggers the sparse \eqn{\mathbf{A}^{-1}}
-path (Hadfield & Nakagawa 2010, appendix eqs. 26-29) which
-scales linearly in \code{n_species}. About 24x faster than the dense
-path at \code{n_species = 1000} on the published benchmark.
-\item \strong{\code{vcv = Cphy}} (\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}}) -- a
-tip-only \verb{n_species x n_species} correlation matrix. Forces the
-dense O(n^2) memory / O(n^3) Cholesky path. Provided for users
-who have a Cphy in hand and no Newick tree (e.g. comparing
-against \code{nlme::corPagel}); soft deprecation in 0.2.0.
+\item \strong{\code{tree = phylo}} (recommended when the tree is available) -- the full
+\code{ape::phylo} object. The package constructs the sparse phylogenetic
+precision using its Hadfield--Nakagawa implementation.
+\item \strong{\code{vcv = Cphy}} -- a tip-level \verb{n_species x n_species} correlation
+matrix for analyses that begin from a supplied covariance matrix.
 }
 
-Both arguments give the \strong{same MLE} -- they differ only in
-computational cost. Internal-node ancestral states are estimated
-as latent random effects on the sparse path; on the dense path
-only tip-level loadings are estimated.
+These inputs encode the same tip-level covariance target when they are
+constructed from the same tree and aligned identically. Numerical agreement
+still depends on labels, scaling, and fitting health; the function does not
+estimate or report ancestral states.
 
 See \code{vignette("phylogenetic-gllvm")} for the benchmark and
-\code{dev/design/01-phylo-api-canonical-tree.md} for the technical
-justification.
+\code{docs/design/04-random-effects.md} for the implementation contract.
 }
 }
 \examples{

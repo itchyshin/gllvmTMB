@@ -141,7 +141,7 @@ expect_slope_spatial_indep_health_and_diag <- function(fit, n_traits,
   ## pd_hessian -- see setup.R / brain LESSONS 0c). pd_hessian is reported as a
   ## raw diagnostic but is NOT the pass/fail signal: a benign SPDE variance-range
   ## ridge leaves it FALSE at a good optimum.
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], expected_id)
   testthat::expect_true(isTRUE(fit$use$spde_slope))
@@ -196,7 +196,7 @@ run_slope_spatial_indep_family <- function(fixture_family, fit_family,
   ## they do not need a PD Hessian. Gating on pd_hessian here parked converged
   ## cells as "partial" (audit 2026-07-08). The genuinely non-convergent cells
   ## (large scaled gradient) still skip.
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     testthat::skip(sprintf(
       "%s: spatial_indep(1 + x | site) did not converge (scaled gradient above tolerance); SLOPE-spatial-indep(%s) stays partial pending bigger n / different seed",
       label, label

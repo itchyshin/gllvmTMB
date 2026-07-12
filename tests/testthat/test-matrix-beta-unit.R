@@ -86,9 +86,9 @@ fit_beta_unit <- function(formula, data) {
 ## Shared health assertions for a converged Beta unit-tier fit.
 expect_beta_unit_health <- function(fit) {
   testthat::expect_s3_class(fit, "gllvmTMB_multi")
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   testthat::expect_true(is.finite(fit$opt$objective))
-  expect_converged(fit)
+  expect_stationary_for_recovery_test(fit)
   ## Beta family routing (family_id 7 per test-beta-recovery.R).
   testthat::expect_equal(fit$tmb_data$family_id_vec[1], 7L)
 }
@@ -136,7 +136,7 @@ test_that("beta x latent(0 + trait | unit, d = 1): converges, pd_hessian, phi re
     skip(sprintf("beta x latent fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("beta x latent did not converge with PD Hessian; FG-07/08/09(beta) stays partial pending bigger n / different seed")
   }
   expect_beta_unit_health(fit)
@@ -160,7 +160,7 @@ test_that("beta x unique(0 + trait | unit): converges, pd_hessian, phi recovered
     skip(sprintf("beta x unique fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("beta x unique did not converge with PD Hessian; FG-07/08/09(beta) stays partial pending bigger n / different seed")
   }
   expect_beta_unit_health(fit)
@@ -186,7 +186,7 @@ test_that("beta x latent + unique (paired): converges, pd_hessian, phi recovered
     skip(sprintf("beta x latent+unique fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("beta x latent+unique did not converge with PD Hessian; FG-07/08/09(beta) stays partial pending bigger n / different seed")
   }
   expect_beta_unit_health(fit)
@@ -210,7 +210,7 @@ test_that("beta x indep(0 + trait | unit): converges, pd_hessian, phi recovered"
     skip(sprintf("beta x indep fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("beta x indep did not converge with PD Hessian; FG-07/08/09(beta) stays partial pending bigger n / different seed")
   }
   expect_beta_unit_health(fit)
@@ -234,7 +234,7 @@ test_that("beta x dep(0 + trait | unit): converges, pd_hessian, phi recovered, r
     skip(sprintf("beta x dep fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("beta x dep did not converge with PD Hessian; FG-07/08/09(beta) stays partial pending bigger n / different seed")
   }
   expect_beta_unit_health(fit)
@@ -259,7 +259,7 @@ test_that("beta x scalar unique(1 | unit): converges, pd_hessian, phi recovered"
     skip(sprintf("beta x scalar (unique(1 | unit)) fit failed to construct: %s",
                  if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"))
   }
-  if (!.fit_converged(fit)) {
+  if (!.fit_stationary_for_recovery_test(fit)) {
     skip("beta x scalar (unique(1 | unit)) did not converge with PD Hessian; FG-07/08/09(beta) stays partial pending bigger n / different seed")
   }
   expect_beta_unit_health(fit)

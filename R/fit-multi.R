@@ -787,6 +787,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## expand n_lhs_cols_spde to 2T, build the interleaved Z, free
   ## theta_spde_dep_chol, and map off log_sd_spde_b / atanh_cor_spde_b.
   use_spde_dep_slope <- isTRUE(spde_slope_cs$extra[[".spatial_dep_augmented"]])
+  ## spatial_indep(1 + x | g) per-trait: the spde dep 2T-wide engine with the
+  ## cross-block Cholesky pinned to 0 (block-diagonal). Design 79/80.
+  use_spde_indep_blockdiag <- use_spde_dep_slope &&
+    isTRUE(spde_slope_cs$extra[[".indep_blockdiag"]])
   spde_slope_lhs_form <- if (use_spde_slope) {
     spde_slope_cs$extra$lhs_form %||% "unsupported"
   } else "none"
@@ -1394,6 +1398,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## interleaved Z, free theta_dep_chol, and map off log_sd_b / atanh_cor_b
   ## (the unstructured Sigma_b replaces the closed-form 2x2 parameters).
   use_phylo_dep_slope <- isTRUE(phylo_slope_cs$extra$.phylo_dep_augmented)
+  ## indep(1 + x | g) per-trait: rides the dep 2T-wide engine but with the
+  ## cross-block Cholesky entries pinned to 0 (block-diagonal Sigma_b = T
+  ## independent 2x2 blocks). Design 79/80.
+  use_phylo_indep_blockdiag <- use_phylo_dep_slope &&
+    isTRUE(phylo_slope_cs$extra$.indep_blockdiag)
   use_phylo_slope_correlated <- use_phylo_slope_correlated ||
     use_phylo_dep_slope
   ## phylo_indep(1 + x | species): same augmented b_phy_aug engine as
@@ -3947,12 +3956,38 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!use_phylo_dep_slope) {
     tmb_map$theta_dep_chol <-
       factor(rep(NA_integer_, length(tmb_params$theta_dep_chol)))
+  } else if (use_phylo_indep_blockdiag) {
+    ## Block-diagonal: pin the cross-block strictly-lower Cholesky entries to 0
+    ## so Sigma_b = L L^T is block-diagonal (T independent (intercept, slope)
+    ## 2x2 blocks). The within-block diagonal + intercept-slope entries stay
+    ## free -> 3T params for a single slope, matching T stacked univariate
+    ## random regressions.
+    pins <- dep_chol_crossblock_pins(n_lhs_cols, 1L + n_phy_slope)
+    if (length(pins) > 0L) {
+      m <- seq_along(tmb_params$theta_dep_chol)
+      m[pins] <- NA
+      tmb_params$theta_dep_chol[pins] <- 0
+      tmb_map$theta_dep_chol <- factor(m)
+    }
   }
   ## theta_spde_dep_chol is FREE only on the spatial_dep path; mapped off
   ## (length-0 no-op) everywhere else.
   if (!use_spde_dep_slope) {
     tmb_map$theta_spde_dep_chol <-
       factor(rep(NA_integer_, length(tmb_params$theta_spde_dep_chol)))
+  } else if (use_spde_indep_blockdiag) {
+    ## Block-diagonal spatial slope: pin the cross-block Cholesky entries so
+    ## Sigma_field = L L^T is block-diagonal (T independent (intercept, slope)
+    ## spatial-field blocks). block_size = n_lhs_cols_spde / n_traits.
+    pins <- dep_chol_crossblock_pins(
+      n_lhs_cols_spde, n_lhs_cols_spde %/% n_traits
+    )
+    if (length(pins) > 0L) {
+      m <- seq_along(tmb_params$theta_spde_dep_chol)
+      m[pins] <- NA
+      tmb_params$theta_spde_dep_chol[pins] <- 0
+      tmb_map$theta_spde_dep_chol <- factor(m)
+    }
   }
   if (!use_re_int) {
     tmb_map$u_re_int         <- factor(rep(NA_integer_, length(tmb_params$u_re_int)))

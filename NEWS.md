@@ -32,6 +32,12 @@ required for the main workflow.
   `latent(..., unique = FALSE)` for the earlier loadings-only subset.
   Source-specific and kernel latent terms remain loadings-only by default; pass
   `unique = TRUE` when their intended covariance includes the diagonal companion.
+* `phylo_indep()` and `animal_indep()` with an intercept-and-slope term
+  (`1 + x | g`) fit **one independent (intercept, slope) block per trait** --
+  each trait its own random regression, with an estimated intercept-slope
+  correlation and zero cross-trait covariance (a set of univariate random
+  regressions stacked over traits). The spatial `spde` intercept-slope path is
+  unchanged for now, pending its own verification.
 * `fit$fit_health` separates optimiser success, raw and objective-scaled
   gradients, Hessian health, and `sdreport()` availability. Its `converged` field
   is conservative: optimiser success, a finite objective, and a small raw maximum

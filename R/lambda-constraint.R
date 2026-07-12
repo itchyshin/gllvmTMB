@@ -51,6 +51,31 @@ lambda_packed_index <- function(i, j, p, rank) {
 #'   user values).
 #' @keywords internal
 #' @noRd
+## Cross-block strictly-lower `theta_dep_chol` indices for a BLOCK-DIAGONAL
+## augmented covariance (per-trait indep slope). The dep Cholesky packs L
+## (C x C lower-triangular) as: the C diagonal entries first, then the
+## strictly-lower entries in column-major order (src/gllvmTMB.cpp:1224-1237).
+## The 2T augmented columns are grouped by trait in runs of
+## `block_size = 1 + n_slopes`, so pinning the cross-block strictly-lower
+## entries to 0 makes L block-lower-triangular and Sigma_b = L L^T
+## block-diagonal -- T independent (intercept, slope) blocks, i.e. T stacked
+## univariate random regressions (Design 79/80). Returns the 1-based indices
+## into `theta_dep_chol` to pin (map off + init 0).
+dep_chol_crossblock_pins <- function(C, block_size) {
+  blk <- (seq_len(C) - 1L) %/% block_size
+  pins <- integer(0)
+  idx <- C                              # diagonal entries occupy indices 1..C
+  for (j in seq_len(C)) {
+    if (j < C) {
+      for (i in (j + 1L):C) {
+        idx <- idx + 1L                 # theta index of L(i, j), column-major
+        if (blk[i] != blk[j]) pins <- c(pins, idx)
+      }
+    }
+  }
+  pins
+}
+
 lambda_packed_map <- function(constraint, n_traits, rank, theta_init) {
   if (!is.matrix(constraint))
     cli::cli_abort("lambda_constraint entries must be matrices.")

@@ -163,11 +163,17 @@ slope appears.
   `level = name`. **LANDED** (recovery-tested; 1 free variance vs `kernel_indep`'s T).
 - Fix the malformed `*_scalar(1+x)` → `propto` nesting.
 
-**Does NOT exist → the genuine engine build (S2c; stats-gated, likely C++, Totoro):**
-- **`indep(1 + x \| g)`** per-trait correlated 2×2 (**3T**) — no source has it.
-  This is the real new engine, and it **changes** what `*_indep(1+x)` means
-  today (shared-2 → per-trait-3T): a **behavioural/API change** with existing
-  tests to migrate.
+**Built by S2c → LANDED (phylo + animal; spatial pending):**
+- **`phylo_indep(1 + x | g)` / `animal_indep(1 + x | g)`** per-trait correlated
+  2×2 (**3T**) — **LANDED** (recovery-verified). Implemented *without C++*: the
+  dep 2T-wide engine (`use_phylo_dep_slope`) with the cross-block `theta_dep_chol`
+  entries pinned to 0 (`dep_chol_crossblock_pins()`), giving a block-diagonal
+  Sigma_b = T independent (intercept, slope) blocks with the intercept-slope
+  correlation estimated per trait. `spatial_indep(1+x)` uses the identical `spde`
+  pin but is **held** pending INLA/CI verification (parser TODO in place; engine
+  pin dormant). Old shared-2 tests migrated to the per-trait contract.
+
+**Does NOT exist → still to build:**
 - **`indep(1 + x \|\| g)`** per-trait diagonal (2T) — exists only for the none
   source, *bundled inside* `latent()`'s default Psi companion
   (`theta_diag_B_slope`, `R/fit-multi.R:1627`), never standalone.

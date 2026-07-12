@@ -2835,8 +2835,11 @@ rewrite_canonical_aliases <- function(formula) {
             new_call <- as.call(c(
               list(as.name("phylo_slope"), bar),
               list(
-                .phylo_unique_augmented = TRUE,
-                .indep = TRUE,
+                ## Per-trait block-diagonal (Design 79/80): dep 2T-wide engine
+                ## with cross-block Cholesky pinned -> T stacked univariate
+                ## random regressions. Shares the phylo_slope engine; A via vcv.
+                .phylo_dep_augmented = TRUE,
+                .indep_blockdiag = TRUE,
                 lhs_form = lhs_form$lhs_form,
                 slope_col = lhs_form$slope_col
               ),
@@ -3789,8 +3792,12 @@ rewrite_canonical_aliases <- function(formula) {
           new_call <- as.call(c(
             list(as.name("phylo_slope"), bar),
             list(
-              .phylo_unique_augmented = TRUE,
-              .indep = TRUE,
+              ## Per-trait block-diagonal (Design 79/80): the dep 2T-wide engine
+              ## with the cross-block Cholesky entries pinned -> T independent
+              ## (intercept, slope) 2x2 blocks = T stacked univariate random
+              ## regressions, each with its own intercept-slope correlation.
+              .phylo_dep_augmented = TRUE,
+              .indep_blockdiag = TRUE,
               lhs_form = lhs_form$lhs_form,
               slope_col = lhs_form$slope_col
             ),
@@ -3844,6 +3851,10 @@ rewrite_canonical_aliases <- function(formula) {
             new_call <- as.call(c(
               list(as.name("spde"), bar),
               list(
+                ## TODO(Design 79/80): route to the block-diagonal dep path
+                ## (per-trait indep slope) like phylo_indep/animal_indep, once
+                ## the spatial slope tests can be verified with INLA. Held at the
+                ## former shared-block path for now.
                 .spatial_unique_augmented = TRUE,
                 .spatial_indep_augmented = TRUE,
                 lhs_form = lhs_form$lhs_form,

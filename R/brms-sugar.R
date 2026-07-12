@@ -2917,7 +2917,8 @@ rewrite_canonical_aliases <- function(formula) {
       ## phylo-equivalent path.
       if (
         fn %in%
-          c("kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep")
+          c("kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep",
+            "kernel_scalar")
       ) {
         nm <- names(e)
         if (is.null(nm) || !"K" %in% nm) {
@@ -2977,6 +2978,18 @@ rewrite_canonical_aliases <- function(formula) {
           )))
         }
         if (fn == "kernel_indep") {
+          return(as.call(c(
+            list(as.name("phylo_rr"), unit_arg),
+            list(.phylo_unique = TRUE, .indep = TRUE),
+            kernel_meta
+          )))
+        }
+        if (fn == "kernel_scalar") {
+          ## One shared variance x K: same diagonal phylo_rr engine path as
+          ## kernel_indep, but `.kernel_mode = "scalar"` (carried in
+          ## kernel_meta) tells fit-multi.R to tie the per-trait theta_rr_phy
+          ## diagonal to a single shared level -- the dense-kernel analogue of
+          ## spatial_scalar()'s log_tau_spde tie.
           return(as.call(c(
             list(as.name("phylo_rr"), unit_arg),
             list(.phylo_unique = TRUE, .indep = TRUE),

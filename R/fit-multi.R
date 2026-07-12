@@ -1217,6 +1217,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     phylo_rr_idx   <- phylo_diag_idx
     phylo_diag_idx <- integer(0)
   }
+  ## kernel_scalar(): a lone diagonal dense-kernel term carrying
+  ## `.kernel_mode == "scalar"`. It rides the phylo_unique diagonal engine
+  ## (per-trait theta_rr_phy) but its per-trait variances are tied to ONE
+  ## shared level below (the dense-kernel analogue of spatial_scalar).
+  is_kernel_scalar <- any(vapply(parsed$covstructs, function(cs)
+    identical(cs$kind, "phylo_rr") &&
+      identical(as.character(cs$extra[[".kernel_mode"]]), "scalar"),
+    logical(1L)))
   ## IMPORTANT: read engine markers with `[[` (EXACT match), never `$`. The
   ## augmented SPDE-slope markers `.spatial_latent_augmented` /
   ## `.spatial_indep_augmented` have `.spatial_latent` / `.spatial_indep` as a
@@ -3774,6 +3782,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     cm <- lambda_packed_map(diag_constraint, n_traits, d_phy,
                             tmb_params$theta_rr_phy)
+    if (is_kernel_scalar) {
+      ## kernel_scalar(): collapse the per-trait diagonal SDs to ONE shared
+      ## parameter by re-pointing every free (non-fixed) map entry at a single
+      ## level. Gives sigma^2 I_T x K -- one shared variance across traits.
+      ## Same TMB-map trick as spatial_scalar()'s log_tau_spde tie.
+      raw <- as.integer(cm$map)
+      raw[!is.na(raw)] <- 1L
+      cm$map <- factor(raw)
+    }
     tmb_map$theta_rr_phy    <- cm$map
     tmb_params$theta_rr_phy <- cm$init
     ## Track the user-facing intent so downstream printing / extractors can

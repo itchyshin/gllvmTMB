@@ -104,8 +104,9 @@ coupling:
 | kernel | **`kernel_scalar()`** ⟵ new | `kernel_indep()` | `kernel_dep()` | `kernel_latent()` |
 
 - Intercept-only `scalar()` ≡ `indep(..., common = TRUE)` (byte-identical
-  desugar). `kernel_scalar()` requires a formula-LHS grammar (like the other
-  kernel keywords carry `K =`), unlike the bare-`unit` `kernel_indep/dep/latent`.
+  desugar). `kernel_scalar(unit, K = K, name = ...)` takes the same bare-`unit`
+  form as `kernel_indep/dep/latent` (no formula LHS needed for the intercept-
+  only mode).
 - Every cell takes `(1 + x | g)` (correlated) and `(1 + x || g)` (uncorrelated).
 - `unique()` / `*_unique()` / `kernel_unique()` remain soft-deprecated aliases.
 
@@ -155,7 +156,11 @@ slope appears.
   ρ=0, 2).
 - `dep(1 + x \| g)` → current `*_dep` augmented (full 2T×2T) — already correct.
 - `latent(1 + x \|\| g)` → current `*_latent` augmented (separate Λ blocks).
-- Intercept-only `scalar()`/`kernel_scalar()` → `common = TRUE` engine.
+- Intercept-only `scalar()` → `common = TRUE` (diag) engine. **LANDED** (tested).
+- Intercept-only `kernel_scalar()` → the `kernel_indep` diagonal `phylo_rr`
+  path with the per-trait `theta_rr_phy` tied to one shared level (the
+  `spatial_scalar` `log_tau_spde` trick), so it stays extractable under
+  `level = name`. **LANDED** (recovery-tested; 1 free variance vs `kernel_indep`'s T).
 - Fix the malformed `*_scalar(1+x)` → `propto` nesting.
 
 **Does NOT exist → the genuine engine build (S2c; stats-gated, likely C++, Totoro):**

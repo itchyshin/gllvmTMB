@@ -220,6 +220,7 @@ is_traits_lhs <- function(formula) {
   "kernel_unique",
   "kernel_indep",
   "kernel_dep",
+  "kernel_scalar",
   "propto",
   "equalto",
   "meta_V",

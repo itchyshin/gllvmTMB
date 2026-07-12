@@ -85,3 +85,23 @@ kernel_indep <- function(unit, K, name = "kernel") {
 kernel_dep <- function(unit, K, name = "kernel") {
   invisible(NULL)
 }
+
+#' Dense-kernel one-shared-variance covariance: `kernel_scalar()`
+#'
+#' `kernel_scalar()` is the dense-kernel analogue of [scalar()] /
+#' [phylo_scalar()]: **one variance shared by every trait**, coupled between
+#' grouping levels by the supplied dense matrix `K`
+#' (\eqn{\boldsymbol\Sigma = \sigma^2\,\mathbf I_T},
+#' \eqn{\operatorname{Cov}(b_{gt}, b_{g't}) = \sigma^2 K_{gg'}}). It uses the
+#' same phylo-equivalent diagonal engine path as [kernel_indep()], with the
+#' per-trait variances tied to a single shared parameter, so
+#' [extract_Sigma()] exposes it under `level = name`.
+#'
+#' @inheritParams kernel_latent
+#' @return A formula marker; never evaluated as a regular R function.
+#' @seealso [kernel_indep()], [kernel_dep()], [kernel_latent()], [scalar()],
+#'   [phylo_scalar()], [extract_Sigma()].
+#' @export
+kernel_scalar <- function(unit, K, name = "kernel") {
+  invisible(NULL)
+}

@@ -73,3 +73,36 @@ test_that("kernel_dep recovers a full cross-trait covariance on a dense K", {
   ## Full unstructured covariance recovered, including signed off-diagonals.
   expect_equal(S, Sigma_T, tolerance = 0.35, ignore_attr = TRUE)
 })
+
+test_that("kernel_scalar desugars to the diagonal kernel path with scalar mode", {
+  txt <- paste(deparse(gllvmTMB:::desugar_brms_sugar(
+    value ~ 0 + trait + kernel_scalar(site, K = K, name = "k")
+  )), collapse = " ")
+  expect_match(txt, "phylo_rr", fixed = TRUE)
+  expect_match(txt, ".phylo_unique = TRUE", fixed = TRUE)
+  expect_match(txt, ".kernel_mode = \"scalar\"", fixed = TRUE)
+})
+
+test_that("kernel_scalar fits ONE shared variance across traits on a dense K", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  sigma2 <- 0.7
+  fx <- make_kernel_fixture(707, diag(sigma2, 3))  # scalar truth: sigma^2 I_3
+  fit <- fit_kernel("kernel_scalar", fx)
+  expect_equal(fit$opt$convergence, 0L)
+  ## The tie collapses the per-trait diagonal to ONE free parameter.
+  fit_indep <- fit_kernel("kernel_indep", fx)
+  expect_equal(sum(names(fit$opt$par) == "theta_rr_phy"), 1L)
+  expect_lt(
+    sum(names(fit$opt$par) == "theta_rr_phy"),
+    sum(names(fit_indep$opt$par) == "theta_rr_phy")
+  )
+  S <- suppressMessages(
+    gllvmTMB::extract_Sigma(fit, level = "known", part = "total")$Sigma
+  )
+  ## One shared variance: all trait variances identical, off-diagonals zero,
+  ## recovered near the scalar truth.
+  expect_lt(max(abs(diag(S) - diag(S)[1L])), 1e-8)
+  expect_lt(max(abs(S[upper.tri(S)])), 1e-6)
+  expect_equal(diag(S)[1L], sigma2, tolerance = 0.25, ignore_attr = TRUE)
+})

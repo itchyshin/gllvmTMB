@@ -1,9 +1,35 @@
 # 61 -- Capability Status and Dependency-Ordered Work-List
 
-**Status date:** 2026-06-28
+**Status date:** 2026-06-28 (covariance-grid layer updated 2026-07-12 — see next section)
 **Scope:** status synthesis only. The validation-debt register
 (`docs/design/35-validation-debt-register.md`) remains the row-level source
 of truth; this document is the readable planning layer.
+
+## 2026-07-12 update — covariance-mode taxonomy + tested tier
+
+**Canonical taxonomy: [Design 79](79-covariance-mode-taxonomy.md).** The
+covariance grid is now specified on two orthogonal axes — mode (scalar/indep/
+dep/latent, cross-trait) × correlation coupling (`|` correlated / `||`
+uncorrelated, intercept–slope). Design 79 supersedes Design 55 §5 ("scalar NOT
+APPLICABLE to slopes" — now applicable, as a shared-across-traits G-matrix).
+
+**Fit-verified census (S0, `scratchpad/semantics-census.md`).** All
+intercept-only cells match target. **Slope-cell engine names are shifted:**
+`*_indep(1+x)` actually fits `scalar ||` (shared 2×2, ρ=0); `*_unique(1+x)`
+fits `scalar |` (shared 2×2, ρ free); `*_dep(1+x)` is correct (`dep |`, full
+2T×2T); `*_latent(1+x)` fits `latent ||` (separate Λ). A genuine per-trait
+`indep(1+x)` engine (3T) does **not** exist for any source, and `||` is not
+implemented anywhere (the parser refuses standalone slope-only terms).
+
+**Landed (non-breaking):** `scalar()` no-prefix intercept-only keyword
+(byte-identical to `indep(common = TRUE)`), tested; the capability widget gains a
+**tested** tier and phylo/animal/spatial + `kernel_latent` flip amber→tested
+(recovery tests already existed — the label was stale, not the code).
+
+**Gated behind the stats checkpoint (breaking / new engine):** the per-trait
+`indep(1+x)` redefinition (changes what `*_indep(1+x)` fits today), `dep ||`,
+`kernel_scalar()`, `*_scalar(1+x)` slope routing, and the `||` engine for
+indep/dep. Plan: `~/.claude/plans/glistening-skipping-anchor.md`.
 
 ## 2026-06-28 Truth Sync
 

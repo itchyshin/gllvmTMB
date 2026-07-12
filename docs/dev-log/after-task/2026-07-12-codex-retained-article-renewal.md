@@ -10,7 +10,7 @@ Renew the retained gllvmTMB documentation estate before release discussion: remo
 - Reader-facing pages no longer expose DIA/CI/EXT/FAM/FG/MIX validation-register identifiers or validation-process markers.
 - Current teaching uses Scalar, Independent, Dependent, and Latent. Standalone `unique()` and source-specific/kernel `*_unique()` remain compatibility syntax and are described as deprecated; the current `unique =` latent argument remains documented where it controls the diagonal Psi companion.
 - `phylogenetic-gllvm.Rmd` uses `phylo_latent(..., unique = TRUE)` for the phylogenetic Lambda/Psi decomposition, with an explicit non-phylogenetic latent comparison and honest recovery limits.
-- Long examples name `trait` and `unit`; repeated-measure examples name `unit_obs`; the phylogenetic guide names `cluster` only where it is a real supplied role. No invented `cluster2` column was added.
+- Long examples name `trait` and `unit`; repeated-measure examples name `unit_obs`; the phylogenetic guide names `cluster` only where it is a real supplied role. `cluster2` remains a supported optional second grouping role, but no invented `cluster2` column was added because these examples contain no genuine second plain-diagonal tier.
 - The generated local pkgdown pages were renewed and checked against their source timestamps.
 
 ## 3. Files Changed
@@ -66,4 +66,3 @@ Fisher checked inference wording, latent decomposition, fit health, and long/wid
 ## 10. Known Limitations and Next Actions
 
 The public GitHub Pages site is not updated until the branch is merged and deployed. The branch still contains broad pre-existing WIP outside this article slice. Claude should read the handover, inspect the full dirty tree, run a fresh article review, and decide what belongs in the eventual PR. Do not merge, tag `v0.5.0`, or submit to CRAN until Shinichi calls for those actions.
-

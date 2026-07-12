@@ -34,7 +34,9 @@ after this Codex loop; release decisions remain his.
 - The explicit grouping-argument cascade is complete: 22 executable calls and
   five display-only calls passed. Long calls name `trait` and `unit`; repeated
   designs name `unit_obs`; `cluster` is named in the phylogenetic guide where it
-  is a real role; no invented `cluster2` column was added. One commented negative
+  is a real role. `cluster2` is also a supported optional grouping role, but no
+  retained example has a genuine second plain-diagonal tier, so no invented
+  `cluster2` column was added. One commented negative
   example in `pitfalls.Rmd` intentionally retains the package default to teach
   the missing-`site` error and immediately shows the explicit override.
 - The stale profile-likelihood rendered page was rebuilt. All 13 retained local
@@ -88,8 +90,9 @@ Read the detailed evidence rather than re-deriving it from chat:
    and show shared/unique/total extraction; reserve other covariance helpers for
    separate future references rather than diluting this worked example.
 4. **Grouping roles.** Make `trait`, `unit`, and where applicable `unit_obs` /
-   `cluster` explicit. Do not invent `cluster2` arguments without a real column
-   and a real model role.
+   `cluster` explicit. `cluster2` is a supported optional second grouping role;
+   use it when a real second plain-diagonal grouping column exists, but do not
+   invent it in examples that have no such tier.
 5. **Local versus live.** A fresh local render is not evidence that the public
    GitHub Pages site has deployed. The branch must be merged and deployed before
    saying the live site changed.

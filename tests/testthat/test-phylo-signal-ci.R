@@ -256,3 +256,24 @@ test_that(".phylo_signal_bootstrap_ci returns finite bounds with rough Wald agre
               max(diff_hi, na.rm = TRUE)
             ))
 })
+
+## ============================================================================
+##  Entry-point consistency: extract_phylo_signal(method = "wald") uses the
+##  real .phylo_signal_wald_ci(), not a silent bootstrap fallback (T1.3).
+## ============================================================================
+
+test_that("extract_phylo_signal(ci=TRUE, method='wald') returns a real Wald CI", {
+  fx <- build_phylo_signal_fixture()
+  fit <- fit_phylo_signal_binary(fx)
+
+  w <- suppressMessages(extract_phylo_signal(fit, ci = TRUE, method = "wald"))
+  ## Before the fix, this printed "Wald CI for H^2 not implemented; falling
+  ## back to bootstrap" and returned bootstrap bounds, contradicting the
+  ## confint(parm = "phylo_signal", method = "wald") path.
+  expect_true(all(grepl("^wald", w$H2_method)))
+  expect_false(any(grepl("bootstrap", w$H2_method)))
+
+  ref <- gllvmTMB:::.phylo_signal_wald_ci(fit, level = 0.95)
+  expect_equal(w$H2_lower, ref$lower, tolerance = 1e-8)
+  expect_equal(w$H2_upper, ref$upper, tolerance = 1e-8)
+})

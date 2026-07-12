@@ -514,10 +514,15 @@ extract_phylo_signal <- function(
     return(pe_df)
   }
   if (method == "wald") {
-    cli::cli_inform(
-      "Wald CI for H^2 not implemented; falling back to {.val bootstrap}."
-    )
-    method <- "bootstrap"
+    ## Use the same closed-form delta-method Wald CI as
+    ## confint(fit, parm = "phylo_signal", method = "wald"). It exists in
+    ## .phylo_signal_wald_ci(); do not silently demote to bootstrap (that
+    ## made the same target/method disagree across entry points).
+    h2_ci <- .phylo_signal_wald_ci(fit, level = conf_level)
+    pe_df$H2_lower <- h2_ci$lower
+    pe_df$H2_upper <- h2_ci$upper
+    pe_df$H2_method <- h2_ci$method
+    return(pe_df)
   }
   ## bootstrap on H^2: re-fit with simulate, recompute extract_phylo_signal
   ## per replicate. We borrow bootstrap_Sigma's machinery for simulate +

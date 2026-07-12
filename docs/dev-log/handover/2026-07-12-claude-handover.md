@@ -53,9 +53,9 @@ Read the detailed evidence rather than re-deriving it from chat:
 ## Current working state
 
 - Branch: `claude/release-0.5.0`.
-- The branch had four local commits not yet on origin when the landing gate ran;
-  the handover bundle is being committed on this same feature branch. Do not
-  merge it to `main`.
+- The handover bundle is committed as `3b6f4225` and pushed to
+  `origin/claude/release-0.5.0` on this same feature branch. Four earlier local
+  commits were pushed with it. Do not merge it to `main`.
 - The working tree contains a broad, pre-existing WIP estate: the landing gate
   reported **261 uncommitted paths** (246 tracked paths in the diff, plus
   untracked audit/generated files). This is not all attributable to the narrow
@@ -202,7 +202,7 @@ sequential session.
 
 | Artefact | State at handover | What the next session must do |
 |---|---|---|
-| `claude/release-0.5.0` branch | Feature branch; four local commits were unpushed when the gate ran; handover bundle is being added here | Verify the pushed commit and branch tip before relying on origin |
+| `claude/release-0.5.0` branch | `3b6f4225` pushed; branch remains a feature/WIP branch | Verify the branch tip before relying on origin |
 | Retained article source + local pkgdown HTML | Reworked and locally verified | Fresh-eye review; rebuild after any edits |
 | Fisher/Rose/Pat audits | Written; all 13/13 PASS | Treat as evidence, not a substitute for Claude’s fresh review |
 | Broad pre-existing dirty WIP | **CARRIED-OVER**; 261 paths at landing gate | Classify with git status/diff; do not silently stage unrelated files |
@@ -225,4 +225,3 @@ phylogenetic rewrite and explicit grouping-argument cascade. The branch still
 has broad carried-over WIP; Claude must rehydrate from this handover, inspect
 the dirty manifest, run a fresh Rose audit, and keep 0.5.0 merge/tag/CRAN work
 paused until Shinichi decides.
-

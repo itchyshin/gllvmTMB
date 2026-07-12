@@ -1300,7 +1300,7 @@ extract_Sigma <- function(
   if (link_residual == "auto") {
     link_resid_per_trait <- link_residual_per_trait(fit)
     nonzero <- link_resid_per_trait != 0
-    if (any(nonzero)) {
+    if (any(nonzero, na.rm = TRUE)) {
       ## Map family_id back to a label for the report.
       fam_lookup <- function(fid) {
         switch(
@@ -1384,7 +1384,7 @@ extract_Sigma <- function(
   } else {
     ## "total": LLt + diag(Psi) + (optional) per-trait link-implicit residual
     Sigma <- LLt + diag(Sd, nrow = T)
-    if (any(link_resid_per_trait != 0)) {
+    if (any(link_resid_per_trait != 0, na.rm = TRUE)) {
       diag(Sigma) <- diag(Sigma) + link_resid_per_trait
     }
     R <- .safe_cov2cor(Sigma, trait_names)

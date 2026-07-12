@@ -271,7 +271,7 @@ extract_Omega <- function(
     ## Per-trait link-implicit residual added once at the Omega level
     ## (NOT inside the per-tier loop -- that would double-count it).
     link_resid_per_trait <- link_residual_per_trait(fit)
-    if (any(link_resid_per_trait != 0)) {
+    if (any(link_resid_per_trait != 0, na.rm = TRUE)) {
       diag(Omega) <- diag(Omega) + link_resid_per_trait
       tbl <- paste0(
         "  - ",

@@ -651,6 +651,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (diag_B_slope_is_default) {
     use_diag_B_slope <- TRUE
   }
+  ## Fail-loud (T1.2): the default diagonal-Psi companion of an augmented
+  ## ordinary `latent(1 + x | unit, d = K)` reaction-norm slope is
+  ## Gaussian-only (D-28). When a non-Gaussian family suppresses it but the
+  ## user did NOT opt out with `unique = FALSE`, they asked for the default
+  ## Lambda Lambda^T + Psi and are silently getting loadings-only. Warn so
+  ## the demotion is visible; the user can silence it with `unique = FALSE`.
+  if (use_rr_B_slope && !use_diag_B_slope && any(family_id_vec != 0L) &&
+      !identical(
+        parsed$covstructs[[rr_B_slope_idx[1L]]]$extra$.latent_augmented_unique,
+        FALSE
+      )) {
+    cli::cli_warn(c(
+      "!" = "The default diagonal-{.field Psi} companion of an augmented {.code latent(1 + x | {site}, d = K)} slope is Gaussian-only; it is omitted for this non-Gaussian fit (loadings-only).",
+      "i" = "The fit relies on the family/link-specific latent-scale residual instead (D-28).",
+      ">" = "Pass {.code unique = FALSE} to request the loadings-only slope explicitly and silence this warning."
+    ))
+  }
   use_rr_B   <- any(kinds == "rr"   & groupings == site & !rr_is_latent_augmented)
   if (use_rr_B_slope && use_rr_B) {
     cli::cli_abort(c(

@@ -796,3 +796,53 @@ test_that("print(fit) labels dep distinctly from latent", {
   ## (not "dep_B" or just "latent_unit").
   expect_true(any(grepl("dep_unit", printed)))
 })
+
+## ============================================================
+## scalar(): the no-prefix one-shared-variance mode (Design 79)
+## ============================================================
+
+test_that("scalar() desugars byte-identically to indep(common = TRUE)", {
+  expect_identical(
+    gllvmTMB:::desugar_brms_sugar(value ~ 0 + trait + scalar(0 + trait | site)),
+    gllvmTMB:::desugar_brms_sugar(
+      value ~ 0 + trait + indep(0 + trait | site, common = TRUE)
+    )
+  )
+  ## Concretely: a diagonal (.indep) tier with the shared-variance tie and no
+  ## low-rank / rr block.
+  txt <- paste(deparse(
+    gllvmTMB:::desugar_brms_sugar(value ~ 0 + trait + scalar(0 + trait | site))
+  ), collapse = " ")
+  expect_match(txt, "diag", fixed = TRUE)
+  expect_match(txt, ".indep = TRUE", fixed = TRUE)
+  expect_match(txt, "common = TRUE", fixed = TRUE)
+  expect_false(grepl("rr(", txt, fixed = TRUE))
+})
+
+test_that("scalar() fits one shared variance across traits (= indep(common = TRUE))", {
+  df <- make_simple()
+  fit_scalar <- suppressMessages(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + scalar(0 + trait | site),
+    data = df
+  ))
+  fit_indep_common <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + indep(0 + trait | site, common = TRUE),
+    data = df
+  )))
+  expect_equal(fit_scalar$opt$convergence, 0L)
+  ## One shared variance: every trait's sd_B is identical.
+  sds <- as.numeric(fit_scalar$report$sd_B)
+  expect_gt(length(sds), 1L)
+  expect_lt(max(abs(sds - sds[1L])), 1e-10)
+  ## Byte-identical fit to the indep(common = TRUE) longhand.
+  expect_equal(fit_scalar$opt$objective, fit_indep_common$opt$objective,
+               tolerance = 1e-10)
+  expect_true(isTRUE(fit_scalar$use$indep_B))
+})
+
+test_that("scalar() slope form fails loud (augmented LHS deferred, Design 79)", {
+  expect_error(
+    gllvmTMB:::desugar_brms_sugar(value ~ 0 + trait + scalar(1 + x | site)),
+    regexp = "augmented LHS is not yet supported"
+  )
+})

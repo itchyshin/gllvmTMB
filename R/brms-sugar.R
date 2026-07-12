@@ -1367,6 +1367,44 @@ indep <- function(formula, common = FALSE) {
   invisible(NULL)
 }
 
+#' One shared trait variance: `scalar(0 + trait | g)`
+#'
+#' Canonical no-prefix name for the **one-shared-variance** trait covariance:
+#' a single variance \eqn{\sigma^2} shared by every trait with zero cross-trait
+#' covariance, giving \eqn{\boldsymbol\Sigma_T = \sigma^2 \mathbf I_T}. It is the
+#' most parsimonious mode in the covariance grid.
+#'
+#' `scalar()` desugars byte-identically to
+#' `indep(0 + trait | g, common = TRUE)` -- the two spellings fit the same
+#' model, tying all trait variances to one shared parameter. Use `scalar()`
+#' when you want to commit explicitly to one shared trait-scale variance; use
+#' `indep()` for a separate variance per trait, or `dep()` / `latent()` for
+#' cross-trait covariance.
+#'
+#' The shared variance still couples grouping levels through the source
+#' (identity for the no-prefix row). The source-specific `phylo_scalar()`,
+#' `animal_scalar()`, and `spatial_scalar()` carry the same one-shared-variance
+#' meaning on their respective relationship operators.
+#'
+#' @param formula `0 + trait | g` style formula (LHS is the trait factor,
+#'   typically `0 + trait`; RHS is the grouping factor).
+#' @return A formula marker; never evaluated.
+#' @seealso [indep()], [dep()], [latent()], [phylo_scalar()], [extract_Sigma()].
+#' @export
+#' @examples
+#' \dontrun{
+#' # One shared trait variance across all traits (identity cross-trait):
+#' fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | site),
+#'                 data = df, trait = "trait", unit = "site")
+#'
+#' # Equivalent longhand:
+#' fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site, common = TRUE),
+#'                 data = df, trait = "trait", unit = "site")
+#' }
+scalar <- function(formula) {
+  invisible(NULL)
+}
+
 #' Per-trait phylogenetic marginal variance: `phylo_indep(0 + trait | species)`
 #'
 #' Canonical name for **T per-trait phylogenetic variances coupled by
@@ -3679,6 +3717,20 @@ rewrite_canonical_aliases <- function(formula) {
           extras$common <- common_arg
         }
         new_call <- as.call(c(list(as.name("diag"), e[[2L]]), extras))
+        return(new_call)
+      }
+      ## `scalar(form)` -> `diag(form, .indep = TRUE, common = TRUE)`
+      ## The no-prefix one-shared-variance mode: byte-identical to
+      ## `indep(form, common = TRUE)`, tying all trait variances to one shared
+      ## parameter (fit-multi.R diag_B_common / diag_W_common). Intercept-only
+      ## for now; an augmented `scalar(1 + x | g)` slope is a later slice, so we
+      ## fail loud rather than silently drop or malform it.
+      if (fn == "scalar") {
+        .assert_no_augmented_lhs(fn, e)
+        new_call <- as.call(c(
+          list(as.name("diag"), e[[2L]]),
+          list(.indep = TRUE, common = TRUE)
+        ))
         return(new_call)
       }
       ## `phylo_indep(0 + trait | species)` -> `phylo_rr(species,

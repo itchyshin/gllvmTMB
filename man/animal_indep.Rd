@@ -4,12 +4,18 @@
 \alias{animal_indep}
 \title{Independent per-trait animal-model random intercepts: \code{animal_indep(0 + trait | id)}}
 \usage{
-animal_indep(formula, pedigree = NULL, A = NULL, Ainv = NULL)
+animal_indep(formula, pedigree = NULL, A = NULL, Ainv = NULL, common = FALSE)
 }
 \arguments{
 \item{formula}{An lme4-bar formula of the form \code{0 + trait | id}.}
 
 \item{pedigree, A, Ainv}{See \code{\link[=animal_scalar]{animal_scalar()}}.}
+
+\item{common}{\code{FALSE} (default) for a separate additive-genetic variance per
+trait; \code{TRUE} ties all traits to one shared additive-genetic variance
+(intercept-only). \code{animal_indep(0 + trait | id, common = TRUE)} is the
+canonical one-shared-variance spelling and fits the same model as the
+soft-deprecated \code{animal_scalar(id)}.}
 }
 \value{
 See \code{\link[=animal_scalar]{animal_scalar()}}.

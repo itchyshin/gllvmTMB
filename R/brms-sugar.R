@@ -137,6 +137,30 @@
   invisible(NULL)
 }
 
+## One-shot fire-on-use notice for the scalar() / *_scalar() soft-deprecation.
+## Design 79's covariance grid collapses to THREE modes {indep, dep, latent}: the
+## one-shared-variance case is now the canonical `indep(..., common = TRUE)`, which
+## routes to the same *_scalar engine. The `scalar()` / `*_scalar()` keywords stay
+## live as compatibility syntax but warn once per session, mirroring the
+## unique-family soft-deprecation (maintainer 2026-07-12: warn-once + rewrite).
+.gllvmTMB_warn_scalar_family_deprecated <- function(fn) {
+  if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    return(invisible(NULL))
+  }
+  key <- sprintf("scalar-family-%s", fn)
+  if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
+    common_hint <- sub("_scalar$", "_indep", fn)
+    if (identical(fn, "scalar")) common_hint <- "indep"
+    cli::cli_warn(c(
+      "!" = "Formula keyword {.fn {fn}} is soft-deprecated as of gllvmTMB 0.5.0 (compatibility syntax).",
+      "i" = "The covariance grid now has three modes: {.fn indep}, {.fn dep}, {.fn latent}. The one-shared-variance case is {.code common = TRUE}.",
+      ">" = "Use {.code {common_hint}(..., common = TRUE)}; it fits the same model."
+    ))
+    .gllvmTMB_deprecation_seen[[key]] <- TRUE
+  }
+  invisible(NULL)
+}
+
 ## One-shot fire-on-use notice for the bare-latent() meaning change: ordinary
 ## latent() now carries the per-trait Psi by DEFAULT (was Lambda-only). This is a
 ## silent behavior change for existing analyses, flagged as the key hazard in the
@@ -1450,6 +1474,11 @@ scalar <- function(formula) {
 #'   -- alias of `vcv =`, aligned with the `animal_*` family's
 #'   argument naming.
 #' @param Ainv Sparse precision matrix (inverse of `A`).
+#' @param common `FALSE` (default) for a separate phylogenetic variance per
+#'   trait; `TRUE` ties all traits to one shared phylogenetic variance
+#'   (intercept-only). `phylo_indep(0 + trait | species, common = TRUE)` is the
+#'   canonical one-shared-variance spelling and fits the same model as the
+#'   soft-deprecated `phylo_scalar(species)`.
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_latent()], [phylo_dep()], [indep()],
 #'   [spatial_indep()], [extract_Sigma()].
@@ -1475,7 +1504,8 @@ phylo_indep <- function(
   tree = NULL,
   vcv = NULL,
   A = NULL,
-  Ainv = NULL
+  Ainv = NULL,
+  common = FALSE
 ) {
   invisible(NULL)
 }
@@ -1518,6 +1548,11 @@ phylo_indep <- function(
 #' @param mesh An `fmesher` mesh object built via [make_mesh()]. It may be
 #'   supplied here or through the top-level `mesh =` argument to [gllvmTMB()].
 #'   The engine does not construct a mesh automatically from `coords`.
+#' @param common `FALSE` (default) for a separate spatial-field variance per
+#'   trait; `TRUE` ties all traits to one shared spatial variance
+#'   (intercept-only). `spatial_indep(0 + trait | coords, common = TRUE)` is the
+#'   canonical one-shared-variance spelling and fits the same model as the
+#'   soft-deprecated `spatial_scalar()`.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_latent()], [indep()],
 #'   [phylo_indep()], [extract_Sigma()].
@@ -1537,7 +1572,7 @@ phylo_indep <- function(
 #'   )
 #' }
 #' @export
-spatial_indep <- function(formula, coords = NULL, mesh = NULL) {
+spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE) {
   invisible(NULL)
 }
 
@@ -2254,6 +2289,27 @@ rewrite_canonical_aliases <- function(formula) {
     nm <- names(e)
     !is.null(nm) && any(nm == arg, na.rm = TRUE)
   }
+  ## Read a literal `common = TRUE/FALSE` from a structured *_indep() call
+  ## (Design 79 scalar-collapse). `common = TRUE` folds the per-trait indep
+  ## variances to one shared variance, routing to the *_scalar engine. Named
+  ## only (the source keywords carry positional tree/vcv/coords/mesh args).
+  .read_common_flag <- function(e, fn) {
+    common_arg <- e[["common"]]
+    if (is.null(common_arg)) {
+      return(FALSE)
+    }
+    if (
+      !is.logical(common_arg) ||
+        length(common_arg) != 1L ||
+        is.na(common_arg)
+    ) {
+      cli::cli_abort(c(
+        "{.arg common} in {.fn {fn}} must be a literal {.code TRUE} or {.code FALSE}.",
+        ">" = "Use {.code {fn}(..., common = TRUE)} to tie all trait variances to one shared variance."
+      ))
+    }
+    common_arg
+  }
   .abort_unsupported_lv_keyword <- function(fn) {
     cli::cli_abort(c(
       "{.arg lv} is reserved for ordinary {.fn latent} only.",
@@ -2648,6 +2704,7 @@ rewrite_canonical_aliases <- function(formula) {
         nm <- names(e)
         ## animal_scalar(id, ...) -> phylo(id, vcv = A)   (then desugar to propto)
         if (fn == "animal_scalar") {
+          .gllvmTMB_warn_scalar_family_deprecated(fn)
           new_call <- call("phylo", e[[2L]])
           new_call[["vcv"]] <- vcv_expr
           return(new_call)
@@ -2828,6 +2885,23 @@ rewrite_canonical_aliases <- function(formula) {
           ## via vcv, and atanh_cor_b pinned to 0 via the TMB map
           ## (fit-multi.R reads the `.indep` marker). No new C++.
           lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
+          ## additive-genetic variances to ONE shared variance -- byte-identical
+          ## to the (soft-deprecated) `animal_scalar(id)` (`phylo(id, vcv = A)`).
+          if (isTRUE(.read_common_flag(e, fn))) {
+            if (
+              lhs_form$lhs_form %in%
+                c("wide_intercept_slope", "long_intercept_slope")
+            ) {
+              cli::cli_abort(c(
+                "{.code animal_indep(..., common = TRUE)} is intercept-only.",
+                ">" = "One shared variance across traits applies to {.code animal_indep(0 + trait | id, common = TRUE)}; the shared-variance random slope is a later slice."
+              ))
+            }
+            new_call <- call("phylo", species_arg)
+            new_call[["vcv"]] <- vcv_expr
+            return(new_call)
+          }
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -2981,6 +3055,14 @@ rewrite_canonical_aliases <- function(formula) {
           )))
         }
         if (fn == "kernel_indep") {
+          ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
+          ## dense-kernel variances to ONE shared variance -- byte-identical to
+          ## the (soft-deprecated) `kernel_scalar()`. Same diagonal phylo_rr
+          ## path; `.kernel_mode = "scalar"` drives the single-level tie in
+          ## fit-multi.R (the theta_rr_phy analogue of spatial_scalar's tie).
+          if (isTRUE(.read_common_flag(e, fn))) {
+            kernel_meta$.kernel_mode <- "scalar"
+          }
           return(as.call(c(
             list(as.name("phylo_rr"), unit_arg),
             list(.phylo_unique = TRUE, .indep = TRUE),
@@ -2988,6 +3070,7 @@ rewrite_canonical_aliases <- function(formula) {
           )))
         }
         if (fn == "kernel_scalar") {
+          .gllvmTMB_warn_scalar_family_deprecated(fn)
           ## One shared variance x K: same diagonal phylo_rr engine path as
           ## kernel_indep, but `.kernel_mode = "scalar"` (carried in
           ## kernel_meta) tells fit-multi.R to tie the per-trait theta_rr_phy
@@ -3545,6 +3628,7 @@ rewrite_canonical_aliases <- function(formula) {
       }
       ## `phylo_scalar(species)` -> `phylo(species)`
       if (fn == "phylo_scalar") {
+        .gllvmTMB_warn_scalar_family_deprecated(fn)
         new_call <- e
         new_call[[1L]] <- as.name("phylo")
         return(new_call)
@@ -3613,6 +3697,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## fit-multi.R ties log_tau_spde across traits via the map mechanism
       ## when it sees the marker.
       if (fn == "spatial_scalar") {
+        .gllvmTMB_warn_scalar_family_deprecated(fn)
         extras <- .pass_through_extras(e, c("coords", "mesh"))
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
@@ -3742,6 +3827,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## for now; an augmented `scalar(1 + x | g)` slope is a later slice, so we
       ## fail loud rather than silently drop or malform it.
       if (fn == "scalar") {
+        .gllvmTMB_warn_scalar_family_deprecated(fn)
         .assert_no_augmented_lhs(fn, e)
         new_call <- as.call(c(
           list(as.name("diag"), e[[2L]]),
@@ -3776,6 +3862,21 @@ rewrite_canonical_aliases <- function(formula) {
             "i" = "Got RHS: {.code {deparse(species_arg)}}.",
             ">" = "Use {.code phylo_indep(0 + trait | species)}."
           ))
+        }
+        ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
+        ## phylogenetic variances to ONE shared variance -- byte-identical to the
+        ## (soft-deprecated) `phylo_scalar(species)`, which renames to `phylo()`.
+        if (isTRUE(.read_common_flag(e, fn))) {
+          if (!.is_zero_plus_trait(lhs_bar)) {
+            cli::cli_abort(c(
+              "{.code phylo_indep(..., common = TRUE)} is intercept-only.",
+              "i" = "Got LHS: {.code {deparse(lhs_bar)}}.",
+              ">" = "One shared variance across traits applies to {.code phylo_indep(0 + trait | species, common = TRUE)}; the shared-variance random slope (former {.code scalar(1 + x | g)}) is a later slice."
+            ))
+          }
+          extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
+          new_call <- as.call(c(list(as.name("phylo"), species_arg), extras))
+          return(new_call)
         }
         ## Augmented intercept+slope LHS (`1 + x | species` or the long form
         ## `0 + trait + (0 + trait):x | species`). phylo_indep means the
@@ -3830,6 +3931,31 @@ rewrite_canonical_aliases <- function(formula) {
       ## over-parameterisation guard.
       if (fn == "spatial_indep") {
         extras <- .pass_through_extras(e, c("coords", "mesh"))
+        ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
+        ## spatial-field variances to ONE shared variance -- byte-identical to the
+        ## (soft-deprecated) `spatial_scalar()` (`spde(form, .spatial_scalar =
+        ## TRUE)`). Intercept-only; the shared-variance spatial slope is deferred.
+        if (isTRUE(.read_common_flag(e, fn))) {
+          if (
+            length(e) >= 2L &&
+              is.call(e[[2L]]) &&
+              identical(e[[2L]][[1L]], as.name("|")) &&
+              length(e[[2L]]) == 3L &&
+              .gllvmTMB_lhs_form(e[[2L]][[2L]])$lhs_form %in%
+                c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            cli::cli_abort(c(
+              "{.code spatial_indep(..., common = TRUE)} is intercept-only.",
+              ">" = "One shared variance across traits applies to {.code spatial_indep(0 + trait | coords, common = TRUE)}; the shared-variance spatial random slope is a later slice."
+            ))
+          }
+          new_call <- as.call(c(
+            list(as.name("spde"), e[[2L]]),
+            list(.spatial_scalar = TRUE),
+            extras
+          ))
+          return(new_call)
+        }
         ## Design 60 §3.5: augmented spatial_indep(1 + x | coords) is the
         ## DIAGONAL special case of the base SPDE slope engine -- the
         ## intercept-slope cross-field correlation rho is FIXED at 0. It uses

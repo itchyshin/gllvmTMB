@@ -75,8 +75,11 @@ kernel_unique <- function(unit, K, name = "kernel") {
 }
 
 #' @rdname kernel_latent
+#' @param common `FALSE` (default) for a separate dense-kernel variance per
+#'   trait (`kernel_indep`); `TRUE` ties all traits to one shared variance,
+#'   the canonical spelling for the soft-deprecated [kernel_scalar()].
 #' @export
-kernel_indep <- function(unit, K, name = "kernel") {
+kernel_indep <- function(unit, K, name = "kernel", common = FALSE) {
   invisible(NULL)
 }
 

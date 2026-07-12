@@ -4,7 +4,14 @@
 \alias{phylo_indep}
 \title{Per-trait phylogenetic marginal variance: \code{phylo_indep(0 + trait | species)}}
 \usage{
-phylo_indep(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
+phylo_indep(
+  formula,
+  tree = NULL,
+  vcv = NULL,
+  A = NULL,
+  Ainv = NULL,
+  common = FALSE
+)
 }
 \arguments{
 \item{formula}{Intercept-only \code{0 + trait | species}, or the supported
@@ -20,6 +27,12 @@ one-covariate intercept-and-slope form described above.}
 argument naming.}
 
 \item{Ainv}{Sparse precision matrix (inverse of \code{A}).}
+
+\item{common}{\code{FALSE} (default) for a separate phylogenetic variance per
+trait; \code{TRUE} ties all traits to one shared phylogenetic variance
+(intercept-only). \code{phylo_indep(0 + trait | species, common = TRUE)} is the
+canonical one-shared-variance spelling and fits the same model as the
+soft-deprecated \code{phylo_scalar(species)}.}
 }
 \value{
 A formula marker; never evaluated.

@@ -4,7 +4,7 @@
 \alias{spatial_indep}
 \title{Per-trait spatial marginal field: \code{spatial_indep(0 + trait | coords)}}
 \usage{
-spatial_indep(formula, coords = NULL, mesh = NULL)
+spatial_indep(formula, coords = NULL, mesh = NULL, common = FALSE)
 }
 \arguments{
 \item{formula}{\code{0 + trait | coords} style formula (LHS is the trait
@@ -19,6 +19,12 @@ the coordinates via the formula RHS.}
 \item{mesh}{An \code{fmesher} mesh object built via \code{\link[=make_mesh]{make_mesh()}}. It may be
 supplied here or through the top-level \verb{mesh =} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}.
 The engine does not construct a mesh automatically from \code{coords}.}
+
+\item{common}{\code{FALSE} (default) for a separate spatial-field variance per
+trait; \code{TRUE} ties all traits to one shared spatial variance
+(intercept-only). \code{spatial_indep(0 + trait | coords, common = TRUE)} is the
+canonical one-shared-variance spelling and fits the same model as the
+soft-deprecated \code{spatial_scalar()}.}
 }
 \value{
 A formula marker; never evaluated.

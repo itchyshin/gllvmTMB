@@ -8,7 +8,7 @@
 \usage{
 kernel_latent(unit, K, d = 1, name = "kernel", unique = FALSE)
 
-kernel_indep(unit, K, name = "kernel")
+kernel_indep(unit, K, name = "kernel", common = FALSE)
 
 kernel_dep(unit, K, name = "kernel")
 }
@@ -26,6 +26,10 @@ matrix aligned to the grouping levels.}
 \item{unique}{Logical; \code{TRUE} auto-includes the kernel-structured diagonal
 trait-specific \eqn{\boldsymbol\Psi} companion for a single dense-kernel
 tier. The default \code{FALSE} preserves the loadings-only subset.}
+
+\item{common}{\code{FALSE} (default) for a separate dense-kernel variance per
+trait (\code{kernel_indep}); \code{TRUE} ties all traits to one shared variance,
+the canonical spelling for the soft-deprecated \code{\link[=kernel_scalar]{kernel_scalar()}}.}
 }
 \value{
 A formula marker; never evaluated as a regular R function.

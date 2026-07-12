@@ -242,28 +242,25 @@
     <div class="scroll">
       <table class="grid">
         <thead><tr>
-          <th>Source</th><th>Scalar</th><th>Independent</th><th>Dependent</th><th>Latent</th><th style="text-align:left">Evidence</th>
+          <th>Source</th><th>Independent<div class="note" style="font-weight:400">+ scalar via <code>common&nbsp;=&nbsp;TRUE</code></div></th><th>Dependent</th><th>Latent</th><th style="text-align:left">Evidence</th>
         </tr></thead>
         <tbody>
           <tr>
             <td class="src"><b>none</b><div class="note">ordinary RE</div></td>
-            <td><span class="cell"><span class="pip p-tested"></span><span class="k">scalar()</span></span></td>
             <td><span class="cell"><span class="pip p-taught"></span><span class="k">indep()</span></span></td>
             <td><span class="cell"><span class="pip p-taught"></span><span class="k">dep()</span></span></td>
             <td><span class="cell"><span class="pip p-taught"></span><span class="k">latent()</span></span></td>
-            <td style="text-align:left"><span class="tag t-taught">taught</span><div class="note">Gaussian <code>latent()</code> is the hero; <code>scalar()</code> new + tested</div></td>
+            <td style="text-align:left"><span class="tag t-taught">taught</span><div class="note">Gaussian <code>latent()</code> is the hero; <code>indep(common = TRUE)</code> tested</div></td>
           </tr>
           <tr>
             <td class="src"><b>phylogenetic</b><div class="note">tree / vcv / A</div></td>
-            <td><span class="cell"><span class="pip p-tested"></span><span class="k">phylo_scalar()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">phylo_indep()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">phylo_dep()</span></span></td>
             <td><span class="cell"><span class="pip p-taught"></span><span class="k">phylo_latent()</span></span></td>
-            <td style="text-align:left"><span class="tag t-taught">taught</span><div class="note"><code>phylo_latent</code> taught (Λ/Ψ split); scalar/indep/dep recovery-tested</div></td>
+            <td style="text-align:left"><span class="tag t-taught">taught</span><div class="note"><code>phylo_latent</code> taught (Λ/Ψ split); indep/dep + <code>common = TRUE</code> recovery-tested</div></td>
           </tr>
           <tr>
             <td class="src"><b>animal</b><div class="note">pedigree / A / Ainv</div></td>
-            <td><span class="cell"><span class="pip p-tested"></span><span class="k">animal_scalar()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">animal_indep()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">animal_dep()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">animal_latent()</span></span></td>
@@ -271,7 +268,6 @@
           </tr>
           <tr>
             <td class="src"><b>spatial</b><div class="note">mesh / SPDE GMRF</div></td>
-            <td><span class="cell"><span class="pip p-tested"></span><span class="k">spatial_scalar()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">spatial_indep()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">spatial_dep()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">spatial_latent()</span></span></td>
@@ -279,7 +275,6 @@
           </tr>
           <tr>
             <td class="src"><b>kernel</b><div class="note">dense K, off-grid</div></td>
-            <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_scalar()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_indep()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_dep()</span></span></td>
             <td><span class="cell"><span class="pip p-tested"></span><span class="k">kernel_latent()</span></span></td>
@@ -289,12 +284,13 @@
       </table>
     </div>
     <p class="note">
-      Modes: <b>scalar</b> = one shared trait variance, zero cross-trait covariance ·
-      <b>indep</b> = per-trait diagonal · <b>dep</b> = full unstructured Σ<sub>T</sub> (T(T+1)/2 params) ·
+      Three modes: <b>indep</b> = per-trait diagonal · <b>dep</b> = full unstructured Σ<sub>T</sub> (T(T+1)/2 params) ·
       <b>latent</b> = ΛΛ<sup>T</sup> with optional diagonal Ψ companion. Ordinary <code>latent()</code>
       carries Ψ by default; source/kernel latent terms are loadings-only unless <code>unique = TRUE</code>.
-      The no-prefix <code>scalar()</code> ties all trait variances to one shared value
-      (byte-identical to <code>indep(0 + trait | g, common = TRUE)</code>); intercept-only for now.
+      The <b>scalar</b> (one shared trait variance) case is the modifier
+      <code>common = TRUE</code> on any <code>indep</code> term — e.g.
+      <code>indep(0 + trait | g, common = TRUE)</code>, intercept-only. The
+      <code>scalar()</code>/<code>*_scalar()</code> keywords are soft-deprecated compatibility syntax for it.
     </p>
   </section>
 
@@ -455,7 +451,7 @@
         <li><b>Categorical needs major development</b> — nominal support is early-stage, not a usable path yet.</li>
         <li><b>REML is a Gaussian-only pilot.</b> Non-Gaussian, weighted, and missing-data REML are later work.</li>
         <li><b>Delta / hurdle latent-scale correlation</b> awaits a reporting convention (two response scales) — a design gap, not a bug.</li>
-        <li><b>Grammar symmetry:</b> <code>scalar()</code> (no-prefix) and <code>kernel_scalar()</code> have landed — intercept-only, recovery-tested; both grid rows' scalar cells are now live. The correlated-vs-uncorrelated (<code>|</code> / <code>||</code>) random-slope axis is the remaining build (see Design 79).</li>
+        <li><b>Grammar symmetry:</b> the covariance grid is now three modes {indep, dep, latent}; the one-shared-variance ("scalar") case folded into the <code>common = TRUE</code> modifier on any <code>indep</code> term (the <code>scalar()</code>/<code>*_scalar()</code> keywords are soft-deprecated compatibility syntax). The correlated-vs-uncorrelated (<code>|</code> / <code>||</code>) random-slope axis is the remaining build (see Design 79).</li>
       </ul>
     </div>
 

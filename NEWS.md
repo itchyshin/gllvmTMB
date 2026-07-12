@@ -8,9 +8,10 @@ required for the main workflow.
 
 * `gllvmTMB()` now accepts both canonical long data and wide data through a
   `traits(...)` left-hand side. The two forms use the same fitting engine.
-* The reader-facing covariance grammar crosses four correlation sources
-  (`none`, `animal`, `phylo`, and `spatial`) with four taught modes: scalar,
-  independent, dependent, and latent.
+* The reader-facing covariance grammar crosses five correlation sources
+  (`none`, `animal`, `phylo`, `spatial`, and `kernel`) with three taught modes:
+  independent, dependent, and latent. The one-shared-variance ("scalar") case is
+  the parsimony modifier `common = TRUE` on any `indep` term.
 * The retained pkgdown guides now focus on runnable, numerically inspected
   workflows: morphometrics, Gaussian latent-rank selection, binary joint species
   distribution modelling, behavioural covariance, reaction norms, phylogenetic
@@ -32,6 +33,13 @@ required for the main workflow.
   `latent(..., unique = FALSE)` for the earlier loadings-only subset.
   Source-specific and kernel latent terms remain loadings-only by default; pass
   `unique = TRUE` when their intended covariance includes the diagonal companion.
+* The one-shared-variance ("scalar") covariance is now the parsimony modifier
+  `common = TRUE` on any `indep` term: `indep(..., common = TRUE)`,
+  `phylo_indep(..., common = TRUE)`, `animal_indep(..., common = TRUE)`,
+  `spatial_indep(..., common = TRUE)`, and `kernel_indep(..., common = TRUE)` fit
+  one variance shared across all traits (intercept-only). The covariance grid is
+  taught as three modes -- independent, dependent, latent -- with `common =` as
+  the scalar sub-case, rather than a separate fourth mode.
 * `phylo_indep()` and `animal_indep()` with an intercept-and-slope term
   (`1 + x | g`) fit **one independent (intercept, slope) block per trait** --
   each trait its own random regression, with an estimated intercept-slope
@@ -71,6 +79,11 @@ required for the main workflow.
 * The formula parser continues to accept `unique()` as compatibility syntax;
   source-specific `*_unique()` functions remain exported soft-deprecated
   aliases. Use `indep()` / `*_indep()` in new standalone diagonal formulas.
+* The scalar family -- `scalar()`, `phylo_scalar()`, `animal_scalar()`,
+  `spatial_scalar()`, `kernel_scalar()` -- is soft-deprecated compatibility
+  syntax that emits a one-time warning and keeps working. Use
+  `indep(..., common = TRUE)` / `*_indep(..., common = TRUE)`, which fits the
+  same model.
 * `gllvmTMB_wide()` remains available for migration, but new wide examples use
   `gllvmTMB(traits(...) ~ ...)`.
 * `meta_known_V()` remains a deprecated alias of `meta_V()`.

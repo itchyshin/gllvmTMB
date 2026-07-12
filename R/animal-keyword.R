@@ -157,6 +157,11 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'
 #' @param formula An lme4-bar formula of the form `0 + trait | id`.
 #' @param pedigree,A,Ainv See [animal_scalar()].
+#' @param common `FALSE` (default) for a separate additive-genetic variance per
+#'   trait; `TRUE` ties all traits to one shared additive-genetic variance
+#'   (intercept-only). `animal_indep(0 + trait | id, common = TRUE)` is the
+#'   canonical one-shared-variance spelling and fits the same model as the
+#'   soft-deprecated `animal_scalar(id)`.
 #' @return See [animal_scalar()].
 #' @seealso [phylo_indep()].
 #' @examples
@@ -185,7 +190,8 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' )
 #' }
 #' @export
-animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
+animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
+                         common = FALSE) {
   invisible(NULL)
 }
 

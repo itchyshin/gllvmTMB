@@ -59,10 +59,10 @@ There are **three fundamental cross-trait structures**, from simplest to richest
 **`scalar` and `unique` are modifiers, not separate modes.** `scalar` is
 `indep` with the variances tied to one shared value; `unique` is `latent` with
 its diagonal-\(\Psi\) companion. This mirrors how the deprecated `unique()`
-keyword now lives as `latent(unique = TRUE)`. For convenience the tied-variance
-model also has named keywords — `scalar()`, `phylo_scalar()`, `animal_scalar()`,
-`spatial_scalar()`, `kernel_scalar()` — which fit exactly the same model as the
-corresponding `indep(..., common = TRUE)`.
+keyword now lives as `latent(unique = TRUE)`. The named `scalar()`,
+`phylo_scalar()`, `animal_scalar()`, `spatial_scalar()`, and `kernel_scalar()`
+keywords fit exactly this model but are **soft-deprecated compatibility syntax**
+(they emit a one-time warning); write `indep(..., common = TRUE)` in new code.
 
 All fitted keyword covariances are random-effect covariances on the model's
 linear-predictor or latent scale. They are not automatically response-scale
@@ -97,9 +97,9 @@ the table.
 </div>
 
 **Scalar (one shared variance).** Add `common = TRUE` to any `indep` term —
-e.g. `indep(0 + trait | g, common = TRUE)` — or use the equivalent convenience
-keyword `scalar()`, `phylo_scalar()`, `animal_scalar()`, `spatial_scalar()`, or
-`kernel_scalar()`. Omitting a multi-trait covariance term entirely means no such
+e.g. `indep(0 + trait | g, common = TRUE)`. The soft-deprecated `scalar()` /
+`*_scalar()` keywords fit the same model but warn once and are kept only for
+compatibility. Omitting a multi-trait covariance term entirely means no such
 term is fitted.
 
 **Unique (diagonal-\(\Psi\) companion).** Add `unique = TRUE` to a `latent`
@@ -193,14 +193,15 @@ the long-form `0 + trait` representation.
 
 ## Exact source-specific syntax
 
-The scalar and latent animal/phylogenetic helpers take the grouping column
-directly. Their `indep` and `dep` counterparts use a bar formula. Spatial
-helpers all use the bar-form orientation.
+The latent animal/phylogenetic helpers take the grouping column directly. The
+`indep` and `dep` counterparts use a bar formula, and the one-shared-variance
+(scalar) case is the `common = TRUE` modifier on `indep`. Spatial helpers all
+use the bar-form orientation.
 
 ### Animal
 
 ```{r animal-syntax, eval = FALSE}
-animal_scalar(id, pedigree = ped)
+animal_indep(0 + trait | id, pedigree = ped, common = TRUE)  # one shared variance
 animal_indep(0 + trait | id, pedigree = ped)
 animal_dep(0 + trait | id, pedigree = ped)
 animal_latent(id, d = 2, pedigree = ped)                 # loadings only
@@ -210,7 +211,7 @@ animal_latent(id, d = 2, pedigree = ped, unique = TRUE)  # + animal Psi
 ### Phylogenetic
 
 ```{r phylo-syntax, eval = FALSE}
-phylo_scalar(species, tree = tree)
+phylo_indep(0 + trait | species, tree = tree, common = TRUE)  # one shared variance
 phylo_indep(0 + trait | species, tree = tree)
 phylo_dep(0 + trait | species, tree = tree)
 phylo_latent(species, d = 2, tree = tree)                 # loadings only
@@ -224,7 +225,7 @@ names must match the grouping levels.
 ### Spatial
 
 ```{r spatial-syntax, eval = FALSE}
-spatial_scalar(0 + trait | site, mesh = mesh)
+spatial_indep(0 + trait | site, mesh = mesh, common = TRUE)  # one shared variance
 spatial_indep(0 + trait | site, mesh = mesh)
 spatial_dep(0 + trait | site, mesh = mesh)
 spatial_latent(0 + trait | site, d = 2, mesh = mesh)
@@ -240,11 +241,11 @@ parameters.
 ## Dense kernels (the fifth grid row)
 
 A supplied dense covariance matrix `K` is the generic dense-matrix source. Its
-keywords follow the same grid as the other sources, plus the tied-variance
-`kernel_scalar()`.
+keywords follow the same grid as the other sources, with the tied-variance case
+as the `common = TRUE` modifier on `kernel_indep()`.
 
 ```{r kernel-syntax, eval = FALSE}
-kernel_scalar(unit_id, K = K, name = "known")   # one shared variance x K
+kernel_indep(unit_id, K = K, name = "known", common = TRUE)  # one shared variance x K
 kernel_indep(unit_id, K = K, name = "known")
 kernel_dep(unit_id, K = K, name = "known")
 kernel_latent(unit_id, K = K, d = 2, name = "known")

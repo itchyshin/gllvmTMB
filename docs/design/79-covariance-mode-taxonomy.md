@@ -92,23 +92,42 @@ Notes:
 
 ## 5. Keyword surface
 
-Sources × modes, plus the new `scalar()`/`kernel_scalar()` and the `|`/`||`
-coupling:
+**The public grid is three modes** (`indep` / `dep` / `latent`) across five
+sources. The one-shared-variance ("scalar") case is not a fourth mode — it is
+the parsimony **modifier `common = TRUE`** on any `indep` term (§5.1). The `|`/
+`||` coupling is the orthogonal second axis (§3).
 
-| source | scalar | indep | dep | latent |
+| source | indep | ↳ scalar (`common = TRUE`) | dep | latent |
 |---|---|---|---|---|
-| none | **`scalar()`** ⟵ new | `indep()` | `dep()` | `latent()` |
-| phylogenetic | `phylo_scalar()` | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
-| animal | `animal_scalar()` | `animal_indep()` | `animal_dep()` | `animal_latent()` |
-| spatial | `spatial_scalar()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
-| kernel | **`kernel_scalar()`** ⟵ new | `kernel_indep()` | `kernel_dep()` | `kernel_latent()` |
+| none | `indep()` | `indep(common = TRUE)` | `dep()` | `latent()` |
+| phylogenetic | `phylo_indep()` | `phylo_indep(common = TRUE)` | `phylo_dep()` | `phylo_latent()` |
+| animal | `animal_indep()` | `animal_indep(common = TRUE)` | `animal_dep()` | `animal_latent()` |
+| spatial | `spatial_indep()` | `spatial_indep(common = TRUE)` | `spatial_dep()` | `spatial_latent()` |
+| kernel | `kernel_indep()` | `kernel_indep(common = TRUE)` | `kernel_dep()` | `kernel_latent()` |
 
-- Intercept-only `scalar()` ≡ `indep(..., common = TRUE)` (byte-identical
-  desugar). `kernel_scalar(unit, K = K, name = ...)` takes the same bare-`unit`
-  form as `kernel_indep/dep/latent` (no formula LHS needed for the intercept-
-  only mode).
 - Every cell takes `(1 + x | g)` (correlated) and `(1 + x || g)` (uncorrelated).
 - `unique()` / `*_unique()` / `kernel_unique()` remain soft-deprecated aliases.
+
+### 5.1 The scalar-collapse (`*_scalar()` → `*_indep(common = TRUE)`)
+
+`common = TRUE` ties the T per-trait `indep` variances to **one shared
+variance** (\eqn{\boldsymbol\Sigma_T = \sigma^2 \mathbf I_T}), routing
+byte-identically to the source's existing scalar engine (no new engine):
+
+| canonical | routes to (engine call) |
+|---|---|
+| `indep(0 + trait \| g, common = TRUE)` | `diag(form, .indep = TRUE, common = TRUE)` |
+| `phylo_indep(0 + trait \| sp, common = TRUE)` | `phylo(sp)` |
+| `animal_indep(0 + trait \| id, common = TRUE)` | `phylo(id, vcv = A)` |
+| `spatial_indep(0 + trait \| coords, common = TRUE)` | `spde(form, .spatial_scalar = TRUE)` |
+| `kernel_indep(unit, K, common = TRUE)` | `phylo_rr(unit, .indep, .kernel_mode = "scalar")` |
+
+The **`scalar()` / `phylo_scalar()` / `animal_scalar()` / `spatial_scalar()` /
+`kernel_scalar()` keywords are soft-deprecated compatibility syntax** as of
+0.5.0: they still fit and desugar to exactly the routes above, but emit a
+one-time warning steering to `*_indep(common = TRUE)`. `common = TRUE` is
+**intercept-only**; the shared-variance random slope (the former `scalar(1 + x |
+g)`, a shared 2×2 across traits) is a later slice and errors for now.
 
 ## 6. Supersedes Design 55 §5 (`scalar` + slope)
 

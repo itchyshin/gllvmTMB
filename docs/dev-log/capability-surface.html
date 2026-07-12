@@ -497,11 +497,11 @@
     </p>
     <div class="scroll">
       <table>
-        <thead><tr><th>Method</th><th>What it buys</th><th>Status</th></tr></thead>
+        <thead><tr><th>Method</th><th>Gaussian <span class="muted">(exact likelihood)</span></th><th>Non-Gaussian <span class="muted">(Laplace)</span></th></tr></thead>
         <tbody>
-          <tr><th>ML (Laplace)</th><td>the shipped default — point estimates + fixed-effect recovery (Bar&nbsp;1–2); the RE&nbsp;SD is downward-biased at small cluster <i>n</i></td><td><span class="tag t-taught">default · all families</span></td></tr>
-          <tr><th>REML</th><td>reduces small-cluster variance bias (integrated-likelihood Laplace)</td><td><span class="tag t-exp">Gaussian-only pilot</span></td></tr>
-          <tr><th>AGHQ</th><td>the path to calibrated / unbiased variance components (Bar&nbsp;3) — most critical for the logit/binary families (binomial, ordinal, beta) where the Laplace bias bites hardest</td><td><span class="tag t-gone">planned · not in engine</span></td></tr>
+          <tr><th>ML</th><td><span class="tag t-taught">✓ done</span> <span class="muted">default</span></td><td><span class="tag t-taught">✓ done</span> <span class="muted">default; RE&nbsp;SD biased down at small <i>n</i></span></td></tr>
+          <tr><th>REML</th><td><span class="tag t-exp">Gaussian-only pilot</span> <span class="muted">exact where it applies</span></td><td class="muted">n/a — REML is a Gaussian-only tool</td></tr>
+          <tr><th>AGHQ</th><td class="muted">n/a — likelihood already exact</td><td><span class="tag t-gone">planned</span> <span class="muted">critical for the logit/binary families (binomial, ordinal, beta) → Bar&nbsp;3</span></td></tr>
         </tbody>
       </table>
     </div>

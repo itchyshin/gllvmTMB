@@ -64,10 +64,14 @@ strip the scalar column from the widget.
   `test-kernel-equivalence` 38/0, `test-formula-grammar-smoke` 28/0,
   `test-phylo/spatial-mode-dispatch`, `test-kernel-recovery` — no failures.
 - **Full non-heavy `devtools::test()`:** **4519 pass / 0 fail / 951 skip**
-  (heavy recovery), 1 warning. The single warning is **not** from this slice —
-  every `*_scalar()`-calling test file is `WARN=0` when run individually (a
-  scalar-deprecation leak would surface as `WARN=1` in a scalar file under the
-  warn-once tracker, and none did), so it is a pre-existing, unrelated warning.
+  (heavy recovery), 1 warning. **Correction:** that summary command summed only
+  the `failed` column, not `error`; a later `--as-cran` run surfaced **1 errored
+  test** it had hidden — `test-predictive-diagnostics.R:496`, a stale rootogram
+  regexp from sibling commit `4dfd2e2b` (unrelated to the scalar-collapse; the
+  guard message gained "NB1" and the test was not updated). Fixed separately.
+  The scalar-collapse surfaces are clean: every `*_scalar()`-calling test file is
+  `WARN=0`/`ERROR=0` run individually, and `test-scalar-family-collapse.R` is
+  19 pass / 0 fail / 0 error.
 - **`devtools::document()`** — clean; `common` documented on the four indep Rd
   pages (`man/phylo_indep.Rd`, `man/spatial_indep.Rd`, `man/animal_indep.Rd`,
   `man/kernel_latent.Rd`). No spurious NAMESPACE churn (markers, not new exports).

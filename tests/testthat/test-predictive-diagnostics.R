@@ -493,6 +493,6 @@ test_that("public predictive diagnostic argument validation is explicit", {
   )
   expect_error(
     predictive_check(fit, type = "rootogram", ndraws = 8L),
-    "requires Poisson or NB2 rows"
+    "requires Poisson, NB1, or NB2 rows"
   )
 })

@@ -11,6 +11,20 @@ gaps to 1.0" plan. Version number is a downstream detail.
 **Baseline:** the current tree passes `R CMD check --as-cran` at **0E/0W/1N**
 (only the benign "New submission"). We build on a provably-clean foundation.
 
+## Capability surface widget — the mission-control (keep current!)
+
+**Live:** https://claude.ai/code/artifact/46e611f2-69d1-48e1-8b8b-ccab2e89983d
+**Source (edit + redeploy to the same URL):** `docs/dev-log/capability-surface.html`
+
+**Standing rule (Shinichi, 2026-07-12):** this widget is *superuseful* — **update it
+as you go**, and **show it FIRST at the start of each new lane/session** so we
+always see the current capability/gap state. To update: edit the HTML source,
+`Artifact(file_path=..., url=<the URL above>)` to redeploy in place, then `cp` it
+back to `docs/dev-log/capability-surface.html` and commit. It has: stat chips,
+the source×mode covariance grid, the per-family capability/gap table (with the
+"where the gaps are" callout), interval tiers, and the 18 guides — all
+reconciled against the code + Phase-0 audit.
+
 ## Locked scope (the finished first release)
 
 | Axis | IN scope | Deferred |

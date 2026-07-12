@@ -1,0 +1,573 @@
+<title>gllvmTMB 0.5.0 — Capability surface</title>
+<style>
+  :root {
+    --bg:        #f6f5f9;
+    --panel:     #ffffff;
+    --ink:       #1a1726;
+    --ink-soft:  #514c63;
+    --ink-faint: #837d96;
+    --line:      #e5e2ee;
+    --line-soft: #efedf5;
+    --accent:    #5b46d9;   /* indigo — latent dimensions / ordination axes */
+    --accent-ink:#4534b0;
+    --accent-wash:#eeeafc;
+    /* semantic tiers */
+    --taught:    #1f9d63;   --taught-wash:#e6f4ec;
+    --avail:     #c07d14;   --avail-wash: #f8efdc;
+    --exp:       #6c7385;   --exp-wash:   #edeef2;
+    --gone:      #b23b52;   --gone-wash:  #f7e7ea;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#131019; --panel:#1c1826; --ink:#efecf6; --ink-soft:#b6b0c6;
+      --ink-faint:#8b849c; --line:#2e2940; --line-soft:#26212f;
+      --accent:#a394f5; --accent-ink:#c3b8fb; --accent-wash:#241d3d;
+      --taught:#4cc78a; --taught-wash:#16301f;
+      --avail:#e0a94a; --avail-wash:#332711;
+      --exp:#9aa1b4; --exp-wash:#232631;
+      --gone:#e2758c; --gone-wash:#331a20;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#131019; --panel:#1c1826; --ink:#efecf6; --ink-soft:#b6b0c6;
+    --ink-faint:#8b849c; --line:#2e2940; --line-soft:#26212f;
+    --accent:#a394f5; --accent-ink:#c3b8fb; --accent-wash:#241d3d;
+    --taught:#4cc78a; --taught-wash:#16301f;
+    --avail:#e0a94a; --avail-wash:#332711;
+    --exp:#9aa1b4; --exp-wash:#232631;
+    --gone:#e2758c; --gone-wash:#331a20;
+  }
+  :root[data-theme="light"] {
+    --bg:#f6f5f9; --panel:#ffffff; --ink:#1a1726; --ink-soft:#514c63;
+    --ink-faint:#837d96; --line:#e5e2ee; --line-soft:#efedf5;
+    --accent:#5b46d9; --accent-ink:#4534b0; --accent-wash:#eeeafc;
+    --taught:#1f9d63; --taught-wash:#e6f4ec;
+    --avail:#c07d14; --avail-wash:#f8efdc;
+    --exp:#6c7385; --exp-wash:#edeef2;
+    --gone:#b23b52; --gone-wash:#f7e7ea;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .wrap {
+    max-width: 1080px; margin: 0 auto; padding: 44px 28px 72px;
+    background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--accent-ink); font-weight: 600;
+    display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center;
+  }
+  .eyebrow .dot { color: var(--ink-faint); }
+  h1 {
+    font-size: clamp(30px, 5vw, 46px); line-height: 1.05; margin: 14px 0 0;
+    letter-spacing: -0.02em; text-wrap: balance; font-weight: 700;
+  }
+  .thesis {
+    margin: 16px 0 0; max-width: 64ch; color: var(--ink-soft); font-size: 16px;
+  }
+  .thesis em { color: var(--ink); font-style: italic; }
+
+  /* stat chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 30px 0 8px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--panel); border-radius: 11px;
+    padding: 11px 14px; min-width: 128px; flex: 1 1 128px;
+  }
+  .chip .n {
+    font-family: var(--mono); font-weight: 600; font-size: 20px;
+    color: var(--accent-ink); font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+  }
+  .chip .l { font-size: 12px; color: var(--ink-faint); margin-top: 3px; letter-spacing: .02em; }
+
+  /* legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 22px 0 4px;
+    padding: 13px 16px; border: 1px solid var(--line); border-radius: 11px;
+    background: var(--panel); font-size: 13px; color: var(--ink-soft);
+  }
+  .legend b { color: var(--ink); font-weight: 600; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px;
+    margin-right: 7px; vertical-align: baseline; transform: translateY(1px); }
+  .s-taught { background: var(--taught); }
+  .s-avail  { background: var(--avail); }
+  .s-exp    { background: var(--exp); }
+  .s-gone   { background: var(--gone); }
+
+  section { margin-top: 40px; }
+  h2 {
+    font-size: 13px; font-family: var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; margin: 0 0 4px;
+    padding-bottom: 9px; border-bottom: 1px solid var(--line);
+  }
+  h2 .idx { color: var(--accent); margin-right: 9px; }
+  .lead { margin: 12px 0 18px; color: var(--ink-soft); max-width: 66ch; font-size: 15px; }
+
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 640px; }
+  thead th {
+    text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
+    padding: 13px 15px; border-bottom: 1px solid var(--line); white-space: nowrap;
+    background: var(--panel);
+  }
+  tbody td { padding: 12px 15px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody th {
+    text-align: left; padding: 12px 15px; border-bottom: 1px solid var(--line-soft);
+    font-weight: 600; white-space: nowrap; vertical-align: top;
+  }
+  code {
+    font-family: var(--mono); font-size: 12.5px; background: var(--accent-wash);
+    color: var(--accent-ink); padding: 1.5px 5px; border-radius: 5px; white-space: nowrap;
+  }
+  td.muted, .muted { color: var(--ink-faint); }
+  .note { font-size: 12.5px; color: var(--ink-faint); margin-top: 4px; }
+
+  /* tier tag */
+  .tag {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px;
+    white-space: nowrap;
+  }
+  .t-taught { background: var(--taught-wash); color: var(--taught); }
+  .t-avail  { background: var(--avail-wash);  color: var(--avail); }
+  .t-exp    { background: var(--exp-wash);    color: var(--exp); }
+  .t-gone   { background: var(--gone-wash);   color: var(--gone); }
+
+  /* covariance grid cells */
+  .grid td { text-align: center; }
+  .grid td.src { text-align: left; }
+  .cell { display: inline-flex; align-items: center; gap: 6px; }
+  .cell .k { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+  .pip { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .p-taught { background: var(--taught); }
+  .p-avail  { background: var(--avail); }
+  .p-na     { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; }
+
+  /* articles */
+  .arts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .arts { grid-template-columns: 1fr; } .chip { min-width: 110px; } }
+  .artcol { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 4px 0; }
+  .artcol h3 {
+    font-size: 11px; font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent-ink); margin: 14px 16px 8px; font-weight: 600;
+  }
+  .art { padding: 8px 16px; border-top: 1px solid var(--line-soft); }
+  .art:first-of-type { border-top: none; }
+  .art .t { font-weight: 600; font-size: 14px; }
+  .art .d { font-size: 12.5px; color: var(--ink-faint); margin-top: 2px; }
+
+  footer {
+    margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink-faint); max-width: 72ch;
+  }
+  footer b { color: var(--ink-soft); font-weight: 600; }
+
+  .subhead { font-size: 16px; font-weight: 700; color: var(--ink); margin: 30px 0 4px; letter-spacing: -0.01em; }
+  table.perfam { min-width: 900px; font-size: 13px; }
+  table.perfam td, table.perfam th { padding: 10px 13px; vertical-align: top; }
+  .gram { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); letter-spacing: .02em; white-space: nowrap; }
+  .yes { color: var(--taught); font-weight: 700; }
+  .no { color: var(--ink-faint); }
+  .fampip { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: baseline; transform: translateY(1px); flex: none; }
+  .fp-w { background: var(--taught); }
+  .fp-a { background: var(--avail); }
+  table.perfam .fam { font-weight: 600; white-space: nowrap; }
+  table.perfam .dom { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+
+  .gapbox { border: 1px solid var(--line); border-left: 3px solid var(--avail); border-radius: 12px;
+    background: var(--panel); padding: 16px 20px; margin-top: 22px; }
+  .gapbox h4 { margin: 0 0 10px; font-size: 13px; font-family: var(--mono); letter-spacing: .08em;
+    text-transform: uppercase; color: var(--avail); font-weight: 600; }
+  .gapbox ul { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 9px; }
+  .gapbox li { font-size: 13.5px; color: var(--ink-soft); padding-left: 18px; position: relative; }
+  .gapbox li::before { content: "→"; position: absolute; left: 0; color: var(--avail); font-weight: 700; }
+  .gapbox li b { color: var(--ink); font-weight: 600; }
+</style>
+
+<div class="wrap">
+
+  <div class="eyebrow">
+    <span>gllvmTMB 0.5.0</span><span class="dot">·</span>
+    <span>first CRAN release</span><span class="dot">·</span>
+    <span>building to a finished scope</span>
+  </div>
+  <h1>Capability surface</h1>
+  <p class="thesis">
+    What the stacked-trait GLLVM engine fits, at what evidence depth, across every
+    correlation source and covariance mode. Built from the 0.5.0 <em>NEWS</em>, the formula
+    keyword grid, and the exported family set — <em>reconciled against the code</em>. Where a
+    summary drifts from the source, the code wins.
+  </p>
+
+  <div class="chips">
+    <div class="chip"><div class="n">4 × 4</div><div class="l">sources × covariance modes</div></div>
+    <div class="chip"><div class="n">+kernel</div><div class="l">dense-K quartet, off-grid</div></div>
+    <div class="chip"><div class="n">30+</div><div class="l">response families</div></div>
+    <div class="chip"><div class="n">18</div><div class="l">public guides</div></div>
+    <div class="chip"><div class="n">point</div><div class="l">default interval scale</div></div>
+    <div class="chip"><div class="n">Julia</div><div class="l">bridge = experimental</div></div>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch s-taught"></span><b>Taught</b> — worked article + runnable, numerically-inspected workflow</span>
+    <span><span class="swatch s-avail"></span><b>Available · point-only</b> — live API, recovery/point evidence; intervals not calibrated</span>
+    <span><span class="swatch s-exp"></span><b>Experimental</b> — partial route, fail-loud guards</span>
+    <span><span class="swatch s-gone"></span><b>Withdrawn / deferred</b> — out of the 0.5.0 exported/public surface</span>
+  </div>
+
+  <!-- COVARIANCE GRID -->
+  <section>
+    <h2><span class="idx">1</span>Covariance structure grid</h2>
+    <p class="lead">
+      Two decisions: what relates the grouping levels (source, down the side) and what trait
+      covariance holds at that level (mode, across the top). Every cell is live API. The pip
+      marks evidence depth: a <b>worked article</b> backs the source, or the route is
+      <b>available point-only</b>. <code>Cov(b<sub>gt</sub>, b<sub>g't'</sub>) = Σ<sub>T,tt'</sub> K<sub>gg'</sub></code>.
+    </p>
+    <div class="scroll">
+      <table class="grid">
+        <thead><tr>
+          <th>Source</th><th>Scalar</th><th>Independent</th><th>Dependent</th><th>Latent</th><th style="text-align:left">Evidence</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td class="src"><b>none</b><div class="note">ordinary RE</div></td>
+            <td><span class="p-na">—</span></td>
+            <td><span class="cell"><span class="pip p-taught"></span><span class="k">indep()</span></span></td>
+            <td><span class="cell"><span class="pip p-taught"></span><span class="k">dep()</span></span></td>
+            <td><span class="cell"><span class="pip p-taught"></span><span class="k">latent()</span></span></td>
+            <td style="text-align:left"><span class="tag t-taught">taught</span><div class="note">Gaussian <code>latent()</code> is the hero example</div></td>
+          </tr>
+          <tr>
+            <td class="src"><b>phylogenetic</b><div class="note">tree / vcv / A</div></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">phylo_scalar()</span></span></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">phylo_indep()</span></span></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">phylo_dep()</span></span></td>
+            <td><span class="cell"><span class="pip p-taught"></span><span class="k">phylo_latent()</span></span></td>
+            <td style="text-align:left"><span class="tag t-taught">taught</span><div class="note"><code>phylo_latent(unique=TRUE)</code> Λ/Ψ split</div></td>
+          </tr>
+          <tr>
+            <td class="src"><b>animal</b><div class="note">pedigree / A / Ainv</div></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">animal_scalar()</span></span></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">animal_indep()</span></span></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">animal_dep()</span></span></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">animal_latent()</span></span></td>
+            <td style="text-align:left"><span class="tag t-avail">point-only</span><div class="note">QG heritability guide deferred</div></td>
+          </tr>
+          <tr>
+            <td class="src"><b>spatial</b><div class="note">mesh / SPDE GMRF</div></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">spatial_scalar()</span></span></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">spatial_indep()</span></span></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">spatial_dep()</span></span></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">spatial_latent()</span></span></td>
+            <td style="text-align:left"><span class="tag t-avail">point-only</span><div class="note">range/scale need spatial spread</div></td>
+          </tr>
+          <tr>
+            <td class="src"><b>kernel</b><div class="note">dense K, off-grid</div></td>
+            <td><span class="p-na">—</span></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">kernel_indep()</span></span></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">kernel_dep()</span></span></td>
+            <td><span class="cell"><span class="pip p-avail"></span><span class="k">kernel_latent()</span></span></td>
+            <td style="text-align:left"><span class="tag t-avail">point-only</span><div class="note">phylo-equivalent for dense K to &lt;1e-6</div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      Modes: <b>scalar</b> = one shared trait variance, zero cross-trait covariance ·
+      <b>indep</b> = per-trait diagonal · <b>dep</b> = full unstructured Σ<sub>T</sub> (T(T+1)/2 params) ·
+      <b>latent</b> = ΛΛ<sup>T</sup> with optional diagonal Ψ companion. Ordinary <code>latent()</code>
+      carries Ψ by default; source/kernel latent terms are loadings-only unless <code>unique = TRUE</code>.
+      There is no no-prefix <code>scalar</code>; omitting a term fits none.
+    </p>
+  </section>
+
+  <!-- FAMILIES -->
+  <section>
+    <h2><span class="idx">2</span>Response families</h2>
+    <p class="lead">
+      Fitted through the R/TMB engine. Evidence depth varies by family;
+      <b>Gaussian, Poisson, and NB2</b> are the paths with fitted-response diagnostic support
+      (<code>predictive_check()</code>, residuals, <code>diagnostic_table()</code>).
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Group</th><th>Families</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr>
+            <th>Core continuous / count</th>
+            <td><code>gaussian</code> <code>poisson</code> <code>nbinom1</code> <code>nbinom2</code> <code>binomial</code> <code>betabinomial</code> <code>Gamma</code> <code>beta</code></td>
+            <td><span class="tag t-taught">taught paths</span><div class="note">Gaussian · Poisson · NB2 · binomial appear in worked guides</div></td>
+          </tr>
+          <tr>
+            <th>Extended continuous</th>
+            <td><code>tweedie</code> <code>student</code> <code>lognormal</code> <code>gengamma</code> <code>gamma_mix</code> <code>lognormal_mix</code></td>
+            <td><span class="tag t-avail">point-only</span><div class="note">Student-t variance undefined for df ≤ 2 → propagates <code>NA</code></div></td>
+          </tr>
+          <tr>
+            <th>Truncated / censored</th>
+            <td><code>truncated_poisson</code> <code>truncated_nbinom1</code> <code>truncated_nbinom2</code> <code>censored_poisson</code></td>
+            <td><span class="tag t-avail">point-only</span></td>
+          </tr>
+          <tr>
+            <th>Ordered / categorical</th>
+            <td><code>ordinal_probit</code> <code>cumulative_logit</code> <code>categorical</code></td>
+            <td><span class="tag t-avail">point-only</span><div class="note">applied ordinal / IRT guides deferred</div></td>
+          </tr>
+          <tr>
+            <th>Delta / hurdle (two-stage)</th>
+            <td><code>delta_gamma</code> <code>delta_lognormal</code> <code>delta_beta</code> <code>delta_gengamma</code> <code>delta_poisson_link_gamma</code> <code>delta_poisson_link_lognormal</code> <code>delta_truncated_nbinom1/2</code> + <code>_mix</code></td>
+            <td><span class="tag t-avail">point-only</span><div class="note"><b>No latent-scale correlation advertised</b> — two response scales make it ambiguous</div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="subhead">Per-family capability detail</h3>
+    <p class="lead">
+      A per-family view, as a cross-check on the grid. <b>Read the columns honestly:</b> the
+      <span class="gram">S I D L</span> (covariance modes) and structured-source columns show what the
+      <i>family-agnostic grammar accepts</i> — a valid formula does not guarantee estimability
+      (see the covariance grid in §1), and non-Gaussian structured evidence is recovery-grade,
+      concentrated at low rank on Gaussian. This is <b>not</b> a per-cell coverage census like
+      drmTMB's. A green <span class="yes">✓</span> marks something genuinely verified (fitted
+      diagnostics); the family pip marks overall evidence: <span class="fampip fp-w"></span>worked /
+      diagnostic, <span class="fampip fp-a"></span>available (point-only). Crucially,
+      <b>every family's interval evidence is point-only</b> — no coverage certificate.
+    </p>
+    <div class="scroll">
+      <table class="perfam">
+        <thead><tr>
+          <th>Family</th><th>Params</th><th>Modes</th><th>Structured</th>
+          <th>Rand. slope</th><th>Diagnostics</th><th>Interval</th><th>Missing resp.</th><th>REML</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <th><span class="fampip fp-w"></span><span class="fam">gaussian</span><div class="dom">continuous</div></th>
+            <td class="gram">mu, sigma</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td><span class="tag t-avail">partial</span> <span class="gram">s1·s2</span></td><td><span class="yes">✓</span></td>
+            <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="gram">✓ pilot</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-w"></span><span class="fam">poisson</span><div class="dom">count · log</div></th>
+            <td class="gram">mu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td><span class="tag t-avail">partial</span></td><td><span class="yes">✓</span></td>
+            <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-w"></span><span class="fam">nbinom1 · nbinom2</span><div class="dom">overdispersed count</div></th>
+            <td class="gram">mu, phi</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td><span class="tag t-avail">partial</span></td><td><span class="yes">✓</span> <span class="no">(NB2)</span></td>
+            <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span> <span class="no">(NB2)</span></td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-w"></span><span class="fam">binomial</span><div class="dom">binary · logit/probit/cloglog</div></th>
+            <td class="gram">mu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td><span class="tag t-avail">partial</span></td><td class="no">— <span style="font-size:10px">JSDM worked; single-trial diag RE off</span></td>
+            <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-a"></span><span class="fam">betabinomial</span><div class="dom">overdispersed binomial</div></th>
+            <td class="gram">mu, phi</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td class="no">—</td><td class="no">—</td>
+            <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-a"></span><span class="fam">beta</span><div class="dom">proportions · interior (0,1)</div></th>
+            <td class="gram">mu, phi</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td class="no">—</td><td class="no">—</td>
+            <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-a"></span><span class="fam">Gamma</span><div class="dom">positive · log</div></th>
+            <td class="gram">mu, shape</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td class="no">—</td><td class="no">—</td>
+            <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-a"></span><span class="fam">tweedie</span><div class="dom">semicontinuous</div></th>
+            <td class="gram">mu, phi, p</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td class="no">—</td><td class="no">—</td>
+            <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-a"></span><span class="fam">student</span><div class="dom">heavy-tailed continuous</div></th>
+            <td class="gram">mu, sigma, nu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td class="no">—</td><td class="no">— <span style="font-size:10px">sigma undefined if nu ≤ 2 → NA</span></td>
+            <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-a"></span><span class="fam">lognormal · gengamma</span><div class="dom">positive continuous</div></th>
+            <td class="gram">mu, sigma (,Q)</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td class="no">—</td><td class="no">—</td>
+            <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-a"></span><span class="fam">truncated_* · censored_poisson</span><div class="dom">truncated / censored count</div></th>
+            <td class="gram">mu (,phi)</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td class="no">—</td><td class="no">—</td>
+            <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-a"></span><span class="fam">ordinal_probit · cumulative_logit</span><div class="dom">ordered categorical</div></th>
+            <td class="gram">mu + cutpoints</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td class="no">— <span style="font-size:10px">ordinal RE not implemented</span></td><td class="no">—</td>
+            <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-a"></span><span class="fam">categorical</span><div class="dom" style="color:var(--gone)">nominal · major development pending</div></th>
+            <td class="gram">mu / category</td><td class="gram">limited</td><td class="gram">—</td>
+            <td class="no">—</td><td class="no">—</td>
+            <td><span class="tag t-gone">early</span></td><td class="no">—</td><td class="no">—</td>
+          </tr>
+          <tr>
+            <th><span class="fampip fp-a"></span><span class="fam">delta_* · hurdle</span><div class="dom">two-stage semicontinuous</div></th>
+            <td class="gram">presence + positive</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
+            <td class="no">—</td><td class="no">— <span style="font-size:10px">no latent-scale correlation</span></td>
+            <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="gapbox">
+      <h4>Where the gaps are · 0.5.0 → 1.0</h4>
+      <ul>
+        <li><b>Interval coverage — the headline gap.</b> Zero families have coverage-checked intervals; every cell is point-only. Calibration is the largest 1.0 task.</li>
+        <li><b>Random slopes (≥1) are unfinished.</b> In development / diagnostic-grade even for Gaussian — not a finished 0.5.0 capability. Shown as <span class="tag t-avail">partial</span>, not ✓.</li>
+        <li><b>Missing responses: core families now tested.</b> Gaussian + poisson/NB2/binomial masked-response is verified (sentinel-invariance, 2026-07-12); nbinom1 recovery + <code>mi()</code> predictor coverage pending.</li>
+        <li><b>Fitted diagnostics reach 3 families</b> (Gaussian, Poisson, NB2). Extending residual / predictive checks to more families is the next diagnostics step.</li>
+        <li><b>Categorical needs major development</b> — nominal support is early-stage, not a usable path yet.</li>
+        <li><b>REML is a Gaussian-only pilot.</b> Non-Gaussian, weighted, and missing-data REML are later work.</li>
+        <li><b>Delta / hurdle latent-scale correlation</b> awaits a reporting convention (two response scales) — a design gap, not a bug.</li>
+        <li><b>Grammar symmetry:</b> <code>scalar()</code> for the no-prefix source and <code>kernel_scalar()</code> — the approved 0.5.0 addition — are not yet in the grid.</li>
+      </ul>
+    </div>
+
+    <p class="note">
+      Reconciled against <code>NAMESPACE</code> family exports, <code>NEWS.md</code> (diagnostics scoped
+      to Gaussian/Poisson/NB2; single-trial Bernoulli diagonal RE mapped off; Student-t variance NA for
+      df ≤ 2), the keyword grid, and the README support boundary, plus maintainer-confirmed status for
+      the in-progress lanes (random slopes ≥1 unfinished; missing responses validated for Gaussian only;
+      categorical early-stage). Where per-family structured or slope support is not individually validated
+      in code, the column reflects grammar availability, not a coverage claim — firming these into
+      per-cell evidence is a 1.0 audit, not a 0.5.0 promise.
+    </p>
+  </section>
+
+  <!-- INTERVALS -->
+  <section>
+    <h2><span class="idx">3</span>Intervals &amp; evidence</h2>
+    <p class="lead">
+      The honesty boundary. A route that returns bounds is <b>not</b>, by itself, evidence of
+      nominal repeated-sampling coverage. Extraction is point-only by default.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Route</th><th>Scale / meaning</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><th>Point extraction</th><td><code>extract_Sigma_table()</code>, <code>extract_correlations()</code>, <code>plot_correlations()</code></td><td><span class="tag t-taught">default</span></td></tr>
+          <tr><th>Direct TMB / linear-contrast profiles</th><td><code>profile_targets()</code> and parameter profiles for supported targets</td><td><span class="tag t-taught">available</span></td></tr>
+          <tr><th>Wald / Fisher-z bounds</th><td>heuristic sensitivity summaries around a point</td><td><span class="tag t-avail">uncalibrated</span></td></tr>
+          <tr><th>Bootstrap</th><td>target-specific; not universally calibrated</td><td><span class="tag t-avail">target-specific</span></td></tr>
+          <tr><th>Nonlinear penalty-profile prototypes</th><td>communality / correlation / proportions / repeatability</td><td><span class="tag t-gone">withdrawn</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- RANDOM SLOPES + SPECIAL -->
+  <section>
+    <h2><span class="idx">4</span>Random slopes &amp; special capabilities</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Capability</th><th>Detail</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><th>Data input</th><td>Long <code>value ~ 0 + trait + …</code> and wide <code>traits(…) ~ …</code>, one engine, byte-identical fits</td><td><span class="tag t-taught">taught</span></td></tr>
+          <tr><th>Keyworded random slope</th><td>Gaussian reaction norm <code>latent(1 + x | unit, d = K)</code>; structured <code>*_indep/dep/latent(1 + x | g)</code>, s = 1</td><td><span class="tag t-taught">taught</span></td></tr>
+          <tr><th>Gaussian structured s = 2</th><td><code>phylo_dep(1 + x1 + x2 | species)</code></td><td><span class="tag t-avail">point-only</span></td></tr>
+          <tr><th>Plain bare-bar slope <code>(1 + x | g)</code></th><td>reserved — use the keyworded decomposition</td><td><span class="tag t-exp">reserved</span></td></tr>
+          <tr><th>Missing responses</th><td><code>NA</code> cells as unobserved; <code>predict_missing()</code></td><td><span class="tag t-taught">taught</span></td></tr>
+          <tr><th>Missing predictor</th><td>one <code>mi()</code> term: Gaussian, grouped, phylo, binary, ordered, unordered fixed routes</td><td><span class="tag t-avail">point-only</span></td></tr>
+          <tr><th>Latent scores on covariates</th><td><code>latent(…, lv = ~ x)</code> — ordinary Gaussian &amp; binomial unit-tier</td><td><span class="tag t-exp">partial</span></td></tr>
+          <tr><th>Known sampling covariance</th><td><code>meta_V(V = V)</code> — function live, no worked guide yet</td><td><span class="tag t-avail">no guide</span></td></tr>
+          <tr><th>REML</th><td>narrow Gaussian-only <code>REML = TRUE</code> pilot</td><td><span class="tag t-exp">pilot</span></td></tr>
+          <tr><th>Julia bridge</th><td>narrow point route for select families; experimental, not required</td><td><span class="tag t-exp">experimental</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- WITHDRAWN / DEFERRED -->
+  <section>
+    <h2><span class="idx">5</span>Withdrawn &amp; deferred in 0.5.0</h2>
+    <p class="lead">Named so prose does not overpromise. Underlying code may exist — that alone is not a recommendation.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Item</th><th>Why</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><th><code>check_identifiability()</code>, <code>coverage_study()</code></th><td>fitted-model designs did not establish unknown generating rank / retain every replicate in the denominator</td><td><span class="tag t-gone">withdrawn export</span></td></tr>
+          <tr><th>Nonlinear penalty profiles</th><td><code>profile_communality/correlation/proportions/repeatability</code> + CIs — could accept loose constraints without a status ledger</td><td><span class="tag t-gone">withdrawn export</span></td></tr>
+          <tr><th>Delta / hurdle latent-scale correlation</th><td>two latent scales make a single cross-family correlation ambiguous</td><td><span class="tag t-gone">not advertised</span></td></tr>
+          <tr><th>QG heritability · IRT / psychometrics · mixed-response · applied ordinal · cross-package agreement</th><td>retired drafts; need aligned fixtures, stable extractors, and calibrated uncertainty first</td><td><span class="tag t-gone">deferred guide</span></td></tr>
+          <tr><th>SPDE barrier meshes · broad non-Gaussian REML</th><td>later work beyond the shipped narrow pilot</td><td><span class="tag t-gone">later</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ARTICLES -->
+  <section>
+    <h2><span class="idx">6</span>The 18 public guides</h2>
+    <p class="lead">Get Started plus 17 retained articles — the reader-facing site after the 0.5.0 estate cut (15 drafts retired). Each states its own narrower conditions.</p>
+    <div class="arts">
+      <div class="artcol">
+        <h3>Get started &amp; core workflows</h3>
+        <div class="art"><div class="t">Get started</div><div class="d">the one entry point, long &amp; wide</div></div>
+        <div class="art"><div class="t">Morphometrics</div><div class="d">Tier-1 exemplar; Gaussian <code>latent()</code>, long≡wide</div></div>
+        <div class="art"><div class="t">How many latent dimensions?</div><div class="d">rank selection with logLik / AIC / BIC</div></div>
+        <div class="art"><div class="t">Joint species distribution</div><div class="d">binary JSDM orientation</div></div>
+        <div class="art"><div class="t">Phylogenetic covariance</div><div class="d"><code>phylo_latent(unique=TRUE)</code> Λ/Ψ split</div></div>
+        <div class="art"><div class="t">Behavioural syndromes</div><div class="d">intercept-only trait covariance</div></div>
+        <div class="art"><div class="t">Reaction norms</div><div class="d">within-individual random regression</div></div>
+        <div class="art"><div class="t">Missing responses &amp; predictors</div><div class="d">masks + one <code>mi()</code> predictor</div></div>
+      </div>
+      <div class="artcol">
+        <h3>Concepts &amp; reference</h3>
+        <div class="art"><div class="t">Formula keyword grid</div><div class="d">the 4×4 syntax lookup</div></div>
+        <div class="art"><div class="t">Vocabulary</div><div class="d">LV scores vs loadings; Λ/Ψ/Σ; grouping roles</div></div>
+        <div class="art"><div class="t">Covariance &amp; correlation</div><div class="d">estimands and interval boundaries</div></div>
+        <div class="art"><div class="t">Response families</div><div class="d">choose a family; domain &amp; sampling routing</div></div>
+        <div class="art"><div class="t">Fixed-effect zero constraints</div><div class="d">response-specific predictor effects</div></div>
+        <div class="art"><div class="t">Profile-likelihood CIs</div><div class="d">target-specific route map</div></div>
+      </div>
+      <div class="artcol">
+        <h3>Diagnostics &amp; pitfalls</h3>
+        <div class="art"><div class="t">Can I trust this fit?</div><div class="d">post-fit triage, <code>check_gllvmTMB()</code></div></div>
+        <div class="art"><div class="t">Convergence &amp; start values</div><div class="d">scaled-gradient verdict; restarts</div></div>
+        <div class="art"><div class="t">Pre-fit response screening</div><div class="d">support / redundancy / formula shape</div></div>
+        <div class="art"><div class="t">Pitfalls</div><div class="d">six concise checks</div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <b>Operating surface — refresh from source before treating as current evidence.</b>
+    Reconciled 2026-07-12 against <code>NEWS.md</code> (0.5.0), <code>api-keyword-grid.Rmd</code>,
+    <code>README.md</code> support boundary, the <code>NAMESPACE</code> family exports, and the
+    2026-07-12 Phase-0 code audit on branch <code>claude/release-0.5.0</code>. Tiers reflect the
+    honesty contract: intervals are recovery/point evidence, not coverage certificates.
+    <b>0.5.0 is being built to a finished, focused scope before CRAN</b> — core families
+    (gaussian/poisson/nbinom1/nbinom2/binomial) × ordinary/phylo/spatial, full slopes — not a thin
+    submission. Baseline <code>--as-cran</code> = 0E/0W/1N; Tier-1 bugs fixed. Live campaign status:
+    <code>docs/dev-log/2026-07-12-capability-buildup-campaign.md</code>.
+    1.0 remains the capability-maturity milestone (full surface + full story + stable API).
+  </footer>
+
+</div>

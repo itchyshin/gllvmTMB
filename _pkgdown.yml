@@ -208,6 +208,8 @@ reference:
     - extract_Omega
     - extract_communality
     - extract_correlations
+    - extract_residual_cov
+    - extract_residual_cor
     - extract_repeatability
     - extract_phylo_signal
     - extract_proportions

@@ -24,7 +24,9 @@ An \verb{n_traits × n_traits} matrix.
 Returns the implied trait covariance at \code{level = "unit"} or
 \code{level = "unit_obs"}. For a reduced-rank plus unique tier this is
 \eqn{\Sigma_X = \Lambda_X \Lambda_X^\top + \Psi_X}. \code{getResidualCor()}
-returns the corresponding correlation matrix.
+returns the corresponding correlation matrix. The canonical snake_case
+spellings in this package are \code{\link[=extract_residual_cov]{extract_residual_cov()}} and
+\code{\link[=extract_residual_cor]{extract_residual_cor()}}, which forward here.
 }
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}} — the canonical unified API for

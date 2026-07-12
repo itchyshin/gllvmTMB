@@ -297,6 +297,12 @@ test_that("extract_loadings(): snake_case alias matches getLoadings()", {
   )
 })
 
+test_that("extract_residual_cov/cor(): snake_case aliases match getResidual*()", {
+  fit <- make_small_rrB_fit(seed = 24, d = 2)
+  expect_identical(extract_residual_cov(fit, "unit"), getResidualCov(fit, "unit"))
+  expect_identical(extract_residual_cor(fit, "unit"), getResidualCor(fit, "unit"))
+})
+
 test_that("getLV(level='unit'): returns NULL when no rr_B in fit", {
   fit <- make_diag_only_fit()
   expect_null(getLV(fit, "unit"))

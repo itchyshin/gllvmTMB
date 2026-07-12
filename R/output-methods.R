@@ -138,7 +138,9 @@ getLV <- function(
 #' Returns the implied trait covariance at `level = "unit"` or
 #' `level = "unit_obs"`. For a reduced-rank plus unique tier this is
 #' \eqn{\Sigma_X = \Lambda_X \Lambda_X^\top + \Psi_X}. `getResidualCor()`
-#' returns the corresponding correlation matrix.
+#' returns the corresponding correlation matrix. The canonical snake_case
+#' spellings in this package are [extract_residual_cov()] and
+#' [extract_residual_cor()], which forward here.
 #'
 #' @inheritParams getLoadings
 #' @return An `n_traits × n_traits` matrix.
@@ -167,6 +169,28 @@ getResidualCor <- function(fit, level = "unit") {
     return(NULL)
   }
   if (level == "B") out$R_B else out$R_W
+}
+
+#' Implied trait covariance or correlation
+#'
+#' Canonical snake_case accessors in the `extract_*()` family for the implied
+#' trait covariance and correlation at `level = "unit"` or `"unit_obs"`.
+#' [getResidualCov()] and [getResidualCor()] are accepted gllvm-compatibility
+#' spellings; each pair returns the same matrix.
+#'
+#' @inheritParams getLoadings
+#' @return An `n_traits x n_traits` matrix.
+#' @seealso [extract_Sigma()] for the unified Sigma API;
+#'   [getResidualCov()] for the `gllvm`-style spellings.
+#' @export
+extract_residual_cov <- function(fit, level = "unit") {
+  getResidualCov(fit, level = level)
+}
+
+#' @rdname extract_residual_cov
+#' @export
+extract_residual_cor <- function(fit, level = "unit") {
+  getResidualCor(fit, level = level)
 }
 
 

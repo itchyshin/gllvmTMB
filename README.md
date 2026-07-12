@@ -178,7 +178,7 @@ examples and interpretations apply.
 | Surface | Current message |
 |---|---|
 | Long and wide data | Both are supported through `gllvmTMB()`: long data use `value ~ ...` with `trait = "trait"`; wide data use `traits(...) ~ ...`. |
-| Missing response cells | Supported for long response rows and wide `traits(...)` cells: `NA` responses can be treated as unobserved unit-trait cells, with `predict_missing()` for the masked-response route. |
+| Missing response cells | `NA` responses are treated as unobserved unit-trait cells (gated out of the likelihood) for long response rows and wide `traits(...)` cells, with `predict_missing()` for the reconstruction route. The masking is family-agnostic; the validated worked example is Gaussian, with other families covered by the same route but lighter recovery evidence so far. |
 | Missing predictors | Supported for one explicitly modelled `mi()` predictor: Gaussian fixed, grouped, phylogenetic, binary, ordered, and unordered fixed-effect routes. Multiple `mi()` terms, non-Gaussian bounded/count predictors, and structured discrete predictor models are planned. |
 | First worked model | Gaussian `latent()` with its default `Psi` companion is the safest public decomposition example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
 | Latent-rank choice | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) compares Gaussian ordinary `latent()` candidate ranks with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows. These criteria help route model choice within a fixed candidate set; they do not prove the biological rank or replace diagnostics. |

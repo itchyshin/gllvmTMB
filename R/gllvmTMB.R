@@ -8,10 +8,10 @@
 #' and trait-specific variance. The formula syntax also supports fixed
 #' effects plus covariance-structure keywords organised by
 #' \emph{correlation source} (none / animal / phylo / spatial) and
-#' \emph{mode} (scalar / indep / dep / latent):
+#' \emph{mode} (scalar / independent / dependent / latent):
 #'
 #' \tabular{lllll}{
-#'   \strong{source \\ mode} \tab \strong{scalar} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
+#'   \strong{source \\ mode} \tab \strong{scalar} \tab \strong{independent} \tab \strong{dependent} \tab \strong{latent} \cr
 #'   \emph{none}    \tab (omit)             \tab [indep()]         \tab [dep()]         \tab [latent()]         \cr
 #'   \emph{animal}  \tab [animal_scalar()]  \tab [animal_indep()]  \tab [animal_dep()]  \tab [animal_latent()]  \cr
 #'   \emph{phylo}   \tab [phylo_scalar()]   \tab [phylo_indep()]   \tab [phylo_dep()]   \tab [phylo_latent()]   \cr
@@ -42,7 +42,7 @@
 #'
 #' @param formula A glmmTMB-style formula, e.g.
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
-#'   Fixed effects and any of the 4 x 4 keyword-grid covstructs above are
+#'   Fixed effects and any of the four-mode grid covstructs above are
 #'   supported (plus [phylo_slope()], [animal_slope()], and [meta_V()]).
 #' @param data A data frame. With an ordinary response LHS such as
 #'   `value ~ ...`, `data` is long: one row per `(unit, trait)`
@@ -76,7 +76,7 @@
 #'   factor (the "cluster" slot). When the column name matches the
 #'   row/column names of `phylo_vcv` (or the tip labels of
 #'   `phylo_tree`), this slot also drives the phylogenetic random
-#'   effects (`phylo_latent`, `phylo_scalar`, `phylo_unique`,
+#'   effects (`phylo_latent`, `phylo_scalar`, `phylo_indep`,
 #'   `phylo_slope`). When the column does **not** match a phylogenetic
 #'   correlation, the slot still functions as a regular crossed/nested
 #'   third grouping (e.g. `cluster = "population"` for 3-level
@@ -121,6 +121,7 @@
 #'   with sigma_d = 1 fixed exactly; no delta-method approximation),
 #'   `lognormal()` (log link), `Gamma(link = "log")`,
 #'   `nbinom2()` (NB2 negative binomial; log link),
+#'   `nbinom1()` (NB1 negative binomial; log link),
 #'   `tweedie()` (compound Poisson-Gamma; log link),
 #'   `Beta()` (logit link, mean-precision parameterisation; y in (0, 1)),
 #'   `betabinomial()` (logit link, mean-precision parameterisation;
@@ -137,8 +138,10 @@
 #'   `glmmTMB` convention); the engine then uses the per-row trial
 #'   count `successes + failures` as the binomial size. A `weights =`
 #'   numeric vector of trial counts is also accepted as an alternative
-#'   API (see Details). The `nbinom2()` family fits one log-dispersion
-#'   parameter per trait (Var = mu + mu^2 / phi). The `tweedie()` family
+#'   API (see Details). The negative-binomial families fit one
+#'   log-dispersion parameter per trait: `nbinom1()` uses
+#'   Var = mu * (1 + phi), while `nbinom2()` uses
+#'   Var = mu + mu^2 / phi. The `tweedie()` family
 #'   fits one log-phi and one logit-(p-1) per trait, with p in (1, 2).
 #'   The `Beta()` and `betabinomial()` families each fit one
 #'   log-precision per trait (a = mu*phi, b = (1-mu)*phi; Smithson &
@@ -176,10 +179,11 @@
 #'   responses must use the default `miss_control(response = "drop")`, and
 #'   `mi()` predictor models are not supported. The default `FALSE` keeps the
 #'   historical ML fit.
-#' @param mesh Optional mesh object from `make_mesh()`. Required when the
-#'   formula includes a `spatial()` term; ignored otherwise.
-#' @param phylo_tree (legacy global) Optional `ape::phylo` tree. The
-#'   **canonical Phase L (May 2026) syntax** is to pass `tree =` inside
+#' @param mesh Optional mesh object from [make_mesh()]. Required for any
+#'   `spatial_*()` or `spatial()` term unless that term supplies its own
+#'   `mesh =` argument; ignored only when the model has no spatial term.
+#' @param phylo_tree (legacy global) Optional `ape::phylo` tree. The current
+#'   syntax is to pass `tree =` inside
 #'   each `phylo_*()` keyword (e.g. `phylo_latent(species, d = K, tree =
 #'   tree)`); this argument is the older outer-level fallback and is
 #'   slated for soft deprecation. When supplied (in either form) the
@@ -199,7 +203,7 @@
 #'   giving the same MLE as the sparse path but at `O(n^2)` memory and
 #'   `O(n^3)` Cholesky cost. Use only when you have a Cphy in hand and
 #'   no Newick tree (e.g. comparing against `nlme::corPagel`). See
-#'   `dev/design/01-phylo-api-canonical-tree.md` for the full
+#'   `docs/design/04-random-effects.md` for the full
 #'   technical justification.
 #' @param known_V Optional list of block-diagonal sampling-error matrices
 #'   `V_t`. Used by the `equalto()` two-stage workflow when sampling-error
@@ -318,7 +322,7 @@
 #' formulation; a future release may decouple the two predictors so
 #' presence and abundance can have independent fixed and random effects.
 #' Only `type = "standard"` (the default) is currently wired in the
-#' multivariate engine; `type = "poisson-link"` is on the roadmap. Each
+#' multivariate engine; `type = "poisson-link"` is not implemented. Each
 #' delta family carries one per-trait dispersion of the *positive*
 #' component (no extra Bernoulli dispersion). The response must be
 #' non-negative.
@@ -346,7 +350,7 @@
 #' \describe{
 #'   \item{No per-row `indep`, Gaussian/lognormal present}{One
 #'     shared `sigma_eps` across Gaussian/lognormal rows. *Not* per-trait.}
-#'   \item{No per-row `indep` / `unique`, no Gaussian/lognormal rows}{`sigma_eps`
+#'   \item{No per-row `indep`, no Gaussian/lognormal rows}{`sigma_eps`
 #'     is mapped off; the family's intrinsic dispersion handles the residual
 #'     (for ordinary Gamma, `phi_gamma`).}
 #'   \item{\code{indep(0 + trait | g)} where `g` has fewer levels than
@@ -368,9 +372,9 @@
 #' }
 #'
 #' Mnemonic: Gaussian/lognormal `sigma_eps` is the default; ordinary Gamma uses
-#' `phi_gamma`; per-row `indep` / legacy `unique` replaces the Gaussian/lognormal
-#' scalar residual with T per-trait residuals; non-per-row `indep` / legacy
-#' `unique` adds a higher-level random effect on top of the family residual;
+#' `phi_gamma`; per-row `indep` replaces the Gaussian/lognormal scalar residual
+#' with T per-trait residuals; non-per-row `indep` adds a higher-level random
+#' effect on top of the family residual;
 #' non-continuous families never carry `sigma_eps` regardless.
 #'
 #' **Per-family-aware OLRE selection.** When
@@ -539,7 +543,9 @@ gllvmTMB <- function(
     fit$call_long_format <- rewrite$formula_long
     fit$traits_meta <- list(
       trait_cols = rewrite$trait_cols,
-      n_dropped = rewrite$n_dropped
+      n_dropped = rewrite$n_dropped,
+      source_row = rewrite$source_row,
+      input_shape = "wide_data_frame"
     )
     return(fit)
   }
@@ -609,7 +615,7 @@ gllvmTMB <- function(
   ## arguments `phylo_tree =` / `phylo_vcv =` to gllvmTMB() continue to
   ## work for backward compatibility but emit a one-shot soft warning
   ## per session pointing at the in-keyword form. See
-  ## dev/design/01-phylo-api-canonical-tree.md for the full migration.
+  ## docs/design/04-random-effects.md for the current contract.
   if (!is.null(phylo_tree)) {
     cli::cli_inform(
       c(
@@ -926,8 +932,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   the starting parameter vector across the `n_init` restarts.
 #'   Default 0.3.
 #' @param init_strategy One of `"default"` (current behaviour) or
-#'   `"single_trait_warmup"`. The warmup option (Design 48 Mitigation A
-#'   for M3.4 boundary regimes) fits an intercept-only univariate GLM
+#'   `"single_trait_warmup"`. The warmup option fits an intercept-only univariate GLM
 #'   per trait — with that trait's family — and seeds the matching
 #'   `log_phi_*` entries before `MakeADFun()`. Recommended for count
 #'   families (especially `nbinom2`) where the default initialisation
@@ -1047,8 +1052,7 @@ gllvmTMBcontrol <- function(
 #' Missing-data control for [gllvmTMB()]
 #'
 #' Configures how [gllvmTMB()] treats missing **responses** and missing
-#' **predictors**. This is the v1 surface of the model-based missing-data
-#' layer (design 59). Pass the result to the `missing =` argument of
+#' **predictors**. Pass the result to the `missing =` argument of
 #' [gllvmTMB()].
 #'
 #' @param response How to treat rows whose response value is `NA`.
@@ -1056,19 +1060,20 @@ gllvmTMBcontrol <- function(
 #'   a missing response are removed before the likelihood is built. `"include"`
 #'   keeps those rows, builds an observed-response mask (`is_y_observed`), and
 #'   contributes nothing to the likelihood for the masked rows -- the
-#'   frequentist observed-data likelihood. The fit is identical to the
-#'   complete-case fit on the observed rows, but the original-row accounting is
-#'   preserved (see `fit$missing_data`).
+#'   frequentist observed-data likelihood. For the supported routes, the
+#'   observed-response likelihood contribution matches the corresponding
+#'   observed rows, while cell identity is preserved for [predict_missing()].
 #' @param predictor How to treat missing **predictors** (covariates).
 #'   `"fail"` (the default): a missing value in the fixed-effect design matrix
 #'   is an error, exactly as today. `"model"` treats a missing predictor
 #'   declared with `mi(x)` as a latent variable integrated out by the Laplace
 #'   approximation, with its covariate model supplied via the `impute =`
-#'   argument of [gllvmTMB()]. The v1 shipped routes are one modelled predictor
+#'   argument of [gllvmTMB()]. The current routes fit one modelled predictor
 #'   at a time: Gaussian fixed-effect, grouped-intercept, or phylogenetic-
 #'   intercept covariate models, plus fixed-effect binary, ordered, and
 #'   unordered discrete predictors.
-#' @param engine The estimation engine. v1 ships `"laplace"` only (TMB Laplace
+#' @param engine The estimation engine. The supported value is `"laplace"`
+#'   (TMB Laplace
 #'   approximation). `"em"` (the Gaussian-only EM special case) and `"profile"`
 #'   are **reserved names, not yet supported**.
 #'
@@ -1077,8 +1082,8 @@ gllvmTMBcontrol <- function(
 #' estimator choice belongs to [gllvmTMB()]. The default `gllvmTMB()` fit uses
 #' ML; `gllvmTMB(REML = TRUE)` is a Gaussian-only pilot and does not yet combine
 #' with `miss_control(response = "include")` or `mi()` predictor models. There
-#' is **no** MI ("multiple imputation") engine here; multiple imputation is the
-#' separate `pigauto` workflow (design 59 sec.1b).
+#' is **no** MI ("multiple imputation") engine here; multiple imputation is a
+#' separate workflow.
 #'
 #' Under the default `miss_control(response = "drop", predictor = "fail",
 #' engine = "laplace")` the missing-data layer is an exact no-op: a complete-
@@ -1124,12 +1129,12 @@ miss_control <- function(
     if (engine %in% c("em", "profile")) {
       cli::cli_abort(c(
         "{.code engine = {.val {engine}}} is a reserved name, not yet supported.",
-        "i" = "v1 supports {.code engine = \"laplace\"} only."
+        "i" = "This version supports {.code engine = \"laplace\"} only."
       ))
     }
     cli::cli_abort(c(
       "Unknown {.arg engine}: {.val {engine}}.",
-      "i" = "v1 supports {.code engine = \"laplace\"} only ({.val em} / {.val profile} are reserved names)."
+      "i" = "This version supports {.code engine = \"laplace\"} only ({.val em} / {.val profile} are reserved names)."
     ))
   }
 

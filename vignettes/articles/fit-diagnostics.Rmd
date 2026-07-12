@@ -1,5 +1,6 @@
 ---
 title: "Can I trust this fit?"
+description: "Inspect optimiser, gradient, Hessian, residual, and fitted-model predictive signals before interpreting covariance or uncertainty."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -20,7 +21,7 @@ knitr::opts_chunk$set(
   cache     = FALSE,
   eval      = TRUE,
   message   = FALSE,
-  warning   = FALSE
+  warning   = TRUE
 )
 ```
 
@@ -31,7 +32,6 @@ responses arranged in long format? This article answers those questions for a sm
 before moving on to covariance, ordination, repeatability, or interval
 claims.
 
-`gllvmTMB` 0.5.0 is a pre-CRAN release with an experimental lifecycle.
 Use these diagnostics to decide what to inspect or refit next, not as a
 certificate that every inferential target is calibrated.
 
@@ -134,18 +134,21 @@ reported precision: the two calls reach the same stacked-trait likelihood.
 
 ## Read Fit Health
 
-The authoritative convergence verdict is `fit$fit_health$converged`. It uses
-the largest absolute gradient divided by `1 + abs(objective)`, so the gradient
-is judged relative to the scale of the fitted objective. Values below `1e-3`
-count as a usable optimum. Raw optimizer codes, the unscaled maximum gradient,
-and Hessian curvature remain supporting evidence rather than substitutes for
-that verdict.
+The conservative convergence verdict is `fit$fit_health$converged`. It requires
+an optimiser success code, a finite objective, and an unscaled maximum gradient
+below `0.01`. `scaled_gradient` is retained as a descriptive diagnostic, but
+objective scaling cannot turn a failed optimiser or a large raw gradient into a
+usable optimum. Hessian curvature and `sdreport()` remain separate inference
+checks.
 
 ```{r convergence-verdict}
 data.frame(
   converged = isTRUE(fit$fit_health$converged),
-  scaled_gradient = signif(fit$fit_health$scaled_gradient, 4),
-  threshold = 1e-3
+  optimizer_converged = isTRUE(fit$fit_health$optimizer_converged),
+  stationary_by_gradient = isTRUE(fit$fit_health$stationary_by_gradient),
+  raw_max_gradient = signif(fit$fit_health$max_gradient, 4),
+  raw_gradient_threshold = 0.01,
+  scaled_gradient_descriptive = signif(fit$fit_health$scaled_gradient, 4)
 )
 ```
 
@@ -272,7 +275,7 @@ because it does not turn a mostly straight pattern into a blanket pass: those
 tails deserve inspection, and the plot is not evidence that the latent rank or
 uncertainty estimates are calibrated.
 
-```{r residual-qq, fig.cap = "Randomized-quantile residual Q-Q check for the fitted Poisson GLLVM. This is a fitted-model diagnostic display, not interval calibration, latent-rank proof, or a Bayesian posterior predictive check."}
+```{r residual-qq, fig.class="wide-scientific-figure", fig.cap = "Randomized-quantile residual Q-Q check for the fitted Poisson GLLVM. This is a fitted-model diagnostic display, not interval calibration, latent-rank proof, or a Bayesian posterior predictive check."}
 predictive_check(
   fit,
   type = "rq_qq",
@@ -290,7 +293,7 @@ especially for forage counts 3 and 5. They do not all point in one direction,
 but they are large enough to investigate rather than dismiss. Simulation noise
 remains, even with the larger draw count used here.
 
-```{r rootogram, fig.cap = "Rootogram comparing observed behavioural counts with simulations conditional on the fitted random-effect modes. Persistent departures can flag a response-family, link, covariate, offset, or fitted-linear-predictor mismatch; this display does not test the marginal random-effect distribution."}
+```{r rootogram, fig.class="wide-scientific-figure", fig.cap = "Rootogram comparing observed behavioural counts with simulations conditional on the fitted random-effect modes. Persistent departures can flag a response-family, link, covariate, offset, or fitted-linear-predictor mismatch; this display does not test the marginal random-effect distribution."}
 predictive_check(
   fit,
   type = "rootogram",
@@ -318,6 +321,23 @@ is still a modelling choice, continue to
 [How many latent dimensions should I fit?](model-selection-latent-rank.html).
 That article compares one ML candidate set with AIC/BIC and uses REML
 only after a Gaussian model has been chosen.
+
+## What A Simulation Check Can Establish
+
+Simulation is useful only when its question is named. Three common checks
+answer different questions:
+
+| Check | What it can show | What it cannot show |
+|---|---|---|
+| Fitted-model predictive draw | Selected response patterns | Biological truth, latent rank, or interval calibration |
+| Fitted-model simulate--refit | Local pipeline self-consistency | Real-data truth or protection against misspecification |
+| Predeclared known-DGP grid | Bias, recovery, and interval performance in the studied regime | Performance outside the regimes actually studied |
+
+One simulated dataset is an illustration, not recovery evidence. A validation
+study needs repeated independent datasets, an estimand that matches the fitted
+model, and separate counts for attempted fits, healthy fits, usable intervals,
+and successful coverage. It should also report Monte Carlo uncertainty rather
+than turning a small number of replicates into a pass/fail certificate.
 
 This page covers fit health and no-SE status, fitted-model predictive
 diagnostics and residuals for Gaussian, Poisson, and NB2 rows, and report-ready

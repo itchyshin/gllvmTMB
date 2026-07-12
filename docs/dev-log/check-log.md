@@ -42910,3 +42910,2516 @@ Not done:
 - No commit, push, PR, merge, tag, or release action was taken for page 8.
 - Full-site rendering remains deferred until page dispositions and individual
   reviews are complete.
+
+## 2026-07-11 — page 9 three-reviewer recommendations applied (Codex)
+
+Maintainer direction:
+
+- Applied the consolidated Fisher, Rose, and Pat recommendations to
+  `vignettes/articles/pre-fit-response-screening.Rmd`.
+- Preserved the reader-facing zero-code rule; the current source and local
+  render contain no internal validation-register IDs.
+- Stopped before commit so the maintainer can inspect the rendered result.
+
+Changes:
+
+- Reframed `screen_gllvmTMB()` as three separate checks: marginal response
+  support, response-pair redundancy/association, and formula shape.
+- Stated explicitly that the function does not detect or rule out formal
+  response-by-predictor separation.
+- Narrowed the supported surface to one `binomial()` family with logit, probit,
+  or cloglog link; pairwise duplicate/complement checks are Bernoulli-only.
+- Replaced the full-engine-equivalence wording with the precise shared
+  wide-to-long stacking contract.
+- Rendered the active `screen_control()` defaults for minority counts,
+  prevalence, discordance, Hamming rate, phi, and Jaccard thresholds, while
+  retaining the advisory/no-deletion boundary.
+- Explained that the printed `FAIL 4 | WARN 1 | PASS 13` aggregates trait,
+  pair, and design checks rather than counting five traits.
+- Defined `PASS`, `WARN`, `INFO`, `FAIL`, `NOT_CHECKED`, and the independent
+  `severity` field; clarified that statuses do not cancel across scopes.
+- Replaced the wide raw trait output with denominator-focused columns and added
+  `n_pair`, discordance, and Hamming rate to the pair display.
+- Added compact design and unit-status displays.
+- Corrected the long formula to
+  `present ~ 0 + trait + latent(0 + trait | review, d = 2)` and rendered an
+  explicit `TRUE` comparison for long/wide trait-support summaries.
+- Added a corrected candidate rerun that removes the constant response, keeps
+  one representative of the duplicate/complement group, and retains the
+  near-universal response only with a documented sensitivity decision.
+- Split `FAIL` guidance into invalid input, constant-but-valid binomial data,
+  and exact pair redundancy on the observed overlap.
+- Shortened the evidence discussion and reference list so the practical
+  workflow remains the dominant reader path.
+
+Commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/pre-fit-response-screening", lazy = FALSE)'`
+  -> PASS; all live wide, long, threshold, design/unit, and corrected-candidate
+  chunks ran.
+- Rendered initial screen -> `FAIL 4 | WARN 1 | PASS 13`, matching the scope
+  explanation; the five recommendations remain fully visible.
+- Rendered long/wide comparison -> `TRUE` for trait, status, success, and
+  failure summaries.
+- Rendered corrected candidate -> one `WARN` recommendation for the deliberately
+  retained near-universal response and no unchanged constant/redundant pair.
+- Browser DOM and responsive checks -> PASS: all new sections present, required
+  reference and forward links resolve, document width equals viewport width at
+  1024 px and 390 px, and the navigation toggle remains visible.
+- Reader-code scan over source and rendered body -> PASS; zero internal
+  validation-register IDs.
+- Stale wording/scope scan -> PASS for old design labels, bare `validated`,
+  validation-debt wording, over-broad separation claims, over-broad long/wide
+  parity, and the inaccurate constant-response description.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- No commit, push, PR, merge, tag, or release action was taken for page 9.
+- Full-site rendering remains deferred until page dispositions and individual
+  reviews are complete.
+
+## 2026-07-11 — page 10 three-reviewer recommendations applied (Codex)
+
+Maintainer direction:
+
+- Applied the consolidated Fisher, Rose, and Pat recommendations to
+  `vignettes/articles/pitfalls.Rmd`.
+- Removed every reader-facing validation-register ID and all links to internal
+  audit/design bookkeeping.
+- Kept the page as a public troubleshooting guide, but cut advanced
+  phylogenetic decomposition material that belongs in a later repaired guide.
+- Recorded `meta_V()` as a separate capability-and-article gate: the pitfalls
+  page distinguishes `V` from `A`/`Ainv` without presenting a mature worked
+  meta-analytic workflow.
+
+Changes:
+
+- Replaced the seven-section article with six focused checks: trait order,
+  estimand matching, simulation/formula alignment, rotation-invariant
+  interpretation, explicit observational units, and relatedness-versus-sampling
+  covariance.
+- Added the common pre-CRAN/experimental lifecycle baseline and linked the
+  authoritative fit-health and convergence pages before any interpretation.
+- Corrected the marginal covariance equation by including the identity matrix
+  on the observation residual term.
+- Corrected `simulate_site_trait()` defaults: `beta = NULL` generates
+  environmental coefficients, `psi_B = NULL` omits the between-unit diagonal,
+  and `sigma2_eps` controls observation residual variance.
+- Replaced claims of identifiable covariance and a unique varimax solution with
+  the precise rotation-invariant covariance and reproducible-presentation
+  distinction.
+- Separated `suggest_lambda_constraint()` as an identification scaffold from
+  scientifically prespecified confirmatory constraints.
+- Removed the mathematically incorrect claim that `phylo_scalar()` estimates a
+  free cross-trait phylogenetic correlation matrix and removed the entire
+  advanced phylogenetic decomposition from this general page.
+- Replaced direct fitted-object internals with a stable reader action or the
+  authoritative fit-health result.
+- Replaced broken `meta_V()` pseudocode with a narrow table defining `A`,
+  `Ainv`, and `V`, including the required row-aligned covariance shape and
+  top-level `known_V = V` handoff.
+
+Commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/pitfalls", lazy = FALSE)'`
+  -> PASS; all executable chunks ran and the article rendered.
+- Source and rendered-body internal-code scans -> PASS; no register IDs,
+  validation-debt wording, audit-state prose, or internal design links remain.
+- Browser DOM and responsive checks -> PASS: revised six-check structure and
+  links are present; document width equals viewport width at 1440 px and 390
+  px; the comparison table remains within the mobile viewport.
+- Rendered examples -> both model fits report converged point fits; the trait
+  order, covariance target, rotated loadings, constraint scaffold, and explicit
+  `unit = "individual"` outputs are visible.
+- `git diff --check` -> PASS before the ledger/check-log update.
+
+Not done:
+
+- No commit, push, PR, merge, tag, or release action was taken for page 10.
+- The dedicated `meta_V()` Tier-1 article remains deferred until the exact
+  workflow passes the full capability, recovery, inference, and reader-path
+  gate.
+- Full-site rendering remains deferred until page dispositions and individual
+  reviews are complete.
+
+## 2026-07-11 — page 11 three-reviewer recommendations applied (Codex)
+
+Maintainer direction:
+
+- Applied the consolidated Fisher, Rose, and Pat recommendations to
+  `vignettes/articles/profile-likelihood-ci.Rmd`.
+- Kept the topic as a Tier 2 technical reference, but rebuilt it around the
+  methods actually returned for each target rather than the method requested.
+- Removed all internal evidence codes, register links, milestones, and
+  maintainer observations from reader-facing prose.
+
+Changes:
+
+- Retitled the page `Profile likelihood: routes and fallbacks` and added the
+  common 0.5.0 pre-CRAN/experimental lifecycle baseline.
+- Replaced the false universal three-method table with a target-specific route
+  map for direct parameters, repeatability, correlations, communality,
+  phylogenetic signal, and full covariance matrices.
+- Kept the verified canonical long and `traits(...)` wide calls and rendered
+  their equal log likelihoods and convergence verdicts.
+- Replaced direct engine parameter names and raw TMB-object instructions with
+  the public `profile_targets()` plus `confint()` workflow.
+- Demonstrated the current natural-boundary convention with a direct
+  `sd_B[1]` profile whose lower endpoint is zero; reserved `NA` for genuine
+  profile failure and described infinite endpoints separately.
+- Demonstrated that `extract_repeatability(method = "profile")` returns the
+  same honestly labelled Wald rows as the explicit Wald call for the current
+  full-covariance definition.
+- Demonstrated the actual Fisher-z correlation default and clarified that
+  `interval_status = "nominal"` is not empirical coverage calibration.
+- Added the implemented t-based profile route explicitly:
+  `profile_ci_lv_effects()` defaults to `reference = "t"` with
+  `df = n_units - latent_rank - 1`, while direct `confint()` and most older
+  profile helpers still use the one-degree-of-freedom chi-square cutoff.
+- Removed the false claims that profile/bootstrap routes have demonstrated
+  broad accurate coverage, fixed 10–50x or seconds-to-hours speed advantages,
+  symmetric profile or natural-scale Wald bounds, and universally finite
+  profile upper endpoints.
+- Removed the unsupported recommendation to bootstrap richer phylogenetic
+  signal decompositions, the casual `tmbstan` route, and the duplicated profile
+  failure catalogue.
+
+Capability finding:
+
+- Reproduced the implausibly narrow bootstrap intervals in the former article.
+  The fitted example activates `indep_W`; `.check_simulate_unconditional()`
+  treats that alias as unhandled even though `diag_W` is redrawable, so
+  `simulate()` warns and falls back to conditional simulation. Five inspected
+  bootstrap refits returned repeatabilities differing only in the fourth
+  decimal place. The revised article does not advertise or interpret this
+  bootstrap route. Fixing the simulator alias and adding a regression test is
+  a separate code task, not silently folded into the documentation rewrite.
+
+Commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/profile-likelihood-ci", lazy = FALSE)'`
+  -> PASS after the rewrite and again after the final output simplification.
+- Rendered long/wide fits -> equal log likelihoods and converged point fits.
+- Rendered direct profile -> `sd_B[1]` interval `[0, 0.1134149]`, confirming
+  the natural-boundary convention.
+- Rendered repeatability comparison -> requested-profile rows are labelled
+  Wald and are identical to the explicit Wald rows.
+- Rendered correlation table -> Fisher-z method labels and bounded intervals.
+- Source/render reader-code and stale-claim scans -> PASS; no internal IDs,
+  validation-register prose, milestone language, low-level TMB instructions,
+  or fixed speed/coverage promises remain.
+- Browser DOM and responsive checks -> PASS: new title and route sections are
+  present, no internal IDs remain, document width equals viewport width at
+  1440 px and 390 px, and the route table fits within the mobile viewport.
+- `git diff --check` -> PASS before the ledger/check-log update.
+
+Not done:
+
+- No code fix was made for the `indep_W` unconditional-simulation alias gap.
+- No commit, push, PR, merge, tag, or release action was taken for page 11.
+- Full-site rendering remains deferred until page dispositions and individual
+  reviews are complete.
+
+## 2026-07-11 — page 12 merged into page 11 and retired (Codex)
+
+Panel and integrator decision:
+
+- Fisher recommended retaining a corrected Tier 2 troubleshooting page; Rose
+  and Pat recommended merging it into page 11 and removing the duplicate route.
+- Accepted the merge disposition because the old page duplicated page 11, ran
+  no examples, exposed internal bookkeeping, and gave unsafe categorical advice.
+- Preserved Fisher's technically useful distinctions in a compact symptom,
+  first-check, interpretation, and safe-next-action table on page 11.
+
+Changes:
+
+- Added explicit rows for natural boundaries, unavailable `NA` endpoints,
+  infinite endpoints, equal bounds, large Wald/profile disagreement, and finite
+  bootstrap percentiles after failed or unbounded profiles.
+- Added a live `confint_inspect(fit, parm = "sd_B[1]")` example for direct
+  profile-curve diagnostics and separated direct from nonlinear derived-target
+  troubleshooting.
+- Removed categorical `trust the profile`, `Wald is wrong`, and `bootstrap will
+  provide a finite robust bound` claims.
+- Clarified that loading constraints choose orientation or encode a prespecified
+  structure; they do not identify confounded variance components.
+- Deleted `vignettes/articles/troubleshooting-profile.Rmd`, removed its navbar
+  and article-index configuration, and deleted the stale rendered HTML.
+- Repaired inbound links in the convergence and developer-simulation articles
+  to point to page 11's troubleshooting section.
+- Updated `confint_inspect()` roxygen, generated Rd, and printed diagnostic
+  message to point to page 11 and to avoid categorical method claims.
+- Marked the reportable-table print method internal to the reference index and
+  removed internal-column wording from its generated help page.
+- Updated the extractor contract and NEWS cross-reference.
+
+Brain-grounded decision check:
+
+- The reader-facing rule applies to articles, Rd/help pages, NEWS, and printed
+  output, not only vignette prose.
+- The profile doctrine supports profile's structural advantages but does not
+  treat it as calibration-free; boundary reference distributions, Laplace bias,
+  effective degrees of freedom, derived-constraint accuracy, and bootstrap
+  calibration remain target-specific questions.
+- The t-based route remains explicit only where implemented; it is not promoted
+  to a generic profile default.
+
+Commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> PASS; regenerated
+  `man/confint_inspect.Rd` and `man/print.gllvmTMB_reportable_table.Rd`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/profile-likelihood-ci", lazy = FALSE)'`
+  -> PASS with the merged troubleshooting table and live inspection example.
+- `pkgdown::build_reference(lazy = FALSE)` initially exposed the unindexed
+  reportable-table print method; after adding `@keywords internal`, the full
+  reference build passed and rewrote the reference site.
+- `pkgdown::build_articles_index()` did not run to completion because the
+  pre-existing `functional-biogeography.Rmd` source had been removed from the
+  configured index without being deleted or moved out of `vignettes/`. This is
+  authoritative evidence that the earlier unlinked-direct-URL disposition is
+  not a valid final pkgdown state; it remains queued for that page's disposition.
+- Inbound-link scan found and repaired all current source/man/navbar references
+  to the retired troubleshooting page; historical dev-log records remain.
+
+Not done:
+
+- The article index cannot be rebuilt until `functional-biogeography.Rmd` gets
+  a valid keep/rewrite or remove/move disposition.
+- No commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — page 13 missing-data article rebuilt (Codex)
+
+Panel and integrator decision:
+
+- Fisher: keep the subject, split and heavily change the current article.
+- Rose: fail the current public page; rewrite and split before retaining it.
+- Pat: hide the current page, then split it into reader, technical, and developer
+  layers.
+- Accepted the unanimous rejection of the current page. Kept one concise Tier 1
+  reader guide rather than adding multiple new public routes; retained technical
+  and planned material in the existing design documentation.
+
+Changes:
+
+- Replaced the 1,169-line, globally unevaluated article with a 253-line guide
+  organized around the reader's first decision: missing response or missing
+  predictor.
+- Added the 0.5.0 experimental/pre-CRAN baseline and placed the ignorable/MAR,
+  correct-model, and no-MNAR assumptions before benefit claims.
+- Stated the actual defaults: response rows drop and missing predictors fail
+  unless the reader explicitly selects a supported likelihood route.
+- Added a live Gaussian response-mask example, its `nobs()` accounting, and
+  point-only `predict_missing()` output.
+- Added and executed canonical `traits(...)` wide and long calls, showing equal
+  observed-data log likelihoods and row counts.
+- Added a live continuous Gaussian `mi()` example with `imputed()` output and
+  accurately described the conditional-mode/Laplace-SE boundary.
+- Summarized binary, ordered, and unordered predictor routes without duplicating
+  every wide/long fit or implying parameter-uncertainty standard errors.
+- Removed all implementation phases, raw `fit$missing_data` registry fields,
+  internal evidence codes, planned spatial/animal/beta/count syntax, and the
+  false claims that nothing is deleted or that joint fitting guarantees
+  congeniality.
+- Reduced the FIML-versus-MI essay to a routing explanation and kept `pigauto`
+  as a short, explicitly separate phylogenetic multiple-imputation pointer.
+- Replaced three cramped tables with decision lists after the first 390-pixel
+  browser inspection exposed unreadable word wrapping.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/missing-data", lazy = FALSE, quiet = TRUE)'`
+  -> PASS; every fit chunk executed and the rendered article was written.
+- Live wide and long response-mask fits -> equal log likelihoods
+  (`-26.20456`) and 44 likelihood-contributing cells.
+- Live continuous-predictor fit -> optimizer convergence code 0 and three finite
+  conditional modes with finite conditional standard errors.
+- Source and rendered scans for internal IDs, phase labels, validation-register
+  wording, raw fitted-object registries, planned syntax, and stale overclaims ->
+  PASS in the page body.
+- Browser DOM check -> correct title, live outputs, no render errors, and no
+  horizontal overflow at 1280 pixels.
+- Browser mobile check -> document width equals the 390-pixel viewport, navbar
+  collapses, and the final list-based layout has no tables or horizontal
+  overflow.
+- `git diff --check -- vignettes/articles/missing-data.Rmd` -> PASS.
+
+Not done:
+
+- Maintainer visual approval remains pending.
+- No local commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — reaction-norm article fixture repair and reader-first rewrite
+
+Panel disposition:
+
+- Fisher, Rose, and Pat independently recommended **HIDE then REWRITE**, not
+  merge or cut. The ordinary Gaussian individual random-slope estimand is
+  distinct from the intercept-only behavioural-syndrome page.
+- Fisher found a load-bearing fixture bug: `expand.grid(individual, session)`
+  varied individual fastest, but the temperature vector also varied fastest.
+  Each individual therefore experienced a narrow temperature band rather than
+  the intended five-temperature gradient.
+- Rose and Pat independently found incomplete diagnostics, private
+  `fit$report$sigma_eps` access, an unidentified session-Psi/residual split,
+  missing centring and within-individual design guidance, rank-one
+  overinterpretation, extrapolated repeatability curves, stale rendered
+  output, and premature non-Gaussian analysis advice.
+
+Changes:
+
+- Regenerated `behavioural-reaction-norm-example.rds` from a Celsius gradient
+  keyed to session, with jitter, stored centre and scale, and five repeated
+  temperatures for every individual.
+- Added a test invariant requiring adequate within-individual spread and
+  limited between-individual differences in mean temperature. Added recovery
+  checks for population slopes, intercept/intercept, slope/slope, and
+  intercept/slope covariance blocks, total session covariance, repeatability
+  over common support, and the final `se = TRUE` curvature diagnostics.
+- Rewrote `random-regression-reaction-norms.Rmd` as a Gaussian Tier-1 guide.
+  The page now starts with design and centring, shows long and `traits(...)`
+  wide fits, prints every fit-health row, reports fixed temperature slopes,
+  uses only public `extract_Sigma()` output, distinguishes the three augmented
+  covariance blocks, and restricts pointwise repeatability to the interval
+  observed for every simulated individual.
+- Aligned the model equation with the fitted residual representation. The
+  session-tier total covariance contains the diagonal variation that absorbs
+  the simulator's independent Gaussian noise; the page no longer pretends
+  that the two diagonal sources are separately estimated.
+- Removed private fitted-object fields, internal evidence codes, audit/process
+  prose, non-Gaussian fitting advice, causal plasticity claims, interval
+  implications, and raw latent-axis interpretation.
+- Promoted the completed page from Developer Notes to Model Guides, removed
+  its restoration-queue row, and updated the estate ledger to 21 completed
+  pages and 12 pages still requiring disposition.
+
+Verification:
+
+- `Rscript --vanilla data-raw/examples/make-behavioural-reaction-norm-example.R`
+  -> PASS; regenerated the 36,937-byte fixture.
+- `Rscript --vanilla -e 'devtools::test(filter =
+  "example-behavioural-reaction-norm|ordinary-latent-random-regression|traits-keyword",
+  stop_on_failure = TRUE)'` -> PASS: 209 expectations, one explicitly heavy
+  test skipped, no failures or warnings.
+- The final audited fit uses `se = TRUE`; optimizer, scaled gradient,
+  `sdreport`, positive-definite Hessian, Hessian rank, fixed-effect SE,
+  restart, boundary, and active-axis rows all pass.
+- Corrected fixture results: full augmented-covariance relative Frobenius
+  error 0.138; block errors 0.129 (intercepts), 0.205 (slopes), and 0.174
+  (cross block); total session-covariance relative error 0.029; pointwise
+  repeatability MAE 0.014 and maximum absolute error 0.045 over common support.
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/random-regression-reaction-norms", lazy = FALSE)'` -> PASS; all
+  chunks executed and the current HTML was regenerated.
+- `pkgdown::check_pkgdown()` -> expected estate-level STOP only because
+  `articles/functional-biogeography` is deliberately unindexed pending its
+  disposition. No reaction-norm configuration error was reported.
+- Source/rendered scan -> no internal evidence IDs, validation-register prose,
+  under-audit labels, private fit fields, stale version text, or render errors.
+- Figure-quality gate -> PASS (18/20): the context-coverage figure matches the
+  design claim; the covariance plot separates all three estimand blocks with a
+  one-to-one truth line; the repeatability plot is restricted to common
+  support and explicitly labelled as point estimates without intervals;
+  legends are below the plots, colours are print-safe, and alt text is complete.
+- Browser desktop check at 1280 pixels -> document width equals the viewport,
+  all tables and figures are legible, and the page appears exactly once under
+  Model Guides.
+- Browser mobile check at 390 pixels -> all four tables fit the 366-pixel
+  content column, figures and captions remain legible, the navbar collapses,
+  and there is no meaningful non-code overflow.
+- Removed two stale generated figures (`inspect-slopes` and
+  `per-species-slopes`); only the three current article figures remain.
+- HTTP checks -> the article and both linked model-guide destinations return
+  200 from the local site.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- Maintainer visual approval of the rewritten page remains pending.
+- The whole-site build, full package tests/check, and final estate audits wait
+  until every remaining article has a disposition.
+- No local commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — page 17 response-family lookup rebuilt (Codex)
+
+Panel and integrator decision:
+
+- Fisher, Rose, and Pat independently recommended REWRITE then SHIP as the
+  canonical Tier 2 family lookup.
+- Accepted the separate route because family, link, response-domain, and
+  input-coding decisions are distinct from covariance syntax.
+- Rejected the implementation-led family-ID narrative, validation-status
+  column, unsupported-constructor catalogue, and future-route prose.
+- Independently confirmed the panel's critical finding: the old mixed-family
+  section said hurdle latent structure was positive-submodel-only, while
+  `src/gllvmTMB.cpp` uses the same `eta` for occurrence and the positive
+  density. The rewritten public boundary now matches the live shared-predictor
+  likelihood and does not advertise hurdle covariance interpretation.
+
+Changes:
+
+- Renamed the page and Concepts navigation label to “Choose a response family”.
+- Added the 0.5.0 experimental/pre-CRAN baseline and organized the chooser by
+  observed response domain and sampling process.
+- Replaced the five-column status ledger with three responsive lookup tables
+  covering continuous, trial/proportion/ordinal, and count responses.
+- Added exact public parameterizations and cautions for NB1, NB2, Gamma,
+  lognormal, Tweedie, Beta/beta-binomial, Student-t, ordinal probit, truncated
+  counts, and standard hurdle families.
+- Added the scientific distinction between Tweedie and hurdle zeros, the
+  zero-truncation sampling-process requirement, and an explicit warning against
+  automatic observation-level overdispersion repairs.
+- Replaced undefined, globally unevaluated examples with a live Poisson
+  long/`traits(...)` wide pair; both routes return logLik `-184.6423`.
+- Replaced order-only mixed-family syntax with a safer named family list and
+  stated that different-family dispatch is long-form only.
+- Separated fitted covariance (`link_residual = "none"`) from the
+  family-specific diagonal convention (`"auto"`), and stopped equating either
+  with raw observed-response correlation.
+- Restricted the public hurdle route to standard fixed-effect fits with one
+  shared predictor and no response-scale covariance/correlation claim.
+- Added implemented diagnostic routes and direct remedies for invalid response
+  domains, ordinal coding, rejected links, mixed-family name mismatches, and
+  unavailable constructors.
+- Removed all internal evidence IDs, validation/register status, roadmap
+  inventory, raw fitted-object access, and `family_to_id()` references from the
+  page body.
+- Added the admitted `nbinom1()` family and its linear-variance formula to the
+  main `gllvmTMB()` roxygen/Rd family list and to the NEWS family catalogue.
+- During the cross-page render check, found hidden backspace characters that
+  corrupted mathematical symbols in the previously reviewed vocabulary and
+  keyword-grid articles. Replaced them with proper inline/display math,
+  re-rendered both pages, and confirmed the intended Lambda/Psi/Sigma/K/Q
+  MathML.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/response-families", lazy = FALSE, quiet = TRUE)'`
+  -> PASS; the live Poisson long and wide fits executed and rendered with equal
+  likelihoods.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> PASS; regenerated
+  `man/gllvmTMB.Rd` contains `nbinom1()` and both NB variance formulas.
+- Focused non-heavy family/API suite covering runtime enum, Gamma/lognormal,
+  multi-trial binomial, ordinal probit, mixed-family dispatch, and guarded
+  specialist files -> PASS; the specialist recovery cells skipped only because
+  their explicit heavy-test environment flag was off.
+- `GLLVMTMB_HEAVY_TESTS=1` specialist recovery suite for Beta,
+  beta-binomial, delta-Gamma, delta-lognormal, Student-t, truncated Poisson,
+  truncated NB2, and Tweedie -> PASS. Tweedie emitted one `NaNs produced`
+  warning while summarizing `sdreport`; all recovery and parameter checks
+  passed.
+- `GLLVMTMB_HEAVY_TESTS=1` NB1/NB2 matrix, multi-trial binomial,
+  ordinal-probit, and mixed-family suite -> PASS with no failures or skips.
+- Source and rendered-body scans -> PASS for internal IDs, validation/status
+  bookkeeping, `family_to_id`, unsupported-constructor inventory, control
+  characters, raw fitted-object access, and stale positive-only hurdle wording.
+- Browser desktop check -> correct title, five content sections plus populated
+  nine-entry ToC, no render errors, three readable full-width tables, and
+  document width equal to the 1280-pixel viewport.
+- Browser mobile check -> correct title and lifecycle baseline, collapsed
+  navbar, document width equal to the 390-pixel viewport, and each 680-pixel
+  lookup table scrolls inside its own 366-pixel container rather than forcing
+  page overflow.
+- Fresh desktop and mobile screenshots were inspected after the final render.
+- `gllvm-vocabulary` and `api-keyword-grid` re-renders plus browser/HTML checks
+  -> PASS; no `oldsymbol`, control characters, or literal broken math remain.
+- `git diff --check` -> PASS for the complete working diff.
+
+Not done:
+
+- Maintainer visual approval remains pending.
+- Contradictory delta/hurdle wording in pages that still await their own
+  disposition remains queued for that page-by-page review and the final
+  cross-site stale-wording audit; it is not linked as current guidance here.
+- No local commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — page 16 response-specific predictor effects rebuilt (Codex)
+
+Panel and integrator decision:
+
+- Fisher, Rose, and Pat independently recommended retaining this as a narrow
+  Tier 2 guide, with a reader-first rewrite.
+- Accepted the separate route because the name-based, response-specific equality
+  constraint is difficult to discover from the general formula reference.
+- Rejected automatic selection advice, implementation-led framing, unnecessary
+  latent structure, and any implication that an imposed zero is evidence for a
+  null effect.
+
+Changes:
+
+- Renamed the page and navigation label from "Fixed predictor effects" to
+  "Response-specific predictor effects".
+- Added the 0.5.0 experimental/pre-CRAN lifecycle baseline and stated the current
+  exact-zero, maximum-likelihood-only contract.
+- Added the mean-model equation and distinguished a direct fixed coefficient
+  from loadings, latent scores, Psi, and other covariance parameters.
+- Reframed the decision around a prespecified structural zero justified by
+  design, timing, measurement, preregistration, or a defensible structural model.
+- Replaced the old example with a design-based baseline/treatment example and
+  removed the unrelated latent covariance term.
+- Added `model.matrix()` name discovery, live long and `traits(...)` wide fits,
+  and a numerical output comparison.
+- Explained that `estimate = 0`, `std.error = NA`, and `status = "fixed"` are
+  expected, and that inference for other parameters is conditional on the
+  imposed restriction.
+- Added multiple-constraint syntax and symptom-to-action guidance for unknown
+  names, non-zero values, REML, convergence changes, and attempts to test the
+  imposed zero.
+- Removed internal support-state language and linked only to public reader
+  routes.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/fixed-effect-zero-constraints", lazy = FALSE, quiet = TRUE)'`
+  -> PASS; all fit chunks executed and the article rendered.
+- `Rscript --vanilla -e 'devtools::test(filter = "xcoef-fixed", reporter = "summary")'`
+  -> PASS; 15 expectations covered exact-zero parsing, output, degrees of
+  freedom, unsupported values, and REML rejection.
+- An earlier direct `testthat::test_file()` invocation failed because it did not
+  load the package and therefore could not find `gllvmTMB()`; this was a test
+  runner invocation error, not a package failure. The package-aware run above is
+  the authoritative result.
+- Source and rendered scans -> PASS for internal IDs, validation-register and
+  maintainer-process wording, control characters, and the earlier malformed
+  `boldsymbol` rendering.
+- Browser desktop check -> correct title, four content sections, populated table
+  of contents, no render errors, and document width equals the 1280-pixel
+  viewport.
+- Browser mobile check -> document width equals the 390-pixel viewport, navbar
+  collapses, the corrected equation renders, and the page contains no cramped
+  tables or horizontal overflow.
+- `git diff --check -- vignettes/articles/fixed-effect-zero-constraints.Rmd _pkgdown.yml`
+  -> PASS.
+
+Not done:
+
+- Maintainer visual approval remains pending.
+- No local commit, push, PR, merge, tag, or release action was taken.
+- The full article-index and site build remain deferred until every page has a
+  final disposition, including `functional-biogeography.Rmd`.
+
+## 2026-07-11 — page 14 vocabulary glossary rebuilt (Codex)
+
+Panel and integrator decision:
+
+- Fisher, Rose, and Pat independently recommended REWRITE then SHIP as a compact
+  standalone Tier 2 glossary.
+- Accepted the standalone glossary because it gives readers a stable lookup
+  route, but rejected the existing definitions, specialist sprawl, inference
+  prescriptions, and internal process language.
+
+Changes:
+
+- Replaced the 321-line mixed glossary/design note with a current reader glossary
+  organized by data, latent variables, covariance structure, scale and
+  identification, fit/uncertainty, and missing-data terms.
+- Separated a latent variable (LV) from each unit's conditional latent score and
+  used the canonical `LV1`, `LV2`, and `u_i` vocabulary.
+- Separated grouping keys, covariance tiers, correlation sources, covariance
+  modes, and plotted LV axes instead of treating them as synonyms.
+- Corrected the public grammar to the canonical 4 x 5 source-by-mode grid,
+  identified `unique` as compatibility syntax, and added the separate dense-
+  kernel quartet.
+- Distinguished tier-specific diagonal Psi from Gaussian observation residual
+  variance and post-fit link/liability-scale residual additions.
+- Narrowed communality to the chosen tier/scale and warned that a no-Psi model
+  can produce communality equal to one mechanically.
+- Corrected rotation/identification language: the covariance/equivalence class is
+  identified, while constraints or rotations choose an orientation.
+- Replaced universal profile/bootstrap/Fisher-z advice with concise definitions
+  and a requirement to inspect the returned method, status, and warnings.
+- Added reader-facing definitions for optimizer convergence, gradient, Hessian,
+  response masks, conditional modes, and missing-predictor models.
+- Removed internal validation/process language, dated release history, developer
+  design links, paired-phylo decision rules, inaccurate SPDE mechanics, and the
+  premature animal-model, heritability, G-matrix, and reaction-norm section.
+- Added one annotated long/`traits(...)` wide formula pair without duplicating a
+  worked model already taught in Get Started.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/gllvm-vocabulary", lazy = FALSE, quiet = TRUE)'`
+  -> PASS; the source and rendered page are synchronized.
+- Source/rendered stale-language scan -> PASS for internal IDs, validation and
+  article-council bookkeeping, old 4 x 4 wording, raw fitted-object advice,
+  casual phylogenetic-heritability equivalence, and unfinished specialist terms.
+- Browser desktop check -> correct title and seven thematic sections, no render
+  errors, and document width equals the 1280-pixel viewport.
+- Browser mobile check -> collapsed navbar, no tables, document width equals the
+  390-pixel viewport, and the reformatted long/wide code block fits its container.
+- Rendered-body audit -> canonical 4 x 5 and kernel grammar present; no internal
+  evidence codes or maintainer bookkeeping present.
+- `git diff --check -- vignettes/articles/gllvm-vocabulary.Rmd` -> PASS.
+
+Not done:
+
+- Maintainer visual approval remains pending.
+- The specialist quantitative-genetic and phylogenetic terms will be addressed
+  only when their own articles receive a disposition and evidence review.
+- No local commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — page 15 formula keyword grid rebuilt (Codex)
+
+Panel and integrator decision:
+
+- Fisher, Rose, and Pat independently recommended REWRITE then SHIP as the
+  canonical Tier 2 formula reference.
+- Accepted the page as a standalone syntax source, but rejected the source's
+  4 x 4 rewrite, missing kernel API, aggregate validation-status prose, and
+  automatic model-choice advice.
+
+Changes:
+
+- Added the 0.5.0 experimental/pre-CRAN baseline and a two-question chooser:
+  correlation source first, then trait-covariance mode.
+- Restored the live 4 x 5 contract with scalar, compatibility `unique`, `indep`,
+  `dep`, and `latent` across ordinary, animal, phylogenetic, and spatial rows.
+- Defined scalar as equal marginal variances with zero cross-trait covariance,
+  rather than a shared random effect with perfect correlation.
+- Added matrix/Kronecker meanings for scalar, diagonal, full, and latent modes
+  and clarified that structured diagonal modes remain correlated across grouping
+  levels through the pedigree, phylogeny, or spatial field.
+- Put the default asymmetry next to the grid: ordinary `latent()` includes Psi;
+  animal/phylo/spatial/kernel latent terms are loadings-only unless
+  `unique = TRUE`.
+- Kept the useful ordinary long/`traits(...)` wide alignment and linked its
+  executed equivalence proof to the Morphometrics guide.
+- Added exact animal, phylogenetic, and spatial syntax with their differing
+  shorthand/bar-form call shapes.
+- Added the generic dense-kernel quartet outside the grid, its lack of a scalar
+  keyword, single-kernel Psi behavior, and multi-kernel/overlap boundary.
+- Consolidated `unique()`/`*_unique()` history into one compatibility section
+  and recorded the accepted explicit-Psi pair versus duplicate-Psi error.
+- Moved slope helpers and `meta_V()` outside the grid; the latter now shows the
+  complete `meta_V(V = V)` plus top-level `known_V = V` call.
+- Expanded mutual-exclusion and recovery advice without exposing internal
+  validation codes or maintainer gates.
+- Wrapped the six-column matrix in a responsive container with a readable
+  720-pixel minimum table width for touch scrolling at narrow breakpoints.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/api-keyword-grid", lazy = FALSE, quiet = TRUE)'`
+  -> PASS after the rewrite and responsive-table adjustment.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords|keyword-grid|kernel-latent-unique-fold", reporter = "summary")'`
+  -> PASS; canonical parser, grid, and kernel-Psi tests completed, with only
+  expected deprecation messages for older aliases.
+- Source/rendered stale-language scan -> PASS for internal IDs, validation
+  register/process language, old 4 x 4 wording, and under-audit/post-CRAN prose.
+- Browser desktop check -> synchronized title/content, no render errors, and
+  document width equals the 1280-pixel viewport.
+- Browser mobile check -> document width equals the 390-pixel viewport; the
+  navbar collapses; the grid wrapper is 366 pixels wide with horizontal
+  scrolling over a 720-pixel table rather than compressed word fragments.
+- Rendered-body audit -> canonical 4 x 5, kernel quartet, and complete
+  `known_V = V` handoff present; no internal evidence codes or maintainer
+  bookkeeping present.
+- `git diff --check -- vignettes/articles/api-keyword-grid.Rmd` -> PASS.
+
+Not done:
+
+- Maintainer visual approval remains pending.
+- No local commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — uncertain page 18 model-choice ladder retired (Codex)
+
+Panel and integrator decision:
+
+- Fisher, Rose, and Pat independently recommended HIDE/CUT rather than another
+  public rewrite.
+- Accepted the panel's central finding: response family, grouping structure,
+  covariance source, covariance mode, latent rank, spatial structure, and
+  varying slopes are independent scientific branches, not cumulative rungs.
+- Retained only the unique reader value—a compact question-to-destination
+  router—and merged that into Get Started.
+- Retired the standalone page. Git history preserves the draft if a future
+  redesign needs provenance.
+
+Why the old page was unsafe:
+
+- It described crossed and nested grouping slots as one nesting hierarchy and
+  told unsure readers to choose the family matching the most abundant trait.
+- It incorrectly called simpler phylogenetic decompositions degenerate,
+  misdescribed `phylo_scalar()`, and published unsupported dataset-size speed
+  thresholds.
+- Its structured-slope allowlists and delta/hurdle boundaries were stale; its
+  augmented phylogenetic extractor example used the wrong level.
+- It exposed `fit$report`, `fit$tmb_obj`, `last.par.best`, `fit$tmb_data`, and
+  private random-effect names.
+- Its “recovery” examples did not align their data-generating process with the
+  fitted model; the rendered slope SD was 0.894 against truth 0.632 but was
+  described as close.
+- Its uncertainty section recommended citing a bootstrap interval despite an
+  implausibly narrow rendered interval and admitted failed coverage cells.
+- It duplicated the family, keyword, rank, diagnostics, and interval articles
+  while routing readers into unaudited specialist drafts.
+- Mobile inspection showed document width 567 pixels in a 390-pixel viewport,
+  with nine uncontained tables and a clipped title/page body.
+
+Changes:
+
+- Added “Choose your next guide” near the top of Get Started. It begins with
+  the estimand and sampling/replication unit, then routes independently to the
+  family, grouping vocabulary, covariance source/mode, latent-rank,
+  missing-data, diagnostics, and target-specific interval guides.
+- Explicitly stated that crossed structures such as site × species are not
+  forced into a nesting hierarchy and that model decisions are branches, not
+  a complexity ladder.
+- Removed `choose-your-model` from the Developer Notes navbar and article
+  index.
+- Deleted `vignettes/articles/choose-your-model.Rmd`, the generated HTML route,
+  and its stale ladder-figure asset; the served URL now returns 404.
+- Repointed inbound links from the animal, psychometrics, mixed-family, and
+  simulation-verification drafts to the compact Get Started router.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("gllvmTMB", lazy = FALSE, quiet = TRUE)'`
+  -> PASS after the merge; all existing Get Started chunks executed.
+- Browser desktop check -> the router appears immediately after the lifecycle
+  baseline, the ToC is populated, all destination links use valid article-local
+  paths, no render errors, and document width equals the 1280-pixel viewport.
+- Browser mobile check -> collapsed navbar, eight ToC entries, router present,
+  and document width equals the 390-pixel viewport. Fresh desktop and mobile
+  screenshots were inspected.
+- HTTP checks -> every router destination returns 200; the retired
+  `articles/choose-your-model.html` route returns 404.
+- Source/config scan -> no remaining `choose-your-model` link in `_pkgdown.yml`,
+  README, or vignette/article sources.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- Maintainer visual approval of the merged Get Started router remains pending.
+- Other generated pages still carry their prior navbar until the final full-site
+  rebuild after all dispositions; the rebuilt Get Started page is already clean.
+- No local commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — uncertain page 19 animal-model article retired (Codex)
+
+Panel and integrator decision:
+
+- Fisher, Rose, and Pat independently failed the page for publication and
+  recommended removing it from the 0.5.0 reader estate.
+- Accepted the panel's scientific findings after checking the current source,
+  rendered numerical output, public exports, focused animal tests, validation
+  evidence, neighbouring pages, navigation, and desktop/mobile behavior.
+- Retired the current article rather than polishing a workflow that the public
+  API and recovery evidence cannot yet support. Git history preserves the
+  draft for a future ground-up rewrite.
+
+Why the page was unsafe:
+
+- The nominal half-sib pedigree alternated two sire-dam pairs and therefore
+  generated repeated full-sib families, not the relatedness design described
+  in the prose.
+- The bivariate example estimated genetic covariance -0.218 against truth
+  +0.30 and genetic correlation -1.00 against truth +0.632. The single-trait
+  example estimated h2 = 0.784 against truth 0.5.
+- All reported numerical fit-health checks passed despite the failed genetic
+  estimands, demonstrating that convergence and a positive-definite Hessian
+  do not establish scientific recovery.
+- The tutorials relied on private fields such as `fit$report`, `fit$tmb_obj`,
+  `fit$tmb_data`, and internal random-effect names because no stable public
+  heritability, animal-G, or breeding-value extraction contract exists.
+- The page blurred record-level residual error, individual-level permanent
+  environment, and additive-genetic covariance, and invited non-Gaussian use
+  without defining liability-, link-, or observed-scale heritability.
+- The three-trait rank-one example did not reduce the covariance parameter
+  count and rendered an all-one genetic-correlation heatmap.
+- Mobile inspection found horizontal overflow and a clipped title; desktop
+  inspection found an excessively long four-tutorial draft with internal
+  process language.
+
+Changes:
+
+- Removed `animal-model` from the Developer Notes navbar and article index.
+- Deleted `vignettes/articles/animal-model.Rmd`; no replacement public route
+  was created.
+- Repointed the two remaining inbound article links to the animal section of
+  the Formula keyword grid and explicitly deferred heritability teaching.
+- Updated the restoration queue to require stable public extractors, an
+  informative pedigree with repeated records, explicit environmental
+  components, replicated known-DGP recovery, and scale-specific uncertainty.
+- Removed stale NEWS wording that implied the retired animal article remained
+  part of the teaching estate.
+
+Verification:
+
+- Source/config scan found no remaining `animal-model.html`,
+  `articles/animal-model`, or `vignettes/articles/animal-model` route in
+  `_pkgdown.yml`, README, ROADMAP, NEWS, or vignette/article sources.
+- Confirmed the surviving Formula keyword grid contains the `Animal` section
+  and current `animal_*()` call shapes.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/api-keyword-grid", lazy = FALSE, quiet = TRUE)'`
+  -> PASS.
+- HTTP checks -> retired `articles/animal-model.html` returns 404; the surviving
+  `articles/api-keyword-grid.html#animal` destination returns 200.
+- Browser desktop check -> the Animal section is present, no render errors or
+  internal evidence codes are visible, and document width equals the
+  1280-pixel viewport.
+- Browser mobile check -> collapsed navbar, no render errors or internal
+  evidence codes, and document width equals the 390-pixel viewport. The code
+  blocks remain intentionally horizontally scrollable without widening the
+  document.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- Maintainer approval of the retirement decision and surviving Formula keyword
+  grid destination remains pending.
+- Other generated pages retain their prior navigation until the final
+  whole-site rebuild after all page dispositions.
+- No local commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — uncertain page 20 phylogenetic guide rebuilt (Codex)
+
+Panel and integrator decision:
+
+- Fisher, Rose, and Pat independently failed the old 825-line page and
+  recommended hiding it unless it received a ground-up, truth-checked rewrite.
+- Accepted the scientific and reader-path findings after checking the source,
+  rendered estimates, public extractors, focused phylogenetic tests, validation
+  evidence, neighbouring articles, navigation, and desktop/mobile output.
+- Rejected permanent hiding because the core Gaussian `phylo_dep()` covariance
+  route is mature enough for a narrow public guide. Replaced the page with one
+  replicated Gaussian example and removed every unrelated or premature lane.
+
+Why the old page failed:
+
+- Its 30-species four-component fit estimated phylogenetic total variances
+  1.915, 0.145, and 0.063 against truths 0.690, 0.353, and 0.183, with one
+  planted phylogenetic diagonal collapsed to approximately zero.
+- The rendered fit-health rows all passed despite the failed decomposition;
+  the page did not show truth beside estimates.
+- It attempted to distinguish an independent species-level diagonal from
+  measurement residual with one observation per species-trait cell.
+- It called a model-specific species-level variance share “phylogenetic
+  heritability,” presented unsupported species-count and disagreement
+  thresholds as evidence rules, and recommended a larger full-covariance
+  model as an automatic simplification.
+- Reaction norms used private optimizer/TMB fields and stale support claims;
+  an unrelated behavioural-syndrome tutorial and two-Psi refit mechanics
+  fragmented the comparative-methods question.
+
+Replacement:
+
+- Rewrote `vignettes/articles/phylogenetic-gllvm.Rmd` from 825 lines / 4,188
+  words to 353 lines / 1,390 source words.
+- The retained model asks one question: which three-trait covariances are
+  associated with a fixed Brownian relationship matrix after allowing for
+  individual-level Gaussian noise?
+- Uses 150 species and ten individual measurements per species, biologically
+  named traits, a full `phylo_dep()` covariance, and an explicit tree/data
+  label and branch-length check.
+- Shows canonical long and `traits(...)` wide calls through `gllvmTMB()`; their
+  log-likelihoods agree to approximately 1e-11.
+- Prints the authoritative core fit-health rows and every non-passing row,
+  then compares the public `extract_Sigma()` result with known truth through
+  `compare_Sigma_table()` and `plot_Sigma_comparison()`.
+- The one-draw covariance estimate has relative Frobenius error 0.156. The
+  page labels this as descriptive finite-sample recovery, not validation or
+  calibrated uncertainty.
+- States that the result is conditional on the supplied fixed tree and does
+  not estimate Pagel's lambda, tree uncertainty, genetic covariance, or
+  heritability.
+- Removed the reaction-norm, behavioural-tier, two-Psi, communality,
+  variance-share, private-field, arbitrary-threshold, internal-process, and
+  version-roadmap material.
+- Promoted the rewritten page from Developer Notes to Model Guides in the
+  navbar and article index.
+
+API-facing corrections discovered by the rewrite:
+
+- `extract_Sigma(level = "phy")` no longer calls a full `phylo_dep()`
+  covariance “latent-only.”
+- `needs_rotation_advice$phy` and `check_gllvmTMB()` no longer treat the
+  constrained full-covariance factor used by `phylo_dep()` as exchangeable
+  latent axes. Rotation and weak-axis diagnostics remain for actual latent
+  terms.
+- Added focused regression tests for both corrections.
+
+Verification:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> PASS.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|rotation-advisory", reporter = "summary")'`
+  -> PASS; 99 expectations passed and 12 explicitly heavy tests were skipped.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/phylogenetic-gllvm", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS; all article chunks executed and the HTML was regenerated from the
+  current source.
+- Source/rendered scan -> no internal evidence IDs, validation-register prose,
+  under-audit gates, private fit fields, interval-status plumbing, or stale
+  version promises in the article body.
+- Figure-quality gate -> PASS (18/20): the difference geometry matches the
+  truth-comparison estimand, zero is explicit, the caption says segments are
+  not intervals, labels are readable, the palette is print-safe, the PNG is
+  1344 x 921, and the public tested plot helper carries package metadata.
+- Browser desktop check -> synchronized title and lifecycle text, populated
+  table of contents, complete figure and alt text, no render errors, no
+  internal codes/private fields, and document width equals the 1280-pixel
+  viewport.
+- Browser mobile check -> collapsed navbar, complete 366-pixel figure,
+  horizontally scrollable code blocks without document overflow, no render
+  errors/internal codes, and document width equals the 390-pixel viewport.
+- Removed the stale heatmap asset left by the retired draft; the generated
+  article directory now contains only the correlation-comparison figure.
+- Rebuilt after navigation promotion; the rendered navbar contains exactly one
+  `Phylogenetic covariance among traits` link under Model Guides and none under
+  Developer Notes.
+- HTTP checks -> all four article destinations and seven public reference
+  destinations linked by the page return 200.
+- `git diff --check` -> PASS before final navigation-link checks.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> pre-existing estate
+  blocker: `articles/functional-biogeography` remains intentionally absent from
+  the index pending its later disposition. No phylogenetic-guide configuration
+  error was reported before that stop.
+
+Not done:
+
+- Maintainer visual approval of the rewritten page remains pending.
+- Full package tests, check, pkgdown-site rebuild, and final estate audits wait
+  until all article dispositions are complete.
+- `pkgdown::check_pkgdown()` cannot pass until the still-pending
+  `functional-biogeography` source is either restored to the index or retired.
+- No local commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — uncertain page 21 behavioural-syndrome guide rebuilt (Codex)
+
+Panel and integrator decision:
+
+- Fisher, Rose, and Pat independently recommended a ground-up rewrite while
+  retaining the intercept-only behavioural-syndrome question as a standalone
+  Tier-1 guide.
+- Accepted the central findings after checking the source, rendered estimates,
+  current formulas/defaults, public covariance and repeatability extractors,
+  focused tests, validation evidence, neighbouring reaction-norm drafts,
+  figures, navigation, and desktop/mobile output.
+- Kept the page separate from reaction norms: this guide estimates stable
+  between-individual and occasion-level intercept covariance; reaction norms
+  ask about individual-specific slopes along a measured gradient.
+
+Why the old page failed:
+
+- It labelled raw, rotation-indeterminate axes “proactive-reactive” and
+  “aggression-activity” before truth-only Procrustes alignment.
+- It called observation noise negligible while simulating a residual SD of
+  0.48, then causally attributed the inseparable occasion-level covariance to
+  motivation or context rather than measurement error.
+- It tuned truth to a published repeatability median and presented the fitted
+  median's agreement as if it were external validation.
+- It filtered diagnostics to four passing rows and called gradient/Hessian
+  health a reliable MLE rather than numerical evidence.
+- It interpreted high repeatability as cross-context generality and low
+  repeatability as session-specific inference, neither of which follows from
+  the variance ratio.
+- It emphasized nominal Wald limits without calibration evidence, interpreted
+  poorly recovered communalities, and assessed only the between-individual
+  covariance target.
+- The 792-line / 3,857-word page contained an enormous summary, two duplicated
+  8 x 8 heatmaps, raw-score ordination, two recovery plots, internal process
+  prose, a stale package self-citation, and a broken complexity-ladder link.
+
+Replacement:
+
+- Rewrote `vignettes/articles/behavioural-syndromes.Rmd` as a 427-line,
+  1,642-source-word Gaussian guide.
+- Uses six behaviours, 150 individuals, and six uniquely nested occasions;
+  validates the `(individual, occasion, trait)` cell key and explains the
+  replication, scale, family, and supplied-rank requirements.
+- Defines the exact two-tier model and maps `Sigma_B`, `Sigma_W`, and
+  repeatability to the two `latent(..., unique = TRUE)` terms.
+- Folds unshared occasion variation and measurement error into `Psi_W`
+  explicitly instead of claiming they can be separated.
+- Shows canonical long and `traits(...)` wide calls; their log-likelihoods
+  agree to approximately 2.9e-7.
+- Shows the authoritative scaled-gradient verdict and every non-passing row.
+  The raw PORT false-convergence code remains visible and is interpreted
+  alongside the very small scaled gradient, matching long/wide likelihoods,
+  usable `sdreport`, and positive-definite Hessian.
+- Uses only rotation-invariant total covariance targets. The one-draw relative
+  Frobenius errors are 0.173 between individuals and 0.094 within individuals.
+- Compares fitted versus true correlations for both tiers in one figure and
+  compares point repeatability against truth (MAE 0.032).
+- Removes raw-axis naming and ordination, communality claims, causal
+  explanations of occasion covariance, literature-median circularity,
+  interval displays, internal codes/bookkeeping, and context-generalisation
+  claims.
+- Promoted the finished page from Developer Notes to Model Guides in the
+  navbar and article index; removed its restoration-queue row.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", lazy = FALSE, new_process = FALSE, quiet = TRUE)'`
+  -> PASS after the rewrite, diagnostics adjustment, responsive-math fix, and
+  navigation promotion.
+- `Rscript --vanilla -e 'devtools::test(filter = "re09-latent-unique-unit|extract-repeatability|traits-keyword", reporter = "summary")'`
+  -> PASS for 59 non-heavy expectations; six explicitly heavy recovery tests
+  skipped under the default environment. The article's executed known-truth
+  fit provides page-specific point-recovery evidence.
+- Source/rendered scan -> no internal evidence IDs, validation-register prose,
+  under-audit gates, private fit fields, interval-status plumbing, stale
+  version promises, or causal motivation/generalisation wording.
+- Figure-quality gate -> PASS (19/20): two facets show both covariance targets,
+  estimate-vs-truth geometry and one-to-one lines match the estimand, signed
+  error is redundantly encoded by colour and segments, the caption explicitly
+  says the segments are not confidence intervals, the palette is print-safe,
+  alt text is complete, and the PNG is 1382 x 921.
+- Removed six stale assets from the old draft; the generated article directory
+  now contains only `covariance-figure-1.png`.
+- Browser desktop check -> synchronized title/lifecycle text, populated table
+  of contents, complete figure and alt text, exactly one navbar destination
+  under Model Guides, no render errors/internal codes/private fields, and
+  document width equals the 1280-pixel viewport.
+- Initial browser mobile check exposed a 462-pixel MathML equation in the
+  390-pixel viewport. Split the equation into responsive display blocks.
+  Recheck -> document width equals 390 pixels, no non-code overflow, collapsed
+  navbar, complete 366-pixel figure, and no render errors/internal codes.
+- HTTP checks -> four linked article destinations and seven public reference
+  destinations return 200.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- Maintainer visual approval of the rewritten page remains pending.
+- Full package tests, check, pkgdown-site rebuild, and final estate audits wait
+  until all article dispositions are complete.
+- No local commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — uncertain page 22 structured-slope catalogue retired (Codex)
+
+Panel and integrator disposition:
+
+- Fisher, Rose, and Pat independently recommended **HIDE** for 0.5.0. The
+  integrator agreed that the validation-led catalogue should not remain a
+  reader-facing article.
+- The topic is scientifically distinct, but the current page does not contain
+  one aligned, runnable applied workflow. A future guide is deferred until it
+  can start from one phylogenetic or spatial question rather than a
+  family-by-engine matrix.
+
+Why the old page failed:
+
+- Its lead Gaussian DGP planted intercept--slope correlation `rho = 0.5` but
+  fitted `phylo_indep()`, which fixes the correlation to zero. It compared only
+  marginal SDs and called the misspecified fit recovery.
+- Both fitted formulas omitted the fixed population-average slope. The Poisson
+  fixture assigned most context variation between species and only small
+  within-species jitter, weakening the intercept/slope separation.
+- The Poisson slope variance estimate was less than half its truth, yet the
+  prose called it recovery and generalized to the whole family grid.
+- “Every family x every source x every mode” and full animal-grid claims mixed
+  direct recovery evidence with inferred shared-engine routing. In particular,
+  direct `nbinom1` and animal evidence is much narrower than the page claimed.
+- `indep`, `latent`, and `dep` were presented as a uniform complexity ladder,
+  although they estimate different covariance dimensions. The latent slope
+  route is block-diagonal across intercept and slope columns and does not
+  estimate their cross-covariance.
+- The correlated phylogenetic and all spatial examples were unevaluated code
+  over undefined objects. The page contained no scientific figure.
+- Private `fit$report`, `fit$fit_health`, and `fit$opt` fields, internal
+  validation IDs, issue history, test acceptance bands as wide as a factor of
+  four, unsafe permission to report non-PD-Hessian fits, and an unsupported
+  generic Bayesian-refit recommendation dominated the reader path.
+- The rendered support table was broken by unescaped formula pipes and the
+  served HTML was stale.
+
+Changes:
+
+- Removed `vignettes/articles/random-slopes-nongaussian.Rmd`, its navbar and
+  article-index entries, and both stale generated HTML copies. Git history,
+  tests, the validation register, and prior after-task reports preserve the
+  developer evidence.
+- Expanded the Random slopes section of `api-keyword-grid.Rmd` with the useful
+  reader-facing remainder: a required fixed population slope in long and
+  `traits(...)` wide syntax; the exact 2 x 2 `indep`, per-column block-diagonal
+  `latent`, and full interleaved 2T x 2T `dep` targets; their public extractor
+  levels; and centring, scaling, within-unit coverage, and family-domain
+  cautions.
+- Updated NEWS, ROADMAP, the capability-status restoration queue, and the
+  estate ledger. The ledger now records 22 completed dispositions and 11
+  pages still requiring review.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/api-keyword-grid", lazy = FALSE)'` -> PASS.
+- Browser desktop check at 1280 pixels -> the structured-slope section is
+  legible, code and formulas are intact, and document width equals the
+  viewport.
+- Browser mobile check at 390 pixels -> collapsed navbar, wrapped prose/code,
+  no document-level overflow, and no internal validation IDs or render errors.
+- Source/rendered scan -> no internal IDs, validation-register language, or
+  private fit fields in the surviving keyword guide; no public source link to
+  the retired article remains.
+- HTTP checks -> retired route 404; keyword guide and ordinary reaction-norm
+  guide 200.
+- `pkgdown::check_pkgdown()` -> expected estate-level STOP only because
+  `articles/functional-biogeography` remains deliberately unindexed pending
+  its disposition. The retired article is no longer reported as a missing
+  configuration row.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- Maintainer visual approval of the surviving keyword-guide section remains
+  pending.
+- Full package tests/check, complete site build, and final estate audits wait
+  until every remaining article has a disposition.
+- No local commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — uncertain page 23 coevolution-labelled article retired (Codex)
+
+Panel and integrator disposition:
+
+- Fisher and Rose recommended HIDE; Pat recommended CUT from the reader walk
+  while retaining the research programme as a design note. The integrator
+  retired the pkgdown source and kept the existing Design 65 and validation
+  records as the developer artefact.
+- A future page, if justified, must be framed as fixed
+  association-conditioned cross-lineage covariance rather than a demonstrated
+  coevolution workflow.
+
+Why the old page failed:
+
+- A kernel built from two phylogenies, one observed association matrix `W`, and
+  analyst-supplied `rho` cannot distinguish reciprocal coevolution from
+  ecological filtering, shared environment, partner choice, abundance or
+  detection bias, or measurement error in `W`.
+- The page conflated `Gamma_shape`, `rho * Gamma_shape`, and pair-specific
+  `Gamma_shape * K[i, j]`, then interpreted individual cells as biological
+  coevolution in raw trait units.
+- It incorrectly said common loading rotation changes Gamma, although
+  `(Lambda_H Q)(Lambda_P Q)^T = Lambda_H Lambda_P^T`; the package test verifies
+  that shared-covariance block is rotation invariant.
+- The block-diagonal null structurally sets realised cross-lineage covariance
+  to zero through `K_HP = 0`; it does not structurally identify or force the
+  shape-only Gamma block to zero. The article treated one optimizer outcome as
+  the null identity.
+- The source described simultaneous kernels as planned although the latent-only
+  multi-kernel engine exists, while its worked workflow fitted one kernel with
+  Psi. Its automatic rho-profile callback omitted `unique = TRUE`, changing
+  the fitted model relative to the main and manual-grid specifications.
+- Every consequential fit, long/wide equality, null comparison, Gamma
+  recovery, rho profile, and sparse/dense sensitivity result was unevaluated
+  or illustrative. The only figure fabricated a “fitted” panel by adding
+  random noise to truth and hand-created the null panel.
+- The recovery gate used absolute correlation across four Gamma cells, which
+  is scale-free and permits global sign reversal, but the page claimed
+  sign-and-magnitude recovery. The printed rho profile was illustrative and
+  stronger than the real fixed-grid sensitivity evidence.
+- The novelty claim lacked a dedicated literature review; fixed-kernel
+  likelihood improvement had no decision calibration; link count was treated
+  too absolutely as effective sample size; and unsupported bootstrap/profile
+  interval advice was offered despite point-only Gamma evidence.
+- Internal validation IDs, Paper-2/build process, private fit fields, and a
+  wide three-facet schematic heatmap further failed the reader and mobile
+  paths.
+
+Changes:
+
+- Removed `vignettes/articles/cross-lineage-coevolution.Rmd`, its navbar and
+  article-index entries, both stale generated HTML copies, and its generated
+  figure directory.
+- Expanded the dense-kernel section of `api-keyword-grid.Rmd` with the narrow
+  public boundary: association-conditioned language; analyst-supplied `W` and
+  `rho`; `Gamma_shape`, fixed-rho effect, and pair-specific covariance scales;
+  point-estimate-only scope; and kernel-separability/collapse guidance.
+- Updated NEWS, ROADMAP, the capability-status queue, and the estate ledger.
+  The ledger now records 23 completed dispositions and 10 pages remaining.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/api-keyword-grid", lazy = FALSE)'` -> PASS.
+- Browser/DOM checks -> the surviving fixed-kernel wording is legible and
+  wrapped at 390 pixels, has no document-level overflow, render errors,
+  internal validation IDs, private fields, or project-process wording. The
+  keyword guide had already passed its 1280-pixel desktop layout; this prose
+  addition does not add tables or figures.
+- Source/rendered scan -> no reader-facing link to the retired article remains.
+- HTTP checks -> retired article route 404; keyword guide,
+  `make_cross_kernel()` reference, and `extract_Gamma()` reference all 200.
+- `pkgdown::check_pkgdown()` -> expected estate-level STOP only because
+  `articles/functional-biogeography` remains deliberately unindexed pending
+  its disposition. The retired article is no longer reported as missing.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- Maintainer visual approval of the surviving keyword-guide section remains
+  pending.
+- Related reference/help pages still contain developer-status language; the
+  final reference/help sweep will replace it after article dispositions are
+  complete.
+- Full package tests/check, complete site build, and final estate audits wait
+  until every remaining article has a disposition.
+- No local commit, push, PR, merge, tag, or release action was taken.
+
+## 2026-07-11 — uncertain pages 24–25 loading-constraint articles retired (Codex)
+
+Branch: `claude/release-0.5.0`; local documentation-estate work only. No
+push, PR, merge, tag, or release action.
+
+Review:
+
+- Fisher, Rose, and Pat independently recommended that neither
+  `lambda-constraint.Rmd` nor `lambda-constraint-suggest.Rmd` ship as a
+  standalone 0.5.0 article.
+- The main simulation drew both anchor loadings below one but fitted them as
+  exact `+1` restrictions. Because the latent scores have unit variance, those
+  pins are substantive loading assumptions rather than cosmetic scale/sign
+  choices.
+- The page renamed raw exploratory axes as shade and drought without target or
+  Procrustes alignment, so its leakage comparison and central loading figure
+  were not interpretable.
+- Its small binary fixture was unhealthy, its served likelihood and loading
+  intervals were pathological and inconsistent with the newer source, and its
+  likelihood-ratio reference distribution had no calibration evidence.
+- The companion chose zero constraints from the same exploratory data, refit
+  the same data, and invited confirmatory interpretation without accounting
+  for selection. Its profile-retention route treated failure to reject as
+  support for an exact zero and described a non-positive-definite fit as
+  rescued merely because a profile could be computed.
+
+Changes:
+
+- Removed both standalone article sources and their article-index entries.
+  Git history and the exported reference topics preserve the advanced API.
+- Replaced the unsafe same-data suggestion/refit/loading-CI sequence in
+  `joint-sdm.Rmd` with one concise boundary: numeric pins are exact model
+  assumptions, the current route acts on the packed lower triangle, same-data
+  suggestions remain exploratory, and rotation-invariant covariance and
+  correlations remain the primary JSDM targets.
+- Removed the remaining validation-register link from the public JSDM page.
+- Updated ROADMAP and the article-estate ledger. The ledger now records 25
+  completed dispositions and 8 pages remaining.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/joint-sdm", lazy = FALSE)'` -> PASS after the final prose edit.
+- Browser/DOM checks at 1280 × 900 and 390 × 844 -> no document-level
+  horizontal overflow, internal validation IDs, validation-register wording,
+  or links to either retired route.
+- HTTP checks -> `joint-sdm.html` 200; both retired article routes 404.
+- Source/render scans for internal IDs, validation-register wording, test
+  paths, and retired links -> no hits in the retained JSDM source/render.
+- `git diff --check` -> PASS.
+- `pkgdown::build_site(lazy = TRUE, new_process = FALSE, install = FALSE)`
+  refreshed home and reference pages, then stopped before rebuilding the
+  article index/search/sitemap because the still-pending
+  `functional-biogeography` source is deliberately unindexed. This is the
+  previously recorded estate-level blocker, not a lambda-page failure.
+
+Not done:
+
+- The article index, search, and sitemap receive their clean rebuild after the
+  remaining article dispositions resolve the unindexed functional-biogeography
+  source.
+- Full package tests/check and final whole-estate audits remain pending.
+- Maintainer visual approval of the surviving JSDM guidance remains pending.
+- No local commit was created.
+
+## 2026-07-11 — uncertain page 26 mixed-family extractor catalogue retired (Codex)
+
+Branch: `claude/release-0.5.0`; local documentation-estate work only. No
+commit, push, PR, merge, tag, or release action.
+
+Review:
+
+- Fisher, Rose, and Pat independently recommended MERGE then CUT. The useful
+  capability is mixed-family dispatch and careful point-estimate extraction;
+  the standalone page was an internal API catalogue without a biological
+  question.
+- The central “common, comparable latent scale” claim contradicted the
+  package's per-trait/per-pair convention. Identity-, logit-, and log-link
+  predictors do not acquire one universal unit merely because family-specific
+  diagonal residual conventions are added before forming correlations.
+- The private routing fixture was created by thresholding and rounding a
+  Gaussian simulation rather than drawing from the fitted Bernoulli and
+  Poisson likelihoods. Its live fit had two warnings and a near-boundary
+  Gaussian communality, while the article displayed only diagnostic counts.
+- The page misidentified the unsupported randomized-quantile residual rows,
+  used `gllvmTMB:::` and `$opt`, compared convention-dependent communalities,
+  and printed authoritative-looking Fisher-z and percentile intervals from
+  tiny bootstrap runs despite absent mixed-family calibration.
+- Developer status, delta/hurdle plans, validation ledgers, generic trait
+  names, and unshown bootstrap-failure counts dominated the reader path.
+
+Changes:
+
+- Removed the standalone source, Developer Notes navbar link, article-index
+  entry, generated route, and generated figure directory.
+- Expanded the existing mixed-family section in `response-families.Rmd` only
+  where it improved the reader path: explicit named family lists; a check that
+  each trait uses one family; long-only dispatch; and separate point estimates
+  for fitted-tier covariance (`link_residual = "none"`) and family/link-scale
+  correlation (`"auto"`).
+- The retained prose states that covariance entries keep their
+  trait-specific link units; adjusted correlations are dimensionless but
+  pairwise, link-conditional, and sometimes mean-dependent approximations;
+  neither target is generally a raw-response correlation or universal common
+  scale. The public mixed-family workflow is point-estimate-only.
+- Updated ROADMAP, the capability-status queue, and the estate ledger. The
+  ledger now records 26 completed dispositions and 7 pages remaining.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/response-families", lazy = FALSE)'` -> PASS.
+- Browser/DOM checks at 1280 × 900 and 390 × 844 -> no document-level
+  horizontal overflow; the named-family and covariance-scale sections remain
+  readable on mobile. The existing family table is horizontally scrollable
+  inside its container rather than widening the document.
+- Source/render scans -> no internal validation IDs, register wording, test
+  paths, private fields, internal fixture calls, or links to the retired page
+  in the retained article.
+- HTTP checks -> `response-families.html` 200; retired
+  `mixed-family-extractors.html` 404.
+- Mixed-family wide-interface probe -> current `traits(...)` input fails with
+  the expected request for a per-row family selector column, confirming that
+  the honest public route is long-only.
+- Live internal-fixture audit -> convergence and curvature rows passed, but
+  `boundary_flags` and `near_zero_psi_unit` warned; the fitted Psi entries were
+  effectively zero and `link_residual = "none"` communalities were all one.
+  This confirms the fixture is unsuitable for an applied article.
+- `pkgdown::check_pkgdown()` -> expected estate-level STOP only because the
+  still-pending `articles/functional-biogeography` source remains deliberately
+  unindexed. The retired mixed-family page is not reported.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- The `extract_Sigma()` and `extract_correlations()` help topics still contain
+  broader “comparable latent scale” wording. Their full correction belongs to
+  the final reference/help sweep after all article dispositions.
+- Full package tests/check and final whole-site index/search/sitemap rebuild
+  remain pending.
+- Maintainer visual approval of the revised `response-families` destination
+  remains pending.
+
+## 2026-07-11 — uncertain page 27 ordinal-probit reference retired (Codex)
+
+Branch: `claude/release-0.5.0`; local documentation-estate work only. No
+commit, push, PR, merge, tag, or release action.
+
+Review:
+
+- Fisher recommended MERGE then CUT. Rose and Pat agreed the current page
+  cannot ship and considered a future applied rewrite worthwhile. The
+  integrator retained that future topic but retired the present technical
+  reference rather than releasing an incomplete tutorial.
+- The threshold DGP matched the ordinal likelihood, but the design had only
+  one observation per unit and trait. Its fitted diagonal unit effect behaved
+  like an observation-level scale: planted variance `0.55^2 = 0.3025`
+  collapsed to approximately `0.000068` and `0.000204` despite every numerical
+  health row passing.
+- The two Sigma examples were identical because both used the current default
+  `link_residual = "auto"`; the page incorrectly labelled the first as
+  structural covariance and the second as liability-total covariance.
+- The page introduced threshold heritability without fitting a phylogenetic or
+  genetic component, omitted other possible denominator components, claimed
+  automatic comparability with Gaussian measurement scales, and misstated the
+  covariance grammar as 4 x 4.
+- There was no applied question, predictor interpretation, predicted category
+  probability, sparse-category workflow, or figure. Native TMB ordinal fits do
+  not yet provide the public category-probability path needed for the applied
+  tutorial Pat described.
+
+Changes:
+
+- Removed the standalone source, Developer Notes link, article-index entry,
+  generated route, and stale generated copy.
+- Expanded the ordinal row in `response-families.Rmd` with the threshold model,
+  the fixed-first-boundary / `K-2` free-cutpoint convention, the distinction
+  between cutpoints and effects, and the proportional-threshold assumption.
+- Added reader-facing data rules: categories must be meaningfully ordered and
+  coded consecutively; the engine currently infers `K` from the largest
+  observed code, so the highest intended category must occur; gaps must be
+  resolved; and new two-category analyses should use binomial probit.
+- Explicitly stopped the lookup before variance, correlation, or heritability:
+  those require replicated or externally structured data that identify the
+  advertised variance tier.
+- Repaired ordinal links in the still-under-review psychometrics source to the
+  response-family and reference destinations.
+- Updated ROADMAP, the capability-status queue, and the estate ledger. The
+  ledger now records 27 completed dispositions and 6 pages remaining.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/ordinal-probit", lazy = FALSE)'` -> PASS before retirement and
+  exposed the identical Sigma outputs plus near-zero structural variances.
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/response-families", lazy = FALSE)'` -> PASS after consolidation.
+- Browser/DOM checks at 1280 × 900 and 390 × 844 -> no document-level
+  horizontal overflow, internal validation IDs, or retired ordinal links; the
+  liability/cutpoint guidance is readable on mobile.
+- HTTP checks -> `response-families.html` 200; retired
+  `ordinal-probit.html` 404.
+- Source/render scans -> no validation-register wording, test paths, private
+  fields, maintainer bookkeeping, or ordinal article links in the retained
+  response-family page.
+- `pkgdown::check_pkgdown()` -> expected estate-level STOP only because the
+  still-pending `articles/functional-biogeography` source remains deliberately
+  unindexed. The retired ordinal page is not reported.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- The exported `check_auto_residual()` guidance and the
+  `extract_Sigma(link_residual = "auto")` ordinal behavior currently disagree
+  about whether adding the fixed probit residual double-counts the liability
+  scale. Related “directly comparable to Gaussian” wording also remains in
+  family/reference help. These contradictions are queued for the final
+  reference/help audit; no variance tutorial was retained while they remain.
+- Full package tests/check and final whole-site index/search/sitemap rebuild
+  remain pending.
+- Maintainer visual approval of the revised response-family destination
+  remains pending.
+
+## 2026-07-11 — uncertain page 28 psychometrics / IRT draft retired (Codex)
+
+Branch: `claude/release-0.5.0`; local documentation-estate work only. No
+commit, push, PR, merge, tag, or release action.
+
+Review:
+
+- Fisher, Rose, and Pat independently recommended CUT. The integrator verified
+  their findings against the rendered page, live fitted objects, current
+  lower-triangular loading implementation, diagnostics, tests, and neighbouring
+  articles.
+- The advertised confirmatory matrix fixed the second lower-triangular
+  identification loading to zero. The entire Mood factor therefore collapsed:
+  all three fitted Mood loadings were exactly zero although their planted values
+  were 0.9, 0.6, and 0.8. The prose nevertheless claimed recovery.
+- `check_gllvmTMB()` reported a non-positive-definite Hessian, a weak zero-share
+  axis, and near-zero loading and diagonal-variance warnings. The page still
+  presented confirmatory inference as successful.
+- The exploratory and constrained fits had 20 and 15 effective parameters, so
+  the article's hand-coded six-degree-of-freedom likelihood-ratio comparison was
+  wrong. The collapsed boundary fit also invalidated the advertised chi-square
+  reference regardless of that arithmetic error.
+- The article called unbounded Gaussian responses Likert scores, described raw
+  exploratory loadings as rotation-invariant, read a private fitted-object
+  field, mislabeled total family-adjusted correlation as latent-only, used an
+  unnamed order-sensitive family list, and offered malformed multilevel syntax.
+  It did not provide the item difficulty, discrimination, curves, information,
+  scores, reliability, comparator, or calibrated uncertainty expected of a
+  psychometrics guide.
+
+Changes:
+
+- Removed the standalone source, Developer Notes link, article-index section,
+  generated route, and generated figure directory. No replacement page was
+  created: the safe generic mixed-family, ordinal, and loading-interpretation
+  boundaries already live in `response-families` and `joint-sdm`, while the
+  psychometric workflow itself is not ready to advertise.
+- Replaced the restoration entry in ROADMAP and capability status with a future
+  guide contract: validated item-response data, correct identification anchors,
+  public loading and score extractors, psychometric estimands, an external
+  comparator, complete diagnostics, and calibrated uncertainty.
+- Updated the estate ledger to 28 completed dispositions and 5 pages remaining.
+
+Verification:
+
+- Live reproduction -> constrained Mood loadings all zero; `logLik()` effective
+  parameter counts 20 versus 15; confirmatory diagnostics non-PD with a collapsed
+  second axis.
+- Three independent reviews plus integrator verification -> unanimous CUT.
+- Source and navigation-config scans -> no active pkgdown entry or retained
+  source-page link to `psychometrics-irt`. The generated article index, search
+  index, and sitemap still contain the old route and are deliberately queued
+  for the final whole-site rebuild after all five remaining dispositions.
+- HTTP check -> retired `psychometrics-irt.html` returns 404 after generated-file
+  removal.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- Full site index/search/sitemap rebuild, reference/help audit, package checks,
+  and final retained-page visual approvals remain pending.
+
+## 2026-07-11 — uncertain page 29 cross-package validation note retired (Codex)
+
+Branch: `claude/release-0.5.0`; local documentation-estate work only. No
+commit, push, PR, merge, tag, or release action.
+
+Review:
+
+- Fisher, Rose, and Pat independently recommended removing the page from the
+  release site. The integrator rendered the current source, reproduced both
+  headline comparisons, inspected the named tests and register rows, and ran
+  the two narrow comparator test files.
+- The rendered `gllvm` comparison returned per-factor correlations 0.9988 and
+  0.0174 with Frobenius residual 1.0735. The second `gllvm` loading column was
+  effectively zero while the `gllvmTMB` second factor remained substantial;
+  the page nevertheless said both ordinations were identical.
+- That binary fixture thresholded a Gaussian latent response, thereby creating
+  a probit DGP, but fitted default logit models in both packages. It also used
+  unmatched covariance decompositions and no rank/health gate. Per-factor
+  correlations alone were not sufficient subspace validation.
+- The Gaussian live comparison had one observation per site and trait while
+  fitting a reduced-rank site effect, site-level diagonal variance, and
+  Gaussian residual. `glmmTMB::logLik()` was unavailable because the Hessian
+  was non-PD; the page bypassed the public safeguard through
+  `fit_t$fit$objective` and dismissed the failure. The cited CI test instead
+  skips exactly this unhealthy combined comparison.
+- The matrix labelled a standalone `indep()` / `diag()` comparison as live even
+  though it was not run, described raw `propto()` parity as a direct public
+  `phylo_scalar()` comparison, and mixed parser smoke coverage, missing
+  comparators, shared-engine port regression, and independent agreement.
+  Promotional breadth and interval-API claims exceeded the evidence.
+
+Changes:
+
+- Removed the standalone source, Developer Notes link, article-index entry,
+  generated route, and figure directory. No public replacement was created.
+  The useful comparator assertions remain in `tests/testthat/`, the validation
+  register, testing-strategy document, and dev audits.
+- Replaced the restoration entry in ROADMAP and capability status with a future
+  agreement-guide contract requiring versioned and estimand-aligned DGPs,
+  healthy fits in every engine, predeclared tolerances, truth recovery,
+  rank/subspace and covariance checks, and separation of port regression from
+  independent validation.
+- Updated the estate ledger to 29 completed dispositions and 4 pages remaining.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/cross-package-validation", lazy = FALSE)'` -> PASS before
+  retirement and exposed the failed second-factor comparison.
+- Direct live reproduction -> factor correlations 0.9988 and 0.0174,
+  Frobenius residual 1.0735; `gllvm` warned about negative loading-variance
+  estimates and likely non-convergence.
+- `Rscript --vanilla -e 'devtools::test(filter = "stage2-rr-diag",
+  reporter = "summary")'` -> PASS with one expected skip because the combined
+  `rr() + diag()` glmmTMB Hessian was non-PD.
+- `Rscript --vanilla -e 'devtools::test(filter =
+  "stage3-propto-equalto", reporter = "summary")'` -> PASS with one expected
+  skip because the combined latent-plus-propto glmmTMB Hessian was non-PD.
+- Three independent reviews plus integrator verification -> no public article
+  claim survived intact; unanimous removal from the site.
+- HTTP check -> retired `cross-package-validation.html` returns 404 after
+  generated-file removal.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- The generated article index, search index, and sitemap still contain the old
+  route and are queued for the final whole-site rebuild after the four remaining
+  dispositions.
+- Full reference/help, package-check, and retained-page visual-approval gates
+  remain pending.
+
+## 2026-07-11 — uncertain page 30 profile-Psi smoke article retired (Codex)
+
+Branch: `claude/release-0.5.0`; local documentation-estate work only. No
+commit, push, PR, merge, tag, or release action.
+
+Review:
+
+- Fisher recommended HIDE/RENAME; Rose recommended CUT; Pat recommended CUT
+  from pkgdown and retention only as an internal report. The integrator chose
+  CUT because the authoritative evidence already lives in design/audit records
+  and the bundled artifact no longer describes the current model.
+- The rendered page read a v0.2.0, ten-replicate smoke artifact created before
+  default Psi was mapped off for single-trial Bernoulli and ordinal traits. Its
+  binomial and ordinal profile-Psi results therefore target a superseded model.
+- Design 42 and the target-scale audit identify total `Sigma_unit[tt]` as the
+  primary reader-facing target; the artifact profiles only direct Psi, now a
+  diagnostic target. The later production run failed the statistical gate:
+  only 2 of 15 cells passed and 236 of 3000 replicate fits failed.
+- The smoke summary counted trait rows as `n_completed`, omitted failed
+  replicate rows, and nevertheless printed `n_failed = 0`. Mixed-family cells
+  with 35 of 50 expected trait rows were then described as 30% non-convergent.
+  Coverage was conditional on successful/available intervals and could not be
+  interpreted as failure-aware coverage.
+- Ten replicate clusters give wide Monte Carlo uncertainty; applying a hard
+  94% pass flag and averaging dependent trait rows was triage, not validation.
+  The page also stated the wrong free-cutpoint count for ordinal probit,
+  speculated about mechanisms without isolating them, exposed raw artifact
+  schemas and development scripts, and provided no scientific figure or
+  applied decision path.
+
+Changes:
+
+- Removed the standalone source, Developer Notes link, article-index entry,
+  generated route, and generated assets. The smoke and failed-production
+  evidence remains in Design 42/44/50, the production-artifact and target-scale
+  audits, the validation register, and developer RDS artifacts.
+- Replaced the restoration entry in ROADMAP and capability status with a future
+  interval-evidence contract: current-version target-explicit artifacts,
+  unconditional failure denominators, Monte Carlo intervals, bias/RMSE,
+  calibrated acceptance rules, and reader-facing figures.
+- Updated the estate ledger to 30 completed dispositions and 3 pages remaining.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/simulation-recovery-validated", lazy = FALSE)'` -> PASS before
+  retirement and exposed the stale v0.2.0 artifact and contradictory counts.
+- Direct artifact read -> 702 observed rows versus 750 expected, reduced
+  `n_completed` values in difficult cells, and `n_failed = 0` throughout.
+- Current source/design scan -> the harness now zeroes effective Bernoulli Psi;
+  Design 42 demotes direct Psi coverage to diagnostic status and requires
+  target-explicit total covariance for promotion.
+- Three independent reviews plus integrator verification -> unanimous removal
+  from the release site.
+- HTTP check -> retired `simulation-recovery-validated.html` returns 404 after
+  generated-file removal.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- The generated article index, search index, and sitemap still contain the old
+  route and are queued for the final whole-site rebuild after the three
+  remaining dispositions.
+- `simulation-verification`, the roadmap article, and the functional-biogeography
+  capstone still require individual disposition.
+
+## 2026-07-11 — uncertain page 31 simulation-verification workflow retired (Codex)
+
+Branch: `claude/release-0.5.0`; local documentation-estate work only. No
+commit, push, PR, merge, tag, or release action.
+
+Review:
+
+- Fisher recommended HIDE/MERGE, Rose recommended CUT, and Pat recommended
+  MERGE then retire. The integrator accepted the safe simulation-question
+  boundary but rejected the standalone workflow and its helper checklist.
+- The headline DGP used `simulate_site_trait()` defaults: two site predictors
+  with random nonzero trait-specific effects. The fitted formula omitted those
+  predictors, so their between-site covariance was absorbed by the latent
+  effect while the supplied truth matrix included only `Lambda Lambda' + Psi`.
+- The rendered comparison contradicted the recovery prose. One variance had
+  truth 0.94 and estimate 1.356 (error +0.416); one covariance had truth 0.32
+  and estimate 0.525 (error +0.205). No tolerance, uncertainty interval,
+  replicate distribution, or acceptance rule justified calling those results
+  recovery.
+- Only the illustrative fit and `sanity_multi()` evaluated. The advertised
+  identifiability, Laplace-consistency, coverage, and profile checks were all
+  unevaluated, yet the conclusion described a fit as having passed
+  verification after running them.
+- Code inspection found release-blocking documentation/helper defects:
+  `check_identifiability()` interprets a near-zero mean absolute Procrustes
+  residual as factor collapse although that is close recovery, accepts
+  optimiser convergence or a positive-definite Hessian rather than requiring
+  both, and leaves its documented coverage column as `NA`. Its tests check
+  object structure but not the claimed spurious-rank operating characteristic.
+- `coverage_study()` uses the fitted estimate as plug-in truth, drops failed
+  refits, removes unusable interval bounds from the denominator after marking
+  them noncoverage, and applies an uncalibrated 94% pass flag at 30/50
+  replicates. This is conditional self-consistency, not known-DGP or
+  package-wide coverage.
+- The article also treated profile-shape heuristics and non-rejection by
+  `checkConsistency()` as proof, duplicated the current diagnostics/pitfalls/
+  profile routes, used a private convergence field, and contained no complete
+  reader decision path.
+
+Changes:
+
+- Removed the standalone source, Developer Notes link, article-index entry,
+  generated route, and generated figure directory.
+- Added a compact reader-facing section to `fit-diagnostics` that separates
+  predictive simulation, simulate-refit self-consistency near a fitted point,
+  and repeated known-DGP validation. It states what each can and cannot show
+  and requires estimand alignment, attempted/healthy/usable denominators, and
+  Monte Carlo uncertainty.
+- Added a future-guide restoration contract and an explicit pre-release helper
+  correctness lane to ROADMAP/capability status. The latter requires repaired
+  semantics, failure accounting, reference help, decision rules, and
+  operating-characteristic tests before these helpers are taught as
+  validation tools.
+- Updated the estate ledger to 31 completed dispositions and 2 pages remaining.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/simulation-verification", lazy = FALSE)'` -> PASS before retirement
+  and exposed the mismatched truth plus large rendered errors.
+- Source/runtime inspection -> `simulate_site_trait()` defaults to random
+  nonzero `beta`; the article fit omitted the corresponding predictors.
+- Direct helper/test inspection -> confirmed the Procrustes-residual inversion,
+  convergence disjunction, uncomputed coverage column, conditional denominator,
+  and small-R hard gate described above.
+- Three independent reviews plus integrator verification -> unanimous removal
+  from the release site; safe conceptual boundary only was retained.
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/fit-diagnostics", lazy = FALSE)'` -> PASS after consolidation.
+- Browser/DOM checks at 1280 x 900 and 390 x 844 -> no document-level
+  horizontal overflow; the three simulation questions remain readable on
+  mobile after shortening the table labels.
+- Retained source/render scan -> no internal validation IDs, register language,
+  test paths, private fitted-object fields, or links to the retired workflow.
+- HTTP check -> `fit-diagnostics.html` 200; retired
+  `simulation-verification.html` 404.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- Helper implementation/reference repairs are now explicit pre-release work,
+  not completed in this article-disposition slice.
+- The roadmap article and functional-biogeography capstone remain to review.
+
+## 2026-07-11 — uncertain page 32 public roadmap wrapper retired (Codex)
+
+Branch: `claude/release-0.5.0`; local documentation-estate work only. No
+commit, push, PR, merge, tag, or release action.
+
+Review:
+
+- Fisher, Rose, and Pat unanimously recommended removing the rendered roadmap
+  from pkgdown while retaining root `ROADMAP.md` for contributors.
+- The wrapper injected the complete 3,499-word internal reset ledger into a
+  top-level reader route. Agent ownership, PR pacing, issue numbers, audit
+  paths, validation IDs, restoration gates, and dated process checkpoints
+  dominated the page.
+- Its claimed current public surface omitted behavioural syndromes, reaction
+  norms, phylogenetic GLLVM, fixed-effect constraints, and response screening;
+  duplicated vocabulary and missing-data pages; and retained completed work in
+  its active queue. The generated route was older still and linked retired
+  articles.
+- Root ROADMAP also contained a direct syntax error for current 0.5.0: it said
+  full decomposition required `latent + unique`, whereas ordinary `latent()`
+  now includes diagonal Psi and `unique()` is compatibility syntax.
+- README linked the stale public route twice and called it the canonical,
+  continuously refreshed status source. The rendered evidence contradicted
+  that promise.
+
+Changes:
+
+- Removed the Rmd wrapper, top-level Roadmap navbar item, empty Developer Notes
+  menu, developer article-index section, generated route, and generated assets.
+  Root `ROADMAP.md` remains in the repository and is now explicitly labelled
+  contributor-only.
+- Updated the two roadmap reset slices to record the internal-only destination,
+  corrected its current ordinary-latent/Psi syntax, and replaced the false
+  statement that all deferred sources remain on disk.
+- Rewrote README's current-status introduction to use the linked public guides
+  as the reader boundary, corrected the keyword grid from 4 x 4 to 4 x 5,
+  replaced the stale advanced-page list with explicit deferred guide topics,
+  removed the validation-register/roadmap routing, and labelled the GitHub
+  roadmap as internal planning rather than a support guarantee or schedule.
+- Updated the estate ledger to 32 completed dispositions and 1 page remaining.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/roadmap",
+  lazy = FALSE)'` -> PASS before retirement and confirmed full internal-roadmap
+  injection.
+- Source comparison against `_pkgdown.yml` -> confirmed missing, duplicated,
+  completed-but-active, and retired-route entries in the rendered roadmap.
+- Three independent reviews plus integrator verification -> unanimous removal
+  from the public site; root contributor document retained.
+- Removed a stale custom `pkgdown-site/index.html` output that prevented
+  `pkgdown::build_home()` from regenerating the README homepage, then ran
+  `Rscript --vanilla -e 'pkgdown::build_home()'` -> PASS and wrote the current
+  `index.html`.
+- Browser/DOM checks on the rebuilt homepage at 1280 x 900 and 390 x 844 ->
+  clean reader navbar with no Developer Notes or Roadmap item, no page-level
+  horizontal overflow, and readable current/development-status sections.
+- README/render scans -> no public-roadmap URL, canonical-roadmap claim,
+  validation-register routing, or stale 4 x 4 keyword-grid wording.
+- HTTP check -> retired `roadmap.html` returns 404 after generated-file removal.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- Root ROADMAP receives a final contributor-state cleanup during the whole-site
+  audit; removing its public route does not certify every internal status row.
+- The functional-biogeography capstone is the final article disposition.
+
+## 2026-07-11 — uncertain page 33 functional-biogeography capstone retired (Codex)
+
+Branch: `claude/release-0.5.0`; local documentation-estate work only. No
+commit, push, PR, merge, tag, or release action.
+
+Review:
+
+- Fisher, Rose, and Pat unanimously recommended CUT with a from-scratch future
+  rewrite. The integrator rendered the current source, reproduced the fitted
+  outputs, inspected both figures, compared the planted and estimated targets,
+  and checked the claimed component evidence and neighbouring guides.
+- The only adjusted capstone fit returned optimizer convergence 1. Its final
+  `sanity_multi()` output reported optimizer FAIL, non-PD Hessian WARN, and
+  fixed-effect-SE WARN/NA. The article nevertheless extracted point
+  correlations, plotted them, and concluded that the syndrome was not a
+  geography or ancestry artefact before showing diagnostics.
+- The core fit did not recover the planted decomposition. True communalities
+  were 0.850, 0.769, 0.706, 0.779, 0.831, and 0.694; rendered estimates were
+  0.627, 1.000, 0.670, 1.000, 0.541, and 0.740, including two collapsed Psi
+  components. Several planted covariance entries were badly underestimated or
+  changed sign.
+- The spatial DGP used a dense exponential kernel while the fit used a Matérn
+  SPDE approximation; spatial and ordinary site covariance competed at the
+  same tier. `C_phy` and the identity matrix were incorrectly called
+  orthogonal, and the one-seed p/q recovery observations were presented as
+  universal 10%/50% guidance.
+- The fixture knowingly used 40 sites and 18 species while presenting
+  unsupported thresholds of 50--100 groups and fitting roughly 70 parameters.
+  Telling readers to drop plausible spatial/phylogenetic controls below those
+  thresholds does not resolve confounding; it changes the estimand.
+- The spatial and phylogenetic partition extensions were unevaluated. The
+  phylogenetic formula changes `unit = "species"` while retaining site and
+  site-species ordinary latent terms and errors under the current grouping API.
+  The article also taught a superseded ICC helper, private convergence field,
+  machine-dependent runtimes, and point-only results without uncertainty.
+- The between-site heatmap was legible but hard-coded the unsupported
+  conclusion in its subtitle. The within-site heatmap had missing axes,
+  clipped labels, black cells/regions, and incomplete diagonal annotations.
+
+Changes:
+
+- Removed the final uncertain article source, generated route, and generated
+  assets. It was already absent from navbar/index configuration.
+- Replaced the ROADMAP and capability-status return condition with a future
+  capstone contract: biologically named data, one predeclared question,
+  stagewise component-aligned fits, a hard diagnostic stop, long/wide
+  equivalence, truth comparisons at every tier, evidence-based design guidance,
+  uncertainty in the named regime, and associational sensitivity language.
+- Updated the estate ledger: all 33 starting article pages now have completed
+  reader-first dispositions; none remain pending detailed review.
+
+Verification:
+
+- `Rscript --vanilla -e 'pkgdown::build_article(
+  "articles/functional-biogeography", lazy = FALSE)'` -> PASS before retirement
+  and exposed the failed adjusted fit plus the broken figures.
+- Rendered output -> adjusted convergence 1; final diagnostics FAIL/WARN/WARN;
+  max point-correlation shifts 0.123 and 0.099 without uncertainty or an
+  equivalence margin.
+- Truth comparison -> large covariance/communality allocation errors and two
+  boundary communalities of one in the core fit.
+- Figure inspection -> between-site figure scientifically unsupported;
+  within-site figure visually failed.
+- Three independent reviews plus integrator verification -> unanimous CUT.
+- HTTP check -> retired `functional-biogeography.html` returns 404 after
+  generated-file removal.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- Page disposition is complete, but the whole-site article index, navigation,
+  links, search/sitemap, README, NEWS, reference/help, pkgdown, stale-wording,
+  and package-check gates remain. Maintainer visual approvals also remain
+  separate; no local commit is authorised yet.
+
+## 2026-07-12 — profile-inference article release-boundary correction (Codex)
+
+Branch: `claude/release-0.5.0`; local documentation-estate work only. No
+commit, push, PR, merge, tag, or release action.
+
+Decision and changes:
+
+- Withheld the nonlinear penalty-profile helpers for communality,
+  correlation, latent-score effects, variance proportions, and full-covariance
+  repeatability. Their constraint/status contracts were not strong enough for
+  a public confidence-interval claim. The corresponding exports, reference
+  pages, and pkgdown entries were removed; explicit requests now stop with a
+  reader-facing explanation.
+- Kept direct TMB-parameter profiles and fixed linear combinations. The
+  released reference cutoff is chi-square. No automatic t degrees of freedom
+  are invented; the article explains the evidence needed before a target-
+  specific t correction could be taught.
+- Made `profile_targets()` direct-only, removed dead derived-target advice from
+  `confint_inspect()`, and corrected `tmbprofile_wrapper()` so it no longer
+  directs readers to internal source helpers.
+- Corrected `extract_repeatability()` documentation and messages: a profile
+  request currently returns an explicitly labelled full-covariance Wald
+  fallback. It no longer claims a fast and accurate direct-contrast profile or
+  exposes phase bookkeeping.
+- Removed internal validation codes and validation-register wording from the
+  rendered public estate. Withdrew the Julia capability/registry exports that
+  existed only to expose internal bookkeeping.
+- Added regression tests covering the complete withdrawn export surface and
+  requiring every nonlinear profile route to remain blocked without a public
+  helper name or validation-row code.
+
+Verification:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> PASS; regenerated
+  the affected Rd files and removed withdrawn topics.
+- Focused test command:
+  `Rscript --vanilla -e 'devtools::test(filter="profile-ci-lv-effects|profile-targets|profile-route-matrix|confint-derived|profile-derived-curves|confint-inspect|extract-correlations-mixed-family|lv-parser-guard", stop_on_failure=FALSE)'`
+  -> 582 PASS, 0 FAIL, 0 WARN, 81 explicit heavy-test skips.
+- Installed the current source with
+  `devtools::install(quiet = TRUE, upgrade = FALSE, dependencies = FALSE)` and
+  ran a clean `pkgdown::build_site(new_process = FALSE, install = FALSE)` ->
+  PASS; prior generated output was moved to
+  `/tmp/gllvmTMB-pkgdown-clean-20260712-000101/pkgdown-site-before`.
+- Retained article count scan -> 18 article HTML pages plus the article index.
+- Built-estate stale-code scan used
+  `\\b(?:DIA|EXT|FG|FAM|MIX|PHY|SPA|RE|CI|LV|MET|ANI|COE|GJL)-[0-9]{2}\\b|validation_row|validation-debt`
+  across `pkgdown-site/**/*.html` and `search.json` -> 0 files.
+- Withdrawn-surface scan used
+  `profile_ci_(communality|correlation|lv_effects|proportions|repeatability)|profile_(communality|correlation|proportions|repeatability)|bootstrap_ci_lv_effects|gllvm_julia_(capabilities|gate_registry)`
+  across built HTML, search, and sitemap -> 0 files.
+- Profile-page render scan used
+  `(^|>)(Warning|Error)(:|<)|aes_string|fit_lv|design_df|validation_row|validation-debt`
+  -> 0 files.
+- `git diff --check` -> PASS.
+- Fisher final inference gate -> READY. Pat final applied-reader gate -> READY.
+  Rose identified the public-contract contradictions above; a final recheck of
+  the corrected clean build was requested.
+
+Not done:
+
+- Shinichi's visual checkpoint on the rebuilt profile article remains.
+- The wider retained-article visual sweep and the remaining README, NEWS,
+  reference, navigation, link, search/sitemap, and package-check gates remain.
+- Bootstrap extractors do not yet retain failed-refit metadata consistently
+  when called directly with a fit; this is a documented non-blocking follow-up
+  and no calibration claim is made on this page.
+
+## 2026-07-12 — missing-data reader contract and article gate (Codex)
+
+Branch: `claude/release-0.5.0`; local documentation-estate work only. No
+commit, push, PR, merge, tag, or release action.
+
+Review and decision:
+
+- Fisher, Rose, and Pat independently retained the rewritten missing-data page
+  but rejected its first final candidate. All three found that `imputed()` told
+  readers to join on a unit identifier it did not return. Rose and Fisher also
+  found that `predict_missing()` called stacked wide-cell indices original
+  source rows and exposed a synthetic `species = "placeholder"` column.
+- The panel also found overstated discrete output: ordered/unordered state
+  probabilities and labelled modal categories existed only in private fitted
+  metadata, not the public `imputed()` table. Pat found that the predictor
+  example lacked a long-data fit. Fisher rejected EBLUP language for a general
+  nonlinear/Laplace conditional mode. Pat found that the simulated traits used
+  different predictor slopes although the taught `mi(x)` coefficient was
+  shared, and that the example merged on only half of its declared join key.
+- The final candidate passed Fisher, Rose, and Pat with no blockers.
+
+Changes:
+
+- `traits()` now records the supplied wide-data source row for every stacked
+  cell. `predict_missing()` returns that source row as `original_row`, retains
+  the stacked `model_row`, and omits synthetic placeholder grouping columns.
+- `imputed()` now returns `level` and character `level_id` as the public join
+  key for unit, coarser `mi_group()`, and phylogenetic predictor levels. The
+  stable return contract, roxygen/Rd, design contract, and focused tests agree.
+- Added `mi` and `mi_group` help aliases to `impute_model`, documented the
+  coarser-level call shape, and changed the pkgdown category from multiple
+  imputation to modelled missing predictors.
+- Added a runnable long-format continuous-predictor fit. Its shared `mi(x)`
+  model matches the wide fit and the data-generating slopes. The rendered
+  comparison joins on both `level` and `level_id` and gives identical estimates
+  for all three masked sites.
+- Narrowed discrete prose to the public table: binary returns a conditional
+  probability; ordered returns an expected numeric score; unordered returns a
+  modal numeric code. Per-level probabilities and unordered labels are not
+  advertised as public output.
+- Replaced EBLUP claims with conditional-mode and local Gaussian/Laplace
+  conditional-SE language. Removed phase/design bookkeeping from the linked
+  missing-data reference pages and runtime messages.
+
+Verification:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> PASS; regenerated
+  `miss_control`, `predict_missing`, `impute_model`, `imputed`, categorical,
+  ordered-predictor, and phylogenetic-signal Rd topics.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e
+  'devtools::test(filter="missing-predictor-phylo|missing-predictor-gaussian|missing-response-traits", stop_on_failure=FALSE)'`
+  -> 257 PASS, 0 FAIL, 0 WARN, 0 SKIP.
+- Clean `pkgdown::build_site(new_process = FALSE, install = FALSE)` after
+  installing the current package -> PASS. Previous generated output is at
+  `/tmp/gllvmTMB-pkgdown-clean-20260712-003528/pkgdown-site-before`.
+- Built estate -> 18 retained article HTML pages; withdrawn inference/Julia
+  surface scan -> 0 files.
+- Built HTML/search/sitemap scan used
+  `\\b(?:DIA|EXT|FG|FAM|MIX|PHY|SPA|RE|CI|LV|MET|ANI|COE|GJL)-[0-9]{2}\\b|validation_row|validation-debt`
+  -> 0 files.
+- Missing-data article -> 30 local links, 0 missing targets; 0 rendered
+  Warning/Error blocks; no EBLUP, placeholder-data, phase/design, validation
+  code, or maintainer-process wording on the article and linked missing-data
+  help pages.
+- Browser inspection at 1440 x 900 -> document width 1440, main width 800,
+  no document overflow or console warnings/errors. At 390 x 844 -> document
+  width equals viewport width 390; code blocks scroll within their containers,
+  navbar collapses, page TOC remains usable, and the corrected output is
+  legible. Viewport override was reset after testing.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- Shinichi's visual checkpoint remains separate from the panel/browser gate.
+- The remaining retained-page visual checkpoints and final whole-estate
+  README, NEWS, reference, navigation, link, search/sitemap, and package-check
+  gates remain open.
+
+## 2026-07-12 — vocabulary glossary final reader gate (Codex)
+
+Scope:
+
+- Re-ran independent Fisher, Rose, and Pat reviews of
+  `vignettes/articles/gllvm-vocabulary.Rmd` and its rendered page.
+- Verified every recommendation against the current fit-health,
+  correlation-interval, grouping-key, latent-score, and missing-predictor
+  contracts before editing.
+- Kept this as a compact Tier-2 lookup page; no new capability was advertised.
+
+Findings and changes:
+
+- All three reviewers rejected the stale EBLUP label for a joint/Laplace
+  missing-predictor conditional mode. The glossary now uses the same fitted
+  conditional-mode and local Gaussian/Laplace conditional-SE language as
+  `imputed()` and explicitly excludes conditional means, multiple-imputation
+  draws, posterior summaries, and calibrated intervals.
+- Fisher required the identifying convention
+  `Var(u_i) = I_d` for the ordinary latent-score model and the
+  linear-predictor-scale meaning of loadings. The glossary now states both and
+  warns against comparing raw loading magnitudes across families or links.
+- Fisher required the implemented Fisher-z route to be described as an
+  `n_eff`-based sensitivity interval rather than generic local inference. The
+  glossary now gives `atanh(rho)` and `1 / sqrt(n_eff - 3)` and states the
+  coverage boundary.
+- Rose and Pat found that the convergence definition had drifted to a scaled
+  gradient. It now matches the conservative public contract: optimiser
+  success, finite objective, and unscaled maximum gradient below `0.01`;
+  `scaled_gradient` remains descriptive only.
+- Rose found that `interval_status` is not a universal extractor column. The
+  page now tells readers to inspect method/status fields where present plus
+  messages and warnings.
+- Pat required the glossary to distinguish `unit`, `unit_obs`, `cluster`, and
+  `cluster2`. Compact modelling-role definitions were added without assigning
+  fixed biological meanings.
+- Removed version-specific `0.5.0 is experimental and pre-CRAN` prose that
+  would become stale as soon as the release state changed.
+- Rose's first final gate found stale EBLUP, unit-only, and universal
+  `interval_status` text in `pkgdown-site/search.json` after an article-only
+  render. A complete site rebuild repaired the search index.
+- The first complete rebuild also demonstrated why the pkgdown workflow hides
+  root `AGENTS.md`, `CLAUDE.md`, and `ROADMAP.md`: pkgdown otherwise rendered
+  and indexed their internal validation codes. The final local rebuild used
+  the same temporary-hide path as CI; the source files were restored and their
+  public HTML/Markdown, search, and sitemap entries are absent.
+
+Verification:
+
+- `pkgdown::build_article("articles/gllvm-vocabulary", lazy = FALSE,
+  new_process = FALSE)` -> PASS.
+- `pkgdown::build_site(new_process = FALSE, install = FALSE)` -> PASS. The
+  final build temporarily hid `AGENTS.md`, `CLAUDE.md`, and `ROADMAP.md`, as the
+  pkgdown workflow does, then restored all three source files.
+- Final Fisher -> READY; final Rose -> READY; final Pat -> READY.
+- Vocabulary article -> 51 local links, 0 missing targets; 0 rendered
+  Warning/Error markers.
+- Public HTML/search/sitemap scan used
+  `\\b(DIA|EXT|FG|FAM|MIX|PHY|SPA|RE|CI|LV|MET|ANI|COE|GJL)-[0-9]{2}\\b|validation_row|validation-debt|validation register`
+  -> 0 files.
+- Stale vocabulary scan for EBLUP, the unit-only missing-predictor claim, and
+  the universal `interval_status` instruction -> 0 files in public HTML,
+  search, and sitemap.
+- Desktop browser gate at 1440 x 900 -> document width 1440, main width 800,
+  no horizontal or code overflow. Mobile gate at 390 x 844 -> document width
+  equals viewport width 390, collapsed navbar present, no document overflow,
+  and no browser console warnings/errors. The temporary viewport override was
+  reset after testing.
+- `git diff --check` -> PASS.
+
+Not run:
+
+- No package test suite was run for this prose-only slice. Current code
+  contracts were inspected directly, and the full pkgdown build executed the
+  retained article estate. Package-wide test/check gates remain part of the
+  final documentation-estate audit.
+
+Not done:
+
+- Shinichi's visual checkpoint remains separate from the panel/browser gate.
+- Remaining retained-page visual checkpoints and the final whole-estate
+  README, NEWS, reference, navigation, links, search/sitemap, and package-check
+  gates remain open.
+
+## 2026-07-12 — formula keyword guide final reader gate and release-stage prose sweep (Codex)
+
+Scope:
+
+- Re-ran independent Fisher, Rose, and Pat reviews of
+  `vignettes/articles/api-keyword-grid.Rmd` and its rendered page.
+- Verified recommendations against the live parser, spatial mesh setup,
+  covariance extraction, `meta_V()` contract, generated help, focused tests,
+  and rendered desktop/mobile layouts before accepting them.
+- Extended the final built-estate scan when it found version-specific
+  `pre-CRAN` prose outside the keyword guide.
+
+Findings and changes:
+
+- Fisher required the guide to distinguish fixed animal, phylogenetic, and
+  dense-kernel operators from the model-implied spatial operator obtained from
+  an estimated SPDE precision. The covariance equation is now independent of
+  row ordering, and scalar mode is described as one shared trait-scale
+  multiplier rather than equal grouping-level marginal variances.
+- Fisher also required the guide to distinguish intercept-only diagonal Psi
+  from augmented `*_indep()` and `*_unique()` intercept--slope covariance.
+  The final Fisher review was READY.
+- Pat removed the cross-lineage helper catalogue and reduced `meta_V()` to a
+  bounded formula handoff rather than implying a complete applied
+  meta-analysis guide. The full `meta_V()` article remains deferred until its
+  estimands, diagnostics, and interpretation are ready. The final Pat review
+  was READY.
+- Rose removed false legacy labels from live slope syntax, narrowed the
+  compatibility heading, corrected mesh documentation, and removed design,
+  stage, roadmap, and maintainer-process wording from linked help. The final
+  Rose review was READY.
+- Corrected the long structured-slope formula and the public mesh contract:
+  readers build a mesh with `make_mesh()` and supply it inside the spatial
+  keyword or through the top-level `mesh` argument; `mesh = NULL` is not
+  advertised as automatic mesh construction.
+- Removed transient `0.5.0` / `pre-CRAN` lifecycle paragraphs from all retained
+  articles and the landing page while keeping each page's substantive evidence
+  boundary. Replaced the planned-release sentence in NEWS with durable release
+  content and removed the same process wording from
+  `pedigree_to_Ainv_sparse()` help.
+- The pkgdown workflow now hides `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`,
+  and `ROADMAP.md` during publication so contributor instructions cannot enter
+  public HTML, search, sitemap, or LLM indexes.
+
+Verification:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> PASS; regenerated
+  `pedigree_to_Ainv_sparse.Rd`.
+- Focused keyword-grid test -> 59 PASS, 0 FAIL, 0 WARN, 0 SKIP.
+- Focused formula, phylogenetic, spatial, augmented-LHS, latent-parser, and
+  animal-keyword tests -> 362 PASS, 0 FAIL, 2 expected external `nadiv`
+  warnings, 2 SKIP.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` -> PASS for the
+  complete retained article estate. A subsequent lazy rebuild rendered the two
+  final rank-selection and response-family prose corrections.
+- Home, affected reference topic, NEWS, sitemap, LLM documents, and search
+  indexes rebuilt with the same root-file exclusion used by CI -> PASS; all
+  four root source files were restored.
+- Retained estate -> 19 HTML files including the article index; 1,185 local
+  article links checked, 0 missing files or anchors.
+- Public HTML/search/sitemap/LLM scan used
+  `\\b(DIA|EXT|FG|FAM|MIX|PHY|SPA|RE|CI|LV|MET|ANI|COE|GJL)-[0-9]{2}\\b|validation_row|validation-debt|validation register`
+  -> 0 files.
+- Public root-file scan used
+  `AGENTS\\.md|CLAUDE\\.md|CONTRIBUTING\\.md|ROADMAP\\.md|development roadmap|internal planning docs`
+  -> 0 files; no generated root-instruction page exists.
+- Public release-stage scan for `pre-CRAN`, `not yet on CRAN`, and follow-on PR
+  language -> 0 entries. The NEWS title remains `gllvmTMB 0.5.0`, as required
+  for the release notes; lifecycle `experimental` remains a reader-facing API
+  stability label.
+- Keyword-guide desktop gate at 1440 x 900 -> no document overflow; main width
+  800 px and the 776 px matrix fits. Mobile gate at 390 x 844 -> no document
+  overflow, collapsed navigation present, and the 720 px matrix scrolls inside
+  its 366 px wrapper. Browser console warnings/errors -> 0.
+- `git diff --check` -> PASS.
+
+Not run:
+
+- No package-wide `devtools::check()` was run for this page gate. The final
+  documentation-estate check, reference semantic audit, NEWS internal-code
+  sweep, and whole-site visual review remain open.
+
+Not done:
+
+- Shinichi's visual checkpoint on the rebuilt keyword guide remains separate
+  from the panel/browser gate.
+- No commit, push, PR advancement, merge, tag, or release action was taken.
+
+## 2026-07-12 06:40 MDT -- retained-article re-audit and latent-focused phylogenetic guide
+
+The earlier estate label "reviewed" was not sufficient: Shinichi found a stale
+profile HTML page containing internal CI/EXT register codes. The 13 retained
+articles were therefore re-audited from source and rendered reader views in
+three parallel batches, followed by independent final Fisher, Rose, and Pat
+passes.
+
+Final changes and decisions:
+
+- Removed internal validation IDs, validation-debt/register prose, developer
+  process labels, and hidden warning-suppression patterns from the retained
+  reader pages. Scope and uncertainty boundaries remain, but they are written
+  in reader language.
+- Rebuilt every retained page non-lazily and checked source/render mtimes and
+  title/H1 parity. The stale profile HTML was replaced.
+- Applied the raw-gradient rule consistently: the `0.01` convergence cutoff
+  refers to raw `max_gradient`; scaled gradients are descriptive only. Point
+  optimizer health is kept separate from Hessian / `sdreport()` support for
+  Wald inference.
+- Added explicit `trait = "trait"` to all canonical long-format calls found by
+  the Option-A recheck; wide `traits(...)` calls remain compact.
+- The applied phylogenetic article is now latent-focused throughout. Both the
+  150-species example and the added 500-species comparison use
+  `phylo_latent(..., unique = TRUE)` and expose phylogenetic shared
+  `Lambda Lambda^T`, phylogenetic `Psi`, and total covariance. The comparison
+  adds ordinary `latent(..., unique = TRUE)` for non-phylogenetic species
+  covariance. `phylo_dep()` and `phylo_indep()` no longer appear as fitted
+  routes in this article; they remain available in the formula/reference
+  material. The 500-species choice is explicitly example-specific, not a
+  universal threshold.
+- Wrapped both five-column Lambda/Psi/total alignment tables in responsive
+  containers after Pat's mobile check.
+
+Final parallel audit evidence:
+
+- Fisher final audit: 13/13 PASS; symbolic alignment, raw-gradient wording,
+  point-vs-Hessian distinction, and latent phylogenetic component recovery
+  checked. At 150 species all 13 health rows pass (raw gradient 0.0009637,
+  Hessian rank 10/10). At 500 species all 16 health rows pass (raw gradient
+  0.0002954, Hessian rank 16/16). Weak component recovery in the 500-species
+  split is shown as weak rather than hidden.
+- Rose final audit: 13/13 PASS; source/render sync, internal-code and
+  suppression scans, deprecated-API boundary, Option-A naming, links, index,
+  sitemap, images, and fatal markers checked.
+- Pat final audit: 13/13 PASS; reader path, current syntax, mobile figure
+  handling, responsive Lambda/Psi tables, and the reaction-norm legend checked.
+- Shinichi visually approved the formula keyword page and the other retained
+  pages; the formula page approval is recorded in the disposition ledger.
+
+Commands and scans:
+
+- Forced non-lazy `pkgdown::build_article(file.path("articles", page),
+  lazy = FALSE, new_process = FALSE)` for all 13 retained pages -> all
+  rendered successfully; the latent-focused phylogenetic page was rebuilt
+  after the final source change.
+- Source/render scan for the 13-page set -> every HTML file is newer than its
+  source; zero global `warning = FALSE` / quiet-lifecycle suppressors, zero
+  internal validation IDs or register phrases, and zero stale four-mode or
+  deprecated-covariance teaching leaks outside explicit migration notes.
+- Rendered phylogenetic DOM -> two responsive alignment tables, current
+  `phylo_latent(..., unique = TRUE)` long/wide routes, the 150-species and
+  500-species sections, and no `phylo_dep()` / `phylo_indep()` route.
+- `pkgdown::check_pkgdown()` -> PASS, no problems.
+- `git diff --check` -> PASS.
+
+Maintainer checkpoint: Shinichi approved the retained pages for visual
+appearance. The page-specific Fisher/Rose/Pat blockers above are resolved;
+the next gate is the durable Claude handover, not another silent release step.
+
+## 2026-07-12 05:51 MDT -- four-mode public grammar and deprecated-function isolation
+
+Scope:
+
+- Applied the maintainer decision that active documentation teaches four
+  covariance modes only: Scalar, Independent, Dependent, and Latent.
+- Removed `unique()` / `*_unique()` functions from the API grid, vocabulary,
+  README, main `gllvmTMB()` help, current `phylo()` / `spatial()` wrapper help,
+  ordinary examples, and current runtime suggestions.
+- Preserved the current `unique = TRUE/FALSE` argument on latent helpers and
+  added an explicit sentence distinguishing that argument from deprecated
+  covariance functions.
+- Split `kernel_unique()` from the current dense-kernel reference topic. The
+  reference index now keeps `kernel_latent()`, `kernel_indep()`, and
+  `kernel_dep()` in the current covariance section and places only
+  `kernel_unique()` in the deprecated-function section. The deprecated topic
+  explicitly says dense-kernel modelling remains current, including the
+  `make_cross_kernel()` two-lineage input path.
+- Recorded the general central-API deprecation rule in
+  `docs/dev-log/decisions.md` and updated the article-disposition ledger.
+
+Review:
+
+- Pat: PASS; confirmed the rendered grid teaches exactly four modes and
+  suggested distinguishing the `unique =` argument and removing wording that
+  hinted at an unnamed alternative. Both suggestions were applied.
+- Fisher: initially found the stale “kernel quartet” phrase and legacy
+  covariance-function wording in main help; both were fixed and sent for
+  re-audit.
+- Rose: initially found the repeated five-mode / `mode = "diag"` pattern in
+  active phylogenetic and spatial wrapper documentation and runtime guidance;
+  all active instances were removed. Her final re-audit passed after spatial
+  orientation, invalid-mode, deprecated-animal, and redundancy messages were
+  redirected to current syntax only.
+
+Verification:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> regenerated
+  `gllvmTMB.Rd`, `phylo.Rd`, `spatial.Rd`, `phylo_indep.Rd`,
+  `spatial_indep.Rd`, and the split `kernel_unique.Rd` topic.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = TRUE); pkgdown::build_reference()'`
+  -> affected articles and reference index rebuilt. The stale generated
+  `kernel_unique.html` redirect was replaced by the dedicated deprecated topic
+  with `pkgdown::build_reference(topics = "kernel_unique")`.
+- Public-source allowlist scan -> no deprecated covariance-function calls in
+  README or articles; the three remaining vignette `unique()` calls are
+  verified `base::unique()` data operations.
+- Generated-man allowlist scan -> deprecated covariance-function calls occur
+  only in `animal_unique.Rd`, `diag_re.Rd`, `kernel_unique.Rd`,
+  `phylo_unique.Rd`, `spatial_unique.Rd`, and `unique_keyword.Rd`.
+- Stale wording scan for `4 x 5`, `4 × 5`, `five canonical`, `five modes`,
+  `kernel quartet`, `unique compatibility`, and `unique column` across README,
+  NEWS, vignettes, man, and `_pkgdown.yml` -> zero matches.
+- Rendered API article DOM -> table headers are `Source | Scalar | Independent
+  | Dependent | Latent`; zero deprecated covariance-function calls; live kernel
+  example contains `kernel_indep()`, `kernel_dep()`, and `kernel_latent()`.
+- Rendered reference DOM -> current kernel trio present in the normal reference
+  section; deprecated-section description says the broader kernel API remains
+  current; `kernel_unique()` links to a dedicated deprecated-alias page rather
+  than redirecting to `kernel_latent()`.
+- Focused canonical/formula/kernel suite -> PASS; 3 expected INLA skips.
+- Focused brms-sugar/deprecation suite -> PASS.
+- Final focused brms-sugar/canonical/deprecation suite after runtime-message
+  cleanup -> PASS; 3 expected INLA skips.
+- `pkgdown::check_pkgdown()` -> PASS, no problems.
+- `git diff --check` -> PASS.
+
+Boundary:
+
+- Parser compatibility, tests, internal implementation comments, technical
+  design records, historical dev logs, and base R `unique()` calls were not
+  rewritten. They remain necessary to maintain old formulas and provenance.
+- No commit, push, PR advancement, merge, tag, or release action was taken.
+
+## 2026-07-12 — NEWS and reference reader-process sweep (Codex / Rose)
+
+Scope:
+
+- Audited `NEWS.md`, exported roxygen, generated `man/*.Rd`, the pkgdown
+  reference index, withdrawn article routes, search, sitemap, and LLM indexes.
+- Applied the project-local Rose pre-publish gate. Its historical instruction
+  to place validation-register IDs in public prose is superseded by the
+  maintainer's current reader-facing rule: evidence is checked privately, but
+  internal IDs and process bookkeeping do not appear on public pages.
+
+Findings and changes:
+
+- Confirmed that the declared 53-code NEWS sweep is complete: NEWS source and
+  rendered changelog contain no internal validation identifiers.
+- Removed design numbers, stages, issue numbers, maintainer rulings, internal
+  plan paths, and validation-process language from eleven exported help topics.
+  Each replacement states the statistical or API boundary directly.
+- Rose found one real API/prose mismatch: ordinary `unique()` is accepted by
+  the formula parser but is not exported because that would shadow
+  `base::unique()`. NEWS now distinguishes that parser compatibility from the
+  exported source-specific `*_unique()` aliases; the `unique_keyword` help
+  gives the same contract.
+- Preserved substantive boundaries for fixed-rho sensitivity, kernel
+  separability, predictor-informed latent scores, augmented phylogenetic
+  slopes, loading intervals, species-level phylogenetic-signal denominators,
+  and fitted-model predictive checks while removing internal provenance.
+
+Verification:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> PASS after both
+  roxygen edits; all affected Rd files regenerated from source.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS, no export/reference
+  index or pkgdown-configuration problems.
+- Rose export check -> every function named as current in NEWS is exported;
+  withdrawn identifiability, coverage, and nonlinear profile prototypes are not
+  exported. Ordinary `unique()` was checked separately as parser syntax.
+- Rose removed-route cascade -> 0 stale generated routes and 0 surviving source
+  links across all 15 retired article slugs.
+- Generated reference pages, NEWS, sitemap, LLM documents, and search index
+  rebuilt with contributor root files excluded -> PASS; source root files
+  restored.
+- `man/*.Rd` scan for design/stage/phase labels, maintainer language,
+  validation-register terms, milestones, roadmaps, release-process wording,
+  PRs, and issue numbers -> 0 files.
+- Public HTML/search/sitemap/LLM scan for internal validation identifiers ->
+  0 files; scan for `pre-CRAN`, `not yet on CRAN`, `post-CRAN`, and follow-up PR
+  wording -> 0 files.
+- Preview-banner scan -> 0 retained preview banners.
+- `git diff --check` -> PASS.
+
+Not run:
+
+- Package-wide tests and `devtools::check()` were not repeated for this
+  documentation-only sweep. They remain part of the final release gate.
+- The package-wide final render remains open.
+
+Not done:
+
+- No commit, push, PR advancement, merge, tag, or release action was taken.
+
+## 2026-07-12 — printed-output and non-article visual gate (Codex)
+
+Scope and findings:
+
+- Audited report-ready covariance/correlation tables for internal provenance
+  leakage. The underlying objects may retain private machinery columns for
+  tests, but their print methods and rendered pages must never display them.
+- Inspected the landing page, article chooser, reference index, changelog, and
+  responsive navbar in the local browser at desktop, small-laptop, and mobile
+  widths.
+- Corrected the estate ledger's outdated 1024 px expectation. The intentional
+  CSS contract collapses the full navigation below 1280 px; at 1024 px the
+  correct gate is that the toggle exposes every menu and search without page
+  overflow, not that the full desktop row remains expanded.
+
+Verification:
+
+- `devtools::test(filter =
+  "reportable-table|extract-sigma-table|plot-covariance-tables")` -> 339 PASS,
+  0 FAIL, 0 WARN, 0 SKIP.
+- Rendered table-header scan for `validation_row`, gate/test/provenance labels,
+  and Julia gate codes across articles, reference, landing page, and NEWS ->
+  0 matches.
+- Reference index at 1440 x 900 -> document width 1440, main width 800, no
+  overflow, 17 reader-shaped groups, and 0 empty function descriptions.
+- Reference index at 390 x 844 -> document width 390, main width 390, compact
+  logo, hidden desktop table of contents, and accessible navigation toggle.
+- Navbar at 1024 x 768 -> document and navigation widths 1024; toggle opens,
+  `aria-expanded = true`, all dropdown entry points and search are reachable,
+  and no horizontal overflow occurs.
+- Changelog at 1440 x 900 and 390 x 844 -> no overflow, no rendered errors, and
+  no internal validation identifiers; visual inspection passed.
+- Landing page at 1440 x 900 and 390 x 844 -> no overflow, no internal codes,
+  and all three mobile tables fit without horizontal scrolling; visual
+  inspection passed.
+- Article chooser at 1440 x 900 and 390 x 844 -> 17 retained article links,
+  no internal codes, no overflow; visual inspection passed.
+- Browser console log across the inspected pages -> 0 entries.
+- Temporary viewport override was reset and the audit tab closed; Shinichi's
+  article-review tabs were left untouched.
+- `git diff --check` -> PASS.
+
+Not done:
+
+- The final clean pkgdown build, package-wide check, completion audit, and
+  maintainer visual approvals remain separate gates.
+- No commit, push, PR advancement, merge, tag, or release action was taken.
+
+## 2026-07-12 — final clean build and `--as-cran` gate (Codex)
+
+First check and corrections:
+
+- The first `devtools::check(args = "--as-cran")` correctly failed with five
+  stale test expectations and one source-tarball note. No model-code failure
+  was found.
+- Updated the Student-t df <= 2 test to require the current honest `NA` result
+  and both explicit warnings rather than the withdrawn finite fallback.
+- Replaced a reaction-norm correlation-profile coverage assertion with point
+  covariance/correlation recovery plus an explicit assertion that the
+  unsupported nonlinear profile route fails with its public error class.
+- Added Gaussian family/trait metadata to a synthetic cluster-proportion
+  fixture so its zero link residual is defined instead of silently inferred.
+- Converted deliberate Julia, exact-residual, and external `nadiv` warnings
+  into explicit expectations or suppression at the test boundary.
+- Added `.claude/` to `.Rbuildignore`, matching the existing `.agents/` and
+  `.codex/` exclusions. The directory remains untouched in the working tree.
+- Verified that the check's unused-snapshot cleanup occurred only inside its
+  temporary source copy; no working-tree visual snapshot was deleted.
+
+Verification:
+
+- Focused stale-contract suite covering animal keywords, the Julia bridge,
+  predictive diagnostics, Student-t residual scale, ordinary latent reaction
+  norms, and cluster proportions -> 863 PASS, 0 FAIL, 0 WARN, 22 expected
+  SKIP.
+- Clean `pkgdown::build_site(new_process = FALSE, install = FALSE)` with
+  contributor root files temporarily excluded -> PASS through home, all
+  reference pages, all retained articles, NEWS, sitemap, LLM docs, redirects,
+  search, and final problem check. All root files were restored.
+- Second `Rscript --vanilla -e
+  'devtools::check(args = "--as-cran", quiet = TRUE)'` -> 0 errors,
+  0 warnings, 0 notes in 5m 27s.
+- Final `pkgdown::check_pkgdown()` -> PASS, no problems.
+- Final whole-site link check -> 229 HTML pages, 6,920 local links and anchors,
+  0 missing targets.
+- Final public HTML/search/sitemap/LLM scans -> 0 internal validation-code
+  files, 0 release-process files, 0 contributor-root mentions, and 0 rendered
+  contributor-root pages.
+- `git diff --check` -> PASS.
+
+Remaining gate:
+
+- The mechanical documentation estate is green. The active goal still requires
+  Shinichi's visual checkpoints on the retained pages before local commit and
+  before any release action can be considered.
+- No commit, push, PR advancement, merge, tag, or release action was taken.

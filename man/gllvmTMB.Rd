@@ -37,7 +37,7 @@ gllvmTMB(
 \arguments{
 \item{formula}{A glmmTMB-style formula, e.g.
 \code{value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip}.
-Fixed effects and any of the 4 x 4 keyword-grid covstructs above are
+Fixed effects and any of the four-mode grid covstructs above are
 supported (plus \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, and \code{\link[=meta_V]{meta_V()}}).}
 
 \item{data}{A data frame. With an ordinary response LHS such as
@@ -74,7 +74,7 @@ domains pass e.g. \code{unit_obs = "obs"} for behavioural syndromes.}
 factor (the "cluster" slot). When the column name matches the
 row/column names of \code{phylo_vcv} (or the tip labels of
 \code{phylo_tree}), this slot also drives the phylogenetic random
-effects (\code{phylo_latent}, \code{phylo_scalar}, \code{phylo_unique},
+effects (\code{phylo_latent}, \code{phylo_scalar}, \code{phylo_indep},
 \code{phylo_slope}). When the column does \strong{not} match a phylogenetic
 correlation, the slot still functions as a regular crossed/nested
 third grouping (e.g. \code{cluster = "population"} for 3-level
@@ -118,6 +118,7 @@ column matches).}
 with sigma_d = 1 fixed exactly; no delta-method approximation),
 \code{lognormal()} (log link), \code{Gamma(link = "log")},
 \code{nbinom2()} (NB2 negative binomial; log link),
+\code{nbinom1()} (NB1 negative binomial; log link),
 \code{tweedie()} (compound Poisson-Gamma; log link),
 \code{Beta()} (logit link, mean-precision parameterisation; y in (0, 1)),
 \code{betabinomial()} (logit link, mean-precision parameterisation;
@@ -134,8 +135,10 @@ beta-binomial (k-of-n) data, write the LHS of \code{formula} as
 \code{glmmTMB} convention); the engine then uses the per-row trial
 count \code{successes + failures} as the binomial size. A \verb{weights =}
 numeric vector of trial counts is also accepted as an alternative
-API (see Details). The \code{nbinom2()} family fits one log-dispersion
-parameter per trait (Var = mu + mu^2 / phi). The \code{tweedie()} family
+API (see Details). The negative-binomial families fit one
+log-dispersion parameter per trait: \code{nbinom1()} uses
+Var = mu * (1 + phi), while \code{nbinom2()} uses
+Var = mu + mu^2 / phi. The \code{tweedie()} family
 fits one log-phi and one logit-(p-1) per trait, with p in (1, 2).
 The \code{Beta()} and \code{betabinomial()} families each fit one
 log-precision per trait (a = mu*phi, b = (1-mu)*phi; Smithson &
@@ -178,8 +181,9 @@ responses must use the default \code{miss_control(response = "drop")}, and
 \code{mi()} predictor models are not supported. The default \code{FALSE} keeps the
 historical ML fit.}
 
-\item{mesh}{Optional mesh object from \code{make_mesh()}. Required when the
-formula includes a \code{spatial()} term; ignored otherwise.}
+\item{mesh}{Optional mesh object from \code{\link[=make_mesh]{make_mesh()}}. Required for any
+\verb{spatial_*()} or \code{spatial()} term unless that term supplies its own
+\verb{mesh =} argument; ignored only when the model has no spatial term.}
 
 \item{phylo_vcv}{(legacy global) Optional tip-only \verb{n_species × n_species} phylogenetic correlation matrix. The canonical syntax
 is \verb{vcv =} inside each \verb{phylo_*()} keyword. \strong{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}}} —
@@ -187,11 +191,11 @@ prefer \verb{tree =}. The dense path inverts via \code{Matrix::solve()},
 giving the same MLE as the sparse path but at \code{O(n^2)} memory and
 \code{O(n^3)} Cholesky cost. Use only when you have a Cphy in hand and
 no Newick tree (e.g. comparing against \code{nlme::corPagel}). See
-\code{dev/design/01-phylo-api-canonical-tree.md} for the full
+\code{docs/design/04-random-effects.md} for the full
 technical justification.}
 
-\item{phylo_tree}{(legacy global) Optional \code{ape::phylo} tree. The
-\strong{canonical Phase L (May 2026) syntax} is to pass \verb{tree =} inside
+\item{phylo_tree}{(legacy global) Optional \code{ape::phylo} tree. The current
+syntax is to pass \verb{tree =} inside
 each \verb{phylo_*()} keyword (e.g. \code{phylo_latent(species, d = K, tree = tree)}); this argument is the older outer-level fallback and is
 slated for soft deprecation. When supplied (in either form) the
 \verb{phylo_*()} terms build a sparse \eqn{\mathbf{A}^{-1}} over tips + internal
@@ -298,11 +302,11 @@ the same trait covariance, pairwise correlations, shared latent axes,
 and trait-specific variance. The formula syntax also supports fixed
 effects plus covariance-structure keywords organised by
 \emph{correlation source} (none / animal / phylo / spatial) and
-\emph{mode} (scalar / indep / dep / latent):
+\emph{mode} (scalar / independent / dependent / latent):
 }
 \details{
 \tabular{lllll}{
-\strong{source \\ mode} \tab \strong{scalar} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
+\strong{source \\ mode} \tab \strong{scalar} \tab \strong{independent} \tab \strong{dependent} \tab \strong{latent} \cr
 \emph{none}    \tab (omit)             \tab \code{\link[=indep]{indep()}}         \tab \code{\link[=dep]{dep()}}         \tab \code{\link[=latent]{latent()}}         \cr
 \emph{animal}  \tab \code{\link[=animal_scalar]{animal_scalar()}}  \tab \code{\link[=animal_indep]{animal_indep()}}  \tab \code{\link[=animal_dep]{animal_dep()}}  \tab \code{\link[=animal_latent]{animal_latent()}}  \cr
 \emph{phylo}   \tab \code{\link[=phylo_scalar]{phylo_scalar()}}   \tab \code{\link[=phylo_indep]{phylo_indep()}}   \tab \code{\link[=phylo_dep]{phylo_dep()}}   \tab \code{\link[=phylo_latent]{phylo_latent()}}   \cr
@@ -381,7 +385,7 @@ random effects). The shared-predictor scheme is the simplest hurdle
 formulation; a future release may decouple the two predictors so
 presence and abundance can have independent fixed and random effects.
 Only \code{type = "standard"} (the default) is currently wired in the
-multivariate engine; \code{type = "poisson-link"} is on the roadmap. Each
+multivariate engine; \code{type = "poisson-link"} is not implemented. Each
 delta family carries one per-trait dispersion of the \emph{positive}
 component (no extra Bernoulli dispersion). The response must be
 non-negative.
@@ -408,7 +412,7 @@ The dispatch is automatic:
 \describe{
 \item{No per-row \code{indep}, Gaussian/lognormal present}{One
 shared \code{sigma_eps} across Gaussian/lognormal rows. \emph{Not} per-trait.}
-\item{No per-row \code{indep} / \code{unique}, no Gaussian/lognormal rows}{\code{sigma_eps}
+\item{No per-row \code{indep}, no Gaussian/lognormal rows}{\code{sigma_eps}
 is mapped off; the family's intrinsic dispersion handles the residual
 (for ordinary Gamma, \code{phi_gamma}).}
 \item{\code{indep(0 + trait | g)} where \code{g} has fewer levels than
@@ -430,9 +434,9 @@ selection" below).}
 }
 
 Mnemonic: Gaussian/lognormal \code{sigma_eps} is the default; ordinary Gamma uses
-\code{phi_gamma}; per-row \code{indep} / legacy \code{unique} replaces the Gaussian/lognormal
-scalar residual with T per-trait residuals; non-per-row \code{indep} / legacy
-\code{unique} adds a higher-level random effect on top of the family residual;
+\code{phi_gamma}; per-row \code{indep} replaces the Gaussian/lognormal scalar residual
+with T per-trait residuals; non-per-row \code{indep} adds a higher-level random
+effect on top of the family residual;
 non-continuous families never carry \code{sigma_eps} regardless.
 
 \strong{Per-family-aware OLRE selection.} When

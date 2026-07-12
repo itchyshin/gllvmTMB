@@ -14,29 +14,24 @@ The main question is simple:
 > Which responses vary together, and how much of that variation is shared
 > versus response-specific?
 
-Unlike PCA or NMDS, `gllvmTMB` estimates the latent structure **inside a
-likelihood**: the loadings, correlations, and communalities it reports carry
-model-based uncertainty, rather than coming from a distance matrix or an
-eigen-decomposition. It is model-based ordination, fitted jointly with a
-per-response GLM family.
+Unlike PCA or NMDS, `gllvmTMB` estimates latent structure **inside a
+likelihood** rather than from a distance matrix or eigen-decomposition.
+Loadings, correlations, and communalities can be paired with model-based
+uncertainty where a target-specific route is supported; broad interval
+calibration remains incomplete.
 
 ## Start Here
 
 | If you want to... | Read this |
 |---|---|
 | fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
-| see the full worked example | [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html) |
-| choose how many latent dimensions to fit | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) |
-| learn the symbols before reading equations | [gllvmTMB vocabulary](https://itchyshin.github.io/gllvmTMB/articles/gllvm-vocabulary.html) |
-| interpret `Sigma`, correlations, `Lambda`, `psi`, and communality | [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) |
-| choose formula keywords | [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html) |
-| check response-family status | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html) |
+| choose the guide matching your data and question | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
 | check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
-| diagnose hard fits | [Convergence and start values](https://itchyshin.github.io/gllvmTMB/articles/convergence-start-values.html) and [Common pitfalls](https://itchyshin.github.io/gllvmTMB/articles/pitfalls.html) |
+| look up formulas, covariance terms, or families | [Reference index](https://itchyshin.github.io/gllvmTMB/reference/) |
 
-`gllvmTMB` is version `0.5.0`, pre-CRAN, and lifecycle **experimental**: the
-formula grammar, defaults, and extractor output may still change before the API
-is committed-stable. The public path above is deliberately bounded — fit one
+`gllvmTMB` is under active development and has lifecycle **experimental**: the
+formula grammar, defaults, and extractor output may still change as the API
+matures. The public path above is deliberately bounded — fit one
 ordinary Gaussian model, then interpret `Sigma`, correlations, loadings, and
 communality, then branch to diagnostics or keyword lookup. Bare-bar
 `(1 + x | g)` slopes remain reserved.
@@ -173,13 +168,12 @@ binary, ordered, and unordered fixed-effect routes. Ordinary missing
 grouping variables, offsets, weights, or design-matrix values still error
 because the model cannot build that row.
 
-## Current Status
+## Current support boundary
 
-The public site is intentionally small while `gllvmTMB` is pre-CRAN and
-experimental. Use the table below as the homepage version; the detailed,
-row-by-row evidence lives in the
-[validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)
-and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
+The public site is deliberately focused on workflows with usable examples and
+an explicit evidence boundary. Use the table below as the current reader-facing
+boundary; each linked guide states the narrower conditions under which its
+examples and interpretations apply.
 
 | Surface | Current message |
 |---|---|
@@ -188,10 +182,10 @@ and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 | Missing predictors | Supported for one explicitly modelled `mi()` predictor: Gaussian fixed, grouped, phylogenetic, binary, ordered, and unordered fixed-effect routes. Multiple `mi()` terms, non-Gaussian bounded/count predictors, and structured discrete predictor models are planned. |
 | First worked model | Gaussian `latent()` with its default `Psi` companion is the safest public decomposition example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
 | Latent-rank choice | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) compares Gaussian ordinary `latent()` candidate ranks with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows. These criteria help route model choice within a fixed candidate set; they do not prove the biological rank or replace diagnostics. |
-| Formula keywords | The full 4 x 4 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
-| Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |
+| Formula keywords | The four taught covariance modes—Scalar, Independent, Dependent, and Latent—are documented across ordinary, animal, phylogenetic, and spatial sources in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html). |
+| Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); evidence depth and supported covariance regimes vary by family. |
 | Fitted diagnostics | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) shows the first post-fit triage. `check_gllvmTMB()` reports numerical fit health; `predictive_check()`, `residuals()`, and `diagnostic_table()` provide fitted-model response diagnostics for the scoped Gaussian, Poisson, and NB2 paths. These are diagnostic displays, not posterior predictive checks or interval calibration. |
-| Advanced examples | Structured random slopes, cross-lineage coevolution, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries and stay out of the first-click public model guide until their reader paths are explicitly promoted. |
+| Deferred guides | Quantitative-genetic heritability, confirmatory loading constraints, applied mixed-response and ordinal workflows, broad interval calibration, and cross-package agreement do not yet have public worked guides. Their underlying functions may exist, but that alone is not a recommendation to use them for those scientific claims. |
 
 ## Current boundaries
 
@@ -210,17 +204,15 @@ overpromise):
   Gaussian reaction-norm decomposition `latent(1 + x | unit, d = K)` (and its
   long-form equivalent) is available and extracts with
   `extract_Sigma(level = "unit_slope", ...)`.
-- **Proportional `meta_V()`.** Only the additive exact known-V mode ships.
+- **Known-variance meta-analysis with `meta_V()`.** The function remains under
+  development and has no public worked guide yet. Do not infer a complete
+  applied workflow from the export alone.
 - **SPDE barrier meshes and broader REML.** A narrow Gaussian-only `REML = TRUE`
   pilot ships; non-Gaussian, weighted, and missing-data REML remain later work.
 - **Zero-inflated / hurdle / two-stage delta families with latent-scale
   correlations.** Two-sub-model families have two latent scales, so a single
   latent-scale correlation is ambiguous; deferred until a clean reporting
   convention is agreed.
-
-For the complete row-by-row scope ledger, including diagnostic and interval
-status, see the
-[validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md).
 
 ## Citation and acknowledgements
 
@@ -234,13 +226,13 @@ formatted entries; the curated list is:
 - **TMB engine**: Kristensen K, Nielsen A, Berg CW, Skaug H,
   Bell BM (2016). *TMB: Automatic Differentiation and Laplace
   Approximation.* Journal of Statistical Software, 70(5), 1-21.
-  <doi:10.18637/jss.v070.i05>
+  <https://doi.org/10.18637/jss.v070.i05>
 - **sdmTMB (when using `spatial_*()` keywords)**: Anderson SC,
   Ward EJ, English PA, Barnett LAK, Thorson JT (2025). *sdmTMB:
   An R Package for Fast, Flexible, and User-Friendly Generalized
   Linear Mixed Effects Models with Spatial and Spatiotemporal
   Random Fields.* Journal of Statistical Software, 115(2), 1-36.
-  <doi:10.18637/jss.v115.i02>
+  <https://doi.org/10.18637/jss.v115.i02>
 
 gllvmTMB inherits SPDE / mesh / anisotropy R helpers (`R/mesh.R`,
 `R/crs.R`, parts of `R/plot.R`) from `sdmTMB` (Sean C. Anderson,
@@ -264,24 +256,21 @@ package author, written against the TMB API.
   2.0) is the established multivariate GLLVM / ordination package,
   with variational, extended-variational, and Laplace approximation
   paths plus a matrix-in API; `gllvmTMB` is the TMB-Laplace
-  alternative with stacked-trait formula grammar, the 4 x 4 keyword
-  grid, and issue-tracked validation for its phylogenetic / spatial
-  covariance paths.
+  alternative with stacked-trait formula grammar and the four-mode
+  covariance-keyword grid.
 - `MCMCglmm` and `brms` are Bayesian alternatives for multivariate
   phylogenetic / multi-response models; `gllvmTMB` returns ML point
-  estimates with profile / Wald / bootstrap intervals (recovery-grade
-  point-interval reporting; empirical coverage is not yet calibrated)
-  at ML rather than MCMC cost.
+  estimates with profile, Wald, or bootstrap routes where supported. Method
+  availability does not establish calibrated interval coverage; follow the
+  boundary in the relevant guide before reporting uncertainty.
 
 A full scope comparison and decision matrix lives in
 [`docs/design/04-sister-package-scope.md`](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/04-sister-package-scope.md)
 on GitHub.
 
-## Roadmap
+## Support boundary
 
-The package is pre-CRAN. The
-[roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html)
-shows what is stable today, what is in flight, and what is
-planned next; it is refreshed as work progresses, and it is the
-canonical place to check the current status of every phase
-before adopting `gllvmTMB` for a project.
+Reader-facing support is defined by the current guides linked above. A formula
+being accepted by the parser does not guarantee that its covariance parameters
+are estimable from a particular data set; check fit health and the boundary in
+the relevant guide before interpreting a model.

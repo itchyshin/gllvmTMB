@@ -1,218 +1,358 @@
 ---
-title: "Response families"
-tier: 2 # technical reference for the multivariate family surface
+title: "Choose a response family"
+description: "Match the response support and sampling process to a family before adding multivariate covariance, and stop at the documented specialist boundaries."
+tier: 2
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Response families}
+  %\VignetteIndexEntry{Choose a response family}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment  = "#>",
-  eval     = FALSE
+  comment = "#>",
+  message = FALSE
 )
 ```
 
-This reference is for readers who already know the covariance
-structure they want and need to choose the response likelihood. The
-family controls the link function, the distributional variance, and
-the link-scale residual term that `extract_Sigma()` and
-`extract_Omega()` use when reporting non-Gaussian covariance.
+<style type="text/css">
+.family-lookup {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.family-lookup table {
+  min-width: 680px;
+}
+</style>
 
-> **Scope boundary.** This page is a technical lookup for families that
-> the multivariate engine maps through `family_to_id()` and for exported
-> constructors that are intentionally not advertised as current
-> multivariate examples. Gaussian, the binomial links, Poisson, NB1, NB2,
-> Gamma, lognormal, beta, beta-binomial, Student-t, Tweedie, and ordinal
-> probit are validated multivariate families. The truncated-count families
-> are implemented but only partially validated at the depth shown here.
-> Standard `delta_lognormal()` and `delta_gamma()` hurdle fits are
-> engine-mapped, but two-part response-scale correlations remain outside
-> this article's advertised interpretation boundary, and mixed-family
-> delta/hurdle latent-scale correlations are route-only -- implemented but
-> not yet calibrated -- rather than an interpretation readers can use
-> today. Exported constructors that are not mapped by `family_to_id()`
-> remain outside the public multivariate engine surface until their
-> validation rows move.
+Choose a family from the values the response can take **and** the process that
+generated those values. The family sets the likelihood and link; covariance
+terms such as `latent()` or `indep()` describe dependence among responses.
+Changing the family can therefore require different response coding,
+diagnostics, and interpretation—not merely a different argument value.
 
-The current multivariate engine recognises 16 family entries. The
-source of truth is the `family_to_id()` mapping in `R/fit-multi.R`;
-families not mapped there should be treated as unsupported in
-`gllvmTMB()` multivariate fits until a later implementation and
-simulation check say otherwise.
+Start with the simplest scientifically defensible family, inspect fit and
+predictive diagnostics, and change it when the observed mean--variance or zero
+pattern contradicts its assumptions.
 
-## Quick Lookup
+## Start from the response
 
-| Response looks like | Family | Link(s) currently accepted by the multivariate engine | Validation / interpretation status | Notes |
-|---|---|---|---|---|
-| continuous, unbounded | `gaussian()` | identity | validated | Default family. |
-| binary or binomial trials | `binomial()` | logit, probit, cloglog | validated | Use `cbind(success, failure)` or `weights` for multi-trial binomial data. |
-| counts | `poisson()` | log | validated | No dispersion parameter; add an observation-level `indep()` diagonal term only when that is identifiable. |
-| overdispersed counts (linear variance) | `nbinom1()` | log | validated | NB1 variance grows linearly with the mean. |
-| overdispersed counts (quadratic variance) | `nbinom2()` | log | validated | NB2 variance grows quadratically with the mean. |
-| positive continuous, right-skewed | `lognormal()` | log | validated | Use only when the response is strictly positive. |
-| positive continuous, constant CV | `Gamma(link = "log")` | log | validated | Base R `Gamma()`, with log link in the engine. |
-| non-negative continuous with zeros | `tweedie()` | log | validated | Compound Poisson-Gamma style mean-variance relationship. |
-| proportions in `(0, 1)` | `Beta()` | logit | validated | Boundary 0 and 1 values need separate handling before fitting. |
-| overdispersed binomial trials | `betabinomial()` | logit | validated | For k-of-n responses with extra-binomial variation. |
-| continuous with heavy tails | `student()` | identity | validated | Degrees of freedom can be estimated or fixed. |
-| positive counts, no zeros | `truncated_poisson()` | log | implemented, validation partial | Requires integer responses `y >= 1`. |
-| overdispersed positive counts, no zeros | `truncated_nbinom2()` | log | implemented, validation partial | Requires integer responses `y >= 1`. |
-| non-negative continuous with exact zeros | `delta_lognormal()` | logit + log | validated for standard hurdle fits; response-scale correlation undefined | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
-| non-negative continuous with exact zeros | `delta_gamma()` | logit + log | validated for standard hurdle fits; response-scale correlation undefined | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
-| ordered categories with `K >= 3` | `ordinal_probit()` | probit | validated | Threshold model with latent residual variance fixed at 1. |
+### Continuous responses
 
-Use this table as a likelihood lookup. For covariance keywords, see
-[Formula keyword grid](api-keyword-grid.html). In that grid, `indep()` is the
-documented standalone diagonal spelling. Binary species,
-mixed-family, and other non-Gaussian worked examples are under audit until
-their example objects, diagnostics, and validation caveats are ready.
+<div class="table-responsive family-lookup">
 
-## Single-Family Fits
+| Observed values and sampling process | Family and link | Main assumption or warning |
+|---|---|---|
+| Any real value; roughly symmetric conditional errors | `gaussian()`; identity | Residual variation is Gaussian on the response scale. |
+| Any real value; occasional genuine heavy-tailed observations | `student()`; identity | `df = NULL` estimates degrees of freedom; `student(df = 3)` fixes them. The fitted scale is not the response SD, and the variance is infinite when `df <= 2`. |
+| Strictly positive; multiplicative errors are plausible | `lognormal()`; log | The linear predictor describes the mean of `log(y)`, so `exp(eta)` is the conditional median, not the arithmetic mean. |
+| Strictly positive; variance grows approximately with the square of the mean | `Gamma(link = "log")`; log | Uses a mean--shape parameterization with constant conditional coefficient of variation within a trait. |
+| Non-negative continuous values with exact zeros from one compound process | `tweedie()`; log | Assumes `Var(Y) = phi * mu^p`, with `1 < p < 2`. It is a one-likelihood alternative to an explicit occurrence/positive decomposition. |
+| Non-negative continuous values with a scientifically meaningful occurrence process and positive part | `delta_lognormal()` or `delta_gamma()`; logit + log | The current standard hurdle model uses the **same** linear predictor for occurrence and positive mean. See the specialist boundary below before using covariance terms. |
 
-A single `family = ...` value applies the same response family to all
-rows. Long data remain the canonical form:
+</div>
 
-```{r}
+`Gamma()` and `lognormal()` can both fit right-skewed positive data. Choose from
+the sampling mechanism and residual pattern rather than the histogram alone:
+lognormal errors are additive after taking logs, whereas Gamma variation is
+described through a conditional coefficient of variation.
+
+For exact zeros, ask whether one compound process is plausible or whether zero
+versus positive observations represent distinct biological events. That
+scientific distinction is more important than which likelihood gives the
+smallest AIC in one dataset.
+
+### Binary, trial, proportion, and ordinal responses
+
+<div class="table-responsive family-lookup">
+
+| Observed values and sampling process | Family and link | Main assumption or warning |
+|---|---|---|
+| A 0/1 event or successes out of known trials | `binomial()`; logit, probit, or cloglog | Use `cbind(successes, failures)` for trials. A flat response plus `weights = n_trials` is also accepted. |
+| Successes out of known trials with extra-binomial variation | `betabinomial()`; logit | Uses the same trial encoding as binomial data and estimates a precision parameter for each trait. |
+| A continuous proportion strictly inside `(0, 1)` | `Beta()`; logit | Genuine zeros or ones are not Beta observations; do not silently nudge them inward without a scientific measurement model. |
+| Ordered categories coded consecutively as `1, ..., K`, with `K >= 3` | `ordinal_probit()`; probit | Category order is part of the model. For two categories, use `binomial(link = "probit")`. Recover estimated thresholds with `extract_cutpoints()`. |
+
+</div>
+
+`ordinal_probit()` uses an underlying liability
+
+\[
+y^* = \eta + \varepsilon, \qquad \varepsilon \sim N(0, 1),
+\]
+
+and records category \(k\) when \(\tau_{k-1} < y^* \leq \tau_k\).
+`gllvmTMB` fixes \(\tau_1 = 0\) as its location convention and estimates the
+remaining \(K-2\) free boundaries. `extract_cutpoints(fit)` returns those
+boundaries from `cutpoint_2` onward. A cutpoint is a boundary between adjacent
+categories on the latent probit scale, not a regression effect or an observed
+category-unit change. A predictor shifts the same latent liability across all
+boundaries, which is the proportional-threshold assumption.
+
+Prepare ordinal responses deliberately. Use meaningful ordered categories
+coded as consecutive integers `1, ..., K`; a numeric code does not make a
+nominal category ordinal. The current engine infers \(K\) from the largest
+observed code for each trait, so the highest intended category must occur in
+the fitted data and gaps must be resolved before fitting. Two-category input is
+accepted as the probit special case, but new binary analyses should use
+`binomial(link = "probit")` directly.
+
+This lookup stops at family choice and cutpoint interpretation. Ordinal
+variance, correlation, or heritability requires a replicated or externally
+structured design that identifies the relevant variance tier; a converged fit
+with one random effect per observation is not evidence that such a component
+has been recovered.
+
+For multi-trial binomial and beta-binomial data, `weights` means trial counts.
+For other families, `weights` are likelihood multipliers. Prefer the explicit
+`cbind(successes, failures)` form when possible because it makes the denominator
+visible in the formula.
+
+### Counts
+
+<div class="table-responsive family-lookup">
+
+| Sampling process | Family and link | Conditional variance |
+|---|---|---|
+| Counts with no remaining dispersion after the mean structure and random effects | `poisson()`; log | `Var(Y) = mu` |
+| Overdispersion that grows approximately linearly with the mean | `nbinom1()`; log | `Var(Y) = mu * (1 + phi)` |
+| Overdispersion that grows approximately quadratically with the mean | `nbinom2()`; log | `Var(Y) = mu + mu^2 / phi` |
+| Positive counts because zero cannot be observed by design | `truncated_poisson()` or `truncated_nbinom2()`; log | Conditions on `Y >= 1`; every response must be a positive integer. |
+
+</div>
+
+Do not choose a zero-truncated family merely because zeros were deleted during
+cleaning. It is appropriate only when the observation process could not produce
+or record a zero. Likewise, an observation-level random effect is not an
+automatic repair for Poisson overdispersion: first check whether the missing
+structure is better represented by NB1/NB2, a predictor, a grouping term, or a
+different sampling process.
+
+## One family in long and wide data
+
+A single family applies to every response in the fit. The long and
+`traits(...)` wide calls below fit the same Poisson model; only the data shape
+and formula shorthand differ.
+
+```{r count-data}
+library(gllvmTMB)
+
+set.seed(20260711)
+n_unit <- 40L
+trait_names <- c("beetles", "moths", "spiders")
+unit <- factor(seq_len(n_unit))
+z <- rnorm(n_unit, sd = 0.45)
+
+eta <- cbind(
+  beetles = 0.2 + 0.8 * z,
+  moths = 0.6 - 0.4 * z,
+  spiders = 0.1 + 0.5 * z
+)
+Y <- matrix(
+  rpois(length(eta), lambda = exp(eta)),
+  nrow = n_unit,
+  dimnames = list(NULL, trait_names)
+)
+
+counts_wide <- data.frame(unit = unit, Y, check.names = FALSE)
+counts_long <- data.frame(
+  unit = rep(unit, each = length(trait_names)),
+  trait = factor(rep(trait_names, times = n_unit), levels = trait_names),
+  count = as.vector(t(Y))
+)
+```
+
+```{r count-fits}
 fit_long <- gllvmTMB(
-  value ~ 0 + trait +
-    latent(0 + trait | individual, d = 2),
-  data = df_long,
+  count ~ 0 + trait + latent(0 + trait | unit, d = 1),
+  data = counts_long,
   trait = "trait",
-  unit = "individual",
-  family = gaussian()
+  unit = "unit",
+  family = poisson(),
+  silent = TRUE
 )
-```
 
-The wide data-frame path reaches the same engine through
-`traits(...)`. Use the compact wide syntax when your data already
-have one row per unit and one column per trait:
-
-```{r}
 fit_wide <- gllvmTMB(
-  traits(length, mass, wing, tarsus, bill) ~
-    1 +
-    latent(1 | individual, d = 2),
-  data = df_wide,
-  unit = "individual",
-  family = gaussian()
+  traits(beetles, moths, spiders) ~ 1 + latent(1 | unit, d = 1),
+  data = counts_wide,
+  unit = "unit",
+  family = poisson(),
+  silent = TRUE
+)
+
+data.frame(
+  input = c("long", "wide"),
+  logLik = c(as.numeric(logLik(fit_long)), as.numeric(logLik(fit_wide)))
 )
 ```
 
-Only the `family` argument changes when you move from Gaussian to
-another supported likelihood. The covariance keyword grammar stays
-the same, but the diagonal keyword choice should still match the
-model interpretation: ordinary `latent()` already includes the diagonal
-Psi component by default; use `indep()` for standalone marginal diagonal tiers
-and identifiable observation-level random effects.
+Equivalent long and wide designs should give the same likelihood. This check
+does not show that Poisson is the right family; that requires diagnostics and a
+scientific mean--variance argument.
 
-## Mixed-Family Fits
+## Different families in one fit
 
-Mixed-family fits use long data with one row per observation and a
-column that selects the family for that row. Pass a list of family
-objects and set `attr(fam, "family_var")` to the selector column.
+A mixed-family model needs long data because the family selector belongs to
+each stacked response row. Use a factor with explicit levels and a **named**
+family list; names are matched to selector levels, so accidental list ordering
+cannot silently swap likelihoods.
 
-```{r}
-df_long$family <- factor(
-  df_long$family,
+```{r mixed-syntax, eval = FALSE}
+mixed_long$family <- factor(
+  mixed_long$family,
   levels = c("continuous", "presence", "count")
 )
 
-fam <- list(gaussian(), binomial(), poisson())
+fam <- list(
+  continuous = gaussian(),
+  presence = binomial(),
+  count = poisson()
+)
 attr(fam, "family_var") <- "family"
 
 fit_mixed <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 2),
-  data = df_long,
+  value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+  data = mixed_long,
   trait = "trait",
-  unit = "site",
+  unit = "unit",
   family = fam
 )
 ```
 
-The list order must match the factor levels in the selector column.
-If the selector is a character column, the engine sorts the unique
-values before matching them, so an explicit factor is safer.
+An unnamed list is still accepted, but its order must match the selector factor
+levels exactly. A named list is safer. Keep one family within each trait; in
+particular, an ordinal trait must own all of its rows because its thresholds are
+estimated per trait.
 
-This page is a family lookup, not the mixed-response worked example.
-The separate mixed-response article can show a runnable Gaussian +
-binomial + Poisson analysis with simulated data and interpretation.
-Use non-delta, one-link families for public mixed-family examples for
-now. Delta and hurdle families are deliberately not used in the
-mixed-family example path here: the mixed-family delta/hurdle route is
-implemented and route-only (latent structure constrained to the
-positive/continuous submodel, with the occurrence submodel
-fixed-effects-only), but the cross-family correlation it reports is not
-yet calibrated, so it is not advertised as an interpretation readers
-can use today.
+Check that rule explicitly before fitting:
 
-## Scale And Extraction
+```{r mixed-family-check, eval = FALSE}
+families_per_trait <- tapply(
+  as.character(mixed_long$family),
+  mixed_long$trait,
+  function(x) length(unique(x))
+)
+stopifnot(all(families_per_trait == 1L))
+```
 
-`extract_Sigma()` reports trait covariance on the latent or link
-scale. For Gaussian responses, there is no distribution-specific
-latent residual term beyond the modelled covariance. For binomial,
-Poisson, Tweedie, beta-binomial, delta, and ordinal responses, the
-family determines the residual term that makes the reported
-covariance interpretable on the link scale.
+Mixed-family fitting does not make every response directly comparable on its
+raw observed scale. Define the scale and scientific target before interpreting
+cross-trait covariance.
 
-That is why family choice is not cosmetic. A Poisson count model and
-a Gaussian model can share the same ordinary `latent()` formula but
-will not imply the same residual scale. Use `extract_Omega()` and
-`extract_Sigma()` after fitting, and read the extractor output on the
-scale implied by the family.
+## Covariance scale and uncertainty
 
-Correlations need one extra sentence of caution. `extract_correlations()`
-reports correlations in the fitted covariance tier, not correlations
-of the raw observed responses. For single-link families this is usually
-the quantity readers want: a latent-liability or link-scale trait
-correlation. For two-part families such as `delta_lognormal()` and
-`delta_gamma()`, there are several possible scientific targets:
-presence/absence correlation, positive-response correlation, and total
-observed-response correlation. The current engine fits those families
-with one shared linear predictor, so the covariance tier is still
-well-defined, but the link-residual adjustment used by
-`extract_Sigma(link_residual = "auto")` is an approximate diagonal
-scale correction, not a full observed-scale two-part correlation
-calculus.
+The fitted covariance tier and the observed responses are different objects.
+For `extract_Sigma()`:
 
-The practical rule is to report two-part family correlations as
-latent/link-scale model correlations unless a future article or
-extractor explicitly defines a response-scale estimand. Do not describe
-them as raw biomass, abundance, or total-response correlations without
-that extra definition.
+- `link_residual = "none"` returns the covariance components fitted in the
+  selected tier;
+- `link_residual = "auto"` adds a family-specific diagonal convention before
+  converting to correlations.
 
-## Exported But Not Engine-Mapped
+The automatic addition is exact for fixed-scale links such as probit and an
+approximation for several count, proportion, and two-part families. Neither
+setting generally gives the correlation between raw observed responses. Choose
+between them by stating the estimand, not by treating `"auto"` as universally
+better.
 
-`R/families.R` also contains exported constructor helpers that are not
-currently mapped by `family_to_id()` for multivariate `gllvmTMB()`
-fits. Do not present these as supported response families in public
-examples until the engine, tests, and documentation are updated
-together.
+For a fitted mixed-family model, keep the two point-estimate targets separate:
 
-| Constructor | Status | Current status in multivariate `gllvmTMB()` |
-|---|---|---|
-| `gengamma()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `gamma_mix()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `lognormal_mix()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `nbinom2_mix()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `truncated_nbinom1()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `censored_poisson()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `delta_beta()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `delta_gengamma()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `delta_gamma_mix()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `delta_lognormal_mix()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `delta_truncated_nbinom1()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `delta_truncated_nbinom2()` | roadmap | exported constructor, not mapped in `family_to_id()` |
-| `delta_poisson_link_gamma()` | compatibility | deprecated compatibility helper |
-| `delta_poisson_link_lognormal()` | compatibility | deprecated compatibility helper |
+```{r mixed-family-point-estimates, eval = FALSE}
+# Covariance fitted at the selected random-effect tier. Entries retain the
+# units of their trait-specific linear predictors.
+structural <- extract_Sigma(
+  fit_mixed,
+  level = "unit",
+  part = "total",
+  link_residual = "none"
+)
 
-The practical rule is simple: if a family is in the quick-lookup table
-above, it is a documented multivariate engine family. If it appears
-only in this unsupported table, treat it as roadmap or compatibility
-surface for now.
+# Pairwise family/link-scale correlations after adding each trait's
+# link-residual convention to its diagonal.
+adjusted <- extract_Sigma(
+  fit_mixed,
+  level = "unit",
+  part = "total",
+  link_residual = "auto"
+)
+
+structural$Sigma
+adjusted$R
+adjusted$note
+```
+
+Raw covariance magnitudes are not directly comparable when one predictor is in
+identity-link units, another in logit units, and another in log units. The
+correlations in `adjusted$R` are dimensionless, but they remain conditional on
+the family, link, fitted mean trajectory, and residual convention for each
+trait. For example, the Poisson addition uses a trait-level approximation based
+on its fitted mean. These are pairwise model/link-scale summaries—not a single
+universal latent scale and not observed-response correlations.
+
+For mixed-family fits, point estimates can describe dependence on the selected
+latent or link scale, but broad interval coverage has not been established for
+this target. Keep the public workflow point-estimate-only; do not use mixed-family
+correlation intervals as calibrated uncertainty.
+
+### Specialist boundary for hurdle families
+
+`delta_lognormal()` and `delta_gamma()` currently use one shared predictor:
+
+\[
+\Pr(Y > 0) = \operatorname{logit}^{-1}(\eta), \qquad
+E(Y \mid Y > 0) = \exp(\eta).
+\]
+
+Use these constructors only when that shared-predictor assumption is
+scientifically defensible. The current reader-facing route is the standard
+fixed-effect hurdle fit. The package does not yet supply a response-scale
+covariance or correlation interpretation for hurdle fits, so do
+not describe fitted-tier correlations as correlations of total biomass,
+abundance, or another observed two-part response.
+
+## Diagnose the fitted choice
+
+Family choice is provisional until the fitted model behaves sensibly.
+
+```{r diagnostics, eval = FALSE}
+check_gllvmTMB(fit_long)
+
+# Exact randomized-quantile residuals are currently available for
+# Gaussian, Poisson, NB1, and NB2 rows.
+residuals(fit_long, type = "randomized_quantile", seed = 1)
+
+# Rootograms currently support Poisson and NB2 count rows.
+predictive_check(fit_long, type = "rootogram", ndraws = 100, seed = 1)
+```
+
+Systematic residual or rootogram structure can indicate a wrong family, link,
+mean model, offset, or random-effect structure. It does not identify which one
+automatically. Compare alternatives that represent credible sampling processes,
+then recheck convergence and prediction rather than choosing solely by AIC.
+
+Common input failures have direct remedies:
+
+- **Gamma or lognormal data contain zero:** revisit the measurement process;
+  use a family that allows zero rather than adding an arbitrary constant.
+- **Counts are negative or non-integer:** correct the response definition; a
+  count likelihood is not appropriate for transformed or continuous values.
+- **Beta data include 0 or 1:** model the boundary process explicitly or choose
+  another response representation.
+- **Ordinal categories are not consecutive integers starting at 1:** recode an
+  ordered factor with `as.integer()` and verify the level order.
+- **A link is rejected:** use the accepted link shown above; the constructor may
+  allow a base-R link that the multivariate engine does not.
+- **Mixed-family names do not match selector levels:** name every family-list
+  element exactly as the factor level.
+- **A constructor is absent from this page:** it is not a supported
+  multivariate response family; choose an available likelihood rather than
+  relying on an exported experimental constructor.
+
+For the full diagnostic workflow, continue to
+[Fit diagnostics](fit-diagnostics.html). For covariance syntax, see the
+[Formula keyword grid](api-keyword-grid.html).

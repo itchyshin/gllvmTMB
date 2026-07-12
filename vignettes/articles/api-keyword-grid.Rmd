@@ -1,6 +1,7 @@
 ---
 title: "Formula keyword grid"
-tier: 2 # technical reference for the covariance keyword grammar
+description: "Choose a correlation source and covariance mode, then translate the intended model into matching long and traits(...) wide formulas."
+tier: 2
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -12,149 +13,143 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment  = "#>",
-  eval     = FALSE
-)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-This reference is for readers who already know they need a
-stacked-trait model and want to choose the right covariance keyword.
-The keywords are organised as a 4 x 4 grid: the row names the
-correlation across units, and the column names the covariance mode
-across traits. The four correlation rows go from finest-grained
-(individual pedigree) to broadest (geography).
+This page is the syntax lookup for choosing a covariance keyword. The formula
+grammar has two decisions: what relates the grouping levels, and what covariance
+among traits is required at that grouping level.
 
-> **Scope boundary.** This page is a technical lookup for the formula
-> grammar, not a worked validation article. The long and wide formula
-> grammar, `traits(...)` expansion, the ordinary `latent()` path with
-> default diagonal $\boldsymbol\Psi$, the `animal_*()` keywords, and the
-> phylogenetic and spatial keyword families are validated for their core
-> paths. A few surfaces are still under validation at greater recovery
-> depth — notably the standalone diagonal, full, and slope forms on the
-> no-prefix row, the augmented spatial `latent(unique = TRUE)` fold, and
-> the exact single-V meta-analytic path — and proportional `meta_V()` is
-> not yet available. Phylogenetic, spatial, animal, and meta-analysis
-> worked examples stay hidden until their article-specific gates pass.
-> The per-capability validation status lives in the validation-debt
-> register.
+The keywords below are live API, but a valid formula does not guarantee that a
+complex covariance is estimable from a particular data set. Fit health,
+replication, trait count, and the scientific covariance question still matter.
 
-| correlation \ mode | scalar | indep | dep | latent |
-|---|---|---|---|---|
-| none | (omit) | `indep()` | `dep()` | `latent()` |
-| **animal** | `animal_scalar()` | `animal_indep()` | `animal_dep()` | `animal_latent()` |
-| phylo | `phylo_scalar()` | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
-| spatial | `spatial_scalar()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+## Choose in two steps
 
-Plus the **random-slope** keywords alongside the grid:
-`phylo_slope(x | species)` and `animal_slope(x | id)` — for
-per-group random regression slopes on a continuous covariate.
+### 1. What relates the grouping levels?
 
-The diagonal `Psi` companion (`Sigma = Lambda Lambda^T + Psi`) is controlled
-by the `unique =` **argument** on `latent()` / `*_latent()`, not by a separate
-keyword. Ordinary `latent()` carries `Psi` by default; use
-`latent(..., unique = FALSE)` for the loadings-only subset, and
-`*_latent(..., unique = TRUE)` to fold the `Psi` companion into a
-source-specific term. This includes the augmented random-slope form
-`*_latent(1 + x | group, unique = TRUE)`, which folds in the intercept–slope
-companion for the ordinary, `phylo`, and `animal` sources. The spatial
-augmented fold (`spatial_latent(1 + x, unique = TRUE)`) is still under
-validation and the kernel augmented fold is future work. For a
-standalone marginal-only diagonal, use `indep()` / `*_indep()`.
+- **No prefix:** levels are independent, as in an ordinary random effect.
+- **`animal_`:** individuals are related through a pedigree, `A`, or `Ainv`.
+- **`phylo_`:** species are related through a tree or phylogenetic covariance.
+- **`spatial_`:** locations share a mesh-based spatial field, represented with
+  a sparse Gaussian Markov random field (GMRF) approximation so nearby
+  locations can be correlated.
+- **`kernel_`:** levels are related through a supplied dense covariance matrix
+  `K`. These helpers sit outside the source-specific grid.
 
-Status labels during the public-surface reset:
+These sources are alternatives based on study design, not a progression from
+fine to broad scale. Add a source prefix only when that structured relationship
+is part of the estimand.
 
-| row | Public status |
-|---|---|
-| none | covered for long/wide grammar and the ordinary Gaussian `latent()` path with default $\boldsymbol\Psi$; standalone `indep()` and `dep()` are partial outside that core, and the scalar cell has no public no-prefix keyword |
-| animal | covered for the five covariance keywords, the A/Ainv helper path, and `animal_slope()`; cross-package agreement remains partial |
-| phylo | covered for the main paired decomposition, the sparse A^-1 route, and the scalar, marginal-only, saturated, and slope paths |
-| spatial | covered for mesh construction, mode dispatch, orientation, scalar/marginal-only/saturated recovery, and legacy-alias deprecation; the augmented `spatial_latent(unique = TRUE)` total-covariance recovery remains partial |
-| meta_V | partial for exact single-V workflows, covered for block-V construction, blocked for proportional mode |
+### 2. What trait covariance is needed?
 
-The per-capability validation status lives in the validation-debt register.
+- **`scalar`:** one shared trait-scale variance multiplier and zero cross-trait
+  covariance. For a structured source, each trait has its own field or draw;
+  its marginal variance across grouping levels also reflects the diagonal of
+  the supplied relationship or covariance operator.
+- **`indep`:** separate marginal variance for each trait and zero cross-trait
+  covariance. Use this for a diagonal model.
+- **`dep`:** a full unstructured trait covariance with (T(T+1)/2) covariance
+  parameters. Use only when trait count and grouping-level replication support
+  a saturated covariance.
+- **`latent`:** a parsimonious cross-trait covariance represented by (d) LVs.
+  Use when a few shared dimensions are scientifically plausible.
+All fitted keyword covariances are random-effect covariances on the model's
+linear-predictor or latent scale. They are not automatically response-scale
+covariances for non-Gaussian traits.
 
-Use this page as a grammar lookup. For a worked example, start with
-[`morphometrics`](morphometrics.html) for non-phylogenetic
-ordinary `latent()` models. Phylogenetic, spatial, animal, and
-meta-analysis worked examples are under audit until their validation
-and rendered HTML gates pass.
+## The four-mode grid
 
-## The Four Modes
+The rows are correlation sources across grouping levels. The columns are trait
+covariance modes: scalar, independent, dependent, and latent.
 
-The mode controls the trait covariance matrix `Sigma` at one model
-level.
+<div class="table-responsive">
+<table class="table table-striped" style="min-width: 720px;">
+<caption>Source-specific covariance keyword grid</caption>
+<thead><tr>
+<th>Source</th><th>Scalar</th><th>Independent</th><th>Dependent</th><th>Latent</th>
+</tr></thead>
+<tbody>
+<tr><th>none</th><td>(omit)</td><td><code>indep()</code></td>
+<td><code>dep()</code></td><td><code>latent()</code></td></tr>
+<tr><th>animal</th><td><code>animal_scalar()</code></td>
+<td><code>animal_indep()</code></td><td><code>animal_dep()</code></td><td><code>animal_latent()</code></td></tr>
+<tr><th>phylogenetic</th><td><code>phylo_scalar()</code></td>
+<td><code>phylo_indep()</code></td><td><code>phylo_dep()</code></td><td><code>phylo_latent()</code></td></tr>
+<tr><th>spatial</th><td><code>spatial_scalar()</code></td>
+<td><code>spatial_indep()</code></td><td><code>spatial_dep()</code></td><td><code>spatial_latent()</code></td></tr>
+</tbody>
+</table>
+</div>
 
-| mode | Meaning | Use when |
-|---|---|---|
-| scalar | one shared variance for all traits | every trait should have the same group-level scale |
-| indep | a standalone diagonal covariance with no cross-trait covariance | you want to state marginal-only intent explicitly |
-| dep | a full unstructured positive-definite `Sigma` | the number of traits is small enough for a saturated covariance |
-| latent | low-rank shared covariance `Lambda Lambda^T`; ordinary no-prefix `latent()` also includes the diagonal `Psi` companion by default | a few latent variables should explain cross-trait association while retaining trait-specific variance |
+There is no no-prefix scalar keyword: omitting a multi-trait covariance term
+means that no such term is fitted. For a diagonal ordinary model with equal
+variances, use `indep(..., common = TRUE)`.
 
-For ordinary no-prefix models, `latent()` is the default decomposed model:
+## What the modes estimate
 
-```text
-Sigma = Lambda Lambda^T + Psi
-Psi = diag(psi_1, ..., psi_T)
-```
+For the intercept-only grid, let $K_{gg'}$ be an entry of the relationship or
+model-implied covariance operator among grouping levels. For the ordinary
+no-prefix row, $\mathbf K = \mathbf I$. Animal, phylogenetic, and dense-kernel
+inputs supply fixed covariance operators and may have non-unit diagonals.
+Spatial terms instead imply $\mathbf K(\boldsymbol\theta)$ through a
+mesh-based precision whose range and scale parameters are estimated.
 
-The same alignment appears in the worked articles:
+The clearest ordering-free definition is
 
-| Goal | Long syntax | Wide syntax | Mathematical target |
-|---|---|---|---|
-| decomposed covariance | `latent(0 + trait | unit, d = K)` | `latent(1 | unit, d = K)` | $\Sigma = \Lambda \Lambda^\top + \Psi$ |
-| shared latent variables only | `latent(0 + trait | unit, d = K, unique = FALSE)` | `latent(1 | unit, d = K, unique = FALSE)` | $\Lambda \Lambda^\top$ |
-| marginal-only diagonal | `indep(0 + trait | unit)` | `indep(1 | unit)` | diagonal $\Sigma$ with no cross-trait covariance |
-| saturated covariance | `dep(0 + trait | unit)` | `dep(1 | unit)` | full unstructured $\Sigma$ |
+\[
+\operatorname{Cov}(b_{gt}, b_{g't'})
+=
+\Sigma_{T,tt'} K_{gg'},
+\]
 
-Ordinary `latent()` fits the shared-plus-diagonal-Psi decomposition;
-use `latent(..., unique = FALSE)` for the loadings-only subset, and `indep()`
-for a standalone marginal-only diagonal model. Old ordinary `common = TRUE`
-formulas should move to `indep(..., common = TRUE)` for standalone diagonal
-models, or to `latent(..., common = TRUE)` for ordinary paired decompositions.
-`dep()` is the full unstructured baseline and should not be combined with the
-matching `latent()` or `indep()` term at the same level.
+where $\boldsymbol\Sigma_T$ is the trait covariance implied by the selected
+mode: $\sigma^2\mathbf I_T$ for `scalar`,
+$\mathrm{diag}(\psi_1,\ldots,\psi_T)$ for `indep`, a free
+$\boldsymbol\Sigma_T$ for `dep`, and
+$\boldsymbol\Lambda\boldsymbol\Lambda^{\mathsf T}$ with an optional
+$\boldsymbol\Psi$ companion for `latent`. This elementwise form does not depend
+on whether software stacks traits or grouping levels first.
 
-## The Four Correlation Rows
+The diagonal in `animal_indep()` or `phylo_indep()` is diagonal **across
+traits**, but observations remain correlated **within each trait** through the
+pedigree or phylogeny. It is not independent residual noise.
 
-The row controls how the grouping units are correlated. The rows
-are pedagogically ordered from finest-grained (pedigree, one
-individual at a time) to broadest (geographic distance).
+### The important latent default
 
-| row | Unit correlation | Typical grouping | How A is supplied |
-|---|---|---|---|
-| none | independent groups | sites, individuals, sessions | — |
-| **animal** | **the additive-genetic relatedness matrix A** | **individuals in a pedigree** | **`pedigree =` (3-column id/sire/dam) or `A =` or `Ainv =`** |
-| phylo | a phylogenetic relationship matrix from `tree` or `vcv` | species or clades | `tree =` or `vcv =` or **`A =`** or **`Ainv =`** (A / Ainv aliases align with `animal_*` per Design 14 §3) |
-| spatial | an SPDE/GMRF spatial precision matrix from `mesh` | sites with coordinates | `mesh =` |
+Here, `unique =` is an argument of a latent term that toggles its diagonal Psi
+companion; it is not a separate covariance mode or a call to the deprecated
+covariance-function syntax.
 
-**The A vs V naming boundary.** The `animal_*` and `phylo_*` keywords
-accept the **A** (or **Ainv**) argument for *relatedness*. The
-separate `meta_V(V = V)` keyword accepts **V** for
-*sampling variance* in meta-analysis. These are mathematically
-distinct (relatedness covariance vs measurement-error variance),
-and the argument naming keeps them visually separated.
+The diagonal Psi companion is controlled differently across sources:
 
-No-prefix keywords such as `latent()`, `indep()`, and `dep()` use
-independent group effects. The animal row uses
-`animal_*()` keywords with a pedigree (or pre-computed A / Ainv).
-The phylogenetic row uses `phylo_*()` keywords and a tree or
-covariance matrix. The spatial row
-uses `spatial_*()` keywords and an SPDE mesh, often created with
-`make_mesh()`.
+- ordinary `latent()` includes
+  $\boldsymbol\Lambda\boldsymbol\Lambda^{\mathsf T}+\boldsymbol\Psi$ by
+  default; use `unique = FALSE` for loadings only;
+- `animal_latent()`, `phylo_latent()`, `spatial_latent()`, and
+  `kernel_latent()` are loadings-only by default;
+- use `unique = TRUE` on a source-specific or single-kernel latent term when
+  that same source should also carry a trait-diagonal Psi component.
 
-## Long And Wide Syntax
+For animal, phylogenetic, and kernel models, source-specific Psi is diagonal
+across traits but still correlated across individuals, species, or other levels
+through the supplied relationship or covariance operator. Spatial Psi is also
+diagonal across traits, while each trait-specific field remains correlated
+across locations through the mesh-based spatial precision.
 
-Most readers can start from a wide data frame: one row per unit and one
-column per response. Use `traits(...)` on the formula left-hand side to
-name those response columns and keep the right-hand side compact. If
-your data are already long, use one row per `(unit, trait)` observation
-and pass `trait =`.
+These diagonal statements describe intercept-only trait covariance. With an
+augmented intercept-and-slope term, `*_indep(1 + x | group)` fixes the
+within-trait intercept--slope correlation to zero. The random-slope section
+below gives the corresponding blocks.
 
-```{r}
-# Long format
+## Ordinary long and wide syntax
+
+The long and wide forms below express the same covariance choices. The
+[Morphometrics](morphometrics.html) article executes and compares both data
+shapes.
+
+```{r ordinary-syntax, eval = FALSE}
+# Decomposed covariance: Lambda Lambda^T + Psi
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
     latent(0 + trait | individual, d = 2),
@@ -163,7 +158,6 @@ fit_long <- gllvmTMB(
   unit = "individual"
 )
 
-# Wide data-frame format
 fit_wide <- gllvmTMB(
   traits(length, mass, wing, tarsus, bill) ~ 1 +
     latent(1 | individual, d = 2),
@@ -172,141 +166,176 @@ fit_wide <- gllvmTMB(
 )
 ```
 
-In the wide form, `1` supplies the trait-specific intercepts and
-`latent(1 | individual)` expands to `latent(0 + trait | individual)`;
-ordinary `latent()` now includes the diagonal Psi companion by default.
-The same shorthand applies to `indep()`, `dep()`, bar-style
-`phylo_indep()` / `phylo_dep()`, and `spatial_*()` terms.
-Species-axis phylogenetic calls such as
-`phylo_latent(species, d = K, tree = tree)` and
-`phylo_indep(species, tree = tree)` already name their phylogenetic
-axis, so they pass through unchanged.
+Replace `latent(...)` with `indep(...)` for a diagonal baseline or `dep(...)`
+for a full covariance. In wide formulas, `1` inside a bar-style term expands to
+the long-form `0 + trait` representation.
 
-## Per-Cell Examples
+## Exact source-specific syntax
 
-Use one cell from a row at a time unless you are deliberately showing
-explicit-Psi compatibility syntax. The examples below show the long-form
-syntax; the wide-form equivalent replaces `0 + trait` with `1` inside
-bar-style terms.
-
-### No Correlation
-
-```{r}
-# Explicit marginal-only diagonal covariance
-indep(0 + trait | unit)
-
-# Full unstructured trait covariance
-dep(0 + trait | unit)
-
-# Reduced-rank shared trait covariance plus default diagonal Psi
-latent(0 + trait | unit, d = 2)
-```
-
-The scalar no-correlation cell is not a covariance keyword. Ordinary
-random intercepts such as `(1 | batch)` pass through as ordinary random
-intercepts rather than trait covariance terms.
+The scalar and latent animal/phylogenetic helpers take the grouping column
+directly. Their `indep` and `dep` counterparts use a bar formula. Spatial
+helpers all use the bar-form orientation.
 
 ### Animal
 
-```{r}
-# One shared additive-genetic variance
+```{r animal-syntax, eval = FALSE}
 animal_scalar(id, pedigree = ped)
-
-# Explicit marginal-only animal-model diagonal
 animal_indep(0 + trait | id, pedigree = ped)
-
-# Full unstructured animal-model trait covariance
 animal_dep(0 + trait | id, pedigree = ped)
-
-# Reduced-rank additive-genetic shared covariance plus optional Psi
-animal_latent(id, d = 2, pedigree = ped, unique = TRUE)
+animal_latent(id, d = 2, pedigree = ped)                 # loadings only
+animal_latent(id, d = 2, pedigree = ped, unique = TRUE)  # + animal Psi
 ```
-
-The animal row uses the same four covariance modes as the grid, but
-the correlation among individuals comes from a pedigree, a dense
-relatedness matrix `A`, or a sparse inverse `Ainv`. Use
-`animal_latent(..., unique = TRUE)` for a decomposed additive-genetic model,
-`animal_latent(..., unique = FALSE)` for the loadings-only subset,
-`animal_indep()` for a marginal-only diagonal animal model, and
-`animal_dep()` as the saturated small-trait comparator.
 
 ### Phylogenetic
 
-```{r}
-# One shared phylogenetic variance
+```{r phylo-syntax, eval = FALSE}
 phylo_scalar(species, tree = tree)
-
-# Explicit marginal-only phylogenetic diagonal
 phylo_indep(0 + trait | species, tree = tree)
-
-# Full unstructured phylogenetic trait covariance
 phylo_dep(0 + trait | species, tree = tree)
-
-# Reduced-rank phylogenetic shared covariance
-phylo_latent(species, d = 2, tree = tree)
+phylo_latent(species, d = 2, tree = tree)                 # loadings only
+phylo_latent(species, d = 2, tree = tree, unique = TRUE)  # + phylo Psi
 ```
 
-Use `phylo_latent(..., unique = TRUE)` for the folded decomposition of
-shared phylogenetic trait axes plus trait-specific phylogenetic
-variance. The default `phylo_latent()` is loadings-only.
-Use `phylo_dep()` as a saturated comparator when the number of traits
-is small enough.
+Use `tree =` for the usual phylogenetic workflow. `vcv =`, `A =`, and `Ainv =`
+support advanced precomputed covariance/precision inputs; their row and column
+names must match the grouping levels.
 
 ### Spatial
 
-```{r}
-# One shared spatial variance
+```{r spatial-syntax, eval = FALSE}
 spatial_scalar(0 + trait | site, mesh = mesh)
-
-# Explicit marginal-only spatial fields
 spatial_indep(0 + trait | site, mesh = mesh)
-
-# Full unstructured spatial trait covariance
 spatial_dep(0 + trait | site, mesh = mesh)
-
-# Reduced-rank shared spatial fields plus optional spatial Psi
+spatial_latent(0 + trait | site, d = 2, mesh = mesh)
 spatial_latent(0 + trait | site, d = 2, mesh = mesh, unique = TRUE)
 ```
 
-The spatial row uses the SPDE/GMRF approximation inherited from
-`sdmTMB`. Prefer `spatial_indep()` for a marginal-only spatial
-diagonal. The folded `spatial_latent(..., unique = TRUE)`
-shared-plus-Psi spatial decomposition is accepted grammar, but its
-total-covariance recovery is still under validation.
+Spatial models require a mesh built from the model's coordinate columns with
+`make_mesh()`. Pass that mesh either inside the spatial keyword or through the
+top-level `mesh =` argument to `gllvmTMB()`. A source-valid formula still needs
+enough locations and spatial spread to identify range and covariance
+parameters.
 
-## Helpers Outside The Grid
+## Dense kernels outside the grid
 
-Three exported helpers are related to the grid but are not grid
-cells.
+A supplied dense covariance matrix uses the separate kernel interface; there is
+no `kernel_scalar()`.
 
-`phylo_slope(x | species)` adds a phylogenetic random slope for a
-covariate `x`. It is an extension hook, not one of the five covariance
-modes.
+```{r kernel-syntax, eval = FALSE}
+kernel_indep(unit_id, K = K, name = "known")
+kernel_dep(unit_id, K = K, name = "known")
+kernel_latent(unit_id, K = K, d = 2, name = "known")
+kernel_latent(
+  unit_id, K = K, d = 2, name = "known", unique = TRUE
+)
+```
 
-`animal_slope(x | id)` adds the animal-model analogue: a random slope
-whose groups are related by a pedigree, `A`, or `Ainv`. Its recovery is
-validated against the matching `phylo_slope()` call.
+For a single named kernel, `unique = TRUE` adds that kernel's diagonal Psi
+companion. Multiple named-kernel fits currently use the latent-only route; do
+not assume that each component receives its own Psi. When kernels overlap
+strongly, the fitted sum may be more stable than attribution to individual
+kernel components.
 
-`meta_V(V = V)` adds known sampling covariance for
-meta-analytic workflows. It uses a user-supplied covariance matrix
-rather than one of the grid's estimated correlation rows. Exact
-single-V workflows are still under validation, block-V construction is
-covered, and proportional known-V mode is not yet available (it awaits
-a post-CRAN validation path).
+Named kernels should encode a relationship fixed before fitting. The model
+does not turn an analyst-supplied association matrix into evidence of a causal
+or reciprocal process. When more than one named kernel is fitted, use
+`diagnose_kernel_separability()` before interpreting component-specific output;
+collapse indistinguishable kernels rather than assigning them separate
+biological stories.
 
-## What Not To Combine
+## Other formula markers
 
-The parser rejects combinations that tell the same covariance story
-twice at the same level:
+### Random slopes
 
-- `dep()` with `latent()` or `indep()` on the same group;
-- `indep()` with `latent()` on the same group;
-- `phylo_dep()` with `phylo_latent()` or `phylo_indep()` for the same
-  phylogenetic tier;
-- `spatial_dep()` with `spatial_latent()` or `spatial_indep()` for the
-  same spatial tier.
+`phylo_slope(x | species)` and `animal_slope(x | id)` are live slope-only
+structured routes. They are not additional covariance modes and should not be
+confused with an augmented intercept-and-slope covariance such as
+`animal_dep(1 + x | id, ...)` or `spatial_latent(1 + x | site, ...)`.
 
-When in doubt, start with `latent()` for a decomposed model,
-`indep()` for a diagonal baseline, and `dep()` for a saturated
-baseline. Then use the row prefix only when the grouping units are
-phylogenetically or spatially correlated.
+An augmented random-slope term describes deviations around a fixed
+population-average slope. Include that fixed slope separately:
+
+```{r structured-slope-syntax, eval = FALSE}
+# Long form
+value ~ 0 + trait + (0 + trait):x +
+  phylo_indep(0 + trait + (0 + trait):x | species)
+
+# Equivalent wide form
+traits(t1, t2, t3) ~ 1 + x +
+  phylo_indep(1 + x | species)
+```
+
+The three structured modes do not merely represent increasing computational
+complexity. They estimate different covariance objects:
+
+- `phylo_indep(1 + x | species)` and
+  `spatial_indep(1 + x | site)` estimate one \(2 \times 2\)
+  intercept--slope block with the cross-correlation fixed to zero. Extract it
+  at `level = "phy"` or `level = "spatial"`.
+- `phylo_latent(1 + x | species, d = K)` and
+  `spatial_latent(1 + x | site, d = K)` estimate separate reduced-rank
+  cross-trait covariance matrices for the intercept and slope columns. They
+  do not estimate intercept--slope covariance. Extract the per-column matrices
+  at `level = "phy_slope"` or `level = "spde_slope"`.
+- `phylo_dep(1 + x | species)` and
+  `spatial_dep(1 + x | site)` estimate a full interleaved
+  \(2T \times 2T\) covariance across trait intercepts and slopes. Extract it at
+  `level = "phy"` or `level = "spatial"`.
+
+Choose the mode from the scientific covariance assumption, not as an automatic
+fallback after a difficult fit. Centre and scale `x`, retain the transformation,
+and confirm repeated, overlapping within-unit coverage before fitting a random
+slope. The [behavioural reaction-norm guide](random-regression-reaction-norms.html)
+shows those design checks for the ordinary Gaussian case. Family-specific
+response requirements still apply; changing `family =` is not the only change
+needed when moving from continuous traits to counts, proportions, trials, or
+ordered categories.
+
+### Known sampling covariance
+
+`meta_V()` is not a grid row. It adds a known observation/sampling covariance
+to a meta-analytic model rather than estimating a random-effect trait
+covariance. The exact-additive route requires the same row-aligned matrix in
+the formula marker and the top-level argument:
+
+```{r known-v-syntax, eval = FALSE}
+value ~ 0 + trait + latent(0 + trait | study, d = 1) + meta_V(V = V)
+# In gllvmTMB(...), also pass known_V = V.
+```
+
+Use `A`/`Ainv` for relatedness and `V` for known sampling covariance; they are
+different scientific objects. This syntax lookup does not provide the applied
+estimand, diagnostic, and interpretation workflow needed for a full
+meta-analytic example. `meta_known_V()` remains a soft-deprecated alias;
+new code uses `meta_V()`.
+
+## What not to combine
+
+At one grouping level and correlation source, specify one trait-covariance
+story:
+
+- do not combine `dep` with `indep` or `latent` at that source;
+- do not combine standalone `indep` with `latent` at that source;
+- the same rules apply to ordinary, animal, phylogenetic, spatial, and
+  single-kernel terms.
+
+Different grouping levels can carry different covariance terms—for example, a
+between-individual `latent()` term and a within-individual `indep()` term—when
+the design identifies both.
+
+## If the first choice is too complex
+
+- **Full `dep()` is unstable or imprecise:** try a lower-rank `latent()` model,
+  or `indep()` if cross-trait covariance is not essential.
+- **An added LV is weak or unstable across refits:** reduce `d` and compare fit
+  health and information criteria.
+- **A diagonal variance is at zero:** treat it as a boundary estimate; compare
+  the simpler model rather than interpreting a tiny component literally.
+- **A relationship input fails:** check grouping-level names, matrix dimensions,
+  positive-semidefiniteness, tree tips, or mesh/data alignment.
+- **You are unsure which source prefix to use:** return to the biological
+  sampling design. A more elaborate source is not automatically a better model.
+
+See [Fit diagnostics](fit-diagnostics.html) before interpreting the selected
+covariance and [Covariance and correlation](covariance-correlation.html) for the
+corresponding estimands.

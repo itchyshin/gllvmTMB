@@ -1137,3 +1137,48 @@ curvature in the realistic-design regime. Full analysis:
 `docs/dev-log/2026-06-20-coevolution-in-engine-rho-design.md`
 (design-note-only PR #507). Closes the parked in-engine-`rho`
 decision.
+
+## 2026-07-12  Deprecated covariance functions leave the active teaching model
+
+Decision: the reader-facing covariance grammar teaches four modes only:
+Scalar, Independent, Dependent, and Latent. `unique()` and the source-specific
+`*_unique()` functions are deprecated compatibility functions, not a fifth
+mode. Remove them from overview grids, articles, ordinary help topics,
+examples, and navigation prose. Keep them only in the dedicated deprecated
+function reference set, the release-note deprecation entry, and the minimum
+internal design, test, and historical records required to maintain old
+formulas. The current `unique = TRUE/FALSE` argument on `latent()` helpers is a
+separate interface and remains documented.
+
+General rule: a central API deprecation is not complete merely because its
+replacement exists. Completion requires changing the package's teaching model,
+centralising migration guidance, and maintaining a regression scan that rejects
+the deprecated spelling outside explicitly allowed compatibility paths.
+
+## 2026-07-12  Keep the applied phylogenetic article latent-focused
+
+Decision: the applied phylogenetic covariance article teaches the
+`phylo_latent(..., unique = TRUE)` decomposition. Its primary examples and
+interpretation expose the shared `Lambda Lambda^T` component, the phylogenetic
+diagonal `Psi` companion, and their total, with long and `traits(...)` wide
+forms aligned. `phylo_dep()` and `phylo_indep()` remain current API choices but
+belong in the formula/reference guide or a separate article rather than
+dominating this applied page. The same latent-plus-diagonal framing applies to
+the page's comparison of phylogenetic and non-phylogenetic species covariance.
+
+Rationale: the article's purpose is interpretable latent covariance and its
+reader-facing limits, not an undifferentiated catalogue of covariance modes.
+
+## 2026-07-12  Renew generated pages as part of every documentation change
+
+Decision: a documentation change is incomplete until the affected generated
+pkgdown HTML is rebuilt and checked against its source. Rmd/README correctness
+alone is not evidence that readers see the current page; generated pages,
+navigation, search, sitemap, and examples can age independently. Whenever one
+stale page is found, sweep the neighbouring affected estate for the same
+source/render drift, stale internal codes, hidden warnings, and old API
+examples. Record the source/render synchronization evidence in the check log.
+
+Rationale: the profile-likelihood page exposed an old rendered scope block even
+after its source had been rewritten. The served artefact, not the editor's
+source file, is the reader's contract.

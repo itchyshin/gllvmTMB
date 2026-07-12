@@ -1,5 +1,6 @@
 ---
 title: "Individual morphometrics: the simplest GLLVM"
+description: "Use when continuous traits are measured once per individual; fit a Gaussian latent covariance and compare it with known simulation truth."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -25,15 +26,15 @@ knitr::opts_chunk$set(
 
 This is the simplest case the package handles, and it is the
 foundation for everything else on the
-[complexity ladder](../index.html#models-by-complexity). One
+[homepage guide](../index.html#start-here). One
 observational level (individuals), several continuous traits per
 individual, and shared low-rank covariance between traits. No
 phylogeny, no spatial structure, no nesting. This article walks
 through that model end-to-end.
 
-`gllvmTMB` is experimental and pre-CRAN (version 0.5.0): the surface may
-change, and the recovery numbers and intervals below are illustrative,
-not validated coverage.
+The recovery numbers and intervals below describe this teaching example; they
+do not establish calibrated coverage across other sample sizes or model
+structures.
 
 The working question is simple: if five body measurements are all
 partly driven by size and shape, can a rank-2 GLLVM recover that
@@ -300,10 +301,9 @@ plot_Sigma_comparison(corr_compare, measure = "correlation")
 
 For inference on individual cross-trait correlations or per-trait
 communality, the canonical extractors return tidy data frames.
-`extract_correlations()` defaults to `method = "fisher-z"` (fast
-Fisher-transform Wald CI; bounds guaranteed in $[-1, 1]$). These are
-nominal intervals — their empirical coverage is not calibrated for this
-model, so read them as recovery-grade illustration, not validated
+`extract_correlations()` defaults to point estimates. Fisher-z bounds are an
+opt-in sensitivity display, not a calibrated mixed-model interval. The table
+below therefore reports the fitted correlations without implying universal
 coverage.
 The table is useful for reporting exact numbers; the plot shows which
 trait pairs have the strongest evidence of positive or negative
@@ -351,11 +351,11 @@ is the fraction of trait $t$'s variance shared with the others via
 the latent factors; high $c_t^2$ means strongly integrated, low
 $c_t^2$ means trait-specific variation dominates.
 
-This single generated data set is a teaching example, not a full
-simulation study. The test suite refits the long and wide formulas from
-the shipped object and checks that the off-diagonal covariance pattern
-recovers the known truth. Broader coverage and interval-calibration
-claims belong in the simulation-grid articles, which remain under audit.
+This single generated data set is a teaching example, not a full simulation
+study. For this known fixture, the long and wide formulas recover the same
+off-diagonal covariance pattern. Broader coverage and interval-calibration
+claims require separate simulation studies across prespecified generating
+values, with every failed fit included in the accounting.
 
 ## Why default `latent()`? `dep` and `indep` on the same data
 
@@ -504,7 +504,7 @@ loading_table <- loading_table[
 head(loading_table, 8)
 ```
 
-```{r ordi, fig.height = 5.6}
+```{r ordi, fig.height = 5.6, fig.alt = "Ordination of the fitted morphometrics model. Grey points show individual latent scores; arrows show standardized trait loadings. Mass and wing anchor the displayed axis signs, but axis sign and orientation remain conventions. Individuals spread mainly along a shared body-size direction, while arrow angles show how the five traits align with the two displayed axes."}
 ord <- extract_ordination(fit, level = "unit")
 head(ord$scores)
 plot(
@@ -526,8 +526,9 @@ plot(
 
 This ordination comes from the fitted covariance model
 ($\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$):
-unlike PCA or NMDS, the axes are model parameters with uncertainty, not an
-eigen- or distance-decomposition of the raw data, and the grey points are
+unlike PCA or NMDS, the axes are estimated latent quantities rather than an
+eigen- or distance-decomposition of the raw data. Their uncertainty is not
+shown in this plot, and the grey points are
 *predicted* latent scores (empirical-Bayes conditional modes of
 $\mathbf{u}_i$), not observed coordinates.
 

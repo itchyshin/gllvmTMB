@@ -1,12 +1,13 @@
 ---
-title: "Phylogenetic trait covariance"
-tier: 3 # under-audit phylogenetic reader path; visible as a Developer Note
+title: "Phylogenetic covariance among traits"
+description: "Use replicated Gaussian species traits and a supplied tree to estimate phylogenetically structured covariance with explicit label and health checks."
+tier: 1
 output:
   rmarkdown::html_vignette:
     toc: true
-    toc_depth: 3
+    toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Phylogenetic trait covariance}
+  %\VignetteIndexEntry{Phylogenetic covariance among traits}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -14,810 +15,703 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment  = "#>",
-  fig.width = 6, fig.height = 4,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4.8,
   fig.align = "center",
-  cache    = FALSE,
-  eval     = requireNamespace("ape", quietly = TRUE),
-  message  = FALSE,
-  warning  = FALSE
+  cache = FALSE,
+  eval = requireNamespace("ape", quietly = TRUE),
+  message = FALSE
 )
 ```
 
-> **Developer Note -- under audit.** This page is buildable and linked
-> from Developer Notes so maintainers can audit the phylogenetic reader
-> path. It is not a first-stop tutorial. Start with
-> [Get started](gllvmTMB.html), [First Gaussian morphology model](morphometrics.html),
-> and [Covariance and correlation](covariance-correlation.html) before
-> using this page for `phylo_*()` syntax.
->
-> This is a candidate Tier 1 comparative-methods worked example, but it is
-> not ready for the public article dropdown. The page stays internal until
-> the phylogenetic/non-phylogenetic reader path, validation row bridge,
-> figures, diagnostics, and rendered HTML pass article-council review.
+> **Evidence boundary.** This article uses the package's public interfaces.
+> The estimates below are conditional on the supplied tree and fitted
+> Gaussian model.
 
-This article is for a comparative-methods reader with several traits
-measured once per species. The working question is: can we separate
-phylogenetically conserved trait covariance from non-phylogenetic
-species-level covariance, while still keeping trait-specific variation
-on the diagonal?
+Closely related species can resemble one another across several traits. The
+question in this article is: **after allowing for measurement-level noise,
+which trait covariances are associated with a supplied phylogeny?**
 
-The model has two species-level trait-covariance matrices. The
-phylogenetic component uses the tree correlation matrix `A`; the
-non-phylogenetic component uses independent species effects:
+The first example estimates that phylogenetic covariance directly. A second
+example then asks the complementary question: **how much species-level trait
+covariance follows the tree, and how much remains non-phylogenetic?**
+
+We use three standardized plant traits measured on ten individuals from each
+of 150 species. Replication within species matters here: it gives the model
+information to distinguish persistent species differences from
+individual-level noise. If you have only one species mean per trait, those
+sources are harder to separate and the resulting covariance should be
+interpreted accordingly.
+
+## The model
+
+For individual \(i\), species \(s\), and trait \(t\), the example fits
 
 $$
-g_{\mathrm{phy}} \sim
-\mathrm{MVN}(0, \Sigma_{\mathrm{phy}} \otimes A),
+y_{ist} = \mu_t + u_{st} + \varepsilon_{ist},
 \qquad
-g_{\mathrm{non}} \sim
-\mathrm{MVN}(0, \Sigma_{\mathrm{non}} \otimes I).
-$$
-
-The phylogenetic tier uses `phylo_latent(..., unique = TRUE)`, and the ordinary
-non-phylogenetic tier uses `latent()` for the same
-shared-plus-diagonal-Psi target:
-
-$$
-\Sigma_{\mathrm{phy}} =
-\Lambda_{\mathrm{phy}}\Lambda_{\mathrm{phy}}^T + \boldsymbol\Psi_{\mathrm{phy}},
+\operatorname{vec}(U) \sim
+\operatorname{MVN}(0, \Sigma_{\mathrm{phy,total}} \otimes A),
 \qquad
-\Sigma_{\mathrm{non}} =
-\Lambda_{\mathrm{non}}\Lambda_{\mathrm{non}}^T + \boldsymbol\Psi_{\mathrm{non}}.
+\Sigma_{\mathrm{phy,total}} =
+\underbrace{\Lambda_{\mathrm{phy}}\Lambda_{\mathrm{phy}}^{\mathsf T}}_
+  {\Sigma_{\mathrm{phy,shared}}} + \Psi_{\mathrm{phy}}.
 $$
 
-Here `Lambda` is the shared low-rank structure and `Psi` is the
-trait-specific diagonal variance. The "two-Psi" nickname refers to
-this paired phylogenetic and non-phylogenetic decomposition (two
-`Psi` diagonals, one at each tier). `phylo_latent(..., unique = TRUE)`
-carries the phylogenetic diagonal `Psi` companion; ordinary `latent()`
-already includes the non-phylogenetic diagonal `Psi` companion by
-default. For a standalone marginal
-phylogenetic diagonal model, use `phylo_indep()`; for a standalone
-non-phylogenetic diagonal tier, use `indep()`.
+The supplied matrix \(A\) is the Brownian correlation matrix implied by the
+tree. The rank-one matrix
+\(\Sigma_{\mathrm{phy,shared}}\) describes one shared phylogenetic trait axis,
+while diagonal \(\Psi_{\mathrm{phy}}\) allows additional trait-specific
+phylogenetic variance. Their sum is the total phylogenetic covariance.
+Independent Gaussian record-level errors \(\varepsilon_{ist}\) account for
+variation among individual measurements.
 
-## Reader path and scope
+This model does **not** estimate the tree, Pagel's lambda, tree uncertainty, or
+genetic heritability. It estimates covariance attributed to one fixed
+relationship matrix under the fitted model. The main route throughout this
+article is `phylo_latent(..., unique = TRUE)`, which exposes the shared,
+diagonal, and total matrices through the public extractor. Other covariance
+modes are listed in the
+[Formula keyword grid](api-keyword-grid.html#phylogenetic).
 
-This draft follows one comparative question through five checks:
+::: {.table-responsive}
+| Symbol in prose | Keyword / covstruct | DGP draw | Recovery extractor | Planted truth |
+|---|---|---|---|---|
+| \(\Sigma_{\mathrm{phy,shared}} = \Lambda_{\mathrm{phy}}\Lambda_{\mathrm{phy}}^{\mathsf T}\) | `phylo_latent(..., d = 1, unique = TRUE)` | `phy_shared` with row covariance `A` | `extract_Sigma(level = "phy", part = "shared")` | `Sigma_phy_shared_true` |
+| \(\Psi_{\mathrm{phy}}\) | diagonal companion in the same term | `phy_unique` with row covariance `A` | `diag(extract_Sigma(level = "phy", part = "unique")$s)` | `Psi_phy_true` |
+| \(\Sigma_{\mathrm{phy,total}} = \Sigma_{\mathrm{phy,shared}} + \Psi_{\mathrm{phy}}\) | same `phylo_latent(..., unique = TRUE)` term | `phy_shared + phy_unique` | `extract_Sigma(level = "phy", part = "total")` | `Sigma_phy_total_true` |
+:::
 
-| Question | Model object | Code section | Readout |
-|---|---|---|---|
-| Is trait covariance phylogenetically conserved? | `phylo_latent(unique = TRUE)` | `fit`, `extract-phy` | `Sigma_phy` shared, diagonal, and total rows |
-| Is there residual species-level covariance not explained by the tree? | ordinary `latent()` at the species tier | `fit`, `extract-non` | `Sigma_non` shared, diagonal, and total rows |
-| Do long and wide data give the same likelihood? | long `value ~ ...` and wide `traits(...) ~ ...` calls | `fit` | long/wide log-likelihood difference |
-| Is the fitted model numerically usable? | `check_gllvmTMB()` through `diagnostic_table()` | `diagnostic-table` | optimizer, gradient, `sdreport`, and Hessian rows |
-| Are the phylogenetic and non-phylogenetic totals interpretable? | `extract_Sigma_table()` + `plot_Sigma_heatmap()` | `extract-total-correlations` | side-by-side total-correlation heatmaps |
-| When should the model be simplified? | three-piece fallback and two-Psi cross-checks | `fallback`, `compare-indep`, `compare-dep` | diagnostics and baseline disagreement flags |
-
-Scope boundary: this article covers the paired phylogenetic decomposition,
-the three-piece fallback, the phylogenetic independent and dependent
-baselines, a Gaussian phylogenetic slope demonstration,
-`extract_phylo_signal()` and communality summaries, report-ready Sigma
-tables and heatmaps, and fit-health table support. Interval and calibration
-displays for broader covariance summaries and profile/bootstrap coverage are
-still under development, so point estimates in this article should not be read
-as calibrated uncertainty. Richer trait-specific reaction-norm forms and
-broad non-Gaussian uncertainty claims are planned or guarded rather than
-delivered.
-
-## Setup
+## Simulate one truth-checked example
 
 ```{r setup}
 library(gllvmTMB)
 library(ape)
 ```
 
-## Simulate
+The simulation uses biologically named, standardized traits so that the
+correlations have a concrete interpretation. It is one reproducible teaching
+dataset, not a repeated-sampling validation study.
 
-We simulate three traits on 30 species. The truth has four
-components, matching the paired decomposition in the theory section:
-a phylogenetic shared axis (`Lambda_phy`), a phylogenetic diagonal
-component (`psi_phy`, carried by `phylo_latent(..., unique = TRUE)`), a
-non-phylogenetic shared axis (`Lambda_non`),
-and a non-phylogenetic diagonal component (`psi_non`). This small
-example is meant to show syntax and extraction, not to be a full
-simulation study.
+```{r simulate}
+set.seed(7311)
+n_species <- 150L
+n_per_species <- 10L
+trait_names <- c("leaf_area", "wood_density", "seed_mass")
+n_traits <- length(trait_names)
 
-```{r sim}
-set.seed(13)
-n_sp <- 30
-n_traits <- 3
-trait_names <- paste0("trait_", seq_len(n_traits))
+tree <- ape::rcoal(n_species)
+tree$tip.label <- paste0("sp", seq_len(n_species))
+A <- ape::vcv(tree, corr = TRUE)
 
-tree <- ape::rcoal(n_sp)
-tree$tip.label <- paste0("sp", seq_len(n_sp))
-Cphy <- ape::vcv(tree, corr = TRUE)
-Lphy <- t(chol(Cphy + 1e-8 * diag(n_sp)))
+Lambda_phy_true <- matrix(c(0.75, 0.48, 0.35), n_traits, 1)
+Sigma_phy_shared_true <- Lambda_phy_true %*% t(Lambda_phy_true)
+Psi_phy_true <- diag(c(0.25, 0.30, 0.25))
+Sigma_phy_total_true <- Sigma_phy_shared_true + Psi_phy_true
+for (nm in c(
+  "Sigma_phy_shared_true", "Psi_phy_true", "Sigma_phy_total_true"
+)) {
+  x <- get(nm)
+  dimnames(x) <- list(trait_names, trait_names)
+  assign(nm, x)
+}
 
-Lambda_phy_true <- matrix(c(0.70, 0.45, 0.25), n_traits, 1)
-Lambda_non_true <- matrix(c(0.50, 0.30, 0.20), n_traits, 1)
-s_phy_true <- c(0.20, 0.15, 0.12)
-s_non_true <- c(0.18, 0.20, 0.16)
+L_A <- t(chol(A + 1e-9 * diag(n_species)))
+phy_shared <- L_A %*%
+  matrix(rnorm(n_species), n_species, 1) %*%
+  t(Lambda_phy_true)
+phy_unique <- L_A %*%
+  matrix(rnorm(n_species * n_traits), n_species, n_traits) %*%
+  chol(Psi_phy_true)
+species_effect <- phy_shared + phy_unique
 
-g_phy <- Lphy %*% rnorm(n_sp)
-g_non <- matrix(rnorm(n_sp), n_sp, 1)
-e_phy <- Lphy %*% matrix(rnorm(n_sp * n_traits), n_sp, n_traits)
-e_non <- matrix(rnorm(n_sp * n_traits), n_sp, n_traits)
+trait_means <- c(leaf_area = 0.5, wood_density = 0, seed_mass = -0.5)
+residual_sd <- 0.35
 
-Y <- g_phy %*% t(Lambda_phy_true) +
-  sweep(e_phy, 2, sqrt(s_phy_true), "*") +
-  g_non %*% t(Lambda_non_true) +
-  sweep(e_non, 2, sqrt(s_non_true), "*")
-rownames(Y) <- tree$tip.label
-colnames(Y) <- trait_names
-
-df <- data.frame(
-  species = factor(rep(tree$tip.label, each = n_traits),
-                   levels = tree$tip.label),
-  trait = factor(rep(trait_names, times = n_sp),
-                 levels = trait_names),
-  value = as.numeric(t(Y))
+df_wide <- expand.grid(
+  replicate = seq_len(n_per_species),
+  species = tree$tip.label,
+  KEEP.OUT.ATTRS = FALSE,
+  stringsAsFactors = FALSE
+)
+df_wide$species <- factor(df_wide$species, levels = tree$tip.label)
+df_wide$individual <- factor(
+  paste(df_wide$species, df_wide$replicate, sep = "_")
 )
 
-df_wide <- data.frame(
-  species = factor(tree$tip.label, levels = tree$tip.label),
-  Y,
-  check.names = FALSE
+for (j in seq_along(trait_names)) {
+  nm <- trait_names[[j]]
+  df_wide[[nm]] <- trait_means[[nm]] +
+    species_effect[as.integer(df_wide$species), j] +
+    rnorm(nrow(df_wide), sd = residual_sd)
+}
+
+df_long <- do.call(
+  rbind,
+  lapply(seq_along(trait_names), function(j) {
+    data.frame(
+      individual = df_wide$individual,
+      species = df_wide$species,
+      trait = trait_names[[j]],
+      value = df_wide[[trait_names[[j]]]]
+    )
+  })
 )
-head(df)
+df_long$species <- factor(df_long$species, levels = tree$tip.label)
+df_long$trait <- factor(df_long$trait, levels = trait_names)
+
+head(df_long)
 ```
 
-## Fit
+## Match the data to the tree
 
-The long form is canonical: one row per `(species, trait)` observation.
-The wide data-frame form is the same model written from one row per
-species and one column per trait. Because `traits(...)` names the
-response traits on the left-hand side, the right-hand side can use the
-compact covariance syntax.
+Tree labels and the grouping column must name the same species. Check this
+before fitting; silently relying on factor order is unsafe.
+
+```{r tree-data-check}
+data_species <- unique(as.character(df_long$species))
+
+alignment <- list(
+  data_not_in_tree = setdiff(data_species, tree$tip.label),
+  tree_not_in_data = setdiff(tree$tip.label, data_species),
+  duplicated_tree_labels = tree$tip.label[duplicated(tree$tip.label)],
+  non_positive_branch_lengths = which(tree$edge.length <= 0)
+)
+alignment
+
+stopifnot(
+  lengths(alignment) == 0L,
+  identical(levels(df_long$species), tree$tip.label)
+)
+```
+
+With real data, prune unused tips deliberately and then rebuild the species
+factor in the retained tip order. Do not continue when data species are absent
+from the tree, tip labels are duplicated, or the covariance derived from the
+tree is invalid. Those are data problems, not optimizer problems.
+
+## Fit the same model in long and wide form
+
+The long form is canonical: one row per individual-trait observation. The wide
+form is useful when each individual occupies one row and traits occupy
+columns. Both calls use the same `gllvmTMB()` entry point.
 
 ```{r fit}
-# Long format (canonical)
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    phylo_latent(species, d = 1, tree = tree, unique = TRUE) +
-    latent(0 + trait | species, d = 1),
-  data = df,
+    phylo_latent(
+      0 + trait | species,
+      d = 1,
+      tree = tree,
+      unique = TRUE
+    ),
+  data = df_long,
   trait = "trait",
-  unit = "species",
-  cluster = "species"
+  unit = "individual",
+  cluster = "species",
+  family = gaussian()
 )
 
-# Wide data-frame format (same model with compact formula syntax)
 fit_wide <- gllvmTMB(
-  traits(trait_1, trait_2, trait_3) ~ 1 +
-    phylo_latent(species, d = 1, tree = tree, unique = TRUE) +
-    latent(1 | species, d = 1),
+  traits(leaf_area, wood_density, seed_mass) ~ 1 +
+    phylo_latent(
+      1 | species,
+      d = 1,
+      tree = tree,
+      unique = TRUE
+    ),
   data = df_wide,
-  unit = "species",
-  cluster = "species"
+  unit = "individual",
+  cluster = "species",
+  family = gaussian()
 )
 
-fit <- fit_long
-fit$opt$convergence
-
-cat("Long/wide logLik difference:",
-    signif(abs(as.numeric(logLik(fit_long)) -
-               as.numeric(logLik(fit_wide))), 3), "\n")
-```
-
-The two forms dispatch to the same long-format engine. In this model,
-`phylo_latent(species, d = 1, tree = tree, unique = TRUE)` estimates the shared
-phylogenetic axis and its trait-specific phylogenetic diagonal,
-while `latent(1 | species, d = 1)` in the wide formula (expanding to
-`latent(0 + trait | species, d = 1)` in the long form) estimates the
-shared non-phylogenetic axis and its ordinary diagonal `Psi` companion.
-
-## Fit-health diagnostics
-
-Read the diagnostics before interpreting the phylogenetic split. The table
-below uses randomized-quantile residual objects as the carrier for the
-`check_gllvmTMB()` fit-health rows, then exposes those rows through
-`diagnostic_table()`.
-
-```{r diagnostic-table}
-rq_long <- residuals(
-  fit_long,
-  type = "randomized_quantile",
-  seed = 20260619
-)
-rq_wide <- residuals(
-  fit_wide,
-  type = "randomized_quantile",
-  seed = 20260619
-)
-
-diagnostic_components <- c(
-  "optimizer_convergence",
-  "max_gradient",
-  "sdreport",
-  "pd_hessian"
-)
-
-diagnostic_rows <- rbind(
-  data.frame(
-    layout = "long",
-    diagnostic_table(rq_long, table = "check_gllvmTMB")
-  ),
-  data.frame(
-    layout = "wide",
-    diagnostic_table(rq_wide, table = "check_gllvmTMB")
+c(
+  long = as.numeric(logLik(fit_long)),
+  wide = as.numeric(logLik(fit_wide)),
+  absolute_difference = abs(
+    as.numeric(logLik(fit_long)) - as.numeric(logLik(fit_wide))
   )
 )
+```
 
-diagnostic_rows[
-  diagnostic_rows$component %in% diagnostic_components,
-  c("layout", "component", "status", "message")
+The likelihoods agree up to numerical precision. This checks the data-shape
+translation; it does not provide two independent scientific fits.
+
+## Check numerical health before interpretation
+
+`check_gllvmTMB()` is the detailed numerical-health table. Inspect every row;
+do not infer component recovery from optimizer or curvature checks.
+
+```{r diagnostics}
+health <- check_gllvmTMB(fit_long)
+health[
+  ,
+  c("component", "status", "value", "threshold", "message", "action")
 ]
 ```
 
-Treat any `WARN` or `FAIL` row as a public-promotion blocker. A clean
-diagnostic table is not proof that the phylogenetic split is biologically
-identified; it only says the fitted object is numerically usable enough for
-the point-estimate readout below.
+All 13 rows pass for this fit. The raw maximum gradient is `0.0009637`, below
+`0.01`; `sdreport()` is available and the Hessian is positive definite with
+reported rank `10/10`.
 
-## Recover the phylogenetic covariance
+A passing optimizer and raw maximum gradient below `0.01` support the fitted
+point; usable `sdreport()` and a positive-definite Hessian support local Wald
+calculations. Neither result proves that the shared and diagonal phylogenetic
+components are scientifically well recovered. In a simulation, compare each
+component with its known truth; in real data, examine sensitivity to rank,
+tree, influential species, and sampling design.
 
-`extract_Sigma(level = "phy")` returns the phylogenetic trait
-covariance. The shared part is
-`Lambda_phy %*% t(Lambda_phy)`; the unique part is the diagonal
-`psi_phy`; the total is their sum.
+## Compare the fitted covariance with truth
 
-```{r extract-phy}
-Sigma_phy_rows <- rbind(
-  extract_Sigma_table(fit, level = "phy", part = "shared",
-                      entries = "unique"),
-  extract_Sigma_table(fit, level = "phy", part = "unique",
-                      entries = "diag"),
-  extract_Sigma_table(fit, level = "phy", part = "total",
-                      entries = "unique")
+The public extractor returns the shared, diagonal, and total covariance
+attributed to the supplied phylogenetic matrix.
+
+```{r covariance-comparison}
+Sigma_phy_shared_hat <- extract_Sigma(
+  fit_long,
+  level = "phy",
+  part = "shared"
+)$Sigma
+Psi_phy_hat <- diag(extract_Sigma(
+  fit_long,
+  level = "phy",
+  part = "unique"
+)$s)
+Sigma_phy_total_hat <- extract_Sigma(
+  fit_long,
+  level = "phy",
+  part = "total"
+)$Sigma
+
+relative_error_first <- function(estimate, truth) {
+  norm(estimate - truth, "F") / norm(truth, "F")
+}
+recovery_first <- data.frame(
+  component = c("Sigma_phy_shared", "Psi_phy", "Sigma_phy_total"),
+  relative_error = round(c(
+    relative_error_first(Sigma_phy_shared_hat, Sigma_phy_shared_true),
+    relative_error_first(Psi_phy_hat, Psi_phy_true),
+    relative_error_first(Sigma_phy_total_hat, Sigma_phy_total_true)
+  ), 3)
 )
-Sigma_phy_rows[, c("component", "trait_i", "trait_j",
-                   "estimate", "interval_status")]
+recovery_first
+
+round(Sigma_phy_shared_hat, 3)
+round(Psi_phy_hat, 3)
+round(Sigma_phy_total_hat, 3)
+
+sigma_comparison <- compare_Sigma_table(
+  fit_long,
+  truth = Sigma_phy_total_true,
+  level = "phy",
+  part = "total",
+  measure = "covariance",
+  entries = "unique"
+)
+sigma_comparison[
+  ,
+  c("trait_i", "trait_j", "estimate", "truth", "error")
+]
 ```
 
-The non-phylogenetic species-level covariance has the same paired
-decomposition as the phylogenetic side:
+The estimates need not equal truth in one simulated dataset. Read the three
+relative errors separately. They are `0.173` for the shared covariance,
+`0.228` for phylogenetic \(\Psi\), and `0.096` for their total in this seeded
+fit. Better recovery of the total does not imply that the shared axis and
+diagonal companion are individually well separated. Numerical convergence is
+necessary, but the scientific targets still have finite-sample uncertainty.
 
-```{r extract-non}
-Sigma_non_rows <- rbind(
-  extract_Sigma_table(fit, level = "unit", part = "shared",
-                      entries = "unique"),
-  extract_Sigma_table(fit, level = "unit", part = "unique",
-                      entries = "diag"),
-  extract_Sigma_table(fit, level = "unit", part = "total",
-                      entries = "unique")
-)
-Sigma_non_rows[, c("component", "trait_i", "trait_j",
-                   "estimate", "interval_status")]
-```
+The same comparison is often easier to read on the correlation scale.
 
-On the correlation scale, compare the two total covariance targets side
-by side:
-
-```{r extract-total-correlations, fig.width = 7.4, fig.height = 4.6, fig.cap = "Phylogenetic and non-phylogenetic trait correlations estimated from the two-tier model.", fig.alt = "Two heatmap facets compare total trait correlations at the phylogenetic and non-phylogenetic unit tiers. Cell labels show estimated correlations for the three simulated traits."}
-Sigma_corr_rows <- extract_Sigma_table(
-  fit,
-  level = c("phy", "unit"),
+```{r correlation-comparison, fig.cap = "Estimated minus true phylogenetic correlation for each trait pair. Segments are comparison errors, not confidence intervals.", fig.alt = "A horizontal comparison plot for leaf area, wood density, and seed mass. Each point shows the fitted phylogenetic correlation minus the known simulated correlation, with zero indicating exact recovery."}
+correlation_comparison <- compare_Sigma_table(
+  fit_long,
+  truth = Sigma_phy_total_true,
+  level = "phy",
   part = "total",
   measure = "correlation",
-  entries = "all"
+  entries = "upper"
 )
-plot_Sigma_heatmap(
-  Sigma_corr_rows,
-  label_digits = 2,
-  title = "Phylogenetic and non-phylogenetic correlations",
-  subtitle = "Facets compare total Sigma at the phy and unit tiers."
+plot_Sigma_comparison(
+  correlation_comparison,
+  measure = "correlation"
 )
 ```
 
-For a small tree, do not over-interpret either split (between
-`Lambda_phy Lambda_phy^T` and `Psi_phy`, or between
-`Lambda_non Lambda_non^T` and `Psi_non`). The more stable biological
-targets are often the totals `Sigma_phy` and `Sigma_non`, especially
-when the tree is small or the ranks are exploratory.
+This page intentionally reports point estimates only. It does not claim
+calibrated confidence-interval coverage for source-specific covariance or
+correlation summaries.
 
-### Three-piece fallback when the paired form is under-identified
+## Add a non-phylogenetic species component
 
-The paired decomposition fits **four pieces**:
-`Lambda_phy`, `Psi_phy`, `Lambda_non`, `Psi_non`. For small trees
-(say `n_species < 30`) or near-zero phylogenetic signal, the two
-`Psi` diagonals tend to trade off against each other -- only their
-sum is well-determined by the data, and `sanity_multi()` will often
-flag the fit as boundary-pinned or rank-deficient.
-
-The **three-piece fallback** drops one `Psi` and keeps a single
-trait-specific diagonal that is not assigned to either tier:
+Species can share trait combinations for reasons that are not represented by
+the supplied tree. To separate the two sources, write the species effect as
 
 $$
-\boldsymbol{\Omega} =
-\boldsymbol{\Lambda}_{\mathrm{phy}}\boldsymbol{\Lambda}_{\mathrm{phy}}^{\top} +
-\boldsymbol{\Lambda}_{\mathrm{non}}\boldsymbol{\Lambda}_{\mathrm{non}}^{\top} +
-\boldsymbol{\Psi}.
+b_s = p_s + q_s,
+\qquad
+\operatorname{vec}(P) \sim
+\operatorname{MVN}(0, \Sigma_{\mathrm{phy}} \otimes A),
+\qquad
+\operatorname{vec}(Q) \sim
+\operatorname{MVN}(0, \Sigma_{\mathrm{non}} \otimes I).
 $$
 
-To fit it, turn off the phylogenetic diagonal with
-`phylo_latent(..., unique = FALSE)` and let ordinary `latent()` carry
-the single trait-specific diagonal `Psi`:
-
-```r
-fit_3piece <- gllvmTMB(
-  value ~ 0 + trait +
-    phylo_latent(species, d = 1, tree = tree,
-                 unique = FALSE) +                # Lambda_phy only
-    latent(0 + trait | species, d = 1),            # Lambda_non + single Psi
-  data = df,
-  trait = "trait", unit = "species"
-)
-```
-
-When you read the output of `extract_phylo_signal()` on a three-piece
-fit, `Psi` is the **single** shared diagonal (not the tier-specific
-`psi_non` used by the paired form), and the three-way decomposition
-`H^2 + C^2_non + Psi = 1` is interpreted with the entire `Psi`
-attributed to "trait-specific variance not separated by tier" rather
-than to a specifically non-phylogenetic source. The paired form is
-preferable when the data support it (it gives a cleaner H^2 reading);
-the three-piece fallback is the conservative choice when `sanity_multi()`
-or visual inspection flag the paired form as over-parameterised.
-
-## Communality (within each tier)
-
-Communality `c_t^2` is the fraction of a trait's within-tier variance
-explained by the shared latent variable. It is defined when the tier has
-both a shared latent component and a diagonal `Psi` component;
-`phylo_latent(..., unique = TRUE)` and default ordinary `latent()` give us those pieces
-on the phylogenetic and non-phylogenetic sides.
-
-```{r communality}
-# Non-phylogenetic communality is one extractor call.
-c2_non <- extract_communality(fit, level = "unit")
-round(c2_non, 2)
-
-# Phylogenetic communality is the same ratio, computed from the
-# Sigma_phy decomposition table above.
-phy_shared_diag <- subset(Sigma_phy_rows,
-                          component == "shared" & diagonal)
-phy_total_diag <- subset(Sigma_phy_rows,
-                         component == "total" & diagonal)
-c2_phy <- phy_shared_diag$estimate / phy_total_diag$estimate
-names(c2_phy) <- phy_shared_diag$trait_i
-round(c2_phy, 2)
-```
-
-A value near 1 means the trait's within-tier variance is dominated by
-the shared axis (high "integration" with the other traits at that
-tier). A value near 0 means the trait is mostly idiosyncratic at that
-tier.
-
-## Phylogenetic heritability
-
-Phylogenetic heritability `H^2` is a between-tier ratio: the fraction
-of total trait variance attributable to the phylogenetic component
-(both shared and unique parts of `Sigma_phy`) versus the
-non-phylogenetic component (both shared and unique parts of
-`Sigma_non`). It is distinct from the within-tier communalities
-above.
-
-The convenience extractor returns the full three-way decomposition
-`H^2 + C^2_non + Psi = 1` per trait, where:
-
-- `H^2` = phylogenetic share = the diagonal of the total phylogenetic
-  Sigma divided by `V_eta`
-- `C^2_non` = non-phylogenetic *shared* share =
-  the diagonal of `Lambda_non Lambda_non^T` divided by `V_eta`
-- `Psi` = non-phylogenetic *unique* share = `psi_non / V_eta`
-
-Here `V_eta` is the sum of those three diagonal contributions for each trait.
-
-```{r phylo-heritability}
-extract_phylo_signal(fit)
-```
-
-`C^2_non` is structurally zero when the formula omits the non-phylogenetic
-`latent()` term, so the three-way split collapses to `H^2 + Psi`. Adding
-`latent(0 + trait | species, d = K)` (long) or `latent(1 | species, d = K)`
-(wide), as this article does, is what makes `C^2_non` a genuine
-non-phylogenetic shared-axis component rather than a placeholder.
-
-## Reaction norms: a phylogenetic random slope
-
-The covariance terms above all act on trait *intercepts* -- the
-species-level mean of each trait. A different comparative question is
-whether species differ in how a trait *responds to an environmental
-gradient*, and whether that response is itself phylogenetically
-structured. This is a phylogenetic **reaction norm**: a per-species
-slope on a continuous covariate, with the slopes drawn from a
-phylogenetically correlated distribution
+Each source is decomposed into a rank-one shared covariance and a diagonal
+trait-specific companion:
 
 $$
-\beta_{\mathrm{slope}} \sim
-\mathrm{N}\!\left(0,\; \sigma^2_{\mathrm{slope}}\, A\right),
+\Sigma_{\mathrm{phy,total}} =
+\underbrace{\Lambda_{\mathrm{phy}}\Lambda_{\mathrm{phy}}^{\mathsf T}}_
+  {\Sigma_{\mathrm{phy,shared}}} + \Psi_{\mathrm{phy}},
+\qquad
+\Sigma_{\mathrm{non,total}} =
+\underbrace{\Lambda_{\mathrm{non}}\Lambda_{\mathrm{non}}^{\mathsf T}}_
+  {\Sigma_{\mathrm{non,shared}}} + \Psi_{\mathrm{non}}.
 $$
 
-so closely related species tend to have similar environmental
-sensitivities. The keyword is `phylo_slope(x | species)`, where `x` is
-the continuous covariate (the environmental gradient).
+The species-level covariance is therefore
+\(\Omega_{\mathrm{species}} = \Sigma_{\mathrm{phy,total}} +
+\Sigma_{\mathrm{non,total}}\). The alignment table below fixes the meaning of
+every claimed covariance before we simulate or fit it.
 
-This is the **one** random-slope mode that is validated for recovery in
-this package, and only on a Gaussian response. The honest scope is
-spelled out in the caveat below; here we show the worked Gaussian case.
+::: {.table-responsive}
+| Symbol in prose | Keyword / covstruct | DGP draw | Recovery extractor | Planted truth |
+|---|---|---|---|---|
+| \(\Sigma_{\mathrm{phy,shared}} = \Lambda_{\mathrm{phy}}\Lambda_{\mathrm{phy}}^{\mathsf T}\) | `phylo_latent(0 + trait \| species, d = 1, tree = tree_split, unique = TRUE)` | `phy_shared_split` with row covariance `A_split` | `extract_Sigma(level = "phy", part = "shared")` | `Sigma_phy_shared_split_true` |
+| \(\Psi_{\mathrm{phy}}\) | diagonal companion in the same `phylo_latent(..., unique = TRUE)` term | `phy_unique_split` with row covariance `A_split` | `diag(extract_Sigma(level = "phy", part = "unique")$s)` | `Psi_phy_split_true` |
+| \(\Sigma_{\mathrm{phy,total}} = \Sigma_{\mathrm{phy,shared}} + \Psi_{\mathrm{phy}}\) | same `phylo_latent(..., unique = TRUE)` term | `phy_shared_split + phy_unique_split` | `extract_Sigma(level = "phy", part = "total")` | `Sigma_phy_total_split_true` |
+| \(\Sigma_{\mathrm{non,shared}} = \Lambda_{\mathrm{non}}\Lambda_{\mathrm{non}}^{\mathsf T}\) | `latent(0 + trait \| species, d = 1, unique = TRUE)` | `non_shared_split` with independent species rows | `extract_Sigma(level = "unit", part = "shared")` | `Sigma_non_shared_split_true` |
+| \(\Psi_{\mathrm{non}}\) | diagonal companion in the same `latent(..., unique = TRUE)` term | `non_unique_split` with independent species rows | `diag(extract_Sigma(level = "unit", part = "unique")$s)` | `Psi_non_split_true` |
+| \(\Sigma_{\mathrm{non,total}} = \Sigma_{\mathrm{non,shared}} + \Psi_{\mathrm{non}}\) | same `latent(..., unique = TRUE)` term | `non_shared_split + non_unique_split` | `extract_Sigma(level = "unit", part = "total")` | `Sigma_non_total_split_true` |
+| \(\Omega_{\mathrm{species}} = \Sigma_{\mathrm{phy,total}} + \Sigma_{\mathrm{non,total}}\) | sum of both fitted terms | `phy_effect_split + non_effect_split` | sum of both `part = "total"` matrices | `Sigma_phy_total_split_true + Sigma_non_total_split_true` |
+:::
 
-We simulate per-species slopes on a single environmental gradient
-`env`, shared across the three traits, then recover the slope variance
-and the per-species slopes. As elsewhere in this article, this is a
-syntax-and-recovery demonstration on one data set, not a full
-simulation study.
+Both terms now estimate one shared axis and a diagonal, trait-specific
+\(\Psi\) companion. The phylogenetic shared and diagonal draws both follow
+`A_split`; their non-phylogenetic counterparts are independent among species.
+The `unique =` argument is part of the current latent-term interfaces; it is
+distinct from the deprecated standalone `unique()` function.
 
-```{r reaction-norm-sim}
-set.seed(2026)
-n_sp_rn <- 25
-rn_traits <- paste0("trait_", seq_len(3))
+### Why this example uses 500 species
 
-tree_rn <- ape::rcoal(n_sp_rn)
-tree_rn$tip.label <- paste0("sp", seq_len(n_sp_rn))
-Lphy_rn <- t(chol(ape::vcv(tree_rn, corr = TRUE) + 1e-8 * diag(n_sp_rn)))
+There is no universal species-count threshold for separating these matrices.
+Tree shape, covariance strength, trait count, and within-species replication
+all change the information in the data. In a scaled pilot using this same
+three-trait model, recovery did not improve monotonically across separately
+generated trees as the number of species increased. We use a seeded
+500-species dataset to make the seven planted targets visible in one worked
+example, not as a recommended minimum for real studies.
 
-sigma_slope_true <- 0.6
-slope_sp <- as.numeric(Lphy_rn %*% rnorm(n_sp_rn, sd = sigma_slope_true))
-names(slope_sp) <- tree_rn$tip.label
+The simulation retains three individuals per species. Without within-species
+replication, individual noise and independent species-level variation are much
+harder to distinguish; a clean optimizer cannot solve that design problem.
 
-rn <- expand.grid(
-  species = factor(tree_rn$tip.label, levels = tree_rn$tip.label),
-  trait   = factor(rn_traits, levels = rn_traits),
-  rep     = seq_len(5)
+```{r simulate-phylo-nonphylo}
+set.seed(8622)
+n_species_split <- 500L
+n_per_species_split <- 3L
+trait_names_split <- c("leaf_area", "wood_density", "seed_mass")
+n_traits_split <- length(trait_names_split)
+
+tree_split <- ape::rcoal(n_species_split)
+tree_split$tip.label <- paste0("sp", seq_len(n_species_split))
+A_split <- ape::vcv(tree_split, corr = TRUE)
+
+Lambda_phy_split_true <- matrix(c(0.75, 0.48, 0.35), n_traits_split, 1)
+Sigma_phy_shared_split_true <-
+  Lambda_phy_split_true %*% t(Lambda_phy_split_true)
+Psi_phy_split_true <- diag(c(0.25, 0.30, 0.25))
+Sigma_phy_total_split_true <-
+  Sigma_phy_shared_split_true + Psi_phy_split_true
+Lambda_non_split_true <- matrix(c(0.50, -0.36, 0.28), n_traits_split, 1)
+Sigma_non_shared_split_true <-
+  Lambda_non_split_true %*% t(Lambda_non_split_true)
+Psi_non_split_true <- diag(c(0.20, 0.18, 0.16))
+Sigma_non_total_split_true <-
+  Sigma_non_shared_split_true + Psi_non_split_true
+
+for (nm in c(
+  "Sigma_phy_shared_split_true",
+  "Psi_phy_split_true",
+  "Sigma_phy_total_split_true",
+  "Sigma_non_shared_split_true",
+  "Psi_non_split_true",
+  "Sigma_non_total_split_true"
+)) {
+  x <- get(nm)
+  dimnames(x) <- list(trait_names_split, trait_names_split)
+  assign(nm, x)
+}
+
+L_A_split <- t(chol(A_split + 1e-9 * diag(n_species_split)))
+phy_shared_split <- L_A_split %*%
+  matrix(rnorm(n_species_split), n_species_split, 1) %*%
+  t(Lambda_phy_split_true)
+phy_unique_split <- L_A_split %*% matrix(
+  rnorm(n_species_split * n_traits_split),
+  n_species_split,
+  n_traits_split
+) %*% chol(Psi_phy_split_true)
+phy_effect_split <- phy_shared_split + phy_unique_split
+
+non_shared_split <-
+  matrix(rnorm(n_species_split), n_species_split, 1) %*%
+  t(Lambda_non_split_true)
+non_unique_split <- matrix(
+  rnorm(n_species_split * n_traits_split),
+  n_species_split,
+  n_traits_split
+) %*% chol(Psi_non_split_true)
+non_effect_split <- non_shared_split + non_unique_split
+
+df_split_wide <- expand.grid(
+  replicate = seq_len(n_per_species_split),
+  species = tree_split$tip.label,
+  KEEP.OUT.ATTRS = FALSE,
+  stringsAsFactors = FALSE
 )
-rn$env <- rnorm(nrow(rn))
-mu_trait_rn <- c(2.0, 1.0, 0.0)[as.integer(rn$trait)]
-rn$value <- mu_trait_rn +
-  slope_sp[as.character(rn$species)] * rn$env +
-  rnorm(nrow(rn), sd = 0.5)
-head(rn)
-```
-
-The slope keyword goes on the right-hand side alongside the fixed
-trait means. Pass the tree *inside* the keyword (`tree = tree_rn`);
-this is the recommended form and keeps the species index aligned with
-the tree.
-
-```{r reaction-norm-fit}
-fit_rn <- gllvmTMB(
-  value ~ 0 + trait + phylo_slope(env | species, tree = tree_rn),
-  data = rn,
-  unit = "species"
+df_split_wide$species <- factor(
+  df_split_wide$species,
+  levels = tree_split$tip.label
 )
-fit_rn$opt$convergence
-```
-
-`phylo_slope` estimates a single shared slope variance
-`sigma_slope^2` (the slopes are shared across traits in this initial
-release). It is reported on the standard-deviation scale as
-`log_sigma_slope`:
-
-```{r reaction-norm-sigma}
-sigma_slope_hat <- exp(
-  fit_rn$opt$par[grepl("log_sigma_slope", names(fit_rn$opt$par))]
+df_split_wide$individual <- factor(
+  paste(df_split_wide$species, df_split_wide$replicate, sep = "_")
 )
-c(true = sigma_slope_true, estimate = unname(round(sigma_slope_hat, 3)))
+
+means_split <- c(leaf_area = 0.4, wood_density = 0, seed_mass = -0.4)
+for (j in seq_along(trait_names_split)) {
+  nm <- trait_names_split[[j]]
+  df_split_wide[[nm]] <- means_split[[nm]] +
+    phy_effect_split[as.integer(df_split_wide$species), j] +
+    non_effect_split[as.integer(df_split_wide$species), j] +
+    rnorm(nrow(df_split_wide), sd = 0.25)
+}
+
+df_split_long <- do.call(
+  rbind,
+  lapply(seq_along(trait_names_split), function(j) {
+    data.frame(
+      individual = df_split_wide$individual,
+      species = df_split_wide$species,
+      trait = trait_names_split[[j]],
+      value = df_split_wide[[trait_names_split[[j]]]]
+    )
+  })
+)
+df_split_long$species <- factor(
+  df_split_long$species,
+  levels = tree_split$tip.label
+)
+df_split_long$trait <- factor(
+  df_split_long$trait,
+  levels = trait_names_split
+)
 ```
 
-The per-species slopes themselves are the random effects
-`b_phy_slope`, indexed against the augmented `A` rows. Aligning them
-to the tip labels recovers the simulated slopes closely:
+The long and wide formulas below are the same model. We set `unit = "species"`
+so the ordinary `latent()` term is a non-phylogenetic species effect, and
+`unit_obs = "individual"` records the replicated observational unit. The fit
+chunk displays any messages or warnings instead of hiding them.
 
-```{r reaction-norm-slopes}
-b_all     <- fit_rn$tmb_obj$env$last.par.best
-b_slope   <- as.numeric(b_all[names(b_all) == "b_phy_slope"])
-aug_names <- rownames(fit_rn$tmb_data$Ainv_phy_rr)
-tip_slope <- b_slope[match(tree_rn$tip.label, aug_names)]
-
-round(cor(tip_slope, slope_sp), 2)   # fitted vs simulated per-species slopes
-```
-
-The slope term composes with the intercept-covariance terms from the
-rest of this article. For example, a reduced-rank phylogenetic axis on
-the intercepts and a phylogenetic reaction-norm slope can be fit
-together:
-
-```{r reaction-norm-combined}
-fit_rn_latent <- gllvmTMB(
+```{r fit-phylo-nonphylo, message = TRUE, warning = TRUE}
+fit_split_long <- gllvmTMB(
   value ~ 0 + trait +
-    phylo_latent(species, d = 1, tree = tree_rn, unique = TRUE) +
-    phylo_slope(env | species, tree = tree_rn),
-  data = rn,
-  unit = "species"
-)
-fit_rn_latent$opt$convergence
-```
-
-### Scope of the slope machinery (read before extending)
-
-`phylo_slope` is deliberately narrow, and the package is honest about
-what is *not* yet available. The validated capability is exactly:
-
-- **`phylo_slope(x | species)` on a Gaussian response**: a single
-  shared slope variance on one continuous covariate, slopes shared
-  across traits. Recovery of `sigma_slope` and the per-species slopes
-  is validated on a Gaussian data-generating process. The parallel
-  pedigree keyword `animal_slope(x | id)` uses the same machinery on a
-  relatedness matrix `A`.
-
-What is **not** implemented (the fit will stop, or the richer
-structure is simply unavailable -- it is not silently approximated):
-
-- **Trait-specific / structured phylogenetic slopes.** Beyond the
-  single-variance `phylo_slope` path, the augmented diagonal slope
-  `phylo_indep(1 + x | species)` now fits and recovers across the core
-  families (Gaussian; binomial probit/logit; Poisson; negative
-  binomial; Gamma; Beta; ordinal -- see the validation-debt register).
-  The reduced-rank `phylo_latent(1 + x | species)` slope is likewise
-  validated across that family set. The richer
-  *trait-specific* spelling `phylo_indep(0 + trait + trait:x | species)`
-  is recognised by the parser but **reserved for a future release**: it
-  **fails loud** (the parser reports that an "LHS richer than
-  `0 + trait` is not yet supported"), so you cannot accidentally get an
-  unvalidated fit. The full-unstructured `phylo_dep(1 + x | species)`
-  augmented slope is validated for `gaussian()` only in this release;
-  on a non-Gaussian family it fails loud rather than silently
-  approximate (the unstructured cross-(intercept,slope)
-  covariance is not yet identifiable off Gaussian). For a correlated
-  (intercept, slope) augmented phylogenetic random regression, the folded
-  `phylo_latent(1 + x | species, unique = TRUE)` estimates
-  `Sigma = Lambda Lambda^T + Psi` over the (intercept, slope)
-  coefficients and surfaces it via `extract_Sigma(level = "phy")`.
-- **Calibrated intervals on the slope variance.** The point estimate
-  of `sigma_slope` is what this section demonstrates; calibrated
-  confidence-interval coverage for slope variances has not been
-  established and should not be reported as such.
-- **Non-Gaussian slope recovery on the full-unstructured `phylo_dep`
-  path.** The diagonal `phylo_indep` and reduced-rank `phylo_latent`
-  augmented slopes now recover across the core families (above); the
-  remaining reserve is the full-unstructured `phylo_dep(1 + x |
-  species)` slope, which is Gaussian-only and fails loud off Gaussian.
-  Treat non-Gaussian `phylo_dep` slopes as not yet
-  delivered.
-
-If you need a correlated (intercept, slope) covariance, use the folded
-`phylo_latent(1 + x | species, unique = TRUE)`, which estimates
-`Sigma = Lambda Lambda^T + Psi` over the (intercept, slope) coefficients
-and surfaces it via `extract_Sigma(level = "phy")`. If your question
-genuinely needs trait-specific reaction-norm LHS spellings or a
-non-Gaussian full-unstructured `phylo_dep` slope, those remain
-reserved (fail-loud) rather than features to reach for now.
-
-## Trait covariance across nested tiers
-
-The phylogenetic and non-phylogenetic split above is one example of a
-more general pattern: default `latent()` covariance decompositions and
-standalone diagonal `indep()` tiers can be placed at **several nested
-grouping tiers** at once. The three grouping slots are named by the
-`unit`, `unit_obs`, and `cluster` arguments:
-
-- `unit` -- the primary between-group level whose covariance you most
-  want to read (here, the individual);
-- `unit_obs` -- the within-`unit` replication level (here, the
-  repeated measurement session), which carries the residual;
-- `cluster` -- a third grouping slot (here, the population the
-  individual belongs to).
-
-This is the layout behind a repeated-measures "behavioural syndrome"
-design: traits measured several times per individual, individuals
-nested in populations. We decompose the among-individual trait
-covariance into a shared axis plus a trait-specific diagonal, and add
-a separate population-level diagonal.
-
-```{r tiers-sim}
-set.seed(2026)
-n_pop     <- 6
-n_ind_per <- 10
-n_sess    <- 4
-behav     <- paste0("behav_", seq_len(3))
-
-pop  <- factor(rep(seq_len(n_pop), each = n_ind_per * n_sess))
-ind  <- factor(rep(seq_len(n_pop * n_ind_per), each = n_sess))
-sess <- factor(seq_along(ind))
-
-tiers <- data.frame(
-  population = rep(pop,  3),
-  individual = rep(ind,  3),
-  session_id = rep(sess, 3),
-  trait      = factor(rep(behav, each = length(sess)), levels = behav)
-)
-
-# Truth: a shared among-individual axis + trait-specific diagonals at
-# the individual and population tiers, plus residual session noise.
-n_ind_tot  <- nlevels(ind)
-Lambda_ind <- matrix(c(0.9, 0.6, 0.3), 3, 1)
-psi_ind    <- c(0.20, 0.25, 0.30)
-psi_pop    <- c(0.40, 0.30, 0.35)
-psi_resid  <- c(0.15, 0.15, 0.15)
-
-f_ind      <- rnorm(n_ind_tot)
-ind_shared <- f_ind %o% as.numeric(Lambda_ind)
-ind_uniq   <- sapply(psi_ind, function(s) rnorm(n_ind_tot, sd = sqrt(s)))
-pop_uniq   <- sapply(psi_pop, function(s) rnorm(n_pop,     sd = sqrt(s)))
-
-mu_behav <- c(0.5, 0.0, -0.5)
-ti <- as.integer(tiers$trait)
-ii <- as.integer(tiers$individual)
-pp <- as.integer(tiers$population)
-tiers$value <- mu_behav[ti] +
-  ind_shared[cbind(ii, ti)] + ind_uniq[cbind(ii, ti)] +
-  pop_uniq[cbind(pp, ti)] +
-  rnorm(nrow(tiers), sd = sqrt(psi_resid[ti]))
-```
-
-The formula places default `latent()` at the individual tier and an
-`indep()` diagonal at the population tier. The three grouping columns
-are routed by the `unit` / `unit_obs` / `cluster` arguments:
-
-```{r tiers-fit}
-fit_tier <- gllvmTMB(
-  value ~ 0 + trait +
-    latent(0 + trait | individual, d = 1) +
-    indep(0 + trait | population),
-  data     = tiers,
-  unit     = "individual",
-  unit_obs = "session_id",
-  cluster  = "population"
-)
-fit_tier$opt$convergence
-```
-
-`extract_Sigma()` reads the covariance at whichever tier you name.
-The `unit` (individual) tier returns the full trait covariance and its
-correlation; the `cluster` (population) tier returns the diagonal
-`indep()` component it carries:
-
-```{r tiers-extract}
-# Among-individual total trait covariance (the syndrome of interest).
-Sigma_ind <- extract_Sigma(fit_tier, level = "unit", part = "total")
-round(Sigma_ind$R, 2)   # correlation among individual-level trait values
-
-# Population-tier trait-specific variances (a diagonal at the cluster slot).
-Sigma_pop <- extract_Sigma(fit_tier, level = "cluster", part = "unique")
-round(Sigma_pop$s, 3)
-```
-
-The table extractor gives the same content per tier in long form, with
-an `interval_status` column so you can see which entries carry an
-interval:
-
-```{r tiers-table}
-ind_total <- extract_Sigma_table(
-  fit_tier, level = "unit", part = "total",
-  measure = "correlation", entries = "all"
-)
-ind_total[, c("component", "trait_i", "trait_j",
-              "estimate", "interval_status")]
-```
-
-Because default `latent()` includes both a shared axis and a diagonal
-`Psi` companion, communality is defined there -- the fraction of each
-trait's among-individual variance explained by the shared syndrome axis:
-
-```{r tiers-communality}
-round(extract_communality(fit_tier, level = "unit"), 2)
-```
-
-A practical caveat: the **cluster** tier here has only `r n_pop`
-populations, so its diagonal (`Sigma_pop$s` above) is estimated from
-few groups and should be read as indicative, not precise -- the same
-small-group caution that applies to small trees applies to a
-small number of clusters. The among-individual covariance, estimated
-from `r n_ind_tot` individuals, is the better-determined target in
-this design.
-
-## Compare against simpler and saturated baselines
-
-Three nested covariance intents bracket the four-component model:
-
-- **Independent** (`phylo_indep + indep`): per-trait diagonal only at
-  each tier. No shared axis, no cross-trait covariance. The simplest
-  model that respects the phylogenetic structure.
-- **Two-Psi** (`phylo_latent + latent`, both with default `Psi`): the
-  four-component decomposition fit in this article. A shared
-  low-rank axis plus a trait-specific diagonal at each tier.
-- **Dependent** (`phylo_dep + dep`): a full unstructured covariance
-  at each tier. Saturated; no shared/unique split is enforced.
-
-The two-Psi decomposition sits between independent (too restrictive
-when traits are correlated) and dependent (too many parameters when
-the number of traits grows). The cross-check functions refit the
-data under the independent and dependent baselines and compare each
-component's implied total covariance against the two-Psi fit.
-
-The helper functions operate on a folded two-Psi phylogenetic fit —
-`phylo_latent(..., unique = TRUE)` carrying its own diagonal `Psi`. The
-calls below show the diagnostic route and are not evaluated by this
-article.
-
-```{r compare-two-psi, eval = FALSE}
-fit_two_psi <- gllvmTMB(
-  value ~ 0 + trait +
-    phylo_latent(species, d = 1, tree = tree, unique = TRUE) +
-    latent(0 + trait | species, d = 1),
-  data = df,
+    phylo_latent(
+      0 + trait | species,
+      d = 1,
+      tree = tree_split,
+      unique = TRUE
+    ) +
+    latent(0 + trait | species, d = 1, unique = TRUE),
+  data = df_split_long,
   trait = "trait",
   unit = "species",
-  cluster = "species"
+  unit_obs = "individual",
+  cluster = "species",
+  family = gaussian()
 )
 
-diag_indep <- compare_indep_vs_two_psi(fit_two_psi)
-diag_indep$agreement
-diag_indep$flag
-
-diag_dep <- compare_dep_vs_two_psi(fit_two_psi)
-diag_dep$agreement
-diag_dep$flag
-```
-
-Each `$agreement` row shows the Frobenius relative disagreement
-between the two-Psi fit and the baseline (`rmse / baseline_mag`).
-`flag = TRUE` means relative disagreement exceeds `0.10`. A flag is
-not a failed model; it tells you the data do not strongly support
-the chosen decomposition at the requested rank.
-
-Use `compare_indep_vs_two_psi()` first when the number of traits is
-large -- it only refits the diagonal and stays cheap. Use
-`compare_dep_vs_two_psi()` when the number of traits is modest and the
-saturated refit is affordable -- it is the more informative
-benchmark for off-diagonal cross-trait structure.
-
-## When to simplify
-
-The folded `phylo_latent(..., unique = TRUE)` plus ordinary `latent()` model is useful
-when the question is about phylogenetically conserved
-trait syndromes alongside non-phylogenetic shared-axis structure.
-Simplify when the data do not identify the splits the model asks for:
-
-```{r fallback, eval = FALSE}
-fit_phylo_dep <- gllvmTMB(
-  value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree) +
-                      dep(0 + trait | species),
-  data = df,
-  trait = "trait",
+fit_split_wide <- gllvmTMB(
+  traits(leaf_area, wood_density, seed_mass) ~ 1 +
+    phylo_latent(
+      1 | species,
+      d = 1,
+      tree = tree_split,
+      unique = TRUE
+    ) +
+    latent(1 | species, d = 1, unique = TRUE),
+  data = df_split_wide,
   unit = "species",
-  cluster = "species"
+  unit_obs = "individual",
+  cluster = "species",
+  family = gaussian()
+)
+
+c(
+  long = as.numeric(logLik(fit_split_long)),
+  wide = as.numeric(logLik(fit_split_wide)),
+  absolute_difference = abs(
+    as.numeric(logLik(fit_split_long)) -
+      as.numeric(logLik(fit_split_wide))
+  )
 )
 ```
 
-`phylo_dep() + dep()` estimates full unstructured trait covariances
-at each tier without asking the data to separate a low-rank shared
-axis from the diagonal. It is the natural fallback when the two-Psi
-diagnostics flag.
+Now inspect every fit-health row before reading the split. Passing rows show
+that this fitted point is numerically usable and that local Wald calculations
+are available; they do not prove that the scientific decomposition is
+identified in another dataset.
+
+```{r diagnose-phylo-nonphylo}
+health_split <- check_gllvmTMB(fit_split_long)
+health_split[, c(
+  "component", "status", "value", "threshold", "message", "action"
+)]
+```
+
+All 16 rows pass for this fit. The raw maximum gradient is `0.0002954`, below
+the `0.01` point-stationarity threshold; `sdreport()` is available and the
+Hessian is positive definite with reported rank `16/16`. These are numerical
+and local-curvature checks, not recovery guarantees.
+
+The six extractor calls recover each shared, diagonal, and total matrix named
+in the alignment table. The sum of the two total matrices is the persistent
+species covariance; it excludes the independent record-level Gaussian noise
+added in the simulation.
+
+```{r recover-phylo-nonphylo}
+Sigma_phy_shared_split_hat <- extract_Sigma(
+  fit_split_long,
+  level = "phy",
+  part = "shared"
+)$Sigma
+Psi_phy_split_hat <- diag(extract_Sigma(
+  fit_split_long,
+  level = "phy",
+  part = "unique"
+)$s)
+Sigma_phy_total_split_hat <- extract_Sigma(
+  fit_split_long,
+  level = "phy",
+  part = "total"
+)$Sigma
+Sigma_non_shared_split_hat <- extract_Sigma(
+  fit_split_long,
+  level = "unit",
+  part = "shared"
+)$Sigma
+Psi_non_split_hat <- diag(extract_Sigma(
+  fit_split_long,
+  level = "unit",
+  part = "unique"
+)$s)
+Sigma_non_total_split_hat <- extract_Sigma(
+  fit_split_long,
+  level = "unit",
+  part = "total"
+)$Sigma
+
+relative_error <- function(estimate, truth) {
+  norm(estimate - truth, "F") / norm(truth, "F")
+}
+
+recovery_split <- data.frame(
+  component = c(
+    "Sigma_phy_shared",
+    "Psi_phy",
+    "Sigma_phy_total",
+    "Sigma_non_shared",
+    "Psi_non",
+    "Sigma_non_total",
+    "species total"
+  ),
+  relative_error = c(
+    relative_error(
+      Sigma_phy_shared_split_hat,
+      Sigma_phy_shared_split_true
+    ),
+    relative_error(Psi_phy_split_hat, Psi_phy_split_true),
+    relative_error(Sigma_phy_total_split_hat, Sigma_phy_total_split_true),
+    relative_error(
+      Sigma_non_shared_split_hat,
+      Sigma_non_shared_split_true
+    ),
+    relative_error(Psi_non_split_hat, Psi_non_split_true),
+    relative_error(Sigma_non_total_split_hat, Sigma_non_total_split_true),
+    relative_error(
+      Sigma_phy_total_split_hat + Sigma_non_total_split_hat,
+      Sigma_phy_total_split_true + Sigma_non_total_split_true
+    )
+  )
+)
+recovery_split$relative_error <- round(recovery_split$relative_error, 3)
+recovery_split
+
+round(Sigma_phy_shared_split_hat, 3)
+round(Psi_phy_split_hat, 3)
+round(Sigma_phy_total_split_hat, 3)
+round(Sigma_non_shared_split_hat, 3)
+round(Psi_non_split_hat, 3)
+round(Sigma_non_total_split_hat, 3)
+```
+
+The relative errors are descriptive results from this one seeded fit. They
+are `0.732`, `0.862`, and `0.340` for the phylogenetic shared, diagonal, and
+total matrices; `0.179`, `0.114`, and `0.137` for the corresponding
+non-phylogenetic matrices; and `0.197` for the species total. The healthy
+optimizer and Hessian therefore do **not** establish close separation of the
+phylogenetic shared axis from its diagonal companion in this realization.
+These errors are not standard errors or repeated-sampling summaries. This fit
+demonstrates the shared/diagonal/total API and an honest truth comparison; it
+is not a coverage study or evidence that 500 species will identify the split
+for every tree, rank, and covariance regime.
+
+## Interpretation boundaries
+
+The fitted off-diagonal entries answer a conditional model question: how much
+cross-trait covariance is associated with the Brownian relationship matrix
+constructed from this tree? They do not, by themselves, establish a causal
+evolutionary mechanism.
+
+Keep four distinctions clear:
+
+- `Sigma_phy` is a covariance matrix; its correlation matrix standardizes
+  entries by fitted phylogenetic variances.
+- A phylogenetic covariance is not genetic covariance or heritability.
+- The supplied tree and Brownian covariance are treated as fixed. Alternative
+  trees or evolutionary kernels can change the answer.
+- Replication helps separate species effects from individual noise. With one
+  mean per species and trait, independent species variation, measurement
+  error, and other tip-level variation can be difficult to distinguish.
+
+This article uses the low-rank `phylo_latent(..., unique = TRUE)` route
+throughout. If that decomposition is not supported by the data, simplify or
+change covariance mode according to the scientific target rather than adding
+complexity automatically. The
+[Formula keyword grid](api-keyword-grid.html#phylogenetic) lists the diagonal
+and full-covariance alternatives and their exact call shapes.
 
 ## What to read next
 
-- [`compare_dep_vs_two_psi()`](../reference/compare_dep_vs_two_psi.html)
-  and [`compare_indep_vs_two_psi()`](../reference/compare_indep_vs_two_psi.html)
-  are the likelihood-based cross-checks for this model.
-- [`functional-biogeography`](functional-biogeography.html) shows how
-  phylogenetic terms behave as controls in a larger site--species--trait
-  model.
-- [`cross-lineage-coevolution`](cross-lineage-coevolution.html) extends
-  the same dense-relatedness idea to two interacting lineages linked by
-  an association matrix `W`.
-- [`morphometrics`](morphometrics.html) is the simplest non-phylogenetic
-  ordinary `latent()` worked example.
-- **Animal models with individual pedigrees.** If your rows are
-  *individuals* with a known pedigree rather than *species* with a
-  phylogeny, swap `phylo_*()` for the parallel `animal_*()` family
-  ([`animal_scalar`](../reference/animal_scalar.html),
-  [`animal_indep`](../reference/animal_indep.html),
-  [`animal_dep`](../reference/animal_dep.html),
-  [`animal_latent`](../reference/animal_latent.html), and
-  [`animal_slope`](../reference/animal_slope.html) for
-  random-regression / reaction-norm models). The math is
-  identical — both keyword families use a known relatedness
-  matrix $\mathbf{A}$ — only the source differs (pedigree via
-  [`pedigree_to_A()`](../reference/pedigree_to_A.html) vs tree
-  via `ape::vcv()`). The pedigree-side worked example with
-  heritability, bivariate $\mathbf{G}$, and factor-analytic
-  $\mathbf{G}$ is [animal-model](animal-model.html). See
-  [Design 14](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
-  for the unified math and the A-vs-V naming boundary.
+- [Covariance and correlation](covariance-correlation.html) explains the
+  distinction between covariance, correlation, shared structure, and
+  trait-specific variance.
+- [Can I trust this fit?](fit-diagnostics.html) gives the full numerical and
+  response-diagnostic workflow.
+- [Convergence and start values](convergence-start-values.html) gives
+  symptom-specific recovery steps for difficult fits.
+- [Formula keyword grid](api-keyword-grid.html#phylogenetic)
+  compares the available phylogenetic covariance modes.
 
-References: Hadfield and Nakagawa (2010) for the phylogenetic mixed
-model representation; Meyer and Kirkpatrick (2008) for reduced-rank
-covariance estimation; Williams et al. (2025) for fast phylogenetic
-GLMMs in the `glmmTMB` ecosystem.
+## References
+
+Felsenstein, J. (1985). Phylogenies and the comparative method.
+*The American Naturalist*, 125, 1–15.
+
+Hadfield, J. D., & Nakagawa, S. (2010). General quantitative genetic methods
+for comparative biology: phylogenies, taxonomies and multi-trait models for
+continuous and categorical characters. *Journal of Evolutionary Biology*, 23,
+494–508. <https://doi.org/10.1111/j.1420-9101.2009.01915.x>

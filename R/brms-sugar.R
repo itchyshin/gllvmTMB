@@ -180,12 +180,12 @@
 
 #' Phylogenetic random effect: lme4-bar mode-dispatch wrapper
 #'
-#' `phylo()` is a unified entry point for the package's five canonical
-#' phylogenetic keywords (`phylo_scalar`, `phylo_unique`, `phylo_indep`,
-#' `phylo_latent`, `phylo_dep`). It accepts an lme4-bar formula on the
+#' `phylo()` is a unified entry point for the package's four taught
+#' phylogenetic modes (`phylo_scalar`, `phylo_indep`, `phylo_latent`,
+#' `phylo_dep`). It accepts an lme4-bar formula on the
 #' first argument and dispatches to the appropriate canonical keyword
 #' based on the LHS shape and the optional `mode = ...` argument. The
-#' five canonical keywords stay first-class -- `phylo()` is an additive
+#' four current keywords stay first-class -- `phylo()` is an additive
 #' alias matching the lme4 / brms / drmTMB convention.
 #'
 #' @section Dispatch rules:
@@ -199,8 +199,8 @@
 #' When the LHS expands to a single column (`1`, intercept-only), `mode`
 #' is degenerate: it defaults silently to `"scalar"`, and explicit
 #' `mode = "scalar"` is accepted (no warning). When the LHS is
-#' `0 + trait`, `mode` is **mandatory** -- choosing between `"diag"` /
-#' `"indep"` / `"latent"` / `"dep"` is a meaningful decision (per-trait
+#' `0 + trait`, `mode` is **mandatory** -- choosing between `"indep"` /
+#' `"latent"` / `"dep"` is a meaningful decision (per-trait
 #' diagonal vs reduced-rank decomposition vs full unstructured) and the
 #' parser refuses to silently default.
 #'
@@ -211,11 +211,11 @@
 #' `propto(0 + species | trait)` internally, picking up the phylogenetic
 #' covariance from the top-level `phylo_vcv =` argument to [gllvmTMB()].
 #'
-#' @section Augmented LHS (Stage 3, not yet shipped):
-#' Augmented LHS forms -- `1 + x` (intercept + slope), `0 + trait + (0 + trait):x`
-#' (per-trait intercepts + per-trait slopes on covariate `x`), `x || species`
-#' (uncorrelated) -- are reserved for Design 07 Stage 3 engine work. The
-#' parser currently raises an error pointing at this status.
+#' @section Intercept-and-slope terms:
+#' The unified `phylo()` wrapper is limited to intercept-only trait covariance.
+#' For an intercept and one or more slopes, use an explicit structured mode
+#' such as `phylo_indep()`, `phylo_latent()`, or `phylo_dep()`; unsupported LHS
+#' forms fail with a message showing the accepted syntax.
 #'
 #' @section Cross-package coexistence:
 #' drmTMB also exposes `phylo(1 | species, tree = tree)` with the same
@@ -231,7 +231,7 @@
 #'   \eqn{\mathbf A^{-1}} via Hadfield & Nakagawa (2010).
 #' @param vcv A tip-only phylogenetic correlation matrix
 #'   (`n_species x n_species`). Legacy / superseded.
-#' @param mode One of `"scalar"` / `"diag"` / `"indep"` / `"latent"` /
+#' @param mode One of `"scalar"` / `"indep"` / `"latent"` /
 #'   `"dep"`. Optional when LHS is `1` (defaults silently to
 #'   `"scalar"`). Mandatory when LHS is `0 + trait`.
 #' @param d Latent rank for `mode = "latent"`. Default 1.
@@ -255,9 +255,9 @@
 #'                   trait   = "trait",
 #'                   unit    = "species",
 #'                   cluster = "species")
-#' # Per-trait phylogenetic variances on shared A (= phylo_unique)
+#' # Per-trait independent phylogenetic variances on shared A
 #' fit_u <- gllvmTMB(value ~ 0 + trait +
-#'                     phylo(0 + trait | species, mode = "diag", tree = tree),
+#'                     phylo(0 + trait | species, mode = "indep", tree = tree),
 #'                   data    = df,
 #'                   trait   = "trait",
 #'                   unit    = "species",
@@ -313,7 +313,7 @@ phylo <- function(
 #' sparsity. The construction is the deterministic Hadfield & Nakagawa (2010)
 #' algorithm (*Journal of Evolutionary Biology* 23:494-508), adopted from that
 #' method; see Hadfield (2010) *Journal of Statistical Software* 33(2):1-22 for
-#' the MCMCglmm reference implementation it is validated against. When the user supplies only `phylo_vcv` (the dense
+#' the MCMCglmm reference implementation used for numerical cross-checks. When the user supplies only `phylo_vcv` (the dense
 #' tip-only covariance matrix), the package falls back to inverting it
 #' densely via `Matrix::solve()` -- correct, but does not exploit
 #' sparsity.
@@ -502,11 +502,11 @@ meta <- function(value, sampling_var) {
 #'   \eqn{\boldsymbol\Psi} variance per trait. `TRUE` ties the default ordinary
 #'   diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 #'   traits. Only applies when `unique = TRUE`.
-#' @param lv One-sided formula for Design 73 predictor-informed latent score
-#'   means. Runtime support is limited to ordinary unit-tier
+#' @param lv One-sided formula for predictor-informed latent-score means.
+#'   Runtime support is limited to ordinary unit-tier
 #'   `latent(..., lv = ~ x)`, and only Gaussian and pure binomial
 #'   (logit/probit/cloglog) fits are currently admitted (partial coverage,
-#'   validated for the ordinary-latent case). Source-specific `*_latent(..., lv = ~ x)` forms are
+#'   supported for the ordinary-latent case). Source-specific `*_latent(..., lv = ~ x)` forms are
 #'   parsed and then fail loud (not yet fittable).
 #' @return A formula marker; never evaluated.
 #' @seealso [indep()], [phylo_latent()], [diag_re], [extract_Sigma()].
@@ -539,7 +539,8 @@ latent <- function(formula, d = 1, unique = TRUE, common = FALSE, lv = NULL) {
 #' `indep(..., common = TRUE)` for the scalar standalone marginal case.
 #' Ordinary `latent()` now carries \eqn{\boldsymbol\Psi} by default, so paired
 #' `latent() + unique()` remains accepted compatibility syntax. Removal is a
-#' later API-change decision while the parser and exports remain live. The
+#' later API-change decision while the parser and source-specific exports
+#' remain live. The
 #' paired legacy `unique(..., common = TRUE)`
 #' parsimony knob remains accepted, but new ordinary intercept-only code should
 #' use `latent(..., common = TRUE)`.
@@ -596,25 +597,19 @@ NULL
 #'
 #' Pass the phylogeny inside the keyword via one of two arguments:
 #'
-#' * **`tree = phylo`** (canonical, recommended) -- the full
-#'   `ape::phylo` object. Triggers the sparse \eqn{\mathbf{A}^{-1}}
-#'   path (Hadfield & Nakagawa 2010, appendix eqs. 26-29) which
-#'   scales linearly in `n_species`. About 24x faster than the dense
-#'   path at `n_species = 1000` on the published benchmark.
-#' * **`vcv = Cphy`** (`r lifecycle::badge("superseded")`) -- a
-#'   tip-only `n_species x n_species` correlation matrix. Forces the
-#'   dense O(n^2) memory / O(n^3) Cholesky path. Provided for users
-#'   who have a Cphy in hand and no Newick tree (e.g. comparing
-#'   against `nlme::corPagel`); soft deprecation in 0.2.0.
+#' * **`tree = phylo`** (recommended when the tree is available) -- the full
+#'   `ape::phylo` object. The package constructs the sparse phylogenetic
+#'   precision using its Hadfield--Nakagawa implementation.
+#' * **`vcv = Cphy`** -- a tip-level `n_species x n_species` correlation
+#'   matrix for analyses that begin from a supplied covariance matrix.
 #'
-#' Both arguments give the **same MLE** -- they differ only in
-#' computational cost. Internal-node ancestral states are estimated
-#' as latent random effects on the sparse path; on the dense path
-#' only tip-level loadings are estimated.
+#' These inputs encode the same tip-level covariance target when they are
+#' constructed from the same tree and aligned identically. Numerical agreement
+#' still depends on labels, scaling, and fitting health; the function does not
+#' estimate or report ancestral states.
 #'
 #' See `vignette("phylogenetic-gllvm")` for the benchmark and
-#' `dev/design/01-phylo-api-canonical-tree.md` for the technical
-#' justification.
+#' `docs/design/04-random-effects.md` for the implementation contract.
 #'
 #' @param species Unquoted column name for the species factor.
 #' @param d Integer; number of phylogenetic latent factors.
@@ -631,11 +626,10 @@ NULL
 #'   (`n_species x n_species`). Legacy alias of `A =`.
 #' @param A Tip-level relatedness matrix (`n_species x n_species`)
 #'   -- alias of `vcv =`, aligned with the `animal_*` family's
-#'   argument naming (M2.8b, 2026-05-17). Supply one of `tree`,
+#'   argument naming. Supply one of `tree`,
 #'   `vcv`, or `A` / `Ainv`.
-#' @param Ainv Sparse precision matrix (inverse of `A`). Densified
-#'   via `solve()` internally for v0.2.0; sparse direct engine
-#'   path is a v0.3.0 follow-up.
+#' @param Ainv Precision matrix (inverse of `A`). Sparse inputs are preserved
+#'   for the sparse precision route.
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_scalar()], [phylo_indep()],
 #'   [phylo_dep()], [phylo_rr()] (deprecated alias).
@@ -703,16 +697,16 @@ phylo_latent <- function(
 #' [phylo_latent()] (sparse via `phylo_tree =`, dense via
 #' `phylo_vcv =`); only one tree / VCV is needed even with both terms.
 #'
-#' ## Scope (initial release)
+#' ## Scope
 #'
-#' This first cut supports:
+#' This helper supports:
 #' * **One** continuous covariate `x` (a single column name).
 #' * **One** shared slope variance \eqn{\sigma^2_{\text{slope}}}.
 #' * **Slopes shared across traits** (same \eqn{\beta_{\text{phy}}}(i)
 #'   for every trait of species \eqn{i}).
 #'
-#' Multi-covariate / per-trait / reduced-rank phylogenetic random
-#' slopes are on the roadmap.
+#' For trait-specific intercept-and-slope covariance, use the corresponding
+#' augmented `phylo_indep()`, `phylo_latent()`, or `phylo_dep()` syntax.
 #'
 #' @param formula `x | species` style formula (LHS is the continuous
 #'   covariate column name; RHS must be the species factor).
@@ -764,7 +758,7 @@ phylo_slope <- function(formula) {
 #'   (`n_species x n_species`). Legacy alias of `A =`.
 #' @param A Tip-level relatedness matrix (`n_species x n_species`)
 #'   -- alias of `vcv =`, aligned with the `animal_*` family's
-#'   argument naming (M2.8b, 2026-05-17).
+#'   argument naming.
 #' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_latent()], [phylo_indep()],
@@ -864,7 +858,7 @@ phylo_scalar <- function(
 #'   (`n_species x n_species`). Legacy alias of `A =`.
 #' @param A Tip-level relatedness matrix (`n_species x n_species`)
 #'   -- alias of `vcv =`, aligned with the `animal_*` family's
-#'   argument naming (M2.8b, 2026-05-17).
+#'   argument naming.
 #' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_scalar()], [phylo_latent()], [phylo_indep()],
@@ -946,8 +940,9 @@ phylo_unique <- function(
 #'   in `data` (e.g. `c("lon", "lat")`). Resolved by the parser when
 #'   supplied as keyword argument; `NULL` when the orientation expresses
 #'   the coordinates via the formula RHS.
-#' @param mesh Optional `fmesher` mesh object built via [make_mesh()]. If
-#'   `NULL`, the engine constructs a default mesh from `coords`.
+#' @param mesh An `fmesher` mesh object built via [make_mesh()]. It may be
+#'   supplied here or through the top-level `mesh =` argument to [gllvmTMB()].
+#'   The engine does not construct a mesh automatically from `coords`.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_scalar()], [spatial_latent()], [spde()] (deprecated alias).
 #' @examples
@@ -956,9 +951,10 @@ phylo_unique <- function(
 #'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
 #'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
 #'   )
+#'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
-#'             spatial_unique(0 + trait | site, coords = c("lon", "lat")),
+#'             spatial_unique(0 + trait | site, mesh = mesh),
 #'     data  = sim$data,
 #'     trait = "trait",
 #'     unit  = "site"
@@ -998,8 +994,9 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
 #'   in `data` (e.g. `c("lon", "lat")`). Resolved by the parser when
 #'   supplied as keyword argument; `NULL` when the orientation expresses
 #'   the coordinates via the formula RHS.
-#' @param mesh Optional `fmesher` mesh object built via [make_mesh()]. If
-#'   `NULL`, the engine constructs a default mesh from `coords`.
+#' @param mesh An `fmesher` mesh object built via [make_mesh()]. It may be
+#'   supplied here or through the top-level `mesh =` argument to [gllvmTMB()].
+#'   The engine does not construct a mesh automatically from `coords`.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_indep()], [spatial_latent()], [spde()] (deprecated alias).
 #' @examples
@@ -1008,9 +1005,10 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
 #'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
 #'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
 #'   )
+#'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
-#'             spatial_scalar(0 + trait | site, coords = c("lon", "lat")),
+#'             spatial_scalar(0 + trait | site, mesh = mesh),
 #'     data  = sim$data,
 #'     trait = "trait",
 #'     unit  = "site"
@@ -1072,8 +1070,9 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   in `data` (e.g. `c("lon", "lat")`). Resolved by the parser when
 #'   supplied as keyword argument; `NULL` when the orientation expresses
 #'   the coordinates via the formula RHS.
-#' @param mesh Optional `fmesher` mesh object built via [make_mesh()]. If
-#'   `NULL`, the engine constructs a default mesh from `coords`.
+#' @param mesh An `fmesher` mesh object built via [make_mesh()]. It may be
+#'   supplied here or through the top-level `mesh =` argument to [gllvmTMB()].
+#'   The engine does not construct a mesh automatically from `coords`.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_indep()], [spatial_scalar()], [phylo_latent()].
 #' @examples
@@ -1082,10 +1081,10 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'     n_sites = 30, n_species = 6, mean_species_per_site = 5,
 #'     spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1
 #'   )
+#'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
-#'             spatial_latent(0 + trait | site, d = 2,
-#'                            coords = c("lon", "lat")),
+#'             spatial_latent(0 + trait | site, d = 2, mesh = mesh),
 #'     data  = sim$data,
 #'     trait = "trait",
 #'     unit  = "site"
@@ -1099,12 +1098,12 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 
 #' Spatial random field: lme4-bar mode-dispatch wrapper
 #'
-#' `spatial()` is a unified entry point for the package's five canonical
-#' spatial keywords (`spatial_scalar`, `spatial_unique`, `spatial_indep`,
-#' `spatial_latent`, `spatial_dep`). It accepts an lme4-bar formula on
+#' `spatial()` is a unified entry point for the package's four taught
+#' spatial modes (`spatial_scalar`, `spatial_indep`, `spatial_latent`,
+#' `spatial_dep`). It accepts an lme4-bar formula on
 #' the first argument and dispatches to the appropriate canonical
 #' keyword based on the LHS shape and the optional `mode = ...` argument.
-#' The five canonical keywords stay first-class -- `spatial()` is an
+#' The four current keywords stay first-class -- `spatial()` is an
 #' additive alias matching the lme4 / brms / drmTMB convention.
 #'
 #' This is the spatial parallel of the [phylo()] mode-dispatch wrapper:
@@ -1122,8 +1121,8 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #' When the LHS expands to a single column (`1`, intercept-only), `mode`
 #' is degenerate: it defaults silently to `"scalar"`, and explicit
 #' `mode = "scalar"` is accepted (no warning). When the LHS is
-#' `0 + trait`, `mode` is **mandatory** -- choosing between `"diag"` /
-#' `"indep"` / `"latent"` / `"dep"` is a meaningful decision (per-trait
+#' `0 + trait`, `mode` is **mandatory** -- choosing between `"indep"` /
+#' `"latent"` / `"dep"` is a meaningful decision (per-trait
 #' marginal vs reduced-rank decomposition vs full unstructured) and the
 #' parser refuses to silently default.
 #'
@@ -1136,11 +1135,11 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #' picking up the SPDE mesh from the top-level `mesh =` argument to
 #' [gllvmTMB()].
 #'
-#' @section Augmented LHS (Stage 3, not yet shipped):
-#' Augmented LHS forms -- `1 + x` (intercept + slope), `0 + trait + (0 + trait):x`
-#' (per-trait intercepts + per-trait slopes on covariate `x`), `x || coords`
-#' (uncorrelated) -- are reserved for Design 07 Stage 3 engine work. The
-#' parser currently raises an error pointing at this status.
+#' @section Intercept-and-slope terms:
+#' The unified `spatial()` wrapper is limited to intercept-only trait
+#' covariance. For an intercept and slope, use an explicit structured mode such
+#' as `spatial_indep()`, `spatial_latent()`, or `spatial_dep()`; unsupported LHS
+#' forms fail with a message showing the accepted syntax.
 #'
 #' @section Cross-package coexistence:
 #' drmTMB also exposes `spatial(1 | site, mesh = mesh)` with the same
@@ -1161,7 +1160,7 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #'   columns correspond to the spatial grouping. The mesh actually
 #'   used is whatever is passed to the `mesh` argument of [gllvmTMB()]
 #'   or this function.
-#' @param mode One of `"scalar"` / `"diag"` / `"indep"` / `"latent"` /
+#' @param mode One of `"scalar"` / `"indep"` / `"latent"` /
 #'   `"dep"`. Optional when LHS is `1` (defaults silently to
 #'   `"scalar"`). Mandatory when LHS is `0 + trait`.
 #' @param d Latent rank for `mode = "latent"`. Default 1.
@@ -1180,9 +1179,9 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #'                   data  = df,
 #'                   trait = "trait",
 #'                   unit  = "site")
-#' # Per-trait independent fields on shared mesh (= spatial_unique)
+#' # Per-trait independent fields on a shared mesh
 #' fit_u <- gllvmTMB(value ~ 0 + trait +
-#'                     spatial(0 + trait | coords, mode = "diag",
+#'                     spatial(0 + trait | coords, mode = "indep",
 #'                             mesh = mesh),
 #'                   data  = df,
 #'                   trait = "trait",
@@ -1215,28 +1214,25 @@ spatial <- function(
 
 #' Known-V meta-analytic random effect (deprecated alias): `meta_known_V(V = V)`
 #'
-#' Deprecated alias for [meta_V()] (renamed 2026-05-16 per vision
-#' item 4). Both names desugar identically; new code should prefer
-#' `meta_V(V = V)`. The shorter `meta_V` is the canonical
-#' 0.2.0 name; `meta_known_V` is retained as an alias for
-#' back-compatibility.
+#' Soft-deprecated alias for [meta_V()]. Both names desugar identically; new
+#' code should use `meta_V(V = V)`. `meta_known_V()` remains available for
+#' backward compatibility.
 #'
 #' @param V Known sampling variance or covariance marker. In current
 #'   exact-additive fits, pass the actual matrix via the top-level
 #'   `known_V =` argument to [gllvmTMB()]. Formula-level `V = V` names
 #'   the marker and keeps the syntax aligned with `drmTMB::meta_V()`.
 #' @param type Sampling-covariance mode. `"exact"` is implemented.
-#'   `"proportional"` is reserved for the planned post-CRAN extension
-#'   and currently fails loud in the formula parser.
+#'   `"proportional"` is not implemented and fails clearly in the formula
+#'   parser rather than being treated as exact.
 #' @return A formula marker; never evaluated.
 #' @seealso [meta_V()] (canonical name; preferred for new code);
 #'   [meta()] (older deprecated short alias); [block_V()];
 #'   [gllvmTMB()].
 #' @examples
 #' \dontrun{
-#' # Deprecated alias of meta_V(); both desugar identically (see
-#' # test-formula-grammar-smoke.R, where meta_V() / meta_known_V() expand
-#' # to the same parsed formula). New code should use meta_V(V = V).
+#' # Deprecated alias of meta_V(); both desugar identically.
+#' # New code should use meta_V(V = V).
 #' set.seed(131)
 #' df <- expand.grid(
 #'   site  = factor(seq_len(50)),
@@ -1262,32 +1258,28 @@ meta_known_V <- function(V, type = "exact") {
 #' Canonical formula keyword for the known-sampling-error term in
 #' two-stage meta-regression workflows. The name makes it explicit
 #' that what is "known" is the **V** matrix (the sampling-error
-#' covariance). Renamed from [meta_known_V()] in 0.2.0 per vision
-#' item 4 (2026-05-16); the older name is retained as a deprecated
-#' alias. Both names desugar identically in the formula parser.
+#' covariance). [meta_known_V()] is retained as a soft-deprecated alias; both
+#' names desugar identically in the formula parser.
 #'
 #' Pass the matrix `V` via the top-level `known_V = V` argument to
 #' [gllvmTMB()] when using the exact-additive (default) form. For
 #' block-diagonal within-study correlation, build `V` via [block_V()].
-#' The future proportional-sampling-variance mode will use
-#' `type = "proportional"`; in 0.2.x this value is deliberately
-#' rejected rather than silently treated as exact.
+#' `type = "proportional"` is not implemented and is deliberately rejected
+#' rather than silently treated as exact.
 #'
 #' @param V Known sampling variance or covariance marker. In current
 #'   exact-additive fits, pass the actual matrix via the top-level
 #'   `known_V =` argument to [gllvmTMB()]. Formula-level `V = V` names
 #'   the marker and keeps the syntax aligned with `drmTMB::meta_V()`.
 #' @param type Sampling-covariance mode. `"exact"` is implemented.
-#'   `"proportional"` is reserved for the planned post-CRAN extension
-#'   and currently fails loud in the formula parser.
+#'   `"proportional"` is not implemented and fails clearly in the formula
+#'   parser rather than being treated as exact.
 #' @return A formula marker; never evaluated.
 #' @seealso [meta_known_V()] (deprecated alias); [block_V()];
-#'   [gllvmTMB()]; vision doc "Planned extensions" for the future
-#'   `meta_V(type = "proportional")` mode (Nakagawa 2022).
+#'   [gllvmTMB()].
 #' @examples
 #' \dontrun{
-#' # Stage-2 meta-regression with a known per-row sampling-variance V.
-#' # Grounded in test-formula-grammar-smoke.R.
+#' # Two-stage meta-regression with a known per-row sampling-variance V.
 #' set.seed(131)
 #' df <- expand.grid(
 #'   site  = factor(seq_len(50)),
@@ -1398,29 +1390,27 @@ indep <- function(formula, common = FALSE) {
 #'
 #' Combining `phylo_indep(0 + trait | species)` with
 #' `phylo_latent(species, d = K)` is **over-parameterised** and the
-#' parser raises a `cli::cli_abort()`. Combining `phylo_indep` with
-#' `phylo_unique` is redundant and also errors.
+#' parser raises a `cli::cli_abort()`.
 #'
-#' ## Future extensibility
+#' ## Intercept-and-slope form
 #'
-#' The formula syntax `phylo_indep(0 + trait + trait:x | species)` is
-#' reserved as a future path for **trait-specific phylogenetic random
-#' slopes** on covariate `x`. The parser recognises the syntax but the
-#' engine currently supports only the simple `0 + trait | species` form;
-#' richer LHS expressions are deferred.
+#' A single-covariate random regression uses
+#' `phylo_indep(1 + x | species)` in wide syntax or
+#' `phylo_indep(0 + trait + (0 + trait):x | species)` in explicit long syntax.
+#' It estimates an intercept--slope block with their correlation fixed to zero.
 #'
 #' Pass the phylogeny via `tree = phylo` (canonical, sparse \eqn{\mathbf{A}^{-1}}) or
 #' `vcv = Cphy` (`r lifecycle::badge("superseded")`, dense). See
 #' [phylo_latent()] for the full discussion of the two paths.
 #'
-#' @param formula `0 + trait | species` style formula. The LHS must be
-#'   `0 + trait` (the trait factor); the RHS is the species column.
+#' @param formula Intercept-only `0 + trait | species`, or the supported
+#'   one-covariate intercept-and-slope form described above.
 #' @param tree An `ape::phylo` object. **Canonical.**
 #' @param vcv A tip-only phylogenetic correlation matrix
 #'   (`n_species x n_species`). Legacy alias of `A =`.
 #' @param A Tip-level relatedness matrix (`n_species x n_species`)
 #'   -- alias of `vcv =`, aligned with the `animal_*` family's
-#'   argument naming (M2.8b, 2026-05-17).
+#'   argument naming.
 #' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_latent()], [phylo_dep()], [indep()],
@@ -1478,8 +1468,7 @@ phylo_indep <- function(
 #'
 #' Combining `spatial_indep(0 + trait | coords)` with
 #' `spatial_latent(0 + trait | coords, d = K)` is **over-parameterised**
-#' and the parser raises a `cli::cli_abort()`. Combining `spatial_indep`
-#' with `spatial_unique` is redundant and also errors.
+#' and the parser raises a `cli::cli_abort()`.
 #'
 #' @param formula `0 + trait | coords` style formula (LHS is the trait
 #'   factor `0 + trait`; RHS is the `coords` placeholder symbol that
@@ -1488,8 +1477,9 @@ phylo_indep <- function(
 #'   in `data` (e.g. `c("lon", "lat")`). Resolved by the parser when
 #'   supplied as keyword argument; `NULL` when the orientation expresses
 #'   the coordinates via the formula RHS.
-#' @param mesh Optional `fmesher` mesh object built via [make_mesh()]. If
-#'   `NULL`, the engine constructs a default mesh from `coords`.
+#' @param mesh An `fmesher` mesh object built via [make_mesh()]. It may be
+#'   supplied here or through the top-level `mesh =` argument to [gllvmTMB()].
+#'   The engine does not construct a mesh automatically from `coords`.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_latent()], [indep()],
 #'   [phylo_indep()], [extract_Sigma()].
@@ -1499,9 +1489,10 @@ phylo_indep <- function(
 #'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
 #'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
 #'   )
+#'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
-#'             spatial_indep(0 + trait | site, coords = c("lon", "lat")),
+#'             spatial_indep(0 + trait | site, mesh = mesh),
 #'     data  = sim$data,
 #'     trait = "trait",
 #'     unit  = "site"
@@ -1546,8 +1537,8 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL) {
 #' }
 #'
 #' Use `dep()` when you want to commit to the full unstructured
-#' interpretation explicitly. Maintainer's framing: this is just a
-#' standard multivariate response model. Computational scope: tractable
+#' interpretation explicitly. This is a standard multivariate response
+#' covariance model. Computational scope: tractable
 #' for \eqn{T \le \sim 30} with the default optimiser; for larger
 #' \eqn{T}, prefer `latent(d = K)` with \eqn{K \ll T} as the
 #' rank-reduced approximation.
@@ -1622,7 +1613,7 @@ dep <- function(formula) {
 #'   (`n_species x n_species`). Legacy alias of `A =`.
 #' @param A Tip-level relatedness matrix (`n_species x n_species`)
 #'   -- alias of `vcv =`, aligned with the `animal_*` family's
-#'   argument naming (M2.8b, 2026-05-17).
+#'   argument naming.
 #' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_latent()], [phylo_indep()],
@@ -1685,8 +1676,9 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL) {
 #'   in `data` (e.g. `c("lon", "lat")`). Resolved by the parser when
 #'   supplied as keyword argument; `NULL` when the orientation expresses
 #'   the coordinates via the formula RHS.
-#' @param mesh Optional `fmesher` mesh object built via [make_mesh()]. If
-#'   `NULL`, the engine constructs a default mesh from `coords`.
+#' @param mesh An `fmesher` mesh object built via [make_mesh()]. It may be
+#'   supplied here or through the top-level `mesh =` argument to [gllvmTMB()].
+#'   The engine does not construct a mesh automatically from `coords`.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_latent()], [spatial_indep()],
 #'   [dep()], [phylo_dep()], [extract_Sigma()].
@@ -1696,9 +1688,10 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL) {
 #'     n_sites = 30, n_species = 6, mean_species_per_site = 5,
 #'     spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1
 #'   )
+#'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
-#'             spatial_dep(0 + trait | site, coords = c("lon", "lat")),
+#'             spatial_dep(0 + trait | site, mesh = mesh),
 #'     data  = sim$data,
 #'     trait = "trait",
 #'     unit  = "site"
@@ -1975,8 +1968,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
   cli::cli_abort(c(
     "{.fn {fn}} augmented LHS is not yet supported.",
     "i" = "You wrote {.code {fn}({deparse(bar)})}.",
-    "x" = "Augmented LHS forms (intercept + slope, per-trait slopes, uncorrelated `||`) require {.strong Design 07 Stage 3} engine work (extending {.code n_traits} to {.code n_lhs_cols} in the TMB template).",
-    ">" = "For Stage 2, use {.code 0 + trait | g} (per-trait intercepts) or {.code 1 | g} (single shared variance)."
+    "x" = "This wrapper accepts only intercept-only {.code 0 + trait | g} or {.code 1 | g} forms.",
+    ">" = "Use the source-specific {.fn *_indep}, {.fn *_latent}, or {.fn *_dep} keyword when you need a supported intercept-and-slope covariance."
   ))
 }
 
@@ -2083,7 +2076,7 @@ normalise_spatial_orientation <- function(e) {
       details = c(
         i = paste0(
           "The canonical formula orientation for spatial_* keywords is now ",
-          "`0 + trait | coords`, matching `latent()`, `unique()`, and ",
+          "`0 + trait | coords`, matching `latent()`, `indep()`, and ",
           "glmmTMB's `gau(0 + trait | pos)` / `exp(0 + trait | pos)`."
         ),
         ">" = sprintf(
@@ -2227,8 +2220,8 @@ rewrite_canonical_aliases <- function(formula) {
     cli::cli_abort(c(
       "{.arg lv} is reserved for ordinary {.fn latent} only.",
       "x" = "{.fn {fn}} does not support predictor-informed latent-score means.",
-      "i" = "Design 73 C1 is limited to ordinary unit-tier {.code latent(..., lv = ~ x)}; only Gaussian and pure binomial logit/probit/cloglog fits are admitted.",
-      ">" = "Remove {.arg lv} from {.fn {fn}} until validation row {.code LV-07} moves."
+      "i" = "Predictor-informed latent-score means are limited to ordinary unit-tier {.code latent(..., lv = ~ x)} with Gaussian or pure binomial logit/probit/cloglog responses.",
+      ">" = "Remove {.arg lv} from {.fn {fn}}; predictor-informed latent scores are not implemented for this covariance source."
     ))
   }
   .meta_type <- function(e, fn) {
@@ -2242,7 +2235,7 @@ rewrite_canonical_aliases <- function(formula) {
       cli::cli_abort(c(
         "{.fn {fn}} requires {.arg type} to be a literal string.",
         ">" = "Use {.code {fn}(V = V, type = \"exact\")}.",
-        "i" = "{.code type = \"proportional\"} is planned but not implemented in 0.2.x."
+        "i" = "{.code type = \"proportional\"} is not implemented; the supported route is exact additive known sampling covariance."
       ))
     }
     if (!type_expr %in% c("exact", "proportional")) {
@@ -2255,8 +2248,8 @@ rewrite_canonical_aliases <- function(formula) {
     type <- type_expr
     if (identical(type, "proportional")) {
       cli::cli_abort(c(
-        "{.code {fn}(type = \"proportional\")} is planned but not implemented.",
-        "i" = "The current implementation supports exact additive known sampling covariance only.",
+        "{.code {fn}(type = \"proportional\")} is not implemented.",
+        "i" = "The supported route is exact additive known sampling covariance.",
         ">" = "Use {.code {fn}(V = V, type = \"exact\")} with {.arg known_V = V}."
       ))
     }
@@ -2462,8 +2455,8 @@ rewrite_canonical_aliases <- function(formula) {
             cli::cli_abort(c(
               "{.fn spatial} augmented LHS is not yet supported.",
               "i" = "You wrote {.code spatial({deparse(bar)})}.",
-              "x" = "Augmented LHS forms (intercept + slope, per-trait slopes, uncorrelated `||`) require {.strong Design 07 Stage 3} engine work (extending {.code n_traits} to {.code n_lhs_cols} in the TMB template).",
-              ">" = "For Stage 2, use {.code 1 | site} (scalar mode) or {.code 0 + trait | coords} (with explicit {.arg mode = }). See {.code ?spatial}."
+              "x" = "The unified {.fn spatial} wrapper accepts only intercept-only {.code 1 | site} or {.code 0 + trait | site} forms.",
+              ">" = "For a supported intercept-and-slope covariance, use {.fn spatial_indep}, {.fn spatial_latent}, or {.fn spatial_dep}."
             ))
           }
 
@@ -2502,14 +2495,14 @@ rewrite_canonical_aliases <- function(formula) {
           if (is.null(mode_str)) {
             cli::cli_abort(c(
               "{.fn spatial} requires {.arg mode} when LHS is {.code 0 + trait}.",
-              "i" = "Choose one of {.val diag} (per-trait independent fields; = spatial_unique), {.val indep} (= spatial_indep), {.val latent} (reduced-rank shared spatial factors, requires {.arg d}; = spatial_latent), or {.val dep} (full unstructured T x T; = spatial_dep)."
+              "i" = "Choose {.val indep} (per-trait independent fields), {.val latent} (reduced-rank shared spatial factors; requires {.arg d}), or {.val dep} (full unstructured T x T)."
             ))
           }
           valid_modes <- c("diag", "indep", "latent", "dep")
           if (!mode_str %in% valid_modes) {
             cli::cli_abort(c(
               "{.code mode = {.val {mode_str}}} is not a recognised mode.",
-              "i" = "Valid modes for LHS = {.code 0 + trait}: {.val {valid_modes}}."
+              "i" = "Current modes for LHS = {.code 0 + trait} are {.val indep}, {.val latent}, and {.val dep}."
             ))
           }
 
@@ -2667,7 +2660,7 @@ rewrite_canonical_aliases <- function(formula) {
               "{.fn animal_unique} augmented LHS form is not supported.",
               "i" = "You wrote {.code animal_unique({deparse(arg)})}.",
               "x" = "Only {.code 1 + x | id} (correlated intercept + slope) and the bare intercept-only {.code id} / {.code 0 + trait | id} forms are accepted.",
-              ">" = "For a correlated intercept+slope reaction norm use {.code animal_unique(1 + x | id, pedigree = ped)}; for the diagonal case use {.code animal_indep(1 + x | id, pedigree = ped)}."
+              ">" = "For current syntax, use {.code animal_indep(1 + x | id, pedigree = ped)} when intercept--slope correlation is fixed to zero, or {.code animal_dep(1 + x | id, pedigree = ped)} for a full covariance."
             ))
           }
           new_call <- as.call(c(
@@ -3041,7 +3034,7 @@ rewrite_canonical_aliases <- function(formula) {
             if (.has_named_arg(e, "lv")) {
               cli::cli_abort(c(
                 "{.arg lv} cannot yet be combined with augmented ordinary {.fn latent} random-regression syntax.",
-                "x" = "Design 73 C1 requires an intercept-only latent block.",
+                "x" = "Predictor-informed latent-score means require an intercept-only ordinary latent block.",
                 ">" = "Use {.code latent(0 + trait | unit, d = K, lv = ~ x)} without an augmented LHS."
               ))
             }
@@ -3427,8 +3420,8 @@ rewrite_canonical_aliases <- function(formula) {
           cli::cli_abort(c(
             "{.fn phylo} augmented LHS is not yet supported.",
             "i" = "You wrote {.code phylo({deparse(bar)})}.",
-            "x" = "Augmented LHS forms (intercept + slope, per-trait slopes, uncorrelated `||`) require {.strong Design 07 Stage 3} engine work (extending {.code n_traits} to {.code n_lhs_cols} in the TMB template).",
-            ">" = "For Stage 2, use {.code 1 | species} (scalar mode) or {.code 0 + trait | species} (with explicit {.arg mode = }). See {.code ?phylo}."
+            "x" = "The unified {.fn phylo} wrapper accepts only intercept-only {.code 1 | species} or {.code 0 + trait | species} forms.",
+            ">" = "For a supported intercept-and-slope covariance, use {.fn phylo_indep}, {.fn phylo_latent}, or {.fn phylo_dep}."
           ))
         }
 
@@ -3456,14 +3449,14 @@ rewrite_canonical_aliases <- function(formula) {
         if (is.null(mode_str)) {
           cli::cli_abort(c(
             "{.fn phylo} requires {.arg mode} when LHS is {.code 0 + trait}.",
-            "i" = "Choose one of {.val diag} (per-trait variances on A; = phylo_unique), {.val indep} (= phylo_indep), {.val latent} (reduced-rank cross-trait, requires {.arg d}; = phylo_latent), or {.val dep} (full unstructured T x T; = phylo_dep)."
+            "i" = "Choose {.val indep} (per-trait independent variances on A), {.val latent} (reduced-rank cross-trait covariance; requires {.arg d}), or {.val dep} (full unstructured T x T covariance)."
           ))
         }
         valid_modes <- c("diag", "indep", "latent", "dep")
         if (!mode_str %in% valid_modes) {
           cli::cli_abort(c(
             "{.code mode = {.val {mode_str}}} is not a recognised mode.",
-            "i" = "Valid modes for LHS = {.code 0 + trait}: {.val {valid_modes}}."
+            "i" = "Current modes for LHS = {.code 0 + trait} are {.val indep}, {.val latent}, and {.val dep}."
           ))
         }
 
@@ -3522,7 +3515,7 @@ rewrite_canonical_aliases <- function(formula) {
             cli::cli_abort(c(
               "{.fn phylo_unique} RHS must be a single column name (the species factor).",
               "i" = "Got RHS: {.code {deparse(species_arg)}}.",
-              ">" = "Use {.code phylo_unique(1 + x | species)} or {.code phylo_unique(0 + trait + (0 + trait):x | species)}."
+              ">" = "For new code, use {.code phylo_indep(1 + x | species)} when intercept--slope correlation is fixed to zero, or {.code phylo_dep(1 + x | species)} for a full covariance."
             ))
           }
           if (identical(lhs_form$lhs_form, "intercept_only")) {
@@ -3551,8 +3544,8 @@ rewrite_canonical_aliases <- function(formula) {
           cli::cli_abort(c(
             "{.fn phylo_unique} augmented LHS form is not supported.",
             "i" = "You wrote {.code phylo_unique({deparse(bar)})}.",
-            "x" = "Phase 56.3 accepts only {.code 1 + x | species} and {.code 0 + trait + (0 + trait):x | species}.",
-            ">" = "Keep multi-covariate, slope-only, uncorrelated, and richer per-trait slope forms for a later design slice."
+            "x" = "Accepted forms are {.code 1 + x | species} and {.code 0 + trait + (0 + trait):x | species}.",
+            ">" = "Use one named slope covariate and keep the intercept in this compatibility form."
           ))
         }
         new_call <- as.call(c(

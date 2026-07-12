@@ -1,11 +1,13 @@
 ---
-title: "Fix predictor effects at zero"
+title: "Response-specific predictor effects"
+description: "Specify which predictors affect which responses, including intentional zero coefficients, without confusing fixed-effect structure with covariance constraints."
+tier: 2
 output:
   rmarkdown::html_vignette:
     toc: true
-    toc_depth: 3
+    toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Fix predictor effects at zero}
+  %\VignetteIndexEntry{Response-specific predictor effects}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -14,142 +16,185 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  message = FALSE,
-  warning = FALSE
+  message = FALSE
 )
 ```
 
-When should one response ignore a predictor while the others estimate it?
-`Xcoef_fixed` controls the fixed-effect part of the model for that case. Use it
-when the same stacked-trait formula is convenient, but a predictor should be
-estimated for some responses and fixed at zero for others.
+Use `Xcoef_fixed` when a direct predictor effect is fixed at zero for some
+responses but estimated for others. This is an exact equality constraint on the
+mean model—not shrinkage, variable selection, or evidence that an estimated
+effect is null.
 
-Scope boundary: exact zero fixed-effect constraints are covered for
-native ML fits and for admitted `engine = "julia"` fixed-effect-X rows. This is
-not variable selection, response screening, response deletion, loading
-constraints, or latent-rank selection. `REML = TRUE`, non-zero fixed values,
-Julia per-trait intercept pinning, and unsupported Julia fixed-effect-X families
-remain gated.
+You can impose named zero constraints in maximum-likelihood fits. Non-zero
+fixed values and `REML = TRUE` are not supported.
 
-For one unit `i` and response `t`, a simple stacked-trait model has a mean
-structure like
+## Decide whether zero is structural
 
-$$
-\eta_{it} = x_{it}^{T}\beta_t + \lambda_t^{T}u_i .
-$$
+For unit (i) and response (t), consider
 
-Here `beta` is the fixed-effect coefficient vector for the mean, `lambda` is a
-loading row, and `u_i` is the unit score. `Xcoef_fixed` changes the first part,
-`x beta`. It does not change `Lambda`, `Psi`, the latent rank, or the response
-set.
+\[
+\eta_{it} = \mathbf x_{it}^{\mathsf T}\boldsymbol\beta_t
+             + \boldsymbol\lambda_t^{\mathsf T}\mathbf u_i.
+\]
 
-## Why fix a coefficient?
+`Xcoef_fixed` pins one named entry of the direct mean coefficient
+$\boldsymbol\beta_t$. It does not directly constrain the loadings, latent
+scores, Psi, or other covariance parameters—although their fitted estimates can
+change after the mean restriction changes.
 
-Sometimes a predictor is meaningful for one response but not another. In a
-systematic map, an urban-gradient predictor might be scientifically meaningful
-for biodiversity outcomes but not for a metadata indicator. In a joint species
-distribution model, a covariate might be pre-specified for some species or
-response groups but not others. In a morphometrics example, a treatment might
-affect growth traits but not a recording-quality indicator.
+Use an exact zero only when it is justified before seeing the fitted estimate,
+for example by experimental design, temporal ordering, measurement definition,
+preregistration, or a defensible structural model.
 
-You could split the model into several formulas. `Xcoef_fixed` gives a narrower
-route: keep one stacked model and pin only the irrelevant fixed-effect
-coefficients at structural zero.
+- **Known by design that the direct coefficient is zero:** use
+  `Xcoef_fixed`.
+- **Want to learn whether the coefficient is near zero:** leave it free and
+  report its uncertainty or compare prespecified restricted and unrestricted
+  models.
+- **Want shrinkage or data-driven selection:** use a method designed for that
+  purpose.
+- **Want to remove a response:** change the response set.
+- **Want to constrain which traits load on an LV:** use the separate loading-
+  constraint interface; that changes $\boldsymbol\Lambda$, not
+  $\boldsymbol\beta$.
 
-## Example
+Pinning a false zero can move the omitted mean pattern into other fixed effects,
+residual variation, or covariance components.
+
+## Worked example
+
+Suppose treatment is assigned after a baseline measurement. By design, the
+treatment cannot cause the baseline response, while its effects on later growth
+and colour responses remain free. We encode that prespecified temporal zero.
 
 ```{r setup}
 library(gllvmTMB)
-```
 
-Create three responses measured on the same units. The predictor `x` should
-affect `growth` and `colour`, but the `metadata` response is included only as a
-control indicator, so we do not want `x` to define that response's mean.
-
-```{r data}
 set.seed(20260623)
 n_unit <- 36
 site <- factor(seq_len(n_unit))
-x_site <- rnorm(n_unit)
+treatment <- rnorm(n_unit)
 
 dat <- expand.grid(
   site = site,
-  trait = factor(c("growth", "colour", "metadata")),
+  trait = factor(c("baseline", "growth", "colour")),
   KEEP.OUT.ATTRS = FALSE
 )
-dat$x <- x_site[as.integer(dat$site)]
+dat$treatment <- treatment[as.integer(dat$site)]
 dat$eta <- with(dat, ifelse(
-  trait == "growth", 0.4 + 0.8 * x,
-  ifelse(trait == "colour", -0.2 - 0.5 * x, 0.1)
+  trait == "baseline", 0.3,
+  ifelse(trait == "growth", 0.4 + 0.8 * treatment,
+         -0.2 - 0.5 * treatment)
 ))
 dat$y <- dat$eta + rnorm(nrow(dat), sd = 0.2)
 ```
 
-The coefficient names come from the expanded fixed-effect design, not from the
-raw formula text. Check those names before supplying `Xcoef_fixed`.
+### Inspect the expanded coefficient names
+
+Constraint names must match the expanded fixed-effect design, not a guess based
+on the raw formula. Factor contrasts, interactions, transformations, and factor
+level order can all change these names.
 
 ```{r names}
-colnames(model.matrix(~ 0 + trait + (0 + trait):x, dat))
+fixed_formula <- ~ 0 + trait + (0 + trait):treatment
+colnames(model.matrix(fixed_formula, dat))
 ```
 
-Now fix only the `metadata` slope for `x` at zero.
+The baseline treatment coefficient is named `traitbaseline:treatment`, so the
+constraint is:
 
-```{r fit}
-fit <- gllvmTMB(
-  y ~ 0 + trait + (0 + trait):x + latent(0 + trait | site, d = 1, unique = FALSE),
+```{r fit-long}
+fit_long <- gllvmTMB(
+  y ~ 0 + trait + (0 + trait):treatment,
   data = dat,
+  trait = "trait",
   unit = "site",
   family = gaussian(),
-  Xcoef_fixed = c("traitmetadata:x" = 0),
+  Xcoef_fixed = c("traitbaseline:treatment" = 0),
   silent = TRUE
 )
 
-tidy(fit, "fixed")
+long_fixed <- tidy(fit_long, "fixed")
+long_fixed[grepl(":treatment$", long_fixed$term),
+           c("term", "estimate", "std.error", "status")]
 ```
 
-The fixed row remains in the fitted object. Its estimate is `0`, its standard
-error is `NA`, and its `status` is `"fixed"`. The other response-specific slopes
-are still estimated.
+The zero is imposed, not estimated. Therefore `estimate = 0`,
+`std.error = NA`, and `status = "fixed"` are expected. The missing standard
+error does not indicate a failed Hessian calculation. Inference for all other
+parameters is conditional on the zero restriction being correct, and the model
+degrees of freedom decrease by one for each pinned coefficient.
 
-If your data start in wide form, use the same `gllvmTMB()` entry point with the
-`traits(...)` left-hand side. The expanded coefficient name is the same because
-both forms reach the same stacked fixed-effect design.
+### The same constraint from wide data
 
-```{r wide-fit}
+The equivalent `traits(...)` call reaches the same stacked design and therefore
+uses the same expanded coefficient name.
+
+```{r fit-wide}
 dat_wide <- stats::reshape(
-  dat[c("site", "trait", "x", "y")],
-  idvar = c("site", "x"),
+  dat[c("site", "trait", "treatment", "y")],
+  idvar = c("site", "treatment"),
   timevar = "trait",
   direction = "wide"
 )
 names(dat_wide) <- sub("^y\\.", "", names(dat_wide))
 
 fit_wide <- gllvmTMB(
-  traits(growth, colour, metadata) ~ 1 + x +
-    latent(1 | site, d = 1, unique = FALSE),
+  traits(baseline, growth, colour) ~ 1 + treatment,
   data = dat_wide,
   unit = "site",
   family = gaussian(),
-  Xcoef_fixed = c("traitmetadata:x" = 0),
+  Xcoef_fixed = c("traitbaseline:treatment" = 0),
   silent = TRUE
 )
 
-tidy(fit_wide, "fixed")
+wide_fixed <- tidy(fit_wide, "fixed")
+comparison <- merge(
+  long_fixed[grepl(":treatment$", long_fixed$term),
+             c("term", "estimate", "status")],
+  wide_fixed[grepl(":treatment$", wide_fixed$term),
+             c("term", "estimate", "status")],
+  by = "term",
+  suffixes = c("_long", "_wide")
+)
+comparison
 ```
 
-## Relation to other tools
+Equivalent designs and contrast settings produce the same names and estimates;
+arbitrarily different codings need not.
 
-`Xcoef_fixed` is not variable selection. It should express a pre-specified
-model structure: this response does not get this predictor effect. If you are
-unsure whether a binary response should enter the model at all, start with
-`screen_gllvmTMB()` instead.
+To pin several prespecified direct effects, supply several uniquely named
+entries, for example:
 
-`Xcoef_fixed` is also not a loading constraint. Use loading constraints when
-you want to control which responses define a latent variable. Use `Xcoef_fixed`
-when you want to control which predictors enter each response's mean.
+```{r multiple-constraints, eval = FALSE}
+Xcoef_fixed = c(
+  "traitbaseline:treatment" = 0,
+  "traitcolour:temperature" = 0
+)
+```
 
-The current implementation supports exact zero constraints in ML fits. Native
-TMB fits support the full named `Xcoef_fixed` contract. Admitted
-`engine = "julia"` fixed-effect-X rows use the same R argument and pass a
-zero-mask to GLLVM.jl. These are the currently supported cases; `REML = TRUE`,
-non-zero fixed values, and unsupported Julia fixed-effect-X rows remain gated.
+## Errors and next actions
+
+- **A name is not recognized:** inspect `colnames(model.matrix(...))` for the
+  exact expanded design and check factor levels and contrasts.
+- **A name is duplicated:** provide each expanded coefficient once.
+- **A non-zero fixed value is requested:** only structural zero is implemented;
+  leave the coefficient free if zero is not the intended value.
+- **`REML = TRUE` errors:** fixed-coefficient pinning is currently ML-only.
+- **A fixed row has an unavailable SE or CI:** this is expected because the
+  value was imposed rather than estimated.
+- **The scientific question is whether the effect equals zero:** do not impose
+  the answer with `Xcoef_fixed`; fit an appropriate unrestricted comparison.
+
+## Related tools
+
+`Xcoef_fixed` acts on direct response-specific mean coefficients. It is
+different from:
+
+- [Formula keyword grid](api-keyword-grid.html), which chooses covariance
+  structure;
+- [Pre-fit response screening](pre-fit-response-screening.html), which checks
+  data support and formula estimability rather than selecting responses or
+  predictors;
+- [`gllvmTMB()` reference](../reference/gllvmTMB.html), which documents the
+  complete argument contract.

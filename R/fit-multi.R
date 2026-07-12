@@ -244,7 +244,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         cli::cli_abort(c(
           "{.fn delta_lognormal}/{.fn delta_gamma}: only the standard (logit/log) parameterisation is currently supported in the multivariate engine.",
           "i" = "Use {.code delta_lognormal()} or {.code delta_gamma()} (default {.code type = \"standard\"}).",
-          "*" = "{.code type = \"poisson-link\"} is on the roadmap."
+          "*" = "{.code type = \"poisson-link\"} is not implemented."
         ))
       delta_id <- if (identical(f$family, c("binomial", "lognormal"))) {
         12L
@@ -570,7 +570,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(duplicate_source_psi)) {
       cli::cli_abort(c(
         "Duplicate source-specific {.field Psi} terms were supplied.",
-        "i" = "Use either {.code *_latent(..., unique = TRUE)} or the compatibility pair {.code *_latent(..., unique = FALSE) + *_unique()}, not both.",
+        "i" = "Remove the deprecated {.code *_unique()} term and keep {.code *_latent(..., unique = TRUE)}.",
         ">" = "The folded and explicit terms target the same diagonal covariance component."
       ))
     }
@@ -1037,7 +1037,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn indep} and {.fn unique} on the same grouping are redundant.",
         "i" = "Both {.code indep(0 + trait | {gname})} and {.code unique(0 + trait | {gname})} appear in the formula.",
-        ">" = "{.fn indep} standalone and {.fn unique} standalone are mathematically identical -- pick one."
+        ">" = "Remove the deprecated {.fn unique} term and keep {.fn indep}."
       ))
     }
   }
@@ -1181,7 +1181,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn phylo_indep} and {.fn phylo_unique} are redundant together.",
         "i" = "Both appear in the formula.",
-        ">" = "{.fn phylo_indep} standalone and {.fn phylo_unique} standalone are mathematically identical -- pick one."
+        ">" = "Remove the deprecated {.fn phylo_unique} term and keep {.fn phylo_indep}."
       ))
     }
   }
@@ -1292,7 +1292,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn spatial_indep} and {.fn spatial_unique} are redundant together.",
         "i" = "Both appear in the formula.",
-        ">" = "{.fn spatial_indep} standalone and {.fn spatial_unique} standalone are mathematically identical -- pick one."
+        ">" = "Remove the deprecated {.fn spatial_unique} term and keep {.fn spatial_indep}."
       ))
     }
   }
@@ -4466,7 +4466,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     B    = isTRUE(use_rr_B)         && is.null(lambda_constraint$B)    && isTRUE(d_B   > 1L),
     B_slope = isTRUE(use_rr_B_slope) && isTRUE(d_B_slope > 1L),
     W    = isTRUE(use_rr_W)         && is.null(lambda_constraint$W)    && isTRUE(d_W   > 1L),
-    phy  = isTRUE(use_phylo_rr)     && is.null(lambda_constraint$phy)  && isTRUE(d_phy > 1L),
+    phy  = isTRUE(use_phylo_rr)     && !isTRUE(is_phylo_dep) &&
+      is.null(lambda_constraint$phy) && isTRUE(d_phy > 1L),
     spde = isTRUE(is_spatial_latent) && is.null(lambda_constraint$spde) && isTRUE(d_spde_lv > 1L)
   )
 

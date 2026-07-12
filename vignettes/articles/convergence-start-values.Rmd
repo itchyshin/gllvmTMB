@@ -1,5 +1,6 @@
 ---
 title: "Convergence and hard fits"
+description: "Diagnose a numerically difficult fit and compare start or optimiser strategies without turning a small criterion into a validity certificate."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -19,7 +20,7 @@ knitr::opts_chunk$set(
   cache     = FALSE,
   eval      = TRUE,
   message   = FALSE,
-  warning   = FALSE
+  warning   = TRUE
 )
 ```
 
@@ -31,7 +32,6 @@ therefore not just "did the optimizer print convergence code 0?" but
 "which part of the fit is healthy, which part is weak, and what should
 I try next?"
 
-`gllvmTMB` 0.5.0 is a pre-CRAN release with an experimental lifecycle.
 This article covers `check_gllvmTMB()`, restart history, protected or
 skipped `TMB::sdreport()` status, and `gllvmTMBcontrol(se = FALSE)`.
 Bootstrap and profile uncertainty are follow-up paths when Wald standard
@@ -41,13 +41,12 @@ targets with stable profiles. The start strategies below are options to try,
 not established defaults or universal convergence recommendations.
 
 The most important distinction is simple. `fit$fit_health$converged` is the
-package's point-stationarity verdict. By contrast, `pd_hessian` in the health
-table reports TMB's `pdHess` curvature result. `FALSE` means Wald uncertainty
-may be unreliable; `NA` after `se = FALSE` means the Hessian was not computed.
-Neither result automatically makes fitted values, likelihoods, or
-rotation-invariant covariance summaries useless. A benign rotation ridge can
-also produce weak curvature, so inspect the scientific target before choosing
-a profile or refit-based bootstrap route.
+package's conservative point-stationarity conjunction: optimiser success, a
+finite objective, and a small raw maximum gradient. By contrast, `pd_hessian`
+reports TMB's curvature result. `FALSE` means ordinary Wald uncertainty is not
+supported; `NA` after `se = FALSE` means the Hessian was not computed. Keep the
+point-fit and inference checks separate, and do not use objective scaling to
+override a failed optimiser code.
 
 ```{r setup}
 library(gllvmTMB)
@@ -126,17 +125,19 @@ not replace the health checks below.
 
 ## Read fit health
 
-Start with the authoritative point-stationarity verdict. It divides the largest
-absolute gradient by `1 + abs(objective)`, then compares that scaled gradient
-with `1e-3`. The raw optimizer code and unscaled gradient remain supporting
-diagnostics.
+Start with the conservative point-stationarity verdict. It requires an
+optimiser success code, a finite objective, and an unscaled maximum gradient
+below `0.01`. The objective-scaled gradient is retained as a descriptive signal,
+not a substitute for those checks.
 
 ```{r diagnose}
 data.frame(
   converged = isTRUE(fit$fit_health$converged),
-  scaled_gradient = signif(fit$fit_health$scaled_gradient, 4),
-  threshold = 1e-3,
+  optimizer_converged = isTRUE(fit$fit_health$optimizer_converged),
+  stationary_by_gradient = isTRUE(fit$fit_health$stationary_by_gradient),
   raw_max_gradient = signif(fit$fit_health$max_gradient, 4),
+  raw_gradient_threshold = 0.01,
+  scaled_gradient_descriptive = signif(fit$fit_health$scaled_gradient, 4),
   objective = signif(fit$fit_health$objective, 6),
   optimizer_code = fit$fit_health$convergence
 )
@@ -157,11 +158,11 @@ Read the components in three lanes:
 
 | Lane | Components | What it answers | Typical next action |
 |---|---|---|---|
-| Convergence | optimizer code, scaled gradient, restart history | Is the selected point sufficiently stationary, and did starts find competing objective values? | Try more starts, rescale predictors, or compare optimizers. |
+| Convergence | optimizer code, raw maximum gradient, restart history; scaled gradient is descriptive | Is the selected point sufficiently stationary, and did starts find competing objective values? | Try more starts, rescale predictors, or compare optimizers. |
 | Hessian-based inference | `sdreport`, `pd_hessian`, Hessian rank, fixed-effect SE | Is local curvature usable for Wald uncertainty? | If unavailable or weak, inspect the target and use a supported profile or bootstrap route. |
 | Identifiability and interpretation | weak axes, boundary flags, near-zero `Psi`, rotation convention | Is a covariance component or latent axis weak, redundant, or convention-dependent? | Compare lower rank, simpler covariance, and rotation-invariant `Sigma`; use the advanced identifiability check when appropriate. |
 
-In this baseline fit, the scaled-gradient verdict is `TRUE`, both restarts reach
+In this baseline fit, the conservative convergence conjunction is `TRUE`, both restarts reach
 the same displayed objective, `sdreport` is available, and the reported Hessian
 rank is full. However, `pd_hessian` is `FALSE`. That combination says the
 selected point is stationary but local curvature still warns against a blanket
@@ -191,21 +192,13 @@ structure being interpreted. Raw `Lambda` loadings also depend on a rotation
 convention, whereas `Sigma` is rotation invariant and is therefore the safer
 cross-start comparison.
 
-For Gaussian fits, `check_identifiability()` provides an advanced simulate-and-
-refit check of loading recovery. It is computationally expensive, supports only
-the Gaussian route in this release, and is not a routine certificate for every
-model. Start with a small run to budget the cost before increasing the number of
-replicates.
-
-```{r identifiability, eval = FALSE}
-id_check <- check_identifiability(
-  fit,
-  sim_reps = 20,
-  tier = "B",
-  seed = 1
-)
-id_check
-```
+Simulation can assess a predeclared rank-selection rule only when the data-
+generating rank is fixed independently of the fitted model. Simulating from a
+rank-two fit and successfully refitting rank two tests stability under that
+fitted scenario; it cannot establish that rank two was required by the original
+data. For a study-level validation, predeclare candidate ranks, simulate from
+known rank-one and rank-two models over realistic sample sizes, and report how
+often the full selection workflow recovers each generating rank.
 
 ## Choose a start strategy
 
@@ -238,7 +231,7 @@ fit$restart_history[, c("restart", "start_method", "objective",
 Lower objective values are preferred. Here the two displayed objectives are
 equal at the shown precision and restart 1 is selected. That supports, but does
 not prove, that the starts reached the same solution. Do not privilege a start
-simply because it converged: compare the selected fit's scaled-gradient verdict
+simply because it converged: compare the selected fit's optimiser code and raw gradient
 and rotation-invariant targets such as `Sigma`. Compare raw `Lambda` only after
 alignment or rotation handling.
 
@@ -329,8 +322,8 @@ Target-specific profile helpers are narrower: check
 profile-ready, and read the returned method and status literally.
 For the interval workflow, continue to
 [Profile-likelihood confidence intervals](profile-likelihood-ci.html);
-for failed or irregular profiles, use
-[Troubleshooting profile-likelihood CIs](troubleshooting-profile.html).
+for failed or irregular profiles, use its
+[troubleshooting decision table](profile-likelihood-ci.html#troubleshoot-the-interval-that-came-back).
 
 ## Troubleshooting ladder
 

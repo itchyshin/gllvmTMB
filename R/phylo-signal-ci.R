@@ -193,13 +193,13 @@
 #' 2-component-vs-richer-case policy:
 #'
 #' * 2-component (`phylo_diag` + `diag_species`, no species-level
-#'   `latent` or `unique` at the unit tier): closed-form delta-method on
+#'   latent or additional diagonal-Psi term at the unit tier): closed-form delta-method on
 #'   the linear contrast `2 * log_sd_phy_diag[t] - 2 *
 #'   theta_diag_species[t]`. SE on the lincomb is `sqrt(lc' * cov.fixed
 #'   * lc)`; back-transform via [plogis()].
 #'
-#' * Richer cases (3+ components, lone-`phylo_unique` rerouted to
-#'   `phylo_rr`, or species-level `unique` at the unit tier with
+#' * Richer cases (3+ components, a compatibility-routed diagonal
+#'   phylogenetic component, or species-level diagonal Psi at the unit tier with
 #'   `unit == species`): numerical Jacobian of H^2 on the
 #'   fixed-parameter scale, then symmetric Wald on the logit-H^2 scale
 #'   (with delta-method SE on logit) and back-transform via [plogis()].

@@ -1,37 +1,25 @@
 #' Generic dense-kernel covariance keywords
 #'
 #' @description
-#' `kernel_latent()` fits named random-effect tiers with user-supplied
-#' between-unit covariance matrices `K`. The covered scope for one named
-#' dense-kernel tier is the phylo-equivalent path:
-#' `kernel_latent(unit, K = A, d = q, unique = TRUE)` carries its
-#' kernel-structured diagonal \eqn{\boldsymbol\Psi} companion and must match
-#' `phylo_latent(unit, vcv = A, d = q, unique = TRUE)` to less than `1e-6`
-#' for log likelihood and extracted `Sigma`. The soft-deprecated
-#' compatibility spelling `kernel_latent(..., unique = FALSE) +
-#' kernel_unique(...)` remains accepted.
-#' The first multi-kernel scope accepts two or more fixed named
-#' `kernel_latent()` tiers over the same grouping levels, each with its own
-#' `K`, loading matrix, and latent field. This Paper 2 first wave remains
-#' latent-only: auto-generated kernel \eqn{\boldsymbol\Psi} companions are
-#' pruned for multi-kernel fits, and explicit paired `kernel_unique()` Psi is
-#' deferred because explicit residual/Psi structure is a poor default for
-#' non-Gaussian and cross-family coevolution models. `kernel_dep()` remains
-#' single-tier only in this first wave.
+#' `kernel_latent()` fits a named random-effect tier with a user-supplied
+#' between-unit covariance matrix `K`. For one named tier,
+#' `unique = TRUE` adds a kernel-structured diagonal
+#' \eqn{\boldsymbol\Psi} companion; the default `FALSE` is loadings-only.
+#' Two or more named `kernel_latent()` tiers may share the same grouping levels,
+#' each with its own `K`, loading matrix, and latent field. Multi-kernel fits are
+#' loadings-only: `unique = TRUE` and `kernel_dep()` are not available in that
+#' combination. Similar kernels can be
+#' weakly separable, so use [diagnose_kernel_separability()] before assigning a
+#' distinct interpretation to each component.
 #'
-#' The cross-lineage coevolution scope remains evidence-gated. Covered:
-#' users can pass one `K_star` from [make_cross_kernel()] and extract the
-#' host-partner shared covariance block with [extract_Gamma()]. Partial:
-#' fixed two-component named-kernel fits are available for
-#' component-specific `Gamma_shape` extraction, but explicit Psi, kernel-
-#' separation recovery, `rho` estimation/profiling, and interval calibration
-#' remain future gates. The broader `*_unique()` teaching/API surface is kept
-#' for compatibility now and should be redesigned/deprecated after this arc.
+#' A matrix returned by [make_cross_kernel()] is treated as a fixed supplied
+#' covariance. The model does not estimate its association structure or bridge
+#' strength. [extract_Gamma()] returns descriptive point summaries; it does not
+#' provide calibrated intervals or establish a causal evolutionary process.
 #'
 #' @param unit Unquoted grouping column whose levels align with `rownames(K)`.
-#' @param K Numeric dense positive-semidefinite covariance/correlation matrix.
-#'   In C1 this routes through the existing phylo-equivalent dense `vcv`
-#'   path.
+#' @param K Numeric dense positive-semidefinite covariance or correlation
+#'   matrix aligned to the grouping levels.
 #' @param name Character scalar used as the extractor level, e.g.
 #'   `extract_Sigma(fit, level = "cross")`.
 #' @param d Integer latent rank for `kernel_latent()`.
@@ -68,7 +56,19 @@ kernel_latent <- function(unit, K, d = 1, name = "kernel", unique = FALSE) {
   invisible(NULL)
 }
 
-#' @rdname kernel_latent
+#' Deprecated alias: `kernel_unique()`
+#'
+#' `r lifecycle::badge("deprecated")`
+#'
+#' Only `kernel_unique()` is deprecated; dense-kernel modelling and
+#' [kernel_latent()], [kernel_indep()], and [kernel_dep()] remain current.
+#' This alias is retained for old formulas. Use [kernel_indep()] for a
+#' standalone diagonal kernel covariance, or `kernel_latent(..., unique = TRUE)`
+#' when a single latent kernel tier should include its diagonal
+#' \eqn{\boldsymbol\Psi} companion.
+#'
+#' @inheritParams kernel_latent
+#' @return A formula marker; never evaluated as a regular R function.
 #' @export
 kernel_unique <- function(unit, K, name = "kernel") {
   invisible(NULL)

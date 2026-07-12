@@ -1,5 +1,6 @@
 ---
 title: "Screen binary traits before fitting"
+description: "Check prevalence, sparse outcomes, duplicated cells, and usable denominators before fitting a binary multivariate model."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -15,7 +16,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   message = FALSE,
-  warning = FALSE
+  warning = TRUE
 )
 ```
 
@@ -25,21 +26,30 @@ small question before you fit a stacked-trait GLLVM:
 > Are these traits, items, or indicators risky to put into this exact model?
 
 It does not decide which responses to use, remove indicators, choose a latent
-rank, prove identifiability, or guarantee convergence. It builds the same long response
-shape that `gllvmTMB()` would use, then reports data and formula conditions that
-are easy to miss before fitting.
+rank, prove identifiability, or guarantee convergence. It uses the same
+wide-to-long stacking route as `gllvmTMB()`, then reports data and formula
+conditions that are easy to miss before fitting. It is not a complete dry run
+of every parser or engine check.
 
-`gllvmTMB` 0.5.0 is a pre-CRAN release with an experimental lifecycle.
-The current screen covers binary and binomial candidate responses before
-fitting and is advisory only. It does not screen non-binary response families
-or run external separation or item-response comparators.
+The current screen covers one `binomial()` family using the logit, probit, or
+cloglog link. Trait-level support works for Bernoulli and multi-trial binomial
+responses; pairwise duplicate/complement screening is Bernoulli-only. Other
+families return `NOT_CHECKED` rather than pretending they were screened.
 
-The first screen is for binary and binomial responses. This is the place where
-risk conditions associated with complete or quasi-complete separation are most
-visible: a constant, rare, near-universal, duplicated, or nearly deterministic
-indicator can produce a very large fitted loading later. The screen reports
-those data conditions; it does not fit a separation model or prove that
-separation will occur.
+The screen has three separate jobs:
+
+1. **Marginal response support:** invalid values, unusable denominators,
+   constants, rare outcomes, and strong imbalance.
+2. **Response-pair redundancy:** exact or near duplicates, complements, and
+   unusually strong pairwise association on jointly observed units.
+3. **Formula shape:** fixed-effect rank, grouping-level support, and whether the
+   requested latent dimension is smaller than the raw number of traits.
+
+Formal complete or quasi-complete separation depends on the response–predictor
+design. Rare or constant outcomes can motivate a formal separation check, but
+duplicate or complementary response columns are redundancy conditions, not
+classical separation. A clean `screen_gllvmTMB()` result therefore does not
+prove that separation cannot occur.
 
 ## Setup
 
@@ -82,16 +92,49 @@ indicator. Use the same `traits(...)` left-hand side that you would use in a
 wide `gllvmTMB()` call.
 
 Here `latent(1 | review, d = 2)` requests two ordinary unit-tier latent variables
-for the review or site units. The screen uses that requested rank when checking
-whether the candidate response block is too small or too redundant; it is not
-checking phylogenetic, spatial, or meta-analytic covariance tiers.
+for the review or site units. The screen warns when `d` is not smaller than the
+raw number of traits. It reports pair redundancy separately and does not
+estimate an effective rank after collapsing duplicate responses. This page
+does not screen phylogenetic, spatial, or meta-analytic covariance tiers.
 
-The example wraps the call in `suppressWarnings()` only to keep the rendered
-article focused on the screen output. In an interactive analysis, read warnings
-and then inspect `screen_table(scr, "recommendations")`.
+The thresholds are advisory and configurable. This example stores the defaults
+explicitly so the active rules remain visible.
+
+```{r thresholds}
+ctl <- screen_control()
+data.frame(
+  rule = c(
+    "minority count: stronger warning",
+    "minority count: warning",
+    "prevalence: stronger information flag",
+    "prevalence: information flag",
+    "pair discordance: stronger warning",
+    "pair discordance: warning",
+    "pair Hamming rate: warning",
+    "absolute phi/Jaccard: stronger warning",
+    "absolute phi/Jaccard: warning"
+  ),
+  default = c(
+    paste0("< ", ctl$rare_strong_n),
+    paste0("< ", ctl$rare_warn_n),
+    paste(ctl$prevalence_strong, collapse = " to "),
+    paste(ctl$prevalence_warn, collapse = " to "),
+    paste0("< ", ctl$discordant_strong_n),
+    paste0("< ", ctl$discordant_warn_n),
+    paste0("<= ", ctl$hamming_rate_warn),
+    paste0(">= ", ctl$phi_strong),
+    paste0(">= ", ctl$phi_warn)
+  )
+)
+```
+
+Prevalence outside the displayed interval is flagged; it is not a deletion
+cutoff. Minority counts take priority, which prevents a large data set with a
+low prevalence from receiving the same warning as a tiny data set with only a
+few minority outcomes.
 
 ```{r screen-wide}
-scr <- suppressWarnings(screen_gllvmTMB(
+scr <- screen_gllvmTMB(
   traits(
     outcome_richness,
     outcome_diversity,
@@ -101,29 +144,53 @@ scr <- suppressWarnings(screen_gllvmTMB(
   ) ~ 1 + latent(1 | review, d = 2),
   data = reviews,
   unit = "review",
-  family = binomial("probit")
-))
+  family = binomial("probit"),
+  control = ctl
+)
 
 scr
 ```
 
+The summary counts checks, not traits: `FAIL 4` combines one trait-level and
+three pair-level failures, `WARN 1` is one trait warning, and `PASS 13` includes
+trait, pair, and formula-shape checks. Statuses are scope-specific. A pair-level
+`PASS` cannot cancel a trait-level `FAIL`, and a trait-level `PASS` cannot cancel
+an exact redundant-pair finding.
+
+- `PASS` means no condition was flagged at the current thresholds; it is not a
+  guarantee of a safe fitted model.
+- `WARN` and `INFO` are advisory. `severity` grades the evidence within that
+  status, so `WARN` with `severity = "strong"` is not contradictory.
+- `FAIL` means invalid binomial input, no usable denominator, a constant
+  response that is uninformative for this latent block, or exact pair
+  redundancy on the observed overlap.
+- `NOT_CHECKED` means the requested screen is unavailable for that row or
+  family.
+
 The trait table reports the denominators behind each warning. A 5% prevalence
-with 20 observations is not the same evidence as a 5% prevalence with 100000
-observations, so the screen always reports both prevalence and minority count.
+with 20 Bernoulli trials is not the same evidence as a 5% prevalence with
+100000 trials. `n_valid` counts usable rows, while `total_trials` includes the
+multi-trial denominator.
 
 ```{r traits}
-screen_table(scr, "traits")
+trait_screen <- screen_table(scr, "traits")
+trait_screen[, c(
+  "trait", "status", "severity", "n_valid", "total_trials",
+  "prevalence", "minority_count", "action"
+)]
 ```
 
 The pair table catches exact duplicates, exact complements, and near-duplicate
-binary indicators on paired review rows. These are pre-fit data conditions, not
-fitted-model diagnostics.
+Bernoulli indicators on jointly observed review rows. `n_pair` is the overlap
+denominator; `discordant_n` counts different outcomes, and `hamming_rate` is
+that count divided by `n_pair`. “Exact” therefore means exact among the paired
+rows shown, not necessarily across rows where one response is missing.
 
 ```{r pairs}
 pairs <- screen_table(scr, "pairs")
 pairs[, c(
   "trait_i", "trait_j", "status", "severity",
-  "discordant_n", "phi", "action"
+  "n_pair", "discordant_n", "hamming_rate", "action"
 )]
 ```
 
@@ -136,6 +203,20 @@ keep it descriptive instead of making it define a latent variable.
 ```{r recommendations}
 recommendations <- screen_table(scr, "recommendations")
 recommendations[, c("scope", "status", "action", "trait", "evidence")]
+```
+
+The formula and grouping checks are separate tables. Here all 40 units have
+both outcome sides across the screened block, and the requested rank is smaller
+than the raw trait count.
+
+```{r design-units}
+screen_table(scr, "design")[, c(
+  "component", "status", "value", "threshold", "message"
+)]
+
+as.data.frame(table(
+  status = screen_table(scr, "units")$status
+))
 ```
 
 ## Long-data screen
@@ -157,36 +238,78 @@ long <- stats::reshape(
 long$trait <- factor(long$trait, levels = names(reviews)[names(reviews) != "review"])
 row.names(long) <- NULL
 
-scr_long <- suppressWarnings(screen_gllvmTMB(
-  present ~ 1 + latent(1 | review, d = 2),
+scr_long <- screen_gllvmTMB(
+  present ~ 0 + trait + latent(0 + trait | review, d = 2),
   data = long,
   unit = "review",
   trait = "trait",
-  family = binomial("probit")
-))
+  family = binomial("probit"),
+  control = ctl
+)
 
 long_traits <- screen_table(scr_long, "traits")
 long_traits[, c(
   "trait", "status", "n_valid", "prevalence", "minority_count"
 )]
+
+identical(
+  trait_screen[, c("trait", "status", "n_success", "n_failure")],
+  long_traits[, c("trait", "status", "n_success", "n_failure")]
+)
 ```
 
-The wide and long calls reach the same stacked-trait screen. Use whichever data
-shape matches your workflow.
+The printed comparison verifies that the wide and canonical long calls produce
+the same trait-support summaries in this example. It does not claim that every
+future table is identical under every formula. Use whichever data shape matches
+your workflow.
+
+## Apply the screen before fitting
+
+The constant response cannot inform this latent block, and the duplicate and
+complementary outcomes should not enter the same block unchanged. The next
+candidate keeps one representative response, removes the constant, and retains
+the near-universal response because we decide it is scientifically important.
+That retained warning must be documented and revisited in a sensitivity fit.
+
+```{r corrected-screen}
+candidate <- reviews[c(
+  "review",
+  "outcome_richness",
+  "region_north_america"
+)]
+
+scr_candidate <- screen_gllvmTMB(
+  traits(outcome_richness, region_north_america) ~
+    1 + latent(1 | review, d = 1),
+  data = candidate,
+  unit = "review",
+  family = binomial("probit"),
+  control = ctl
+)
+
+screen_table(scr_candidate, "recommendations")[, c(
+  "scope", "status", "action", "trait", "evidence"
+)]
+```
+
+This rerun contains only the deliberately retained rarity warning. If the rare
+response is not scientifically essential, keep it descriptive or fit a
+sensitivity model without it. The screen supports that decision; it does not
+make the decision.
 
 ## What to do with warnings
 
-`FAIL` means the candidate response cannot be interpreted as a valid binomial
-trait in the screened data, or that two candidate responses carry exactly the
-same or exactly opposite information in the rows being fitted. Do not treat this
-as an automatic species-removal rule. First check coding, taxonomy, sampling
-design, and the scientific role of the response; then either justify keeping
-both, combine or recode them, or run a sensitivity fit with one representative
-response.
+Read `FAIL` according to its scope. Invalid values or denominators require data
+repair. A constant response is valid binomial data but has no minority support
+for the proposed latent block; exclude it from that block or collect informative
+variation. Exact duplicate or complementary pairs should be selected, combined,
+or recoded before fitting the same latent block unchanged. Always check the
+reported `n_pair` first, especially when responses have different missingness.
 
-`WARN` means the trait or pair has weak support. Inspect the coding, missingness,
-and scientific purpose. Do not lower the latent rank and assume the problem is
-gone; a near-constant binary item can dominate a one-axis model too.
+`WARN` means limited marginal support or unusually strong pairwise redundancy
+or association. Inspect the coding, missingness, overlap denominator, and
+scientific purpose. Do not lower the latent rank and assume the problem is gone;
+a near-constant binary item can dominate a one-axis model too.
 
 `INFO` means the screen saw an imbalanced condition but enough denominator
 support that a hard warning would overstate the evidence. This distinction is
@@ -201,46 +324,40 @@ fitting. The full sequence is shown in
 
 ## Evidence base
 
-The screen uses evidence-informed defaults, not universal deletion rules.
-Complete and quasi-complete separation in logistic/probit models is a
-well-studied maximum-likelihood failure mode (Albert and Anderson 1984). Small
-minority counts matter, but the old "10 events per variable" rule is a
-simulation-based heuristic whose strictness depends on the modelling context
-(Peduzzi et al. 1996; Vittinghoff and McCulloch 2007). Separation is also tied
-to sparse outcomes, rare exposures, highly correlated predictors, and strong
-effects, and can produce infinite maximum-likelihood estimates if left
-unchecked (Mansournia et al. 2018). The UCLA OARC separation FAQ is a useful
-teaching reference for the practical complete/quasi-complete distinction.
+The defaults are evidence-informed heuristics, not universal deletion rules.
+Complete and quasi-complete separation is a well-studied maximum-likelihood
+failure mode (Albert and Anderson 1984; Mansournia et al. 2018), but its presence
+depends on the response–predictor design. Minority-count rules such as “10
+events per variable” are context-dependent heuristics rather than hard laws
+(Peduzzi et al. 1996; Vittinghoff and McCulloch 2007). This screen reports
+conditions that deserve inspection; it does not replace a formal separation
+analysis.
 
-In JSDM work, rare species are not automatically discarded. They are often one
-reason to use a joint model, because hierarchical, latent-variable, trait, or
-phylogenetic structure can let weakly observed species borrow information from
-the rest of the community (Ovaskainen and Soininen 2011; Warton et al. 2015).
-At the same time, very sparse or constant responses can make species-level
-parameters hard to estimate, slow computation, worsen convergence, or make a
-binomial likelihood uninformative (Norberg et al. 2019; Zhang et al. 2020).
-Some applied HMSC/JSDM analyses therefore set documented prevalence thresholds,
-but those thresholds are analysis choices, not general rules (Cranston et al.
-2024). `screen_gllvmTMB()` follows that convention: it flags
-all-zero, all-one, near-constant, and very rare candidate species for
-inspection, reporting, and possible sensitivity analysis. It does not decide
-that a biologically important rare species should be removed.
+Rare species are not automatically discarded in JSDMs. Shared community
+structure can make sparse responses scientifically valuable, while very sparse
+or constant responses can still make species-specific parameters hard to
+estimate (Ovaskainen and Soininen 2011; Warton et al. 2015; Norberg et al.
+2019). Documented prevalence thresholds are analysis choices, not general
+rules. Retain an important rare species only with a stated reason and a
+sensitivity analysis.
 
-Psychometric item analysis similarly treats item support, redundancy, response
-frequencies, and interpretability as diagnostic evidence rather than removal
-rules. The `mirt::itemstats()` interface is a useful precedent because it
-computes item summary statistics without first fitting an IRT model (Chalmers
-2012). The SAS IRT overview is another applied reference for thinking of
-binary responses as items that measure latent traits. Predictor-screening tools
-such as `recipes::step_nzv()` and `recipes::step_corr()` are another precedent,
-but `screen_gllvmTMB()` is more conservative: it reports candidate response
-risks for this formula instead of silently deleting columns. This caution
-matters because item-deletion rules can reduce criterion validity even when a
-reliability statistic improves (Raykov 2008).
+Psychometric item analysis uses the same principle: item support, redundancy,
+response frequencies, and interpretability are evidence for review rather than
+automatic deletion. `mirt::itemstats()` is a useful precedent for inspecting
+items before fitting an IRT model (Chalmers 2012). `screen_gllvmTMB()` likewise
+reports response risks without silently changing the formula.
 
-Post-fit loading thresholds, such as a 0.30 loading-salience rule after
-rotation, belong to the identification and interpretation stage. They are not
-the same as pre-fit response screening.
+Post-fit loading salience, rotation, and latent-rank interpretation belong after
+fitting. They are not substitutes for this pre-fit response screen.
+
+## Next decision
+
+Fit only after every `WARN` row has a documented keep, recode, combine, or omit
+decision. Then run [Can I trust this fit?](fit-diagnostics.html); a clean
+pre-fit screen does not make the fitted optimiser, Hessian, or weak-axis checks
+pass automatically. If a scientifically essential response remains constant or
+has too little denominator support, report that limitation and defer its
+species-specific effect rather than forcing it into the model.
 
 ## References
 
@@ -255,15 +372,10 @@ the same as pre-fit response screening.
 - Mansournia MA, Geroldinger A, Greenland S, Heinze G (2018). Separation in
   logistic regression: causes, consequences, and control. *American Journal of
   Epidemiology* 187:864--870.
-- UCLA OARC. Complete or quasi-complete separation in logistic/probit
-  regression. <https://stats.oarc.ucla.edu/other/mult-pkg/faq/general/faqwhat-is-complete-or-quasi-complete-separation-in-logisticprobit-regression-and-how-do-we-deal-with-them/>
 - Chalmers RP (2012). mirt: A multidimensional item response theory package for
   the R environment. *Journal of Statistical Software* 48(6):1--29.
 - Chalmers RP. `mirt::itemstats()` documentation: generic item summary
   statistics without prior IRT fitting. <https://rdrr.io/cran/mirt/man/itemstats.html>
-- Cranston A, Cooper N, Bro-Jorgensen J (2024). Using joint species distribution
-  modelling to identify climatic and non-climatic drivers of Afrotropical
-  ungulate distributions. *Ecography* 2024:e07209. doi:10.1111/ecog.07209.
 - Norberg A, Abrego N, Blanchet FG, Adler FR, Anderson BJ, Anttila J, Araujo MB,
   Dallas T, Dunson D, Elith J, Foster SD, Fox R, Franklin J, Godsoe W, Guisan A,
   O'Hara B, Hill NA, Holt RD, Hui FKC, Husby M, Kalas JA, Lehikoinen A,
@@ -271,24 +383,11 @@ the same as pre-fit response screening.
   Vanhatalo J, Warton D, White M, Zimmermann NE, Gravel D, Ovaskainen O (2019).
   A comprehensive evaluation of predictive performance of 33 species distribution
   models at species and community levels. *Ecological Monographs* 89:e01370.
-  doi:10.1002/ecm.1370.
+  <https://doi.org/10.1002/ecm.1370>.
 - Ovaskainen O, Soininen J (2011). Making more out of sparse data: hierarchical
-  modeling of species communities. *Ecology* 92:289--295. doi:10.1890/10-1251.1.
-- An X, Yung Y-F (2014). Item Response Theory: what it is and how you can use
-  the IRT procedure to apply it. SAS Global Forum paper SAS364-2014.
-  <https://support.sas.com/resources/papers/proceedings14/SAS364-2014.pdf>
-- Kosmidis I, Schumacher D. `detectseparation`: detect and check for separation
-  and infinite maximum-likelihood estimates in binomial-response GLMs.
-  <https://cran.r-project.org/package=detectseparation>
-- Kuhn M, Wickham H. `recipes::step_nzv()` and `recipes::step_corr()`
-  documentation. <https://recipes.tidymodels.org/reference/step_nzv.html> and
-  <https://recipes.tidymodels.org/reference/step_corr.html>
-- Raykov T (2008). Alpha if item deleted: a note on loss of criterion validity
-  in scale development if maximizing coefficient alpha. *British Journal of
-  Mathematical and Statistical Psychology* 61:275--285.
+  modeling of species communities. *Ecology* 92:289--295.
+  <https://doi.org/10.1890/10-1251.1>.
 - Warton DI, Blanchet FG, O'Hara RB, Ovaskainen O, Taskinen S, Walker SC,
   Hui FKC (2015). So many variables: joint modeling in community ecology.
-  *Trends in Ecology & Evolution* 30:766--779. doi:10.1016/j.tree.2015.09.007.
-- Zhang C, Chen Y, Xu B, Xue Y, Ren Y (2020). Improving prediction of rare
-  species' distribution from community data. *Scientific Reports* 10:12230.
-  doi:10.1038/s41598-020-69157-x.
+  *Trends in Ecology & Evolution* 30:766--779.
+  <https://doi.org/10.1016/j.tree.2015.09.007>.

@@ -17,7 +17,7 @@ template:
 
 navbar:
   structure:
-    left:  [intro, model_guides, concepts, diagnostics, developer, roadmap, reference, news]
+    left:  [intro, model_guides, concepts, diagnostics, reference, news]
     right: [search, github]
   components:
     model_guides:
@@ -25,10 +25,16 @@ navbar:
       menu:
       - text: First Gaussian morphology model
         href: articles/morphometrics.html
+      - text: Behavioural syndromes in repeated measurements
+        href: articles/behavioural-syndromes.html
+      - text: Behavioural reaction norms with random slopes
+        href: articles/random-regression-reaction-norms.html
       - text: Choosing latent rank
         href: articles/model-selection-latent-rank.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
+      - text: Phylogenetic covariance among traits
+        href: articles/phylogenetic-gllvm.html
       - text: Handling missing data
         href: articles/missing-data.html
     concepts:
@@ -40,9 +46,9 @@ navbar:
         href: articles/covariance-correlation.html
       - text: Formula keyword grid
         href: articles/api-keyword-grid.html
-      - text: Fixed predictor effects
+      - text: Response-specific predictor effects
         href: articles/fixed-effect-zero-constraints.html
-      - text: Response families
+      - text: Choose a response family
         href: articles/response-families.html
     diagnostics:
       text: Diagnostics
@@ -55,51 +61,18 @@ navbar:
         href: articles/convergence-start-values.html
       - text: Profile-likelihood confidence intervals
         href: articles/profile-likelihood-ci.html
-      - text: Troubleshooting profile-likelihood CIs
-        href: articles/troubleshooting-profile.html
       - text: Common pitfalls
         href: articles/pitfalls.html
-    developer:
-      text: Developer Notes
-      menu:
-      - text: Under-audit model drafts
-      - text: How to choose your model
-        href: articles/choose-your-model.html
-      - text: Animal model
-        href: articles/animal-model.html
-      - text: Phylogenetic trait covariance
-        href: articles/phylogenetic-gllvm.html
-      - text: Behavioural reaction norms
-        href: articles/random-regression-reaction-norms.html
-      - text: Structured non-Gaussian slopes
-        href: articles/random-slopes-nongaussian.html
-      - text: Cross-lineage coevolution kernels
-        href: articles/cross-lineage-coevolution.html
-      - text: Behavioural syndromes
-        href: articles/behavioural-syndromes.html
-      - text: Mixed-family extractor notes
-        href: articles/mixed-family-extractors.html
-      - text: Ordinal-probit traits
-        href: articles/ordinal-probit.html
-      - text: Psychometrics / IRT draft
-        href: articles/psychometrics-irt.html
-      - text: Validation and comparison notes
-      - text: Cross-package validation
-        href: articles/cross-package-validation.html
-      - text: Simulation recovery
-        href: articles/simulation-recovery-validated.html
-      - text: Simulation verification
-        href: articles/simulation-verification.html
-    roadmap:
-      text: Roadmap
-      href: articles/roadmap.html
 
 articles:
   - title: Model Guides
     contents:
     - articles/morphometrics
+    - articles/behavioural-syndromes
+    - articles/random-regression-reaction-norms
     - articles/model-selection-latent-rank
     - articles/joint-sdm
+    - articles/phylogenetic-gllvm
     - articles/missing-data
 
   - title: Concepts
@@ -116,32 +89,7 @@ articles:
     - articles/fit-diagnostics
     - articles/convergence-start-values
     - articles/profile-likelihood-ci
-    - articles/troubleshooting-profile
     - articles/pitfalls
-
-  - title: Under-audit model drafts
-    desc: Buildable pages kept out of the first-click model-guide path until their evidence, examples, and rendered reader path are ready. They remain direct-link references for maintainers and contributors.
-    contents:
-    - articles/choose-your-model
-    - articles/animal-model
-    - articles/phylogenetic-gllvm
-    - articles/random-regression-reaction-norms
-    - articles/random-slopes-nongaussian
-    - articles/cross-lineage-coevolution
-    - articles/behavioural-syndromes
-    - articles/lambda-constraint
-    - articles/lambda-constraint-suggest
-    - articles/mixed-family-extractors
-    - articles/ordinal-probit
-    - articles/psychometrics-irt
-
-  - title: Developer validation notes
-    desc: Validation, comparator, and project-state pages for maintainers. These are not first-stop tutorials.
-    contents:
-    - articles/cross-package-validation
-    - articles/simulation-recovery-validated
-    - articles/simulation-verification
-    - articles/roadmap
 
 reference:
   - title: Start here
@@ -152,62 +100,13 @@ reference:
     - gllvmTMBcontrol
     - miss_control
     - impute_model
-    - simulate_site_trait
-    - simulate_unit_trait
 
-  - title: Julia bridge
-    desc: Experimental GLLVM.jl bridge fitting path; use the capability ledger before relying on a row
-    contents:
-    - gllvm_julia_capabilities
-    - gllvm_julia_gate_registry
-    - gllvm_julia_fit
-    - gllvm_julia_setup
-    - gllvmTMB_julia-methods
-    - logLik.gllvmTMB_julia
-    - print.gllvmTMB_julia
-    - coef.gllvmTMB_julia
-    - predict.gllvmTMB_julia
-    - fitted.gllvmTMB_julia
-    - residuals.gllvmTMB_julia
-    - simulate.gllvmTMB_julia
-    - confint.gllvmTMB_julia
-    - summary.gllvmTMB_julia
-    - print.summary.gllvmTMB_julia
-
-  - title: First-line covariance keywords
-    desc: Formula keywords to teach first for the 4 x 4 grid; explicit-Psi compatibility aliases are grouped below
+  - title: Core covariance keywords
+    desc: Start with the ordinary decomposition, diagonal baseline, or full covariance before adding a relationship source
     contents:
     - latent
     - indep
     - dep
-    - animal_scalar
-    - animal_indep
-    - animal_dep
-    - animal_latent
-    - pedigree_to_A
-    - pedigree_to_Ainv_sparse
-    - phylo_scalar
-    - phylo_indep
-    - phylo_dep
-    - phylo_latent
-    - spatial_scalar
-    - spatial_indep
-    - spatial_dep
-    - spatial_latent
-    - kernel_latent
-    - kernel_indep
-    - kernel_dep
-    - meta_V
-    - block_V
-
-  - title: Soft-deprecated covariance compatibility syntax
-    desc: Explicit diagonal-Psi spellings retained for old formulas; new standalone diagonal examples use indep / *_indep, and ordinary decomposed examples use latent defaults
-    contents:
-    - unique
-    - animal_unique
-    - phylo_unique
-    - spatial_unique
-    - kernel_unique
 
   - title: Advanced formula keywords and shorthands
     desc: Useful after the core grid is familiar; public articles prefer the explicit core keywords
@@ -235,12 +134,10 @@ reference:
 
   - title: Response families
     desc: >
-      Response distributions the multivariate engine fits. Several constructors
-      below are exported for API continuity but fail loud until their
-      validation rows move (`censored_poisson`, `gengamma`, the `*_mix`
-      mixtures, `truncated_nbinom1`, and the delta mixture / gengamma /
-      truncated-NB forms). See the "Response families" article for the
-      covered-vs-blocked split.
+      Match response support and sampling process before adding covariance.
+      Several exported compatibility constructors still stop explicitly rather
+      than fitting an unsupported model; the response-family article states the
+      current reader-facing boundary.
     contents:
     - Families
     - Beta
@@ -267,14 +164,37 @@ reference:
     - delta_beta
     - ordinal_probit
 
-  - title: Predictor-model families (imputation)
+  - title: Predictor-model families (modelled missing predictors)
     desc: >
       Not response families: these tag the submodel for a categorical or
-      ordered *predictor* under multiple imputation (`impute_model()` /
+      ordered *predictor* in the modelled missing-predictor workflow (`impute_model()` /
       `mi()`), not a response distribution.
     contents:
     - categorical
     - cumulative_logit
+
+  - title: Source-specific covariance keywords
+    desc: Add a pedigree, phylogeny, spatial field, supplied kernel, or known-variance structure only when the study design requires it
+    contents:
+    - animal_scalar
+    - animal_indep
+    - animal_dep
+    - animal_latent
+    - pedigree_to_A
+    - pedigree_to_Ainv_sparse
+    - phylo_scalar
+    - phylo_indep
+    - phylo_dep
+    - phylo_latent
+    - spatial_scalar
+    - spatial_indep
+    - spatial_dep
+    - spatial_latent
+    - kernel_latent
+    - kernel_indep
+    - kernel_dep
+    - meta_V
+    - block_V
 
   - title: Report-ready extractors
     desc: Recover covariance, correlation, ordination, repeatability, communality, phylogenetic signal, and variance proportions
@@ -330,28 +250,26 @@ reference:
     - diagnostic_table
     - residuals.gllvmTMB_multi
     - bootstrap_Sigma
-    - profile_ci_lv_effects
-    - bootstrap_ci_lv_effects
     - confint_inspect
-    - profile_repeatability
     - profile_phylo_signal
-    - profile_communality
-    - profile_correlation
-    - profile_proportions
     - plot.profile_derived
 
   - title: Advanced validation utilities
-    desc: Slower or developer-facing checks; use when a model or interval claim needs stronger evidence
+    desc: Slower diagnostics for investigating a fitted model; none is a calibration certificate
     contents:
     - sanity_multi
     - check_auto_residual
-    - check_identifiability
     - gllvmTMB_check_consistency
     - compare_dep_vs_two_psi
     - compare_indep_vs_two_psi
     - profile_targets
     - tmbprofile_wrapper
-    - coverage_study
+
+  - title: Simulation helpers
+    desc: Generate small stacked-trait fixtures for examples and known-data-generating checks
+    contents:
+    - simulate_site_trait
+    - simulate_unit_trait
 
   - title: Loadings (Lambda) and confirmatory factor analysis
     desc: Extract, rotate, and constrain the loading matrix
@@ -369,13 +287,35 @@ reference:
     - plot.profile_loadings
 
   - title: Profile-likelihood confidence intervals
-    desc: Likelihood-profile CIs for derived quantities; interval calibration is validated for common Gaussian cases and experimental elsewhere (see the article)
+    desc: Target-specific likelihood-profile routes and fallbacks; inspect each target and do not assume universal calibration
     contents:
-    - profile_ci_repeatability
-    - profile_ci_communality
-    - profile_ci_correlation
     - profile_ci_phylo_signal
-    - profile_ci_proportions
+
+  - title: Experimental Julia bridge
+    desc: Optional point-estimation bridge; use only after reading the explicit method limitations, and do not assume R/TMB feature parity
+    contents:
+    - gllvm_julia_fit
+    - gllvm_julia_setup
+    - gllvmTMB_julia-methods
+    - logLik.gllvmTMB_julia
+    - print.gllvmTMB_julia
+    - coef.gllvmTMB_julia
+    - predict.gllvmTMB_julia
+    - fitted.gllvmTMB_julia
+    - residuals.gllvmTMB_julia
+    - simulate.gllvmTMB_julia
+    - confint.gllvmTMB_julia
+    - summary.gllvmTMB_julia
+    - print.summary.gllvmTMB_julia
+
+  - title: Deprecated covariance functions
+    desc: Only the functions listed here are deprecated; the broader animal, phylogenetic, spatial, and kernel APIs remain current. Use indep / *_indep for standalone diagonal models and latent defaults for decomposed models
+    contents:
+    - unique
+    - animal_unique
+    - phylo_unique
+    - spatial_unique
+    - kernel_unique
 
   - title: Deprecated and compatibility aliases
     desc: Soft-deprecated spellings and gllvm-style accessors retained for migration; new code should prefer the canonical keywords and extract_*() functions
@@ -400,12 +340,8 @@ reference:
     - getResidualCov
     - ordiplot
 
-## news.releases intentionally omitted: the v0.2.0 git tag (416f8e4) and the
-## GitHub release "gllvmTMB 0.2.0 — first public release" exist; the first CRAN
-## release is numbered 0.5.0 (D-42, 2026-07-11 — 1.0 is reserved for the
-## capability-maturity milestone). DESCRIPTION and NEWS now read 0.5.0; the
-## `releases:` block stays parked until the v0.5.0 tag / GitHub release are cut.
-## Re-adding `releases:` is a maintainer call.
+## news.releases intentionally omitted until the maintainer creates a 0.5.0 tag
+## and GitHub release. The current site is pre-release documentation.
 ##
 ## In the meantime, the navbar "News" dropdown will show only the
 ## "Changelog" entry (NEWS.md) — which is the correct pre-release UX.

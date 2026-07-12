@@ -1902,11 +1902,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (is.matrix(y_raw) && ncol(y_raw) == 2L) {
     succ <- as.numeric(y_raw[, 1L])
     fail <- as.numeric(y_raw[, 2L])
-    if (any(succ < 0) || any(fail < 0))
+    ## Masked rows (response = "include") carry NA in both columns; they are
+    ## gated out of the likelihood in TMB, so validate only observed rows
+    ## (na.rm) and sentinel-fill their y / n_trials below.
+    if (any(succ < 0, na.rm = TRUE) || any(fail < 0, na.rm = TRUE))
       cli::cli_abort("cbind(successes, failures): both columns must be non-negative.")
     y         <- succ
     n_trials  <- succ + fail
-    if (any(n_trials <= 0))
+    if (any(n_trials <= 0, na.rm = TRUE))
       cli::cli_abort("cbind(successes, failures): rows with zero trials are not allowed.")
   } else {
     y <- as.numeric(y_raw)
@@ -1949,6 +1952,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   masked_response <- is_y_observed == 0L
   if (any(masked_response)) {
     y[masked_response] <- 0   # sentinel; gated out by is_y_observed in TMB
+    ## cbind(succ, fail) masked rows leave n_trials = NA (succ + fail); give
+    ## them a safe positive sentinel so nothing downstream chokes. The row is
+    ## gated out of the likelihood regardless.
+    n_trials[masked_response] <- 1
   }
 
   ## ---- lme4 / glmmTMB-style observation weights -------------------------

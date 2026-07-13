@@ -75,9 +75,15 @@ Still to do (all locally verifiable — **`fmesher` IS installed**, so spatial n
   (indep||) / parity (dep||) pins to `theta_spde_dep_chol` (`R/fit-multi.R:4017-4033`,
   flags `use_spde_dep_slope`/`use_spde_indep_blockdiag` at :789/:792 — direct mirror of
   the phylo `use_phylo_dep_uncorrelated` + `dep_chol_parity_pins` I just landed).
-- **C1 rest** — tweedie(6) + betabinomial(8) random-slope recovery cells (need
-  DGP-specific sims; then relax those two family ids at the 6 gate sites). The two
-  existing gate-rejection tests use tweedie — update them when tweedie lands.
+- **C1 rest** — tweedie(6) + betabinomial(8). **Finding (this session):** tweedie
+  is structurally slope-ready but its random-slope recovery is **empirically
+  ridge-biased** — a bare gate-removal fit converges but over-estimates the slope
+  SDs by ~44% (the sigma_u^2 <-> p <-> phi ridge flagged by Design 80 + the
+  mixed-models lens). So tweedie is NOT a clean gate-removal like lognormal/student;
+  it needs a ridge-aware recovery study (fix p or phi, or the ML-vs-REML-gap
+  diagnostic) before admission. betabinomial needs a trials/size DGP. Both stay
+  gated (the two gate-rejection tests using tweedie remain valid). This is a proper
+  follow-up recovery campaign, not a quick win.
 - **Kernel `||`** — once B1 wires kernel slopes, kernel `indep||`/`dep||` come for
   free via the existing A1/A2 markers (add kernel_indep/dep to the A0 allowlist).
 - **V: `extract_Sigma` for augmented slope fits** — PRE-EXISTING gap (errors on

@@ -159,9 +159,9 @@ diagonal across traits, while each trait-specific field remains correlated
 across locations through the mesh-based spatial precision.
 
 These diagonal statements describe intercept-only trait covariance. With an
-augmented intercept-and-slope term, `*_indep(1 + x | group)` fixes the
-within-trait intercept--slope correlation to zero. The random-slope section
-below gives the corresponding blocks.
+augmented intercept-and-slope term, `*_indep(1 + x | group)` estimates a
+per-trait intercept--slope correlation (a double bar, `1 + x || group`, drops
+it). The random-slope section below gives the corresponding blocks.
 
 ## Ordinary long and wide syntax
 
@@ -290,21 +290,41 @@ traits(t1, t2, t3) ~ 1 + x +
 ```
 
 The three structured modes do not merely represent increasing computational
-complexity. They estimate different covariance objects:
+complexity. They estimate different covariance objects (for a single slope `x`
+and \(T\) traits):
 
-- `phylo_indep(1 + x | species)` and
-  `spatial_indep(1 + x | site)` estimate one \(2 \times 2\)
-  intercept--slope block with the cross-correlation fixed to zero. Extract it
-  at `level = "phy"` or `level = "spatial"`.
-- `phylo_latent(1 + x | species, d = K)` and
-  `spatial_latent(1 + x | site, d = K)` estimate separate reduced-rank
-  cross-trait covariance matrices for the intercept and slope columns. They
-  do not estimate intercept--slope covariance. Extract the per-column matrices
-  at `level = "phy_slope"` or `level = "spde_slope"`.
-- `phylo_dep(1 + x | species)` and
-  `spatial_dep(1 + x | site)` estimate a full interleaved
-  \(2T \times 2T\) covariance across trait intercepts and slopes. Extract it at
-  `level = "phy"` or `level = "spatial"`.
+- `*_indep(1 + x | g)` estimates **\(T\) independent per-trait \(2 \times 2\)
+  (intercept, slope) blocks** -- each trait gets its own intercept variance,
+  slope variance, and intercept--slope correlation, with no covariance across
+  traits. Extract it at `level = "phy"` / `"spatial"` / `"kernel"`.
+- `*_dep(1 + x | g)` estimates a **full interleaved \(2T \times 2T\)** covariance
+  across all trait intercepts and slopes. Same extraction levels.
+- `*_latent(1 + x | g, d = K)` estimates **separate reduced-rank cross-trait
+  covariance matrices** for the intercept and slope columns; it does not
+  estimate intercept--slope covariance. Extract the per-column matrices at
+  `level = "phy_slope"` or `level = "spde_slope"`.
+
+#### Correlated and uncorrelated slopes: `|` and `||`
+
+There is one more choice for a random slope -- whether the intercept and slope
+are **correlated** -- and it is set by the number of bars, matching lme4/glmmTMB:
+
+- A **single bar**, `mode(1 + x | g)`, **estimates the intercept--slope
+  correlation** (the default).
+- A **double bar**, `mode(1 + x || g)`, drops it: the intercept and slope are
+  **uncorrelated**. It is exactly `mode(1 | g) + mode(0 + x | g)`.
+
+The bar count sets only the intercept--slope coupling; the mode still sets the
+cross-trait structure. For \(T\) traits:
+
+| mode | `1 + x \| g` (correlated) | `1 + x \|\| g` (uncorrelated) |
+|---|---|---|
+| `indep` | a separate \(2 \times 2\) per trait | a per-trait intercept variance + slope variance (fully diagonal) |
+| `dep` | full \(2T \times 2T\) across all trait intercepts and slopes | a full intercept covariance and a full slope covariance, with intercepts \(\perp\) slopes (\(\boldsymbol\Sigma_{\text{int}} \oplus \boldsymbol\Sigma_{\text{slope}}\)) |
+| `latent` | separate reduced-rank \(\boldsymbol\Lambda\) per column block (already uncorrelated) | the same -- `\|\|` is the explicit spelling |
+
+Both bar forms are available for the `phylo_`, `animal_`, `kernel_`, and
+`spatial_` sources.
 
 Choose the mode from the scientific covariance assumption, not as an automatic
 fallback after a difficult fit. Centre and scale `x`, retain the transformation,

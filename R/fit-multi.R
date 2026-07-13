@@ -847,14 +847,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## the easier spatial modes by the same family-agnostic-engine argument
       ## PHY-18 / SPA-10 used). If that gate skips, nbinom1 is removed from all
       ## slope allowlists and reserved fail-loud.
-      if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
+      if (any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
         cli::cli_abort(c(
           "{.fn spatial_dep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
           "i" = "Other families for the augmented {.code spatial_dep(1 + x | coords)} (full unstructured 2T x 2T field covariance) slope are reserved (Design 64; SPA-10).",
           ">" = "Use a validated family for the augmented unstructured SPDE random-regression fit."
         ))
       }
-    } else if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
+    } else if (any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
       ## Base spatial_unique / spatial_indep (1 + x | coords): the 2x2
       ## cross-field augmented slope. SPA-08 relaxes this guard from the old
       ## gaussian-only abort to a per-family allowlist, mirroring the
@@ -907,7 +907,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## nbinom1 = 15). nbinom1 (#350) is gated by the phylo_dep nbinom1 VALIDATION
     ## cell (the hardest cell); if it skips, nbinom1 is removed from all slope
     ## allowlists.
-    if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
+    if (any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
       cli::cli_abort(c(
         "Augmented {.fn spatial_latent} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
         "i" = "Other families for {.code spatial_latent(1 + x | coords, d = K)} are reserved (Design 64 section 6).",
@@ -1439,7 +1439,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the reservation is enforced here where family_id_vec exists. The message
   ## keeps the parser's "LHS richer than" phrasing so the contract substring
   ## is unchanged.
-  if (use_phylo_slope_indep && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
+  if (use_phylo_slope_indep && any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
     cli::cli_abort(c(
       "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
       "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
@@ -1473,7 +1473,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## 14 ordinal_probit, 15 nbinom1. Family is unknown at parse time, so the
   ## reservation is enforced here where family_id_vec exists. Fail loud rather
   ## than silently truncate (Design 56 §7).
-  if (use_phylo_dep_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
+  if (use_phylo_dep_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
     cli::cli_abort(c(
       "{.fn phylo_dep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
       "i" = "Augmented {.code phylo_dep(1 + x | species)} (full unstructured 2T x 2T covariance) is validated for {.code gaussian()}, {.code binomial()} (logit / probit), {.code poisson()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
@@ -1547,7 +1547,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## allowlists. Families NOT on this list stay reserved fail-loud until their
   ## own recovery cells land. Family is unknown at parse time, so the
   ## reservation is enforced here where family_id_vec exists.
-  if (use_phylo_latent_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
+  if (use_phylo_latent_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
     cli::cli_abort(c(
       "{.fn phylo_latent} random slopes are not yet supported for this family.",
       "i" = "Augmented {.code phylo_latent(1 + x | species, d = K)} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",

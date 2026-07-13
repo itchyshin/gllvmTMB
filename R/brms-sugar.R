@@ -3007,6 +3007,19 @@ rewrite_canonical_aliases <- function(formula) {
         K_expr <- e[[which(nm == "K")]]
         name_expr <- if ("name" %in% nm) e[[which(nm == "name")]] else "kernel"
         unit_arg <- e[[2L]]
+        ## Fail-loud on a random-slope bar. Kernel keywords take a BARE grouping
+        ## column (`kernel_indep(unit, K = K)`); a `... | group` bar in the unit
+        ## slot was previously passed straight through to `phylo_rr`, which then
+        ## mis-parsed it into a garbled covstruct (`lhs = 0 + (1 + x | g)`,
+        ## `group = trait`) with no error -- a silent-corruption (Sokal) bug.
+        ## Reject it clearly until the kernel random-slope engine is wired.
+        if (is.call(unit_arg) && identical(unit_arg[[1L]], as.name("|"))) {
+          cli::cli_abort(c(
+            "{.fn {fn}} does not support a random-slope bar ({.code ... | group}).",
+            "i" = "Kernel keywords take a bare grouping column, e.g. {.code {fn}(unit, K = K)}.",
+            ">" = "Dense-kernel random slopes are not yet implemented; use a source-specific keyword ({.fn phylo_indep} / {.fn animal_indep} / {.fn spatial_indep} and siblings) for {.code 1 + x | group} slopes."
+          ))
+        }
         kernel_meta <- list(
           vcv = K_expr,
           .kernel_name = name_expr,

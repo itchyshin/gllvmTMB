@@ -451,7 +451,7 @@
         <li><b>Categorical needs major development</b> — nominal support is early-stage, not a usable path yet.</li>
         <li><b>REML is a Gaussian-only pilot.</b> Non-Gaussian, weighted, and missing-data REML are later work.</li>
         <li><b>Delta / hurdle latent-scale correlation</b> awaits a reporting convention (two response scales) — a design gap, not a bug.</li>
-        <li><b>Grammar symmetry:</b> the covariance grid is now three modes {indep, dep, latent}; the one-shared-variance ("scalar") case folded into the <code>common = TRUE</code> modifier on any <code>indep</code> term (the <code>scalar()</code>/<code>*_scalar()</code> keywords are soft-deprecated compatibility syntax). The correlated-vs-uncorrelated (<code>|</code> / <code>||</code>) random-slope axis is the remaining build (see Design 79).</li>
+        <li><b>Grammar symmetry:</b> the covariance grid is three modes {indep, dep, latent}; the one-shared-variance ("scalar") case folded into the <code>common = TRUE</code> modifier on any <code>indep</code> term (the <code>scalar()</code>/<code>*_scalar()</code> keywords are soft-deprecated compatibility syntax). The correlated-vs-uncorrelated (<code>|</code> / <code>||</code>) random-slope axis is now <b>built</b>: <code>mode(1 + x || g)</code> = intercept ⟂ slope (<code>indep||</code> fully diagonal, <code>dep||</code> = Σ<sub>int</sub>⊕Σ<sub>slope</sub> via a Cholesky parity pin, <code>latent||</code> the separate-Λ form) across phylo / animal / kernel / spatial + source-tier latent, recovery/target-matrix tested (Design 79 §4).</li>
       </ul>
     </div>
 
@@ -516,7 +516,8 @@
         <thead><tr><th>Capability</th><th>Detail</th><th>Status</th></tr></thead>
         <tbody>
           <tr><th>Data input</th><td>Long <code>value ~ 0 + trait + …</code> and wide <code>traits(…) ~ …</code>, one engine, byte-identical fits</td><td><span class="tag t-taught">taught</span></td></tr>
-          <tr><th>Keyworded random slope</th><td>Gaussian reaction norm <code>latent(1 + x | unit, d = K)</code>; structured <code>*_indep/dep/latent(1 + x | g)</code>, s = 1</td><td><span class="tag t-taught">taught</span></td></tr>
+          <tr><th>Keyworded random slope</th><td>Gaussian reaction norm <code>latent(1 + x | unit, d = K)</code>; structured <code>*_indep/dep/latent(1 + x | g)</code>, s = 1, across phylo / animal / kernel / spatial</td><td><span class="tag t-tested">tested</span></td></tr>
+          <tr><th>Uncorrelated slope <code>(1 + x || g)</code></th><td><code>indep||</code> per-trait diagonal · <code>dep||</code> = Σ<sub>int</sub>⊕Σ<sub>slope</sub> (parity pin) · <code>latent||</code> separate-Λ — phylo / animal / kernel / spatial</td><td><span class="tag t-tested">tested</span></td></tr>
           <tr><th>Gaussian structured s = 2</th><td><code>phylo_dep(1 + x1 + x2 | species)</code></td><td><span class="tag t-avail">point-only</span></td></tr>
           <tr><th>Plain bare-bar slope <code>(1 + x | g)</code></th><td>reserved — use the keyworded decomposition</td><td><span class="tag t-exp">reserved</span></td></tr>
           <tr><th>Missing responses</th><td><code>NA</code> cells as unobserved; <code>predict_missing()</code></td><td><span class="tag t-taught">taught</span></td></tr>

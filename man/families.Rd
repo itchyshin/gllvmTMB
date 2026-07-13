@@ -53,7 +53,7 @@ truncated_nbinom1(link = "log")
 
 student(link = "identity", df = NULL)
 
-tweedie(link = "log")
+tweedie(link = "log", p = NULL)
 
 censored_poisson(link = "log")
 

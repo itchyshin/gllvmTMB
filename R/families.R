@@ -435,7 +435,7 @@ student <- function(link = "identity", df = NULL) {
 #' @examples
 #' tweedie(link = "log")
 #' @rdname families
-tweedie <- function(link = "log") {
+tweedie <- function(link = "log", p = NULL) {
   linktemp <- substitute(link)
   if (!is.character(linktemp))
     linktemp <- deparse(linktemp)
@@ -447,7 +447,16 @@ tweedie <- function(link = "log") {
     linktemp <- link
   }
 
-  x <- c(list(family = "tweedie", link = linktemp), stats)
+  ## Optional fixed power `p` (1 < p < 2). The power, dispersion phi, and any
+  ## random-effect variance sit on a shared ridge, so fixing p is the standard
+  ## way to stabilise variance-component recovery (esp. for random slopes).
+  if (!is.null(p) &&
+        (!is.numeric(p) || length(p) != 1L || is.na(p) || p <= 1 || p >= 2)) {
+    cli::cli_abort(
+      "tweedie(): {.code p} (the power) must be a single number strictly between 1 and 2 (got {p})."
+    )
+  }
+  x <- c(list(family = "tweedie", link = linktemp, p = p), stats)
   add_to_family(x)
 }
 

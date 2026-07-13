@@ -4087,6 +4087,28 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!any_tweedie) {
     tmb_map$log_phi_tweedie <- factor(rep(NA_integer_, n_traits))
     tmb_map$logit_p_tweedie <- factor(rep(NA_integer_, n_traits))
+  } else {
+    ## If the user supplied a numeric `p` on the tweedie() family object
+    ## (e.g. tweedie(p = 1.5)), pin logit_p_tweedie per trait that uses it.
+    ## Parameterisation: p = 1 + plogis(logit_p_tweedie), so the pin value is
+    ## qlogis(p - 1). Mirrors the student(df = ...) per-trait pin above.
+    p_pin <- rep(NA_real_, n_traits)
+    for (t in seq_len(n_traits)) {
+      rows_t <- which(trait_id == (t - 1L) & family_id_vec == 6L)
+      if (length(rows_t) == 0L) next
+      p_vals <- vapply(family_per_row[rows_t], function(f) {
+        v <- f$p
+        if (is.null(v)) NA_real_ else as.numeric(v)
+      }, numeric(1))
+      if (all(!is.na(p_vals)) && length(unique(p_vals)) == 1L) p_pin[t] <- p_vals[1]
+    }
+    if (any(!is.na(p_pin))) {
+      tmb_params$logit_p_tweedie[!is.na(p_pin)] <-
+        stats::qlogis(p_pin[!is.na(p_pin)] - 1)
+      p_map <- seq_len(n_traits)
+      p_map[!is.na(p_pin)] <- NA
+      tmb_map$logit_p_tweedie <- factor(p_map)
+    }
   }
   if (!any_beta)
     tmb_map$log_phi_beta <- factor(rep(NA_integer_, n_traits))

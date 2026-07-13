@@ -154,27 +154,27 @@ img.logo {
   }
 }
 
-/* --- Fixed-top navbar spacing (site-wide) ------------------------------- */
-/* The pkgdown navbar renders as Bootstrap `.fixed-top` (position: fixed), so
-   it overlays the top of every page. Its height varies with viewport width
-   (it wraps to two lines on narrower desktops, ~123px), yet pkgdown offsets
-   the content by only a fixed ~56px — so the page header, home logo, and the
-   right-hand table of contents get clipped underneath the navbar at those
-   widths. Push the main content and sidebar clear of the navbar on desktop
-   (mirrors drmTMB's spacing), and keep in-page anchor links clear too. */
-html {
-  scroll-padding-top: 4.5rem;
+/* --- Navbar overlay fix: make the fixed-top navbar STICKY ---------------- */
+/* pkgdown renders the navbar as `.navbar.fixed-top` (position: fixed), which
+   removes it from layout flow and overlays page content, clipping whatever sits
+   at the top (page header, home logo, and especially the right-hand "On this
+   page" TOC). Its height is NOT a fixed number: menu items wrap to a second line
+   depending on viewport width AND on label length (e.g. "Get started" wraps even
+   on wide screens), and browsers round/wrap differently (the clip shows in
+   Firefox but not Chromium), so no single `padding-top` reliably clears it — the
+   earlier per-breakpoint offsets could not. Making the navbar `position: sticky`
+   keeps it pinned to the top on scroll while leaving it IN the layout flow, so
+   content always starts below it and can never be clipped, at any width, wrap
+   state, or browser. Keep a generous scroll-padding so in-page anchor jumps
+   clear the pinned bar. */
+.navbar.fixed-top {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
 }
 
-@media (min-width: 992px) and (max-width: 1279.98px) {
-  body > .container .row > main,
-  body > .container .row > aside {
-    margin-top: 8rem;
-  }
-
-  html {
-    scroll-padding-top: 8rem;
-  }
+html {
+  scroll-padding-top: 7rem;
 }
 
 /* The full desktop navigation needs more horizontal room than Bootstrap's

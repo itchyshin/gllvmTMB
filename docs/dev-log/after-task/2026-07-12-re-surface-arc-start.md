@@ -18,6 +18,7 @@ silent-mis-parse safety fix (Strand 0), and the **first functional `||` cell**
 | `4f151c8e` | **pkgdown banner → sticky navbar** (P2) — fixes Firefox/all-width content clipping; the fixed-top navbar wrapped labels ("Get started") unpredictably so no `padding-top` cleared it | CSS cascade reasoned (sandbox can't serve localhost); needs visual check on redeploy |
 | `9ba03d79` | **kernel slope fail-loud** (Strand 0) — `kernel_*(1+x\|g)` mis-parsed silently; now errors | test-kernel-slope-guard 5/0 |
 | `7d8ca4fe` | **`indep\|\|`** (A0+A1) phylo/animal | recovery fit: `\|\|`=2T free, off-diag cor=0; `\|`=3T, rho~0.6; 11/0 |
+| `bf541444` | **`latent\|\|`** (A3) source-tier phylo/animal/spatial — `\|\|` spelling routed to the already-uncorrelated latent engine | desugar + logLik identity to `\|`; 15/0 |
 
 **Pkgdown P1 (pull under-audited articles): already done** by the prior estate-
 renewal commits `eacbd0f6`/`3b6f4225` — the six named articles (animal-model,
@@ -59,12 +60,12 @@ links. (Shinichi's memory of "not taken out" predated that cleanup.)
    int↔int & slope↔slope FREE. **Write the index algebra + a hand-built
    target-matrix unit test BEFORE coding** (else it silently collapses to
    indep-diag). Needs a new modulo/strided pin in `R/lambda-constraint.R`.
-4. **A3 `latent||`** — source-tier `latent(1+x|g)` is ALREADY uncorrelated
-   (separate Λ per column block); accept the `||` spelling (add to A0 allowlist,
-   route identically). Ordinary no-prefix `latent||` needs a block-diagonal Λ
-   constraint.
+4. **A3 ordinary `latent||`** — DONE for source-tier (phylo/animal/spatial,
+   `bf541444`). The no-prefix ordinary `latent||` still needs a block-diagonal Λ
+   constraint (ordinary `latent(1+x|g)` fits the CORRELATED joint-Λ form, so it
+   is the one latent cell where `|`≠`||`).
 5. **C1 family generality** — relax the 6 allowlist sites + recovery cell per
-   family (lognormal/tweedie/betabinomial/student-t).
+   family (lognormal/tweedie/betabinomial/student-t). Zero C++ (verified).
 6. **V close-out** — singular/boundary-fit diagnostic for new `||` cells; teach
    `R/extract-sigma.R` + `R/profile-route-matrix.R` the new cells (`dep||` changes
    Σ_b *semantics* without changing *shape* → they'd misreport "full

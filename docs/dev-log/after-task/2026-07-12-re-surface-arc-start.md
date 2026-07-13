@@ -41,11 +41,14 @@ links. (Shinichi's memory of "not taken out" predated that cleanup.)
 
 ## Closure check
 
-Full non-heavy `devtools::test()` after all 8 feature commits: **4532 pass / 0
-fail / 0 error / 959 skip** (heavy), summing the `error` column too. The whole
-package is green with the coupling axis + kernel slopes + lognormal/student
-integrated. Heavy `||`/kernel/family recovery cells pass under
-`GLLVMTMB_HEAVY_TESTS=1`.
+Full non-heavy `devtools::test()` after all feature commits (incl. B2 spatial):
+**4532 pass / 0 fail / 0 error / 958 skip** (heavy), summing the `error` column.
+Heavy `||`/kernel/family/spatial recovery cells pass under `GLLVMTMB_HEAVY_TESTS=1`.
+
+**`R CMD check --as-cran` on the final tree: 0 ERRORS / 0 WARNINGS / 1 NOTE**
+(the benign "New submission"). The package is CRAN-clean with the full `||`
+coupling axis, kernel slopes, spatial migration, and lognormal/student families
+integrated.
 
 ## Key verified recipes (for the remaining slices)
 

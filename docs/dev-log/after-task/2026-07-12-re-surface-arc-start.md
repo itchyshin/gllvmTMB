@@ -23,6 +23,11 @@ silent-mis-parse safety fix (Strand 0), and the **first functional `||` cell**
 | `bcd96888` | **`dep\|\|`** (A2) = Σ_int⊕Σ_slope via Cholesky **parity pin** (`dep_chol_parity_pins`) — the subtle cell | target-matrix test: T(T+1) free, int-slope cov=0, cross-trait cov=0.34 recovered; 7/0 |
 
 | `7d8dc6d4` | **B1 kernel random slopes** — kernel_indep/dep(1+x\|g) route to phylo_slope w/ vcv=K; `\|\|` free | logLik == phylo_*(vcv=A) to 1e-6, all 4 cells; 16/0 |
+| `e902f8bd` | **B2a spatial migration** — spatial_indep(1+x) → per-trait block-diagonal | gaussian 9/0 (byte-identity + recovery); non-gaussian structural 9/0; fmesher |
+| `93123ea0` | **B2b spatial `\|\|`** — spatial indep\|\|(2T diag) / dep\|\|(T(T+1) parity) | 6/0; indep\|\| converges; parser regression 38/0 |
+
+**B2 spatial COMPLETE.** The `||` coupling axis + per-trait migration now span
+phylo / animal / kernel / spatial (indep/dep) + source-tier latent.
 
 **The `||` coupling axis is COMPLETE** for indep/dep/latent (phylo/animal/**kernel** +
 source-tier latent). That was the heart of the arc (the maintainer's original `||`

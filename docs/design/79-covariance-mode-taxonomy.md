@@ -192,12 +192,28 @@ slope appears.
   pin but is **held** pending INLA/CI verification (parser TODO in place; engine
   pin dormant). Old shared-2 tests migrated to the per-trait contract.
 
-**Does NOT exist → still to build:**
-- **`indep(1 + x \|\| g)`** per-trait diagonal (2T) — exists only for the none
-  source, *bundled inside* `latent()`'s default Psi companion
-  (`theta_diag_B_slope`, `R/fit-multi.R:1627`), never standalone.
-- **`dep(1 + x \|\| g)`** block Σ_int⊕Σ_slope — does not exist.
-- **`latent(1 + x \| g)`** shared-factor — deferred (§4).
+**LANDED (2026-07-12, the `||` coupling-axis arc):**
+- **`indep(1 + x \|\| g)`** per-trait diagonal (2T) — the block-diagonal engine
+  with `dep_chol_crossblock_pins(., block_size = 1)` (every off-diagonal pinned).
+  phylo/animal/kernel/spatial. `R/fit-multi.R` `use_*_indep_uncorrelated`.
+- **`dep(1 + x \|\| g)`** = Σ_int ⊕ Σ_slope — the Cholesky **parity pin**
+  (`dep_chol_parity_pins()`, pin strictly-lower L(i,j) with parity(i)≠parity(j)),
+  T(T+1) free params. phylo/animal/kernel/spatial, single-slope. Target-matrix
+  verified (int-slope cov = 0, cross-trait cov free).
+- **`latent(1 + x \|\| g)`** — the `||` spelling for the source-tier latent slopes,
+  which were already the uncorrelated (separate-Λ) form.
+- **spatial `indep(1 + x)` migrated** off the shared-field path to the per-trait
+  block-diagonal engine (B2), verified with fmesher.
+- **kernel random slopes** — `kernel_indep/dep(1 + x | g, K)` ≡ `phylo_*(vcv = K)`.
+
+**Still to build:**
+- **`latent(1 + x \| g)`** shared-factor (correlated latent slope) — deferred (§4).
+- Ordinary no-prefix `latent(1 + x \|\| g)` block-diagonal Λ constraint (ordinary
+  `latent` fits the correlated joint-Λ form, so it is the one latent cell where
+  `\|`≠`\|\|`).
+- Family generality for slopes beyond lognormal/student: **tweedie** is
+  structurally ready but its slope recovery is **ridge-biased** (needs a
+  ridge-aware DGP); betabinomial needs a trials/size DGP.
 
 ### 7.3 `||` is not free sugar
 

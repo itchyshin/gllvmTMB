@@ -1403,6 +1403,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## independent 2x2 blocks). Design 79/80.
   use_phylo_indep_blockdiag <- use_phylo_dep_slope &&
     isTRUE(phylo_slope_cs$extra$.indep_blockdiag)
+  ## indep(1 + x || g): the UNCORRELATED coupling. Same block-diagonal engine as
+  ## `|` indep, but the within-block intercept-slope entry is ALSO pinned, so
+  ## Sigma_b is FULLY diagonal (per-trait sigma^2_int, sigma^2_slope; 2T params,
+  ## no intercept-slope covariance). Achieved with block_size = 1 in the
+  ## cross-block Cholesky pin below (Design 79 §4).
+  use_phylo_indep_uncorrelated <- use_phylo_indep_blockdiag &&
+    isTRUE(phylo_slope_cs$extra$.uncorrelated)
   use_phylo_slope_correlated <- use_phylo_slope_correlated ||
     use_phylo_dep_slope
   ## phylo_indep(1 + x | species): same augmented b_phy_aug engine as
@@ -3962,7 +3969,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## 2x2 blocks). The within-block diagonal + intercept-slope entries stay
     ## free -> 3T params for a single slope, matching T stacked univariate
     ## random regressions.
-    pins <- dep_chol_crossblock_pins(n_lhs_cols, 1L + n_phy_slope)
+    ## block_size = 1 for the uncorrelated (`||`) form pins every off-diagonal
+    ## Cholesky entry -> fully diagonal Sigma_b; block_size = 1 + n_phy_slope for
+    ## the correlated (`|`) form keeps each trait's (intercept, slope) block free.
+    pins <- dep_chol_crossblock_pins(
+      n_lhs_cols,
+      if (use_phylo_indep_uncorrelated) 1L else 1L + n_phy_slope
+    )
     if (length(pins) > 0L) {
       m <- seq_along(tmb_params$theta_dep_chol)
       m[pins] <- NA

@@ -2425,6 +2425,44 @@ rewrite_canonical_aliases <- function(formula) {
   rewrite <- function(e) {
     if (is.call(e)) {
       fn <- as.character(e[[1L]])
+      ## `||` uncorrelated intercept-slope coupling (Design 79 §3-4):
+      ## `mode(1 + x || g)` == `mode(1|g) + mode(0+x|g)` -- intercept and slope
+      ## get their own variances with NO intercept-slope covariance. In R the bar
+      ## parses as `||(lhs, g)`. Intercept it before per-fn dispatch: flip the
+      ## head to a single `|` so the existing branch runs unchanged, desugar, then
+      ## tag the resulting covstruct `.uncorrelated = TRUE` (the engine applies the
+      ## fully-diagonal block_size = 1 pin). Only cells whose uncorrelated engine
+      ## exists are accepted; every other wrapper fails loud rather than silently
+      ## fitting the CORRELATED model under a `||` the user wrote to drop it.
+      if (
+        length(fn) == 1L &&
+          length(e) >= 2L &&
+          is.call(e[[2L]]) &&
+          identical(e[[2L]][[1L]], as.name("||"))
+      ) {
+        if (!fn %in% c("phylo_indep", "animal_indep")) {
+          cli::cli_abort(c(
+            "{.code ||} (uncorrelated intercept--slope) is not yet supported for {.fn {fn}}.",
+            "i" = "The `||` coupling currently ships for {.fn phylo_indep} and {.fn animal_indep} random slopes; other modes/sources are on the way (Design 79).",
+            ">" = "Use a single {.code |} for the correlated form, or switch to {.fn phylo_indep}/{.fn animal_indep} with {.code ||}."
+          ))
+        }
+        bar <- e[[2L]]
+        bar[[1L]] <- as.name("|")
+        e_single <- e
+        e_single[[2L]] <- bar
+        desugared <- rewrite(e_single)
+        if (
+          is.call(desugared) &&
+            identical(desugared[[1L]], as.name("phylo_slope"))
+        ) {
+          return(as.call(c(as.list(desugared), list(.uncorrelated = TRUE))))
+        }
+        cli::cli_abort(c(
+          "{.code ||} on {.fn {fn}} did not resolve to a random-slope term.",
+          "i" = "`||` requires an intercept-and-slope LHS, e.g. {.code {fn}(1 + x || g)}."
+        ))
+      }
       if (length(fn) == 1L && fn %in% .source_specific_lv_keywords) {
         .abort_source_specific_lv(e, fn)
       }

@@ -19,6 +19,11 @@ silent-mis-parse safety fix (Strand 0), and the **first functional `||` cell**
 | `9ba03d79` | **kernel slope fail-loud** (Strand 0) — `kernel_*(1+x\|g)` mis-parsed silently; now errors | test-kernel-slope-guard 5/0 |
 | `7d8ca4fe` | **`indep\|\|`** (A0+A1) phylo/animal | recovery fit: `\|\|`=2T free, off-diag cor=0; `\|`=3T, rho~0.6; 11/0 |
 | `bf541444` | **`latent\|\|`** (A3) source-tier phylo/animal/spatial — `\|\|` spelling routed to the already-uncorrelated latent engine | desugar + logLik identity to `\|`; 15/0 |
+| `a51e9704` | **C1 family generality (partial)** — lognormal(3) + student(9) random slopes admitted (6 gate sites) | recovery fit converges + plausible variance recovery; 10/0 |
+| `bcd96888` | **`dep\|\|`** (A2) = Σ_int⊕Σ_slope via Cholesky **parity pin** (`dep_chol_parity_pins`) — the subtle cell | target-matrix test: T(T+1) free, int-slope cov=0, cross-trait cov=0.34 recovered; 7/0 |
+
+**The `||` coupling axis is COMPLETE** for indep/dep/latent (phylo/animal + source-tier
+latent). That was the heart of the arc (the maintainer's original `||` instinct).
 
 **Pkgdown P1 (pull under-audited articles): already done** by the prior estate-
 renewal commits `eacbd0f6`/`3b6f4225` — the six named articles (animal-model,
@@ -43,7 +48,23 @@ links. (Shinichi's memory of "not taken out" predated that cleanup.)
   sites relaxed (`R/fit-multi.R:850,857,910,1435,1469,1543`) + a recovery cell
   each (the `#388` discipline; small-cluster + ML-vs-REML-gap acceptance).
 
-## Remaining (Tier 2), in the plan's value order
+## Remaining (Tier 2) — after the coupling axis
+
+**Done since first draft:** A2 `dep||` (`bcd96888`), A3 `latent||` (`bf541444`),
+C1-partial lognormal+student (`a51e9704`). **`||` coupling axis complete.**
+
+Still to do:
+- **C1 rest** — tweedie(6) + betabinomial(8) random-slope recovery cells (need
+  DGP-specific sims; then relax those two family ids at the 6 gate sites). The two
+  existing gate-rejection tests use tweedie — update them when tweedie lands.
+- **Kernel `||`** — once B1 wires kernel slopes, kernel `indep||`/`dep||` come for
+  free via the existing A1/A2 markers (add kernel_indep/dep to the A0 allowlist).
+- **V: `extract_Sigma` for augmented slope fits** — PRE-EXISTING gap (errors on
+  BOTH `|` and `||` slope fits identically, so no `||` regression). When built, add
+  the `dep||`/`indep||` labels so `dep||` reports Σ_int⊕Σ_slope, not "full
+  unstructured" (mixed-models lens). Also `R/profile-route-matrix.R`.
+- Plus the original remaining below (B1 kernel engine, B2 spatial, V close-out
+  diagnostics/docs/gate/drmTMB issue).
 
 1. **B2 spatial `indep(1+x)` migration** — re-flip the parser TODO
    (`R/brms-sugar.R:~3980`, `.spatial_unique_augmented`→per-trait block-diagonal

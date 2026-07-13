@@ -8,6 +8,19 @@ required for the main workflow.
 
 * `gllvmTMB()` now accepts both canonical long data and wide data through a
   `traits(...)` left-hand side. The two forms use the same fitting engine.
+* Random slopes accept the **`||` uncorrelated coupling**: `mode(1 + x || g)`
+  fits the intercept and slope with no intercept-slope covariance (equivalently
+  `mode(1 | g) + mode(0 + x | g)`), alongside the correlated single-bar
+  `mode(1 + x | g)`. Available for `phylo_indep`/`animal_indep`/`kernel_indep`
+  (per-trait diagonal), `phylo_dep`/`animal_dep`/`kernel_dep` (block
+  `Sigma_int (+) Sigma_slope`), and the source-tier `phylo_latent`/`animal_latent`/
+  `spatial_latent` (which were already the uncorrelated form).
+* Dense-kernel random slopes: `kernel_indep(1 + x | g, K = K)` and
+  `kernel_dep(1 + x | g, K = K)` (and their `||` forms) fit a random regression on
+  a supplied dense kernel `K`, byte-equivalent to the phylogenetic path with
+  `vcv = K`.
+* Random slopes now support **lognormal** and **student** responses in addition to
+  the previous set.
 * The reader-facing covariance grammar crosses five correlation sources
   (`none`, `animal`, `phylo`, `spatial`, and `kernel`) with three taught modes:
   independent, dependent, and latent. The one-shared-variance ("scalar") case is

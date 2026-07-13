@@ -22,8 +22,11 @@ silent-mis-parse safety fix (Strand 0), and the **first functional `||` cell**
 | `a51e9704` | **C1 family generality (partial)** — lognormal(3) + student(9) random slopes admitted (6 gate sites) | recovery fit converges + plausible variance recovery; 10/0 |
 | `bcd96888` | **`dep\|\|`** (A2) = Σ_int⊕Σ_slope via Cholesky **parity pin** (`dep_chol_parity_pins`) — the subtle cell | target-matrix test: T(T+1) free, int-slope cov=0, cross-trait cov=0.34 recovered; 7/0 |
 
-**The `||` coupling axis is COMPLETE** for indep/dep/latent (phylo/animal + source-tier
-latent). That was the heart of the arc (the maintainer's original `||` instinct).
+| `7d8dc6d4` | **B1 kernel random slopes** — kernel_indep/dep(1+x\|g) route to phylo_slope w/ vcv=K; `\|\|` free | logLik == phylo_*(vcv=A) to 1e-6, all 4 cells; 16/0 |
+
+**The `||` coupling axis is COMPLETE** for indep/dep/latent (phylo/animal/**kernel** +
+source-tier latent). That was the heart of the arc (the maintainer's original `||`
+instinct). Kernel random slopes (indep/dep) also landed (B1).
 
 **Pkgdown P1 (pull under-audited articles): already done** by the prior estate-
 renewal commits `eacbd0f6`/`3b6f4225` — the six named articles (animal-model,
@@ -53,7 +56,17 @@ links. (Shinichi's memory of "not taken out" predated that cleanup.)
 **Done since first draft:** A2 `dep||` (`bcd96888`), A3 `latent||` (`bf541444`),
 C1-partial lognormal+student (`a51e9704`). **`||` coupling axis complete.**
 
-Still to do:
+Still to do (all locally verifiable — **`fmesher` IS installed**, so spatial needs no INLA):
+- **B2 spatial** — TWO parts: (a) migrate `spatial_indep(1+x|coords)` off the old
+  shared-field path (`R/brms-sugar.R:4053-4074`, `.spatial_unique_augmented`) to the
+  per-trait block-diagonal `use_spde_indep_blockdiag` path (mirrors phylo) — a
+  *behavior change*, and `test-spatial-indep-slope-{gaussian,nongaussian}.R` assert the
+  OLD contract and must migrate; (b) spatial `||`: extend A0 to route
+  spatial_indep/spatial_dep under `||` and append `.uncorrelated` to the **spde**
+  covstruct (A0 currently only tags `phylo_slope` calls), then apply block_size=1
+  (indep||) / parity (dep||) pins to `theta_spde_dep_chol` (`R/fit-multi.R:4017-4033`,
+  flags `use_spde_dep_slope`/`use_spde_indep_blockdiag` at :789/:792 — direct mirror of
+  the phylo `use_phylo_dep_uncorrelated` + `dep_chol_parity_pins` I just landed).
 - **C1 rest** — tweedie(6) + betabinomial(8) random-slope recovery cells (need
   DGP-specific sims; then relax those two family ids at the 6 gate sites). The two
   existing gate-rejection tests use tweedie — update them when tweedie lands.

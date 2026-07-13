@@ -804,11 +804,15 @@ extract_Sigma <- function(
       level = "phy_dep",
       part = "dep",
       note = paste0(
-        "phylo_dep(1 + x1 + ... + xs | species): full unstructured ",
-        "(1+s)T x (1+s)T covariance over trait-stacked ",
-        "(intercept, slope_1, ..., slope_s) columns (interleaved per trait). ",
-        "The part / link_residual arguments do not apply to this single ",
-        "unstructured block."
+        "phylo_dep/indep(1 + x1 + ... + xs | species): the trait-stacked ",
+        "(intercept, slope_1, ..., slope_s) covariance, (1+s)T x (1+s)T, ",
+        "interleaved per trait. Structural zeros in the returned matrix reflect ",
+        "the fitted mode: `dep |` is full unstructured; `indep` is ",
+        "block-diagonal across traits (per-trait blocks, no cross-trait ",
+        "covariance); `||` (uncorrelated) additionally sets the ",
+        "intercept-slope covariance to zero, so `dep ||` is ",
+        "Sigma_intercept (+) Sigma_slope. Read the matrix itself for the exact ",
+        "pattern. The part / link_residual arguments do not apply to this block."
       )
     ))
   }

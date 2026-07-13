@@ -4066,12 +4066,15 @@ rewrite_canonical_aliases <- function(formula) {
             new_call <- as.call(c(
               list(as.name("spde"), bar),
               list(
-                ## TODO(Design 79/80): route to the block-diagonal dep path
-                ## (per-trait indep slope) like phylo_indep/animal_indep, once
-                ## the spatial slope tests can be verified with INLA. Held at the
-                ## former shared-block path for now.
-                .spatial_unique_augmented = TRUE,
-                .spatial_indep_augmented = TRUE,
+                ## Design 79/80 (B2): per-trait block-diagonal spatial slope,
+                ## mirroring phylo_indep/animal_indep -- the spde dep 2T-wide
+                ## engine (use_spde_dep_slope) with the cross-block Cholesky
+                ## entries pinned (use_spde_indep_blockdiag), giving T independent
+                ## (intercept, slope) spatial-field blocks with the intercept-slope
+                ## correlation estimated per trait. Migrated off the former shared-
+                ## field path; verified locally with fmesher (no INLA needed).
+                .spatial_dep_augmented = TRUE,
+                .indep_blockdiag = TRUE,
                 lhs_form = lhs_form$lhs_form,
                 slope_col = lhs_form$slope_col
               ),

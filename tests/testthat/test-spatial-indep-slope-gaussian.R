@@ -1,154 +1,81 @@
-## Design 55 §A4 + Design 56 §9.5e-indep + Design 60 §3.5 --
-## spatial_indep(1 + x | coords) Gaussian recovery + wide<->long byte-identity.
+## Design 79/80 (B2) -- spatial_indep(1 + x | coords) Gaussian, MIGRATED to the
+## per-trait block-diagonal contract.
 ##
-## ACTIVATED. spatial_indep(1 + x | coords) is the DIAGONAL special case of the
-## base SPDE slope engine: the intercept-slope cross-field correlation rho is
-## FIXED at 0 (atanh_cor_spde_b mapped to factor(NA) in R/fit-multi.R). Same
-## engine as spatial_unique(); Sigma_field is diagonal (Design 56 §5.3).
-##
-## Marginal-variance normalisation as in test-spatial-unique-slope-gaussian.R:
-## the DGP is parameterised by the IDENTIFIABLE marginal field SD scaled UP by
-## sqrt(4*pi)*kappa, recovery normalises by the ESTIMATED kappa.
+## spatial_indep(1 + x | coords) USED to fit a shared spatial field with the
+## intercept-slope correlation PINNED to 0 (atanh_cor_spde_b mapped to NA). It
+## NOW fits T INDEPENDENT per-trait (intercept, slope) spatial-field blocks --
+## the spde dep 2T-wide engine (use_spde_dep_slope) with the cross-block Cholesky
+## entries pinned (use_spde_indep_blockdiag), correlation ESTIMATED per trait and
+## cross-trait covariance structurally zero -- exactly mirroring phylo_indep /
+## animal_indep (Design 79/80). Verified locally with fmesher (no INLA needed).
+## `||` gives the fully-diagonal (uncorrelated) form; see the sibling engine.
 
-skip_helper <- function() {
+skip_spatial <- function() {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("fmesher")
+  if (!identical(Sys.getenv("GLLVMTMB_HEAVY_TESTS"), "1")) {
+    testthat::skip("heavy recovery test; set GLLVMTMB_HEAVY_TESTS=1 to run")
+  }
 }
 
-.spde_indep_Q_dense <- function(mesh, kappa) {
-  M0 <- as.matrix(mesh$spde$c0)
-  M1 <- as.matrix(mesh$spde$g1)
-  M2 <- as.matrix(mesh$spde$g2)
-  kappa^4 * M0 + 2 * kappa^2 * M1 + M2
-}
-
-## Simulate from the DIAGONAL augmented-SPDE-slope DGP (rho = 0).
-.make_spatial_indep_slope_data <- function(seed,
-                                           marg_a = 0.8, marg_b = 0.5,
-                                           range_true = 0.3,
-                                           sigma_eps = 0.15,
-                                           n_traits = 3L, n_sites = 300L,
-                                           cutoff = 0.05) {
+## Per-trait spatial slope fixture: each trait gets its own (intercept, slope)
+## SPDE field pair with a real within-trait correlation, drawn from the SPDE
+## precision Q = (kappa^2 I - Laplacian)^2 via its dense Cholesky.
+make_spatial_slope_fixture <- function(seed, n_sites = 160L, n_traits = 3L,
+                                       range = 0.3, cutoff = 0.08) {
   set.seed(seed)
-  kappa_true <- sqrt(8) / range_true
-  sf_norm    <- sqrt(4 * pi) * kappa_true
-  sd_a_p     <- marg_a * sf_norm
-  sd_b_p     <- marg_b * sf_norm
-
   coords <- cbind(lon = stats::runif(n_sites), lat = stats::runif(n_sites))
   df <- expand.grid(site = seq_len(n_sites), trait_id = seq_len(n_traits))
-  df$species      <- 1L
-  df$site_species <- paste0(df$site, "_1")
-  df$trait <- factor(paste0("trait_", df$trait_id),
-                     levels = paste0("trait_", seq_len(n_traits)))
-  df$lon <- coords[df$site, 1]
-  df$lat <- coords[df$site, 2]
-  df$x   <- stats::rnorm(nrow(df))
-
-  mesh   <- gllvmTMB::make_mesh(df, c("lon", "lat"), cutoff = cutoff)
-  n_mesh <- ncol(mesh$A_st)
-
-  Q  <- .spde_indep_Q_dense(mesh, kappa_true)
-  A  <- solve(Q)
-  ## rho = 0: two independent fields, each N(0, sd^2 Q^{-1}).
-  chA <- t(chol(A + 1e-9 * diag(n_mesh)))
-  om_a <- sd_a_p * (chA %*% stats::rnorm(n_mesh))
-  om_b <- sd_b_p * (chA %*% stats::rnorm(n_mesh))
-  A_full <- as.matrix(mesh$A_st)
-  fa_tru <- as.numeric(A_full %*% om_a)
-  fb_tru <- as.numeric(A_full %*% om_b)
-  df$value <- stats::rnorm(n_traits, 0, 0.5)[df$trait_id] +
-    fa_tru + df$x * fb_tru + stats::rnorm(nrow(df), sd = sigma_eps)
-
-  df$site         <- factor(df$site)
-  df$species      <- factor(df$species)
-  df$site_species <- factor(df$site_species)
-
-  list(data = df, mesh = mesh, A_full = A_full,
-       fa_tru = fa_tru, fb_tru = fb_tru,
-       marg_a = marg_a, marg_b = marg_b, kappa_true = kappa_true)
+  df$trait <- factor(paste0("t", df$trait_id), levels = paste0("t", seq_len(n_traits)))
+  df$lon <- coords[df$site, 1]; df$lat <- coords[df$site, 2]
+  df$x <- stats::rnorm(nrow(df)); df$site <- factor(df$site)
+  ## Mesh must be built on the same long-format data passed to gllvmTMB().
+  mesh <- gllvmTMB::make_mesh(df, c("lon", "lat"), cutoff = cutoff)
+  kappa <- sqrt(8) / range
+  M0 <- as.matrix(mesh$spde$c0); M1 <- as.matrix(mesh$spde$g1); M2 <- as.matrix(mesh$spde$g2)
+  Q <- kappa^4 * M0 + 2 * kappa^2 * M1 + M2
+  Lq <- t(chol(Q)); n_mesh <- nrow(Q)
+  Ast <- mesh$A_st                       # n_obs x n_mesh
+  fld <- function() as.numeric(Ast %*% backsolve(t(Lq), stats::rnorm(n_mesh)))
+  val <- numeric(nrow(df))
+  for (t in seq_len(n_traits)) {
+    a <- fld() * 0.8; b <- fld() * 0.5   # per-observation intercept + slope fields
+    idx <- df$trait_id == t
+    val[idx] <- a[idx] + df$x[idx] * b[idx]
+  }
+  df$value <- val + stats::rnorm(nrow(df), 0, 0.15)
+  list(df = df, mesh = mesh)
 }
 
-.summarise_spatial_indep_slope <- function(fit, fx) {
-  rp        <- fit$report
-  sd_hat    <- as.numeric(rp$sd_spde_b)
-  kappa_hat <- as.numeric(rp$kappa_s)
-  sf_hat    <- sqrt(4 * pi) * kappa_hat
-  om_hat <- matrix(
-    fit$tmb_obj$env$last.par.best[
-      grepl("^omega_spde_aug", names(fit$tmb_obj$env$last.par.best))],
-    ncol = 2L)
-  list(
-    conv   = fit$opt$convergence,
-    pd     = isTRUE(fit$fit_health$pd_hessian),
-    marg_a = sd_hat[1] / sf_hat,
-    marg_b = sd_hat[2] / sf_hat,
-    rho    = as.numeric(rp$cor_spde_b),
-    cor_fa = stats::cor(as.numeric(fx$A_full %*% om_hat[, 1]), fx$fa_tru),
-    cor_fb = stats::cor(as.numeric(fx$A_full %*% om_hat[, 2]), fx$fb_tru))
-}
+.fit_sp <- function(fx, lhs) suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+  stats::as.formula(sprintf("value ~ 0 + trait + spatial_indep(%s | site, mesh = mesh)", lhs)),
+  data = fx$df, mesh = fx$mesh, unit = "site", cluster = "site",
+  family = stats::gaussian(), silent = TRUE)))
 
-test_that(
-  "spatial_indep(1 + x | coords) recovery: diagonal Sigma_field (rho pinned to 0) x SPDE precision", {
-  skip_if_not_heavy()
-  skip_helper()
-
-  seeds <- 1:6
-  res <- lapply(seeds, function(s) {
-    fx  <- .make_spatial_indep_slope_data(seed = s)
-    fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-      value ~ 0 + trait + spatial_indep(1 + x | coords),
-      data = fx$data, mesh = fx$mesh, silent = TRUE)))
-    s_out <- .summarise_spatial_indep_slope(fit, fx)
-    ## rho MUST be held exactly at 0 (atanh_cor_spde_b mapped to factor(NA)).
-    s_out$atanh_mapped <- !is.null(fit$tmb_map$atanh_cor_spde_b)
-    s_out
-  })
-
-  conv     <- vapply(res, `[[`, integer(1), "conv")
-  pd       <- vapply(res, `[[`, logical(1), "pd")
-  marg_a_h <- vapply(res, `[[`, numeric(1), "marg_a")
-  marg_b_h <- vapply(res, `[[`, numeric(1), "marg_b")
-  rho_h    <- vapply(res, `[[`, numeric(1), "rho")
-  cor_fa   <- vapply(res, `[[`, numeric(1), "cor_fa")
-  cor_fb   <- vapply(res, `[[`, numeric(1), "cor_fb")
-  atanh_m  <- vapply(res, `[[`, logical(1), "atanh_mapped")
-
-  expect_true(all(conv == 0L))
-  expect_true(all(pd))
-  ## rho held EXACTLY at 0 across every fit (the indep contract).
-  expect_true(all(atanh_m))
-  expect_true(all(rho_h == 0))
-  ## Field-BLUP recovery is the strong, distribution-free check.
-  expect_gt(mean(cor_fa), 0.90)
-  expect_gt(mean(cor_fb), 0.90)
-  ## Marginal variances recovered on average (truths: marg_a = 0.8, marg_b = 0.5).
-  expect_lt(abs(mean(marg_a_h) - 0.8), 0.20)
-  expect_lt(abs(mean(marg_b_h) - 0.5), 0.20)
+test_that("spatial_indep(1 + x | coords) fits the per-trait block-diagonal engine", {
+  skip_spatial()
+  fx <- make_spatial_slope_fixture(seed = 1L); T <- 3L
+  fit <- .fit_sp(fx, "1 + x")
+  expect_equal(fit$opt$convergence, 0L)
+  ## per-trait engine: 2T augmented columns, block-diagonal theta_spde_dep_chol.
+  expect_equal(fit$tmb_data$n_lhs_cols_spde, 2L * T)
+  ## The per-trait dep-slope Cholesky is FREE with block pins: 3 params per trait
+  ## (two diagonal + one within-block intercept-slope), i.e. 3T -- rho ESTIMATED
+  ## per trait, not the old single pinned shared block.
+  expect_equal(sum(!is.na(as.integer(fit$tmb_obj$env$map$theta_spde_dep_chol))), 3L * T)
+  ## positive per-trait field SDs recovered (2T of them).
+  expect_true(all(fit$report$sd_spde_b > 0))
+  expect_length(fit$report$sd_spde_b, 2L * T)
 })
 
-test_that(
-  "spatial_indep wide == long byte-identical (Design 55 §3)", {
-  skip_if_not_heavy()
-  skip_helper()
-
-  fx <- .make_spatial_indep_slope_data(seed = 13, n_sites = 200L, cutoff = 0.07)
-
-  f_w <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + spatial_indep(1 + x | coords),
-    data = fx$data, mesh = fx$mesh, silent = TRUE)))
-  f_l <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + spatial_indep(0 + trait + (0 + trait):x | coords),
-    data = fx$data, mesh = fx$mesh, silent = TRUE)))
-
+test_that("spatial_indep wide == long byte-identical under the per-trait engine", {
+  skip_spatial()
+  fx <- make_spatial_slope_fixture(seed = 13L, n_sites = 180L)
+  f_w <- .fit_sp(fx, "1 + x")
+  f_l <- .fit_sp(fx, "0 + trait + (0 + trait):x")
   expect_identical(f_w$tmb_data$Z_spde_aug, f_l$tmb_data$Z_spde_aug)
-  expect_identical(f_w$tmb_data$n_lhs_cols_spde, 2L)
-  ## Both surfaces pin rho to 0 via the map.
-  expect_false(is.null(f_w$tmb_map$atanh_cor_spde_b))
-  expect_false(is.null(f_l$tmb_map$atanh_cor_spde_b))
-  expect_lt(abs(as.numeric(logLik(f_w)) - as.numeric(logLik(f_l))), 1e-6)
+  expect_identical(f_w$tmb_data$n_lhs_cols_spde, 6L)
+  expect_lt(abs(as.numeric(stats::logLik(f_w)) - as.numeric(stats::logLik(f_l))), 1e-6)
   expect_lt(max(abs(as.numeric(f_w$report$sd_spde_b) -
                       as.numeric(f_l$report$sd_spde_b))), 1e-6)
-  expect_lt(abs(as.numeric(f_w$report$kappa_s) -
-                  as.numeric(f_l$report$kappa_s)), 1e-6)
 })

@@ -3,12 +3,14 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 For the current handoff, read
-`docs/dev-log/handover/2026-07-12-claude-handover-covariance.md` (Claude→Claude,
-evening; the covariance-mode grammar campaign — Design 79/80, `scalar()`/
-`kernel_scalar()`, `indep(1+x)` per-trait) before starting new work. Branch
-`claude/release-0.5.0` is PUSHED with the doc-honesty cleanups (pages 4–6, LV +
-register sweeps, reference/roxygen sweep, `validation_row` print-fix); the
-`1.0.0 → 0.5.0` version correction (PR #748) is MERGED to `main`. Standing rule:
+`docs/dev-log/handover/2026-07-13-claude-handover.md` (Claude→Claude; the `||`
+uncorrelated random-slope coupling axis COMPLETE across all sources, merged to
+`main` @ `8ec261bb`) before starting new work. **Strategy: 0.5 is the
+"cover-everything" dev cycle — we do NOT release 0.5; we accumulate the
+0.5.0→1.0 gap list and release at 0.6.** Next move: **ultra-plan the gap
+closure** (interval coverage is the headline). NOTE: a `v0.5.0` tag was pushed
+but 0.5 will not be released — confirm dropping it. Earlier handover:
+`docs/dev-log/handover/2026-07-12-claude-handover-covariance.md`. Standing rule:
 reader-facing content shows only what makes sense to the reader — no internal
 register codes on any surface (articles, reference/roxygen, NEWS, printed output).
 **gllvmTMB's first CRAN release is `0.5.0`, NOT 1.0 (D-42, 2026-07-11) — 1.0 is

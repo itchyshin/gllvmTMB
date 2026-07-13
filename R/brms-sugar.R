@@ -2442,7 +2442,8 @@ rewrite_canonical_aliases <- function(formula) {
       ) {
         .uncorr_marked <- c("phylo_indep", "animal_indep",
                              "phylo_dep", "animal_dep",
-                             "kernel_indep", "kernel_dep")
+                             "kernel_indep", "kernel_dep",
+                             "spatial_indep", "spatial_dep")
         .uncorr_latent <- c("phylo_latent", "animal_latent", "spatial_latent")
         if (!fn %in% c(.uncorr_marked, .uncorr_latent)) {
           cli::cli_abort(c(
@@ -2464,10 +2465,13 @@ rewrite_canonical_aliases <- function(formula) {
           ## marker needed. (`latent |` shared-factor correlation is deferred.)
           return(desugared)
         }
-        ## indep: tag the phylo_slope covstruct for the fully-diagonal pin.
+        ## indep/dep: tag the resulting slope covstruct (phylo_slope for the
+        ## phylo/animal/kernel sources, spde for spatial) with `.uncorrelated`
+        ## so the engine applies the fully-diagonal (indep) / parity (dep) pin.
         if (
           is.call(desugared) &&
-            identical(desugared[[1L]], as.name("phylo_slope"))
+            (identical(desugared[[1L]], as.name("phylo_slope")) ||
+              identical(desugared[[1L]], as.name("spde")))
         ) {
           return(as.call(c(as.list(desugared), list(.uncorrelated = TRUE))))
         }

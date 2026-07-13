@@ -791,6 +791,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## cross-block Cholesky pinned to 0 (block-diagonal). Design 79/80.
   use_spde_indep_blockdiag <- use_spde_dep_slope &&
     isTRUE(spde_slope_cs$extra[[".indep_blockdiag"]])
+  ## spatial `||` uncorrelated coupling (Design 79 §4), mirroring phylo: indep||
+  ## = fully diagonal (block_size 1); dep|| = Sigma_int (+) Sigma_slope via the
+  ## parity pin. Both ride the same spde dep-slope engine (theta_spde_dep_chol).
+  use_spde_indep_uncorrelated <- use_spde_indep_blockdiag &&
+    isTRUE(spde_slope_cs$extra[[".uncorrelated"]])
+  use_spde_dep_uncorrelated <- use_spde_dep_slope &&
+    !use_spde_indep_blockdiag &&
+    isTRUE(spde_slope_cs$extra[[".uncorrelated"]])
   spde_slope_lhs_form <- if (use_spde_slope) {
     spde_slope_cs$extra$lhs_form %||% "unsupported"
   } else "none"
@@ -4022,15 +4030,35 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else if (use_spde_indep_blockdiag) {
     ## Block-diagonal spatial slope: pin the cross-block Cholesky entries so
     ## Sigma_field = L L^T is block-diagonal (T independent (intercept, slope)
-    ## spatial-field blocks). block_size = n_lhs_cols_spde / n_traits.
+    ## spatial-field blocks). block_size = n_lhs_cols_spde / n_traits for the
+    ## correlated (`|`) form; block_size = 1 for the uncorrelated (`||`) form
+    ## pins every off-diagonal -> fully diagonal.
     pins <- dep_chol_crossblock_pins(
-      n_lhs_cols_spde, n_lhs_cols_spde %/% n_traits
+      n_lhs_cols_spde,
+      if (use_spde_indep_uncorrelated) 1L else n_lhs_cols_spde %/% n_traits
     )
     if (length(pins) > 0L) {
       m <- seq_along(tmb_params$theta_spde_dep_chol)
       m[pins] <- NA
       tmb_params$theta_spde_dep_chol[pins] <- 0
       tmb_map$theta_spde_dep_chol <- factor(m)
+    }
+  } else if (use_spde_dep_uncorrelated) {
+    ## spatial dep(1 + x || g): Sigma_field = Sigma_int (+) Sigma_slope via the
+    ## parity pin (single-slope interleaved int/slope ordering). Mirrors phylo.
+    if (n_lhs_cols_spde == 2L * n_traits) {
+      pins <- dep_chol_parity_pins(n_lhs_cols_spde)
+      if (length(pins) > 0L) {
+        m <- seq_along(tmb_params$theta_spde_dep_chol)
+        m[pins] <- NA
+        tmb_params$theta_spde_dep_chol[pins] <- 0
+        tmb_map$theta_spde_dep_chol <- factor(m)
+      }
+    } else {
+      cli::cli_abort(c(
+        "{.code ||} on {.fn spatial_dep} is currently single-slope only.",
+        ">" = "Use one slope, or the correlated {.code |} form for multiple slopes."
+      ))
     }
   }
   if (!use_re_int) {

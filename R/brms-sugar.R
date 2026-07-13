@@ -2440,12 +2440,13 @@ rewrite_canonical_aliases <- function(formula) {
           is.call(e[[2L]]) &&
           identical(e[[2L]][[1L]], as.name("||"))
       ) {
-        .uncorr_indep <- c("phylo_indep", "animal_indep")
+        .uncorr_marked <- c("phylo_indep", "animal_indep",
+                             "phylo_dep", "animal_dep")
         .uncorr_latent <- c("phylo_latent", "animal_latent", "spatial_latent")
-        if (!fn %in% c(.uncorr_indep, .uncorr_latent)) {
+        if (!fn %in% c(.uncorr_marked, .uncorr_latent)) {
           cli::cli_abort(c(
             "{.code ||} (uncorrelated intercept--slope) is not yet supported for {.fn {fn}}.",
-            "i" = "The `||` coupling currently ships for {.fn phylo_indep}/{.fn animal_indep} and the source-tier {.fn phylo_latent}/{.fn animal_latent}/{.fn spatial_latent} random slopes; other modes/sources are on the way (Design 79).",
+            "i" = "The `||` coupling currently ships for {.fn phylo_indep}/{.fn animal_indep}, {.fn phylo_dep}/{.fn animal_dep}, and the source-tier {.fn phylo_latent}/{.fn animal_latent}/{.fn spatial_latent} random slopes; other modes/sources are on the way (Design 79).",
             ">" = "Use a single {.code |} for the correlated form, or one of those keywords with {.code ||}."
           ))
         }

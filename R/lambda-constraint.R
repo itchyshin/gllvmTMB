@@ -76,6 +76,31 @@ dep_chol_crossblock_pins <- function(C, block_size) {
   pins
 }
 
+## Strictly-lower `theta_dep_chol` indices for the `dep(1 + x || g)` UNCORRELATED
+## coupling: Sigma_b = Sigma_int (T x T) (+) Sigma_slope (T x T) -- full cross-trait
+## covariance among intercepts and (separately) among slopes, but intercept _|_
+## slope everywhere. With the single-slope interleaved 2T ordering
+## (int_1, slope_1, int_2, slope_2, ...), intercepts occupy the ODD positions and
+## slopes the EVEN positions. Sigma_b[i, j] = 0 exactly when i and j have
+## DIFFERENT parity, which holds iff L is parity-structured: pin every
+## strictly-lower L(i, j) with parity(i) != parity(j). Diagonal entries (same
+## position, always same parity) are never pinned. Free-param count is
+## T(T + 1) = two T x T Cholesky blocks. Same column-major packing as
+## dep_chol_crossblock_pins(). Single-slope only (block_size = 2). Design 79 §4.
+dep_chol_parity_pins <- function(C) {
+  pins <- integer(0)
+  idx <- C                              # diagonal entries occupy indices 1..C
+  for (j in seq_len(C)) {
+    if (j < C) {
+      for (i in (j + 1L):C) {
+        idx <- idx + 1L                 # theta index of L(i, j), column-major
+        if ((i %% 2L) != (j %% 2L)) pins <- c(pins, idx)
+      }
+    }
+  }
+  pins
+}
+
 lambda_packed_map <- function(constraint, n_traits, rank, theta_init) {
   if (!is.matrix(constraint))
     cli::cli_abort("lambda_constraint entries must be matrices.")

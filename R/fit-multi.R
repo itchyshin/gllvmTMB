@@ -1410,6 +1410,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## cross-block Cholesky pin below (Design 79 §4).
   use_phylo_indep_uncorrelated <- use_phylo_indep_blockdiag &&
     isTRUE(phylo_slope_cs$extra$.uncorrelated)
+  ## dep(1 + x || g): the UNCORRELATED full-covariance coupling. Sigma_b =
+  ## Sigma_int (T x T) (+) Sigma_slope (T x T) -- full cross-trait covariance among
+  ## intercepts and among slopes, but intercept _|_ slope. Rides the full
+  ## dep-slope engine (free theta_dep_chol) with the PARITY pins applied so L is
+  ## parity-structured. Single-slope only (interleaved int/slope parity). Design 79 §4.
+  use_phylo_dep_uncorrelated <- use_phylo_dep_slope &&
+    !use_phylo_indep_blockdiag &&
+    isTRUE(phylo_slope_cs$extra$.uncorrelated)
   use_phylo_slope_correlated <- use_phylo_slope_correlated ||
     use_phylo_dep_slope
   ## phylo_indep(1 + x | species): same augmented b_phy_aug engine as
@@ -1513,6 +1521,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     phylo_slope_xcol
   } else character(0L)
   n_phy_slope <- length(phylo_slope_xcols)
+
+  ## dep(1 + x || g) parity pin assumes the single-slope interleaved ordering
+  ## (int_t, slope_t): intercepts on odd positions, slopes on even. Multiple
+  ## slopes break that 2-parity structure, so fail loud rather than mis-pin.
+  if (use_phylo_dep_uncorrelated && n_phy_slope != 1L) {
+    cli::cli_abort(c(
+      "{.code ||} on {.fn phylo_dep} / {.fn animal_dep} is currently single-slope only.",
+      "i" = "{.code dep(1 + x || g)} = {.field Sigma_int (+) Sigma_slope} is defined for one random slope.",
+      ">" = "Use one slope, or the correlated {.code |} form for multiple slopes."
+    ))
+  }
 
   ## RE-03 scope guard: the non-Gaussian allowlist above is evidence-backed for
   ## the s == 1 full-unstructured dep slope only. Gaussian s >= 2 is covered by
@@ -3976,6 +3995,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       n_lhs_cols,
       if (use_phylo_indep_uncorrelated) 1L else 1L + n_phy_slope
     )
+    if (length(pins) > 0L) {
+      m <- seq_along(tmb_params$theta_dep_chol)
+      m[pins] <- NA
+      tmb_params$theta_dep_chol[pins] <- 0
+      tmb_map$theta_dep_chol <- factor(m)
+    }
+  } else if (use_phylo_dep_uncorrelated) {
+    ## dep(1 + x || g): Sigma_b = Sigma_int (+) Sigma_slope. Pin the parity-crossing
+    ## strictly-lower Cholesky entries so L is parity-structured and every
+    ## intercept-slope covariance is 0, while cross-trait intercept-intercept and
+    ## slope-slope covariances stay free (Design 79 §4). Free params = T(T+1).
+    pins <- dep_chol_parity_pins(n_lhs_cols)
     if (length(pins) > 0L) {
       m <- seq_along(tmb_params$theta_dep_chol)
       m[pins] <- NA

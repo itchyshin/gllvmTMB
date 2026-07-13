@@ -4,6 +4,12 @@ Meta: 2026-07-13 · from Claude · **supersedes** the 2026-07-12 covariance hand
 You are the next Claude. **Your job: ultra-plan and execute the 0.5→0.6 gap
 closure.** Branch `claude/release-0.5.0`, work MERGED to `main` @ `8ec261bb`.
 
+> ## 🔴 STEP 0 — BEFORE ANYTHING ELSE: OPEN THE CAPABILITY WIDGET
+> Open `docs/dev-log/capability-surface.html` (live artifact
+> https://claude.ai/code/artifact/46e611f2-69d1-48e1-8b8b-ccab2e89983d) and show
+> it to Shinichi FIRST — it is the mission-control. Do not read further, plan, or
+> touch code until you have surfaced the widget. This is a standing rule.
+
 ## Mission (the strategy shift — read this first)
 
 - **0.5 is the "cover everything" development cycle.** We are NOT releasing 0.5.
@@ -11,10 +17,8 @@ closure.** Branch `claude/release-0.5.0`, work MERGED to `main` @ `8ec261bb`.
   and **release at 0.6**. So: no CRAN submission now; keep building.
 - **Next move (Shinichi's ask): ULTRA-PLAN the gap closure** (`skills/ultra-plan`),
   then execute. The gaps are the widget's "WHERE THE GAPS ARE" box (below).
-- **Tag note (decide early):** the previous session tagged `v0.5.0` (pushed).
-  Since 0.5 will NOT be released, that release tag is misleading — Shinichi's
-  standing recommendation is to **drop it** (`git tag -d v0.5.0 && git push origin
-  :refs/tags/v0.5.0`) and keep `main` as the 0.5 dev line. Confirm with him, then act.
+- **Tag:** the premature `v0.5.0` tag was **DROPPED** (local + remote, 2026-07-13)
+  — 0.5 is not a release. `main` @ `8ec261bb` is the 0.5 dev line (no release tag).
 
 ## Critical Context
 
@@ -75,7 +79,7 @@ cover all of these*:
 
 ## Next Immediate Steps
 
-1. **Confirm the tag decision** (drop `v0.5.0` or keep as dev milestone).
+1. **Show the capability widget** (STEP 0 above) — always first.
 2. **Ultra-plan the gap closure** (`skills/ultra-plan`): decompose the list above
    into slices, sequence by leverage (interval coverage is the headline; it likely
    needs a compute campaign). Recommend interval-coverage first (biggest, gating
@@ -100,7 +104,6 @@ cover all of these*:
 
 - Interval-coverage calibration is a research-grade campaign (compute).
 - tweedie slope bias needs a diagnosis (Laplace? small-sample?).
-- The `v0.5.0` tag disposition (drop vs keep).
 - The pkgdown/doc honesty **one-by-one review with Shinichi** is still undone — a
   gate before ANY eventual 0.6 CRAN submission.
 
@@ -131,7 +134,7 @@ cover all of these*:
 One-command resume (paste in your authenticated terminal, from the repo root):
 
 ```
-claude "Rehydrate from docs/dev-log/handover/2026-07-13-claude-handover.md + the AGENTS.md snapshot. Show me the capability widget first, then ultra-plan the 0.5→0.6 gap closure (interval coverage is the headline), and confirm the v0.5.0 tag disposition before anything else."
+claude "FIRST open and show me the capability widget (docs/dev-log/capability-surface.html), then rehydrate from docs/dev-log/handover/2026-07-13-claude-handover.md + the AGENTS.md snapshot and ultra-plan the 0.5→0.6 gap closure (interval coverage is the headline)."
 ```
 
 ## Mission control
@@ -143,7 +146,7 @@ claude "Rehydrate from docs/dev-log/handover/2026-07-13-claude-handover.md + the
 | **Families (slopes)** | +lognormal/student; tweedie/betabinom gated | diagnose tweedie bias; nbinom1 recovery |
 | **Diagnostics** | Gaussian/Poisson/NB2 | extend residual/predictive checks to more families |
 | **Categorical / REML / delta-hurdle / AGHQ** | early-stage / Gaussian-only / design-gap / unbuilt | the deep 0.6→1.0 lanes |
-| **Release** | `main` @ `8ec261bb`, `v0.5.0` tagged; **NOT releasing 0.5** | release at **0.6**; doc honesty review is the gate |
+| **Release** | `main` @ `8ec261bb`; **NOT releasing 0.5** (v0.5.0 tag dropped) | release at **0.6**; doc honesty review is the gate |
 
 Branch `claude/release-0.5.0` == `main` @ `8ec261bb`, pushed. Nothing half-done.
 The `||` arc is complete and green; the gap list is the next campaign. Good luck. 🧬

@@ -2,14 +2,20 @@
 
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
+**🔴 FIRST, BEFORE ANYTHING: open the capability widget.** Every new session
+opens `docs/dev-log/capability-surface.html` (live artifact
+https://claude.ai/code/artifact/46e611f2-69d1-48e1-8b8b-ccab2e89983d) and shows
+it to Shinichi as step 0 — it is the mission-control. Do this before reading
+further or planning.
+
 For the current handoff, read
 `docs/dev-log/handover/2026-07-13-claude-handover.md` (Claude→Claude; the `||`
 uncorrelated random-slope coupling axis COMPLETE across all sources, merged to
 `main` @ `8ec261bb`) before starting new work. **Strategy: 0.5 is the
 "cover-everything" dev cycle — we do NOT release 0.5; we accumulate the
 0.5.0→1.0 gap list and release at 0.6.** Next move: **ultra-plan the gap
-closure** (interval coverage is the headline). NOTE: a `v0.5.0` tag was pushed
-but 0.5 will not be released — confirm dropping it. Earlier handover:
+closure** (interval coverage is the headline). (The premature `v0.5.0` tag was
+DROPPED — 0.5 is not a release.) Earlier handover:
 `docs/dev-log/handover/2026-07-12-claude-handover-covariance.md`. Standing rule:
 reader-facing content shows only what makes sense to the reader — no internal
 register codes on any surface (articles, reference/roxygen, NEWS, printed output).

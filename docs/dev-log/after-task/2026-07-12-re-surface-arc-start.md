@@ -34,6 +34,14 @@ cross-lineage-coevolution, random-slopes-nongaussian, simulation-recovery-
 validated, lambda-constraint-suggest, roadmap) are gone; estate = 19, no dangling
 links. (Shinichi's memory of "not taken out" predated that cleanup.)
 
+## Closure check
+
+Full non-heavy `devtools::test()` after all 8 feature commits: **4532 pass / 0
+fail / 0 error / 959 skip** (heavy), summing the `error` column too. The whole
+package is green with the coupling axis + kernel slopes + lognormal/student
+integrated. Heavy `||`/kernel/family recovery cells pass under
+`GLLVMTMB_HEAVY_TESTS=1`.
+
 ## Key verified recipes (for the remaining slices)
 
 - **`||` interception (A0)** lives at the top of `rewrite()` in `R/brms-sugar.R`

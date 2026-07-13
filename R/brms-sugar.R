@@ -2441,7 +2441,8 @@ rewrite_canonical_aliases <- function(formula) {
           identical(e[[2L]][[1L]], as.name("||"))
       ) {
         .uncorr_marked <- c("phylo_indep", "animal_indep",
-                             "phylo_dep", "animal_dep")
+                             "phylo_dep", "animal_dep",
+                             "kernel_indep", "kernel_dep")
         .uncorr_latent <- c("phylo_latent", "animal_latent", "spatial_latent")
         if (!fn %in% c(.uncorr_marked, .uncorr_latent)) {
           cli::cli_abort(c(
@@ -3057,17 +3058,42 @@ rewrite_canonical_aliases <- function(formula) {
         K_expr <- e[[which(nm == "K")]]
         name_expr <- if ("name" %in% nm) e[[which(nm == "name")]] else "kernel"
         unit_arg <- e[[2L]]
-        ## Fail-loud on a random-slope bar. Kernel keywords take a BARE grouping
-        ## column (`kernel_indep(unit, K = K)`); a `... | group` bar in the unit
-        ## slot was previously passed straight through to `phylo_rr`, which then
-        ## mis-parsed it into a garbled covstruct (`lhs = 0 + (1 + x | g)`,
-        ## `group = trait`) with no error -- a silent-corruption (Sokal) bug.
-        ## Reject it clearly until the kernel random-slope engine is wired.
-        if (is.call(unit_arg) && identical(unit_arg[[1L]], as.name("|"))) {
+        ## Random-slope bar handling (B1). Kernel keywords normally take a bare
+        ## grouping column; a `1 + x | g` bar is a random slope. kernel_indep and
+        ## kernel_dep route it to the SAME augmented phylo_slope engine as
+        ## animal_indep / animal_dep, carrying `vcv = K` + the kernel metadata
+        ## (dense-kernel = phylo with a supplied K; no new C++). Other kernel modes'
+        ## slopes are not yet wired -> fail loud (previously a silent Sokal
+        ## mis-parse into a garbled `lhs = 0 + (1 + x | g)`, `group = trait`).
+        if (
+          is.call(unit_arg) &&
+            identical(unit_arg[[1L]], as.name("|")) &&
+            length(unit_arg) == 3L
+        ) {
+          lhs_form <- .gllvmTMB_lhs_form(unit_arg[[2L]])
+          is_slope <- lhs_form$lhs_form %in%
+            c("wide_intercept_slope", "long_intercept_slope")
+          if (is_slope && fn %in% c("kernel_indep", "kernel_dep")) {
+            marks <- list(
+              .phylo_dep_augmented = TRUE,
+              lhs_form = lhs_form$lhs_form,
+              slope_col = lhs_form$slope_col
+            )
+            if (fn == "kernel_indep") marks$.indep_blockdiag <- TRUE
+            return(as.call(c(
+              list(as.name("phylo_slope"), unit_arg),
+              marks,
+              list(
+                vcv = K_expr,
+                .kernel_name = name_expr,
+                .kernel_mode = sub("^kernel_", "", fn)
+              )
+            )))
+          }
           cli::cli_abort(c(
-            "{.fn {fn}} does not support a random-slope bar ({.code ... | group}).",
-            "i" = "Kernel keywords take a bare grouping column, e.g. {.code {fn}(unit, K = K)}.",
-            ">" = "Dense-kernel random slopes are not yet implemented; use a source-specific keyword ({.fn phylo_indep} / {.fn animal_indep} / {.fn spatial_indep} and siblings) for {.code 1 + x | group} slopes."
+            "{.fn {fn}} does not support this random-slope bar yet.",
+            "i" = "Kernel random slopes are wired for {.fn kernel_indep} and {.fn kernel_dep} ({.code 1 + x | g}); other kernel modes are on the way.",
+            ">" = "Use {.fn kernel_indep}/{.fn kernel_dep} for kernel random slopes, or a bare grouping column for an intercept-only kernel term."
           ))
         }
         kernel_meta <- list(

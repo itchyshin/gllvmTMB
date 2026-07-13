@@ -130,7 +130,14 @@
       "sd_W",
       "sd_phy",
       "sd_phy_diag",
-      "sd_spde"
+      "sd_spde",
+      ## Augmented random-slope variances (the dep/indep/`||` slope engines and
+      ## the spatial slope). These are the cells most prone to a boundary
+      ## (singular) fit -- weakly-identified per-trait intercept/slope variances,
+      ## esp. `||` and spatial slopes -- so surfacing a near-zero flag here is
+      ## the isSingular-style signal for a weakly-identified random-slope fit.
+      "sd_b",
+      "sd_spde_b"
     ),
     names(rep)
   )) {

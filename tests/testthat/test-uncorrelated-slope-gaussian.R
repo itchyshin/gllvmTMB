@@ -93,6 +93,34 @@ test_that("phylo_indep(1 + x || species) fits the fully-diagonal (uncorrelated) 
   expect_length(fit_unc$report$sd_b, 2L * T)
 })
 
+test_that("source-tier latent `||` desugars to and fits the same as `|` (A3)", {
+  ## Source-tier latent slopes are already the uncorrelated form (separate Lambda
+  ## per column block, no intercept-slope covariance), so `||` is an accepted
+  ## spelling that routes to the same engine. Desugar identity is cheap (no fit).
+  withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE)
+  t <- matrix(0, 3, 3)
+  rw <- gllvmTMB:::rewrite_canonical_aliases
+  for (kw in c("phylo_latent", "spatial_latent")) {
+    a <- paste(deparse(rw(stats::as.formula(
+      sprintf("y ~ %s(1 + x || sp, tree = t, d = 1)", kw)))), collapse = " ")
+    b <- paste(deparse(rw(stats::as.formula(
+      sprintf("y ~ %s(1 + x | sp, tree = t, d = 1)", kw)))), collapse = " ")
+    expect_identical(a, b, info = kw)
+  }
+})
+
+test_that("latent `||` fit equals the `|` fit at the likelihood", {
+  skip_if_not_ape()
+  fx <- make_uncorr_fixture(seed = 5L)
+  ff <- function(bar) suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    stats::as.formula(sprintf("value ~ 0 + trait + phylo_latent(%s, d = 1)", bar)),
+    data = fx$df, phylo_tree = fx$tree, unit = "species", family = stats::gaussian())))
+  f_unc <- ff("1 + x || species"); f_cor <- ff("1 + x | species")
+  expect_equal(f_unc$opt$convergence, 0L)
+  expect_equal(as.numeric(stats::logLik(f_unc)),
+               as.numeric(stats::logLik(f_cor)), tolerance = 1e-8)
+})
+
 test_that("wide `||` and its long form are byte-identical", {
   skip_if_not_ape()
   fx <- make_uncorr_fixture(seed = 7L)

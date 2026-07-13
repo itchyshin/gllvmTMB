@@ -2440,11 +2440,13 @@ rewrite_canonical_aliases <- function(formula) {
           is.call(e[[2L]]) &&
           identical(e[[2L]][[1L]], as.name("||"))
       ) {
-        if (!fn %in% c("phylo_indep", "animal_indep")) {
+        .uncorr_indep <- c("phylo_indep", "animal_indep")
+        .uncorr_latent <- c("phylo_latent", "animal_latent", "spatial_latent")
+        if (!fn %in% c(.uncorr_indep, .uncorr_latent)) {
           cli::cli_abort(c(
             "{.code ||} (uncorrelated intercept--slope) is not yet supported for {.fn {fn}}.",
-            "i" = "The `||` coupling currently ships for {.fn phylo_indep} and {.fn animal_indep} random slopes; other modes/sources are on the way (Design 79).",
-            ">" = "Use a single {.code |} for the correlated form, or switch to {.fn phylo_indep}/{.fn animal_indep} with {.code ||}."
+            "i" = "The `||` coupling currently ships for {.fn phylo_indep}/{.fn animal_indep} and the source-tier {.fn phylo_latent}/{.fn animal_latent}/{.fn spatial_latent} random slopes; other modes/sources are on the way (Design 79).",
+            ">" = "Use a single {.code |} for the correlated form, or one of those keywords with {.code ||}."
           ))
         }
         bar <- e[[2L]]
@@ -2452,6 +2454,15 @@ rewrite_canonical_aliases <- function(formula) {
         e_single <- e
         e_single[[2L]] <- bar
         desugared <- rewrite(e_single)
+        if (fn %in% .uncorr_latent) {
+          ## Source-tier latent slopes are ALREADY the uncorrelated form: each
+          ## (intercept, slope) column block gets its own reduced-rank
+          ## Lambda_k Lambda_k^T with NO intercept-slope covariance (Design 79
+          ## §7.1). The `||` spelling routes to that same engine unchanged -- no
+          ## marker needed. (`latent |` shared-factor correlation is deferred.)
+          return(desugared)
+        }
+        ## indep: tag the phylo_slope covstruct for the fully-diagonal pin.
         if (
           is.call(desugared) &&
             identical(desugared[[1L]], as.name("phylo_slope"))

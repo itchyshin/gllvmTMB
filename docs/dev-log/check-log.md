@@ -45476,3 +45476,29 @@ reproduces it verbatim). **G3** (`man/extract_Sigma.Rd`) remains deferred becaus
 its roxygen source `R/extract-sigma.R` is in Lane A's uncommitted set. All other
 non-coverage slices (Item 1 `disp_group=`, Item 4, S6/S7) stay gated on Lane A's
 commit; a background monitor is armed to resume them the moment it lands.
+
+## 2026-07-15 — Lane B batch integrated (autonomous; sign-offs pending)
+
+After Lane A's diff was committed (`84aea3e8`), Lane B ran the unblocked gap batch
+via three isolated-worktree agents and integrated the results. **Landed + verified
+on `claude/release-0.5.0`:**
+- G1/G2/G3 nbinom2 fences (article + families + extract_Sigma); Item 4
+  `ci_missing_rate` denominator fix (11/11 gate tests); bare-`||` grammar merged.
+- **Gamma residual bug fix** (`f9102922`) — S6 found `scale <- mu/shape` clobbering
+  the `scale` argument, silently returning raw PIT for Gamma normal-scale
+  randomized-quantile residuals; fixed + verified (compile + heavy residual/slope
+  suites green: binomial/Gamma/Beta ~N(0,1); nbinom1 slope recovers ~1.0).
+
+**HELD for maintainer sign-off (NOT committed to branch; in worktree branches):**
+- `disp_group=` shared NB2 dispersion — implemented (Route A, zero C++ diff, 18/18
+  tests) but **FAILS the recovery gate**: pooling φ does not recover Σ (shared
+  0.52/0.41/0.48 vs default 0.52/0.46/0.50 vs oracle 0.78/0.81/0.84). The ridge is
+  in φ *estimation*, not over-parameterisation. **nbinom2 stays fenced.** Design 82
+  §4.5 records the negative result. Worktree `worktree-agent-a6930931ce81e02da`.
+- S6 family-breadth *advertising* (roxygen listing binomial/Gamma/Beta) — the
+  correctness fix + tests landed; the doc claim awaits Phase F. Worktree
+  `worktree-agent-a001dee2509c89dc2`.
+- **tweedie stays GATED** — S7 found the reputed ~44% slope over-estimate does NOT
+  reproduce (recovers ~0.88–1.04) and the p-fix does not resolve B1; un-gating needs
+  a full campaign + sign-off. `test-tweedie-fixed-p.R`'s stale ~44% rationale needs a
+  refresh (conclusion holds). Worktree `worktree-agent-a33d0cc868dd580a0`.

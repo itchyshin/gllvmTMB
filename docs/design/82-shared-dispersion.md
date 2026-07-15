@@ -327,6 +327,43 @@ what "shared dispersion works" would have to show, not a result.
    design is sound — per D-43, default to NOT-DONE until an independent
    read of the ladder output confirms the pattern in (1).
 
+### 4.5 RESULT (2026-07-15) — validated, and it FAILS the gate
+
+`disp_group=` was implemented via Route A (TMB `map=` tying, zero
+`src/gllvmTMB.cpp` diff, 18/18 tests pass) and validation step (1) was run:
+the mitigation ladder with a fully-pooled `shared` arm, 3 arms × n ∈
+{150, 400, 800} × 8 seeds, 0 non-convergence.
+
+| n | default (per-trait) | **shared `disp_group`** | knownphi oracle | shared − default |
+|---|---|---|---|---|
+| 150 | 0.519 | 0.515 | 0.776 | −0.004 |
+| 400 | 0.459 | 0.408 | 0.811 | −0.051 |
+| 800 | 0.495 | 0.480 | 0.839 | −0.015 |
+
+(median Σ̂/truth; default reproduces the §1.3 baseline exactly.)
+
+**Verdict: shared dispersion does NOT recover Σ.** `shared` tracks the
+`default` line — in fact marginally *below* it (pooling discards the
+occasional helpful high per-trait φ) — nowhere near the `knownphi` oracle.
+This is precisely the outcome step (1) flagged as possible: **the ridge is
+in φ *estimation itself*, not over-parameterisation.** A freely-estimated φ
+lands biased-low (~0.5 vs true ~1.1) whether pooled or per-trait; only
+fixing φ at the (unknowable) true value rescues Σ. Steps (2)-(3) were not
+run — the gate in step (1) already fails, so there is nothing to un-fence.
+
+**Consequences:**
+- **nbinom2 stays fenced** (recovery-only; the G1/G2/G3 caveats stand). The
+  un-fence gate in §4.4 is NOT met.
+- `disp_group=` remains a *legitimate modelling option* (pool φ when traits
+  genuinely share dispersion) but is **not** the nbinom2-Σ fix it was
+  motivated by. It is **held for maintainer sign-off** — the decision is
+  whether to land a correctly-built facility that does not deliver its
+  motivating benefit. Not committed to the branch; the diff lives in worktree
+  branch `worktree-agent-a6930931ce81e02da`.
+- The real nbinom2 Σ problem is φ-estimation bias — a separate, harder
+  problem (bias-corrected / penalised φ, or a genuinely informative prior),
+  out of scope here and not solved by pooling.
+
 ---
 
 ## 5. Risks / open questions

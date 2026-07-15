@@ -364,6 +364,37 @@ run — the gate in step (1) already fails, so there is nothing to un-fence.
   problem (bias-corrected / penalised φ, or a genuinely informative prior),
   out of scope here and not solved by pooling.
 
+### 4.6 Validation-completeness caveat (2026-07-15)
+
+The §4.5 run has a subtlety worth stating plainly: **the mitigation ladder's
+DGP draws a single shared phi across all traits**, so the fully-pooled `shared`
+model is the case *most favourable* to pooling — the pooled model structurally
+*matches* the DGP. "Pooling recovers Sigma" on this DGP would therefore be
+partly circular.
+
+This does not weaken the §4.5 verdict — it **strengthens it a fortiori**:
+pooling failed to recover Sigma *even on the DGP that most favours it*. If it
+does not help when the shared-dispersion assumption is exactly true, it will not
+help when it is false. The phi-estimation-bias diagnosis stands.
+
+But for a **complete** evaluation of `disp_group=` as an opt-in *modelling tool*
+(a separate question from the now-settled "does it fix nbinom2 Sigma" — it does
+not), two further checks are owed before the facility is advertised:
+
+1. **Per-trait default unharmed.** `disp_group = NULL` must be byte-identical to
+   current behaviour. Covered by construction (NULL sets no `map`) and by the
+   wire test; assert it explicitly in the recovery ladder too.
+2. **Mis-specification / bias cost.** Run a DGP with genuinely *different*
+   per-trait phi and measure the bias `disp_group=` *introduces* when the
+   shared-dispersion assumption is **wrong** (pooling then forces distinct true
+   phi's onto one estimate). This quantifies the cost of the tool being misused,
+   and is the honest counterpart to advertising it.
+
+**Standing framing:** per-trait phi estimation remains the **default**;
+`disp_group=` is an **opt-in** tool for the case where traits genuinely share
+dispersion — never a universal fix, and (per §4.5) not the nbinom2-Sigma remedy.
+Fold checks (1)-(2) into the recovery run before any sign-off to advertise.
+
 ---
 
 ## 5. Risks / open questions

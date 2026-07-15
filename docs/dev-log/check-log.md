@@ -45538,3 +45538,15 @@ your resume:
 
 Coverage certificate + all widget/NEWS coverage flips remain **yours**. Lane B
 asserted no coverage claims.
+
+## 2026-07-15 — UPDATE to Lane A note: the grid LANDED (to HOLD)
+
+Correcting point 3 of the directed note above: the n_sim=2000 grid has **already
+landed** (verdict committed just now). Result is **HOLD — no nominal certificate**.
+gaussian intervals ~0.91 (bug fix validated at scale, 0.54→0.91) and binomial
+~0.92 both sit ~2-4pt below nominal 0.95; the percentile bootstrap systematically
+under-covers `Sigma_unit_diag`. So **no coverage cell flips to nominal-certified** —
+gaussian/binomial join nbinom2 as recovery-only / approximately-calibrated. The
+widget carries an "approx-calibrated, not nominal-certified" note (no cell flip).
+Your next coverage move is the **BCa/studentized bootstrap** re-run (0.6+ methods
+lane) to close the ~3-4pt gap, not a widget flip.

@@ -2440,6 +2440,55 @@ rewrite_canonical_aliases <- function(formula) {
           is.call(e[[2L]]) &&
           identical(e[[2L]][[1L]], as.name("||"))
       ) {
+        ## Ordinary (none-source) `indep(1 + x || g)`: the per-trait fully
+        ## diagonal augmented slope (2T variances, no intercept-slope
+        ## covariance). This is exactly the `use_diag_B_slope` engine that
+        ## `unique(1 + x | g)` drives -- standalone `indep` and `unique` are the
+        ## mathematically identical diagonal (CLAUDE.md syntax rules), so route
+        ## `indep ||` straight to the same marked `diag()` covstruct. The
+        ## CORRELATED ordinary `indep(1 + x | g)` (per-trait 2x2 G_t) has no
+        ## none-source engine yet and still fails loud at its single-`|` branch,
+        ## so only the uncorrelated `||` spelling is admitted here.
+        if (identical(fn, "indep")) {
+          bar <- e[[2L]]
+          bar[[1L]] <- as.name("|")
+          if (length(bar) != 3L) {
+            cli::cli_abort(c(
+              "{.code indep(... || g)} did not resolve to a random-slope term.",
+              "i" = "`||` requires an intercept-and-slope LHS, e.g. {.code indep(1 + x || g)}."
+            ))
+          }
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          if (
+            !lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            cli::cli_abort(c(
+              "{.code indep(... || g)} requires an intercept-and-slope LHS.",
+              "i" = "Got LHS {.code {deparse(bar[[2L]])}}.",
+              ">" = "Use {.code indep(1 + x || g)} for the per-trait uncorrelated random slope."
+            ))
+          }
+          new_call <- as.call(list(as.name("diag"), bar))
+          new_call[[".unique_augmented"]] <- TRUE
+          new_call[["lhs_form"]] <- lhs_form$lhs_form
+          new_call[["slope_col"]] <- lhs_form$slope_col
+          return(new_call)
+        }
+        ## Ordinary (none-source) `latent(1 + x || g)`: the block-diagonal Lambda
+        ## constraint (separate Lambda_int, Lambda_slope; no intercept-slope
+        ## covariance) is a pending ENGINE deliverable (Design 79 "still to
+        ## build"). The shipped ordinary `latent(1 + x | g)` fits the CORRELATED
+        ## joint-Lambda random slope, so routing `||` there would silently drop
+        ## the decorrelation the user asked for. Fail loud until the constraint
+        ## lands rather than mislabel a correlated fit as uncorrelated.
+        if (identical(fn, "latent")) {
+          cli::cli_abort(c(
+            "{.code latent(1 + x || g)} (uncorrelated ordinary latent slope) is not yet available.",
+            "i" = "Ordinary {.fn latent} fits the correlated joint-Lambda random slope; the block-diagonal Lambda constraint for the {.code ||} form is a pending engine deliverable (Design 79).",
+            ">" = "Use {.code indep(1 + x || g)} for a per-trait uncorrelated slope, or a source-tier {.fn phylo_latent}/{.fn spatial_latent} with {.code ||}."
+          ))
+        }
         .uncorr_marked <- c("phylo_indep", "animal_indep",
                              "phylo_dep", "animal_dep",
                              "kernel_indep", "kernel_dep",

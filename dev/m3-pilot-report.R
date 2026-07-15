@@ -265,11 +265,20 @@ pilot_scale_gate_eval <- function(
   logit_harness <- bino & grepl("logit", core$evidence_family)
   probit_ok <- !any(logit_harness)
 
-  ## CI-missing rate = fraction of converged fits with no usable primary CI.
+  ## CI-missing rate = fraction of (converged draw x trait) primary coverage
+  ## slots with no usable CI. coverage_eligible_n counts eligible (draw x trait)
+  ## checks, so the denominator is n_converged_fits * n_traits, not
+  ## n_converged_fits alone (which made the rate negative when n_traits > 1).
+  n_traits_vec <- if ("n_traits" %in% names(core)) {
+    core$n_traits
+  } else {
+    rep(NA_integer_, nrow(core))
+  }
   denom <- ifelse(
-    is.na(core$n_converged_fits) | core$n_converged_fits <= 0L,
+    is.na(core$n_converged_fits) | core$n_converged_fits <= 0L |
+      is.na(n_traits_vec) | n_traits_vec <= 0L,
     NA_real_,
-    core$n_converged_fits
+    core$n_converged_fits * n_traits_vec
   )
   ci_missing <- 1 - (core$coverage_eligible_n / denom)
   mcse_f <- ifelse(is.na(core$coverage_mcse), 0.02, core$coverage_mcse)
@@ -533,6 +542,15 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
   boot_fail_mcse <- pilot_binomial_mcse(boot_fail_rate, n_boot_attempted)
 
   coverage_eligible_n <- pilot_coverage_denominator(prim_rows)
+  ## Number of primary trait-targets per draw. coverage_eligible_n counts
+  ## eligible (draw x trait) coverage checks, so the per-draw denominator for
+  ## the CI-missing rate is n_converged_fits * n_traits, not n_converged_fits.
+  n_traits <- if (!is.null(prim_rows) && nrow(prim_rows) &&
+    "trait_id" %in% names(prim_rows)) {
+    length(unique(prim_rows$trait_id[!is.na(prim_rows$trait_id)]))
+  } else {
+    NA_integer_
+  }
   coverage_mcse <- pilot_binomial_mcse(cov_p, n_sim)
 
   ## --- zero-exclusion diagnostic on the primary target ---
@@ -620,6 +638,7 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
     n_sdreport_ok = as.integer(n_sdreport_ok),
     n_boot_attempted = as.integer(n_boot_attempted),
     coverage_eligible_n = as.integer(coverage_eligible_n),
+    n_traits = as.integer(n_traits),
     coverage_primary = cov_p,
     coverage_mcse = coverage_mcse,
     passes_94 = if (is.na(cov_p)) NA else cov_p >= gate_94,
@@ -791,6 +810,7 @@ pilot_collect_empty <- function() {
     n_sdreport_ok = integer(0),
     n_boot_attempted = integer(0),
     coverage_eligible_n = integer(0),
+    n_traits = integer(0),
     coverage_primary = numeric(0),
     coverage_mcse = numeric(0),
     passes_94 = logical(0),

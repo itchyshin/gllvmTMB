@@ -6,13 +6,15 @@ source("dev/m3-pilot-report.R")
 
 mkcell <- function(family, signal, coverage_primary, coverage_mcse,
                    fit_failure_rate = 0.05, boot_fail_rate = 0.05,
-                   n_converged_fits = 190L, coverage_eligible_n = 188L,
+                   n_converged_fits = 190L, n_traits = 5L,
+                   coverage_eligible_n = 940L,
                    evidence_family = family) {
   data.frame(
     family = family, evidence_family = evidence_family, signal = signal,
     coverage_primary = coverage_primary, coverage_mcse = coverage_mcse,
     coverage_eligible_n = as.integer(coverage_eligible_n),
     n_converged_fits = as.integer(n_converged_fits),
+    n_traits = as.integer(n_traits),
     fit_failure_rate = fit_failure_rate, boot_fail_rate = boot_fail_rate,
     stringsAsFactors = FALSE
   )
@@ -70,6 +72,22 @@ lowcov <- rbind(
 )
 r5 <- pilot_scale_gate_eval(lowcov)
 chk(r5$verdict == "HOLD", "coverage 0.60 -> HOLD (below provisional floor)")
+
+## 6. Regression (Repair #5): coverage_eligible_n counts (draw x trait) checks,
+## so the CI-missing denominator is n_converged_fits * n_traits. Under the old
+## denominator (n_converged_fits alone) eligible_n > n_converged made the rate
+## negative; confirm it is now a sane fraction in [0, 1] on the correct denom.
+reg <- rbind(
+  mkcell("gaussian", 0.2, 0.95, 0.015,
+         n_converged_fits = 190L, n_traits = 5L, coverage_eligible_n = 900L),
+  mkcell("nbinom2", 0.5, 0.94, 0.016,
+         n_converged_fits = 190L, n_traits = 5L, coverage_eligible_n = 950L)
+)
+r6 <- pilot_scale_gate_eval(reg)
+cm <- r6$cells$ci_missing_rate
+chk(all(cm >= 0 & cm <= 1), "ci_missing_rate in [0, 1] (no longer negative)")
+chk(isTRUE(all.equal(cm[r6$cells$family == "gaussian"], 1 - 900 / (190 * 5))),
+    "ci_missing_rate uses n_converged_fits * n_traits denominator")
 
 cat("\n", if (ok) "ALL PASS" else "SOME FAILED", "\n")
 if (!ok) quit(status = 1L)

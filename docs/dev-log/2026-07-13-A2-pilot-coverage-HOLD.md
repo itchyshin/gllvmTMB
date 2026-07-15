@@ -117,6 +117,38 @@ pending verification) + binomial_probit (healthy, 0.82–0.93 @ n=150)**. **nbin
 dispersion, re-parameterization, or a different estimand), same tier as AGHQ. This matches the
 May scope status (nbinom2 never promoted). Ordinal was already excluded (Repair #2).
 
+## n_sim=2000 GRID VERDICT (2026-07-15) — the definitive adversarial result
+
+Grid complete: 24 core-2 cells (gaussian FIXED + binomial), n_sim=2000, n_boot=100, Totoro (~40h,
+lab-contention-slowed). MCSE now ~0.006 (adjudication-grade). `~/gllvm_work/grid2000/`,
+`core2-collected.rds`.
+
+**Formal scale gate: `HOLD`** — 16/16 health gates pass, but only **3/16 cells reach the 0.94
+gate**; 11/16 below the provisional floor. Threshold counts (signal>0): ≥0.95: 3/16 · ≥0.94: 3/16 ·
+≥0.93: 5/16 · ≥0.90: **14/16**.
+
+- **gaussian** — 8 signal>0 cells: coverage **0.900–0.924, mean 0.913**, MCSE ~0.006. **Improves
+  with n** (n=50 ~0.905 → n=150 ~0.922) — correct direction, the bug fix is validated at scale
+  (was 0.54 broken). BUT consistently **~2–4 points below nominal 0.95** — a real, tight, mild
+  **undercoverage**, not noise.
+- **binomial** — 8 signal>0 cells: **0.836–0.979, mean 0.922**. n=50 cells fine/over (0.93–0.98);
+  **n=150 high-signal cells genuinely undercover** (0.853 @ d1, 0.836 @ d2). The pilot's soft 0.82
+  cell was REAL (0.836 confirmed at tight MCSE), not noise.
+
+**Adversarial verdict (D-43, default NOT-DONE):**
+- ❌ **"Nominal 0.95 coverage certificate" — NOT EARNED.** Both families under-cover; only 3/16
+  cells clear 0.94. The nominal claim is refuted by the data.
+- ✅ **"Gaussian bug fixed; intervals now approximately calibrated (~0.91) with correct
+  n-direction" — EARNED** (0.54 → 0.91, verified at n_sim=2000).
+
+**Interpretation.** The parametric **percentile bootstrap** for `Sigma_unit_diag` (a bounded,
+skewed variance-component functional) **systematically under-covers by ~3–4 points** — a known
+limitation of percentile intervals for variance components. This **validates the honesty fence**:
+intervals stay **recovery-only / approximately-calibrated, NOT nominal-coverage-certified**; the
+widget does not flip to "coverage-checked at nominal." **Path to nominal (0.6+/1.0 methods lane):**
+BCa (bias-corrected accelerated) or studentized bootstrap should close much of the gap; validate by
+re-running this grid with BCa intervals.
+
 ## Artifacts
 
 - `~/gllvm_work/pilot200/` (Totoro) — 48 cell aggregates + `scale-gate-verdict.rds`.

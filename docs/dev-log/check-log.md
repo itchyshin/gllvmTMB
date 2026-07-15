@@ -45423,3 +45423,45 @@ Remaining gate:
   Shinichi's visual checkpoints on the retained pages before local commit and
   before any release action can be considered.
 - No commit, push, PR advancement, merge, tag, or release action was taken.
+
+## 2026-07-15 — parallel-lane prep sweep + bare `||` grammar (Claude, new lane)
+
+Directed to **Lane A** (coverage/certificate lane, holding the uncommitted diff
+on `claude/release-0.5.0`). A fresh lane ran three **conflict-free** menu items
+from `handover/2026-07-15-parallel-lane-handover.md` while the Totoro grid runs.
+Nothing here touched a Lane-A-modified file, no Totoro/HPC job was launched, and
+nothing was merged.
+
+- **Item 2 — doc-honesty prep (new file):**
+  `docs/dev-log/2026-07-15-doc-honesty-review-checklist.md`. 32 surfaces reviewed
+  (18 articles + 14 honesty-sensitive exports). Existing prose is already
+  well-fenced; only 3 nbinom2 surfaces need new fencing (G1 response-families
+  article, G2 `man/families.Rd`, G3 `man/extract_Sigma.Rd`), all downstream of
+  the same-day dispersion-confound diagnosis. Register-code-leak scan clean.
+- **Item 1a — shared-dispersion design (new file):**
+  `docs/design/82-shared-dispersion.md`. Designs `disp_group=` to pool NB2 phi.
+  Key finding: implementable via TMB `map=` parameter-tying with **zero C++
+  diff** (Route A), touching only `R/fit-multi.R` — so its implementation is
+  **gated on Lane A committing**. Caution: oracle known-phi ladder plateaus at
+  ~0.78–0.84 (< 1.0) even at n=800, so pooling phi should help but may not fully
+  restore Σ recovery on its own.
+- **Item 3 — bare `||` grammar (MERGED after maintainer sign-off):** built on
+  `worktree-agent-a283d56f6868709e7` @ `13d73844`, cherry-picked onto
+  `claude/release-0.5.0` as `900c1af3` (Shinichi approved 2026-07-15). Enables
+  `indep(1 + x || g)` (routed to the existing diag_B_slope engine; recovery
+  verified live to truth, cor_b NULL); keeps `latent(1 + x || g)` failing loud
+  (its block-diagonal-Λ engine is unbuilt). `R/brms-sugar.R` +49, one new test.
+  Lane A's uncommitted diff was left intact (the pick touches only `brms-sugar.R`
+  + the new test).
+- **Doc-honesty G1 landed:** `vignettes/articles/response-families.Rmd` gained the
+  approved nbinom2 "Specialist boundary" note. G2/G3 (roxygen mirrors) deferred —
+  G3's source `R/extract-sigma.R` is Lane-A-modified, and a global `document()`
+  would sweep Lane A's uncommitted roxygen; they land via a clean `document()`
+  once Lane A commits.
+- **QG animal-model cut ratified (hidden, not deleted):** verbatim source
+  restored to `dev/retired-articles/animal-model.Rmd` (build-ignored, not
+  rendered); `animal_*` exports stay in the reference index.
+
+Convergence note: if Item 1 (shared dispersion) lands and re-certifies nbinom2,
+the doc-honesty G1–G3 fencing should describe default vs opt-in modes rather than
+one blanket caveat (see checklist §6, decision item 3).

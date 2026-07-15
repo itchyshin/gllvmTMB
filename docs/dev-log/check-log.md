@@ -45502,3 +45502,39 @@ on `claude/release-0.5.0`:**
   reproduce (recovers ~0.88–1.04) and the p-fix does not resolve B1; un-gating needs
   a full campaign + sign-off. `test-tweedie-fixed-p.R`'s stale ~44% rationale needs a
   refresh (conclusion holds). Worktree `worktree-agent-a33d0cc868dd580a0`.
+
+## 2026-07-15 — 🔴 DIRECTED TO LANE A (coverage/certificate lane) — read on resume
+
+Lane B (this session) touched your territory while you ran the grid. Key facts for
+your resume:
+
+1. **Your uncommitted diff is now COMMITTED** — `84aea3e8` ("wip(coverage-lane):
+   Lane A body …"), done by Lane B on Shinichi's explicit authorization to unblock
+   the gap batch. On resume your working tree is CLEAN and your work is in git. Do
+   NOT re-commit or re-stage it; **build forward** from the current tip. The branch
+   has advanced past `84aea3e8` with Lane B commits (`a5b9be5f`…`4c2e2e02`).
+
+2. **A real bug in your committed code was found + fixed** — `f9102922`: the Gamma
+   randomized-quantile branch wrote `scale <- mu/shape`, clobbering the `scale`
+   argument, so Gamma normal-scale residuals silently returned the raw PIT instead
+   of `qnorm(u)`. Caught by S6 via a real fit (#388). Renamed to `scale_gamma`;
+   verified (heavy residual/slope suites green). Your `test-predictive-diagnostics.R`
+   probe was already fine (you'd repointed it to lognormal 3L).
+
+3. **nbinom2 STAYS FENCED — do not flip its coverage cell.** `disp_group=` shared
+   dispersion was implemented + validated and **FAILS recovery** (pooling φ does not
+   recover Σ; the ridge is in φ estimation, not over-parameterisation — design 82
+   §4.5/§4.6). So the nbinom2 interval cell stays point-only/recovery-only. Your
+   **gaussian + binomial** certificate (when the grid lands) remains yours to flip on
+   the widget/NEWS — those are the earned cells; nbinom2 is not.
+
+4. **Item 4 fixed in your `dev/m3-pilot-report.R`** (`c01a888c`): `ci_missing_rate`
+   denominator is now `n_converged_fits * n_traits` (was going negative). 11/11 gate
+   tests pass.
+
+5. **Held for Shinichi's sign-off (NOT on the branch; in worktrees):** `disp_group=`
+   API, family-breadth advertising (roxygen), tweedie stays gated + stale-rationale
+   refresh. Don't merge these; they're staged for review.
+
+Coverage certificate + all widget/NEWS coverage flips remain **yours**. Lane B
+asserted no coverage claims.

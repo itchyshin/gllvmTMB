@@ -45465,3 +45465,14 @@ nothing was merged.
 Convergence note: if Item 1 (shared dispersion) lands and re-certifies nbinom2,
 the doc-honesty G1–G3 fencing should describe default vs opt-in modes rather than
 one blanket caveat (see checklist §6, decision item 3).
+
+## 2026-07-15 — G2 nbinom2 fence landed (Lane B, autonomous)
+
+Follow-up to the prep-sweep entry above. Under the Lane B autonomy goal, **G2**
+landed (`bcb6d774`): the approved nbinom2 dispersion/latent-variance caveat is now
+in `R/families.R` roxygen + `man/families.Rd` (hand-mirrored; Rd re-parsed OK; no
+global `document()` — Lane A's uncommitted roxygen untouched; next `document()`
+reproduces it verbatim). **G3** (`man/extract_Sigma.Rd`) remains deferred because
+its roxygen source `R/extract-sigma.R` is in Lane A's uncommitted set. All other
+non-coverage slices (Item 1 `disp_group=`, Item 4, S6/S7) stay gated on Lane A's
+commit; a background monitor is armed to resume them the moment it lands.

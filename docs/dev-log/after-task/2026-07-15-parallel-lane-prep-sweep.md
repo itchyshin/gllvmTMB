@@ -107,12 +107,13 @@ Shinichi ruled on the three surfaced decisions; applied as follows.
      "Specialist boundary for `nbinom2()` with latent covariance" subsection
      (verbatim approved wording, heading harmonised to the sibling hurdle
      "Specialist boundary" pattern).
-   - **G2/G3 deferred** (not a reversal — a boundary necessity): both are roxygen
-     mirrors. G3's source is `R/extract-sigma.R`, a **Lane-A-modified file**; and a
-     global `devtools::document()` now would sweep Lane A's uncommitted roxygen into
-     generated man-pages. So G2 (`R/families.R` → `man/families.Rd`) and G3
-     (`R/extract-sigma.R` → `man/extract_Sigma.Rd`) land via a clean `document()`
-     once Lane A commits — exactly the checklist's article-first ship order.
+   - **G2 landed** (`bcb6d774`): its roxygen source `R/families.R` is **not** a
+     Lane-A file, so it was hand-mirrored into `R/families.R` roxygen +
+     `man/families.Rd` (Rd re-parsed OK; no global `document()`, so Lane A's
+     uncommitted roxygen is untouched; next `document()` reproduces it verbatim).
+   - **G3 deferred** (boundary necessity, not a reversal): its roxygen source is
+     `R/extract-sigma.R`, a **Lane-A-modified file** — lands via a clean
+     `document()` once Lane A commits.
 3. **QG animal-model → cut, hidden, preserved (not deleted).** The article was
    already removed from the tree in `eacbd0f6` and absent from `_pkgdown.yml`
    articles. Per "do not delete", the verbatim last version
@@ -123,6 +124,9 @@ Shinichi ruled on the three surfaced decisions; applied as follows.
    `animal_*` exports stay discoverable via the reference index + keyword grid.
 
 ### Remaining deferred (still gated on Lane A committing)
-- G2/G3 roxygen fences (above).
-- Item 1a `disp_group=` implementation (Route A) and Item 4 `ci_missing_rate` fix
-  — both touch Lane-A files.
+- **G3 roxygen fence** — source `R/extract-sigma.R` is Lane-A-modified.
+- **Item 1a `disp_group=` implementation** (Route A) and **Item 4 `ci_missing_rate`
+  fix** — both touch Lane-A files.
+- **Diagnostics breadth (S6)** and **slope-recovery evidence (S7)** — S6 touches
+  `R/predictive-diagnostics.R` (Lane-A) and likely `src/`; S7 is live-TMB (Codex).
+- A background monitor is armed to re-trigger the moment Lane A commits.

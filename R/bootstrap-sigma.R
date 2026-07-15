@@ -16,6 +16,17 @@
   ## Rebuild a covstruct expression from the parsed list element.
   build_one <- function(cs) {
     bar <- call("|", cs$lhs, cs$group)
+    ## A bare `(1 | group)` random intercept (parse_re_int_call()'s
+    ## kind = "re_int") is recognised by parse_multi_formula()'s walk()
+    ## ONLY via literal parenthesized bar syntax -- `re_int` is never a
+    ## real callable (R/re-int.R: "a formula marker; never evaluated as a
+    ## call"). Reconstructing it as a `re_int(1 | group)` function call
+    ## therefore falls through to an unrecognised fixed-effect term and
+    ## errors with "could not find function \"re_int\"" (caught while
+    ## building the ML-REML bridge refit; #reml_bridge).
+    if (identical(cs$kind, "re_int")) {
+      return(call("(", bar))
+    }
     extra <- cs$extra
     if (length(extra) == 0L) {
       as.call(c(list(as.name(cs$kind)), list(bar)))

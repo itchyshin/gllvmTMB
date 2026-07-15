@@ -15,6 +15,7 @@ make_missing_resp_data <- function(family = "poisson", seed = 5L, n_unit = 45L) 
   df$value <- switch(
     family,
     poisson = stats::rpois(nrow(df), exp(eta)),
+    nbinom1 = stats::rnbinom(nrow(df), mu = exp(eta), size = 3),
     nbinom2 = stats::rnbinom(nrow(df), mu = exp(eta), size = 3),
     binomial = stats::rbinom(nrow(df), 1L, stats::plogis(eta))
   )
@@ -41,6 +42,7 @@ run_include_drop_equiv <- function(family, famfun, seed = 5L) {
 
 for (fam in list(
   list(name = "poisson", fun = quote(poisson())),
+  list(name = "nbinom1", fun = quote(nbinom1())),
   list(name = "nbinom2", fun = quote(nbinom2())),
   list(name = "binomial", fun = quote(binomial()))
 )) {

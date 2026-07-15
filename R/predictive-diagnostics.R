@@ -18,12 +18,12 @@
 #'
 #' Scope boundary: IN, fitted-model predictive plots
 #' and residual Q-Q/rootogram helpers for `gllvmTMB_multi` fits, with
-#' exact randomized-quantile residuals for Gaussian, Poisson, and NB2
-#' rows and a simulation-rank fallback. PARTIAL, these are diagnostic
-#' displays, not formal uniformity, dispersion, interval-calibration, or
-#' Bayesian posterior-predictive tests. PLANNED, exact residual support
-#' for delta, hurdle, truncated, ordinal, and mixture families remains
-#' future validation work.
+#' exact randomized-quantile residuals for Gaussian, binomial, Poisson,
+#' Gamma, NB1, NB2, and Beta rows and a simulation-rank fallback. PARTIAL,
+#' these are diagnostic displays, not formal uniformity, dispersion,
+#' interval-calibration, or Bayesian posterior-predictive tests. PLANNED,
+#' exact residual support for delta, hurdle, truncated, ordinal, and
+#' mixture families remains future validation work.
 #'
 #' @param object A `gllvmTMB_multi` fit.
 #' @param type Diagnostic plot type. `"rq_qq"` plots exact randomized-
@@ -333,6 +333,7 @@ residuals.gllvmTMB_multi <- function(
 
   observed <- as.numeric(object$tmb_data$y)
   eta <- as.numeric(object$report$eta)
+  n_trials <- as.numeric(object$tmb_data$n_trials %||% rep(1, length(observed)))
   row_meta <- .gllvmTMB_diagnostic_row_metadata(object)
   keep <- .gllvmTMB_trait_keep(row_meta, trait)
 
@@ -343,6 +344,7 @@ residuals.gllvmTMB_multi <- function(
 
   observed <- observed[keep]
   eta <- eta[keep]
+  n_trials <- n_trials[keep]
   observed_mask <- observed_mask[keep]
   row_meta <- row_meta[keep, , drop = FALSE]
   n <- length(observed)
@@ -356,6 +358,8 @@ residuals.gllvmTMB_multi <- function(
   sigma_eps <- .gllvmTMB_sigma_eps(object)
   phi_nbinom2 <- object$report$phi_nbinom2
   phi_nbinom1 <- object$report$phi_nbinom1
+  phi_gamma <- object$report$phi_gamma
+  phi_beta <- object$report$phi_beta
 
   ## A Gaussian diagonal random effect indexed at the same resolution as the
   ## observed trait-cell can absorb the observation residual, with sigma_eps
@@ -402,6 +406,33 @@ residuals.gllvmTMB_multi <- function(
       lower[i] <- stats::pnorm(y_i, mean = eta[i], sd = sigma_eps)
       upper[i] <- lower[i]
       u[i] <- lower[i]
+    } else if (fid == 1L) {
+      if (y_i < 0 || y_i != floor(y_i)) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      size <- n_trials[i]
+      if (!is.finite(size) || size <= 0 || y_i > size) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      ## Link depends on link_id_vec (design mirrors src/gllvmTMB.cpp fid 1):
+      ## 0 = logit, 1 = probit, 2 = cloglog.
+      lid <- row_meta$link_id[i]
+      prob <- if (lid == 1L) {
+        stats::pnorm(eta[i])
+      } else if (lid == 2L) {
+        1 - exp(-exp(eta[i]))
+      } else {
+        stats::plogis(eta[i])
+      }
+      lower[i] <- if (y_i <= 0) {
+        0
+      } else {
+        stats::pbinom(y_i - 1, size = size, prob = prob)
+      }
+      upper[i] <- stats::pbinom(y_i, size = size, prob = prob)
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
     } else if (fid == 2L) {
       if (y_i < 0 || y_i != floor(y_i)) {
         status[i] <- "invalid_observed"
@@ -411,6 +442,23 @@ residuals.gllvmTMB_multi <- function(
       lower[i] <- if (y_i <= 0) 0 else stats::ppois(y_i - 1, lambda = lambda)
       upper[i] <- stats::ppois(y_i, lambda = lambda)
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 4L) {
+      if (y_i <= 0) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      shape <- phi_gamma[tid]
+      if (!is.finite(shape) || shape <= 0) {
+        status[i] <- "missing_phi"
+        next
+      }
+      ## mean-shape parametrisation (mirrors src/gllvmTMB.cpp fid 4):
+      ## mu = exp(eta), scale = mu / shape.
+      mu <- exp(eta[i])
+      scale <- mu / shape
+      lower[i] <- stats::pgamma(y_i, shape = shape, scale = scale)
+      upper[i] <- lower[i]
+      u[i] <- lower[i]
     } else if (fid == 5L) {
       if (y_i < 0 || y_i != floor(y_i)) {
         status[i] <- "invalid_observed"
@@ -429,6 +477,24 @@ residuals.gllvmTMB_multi <- function(
       }
       upper[i] <- stats::pnbinom(y_i, size = size, mu = mu)
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 7L) {
+      if (y_i <= 0 || y_i >= 1) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      phi <- phi_beta[tid]
+      if (!is.finite(phi) || phi <= 0) {
+        status[i] <- "missing_phi"
+        next
+      }
+      ## mean-precision parametrisation (mirrors src/gllvmTMB.cpp fid 7):
+      ## mu = plogis(eta), shape1 = mu*phi, shape2 = (1 - mu)*phi.
+      mu <- stats::plogis(eta[i])
+      shape1 <- mu * phi
+      shape2 <- (1 - mu) * phi
+      lower[i] <- stats::pbeta(y_i, shape1 = shape1, shape2 = shape2)
+      upper[i] <- lower[i]
+      u[i] <- lower[i]
     } else if (fid == 15L) {
       if (y_i < 0 || y_i != floor(y_i)) {
         status[i] <- "invalid_observed"

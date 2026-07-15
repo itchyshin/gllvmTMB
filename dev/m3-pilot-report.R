@@ -199,6 +199,149 @@ pilot_collect_chunk_aggregates <- function(
   )
 }
 
+## ---- Scale-gate: the calibrated PASS_TO_SCALE decision (A1a, 2026-07-13) ----
+##
+## Design 66's pilot gates whether the campaign may scale to the n_sim = 2000
+## confirmatory grid. The live index / pilot_status() path stores only bare
+## coverage_primary (no MCSE, no fit-health denominators), so the scale
+## decision must be made from pilot_collect() -- the reducer that carries
+## coverage_mcse, coverage_eligible_n, and the fit-health rates. This closes
+## the "wiring gap": the certificate decision is calibrated by construction.
+##
+## Locked 2026-07-13 (0.5 -> 0.6 gap-closure ultra-plan; solo Claude):
+##   * Confirmatory CORE = gaussian, nbinom2, binomial_probit. ordinal_probit
+##     and mixed are EXCLUDED (ordinal has no primary bootstrap interval;
+##     m3_bootstrap_supported() admits family_id 0:5 only) -- Repair #2.
+##   * Repair #1: binomial cells must carry evidence_family == "binomial_probit"
+##     (true-probit), never a *_logit_harness label.
+##   * Repair #3: signal == 0 is a zero-exclusion diagnostic, not a coverage
+##     cell -- only signal > 0 cells enter the gate.
+PILOT_CORE_CONFIRMATORY <- c("gaussian", "nbinom2", "binomial_probit")
+
+## Evaluate the scale gate on an ALREADY-collected pilot table (the output of
+## pilot_collect()). Pure function of the data.frame -> unit-testable without
+## fits. Returns list(verdict = "PASS_TO_SCALE" | "HOLD", cells, reasons).
+pilot_scale_gate_eval <- function(
+  collected,
+  core_families = PILOT_CORE_CONFIRMATORY,
+  gate_94 = 0.94,
+  gate_95 = 0.95,
+  max_fit_fail = 0.20,
+  max_boot_fail = 0.20,
+  max_ci_missing = 0.10,
+  mcse_adjudication = 0.005
+) {
+  need <- c(
+    "family", "evidence_family", "signal", "coverage_primary", "coverage_mcse",
+    "coverage_eligible_n", "n_converged_fits", "fit_failure_rate",
+    "boot_fail_rate"
+  )
+  miss <- setdiff(need, names(collected))
+  if (length(miss)) {
+    stop(
+      "pilot_scale_gate_eval(): collected table missing columns: ",
+      paste(miss, collapse = ", "),
+      " -- pass the output of pilot_collect()."
+    )
+  }
+
+  ## CORE coverage cells only (signal > 0).
+  is_core <- collected$family %in% core_families |
+    collected$evidence_family %in% core_families
+  cov_cell <- !is.na(collected$signal) & collected$signal > 0
+  core <- collected[is_core & cov_cell, , drop = FALSE]
+
+  if (!nrow(core)) {
+    return(list(
+      verdict = "HOLD",
+      cells = core,
+      reasons = "no CORE coverage cells (signal > 0) present yet"
+    ))
+  }
+
+  ## Repair #1 -- true-probit hygiene: no binomial CORE cell may be logit-harness.
+  bino <- grepl("binomial", core$family) |
+    grepl("binomial", core$evidence_family)
+  logit_harness <- bino & grepl("logit", core$evidence_family)
+  probit_ok <- !any(logit_harness)
+
+  ## CI-missing rate = fraction of converged fits with no usable primary CI.
+  denom <- ifelse(
+    is.na(core$n_converged_fits) | core$n_converged_fits <= 0L,
+    NA_real_,
+    core$n_converged_fits
+  )
+  ci_missing <- 1 - (core$coverage_eligible_n / denom)
+  mcse_f <- ifelse(is.na(core$coverage_mcse), 0.02, core$coverage_mcse)
+
+  fit_ok <- is.na(core$fit_failure_rate) | core$fit_failure_rate <= max_fit_fail
+  boot_ok <- is.na(core$boot_fail_rate) | core$boot_fail_rate <= max_boot_fail
+  ci_ok <- is.na(ci_missing) | ci_missing <= max_ci_missing
+  health_ok <- fit_ok & boot_ok & ci_ok
+  ## Provisional coverage: within ~2 MCSE of the 0.94 gate at pilot noise.
+  cov_provisional <- is.na(core$coverage_primary) |
+    core$coverage_primary >= (gate_94 - 2 * pmax(mcse_f, 0.005))
+  ## Adjudication-grade precision -- the pilot is a SMOKE instrument and is
+  ## EXPECTED to miss this; scale to n_sim=2000 to adjudicate 0.94 vs 0.95.
+  mcse_adjudicated <- !is.na(core$coverage_mcse) &
+    core$coverage_mcse <= mcse_adjudication
+
+  core$gate_passes_94 <- !is.na(core$coverage_primary) &
+    core$coverage_primary >= gate_94
+  core$ci_missing_rate <- ci_missing
+  core$gate_fit_ok <- fit_ok
+  core$gate_boot_ok <- boot_ok
+  core$gate_ci_ok <- ci_ok
+  core$gate_health_ok <- health_ok
+  core$gate_cov_provisional <- cov_provisional
+  core$gate_mcse_adjudicated <- mcse_adjudicated
+
+  reasons <- character(0)
+  if (!probit_ok) {
+    reasons <- c(
+      reasons,
+      "HALT: a binomial CORE cell carries a *_logit_harness evidence_family (Repair #1 -- true-probit only)"
+    )
+  }
+  if (sum(!health_ok)) {
+    reasons <- c(reasons, sprintf(
+      "%d CORE cell(s) fail a health gate (fit/boot/CI-missing)", sum(!health_ok)
+    ))
+  }
+  if (sum(!cov_provisional)) {
+    reasons <- c(reasons, sprintf(
+      "%d CORE cell(s) below the provisional coverage floor", sum(!cov_provisional)
+    ))
+  }
+
+  verdict <- if (probit_ok && all(health_ok) && all(cov_provisional)) {
+    "PASS_TO_SCALE"
+  } else {
+    "HOLD"
+  }
+  if (verdict == "PASS_TO_SCALE" && !all(mcse_adjudicated)) {
+    reasons <- c(
+      reasons,
+      "NOTE: pilot MCSE is smoke-grade; the n_sim=2000 grid is required to adjudicate 0.94 vs 0.95 (expected)"
+    )
+  }
+
+  list(verdict = verdict, cells = core, reasons = reasons)
+}
+
+## Thin wrapper: collect from the result stores, then evaluate the gate.
+pilot_scale_gate <- function(
+  results_dirs = "dev/m3-pilot-results",
+  index_file = "pilot-index.rds",
+  ...
+) {
+  collected <- pilot_collect(
+    results_dirs = results_dirs,
+    index_file = index_file
+  )
+  pilot_scale_gate_eval(collected, ...)
+}
+
 ## Read and combine the long per-replicate grids from one or more stores.
 ## This is the shared loading path for pilot_collect() and the scoring audit.
 pilot_read_cell_grids <- function(

@@ -1,0 +1,32 @@
+n= 150 s=1  default=0.45  warmstart=0.45  knownphi=1.02
+n= 150 s=2  default=0.37  warmstart=0.37  knownphi=0.64
+n= 150 s=3  default=0.58  warmstart=0.58  knownphi=0.78
+n= 150 s=4  default=0.40  warmstart=0.40  knownphi=0.77
+n= 150 s=5  default=0.81  warmstart=0.81  knownphi=0.85
+n= 150 s=6  default=0.57  warmstart=0.77  knownphi=0.66
+n= 150 s=7  default=0.75  warmstart=0.75  knownphi=0.70
+n= 150 s=8  default=0.46  warmstart=0.46  knownphi=0.82
+n= 400 s=1  default=0.49  warmstart=0.49  knownphi=0.79
+n= 400 s=2  default=0.42  warmstart=0.42  knownphi=0.84
+n= 400 s=3  default=0.30  warmstart=0.30  knownphi=0.96
+n= 400 s=4  default=0.38  warmstart=0.38  knownphi=0.74
+n= 400 s=5  default=0.62  warmstart=0.62  knownphi=0.73
+n= 400 s=6  default=1.23  warmstart=NA  knownphi=0.89
+n= 400 s=7  default=0.42  warmstart=0.42  knownphi=0.76
+n= 400 s=8  default=0.50  warmstart=0.50  knownphi=0.91
+n= 800 s=1  default=0.64  warmstart=0.64  knownphi=0.80
+n= 800 s=2  default=0.47  warmstart=0.47  knownphi=0.93
+n= 800 s=3  default=0.47  warmstart=0.47  knownphi=0.81
+n= 800 s=4  default=0.41  warmstart=0.41  knownphi=0.82
+n= 800 s=5  default=0.52  warmstart=0.52  knownphi=0.92
+n= 800 s=6  default=0.74  warmstart=0.74  knownphi=0.93
+n= 800 s=7  default=0.56  warmstart=0.56  knownphi=0.76
+n= 800 s=8  default=0.40  warmstart=0.40  knownphi=0.86
+
+=== median Sigma/truth by n x arm (1.0 = unbiased) ===
+n= 150  default=0.52  warmstart=0.52  knownphi=0.78
+n= 400  default=0.46  warmstart=0.42  knownphi=0.81
+n= 800  default=0.49  warmstart=0.49  knownphi=0.84
+
+If knownphi -> ~1.0 and default/warmstart stay ~0.5: phi estimation IS the problem, 
+and shared-dispersion (disp_group, unbuilt) is the indicated fix.

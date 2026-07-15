@@ -441,9 +441,13 @@ m3_sample_truth <- function(
     nuisance$K <- K
     nuisance$cutpoints <- stats::qnorm(seq_len(K - 1L) / K)
   }
-  if (family == "gaussian" || family == "mixed") {
-    nuisance$sigma_eps <- 0.5 # Fix residual SD so identifiability is OK
-  }
+  ## Gaussian traits carry NO separate observation residual: `e_unique`
+  ## (~ N(0, psi), inside `eta`) is the only per-row noise, so the
+  ## simulated response is `eta` itself and the per-unit variance is
+  ## exactly `diag(Lambda Lambda^T + diag(psi))` = `diag_Sigma` (the
+  ## scored truth). A separate `sigma_eps` is non-identifiable from `psi`
+  ## with one obs per (unit, trait) and previously biased the fit's `psi`
+  ## high by `sigma_eps^2`; removed 2026-07-13 (see m3_simulate_response).
 
   list(
     Lambda = Lambda,
@@ -510,8 +514,21 @@ m3_simulate_response <- function(truth) {
     eta_t <- eta[, t]
     Y[, t] <- switch(
       fam_t,
-      gaussian = eta_t +
-        stats::rnorm(n_units, sd = truth$nuisance$sigma_eps %||% 0.5),
+      ## Gaussian trait: the latent linear predictor `eta_t` (= Lambda Z +
+      ## e_unique, e_unique ~ N(0, psi)) IS the response. NO separate
+      ## observation residual is added. With one observation per
+      ## (unit, trait) cell, a per-observation latent RE `psi` and a
+      ## Gaussian observation residual `sigma_eps` are FUNDAMENTALLY
+      ## non-identifiable — the fitter's single `indep(0 + trait | unit)`
+      ## component absorbs both. The old DGP added `rnorm(sd = 0.5)` on top
+      ## of `eta`, so the fit's `psi` consistently estimated
+      ## `psi + sigma_eps^2` (a constant +0.25) while the truth
+      ## `diag_Sigma = diag(Lambda Lambda^T + diag(psi))` omitted it: a
+      ## fixed estimand-vs-truth offset that made bootstrap coverage
+      ## COLLAPSE as n grew (0.90 @ n=50 -> 0.54 @ n=150). Mirror image of
+      ## the 2026-05-25 binomial-psi patch. See
+      ## docs/dev-log/2026-07-13-A2-pilot-coverage-HOLD.md.
+      gaussian = eta_t,
       binomial = stats::rbinom(n_units, size = 1L, prob = stats::plogis(eta_t)),
       binomial_probit = stats::rbinom(
         n_units,

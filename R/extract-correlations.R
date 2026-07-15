@@ -106,6 +106,18 @@
   "target_specific_uncalibrated"
 }
 
+## Design 02 (2026-07-05 resolution, docs/design/02-family-registry.md
+## "Hurdle / delta families"): TRUE if `fit` has at least one delta/hurdle
+## trait (family_id 12 = delta_lognormal, 13 = delta_gamma). Used to route
+## such traits' correlation-diagonal residual through the positive-part-only
+## value (delta_positive_part_residual_per_trait() in R/extract-sigma.R)
+## instead of the total-variance sigma^2 + pi^2/3 that
+## link_residual_per_trait() reports for its own repeatability purpose.
+.correlation_has_delta_trait <- function(fit) {
+  fids <- fit$tmb_data$family_id_vec
+  !is.null(fids) && any(fids %in% c(12L, 13L))
+}
+
 ## Point-only correlation rows for an engine = 'julia' bridge fit.
 ##
 ## engine = 'julia' bridge fits expose the ordinary unit tier only and carry
@@ -312,7 +324,13 @@
 #'       diagonal before computing correlations. Returned correlations
 #'       are on the latent-liability scale; this is the convention most
 #'       readers expect. Gaussian fits are unaffected (link residual is
-#'       \eqn{0}).}
+#'       \eqn{0}). For a delta/hurdle trait
+#'       (\code{\link{delta_lognormal}} / \code{\link{delta_gamma}}) the
+#'       diagonal instead uses that trait's positive-part residual alone
+#'       (no \eqn{\pi^2/3} occurrence baseline; Design 02, 2026-07-05
+#'       resolution) and the row is flagged
+#'       \code{interval_status = "conditional_on_occurrence"} -- see
+#'       Return.}
 #'     \item{\code{"none"}}{Use the fitted model-implied \eqn{\Sigma}
 #'       directly with no link-residual addition. For ordinary `latent()`
 #'       fits this includes the default diagonal Psi companion; correlations
@@ -340,8 +358,15 @@
 #'   \item{\code{method}}{Method used to compute the CI.}
 #'   \item{\code{interval_status}}{Claim-boundary marker:
 #'     \code{"none"} for point-only output,
-#'     \code{"heuristic_unvalidated"} for Fisher-z/Wald bounds, and
-#'     \code{"target_specific_uncalibrated"} for bootstrap bounds. The
+#'     \code{"heuristic_unvalidated"} for Fisher-z/Wald bounds,
+#'     \code{"target_specific_uncalibrated"} for bootstrap bounds, and
+#'     \code{"conditional_on_occurrence"} for any pair involving a
+#'     delta/hurdle trait (\code{\link{delta_lognormal}} /
+#'     \code{\link{delta_gamma}}) when \code{link_residual = "auto"}: the
+#'     correlation uses that trait's positive-part residual only (Design 02,
+#'     2026-07-05 resolution), so it describes covariation conditional on
+#'     occurrence, NOT an unconditional response correlation. This overrides
+#'     the method-based token above for those rows. The
 #'     bootstrap route computes intervals, but this function does not certify
 #'     their frequentist coverage for the fitted target.}
 #' }
@@ -621,6 +646,40 @@ extract_correlations <- function(
       colnames(R) <- trait_names
     }
 
+    ## Design 02 (2026-07-05 resolution): a delta/hurdle trait's latent-
+    ## scale correlation is defined on the POSITIVE-PART residual only
+    ## (sigma^2 for delta_lognormal; trigamma(shape) for delta_gamma), not
+    ## the total-variance sigma^2 + pi^2/3 that extract_Sigma()'s ordinary
+    ## "auto" path adds via link_residual_per_trait() (that total-variance
+    ## value stays correct for its own repeatability purpose -- see
+    ## docs/design/02-family-registry.md "Hurdle / delta families"). When
+    ## link_residual = "auto" and the fit has any delta trait, rebuild this
+    ## tier's Sigma from the no-residual base (Lambda Lambda^T + Psi) plus
+    ## the ordinary per-trait residual for non-delta traits and the
+    ## positive-part-only residual for delta traits. Non-delta-only fits
+    ## are untouched (the branch is a no-op when no delta trait is present).
+    delta_trait_names <- character(0)
+    if (identical(link_residual, "auto") && .correlation_has_delta_trait(fit)) {
+      sig_base <- suppressMessages(extract_Sigma(
+        fit,
+        level = tk,
+        part = "total",
+        link_residual = "none",
+        .skip_warn = TRUE
+      ))
+      if (!is.null(sig_base) && !is.null(sig_base$Sigma)) {
+        resid_total <- link_residual_per_trait(fit)
+        resid_pos <- delta_positive_part_residual_per_trait(fit)
+        has_pos <- !is.na(resid_pos)
+        resid_final <- resid_total
+        resid_final[has_pos] <- resid_pos[has_pos]
+        Sigma_corr <- sig_base$Sigma
+        diag(Sigma_corr) <- diag(Sigma_corr) + resid_final
+        R <- .safe_cov2cor(Sigma_corr, trait_names)
+        delta_trait_names <- trait_names[has_pos]
+      }
+    }
+
     ## Pairs: either a single pair or all upper-tri pairs
     if (!is.null(pair_idx)) {
       pairs <- matrix(pair_idx, nrow = 1)
@@ -706,6 +765,18 @@ extract_correlations <- function(
       )
     }
     results[[k]] <- do.call(rbind, out_rows)
+    ## Mark which rows involve a delta/hurdle trait so the final
+    ## interval_status assignment below can override them to
+    ## "conditional_on_occurrence" (Design 02, 2026-07-05 resolution)
+    ## instead of the ordinary method-based status.
+    if (!is.null(results[[k]])) {
+      results[[k]]$.gllvm_delta_pair <- if (length(delta_trait_names) > 0L) {
+        results[[k]]$trait_i %in% delta_trait_names |
+          results[[k]]$trait_j %in% delta_trait_names
+      } else {
+        FALSE
+      }
+    }
   }
   out <- do.call(rbind, results[!vapply(results, is.null, logical(1))])
   if (is.null(out)) {
@@ -722,6 +793,12 @@ extract_correlations <- function(
     )
   } else {
     out$interval_status <- .correlation_interval_status(out_method_label)
+    ## Design 02 (2026-07-05 resolution): a delta/hurdle trait's reported
+    ## correlation is conditional on occurrence (the positive-part residual
+    ## only), NOT an unconditional response correlation -- flag it distinctly
+    ## from the ordinary method-based claim-boundary tokens above.
+    out$interval_status[out$.gllvm_delta_pair] <- "conditional_on_occurrence"
+    out$.gllvm_delta_pair <- NULL
   }
   rownames(out) <- NULL
   .reportable_table(out)

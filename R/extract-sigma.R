@@ -109,6 +109,63 @@
 ##     variables. Psychological Methods 11, 54-71.
 ##     doi:10.1037/1082-989X.11.1.54
 ##
+## ---------------------------------------------------------------------------
+## Positive-part-only residual helpers for delta/hurdle families (fid 12 =
+## delta_lognormal, fid 13 = delta_gamma).
+##
+## link_residual_per_trait() below reports the TOTAL-VARIANCE residual for a
+## delta trait (sigma^2 + pi^2/3 for delta_lognormal; trigamma(shape) +
+## pi^2/3 for delta_gamma) via the law of total variance -- correct for its
+## own repeatability / total-variance purpose. The maintainer resolution of
+## 2026-07-05 (docs/design/02-family-registry.md "Hurdle / delta families")
+## distinguishes a SECOND context: the trait correlation / latent-scale
+## diagonal, which uses the positive-part residual ALONE (no pi^2/3), because
+## the resolution's modelling constraint keeps the occurrence (hurdle)
+## submodel fixed-effects-only, so only the positive-continuous submodel
+## carries the latent structure that induces cross-trait correlation. These
+## two small helpers factor out that shared math so link_residual_per_trait()
+## (total-variance) and delta_positive_part_residual_per_trait()
+## (correlation-scale, used by R/extract-correlations.R) never diverge.
+.delta_lognormal_positive_part_var <- function(fit, t, Tn) {
+  sigma_vec <- as.numeric(fit$report$sigma_lognormal_delta %||% rep(1, Tn))
+  sigma_t <- if (length(sigma_vec) >= t) sigma_vec[t] else sigma_vec[1]
+  sigma_t^2
+}
+
+.delta_gamma_positive_part_var <- function(fit, t, Tn) {
+  phi_vec <- as.numeric(fit$report$phi_gamma_delta %||% rep(1, Tn))
+  phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+  trigamma(1 / max(phi_t^2, 1e-12))
+}
+
+## Per-trait positive-part-only latent-scale residual for delta/hurdle traits
+## (fid 12/13), for extract_correlations()'s delta branch. NA for a trait
+## with no rows, mixed families, or a non-delta family -- callers must only
+## substitute this value for traits where it is not NA. The resulting
+## correlation is on the positive-continuous latent scale, i.e. conditional
+## on occurrence, not an unconditional response correlation (Design 02,
+## 2026-07-05 resolution).
+delta_positive_part_residual_per_trait <- function(fit) {
+  trait_names <- levels(fit$data[[fit$trait_col]])
+  Tn <- length(trait_names)
+  fids <- fit$tmb_data$family_id_vec
+  tids_obs <- fit$tmb_data$trait_id + 1L
+  out <- rep(NA_real_, Tn)
+  names(out) <- trait_names
+  for (t in seq_len(Tn)) {
+    rows_t <- which(tids_obs == t)
+    if (length(rows_t) == 0L) next
+    fam_t <- unique(fids[rows_t])
+    if (length(fam_t) != 1L) next
+    if (fam_t == 12L) {
+      out[t] <- .delta_lognormal_positive_part_var(fit, t, Tn)
+    } else if (fam_t == 13L) {
+      out[t] <- .delta_gamma_positive_part_var(fit, t, Tn)
+    }
+  }
+  out
+}
+
 ## Returns a numeric vector of length n_traits, one entry per trait. A trait
 ## with multiple families or links is not reduced to a modal shortcut: its
 ## residual variance is returned as NA with a warning.
@@ -313,17 +370,18 @@ link_residual_per_trait <- function(fit) {
       ## Approximate marginal latent-scale residual via law of total variance:
       ##   Var(eta-residual) ~ Var(log y | y > 0) + Var(presence-on-logit)
       ##                     = sigma_lognormal^2 + pi^2 / 3.
-      sigma_vec <- as.numeric(fit$report$sigma_lognormal_delta %||% rep(1, Tn))
-      sigma_t <- if (length(sigma_vec) >= t) sigma_vec[t] else sigma_vec[1]
-      out[t] <- sigma_t^2 + pi^2 / 3
+      ## The positive-part term alone (sigma_lognormal^2, no pi^2/3) is
+      ## factored into .delta_lognormal_positive_part_var() above, reused by
+      ## extract-correlations.R's delta branch (Design 02, 2026-07-05
+      ## resolution: the correlation-scale residual for a delta trait is the
+      ## positive part only, conditional on occurrence).
+      out[t] <- .delta_lognormal_positive_part_var(fit, t, Tn) + pi^2 / 3
     } else if (fid == 13L) {
       # delta_gamma (logit/log)
       ## trigamma(1/phi^2) is the log-scale Gamma residual; pi^2/3 the
-      ## logit-Bernoulli baseline.
-      phi_vec <- as.numeric(fit$report$phi_gamma_delta %||% rep(1, Tn))
-      phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
-      shape_t <- 1 / max(phi_t^2, 1e-12)
-      out[t] <- trigamma(shape_t) + pi^2 / 3
+      ## logit-Bernoulli baseline. The positive-part term alone is factored
+      ## into .delta_gamma_positive_part_var() above (see fid 12 note).
+      out[t] <- .delta_gamma_positive_part_var(fit, t, Tn) + pi^2 / 3
     } else if (fid == 14L) {
       # ordinal_probit
       ## Wright/Falconer/Hadfield threshold model: the latent residual is

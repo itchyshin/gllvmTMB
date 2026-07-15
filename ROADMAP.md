@@ -1,5 +1,10 @@
 # gllvmTMB Live Roadmap
 
+**Contributor-only planning document.** The former pkgdown wrapper was retired
+on 2026-07-11. `_pkgdown.yml` is authoritative for the reader-facing article
+inventory; this file records development work and does not promise a public
+capability or release date.
+
 *Reset: 2026-05-20. The previous long roadmap is archived at
 `docs/dev-log/roadmap-archive/2026-05-20-pre-reset-roadmap.md`.*
 
@@ -28,8 +33,6 @@ with the live package.
 | Model Guides | `articles/morphometrics` | First complete Gaussian worked example. | Visible; final rendered figure/prose audit passed. |
 | Model Guides | `articles/model-selection-latent-rank` | Choosing candidate latent rank with AIC/BIC beside diagnostics. | Visible after 2026-06-09 model-selection slice; Gaussian ordinary-`latent()` teaching fixture only, not universal rank-selection calibration. |
 | Model Guides | `articles/joint-sdm` | Binary JSDM worked example. | Visible; binary caveats and diagnostics remain under active audit. |
-| Model Guides | `articles/lambda-constraint` | Confirmatory loading constraints for binary species distributions. | Visible loading-constraint guide; keep binary scope and interval caveats explicit. |
-| Model Guides | `articles/lambda-constraint-suggest` | Data-driven loading-constraint suggestion companion. | Visible technical companion; zero-pin and profile-retention diagnostics stay explicit. |
 | Model Guides | `articles/missing-data` | Missing response and scoped missing-predictor workflows. | Visible; engine naming and predictor scope stay bounded by MIS rows. |
 | Concepts | `articles/gllvm-vocabulary` | Plain-English glossary for package terms. | Visible after 2026-06-22 article-accessibility slice. |
 | Concepts | `articles/covariance-correlation` | Explain `Sigma`, correlations, `Lambda`, `psi`, communality. | Visible; final rendered figure/prose audit passed. |
@@ -38,21 +41,20 @@ with the live package.
 | Diagnostics & Validation | `articles/fit-diagnostics` | First post-fit triage before interpreting fitted models. | Visible after 2026-06-09 diagnostics-article slice; diagnostic-only claims tied to DIA-08 / DIA-10 / DIA-11 / DIA-12 / DIA-13. |
 | Diagnostics & Validation | `articles/convergence-start-values` | Hard-fit survival guide. | Visible; final wording audit passed. |
 | Diagnostics & Validation | `articles/profile-likelihood-ci` | Profile / bootstrap / Wald interval mechanics and caveats. | Visible Tier 2 reference after the 2026-06-18 methods-reference placement slice; must continue to distinguish API coverage from calibrated coverage. |
-| Diagnostics & Validation | `articles/troubleshooting-profile` | Profile-interval failure modes and remedies. | Visible Tier 2 companion reference after the 2026-06-18 methods-reference placement slice. |
 | Diagnostics & Validation | `articles/gllvm-vocabulary` | Plain-English terminology glossary for public articles. | Visible Tier 2 glossary after the 2026-06-18 entry-path placement slice; hidden worked-example links removed. |
 | Diagnostics & Validation | `articles/pitfalls` | Common mistakes and fixes. | Visible; final prose audit passed. |
 | Diagnostics & Validation | `articles/missing-data` | Missing response and scoped missing-predictor workflows. | Visible; engine naming and predictor scope stay bounded by MIS rows. |
 
-Hidden pages remain on disk. They must not be routed from the landing
-page or visible articles as recommended next steps until their return
-conditions pass.
+Deferred topics are either retained as internal design records or preserved in
+git history. They must not be routed from the landing page or visible articles
+as recommended next steps until their return conditions pass.
 
 ## Active Reset Slices
 
 | Slice | Work | Owner lenses | Done when |
 |---|---|---|---|
-| 1 | Roadmap archive and new dashboard | Ada, Rose, Grace | Old roadmap archived; this dashboard renders through `articles/roadmap`. |
-| 2 | Curated pkgdown nav | Ada, Grace, Rose | `_pkgdown.yml` shows Model Guides / Concepts / Diagnostics & Validation / Developer Notes; Roadmap stays top-nav for readers and appears only under Developer validation notes for pkgdown index completeness; under-audit pages are labelled as developer notes rather than first-stop tutorials. |
+| 1 | Roadmap archive and internal dashboard | Ada, Rose, Grace | Old roadmap archived; this contributor dashboard remains in the repository and is not rendered as a public article. |
+| 2 | Curated pkgdown nav | Ada, Grace, Rose | `_pkgdown.yml` shows only the reviewed reader path; developer ledgers and the roadmap have no public navbar or article-index route. |
 | 3 | Landing page cleanup | Pat, Darwin, Rose | First screen routes to the curated public path and does not advertise hidden pages as ready. |
 | 4 | Get Started cleanup | Pat, Boole, Grace | Beginner path shows long and wide fits early without a page-long DGP block. |
 | 5 | Public article safety fixes | Rose, Boole, Fisher | Public articles use `trait = "trait"` in long fits, stable `Psi/psi` notation, and no hidden-page next-step links. |
@@ -144,17 +146,21 @@ work stayed internal after reader review: ordinary Gaussian reaction norms and
 structured slope grids remain buildable drafts, not first-click teaching pages.
 The 2026-06-09 model-selection article is a narrow Gaussian `latent() +
 unique()` restoration because it uses a tested fixture, long and wide calls,
-and diagnostics-first AIC/BIC wording. No public promotion of
-`mixed-family-extractors`, `psychometrics-irt`, or `lambda-constraint` until
-the binary lambda/JSDM article plan lands. Keep mixed-family response teaching
-separate from loading-constraint teaching.
+and diagnostics-first AIC/BIC wording. The former psychometrics draft was
+retired after reader-first review found that its constraint matrix collapsed
+one factor while the article claimed recovery. Keep mixed-family response
+teaching separate from loading-constraint teaching.
 
-Lambda surface cleanup checkpoint, 2026-06-18: `lambda-constraint` and
-`lambda-constraint-suggest` remain buildable but moved out of the public
-Articles dropdown and into the internal article bucket. The public
-`joint-sdm` article no longer routes readers to those hidden pages as
-recommended next steps. The next lambda action remains the binary JSDM
-article plan and rendered review, not a capability promotion.
+Lambda article disposition, 2026-07-11: the standalone
+`lambda-constraint` and `lambda-constraint-suggest` drafts were retired
+after Fisher, Rose, and Pat review. The constrained fixture imposed false
+`+1` anchor values, compared unaligned exploratory axes, used an unhealthy
+fit for inference, and presented an uncalibrated likelihood-ratio path.
+The public `joint-sdm` guide retains only the safe interpretation boundary:
+numeric pins are substantive restrictions, same-data suggestions remain
+exploratory, and rotation-invariant covariance is the primary target. A
+future worked guide requires a healthy fixture whose truth matches every
+numeric pin and independent evidence for any model-comparison claim.
 
 After these infrastructure slices, resume article restoration one page at a time.
 
@@ -166,7 +172,7 @@ Keep each item to one branch and one pull request.
 | Order | Lane | Good owner | Stop condition |
 |---|---|---|---|
 | 1 | Latent-rank model-selection article | Codex + Curie/Fisher/Pat/Boole/Rose/Grace | `model-selection-latent-rank` is public, uses a tested Gaussian fixture, shows long and wide calls, compares AIC/BIC after fit-health checks, renders its figures, and records the rendered checks. |
-| 2 | Binary lambda/JSDM article plan | Codex or Claude Code + Boole/Fisher/Florence/Rose | Rewrite `lambda-constraint` as the first binary loading-constraint teaching article, using a binary species/JSDM-style example rather than mixed psychometrics. Keep the article internal until the plan, example, figure contract, and rendered HTML review are recorded. |
+| 2 | Confirmatory-loading evidence | Codex or Claude Code + Boole/Fisher/Florence/Rose | Revisit a worked loading-constraint guide only after the anchor estimand, lower-triangular support boundary, healthy binary fixture, and any model-comparison reference distribution are independently validated. |
 | 3 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, long + wide calls where meaningful, validation rows, diagnostic table, figure review, and rendered HTML review. Do not combine mixed-family responses with loading constraints in one teaching article. |
 
 If two agents are active, prefer one public-documentation lane and one
@@ -199,7 +205,7 @@ only when a stage becomes active.
 | Symbol and syntax clarity | Reintroduce enough math to teach the model without losing applied users. | Every symbol is defined and paired with R syntax plus interpretation. |
 | Florence plot system | Move from functional plots to publication-quality scientific graphics. | Rendered figures are informative, colour-blind friendly, uncertainty-aware, and reviewed in HTML. |
 | Diagnostics and uncertainty | Stabilise `pdHess`, profile, bootstrap, fitted-model predictive checks, residual diagnostics, and simulation-grid language. | `fit-diagnostics` teaches the exported diagnostic surface while keeping claims diagnostic-only, not interval calibration or Bayesian posterior prediction. |
-| Article restoration | Bring hidden articles back one at a time. | Each restored article has examples or exact syntax chunks, long/wide status where meaningful, validation rows, figure/prose review, and rendered checks. Binary lambda/JSDM planning still comes before mixed-family or psychometrics promotion. |
+| Article restoration | Bring hidden articles back one at a time. | Each restored article has examples or exact syntax chunks, long/wide status where meaningful, validation rows, figure/prose review, and rendered checks. Loading constraints do not block independent disposition of mixed-family or psychometrics drafts. |
 | Pre-CRAN | Audit public API, examples, docs, pkgdown, reverse dependencies, and CRAN notes. | Local checks and 3-OS CI are clean; validation-debt register is current. |
 | Publication-quality claims | Support strong methodological claims with target-explicit simulation and external comparators. | M3 inference gates and Phase 5.5 comparator evidence pass. |
 
@@ -243,17 +249,17 @@ to reverse-engineer it from long setup chunks.
 
 | Hidden article | Return condition |
 |---|---|
-| `random-regression-reaction-norms` | Buildable internal draft after #466. The article now uses a shipped behavioural-syndrome example object with `individual` as unit and `session_id` as repeated occasion, long and wide formulas, diagnostics, augmented-covariance recovery, and repeatability curves, but it stays hidden until the reader path is plain-language and fully reviewed. |
-| `random-slopes-nongaussian` | Buildable internal structured-slope workflow. Keep hidden until the phylogenetic GLLVM / structured-dependence reader path is ready; do not present it as an interval-calibration article. |
-| `behavioural-syndromes` | Internal Tier 3 candidate Tier 1 after the 2026-06-18 article-council gate. Needs runnable long + wide where meaningful; between/within covariance; repeatability; truth recovery; diagnostic table; Florence figure review; rendered HTML review before public article prose expansion. |
-| `mixed-family-extractors` | Keep internal until the broader mixed-response teaching story covers Gaussian, binomial, Poisson/NB, beta/proportion, and the route-only delta/hurdle cases (designed, convergence-gated — MIX-10) with report-ready extractor tables. This is not the loading-constraint lane. |
-| `animal-model` | Larger pedigree fixture; A/Ainv truth; genetic covariance recovery. |
-| `phylogenetic-gllvm` | Phylo helper; phylo versus non-phylo split; validation rows. |
-| `psychometrics-irt` | Preview/internal until after the binary lambda/JSDM article is coherent and the `mirt` comparator path is explicitly designed. The current page is not the final IRT article. |
-| `lambda-constraint` | First rework target for binary loading constraints: binary species/JSDM-style example, separate from mixed-family response teaching, with interval-aware matrix figures via `plot_correlations(..., style = "heatmap", matrix_layout = "estimate_ci")` whenever CI columns are displayed. |
-| `simulation-recovery-validated` | M3 target-explicit statistical gate passes. |
-| `cross-package-validation` | Phase 5.5 comparator evidence exists. |
-| `functional-biogeography` | Final capstone; component helpers and M3 evidence complete. |
+| Future structured random-slope guide | Start again from one aligned applied phylogenetic or spatial question. Require a fixed population slope, repeated overlapping context coverage within structured units, a DGP that matches the chosen `indep` / `latent` / `dep` covariance, public extractors, complete diagnostics, and one scientific figure. Do not convert family-by-engine routing tests or wide recovery tolerances into a reader-facing validation claim. |
+| Future fixed cross-lineage covariance guide | Start from one association-conditioned question and the live latent-only multi-kernel model. Require aligned trees, traits, and effort-aware association data; actual fitted output; public diagnostics; explicit `Gamma_shape`, fixed-rho effect, and pair-specific covariance scales; kernel-separability sensitivity; and non-causal language. Do not present a supplied association kernel as proof of reciprocal coevolution. |
+| Future applied mixed-response guide | Require a biologically named, likelihood-aligned dataset or DGP; one family per trait; explicit links and offsets; complete diagnostics; point-estimate-only structural covariance versus family/link-scale correlation; and no claim that different family pairs share one universal latent scale. The compact syntax and scale boundary already live in `response-families`. |
+| Future applied ordinal guide | Require a real ecological/evolutionary question, meaningful category coding, replicated or externally structured variance identification, non-boundary recovery, long/wide forms where useful, a liability/cutpoint figure, and a public category-probability interpretation path. Keep heritability out unless a genuine phylogenetic or genetic component and complete denominator are fitted. |
+| Future quantitative-genetics tutorial | Stable public heritability, genetic-covariance, and breeding-value extractors; a genuinely informative pedigree with repeated records and explicit environmental components; replicated known-DGP recovery; scale-specific uncertainty; and no private fitted-object fields. |
+| Future psychometrics / IRT guide | Start again only if psychometrics becomes a deliberate audience for the package. Require a validated item-response fixture, a constraint matrix that preserves every identification anchor, public loading and score extractors, item difficulty/discrimination interpretation, an external comparator, complete diagnostics, and calibrated uncertainty. Do not repair or restore the retired mixed-response draft. |
+| Future confirmatory-loading guide | Require a pre-specified hypothesis, truth matched to every numeric pin, a healthy binary fixture in the tested sample regime, public diagnostics, and validated comparison/uncertainty claims. Same-data constraint suggestions must remain exploratory. |
+| Future interval-validation evidence guide | Start from current-version, target-explicit production artifacts for quantities readers interpret, including total unit-tier covariance and derived summaries. Require unconditional failure denominators, Monte Carlo intervals, bias and RMSE, calibrated acceptance rules, and publication-quality figures. Do not reuse the retired profile-Psi smoke artifact or its `validated` route. |
+| Future simulation-verification guide | Start only after the validation helpers have operating-characteristic tests and honest failure accounting. Use an exactly aligned DGP, multiple predeclared replicates, bias/RMSE and Monte Carlo uncertainty, and a clear separation among implementation recovery, fitted-model self-consistency, predictive checking, and scientific model adequacy. |
+| Future cross-package agreement guide | Start from stored, versioned fixtures that align the DGP, link, covariance decomposition, and estimand across packages. Require healthy fits in both engines, predeclared tolerances, truth recovery, rank/subspace and covariance checks, and a clear distinction between shared-engine port regression and independent implementation agreement. The retired page's failed rank-two comparison and non-PD private-object workaround must not be reused. |
+| Future functional-biogeography capstone | Rebuild from scratch around a biologically named dataset or fixture and one predeclared question. Fit the ladder stage by stage, stop before interpretation whenever health fails, align every DGP component with the formula and estimand, test long/wide equivalence, compare truth at every covariance tier, report uncertainty in the named regime, and use associational rather than causal language. The retired kitchen-sink fixture and unsupported sample thresholds must not be reused. |
 
 Blocked articles have no navbar entry, no README routing, and no
 recommended-next-step link from visible pages. Partial articles may return
@@ -289,9 +295,10 @@ advanced articles only after their gates pass.
 - Every Tier-1 worked example shows long and wide formulas side by side
   unless the article explicitly records why the wide form is not applicable.
 - Every figure-heavy article gets Florence review on rendered figures.
-- Articles that teach full covariance decomposition, communality, or
-  `Sigma = shared + unique` use `latent + unique`; a latent-only formula must
-  say it is latent-only and must not imply a free unique component.
+- Articles that teach the ordinary full covariance decomposition use default
+  `latent()`, which includes the diagonal Psi companion. The loadings-only
+  subset must use `latent(..., unique = FALSE)` explicitly. Standalone
+  diagonal examples use `indep()`; `unique()` remains compatibility syntax.
 - Correlation matrices that display interval columns use
   `plot_correlations(..., style = "heatmap", matrix_layout = "estimate_ci")`;
   `plot_Sigma_heatmap()` remains point-estimate-only.

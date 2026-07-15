@@ -76,7 +76,13 @@ non-Gaussian fits, add the link-specific implicit residual
 diagonal before computing correlations. Returned correlations
 are on the latent-liability scale; this is the convention most
 readers expect. Gaussian fits are unaffected (link residual is
-\eqn{0}).}
+\eqn{0}). For a delta/hurdle trait
+(\code{\link{delta_lognormal}} / \code{\link{delta_gamma}}) the
+diagonal instead uses that trait's positive-part residual alone
+(no \eqn{\pi^2/3} occurrence baseline; Design 02, 2026-07-05
+resolution) and the row is flagged
+\code{interval_status = "conditional_on_occurrence"} -- see
+Return.}
 \item{\code{"none"}}{Use the fitted model-implied \eqn{\Sigma}
 directly with no link-residual addition. For ordinary \code{latent()}
 fits this includes the default diagonal Psi companion; correlations
@@ -105,8 +111,15 @@ names in new calls.}
 \item{\code{method}}{Method used to compute the CI.}
 \item{\code{interval_status}}{Claim-boundary marker:
 \code{"none"} for point-only output,
-\code{"heuristic_unvalidated"} for Fisher-z/Wald bounds, and
-\code{"target_specific_uncalibrated"} for bootstrap bounds. The
+\code{"heuristic_unvalidated"} for Fisher-z/Wald bounds,
+\code{"target_specific_uncalibrated"} for bootstrap bounds, and
+\code{"conditional_on_occurrence"} for any pair involving a
+delta/hurdle trait (\code{\link{delta_lognormal}} /
+\code{\link{delta_gamma}}) when \code{link_residual = "auto"}: the
+correlation uses that trait's positive-part residual only (Design 02,
+2026-07-05 resolution), so it describes covariation conditional on
+occurrence, NOT an unconditional response correlation. This overrides
+the method-based token above for those rows. The
 bootstrap route computes intervals, but this function does not certify
 their frequentist coverage for the fitted target.}
 }

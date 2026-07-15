@@ -15,7 +15,8 @@ check_gllvmTMB(
   binary_prevalence_thresh = 0.9,
   binary_saturation_prob_thresh = 0.99,
   binary_saturation_share_thresh = 0.5,
-  loading_relative_thresh = 8
+  loading_relative_thresh = 8,
+  reml_bridge = NULL
 )
 }
 \arguments{
@@ -52,6 +53,13 @@ fitted probabilities before a binomial trait is flagged. Default
 
 \item{loading_relative_thresh}{Threshold for the largest trait loading
 relative to the typical fitted loading size. Default 8.}
+
+\item{reml_bridge}{Optional \code{\link[=reml_bridge]{reml_bridge()}} result (a data frame with
+columns \code{component}, \code{ml}, \code{reml}, \code{gap_abs}, \code{gap_rel}, \code{threshold},
+\code{flag}). \code{reml_bridge()} is never called automatically here -- it
+triggers an extra refit -- but when supplied (or already attached as
+\code{object$reml_bridge}), one \verb{ml_reml_gap_<component>} row per
+component is added, \code{WARN} when \code{flag} is \code{TRUE}. Default \code{NULL}.}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},

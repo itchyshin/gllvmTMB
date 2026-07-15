@@ -141,6 +141,14 @@ Type objective_function<Type>::operator()()
   DATA_IVECTOR(cluster2_id);       // 0-indexed cluster2 grouping per row
   DATA_INTEGER(n_cluster2);
   DATA_INTEGER(use_diag_cluster2);
+  // cluster2 augmented DIAGONAL random SLOPE (Design 81, Tier-3): the
+  // uncorrelated (indep / ||) intercept+slope form on the cluster2 grouping.
+  // A renamed copy of the unit-tier use_diag_B_slope block, keyed on
+  // cluster2_id instead of the site index. Fully diagonal over C = 2*n_traits
+  // augmented columns (intercept _|_ slope, traits independent).
+  DATA_INTEGER(use_diag_cluster2_slope);
+  DATA_INTEGER(n_lhs_cols_c2_slope);   // C = 2*n_traits when active, else 1
+  DATA_MATRIX(Z_c2_slope);             // n_obs x C augmented design
 
   // Stage-3 known-V (equalto): a single length-n_obs draw with prior
   // MVN(0, V), V fixed. Used by Stage 6's two-stage meta-regression.
@@ -508,6 +516,9 @@ Type objective_function<Type>::operator()()
   // the diag_species block on a second independent grouping.
   PARAMETER_VECTOR(theta_diag_cluster2);         // length n_traits
   PARAMETER_MATRIX(r_c2);                        // n_traits x n_cluster2
+  // cluster2 augmented diagonal random slope (Design 81, Tier-3)
+  PARAMETER_VECTOR(theta_diag_cluster2_slope);   // length C = 2*n_traits (or 1)
+  PARAMETER_MATRIX(s_c2_slope);                  // C x n_cluster2
 
   // Stage-3 equalto: known-V random effect e_eq, length n_obs, prior MVN(0, V)
   PARAMETER_VECTOR(e_eq);                        // length n_obs (or 1 if unused)
@@ -977,6 +988,32 @@ Type objective_function<Type>::operator()()
     for (int i = 0; i < n_cluster2; i++) {
       for (int t = 0; t < n_traits; t++)
         nll -= dnorm(r_c2(t, i), Type(0), sd_c2(t), true);
+    }
+  }
+
+  // -------- augmented diagonal random SLOPE on cluster2 (Design 81) -----
+  // Renamed copy of the unit-tier use_diag_B_slope block, keyed on the
+  // cluster2 grouping (n_cluster2 groups) instead of the site index. Fully
+  // diagonal over C = 2*n_traits augmented columns: independent Gaussian
+  // random effects with per-column SDs exp(theta_diag_cluster2_slope).
+  if (use_diag_cluster2_slope == 1) {
+    if (theta_diag_cluster2_slope.size() != n_lhs_cols_c2_slope)
+      error("gllvmTMB_multi: theta_diag_cluster2_slope has wrong length");
+    if (s_c2_slope.rows() != n_lhs_cols_c2_slope || s_c2_slope.cols() != n_cluster2)
+      error("gllvmTMB_multi: s_c2_slope must be n_lhs_cols_c2_slope x n_cluster2");
+    if (Z_c2_slope.rows() != y.size() || Z_c2_slope.cols() != n_lhs_cols_c2_slope)
+      error("gllvmTMB_multi: Z_c2_slope must be n_obs x n_lhs_cols_c2_slope");
+    vector<Type> sd_c2_slope = exp(theta_diag_cluster2_slope);
+    REPORT(sd_c2_slope);
+    matrix<Type> Sigma_c2_slope(n_lhs_cols_c2_slope, n_lhs_cols_c2_slope);
+    Sigma_c2_slope.setZero();
+    for (int j = 0; j < n_lhs_cols_c2_slope; j++)
+      Sigma_c2_slope(j, j) = sd_c2_slope(j) * sd_c2_slope(j);
+    REPORT(Sigma_c2_slope);
+    for (int i = 0; i < n_cluster2; i++) {
+      for (int j = 0; j < n_lhs_cols_c2_slope; j++) {
+        nll -= dnorm(s_c2_slope(j, i), Type(0), sd_c2_slope(j), true);
+      }
     }
   }
 
@@ -1839,6 +1876,12 @@ Type objective_function<Type>::operator()()
       eta(o) += q_sp(t, species_id(o));
     if (use_diag_cluster2 == 1)
       eta(o) += r_c2(t, cluster2_id(o));
+    if (use_diag_cluster2_slope == 1) {
+      Type u_c2_slope = 0;
+      for (int j = 0; j < n_lhs_cols_c2_slope; j++)
+        u_c2_slope += Z_c2_slope(o, j) * s_c2_slope(j, cluster2_id(o));
+      eta(o) += u_c2_slope;
+    }
     if (use_equalto == 1)
       eta(o) += e_eq(o);
     if (use_spde == 1) {

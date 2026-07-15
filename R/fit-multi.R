@@ -747,7 +747,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## C++ branching), exactly like diag_species. See issue #342.
   cluster2_col <- if (is.null(cluster2)) NULL else as.character(cluster2)[1]
   use_diag_cluster2 <- !is.null(cluster2_col) &&
-    any(kinds == "diag" & groupings == cluster2_col)
+    any(kinds == "diag" & groupings == cluster2_col & !diag_is_unique_augmented)
+  ## cluster2 augmented diagonal random SLOPE (Design 81, Tier-3): the
+  ## uncorrelated (indep / ||) intercept+slope form via unique(1 + x | cluster2).
+  ## The augmented covstruct is grouping-agnostic; it is routed here purely by
+  ## grouping == cluster2_col (mirroring diag_B_slope_idx for `site`).
+  diag_c2_slope_idx <- if (!is.null(cluster2_col)) {
+    which(diag_is_unique_augmented & groupings == cluster2_col)
+  } else integer(0)
+  if (length(diag_c2_slope_idx) > 1L) {
+    cli::cli_abort(
+      "Only one augmented diagonal random-regression term is supported at the {.arg cluster2} tier."
+    )
+  }
+  use_diag_cluster2_slope <- length(diag_c2_slope_idx) > 0L
   use_propto <- any(kinds == "propto")
   use_equalto <- any(kinds == "equalto")
   use_spde   <- any(kinds == "spde")
@@ -1455,7 +1468,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the reservation is enforced here where family_id_vec exists. The message
   ## keeps the parser's "LHS richer than" phrasing so the contract substring
   ## is unchanged.
-  if (use_phylo_slope_indep && any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
+  .slope_allow_indep <- c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L)
+  if (nzchar(Sys.getenv("GLLVMTMB_DEV_TWEEDIE_SLOPE_DIAG"))) {
+    ## Diagnostic-only, DEFAULT-OFF dev escape (#388 / B1 tweedie n-ladder):
+    ## admits tweedie (family id 6) so dev/tweedie-slope-diagnosis.R can
+    ## reproduce the ~44% slope-SD over-estimate and measure it across an
+    ## n-ladder. NEVER set this in user code or tests -- the shipped gate is
+    ## unchanged and tweedie stays reserved fail-loud for users.
+    .slope_allow_indep <- c(.slope_allow_indep, 6L)
+  }
+  if (use_phylo_slope_indep && any(!family_id_vec %in% .slope_allow_indep)) {
     cli::cli_abort(c(
       "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
       "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
@@ -1489,7 +1511,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## 14 ordinal_probit, 15 nbinom1. Family is unknown at parse time, so the
   ## reservation is enforced here where family_id_vec exists. Fail loud rather
   ## than silently truncate (Design 56 §7).
-  if (use_phylo_dep_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
+  if (use_phylo_dep_slope && any(!family_id_vec %in% .slope_allow_indep)) {
     cli::cli_abort(c(
       "{.fn phylo_dep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
       "i" = "Augmented {.code phylo_dep(1 + x | species)} (full unstructured 2T x 2T covariance) is validated for {.code gaussian()}, {.code binomial()} (logit / probit), {.code poisson()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
@@ -1676,6 +1698,31 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ))
   }
   n_lhs_cols_B_diag <- if (use_diag_B_slope) 2L * .n_traits_for_dep else 1L
+
+  ## cluster2 augmented diagonal slope (Design 81): covstruct, Gaussian-only
+  ## guard (mirrors the unit-tier diag_B_slope guard), slope covariate, C = 2T.
+  diag_c2_slope_cs <- if (use_diag_cluster2_slope) {
+    parsed$covstructs[[diag_c2_slope_idx[1L]]]
+  } else NULL
+  if (use_diag_cluster2_slope && any(family_id_vec != 0L)) {
+    cli::cli_abort(c(
+      "Augmented random slopes at the {.arg cluster2} tier are Gaussian-only in this release.",
+      ">" = "Use a Gaussian family, or omit the {.code cluster2} slope term."
+    ))
+  }
+  diag_c2_slope_lhs_form <- if (use_diag_cluster2_slope) {
+    diag_c2_slope_cs$extra$lhs_form %||% "unsupported"
+  } else "none"
+  diag_c2_slope_xcol <- if (use_diag_cluster2_slope) {
+    sc <- diag_c2_slope_cs$extra$slope_col
+    if (is.null(sc) || !nzchar(sc)) {
+      cli::cli_abort(
+        "Internal: augmented cluster2 random regression is missing {.code slope_col}."
+      )
+    }
+    sc
+  } else NA_character_
+  n_lhs_cols_c2_slope <- if (use_diag_cluster2_slope) 2L * .n_traits_for_dep else 1L
 
   d_B <- if (use_rr_B) {
     cs <- parsed$covstructs[[which(
@@ -2593,7 +2640,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Mirrors species_id. When the cluster2 slot is inactive (no diag term
   ## on the cluster2 column, or cluster2 = NULL) we still pass a length-1
   ## grouping so the (mapped-off) r_c2 parameter has a valid shape.
-  if (use_diag_cluster2) {
+  if (use_diag_cluster2 || use_diag_cluster2_slope) {
     if (!is.factor(data[[cluster2_col]])) {
       data[[cluster2_col]] <- factor(data[[cluster2_col]])
     }
@@ -3230,6 +3277,32 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  ## cluster2 augmented diagonal slope design (Design 81) -- same 2T
+  ## interleaved (intercept, slope) x trait ordering as Z_B_diag.
+  Z_c2_slope <- matrix(0.0, nrow = n_obs, ncol = n_lhs_cols_c2_slope)
+  if (use_diag_cluster2_slope) {
+    if (
+      !diag_c2_slope_lhs_form %in%
+        c("wide_intercept_slope", "long_intercept_slope")
+    ) {
+      cli::cli_abort(c(
+        "Unsupported augmented cluster2 random-regression LHS.",
+        "i" = "Got LHS form {.val {diag_c2_slope_lhs_form}}."
+      ))
+    }
+    if (!diag_c2_slope_xcol %in% names(data)) {
+      cli::cli_abort(c(
+        "The augmented cluster2 random-regression term references column {.val {diag_c2_slope_xcol}}, which is not in {.arg data}."
+      ))
+    }
+    x_c2_slope <- as.numeric(data[[diag_c2_slope_xcol]])
+    for (o in seq_len(n_obs)) {
+      base <- 2L * trait_id[o]
+      Z_c2_slope[o, base + 1L] <- 1.0
+      Z_c2_slope[o, base + 2L] <- x_c2_slope[o]
+    }
+  }
+
   tmb_data <- list(
     y                = as.numeric(y),
     is_y_observed    = as.integer(is_y_observed),
@@ -3266,6 +3339,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cluster2_id       = cluster2_id,
     n_cluster2        = as.integer(n_cluster2),
     use_diag_cluster2 = as.integer(use_diag_cluster2),
+    use_diag_cluster2_slope = as.integer(use_diag_cluster2_slope),
+    n_lhs_cols_c2_slope = as.integer(n_lhs_cols_c2_slope),
+    Z_c2_slope        = Z_c2_slope,
     use_equalto      = as.integer(use_equalto),
     V_inv            = V_inv,
     log_det_V        = log_det_V,
@@ -3393,6 +3469,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     q_sp         = matrix(0, nrow = n_traits, ncol = n_species),
     theta_diag_cluster2 = rep(0.0, n_traits),
     r_c2         = matrix(0, nrow = n_traits, ncol = n_cluster2),
+    theta_diag_cluster2_slope = rep(0.0, n_lhs_cols_c2_slope),
+    s_c2_slope   = matrix(0, nrow = n_lhs_cols_c2_slope, ncol = n_cluster2),
     e_eq         = if (use_equalto) rep(0.0, n_obs) else 0.0,
     log_tau_spde = if (use_spde) rep(0.0, n_traits) else 0.0,
     log_kappa_spde = 0.0,
@@ -3883,6 +3961,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!use_diag_cluster2) {
     tmb_map$theta_diag_cluster2 <- factor(rep(NA_integer_, n_traits))
     tmb_map$r_c2                <- factor(rep(NA_integer_, length(tmb_params$r_c2)))
+  }
+  if (!use_diag_cluster2_slope) {
+    tmb_map$theta_diag_cluster2_slope <-
+      factor(rep(NA_integer_, length(tmb_params$theta_diag_cluster2_slope)))
+    tmb_map$s_c2_slope <-
+      factor(rep(NA_integer_, length(tmb_params$s_c2_slope)))
   }
   if (!use_equalto) {
     tmb_map$e_eq <- factor(rep(NA_integer_, length(tmb_params$e_eq)))
@@ -4402,6 +4486,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_propto) random <- c(random, "p_phy")
   if (use_diag_species) random <- c(random, "q_sp")
   if (use_diag_cluster2) random <- c(random, "r_c2")
+  if (use_diag_cluster2_slope) random <- c(random, "s_c2_slope")
   if (use_equalto) random <- c(random, "e_eq")
   if (use_spde && (!is_spatial_latent || use_spde_latent_diag)) {
     random <- c(random, "omega_spde")
@@ -4692,6 +4777,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           rr_W = use_rr_W, diag_W = use_diag_W,
                           propto = use_propto, diag_species = use_diag_species,
                           diag_cluster2 = use_diag_cluster2,
+                          diag_cluster2_slope = isTRUE(use_diag_cluster2_slope),
+                          diag_cluster2_slope_col =
+                            if (use_diag_cluster2_slope) diag_c2_slope_xcol else NULL,
                           equalto = use_equalto, spde = use_spde,
                           ## Ordinary individual-level random regression:
                           ## augmented B-tier latent covariance over the

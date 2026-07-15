@@ -61,23 +61,23 @@ jobs:
           extra-packages: any::pkgdown, local::.
           needs: website
 
-      - name: Hide internal agent-instruction files from pkgdown
-        # pkgdown 2.2.0 renders every root .md (incl. AGENTS.md, CLAUDE.md) as a
-        # public page AND indexes it in search.json / sitemap.xml, honoring
-        # neither .Rbuildignore nor any exclude config. These are internal agent
-        # instructions, not user docs. Move them out of pkgdown's view for the
-        # build so no page, search entry, or sitemap entry is produced. The CI
+      - name: Hide internal maintainer files from pkgdown
+        # pkgdown 2.2.0 renders every root .md (including agent instructions,
+        # the maintainer workflow, and the internal roadmap) as a public page
+        # and indexes it in search.json / sitemap.xml, honoring neither
+        # .Rbuildignore nor an exclude config. Move those files out of pkgdown's
+        # view so no page, search entry, or sitemap entry is produced. The CI
         # checkout is ephemeral; the restore step is hygiene only.
-        run: mkdir -p .pkgdown-hidden && mv AGENTS.md CLAUDE.md .pkgdown-hidden/
+        run: mkdir -p .pkgdown-hidden && mv AGENTS.md CLAUDE.md CONTRIBUTING.md ROADMAP.md .pkgdown-hidden/
         shell: bash
 
       - name: Build site
         run: pkgdown::build_site(new_process = FALSE, install = FALSE)
         shell: Rscript {0}
 
-      - name: Restore internal agent-instruction files
+      - name: Restore internal maintainer files
         if: always()
-        run: mv .pkgdown-hidden/AGENTS.md .pkgdown-hidden/CLAUDE.md . && rmdir .pkgdown-hidden
+        run: mv .pkgdown-hidden/AGENTS.md .pkgdown-hidden/CLAUDE.md .pkgdown-hidden/CONTRIBUTING.md .pkgdown-hidden/ROADMAP.md . && rmdir .pkgdown-hidden
         shell: bash
 
       - uses: actions/upload-pages-artifact@v4

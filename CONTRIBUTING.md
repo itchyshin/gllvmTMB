@@ -32,7 +32,7 @@ that produced PR #13 backfill on 2026-05-11.
 
 Every pull request should use `.github/pull_request_template.md`.
 Keep the slice goal to one bounded change, list files intentionally
-touched and intentionally not touched, name validation-debt rows when
+touched and intentionally not touched, name the relevant test evidence when
 advertised capability status moves, record exact checks run, and name
 only the review roles that actually engaged.
 

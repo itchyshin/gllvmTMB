@@ -36,6 +36,34 @@ MCSE with explicit fit-health denominators. The first compute step after that
 audit is an immutable-chunk smoke ladder, not the full `n_sim = 2000`
 grid.
 
+**2026-07-13 amendment (maintainer, 0.5→0.6 gap-closure ultra-plan;
+solo Claude).** The scaling gate is cleared for execution with these
+locked decisions:
+
+- **Confirmatory core for the 0.6 coverage certificate = `gaussian`,
+  `nbinom2`, `binomial_probit`** (true-probit DGP/fit). **`ordinal_probit`
+  is EXCLUDED from the confirmatory core** — this resolves the scaling
+  gate's "ordinal-probit cells must produce primary coverage rows *or be
+  excluded*" clause by exclusion. Ordinal stays point-only; a calibrated
+  ordinal variance component is Bar-3 (AGHQ) work per Design 80, deferred
+  to 1.0. `mixed` likewise stays out of the confirmatory core (CI-10).
+- **Repair status (code-verified 2026-07-13):** #3 (signal=0 as
+  zero-exclusion, not Type-I) DONE in `dev/m3-pilot-report.R`; #4 (MCSE +
+  fit-health denominators) IMPLEMENTED in the report reducer
+  (`pilot_collect_cell`, `pilot_binomial_mcse`) but NOT wired into the
+  live decision surface (`run_next_pilot_batch` → `m3_summarise` →
+  `pilot_status`) — **the campaign decision surface must read the report
+  reducer**; #1 (logit-artifact quarantine) mechanism DONE (true-probit
+  path + `evidence_family` labels), **campaign consumes true-probit runs
+  only**; #2 resolved by the ordinal exclusion above.
+- **Compute is SOLO CLAUDE on Totoro (≤100 cores), not GitHub Actions**
+  (D-50): the `.github/workflows/m3-production-grid.yaml` dispatch pattern
+  is a shape reference only — campaigns run on Totoro/DRAC, outputs stay
+  local. Order: metric repairs → 48-cell pilot → immutable-chunk smoke
+  ladder → pilot `PASS_TO_SCALE` gate → `n_sim = 2000` core grid.
+
+Punch-list detail: `docs/dev-log/2026-07-13-A0-design66-scaling-gate-punchlist.md`.
+
 **Backed by (verified on origin/main):** PR #364 (merged 2026-05-31,
 `fix(m3): coverage gate keys on Sigma_unit_diag bootstrap, not psi
 proxy`); PR #366 (merged 2026-05-31, RE-09 within-unit latent()+unique()

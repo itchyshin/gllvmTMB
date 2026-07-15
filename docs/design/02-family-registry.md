@@ -325,16 +325,26 @@ link_residual = "auto")` on a `family = list(...)` fit is a
 These are family-related directions captured for the roadmap but
 NOT in the registry today:
 
-- **Mixed-family fits combining a delta/hurdle family with another
-  family** — e.g. `family = list(gaussian, delta_lognormal)` is
-  **not a supported configuration in 0.2.0**. `check_auto_residual()`
-  rejects these with `class = "gllvmTMB_auto_residual_delta_undefined"`
-  (planned safeguard; Phase 0B writes the test). Reason: the
-  latent-scale correlation contract is undefined for two-stage
-  families (see "Hurdle / delta families" section above).
-- **Latent-scale correlations on single-family delta fits** —
-  even a fit with `family = list(delta_lognormal, delta_lognormal)`
-  has no defined per-row link residual. Deferred to post-CRAN.
+- **~~Mixed-family fits combining a delta/hurdle family with another
+  family~~ — superseded by the 2026-07-05 resolution above.** The
+  earlier plan was that `family = list(gaussian, delta_lognormal)`
+  would be **rejected** by a `check_auto_residual()` safeguard with
+  `class = "gllvmTMB_auto_residual_delta_undefined"`. That safeguard
+  was never built (the class exists in 0 files), and it is no longer
+  needed: the resolution above defines a single latent scale per delta
+  trait (the positive-part residual), so a delta trait mixed with a
+  non-delta trait is **handled route-only**, not rejected. Each
+  trait's own family still picks its own residual formula (delta
+  traits get the positive-part residual, conditional on occurrence;
+  other traits keep their ordinary link residual) — see
+  `extract_correlations()`'s delta branch in `R/extract-correlations.R`.
+- **~~Latent-scale correlations on single-family delta fits~~ —
+  superseded by the 2026-07-05 resolution above.** A fit such as
+  `family = list(delta_lognormal, delta_lognormal)` now has a defined
+  per-row link residual (the positive-part residual), wired into
+  `extract_correlations()`. It is reported route-only (coverage
+  unestablished, CI-08 / CI-10) and labelled
+  `interval_status = "conditional_on_occurrence"`.
 - **Zero-inflated count families on multi-trait fits** (planned;
   post-CRAN). Single-trait zero-inflated count via the delta-*
   hurdle path is in the engine but its multi-trait correlation

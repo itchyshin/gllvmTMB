@@ -464,7 +464,7 @@ test_that("exact residuals retain non-finite and unsupported rows", {
   expect_true(all(res$status[-1] == "ok"))
 
   fit$tmb_data$y[1] <- 0
-  fit$tmb_data$family_id_vec[1] <- 7L
+  fit$tmb_data$family_id_vec[1] <- 3L ## lognormal: outside the exact-CDF ladder
   expect_warning(
     res_unsupported <- stats::residuals(
       fit,

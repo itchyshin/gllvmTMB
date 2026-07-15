@@ -543,6 +543,12 @@
 #'   0.5.
 #' @param loading_relative_thresh Threshold for the largest trait loading
 #'   relative to the typical fitted loading size. Default 8.
+#' @param reml_bridge Optional [reml_bridge()] result (a data frame with
+#'   columns `component`, `ml`, `reml`, `gap_abs`, `gap_rel`, `threshold`,
+#'   `flag`). `reml_bridge()` is never called automatically here -- it
+#'   triggers an extra refit -- but when supplied (or already attached as
+#'   `object$reml_bridge`), one `ml_reml_gap_<component>` row per
+#'   component is added, `WARN` when `flag` is `TRUE`. Default `NULL`.
 #' @return A data frame with columns `component`, `status`, `value`,
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
 #'   `"WARN"`, or `"FAIL"`.
@@ -564,7 +570,8 @@ check_gllvmTMB <- function(
   binary_prevalence_thresh = 0.9,
   binary_saturation_prob_thresh = 0.99,
   binary_saturation_share_thresh = 0.5,
-  loading_relative_thresh = 8
+  loading_relative_thresh = 8,
+  reml_bridge = NULL
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
@@ -862,6 +869,37 @@ check_gllvmTMB <- function(
         "if estimated near zero, check row-level unique terms or residual-scale identifiability"
       ))
     )
+  }
+
+  ## Design 80 "Bridge diagnostic": surface a user-computed reml_bridge()
+  ## result if one was passed in or already attached to the fit. Never
+  ## computed here -- reml_bridge() triggers an extra refit, which this
+  ## default diagnostic path must not force.
+  bridge <- reml_bridge %||% object$reml_bridge
+  if (!is.null(bridge)) {
+    if (!is.data.frame(bridge) ||
+          !all(c("component", "ml", "reml", "gap_abs", "gap_rel", "flag") %in% names(bridge))) {
+      cli::cli_abort(
+        "{.arg reml_bridge} must be the data frame returned by {.fn reml_bridge}."
+      )
+    }
+    for (i in seq_len(nrow(bridge))) {
+      rows <- c(
+        rows,
+        list(.gllvmTMB_check_row(
+          paste0("ml_reml_gap_", bridge$component[i]),
+          if (isTRUE(bridge$flag[i])) "WARN" else "PASS",
+          .gllvmTMB_fmt_num(bridge$gap_rel[i], digits = 4L),
+          bridge$threshold[i] %||% NA_real_,
+          paste0(
+            "ML = ", .gllvmTMB_fmt_num(bridge$ml[i]),
+            ", REML = ", .gllvmTMB_fmt_num(bridge$reml[i]),
+            " (Design 80 ML-REML bridge diagnostic)"
+          ),
+          "large ML-REML gap flags the small-cluster regime; treat the ML variance-component point estimate as biased, prefer REML or more clusters"
+        ))
+      )
+    }
   }
 
   out <- do.call(rbind, rows)

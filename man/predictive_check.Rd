@@ -72,12 +72,12 @@ without reverse-engineering ggplot layers.
 
 Scope boundary: IN, fitted-model predictive plots
 and residual Q-Q/rootogram helpers for \code{gllvmTMB_multi} fits, with
-exact randomized-quantile residuals for Gaussian, Poisson, and NB2
-rows and a simulation-rank fallback. PARTIAL, these are diagnostic
-displays, not formal uniformity, dispersion, interval-calibration, or
-Bayesian posterior-predictive tests. PLANNED, exact residual support
-for delta, hurdle, truncated, ordinal, and mixture families remains
-future validation work.
+exact randomized-quantile residuals for Gaussian, binomial, Poisson,
+Gamma, NB1, NB2, and Beta rows and a simulation-rank fallback. PARTIAL,
+these are diagnostic displays, not formal uniformity, dispersion,
+interval-calibration, or Bayesian posterior-predictive tests. PLANNED,
+exact residual support for delta, hurdle, truncated, ordinal, and
+mixture families remains future validation work.
 }
 \examples{
 \donttest{

@@ -1,0 +1,51 @@
+n=  50 seed=1 FAIL
+n=  50 seed=2 phi/tru=0.88 psi/tru=0.45 Sig/tru=0.90
+n=  50 seed=3 phi/tru=138024512.42 psi/tru=0.33 Sig/tru=0.83
+n=  50 seed=4 phi/tru=73266246.01 psi/tru=0.00 Sig/tru=0.94
+n=  50 seed=5 phi/tru=7267378466.18 psi/tru=0.03 Sig/tru=0.49
+n=  50 seed=6 phi/tru=149603716.50 psi/tru=0.27 Sig/tru=1.86
+n=  50 seed=7 phi/tru=0.57 psi/tru=0.03 Sig/tru=0.71
+n=  50 seed=8 FAIL
+n= 150 seed=1 phi/tru=0.34 psi/tru=0.25 Sig/tru=0.45
+n= 150 seed=2 phi/tru=0.64 psi/tru=0.31 Sig/tru=0.37
+n= 150 seed=3 phi/tru=0.83 psi/tru=0.35 Sig/tru=0.58
+n= 150 seed=4 phi/tru=0.61 psi/tru=0.16 Sig/tru=0.40
+n= 150 seed=5 phi/tru=282846935.94 psi/tru=0.34 Sig/tru=0.81
+n= 150 seed=6 phi/tru=0.86 psi/tru=0.33 Sig/tru=0.57
+n= 150 seed=7 phi/tru=304404197.54 psi/tru=0.41 Sig/tru=0.75
+n= 150 seed=8 phi/tru=0.66 psi/tru=0.11 Sig/tru=0.46
+n= 400 seed=1 phi/tru=0.59 psi/tru=0.29 Sig/tru=0.49
+n= 400 seed=2 phi/tru=0.54 psi/tru=0.16 Sig/tru=0.42
+n= 400 seed=3 phi/tru=0.38 psi/tru=0.16 Sig/tru=0.30
+n= 400 seed=4 phi/tru=0.55 psi/tru=0.24 Sig/tru=0.38
+n= 400 seed=5 phi/tru=0.91 psi/tru=0.40 Sig/tru=0.62
+n= 400 seed=6 phi/tru=996028781.03 psi/tru=1.25 Sig/tru=1.23
+n= 400 seed=7 phi/tru=0.53 psi/tru=0.26 Sig/tru=0.42
+n= 400 seed=8 phi/tru=0.54 psi/tru=0.48 Sig/tru=0.50
+n= 800 seed=1 phi/tru=0.76 psi/tru=0.49 Sig/tru=0.64
+n= 800 seed=2 phi/tru=0.41 psi/tru=0.27 Sig/tru=0.47
+n= 800 seed=3 phi/tru=0.61 psi/tru=0.42 Sig/tru=0.47
+n= 800 seed=4 phi/tru=0.61 psi/tru=0.25 Sig/tru=0.41
+n= 800 seed=5 phi/tru=0.60 psi/tru=0.23 Sig/tru=0.52
+n= 800 seed=6 phi/tru=1786701.75 psi/tru=0.79 Sig/tru=0.74
+n= 800 seed=7 phi/tru=0.68 psi/tru=0.39 Sig/tru=0.56
+n= 800 seed=8 phi/tru=0.47 psi/tru=0.26 Sig/tru=0.40
+n=1500 seed=1 phi/tru=0.44 psi/tru=0.33 Sig/tru=0.40
+n=1500 seed=2 phi/tru=0.49 psi/tru=0.24 Sig/tru=0.43
+n=1500 seed=3 phi/tru=0.56 psi/tru=0.29 Sig/tru=0.46
+n=1500 seed=4 phi/tru=0.64 psi/tru=0.24 Sig/tru=0.44
+n=1500 seed=5 phi/tru=0.65 psi/tru=0.18 Sig/tru=0.54
+n=1500 seed=6 phi/tru=0.72 psi/tru=0.47 Sig/tru=0.59
+n=1500 seed=7 phi/tru=0.52 psi/tru=0.24 Sig/tru=0.54
+n=1500 seed=8 phi/tru=0.55 psi/tru=0.28 Sig/tru=0.43
+
+=== nbinom2 recovery vs n (mean ratio to truth; 1.0 = unbiased) ===
+    n phi_ratio psi_ratio sigma_ratio n_ok
+   50  1.27e+09     0.182       0.956    6
+  150  7.34e+07     0.283       0.550    8
+  400  1.25e+08     0.406       0.545    8
+  800  2.23e+05     0.388       0.526    8
+ 1500  5.72e-01     0.283       0.479    8
+
+READ THE TREND: ratios -> 1.0 with n = information/power (recovers at big n). 
+Stuck below 1.0 = genuine dispersion/latent identifiability LIMIT.

@@ -267,7 +267,12 @@ nbinom2_mix <- function(link = "log", p_extreme = NULL) {
 
 #' @details
 #' The `nbinom2` negative binomial parameterization is the NB2 where the
-#' variance grows quadratically with the mean (Hilbe 2011).
+#' variance grows quadratically with the mean (Hilbe 2011). When combined with a
+#' latent covariance term, the per-trait NB dispersion and the latent or
+#' random-effect variance are weakly identifiable and covariance recovery is
+#' attenuated at practical sample sizes (see the response-families article's
+#' `nbinom2()` specialist boundary); treat `nbinom2` covariance and correlation
+#' output as recovery-only, not coverage-certified.
 #' @references
 #'
 #' *Negative binomial families*:

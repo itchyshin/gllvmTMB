@@ -164,7 +164,12 @@ mean to the "regular" mean. You can see these parameters in
 in as a proportion for these families.
 
 The \code{nbinom2} negative binomial parameterization is the NB2 where the
-variance grows quadratically with the mean (Hilbe 2011).
+variance grows quadratically with the mean (Hilbe 2011). When combined with a
+latent covariance term, the per-trait NB dispersion and the latent or
+random-effect variance are weakly identifiable and covariance recovery is
+attenuated at practical sample sizes (see the response-families article's
+\code{nbinom2()} specialist boundary); treat \code{nbinom2} covariance and
+correlation output as recovery-only, not coverage-certified.
 
 The \code{nbinom1} negative binomial parameterization lets the variance grow
 linearly with the mean (Hilbe 2011).

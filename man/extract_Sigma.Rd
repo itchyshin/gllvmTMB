@@ -175,6 +175,12 @@ Schielzeth 2017):
 \code{betabinomial(link = "logit")}    \tab \eqn{\sigma^2_d = \pi^2/3 + \psi'(\hat\mu_t \hat\phi) + \psi'((1 - \hat\mu_t)\hat\phi)}
 }
 
+For \code{nbinom2}, the dispersion \eqn{\hat\phi} is itself subject to the known
+dispersion / latent-variance identifiability confound (see \code{families()} and
+the response-families article); the derived \eqn{\sigma^2_d}, and any
+covariance built from it, inherit that attenuation and should be read as
+recovery-only.
+
 For mixed-family fits the residual is computed \emph{per trait} when that trait has
 one unambiguous family/link, then added to the diagonal
 of \eqn{\boldsymbol\Sigma} entry-by-entry. The default

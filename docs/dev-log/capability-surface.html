@@ -444,7 +444,7 @@
     <div class="gapbox">
       <h4>Where the gaps are · 0.5.0 → 1.0</h4>
       <ul>
-        <li><b>Interval coverage — the headline gap.</b> Zero families have coverage-checked intervals; every cell is point-only. Calibration is the largest 1.0 task.</li>
+        <li><b>Interval coverage — the headline gap.</b> No family has a <i>nominal</i> coverage certificate; every cell stays point-only. The n_sim=2000 grid (2026-07-15) makes this precise: gaussian + binomial <code>Sigma_unit_diag</code> intervals are <b>approximately calibrated (~0.91, bug-fix-validated at scale)</b> but the percentile bootstrap <b>under-covers ~3–4 pt</b> — recovery-grade, not nominal-certified. BCa / studentized bootstrap is the path to nominal (a 1.0 task). nbinom2 stays fenced (shared-dispersion pooling did not recover Σ).</li>
         <li><b>Random slopes (≥1) are unfinished.</b> In development / diagnostic-grade even for Gaussian — not a finished 0.5.0 capability. Shown as <span class="tag t-avail">partial</span>, not ✓.</li>
         <li><b>Missing responses: core families now tested.</b> Gaussian + poisson/NB2/binomial masked-response is verified (sentinel-invariance, 2026-07-12); nbinom1 recovery + <code>mi()</code> predictor coverage pending.</li>
         <li><b>Fitted diagnostics reach 3 families</b> (Gaussian, Poisson, NB2). Extending residual / predictive checks to more families is the next diagnostics step.</li>
@@ -472,6 +472,10 @@
     <p class="lead">
       The honesty boundary. A route that returns bounds is <b>not</b>, by itself, evidence of
       nominal repeated-sampling coverage. Extraction is point-only by default.
+      <b>Empirically confirmed (n_sim=2000, 2026-07-15):</b> gaussian / binomial
+      <code>Sigma_unit_diag</code> intervals sit ~2–4 pt below nominal (percentile-bootstrap
+      undercoverage), so they remain recovery-grade / approximately-calibrated —
+      <b>no cell is nominal-certified.</b>
     </p>
     <div class="scroll">
       <table>

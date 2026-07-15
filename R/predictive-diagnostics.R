@@ -453,10 +453,12 @@ residuals.gllvmTMB_multi <- function(
         next
       }
       ## mean-shape parametrisation (mirrors src/gllvmTMB.cpp fid 4):
-      ## mu = exp(eta), scale = mu / shape.
+      ## mu = exp(eta), scale = mu / shape. Use a distinct local name
+      ## (`scale_gamma`) so it does not clobber the `scale` argument that the
+      ## shared residual block reads to choose normal vs uniform output.
       mu <- exp(eta[i])
-      scale <- mu / shape
-      lower[i] <- stats::pgamma(y_i, shape = shape, scale = scale)
+      scale_gamma <- mu / shape
+      lower[i] <- stats::pgamma(y_i, shape = shape, scale = scale_gamma)
       upper[i] <- lower[i]
       u[i] <- lower[i]
     } else if (fid == 5L) {

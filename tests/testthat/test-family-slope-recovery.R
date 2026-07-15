@@ -4,12 +4,20 @@
 ## R/fit-multi.R). The augmented-slope engine is family-agnostic (the family
 ## likelihood consumes only the final `eta`; verified at src/gllvmTMB.cpp
 ## 1798-1938 -- ZERO new C++), so a family joins the slope grid once its recovery
-## cell passes (the #388 discipline). This cell admits lognormal (family_id 3)
-## and student (9): both fit a phylo random slope and recover per-trait variances.
+## cell passes (the #388 discipline). This cell admits lognormal (family_id 3),
+## student (9), and nbinom1 (15): each fits a phylo random slope and recovers the
+## per-trait slope variances. nbinom1 is already on the runtime slope allowlist
+## (#350, phylo_dep validation cell); this adds the matching indep-slope recovery
+## evidence.
 ##
 ## NOTE (Design 80 Bar-2): acceptance here is adequate-N convergence + plausible
 ## variance recovery. The small-cluster ML-vs-REML downward-bias diagnostic is a
-## follow-up (V close-out); tweedie(6)/betabinomial(8) await their own cells.
+## follow-up (V close-out). tweedie(6) stays GATED off the slope allowlist: a
+## local gate-bypass measurement (dev/tweedie-slope-diagnosis.R; 8 seeds, n_sp in
+## {80,200}) found the current engine recovers the slope SD at ratio ~0.88-1.04
+## with NO ~44% over-estimate, and free-p vs p-fixed agree to <0.01 -- promising
+## but preliminary, so tweedie awaits a full multi-seed campaign + maintainer
+## sign-off before admission (#388, D-43). betabinomial(8) awaits its own cell.
 
 skip_heavy_ape <- function() {
   testthat::skip_on_cran()
@@ -74,4 +82,14 @@ test_that("student random slope fits and recovers (C1)", {
   fx <- make_family_slope_mu(seed = 42L)
   y <- fx$df$mu + stats::rt(nrow(fx$df), df = 5) * 0.3
   .check_slope_recovery(.fit_family_slope(fx, y, student()), sqrt(fx$s2_slope))
+})
+
+test_that("nbinom1 random slope fits and recovers (C1)", {
+  skip_heavy_ape()
+  ## NB1 (var = mu(1 + phi)) with log link; fx$df$mu is the linear predictor eta.
+  fx  <- make_family_slope_mu(seed = 101L)
+  mu  <- exp(fx$df$mu)
+  phi <- 1.0
+  y   <- stats::rnbinom(length(mu), mu = mu, size = mu / phi)
+  .check_slope_recovery(.fit_family_slope(fx, y, nbinom1()), sqrt(fx$s2_slope))
 })

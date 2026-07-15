@@ -315,6 +315,19 @@ covariance or correlation interpretation for hurdle fits, so do
 not describe fitted-tier correlations as correlations of total biomass,
 abundance, or another observed two-part response.
 
+### Specialist boundary for `nbinom2()` with latent covariance
+
+When `nbinom2()` is combined with a latent covariance term, the per-trait NB
+dispersion (`phi`) and the latent or random-effect variance are a documented
+weak-identifiability pair (Lawless 1987; the GLMM FAQ's residual/random-effect
+confounding warning), with a literature-corroborated small-sample upward bias in
+the dispersion MLE (Lloyd-Smith 2007; Saha & Paul 2005). With the package's
+default per-trait dispersion, covariance (`Sigma`) recovery is attenuated at
+practical sample sizes. This is a known confound, not a defect, and it is not yet
+resolved for the default parameterization. Treat nbinom2 covariance and
+correlation estimates as recovery-only, and do not present nbinom2 intervals as
+coverage-certified.
+
 ## Diagnose the fitted choice
 
 Family choice is provisional until the fitted model behaves sensibly.

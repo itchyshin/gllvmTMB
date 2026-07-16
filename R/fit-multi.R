@@ -2412,6 +2412,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ordinal_offset_per_trait  <- integer(n_traits)
   ordinal_K_per_trait       <- integer(n_traits)
   ordinal_init_log_incs     <- numeric(0)
+
+  ## multinomial (fid 16) metadata. C1a wires the TMB data with safe defaults so
+  ## every non-multinomial fit stays valid; C1b's expand_multinomial_response()
+  ## fills real values from the K-1 pseudo-trait expansion. multinom_K_per_trait
+  ## is K_t - 1 for a multinomial (pseudo-)trait, 0 otherwise; multinom_group_id
+  ## is the per-row observation-group index (-1 off-family). The `.multinom_group_`
+  ## data column, when present, is produced by the expansion pre-pass.
+  multinom_K_per_trait <- integer(n_traits)
+  multinom_group_id    <- if (".multinom_group_" %in% names(data)) {
+    as.integer(data[[".multinom_group_"]])
+  } else {
+    rep(-1L, n_obs)
+  }
   if (any_ordinal_probit) {
     ordinal_rows <- family_id_vec == 14L
     ## Validate the observed ordinal responses only; masked rows carry the
@@ -3375,6 +3388,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     link_id_vec      = as.integer(link_id_vec),
     n_ordinal_cuts_per_trait = as.integer(n_ordinal_cuts_per_trait),
     ordinal_offset_per_trait = as.integer(ordinal_offset_per_trait),
+    multinom_group_id    = as.integer(multinom_group_id),
+    multinom_K_per_trait = as.integer(multinom_K_per_trait),
     use_phylo_rr     = as.integer(use_phylo_rr),
     d_phy            = as.integer(d_phy),
     n_aug_phy        = as.integer(n_aug_phy),

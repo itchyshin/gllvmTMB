@@ -127,6 +127,17 @@ test_that("multinomial cannot be combined in a mixed-family list() (Tier 1)", {
   )
 })
 
+test_that("extract_correlations refuses a multinomial (categorical) trait", {
+  skip_on_cran()
+  df  <- .make_multinomial(seed = 7L, n = 150L, K = 3L)
+  fit <- gllvmTMB(value ~ 0 + trait + (0 + trait):x, data = df,
+                  family = multinomial(), trait = "trait", unit = "unit")
+  expect_error(
+    extract_correlations(fit),
+    class = "gllvmTMB_multinomial_correlation_undefined"
+  )
+})
+
 test_that("multinomial likelihood is invariant to the baseline category", {
   skip_on_cran()
   df <- .make_multinomial(seed = 6L, n = 250L, K = 3L)

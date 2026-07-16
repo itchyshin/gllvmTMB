@@ -456,6 +456,19 @@ extract_correlations <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
+  ## Tier-1 fence (Design 83 / FAM-20): an unordered categorical (multinomial)
+  ## trait spans K-1 latent liability dimensions, so it has no single
+  ## latent-residual scale on which a trait x trait correlation is defined. The
+  ## latent-scale correlation surface for categorical responses is deferred
+  ## (Tier 2). Refuse loudly rather than fabricate a diagonal / return NaN.
+  if (!is.null(fit$tmb_data$family_id_vec) &&
+      any(fit$tmb_data$family_id_vec == 16L)) {
+    cli::cli_abort(c(
+      "Latent-scale correlations are not defined for a {.fn multinomial} (categorical) trait.",
+      "i" = "An unordered categorical response spans K-1 latent liability dimensions, not one, so no single trait correlation exists (Design 83, Tier 2 deferred).",
+      ">" = "{.fn multinomial} is fixed-effects-only in this release; read fixed-effect coefficients via {.fn summary} / {.fn tidy}."
+    ), class = "gllvmTMB_multinomial_correlation_undefined")
+  }
   method <- match.arg(method)
   if (identical(method, "profile")) {
     cli::cli_abort(c(

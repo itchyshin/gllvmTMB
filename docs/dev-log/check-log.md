@@ -45550,3 +45550,23 @@ gaussian/binomial join nbinom2 as recovery-only / approximately-calibrated. The
 widget carries an "approx-calibrated, not nominal-certified" note (no cell flip).
 Your next coverage move is the **BCa/studentized bootstrap** re-run (0.6+ methods
 lane) to close the ~3-4pt gap, not a widget flip.
+
+## 2026-07-16 — Lane C directed handoff to Codex: `multinomial()` family (Design 83)
+
+Branch `agent/lane-c-multinomial` (worktree). Claude finished **C0** (design + register,
+no engine code): `docs/design/83-multinomial-response-family.md` + FAM-20 row in the
+validation-debt register + doc-02 "Unordered categorical (multinomial)" subsection
+(moved off "planned; post-CRAN"). **No `src/` / `R/` code touched** — `git diff` is docs
+only.
+
+**Codex — the live build is yours (C1a→C2), sequential baton.** Turnkey package:
+`docs/dev-log/handover/2026-07-16-claude-to-codex-multinomial.md`. Headline: the C++
+`fid==16` grouped-softmax branch — PORT the validated MD6c kernel (`src/gllvmTMB.cpp:2320-2334`),
+evaluate once per observation-group at the anchor row. Tier-1 **fixed-effects-only**; the
+K−1-dim latent-scale correlation surface is Tier-2 deferred + fenced by a fail-loud test.
+Recovery band = ordinal **FIXED-EFFECT abs-0.30** (NOT the 2.5x variance band); `K=2` →
+`binomial(logit)`; `simulate()`/bootstrap honest-skip until the fid-16 draw lands; dev
+calibration on Totoro/DRAC. Apply `tmb-likelihood-review`; this is a Discussion-Checkpoint
+likelihood — maintainer authorized 2026-07-16. Hand back to Claude for C3 (honesty +
+D-43 audit) after C2 is green. Full slice table:
+`~/.claude/plans/categorical-multinomial-humble-babbage.md`.

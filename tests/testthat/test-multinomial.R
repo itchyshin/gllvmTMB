@@ -57,6 +57,26 @@ test_that("multinomial (K = 3) recovers per-category intercepts and slopes", {
   }
 })
 
+test_that("multinomial (K = 4) recovers per-category intercepts and slopes", {
+  skip_on_cran()
+  b0 <- c(0.4, -0.3, 0.2); b1 <- c(0.9, -0.7, 0.6)
+  df  <- .make_multinomial(seed = 11L, n = 600L, K = 4L, b0 = b0, b1 = b1)
+  fit <- gllvmTMB(value ~ 0 + trait + (0 + trait):x, data = df,
+                  family = multinomial(), trait = "trait", unit = "unit")
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(isTRUE(fit$sd_report$pdHess))
+  expect_true(all(fit$tmb_data$family_id_vec == 16L))
+  sdf <- summary(fit$sd_report, "fixed")
+  est <- sdf[grepl("b_fix", rownames(sdf)), "Estimate"]
+  # 3 intercepts then 3 slopes, in X_fix column order.
+  truth <- c(b0, b1)
+  names(est) <- fit$X_fix_names
+  expect_length(est, 6L)
+  for (i in seq_along(truth)) {
+    expect_lt(abs(est[[i]] - truth[[i]]), 0.4)
+  }
+})
+
 test_that("multinomial dispatches family_id 16 with a (K-1) coefficient block", {
   skip_on_cran()
   df  <- .make_multinomial(seed = 2L, n = 200L, K = 3L)

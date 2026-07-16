@@ -234,16 +234,68 @@ test_that("Failed refits are tallied in n_failed, not in CIs", {
     },
     .package = "gllvmTMB",
     code = {
-      boot <- suppressMessages(bootstrap_Sigma(
-        fit,
-        n_boot = 5L,
-        level = "unit",
-        what = "Sigma",
-        seed = 5L,
-        progress = FALSE
-      ))
+      ## Fail-loud (issue #18): a failed refit must warn, not vanish.
+      boot <- NULL
+      expect_warning(
+        boot <- suppressMessages(bootstrap_Sigma(
+          fit,
+          n_boot = 5L,
+          level = "unit",
+          what = "Sigma",
+          seed = 5L,
+          progress = FALSE
+        )),
+        "failed to refit"
+      )
       expect_gte(boot$n_failed, 1L)
       expect_equal(dim(boot$ci_lower$Sigma_B), dim(boot$point_est$Sigma_B))
     }
+  )
+})
+
+## ---- issue #18: a non-default unit_obs tier must round-trip through refit ---
+## bootstrap_Sigma() reconstructs each refit call; it must forward EVERY
+## grouping tier the fit used. Previously it hardcoded unit/cluster (via the
+## legacy site/species aliases) and dropped unit_obs, so a model whose within-
+## unit grouping was not the default "site_species" failed every replicate
+## silently (n_failed == n_boot). The default-named case was masked because the
+## refit inherited gllvmTMB()'s default unit_obs = "site_species"; this test
+## uses a NON-default name to exercise the actual bug.
+
+make_nondefault_unit_obs_fit <- function(seed = 1) {
+  set.seed(seed)
+  s <- gllvmTMB::simulate_site_trait(
+    n_sites = 40L, n_species = 6L, n_traits = 3L, mean_species_per_site = 4L,
+    Lambda_B = matrix(c(0.9, 0.4, -0.3), 3L, 1L),
+    psi_B = c(0.40, 0.30, 0.50), psi_W = c(0.30, 0.40, 0.30),
+    beta = matrix(0, 3L, 2L), seed = seed
+  )
+  d <- s$data
+  d$indiv_id <- d$site_species
+  d$site_species <- NULL
+  suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1) +
+      unique(0 + trait | site) + unique(0 + trait | indiv_id),
+    data = d, unit_obs = "indiv_id", silent = TRUE
+  )))
+}
+
+test_that("bootstrap_Sigma refits a non-default unit_obs tier (issue #18)", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- make_nondefault_unit_obs_fit()
+  expect_identical(fit$unit_obs_col, "indiv_id")
+  bs <- suppressMessages(bootstrap_Sigma(
+    fit, n_boot = 4L, level = c("unit", "unit_obs"), what = "Sigma", seed = 1L
+  ))
+  ## Every replicate must refit (was n_failed == n_boot before the fix).
+  expect_identical(bs$n_failed, 0L)
+  ## The refit is otherwise unchanged, so the point estimate matches
+  ## extract_Sigma() (Ayumi's 2e-16 cross-check).
+  exs <- gllvmTMB::extract_Sigma(fit, level = "unit", link_residual = "none")
+  expect_equal(
+    unname(diag(as.matrix(bs$point_est$Sigma_B))),
+    unname(diag(as.matrix(exs$Sigma))),
+    tolerance = 1e-8
   )
 })

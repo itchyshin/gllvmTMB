@@ -223,8 +223,16 @@ bootstrap_Sigma <- function(
   ## formula argument here to keep the API minimal.
   formula <- .reconstruct_multi_formula(fit)
   trait <- fit$trait_col
-  site <- fit$unit_col
-  species <- fit$species_col
+  ## Forward EVERY grouping tier the original fit used, by the canonical
+  ## argument names. Previously only `unit` (via the legacy `site` alias) and
+  ## `cluster` (via the legacy `species` alias) were forwarded, so a fit with a
+  ## `unit_obs` or `cluster2` tier reconstructed a refit call missing that
+  ## grouping and failed inside gllvmTMB() -- silently, since each refit is
+  ## wrapped in tryCatch(error = NULL) (issue #18, Ayumi Mizuno).
+  unit <- fit$unit_col
+  unit_obs <- fit$unit_obs_col
+  cluster <- if (!is.null(fit$cluster_col)) fit$cluster_col else fit$species_col
+  cluster2 <- fit$cluster2_col
   ## M1.8 (2026-05-17): prefer family_input (the original family list with
   ## family_var attribute for mixed-family fits) over family (the
   ## first-family-only view used by predict's linkinv). Pre-M1.8 fits
@@ -281,6 +289,15 @@ bootstrap_Sigma <- function(
   )
   aux <- aux[!vapply(aux, is.null, logical(1))]
 
+  ## Grouping tiers to forward, dropping any the fit did not use (NULL).
+  group_args <- list(
+    unit = unit,
+    unit_obs = unit_obs,
+    cluster = cluster,
+    cluster2 = cluster2
+  )
+  group_args <- group_args[!vapply(group_args, is.null, logical(1))]
+
   refit_one <- function(b) {
     dat <- data
     dat[[resp]] <- Y_sim[, b]
@@ -289,25 +306,36 @@ bootstrap_Sigma <- function(
         formula = formula,
         data = dat,
         trait = trait,
-        site = site,
-        species = species,
         family = family,
         silent = TRUE
       ),
+      group_args,
       aux
     )
+    ## Capture the first refit error so a total failure can be surfaced to the
+    ## caller (see the n_failed warning below) instead of vanishing.
     out <- tryCatch(
       suppressMessages(suppressWarnings(
         do.call(gllvmTMB, call_args)
       )),
-      error = function(e) NULL
+      error = function(e) list(.boot_error = conditionMessage(e))
     )
+    boot_err <- if (is.list(out) && !is.null(out[[".boot_error"]])) {
+      out[[".boot_error"]]
+    } else {
+      NULL
+    }
     if (
       is.null(out) ||
+        !is.null(boot_err) ||
         !inherits(out, "gllvmTMB_multi") ||
         !isTRUE(out$opt$convergence == 0L)
     ) {
-      return(na_fn(point_est))
+      res <- na_fn(point_est)
+      if (!is.null(boot_err)) {
+        attr(res, "boot_error") <- boot_err
+      }
+      return(res)
     }
     extract_fn(out, level = level, what = what, link_residual = link_residual)
   }
@@ -347,6 +375,27 @@ bootstrap_Sigma <- function(
     function(d) isTRUE(attr(d, "failed")),
     logical(1)
   ))
+
+  ## Fail loud: a refit gap (e.g. a missing grouping tier) must not masquerade
+  ## as a converged-but-empty result. Surface the failure count and the first
+  ## captured refit error (issue #18).
+  if (n_failed > 0L) {
+    boot_errs <- Filter(
+      Negate(is.null),
+      lapply(draws, function(d) attr(d, "boot_error"))
+    )
+    first_err <- if (length(boot_errs)) boot_errs[[1L]] else NULL
+    cli::cli_warn(c(
+      "{cli::qty(n_failed)}{n_failed}/{n_boot} bootstrap replicate{?s} failed to refit; the corresponding interval{?s} {?is/are} NA.",
+      if (!is.null(first_err)) c("i" = "First refit error: {first_err}"),
+      if (n_failed == n_boot) {
+        c(
+          "!" = "All replicates failed -- the returned confidence intervals are entirely NA.",
+          ">" = "This usually means the refit is missing an argument the original fit used (for example a grouping tier)."
+        )
+      }
+    ))
+  }
 
   ci <- .summarise_draws(draws, point_est, conf = conf)
 

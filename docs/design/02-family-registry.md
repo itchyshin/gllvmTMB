@@ -187,6 +187,32 @@ truth for whether a family is `covered`, `partial`, or `blocked`.
 |--------|---------------|---------|-------|--------|--------|
 | Ordinal probit | `ordinal_probit()` | latent `mu`, `cutpoints` (vector) | probit (latent), identity (cutpoints on log-difference scale) | $\{1, 2, \ldots, K\}$ ordered categories | claimed |
 
+### Unordered categorical (multinomial) families
+
+**Status:** in progress, **fixed-effects-only** (Design 83). Admitted for
+fixed-effect recovery of a single unordered categorical trait via
+baseline-category logit / softmax (runtime id 16). Latent / random structure is
+**N/A by design** — a multinomial trait maps to $K-1$ non-comparable
+baseline-category linear predictors, so it contributes $K-1$ latent liabilities,
+not one; the GLLVM latent machinery induces **one** interpretable residual
+covariance $\Sigma$ per trait, so there is no single latent-residual scale on
+which a trait×trait correlation is defined for a nominal response. This is the
+same single-latent-scale boundary Design 62 records for delta/hurdle, generalised
+from 2 scales to $K-1$.
+
+| Family | R constructor | `dpars` | Links | Bounds | Status |
+|--------|---------------|---------|-------|--------|--------|
+| Multinomial | `multinomial()` | `mu` ($K-1$ baseline-category linear predictors) | baseline-category logit (softmax) | $\{1, \ldots, K\}$ unordered categories | in-progress, fixed-effects-only (Design 83) |
+
+**Scope note (maintainer, Design 83).** Tier 1 admits fixed-effect recovery only;
+`latent()` / `unique()` / `indep()` / `dep()` / `phylo_*` / `spatial_*` / slope /
+cluster terms on a multinomial trait fail loud. The $K-1$-dimensional latent-scale
+correlation surface is **Tier 2, deferred** (open derivation, not a validation
+task) — reversible only by first defining a principled per-category or
+stacked-liability reporting convention. Name: `multinomial()` (not
+`categorical()`, which is the unordered missing-**predictor** imputation family,
+Design 68). Julia parity is a separate later arc.
+
 ### Hurdle / delta families
 
 **Status:** the standard `delta_lognormal()` and `delta_gamma()` routes are
@@ -345,8 +371,6 @@ NOT in the registry today:
 - **Compound Poisson-Gamma direct parameterisation** (the Tweedie
   `1 < p < 2` case is the existing path; a direct `cp_gamma`
   family is planned).
-- **Multinomial / softmax** for unordered-category response
-  (planned; post-CRAN).
 - **Custom user-supplied likelihood** via a `family_custom()`
   hook (reserved; would require a careful TMB-side density
   contract).
@@ -371,6 +395,9 @@ NOT in the registry today:
   fits.
 - `R/families.R` (or per-family `R/family-*.R`) — the constructor
   functions named in the tables above.
+- `docs/design/83-multinomial-response-family.md` — baseline-category logit /
+  softmax response family; Tier 1 fixed-effects-only scope and the Tier 2
+  latent-correlation deferral.
 - AGENTS.md Design Rules #1 and #4 — bind family-addition and
   likelihood-parameterisation changes to this registry.
 
@@ -393,6 +420,8 @@ NOT in the registry today:
   (is this family novel or replicating existing software?).
 - **Rose** audits the public scope statements ("nbinom2 is
   `claimed`; truncated_nbinom1 / mixture / gengamma constructors are
-  blocked constructor-only; multinomial is `planned`) for honesty.
+  blocked constructor-only; multinomial is in progress, fixed-effects-only per
+  Design 83 — its $K-1$-dimensional latent-scale correlation surface is Tier 2,
+  deferred and must never be advertised") for honesty.
 - **Ada** ratifies the per-family status when Phase 0B verifies
   evidence.

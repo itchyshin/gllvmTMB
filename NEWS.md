@@ -21,6 +21,17 @@ required for the main workflow.
   `vcv = K`.
 * Random slopes now support **lognormal** and **student** responses in addition to
   the previous set.
+* New **`multinomial()`** response family for an *unordered* categorical response
+  with three or more categories (baseline-category logit / softmax). It recovers the
+  per-category intercepts and slopes as contrasts against a reference category, and
+  `predict(type = "response")` returns per-category probabilities. Use
+  `multinomial(baseline = ...)` to choose the reference category. This release is
+  **fixed-effects only**: latent / random-effect terms on a multinomial trait are not
+  supported, and a cross-trait latent-scale correlation is undefined for a categorical
+  response (it spans several liability dimensions rather than one), so
+  `extract_correlations()` / `extract_Sigma()` decline a multinomial fit. A
+  two-category response is `binomial(link = "logit")`. For *ordered* categories use
+  `ordinal_probit()`.
 * The reader-facing covariance grammar crosses five correlation sources
   (`none`, `animal`, `phylo`, `spatial`, and `kernel`) with three taught modes:
   independent, dependent, and latent. The one-shared-variance ("scalar") case is

@@ -265,6 +265,48 @@
 ## returns its conditional mean exp(eta + sigma_eps^2 / 2), not the median
 ## exp(eta). fids whose mean is on the link scale (none here) pass through.
 ## Length(eta) MUST equal length(family_id) == length(link_id).
+## Per-category prediction for a multinomial (fid 16) fit (Design 83). The fit
+## stores K-1 category-contrast pseudo-trait rows per observation; reconstruct
+## the per-observation softmax over all K categories (baseline first).
+##   type = "response": K rows per observation, est = P(category); sums to 1.
+##   type = "link":     K-1 rows per observation, est = baseline-category logit.
+.predict_multinomial <- function(object, type) {
+  eta       <- as.numeric(object$report$eta)
+  gid       <- object$data[[".multinom_group_"]]
+  unit_lbl  <- if (!is.null(object$unit_col)) object$unit_col else "site"
+  trait_lbl <- if (!is.null(object$trait_col)) object$trait_col else "trait"
+  units     <- object$data[[unit_lbl]]
+  ptrait    <- as.character(object$data[[trait_lbl]])   # "<orig-trait>:<category>"
+  row_cat   <- sub("^.*:", "", ptrait)                  # non-baseline category label
+  orig_tr   <- sub(":[^:]*$", "", ptrait)               # original trait name
+  base      <- object$multinomial_meta$baseline
+
+  if (identical(type, "link")) {
+    out <- data.frame(units, orig_tr, row_cat, est = eta, stringsAsFactors = FALSE)
+    names(out) <- c(unit_lbl, trait_lbl, "category", "est")
+    rownames(out) <- NULL
+    return(out)
+  }
+
+  ## type == "response": per-observation softmax P(k) = exp(eta_k) / (1 + sum exp),
+  ## baseline category (eta = 0) prepended as 1 / (1 + sum exp).
+  ord   <- order(gid)                                   # stable, group-contiguous
+  parts <- lapply(split(ord, gid[ord]), function(rows) {
+    e     <- eta[rows]                                  # K-1 logits, category order
+    denom <- 1 + sum(exp(e))
+    data.frame(
+      units[rows[1L]], orig_tr[rows[1L]],
+      category = c(base, row_cat[rows]),
+      est = c(1, exp(e)) / denom,
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, parts)
+  names(out)[1:2] <- c(unit_lbl, trait_lbl)
+  rownames(out) <- NULL
+  out
+}
+
 .apply_linkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL) {
   n <- length(eta)
   out <- eta
@@ -1098,6 +1140,16 @@ simulate.gllvmTMB_multi <- function(
   ## know fall-back-to-Gaussian-on-link-scale is in play.
   uniq_fids <- unique(fids)
   supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 15L)
+  ## Tier-1 fence (Design 83): a multinomial (fid 16) response needs a
+  ## per-observation softmax draw; the Gaussian-on-link fallback below would
+  ## fabricate continuous data. Fail loud rather than return invalid draws.
+  if (16L %in% uniq_fids) {
+    cli::cli_abort(c(
+      "Family-aware {.fn simulate} is not yet implemented for {.fn multinomial} (family_id 16).",
+      "i" = "A categorical response requires a per-observation softmax category draw; the Gaussian-on-link fallback would fabricate continuous values.",
+      ">" = "Refusing rather than returning invalid draws (Design 83); the multinomial draw path is planned."
+    ), class = "gllvmTMB_simulate_multinomial_unsupported")
+  }
   unsupp <- setdiff(uniq_fids, supported)
   if (length(unsupp) > 0L) {
     cache_key <- "gllvmTMB.warned_simulate_unsupported_family"
@@ -1468,6 +1520,22 @@ predict.gllvmTMB_multi <- function(
   ...
 ) {
   type <- match.arg(type)
+  ## Tier-1 fence (Design 83): a multinomial() fit stores K-1 category-contrast
+  ## pseudo-trait rows; the response scale is a per-observation softmax over
+  ## categories, NOT a per-row inverse link. Returning per-pseudo-row values
+  ## would be silently wrong, so predict() is fenced for multinomial fits until
+  ## the per-category-probability path lands. Fixed-effect coefficients (the
+  ## Tier-1 estimand) are available via summary() / broom::tidy().
+  if (!is.null(object$tmb_data$family_id_vec) &&
+      any(object$tmb_data$family_id_vec == 16L)) {
+    if (!is.null(newdata)) {
+      cli::cli_abort(c(
+        "{.fn predict} with {.arg newdata} is not yet supported for {.fn multinomial} fits.",
+        "i" = "Training-row per-category predictions are available with the default {.code newdata = NULL}."
+      ), class = "gllvmTMB_multinomial_predict_newdata")
+    }
+    return(.predict_multinomial(object, type))
+  }
   if (is.null(newdata)) {
     eta <- as.numeric(object$report$eta)
     ## Use the user's actual column names (not hard-coded sdmTMB ecology labels)

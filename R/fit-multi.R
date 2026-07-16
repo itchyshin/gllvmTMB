@@ -281,9 +281,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       delta_gamma       = 13L,
       ordinal_probit    = 14L,
       nbinom1           = 15L,
+      multinomial       = 16L,
       cli::cli_abort(c(
         "Unsupported family: {.val {f$family}}.",
-        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}."
+        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code multinomial()}."
       ))
     )
     lid <- 0L
@@ -323,6 +324,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort("ordinal_probit: only the probit link is supported.")
     if (fid == 15L && !identical(f$link, "log"))
       cli::cli_abort("nbinom1: only the log link is currently supported.")
+    if (fid == 16L && !identical(f$link, "logit"))
+      cli::cli_abort("multinomial: only the baseline-category logit link is supported.")
     c(fid, lid)
   }
   ## Per-row family list (length = nrow(data)). Used downstream to read
@@ -1782,6 +1785,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- Generic random intercepts (1 | group) ----------------------------
   re_int_idx <- which(kinds == "re_int")
   use_re_int <- length(re_int_idx) > 0L
+  ## Tier-1 fence (Design 83 / FAM-20): a multinomial() response is
+  ## fixed-effects-only in this release. Reject any latent / random-effect /
+  ## structured term on a multinomial fit; the K-1-dimensional latent-scale
+  ## correlation surface is deferred (Tier 2). Fail loud rather than fit a
+  ## silently-wrong model.
+  if (any(family_id_vec == 16L) &&
+      (use_lv_B || use_rr_B || use_diag_B || use_spde ||
+       use_phylo_rr || use_phylo_slope || use_re_int)) {
+    cli::cli_abort(c(
+      "{.fn multinomial} is fixed-effects-only in this release (Tier 1).",
+      "x" = "A latent / random-effect / structured term was combined with a categorical (multinomial) response.",
+      "i" = "Fit the baseline-category logit with fixed effects only, e.g. {.code value ~ 0 + trait + (0 + trait):x}.",
+      ">" = "Latent-scale structure on categorical responses is deferred to a later release (Design 83, Tier 2)."
+    ))
+  }
   ## Each term gets its own group factor + variance component. We pack all
   ## random intercepts into a single flat vector u_re_int with per-term
   ## offsets so the cpp side can index them with `offset_t + group_id`.
@@ -2365,6 +2383,29 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ordinal_offset_per_trait  <- integer(n_traits)
   ordinal_K_per_trait       <- integer(n_traits)
   ordinal_init_log_incs     <- numeric(0)
+
+  ## multinomial (fid 16) metadata. C1a wires the TMB data with safe defaults so
+  ## every non-multinomial fit stays valid; C1b's expand_multinomial_response()
+  ## fills real values from the K-1 pseudo-trait expansion. multinom_K_per_trait
+  ## is K_t - 1 for a multinomial (pseudo-)trait, 0 otherwise; multinom_group_id
+  ## is the per-row observation-group index (-1 off-family). The `.multinom_group_`
+  ## data column, when present, is produced by the expansion pre-pass.
+  multinom_K_per_trait <- integer(n_traits)
+  multinom_group_id    <- if (".multinom_group_" %in% names(data)) {
+    as.integer(data[[".multinom_group_"]])
+  } else {
+    rep(-1L, n_obs)
+  }
+  ## multinom_K_per_trait(t) = K-1 for each multinomial (pseudo-)trait, read
+  ## from the `.multinom_L_` carrier the expansion writes on every fid-16 row.
+  if (".multinom_L_" %in% names(data) && any(family_id_vec == 16L)) {
+    for (.t in seq_len(n_traits)) {
+      .rows_t <- which(trait_id == (.t - 1L) & family_id_vec == 16L)
+      if (length(.rows_t) > 0L) {
+        multinom_K_per_trait[.t] <- as.integer(data[[".multinom_L_"]][.rows_t[1L]])
+      }
+    }
+  }
   if (any_ordinal_probit) {
     ordinal_rows <- family_id_vec == 14L
     ## Validate the observed ordinal responses only; masked rows carry the
@@ -3299,6 +3340,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     link_id_vec      = as.integer(link_id_vec),
     n_ordinal_cuts_per_trait = as.integer(n_ordinal_cuts_per_trait),
     ordinal_offset_per_trait = as.integer(ordinal_offset_per_trait),
+    multinom_group_id    = as.integer(multinom_group_id),
+    multinom_K_per_trait = as.integer(multinom_K_per_trait),
     use_phylo_rr     = as.integer(use_phylo_rr),
     d_phy            = as.integer(d_phy),
     n_aug_phy        = as.integer(n_aug_phy),

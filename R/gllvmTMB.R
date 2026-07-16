@@ -692,6 +692,14 @@ gllvmTMB <- function(
     data[[unit_obs]] <- factor(data[[unit_obs]])
   }
 
+  ## ---- Multinomial response expansion (Design 83) ----------------------
+  ## Expand a multinomial() response into K-1 category-contrast pseudo-trait
+  ## rows BEFORE desugar/parse so the ordinary trait grammar builds the
+  ## per-category fixed-effect design. No-op for non-multinomial families.
+  .mn_expand <- expand_multinomial_response(formula, data, family, trait_col = trait)
+  data   <- .mn_expand$data
+  family <- .mn_expand$family
+
   ## ---- Desugar brms-style sugar (phylo / gr / meta) ---------------------
   formula <- desugar_brms_sugar(formula, trait_col = trait)
 
@@ -800,6 +808,70 @@ gllvmTMB <- function(
       data_original = data_original
     )
   )
+}
+
+## Multinomial (baseline-category logit) response expansion (Design 83).
+## A multinomial() response over K unordered categories is expanded, BEFORE
+## desugar/parse, into K-1 contiguous "category-contrast" pseudo-trait rows per
+## observation: pseudo-trait `<trait>:<cat_k>` for k = 2..K, response set to the
+## 0/1 indicator "observed category == this contrast", and a per-observation
+## `.multinom_group_` id (0-based, contiguous). The ordinary
+## `0 + trait + (0 + trait):x` grammar then builds the (K-1) per-category
+## baseline-category logits, and the softmax likelihood (fid 16) is evaluated
+## once per observation-group in the TMB engine. Tier 1: fixed-effects only.
+expand_multinomial_response <- function(formula, data, family, trait_col) {
+  ## A single family object is itself a list, so test the class FIRST; only a
+  ## bare list-of-families (mixed-family API) is treated as a list.
+  fams <- if (inherits(family, "family")) list(family)
+          else if (is.list(family)) family
+          else list(family)
+  fam_is_mn <- vapply(fams, function(f) {
+    if (inherits(f, "family")) identical(f$family, "multinomial")
+    else identical(as.character(f)[1L], "multinomial")
+  }, logical(1))
+  if (!any(fam_is_mn)) {
+    return(list(data = data, family = family, expanded = FALSE))
+  }
+  if (!inherits(family, "family") && is.list(family) && length(family) > 1L) {
+    cli::cli_abort(c(
+      "{.fn multinomial} cannot yet be combined in a mixed-family {.code list(...)} (Tier 1, fixed-effects only).",
+      "i" = "Fit a single unordered categorical response with {.code family = multinomial()}."
+    ))
+  }
+  resp <- all.vars(formula[[2L]])
+  if (length(resp) != 1L || !(resp %in% names(data))) {
+    cli::cli_abort("multinomial(): the response must be a single categorical variable on the formula LHS.")
+  }
+  y_raw <- data[[resp]]
+  if (anyNA(y_raw)) {
+    cli::cli_abort("multinomial(): missing categorical responses are not supported in this release.")
+  }
+  yf   <- droplevels(if (is.factor(y_raw)) y_raw else factor(y_raw))
+  cats <- levels(yf)
+  K    <- length(cats)
+  if (K < 3L) {
+    cli::cli_abort(c(
+      "{.fn multinomial} requires an unordered response with >= 3 categories.",
+      "i" = "A 2-category response is {.fn binomial}; use {.code family = binomial(link = \"logit\")}."
+    ))
+  }
+  yint <- as.integer(yf)                       # observed category 1..K
+  L    <- K - 1L
+  n    <- nrow(data)
+  idx      <- rep(seq_len(n), each = L)        # original-row index per pseudo-row
+  contrast <- rep(seq_len(L), times = n)       # 1..L -> categories 2..K
+  new <- data[idx, , drop = FALSE]
+  orig_trait  <- as.character(data[[trait_col]])[idx]
+  orig_levels <- unique(as.character(data[[trait_col]]))
+  ps_levels   <- unlist(lapply(orig_levels, function(ol) paste0(ol, ":", cats[-1L])))
+  new[[trait_col]] <- factor(paste0(orig_trait, ":", cats[contrast + 1L]),
+                             levels = ps_levels)
+  new[[resp]] <- as.numeric(yint[idx] == (contrast + 1L))   # 0/1 one-hot indicator
+  new[[".multinom_group_"]] <- as.integer(idx - 1L)         # 0-based, contiguous
+  new[[".multinom_L_"]]     <- as.integer(L)                # K-1, per multinomial row
+  rownames(new) <- NULL
+  list(data = new, family = multinomial(), expanded = TRUE,
+       K = K, categories = cats, baseline = cats[1L])
 }
 
 drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,

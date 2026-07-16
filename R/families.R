@@ -790,3 +790,49 @@ ordinal_probit <- function(link = "probit") {
   class(x) <- c("ordinal_probit", "family")
   x
 }
+
+#' Multinomial (baseline-category logit) family
+#'
+#' Baseline-category logit / softmax family for a single \strong{unordered}
+#' categorical response with \eqn{K \ge 3} categories. For a categorical trait
+#' with categories \eqn{1, \ldots, K} and reference category 1, the model is
+#' \eqn{\eta_{k} = \beta_{0k} + x^\top \beta_k} for \eqn{k = 2, \ldots, K} with
+#' \eqn{\eta_1 \equiv 0}, and
+#' \eqn{\Pr(y = k) = \exp(\eta_k) / \sum_j \exp(\eta_j)} (softmax). It recovers
+#' the \eqn{(K-1)} per-category intercepts and slopes as contrasts against the
+#' reference category.
+#'
+#' @details
+#' This is a \strong{response} family and must not be confused with the
+#' \code{\link{categorical}()} constructor, which is a missing-\emph{predictor}
+#' imputation family. In this release the multinomial family is
+#' \strong{fixed-effects only}: latent / random-effect / structured terms
+#' (\code{latent()}, \code{unique()}, \code{indep()}, \code{phylo_*()},
+#' \code{spatial_*()}, random slopes, cluster) on a multinomial trait are not
+#' supported, because an unordered categorical response spans \eqn{K-1} latent
+#' liability dimensions rather than one (see the family registry / Design 83).
+#' A two-category response is exactly \code{binomial(link = "logit")} and is
+#' redirected there. See also \code{\link{ordinal_probit}()} for \emph{ordered}
+#' categories.
+#'
+#' @param link Character; only the baseline-category \code{"logit"} link is
+#'   supported (present for API symmetry).
+#' @param baseline Optional reference category (level of the response factor)
+#'   pinned at \eqn{\eta = 0}. \code{NULL} (default) uses the first factor level.
+#'
+#' @return A family object with class \code{c("multinomial", "family")}.
+#' @seealso [ordinal_probit()] for ordered categories; [categorical()] for the
+#'   missing-predictor imputation namesake.
+#' @export
+#' @examples
+#' multinomial()
+multinomial <- function(link = "logit", baseline = NULL) {
+  if (!identical(link, "logit"))
+    cli::cli_abort("multinomial() supports only the baseline-category logit link.")
+  stats <- stats::make.link("logit")
+  x <- list(family = "multinomial", link = "logit",
+            linkfun = stats$linkfun, linkinv = stats$linkinv,
+            baseline = baseline)
+  class(x) <- c("multinomial", "family")
+  x
+}

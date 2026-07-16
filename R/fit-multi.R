@@ -281,9 +281,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       delta_gamma       = 13L,
       ordinal_probit    = 14L,
       nbinom1           = 15L,
+      multinomial       = 16L,
       cli::cli_abort(c(
         "Unsupported family: {.val {f$family}}.",
-        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}."
+        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code multinomial()}."
       ))
     )
     lid <- 0L
@@ -323,6 +324,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort("ordinal_probit: only the probit link is supported.")
     if (fid == 15L && !identical(f$link, "log"))
       cli::cli_abort("nbinom1: only the log link is currently supported.")
+    if (fid == 16L && !identical(f$link, "logit"))
+      cli::cli_abort("multinomial: only the baseline-category logit link is supported.")
     c(fid, lid)
   }
   ## Per-row family list (length = nrow(data)). Used downstream to read
@@ -2424,6 +2427,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     as.integer(data[[".multinom_group_"]])
   } else {
     rep(-1L, n_obs)
+  }
+  ## multinom_K_per_trait(t) = K-1 for each multinomial (pseudo-)trait, read
+  ## from the `.multinom_L_` carrier the expansion writes on every fid-16 row.
+  if (".multinom_L_" %in% names(data) && any(family_id_vec == 16L)) {
+    for (.t in seq_len(n_traits)) {
+      .rows_t <- which(trait_id == (.t - 1L) & family_id_vec == 16L)
+      if (length(.rows_t) > 0L) {
+        multinom_K_per_trait[.t] <- as.integer(data[[".multinom_L_"]][.rows_t[1L]])
+      }
+    }
   }
   if (any_ordinal_probit) {
     ordinal_rows <- family_id_vec == 14L

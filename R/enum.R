@@ -18,7 +18,8 @@
   delta_lognormal   = 12L,
   delta_gamma       = 13L,
   ordinal_probit    = 14L,
-  nbinom1           = 15L
+  nbinom1           = 15L,
+  multinomial       = 16L
 )
 
 .valid_link <- c(

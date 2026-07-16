@@ -3,6 +3,10 @@
 **Status date:** 2026-07-16.
 **Decision owner:** maintainer (S. Nakagawa); re-scoped multinomial out of "post-CRAN" into the
 0.6 dev cycle, **fixed-effects-only (Tier 1)**.
+**FAM-20 status:** **`covered`** for the fixed-effect recovery route — promoted 2026-07-16 after a
+clean fresh 3-lens D-43 re-audit (likelihood / honesty / recovery all DONE) + maintainer sign-off.
+The latent-scale correlation surface stays **Tier 2, deferred**. Reader-facing article coverage
+(response-families) is a deliberate follow-up with the maintainer, not batched here.
 **Scope:** R-only this arc (Julia parity is a separate later arc).
 **Design panel (ultra-plan):** Gauss (TMB likelihood), Boole (R API), Noether (symbolic
 alignment / identifiability), Fisher + Emmy (inference / S3), Curie (recovery), Rose + Jason
@@ -189,11 +193,11 @@ S3 method assumes (methods co-index at `n = length(y)`). Each method therefore n
 | `predict(type="response")` | K per-category probabilities (long-in-category, sums to 1); point only | prediction intervals / prob SEs |
 | `predict(type="link")` | K−1 non-baseline etas (category 1 omitted) | SEs on etas |
 | `fitted()` (new method) | per-category probability; modal category via arg | — |
-| `simulate()` | per-group softmax draw → one category, expanded to the pseudo-row encoding; add `16L` to `supported` | family-aware `newdata` (M2/M3) |
+| `simulate()` | **not defined** → fails loud (typed `gllvmTMB_simulate_multinomial_unsupported`); the fid-16 softmax draw branch is **deferred** rather than fall back to Gaussian-on-link (which would fabricate data) | per-group softmax `simulate()` draw (deferred) |
 | `residuals()` | **not defined** → `status = "unsupported_family"` (nominal categories have no ordered CDF; the pseudo-rows are not independent) — exactly where fid 14 already lands | ordinal quantile residual / multinomial deviance residual, calibration-gated |
 | `confint()` / SE | **Wald** on per-category `b_fix` intercept + slope (free) | profile CI (runs but uncalibrated → **not advertised**) |
 | `print()` / `summary()` | `trait:cat_k[:x]` coefficient labels + a baseline advisory line | — |
-| `extract_correlations` / `_sigma` / `_repeatability` | **hard-refuse** a fid-16 trait (typed abort) | latent-scale trait correlation |
+| `extract_correlations` / `extract_Sigma` | **hard-refuse** a fid-16 trait (typed abort: `gllvmTMB_multinomial_correlation_undefined` / `gllvmTMB_multinomial_sigma_undefined`); `extract_repeatability` errors on the absent variance components | latent-scale trait correlation |
 
 ---
 

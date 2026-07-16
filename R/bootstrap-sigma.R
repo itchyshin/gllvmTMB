@@ -4,6 +4,25 @@
 ## refits the same formula, and accumulates percentile CIs across the
 ## requested levels and summaries.
 
+#' Accept a bootstrap refit's optimiser outcome.
+#'
+#' A refit counts as converged when its optimiser code is `0` **or** matches the
+#' base fit's own convergence code. A base fit with a reproducible non-zero code
+#' (e.g. `convergence == 1`) therefore does not flag every refit as failed --
+#' only genuinely worse or errored refits are excluded (issue #18, Ayumi Mizuno).
+#' No-op for the usual `convergence == 0` base fit.
+#'
+#' @param refit_convergence Integer optimiser code from the refit (`NULL`/`NA`
+#'   are not accepted).
+#' @param base_convergence Integer optimiser code from the base fit.
+#' @return `TRUE` if the refit's optimiser outcome is acceptable.
+#' @keywords internal
+#' @noRd
+.refit_convergence_acceptable <- function(refit_convergence, base_convergence) {
+  isTRUE(refit_convergence == 0L) ||
+    isTRUE(refit_convergence == base_convergence)
+}
+
 #' Reconstruct the full formula (fixed + covstructs) from a
 #' fitted gllvmTMB model. Used internally by `bootstrap_Sigma()` so the
 #' caller does not have to pass the original formula manually.
@@ -138,9 +157,12 @@
 #'     `fit$formula` and `fit$covstructs`, and forward the fit's
 #'     auxiliary structure (`phylo_vcv`, `phylo_tree`, `mesh`,
 #'     `lambda_constraint`) so each refit matches the original model.
-#'   \item Convergence: replicates whose refit fails or whose
-#'     optimiser does not return `convergence == 0` are counted in
-#'     `n_failed` and excluded from CIs.
+#'   \item Convergence: replicates whose refit errors, or whose optimiser
+#'     returns a code that is neither `0` nor the base fit's own convergence
+#'     code, are counted in `n_failed` and excluded from CIs. Accepting a
+#'     refit that reproduces the base fit's (possibly non-zero) code avoids
+#'     flagging every replicate of a base fit that itself converged to a
+#'     reproducible non-zero code (issue #18).
 #' }
 #'
 #' @export
@@ -299,6 +321,15 @@ bootstrap_Sigma <- function(
   ## namespace, not bootstrap_Sigma()'s calling env).
   extract_fn <- .extract_summaries
   na_fn <- .na_summaries
+  conv_ok_fn <- .refit_convergence_acceptable
+  ## Base-fit convergence code (issue #18, Ayumi Mizuno): the refit success test
+  ## below accepts a refit whose optimiser code is 0 OR reproduces the base
+  ## fit's own code, so a reproducible non-zero base (e.g. convergence == 1) does
+  ## not flag every refit as failed. Missing/odd -> 0L (the old strict rule).
+  base_convergence <- suppressWarnings(as.integer(fit$opt$convergence))
+  if (length(base_convergence) != 1L || is.na(base_convergence)) {
+    base_convergence <- 0L
+  }
   ## Auxiliary fit arguments to forward: phylo correlation matrix or
   ## tree, SPDE mesh, lambda_constraint, etc. Without these, refits of
   ## phylogenetic / spatial fits all fail.
@@ -350,7 +381,7 @@ bootstrap_Sigma <- function(
       is.null(out) ||
         !is.null(boot_err) ||
         !inherits(out, "gllvmTMB_multi") ||
-        !isTRUE(out$opt$convergence == 0L)
+        !conv_ok_fn(out$opt$convergence, base_convergence)
     ) {
       res <- na_fn(point_est)
       if (!is.null(boot_err)) {

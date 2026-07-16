@@ -338,3 +338,19 @@ test_that("bootstrap_Sigma stops when simulate() cannot unconditionally redraw a
     class = "gllvmTMB_bootstrap_conditional_sim"
   )
 })
+
+test_that(".refit_convergence_acceptable accepts refits matching a non-zero base code (issue #18)", {
+  f <- gllvmTMB:::.refit_convergence_acceptable
+  ## Clean base (code 0): only code-0 refits pass -- unchanged strict behaviour.
+  expect_true(f(0L, 0L))
+  expect_false(f(1L, 0L))
+  ## Reproducible non-zero base (code 1): a refit reproducing code 1 now passes
+  ## (the issue #18 fix); a code-0 refit still passes; a different/worse code
+  ## still fails, so genuine regressions are still counted in n_failed.
+  expect_true(f(1L, 1L))
+  expect_true(f(0L, 1L))
+  expect_false(f(2L, 1L))
+  ## Missing / malformed refit codes are never accepted (fail-closed).
+  expect_false(f(NULL, 1L))
+  expect_false(f(NA_integer_, 0L))
+})

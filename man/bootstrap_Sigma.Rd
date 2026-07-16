@@ -125,9 +125,12 @@ warning path.
 \code{fit$formula} and \code{fit$covstructs}, and forward the fit's
 auxiliary structure (\code{phylo_vcv}, \code{phylo_tree}, \code{mesh},
 \code{lambda_constraint}) so each refit matches the original model.
-\item Convergence: replicates whose refit fails or whose
-optimiser does not return \code{convergence == 0} are counted in
-\code{n_failed} and excluded from CIs.
+\item Convergence: replicates whose refit errors, or whose optimiser
+returns a code that is neither \code{0} nor the base fit's own convergence
+code, are counted in \code{n_failed} and excluded from CIs. Accepting a
+refit that reproduces the base fit's (possibly non-zero) code avoids
+flagging every replicate of a base fit that itself converged to a
+reproducible non-zero code (issue #18).
 }
 }
 

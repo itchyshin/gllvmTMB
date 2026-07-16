@@ -29,7 +29,13 @@ test_that("tweedie(p = ...) pins logit_p_tweedie (mapped off); free p is estimat
   free <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + x, data = df, unit = "unit", family = tweedie())))
   expect_equal(fix$opt$convergence, 0L)
-  ## p pinned -> logit_p_tweedie fully mapped off; free -> estimable.
+  ## p pinned -> logit_p_tweedie fully mapped off (present in env$map, all-NA).
   expect_true(all(is.na(as.integer(fix$tmb_obj$env$map$logit_p_tweedie))))
-  expect_false(all(is.na(as.integer(free$tmb_obj$env$map$logit_p_tweedie))))
+  ## free -> logit_p_tweedie is estimable. TMB represents a FREE parameter by
+  ## OMITTING it from env$map (NULL), not by listing it non-NA; so "mapped off"
+  ## means a present-and-all-NA map entry, and NULL means free. The old check
+  ## `all(is.na(as.integer(NULL)))` was vacuously TRUE and thus fragile.
+  free_map <- free$tmb_obj$env$map$logit_p_tweedie
+  expect_false(!is.null(free_map) && all(is.na(as.integer(free_map))))
+  expect_true("logit_p_tweedie" %in% names(free$tmb_obj$env$par))
 })

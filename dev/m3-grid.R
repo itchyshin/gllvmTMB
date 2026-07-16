@@ -824,10 +824,19 @@ m3_run_cell <- function(
   targets = c("psi", "Sigma_unit_diag"),
   n_boot = 30L,
   n_cores_boot = 1L,
+  ## Extra Sigma_unit_diag interval methods to co-compute from each fit, in
+  ## addition to the bootstrap. "profile_total" = genuine chi-square_1 profile on
+  ## V_t (the certificate candidate); "wald_t_logsd" = log-SD delta-Wald
+  ## diagnostic. Default empty -> unchanged bootstrap grid, zero overhead.
+  sigma_extra_methods = character(0),
   ci_level = M3_DEFAULT_NOMINAL,
   verbose = TRUE
 ) {
   stopifnot(family %in% M3_SUPPORTED_FAMILIES, d >= 1L, n_reps >= 1L)
+  sigma_extra_methods <- intersect(
+    sigma_extra_methods,
+    c("profile_total", "wald_t_logsd")
+  )
   rep_indices <- m3_rep_index_range(
     n_reps,
     rep_index_start = rep_index_start,
@@ -1355,6 +1364,104 @@ m3_run_cell <- function(
       }
     }
 
+    ## Extra Sigma_unit_diag interval methods, co-computed from the SAME fit as
+    ## the bootstrap: the genuine profile on V_t (`profile_total`, the
+    ## certificate candidate) and the log-SD delta-Wald diagnostic
+    ## (`wald_t_logsd`, never a certificate). Gated by `sigma_extra_methods` so
+    ## the default bootstrap grid is unchanged (zero overhead when empty). Rows
+    ## share the bootstrap-row schema; m3_summarise() splits by ci_method, so no
+    ## summariser change is needed.
+    if (
+      length(sigma_extra_methods) > 0L &&
+        "Sigma_unit_diag" %in% targets &&
+        inherits(fit, "gllvmTMB_multi")
+    ) {
+      route_bounds <- list()
+      if ("profile_total" %in% sigma_extra_methods) {
+        route_bounds[["profile_total"]] <- tryCatch(
+          gllvmTMB:::.profile_ci_total_variance(
+            fit,
+            tier = "unit",
+            level = ci_level
+          ),
+          error = function(e) NULL
+        )
+      }
+      if ("wald_t_logsd" %in% sigma_extra_methods) {
+        route_bounds[["wald_t_logsd"]] <- tryCatch(
+          gllvmTMB:::.wald_ci_total_variance_logsd(
+            fit,
+            tier = "unit",
+            level = ci_level
+          ),
+          error = function(e) NULL
+        )
+      }
+      for (meth in names(route_bounds)) {
+        rdf <- route_bounds[[meth]]
+        for (t in seq_len(n_traits)) {
+          sig_truth <- truth$diag_Sigma[t]
+          lo <- if (!is.null(rdf) && t <= nrow(rdf)) rdf$lower[t] else NA_real_
+          hi <- if (!is.null(rdf) && t <= nrow(rdf)) rdf$upper[t] else NA_real_
+          ci_avail <- isTRUE(!is.na(lo) && !is.na(hi))
+          covered_sig <- if (ci_avail) {
+            sig_truth >= lo && sig_truth <= hi
+          } else {
+            NA
+          }
+          rep_rows[[length(rep_rows) + 1L]] <- data.frame(
+            cell = cell_id,
+            family = family,
+            d = d,
+            rep = r,
+            trait_id = t,
+            truth_diag_sigma = sig_truth,
+            truth_psi = truth$psi[t],
+            est_diag_sigma = est_diag[t],
+            est_psi = est_psi[t],
+            est_phi_nbinom2 = est_phi_nbinom2[t],
+            est_link_residual = est_link_residual[t],
+            ci_prof_lo = NA_real_,
+            ci_prof_hi = NA_real_,
+            covered_prof = NA,
+            converged = TRUE,
+            target = "Sigma_unit_diag",
+            truth = sig_truth,
+            estimate = est_diag[t],
+            ci_method = meth,
+            ci_level = ci_level,
+            ci_lo = lo,
+            ci_hi = hi,
+            covered = covered_sig,
+            ci_available = ci_avail,
+            fit_converged = TRUE,
+            ci_failed = !ci_avail,
+            miss_side = m3_miss_side(sig_truth, lo, hi, covered_sig, ci_avail),
+            n_boot = NA_integer_,
+            n_boot_failed = NA_integer_,
+            n_cores_boot = n_cores_boot,
+            init_strategy = init_strategy,
+            start_method = m3_start_method_label(start_method),
+            start_method_jitter_sd = m3_start_method_jitter(start_method),
+            optimizer = optimizer,
+            n_init = n_init,
+            init_jitter = init_jitter,
+            fit_phi_mode = fit_phi_mode,
+            n_units = n_units,
+            n_traits = n_traits,
+            lambda_scale = lambda_scale,
+            psi_scale = psi_scale,
+            truth_phi = truth$nuisance$phi %||% NA_real_,
+            se = se,
+            seed_base = seed_base,
+            rep_seed = rep_seed,
+            runtime_s = rep_runtime,
+            stringsAsFactors = FALSE
+          )
+        }
+      }
+    }
+
     rep_runtime <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
     rows[[j]] <- m3_add_fit_health(do.call(rbind, rep_rows), fit_diag)
     rows[[j]]$runtime_s <- rep_runtime
@@ -1396,6 +1503,7 @@ m3_run_grid <- function(
   targets = c("psi", "Sigma_unit_diag"),
   n_boot = 30L,
   n_cores_boot = 1L,
+  sigma_extra_methods = character(0),
   ci_level = M3_DEFAULT_NOMINAL,
   parallel = FALSE
 ) {
@@ -1443,6 +1551,7 @@ m3_run_grid <- function(
           targets = targets,
           n_boot = n_boot,
           n_cores_boot = n_cores_boot,
+          sigma_extra_methods = sigma_extra_methods,
           ci_level = ci_level,
           verbose = FALSE
         )
@@ -1476,6 +1585,7 @@ m3_run_grid <- function(
         targets = targets,
         n_boot = n_boot,
         n_cores_boot = n_cores_boot,
+        sigma_extra_methods = sigma_extra_methods,
         ci_level = ci_level,
         verbose = TRUE
       )
@@ -2119,6 +2229,32 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
       } else {
         coverage_primary >= gate
       }
+      ## Certificate column: the genuine PROFILE on total `Sigma_unit_diag`
+      ## (`profile_total`) is the certificate candidate; `wald_t_logsd` is a
+      ## diagnostic only and never certifies, and `bootstrap` is the
+      ## under-covering baseline. Kept SEPARATE from `coverage_primary` so the
+      ## existing bootstrap gate is unchanged. D-43: default NOT-DONE until a
+      ## Rose panel confirms the earned cells.
+      coverage_certificate <- if (
+        identical(sub$target[1], "Sigma_unit_diag") &&
+          identical(sub$ci_method[1], "profile_total")
+      ) {
+        coverage
+      } else {
+        NA_real_
+      }
+      certificate_gate_status <- if (is.na(coverage_certificate)) {
+        "NOT_EVALUATED"
+      } else if (coverage_certificate >= gate) {
+        "PASS"
+      } else {
+        "FAIL"
+      }
+      passes_94pct_certificate <- if (is.na(coverage_certificate)) {
+        NA
+      } else {
+        coverage_certificate >= gate
+      }
       row <- data.frame(
         cell = sub$cell[1],
         family = sub$family[1],
@@ -2150,6 +2286,9 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         coverage_primary = coverage_primary,
         passes_94pct_primary = passes_94pct_primary,
         primary_gate_status = primary_gate_status,
+        coverage_certificate = coverage_certificate,
+        passes_94pct_certificate = passes_94pct_certificate,
+        certificate_gate_status = certificate_gate_status,
         coverage_prof = coverage_prof,
         passes_94pct_prof = passes_94pct_prof,
         profile_gate_status = profile_gate_status,

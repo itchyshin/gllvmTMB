@@ -337,3 +337,108 @@ test_that(".qchisq_threshold() rejects out-of-range or non-scalar level", {
     "must be a single value in (0, 1)", fixed = TRUE
   )
 })
+
+## ---- 9. Total-variance V_t: profile (Route A) + delta-Wald (Route B) ------
+## V_t = (Lambda Lambda^T)_tt + psi_t = diag(Sigma_unit)_tt, the loadings-
+## inclusive per-trait total variance. `.profile_ci_total_variance()` is the
+## certificate candidate (genuine chi-square_1 profile via `.profile_ci_via_refit`)
+## and `.wald_ci_total_variance_logsd()` is a log-SD delta-Wald DIAGNOSTIC. Both
+## flow through the single `.total_variance_spec()` builder so they target the
+## identical functional. NOTE: these are dev/re-score internals; they do NOT
+## touch the public confint bootstrap-fallback path asserted above -- do not
+## modify the "Profile on Sigma_unit (latent+unique tier) falls back to
+## bootstrap" test.
+
+test_that("total-variance routes: estimand identity, exact gradient, bracketing, guards", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- make_tiny_BW_fit()
+
+  prof <- gllvmTMB:::.profile_ci_total_variance(fit, tier = "unit")
+  wald <- gllvmTMB:::.wald_ci_total_variance_logsd(fit, tier = "unit")
+
+  ## (a) Estimand identity: Route A == Route B == diag(extract_Sigma total).
+  exs <- gllvmTMB::extract_Sigma(fit, level = "unit", link_residual = "none")
+  sig_diag <- unname(diag(as.matrix(exs$Sigma)))
+  expect_equal(prof$estimate, wald$estimate, tolerance = 1e-8)
+  expect_equal(prof$estimate, sig_diag, tolerance = 1e-6)
+
+  ## (b) Analytic gradient of V_t matches central finite differences (<1e-5).
+  spec <- gllvmTMB:::.total_variance_spec(fit, tier = "unit")
+  par0 <- fit$opt$par
+  for (t in seq_len(spec$n_traits)) {
+    ga <- spec$dV_dpar(par0, t)
+    gn <- numeric(length(par0))
+    h <- 1e-6
+    for (m in seq_along(par0)) {
+      pp <- par0
+      pp[m] <- pp[m] + h
+      pm <- par0
+      pm[m] <- pm[m] - h
+      gn[m] <- (spec$V_of_par(pp, t) - spec$V_of_par(pm, t)) / (2 * h)
+    }
+    expect_lt(max(abs(ga - gn)), 1e-5)
+  }
+
+  ## (c) Profile brackets the point estimate with finite, positive bounds.
+  ok <- !is.na(prof$lower) & !is.na(prof$upper)
+  expect_true(any(ok))
+  expect_true(all(prof$lower[ok] >= 0))
+  expect_true(all(prof$lower[ok] <= prof$estimate[ok] + 1e-8))
+  expect_true(all(prof$upper[ok] >= prof$estimate[ok] - 1e-8))
+
+  ## (d) Route B is a documented-status diagnostic; where "ok", bounds bracket.
+  valid_status <- c(
+    "ok", "wide_na", "boundary_na", "pdHess_false",
+    "no_sdreport", "cov_dim_mismatch", "se_nonfinite"
+  )
+  expect_true(all(wald$ci_status %in% valid_status))
+  wok <- wald$ci_status == "ok"
+  if (any(wok)) {
+    expect_true(all(wald$lower[wok] > 0))
+    expect_true(all(wald$upper[wok] > wald$lower[wok]))
+  }
+})
+
+test_that("profile V_t upper bound sits on the chi-square_1 deviance crossing", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- make_tiny_BW_fit()
+  spec <- gllvmTMB:::.total_variance_spec(fit, tier = "unit")
+
+  ## Use the most strongly identified trait (largest V_hat) so the upper bound
+  ## is a genuine crossing rather than the parameter ceiling.
+  V_hat <- vapply(
+    seq_len(spec$n_traits),
+    function(tt) spec$V_of_par(fit$opt$par, tt),
+    numeric(1)
+  )
+  t <- which.max(V_hat)
+  prof <- gllvmTMB:::.profile_ci_total_variance(fit, tier = "unit", trait_idx = t)
+  skip_if(is.na(prof$upper))
+  expect_gt(prof$upper, prof$estimate)
+
+  ## At the reported upper bound the constrained deviance should equal the
+  ## chi-square_1(0.95) threshold (this is exactly what the profile root-finds).
+  target_fn <- function(par, fit) {
+    V <- spec$V_of_par(par, t)
+    if (is.na(V) || V <= 0) {
+      return(NA_real_)
+    }
+    log(V)
+  }
+  target_grad <- function(par, fit) {
+    V <- spec$V_of_par(par, t)
+    if (is.na(V) || V <= 0) {
+      return(numeric(length(par)))
+    }
+    spec$dV_dpar(par, t) / V
+  }
+  crit <- gllvmTMB:::.qchisq_threshold(0.95)
+  mle <- as.numeric(fit$opt$objective)
+  nll_hi <- gllvmTMB:::.fix_and_refit_nll(
+    fit, target_fn, log(prof$upper), target_grad = target_grad
+  )
+  skip_if(is.na(nll_hi))
+  expect_lt(abs((nll_hi - mle) - crit), 0.1)
+})

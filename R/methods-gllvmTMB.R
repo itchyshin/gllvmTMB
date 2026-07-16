@@ -1098,6 +1098,16 @@ simulate.gllvmTMB_multi <- function(
   ## know fall-back-to-Gaussian-on-link-scale is in play.
   uniq_fids <- unique(fids)
   supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 15L)
+  ## Tier-1 fence (Design 83): a multinomial (fid 16) response needs a
+  ## per-observation softmax draw; the Gaussian-on-link fallback below would
+  ## fabricate continuous data. Fail loud rather than return invalid draws.
+  if (16L %in% uniq_fids) {
+    cli::cli_abort(c(
+      "Family-aware {.fn simulate} is not yet implemented for {.fn multinomial} (family_id 16).",
+      "i" = "A categorical response requires a per-observation softmax category draw; the Gaussian-on-link fallback would fabricate continuous values.",
+      ">" = "Refusing rather than returning invalid draws (Design 83); the multinomial draw path is planned."
+    ), class = "gllvmTMB_simulate_multinomial_unsupported")
+  }
   unsupp <- setdiff(uniq_fids, supported)
   if (length(unsupp) > 0L) {
     cache_key <- "gllvmTMB.warned_simulate_unsupported_family"
@@ -1468,6 +1478,20 @@ predict.gllvmTMB_multi <- function(
   ...
 ) {
   type <- match.arg(type)
+  ## Tier-1 fence (Design 83): a multinomial() fit stores K-1 category-contrast
+  ## pseudo-trait rows; the response scale is a per-observation softmax over
+  ## categories, NOT a per-row inverse link. Returning per-pseudo-row values
+  ## would be silently wrong, so predict() is fenced for multinomial fits until
+  ## the per-category-probability path lands. Fixed-effect coefficients (the
+  ## Tier-1 estimand) are available via summary() / broom::tidy().
+  if (!is.null(object$tmb_data$family_id_vec) &&
+      any(object$tmb_data$family_id_vec == 16L)) {
+    cli::cli_abort(c(
+      "{.fn predict} is not yet implemented for {.fn multinomial} fits.",
+      "i" = "A categorical response predicts per-category softmax probabilities (planned); the current per-row route would mislabel the K-1 category-contrast rows.",
+      ">" = "Read the fixed-effect baseline-category logits via {.fn summary} or {.code broom::tidy(fit)}."
+    ), class = "gllvmTMB_multinomial_predict_unsupported")
+  }
   if (is.null(newdata)) {
     eta <- as.numeric(object$report$eta)
     ## Use the user's actual column names (not hard-coded sdmTMB ecology labels)

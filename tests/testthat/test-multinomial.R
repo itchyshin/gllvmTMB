@@ -138,6 +138,21 @@ test_that("extract_correlations refuses a multinomial (categorical) trait", {
   )
 })
 
+test_that("predict() and simulate() fail loud on a multinomial fit (Tier 1)", {
+  skip_on_cran()
+  df  <- .make_multinomial(seed = 8L, n = 120L, K = 3L)
+  fit <- gllvmTMB(value ~ 0 + trait, data = df, family = multinomial(),
+                  trait = "trait", unit = "unit")
+  # per-row predict / per-row inverse link would mislabel the K-1 pseudo-rows.
+  expect_error(predict(fit),
+               class = "gllvmTMB_multinomial_predict_unsupported")
+  expect_error(predict(fit, type = "response"),
+               class = "gllvmTMB_multinomial_predict_unsupported")
+  # simulate must NOT fall back to Gaussian-on-link draws for a categorical resp.
+  expect_error(simulate(fit),
+               class = "gllvmTMB_simulate_multinomial_unsupported")
+})
+
 test_that("multinomial likelihood is invariant to the baseline category", {
   skip_on_cran()
   df <- .make_multinomial(seed = 6L, n = 250L, K = 3L)

@@ -72,6 +72,7 @@ Suggests:
     testthat (>= 3.0.0),
     tibble,
     tidyr,
+    tweedie,
     vegan,
     vdiffr,
     withr

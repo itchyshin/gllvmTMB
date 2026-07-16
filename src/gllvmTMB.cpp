@@ -235,6 +235,13 @@ Type objective_function<Type>::operator()()
   //                        cutpoints per trait beyond the fixed tau_1 = 0)
   //  15 = NB1 negative binomial type-1 (log link; Var = mu*(1+phi), linear
   //                        in the mean; per-trait phi via log_phi_nbinom1)
+  //  16 = multinomial (baseline-category logit / softmax; unordered K >= 3
+  //                        categories; fixed-effects-only). A categorical
+  //                        observation is expanded (R side) into K-1 contiguous
+  //                        "category-contrast" pseudo-rows sharing one
+  //                        multinom_group_id; the softmax density is evaluated
+  //                        ONCE at the group's anchor (first) row, NOT per row.
+  //                        See multinom_group_id / multinom_K_per_trait below.
   // For single-family fits the vector is filled with the same value.
   // sigma_eps is mapped off when no row has family_id_vec(o) in {0, 3}.
   // Ordinary Gamma (fid 4) has its own per-trait shape/CV parameter below.
@@ -266,6 +273,23 @@ Type objective_function<Type>::operator()()
   // traits are 0 and unused. Reference: Hadfield (2015) MEE 6:706-714, eqn 9.
   DATA_IVECTOR(n_ordinal_cuts_per_trait);
   DATA_IVECTOR(ordinal_offset_per_trait);
+
+  // multinomial (fid 16): baseline-category logit / softmax response. A
+  // categorical observation with K_t categories is expanded (R side) into
+  // K_t - 1 CONTIGUOUS "category-contrast" pseudo-rows sharing one
+  // multinom_group_id. The eta on contrast row j (j = 0..K_t-2) is the
+  // baseline-category logit for category j+2; baseline category 1 is pinned at
+  // eta = 0 (the implicit exp(0) = 1 term in the softmax normaliser). y on each
+  // contrast row is the 0/1 indicator "observed category == this contrast"
+  // (all zero => baseline observed). The grouped softmax density is evaluated
+  // ONCE at the group anchor (first) row over its L = K_t - 1 contrast rows;
+  // there is NO cutpoint or dispersion parameter (contrast ordinal fid 14).
+  //   multinom_group_id(o)    = observation-group index (>= 0) for a fid-16 row;
+  //                             -1 for every non-multinomial row. (length n_obs)
+  //   multinom_K_per_trait(t) = K_t - 1 for a multinomial (pseudo-)trait t;
+  //                             0 for non-multinomial traits. (length n_traits)
+  DATA_IVECTOR(multinom_group_id);
+  DATA_IVECTOR(multinom_K_per_trait);
 
   // Stage-35 / Stage-40: phylogenetic reduced-rank covstruct (PGLLVM).
   // For each factor k = 0..d_phy-1, g_phy.col(k) ~ N(0, A) where A is
@@ -2151,6 +2175,9 @@ Type objective_function<Type>::operator()()
       Type log_mu = eta_o;                         // log link
       Type log_v_minus_mu = log_mu + log_phi_nbinom1(t);
       ll += dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
+    } else if (fid == 16) {
+      error("gllvmTMB_multi: multinomial (fid 16) is evaluated as a grouped "
+            "softmax at its anchor row, not per-row via obs_loglik");
     } else {
       error("gllvmTMB_multi: unknown family_id");
     }
@@ -2298,6 +2325,38 @@ Type objective_function<Type>::operator()()
     // its weight after the family-dispatch block. Mirrors the
     // `tmp_ll *= weights_i(i)` pattern in src/gllvmTMB.cpp around line 1136.
     Type nll_before_row = nll;
+    // multinomial (fid 16): the K-1 category-contrast pseudo-rows of one
+    // categorical observation are contiguous and share multinom_group_id(o).
+    // Evaluate the grouped baseline-category softmax density ONCE, at the
+    // group's ANCHOR (first) row; the other K-2 rows are a no-op. This is the
+    // anti-double-counting contract (the loop otherwise sums rows
+    // independently). Baseline category 1 is the implicit eta = 0 normaliser
+    // term; y(o+j) is the 0/1 indicator "observed == contrast j".
+    if (family_id_vec(o) == 16) {
+      bool is_anchor = (o == 0) ||
+                       (multinom_group_id(o) != multinom_group_id(o - 1));
+      if (is_anchor && is_y_observed(o)) {
+        int t_mn = trait_id(o);
+        int L_mn = multinom_K_per_trait(t_mn);       // = K_t - 1 contrast rows
+        Type m_mn = Type(0.0);                        // baseline 0 seeds the max
+        for (int j = 0; j < L_mn; ++j) {
+          m_mn = CppAD::CondExpGt(eta(o + j), m_mn, eta(o + j), m_mn);
+        }
+        Type s_mn = exp(Type(0.0) - m_mn);            // baseline exp(0 - m)
+        for (int j = 0; j < L_mn; ++j) {
+          s_mn += exp(eta(o + j) - m_mn);
+        }
+        Type log_denom_mn = m_mn + log(s_mn);         // s >= 1 -> finite
+        Type num_mn = Type(0.0);
+        for (int j = 0; j < L_mn; ++j) {
+          num_mn += y(o + j) * eta(o + j);            // one-hot picks observed eta
+        }
+        Type logp_mn = num_mn - log_denom_mn;
+        Type log_tiny_mn = log(Type(1e-12));          // defensive AD-safe floor
+        logp_mn = CppAD::CondExpLt(logp_mn, log_tiny_mn, log_tiny_mn, logp_mn);
+        nll -= logp_mn;
+      }
+    }
     // The discrete-row GATE (design 68 sec.2 / drmTMB src/drmTMB.cpp:1163-1170).
     // For a row whose unit has a MISSING discrete predictor (mi_family in
     // {1, 2}, mi_observed_unit(unit) == 0), the per-state response density is
@@ -2314,11 +2373,13 @@ Type objective_function<Type>::operator()()
     // evaluate any family density on it (that is the sentinel-invariance
     // guarantee, design 59 sec.9). When all rows are observed (response="drop")
     // this guard is always true -> an exact no-op.
-    if (is_y_observed(o) && !mi_missing_row) {
+    if (family_id_vec(o) != 16 && is_y_observed(o) && !mi_missing_row) {
       // Ordinary path: observed-y row whose predictor value is NOT a missing
       // discrete x (observed-x units take this path with the true x in eta(o)).
+      // fid-16 rows are handled by the multinomial group branch above and skip
+      // this per-row family dispatch.
       nll -= obs_loglik(o, eta(o));
-    } else if (is_y_observed(o) && mi_missing_row) {
+    } else if (family_id_vec(o) != 16 && is_y_observed(o) && mi_missing_row) {
       // Discrete-SUM path (sec.3.3 steps 1-2): accumulate the per-state
       // response log-density into the unit's K-state accumulator. Weights enter
       // HERE per trait row (the outer weight scaling at the foot of the loop is

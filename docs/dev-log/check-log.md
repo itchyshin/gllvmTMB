@@ -45550,3 +45550,15 @@ gaussian/binomial join nbinom2 as recovery-only / approximately-calibrated. The
 widget carries an "approx-calibrated, not nominal-certified" note (no cell flip).
 Your next coverage move is the **BCa/studentized bootstrap** re-run (0.6+ methods
 lane) to close the ~3-4pt gap, not a widget flip.
+
+## 2026-07-16 — Lane A coverage arc LANDED + Ayumi #18 fixed (Claude)
+
+Coverage certificate arc COMPLETE (dev-only): genuine profile on V_t built + Totoro
+n_sim=1000 grid + D-43 panel → **scoped gaussian-n≥150 certificate defensible; binomial +
+nbinom2 + ordinal fenced**. NO public flip (with-Shinichi + needs n_sim≥5000 confirm).
+Committed `829c34cd`. Ayumi issue #18: two bootstrap_Sigma bugs fixed+pushed (`1dd7fcde`
+grouping-forwarding+fail-loud; `198ca67d` conditional-sim guard). 0.6→1.0 methods backlog +
+"Wald-CI-for-VCs = non-goal" policy in Mission Control. Full state:
+`docs/dev-log/handover/2026-07-16-claude-handover-coverage-landed.md`. Lane A files only
+(`R/profile-derived.R`, `R/bootstrap-sigma.R`, `dev/m3-grid.R`, `tests/testthat/test-{profile-ci,bootstrap-Sigma}.R`) —
+no overlap with Lane B (X_lv) or Lane C (categorical).

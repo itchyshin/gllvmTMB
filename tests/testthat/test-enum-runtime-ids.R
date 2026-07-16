@@ -15,7 +15,8 @@ test_that("internal enum mirrors multivariate runtime ids", {
     delta_lognormal   = 12L,
     delta_gamma       = 13L,
     ordinal_probit    = 14L,
-    nbinom1           = 15L
+    nbinom1           = 15L,
+    multinomial       = 16L
   )
   runtime_link <- c(logit = 0L, probit = 1L, cloglog = 2L)
 

@@ -77,6 +77,29 @@ test_that("multinomial (K = 4) recovers per-category intercepts and slopes", {
   }
 })
 
+test_that("multinomial (K = 3) recovers across 5 seeds (aggregate, band 0.30)", {
+  skip_on_cran()
+  truth <- c("traitmorph:2" = 0.5, "traitmorph:3" = -0.4,
+             "traitmorph:2:x" = 1.0, "traitmorph:3:x" = -0.8)
+  ests <- vapply(seq_len(5L), function(s) {
+    df  <- .make_multinomial(seed = 100L + s, n = 400L, K = 3L)
+    fit <- gllvmTMB(value ~ 0 + trait + (0 + trait):x, data = df,
+                    family = multinomial(), trait = "trait", unit = "unit")
+    if (fit$opt$convergence != 0L || !isTRUE(fit$sd_report$pdHess)) {
+      return(stats::setNames(rep(NA_real_, 4L), names(truth)))
+    }
+    sdf <- summary(fit$sd_report, "fixed")
+    e   <- sdf[grepl("b_fix", rownames(sdf)), "Estimate"]
+    stats::setNames(e, fit$X_fix_names)[names(truth)]
+  }, numeric(4L))
+  ok <- colSums(is.na(ests)) == 0L                 # honest-skip non-converged seeds
+  skip_if(sum(ok) < 4L, "fewer than 4 of 5 seeds converged PD")
+  seed_mean <- rowMeans(ests[, ok, drop = FALSE])
+  for (nm in names(truth)) {
+    expect_lt(abs(seed_mean[[nm]] - truth[[nm]]), 0.30)   # tight band on the aggregate
+  }
+})
+
 test_that("multinomial dispatches family_id 16 with a (K-1) coefficient block", {
   skip_on_cran()
   df  <- .make_multinomial(seed = 2L, n = 200L, K = 3L)

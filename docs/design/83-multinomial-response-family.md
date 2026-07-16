@@ -112,8 +112,13 @@ single scale to nominate. Categorical is therefore strictly harder than delta an
 **Consequences enforced in Tier 1:**
 - `multinomial()` declares its `link_residual_rule` as **N/A-by-design**;
   `link_residual_per_trait()` (`R/extract-sigma.R`) gains an explicit `fid == 16 → NA_real_` branch.
-- `extract_correlations()` / `extract_sigma()` / `extract_repeatability()` **hard-refuse** a fit
-  containing a categorical trait (a typed `cli_abort`, not a silent NA fall-through).
+- `extract_correlations()` **hard-refuses** a fit containing a categorical trait with a typed,
+  multinomial-specific `cli_abort` (`gllvmTMB_multinomial_correlation_undefined`). `extract_Sigma()`
+  returns `NULL` and `extract_repeatability()` errors on the absent variance components — both the
+  **generic** behaviour of *any* fixed-effects-only fit (a Tier-1 multinomial has no latent/variance
+  structure), so neither reaches a silent-wrong NA fall-through. (Corrected 2026-07-16 re-audit: the
+  export is `extract_Sigma`, capital S; there is no `extract_sigma`, and it returns `NULL` rather
+  than aborting — whether it should abort for consistency is an open design question.)
 - `latent()` / `unique()` / `indep()` / `dep()` / `phylo_*` / `spatial_*` / random-slope / cluster
   terms on a multinomial trait **fail loud** (a single Tier-1 covstruct choke-point), enforced by a
   dedicated fail-loud **test** — a fence that is only documented is not fenced.
@@ -202,21 +207,34 @@ from a known softmax DGP (K = 3 and K = 4), and is baseline-invariant.
 (K=3) / `600` (K=4); truth chosen so no category starves (min `p ≥ 0.17`). K=3 truth
 `β0 = (0.5, −0.4)`, `β = (1.0, −0.8)`.
 
-**Targets & bands.** Recover the `(K−1)` intercepts + slopes, **name-keyed** to `b_fix`, within
-**abs 0.30** (largest coefficient per cell **abs 0.40**) — the ordinal **fixed-effect** band
-(`test-ordinal-probit.R`), **NOT** the 2.5× variance band (there are no variance components in
-fixed-effects-only C2). One 5-seed aggregate cell: seed-mean within abs 0.30. Baseline-invariance:
-refit at a different reference → objective + fitted `p_ik` identical to **1e-6**. `K=2` byte-identity
-to `binomial(logit)` to **1e-6**.
+**Targets & bands (CALIBRATED 2026-07-16).** Recover the `(K−1)` intercepts + slopes, **name-keyed**
+to `b_fix`. The bands are no longer borrowed from ordinal by analogy — they are **calibrated by
+`dev/multinomial-recovery.R` (500 seeds)**. The softmax MLE is **unbiased** (|bias| ≤ 0.02 for every
+coefficient) with per-fit SD ≈ 0.15–0.23 at `n=300` and ≈ 0.11–0.16 at `n=600`. Because a single fit
+is a noisy draw (the old single-seed `n=300`/abs-0.40 cell passed only on a favourable seed — ~15% of
+seeds exceeded 0.40), the recovery cells assert **unbiased aggregate** recovery: the **seed-mean over
+20 fits at `n=600`** (SD ≈ 0.036) lies within **abs 0.15** — tighter than the retired band and
+essentially non-flaky (~4 SD margin). K=3 and K=4 both use this criterion; a supplementary 5-seed
+aggregate cell (seed-mean within abs 0.30) remains. Baseline-invariance: refit at a different
+reference → objective + fitted `p_ik` identical to **1e-6** (asserted). **`K=2` reduces to
+`binomial(logit)` by construction** — the single non-baseline contrast's 0/1 indicator likelihood
+*is* the binomial logit — but `multinomial()` **fences `K=2` (errors + redirects to `binomial()`)**,
+so there is no `K=2` multinomial fit to run a byte-identity test against; the softmax's correctness at
+every `K` (including that `K=2` limit) is instead established by the `nnet::multinom` cross-check
+(objective agreement to 1.66e-9, which subsumes `K=2`). The earlier "`K=2` byte-identity to 1e-6"
+line contradicted the `K=2` fence and is retired.
 
-**Test files.** `tests/testthat/test-multinomial-recovery.R` (K=3/K=4 recovery; K=2 reduction;
-invariance; 5-seed; mixed gaussian+poisson smoke); `test-multinomial-unit.R` (fast: fid==16 +
-`(K−1)`-block contract; **fail-loud latent-on-multinomial guard**; an optimiser-free reference-
-invariance math gate); `test-enum-runtime-ids.R` updated for id 16. `dev/multinomial-recovery.R`
-calibrates the bands over 20–50 seeds on **Totoro/DRAC** (never GitHub Actions — D-50).
-**Do NOT author `test-matrix-multinomial-unit.R`** — a "matrix" file is unit-tier covariance recovery,
-which needs random effects on a categorical trait = out of Tier-1 scope; record that row
-`blocked/planned`.
+**Test files (as implemented).** All multinomial tests live in a single
+`tests/testthat/test-multinomial.R` (K=3/K=4 calibrated aggregate recovery; the `K=2` error+redirect;
+baseline-invariance incl. explicit `baseline=`; fid==16 + `(K−1)`-block dispatch contract; the
+fail-loud latent/RE/mixed-family guards; per-category `predict`); `test-enum-runtime-ids.R` carries
+id 16. (The earlier plan named `test-multinomial-recovery.R` / `test-multinomial-unit.R` as separate
+files; they were consolidated into `test-multinomial.R` — those names are retired.)
+`dev/multinomial-recovery.R` calibrates the bands; it was run **locally** at 500 seeds (each fit
+~0.1s, so a few-hundred-seed sweep is ~2 min — this is *not* a Totoro/DRAC-scale campaign, which is
+reserved for thousands of slow fits / >100 cores; never GitHub Actions — D-50). A covariance-tier
+"matrix" recovery test is deliberately **not** authored — it needs random effects on a categorical
+trait = out of Tier-1 scope (that row stays `blocked/planned`).
 
 **The two-part draw trap (R4).** The inline `sample()` DGP does *not* depend on `simulate()`, so
 recovery is not blocked by it — but it **must match the C++ packing** (§4.5). Separately,

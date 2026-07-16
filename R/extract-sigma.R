@@ -620,6 +620,20 @@ extract_Sigma <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
+  ## Tier-1 fence (Design 83 / FAM-20): fail loud on an unordered categorical
+  ## (multinomial) trait rather than returning a silent NULL. A Tier-1
+  ## multinomial fit is fixed-effects-only (no latent term), so it carries no
+  ## latent covariance Sigma; and its intrinsic K-1 liability covariance is a
+  ## (K-1)x(K-1) matrix (Tier 2, deferred), not the trait-scale Sigma this
+  ## returns. Refuse loudly and consistently with extract_correlations().
+  if (!is.null(fit$tmb_data$family_id_vec) &&
+      any(fit$tmb_data$family_id_vec == 16L)) {
+    cli::cli_abort(c(
+      "A latent-scale {.code Sigma} is not defined for a {.fn multinomial} (categorical) trait.",
+      "i" = "{.fn multinomial} is fixed-effects-only in this release, so there is no latent covariance to extract; its intrinsic covariance is a (K-1)x(K-1) liability matrix (Design 83, Tier 2 deferred), not a trait-scale {.code Sigma}.",
+      ">" = "Read fixed-effect coefficients via {.fn summary} / {.fn tidy}."
+    ), class = "gllvmTMB_multinomial_sigma_undefined")
+  }
   ## Boundary translation (Design 02 Stage 2): canonical (unit /
   ## unit_obs / spatial / Omega) or legacy (B / W / spde / total) ->
   ## legacy / internal slot name; soft-deprecate legacy.

@@ -112,13 +112,13 @@ single scale to nominate. Categorical is therefore strictly harder than delta an
 **Consequences enforced in Tier 1:**
 - `multinomial()` declares its `link_residual_rule` as **N/A-by-design**;
   `link_residual_per_trait()` (`R/extract-sigma.R`) gains an explicit `fid == 16 → NA_real_` branch.
-- `extract_correlations()` **hard-refuses** a fit containing a categorical trait with a typed,
-  multinomial-specific `cli_abort` (`gllvmTMB_multinomial_correlation_undefined`). `extract_Sigma()`
-  returns `NULL` and `extract_repeatability()` errors on the absent variance components — both the
-  **generic** behaviour of *any* fixed-effects-only fit (a Tier-1 multinomial has no latent/variance
-  structure), so neither reaches a silent-wrong NA fall-through. (Corrected 2026-07-16 re-audit: the
-  export is `extract_Sigma`, capital S; there is no `extract_sigma`, and it returns `NULL` rather
-  than aborting — whether it should abort for consistency is an open design question.)
+- `extract_correlations()` and `extract_Sigma()` both **hard-refuse** a fit containing a categorical
+  trait with a typed, multinomial-specific `cli_abort`
+  (`gllvmTMB_multinomial_correlation_undefined` / `gllvmTMB_multinomial_sigma_undefined`).
+  `extract_repeatability()` errors on the absent variance components (the generic behaviour of any
+  fixed-effects-only fit). None reaches a silent-wrong NA fall-through. (The export is `extract_Sigma`,
+  capital S; there is no `extract_sigma`. Maintainer decision 2026-07-16: `extract_Sigma` now **aborts**
+  for consistency with `extract_correlations`, rather than the earlier silent `NULL`.)
 - `latent()` / `unique()` / `indep()` / `dep()` / `phylo_*` / `spatial_*` / random-slope / cluster
   terms on a multinomial trait **fail loud** (a single Tier-1 covstruct choke-point), enforced by a
   dedicated fail-loud **test** — a fence that is only documented is not fenced.

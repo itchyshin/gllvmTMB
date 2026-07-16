@@ -160,7 +160,7 @@ test_that("multinomial cannot be combined in a mixed-family list() (Tier 1)", {
   )
 })
 
-test_that("extract_correlations refuses a multinomial (categorical) trait", {
+test_that("extract_correlations / extract_Sigma refuse a multinomial (categorical) trait", {
   skip_on_cran()
   df  <- .make_multinomial(seed = 7L, n = 150L, K = 3L)
   fit <- gllvmTMB(value ~ 0 + trait + (0 + trait):x, data = df,
@@ -168,6 +168,11 @@ test_that("extract_correlations refuses a multinomial (categorical) trait", {
   expect_error(
     extract_correlations(fit),
     class = "gllvmTMB_multinomial_correlation_undefined"
+  )
+  # extract_Sigma hard-refuses too (was a silent NULL) — consistent fail-loud.
+  expect_error(
+    extract_Sigma(fit),
+    class = "gllvmTMB_multinomial_sigma_undefined"
   )
 })
 

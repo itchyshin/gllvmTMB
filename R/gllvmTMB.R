@@ -845,6 +845,9 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
       "i" = "Fit a single unordered categorical response with {.code family = multinomial()}."
     ))
   }
+  ## The user-requested reference category, if any (multinomial(baseline=)).
+  mn_family <- fams[[which(fam_is_mn)[1L]]]
+  requested_baseline <- if (inherits(mn_family, "family")) mn_family$baseline else NULL
   resp <- all.vars(formula[[2L]])
   if (length(resp) != 1L || !(resp %in% names(data))) {
     cli::cli_abort("multinomial(): the response must be a single categorical variable on the formula LHS.")
@@ -862,6 +865,20 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
       "i" = "A 2-category response is {.fn binomial}; use {.code family = binomial(link = \"logit\")}."
     ))
   }
+  ## Honour multinomial(baseline=): pin the requested category at eta = 0 by
+  ## making it the first factor level, so the K-1 contrasts run against it.
+  ## Equivalent to relevel()-ing the response before the fit.
+  if (!is.null(requested_baseline)) {
+    requested_baseline <- as.character(requested_baseline)
+    if (length(requested_baseline) != 1L || !(requested_baseline %in% cats)) {
+      cli::cli_abort(c(
+        "{.fn multinomial}: {.code baseline = {requested_baseline}} is not a category of the response.",
+        "i" = "Response categories are {.val {cats}}."
+      ))
+    }
+    yf   <- stats::relevel(yf, ref = requested_baseline)
+    cats <- levels(yf)
+  }
   yint <- as.integer(yf)                       # observed category 1..K
   L    <- K - 1L
   n    <- nrow(data)
@@ -877,8 +894,8 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
   new[[".multinom_group_"]] <- as.integer(idx - 1L)         # 0-based, contiguous
   new[[".multinom_L_"]]     <- as.integer(L)                # K-1, per multinomial row
   rownames(new) <- NULL
-  list(data = new, family = multinomial(), expanded = TRUE,
-       K = K, categories = cats, baseline = cats[1L])
+  list(data = new, family = multinomial(baseline = requested_baseline),
+       expanded = TRUE, K = K, categories = cats, baseline = cats[1L])
 }
 
 drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,

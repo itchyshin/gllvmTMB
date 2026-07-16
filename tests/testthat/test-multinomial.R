@@ -210,3 +210,37 @@ test_that("multinomial likelihood is invariant to the baseline category", {
   expect_equal(as.numeric(fit_ref1$opt$objective),
                as.numeric(fit_ref3$opt$objective), tolerance = 1e-4)
 })
+
+test_that("multinomial(baseline=) matches a manual relevel of the response", {
+  skip_on_cran()
+  df <- .make_multinomial(seed = 6L, n = 250L, K = 3L)
+  # baseline = "3" via the arg ...
+  fit_arg <- gllvmTMB(value ~ 0 + trait + (0 + trait):x, data = df,
+                      family = multinomial(baseline = "3"),
+                      trait = "trait", unit = "unit")
+  # ... must equal releveling the data so "3" is the first factor level.
+  df3 <- df
+  df3$value <- factor(df3$value, levels = c("3", "1", "2"))
+  fit_manual <- gllvmTMB(value ~ 0 + trait + (0 + trait):x, data = df3,
+                         family = multinomial(), trait = "trait", unit = "unit")
+
+  expect_equal(fit_arg$opt$convergence, 0L)
+  expect_equal(as.numeric(fit_arg$opt$objective),
+               as.numeric(fit_manual$opt$objective), tolerance = 1e-6)
+  # Coefficient contrasts (vs the shared "3" reference) coincide.
+  expect_equal(as.numeric(fit_arg$opt$par), as.numeric(fit_manual$opt$par),
+               tolerance = 1e-4)
+  # Metadata reports the requested reference as the pinned baseline.
+  expect_identical(fit_arg$multinomial_meta$baseline, "3")
+})
+
+test_that("multinomial(baseline=) rejects a category that does not exist", {
+  skip_on_cran()
+  df <- .make_multinomial(seed = 6L, n = 120L, K = 3L)
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + (0 + trait):x, data = df,
+             family = multinomial(baseline = "nonesuch"),
+             trait = "trait", unit = "unit"),
+    "not a category of the response"
+  )
+})

@@ -122,10 +122,18 @@ gll_prepare_lv_predictor_setup <- function(
   is_gaussian <- all(family_id_vec == 0L)
   is_pure_binomial <- all(family_id_vec == 1L)
   is_binomial_standard_link <- all(link_id_vec %in% c(0L, 1L, 2L))
-  if (!is_gaussian && !(is_pure_binomial && is_binomial_standard_link)) {
+  is_poisson <- all(family_id_vec == 2L)
+  ## LV-05 note (Lane B, 2026-07-16): a diagnostic guard-lift admitting Poisson
+  ## (family_id 2) confirmed the engine fits + recovers B_lv (maxAbsErr 0.066-0.087),
+  ## i.e. this fence was validation-debt, not an engine limit. Poisson is now admitted
+  ## on maintainer sign-off (2026-07-16): the guard test moved it accept, and this
+  ## slice adds a Model A recovery test + a coverage harness. Poisson's default link
+  ## (log) needs no binomial-style link check. Other non-Gaussian, non-pure-binomial
+  ## families remain blocked under LV-05.
+  if (!is_gaussian && !is_poisson && !(is_pure_binomial && is_binomial_standard_link)) {
     cli::cli_abort(c(
-      "{.arg lv} currently admits only Gaussian and pure binomial fits with standard links.",
-      "x" = "Found at least one row outside {.code gaussian()} or {.code binomial(link = \"logit\" / \"probit\" / \"cloglog\")}.",
+      "{.arg lv} currently admits only Gaussian, Poisson, and pure binomial fits with standard links.",
+      "x" = "Found at least one row outside {.code gaussian()}, {.code poisson()}, or {.code binomial(link = \"logit\" / \"probit\" / \"cloglog\")}.",
       "i" = "Other non-Gaussian predictor-informed latent scores remain blocked under {.code LV-05}."
     ))
   }

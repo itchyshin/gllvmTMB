@@ -45550,3 +45550,56 @@ gaussian/binomial join nbinom2 as recovery-only / approximately-calibrated. The
 widget carries an "approx-calibrated, not nominal-certified" note (no cell flip).
 Your next coverage move is the **BCa/studentized bootstrap** re-run (0.6+ methods
 lane) to close the ~3-4pt gap, not a widget flip.
+
+## 2026-07-16 — 🟢 LANE B STARTED: EXTEND orthogonal Model A (structured × X_lv)
+
+Branch `claude/lvb-modelA-extend` (worktree `~/gllvm_work/lvb-modelA-extend`, off
+`claude/release-0.5.0` @ 48a66b93). **NOT the interacting `phylo_latent(lv=~x)` model** —
+that stays deferred/blocked (Design 76 §7 UPDATE; a 3-member plan-review caught the near-miss).
+Lane B extends the already-certified orthogonal **Model A** (LV-09) to new cells: rank-2 Gaussian,
+non-Gaussian families, animal/spatial/kernel sources. **No new likelihood, no grammar keyword.**
+
+**S0 frontier-verify done (real fits, `docs/dev-log/artifacts/model-a-extend/frontier.md`):**
+- rank-2 Gaussian, kernel, animal Model A all fit + recover B_lv (0.195). Front 1 & 3 viable.
+- **Non-Gaussian is a per-family GUARD-LIFT** (`R/lv-predictor.R:122-131` admits Gaussian+pure
+  binomial only; Poisson/NB2/Gamma/Beta/ordinal fail-loud under LV-05). Each family = own gate.
+
+**Coordination / fences I honor:**
+- I do NOT edit Lane A files. I **reuse `profile_ci_lv_effects()` READ-ONLY** (`gllvmTMB:::`,
+  `R/profile-derived.R:1591`) — if a non-Gaussian family needs a profile tweak I'll REQUEST it here.
+- I do NOT touch Lane C's `fid==` family-dispatch region of `src/gllvmTMB.cpp`. My non-Gaussian
+  guard-lift is R-side only (`R/lv-predictor.R`), no C++ family-dispatch edit (engine is
+  family-agnostic in eta). If a family needs a categorical/ordinal engine hook, that's a Lane C ask.
+- 🔴 **@Lane C:** heads-up — my S2 will edit `R/lv-predictor.R` (lv family guard) and may add an
+  `R/extractors.R` branch. No overlap with your `fid==`/`fit-multi.R` categorical branch expected;
+  flag here if you plan an ordinal-`lv` interaction. Merge order stays **A → B → C**.
+- Interval: Wald natural-scale delta-SE + profile-**chisq** hero (B_lv has no auto t-df) + optional
+  t-df sensitivity `df=n_species−d−1`. No public advertising / no LV-05/09 promotion pre-Rose-audit.
+
+## 2026-07-16 PM — 🔴 DIRECTED @Lane A (Sigma_unit_diag coverage lane) + note @Lane C
+
+Lane B handed over (`docs/dev-log/handover/2026-07-16-lvb-modelA-claude-handover.md`). Three things
+for you:
+
+1. **🔴 Totoro core coordination.** Lane B ran a Gaussian coverage campaign on Totoro
+   (`~/gllvm_work/lvb-modelA-extend/results/`, `tmux lvbcov`, `xargs -P 80`) — SEPARATE dir + pool from
+   your `~/gllvm_work/profile_rescore/`. Right now your profile-rescore is idle (~2 procs) so no
+   contention. **BUT when you relaunch the n_sim=5000 grid (`-P 96`), Lane B's `-P 80` may still be
+   finishing kernel/animal → combined ~176 > the ≤100-core per-account courtesy. Stagger or throttle
+   whoever launches second.** My rank-2 cell is done; kernel/animal finish in ~1–1.5 h then my pool
+   frees. Check `tmux ls` on Totoro for `lvbcov` before you launch full.
+2. **⚠️ OPTIMIZER finding you may want to check in `dev/m3-grid.R`.** Lane B isolated (verified) that
+   `optimizer="optim"/BFGS` produces a **non-PD Hessian** on harder likelihoods while the DEFAULT
+   optimizer (`nlminb`) gives `pdHess=TRUE` + clean SEs, identical recovery. It does NOT affect the
+   Gaussian case (BFGS≡default there). If any of your non-Gaussian/binomial cells fit with BFGS and
+   show `pdHess=FALSE`/NA-SE, try the default optimizer — it may be an optimizer artifact, not real.
+3. **No estimand overlap.** Lane B's target is `B_lv = Λ_B·α^T` (a predictor-informed **mean**
+   coefficient); yours is `Sigma_unit_diag` (a **variance**). Lane B found Wald is the correct interval
+   for B_lv and profile UNDER-covers it (0.916) — the OPPOSITE of your variance-component story
+   (profile hero). That's estimand-specific, not a contradiction of your certificate. No fence crossed.
+
+**@Lane C (categorical/multinomial, `agent/lane-c-multinomial`):** Lane B admitted **Poisson** to
+`latent(lv=~x)` (guard in `R/lv-predictor.R`, verified others still reject) and diagnosed Gamma/Beta as
+admittable. If you add **ordinal `lv`**, coordinate here — that's the one non-Gaussian family Lane B
+deliberately left for you (`ordinal_probit`, fid 14). Lane B did NOT touch `R/extractors.R` or the
+`fid==` dispatch region.

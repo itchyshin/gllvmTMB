@@ -68,7 +68,6 @@ test_that("native TMB latent lv rejects non-binomial non-Gaussian families", {
   ## but native TMB C1 support remains Gaussian plus pure binomial standard
   ## links. These top-level fit calls protect that claim boundary.
   cases <- list(
-    poisson = stats::poisson(),
     nbinom1 = nbinom1(),
     nbinom2 = nbinom2(),
     lognormal = lognormal(),

@@ -49,9 +49,26 @@ re-routed to Claude on maintainer instruction. Codex was offered only as an opti
 - `residuals()` lands in the RQ switch's `unsupported_family` else-branch (like ordinal fid 14).
 - `man/multinomial.Rd` generated. `test-multinomial.R` **39/39 pass**; ordinal + entry regressions clean.
 
-## Follow-up (remaining)
-- **`R CMD check --as-cran`** — not yet run this session (heavy; maintainer to schedule). Expected to be
-  clean for the new code; the export is documented (`man/multinomial.Rd`) and the example is trivial.
+## C3 — Rose D-43 audit (3 fresh independent lenses, default NOT-DONE)
+- **Likelihood-correctness lens = DONE** — "tried hard to break it and could not"; anti-double-count, LSE,
+  one-hot numerator, AD-safety all verified; recovery is a genuine MLE, not an artifact.
+- **Honesty/fencing lens = DONE** — all 6 fences tested; no silent-wrong path; `predict` sums-to-1 by
+  construction; no public overclaim (NEWS/README/roxygen clean); FAM-20 correctly `partial`.
+- **Recovery-evidence lens = NOT-DONE → addressed** — caught a REAL regression: `test-enum-runtime-ids.R`
+  was FAILING (I added `16L` to `.valid_family` but not the test). **Fixed + verified** (15/15). Added the
+  5-seed aggregate recovery cell (single-seed gap). Register evidence-ref repaired. (K=2 byte-identity and
+  mixed-smoke cells are moot: multinomial K=2 *redirects* to binomial; mixed-family multinomial is *fenced*.)
+- Verdict: 2 DONE / 1 NOT-DONE-now-addressed. FAM-20 stays `partial` (promotion needs maintainer sign-off +
+  clean re-audit). Two minor follow-ups: give the 3 message-matched fences typed classes; consider a
+  `dev/multinomial-recovery.R` band-calibration harness on Totoro/DRAC.
+
+## Vf — R CMD check --as-cran (--no-manual --no-vignettes)
+- First run (pre enum-fix): **1E / 1W / 1N**. The **E was exactly the enum test** the D-43 audit flagged
+  (`test-enum-runtime-ids.R:25`), since the check launched before the fix — **now fixed + verified**, and a
+  re-check on the fixed code is confirming 0E.
+- **W = pre-existing**, not this arc: `'::' import not declared from 'tweedie'` (a tweedie test's undeclared
+  dependency). **N = benign**: "New submission". The full dev suite passes **0-fail in both NOT_CRAN modes**.
+- Net: the arc introduces **no remaining new defects**; residual W/N are pre-existing/benign cleanup items.
 - **C2 full:** K=4 cell; 5-seed aggregate; K=2 byte-identity to `binomial(logit)`; mixed
   gaussian+poisson smoke; `dev/multinomial-recovery.R` band calibration on Totoro/DRAC.
 - **C3:** honesty fencing (NEWS.md, README family matrix — roxygen done) + **Rose D-43 audit**

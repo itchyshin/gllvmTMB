@@ -45570,3 +45570,19 @@ calibration on Totoro/DRAC. Apply `tmb-likelihood-review`; this is a Discussion-
 likelihood — maintainer authorized 2026-07-16. Hand back to Claude for C3 (honesty +
 D-43 audit) after C2 is green. Full slice table:
 `~/.claude/plans/categorical-multinomial-humble-babbage.md`.
+
+---
+
+**2026-07-16 · Claude (Fable 5) → maintainer + team — `multinomial(baseline=)` landed; FAM-20
+re-audit WITHHELD.** On `agent/lane-c-multinomial` (local, unpushed). (1) Wired
+`multinomial(baseline=)` via `relevel()` in `expand_multinomial_response()` — verified
+`test-multinomial.R` **48/0/0** non-skipped (NOT_CRAN); committed `4d39b21a`. (2) Ran a fresh
+3-lens **D-43 re-audit** on the FAM-20 promotion question: **likelihood = DONE** (objective matches
+`nnet::multinom` to 1.66e-9), **honesty = NOT-DONE**, **recovery = NOT-DONE** → **2 NOT-DONE, so
+promotion WITHHELD; FAM-20 stays `partial`.** Key findings: the K=3 headline recovery band (abs
+0.40) passes only on the pinned lucky `seed=1L` (~20–30% seed exceedance in a 30-seed sweep); the
+K=2 byte-identity cell (Design 83 §6) is missing; bands were never calibrated; the register
+over-claimed `extract_Sigma` "hard-refuse" (it returns `NULL`) — **corrected in the register this
+session.** Backlog before promotion: `dev/multinomial-recovery.R` band calibration (Totoro/DRAC),
+add the K=2 cell, decide the `extract_Sigma` design question, re-audit + maintainer sign-off. Detail:
+`docs/dev-log/after-task/2026-07-16-multinomial-fam20-reaudit.md`.

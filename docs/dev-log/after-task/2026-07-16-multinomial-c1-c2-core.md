@@ -69,6 +69,12 @@ re-routed to Claude on maintainer instruction. Codex was offered only as an opti
 - **W = pre-existing**, not this arc: `'::' import not declared from 'tweedie'` (a tweedie test's undeclared
   dependency). **N = benign**: "New submission". The full dev suite passes **0-fail in both NOT_CRAN modes**.
 - Net: the arc introduces **no remaining new defects**; residual W/N are pre-existing/benign cleanup items.
+- **Re-check on the fixed code CONFIRMED: 0 ERRORS / 1 WARNING / 1 NOTE.** The 0E confirms the enum fix
+  cleared the only arc-caused defect. The 1W (`tweedie` undeclared dep in a tweedie test) is pre-existing
+  and trivially fixable by adding `tweedie` to `DESCRIPTION` Suggests (out-of-arc cleanup — not done to keep
+  the diff surgical / avoid a shared-file conflict; offered to the maintainer). The 1N ("New submission") is
+  inherent to a first submission. Literal "0E/0W/0N" is therefore blocked only by items this arc did not
+  introduce.
 - **C2 full:** K=4 cell; 5-seed aggregate; K=2 byte-identity to `binomial(logit)`; mixed
   gaussian+poisson smoke; `dev/multinomial-recovery.R` band calibration on Totoro/DRAC.
 - **C3:** honesty fencing (NEWS.md, README family matrix — roxygen done) + **Rose D-43 audit**

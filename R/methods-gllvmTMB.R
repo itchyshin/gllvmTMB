@@ -265,6 +265,48 @@
 ## returns its conditional mean exp(eta + sigma_eps^2 / 2), not the median
 ## exp(eta). fids whose mean is on the link scale (none here) pass through.
 ## Length(eta) MUST equal length(family_id) == length(link_id).
+## Per-category prediction for a multinomial (fid 16) fit (Design 83). The fit
+## stores K-1 category-contrast pseudo-trait rows per observation; reconstruct
+## the per-observation softmax over all K categories (baseline first).
+##   type = "response": K rows per observation, est = P(category); sums to 1.
+##   type = "link":     K-1 rows per observation, est = baseline-category logit.
+.predict_multinomial <- function(object, type) {
+  eta       <- as.numeric(object$report$eta)
+  gid       <- object$data[[".multinom_group_"]]
+  unit_lbl  <- if (!is.null(object$unit_col)) object$unit_col else "site"
+  trait_lbl <- if (!is.null(object$trait_col)) object$trait_col else "trait"
+  units     <- object$data[[unit_lbl]]
+  ptrait    <- as.character(object$data[[trait_lbl]])   # "<orig-trait>:<category>"
+  row_cat   <- sub("^.*:", "", ptrait)                  # non-baseline category label
+  orig_tr   <- sub(":[^:]*$", "", ptrait)               # original trait name
+  base      <- object$multinomial_meta$baseline
+
+  if (identical(type, "link")) {
+    out <- data.frame(units, orig_tr, row_cat, est = eta, stringsAsFactors = FALSE)
+    names(out) <- c(unit_lbl, trait_lbl, "category", "est")
+    rownames(out) <- NULL
+    return(out)
+  }
+
+  ## type == "response": per-observation softmax P(k) = exp(eta_k) / (1 + sum exp),
+  ## baseline category (eta = 0) prepended as 1 / (1 + sum exp).
+  ord   <- order(gid)                                   # stable, group-contiguous
+  parts <- lapply(split(ord, gid[ord]), function(rows) {
+    e     <- eta[rows]                                  # K-1 logits, category order
+    denom <- 1 + sum(exp(e))
+    data.frame(
+      units[rows[1L]], orig_tr[rows[1L]],
+      category = c(base, row_cat[rows]),
+      est = c(1, exp(e)) / denom,
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, parts)
+  names(out)[1:2] <- c(unit_lbl, trait_lbl)
+  rownames(out) <- NULL
+  out
+}
+
 .apply_linkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL) {
   n <- length(eta)
   out <- eta
@@ -1486,11 +1528,13 @@ predict.gllvmTMB_multi <- function(
   ## Tier-1 estimand) are available via summary() / broom::tidy().
   if (!is.null(object$tmb_data$family_id_vec) &&
       any(object$tmb_data$family_id_vec == 16L)) {
-    cli::cli_abort(c(
-      "{.fn predict} is not yet implemented for {.fn multinomial} fits.",
-      "i" = "A categorical response predicts per-category softmax probabilities (planned); the current per-row route would mislabel the K-1 category-contrast rows.",
-      ">" = "Read the fixed-effect baseline-category logits via {.fn summary} or {.code broom::tidy(fit)}."
-    ), class = "gllvmTMB_multinomial_predict_unsupported")
+    if (!is.null(newdata)) {
+      cli::cli_abort(c(
+        "{.fn predict} with {.arg newdata} is not yet supported for {.fn multinomial} fits.",
+        "i" = "Training-row per-category predictions are available with the default {.code newdata = NULL}."
+      ), class = "gllvmTMB_multinomial_predict_newdata")
+    }
+    return(.predict_multinomial(object, type))
   }
   if (is.null(newdata)) {
     eta <- as.numeric(object$report$eta)

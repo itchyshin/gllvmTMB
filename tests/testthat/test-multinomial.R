@@ -138,16 +138,34 @@ test_that("extract_correlations refuses a multinomial (categorical) trait", {
   )
 })
 
-test_that("predict() and simulate() fail loud on a multinomial fit (Tier 1)", {
+test_that("predict(type='response') returns per-category softmax probabilities", {
   skip_on_cran()
-  df  <- .make_multinomial(seed = 8L, n = 120L, K = 3L)
+  df  <- .make_multinomial(seed = 8L, n = 200L, K = 3L)
+  fit <- gllvmTMB(value ~ 0 + trait + (0 + trait):x, data = df,
+                  family = multinomial(), trait = "trait", unit = "unit")
+  pr  <- predict(fit, type = "response")
+  # K = 3 categories per observation; probabilities sum to 1 within each unit.
+  expect_equal(nrow(pr), 200L * 3L)
+  expect_true(all(c("category", "est") %in% names(pr)))
+  sums <- tapply(pr$est, as.character(pr$unit), sum)
+  expect_true(all(abs(sums - 1) < 1e-8))
+  expect_true(all(pr$est >= 0 & pr$est <= 1))
+  # calibration: mean predicted P per category ~ observed category frequency.
+  mean_p <- tapply(pr$est, pr$category, mean)
+  emp    <- prop.table(table(df$value))
+  expect_true(all(abs(mean_p[names(emp)] - as.numeric(emp)) < 0.1))
+  # link scale returns the K-1 non-baseline logits (2 per observation).
+  lk <- predict(fit, type = "link")
+  expect_equal(nrow(lk), 200L * 2L)
+})
+
+test_that("predict(newdata=) and simulate() fail loud on a multinomial fit", {
+  skip_on_cran()
+  df  <- .make_multinomial(seed = 9L, n = 100L, K = 3L)
   fit <- gllvmTMB(value ~ 0 + trait, data = df, family = multinomial(),
                   trait = "trait", unit = "unit")
-  # per-row predict / per-row inverse link would mislabel the K-1 pseudo-rows.
-  expect_error(predict(fit),
-               class = "gllvmTMB_multinomial_predict_unsupported")
-  expect_error(predict(fit, type = "response"),
-               class = "gllvmTMB_multinomial_predict_unsupported")
+  expect_error(predict(fit, newdata = df),
+               class = "gllvmTMB_multinomial_predict_newdata")
   # simulate must NOT fall back to Gaussian-on-link draws for a categorical resp.
   expect_error(simulate(fit),
                class = "gllvmTMB_simulate_multinomial_unsupported")

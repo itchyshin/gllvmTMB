@@ -777,7 +777,7 @@ gllvmTMB <- function(
       call           = match.call()
     ))
   }
-  gllvmTMB_multi_fit(
+  .fit <- gllvmTMB_multi_fit(
     parsed,
     data,
     trait = trait,
@@ -808,6 +808,13 @@ gllvmTMB <- function(
       data_original = data_original
     )
   )
+  ## Attach multinomial category metadata (baseline label + category order) so
+  ## predict(type = "response") can reconstruct per-category softmax
+  ## probabilities from the K-1 pseudo-trait rows.
+  if (isTRUE(.mn_expand$expanded)) {
+    .fit$multinomial_meta <- .mn_expand[c("K", "categories", "baseline")]
+  }
+  .fit
 }
 
 ## Multinomial (baseline-category logit) response expansion (Design 83).

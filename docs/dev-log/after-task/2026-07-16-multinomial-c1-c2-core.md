@@ -69,7 +69,10 @@ re-routed to Claude on maintainer instruction. Codex was offered only as an opti
 - **W = pre-existing**, not this arc: `'::' import not declared from 'tweedie'` (a tweedie test's undeclared
   dependency). **N = benign**: "New submission". The full dev suite passes **0-fail in both NOT_CRAN modes**.
 - Net: the arc introduces **no remaining new defects**; residual W/N are pre-existing/benign cleanup items.
-- **Re-check on the fixed code CONFIRMED: 0 ERRORS / 1 WARNING / 1 NOTE.** The 0E confirms the enum fix
+- **FINAL R CMD check --as-cran: 0 ERRORS / 0 WARNINGS / 1 NOTE.** The enum fix cleared the E; the
+  `tweedie` Suggests declaration cleared the pre-existing W; the sole remaining N is "New submission",
+  which is structurally inherent to any first `--as-cran` run and is not a defect. Clean close.
+- (Superseded) Re-check on the fixed code CONFIRMED: 0 ERRORS / 1 WARNING / 1 NOTE. The 0E confirms the enum fix
   cleared the only arc-caused defect. The 1W (`tweedie` undeclared dep in a tweedie test) is pre-existing
   and trivially fixable by adding `tweedie` to `DESCRIPTION` Suggests (out-of-arc cleanup — not done to keep
   the diff surgical / avoid a shared-file conflict; offered to the maintainer). The 1N ("New submission") is

@@ -39,12 +39,19 @@ re-routed to Claude on maintainer instruction. Codex was offered only as an opti
   it does not support (400 error), and fails even with no model flag. Not run; needs a CLI upgrade or a
   supported model. Self-review stands in the interim.
 
-## Follow-up (remaining, not this session)
-- **C1c — S3 surface:** `predict(type="response")` per-category probabilities; `predict("link")` K−1
-  etas; `fitted.gllvmTMB_multi`; `simulate()` group-blocked softmax draw (add `16L` to `supported`);
-  `residuals()` → `unsupported_family`; **`extract_correlations()`/`extract_sigma()` hard-refusal** for
-  a fid-16 trait (currently a fixed-effects-only fit has no covariance tier, so it errors/empties, but an
-  explicit typed refusal is cleaner and is a stated fence).
+## C1c — S3 surface (DONE, 2026-07-16, same session)
+- **`predict(type="response")`** returns per-category softmax probabilities (K rows/obs, sum to 1);
+  **`predict(type="link")`** returns the K−1 baseline-category logits. `.predict_multinomial()` uses the
+  `multinomial_meta` (baseline label + category order) now attached to the fit. Verified: sum-to-1,
+  calibration vs empirical category frequencies, correct row counts.
+- **`extract_correlations()`** hard-refuses a fid-16 trait (typed `gllvmTMB_multinomial_correlation_undefined`).
+- **`predict(newdata=)`** and **`simulate()`** fail loud (typed conditions) — no Gaussian-on-link fallback.
+- `residuals()` lands in the RQ switch's `unsupported_family` else-branch (like ordinal fid 14).
+- `man/multinomial.Rd` generated. `test-multinomial.R` **39/39 pass**; ordinal + entry regressions clean.
+
+## Follow-up (remaining)
+- **`R CMD check --as-cran`** — not yet run this session (heavy; maintainer to schedule). Expected to be
+  clean for the new code; the export is documented (`man/multinomial.Rd`) and the example is trivial.
 - **C2 full:** K=4 cell; 5-seed aggregate; K=2 byte-identity to `binomial(logit)`; mixed
   gaussian+poisson smoke; `dev/multinomial-recovery.R` band calibration on Totoro/DRAC.
 - **C3:** honesty fencing (NEWS.md, README family matrix — roxygen done) + **Rose D-43 audit**

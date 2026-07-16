@@ -40,6 +40,29 @@ maintainer commits Lane A's work:**
 
 ## 2. The work menu (to ultra-plan — ranked by leverage)
 
+### Item 0 — 🎯 THE interval-coverage item: re-score `Sigma_unit_diag` on the PROFILE / t-df route (NOT bootstrap/BCa)
+**This is the actual certificate path and supersedes any "BCa" idea.** The n_sim=2000 Totoro grid
+(done 2026-07-15) measured coverage on the **percentile-bootstrap** route → gaussian ~0.91,
+binomial ~0.84, misses **4–11:1 truth-above-upper**. Direct check: the point estimate is
+**near-unbiased** (ML Σ̂/truth 1.007, REML 1.014 at n=150 — REML barely moves it), so it's the
+**right-skew** of a bounded LOCATION-axis variance component, NOT ML mean-bias and NOT Laplace
+(gaussian Laplace is exact). **The fix is already-decided doctrine — DO NOT re-derive it:**
+**[[Small-sample variance-component interval corrections — cross-repo map]]** (`~/shinichi-brain/Shinichi/methods/`),
+`LEARNINGS-archive.md:38–39`, gllvmTMB#565, D-12, Design 73/75.
+**Task:** re-score the SAME core cells (gaussian + binomial) on **(a) the direct log-SD PROFILE
+route** (already "covered" per Design 73) and **(b) Wald on the log-SD scale with a t-quantile on
+`g−1` (Satterthwaite/KR) df** — per-target (t helps location VCs, do NOT apply to dispersion φ;
+ρ→Fisher-z). Compare to the bootstrap column already in `~/gllvm_work/grid2000/`. Expectation
+(from drmTMB): profile lands near nominal (0.948–0.956 at adequate g). This is the "profile / t-df"
+columns of the **2026-07-06 coverage-mapping campaign** — the grid we ran is its "bootstrap" column.
+**Where.** `R/profile-ci.R` / `profile_targets()` (direct log-SD profile); `R/extract-correlations.R`
+(Fisher-z pattern to mirror for log-SD); the m3 scorer `dev/m3-grid.R` currently routes
+`Sigma_unit_diag` to bootstrap — add profile + t-df routes. ⚠️ `dev/m3-grid.R` is Lane-A-modified →
+sequence after §1(A).
+**Effort:** the headline methods slice; ~1 session. **BCa is explicitly OFF the table** (last resort).
+
+
+
 ### Item 1 — 🥇 Shared-dispersion (`disp.formula` / `disp_group=`): the nbinom2 fix
 **Goal.** Let the NB2 dispersion `phi` be **pooled/grouped across traits** instead of one free
 `phi` per trait, mirroring gllvm's `disp.formula`. This is the literature-endorsed remedy for the

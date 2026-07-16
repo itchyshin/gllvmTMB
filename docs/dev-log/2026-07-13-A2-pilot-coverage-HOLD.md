@@ -141,13 +141,22 @@ gate**; 11/16 below the provisional floor. Threshold counts (signal>0): ≥0.95:
 - ✅ **"Gaussian bug fixed; intervals now approximately calibrated (~0.91) with correct
   n-direction" — EARNED** (0.54 → 0.91, verified at n_sim=2000).
 
-**Interpretation.** The parametric **percentile bootstrap** for `Sigma_unit_diag` (a bounded,
-skewed variance-component functional) **systematically under-covers by ~3–4 points** — a known
-limitation of percentile intervals for variance components. This **validates the honesty fence**:
-intervals stay **recovery-only / approximately-calibrated, NOT nominal-coverage-certified**; the
-widget does not flip to "coverage-checked at nominal." **Path to nominal (0.6+/1.0 methods lane):**
-BCa (bias-corrected accelerated) or studentized bootstrap should close much of the gap; validate by
-re-running this grid with BCa intervals.
+**Interpretation (corrected 2026-07-15 against the existing doctrine — NOT BCa).** The undercoverage
+is the well-mapped small-sample variance-component problem, and the fix is already decided in the
+vault — see **[[Small-sample variance-component interval corrections — cross-repo map]]**,
+`LEARNINGS-archive.md:38–39`, gllvmTMB#565, D-12, Design 73/75. `Sigma_unit_diag = ΛΛ' + Ψ` is a
+**pure LOCATION-axis** variance component (loadings + unique variances), and the grid measured it on
+the **percentile-bootstrap** route — the wrong route. Direct check: the point estimate is **near-
+unbiased** (ML Σ̂/truth 1.007, REML 1.014 at n=150 — REML barely moves it), so this is **not** an
+ML mean-bias problem; the 4–11:1 truth-above-upper misses are the **right-skew** of a bounded VC.
+The doctrine's fix hierarchy: **(1) profile likelihood (the star — already implemented as the direct
+log-SD route, Design 73; certified nominal at adequate g in drmTMB); (2) Wald on the log-SD scale +
+a t-quantile on `g−1` (Satterthwaite/KR) df, per-target; (3) REML for any residual centre bias.**
+**Bootstrap/BCa is the last resort, not the fix.** This **validates the honesty fence** (intervals
+stay recovery-only / approximately-calibrated, NOT nominal-certified; widget does not flip) AND
+positions this grid as the **"bootstrap" column** of the 2026-07-06 coverage-mapping campaign.
+**Next coverage run: re-measure the SAME cells on the profile / log-SD-Wald-with-t-df route** (both
+already in the package) — that is the certificate path, not a new bootstrap variant.
 
 ## Artifacts
 

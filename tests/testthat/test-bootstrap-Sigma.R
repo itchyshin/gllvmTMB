@@ -299,3 +299,42 @@ test_that("bootstrap_Sigma refits a non-default unit_obs tier (issue #18)", {
     tolerance = 1e-8
   )
 })
+
+## ---- issue #18 follow-up: stop, do not silently condition, when simulate() --
+## cannot unconditionally redraw a requested RE tier. A parametric bootstrap of
+## Sigma needs the REs redrawn each replicate; for tiers simulate() cannot yet
+## redraw (paired phylo `phylo_diag`, spatial) it silently falls back to
+## conditional simulation (REs held FIXED), which collapses the intervals to
+## near-zero width -- false precision. bootstrap_Sigma() must error, not return
+## those. (Reported by Ayumi Mizuno while validating the unit_obs fix.)
+
+test_that("bootstrap_Sigma stops when simulate() cannot unconditionally redraw an RE tier", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  skip_if_not_installed("ape")
+  set.seed(7L)
+  n_sp <- 12L
+  Tn <- 3L
+  tree <- ape::rcoal(n_sp)
+  tree$tip.label <- paste0("sp", seq_len(n_sp))
+  Cphy <- ape::vcv(tree, corr = TRUE)
+  sim <- gllvmTMB::simulate_site_trait(
+    n_sites = 20L, n_species = n_sp, n_traits = Tn, mean_species_per_site = n_sp,
+    Cphy = Cphy, sigma2_phy = rep(1.2, Tn), sigma2_sp = rep(0.6, Tn),
+    Lambda_B = matrix(0, Tn, 1L), psi_B = rep(0, Tn), sigma2_eps = 0.3, seed = 7L
+  )
+  df <- sim$data
+  levels(df$species) <- tree$tip.label
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + phylo_unique(species) + unique(0 + trait | species),
+    data = df, phylo_tree = tree, cluster = "species", silent = TRUE
+  )))
+  ## The phylo diagonal tier cannot be unconditionally redrawn -> the guard must
+  ## fail loud rather than return conditional (collapsed) intervals.
+  expect_error(
+    bootstrap_Sigma(
+      fit, n_boot = 2L, level = c("phy", "unit_obs"), what = "R", seed = 1L
+    ),
+    class = "gllvmTMB_bootstrap_conditional_sim"
+  )
+})

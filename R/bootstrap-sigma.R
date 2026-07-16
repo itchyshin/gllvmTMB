@@ -248,6 +248,27 @@ bootstrap_Sigma <- function(
     )
   }
 
+  ## A parametric bootstrap of Sigma needs UNCONDITIONAL simulation -- the
+  ## random effects redrawn from their fitted distributions each replicate -- so
+  ## the intervals span the between-tier uncertainty. If the fit has an RE tier
+  ## simulate() cannot yet redraw (e.g. the paired phylo `phylo_diag`, spatial),
+  ## simulate() SILENTLY falls back to conditional simulation (REs held fixed),
+  ## which collapses the intervals to near-zero width -- false precision, not
+  ## real uncertainty (issue #18 follow-up, Ayumi Mizuno). Fail loud rather than
+  ## return statistically invalid intervals.
+  sim_ok <- .check_simulate_unconditional(fit)
+  if (!isTRUE(sim_ok$can_redraw)) {
+    cli::cli_abort(
+      c(
+        "{.fn bootstrap_Sigma} needs unconditional simulation, but this fit has RE tier{?s} {.fn simulate} cannot yet redraw: {.val {sim_ok$unhandled}}.",
+        "x" = "A conditional bootstrap (random effects held fixed) returns intervals that severely understate the between-tier uncertainty -- often collapsing to near-zero width, which looks like false precision.",
+        "i" = "Use the profile route for these quantities instead: {.fn extract_correlations} with {.code method = \"profile\"}, {.fn confint} with {.code method = \"profile\"}, or {.fn profile_ci_phylo_signal}.",
+        "i" = "Unconditional redraw of these tiers is planned for the 0.6 release."
+      ),
+      class = "gllvmTMB_bootstrap_conditional_sim"
+    )
+  }
+
   ## Pre-draw the simulated response matrix once, in the parent process,
   ## so the replicates are reproducible regardless of n_cores. Each
   ## column is one bootstrap response vector.

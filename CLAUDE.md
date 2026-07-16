@@ -9,6 +9,11 @@ it to Shinichi as step 0 — it is the mission-control. Do this before reading
 further or planning.
 
 For the current handoff, read
+`docs/dev-log/handover/2026-07-16-claude-handover-coverage-landed.md` (Claude→Claude,
+2026-07-16; Sigma_unit coverage arc LANDED — scoped gaussian-n≥150 profile certificate
+defensible, binomial+nbinom2+ordinal fenced, DEV-ONLY not flipped; Ayumi #18 bootstrap bugs
+fixed; 0.6→1.0 methods backlog recorded. NEXT: n_sim≥5000 gaussian confirm + Shinichi flip
+decision). Earlier:
 `docs/dev-log/handover/2026-07-13-claude-handover.md` (Claude→Claude; the `||`
 uncorrelated random-slope coupling axis COMPLETE across all sources, merged to
 `main` @ `8ec261bb`) before starting new work. **Strategy: 0.5 is the

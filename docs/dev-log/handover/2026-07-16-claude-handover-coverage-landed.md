@@ -69,3 +69,27 @@ notes in `docs/dev-log/check-log.md`).
 - **Verify your own output before advising publicly** — I once called three IDENTICAL degenerate CIs
   "sensible"; they were a zero-correlation (diagonal-tier) artifact. Give non-degenerate examples.
 - The pilot (n_sim=40) over-promised binomial (0.94) vs the real grid (0.77-0.92) — trust MCSE ~0.007, not ~0.03.
+
+## Files created / modified this session (Lane A only)
+- `R/profile-derived.R` — `.total_variance_spec`, `.profile_ci_total_variance`, `.wald_ci_total_variance_logsd` (`829c34cd`).
+- `R/bootstrap-sigma.R` — grouping forwarding + fail-loud (`1dd7fcde`); conditional-sim guard (`198ca67d`).
+- `dev/m3-grid.R` — `sigma_extra_methods` + `coverage_certificate` gate (`829c34cd`).
+- `dev/profile-rescore-run.R`, `dev/totoro-profile-rescore.sh` — Totoro re-score harness (`829c34cd`).
+- `tests/testthat/test-profile-ci.R` §9; `tests/testthat/test-bootstrap-Sigma.R` (issue #18 regressions).
+- `docs/dev-log/after-task/2026-07-16-sigma-total-variance-profile-wald-build.md`; this handover; `check-log.md` (`459296ac`).
+- Mission Control `status/gllvmTMB.json` (vault, separate repo) — methods backlog + Wald-non-goal policy.
+- **Never commit:** the untracked `.claude/` session dir.
+
+## Mission-control summary
+| repo · branch · CI | what shipped this session | next by leverage |
+|---|---|---|
+| gllvmTMB · `claude/release-0.5.0` (pushed, in sync) | genuine profile on V_t + Totoro n_sim=1000 grid + D-43 panel → **scoped gaussian-n≥150 certificate defensible; binomial+nbinom2+ordinal fenced** (dev-only, NOT flipped). Ayumi #18: 2 bootstrap bugs fixed (`1dd7fcde`, `198ca67d`) + Fisher-z steer. 0.6→1.0 methods backlog + Wald-non-goal policy recorded. | **1** n_sim≥5000 gaussian-n≥150 confirm (fix OUTDIR quoting first) · **2** Shinichi flip decision + doc-honesty review · **3** Phase-2 public confint wiring (if earned) · **4** 3 held sign-offs (disp_group/family-breadth/tweedie) |
+
+## How to Resume (one-command — paste in an authenticated terminal at the repo root)
+```
+claude "Rehydrate from docs/dev-log/handover/2026-07-16-claude-handover-coverage-landed.md + the CLAUDE.md snapshot + the Mission Control GLLVM board, then continue with the Next Immediate Steps (n_sim>=5000 gaussian-n>=150 confirmation — fix the OUTDIR quoting bug first — then present the flip decision). Do NOT flip any public surface without Shinichi. Spawn Rose before any public coverage claim."
+```
+Rehydration for the next Claude: read the CLAUDE.md snapshot pointer + this doc + the
+after-task report; load the coverage doctrine (LESSONS.md 2026-07-15 + the cross-repo map);
+spawn **Rose** (claims/scope) before any public coverage claim. Totoro is passwordless
+(`ssh totoro`, no Duo). This is DEV-ONLY — the public flip is a with-Shinichi decision.

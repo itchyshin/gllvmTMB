@@ -126,14 +126,44 @@ test_that("multinomial dispatches family_id 16 with a (K-1) coefficient block", 
   expect_false(is.unsorted(gid))
 })
 
-test_that("multinomial is fixed-effects-only: latent/RE terms fail loud (Tier 1)", {
+test_that("multinomial admits only fixed effects + phylo_latent: other RE terms fail loud", {
   skip_on_cran()
   df <- .make_multinomial(seed = 3L, n = 120L, K = 3L)
+  ## Tier-2a (Design 84) relaxed the Tier-1 fence to permit phylo_latent(); every
+  ## OTHER latent / random-effect tier (here a generic (1 | unit) intercept) still
+  ## fails loud rather than fit a silently-wrong model.
   expect_error(
     gllvmTMB(value ~ 0 + trait + (1 | unit), data = df,
              family = multinomial(), trait = "trait", unit = "unit"),
-    regexp = "fixed-effects-only"
+    regexp = "only fixed effects"
   )
+})
+
+test_that("multinomial + phylo_latent fits and reports the (K-1)x(K-1) among-category V (Tier-2a)", {
+  skip_on_cran()
+  skip_if_not_installed("ape")
+  ## Capability (Design 84): a phylo_latent term on a multinomial trait yields the
+  ## reduced-rank among-category covariance V = Lambda_phy Lambda_phy^T over the
+  ## K-1 category-contrast pseudo-traits. This asserts the fit + reporting SHAPE
+  ## only; one-per-species recovery is data-hungry (needs replication or large N)
+  ## and is not asserted here.
+  set.seed(11L)
+  n <- 60L; K <- 3L
+  tree <- ape::rcoal(n); tree$tip.label <- paste0("sp", seq_len(n))
+  df <- data.frame(species = factor(tree$tip.label, levels = tree$tip.label),
+                   trait = factor("morph"),
+                   value = factor(sample.int(K, n, replace = TRUE)))
+  fit <- gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = 2), data = df,
+                  family = multinomial(), trait = "trait", unit = "species",
+                  phylo_tree = tree)
+  expect_s3_class(fit, "gllvmTMB_multi")
+  expect_true(all(fit$tmb_data$family_id_vec == 16L))
+  ## Link-scale residual for a multinomial is not yet wired (Design 84 follow-up),
+  ## so extract_Sigma warns and returns the latent-scale V; that is expected here.
+  V <- suppressWarnings(extract_Sigma(fit, level = "phy"))
+  if (is.list(V)) V <- V[[1L]]
+  expect_equal(dim(V), c(K - 1L, K - 1L))       # (K-1) x (K-1) among-category V
+  expect_true(isSymmetric(unname(round(V, 8))))
 })
 
 test_that("multinomial requires >= 3 categories (2-level redirects to binomial)", {

@@ -473,6 +473,23 @@ link_residual_per_trait <- function(fit) {
 #'   `betabinomial(link = "logit")`    \tab \eqn{\sigma^2_d = \pi^2/3 + \psi'(\hat\mu_t \hat\phi) + \psi'((1 - \hat\mu_t)\hat\phi)}
 #' }
 #'
+#' `multinomial()` is the exception to the scalar-per-trait table: its
+#' distribution-specific residual is not a scalar but the \eqn{(K-1)\times(K-1)}
+#' matrix \eqn{(\pi^2/6)(\mathbf{I} + \mathbf{J})} over the category-contrast
+#' pseudo-traits -- \eqn{\pi^2/3} on the diagonal (each baseline contrast is a
+#' logit, exactly as for `binomial(link = "logit")`) and \eqn{\pi^2/6}
+#' off-diagonal (the shared baseline category couples the contrasts). This is the
+#' residual covariance implied by the softmax's random-utility (Gumbel)
+#' representation, and it reduces to the binomial \eqn{\pi^2/3} at \eqn{K = 2}.
+#' (It is distinct from MCMCglmm's *arbitrary* fixed identification residual
+#' \eqn{(1/K)(\mathbf{I}+\mathbf{J})} and that package's MCMC-specific \eqn{c^2}
+#' overdispersion correction, neither of which a direct softmax fit needs.)
+#' Because the residual is a full matrix rather than a diagonal addition, it is
+#' not yet applied automatically; `extract_Sigma()` returns the latent-scale V and
+#' warns for a multinomial trait. Relatedly, a *diagonal* among-category V is not
+#' independence: the independence null for the contrasts is itself
+#' \eqn{(\mathbf{I}+\mathbf{J})}-structured (equal diagonal, equal off-diagonal).
+#'
 #' For mixed-family fits the residual is computed *per trait* when that trait has
 #' one unambiguous family/link, then added to the diagonal
 #' of \eqn{\boldsymbol\Sigma} entry-by-entry. The default
@@ -626,12 +643,23 @@ extract_Sigma <- function(
   ## latent covariance Sigma; and its intrinsic K-1 liability covariance is a
   ## (K-1)x(K-1) matrix (Tier 2, deferred), not the trait-scale Sigma this
   ## returns. Refuse loudly and consistently with extract_correlations().
+  ## Tier-2a (Design 84): a multinomial() fit WITH a phylo_latent term carries a
+  ## genuine among-category covariance -- Sigma_phy = Lambda_phy Lambda_phy^T over
+  ## the K-1 category-contrast pseudo-traits -- surfaced at level = "phy". Only a
+  ## FIXED-EFFECTS-ONLY multinomial fit (no phylo factor) has no latent Sigma; keep
+  ## the clear refusal for that case. Interpretation caveats (2026-07-17 after-task):
+  ## the returned V is on the K-1 baseline-CONTRAST scale, so a diagonal V is NOT
+  ## independence -- the null contrast covariance is (I+J)-structured (Hadfield
+  ## MCMCglmm notes; the softmax link residual shares that shape at scale pi^2/6);
+  ## and one-per-species recovery is high-variance (needs replication or large N).
+  ## See the phylo-multinomial fence in fit-multi.R.
   if (!is.null(fit$tmb_data$family_id_vec) &&
-      any(fit$tmb_data$family_id_vec == 16L)) {
+      any(fit$tmb_data$family_id_vec == 16L) &&
+      !isTRUE(fit$use$phylo_rr)) {
     cli::cli_abort(c(
-      "A latent-scale {.code Sigma} is not defined for a {.fn multinomial} (categorical) trait.",
-      "i" = "{.fn multinomial} is fixed-effects-only in this release, so there is no latent covariance to extract; its intrinsic covariance is a (K-1)x(K-1) liability matrix (Design 83, Tier 2 deferred), not a trait-scale {.code Sigma}.",
-      ">" = "Read fixed-effect coefficients via {.fn summary} / {.fn tidy}."
+      "A latent-scale {.code Sigma} is not defined for a fixed-effects-only {.fn multinomial} trait.",
+      "i" = "Add a {.code phylo_latent(species, d = K)} term to estimate the (K-1)x(K-1) among-category phylogenetic covariance, then read it with {.code extract_Sigma(fit, level = \"phy\")}.",
+      ">" = "Otherwise read fixed-effect coefficients via {.fn summary} / {.fn tidy}."
     ), class = "gllvmTMB_multinomial_sigma_undefined")
   }
   ## Boundary translation (Design 02 Stage 2): canonical (unit /

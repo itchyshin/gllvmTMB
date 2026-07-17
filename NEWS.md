@@ -33,13 +33,13 @@ required for the main workflow.
   multinomial fit. A two-category response is `binomial(link = "logit")`. For
   *ordered* categories use `ordinal_probit()`.
 * **`phylo_latent()` on a `multinomial()` trait (Design 84)** reports the
-  \eqn{(K-1)\times(K-1)} among-category phylogenetic covariance V (how the category
+  `(K-1) x (K-1)` among-category phylogenetic covariance V (how the category
   liabilities coevolve) via `extract_Sigma(fit, level = "phy")`. Two honest caveats:
   recovery of V is **data-hungry** (it needs per-species replication or large N; a
   single categorical draw per species is weakly informative, so one-per-species point
-  estimates are high-variance and can reach the \eqn{\pm 1} boundary), and V is on the
+  estimates are high-variance and can reach the +/-1 boundary), and V is on the
   baseline-**contrast** scale, so a diagonal V is not independence -- the null contrast
-  covariance is \eqn{(1/K)(\mathbf{I}+\mathbf{J})}. Treat it as recovery-oriented.
+  covariance is `(1/K)(I + J)`. Treat it as recovery-oriented.
 * The reader-facing covariance grammar crosses five correlation sources
   (`none`, `animal`, `phylo`, `spatial`, and `kernel`) with three taught modes:
   independent, dependent, and latent. The one-shared-variance ("scalar") case is

@@ -25,14 +25,24 @@ required for the main workflow.
   with three or more categories (baseline-category logit / softmax). It recovers the
   per-category intercepts and slopes as contrasts against a reference category, and
   `predict(type = "response")` returns per-category probabilities. Use
-  `multinomial(baseline = ...)` to choose the reference category. This release is
-  **fixed-effects only**: latent / random-effect terms on a multinomial trait are not
-  supported, and a cross-trait latent-scale correlation is undefined for a categorical
-  response (it spans several liability dimensions rather than one), so
-  `extract_correlations()` / `extract_Sigma()` decline a multinomial fit. A
-  two-category response is `binomial(link = "logit")`. For *ordered* categories use
-  `ordinal_probit()`. See the *Unordered categories with `multinomial()`* article for a
-  worked diet-guild example.
+  `multinomial(baseline = ...)` to choose the reference category. Fixed effects and
+  a single `phylo_latent()` term are supported; every other latent / random-effect
+  tier on a multinomial trait fails loud, and a *cross-trait* correlation with a
+  categorical response is still undefined (it spans several liability dimensions), so
+  `extract_correlations()` / `extract_Sigma()` decline a fixed-effects-only
+  multinomial fit. A two-category response is `binomial(link = "logit")`. For
+  *ordered* categories use `ordinal_probit()`. See the *Unordered categories with
+  `multinomial()`* article for a worked diet-guild example.
+* **`phylo_latent()` on a `multinomial()` trait (Design 84)** reports the
+  `(K-1) x (K-1)` among-category phylogenetic covariance V (how the category
+  liabilities coevolve) via `extract_Sigma(fit, level = "phy")`. Two honest caveats:
+  recovery of V is **data-hungry** (it needs per-species replication or large N; a
+  single categorical draw per species is weakly informative, so one-per-species point
+  estimates are high-variance and can reach the +/-1 boundary), and V is on the
+  baseline-**contrast** scale, so a diagonal V is not independence -- the null contrast
+  covariance is `(I + J)`-structured (equal diagonal, equal off-diagonal; the
+  observation-scale link residual has the same shape, `(pi^2/6)(I + J)` -- the softmax
+  analog of binomial's `pi^2/3`). Treat it as recovery-oriented.
 * The reader-facing covariance grammar crosses five correlation sources
   (`none`, `animal`, `phylo`, `spatial`, and `kernel`) with three taught modes:
   independent, dependent, and latent. The one-shared-variance ("scalar") case is

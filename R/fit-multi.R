@@ -1785,19 +1785,36 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- Generic random intercepts (1 | group) ----------------------------
   re_int_idx <- which(kinds == "re_int")
   use_re_int <- length(re_int_idx) > 0L
-  ## Tier-1 fence (Design 83 / FAM-20): a multinomial() response is
-  ## fixed-effects-only in this release. Reject any latent / random-effect /
-  ## structured term on a multinomial fit; the K-1-dimensional latent-scale
-  ## correlation surface is deferred (Tier 2). Fail loud rather than fit a
-  ## silently-wrong model.
+  ## Tier-2a fence (Design 84): a multinomial() response may now carry a
+  ## `phylo_latent` term. The K-1 category-contrast pseudo-traits (distinct
+  ## trait_id per contrast; see expand_multinomial_response()) each receive a
+  ## category-specific phylo-factor loading row Lambda_phy(contrast, .), so
+  ## Sigma_phy = Lambda_phy Lambda_phy^T is the (K-1)x(K-1) among-category
+  ## covariance V. Two honesty caveats (see the 2026-07-17 regularization
+  ## after-task): (1) RECOVERY is data-hungry -- V recovers with per-species
+  ## replication or large N, but a single categorical draw per species is weakly
+  ## informative about the (K-1)-dim liability, so one-per-species point
+  ## estimates are high-variance and rail at rho = +/-1 (no cheap fixed
+  ## regularizer fixes this; the fixed-R OLRE was tested and is inert). (2) The
+  ## contrasts are differences against a SHARED baseline category, so a diagonal
+  ## V does NOT mean independence: under independent equal-variance categories
+  ## the null contrast covariance is (I+J)-structured -- equal on the diagonal,
+  ## equal off-diagonal (Hadfield MCMCglmm course notes, multinomial section) --
+  ## so interpret the reported correlations against that null, not against 0. (The
+  ## observation-scale link residual has the same (I+J) shape at scale pi^2/6:
+  ## pi^2/3 diagonal, pi^2/6 off-diagonal -- the softmax analog of binomial's
+  ## pi^2/3; see extract_Sigma()'s link_residual docs.) Every OTHER latent /
+  ## random-effect / structured tier
+  ## remains fixed-effects-only on a multinomial fit and still fails loud rather
+  ## than fit a silently-wrong model.
   if (any(family_id_vec == 16L) &&
       (use_lv_B || use_rr_B || use_diag_B || use_spde ||
-       use_phylo_rr || use_phylo_slope || use_re_int)) {
+       use_phylo_slope || use_re_int)) {
     cli::cli_abort(c(
-      "{.fn multinomial} is fixed-effects-only in this release (Tier 1).",
-      "x" = "A latent / random-effect / structured term was combined with a categorical (multinomial) response.",
-      "i" = "Fit the baseline-category logit with fixed effects only, e.g. {.code value ~ 0 + trait + (0 + trait):x}.",
-      ">" = "Latent-scale structure on categorical responses is deferred to a later release (Design 83, Tier 2)."
+      "{.fn multinomial} supports only fixed effects and {.fn phylo_latent} in this release.",
+      "x" = "An unsupported latent / random-effect / structured term was combined with a categorical (multinomial) response.",
+      "i" = "Fit fixed effects, optionally with {.code phylo_latent(species, d = K)} for the among-category phylogenetic correlation surface.",
+      ">" = "Other latent-scale structures on categorical responses are deferred (Design 84, Tier 2b+)."
     ))
   }
   ## Each term gets its own group factor + variance component. We pack all

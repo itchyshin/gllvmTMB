@@ -9,11 +9,13 @@ it to Shinichi as step 0 — it is the mission-control. Do this before reading
 further or planning.
 
 For the current handoff, read
-`docs/dev-log/handover/2026-07-16-claude-handover-coverage-landed.md` (Claude→Claude,
-2026-07-16; Sigma_unit coverage arc LANDED — scoped gaussian-n≥150 profile certificate
-defensible, binomial+nbinom2+ordinal fenced, DEV-ONLY not flipped; Ayumi #18 bootstrap bugs
-fixed; 0.6→1.0 methods backlog recorded. NEXT: n_sim≥5000 gaussian confirm + Shinichi flip
-decision). Earlier:
+`docs/dev-log/handover/2026-07-17-claude-handover.md` (Claude→Claude, 2026-07-17; Sigma_unit
+coverage arc **WITHHELD** — d2-n150 fails on rorqual under the COMMITTED MCSE; an in-session
+"earned" analysis was WRONG (looser MCSE + no cross-hardware) and its flip was reverted, nothing
+public touched. A fresh-seed lift run (reps 5001–20000, gaussian n150) is IN FLIGHT on Totoro.
+NEXT: wait `FRESHSEED_DONE` → aggregate + pool to N=20k → re-audit d2 under the committed MCSE;
+earn → Rose + Shinichi flip, marginal → defer to 1.0. Ayumi #18 fixed (`c5c56f41`); #17/#18
+replied; tracking #750 opened). Earlier:
 `docs/dev-log/handover/2026-07-13-claude-handover.md` (Claude→Claude; the `||`
 uncorrelated random-slope coupling axis COMPLETE across all sources, merged to
 `main` @ `8ec261bb`) before starting new work. **Strategy: 0.5 is the

@@ -46,6 +46,14 @@ seed_base <- as.integer(arg_value("--seed-base", "1"))
 out_dir <- arg_value("--out-dir", "~/gllvm_work/profile_rescore")
 out_dir <- path.expand(out_dir)
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+## Fresh-seed extension (2026-07-17, WITHHELD lift path): shard reps over the
+## window [rep_start, rep_end] instead of [1, n_sim], so reps > 5000 carry
+## genuinely fresh (disjoint) seeds and POOL with the original run to shrink the
+## MCSE. Optional --family / --n-units filters focus the deciding d2-n150 cell.
+rep_start <- as.integer(arg_value("--rep-start", "1"))
+rep_end <- as.integer(arg_value("--rep-end", as.character(n_sim)))
+fam_filter <- arg_value("--family", "")
+nu_filter <- arg_value("--n-units", "")
 
 ## Core-2 cells: gaussian + binomial x d in {1,2}, at both n_units the grid used.
 ## (nbinom2 + ordinal stay FENCED -- never re-scored here.)
@@ -55,6 +63,18 @@ default_cells <- expand.grid(
   n_units = c(50L, 150L),
   stringsAsFactors = FALSE
 )
+if (nzchar(fam_filter)) {
+  default_cells <- default_cells[
+    default_cells$family %in% strsplit(fam_filter, ",", fixed = TRUE)[[1L]], ,
+    drop = FALSE
+  ]
+}
+if (nzchar(nu_filter)) {
+  default_cells <- default_cells[
+    default_cells$n_units %in% as.integer(strsplit(nu_filter, ",", fixed = TRUE)[[1L]]), ,
+    drop = FALSE
+  ]
+}
 
 if (mode == "aggregate") {
   files <- list.files(out_dir, pattern = "^shard-.*\\.rds$", full.names = TRUE)
@@ -75,10 +95,13 @@ if (mode == "aggregate") {
   quit(status = 0)
 }
 
-## --- shard mode: run rep-shard `shard` of every cell -------------------------
-rng <- m3_shard_rep_range(n_sim, shard = shard, n_shards = n_shards)
-cat(sprintf("[rescore] shard %d/%d: reps %d-%d of %d; %d cells; n_boot=%d\n",
-            shard, n_shards, rng[["start"]], rng[["end"]], n_sim,
+## --- shard mode: shard the rep WINDOW [rep_start, rep_end] across n_shards ----
+rep_total <- rep_end - rep_start + 1L
+sub <- m3_shard_rep_range(rep_total, shard = shard, n_shards = n_shards)
+rng <- c(start = rep_start + sub[["start"]] - 1L,
+         end = rep_start + sub[["end"]] - 1L)
+cat(sprintf("[rescore] shard %d/%d: reps %d-%d (window %d-%d of %d); %d cells; n_boot=%d\n",
+            shard, n_shards, rng[["start"]], rng[["end"]], rep_start, rep_end, n_sim,
             nrow(default_cells), n_boot))
 
 for (i in seq_len(nrow(default_cells))) {

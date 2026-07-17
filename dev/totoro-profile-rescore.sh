@@ -22,16 +22,21 @@
 # =============================================================================
 set -euo pipefail
 
-SOCK="$HOME/.ssh/cm/cm-snakagaw@totoro.biology.ualberta.ca:22"
+SOCK="$HOME/.ssh/cm-snakagaw@totoro.biology.ualberta.ca:22"
 REMOTE="totoro"
 RWORK="gllvm_work/gllvmTMB"
 # Totoro is a personal server: NO /project mount. R library lives in HOME
-# (~/gllvm_work/Rlib, already provisioned by the grid2000 campaign).
-RLIB="\$HOME/gllvm_work/Rlib"
+# (~/gllvm_work/Rlib, already provisioned by the grid2000 campaign). Use ABSOLUTE
+# remote paths -- a leading "\$HOME" survives the local-double-quote ->
+# remote-single-quote -> R path.expand chain as a LITERAL "$HOME" directory
+# (2026-07-16 bug: results landed under gllvm_work/gllvmTMB/$HOME/...). Totoro
+# HOME is a stable /home/snakagaw, so an absolute path removes the quoting hazard
+# outright rather than trading one escape trick for another.
+RLIB="/home/snakagaw/gllvm_work/Rlib"
 CORES="${CORES:-64}"
 NSIM="${NSIM:-2000}"
 NBOOT="${NBOOT:-100}"
-OUTDIR="${OUTDIR:-\$HOME/gllvm_work/profile_rescore}"
+OUTDIR="${OUTDIR:-/home/snakagaw/gllvm_work/profile_rescore}"
 STAGE="${1:-smoke}"                       # smoke | grid | aggregate
 
 # Prefer the ControlMaster socket if present; otherwise a plain passwordless

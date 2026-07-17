@@ -626,12 +626,19 @@ extract_Sigma <- function(
   ## latent covariance Sigma; and its intrinsic K-1 liability covariance is a
   ## (K-1)x(K-1) matrix (Tier 2, deferred), not the trait-scale Sigma this
   ## returns. Refuse loudly and consistently with extract_correlations().
+  ## Tier-2a (Design 84): a multinomial() fit WITH a phylo_latent term carries a
+  ## genuine among-category covariance -- Sigma_phy = Lambda_phy Lambda_phy^T over
+  ## the K-1 category-contrast pseudo-traits -- surfaced at level = "phy". Only a
+  ## FIXED-EFFECTS-ONLY multinomial fit (no phylo factor) has no latent Sigma; keep
+  ## the clear refusal for that case. The softmax-Laplace fit identifies V directly
+  ## (no liability-residual convention).
   if (!is.null(fit$tmb_data$family_id_vec) &&
-      any(fit$tmb_data$family_id_vec == 16L)) {
+      any(fit$tmb_data$family_id_vec == 16L) &&
+      !isTRUE(fit$use$phylo_rr)) {
     cli::cli_abort(c(
-      "A latent-scale {.code Sigma} is not defined for a {.fn multinomial} (categorical) trait.",
-      "i" = "{.fn multinomial} is fixed-effects-only in this release, so there is no latent covariance to extract; its intrinsic covariance is a (K-1)x(K-1) liability matrix (Design 83, Tier 2 deferred), not a trait-scale {.code Sigma}.",
-      ">" = "Read fixed-effect coefficients via {.fn summary} / {.fn tidy}."
+      "A latent-scale {.code Sigma} is not defined for a fixed-effects-only {.fn multinomial} trait.",
+      "i" = "Add a {.code phylo_latent(species, d = K)} term to estimate the (K-1)x(K-1) among-category phylogenetic covariance, then read it with {.code extract_Sigma(fit, level = \"phy\")}.",
+      ">" = "Otherwise read fixed-effect coefficients via {.fn summary} / {.fn tidy}."
     ), class = "gllvmTMB_multinomial_sigma_undefined")
   }
   ## Boundary translation (Design 02 Stage 2): canonical (unit /

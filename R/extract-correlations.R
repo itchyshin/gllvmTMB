@@ -436,12 +436,18 @@ extract_correlations <- function(
   ## latent-residual scale on which a trait x trait correlation is defined. The
   ## latent-scale correlation surface for categorical responses is deferred
   ## (Tier 2). Refuse loudly rather than fabricate a diagonal / return NaN.
+  ## Tier-2a (Design 84): a multinomial() fit WITH a phylo_latent term DOES have a
+  ## defined among-category correlation surface -- the K-1 category-contrast
+  ## pseudo-traits coevolve via Sigma_phy = Lambda_phy Lambda_phy^T, so the (K-1)x
+  ## (K-1) correlation is cor(Sigma_phy). Only a FIXED-EFFECTS-ONLY multinomial fit
+  ## has no such surface; keep the clear refusal for that case.
   if (!is.null(fit$tmb_data$family_id_vec) &&
-      any(fit$tmb_data$family_id_vec == 16L)) {
+      any(fit$tmb_data$family_id_vec == 16L) &&
+      !isTRUE(fit$use$phylo_rr)) {
     cli::cli_abort(c(
-      "Latent-scale correlations are not defined for a {.fn multinomial} (categorical) trait.",
-      "i" = "An unordered categorical response spans K-1 latent liability dimensions, not one, so no single trait correlation exists (Design 83, Tier 2 deferred).",
-      ">" = "{.fn multinomial} is fixed-effects-only in this release; read fixed-effect coefficients via {.fn summary} / {.fn tidy}."
+      "Latent-scale correlations are not defined for a fixed-effects-only {.fn multinomial} trait.",
+      "i" = "Add a {.code phylo_latent(species, d = K)} term to estimate the among-category phylogenetic correlation surface (the K-1 category liabilities coevolving).",
+      ">" = "Otherwise read fixed-effect coefficients via {.fn summary} / {.fn tidy}."
     ), class = "gllvmTMB_multinomial_correlation_undefined")
   }
   method <- match.arg(method)

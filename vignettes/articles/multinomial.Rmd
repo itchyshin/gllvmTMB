@@ -253,6 +253,27 @@ depends on. Concretely:
   family is not part of the interval-coverage certification; treat its intervals
   as recovery-oriented.
 
+### Looking ahead: the phylogenetic route to a standalone table
+
+The standalone \((K-1) \times (K-1)\) table is most natural in a *phylogenetic*
+setting, and that is where the package is heading (design 84). Following the
+phylogenetic multinomial GLMM of Mizuno, Drobniak, Williams, Lagisz & Nakagawa
+(2025, *Journal of Evolutionary Biology*, doi:10.1093/jeb/voaf116), a
+phylogenetic factor on the \(K-1\) category contrasts estimates the among-category
+covariance \(V\) — how the category liabilities coevolve across the tree — which
+`extract_Sigma()` can then report. The key is that a categorical trait already
+occupies \(K-1\) latent dimensions, so a low-rank factor on those contrasts is
+exactly the right object; no new likelihood is needed beyond the softmax you have
+here.
+
+The honest caveat is that this table is **data-hungry**. A single categorical
+draw carries little information about the \((K-1)\)-dimensional liability, so
+recovering \(V\) needs either per-species replication or a large number of
+species; one observation per species is too weakly informative to pin the
+among-category correlation reliably (the point estimate is high-variance and can
+reach the \(\pm 1\) boundary). Read it as recovery-oriented, and prefer replicated
+or large samples — the same discipline the coefficient recovery above is held to.
+
 Within those limits, `multinomial()` gives you an honest, identified
 baseline-category model for a single unordered categorical response.
 

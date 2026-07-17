@@ -35,26 +35,38 @@ does not help. MCMCglmm recovers one-per-species via its **parameter-expanded pr
 to the ±1 boundary at small N; only more data, or a genuine prior/penalty WITH posterior-mean/interval
 reporting, fixes it. The reduced-rank ΛΛᵀ MLE rails when a loading → 0.
 
-## Next steps (by leverage)
-1. **Fence the reader surfaces for 0.6** (the capability stays; the claim is fenced): roxygen on the
-   `extract_Sigma(level="phy")` / `phylo_latent`-on-multinomial path, a NEWS line, and (when PR #751
-   lands after PR #753) update the article's "Looking ahead" note from forward-looking to "available,
-   fenced". State plainly: one-per-species is high-variance (rails at ±1); use replication or large N.
-   Also update the two stale in-code comments that still say "identifies V directly (no residual
-   convention)" — `R/fit-multi.R:~1799` and `R/extract-sigma.R:~633` — to the honest weak-information
-   framing.
-2. **`link_residual` for multinomial — DEFERRED, needs Shinichi.** The "multivariate analog of π²/3"
-   framing is wrong: `(1/K)(I+J)` (diagonal 2/K) is MCMCglmm's convention, not the logistic π²/3 scale.
-   Decide the scale convention before wiring `link_residual_per_trait()` (`R/extract-sigma.R:~115`). Not
-   needed for 0.6.
-3. **1.0 arc:** the genuine one-per-species recovery — a prior/penalty on the loadings + posterior-mean
-   or interval reporting (Bayesian, or penalized-likelihood with proper uncertainty), cross-checked vs
-   MCMCglmm on the reconciled scale. The `phylo_diag_fixed_var` ridge + larger N is a candidate to
-   calibrate (recipe preserved).
+## Status at session close (all DONE + pushed unless marked)
+1. **Reader surfaces FENCED for 0.6 — DONE** (`3e4a4f5b`, `a1756724`): NEWS entry (V reported,
+   data-hungry, diagonal ≠ independence), `extract_Sigma()` roxygen, and the two stale in-code comments
+   corrected. Article "Looking ahead" note still forward-looking on PR #751 (correct until #753 merges).
+2. **`link_residual` convention RESOLVED — DONE** (`3db828ec`; Shinichi's steer + Hadfield notes + the
+   Mizuno/Ayumi tutorial). The softmax link residual is **`(π²/6)(I+J)`** — **π²/3 on the diagonal**
+   (each contrast is a logit, as binomial), **π²/6 off-diagonal** (shared-baseline coupling), reducing to
+   binomial's π²/3 at K=2. It is the softmax's own random-utility (Gumbel) residual — NOT MCMCglmm's
+   *arbitrary* identification residual `(1/K)(I+J)`, and NOT its MCMC-specific `c²=(16√3/15π)²`
+   correction (Bayesian-only; "brms doesn't need c2"). Documented in NEWS + `extract_Sigma()` roxygen.
+   **REMAINING (1.0 wiring):** *apply* the matrix — `link_residual_per_trait()` (`R/extract-sigma.R:~115`)
+   is scalar-per-trait; the multinomial needs a `(K-1)×(K-1)` block added to Σ. Until then
+   `extract_Sigma()` returns latent-scale V and warns.
+3. **Article Mizuno paragraph — DONE** (PR #751 `63c12fe2`): forward-looking, fenced.
+4. **Cross-family correlation is now UNBLOCKED on the scale side (1.0 arc).** The link variance is the
+   commensurability piece: it standardizes a category contrast (diag π²/3) against binomial (π²/3),
+   Gaussian, etc., so `corr(contrast_k, trait_j) = cov / sqrt[(V_kk+π²/3)(V_jj+σ²_d,j)]` is now
+   well-defined. Two open pieces: a multinomial gives a **(K-1)-vector** of correlations per partner (not
+   a scalar) — the reporting-convention call (Design 84 "harder open problem"); and the parser/
+   `extract_correlations` cross-blocks are still fenced to standalone-only. Recovery stays data-hungry.
+
+## Deeper 1.0 arc (the genuine recovery)
+- Real one-per-species recovery — a prior/penalty on the loadings + posterior-mean or interval reporting
+  (Bayesian, or penalized-likelihood with proper uncertainty), cross-checked vs MCMCglmm on the
+  reconciled scale. The `phylo_diag_fixed_var` ridge + larger N is a candidate to calibrate (recipe
+  preserved). Pairs naturally with the cross-family correlation wiring (step 4 above).
 
 ## State / guards
-- **PR #753** (draft, `claude/tier2a-phylo-multinomial`): capability + test fix + after-task. CI
-  re-running on `62c04c4e` (test verified locally 44/0 with NOT_CRAN; expected green).
+- **PR #753** (draft, `claude/tier2a-phylo-multinomial`, HEAD `3db828ec`): capability + test fix +
+  after-task + fencing + link-residual correction. CI green through `e915a711`; later commits are
+  doc-only. (PR title still says "regularization pending" — now stale; regularization was a negative
+  result. Retitle at your leisure.)
 - **PR #751** (`docs/multinomial-article`): article + Mizuno paragraph.
 - **No "covered" claim was made** — the capability is fenced, per the D-43 gate (the 3-lens verification
   was the Rose-equivalent for the negative). Multi-seed discipline held throughout (single seeds lie).

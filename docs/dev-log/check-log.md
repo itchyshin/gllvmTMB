@@ -45562,3 +45562,21 @@ grouping-forwarding+fail-loud; `198ca67d` conditional-sim guard). 0.6→1.0 meth
 `docs/dev-log/handover/2026-07-16-claude-handover-coverage-landed.md`. Lane A files only
 (`R/profile-derived.R`, `R/bootstrap-sigma.R`, `dev/m3-grid.R`, `tests/testthat/test-{profile-ci,bootstrap-Sigma}.R`) —
 no overlap with Lane B (X_lv) or Lane C (categorical).
+
+## 2026-07-17 -> Lane A (coverage / code lane): coverage arc closed WITHHELD + MCSE-convention flag
+
+From the coverage-analysis session (no package files touched; Lane A's uncommitted body untouched).
+
+- **n_sim=5000 gaussian confirm + D-43 re-audit -> WITHHELD.** profile_total Sigma_unit_diag:
+  d1-n150 certify-grade, **d2-n150 MARGINAL** under the COMMITTED conservative MCSE
+  (`m3-pilot-report.R:554` = `sqrt(p(1-p)/n_sim)` ~= 0.0032, NOT the trait-level 0.0015 an earlier
+  draft used). Under 0.0032: d1 band 0.9418 (both clusters); d2 band 0.9409 Totoro / **0.9398 rorqual
+  (fails 0.94)**.
+- **Exclusion diagnosed = non-convergence** (2.56% of d1-n150 reps; converged=FALSE), NOT degenerate
+  CIs. Emitted profile CIs are 100% clean (0 Inf / 0 NA). Coverage is conditional-on-convergence; keep
+  the rate disclosed on every surface.
+- **Lift path:** FRESH-SEED reps to shrink the MCSE (the rorqual "confirm" was SAME-seed -> corroborates
+  but adds no independent precision). Then re-audit d2.
+- **disp_group (shared NB2 dispersion): DEFERRED** (accepted in principle, possible 1.0). nbinom2 stays
+  fenced / recovery-only for 0.6. Design record: docs/dev-log/2026-07-17-shared-dispersion-nbinom2-design.md
+- Full write-up: docs/dev-log/after-task/2026-07-17-sigma-coverage-nsim5000-confirm.md (committed f0f17333, local, not pushed).

@@ -31,7 +31,8 @@ required for the main workflow.
   categorical response is still undefined (it spans several liability dimensions), so
   `extract_correlations()` / `extract_Sigma()` decline a fixed-effects-only
   multinomial fit. A two-category response is `binomial(link = "logit")`. For
-  *ordered* categories use `ordinal_probit()`.
+  *ordered* categories use `ordinal_probit()`. See the *Unordered categories with
+  `multinomial()`* article for a worked diet-guild example.
 * **`phylo_latent()` on a `multinomial()` trait (Design 84)** reports the
   `(K-1) x (K-1)` among-category phylogenetic covariance V (how the category
   liabilities coevolve) via `extract_Sigma(fit, level = "phy")`. Two honest caveats:

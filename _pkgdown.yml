@@ -50,6 +50,8 @@ navbar:
         href: articles/fixed-effect-zero-constraints.html
       - text: Choose a response family
         href: articles/response-families.html
+      - text: Unordered categories with multinomial()
+        href: articles/multinomial.html
     diagnostics:
       text: Diagnostics
       menu:
@@ -82,6 +84,7 @@ articles:
     - articles/api-keyword-grid
     - articles/fixed-effect-zero-constraints
     - articles/response-families
+    - articles/multinomial
 
   - title: Diagnostics and validation
     contents:

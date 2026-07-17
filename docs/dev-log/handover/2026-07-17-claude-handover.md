@@ -6,6 +6,29 @@ remaining leverage item (the fixed-`R` regularization) is scoped, not started. *
 lives in the after-task report — read it:**
 `docs/dev-log/after-task/2026-07-17-tier2a-phylo-multinomial-build-recovery.md`.
 
+## 📌 Note to the next lane (from the outgoing Claude) — read before you build
+Beyond the turnkey mechanics below:
+1. **Cheap-first, before the OLRE C++.** The fixed-`R` OLRE is a real marginalized-latent change. Before
+   building it, spend 20 min: does one-per-species even NEED the full `(1/K)(I+J)`, or does a *simpler*
+   stabiliser already pull ρ̂ off the ±1 boundary — e.g. a small FIXED diagonal ridge on the phylo factor,
+   or FIXING Ψ (`unique=TRUE` but mapped to a fixed value) instead of estimating it? If a ridge suffices,
+   it's far less plumbing. Only commit to the full OLRE if the cheap proxy fails.
+2. **OLRE dimension = `n_mn_groups × (K−1)` new latent dims** — sparse-Laplace-fine, but test small→large
+   (n=200 → 2000 → 10000); watch fit time + memory.
+3. **`conv=0` (non-PD Hessian) is UNRESOLVED** — it persists even when ρ̂ recovers with replication.
+   Decide if it's real non-convergence or a benign loadings-only rank-edge flag. **Do not claim "covered"
+   while `conv=0`.** May or may not resolve with the regularization.
+4. **ALWAYS multi-seed; set the "covered" band WITH Shinichi.** Single seeds LIED badly here (0.57 looked
+   like recovery; multi-seed SD was 0.6 with ±1 collapses). The spike's ±0.25 is too loose for a covered
+   claim — agree a mean+SD/MCSE criterion first.
+5. **Cross-check vs MCMCglmm on the reconciled scale.** The harness has the MCMCglmm reference (~0.45 at
+   N=800). Remember liability-scale (MCMCglmm) ≠ softmax-scale (gllvmTMB) — reconcile before comparing.
+6. **Article paragraph = forward-looking + honestly fenced.** "phylogenetic among-category correlation
+   available for adequately-replicated or large-N data; the one-per-species regularised path is
+   forthcoming/landed" — do NOT advertise "covered" until proven.
+7. **Don't touch** the shipped fixed-effects `multinomial()` or the other RE tiers until the phylo
+   instance is covered. Generalising the fence to other tiers is a LATER arc.
+
 ## Mission / goal (why)
 Design 84 Tier-2a: make gllvmTMB **report the (K−1)×(K−1) among-category correlation surface V for a
 multinomial trait**, phylogenetic version, via a phylo factor decomposition on the K−1 category-contrast

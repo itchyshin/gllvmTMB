@@ -1,0 +1,260 @@
+---
+title: "Unordered categories with multinomial()"
+description: "Model an unordered categorical response as baseline-category log-odds, read the per-category contrasts and predicted probabilities, and stop at the fixed-effects-only boundary."
+tier: 2
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Unordered categories with multinomial()}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE
+)
+```
+
+Some responses are a single choice among several categories that have **no
+natural order**: a bird's diet guild (frugivore, insectivore, granivore), a
+plant's pollination syndrome, a patch's dominant land cover. `multinomial()`
+models such a response as a set of baseline-category log-odds and recovers how a
+predictor moves the odds of each category against a common reference.
+
+This article shows when to reach for it, how to read its coefficients and
+predicted probabilities, and — just as important — where it stops in the current
+release.
+
+## When to use `multinomial()`
+
+Match the family to how the categories relate, not just to the fact that the
+response is a factor.
+
+| Response | Family | Why |
+|---|---|---|
+| Unordered categories, `K >= 3` | `multinomial()` | No category is "between" the others; each gets its own contrast against a reference. |
+| **Ordered** categories, `K >= 3` | `ordinal_probit()` | The order is information. A single latent axis crosses ordered thresholds; see [Choose a response family](response-families.html). |
+| Two categories | `binomial(link = "logit")` | One log-odds is enough. `multinomial()` on a 2-level response errors and points you here. |
+
+Two cautions before you start:
+
+- `multinomial()` is a **response** family. It is not the same as
+  `categorical()`, which is a constructor for imputing a missing categorical
+  *predictor*. The two are unrelated.
+- "Ordered-looking" numeric codes are not ordinal by themselves, and genuinely
+  ordered categories are not multinomial. Diet guilds are unordered; abundance
+  classes (`low < medium < high`) are ordered and belong to `ordinal_probit()`.
+
+## The model: baseline-category log-odds
+
+Pick a reference category (the first factor level by default). For a response
+with categories \(1, \dots, K\) and reference \(1\),
+
+\[
+\eta_{1} \equiv 0, \qquad
+\eta_{k} = \beta_{0k} + x^{\top}\beta_{k}, \quad k = 2, \dots, K,
+\]
+
+\[
+\Pr(y = k) = \frac{\exp(\eta_{k})}{\sum_{j=1}^{K} \exp(\eta_{j})}
+\quad\text{(softmax)} .
+\]
+
+The reference is pinned at \(\eta_1 = 0\) so the model is identified, and each
+non-reference category carries its own intercept and slopes. A coefficient is a
+**contrast against the reference**: \(\beta_{0k}\) is the log-odds of category
+\(k\) versus the reference at \(x = 0\), and \(\beta_{k}\) is the change in that
+log-odds per unit of \(x\). A single categorical trait therefore occupies
+\(K-1\) linear predictors.
+
+Which category is the reference is only a labelling choice: the fitted
+probabilities and the maximised likelihood are identical whichever you pick, and
+only the coefficient labels change. You can set it with
+`multinomial(baseline = ...)` (shown below).
+
+## A worked example: diet guild
+
+We simulate the diet guild of `r 250` bird species — frugivore, insectivore, or
+granivore — as a function of one scaled morphological axis, `bill` (larger values
+= deeper bills). The data-generating odds make deeper-billed species more likely
+to be granivores and finer-billed species more likely to be insectivores,
+relative to frugivores.
+
+```{r simulate}
+library(gllvmTMB)
+
+set.seed(20260716)
+n_species <- 250L
+bill <- as.numeric(scale(rnorm(n_species)))
+
+# True baseline-category log-odds, reference = frugivore.
+eta <- cbind(
+  frugivore   = 0,
+  insectivore = 0.3 - 0.9 * bill,
+  granivore   = -0.2 + 1.1 * bill
+)
+prob <- exp(eta - apply(eta, 1L, max))
+prob <- prob / rowSums(prob)
+
+guild <- c("frugivore", "insectivore", "granivore")[
+  apply(prob, 1L, function(p) sample.int(3L, 1L, prob = p))
+]
+
+diet <- data.frame(
+  species = factor(seq_len(n_species)),
+  trait   = factor("diet"),
+  guild   = factor(guild, levels = c("frugivore", "insectivore", "granivore")),
+  bill    = bill
+)
+
+table(diet$guild)
+```
+
+A multinomial response is a **single** categorical column, so the model is fit
+from long data only; there is no wide `traits(...)` twin, because that shorthand
+is for stacking several response columns into a shared covariance — which a
+fixed-effects-only multinomial trait does not use.
+
+```{r fit}
+fit <- gllvmTMB(
+  guild ~ 0 + trait + (0 + trait):bill,
+  data   = diet,
+  trait  = "trait",
+  unit   = "species",
+  family = multinomial(),
+  silent = TRUE
+)
+
+c(convergence = fit$opt$convergence, pdHess = isTRUE(fit$sd_report$pdHess))
+```
+
+## Reading the contrasts
+
+The fit holds \(K - 1 = 2\) contrasts (insectivore and granivore, each versus the
+frugivore reference), each with an intercept and a `bill` slope. We pull them
+into a readable table.
+
+```{r contrasts}
+sdf <- summary(fit$sd_report, "fixed")
+est <- sdf[grepl("b_fix", rownames(sdf)), "Estimate"]
+names(est) <- fit$X_fix_names
+
+pick <- function(cat, slope = FALSE) {
+  key <- if (slope) paste0(cat, ":bill") else paste0(cat, "$")
+  unname(est[grepl(key, names(est))])
+}
+
+data.frame(
+  contrast   = c("insectivore vs frugivore", "granivore vs frugivore"),
+  intercept  = round(c(pick("insectivore"), pick("granivore")), 2),
+  bill_slope = round(c(pick("insectivore", TRUE), pick("granivore", TRUE)), 2),
+  truth_slope = c(-0.9, 1.1)
+)
+```
+
+Read the `bill` slopes as log-odds changes against the frugivore reference. The
+granivore slope is positive: deeper-billed species are more likely to be
+granivores than frugivores. The insectivore slope is negative: deeper-billed
+species are *less* likely to be insectivores than frugivores. Both recover the
+signs and rough magnitudes of the truth. An intercept is the log-odds of that
+guild versus frugivory at the mean bill (`bill = 0`).
+
+Coefficients are contrasts, not category-level effects: a positive granivore
+slope does not by itself mean the *probability* of granivory rises everywhere,
+because every category shares the denominator. For probabilities, predict.
+
+## Predicted category probabilities
+
+`predict(type = "response")` returns a long data frame with one row per
+observation and category; the `est` column is the fitted probability, and the
+probabilities sum to one within each observation.
+
+```{r predict}
+p_hat <- predict(fit, type = "response")
+head(p_hat)
+
+# probabilities sum to 1 within each observation
+head(tapply(p_hat$est, p_hat$species, sum), 3)
+```
+
+To see the trend, evaluate the fitted softmax across a grid of `bill` values
+directly from the estimated contrasts (the reference stays at \(\eta = 0\)):
+
+```{r softmax-curve}
+bill_grid <- seq(-2, 2, by = 1)
+eta_hat <- cbind(
+  frugivore   = 0,
+  insectivore = pick("insectivore") + pick("insectivore", TRUE) * bill_grid,
+  granivore   = pick("granivore")   + pick("granivore",   TRUE) * bill_grid
+)
+p_grid <- exp(eta_hat) / rowSums(exp(eta_hat))
+cbind(bill = bill_grid, round(p_grid, 2))
+```
+
+Fitted probability of granivory rises with bill depth while insectivory falls —
+the diet composition the data were built from.
+
+Prediction is limited to the fitted data in this release: `predict()` with a
+`newdata` argument on a multinomial fit is not supported and fails loud rather
+than returning a silently wrong answer. Build the softmax grid from the
+coefficients (as above) when you need probabilities at new predictor values.
+
+## Changing the reference category
+
+Any category can be the reference. Refitting with a different baseline relabels
+the contrasts but leaves the fit unchanged — same log-likelihood, same fitted
+probabilities.
+
+```{r baseline}
+fit_gran <- gllvmTMB(
+  guild ~ 0 + trait + (0 + trait):bill,
+  data   = diet,
+  trait  = "trait",
+  unit   = "species",
+  family = multinomial(baseline = "granivore"),
+  silent = TRUE
+)
+
+c(default_logLik  = as.numeric(logLik(fit)),
+  granivore_logLik = as.numeric(logLik(fit_gran)))
+```
+
+The two log-likelihoods match; only whether coefficients read "versus frugivore"
+or "versus granivore" changes. Choose the reference that makes your contrasts
+easiest to interpret.
+
+## What this release does not do
+
+`multinomial()` is **fixed-effects-only** in this release, and that boundary is
+deliberate. An unordered response over \(K\) categories is not one latent
+dimension but \(K - 1\) of them (the contrasts), so it does not fit the
+single-latent-scale contract that the package's cross-trait covariance machinery
+depends on. Concretely:
+
+- Latent, random-effect, or structured terms on a multinomial trait
+  (`latent()`, `indep()`, `phylo_*()`, `spatial_*()`, random slopes) are **not
+  supported** and fail loud.
+- There is **no trait correlation** for a multinomial trait:
+  `extract_correlations()` and `extract_Sigma()` refuse a fit containing one.
+  The \((K-1) \times (K-1)\) covariance among the category contrasts — the
+  natural "correlation table" for an unordered response — is a separate, deferred
+  extension.
+- Coefficient recovery is validated (see the package's recovery tests), but the
+  family is not part of the interval-coverage certification; treat its intervals
+  as recovery-oriented.
+
+Within those limits, `multinomial()` gives you an honest, identified
+baseline-category model for a single unordered categorical response.
+
+## See also
+
+- [Choose a response family](response-families.html) — matching every response
+  type to a family, including the ordered-category route with `ordinal_probit()`.
+- `?multinomial` — the family constructor and its `baseline` argument.
+- `?ordinal_probit` — for ordered categories.
+- `?categorical` — the unrelated missing-*predictor* imputation family.

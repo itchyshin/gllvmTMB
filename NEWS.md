@@ -31,7 +31,8 @@ required for the main workflow.
   response (it spans several liability dimensions rather than one), so
   `extract_correlations()` / `extract_Sigma()` decline a multinomial fit. A
   two-category response is `binomial(link = "logit")`. For *ordered* categories use
-  `ordinal_probit()`.
+  `ordinal_probit()`. See the *Unordered categories with `multinomial()`* article for a
+  worked diet-guild example.
 * The reader-facing covariance grammar crosses five correlation sources
   (`none`, `animal`, `phylo`, `spatial`, and `kernel`) with three taught modes:
   independent, dependent, and latent. The one-shared-variance ("scalar") case is

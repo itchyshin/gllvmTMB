@@ -1191,7 +1191,9 @@ simulate.gllvmTMB_multi <- function(
 .check_simulate_unconditional <- function(fit) {
   handled <- c(
     "rr_B", "diag_B", "rr_W", "diag_W", "propto",
-    "lv_B", "phylo_rr", "phylo_diag", "diag_species"
+    "lv_B", "phylo_rr", "phylo_diag", "diag_species",
+    ## spde: base per-trait SPDE spatial field (spde_lv_k == 0), issue #750.
+    "spde"
   )
   ## `fit$use` also carries non-engine label sub-flags that only steer
   ## print()/extract_*/tidy() label dispatch -- they are NOT distinct
@@ -1203,13 +1205,17 @@ simulate.gllvmTMB_multi <- function(
   ##   indep_W / dep_W -> ride on `diag_W` / `rr_W`
   ##   indep_cluster   -> rides on `diag_species` (or `diag_cluster2`, itself
   ##                      still checked, so a cluster2 fit still fails loud).
-  ## Labels riding on an UNhandled engine (spatial_* on `spde`, dep_cluster,
-  ## the slope markers) are deliberately left in so the fit still fails loud
-  ## on the engine flag -- fail-closed against false-precision (issue #18).
+  ## Labels riding on an UNhandled engine (dep_cluster, the slope markers, and
+  ## `spatial_latent`/`spatial_dep` on `spde`) are deliberately left OUT so the
+  ## fit still fails loud on the engine flag -- fail-closed against false-
+  ## precision (issue #18). `spatial_indep`/`spatial_scalar` DO ride the now-
+  ## handled base `spde` engine (spde_lv_k == 0, redrawn below -- issue #750),
+  ## so they are listed here; `spatial_latent` (spde_lv_k > 0) is NOT.
   handled_labels <- c(
     "phylo_unique", "phylo_indep", "phylo_dep",
     "indep_B", "indep_W", "indep_cluster",
-    "dep_B", "dep_W"
+    "dep_B", "dep_W",
+    "spatial_indep", "spatial_scalar"
   )
   active <- names(fit$use)[vapply(fit$use, isTRUE, logical(1))]
   active <- setdiff(active, handled_labels)
@@ -1349,6 +1355,42 @@ simulate.gllvmTMB_multi <- function(
     q_new <- matrix(stats::rnorm(n_traits * n_species), n_traits, n_species)
     q_new <- q_new * sd_q
     eta <- eta + q_new[cbind(trait_id, sp_id)]
+  }
+
+  ## spde: base per-trait SPDE spatial field only (spde_lv_k == 0). The
+  ## reduced-rank spatial_latent field (spde_lv_k > 0, shared K_S fields via
+  ## Lambda_spde) is NOT redrawn here -- .check_simulate_unconditional() keeps
+  ## it out of the whitelist so it fails loud (conditional fallback) instead of
+  ## silently mis-drawing. Ground truth (src/gllvmTMB.cpp SPDE block + the eta
+  ## projection):
+  ##   Q_base = kappa^4 spde_M0 + 2 kappa^2 spde_M1 + spde_M2
+  ##   omega_spde[, t] ~ N(0, tau_t^-2 Q_base^-1),  tau_t = exp(log_tau_spde[t])
+  ##   eta[o] += (A_proj %*% omega_spde)[o, trait(o)]
+  ## Draw via the sparse precision Cholesky: Q_base = L L^T, UNPERMUTED
+  ## (perm = FALSE -- the default fill-reducing permutation reorders mesh nodes
+  ## internally, which silently scrambles the correspondence with A_proj's
+  ## columns unless undone; disabling it keeps L in mesh-node order). For
+  ## z ~ N(0, I), x = solve(L^T, z) (system = "Lt") has Cov = L^-T L^-1 =
+  ## (L L^T)^-1 = Q_base^-1; scaling by 1 / tau_t gives the correct per-trait
+  ## variance.
+  spde_lv_k <- fit$tmb_data$spde_lv_k %||% 0L
+  if (isTRUE(fit$use$spde) && identical(as.integer(spde_lv_k), 0L)) {
+    kappa <- as.numeric(fit$report$kappa)
+    tau <- exp(as.numeric(fit$report$log_tau_spde)) # length n_traits (recycled if length 1)
+    Qb <- kappa^4 * fit$tmb_data$spde_M0 +
+      2 * kappa^2 * fit$tmb_data$spde_M1 +
+      fit$tmb_data$spde_M2
+    L_spde <- Matrix::Cholesky(Qb, LDL = FALSE, perm = FALSE)
+    n_mesh <- ncol(fit$tmb_data$A_proj)
+    omega_spde_new <- matrix(0, n_mesh, n_traits)
+    for (t in seq_len(n_traits)) {
+      tau_t <- tau[min(t, length(tau))]
+      omega_spde_new[, t] <- as.numeric(
+        Matrix::solve(L_spde, stats::rnorm(n_mesh), system = "Lt")
+      ) / tau_t
+    }
+    A_omega_new <- as.matrix(fit$tmb_data$A_proj %*% omega_spde_new)
+    eta <- eta + A_omega_new[cbind(seq_along(trait_id), trait_id)]
   }
 
   eta

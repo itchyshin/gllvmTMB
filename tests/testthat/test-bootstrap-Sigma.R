@@ -309,16 +309,19 @@ test_that("bootstrap_Sigma refits a non-default unit_obs tier (issue #18)", {
 ## Mizuno while validating the unit_obs fix.)
 ##
 ## NB: the paired-phylo `phylo_diag` tier USED to sit here as an "unredrawable"
-## example; it is now redrawn unconditionally (see the success test below), so
-## the guard is re-pointed at a genuinely unhandled spatial tier.
+## example (now redrawn -- see the phylo success test below), and as of issue
+## #750 the BASE per-trait spatial (`spde`, spde_lv_k == 0) tier is redrawn too,
+## so bootstrap_Sigma() must SUCCEED on it. The guard still fires for the
+## genuinely unhandled spatial variants (spatial_latent / spde_*_slope) --
+## covered fail-closed by the mock test in test-spatial-redraw.R.
 
-test_that("bootstrap_Sigma stops when simulate() cannot unconditionally redraw an RE tier", {
+test_that("bootstrap_Sigma succeeds on a base spatial (spde_indep) fit (issue #750)", {
   skip_if_not_heavy()
   skip_on_cran()
   skip_if_not_installed("fmesher")
-  ## A spde tier cannot be unconditionally redrawn. Combine it with a latent()
-  ## B tier so bootstrap_Sigma() reaches the redraw guard (a spatial-only fit
-  ## exposes no B/W/phy level and aborts earlier for a different reason).
+  ## A base per-trait spde tier is now unconditionally redrawable. Combine it
+  ## with a latent() B tier so bootstrap_Sigma() has an extractable Sigma target
+  ## (a spatial-only fit exposes no B/W/phy level).
   sim <- gllvmTMB::simulate_site_trait(
     n_sites = 60L, n_species = 14L, n_traits = 2L, mean_species_per_site = 6,
     spatial_range = 0.3, sigma2_spa = rep(0.5, 2L), seed = 7L
@@ -329,14 +332,16 @@ test_that("bootstrap_Sigma stops when simulate() cannot unconditionally redraw a
       latent(0 + trait | site, d = 2),
     data = sim$data, mesh = mesh
   )))
-  ## The spatial (spde) tier cannot be unconditionally redrawn -> the guard must
-  ## fail loud rather than return conditional (collapsed) intervals.
-  expect_error(
-    bootstrap_Sigma(
-      fit, n_boot = 2L, level = "unit", what = "R", seed = 1L
-    ),
-    class = "gllvmTMB_bootstrap_conditional_sim"
-  )
+  ## The base spde tier is redrawable -> the guard passes and the CIs are real.
+  expect_true(gllvmTMB:::.check_simulate_unconditional(fit)$can_redraw)
+  boot <- suppressMessages(suppressWarnings(bootstrap_Sigma(
+    fit, n_boot = 15L, level = "unit", what = "Sigma", seed = 1L, progress = FALSE
+  )))
+  expect_s3_class(boot, "bootstrap_Sigma")
+  lo <- unlist(boot$ci_lower)
+  hi <- unlist(boot$ci_upper)
+  expect_true(length(lo) > 0L && all(is.finite(lo)) && all(is.finite(hi)))
+  expect_true(any(hi > lo))
 })
 
 ## ---- companion to the guard above: the paired-phylo tier IS now redrawn ----

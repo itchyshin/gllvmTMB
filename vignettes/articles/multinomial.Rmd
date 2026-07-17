@@ -230,41 +230,39 @@ easiest to interpret.
 
 ## What this release does not do
 
-`multinomial()` is **fixed-effects-only** in this release, and that boundary is
-deliberate. An unordered response over \(K\) categories is not one latent
-dimension but \(K - 1\) of them (the contrasts), so it does not fit the
-single-latent-scale contract that the package's cross-trait covariance machinery
-depends on. Concretely:
+`multinomial()` is fixed-effects-first, with one random-effect extension: a
+`phylo_latent()` term is admitted and reports the among-category *phylogenetic*
+covariance (see below). The remaining boundaries are deliberate — an unordered
+response over \(K\) categories is not one latent dimension but \(K - 1\) of them
+(the contrasts), so it does not fit the single-latent-scale contract that the
+package's *cross-trait* covariance machinery depends on. Concretely:
 
-- Latent, random-effect, or structured terms on a multinomial trait
-  (`latent()`, `indep()`, `phylo_*()`, `spatial_*()`, random slopes) are **not
-  supported** and fail loud.
-- There is **no trait correlation** for a multinomial trait in this release:
-  `extract_correlations()` and `extract_Sigma()` decline a fit containing one,
-  because a fixed-effects-only fit has no latent covariance to report. Two
-  different extensions are deferred, and they are not equally hard. A *standalone*
-  \((K-1) \times (K-1)\) covariance among the category contrasts — the natural
-  "correlation table" for one unordered response, as produced by correlated
-  random effects — is a bounded future feature. Folding a categorical trait, which
-  occupies \(K-1\) latent dimensions, into the *cross-trait* correlation matrix
-  alongside ordinary single-scale traits — and settling which reference and scale
-  convention to report it on — is the harder open problem.
+- Every latent / random-effect / structured tier *other than* `phylo_latent()` —
+  `latent()`, `indep()`, `spatial_*()`, the other `phylo_*()` tiers, random slopes
+  — is **not supported** on a multinomial trait and fails loud.
+- **Cross-trait** correlation with a categorical trait is still deferred:
+  `extract_correlations()` and `extract_Sigma()` decline a *fixed-effects-only*
+  multinomial fit (no latent covariance to report), and folding a categorical
+  trait, which occupies \(K-1\) latent dimensions, into the *cross-trait*
+  correlation matrix alongside ordinary single-scale traits — settling which
+  reference and scale convention to report it on — is the harder open problem. The
+  *standalone* \((K-1) \times (K-1)\) among-category table, by contrast, is now
+  available in the phylogenetic setting (below).
 - Coefficient recovery is validated (see the package's recovery tests), but the
   family is not part of the interval-coverage certification; treat its intervals
   as recovery-oriented.
 
-### Looking ahead: the phylogenetic route to a standalone table
+### The phylogenetic route: a standalone among-category table
 
 The standalone \((K-1) \times (K-1)\) table is most natural in a *phylogenetic*
-setting, and that is where the package is heading (design 84). Following the
-phylogenetic multinomial GLMM of Mizuno, Drobniak, Williams, Lagisz & Nakagawa
-(2025, *Journal of Evolutionary Biology*, doi:10.1093/jeb/voaf116), a
-phylogenetic factor on the \(K-1\) category contrasts estimates the among-category
-covariance \(V\) — how the category liabilities coevolve across the tree — which
-`extract_Sigma()` can then report. The key is that a categorical trait already
-occupies \(K-1\) latent dimensions, so a low-rank factor on those contrasts is
-exactly the right object; no new likelihood is needed beyond the softmax you have
-here.
+setting, and gllvmTMB now reports it there (design 84), following the phylogenetic
+multinomial GLMM of Mizuno, Drobniak, Williams, Lagisz & Nakagawa (2025, *Journal
+of Evolutionary Biology*, doi:10.1093/jeb/voaf116). A `phylo_latent()` factor on
+the \(K-1\) category contrasts estimates the among-category covariance \(V\) — how
+the category liabilities coevolve across the tree — read out with
+`extract_Sigma(fit, level = "phy")`. A categorical trait already occupies
+\(K-1\) latent dimensions, so a low-rank factor on those contrasts is exactly the
+right object; no new likelihood is needed beyond the softmax you have here.
 
 The honest caveat is that this table is **data-hungry**. A single categorical
 draw carries little information about the \((K-1)\)-dimensional liability, so
@@ -273,6 +271,21 @@ species; one observation per species is too weakly informative to pin the
 among-category correlation reliably (the point estimate is high-variance and can
 reach the \(\pm 1\) boundary). Read it as recovery-oriented, and prefer replicated
 or large samples — the same discipline the coefficient recovery above is held to.
+
+Two scales are in play, and it helps to name them. \(V\) above is the covariance
+of the phylogenetic factor on the latent (log-odds) scale. To place a categorical
+trait on the same footing as ordinary single-scale traits you also need its
+*observation-scale* residual, and for the softmax that residual is a matrix, not a
+scalar: each category contrast carries \(\pi^2/3\) — the same distribution-specific
+link variance a `binomial` logit uses (Nakagawa & Schielzeth 2010, *Biological
+Reviews* 85, 935–956; Nakagawa, Johnson & Schielzeth 2017, *J. R. Soc. Interface*
+14, 20170213) — with a \(\pi^2/6\) covariance between contrasts induced by their
+shared baseline category, i.e. \((\pi^2/6)(\mathbf{I} + \mathbf{J})\). That is the
+covariance of the differenced Gumbel errors in the softmax's random-utility
+representation (McFadden 1974, in *Frontiers in Econometrics*, ed. P. Zarembka,
+pp. 105–142); it reduces to the binomial's \(\pi^2/3\) when \(K = 2\), and it is
+the scale on which a categorical trait can eventually be made commensurable with
+single-scale traits.
 
 Within those limits, `multinomial()` gives you an honest, identified
 baseline-category model for a single unordered categorical response.

@@ -480,7 +480,8 @@ link_residual_per_trait <- function(fit) {
 #' logit, exactly as for `binomial(link = "logit")`) and \eqn{\pi^2/6}
 #' off-diagonal (the shared baseline category couples the contrasts). This is the
 #' residual covariance implied by the softmax's random-utility (Gumbel)
-#' representation, and it reduces to the binomial \eqn{\pi^2/3} at \eqn{K = 2}.
+#' representation (McFadden 1974), and it reduces to the binomial \eqn{\pi^2/3} at
+#' \eqn{K = 2}.
 #' (It is distinct from MCMCglmm's *arbitrary* fixed identification residual
 #' \eqn{(1/K)(\mathbf{I}+\mathbf{J})} and that package's MCMC-specific \eqn{c^2}
 #' overdispersion correction, neither of which a direct softmax fit needs.)
@@ -500,7 +501,8 @@ link_residual_per_trait <- function(fit) {
 #' `"auto"` is a no-op (their per-trait \eqn{\sigma^2_d} is zero).
 #'
 #' Citations: Nakagawa & Schielzeth (2010); Nakagawa, Johnson & Schielzeth
-#' (2017) — see \strong{References} below.
+#' (2017); McFadden (1974) for the multinomial-logit random-utility residual —
+#' see \strong{References} below.
 #'
 #' ## Future: 3+ latent tiers
 #'
@@ -579,6 +581,11 @@ link_residual_per_trait <- function(fit) {
 #'   generalized linear mixed-effects models revisited and expanded.
 #'   *Journal of the Royal Society Interface* 14(134), 20170213.
 #'   \doi{10.1098/rsif.2017.0213}
+#'
+#' McFadden, D. (1974). Conditional logit analysis of qualitative choice
+#'   behavior. In P. Zarembka (Ed.), *Frontiers in Econometrics* (pp. 105-142).
+#'   Academic Press, New York. (Random-utility origin of the multinomial-logit
+#'   \eqn{(\pi^2/6)(\mathbf{I}+\mathbf{J})} contrast residual.)
 #' @seealso [extract_communality()] for the per-trait shared / unique
 #'   variance share at one tier; [extract_proportions()] for the
 #'   canonical per-trait variance decomposition across tiers;

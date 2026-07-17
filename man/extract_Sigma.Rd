@@ -182,7 +182,8 @@ pseudo-traits -- \eqn{\pi^2/3} on the diagonal (each baseline contrast is a
 logit, exactly as for \code{binomial(link = "logit")}) and \eqn{\pi^2/6}
 off-diagonal (the shared baseline category couples the contrasts). This is the
 residual covariance implied by the softmax's random-utility (Gumbel)
-representation, and it reduces to the binomial \eqn{\pi^2/3} at \eqn{K = 2}.
+representation (McFadden 1974), and it reduces to the binomial \eqn{\pi^2/3} at
+\eqn{K = 2}.
 (It is distinct from MCMCglmm's \emph{arbitrary} fixed identification residual
 \eqn{(1/K)(\mathbf{I}+\mathbf{J})} and that package's MCMC-specific \eqn{c^2}
 overdispersion correction, neither of which a direct softmax fit needs.)
@@ -202,7 +203,8 @@ latent decomposition is present). For continuous-only Gaussian or lognormal fits
 \code{"auto"} is a no-op (their per-trait \eqn{\sigma^2_d} is zero).
 
 Citations: Nakagawa & Schielzeth (2010); Nakagawa, Johnson & Schielzeth
-(2017) — see \strong{References} below.
+(2017); McFadden (1974) for the multinomial-logit random-utility residual —
+see \strong{References} below.
 }
 
 \subsection{Future: 3+ latent tiers}{
@@ -241,6 +243,11 @@ of determination \eqn{R^2} and intra-class correlation coefficient from
 generalized linear mixed-effects models revisited and expanded.
 \emph{Journal of the Royal Society Interface} 14(134), 20170213.
 \doi{10.1098/rsif.2017.0213}
+
+McFadden, D. (1974). Conditional logit analysis of qualitative choice
+behavior. In P. Zarembka (Ed.), \emph{Frontiers in Econometrics} (pp. 105-142).
+Academic Press, New York. (Random-utility origin of the multinomial-logit
+\eqn{(\pi^2/6)(\mathbf{I}+\mathbf{J})} contrast residual.)
 }
 \seealso{
 \code{\link[=extract_communality]{extract_communality()}} for the per-trait shared / unique

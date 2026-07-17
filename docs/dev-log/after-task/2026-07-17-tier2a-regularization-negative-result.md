@@ -76,9 +76,13 @@ cheap 0.6 add.
 ## Follow-ups
 1. **Fence the reader surfaces** (roxygen on the phylo path, NEWS, article) — one-per-species = replication
    or large N; regularization dropped for 0.6.
-2. **`link_residual` for multinomial (DEFERRED):** the "multivariate analog of π²/3" framing is unresolved
-   — `(1/K)(I+J)` diagonal 2/K is MCMCglmm's convention, NOT the logistic π²/3 scale. Needs a
-   scale-convention decision (Shinichi) before wiring; not essential for 0.6.
+2. **`link_residual` for multinomial — CONVENTION RESOLVED (Hadfield MCMCglmm course notes, multinomial
+   section).** `(1/K)(I+J)` is NOT a scalar and NOT π²/3: it is the covariance of the K−1 baseline
+   CONTRASTS under independence of the underlying categories (2/K diagonal = own+baseline variance; 1/K
+   off-diagonal = shared baseline). Key consequence, now documented on the reader surfaces: **a diagonal V
+   is not independence** — the null is `(1/K)(I+J)`. What remains is *applying* a matrix residual (the
+   current `link_residual_per_trait()` is scalar-per-trait), a 1.0 wiring task; `extract_Sigma()` returns
+   the latent-scale V and warns for now. Fenced in NEWS + the `extract_Sigma` roxygen (`3e4a4f5b`).
 3. **1.0 arc:** proper prior + posterior-mean/interval reporting (cross-check vs MCMCglmm on the
    reconciled scale). Ridge+N calibration is a candidate; `phylo_diag_fixed_var` recipe is preserved.
 

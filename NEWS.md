@@ -39,7 +39,9 @@ required for the main workflow.
   single categorical draw per species is weakly informative, so one-per-species point
   estimates are high-variance and can reach the +/-1 boundary), and V is on the
   baseline-**contrast** scale, so a diagonal V is not independence -- the null contrast
-  covariance is `(1/K)(I + J)`. Treat it as recovery-oriented.
+  covariance is `(I + J)`-structured (equal diagonal, equal off-diagonal; the
+  observation-scale link residual has the same shape, `(pi^2/6)(I + J)` -- the softmax
+  analog of binomial's `pi^2/3`). Treat it as recovery-oriented.
 * The reader-facing covariance grammar crosses five correlation sources
   (`none`, `animal`, `phylo`, `spatial`, and `kernel`) with three taught modes:
   independent, dependent, and latent. The one-shared-variance ("scalar") case is

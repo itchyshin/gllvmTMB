@@ -474,14 +474,21 @@ link_residual_per_trait <- function(fit) {
 #' }
 #'
 #' `multinomial()` is the exception to the scalar-per-trait table: its
-#' latent-scale residual is not a scalar but the \eqn{(K-1)\times(K-1)} matrix
-#' \eqn{(1/K)(\mathbf{I} + \mathbf{J})} over the category-contrast pseudo-traits.
-#' This is the covariance the \eqn{K-1} baseline contrasts have when the
-#' underlying categories are independent with equal variance (Hadfield, MCMCglmm
-#' course notes) -- the off-diagonal \eqn{1/K} is the shared-baseline term, so a
-#' *diagonal* among-category covariance is not independence. Because it is a full
-#' matrix rather than a diagonal addition, it is not yet applied automatically;
-#' `extract_Sigma()` returns the latent-scale V and warns for a multinomial trait.
+#' distribution-specific residual is not a scalar but the \eqn{(K-1)\times(K-1)}
+#' matrix \eqn{(\pi^2/6)(\mathbf{I} + \mathbf{J})} over the category-contrast
+#' pseudo-traits -- \eqn{\pi^2/3} on the diagonal (each baseline contrast is a
+#' logit, exactly as for `binomial(link = "logit")`) and \eqn{\pi^2/6}
+#' off-diagonal (the shared baseline category couples the contrasts). This is the
+#' residual covariance implied by the softmax's random-utility (Gumbel)
+#' representation, and it reduces to the binomial \eqn{\pi^2/3} at \eqn{K = 2}.
+#' (It is distinct from MCMCglmm's *arbitrary* fixed identification residual
+#' \eqn{(1/K)(\mathbf{I}+\mathbf{J})} and that package's MCMC-specific \eqn{c^2}
+#' overdispersion correction, neither of which a direct softmax fit needs.)
+#' Because the residual is a full matrix rather than a diagonal addition, it is
+#' not yet applied automatically; `extract_Sigma()` returns the latent-scale V and
+#' warns for a multinomial trait. Relatedly, a *diagonal* among-category V is not
+#' independence: the independence null for the contrasts is itself
+#' \eqn{(\mathbf{I}+\mathbf{J})}-structured (equal diagonal, equal off-diagonal).
 #'
 #' For mixed-family fits the residual is computed *per trait* when that trait has
 #' one unambiguous family/link, then added to the diagonal
@@ -642,9 +649,10 @@ extract_Sigma <- function(
   ## FIXED-EFFECTS-ONLY multinomial fit (no phylo factor) has no latent Sigma; keep
   ## the clear refusal for that case. Interpretation caveats (2026-07-17 after-task):
   ## the returned V is on the K-1 baseline-CONTRAST scale, so a diagonal V is NOT
-  ## independence -- the null contrast covariance is (1/K)(I+J) (Hadfield MCMCglmm
-  ## notes); and one-per-species recovery is high-variance (needs replication or
-  ## large N). See the phylo-multinomial fence in fit-multi.R.
+  ## independence -- the null contrast covariance is (I+J)-structured (Hadfield
+  ## MCMCglmm notes; the softmax link residual shares that shape at scale pi^2/6);
+  ## and one-per-species recovery is high-variance (needs replication or large N).
+  ## See the phylo-multinomial fence in fit-multi.R.
   if (!is.null(fit$tmb_data$family_id_vec) &&
       any(fit$tmb_data$family_id_vec == 16L) &&
       !isTRUE(fit$use$phylo_rr)) {

@@ -1798,9 +1798,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## regularizer fixes this; the fixed-R OLRE was tested and is inert). (2) The
   ## contrasts are differences against a SHARED baseline category, so a diagonal
   ## V does NOT mean independence: under independent equal-variance categories
-  ## the null contrast covariance is (1/K)(I+J) (Hadfield MCMCglmm course notes,
-  ## multinomial section) -- interpret the reported correlations against that
-  ## null, not against 0. Every OTHER latent / random-effect / structured tier
+  ## the null contrast covariance is (I+J)-structured -- equal on the diagonal,
+  ## equal off-diagonal (Hadfield MCMCglmm course notes, multinomial section) --
+  ## so interpret the reported correlations against that null, not against 0. (The
+  ## observation-scale link residual has the same (I+J) shape at scale pi^2/6:
+  ## pi^2/3 diagonal, pi^2/6 off-diagonal -- the softmax analog of binomial's
+  ## pi^2/3; see extract_Sigma()'s link_residual docs.) Every OTHER latent /
+  ## random-effect / structured tier
   ## remains fixed-effects-only on a multinomial fit and still fails loud rather
   ## than fit a silently-wrong model.
   if (any(family_id_vec == 16L) &&

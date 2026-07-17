@@ -76,13 +76,22 @@ cheap 0.6 add.
 ## Follow-ups
 1. **Fence the reader surfaces** (roxygen on the phylo path, NEWS, article) — one-per-species = replication
    or large N; regularization dropped for 0.6.
-2. **`link_residual` for multinomial — CONVENTION RESOLVED (Hadfield MCMCglmm course notes, multinomial
-   section).** `(1/K)(I+J)` is NOT a scalar and NOT π²/3: it is the covariance of the K−1 baseline
-   CONTRASTS under independence of the underlying categories (2/K diagonal = own+baseline variance; 1/K
-   off-diagonal = shared baseline). Key consequence, now documented on the reader surfaces: **a diagonal V
-   is not independence** — the null is `(1/K)(I+J)`. What remains is *applying* a matrix residual (the
-   current `link_residual_per_trait()` is scalar-per-trait), a 1.0 wiring task; `extract_Sigma()` returns
-   the latent-scale V and warns for now. Fenced in NEWS + the `extract_Sigma` roxygen (`3e4a4f5b`).
+2. **`link_residual` for multinomial — CONVENTION RESOLVED** (Hadfield MCMCglmm course notes +
+   Mizuno/Ayumi tutorial; Shinichi's steer). Three things were conflated:
+   - **MCMCglmm's fixed identification residual `(1/K)(I+J)`** — an *arbitrary* value (Hadfield: "can be
+     set to any arbitrary value") for the latent-Gaussian categorical; not a real link variance.
+   - **The `c² = (16√3/15π)²` correction** — MCMCglmm's MCMC overdispersion/probability-scale rescale;
+     **Bayesian-specific** (the tutorial: "In brms, we do not need c2 correction"). A softmax fit needs
+     neither A nor B.
+   - **gllvmTMB's link residual = `(π²/6)(I+J)`** — the softmax's own random-utility (Gumbel) residual:
+     **π²/3 on the diagonal** (each contrast is a logit, exactly as binomial), **π²/6 off-diagonal**
+     (shared-baseline coupling). Reduces to binomial's π²/3 at K=2. This is the correct distribution-
+     specific residual for reporting observation-scale correlations.
+   Separately, the **independence null of V** is `(I+J)`-*structured* (scale-free) — so a diagonal V is
+   not independence. What remains: *applying* the matrix residual (current `link_residual_per_trait()` is
+   scalar-per-trait) — a 1.0 wiring task; `extract_Sigma()` returns latent-scale V and warns for now.
+   Documented in NEWS + the `extract_Sigma` roxygen (corrected: link residual is `(π²/6)(I+J)`, not the
+   MCMCglmm identification residual).
 3. **1.0 arc:** proper prior + posterior-mean/interval reporting (cross-check vs MCMCglmm on the
    reconciled scale). Ridge+N calibration is a candidate; `phylo_diag_fixed_var` recipe is preserved.
 

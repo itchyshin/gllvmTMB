@@ -980,14 +980,268 @@ profile_ci_communality <- function(
   full
 }
 
-#' Profile-likelihood CI for one cross-trait correlation
+## ---- Cross-trait correlation on Sigma_total: shared spec ------------------
+## rho_ij = Sigma_ij / sqrt(Sigma_ii * Sigma_jj) with
+##   Sigma_total = Lambda Lambda^T + diag(Psi) + diag(link_residual).
+## MIRRORS `.total_variance_spec()`: a SINGLE source of truth for the target
+## and its EXACT analytic gradient, reused by the recovery-grade profile
+## `profile_ci_correlation()`. ESTIMAND NOTE: this targets Sigma_TOTAL -- the
+## same functional fisher-z / wald / bootstrap use -- NOT the withdrawn
+## Sigma_shared = Lambda Lambda^T surface that returned +/-1 on rank-deficient
+## / non-Gaussian fits (audit
+## docs/dev-log/audits/2026-05-17-profile-correlation-surface.md, option b).
+## The link residual (r) and Psi are DIAGONAL, so they enter the denominator
+## (Sigma_ii, Sigma_jj) but NEVER the numerator (Sigma_ij, i != j); r is
+## CONSTANT in the free parameters (family-derived), so its gradient
+## contribution is 0. The theta_rr -> Lambda packing is LINEAR, so
+## d vec(Lambda) / d theta_rr is a constant 0/1 basis map (basis_L) obtained
+## once via build_Lambda on basis vectors, and Psi is reconstructed through
+## `.expand_mapped_diag()` so mapped-off single-trial-binary Psi (#717) is
+## handled, not misindexed.
+#' @keywords internal
+#' @noRd
+.correlation_total_spec <- function(fit, tier, i, j, link_residual = "auto") {
+  par_names <- names(fit$opt$par)
+  if (tier == "B_slope") {
+    ix_rr <- which(par_names == "theta_rr_B_slope")
+    ix_diag <- which(par_names == "theta_diag_B_slope")
+    rank <- fit$d_B_slope
+    use_rr <- isTRUE(fit$use$rr_B_slope)
+    use_diag <- isTRUE(fit$use$diag_B_slope)
+    diag_name <- "theta_diag_B_slope"
+    spde <- FALSE
+  } else if (tier == "B") {
+    ix_rr <- which(par_names == "theta_rr_B")
+    ix_diag <- which(par_names == "theta_diag_B")
+    rank <- fit$d_B
+    use_rr <- isTRUE(fit$use$rr_B)
+    use_diag <- isTRUE(fit$use$diag_B)
+    diag_name <- "theta_diag_B"
+    spde <- FALSE
+  } else if (tier == "W") {
+    ix_rr <- which(par_names == "theta_rr_W")
+    ix_diag <- which(par_names == "theta_diag_W")
+    rank <- fit$d_W
+    use_rr <- isTRUE(fit$use$rr_W)
+    use_diag <- isTRUE(fit$use$diag_W)
+    diag_name <- "theta_diag_W"
+    spde <- FALSE
+  } else if (tier == "phy") {
+    ix_rr <- which(par_names == "theta_rr_phy")
+    ix_diag <- which(par_names == "log_sd_phy_diag")
+    rank <- fit$d_phy
+    use_rr <- isTRUE(fit$use$phylo_rr)
+    use_diag <- isTRUE(fit$use$phylo_diag)
+    diag_name <- "log_sd_phy_diag"
+    spde <- FALSE
+  } else {
+    # spde
+    ix_rr <- which(par_names == "theta_rr_spde_lv")
+    ix_diag <- which(par_names == "log_tau_spde")
+    rank <- fit$d_spde_lv
+    use_rr <- isTRUE(fit$use$spatial_latent)
+    use_diag <- isTRUE(fit$use$spatial_latent_unique)
+    diag_name <- "log_tau_spde"
+    spde <- TRUE
+  }
+
+  trait_names <- levels(fit$data[[fit$trait_col]])
+  n_traits <- length(trait_names)
+  if (n_traits == 0L) {
+    n_traits <- length(ix_diag)
+  }
+
+  ## Constant, family-derived per-trait link residual added to the diagonal so
+  ## the target is Sigma_TOTAL (consistent with fisher-z / bootstrap). For a
+  ## delta/hurdle trait the correlation diagonal uses the positive-part-only
+  ## residual (Design 02, 2026-07-05), mirroring extract_correlations().
+  r <- rep(0, n_traits)
+  if (identical(link_residual, "auto")) {
+    r_try <- as.numeric(link_residual_per_trait(fit))
+    if (length(r_try) == n_traits) {
+      r <- r_try
+      if (.correlation_has_delta_trait(fit)) {
+        resid_pos <- delta_positive_part_residual_per_trait(fit)
+        has_pos <- !is.na(resid_pos)
+        r[has_pos] <- resid_pos[has_pos]
+      }
+    }
+  }
+
+  build_Lambda <- function(theta_rr, p, rk) {
+    L <- matrix(0, p, rk)
+    if (length(theta_rr) == 0L || rk == 0L) {
+      return(L)
+    }
+    lam_diag <- theta_rr[seq_len(rk)]
+    lam_lower <- theta_rr[-seq_len(rk)]
+    for (jj in seq_len(rk)) {
+      L[jj, jj] <- lam_diag[jj]
+    }
+    idx <- 1L
+    for (jj in seq_len(rk)) {
+      if (jj < p) {
+        for (ii in (jj + 1L):p) {
+          if (idx <= length(lam_lower)) {
+            L[ii, jj] <- lam_lower[idx]
+          }
+          idx <- idx + 1L
+        }
+      }
+    }
+    L
+  }
+
+  has_rr <- isTRUE(use_rr) && length(ix_rr) > 0L
+  rk <- if (has_rr) as.integer(rank) else 0L
+
+  ## Constant linear map d vec(Lambda) / d theta_rr as 0/1 basis matrices.
+  basis_L <- if (has_rr) {
+    lapply(seq_along(ix_rr), function(m) {
+      e <- numeric(length(ix_rr))
+      e[m] <- 1
+      build_Lambda(e, p = n_traits, rk = rk)
+    })
+  } else {
+    list()
+  }
+
+  ## trait -> free theta_diag par index (NA when the trait's psi is mapped off
+  ## / pinned), replicating `.total_variance_spec()`'s reconciliation (#717).
+  diag_map <- fit$tmb_map[[diag_name]]
+  diag_free_for_trait <- function(t) {
+    if (!isTRUE(use_diag) || length(ix_diag) == 0L) {
+      return(NA_integer_)
+    }
+    if (is.null(diag_map)) {
+      if (length(ix_diag) == n_traits) {
+        return(ix_diag[t])
+      }
+      if (length(ix_diag) == 1L) {
+        return(ix_diag[1L])
+      }
+      return(NA_integer_)
+    }
+    lvl <- as.integer(diag_map)
+    if (
+      t > length(lvl) || is.na(lvl[t]) || lvl[t] < 1L || lvl[t] > length(ix_diag)
+    ) {
+      return(NA_integer_)
+    }
+    ix_diag[lvl[t]]
+  }
+
+  ## psi (diagonal) reconstructed to one value per trait; spde stores precision
+  ## (exp(-2*theta)), the source/ordinary tiers store variance (exp(2*theta)).
+  psi_full <- function(par) {
+    if (!isTRUE(use_diag) || length(ix_diag) == 0L) {
+      return(rep(0, n_traits))
+    }
+    th <- .expand_mapped_diag(fit, diag_name, par[ix_diag], n_traits)
+    if (spde) exp(-2 * th) else exp(2 * th)
+  }
+
+  Sigma_entries <- function(par) {
+    L <- if (has_rr) {
+      build_Lambda(par[ix_rr], p = n_traits, rk = rk)
+    } else {
+      matrix(0, n_traits, 0L)
+    }
+    psi <- psi_full(par)
+    Sij <- if (has_rr) sum(L[i, ] * L[j, ]) else 0
+    Sii <- (if (has_rr) sum(L[i, ]^2) else 0) + psi[i] + r[i]
+    Sjj <- (if (has_rr) sum(L[j, ]^2) else 0) + psi[j] + r[j]
+    list(L = L, psi = psi, Sij = Sij, Sii = Sii, Sjj = Sjj)
+  }
+
+  rho_of_par <- function(par) {
+    e <- Sigma_entries(par)
+    if (is.na(e$Sii) || is.na(e$Sjj) || e$Sii <= 0 || e$Sjj <= 0) {
+      return(NA_real_)
+    }
+    ## unname: psi / the diagonal reconstruction inherits a `theta_diag_*` name
+    ## from the named par subset, which would otherwise propagate through rho
+    ## into the returned CI vector (breaking its estimate/lower/upper names).
+    unname(e$Sij / sqrt(e$Sii * e$Sjj))
+  }
+
+  ## Exact analytic gradient drho/dpar over the fit$opt$par vector.
+  drho_dpar <- function(par) {
+    g <- numeric(length(par))
+    e <- Sigma_entries(par)
+    Sii <- e$Sii
+    Sjj <- e$Sjj
+    Sij <- e$Sij
+    if (is.na(Sii) || is.na(Sjj) || Sii <= 0 || Sjj <= 0) {
+      return(g)
+    }
+    den <- sqrt(Sii * Sjj)
+    rho <- Sij / den
+    ## theta_rr entries enter numerator AND denominator.
+    if (has_rr) {
+      Li <- e$L[i, ]
+      Lj <- e$L[j, ]
+      for (m in seq_along(ix_rr)) {
+        Bi <- basis_L[[m]][i, ]
+        Bj <- basis_L[[m]][j, ]
+        dSij <- sum(Bi * Lj) + sum(Li * Bj)
+        dSii <- 2 * sum(Li * Bi)
+        dSjj <- 2 * sum(Lj * Bj)
+        dden <- (dSii * Sjj + Sii * dSjj) / (2 * den)
+        g[ix_rr[m]] <- dSij / den - rho * dden / den
+      }
+    }
+    ## theta_diag entries are DIAGONAL only, so they enter the denominator via
+    ## Sii / Sjj (never the numerator). d psi / d theta = (+/-)2 psi. Accumulate
+    ## so a common-diagonal free param mapping BOTH i and j gets both terms.
+    if (isTRUE(use_diag)) {
+      psi <- e$psi
+      dpsi_coef <- if (spde) -2 else 2
+      di <- diag_free_for_trait(i)
+      dj <- diag_free_for_trait(j)
+      if (!is.na(di)) {
+        dSii <- dpsi_coef * psi[i]
+        dden <- (dSii * Sjj) / (2 * den)
+        g[di] <- g[di] - rho * dden / den
+      }
+      if (!is.na(dj)) {
+        dSjj <- dpsi_coef * psi[j]
+        dden <- (Sii * dSjj) / (2 * den)
+        g[dj] <- g[dj] - rho * dden / den
+      }
+    }
+    g
+  }
+
+  list(
+    n_traits = n_traits,
+    trait_names = trait_names,
+    use_rr = has_rr,
+    rho_of_par = rho_of_par,
+    drho_dpar = drho_dpar
+  )
+}
+
+#' Profile-likelihood CI for one cross-trait correlation (recovery-grade)
 #'
-#' For a fit returned by [gllvmTMB()], computes the profile-likelihood
-#' confidence interval for one cross-trait correlation
+#' For a fit returned by [gllvmTMB()], computes a fix-and-refit
+#' profile-likelihood confidence interval for one cross-trait correlation
 #' \eqn{\rho_{ij} = \Sigma_{ij} / \sqrt{\Sigma_{ii}\Sigma_{jj}}} at one
-#' covariance level. Cross-trait correlations are first-class outputs of the
-#' factor-analytic decomposition and need accurate CIs at scale (a 6-trait
-#' fit has 60 of them across four covariance levels).
+#' covariance level, targeting the TOTAL implied covariance
+#' \eqn{\Sigma_\text{total} = \Lambda\Lambda^\top + \mathrm{diag}(\Psi) +
+#' \mathrm{diag}(r)} where \eqn{r} is the family-specific link residual. This
+#' is the SAME estimand fisher-z / wald / bootstrap use, so on a
+#' rank-deficient / non-Gaussian fit the point \eqn{\rho} is the interior
+#' latent-scale value, not the \eqn{\pm 1} of the withdrawn
+#' \eqn{\Sigma_\text{shared} = \Lambda\Lambda^\top} surface (audit
+#' `2026-05-17-profile-correlation-surface.md`, option b).
+#'
+#' RECOVERY-GRADE, NOT COVERAGE-CERTIFIED. The interval reproduces the
+#' likelihood geometry (the profile brackets the point estimate and inverts
+#' the \eqn{\chi^2_1} deviance), but its frequentist coverage for the fitted
+#' target is not established (validation-debt register CI-08 / CI-10). Callers
+#' surface it with `interval_status = "recovery_unvalidated"`; do not advertise
+#' it as certified.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param tier `"unit"`, `"unit_slope"`, `"unit_obs"`, `"cluster"`,
@@ -995,10 +1249,16 @@ profile_ci_communality <- function(
 #'   and `"spde"` are accepted. `"cluster"` and `"cluster2"` fail loud as
 #'   diagonal-only structural-zero point routes; they are not profile targets.
 #'   `"unit_slope"` is a selected-entry Gaussian canary for augmented
-#'   ordinary random-regression coefficients.
+#'   ordinary random-regression coefficients (kept on the legacy
+#'   \eqn{\Sigma_\text{shared}} rho-scale path; Gaussian-only, so its estimand
+#'   already equals \eqn{\Sigma_\text{total}}).
 #' @param i,j Trait indices (1-based, `i < j`). For `tier = "unit_slope"`,
 #'   these are augmented coefficient indices on the interleaved `2T` vector.
 #' @param level Confidence level. Default 0.95.
+#' @param link_residual `"auto"` (default) targets \eqn{\Sigma_\text{total}}
+#'   with the family-specific link residual on the diagonal (matching
+#'   `extract_correlations()`); `"none"` uses \eqn{\Lambda\Lambda^\top +
+#'   \mathrm{diag}(\Psi)} only.
 #' @return Length-3 numeric vector (`estimate`, `lower`, `upper`).
 #'
 #' @keywords internal
@@ -1011,13 +1271,15 @@ profile_ci_correlation <- function(
   ),
   i,
   j,
-  level = 0.95
+  level = 0.95,
+  link_residual = c("auto", "none")
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
+  link_residual <- match.arg(link_residual)
   if (tier %in% c("cluster", "cluster2")) {
     .profile_abort_point_only_rho(tier)
   }
@@ -1025,6 +1287,9 @@ profile_ci_correlation <- function(
     cli::cli_abort("Provide {.arg i} < {.arg j}.")
   }
 
+  ## Point Sigma at the tier supplies n_dim for the range check. The point rho
+  ## itself comes from the Sigma_total spec below, so this call stays on
+  ## link_residual = "none".
   Sigma_pt <- suppressMessages(
     extract_Sigma(
       fit,
@@ -1044,10 +1309,13 @@ profile_ci_correlation <- function(
       "i" = "Valid indices for this tier are 1:{n_dim}."
     ))
   }
-  rho_hat <- Sigma_pt$R[i, j]
 
-  ## Build target function from the tier's parameter blocks
-  par_names <- names(fit$opt$par)
+  ## ---- unit_slope: preserved Gaussian-only augmented canary --------------
+  ## The augmented ordinary random-regression tier profiles a SELECTED entry of
+  ## the interleaved 2T coefficient vector; its dimension is n_dim = 2T and its
+  ## target is Lambda Lambda^T + Psi on that augmented block. For Gaussian (the
+  ## only supported case) the link residual is 0, so this already equals
+  ## Sigma_total. Kept on the rho-scale fix-and-refit path unchanged.
   if (tier == "B_slope") {
     fids <- fit$tmb_data$family_id_vec %||% 0L
     if (any(fids != 0L)) {
@@ -1056,124 +1324,115 @@ profile_ci_correlation <- function(
         "i" = "Non-Gaussian augmented ordinary random-regression profiles need a separate calibration gate."
       ))
     }
+    par_names <- names(fit$opt$par)
     ix_rr <- which(par_names == "theta_rr_B_slope")
     ix_diag <- which(par_names == "theta_diag_B_slope")
     rank <- fit$d_B_slope
     use_rr <- isTRUE(fit$use$rr_B_slope)
     use_diag <- isTRUE(fit$use$diag_B_slope)
-  } else if (tier == "B") {
-    ix_rr <- which(par_names == "theta_rr_B")
-    ix_diag <- which(par_names == "theta_diag_B")
-    rank <- fit$d_B
-    use_rr <- isTRUE(fit$use$rr_B)
-    use_diag <- isTRUE(fit$use$diag_B)
-  } else if (tier == "W") {
-    ix_rr <- which(par_names == "theta_rr_W")
-    ix_diag <- which(par_names == "theta_diag_W")
-    rank <- fit$d_W
-    use_rr <- isTRUE(fit$use$rr_W)
-    use_diag <- isTRUE(fit$use$diag_W)
-  } else if (tier == "phy") {
-    ix_rr <- which(par_names == "theta_rr_phy")
-    ix_diag <- which(par_names == "log_sd_phy_diag")
-    rank <- fit$d_phy
-    use_rr <- isTRUE(fit$use$phylo_rr)
-    use_diag <- isTRUE(fit$use$phylo_diag)
-  } else {
-    # spde
-    ix_rr <- which(par_names == "theta_rr_spde_lv")
-    ix_diag <- which(par_names == "log_tau_spde")
-    rank <- fit$d_spde_lv
-    use_rr <- isTRUE(fit$use$spatial_latent)
-    use_diag <- isTRUE(fit$use$spatial_latent_unique)
+    if (!use_rr) {
+      cli::cli_abort(
+        "Tier {.val {tier}} has no {.code latent()} term; correlation profile not available."
+      )
+    }
+    n_traits <- n_dim
+    build_Lambda <- function(theta_rr, p, rank) {
+      L <- matrix(0, p, rank)
+      if (length(theta_rr) == 0L || rank == 0L) {
+        return(L)
+      }
+      lam_diag <- theta_rr[seq_len(rank)]
+      lam_lower <- theta_rr[-seq_len(rank)]
+      for (jj in seq_len(rank)) {
+        L[jj, jj] <- lam_diag[jj]
+      }
+      idx <- 1L
+      for (jj in seq_len(rank)) {
+        if (jj < p) {
+          for (ii in (jj + 1L):p) {
+            if (idx <= length(lam_lower)) {
+              L[ii, jj] <- lam_lower[idx]
+            }
+            idx <- idx + 1L
+          }
+        }
+      }
+      L
+    }
+    rho_hat <- Sigma_pt$R[i, j]
+    target_fn <- function(par, fit) {
+      th_rr <- if (length(ix_rr) > 0L) par[ix_rr] else numeric(0)
+      L <- build_Lambda(th_rr, p = n_traits, rank = rank)
+      Sigma <- L %*% t(L)
+      if (use_diag) {
+        th_diag <- .expand_mapped_diag(
+          fit, "theta_diag_B_slope", par[ix_diag], n_traits
+        )
+        diag(Sigma) <- diag(Sigma) + exp(2 * th_diag)
+      }
+      if (Sigma[i, i] <= 0 || Sigma[j, j] <= 0) {
+        return(NA_real_)
+      }
+      Sigma[i, j] / sqrt(Sigma[i, i] * Sigma[j, j])
+    }
+    bounds <- .profile_ci_via_refit(
+      fit, target_fn, q_hat = rho_hat, level = level,
+      q_lo_hint = max(rho_hat - 0.3, -0.999),
+      q_hi_hint = min(rho_hat + 0.3, 0.999),
+      q_lo_floor = -0.999, q_hi_ceiling = 0.999
+    )
+    lower <- bounds$lower
+    upper <- bounds$upper
+    if (is.finite(lower)) lower <- min(lower, rho_hat)
+    if (is.finite(upper)) upper <- max(upper, rho_hat)
+    return(c(estimate = rho_hat, lower = lower, upper = upper))
   }
-  if (!use_rr) {
+
+  ## ---- unit / unit_obs / phy / spatial: Sigma_total Fisher-z profile ------
+  spec <- .correlation_total_spec(fit, tier, i, j, link_residual = link_residual)
+  if (!spec$use_rr) {
     cli::cli_abort(
       "Tier {.val {tier}} has no {.code latent()} term; correlation profile not available."
     )
   }
-  n_traits <- n_dim
-  ## Name of the diagonal (Psi) parameter block for this tier, used to reconcile
-  ## a TMB-mapped free vector back to one value per trait (#717).
-  diag_name <- switch(
-    tier,
-    B_slope = "theta_diag_B_slope",
-    B = "theta_diag_B",
-    W = "theta_diag_W",
-    phy = "log_sd_phy_diag",
-    "log_tau_spde"
-  )
-
-  build_Lambda <- function(theta_rr, p, rank) {
-    L <- matrix(0, p, rank)
-    if (length(theta_rr) == 0L || rank == 0L) {
-      return(L)
-    }
-    lam_diag <- theta_rr[seq_len(rank)]
-    lam_lower <- theta_rr[-seq_len(rank)]
-    ## Diagonal entries
-    for (jj in seq_len(rank)) {
-      L[jj, jj] <- lam_diag[jj]
-    }
-    ## Strict-lower entries packed column by column (column j has p-j
-    ## entries at rows j+1, ..., p), matching the engine's TMB packing.
-    idx <- 1L
-    for (jj in seq_len(rank)) {
-      if (jj < p) {
-        for (ii in (jj + 1L):p) {
-          if (idx <= length(lam_lower)) {
-            L[ii, jj] <- lam_lower[idx]
-          }
-          idx <- idx + 1L
-        }
-      }
-    }
-    L
+  rho_hat <- spec$rho_of_par(fit$opt$par)
+  if (is.na(rho_hat) || abs(rho_hat) >= 1) {
+    ## Boundary / degenerate point: no finite Fisher-z profile. Return the
+    ## pinned point with NA bounds (honest boundary semantics).
+    return(c(estimate = rho_hat, lower = NA_real_, upper = NA_real_))
   }
-  target_fn <- function(par, fit) {
-    th_rr <- if (length(ix_rr) > 0L) par[ix_rr] else numeric(0)
-    L <- build_Lambda(th_rr, p = n_traits, rank = rank)
-    LLt <- L %*% t(L)
-    Sigma <- LLt
-    if (use_diag) {
-      ## Reconcile the (possibly TMB-mapped) free diagonal block back to one
-      ## value per trait before adding it to diag(Sigma); a mixed-family fit
-      ## carries fewer free theta_diag_B entries than traits (#717).
-      th_diag <- .expand_mapped_diag(fit, diag_name, par[ix_diag], n_traits)
-      if (tier == "spde") {
-        diag(Sigma) <- diag(Sigma) + exp(-2 * th_diag)
-      } else {
-        diag(Sigma) <- diag(Sigma) + exp(2 * th_diag)
-      }
-    }
-    if (Sigma[i, i] <= 0 || Sigma[j, j] <= 0) {
+
+  ## Profile on the FISHER-Z scale z = atanh(rho): transformation-invariant, so
+  ## identical endpoints to profiling rho directly, but it maps rho -> +/-1 to
+  ## z -> +/-Inf so the fixed fix-and-refit constraint tolerance acts as a
+  ## RELATIVE tolerance (mirroring the log(V) trick in
+  ## .profile_ci_total_variance). Back-transform bounds via tanh. The analytic
+  ## target_grad dz/dpar = drho_dpar / (1 - rho^2) drives the fix-and-refit
+  ## speedup.
+  z_target_fn <- function(par, fit) {
+    rho <- spec$rho_of_par(par)
+    if (is.na(rho) || abs(rho) >= 1) {
       return(NA_real_)
     }
-    Sigma[i, j] / sqrt(Sigma[i, i] * Sigma[j, j])
+    atanh(rho)
   }
-
+  z_target_grad <- function(par, fit) {
+    rho <- spec$rho_of_par(par)
+    if (is.na(rho) || abs(rho) >= 1) {
+      return(numeric(length(par)))
+    }
+    spec$drho_dpar(par) / (1 - rho^2)
+  }
+  z_hat <- atanh(rho_hat)
   bounds <- .profile_ci_via_refit(
-    fit,
-    target_fn,
-    q_hat = rho_hat,
-    level = level,
-    q_lo_hint = max(rho_hat - 0.3, -0.999),
-    q_hi_hint = min(rho_hat + 0.3, 0.999),
-    q_lo_floor = -0.999,
-    q_hi_ceiling = 0.999
+    fit, z_target_fn, q_hat = z_hat, level = level,
+    target_grad = z_target_grad,
+    q_lo_hint = z_hat - 0.35, q_hi_hint = z_hat + 0.35,
+    q_lo_floor = z_hat - 15, q_hi_ceiling = z_hat + 15
   )
-  ## Boundary guarantee: a confidence interval must contain its own point
-  ## estimate. When the latent-scale correlation MLE sits at the natural
-  ## boundary (|rho_hat| = 1 -- e.g. a rank-1 latent block where
-  ## Sigma = Lambda Lambda^T is rank-deficient), the refit grid is floored /
-  ## ceiled just inside +/-0.999 and cannot represent the MLE, so the
-  ## boundary-side bound can be returned on the wrong side of rho_hat
-  ## (lower > estimate, or upper < estimate). Clamp finite bounds so
-  ## lower <= estimate <= upper always holds: the boundary side collapses to
-  ## rho_hat = +/-1, which is the standard pinned-parameter CI semantic (the
-  ## data are consistent with the correlation right up to the boundary).
-  lower <- bounds$lower
-  upper <- bounds$upper
+  lower <- if (is.na(bounds$lower)) NA_real_ else tanh(bounds$lower)
+  upper <- if (is.na(bounds$upper)) NA_real_ else tanh(bounds$upper)
+  ## Boundary guarantee: the CI must contain its own point estimate.
   if (is.finite(lower)) lower <- min(lower, rho_hat)
   if (is.finite(upper)) upper <- max(upper, rho_hat)
   c(estimate = rho_hat, lower = lower, upper = upper)

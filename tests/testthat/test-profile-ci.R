@@ -442,3 +442,162 @@ test_that("profile V_t upper bound sits on the chi-square_1 deviance crossing", 
   skip_if(is.na(nll_hi))
   expect_lt(abs((nll_hi - mle) - crit), 0.1)
 })
+
+## ---- 10. Restored recovery-grade correlation profile on Sigma_total -------
+## profile_ci_correlation() was withdrawn (extract_correlations(method =
+## "profile") aborted) because the old prototype targeted Sigma_shared =
+## Lambda Lambda^T, mismatching fisher-z / wald / bootstrap (all Sigma_total).
+## The restored route targets Sigma_total = Lambda Lambda^T + diag(Psi) +
+## diag(link_residual) via `.correlation_total_spec()`, profiled on the
+## Fisher-z scale. It is RECOVERY-GRADE (interval_status =
+## "recovery_unvalidated"), NOT coverage-certified (audit
+## 2026-05-17-profile-correlation-surface.md option b; validation-debt
+## CI-08 / CI-10).
+
+## Hand-built binomial-logit fit: link residual pi^2/3 per trait is a constant
+## (no eta needed), so the spec's Sigma_total math is deterministic and the
+## analytic-gradient / estimand checks below need no TMB fit.
+make_fake_binomial_corr_fit <- function() {
+  par <- c(
+    theta_rr_B = 0.9,
+    theta_rr_B = 0.4,
+    theta_diag_B = log(0.5),
+    theta_diag_B = log(0.6)
+  )
+  structure(
+    list(
+      opt = list(par = par),
+      tmb_data = list(
+        family_id_vec = c(1L, 1L), # binomial
+        link_id_vec = c(0L, 0L), # logit -> link residual pi^2/3
+        trait_id = c(0L, 1L) # 0-based trait ids
+      ),
+      tmb_map = list(),
+      report = list(),
+      use = list(rr_B = TRUE, diag_B = TRUE),
+      d_B = 1L,
+      n_traits = 2L,
+      data = data.frame(trait = factor(c("t1", "t2"))),
+      trait_col = "trait"
+    ),
+    class = "gllvmTMB_multi"
+  )
+}
+
+test_that(".correlation_total_spec: analytic drho_dpar matches finite diff", {
+  fake <- make_fake_binomial_corr_fit()
+  spec <- gllvmTMB:::.correlation_total_spec(
+    fake, "B", 1L, 2L, link_residual = "auto"
+  )
+  par0 <- fake$opt$par
+  ga <- spec$drho_dpar(par0)
+  gn <- numeric(length(par0))
+  h <- 1e-6
+  for (m in seq_along(par0)) {
+    pp <- par0
+    pp[m] <- pp[m] + h
+    pm <- par0
+    pm[m] <- pm[m] - h
+    gn[m] <- (spec$rho_of_par(pp) - spec$rho_of_par(pm)) / (2 * h)
+  }
+  expect_lt(max(abs(ga - gn)), 1e-5)
+})
+
+test_that(".correlation_total_spec targets Sigma_total (link residual on diag)", {
+  fake <- make_fake_binomial_corr_fit()
+  par0 <- fake$opt$par
+  spec_auto <- gllvmTMB:::.correlation_total_spec(
+    fake, "B", 1L, 2L, link_residual = "auto"
+  )
+  spec_none <- gllvmTMB:::.correlation_total_spec(
+    fake, "B", 1L, 2L, link_residual = "none"
+  )
+  rho_auto <- spec_auto$rho_of_par(par0)
+  rho_none <- spec_none$rho_of_par(par0)
+  ## Both interior; the pi^2/3 link residual on the diagonal shrinks the
+  ## correlation, so the Sigma_total ("auto") value is strictly smaller in
+  ## magnitude than the no-residual value -- i.e. the residual IS included.
+  expect_true(is.finite(rho_auto))
+  expect_lt(abs(rho_auto), 1)
+  expect_lt(abs(rho_auto), abs(rho_none))
+  ## Closed-form Sigma_total check.
+  llt <- c(0.81, 0.16, 0.36) # Sigma11_shared, Sigma22_shared, Sigma12
+  psi <- c(0.25, 0.36)
+  r <- pi^2 / 3
+  denom <- sqrt((llt[1] + psi[1] + r) * (llt[2] + psi[2] + r))
+  expect_equal(rho_auto, llt[3] / denom, tolerance = 1e-10)
+})
+
+test_that("profile_ci_correlation(): finite interval brackets point in [-1,1]", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- make_tiny_BW_fit()
+  ci <- suppressMessages(suppressWarnings(
+    gllvmTMB:::profile_ci_correlation(fit, tier = "unit", i = 1L, j = 2L)
+  ))
+  expect_named(ci, c("estimate", "lower", "upper"))
+  expect_true(all(is.finite(ci)))
+  expect_gte(ci[["estimate"]], -1)
+  expect_lte(ci[["estimate"]], 1)
+  expect_lte(ci[["lower"]], ci[["estimate"]] + 1e-8)
+  expect_gte(ci[["upper"]], ci[["estimate"]] - 1e-8)
+  expect_gte(ci[["lower"]], -1)
+  expect_lte(ci[["upper"]], 1)
+})
+
+test_that("profile correlation point == fisher-z point (Sigma_total, interior)", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- make_tiny_BW_fit()
+  ## rank-1 latent (d = 1) over 3 traits: Lambda Lambda^T is rank-deficient,
+  ## but Psi keeps rho interior. The restored profile point must equal the
+  ## fisher-z point (both Sigma_total), i.e. interior, NOT +/-1.
+  cor_prof <- suppressMessages(suppressWarnings(
+    gllvmTMB:::profile_ci_correlation(fit, tier = "unit", i = 1L, j = 2L)
+  ))
+  cor_fz <- suppressMessages(gllvmTMB::extract_correlations(
+    fit, tier = "unit", pair = c(1L, 2L), method = "fisher-z"
+  ))
+  expect_equal(
+    unname(cor_prof[["estimate"]]), cor_fz$correlation[1L],
+    tolerance = 1e-5
+  )
+  expect_lt(abs(unname(cor_prof[["estimate"]])), 1)
+
+  ## End-to-end wiring: extract_correlations(method = "profile") routes to the
+  ## restored profile and fences the interval as recovery-grade (not certified).
+  cor_pr_tab <- suppressMessages(gllvmTMB::extract_correlations(
+    fit, tier = "unit", pair = c(1L, 2L), method = "profile"
+  ))
+  expect_equal(nrow(cor_pr_tab), 1L)
+  expect_equal(cor_pr_tab$method[1L], "profile")
+  expect_equal(cor_pr_tab$interval_status[1L], "recovery_unvalidated")
+  ## Point is method-invariant (same Sigma_total value as fisher-z).
+  expect_equal(
+    cor_pr_tab$correlation[1L], cor_fz$correlation[1L], tolerance = 1e-8
+  )
+  ## Interval, when finite, brackets the point.
+  if (is.finite(cor_pr_tab$lower[1L])) {
+    expect_lte(cor_pr_tab$lower[1L], cor_pr_tab$correlation[1L] + 1e-8)
+  }
+  if (is.finite(cor_pr_tab$upper[1L])) {
+    expect_gte(cor_pr_tab$upper[1L], cor_pr_tab$correlation[1L] - 1e-8)
+  }
+})
+
+test_that("confint(method='profile') routes rho through the restored profile", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- make_tiny_BW_fit()
+  ci <- tryCatch(
+    suppressMessages(suppressWarnings(stats::confint(
+      fit, parm = "rho:unit:1,2", method = "profile"
+    ))),
+    error = function(e) e
+  )
+  ## Restored: no longer aborts with the withdrawn-class error.
+  expect_false(inherits(ci, "gllvmTMB_nonlinear_profile_withdrawn"))
+  expect_true(is.matrix(ci))
+  expect_equal(nrow(ci), 1L)
+  expect_equal(ncol(ci), 2L)
+})

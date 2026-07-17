@@ -980,13 +980,11 @@
   hi <- numeric(n_pairs)
   rn <- character(n_pairs)
 
-  if (method == "profile") {
-    cli::cli_abort(c(
-      "Nonlinear profile intervals for correlations are not currently available.",
-      "i" = "The penalty-based constrained-refit prototype has been withdrawn pending an exact constraint solver and diagnostic contract.",
-      ">" = "Request {.code method = \"fisher-z\"} or {.code method = \"bootstrap\"}, and report the method's limitations."
-    ), class = "gllvmTMB_nonlinear_profile_withdrawn")
-  } else if (method %in% c("fisher-z", "wald", "bootstrap")) {
+  if (method %in% c("fisher-z", "wald", "bootstrap", "profile")) {
+    ## `profile` is the restored recovery-grade Sigma_total fix-and-refit
+    ## interval (interval_status = "recovery_unvalidated"); it routes through
+    ## extract_correlations() exactly like the other methods. `unit_slope`
+    ## stays blocked (aborted above). NOT coverage-certified.
     ## extract_correlations() returns all pairs at the tier; loop per
     ## requested pair and match the row.
     for (m in seq_len(n_pairs)) {

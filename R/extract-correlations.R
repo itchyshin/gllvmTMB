@@ -103,6 +103,14 @@
   if (method %in% c("fisher-z", "wald")) {
     return("heuristic_unvalidated")
   }
+  if (identical(method, "profile")) {
+    ## Restored Sigma_total Fisher-z-scale fix-and-refit profile: RECOVERY-
+    ## GRADE, not coverage-certified. The interval reproduces the likelihood
+    ## geometry but its frequentist coverage is not established (validation-
+    ## debt register CI-08 / CI-10) -- fence it distinctly from the fisher-z
+    ## heuristic and from bootstrap, and never advertise it as certified.
+    return("recovery_unvalidated")
+  }
   "target_specific_uncalibrated"
 }
 
@@ -289,9 +297,12 @@
 #'   Default \code{NULL} (all pairs).
 #' @param level Confidence level in (0, 1). Default 0.95.
 #' @param method One of \code{"none"} (default), \code{"fisher-z"},
-#'   \code{"wald"} (alias of \code{"fisher-z"}), or \code{"bootstrap"}.
-#'   The accepted \code{"profile"} token is withdrawn and stops with an
-#'   explanation. See Details.
+#'   \code{"wald"} (alias of \code{"fisher-z"}), \code{"profile"}, or
+#'   \code{"bootstrap"}. \code{"profile"} is a RECOVERY-GRADE fix-and-refit
+#'   profile-likelihood interval on \eqn{\Sigma_\text{total}} (the same
+#'   estimand as fisher-z / bootstrap); it reproduces the likelihood geometry
+#'   but is NOT coverage-certified and is flagged
+#'   \code{interval_status = "recovery_unvalidated"}. See Details.
 #' @param n_eff Optional positive integer (>= 4): override the
 #'   effective sample size used in Fisher's
 #'   \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}}
@@ -359,6 +370,9 @@
 #'   \item{\code{interval_status}}{Claim-boundary marker:
 #'     \code{"none"} for point-only output,
 #'     \code{"heuristic_unvalidated"} for Fisher-z/Wald bounds,
+#'     \code{"recovery_unvalidated"} for the recovery-grade profile bounds
+#'     (likelihood-geometry interval on \eqn{\Sigma_\text{total}}, not
+#'     coverage-certified; validation-debt register CI-08 / CI-10),
 #'     \code{"target_specific_uncalibrated"} for bootstrap bounds, and
 #'     \code{"conditional_on_occurrence"} for any pair involving a
 #'     delta/hurdle trait (\code{\link{delta_lognormal}} /
@@ -376,8 +390,14 @@
 #'
 #' @section Caveats:
 #' \itemize{
-#'   \item The former nonlinear penalty-profile route is withheld pending an
-#'     exact constraint solver and explicit constrained-fit diagnostics.
+#'   \item \code{method = "profile"} is RECOVERY-GRADE, not coverage-certified.
+#'     It targets \eqn{\Sigma_\text{total} = \Lambda\Lambda^\top +
+#'     \mathrm{diag}(\Psi) + \mathrm{diag}(r)} (the family link residual on the
+#'     diagonal, matching fisher-z / bootstrap) and inverts the
+#'     \eqn{\chi^2_1} deviance on the Fisher-z scale, but its frequentist
+#'     coverage for the fitted target is not established (validation-debt
+#'     register CI-08 / CI-10). Treat the bounds as a likelihood-geometry
+#'     recovery interval, not a certified confidence interval.
 #'   \item Bootstrap uses \code{\link{bootstrap_Sigma}} refits and is the
 #'     practical fallback when point estimates are useful but Hessian- or
 #'     profile-based intervals are unavailable. Inspect bootstrap warnings,
@@ -457,13 +477,6 @@ extract_correlations <- function(
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
   method <- match.arg(method)
-  if (identical(method, "profile")) {
-    cli::cli_abort(c(
-      "Nonlinear profile intervals for correlations are not currently available.",
-      "i" = "The penalty-based constrained-refit prototype has been withdrawn pending an exact constraint solver and calibration evidence.",
-      ">" = "Use the point-only default, or request {.code method = \"fisher-z\"} or {.code method = \"bootstrap\"} and report their limitations."
-    ), class = "gllvmTMB_nonlinear_profile_withdrawn")
-  }
 
   ## Phase 1b 2026-05-15: the default of `link_residual` changed from
   ## "none" to "auto". For non-Gaussian fits, the new default adds the
@@ -763,6 +776,51 @@ extract_correlations <- function(
         n_eff_used = .correlation_fisher_n_eff(fit, tk, n_eff),
         method_label = out_method_label
       )
+    }
+    if (method == "profile") {
+      ## Restored recovery-grade Sigma_total profile (see profile_ci_correlation
+      ## + .correlation_interval_status = "recovery_unvalidated"). The reported
+      ## point `correlation` stays R[i, j] -- the same Sigma_total value all
+      ## methods report -- so it is method-invariant; the profile supplies only
+      ## the interval, clamped to bracket the point. NOT coverage-certified.
+      tier_arg <- .canonical_level_name(tk)
+      out_rows <- vector("list", n_pairs)
+      for (m in seq_len(n_pairs)) {
+        i <- pairs[m, 1L]
+        j <- pairs[m, 2L]
+        a <- min(i, j)
+        b <- max(i, j)
+        rho_pt <- R[i, j]
+        ci <- tryCatch(
+          suppressMessages(profile_ci_correlation(
+            fit,
+            tier = tier_arg,
+            i = a,
+            j = b,
+            level = level,
+            link_residual = link_residual
+          )),
+          error = function(e) NULL
+        )
+        lo <- NA_real_
+        hi <- NA_real_
+        if (!is.null(ci)) {
+          lo <- unname(ci["lower"])
+          hi <- unname(ci["upper"])
+          if (is.finite(lo) && is.finite(rho_pt)) lo <- min(lo, rho_pt)
+          if (is.finite(hi) && is.finite(rho_pt)) hi <- max(hi, rho_pt)
+        }
+        out_rows[[m]] <- data.frame(
+          tier = tk,
+          trait_i = trait_names[i],
+          trait_j = trait_names[j],
+          correlation = rho_pt,
+          lower = lo,
+          upper = hi,
+          method = "profile",
+          stringsAsFactors = FALSE
+        )
+      }
     }
     results[[k]] <- do.call(rbind, out_rows)
     ## Mark which rows involve a delta/hurdle trait so the final

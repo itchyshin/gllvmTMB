@@ -37,9 +37,12 @@ Default \code{NULL} (all pairs).}
 \item{level}{Confidence level in (0, 1). Default 0.95.}
 
 \item{method}{One of \code{"none"} (default), \code{"fisher-z"},
-\code{"wald"} (alias of \code{"fisher-z"}), or \code{"bootstrap"}.
-The accepted \code{"profile"} token is withdrawn and stops with an
-explanation. See Details.}
+\code{"wald"} (alias of \code{"fisher-z"}), \code{"profile"}, or
+\code{"bootstrap"}. \code{"profile"} is a RECOVERY-GRADE fix-and-refit
+profile-likelihood interval on \eqn{\Sigma_\text{total}} (the same
+estimand as fisher-z / bootstrap); it reproduces the likelihood geometry
+but is NOT coverage-certified and is flagged
+\code{interval_status = "recovery_unvalidated"}. See Details.}
 
 \item{n_eff}{Optional positive integer (>= 4): override the
 effective sample size used in Fisher's
@@ -112,6 +115,9 @@ names in new calls.}
 \item{\code{interval_status}}{Claim-boundary marker:
 \code{"none"} for point-only output,
 \code{"heuristic_unvalidated"} for Fisher-z/Wald bounds,
+\code{"recovery_unvalidated"} for the recovery-grade profile bounds
+(likelihood-geometry interval on \eqn{\Sigma_\text{total}}, not
+coverage-certified; validation-debt register CI-08 / CI-10),
 \code{"target_specific_uncalibrated"} for bootstrap bounds, and
 \code{"conditional_on_occurrence"} for any pair involving a
 delta/hurdle trait (\code{\link{delta_lognormal}} /
@@ -175,8 +181,14 @@ cross-trait correlations to report.
 \section{Caveats}{
 
 \itemize{
-\item The former nonlinear penalty-profile route is withheld pending an
-exact constraint solver and explicit constrained-fit diagnostics.
+\item \code{method = "profile"} is RECOVERY-GRADE, not coverage-certified.
+It targets \eqn{\Sigma_\text{total} = \Lambda\Lambda^\top +
+    \mathrm{diag}(\Psi) + \mathrm{diag}(r)} (the family link residual on the
+diagonal, matching fisher-z / bootstrap) and inverts the
+\eqn{\chi^2_1} deviance on the Fisher-z scale, but its frequentist
+coverage for the fitted target is not established (validation-debt
+register CI-08 / CI-10). Treat the bounds as a likelihood-geometry
+recovery interval, not a certified confidence interval.
 \item Bootstrap uses \code{\link{bootstrap_Sigma}} refits and is the
 practical fallback when point estimates are useful but Hessian- or
 profile-based intervals are unavailable. Inspect bootstrap warnings,

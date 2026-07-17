@@ -105,18 +105,15 @@ reference:
     - impute_model
 
   - title: Core covariance keywords
-    desc: Start with the ordinary decomposition, diagonal baseline, or full covariance before adding a relationship source
+    desc: Start with the ordinary decomposition, diagonal baseline, or full covariance before adding a relationship source. The grid has three modes; the one-shared-variance case is now indep(..., common = TRUE) (the soft-deprecated scalar() is under Deprecated below)
     contents:
     - latent
     - indep
     - dep
-    - scalar
 
   - title: Advanced formula keywords and shorthands
-    desc: Useful after the core grid is familiar; public articles prefer the explicit core keywords
+    desc: First-class mode-dispatch wrappers; the bar form (e.g. phylo(0 + trait | species, mode = ...)) is current, while the legacy bare-alias form is soft-deprecated. Public articles prefer the explicit core keywords
     contents:
-    - animal_slope
-    - phylo_slope
     - phylo
     - spatial
 
@@ -181,21 +178,17 @@ reference:
   - title: Source-specific covariance keywords
     desc: Add a pedigree, phylogeny, spatial field, supplied kernel, or known-variance structure only when the study design requires it
     contents:
-    - animal_scalar
     - animal_indep
     - animal_dep
     - animal_latent
     - pedigree_to_A
     - pedigree_to_Ainv_sparse
-    - phylo_scalar
     - phylo_indep
     - phylo_dep
     - phylo_latent
-    - spatial_scalar
     - spatial_indep
     - spatial_dep
     - spatial_latent
-    - kernel_scalar
     - kernel_latent
     - kernel_indep
     - kernel_dep
@@ -318,13 +311,25 @@ reference:
     - print.summary.gllvmTMB_julia
 
   - title: Deprecated covariance functions
-    desc: Only the functions listed here are deprecated; the broader animal, phylogenetic, spatial, and kernel APIs remain current. Use indep / *_indep for standalone diagonal models and latent defaults for decomposed models
+    desc: >
+      Soft-deprecated as of 0.5.0; only the functions listed here are deprecated, and the broader
+      animal, phylogenetic, spatial, and kernel APIs remain current. The scalar family (one shared
+      variance) is now indep(..., common = TRUE); the *_unique diagonal companion folds into
+      latent(); the standalone slope keywords are superseded by the reduced-rank latent / indep / dep
+      slope forms. Existing calls keep working and warn once per session.
     contents:
+    - scalar
+    - animal_scalar
+    - phylo_scalar
+    - spatial_scalar
+    - kernel_scalar
     - unique
     - animal_unique
     - phylo_unique
     - spatial_unique
     - kernel_unique
+    - animal_slope
+    - phylo_slope
 
   - title: Deprecated and compatibility aliases
     desc: Soft-deprecated spellings and gllvm-style accessors retained for migration; new code should prefer the canonical keywords and extract_*() functions

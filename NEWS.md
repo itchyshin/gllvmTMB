@@ -41,6 +41,20 @@ required for the main workflow.
 
 ## Changed
 
+* `confint(fit, parm = "Sigma_unit")` now returns a genuine profile-likelihood
+  interval for the per-trait total variance (the diagonal of `Sigma_unit`,
+  combining the loadings and diagonal contributions) instead of falling back to
+  the bootstrap. For Gaussian responses fitted with at least 150 grouping units
+  and low latent dimension (`d <= 2`, the dimensions evaluated), repeated-sampling
+  simulation validates that this interval clears a 0.94 two-sided coverage gate
+  (measured coverage approximately 0.946-0.948 against a 0.95 target), for
+  converged fits -- in the validating simulation about 1-3% of fits did not
+  converge and returned no interval (roughly 2.9% at `d = 1`, 0.7% at `d = 2`).
+  This is currently the only `confint()` target whose coverage is
+  validated by simulation. Gaussian fits with fewer than 150 grouping units or
+  higher latent dimension, and binomial, `nbinom2`, and ordinal responses, are
+  not covered by this validation and remain recovery-grade; `Sigma_unit`
+  off-diagonal (covariance) entries continue to use the bootstrap.
 * Ordinary `latent()` now represents
   `Sigma = Lambda Lambda^T + Psi` by default. Use
   `latent(..., unique = FALSE)` for the earlier loadings-only subset.
@@ -104,7 +118,11 @@ required for the main workflow.
 ## Known limitations
 
 * Interval support is target-specific. A route that returns bounds is not, by
-  itself, evidence of nominal repeated-sampling coverage.
+  itself, evidence of nominal repeated-sampling coverage. The one exception is
+  the `Sigma_unit` diagonal (per-trait total variance) profile interval for
+  Gaussian responses at 150 or more grouping units and low latent dimension
+  (`d <= 2`), whose coverage of the 0.94 gate is simulation-validated for
+  converged fits (see Changed); every other route remains recovery-grade.
 * The previous public `check_identifiability()` and `coverage_study()` prototypes
   have been withdrawn from the exported surface. Their fitted-model simulation
   designs did not establish unknown generating rank or retain every attempted

@@ -251,14 +251,30 @@ test_that("All extractors accept method argument", {
 
 ## ---- 7. Bootstrap fallback for full-Sigma matrices when profile asked ---
 
-test_that("Profile on Sigma_unit (latent+unique tier) falls back to bootstrap", {
+test_that("Profile on Sigma_unit (latent+unique tier): diagonal profiles, off-diagonal bootstraps", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
-  ## Profile method should fall back to bootstrap with an info message
-  ci <- suppressMessages(confint(fit, parm = "Sigma_unit", method = "profile"))
+  ## The per-trait total variance V_t = diag(Sigma_unit) now uses the genuine
+  ## profile route (the coverage-validated estimand for Gaussian n >= 150,
+  ## d <= 2); off-diagonal covariance entries stay rotation-equivalent and fall
+  ## back to the bootstrap.
+  ci <- suppressMessages(confint(
+    fit,
+    parm = "Sigma_unit",
+    method = "profile",
+    nsim = 25
+  ))
   expect_s3_class(ci, "data.frame")
-  expect_true(all(ci$method == "bootstrap")) ## fell back automatically
+  diag_rows <- which(grepl(
+    "trait_1,trait_1|trait_2,trait_2|trait_3,trait_3",
+    ci$parameter
+  ))
+  off_rows <- setdiff(seq_len(nrow(ci)), diag_rows)
+  expect_equal(length(diag_rows), 3L)
+  expect_true(all(ci$method[diag_rows] == "profile"))
+  expect_true(all(is.finite(ci$upper[diag_rows])))
+  expect_true(all(ci$method[off_rows] == "bootstrap"))
 })
 
 ## ---- 8. Pure-diag tier (no rr): profile gives clean bounds ---------------
@@ -344,10 +360,11 @@ test_that(".qchisq_threshold() rejects out-of-range or non-scalar level", {
 ## certificate candidate (genuine chi-square_1 profile via `.profile_ci_via_refit`)
 ## and `.wald_ci_total_variance_logsd()` is a log-SD delta-Wald DIAGNOSTIC. Both
 ## flow through the single `.total_variance_spec()` builder so they target the
-## identical functional. NOTE: these are dev/re-score internals; they do NOT
-## touch the public confint bootstrap-fallback path asserted above -- do not
-## modify the "Profile on Sigma_unit (latent+unique tier) falls back to
-## bootstrap" test.
+## identical functional. NOTE: `.profile_ci_total_variance()` (Route A, the
+## certificate candidate) is now WIRED into the public confint() path --
+## confint(parm = "Sigma_unit", method = "profile") returns it for the diagonal
+## (per-trait total variance), with off-diagonal entries on the bootstrap (see
+## the "diagonal profiles, off-diagonal bootstraps" test above).
 
 test_that("total-variance routes: estimand identity, exact gradient, bracketing, guards", {
   skip_if_not_heavy()

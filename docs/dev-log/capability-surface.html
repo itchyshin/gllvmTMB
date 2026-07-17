@@ -345,7 +345,9 @@
       drmTMB's. A green <span class="yes">✓</span> marks something genuinely verified (fitted
       diagnostics); the family pip marks overall evidence: <span class="fampip fp-w"></span>worked /
       diagnostic, <span class="fampip fp-a"></span>available (point-only). Crucially,
-      <b>every family's interval evidence is point-only</b> — no coverage certificate.
+      <b>every family's interval evidence is point-only</b> — with one exception: the Gaussian
+      <code>Sigma_unit</code> diagonal profile interval at ≥150 units and low rank (d ≤ 2), whose
+      coverage of a 0.94 gate is simulation-validated for converged fits (see §3).
     </p>
     <div class="scroll">
       <table class="perfam">
@@ -444,7 +446,7 @@
     <div class="gapbox">
       <h4>Where the gaps are · 0.5.0 → 1.0</h4>
       <ul>
-        <li><b>Interval coverage — the headline gap.</b> No family has a <i>nominal</i> coverage certificate; every cell stays point-only. The n_sim=2000 grid (2026-07-15) makes this precise: gaussian + binomial <code>Sigma_unit_diag</code> intervals are <b>approximately calibrated (~0.91, bug-fix-validated at scale)</b> but the percentile bootstrap <b>under-covers ~3–4 pt</b> — recovery-grade, not nominal-certified. BCa / studentized bootstrap is the path to nominal (a 1.0 task). nbinom2 stays fenced (shared-dispersion pooling did not recover Σ).</li>
+        <li><b>Interval coverage — the first validated cell.</b> One cell now has simulation-validated coverage: the profile-likelihood interval on the Gaussian <code>Sigma_unit</code> diagonal (per-trait total variance) at <b>≥150 grouping units and low latent dimension (d ≤ 2)</b> clears a <b>0.94 two-sided coverage gate</b> (~0.946–0.948 against a 0.95 target, from ~15,000 simulation replications), for converged fits (~1–3% of fits do not converge and return no interval — ~2.9% at d=1, ~0.7% at d=2). This is the genuine χ²₁ profile route, <b>not</b> the percentile bootstrap — which still under-covers ~2–4 pt and stays recovery-grade. Every other cell remains point-only / recovery-grade: Gaussian below 150 units or higher rank, binomial, nbinom2, ordinal, and all <code>Sigma_unit</code> off-diagonal (covariance) entries. Tightening toward nominal 0.95 and broadening the validated grid are 1.0 tasks. nbinom2 stays fenced (shared-dispersion pooling did not recover Σ).</li>
         <li><b>Random slopes (≥1) are unfinished.</b> In development / diagnostic-grade even for Gaussian — not a finished 0.5.0 capability. Shown as <span class="tag t-avail">partial</span>, not ✓.</li>
         <li><b>Missing responses: core families now tested.</b> Gaussian + poisson/NB2/binomial masked-response is verified (sentinel-invariance, 2026-07-12); nbinom1 recovery + <code>mi()</code> predictor coverage pending.</li>
         <li><b>Fitted diagnostics reach 3 families</b> (Gaussian, Poisson, NB2). Extending residual / predictive checks to more families is the next diagnostics step.</li>
@@ -472,10 +474,15 @@
     <p class="lead">
       The honesty boundary. A route that returns bounds is <b>not</b>, by itself, evidence of
       nominal repeated-sampling coverage. Extraction is point-only by default.
-      <b>Empirically confirmed (n_sim=2000, 2026-07-15):</b> gaussian / binomial
-      <code>Sigma_unit_diag</code> intervals sit ~2–4 pt below nominal (percentile-bootstrap
-      undercoverage), so they remain recovery-grade / approximately-calibrated —
-      <b>no cell is nominal-certified.</b>
+      <b>One cell is now validated by repeated-sampling simulation:</b> the profile-likelihood
+      interval on the Gaussian <code>Sigma_unit</code> diagonal (per-trait total variance),
+      restricted to fits with ≥150 grouping units and low latent dimension (d ≤ 2), clears a
+      <b>0.94 two-sided coverage gate</b> (~0.946–0.948 against a 0.95 target) for converged fits
+      (~1–3% of fits do not converge and return no interval — ~2.9% at d=1, ~0.7% at d=2).
+      The percentile bootstrap still sits ~2–4 pt below nominal; binomial, nbinom2, and ordinal
+      <code>Sigma_unit_diag</code> intervals, Gaussian fits below 150 units or higher rank, and all
+      off-diagonal entries remain recovery-grade / approximately-calibrated — <b>no other cell is
+      validated.</b>
     </p>
     <div class="scroll">
       <table>
@@ -492,8 +499,9 @@
 
     <h3 class="subhead">Estimation methods — the calibration ladder</h3>
     <p class="lead">
-      Why extraction is point-only: the tools that would certify a <b>calibrated</b>
-      variance component (Design 80's "Bar 3") are not all in the engine yet.
+      Why <i>most</i> extraction is point-only: the tools that would certify a <b>calibrated</b>
+      variance component (Design 80's "Bar 3") are not all in the engine yet (the one exception
+      is the Gaussian <code>Sigma_unit</code> diagonal profile, above).
     </p>
     <div class="scroll">
       <table>
@@ -595,7 +603,8 @@
     The <b>tested</b> tier marks cells with passing recovery/health tests but no worked article;
     phylo/animal/spatial and kernel_latent flipped amber→tested from that census (the grammar was
     live, the tests already existed — the label was stale). Tiers reflect the honesty contract:
-    intervals are recovery/point evidence, not coverage certificates.
+    intervals are recovery/point evidence, except the one simulation-validated cell (the Gaussian
+    <code>Sigma_unit</code> diagonal profile at ≥150 units, d ≤ 2; see §3).
     <b>0.5.0 is being built to a finished, focused scope before CRAN</b> — core families
     (gaussian/poisson/nbinom1/nbinom2/binomial) × ordinary/phylo/spatial, full slopes — not a thin
     submission. Baseline <code>--as-cran</code> = 0E/0W/1N; Tier-1 bugs fixed. Live campaign status:

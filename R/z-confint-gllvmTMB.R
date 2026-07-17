@@ -1330,12 +1330,30 @@
 #' intervals accept canonical \code{parm = "Sigma_unit"} /
 #' \code{"Sigma_unit_obs"} names, diagonal extra-grouping
 #' \code{"Sigma_cluster"} / \code{"Sigma_cluster2"} names, plus legacy
-#' \code{"Sigma_B"} / \code{"Sigma_W"} aliases. Profile intervals for full
-#' decomposed Sigma entries fall back to
-#' bootstrap because those entries are nonlinear functions of rotation-equivalent
-#' loadings and diagonal \eqn{\Psi}. Non-Gaussian bootstrap and broader
-#' derived-target coverage are not universally calibrated; inspect the returned
-#' method and the target-specific article before reporting bounds.
+#' \code{"Sigma_B"} / \code{"Sigma_W"} aliases. Profile intervals for
+#' \emph{off-diagonal} decomposed Sigma entries fall back to
+#' bootstrap because those covariances are nonlinear functions of
+#' rotation-equivalent loadings and diagonal \eqn{\Psi}; the diagonal (per-trait
+#' total variance) is profiled directly, as described next. Non-Gaussian
+#' bootstrap and broader derived-target coverage are not universally calibrated;
+#' inspect the returned method and the target-specific article before reporting
+#' bounds.
+#'
+#' For \code{parm = "Sigma_unit"} the diagonal entries -- the per-trait total
+#' variance \eqn{V_t = (\Lambda\Lambda^\top)_{tt} + \psi_t} -- are returned from
+#' a genuine profile-likelihood interval rather than the bootstrap. For Gaussian
+#' responses fitted with at least 150 grouping units and low latent dimension
+#' (\eqn{d \le 2}, the dimensions evaluated), repeated-sampling simulation
+#' validates that this interval clears a 0.94 two-sided coverage gate (measured
+#' coverage approximately 0.946--0.948 against a 0.95 target), conditional on
+#' model convergence -- in the validating simulation about 1--3\% of fits did not
+#' converge and returned no interval (roughly 2.9\% at \eqn{d = 1}, 0.7\% at
+#' \eqn{d = 2}). This is currently the only \code{confint()} target whose coverage is
+#' validated by simulation. Gaussian fits with fewer than 150 grouping units or
+#' higher latent dimension, and binomial, \code{nbinom2}, and ordinal responses,
+#' do not carry this validation and remain recovery-grade /
+#' approximately-calibrated. \code{Sigma_unit} off-diagonal (covariance) entries
+#' fall back to bootstrap regardless of family and are not covered by it.
 #'
 #' Main parm-class dispatch paths:
 #'
@@ -1347,7 +1365,9 @@
 #'     \code{"Sigma_W"} still work),
 #'     returns a tidy \code{data.frame} with columns \code{parameter},
 #'     \code{estimate}, \code{lower}, \code{upper}, \code{method}. Profile is
-#'     computed element-wise via [TMB::tmbprofile()] for the diagonal entries;
+#'     computed for the diagonal entries -- directly via [TMB::tmbprofile()] for
+#'     pure-diagonal tiers, and via a fix-and-refit profile on the per-trait
+#'     total variance \eqn{V_t} for reduced-rank (latent) tiers;
 #'     structural-zero off-diagonal entries in pure-diagonal tiers are labelled
 #'     \code{"structural_zero"}; off-diagonals for reduced-rank tiers fall back
 #'     to bootstrap (full Sigma sampling) since they mix two parameters in a
@@ -1977,20 +1997,39 @@ confint.gllvmTMB_multi <- function(
     return(.mark_structural_sigma_zeros(out, idx))
   }
 
-  ## rr present (with or without diag): full Sigma is rotation-equivalent
-  ## under Lambda. Fall back to bootstrap with a clear advisory.
+  ## rr present (with or without diag): the per-trait total variance
+  ## V_t = diag(Sigma)_t = (Lambda Lambda^T)_tt + psi_t has a genuine
+  ## profile-likelihood route (`.profile_ci_total_variance`, the fix-and-refit
+  ## chi-square_1 profile on log V_t). This is the coverage-validated estimand
+  ## for Gaussian `Sigma_unit` at n_units >= 150 with low latent dimension (see
+  ## the confint() @details). The OFF-diagonal covariance entries stay
+  ## rotation-equivalent under Lambda and are not profiled -- they retain the
+  ## bootstrap. So compute the bootstrap for the full matrix, then overwrite the
+  ## diagonal rows with the profile interval (leaving any diagonal trait whose
+  ## profile declines -- e.g. a non-converged refit -- on its bootstrap value).
+  prof <- tryCatch(
+    .profile_ci_total_variance(object, tier = info$level, level = level),
+    error = function(e) NULL
+  )
+  boot <- .confint_sigma_bootstrap(object, parm, level, nsim = nsim, seed = seed)
+  if (is.null(prof) || !nrow(prof)) {
+    cli::cli_inform(c(
+      "Profile interval on the {parm} diagonal was unavailable; returning the bootstrap for all entries.",
+      "i" = "Pass {.code nsim} to control bootstrap replicate count."
+    ))
+    return(boot)
+  }
+  diag_labels <- paste0(info$display, "[", prof$trait, ",", prof$trait, "]")
+  m <- match(diag_labels, boot$parameter)
+  ok <- !is.na(m) & !is.na(prof$lower) & !is.na(prof$upper)
+  boot$lower[m[ok]] <- prof$lower[ok]
+  boot$upper[m[ok]] <- prof$upper[ok]
+  boot$method[m[ok]] <- "profile"
   cli::cli_inform(c(
-    "Profile CIs on {parm} entries when {.code latent()} is present require fix-and-refit on a non-linear function of multiple rotation-equivalent parameters and are unstable.",
-    "i" = "Falling back to {.code method = \"bootstrap\"}; pass {.code nsim} to control replicate count."
+    "{.code {parm}} diagonal (per-trait total variance) uses a profile-likelihood interval; off-diagonal covariance entries use the bootstrap.",
+    "i" = "Pass {.code nsim} to control the bootstrap replicate count for the off-diagonal entries."
   ))
-  ## Reuse the bootstrap path with the caller's controls.
-  return(.confint_sigma_bootstrap(
-    object,
-    parm,
-    level,
-    nsim = nsim,
-    seed = seed
-  ))
+  return(boot)
 }
 
 ## ---- Profile / Wald on fixed effects -------------------------------------

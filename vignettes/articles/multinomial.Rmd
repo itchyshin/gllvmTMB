@@ -239,11 +239,16 @@ depends on. Concretely:
 - Latent, random-effect, or structured terms on a multinomial trait
   (`latent()`, `indep()`, `phylo_*()`, `spatial_*()`, random slopes) are **not
   supported** and fail loud.
-- There is **no trait correlation** for a multinomial trait:
-  `extract_correlations()` and `extract_Sigma()` refuse a fit containing one.
-  The \((K-1) \times (K-1)\) covariance among the category contrasts — the
-  natural "correlation table" for an unordered response — is a separate, deferred
-  extension.
+- There is **no trait correlation** for a multinomial trait in this release:
+  `extract_correlations()` and `extract_Sigma()` decline a fit containing one,
+  because a fixed-effects-only fit has no latent covariance to report. Two
+  different extensions are deferred, and they are not equally hard. A *standalone*
+  \((K-1) \times (K-1)\) covariance among the category contrasts — the natural
+  "correlation table" for one unordered response, as produced by correlated
+  random effects — is a bounded future feature. Folding a categorical trait, which
+  occupies \(K-1\) latent dimensions, into the *cross-trait* correlation matrix
+  alongside ordinary single-scale traits — and settling which reference and scale
+  convention to report it on — is the harder open problem.
 - Coefficient recovery is validated (see the package's recovery tests), but the
   family is not part of the interval-coverage certification; treat its intervals
   as recovery-oriented.

@@ -1790,11 +1790,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## trait_id per contrast; see expand_multinomial_response()) each receive a
   ## category-specific phylo-factor loading row Lambda_phy(contrast, .), so
   ## Sigma_phy = Lambda_phy Lambda_phy^T is the (K-1)x(K-1) among-category
-  ## covariance V. The softmax-Laplace likelihood identifies V directly (there
-  ## is NO latent-liability residual to fix -- that is an MCMCglmm-only
-  ## convention). Every OTHER latent / random-effect / structured tier remains
-  ## fixed-effects-only on a multinomial fit and still fails loud rather than
-  ## fit a silently-wrong model.
+  ## covariance V. Two honesty caveats (see the 2026-07-17 regularization
+  ## after-task): (1) RECOVERY is data-hungry -- V recovers with per-species
+  ## replication or large N, but a single categorical draw per species is weakly
+  ## informative about the (K-1)-dim liability, so one-per-species point
+  ## estimates are high-variance and rail at rho = +/-1 (no cheap fixed
+  ## regularizer fixes this; the fixed-R OLRE was tested and is inert). (2) The
+  ## contrasts are differences against a SHARED baseline category, so a diagonal
+  ## V does NOT mean independence: under independent equal-variance categories
+  ## the null contrast covariance is (1/K)(I+J) (Hadfield MCMCglmm course notes,
+  ## multinomial section) -- interpret the reported correlations against that
+  ## null, not against 0. Every OTHER latent / random-effect / structured tier
+  ## remains fixed-effects-only on a multinomial fit and still fails loud rather
+  ## than fit a silently-wrong model.
   if (any(family_id_vec == 16L) &&
       (use_lv_B || use_rr_B || use_diag_B || use_spde ||
        use_phylo_slope || use_re_int)) {

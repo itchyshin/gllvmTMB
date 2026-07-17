@@ -473,6 +473,16 @@ link_residual_per_trait <- function(fit) {
 #'   `betabinomial(link = "logit")`    \tab \eqn{\sigma^2_d = \pi^2/3 + \psi'(\hat\mu_t \hat\phi) + \psi'((1 - \hat\mu_t)\hat\phi)}
 #' }
 #'
+#' `multinomial()` is the exception to the scalar-per-trait table: its
+#' latent-scale residual is not a scalar but the \eqn{(K-1)\times(K-1)} matrix
+#' \eqn{(1/K)(\mathbf{I} + \mathbf{J})} over the category-contrast pseudo-traits.
+#' This is the covariance the \eqn{K-1} baseline contrasts have when the
+#' underlying categories are independent with equal variance (Hadfield, MCMCglmm
+#' course notes) -- the off-diagonal \eqn{1/K} is the shared-baseline term, so a
+#' *diagonal* among-category covariance is not independence. Because it is a full
+#' matrix rather than a diagonal addition, it is not yet applied automatically;
+#' `extract_Sigma()` returns the latent-scale V and warns for a multinomial trait.
+#'
 #' For mixed-family fits the residual is computed *per trait* when that trait has
 #' one unambiguous family/link, then added to the diagonal
 #' of \eqn{\boldsymbol\Sigma} entry-by-entry. The default
@@ -630,8 +640,11 @@ extract_Sigma <- function(
   ## genuine among-category covariance -- Sigma_phy = Lambda_phy Lambda_phy^T over
   ## the K-1 category-contrast pseudo-traits -- surfaced at level = "phy". Only a
   ## FIXED-EFFECTS-ONLY multinomial fit (no phylo factor) has no latent Sigma; keep
-  ## the clear refusal for that case. The softmax-Laplace fit identifies V directly
-  ## (no liability-residual convention).
+  ## the clear refusal for that case. Interpretation caveats (2026-07-17 after-task):
+  ## the returned V is on the K-1 baseline-CONTRAST scale, so a diagonal V is NOT
+  ## independence -- the null contrast covariance is (1/K)(I+J) (Hadfield MCMCglmm
+  ## notes); and one-per-species recovery is high-variance (needs replication or
+  ## large N). See the phylo-multinomial fence in fit-multi.R.
   if (!is.null(fit$tmb_data$family_id_vec) &&
       any(fit$tmb_data$family_id_vec == 16L) &&
       !isTRUE(fit$use$phylo_rr)) {

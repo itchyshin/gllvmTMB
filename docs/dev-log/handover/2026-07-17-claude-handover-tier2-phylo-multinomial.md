@@ -7,10 +7,22 @@ effects on a categorical trait). Do NOT start the build without maintainer sign-
 
 ## 🎯 One-command resume (paste in an authenticated terminal, repo root)
 ```
-claude "Rehydrate from docs/dev-log/handover/2026-07-17-claude-handover-tier2-phylo-multinomial.md.
-First finish the ONE carried-over item (write the brain note — it was blocked by a classifier
-outage), then STOP for maintainer sign-off before starting the Tier-2a build (Design 84)."
+claude "Rehydrate from docs/dev-log/handover/2026-07-17-claude-handover-tier2-phylo-multinomial.md,
+then STOP for maintainer sign-off before starting the Tier-2a build (Design 84)."
 ```
+
+## Mission control (all landed — nothing carried over)
+| thread | branch / PR | state |
+|---|---|---|
+| `multinomial()` → FAM-20 `covered` | PR #749 | **MERGED to `main`** (`aeee1bd2`), CI green |
+| Article "Unordered categories with `multinomial()`" | PR #751 (`docs/multinomial-article`) | OPEN — maintainer read pending |
+| Design 84 (Tier-2a phylo multinomial) scoping + spike + this handover | PR #752 (`docs/tier2a-phylo-multinomial-scoping`) | OPEN — maintainer review |
+| Feasibility spike (`dev/phylo-multinomial-spike.R`) | in PR #752 | validated — N=800 recovers ρ 0.6→0.45; N=250 under-powered |
+| Compound-back brain note (Mizuno 2025 ↔ Design 84 ↔ notebook) | `~/shinichi-brain/projects/gllvmTMB/` | **FILED** |
+| Full 23-commit multinomial history | `agent/lane-c-multinomial` | pushed (archival) |
+
+**Next lane = the Tier-2a build (Design 84).** It is a Discussion-Checkpoint likelihood change
+(random effects on a categorical trait) → **maintainer sign-off before any code.**
 
 ## What shipped this session
 - **`multinomial()` promoted FAM-20 `partial` → `covered`**: `baseline=` arg, calibrated seed-robust
@@ -44,11 +56,9 @@ rank `V`; (5) validate vs MCMCglmm `categorical`+`ginverse` and brms `categorica
 **Open decisions (Design 84 §7):** residual-scale convention; factor rank; standalone-`V` first vs
 cross-trait integration.
 
-## 🔴 CARRIED-OVER (one item — a transient safety-classifier outage blocked it; retry when stable)
-- **Write the brain note** (compound-back) linking Mizuno 2025 ↔ Design 84 ↔ the notebook, recording
-  the factor-model insight + the N=800/N=250 spike verdict + the retired binary reductions. Content is
-  drafted verbatim in this session's transcript; target vault `projects/gllvmTMB`
-  (`mcp__shinichi-brain__write_note`). (Everything else — PRs #749/#751/#752, the spike — is landed.)
+## CARRIED-OVER: none
+All session work is landed (PRs #749 merged / #751 / #752; spike; brain note filed; this handover).
+The next session starts clean — nothing to finish first, just the sign-off gate below.
 
 ## Guards
 - Tier-2a = **Discussion Checkpoint** (likelihood/family change) → maintainer sign-off before code.

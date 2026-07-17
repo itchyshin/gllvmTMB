@@ -107,6 +107,7 @@ reference:
     - latent
     - indep
     - dep
+    - scalar
 
   - title: Advanced formula keywords and shorthands
     desc: Useful after the core grid is familiar; public articles prefer the explicit core keywords
@@ -163,6 +164,7 @@ reference:
     - betabinomial
     - delta_beta
     - ordinal_probit
+    - multinomial
 
   - title: Predictor-model families (modelled missing predictors)
     desc: >
@@ -190,6 +192,7 @@ reference:
     - spatial_indep
     - spatial_dep
     - spatial_latent
+    - kernel_scalar
     - kernel_latent
     - kernel_indep
     - kernel_dep

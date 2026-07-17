@@ -9,13 +9,13 @@ it to Shinichi as step 0 — it is the mission-control. Do this before reading
 further or planning.
 
 For the current handoff, read
-`docs/dev-log/handover/2026-07-17-claude-handover.md` (Claude→Claude, 2026-07-17; Sigma_unit
-coverage arc **WITHHELD** — d2-n150 fails on rorqual under the COMMITTED MCSE; an in-session
-"earned" analysis was WRONG (looser MCSE + no cross-hardware) and its flip was reverted, nothing
-public touched. A fresh-seed lift run (reps 5001–20000, gaussian n150) is IN FLIGHT on Totoro.
-NEXT: wait `FRESHSEED_DONE` → aggregate + pool to N=20k → re-audit d2 under the committed MCSE;
-earn → Rose + Shinichi flip, marginal → defer to 1.0. Ayumi #18 fixed (`c5c56f41`); #17/#18
-replied; tracking #750 opened). Earlier:
+`docs/dev-log/handover/2026-07-17-claude-handover-coverage-shipped.md` (Claude→Claude, 2026-07-17;
+Sigma_unit-diagonal coverage certificate **SHIPPED** — the fresh-seed lift pooled to N≈15k, an
+independent D-43 panel certified both gaussian n≥150 d≤2 cells 3-0, Shinichi approved **flip both**,
+and the confint profile wiring + gate-framed/convergence-conditional/d≤2-scoped public wording merged
+as **`dd80244a`** and pushed. Fences intact; certificate defaults NOT-DONE elsewhere. NEXT: pick the
+next arc from that handover's "Remaining arcs" map, or ask Shinichi). The prior WITHHELD/in-flight
+handover `docs/dev-log/handover/2026-07-17-claude-handover.md` is now superseded. Earlier:
 `docs/dev-log/handover/2026-07-13-claude-handover.md` (Claude→Claude; the `||`
 uncorrelated random-slope coupling axis COMPLETE across all sources, merged to
 `main` @ `8ec261bb`) before starting new work. **Strategy: 0.5 is the

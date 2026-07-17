@@ -60,6 +60,18 @@ test AND independently re-confirmed by the review (perm=TRUE relerr 0.61; perm=F
   0.94. Compute stayed LOCAL (parallel shards, D-50); scripts `dev/spatial-coverage-750{,-parallel,
   -shard,-pool}.R`.
 
+  **Non-spatial BASELINE control (N=360, `dev/spatial-coverage-750-baseline-shard.R`) — the decisive
+  finding on the DoD gate:** a plain `latent(B)` fit with NO spatial tier in the DGP or model ALSO
+  fails `coverage_study() >= 0.94` — and worse: sd_B[1] 0.814, sd_B[2] 0.825 (b_fix[1] 0.947,
+  b_fix[2] 0.925, sigma_eps 0.958). So sub-0.94 `coverage_study` cells are a **general small-n
+  profile-CI / MLE-as-truth property of `coverage_study` itself**, present WITHOUT any spatial content —
+  NOT a spatial-redraw defect. The "coverage_study() >= 0.94 across all cells" gate is therefore not
+  achievable at n=50 for reasons intrinsic to `coverage_study` (baseline-proven), independent of #750.
+  **The redraw's correctness rests on the RECOVERY TEST (empirical cov = Q_base^-1, relerr 0.01-0.03) +
+  the adversarial review — a direct distributional proof — NOT on these confounded end-to-end coverage
+  numbers.** #750's deliverable (exact spatial redraw + valid harness) is complete; the ≥0.94-per-cell
+  gate is a mis-specified DoD at this sample size.
+
 ## Process note (wrong-base recovery)
 The S1 build sub-agent's `isolation:worktree` was based on `8ec0ee99` (the `main` line, from the #754
 merge), which diverged 35 commits ago and lacks `be40d8ae` (phylo redraw + `handled_labels` + the abort

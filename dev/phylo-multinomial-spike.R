@@ -28,7 +28,7 @@ if (!ok_pkgs) {
 suppressMessages({library(ape); library(MCMCglmm)})
 
 ## --- 1. toy tree + phylo correlation A -------------------------------------
-N    <- 250L
+## (N comes from the optional first arg, default 250 — see top.)
 tree <- rcoal(N)                       # ultrametric coalescent tree
 tree$tip.label <- paste0("sp", seq_len(N))
 A    <- vcv(tree, corr = TRUE)         # NxN phylogenetic correlation

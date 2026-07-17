@@ -109,6 +109,52 @@ test_that("Stage 3: propto simulation uses lambda as variance, not sd", {
   expect_lt(empirical_var, 4.4)
 })
 
+test_that("phylo_diag unconditional redraw recovers sd_phy_diag[t]^2 * A per trait", {
+  ## phylo_diag is diagonal ACROSS traits but phylogenetically correlated WITHIN
+  ## each trait: eta[obs] = sd_phy_diag[t] * g_t[species], with g_t ~ N(0, A) and
+  ## the SAME precision Ainv_phy_rr = A^{-1} shared across traits. Mock a fit so
+  ## the redraw branch fires in isolation (mirrors the propto mock above) and
+  ## check the empirical per-trait species (co)variance against sd^2 * A, and
+  ## that the two traits are independent (the "diagonal across traits" property).
+  n_sp <- 6L
+  n_traits <- 2L
+  n_obs <- n_sp * n_traits
+  sd_pd <- c(1.4, 0.7)
+  ## AR(1)-style correlation matrix stands in for a phylogenetic A (PD, unit diag).
+  A <- 0.6^abs(outer(seq_len(n_sp), seq_len(n_sp), "-"))
+  Ainv <- solve(A)
+  ## Trait-major observation grid: rows 1:n_sp are trait 1 over species 1..n_sp,
+  ## rows (n_sp+1):(2 n_sp) are trait 2 over species 1..n_sp.
+  fit <- list(
+    X_fix_names = character(0),
+    opt = list(par = numeric(0)),
+    use = list(phylo_diag = TRUE),
+    tmb_data = list(
+      X_fix = matrix(numeric(0), n_obs, 0L),
+      trait_id = rep(0:(n_traits - 1L), each = n_sp),      # 0-indexed
+      n_traits = n_traits,
+      n_aug_phy = n_sp,
+      Ainv_phy_rr = Ainv,
+      species_aug_id = rep(0:(n_sp - 1L), times = n_traits) # 0-indexed
+    ),
+    report = list(sd_phy_diag = sd_pd)
+  )
+
+  set.seed(4242)
+  n_draw <- 4000L
+  eta_draws <- replicate(n_draw, gllvmTMB:::.simulate_eta_unconditional(fit))
+  blk1 <- eta_draws[seq_len(n_sp), , drop = FALSE]
+  blk2 <- eta_draws[n_sp + seq_len(n_sp), , drop = FALSE]
+  emp1 <- stats::cov(t(blk1))
+  emp2 <- stats::cov(t(blk2))
+  emp_cross <- stats::cov(t(blk1), t(blk2))
+
+  expect_lt(max(abs(emp1 - sd_pd[1]^2 * A)), 0.2)
+  expect_lt(max(abs(emp2 - sd_pd[2]^2 * A)), 0.2)
+  ## Diagonal ACROSS traits: independent draws per trait -> ~0 cross-covariance.
+  expect_lt(max(abs(emp_cross)), 0.15)
+})
+
 test_that("Stage 3: propto() matches glmmTMB log-likelihood exactly", {
   skip_if_not_glmmTMB()
   s <- simulate_phylo_data()

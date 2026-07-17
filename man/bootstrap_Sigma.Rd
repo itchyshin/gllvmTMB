@@ -114,13 +114,18 @@ an \code{n_cores = 1} run with the same seed (different RNG streams).
 \section{Caveats}{
 
 \itemize{
-\item Uses the existing \code{\link[=simulate.gllvmTMB_multi]{simulate.gllvmTMB_multi()}} method, which
-conditions on the fitted random effects (\eqn{\eta = \hat\eta})
-and redraws the response from the fitted family where implemented.
-CIs reflect parametric simulate-refit variability, not a
-Bayesian posterior distribution for variance components.
-Unsupported families fall back through the simulator's own
-warning path.
+\item Uses the existing \code{\link[=simulate.gllvmTMB_multi]{simulate.gllvmTMB_multi()}} method in its
+default \emph{unconditional} mode: each replicate redraws the random
+effects from their fitted distributions for every supported tier
+(\code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W}, \code{propto}, \code{phylo_rr},
+\code{phylo_diag}, \code{diag_species}) and rebuilds \eqn{\eta} from scratch,
+so the CIs span the between-tier uncertainty. If the fit uses a tier
+the simulator cannot yet redraw unconditionally (e.g. spatial/SPDE),
+\code{bootstrap_Sigma()} \strong{errors} rather than silently returning
+the collapsed conditional intervals (issue #18). CIs reflect
+parametric simulate-refit variability, not a Bayesian posterior
+distribution for variance components. Unsupported families fall back
+through the simulator's own warning path.
 \item Refits use the same \code{formula} reconstructed from
 \code{fit$formula} and \code{fit$covstructs}, and forward the fit's
 auxiliary structure (\code{phylo_vcv}, \code{phylo_tree}, \code{mesh},

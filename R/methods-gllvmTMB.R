@@ -962,14 +962,20 @@ tidy.gllvmTMB_multi <- function(
 #'   must contain enough columns to rebuild the fixed-effects design and
 #'   any random-effect grouping that was active.
 #' @param condition_on_RE Logical (default `FALSE`). When `FALSE`
-#'   (the default), random effects are redrawn from the fitted
-#'   covariance at every tier (`rr_B`, `diag_B`, `rr_W`, `diag_W`,
-#'   `phylo`, `spde`) — the unconditional simulation appropriate for
-#'   parametric bootstrap. When `TRUE`, the existing fitted RE modes
-#'   are reused (the older glmmTMB-style conditional simulation that
-#'   only adds Gaussian noise on top of `fit$report$eta`). Forced to
-#'   `TRUE` when `newdata` is supplied (RE modes for unseen levels
-#'   cannot be redrawn).
+#'   (the default), random effects are redrawn from their fitted
+#'   distributions at every supported tier (`rr_B`, `diag_B`, `rr_W`,
+#'   `diag_W`, `propto`, `phylo_rr`, `phylo_diag`, `diag_species`, and
+#'   the canonical-keyword spellings that ride on them) — the
+#'   unconditional simulation appropriate for parametric bootstrap. If
+#'   the fit uses a tier that cannot yet be redrawn unconditionally
+#'   (e.g. spatial/SPDE, the augmented random-slope tiers, a second
+#'   grouping cluster), `simulate()` **errors** rather than silently
+#'   conditioning — pass `condition_on_RE = TRUE` explicitly to opt into
+#'   conditional draws. When `TRUE`, the existing fitted RE modes are
+#'   reused (the older glmmTMB-style conditional simulation that only
+#'   adds Gaussian noise on top of `fit$report$eta`). Forced to `TRUE`
+#'   when `newdata` is supplied (RE modes for unseen levels cannot be
+#'   redrawn).
 #' @param ... Currently unused.
 #'
 #' @return A matrix of dimension `n_obs x nsim` (or `nrow(newdata) x nsim`
@@ -1033,21 +1039,25 @@ simulate.gllvmTMB_multi <- function(
   ## downstream caller) needs for the variance-component CIs to span the
   ## parametric simulate-refit uncertainty.
   ##
-  ## Currently handles: rr_B, diag_B, rr_W, diag_W, propto (single-factor
-  ## phylo). Other tiers fall back to conditional with a one-shot warning.
+  ## Currently redraws: rr_B, diag_B, rr_W, diag_W, propto, lv_B, phylo_rr,
+  ## phylo_diag, diag_species (plus the canonical-keyword spellings that ride
+  ## on them). For any OTHER active tier (spatial/SPDE, the augmented slope
+  ## tiers, cluster2, kernel, ...) an unconditional draw is not yet available.
+  ## Rather than SILENTLY fall back to conditional simulation -- which holds the
+  ## random effects at their fitted modes and collapses parametric-bootstrap
+  ## variance to near-zero width (false precision, issue #18/#5) -- fail loud.
+  ## Conditional draws remain available, but ONLY via an explicit
+  ## condition_on_RE = TRUE so they cannot be reached by accident.
   ok <- .check_simulate_unconditional(object)
   if (!ok$can_redraw) {
-    cli::cli_warn(c(
-      "Unconditional {.fn simulate} does not yet redraw RE tiers: {.val {ok$unhandled}}.",
-      "i" = "Falling back to conditional simulation. Use {.code condition_on_RE = TRUE} explicitly to silence this warning."
-    ))
-    return(simulate.gllvmTMB_multi(
-      object,
-      nsim = nsim,
-      seed = NULL,
-      newdata = NULL,
-      condition_on_RE = TRUE
-    ))
+    cli::cli_abort(
+      c(
+        "Unconditional {.fn simulate} cannot yet redraw RE tier{?s}: {.val {ok$unhandled}}.",
+        "x" = "Conditioning on the fitted random effects here would collapse the parametric-bootstrap variance to near-zero width (false precision).",
+        "i" = "Pass {.code condition_on_RE = TRUE} explicitly if you genuinely want conditional draws (random effects held at their fitted modes)."
+      ),
+      class = "gllvmTMB_simulate_conditional_required"
+    )
   }
 
   ## M1.8 (2026-05-17): family-aware per-row draw. For mixed-family fits,
@@ -1181,9 +1191,28 @@ simulate.gllvmTMB_multi <- function(
 .check_simulate_unconditional <- function(fit) {
   handled <- c(
     "rr_B", "diag_B", "rr_W", "diag_W", "propto",
-    "lv_B", "phylo_rr", "diag_species"
+    "lv_B", "phylo_rr", "phylo_diag", "diag_species"
+  )
+  ## `fit$use` also carries non-engine label sub-flags that only steer
+  ## print()/extract_*/tidy() label dispatch -- they are NOT distinct
+  ## redrawable tiers, they annotate an engine tier that is flagged
+  ## separately. Drop the ones whose engine tier is already handled, so a
+  ## canonical-keyword spelling of a redrawable tier is not falsely blocked:
+  ##   phylo_unique / phylo_indep / phylo_dep -> ride on `phylo_rr`
+  ##   indep_B / dep_B -> ride on `diag_B` / `rr_B`
+  ##   indep_W / dep_W -> ride on `diag_W` / `rr_W`
+  ##   indep_cluster   -> rides on `diag_species` (or `diag_cluster2`, itself
+  ##                      still checked, so a cluster2 fit still fails loud).
+  ## Labels riding on an UNhandled engine (spatial_* on `spde`, dep_cluster,
+  ## the slope markers) are deliberately left in so the fit still fails loud
+  ## on the engine flag -- fail-closed against false-precision (issue #18).
+  handled_labels <- c(
+    "phylo_unique", "phylo_indep", "phylo_dep",
+    "indep_B", "indep_W", "indep_cluster",
+    "dep_B", "dep_W"
   )
   active <- names(fit$use)[vapply(fit$use, isTRUE, logical(1))]
+  active <- setdiff(active, handled_labels)
   unhandled <- setdiff(active, handled)
   list(
     can_redraw = length(unhandled) == 0L,
@@ -1290,6 +1319,25 @@ simulate.gllvmTMB_multi <- function(
         g_phy_new[sp_aug_id, , drop = FALSE]
     )
     eta <- eta + contrib
+  }
+
+  ## phylo_diag: per-trait phylogenetic random intercept (paired-PGLLVM
+  ## "unique" component, cpp l.1060-1087 and l.1927-1929). Each trait column
+  ## g_phy_diag[, t] ~ MVN(0, A) on the augmented node set, drawn with the SAME
+  ## precision Ainv_phy_rr = A^{-1} as phylo_rr, then scaled by sd_phy_diag[t]
+  ## and mapped to observations via species_aug_id. Diagonal ACROSS traits,
+  ## phylogenetically correlated WITHIN each trait: u_t ~ N(0, sd_phy_diag[t]^2 A).
+  ## Draw via the precision Cholesky: backsolve(chol(A^{-1}), z) has covariance A.
+  if (isTRUE(fit$use$phylo_diag)) {
+    n_aug <- fit$tmb_data$n_aug_phy
+    sd_pd <- as.numeric(fit$report$sd_phy_diag) # length n_traits
+    U_phy <- chol(as.matrix(fit$tmb_data$Ainv_phy_rr))
+    sp_aug_id <- fit$tmb_data$species_aug_id + 1L
+    g_diag_new <- matrix(0, n_aug, n_traits)
+    for (t in seq_len(n_traits)) {
+      g_diag_new[, t] <- backsolve(U_phy, stats::rnorm(n_aug))
+    }
+    eta <- eta + sd_pd[trait_id] * g_diag_new[cbind(sp_aug_id, trait_id)]
   }
 
   ## diag_species: non-phylogenetic species random effect (Stage-3, cpp l.959):

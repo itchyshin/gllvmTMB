@@ -302,13 +302,50 @@ test_that("bootstrap_Sigma refits a non-default unit_obs tier (issue #18)", {
 
 ## ---- issue #18 follow-up: stop, do not silently condition, when simulate() --
 ## cannot unconditionally redraw a requested RE tier. A parametric bootstrap of
-## Sigma needs the REs redrawn each replicate; for tiers simulate() cannot yet
-## redraw (paired phylo `phylo_diag`, spatial) it silently falls back to
-## conditional simulation (REs held FIXED), which collapses the intervals to
-## near-zero width -- false precision. bootstrap_Sigma() must error, not return
-## those. (Reported by Ayumi Mizuno while validating the unit_obs fix.)
+## Sigma needs the REs redrawn each replicate; for a tier simulate() cannot yet
+## redraw (spatial/SPDE) it silently falls back to conditional simulation (REs
+## held FIXED), which collapses the intervals to near-zero width -- false
+## precision. bootstrap_Sigma() must error, not return those. (Reported by Ayumi
+## Mizuno while validating the unit_obs fix.)
+##
+## NB: the paired-phylo `phylo_diag` tier USED to sit here as an "unredrawable"
+## example; it is now redrawn unconditionally (see the success test below), so
+## the guard is re-pointed at a genuinely unhandled spatial tier.
 
 test_that("bootstrap_Sigma stops when simulate() cannot unconditionally redraw an RE tier", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  skip_if_not_installed("fmesher")
+  ## A spde tier cannot be unconditionally redrawn. Combine it with a latent()
+  ## B tier so bootstrap_Sigma() reaches the redraw guard (a spatial-only fit
+  ## exposes no B/W/phy level and aborts earlier for a different reason).
+  sim <- gllvmTMB::simulate_site_trait(
+    n_sites = 60L, n_species = 14L, n_traits = 2L, mean_species_per_site = 6,
+    spatial_range = 0.3, sigma2_spa = rep(0.5, 2L), seed = 7L
+  )
+  mesh <- gllvmTMB::make_mesh(sim$data, c("lon", "lat"), cutoff = 0.07)
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + spatial_indep(0 + trait | coords) +
+      latent(0 + trait | site, d = 2),
+    data = sim$data, mesh = mesh
+  )))
+  ## The spatial (spde) tier cannot be unconditionally redrawn -> the guard must
+  ## fail loud rather than return conditional (collapsed) intervals.
+  expect_error(
+    bootstrap_Sigma(
+      fit, n_boot = 2L, level = "unit", what = "R", seed = 1L
+    ),
+    class = "gllvmTMB_bootstrap_conditional_sim"
+  )
+})
+
+## ---- companion to the guard above: the paired-phylo tier IS now redrawn ----
+## unconditionally. A standalone phylo_unique(species) fit reroutes to the
+## phylo_rr slot (rank T, diagonal Lambda) and rides the existing phylo_rr
+## redraw; the `phylo_unique` label sub-flag no longer trips the guard. So
+## bootstrap_Sigma() must SUCCEED and return finite, non-degenerate intervals.
+
+test_that("bootstrap_Sigma succeeds on a paired-phylo fit (phylo_diag redraw)", {
   skip_if_not_heavy()
   skip_on_cran()
   skip_if_not_installed("ape")
@@ -329,14 +366,17 @@ test_that("bootstrap_Sigma stops when simulate() cannot unconditionally redraw a
     value ~ 0 + trait + phylo_unique(species) + unique(0 + trait | species),
     data = df, phylo_tree = tree, cluster = "species", silent = TRUE
   )))
-  ## The phylo diagonal tier cannot be unconditionally redrawn -> the guard must
-  ## fail loud rather than return conditional (collapsed) intervals.
-  expect_error(
-    bootstrap_Sigma(
-      fit, n_boot = 2L, level = c("phy", "unit_obs"), what = "R", seed = 1L
-    ),
-    class = "gllvmTMB_bootstrap_conditional_sim"
-  )
+  ## The guard must now pass (the phylo tier is redrawable).
+  expect_true(gllvmTMB:::.check_simulate_unconditional(fit)$can_redraw)
+  boot <- suppressMessages(suppressWarnings(bootstrap_Sigma(
+    fit, n_boot = 15L, level = "phy", what = "Sigma", seed = 1L, progress = FALSE
+  )))
+  expect_s3_class(boot, "bootstrap_Sigma")
+  lo <- unlist(boot$ci_lower)
+  hi <- unlist(boot$ci_upper)
+  expect_true(length(lo) > 0L && all(is.finite(lo)) && all(is.finite(hi)))
+  ## Unconditional redraw yields real (non-collapsed) width somewhere.
+  expect_true(any(hi > lo))
 })
 
 test_that(".refit_convergence_acceptable accepts refits matching a non-zero base code (issue #18)", {

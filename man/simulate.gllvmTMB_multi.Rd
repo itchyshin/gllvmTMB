@@ -26,14 +26,20 @@ must contain enough columns to rebuild the fixed-effects design and
 any random-effect grouping that was active.}
 
 \item{condition_on_RE}{Logical (default \code{FALSE}). When \code{FALSE}
-(the default), random effects are redrawn from the fitted
-covariance at every tier (\code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W},
-\code{phylo}, \code{spde}) — the unconditional simulation appropriate for
-parametric bootstrap. When \code{TRUE}, the existing fitted RE modes
-are reused (the older glmmTMB-style conditional simulation that
-only adds Gaussian noise on top of \code{fit$report$eta}). Forced to
-\code{TRUE} when \code{newdata} is supplied (RE modes for unseen levels
-cannot be redrawn).}
+(the default), random effects are redrawn from their fitted
+distributions at every supported tier (\code{rr_B}, \code{diag_B}, \code{rr_W},
+\code{diag_W}, \code{propto}, \code{phylo_rr}, \code{phylo_diag}, \code{diag_species}, and
+the canonical-keyword spellings that ride on them) — the
+unconditional simulation appropriate for parametric bootstrap. If
+the fit uses a tier that cannot yet be redrawn unconditionally
+(e.g. spatial/SPDE, the augmented random-slope tiers, a second
+grouping cluster), \code{simulate()} \strong{errors} rather than silently
+conditioning — pass \code{condition_on_RE = TRUE} explicitly to opt into
+conditional draws. When \code{TRUE}, the existing fitted RE modes are
+reused (the older glmmTMB-style conditional simulation that only
+adds Gaussian noise on top of \code{fit$report$eta}). Forced to \code{TRUE}
+when \code{newdata} is supplied (RE modes for unseen levels cannot be
+redrawn).}
 
 \item{...}{Currently unused.}
 }

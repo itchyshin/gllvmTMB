@@ -146,13 +146,18 @@
 #'
 #' @section Caveats:
 #' \itemize{
-#'   \item Uses the existing [simulate.gllvmTMB_multi()] method, which
-#'     conditions on the fitted random effects (\eqn{\eta = \hat\eta})
-#'     and redraws the response from the fitted family where implemented.
-#'     CIs reflect parametric simulate-refit variability, not a
-#'     Bayesian posterior distribution for variance components.
-#'     Unsupported families fall back through the simulator's own
-#'     warning path.
+#'   \item Uses the existing [simulate.gllvmTMB_multi()] method in its
+#'     default \emph{unconditional} mode: each replicate redraws the random
+#'     effects from their fitted distributions for every supported tier
+#'     (`rr_B`, `diag_B`, `rr_W`, `diag_W`, `propto`, `phylo_rr`,
+#'     `phylo_diag`, `diag_species`) and rebuilds \eqn{\eta} from scratch,
+#'     so the CIs span the between-tier uncertainty. If the fit uses a tier
+#'     the simulator cannot yet redraw unconditionally (e.g. spatial/SPDE),
+#'     `bootstrap_Sigma()` \strong{errors} rather than silently returning
+#'     the collapsed conditional intervals (issue #18). CIs reflect
+#'     parametric simulate-refit variability, not a Bayesian posterior
+#'     distribution for variance components. Unsupported families fall back
+#'     through the simulator's own warning path.
 #'   \item Refits use the same `formula` reconstructed from
 #'     `fit$formula` and `fit$covstructs`, and forward the fit's
 #'     auxiliary structure (`phylo_vcv`, `phylo_tree`, `mesh`,
@@ -273,11 +278,12 @@ bootstrap_Sigma <- function(
   ## A parametric bootstrap of Sigma needs UNCONDITIONAL simulation -- the
   ## random effects redrawn from their fitted distributions each replicate -- so
   ## the intervals span the between-tier uncertainty. If the fit has an RE tier
-  ## simulate() cannot yet redraw (e.g. the paired phylo `phylo_diag`, spatial),
-  ## simulate() SILENTLY falls back to conditional simulation (REs held fixed),
-  ## which collapses the intervals to near-zero width -- false precision, not
-  ## real uncertainty (issue #18 follow-up, Ayumi Mizuno). Fail loud rather than
-  ## return statistically invalid intervals.
+  ## simulate() cannot yet redraw (e.g. spatial/SPDE), simulate() SILENTLY falls
+  ## back to conditional simulation (REs held fixed), which collapses the
+  ## intervals to near-zero width -- false precision, not real uncertainty
+  ## (issue #18 follow-up, Ayumi Mizuno). Fail loud rather than return
+  ## statistically invalid intervals. (The paired phylo `phylo_diag` tier IS
+  ## now redrawn unconditionally, so paired PGLLVM fits pass this guard.)
   sim_ok <- .check_simulate_unconditional(fit)
   if (!isTRUE(sim_ok$can_redraw)) {
     cli::cli_abort(
@@ -333,11 +339,26 @@ bootstrap_Sigma <- function(
   ## Auxiliary fit arguments to forward: phylo correlation matrix or
   ## tree, SPDE mesh, lambda_constraint, etc. Without these, refits of
   ## phylogenetic / spatial fits all fail.
+  lambda_constraint <- fit$lambda_constraint
+  ## A rerouted standalone phylo_unique()/phylo_indep() fit stores the diagonal
+  ## Lambda_phy constraint it auto-generated in `lambda_constraint$phy`. The
+  ## reconstructed formula's `phylo_rr(..., .phylo_unique = TRUE)` term rebuilds
+  ## that same diagonal constraint itself and ERRORS if a `lambda_constraint$phy`
+  ## is ALSO forwarded (fit-multi.R "supplies its own diagonal lambda_constraint").
+  ## Drop the $phy element so the refit regenerates it from the term rather than
+  ## from a forwarded (conflicting) copy -- otherwise every phylo_unique refit
+  ## fails and the intervals collapse to NA.
+  if (isTRUE(fit$use$phylo_unique) && !is.null(lambda_constraint$phy)) {
+    lambda_constraint$phy <- NULL
+  }
+  if (is.list(lambda_constraint) && length(lambda_constraint) == 0L) {
+    lambda_constraint <- NULL
+  }
   aux <- list(
     phylo_vcv = fit$phylo_vcv,
     phylo_tree = fit$phylo_tree,
     mesh = fit$mesh,
-    lambda_constraint = fit$lambda_constraint
+    lambda_constraint = lambda_constraint
   )
   aux <- aux[!vapply(aux, is.null, logical(1))]
 

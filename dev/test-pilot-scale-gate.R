@@ -8,6 +8,7 @@ mkcell <- function(family, signal, coverage_primary, coverage_mcse,
                    fit_failure_rate = 0.05, boot_fail_rate = 0.05,
                    n_converged_fits = 190L, n_traits = 5L,
                    coverage_eligible_n = 940L,
+                   miss_total = NA_integer_, one_sided_miss_share = NA_real_,
                    evidence_family = family) {
   data.frame(
     family = family, evidence_family = evidence_family, signal = signal,
@@ -16,6 +17,8 @@ mkcell <- function(family, signal, coverage_primary, coverage_mcse,
     n_converged_fits = as.integer(n_converged_fits),
     n_traits = as.integer(n_traits),
     fit_failure_rate = fit_failure_rate, boot_fail_rate = boot_fail_rate,
+    miss_total = as.integer(miss_total),
+    one_sided_miss_share = one_sided_miss_share,
     stringsAsFactors = FALSE
   )
 }
@@ -88,6 +91,28 @@ cm <- r6$cells$ci_missing_rate
 chk(all(cm >= 0 & cm <= 1), "ci_missing_rate in [0, 1] (no longer negative)")
 chk(isTRUE(all.equal(cm[r6$cells$family == "gaussian"], 1 - 900 / (190 * 5))),
     "ci_missing_rate uses n_converged_fits * n_traits denominator")
+
+## 7. A one-sided miss pattern in a CORE cell -> HOLD (Design 66 sec.6 gate 5).
+onesided <- rbind(
+  mkcell("gaussian", 0.2, 0.95, 0.015),
+  mkcell("nbinom2", 0.5, 0.94, 0.016,
+         miss_total = 12L, one_sided_miss_share = 0.92),
+  mkcell("binomial_probit", 0.2, 0.95, 0.015)
+)
+r7 <- pilot_scale_gate_eval(onesided)
+chk(r7$verdict == "HOLD", "one-sided miss pattern -> HOLD")
+chk(any(grepl("one-sided miss", r7$reasons)), "one-sided miss cites gate 5")
+
+## 8. A lopsided but tiny miss count is noise, not a pattern -> still PASS.
+fewmiss <- rbind(
+  mkcell("gaussian", 0.2, 0.95, 0.015,
+         miss_total = 3L, one_sided_miss_share = 1.0),
+  mkcell("nbinom2", 0.5, 0.94, 0.016),
+  mkcell("binomial_probit", 0.2, 0.95, 0.015)
+)
+r8 <- pilot_scale_gate_eval(fewmiss)
+chk(r8$verdict == "PASS_TO_SCALE",
+    "lopsided but <5 misses -> PASS (below the pattern floor)")
 
 cat("\n", if (ok) "ALL PASS" else "SOME FAILED", "\n")
 if (!ok) quit(status = 1L)

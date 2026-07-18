@@ -64,6 +64,27 @@ locked decisions:
 
 Punch-list detail: `docs/dev-log/2026-07-13-A0-design66-scaling-gate-punchlist.md`.
 
+**2026-07-15 EXECUTION RESULT (the campaign RAN — this supersedes the "gate blocks
+the grid" framing above for status purposes).** The metric repairs, the n_sim=200
+pilot (n_boot=100), and the **n_sim=2000 core grid** all ran on Totoro. Result
+detail: `docs/dev-log/2026-07-13-A2-pilot-coverage-HOLD.md`; reconciliation +
+next-arc handover: `docs/dev-log/handover/2026-07-17-claude-handover-capstone-reconciliation.md`.
+
+- **Confirmatory core executed = `gaussian` + `binomial_probit`** (core-2). A gaussian
+  DGP bug was found and fixed (0.54 → ~0.91). **`nbinom2` is FENCED** (excluded from the
+  certificate core) as a documented weak-identifiability limit: the NB-dispersion(φ) ↔
+  latent/unique-variance ridge under-recovers `Sigma_unit_diag` to ~0.5× truth, flat with n;
+  the fix (`disp_group`, shared/grouped φ) is **deferred to 1.0**. `ordinal` stays excluded (Repair #2).
+- **n_sim=2000 grid verdict = HOLD** (adjudication-grade, MCSE ~0.006): the nominal-0.95
+  coverage certificate is **NOT earned** on the parametric-bootstrap route (gaussian ~0.91,
+  binomial n=150 high-signal ~0.836–0.853 genuinely under-cover).
+- **DECIDED conclusion:** the point estimate is near-unbiased (Σ̂/truth ≈ 1.007), so the
+  under-coverage is the small-sample **variance-component right-skew**, and the parametric
+  **bootstrap is the WRONG route** for this location-axis estimand. The certificate path is
+  **profile likelihood / log-SD-Wald-with-t-df** (Design 73, nominal-certified in drmTMB) — NOT
+  another bootstrap grid. **The real next coverage arc is a profile-route re-measurement of the
+  same core cells.** CI-08 / CI-10 stay `partial`; no promotion without the D-43 adversarial panel.
+
 **Backed by (verified on origin/main):** PR #364 (merged 2026-05-31,
 `fix(m3): coverage gate keys on Sigma_unit_diag bootstrap, not psi
 proxy`); PR #366 (merged 2026-05-31, RE-09 within-unit latent()+unique()

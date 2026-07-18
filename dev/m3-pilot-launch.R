@@ -1534,6 +1534,24 @@ pilot_status <- function(
     )
   }
 
+  ## Surface the CALIBRATED scale-gate verdict (MCSE + fit-health denominators +
+  ## the six Design-66 gates). pilot_status() stays a progress MONITOR: it does
+  ## not recompute the decision, it CALLS pilot_scale_gate() -- the same reducer
+  ## the campaign driver (dev/totoro-coverage-grid.sh) uses -- so the operator
+  ## sees the same PASS_TO_SCALE / HOLD the gate would return, with no second
+  ## divergent decision path. Guarded: a store without primary rows just prints
+  ## nothing here (the progress report above is unaffected).
+  gate <- tryCatch(
+    pilot_scale_gate(results_dirs = results_dir),
+    error = function(e) NULL
+  )
+  if (!is.null(gate) && !is.null(gate$verdict)) {
+    cat(sprintf("calibrated scale gate: %s\n", gate$verdict))
+    for (r in gate$reasons) {
+      cat(sprintf("  - %s\n", r))
+    }
+  }
+
   invisible(list(
     counts = c(
       total = total,
@@ -1543,7 +1561,8 @@ pilot_status <- function(
     ),
     cells = cells,
     coverage = cov_cells,
-    null = null_cells
+    null = null_cells,
+    scale_gate = gate
   ))
 }
 

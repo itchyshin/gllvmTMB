@@ -18,10 +18,14 @@
 # =============================================================================
 set -euo pipefail
 
-SOCK="$HOME/.ssh/cm/snakagaw@totoro.biology.ualberta.ca:22"
+# ControlMaster socket: real path is ~/.ssh/cm-<host>:22 (cm- PREFIX, NOT a cm/
+# subdirectory -- the cm/ form was wrong and false-failed preflight). Resolve it
+# robustly, with the canonical name as a fallback.
+SOCK="$(ls "$HOME"/.ssh/cm-*totoro* 2>/dev/null | head -1)"
+SOCK="${SOCK:-$HOME/.ssh/cm-snakagaw@totoro.biology.ualberta.ca:22}"
 REMOTE="totoro"
 RWORK="\$HOME/gllvm_work/gllvmTMB"        # remote work dir (expanded remotely)
-RLIB='/project/def-snakagaw/snakagaw/Rlib-gllvm'  # persistent R library on /project
+RLIB='/home/snakagaw/gllvm_work/Rlib'    # persistent R library on Totoro (home; NOT DRAC /project)
 CORES="${CORES:-96}"
 NSIM="${NSIM:-2000}"
 STAGE="${1:-smoke}"                        # smoke | grid  (default: smoke first)
@@ -40,8 +44,8 @@ echo "[totoro] socket OK; host: $(ssh_t hostname); nproc: $(ssh_t nproc)"
 echo "[totoro] rsync package + dev harness -> $RWORK"
 rsync -az --delete \
   -e "ssh -o ControlPath=$SOCK -o ControlMaster=no" \
-  --exclude '.git' --exclude 'dev/m3-pilot-results' --exclude 'results' \
-  --exclude '*.o' --exclude '*.so' \
+  --exclude '.git' --exclude '.claude' --exclude 'dev/m3-pilot-results' \
+  --exclude 'results' --exclude '*.o' --exclude '*.so' \
   ./ "$REMOTE:gllvm_work/gllvmTMB/"
 
 # --- 2. Ensure R deps + build the package on Totoro (one-time-ish) ------------
@@ -84,7 +88,7 @@ ssh_t "cd $RWORK && OPENBLAS_NUM_THREADS=1 R_LIBS_USER='$RLIB' NOT_CRAN=true \
     ad <- pilot_chunk_aggregate_results_dirs(\"dev/m3-pilot-results\");
     g <- pilot_scale_gate_eval(pilot_collect_chunk_aggregates());
     cat(\"CORE-GRID VERDICT:\", g\$verdict, \"\\n\"); print(g\$reasons);
-    print(g\$cells[, c(\"family\",\"signal\",\"coverage_primary\",\"coverage_mcse\",\"ci_missing_rate\",\"gate_health_ok\")])'"
+    print(g\$cells[, c(\"family\",\"signal\",\"coverage_primary\",\"coverage_mcse\",\"ci_missing_rate\",\"gate_health_ok\",\"one_sided_miss_share\",\"gate_miss_ok\")])'"
 
 # --- 5. Pull results back LOCAL (D-50: outputs stay off any cloud) -------------
 echo "[totoro] rsync results back -> ./results/totoro-coverage-grid/"

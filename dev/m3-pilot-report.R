@@ -229,6 +229,8 @@ pilot_scale_gate_eval <- function(
   max_fit_fail = 0.20,
   max_boot_fail = 0.20,
   max_ci_missing = 0.10,
+  max_one_sided_miss_share = 0.80,
+  min_one_sided_miss_total = 5L,
   mcse_adjudication = 0.005
 ) {
   need <- c(
@@ -287,6 +289,27 @@ pilot_scale_gate_eval <- function(
   boot_ok <- is.na(core$boot_fail_rate) | core$boot_fail_rate <= max_boot_fail
   ci_ok <- is.na(ci_missing) | ci_missing <= max_ci_missing
   health_ok <- fit_ok & boot_ok & ci_ok
+  ## Design 66 sec.6 gate 5: no one-sided miss pattern (>= 80% of misses on one
+  ## side). one_sided_miss_share / miss_total come from pilot_collect_cell()
+  ## (reduced from m3_miss_side()). Guarded columns so legacy stores that lack
+  ## them do not trip the gate. A "pattern" needs enough misses to be real, so
+  ## the share only gates once miss_total >= min_one_sided_miss_total; below that
+  ## a lopsided share is Monte-Carlo noise, not a calibration signal. The raw
+  ## share + miss_total are surfaced per cell so a reviewer can adjudicate a
+  ## borderline pattern the gate lets through.
+  osms <- if ("one_sided_miss_share" %in% names(core)) {
+    core$one_sided_miss_share
+  } else {
+    rep(NA_real_, nrow(core))
+  }
+  miss_total_col <- if ("miss_total" %in% names(core)) {
+    core$miss_total
+  } else {
+    rep(NA_integer_, nrow(core))
+  }
+  miss_ok <- is.na(osms) | is.na(miss_total_col) |
+    miss_total_col < min_one_sided_miss_total |
+    osms < max_one_sided_miss_share
   ## Provisional coverage: within ~2 MCSE of the 0.94 gate at pilot noise.
   cov_provisional <- is.na(core$coverage_primary) |
     core$coverage_primary >= (gate_94 - 2 * pmax(mcse_f, 0.005))
@@ -302,6 +325,9 @@ pilot_scale_gate_eval <- function(
   core$gate_boot_ok <- boot_ok
   core$gate_ci_ok <- ci_ok
   core$gate_health_ok <- health_ok
+  core$one_sided_miss_share <- osms
+  core$miss_total <- miss_total_col
+  core$gate_miss_ok <- miss_ok
   core$gate_cov_provisional <- cov_provisional
   core$gate_mcse_adjudicated <- mcse_adjudicated
 
@@ -317,13 +343,21 @@ pilot_scale_gate_eval <- function(
       "%d CORE cell(s) fail a health gate (fit/boot/CI-missing)", sum(!health_ok)
     ))
   }
+  if (sum(!miss_ok)) {
+    reasons <- c(reasons, sprintf(
+      "%d CORE cell(s) show a one-sided miss pattern (>=%.0f%% of >=%d misses on one side; Design 66 sec.6 gate 5)",
+      sum(!miss_ok), 100 * max_one_sided_miss_share, min_one_sided_miss_total
+    ))
+  }
   if (sum(!cov_provisional)) {
     reasons <- c(reasons, sprintf(
       "%d CORE cell(s) below the provisional coverage floor", sum(!cov_provisional)
     ))
   }
 
-  verdict <- if (probit_ok && all(health_ok) && all(cov_provisional)) {
+  verdict <- if (
+    probit_ok && all(health_ok) && all(miss_ok) && all(cov_provisional)
+  ) {
     "PASS_TO_SCALE"
   } else {
     "HOLD"
@@ -569,6 +603,42 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
   )
   power <- zero_exclusion_rate
 
+  ## --- one-sided-miss diagnostic (Design 66 sec.6 gate 5) ---
+  ## A cell whose primary-target coverage misses land almost all on one side
+  ## is miscalibrated in a way a symmetric coverage rate hides. Reuse the audit
+  ## reducer's miss_side semantics (m3_miss_side(): "truth_below_lower" /
+  ## "truth_above_upper") on the usable (converged, CI-available) primary rows so
+  ## the scale gate can enforce Design 66's sixth quality gate ("no one-sided
+  ## miss pattern, >= 80% of misses on one side"). This is the same formula as
+  ## the scoring audit (see pilot_score_cell), lifted onto the reducer that
+  ## feeds pilot_scale_gate_eval().
+  miss_rows <- prim_rows
+  if (!is.null(miss_rows) && nrow(miss_rows)) {
+    keep <- rep(TRUE, nrow(miss_rows))
+    if ("fit_converged" %in% names(miss_rows)) {
+      keep <- keep & (miss_rows$fit_converged %in% TRUE)
+    }
+    if ("ci_available" %in% names(miss_rows)) {
+      keep <- keep & (miss_rows$ci_available %in% TRUE)
+    }
+    miss_rows <- miss_rows[keep, , drop = FALSE]
+  }
+  miss_side_vec <- if (
+    !is.null(miss_rows) && "miss_side" %in% names(miss_rows)
+  ) {
+    miss_rows$miss_side
+  } else {
+    character(0L)
+  }
+  miss_below <- sum(miss_side_vec == "truth_below_lower", na.rm = TRUE)
+  miss_above <- sum(miss_side_vec == "truth_above_upper", na.rm = TRUE)
+  miss_total <- miss_below + miss_above
+  one_sided_miss_share <- if (miss_total > 0L) {
+    max(miss_below, miss_above) / miss_total
+  } else {
+    NA_real_
+  }
+
   ## --- flag ---
   flag <- pilot_make_flag(
     fit_failure_rate,
@@ -648,6 +718,10 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
     zero_exclusion_n = as.integer(zero_exclusion_n),
     zero_exclusion_mcse = zero_exclusion_mcse,
     power = power,
+    miss_below = as.integer(miss_below),
+    miss_above = as.integer(miss_above),
+    miss_total = as.integer(miss_total),
+    one_sided_miss_share = one_sided_miss_share,
     n_failed_fits = as.integer(n_failed_fits),
     fit_failure_rate = fit_failure_rate,
     fit_failure_mcse = fit_failure_mcse,

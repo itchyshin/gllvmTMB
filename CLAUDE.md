@@ -9,6 +9,15 @@ it to Shinichi as step 0 — it is the mission-control. Do this before reading
 further or planning.
 
 For the current handoff, read
+`docs/dev-log/handover/2026-07-18-claude-handover.md` (Claude→Claude, 2026-07-18; **capstone coverage
+RECONCILED** — the campaign ALREADY RAN through the `n_sim=2000` grid on 2026-07-15 and concluded the
+parametric BOOTSTRAP is the WRONG route for `Sigma_unit_diag`; the certificate path is PROFILE /
+log-SD-Wald (Design 73). **NEXT = ultra-plan the profile-route re-measurement** (gaussian+binomial;
+`nbinom2` FENCED = φ↔σ² dispersion ridge, `disp_group` deferred to 1.0; ordinal excluded). This session's
+R2/R3/R1 code repair (Design-66 gate 5 wired + proven, totoro-coverage-grid.sh compute-lane fix, pilot_status
+surfacing) is **CARRIED-OVER** — the commit was blocked by a transient shell-classifier outage; the doc's
+Landing State holds the paste-to-land block. **The "CAPSTONE METRIC-REPAIR" next-arc framing below is
+SUPERSEDED — do NOT run another bootstrap grid.**) Prior handoff:
 `docs/dev-log/handover/2026-07-17-claude-handover-750-spatial-done.md` (Claude→Claude, 2026-07-17;
 **#750 spatial SPDE unconditional RE redraw SHIPPED** — `bootstrap_Sigma()`/`coverage_study()`/the other
 simulate-based CIs are now valid (non-collapsed) for base spatial fits; the redraw is proven

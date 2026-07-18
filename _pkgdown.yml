@@ -81,6 +81,7 @@ articles:
     contents:
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
+    - articles/cross-family-correlations
     - articles/api-keyword-grid
     - articles/fixed-effect-zero-constraints
     - articles/response-families
@@ -207,6 +208,7 @@ reference:
     - extract_Omega
     - extract_communality
     - extract_correlations
+    - extract_cross_correlations
     - extract_residual_cov
     - extract_residual_cor
     - extract_repeatability

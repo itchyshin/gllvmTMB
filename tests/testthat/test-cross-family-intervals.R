@@ -211,3 +211,25 @@ test_that("wald works with contrasts = FALSE (multiple_r only, no partner-family
   expect_false("contrast_r_lower" %in% names(cc))
   expect_true(all(cc$multiple_r_method == "wald"))
 })
+
+test_that("bootstrap + contrasts = TRUE now ALSO populates contrast_r (not point-only NA)", {
+  skip_on_cran(); skip_if_not_installed("MASS")
+  fit <- .get_xfam_ci()
+  skip_if_not(isTRUE(fit$opt$convergence == 0L), "fixture did not converge")
+  cc <- suppressWarnings(suppressMessages(extract_cross_correlations(
+    fit, level = "unit", contrasts = TRUE, method = "bootstrap",
+    conf = 0.95, nsim = 25L, seed = 303)))
+  ## multiple_r bootstrap columns unaffected by the new arm.
+  expect_true(all(cc$multiple_r_method == "bootstrap"))
+  expect_true(all(cc$multiple_r_interval_status == "target_specific_uncalibrated"))
+  ## contrast_r bootstrap columns: finite (not all-NA), uncalibrated flag,
+  ## and the interval brackets the point estimate.
+  expect_true(all(c("contrast_r_lower", "contrast_r_upper", "contrast_r_method",
+                    "contrast_r_interval_status") %in% names(cc)))
+  expect_true(all(cc$contrast_r_method == "bootstrap"))
+  expect_true(all(cc$contrast_r_interval_status == "target_specific_uncalibrated"))
+  lo1 <- cc$contrast_r_lower[[1L]]; hi1 <- cc$contrast_r_upper[[1L]]; pt1 <- cc$contrast_r[[1L]]
+  fin <- is.finite(lo1) & is.finite(hi1)
+  expect_true(any(fin))
+  expect_true(all(lo1[fin] <= pt1[fin] & pt1[fin] <= hi1[fin]))
+})

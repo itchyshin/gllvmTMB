@@ -80,9 +80,10 @@
 #'   Subset of `c("Sigma", "R", "communality", "ICC", "cross_corr")`.
 #'   Default: all. `"ICC"` only makes sense at the site level and
 #'   requires both `B` and `W` tiers in the fit. `"cross_corr"` bootstraps
-#'   the aggregate `multiple_r` between a `multinomial()` trait and each
-#'   partner (see [extract_cross_correlations()]); it is stored as a plain
-#'   named numeric per tier (`multiple_r_B`, ...) and is silently skipped
+#'   the aggregate `multiple_r` AND the per-contrast `contrast_r` between a
+#'   `multinomial()` trait and each partner (see
+#'   [extract_cross_correlations()]); each is stored as a plain named numeric
+#'   per tier (`multiple_r_B`, `contrast_r_B`, ...) and is silently skipped
 #'   for fits without a nominal trait.
 #' @param conf Numeric in `(0, 1)`; confidence level for percentile CIs.
 #'   Default 0.95.
@@ -430,16 +431,20 @@ bootstrap_Sigma <- function(
     }
     if ("cross_corr" %in% what) {
       ## Aggregate cross-family multiple_r between a multinomial() trait and each
-      ## partner. Stored as a PLAIN named numeric only (never the per-contrast
-      ## contrast_r list column): a list column would break .summarise_draws()'s
-      ## positional vapply. refit_one() calls .extract_summaries() UNGUARDED, so
-      ## the tryCatch is load-bearing -- an abort (no nominal trait, singular
-      ## Scc, non-convergence) must yield NULL, not kill the whole bootstrap.
+      ## partner, PLUS the per-contrast contrast_r (one call, contrasts = TRUE,
+      ## serves both estimands -- avoids a second bootstrap_Sigma refit pass).
+      ## Both are stored as PLAIN named numerics only (never a list column): a
+      ## list column would break .summarise_draws()'s positional vapply, so the
+      ## per-contrast contrast_r list column is FLATTENED here into
+      ## contrast_r_<lvl> with names "<nominal>__<partner>__<contrast_name>".
+      ## refit_one() calls .extract_summaries() UNGUARDED, so the tryCatch is
+      ## load-bearing -- an abort (no nominal trait, singular Scc,
+      ## non-convergence) must yield NULL, not kill the whole bootstrap.
       cc <- tryCatch(
         extract_cross_correlations(
           fit,
           level = .canonical_level_name(lvl),
-          contrasts = FALSE,
+          contrasts = TRUE,
           link_residual = link_residual
         ),
         error = function(e) NULL
@@ -449,6 +454,16 @@ bootstrap_Sigma <- function(
           as.numeric(cc$multiple_r),
           paste(cc$nominal, cc$partner, sep = "__")
         )
+        cr_flat <- unlist(lapply(seq_len(nrow(cc)), function(i) {
+          cr_i <- cc$contrast_r[[i]]
+          stats::setNames(
+            as.numeric(cr_i),
+            paste(cc$nominal[i], cc$partner[i], names(cr_i), sep = "__")
+          )
+        }))
+        if (!is.null(cr_flat) && length(cr_flat) > 0L) {
+          out[[paste0("contrast_r_", lvl)]] <- cr_flat
+        }
       }
     }
   }
@@ -560,13 +575,15 @@ bootstrap_Sigma <- function(
         names = FALSE
       )
       ## Per-element effective replicate count (finite draws) and, for the
-      ## cross-family multiple_r entries, a minimum-effective-B floor. Percentile
-      ## bounds over only the SURVIVING refits bias the interval narrow (the
-      ## CI-10 inner-attrition failure mode). Where a partner's survivors /
-      ## n_boot < 0.8, return NA bounds so the caller can mark it ci_failed
-      ## rather than report an over-narrow interval from too few draws.
+      ## cross-family multiple_r / contrast_r entries, a minimum-effective-B
+      ## floor. Percentile bounds over only the SURVIVING refits bias the
+      ## interval narrow (the CI-10 inner-attrition failure mode). Where a
+      ## partner's survivors / n_boot < 0.8, return NA bounds so the caller can
+      ## mark it ci_failed rather than report an over-narrow interval from too
+      ## few draws. contrast_r inherits the SAME floor (else its bootstrap
+      ## interval would silently narrow-bias under the identical attrition).
       n_eff_v <- rowSums(is.finite(stacked))
-      if (grepl("^multiple_r_", nm)) {
+      if (grepl("^(multiple_r|contrast_r)_", nm)) {
         thin <- (n_eff_v / n_boot) < 0.8
         if (any(thin)) {
           lo[thin] <- NA_real_

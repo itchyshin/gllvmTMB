@@ -791,17 +791,18 @@ extract_correlations <- function(
 #'   columns), `"wald"` (fast Fisher-z intervals on BOTH `multiple_r` and
 #'   `contrast_r`; no refits or root-finding, so it always returns and is robust
 #'   on messy real data; any partner family), `"bootstrap"` (parametric-bootstrap
-#'   interval on the aggregate `multiple_r` via [bootstrap_Sigma()]), or
-#'   `"profile"` (profile-likelihood interval on each pairwise `contrast_r` via
-#'   `profile_ci_correlation()`; requires `contrasts = TRUE`; gaussian/binomial
-#'   partners only). For `"bootstrap"`/`"profile"` the two estimands take
-#'   DIFFERENT routes: `multiple_r` (a nonlinear \eqn{\Sigma}-block functional
-#'   with no single profile parameter) is only ever bootstrapped; `contrast_r`
-#'   (a single \eqn{\rho_{ij}}) is only ever profiled. `"wald"` covers both at
-#'   once. Requesting `method = "profile"` with `contrasts = FALSE` fails loud.
+#'   intervals via [bootstrap_Sigma()] on the aggregate `multiple_r`, and, when
+#'   `contrasts = TRUE`, also on each pairwise `contrast_r` -- a single bootstrap
+#'   pass serves both estimands), or `"profile"` (profile-likelihood interval on
+#'   each pairwise `contrast_r` via `profile_ci_correlation()`; requires
+#'   `contrasts = TRUE`; gaussian/binomial partners only; `multiple_r`, a
+#'   nonlinear \eqn{\Sigma}-block functional with no single profile parameter,
+#'   is never profiled and keeps point-only columns under `"profile"`).
+#'   Requesting `method = "profile"` with `contrasts = FALSE` fails loud.
 #'   \strong{None of these intervals is coverage-calibrated yet} — they are
 #'   recovery-oriented; `"wald"` is the most approximate (`multiple_r` is not a
-#'   Pearson correlation). Use them to explore + report bugs, not for inference.
+#'   Pearson correlation), and the bootstrap `contrast_r` arm is newly added and
+#'   equally uncalibrated. Use them to explore + report bugs, not for inference.
 #' @param conf confidence level for the interval columns. Default 0.95.
 #' @param nsim number of parametric-bootstrap replicates when
 #'   `method = "bootstrap"`. Default 500.
@@ -813,9 +814,11 @@ extract_correlations <- function(
 #'   `multiple_r_lower`/`multiple_r_upper`/`multiple_r_method`/`multiple_r_interval_status`
 #'   (scalar), and when `contrasts = TRUE`
 #'   `contrast_r_lower`/`contrast_r_upper` (list columns) plus
-#'   `contrast_r_method`/`contrast_r_interval_status`. The estimand NOT served by
-#'   the requested `method` keeps point-only interval columns (`NA` bounds,
-#'   `method = "point"`). Computed intervals carry an `interval_status` flag
+#'   `contrast_r_method`/`contrast_r_interval_status`. `"wald"` and `"bootstrap"`
+#'   serve both estimands at once; `"profile"` serves only `contrast_r`, and
+#'   `multiple_r` keeps point-only interval columns (`NA` bounds,
+#'   `method = "point"`) under `"profile"`. Computed intervals carry an
+#'   `interval_status` flag
 #'   (`"heuristic_unvalidated"` for `"wald"`, `"target_specific_uncalibrated"`
 #'   for `"bootstrap"`/`"profile"`) -- coverage is not yet certified for any
 #'   route (validation register CI-11 pending).
@@ -877,8 +880,11 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
     cli::cli_abort("No non-nominal partner trait to correlate the {.fn multinomial} trait with.")
   }
 
-  ## ---- method = "bootstrap": one bootstrap_Sigma call for multiple_r --------
-  boot_lo <- boot_hi <- NULL
+  ## ---- method = "bootstrap": one bootstrap_Sigma call serves BOTH estimands -
+  ## bootstrap_Sigma(what = "cross_corr") always computes multiple_r_<lvl> AND
+  ## contrast_r_<lvl> (bootstrap-sigma.R), so a single call here avoids a
+  ## second refit pass regardless of whether `contrasts` was requested.
+  boot_lo <- boot_hi <- boot_cr_lo <- boot_cr_hi <- NULL
   if (method == "bootstrap") {
     boot <- suppressMessages(bootstrap_Sigma(
       fit,
@@ -893,6 +899,9 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
     key_nm <- paste0("multiple_r_", lvl_internal)
     boot_lo <- boot$ci_lower[[key_nm]]
     boot_hi <- boot$ci_upper[[key_nm]]
+    cr_key_nm <- paste0("contrast_r_", lvl_internal)
+    boot_cr_lo <- boot$ci_lower[[cr_key_nm]]
+    boot_cr_hi <- boot$ci_upper[[cr_key_nm]]
   }
 
   ## ---- method = "profile": per-partner constant-residual certification ------
@@ -989,6 +998,13 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
             for (k in seq_along(blk)) {
               w <- .cross_wald_ci(as.numeric(cr[k]), n_eff_w, conf, lower_bound = -1)
               cr_lo[k] <- w[1L]; cr_hi[k] <- w[2L]
+            }
+          } else if (method == "bootstrap") {
+            cr_method <- "bootstrap"
+            for (k in seq_along(blk)) {
+              key <- paste(b, tn[p], tn[blk[k]], sep = "__")
+              cr_lo[k] <- .cross_named_get(boot_cr_lo, key)
+              cr_hi[k] <- .cross_named_get(boot_cr_hi, key)
             }
           }
           row$contrast_r_lower <- I(list(stats::setNames(cr_lo, tn[blk])))

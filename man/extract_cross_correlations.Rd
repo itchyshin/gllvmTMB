@@ -41,17 +41,18 @@ correlations from \code{\link[=extract_Sigma]{extract_Sigma()}} / \code{\link[=e
 columns), \code{"wald"} (fast Fisher-z intervals on BOTH \code{multiple_r} and
 \code{contrast_r}; no refits or root-finding, so it always returns and is robust
 on messy real data; any partner family), \code{"bootstrap"} (parametric-bootstrap
-interval on the aggregate \code{multiple_r} via \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}), or
-\code{"profile"} (profile-likelihood interval on each pairwise \code{contrast_r} via
-\code{profile_ci_correlation()}; requires \code{contrasts = TRUE}; gaussian/binomial
-partners only). For \code{"bootstrap"}/\code{"profile"} the two estimands take
-DIFFERENT routes: \code{multiple_r} (a nonlinear \eqn{\Sigma}-block functional
-with no single profile parameter) is only ever bootstrapped; \code{contrast_r}
-(a single \eqn{\rho_{ij}}) is only ever profiled. \code{"wald"} covers both at
-once. Requesting \code{method = "profile"} with \code{contrasts = FALSE} fails loud.
+intervals via \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} on the aggregate \code{multiple_r}, and, when
+\code{contrasts = TRUE}, also on each pairwise \code{contrast_r} -- a single bootstrap
+pass serves both estimands), or \code{"profile"} (profile-likelihood interval on
+each pairwise \code{contrast_r} via \code{profile_ci_correlation()}; requires
+\code{contrasts = TRUE}; gaussian/binomial partners only; \code{multiple_r}, a
+nonlinear \eqn{\Sigma}-block functional with no single profile parameter,
+is never profiled and keeps point-only columns under \code{"profile"}).
+Requesting \code{method = "profile"} with \code{contrasts = FALSE} fails loud.
 \strong{None of these intervals is coverage-calibrated yet} — they are
 recovery-oriented; \code{"wald"} is the most approximate (\code{multiple_r} is not a
-Pearson correlation). Use them to explore + report bugs, not for inference.}
+Pearson correlation), and the bootstrap \code{contrast_r} arm is newly added and
+equally uncalibrated. Use them to explore + report bugs, not for inference.}
 
 \item{conf}{confidence level for the interval columns. Default 0.95.}
 
@@ -68,9 +69,11 @@ a data.frame, one row per (nominal, partner) pair. With
 \code{multiple_r_lower}/\code{multiple_r_upper}/\code{multiple_r_method}/\code{multiple_r_interval_status}
 (scalar), and when \code{contrasts = TRUE}
 \code{contrast_r_lower}/\code{contrast_r_upper} (list columns) plus
-\code{contrast_r_method}/\code{contrast_r_interval_status}. The estimand NOT served by
-the requested \code{method} keeps point-only interval columns (\code{NA} bounds,
-\code{method = "point"}). Computed intervals carry an \code{interval_status} flag
+\code{contrast_r_method}/\code{contrast_r_interval_status}. \code{"wald"} and \code{"bootstrap"}
+serve both estimands at once; \code{"profile"} serves only \code{contrast_r}, and
+\code{multiple_r} keeps point-only interval columns (\code{NA} bounds,
+\code{method = "point"}) under \code{"profile"}. Computed intervals carry an
+\code{interval_status} flag
 (\code{"heuristic_unvalidated"} for \code{"wald"}, \code{"target_specific_uncalibrated"}
 for \code{"bootstrap"}/\code{"profile"}) -- coverage is not yet certified for any
 route (validation register CI-11 pending).

@@ -6,11 +6,16 @@
 ## the coverage of the intervals attached to extract_cross_correlations()
 ## (Slices 1-4) against an ANALYTICALLY-KNOWN truth.
 ##
-## Two estimands are measured:
+## Two estimands, measured across every WIRED (estimand, method) cell of
+## extract_cross_correlations() (5 cells total; multiple_r x profile is
+## deliberately NOT wired -- the block functional has no profile parameter):
 ##   * multiple_r  -- aggregate cross-family multiple correlation (Sigma-block
-##     functional). Interval = parametric bootstrap (method = "bootstrap").
-##   * contrast_r  -- pairwise partner-vs-contrast correlation. Interval =
-##     wired profile (method = "profile", Option-b AUTO scale).
+##     functional). Methods: "bootstrap", "wald".
+##   * contrast_r  -- pairwise partner-vs-contrast correlation. Methods:
+##     "profile" (Option-b AUTO scale), "wald", "bootstrap".
+## Per replicate, the fit is refit ONCE and reused across all three
+## extract_cross_correlations() calls (wald / bootstrap / profile) -- the
+## refit is the cost, not the interval computation.
 ##
 ## HONESTY BANNER (D-43): EVERY number produced by this harness is
 ##   "MEASURED, NOT certified -- awaiting D-43 panel".
@@ -291,6 +296,8 @@ XFC_BANNER <- "MEASURED, NOT certified -- awaiting D-43 panel"
 
 .xfc_one_rep <- function(truth, N, reps, seed, n_boot,
                          estimands = c("multiple_r", "contrast_r"),
+                         methods_multiple_r = c("bootstrap", "wald"),
+                         methods_contrast_r = c("profile", "wald", "bootstrap"),
                          conf = 0.95) {
   dat <- .xfc_simulate_data(truth, N = N, reps = reps, seed = seed)
   fit <- tryCatch(.xfc_fit(dat, truth$partner_family), error = function(e) NULL)
@@ -302,60 +309,87 @@ XFC_BANNER <- "MEASURED, NOT certified -- awaiting D-43 panel"
 
   ## Path-2 gate: never bootstrap a fit whose RE cannot be unconditionally redrawn.
   can_redraw <- isTRUE(.xfc_can_redraw(fit)$can_redraw)
+  ## Only compute methods for the estimands actually requested (an estimand-
+  ## scoped run must not pay for the other estimand's refit/profile cost).
+  needed_methods <- unique(c(
+    if ("multiple_r" %in% estimands) methods_multiple_r,
+    if ("contrast_r" %in% estimands) methods_contrast_r))
 
-  ## ---- multiple_r via parametric bootstrap -------------------------------
-  if ("multiple_r" %in% estimands) {
-    lo <- hi <- NA_real_; inner_surv <- NA_real_; err <- NA_character_
-    if (!can_redraw) {
-      err <- "path2_gate_failed"
-    } else {
-      cc <- tryCatch(
-        suppressMessages(extract_cross_correlations(
-          fit, level = "unit", contrasts = FALSE, link_residual = "auto",
-          method = "bootstrap", conf = conf, nsim = as.integer(n_boot), seed = seed)),
-        error = function(e) { err <<- conditionMessage(e); NULL })
-      if (!is.null(cc) && nrow(cc) >= 1L) {
-        lo <- as.numeric(cc$multiple_r_lower[1L])
-        hi <- as.numeric(cc$multiple_r_upper[1L])
-      }
-    }
-    ci_failed <- !is.finite(lo) || !is.finite(hi)
-    covered <- !ci_failed && (truth$multiple_r_true >= lo) && (truth$multiple_r_true <= hi)
-    miss_side <- if (ci_failed) "ci_failed"
-                 else if (covered) NA_character_
-                 else if (truth$multiple_r_true < lo) "lower" else "upper"
-    res$multiple_r <- data.frame(
-      seed = seed, truth = truth$multiple_r_true, lower = lo, upper = hi,
-      ci_failed = ci_failed, covered = covered, miss_side = miss_side,
-      stringsAsFactors = FALSE)
+  ## ---- ONE extract_cross_correlations() call per requested METHOD, fit
+  ## reused across estimands: "wald" and "bootstrap" each serve BOTH
+  ## multiple_r and contrast_r in a single call; "profile" serves contrast_r
+  ## only (multiple_r x profile is not wired -- fenced upstream). ----------
+  cc_by_method <- list()
+  if ("wald" %in% needed_methods) {
+    cc_by_method$wald <- tryCatch(
+      suppressMessages(extract_cross_correlations(
+        fit, level = "unit", contrasts = TRUE, link_residual = "auto",
+        method = "wald", conf = conf)),
+      error = function(e) NULL)
   }
-
-  ## ---- contrast_r via wired profile (Option-b AUTO scale) ----------------
-  if ("contrast_r" %in% estimands) {
-    cc <- tryCatch(
+  if ("bootstrap" %in% needed_methods) {
+    cc_by_method$bootstrap <- if (!can_redraw) NULL else tryCatch(
+      suppressMessages(extract_cross_correlations(
+        fit, level = "unit", contrasts = TRUE, link_residual = "auto",
+        method = "bootstrap", conf = conf, nsim = as.integer(n_boot), seed = seed)),
+      error = function(e) NULL)
+  }
+  if ("profile" %in% needed_methods) {
+    cc_by_method$profile <- tryCatch(
       suppressMessages(extract_cross_correlations(
         fit, level = "unit", contrasts = TRUE, link_residual = "auto",
         method = "profile", conf = conf)),
       error = function(e) NULL)
-    blk <- truth$blk_names
-    cr_true <- truth$contrast_r_true
-    rows <- vector("list", length(blk))
-    for (k in seq_along(blk)) {
+  }
+
+  ## ---- multiple_r: one row per method -------------------------------------
+  if ("multiple_r" %in% estimands) {
+    rows <- vector("list", length(methods_multiple_r))
+    for (mi in seq_along(methods_multiple_r)) {
+      meth <- methods_multiple_r[mi]
+      cc <- cc_by_method[[meth]]
       lo <- hi <- NA_real_
       if (!is.null(cc) && nrow(cc) >= 1L) {
-        lo <- as.numeric(cc$contrast_r_lower[[1L]][blk[k]])
-        hi <- as.numeric(cc$contrast_r_upper[[1L]][blk[k]])
+        lo <- as.numeric(cc$multiple_r_lower[1L])
+        hi <- as.numeric(cc$multiple_r_upper[1L])
       }
       ci_failed <- !is.finite(lo) || !is.finite(hi)
-      tr <- as.numeric(cr_true[blk[k]])
-      covered <- !ci_failed && (tr >= lo) && (tr <= hi)
+      covered <- !ci_failed && (truth$multiple_r_true >= lo) && (truth$multiple_r_true <= hi)
       miss_side <- if (ci_failed) "ci_failed"
                    else if (covered) NA_character_
-                   else if (tr < lo) "lower" else "upper"
-      rows[[k]] <- data.frame(
-        seed = seed, contrast = blk[k], truth = tr, lower = lo, upper = hi,
+                   else if (truth$multiple_r_true < lo) "lower" else "upper"
+      rows[[mi]] <- data.frame(
+        seed = seed, method = meth, truth = truth$multiple_r_true, lower = lo, upper = hi,
         ci_failed = ci_failed, covered = covered, miss_side = miss_side,
         stringsAsFactors = FALSE)
+    }
+    res$multiple_r <- do.call(rbind, rows)
+  }
+
+  ## ---- contrast_r: one row per (method, contrast) -------------------------
+  if ("contrast_r" %in% estimands) {
+    blk <- truth$blk_names
+    cr_true <- truth$contrast_r_true
+    rows <- list()
+    for (meth in methods_contrast_r) {
+      cc <- cc_by_method[[meth]]
+      for (k in seq_along(blk)) {
+        lo <- hi <- NA_real_
+        if (!is.null(cc) && nrow(cc) >= 1L) {
+          lo <- as.numeric(cc$contrast_r_lower[[1L]][blk[k]])
+          hi <- as.numeric(cc$contrast_r_upper[[1L]][blk[k]])
+        }
+        ci_failed <- !is.finite(lo) || !is.finite(hi)
+        tr <- as.numeric(cr_true[blk[k]])
+        covered <- !ci_failed && (tr >= lo) && (tr <= hi)
+        miss_side <- if (ci_failed) "ci_failed"
+                     else if (covered) NA_character_
+                     else if (tr < lo) "lower" else "upper"
+        rows[[length(rows) + 1L]] <- data.frame(
+          seed = seed, method = meth, contrast = blk[k], truth = tr, lower = lo, upper = hi,
+          ci_failed = ci_failed, covered = covered, miss_side = miss_side,
+          stringsAsFactors = FALSE)
+      }
     }
     res$contrast_r <- do.call(rbind, rows)
   }
@@ -423,6 +457,8 @@ XFC_BANNER <- "MEASURED, NOT certified -- awaiting D-43 panel"
 xfc_run_cell <- function(truth, N, reps, n_sim, n_boot, seed_base, cell_id = 1L,
                          rep_range = c(1L, n_sim),
                          estimands = c("multiple_r", "contrast_r"),
+                         methods_multiple_r = c("bootstrap", "wald"),
+                         methods_contrast_r = c("profile", "wald", "bootstrap"),
                          conf = 0.95, gate = 0.94, verbose = TRUE) {
   .xfc_ensure_pkg()
   rr <- seq.int(rep_range[1L], rep_range[2L])
@@ -432,7 +468,8 @@ xfc_run_cell <- function(truth, N, reps, n_sim, n_boot, seed_base, cell_id = 1L,
     seed <- .xfc_rep_seed(seed_base, cell_id, i)
     rep_res <- tryCatch(
       .xfc_one_rep(truth, N = N, reps = reps, seed = seed, n_boot = n_boot,
-                   estimands = estimands, conf = conf),
+                   estimands = estimands, methods_multiple_r = methods_multiple_r,
+                   methods_contrast_r = methods_contrast_r, conf = conf),
       error = function(e) list(converged = FALSE))
     if (!isTRUE(rep_res$converged)) { n_nonconv <- n_nonconv + 1L; next }
     if (!is.null(rep_res$multiple_r)) mr_rows[[length(mr_rows) + 1L]] <- rep_res$multiple_r
@@ -449,20 +486,27 @@ xfc_run_cell <- function(truth, N, reps, n_sim, n_boot, seed_base, cell_id = 1L,
     raw_contrast_r = if (length(cr_rows)) do.call(rbind, cr_rows) else NULL,
     summary_multiple_r = NULL, summary_contrast_r = NULL)
 
+  ## Per-(estimand, method) summaries -- multiple_r splits on `method`;
+  ## contrast_r splits on `method` x `contrast` (drop = TRUE: only combos that
+  ## actually occurred, since a method may be entirely NULL on a bad rep).
   if ("multiple_r" %in% estimands && length(mr_rows)) {
     m <- do.call(rbind, mr_rows)
-    s <- .xfc_summarise_series(m$covered, m$ci_failed, n_nonconv, gate = gate)
-    s <- cbind(data.frame(cell_id = cell_id, partner = truth$partner_family, N = N,
-                          estimand = "multiple_r", contrast = NA_character_,
-                          truth = truth$multiple_r_true, stringsAsFactors = FALSE), s)
-    out$summary_multiple_r <- s
+    per <- lapply(split(m, m$method, drop = TRUE), function(mk) {
+      s <- .xfc_summarise_series(mk$covered, mk$ci_failed, n_nonconv, gate = gate)
+      cbind(data.frame(cell_id = cell_id, partner = truth$partner_family, N = N,
+                       estimand = "multiple_r", method = mk$method[1L],
+                       contrast = NA_character_,
+                       truth = truth$multiple_r_true, stringsAsFactors = FALSE), s)
+    })
+    out$summary_multiple_r <- do.call(rbind, per)
   }
   if ("contrast_r" %in% estimands && length(cr_rows)) {
     m <- do.call(rbind, cr_rows)
-    per <- lapply(split(m, m$contrast), function(mk) {
+    per <- lapply(split(m, list(m$method, m$contrast), drop = TRUE), function(mk) {
       s <- .xfc_summarise_series(mk$covered, mk$ci_failed, n_nonconv, gate = gate)
       cbind(data.frame(cell_id = cell_id, partner = truth$partner_family, N = N,
-                       estimand = "contrast_r", contrast = mk$contrast[1L],
+                       estimand = "contrast_r", method = mk$method[1L],
+                       contrast = mk$contrast[1L],
                        truth = mk$truth[1L], stringsAsFactors = FALSE), s)
     })
     out$summary_contrast_r <- do.call(rbind, per)
@@ -472,10 +516,20 @@ xfc_run_cell <- function(truth, N, reps, n_sim, n_boot, seed_base, cell_id = 1L,
                 cell_id, truth$partner_family, N, truth$multiple_r_true,
                 rep_range[1L], rep_range[2L], n_nonconv))
     if (!is.null(out$summary_multiple_r)) {
-      s <- out$summary_multiple_r
-      cat(sprintf("         multiple_r: coverage=%.3f (2MCSE lower %.3f) conv=%.2f gate>=%.2f -> %s  [%s]\n",
-                  s$coverage, s$lower_2mcse, s$conv_rate, s$gate, ifelse(s$gate_pass, "PASS", "no"),
-                  XFC_BANNER))
+      for (ri in seq_len(nrow(out$summary_multiple_r))) {
+        s <- out$summary_multiple_r[ri, ]
+        cat(sprintf("         multiple_r[%s]: coverage=%.3f (2MCSE lower %.3f) conv=%.2f gate>=%.2f -> %s  [%s]\n",
+                    s$method, s$coverage, s$lower_2mcse, s$conv_rate, s$gate,
+                    ifelse(s$gate_pass, "PASS", "no"), XFC_BANNER))
+      }
+    }
+    if (!is.null(out$summary_contrast_r)) {
+      for (ri in seq_len(nrow(out$summary_contrast_r))) {
+        s <- out$summary_contrast_r[ri, ]
+        cat(sprintf("         contrast_r[%s,%s]: coverage=%.3f (2MCSE lower %.3f) conv=%.2f gate>=%.2f -> %s  [%s]\n",
+                    s$method, s$contrast, s$coverage, s$lower_2mcse, s$conv_rate, s$gate,
+                    ifelse(s$gate_pass, "PASS", "no"), XFC_BANNER))
+      }
     }
   }
   out
@@ -626,8 +680,10 @@ xfc_run_grid <- function(grid, N_sim, n_boot, seed_base, shard = 1L, n_shards = 
 
 ## ---------------------------------------------------------------------
 ## 10. Smoke: 1 gaussian cell, tiny N + tiny n_sim, end-to-end via load_all.
-##     Confirms (a) the truth assertion passes and (b) a non-NA in-range
-##     coverage row is produced. Runs in a couple of minutes; NOT a campaign.
+##     Confirms (a) the truth assertion passes and (b) all 5 wired
+##     (estimand, method) cells -- multiple_r x {bootstrap, wald},
+##     contrast_r x {profile, wald, bootstrap} -- produce a summary row.
+##     Runs in a couple of minutes; NOT a campaign.
 ## ---------------------------------------------------------------------
 
 xfc_smoke <- function() {
@@ -642,7 +698,8 @@ xfc_smoke <- function() {
   ta <- .xfc_assert_truth(truth, N = 150L, reps = 4L, seed = 202607L,
                           tol_abs = 0.8, tol_rel = 0.3)
 
-  ## (b) a tiny coverage cell: 3 reps, tiny N, tiny inner bootstrap.
+  ## (b) a tiny coverage cell: 3 reps, tiny N, tiny inner bootstrap; all 5
+  ## wired cells (default methods_multiple_r / methods_contrast_r).
   cell <- xfc_run_cell(
     truth, N = 40L, reps = 4L, n_sim = 3L, n_boot = 8L,
     seed_base = 20260718L, cell_id = 1L,
@@ -655,7 +712,21 @@ xfc_smoke <- function() {
   cat("\n---- raw multiple_r rows ----\n")
   print(cell$raw_multiple_r, row.names = FALSE)
 
-  invisible(list(truth_assertion = ta, cell = cell, note = XFC_BANNER))
+  ## 5-cell coverage check: multiple_r x {bootstrap, wald} (2 rows) +
+  ## contrast_r x {profile, wald, bootstrap} x 2 contrasts (6 rows).
+  mr_methods <- sort(unique(cell$summary_multiple_r$method))
+  cr_methods <- sort(unique(cell$summary_contrast_r$method))
+  cat(sprintf("\n[xfc_smoke] multiple_r methods present: %s\n",
+              paste(mr_methods, collapse = ", ")))
+  cat(sprintf("[xfc_smoke] contrast_r methods present: %s\n",
+              paste(cr_methods, collapse = ", ")))
+  five_cell_ok <- setequal(mr_methods, c("bootstrap", "wald")) &&
+    setequal(cr_methods, c("bootstrap", "profile", "wald"))
+  cat(sprintf("[xfc_smoke] all 5 wired cells present: %s\n",
+              if (five_cell_ok) "YES" else "NO"))
+
+  invisible(list(truth_assertion = ta, cell = cell, five_cell_ok = five_cell_ok,
+                 note = XFC_BANNER))
 }
 
 ## ---------------------------------------------------------------------

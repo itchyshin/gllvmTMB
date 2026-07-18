@@ -31,9 +31,10 @@ the fit are silently dropped. Default: all available levels.}
 Subset of \code{c("Sigma", "R", "communality", "ICC", "cross_corr")}.
 Default: all. \code{"ICC"} only makes sense at the site level and
 requires both \code{B} and \code{W} tiers in the fit. \code{"cross_corr"} bootstraps
-the aggregate \code{multiple_r} between a \code{multinomial()} trait and each
-partner (see \code{\link[=extract_cross_correlations]{extract_cross_correlations()}}); it is stored as a plain
-named numeric per tier (\code{multiple_r_B}, ...) and is silently skipped
+the aggregate \code{multiple_r} AND the per-contrast \code{contrast_r} between a
+\code{multinomial()} trait and each partner (see
+\code{\link[=extract_cross_correlations]{extract_cross_correlations()}}); each is stored as a plain named numeric
+per tier (\code{multiple_r_B}, \code{contrast_r_B}, ...) and is silently skipped
 for fits without a nominal trait.}
 
 \item{conf}{Numeric in \verb{(0, 1)}; confidence level for percentile CIs.

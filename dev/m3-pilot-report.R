@@ -234,7 +234,8 @@ pilot_scale_gate_eval <- function(
   mcse_adjudication = 0.005
 ) {
   need <- c(
-    "family", "evidence_family", "signal", "coverage_primary", "coverage_mcse",
+    "family", "evidence_family", "signal", "coverage_primary",
+    "coverage_certificate", "coverage_mcse",
     "coverage_eligible_n", "n_converged_fits", "fit_failure_rate",
     "boot_fail_rate"
   )
@@ -310,16 +311,34 @@ pilot_scale_gate_eval <- function(
   miss_ok <- is.na(osms) | is.na(miss_total_col) |
     miss_total_col < min_one_sided_miss_total |
     osms < max_one_sided_miss_share
+  ## Active coverage measurement (FIX 2, 2026-07-18): as of A1a the DEFAULT
+  ## route is the genuine profile, whose coverage lands in
+  ## `coverage_certificate` (ci_method == "profile_total"); `coverage_primary`
+  ## is the opt-in bootstrap baseline and is NA under the n_boot = 0 default.
+  ## The gate must enforce the coverage floor on the measurement that is
+  ## ACTUALLY present: prefer coverage_certificate, fall back to
+  ## coverage_primary (so a legacy bootstrap-route store is still enforced and
+  ## the existing coverage_primary-path tests keep working). This does NOT
+  ## touch coverage_primary itself -- that column stays the bootstrap baseline.
+  ## Without this, cov_provisional keyed on coverage_primary alone was
+  ## silently ALL-TRUE under the default route (is.na(NA) -> TRUE), so a CORE
+  ## cell with profile coverage 0.70 wrongly PASSED (coverage enforcement OFF).
+  cov_measure <- ifelse(
+    !is.na(core$coverage_certificate),
+    core$coverage_certificate,
+    core$coverage_primary
+  )
+  core$cov_measure <- cov_measure
   ## Provisional coverage: within ~2 MCSE of the 0.94 gate at pilot noise.
-  cov_provisional <- is.na(core$coverage_primary) |
-    core$coverage_primary >= (gate_94 - 2 * pmax(mcse_f, 0.005))
+  cov_provisional <- is.na(cov_measure) |
+    cov_measure >= (gate_94 - 2 * pmax(mcse_f, 0.005))
   ## Adjudication-grade precision -- the pilot is a SMOKE instrument and is
   ## EXPECTED to miss this; scale to n_sim=2000 to adjudicate 0.94 vs 0.95.
   mcse_adjudicated <- !is.na(core$coverage_mcse) &
     core$coverage_mcse <= mcse_adjudication
 
-  core$gate_passes_94 <- !is.na(core$coverage_primary) &
-    core$coverage_primary >= gate_94
+  core$gate_passes_94 <- !is.na(cov_measure) &
+    cov_measure >= gate_94
   core$ci_missing_rate <- ci_missing
   core$gate_fit_ok <- fit_ok
   core$gate_boot_ok <- boot_ok
@@ -437,9 +456,15 @@ pilot_rbind_cell <- function(prev, new) {
     ## Keep all rows of each distinct (rep_seed) draw; a draw is a block of
     ## trait rows sharing one rep_seed. De-dup whole draws, not rows: a
     ## draw is duplicated if its rep_seed already appeared with identical
-    ## per-row content. Use rep_seed + trait_id + target as the row key.
+    ## per-row content. Use rep_seed + trait_id + trait_j + target as the row
+    ## key. trait_j is REQUIRED for the Sigma_unit_corr target (FIX 3,
+    ## 2026-07-18): its rows set trait_id = i and distinguish a pair ONLY by
+    ## trait_j = j, so without trait_j in the key, (1,2) and (1,3) share
+    ## (rep_seed, trait_id = 1, target, ci_method) and the later pair is wrongly
+    ## dropped as a duplicate. trait_j is NA for the per-trait targets (psi,
+    ## Sigma_unit_diag), where it is a constant and does not change the key.
     key_cols <- intersect(
-      c("rep_seed", "trait_id", "target", "ci_method"),
+      c("rep_seed", "trait_id", "trait_j", "target", "ci_method"),
       names(combined)
     )
     combined <- combined[!duplicated(combined[, key_cols, drop = FALSE]), ]
@@ -448,7 +473,7 @@ pilot_rbind_cell <- function(prev, new) {
     combined$rep <- match(combined$rep_seed, unique(combined$rep_seed))
   } else if ("rep" %in% names(combined)) {
     key_cols <- intersect(
-      c("rep", "trait_id", "target", "ci_method"),
+      c("rep", "trait_id", "trait_j", "target", "ci_method"),
       names(combined)
     )
     combined <- combined[!duplicated(combined[, key_cols, drop = FALSE]), ]
@@ -459,6 +484,9 @@ pilot_rbind_cell <- function(prev, new) {
 ## Reduce ONE combined long grid to a single tidy per-cell row.
 pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
   ## --- coverage via the validated aggregator (primary target row) ---
+  ## `coverage_primary` (bootstrap route, ci_method == "bootstrap") is left
+  ## UNTOUCHED here -- it is opt-in secondary as of A1a (2026-07-18) and is
+  ## simply NA/NOT_EVALUATED unless the caller ran m3_run_cell(n_boot > 0).
   cov_p <- NA_real_
   gate_status <- NA_character_
   pd_rate_summ <- NA_real_
@@ -475,6 +503,22 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
       if ("boot_fail_rate" %in% names(prim)) {
         boot_fail_rate <- prim$boot_fail_rate[1]
       }
+    }
+  }
+
+  ## --- coverage via the CERTIFICATE route (profile_total, DEFAULT as of
+  ## A1a 2026-07-18) -- the NEW measurement. Kept as a genuinely separate
+  ## field from coverage_primary above (never overwriting it): the harness
+  ## routes the profile number through m3_summarise()'s EXISTING
+  ## coverage_certificate column (dev/m3-grid.R, D-43), and this reducer
+  ## just surfaces it.
+  cov_cert <- NA_real_
+  cert_gate_status <- NA_character_
+  if (!is.null(s)) {
+    cert <- s[!is.na(s$coverage_certificate), , drop = FALSE]
+    if (nrow(cert)) {
+      cov_cert <- cert$coverage_certificate[1]
+      cert_gate_status <- cert$certificate_gate_status[1] %||% NA_character_
     }
   }
 
@@ -714,6 +758,13 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
     passes_94 = if (is.na(cov_p)) NA else cov_p >= gate_94,
     passes_95 = if (is.na(cov_p)) NA else cov_p >= gate_95,
     primary_gate_status = gate_status,
+    ## The NEW default measurement (A1a, 2026-07-18): profile_total /
+    ## coverage_certificate. See the block above -- additive, never
+    ## overwrites coverage_primary.
+    coverage_certificate = cov_cert,
+    passes_94_certificate = if (is.na(cov_cert)) NA else cov_cert >= gate_94,
+    passes_95_certificate = if (is.na(cov_cert)) NA else cov_cert >= gate_95,
+    certificate_gate_status = cert_gate_status,
     zero_exclusion_rate = zero_exclusion_rate,
     zero_exclusion_n = as.integer(zero_exclusion_n),
     zero_exclusion_mcse = zero_exclusion_mcse,
@@ -741,13 +792,21 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
 }
 
 ## Subset of a long grid to the PRIMARY target rows (the rotation-
-## invariant Sigma_unit_diag estimand under bootstrap CIs). Falls back to
-## all rows if those columns are absent (legacy artifacts).
+## invariant Sigma_unit_diag estimand). As of A1a (2026-07-18) the default
+## certificate route is the genuine profile ("profile_total"); select those
+## rows first. Grids stored before A1a (n_boot > 0, no profile_total rows)
+## fall back to the closed parametric bootstrap route so historical
+## artifacts still resolve to a "primary" selection. Falls back to all rows
+## if the target/ci_method columns are absent entirely (legacy artifacts).
 pilot_primary_rows <- function(g) {
   if (all(c("target", "ci_method") %in% names(g))) {
-    sel <- g$target == "Sigma_unit_diag" & g$ci_method == "bootstrap"
+    sel <- g$target == "Sigma_unit_diag" & g$ci_method == "profile_total"
     if (any(sel)) {
       return(g[sel, , drop = FALSE])
+    }
+    sel_boot <- g$target == "Sigma_unit_diag" & g$ci_method == "bootstrap"
+    if (any(sel_boot)) {
+      return(g[sel_boot, , drop = FALSE])
     }
   }
   g
@@ -890,6 +949,10 @@ pilot_collect_empty <- function() {
     passes_94 = logical(0),
     passes_95 = logical(0),
     primary_gate_status = character(0),
+    coverage_certificate = numeric(0),
+    passes_94_certificate = logical(0),
+    passes_95_certificate = logical(0),
+    certificate_gate_status = character(0),
     zero_exclusion_rate = numeric(0),
     zero_exclusion_n = integer(0),
     zero_exclusion_mcse = numeric(0),
@@ -925,7 +988,9 @@ pilot_scoring_audit <- function(
   results_dirs = "dev/m3-pilot-results",
   cell_ids = PILOT_SCORING_AUDIT_CELLS_DEFAULT,
   target = "Sigma_unit_diag",
-  ci_method = "bootstrap",
+  ## Default certificate route as of A1a (2026-07-18); pass ci_method =
+  ## "bootstrap" explicitly to audit a legacy bootstrap-route store.
+  ci_method = "profile_total",
   index_file = "pilot-index.rds"
 ) {
   grids <- pilot_read_cell_grids(

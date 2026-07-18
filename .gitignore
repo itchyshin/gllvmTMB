@@ -106,5 +106,11 @@ dev/cov-baseline/
 dev/cov-clean/
 dev/spatial-coverage-750-*.rds
 
+# Profile-route interval-coverage RUNTIME artifacts (Monte-Carlo chunk/shard
+# .rds + aggregates). Machine-local per D-50 (never committed); the numbers live
+# in the profile-route after-task + the D-43 panel record. Regenerated on demand
+# by dev/profile-pilot-run.R --mode=aggregate.
+results/profile-pilot-*/
+
 # Claude Code background-agent worktrees (ephemeral; auto-removed)
 .claude/worktrees/

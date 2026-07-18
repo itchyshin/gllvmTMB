@@ -352,6 +352,12 @@ pilot_empty_index <- function() {
     wall_s = numeric(0),
     coverage_primary = numeric(0),
     primary_gate_status = character(0),
+    ## Additive (A1c, 2026-07-18): the profile_total CERTIFICATE route, the
+    ## DEFAULT measurement as of A1a. Never overwrites coverage_primary above;
+    ## surfaced alongside it. Old index files backfill these via the
+    ## schema-tolerant loop in pilot_load_index().
+    coverage_certificate = numeric(0),
+    certificate_gate_status = character(0),
     error = character(0),
     timestamp = character(0),
     stringsAsFactors = FALSE
@@ -391,6 +397,8 @@ pilot_load_index <- function(results_dir) {
     df <- tryCatch(readRDS(f), error = function(e) NULL)
     cov_p <- NA_real_
     gate <- NA_character_
+    cov_cert <- NA_real_
+    cert_gate <- NA_character_
     wall <- NA_real_
     nsim <- NA_integer_
     nboot <- NA_integer_
@@ -401,6 +409,12 @@ pilot_load_index <- function(results_dir) {
         if (nrow(prim)) {
           cov_p <- prim$coverage_primary[1]
           gate <- prim$primary_gate_status[1]
+        }
+        ## Additive certificate route (A1c): profile_total / coverage_certificate.
+        cert <- s[!is.na(s$coverage_certificate), , drop = FALSE]
+        if (nrow(cert)) {
+          cov_cert <- cert$coverage_certificate[1]
+          cert_gate <- cert$certificate_gate_status[1]
         }
         wall <- sum(s$mean_runtime_s * s$n_completed, na.rm = TRUE)
       }
@@ -422,6 +436,8 @@ pilot_load_index <- function(results_dir) {
         wall_s = wall,
         coverage_primary = cov_p,
         primary_gate_status = gate %||% NA_character_,
+        coverage_certificate = cov_cert,
+        certificate_gate_status = cert_gate %||% NA_character_,
         error = NA_character_,
         timestamp = NA_character_,
         stringsAsFactors = FALSE
@@ -1341,6 +1357,8 @@ run_next_pilot_batch <- function(
           wall_s = wall,
           coverage_primary = NA_real_,
           primary_gate_status = NA_character_,
+          coverage_certificate = NA_real_,
+          certificate_gate_status = NA_character_,
           error = msg,
           timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
           stringsAsFactors = FALSE
@@ -1355,12 +1373,20 @@ run_next_pilot_batch <- function(
     saveRDS(res, file.path(results_dir, paste0(cid, ".rds")))
     cov_p <- NA_real_
     gate <- NA_character_
+    cov_cert <- NA_real_
+    cert_gate <- NA_character_
     s <- tryCatch(m3_summarise(res), error = function(e) NULL)
     if (!is.null(s)) {
       prim <- s[!is.na(s$coverage_primary), , drop = FALSE]
       if (nrow(prim)) {
         cov_p <- prim$coverage_primary[1]
         gate <- prim$primary_gate_status[1]
+      }
+      ## Additive certificate route (A1c): profile_total / coverage_certificate.
+      cert <- s[!is.na(s$coverage_certificate), , drop = FALSE]
+      if (nrow(cert)) {
+        cov_cert <- cert$coverage_certificate[1]
+        cert_gate <- cert$certificate_gate_status[1]
       }
     }
     idx <- pilot_index_upsert(
@@ -1373,6 +1399,8 @@ run_next_pilot_batch <- function(
         wall_s = wall,
         coverage_primary = cov_p,
         primary_gate_status = gate %||% NA_character_,
+        coverage_certificate = cov_cert,
+        certificate_gate_status = cert_gate %||% NA_character_,
         error = NA_character_,
         timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
         stringsAsFactors = FALSE
@@ -1450,7 +1478,9 @@ pilot_status <- function(
       "n_sim",
       "wall_s",
       "coverage_primary",
-      "primary_gate_status"
+      "primary_gate_status",
+      "coverage_certificate",
+      "certificate_gate_status"
     )],
     by = "cell_id",
     all.x = TRUE
@@ -1467,6 +1497,17 @@ pilot_status <- function(
     NA,
     cells$coverage_primary >= gate_95
   )
+  ## Additive certificate-route gate columns (A1c).
+  cells$passes_94_certificate <- ifelse(
+    is.na(cells$coverage_certificate),
+    NA,
+    cells$coverage_certificate >= gate_94
+  )
+  cells$passes_95_certificate <- ifelse(
+    is.na(cells$coverage_certificate),
+    NA,
+    cells$coverage_certificate >= gate_95
+  )
   cells <- cells[
     order(cells$family_label, cells$d, cells$n_units, cells$signal),
   ]
@@ -1477,6 +1518,14 @@ pilot_status <- function(
     cells$status == "done" &
       cells$signal > 0 &
       !is.na(cells$coverage_primary),
+    ,
+    drop = FALSE
+  ]
+  ## Certificate-route coverage (signal > 0 cells, done only) -- additive.
+  cov_cert_cells <- cells[
+    cells$status == "done" &
+      cells$signal > 0 &
+      !is.na(cells$coverage_certificate),
     ,
     drop = FALSE
   ]
@@ -1521,6 +1570,21 @@ pilot_status <- function(
     ))
   } else {
     cat("preliminary coverage (signal>0): <no done cells yet>\n")
+  }
+  ## Additive (A1c): the DEFAULT certificate route (profile_total). Printed
+  ## alongside -- never replacing -- the coverage_primary line above.
+  if (nrow(cov_cert_cells)) {
+    cat(sprintf(
+      "preliminary CERTIFICATE coverage (profile_total, signal>0, %d cells): mean=%.3f  >=94%%: %d/%d  >=95%%: %d/%d\n",
+      nrow(cov_cert_cells),
+      mean(cov_cert_cells$coverage_certificate),
+      sum(cov_cert_cells$passes_94_certificate, na.rm = TRUE),
+      nrow(cov_cert_cells),
+      sum(cov_cert_cells$passes_95_certificate, na.rm = TRUE),
+      nrow(cov_cert_cells)
+    ))
+  } else {
+    cat("preliminary CERTIFICATE coverage (profile_total, signal>0): <no done cells yet>\n")
   }
   if (nrow(null_cells)) {
     cat(sprintf(
@@ -1691,7 +1755,13 @@ pilot_reindex_reps <- function(df, offset) {
 ## returning a small list of the fields the index stores. Fail-soft:
 ## any summarise error yields NA fields rather than throwing.
 pilot_summarise_primary <- function(df) {
-  out <- list(coverage_primary = NA_real_, primary_gate_status = NA_character_)
+  out <- list(
+    coverage_primary = NA_real_,
+    primary_gate_status = NA_character_,
+    ## Additive certificate route (A1c): profile_total / coverage_certificate.
+    coverage_certificate = NA_real_,
+    certificate_gate_status = NA_character_
+  )
   s <- tryCatch(m3_summarise(df), error = function(e) NULL)
   if (is.null(s)) {
     return(out)
@@ -1700,6 +1770,11 @@ pilot_summarise_primary <- function(df) {
   if (nrow(prim)) {
     out$coverage_primary <- prim$coverage_primary[1]
     out$primary_gate_status <- prim$primary_gate_status[1]
+  }
+  cert <- s[!is.na(s$coverage_certificate), , drop = FALSE]
+  if (nrow(cert)) {
+    out$coverage_certificate <- cert$coverage_certificate[1]
+    out$certificate_gate_status <- cert$certificate_gate_status[1]
   }
   out
 }
@@ -1782,6 +1857,8 @@ run_accumulate_pilot_batch <- function(
     n_before = integer(0),
     n_after = integer(0),
     coverage_primary = numeric(0),
+    ## Additive (A1c): the DEFAULT certificate route, alongside coverage_primary.
+    coverage_certificate = numeric(0),
     error = character(0),
     stringsAsFactors = FALSE
   )
@@ -1816,6 +1893,7 @@ run_accumulate_pilot_batch <- function(
           n_before = n_before,
           n_after = n_before,
           coverage_primary = NA_real_,
+          coverage_certificate = NA_real_,
           error = NA_character_,
           stringsAsFactors = FALSE
         )
@@ -1886,7 +1964,12 @@ run_accumulate_pilot_batch <- function(
       prior_sum <- if (n_before > 0L) {
         pilot_summarise_primary(prior)
       } else {
-        list(coverage_primary = NA_real_, primary_gate_status = NA_character_)
+        list(
+          coverage_primary = NA_real_,
+          primary_gate_status = NA_character_,
+          coverage_certificate = NA_real_,
+          certificate_gate_status = NA_character_
+        )
       }
       idx <- pilot_index_upsert(
         idx,
@@ -1898,6 +1981,9 @@ run_accumulate_pilot_batch <- function(
           wall_s = wall,
           coverage_primary = prior_sum$coverage_primary,
           primary_gate_status = prior_sum$primary_gate_status %||%
+            NA_character_,
+          coverage_certificate = prior_sum$coverage_certificate,
+          certificate_gate_status = prior_sum$certificate_gate_status %||%
             NA_character_,
           error = msg,
           timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
@@ -1913,6 +1999,7 @@ run_accumulate_pilot_batch <- function(
           n_before = n_before,
           n_after = n_before,
           coverage_primary = prior_sum$coverage_primary,
+          coverage_certificate = prior_sum$coverage_certificate,
           error = msg,
           stringsAsFactors = FALSE
         )
@@ -1961,6 +2048,9 @@ run_accumulate_pilot_batch <- function(
         wall_s = wall,
         coverage_primary = prim$coverage_primary,
         primary_gate_status = prim$primary_gate_status %||% NA_character_,
+        coverage_certificate = prim$coverage_certificate,
+        certificate_gate_status = prim$certificate_gate_status %||%
+          NA_character_,
         error = NA_character_,
         timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
         stringsAsFactors = FALSE
@@ -1988,6 +2078,7 @@ run_accumulate_pilot_batch <- function(
         n_before = n_before,
         n_after = n_after,
         coverage_primary = prim$coverage_primary,
+        coverage_certificate = prim$coverage_certificate,
         error = NA_character_,
         stringsAsFactors = FALSE
       )
@@ -2042,7 +2133,9 @@ pilot_accum_status <- function(
       "status",
       "n_sim",
       "coverage_primary",
-      "primary_gate_status"
+      "primary_gate_status",
+      "coverage_certificate",
+      "certificate_gate_status"
     )],
     by = "cell_id",
     all.x = TRUE
@@ -2059,6 +2152,17 @@ pilot_accum_status <- function(
     NA,
     cells$coverage_primary >= gate_95
   )
+  ## Additive certificate-route gate columns (A1c).
+  cells$passes_94_certificate <- ifelse(
+    is.na(cells$coverage_certificate),
+    NA,
+    cells$coverage_certificate >= gate_94
+  )
+  cells$passes_95_certificate <- ifelse(
+    is.na(cells$coverage_certificate),
+    NA,
+    cells$coverage_certificate >= gate_95
+  )
   cells <- cells[
     order(cells$family_label, cells$d, cells$n_units, cells$signal),
   ]
@@ -2072,6 +2176,11 @@ pilot_accum_status <- function(
 
   cov_cells <- cells[
     cells$signal > 0 & !is.na(cells$coverage_primary),
+    ,
+    drop = FALSE
+  ]
+  cov_cert_cells <- cells[
+    cells$signal > 0 & !is.na(cells$coverage_certificate),
     ,
     drop = FALSE
   ]
@@ -2108,6 +2217,20 @@ pilot_accum_status <- function(
     ))
   } else {
     cat("coverage (signal>0): <no reps yet>\n")
+  }
+  ## Additive (A1c): DEFAULT certificate route (profile_total), alongside primary.
+  if (nrow(cov_cert_cells)) {
+    cat(sprintf(
+      "CERTIFICATE coverage (profile_total, signal>0, %d cells): mean=%.3f  >=94%%: %d/%d  >=95%%: %d/%d\n",
+      nrow(cov_cert_cells),
+      mean(cov_cert_cells$coverage_certificate),
+      sum(cov_cert_cells$passes_94_certificate, na.rm = TRUE),
+      nrow(cov_cert_cells),
+      sum(cov_cert_cells$passes_95_certificate, na.rm = TRUE),
+      nrow(cov_cert_cells)
+    ))
+  } else {
+    cat("CERTIFICATE coverage (profile_total, signal>0): <no reps yet>\n")
   }
   if (nrow(null_cells)) {
     cat(sprintf(

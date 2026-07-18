@@ -4,15 +4,20 @@
 
 source("dev/m3-pilot-report.R")
 
+## coverage_certificate defaults to NA: these legacy-shaped cells exercise the
+## coverage_primary (bootstrap) path, and the gate's cov_measure falls back to
+## coverage_primary when the certificate is absent (FIX 2, 2026-07-18).
 mkcell <- function(family, signal, coverage_primary, coverage_mcse,
                    fit_failure_rate = 0.05, boot_fail_rate = 0.05,
                    n_converged_fits = 190L, n_traits = 5L,
                    coverage_eligible_n = 940L,
                    miss_total = NA_integer_, one_sided_miss_share = NA_real_,
-                   evidence_family = family) {
+                   evidence_family = family,
+                   coverage_certificate = NA_real_) {
   data.frame(
     family = family, evidence_family = evidence_family, signal = signal,
-    coverage_primary = coverage_primary, coverage_mcse = coverage_mcse,
+    coverage_primary = coverage_primary,
+    coverage_certificate = coverage_certificate, coverage_mcse = coverage_mcse,
     coverage_eligible_n = as.integer(coverage_eligible_n),
     n_converged_fits = as.integer(n_converged_fits),
     n_traits = as.integer(n_traits),
@@ -113,6 +118,45 @@ fewmiss <- rbind(
 r8 <- pilot_scale_gate_eval(fewmiss)
 chk(r8$verdict == "PASS_TO_SCALE",
     "lopsided but <5 misses -> PASS (below the pattern floor)")
+
+## 9. FIX 2 -- the gate must enforce coverage on the DEFAULT (profile) route,
+## where coverage lands in coverage_certificate and coverage_primary is NA.
+## A CORE cell with catastrophic profile coverage 0.70 must HOLD with a
+## coverage reason (previously PASSED because the gate was coverage-blind).
+cert_low <- rbind(
+  mkcell("gaussian", 0.2, NA_real_, NA_real_, coverage_certificate = 0.70),
+  mkcell("nbinom2", 0.5, NA_real_, NA_real_, coverage_certificate = 0.95),
+  mkcell("binomial_probit", 0.2, NA_real_, NA_real_, coverage_certificate = 0.95)
+)
+r9 <- pilot_scale_gate_eval(cert_low)
+chk(r9$verdict == "HOLD",
+    "FIX 2: catastrophic profile coverage (cert 0.70) -> HOLD")
+chk(any(grepl("provisional coverage floor", r9$reasons)),
+    "FIX 2: cert 0.70 emits a coverage-floor reason")
+
+## 10. FIX 2 -- a healthy profile route (all certs 0.96, primary NA) passes the
+## coverage arm (verdict PASS_TO_SCALE, no coverage-floor reason).
+cert_ok <- rbind(
+  mkcell("gaussian", 0.2, NA_real_, NA_real_, coverage_certificate = 0.96),
+  mkcell("nbinom2", 0.5, NA_real_, NA_real_, coverage_certificate = 0.96),
+  mkcell("binomial_probit", 0.2, NA_real_, NA_real_, coverage_certificate = 0.96)
+)
+r10 <- pilot_scale_gate_eval(cert_ok)
+chk(r10$verdict == "PASS_TO_SCALE",
+    "FIX 2: healthy profile coverage (cert 0.96) passes the coverage arm")
+chk(!any(grepl("provisional coverage floor", r10$reasons)),
+    "FIX 2: cert 0.96 emits no coverage-floor reason")
+
+## 11. FIX 2 regression -- coverage_primary is still enforced when it is the
+## only measurement present (cert NA): a bootstrap-route cell at 0.60 HOLDs.
+prim_only_low <- rbind(
+  mkcell("gaussian", 0.2, 0.60, 0.015),
+  mkcell("nbinom2", 0.5, 0.94, 0.016),
+  mkcell("binomial_probit", 0.2, 0.95, 0.015)
+)
+r11 <- pilot_scale_gate_eval(prim_only_low)
+chk(r11$verdict == "HOLD",
+    "FIX 2: coverage_primary path still enforced when cert is NA (0.60 -> HOLD)")
 
 cat("\n", if (ok) "ALL PASS" else "SOME FAILED", "\n")
 if (!ok) quit(status = 1L)

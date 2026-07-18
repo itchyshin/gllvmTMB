@@ -50,7 +50,7 @@ M3_DEFAULT_PHI_SHAPE <- 5
 M3_DEFAULT_PHI_RATE <- 5
 M3_DEFAULT_NOMINAL <- 0.95
 M3_PASS_GATE <- 0.94 # audit-1 exit threshold
-M3_INTERVAL_TARGETS <- c("psi", "Sigma_unit_diag")
+M3_INTERVAL_TARGETS <- c("psi", "Sigma_unit_diag", "Sigma_unit_corr")
 M3_STRESS_RUN_STAGE <- "point_stress"
 M3_START_PROBE_STAGE <- "start_probe"
 
@@ -69,19 +69,64 @@ m3_normalise_targets <- function(targets = "psi") {
   targets
 }
 
-m3_target_method <- function(target, n_boot = NULL) {
+## Sigma_unit_diag DEFAULT route is now the genuine profile ("profile_total",
+## the certificate candidate); bootstrap is opt-in via n_boot > 0 (A1a,
+## 2026-07-18 profile-route remeasurement). nbinom2 stays certificate-
+## INELIGIBLE (fenced) even by default: its Sigma_hat under-recovers ~0.5x
+## via the phi<->sigma^2 dispersion ridge, and a location-axis profile
+## cannot rescue it -- see the m3-nb2-stress-surfaces audit trail. `family`
+## is only consulted for the Sigma_unit_diag fence; callers that don't pass
+## it (e.g. the `psi` target) are unaffected.
+m3_target_method <- function(target, n_boot = NULL, family = NULL) {
   switch(
     target,
     psi = "profile",
-    Sigma_unit_diag = if (
-      !is.null(n_boot) && identical(as.integer(n_boot), 0L)
-    ) {
-      "none"
-    } else {
-      "bootstrap"
+    Sigma_unit_diag = {
+      n_boot_i <- if (is.null(n_boot)) NA_integer_ else as.integer(n_boot)
+      if (!is.na(n_boot_i) && n_boot_i > 0L) {
+        "bootstrap"
+      } else if (identical(family, "nbinom2")) {
+        "none"
+      } else {
+        "profile_total"
+      }
     },
+    Sigma_unit_corr = "profile_corr",
     stop("Unknown M3 interval target: ", target)
   )
+}
+
+## Honest ci_method label for a NON-computed Sigma_unit_diag PLACEHOLDER row
+## (CONCERN 1 / V-4, 2026-07-18). A placeholder is emitted when no interval was
+## actually computed for the cell: (a) the fit failed (per-target fallback
+## loop), or (b) the fit succeeded but the bootstrap block ran only to emit a
+## bare row because profile_total is NOT this cell's route. `m3_target_method()`
+## alone mislabels case (b) as "profile_total" in the OPT-OUT config
+## (sigma_extra_methods excludes "profile_total" + n_boot = 0), where no profile
+## runs. This helper folds in the sigma_extra_methods knowledge so BOTH
+## placeholder sites (fit-failed :~1156 and success :~1440) derive the SAME
+## label and can never diverge again. It is a PURE function of its arguments
+## (no fit object), so it is unit-testable directly.
+##
+## Sigma_unit_diag: n_boot > 0 -> "bootstrap"; else if profile_total is
+## genuinely this cell's route (requested AND not fenced) -> "profile_total";
+## else -> "none". Any OTHER target passes through m3_target_method() unchanged.
+m3_placeholder_ci_method <- function(
+  target, n_boot = NULL, family = NULL, sigma_extra_methods = character(0)
+) {
+  if (!identical(target, "Sigma_unit_diag")) {
+    return(m3_target_method(target, n_boot = n_boot, family = family))
+  }
+  n_boot_i <- if (is.null(n_boot)) NA_integer_ else as.integer(n_boot)
+  if (!is.na(n_boot_i) && n_boot_i > 0L) {
+    return("bootstrap")
+  }
+  profile_total_route <- "profile_total" %in% sigma_extra_methods &&
+    identical(
+      m3_target_method("Sigma_unit_diag", n_boot = 0L, family = family),
+      "profile_total"
+    )
+  if (profile_total_route) "profile_total" else "none"
 }
 
 m3_family_seed_index <- function(family) {
@@ -163,6 +208,29 @@ m3_miss_side <- function(truth, lo, hi, covered, ci_available) {
     return("truth_above_upper")
   }
   "other_miss"
+}
+
+## Endpoint-sanity guard for fix-and-refit profile intervals (PF-3,
+## 2026-07-18). `.profile_ci_via_refit()` -- the shared endpoint search under
+## BOTH .profile_ci_total_variance() and profile_ci_correlation() -- can
+## converge an endpoint to a local optimum / looser tolerance and return a
+## FINITE-but-wrong-width bound. Neither profile returns a per-row ci_status
+## to reuse (only the diagnostic .wald_ci_total_variance_logsd() does), so we
+## sanity-check the OUTPUT here (we do NOT re-implement the profile): a valid
+## interval must have finite, strictly-ordered endpoints (positive width) that
+## bracket the profile's OWN point estimate. Any violation -> treat the CI as
+## FAILED (ci_failed = TRUE, covered = NA) so a finite-but-wrong endpoint is
+## no longer silently counted as a valid cover. Returns FALSE for NA endpoints
+## too, so it subsumes the old `!is.na(lo) && !is.na(hi)` availability check.
+m3_profile_ci_sane <- function(estimate, lo, hi) {
+  isTRUE(
+    is.finite(lo) &&
+      is.finite(hi) &&
+      hi > lo &&
+      is.finite(estimate) &&
+      estimate >= lo &&
+      estimate <= hi
+  )
 }
 
 m3_bootstrap_supported <- function(fit) {
@@ -429,6 +497,30 @@ m3_sample_truth <- function(
   Sigma <- tcrossprod(Lambda) + diag(psi_effective, n_traits)
   diag_Sigma <- diag(Sigma)
 
+  ## Per-trait TRUE link-residual variance r_t, needed to build Sigma_TOTAL =
+  ## Lambda Lambda^T + diag(psi_effective) + diag(r) -- the SAME estimand
+  ## profile_ci_correlation() / .correlation_total_spec() target via
+  ## link_residual_per_trait() at the fit's MLE (rho:unit target, A1b,
+  ## 2026-07-18). Only gaussian (r = 0) and binomial / binomial_probit
+  ## (r = pi^2/3 logit, r = 1 probit) are supported here: both are
+  ## DETERMINISTIC constants that match m3_simulate_response()'s link
+  ## exactly, so truth == target holds with no nuisance-estimation noise
+  ## (verified in dev/test-profile-coverage-remeasure.R). Other families get
+  ## r = NA, which fences their rho truth as NA (excluded from coverage, not
+  ## fabricated) rather than approximating an unverified nuisance-parameter
+  ## link (e.g. nbinom2's trigamma(phi) would need the FITTED phi, not a
+  ## truth-side constant, to match the estimator's own target).
+  link_residual_truth <- vapply(row_family, function(f) {
+    switch(
+      f,
+      gaussian = 0,
+      binomial = pi^2 / 3,
+      binomial_probit = 1,
+      NA_real_
+    )
+  }, numeric(1))
+  Sigma_total <- Sigma + diag(link_residual_truth, n_traits)
+
   ## Family-specific nuisance. Mixed-family populates ALL of them since
   ## it cycles families across trait rows.
   nuisance <- list()
@@ -457,6 +549,8 @@ m3_sample_truth <- function(
     Z = Z,
     Sigma = Sigma,
     diag_Sigma = diag_Sigma,
+    link_residual_truth = link_residual_truth, # NA for unsupported families
+    Sigma_total = Sigma_total, # Sigma + diag(link_residual_truth); rho:unit truth scale
     nuisance = nuisance,
     family = family,
     d = d,
@@ -818,17 +912,22 @@ m3_run_cell <- function(
   init_jitter = 0.3,
   se = TRUE,
   fit_phi_mode = c("estimated", "known"),
-  ## Primary target is `Sigma_unit_diag` (bootstrap); `psi` (profile) is
-  ## a diagnostic proxy only. See the 2026-05-19 target-scale audit
-  ## (Design 44 6, CI-08/CI-10) -- the gate is on `Sigma_unit_diag`.
+  ## Primary target is `Sigma_unit_diag`; `psi` (profile) is a diagnostic
+  ## proxy only. See the 2026-05-19 target-scale audit (Design 44 6,
+  ## CI-08/CI-10) -- the gate is on `Sigma_unit_diag`.
   targets = c("psi", "Sigma_unit_diag"),
-  n_boot = 30L,
+  ## Bootstrap is now OPT-IN secondary (A1a, 2026-07-18): the DEFAULT
+  ## Sigma_unit_diag certificate route is the genuine profile
+  ## ("profile_total", via `sigma_extra_methods` below), not the closed
+  ## parametric bootstrap. Pass n_boot > 0 to also run/record bootstrap CIs.
+  n_boot = 0L,
   n_cores_boot = 1L,
-  ## Extra Sigma_unit_diag interval methods to co-compute from each fit, in
-  ## addition to the bootstrap. "profile_total" = genuine chi-square_1 profile on
-  ## V_t (the certificate candidate); "wald_t_logsd" = log-SD delta-Wald
-  ## diagnostic. Default empty -> unchanged bootstrap grid, zero overhead.
-  sigma_extra_methods = character(0),
+  ## Extra Sigma_unit_diag interval methods to co-compute from each fit.
+  ## "profile_total" = genuine chi-square_1 profile on V_t (the certificate
+  ## candidate, DEFAULT); "wald_t_logsd" = log-SD delta-Wald diagnostic
+  ## (never a certificate, opt-in). nbinom2 is fenced out of "profile_total"
+  ## regardless of this argument -- see m3_target_method().
+  sigma_extra_methods = c("profile_total"),
   ci_level = M3_DEFAULT_NOMINAL,
   verbose = TRUE
 ) {
@@ -1073,6 +1172,7 @@ m3_run_cell <- function(
               d = d,
               rep = r,
               trait_id = NA_integer_,
+              trait_j = NA_integer_,
               truth_diag_sigma = NA_real_,
               truth_psi = NA_real_,
               est_diag_sigma = NA_real_,
@@ -1086,7 +1186,12 @@ m3_run_cell <- function(
               target = target,
               truth = NA_real_,
               estimate = NA_real_,
-              ci_method = m3_target_method(target, n_boot = n_boot),
+              ci_method = m3_placeholder_ci_method(
+                target,
+                n_boot = n_boot,
+                family = family,
+                sigma_extra_methods = sigma_extra_methods
+              ),
               ci_level = ci_level,
               ci_lo = NA_real_,
               ci_hi = NA_real_,
@@ -1193,6 +1298,7 @@ m3_run_cell <- function(
           d = d,
           rep = r,
           trait_id = t,
+          trait_j = NA_integer_,
           truth_diag_sigma = truth$diag_Sigma[t],
           truth_psi = psi_truth,
           est_diag_sigma = est_diag[t],
@@ -1245,7 +1351,35 @@ m3_run_cell <- function(
       }
     }
 
-    if ("Sigma_unit_diag" %in% targets) {
+    ## Bootstrap route is now OPT-IN secondary (A1a, 2026-07-18): it only
+    ## runs -- and only emits a row -- when the caller explicitly requests
+    ## n_boot > 0. The DEFAULT Sigma_unit_diag certificate route is
+    ## profile_total, computed unconditionally below in the sigma_extra_
+    ## methods block. Gating row-emission (not just the bootstrap_Sigma()
+    ## call) on n_boot > 0 avoids ever double-emitting a
+    ## ci_method == "profile_total" row for the same (rep, trait): a phantom
+    ## NA-CI row from THIS block would otherwise collide, under m3_summarise's
+    ## (cell, target, ci_method) grouping, with the genuine profile_total row
+    ## the extra-methods block emits for the same (rep, trait).
+    ##
+    ## `profile_total_will_run` mirrors the extra-methods block's own gate
+    ## (below) exactly: TRUE when that block will actually emit a
+    ## profile_total row for this (family, sigma_extra_methods) combination.
+    ## When it is FALSE -- nbinom2 (fenced) or the caller opted out of
+    ## "profile_total" in sigma_extra_methods -- this block still needs to
+    ## run (with n_boot == 0, boot_ok && n_boot > 0L below stays FALSE, so no
+    ## bootstrap is attempted) so Sigma_unit_diag gets AT LEAST a
+    ## "none"-labelled placeholder row per trait; otherwise `rep_rows` can
+    ## end up empty for a rep and do.call(rbind, list()) -> NULL crashes
+    ## m3_add_fit_health() downstream.
+    profile_total_will_run <- "profile_total" %in% sigma_extra_methods &&
+      identical(
+        m3_target_method("Sigma_unit_diag", n_boot = 0L, family = family),
+        "profile_total"
+      )
+    if (
+      "Sigma_unit_diag" %in% targets && (n_boot > 0L || !profile_total_will_run)
+    ) {
       boot_ok <- m3_bootstrap_supported(fit)
       boot <- NULL
       if (boot_ok$ok && n_boot > 0L) {
@@ -1318,6 +1452,7 @@ m3_run_cell <- function(
           d = d,
           rep = r,
           trait_id = t,
+          trait_j = NA_integer_,
           truth_diag_sigma = sig_truth,
           truth_psi = truth$psi[t],
           est_diag_sigma = est_diag[t],
@@ -1331,7 +1466,20 @@ m3_run_cell <- function(
           target = "Sigma_unit_diag",
           truth = sig_truth,
           estimate = est_diag[t],
-          ci_method = m3_target_method("Sigma_unit_diag", n_boot = n_boot),
+          ## FIX 4 / CONCERN 1 (2026-07-18): this block runs iff `n_boot > 0 ||
+          ## !profile_total_will_run`. When n_boot > 0 it is a genuine bootstrap
+          ## row; when n_boot == 0 it is a bare placeholder emitted BECAUSE
+          ## profile_total is NOT running for this cell -- so the honest label is
+          ## "none", never "profile_total". Derived via the SAME pure helper as
+          ## the fit-failed placeholder above, so the two sites can never diverge
+          ## again (the helper folds in sigma_extra_methods, which
+          ## m3_target_method() alone cannot see).
+          ci_method = m3_placeholder_ci_method(
+            "Sigma_unit_diag",
+            n_boot = n_boot,
+            family = family,
+            sigma_extra_methods = sigma_extra_methods
+          ),
           ci_level = ci_level,
           ci_lo = sig_lo[t],
           ci_hi = sig_hi[t],
@@ -1365,11 +1513,11 @@ m3_run_cell <- function(
     }
 
     ## Extra Sigma_unit_diag interval methods, co-computed from the SAME fit as
-    ## the bootstrap: the genuine profile on V_t (`profile_total`, the
-    ## certificate candidate) and the log-SD delta-Wald diagnostic
-    ## (`wald_t_logsd`, never a certificate). Gated by `sigma_extra_methods` so
-    ## the default bootstrap grid is unchanged (zero overhead when empty). Rows
-    ## share the bootstrap-row schema; m3_summarise() splits by ci_method, so no
+    ## the (now opt-in) bootstrap: the genuine profile on V_t (`profile_total`,
+    ## the certificate candidate, DEFAULT since A1a 2026-07-18) and the log-SD
+    ## delta-Wald diagnostic (`wald_t_logsd`, never a certificate). Gated by
+    ## `sigma_extra_methods` (default now includes "profile_total"). Rows share
+    ## the bootstrap-row schema; m3_summarise() splits by ci_method, so no
     ## summariser change is needed.
     if (
       length(sigma_extra_methods) > 0L &&
@@ -1377,7 +1525,30 @@ m3_run_cell <- function(
         inherits(fit, "gllvmTMB_multi")
     ) {
       route_bounds <- list()
-      if ("profile_total" %in% sigma_extra_methods) {
+      ## `intended_methods` is the set of methods we MEANT to run for this
+      ## (family, sigma_extra_methods) combination. We iterate over IT below,
+      ## NOT over names(route_bounds): a method whose profile call errors
+      ## returns NULL, and `route_bounds[["x"]] <- NULL` DELETES key "x" from
+      ## the list (R list-assign-NULL semantics). Keying the emission loop on
+      ## the surviving names would then SILENTLY DROP the failed method's rows
+      ## -- and when profile_total is the SOLE emitter (targets =
+      ## "Sigma_unit_diag" only, n_boot = 0, the real pilot-driver call), that
+      ## leaves `rep_rows` EMPTY for the rep, so do.call(rbind, list()) -> NULL
+      ## crashes m3_add_fit_health() (FIX 1, 2026-07-18: reproduced with the
+      ## installed package lacking .profile_ci_total_variance). Iterating
+      ## intended_methods instead guarantees a successful fit ALWAYS emits a
+      ## Sigma_unit_diag profile_total row -- an honest ci_failed = TRUE row
+      ## when the profile itself could not be computed, never a dropped row.
+      intended_methods <- character(0)
+      ## Fence nbinom2 out of the profile_total certificate route here too
+      ## (not just in m3_target_method()'s label): otherwise this block would
+      ## still compute and literally tag a nbinom2 row `ci_method =
+      ## "profile_total"`, defeating the fence. `profile_total_will_run`
+      ## (computed above, before the Sigma_unit_diag primary block) is the
+      ## single source of truth for "is profile_total this family's Sigma_
+      ## unit_diag route"; reuse it here instead of re-deriving the check.
+      if (profile_total_will_run) {
+        intended_methods <- c(intended_methods, "profile_total")
         route_bounds[["profile_total"]] <- tryCatch(
           gllvmTMB:::.profile_ci_total_variance(
             fit,
@@ -1388,6 +1559,7 @@ m3_run_cell <- function(
         )
       }
       if ("wald_t_logsd" %in% sigma_extra_methods) {
+        intended_methods <- c(intended_methods, "wald_t_logsd")
         route_bounds[["wald_t_logsd"]] <- tryCatch(
           gllvmTMB:::.wald_ci_total_variance_logsd(
             fit,
@@ -1397,13 +1569,24 @@ m3_run_cell <- function(
           error = function(e) NULL
         )
       }
-      for (meth in names(route_bounds)) {
+      for (meth in intended_methods) {
         rdf <- route_bounds[[meth]]
         for (t in seq_len(n_traits)) {
           sig_truth <- truth$diag_Sigma[t]
           lo <- if (!is.null(rdf) && t <= nrow(rdf)) rdf$lower[t] else NA_real_
           hi <- if (!is.null(rdf) && t <= nrow(rdf)) rdf$upper[t] else NA_real_
-          ci_avail <- isTRUE(!is.na(lo) && !is.na(hi))
+          ## PF-3 endpoint-sanity guard on the profile's OWN output: a
+          ## finite-but-degenerate interval (mis-ordered, zero-width, or not
+          ## bracketing its own point estimate) is folded into ci_failed here,
+          ## not silently counted as a valid cover. The point checked is the
+          ## profile's returned estimate (rdf$estimate[t]), not the harness's
+          ## est_diag[t] -- the interval's job is to bracket its OWN point.
+          est_point <- if (!is.null(rdf) && t <= nrow(rdf)) {
+            rdf$estimate[t]
+          } else {
+            NA_real_
+          }
+          ci_avail <- m3_profile_ci_sane(est_point, lo, hi)
           covered_sig <- if (ci_avail) {
             sig_truth >= lo && sig_truth <= hi
           } else {
@@ -1415,6 +1598,7 @@ m3_run_cell <- function(
             d = d,
             rep = r,
             trait_id = t,
+            trait_j = NA_integer_,
             truth_diag_sigma = sig_truth,
             truth_psi = truth$psi[t],
             est_diag_sigma = est_diag[t],
@@ -1462,6 +1646,112 @@ m3_run_cell <- function(
       }
     }
 
+    ## rho:unit target (A1b, 2026-07-18): profile-likelihood CI on each
+    ## cross-trait correlation of Sigma_total = Lambda Lambda^T +
+    ## diag(psi_effective) + diag(r), the SAME estimand
+    ## profile_ci_correlation(link_residual = "auto") targets (verified in
+    ## dev/test-profile-coverage-remeasure.R). truth$Sigma_total carries r =
+    ## NA for families other than gaussian/binomial/binomial_probit, which
+    ## naturally NAs out `covered` for those pairs (excluded from any
+    ## coverage rate, never fabricated) while the CI itself is still
+    ## computed and recorded as a diagnostic value. Mirrors the
+    ## sigma_extra_methods row schema (one row per pair per rep); opt-in via
+    ## `targets` (not in the default `c("psi", "Sigma_unit_diag")` set).
+    if (
+      "Sigma_unit_corr" %in% targets &&
+        inherits(fit, "gllvmTMB_multi") &&
+        n_traits >= 2L
+    ) {
+      pairs <- utils::combn(n_traits, 2L)
+      St_truth <- truth$Sigma_total
+      for (p in seq_len(ncol(pairs))) {
+        pi_ <- pairs[1L, p]
+        pj_ <- pairs[2L, p]
+        denom_truth <- sqrt(St_truth[pi_, pi_] * St_truth[pj_, pj_])
+        rho_truth <- if (is.finite(denom_truth) && denom_truth > 0) {
+          St_truth[pi_, pj_] / denom_truth
+        } else {
+          NA_real_
+        }
+        ci_ij <- tryCatch(
+          gllvmTMB:::profile_ci_correlation(
+            fit,
+            tier = "unit", i = pi_, j = pj_,
+            level = ci_level, link_residual = "auto"
+          ),
+          error = function(e) {
+            c(estimate = NA_real_, lower = NA_real_, upper = NA_real_)
+          }
+        )
+        rho_est <- unname(ci_ij["estimate"])
+        lo <- unname(ci_ij["lower"])
+        hi <- unname(ci_ij["upper"])
+        ## PF-3 endpoint-sanity guard (same as the profile_total block): a
+        ## finite-but-degenerate correlation interval is folded into
+        ## ci_failed rather than counted as a valid cover. The point checked
+        ## is the profile's own rho estimate, which profile_ci_correlation()
+        ## already guarantees to bracket for a well-behaved refit -- so this
+        ## only fires when .profile_ci_via_refit() returns a genuinely
+        ## degenerate endpoint.
+        ci_avail <- m3_profile_ci_sane(rho_est, lo, hi)
+        covered_rho <- if (ci_avail) {
+          rho_truth >= lo && rho_truth <= hi
+        } else {
+          NA
+        }
+        rep_rows[[length(rep_rows) + 1L]] <- data.frame(
+          cell = cell_id,
+          family = family,
+          d = d,
+          rep = r,
+          trait_id = pi_,
+          trait_j = pj_,
+          truth_diag_sigma = NA_real_,
+          truth_psi = NA_real_,
+          est_diag_sigma = NA_real_,
+          est_psi = NA_real_,
+          est_phi_nbinom2 = NA_real_,
+          est_link_residual = NA_real_,
+          ci_prof_lo = NA_real_,
+          ci_prof_hi = NA_real_,
+          covered_prof = NA,
+          converged = TRUE,
+          target = "Sigma_unit_corr",
+          truth = rho_truth,
+          estimate = rho_est,
+          ci_method = "profile_corr",
+          ci_level = ci_level,
+          ci_lo = lo,
+          ci_hi = hi,
+          covered = covered_rho,
+          ci_available = ci_avail,
+          fit_converged = TRUE,
+          ci_failed = !ci_avail,
+          miss_side = m3_miss_side(rho_truth, lo, hi, covered_rho, ci_avail),
+          n_boot = NA_integer_,
+          n_boot_failed = NA_integer_,
+          n_cores_boot = n_cores_boot,
+          init_strategy = init_strategy,
+          start_method = m3_start_method_label(start_method),
+          start_method_jitter_sd = m3_start_method_jitter(start_method),
+          optimizer = optimizer,
+          n_init = n_init,
+          init_jitter = init_jitter,
+          fit_phi_mode = fit_phi_mode,
+          n_units = n_units,
+          n_traits = n_traits,
+          lambda_scale = lambda_scale,
+          psi_scale = psi_scale,
+          truth_phi = truth$nuisance$phi %||% NA_real_,
+          se = se,
+          seed_base = seed_base,
+          rep_seed = rep_seed,
+          runtime_s = rep_runtime,
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+
     rep_runtime <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
     rows[[j]] <- m3_add_fit_health(do.call(rbind, rep_rows), fit_diag)
     rows[[j]]$runtime_s <- rep_runtime
@@ -1497,13 +1787,15 @@ m3_run_grid <- function(
   init_jitter = 0.3,
   se = TRUE,
   fit_phi_mode = c("estimated", "known"),
-  ## Primary target is `Sigma_unit_diag` (bootstrap); `psi` (profile) is
-  ## a diagnostic proxy only. See the 2026-05-19 target-scale audit
-  ## (Design 44 6, CI-08/CI-10) -- the gate is on `Sigma_unit_diag`.
+  ## Primary target is `Sigma_unit_diag`; `psi` (profile) is a diagnostic
+  ## proxy only. See the 2026-05-19 target-scale audit (Design 44 6,
+  ## CI-08/CI-10) -- the gate is on `Sigma_unit_diag`.
   targets = c("psi", "Sigma_unit_diag"),
-  n_boot = 30L,
+  ## See m3_run_cell(): bootstrap is opt-in secondary (n_boot > 0); the
+  ## default Sigma_unit_diag certificate route is profile_total.
+  n_boot = 0L,
   n_cores_boot = 1L,
-  sigma_extra_methods = character(0),
+  sigma_extra_methods = c("profile_total"),
   ci_level = M3_DEFAULT_NOMINAL,
   parallel = FALSE
 ) {

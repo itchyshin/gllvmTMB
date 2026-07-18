@@ -66,12 +66,16 @@ run_one <- function(N, seed, nitt = NITT, m = M_REPS) {
                        alpha.mu = rep(0, K - 1L), alpha.V = diag(K - 1L) * 25^2)))
   df_mc <- data.frame(species = sp, y = factor(y))
   rho_mcmc <- tryCatch({
-    m <- MCMCglmm(y ~ trait - 1, random = ~ us(trait):species, rcov = ~ us(trait):units,
+    ## NB: name this `fit_mc`, NOT `m` -- `tryCatch` evaluates in the caller's
+    ## frame, so `m <- MCMCglmm(...)` would clobber the `m` draws-per-species
+    ## argument (the return row carries `m = m`), flattening the fit object into
+    ## the result and failing every row's numeric sanity check.
+    fit_mc <- MCMCglmm(y ~ trait - 1, random = ~ us(trait):species, rcov = ~ us(trait):units,
                   family = "categorical", ginverse = list(species = Ainv), prior = prior,
                   data = df_mc, nitt = nitt, burnin = as.integer(nitt * 0.25),
                   thin = max(25L, as.integer(nitt / 2000)), verbose = FALSE)
-    Gcols <- grep("^traity.*:traity.*\\.species$", colnames(m$VCV))
-    Gpost <- matrix(colMeans(m$VCV[, Gcols, drop = FALSE]), K - 1L, K - 1L)
+    Gcols <- grep("^traity.*:traity.*\\.species$", colnames(fit_mc$VCV))
+    Gpost <- matrix(colMeans(fit_mc$VCV[, Gcols, drop = FALSE]), K - 1L, K - 1L)
     .rho(Gpost)
   }, error = function(e) NA_real_)
 

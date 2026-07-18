@@ -75,34 +75,37 @@ at N=4000. Its bias does not resolve within N ≤ 4000, one-per-species. This ex
 param-expanded-prior shrinkage previously seen at N ≤ 1000) to the larger-N range: MCMCglmm's asymptotic
 behaviour on this problem remains an open question, not gllvmTMB's.
 
-### Replication-arm control (m=10 draws/species, N=100)
-**Harness crashed — did not produce a usable recovery ladder.** Command run: `N=100, seeds=8, nitt=8000,
-m=10` via `dev/phylo-multinomial-recovery-harness-reps.R`. The intended question — does replication per
-species (rather than larger N) recover ρ≈0.6 cleanly, which would show the estimators are sound and the
-one-per-species failure is purely information-limited — was **not answered**. This is a harness bug, not
-evidence about the estimators, and must be re-run after the fix below before it can support any claim
-either way.
+### Replication-arm control (m=10 draws/species, N=100 species)
+Ran `dev/phylo-multinomial-recovery-harness-reps.R 100 8 8000 10` (8 seeds) AFTER fixing the harness bug
+below. All 8 workers OK (no spurious drops).
 
-**Root cause (isolated and independently reproduced):** in `run_one(N, seed, nitt = NITT, m = M_REPS)`,
-the MCMCglmm block reassigns the same local `m` (`m <- MCMCglmm(...)`, line 69) that holds the
-draws-per-species count (10) passed in as the function argument. `tryCatch()` evaluates in the caller's
-frame, so this clobbers the integer with the fitted MCMCglmm object. The return line
-`c(N = N, m = m, seed = seed, rho_gllvm = rg, rho_mcmc = rm_, railed_gllvm = ...)` then flattens the
-~15+ named components of the MCMCglmm fit into the row (`m.Sol`, `m.VCV`, ...), producing a non-numeric,
-length ≫ 6 result. The driver's row-sanity check (`is.numeric(x) && length(x) == 6L`) rejects every row
-as a spurious "failure" (hence `WARN: 8/8 workers failed`, with the `100` label being `as.character(N)`,
-not an error message). With all rows dropped, `res` is 0-row, `agg <- do.call(rbind, list())` is `NULL`,
-and `round(NULL, 4)` throws the fatal `non-numeric argument to mathematical function` error. Confirmed by
-an isolated repro (`class(res)`, `length`, `is.numeric`, and the `round(NULL, 4)` error all reproduce the
-observed chain). Bug is specific to `-reps.R` (the `m` replicate-count parameter is new there) and
-pre-dates this run.
+| N species | m/species | ρ̂_gllvm | mcse_g | bias_gllvm | rail_rate_g | ρ̂_mcmc | mcse_m | bias_mcmc |
+|---|---|---|---|---|---|---|---|---|
+| 100 | 10 | 0.785 | 0.065 | +0.185 | 0.25 | 0.478 | 0.081 | −0.122 |
 
-**Fix needed (not yet applied):** rename the MCMCglmm fit variable at line 69 (e.g. `fit_mc <-
-MCMCglmm(...)`) so it stops shadowing the `m` draws-per-species argument. One line. Re-run after the fix
-to get the actual replication-arm ladder.
+**Interpretation (in-progress evidence, not a covered claim):**
+Replication **does** attack the collapse: rail_rate is 0.25 at 100 species × 10 draws, versus 0.875 at
+150 species × 1 draw — i.e. adding draws-per-species kills most of the ±1 railing, confirming the
+one-per-species collapse is fundamentally an **information** problem. BUT it is **not** a clean recovery:
+gllvmTMB now over-shoots (ρ̂ = 0.785, bias +0.18) and MCMCglmm still under-shoots (0.478, bias −0.12).
+The nuance: the phylo V is an **among-species** covariance, so it needs enough **species** to estimate,
+regardless of draws-per-species. Replication sharpens each species' latent (killing the collapse) but 100
+species is still a small sample for the (K−1)×(K−1) among-species V, so a sizeable finite-species bias
+remains. Compare the large-N grid above: at ≥1000 species one-per-species, gllvmTMB is essentially
+unbiased. So **species count and draws-per-species are not interchangeable** — draws fix the collapse,
+species fix the among-species V. This is the honest resolution of the "does replication substitute for N"
+question: partially (collapse yes; among-species estimation no).
 
-**NOT covered (explicit):** no replication-arm recovery evidence exists yet, in either direction. The
-"does replication substitute for N" question from the original after-task's Next section remains open.
+**Harness bug that was fixed first (variable shadowing):** in `run_one(N, seed, nitt = NITT, m = M_REPS)`
+the MCMCglmm block used `m <- MCMCglmm(...)`, and because `tryCatch()` evaluates in the caller's frame it
+clobbered the `m` draws-per-species argument with the fit object; the return row `c(..., m = m, ...)` then
+flattened the fit into a non-numeric, length-≫6 result and every row was dropped (`WARN: 8/8 workers
+failed`), leaving `round(NULL)` to crash. Fixed by renaming the fit to `fit_mc` (with a guard comment).
+Bug was specific to the `-reps.R` variant (the `m` parameter is new there).
+
+**NOT covered (explicit):** single N-species point (100) and single m (10); no m-ladder or species-ladder
+crossing; ρ=0.6/K=3 only; no interval coverage; no D-43 panel. The finding above is a first data point,
+not a covered claim.
 
 ## Guards honored
 Multi-seed (40/rung, then 50/N on the large-N grid) · compute Totoro not Actions (D-50) · results local ·

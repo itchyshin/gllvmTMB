@@ -135,7 +135,7 @@ test_that("multinomial admits only fixed effects + phylo_latent: other RE terms 
   expect_error(
     gllvmTMB(value ~ 0 + trait + (1 | unit), data = df,
              family = multinomial(), trait = "trait", unit = "unit"),
-    regexp = "only fixed effects"
+    regexp = "unsupported latent|deferred|Design 84"
   )
 })
 

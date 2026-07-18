@@ -894,6 +894,9 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
       ))
     }
     mn_trait <- mn_trait_lvls
+    if (anyNA(data[[resp]][mn_rows])) {
+      cli::cli_abort("multinomial(): missing categorical responses are not supported in this release.")
+    }
     yf <- droplevels(if (is.factor(data[[resp]])) data[[resp]][mn_rows]
                      else factor(data[[resp]][mn_rows]))
     if (!is.null(requested_baseline)) {
@@ -910,11 +913,11 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     L <- K - 1L
     yint <- as.integer(yf)
     other <- data[-mn_rows, , drop = FALSE]
-    if (nrow(other) > 0L) {
-      other[[trait_col]] <- as.character(other[[trait_col]])
-      other[[".multinom_group_"]] <- -1L
-      other[[".multinom_L_"]]     <- 0L
-    }
+    ## Tag off-family rows (rep() keeps the columns present even if nrow == 0, so
+    ## the later rbind never column-mismatches).
+    other[[trait_col]] <- as.character(other[[trait_col]])
+    other[[".multinom_group_"]] <- rep(-1L, nrow(other))
+    other[[".multinom_L_"]]     <- rep(0L, nrow(other))
     n_mn     <- length(mn_rows)
     rep_idx  <- rep(seq_len(n_mn), each = L)
     contrast <- rep(seq_len(L), times = n_mn)

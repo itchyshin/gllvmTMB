@@ -106,3 +106,19 @@ test_that("cross-family latent correlation recovers a known truth (multi-seed me
   expect_lt(abs(mean(r_g_c2) - R_true[1, 2]), 0.06)   # strong, stable
   expect_lt(abs(mean(r_g_c3) - R_true[1, 3]), 0.10)   # weaker, noisier
 })
+
+test_that("fail-closed fence: a multinomial + augmented latent slope (rr_B_slope) is refused (Rose 2026-07-18)", {
+  skip_on_cran(); skip_if_not_installed("MASS")
+  ## The Tier-2b fence is a fail-closed allow-list: only phylo_rr / rr_B / lv_B
+  ## are permitted on a fid-16 trait. An augmented reaction-norm slope
+  ## latent(1 + x | unit, d) sets use_rr_B_slope, which is NOT allowed and must
+  ## abort rather than reach the untested categorical random-slope path.
+  sim <- .build_xfam_raw(1L, N = 120L, reps = 3L)
+  sim$data$x <- stats::rnorm(nrow(sim$data))
+  expect_error(
+    suppressWarnings(suppressMessages(gllvmTMB(
+      value ~ 0 + trait + latent(1 + x | unit, d = 2),
+      data = sim$data, family = .xfam_fam(), trait = "trait", unit = "unit"))),
+    regexp = "unsupported latent|deferred|Design 84"
+  )
+})

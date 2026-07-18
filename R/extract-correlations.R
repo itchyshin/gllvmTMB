@@ -778,7 +778,13 @@ extract_correlations <- function(
 #' @param link_residual passed to [extract_Sigma()]; `"auto"` (default) puts the
 #'   nominal block on the observation scale via the \eqn{(\pi^2/6)(I+J)} softmax
 #'   residual, making `multiple_r` commensurable with single-scale partners;
-#'   `"none"` uses the latent (loadings) scale.
+#'   `"none"` uses the latent (loadings) scale. Note: with `"none"` and a
+#'   loadings-only fit whose shared factor the contrast block spans (e.g. the
+#'   block dimension >= the partner's), `multiple_r` degenerates to 1 (the
+#'   partner is then a deterministic function of the block). This is correct but
+#'   uninformative, which is why `"auto"` (full-rank via the residual) is the
+#'   sensible default for the single-number summary; read the per-pair latent
+#'   correlations from [extract_Sigma()] / [extract_correlations()] instead.
 #' @return a data.frame, one row per (nominal, partner) pair.
 #' @export
 extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,

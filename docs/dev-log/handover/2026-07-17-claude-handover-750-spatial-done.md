@@ -47,6 +47,39 @@ map (full arc list) + Design 66 + `dev/m3-*` harness.
 - **`051eb4e5`** — gitignore the local coverage artifacts (D-50).
 - Mission Control refreshed (vault `ea22550`).
 
+## Full session record — everything that happened (nothing lost)
+This was a long multi-arc session. In order:
+1. **Sigma_unit-diagonal coverage certificate SHIPPED** (`dd80244a`). Fresh-seed lift pooled to N≈15k;
+   independent D-43 panel certified both gaussian n≥150 d≤2 cells 3-0; Shinichi approved **flip both**;
+   confint profile wiring + gate-framed / convergence-conditional / d≤2-scoped public wording (roxygen,
+   NEWS, capability-surface). Detail: `docs/dev-log/after-task/2026-07-17-sigma-coverage-freshseed-pooled-audit.md`,
+   `docs/dev-log/2026-07-17-sigma-coverage-d43-panel.md`, `docs/dev-log/2026-07-17-sigma-coverage-earn-vs-defer-memo.md`.
+   Close-out handover: `docs/dev-log/handover/2026-07-17-claude-handover-coverage-shipped.md` (holds the
+   **full "Remaining arcs" map** from the 2026-07-17 grounded arc-survey).
+2. **pkgdown build fixed + published roadmap retired** — PR **#754** (merged to `main`): added the 3
+   un-indexed exports `kernel_scalar`/`scalar`/`multinomial` to `_pkgdown.yml`'s reference index; the
+   deploy had been failing on every run (build_reference_index abort), freezing the site. Manual deploy
+   then dropped the orphaned, stale `articles/roadmap.html` (source removed in the 2026-05-20 reset;
+   Shinichi chose to retire it). Verified `roadmap.html` → 404, live articles → 200.
+3. **#750 spatial SPDE unconditional RE redraw** (below) — the main arc, via ultra-plan.
+4. **Lane cleaned + this handover** — gitignore local coverage artifacts (`051eb4e5`), prune stale
+   worktree records, refresh CLAUDE.md pointer, commit handover (`119c29dc`).
+
+## Known items / open follow-ups (not blocking; don't lose these)
+- **Fixed-effect profile-CI under-coverage at small n** — `coverage_study()`'s `b_fix` cells under-cover
+  at n<150 (e.g. b_fix[1] 0.881 at n=50), a coverage_study small-sample / MLE-as-truth property proven
+  spatial-free by the non-spatial baseline control. NOT a #750 defect. If ever wanted: a separate
+  fixed-effect profile-CI calibration study. Documented in the #750 after-task.
+- **#750 deferred piece:** `spatial_latent` (loadings, `spde_lv_k>0`, the `phylo_rr` analogue) + the
+  `spde_*_slope` tiers are still fail-closed — a fast-follow arc if desired (machinery fresh in the
+  #750 after-task/handover).
+- **Held maintainer sign-offs (still OPEN):** disp_group (nbinom2 shared dispersion — **DEFERRED**,
+  fails the recovery gate), family-breadth advertising, tweedie stale-rationale refresh. See
+  `docs/dev-log/2026-07-16-held-signoffs-review.md`.
+- **Multinomial article idea (Lane C):** positioning gllvmTMB's factor decomposition as a scalable
+  alternative to Mizuno et al. 2025's full-covariance phylo-multinomial GLMM — a good article point,
+  but it belongs to **Lane C (off-limits to this lane)**; noted for whoever owns the multinomial work.
+
 ## Files created / modified (this session's diff, `dd80244a..051eb4e5`)
 `R/methods-gllvmTMB.R` · `tests/testthat/test-bootstrap-Sigma.R` · `tests/testthat/test-spatial-redraw.R`
 (new) · `dev/spatial-coverage-750*.R` (new, ×6) · `.gitignore` ·

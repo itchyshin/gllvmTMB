@@ -2,18 +2,20 @@
 
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
-For the current handoff, read
-`docs/dev-log/handover/2026-07-18-claude-handover.md` (Claude→Claude, 2026-07-18;
+For the current handoff (multinomial lane), read
+`docs/dev-log/handover/2026-07-18-claude-handover-multinomial-lane.md` (Claude→Claude, 2026-07-18;
 **the multinomial cross-family arc is SHIPPED to `main`** — item 1 matrix
 `link_residual` (#758), item 2a-ii cross-family correlations +
 `extract_cross_correlations()` (#761), and `unique = TRUE` default + the
 `Psi = unique + link-specific` consistency fix (#762). A `multinomial()` trait now
 shares a shared `latent()` factor with Gaussian/binary/count/ordinal traits and
-reports genuine cross-family correlations. **NEXT arc (chosen 2026-07-18):
-calibrated cross-family intervals** — attach certified-coverage uncertainty to
-`extract_cross_correlations()`, closing the CI-08/CI-10 `heuristic_unvalidated`
-debt (the 0.6→1.0 headline); the item-3 recovery certificate is deferred behind it.
-Multi-seed always; Rose before any covered claim; compute local→Totoro (D-50).) Earlier:
+reports genuine cross-family correlations. **Calibrated cross-family intervals are now BUILT**
+(PR #766, awaiting merge): `extract_cross_correlations(method="wald"/"bootstrap"/"profile")` +
+multinomial `simulate()`, shipped UNCALIBRATED for Ayumi's real-data testing.
+**NEXT-LANE MISSION: VALIDATE the interval/SE machinery** (register CI-11) via the Totoro
+coverage-certification campaign + Ayumi's real-data bug reports — "all routes have validated
+coverage" requires BOTH certified coverage (D-43) AND a clean real-data pass; MEASURED / NOT
+certified until then. Multi-seed always; Rose before any covered claim; compute local→Totoro (D-50).) Earlier:
 `docs/dev-log/handover/2026-07-12-claude-handover-covariance.md` (Claude→Claude,
 evening; the covariance-mode grammar campaign — Design 79/80, `scalar()`/
 `kernel_scalar()`, `indep(1+x)` per-trait) before starting new work. Branch

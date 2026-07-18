@@ -45483,3 +45483,31 @@ multinomial Tier-2b cross-family arc is now **fully landed on `main`** — five 
 **Handover for the next multinomial lane:** `docs/dev-log/handover/2026-07-18-claude-handover.md`
 (the arc is shipped; next lane picks a depth arc — item-3 recovery certificate or calibrated cross-family
 intervals — at a discussion checkpoint). Reusable compute: Totoro `~/gtmb_work` (gllvmTMB compiled + MCMCglmm).
+
+---
+
+## 2026-07-18 · Claude → Lane A (main / profile-coverage) — cross-family INTERVALS arc (PR #766)
+
+The multinomial lane's chosen depth arc — **calibrated cross-family intervals** — is built and up as **PR #766**
+(branch `claude/cross-family-intervals-20260718`, off `main`; awaiting maintainer merge). Isolated worktree;
+`release-0.5.0` never touched.
+
+**What Lane A should know:**
+- **`extract_cross_correlations()` now takes `method = "wald" | "bootstrap" | "profile"`** (per-estimand interval
+  columns for `multiple_r` + `contrast_r`), and **`simulate.gllvmTMB_multi` now draws the multinomial softmax
+  response** — the `gllvmTMB_simulate_multinomial_unsupported` fence is removed (so `simulate()`/`bootstrap_Sigma()`
+  work on cross-family multinomial fits).
+- **`R/profile-derived.R` changed — you READ this file.** `profile_ci_correlation()` gained a `diag_resid` arg
+  (Option-b AUTO-scale diagonal augmentation) **and a reconstruction self-check**
+  (`gllvmTMB_profile_reconstruction_mismatch`, gated on `!is.null(fit$tmb_map[[diag_name]])`) that aborts when
+  `target_fn(theta_hat) != rho_hat`. Additive; route-matrix stays 20/0/0/0 — but **merge/rebase `main`** to pick it
+  up, and note the self-check can legitimately fire on a mapped-diagonal (Ψ) mismatch.
+- **`R/bootstrap-sigma.R`:** `what = "cross_corr"` added + a `.summarise_draws` single-partner `dim()` fix.
+  **`R/methods-gllvmTMB.R`:** the simulate multinomial branch. All additive; broad 12-file regression 0 fail.
+- **Register:** this arc's row is a NEW **`CI-11`** (multinomial cross-family intervals) — **NOT** CI-08/CI-10
+  (yours). **No register edit made** (the CI-11 flip + NEWS are deferred behind a D-43 panel). If we both touch
+  `docs/design/35-validation-debt-register.md`, coordinate — CI-11 is mine, CI-08/CI-10 stay yours.
+- **Intervals are UNCALIBRATED — coverage NOT certified.** Do not advertise coverage. The certification campaign is
+  DEFERRED; harness `dev/cross-family-coverage.R` staged on Totoro **`~/gtmb_work/xfam-intervals`** (private lib
+  `~/gtmb_work/xfam-lib`; run with `export R_LIBS=…/gtmb_work/xfam-lib:…/R/lib`) — separate from your `~/gllvm_work`.
+- **Handover:** `docs/dev-log/handover/2026-07-18-claude-handover-cross-family-intervals-build.md`.

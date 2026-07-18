@@ -158,10 +158,12 @@ test_that("multinomial + phylo_latent fits and reports the (K-1)x(K-1) among-cat
                   phylo_tree = tree)
   expect_s3_class(fit, "gllvmTMB_multi")
   expect_true(all(fit$tmb_data$family_id_vec == 16L))
-  ## Link-scale residual for a multinomial is not yet wired (Design 84 follow-up),
-  ## so extract_Sigma warns and returns the latent-scale V; that is expected here.
-  V <- suppressWarnings(extract_Sigma(fit, level = "phy"))
-  if (is.list(V)) V <- V[[1L]]
+  ## Tier-2b item 1: the softmax link residual (pi^2/6)(I+J) is now wired, so the
+  ## default link_residual = "auto" returns the OBSERVATION-scale V (no warning).
+  ## Shape only here; the residual arithmetic is asserted in
+  ## test-link-residual-multinomial.R.
+  V <- extract_Sigma(fit, level = "phy")
+  if (is.list(V) && !is.matrix(V)) V <- if (!is.null(V$Sigma)) V$Sigma else V[[1L]]
   expect_equal(dim(V), c(K - 1L, K - 1L))       # (K-1) x (K-1) among-category V
   expect_true(isSymmetric(unname(round(V, 8))))
 })

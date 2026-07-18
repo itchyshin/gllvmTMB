@@ -362,6 +362,16 @@ link_residual_per_trait <- function(fit) {
           NA_real_
         }
       }
+    } else if (fid == 16L) {
+      # multinomial (baseline-category logit), fid 16.
+      ## DIAGONAL of the softmax observation-scale residual: each of the K-1
+      ## baseline-category contrasts is itself a logit, so its per-contrast
+      ## link-residual variance is pi^2/3 -- exactly binomial(link = "logit").
+      ## The pi^2/6 OFF-diagonal coupling from the shared baseline category is a
+      ## full (K-1)x(K-1) matrix, not a scalar, and is added by extract_Sigma()
+      ## via .multinomial_link_residual_offdiag(); this scalar path carries the
+      ## diagonal only (McFadden 1974; Nakagawa & Schielzeth 2010).
+      out[t] <- pi^2 / 3
     } else {
       out[t] <- NA_real_
     }
@@ -376,6 +386,41 @@ link_residual_per_trait <- function(fit) {
     )
   }
   out
+}
+
+## Off-diagonal block of the multinomial softmax link residual.
+##
+## A `multinomial()` trait over K categories is fitted as K-1 baseline-category
+## contrast pseudo-traits, named "<base>:<cat>" (see
+## expand_multinomial_response()) and each carrying multinom_K_per_trait == K-1.
+## The softmax observation-scale residual over those contrasts is the full
+## matrix (pi^2/6)(I + J): pi^2/3 on the diagonal (handled per-trait by
+## link_residual_per_trait(); each contrast is a logit) and pi^2/6 off-diagonal
+## (the SHARED baseline category couples the contrasts; McFadden 1974 random-
+## utility / Gumbel origin). This helper returns ONLY the off-diagonal part as a
+## T x T matrix (pi^2/6 within each multinomial block, 0 everywhere else,
+## including all diagonals), positionally aligned to `trait_names`. It is
+## tier-agnostic -- extract_Sigma() adds it to whatever tier Sigma it builds --
+## and multi-block safe (two multinomial traits couple only within their own
+## block; a normal/Gaussian trait contributes nothing and receives no coupling).
+.multinomial_link_residual_offdiag <- function(trait_names, multinom_K_per_trait) {
+  Tn <- length(trait_names)
+  M <- matrix(0, Tn, Tn, dimnames = list(trait_names, trait_names))
+  if (is.null(multinom_K_per_trait) || length(multinom_K_per_trait) != Tn ||
+      !any(multinom_K_per_trait > 0L)) {
+    return(M)
+  }
+  is_mn <- multinom_K_per_trait > 0L
+  ## Group pseudo-traits into blocks by their shared "<base>:" prefix. Each base
+  ## is one multinomial trait; its members are that trait's K-1 contrasts.
+  base <- sub(":[^:]*$", "", trait_names)
+  for (b in unique(base[is_mn])) {
+    idx <- which(is_mn & base == b)
+    if (length(idx) < 2L) next          # K = 2 (single contrast) has no coupling
+    M[idx, idx] <- pi^2 / 6
+    M[cbind(idx, idx)] <- 0             # off-diagonal only; diagonal is pi^2/3 elsewhere
+  }
+  M
 }
 
 #' Extract the implied trait covariance / correlation at one tier
@@ -485,10 +530,16 @@ link_residual_per_trait <- function(fit) {
 #' (It is distinct from MCMCglmm's *arbitrary* fixed identification residual
 #' \eqn{(1/K)(\mathbf{I}+\mathbf{J})} and that package's MCMC-specific \eqn{c^2}
 #' overdispersion correction, neither of which a direct softmax fit needs.)
-#' Because the residual is a full matrix rather than a diagonal addition, it is
-#' not yet applied automatically; `extract_Sigma()` returns the latent-scale V and
-#' warns for a multinomial trait. Relatedly, a *diagonal* among-category V is not
-#' independence: the independence null for the contrasts is itself
+#' `link_residual = "auto"` (the default) applies this full-matrix residual: the
+#' \eqn{(\pi^2/6)(\mathbf{I}+\mathbf{J})} block is added to the multinomial
+#' trait's \eqn{(K-1)}-contrast block of \eqn{\boldsymbol\Sigma} (the diagonal
+#' \eqn{\pi^2/3} entry-by-entry with the other families, the \eqn{\pi^2/6}
+#' off-diagonal as a block); `"none"` returns the latent-scale V unchanged. The
+#' addition is tier-agnostic -- it applies to whichever tier \eqn{\boldsymbol\Sigma}
+#' is requested (`level = "phy"`, a spatial or kernel tier, or an ordinary latent
+#' term) -- and it makes the categorical block commensurable with any single-scale
+#' (e.g. Gaussian) trait sharing the fit. Relatedly, a *diagonal* among-category V
+#' is not independence: the independence null for the contrasts is itself
 #' \eqn{(\mathbf{I}+\mathbf{J})}-structured (equal diagonal, equal off-diagonal).
 #'
 #' For mixed-family fits the residual is computed *per trait* when that trait has
@@ -1374,6 +1425,7 @@ extract_Sigma <- function(
           "13" = "delta_gamma",
           "14" = "ordinal_probit",
           "15" = "nbinom1",
+          "16" = "multinomial",
           sprintf("family_id %s", fid)
         )
       }
@@ -1439,6 +1491,27 @@ extract_Sigma <- function(
     Sigma <- LLt + diag(Sd, nrow = T)
     if (any(link_resid_per_trait != 0, na.rm = TRUE)) {
       diag(Sigma) <- diag(Sigma) + link_resid_per_trait
+    }
+    ## Multinomial off-diagonal coupling: the per-trait path above adds the
+    ## pi^2/3 DIAGONAL for each contrast; a multinomial trait additionally
+    ## carries pi^2/6 OFF-diagonal within its (K-1)-contrast block, so the full
+    ## added residual is (pi^2/6)(I + J). Only under link_residual = "auto".
+    if (link_residual == "auto") {
+      mn_off <- .multinomial_link_residual_offdiag(
+        trait_names, fit$tmb_data$multinom_K_per_trait
+      )
+      if (any(mn_off != 0)) {
+        Sigma <- Sigma + mn_off
+        notes <- c(
+          notes,
+          paste0(
+            "Added the multinomial softmax off-diagonal link residual ",
+            "pi^2/6 ~= ", formatC(pi^2 / 6, digits = 3, format = "f"),
+            " within each (K-1)-contrast block (with the pi^2/3 diagonal above, ",
+            "the full block residual is (pi^2/6)(I + J); McFadden 1974)."
+          )
+        )
+      }
     }
     R <- .safe_cov2cor(Sigma, trait_names)
     out <- list(

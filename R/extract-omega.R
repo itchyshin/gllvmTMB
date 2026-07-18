@@ -288,6 +288,26 @@ extract_Omega <- function(
         )
       )
     }
+    ## Multinomial off-diagonal coupling: mirror extract_Sigma() so the
+    ## trait-level Omega and the per-tier Sigma agree for a multinomial trait.
+    ## The diagonal pi^2/3 is added above (per-trait); a multinomial trait
+    ## additionally carries pi^2/6 OFF-diagonal within its (K-1)-contrast block,
+    ## so the full added residual is (pi^2/6)(I + J). Without this, Omega would
+    ## silently disagree with extract_Sigma(level, part = "total").
+    mn_off <- .multinomial_link_residual_offdiag(
+      trait_names, fit$tmb_data$multinom_K_per_trait
+    )
+    if (any(mn_off != 0)) {
+      Omega <- Omega + mn_off
+      notes <- c(
+        notes,
+        paste0(
+          "Added the multinomial softmax off-diagonal link residual pi^2/6 ~= ",
+          formatC(pi^2 / 6, digits = 3, format = "f"),
+          " within each (K-1)-contrast block of Omega (matching extract_Sigma)."
+        )
+      )
+    }
   }
   R_Omega <- .safe_cov2cor(Omega, trait_names)
   out <- list(

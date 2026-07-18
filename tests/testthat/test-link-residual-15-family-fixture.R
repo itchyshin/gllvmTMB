@@ -263,6 +263,18 @@ test_that("family_id 14 (ordinal_probit) returns exactly 1", {
   expect_equal(unname(res), 1)
 })
 
+## ---- 16 Multinomial (diagonal of the (pi^2/6)(I+J) block) -----------------
+
+test_that("family_id 16 (multinomial) returns the pi^2/3 contrast diagonal", {
+  ## Each baseline-category contrast is itself a logit, so the per-trait scalar
+  ## path carries pi^2/3 (as binomial-logit); the pi^2/6 OFF-diagonal coupling
+  ## is the matrix added by extract_Sigma() (see
+  ## .multinomial_link_residual_offdiag()). No 'unavailable' warning now.
+  fit <- make_mock_single_family_fit(family_id = 16L)
+  expect_no_warning(res <- gllvmTMB:::link_residual_per_trait(fit))
+  expect_equal(unname(res), pi^2 / 3, tolerance = 1e-12)
+})
+
 ## ---- vector shape: per-trait output --------------------------------------
 
 test_that("link_residual_per_trait() returns a per-trait vector named by trait levels", {

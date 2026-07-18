@@ -187,10 +187,16 @@ representation (McFadden 1974), and it reduces to the binomial \eqn{\pi^2/3} at
 (It is distinct from MCMCglmm's \emph{arbitrary} fixed identification residual
 \eqn{(1/K)(\mathbf{I}+\mathbf{J})} and that package's MCMC-specific \eqn{c^2}
 overdispersion correction, neither of which a direct softmax fit needs.)
-Because the residual is a full matrix rather than a diagonal addition, it is
-not yet applied automatically; \code{extract_Sigma()} returns the latent-scale V and
-warns for a multinomial trait. Relatedly, a \emph{diagonal} among-category V is not
-independence: the independence null for the contrasts is itself
+\code{link_residual = "auto"} (the default) applies this full-matrix residual: the
+\eqn{(\pi^2/6)(\mathbf{I}+\mathbf{J})} block is added to the multinomial
+trait's \eqn{(K-1)}-contrast block of \eqn{\boldsymbol\Sigma} (the diagonal
+\eqn{\pi^2/3} entry-by-entry with the other families, the \eqn{\pi^2/6}
+off-diagonal as a block); \code{"none"} returns the latent-scale V unchanged. The
+addition is tier-agnostic -- it applies to whichever tier \eqn{\boldsymbol\Sigma}
+is requested (\code{level = "phy"}, a spatial or kernel tier, or an ordinary latent
+term) -- and it makes the categorical block commensurable with any single-scale
+(e.g. Gaussian) trait sharing the fit. Relatedly, a \emph{diagonal} among-category V
+is not independence: the independence null for the contrasts is itself
 \eqn{(\mathbf{I}+\mathbf{J})}-structured (equal diagonal, equal off-diagonal).
 
 For mixed-family fits the residual is computed \emph{per trait} when that trait has

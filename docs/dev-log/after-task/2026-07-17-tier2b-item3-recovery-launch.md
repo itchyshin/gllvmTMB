@@ -46,6 +46,65 @@ Extend on Totoro: N-ladder to 2000/4000 + a replication arm (m draws/species); a
 gllvmTMB arm; compute interval coverage; add the ρ-ladder (0, ±0.4, ±0.8) and K=4; then a D-43 panel
 before any covered claim. Harness + Totoro env are ready (`~/gtmb_work` on Totoro).
 
+## Follow-up runs (2026-07-18)
+
+### Large-N Totoro grid (N={1000,2000,4000} x 50 seeds)
+Raw per-seed results retrieved from Totoro and confirmed as the actual RDS (not just the log): 150 rows
+= 3 N x 50 seeds (`dev/recovery-totoro-large.rds`, local per D-50, not committed). Aggregate recomputed
+directly from the raw rows and matches the reported summary exactly (e.g. N=1000 rail_rate_g = 0.30 by
+directly counting `railed_gllvm==1` rows).
+
+| N | n_ok_g | n_ok_m | rho_gllvm | mcse_g | bias_gllvm | rail_rate_g | rho_mcmc | mcse_m | bias_mcmc |
+|---|---|---|---|---|---|---|---|---|---|
+| 1000 | 50 | 50 | 0.6035 | 0.0725 | 0.0035 | 0.30 | 0.4285 | 0.0381 | -0.1715 |
+| 2000 | 50 | 50 | 0.6029 | 0.0537 | 0.0029 | 0.16 | 0.4335 | 0.0315 | -0.1665 |
+| 4000 | 50 | 50 | 0.5592 | 0.0530 | -0.0408 | 0.08 | 0.4759 | 0.0259 | -0.1241 |
+
+(rho_true = 0.6, nitt=60000, 50 seeds/N, one-per-species draw.)
+
+**Interpretation (in-progress evidence, not a covered claim):**
+(a) gllvmTMB's rail_rate falls monotonically toward 0 as N climbs — 0.30 → 0.16 → 0.08 — and mean ρ̂ is
+essentially unbiased at N=1000/2000 (bias 0.003–0.004), but a small negative-bias artifact appears at
+N=4000 (bias −0.041). The rail collapse is resolving with N, but the N=4000 point is not yet a clean
+monotone recovery and deserves a closer look (more seeds, or check for a systematic estimator artifact
+at large N) before it is folded into a covered claim.
+
+(b) MCMCglmm's ρ̂ does NOT climb toward 0.6 over this range — it stays substantially and persistently
+biased low across the whole ladder (0.43, 0.43, 0.48; bias −0.17, −0.17, −0.12), only mildly attenuating
+at N=4000. Its bias does not resolve within N ≤ 4000, one-per-species. This extends finding 3 above (the
+param-expanded-prior shrinkage previously seen at N ≤ 1000) to the larger-N range: MCMCglmm's asymptotic
+behaviour on this problem remains an open question, not gllvmTMB's.
+
+### Replication-arm control (m=10 draws/species, N=100)
+**Harness crashed — did not produce a usable recovery ladder.** Command run: `N=100, seeds=8, nitt=8000,
+m=10` via `dev/phylo-multinomial-recovery-harness-reps.R`. The intended question — does replication per
+species (rather than larger N) recover ρ≈0.6 cleanly, which would show the estimators are sound and the
+one-per-species failure is purely information-limited — was **not answered**. This is a harness bug, not
+evidence about the estimators, and must be re-run after the fix below before it can support any claim
+either way.
+
+**Root cause (isolated and independently reproduced):** in `run_one(N, seed, nitt = NITT, m = M_REPS)`,
+the MCMCglmm block reassigns the same local `m` (`m <- MCMCglmm(...)`, line 69) that holds the
+draws-per-species count (10) passed in as the function argument. `tryCatch()` evaluates in the caller's
+frame, so this clobbers the integer with the fitted MCMCglmm object. The return line
+`c(N = N, m = m, seed = seed, rho_gllvm = rg, rho_mcmc = rm_, railed_gllvm = ...)` then flattens the
+~15+ named components of the MCMCglmm fit into the row (`m.Sol`, `m.VCV`, ...), producing a non-numeric,
+length ≫ 6 result. The driver's row-sanity check (`is.numeric(x) && length(x) == 6L`) rejects every row
+as a spurious "failure" (hence `WARN: 8/8 workers failed`, with the `100` label being `as.character(N)`,
+not an error message). With all rows dropped, `res` is 0-row, `agg <- do.call(rbind, list())` is `NULL`,
+and `round(NULL, 4)` throws the fatal `non-numeric argument to mathematical function` error. Confirmed by
+an isolated repro (`class(res)`, `length`, `is.numeric`, and the `round(NULL, 4)` error all reproduce the
+observed chain). Bug is specific to `-reps.R` (the `m` replicate-count parameter is new there) and
+pre-dates this run.
+
+**Fix needed (not yet applied):** rename the MCMCglmm fit variable at line 69 (e.g. `fit_mc <-
+MCMCglmm(...)`) so it stops shadowing the `m` draws-per-species argument. One line. Re-run after the fix
+to get the actual replication-arm ladder.
+
+**NOT covered (explicit):** no replication-arm recovery evidence exists yet, in either direction. The
+"does replication substitute for N" question from the original after-task's Next section remains open.
+
 ## Guards honored
-Multi-seed (40/rung) · compute Totoro not Actions (D-50) · results local · ρ is scale-invariant so the
-cross-check is fair · stated what is NOT covered · no covered claim made.
+Multi-seed (40/rung, then 50/N on the large-N grid) · compute Totoro not Actions (D-50) · results local ·
+ρ is scale-invariant so the cross-check is fair · stated what is NOT covered · no covered claim made ·
+harness bug isolated and reproduced independently rather than taken on faith from the subagent report.

@@ -441,12 +441,19 @@ extract_correlations <- function(
   ## pseudo-traits coevolve via Sigma_phy = Lambda_phy Lambda_phy^T, so the (K-1)x
   ## (K-1) correlation is cor(Sigma_phy). Only a FIXED-EFFECTS-ONLY multinomial fit
   ## has no such surface; keep the clear refusal for that case.
+  ## Tier-2b item 2a-ii: a shared ordinary latent ordination (use_rr_B / lv_B)
+  ## also gives a multinomial trait a defined correlation surface -- the K-1
+  ## pseudo-traits load on the shared factor, so cross-family (nominal <-> other)
+  ## correlations are well-defined. Only a FIXED-EFFECTS-ONLY multinomial has no
+  ## surface; keep the clear refusal for that case.
+  .mn_has_latent <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$rr_B) ||
+    isTRUE(fit$use$lv_B)
   if (!is.null(fit$tmb_data$family_id_vec) &&
       any(fit$tmb_data$family_id_vec == 16L) &&
-      !isTRUE(fit$use$phylo_rr)) {
+      !.mn_has_latent) {
     cli::cli_abort(c(
       "Latent-scale correlations are not defined for a fixed-effects-only {.fn multinomial} trait.",
-      "i" = "Add a {.code phylo_latent(species, d = K)} term to estimate the among-category phylogenetic correlation surface (the K-1 category liabilities coevolving).",
+      "i" = "Add a {.code phylo_latent(species, d = K)} term (among-category phylogenetic surface) or a shared {.code latent(0 + trait | unit, d = k)} term (cross-family nominal <-> other correlations).",
       ">" = "Otherwise read fixed-effect coefficients via {.fn summary} / {.fn tidy}."
     ), class = "gllvmTMB_multinomial_correlation_undefined")
   }
@@ -744,4 +751,70 @@ extract_correlations <- function(
   }
   rownames(out) <- NULL
   .reportable_table(out)
+}
+
+#' Cross-family correlations between a nominal (multinomial) trait and partners
+#'
+#' @description
+#' For a fit where a `multinomial()` trait shares a latent factor with
+#' other-family traits, report the association between the nominal trait and each
+#' partner trait. A nominal trait spans K-1 baseline-category contrasts, so its
+#' association with a single-scale partner is a *vector*, summarized two ways
+#' (reporting decision 2C):
+#' \itemize{
+#'   \item `multiple_r`: the reference-invariant multiple correlation
+#'     \eqn{R = \sqrt{\Sigma_{pc}\,\Sigma_{cc}^{-1}\,\Sigma_{cp}/\sigma_{pp}}}
+#'     between partner `p` and the whole K-1 contrast block `c`. Invariant to the
+#'     baseline category; magnitude in \[0, 1\].
+#'   \item `contrast_r` (when `contrasts = TRUE`): the (K-1)-vector of individual
+#'     contrast correlations, labelled by category-vs-baseline.
+#' }
+#'
+#' @param fit a fitted `gllvmTMB_multi` with a `multinomial()` trait and a shared
+#'   latent tier (`latent(0 + trait | unit, d)`).
+#' @param level covariance tier (default `"unit"`).
+#' @param contrasts if `TRUE`, also return the per-contrast (K-1)-vector (as a
+#'   list column).
+#' @param link_residual passed to [extract_Sigma()]; `"auto"` (default) puts the
+#'   nominal block on the observation scale via the \eqn{(\pi^2/6)(I+J)} softmax
+#'   residual, making `multiple_r` commensurable with single-scale partners;
+#'   `"none"` uses the latent (loadings) scale.
+#' @return a data.frame, one row per (nominal, partner) pair.
+#' @export
+extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
+                                       link_residual = c("auto", "none")) {
+  link_residual <- match.arg(link_residual)
+  S <- extract_Sigma(fit, level = level, part = "total", link_residual = link_residual)
+  Sigma <- if (is.list(S) && !is.null(S$Sigma)) S$Sigma else S
+  tn <- rownames(Sigma)
+  mnK <- fit$tmb_data$multinom_K_per_trait
+  if (is.null(mnK) || !any(mnK > 0L)) {
+    cli::cli_abort("No {.fn multinomial} trait in this fit; use {.fn extract_correlations}.")
+  }
+  is_mn <- mnK > 0L
+  base  <- sub(":[^:]*$", "", tn)
+  mn_bases <- unique(base[is_mn])
+  partners <- which(!is_mn)
+  if (length(partners) == 0L) {
+    cli::cli_abort("No non-nominal partner trait to correlate the {.fn multinomial} trait with.")
+  }
+  out <- list()
+  for (b in mn_bases) {
+    blk <- which(is_mn & base == b)
+    Scc <- Sigma[blk, blk, drop = FALSE]
+    Scc_inv <- tryCatch(solve(Scc), error = function(e) MASS::ginv(Scc))
+    for (p in partners) {
+      Spc  <- Sigma[p, blk, drop = FALSE]                 # 1 x (K-1)
+      mult <- sqrt(max(0, as.numeric(Spc %*% Scc_inv %*% t(Spc)) / Sigma[p, p]))
+      mult <- min(mult, 1)                                # numerical guard
+      row  <- data.frame(nominal = b, partner = tn[p],
+                         multiple_r = mult, stringsAsFactors = FALSE)
+      if (contrasts) {
+        cr <- Sigma[p, blk] / sqrt(Sigma[p, p] * diag(Scc))
+        row$contrast_r <- I(list(stats::setNames(as.numeric(cr), tn[blk])))
+      }
+      out[[length(out) + 1L]] <- row
+    }
+  }
+  do.call(rbind, out)
 }

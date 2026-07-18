@@ -1807,13 +1807,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## random-effect / structured tier
   ## remains fixed-effects-only on a multinomial fit and still fails loud rather
   ## than fit a silently-wrong model.
+  ## Tier-2b item 2a-ii: a multinomial() trait may now share an ordinary latent
+  ## ordination -- latent(0 + trait | unit, d) (use_lv_B / use_rr_B) -- with
+  ## other-family traits, so its K-1 pseudo-traits load on the shared factor and
+  ## the cross-family (nominal <-> other) covariance lives in Lambda. phylo_latent
+  ## stays allowed (Tier-2a). Still fenced on a categorical response: the diagonal
+  ## unique tier (use_diag_B), SPDE, phylo-slope, and plain random intercepts --
+  ## deferred, fail loud rather than fit a silently-wrong model.
   if (any(family_id_vec == 16L) &&
-      (use_lv_B || use_rr_B || use_diag_B || use_spde ||
-       use_phylo_slope || use_re_int)) {
+      (use_diag_B || use_spde || use_phylo_slope || use_re_int)) {
     cli::cli_abort(c(
-      "{.fn multinomial} supports only fixed effects and {.fn phylo_latent} in this release.",
-      "x" = "An unsupported latent / random-effect / structured term was combined with a categorical (multinomial) response.",
-      "i" = "Fit fixed effects, optionally with {.code phylo_latent(species, d = K)} for the among-category phylogenetic correlation surface.",
+      "{.fn multinomial} supports fixed effects, {.fn phylo_latent}, and a shared {.fn latent} ordination in this release.",
+      "x" = "An unsupported unique / SPDE / phylo-slope / random-intercept term was combined with a categorical (multinomial) response.",
+      "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations, or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface.",
       ">" = "Other latent-scale structures on categorical responses are deferred (Design 84, Tier 2b+)."
     ))
   }

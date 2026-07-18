@@ -711,12 +711,19 @@ extract_Sigma <- function(
   ## MCMCglmm notes; the softmax link residual shares that shape at scale pi^2/6);
   ## and one-per-species recovery is high-variance (needs replication or large N).
   ## See the phylo-multinomial fence in fit-multi.R.
+  ## A multinomial trait carries a latent-scale Sigma iff it has SOME latent
+  ## tier: phylo_latent (Tier-2a, level = "phy") OR a shared ordinary latent
+  ## ordination (Tier-2b item 2a-ii, level = "unit") that couples the K-1
+  ## pseudo-traits with other-family traits. Only a FIXED-EFFECTS-ONLY
+  ## multinomial has no latent Sigma; keep the clear refusal for that case.
+  .mn_has_latent <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$rr_B) ||
+    isTRUE(fit$use$lv_B)
   if (!is.null(fit$tmb_data$family_id_vec) &&
       any(fit$tmb_data$family_id_vec == 16L) &&
-      !isTRUE(fit$use$phylo_rr)) {
+      !.mn_has_latent) {
     cli::cli_abort(c(
       "A latent-scale {.code Sigma} is not defined for a fixed-effects-only {.fn multinomial} trait.",
-      "i" = "Add a {.code phylo_latent(species, d = K)} term to estimate the (K-1)x(K-1) among-category phylogenetic covariance, then read it with {.code extract_Sigma(fit, level = \"phy\")}.",
+      "i" = "Add a {.code phylo_latent(species, d = K)} term (among-category phylogenetic surface, {.code level = \"phy\"}) or a shared {.code latent(0 + trait | unit, d = k)} term (cross-family correlations, {.code level = \"unit\"}).",
       ">" = "Otherwise read fixed-effect coefficients via {.fn summary} / {.fn tidy}."
     ), class = "gllvmTMB_multinomial_sigma_undefined")
   }

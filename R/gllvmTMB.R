@@ -839,10 +839,30 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
   if (!any(fam_is_mn)) {
     return(list(data = data, family = family, expanded = FALSE))
   }
+  ## Idempotency / pre-expanded guard: if the data already carries the
+  ## multinomial expansion columns (.multinom_group_ / .multinom_L_), treat it
+  ## as already expanded and pass through unchanged. This is the entry point
+  ## for a multinomial trait that lives INSIDE a multi-trait long dataset
+  ## (item 2a-ii cross-family): the caller supplies the expanded long frame
+  ## directly, and the family list (with its family_var) already tags the
+  ## K-1 pseudo-trait rows as multinomial.
+  if (".multinom_group_" %in% names(data)) {
+    return(list(data = data, family = family, expanded = TRUE))
+  }
+  if (sum(fam_is_mn) > 1L) {
+    cli::cli_abort(c(
+      "More than one {.fn multinomial} trait in a single fit is not supported yet.",
+      "i" = "Fit one categorical response per model (item 2a-ii admits exactly one)."
+    ))
+  }
+  ## A mixed-family list with exactly one multinomial, on data that is NOT yet
+  ## expanded, needs subset expansion (expand only the categorical trait's rows).
+  ## Until that is automated, fail loud rather than mis-expand the whole
+  ## response column.
   if (!inherits(family, "family") && is.list(family) && length(family) > 1L) {
     cli::cli_abort(c(
-      "{.fn multinomial} cannot yet be combined in a mixed-family {.code list(...)} (Tier 1, fixed-effects only).",
-      "i" = "Fit a single unordered categorical response with {.code family = multinomial()}."
+      "A {.fn multinomial} trait inside a mixed-family {.code list(...)} needs the pre-expanded long frame in this build.",
+      "i" = "Supply data carrying the {.code .multinom_group_} / {.code .multinom_L_} pseudo-trait columns, or fit the categorical response on its own."
     ))
   }
   ## The user-requested reference category, if any (multinomial(baseline=)).

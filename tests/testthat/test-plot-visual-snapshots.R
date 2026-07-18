@@ -16,6 +16,21 @@
 ## via skip_on_ci(). Object-shape coverage of the same dispatcher lives in
 ## test-plot-gllvmTMB.R; these cells add the rendered-figure layer only and
 ## change no engine code.
+##
+## NOTE (drift is EXPECTED here, not a regression): a LOCAL failure on the two
+## value-encoding dispatcher cells below -- "dispatcher-communality" and
+## "dispatcher-variance" -- is expected cross-build drift. They are the only
+## dispatcher panels that render the shared/unique variance PARTITION as bar
+## heights, and that split is only weakly identified (see extract_Sigma()'s
+## roxygen): a BLAS-level change in the optimiser landing shifts the bars with
+## the total likelihood unchanged. The correlation / correlation_ellipse /
+## loadings / integration cells render rotation-invariant quantities and do NOT
+## drift. Verified to fail identically on a clean main (2026-07-18). Do NOT
+## regenerate the committed SVG to chase one machine's optimum -- CI skips these
+## cells (skip_on_ci), so the committed baseline is the reference and
+## regenerating only moves the drift to other machines. (Future hardening:
+## snapshotting a weakly-identified partition is inherently fragile; consider
+## asserting the identified TOTAL per-trait variance instead.)
 
 skip_if_no_visual_snapshot <- function() {
   testthat::skip_if_not_installed("ggplot2")

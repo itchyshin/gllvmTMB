@@ -58,6 +58,11 @@ default) now applies the full-matrix residual. This is brief item 1 of the Tier-
   checked-and-fine; block identification robust; scoping honest. **One CONFIRMED issue** — `extract_Omega`
   silently disagreed with `extract_Sigma` for a multinomial (diagonal only, no warn). **Fixed** (see
   above) + regression test added.
+- `devtools::check()`: **1 ERROR, 0 WARNING, 1 NOTE — both attributable to the pre-existing vdiffr drift,
+  not this change.** The ERROR is the 2 snapshot failures above (`checking tests`); the NOTE
+  (`non-portable file path`) was the `.new.svg` *scratch* those failures wrote — untracked, never in the
+  commit, since removed from the worktree. R-code / Rd / examples / examples-with-donttest all OK. My
+  change is check-clean.
 
 ## Follow-ups (staged this session, not executed)
 - Item 2 Discussion Checkpoint memo: `docs/dev-log/2026-07-17-tier2b-item2-discussion-checkpoint.md`

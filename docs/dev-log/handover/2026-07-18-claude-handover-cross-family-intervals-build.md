@@ -35,16 +35,11 @@ The certification campaign (W3) was deliberately deferred: the maintainer redire
 - **Confirm (NOT launched):** after the pilot validates, launch detached like the pilot but `--grid=both --n-sim=13000 --n-boot=499 --n-shards=~100` — this is a **multi-DAY** job (bootstrap-dominated ≈ tens of thousands of CPU-hours); it will NOT finish in one session. Results land later; aggregate the same way.
 - **Pilot is plumbing-scale** (n_sim=200 ⇒ 2·MCSE≈0.03): it exercises the whole pipeline + gives a first coverage signal, but the 0.94 gate verdict is only trustworthy at confirm scale. Report pilot numbers with that caveat + the "MEASURED, NOT certified" banner.
 
-## Next immediate steps (ordered)
-1. **Slice 5 — `dev/cross-family-coverage.R`** (NEW file; the multi-seed certification harness). Design in the plan's "Coverage-study design" + v3 fixes. Load-bearing:
-   - **Analytic `Σ_total_true = ΛΛᵀ + diag(ψ) + R_link`**; apply the estimator's OWN doubly-clamped functional (`sqrt(max(0,·))`, `min(·,1)`) to it. **Pin the mapped-off multinomial-contrast Ψ to ≈0** (the `.expand_mapped_diag` convention), NOT arbitrary DGP ψ. **Hard assertion:** `extract_Sigma(fit,'unit','total','none')` on a fitted truth fixture == analytic Σ to tolerance.
-   - **Coverage = covered / converged reps** (panel BLOCKER 2); `ci_failed`/NA = MISS; exclude only pre-CI non-convergence + a worst-case sensitivity (non-converged = not-covered).
-   - Operationalize BOTH estimands: `multiple_r` (bootstrap, one row per (nominal,partner,rep)) AND `contrast_r` (profile, one row per (nominal,partner,contrast k,rep); per-contrast MCSE).
-   - Grid: certified interior cells N∈{50,150,500} × multiple_r∈{0.2,0.5,0.8} × partner∈{gaussian r=0 (keep σ_eps>0 small), binomial}; + non-certified boundary DIAGNOSTIC cells. rep-clustered MCSE; judge the **2·MCSE lower band vs 0.94**; **confirm at ~12k CONVERGED reps** (inflate attempts by attrition; report effective N + per-cell power vs 0.95).
-   - **Pre-campaign inner-convergence gate**: measure the K=3 cross-family multinomial refit convergence rate on 1–2 pilot cells FIRST; if <~0.8, abort / lower-B / relax tolerance (don't burn the 12k campaign on a null).
-   - Path-2 gate: assert `.check_simulate_unconditional(fit)$can_redraw` is TRUE before any bootstrap.
-2. **Slice 6 — Totoro campaign** (multi-hour). **Deploy step first** (D-50: no GitHub artifacts, branch not pushed): rsync the worktree to Totoro `~/gtmb_work` (socket `~/.ssh/cm-*totoro*`, `cm-` prefix, ≤100 cores). Smoke-first (1 cell, abort on NA) → pilot n_sim=200 → confirm ~12k. Results LOCAL.
-3. **Slice 7 — STOP + report** the MEASURED coverage with the "MEASURED, NOT certified — awaiting D-43 panel" banner; after-task; refresh this handover. **Register CI-11 flip + NEWS + the D-43 panel (W4) are DEFERRED** — Rose before any covered claim; ≥2 NOT-DONE withholds.
+## Next steps (the ONLY remaining work — the deferred certification arc)
+The **Ayumi deliverable is SHIPPED** (above); Slice 5 (the harness) is DONE + smoke-verified. What remains is the **coverage-certification campaign** (Slices 6–7), deliberately deferred by the maintainer and fully staged:
+1. **Run the campaign on Totoro** (exact commands in the "STAGED" section above): re-deploy `dev/` → `export R_LIBS=…xfam-lib:…R/lib` → `--mode=gate` → `--mode=pilot` (`--grid=lean` for a fast ~20–40 min plumbing signal, or `--grid=certified` for the full ~5–9 h pilot) → `--mode=confirm` (n_sim≥5000, **multi-DAY**) → `Rscript dev/xfc-aggregate.R <out-dir>`. Coverage = covered/converged; 2·MCSE-lower-band vs 0.94; **"MEASURED, NOT certified" banner on every number**; results LOCAL (D-50).
+2. **STOP + report** the measured coverage to the maintainer. **Do NOT promote:** the D-43 panel (W4), the register CI-11 flip, and NEWS are ALL deferred behind the maintainer's decision. Rose before any covered claim; ≥2 NOT-DONE withholds.
+3. **Still-open plan deliverable:** a *directed check-log note to the main lane* (coordination on the shared register row `docs/design/35-validation-debt-register.md` CI-11 vs CI-08/CI-10) was NOT written this session — do it when the register work resumes (append-only; expect a merge point with the main lane).
 
 ## Gotchas
 - **`nnet` NOT in Suggests** — the coverage harness / any GOF must use by-hand expected freqs OR add `nnet` to Suggests + `skip_if_not_installed`.
@@ -54,7 +49,15 @@ The certification campaign (W3) was deliberately deferred: the maintainer redire
 - The **delta(atanh) comparator was CUT** (no `ADREPORT(Sigma_B)` in `src/gllvmTMB.cpp`). Do not re-add it without a C++ recompile slice.
 - Do NOT edit `dev/m3-grid.R` / the main lane's files. Register row is **CI-11** (new), NOT CI-08/CI-10 (the main lane's).
 
+## Mission control
+| repo · branch · state | what shipped this session | next by leverage |
+|---|---|---|
+| gllvmTMB · `claude/cross-family-intervals-20260718` (pushed; off `origin/main`) · **Ayumi package SHIPPED** | `simulate()` multinomial softmax draw; `extract_cross_correlations(method="wald"/"bootstrap"/"profile")` intervals (**uncalibrated**); Slice-5 coverage harness (smoke-verified, staged on Totoro); committed `9aa8281f` + `96c30593`, **tarball built**; tests green (12-file regression 0 fail) | **1** send Ayumi the package (`install_github` + usage guide) · **2** *[deferred]* run the Totoro certification campaign → report measured coverage → maintainer D-43 → CI-11/NEWS flip · **3** open a PR if wanted (maintainer merges) |
+
 ## How to resume
+This session's deliverable (Ayumi-ready intervals) is **COMPLETE**. The next Claude only needs to resume for the **deferred certification campaign** (or a new task). Rehydration order: this doc → the plan `~/.claude/plans/do-we-need-to-functional-zebra.md` (GOAL block + v3 resolution) → the two locked engine designs (Slices 1 & 3 in the plan). Open the capability widget (per `CLAUDE.md` step 0). **Spawn Rose (validation-debt lens) before any coverage claim; D-43 default NOT-DONE.**
+
+**One-command resume** (paste in an authenticated terminal at the worktree root `../gllvmTMB-cross-family-intervals`):
 ```
-claude "Rehydrate from docs/dev-log/handover/2026-07-18-claude-handover-cross-family-intervals-build.md in the worktree ../gllvmTMB-cross-family-intervals. Slices 1–4 are VERIFIED (uncommitted). Build Slice 5 (dev/cross-family-coverage.R) per the plan v3 (~/.claude/plans/do-we-need-to-functional-zebra.md), then run the Totoro campaign (Slice 6). Coverage = covered/converged; pin the mapped-off contrast Ψ in the truth; inner-convergence gate before the 12k run; measured-not-certified, D-43 deferred."
+claude "Rehydrate from docs/dev-log/handover/2026-07-18-claude-handover-cross-family-intervals-build.md on branch claude/cross-family-intervals-20260718. The Ayumi interval package is SHIPPED (committed/pushed/tarball); coverage is NOT certified. If continuing: run the deferred Totoro coverage-certification campaign per the 'STAGED' section (re-deploy dev/, R_LIBS export, gate->pilot->confirm->aggregate; coverage=covered/converged, 2*MCSE-vs-0.94, MEASURED-NOT-certified banner, D-43 before any CI-11 flip). Spawn Rose before any covered claim."
 ```

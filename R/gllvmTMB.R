@@ -855,15 +855,83 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
       "i" = "Fit one categorical response per model (item 2a-ii admits exactly one)."
     ))
   }
-  ## A mixed-family list with exactly one multinomial, on data that is NOT yet
-  ## expanded, needs subset expansion (expand only the categorical trait's rows).
-  ## Until that is automated, fail loud rather than mis-expand the whole
-  ## response column.
+  ## A mixed-family list with exactly one multinomial: expand ONLY the
+  ## categorical trait's rows (item 2a-ii cross-family). Other-family rows pass
+  ## through untouched (tagged .multinom_group_ = -1, .multinom_L_ = 0); each
+  ## multinomial observation becomes K-1 baseline-contrast pseudo-trait rows
+  ## carrying its 0-based observation id and .multinom_L_ = K-1.
   if (!inherits(family, "family") && is.list(family) && length(family) > 1L) {
-    cli::cli_abort(c(
-      "A {.fn multinomial} trait inside a mixed-family {.code list(...)} needs the pre-expanded long frame in this build.",
-      "i" = "Supply data carrying the {.code .multinom_group_} / {.code .multinom_L_} pseudo-trait columns, or fit the categorical response on its own."
-    ))
+    resp <- all.vars(formula[[2L]])
+    if (length(resp) != 1L || !(resp %in% names(data))) {
+      cli::cli_abort("multinomial(): the response must be a single column on the formula LHS.")
+    }
+    mn_family <- fams[[which(fam_is_mn)[1L]]]
+    requested_baseline <- if (inherits(mn_family, "family")) mn_family$baseline else NULL
+    fam_var <- attr(family, "family_var") %||% "family"
+    if (!(fam_var %in% names(data))) {
+      cli::cli_abort(c(
+        "A mixed-family {.code list(...)} needs a {.var {fam_var}} column mapping each row to a family.",
+        "i" = "Set {.code attr(family, 'family_var') <- 'colname'} or add a {.var family} column."
+      ))
+    }
+    ## Identify the multinomial family level, matching the fit's family_var ->
+    ## list alignment (named lists by name; unnamed lists in family_var-level
+    ## order).
+    fam_col    <- data[[fam_var]]
+    fam_levels <- if (is.factor(fam_col)) levels(fam_col) else sort(unique(as.character(fam_col)))
+    fam_names  <- names(fams)
+    mn_pos     <- which(fam_is_mn)[1L]
+    mn_level   <- if (!is.null(fam_names) && all(nzchar(fam_names))) fam_names[mn_pos] else fam_levels[mn_pos]
+    mn_rows    <- which(as.character(fam_col) == as.character(mn_level))
+    if (length(mn_rows) == 0L) {
+      cli::cli_abort("No rows map to the {.fn multinomial} family level {.val {mn_level}} in {.var {fam_var}}.")
+    }
+    mn_trait_lvls <- unique(as.character(data[[trait_col]])[mn_rows])
+    if (length(mn_trait_lvls) != 1L) {
+      cli::cli_abort(c(
+        "The {.fn multinomial} family must map to exactly one trait.",
+        "i" = "Found trait(s) {paste(mn_trait_lvls, collapse = ', ')} on multinomial rows."
+      ))
+    }
+    mn_trait <- mn_trait_lvls
+    yf <- droplevels(if (is.factor(data[[resp]])) data[[resp]][mn_rows]
+                     else factor(data[[resp]][mn_rows]))
+    if (!is.null(requested_baseline)) {
+      requested_baseline <- as.character(requested_baseline)
+      if (!(requested_baseline %in% levels(yf))) {
+        cli::cli_abort("{.fn multinomial}: baseline {.val {requested_baseline}} is not a category.")
+      }
+      yf <- stats::relevel(yf, ref = requested_baseline)
+    }
+    cats <- levels(yf); K <- length(cats)
+    if (K < 3L) {
+      cli::cli_abort("{.fn multinomial} requires an unordered response with >= 3 categories.")
+    }
+    L <- K - 1L
+    yint <- as.integer(yf)
+    other <- data[-mn_rows, , drop = FALSE]
+    if (nrow(other) > 0L) {
+      other[[trait_col]] <- as.character(other[[trait_col]])
+      other[[".multinom_group_"]] <- -1L
+      other[[".multinom_L_"]]     <- 0L
+    }
+    n_mn     <- length(mn_rows)
+    rep_idx  <- rep(seq_len(n_mn), each = L)
+    contrast <- rep(seq_len(L), times = n_mn)
+    mn_new <- data[mn_rows[rep_idx], , drop = FALSE]
+    mn_new[[trait_col]] <- paste0(mn_trait, ":", cats[contrast + 1L])
+    mn_new[[resp]] <- as.numeric(yint[rep_idx] == (contrast + 1L))
+    mn_new[[".multinom_group_"]] <- as.integer(rep_idx - 1L)
+    mn_new[[".multinom_L_"]]     <- as.integer(L)
+    other_lvls <- setdiff(unique(as.character(data[[trait_col]])), mn_trait)
+    ps_levels  <- paste0(mn_trait, ":", cats[-1L])
+    combined <- rbind(other, mn_new)
+    combined[[trait_col]] <- factor(as.character(combined[[trait_col]]),
+                                    levels = c(other_lvls, ps_levels))
+    rownames(combined) <- NULL
+    return(list(data = combined,
+                family = family, expanded = TRUE,
+                K = K, categories = cats, baseline = cats[1L]))
   }
   ## The user-requested reference category, if any (multinomial(baseline=)).
   mn_family <- fams[[which(fam_is_mn)[1L]]]

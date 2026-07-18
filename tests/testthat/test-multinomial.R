@@ -181,14 +181,17 @@ test_that("multinomial requires >= 3 categories (2-level redirects to binomial)"
   )
 })
 
-test_that("multinomial cannot be combined in a mixed-family list() (Tier 1)", {
+test_that("multinomial in a mixed-family list() needs a family_var column (item 2a-ii guard)", {
   skip_on_cran()
-  df <- .make_multinomial(seed = 5L, n = 60L, K = 3L)
+  ## A mixed-family list is now SUPPORTED for a multinomial trait (item 2a-ii),
+  ## but it requires a family_var column mapping each row to a family. Without
+  ## it, fail loud rather than mis-expand.
+  df <- .make_multinomial(seed = 5L, n = 60L, K = 3L)   # no `family` column
   expect_error(
     gllvmTMB(value ~ 0 + trait, data = df,
              family = list(multinomial(), gaussian()),
              trait = "trait", unit = "unit"),
-    regexp = "mixed-family"
+    regexp = "family.*column|family_var"
   )
 })
 

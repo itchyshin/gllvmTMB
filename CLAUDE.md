@@ -3,6 +3,16 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 For the current handoff, read
+`docs/dev-log/handover/2026-07-18-claude-handover.md` (Claude→Claude, 2026-07-18;
+**the multinomial cross-family arc is SHIPPED to `main`** — item 1 matrix
+`link_residual` (#758), item 2a-ii cross-family correlations +
+`extract_cross_correlations()` (#761), and `unique = TRUE` default + the
+`Psi = unique + link-specific` consistency fix (#762). A `multinomial()` trait now
+shares a shared `latent()` factor with Gaussian/binary/count/ordinal traits and
+reports genuine cross-family correlations. **NEXT lane picks a depth arc at a
+discussion checkpoint** — the item-3 one-per-unit recovery certificate (Totoro,
+ultra-plan) or calibrated cross-family intervals. Multi-seed always; Rose before any
+covered claim; compute local→Totoro (D-50).) Earlier:
 `docs/dev-log/handover/2026-07-12-claude-handover-covariance.md` (Claude→Claude,
 evening; the covariance-mode grammar campaign — Design 79/80, `scalar()`/
 `kernel_scalar()`, `indep(1+x)` per-trait) before starting new work. Branch

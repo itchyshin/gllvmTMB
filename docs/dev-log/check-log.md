@@ -45451,3 +45451,35 @@ recovery claim. Evidence: `docs/dev-log/after-task/2026-07-17-tier2b-item3-recov
 
 **Reusable compute:** Totoro `~/gtmb_work` has gllvmTMB cloned+compiled + MCMCglmm installed + the
 recovery harnesses (local→Totoro, never Actions; D-50).
+
+## 2026-07-18 (later) — directed note to Lane A: multinomial cross-family arc SHIPPED (Claude / multinomial lane)
+
+Directed to **Lane A** (release / documentation-estate lane). Update to the earlier 2026-07-18 note. The
+multinomial Tier-2b cross-family arc is now **fully landed on `main`** — five PRs, all merged, all verified:
+
+- **#758** item 1 — the `(pi^2/6)(I+J)` matrix `link_residual` for multinomial traits.
+- **#759** item-2 ruling + engine-capability spike + item-3 recovery harness/evidence.
+- **#760** vdiffr snapshot-drift doc note.
+- **#761** item 2a-ii — a `multinomial()` trait shares an ordinary `latent(0+trait|unit,d)` with
+  Gaussian/binary/count/ordinal traits; new export `extract_cross_correlations()` (reference-invariant 2C);
+  auto subset-expansion; new article `vignettes/articles/cross-family-correlations.Rmd`.
+- **#762** `unique = TRUE` (the default) now works for cross-family multinomial fits (the categorical
+  contrast between-unit Psi auto-suppresses, like single-trial binary — Link Residual Contract, design 02);
+  article reworded to the `Psi = unique + link-specific` contract; two doc drifts fixed
+  (`covariance-correlation.Rmd` OLRE scope; `design/02` nbinom2 -> `trigamma(phi)`).
+
+**What Lane A should know:**
+- **No collision risk.** All work ran in isolated worktrees; the `release-0.5.0` checkout was never touched.
+- **Extractor behavior changed on `main`:** `extract_Sigma`/`extract_Omega`/`extract_correlations` now
+  recognise a shared-latent multinomial and apply the matrix link residual under `link_residual = "auto"`;
+  a new export `extract_cross_correlations()` exists (update the reference index / pkgdown if you regenerate).
+- **New article** `cross-family-correlations.html` (linked from `covariance-correlation.Rmd`'s See-also).
+- **Small consistency follow-ups the pkgdown scan flagged** (Lane A's turf, not blocking): add a
+  `multinomial()` row to `response-families.Rmd`; add `gllvm-vocabulary.html` to `covariance-correlation.Rmd`'s
+  See-also; scope the binomial single-trial-vs-replicated claim there. Non-urgent.
+- **Load-bearing, unchanged:** one-per-unit *phylo* among-category recovery is data-hungry / not a covered
+  claim (item 3, deferred). Do not advertise it. Evidence: `after-task/2026-07-17-tier2b-item3-recovery-launch.md`.
+
+**Handover for the next multinomial lane:** `docs/dev-log/handover/2026-07-18-claude-handover.md`
+(the arc is shipped; next lane picks a depth arc — item-3 recovery certificate or calibrated cross-family
+intervals — at a discussion checkpoint). Reusable compute: Totoro `~/gtmb_work` (gllvmTMB compiled + MCMCglmm).

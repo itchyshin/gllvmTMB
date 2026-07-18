@@ -537,6 +537,7 @@ Nakagawa, Johnson & Schielzeth 2017).
 
 ## See also
 
+* [Cross-family trait correlations, including nominal responses](cross-family-correlations.html) — one shared latent factor across Gaussian, binary, count, ordinal, and nominal traits, and the reference-invariant summary for a `multinomial()` trait
 * [Pitfalls](pitfalls.html) — common mistakes including correlation inflation
 * [`?latent`](../reference/latent.html) — the ordinary Psi-carrying latent keyword
 * [`?extract_Sigma`](../reference/extract_Sigma.html) — the unified extractor

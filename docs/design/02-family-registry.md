@@ -86,9 +86,10 @@ exactly one term is non-zero:
 - **Overdispersed Poisson — BOTH, and it is the ONLY distribution that carries
   both**: a *separate estimated OLRE* (unique variance) on top of the Poisson
   link residual `log1p(1/mu)`. The other overdispersed families **bake** the
-  overdispersion into a single analytic $\sigma^2_d$ (`nbinom2` $= \log(1 + 1/\mu
-  + \phi)$, tweedie $= \log(1 + \phi\,\mu^{p-2})$), so they have no separate
-  unique term.
+  overdispersion into a single analytic $\sigma^2_d$ (`nbinom2` $= \psi'(\phi)$,
+  the trigamma of the NB2 dispersion, matching the shipped
+  `link_residual_per_trait()`; tweedie $= \log(1 + \phi\,\mu^{p-2})$), so they
+  have no separate unique term.
 
 (Caution: this is the *observation-level* residual. The *between-unit* `Psi`
 `theta_diag_B` in a `latent()`/`indep()` term is a distinct, genuinely
@@ -104,7 +105,7 @@ cases:
 | `binomial` | probit | $1$ (by construction; the probit latent residual is unit-Gaussian) |
 | `binomial` | cloglog | $\pi^2 / 6 \approx 1.64$ |
 | `poisson` | log | depends on $\mu$; the trigamma-approximation $\sigma^2_d \approx \log(1 + 1/\mu)$ is the standard latent-Gaussian linearisation |
-| `nbinom2` | log | $\sigma^2_d = \log(1 + 1/\mu + \phi)$ where $\phi$ is the overdispersion |
+| `nbinom2` | log | $\sigma^2_d = \psi'(\hat\phi)$ (trigamma of the per-trait NB2 dispersion $\phi$), matching the shipped `link_residual_per_trait()` |
 | `Gamma` | log | $\sigma^2_d = \psi'(\phi_{\gamma,t})$ where $\phi_{\gamma,t}$ is the per-trait shape and $\psi'$ is the trigamma function |
 | `Beta` | logit | $\sigma^2_d = \psi'(a) + \psi'(b)$ where $a, b$ are the beta shape parameters |
 | `lognormal` | identity (of log-y) | $0$ (since the linear predictor is on the log-y scale, this is just Gaussian on log-y) |

@@ -507,10 +507,13 @@ $\boldsymbol\Sigma_{\text{unit\_obs}} = \boldsymbol\Lambda_{\text{unit\_obs}} \b
 
 ## Observation-level random effects for non-Gaussian fits
 
-For overdispersed Poisson and similar count families, a latent-scale
-diagonal component can be represented by adding an observation-level
-random effect (OLRE; Nakagawa & Schielzeth 2010). The pattern is
-described here but not run in this article:
+**Overdispersed Poisson is the one family that carries both** an estimated
+observation-level random effect (OLRE) and a link residual, so it is the case
+where adding a latent-scale diagonal component makes sense (Nakagawa &
+Schielzeth 2010). For `nbinom2`, `tweedie`, and the other overdispersed count
+families the overdispersion is already baked into the single
+distribution-specific residual $\sigma^2_d$ — adding an OLRE on top would
+double-count it. The OLRE pattern is described here but not run in this article:
 
 $$
 \ln \lambda_{ij} = \eta_{ij} + e_{ij}, \qquad e_{ij} \sim \mathcal N(0, \sigma_e^2).

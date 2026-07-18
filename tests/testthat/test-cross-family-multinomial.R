@@ -122,3 +122,27 @@ test_that("fail-closed fence: a multinomial + augmented latent slope (rr_B_slope
     regexp = "unsupported latent|deferred|Design 84"
   )
 })
+
+test_that("unique = TRUE (default) works; the multinomial contrast between-unit Psi auto-suppresses", {
+  skip_on_cran(); skip_if_not_installed("MASS")
+  ## The DEFAULT latent() carries unique = TRUE. A multinomial contrast is a
+  ## one-hot 0/1 per row, so its between-unit Psi is unidentified (like single-
+  ## trial binary) and the engine auto-suppresses it -- unique = TRUE works out
+  ## of the box, pdHess holds, and identified partners keep their Psi. This is
+  ## the Link Residual Contract (design 02): categorical unique variance is 0.
+  sim <- .build_xfam_raw(2L, N = 300L, reps = 5L)
+  fit <- suppressWarnings(suppressMessages(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 2),          # unique = TRUE
+    data = sim$data, family = .xfam_fam(), trait = "trait", unit = "unit", silent = TRUE)))
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(isTRUE(fit$sd_report$pdHess))
+  ## Between-unit Psi for the two multinomial contrasts is auto-suppressed (~0).
+  psi <- suppressMessages(extract_Sigma(fit, level = "unit", part = "unique"))
+  s <- if (!is.null(psi$s)) psi$s else diag(psi$Sigma)
+  mn <- grepl("^cat:", names(s))
+  expect_true(any(mn))
+  expect_true(all(s[mn] < 1e-2))
+  ## Cross-block still reported.
+  cc <- suppressMessages(extract_cross_correlations(fit, level = "unit"))
+  expect_true(is.data.frame(cc) && nrow(cc) >= 1L)
+})

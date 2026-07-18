@@ -77,10 +77,17 @@ $\boldsymbol\Lambda\boldsymbol\Lambda^{\!\top}$, and the cross-family
 correlations are its standardised off-diagonals — rotation-invariant, and the
 quantity to report.
 
-In this demonstration the nominal trait is fitted **loadings-only**
-(`latent(..., unique = FALSE)`): the $K-1$ contrast rows share the factor but
-carry no per-contrast diagonal $\boldsymbol\Psi$. A unique/Psi tier on a
-categorical response is deferred (see the caveats).
+`latent()` carries a **between-unit** trait-specific variance $\boldsymbol\Psi$
+by default (`unique = TRUE`), so the full tier covariance is
+$\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$
+— $\boldsymbol\Psi$ is the variance each trait has among units *beyond* the
+shared factor. For the nominal trait — exactly like a binary trait — each
+contrast is a single 0/1 per observation, so its between-unit $\boldsymbol\Psi$
+is *not identified*, and the engine auto-suppresses it (the softmax's own fixed
+link residual is the residual; see the caveats). Identified partners (Gaussian,
+overdispersed Poisson) keep their $\boldsymbol\Psi$, so the default
+`unique = TRUE` works out of the box; the cross-family correlations live in
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top$ either way.
 
 ## A five-family worked example
 
@@ -178,7 +185,7 @@ family <- list(
 attr(family, "family_var") <- "family"
 
 fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | unit, d = 3, unique = FALSE),
+  value ~ 0 + trait + latent(0 + trait | unit, d = 3),  # unique = TRUE (default)
   data   = dat,
   family = family,
   trait  = "trait",
@@ -258,11 +265,24 @@ next section.
 
 These are limits of the capability as it stands at 0.6, not incidental notes.
 
-- **The nominal trait is loadings-only here.** It is fitted with
-  `latent(..., unique = FALSE)`, so the $K-1$ contrast rows share the factor but
-  carry no per-contrast diagonal $\boldsymbol\Psi$. A unique/Psi tier on a
-  categorical response is deferred; the pairwise latent correlations (the matrix)
-  are the recovered quantities.
+- **Two different $\boldsymbol\Psi$'s — do not conflate them.** The package uses
+  the contract $\boldsymbol\Psi = \text{unique} + \text{link-specific}$, and for
+  almost every family exactly one term is non-zero (Gaussian: an estimated
+  `unique`; binary / ordinal / Poisson / **multinomial**: a fixed `link-specific`
+  residual). There are then two distinct objects:
+  (i) the **between-unit** $\boldsymbol\Psi$ inside `latent()` — an estimated
+  among-unit random-effect variance; and
+  (ii) the **observation-scale** link residual $(\pi^2/6)(\mathbf I+\mathbf J)$
+  used to put the nominal block on a common scale.
+  For the nominal trait the *between-unit* $\boldsymbol\Psi$ is **not identified**
+  (each contrast is a single 0/1 — the softmax link's own scale is the residual),
+  so `unique = TRUE` (the default) **auto-suppresses** it for the categorical
+  contrasts and keeps it for the identified partners (Gaussian, overdispersed
+  Poisson). This is *structural*, not a to-do: like a binary trait, a categorical
+  trait has no estimable per-contrast between-unit variance. The pairwise latent
+  correlations (the matrix) are the recovered quantities. See
+  [the vocabulary of $\boldsymbol\Psi$](gllvm-vocabulary.html) and
+  [covariance and correlation](covariance-correlation.html).
 
 - **The single-number summary belongs on the observation scale.** The
   reference-invariant multiple correlation is computed on the observation scale

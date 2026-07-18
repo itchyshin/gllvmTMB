@@ -1823,6 +1823,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (any(family_id_vec == 16L)) {
     .mn_env <- environment()
     .mn_allowed_tiers <- c("use_phylo_rr", "use_rr_B", "use_lv_B")
+    ## The DEFAULT between-unit auto-Psi -- latent(unique = TRUE), the ordinary
+    ## default -- is allowed: a multinomial's one-hot contrast pseudo-traits
+    ## auto-suppress their between-unit Psi (unidentified; Link Residual
+    ## Contract, design 02), while identified partners (Gaussian sigma^2,
+    ## overdispersed-Poisson OLRE) keep theirs. So `unique = TRUE` works out of
+    ## the box for cross-family correlations. An EXPLICIT unique()/indep()
+    ## diagonal (use_diag_B with auto_psi_B = FALSE) stays fenced -- it would
+    ## leave the contrast Psi free and non-identified.
+    if (isTRUE(auto_psi_B)) .mn_allowed_tiers <- c(.mn_allowed_tiers, "use_diag_B")
     .mn_non_tier      <- c("use_equalto", "use_propto")
     .mn_use_flags <- setdiff(ls(envir = .mn_env, pattern = "^use_"),
                              c(.mn_allowed_tiers, .mn_non_tier))
@@ -1832,7 +1841,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn multinomial} supports fixed effects, {.fn phylo_latent}, and a shared {.fn latent} ordination in this release.",
         "x" = "An unsupported latent / random-effect / structured term was combined with a categorical (multinomial) response.",
-        "i" = "Use a shared {.code latent(0 + trait | unit, d = k, unique = FALSE)} for cross-family (nominal <-> other) correlations, or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface. A per-contrast unique tier is deferred, so {.code unique = FALSE} is required.",
+        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical trait's between-unit Psi auto-suppresses), or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface. An explicit {.fn unique}/{.fn indep} diagonal on a categorical trait is not identified and stays fenced.",
         ">" = "Other latent-scale structures on categorical responses are deferred (Design 84, Tier 2b+)."
       ))
     }
@@ -4331,7 +4340,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (length(rows_t) == 0L) return(FALSE)
       isTRUE(all(family_id_vec[rows_t] == 14L))
     }, logical(1))
-    skip_olre_t <- bernoulli_only_per_trait | ordinal_only_per_trait
+    ## Multinomial (fid 16): each baseline-contrast pseudo-trait is a one-hot
+    ## 0/1 per row, so a per-row OLRE is unidentified for the same scale-
+    ## absorbing reason as single-trial Bernoulli / ordinal_probit (Link
+    ## Residual Contract, design 02: categorical unique variance is 0).
+    multinom_only_per_trait <- vapply(seq_len(n_traits), function(t) {
+      rows_t <- which(trait_id == (t - 1L))
+      if (length(rows_t) == 0L) return(FALSE)
+      isTRUE(all(family_id_vec[rows_t] == 16L))
+    }, logical(1))
+    skip_olre_t <- bernoulli_only_per_trait | ordinal_only_per_trait |
+      multinom_only_per_trait
     warn_olre_t <- !is.na(family_per_trait) &
                    family_per_trait %in% c(12L, 13L)
     trait_levels_lab <- levels(data[[trait]])
@@ -4421,8 +4440,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     skip_psi_b_t <- vapply(seq_len(n_traits), function(t) {
       rows_t <- which(trait_id == (t - 1L))
       if (length(rows_t) == 0L) return(FALSE)
-      isTRUE(all(family_id_vec[rows_t] == 1L) &&
-             all(n_trials[rows_t] == 1))
+      ## Single-trial Bernoulli: no within-cell information for a between-unit
+      ## Psi. Multinomial (fid 16): each baseline-contrast pseudo-trait is a
+      ## one-hot 0/1 per row, so its between-unit Psi is unidentified for the
+      ## same reason -- the softmax link's implicit scale (the fixed
+      ## (pi^2/6)(I+J) residual) IS the residual. Per the Link Residual Contract
+      ## (design 02, restated 2026-07-05) a categorical trait's observation-level
+      ## unique variance is 0; auto-drop the default between-unit Psi so
+      ## unique = TRUE works out of the box (the shared factor still carries the
+      ## cross-family covariance, and identified traits keep their Psi).
+      isTRUE(all(family_id_vec[rows_t] == 1L) && all(n_trials[rows_t] == 1)) ||
+        isTRUE(all(family_id_vec[rows_t] == 16L))
     }, logical(1))
     if (any(skip_psi_b_t)) {
       ## Pin the skipped trait variances near zero and map them (and their
@@ -4452,7 +4480,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       psi_skipped_labs <- levels(data[[trait]])[skip_psi_b_t]
       n_psi_skip <- length(psi_skipped_labs)
       cli::cli_inform(c(
-        "i" = "Skipping the default between-unit {.field Psi} for {n_psi_skip} single-trial binary trait{?s}: it is unidentified when each (trait, unit) cell has one 0/1 observation (the link's implicit scale is the residual).",
+        "i" = "Skipping the default between-unit {.field Psi} for {n_psi_skip} single-trial binary / categorical-contrast trait{?s}: it is unidentified when each (trait, unit) cell is a single 0/1 (the link's implicit scale is the residual).",
         "i" = "Trait{?s} affected: {.val {psi_skipped_labs}}.",
         "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off. Pass multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) to recover identifiability, or add an explicit {.fn indep} term."
       ), .frequency = "once",

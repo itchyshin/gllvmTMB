@@ -98,5 +98,13 @@ dev/m3-pilot-local.log
 dev/m3-pilot-local.pid
 dev/STOP-LOCAL-PILOT
 
+# Issue #750 spatial-coverage RUNTIME artifacts (Monte-Carlo shards + pooled
+# .rds). Machine-local results kept LOCAL per D-50 (never committed); the numbers
+# live in the #750 after-task. dev/ is already .Rbuildignore'd (never shipped).
+dev/cov-shards/
+dev/cov-baseline/
+dev/cov-clean/
+dev/spatial-coverage-750-*.rds
+
 # Claude Code background-agent worktrees (ephemeral; auto-removed)
 .claude/worktrees/

@@ -9,10 +9,11 @@ For the current handoff, read
 `extract_cross_correlations()` (#761), and `unique = TRUE` default + the
 `Psi = unique + link-specific` consistency fix (#762). A `multinomial()` trait now
 shares a shared `latent()` factor with Gaussian/binary/count/ordinal traits and
-reports genuine cross-family correlations. **NEXT lane picks a depth arc at a
-discussion checkpoint** — the item-3 one-per-unit recovery certificate (Totoro,
-ultra-plan) or calibrated cross-family intervals. Multi-seed always; Rose before any
-covered claim; compute local→Totoro (D-50).) Earlier:
+reports genuine cross-family correlations. **NEXT arc (chosen 2026-07-18):
+calibrated cross-family intervals** — attach certified-coverage uncertainty to
+`extract_cross_correlations()`, closing the CI-08/CI-10 `heuristic_unvalidated`
+debt (the 0.6→1.0 headline); the item-3 recovery certificate is deferred behind it.
+Multi-seed always; Rose before any covered claim; compute local→Totoro (D-50).) Earlier:
 `docs/dev-log/handover/2026-07-12-claude-handover-covariance.md` (Claude→Claude,
 evening; the covariance-mode grammar campaign — Design 79/80, `scalar()`/
 `kernel_scalar()`, `indep(1+x)` per-trait) before starting new work. Branch

@@ -70,18 +70,37 @@ on every step; fence boundaries proven (default ✅, loadings-only ✅, explicit
 - Dev harnesses (results local, D-50): `dev/cross-family-5family-demo.R`, `dev/cross-family-5family-multiseed.R`,
   `dev/phylo-multinomial-recovery-harness.R`. Totoro `~/gtmb_work` has gllvmTMB compiled + MCMCglmm + the harnesses.
 
-## Next Immediate Steps (the next lane — pick ONE at a discussion checkpoint with Shinichi)
-1. **Item-3 recovery certificate** (deepest, compute): the definitive Totoro campaign — larger-N + a
-   ridge-penalized gllvmTMB arm + interval coverage + ρ-ladder + K=4 + a **D-43 panel** before any covered
-   claim. Ultra-plan it; harness + env are ready on Totoro.
-2. **Calibrated intervals for the cross-family correlations** (extract_cross_correlations is point-only;
-   coverage not certified — the 0.6→1.0 headline is interval coverage).
-3. **Replication-aware contrast-Ψ** (Rose check-6): keep the categorical contrast Ψ when replicated
-   categorical data identifies it (mirror the multi-trial-binomial `n_trials` gate). Engine change.
-4. **Cross-family with structure:** a multinomial sharing a `phylo_latent`/`spatial_latent` with other
-   traits (currently ordinary `latent` + phylo are separate paths).
-5. **Small doc cross-refs** the pkgdown scan flagged (response-families.Rmd needs a multinomial row;
-   covariance See-also → gllvm-vocabulary; binomial single-trial scoping) — low-effort consistency.
+## Next arc — CHOSEN by Shinichi 2026-07-18: **calibrated cross-family intervals**
+This is the decided next lane (the 0.6→1.0 headline is interval coverage, not more point estimates).
+
+**Goal:** attach *calibrated* uncertainty to `extract_cross_correlations()` — both the reference-invariant
+`multiple_r` and (optionally) the (K−1)-vector — and to the pairwise cross-family correlations, then
+**certify coverage** (multi-seed, D-43 panel) before any "coverage" claim.
+
+**Concrete first steps:**
+1. **Rehydrate the interval surface.** `extract_cross_correlations()` is point-only (R/extract-correlations.R,
+   near the new function). The package already has interval machinery to reuse/extend: `bootstrap_Sigma()` /
+   `coverage_study()` (R/bootstrap-sigma.R), the Fisher-z / profile routes in `extract-correlations.R`, and
+   the `.correlation_interval_status()` flag which currently marks mixed-family correlation intervals
+   `heuristic_unvalidated` / `target_specific_uncalibrated` — **that flag names exactly the debt to close**
+   (validation register CI-08 / CI-10).
+2. **Pick the route.** Bootstrap (nonparametric over units, or the existing simulate-based redraw) is the
+   natural first route for a `multiple_r` (a nonlinear function of Σ); a profile route is the certificate
+   path where feasible. Decide with Shinichi at a checkpoint.
+3. **Coverage study.** Multi-seed simulation with a KNOWN cross-correlation (reuse `dev/cross-family-5family-*.R`):
+   does the interval cover the true `multiple_r` / pairwise cross-correlation at the nominal rate? Report
+   coverage ± MCSE across N and ρ. Compute local→Totoro (D-50).
+4. **Only then** claim coverage — D-43 panel, Rose, and reader-surface honesty (intervals framed
+   recovery-oriented until certified).
+
+**Also on the menu (deferred; open with Shinichi if #2 stalls or finishes):**
+- **Item-3 one-per-unit recovery certificate** (deepest, compute): larger-N + ridge arm + ρ-ladder + K=4 +
+  D-43 panel; harness + MCMCglmm ready on Totoro `~/gtmb_work`.
+- **Replication-aware contrast-Ψ** (Rose check-6): keep the categorical contrast Ψ when replicated data
+  identifies it (mirror the multi-trial-binomial `n_trials` gate). Engine change.
+- **Structured cross-family:** a multinomial sharing a `phylo_latent`/`spatial_latent` with other traits.
+- **Small pkgdown cross-refs** the scan flagged (response-families.Rmd multinomial row; covariance See-also →
+  gllvm-vocabulary; binomial single-trial scoping) — low-effort, Lane A's turf.
 
 ## Blockers / Open Questions
 - The **MCMCglmm low-bias mystery** (open, not gllvmTMB's) — worth a short note if item 3 resumes.
@@ -101,9 +120,9 @@ All work merged to `main` (#758–#762). This handover is the only new artifact;
 a PR, **do not auto-merge** (Shinichi merges). Nothing unpushed once this branch is pushed.
 
 ## How to Resume (paste ONE line in an authenticated terminal at the repo root)
-Interactive (you steer which arc):
+The next arc is DECIDED: **calibrated cross-family intervals**. Interactive:
 ```
-claude "Rehydrate from docs/dev-log/handover/2026-07-18-claude-handover.md on main. The multinomial cross-family arc is SHIPPED (item 1 + 2a-ii + unique=TRUE, #758–#762). Pick the next depth arc with me at a discussion checkpoint — default candidate is the item-3 recovery certificate (Totoro, ultra-plan) or calibrated cross-family intervals. Spawn Rose before any covered claim; multi-seed always; compute local→Totoro (D-50)."
+claude "Rehydrate from docs/dev-log/handover/2026-07-18-claude-handover.md on main. The multinomial cross-family arc is SHIPPED (item 1 + 2a-ii + unique=TRUE, #758–#762). Open the CHOSEN next arc: calibrated cross-family intervals — attach certified-coverage uncertainty to extract_cross_correlations() (multiple_r + pairwise cross-correlations), closing the CI-08/CI-10 heuristic_unvalidated debt. Start with the 'Concrete first steps' in the handover; pick the bootstrap-vs-profile route with me at a checkpoint. Spawn Rose before any covered claim; multi-seed always; compute local→Totoro (D-50)."
 ```
 
 ## Mission control
@@ -112,7 +131,7 @@ claude "Rehydrate from docs/dev-log/handover/2026-07-18-claude-handover.md on ma
 | item 1 — matrix link residual | ✅ MERGED #758 | `main` | — |
 | item 2a-ii — cross-family + 2C | ✅ MERGED #761 | `main` | — |
 | unique=TRUE default + Ψ contract | ✅ MERGED #762 | `main` | — |
-| item 3 — one-per-unit recovery certificate | 🔴 in-progress evidence, NOT covered | Totoro `~/gtmb_work` | ultra-plan the definitive campaign |
-| cross-family calibrated intervals | 🔴 not started | — | 0.6→1.0 headline |
+| **cross-family calibrated intervals** | ▶ **NEXT — chosen 2026-07-18** | — | CI-08/CI-10 debt; the 0.6→1.0 headline |
+| item 3 — one-per-unit recovery certificate | 🔴 in-progress evidence, NOT covered | Totoro `~/gtmb_work` | ultra-plan the definitive campaign (deferred behind #2) |
 | replication-aware contrast-Ψ | 🟡 deferred (Rose check-6) | fenced | engine change if in scope |
 | multiple multinomial traits / structured cross-family | 🟡 deferred, fail-closed | fenced | future |

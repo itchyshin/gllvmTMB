@@ -67,3 +67,37 @@ headline surface, which is exactly the kind of internal-identification detail we
 ## Guards carried forward
 Multi-seed always · Rose before any covered claim · compute local→Totoro · reader surfaces carry no
 register codes and no bare reference-category identification detail.
+
+---
+
+## RULING (maintainer, 2026-07-17) — ACCEPTED "as recommended"
+- **Decision 1 (parser scope):** narrow-first 1a → then 1b. Approved.
+- **Decision 2 (reporting):** **2C** — default the **reference-invariant multiple-correlation** scalar,
+  full labelled (K−1)-vector on request. Approved. (Sub-Qs: multiple-correlation preferred; interval
+  capability can follow item 3; unsigned R acceptable for the default table.)
+The Discussion Checkpoint is CLEARED; item 2 is unblocked.
+
+## Engine-capability SPIKE (2026-07-17) — re-scopes item 2
+Ran a throwaway spike (env-gated fence bypass `GTMB_SPIKE_ALLOW_MULTINOM_LATENT`, reverted) to size the
+work before implementing:
+- **Spike A — multinomial + ORDINARY `latent()` (single family): the TMB engine FITS and CONVERGES**
+  (`conv = 0`). The softmax likelihood (fid 16) already composes with a shared latent factor. Only
+  `extract_Sigma()` refuses — it wires the `phy` tier only for a multinomial; the ordinary-latent tier
+  falls through to the "fixed-effects-only multinomial" refusal.
+- **Spike B — MIXED `list(multinomial(), gaussian())`: fenced at `expand_multinomial_response()`** (the
+  mixed-family abort), BEFORE the fit. The mixed-family expansion is the real remaining plumbing.
+
+**Re-scoped item 2 (narrow-first, matches the 1a→1b ruling):**
+- **2a-i (medium, R-side reporting):** the engine already fits multinomial + ordinary/structured
+  `latent()`; wire `extract_Sigma()` / `extract_correlations()` to report that tier's V for a multinomial
+  (currently only `level="phy"` is recognized). Its own PR, TDD + Rose + multi-seed.
+- **2a-ii (larger, engine/plumbing — the cross-family headline):** relax the two fences and extend
+  `expand_multinomial_response()` + long-format assembly to admit a multinomial trait ALONGSIDE
+  other-family traits sharing one latent factor (cross-covariance in Λ), then implement the 2C reporting
+  convention (multiple-correlation default + (K−1)-vector). Its own PR.
+- **1c stays fenced.**
+
+**Next-session entry point:** start 2a-i (wire the ordinary/structured-latent multinomial reporting path
+in `extract_Sigma`); the engine work is already done for the single-family case. Branch
+`claude/multinomial-tier2b-item2` off main. Spike detail:
+`docs/dev-log/after-task/2026-07-17-tier2b-item2-spike.md`.

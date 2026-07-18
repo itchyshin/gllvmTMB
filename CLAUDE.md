@@ -9,13 +9,17 @@ it to Shinichi as step 0 — it is the mission-control. Do this before reading
 further or planning.
 
 For the current handoff, read
-`docs/dev-log/handover/2026-07-17-claude-handover-coverage-shipped.md` (Claude→Claude, 2026-07-17;
-Sigma_unit-diagonal coverage certificate **SHIPPED** — the fresh-seed lift pooled to N≈15k, an
-independent D-43 panel certified both gaussian n≥150 d≤2 cells 3-0, Shinichi approved **flip both**,
-and the confint profile wiring + gate-framed/convergence-conditional/d≤2-scoped public wording merged
-as **`dd80244a`** and pushed. Fences intact; certificate defaults NOT-DONE elsewhere. NEXT: pick the
-next arc from that handover's "Remaining arcs" map, or ask Shinichi). The prior WITHHELD/in-flight
-handover `docs/dev-log/handover/2026-07-17-claude-handover.md` is now superseded. Earlier:
+`docs/dev-log/handover/2026-07-17-claude-handover-750-spatial-done.md` (Claude→Claude, 2026-07-17;
+**#750 spatial SPDE unconditional RE redraw SHIPPED** — `bootstrap_Sigma()`/`coverage_study()`/the other
+simulate-based CIs are now valid (non-collapsed) for base spatial fits; the redraw is proven
+distributionally exact (recovery test + adversarial Opus review; `perm=FALSE` crux) and the coverage DoD
+is met IN-REGIME (n≥150, mean 0.946 = the Sigma_unit certificate); `spatial_latent`/`dep`/slope stay
+fail-closed. 7 commits `dd80244a`…`051eb4e5`, pushed, lane clean. **NEXT ARC (Shinichi-chosen): the
+CAPSTONE METRIC-REPAIR** — repair the coverage/power capstone harness (CI-08/CI-10 rows, binary-harness
+mislabelling, ordinal-probit rows; #349/#346, Design 66) that gates CRAN + the methods paper; ultra-plan
+it, compute on Totoro/DRAC, results LOCAL D-50). It supersedes the earlier coverage-certificate handover
+`docs/dev-log/handover/2026-07-17-claude-handover-coverage-shipped.md` (which shipped the Sigma_unit
+certificate `dd80244a` and holds the full "Remaining arcs" map). Earlier:
 `docs/dev-log/handover/2026-07-13-claude-handover.md` (Claude→Claude; the `||`
 uncorrelated random-slope coupling axis COMPLETE across all sources, merged to
 `main` @ `8ec261bb`) before starting new work. **Strategy: 0.5 is the

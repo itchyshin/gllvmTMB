@@ -77,9 +77,13 @@
 #'   aliases `"B"` and `"W"` are still accepted. Levels absent from
 #'   the fit are silently dropped. Default: all available levels.
 #' @param what Character vector; which summaries to compute.
-#'   Subset of `c("Sigma", "R", "communality", "ICC")`. Default: all
-#'   four. `"ICC"` only makes sense at the site level and requires both
-#'   `B` and `W` tiers in the fit.
+#'   Subset of `c("Sigma", "R", "communality", "ICC", "cross_corr")`.
+#'   Default: all. `"ICC"` only makes sense at the site level and
+#'   requires both `B` and `W` tiers in the fit. `"cross_corr"` bootstraps
+#'   the aggregate `multiple_r` between a `multinomial()` trait and each
+#'   partner (see [extract_cross_correlations()]); it is stored as a plain
+#'   named numeric per tier (`multiple_r_B`, ...) and is silently skipped
+#'   for fits without a nominal trait.
 #' @param conf Numeric in `(0, 1)`; confidence level for percentile CIs.
 #'   Default 0.95.
 #' @param seed Optional RNG seed for reproducibility.
@@ -106,6 +110,14 @@
 #'     `R_B`, `communality_B`, `ICC_site`).}
 #'   \item{`ci_lower`, `ci_upper`}{Named lists of percentile CI bounds,
 #'     element-wise the same shape as the corresponding `point_est`.}
+#'   \item{`n_effective`}{Named list (vector summaries only) giving the
+#'     per-element count of finite bootstrap draws. For `multiple_r_*`
+#'     entries, any element whose effective count is below 80% of `n_boot`
+#'     has its CI bounds set to `NA` (minimum-effective-B floor).}
+#'   \item{`boot_median`}{Named list (`multiple_r_*` entries only) of the
+#'     per-element bootstrap median -- a cheap sanity comparator against
+#'     `point_est`; a large gap flags gross bootstrap corruption and is not a
+#'     coverage certifier.}
 #'   \item{`ci_method`}{Character; currently `"percentile"`.}
 #'   \item{`link_residual`}{Character; the link-residual convention used
 #'     in point estimates and bootstrap refit summaries.}
@@ -154,7 +166,7 @@ bootstrap_Sigma <- function(
   fit,
   n_boot = 200,
   level = c("unit", "unit_obs", "phy", "B", "W"),
-  what = c("Sigma", "R", "communality", "ICC"),
+  what = c("Sigma", "R", "communality", "ICC", "cross_corr"),
   conf = 0.95,
   seed = NULL,
   n_cores = 1,
@@ -343,6 +355,8 @@ bootstrap_Sigma <- function(
     point_est = point_est,
     ci_lower = ci$lower,
     ci_upper = ci$upper,
+    n_effective = ci$n_effective,
+    boot_median = ci$boot_median,
     ci_method = "percentile",
     link_residual = link_residual,
     conf = conf,
@@ -414,6 +428,29 @@ bootstrap_Sigma <- function(
       )
       if (!is.null(cm)) out[[paste0("communality_", lvl)]] <- cm
     }
+    if ("cross_corr" %in% what) {
+      ## Aggregate cross-family multiple_r between a multinomial() trait and each
+      ## partner. Stored as a PLAIN named numeric only (never the per-contrast
+      ## contrast_r list column): a list column would break .summarise_draws()'s
+      ## positional vapply. refit_one() calls .extract_summaries() UNGUARDED, so
+      ## the tryCatch is load-bearing -- an abort (no nominal trait, singular
+      ## Scc, non-convergence) must yield NULL, not kill the whole bootstrap.
+      cc <- tryCatch(
+        extract_cross_correlations(
+          fit,
+          level = .canonical_level_name(lvl),
+          contrasts = FALSE,
+          link_residual = link_residual
+        ),
+        error = function(e) NULL
+      )
+      if (!is.null(cc) && nrow(cc) > 0L) {
+        out[[paste0("multiple_r_", lvl)]] <- stats::setNames(
+          as.numeric(cc$multiple_r),
+          paste(cc$nominal, cc$partner, sep = "__")
+        )
+      }
+    }
   }
   if ("ICC" %in% what && all(c("B", "W") %in% level)) {
     icc <- tryCatch(
@@ -450,10 +487,13 @@ bootstrap_Sigma <- function(
   alpha <- 1 - conf
   q_lo <- alpha / 2
   q_hi <- 1 - alpha / 2
+  n_boot <- length(draws)
 
   nms <- names(point_est)
   lower <- list()
   upper <- list()
+  n_effective <- list()
+  boot_median <- list()
   for (nm in nms) {
     ref <- point_est[[nm]]
     ## Stack along a leading replicate dimension
@@ -499,6 +539,10 @@ bootstrap_Sigma <- function(
         },
         numeric(length(ref))
       )
+      ## vapply drops to a bare length-n_boot vector when length(ref) == 1 (a
+      ## single partner / trait); force the length(ref) x n_boot shape so the
+      ## per-element apply()/rowSums() below stay valid.
+      dim(stacked) <- c(length(ref), n_boot)
       lo <- apply(
         stacked,
         1L,
@@ -515,13 +559,38 @@ bootstrap_Sigma <- function(
         na.rm = TRUE,
         names = FALSE
       )
+      ## Per-element effective replicate count (finite draws) and, for the
+      ## cross-family multiple_r entries, a minimum-effective-B floor. Percentile
+      ## bounds over only the SURVIVING refits bias the interval narrow (the
+      ## CI-10 inner-attrition failure mode). Where a partner's survivors /
+      ## n_boot < 0.8, return NA bounds so the caller can mark it ci_failed
+      ## rather than report an over-narrow interval from too few draws.
+      n_eff_v <- rowSums(is.finite(stacked))
+      if (grepl("^multiple_r_", nm)) {
+        thin <- (n_eff_v / n_boot) < 0.8
+        if (any(thin)) {
+          lo[thin] <- NA_real_
+          hi[thin] <- NA_real_
+        }
+        ## Cheap non-sdreport sanity comparator: the bootstrap median. A large
+        ## gap between the median and the point estimate flags gross bootstrap
+        ## corruption (it is NOT a co-certifier of coverage).
+        med_v <- apply(stacked, 1L, stats::median, na.rm = TRUE)
+        med_m <- ref
+        med_m[] <- med_v
+        boot_median[[nm]] <- med_m
+      }
       lo_v <- ref
       lo_v[] <- lo
       hi_v <- ref
       hi_v[] <- hi
       lower[[nm]] <- lo_v
       upper[[nm]] <- hi_v
+      neff_v <- ref
+      neff_v[] <- n_eff_v
+      n_effective[[nm]] <- neff_v
     }
   }
-  list(lower = lower, upper = upper)
+  list(lower = lower, upper = upper, n_effective = n_effective,
+       boot_median = boot_median)
 }

@@ -1139,17 +1139,10 @@ simulate.gllvmTMB_multi <- function(
   ## Pre-flag any unsupported families with a one-shot warning so users
   ## know fall-back-to-Gaussian-on-link-scale is in play.
   uniq_fids <- unique(fids)
-  supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 15L)
-  ## Tier-1 fence (Design 83): a multinomial (fid 16) response needs a
-  ## per-observation softmax draw; the Gaussian-on-link fallback below would
-  ## fabricate continuous data. Fail loud rather than return invalid draws.
-  if (16L %in% uniq_fids) {
-    cli::cli_abort(c(
-      "Family-aware {.fn simulate} is not yet implemented for {.fn multinomial} (family_id 16).",
-      "i" = "A categorical response requires a per-observation softmax category draw; the Gaussian-on-link fallback would fabricate continuous values.",
-      ">" = "Refusing rather than returning invalid draws (Design 83); the multinomial draw path is planned."
-    ), class = "gllvmTMB_simulate_multinomial_unsupported")
-  }
+  ## family_id 16 (multinomial, baseline-category softmax) is drawn in the
+  ## grouped pass after the per-row loop (one categorical draw per observation-
+  ## group, not per contrast row); the per-row loop leaves those rows at 0.
+  supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 15L, 16L)
   unsupp <- setdiff(uniq_fids, supported)
   if (length(unsupp) > 0L) {
     cache_key <- "gllvmTMB.warned_simulate_unsupported_family"
@@ -1220,9 +1213,37 @@ simulate.gllvmTMB_multi <- function(
         ## mu = 0 (deterministic 0) without an invalid size argument.
         y[i] <- stats::rpois(1L, lambda = mu)
       }
+    } else if (fid == 16L) {
+      ## Multinomial (softmax) — drawn in the grouped pass below, one categorical
+      ## draw per observation-group. Leave y[i] = 0 so the terminal Gaussian-on-
+      ## link fallback does NOT overwrite the one-hot (panel Slice-1 correctness).
     } else {
       ## Unsupported family — Gaussian-on-link-scale fallback (warned above)
       y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps)
+    }
+  }
+
+  ## Multinomial (baseline-category logit / softmax) grouped draw. The K-1 contrast
+  ## pseudo-rows of one observation are contiguous and share multinom_group_id,
+  ## with the baseline category pinned at eta = 0. One categorical draw per group;
+  ## a non-baseline draw writes a single 1 into its contrast row (baseline leaves
+  ## all L rows at 0), matching the one-hot the TMB softmax likelihood consumes
+  ## (src/gllvmTMB.cpp) and the encoding expand_multinomial_response() produces.
+  mn_rows <- which(fids == 16L)
+  if (length(mn_rows) > 0L) {
+    mgid <- fit$tmb_data$multinom_group_id
+    if (is.null(mgid)) {
+      cli::cli_abort(c(
+        "Internal: multinomial rows present but {.code fit$tmb_data$multinom_group_id} is missing.",
+        "i" = "Cannot group the softmax contrast rows for a categorical draw."
+      ), class = "gllvmTMB_simulate_multinomial_group_missing")
+    }
+    for (g in split(mn_rows, mgid[mn_rows])) {
+      m <- max(0, eta[g])                        # softmax stabiliser over {baseline 0, contrasts}
+      p <- exp(c(0, eta[g]) - m)
+      p <- p / sum(p)
+      kk <- sample.int(length(p), 1L, prob = p)  # 1 = baseline (no write); 2..K -> contrast row
+      if (kk > 1L) y[g[kk - 1L]] <- 1
     }
   }
   y

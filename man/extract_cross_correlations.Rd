@@ -8,17 +8,23 @@ extract_cross_correlations(
   fit,
   level = "unit",
   contrasts = FALSE,
-  link_residual = c("auto", "none")
+  link_residual = c("auto", "none"),
+  method = c("point", "bootstrap", "profile", "wald"),
+  conf = 0.95,
+  nsim = 500L,
+  seed = NULL
 )
 }
 \arguments{
 \item{fit}{a fitted \code{gllvmTMB_multi} with a \code{multinomial()} trait and a shared
 latent tier (\code{latent(0 + trait | unit, d)}).}
 
-\item{level}{covariance tier (default \code{"unit"}).}
+\item{level}{covariance tier (default \code{"unit"}). For \code{method = "profile"}
+only \code{"unit"} and \code{"unit_obs"} are in scope; structured tiers
+(\code{"phy"}, \code{"spatial"}) are refused.}
 
 \item{contrasts}{if \code{TRUE}, also return the per-contrast (K-1)-vector (as a
-list column).}
+list column). Required for \code{method = "profile"}.}
 
 \item{link_residual}{passed to \code{\link[=extract_Sigma]{extract_Sigma()}}; \code{"auto"} (default) puts the
 nominal block on the observation scale via the \eqn{(\pi^2/6)(I+J)} softmax
@@ -30,9 +36,44 @@ partner is then a deterministic function of the block). This is correct but
 uninformative, which is why \code{"auto"} (full-rank via the residual) is the
 sensible default for the single-number summary; read the per-pair latent
 correlations from \code{\link[=extract_Sigma]{extract_Sigma()}} / \code{\link[=extract_correlations]{extract_correlations()}} instead.}
+
+\item{method}{one of \code{"point"} (default; point estimates only, no interval
+columns), \code{"wald"} (fast Fisher-z intervals on BOTH \code{multiple_r} and
+\code{contrast_r}; no refits or root-finding, so it always returns and is robust
+on messy real data; any partner family), \code{"bootstrap"} (parametric-bootstrap
+interval on the aggregate \code{multiple_r} via \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}), or
+\code{"profile"} (profile-likelihood interval on each pairwise \code{contrast_r} via
+\code{profile_ci_correlation()}; requires \code{contrasts = TRUE}; gaussian/binomial
+partners only). For \code{"bootstrap"}/\code{"profile"} the two estimands take
+DIFFERENT routes: \code{multiple_r} (a nonlinear \eqn{\Sigma}-block functional
+with no single profile parameter) is only ever bootstrapped; \code{contrast_r}
+(a single \eqn{\rho_{ij}}) is only ever profiled. \code{"wald"} covers both at
+once. Requesting \code{method = "profile"} with \code{contrasts = FALSE} fails loud.
+\strong{None of these intervals is coverage-calibrated yet} — they are
+recovery-oriented; \code{"wald"} is the most approximate (\code{multiple_r} is not a
+Pearson correlation). Use them to explore + report bugs, not for inference.}
+
+\item{conf}{confidence level for the interval columns. Default 0.95.}
+
+\item{nsim}{number of parametric-bootstrap replicates when
+\code{method = "bootstrap"}. Default 500.}
+
+\item{seed}{optional RNG seed for the bootstrap.}
 }
 \value{
-a data.frame, one row per (nominal, partner) pair.
+a data.frame, one row per (nominal, partner) pair. With
+\code{method = "point"} the columns are \code{nominal}, \code{partner}, \code{multiple_r}
+(and \code{contrast_r} when \code{contrasts = TRUE}). With \code{method = "wald"},
+\code{"bootstrap"}, or \code{"profile"}, per-estimand interval columns are added:
+\code{multiple_r_lower}/\code{multiple_r_upper}/\code{multiple_r_method}/\code{multiple_r_interval_status}
+(scalar), and when \code{contrasts = TRUE}
+\code{contrast_r_lower}/\code{contrast_r_upper} (list columns) plus
+\code{contrast_r_method}/\code{contrast_r_interval_status}. The estimand NOT served by
+the requested \code{method} keeps point-only interval columns (\code{NA} bounds,
+\code{method = "point"}). Computed intervals carry an \code{interval_status} flag
+(\code{"heuristic_unvalidated"} for \code{"wald"}, \code{"target_specific_uncalibrated"}
+for \code{"bootstrap"}/\code{"profile"}) -- coverage is not yet certified for any
+route (validation register CI-11 pending).
 }
 \description{
 For a fit where a \code{multinomial()} trait shares a latent factor with

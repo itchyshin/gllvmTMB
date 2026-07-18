@@ -8,7 +8,7 @@ bootstrap_Sigma(
   fit,
   n_boot = 200,
   level = c("unit", "unit_obs", "phy", "B", "W"),
-  what = c("Sigma", "R", "communality", "ICC"),
+  what = c("Sigma", "R", "communality", "ICC", "cross_corr"),
   conf = 0.95,
   seed = NULL,
   n_cores = 1,
@@ -28,9 +28,13 @@ aliases \code{"B"} and \code{"W"} are still accepted. Levels absent from
 the fit are silently dropped. Default: all available levels.}
 
 \item{what}{Character vector; which summaries to compute.
-Subset of \code{c("Sigma", "R", "communality", "ICC")}. Default: all
-four. \code{"ICC"} only makes sense at the site level and requires both
-\code{B} and \code{W} tiers in the fit.}
+Subset of \code{c("Sigma", "R", "communality", "ICC", "cross_corr")}.
+Default: all. \code{"ICC"} only makes sense at the site level and
+requires both \code{B} and \code{W} tiers in the fit. \code{"cross_corr"} bootstraps
+the aggregate \code{multiple_r} between a \code{multinomial()} trait and each
+partner (see \code{\link[=extract_cross_correlations]{extract_cross_correlations()}}); it is stored as a plain
+named numeric per tier (\code{multiple_r_B}, ...) and is silently skipped
+for fits without a nominal trait.}
 
 \item{conf}{Numeric in \verb{(0, 1)}; confidence level for percentile CIs.
 Default 0.95.}
@@ -64,6 +68,14 @@ requested summary at each requested level (e.g. \code{Sigma_B},
 \code{R_B}, \code{communality_B}, \code{ICC_site}).}
 \item{\code{ci_lower}, \code{ci_upper}}{Named lists of percentile CI bounds,
 element-wise the same shape as the corresponding \code{point_est}.}
+\item{\code{n_effective}}{Named list (vector summaries only) giving the
+per-element count of finite bootstrap draws. For \verb{multiple_r_*}
+entries, any element whose effective count is below 80\% of \code{n_boot}
+has its CI bounds set to \code{NA} (minimum-effective-B floor).}
+\item{\code{boot_median}}{Named list (\verb{multiple_r_*} entries only) of the
+per-element bootstrap median -- a cheap sanity comparator against
+\code{point_est}; a large gap flags gross bootstrap corruption and is not a
+coverage certifier.}
 \item{\code{ci_method}}{Character; currently \code{"percentile"}.}
 \item{\code{link_residual}}{Character; the link-residual convention used
 in point estimates and bootstrap refit summaries.}

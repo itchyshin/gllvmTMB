@@ -772,9 +772,11 @@ extract_correlations <- function(
 #'
 #' @param fit a fitted `gllvmTMB_multi` with a `multinomial()` trait and a shared
 #'   latent tier (`latent(0 + trait | unit, d)`).
-#' @param level covariance tier (default `"unit"`).
+#' @param level covariance tier (default `"unit"`). For `method = "profile"`
+#'   only `"unit"` and `"unit_obs"` are in scope; structured tiers
+#'   (`"phy"`, `"spatial"`) are refused.
 #' @param contrasts if `TRUE`, also return the per-contrast (K-1)-vector (as a
-#'   list column).
+#'   list column). Required for `method = "profile"`.
 #' @param link_residual passed to [extract_Sigma()]; `"auto"` (default) puts the
 #'   nominal block on the observation scale via the \eqn{(\pi^2/6)(I+J)} softmax
 #'   residual, making `multiple_r` commensurable with single-scale partners;
@@ -785,11 +787,81 @@ extract_correlations <- function(
 #'   uninformative, which is why `"auto"` (full-rank via the residual) is the
 #'   sensible default for the single-number summary; read the per-pair latent
 #'   correlations from [extract_Sigma()] / [extract_correlations()] instead.
-#' @return a data.frame, one row per (nominal, partner) pair.
+#' @param method one of `"point"` (default; point estimates only, no interval
+#'   columns), `"wald"` (fast Fisher-z intervals on BOTH `multiple_r` and
+#'   `contrast_r`; no refits or root-finding, so it always returns and is robust
+#'   on messy real data; any partner family), `"bootstrap"` (parametric-bootstrap
+#'   interval on the aggregate `multiple_r` via [bootstrap_Sigma()]), or
+#'   `"profile"` (profile-likelihood interval on each pairwise `contrast_r` via
+#'   `profile_ci_correlation()`; requires `contrasts = TRUE`; gaussian/binomial
+#'   partners only). For `"bootstrap"`/`"profile"` the two estimands take
+#'   DIFFERENT routes: `multiple_r` (a nonlinear \eqn{\Sigma}-block functional
+#'   with no single profile parameter) is only ever bootstrapped; `contrast_r`
+#'   (a single \eqn{\rho_{ij}}) is only ever profiled. `"wald"` covers both at
+#'   once. Requesting `method = "profile"` with `contrasts = FALSE` fails loud.
+#'   \strong{None of these intervals is coverage-calibrated yet} — they are
+#'   recovery-oriented; `"wald"` is the most approximate (`multiple_r` is not a
+#'   Pearson correlation). Use them to explore + report bugs, not for inference.
+#' @param conf confidence level for the interval columns. Default 0.95.
+#' @param nsim number of parametric-bootstrap replicates when
+#'   `method = "bootstrap"`. Default 500.
+#' @param seed optional RNG seed for the bootstrap.
+#' @return a data.frame, one row per (nominal, partner) pair. With
+#'   `method = "point"` the columns are `nominal`, `partner`, `multiple_r`
+#'   (and `contrast_r` when `contrasts = TRUE`). With `method = "wald"`,
+#'   `"bootstrap"`, or `"profile"`, per-estimand interval columns are added:
+#'   `multiple_r_lower`/`multiple_r_upper`/`multiple_r_method`/`multiple_r_interval_status`
+#'   (scalar), and when `contrasts = TRUE`
+#'   `contrast_r_lower`/`contrast_r_upper` (list columns) plus
+#'   `contrast_r_method`/`contrast_r_interval_status`. The estimand NOT served by
+#'   the requested `method` keeps point-only interval columns (`NA` bounds,
+#'   `method = "point"`). Computed intervals carry an `interval_status` flag
+#'   (`"heuristic_unvalidated"` for `"wald"`, `"target_specific_uncalibrated"`
+#'   for `"bootstrap"`/`"profile"`) -- coverage is not yet certified for any
+#'   route (validation register CI-11 pending).
 #' @export
 extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
-                                       link_residual = c("auto", "none")) {
+                                       link_residual = c("auto", "none"),
+                                       method = c("point", "bootstrap", "profile", "wald"),
+                                       conf = 0.95, nsim = 500L, seed = NULL) {
   link_residual <- match.arg(link_residual)
+  method <- match.arg(method)
+  if (!is.numeric(conf) || length(conf) != 1L || conf <= 0 || conf >= 1) {
+    cli::cli_abort("{.arg conf} must be a single number in (0, 1); got {conf}.")
+  }
+  lvl_internal <- .normalise_level(level, arg_name = "level", .skip_warn = TRUE)
+
+  ## ---- method = "profile" guards (contrast_r only) --------------------------
+  if (method == "profile") {
+    ## multiple_r is a Sigma-block functional with no (i, j) profile parameter,
+    ## so it is never profileable. With contrasts = FALSE the ONLY estimand is
+    ## multiple_r -> refuse loudly rather than fabricate a block profile.
+    if (!isTRUE(contrasts)) {
+      cli::cli_abort(c(
+        "{.code method = \"profile\"} needs {.code contrasts = TRUE}.",
+        "x" = "The aggregate {.field multiple_r} is a nonlinear covariance-block functional with no single profile parameter, so it cannot be profiled.",
+        "i" = "Use {.code contrasts = TRUE} to profile each pairwise {.field contrast_r}, or {.code method = \"bootstrap\"} for a {.field multiple_r} interval."
+      ), class = "gllvmTMB_multiple_r_profile_undefined")
+    }
+    ## Real fence (not prose): the cross-family contrast profile is certified
+    ## only for the ordinary unit / unit_obs tiers this arc measured. A
+    ## structured tier is accepted by profile_ci_correlation() but out of scope.
+    if (!(lvl_internal %in% c("B", "W"))) {
+      cli::cli_abort(c(
+        "{.code method = \"profile\"} cross-family intervals are only available at tier {.val unit} or {.val unit_obs}.",
+        "x" = "Tier {.val {level}} (structured phylogenetic / spatial) is out of scope for the cross-family contrast profile."
+      ), class = "gllvmTMB_cross_profile_tier_unsupported")
+    }
+    ## Latent-term guard: the profile needs the shared latent factor.
+    latent_ok <- if (lvl_internal == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
+    if (!latent_ok) {
+      cli::cli_abort(c(
+        "Tier {.val {level}} has no {.code latent()} term; the cross-family contrast profile is not available.",
+        "i" = "A diagonal-only ({.code indep()}) fit has no shared factor to profile."
+      ), class = "gllvmTMB_cross_profile_no_latent")
+    }
+  }
+
   S <- extract_Sigma(fit, level = level, part = "total", link_residual = link_residual)
   Sigma <- if (is.list(S) && !is.null(S$Sigma)) S$Sigma else S
   tn <- rownames(Sigma)
@@ -804,6 +876,64 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
   if (length(partners) == 0L) {
     cli::cli_abort("No non-nominal partner trait to correlate the {.fn multinomial} trait with.")
   }
+
+  ## ---- method = "bootstrap": one bootstrap_Sigma call for multiple_r --------
+  boot_lo <- boot_hi <- NULL
+  if (method == "bootstrap") {
+    boot <- suppressMessages(bootstrap_Sigma(
+      fit,
+      n_boot = as.integer(nsim),
+      level = level,
+      what = "cross_corr",
+      conf = conf,
+      link_residual = link_residual,
+      seed = seed,
+      progress = FALSE
+    ))
+    key_nm <- paste0("multiple_r_", lvl_internal)
+    boot_lo <- boot$ci_lower[[key_nm]]
+    boot_hi <- boot$ci_upper[[key_nm]]
+  }
+
+  ## ---- method = "profile": per-partner constant-residual certification ------
+  ## The AUTO-scale contrast profile adds a COMPILE-TIME-CONSTANT link residual
+  ## to the i, j diagonals. Only gaussian (0) and binomial (pi^2/3, 1, pi^2/6)
+  ## partners carry a constant residual; the nominal contrast rows are always
+  ## constant (pi^2/3). Parameter/mean-dependent partners (poisson, Gamma, NB,
+  ## Beta, betabinomial, tweedie, student-t, ordinal, ...) are NOT certified ->
+  ## fail loud rather than emit an uncertified interval on a shifting scale.
+  lr <- NULL
+  fam_per_trait <- NULL
+  if (method == "profile") {
+    lr <- suppressWarnings(link_residual_per_trait(fit))
+    fids <- fit$tmb_data$family_id_vec
+    tids <- fit$tmb_data$trait_id + 1L
+    fam_per_trait <- vapply(seq_along(tn), function(t) {
+      ft <- unique(fids[tids == t])
+      if (length(ft) == 1L) as.integer(ft) else NA_integer_
+    }, integer(1L))
+    if (identical(link_residual, "auto")) {
+      bad <- partners[!(fam_per_trait[partners] %in% c(0L, 1L))]
+      if (length(bad) > 0L) {
+        cli::cli_abort(c(
+          "AUTO-scale {.code method = \"profile\"} intervals are certified only for gaussian and binomial partners.",
+          "x" = "Partner trait(s) {.val {tn[bad]}} have a parameter- or mean-dependent link residual (family id {.val {fam_per_trait[bad]}}).",
+          "i" = "Their observation-scale residual shifts with the fit, so the constant-diagonal augmentation is not valid. Use {.code link_residual = \"none\"} for the latent-scale profile instead."
+        ), class = "gllvmTMB_profile_parameter_dependent_residual")
+      }
+    }
+  }
+
+  ## ---- method = "wald": fast Fisher-z intervals (no refits / no uniroot) -----
+  ## The robust, always-returns route for a first pass on real data: treats
+  ## multiple_r / contrast_r as correlation coefficients and forms a Fisher-z
+  ## interval with n_eff = the tier's unit count. Heuristic (multiple_r is not a
+  ## Pearson r; the latent-scale n_eff is approximate) -> interval_status =
+  ## "heuristic_unvalidated". Works for ANY partner family (no residual fence).
+  n_eff_w <- if (method == "wald") {
+    .correlation_fisher_n_eff(fit, lvl_internal, NULL)
+  } else NA_integer_
+
   out <- list()
   for (b in mn_bases) {
     blk <- which(is_mn & base == b)
@@ -815,12 +945,83 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
       mult <- min(mult, 1)                                # numerical guard
       row  <- data.frame(nominal = b, partner = tn[p],
                          multiple_r = mult, stringsAsFactors = FALSE)
+
+      ## multiple_r interval columns (bootstrap only; point-only otherwise).
+      if (method != "point") {
+        mr_lo <- NA_real_; mr_hi <- NA_real_; mr_method <- "point"
+        if (method == "bootstrap") {
+          key <- paste(b, tn[p], sep = "__")
+          mr_lo <- .cross_named_get(boot_lo, key)
+          mr_hi <- .cross_named_get(boot_hi, key)
+          mr_method <- "bootstrap"
+        } else if (method == "wald") {
+          w <- .cross_wald_ci(mult, n_eff_w, conf, lower_bound = 0)
+          mr_lo <- w[1L]; mr_hi <- w[2L]; mr_method <- "wald"
+        }
+        row$multiple_r_lower <- mr_lo
+        row$multiple_r_upper <- mr_hi
+        row$multiple_r_method <- mr_method
+        row$multiple_r_interval_status <- .correlation_interval_status(mr_method)
+      }
+
       if (contrasts) {
         cr <- Sigma[p, blk] / sqrt(Sigma[p, p] * diag(Scc))
         row$contrast_r <- I(list(stats::setNames(as.numeric(cr), tn[blk])))
+        ## contrast_r interval columns (profile only; point-only otherwise).
+        if (method != "point") {
+          cr_lo <- rep(NA_real_, length(blk))
+          cr_hi <- rep(NA_real_, length(blk))
+          cr_method <- "point"
+          if (method == "profile") {
+            cr_method <- "profile"
+            for (k in seq_along(blk)) {
+              ij <- sort(c(p, blk[k]))
+              dr <- if (identical(link_residual, "auto")) as.numeric(lr[ij]) else NULL
+              res <- profile_ci_correlation(
+                fit, tier = level, i = ij[1L], j = ij[2L],
+                level = conf, diag_resid = dr
+              )
+              cr_lo[k] <- res[["lower"]]
+              cr_hi[k] <- res[["upper"]]
+            }
+          } else if (method == "wald") {
+            cr_method <- "wald"
+            for (k in seq_along(blk)) {
+              w <- .cross_wald_ci(as.numeric(cr[k]), n_eff_w, conf, lower_bound = -1)
+              cr_lo[k] <- w[1L]; cr_hi[k] <- w[2L]
+            }
+          }
+          row$contrast_r_lower <- I(list(stats::setNames(cr_lo, tn[blk])))
+          row$contrast_r_upper <- I(list(stats::setNames(cr_hi, tn[blk])))
+          row$contrast_r_method <- cr_method
+          row$contrast_r_interval_status <- .correlation_interval_status(cr_method)
+        }
       }
       out[[length(out) + 1L]] <- row
     }
   }
   do.call(rbind, out)
+}
+
+## Fisher-z (Wald) interval for a correlation-scale quantity r, using n_eff.
+## Returns c(lower, upper); NA bounds when n_eff < 4 or |r| is at/over the
+## boundary (Fisher-z undefined there). lower_bound clamps the lower end
+## (0 for the non-negative multiple_r, -1 for a signed contrast_r).
+.cross_wald_ci <- function(r, n_eff, conf, lower_bound = -1) {
+  if (is.na(r) || is.na(n_eff) || n_eff < 4L || abs(r) >= 1) {
+    return(c(NA_real_, NA_real_))
+  }
+  z  <- stats::qnorm(1 - (1 - conf) / 2)
+  zr <- atanh(r)
+  se <- 1 / sqrt(n_eff - 3L)
+  c(max(lower_bound, tanh(zr - z * se)), tanh(zr + z * se))
+}
+
+## Safe named lookup: return NA_real_ (never NULL, which would drop a
+## data.frame column) when the bootstrap vector is missing or lacks the key.
+.cross_named_get <- function(x, key) {
+  if (is.null(x) || is.null(names(x)) || !(key %in% names(x))) {
+    return(NA_real_)
+  }
+  as.numeric(x[[key]])
 }

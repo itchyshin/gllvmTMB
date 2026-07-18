@@ -698,6 +698,15 @@ profile_ci_communality <- function(
 #' @param i,j Trait indices (1-based, `i < j`). For `tier = "unit_slope"`,
 #'   these are augmented coefficient indices on the interleaved `2T` vector.
 #' @param level Confidence level. Default 0.95.
+#' @param diag_resid Optional length-2 numeric giving CONSTANT link-residual
+#'   variances to add to the tier-`Sigma` diagonal at rows `i` and `j` before
+#'   forming the correlation (Option (b), AUTO scale). Supply this to profile a
+#'   cross-family `contrast_r` on the same observation scale as `multiple_r`
+#'   and the analytic truth: with `diag_resid = link_residual_per_trait(fit)[c(i, j)]`
+#'   the profiled/reported correlation is the AUTO-scale quantity. Must be
+#'   finite; only certified for compile-time-constant residuals (gaussian,
+#'   binomial, multinomial-contrast). `NULL` (default) profiles on the fitted
+#'   `link_residual = "none"` scale.
 #' @return Length-3 numeric vector (`estimate`, `lower`, `upper`).
 #'
 #' @keywords internal
@@ -710,7 +719,8 @@ profile_ci_correlation <- function(
   ),
   i,
   j,
-  level = 0.95
+  level = 0.95,
+  diag_resid = NULL
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
@@ -722,6 +732,18 @@ profile_ci_correlation <- function(
   }
   if (i >= j) {
     cli::cli_abort("Provide {.arg i} < {.arg j}.")
+  }
+  ## Option (b) AUTO-scale augmentation: diag_resid carries the two CONSTANT
+  ## link-residual variances for rows i, j. Validate up front -- a
+  ## parameter-dependent (NA / non-finite) residual is not certifiable.
+  if (!is.null(diag_resid)) {
+    if (!is.numeric(diag_resid) || length(diag_resid) != 2L ||
+        !all(is.finite(diag_resid))) {
+      cli::cli_abort(c(
+        "{.arg diag_resid} must be a length-2 finite numeric.",
+        "i" = "It carries the constant link-residual variances for rows {.val {i}} and {.val {j}}."
+      ), class = "gllvmTMB_profile_diag_resid_invalid")
+    }
   }
 
   Sigma_pt <- suppressMessages(
@@ -743,7 +765,23 @@ profile_ci_correlation <- function(
       "i" = "Valid indices for this tier are 1:{n_dim}."
     ))
   }
-  rho_hat <- Sigma_pt$R[i, j]
+  ## Point estimate. With diag_resid, recompute rho_hat from the COVARIANCE with
+  ## the augmented diagonal (the reported estimate is then the AUTO-scale
+  ## quantity, commensurable with multiple_r); otherwise use the none-scale
+  ## correlation directly.
+  if (is.null(diag_resid)) {
+    rho_hat <- Sigma_pt$R[i, j]
+  } else {
+    Scov <- Sigma_pt$Sigma
+    sii <- Scov[i, i] + diag_resid[1L]
+    sjj <- Scov[j, j] + diag_resid[2L]
+    if (sii <= 0 || sjj <= 0) {
+      cli::cli_abort(
+        "Augmented diagonal is non-positive at tier {.val {tier}}; cannot form the AUTO-scale correlation."
+      )
+    }
+    rho_hat <- Scov[i, j] / sqrt(sii * sjj)
+  }
 
   ## Build target function from the tier's parameter blocks
   par_names <- names(fit$opt$par)
@@ -845,10 +883,42 @@ profile_ci_correlation <- function(
         diag(Sigma) <- diag(Sigma) + exp(2 * th_diag)
       }
     }
-    if (Sigma[i, i] <= 0 || Sigma[j, j] <= 0) {
+    ## Option (b) AUTO scale: add the constant link residuals to the i, j
+    ## diagonals so the profiled correlation matches the AUTO-scale point
+    ## estimate + analytic truth. The off-diagonal Sigma[i, j] is untouched.
+    sii <- Sigma[i, i]
+    sjj <- Sigma[j, j]
+    if (!is.null(diag_resid)) {
+      sii <- sii + diag_resid[1L]
+      sjj <- sjj + diag_resid[2L]
+    }
+    if (sii <= 0 || sjj <= 0) {
       return(NA_real_)
     }
-    Sigma[i, j] / sqrt(Sigma[i, i] * Sigma[j, j])
+    Sigma[i, j] / sqrt(sii * sjj)
+  }
+
+  ## Reconstruction self-check: the target function evaluated at the fitted
+  ## parameters must reproduce the reported point estimate. Under a default
+  ## unique = TRUE cross-family fit the K-1 contrast rows' Psi auto-suppresses
+  ## (mapped-off), so target_fn routes the diagonal through .expand_mapped_diag()
+  ## -- a mis-mapping there silently corrupts the INTERVAL while leaving the
+  ## extract_Sigma-based estimate correct. Fail loud rather than emit a
+  ## silently-wrong CI. The mapped-diagonal risk exists ONLY when a TMB map is
+  ## present for the diagonal block; a no-map fit reconstructs the diagonal
+  ## trivially (free_vals as-is), so gate the check on map presence (this also
+  ## leaves hand-mocked / fake-fit wiring smoke tests, which decouple a mocked
+  ## extract_Sigma from `par`, untouched).
+  if (!is.null(fit$tmb_map[[diag_name]])) {
+    q0 <- suppressWarnings(tryCatch(target_fn(fit$opt$par, fit),
+                                    error = function(e) NA_real_))
+    if (!is.finite(q0) || abs(q0 - rho_hat) > 1e-4) {
+      cli::cli_abort(c(
+        "Profile target reconstruction does not match the reported correlation at tier {.val {tier}}.",
+        "x" = "target_fn(theta_hat) = {.val {q0}} vs rho_hat = {.val {rho_hat}} (indices {i}, {j}).",
+        "i" = "The mapped-diagonal reconstruction is inconsistent; refusing to return a possibly-corrupt interval."
+      ), class = "gllvmTMB_profile_reconstruction_mismatch")
+    }
   }
 
   bounds <- .profile_ci_via_refit(

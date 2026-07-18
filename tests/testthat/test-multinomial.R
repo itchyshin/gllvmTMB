@@ -232,16 +232,26 @@ test_that("predict(type='response') returns per-category softmax probabilities",
   expect_equal(nrow(lk), 200L * 2L)
 })
 
-test_that("predict(newdata=) and simulate() fail loud on a multinomial fit", {
+test_that("predict(newdata=) fails loud; simulate() draws a valid multinomial response", {
   skip_on_cran()
   df  <- .make_multinomial(seed = 9L, n = 100L, K = 3L)
   fit <- gllvmTMB(value ~ 0 + trait, data = df, family = multinomial(),
                   trait = "trait", unit = "unit")
+  ## predict(newdata=) is still unsupported for a multinomial fit.
   expect_error(predict(fit, newdata = df),
                class = "gllvmTMB_multinomial_predict_newdata")
-  # simulate must NOT fall back to Gaussian-on-link draws for a categorical resp.
-  expect_error(simulate(fit),
-               class = "gllvmTMB_simulate_multinomial_unsupported")
+  ## simulate() now DRAWS the softmax categorical response (the
+  ## gllvmTMB_simulate_multinomial_unsupported fence was removed when the
+  ## multinomial draw path landed; distributional correctness is in
+  ## test-simulate-multinomial.R). It must NOT throw, and must return a valid
+  ## per-observation-group one-hot column.
+  expect_error(simulate(fit, nsim = 1L, seed = 1L), NA)
+  Y    <- simulate(fit, nsim = 1L, seed = 1L)
+  fids <- fit$tmb_data$family_id_vec
+  mgid <- fit$tmb_data$multinom_group_id
+  mn   <- which(fids == 16L)
+  expect_true(all(Y[mn, 1L] %in% c(0, 1)))
+  expect_true(all(tapply(Y[mn, 1L], mgid[mn], sum) %in% c(0, 1)))
 })
 
 test_that("multinomial likelihood is invariant to the baseline category", {

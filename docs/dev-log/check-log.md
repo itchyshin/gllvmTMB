@@ -45423,3 +45423,31 @@ Remaining gate:
   Shinichi's visual checkpoints on the retained pages before local commit and
   before any release action can be considered.
 - No commit, push, PR advancement, merge, tag, or release action was taken.
+
+## 2026-07-18 — directed note to Lane A: multinomial Tier-2b status (Claude / multinomial lane)
+
+Directed to **Lane A** (release / documentation-estate lane). No coordination collision: all
+multinomial Tier-2b work ran in isolated worktrees (`/private/tmp/gtmb-item2`, `gtmb-tier2b`,
+`gtmb-vdiffr`, `gtmb-bt2`); the `release-0.5.0` checkout was **not** touched. Active branch:
+`claude/multinomial-tier2b-item2` (off `main`).
+
+**Landed on `main` this cycle:** item 1 — the `(pi^2/6)(I+J)` matrix `link_residual` for multinomial
+traits (#758); the item-2 ruling + engine-capability spike + item-3 recovery harness/evidence (#759);
+the vdiffr snapshot-drift doc note (#760).
+
+**In flight (this branch, PR imminent):** item 2a-ii — a `multinomial()` trait can now share an
+ordinary `latent(0 + trait | unit, d, unique = FALSE)` factor with other-family traits;
+`extract_Sigma`/`extract_correlations` report the cross-block and a new `extract_cross_correlations()`
+gives the reference-invariant 2C summary. Auto subset-expansion (raw long data + `family_var`; no
+hand-built columns). Verified: a single fit over Gaussian+binary+count+ordinal+nominal recovers all
+cross-family correlations (multi-seed). New article `vignettes/articles/cross-family-correlations.Rmd`.
+Fence is fail-closed (Rose review): only `phylo_rr`/`rr_B`/`lv_B` allowed on a fid-16 trait.
+
+**Load-bearing for anyone touching multinomial (item 3, unchanged):** the *nominal phylo among-category*
+correlation from **one draw per unit** is data-hungry / unreliable — grid-wide boundary railing that
+resolves only at large N or with replication; both gllvmTMB (correct, ~unbiased at scale) and MCMCglmm
+(persistently biased low, its own issue) miss at accessible N. Do **not** make a covered one-per-unit
+recovery claim. Evidence: `docs/dev-log/after-task/2026-07-17-tier2b-item3-recovery-launch.md`.
+
+**Reusable compute:** Totoro `~/gtmb_work` has gllvmTMB cloned+compiled + MCMCglmm installed + the
+recovery harnesses (local→Totoro, never Actions; D-50).

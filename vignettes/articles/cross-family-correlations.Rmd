@@ -274,12 +274,19 @@ These are limits of the capability as it stands at 0.6, not incidental notes.
   among-unit random-effect variance; and
   (ii) the **observation-scale** link residual $(\pi^2/6)(\mathbf I+\mathbf J)$
   used to put the nominal block on a common scale.
-  For the nominal trait the *between-unit* $\boldsymbol\Psi$ is **not identified**
-  (each contrast is a single 0/1 — the softmax link's own scale is the residual),
-  so `unique = TRUE` (the default) **auto-suppresses** it for the categorical
-  contrasts and keeps it for the identified partners (Gaussian, overdispersed
-  Poisson). This is *structural*, not a to-do: like a binary trait, a categorical
-  trait has no estimable per-contrast between-unit variance. The pairwise latent
+  For the nominal trait the *between-unit* $\boldsymbol\Psi$ is auto-suppressed
+  by `unique = TRUE` (the default): with one categorical draw per (contrast,
+  unit) cell it is genuinely **not identified** — the softmax link's own scale is
+  the residual, exactly as for single-trial binary — so the engine maps it off
+  and reports which contrasts were affected. The identified partners (Gaussian
+  $\sigma^2$, overdispersed-Poisson OLRE) keep their $\boldsymbol\Psi$. Honest
+  scope: under a *replicated* categorical design that contrast $\boldsymbol\Psi$
+  is identifiable in principle (a per-contrast random-intercept variance), yet
+  the current engine still suppresses it — folding contrast-specific unit
+  heterogeneity into the shared factor and the fixed link residual. That is a
+  deliberate, conservative simplification (unlike multi-trial binomial, which
+  keeps its $\boldsymbol\Psi$ once `cbind(successes, failures)` identifies it); a
+  replication-aware refinement is future work. Either way the pairwise latent
   correlations (the matrix) are the recovered quantities. See
   [the vocabulary of $\boldsymbol\Psi$](gllvm-vocabulary.html) and
   [covariance and correlation](covariance-correlation.html).

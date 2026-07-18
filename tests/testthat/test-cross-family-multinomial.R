@@ -146,3 +146,26 @@ test_that("unique = TRUE (default) works; the multinomial contrast between-unit 
   cc <- suppressMessages(extract_cross_correlations(fit, level = "unit"))
   expect_true(is.data.frame(cc) && nrow(cc) >= 1L)
 })
+
+test_that("fail-closed fence: an EXPLICIT unique()/indep() on a multinomial is refused (Rose 2026-07-18)", {
+  skip_on_cran(); skip_if_not_installed("MASS")
+  ## The default auto-Psi (unique = TRUE) is allowed and auto-suppresses the
+  ## categorical contrast Psi. But an EXPLICIT unique()/indep() diagonal is NOT
+  ## the auto-Psi (auto_psi_B is FALSE), so it would leave the contrast Psi free
+  ## and non-identified -- it must stay fenced.
+  sim <- .build_xfam_raw(1L, N = 150L, reps = 4L)
+  expect_error(
+    suppressWarnings(suppressMessages(gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = FALSE) +
+        unique(0 + trait | unit),
+      data = sim$data, family = .xfam_fam(), trait = "trait", unit = "unit"))),
+    regexp = "unsupported latent|deferred|not identified|Design 84"
+  )
+  expect_error(
+    suppressWarnings(suppressMessages(gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = FALSE) +
+        indep(0 + trait | unit),
+      data = sim$data, family = .xfam_fam(), trait = "trait", unit = "unit"))),
+    regexp = "unsupported latent|deferred|not identified|over-param|Design 84"
+  )
+})

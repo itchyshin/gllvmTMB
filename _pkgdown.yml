@@ -44,6 +44,8 @@ navbar:
         href: articles/gllvm-vocabulary.html
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
+      - text: Cross-family correlations (incl. nominal)
+        href: articles/cross-family-correlations.html
       - text: Formula keyword grid
         href: articles/api-keyword-grid.html
       - text: Response-specific predictor effects

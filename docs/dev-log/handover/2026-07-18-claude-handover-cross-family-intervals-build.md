@@ -1,4 +1,4 @@
-# Session Handoff — calibrated cross-family intervals: R build (Slices 1–4) SHIPPED + verified; NEXT = Slice 5 harness → Slice 6 Totoro campaign
+# Session Handoff — cross-family intervals: R build + WALD + Ayumi package SHIPPED (committed `9aa8281f`, pushed, tarball); certification campaign STAGED for a future session
 
 **Meta:** 2026-07-18 · from Claude (Opus 4.8, ultracode) · **TARGET = Claude** (either tool can resume) · **isolated worktree** `../gllvmTMB-cross-family-intervals` on branch `claude/cross-family-intervals-20260718` (off `origin/main` @ #765). **Uncommitted, verified, safe on disk.** This is the multinomial lane's chosen next arc (handover `269832b4`); the profile-coverage MAIN lane is a *separate* lane (`claude/release-0.5.0`, Totoro `~/gllvm_work`) — do NOT touch its files.
 
@@ -17,26 +17,21 @@
 
 **Verification (end-to-end, `NOT_CRAN=true`):** `test-simulate-multinomial.R` **4/4**, `test-cross-family-intervals.R` **7/7** (estimand-identity to 1e-6, bracketing, canary-silent, `multiple_r`+profile fails loud, self-check negative control, guards, bootstrap path), `test-profile-route-matrix.R` **20/20** regression. Independent large-n **chi-square GOF** confirms the softmax draw is distributionally correct (no baseline off-by-one). Adversarial diff-review of the 2 highest-risk files confirmed correctness.
 
-## Current state / git ledger
-| Artifact | Committed | State |
-|---|---|---|
-| Slices 1–4 (5 R files + 2 tests + 2 .Rd) in worktree | **n** | **VERIFIED, uncommitted** (safe on disk in the worktree) |
+## Current state / git ledger — SHIPPED
+| Artifact | State |
+|---|---|
+| Slices 1–4 + `method="wald"` + tests + docs + harness | **committed `9aa8281f`, pushed** to `origin/claude/cross-family-intervals-20260718` |
+| Tarball | `gllvmTMB_0.5.0.tar.gz` in the worktree root (built `--no-build-vignettes`) |
+| Ayumi install | `remotes::install_github("itchyshin/gllvmTMB@claude/cross-family-intervals-20260718")`; usage guide `docs/dev-log/2026-07-18-cross-family-intervals-USAGE-for-Ayumi.md` |
 
-Files changed: `R/methods-gllvmTMB.R`, `R/bootstrap-sigma.R`, `R/extract-correlations.R`, `R/profile-derived.R`, `man/bootstrap_Sigma.Rd`, `man/extract_cross_correlations.Rd`; new `tests/testthat/test-simulate-multinomial.R`, `tests/testthat/test-cross-family-intervals.R`. **Commit held per the commit-only-when-asked rule** — maintainer decides. Suggested commit (on the worktree branch; do NOT auto-merge — engine + likelihood-adjacent = high-risk):
-```bash
-cd "/Users/z3437171/Dropbox/Github Local/gllvmTMB-cross-family-intervals" && \
-git add R/methods-gllvmTMB.R R/bootstrap-sigma.R R/extract-correlations.R R/profile-derived.R \
-        man/bootstrap_Sigma.Rd man/extract_cross_correlations.Rd \
-        tests/testthat/test-simulate-multinomial.R tests/testthat/test-cross-family-intervals.R && \
-git commit -m "feat(cross-family): calibrated intervals on extract_cross_correlations() — simulate multinomial draw + bootstrap multiple_r + profile contrast_r (uncalibrated; CI-11 pending)
+**`method="wald"` added after the panel build** (fast Fisher-z for BOTH estimands, any partner family, always returns; `interval_status="heuristic_unvalidated"`) — the robust first-pass route for real-data testing by Ayumi. `test-cross-family-intervals.R` now **9/9** (7 + 2 wald); `test-multinomial.R` updated to **14/14** (the old `simulate` fence-assertion test was stale — `simulate` now works). Broad regression across 12 affected files: **0 failed / 0 error**. **Do NOT auto-merge** (engine + likelihood-adjacent = high-risk; maintainer merges). Draft PR NOT opened (maintainer's call). Intervals remain **uncalibrated / recovery-oriented** — coverage NOT certified (register CI-11 pending; certification is the deferred W3 arc below).
 
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
-```
-
-## Totoro campaign — LIVE STATUS (W3 in progress)
-- **Deployed:** worktree rsynced to Totoro `~/gtmb_work/xfam-intervals`; the NEW package installed to a **private lib** `~/gtmb_work/xfam-lib` (do NOT install to the shared `~/R/lib` — the main lane uses it). **Critical env:** the user's R env puts `~/R/lib` first, so you MUST run every harness invocation with `export R_LIBS=/home/snakagaw/gtmb_work/xfam-lib:/home/snakagaw/R/lib` (R_LIBS, not R_LIBS_USER — the latter is overridden) or `library(gllvmTMB)` loads the STALE 0.5.0 without the new code (this exact bug produced a false 0/8 gate).
+## Totoro campaign — STAGED for a future certification session (W3 deferred)
+The certification campaign (W3) was deliberately deferred: the maintainer redirected this session to the Ayumi deliverable, and full certification is multi-day compute regardless. Everything is staged to resume cleanly.
+- **Deployed:** worktree rsynced to Totoro `~/gtmb_work/xfam-intervals`; the NEW package installed to a **private lib** `~/gtmb_work/xfam-lib` (do NOT install to the shared `~/R/lib` — the main lane uses it). **Critical env:** the user's R env puts `~/R/lib` first, so you MUST run every harness invocation with `export R_LIBS=/home/snakagaw/gtmb_work/xfam-lib:/home/snakagaw/R/lib` (R_LIBS, not R_LIBS_USER — the latter is overridden) or `library(gllvmTMB)` loads the STALE 0.5.0 without the new code (this exact bug produced a false 0/8 gate). **NOTE:** the deployed copy predates two harness edits (`--grid=lean` + the `9aa8281f` commit) — **re-`rsync` the worktree `dev/` before resuming.**
 - **Gate:** `--mode=gate` → **PROCEED** (gaussian + binomial, N=150, mr=0.5: outer convergence 1.00, inner-bootstrap survival 1.00). Per-fit ≈ 0.8s at N=150.
-- **Pilot RUNNING (detached):** 90 `setsid nohup` shards launched 2026-07-18 12:55, `--mode=pilot --grid=certified --n-sim=200 --n-boot=99 --n-shards=90 --seed-base=20260718 --out-dir=pilot-results`, logs in `pilot-logs/`. Truth-assertions PASS. ETA ~1.5–2h. **Aggregate when 90 `.rds` land:** `cd ~/gtmb_work/xfam-intervals && export R_LIBS=/home/snakagaw/gtmb_work/xfam-lib:/home/snakagaw/R/lib && Rscript dev/xfc-aggregate.R pilot-results` (writes `pilot-results/AGGREGATED.rds` + prints the per-cell coverage table). Aggregator combines raw covered/ci_failed across shards + sums non-converged, re-runs `.xfc_summarise_series` (coverage=covered/converged, 2·MCSE-vs-0.94).
+- **Pilot: KILLED — not running.** A full-grid pilot (90 shards) was launched 12:55 then stood down (`pkill`); the full pilot paced ~5–9h (the N=500 cells + `contrast_r` profile are heavy), the confirm multi-day. Any partial `.rds` in `pilot-results/` are stale — delete them. `--grid=lean` (certified cells with N≤150) was added for a fast plumbing-scale pilot (~20–40 min on ~72 shards).
+- **To resume (future session):** re-deploy `dev/` → `export R_LIBS=...` → `--mode=gate` (confirm PROCEED) → `--mode=pilot --grid=lean` for a quick signal OR `--grid=certified` for the full pilot → `--mode=confirm`. **Aggregate:** `Rscript dev/xfc-aggregate.R <out-dir>` (writes `AGGREGATED.rds` + prints the per-cell coverage table; combines raw covered/ci_failed across shards + sums non-converged, re-runs `.xfc_summarise_series`: coverage=covered/converged, 2·MCSE-vs-0.94). Compute ≤100 cores, results LOCAL (D-50). Take any coverage CLAIM through the D-43 panel before promoting CI-11.
 - **Confirm (NOT launched):** after the pilot validates, launch detached like the pilot but `--grid=both --n-sim=13000 --n-boot=499 --n-shards=~100` — this is a **multi-DAY** job (bootstrap-dominated ≈ tens of thousands of CPU-hours); it will NOT finish in one session. Results land later; aggregate the same way.
 - **Pilot is plumbing-scale** (n_sim=200 ⇒ 2·MCSE≈0.03): it exercises the whole pipeline + gives a first coverage signal, but the 0.94 gate verdict is only trustworthy at confirm scale. Report pilot numbers with that caveat + the "MEASURED, NOT certified" banner.
 

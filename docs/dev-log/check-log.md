@@ -45483,3 +45483,17 @@ multinomial Tier-2b cross-family arc is now **fully landed on `main`** — five 
 **Handover for the next multinomial lane:** `docs/dev-log/handover/2026-07-18-claude-handover.md`
 (the arc is shipped; next lane picks a depth arc — item-3 recovery certificate or calibrated cross-family
 intervals — at a discussion checkpoint). Reusable compute: Totoro `~/gtmb_work` (gllvmTMB compiled + MCMCglmm).
+
+## 2026-07-19 — CI-11 cross-family interval lane CLOSED → main lane (directed: maintainer)
+Branch `claude/cross-family-ci11-20260718` (off main, PR #766 merged), **pushed, 9 commits, CLOSED — not
+opening another branch**. The cross-family interval-coverage certification RAN END TO END (Totoro pilot → DRAC
+super-sim job 49532634, n_sim=13000/n_boot=499, 6389 shards → aggregate → **D-43 panel WITHHELD 3/3**). Honest
+outcome (MEASURED, not certified): **profile=partial · wald=partial · bootstrap=not_covered/fenced; NO route
+covers at r=0.8** (pooling over r hid it). Mechanism: **attenuation bias of the plug-in functional**
+(empirically confirmed) — bootstrap+wald inherit it, profile escapes it; `multiple_r` has no profile route.
+CI-11 register / NEWS / roxygen **UNTOUCHED** (correctly). Full report + what's-left for the main lane:
+`docs/dev-log/2026-07-19-ci11-lane-closure-report-to-main.md`; register PROPOSAL (fenced, not applied):
+`…-ci11-register-update-PROPOSAL.md`; mechanism: `…-ci11-failure-mechanism.md`. **LEFT for the main lane:**
+(1) maintainer review of the register PROPOSAL; (2) Ayumi external real-data pass; (3) the profile-`multiple_r`
+fix arc (maintainer-design-gated; task `task_25cbceb0`); (4) hardening-map minors (`task_7368e457`);
+(5) merge decision on the API changes. Nothing here flips CI-11.

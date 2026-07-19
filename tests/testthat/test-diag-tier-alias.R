@@ -56,7 +56,10 @@
     value ~ 0 + trait + latent(0 + trait | species, d = 1, lv = ~x) +
       phylo_latent(0 + trait | species, d = 1, tree = fx$tree),
     data = fx$data, unit = "species", trait = "trait", family = gaussian(),
-    REML = TRUE,
+    ## This fixture tests tier aliasing and Wald extraction. Predictor-informed
+    ## score means are intentionally outside the current b_fix-only REML
+    ## restriction, so keep the alias test on its ML likelihood.
+    REML = FALSE,
     control = gllvmTMB::gllvmTMBcontrol(
       se = TRUE, optimizer = "optim", optArgs = list(method = "BFGS")
     )

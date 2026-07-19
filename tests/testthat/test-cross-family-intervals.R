@@ -287,3 +287,64 @@ test_that("CI-11 ordinal simulation is categorical and bootstraps a nominal part
   expect_equal(cc$multiple_r_n_effective, 8L)
   expect_false(any(cc$multiple_r_interval_status == "bootstrap_family_unsupported"))
 })
+
+test_that("CI-11 phylogenetic masked ordinal partner uses categorical bootstrap draws", {
+  skip_on_cran(); skip_if_not_installed("MASS"); skip_if_not_installed("ape")
+  ## This is the relevant CI-11 route: one multinomial trait, a partially
+  ## observed ordinal-probit partner, and a phylogenetic reduced-rank surface.
+  ## It is intentionally a small plumbing regression, not a coverage claim.
+  set.seed(720L); n_species <- 70L
+  tree <- ape::rcoal(n_species); tree$tip.label <- paste0("sp", seq_len(n_species))
+  z <- as.numeric(scale(ape::rTraitCont(tree, model = "BM")))
+  rows <- vector("list", 2L * n_species); at <- 0L
+  for (i in seq_len(n_species)) {
+    p_m <- exp(c(0, 0.9 * z[i], -0.5 * z[i])); p_m <- p_m / sum(p_m)
+    at <- at + 1L
+    rows[[at]] <- data.frame(species = tree$tip.label[i], trait = "cat", family = "m",
+                             value = sample.int(3L, 1L, prob = p_m))
+    at <- at + 1L
+    rows[[at]] <- data.frame(species = tree$tip.label[i], trait = "ord", family = "o",
+                             value = findInterval(stats::rnorm(1L, 0.7 * z[i], 1), c(0, 0.75)) + 1L)
+  }
+  dat <- do.call(rbind, rows)
+  dat$species <- factor(dat$species, levels = tree$tip.label)
+  dat$trait <- factor(dat$trait); dat$family <- factor(dat$family)
+  ordinal_rows <- which(dat$trait == "ord")
+  dat$value[ordinal_rows[c(4L, 17L, 31L, 53L)]] <- NA
+  fam <- list(m = multinomial(), o = ordinal_probit()); attr(fam, "family_var") <- "family"
+  fit <- suppressWarnings(suppressMessages(gllvmTMB(
+    value ~ 0 + trait + phylo_latent(species, d = 1, unique = FALSE),
+    data = dat, family = fam, trait = "trait", unit = "species", phylo_tree = tree,
+    missing = miss_control(response = "include"), silent = TRUE
+  )))
+  expect_equal(fit$opt$convergence, 0L)
+  expect_equal(sum(fit$tmb_data$is_y_observed == 0L), 4L)
+  y_sim <- simulate(fit, nsim = 2L, seed = 99L)
+  ord <- fit$tmb_data$family_id_vec == 14L
+  mn <- fit$tmb_data$family_id_vec == 16L
+  expect_true(all(y_sim[ord, ] %in% 1:3))
+  mn_groups <- split(which(mn), fit$tmb_data$multinom_group_id[mn])
+  expect_true(all(vapply(mn_groups, function(ii) all(colSums(y_sim[ii, , drop = FALSE]) <= 1), logical(1L))))
+  extract_summaries_original <- getFromNamespace(".extract_summaries", "gllvmTMB")
+  refit_masks <- list()
+  testthat::local_mocked_bindings(
+    .extract_summaries = function(fit, ...) {
+      refit_masks[[length(refit_masks) + 1L]] <<- fit$tmb_data$is_y_observed
+      extract_summaries_original(fit, ...)
+    },
+    .package = "gllvmTMB"
+  )
+  boot <- suppressWarnings(suppressMessages(bootstrap_Sigma(
+    fit, n_boot = 4L, level = "phy", what = "cross_corr", seed = 100L, progress = FALSE
+  )))
+  expect_equal(boot$n_failed, 0L)
+  expect_equal(unname(boot$n_effective$multiple_r_phy), 4L)
+  expect_length(refit_masks, 5L) # original point estimate plus four refits
+  expect_true(all(vapply(refit_masks, identical, logical(1L), fit$tmb_data$is_y_observed)))
+  cc <- suppressWarnings(suppressMessages(extract_cross_correlations(
+    fit, level = "phy", method = "bootstrap", nsim = 4L, seed = 100L
+  )))
+  expect_equal(cc$bootstrap_n_failed, 0L)
+  expect_equal(cc$multiple_r_n_effective, 4L)
+  expect_true(all(cc$multiple_r_interval_status == "target_specific_uncalibrated"))
+})

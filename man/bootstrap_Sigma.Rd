@@ -137,7 +137,9 @@ warning path.
 \item Refits use the same \code{formula} reconstructed from
 \code{fit$formula} and \code{fit$covstructs}, and forward the fit's
 auxiliary structure (\code{phylo_vcv}, \code{phylo_tree}, \code{mesh},
-\code{lambda_constraint}) so each refit matches the original model.
+\code{lambda_constraint}) so each refit matches the original model. For a
+fit using \code{miss_control(response = "include")}, the original response
+mask is retained in every simulated refit.
 \item Convergence: replicates whose refit fails or whose
 optimiser does not return \code{convergence == 0} are counted in
 \code{n_failed} and excluded from CIs.

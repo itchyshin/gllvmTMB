@@ -78,11 +78,16 @@ only at mid-cell (mr=0.5); contrast_r print table omits worst-case columns; stud
   fitted cutpoints. The bootstrap family allowlist consequently admits ordinal-probit.
 - **Resolved — invisible bootstrap attrition:** `extract_cross_correlations()` now carries the global
   `bootstrap_n_failed` and the per-target finite `*_n_effective` counts from `bootstrap_Sigma()`.
+- **Resolved — masked refit drift:** bootstrap refits restore the original `is_y_observed` response mask and
+  refit with `miss_control(response = "include")`; simulated values never turn excluded cells into observed
+  likelihood contributions.
 - **Resolved — silent profile endpoints:** profile output carries a scalar `profile_status` and named
   `contrast_r_profile_status`, each marking non-finite endpoint pairs explicitly.
 - **Regression/live evidence:** `test-cross-family-intervals.R` fits a multinomial + ordinal-probit shared-latent
   model, checks both categorical encodings after `simulate()`, and checks finite cross-family bootstrap output.
-  A local live run had `n_failed = 0/8`; this verifies plumbing only, never CI-11 coverage calibration.
+  A local live run had `n_failed = 0/8`; a second `level = "phy"` regression uses
+  `phylo_latent(..., d = 1, unique = FALSE)` with four masked ordinal rows and had `n_failed = 0/4`.
+  These verify plumbing only, never CI-11 coverage calibration or Ayumi's 500-species result.
 
 ## Disposition
 - **Fix now (safe edge-case guards, don't change cert-grid behavior):** blockers 1-2 + the contrast_r clamp +

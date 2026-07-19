@@ -10,7 +10,7 @@ No likelihood, formula grammar, or parameterisation changed. For ordinal probit,
 
 ## Files changed
 
-`R/methods-gllvmTMB.R`; `R/extract-correlations.R`; regenerated `man/extract_cross_correlations.Rd`; `tests/testthat/test-cross-family-intervals.R`; `docs/dev-log/2026-07-19-ci11-register-update-PROPOSAL.md`; `docs/dev-log/2026-07-18-cross-family-interval-hardening-map.md`; and this report. `README.md`, `NEWS.md`, `ROADMAP.md`, vignettes, `_pkgdown.yml`, and design docs were inspected and not changed: this is a bounded plumbing/diagnostic repair, not a coverage or advertised-capability upgrade.
+`R/methods-gllvmTMB.R`; `R/extract-correlations.R`; `R/bootstrap-sigma.R`; regenerated `man/extract_cross_correlations.Rd` and `man/bootstrap_Sigma.Rd`; `tests/testthat/test-cross-family-intervals.R`; `docs/dev-log/2026-07-19-ci11-register-update-PROPOSAL.md`; `docs/dev-log/2026-07-18-cross-family-interval-hardening-map.md`; and this report. `README.md`, `NEWS.md`, `ROADMAP.md`, vignettes, `_pkgdown.yml`, and design docs were inspected and not changed: this is a bounded plumbing/diagnostic repair, not a coverage or advertised-capability upgrade.
 
 ## Checks run
 
@@ -18,6 +18,8 @@ No likelihood, formula grammar, or parameterisation changed. For ordinal probit,
 - `pkgdown::check_pkgdown()` passed.
 - `NOT_CRAN=true Rscript --vanilla ... test_file('tests/testthat/test-cross-family-intervals.R')` completed with no failure output.
 - Live R/TMB check: multinomial + ordinal-probit fit (`N = 60`, three repeats) converged; `simulate()` returned ordinal values in `1:3` and valid multinomial contrast rows; direct `bootstrap_Sigma(what = "cross_corr", n_boot = 8)` returned `n_failed = 0`, eight effective draws, and finite `multiple_r` bounds.
+- Relevant live R/TMB check: a 70-species `phylo_latent(species, d = 1, unique = FALSE)` fit with one multinomial trait, a four-row masked ordinal-probit partner, and `missing = miss_control(response = "include")` converged. `simulate()` returned valid categories; direct `bootstrap_Sigma(what = "cross_corr", level = "phy", n_boot = 4)` returned `n_failed = 0` and four effective draws.
+- Bootstrap refits now restore the original `is_y_observed` mask as `NA` responses and use `miss_control(response = "include")`, rather than silently converting masked cells into complete simulated responses.
 - `git diff --check` passed.
 
 ## Consistency audit
@@ -26,11 +28,11 @@ No likelihood, formula grammar, or parameterisation changed. For ordinal probit,
 
 ## Tests of the tests
 
-The regression directly asserts `bootstrap_Sigma(..., what = "cross_corr")`, `n_failed == 0`, and eight effective `multiple_r` draws; it separately verifies the public wrapper diagnostics. A namespace mock returns non-finite profile endpoints and proves both profile status fields become `non_finite`.
+The regression directly asserts `bootstrap_Sigma(..., what = "cross_corr")`, `n_failed == 0`, and eight effective `multiple_r` draws; it separately verifies the public wrapper diagnostics. The phylogenetic/masked case wraps the internal summary extractor and asserts that the original response mask reaches the point estimate and every one of four bootstrap refits. A namespace mock returns non-finite profile endpoints and proves both profile status fields become `non_finite`.
 
 ## What did not go smoothly
 
-The first test only covered bootstrap indirectly and did not assert the exact live counts. Fresh D-43 review caught both omissions; the final test now covers them directly.
+The first test only covered bootstrap indirectly and did not assert the exact live counts. Fresh D-43 review caught both omissions; the final test now covers them directly. The post-integration D-43 also caught that bootstrap refits did not restore masked responses; the refit now retains the original observed-data mask.
 
 ## Team learning and process
 
@@ -50,4 +52,4 @@ Inspected: Ayumi-495/BIRDBASE_pcm#1 from the handover. No issue was closed. A re
 
 ## Known limitations and next actions
 
-This verifies simulator/bootstrapping plumbing, not interval calibration or ordinal category-frequency recovery. CI-11 remains unupgraded. Publish the bounded repair, then invite @Ayumi-495 to rerun the same setup and report `bootstrap_n_failed`, effective-draw columns, and any `profile_status = "non_finite"` rows.
+This verifies simulator/bootstrapping plumbing on a small phylogenetic/masked route, not interval calibration, ordinal category-frequency recovery, or Ayumi's 500-species result. CI-11 remains unupgraded. Publish the bounded repair, then invite @Ayumi-495 to rerun the same setup and report `bootstrap_n_failed`, effective-draw columns, and any `profile_status = "non_finite"` rows.

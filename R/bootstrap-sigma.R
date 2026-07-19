@@ -139,7 +139,9 @@
 #'   \item Refits use the same `formula` reconstructed from
 #'     `fit$formula` and `fit$covstructs`, and forward the fit's
 #'     auxiliary structure (`phylo_vcv`, `phylo_tree`, `mesh`,
-#'     `lambda_constraint`) so each refit matches the original model.
+#'     `lambda_constraint`) so each refit matches the original model. For a
+#'     fit using `miss_control(response = "include")`, the original response
+#'     mask is retained in every simulated refit.
 #'   \item Convergence: replicates whose refit fails or whose
 #'     optimiser does not return `convergence == 0` are counted in
 #'     `n_failed` and excluded from CIs.
@@ -242,6 +244,29 @@ bootstrap_Sigma <- function(
     )
   }
 
+  ## A parametric bootstrap conditions on the original observed-response
+  ## pattern.  `simulate()` necessarily produces a value for every retained
+  ## row, including rows that were masked under response = "include"; put
+  ## those cells back to NA before each refit so the observed-data likelihood
+  ## and its effective sample size are unchanged.
+  observed_y <- fit$tmb_data$is_y_observed
+  if (is.null(observed_y)) observed_y <- rep.int(1L, nrow(data))
+  observed_y <- as.integer(observed_y)
+  if (length(observed_y) != nrow(data)) {
+    cli::cli_abort("Internal: bootstrap response mask does not align with {.code fit$data}.")
+  }
+  has_response_mask <- any(observed_y == 0L)
+  missing_control <- if (has_response_mask) {
+    md <- fit$missing_data
+    miss_control(
+      response = "include",
+      predictor = md$predictor %||% "fail",
+      engine = md$engine %||% "laplace"
+    )
+  } else {
+    miss_control()
+  }
+
   ## Pre-draw the simulated response matrix once, in the parent process,
   ## so the replicates are reproducible regardless of n_cores. Each
   ## column is one bootstrap response vector.
@@ -287,6 +312,7 @@ bootstrap_Sigma <- function(
   refit_one <- function(b) {
     dat <- data
     dat[[resp]] <- Y_sim[, b]
+    if (has_response_mask) dat[[resp]][observed_y == 0L] <- NA
     call_args <- c(
       list(
         formula = formula,
@@ -295,6 +321,7 @@ bootstrap_Sigma <- function(
         site = site,
         species = species,
         family = family,
+        missing = missing_control,
         silent = TRUE
       ),
       aux

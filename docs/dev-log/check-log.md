@@ -45516,3 +45516,23 @@ fix arc (maintainer-design-gated; task `task_25cbceb0`); (4) hardening-map minor
 - Fresh D-43: three independent reviewers returned DONE after direct-bootstrap/exact-count and mocked
   non-finite-profile regression gaps were repaired. Report:
   `docs/dev-log/after-task/2026-07-19-ci11-categorical-simulate-hardening.md`.
+
+## 2026-07-19 — CI-11 integrated phylogenetic/masked follow-up (Codex)
+
+- Integrated `origin/main` into `claude/cross-family-ci11-20260718` (merge commit `1d3bb788`) after the
+  bounded categorical-simulation checkpoint; no conflicts. The integrated worktree excludes the separate
+  AGHQ/REML lane except for that upstream merge.
+- Added the relevant non-CRAN regression in `tests/testthat/test-cross-family-intervals.R`: a 70-species
+  `phylo_latent(species, d = 1, unique = FALSE)` mixed multinomial/ordinal-probit fit, four masked ordinal
+  responses, `missing = miss_control(response = "include")`, categorical `simulate()` checks, and direct
+  `bootstrap_Sigma(what = "cross_corr", level = "phy", n_boot = 4)`. Live receipt: convergence 0,
+  `n_failed = 0`, and four effective `multiple_r_phy` draws.
+- D-43 caught masked-refit drift: `bootstrap_Sigma()` had replaced simulated values into every retained row.
+  It now restores `is_y_observed == 0` cells to `NA` and refits with the original include mask. This preserves
+  the observed-data likelihood; an internal extractor wrapper asserts that the original mask reaches the point
+  estimate and each of the four refits. This does not alter CI-11 calibration status.
+- Exact checks after the remediation: `NOT_CRAN=true Rscript --vanilla -e 'devtools::test(filter =
+  "cross-family-intervals", reporter = "summary")'`; `git diff --check`; `Rscript --vanilla -e
+  'devtools::document(quiet = TRUE); pkgdown::check_pkgdown()'`. All completed successfully. Deliberately
+  not run: a coverage campaign, profile-speed benchmark, full 3-OS CI, or Ayumi's 500-species proprietary
+  fixture.

@@ -33,6 +33,12 @@ draft. Evidence: `2026-07-19-ci11-coverage-certificate-MEASURED.md`, `…-per-ce
   `bootstrap_Sigma(what = "cross_corr", n_boot = 8)` with `n_failed = 0`, eight effective draws, and finite
   `multiple_r` plus percentile bounds. The regression test is
   `tests/testthat/test-cross-family-intervals.R` (CI-11 ordinal simulation case).
+- The relevant phylogenetic/masked regression now fits `phylo_latent(species, d = 1, unique = FALSE)` with a
+  multinomial trait, a four-row masked ordinal-probit partner, and `level = "phy"`. Its direct
+  `bootstrap_Sigma(what = "cross_corr", n_boot = 4)` run returned `n_failed = 0` and four effective draws;
+  simulated ordinal categories and grouped multinomial contrasts were valid. Bootstrap refits restore the
+  original response mask before refitting. This is a small regression receipt, not a substitute for Ayumi's
+  500-species re-test.
 - `extract_cross_correlations(method = "bootstrap")` now exposes `bootstrap_n_failed` and per-estimand finite
   draw counts. The profile route now labels each returned row `profile_status = "finite"` or `"non_finite"`
   (and exposes per-contrast status), so failed endpoints cannot remain silent.

@@ -1,10 +1,13 @@
 # R2 specification — low-dimensional AGHQ reference harness
 
-**Status:** design only. This is a research harness specification, not a
-package feature, estimator, non-Gaussian REML claim, public argument, CI job,
-or validation-debt promotion. R2 must retain the O3 hard boundary: **AGHQ is
-permitted only for fixed-coordinate q = 1 and q = 2 reference calculations;
-q >= 3 is forbidden.**
+**Status:** implemented on the review branch as a test-only harness in
+`tests/testthat/helper-aghq-o3.R` and
+`tests/testthat/test-aghq-r2-reference-harness.R`; Rose's R2 admission audit
+passed after verifying the numerical receipt and scope fence. This is not a
+package feature, estimator, non-Gaussian REML
+claim, public argument, CI job, or validation-debt promotion. R2 retains the
+O3 hard boundary: **AGHQ is permitted only for fixed-coordinate q = 1 and q =
+2 reference calculations; q >= 3 is forbidden.**
 
 ## Purpose and fixed-coordinate estimand
 
@@ -146,3 +149,15 @@ The existing evidence is explicitly a small fixed-fixture reference and says
 why the q=3 tensor grid is forbidden (9 nodes gives 729 points per unit before
 mode/Hessian work) ([`docs/dev-log/spikes/2026-07-19-aghq-o3-gllvmtmb-hooks.md:64-76`](../spikes/2026-07-19-aghq-o3-gllvmtmb-hooks.md)). R2 therefore ends with a
 numerical receipt, not an inference claim or promotion recommendation.
+
+## Implementation receipt (review-branch only)
+
+The implemented harness preserves the O3 baseline seeds, adds the specified
+signal, intercept, and near-collinear perturbations, canonicalises arithmetic
+within each unit before evaluating a permutation, and writes a local receipt
+only when `o3_r2_write_receipt()` receives an explicit output directory. Its
+ordinary fixture rows label their objective source `refit_opt`; the analytic
+condition fixture is a distinct `prequadrature_guard` row. The test suite
+exercises every ordinary row without writing files, then checks the local
+writer in a temporary directory. This is deliberately evidence plumbing, not
+a fitting path.

@@ -1,5 +1,13 @@
 # gllvmTMB Agent Instructions
 
+## LOAD-FIRST manifest
+<!-- Brain dossier manifest (refresh: python3 ~/shinichi-brain/tools/route.py gllvmTMB). Top = salience; drift-checked by route.py. -->
+- Compute is a default condition — for any heavy sim/coverage/recovery/benchmark ask *"Totoro or DRAC?"* (fast CPU ≤100 cores → Totoro; GPU / replicated grids → DRAC arrays); scale out, never laptop-scale. Playbook: `~/shinichi-brain/projects/COMPUTE-PLAYBOOK.md`.
+- Trust recovery-to-truth over second-order flags; `pdHess=FALSE` on a well-recovered fit is not failure (route CIs via profile/bootstrap); run a null/control case early.
+- Diff main before building; scope any sub-agent to ≤5–6 files and verify by file ground-truth.
+- Load `ultra-plan`, `validation-harness`, `symbolic-alignment` (write math↔impl↔doc first).
+- Do NOT zero the between-unit (B-tier) Ψ — only the lowest-level non-Gaussian W-tier `unique = 0`.
+
 `gllvmTMB` is an R package for stacked-trait, long-format multivariate
 generalised linear latent variable models (GLLVMs) using Template
 Model Builder.

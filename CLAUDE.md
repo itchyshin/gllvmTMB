@@ -8,6 +8,12 @@ https://claude.ai/code/artifact/46e611f2-69d1-48e1-8b8b-ccab2e89983d) and shows
 it to Shinichi as step 0 — it is the mission-control. Do this before reading
 further or planning.
 
+**➡️ gllvmTMB → Codex 2026-07-19 — the 0.6-finishing core arc moves to Codex (SAME repo, live toolchain).**
+Codex continues gllvmTMB (sequential — one tool at a time per repo) to finish 0.6; confirm the exact core from
+`ROADMAP.md` + the maintainer. PARKED (NOT this arc): CI-11 cross-family (CLOSED, human-gated merge/register +
+Ayumi pm), multinom/tier-2a (in-flight build). profile-coverage DONE (WITHHELD, `9476cbe4`). Codex handover +
+lane map: `docs/dev-log/handover/2026-07-19-codex-handover.md`.
+
 For the current handoff, read
 `docs/dev-log/handover/2026-07-19-claude-handover-profile-cert-v3.md` (Claude→Claude, 2026-07-19;
 **B3b Bartlett re-score COMPLETE — certificate WITHHELD at 0.95 (provisional)**: the opt-in Bartlett-corrected

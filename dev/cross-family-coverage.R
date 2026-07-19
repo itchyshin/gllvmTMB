@@ -270,6 +270,17 @@ XFC_BANNER <- "MEASURED, NOT certified -- awaiting D-43 panel"
   allow <- tol_abs + tol_rel * abs(Sig_true)
   ok <- all(D <= allow)
   max_abs <- max(D)
+  ## AUTO-scale (total = latent + R_link) is the quantity the wald/bootstrap
+  ## intervals TARGET; assert it too (not only the latent scale) so a mismatch in
+  ## the estimator's link-residual augmentation is caught, not just a latent error.
+  S_auto <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total",
+                                           link_residual = "auto"))
+  Sig_hat_auto <- if (is.list(S_auto) && !is.null(S_auto$Sigma)) S_auto$Sigma else S_auto
+  Sig_true_auto <- truth$Sigma_total[ord, ord, drop = FALSE]
+  D_auto <- abs(Sig_hat_auto - Sig_true_auto)
+  ok_auto <- all(D_auto <= (tol_abs + tol_rel * abs(Sig_true_auto)))
+  ok <- ok && ok_auto
+  max_abs <- max(max_abs, max(D_auto))
   if (verbose) {
     cat(sprintf("[truth-assertion] partner=%s  target mr_true=%.3f  order=(%s)\n",
                 truth$partner_family, truth$multiple_r_true, paste(ord, collapse = ", ")))
@@ -480,7 +491,11 @@ xfc_run_cell <- function(truth, N, reps, n_sim, n_boot, seed_base, cell_id = 1L,
     meta = data.frame(
       cell_id = cell_id, partner = truth$partner_family, N = N, reps = reps,
       n_sim = n_sim, n_boot = n_boot, rep_start = rep_range[1L], rep_end = rep_range[2L],
-      target_multiple_r = truth$multiple_r_true, note = XFC_BANNER,
+      target_multiple_r = truth$multiple_r_true,
+      ## Fit-level non-convergence carried in META (not only in the per-estimand
+      ## summaries) so the worst-case denominator is honest even when a shard has
+      ## ZERO converged reps (its summaries are NULL, but this count survives).
+      n_nonconverged = n_nonconv, note = XFC_BANNER,
       stringsAsFactors = FALSE),
     raw_multiple_r = if (length(mr_rows)) do.call(rbind, mr_rows) else NULL,
     raw_contrast_r = if (length(cr_rows)) do.call(rbind, cr_rows) else NULL,

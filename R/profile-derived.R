@@ -436,6 +436,8 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
     q_inside <- q_hat
     e_inside <- -crit
     finite_probe_seen <- FALSE
+    e_prev <- e_inside
+    nonmono <- FALSE
 
     for (trial in trials) {
       e_trial <- excess(trial)
@@ -443,7 +445,21 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
         next
       }
       finite_probe_seen <- TRUE
+      ## Monotonicity probe: the constrained-refit deviance excess should RISE as
+      ## the profiled parameter moves away from the MLE. A material DROP means a
+      ## later refit found a LOWER deviance (a non-monotone profile / optimizer
+      ## warm-start artefact), so the first-crossing bracket below may be
+      ## unreliable. Flag it (one-shot); do NOT change the returned bound.
+      if (is.finite(e_prev) && e_trial < e_prev - 1e-3) nonmono <- TRUE
+      e_prev <- e_trial
       if (e_trial >= 0) {
+        if (nonmono && is.null(getOption("gllvmTMB.warned_profile_nonmonotone"))) {
+          cli::cli_warn(c(
+            "Profile-likelihood bracket: the constrained-refit deviance is non-monotone approaching the CI bound.",
+            "i" = "The first-crossing bracket may be unreliable at this fit; treat the profile interval with caution."
+          ), class = "gllvmTMB_profile_nonmonotone_bracket")
+          options(gllvmTMB.warned_profile_nonmonotone = TRUE)
+        }
         return(root_between(q_inside, trial, e_inside, e_trial))
       }
       q_inside <- trial

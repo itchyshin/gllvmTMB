@@ -885,7 +885,28 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
   ## contrast_r_<lvl> (bootstrap-sigma.R), so a single call here avoids a
   ## second refit pass regardless of whether `contrasts` was requested.
   boot_lo <- boot_hi <- boot_cr_lo <- boot_cr_hi <- NULL
+  boot_bad_partner <- logical(length(tn))   # TRUE where a partner family is not natively simulate()d
   if (method == "bootstrap") {
+    ## Family-allowlist guard: the parametric bootstrap is only valid when
+    ## simulate.gllvmTMB_multi() draws the partner's family NATIVELY. Families
+    ## outside its allowlist fall back to Gaussian-on-link-scale draws, so the
+    ## resulting intervals are INVALID (not just uncalibrated). Flag + stamp
+    ## them rather than return a silently-wrong CI.
+    .sim_supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 15L, 16L)
+    .fids <- fit$tmb_data$family_id_vec
+    .tids <- fit$tmb_data$trait_id + 1L
+    fam_per_trait_b <- vapply(seq_along(tn), function(t) {
+      ft <- unique(.fids[.tids == t]); if (length(ft) == 1L) as.integer(ft) else NA_integer_
+    }, integer(1L))
+    boot_bad_partner <- !(fam_per_trait_b %in% .sim_supported)
+    if (any(boot_bad_partner[partners])) {
+      bad_p <- partners[boot_bad_partner[partners]]
+      cli::cli_warn(c(
+        "{.code method = \"bootstrap\"} intervals are INVALID for partner families {.fn simulate} does not draw natively.",
+        "x" = "Partner trait(s) {.val {tn[bad_p]}} (family id {.val {fam_per_trait_b[bad_p]}}) fall back to Gaussian-on-link-scale draws.",
+        "i" = "Use {.code method = \"wald\"}, or a natively-simulated partner family; these rows are stamped {.val bootstrap_family_unsupported}."
+      ), class = "gllvmTMB_bootstrap_family_unsupported")
+    }
     boot <- suppressMessages(bootstrap_Sigma(
       fit,
       n_boot = as.integer(nsim),
@@ -956,6 +977,16 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
       }
       MASS::ginv(Scc)
     })
+    ## Ill-conditioned (but not solve()-singular) Scc: solve() returns with large
+    ## relative error and mult silently pins toward 1. Warn so the estimate is not
+    ## trusted blindly (typically d < K-1, or a near-collinear contrast block).
+    scc_rcond <- tryCatch(rcond(Scc), error = function(e) NA_real_)
+    if (isTRUE(scc_rcond < 1e-8)) {
+      cli::cli_warn(c(
+        "The categorical contrast block for nominal {.val {b}} is ill-conditioned (rcond {.val {signif(scc_rcond, 2)}} < 1e-8).",
+        "i" = "The {.field multiple_r}/{.field contrast_r} estimates may be unstable (often pinned near 1); a latent dimension {.code d >= K-1} makes the block full rank."
+      ), class = "gllvmTMB_cross_scc_illconditioned")
+    }
     for (p in partners) {
       Spc  <- Sigma[p, blk, drop = FALSE]                 # 1 x (K-1)
       mult <- sqrt(max(0, as.numeric(Spc %*% Scc_inv %*% t(Spc)) / Sigma[p, p]))
@@ -978,7 +1009,9 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
         row$multiple_r_lower <- mr_lo
         row$multiple_r_upper <- mr_hi
         row$multiple_r_method <- mr_method
-        row$multiple_r_interval_status <- .correlation_interval_status(mr_method)
+        row$multiple_r_interval_status <- if (identical(mr_method, "bootstrap") && isTRUE(boot_bad_partner[p])) {
+          "bootstrap_family_unsupported"
+        } else .correlation_interval_status(mr_method)
       }
 
       if (contrasts) {
@@ -1024,7 +1057,9 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
           row$contrast_r_lower <- I(list(stats::setNames(cr_lo, tn[blk])))
           row$contrast_r_upper <- I(list(stats::setNames(cr_hi, tn[blk])))
           row$contrast_r_method <- cr_method
-          row$contrast_r_interval_status <- .correlation_interval_status(cr_method)
+          row$contrast_r_interval_status <- if (identical(cr_method, "bootstrap") && isTRUE(boot_bad_partner[p])) {
+            "bootstrap_family_unsupported"
+          } else .correlation_interval_status(cr_method)
         }
       }
       out[[length(out) + 1L]] <- row

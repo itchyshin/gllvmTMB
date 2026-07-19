@@ -33,7 +33,13 @@ agg_one <- function(cell_list, estimand) {
   raws <- raws[!vapply(raws, is.null, logical(1))]
   if (!length(raws)) return(NULL)
   raw  <- do.call(rbind, raws)
+  ## Read fit-level non-convergence from META (always present), falling back to
+  ## the per-estimand summary only for OLD shards that predate the meta field.
+  ## A shard with ZERO converged reps has NULL summaries but still contributes
+  ## its non-converged count here -> honest worst-case denominator.
   nnc  <- sum(vapply(cell_list, function(x) {
+    m <- x$meta
+    if (!is.null(m) && !is.null(m$n_nonconverged)) return(as.integer(m$n_nonconverged[1L]))
     s <- x[[sum_field]]
     if (is.null(s)) 0L else as.integer(s$n_nonconverged[1L])
   }, integer(1)))

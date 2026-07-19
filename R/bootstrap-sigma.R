@@ -260,7 +260,8 @@ bootstrap_Sigma <- function(
     fit,
     level = level,
     what = what,
-    link_residual = link_residual
+    link_residual = link_residual,
+    .point = TRUE
   )
 
   ## One-replicate worker: drop in the b-th simulated response, refit,
@@ -381,7 +382,8 @@ bootstrap_Sigma <- function(
   fit,
   level,
   what,
-  link_residual = c("auto", "none")
+  link_residual = c("auto", "none"),
+  .point = FALSE
 ) {
   link_residual <- match.arg(link_residual)
   out <- list()
@@ -440,6 +442,10 @@ bootstrap_Sigma <- function(
       ## refit_one() calls .extract_summaries() UNGUARDED, so the tryCatch is
       ## load-bearing -- an abort (no nominal trait, singular Scc,
       ## non-convergence) must yield NULL, not kill the whole bootstrap.
+      ## On the POINT-ESTIMATE call (.point = TRUE) a failure here means the
+      ## fit cannot produce the estimand at all, so the bootstrap CIs will be
+      ## silently all-NA -- warn loudly rather than swallow it. Refit failures
+      ## (.point = FALSE) stay silent: they are expected attrition.
       cc <- tryCatch(
         extract_cross_correlations(
           fit,
@@ -447,7 +453,15 @@ bootstrap_Sigma <- function(
           contrasts = TRUE,
           link_residual = link_residual
         ),
-        error = function(e) NULL
+        error = function(e) {
+          if (isTRUE(.point)) {
+            cli::cli_warn(c(
+              "Point-estimate cross-correlation failed for tier {.val {lvl}}; its bootstrap intervals will be all-{.val NA}.",
+              "x" = conditionMessage(e)
+            ), class = "gllvmTMB_bootstrap_point_cross_corr_failed")
+          }
+          NULL
+        }
       )
       if (!is.null(cc) && nrow(cc) > 0L) {
         out[[paste0("multiple_r_", lvl)]] <- stats::setNames(
@@ -522,6 +536,7 @@ bootstrap_Sigma <- function(
         numeric(length(ref))
       )
       ## stacked is length(ref) x n_boot
+      stacked[!is.finite(stacked)] <- NA_real_   # Inf/NaN -> NA (quantile na.rm keeps Inf)
       lo <- apply(
         stacked,
         1L,
@@ -558,6 +573,11 @@ bootstrap_Sigma <- function(
       ## single partner / trait); force the length(ref) x n_boot shape so the
       ## per-element apply()/rowSums() below stay valid.
       dim(stacked) <- c(length(ref), n_boot)
+      ## Map any non-finite draw (Inf / -Inf / NaN, e.g. an unclamped boundary
+      ## functional) to NA: quantile(na.rm = TRUE) strips NA but NOT Inf, so an
+      ## Inf draw would otherwise corrupt the percentile bound. is.finite() also
+      ## drives the attrition count below, so this keeps the two consistent.
+      stacked[!is.finite(stacked)] <- NA_real_
       lo <- apply(
         stacked,
         1L,

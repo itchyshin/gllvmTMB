@@ -50,9 +50,17 @@ Do NOT try to build profile→multiple_r; it is mathematically undefined.
    /project/def-snakagaw/snakagaw/gtmb-xfam-ci11 && Rscript dev/xfc-aggregate.R
    /project/def-snakagaw/snakagaw/gtmb-xfam-ci11-results`. Pull `AGGREGATED.rds` LOCAL (D-50). Right-size
    `--time` via `seff 49531428_<task>` after first tasks land; deepen to n-boot=499 if wanted.
-3. **Certification gate (CI-11 flip) = a LATER session** — needs: DRAC confirm aggregate banked + **Rose** +
-   a **D-43 panel** (default NOT-DONE, ≥2 NOT-DONE withholds) + **Ayumi clean real-data pass**. Only then
-   flip CI-11 in the validation-debt register + NEWS + roxygen (the claim-change pattern, Design 39).
+3. **Certification: EVIDENCE + D-43 DONE (2026-07-19); register flip still gated.** DRAC super-sim aggregated
+   (job 49532634, 6389 shards) → **D-43 panel WITHHELD "all routes validated" (3/3 NOT_DONE)**. The full
+   MEASURED certificate + per-cell decomposition: `docs/dev-log/2026-07-19-ci11-coverage-certificate-MEASURED.md`
+   + `…-per-cell-coverage.txt` (local aggregate `~/gllvm_work/xfc-drac-results/AGGREGATED-49532634.rds`).
+   **Honest route disposition:** profile = **partial** (best; contrast_r only; mild under-cover at r=0.8/N=500),
+   wald = **partial** (r-dependent — over-covers r≤0.5, under-covers r=0.8), bootstrap = **NOT covered / fenced**
+   (binomial×r=0.8×N=500 collapses to **0.303**). NO route validated at the r=0.8 boundary; pooling over r hid it.
+   **Still needed before ANY register/NEWS/roxygen flip:** (a) investigate/fence the r=0.8 boundary + the
+   binomial-specific bootstrap collapse + wald r-dependence; (b) **Ayumi clean real-data pass**; (c) maintainer
+   sign-off. The flip will be a **route-specific** register update (Design 39 claim-change pattern), NOT a
+   blanket "all validated".
 
 ## Fences / discipline
 - Every number: **"MEASURED, NOT certified — awaiting D-43 panel."** Conditional-on-convergence disclosed +

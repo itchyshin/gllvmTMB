@@ -24,30 +24,51 @@ that wald/bootstrap target was **verified byte-identical** to the truth's analyt
 | profile | 0.942 | 0.943 | 0.935 |
 | wald | 0.960 | 0.958 | 0.950 |
 
-## Findings
-1. **Wald — essentially at nominal.** contrast_r wald **0.950–0.960** across N (0.950 exactly at N=500);
-   multiple_r wald 0.937–0.971 (slightly conservative small-N, dips to 0.937 at N=500). The "heuristic"
-   Fisher-z route is, empirically, the **best-behaved** — near-nominal and mildly conservative.
-2. **Profile — near-nominal and stable.** contrast_r profile **0.935–0.943**, essentially flat in N. Slightly
-   below 0.95 (mild residual under-coverage, ~0.5–1.5pp), but tight and predictable. The calibration-aware route.
-3. **Bootstrap — FAILS, and pathologically WORSENS with N.** multiple_r bootstrap collapses
-   **0.933 → 0.898 → 0.791** (N=50→150→500); contrast_r bootstrap 0.930 → 0.923 → 0.883. This is NOT MC noise
-   (2·MCSE≈0.002) — it is a **systematic defect**: the parametric-bootstrap CI for these plug-in correlation
-   functionals is too narrow, *increasingly so at large N*. A CI whose coverage degrades as N grows indicates
-   the redraw under-captures the functional's true sampling variability (plausible causes: the RE-redraw
-   bootstrap misses a variance component of the ΛΛ'-block functional; or point-estimate bias the percentile
-   interval centres on). **Distinct from and more serious than the profile/wald mild under-coverage.**
+## ⚠️ CORRECTION — the pooled table above OVER-STATES coverage (D-43 panel caught this)
+The pooled-over-r numbers **mask a boundary catastrophe**. The per-cell (partner × target-r × N) decomposition
+(from the local `AGGREGATED-49532634.rds`) shows coverage degrades sharply at **r=0.8**, hidden by averaging
+against the over-covering r=0.2 cells. **The r=0.8 / N=500 corner:**
 
-## Honest CI-11 disposition (PROPOSED — pending D-43 + Ayumi + maintainer; DO NOT flip yet)
-- "**All routes have validated coverage**" is **FALSE**. Bootstrap does not cover.
-- Supportable, route-specific (Design 75 method-axis): **wald → covered** (near-nominal; disclose the N=500
-  dip on multiple_r); **profile → covered-with-mild-conservatism** (~0.94, contrast_r only); **bootstrap →
-  NOT covered — systematic under-coverage worsening with N; do-not-advertise / fence.**
-- **Disclosure limits** (apply to any covered claim): single loading-ray (3 correlation shapes, not a Σ-volume),
-  gaussian/binomial partners + K=3 only, interior r∈[0.2,0.8], balanced/complete-case, correct-d,
-  conditional-on-convergence (here moot — conv 1.00).
+| estimand | route | gaussian | binomial |
+|---|---|---|---|
+| multiple_r | bootstrap | 0.943 | **0.303** |
+| multiple_r | wald | 0.938 | **0.726** |
+| contrast_r | bootstrap | — | min **0.640** |
+| contrast_r | profile | — | min **0.885** |
+| contrast_r | wald | — | min **0.806** |
 
-## Next (multi-session, external gates)
-D-43 panel on this evidence → Ayumi clean real-data pass → then a route-specific register update (NOT a blanket
-CI-11 "all validated"). The **bootstrap-worsens-with-N defect** is its own investigation (deferred menu /
-hardening backlog).
+(multiple_r wald by r: r=0.2 → 0.99–1.00, r=0.5 → 0.98, **r=0.8 → 0.73–0.94** — the pooled 0.95 averages
+over-coverage at low r against under-coverage at high r.)
+
+## Findings (CORRECTED, per-cell)
+1. **No route is validated at the r=0.8 boundary.** All degrade there, worsening with N. Pooling over r hid it.
+2. **Wald is r-DEPENDENT, not uniformly safe.** Over-covers at r=0.2 (0.99–1.00), under-covers at r=0.8
+   (0.73 mr / 0.81 cr at N=500). The "pooled ~0.95" was an artifact of averaging opposite errors — do NOT
+   present wald as near-nominal.
+3. **Profile is the MOST ROBUST route** — most stable across r (0.885–0.946), degrades least at the boundary
+   (worst 0.885 at r=0.8/N=500). Best-behaved, but still mildly under-covers at the corner. (contrast_r only.)
+4. **Bootstrap's collapse is partner × r × N specific.** Catastrophic on **binomial × r=0.8 × N=500 = 0.303**;
+   but **gaussian** bootstrap is actually stable (~0.94 across N). So "worsens with N" is driven by the
+   binomial high-r cells — a real, severe, and family-specific defect.
+5. Direction: the boundary failures are **anti-conservative UNDER-coverage** (the safety-relevant direction),
+   not conservatism. (My first draft mislabeled profile's ~0.935 as "conservatism" — it is under-coverage.)
+
+## D-43 PANEL VERDICT — WITHHELD (3/3 NOT_DONE)
+Three fresh independent reviewers, all NOT_DONE. Consensus per-route: **wald = partial · profile = partial ·
+bootstrap = not_covered.** The panel rejected the first-draft "wald covered / profile conservative" language
+(both fail the project's own `lower_2mcse ≥ 0.94` gate at N=500; profile is under-covering not conservative)
+and required the per-cell r-decomposition above. "All routes validated" is **WITHHELD**.
+
+## Honest disposition (route-specific; DO NOT flip the register yet)
+- **profile → partial** — best route; in-regime (r≤0.5) near-nominal; r=0.8 corner mild under-coverage; contrast_r only.
+- **wald → partial (heuristic, r-dependent)** — near/over-nominal for r≤0.5, under-covers at r=0.8; keep the
+  `heuristic_unvalidated` flag; do not advertise as validated.
+- **bootstrap → NOT covered — fenced / do-not-advertise** — severe binomial×high-r×large-N under-coverage (0.30).
+- **Disclosure limits:** single loading-ray, gaussian/binomial + K=3 only, r∈{0.2,0.5,0.8} (r=0.8 fails),
+  balanced/complete-case, correct-d, conditional-on-convergence (moot; conv 1.00).
+
+## Must happen before ANY register flip (D-43)
+1. **Per-cell minimum** (not pooled) is the certificate — done here; the r=0.8 corner governs.
+2. Fix or formally fence the boundary; re-run bootstrap with larger B to confirm the defect isn't a B artifact
+   (keep fenced regardless). Investigate the binomial-specific bootstrap collapse + the wald r-dependence.
+3. **Ayumi's external real-data pass + maintainer sign-off** — no register/NEWS/roxygen flip without both.

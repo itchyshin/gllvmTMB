@@ -554,8 +554,10 @@ which is exactly the "pdHess≠failure → route CIs through profile/bootstrap" 
 
 The honest-interval deliverable is built and validated (branch, pre-merge):
 
-- **REML** for the Gaussian `lv`/Model A path (unbiased variance components; reuses the
-  existing Gaussian REML engine, drmTMB-parallel). Non-Gaussian `lv` REML stays blocked.
+- **REML boundary:** predictor-informed Gaussian `lv`/Model A is not admitted under
+  the current REML path. That path restricts `b_fix` but not `alpha_lv_B`; it fails
+  loudly until a full restriction and recovery study are available. Non-Gaussian
+  `lv` REML is likewise blocked.
 - **`profile_ci_lv_effects()`** — the featured/hero `B_lv` CI (invert the LR test via
   constrained refit) with a **t reference** (`df = n_units − d − 1`) and an analytic-gradient
   fast path (~9×). `bootstrap_ci_lv_effects()` — the calibration/fallback leg (this also fixed

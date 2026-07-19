@@ -178,8 +178,10 @@ stacked response vector before fitting.
 fits. The current REML pilot is deliberately narrow: all response rows
 must be Gaussian, observation weights are not supported, missing
 responses must use the default \code{miss_control(response = "drop")}, and
-\code{mi()} predictor models are not supported. The default \code{FALSE} keeps the
-historical ML fit.}
+\code{mi()} predictor models, predictor-informed \code{latent(..., lv = ~ x)}
+scores, and \code{Xcoef_fixed} maps are not supported. The observed fixed
+design must be full rank with positive residual degrees of freedom. The
+default \code{FALSE} keeps the historical ML fit.}
 
 \item{mesh}{Optional mesh object from \code{\link[=make_mesh]{make_mesh()}}. Required for any
 \verb{spatial_*()} or \code{spatial()} term unless that term supplies its own

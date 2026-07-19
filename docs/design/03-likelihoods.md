@@ -131,6 +131,26 @@ Laplacian" decision; see
 
 The random-effects block decomposes as:
 
+### Gaussian restricted likelihood
+
+For the eligible Gaussian linear model, the current REML path integrates the
+ordinary fixed-effect block `b_fix` in TMB. With response vector \(y\),
+full-rank observed design \(X\), and marginal covariance \(V(\theta)\), the
+test oracle is the Patterson--Thompson restricted log likelihood
+
+\[
+\ell_R(\theta) = -\tfrac12\{(n-p)\log(2\pi) + \log|V| +
+\log|X^\top V^{-1}X| + (y-X\hat\beta)^\top V^{-1}(y-X\hat\beta)\}.
+\]
+
+This is exact for the Gaussian path, not a non-Gaussian Laplace analogue.
+The engine-admitted contract is all-Gaussian, unweighted data with dropped
+responses, a full-rank \(X\) and \(n>p\), and no `mi()`, `Xcoef_fixed`, or
+predictor-informed `latent(..., lv = ~ x)` block. The oracle-certified
+representatives are an ordinary random intercept and ordinary unit-tier
+`indep()`, `dep()`, and rank-1/rank-2 `latent() + Psi`; other covariance tiers
+need their own named recovery evidence before a certificate claim.
+
 - **Reduced-rank** factor scores from `latent(0 + trait | g, d = K)`:
   $\Lambda \in \mathbb{R}^{T \times K}$ on the loadings,
   $\mathbf{u} \in \mathbb{R}^{n_g \times K}$ on the scores, with

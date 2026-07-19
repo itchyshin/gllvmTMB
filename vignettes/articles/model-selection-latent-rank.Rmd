@@ -429,7 +429,9 @@ mix them in the AIC/BIC table. Use one estimator consistently for a
 candidate set, and report which estimator produced the final
 covariance summaries. `REML = TRUE` is currently guarded to Gaussian
 fits without observation weights, retained missing response
-cells, or `mi()` predictor models. Fixed-effect profile confidence
+cells, `mi()` predictor models, predictor-informed `lv` score means, or
+`Xcoef_fixed` maps; its observed fixed-effect design must also be full rank
+with positive residual degrees of freedom. Fixed-effect profile confidence
 intervals are also ML-only; use Wald intervals or refit with
 `REML = FALSE` before profiling fixed effects. Both the Wald and profile
 intervals are nominal, first-order approximations whose empirical
@@ -452,11 +454,13 @@ Report the candidate set and the checks that constrained it.
 This article covers a model-selection workflow for Gaussian
 ordinary `latent()` candidate ranks using base `AIC()` / `BIC()`,
 `logLik()`, and `check_gllvmTMB()` fit-health rows, then shows a
-Gaussian-only `REML = TRUE` refit for the chosen rank.
+Gaussian-only `REML = TRUE` refit for the chosen rank (MIS-33).
 It does not validate AIC/BIC as universally correct latent-rank
 selectors, calibrate confidence intervals, compare likelihoods from
 different fitting approximations, or advertise REML for non-Gaussian,
-weighted, retained-missing-response, or `mi()` predictor fits.
+weighted, retained-missing-response, or `mi()` predictor fits. It also does
+not admit predictor-informed `lv` score means or `Xcoef_fixed` maps under
+REML.
 For fitted response diagnostics, start with
 [Can I trust this fit?](fit-diagnostics.html). To evaluate the rank-selection
 procedure itself, use a separate target-explicit simulation study with known

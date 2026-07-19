@@ -57,6 +57,24 @@
 - **DRAC is NOT headless-reachable** (Duo MFA per login; no live socket) — Totoro suffices (384 cores, key-auth, no MFA). Don't route to DRAC without a live socket.
 - **Totoro connectivity:** a `~/.ssh/cm-*totoro*` glob returning nomatch does NOT mean down — a direct `ssh -o BatchMode=yes totoro '…'` works and self-creates the socket. Don't declare it unreachable from a socket-file probe.
 
+## B3b OPERATIONAL COMMANDS (durable — the scratchpad is NOT portable to a fresh session)
+Out-dirs (Totoro, LOCAL): `~/gllvm_work/results/B3-bartlett-main` + `~/gllvm_work/results/B3-bartlett-anchor`; done-markers `*.DONE`. Aggregator `dev/aggregate-bartlett-b3.R` is DEPLOYED on Totoro. Launched ~18:15 2026-07-18; ETA ~8h main / ~15h anchor. Validation: b̂=7.368, W_mean=1.049 (~4.9% widen), gate PASS.
+
+**Poll (single round-trip, no sleep):**
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=15 totoro '
+  ls ~/gllvm_work/results/B3-bartlett-main.DONE ~/gllvm_work/results/B3-bartlett-anchor.DONE 2>&1
+  echo "--- alive workers ---"; pgrep -fc "profile-pilot-run.R|run-bartlett-anchor-n400.R"
+  echo "--- errors? ---"; grep -l "Error\|Execution halted" ~/gllvm_work/results/B3-bartlett-*/task_*.log 2>/dev/null'
+```
+**Aggregate (works on partial output; reports per-cell rep-clustered coverage + b̂/W_mean/boundary_hit + 2·MCSE-lower earn vs 0.95 & 0.94):**
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=15 totoro '
+  cd ~/gllvm_work/gllvmTMB && R_LIBS_USER=~/gllvm_work/Rlib Rscript dev/aggregate-bartlett-b3.R \
+    ~/gllvm_work/results/B3-bartlett-main ~/gllvm_work/results/B3-bartlett-anchor'
+```
+Compare corrected `profile_total` coverage to the uncorrected baseline (d1 0.9474 / d2 0.9455, MCSE 0.0011). Do NOT treat the n=8 validation number (0.975) as a result.
+
 ## How to Resume
 1. **One-command resume (paste in an authenticated terminal at repo root):**
    ```

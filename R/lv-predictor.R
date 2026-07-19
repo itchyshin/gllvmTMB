@@ -103,14 +103,16 @@ gll_prepare_lv_predictor_setup <- function(
       ">" = "Use {.code latent(0 + trait | {site}, d = K, lv = ~ x)} without an augmented LHS."
     ))
   }
-  ## REML gives unbiased variance components for Gaussian lv/Model A fits and
-  ## reuses the existing Gaussian REML engine (R/fit-multi.R; matches drmTMB's
-  ## Gaussian-only REML). Non-Gaussian lv REML needs its own derivation.
-  if (isTRUE(REML) && !all(family_id_vec == 0L)) {
+  ## The Gaussian REML engine restricts the ordinary mean-effect block
+  ## (`b_fix`).  A predictor-informed score mean also estimates
+  ## `alpha_lv_B`; that coefficient block is not part of the current
+  ## restriction.  Do not present the resulting hybrid objective as REML.
+  if (isTRUE(REML)) {
     cli::cli_abort(c(
-      "{.arg lv} supports {.arg REML = TRUE} only for Gaussian fits.",
-      "i" = "REML for non-Gaussian predictor-informed latent scores needs a separate derivation and validation row.",
-      ">" = "Use {.code REML = FALSE} for non-Gaussian {.arg lv} fits."
+      "{.arg REML = TRUE} is not available with predictor-informed {.arg lv} scores.",
+      "x" = "The current restricted likelihood integrates {.code b_fix} but not {.code alpha_lv_B}.",
+      "i" = "A full restricted-likelihood derivation and recovery study for {.code latent(..., lv = ~ x)} are required before this combination can be admitted.",
+      ">" = "Use {.code REML = FALSE} for predictor-informed latent-score fits."
     ))
   }
   if (length(link_id_vec) != length(family_id_vec)) {

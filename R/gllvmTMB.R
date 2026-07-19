@@ -177,8 +177,10 @@
 #'   fits. The current REML pilot is deliberately narrow: all response rows
 #'   must be Gaussian, observation weights are not supported, missing
 #'   responses must use the default `miss_control(response = "drop")`, and
-#'   `mi()` predictor models are not supported. The default `FALSE` keeps the
-#'   historical ML fit.
+#'   `mi()` predictor models, predictor-informed `latent(..., lv = ~ x)`
+#'   scores, and `Xcoef_fixed` maps are not supported. The observed fixed
+#'   design must be full rank with positive residual degrees of freedom. The
+#'   default `FALSE` keeps the historical ML fit.
 #' @param mesh Optional mesh object from [make_mesh()]. Required for any
 #'   `spatial_*()` or `spatial()` term unless that term supplies its own
 #'   `mesh =` argument; ignored only when the model has no spatial term.

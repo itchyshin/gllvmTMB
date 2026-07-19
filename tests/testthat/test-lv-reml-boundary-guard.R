@@ -35,9 +35,18 @@ expect_lv_reml_boundary_rejects <- function(expr, regexp) {
 test_that("latent lv top-level fit keeps fixed-predictor boundaries loud", {
   df <- make_lv_reml_boundary_data()
 
-  ## Gaussian lv + REML = TRUE is now ADMITTED (unbiased variance components;
-  ## matches drmTMB's Gaussian-only REML) -- see test-lv-reml-gaussian.R. The
-  ## fixed-predictor-shape boundaries below stay loud.
+  ## REML must reject predictor-informed lv: alpha_lv_B is an additional mean
+  ## block not yet included in the restricted likelihood.
+  expect_lv_reml_boundary_rejects(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
+      data = df, unit = "unit", trait = "trait", REML = TRUE,
+      control = gllvmTMBcontrol(se = FALSE)
+    ),
+    regexp = "not available with predictor-informed|alpha_lv_B"
+  )
+
+  ## The fixed-predictor-shape boundaries below stay loud.
   expect_lv_reml_boundary_rejects(
     gllvmTMB(
       value ~ 0 +

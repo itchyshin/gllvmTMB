@@ -158,7 +158,7 @@ reml_bridge <- function(object, rel_thresh = 0.10) {
       cli::cli_abort(c(
         "The companion REML refit failed.",
         "x" = conditionMessage(fit_reml),
-        "i" = "REML is restricted to Gaussian, unweighted, full-rank, no-mi(), no-missing-response fits (see the {.arg REML} guard in {.fn gllvmTMB})."
+        "i" = "REML is restricted to Gaussian, unweighted, positive-residual-df fits with no retained missing responses, {.fn mi}, predictor-informed {.code lv}, or {.code Xcoef_fixed} map (see the {.arg REML} guard in {.fn gllvmTMB})."
       ))
     }
   }

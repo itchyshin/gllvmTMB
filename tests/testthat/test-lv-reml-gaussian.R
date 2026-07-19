@@ -1,7 +1,6 @@
-## REML for Gaussian predictor-informed latent scores (lv). REML gives unbiased
-## variance components (matches drmTMB's Gaussian-only REML: integrate the mean
-## fixed effects out of the marginal likelihood). Enabled for the Gaussian lv /
-## Model A path; non-Gaussian lv REML stays blocked (needs its own derivation).
+## Predictor-informed latent-score means estimate alpha_lv_B.  The current
+## Gaussian REML route restricts b_fix only, so it must reject lv until the
+## full restriction is derived and validated.
 
 make_reml_lv_data <- function(n_units = 40L, n_traits = 4L, seed = 20260706L) {
   set.seed(seed)
@@ -32,26 +31,12 @@ fit_reml_lv <- function(data, reml) {
   ))
 }
 
-test_that("Gaussian lv admits REML and it genuinely engages (fixed effects integrated out)", {
+test_that("predictor-informed lv rejects REML before fitting", {
   df <- make_reml_lv_data()
-  fit_ml <- fit_reml_lv(df, FALSE)
-  fit_reml <- fit_reml_lv(df, TRUE)
-
-  expect_equal(fit_ml$opt$convergence, 0L)
-  expect_equal(fit_reml$opt$convergence, 0L)
-
-  ## REML is a different estimator: the restricted objective differs from ML, and
-  ## the mean fixed effects (b_fix) are moved into the Laplace-integrated block.
-  expect_false(isTRUE(all.equal(fit_ml$opt$objective, fit_reml$opt$objective)))
-  ml_random <- unique(names(fit_ml$tmb_obj$env$par[fit_ml$tmb_obj$env$random]))
-  reml_random <- unique(names(fit_reml$tmb_obj$env$par[fit_reml$tmb_obj$env$random]))
-  expect_false("b_fix" %in% ml_random)
-  expect_true("b_fix" %in% reml_random)
-
-  ## REML variance components are >= ML (removes the ML downward bias); at this
-  ## small n the difference is present, converging to 0 as n grows.
-  expect_true(mean(as.numeric(fit_reml$report$sd_B)) >=
-                mean(as.numeric(fit_ml$report$sd_B)) - 1e-6)
+  expect_error(
+    fit_reml_lv(df, TRUE),
+    regexp = "not available with predictor-informed|alpha_lv_B|REML = FALSE"
+  )
 })
 
 test_that("non-Gaussian lv still rejects REML = TRUE", {

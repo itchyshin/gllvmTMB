@@ -2329,6 +2329,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Remove redundant fixed-effect columns or use {.code REML = FALSE}."
       ))
     }
+    if (nrow(X_reml) <= ncol(X_reml)) {
+      cli::cli_abort(c(
+        "{.arg REML = TRUE} requires positive residual degrees of freedom.",
+        "x" = "The observed-row fixed-effect design has {nrow(X_reml)} row{?s} and {ncol(X_reml)} column{?s}.",
+        "i" = "Use more observed rows than fixed-effect coefficients, or use {.code REML = FALSE}."
+      ))
+    }
   }
   ## The family-specific response-range checks below validate the *observed*
   ## response only. Masked rows (response = "include") carry the sentinel y = 0

@@ -52,9 +52,14 @@ DROPPED — 0.5 is not a release.) Earlier handover:
 `docs/dev-log/handover/2026-07-12-claude-handover-covariance.md`. Standing rule:
 reader-facing content shows only what makes sense to the reader — no internal
 register codes on any surface (articles, reference/roxygen, NEWS, printed output).
-**gllvmTMB's first CRAN release is `0.5.0`, NOT 1.0 (D-42, 2026-07-11) — 1.0 is
-reserved for the capability-maturity milestone (complete surface + full story +
-committed-stable API), mirroring drmTMB's D-40.** The engineering (all five arcs
+**gllvmTMB's first CRAN release is `0.6.0`, NOT 1.0 — settled 2026-07-19 (issue
+#772). D-42 (2026-07-11) established the principle "first release is a 0.x, NOT
+1.0" and named `0.5.0`; the *number* was superseded by the 0.6 strategy above,
+which is why the premature `v0.5.0` tag was dropped. D-42's other half stands
+unchanged: 1.0 remains reserved for the capability-maturity milestone (complete
+surface + full story + committed-stable API), mirroring drmTMB's D-40.
+`DESCRIPTION`/`NEWS` still read `0.5.0` — the dev-cycle number — and get bumped
+to `0.6.0` as part of the release slice, not before.** The engineering (all five arcs
 A–E, merged #737–#745, on `main` `e4188105`) is cross-OS verified — local
 `--as-cran` 0E/0W/0N, 3-OS `R CMD check` passed, 4478 tests / 0 failures — but the
 package is NOT submitted to CRAN. **The one thing NOT done — and the next session's

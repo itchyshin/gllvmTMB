@@ -96,20 +96,45 @@ and freeze one candidate recording: absolute path, SHA-256, byte size, entry cou
 **Sequencing constraint:** a Gate-5-valid candidate needs the 0.6.0 bump **committed** first. A tarball
 built from an uncommitted bump is a dry run, not a candidate.
 
-### 3c. Pending CI action
+### 3c. WINDOWS FAILS A REAL TEST — the run completed after this doc was first written
 
-3-OS `R-CMD-check` dispatched on `main` @ `ff045a38`:
-[run 29704770522](https://github.com/itchyshin/gllvmTMB/actions/runs/29704770522) — the first macOS/Windows
-evidence since 2026-07-12.
+3-OS `R-CMD-check` on `main` @ `ff045a38`
+([run 29704770522](https://github.com/itchyshin/gllvmTMB/actions/runs/29704770522)) — the first
+macOS/Windows evidence since 2026-07-12. **It has now COMPLETED and it found a blocker.**
 
-- **`macos-latest` FAILED — but NOT a package result.** It died in `actions/checkout@v5` before R started:
-  `RPC failed; curl 56 Recv failure: Operation timed out` … `Failed to connect to github.com port 443 after
-  75004 ms`, three retries. **Pure runner network failure. The macOS gap is still OPEN, not closed-and-red.**
-- **Re-run that leg:** `gh run rerun 29704770522 --failed`. It was **blocked at handover time** —
-  `run 29704770522 cannot be rerun; This workflow is already running` — because ubuntu/windows were still in
-  flight. Retry once the run completes.
-- **Check Windows total time** against CRAN's observed ~10-minute incoming threshold. Windows has not run in
-  a week and the suite has grown; a near-threshold total is a blocker even at NOTE status.
+| Leg | Result | Reading |
+|---|---|---|
+| `ubuntu-latest` | **success** | Clean. |
+| `macos-latest` | failure | **NOT a package result** — died in `actions/checkout@v5` on a network timeout (`curl 56 Recv failure`; `Failed to connect to github.com port 443 after 75004 ms`), three retries, before R started. **macOS remains UNKNOWN, not red.** |
+| `windows-latest` | **failure — REAL** | Failed inside `check-r-package@v2`. `Status: 1 ERROR`; `1 error ✖ \| 0 warnings ✔ \| 0 notes ✔`. |
+
+**The Windows failure:**
+
+```
+── Failure ('test-example-behavioural-reaction-norm.R:316:3'):
+   behavioural reaction-norm audited fit passes curvature checks ──
+```
+
+- **Ubuntu passed this same test in the same run** → **platform-specific**, most likely a numerical /
+  BLAS-landing difference on Windows rather than a logic bug.
+- It is a `Failure` (expectation not met), **not** an `Error` (crash).
+- **This is the FAST lane** — `GLLVMTMB_HEAVY_TESTS` is unset — so it is **NOT** one of the 44 nightly
+  failures in §3a. It is a **separate, previously-unseen Windows-only failure in the default suite**, hidden
+  simply because Windows had not run in a week.
+
+**A re-run of both failed legs was dispatched** (`gh run rerun 29704770522 --failed`) and was **still
+in flight when this doc was last updated**. **Check it.** It answers the question that decides the fix:
+**is the curvature failure deterministic, or a flaky optimiser landing?** Deterministic → a real
+Windows-specific defect to fix. Flaky → a tolerance/seed problem in the test.
+
+**Second Windows signal — timing:** `checking tests` ran 21:51:55 → 22:03:33 ≈ **11.6 min**; the whole check
+≈ **15 min** (`install` 154s, `examples` 15s, `--run-donttest` 22s, vignettes OK). CRAN's observed Windows
+incoming threshold is ~10 min, and **a total in this range is a blocker even when the status is only a NOTE**
+(release-gate Gate 2). This needs a measured per-vignette/per-example timing budget before submission.
+
+**Consequence for the rung:** still **NOT READY**, but the reason list grew. It was "no tarball." It is now
+also **"the default suite does not pass on Windows"** — which must be resolved *before* a candidate is worth
+freezing at all. Sequencing: fix Windows → then §3b.
 
 ---
 
@@ -255,12 +280,12 @@ ships. Every "nothing forbidden is tracked" claim in §5 carries that caveat.
 | Item | State |
 |---|---|
 | **Repo / branch** | `gllvmTMB` · `main` @ `ff045a38` · authored from `claude/profile-coverage-remeasure-20260718` |
-| **CI** | 3-OS run 29704770522 in flight; macOS leg failed on **network**, needs re-run. Nightly `full-check` **RED 7 nights**. |
-| **Release rung** | **NOT READY**, below `source-clean` — no built tarball exists |
+| **CI** | 3-OS run 29704770522 **complete**: ubuntu green · **windows RED on a real test** (§3c) · macOS infra-failed, still unknown. Re-run of both dispatched, **check it**. Nightly `full-check` **RED 7 nights** (§3a). |
+| **Release rung** | **NOT READY**, below `source-clean` — no built tarball **and** the default suite fails on Windows |
 | **Version** | Ships as **0.6.0** (D-66); DESCRIPTION/NEWS stay `0.5.0` until the release slice |
-| **Shipped this session** | Two issues resolved (#772 decided, #773 withdrawn); D-66 recorded; release ledger established |
-| **Highest leverage next** | Triage the 7-night nightly (§3a) — real regressions, your lane, currently invisible to the fast CI |
-| **Then** | Re-run macOS leg → release slice (§3b) from a clean checkout |
+| **Shipped this session** | Two issues resolved (#772 decided, #773 withdrawn); D-66 recorded; release ledger established; **the Windows failure found** |
+| **Highest leverage next** | **§3c — the Windows curvature failure.** Check the re-run first: deterministic = real defect, flaky = tolerance. It gates the candidate. |
+| **Then** | §3a nightly triage (7 nights red, your lane, invisible to fast CI) → release slice (§3b) from a clean checkout |
 | **Do NOT** | Promote REML coverage · advertise AGHQ · cite D-50's storage-cost rationale · bulk-commit `check-log.md` |
 
 ---

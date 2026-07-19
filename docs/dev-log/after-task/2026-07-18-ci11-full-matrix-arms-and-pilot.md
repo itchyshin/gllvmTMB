@@ -85,6 +85,25 @@ Validate the cross-family interval/SE machinery on `extract_cross_correlations()
 - **Safety gates ALL held:** MEASURED banner on every number; CI-11/NEWS/roxygen fenced; D-43 pending; results
   LOCAL (D-50). No unjustified drift.
 
+## 6c. Certification OUTCOME (2026-07-19 — full pipeline ran to completion, evidence-wise)
+- **DRAC super-sim aggregated** (job 49532634, 6389 shards, n_sim=13000, n_boot=499, 2·MCSE≈0.0016).
+- **D-43 panel: WITHHELD (3/3 NOT_DONE)** — "all routes validated" is FALSE. Per-route consensus: profile =
+  partial (best; contrast_r only), wald = partial (r-dependent), bootstrap = not_covered (fenced).
+- **Per-cell decomposition** (D-43-mandated) showed pooling-over-r MASKED a boundary catastrophe: r=0.8/N=500
+  → multiple_r bootstrap 0.303 (binomial), wald 0.726; contrast_r bootstrap 0.640 / profile 0.885 / wald 0.806.
+  The panel caught the first-draft certificate over-claiming "wald covered / profile conservative" (both fail
+  the 0.94 gate at N=500; profile is under-covering, not conservative).
+- **Mechanism (empirically confirmed):** attenuation bias in the plug-in correlation estimate (binomial GLLVM
+  loadings shrink at high r), inherited by bootstrap+wald, escaped by likelihood-based profile; multiple_r has
+  no profile route → both its routes collapse; worsens-with-N (bias N-persistent, SE~1/√N). A toy fit corrected
+  the multi-agent theory (which predicted the wrong bias sign). Docs: `2026-07-19-ci11-coverage-certificate-
+  MEASURED.md`, `…-per-cell-coverage.txt`, `…-ci11-failure-mechanism.md`.
+- **Repair path:** fence bootstrap/wald for multiple_r; BUILD a profile-multiple_r route (maintainer-design-
+  gated — deliberately fenced as un-profileable; task chip spawned); keep profile-contrast_r + gaussian.
+- **Gate status:** aggregate ✅ · D-43 ✅ (withheld, not cleared) · Ayumi external pass ❌ · maintainer ❌.
+  CI-11 register / NEWS / roxygen remain UNTOUCHED (correctly). The honest certification is delivered; the
+  register flip is multi-session + human-gated by design.
+
 ## 7. Lesson
 The first Phase-A workflow **stalled 50 min** because a build sub-agent's R self-check hit a permission
 denial and then waited indefinitely. Fix pattern: keep the correctness-critical BUILD single-threaded

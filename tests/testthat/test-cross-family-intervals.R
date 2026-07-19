@@ -101,6 +101,23 @@ test_that("the unit_slope Gaussian canary stays silent on a cross-family unit-ti
   expect_true("contrast_r_lower" %in% names(cc))
   expect_true(all(cc$contrast_r_method == "profile"))
   expect_true(all(cc$contrast_r_interval_status == "target_specific_uncalibrated"))
+  expect_true(all(c("profile_status", "contrast_r_profile_status") %in% names(cc)))
+  expect_true(all(cc$profile_status %in% c("finite", "non_finite")))
+})
+
+test_that("profile output flags non-finite contrast endpoints", {
+  skip_on_cran(); skip_if_not_installed("MASS")
+  fit <- .get_xfam_ci()
+  skip_if_not(isTRUE(fit$opt$convergence == 0L), "fixture did not converge")
+  testthat::local_mocked_bindings(
+    profile_ci_correlation = function(...) c(estimate = 0, lower = NA_real_, upper = NA_real_),
+    .package = "gllvmTMB"
+  )
+  cc <- suppressMessages(extract_cross_correlations(
+    fit, level = "unit", contrasts = TRUE, method = "profile", link_residual = "none"
+  ))
+  expect_true(all(cc$profile_status == "non_finite"))
+  expect_true(all(vapply(cc$contrast_r_profile_status, function(x) all(x == "non_finite"), logical(1L))))
 })
 
 test_that("multiple_r + method = 'profile' fails loud (block functional is not profileable)", {
@@ -232,4 +249,41 @@ test_that("bootstrap + contrasts = TRUE now ALSO populates contrast_r (not point
   fin <- is.finite(lo1) & is.finite(hi1)
   expect_true(any(fin))
   expect_true(all(lo1[fin] <= pt1[fin] & pt1[fin] <= hi1[fin]))
+})
+
+test_that("CI-11 ordinal simulation is categorical and bootstraps a nominal partner", {
+  skip_on_cran(); skip_if_not_installed("MASS")
+  set.seed(719L); n_unit <- 60L; reps <- 3L
+  z <- matrix(stats::rnorm(n_unit * 2L), n_unit, 2L)
+  rows <- vector("list", n_unit * reps * 2L); at <- 0L
+  for (u in seq_len(n_unit)) for (r in seq_len(reps)) {
+    eta_m <- c(0.8 * z[u, 1L] - 0.2 * z[u, 2L], -0.3 * z[u, 1L] + 0.7 * z[u, 2L])
+    p_m <- exp(c(0, eta_m)); p_m <- p_m / sum(p_m)
+    at <- at + 1L; rows[[at]] <- data.frame(unit = u, trait = "cat", family = "m", value = sample.int(3L, 1L, replace = TRUE, prob = p_m))
+    at <- at + 1L; rows[[at]] <- data.frame(unit = u, trait = "ord", family = "o", value = findInterval(stats::rnorm(1L, 0.55 * z[u, 1L] + 0.35 * z[u, 2L], 1), c(0, 0.8)) + 1L)
+  }
+  dat <- do.call(rbind, rows)
+  dat$unit <- factor(dat$unit); dat$trait <- factor(dat$trait); dat$family <- factor(dat$family)
+  fam <- list(m = multinomial(), o = ordinal_probit()); attr(fam, "family_var") <- "family"
+  fit <- suppressWarnings(suppressMessages(gllvmTMB(value ~ 0 + trait + latent(0 + trait | unit, d = 2), data = dat, family = fam, trait = "trait", unit = "unit", silent = TRUE)))
+  expect_equal(fit$opt$convergence, 0L)
+  y_sim <- simulate(fit, nsim = 3L, seed = 14L)
+  ordinal_rows <- fit$tmb_data$family_id_vec == 14L
+  multinom_rows <- fit$tmb_data$family_id_vec == 16L
+  expect_true(all(y_sim[ordinal_rows, ] %in% 1:3))
+  expect_true(all(y_sim[multinom_rows, ] %in% 0:1))
+  groups <- split(which(multinom_rows), fit$tmb_data$multinom_group_id[multinom_rows])
+  expect_true(all(vapply(groups, function(ii) all(colSums(y_sim[ii, , drop = FALSE]) <= 1), logical(1))))
+  boot <- suppressWarnings(suppressMessages(bootstrap_Sigma(
+    fit, n_boot = 8L, level = "unit", what = "cross_corr", seed = 37L, progress = FALSE
+  )))
+  expect_equal(boot$n_failed, 0L)
+  expect_equal(unname(boot$n_effective$multiple_r_B), 8L)
+  cc <- suppressWarnings(suppressMessages(extract_cross_correlations(fit, level = "unit", method = "bootstrap", nsim = 8L, seed = 37L)))
+  expect_true(all(is.finite(cc$multiple_r)))
+  expect_true(all(is.finite(cc$multiple_r_lower)))
+  expect_true(all(is.finite(cc$multiple_r_upper)))
+  expect_equal(cc$bootstrap_n_failed, 0L)
+  expect_equal(cc$multiple_r_n_effective, 8L)
+  expect_false(any(cc$multiple_r_interval_status == "bootstrap_family_unsupported"))
 })

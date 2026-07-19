@@ -23,6 +23,23 @@ draft. Evidence: `2026-07-19-ci11-coverage-certificate-MEASURED.md`, `…-per-ce
    (0.73), and the interval is 2× the sampling SD — so the collapse is the shared plug-in bias, not too-small B.
    A larger-B re-run would be redundant; the defect is real. **Decision: FENCE the boundary + fix via profile.**
 
+## Post-Ayumi hardening addendum (2026-07-19; implementation verified, not a coverage upgrade)
+
+- `simulate.gllvmTMB_multi()` now draws both categorical encodings natively: multinomial is the existing
+  baseline-category softmax grouped over its `K-1` contrast pseudo-rows (`family_id = 16`), and
+  `ordinal_probit` (`family_id = 14`) draws `z ~ N(eta, 1)` then bins it at the fitted thresholds
+  `{0, tau_2, ..., tau_{K-1}}`. The bootstrap family allowlist includes both.
+- A live multinomial + ordinal-probit fit (`N = 60`, three repeats) simulated valid categories, then completed
+  `bootstrap_Sigma(what = "cross_corr", n_boot = 8)` with `n_failed = 0`, eight effective draws, and finite
+  `multiple_r` plus percentile bounds. The regression test is
+  `tests/testthat/test-cross-family-intervals.R` (CI-11 ordinal simulation case).
+- `extract_cross_correlations(method = "bootstrap")` now exposes `bootstrap_n_failed` and per-estimand finite
+  draw counts. The profile route now labels each returned row `profile_status = "finite"` or `"non_finite"`
+  (and exposes per-contrast status), so failed endpoints cannot remain silent.
+
+These are plumbing and observability repairs only. They do **not** alter the measured coverage disposition or
+upgrade CI-11 beyond the route-specific boundary above.
+
 ## PROPOSED register line (route-specific; the honest replacement for a blanket "CI-11 validated")
 > **CI-11 — cross-family `extract_cross_correlations()` intervals (MEASURED, in-regime).** Coverage measured on
 > an analytically-known truth (`Σ_total_true`, AUTO R_link verified exact) over the certified grid

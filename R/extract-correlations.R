@@ -812,9 +812,14 @@ extract_correlations <- function(
 #'   (and `contrast_r` when `contrasts = TRUE`). With `method = "wald"`,
 #'   `"bootstrap"`, or `"profile"`, per-estimand interval columns are added:
 #'   `multiple_r_lower`/`multiple_r_upper`/`multiple_r_method`/`multiple_r_interval_status`
-#'   (scalar), and when `contrasts = TRUE`
+#'   (scalar). Bootstrap output also records `bootstrap_n_failed` and the
+#'   per-estimand finite-draw count `multiple_r_n_effective`; when
+#'   `contrasts = TRUE`
 #'   `contrast_r_lower`/`contrast_r_upper` (list columns) plus
-#'   `contrast_r_method`/`contrast_r_interval_status`. `"wald"` and `"bootstrap"`
+#'   `contrast_r_method`/`contrast_r_interval_status` and
+#'   `contrast_r_n_effective`. Profile output includes `profile_status`, which
+#'   is `"non_finite"` when any requested contrast profile did not yield two
+#'   finite endpoints. `"wald"` and `"bootstrap"`
 #'   serve both estimands at once; `"profile"` serves only `contrast_r`, and
 #'   `multiple_r` keeps point-only interval columns (`NA` bounds,
 #'   `method = "point"`) under `"profile"`. Computed intervals carry an
@@ -885,6 +890,8 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
   ## contrast_r_<lvl> (bootstrap-sigma.R), so a single call here avoids a
   ## second refit pass regardless of whether `contrasts` was requested.
   boot_lo <- boot_hi <- boot_cr_lo <- boot_cr_hi <- NULL
+  boot_neff <- boot_cr_neff <- NULL
+  boot_n_failed <- NA_integer_
   boot_bad_partner <- logical(length(tn))   # TRUE where a partner family is not natively simulate()d
   if (method == "bootstrap") {
     ## Family-allowlist guard: the parametric bootstrap is only valid when
@@ -892,7 +899,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
     ## outside its allowlist fall back to Gaussian-on-link-scale draws, so the
     ## resulting intervals are INVALID (not just uncalibrated). Flag + stamp
     ## them rather than return a silently-wrong CI.
-    .sim_supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 15L, 16L)
+    .sim_supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 14L, 15L, 16L)
     .fids <- fit$tmb_data$family_id_vec
     .tids <- fit$tmb_data$trait_id + 1L
     fam_per_trait_b <- vapply(seq_along(tn), function(t) {
@@ -920,9 +927,12 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
     key_nm <- paste0("multiple_r_", lvl_internal)
     boot_lo <- boot$ci_lower[[key_nm]]
     boot_hi <- boot$ci_upper[[key_nm]]
+    boot_neff <- boot$n_effective[[key_nm]]
     cr_key_nm <- paste0("contrast_r_", lvl_internal)
     boot_cr_lo <- boot$ci_lower[[cr_key_nm]]
     boot_cr_hi <- boot$ci_upper[[cr_key_nm]]
+    boot_cr_neff <- boot$n_effective[[cr_key_nm]]
+    boot_n_failed <- as.integer(boot$n_failed)
   }
 
   ## ---- method = "profile": per-partner constant-residual certification ------
@@ -1012,6 +1022,10 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
         row$multiple_r_interval_status <- if (identical(mr_method, "bootstrap") && isTRUE(boot_bad_partner[p])) {
           "bootstrap_family_unsupported"
         } else .correlation_interval_status(mr_method)
+        if (identical(mr_method, "bootstrap")) {
+          row$bootstrap_n_failed <- boot_n_failed
+          row$multiple_r_n_effective <- .cross_named_get(boot_neff, key)
+        }
       }
 
       if (contrasts) {
@@ -1030,6 +1044,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
           cr_method <- "point"
           if (method == "profile") {
             cr_method <- "profile"
+            profile_status <- rep("finite", length(blk))
             for (k in seq_along(blk)) {
               ij <- sort(c(p, blk[k]))
               dr <- if (identical(link_residual, "auto")) as.numeric(lr[ij]) else NULL
@@ -1039,6 +1054,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
               )
               cr_lo[k] <- res[["lower"]]
               cr_hi[k] <- res[["upper"]]
+              if (!is.finite(cr_lo[k]) || !is.finite(cr_hi[k])) profile_status[k] <- "non_finite"
             }
           } else if (method == "wald") {
             cr_method <- "wald"
@@ -1060,6 +1076,13 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
           row$contrast_r_interval_status <- if (identical(cr_method, "bootstrap") && isTRUE(boot_bad_partner[p])) {
             "bootstrap_family_unsupported"
           } else .correlation_interval_status(cr_method)
+          if (identical(cr_method, "bootstrap")) {
+            row$contrast_r_n_effective <- I(list(stats::setNames(vapply(seq_along(blk), function(k) .cross_named_get(boot_cr_neff, paste(b, tn[p], tn[blk[k]], sep = "__")), numeric(1L)), tn[blk])))
+          }
+          if (identical(cr_method, "profile")) {
+            row$profile_status <- if (all(profile_status == "finite")) "finite" else "non_finite"
+            row$contrast_r_profile_status <- I(list(stats::setNames(profile_status, tn[blk])))
+          }
         }
       }
       out[[length(out) + 1L]] <- row

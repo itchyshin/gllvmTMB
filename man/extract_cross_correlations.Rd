@@ -67,9 +67,14 @@ a data.frame, one row per (nominal, partner) pair. With
 (and \code{contrast_r} when \code{contrasts = TRUE}). With \code{method = "wald"},
 \code{"bootstrap"}, or \code{"profile"}, per-estimand interval columns are added:
 \code{multiple_r_lower}/\code{multiple_r_upper}/\code{multiple_r_method}/\code{multiple_r_interval_status}
-(scalar), and when \code{contrasts = TRUE}
+(scalar). Bootstrap output also records \code{bootstrap_n_failed} and the
+per-estimand finite-draw count \code{multiple_r_n_effective}; when
+\code{contrasts = TRUE}
 \code{contrast_r_lower}/\code{contrast_r_upper} (list columns) plus
-\code{contrast_r_method}/\code{contrast_r_interval_status}. \code{"wald"} and \code{"bootstrap"}
+\code{contrast_r_method}/\code{contrast_r_interval_status} and
+\code{contrast_r_n_effective}. Profile output includes \code{profile_status}, which
+is \code{"non_finite"} when any requested contrast profile did not yield two
+finite endpoints. \code{"wald"} and \code{"bootstrap"}
 serve both estimands at once; \code{"profile"} serves only \code{contrast_r}, and
 \code{multiple_r} keeps point-only interval columns (\code{NA} bounds,
 \code{method = "point"}) under \code{"profile"}. Computed intervals carry an

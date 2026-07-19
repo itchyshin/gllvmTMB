@@ -70,6 +70,20 @@ Over-broad profile fence blocks lognormal(3)/ordinal_probit(14) which are consta
 one-shot warnings go silent after the first fit; `!pdHess` fits counted as converged; boundary truth-assertion
 only at mid-cell (mr=0.5); contrast_r print table omits worst-case columns; student-t df≤2 residual.
 
+## 2026-07-19 Ayumi hardening follow-up
+
+- **Resolved — native categorical simulation completeness:** `family_id = 16` multinomial was confirmed to be
+  grouped baseline-category softmax, not independent Bernoulli rows; its existing grouped sampler remains in
+  place. `family_id = 14` ordinal-probit now draws a unit-variance latent normal and thresholds it with the
+  fitted cutpoints. The bootstrap family allowlist consequently admits ordinal-probit.
+- **Resolved — invisible bootstrap attrition:** `extract_cross_correlations()` now carries the global
+  `bootstrap_n_failed` and the per-target finite `*_n_effective` counts from `bootstrap_Sigma()`.
+- **Resolved — silent profile endpoints:** profile output carries a scalar `profile_status` and named
+  `contrast_r_profile_status`, each marking non-finite endpoint pairs explicitly.
+- **Regression/live evidence:** `test-cross-family-intervals.R` fits a multinomial + ordinal-probit shared-latent
+  model, checks both categorical encodings after `simulate()`, and checks finite cross-family bootstrap output.
+  A local live run had `n_failed = 0/8`; this verifies plumbing only, never CI-11 coverage calibration.
+
 ## Disposition
 - **Fix now (safe edge-case guards, don't change cert-grid behavior):** blockers 1-2 + the contrast_r clamp +
   Inf-strip + bootstrap-error surface + family-allowlist stamp. Adversarially verify + regression (40 testthat).

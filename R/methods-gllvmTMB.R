@@ -1111,7 +1111,7 @@ simulate.gllvmTMB_multi <- function(
 #' from `fit$tmb_data` and draw `y` from the appropriate distribution
 #' at the linear predictor `eta`. Supports the 5 families exercised by
 #' the M1.2 fixture (Gaussian, binomial, Poisson, Gamma, nbinom2) plus
-#' lognormal. Other families warn once per session and fall back to
+#' lognormal, ordinal probit, and multinomial. Other families warn once per session and fall back to
 #' Gaussian-on-the-link-scale (i.e., previous behaviour) until M2 / M3
 #' family-completeness slices add their per-family draws.
 #'
@@ -1135,6 +1135,9 @@ simulate.gllvmTMB_multi <- function(
   phi_gamma <- as.numeric(fit$report$phi_gamma %||% numeric(0L))
   phi_nbinom2 <- fit$report$phi_nbinom2 # length n_traits
   phi_nbinom1 <- fit$report$phi_nbinom1 # length n_traits
+  ordinal_K <- as.integer(fit$tmb_data$n_ordinal_cuts_per_trait %||% integer(0L)) + 2L
+  ordinal_offset <- as.integer(fit$tmb_data$ordinal_offset_per_trait %||% integer(0L))
+  ordinal_cuts <- as.numeric(fit$report$ordinal_cutpoints %||% numeric(0L))
 
   ## Pre-flag any unsupported families with a one-shot warning so users
   ## know fall-back-to-Gaussian-on-link-scale is in play.
@@ -1142,7 +1145,7 @@ simulate.gllvmTMB_multi <- function(
   ## family_id 16 (multinomial, baseline-category softmax) is drawn in the
   ## grouped pass after the per-row loop (one categorical draw per observation-
   ## group, not per contrast row); the per-row loop leaves those rows at 0.
-  supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 15L, 16L)
+  supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 14L, 15L, 16L)
   unsupp <- setdiff(uniq_fids, supported)
   if (length(unsupp) > 0L) {
     cache_key <- "gllvmTMB.warned_simulate_unsupported_family"
@@ -1151,7 +1154,7 @@ simulate.gllvmTMB_multi <- function(
         c(
           "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
           "i" = "Affected rows fall back to Gaussian-on-link-scale draws (pre-M1.8 behaviour). This is M2/M3 family-completeness work.",
-          ">" = "Supported in M1.8: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), nbinom1 (15)."
+          ">" = "Supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), ordinal_probit (14), nbinom1 (15), multinomial (16)."
         ),
         class = "gllvmTMB_simulate_unsupported_family"
       )
@@ -1198,6 +1201,17 @@ simulate.gllvmTMB_multi <- function(
       mu <- exp(eta_i)
       size <- if (is.null(phi_nbinom2)) 1 else phi_nbinom2[tid_1]
       y[i] <- stats::rnbinom(1L, mu = mu, size = size)
+    } else if (fid == 14L) {
+      ## Ordinal probit: z ~ N(eta, 1), then bin z using tau_1 = 0 and
+      ## the fitted tau_2, ..., tau_{K-1} values packed by trait.
+      if (length(ordinal_K) < tid_1 || length(ordinal_offset) < tid_1 || ordinal_K[tid_1] < 2L)
+        cli::cli_abort("Internal: ordinal_probit row has invalid threshold metadata.", class = "gllvmTMB_simulate_ordinal_metadata_invalid")
+      n_free <- ordinal_K[tid_1] - 2L
+      free_cuts <- if (n_free > 0L) ordinal_cuts[seq.int(ordinal_offset[tid_1] + 1L, length.out = n_free)] else numeric(0L)
+      cuts <- c(0, free_cuts)
+      if (length(cuts) != ordinal_K[tid_1] - 1L || any(!is.finite(cuts)) || any(diff(cuts) <= 0))
+        cli::cli_abort("Internal: ordinal_probit thresholds are missing, non-finite, or unordered.", class = "gllvmTMB_simulate_ordinal_cutpoints_invalid")
+      y[i] <- findInterval(stats::rnorm(1L, mean = eta_i, sd = 1), cuts) + 1L
     } else if (fid == 15L) {
       ## nbinom1, log link. LINEAR mean-variance Var = mu * (1 + phi),
       ## so the dispersion enters the size as size = mu / phi (NOT size =

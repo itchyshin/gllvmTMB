@@ -45497,3 +45497,22 @@ CI-11 register / NEWS / roxygen **UNTOUCHED** (correctly). Full report + what's-
 (1) maintainer review of the register PROPOSAL; (2) Ayumi external real-data pass; (3) the profile-`multiple_r`
 fix arc (maintainer-design-gated; task `task_25cbceb0`); (4) hardening-map minors (`task_7368e457`);
 (5) merge decision on the API changes. Nothing here flips CI-11.
+
+## 2026-07-19 — CI-11 categorical simulate + diagnostics hardening (Codex)
+
+- Added native ordinal-probit simulation (`z ~ N(eta, 1)` thresholded at fitted cutpoints) to the existing
+  family-aware simulator; confirmed multinomial remains grouped baseline-category softmax, rather than an
+  independent-Bernoulli encoding.
+- `extract_cross_correlations(method = "bootstrap")` now exposes failed and effective bootstrap-draw counts;
+  profile output reports finite/non-finite endpoint status. This is observability/plumbing only and does not
+  change the CI-11 coverage disposition.
+- Exact checks: `devtools::document(quiet = TRUE)`; `pkgdown::check_pkgdown()`;
+  `NOT_CRAN=true Rscript --vanilla ... test_file('tests/testthat/test-cross-family-intervals.R')`; live mixed
+  multinomial+ordinal fit → `simulate()` → `bootstrap_Sigma(what = "cross_corr", n_boot = 8)` with
+  `n_failed = 0`, all eight effective draws, and finite `multiple_r` bounds; `git diff --check`.
+- Stale-wording/consistency scan:
+  `rg -n 'family_id = 14|ordinal_probit|family_id = 16|multinomial|bootstrap_n_failed|multiple_r_n_effective|profile_status' R/methods-gllvmTMB.R R/extract-correlations.R man/extract_cross_correlations.Rd tests/testthat/test-cross-family-intervals.R docs/dev-log/2026-07-19-ci11-register-update-PROPOSAL.md docs/dev-log/2026-07-18-cross-family-interval-hardening-map.md`.
+  Verdict: all affected code, test, generated Rd, and CI-11 notes use the same family IDs and diagnostics.
+- Fresh D-43: three independent reviewers returned DONE after direct-bootstrap/exact-count and mocked
+  non-finite-profile regression gaps were repaired. Report:
+  `docs/dev-log/after-task/2026-07-19-ci11-categorical-simulate-hardening.md`.

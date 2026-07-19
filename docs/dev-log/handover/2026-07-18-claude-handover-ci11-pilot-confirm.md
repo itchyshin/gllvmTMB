@@ -33,8 +33,12 @@ Do NOT try to build profile→multiple_r; it is mathematically undefined.
   correct-`d`, converged-only) go into the eventual claim wording.
 
 ## What is RUNNING / CARRIED-OVER (the next session finishes this)
-1. **Totoro lean pilot** (fast gross-miscoverage signal, N≤150, all 5 methods) — 20 shards on
-   `~/gtmb_work/xfam-intervals` (lib `~/gtmb_work/xfam-lib`). <!-- PILOT_RESULTS_PLACEHOLDER -->
+1. **Totoro lean pilot — AGGREGATED** (19/20 shards, n_sim=200, n_boot=49, N≤150, all 5 methods; MEASURED,
+   NOT certified). **Signal (mean coverage across 12 lean cells, target 0.95; conv 1.00, 0 ci-fail):**
+   multiple_r bootstrap **0.883**, wald 0.971 · contrast_r bootstrap **0.893**, profile 0.940, wald 0.959.
+   → **bootstrap UNDER-covers ~0.88–0.89 (too narrow at N≤150)**; wald over-covers (conservative); profile
+   best-calibrated (~0.94). `AGGREGATED.rds` at `~/gtmb_work/xfam-intervals/pilot-results/`. The DRAC
+   super-sim tightens these (n_sim=13000) + adds the N=500 cells the pilot omits.
    Aggregate: `ssh totoro`, then `cd ~/gtmb_work/xfam-intervals && export
    R_LIBS=/home/snakagaw/gtmb_work/xfam-lib:/home/snakagaw/R/lib && Rscript dev/xfc-aggregate.R pilot-results`.
 2. **DRAC confirm — LAUNCHED (SUPER), job `49532634`** (fir, `--array=1-6500 --grid=certified --n-sim=13000

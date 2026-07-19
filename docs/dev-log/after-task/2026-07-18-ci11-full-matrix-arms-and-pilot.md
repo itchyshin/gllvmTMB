@@ -40,10 +40,13 @@ Validate the cross-family interval/SE machinery on `extract_cross_correlations()
 | contrast_r | ✅ measured | ✅ measured (NEW arm) | ✅ measured |
 
 ## 4. State at session close (RUNNING / CARRIED-OVER)
-- **Totoro lean pilot** — running (20 shards, `--grid=lean --n-sim=200 --n-boot=49`), ~1-2h; writes 20
-  `.rds` to `~/gtmb_work/xfam-intervals/pilot-results/`.
-  Aggregate: `export R_LIBS=/home/snakagaw/gtmb_work/xfam-lib:/home/snakagaw/R/lib && Rscript
-  dev/xfc-aggregate.R pilot-results` (per-(cell,estimand,method) coverage table).
+- **Totoro lean pilot — AGGREGATED** (19/20 shards, `--grid=lean --n-sim=200 --n-boot=49`, N≤150; MEASURED,
+  NOT certified; `AGGREGATED.rds` in `~/gtmb_work/xfam-intervals/pilot-results/`). Mean coverage across 12
+  lean cells (target 0.95; conv 1.00, 0 ci-fail): **multiple_r** bootstrap **0.883** / wald 0.971;
+  **contrast_r** bootstrap **0.893** / profile 0.940 / wald 0.959. **Signal: bootstrap UNDER-covers
+  (~0.88–0.89, too narrow at N≤150); wald over-covers (conservative); profile best-calibrated (~0.94).**
+  Per-cell 2·MCSE≈0.03 (noisy per-cell; 12-cell means resolve to ~0.006). The DRAC super-sim (n_sim=13000)
+  tightens these + adds the N=500 cells the pilot omits.
 - **DRAC confirm — LAUNCHED (SUPER spec, maintainer-chosen)** (fir, `def-snakagaw`): job **49532634**,
   `--array=1-6500` (2 reps/shard), `--grid=certified --n-sim=13000 --n-boot=499 --time=18:00:00`, out-dir
   `/project/def-snakagaw/snakagaw/gtmb-xfam-ci11-results`. **962 shards running concurrently** → ~3 days wall.
@@ -70,6 +73,17 @@ Validate the cross-family interval/SE machinery on `extract_cross_correlations()
 ## 6. Checks
 - 40 testthat pass; 5-cell harness test pass; 3-lens adversarial 0-blockers; Totoro gate PROCEED (conv 1.00);
   Totoro smoke five_cell_ok=TRUE + truth-assertion PASS at pilot scale.
+
+## 6b. Plan-vs-actual reconcile (Melissa; material deviations, all ADAPTIVE/justified)
+- **Pilot scope:** plan = "full pilot on Totoro"; actual = **lean pilot** (N≤150, 20 cores) — the profile-lane
+  REML campaign (~151 cores) congested Totoro over the ≤100 cap, so the full-cell certification was routed to
+  DRAC instead. (justified, recorded)
+- **DRAC confirm depth:** plan = n-sim=5000/n-boot=199; actual = **13000/499 "super"** — maintainer-chosen.
+- **Scope expansion (user ultracode):** added the wald arm to the matrix, the Feeder-2 robustness audit +
+  hardening, and the AUTO-scale truth verification — beyond the plan's Phase A/B/C. (user-driven)
+- **Phase-A workflow stalled** on a sub-agent permission denial → re-run as a verify-only workflow. (lesson §7)
+- **Safety gates ALL held:** MEASURED banner on every number; CI-11/NEWS/roxygen fenced; D-43 pending; results
+  LOCAL (D-50). No unjustified drift.
 
 ## 7. Lesson
 The first Phase-A workflow **stalled 50 min** because a build sub-agent's R self-check hit a permission

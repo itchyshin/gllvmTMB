@@ -9,15 +9,22 @@ it to Shinichi as step 0 — it is the mission-control. Do this before reading
 further or planning.
 
 For the current handoff, read
-`docs/dev-log/handover/2026-07-18-claude-handover.md` (Claude→Claude, 2026-07-18; **capstone coverage
-RECONCILED** — the campaign ALREADY RAN through the `n_sim=2000` grid on 2026-07-15 and concluded the
-parametric BOOTSTRAP is the WRONG route for `Sigma_unit_diag`; the certificate path is PROFILE /
-log-SD-Wald (Design 73). **NEXT = ultra-plan the profile-route re-measurement** (gaussian+binomial;
-`nbinom2` FENCED = φ↔σ² dispersion ridge, `disp_group` deferred to 1.0; ordinal excluded). This session's
-R2/R3/R1 code repair (Design-66 gate 5 wired + proven, totoro-coverage-grid.sh compute-lane fix, pilot_status
-surfacing) is **CARRIED-OVER** — the commit was blocked by a transient shell-classifier outage; the doc's
-Landing State holds the paste-to-land block. **The "CAPSTONE METRIC-REPAIR" next-arc framing below is
-SUPERSEDED — do NOT run another bootstrap grid.**) Prior handoff:
+`docs/dev-log/handover/2026-07-19-claude-handover-profile-cert-v3.md` (Claude→Claude, 2026-07-19;
+**B3b Bartlett re-score COMPLETE — certificate WITHHELD at 0.95 (provisional)**: the opt-in Bartlett-corrected
+χ²₁ crit lifted gaussian `Sigma_unit_diag` n≥150 coverage from the uncorrected 0.9455–0.9474 to 0.9486–0.9529
+(closes ~half the residual gap; 0.94 floor held; honest ~2–4% widening) but did **not** reach a clean 0.95 (the
+four 2·MCSE lower bands are all <0.95); **nothing promoted**; register CI-08/CI-10 updated non-promotingly with
+the Design-73 disambiguation. the **formal 4-lens D-43 panel (2026-07-19) returned WITHHELD, unanimous for every n≥150 cell** — and found the
+Bartlett route is a **NEGATIVE result (efficacy)**: the n≥150 correction is within MCSE of the uncorrected χ²₁
+baseline (no demonstrable in-regime work). Nothing promoted. The n=400 b̂=318 anomaly is **diagnosed as a pooling
+outlier** — a fresh n=400 b-estimation is normal (b̂=7.46), NOT a systematic large-n breakdown; fix = outlier-guard
+in the b-estimator pooling. The Bartlett worktree was **DECIDED left UNCOMMITTED** (negative result). The gaussian
+`Sigma_unit` diagonal profile remains a **0.94-gate** cell, not 0.95-certified. Do NOT re-run B3b — compute done,
+results LOCAL D-50.) Prior handoff:
+`docs/dev-log/handover/2026-07-18-claude-handover-profile-cert-v2.md` (the pre-B3b state). Earlier:
+`docs/dev-log/handover/2026-07-18-claude-handover.md` (Claude→Claude, 2026-07-18; capstone coverage
+RECONCILED — bootstrap is the WRONG route for `Sigma_unit_diag`; certificate path = PROFILE / log-SD-Wald,
+Design 73). Prior handoff:
 `docs/dev-log/handover/2026-07-17-claude-handover-750-spatial-done.md` (Claude→Claude, 2026-07-17;
 **#750 spatial SPDE unconditional RE redraw SHIPPED** — `bootstrap_Sigma()`/`coverage_study()`/the other
 simulate-based CIs are now valid (non-collapsed) for base spatial fits; the redraw is proven

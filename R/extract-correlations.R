@@ -947,7 +947,15 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
   for (b in mn_bases) {
     blk <- which(is_mn & base == b)
     Scc <- Sigma[blk, blk, drop = FALSE]
-    Scc_inv <- tryCatch(solve(Scc), error = function(e) MASS::ginv(Scc))
+    Scc_inv <- tryCatch(solve(Scc), error = function(e) {
+      if (!requireNamespace("MASS", quietly = TRUE)) {
+        cli::cli_abort(c(
+          "The categorical contrast block is singular and package {.pkg MASS} (for the generalised inverse) is not installed.",
+          "i" = "Install {.pkg MASS}, or fit with a latent dimension {.code d >= K-1} so the contrast block is full rank."
+        ), class = "gllvmTMB_cross_singular_no_MASS")
+      }
+      MASS::ginv(Scc)
+    })
     for (p in partners) {
       Spc  <- Sigma[p, blk, drop = FALSE]                 # 1 x (K-1)
       mult <- sqrt(max(0, as.numeric(Spc %*% Scc_inv %*% t(Spc)) / Sigma[p, p]))
@@ -975,6 +983,12 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
 
       if (contrasts) {
         cr <- Sigma[p, blk] / sqrt(Sigma[p, p] * diag(Scc))
+        ## Numerical guard, mirroring `mult` above: a near-zero partner or
+        ## contrast variance can push |cr| past 1 (or to NaN) at the float
+        ## noise floor; clamp to [-1, 1] and map non-finite to NA so the point
+        ## estimate never contradicts a finite interval (non-bracketing).
+        cr[!is.finite(cr)] <- NA_real_
+        cr <- pmax(pmin(cr, 1), -1)
         row$contrast_r <- I(list(stats::setNames(as.numeric(cr), tn[blk])))
         ## contrast_r interval columns (profile only; point-only otherwise).
         if (method != "point") {

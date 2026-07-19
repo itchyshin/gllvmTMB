@@ -22,6 +22,15 @@ Do NOT try to build profile→multiple_r; it is mathematically undefined.
   `extract_cross_correlations` reads it back), harness measures all 5 cells per method, `xfc-aggregate.R` +
   `xfc_smoke` split by method. **Verified:** 5-cell test + 40 testthat pass; 3-lens Opus adversarial review
   **0 blockers**. man/ regenerated. roxygen honesty-only (no CI-11 claim); NEWS untouched.
+- **Feeder-2 robustness audit + hardening committed `cb829b18`** — 8-agent adversarial audit (31 findings)
+  of `extract_cross_correlations()`/`bootstrap_Sigma`/`profile_ci_correlation`; full prioritized map at
+  `docs/dev-log/2026-07-18-cross-family-interval-hardening-map.md`. `dev/xfc-stress-test.R` (7 regimes × 3
+  methods) confirms the code **survives all tested edge settings** (findings are latent defensive gaps, NOT
+  active fires). Fixed the 2 clear ones (MASS-absent guard + contrast_r clamp — both no-ops on the cert grid,
+  so the running super-sim stays valid; 40+25 testthat pass). **Remaining backlog** (family-allowlist stamp,
+  Inf-strip, bootstrap-error surfacing, profile bracket, honest `nnc`, AUTO-scale truth assertion) → the
+  hardening-map doc + a spawned task; the CI-11 disclosure items (single loading-ray, balanced/complete-case,
+  correct-`d`, converged-only) go into the eventual claim wording.
 
 ## What is RUNNING / CARRIED-OVER (the next session finishes this)
 1. **Totoro lean pilot** (fast gross-miscoverage signal, N≤150, all 5 methods) — 20 shards on

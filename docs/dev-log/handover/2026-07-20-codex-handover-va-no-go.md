@@ -11,7 +11,7 @@
 3. `docs/dev-log/audits/2026-07-20-va-r3-pilot-no-go.md`
 4. `docs/dev-log/after-task/2026-07-20-va-r3-prototype-no-go.md`
 
-## Landed outcome
+## Decision outcome (branch complete; merge pending)
 
 The internal q1/q2 reference and prototype algebra is coherent, but the pilot
 did not establish the frozen fixed-rank Gate 3. Final classification is 22/24
@@ -19,6 +19,13 @@ applicable healthy q1 fits and 19/25 q2 fits, with eight applicable optimiser
 failures. The runner also combined the Gate-3 fixed-rank comparison with the
 Gate-4 ML rank hand-off. The correct decision is NO-GO before high-dimensional
 stress. No q4/q6, 100-, or 500-replicate campaign ran.
+
+## Landing state
+
+PR #777 is the landing vehicle. Treat this handover as pre-merge until the
+exact PR head passes the Windows, macOS, and Ubuntu matrix and the merge commit
+exists on `main`. The final closeout must record those identifiers; a local or
+single-platform pass is not a merged state.
 
 ## Boundaries
 

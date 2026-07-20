@@ -158,11 +158,17 @@ summarise_method <- function(method, fit, dgp) {
   scores <- predictive_scores(dgp$y_replicate, dgp$trials, probability)
   singular <- svd(Lambda, nu = 0L, nv = 0L)$d
   truth_singular <- svd(dgp$Lambda, nu = 0L, nv = 0L)$d
+  rank_matches_truth <- ncol(Lambda) == ncol(dgp$Lambda)
   list(
     healthy = healthy, elapsed = elapsed, max_gradient = gradient,
     beta_rmse = sqrt(mean((beta - dgp$beta)^2)),
     sigma_relative_error = frob_relative(tcrossprod(Lambda), dgp$Sigma),
-    axis_collapsed = min(singular) < 0.1 * min(truth_singular),
+    rank_matches_truth = rank_matches_truth,
+    axis_collapsed = if (rank_matches_truth) {
+      min(singular) < 0.1 * min(truth_singular)
+    } else {
+      NA
+    },
     negative_log_score = scores$negative_log_score,
     squared_error = scores$squared_error
   )

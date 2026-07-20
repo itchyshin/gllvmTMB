@@ -16,6 +16,14 @@
   as.integer(N * q * (q - 1L) / 2L)
 }
 
+.va_r3_best_three_range <- function(objectives) {
+  objectives <- sort(as.numeric(objectives))
+  if (length(objectives) < 3L || any(!is.finite(objectives))) return(Inf)
+  min(vapply(seq_len(length(objectives) - 2L), function(i) {
+    objectives[i + 2L] - objectives[i]
+  }, numeric(1)))
+}
+
 .va_r3_unpack_theta_rr <- function(theta_rr, T, q) {
   T <- as.integer(T)
   q <- as.integer(q)
@@ -546,8 +554,11 @@
   }
   healthy_id <- which(vapply(fits, `[[`, logical(1), "healthy"))
   objectives <- vapply(fits, `[[`, numeric(1), "objective")
-  agreement <- length(healthy_id) >= 3L &&
-    diff(range(objectives[healthy_id])) <= 1e-6
+  agreement_range <- Inf
+  if (length(healthy_id) >= 3L) {
+    agreement_range <- .va_r3_best_three_range(objectives[healthy_id])
+  }
+  agreement <- length(healthy_id) >= 3L && agreement_range <= 1e-6
   admitted <- length(healthy_id) >= 3L && agreement
   best_id <- if (length(healthy_id)) {
     healthy_id[which.min(objectives[healthy_id])]
@@ -600,7 +611,7 @@
       minimum_healthy_starts = 3L,
       all_starts_healthy = length(healthy_id) == length(starts),
       objective_agreement = agreement,
-      objective_range = if (length(healthy_id)) diff(range(objectives[healthy_id])) else Inf,
+      best_three_objective_range = agreement_range,
       gradient_tolerance = 1e-4,
       agreement_tolerance = 1e-6,
       max_projected_variance = max_projected_variance,

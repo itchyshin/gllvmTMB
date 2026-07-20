@@ -17,6 +17,13 @@ test_that("R3 packing and rank-zero guards match the frozen contract", {
   expect_false(rank_zero$objective_constructed)
 })
 
+test_that("R3 objective agreement requires any three of four healthy starts", {
+  objectives <- c(10, 10 + 2e-7, 10 + 4e-7, 10 + 3e-6)
+  expect_lt(.va_r3_best_three_range(objectives), 1e-6)
+  expect_gt(diff(range(objectives)), 1e-6)
+  expect_identical(.va_r3_best_three_range(c(1, 2)), Inf)
+})
+
 test_that("R3 accepts only the predeclared complete ordinary model cell", {
   args <- list(
     y = c(1L, 2L, 0L, 3L), n_trials = rep(4L, 4L),

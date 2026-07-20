@@ -54,6 +54,8 @@ test_that("bootstrap_Sigma returns the expected list structure (smoke test)", {
       "point_est",
       "ci_lower",
       "ci_upper",
+      "n_effective",
+      "boot_median",
       "ci_method",
       "link_residual",
       "conf",
@@ -67,6 +69,17 @@ test_that("bootstrap_Sigma returns the expected list structure (smoke test)", {
   expect_equal(boot$ci_method, "percentile")
   expect_equal(boot$link_residual, "auto")
   expect_equal(boot$n_boot, 5L)
+  ## Matrix summaries have one joint draw per replicate. Effective-count
+  ## diagnostics are defined for the vector targets only, and medians are
+  ## currently exposed only for the multiple-correlation targets.
+  expect_setequal(
+    names(boot$n_effective),
+    c("communality_B", "communality_W", "ICC_site")
+  )
+  n_effective <- unlist(boot$n_effective, use.names = FALSE)
+  expect_true(all(n_effective >= 0L))
+  expect_true(all(n_effective <= boot$n_boot))
+  expect_length(boot$boot_median, 0L)
   expect_true("Sigma_B" %in% names(boot$point_est))
   expect_true("R_B" %in% names(boot$point_est))
   expect_true("Sigma_W" %in% names(boot$point_est))

@@ -1,15 +1,13 @@
 ## M1.4 — extract_correlations() mixed-family validation.
 ##
-## Walks register row MIX-04 from `partial` to `covered` by
-## exercising the 4 supported methods (fisher-z / wald / profile /
-## bootstrap) against the M1.2 fixtures.
+## Exercises the admitted Fisher-z / Wald / bootstrap routes and the explicit
+## refusal of the withdrawn nonlinear profile route against the M1.2 fixtures.
 ##
 ## Scope: shape + bracketing + range, not numerical-depth (R = 200
 ## empirical coverage is M3.3 work).
 ##
-## Profile + bootstrap are slow; we run them on the 3-family
-## fixture only (T = 3, d = 1, 3 trait pairs) to keep CI within budget.
-## Fisher-z + Wald (closed-form) run on both fixtures.
+## Bootstrap is slow, so it runs on one fixture. Fisher-z + Wald
+## (closed-form) run on both fixtures; profile requests fail before refitting.
 
 # ---- Shared helpers --------------------------------------------------
 
@@ -73,91 +71,34 @@ test_that("extract_correlations() method = 'wald' on both fixtures (M1.4 / MIX-0
   }
 })
 
-# ---- Profile: 3-family only (slow) ----------------------------------
+# ---- Profile: explicit public refusal -------------------------------
 
-test_that("extract_correlations() method = 'profile' on 3-family fixture (M1.4 / MIX-04)", {
+test_that("extract_correlations() method = 'profile' is explicitly withheld", {
   skip_if_not_heavy()
   skip_on_cran()
-  ## Profile is slower than Fisher-z / Wald (~repeated refit per pair).
-  ## 3-family has T = 3 → 3 pairs; budget ~30-60 s.
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
-  ## #717: on this mixed-family (single-trial binary) fixture the engine maps
-  ## some theta_diag_B entries off, so the profile refit used to recycle the
-  ## shorter free vector against diag(Sigma) -- a ~36k-warning flood plus a
-  ## mis-assembled Sigma. Capture warnings and assert the recycle is gone.
-  warns <- character()
-  df <- withCallingHandlers(
+  expect_error(
     suppressMessages(extract_correlations(
-      fit, tier = "unit", method = "profile",
-      link_residual = "auto"
+      fit, tier = "unit", method = "profile", link_residual = "auto"
     )),
-    warning = function(w) {
-      warns <<- c(warns, conditionMessage(w))
-      invokeRestart("muffleWarning")
-    }
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
   )
-  expect_false(
-    any(grepl("longer object length", warns, fixed = TRUE)),
-    info = "profile correlation must not recycle the mapped theta_diag_B (#717)"
-  )
-  expect_valid_correlations_df(df, 3L)
-  expect_true(all(df$method == "profile"))
 })
 
-# ---- Profile: single-pair SHAPE cells (3-family, not calibration) ----
-#
-# Shape, not calibration. These widen the profile half of the EXT-04
-# evidence by exercising the `pair =` argument (character names AND
-# integer indices) across every trait pair of the 3-family fixture,
-# rather than only the all-pairs call above. We assert the returned
-# data-frame schema, the single-row shape, the requested trait labels,
-# and the [-1, 1] / NA-aware bracket invariants from
-# expect_valid_correlations_df(). We do NOT assert interval width or
-# coverage: profile-interval calibration is CI-10 / Design-50 / M3.3b
-# gated, out of scope here.
-#
-# Profile on the 5-family fixture (T = 8, d = 2) costs ~10 min per pair
-# (repeated full-model refits), so the profile half stays on the
-# 3-family fixture, matching the budget note at the top of this file.
+# Supplying `pair` must not bypass the global profile refusal. Pair validation
+# itself is tested under admitted methods elsewhere; profile aborts first.
 
-test_that("extract_correlations() method = 'profile' single-pair shape, by name, 3-family (M1.4 / MIX-04, shape not calibration)", {
+test_that("extract_correlations() pair argument does not bypass profile refusal", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
-  named_pairs <- list(
-    c("trait_1", "trait_2"),
-    c("trait_1", "trait_3"),
-    c("trait_2", "trait_3")
-  )
-  for (pr in named_pairs) {
-    df <- suppressMessages(extract_correlations(
-      fit, tier = "unit", method = "profile",
-      pair = pr, link_residual = "auto"
-    ))
-    ## Shape, not calibration: schema + single-row + label + range only.
-    expect_valid_correlations_df(df, 1L)
-    expect_true(all(df$method == "profile"))
-    expect_setequal(c(df$trait_i, df$trait_j), pr)
-  }
-})
-
-test_that("extract_correlations() method = 'profile' single-pair shape, by index, 3-family (M1.4 / MIX-04, shape not calibration)", {
-  skip_if_not_heavy()
-  skip_on_cran()
-  fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
-  index_pairs <- list(c(1L, 2L), c(1L, 3L), c(2L, 3L))
-  for (pr in index_pairs) {
-    df <- suppressMessages(extract_correlations(
-      fit, tier = "unit", method = "profile",
-      pair = pr, link_residual = "auto"
-    ))
-    ## Shape, not calibration: integer `pair =` dispatch returns the same
-    ## one-row schema as the by-name form; no interval-width claim.
-    expect_valid_correlations_df(df, 1L)
-    expect_true(all(df$method == "profile"))
-    expect_setequal(
-      c(df$trait_i, df$trait_j),
-      paste0("trait_", pr)
+  for (pr in list(c("trait_1", "trait_2"), c(1L, 2L))) {
+    expect_error(
+      suppressMessages(extract_correlations(
+        fit, tier = "unit", method = "profile",
+        pair = pr, link_residual = "auto"
+      )),
+      class = "gllvmTMB_nonlinear_profile_withdrawn"
     )
   }
 })
@@ -271,10 +212,9 @@ test_that("extract_correlations() method = 'bootstrap' single-pair shape on 3-fa
 #
 # Fisher-z and Wald both compute the correlation point estimate from
 # the fitted Sigma_total (with link_residual = "auto"), so their
-# point estimates are bit-identical. Profile + bootstrap operate on
-# different surfaces (profile uses Sigma_shared with profile-likelihood
-# CI; bootstrap uses per-refit Sigma) — these can diverge on rank-1
-# latent fits where Sigma_shared correlations are ±1 deterministically.
+# point estimates are bit-identical. The nonlinear profile route is withheld;
+# bootstrap uses per-refit Sigma and can diverge on rank-1 latent fits where
+# shared-surface correlations are ±1 deterministically.
 # Cross-method numerical agreement is M3 inference-completeness work,
 # not MIX-04 scope.
 

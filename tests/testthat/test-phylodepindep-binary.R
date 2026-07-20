@@ -1,5 +1,6 @@
 ## Phase B-INF Lane 2 / B2 (Design 58): `phylo_indep` and `phylo_dep`
-## on a binary probit fit — recovery + CI smoke.
+## on a binary probit fit — structural/recovery evidence plus typed profile
+## refusal.
 ##
 ## Walks PHY-05 of `docs/design/35-validation-debt-register.md`
 ## from `partial` to `covered` for the binary probit branch.
@@ -13,9 +14,8 @@
 ##     `fit_health$pd_hessian == TRUE`) and `extract_correlations(tier="phy")`
 ##     returns a non-degenerate data.frame.
 ##   * `phylo_dep(0 + trait | species)` on the same fixture fits cleanly
-##     with `pd_hessian == TRUE`, supports `confint(parm = "rho:phy:1,2",
-##     method = "profile")` returning a finite bound on at least one pair,
-##     and `extract_correlations(tier="phy")` is non-degenerate.
+##     with `pd_hessian == TRUE`, returns finite point correlations, and
+##     explicitly refuses the withdrawn nonlinear rho profile route.
 ##
 ## SKIP discipline (no fake-pass): if either fit fails to converge or
 ## the Hessian is non-PD we `skip()` honestly rather than relax the
@@ -136,7 +136,7 @@ test_that("phylo_indep(0 + trait | species) fits on binary probit; pd_hessian TR
 ## ---------------------------------------------------------------
 ## phylo_dep(0 + trait | species) on the same fixture
 ## ---------------------------------------------------------------
-test_that("phylo_dep(0 + trait | species) fits on binary probit; CI smoke + extract_correlations non-degenerate", {
+test_that("phylo_dep(0 + trait | species) fits on binary probit; profile refusal + point correlations", {
   skip_if_not_heavy()
   skip_if_not_phylo_binary_deps()
   fx <- make_phylo_binary_fixture()
@@ -165,30 +165,13 @@ test_that("phylo_dep(0 + trait | species) fits on binary probit; CI smoke + extr
   expect_true(isTRUE(fit$use$phylo_dep))
   expect_true(isTRUE(fit$use$phylo_rr))  # phylo_dep rewrites to phylo_rr(d = n_traits)
 
-  ## CI smoke: confint(parm = "rho:phy:1,2", method = "profile") routes
-  ## through profile_ci_correlation() at the "phy" tier and returns a
-  ## 1x2 matrix. We require at least one finite bound on at least one
-  ## of the three upper-tri pairs (1,2 / 1,3 / 2,3).
-  pairs_to_try <- list(c(1L, 2L), c(1L, 3L), c(2L, 3L))
-  any_finite <- FALSE
-  for (p in pairs_to_try) {
-    parm_token <- sprintf("rho:phy:%d,%d", p[1L], p[2L])
-    ci <- tryCatch(
-      suppressMessages(suppressWarnings(stats::confint(
-        fit, parm = parm_token, method = "profile"
-      ))),
-      error = function(e) e
-    )
-    if (!inherits(ci, "error") && is.matrix(ci) && nrow(ci) == 1L &&
-          ncol(ci) == 2L && any(is.finite(ci))) {
-      any_finite <- TRUE
-      break
-    }
-  }
-  if (!any_finite) {
-    skip("Profile CI for rho:phy did not return any finite bound on any pair; honest skip rather than relax assertion")
-  }
-  expect_true(any_finite)
+  expect_error(
+    suppressMessages(suppressWarnings(stats::confint(
+      fit, parm = "rho:phy:1,2", method = "profile"
+    ))),
+    regexp = "Nonlinear profile intervals for correlations are not currently available",
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
+  )
 
   ## extract_correlations on phy tier with rr present: returns one row per
   ## upper-tri pair with finite correlations.

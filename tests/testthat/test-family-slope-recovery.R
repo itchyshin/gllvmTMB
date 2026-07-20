@@ -1,11 +1,11 @@
 ## C1 (Design 79 RE-surface arc): family generality for random SLOPES.
 ##
-## Random slopes were gated to a "core-eight" family allowlist (6 sites in
-## R/fit-multi.R). The augmented-slope engine is family-agnostic (the family
-## likelihood consumes only the final `eta`; verified at src/gllvmTMB.cpp
-## 1798-1938 -- ZERO new C++), so a family joins the slope grid once its recovery
-## cell passes (the #388 discipline). This cell admits lognormal (family_id 3)
-## and student (9): both fit a phylo random slope and recover per-trait variances.
+## The six structured augmented-slope guards share a family-agnostic engine.
+## This C1 fixture records runtime admission evidence for lognormal (family_id
+## 3) and Student-t (9): each fits one phylo_indep seed and clears a pooled mean
+## slope-SD plausibility band. It does NOT establish route-specific or
+## per-trait recovery, positive-definite-Hessian or gradient health,
+## replicated-seed behavior, or inferential calibration (RE-14).
 ##
 ## NOTE (Design 80 Bar-2): acceptance here is adequate-N convergence + plausible
 ## variance recovery. The small-cluster ML-vs-REML downward-bias diagnostic is a
@@ -50,7 +50,7 @@ make_family_slope_mu <- function(seed, n_sp = 90L, n_rep = 10L) {
     data = d, phylo_tree = fx$tree, unit = "species", family = fam)))
 }
 
-.check_slope_recovery <- function(fit, true_slope_sd) {
+.check_slope_c1_plausibility <- function(fit, true_slope_sd) {
   expect_equal(fit$opt$convergence, 0L)
   sd_b <- fit$report$sd_b
   expect_length(sd_b, 6L)                       # 2T: per-trait (int, slope)
@@ -62,16 +62,22 @@ make_family_slope_mu <- function(seed, n_sp = 90L, n_rep = 10L) {
   expect_lt(ratio, 1.7)
 }
 
-test_that("lognormal random slope fits and recovers (C1)", {
+test_that("lognormal random slope fits with pooled slope-SD plausibility (C1)", {
   skip_heavy_ape()
   fx <- make_family_slope_mu(seed = 42L)
   y <- exp(fx$df$mu + stats::rnorm(nrow(fx$df), 0, 0.3))
-  .check_slope_recovery(.fit_family_slope(fx, y, lognormal()), sqrt(fx$s2_slope))
+  .check_slope_c1_plausibility(
+    .fit_family_slope(fx, y, lognormal()),
+    sqrt(fx$s2_slope)
+  )
 })
 
-test_that("student random slope fits and recovers (C1)", {
+test_that("student random slope fits with pooled slope-SD plausibility (C1)", {
   skip_heavy_ape()
   fx <- make_family_slope_mu(seed = 42L)
   y <- fx$df$mu + stats::rt(nrow(fx$df), df = 5) * 0.3
-  .check_slope_recovery(.fit_family_slope(fx, y, student()), sqrt(fx$s2_slope))
+  .check_slope_c1_plausibility(
+    .fit_family_slope(fx, y, student()),
+    sqrt(fx$s2_slope)
+  )
 })

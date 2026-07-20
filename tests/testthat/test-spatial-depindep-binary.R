@@ -1,5 +1,6 @@
 ## Phase B-INF Lane 2 / B5 (Design 58): `spatial_indep` and `spatial_dep`
-## on a binary probit fit with an SPDE mesh -- recovery + CI smoke.
+## on a binary probit fit with an SPDE mesh -- structural/recovery evidence
+## plus typed profile refusal.
 ##
 ## Walks SPA-04 of `docs/design/35-validation-debt-register.md` from
 ## `partial` to `covered` for the binary probit branch.
@@ -24,8 +25,8 @@
 ##     `fit$use$spatial_dep` is set, the engine routes via
 ##     `spatial_latent(d = n_traits)` so `fit$use$spatial_latent` is also
 ##     TRUE, `extract_correlations(tier = "spatial")` returns a non-degenerate
-##     data frame with finite correlations, and at least one of the
-##     upper-tri profile CIs (`rho:spatial:i,j`) returns a finite bound.
+##     data frame with finite correlations, and the withdrawn nonlinear rho
+##     profile route aborts with its public condition class.
 ##
 ## SKIP discipline (no fake-pass): if either fit fails to converge with a
 ## PD Hessian we `skip()` honestly rather than relax the assertion. The
@@ -118,7 +119,7 @@ test_that("spatial_indep(0 + trait | site) fits on binary probit; pd_hessian TRU
 ## ---------------------------------------------------------------
 ## spatial_dep(0 + trait | site) on the same fixture
 ## ---------------------------------------------------------------
-test_that("spatial_dep(0 + trait | site) fits on binary probit; CI smoke + extract_correlations non-degenerate", {
+test_that("spatial_dep(0 + trait | site) fits on binary probit; profile refusal + point correlations", {
   skip_if_not_heavy()
   skip_if_not_spatial_binary_deps()
   fx <- make_spatial_binary_fixture()
@@ -151,30 +152,13 @@ test_that("spatial_dep(0 + trait | site) fits on binary probit; CI smoke + extra
   ## must also be TRUE so the cross-trait correlation surface is available.
   expect_true(isTRUE(fit$use$spatial_latent))
 
-  ## CI smoke: confint(parm = "rho:spatial:1,2", method = "profile") routes
-  ## through profile_ci_correlation() at the "spde" / "spatial" tier. We
-  ## require at least one finite bound on at least one of the three
-  ## upper-tri pairs.
-  pairs_to_try <- list(c(1L, 2L), c(1L, 3L), c(2L, 3L))
-  any_finite <- FALSE
-  for (p in pairs_to_try) {
-    parm_token <- sprintf("rho:spatial:%d,%d", p[1L], p[2L])
-    ci <- tryCatch(
-      suppressMessages(suppressWarnings(stats::confint(
-        fit, parm = parm_token, method = "profile"
-      ))),
-      error = function(e) e
-    )
-    if (!inherits(ci, "error") && is.matrix(ci) && nrow(ci) == 1L &&
-          ncol(ci) == 2L && any(is.finite(ci))) {
-      any_finite <- TRUE
-      break
-    }
-  }
-  if (!any_finite) {
-    skip("Profile CI for rho:spatial did not return any finite bound on any pair; honest skip rather than relax assertion")
-  }
-  expect_true(any_finite)
+  expect_error(
+    suppressMessages(suppressWarnings(stats::confint(
+      fit, parm = "rho:spatial:1,2", method = "profile"
+    ))),
+    regexp = "Nonlinear profile intervals for correlations are not currently available",
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
+  )
 
   ## extract_correlations on spatial tier: returns one row per upper-tri
   ## pair with finite correlations (the rotation-invariant cross-trait

@@ -1,6 +1,6 @@
 # Design 75 -- Inference Route Truth Matrix (estimand x tier x method)
 
-Date: 2026-07-05
+Date: 2026-07-05; release-boundary revision 2026-07-20
 
 Owner: Fisher, with Rose, Noether, Boole, Curie, and Ada review roles.
 
@@ -8,6 +8,12 @@ Status: read-only audit. This note changes no package capability, no
 likelihood code, no formula grammar, and no public-facing claim. It is the
 Day-1 truth-lock artefact for the `gllvmTMB` completion arc and the direct
 follow-on to Design 73 and Design 74.
+
+Release-boundary correction: nonlinear penalty profiles for repeatability,
+communality, correlation, and variance proportion are withdrawn. Their
+Profile-LR cells below are `blocked`, including the former selected-entry
+`unit_slope` canary. Direct/simple profiles and the retained two-component
+phylogenetic-signal route remain separate.
 
 ## Why this note exists
 
@@ -37,8 +43,10 @@ match the profile column.
    `extract_Sigma()` / `extract_repeatability()` / the derived-summary
    extractors accept `method = c("profile", "wald", "bootstrap")`; the
    derived-summary `confint` helpers (`.confint_icc`, `.confint_phylo_signal`,
-   communality/proportion/rho paths) dispatch `profile` to `profile_ci_*()` and
-   `wald` / `bootstrap` to the matching `extract_*()` companion.
+   communality/proportion/rho paths) keep method dispatch, but nonlinear
+   `profile` requests now terminate with the shared typed withdrawal; `wald` /
+   `bootstrap` use their separately labelled `extract_*()` companions where
+   admitted.
 3. **Estimated-likelihood / fixed-nuisance LR is unimplemented.** A repo-wide
    scan for `estimated.?likelihood` / `fixed.?nuisance` over `R/` and `src/`
    returns nothing; the term appears only in planning prose
@@ -74,7 +82,8 @@ coverage calibration**. `pdHess = TRUE` is not calibration evidence.
 ### Evidence basis per method column
 
 - **Profile-LR**: authoritative -- copied from `.profile_route_matrix()`
-  statuses. Route-ledger evidence, not coverage calibration.
+  statuses. Nonlinear derived rows are blocked; direct/simple rows are
+  route-ledger evidence, not coverage calibration.
 - **Wald**: dispatch-confirmed by reading `confint()` / `extract_*()`; per-cell
   focused tests are thinner than the profile column. "covered" here means the
   Wald route dispatches and is dispatch-tested, never that Wald coverage is
@@ -99,10 +108,10 @@ calibration is distinct from point-estimate recovery).
 | --- | --- | --- | --- | --- | --- |
 | direct SD | covered | covered | planned | opt-in (via Sigma diag) | CI-02 |
 | `Sigma` | partial (elementwise delta) | partial (diag direct; low-rank -> bootstrap) | planned | opt-in (`bootstrap_Sigma`) | CI-02;CI-03 |
-| communality | partial | covered | planned | opt-in | CI-06;EXT-05 |
-| `rho` | partial | covered | planned | opt-in | CI-07 |
-| repeatability / icc | partial | partial (diag-only ratio) | planned | opt-in | CI-04 |
-| proportion | partial | covered | planned | opt-in | CI-07;EXT-21;EXT-22 |
+| communality | partial | blocked | planned | opt-in | CI-06;EXT-05 |
+| `rho` | partial | blocked | planned | opt-in | CI-07 |
+| repeatability / icc | partial | blocked | planned | opt-in | CI-04 |
+| proportion | partial | blocked | planned | opt-in | CI-07;EXT-21;EXT-22 |
 
 `unit_obs` (within-unit / observation `T x T`):
 
@@ -110,9 +119,9 @@ calibration is distinct from point-estimate recovery).
 | --- | --- | --- | --- | --- | --- |
 | direct SD | covered | covered | planned | opt-in (via Sigma diag) | CI-02 |
 | `Sigma` | partial (elementwise delta) | partial (diag direct; low-rank -> bootstrap) | planned | opt-in (`bootstrap_Sigma`) | CI-02;CI-03 |
-| communality | partial | covered | planned | opt-in | CI-06;EXT-05 |
-| `rho` | partial | covered | planned | opt-in | CI-07 |
-| proportion | partial | covered | planned | opt-in | CI-07;EXT-21;EXT-22 |
+| communality | partial | blocked | planned | opt-in | CI-06;EXT-05 |
+| `rho` | partial | blocked | planned | opt-in | CI-07 |
+| proportion | partial | blocked | planned | opt-in | CI-07;EXT-21;EXT-22 |
 
 `cluster` and `cluster2` (diagonal `T` grouping tiers -- identical routes):
 
@@ -122,7 +131,7 @@ calibration is distinct from point-estimate recovery).
 | `Sigma` (diag token) | partial (diag only) | partial (diag token; fitted Gaussian canary) | planned | opt-in (diag; gated) | RE-11 |
 | communality | not_applicable (no shared loading) | not_applicable | not_applicable | not_applicable | RE-11 |
 | `rho` (off-diagonal) | not_applicable (structural zero) | point_only (structural zero) | not_applicable | not_applicable | RE-11 |
-| proportion (diag) | partial | partial (`unique_cluster[2]`) | planned | opt-in (gated) | RE-11;CI-11 |
+| proportion (diag) | partial | blocked | planned | opt-in (gated) | RE-11;CI-11 |
 
 Off-diagonal cluster/cluster2 covariances are fixed structural zeros
 (`method = "structural_zero"`). No method column may fabricate an interval for
@@ -135,26 +144,25 @@ them.
 | Estimand | Wald | Profile-LR | Est-Lik | Bootstrap | Validation rows |
 | --- | --- | --- | --- | --- | --- |
 | direct SD | covered | covered | planned | opt-in | CI-02;PHY-05 |
-| `Sigma` | partial (elementwise delta) | partial (diag + selected derived) | planned | opt-in | CI-05;CI-07;PHY-05 |
-| communality | partial | covered | planned | opt-in | CI-06;EXT-05;PHY-08 |
-| `rho` | partial | covered | planned | opt-in | CI-07;PHY-05 |
+| `Sigma` | partial (elementwise delta) | partial (direct diagonal plus separately documented phylogenetic-signal route) | planned | opt-in | CI-02;CI-05;PHY-05 |
+| communality | partial | blocked | planned | opt-in | CI-06;EXT-05;PHY-08 |
+| `rho` | partial | blocked | planned | opt-in | CI-07;PHY-05 |
 | phylo signal | fallback (`wald(numeric)` for 3+) | partial (2-component direct) | planned | opt-in | CI-05 |
-| proportion | partial | covered | planned | opt-in | CI-07;EXT-21 |
+| proportion | partial | blocked | planned | opt-in | CI-07;EXT-21 |
 
 `spatial` (SPDE source `T x T`):
 
 | Estimand | Wald | Profile-LR | Est-Lik | Bootstrap | Validation rows |
 | --- | --- | --- | --- | --- | --- |
 | direct scale (`tau`/`kappa`) | covered | covered | planned | opt-in | CI-02;SPA-03 |
-| `Sigma` | partial | partial (scale + selected `rho` smoke) | planned | partial (heavy gate) | CI-07;SPA-02;SPA-04 |
-| communality | planned | planned | planned | planned | SPA-02 |
-| `rho` | partial | partial (smoke) | planned | partial | CI-07;SPA-02;SPA-04 |
-| proportion | planned | planned | planned | planned | SPA-02 |
+| `Sigma` | partial | partial (direct scale only; derived total-Sigma targets blocked) | planned | partial (heavy gate) | CI-02;SPA-02;SPA-04 |
+| communality | planned | blocked | planned | planned | SPA-02 |
+| `rho` | partial | blocked | planned | partial | CI-07;SPA-02;SPA-04 |
+| proportion | planned | blocked | planned | planned | SPA-02 |
 
 Spatial total-covariance intervals and spatial variance-proportion components
-stay behind a heavy gate and a spatial denominator design
-(`spatial_latent(unique = TRUE)` plus legacy compatibility syntax) before any
-cell here moves off `planned`/`partial`.
+stay behind independent design and calibration gates. A heavier smoke test is
+not sufficient to reactivate any nonlinear profile route.
 
 ## Matrix -- named kernel tier
 
@@ -180,11 +188,12 @@ exists.
 | --- | --- | --- | --- | --- | --- |
 | `Sigma_unit_slope` | blocked | blocked | planned | blocked | RE-12;CI-11 |
 | communality | blocked | blocked | planned | blocked | RE-12;CI-11 |
-| `rho:unit_slope:i,j` | blocked | partial (Gaussian selected-entry canary, one known-DGP truth-inclusion test) | planned | blocked | RE-12;CI-11 |
+| `rho:unit_slope:i,j` | blocked | blocked | planned | blocked | RE-12;CI-11 |
 | proportion | blocked | blocked | planned | blocked | RE-12;CI-11 |
 
-`phy_unique_slope`, `phy_dep`, `phy_slope`, `spde_base_slope`, `spde_dep`,
-`spde_slope` -- **all estimands blocked on all interval methods.** Design 74
+`phy_unique_slope`, `phy_indep_slope`, `phy_dep`, `phy_slope`,
+`spde_base_slope`, `spde_indep_slope`, `spde_dep`, `spde_slope` -- **all
+estimands blocked on all interval methods.** Design 74
 declares the symbolic targets, flattening order, and denominator boundaries;
 `.profile_augmented_target_table()` records them as `declared_blocked` or
 `not_applicable_blocked`. Point extraction/recovery may exist, but no profile,
@@ -197,13 +206,14 @@ Validation rows for the source augmented tiers: `RE-03`, `RE-12`, `PHY-11..18`,
 
 ## Hard guards restated
 
-- The only augmented profile interval that is above `blocked` is the Gaussian
-  `rho:unit_slope:i,j` canary, and it is `partial`, not covered. Everything
-  else augmented is `blocked` on every method.
+- Every augmented nonlinear profile interval is `blocked`, including the
+  former Gaussian `rho:unit_slope:i,j` canary. Historical parser/refit evidence
+  does not constitute a public route.
 - Structural-zero cluster/cluster2 correlations receive no interval on any
   method.
-- Mixed-family CIs remain blocked on every method (MIX-02 is point/postfit
-  dispatch only).
+- Mixed-family nonlinear profiles remain blocked. Point, Fisher-z, Wald, and
+  route-specific bootstrap behavior retain their separate, uncalibrated
+  statuses in the validation register.
 - No non-Gaussian REML or AI-REML wording enters any cell.
 - `pdHess = TRUE` is never cell evidence.
 - No source-specific `lv = ~ env` promotion from parser or point acceptance.
@@ -212,11 +222,12 @@ Validation rows for the source augmented tiers: `RE-03`, `RE-12`, `PHY-11..18`,
 
 Ordered by leverage, each a self-contained slice:
 
-1. **Ledger-reality sync (recommended first).** Extend
+1. **Ledger-reality sync.** Extend
    `.profile_route_matrix()` to emit `wald`, `bootstrap`, and
    `estimated_likelihood` method rows matching this matrix, plus a pure route
-   test per method. Pure code + test, no likelihood or grammar change. Moves
-   the internal ledger from profile-only to the four-word dispatch reality.
+   test per method only after the 0.6 source/API freeze decision. This is a
+   separate architecture slice, not permission to reactivate a nonlinear
+   profile route.
 2. **Estimated-likelihood diagnostic tier.** Implement fixed-nuisance LR as an
    explicitly-labelled diagnostic (`method = "estimated_likelihood"` or a
    distinct label), documented as *not* full profile because nuisance
@@ -227,6 +238,9 @@ Ordered by leverage, each a self-contained slice:
    the Wald and bootstrap companions the dispatch layer already routes
    (communality, rho, proportion, icc) so those columns rest on direct evidence
    rather than dispatch reading.
+
+Any future nonlinear profile restoration additionally requires the Design 73
+solver/status/calibration gates and explicit maintainer promotion.
 
 None of these promotes a blocked augmented tier, a mixed-family CI, a
 structural-zero interval, or a spatial total-covariance interval. Those stay

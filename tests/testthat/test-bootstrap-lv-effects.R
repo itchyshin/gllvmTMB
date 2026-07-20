@@ -2,7 +2,9 @@
 ## simulation redraw it depends on. The interval helper is not a public route:
 ## failed-refit accounting and repeated-sampling evidence are incomplete.
 
-make_modelA_fit <- function(S = 40L, T = 4L, seed = 20260706L, reml = TRUE) {
+## Predictor-informed latent scores are currently ML-only: the restricted
+## likelihood does not yet integrate their alpha_lv_B component.
+make_modelA_fit <- function(S = 40L, T = 4L, seed = 20260706L, reml = FALSE) {
   withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE, lifecycle_verbosity = "quiet")
   set.seed(seed)
   tree <- ape::rcoal(S); tree$tip.label <- paste0("sp", seq_len(S))
@@ -29,6 +31,15 @@ make_modelA_fit <- function(S = 40L, T = 4L, seed = 20260706L, reml = TRUE) {
   ))
   list(fit = fit, truth = as.numeric(LambdaB) * alpha)
 }
+
+test_that("predictor-informed Model A fixtures retain the REML refusal", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  expect_error(
+    make_modelA_fit(S = 12L, T = 3L, reml = TRUE),
+    "not available with predictor-informed"
+  )
+})
 
 test_that("bootstrap_ci_lv_effects errors without a predictor-informed latent term", {
   withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE, lifecycle_verbosity = "quiet")

@@ -22,9 +22,11 @@
       "kernel_named",
       "unit_slope",
       "phy_unique_slope",
+      "phy_indep_slope",
       "phy_dep",
       "phy_slope",
       "spde_base_slope",
+      "spde_indep_slope",
       "spde_dep",
       "spde_slope"
     ),
@@ -37,6 +39,8 @@
       "source",
       "source_named",
       "augmented_peer",
+      "augmented_source",
+      "augmented_source",
       "augmented_source",
       "augmented_source",
       "augmented_source",
@@ -55,7 +59,9 @@
       "B_slope",
       "phy",
       "phy",
+      "phy",
       "phy_slope",
+      "spatial",
       "spatial",
       "spatial",
       "spde_slope"
@@ -70,9 +76,11 @@
       "T_by_T_named_kernel",
       "slope_block",
       "intercept_slope_2_by_2",
+      "block_diagonal_augmented",
       "full_augmented",
       "per_lhs_block",
       "intercept_slope_2_by_2",
+      "block_diagonal_augmented",
       "full_augmented",
       "per_lhs_block"
     ),
@@ -85,10 +93,12 @@
       "Source-specific SPDE tier; intercept-only total covariance is extractable.",
       "Named kernel tier; point covariance can be extracted by fitted kernel name.",
       "Ordinary augmented latent random-regression tier.",
-      "Phylogenetic independent augmented slope tier.",
+      "Legacy/canonical phylo_unique shared 2x2 augmented slope tier.",
+      "Current phylo_indep per-trait block-diagonal augmented slope tier.",
       "Phylogenetic full augmented dependency tier.",
       "Phylogenetic augmented latent slope tier.",
-      "SPDE independent augmented slope tier.",
+      "Legacy/canonical spatial_unique shared 2x2 augmented slope tier.",
+      "Current spatial_indep per-trait block-diagonal augmented slope tier.",
       "SPDE full augmented dependency tier.",
       "SPDE augmented latent slope tier."
     ),
@@ -141,6 +151,17 @@
 
 #' @keywords internal
 #' @noRd
+.profile_nonlinear_release_gate <- function() {
+  paste(
+    "Public profile CI remains blocked until an exact or independently",
+    "tolerance-certified constraint solver, an exposed optimizer-status",
+    "ledger, retained failed endpoints, target-specific calibration, and",
+    "explicit maintainer promotion are all present."
+  )
+}
+
+#' @keywords internal
+#' @noRd
 .profile_augmented_target_row <- function(
   level,
   estimand,
@@ -153,6 +174,7 @@
   validation_row,
   profile_gate
 ) {
+  release_gate <- .profile_nonlinear_release_gate()
   data.frame(
     level = level,
     estimand = estimand,
@@ -163,7 +185,7 @@
     numerator = numerator,
     denominator = denominator,
     validation_row = validation_row,
-    profile_gate = profile_gate,
+    profile_gate = paste(profile_gate, release_gate),
     stringsAsFactors = FALSE
   )
 }
@@ -172,9 +194,8 @@
 #' @noRd
 .profile_augmented_target_table <- function() {
   common_gate <- paste(
-    "Keep profile CI blocked until a selected Gaussian route has direct",
-    "implementation, boundary handling, and focused recovery/calibration",
-    "evidence."
+    "Point-extractor or historical canary evidence does not admit an",
+    "augmented profile route."
   )
   rows <- list(
     .profile_augmented_target_row(
@@ -224,7 +245,7 @@
       "block-local:intercept,slope",
       "D %*% R %*% D from report$sd_b and report$cor_b",
       "single source-slope block; part/link_residual do not apply",
-      "PHY-11..16;ANI-11;CI-11",
+      "ANI-11;CI-11",
       common_gate
     ),
     .profile_augmented_target_row(
@@ -234,7 +255,7 @@
       "block-local:intercept,slope",
       "none",
       "none",
-      "PHY-11..16;ANI-11;CI-11",
+      "ANI-11;CI-11",
       "Do not create communality for a single 2x2 source random-slope block."
     ),
     .profile_augmented_target_row(
@@ -244,7 +265,7 @@
       "block-local:intercept,slope",
       "Sigma_b[intercept,slope]",
       "sqrt(Sigma_b[intercept,intercept] * Sigma_b[slope,slope])",
-      "PHY-11..16;ANI-11;CI-11",
+      "ANI-11;CI-11",
       common_gate
     ),
     .profile_augmented_target_row(
@@ -254,8 +275,48 @@
       "block-local:intercept,slope",
       "intercept/slope source variance component",
       "matched augmented source denominator; not intercept-only phy denominator",
-      "PHY-11..16;ANI-11;CI-11",
+      "ANI-11;CI-11",
       "Define denominator semantics before adding profile proportions."
+    ),
+    .profile_augmented_target_row(
+      "phy_indep_slope", "Sigma", "declared_blocked",
+      "extract_Sigma(level='phy') -> level phy_indep_slope",
+      "2T_by_2T_block_diagonal_T_independent_2_by_2_blocks",
+      "interleaved_per_trait:intercept.trait,slope.trait",
+      "blockdiag_t(L_t %*% t(L_t)) = report$Sigma_b_dep",
+      "single block-diagonal source-slope covariance; part/link_residual do not apply",
+      "PHY-11..16;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "phy_indep_slope", "communality", "not_applicable_blocked",
+      "no shared-loading numerator",
+      "not_applicable",
+      "interleaved_per_trait:intercept.trait,slope.trait",
+      "none",
+      "none",
+      "PHY-11..16;CI-11",
+      "Do not create communality for per-trait unstructured 2x2 blocks."
+    ),
+    .profile_augmented_target_row(
+      "phy_indep_slope", "rho", "declared_blocked",
+      "extract_Sigma(level='phy')$R within each trait block",
+      "length_T_within_trait_intercept_slope_correlations",
+      "trait order; one intercept-slope pair per trait",
+      "Sigma_b_dep[intercept.trait,slope.trait]",
+      "sqrt(Sigma_b_dep[intercept.trait,intercept.trait] * Sigma_b_dep[slope.trait,slope.trait])",
+      "PHY-11..16;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "phy_indep_slope", "proportion", "declared_blocked",
+      "candidate from report$Sigma_b_dep block diagonal",
+      "coefficientwise_or_trace_share_not_public",
+      "interleaved_per_trait:intercept.trait,slope.trait",
+      "selected within-trait augmented variance or block trace",
+      "matched augmented coefficient vector across active tiers; no intercept-only denominator",
+      "PHY-11..16;CI-11",
+      "Choose coefficientwise versus trace-share semantics before implementation."
     ),
     .profile_augmented_target_row(
       "phy_dep", "Sigma", "declared_blocked",
@@ -378,6 +439,46 @@
       "Write spatial denominator design before profile proportions."
     ),
     .profile_augmented_target_row(
+      "spde_indep_slope", "Sigma", "declared_blocked",
+      "extract_Sigma(level='spatial') -> level spde_indep_slope",
+      "2T_by_2T_block_diagonal_T_independent_2_by_2_field_blocks",
+      "interleaved_per_trait:intercept.trait,slope.trait",
+      "blockdiag_t(L_t %*% t(L_t)) = report$Sigma_field",
+      "single block-diagonal spatial-slope field covariance; part/link_residual do not apply; field scale",
+      "SPA-08;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "spde_indep_slope", "communality", "not_applicable_blocked",
+      "no shared-loading numerator",
+      "not_applicable",
+      "interleaved_per_trait:intercept.trait,slope.trait",
+      "none",
+      "none",
+      "SPA-08;CI-11",
+      "Do not create communality for per-trait unstructured 2x2 field blocks."
+    ),
+    .profile_augmented_target_row(
+      "spde_indep_slope", "rho", "declared_blocked",
+      "extract_Sigma(level='spatial')$R within each trait field block",
+      "length_T_within_trait_intercept_slope_field_correlations",
+      "trait order; one intercept-slope field pair per trait",
+      "Sigma_field[intercept.trait,slope.trait]",
+      "sqrt(Sigma_field[intercept.trait,intercept.trait] * Sigma_field[slope.trait,slope.trait])",
+      "SPA-08;CI-11",
+      common_gate
+    ),
+    .profile_augmented_target_row(
+      "spde_indep_slope", "proportion", "declared_blocked",
+      "candidate from report$Sigma_field block diagonal",
+      "coefficientwise_or_trace_share_not_public",
+      "interleaved_per_trait:intercept.trait,slope.trait",
+      "selected within-trait field variance or block trace",
+      "matched spatial denominator on one declared field or marginal scale",
+      "SPA-08;CI-11",
+      "Choose coefficientwise versus trace and field versus marginal semantics before implementation."
+    ),
+    .profile_augmented_target_row(
       "spde_dep", "Sigma", "declared_blocked",
       "extract_Sigma(level='spatial') -> level spde_dep",
       "2T_by_2T_full_unstructured_field_covariance",
@@ -467,6 +568,12 @@
 #' @keywords internal
 #' @noRd
 .profile_route_matrix <- function() {
+  withdrawn_route <- "withheld_nonlinear_penalty_profile"
+  withdrawn_claim <- paste(
+    "The former penalty-profile prototype remains internal;",
+    "the public extractor and confint routes stop with an explanation."
+  )
+  withdrawn_gate <- .profile_nonlinear_release_gate()
   rows <- list(
     .profile_route_row(
       "direct_sd", "unit", "profile", "covered",
@@ -548,16 +655,16 @@
     .profile_route_row(
       "Sigma", "phy", "profile", "partial",
       "direct_phy_diag_or_derived_total",
-      "CI-05;CI-07;PHY-05",
+      "CI-02;CI-05;PHY-05",
       "Phylogenetic direct diagonal and the separately documented phylogenetic-signal route exist.",
-      "Full total-covariance profile calibration is not complete."
+      "Any derived total-Sigma target needs an exact or independently tolerance-certified constraint, an optimizer-status ledger, retained failures, target-specific calibration, and explicit maintainer promotion."
     ),
     .profile_route_row(
       "Sigma", "spatial", "profile", "partial",
       "direct_spatial_scale_profile",
-      "CI-07;SPA-02;SPA-04",
+      "CI-02;SPA-02;SPA-04",
       "The direct spatial scale parameter can be profiled.",
-      "Total spatial covariance profile still needs a heavy gate."
+      "Any derived total-Sigma target needs an exact or independently tolerance-certified constraint, an optimizer-status ledger, retained failures, target-specific calibration, and explicit maintainer promotion."
     ),
     .profile_route_row(
       "Sigma", "kernel_named", "profile", "blocked",
@@ -567,32 +674,20 @@
       "Add a named-kernel Sigma token, symbolic target, and focused recovery/calibration gate before exposing intervals."
     ),
     .profile_route_row(
-      "communality", "unit", "profile", "covered",
-      "fix_refit:profile_ci_communality",
-      "CI-06;EXT-05",
-      "Ordinary unit communality profile route is wired.",
-      "Coverage calibration remains separate."
+      "communality", "unit", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "communality", "unit_obs", "profile", "covered",
-      "fix_refit:profile_ci_communality",
-      "CI-06;EXT-05",
-      "Within-unit communality profile route is wired.",
-      "Coverage calibration remains separate."
+      "communality", "unit_obs", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "communality", "phy", "profile", "covered",
-      "fix_refit:profile_ci_communality",
-      "CI-06;EXT-05;PHY-08",
-      "Phylogenetic-tier communality profile route is wired.",
-      "Source-family calibration remains separate."
+      "communality", "phy", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "communality", "spatial", "profile", "planned",
-      "no_profile_ci_communality_spatial_tier",
-      "SPA-02",
-      "Spatial total covariance is extractable but communality profile is not wired.",
-      "Add spatial communality target function and heavy profile gate."
+      "communality", "spatial", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
       "communality", "cluster", "profile", "not_applicable",
@@ -610,38 +705,23 @@
     ),
     .profile_route_row(
       "communality", "kernel_named", "profile", "blocked",
-      "extractor_denominator_not_declared_for_named_kernel",
-      "COE-04;CI-11",
-      "Named kernel point covariance exists, but kernel communality profile targets and denominators are not declared.",
-      "Define kernel-specific shared/unique numerator and denominator semantics before implementation."
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "rho", "unit", "profile", "covered",
-      "fix_refit:profile_ci_correlation",
-      "CI-07",
-      "Ordinary unit low-rank-plus-Psi correlation profile route is wired.",
-      "Gamma and other hard-family profile stability remains an inference-safety gate."
+      "rho", "unit", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "rho", "unit_obs", "profile", "covered",
-      "fix_refit:profile_ci_correlation",
-      "CI-07",
-      "Within-unit low-rank-plus-Psi correlation profile route is wired.",
-      "Hard-family profile stability remains an inference-safety gate."
+      "rho", "unit_obs", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "rho", "phy", "profile", "covered",
-      "fix_refit:profile_ci_correlation",
-      "CI-07;PHY-05",
-      "Phylogenetic low-rank-plus-Psi correlation profile route is wired.",
-      "Source-specific coverage calibration remains separate."
+      "rho", "phy", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "rho", "spatial", "profile", "partial",
-      "fix_refit:profile_ci_correlation",
-      "CI-07;SPA-02;SPA-04",
-      "Spatial correlation profile route exists with smoke evidence.",
-      "Total-covariance spatial profile still needs a heavy gate."
+      "rho", "spatial", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
       "rho", "cluster", "profile", "point_only",
@@ -659,17 +739,13 @@
     ),
     .profile_route_row(
       "rho", "kernel_named", "profile", "blocked",
-      "point_correlation_via_extract_Sigma_table_only",
-      "COE-04;CI-11",
-      "Named kernel correlations can be computed from point Sigma tables, but profile_ci_correlation()/confint() cannot request kernel names.",
-      "Add named-kernel rho token parsing and direct tests before exposing profile intervals."
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
       "repeatability", "unit", "profile", "blocked",
-      "withheld_diag_only_ratio_not_full_repeatability",
-      "CI-04",
-      "The former direct contrast estimated only the diagonal-companion ratio and omitted shared latent variance.",
-      "Implement a target-explicit full-Sigma repeatability constraint before restoring a profile route."
+      withdrawn_route, "",
+      "The former direct contrast estimated only the diagonal-companion ratio, omitted shared latent variance, and is withdrawn rather than retained as a partial repeatability profile.",
+      withdrawn_gate
     ),
     .profile_route_row(
       "phylo_signal", "phy", "profile", "partial",
@@ -679,62 +755,43 @@
       "Full 3+ component profile remains planned."
     ),
     .profile_route_row(
-      "proportion", "unit", "profile", "covered",
-      "fix_refit:profile_ci_proportions",
-      "CI-07;EXT-21;EXT-22",
-      "Unit shared/unique proportions are represented in the current profile target function.",
-      "Coverage calibration remains separate."
+      "proportion", "unit", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "proportion", "unit_obs", "profile", "covered",
-      "fix_refit:profile_ci_proportions",
-      "CI-07;EXT-21;EXT-22",
-      "Within-unit shared/unique proportions are represented in the current profile target function.",
-      "Coverage calibration remains separate."
+      "proportion", "unit_obs", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "proportion", "phy", "profile", "covered",
-      "fix_refit:profile_ci_proportions",
-      "CI-07;EXT-21",
-      "Phylogenetic shared/unique proportions are represented in the current profile target function.",
-      "Coverage calibration remains separate."
+      "proportion", "phy", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "proportion", "cluster", "profile", "partial",
-      "fix_refit:unique_cluster",
-      "RE-11;CI-11",
-      "Cluster variance enters extract_proportions() and profile/Wald proportion routing as unique_cluster.",
-      "Bootstrap refits preserve cluster arguments, but calibration and non-diagonal cluster claims remain out of scope."
+      "proportion", "cluster", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "proportion", "cluster2", "profile", "partial",
-      "fix_refit:unique_cluster2",
-      "RE-11;CI-11",
-      "Cluster2 variance enters extract_proportions() and profile/Wald proportion routing as unique_cluster2.",
-      "Bootstrap refits preserve cluster2 arguments, but calibration and non-diagonal cluster2 claims remain out of scope."
+      "proportion", "cluster2", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
-      "proportion", "spatial", "profile", "planned",
-      "component_missing_from_profile_proportions",
-      "SPA-02",
-      "Spatial total covariance can be extracted but is not yet in profile proportions.",
-      "Add SPDE shared/unique components only after a spatial denominator design."
+      "proportion", "spatial", "profile", "blocked",
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     ),
     .profile_route_row(
       "proportion", "kernel_named", "profile", "blocked",
-      "component_missing_from_profile_proportions",
-      "COE-04;CI-11",
-      "Named kernel components are not part of the current variance-proportion denominator.",
-      "Define multi-kernel denominator semantics before adding profile proportions."
+      withdrawn_route, "", withdrawn_claim, withdrawn_gate
     )
   )
 
   split_levels <- c(
     "unit_slope",
     "phy_unique_slope",
+    "phy_indep_slope",
     "phy_dep",
     "phy_slope",
     "spde_base_slope",
+    "spde_indep_slope",
     "spde_dep",
     "spde_slope"
   )
@@ -747,56 +804,22 @@
         ,
         drop = FALSE
       ]
-      is_unit_slope_rho <- identical(lvl, "unit_slope") &&
-        identical(est, "rho")
+      is_nonlinear <- est %in% c("communality", "rho", "proportion")
       rows[[length(rows) + 1L]] <- .profile_route_row(
         est, lvl, "profile",
-        if (is_unit_slope_rho) "partial" else "blocked",
-        if (is_unit_slope_rho) {
-          "fix_refit:profile_ci_correlation:unit_slope_selected_entry"
-        } else {
-          paste0("augmented_split_target_table:", target$target_state)
-        },
-        if (is_unit_slope_rho) {
-          "RE-12;CI-11"
-        } else {
-          "RE-03;RE-12;SPA-08;SPA-09;SPA-10;PHY-11..18"
-        },
-        if (is_unit_slope_rho) {
-          "Gaussian selected-entry rho:unit_slope profile canary is wired with known-DGP truth-inclusion evidence; calibration and broader augmented targets remain blocked."
-        } else {
-          "Point extraction/recovery may exist, and Design 74 declares the symbolic target, but profile CIs are not implemented or calibrated."
-        },
-        if (is_unit_slope_rho) {
-          "Run boundary and empirical calibration before promoting beyond a canary."
-        } else {
-          target$profile_gate
-        }
+        "blocked",
+        if (is_nonlinear) withdrawn_route else
+          paste0("augmented_split_target_table:", target$target_state),
+        if (is_nonlinear) "" else
+          "RE-03;RE-12;SPA-08;SPA-09;SPA-10;PHY-11..18",
+        if (is_nonlinear) withdrawn_claim else
+          "Point extraction/recovery may exist, and Design 74 declares the symbolic target, but profile CIs are not implemented or calibrated.",
+        if (is_nonlinear) withdrawn_gate else target$profile_gate
       )
     }
   }
 
   out <- do.call(rbind, rows)
-  ## Release boundary (2026-07-11): the nonlinear quadratic-penalty driver did
-  ## not enforce a sufficiently tight constraint or expose a complete
-  ## constrained-optimizer status ledger. Keep the historical row inventory,
-  ## but normalize every affected public route to blocked until an exact
-  ## constraint solver and calibration gate replace the prototype.
-  nonlinear <- out$estimand %in% c("communality", "rho", "proportion") &
-    out$method == "profile" &
-    !out$status %in% c("point_only", "not_applicable")
-  out$status[nonlinear] <- "blocked"
-  out$route[nonlinear] <- "withheld_nonlinear_penalty_profile"
-  out$validation_row[nonlinear] <- ""
-  out$claim[nonlinear] <- paste(
-    "The former penalty-profile prototype remains internal;",
-    "the public extractor and confint routes stop with an explanation."
-  )
-  out$next_gate[nonlinear] <- paste(
-    "Implement an exact or demonstrably tight constraint, require usable",
-    "constrained optimisation, expose failures, and establish target-specific",
-    "coverage before restoring the route."
-  )
   .validate_profile_route_matrix(out)
   out
 }
@@ -855,9 +878,11 @@
   split_levels <- c(
     "unit_slope",
     "phy_unique_slope",
+    "phy_indep_slope",
     "phy_dep",
     "phy_slope",
     "spde_base_slope",
+    "spde_indep_slope",
     "spde_dep",
     "spde_slope"
   )

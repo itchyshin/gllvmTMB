@@ -439,6 +439,23 @@ test_that("plot(type = 'variance') returns a stacked-bar ggplot summing to 1 per
   ## Per-trait proportions sum to 1 (within numerical tolerance)
   totals <- as.numeric(tapply(p$data$proportion, p$data$trait, sum))
   expect_equal(totals, rep(1, fit$n_traits), tolerance = 1e-8)
+  plot_totals <- as.numeric(tapply(
+    p$data$plot_proportion,
+    p$data$trait,
+    sum
+  ))
+  expect_equal(plot_totals, rep(1, fit$n_traits), tolerance = 0)
+})
+
+test_that("stacked-bar rendering zeros sub-pixel components and renormalises", {
+  x <- c(1 - 3e-9, 3e-9, 0.7, 0.3)
+  group <- rep(c("a", "b"), each = 2L)
+  plotted <- .gtmb_stable_stack_values(x, group)
+  expect_equal(plotted[1:2], c(1, 0), tolerance = 0)
+  expect_equal(as.numeric(tapply(plotted, group, sum)), c(1, 1), tolerance = 0)
+  ## The helper returns separate rendering values; callers retain `x` as the
+  ## exact scientific decomposition in the plot data contract.
+  expect_equal(x, c(1 - 3e-9, 3e-9, 0.7, 0.3), tolerance = 0)
 })
 
 test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {

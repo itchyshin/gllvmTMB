@@ -1,24 +1,25 @@
 ## Track B spike (Design 60 vs audit): phylo_indep(1 + x | species).
 ##
 ## Question settled here: an INDEPENDENT augmented phylogenetic random
-## regression (correlated intercept+slope, but with the intercept-slope
-## correlation FIXED at 0) reuses the SAME augmented `b_phy_aug` engine as
-## phylo_unique() -- the only difference is that `atanh_cor_b` is pinned to 0
-## via the TMB map. No new C++ likelihood block.
+## regression uses one intercept/slope block per trait. The implementation
+## reuses the augmented `b_phy_aug` dependent engine, with cross-trait
+## Cholesky entries fixed to zero; each trait's intercept--slope correlation
+## remains estimable. No new C++ likelihood block.
 ##
 ## Routing:
 ##   phylo_indep(1 + x | species)
 ##     -> parser (R/brms-sugar.R, phylo_indep handler) detects the augmented
 ##        LHS via .gllvmTMB_lhs_form() and rewrites to
 ##        phylo_slope(bar, .phylo_unique_augmented = TRUE, .indep = TRUE, ...)
-##     -> fit-multi.R sets use_phylo_slope_indep and adds
-##        tmb_map$atanh_cor_b <- factor(NA), holding rho = tanh(0) = 0.
+##     -> fit-multi.R sets use_phylo_slope_indep and maps the cross-trait
+##        Cholesky entries to NA.
 ##   The C++ path (src/gllvmTMB.cpp, use_phylo_slope_correlated == 1) is
-##   byte-for-byte the phylo_unique augmented path; rho enters only the prior
-##   (~line 593) and collapses to a block-diagonal Sigma_b when atanh_cor_b = 0.
+##   byte-for-byte the phylo_unique augmented path; the map fixes only
+##   cross-trait entries, yielding a per-trait block-diagonal Sigma_b.
 ##
-## Truth: intercept SD and slope SD both nonzero, correlation = 0, phylo
-## correlation = identity (star tree). ~40 species, one continuous covariate x.
+## Truth: each trait has an independent intercept/slope block with both SDs
+## nonzero and within-trait correlation = 0. The phylogenetic correlation is
+## identity (star tree). ~40 species, one continuous covariate x.
 
 skip_if_not_phylo_indep_slope_deps <- function() {
   testthat::skip_on_cran()
@@ -49,10 +50,18 @@ make_phylo_indep_slope_fixture <- function(
     ncol = 2L
   )
 
-  ## chol(identity) = identity, so the species effects are drawn directly.
-  raw <- matrix(stats::rnorm(n_sp * 2L), nrow = n_sp, ncol = 2L)
-  ab <- raw %*% chol(Sigma_b_true)
-  colnames(ab) <- c("alpha", "beta")
+  ## The fitted model is I_T x Sigma_b: draw one independent (alpha, beta)
+  ## block per trait. chol(identity) = identity across species.
+  ab <- matrix(NA_real_, nrow = n_sp, ncol = 2L * n_traits)
+  for (t in seq_len(n_traits)) {
+    cols <- c(2L * t - 1L, 2L * t)
+    raw_t <- matrix(stats::rnorm(n_sp * 2L), nrow = n_sp, ncol = 2L)
+    ab[, cols] <- raw_t %*% chol(Sigma_b_true)
+  }
+  colnames(ab) <- as.vector(rbind(
+    paste0("alpha_", seq_len(n_traits)),
+    paste0("beta_", seq_len(n_traits))
+  ))
   rownames(ab) <- sp_labels
 
   species_rep <- expand.grid(
@@ -69,9 +78,11 @@ make_phylo_indep_slope_fixture <- function(
   )
   df_long <- df_long[order(df_long$species, df_long$rep, df_long$trait), ]
 
-  mu_t <- c(2, 1, 0.5)[as.integer(df_long$trait)]
-  alpha_sp <- ab[as.character(df_long$species), "alpha"]
-  beta_sp <- ab[as.character(df_long$species), "beta"]
+  trait_idx <- as.integer(df_long$trait)
+  species_idx <- match(as.character(df_long$species), sp_labels)
+  mu_t <- seq(2, 0.5, length.out = n_traits)[trait_idx]
+  alpha_sp <- ab[cbind(species_idx, 2L * trait_idx - 1L)]
+  beta_sp <- ab[cbind(species_idx, 2L * trait_idx)]
   df_long$value <- mu_t + alpha_sp + beta_sp * df_long$x +
     stats::rnorm(nrow(df_long), sd = 0.3)
 
@@ -87,6 +98,7 @@ make_phylo_indep_slope_fixture <- function(
     df_long = df_long,
     df_wide = df_wide,
     Cphy = Cphy,
+    Sigma_b_true = Sigma_b_true,
     sigma2_int_true = sigma2_int_true,
     sigma2_slope_true = sigma2_slope_true,
     rho_true = rho_true
@@ -116,7 +128,7 @@ fit_phylo_indep_slope_wide <- function(fx) {
   )))
 }
 
-test_that("phylo_indep augmented routes to b_phy_aug with atanh_cor_b pinned (no C++)", {
+test_that("phylo_indep augmented routes to per-trait block-diagonal b_phy_aug", {
   skip_if_not_heavy()
   skip_if_not_phylo_indep_slope_deps()
 
@@ -130,32 +142,48 @@ test_that("phylo_indep augmented routes to b_phy_aug with atanh_cor_b pinned (no
   expect_true(isTRUE(fit$fit_health$pd_hessian))
   expect_true(isTRUE(fit$fit_health$sdreport_ok))
 
-  ## Routed through the augmented engine (two LHS columns, b_phy_aug random).
-  expect_equal(fit$tmb_data$n_lhs_cols, 2L)
+  ## Design 79/80: one free 2x2 block per trait, with cross-trait blocks
+  ## map-pinned to zero in the full augmented engine.
+  C <- 2L * 3L
+  expect_equal(fit$tmb_data$n_lhs_cols, C)
   expect_true("b_phy_aug" %in% fit$tmb_obj$env$.random)
-  expect_length(as.numeric(fit$report$sd_b), 2L)
+  expect_true(isTRUE(fit$use$phylo_dep_slope))
+  expect_true(isTRUE(fit$use$phylo_indep_slope))
+  expect_equal(dim(as.matrix(fit$report$Sigma_b_dep)), c(C, C))
+  expect_equal(sum(names(fit$opt$par) == "theta_dep_chol"), 3L * 3L)
+  cor_b <- as.matrix(fit$report$cor_b_mat)
+  block <- rep(seq_len(3L), each = 2L)
+  cross <- outer(block, block, `!=`)
+  expect_lt(max(abs(cor_b[cross])), 1e-6)
 
-  ## The correlation is PINNED, not estimated: atanh_cor_b sits in the map as
-  ## NA (held) and is absent from the optimised parameter vector.
-  expect_true("atanh_cor_b" %in% names(fit$tmb_map))
-  expect_true(all(is.na(fit$tmb_map$atanh_cor_b)))
-  expect_false("atanh_cor_b" %in% names(fit$opt$par))
-  expect_equal(as.numeric(fit$report$cor_b), 0, tolerance = 1e-10)
+  es <- extract_Sigma(fit, level = "phy")
+  expect_identical(es$level, "phy_indep_slope")
+  expect_identical(es$part, "indep")
+  expect_equal(dim(es$Sigma), c(C, C))
+  expect_lt(max(abs(es$Sigma[cross])), 1e-8)
+  expect_identical(
+    rownames(es$Sigma),
+    as.vector(rbind(
+      paste0("intercept.t", seq_len(3L)),
+      paste0("slope.t", seq_len(3L))
+    ))
+  )
 })
 
-test_that("phylo_indep augmented Gaussian recovers both SDs with correlation pinned at 0", {
+test_that("phylo_indep augmented Gaussian has a trait-pooled variance sanity check", {
   skip_if_not_heavy()
   skip_if_not_phylo_indep_slope_deps()
 
   fx <- make_phylo_indep_slope_fixture()
   fit <- fit_phylo_indep_slope_long(fx)
 
-  sd_b <- as.numeric(fit$report$sd_b)
-  sigma2_int_hat <- sd_b[1L]^2
-  sigma2_slope_hat <- sd_b[2L]^2
+  Sigma_b <- as.matrix(fit$report$Sigma_b_dep)
+  sigma2 <- diag(Sigma_b)
+  sigma2_int_hat <- mean(sigma2[seq(1L, length(sigma2), by = 2L)])
+  sigma2_slope_hat <- mean(sigma2[seq(2L, length(sigma2), by = 2L)])
 
-  ## Recover both variance components within 20% relative error (the same band
-  ## the validated phylo_unique augmented Gaussian test uses).
+  ## This single-seed pooled check is a fixture sanity test, not per-trait
+  ## recovery evidence. The dedicated multi-seed Gaussian test owns recovery.
   expect_lte(
     abs(sigma2_int_hat - fx$sigma2_int_true) / fx$sigma2_int_true,
     0.20
@@ -165,11 +193,14 @@ test_that("phylo_indep augmented Gaussian recovers both SDs with correlation pin
     0.20
   )
 
-  ## Correlation stays exactly at the pinned value.
-  expect_equal(as.numeric(fit$report$cor_b), fx$rho_true, tolerance = 1e-10)
+  ## Cross-trait blocks are structurally zero; within-trait correlations are
+  ## estimated and are not the old shared, pinned scalar route.
+  cor_b <- as.matrix(fit$report$cor_b_mat)
+  block <- rep(seq_len(3L), each = 2L)
+  expect_lt(max(abs(cor_b[outer(block, block, `!=`)])), 1e-6)
 })
 
-test_that("phylo_indep wide and long augmented surfaces are byte-identical", {
+test_that("phylo_indep wide and long augmented surfaces are numerically equivalent", {
   skip_if_not_heavy()
   skip_if_not_phylo_indep_slope_deps()
 
@@ -179,6 +210,8 @@ test_that("phylo_indep wide and long augmented surfaces are byte-identical", {
 
   expect_equal(fit_wide$opt$objective, fit_long$opt$objective, tolerance = 1e-8)
   expect_identical(fit_wide$tmb_data$Z_phy_aug, fit_long$tmb_data$Z_phy_aug)
-  expect_equal(fit_wide$report$sd_b, fit_long$report$sd_b, tolerance = 1e-8)
-  expect_equal(as.numeric(fit_wide$report$cor_b), 0, tolerance = 1e-10)
+  expect_equal(fit_wide$report$Sigma_b_dep, fit_long$report$Sigma_b_dep,
+               tolerance = 1e-8)
+  expect_equal(fit_wide$report$cor_b_mat, fit_long$report$cor_b_mat,
+               tolerance = 1e-8)
 })

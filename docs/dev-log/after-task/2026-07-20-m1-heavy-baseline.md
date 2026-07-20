@@ -4,7 +4,8 @@
 
 **Date**: 2026-07-20
 
-**Status**: IN PROGRESS — this skeleton is the branch-first coordination commit
+**Status**: IN PROGRESS — baseline reproduced; corrective repair set is under
+local verification
 
 **Roles (engaged)**: Ada, Shannon, Grace, Emmy, Rose
 
@@ -25,11 +26,22 @@ produce a complete release ledger before Design 86 EVA work can begin.
 - No test repair, package behavior change, remote compute, or release action is
   included in this branch-first commit.
 
-## 2a. Mathematical Contract
+## 2a. Mathematical Contract and M1 Repair Boundary
 
-No public R API, likelihood, estimator, formula grammar, family, NAMESPACE,
-generated Rd, vignette, or pkgdown-navigation change is authorised in M1.
-Design 85 remains NO-GO; Design 86 is a separate later macro and has not begun.
+M1 may make the smallest reviewed corrective changes needed to restore the
+already-landed 0.6 surface to its recorded contracts and to close a reproduced
+heavy-suite failure. This includes test/DGP repairs, typed early refusal of an
+unsupported combination, correction of extractor labels that misdescribe the
+covariance actually fitted, and deterministic rendering-only stabilisation.
+Every such change must be traceable to the 48-failure baseline or its Rose
+neighbour audit, covered by a targeted regression, and reconciled with the
+design and validation ledgers.
+
+M1 does **not** authorise a new exported function, formula keyword, likelihood,
+estimator, response-family implementation, NAMESPACE entry, public feature, or
+release claim. Generated Rd may change only to keep an existing function's
+return contract synchronized with a corrective implementation change. Design
+85 remains NO-GO; Design 86 is a separate later macro and has not begun.
 
 ## 3. Files Changed
 
@@ -48,6 +60,14 @@ This inventory will be updated before closeout.
 - **Decision**: start M1 from fresh `origin/main`. **Rejected**: wholesale
   cherry-pick of `0f1ef2bc`, because several profile-related hunks revive
   superseded contracts. **Confidence**: high after independent diff review.
+- **Decision**: apply the approved M1 "minimal reviewed repair batches" boundary
+  to corrective runtime behavior as well as tests. **Rationale**: the reproduced
+  failures exposed contradictions between fitted covariance channels, public
+  extractor labels, supported-family guards, profile-route truth, and their
+  recorded contracts. **Rejected**: either preserving incorrect behavior merely
+  because it is public, or widening M1 into a new feature/API arc. **Confidence**:
+  high after Gauss, Noether, Rose, and Boole review; full-heavy evidence remains
+  pending.
 
 ## 4. Checks Run
 

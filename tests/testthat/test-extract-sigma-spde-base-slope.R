@@ -1,5 +1,7 @@
-## Issue #354 part (a) -- extract_Sigma() on the BASE SPDE slope path
-## (spatial_unique / spatial_indep (1 + x | coords), the use_spde_slope engine).
+## Issue #354 part (a) -- extract_Sigma() on augmented SPDE slope paths.
+## `spatial_unique(1 + x | coords)` retains the shared 2x2 base engine;
+## Design 79/80 routes `spatial_indep(1 + x | coords)` through the 2T
+## per-trait block-diagonal dep engine.
 ##
 ## The base path REPORTs sd_spde_b (length 2), cor_spde_b (length 1), kappa_s.
 ## extract_Sigma(fit, level = "spatial") returns the 2x2 cross-field
@@ -24,13 +26,15 @@ skip_if_not_spatial <- function() {
   kappa^4 * M0 + 2 * kappa^2 * M1 + M2
 }
 
-## Simulate one base-SPDE-slope Gaussian data set. rho = 0 gives the
-## spatial_indep (diagonal) DGP; rho != 0 gives spatial_unique.
+## Simulate an SPDE-slope Gaussian data set. `per_trait = FALSE` generates one
+## shared 2x2 field for the base `spatial_unique()` route. `per_trait = TRUE`
+## generates independent 2x2 fields for each trait, matching `spatial_indep()`.
 .make_spde_base_slope_data <- function(seed, rho = -0.45,
                                         marg_a = 0.8, marg_b = 0.5,
                                         range_true = 0.3, sigma_eps = 0.15,
                                         n_traits = 3L, n_sites = 250L,
-                                        cutoff = 0.06) {
+                                        cutoff = 0.06,
+                                        per_trait = FALSE) {
   set.seed(seed)
   kappa_true <- sqrt(8) / range_true
   sf_norm    <- sqrt(4 * pi) * kappa_true
@@ -56,10 +60,24 @@ skip_if_not_spatial <- function() {
                   rho * sd_a_p * sd_b_p, sd_b_p^2), 2, 2)
   chA <- t(chol(A + 1e-9 * diag(n_mesh)))
   chS <- chol(Sf)
-  Omega  <- chA %*% matrix(stats::rnorm(n_mesh * 2L), n_mesh, 2L) %*% chS
   A_full <- as.matrix(mesh$A_st)
-  eta    <- as.numeric(A_full %*% Omega[, 1]) +
-    df$x * as.numeric(A_full %*% Omega[, 2])
+  if (isTRUE(per_trait)) {
+    Omega <- matrix(NA_real_, nrow = n_mesh, ncol = 2L * n_traits)
+    eta <- numeric(nrow(df))
+    for (tt in seq_len(n_traits)) {
+      cols <- c(2L * tt - 1L, 2L * tt)
+      Omega[, cols] <- chA %*%
+        matrix(stats::rnorm(n_mesh * 2L), n_mesh, 2L) %*% chS
+      idx <- df$trait_id == tt
+      A_t <- A_full[idx, , drop = FALSE]
+      eta[idx] <- as.numeric(A_t %*% Omega[, cols[1L]]) +
+        df$x[idx] * as.numeric(A_t %*% Omega[, cols[2L]])
+    }
+  } else {
+    Omega <- chA %*% matrix(stats::rnorm(n_mesh * 2L), n_mesh, 2L) %*% chS
+    eta <- as.numeric(A_full %*% Omega[, 1L]) +
+      df$x * as.numeric(A_full %*% Omega[, 2L])
+  }
   df$value <- stats::rnorm(n_traits, 0, 0.5)[df$trait_id] + eta +
     stats::rnorm(nrow(df), sd = sigma_eps)
 
@@ -129,31 +147,51 @@ test_that("extract_Sigma() on spatial_unique(1 + x | coords) returns the 2x2 bas
 })
 
 ## ======================================================================
-## 2. spatial_indep(1 + x | coords): diagonal special case (rho = 0).
+## 2. spatial_indep(1 + x | coords): per-trait block-diagonal route.
 ## ======================================================================
-test_that("extract_Sigma() on spatial_indep(1 + x | coords) returns a diagonal 2x2 block", {
+test_that("extract_Sigma() on spatial_indep(1 + x | coords) returns per-trait block-diagonal covariance", {
   skip_if_not_heavy()
   skip_if_not_spatial()
 
   fx  <- .make_spde_base_slope_data(seed = 202, rho = 0,
-                                    n_sites = 200L, cutoff = 0.07)
+                                    n_sites = 200L, cutoff = 0.07,
+                                    per_trait = TRUE)
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + spatial_indep(1 + x | coords),
     data = fx$data, mesh = fx$mesh, silent = TRUE)))
 
   expect_true(isTRUE(fit$use$spde_slope))
-  expect_false(isTRUE(fit$use$spde_dep_slope))
+  expect_true(isTRUE(fit$use$spde_dep_slope))
+  expect_true(isTRUE(fit$use$spde_indep_slope))
 
   es <- extract_Sigma(fit, level = "spatial")
 
-  expect_equal(dim(es$Sigma), c(2L, 2L))
-  expect_identical(rownames(es$Sigma), c("intercept", "slope"))
-  expect_identical(es$level, "spde_base_slope")
-  ## indep pins atanh_cor_spde_b = 0, so the cross-field correlation is
-  ## exactly 0 and Sigma_field is diagonal.
-  expect_equal(unname(es$Sigma[1L, 2L]), 0)
-  expect_equal(unname(es$R[1L, 2L]), 0)
-  expect_true(is.finite(es$kappa_s) && es$kappa_s > 0)
+  ## Design 79/80: three independent 2x2 intercept/slope blocks, represented
+  ## through the spatial-dep engine with cross-trait Cholesky entries pinned.
+  T <- nlevels(fx$data$trait)
+  C <- 2L * T
+  expect_equal(dim(es$Sigma), c(C, C))
+  expect_identical(es$level, "spde_indep_slope")
+  expect_identical(es$part, "indep")
+  expect_identical(
+    rownames(es$Sigma),
+    as.vector(rbind(
+      paste0("intercept.", levels(fx$data$trait)),
+      paste0("slope.", levels(fx$data$trait))
+    ))
+  )
+  expect_identical(colnames(es$Sigma), rownames(es$Sigma))
+  expect_true(grepl("field-covariance scale", es$note, fixed = TRUE))
+  expect_true(grepl("4*pi*kappa^2", es$note, fixed = TRUE))
+  block <- rep(seq_len(T), each = 2L)
+  cross <- outer(block, block, `!=`)
+  expect_lt(max(abs(es$R[cross])), 1e-6)
+  ## Within-trait intercept--slope correlations remain free in the map; do
+  ## not accidentally pin the complete matrix to a diagonal covariance.
+  expect_equal(
+    sum(!is.na(as.integer(fit$tmb_obj$env$map$theta_spde_dep_chol))),
+    3L * T
+  )
 })
 
 ## ======================================================================
@@ -173,6 +211,7 @@ test_that("spatial_dep(1 + x | coords) still routes to the dep branch (base guar
   ## The dep path nests under use_spde_slope: BOTH flags are TRUE.
   expect_true(isTRUE(fit$use$spde_slope))
   expect_true(isTRUE(fit$use$spde_dep_slope))
+  expect_false(isTRUE(fit$use$spde_indep_slope))
 
   es <- extract_Sigma(fit, level = "spatial")
   ## Dep branch returns the full unstructured 2T x 2T (here 4 x 4) field

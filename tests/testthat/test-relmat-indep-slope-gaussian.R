@@ -1,4 +1,4 @@
-## relmat_indep(1 + x | id) augmented Gaussian recovery (Track B spike extension).
+## relmat_indep(1 + x | id) augmented Gaussian structural and pooled-moment checks.
 ##
 ## SCOPE NOTE (Design 14 §2). There is intentionally NO `relmat_*()` keyword in
 ## gllvmTMB: the drmTMB-team review (2026-05-17) deferred the low-level
@@ -9,14 +9,15 @@
 ## (non-pedigree, non-identity) relatedness matrix", not a distinct keyword.
 ##
 ## This test pins that capability for the INDEPENDENT augmented slope cell:
-## phylo_indep(1 + x | id, vcv = A) with an arbitrary user A. It reuses the SAME
-## cheap route as phylo_indep / animal_indep — the augmented `b_phy_aug` engine
-## with `atanh_cor_b` pinned to 0 via the TMB map (block-diagonal Sigma_b). No
-## new C++ likelihood block, and no new keyword.
+## phylo_indep(1 + x | id, vcv = A) with an arbitrary user A. It uses the
+## augmented `b_phy_aug` engine with cross-trait Cholesky entries pinned to zero
+## through the TMB map
+## (per-trait block-diagonal Sigma_b). No new C++ likelihood block and no new
+## keyword.
 ##
-## Truth: intercept SD and slope SD both nonzero, correlation = 0, A = a generic
-## AR(1) correlation matrix (PD, NON-identity, NOT pedigree-derived). 60 ids,
-## 6 reps for slope-variance identifiability.
+## Truth: each trait has an independent intercept/slope block with both SDs
+## nonzero and within-trait correlation = 0. A is a generic AR(1) correlation
+## matrix (PD, NON-identity, NOT pedigree-derived). 60 ids, 6 reps.
 
 skip_if_not_relmat_indep_slope_deps <- function() {
   testthat::skip_on_cran()
@@ -49,12 +50,20 @@ make_relmat_indep_slope_fixture <- function(
     ncol = 2L
   )
 
-  ## Impose A-structure across ids (chol(A)^T %*% raw) and the (intercept,
-  ## slope) covariance via chol(Sigma_b_true).
-  raw <- matrix(stats::rnorm(n_id * 2L), nrow = n_id, ncol = 2L) %*%
-    chol(Sigma_b_true)
-  ab <- t(chol(A)) %*% raw
-  colnames(ab) <- c("alpha", "beta")
+  ## The fitted model is I_T x Sigma_b. Draw independent trait blocks, then
+  ## impose A across ids separately on each correlated (alpha, beta) pair.
+  ab <- matrix(NA_real_, nrow = n_id, ncol = 2L * n_traits)
+  A_chol_t <- t(chol(A))
+  for (t in seq_len(n_traits)) {
+    cols <- c(2L * t - 1L, 2L * t)
+    raw_t <- matrix(stats::rnorm(n_id * 2L), nrow = n_id, ncol = 2L) %*%
+      chol(Sigma_b_true)
+    ab[, cols] <- A_chol_t %*% raw_t
+  }
+  colnames(ab) <- as.vector(rbind(
+    paste0("alpha_", seq_len(n_traits)),
+    paste0("beta_", seq_len(n_traits))
+  ))
   rownames(ab) <- id_labels
 
   id_rep <- expand.grid(
@@ -71,9 +80,11 @@ make_relmat_indep_slope_fixture <- function(
   )
   df_long <- df_long[order(df_long$species, df_long$rep, df_long$trait), ]
 
-  mu_t <- c(2, 1, 0.5)[as.integer(df_long$trait)]
-  alpha_id <- ab[as.character(df_long$species), "alpha"]
-  beta_id <- ab[as.character(df_long$species), "beta"]
+  trait_idx <- as.integer(df_long$trait)
+  id_idx <- match(as.character(df_long$species), id_labels)
+  mu_t <- seq(2, 0.5, length.out = n_traits)[trait_idx]
+  alpha_id <- ab[cbind(id_idx, 2L * trait_idx - 1L)]
+  beta_id <- ab[cbind(id_idx, 2L * trait_idx)]
   df_long$value <- mu_t + alpha_id + beta_id * df_long$x +
     stats::rnorm(nrow(df_long), sd = 0.3)
 
@@ -89,6 +100,7 @@ make_relmat_indep_slope_fixture <- function(
     df_long = df_long,
     df_wide = df_wide,
     A = A,
+    Sigma_b_true = Sigma_b_true,
     sigma2_int_true = sigma2_int_true,
     sigma2_slope_true = sigma2_slope_true,
     rho_true = rho_true
@@ -119,7 +131,7 @@ fit_relmat_indep_slope_wide <- function(fx) {
   )))
 }
 
-test_that("relmat_indep (= phylo_indep with user A) routes to b_phy_aug with atanh_cor_b pinned (no C++)", {
+test_that("relmat_indep (= phylo_indep with user A) uses per-trait block-diagonal b_phy_aug", {
   skip_if_not_heavy()
   skip_if_not_relmat_indep_slope_deps()
 
@@ -133,19 +145,18 @@ test_that("relmat_indep (= phylo_indep with user A) routes to b_phy_aug with ata
   expect_true(isTRUE(fit$fit_health$pd_hessian))
   expect_true(isTRUE(fit$fit_health$sdreport_ok))
 
-  ## Routed through the augmented engine (two LHS columns, b_phy_aug random).
-  expect_equal(fit$tmb_data$n_lhs_cols, 2L)
+  C <- 2L * 3L
+  expect_equal(fit$tmb_data$n_lhs_cols, C)
   expect_true("b_phy_aug" %in% fit$tmb_obj$env$.random)
-  expect_length(as.numeric(fit$report$sd_b), 2L)
-
-  ## The correlation is PINNED, not estimated.
-  expect_true("atanh_cor_b" %in% names(fit$tmb_map))
-  expect_true(all(is.na(fit$tmb_map$atanh_cor_b)))
-  expect_false("atanh_cor_b" %in% names(fit$opt$par))
-  expect_equal(as.numeric(fit$report$cor_b), 0, tolerance = 1e-10)
+  expect_true(isTRUE(fit$use$phylo_dep_slope))
+  expect_length(as.numeric(fit$report$sd_b), C)
+  expect_equal(sum(names(fit$opt$par) == "theta_dep_chol"), 3L * 3L)
+  cor_b <- as.matrix(fit$report$cor_b_mat)
+  block <- rep(seq_len(3L), each = 2L)
+  expect_lt(max(abs(cor_b[outer(block, block, `!=`)])), 1e-6)
 })
 
-test_that("relmat_indep augmented Gaussian recovers both SDs with correlation pinned at 0", {
+test_that("relmat_indep augmented Gaussian has a trait-pooled variance sanity check", {
   skip_if_not_heavy()
   skip_if_not_relmat_indep_slope_deps()
 
@@ -153,10 +164,11 @@ test_that("relmat_indep augmented Gaussian recovers both SDs with correlation pi
   fit <- fit_relmat_indep_slope_long(fx)
 
   sd_b <- as.numeric(fit$report$sd_b)
-  sigma2_int_hat <- sd_b[1L]^2
-  sigma2_slope_hat <- sd_b[2L]^2
+  sigma2_int_hat <- mean(sd_b[seq(1L, length(sd_b), by = 2L)]^2)
+  sigma2_slope_hat <- mean(sd_b[seq(2L, length(sd_b), by = 2L)]^2)
 
-  ## Recover both variance components within 20% relative error.
+  ## This single-seed pooled check is a fixture sanity test, not complete
+  ## per-trait covariance recovery evidence.
   expect_lte(
     abs(sigma2_int_hat - fx$sigma2_int_true) / fx$sigma2_int_true,
     0.20
@@ -166,11 +178,12 @@ test_that("relmat_indep augmented Gaussian recovers both SDs with correlation pi
     0.20
   )
 
-  ## Correlation stays exactly at the pinned value.
-  expect_equal(as.numeric(fit$report$cor_b), fx$rho_true, tolerance = 1e-10)
+  cor_b <- as.matrix(fit$report$cor_b_mat)
+  block <- rep(seq_len(3L), each = 2L)
+  expect_lt(max(abs(cor_b[outer(block, block, `!=`)])), 1e-6)
 })
 
-test_that("relmat_indep wide and long augmented surfaces are byte-identical", {
+test_that("relmat_indep wide and long augmented surfaces are numerically equivalent", {
   skip_if_not_heavy()
   skip_if_not_relmat_indep_slope_deps()
 
@@ -181,5 +194,6 @@ test_that("relmat_indep wide and long augmented surfaces are byte-identical", {
   expect_equal(fit_wide$opt$objective, fit_long$opt$objective, tolerance = 1e-8)
   expect_identical(fit_wide$tmb_data$Z_phy_aug, fit_long$tmb_data$Z_phy_aug)
   expect_equal(fit_wide$report$sd_b, fit_long$report$sd_b, tolerance = 1e-8)
-  expect_equal(as.numeric(fit_wide$report$cor_b), 0, tolerance = 1e-10)
+  expect_equal(fit_wide$report$cor_b_mat, fit_long$report$cor_b_mat,
+               tolerance = 1e-8)
 })

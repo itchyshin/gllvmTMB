@@ -244,7 +244,7 @@ passed to TMB as a sparse precision matrix. TMB uses sparse
 Cholesky for the marginal-likelihood Hessian. Status: `claimed`;
 Phase 0B verifies via a phylo-trait simulation-recovery test.
 
-### Dormant phylogenetic random-regression block (Phase 56.1)
+### Phylogenetic random-regression blocks
 
 `phylo_slope(x | species)` remains a legacy structured random-slope
 path retained for compatibility:
@@ -257,29 +257,41 @@ $$
 with $\sigma_\beta = \exp(\texttt{log_sigma_slope})$ and sparse
 $A^{-1}$ shared with the phylogenetic blocks above.
 
-Phase 56.1 also adds a dormant internal path for the future
-augmented-LHS engine. When `use_phylo_slope_correlated = 1`, the
-random-regression matrix
-$B \in \mathbb{R}^{n_\text{aug phy} \times n_\text{lhs cols}}$
-has prior
+The augmented-LHS engine is live. For a random-regression matrix
+$B \in \mathbb{R}^{n_\text{aug phy} \times C}$,
 
 $$
 \mathrm{vec}(B) \sim
 \mathcal{N}\left(\mathbf{0}, \Sigma_b \otimes A\right).
 $$
 
-For the Phase 56.1 engine stub, `n_lhs_cols` is block-local and
-restricted to 1 or 2. Positive standard deviations use
-`log_sd_b`; the intercept-slope correlation uses
-$\rho = \tanh(\texttt{atanh_cor_b})$. The R wrapper keeps
-`use_phylo_slope_correlated = 0`, maps `b_phy_aug`, `log_sd_b`,
-and `atanh_cor_b` off, and leaves the parser guard unchanged. This
-is therefore **not** a public formula-grammar, parser, or API
-change; it is dormant TMB/R plumbing for Design 56 §9.1. Status:
-`planned / dormant`; coverage is
-`tests/testthat/test-phase56-1-phylo-augmented-stub.R`, which checks
-the default dormant state and finite objective/gradient values for
-both `n_lhs_cols = 1` and `n_lhs_cols = 2` internal probes.
+The fitted covariance channel depends on the keyword:
+
+- Soft-deprecated `phylo_unique(1 + x | species)` retains the
+  legacy/shared compatibility path with one block-local $2\times2$
+  covariance $D R D$, assembled from `log_sd_b` and
+  `atanh_cor_b`, shared across traits.
+- Current Design 79/80 `phylo_indep(1 + x | species)` sets
+  $C=2T$ and uses `theta_dep_chol` to form
+  $\Sigma_b=L_bL_b^\top$. Cross-trait Cholesky entries are fixed so
+  $\Sigma_b=\operatorname{blockdiag}(\Sigma_{b,1},\ldots,\Sigma_{b,T})$.
+  With `|`, each trait-specific intercept-slope block is free; with
+  `||`, its off-diagonal is also fixed to zero.
+- `phylo_dep(1 + x | species)` uses the same interleaved $2T$
+  channel without the cross-trait pins, giving a full unstructured
+  $\Sigma_b$. More than one slope expands the dimension to
+  $(1+s)T$ on the admitted Gaussian path.
+- `phylo_latent(1 + x | species, d = K)` uses a separate
+  block-diagonal reduced-rank covariance per augmented LHS column;
+  cross-column covariance is structural zero.
+
+The wrapper maps the inactive parameterisations off for each route;
+it does not estimate both covariance channels simultaneously.
+`extract_Sigma(level = "phy")` exposes the current indep and dep
+channels as `phy_indep_slope` and `phy_dep`, respectively, while the
+legacy/shared path returns `phy_unique_slope`. Validation is
+family-by-route specific (PHY-11--PHY-18 and RE-14), not a universal
+family or interval-calibration claim.
 
 ## SPDE / GMRF spatial integration
 
@@ -320,9 +332,36 @@ This is the spatial analogue of the ordinary / phylogenetic
 `latent + Psi` decomposition, but note the SPDE scale: the unique
 diagonal on the trait covariance scale is `exp(-2 * log_tau_spde)`,
 not `exp(2 * log_tau_spde)`. Direct profile targets can still
-profile `tau_spde`; derived spatial correlation profiles must use the
-same total covariance as `extract_Sigma(level = "spatial",
-part = "total")`.
+profile `tau_spde`. The former derived spatial-correlation penalty-profile
+prototype used the same total covariance as
+`extract_Sigma(level = "spatial", part = "total")`, but that nonlinear public
+route is withdrawn pending an exact constraint solver, optimizer-status
+ledger, and target-specific calibration.
+
+### Augmented spatial random-regression blocks
+
+Augmented spatial slopes use the same observation projection and base SPDE
+precision as the intercept-only field, but their coefficient covariance has
+two distinct contracts:
+
+- Soft-deprecated `spatial_unique(1 + x | coords)` retains the
+  legacy/shared $2\times2$ intercept-slope field covariance assembled from
+  `sd_spde_b` and `cor_spde_b`.
+- Current Design 79/80 `spatial_indep(1 + x | coords)` uses an interleaved
+  $2T\times2T$ `theta_spde_dep_chol` covariance with all cross-trait field
+  blocks fixed to zero. `|` leaves one free within-trait intercept-slope
+  correlation per trait; `||` also fixes those entries to zero.
+- `spatial_dep(1 + x | coords)` uses the same $2T$ channel without the
+  cross-trait pins and therefore fits a full unstructured field covariance.
+- `spatial_latent(1 + x | coords, d = K)` uses separate low-rank
+  cross-trait field covariance for each augmented LHS column.
+
+The reported `Sigma_field` is on the fitted SPDE field-covariance scale; a
+field variance is divided by $4\pi\kappa^2$ for the corresponding marginal
+scale. `extract_Sigma(level = "spatial")` returns distinct
+`spde_base_slope`, `spde_indep_slope`, and `spde_dep` labels so the shared
+$2\times2$, block-diagonal $2T$, and full $2T$ channels cannot be conflated.
+SPA-08--SPA-10 record the route-specific evidence; RE-14 remains C1 partial.
 
 ## `meta_V()` additive sampling-covariance contribution
 

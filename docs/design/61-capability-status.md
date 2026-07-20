@@ -1,6 +1,6 @@
 # 61 -- Capability Status and Dependency-Ordered Work-List
 
-**Status date:** 2026-06-28 (covariance-grid layer updated 2026-07-12 — see next section)
+**Status date:** 2026-07-20 (covariance-grid correction; row-level register remains authoritative)
 **Scope:** status synthesis only. The validation-debt register
 (`docs/design/35-validation-debt-register.md`) remains the row-level source
 of truth; this document is the readable planning layer.
@@ -13,31 +13,34 @@ dep/latent, cross-trait) × correlation coupling (`|` correlated / `||`
 uncorrelated, intercept–slope). Design 79 supersedes Design 55 §5 ("scalar NOT
 APPLICABLE to slopes" — now applicable, as a shared-across-traits G-matrix).
 
-**Fit-verified census (S0, `scratchpad/semantics-census.md`).** All
-intercept-only cells match target. **Slope-cell engine names are shifted:**
-`*_indep(1+x)` actually fits `scalar ||` (shared 2×2, ρ=0); `*_unique(1+x)`
-fits `scalar |` (shared 2×2, ρ free); `*_dep(1+x)` is correct (`dep |`, full
-2T×2T); `*_latent(1+x)` fits `latent ||` (separate Λ). A genuine per-trait
-`indep(1+x)` engine (3T) does **not** exist for any source, and `||` is not
-implemented anywhere (the parser refuses standalone slope-only terms).
+**Landed Design 79/80 contract (corrected 2026-07-20).** Intercept-only cells
+retain their existing meanings. For one random slope, `*_indep(1+x | g)` now
+uses an interleaved `2T` covariance with `T` independent 2 by 2 trait blocks:
+cross-trait blocks are zero and each within-trait intercept-slope correlation
+is free (`3T` covariance parameters). `*_indep(1+x || g)` additionally fixes
+those within-trait correlations to zero (`2T` variances). `*_dep(1+x | g)` is
+full unstructured `2T` by `2T`; `*_dep(1+x || g)` retains separate full
+intercept and slope covariance blocks while fixing every intercept-slope
+covariance to zero. Source-tier `*_latent(... || ...)` routes to the existing
+uncorrelated separate-loading form. Ordinary no-prefix latent `||` remains a
+separate deferred cell.
 
 **Landed (non-breaking):** `scalar()` no-prefix intercept-only keyword
 (byte-identical to `indep(common = TRUE)`), tested; the capability widget gains a
 **tested** tier and phylo/animal/spatial + `kernel_latent` flip amber→tested
 (recovery tests already existed — the label was stale, not the code).
 
-**Gated behind the stats checkpoint (breaking / new engine):** the per-trait
-`indep(1+x)` redefinition (changes what `*_indep(1+x)` fits today), `dep ||`,
-`kernel_scalar()`, `*_scalar(1+x)` slope routing, and the `||` engine for
-indep/dep. Plan: `~/.claude/plans/glistening-skipping-anchor.md`.
+The old shared-2x2 channels remain only for the distinct `*_unique(1+x)`
+compatibility/canonical paths where still wired; they must not be used to
+describe current `*_indep(1+x)`. Remaining deferred cells include ordinary
+no-prefix latent `||` and any family/mode combination lacking its own evidence.
 
 ## 2026-06-28 Truth Sync
 
-The current register tally is **213 rows: 173 covered, 30 partial,
-0 opt-in, and 10 blocked**. Five covered rows still include explicit
-partial sub-scope caveats (`EXT-04`, `EXT-13`, `DIA-11`, `DIA-12`,
-`MIS-34`), so public prose must cite the covered regime instead of
-generalising the row.
+The register currently contains 221 identifier rows. This document does not
+maintain a single-status tally: several rows deliberately contain mixed
+covered/partial/blocked sub-scopes, so a hand total would be misleading. Public
+prose must cite the exact covered regime instead of generalising a row label.
 
 Two near-term status surfaces need to stay separate:
 
@@ -93,12 +96,19 @@ not admit combined `X + X_lv` fits.
 
 ## Bottom Line
 
-The random-slope surface has moved from "engine in progress" to a bounded
-covered capability:
+The random-slope engine grid exists, but scientific admission is family- and
+covariance-mode-specific:
 
-- **IN:** one random slope (`s = 1`) is covered across the structured
-  phylogenetic and spatial grid for the core supported families, with
-  row-level evidence in PHY-11..PHY-18, SPA-08..SPA-10, and ANI-11..ANI-12.
+- **IN:** one random slope (`s = 1`) has admitted cells across the structured
+  phylogenetic and spatial grid, with row-level evidence in PHY-11..PHY-18,
+  SPA-08..SPA-10, and ANI-11..ANI-12. This is not a uniform grid-wide claim:
+  PHY-11 binomial is structural-health only and PHY-16 ordinal has no recovery
+  promotion.
+- **PARTIAL C1:** lognormal and Student-t are intentionally permitted by the
+  six family-agnostic augmented-slope guards after one adequate-N
+  `phylo_indep()` seed per family. That evidence checks convergence and pooled
+  slope-SD plausibility only; direct mode-specific recovery, Hessian/gradient,
+  replicated-seed, and calibration evidence remain open.
 - **IN:** Gaussian `phylo_dep(1 + x1 + x2 | species)` is covered for
   two random slopes (`s = 2`) under RE-03.
 - **PARTIAL:** non-Gaussian `phylo_dep(..., s >= 2)` remains fail-loud
@@ -124,24 +134,27 @@ internal until their reader paths are ready.
 
 ## Random-Slope Capability Table
 
-Legend: **covered** = recovery / route evidence exists in the validation
-register; **partial** = a useful path exists but not at full advertised
-depth; **blocked** = needs a mathematical derivation or different scope.
+Legend: **covered** = recovery / route evidence exists for the named
+family-by-mode cells in the validation register, not for every
+runtime-permitted family; **partial** = a useful path exists but not at full
+advertised depth; **blocked** = needs a mathematical derivation or different
+scope.
 
 | Surface | Status | Evidence rows | Public wording |
 |---|---|---|---|
 | `phylo_slope(x | species)` | covered / legacy | PHY-06, RE-02 | Single shared phylogenetic slope variance; retained for compatibility, not used in new public articles. |
 | `animal_slope(x | id)` | covered / legacy | ANI-06 | Pedigree-facing alias for the same legacy slope machinery; not the public ordinary reaction-norm target. |
-| `phylo_latent(1 + x | species, unique = TRUE)` / `animal_latent(1 + x | id, unique = TRUE)` | covered | ANI-11, PHY-17 | Folded taught spelling: reduced-rank slope (PHY-17) plus the correlated intercept+slope Psi companion (ANI-11; the deprecated standalone `*_unique` spelling is the validated companion). Read out via `extract_Sigma(level = "phy")`. |
-| `phylo_indep(1 + x | species)` | covered | PHY-11..PHY-16 | Diagonal intercept+slope block; correlation pinned to zero; core families admitted. |
-| `phylo_latent(1 + x | species, d = 1)` | covered | PHY-17 | Block-diagonal reduced-rank random slope; no intercept-slope correlation. |
-| `phylo_dep(1 + x | species)` | covered | PHY-18 | Full unstructured 2T x 2T intercept+slope covariance across traits. |
+| `phylo_latent(1 + x | species, unique = TRUE)` / `animal_latent(1 + x | id, unique = TRUE)` | covered for cited route-specific core cells; partial for lognormal/Student-t | ANI-11, PHY-17, RE-14 | Folded taught spelling: reduced-rank slope (PHY-17) plus the correlated intercept+slope Psi companion (ANI-11; the deprecated standalone `*_unique` spelling is the validated companion). IDs 3 and 9 are runtime-permitted but lack direct folded-latent recovery. Read out via `extract_Sigma(level = "phy")`. |
+| `phylo_indep(1 + x | species)` | partial | PHY-11..PHY-16; RE-14 | Family-specific Design 79/80 `2T` block-diagonal `Sigma_b`: cross-trait blocks are fixed at zero, while each `|` trait block retains a free intercept-slope correlation. Binomial has structural-health evidence only, ordinal lacks recovery, and lognormal/Student-t have only one-seed C1-partial evidence; do not describe all permitted families as scientifically admitted. |
+| `phylo_latent(1 + x | species, d = 1)` | covered for registered core cells; partial for lognormal/Student-t | PHY-17; RE-14 | Block-diagonal reduced-rank random slope; no intercept-slope correlation. Lognormal/Student-t are mechanically permitted from the family-agnostic engine but lack direct route-specific recovery. |
+| `phylo_dep(1 + x | species)` | covered for registered core cells; partial for lognormal/Student-t | PHY-18; RE-14 | Full unstructured 2T x 2T intercept+slope covariance across traits. Lognormal/Student-t are mechanically permitted but lack direct dep recovery. |
 | `phylo_dep(1 + x1 + x2 | species)` under Gaussian | covered | RE-03 | Gaussian full-unstructured multi-slope path; `s = 2` validated. |
 | `phylo_dep(..., s >= 2)` under non-Gaussian families | partial | RE-03 | Runtime guard remains; feasibility sweeps continue but this is not admitted. |
 | `latent(1 + x \| unit, d = K)` ordinary unit-tier Gaussian reaction norm | partial | RE-12 | Gaussian default `latent()` decomposition implemented with `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`, deterministic recovery evidence, and a buildable internal behavioural-syndrome draft; explicit `+ unique(1 + x \| unit)` remains Gaussian-only compatibility syntax, and non-Gaussian augmented `unique()` remains guarded. |
-| `spatial_unique(1 + x | coords)` / `spatial_indep(1 + x | coords)` | covered | SPA-08 | Two-field spatial intercept+slope path; `indep` pins cross-field correlation to zero. |
-| `spatial_latent(1 + x | coords, d = 1)` | covered | SPA-09 | Block-diagonal reduced-rank spatial slope across the core families. |
-| `spatial_dep(1 + x | coords)` | covered | SPA-10 | Full unstructured 2T x 2T SPDE field covariance; hard cells require large validation fixtures. |
+| `spatial_unique(1 + x | coords)` | covered for registered core cells; partial for lognormal/Student-t | SPA-08; RE-14 | Shared 2 by 2 intercept-slope SPDE field covariance; this is the base `spde_base_slope` channel, not current `spatial_indep`. |
+| `spatial_indep(1 + x | coords)` | covered for registered core cells; partial for lognormal/Student-t | SPA-08; RE-14 | Current Design 79/80 interleaved `2T` block-diagonal field covariance with one free 2 by 2 block per trait (`spde_indep_slope`). |
+| `spatial_latent(1 + x | coords, d = 1)` | covered for registered core cells; partial for lognormal/Student-t | SPA-09; RE-14 | Block-diagonal reduced-rank spatial slope. Lognormal/Student-t lack direct route-specific recovery. |
+| `spatial_dep(1 + x | coords)` | covered for registered core cells; partial for lognormal/Student-t | SPA-10; RE-14 | Full unstructured 2T x 2T SPDE field covariance; hard cells require large validation fixtures. Lognormal/Student-t lack direct dep recovery. |
 | delta / hurdle / two-stage zero-inflated families | blocked | FAM-17, MIX-10 | Do not advertise random-slope covariance or latent-scale correlation for these families. |
 
 ## Latent-Rank `d` Status

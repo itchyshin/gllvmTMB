@@ -19,9 +19,11 @@ test_that("profile route levels cover peer, source, and augmented split tiers", 
     c(
       "unit_slope",
       "phy_unique_slope",
+      "phy_indep_slope",
       "phy_dep",
       "phy_slope",
       "spde_base_slope",
+      "spde_indep_slope",
       "spde_dep",
       "spde_slope"
     ) %in%
@@ -67,7 +69,8 @@ test_that("profile route matrix has controlled keys and statuses", {
 
 test_that("every nonlinear profile route is withheld without a public helper name", {
   routes <- gllvmTMB:::.profile_route_matrix()
-  nonlinear <- routes$estimand %in% c("communality", "rho", "proportion") &
+  nonlinear <- routes$estimand %in%
+    c("repeatability", "communality", "rho", "proportion") &
     routes$method == "profile"
   active_interval <- nonlinear &
     !routes$status %in% c("point_only", "not_applicable")
@@ -77,6 +80,13 @@ test_that("every nonlinear profile route is withheld without a public helper nam
     "withheld_nonlinear_penalty_profile"))
   expect_true(all(routes$validation_row[active_interval] == ""))
   expect_false(any(grepl("profile_ci_|fix_refit", routes$route[nonlinear])))
+
+  gates <- routes$next_gate[active_interval]
+  expect_true(all(grepl("constraint solver", gates, fixed = TRUE)))
+  expect_true(all(grepl("optimizer-status", gates, fixed = TRUE)))
+  expect_true(all(grepl("retained failed", gates, fixed = TRUE)))
+  expect_true(all(grepl("target-specific calibration", gates, fixed = TRUE)))
+  expect_true(all(grepl("maintainer promotion", gates, fixed = TRUE)))
 })
 
 test_that("profile route matrix records current cluster and cluster2 boundaries", {
@@ -234,9 +244,11 @@ test_that("profile route matrix keeps augmented split profile routes blocked", {
   split_levels <- c(
     "unit_slope",
     "phy_unique_slope",
+    "phy_indep_slope",
     "phy_dep",
     "phy_slope",
     "spde_base_slope",
+    "spde_indep_slope",
     "spde_dep",
     "spde_slope"
   )
@@ -269,9 +281,11 @@ test_that("profile route matrix has no augmented partial profile canary", {
       c(
         "unit_slope",
         "phy_unique_slope",
+        "phy_indep_slope",
         "phy_dep",
         "phy_slope",
         "spde_base_slope",
+        "spde_indep_slope",
         "spde_dep",
         "spde_slope"
       ) &
@@ -314,9 +328,11 @@ test_that("rho parser contract mirrors profile route matrix boundaries", {
   blocked_tiers <- c(
     "kernel_named",
     "phy_unique_slope",
+    "phy_indep_slope",
     "phy_dep",
     "phy_slope",
     "spde_base_slope",
+    "spde_indep_slope",
     "spde_dep",
     "spde_slope"
   )
@@ -383,9 +399,11 @@ test_that("communality parser contract mirrors profile route matrix boundaries",
     "kernel_named",
     "unit_slope",
     "phy_unique_slope",
+    "phy_indep_slope",
     "phy_dep",
     "phy_slope",
     "spde_base_slope",
+    "spde_indep_slope",
     "spde_dep",
     "spde_slope"
   )
@@ -415,9 +433,11 @@ test_that("augmented profile target table covers every split level and estimand"
   split_levels <- c(
     "unit_slope",
     "phy_unique_slope",
+    "phy_indep_slope",
     "phy_dep",
     "phy_slope",
     "spde_base_slope",
+    "spde_indep_slope",
     "spde_dep",
     "spde_slope"
   )
@@ -447,6 +467,11 @@ test_that("augmented profile target table covers every split level and estimand"
   expect_true(all(split_levels %in% targets$level))
   expect_true(all(split_estimands %in% targets$estimand))
   expect_true(all(grepl("blocked", targets$target_state, fixed = TRUE)))
+  expect_true(all(grepl("constraint solver", targets$profile_gate, fixed = TRUE)))
+  expect_true(all(grepl("optimizer-status", targets$profile_gate, fixed = TRUE)))
+  expect_true(all(grepl("retained failed", targets$profile_gate, fixed = TRUE)))
+  expect_true(all(grepl("target-specific calibration", targets$profile_gate, fixed = TRUE)))
+  expect_true(all(grepl("maintainer promotion", targets$profile_gate, fixed = TRUE)))
   expect_no_error(gllvmTMB:::.validate_profile_augmented_target_table(targets))
 })
 
@@ -469,6 +494,10 @@ test_that("augmented profile target table preserves shape distinctions", {
     fixed = TRUE
   )
 
+  expect_match(row("phy_indep_slope")$target_shape, "2T_by_2T_block_diagonal", fixed = TRUE)
+  expect_match(row("phy_indep_slope")$flatten_order, "interleaved_per_trait", fixed = TRUE)
+  expect_match(row("phy_indep_slope", "rho")$target_shape, "length_T", fixed = TRUE)
+
   expect_match(row("phy_dep")$target_shape, "(1+s)T", fixed = TRUE)
   expect_match(row("phy_dep")$flatten_order, "interleaved", fixed = TRUE)
 
@@ -476,6 +505,9 @@ test_that("augmented profile target table preserves shape distinctions", {
   expect_match(row("phy_slope")$denominator, "block-diagonal", fixed = TRUE)
 
   expect_match(row("spde_base_slope")$denominator, "kappa_s", fixed = TRUE)
+  expect_match(row("spde_indep_slope")$target_shape, "2T_by_2T_block_diagonal", fixed = TRUE)
+  expect_match(row("spde_indep_slope")$denominator, "field scale", fixed = TRUE)
+  expect_match(row("spde_indep_slope", "rho")$target_shape, "length_T", fixed = TRUE)
   expect_match(row("spde_dep")$target_shape, "2T_by_2T", fixed = TRUE)
   expect_match(row("spde_dep")$denominator, "4*pi*kappa^2", fixed = TRUE)
   expect_match(row("spde_slope")$target_shape, "list_of_T_by_T", fixed = TRUE)
@@ -486,12 +518,15 @@ test_that("augmented communality table blocks non-loading structural modes", {
   non_loading <- targets[
     targets$estimand == "communality" &
       targets$level %in%
-        c("phy_unique_slope", "phy_dep", "spde_base_slope", "spde_dep"),
+        c(
+          "phy_unique_slope", "phy_indep_slope", "phy_dep",
+          "spde_base_slope", "spde_indep_slope", "spde_dep"
+        ),
     ,
     drop = FALSE
   ]
 
-  expect_equal(nrow(non_loading), 4L)
+  expect_equal(nrow(non_loading), 6L)
   expect_true(all(non_loading$target_state == "not_applicable_blocked"))
   expect_true(all(non_loading$numerator == "none"))
   expect_true(all(non_loading$denominator == "none"))

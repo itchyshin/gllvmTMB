@@ -1,5 +1,6 @@
 ## Phase B-matrix Group A (Design 59): `ordinal_probit()` x unit-tier
-## structural recovery + CI smoke. Walks FG-07/08/09 (ordinal) and FAM-14
+## structural recovery + explicit nonlinear-profile refusal. Walks
+## FG-07/08/09 (ordinal) and FAM-14
 ## of `docs/design/35-validation-debt-register.md` for the six unit-tier
 ## structural cells:
 ##
@@ -15,12 +16,10 @@
 ##     the linear-predictor contribution must be substantial (>> 0.1); the
 ##     memo's empirical n-sweep pass bar is var(x) >= 0.5. Both fixtures
 ##     below are tuned so every trait's unit-tier signal clears var(x) > 0.5.
-##   * ordinal_probit is FAM-14 "smoke-only at baseline" -- there was no
-##     prior unit-tier structural coverage for it, so a clean converging,
-##     PD-Hessian fit with the correct engine slots toggled and (where an
-##     off-diagonal exists) a finite profile-CI bound IS the recovery
-##     evidence this cell needs. Bootstrap CI is unsupported for ordinal
-##     (Design 50 family-ID 14 guard), so we use method = "profile" only.
+##   * ordinal_probit is FAM-14 "smoke-only at baseline". A clean converging,
+##     PD-Hessian fit with the correct engine slots and the stated recovery
+##     target supplies structural evidence; it does not supply interval
+##     calibration.
 ##
 ## Fixture design (K = 4 ordinal categories; cutpoints tau = 0, 0.7, 1.4):
 ##   * "shared-factor" fixture -- a single unit-level latent factor (d = 1)
@@ -35,17 +34,10 @@
 ##     diagonal-only cells `unique`, `indep`, and `scalar`. The same
 ##     replication identifies the per-trait between-unit variances.
 ##
-## CI smoke (`confint(parm = "rho:unit:1,2", method = "profile")`):
-##   * Meaningful ONLY for the cells with an off-diagonal unit covariance
-##     (latent / paired / dep) -- those route through profile_ci_correlation()
-##     at the "unit" tier. We require a 1x2 matrix with at least one finite
-##     bound (the spatial/phylo binary smoke bar; tight coverage at scale
-##     stays in Phase B-COV).
-##   * For the diagonal-only cells (unique / indep / scalar) there is NO
-##     off-diagonal to profile -- `rho:unit:1,2` deliberately errors with
-##     "Tier ... has no `latent()` term". We assert that contract instead of
-##     inventing a CI, and the structural recovery (per-trait variance,
-##     tied-variance for scalar) carries the cell.
+## Inference boundary: every explicit nonlinear rho profile request must abort
+## with `gllvmTMB_nonlinear_profile_withdrawn`, whether the fitted covariance
+## has off-diagonal entries or is structurally diagonal. Point extraction and
+## structural recovery remain separate contracts.
 ##
 ## SKIP discipline (no fake-pass): every cell skips honestly with a reason
 ## on non-construction / non-convergence / non-PD Hessian rather than
@@ -167,7 +159,7 @@ expect_ordinal_unit_health <- function(fit) {
 ## ---------------------------------------------------------------
 ## CELL 1: latent(0 + trait | unit, d = 1)
 ## ---------------------------------------------------------------
-test_that("ordinal_probit x latent(0 + trait | unit, d = 1): recovery + rho:unit CI smoke", {
+test_that("ordinal_probit x latent(0 + trait | unit, d = 1): recovery + explicit profile refusal", {
   skip_if_not_heavy()
   skip_if_not_ordinal_unit_deps()
   fx <- make_shared_factor_fixture()
@@ -197,29 +189,13 @@ test_that("ordinal_probit x latent(0 + trait | unit, d = 1): recovery + rho:unit
   rel_err <- abs(abs(Lhat) - abs(fx$lambda)) / abs(fx$lambda)
   expect_lt(stats::median(rel_err), 0.40)
 
-  ## CI smoke: confint(parm = "rho:unit:1,2", method = "profile") routes
-  ## through profile_ci_correlation() at the "unit" tier. Require a 1x2
-  ## matrix with at least one finite bound across the upper-tri pairs.
-  pairs_to_try <- list(c(1L, 2L), c(1L, 3L), c(2L, 3L))
-  any_finite <- FALSE
-  for (p in pairs_to_try) {
-    parm_token <- sprintf("rho:unit:%d,%d", p[1L], p[2L])
-    ci <- tryCatch(
-      suppressMessages(suppressWarnings(stats::confint(
-        fit, parm = parm_token, method = "profile"
-      ))),
-      error = function(e) e
-    )
-    if (!inherits(ci, "error") && is.matrix(ci) && nrow(ci) == 1L &&
-          ncol(ci) == 2L && any(is.finite(ci))) {
-      any_finite <- TRUE
-      break
-    }
-  }
-  if (!any_finite) {
-    skip("Profile CI for rho:unit did not return any finite bound on any pair; honest skip rather than relax assertion")
-  }
-  expect_true(any_finite)
+  expect_error(
+    suppressMessages(suppressWarnings(stats::confint(
+      fit, parm = "rho:unit:1,2", method = "profile"
+    ))),
+    regexp = "Nonlinear profile intervals for correlations are not currently available",
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
+  )
 })
 
 ## ---------------------------------------------------------------
@@ -257,25 +233,21 @@ test_that("ordinal_probit x unique(0 + trait | unit): per-trait variance recover
   rel_err <- abs(sd_hat - fx$sd_unit) / fx$sd_unit
   expect_lt(stats::median(rel_err), 0.40)
 
-  ## A diagonal-only fit has NO off-diagonal unit covariance, so the
-  ## correlation profile target does not exist. The unified confint surface
-  ## errors with a "no `latent()` term" message; we assert that contract
-  ## rather than inventing a CI.
-  ci <- tryCatch(
+  ## The nonlinear rho profile route is withdrawn for every covariance mode;
+  ## no interval is manufactured for this diagonal-only fit.
+  expect_error(
     suppressMessages(suppressWarnings(stats::confint(
       fit, parm = "rho:unit:1,2", method = "profile"
     ))),
-    error = function(e) e
+    regexp = "Nonlinear profile intervals for correlations are not currently available",
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
   )
-  expect_s3_class(ci, "condition")
-  expect_match(conditionMessage(ci), "latent|correlation profile",
-               ignore.case = TRUE)
 })
 
 ## ---------------------------------------------------------------
 ## CELL 3: latent(0 + trait | unit, d = 1) + unique(0 + trait | unit)  (paired)
 ## ---------------------------------------------------------------
-test_that("ordinal_probit x latent + unique (paired): both slots; recovery + rho:unit CI smoke", {
+test_that("ordinal_probit x latent + unique (paired): both slots; recovery + explicit profile refusal", {
   skip_if_not_heavy()
   skip_if_not_ordinal_unit_deps()
   ## Shared factor PLUS per-trait unique variance so BOTH halves of the
@@ -309,27 +281,15 @@ test_that("ordinal_probit x latent + unique (paired): both slots; recovery + rho
   expect_equal(length(sd_hat), N_TRAITS)
   expect_true(all(is.finite(Lhat)) && all(is.finite(sd_hat)))
 
-  ## CI smoke on the cross-trait correlation induced by the shared factor.
-  pairs_to_try <- list(c(1L, 2L), c(1L, 3L), c(2L, 3L))
-  any_finite <- FALSE
-  for (p in pairs_to_try) {
-    parm_token <- sprintf("rho:unit:%d,%d", p[1L], p[2L])
-    ci <- tryCatch(
-      suppressMessages(suppressWarnings(stats::confint(
-        fit, parm = parm_token, method = "profile"
-      ))),
-      error = function(e) e
-    )
-    if (!inherits(ci, "error") && is.matrix(ci) && nrow(ci) == 1L &&
-          ncol(ci) == 2L && any(is.finite(ci))) {
-      any_finite <- TRUE
-      break
-    }
-  }
-  if (!any_finite) {
-    skip("Profile CI for rho:unit (paired) did not return any finite bound on any pair; honest skip rather than relax assertion")
-  }
-  expect_true(any_finite)
+  ## The former nonlinear rho profile is withheld even when a shared factor
+  ## supplies a nonzero point correlation.
+  expect_error(
+    suppressMessages(suppressWarnings(stats::confint(
+      fit, parm = "rho:unit:1,2", method = "profile"
+    ))),
+    regexp = "Nonlinear profile intervals for correlations are not currently available",
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
+  )
 })
 
 ## ---------------------------------------------------------------
@@ -364,22 +324,21 @@ test_that("ordinal_probit x indep(0 + trait | unit): indep_B marker + variance r
   rel_err <- abs(sd_hat - fx$sd_unit) / fx$sd_unit
   expect_lt(stats::median(rel_err), 0.40)
 
-  ## Diagonal-only: no off-diagonal to profile -- assert the no-target error.
-  ci <- tryCatch(
+  ## The nonlinear rho profile route is withdrawn for every covariance mode;
+  ## no interval is manufactured for this diagonal-only fit.
+  expect_error(
     suppressMessages(suppressWarnings(stats::confint(
       fit, parm = "rho:unit:1,2", method = "profile"
     ))),
-    error = function(e) e
+    regexp = "Nonlinear profile intervals for correlations are not currently available",
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
   )
-  expect_s3_class(ci, "condition")
-  expect_match(conditionMessage(ci), "latent|correlation profile",
-               ignore.case = TRUE)
 })
 
 ## ---------------------------------------------------------------
 ## CELL 5: dep(0 + trait | unit)  (full unstructured)
 ## ---------------------------------------------------------------
-test_that("ordinal_probit x dep(0 + trait | unit): full-unstructured slot + rho:unit CI smoke", {
+test_that("ordinal_probit x dep(0 + trait | unit): full-unstructured slot + explicit profile refusal", {
   skip_if_not_heavy()
   skip_if_not_ordinal_unit_deps()
   fx <- make_shared_factor_fixture()
@@ -407,27 +366,13 @@ test_that("ordinal_probit x dep(0 + trait | unit): full-unstructured slot + rho:
   expect_equal(dim(Lhat), c(N_TRAITS, N_TRAITS))
   expect_true(all(is.finite(Lhat)))
 
-  ## CI smoke on the cross-trait correlation (off-diagonal exists for dep).
-  pairs_to_try <- list(c(1L, 2L), c(1L, 3L), c(2L, 3L))
-  any_finite <- FALSE
-  for (p in pairs_to_try) {
-    parm_token <- sprintf("rho:unit:%d,%d", p[1L], p[2L])
-    ci <- tryCatch(
-      suppressMessages(suppressWarnings(stats::confint(
-        fit, parm = parm_token, method = "profile"
-      ))),
-      error = function(e) e
-    )
-    if (!inherits(ci, "error") && is.matrix(ci) && nrow(ci) == 1L &&
-          ncol(ci) == 2L && any(is.finite(ci))) {
-      any_finite <- TRUE
-      break
-    }
-  }
-  if (!any_finite) {
-    skip("Profile CI for rho:unit (dep) did not return any finite bound on any pair; honest skip rather than relax assertion")
-  }
-  expect_true(any_finite)
+  expect_error(
+    suppressMessages(suppressWarnings(stats::confint(
+      fit, parm = "rho:unit:1,2", method = "profile"
+    ))),
+    regexp = "Nonlinear profile intervals for correlations are not currently available",
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
+  )
 })
 
 ## ---------------------------------------------------------------

@@ -614,6 +614,22 @@ link_residual_per_trait <- function(fit) {
 #'   block and are ignored. (The unit / unit_obs tiers return `NULL` for a
 #'   dep-only fit, as it carries no between/within-unit covariance term.)
 #'
+#'   Current `phylo_indep(1 + x | species)` uses the same interleaved `2T`
+#'   report channel with all cross-trait blocks fixed to zero. Its return has
+#'   `level = "phy_indep_slope"` and `part = "indep"`; each trait retains its
+#'   own intercept-slope block. This is distinct from the legacy shared `2 x 2`
+#'   augmented `phylo_unique` channel.
+#'
+#'   For augmented spatial slopes, call with `level = "spatial"`.
+#'   `spatial_unique(1 + x | coords)` retains the shared `2 x 2` field-scale
+#'   channel and returns `level = "spde_base_slope"`. Current
+#'   `spatial_indep(1 + x | coords)` returns the interleaved, cross-trait
+#'   block-diagonal `2T x 2T` field covariance with
+#'   `level = "spde_indep_slope"` and `part = "indep"`; `spatial_dep` returns
+#'   the full unstructured block with `level = "spde_dep"` and `part = "dep"`.
+#'   These SPDE matrices are on the fitted field-covariance scale; the returned
+#'   note records the marginal-scale conversion.
+#'
 #'   For an ordinary individual-level random-regression fit with
 #'   `latent(1 + x | unit, d = K)`, `indep(1 + x | unit)`, or their long-form
 #'   equivalents, call with `level = "unit_slope"`: the result is the augmented
@@ -859,9 +875,12 @@ extract_Sigma <- function(
     ))
   }
 
-  ## ---- phylo_dep augmented-slope block (Design 56 Sec. 9.5c + RE-03) ---
+  ## ---- phylo dep/indep augmented-slope block ---------------------------
   ## phylo_dep(1 + x1 + ... + xs | species) fits a single FULL UNSTRUCTURED
-  ## (1+s)T x (1+s)T covariance Sigma_b over the trait-stacked
+  ## (1+s)T x (1+s)T covariance Sigma_b. Current Design 79/80
+  ## phylo_indep() uses the same report channel with cross-trait Cholesky
+  ## entries pinned, producing T independent within-trait blocks. Both use the
+  ## trait-stacked
   ## (intercept, slope_1, ..., slope_s) random-effect columns (s >= 1). It is
   ## a PHYLOGENETIC random effect, so it is surfaced under `level = "phy"` (the
   ## phylogenetic tier). It is one unstructured block, not a shared/unique
@@ -876,10 +895,11 @@ extract_Sigma <- function(
   ## calls them -- correctly see NO between/within-unit term for a
   ## dep-only fit (they return NULL) rather than this phylogenetic block.
   if (isTRUE(fit$use$phylo_dep_slope) && identical(level, "phy")) {
+    is_indep_slope <- isTRUE(fit$use$phylo_indep_slope)
     Sigma <- fit$report$Sigma_b_dep
     if (is.null(Sigma)) {
       cli::cli_abort(
-        "phylo_dep slope fit has no reported {.code Sigma_b_dep}."
+        "Augmented phylogenetic dep/indep slope fit has no reported {.code Sigma_b_dep}."
       )
     }
     Sigma <- as.matrix(Sigma)
@@ -908,10 +928,11 @@ extract_Sigma <- function(
     return(list(
       Sigma = Sigma,
       R = R,
-      level = "phy_dep",
-      part = "dep",
+      level = if (is_indep_slope) "phy_indep_slope" else "phy_dep",
+      part = if (is_indep_slope) "indep" else "dep",
       note = paste0(
-        "phylo_dep/indep(1 + x1 + ... + xs | species): the trait-stacked ",
+        "phylo_", if (is_indep_slope) "indep" else "dep",
+        "(1 + x1 + ... + xs | species): the trait-stacked ",
         "(intercept, slope_1, ..., slope_s) covariance, (1+s)T x (1+s)T, ",
         "interleaved per trait. Structural zeros in the returned matrix reflect ",
         "the fitted mode: `dep |` is full unstructured; `indep` is ",
@@ -919,18 +940,19 @@ extract_Sigma <- function(
         "covariance); `||` (uncorrelated) additionally sets the ",
         "intercept-slope covariance to zero, so `dep ||` is ",
         "Sigma_intercept (+) Sigma_slope. Read the matrix itself for the exact ",
-        "pattern. The part / link_residual arguments do not apply to this block."
+        "pattern. The returned level distinguishes current block-diagonal ",
+        "phylo_indep_slope from full-unstructured phy_dep. The part / ",
+        "link_residual arguments do not apply to this block."
       )
     ))
   }
 
-  ## ---- phylo_unique / phylo_indep augmented-slope 2x2 block (#373) ------
-  ## phylo_unique(1 + x | species) (and the correlation-pinned
-  ## phylo_indep(1 + x | species)) fit a single 2x2 (intercept, slope)
+  ## ---- phylo_unique augmented-slope 2x2 block (#373) --------------------
+  ## phylo_unique(1 + x | species) fits a single 2x2 (intercept, slope)
   ## covariance over the augmented random-effect columns via the closed-form
   ## scalar parameters log_sd_b (-> report$sd_b, length 2) and atanh_cor_b
   ## (-> report$cor_b, length 1). This is the phylogenetic analogue of the
-  ## spatial_unique/indep base-slope 2x2 block below, with A_phy as the
+  ## legacy/shared spatial_unique base-slope 2x2 block below, with A_phy as the
   ## column-covariance kernel. It is a PHYLOGENETIC random effect, so it is
   ## surfaced under `level = "phy"`, mirroring the phylo_dep block above; the
   ## 2x2 is NOT trait-stacked (no interleaving) because the closed-form path
@@ -938,12 +960,13 @@ extract_Sigma <- function(
   ## `part` / `link_residual` arguments do not apply.
   ##
   ## Discriminator: the closed-form augmented path is the ONLY one that
-  ## REPORTs the scalar `cor_b` (the phylo_dep path REPORTs the matrix
+  ## REPORTs the scalar `cor_b` (the current dep/indep 2T engine REPORTs the matrix
   ## `cor_b_mat` + `Sigma_b_dep` instead; the n_lhs_cols == 1 intercept-only
   ## augmented path REPORTs no `cor_b`). Guarded by `!phylo_dep_slope` so the
   ## dep case is handled by its own block above. Honest scope (#373): this
-  ## surfaces the FREE-correlation `unique` 2x2; for `phylo_indep` the cor is
-  ## pinned to 0 by the engine, so the off-diagonal returns ~0.
+  ## surfaces the FREE-correlation `unique` 2x2. Current Design 79/80
+  ## phylo_indep fits are handled by the block-diagonal Sigma_b_dep branch
+  ## above and cannot enter this route.
   if (
     identical(level, "phy") &&
       !isTRUE(fit$use$phylo_dep_slope) &&
@@ -988,21 +1011,23 @@ extract_Sigma <- function(
     ))
   }
 
-  ## ---- spatial_unique / spatial_indep base slope block (Design 60 sec.3.4)
-  ## spatial_unique(1 + x | coords) or spatial_indep(1 + x | coords) activates
+  ## ---- spatial_unique base slope block (Design 60 sec.3.4) ---------------
+  ## spatial_unique(1 + x | coords) activates
   ## the base SPDE slope engine (use_spde_slope) with n_lhs_cols_spde == 2.
   ## Unlike the dep block below (full unstructured 2T x 2T over traits), the
   ## base path fits a single 2x2 cross-field covariance Sigma_field over the
   ## (intercept, slope) fields, reported via the closed-form sd_spde_b
-  ## (length 2) and cor_spde_b (length 1, = 0 for the indep diagonal case).
+  ## (length 2) and cor_spde_b (length 1; the old compatibility indep marker
+  ## pins this scalar to zero, but current Design 79/80 spatial_indep uses the
+  ## separate 2T block-diagonal branch below).
   ## kappa_s is the shared SPDE range parameter. Surfaced under
   ## `level = "spatial"` (internal "spde"), the spatial analogue of phylo_dep
   ## but a 2x2 block (no trait stacking). Single unstructured block: `part` /
   ## `link_residual` do not apply.
   ##
-  ## Guarded by `!isTRUE(fit$use$spde_dep_slope)`: the dep path nests under
-  ## use_spde_slope (BOTH flags are TRUE for spatial_dep), so this guard hands
-  ## the dep case off to the dep block below. Placed BEFORE the dep block.
+  ## Guarded by `!isTRUE(fit$use$spde_dep_slope)`: the current dep/indep 2T
+  ## engine nests under use_spde_slope, so this guard hands both current routes
+  ## to the block below. Placed before that branch.
   ##
   ## Scale note: Sigma_field is on the SPDE parameterisation scale (tau
   ## absorbed; NOT a per-site marginal). To convert to the marginal field SD:
@@ -1068,19 +1093,23 @@ extract_Sigma <- function(
     ))
   }
 
-  ## ---- spatial_dep augmented-slope block (Design 64 sec.2) -------------
+  ## ---- spatial dep/indep augmented-slope block -------------------------
   ## spatial_dep(1 + x | coords) fits a single FULL UNSTRUCTURED 2T x 2T field
-  ## covariance Sigma_field over the trait-stacked (intercept, slope) spatial
+  ## covariance Sigma_field. Current Design 79/80 spatial_indep() uses the
+  ## same report channel with cross-trait Cholesky entries pinned, producing T
+  ## independent within-trait field blocks. Both use trait-stacked
+  ## (intercept, slope) spatial
   ## fields. It is a SPATIAL random effect, surfaced under `level = "spatial"`
   ## (internal "spde"), the spatial analogue of the phylo_dep block above with
   ## A_phy replaced by the SPDE field covariance. Single unstructured block:
   ## `part` / `link_residual` do not apply; returns the reported Sigma_field
   ## with INTERLEAVED dimnames. Plain list (no special print class, like phy_dep).
   if (isTRUE(fit$use$spde_dep_slope) && identical(level, "spde")) {
+    is_indep_slope <- isTRUE(fit$use$spde_indep_slope)
     Sigma <- fit$report$Sigma_field
     if (is.null(Sigma)) {
       cli::cli_abort(
-        "spatial_dep slope fit has no reported {.code Sigma_field}."
+        "Augmented spatial dep/indep slope fit has no reported {.code Sigma_field}."
       )
     }
     Sigma <- as.matrix(Sigma)
@@ -1093,15 +1122,22 @@ extract_Sigma <- function(
     return(list(
       Sigma = Sigma,
       R = R,
-      level = "spde_dep",
-      part = "dep",
+      level = if (is_indep_slope) "spde_indep_slope" else "spde_dep",
+      part = if (is_indep_slope) "indep" else "dep",
       note = paste0(
-        "spatial_dep(1 + x | coords): full unstructured 2T x 2T field ",
-        "covariance over trait-stacked (intercept, slope) SPDE fields ",
+        "spatial_", if (is_indep_slope) "indep" else "dep",
+        "(1 + x | coords): ",
+        if (is_indep_slope) {
+          "block-diagonal 2T x 2T field covariance with one independent 2x2 block per trait over "
+        } else {
+          "full unstructured 2T x 2T field covariance over "
+        },
+        "trait-stacked (intercept, slope) SPDE fields ",
         "(interleaved). Sigma is on the SPDE field-covariance scale (the L L^T ",
         "Cholesky factor); per-field marginal variances divide by 4*pi*kappa^2. ",
-        "The part / link_residual arguments do not apply to this single ",
-        "unstructured block."
+        "The returned level distinguishes current block-diagonal ",
+        "spde_indep_slope from full-unstructured spde_dep. The part / ",
+        "link_residual arguments do not apply to this block."
       )
     ))
   }

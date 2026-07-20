@@ -172,18 +172,15 @@ test_that("confint(fit, parm = 'icc:[99]') errors on out-of-range index", {
   )
 })
 
-test_that("confint(fit, parm = 'icc') with method = 'profile' returns finite bounds", {
+test_that("confint(fit, parm = 'icc') with method = 'profile' is explicitly withheld", {
   skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
-  ci <- suppressMessages(
-    confint(fx$fit, parm = "icc:trait_1", method = "profile")
+  expect_error(
+    suppressMessages(confint(fx$fit, parm = "icc:trait_1", method = "profile")),
+    class = "gllvmTMB_repeatability_profile_withdrawn"
   )
-  expect_true(is.matrix(ci))
-  expect_equal(nrow(ci), 1L)
-  ## At least one of the two bounds should be finite on a well-identified fit
-  expect_true(is.finite(ci[1, 1L]) || is.finite(ci[1, 2L]))
 })
 
 test_that("confint(fit, parm = 'icc') bounds are within [0, 1]", {
@@ -328,12 +325,11 @@ test_that("confint(fit, parm = 'communality') without tier errors loudly", {
   skip_on_cran()
   fx <- build_derived_fixture()
   ## Bare "communality" does NOT match the recogniser (which requires
-  ## "communality:"). It is a derived profile-target label and must
-  ## fail loud with an extractor pointer rather than returning an
-  ## empty/all-NA matrix.
+  ## "communality:"). It must fail loudly at ordinary parameter resolution
+  ## rather than returning an empty/all-NA matrix.
   expect_error(
     suppressMessages(confint(fx$fit, parm = "communality", method = "wald")),
-    "derived target|extract_"
+    "Unknown `parm` value|Available terms"
   )
 })
 
@@ -385,7 +381,7 @@ test_that("confint(fit, parm = 'communality:unit') bounds are within [0, 1]", {
   expect_true(all(ci[finite] <= 1 + 1e-3))
 })
 
-test_that("confint(fit, parm = 'communality:unit_obs') profiles fitted W-tier latent covariance", {
+test_that("confint(fit, parm = 'communality:unit_obs') profile is explicitly withheld", {
   skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
@@ -393,20 +389,13 @@ test_that("confint(fit, parm = 'communality:unit_obs') profiles fitted W-tier la
   expect_true(isTRUE(fx$fit$use$rr_W))
   expect_true(isTRUE(fx$fit$use$diag_W))
   expect_false(isTRUE(fx$fit$use$rr_B))
-  ci <- suppressMessages(suppressWarnings(
+  expect_error(suppressMessages(suppressWarnings(
     confint(
       fx$fit,
       parm = "communality:unit_obs:trait_1",
       method = "profile"
     )
-  ))
-  expect_true(is.matrix(ci))
-  expect_equal(nrow(ci), 1L)
-  expect_equal(rownames(ci), "communality:unit_obs:trait_1")
-  expect_true(all(is.finite(ci)))
-  expect_true(all(ci >= -1e-8))
-  expect_true(all(ci <= 1 + 1e-8))
-  expect_lte(ci[1L, 1L], ci[1L, 2L])
+  )), class = "gllvmTMB_nonlinear_profile_withdrawn")
 })
 
 ## ============================================================================
@@ -514,7 +503,7 @@ test_that("confint(fit, parm = 'rho:unit:1,2', method = 'wald') aliases fisher-z
   expect_equal(ci_w, ci_f)
 })
 
-test_that("confint(fit, parm = 'rho:unit_obs') profiles fitted W-tier latent covariance", {
+test_that("confint(fit, parm = 'rho:unit_obs') profile is explicitly withheld", {
   skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
@@ -522,20 +511,13 @@ test_that("confint(fit, parm = 'rho:unit_obs') profiles fitted W-tier latent cov
   expect_true(isTRUE(fx$fit$use$rr_W))
   expect_true(isTRUE(fx$fit$use$diag_W))
   expect_false(isTRUE(fx$fit$use$rr_B))
-  ci <- suppressMessages(suppressWarnings(
+  expect_error(suppressMessages(suppressWarnings(
     confint(
       fx$fit,
       parm = "rho:unit_obs:1,2",
       method = "profile"
     )
-  ))
-  expect_true(is.matrix(ci))
-  expect_equal(nrow(ci), 1L)
-  expect_equal(rownames(ci), "rho:unit_obs:1,2")
-  expect_true(all(is.finite(ci)))
-  expect_true(all(ci >= -1 - 1e-8))
-  expect_true(all(ci <= 1 + 1e-8))
-  expect_lte(ci[1L, 1L], ci[1L, 2L])
+  )), class = "gllvmTMB_nonlinear_profile_withdrawn")
 })
 
 ## ============================================================================

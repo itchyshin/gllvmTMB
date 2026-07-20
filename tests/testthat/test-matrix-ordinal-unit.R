@@ -268,7 +268,7 @@ test_that("ordinal_probit x unique(0 + trait | unit): per-trait variance recover
     error = function(e) e
   )
   expect_s3_class(ci, "condition")
-  expect_match(conditionMessage(ci), "latent|correlation profile",
+  expect_match(conditionMessage(ci), "nonlinear profile|correlation profile",
                ignore.case = TRUE)
 })
 
@@ -372,7 +372,7 @@ test_that("ordinal_probit x indep(0 + trait | unit): indep_B marker + variance r
     error = function(e) e
   )
   expect_s3_class(ci, "condition")
-  expect_match(conditionMessage(ci), "latent|correlation profile",
+  expect_match(conditionMessage(ci), "nonlinear profile|correlation profile",
                ignore.case = TRUE)
 })
 

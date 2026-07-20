@@ -107,7 +107,12 @@ skip_on_cran()
 .ec_unit_finite <- function(fit) {
   cc <- tryCatch(
     suppressMessages(
-      extract_correlations(fit, tier = "unit", link_residual = "auto")
+      extract_correlations(
+        fit,
+        tier = "unit",
+        method = "fisher-z",
+        link_residual = "auto"
+      )
     ),
     error = function(e) NULL
   )

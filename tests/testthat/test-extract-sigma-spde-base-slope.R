@@ -131,7 +131,7 @@ test_that("extract_Sigma() on spatial_unique(1 + x | coords) returns the 2x2 bas
 ## ======================================================================
 ## 2. spatial_indep(1 + x | coords): diagonal special case (rho = 0).
 ## ======================================================================
-test_that("extract_Sigma() on spatial_indep(1 + x | coords) returns a diagonal 2x2 block", {
+test_that("extract_Sigma() on spatial_indep(1 + x | coords) returns per-trait block-diagonal covariance", {
   skip_if_not_heavy()
   skip_if_not_spatial()
 
@@ -142,18 +142,17 @@ test_that("extract_Sigma() on spatial_indep(1 + x | coords) returns a diagonal 2
     data = fx$data, mesh = fx$mesh, silent = TRUE)))
 
   expect_true(isTRUE(fit$use$spde_slope))
-  expect_false(isTRUE(fit$use$spde_dep_slope))
+  expect_true(isTRUE(fit$use$spde_dep_slope))
 
   es <- extract_Sigma(fit, level = "spatial")
 
-  expect_equal(dim(es$Sigma), c(2L, 2L))
-  expect_identical(rownames(es$Sigma), c("intercept", "slope"))
-  expect_identical(es$level, "spde_base_slope")
-  ## indep pins atanh_cor_spde_b = 0, so the cross-field correlation is
-  ## exactly 0 and Sigma_field is diagonal.
-  expect_equal(unname(es$Sigma[1L, 2L]), 0)
-  expect_equal(unname(es$R[1L, 2L]), 0)
-  expect_true(is.finite(es$kappa_s) && es$kappa_s > 0)
+  ## Design 79/80: three independent 2x2 intercept/slope blocks, represented
+  ## through the spatial-dep engine with cross-trait Cholesky entries pinned.
+  C <- 2L * 3L
+  expect_equal(dim(es$Sigma), c(C, C))
+  expect_identical(es$level, "spde_dep")
+  block <- rep(seq_len(3L), each = 2L)
+  expect_lt(max(abs(es$R[outer(block, block, `!=`)])), 1e-6)
 })
 
 ## ======================================================================

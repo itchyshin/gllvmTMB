@@ -99,7 +99,7 @@ get_full_prop_tbl <- function() {
   }
   fx <- build_prop_fixture()
   tbl <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_ci_proportions(fx$fit, trait_idx = 1L)
+    gllvmTMB:::profile_ci_proportions(fx$fit, trait_idx = 1L)
   ))
   .prop_fit_cache$tbl <- tbl
   tbl
@@ -198,7 +198,7 @@ test_that("profile_ci_proportions(components = 'shared_unit', trait_idx = 1) fil
   skip_on_cran()
   fx <- build_prop_fixture()
   tbl <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_ci_proportions(
+    gllvmTMB:::profile_ci_proportions(
       fx$fit,
       components = "shared_unit",
       trait_idx = 1L
@@ -218,7 +218,7 @@ test_that("profile_ci_proportions() profiles shared and unique unit_obs componen
   expect_true(isTRUE(fx$fit$use$diag_W))
   expect_false(isTRUE(fx$fit$use$rr_B))
   tbl <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_ci_proportions(
+    gllvmTMB:::profile_ci_proportions(
       fx$fit,
       components = c("shared_unit_obs", "unique_unit_obs"),
       trait_idx = 1L
@@ -271,7 +271,7 @@ test_that("profile_ci_proportions(): unknown component errors with available lis
   ## step before any refit runs.
   expect_error(
     suppressMessages(suppressWarnings(
-      gllvmTMB::profile_ci_proportions(
+      gllvmTMB:::profile_ci_proportions(
         fx$fit,
         components = "shared_phy",
         trait_idx = 1L
@@ -288,7 +288,7 @@ test_that("profile_ci_proportions(trait_idx = 99) errors with a range message", 
   fx <- build_prop_fixture()
   expect_error(
     suppressMessages(suppressWarnings(
-      gllvmTMB::profile_ci_proportions(fx$fit, trait_idx = 99L)
+      gllvmTMB:::profile_ci_proportions(fx$fit, trait_idx = 99L)
     )),
     "trait_idx|range|1:"
   )

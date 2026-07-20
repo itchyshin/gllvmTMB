@@ -75,7 +75,7 @@ test_that("extract_correlations() method = 'wald' on both fixtures (M1.4 / MIX-0
 
 # ---- Profile: 3-family only (slow) ----------------------------------
 
-test_that("extract_correlations() method = 'profile' on 3-family fixture (M1.4 / MIX-04)", {
+test_that("extract_correlations() method = 'profile' is explicitly withheld", {
   skip_if_not_heavy()
   skip_on_cran()
   ## Profile is slower than Fisher-z / Wald (~repeated refit per pair).
@@ -85,23 +85,10 @@ test_that("extract_correlations() method = 'profile' on 3-family fixture (M1.4 /
   ## some theta_diag_B entries off, so the profile refit used to recycle the
   ## shorter free vector against diag(Sigma) -- a ~36k-warning flood plus a
   ## mis-assembled Sigma. Capture warnings and assert the recycle is gone.
-  warns <- character()
-  df <- withCallingHandlers(
-    suppressMessages(extract_correlations(
+  expect_error(suppressMessages(extract_correlations(
       fit, tier = "unit", method = "profile",
       link_residual = "auto"
-    )),
-    warning = function(w) {
-      warns <<- c(warns, conditionMessage(w))
-      invokeRestart("muffleWarning")
-    }
-  )
-  expect_false(
-    any(grepl("longer object length", warns, fixed = TRUE)),
-    info = "profile correlation must not recycle the mapped theta_diag_B (#717)"
-  )
-  expect_valid_correlations_df(df, 3L)
-  expect_true(all(df$method == "profile"))
+    )), class = "gllvmTMB_nonlinear_profile_withdrawn")
 })
 
 # ---- Profile: single-pair SHAPE cells (3-family, not calibration) ----
@@ -120,7 +107,7 @@ test_that("extract_correlations() method = 'profile' on 3-family fixture (M1.4 /
 # (repeated full-model refits), so the profile half stays on the
 # 3-family fixture, matching the budget note at the top of this file.
 
-test_that("extract_correlations() method = 'profile' single-pair shape, by name, 3-family (M1.4 / MIX-04, shape not calibration)", {
+test_that("extract_correlations() profile single-pair request is explicitly withheld by name", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
@@ -130,35 +117,23 @@ test_that("extract_correlations() method = 'profile' single-pair shape, by name,
     c("trait_2", "trait_3")
   )
   for (pr in named_pairs) {
-    df <- suppressMessages(extract_correlations(
+    expect_error(suppressMessages(extract_correlations(
       fit, tier = "unit", method = "profile",
       pair = pr, link_residual = "auto"
-    ))
-    ## Shape, not calibration: schema + single-row + label + range only.
-    expect_valid_correlations_df(df, 1L)
-    expect_true(all(df$method == "profile"))
-    expect_setequal(c(df$trait_i, df$trait_j), pr)
+    )), class = "gllvmTMB_nonlinear_profile_withdrawn")
   }
 })
 
-test_that("extract_correlations() method = 'profile' single-pair shape, by index, 3-family (M1.4 / MIX-04, shape not calibration)", {
+test_that("extract_correlations() profile single-pair request is explicitly withheld by index", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
   index_pairs <- list(c(1L, 2L), c(1L, 3L), c(2L, 3L))
   for (pr in index_pairs) {
-    df <- suppressMessages(extract_correlations(
+    expect_error(suppressMessages(extract_correlations(
       fit, tier = "unit", method = "profile",
       pair = pr, link_residual = "auto"
-    ))
-    ## Shape, not calibration: integer `pair =` dispatch returns the same
-    ## one-row schema as the by-name form; no interval-width claim.
-    expect_valid_correlations_df(df, 1L)
-    expect_true(all(df$method == "profile"))
-    expect_setequal(
-      c(df$trait_i, df$trait_j),
-      paste0("trait_", pr)
-    )
+    )), class = "gllvmTMB_nonlinear_profile_withdrawn")
   }
 })
 

@@ -154,13 +154,13 @@ test_that("confint(method = 'profile') accepts profile_targets() labels for dire
   expect_gt(ci["sigma_eps", 1], 0)
 })
 
-test_that("explicit nonlinear profile request errors loudly", {
+test_that("bare unsupported derived profile token errors loudly", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   expect_error(
     stats::confint(fit, parm = "communality", method = "profile"),
-    class = "gllvmTMB_nonlinear_profile_withdrawn"
+    "Unknown `parm` value|Available terms"
   )
 })
 

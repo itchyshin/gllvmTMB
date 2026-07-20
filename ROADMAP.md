@@ -66,7 +66,7 @@ conditions pass.
 | 13 | Florence-grade plot polish | Florence, Fisher, Darwin, Pat | Partial: helper metadata, colour-safe palettes, confidence-eye displays, matrix correlation layouts, and visual snapshots exist; full rendered article-figure review remains open. |
 | 14 | Visible article closeout sequence | Ada, Pat, Fisher, Florence, Rose | Done for the original reset surface: `morphometrics` and `covariance-correlation` have final rendered figure/prose audits; `pitfalls` has final prose audit; `convergence-start-values` has final wording audit; `response-families` and `api-keyword-grid` have technical reference scope audits. Restored pages need their own status-sync and rendered checks. |
 | 15 | Codex / Claude Code work sharing | Ada, Shannon, Rose | In progress: keep one active PR, record handoffs in repo files, and split work by non-overlapping lanes before opening parallel edits. |
-| 16 | Latent-rank model selection | Ada, Curie, Fisher, Pat, Boole, Rose, Grace | In progress: public article uses a shipped Gaussian rank fixture, shows long and wide calls, compares AIC/BIC beside `check_gllvmTMB()` rows, and records rendered checks without claiming universal rank-selection calibration. |
+| 16 | Latent-rank model selection | Ada, Curie, Fisher, Pat, Boole, Rose, Grace | Done: `vignettes/articles/model-selection-latent-rank.Rmd` is public, uses the tested Gaussian fixture in `inst/extdata/examples/model-selection-rank-example.rds`, shows long and wide calls, compares AIC/BIC beside `check_gllvmTMB()` rows, and has rendered checks in `docs/dev-log/after-task/2026-06-09-model-selection-latent-rank.md`; it does not claim universal rank-selection calibration. |
 
 Launch-audit checkpoint, 2026-05-21: Slices 1-5 and 7-8 passed the
 initial public-site launch gate. The original launch pages, Get Started,
@@ -165,9 +165,8 @@ Keep each item to one branch and one pull request.
 
 | Order | Lane | Good owner | Stop condition |
 |---|---|---|---|
-| 1 | Latent-rank model-selection article | Codex + Curie/Fisher/Pat/Boole/Rose/Grace | `model-selection-latent-rank` is public, uses a tested Gaussian fixture, shows long and wide calls, compares AIC/BIC after fit-health checks, renders its figures, and records the rendered checks. |
-| 2 | Binary lambda/JSDM article plan | Codex or Claude Code + Boole/Fisher/Florence/Rose | Rewrite `lambda-constraint` as the first binary loading-constraint teaching article, using a binary species/JSDM-style example rather than mixed psychometrics. Keep the article internal until the plan, example, figure contract, and rendered HTML review are recorded. |
-| 3 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, long + wide calls where meaningful, validation rows, diagnostic table, figure review, and rendered HTML review. Do not combine mixed-family responses with loading constraints in one teaching article. |
+| 1 | Binary lambda/JSDM article plan | Codex or Claude Code + Boole/Fisher/Florence/Rose | Rewrite `lambda-constraint` as the first binary loading-constraint teaching article, using a binary species/JSDM-style example rather than mixed psychometrics. Keep the article internal until the plan, example, figure contract, and rendered HTML review are recorded. |
+| 2 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, long + wide calls where meaningful, validation rows, diagnostic table, figure review, and rendered HTML review. Do not combine mixed-family responses with loading constraints in one teaching article. |
 
 If two agents are active, prefer one public-documentation lane and one
 implementation/test lane. Do not let both agents edit the roadmap, check-log,

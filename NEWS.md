@@ -19,8 +19,10 @@ required for the main workflow.
   `kernel_dep(1 + x | g, K = K)` (and their `||` forms) fit a random regression on
   a supplied dense kernel `K`, byte-equivalent to the phylogenetic path with
   `vcv = K`.
-* Random slopes now support **lognormal** and **student** responses in addition to
-  the previous set.
+* Random-slope routes are runtime-permitted for **lognormal** and **Student-t**
+  responses under the C1-partial RE-14 contract. This is fit admission only:
+  direct route-specific recovery and inference evidence are not yet covered, so
+  this release makes no scientific-validation claim for those combinations.
 * New **`multinomial()`** response family for an *unordered* categorical response
   with three or more categories (baseline-category logit / softmax). It recovers the
   per-category intercepts and slopes as contrasts against a reference category, and

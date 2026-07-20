@@ -87,8 +87,10 @@ parameter and must not be inserted into this ELBO.
 ## 3. Rank is selected by ML before VA
 
 The candidate set `Q_ML` must be predeclared and satisfy
-`Q_ML subset {1, ..., min(T, 6)}`. Each candidate is fitted by the existing
-ordinary `latent(..., unique = FALSE)` TMB/Laplace ML route. The primary rule
+`Q_ML subset {0, ..., min(T, 6)}` and must contain `0`. The rank-zero candidate
+is the same fixed-effects model without an ordinary latent term; positive-rank
+candidates use the existing ordinary `latent(..., unique = FALSE)` TMB/Laplace
+ML route. The primary rule
 is the smallest healthy rank attaining the minimum BIC; ties within two BIC
 units choose the smaller rank. AIC and fit-health diagnostics are recorded but
 do not override this predeclared rule. This follows the existing rank article's
@@ -96,8 +98,10 @@ principle that rank selection compares penalised marginal ML fits with the
 same likelihood approximation, not scree values
 [rank article](../../vignettes/articles/model-selection-latent-rank.Rmd).
 
-Denote the result by `q_ML`. The joint VA experiment then fixes `q = q_ML`.
-It does **not** compare ELBOs across ranks. Separately:
+Denote the result by `q_ML`. If `q_ML = 0`, the VA experiment stops with
+`not_applicable_rank_zero`: there is no latent posterior to approximate. If
+`q_ML > 0`, the joint VA experiment fixes `q = q_ML`. It does **not** compare
+ELBOs across ranks. Separately:
 
 - `q = 1` and `q = 2` are low-dimensional reference fixtures, whether or not
   either is `q_ML` for the applied fixture;
@@ -116,7 +120,7 @@ not mean that the VA objective is ML.
 | ML rank selection | data, `X`, candidate `q`, formula, `unique = FALSE` | `beta`, packed `Lambda`; unit scores are Laplace-integrated | Laplace marginal-ML objective, BIC, `q_ML` |
 | O3 reference, `q = 1/2` | data, `q`, fitted `beta_ML`, fitted `Lambda_ML` | none for the existing O3 integral; its adaptive modes/Hessians are numerical integration coordinates | fixed-coordinate AGHQ marginal objective |
 | Conditional VA reference, `q = 1/2` | data, `q`, the same `beta_ML`, the same `Lambda_ML`, quadrature rule | all unit-specific variational `m_i`, `L_i` | ELBO and variational posterior moments at the O3 coordinates |
-| Joint VA target | data, `q = q_ML`, quadrature rule | `beta`, packed `Lambda`, every `m_i`, every `L_i` | maximum ELBO and rotation-invariant fitted summaries |
+| Joint VA target | data, `q = q_ML > 0`, quadrature rule | `beta`, packed `Lambda`, every `m_i`, every `L_i` | maximum ELBO and rotation-invariant fitted summaries; no VA object when `q_ML = 0` |
 | `q = 4/6` stress | known DGP, fixed stress rank, quadrature rule | same as joint VA | numerical scaling and known-DGP recovery evidence only |
 
 No coordinate is silently profiled, restricted, or integrated under another
@@ -267,7 +271,7 @@ diagonal is not put on a log scale under this live-engine-matching contract.
 | `G_H(mu,v)` | internal quadrature only | not a DGP parameter | stable 1-D Gauss--Hermite expectation | 15/25 ladder and direct high-precision scalar reference |
 | `KL_i` | none | prior is exactly `N(0,I_q)` | `0.5*(sum(L_i^2)+m_i^Tm_i-2sum(rho_i)-q)` | agrees with a direct multivariate-normal KL calculation |
 | `Sigma_B` | `extract_Sigma(..., part = "shared")` conceptual target | `Lambda Lambda^T` | `Lambda * Lambda^T` | primary rotation-invariant recovery target |
-| `q_ML` | predeclared ML candidate set | planted ranks in simulation only | selected outside VA by healthy-fit BIC rule | selection frequency reported separately from VA performance |
+| `q_ML` | predeclared ML candidate set including zero | planted ranks in simulation only | selected outside VA by healthy-fit BIC rule | selection frequency reported separately from VA performance; zero stops VA as not applicable |
 
 An empty or differently implemented cell in this table is a contract failure,
 not an invitation to reinterpret the symbol.
@@ -356,6 +360,12 @@ count below two, or parked VA source copied without a fresh derivation audit.
 - Analytic/autodiff gradients agree with central finite differences to
   relative error `1e-5` away from declared boundaries; the small-`v` routine
   is value- and first-derivative continuous at its switch.
+- On an ordinary Gaussian `latent(..., unique = FALSE)` fixture with the same
+  `X`, packed-loading map, and full per-unit variational covariance, the
+  Gaussian posterior is represented exactly. The variational posterior means,
+  covariances, objective, and gradients must agree with the analytic Gaussian
+  solution to `1e-8`. This is an algebra/geometry anchor, not evidence about
+  non-Gaussian approximation quality.
 
 **NO-GO:** clipping is needed for finiteness, the KL sign is wrong, constants
 are omitted, or the negative-objective sign is inconsistent.
@@ -391,9 +401,12 @@ excluded from denominators, or bands are widened post hoc.
 
 ### Gate 4 -- ML rank hand-off
 
-- The BIC/tie/health rule is frozen before simulation.
+- The BIC/tie/health rule is frozen before simulation and includes the
+  rank-zero candidate.
 - Report how often ML selects each candidate under planted ranks; then run VA
   at the selected rank without re-selection.
+- If rank zero wins, record `not_applicable_rank_zero` and do not construct or
+  optimise variational coordinates.
 - When ML selects the wrong rank, label the VA result conditional on that
   selected model; do not charge or credit VA with the rank-selection result.
 
@@ -406,17 +419,29 @@ unhealthy ML candidate.
   trial outcomes, planted full-rank `Lambda`, and the same complete
   multi-trial family/link contract.
 - Record wall time, peak memory, objective/gradient evaluations, convergence,
-  quadrature-ladder stability, `Sigma_B` recovery, and axis-collapse rates.
+  quadrature-ladder stability, `Sigma_B` recovery, axis-collapse rates, and
+  predictive scoring against an independently generated replicate response at
+  the same planted unit scores. The replicate is not used in fitting. Report
+  per-cell binomial negative log score and squared-error (Brier-style) loss for
+  the posterior-predictive mean.
 - Across at least 50 predeclared seeds per stress rank, at least 90% must meet
   the optimiser gate; no more than 5% of healthy fits may lose a planted axis;
   and the VA-versus-ML `Sigma_B` RMSE degradation remains within the Gate-3
   `0.05` margin.
+- A GO also requires one predeclared practical advantage over Laplace at both
+  `q = 4` and `q = 6`: either the successful-fit rate is at least 10 percentage
+  points higher, or median wall time is at least 25% lower while p95 wall time
+  is no higher and successful-fit rate is no more than 2 percentage points
+  lower. In either case, VA's mean negative log score may be no more than
+  `0.01` per cell worse and its mean squared-error loss no more than `0.005`
+  worse than Laplace. These margins are frozen before the first stress run.
 - This campaign belongs on Totoro or DRAC and its outputs remain local; it is
   never a GitHub Actions simulation workflow or artifact.
 
 **NO-GO:** tensor quadrature over `R^q`, superlinear-in-`N` storage, silent
-non-finite retries, or a stress-only convergence result presented as
-inferential validation.
+non-finite retries, failure of both practical-advantage alternatives, degraded
+recovery/collapse/predictive scoring beyond the frozen margins, or a
+stress-only convergence result presented as inferential validation.
 
 ### Gate 6 -- claim audit
 

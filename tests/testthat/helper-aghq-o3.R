@@ -234,8 +234,22 @@ o3_q2_gllvm_unit_self_test <- function() {
   u <- sweep(sqrt(2) * t(backsolve(mode$R, t(grid))), 2L, mode$mode, "+")
   a <- apply(u, 1L, mode$log_density) + log_weight + rowSums(grid^2)
   mx <- max(a)
+  log_weight_sum <- mx + log(sum(exp(a - mx)))
+  normalized_weight <- exp(a - log_weight_sum)
+  posterior_mean <- colSums(u * normalized_weight)
+  centered <- sweep(u, 2L, posterior_mean, "-")
+  posterior_covariance <- crossprod(centered, centered * normalized_weight)
+  ## Suppress harmless floating-point asymmetry before serialising the raw
+  ## reference moments.  This is the population covariance of the normalized
+  ## quadrature distribution, so no finite-sample correction is appropriate.
+  posterior_covariance <- (posterior_covariance + t(posterior_covariance)) / 2
   list(
-    log_integral = q * log(sqrt(2)) - sum(log(diag(mode$R))) + mx + log(sum(exp(a - mx))),
+    log_integral = q * log(sqrt(2)) - sum(log(diag(mode$R))) + log_weight_sum,
+    posterior_mean = posterior_mean,
+    posterior_covariance = posterior_covariance,
+    normalized_weight_sum = sum(normalized_weight),
+    max_normalized_weight = max(normalized_weight),
+    log_weight_shift = mx,
     mode = mode$mode,
     gradient_norm = mode$gradient_norm,
     min_eigen = mode$min_eigen,
@@ -280,15 +294,38 @@ o3_q2_gllvm_unit_self_test <- function() {
       extracted$y[ii], extracted$n_trials[ii], extracted$eta_fixed[ii],
       extracted$loading[ii, , drop = FALSE], nodes
     )
-    data.frame(unit_id = as.integer(names(ids)[j]), nodes = as.integer(nodes),
-               log_integral = ans$log_integral,
-               mode = paste(signif(ans$mode, 16), collapse = ";"),
-               gradient_norm = ans$gradient_norm, min_eigen = ans$min_eigen,
-               max_eigen = ans$max_eigen, condition = ans$condition,
-               chol_ok = ans$chol_ok, status = "ok")
+    diagnostics <- data.frame(
+      unit_id = as.integer(names(ids)[j]), nodes = as.integer(nodes),
+      log_integral = ans$log_integral,
+      mode = paste(signif(ans$mode, 16), collapse = ";"),
+      gradient_norm = ans$gradient_norm, min_eigen = ans$min_eigen,
+      max_eigen = ans$max_eigen, condition = ans$condition,
+      chol_ok = ans$chol_ok,
+      normalized_weight_sum = ans$normalized_weight_sum,
+      max_normalized_weight = ans$max_normalized_weight,
+      log_weight_shift = ans$log_weight_shift,
+      status = "ok"
+    )
+    q <- length(ans$posterior_mean)
+    mean_rows <- data.frame(
+      unit_id = as.integer(names(ids)[j]), nodes = as.integer(nodes), q = q,
+      moment = "mean", row = seq_len(q), col = NA_integer_,
+      value = ans$posterior_mean
+    )
+    covariance_rows <- expand.grid(row = seq_len(q), col = seq_len(q))
+    covariance_rows <- transform(
+      covariance_rows,
+      unit_id = as.integer(names(ids)[j]), nodes = as.integer(nodes), q = q,
+      moment = "covariance",
+      value = ans$posterior_covariance[cbind(row, col)]
+    )[, names(mean_rows)]
+    list(diagnostics = diagnostics,
+         moments = rbind(mean_rows, covariance_rows))
   })
-  diagnostics <- do.call(rbind, per_unit)
-  list(objective = -sum(diagnostics$log_integral), diagnostics = diagnostics)
+  diagnostics <- do.call(rbind, lapply(per_unit, `[[`, "diagnostics"))
+  moments <- do.call(rbind, lapply(per_unit, `[[`, "moments"))
+  list(objective = -sum(diagnostics$log_integral), diagnostics = diagnostics,
+       moments = moments)
 }
 
 .o3_r2_fixture_data <- function(q, seed, loading_multiplier = 1,
@@ -298,34 +335,51 @@ o3_q2_gllvm_unit_self_test <- function() {
   if (q == 1L) {
     n_unit <- 16L; n_rep <- 3L; traits <- c("t1", "t2")
     beta <- c(-0.2, 0.35) + intercept_shift
-    lambda <- matrix(c(0.8, -0.5) * loading_multiplier, ncol = 1L)
-    u <- matrix(rnorm(n_unit, 0, 0.7), ncol = 1L)
+    lambda_generating <- matrix(c(0.8, -0.5) * loading_multiplier, ncol = 1L)
+    score_scale <- 0.7
+    standardized_score <- matrix(rnorm(n_unit), ncol = 1L)
   } else {
     n_unit <- 20L; n_rep <- 4L
     traits <- if (near_collinear) paste0("t", 1:4) else c("t1", "t2")
     beta <- if (near_collinear) c(-0.25, 0.3, -0.05, 0.15) else c(-0.25, 0.3)
     beta <- beta + intercept_shift
-    lambda <- if (near_collinear) {
+    lambda_generating <- if (near_collinear) {
       ## Lower-triangular leading block; column 2 differs from column 1 by
       ## epsilon = 0.08 only at the first trait.
       matrix(c(0.08, 0, 0.75, 0.75, 0.55, 0.55, 0.35, 0.35), 4L, 2L, byrow = TRUE)
     } else {
       matrix(c(0.8, 0, 0.25, 0.55), 2L, 2L, byrow = TRUE)
     }
-    lambda <- lambda * loading_multiplier
-    u <- matrix(rnorm(n_unit * 2L), n_unit, 2L) %*% diag(c(0.7, 0.45))
+    lambda_generating <- lambda_generating * loading_multiplier
+    score_scale <- c(0.7, 0.45)
+    standardized_score <- matrix(rnorm(n_unit * 2L), n_unit, 2L)
   }
+  ## Preserve the historical fixture data exactly, but report truth in the
+  ## fitted coordinates.  The generator used v = D u, u ~ N(0, I), while the
+  ## fitted latent score is standardized.  Therefore
+  ##   Lambda_B = Lambda_generating D
+  ## and Sigma_B = Lambda_B Lambda_B', not Lambda_generating Lambda_generating'.
+  u_generating <- sweep(standardized_score, 2L, score_scale, "*")
+  lambda <- sweep(lambda_generating, 2L, score_scale, "*")
   dat <- expand.grid(rep = seq_len(n_rep), trait = factor(traits, levels = traits),
                      unit = factor(sprintf("u%02d", seq_len(n_unit))))
   dat <- dat[order(dat$unit, dat$trait, dat$rep), , drop = FALSE]
   eta <- beta[as.integer(dat$trait)] + rowSums(
-    lambda[as.integer(dat$trait), , drop = FALSE] *
-      u[as.integer(dat$unit), , drop = FALSE]
+    lambda_generating[as.integer(dat$trait), , drop = FALSE] *
+      u_generating[as.integer(dat$unit), , drop = FALSE]
   )
   dat$succ <- rbinom(nrow(dat), 12L, plogis(eta))
   dat$fail <- 12L - dat$succ
-  list(data = dat, truth = list(beta = beta, Lambda_B = lambda,
-                                Sigma_B = tcrossprod(lambda), seed = seed))
+  list(data = dat, truth = list(
+    beta = beta,
+    Lambda_B = lambda,
+    Sigma_B = tcrossprod(lambda),
+    standardized_score = standardized_score,
+    score_scale = score_scale,
+    generating_Lambda_B = lambda_generating,
+    score_convention = "u ~ N(0, I); score scales absorbed into Lambda_B",
+    seed = seed
+  ))
 }
 
 .o3_r2_fit_fixture <- function(fixture) {
@@ -353,24 +407,42 @@ o3_r2_run_fixture <- function(fixture_id, q, seed, loading_multiplier = 1,
   diagnostics <- do.call(rbind, lapply(seq_along(values), function(i) {
     within(values[[i]]$diagnostics, fixture_id <- fixture_id)
   }))
+  moments <- do.call(rbind, lapply(seq_along(values), function(i) {
+    within(values[[i]]$moments, fixture_id <- fixture_id)
+  }))
   unit_order <- order(-x$unit, seq_along(x$unit))
   ## Keep whole-unit order fixed here: this is the separately required
   ## within-unit row permutation, not a second unit-order permutation.
   row_order <- unlist(lapply(split(seq_along(x$y), x$unit), rev), use.names = FALSE)
-  permute_objective <- function(order_index, nq) {
+  permute_evaluation <- function(order_index, nq) {
     xx <- lapply(x, function(v) if (length(v) == length(x$y)) v[order_index] else v)
     xx$loading <- x$loading[order_index, , drop = FALSE]
-    .o3_r2_evaluate(xx, nq)$objective
+    .o3_r2_evaluate(xx, nq)
   }
-  permutation_unit <- vapply(nodes, function(nq) permute_objective(unit_order, nq), numeric(1)) - ladder$objective
-  permutation_row <- vapply(nodes, function(nq) permute_objective(row_order, nq), numeric(1)) - ladder$objective
+  moment_vector <- function(value) {
+    m <- value$moments
+    m$value[order(m$unit_id, m$moment, m$row, m$col, na.last = TRUE)]
+  }
+  permuted_unit <- lapply(nodes, function(nq) permute_evaluation(unit_order, nq))
+  permuted_row <- lapply(nodes, function(nq) permute_evaluation(row_order, nq))
+  permutation_unit <- vapply(permuted_unit, `[[`, numeric(1), "objective") - ladder$objective
+  permutation_row <- vapply(permuted_row, `[[`, numeric(1), "objective") - ladder$objective
+  permutation_unit_moment <- vapply(seq_along(nodes), function(i) {
+    max(abs(moment_vector(permuted_unit[[i]]) - moment_vector(values[[i]])))
+  }, numeric(1))
+  permutation_row_moment <- vapply(seq_along(nodes), function(i) {
+    max(abs(moment_vector(permuted_row[[i]]) - moment_vector(values[[i]])))
+  }, numeric(1))
   one <- ladder$objective[ladder$nodes == 1L]
   terminal <- if (q == 1L) abs(ladder$objective[ladder$nodes == 15L] - ladder$objective[ladder$nodes == 25L]) else abs(ladder$objective[ladder$nodes == 7L] - ladder$objective[ladder$nodes == 9L])
   list(
     fixture_id = fixture_id, q = q, seed = seed, fit = fit, truth = fixture$truth,
     data = fixture$data, ladder = ladder, diagnostics = diagnostics,
+    posterior_moments = moments,
     laplace_difference = one - x$tmb_objective, terminal_difference = terminal,
     permutation_unit = permutation_unit, permutation_row = permutation_row,
+    permutation_unit_moment = permutation_unit_moment,
+    permutation_row_moment = permutation_row_moment,
     max_condition = max(diagnostics$condition), prevalence = mean(fixture$data$succ / 12),
     pd_hessian = isTRUE(fit$fit_health$pd_hessian),
     convergence = fit$opt$convergence, started_at = started_at,
@@ -437,6 +509,8 @@ o3_r2_write_receipt <- function(results, output_dir) {
     objectives[paste0("objective_nodes_", x$ladder$nodes)] <- as.list(x$ladder$objective)
     pass <- abs(x$laplace_difference) < 1e-6 && x$terminal_difference < 1e-4 &&
       max(abs(x$permutation_unit)) <= 1e-10 && max(abs(x$permutation_row)) <= 1e-10 &&
+      max(abs(x$permutation_unit_moment)) <= 1e-10 &&
+      max(abs(x$permutation_row_moment)) <= 1e-10 &&
       x$max_condition <= 1e8 && x$convergence == 0L
     as.data.frame(c(list(
       fixture_id = x$fixture_id, seed = x$seed, q = x$q,
@@ -451,6 +525,8 @@ o3_r2_write_receipt <- function(results, output_dir) {
       terminal_ladder_difference = x$terminal_difference,
       unit_permutation_difference = max(abs(x$permutation_unit)),
       row_permutation_difference = max(abs(x$permutation_row)),
+      unit_permutation_moment_difference = max(abs(x$permutation_unit_moment)),
+      row_permutation_moment_difference = max(abs(x$permutation_row_moment)),
       max_condition = x$max_condition, prevalence = x$prevalence,
       fit_convergence = x$convergence, fit_gradient_norm = x$fit_gradient_norm,
       pd_hessian = x$pd_hessian,
@@ -462,6 +538,25 @@ o3_r2_write_receipt <- function(results, output_dir) {
   diagnostics <- do.call(rbind, lapply(results, function(x) {
     transform(x$diagnostics, seed = x$seed)
   }))
+  posterior_moments <- do.call(rbind, lapply(results, function(x) {
+    transform(x$posterior_moments, seed = x$seed)
+  }))
+  moment_key <- paste(posterior_moments$fixture_id, posterior_moments$unit_id,
+                      posterior_moments$nodes, sep = "\r")
+  diagnostic_key <- paste(diagnostics$fixture_id, diagnostics$unit_id,
+                          diagnostics$nodes, sep = "\r")
+  diagnostic_index <- match(moment_key, diagnostic_key)
+  if (anyNA(diagnostic_index)) stop("posterior-moment diagnostic provenance mismatch")
+  posterior_moments$terminal_node <- posterior_moments$nodes == vapply(
+    posterior_moments$q, function(q) if (q == 1L) 25L else 9L, integer(1)
+  )
+  posterior_moments$normalization <- "log_sum_exp_normalized_adaptive_weights"
+  posterior_moments$normalized_weight_sum <- diagnostics$normalized_weight_sum[diagnostic_index]
+  posterior_moments$log_weight_shift <- diagnostics$log_weight_shift[diagnostic_index]
+  posterior_moments$coordinate <- "standard_normal_latent_score_u"
+  posterior_moments$source <- "held_fitted_beta_and_Lambda_B"
+  posterior_moments$package_commit <- commit
+  posterior_moments$source_helper_sha <- helper_sha
   reject <- o3_r2_condition_reject()
   reject_input <- list(
     y = c(50, 50), n_trials = c(100, 100), beta = c(0, 0), eta_fixed = c(0, 0),
@@ -471,7 +566,9 @@ o3_r2_write_receipt <- function(results, output_dir) {
     unit_id = 1L, nodes = NA_integer_, log_integral = NA_real_, mode = "0;0",
     gradient_norm = reject$gradient_norm, min_eigen = reject$min_eigen,
     max_eigen = reject$max_eigen, condition = reject$condition,
-    chol_ok = reject$chol_ok, status = reject$status,
+    chol_ok = reject$chol_ok, normalized_weight_sum = NA_real_,
+    max_normalized_weight = NA_real_, log_weight_shift = NA_real_,
+    status = reject$status,
     fixture_id = "condition_reject_q2", seed = NA_integer_, stringsAsFactors = FALSE
   ))
   manifest <- summary[, c(
@@ -495,6 +592,13 @@ o3_r2_write_receipt <- function(results, output_dir) {
   manifest$tmb_version <- as.character(utils::packageVersion("TMB"))
   manifest$command <- "source('tests/testthat/helper-aghq-o3.R'); o3_r2_write_receipt(o3_r2_run_default(), '<output_dir>')"
   manifest$objective_source <- c(rep("refit_opt", length(results)), "prequadrature_guard")
+  manifest$posterior_moment_source <- c(
+    rep("normalized_adaptive_ghq_at_held_fitted_coordinates", length(results)),
+    "not_attempted"
+  )
+  manifest$posterior_coordinate <- c(
+    rep("standard_normal_latent_score_u", length(results)), "not_attempted"
+  )
   manifest$terminal_status <- c(summary$status, reject$status)
   manifest$condition_parameters <- NA_character_
   manifest$condition_parameters[nrow(manifest)] <- paste(
@@ -503,6 +607,8 @@ o3_r2_write_receipt <- function(results, output_dir) {
   )
   utils::write.csv(manifest, file.path(output_dir, "manifest.csv"), row.names = FALSE)
   utils::write.csv(diagnostics, file.path(output_dir, "unit_diagnostics.csv"), row.names = FALSE)
+  utils::write.csv(posterior_moments, file.path(output_dir, "posterior_moments.csv"),
+                   row.names = FALSE)
   utils::write.csv(summary, file.path(output_dir, "fixture_summary.csv"), row.names = FALSE)
   saveRDS(list(
     fixtures = lapply(results, function(x) list(fixture_id = x$fixture_id, data = x$data, truth = x$truth)),
@@ -520,9 +626,15 @@ o3_r2_write_receipt <- function(results, output_dir) {
     "",
     "Exit rule: all ordinary q=1/q=2 fixtures must have status `pass`; the",
     "`condition_reject_q2` manifest row must be `condition_exceeds_limit`.",
+    "`posterior_moments.csv` contains normalized adaptive-GHQ posterior means",
+    "and population covariances for the standard-normal score u at the held",
+    "fitted beta and Lambda_B coordinates. Log weights are normalized after",
+    "subtracting their maximum; no optimizer is rerun for these moments.",
     "This receipt is research-only. q>=3 was not attempted. It is neither an",
     "AGHQ refit nor a likelihood, REML, interval, recovery, or coverage claim."
   ), file.path(output_dir, "README.md"))
   invisible(list(manifest = manifest, fixture_summary = summary,
-                 unit_diagnostics = diagnostics, condition_reject = reject))
+                 unit_diagnostics = diagnostics,
+                 posterior_moments = posterior_moments,
+                 condition_reject = reject))
 }

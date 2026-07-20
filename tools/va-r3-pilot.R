@@ -179,6 +179,7 @@ run_seed <- function(cell, seed) {
   } else NULL
 
   va <- NULL
+  va_ladder <- NULL
   if (!is.na(selected_q) && selected_q > 0L && isTRUE(selected_ml$healthy)) {
     started <- proc.time()[["elapsed"]]
     va <- .va_r3_fit(
@@ -188,7 +189,38 @@ run_seed <- function(cell, seed) {
       control = list(eval.max = 2000L, iter.max = 2000L)
     )
     va$elapsed <- proc.time()[["elapsed"]] - started
+    if (!is.null(va$best) && !is.null(va$report)) {
+      validated <- .va_r3_validate_data(
+        dgp$y, dgp$trials, dgp$X, dgp$unit, dgp$trait, selected_q
+      )
+      ladder <- lapply(c(15L, 25L), function(H) {
+        obj <- .va_r3_make_objective(
+          validated, H = H,
+          parameters = .va_r3_default_parameters(validated, 1L)
+        )
+        report <- obj$report(va$best$par)
+        list(H = H, objective = obj$fn(va$best$par),
+             expected_loglik_by_obs = report$expected_loglik_by_obs)
+      })
+      va_ladder <- list(
+        H15_objective = ladder[[1L]]$objective,
+        H25_objective = ladder[[2L]]$objective,
+        H61_objective = va$report$negative_elbo,
+        H25_H61_total = abs(ladder[[2L]]$objective - va$report$negative_elbo),
+        H25_H61_max_per_observation = max(abs(
+          ladder[[2L]]$expected_loglik_by_obs - va$report$expected_loglik_by_obs
+        ))
+      )
+    }
   }
+
+  va_diagnostics <- if (is.null(va)) NULL else list(
+    status = va$status, elapsed = va$elapsed, health = va$health,
+    source_commit = va$source_commit, source_checksum = va$source_checksum,
+    rank_source = va$rank_source, quadrature_order = va$quadrature$order,
+    starts = lapply(va$starts, function(x) x[setdiff(names(x), "par")]),
+    ladder = va_ladder
+  )
 
   list(
     schema = "va_r3_pilot_v1", cell = cell, seed = seed,
@@ -202,6 +234,7 @@ run_seed <- function(cell, seed) {
     ml_candidates = lapply(ml_candidates, function(x) x[setdiff(names(x), "fit")]),
     ml = summarise_method("ML", selected_ml, dgp),
     va = summarise_method("VA", va, dgp),
+    va_diagnostics = va_diagnostics,
     va_status = if (is.na(selected_q)) "not_run_no_healthy_ml" else if (selected_q == 0L) {
       "not_applicable_rank_zero"
     } else if (is.null(va)) "not_run_unhealthy_ml" else va$status

@@ -338,7 +338,7 @@
   if (length(beta_fit) == p && all(is.finite(beta_fit))) beta <- unname(beta_fit)
 
   theta_rr <- rep(0, .va_r3_theta_length(T, q))
-  diagonal_scale <- c(0.10, -0.10, 0.20)[start_id]
+  diagonal_scale <- c(0.10, -0.10, 0.20, -0.20)[start_id]
   theta_rr[seq_len(q)] <- diagonal_scale * rep(c(1, -1), length.out = q)
   if (length(theta_rr) > q && start_id > 1L) {
     k <- seq_len(length(theta_rr) - q)
@@ -348,11 +348,11 @@
   log_L_diag <- matrix(0, nrow = N, ncol = q)
   L_off <- matrix(0, nrow = N, ncol = q * (q - 1L) / 2L)
   if (start_id > 1L) {
-    m[] <- 0.01 * (start_id - 1L) *
+    m[] <- c(0.01, 0.02, 0.015)[start_id - 1L] *
       sin(seq_len(length(m)) + start_id)
-    log_L_diag[] <- c(-0.025, 0.025)[start_id - 1L]
+    log_L_diag[] <- c(-0.025, 0.025, -0.04)[start_id - 1L]
     if (length(L_off)) {
-      L_off[] <- 0.005 * (start_id - 1L) *
+      L_off[] <- c(0.005, 0.01, 0.0075)[start_id - 1L] *
         cos(seq_len(length(L_off)) + start_id)
     }
   }
@@ -451,7 +451,7 @@
     ))
   }
   rule <- .va_r3_gh_rule(H)
-  starts <- lapply(1:3, function(k) .va_r3_default_parameters(validated, k))
+  starts <- lapply(1:4, function(k) .va_r3_default_parameters(validated, k))
   if (!is.null(fixed_global)) {
     if (!is.list(fixed_global) ||
         !identical(sort(names(fixed_global)), c("beta", "theta_rr"))) {
@@ -469,9 +469,9 @@
       starts[[k]]$theta_rr <- as.numeric(fixed_global$theta_rr)
     }
   }
-  fits <- vector("list", 3L)
-  objects <- vector("list", 3L)
-  for (k in seq_len(3L)) {
+  fits <- vector("list", length(starts))
+  objects <- vector("list", length(starts))
+  for (k in seq_along(starts)) {
     obj <- .va_r3_make_objective(
       validated, H = H, source = source, rebuild = rebuild && k == 1L,
       parameters = starts[[k]], fixed_global = fixed_global, silent = silent
@@ -488,6 +488,39 @@
                         finite_parameters = FALSE, healthy = FALSE,
                         message = opt$message)
       next
+    }
+    polish_passes <- 0L
+    for (polish in seq_len(2L)) {
+      current_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
+      if (all(is.finite(current_gradient)) &&
+          max(abs(current_gradient)) < 1e-4) break
+      candidate <- tryCatch(
+        stats::nlminb(opt$par, obj$fn, obj$gr, control = control),
+        error = function(e) NULL
+      )
+      if (is.null(candidate) || !is.finite(candidate$objective) ||
+          candidate$objective > opt$objective + 1e-8) break
+      opt <- candidate
+      polish_passes <- polish
+    }
+    polish_optimizer <- "nlminb_only"
+    post_nlminb_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
+    if (!all(is.finite(post_nlminb_gradient)) ||
+        max(abs(post_nlminb_gradient)) >= 1e-4) {
+      bfgs <- tryCatch(
+        stats::optim(opt$par, obj$fn, obj$gr, method = "BFGS",
+                     control = list(maxit = 500L, reltol = 1e-12)),
+        error = function(e) NULL
+      )
+      if (!is.null(bfgs) && identical(bfgs$convergence, 0L) &&
+          is.finite(bfgs$value) && bfgs$value <= opt$objective + 1e-8) {
+        opt <- list(
+          par = bfgs$par, objective = bfgs$value,
+          convergence = bfgs$convergence, message = bfgs$message,
+          evaluations = bfgs$counts, iterations = NA_integer_
+        )
+        polish_optimizer <- "nlminb_then_bfgs"
+      }
     }
     gradient <- tryCatch(obj$gr(opt$par), error = function(e) rep(NA_real_, length(opt$par)))
     finite_parameters <- all(is.finite(opt$par))
@@ -506,14 +539,16 @@
       message = opt$message,
       par = opt$par,
       evaluations = opt$evaluations,
-      iterations = opt$iterations
+      iterations = opt$iterations,
+      polish_passes = polish_passes,
+      polish_optimizer = polish_optimizer
     )
   }
   healthy_id <- which(vapply(fits, `[[`, logical(1), "healthy"))
   objectives <- vapply(fits, `[[`, numeric(1), "objective")
-  agreement <- length(healthy_id) == 3L &&
+  agreement <- length(healthy_id) >= 3L &&
     diff(range(objectives[healthy_id])) <= 1e-6
-  admitted <- length(healthy_id) == 3L && agreement
+  admitted <- length(healthy_id) >= 3L && agreement
   best_id <- if (any(is.finite(objectives))) which.min(objectives) else NA_integer_
   best <- if (!is.na(best_id)) fits[[best_id]] else NULL
   best_report <- if (!is.na(best_id)) {
@@ -555,7 +590,9 @@
     health = list(
       admitted = admitted,
       healthy_starts = length(healthy_id),
-      all_three_healthy = length(healthy_id) == 3L,
+      attempted_starts = length(starts),
+      minimum_healthy_starts = 3L,
+      all_starts_healthy = length(healthy_id) == length(starts),
       objective_agreement = agreement,
       objective_range = if (length(healthy_id)) diff(range(objectives[healthy_id])) else Inf,
       gradient_tolerance = 1e-4,

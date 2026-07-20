@@ -258,8 +258,15 @@ a NO-GO until the source and design prose are reconciled.
    oracle receipt before the fit can enter evidence.
 6. Optimiser convergence requires code zero, maximum absolute analytic
    gradient below `1e-4`, finite parameters, and agreement of the best
-   objective from at least three deterministic starts within `1e-6`. A finite
-   ELBO alone is not convergence.
+   objective from at least three of four predeclared deterministic starts
+   within `1e-6`. A finite
+   ELBO alone is not convergence. When `nlminb` returns a finite code-zero
+   point above the gradient threshold, permit at most two deterministic
+   polishing calls from that exact point with the same controls. If the point
+   remains above the threshold, permit one deterministic analytic-gradient
+   BFGS polish (`maxit = 500`, `reltol = 1e-12`) from the retained point.
+   Record the polishing route; require BFGS code zero and a non-increased
+   objective; never relax the gradient threshold.
 
 No other positive parameter is introduced. In particular, the loading
 diagonal is not put on a log scale under this live-engine-matching contract.

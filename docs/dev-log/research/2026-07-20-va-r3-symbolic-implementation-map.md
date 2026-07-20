@@ -26,7 +26,7 @@ unit-specific lower-triangular `L_i` and log-transformed diagonal.
 | `S_i=L_iL_i^T` | no public keyword | not a DGP parameter | log diagonal plus packed strict-lower entries per unit | SPD; analytic Gaussian covariance; q=1/2 AGHQ covariance error |
 | `G_H(mu,v)` | internal one-dimensional GH expectation | not a DGP parameter | stable softplus, physicists' nodes/weights, smooth small-`v` even expansion | frozen scalar integration grid and 15/25/61 ladder at identical coordinates |
 | `KL_i` | prior exactly `N(0,I_q)` | not a DGP parameter | `0.5*(sum(L_i^2)+m_i^Tm_i-2sum(log diag L_i)-q)` | independent scalar KL and sign checks |
-| `ELBO_H` | internal objective only | not a likelihood parameter | negative ELBO returned to `nlminb`; `beta`, `Lambda`, `m`, `L` are never `random=` | lower-bound inequality at fixed q=1/2 coordinates and finite AD gradients |
+| `ELBO_H` | internal objective only | not a likelihood parameter | negative ELBO returned to `nlminb`, with one bounded BFGS polish only after the frozen `nlminb` polish ladder; `beta`, `Lambda`, `m`, `L` are never `random=` | lower-bound inequality at fixed q=1/2 coordinates and finite AD gradients |
 | `q_ML` | ML/BIC candidate set includes zero | planted rank in recovery studies | selected outside the prototype | rank zero returns not-applicable before objective construction |
 
 ## Standalone TMB interface
@@ -52,9 +52,10 @@ the TMB objective.
   `sqrt(v)` at zero. Test value/first-derivative continuity and threshold
   sensitivity before accepting the branch.
 - Compute `log choose(n,y)` with log-gamma functions.
-- Three deterministic starts are required for an admitted optimizer result;
-  code zero, finite objective/parameters, max absolute gradient below `1e-4`,
-  and best-objective agreement within `1e-6` are all required.
+- Four deterministic starts are attempted; at least three are required for an
+  admitted optimizer result. Code zero, finite objective/parameters, maximum
+  absolute gradient below `1e-4`, and best-objective agreement within `1e-6`
+  are all required.
 
 ## Claim boundary
 

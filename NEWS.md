@@ -77,12 +77,15 @@ required for the main workflow.
   one variance shared across all traits (intercept-only). The covariance grid is
   taught as three modes -- independent, dependent, latent -- with `common =` as
   the scalar sub-case, rather than a separate fourth mode.
-* `phylo_indep()` and `animal_indep()` with an intercept-and-slope term
-  (`1 + x | g`) fit **one independent (intercept, slope) block per trait** --
-  each trait its own random regression, with an estimated intercept-slope
-  correlation and zero cross-trait covariance (a set of univariate random
-  regressions stacked over traits). The spatial `spde` intercept-slope path is
-  unchanged for now, pending its own verification.
+* Current `phylo_indep()`, `animal_indep()`, and `spatial_indep()`
+  intercept-and-slope terms fit **one independent 2 x 2 (intercept, slope)
+  block per trait**: within-trait correlation is estimated for `|`, fixed to
+  zero for `||`, and cross-trait covariance is zero. Current `*_dep()` routes
+  instead use a full 2T x 2T augmented covariance. The soft-deprecated
+  `phylo_unique()`, `animal_unique()`, and `spatial_unique()` slope forms retain
+  their legacy shared 2 x 2 channels; they are not aliases for the current
+  `*_indep()` shape. Admission remains family- and route-specific (ANI-11;
+  PHY-11 to PHY-16, PHY-18; SPA-08, SPA-10; RE-14).
 * `fit$fit_health` separates optimiser success, raw and objective-scaled
   gradients, Hessian health, and `sdreport()` availability. Its `converged` field
   is conservative: optimiser success, a finite objective, and a small raw maximum

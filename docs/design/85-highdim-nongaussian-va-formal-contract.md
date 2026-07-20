@@ -1,8 +1,12 @@
 # Design 85 -- High-dimensional non-Gaussian VA formal contract
 
-**Status:** pre-code, research-only contract. This document authorises neither
-implementation nor compute. Any prototype governed by it must remain internal,
-non-exported, and outside the shipped `gllvmTMB()` method surface.
+**Status:** closed **NO-GO** on 2026-07-20. Gates 0--2 supported an internal
+prototype and low-dimensional reference check, but the 25 + 25 replicate
+Totoro pilot did not establish Gate 3. Gates 4--5 were therefore not admitted.
+The prototype remains internal, non-exported, and outside the shipped
+`gllvmTMB()` method surface. Retain Laplace; do not run `q = 4/6` or reopen
+this decision without a genuinely new evidence source and a separately
+approved contract.
 
 **Numbering note:** Designs 83 and 84 are already allocated to multinomial
 work. This is therefore Design 85; no multinomial design is superseded.
@@ -491,3 +495,26 @@ review, documentation cascade, and public-object contract would be required.
   MVP and ordinary `latent(..., unique = FALSE)` is the loadings-only subset.
 - [ASReml speed design](43-asreml-speed-techniques.md): Gaussian-only boundary
   for REML/AI-REML terminology in this package.
+
+## 13. Final decision receipt (2026-07-20)
+
+The internal prototype passed its algebra, Gaussian-anchor, q=1/q=2 O3,
+quadrature-ladder, and malformed-input tests. The exact-source Totoro pilot ran
+25 planted-q1 and 25 planted-q2 seeds at commit `0e9b3b56`. The corrected
+predeclared optimiser classification admits 22 of 24 applicable q1 fits (one
+additional rank-zero stop) and 19 of 25 q2 fits. Eight applicable fits still
+fail the optimiser gate.
+
+More importantly, the pilot runner combined the fixed-rank Gate-3 comparison
+with the ML-selected-rank Gate-4 hand-off. ML selected q0/q1/q2 in 1/20/4 of
+the planted-q1 datasets and q1/q2/q3 in 4/20/1 of the planted-q2 datasets.
+Consequently, the stored recovery summaries are not the predeclared fixed-rank
+Gate-3 experiment. The one apparent q2 axis collapse was also a q3 fit against
+q2 truth and is not an admissible fixed-rank collapse event. Reclassifying
+these records honestly does not manufacture the missing Gate-3 evidence.
+
+Because the gates are sequential, this is a NO-GO before q4/q6. Conditional
+recovery and prediction summaries cannot compensate for the missing fixed-rank
+gate or the optimiser failures. No 100- or 500-replicate promotion was run.
+The durable audit is
+[the R3 pilot NO-GO receipt](../dev-log/audits/2026-07-20-va-r3-pilot-no-go.md).

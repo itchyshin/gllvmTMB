@@ -1,7 +1,7 @@
 # After task — R2 mathematical closure
 
 **Branch:** `codex/va-r2-math-closure-20260720`
-**Status:** implementation and local verification complete; three-OS admission pending
+**Status:** complete and admitted for internal R3 work
 
 ## 1. Goal
 
@@ -62,7 +62,8 @@ validation-register row, or parked-lane file changed.
 - A diagnostic `NOT_CRAN=true` source check intentionally ran the developer
   visual tests and reproduced only the two pre-existing vdiffr snapshot
   differences; it is not the admission receipt.
-- Fresh full three-OS GitHub Actions matrix — pending.
+- Full-matrix workflow run `29748324495` at exact closure commit `c70538a2` —
+  PASS on Windows, macOS, and Ubuntu. PR #776 merged as `0ae825fe`.
 
 ## 6. Tests of the tests
 

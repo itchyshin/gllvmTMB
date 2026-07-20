@@ -47,8 +47,10 @@ non-Gaussian REML, interval claims, or a package-release claim.
 
 ## Final verdict
 
-**CONDITIONAL PASS.** The corrected truth map, normalized posterior moments,
-raw provenance, 1,438 targeted expectations, and vignette-complete source
-package check all pass. Final admission remains conditional only on a fresh
-three-OS workflow matrix at the closure commit. R3 must not start before that
-external receipt is green.
+**PASS.** The corrected truth map, normalized posterior moments, raw
+provenance, 1,438 targeted expectations, and vignette-complete source package
+check all pass. Full-matrix workflow run
+[`29748324495`](https://github.com/itchyshin/gllvmTMB/actions/runs/29748324495)
+passed on Windows, macOS, and Ubuntu at exact closure commit `c70538a2`. PR
+[#776](https://github.com/itchyshin/gllvmTMB/pull/776) merged the closure as
+`0ae825fe`. R3 is admitted under the internal-only boundaries above.

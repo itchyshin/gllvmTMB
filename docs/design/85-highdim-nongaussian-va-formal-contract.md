@@ -1,8 +1,12 @@
 # Design 85 -- High-dimensional non-Gaussian VA formal contract
 
-**Status:** pre-code, research-only contract. This document authorises neither
-implementation nor compute. Any prototype governed by it must remain internal,
-non-exported, and outside the shipped `gllvmTMB()` method surface.
+**Status:** closed **NO-GO** on 2026-07-20. Gates 0--2 supported an internal
+prototype and low-dimensional reference check, but the 25 + 25 replicate
+Totoro pilot did not establish Gate 3. Gates 4--5 were therefore not admitted.
+The prototype remains internal, non-exported, and outside the shipped
+`gllvmTMB()` method surface. Retain Laplace; do not run `q = 4/6` or reopen
+this decision without a genuinely new evidence source and a separately
+approved contract.
 
 **Numbering note:** Designs 83 and 84 are already allocated to multinomial
 work. This is therefore Design 85; no multinomial design is superseded.
@@ -245,14 +249,28 @@ a NO-GO until the source and design prose are reconciled.
    they are not replaced by an arbitrary large constant and counted as
    convergence.
 5. Quadrature nodes/weights and their normalisation are immutable data. The
-   `H = 15` and `H = 25` ladder is required before selecting a production
-   research value. The 25-node result is the reference unless the total
-   `|L_25 - L_15| < 1e-4` **and** the per-observation maximum difference is
-   below `1e-8` at the same coordinates.
+   `H = 15`, `H = 25`, and `H = 61` ladder is required. Cheap falsification
+   showed that 25 nodes misses the scalar integration oracle by `2.43e-7` at
+   `mu = 0, v = 4`; therefore `H = 61` is the production research value.
+   Evaluate all ladder orders at the **same parameter vector**. Require total
+   `|L_61 - L_25| < 1e-4`, per-observation maximum difference below `1e-8`,
+   and scalar-oracle error below `1e-10` on the frozen
+   `mu in {-20,-5,0,5,20}` by `v in {0,1e-8,1e-4,0.1,1,4}` grid. Failure is
+   a NO-GO; the grid is not narrowed after a result is seen. Every fitted
+   result also fails closed as `failed_variance_domain` when any reported
+   projected variance exceeds `4`; widening that domain requires a new scalar
+   oracle receipt before the fit can enter evidence.
 6. Optimiser convergence requires code zero, maximum absolute analytic
    gradient below `1e-4`, finite parameters, and agreement of the best
-   objective from at least three deterministic starts within `1e-6`. A finite
-   ELBO alone is not convergence.
+   objective from at least three of four predeclared deterministic starts
+   within `1e-6`. A finite
+   ELBO alone is not convergence. When `nlminb` returns a finite code-zero
+   point above the gradient threshold, permit at most two deterministic
+   polishing calls from that exact point with the same controls. If the point
+   remains above the threshold, permit one deterministic analytic-gradient
+   BFGS polish (`maxit = 500`, `reltol = 1e-12`) from the retained point.
+   Record the polishing route; require BFGS code zero and a non-increased
+   objective; never relax the gradient threshold.
 
 No other positive parameter is introduced. In particular, the loading
 diagonal is not put on a log scale under this live-engine-matching contract.
@@ -268,7 +286,7 @@ diagonal is not put on a log scale under this live-engine-matching contract.
 | `S_i=L_iL_i^T` | no user-facing keyword | not a DGP parameter | unit-specific full variational covariance; log Cholesky diagonal | SPD, finite KL, O3 moment comparison at `q=1/2` |
 | `mu_it` | fixed plus ordinary latent contribution | `x_it^T beta + lambda_t^T u_i` | `x_it^T beta + lambda_t^T m_i` | conditional mean algebra identity |
 | `v_it` | none; variational projection only | not a DGP parameter | squared norm `||L_i^T lambda_t||^2` | agrees with explicit `lambda_t^T S_i lambda_t` to numerical tolerance |
-| `G_H(mu,v)` | internal quadrature only | not a DGP parameter | stable 1-D Gauss--Hermite expectation | 15/25 ladder and direct high-precision scalar reference |
+| `G_H(mu,v)` | internal quadrature only | not a DGP parameter | stable 1-D Gauss--Hermite expectation | 15/25/61 ladder and direct high-precision scalar reference |
 | `KL_i` | none | prior is exactly `N(0,I_q)` | `0.5*(sum(L_i^2)+m_i^Tm_i-2sum(rho_i)-q)` | agrees with a direct multivariate-normal KL calculation |
 | `Sigma_B` | `extract_Sigma(..., part = "shared")` conceptual target | `Lambda Lambda^T` | `Lambda * Lambda^T` | primary rotation-invariant recovery target |
 | `q_ML` | predeclared ML candidate set including zero | planted ranks in simulation only | selected outside VA by healthy-fit BIC rule | selection frequency reported separately from VA performance; zero stops VA as not applicable |
@@ -291,9 +309,9 @@ The following comparisons are valid and required:
    fitted probabilities, convergence, and runtime with the shipped ML/Laplace
    fit and with known DGP truth. Raw loading and score comparisons require
    sign/rotation alignment.
-4. **Within one method and rank:** compare the 15/25-node VA objectives at the
-   same parameter vector, and compare deterministic starts after they reach
-   the same optimum.
+4. **Within one method and rank:** compare the 15/25/61-node VA objectives at
+   the same parameter vector, and compare deterministic starts after they
+   reach the same optimum.
 5. **Across `q = 1,2,4,6`:** compare computational scaling and known-DGP
    recovery summaries only. The stress ranks are not evidence that those ranks
    should be selected.
@@ -325,9 +343,12 @@ The following language or behaviour is prohibited:
   [Design 43](43-asreml-speed-techniques.md).
 
 The prototype result object, if built later, must carry
-`research_only = TRUE`, `objective_type = "ELBO_GH"`, `rank_source = "ML_BIC"`,
-`family = "binomial"`, `link = "logit"`, `unique = FALSE`, the quadrature
-order, and the exact source commit. It must not inherit class
+`research_only = TRUE`, `objective_type = "ELBO_GH"`, and an honest
+`rank_source` equal to `ml_bic` or `fixed_fixture`; Gaussian anchors and
+fixed-rank q=1/2/4/6 fixtures must never claim ML selection. It also carries
+the family, link, `unique = FALSE`, quadrature order, exact source checksum,
+and an exact source commit only when the source is tracked and clean. Remote
+evidence requires that non-missing commit. It must not inherit class
 `gllvmTMB_multi` or methods that imply marginal likelihood.
 
 ## 11. Acceptance and NO-GO gates
@@ -373,14 +394,16 @@ are omitted, or the negative-objective sign is inconsistent.
 ### Gate 2 -- low-dimensional O3 references
 
 - Preserve the landed O3 anchors: one-node joint-Laplace differences below
-  `1.4e-9` at `q = 1` and `9.8e-8` at `q = 2`, with the existing stable node
-  ladders. These are fixed-coordinate numerical references only.
+  the executable `1e-6` identity tolerance at `q = 1` and `q = 2`, with the
+  existing stable node ladders. The smaller historical observed differences
+  (`1.4e-9` and `9.8e-8`) are receipts, not portable acceptance constants.
+  These are fixed-coordinate numerical references only.
 - At those identical `beta_ML, Lambda_ML`, the optimised quadrature ELBO does
   not exceed the O3 marginal log-likelihood by more than `1e-6` total.
 - Against O3 posterior moments, unit-level VA means have RMSE below `0.05`,
   covariance relative Frobenius error has median below `0.10`, and no unit
   exceeds `0.25` on the deliberately non-separated reference fixtures.
-- The VA 15/25-node ladder meets Section 7 and all optimiser gates pass.
+- The VA 15/25/61-node ladder meets Section 7 and all optimiser gates pass.
 
 **NO-GO:** a bound violation beyond numerical tolerance, material posterior-
 moment failure, or dependence of the conclusion on one start.
@@ -472,3 +495,26 @@ review, documentation cascade, and public-object contract would be required.
   MVP and ordinary `latent(..., unique = FALSE)` is the loadings-only subset.
 - [ASReml speed design](43-asreml-speed-techniques.md): Gaussian-only boundary
   for REML/AI-REML terminology in this package.
+
+## 13. Final decision receipt (2026-07-20)
+
+The internal prototype passed its algebra, Gaussian-anchor, q=1/q=2 O3,
+quadrature-ladder, and malformed-input tests. The exact-source Totoro pilot ran
+25 planted-q1 and 25 planted-q2 seeds at commit `0e9b3b56`. The corrected
+predeclared optimiser classification admits 22 of 24 applicable q1 fits (one
+additional rank-zero stop) and 19 of 25 q2 fits. Eight applicable fits still
+fail the optimiser gate.
+
+More importantly, the pilot runner combined the fixed-rank Gate-3 comparison
+with the ML-selected-rank Gate-4 hand-off. ML selected q0/q1/q2 in 1/20/4 of
+the planted-q1 datasets and q1/q2/q3 in 4/20/1 of the planted-q2 datasets.
+Consequently, the stored recovery summaries are not the predeclared fixed-rank
+Gate-3 experiment. The one apparent q2 axis collapse was also a q3 fit against
+q2 truth and is not an admissible fixed-rank collapse event. Reclassifying
+these records honestly does not manufacture the missing Gate-3 evidence.
+
+Because the gates are sequential, this is a NO-GO before q4/q6. Conditional
+recovery and prediction summaries cannot compensate for the missing fixed-rank
+gate or the optimiser failures. No 100- or 500-replicate promotion was run.
+The durable audit is
+[the R3 pilot NO-GO receipt](../dev-log/audits/2026-07-20-va-r3-pilot-no-go.md).

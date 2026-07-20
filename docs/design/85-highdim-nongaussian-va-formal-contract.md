@@ -245,10 +245,17 @@ a NO-GO until the source and design prose are reconciled.
    they are not replaced by an arbitrary large constant and counted as
    convergence.
 5. Quadrature nodes/weights and their normalisation are immutable data. The
-   `H = 15` and `H = 25` ladder is required before selecting a production
-   research value. The 25-node result is the reference unless the total
-   `|L_25 - L_15| < 1e-4` **and** the per-observation maximum difference is
-   below `1e-8` at the same coordinates.
+   `H = 15`, `H = 25`, and `H = 61` ladder is required. Cheap falsification
+   showed that 25 nodes misses the scalar integration oracle by `2.43e-7` at
+   `mu = 0, v = 4`; therefore `H = 61` is the production research value.
+   Evaluate all ladder orders at the **same parameter vector**. Require total
+   `|L_61 - L_25| < 1e-4`, per-observation maximum difference below `1e-8`,
+   and scalar-oracle error below `1e-10` on the frozen
+   `mu in {-20,-5,0,5,20}` by `v in {0,1e-8,1e-4,0.1,1,4}` grid. Failure is
+   a NO-GO; the grid is not narrowed after a result is seen. Every fitted
+   result also fails closed as `failed_variance_domain` when any reported
+   projected variance exceeds `4`; widening that domain requires a new scalar
+   oracle receipt before the fit can enter evidence.
 6. Optimiser convergence requires code zero, maximum absolute analytic
    gradient below `1e-4`, finite parameters, and agreement of the best
    objective from at least three deterministic starts within `1e-6`. A finite
@@ -268,7 +275,7 @@ diagonal is not put on a log scale under this live-engine-matching contract.
 | `S_i=L_iL_i^T` | no user-facing keyword | not a DGP parameter | unit-specific full variational covariance; log Cholesky diagonal | SPD, finite KL, O3 moment comparison at `q=1/2` |
 | `mu_it` | fixed plus ordinary latent contribution | `x_it^T beta + lambda_t^T u_i` | `x_it^T beta + lambda_t^T m_i` | conditional mean algebra identity |
 | `v_it` | none; variational projection only | not a DGP parameter | squared norm `||L_i^T lambda_t||^2` | agrees with explicit `lambda_t^T S_i lambda_t` to numerical tolerance |
-| `G_H(mu,v)` | internal quadrature only | not a DGP parameter | stable 1-D Gauss--Hermite expectation | 15/25 ladder and direct high-precision scalar reference |
+| `G_H(mu,v)` | internal quadrature only | not a DGP parameter | stable 1-D Gauss--Hermite expectation | 15/25/61 ladder and direct high-precision scalar reference |
 | `KL_i` | none | prior is exactly `N(0,I_q)` | `0.5*(sum(L_i^2)+m_i^Tm_i-2sum(rho_i)-q)` | agrees with a direct multivariate-normal KL calculation |
 | `Sigma_B` | `extract_Sigma(..., part = "shared")` conceptual target | `Lambda Lambda^T` | `Lambda * Lambda^T` | primary rotation-invariant recovery target |
 | `q_ML` | predeclared ML candidate set including zero | planted ranks in simulation only | selected outside VA by healthy-fit BIC rule | selection frequency reported separately from VA performance; zero stops VA as not applicable |
@@ -291,9 +298,9 @@ The following comparisons are valid and required:
    fitted probabilities, convergence, and runtime with the shipped ML/Laplace
    fit and with known DGP truth. Raw loading and score comparisons require
    sign/rotation alignment.
-4. **Within one method and rank:** compare the 15/25-node VA objectives at the
-   same parameter vector, and compare deterministic starts after they reach
-   the same optimum.
+4. **Within one method and rank:** compare the 15/25/61-node VA objectives at
+   the same parameter vector, and compare deterministic starts after they
+   reach the same optimum.
 5. **Across `q = 1,2,4,6`:** compare computational scaling and known-DGP
    recovery summaries only. The stress ranks are not evidence that those ranks
    should be selected.
@@ -325,9 +332,12 @@ The following language or behaviour is prohibited:
   [Design 43](43-asreml-speed-techniques.md).
 
 The prototype result object, if built later, must carry
-`research_only = TRUE`, `objective_type = "ELBO_GH"`, `rank_source = "ML_BIC"`,
-`family = "binomial"`, `link = "logit"`, `unique = FALSE`, the quadrature
-order, and the exact source commit. It must not inherit class
+`research_only = TRUE`, `objective_type = "ELBO_GH"`, and an honest
+`rank_source` equal to `ml_bic` or `fixed_fixture`; Gaussian anchors and
+fixed-rank q=1/2/4/6 fixtures must never claim ML selection. It also carries
+the family, link, `unique = FALSE`, quadrature order, exact source checksum,
+and an exact source commit only when the source is tracked and clean. Remote
+evidence requires that non-missing commit. It must not inherit class
 `gllvmTMB_multi` or methods that imply marginal likelihood.
 
 ## 11. Acceptance and NO-GO gates
@@ -373,14 +383,16 @@ are omitted, or the negative-objective sign is inconsistent.
 ### Gate 2 -- low-dimensional O3 references
 
 - Preserve the landed O3 anchors: one-node joint-Laplace differences below
-  `1.4e-9` at `q = 1` and `9.8e-8` at `q = 2`, with the existing stable node
-  ladders. These are fixed-coordinate numerical references only.
+  the executable `1e-6` identity tolerance at `q = 1` and `q = 2`, with the
+  existing stable node ladders. The smaller historical observed differences
+  (`1.4e-9` and `9.8e-8`) are receipts, not portable acceptance constants.
+  These are fixed-coordinate numerical references only.
 - At those identical `beta_ML, Lambda_ML`, the optimised quadrature ELBO does
   not exceed the O3 marginal log-likelihood by more than `1e-6` total.
 - Against O3 posterior moments, unit-level VA means have RMSE below `0.05`,
   covariance relative Frobenius error has median below `0.10`, and no unit
   exceeds `0.25` on the deliberately non-separated reference fixtures.
-- The VA 15/25-node ladder meets Section 7 and all optimiser gates pass.
+- The VA 15/25/61-node ladder meets Section 7 and all optimiser gates pass.
 
 **NO-GO:** a bound violation beyond numerical tolerance, material posterior-
 moment failure, or dependence of the conclusion on one start.

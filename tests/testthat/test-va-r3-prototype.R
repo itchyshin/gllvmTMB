@@ -411,6 +411,7 @@ test_that("R3 fixed-coordinate q=1/q=2 cells pass the AGHQ admission gate", {
     expect_identical(x$va61$rank_source, "fixed_fixture")
     expect_identical(x$va61$health$attempted_starts, 4L)
     expect_gte(x$va61$health$healthy_starts, 3L)
+    expect_true(isTRUE(x$va61$best$healthy))
     expect_lte(x$bound_gap, 1e-6)
     expect_lt(x$mean_rmse, 0.05)
     expect_lt(stats::median(x$cov_rel), 0.10)

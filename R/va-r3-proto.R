@@ -549,7 +549,13 @@
   agreement <- length(healthy_id) >= 3L &&
     diff(range(objectives[healthy_id])) <= 1e-6
   admitted <- length(healthy_id) >= 3L && agreement
-  best_id <- if (any(is.finite(objectives))) which.min(objectives) else NA_integer_
+  best_id <- if (length(healthy_id)) {
+    healthy_id[which.min(objectives[healthy_id])]
+  } else if (any(is.finite(objectives))) {
+    which.min(objectives)
+  } else {
+    NA_integer_
+  }
   best <- if (!is.na(best_id)) fits[[best_id]] else NULL
   best_report <- if (!is.na(best_id)) {
     tryCatch(objects[[best_id]]$report(best$par), error = function(e) {

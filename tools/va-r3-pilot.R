@@ -152,7 +152,7 @@ summarise_method <- function(method, fit, dgp) {
     beta <- unname(object$best$par[names(object$best$par) == "beta"])
     probability <- va_probability(object$report, object$quadrature)
     elapsed <- object$elapsed
-    gradient <- max(vapply(object$starts, `[[`, numeric(1), "max_abs_gradient"))
+    gradient <- object$best$max_abs_gradient
     healthy <- identical(object$status, "healthy")
   }
   scores <- predictive_scores(dgp$y_replicate, dgp$trials, probability)
@@ -182,10 +182,14 @@ run_seed <- function(cell, seed) {
   va_ladder <- NULL
   if (!is.na(selected_q) && selected_q > 0L && isTRUE(selected_ml$healthy)) {
     started <- proc.time()[["elapsed"]]
+    prototype_source <- normalizePath(
+      file.path("inst", "tmb", "gllvmTMB_va_r3.cpp"), mustWork = TRUE
+    )
     va <- .va_r3_fit(
       dgp$y, dgp$trials, dgp$X, dgp$unit, dgp$trait, selected_q,
       H = 61L,
       rank_source = if (reference_cell) "ml_bic" else "fixed_fixture",
+      source = prototype_source,
       control = list(eval.max = 2000L, iter.max = 2000L)
     )
     va$elapsed <- proc.time()[["elapsed"]] - started

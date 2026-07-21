@@ -59,7 +59,15 @@ test_that("extract_Sigma(link_residual='auto') adds (pi^2/6)(I+J) to a multinomi
                   data = df, family = multinomial(), trait = "trait",
                   unit = "species")
 
-  V_none <- .get_sigma(extract_Sigma(fit, level = "phy", link_residual = "none"))
+  V_none_raw <- NULL
+  note <- expect_message(
+    V_none_raw <- extract_Sigma(fit, level = "phy", link_residual = "none"),
+    regexp = "FAM-20A multinomial phylogenetic covariance is deliberately"
+  )
+  expect_false(grepl("refit with `phylo_latent", conditionMessage(note),
+                     fixed = TRUE))
+  expect_match(conditionMessage(note), "a free phylogenetic Psi", fixed = TRUE)
+  V_none <- .get_sigma(V_none_raw)
   ## 'auto' is the default; it must NOT warn about an unavailable residual now.
   V_auto <- .get_sigma(
     expect_no_warning(extract_Sigma(fit, level = "phy", link_residual = "auto"))

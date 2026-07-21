@@ -57,6 +57,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `extract_Sigma_W(fit)` | c | cl | cl | cl | legacy alias for `level = "W"` ($\equiv$ `"unit_obs"`) |
 | `extract_Omega(fit)` | c | cl | cl | cl | cross-partition integration (phy/spatial shares back into unit-tier) |
 | `extract_correlations(fit, method, link_residual)` | c | cl | cl | cl | point, Fisher-z, Wald, bootstrap; accepted profile token stops with typed withdrawal |
+| `extract_cross_correlations(fit, level, contrasts, method)` | c | cl | cl | cl | one `multinomial()` trait with ordinary shared `latent()` tier; point, Wald, bootstrap; profile token stops with typed withdrawal |
 | `extract_communality(fit)` | c | cl | cl | cl | $H^2 + C^2 + \psi^2 = 1$ partition |
 | `extract_repeatability(fit)` | c | cl | cl | cl | ICC / R |
 | `extract_phylo_signal(fit)` | c | cl | cl | cl | phylogenetic $H^2$ |
@@ -340,6 +341,43 @@ $\Sigma_\text{spde} =
 $\Lambda_\text{spde}\Lambda_\text{spde}^\top$ and therefore rank-1
 correlations can be mechanically $\pm 1$. Report figures must label
 which subset was fitted.
+
+#### `extract_cross_correlations(fit, level = "unit", contrasts = FALSE, link_residual = c("auto", "none"), method = c("point", "bootstrap", "profile", "wald"), conf = 0.95, nsim = 500, seed = NULL)`
+
+**Scope**: this extractor is only for a fitted model containing one
+`multinomial()` trait and one or more non-nominal partner traits that share an
+ordinary `latent()` tier. It summarizes the association between each partner
+and the multinomial trait's whole baseline-category contrast block. It is not
+a general correlation extractor for multiple nominal traits, structured
+phylogenetic or spatial tiers, or models without the shared ordinary latent
+structure. Any level that does not normalize to the ordinary `B` / `unit` tier
+fails with `gllvmTMB_cross_level_unsupported`. With
+`link_residual = "auto"`, ordinal-probit partners fail with
+`gllvmTMB_cross_auto_ordinal_unsupported`: their threshold model already fixes
+the latent residual at one, so the current automatic addition would count it
+twice. Latent-scale pairwise covariance remains available through
+`extract_Sigma(..., part = "shared", link_residual = "none")`; the one-number
+nominal summary should be reported from an admitted non-ordinal partner set.
+
+**Return**: one row per nominal-partner pair. Point output has `nominal`,
+`partner`, and `multiple_r`; with `contrasts = TRUE`, it also has the list
+column `contrast_r`. `multiple_r` is the reference-invariant multiple
+correlation for the full contrast block. Wald or bootstrap requests add
+`multiple_r_lower`, `multiple_r_upper`, `multiple_r_method`, and
+`multiple_r_interval_status`; with contrasts, the corresponding `contrast_r_*`
+columns are also present. Bounds that were not computed remain `NA` and are
+labelled `"point"` rather than being presented as another method.
+
+**Method semantics**: `"point"` is the default. `"wald"` uses a Fisher-z
+approximation for both summaries and is labelled
+`"heuristic_unvalidated"`; it is not a calibrated inference procedure.
+`"bootstrap"` uses `bootstrap_Sigma()` for `multiple_r`, while contrast rows
+remain point-only, and is labelled `"target_specific_uncalibrated"`.
+`"profile"` is retained only as a compatibility token and stops with
+`gllvmTMB_nonlinear_profile_withdrawn`: the nonlinear constrained-refit
+prototype is not a public interval route. None of these non-point interval
+routes has coverage calibration, so users must report the returned method and
+status rather than call the bounds profile or validated confidence intervals.
 
 #### `extract_communality(fit, level)`
 

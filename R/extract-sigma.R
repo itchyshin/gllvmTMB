@@ -711,12 +711,10 @@ extract_Sigma <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
-  ## Tier-1 fence (Design 83 / FAM-20): fail loud on an unordered categorical
-  ## (multinomial) trait rather than returning a silent NULL. A Tier-1
-  ## multinomial fit is fixed-effects-only (no latent term), so it carries no
-  ## latent covariance Sigma; and its intrinsic K-1 liability covariance is a
-  ## (K-1)x(K-1) matrix (Tier 2, deferred), not the trait-scale Sigma this
-  ## returns. Refuse loudly and consistently with extract_correlations().
+  ## Fixed-effect fence (Design 83 / FAM-20): fail loud on an unordered
+  ## categorical fit with no admitted latent tier rather than returning a
+  ## silent NULL. Such a fit carries no latent covariance Sigma; the later
+  ## FAM-20A/FAM-20B routes below are the only current exceptions.
   ## Tier-2a (Design 84): a multinomial() fit WITH a phylo_latent term carries a
   ## genuine among-category covariance -- Sigma_phy = Lambda_phy Lambda_phy^T over
   ## the K-1 category-contrast pseudo-traits -- surfaced at level = "phy". Only a
@@ -1252,9 +1250,25 @@ extract_Sigma <- function(
         !isTRUE(fit$use$phylo_unique) &&
           !isTRUE(fit$use$phylo_dep)
       ) {
+        has_multinomial <- !is.null(fit$tmb_data$family_id_vec) &&
+          any(fit$tmb_data$family_id_vec == 16L)
+        latent_only_note <- if (has_multinomial) {
+          paste(
+            "FAM-20A multinomial phylogenetic covariance is deliberately",
+            "loadings-only (Lambda_phy Lambda_phy^T).",
+            "Use `link_residual = \"auto\"` for the fixed softmax residual;",
+            "a free phylogenetic Psi (`unique = TRUE`) is not admitted for this route."
+          )
+        } else {
+          paste(
+            "Phylogenetic tier is currently latent-only (Lambda_phy Lambda_phy^T).",
+            "To add a diagonal Psi component, refit with",
+            "`phylo_latent(species, d = K, unique = TRUE)`."
+          )
+        }
         notes <- c(
           notes,
-          "Phylogenetic tier is currently latent-only (Lambda_phy Lambda_phy^T). To add a diagonal Psi component, refit with `phylo_latent(species, d = K, unique = TRUE)`."
+          latent_only_note
         )
       }
     }

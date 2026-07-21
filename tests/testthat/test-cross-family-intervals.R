@@ -1,9 +1,9 @@
-## Slices 2-4 (cross-family intervals arc): calibrated intervals on
-## extract_cross_correlations() for BOTH estimands.
+## Slices 2-4 (cross-family intervals arc): public Wald/bootstrap intervals and
+## retained direct tests of the withdrawn research prototype.
 ##   - multiple_r (aggregate Sigma-block functional) -> parametric bootstrap
 ##     via bootstrap_Sigma(what = "cross_corr").
-##   - contrast_r (pairwise rho_ij)                  -> wired profile via
-##     profile_ci_correlation(), on the AUTO scale (Option b: constant link
+##   - contrast_r (pairwise rho_ij)                  -> direct prototype checks
+##     of profile_ci_correlation(), on the AUTO scale (Option b: constant link
 ##     residual added to the i, j diagonals) so the profiled estimate matches
 ##     the AUTO-scale point estimate + the analytic truth.
 ##
@@ -90,26 +90,55 @@ test_that("profile contrast_r interval brackets its estimate across seeds (N ~ 2
   }
 })
 
-test_that("the unit_slope Gaussian canary stays silent on a cross-family unit-tier profile", {
-  skip_on_cran(); skip_if_not_installed("MASS")
-  fit <- .get_xfam_ci()
-  skip_if_not(isTRUE(fit$opt$convergence == 0L), "fixture did not converge")
-  ## A legit cross-family unit-tier profile must NOT trip the B_slope Gaussian-
-  ## only canary (that guard lives on tier "unit_slope", not "unit").
-  cc <- suppressMessages(extract_cross_correlations(
-    fit, level = "unit", contrasts = TRUE, method = "profile", conf = 0.95))
-  expect_true("contrast_r_lower" %in% names(cc))
-  expect_true(all(cc$contrast_r_method == "profile"))
-  expect_true(all(cc$contrast_r_interval_status == "target_specific_uncalibrated"))
+test_that("public cross-family profile requests are withdrawn before secondary validation", {
+  expect_error(
+    extract_cross_correlations(
+      NULL,
+      level = "phy",
+      link_residual = "not-a-residual",
+      method = "profile"
+    ),
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
+  )
 })
 
-test_that("multiple_r + method = 'profile' fails loud (block functional is not profileable)", {
-  skip_on_cran(); skip_if_not_installed("MASS")
-  fit <- .get_xfam_ci()
-  skip_if_not(isTRUE(fit$opt$convergence == 0L), "fixture did not converge")
+test_that("general correlation profile withdrawal precedes Julia dispatch and argument validation", {
+  julia_mock <- structure(list(), class = "gllvmTMB_julia")
   expect_error(
-    extract_cross_correlations(fit, level = "unit", contrasts = FALSE, method = "profile"),
-    class = "gllvmTMB_multiple_r_profile_undefined"
+    extract_correlations(
+      julia_mock,
+      tier = "not-a-tier",
+      link_residual = "not-a-residual",
+      method = "profile"
+    ),
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
+  )
+})
+
+test_that("cross-family summaries reject structured tiers before fit inspection", {
+  expect_error(
+    extract_cross_correlations(NULL, level = "phy"),
+    class = "gllvmTMB_cross_level_unsupported"
+  )
+})
+
+test_that("cross-family auto residual rejects ordinal-probit partners", {
+  fit <- structure(
+    list(
+      trait_col = "trait",
+      data = data.frame(
+        trait = factor(c("o", "cat"), levels = c("o", "cat"))
+      ),
+      tmb_data = list(
+        family_id_vec = c(14L, 16L),
+        trait_id = c(0L, 1L)
+      )
+    ),
+    class = "gllvmTMB_multi"
+  )
+  expect_error(
+    extract_cross_correlations(fit, link_residual = "auto"),
+    class = "gllvmTMB_cross_auto_ordinal_unsupported"
   )
 })
 
@@ -132,28 +161,6 @@ test_that("reconstruction self-check fires on a corrupted diagonal map (negative
   )
 })
 
-test_that("profile guards: contrasts, tier, and latent-term fences all fire", {
-  skip_on_cran(); skip_if_not_installed("MASS")
-  fit <- .get_xfam_ci()
-  skip_if_not(isTRUE(fit$opt$convergence == 0L), "fixture did not converge")
-  ## (a) contrasts = FALSE -> undefined block profile.
-  expect_error(
-    extract_cross_correlations(fit, contrasts = FALSE, method = "profile"),
-    class = "gllvmTMB_multiple_r_profile_undefined"
-  )
-  ## (b) structured tier out of scope.
-  expect_error(
-    extract_cross_correlations(fit, level = "phy", contrasts = TRUE, method = "profile"),
-    class = "gllvmTMB_cross_profile_tier_unsupported"
-  )
-  ## (c) diagonal-only (no shared latent) -> nothing to profile.
-  fit_diag <- fit
-  fit_diag$use$rr_B <- FALSE
-  expect_error(
-    extract_cross_correlations(fit_diag, contrasts = TRUE, method = "profile"),
-    class = "gllvmTMB_cross_profile_no_latent"
-  )
-})
 
 test_that("bootstrap path populates multiple_r interval columns with interval_status", {
   skip_on_cran(); skip_if_not_installed("MASS")

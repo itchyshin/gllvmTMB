@@ -7,7 +7,7 @@
 extract_repeatability(
   fit,
   level = 0.95,
-  method = c("profile", "wald", "bootstrap"),
+  method = c("wald", "profile", "bootstrap"),
   nsim = 500L,
   seed = NULL
 )
@@ -20,10 +20,10 @@ point estimates and percentile bounds rather than refitting.}
 
 \item{level}{Confidence level. Default 0.95.}
 
-\item{method}{One of \code{"profile"} (default), \code{"wald"},
-\code{"bootstrap"}. A profile request currently returns a clearly
-labelled Wald interval because the full-covariance repeatability target
-does not yet have a defensible profile implementation.}
+\item{method}{One of \code{"wald"} (default), \code{"profile"}, or
+\code{"bootstrap"}. \code{"profile"} is accepted only for backwards
+compatibility and aborts because a defensible profile interval for
+canonical full-covariance repeatability is not available.}
 
 \item{nsim}{Number of bootstrap replicates when
 \code{method = "bootstrap"}. Default 500.}
@@ -36,22 +36,26 @@ estimate), \code{lower}, \code{upper}, \code{method}.
 }
 \description{
 Returns the per-trait repeatability
-\eqn{R_t = \sigma^2_{B,t} / (\sigma^2_{B,t} + \sigma^2_{W,t})} for a
-fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with both unit- and observation-level diagonal
-variance components. In new ordinary formulas those diagonal components are
-usually supplied by default \code{latent()} terms or explicit \code{indep()} terms.
+\deqn{R_t = v_{B,t} / (v_{B,t} + v_{W,t}),}
+where
+\deqn{v_{B,t} = [\Lambda_B\Lambda_B^\top]_{tt} + \sigma^2_{B,t}}
+and
+\deqn{v_{W,t} = [\Lambda_W\Lambda_W^\top]_{tt} + \sigma^2_{W,t} + \sigma^2_{d,t}.}
+The first two terms include the shared latent and diagonal companion variance
+at the unit and observation tiers; \eqn{\sigma^2_{d,t}} is the
+family-specific link residual used for non-Gaussian traits. The function is
+intended for a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with the relevant ordinary unit
+and observation-level components.
 Also known as the intraclass correlation coefficient (ICC) at the unit
 level.
 }
 \section{Method choice}{
 
 \itemize{
-\item \code{"profile"}: requests a profile interval, but currently falls
-back to the same full-covariance Wald calculation described below. The
-returned \code{method} is \code{"wald"}; it is never relabelled as a
-profile interval.
-\item \code{"wald"}: Gaussian-approximation CI via the delta method
-on \code{plogis(2*(theta_B - theta_W))}.
+\item \code{"wald"} (default): Gaussian-approximation CI via the delta method
+on \code{log(v_B) - log(v_W)}, transformed with \code{plogis()}.
+\item \code{"profile"}: withdrawn. It aborts rather than silently
+substituting a different interval method or estimand.
 \item \code{"bootstrap"}: parametric bootstrap via \code{bootstrap_Sigma()}.
 }
 }

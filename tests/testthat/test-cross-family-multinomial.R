@@ -32,6 +32,115 @@
   fam
 }
 
+test_that("auto-Psi guidance keeps binomial and multinomial remedies distinct", {
+  combined <- gllvmTMB:::.auto_psi_skip_message(
+    binomial_labs = "b",
+    multinomial_labs = c("cat:2", "cat:3")
+  )
+  text <- paste(unname(combined), collapse = "\n")
+  expect_match(text, "Multi-trial data", fixed = TRUE)
+  expect_match(text, "replication can identify", fixed = TRUE)
+  expect_match(text, "rejects explicit multinomial", fixed = TRUE)
+  expect_match(text, "shared {.fn latent} block", fixed = TRUE)
+  expect_false(grepl("or add an explicit {.fn indep} term", text, fixed = TRUE))
+
+  binomial_only <- paste(unname(gllvmTMB:::.auto_psi_skip_message(
+    binomial_labs = "b"
+  )), collapse = "\n")
+  expect_match(binomial_only, "Multi-trial data", fixed = TRUE)
+  expect_false(grepl("multinomial contrast", binomial_only, fixed = TRUE))
+
+  multinomial_only <- paste(unname(gllvmTMB:::.auto_psi_skip_message(
+    multinomial_labs = c("cat:2", "cat:3")
+  )), collapse = "\n")
+  expect_match(multinomial_only, "replication can identify", fixed = TRUE)
+  expect_match(multinomial_only, "rejects explicit multinomial", fixed = TRUE)
+  expect_false(grepl("Multi-trial data", multinomial_only, fixed = TRUE))
+  expect_false(grepl("an explicit {.fn indep} term is", multinomial_only,
+                     fixed = TRUE))
+
+  ids <- c(
+    gllvmTMB:::.auto_psi_skip_frequency_id(binomial_labs = "b"),
+    gllvmTMB:::.auto_psi_skip_frequency_id(multinomial_labs = "cat:2"),
+    gllvmTMB:::.auto_psi_skip_frequency_id(
+      binomial_labs = "b", multinomial_labs = "cat:2"
+    )
+  )
+  expect_identical(ids, c(
+    "gllvmTMB-psi-skip-binomial",
+    "gllvmTMB-psi-skip-multinomial",
+    "gllvmTMB-psi-skip-binomial-multinomial"
+  ))
+  expect_length(unique(ids), 3L)
+})
+
+test_that("auto-Psi once-per-session messages remain distinct across fit compositions", {
+  skip_on_cran(); skip_if_not_installed("MASS")
+  freq_env <- getFromNamespace("message_freq_env", "rlang")
+  frequency_ids <- c(
+    "gllvmTMB-psi-skip-binomial",
+    "gllvmTMB-psi-skip-multinomial",
+    "gllvmTMB-psi-skip-binomial-multinomial",
+    "gllvmTMB-psi-skip-single-trial-binary"
+  )
+  rlang::env_unbind(freq_env, frequency_ids)
+  withr::defer(rlang::env_unbind(freq_env, frequency_ids))
+
+  sim <- .build_xfam_raw(14L, N = 60L, reps = 2L)
+  dat_bin <- sim$data
+  is_original_gaussian <- dat_bin$family == "g"
+  dat_bin$value[is_original_gaussian] <- as.integer(
+    dat_bin$value[is_original_gaussian] > stats::median(dat_bin$value[is_original_gaussian])
+  )
+  dat_bin$family <- factor(
+    ifelse(is_original_gaussian, "b", "g"), levels = c("b", "g")
+  )
+  fam_bin <- list(b = binomial(), g = gaussian())
+  attr(fam_bin, "family_var") <- "family"
+  expect_message(
+    suppressWarnings(gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = dat_bin, family = fam_bin, trait = "trait", unit = "unit",
+      silent = TRUE
+    )),
+    "Single-trial binomial traits g"
+  )
+
+  expect_message(
+    suppressWarnings(gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = sim$data, family = .xfam_fam(), trait = "trait", unit = "unit",
+      silent = TRUE
+    )),
+    "For multinomial contrast traits cat:2, cat:3"
+  )
+})
+
+test_that("auto-Psi fit path classifies binomial and multinomial traits", {
+  skip_on_cran(); skip_if_not_installed("MASS")
+  sim <- .build_xfam_raw(13L, N = 120L, reps = 3L)
+  dat <- sim$data
+  is_g <- dat$family == "g"
+  dat$value[is_g] <- as.integer(dat$value[is_g] > stats::median(dat$value[is_g]))
+  dat$family <- factor(ifelse(is_g, "b", "m"), levels = c("b", "m"))
+  fam <- list(b = binomial(), m = multinomial())
+  attr(fam, "family_var") <- "family"
+  withr::local_options(rlib_message_verbosity = "verbose")
+  fit <- NULL
+  expect_message(
+    fit <- suppressWarnings(gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = dat, family = fam, trait = "trait", unit = "unit", silent = TRUE
+    )),
+    regexp = paste0(
+      "Single-trial binomial traits g.*",
+      "For multinomial contrast traits cat:2, cat:3.*",
+      "rejects explicit multinomial"
+    )
+  )
+  expect_s3_class(fit, "gllvmTMB_multi")
+})
+
 test_that("mixed multinomial + gaussian sharing a latent factor fits and auto-expands (item 2a-ii)", {
   skip_on_cran(); skip_if_not_installed("MASS")
   sim <- .build_xfam_raw(1L, N = 300L, reps = 5L)

@@ -190,27 +190,40 @@ truth for whether a family is `covered`, `partial`, or `blocked`.
 
 ### Unordered categorical (multinomial) families
 
-**Status:** in progress, **fixed-effects-only** (Design 83). Admitted for
-fixed-effect recovery of a single unordered categorical trait via
-baseline-category logit / softmax (runtime id 16). Latent / random structure is
-**N/A by design** — a multinomial trait maps to $K-1$ non-comparable
-baseline-category linear predictors, so it contributes $K-1$ latent liabilities,
-not one; the GLLVM latent machinery induces **one** interpretable residual
-covariance $\Sigma$ per trait, so there is no single latent-residual scale on
-which a trait×trait correlation is defined for a nominal response. This is the
-same single-latent-scale boundary Design 62 records for delta/hurdle, generalised
-from 2 scales to $K-1$.
+**Current status (2026-07-21; supersedes the historical Tier-1-only wording in
+Design 83).** Fixed-effect recovery for one unordered categorical trait is
+**covered** (FAM-20). Two deliberately narrow Tier-2 routes are **partial**:
+`phylo_latent()` reports the $(K-1)\times(K-1)$ among-category phylogenetic
+covariance $V$, and an ordinary shared `latent()` block may connect one
+multinomial trait to other families through its $K-1$ contrast pseudo-traits.
+Neither route turns the nominal response into one scalar correlation: reporting
+keeps the contrast block explicit. The phylogenetic V route is data-hungry; the
+ordinary cross-family route permits one multinomial trait per fit and rejects
+unsupported tiers before TMB construction.
+
+The softmax link residual is the fixed matrix $(\pi^2/6)(I+J)$ on each contrast
+block and is applied at extraction time by
+`extract_Sigma(..., link_residual = "auto")`; it is not a fitted phylogenetic
+diagonal. For the ordinary FAM-20B route, `latent()` may retain its default
+`Psi` for identified partner traits, but the current engine maps off the
+multinomial contrast diagonal. That term is not identified with one categorical
+draw per unit; replication can identify it in principle, but the current
+conservative implementation still suppresses it. An explicit multinomial
+`unique()` or `indep()` term remains fenced. Point extraction and
+target-specific Wald/bootstrap plumbing belong to FAM-20B only; their interval
+calibration is not covered and nonlinear profile requests are withdrawn with a
+typed refusal.
 
 | Family | R constructor | `dpars` | Links | Bounds | Status |
 |--------|---------------|---------|-------|--------|--------|
-| Multinomial | `multinomial()` | `mu` ($K-1$ baseline-category linear predictors) | baseline-category logit (softmax) | $\{1, \ldots, K\}$ unordered categories | in-progress, fixed-effects-only (Design 83) |
+| Multinomial | `multinomial()` | `mu` ($K-1$ baseline-category linear predictors) | baseline-category logit (softmax) | $\{1, \ldots, K\}$ unordered categories | covered fixed-effect route; partial, fenced phylogenetic and ordinary shared-latent routes (Designs 83--84) |
 
-**Scope note (maintainer, Design 83).** Tier 1 admits fixed-effect recovery only;
-`latent()` / `unique()` / `indep()` / `dep()` / `phylo_*` / `spatial_*` / slope /
-cluster terms on a multinomial trait fail loud. The $K-1$-dimensional latent-scale
-correlation surface is **Tier 2, deferred** (open derivation, not a validation
-task) — reversible only by first defining a principled per-category or
-stacked-liability reporting convention. Name: `multinomial()` (not
+**Historical scope note (Design 83, superseded 2026-07-21).** This originally
+admitted fixed-effect recovery only. The current allow-list is the one stated
+above: fixed effects, a narrow `phylo_latent()` V route, and a narrow ordinary
+shared-`latent()` cross-family route. `dep()`, explicit multinomial
+`unique()`/`indep()`, slopes, spatial/animal/kernel tiers, and all other
+unlisted combinations still fail loud. Name: `multinomial()` (not
 `categorical()`, which is the unordered missing-**predictor** imputation family,
 Design 68). Julia parity is a separate later arc.
 
@@ -397,8 +410,8 @@ NOT in the registry today:
 - `R/families.R` (or per-family `R/family-*.R`) — the constructor
   functions named in the tables above.
 - `docs/design/83-multinomial-response-family.md` — baseline-category logit /
-  softmax response family; Tier 1 fixed-effects-only scope and the Tier 2
-  latent-correlation deferral.
+  softmax response family; historical Tier-1 decision record and the current,
+  bounded Tier-2 allow-list.
 - AGENTS.md Design Rules #1 and #4 — bind family-addition and
   likelihood-parameterisation changes to this registry.
 
@@ -419,10 +432,10 @@ NOT in the registry today:
   (AGENTS.md Rule #1).
 - **Jason** scouts new families against the published literature
   (is this family novel or replicating existing software?).
-- **Rose** audits the public scope statements ("nbinom2 is
-  `claimed`; truncated_nbinom1 / mixture / gengamma constructors are
-  blocked constructor-only; multinomial is in progress, fixed-effects-only per
-  Design 83 — its $K-1$-dimensional latent-scale correlation surface is Tier 2,
-  deferred and must never be advertised") for honesty.
+- **Rose** audits the public scope statements (for example: nbinom2 is
+  `claimed`; truncated_nbinom1 / mixture / gengamma constructors are blocked
+  constructor-only; multinomial fixed-effect recovery is FAM-20 `covered`,
+  while FAM-20A/FAM-20B are narrow `partial` routes and every unlisted
+  categorical covariance surface remains blocked) for honesty.
 - **Ada** ratifies the per-family status when Phase 0B verifies
   evidence.

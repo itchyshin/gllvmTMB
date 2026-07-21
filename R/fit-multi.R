@@ -8,6 +8,53 @@
   )
 }
 
+.auto_psi_skip_message <- function(binomial_labs = character(),
+                                   multinomial_labs = character()) {
+  affected <- c(binomial_labs, multinomial_labs)
+  n_affected <- length(affected)
+  noun <- if (n_affected == 1L) "trait" else "traits"
+  msg <- c(
+    "i" = sprintf(
+      "Skipping the default between-unit {.field Psi} for %d binary / categorical-contrast %s under the family-specific identifiability gate.",
+      n_affected, noun
+    ),
+    "i" = sprintf("Affected %s: %s.", noun, paste(affected, collapse = ", "))
+  )
+  if (length(binomial_labs) > 0L) {
+    msg <- c(msg,
+      "i" = sprintf(
+        "Single-trial binomial traits %s have one 0/1 trial per (trait, unit) cell. Multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) can identify the diagonal; an explicit {.fn indep} term is a separate deliberate model choice.",
+        paste(binomial_labs, collapse = ", ")
+      )
+    )
+  }
+  if (length(multinomial_labs) > 0L) {
+    msg <- c(msg,
+      "i" = sprintf(
+        "For multinomial contrast traits %s, replication can identify a contrast-specific diagonal in principle, but the current engine conservatively maps it off and rejects explicit multinomial {.fn unique}/{.fn indep} terms. Use the shared {.fn latent} block for admitted cross-family covariance.",
+        paste(multinomial_labs, collapse = ", ")
+      )
+    )
+  }
+  c(msg,
+    "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off."
+  )
+}
+
+.auto_psi_skip_frequency_id <- function(binomial_labs = character(),
+                                        multinomial_labs = character()) {
+  has_binomial <- length(binomial_labs) > 0L
+  has_multinomial <- length(multinomial_labs) > 0L
+  suffix <- if (has_binomial && has_multinomial) {
+    "binomial-multinomial"
+  } else if (has_multinomial) {
+    "multinomial"
+  } else {
+    "binomial"
+  }
+  paste0("gllvmTMB-psi-skip-", suffix)
+}
+
 .kernel_overlap_diagnostics <- function(K_array, names) {
   n_tiers <- dim(K_array)[1L]
   sim <- diag(1, n_tiers)
@@ -1805,13 +1852,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     .mn_env <- environment()
     .mn_allowed_tiers <- c("use_phylo_rr", "use_rr_B", "use_lv_B")
     ## The DEFAULT between-unit auto-Psi -- latent(unique = TRUE), the ordinary
-    ## default -- is allowed: a multinomial's one-hot contrast pseudo-traits
-    ## auto-suppress their between-unit Psi (unidentified; Link Residual
-    ## Contract, design 02), while identified partners (Gaussian sigma^2,
-    ## overdispersed-Poisson OLRE) keep theirs. So `unique = TRUE` works out of
-    ## the box for cross-family correlations. An EXPLICIT unique()/indep()
-    ## diagonal (use_diag_B with auto_psi_B = FALSE) stays fenced -- it would
-    ## leave the contrast Psi free and non-identified.
+    ## default -- is allowed: the current engine auto-suppresses multinomial
+    ## contrast Psi while identified partners (Gaussian sigma^2,
+    ## overdispersed-Poisson OLRE) keep theirs. Replication could identify a
+    ## contrast-specific diagonal in principle, but that wider route is not
+    ## admitted in 0.6. So `unique = TRUE` works out of the box for cross-family
+    ## correlations, while an EXPLICIT unique()/indep() diagonal
+    ## (use_diag_B with auto_psi_B = FALSE) stays fenced.
     if (isTRUE(auto_psi_B)) .mn_allowed_tiers <- c(.mn_allowed_tiers, "use_diag_B")
     .mn_non_tier      <- c("use_equalto", "use_propto")
     .mn_use_flags <- setdiff(ls(envir = .mn_env, pattern = "^use_"),
@@ -1822,7 +1869,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn multinomial} supports fixed effects, {.fn phylo_latent}, and a shared {.fn latent} ordination in this release.",
         "x" = "An unsupported latent / random-effect / structured term was combined with a categorical (multinomial) response.",
-        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical trait's between-unit Psi auto-suppresses), or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface. An explicit {.fn unique}/{.fn indep} diagonal on a categorical trait is not identified and stays fenced.",
+        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off), or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface. Replication could identify a contrast-specific diagonal in principle, but an explicit multinomial {.fn unique}/{.fn indep} term is not admitted in this release.",
         ">" = "Other latent-scale structures on categorical responses are deferred (Design 84, Tier 2b+)."
       ))
     }
@@ -4431,14 +4478,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       rows_t <- which(trait_id == (t - 1L))
       if (length(rows_t) == 0L) return(FALSE)
       ## Single-trial Bernoulli: no within-cell information for a between-unit
-      ## Psi. Multinomial (fid 16): each baseline-contrast pseudo-trait is a
-      ## one-hot 0/1 per row, so its between-unit Psi is unidentified for the
-      ## same reason -- the softmax link's implicit scale (the fixed
-      ## (pi^2/6)(I+J) residual) IS the residual. Per the Link Residual Contract
-      ## (design 02, restated 2026-07-05) a categorical trait's observation-level
-      ## unique variance is 0; auto-drop the default between-unit Psi so
-      ## unique = TRUE works out of the box (the shared factor still carries the
-      ## cross-family covariance, and identified traits keep their Psi).
+      ## Psi. Multinomial (fid 16): one categorical draw per unit has the same
+      ## problem, while replication could identify a contrast-specific diagonal
+      ## in principle. The current engine deliberately keeps the narrower 0.6
+      ## contract and maps that diagonal off for every multinomial contrast;
+      ## explicit multinomial unique()/indep() remains fenced. This lets default
+      ## unique = TRUE work for the admitted shared-latent route while identified
+      ## partner traits keep their Psi and the fixed softmax link residual remains
+      ## a separate extraction-time quantity.
       isTRUE(all(family_id_vec[rows_t] == 1L) && all(n_trials[rows_t] == 1)) ||
         isTRUE(all(family_id_vec[rows_t] == 16L))
     }, logical(1))
@@ -4467,14 +4514,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       keep <- !is.na(sB_map)
       sB_map[keep] <- seq_len(sum(keep))
       tmb_map$s_B <- factor(as.integer(sB_map))
-      psi_skipped_labs <- levels(data[[trait]])[skip_psi_b_t]
-      n_psi_skip <- length(psi_skipped_labs)
-      cli::cli_inform(c(
-        "i" = "Skipping the default between-unit {.field Psi} for {n_psi_skip} single-trial binary / categorical-contrast trait{?s}: it is unidentified when each (trait, unit) cell is a single 0/1 (the link's implicit scale is the residual).",
-        "i" = "Trait{?s} affected: {.val {psi_skipped_labs}}.",
-        "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off. Pass multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) to recover identifiability, or add an explicit {.fn indep} term."
+      skipped_idx <- which(skip_psi_b_t)
+      skipped_is_multinomial <- vapply(skipped_idx, function(t) {
+        rows_t <- which(trait_id == (t - 1L))
+        isTRUE(length(rows_t) > 0L && all(family_id_vec[rows_t] == 16L))
+      }, logical(1))
+      skipped_labs <- levels(data[[trait]])[skipped_idx]
+      binomial_labs <- skipped_labs[!skipped_is_multinomial]
+      multinomial_labs <- skipped_labs[skipped_is_multinomial]
+      cli::cli_inform(.auto_psi_skip_message(
+        binomial_labs = binomial_labs,
+        multinomial_labs = multinomial_labs
       ), .frequency = "once",
-         .frequency_id = "gllvmTMB-psi-skip-single-trial-binary")
+         .frequency_id = .auto_psi_skip_frequency_id(
+           binomial_labs = binomial_labs,
+           multinomial_labs = multinomial_labs
+         ))
     }
   }
 

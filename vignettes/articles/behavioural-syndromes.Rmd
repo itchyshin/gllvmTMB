@@ -384,15 +384,14 @@ rank- and rotation-dependent.
 
 ## Recover repeatability
 
-`extract_repeatability()` currently requires an interval method. We request
-the Wald route explicitly but display only its point estimate because this
-article does not establish interval calibration.
+`extract_repeatability()` uses the Wald route by default. We display only its
+point estimate because this article does not establish interval calibration.
+A request for `method = "profile"` stops rather than silently substituting a
+Wald interval; use `method = "bootstrap"` only when its refit-based limitations
+are appropriate for the analysis.
 
 ```{r repeatability}
-repeatability <- extract_repeatability(
-  fit_long,
-  method = "wald"
-)
+repeatability <- extract_repeatability(fit_long)
 
 repeatability_comparison <- data.frame(
   trait = repeatability$trait,
@@ -426,7 +425,7 @@ point repeatability. The example does not:
 - choose the ranks;
 - separate short-term biology from measurement error inside \(\Sigma_W\);
 - give rotation-invariant biological names to latent axes;
-- calibrate Wald, profile, or bootstrap intervals; or
+- calibrate the available Wald or bootstrap intervals; or
 - estimate context-dependent slopes.
 
 Move to a random-regression model only when the data contain a measured

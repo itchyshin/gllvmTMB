@@ -1,7 +1,29 @@
 # Design 84 — Phylogenetic multinomial GLMM (multinomial Tier 2a)
 
-**Status date:** 2026-07-17. **Status:** design draft (no code). Successor scope to Design 83
-(the shipped fixed-effects-only `multinomial()`, FAM-20, `covered`).
+**Status date:** 2026-07-21. **Historical status (2026-07-17):** design draft
+(no code). The historical proposal is retained below. **Current 0.6 status:**
+the narrow `phylo_latent()` multinomial route is implemented and **partial**.
+`extract_Sigma(..., level = "phy", part = "shared", link_residual = "none")`
+reports the fitted $(K-1)\times(K-1)$ among-category phylogenetic covariance $V$.
+It is data-hungry, especially with one observation per species, and is not a
+universal recovery or interval claim. The matrix softmax link residual
+$(\pi^2/6)(I+J)$ is added only by the separate total extraction with
+`link_residual = "auto"`; it is not part of fitted $V$.
+This document remains the successor scope to Design 83 (whose fixed-effect
+FAM-20 route is `covered`).
+
+**Related current partial route (not phylogenetic):** one multinomial trait may
+share ordinary `latent()` factors with other response families. Its $K-1$
+baseline-contrast block is reported explicitly; it is not collapsed to one
+categorical correlation. Default ordinary `Psi` is allowed for identified
+partner traits while the current engine maps off the multinomial contrast
+diagonal. That term is unidentified with one categorical draw per unit and
+identifiable in principle under replication, but the current implementation
+still suppresses it. Explicit multinomial `unique()`/`indep()` terms and
+unlisted tiers remain fail-closed. FAM-20B Wald/bootstrap plumbing is
+uncalibrated; nonlinear profile requests are withdrawn and typed-refusal tested
+in `tests/testthat/test-cross-family-intervals.R`. These interval statements do
+not describe the phylogenetic FAM-20A route.
 **Provenance:** grounded lit check — brain note
 `mizuno-et-al.-2025-phylogenetic-multinomial-glmm-jeb` + a NotebookLM deep-research pass (100
 sources, anchored on the Mizuno et al. 2025 preprint):
@@ -46,7 +68,7 @@ Mizuno et al. 2025 argues *against* exactly these simplifications. So the earlie
 (K−1 continuation-ratio binomials fed to the existing binary machinery) is **retired** — it is not
 the multinomial for unordered traits.
 
-## 3. Identification — the one hard requirement
+## 3. Historical identification requirement and shipped resolution
 
 The multinomial logit is non-identified in **location** (softmax shift; solved by the reference
 pin, already done in Design 83) **and scale** (the latent residual variance is not identified from
@@ -58,28 +80,35 @@ fixed**:
 - G-structure (\(V\otimes A\), the phylogenetic effect) vs R-structure (residual \(\Sigma_r\otimes I\))
   is the standard split.
 
-**Implication for a TMB build:** we must **fix the latent-scale residual by convention** (not
-estimate it), or the Laplace/ML optimisation will fail to identify the scale. This is the load-
-bearing design decision.
+**Shipped resolution:** the TMB route fixes the softmax residual scale by
+convention rather than estimating it. Section 4 records the implemented split:
+the fitted phylogenetic component is loadings-only, while the fixed
+$(\pi^2/6)(I+J)$ softmax residual is added only when observation-scale
+extraction is requested. No pending residual-variance implementation is implied
+by this historical rationale.
 
 ## 4. The gllvmTMB-native route — a phylogenetic *factor* model (this is the good news)
 
-Full \(V\otimes A\) is \(O(m^2)\)-costly and \(V\) grows with K. The scalable state of the art is a
-**phylogenetic factor model** — and it is **exactly gllvmTMB's native decomposition**:
+Full \(V\otimes A\) is \(O(m^2)\)-costly and \(V\) grows with K. The shipped
+FAM-20A route is a **loadings-only phylogenetic factor model**:
 \[
 \eta_{ij} = X_i\beta_j + z_i^{\top}\lambda_j, \qquad
-V \approx \Lambda\Lambda^{\top} + \operatorname{diag}(\psi),
+V_{\mathrm{phy}} = \Lambda_{\mathrm{phy}}\Lambda_{\mathrm{phy}}^{\top},
 \]
 with \(z_i\) a **low-dimensional (\(d \ll K-1\)) phylogenetically-structured latent factor** and
-\(\lambda_j\) **category-specific loadings**. That is `Sigma = Lambda Lambda^T + diag(psi)` under a
-phylogenetic latent — i.e. `phylo_latent()` — applied to the K−1 category-contrast pseudo-traits.
+\(\lambda_j\) **category-specific loadings**. Source-specific `phylo_latent()`
+is loadings-only by default, and the admitted multinomial route does not fit a
+free phylogenetic diagonal `Psi`. When
+`extract_Sigma(..., level = "phy", link_residual = "auto")` is requested, the
+fixed softmax residual $(\pi^2/6)(I+J)$ is added at extraction time; it is not
+part of $V_{\mathrm{phy}}$ and is not an estimated variance component.
 
 So the dimensional mismatch Design 83 flagged (a categorical trait wants K−1 latent dimensions, but
 the Σ machinery assumes one per trait) is **resolved by the factor decomposition**: each category
 contrast is a loading row on shared low-rank phylogenetic factors. gllvmTMB is unusually well-placed
 here because reduced-rank latent factors + sparse-\(A^{-1}\) phylogeny + AD/Laplace are its core.
 
-## 5. What it would take to build (blueprint)
+## 5. Historical implementation blueprint (partly superseded)
 
 1. **Likelihood:** the fid-16 grouped baseline-category softmax **already exists** (Design 83) and
    is the correct base — this is why building `multinomial()` was the right first step, not a regret.
@@ -88,9 +117,13 @@ here because reduced-rank latent factors + sparse-\(A^{-1}\) phylogeny + AD/Lapl
    \(z_i\), with the phylogenetic precision on \(z_i\) (reuse the existing sparse \(A^{-1}\) engine).
 3. **Scale anchorage:** fix the latent-scale residual by convention (§3) — the key identification
    step; expose/enforce it rather than estimate it.
-4. **Reporting:** `extract_correlations()` / `extract_Sigma()` would then return the reduced-rank
-   \(V \approx \Lambda\Lambda^\top + \operatorname{diag}(\psi)\) among category liabilities (and its
-   phylogenetic version) — the table the fence currently declines.
+4. **Reporting (implemented boundary):**
+   `extract_Sigma(..., level = "phy", part = "shared", link_residual = "none")`
+   returns the loadings-only fitted covariance
+   \(V_{\mathrm{phy}} = \Lambda_{\mathrm{phy}}\Lambda_{\mathrm{phy}}^\top\).
+   The admitted multinomial route fits no free phylogenetic diagonal
+   \(\Psi_{\mathrm{phy}}\). The separate default total/`"auto"` output adds the
+   fixed softmax residual \((\pi^2/6)(I+J)\).
 5. **Validation target:** recover a known \(V\) (and phylo signal) from simulation; cross-check
    against MCMCglmm `categorical` + `ginverse` and brms `categorical` + `gr(cov=A)` on a shared toy
    dataset. Mizuno et al. 2025 is the methods reference.
@@ -98,15 +131,21 @@ here because reduced-rank latent factors + sparse-\(A^{-1}\) phylogeny + AD/Lapl
 **Obstruction + resolution:** the phylo-covariance inversion — resolved by the sparse \(A^{-1}\)
 route (already in gllvmTMB) + AD/Laplace; VA + NNGP is the scaling frontier if needed later.
 
-## 6. Scope boundaries
+## 6. Current scope boundaries
 
-- This is a **new modelling arc** (random effects on a categorical trait), a Discussion-Checkpoint
-  likelihood change — not a doc tweak. Design + maintainer sign-off before code.
-- The shipped fixed-effects `multinomial()` (Design 83) stays the default fixed-effects interface;
-  this adds the RE/phylo tier on top. Complementary, not a replacement.
-- Julia parity is a later arc.
+- **IN:** fixed-effect FAM-20 recovery; the partial `phylo_latent()` V route;
+  and the separate partial ordinary shared-`latent()` cross-family route, each
+  with one multinomial trait per fit.
+- **PARTIAL:** FAM-20A phylogenetic V recovery requires replication or large
+  samples and currently supports no interval-coverage claim. Separately,
+  FAM-20B cross-family Wald/bootstrap summaries are route-only and
+  uncalibrated; they are not evidence for phylogenetic V intervals.
+- **PLANNED/BLOCKED:** a universal categorical covariance or correlation,
+  augmented slopes, explicit multinomial `unique()`/`indep()`, unlisted
+  structured tiers, multiple multinomial traits, Julia parity, and nonlinear
+  profile intervals. The last is withdrawn, not an available prototype.
 
-## 7. Open decisions for the maintainer
+## 7. Historical open decisions for the maintainer
 
 1. Which residual-scale convention to fix (identity vs the 0.5/0.25 base-category-differencing form)
    and whether to expose it.

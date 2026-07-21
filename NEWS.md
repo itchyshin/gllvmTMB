@@ -27,24 +27,41 @@ required for the main workflow.
   with three or more categories (baseline-category logit / softmax). It recovers the
   per-category intercepts and slopes as contrasts against a reference category, and
   `predict(type = "response")` returns per-category probabilities. Use
-  `multinomial(baseline = ...)` to choose the reference category. Fixed effects and
-  a single `phylo_latent()` term are supported; every other latent / random-effect
-  tier on a multinomial trait fails loud, and a *cross-trait* correlation with a
-  categorical response is still undefined (it spans several liability dimensions), so
-  `extract_correlations()` / `extract_Sigma()` decline a fixed-effects-only
-  multinomial fit. A two-category response is `binomial(link = "logit")`. For
+  `multinomial(baseline = ...)` to choose the reference category. The validation
+  boundary is explicit: fixed-effect recovery is `covered` (FAM-20), while the
+  single `phylo_latent()` route (FAM-20A) and the narrow ordinary
+  shared-`latent()` cross-family route (FAM-20B) are `partial`. The latter reports the nominal
+  trait as its `K - 1` baseline-contrast block rather than inventing one scalar
+  categorical correlation; it permits one multinomial trait per fit and rejects
+  unsupported tiers before TMB construction. Multiple multinomial traits,
+  augmented slopes, explicit multinomial `unique()`/`indep()`, and unlisted
+  source tiers remain blocked. A two-category response is
+  `binomial(link = "logit")`. For
   *ordered* categories use `ordinal_probit()`. See the *Unordered categories with
   `multinomial()`* article for a worked diet-guild example.
-* **`phylo_latent()` on a `multinomial()` trait (Design 84)** reports the
+* **`phylo_latent()` on a `multinomial()` trait (Design 84; FAM-20A `partial`)** reports the
   `(K-1) x (K-1)` among-category phylogenetic covariance V (how the category
-  liabilities coevolve) via `extract_Sigma(fit, level = "phy")`. Two honest caveats:
+  liabilities coevolve) via
+  `extract_Sigma(fit, level = "phy", part = "shared", link_residual = "none")`.
+  The default total/`"auto"` extraction instead reports V plus the fixed softmax
+  residual `(pi^2/6)(I + J)`. Two honest caveats:
   recovery of V is **data-hungry** (it needs per-species replication or large N; a
   single categorical draw per species is weakly informative, so one-per-species point
   estimates are high-variance and can reach the +/-1 boundary), and V is on the
   baseline-**contrast** scale, so a diagonal V is not independence -- the null contrast
   covariance is `(I + J)`-structured (equal diagonal, equal off-diagonal; the
-  observation-scale link residual has the same shape, `(pi^2/6)(I + J)` -- the softmax
-  analog of binomial's `pi^2/3`). Treat it as recovery-oriented.
+  observation-scale link residual is applied as `(pi^2/6)(I + J)` -- the softmax
+  analog of binomial's `pi^2/3`). Treat this phylogenetic V route as
+  recovery-oriented and data-hungry, not universally validated.
+* For the admitted cross-family nominal route (FAM-20B `partial`), ordinary
+  `latent()` keeps its default diagonal companion but the current engine maps
+  off multinomial-contrast `Psi`. That variance is not identified with one
+  categorical draw per unit; replication can identify it in principle, but the
+  current conservative implementation still suppresses it. Explicitly adding
+  `unique()` or `indep()` for those contrasts remains fail-closed. Point
+  extraction and target-specific
+  Wald/bootstrap interval plumbing exist, but their repeated-sampling
+  calibration is not covered. Nonlinear profile intervals are withdrawn.
 * The reader-facing covariance grammar crosses five correlation sources
   (`none`, `animal`, `phylo`, `spatial`, and `kernel`) with three taught modes:
   independent, dependent, and latent. The one-shared-variance ("scalar") case is

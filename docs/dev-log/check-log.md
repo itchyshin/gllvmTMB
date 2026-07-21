@@ -45864,3 +45864,56 @@ Nonclaims:
 - This receipt does not admit Design 86, launch Totoro/DRAC scientific
   compute, add public EVA, merge, freeze an RC, tag, submit to CRAN, or support
   any release/readiness claim.
+
+## 2026-07-21 — M1 public-boundary repair focused receipt and Claude arc-loop handover
+
+Fresh Noether, Rose, and Grace review of the predecessor candidate found four
+load-bearing release-boundary discrepancies: public profile withdrawal did not
+always win validation precedence; cross-family extraction was not fenced to
+the ordinary unit tier and permitted unsafe ordinal-probit `auto`; malformed
+repeatability bootstrap objects lacked typed validation and the help described
+a diagonal-only rather than full-covariance estimand; and multinomial public
+prose conflated fitted phylogenetic covariance with default residual-augmented
+total covariance. The repaired branch also gives binomial, multinomial, and
+combined auto-Psi notices distinct frequency IDs.
+
+Exact focused command:
+
+```sh
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS= OPENBLAS_NUM_THREADS=1 \
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla -e \
+  'devtools::test(filter = "cross-family-intervals|cross-family-multinomial|link-residual-multinomial|profile-ci", stop_on_failure = TRUE)'
+```
+
+Result: PASS in 470.6 seconds; 117 passes, zero failures, zero warnings, and 11
+declared heavy skips from `test-profile-ci.R`. Per-file totals were 30, 42, 24,
+9, and 12 passes for cross-family intervals, cross-family multinomial,
+multinomial link residual, profile CI LV effects, and profile CI respectively.
+
+Additional commands:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgload::run_example("man/extract_cross_correlations.Rd", run_dontrun = TRUE, quiet = TRUE)'
+bash tools/check-actions-boundary.sh
+git diff --check
+```
+
+All passed. Documentation generation changed only
+`man/extract_cross_correlations.Rd` and `man/extract_repeatability.Rd`; the
+generated cross-correlation example ran from this checkout. The Actions guard
+confirmed package-check/docs-only scope with no package-check artifact upload.
+
+The durable L2 continuation kit is `LOOP/GOAL.md`, `LOOP/arcs.md`,
+`LOOP/decision-queue.md`, `LOOP/ultra-plan.md`, and `LOOP/checkpoint.md`.
+It reconciles the intended EVA-in-0.6 scope with the landed Design 85 NO-GO
+and Design 72's sequential fixed-rank-first gates. The next safe arc is the
+complete non-heavy suite, followed by the touched heavy groups, four article
+renders, pkgdown, source-tarball check, and a new exact-SHA platform/D-43 cycle.
+
+Not run on this repaired head: the complete non-heavy or touched-heavy suite,
+article execution, pkgdown, source `--as-cran`, automatic Ubuntu, manual
+three-OS, Ubuntu-heavy, or terminal D-43 gates. Therefore the bounded repair is
+focused PASS but M1 remains IN PROGRESS. No Design 86 implementation,
+Totoro/DRAC scientific job, public EVA admission, merge, candidate freeze,
+version, tag, submission, or readiness/release claim is authorised or made.

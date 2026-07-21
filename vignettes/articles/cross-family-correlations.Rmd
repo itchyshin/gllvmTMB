@@ -1,6 +1,6 @@
 ---
 title: "Cross-family trait correlations, including nominal responses"
-description: "Put a Gaussian, binary, count, ordinal, and nominal trait on one shared latent factor, recover their cross-family correlations, and read the reference-invariant summary for the categorical trait."
+description: "Fit the partial ordinary-unit FAM-20B route, recover latent correlations across five response families, and compute the reference-invariant nominal summary on its admitted non-ordinal partner set."
 tier: 2 # worked demonstration of the multi-family latent factor and the 2C nominal summary
 output:
   rmarkdown::html_vignette:
@@ -33,10 +33,14 @@ class. The question this article answers is narrow and concrete: can a
 shared latent factor** in a single `gllvmTMB()` fit, and can the model report
 the correlations *between* those families — including the categorical one?
 
-The answer is yes, with caveats that matter, and this page shows both. It is a
-young capability (0.6), demonstrated on a single powered simulation. Read the
-recovered numbers as evidence that the estimator tracks the truth in a favourable
-regime, not as calibrated intervals.
+This page covers only the **partial FAM-20B ordinary-unit route**: one
+`multinomial()` trait and its non-nominal partners share
+`latent(0 + trait | unit, d)`. A single powered simulation demonstrates point
+recovery on that route. It does not admit multiple nominal traits, structured
+tiers, augmented slopes, or calibrated intervals. The five-family latent
+covariance is valid, but the one-number observation-scale nominal summary is
+shown on a non-ordinal subset because the current automatic residual convention
+is not coherent for an ordinal-probit partner.
 
 ## Why put different families on one latent scale
 
@@ -81,13 +85,13 @@ quantity to report.
 by default (`unique = TRUE`), so the full tier covariance is
 $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$
 — $\boldsymbol\Psi$ is the variance each trait has among units *beyond* the
-shared factor. For the nominal trait — exactly like a binary trait — each
-contrast is a single 0/1 per observation, so its between-unit $\boldsymbol\Psi$
-is *not identified*, and the engine auto-suppresses it (the softmax's own fixed
-link residual is the residual; see the caveats). Identified partners (Gaussian,
-overdispersed Poisson) keep their $\boldsymbol\Psi$, so the default
-`unique = TRUE` works out of the box; the cross-family correlations live in
-$\boldsymbol\Lambda\boldsymbol\Lambda^\top$ either way.
+shared factor. For a nominal contrast with one categorical draw per unit, the
+corresponding between-unit $\boldsymbol\Psi$ is not identified. Replication can
+identify that variance in principle, but the current engine conservatively maps
+it off even for the replicated design used here. Admitted partner traits retain
+their fitted diagonal companion where the model identifies it, so default
+`unique = TRUE` still works out of the box; the cross-family correlations
+assessed below live in $\boldsymbol\Lambda\boldsymbol\Lambda^\top$.
 
 ## A five-family worked example
 
@@ -252,48 +256,66 @@ depend on which category was chosen as the reference. That is what
 **reference-invariant multiple correlation** between the categorical trait and
 each single-scale partner, optionally with the underlying $(K-1)$-vector.
 
+The five-family fit contains an ordinal-probit partner. Its threshold model
+already fixes the latent residual at one, so an `"auto"` summary would add that
+unit residual a second time. `extract_cross_correlations()` therefore refuses
+that combination rather than attenuating the reported association. We retain
+the valid five-family latent-covariance result above, then refit the same data
+without the ordinal trait for the observation-scale one-number summary.
+
 ```{r cross-cor}
-xc <- extract_cross_correlations(fit, level = "unit", link_residual = "auto")
+ordinal_refusal <- tryCatch(
+  extract_cross_correlations(fit, level = "unit", link_residual = "auto"),
+  error = conditionMessage
+)
+ordinal_refusal
+
+dat_summary <- droplevels(dat[dat$trait != "o", ])
+family_summary <- family[c("g", "b", "p", "m")]
+attr(family_summary, "family_var") <- "family"
+
+fit_summary <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 3),
+  data   = dat_summary,
+  family = family_summary,
+  trait  = "trait",
+  unit   = "unit",
+  silent = TRUE
+)
+
+xc <- extract_cross_correlations(
+  fit_summary, level = "unit", link_residual = "auto"
+)
 xc
 ```
 
-The single-number summary is reported on the **observation scale**, via the
-softmax link residual. This is the deliberate default, and the reason is in the
-next section.
+The single-number summary is reported on the **observation scale**. The
+`"auto"` route adds the applicable family-specific residual for each admitted
+partner and the full softmax residual matrix for the nominal block. This is the
+deliberate default, and the reason is in the next section.
 
 ## Honest caveats
 
 These are limits of the capability as it stands at 0.6, not incidental notes.
 
-- **Two different $\boldsymbol\Psi$'s — do not conflate them.** The package uses
-  the contract $\boldsymbol\Psi = \text{unique} + \text{link-specific}$, and for
-  almost every family exactly one term is non-zero (Gaussian: an estimated
-  `unique`; binary / ordinal / Poisson / **multinomial**: a fixed `link-specific`
-  residual). There are then two distinct objects:
-  (i) the **between-unit** $\boldsymbol\Psi$ inside `latent()` — an estimated
-  among-unit random-effect variance; and
-  (ii) the **observation-scale** link residual $(\pi^2/6)(\mathbf I+\mathbf J)$
-  used to put the nominal block on a common scale.
-  For the nominal trait the *between-unit* $\boldsymbol\Psi$ is auto-suppressed
-  by `unique = TRUE` (the default): with one categorical draw per (contrast,
-  unit) cell it is genuinely **not identified** — the softmax link's own scale is
-  the residual, exactly as for single-trial binary — so the engine maps it off
-  and reports which contrasts were affected. The identified partners (Gaussian
-  $\sigma^2$, overdispersed-Poisson OLRE) keep their $\boldsymbol\Psi$. Honest
-  scope: under a *replicated* categorical design that contrast $\boldsymbol\Psi$
-  is identifiable in principle (a per-contrast random-intercept variance), yet
-  the current engine still suppresses it — folding contrast-specific unit
-  heterogeneity into the shared factor and the fixed link residual. That is a
-  deliberate, conservative simplification (unlike multi-trial binomial, which
-  keeps its $\boldsymbol\Psi$ once `cbind(successes, failures)` identifies it); a
-  replication-aware refinement is future work. Either way the pairwise latent
-  correlations (the matrix) are the recovered quantities. See
+- **Fitted $\boldsymbol\Psi$ and the fixed link residual are different objects.**
+  The **between-unit** $\boldsymbol\Psi$ inside `latent()` is an estimated
+  among-unit diagonal companion. The extractor's $R_{\mathrm{link}}$ is a
+  separate family-specific observation-scale addition; for the nominal block it
+  is $(\pi^2/6)(\mathbf I+\mathbf J)$. With one categorical draw per unit the
+  nominal contrast $\boldsymbol\Psi$ is not identified. Replication can identify
+  it in principle, but the current engine conservatively maps it off even in the
+  replicated design here; admitted partner diagonals remain fitted where the
+  model identifies them. A replication-aware multinomial refinement is future
+  work. Either way the pairwise latent correlations (the matrix) are the
+  recovered quantities. See
   [the vocabulary of $\boldsymbol\Psi$](gllvm-vocabulary.html) and
   [covariance and correlation](covariance-correlation.html).
 
-- **The single-number summary belongs on the observation scale.** The
-  reference-invariant multiple correlation is computed on the observation scale
-  using the softmax's link residual $(\pi^2/6)(\mathbf I + \mathbf J)$ — the
+- **The single-number summary belongs on the observation scale.** For an
+  admitted non-ordinal partner set, the reference-invariant multiple correlation
+  uses each applicable family-specific residual and the softmax residual
+  $(\pi^2/6)(\mathbf I + \mathbf J)$ — the
   covariance of the differenced Gumbel errors in the random-utility
   representation of the softmax (McFadden 1974), which reduces to the binomial's
   $\pi^2/3$ when $K = 2$. On the **latent** scale (`link_residual = "none"`) the
@@ -301,7 +323,9 @@ These are limits of the capability as it stands at 0.6, not incidental notes.
   spans the partner, because a $(K-1)$-dimensional block can align with almost
   any single direction. That is why the observation scale is the sensible default
   for the one-number summary, while the per-pair latent correlations remain the
-  right object for the matrix.
+  right object for the matrix. Ordinal-probit is not admitted on this automatic
+  summary route because its residual is already fixed by the threshold model;
+  the typed refusal above prevents double counting.
 
 - **Recovering a nominal trait's covariance is data-hungry.** A single
   categorical draw carries little information about a $(K-1)$-dimensional

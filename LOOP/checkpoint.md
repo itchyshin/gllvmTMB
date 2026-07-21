@@ -51,6 +51,71 @@ standard error and **0 NaN estimates**. The asserted quantity survives (gap 0.07
 **0.7 must budget for this: repairing the gate will likely make the cell SKIP, moving
 SPA-02(nbinom2) from covered back toward partial.**
 
+## 🌙 OVERNIGHT RUN IN PROGRESS (2026-07-21 → 05:00 2026-07-22)
+
+Maintainer away until 05:00 and has authorised the lane to keep running. **CI authorisation
+is RESTORED** (`LOOP/GOAL.md` Amendment 2) — push, Ubuntu, heavy, and the three-OS matrix are
+approved. Nothing irreversible: **no merge, no tag, no submission, no readiness claim.**
+
+**Current head `037e64f1`.** Source is identical to the pushed `59da7505`; the only diff is a
+`docs/dev-log/` file that `.Rbuildignore` excludes from the tarball, so CI's verdict at
+`59da7505` describes this source too (same reasoning already recorded for `310cbaab`).
+
+### ⚠️ A REGRESSION WAS SHIPPED AND CAUGHT THIS EVENING — read this before trusting any claim
+
+R-10 removed the internal token `C1-partial` from `.augmented_slope_family_scope_text()`.
+**`test-augmented-slope-family-policy.R:80` asserted on exactly that token.** Result: `R CMD
+check` `Status: 1 ERROR`, and Ubuntu CI run `29875507222` **failed** on `1e14e3e0`.
+
+**Worse, the failure was reported as a pass.** The suite log was grepped for `── Failure` /
+`^Failure (` — not how the `summary` reporter formats failures — and no `[ FAIL … ]` summary
+line existed either. Zero matches was read as clean, and a commit was made on it. That is
+*never the exit code, never a negative grep* broken **inside the step meant to enforce it**.
+
+**Method fix now in force:** verify from **structured results only** —
+`as.data.frame(<testthat result>)` counts, or the runner's `M1_FINAL_RECEIPT_CHECK_*` fields.
+**A missing or unparseable field is a failure of verification, not a pass.**
+
+Fixed at `59da7505` (assertion now tracks the plain-English wording). Full detail:
+`docs/dev-log/after-task/2026-07-21-m1-third-reader-surface-sweep.md` §5b.
+
+### 🧹 OPEN HOUSEKEEPING — `vignettes/` render detritus (needs a human hand)
+
+`pkgdown::build_articles()` left **four untracked PNGs in `vignettes/`** —
+`cor-matrix-1.png`, `cor-plot-1.png`, `ord-1.png`, `residual-qq-1.png`. They carry mtimes of
+`17:47` because the render copied them with dates preserved; the tree was verifiably **clean
+at `037e64f1`** when the durable runners ran, and the render happened after, so the render
+put them there.
+
+- **Never tracked, never committed** (`git ls-files` and `git log` both confirm).
+- **Not covered by `.gitignore`**, so every article render will dirty the tree again.
+- **Untracked files are not pushed**, so CI and the in-flight runs are unaffected, and the
+  `037e64f1` receipts — cut before the render — remain valid.
+- **They DO block future local runner runs**, which require a clean worktree.
+- ⚠️ **No `R CMD check` has ever run with them present.** The CRAN-configuration check
+  preceded the render, so their effect on `R CMD build` (stray files in `vignettes/`, a
+  possible CRAN NOTE) is **untested, not proven harmless.**
+
+**An agent attempt to `rm` them was DENIED by the permission layer, and was not retried.**
+Left in place deliberately. **Recommended:** delete the four files, and add `vignettes/*.png`
+to `.gitignore` so renders stop dirtying the tree. Both are the maintainer's to do.
+
+### Overnight sequence (each step waits on the previous; waiters armed)
+
+1. Ubuntu `29877269563` on the fixed head → verify green.
+2. **After** Ubuntu completes, dispatch `R-CMD-check` with `-f full_matrix=true`. **Never
+   during** — the concurrency group cancels the in-flight run and destroys its receipt.
+   **Assert three OS-named jobs**; silent degradation to Ubuntu-only also goes green.
+3. Re-dispatch `full-check` on the fixed head once the current one finishes. The in-flight
+   one (`29875577778`) was launched on the PRE-FIX head and **is expected to fail** on that
+   same single assertion — that is not a new defect. Its heavy **warning set** is still valid
+   R-7 evidence, because a test-assertion string cannot change which warnings fire.
+4. Article renders (running).
+5. Third D-43 panel once platform evidence exists.
+6. Consolidate + handover.
+
+**M1 STILL CANNOT CLOSE OVERNIGHT — R-11 needs the maintainer's signature.**
+
 ## ⚠️ RECEIPT SHA vs HEAD — read before trusting either
 
 **The durable receipts describe `5d7b6de6`.** This checkpoint update is the FIRST commit

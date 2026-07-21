@@ -45726,3 +45726,141 @@ The repair does not admit EVA, launch scientific compute, merge PR #778,
 freeze an RC, tag, submit, or support a release/readiness claim. A new exact
 head must pass the local package/pkgdown gates and fresh three-OS plus
 Ubuntu-heavy platform gates before M1 can close.
+
+## 2026-07-21 — M1 repaired-head platform receipt and final-head protocol (Codex)
+
+Scope and ownership:
+
+- Root Codex remains the sole writer in
+  `/private/tmp/gllvmtmb-060-m1-builder` on
+  `codex/gllvmtmb-060-m1-baseline-20260720`; draft PR #778 remains the sole
+  open PR.
+- Immediately before this receipt edit, `origin/main` remained at the frozen
+  M1 base, the clean builder and sole remote programme branch both resolved to
+  `9ee0ecd7bf38d71346534f6db6267af4061a9a38`, and no competing recent commit
+  or PR existed.
+- The current census contained 38 registered worktrees. The dirty primary,
+  detached verifier, and every registered worktree other than the isolated
+  builder remained untouched.
+- The terminal receipt inventory contains 76 paths relative to `origin/main`,
+  counting tracked and untracked paths mechanically: 7 added, 15 deleted, and
+  54 modified. The seventh added path is the literal platform-closeout
+  checkpoint; its presence was measured rather than inherited from the
+  pre-checkpoint count.
+
+Retained platform attempts:
+
+1. PR Ubuntu run `29804219087`, predecessor
+   `f4628a8cdda885ee66da6b806923c9c2501f463a`: job `88551360333`
+   PASS from `2026-07-21T05:31:11Z` to `2026-07-21T05:51:34Z`;
+   7,235 passes, 787 skips, one warning. Historical/non-qualifying after
+   repair.
+2. Manual three-OS run `29804302347`, same predecessor:
+   - Ubuntu job `88551611370` PASS from
+     `2026-07-21T05:32:54Z` to `2026-07-21T05:52:53Z`; 7,235 passes,
+     787 skips, one warning.
+   - macOS job `88551611407` PASS from
+     `2026-07-21T05:32:55Z` to `2026-07-21T05:45:27Z`; 7,235 passes,
+     787 skips, one warning.
+   - Windows job `88551611475` **RETAINED FAILURE** from
+     `2026-07-21T05:32:56Z` to `2026-07-21T05:56:01Z`; 7,235 passes,
+     786 skips, one warning, one failure at the bitwise stack-total
+     assertion.
+3. Manual Ubuntu-heavy run `29804303658`, same predecessor: job
+   `88551626899` PASS from `2026-07-21T05:33:01Z` to
+   `2026-07-21T06:40:27Z`; 13,614 passes, 104 skips, 10 warnings.
+   Historical/non-qualifying after repair.
+4. PR Ubuntu run `29806600748`, repaired
+   `9ee0ecd7bf38d71346534f6db6267af4061a9a38`: job `88558325914`
+   PASS from `2026-07-21T06:18:11Z` to `2026-07-21T06:38:34Z`;
+   7,238 passes, 787 skips, one warning.
+5. Manual three-OS run `29806604519`, same repaired head:
+   - Windows job `88558339416` PASS from
+     `2026-07-21T06:18:17Z` to `2026-07-21T06:42:07Z`; 7,239 passes,
+     786 skips, one warning.
+   - Ubuntu job `88558339458` PASS from
+     `2026-07-21T06:18:17Z` to `2026-07-21T06:37:34Z`; 7,238 passes,
+     787 skips, one warning.
+   - macOS job `88558339463` PASS from
+     `2026-07-21T06:18:17Z` to `2026-07-21T06:30:46Z`; 7,238 passes,
+     787 skips, one warning.
+6. Manual Ubuntu-heavy run `29809774107`, same repaired head: job
+   `88568008718` PASS from `2026-07-21T07:15:27Z` to
+   `2026-07-21T08:12:44Z`; `Status: OK`; 13,611 passes, 103 skips,
+   9 classified warnings, 0 failures. This qualifies repaired head
+   `9ee0ecd7bf38d71346534f6db6267af4061a9a38` and becomes predecessor
+   evidence when the receipt-only final head is committed.
+
+Infrastructure event outside the attempt denominator:
+
+- The first safe repaired-head heavy dispatch command exited 1 at
+  `2026-07-21T06:41:13Z` with GitHub HTTP 403 because the authenticated core
+  REST quota was exhausted. The verified reset was
+  `2026-07-21T07:15:00Z`. GitHub created no run, and no existing run was
+  cancelled or overwritten.
+- A one-shot guard waited for the reset, re-proved the clean local head and
+  remote branch SHA, and then created run `29809774107`.
+
+Repaired-head local evidence:
+
+- Targeted plot suite: 250 passes, no failures/errors/warnings/skips.
+- Exact-head standard package check: 0 R CMD errors/warnings/notes; 7,010
+  passes, 809 declared skips, one expected plot warning; 565.6744 seconds.
+- Exact-head pkgdown: PASS.
+- Runner SHA-256:
+  `a0d633ccac8d69b90a4282d87ad6ecce539db923df799fb5bc61903393f2cddd`.
+- Results SHA-256:
+  `c29194ba1536033e9e01ea333f8aadf688df4e996c0f4114758032291e905fa2`.
+- Log SHA-256:
+  `42f98e2c64595da5950779d8f5109e0aa74e3077232284c54e528ed79e5021ac`.
+- Pkgdown log SHA-256:
+  `4cd0200ed0bddccb1561b06b5ffbf716a6ca4f6556abaa1235660aa716d6b3a8`.
+
+Final-head protocol:
+
+- This report/check-log/checkpoint commit becomes the final package source
+  candidate for M1. It invalidates earlier exact-head status without
+  invalidating any historical evidence.
+- Frozen final standard-check runner:
+  `/private/tmp/gllvmtmb-060-m1-final-receipt-head-check-runner.R`,
+  SHA-256
+  `fdee381f0cf7afa9b6cebe1ae0acc8b6ff4d0fbc987456c6e21f8b7a8030720c`.
+- Frozen final pkgdown runner:
+  `/private/tmp/gllvmtmb-060-m1-final-receipt-head-pkgdown-runner.R`,
+  SHA-256
+  `6bc5c7f20a9767f59d69fb11552838c522dcb195fb110b6ca02f722d17b6bb1c`.
+- Byte-identical durable non-Git mirrors now live under
+  `/Users/z3437171/gllvmTMB-0.6-evidence/m1/final-receipt/runners/` as
+  `m1-final-receipt-head-check-runner.R` and
+  `m1-final-receipt-head-pkgdown-runner.R`. A four-file `shasum -a 256`
+  comparison proved each durable mirror equals its reviewed `/private/tmp`
+  source at the recorded hash.
+- Both runners bind the builder path and branch, require a clean tree, capture
+  top-level warnings as failures, record the source SHA/session, and write an
+  immutable SHA-plus-attempt receipt rather than overwriting prior evidence.
+- After this receipt commits locally: run the exact-head local standard package
+  check first and pkgdown check second. Push only after both pass. The PR
+  classifier compares `origin/main...HEAD`, so the complete 76-path PR forces
+  a full automatic Ubuntu package check even though the last commit contains
+  only receipts. Retain and wait for that run, then manually dispatch
+  `R-CMD-check.yaml` with `full_matrix=true` and `full-check.yaml` on the sole
+  branch after proving local and remote SHAs are identical. The automatic
+  Ubuntu run is qualifying additional evidence but does not replace the
+  complete manual three-OS matrix.
+- Do not edit the package repository after the final terminal results. Record
+  their URLs and conclusions in PR #778 and Mission Control, then obtain three
+  fresh independent NOT-DONE-default verdicts.
+
+Nonclaims:
+
+- A prospective NOT-DONE-default D-43 audit found two receipt-governance gaps
+  before commit: the after-task report did not explicitly dispose all six
+  package Definition-of-Done items, and its complete 0.6 ledger did not name
+  the landed-verify multinomial cell or every cut/separate optional feature.
+  Both are now explicit in the after-task report. This prospective audit is
+  preparation only and does not count as one of the three fresh terminal D-43
+  verdicts.
+
+- This receipt does not admit Design 86, launch Totoro/DRAC scientific
+  compute, add public EVA, merge, freeze an RC, tag, submit to CRAN, or support
+  any release/readiness claim.

@@ -6,8 +6,8 @@
 
 **Date**: 2026-07-20
 
-**Status**: HEAVY BASELINE AND D-50 TARGETED GATES GREEN; final exact-head
-local and remote gates pending
+**Status**: M1 PACKAGE BASELINE RECEIPT DOCUMENTED; exact-head receipt
+qualification and independent closeout pending
 
 **Roles engaged**: Ada, Shannon, Grace, Emmy, Gauss, Noether, Curie, Fisher,
 Boole, Pat, Florence, and Rose
@@ -20,9 +20,10 @@ fresh `origin/main`, apply only independently reviewed contract repairs, restore
 the complete scheduled-heavy package suite, retire prohibited scientific
 GitHub Actions routes under D-50, and leave a complete release ledger.
 
-M1 is the first of five serial macros. It does not admit EVA, launch remote
-compute, integrate a new public feature, freeze a release candidate, tag a
-version, submit to CRAN, or support a release-readiness claim.
+M1 is the first of five serial macros. It does not admit EVA, launch
+Totoro/DRAC scientific compute, integrate a new public feature, freeze a
+release candidate, tag a version, submit to CRAN, or support a
+release-readiness claim.
 
 ## 2. Implemented
 
@@ -248,6 +249,8 @@ truth and package gates but does not complete a public roadmap phase.
 - `docs/dev-log/check-log.md`
 - `docs/dev-log/recovery-checkpoints/2026-07-20-123822-codex-p0-checkpoint.md`
 - `docs/dev-log/recovery-checkpoints/2026-07-20-230053-codex-m1-local-closeout-checkpoint.md`
+- `docs/dev-log/recovery-checkpoints/2026-07-21-000431-codex-m1-windows-ci-repair-checkpoint.md`
+- `docs/dev-log/recovery-checkpoints/2026-07-21-021419-codex-m1-platform-closeout-checkpoint.md`
 
 No README, vignette/article, `_pkgdown.yml`, `ROADMAP.md`, NAMESPACE, or other
 generated help file changed. The only generated help change is
@@ -395,23 +398,78 @@ Standard package-check receipts:
   `upload-snapshots: true`, and a missing `upload-results: never`.
 - Boundary-guard SHA-256:
   `b94d91e7cca9996de6c28ca41f94c304e757f411c193b22422e9610d7d25717e`.
-- Live GitHub census: `R-CMD-check`, `full-check`, and `pkgdown` are active;
-  the retired registrations remain `disabled_manually`; queued and in-progress
-  runs are both zero.
+- Historical pre-push GitHub census at `2026-07-21T05:00:22Z`:
+  `R-CMD-check`, `full-check`, and `pkgdown` were enabled/registered;
+  retired registrations remained `disabled_manually`; queued and in-progress
+  runs were both zero. This timestamped census is not the final platform
+  receipt.
 - `git diff --check`: PASS.
 
 ### Coordination and documentation structure
 
-- Open PRs: 0; remote M1 branch: absent; active external owners: 0.
+- Draft PR #778 is the sole open PR. The sole remote programme branch is
+  `codex/gllvmtmb-060-m1-baseline-20260720`; root Codex remains the sole
+  writer. The dirty primary checkout and every parked worktree remain
+  quarantined and untouched.
 - Primary committed-prefix proof: PASS. The 303-line primary-only tail is
   24,675 bytes with SHA-256
   `902d88919d88b43c89cec54fd4cd08b619529e2110ac79eca02e244597425ced`.
 - `Rscript /Users/z3437171/Dropbox/Github\ Local/Shinichi/tools/check-after-task.R
   docs/dev-log/after-task/2026-07-20-m1-heavy-baseline.md`: PASS,
   `after-task structure check passed`.
-- A final exact-head standard package check, one PR, three-platform package CI,
-  and Ubuntu scheduled-heavy CI remain pending. Earlier green local receipts do
-  not substitute for those exact-head remote gates.
+- The final package-repository receipt commit freezes the attempt ledger and
+  closeout protocol. Because that documentation-only commit changes the source
+  SHA, it must pass a fresh exact-head standard package check, pkgdown check,
+  manual three-OS package CI, and Ubuntu-heavy CI. Commit locally first; run
+  the standard package check and pkgdown check serially on that clean commit
+  before pushing. On push, the PR classifier compares the complete PR diff
+  against `origin/main`, so its automatic run is a full Ubuntu package check,
+  not the ignored-source/process fast path. Retain and wait for that Ubuntu
+  receipt, but do not substitute it for the complete manual three-OS matrix.
+  Terminal URLs for the final cycle live in draft PR #778 and Mission Control
+  so recording them cannot create an infinite receipt-SHA loop.
+
+### Immutable platform-attempt ledger
+
+Every attempted workflow remains visible. A predecessor-head success cannot
+qualify the repaired head, and a repaired-head success cannot qualify the later
+receipt-only commit.
+
+| Attempt | Source | Trigger / workflow | Job / OS | UTC interval | Outcome and denominator | Classification |
+|---|---|---|---|---|---|---|
+| [29804219087](https://github.com/itchyshin/gllvmTMB/actions/runs/29804219087) | `f4628a8cdda885ee66da6b806923c9c2501f463a` | PR / R-CMD-check | [88551360333](https://github.com/itchyshin/gllvmTMB/actions/runs/29804219087/job/88551360333) / Ubuntu | `2026-07-21T05:31:11Z`–`2026-07-21T05:51:34Z` | PASS; 7,235 pass, 787 skip, 1 warning | historical, non-qualifying after repair |
+| [29804302347](https://github.com/itchyshin/gllvmTMB/actions/runs/29804302347) | same predecessor | manual / R-CMD-check | [88551611370](https://github.com/itchyshin/gllvmTMB/actions/runs/29804302347/job/88551611370) / Ubuntu | `2026-07-21T05:32:54Z`–`2026-07-21T05:52:53Z` | PASS; 7,235 pass, 787 skip, 1 warning | historical, non-qualifying |
+| [29804302347](https://github.com/itchyshin/gllvmTMB/actions/runs/29804302347) | same predecessor | manual / R-CMD-check | [88551611407](https://github.com/itchyshin/gllvmTMB/actions/runs/29804302347/job/88551611407) / macOS | `2026-07-21T05:32:55Z`–`2026-07-21T05:45:27Z` | PASS; 7,235 pass, 787 skip, 1 warning | historical, non-qualifying |
+| [29804302347](https://github.com/itchyshin/gllvmTMB/actions/runs/29804302347) | same predecessor | manual / R-CMD-check | [88551611475](https://github.com/itchyshin/gllvmTMB/actions/runs/29804302347/job/88551611475) / Windows | `2026-07-21T05:32:56Z`–`2026-07-21T05:56:01Z` | **RETAINED FAILURE**; 7,235 pass, 786 skip, 1 warning, 1 failure | test-contract failure; remediated by repaired head |
+| [29804303658](https://github.com/itchyshin/gllvmTMB/actions/runs/29804303658) | same predecessor | manual / full-check | [88551626899](https://github.com/itchyshin/gllvmTMB/actions/runs/29804303658/job/88551626899) / Ubuntu | `2026-07-21T05:33:01Z`–`2026-07-21T06:40:27Z` | PASS; 13,614 pass, 104 skip, 10 warnings | historical, non-qualifying after repair |
+| [29806600748](https://github.com/itchyshin/gllvmTMB/actions/runs/29806600748) | `9ee0ecd7bf38d71346534f6db6267af4061a9a38` | PR / R-CMD-check | [88558325914](https://github.com/itchyshin/gllvmTMB/actions/runs/29806600748/job/88558325914) / Ubuntu | `2026-07-21T06:18:11Z`–`2026-07-21T06:38:34Z` | PASS; 7,238 pass, 787 skip, 1 warning | qualifying for repaired head |
+| [29806604519](https://github.com/itchyshin/gllvmTMB/actions/runs/29806604519) | same repaired head | manual / R-CMD-check | [88558339416](https://github.com/itchyshin/gllvmTMB/actions/runs/29806604519/job/88558339416) / Windows | `2026-07-21T06:18:17Z`–`2026-07-21T06:42:07Z` | PASS; 7,239 pass, 786 skip, 1 warning | qualifying for repaired head |
+| [29806604519](https://github.com/itchyshin/gllvmTMB/actions/runs/29806604519) | same repaired head | manual / R-CMD-check | [88558339458](https://github.com/itchyshin/gllvmTMB/actions/runs/29806604519/job/88558339458) / Ubuntu | `2026-07-21T06:18:17Z`–`2026-07-21T06:37:34Z` | PASS; 7,238 pass, 787 skip, 1 warning | qualifying for repaired head |
+| [29806604519](https://github.com/itchyshin/gllvmTMB/actions/runs/29806604519) | same repaired head | manual / R-CMD-check | [88558339463](https://github.com/itchyshin/gllvmTMB/actions/runs/29806604519/job/88558339463) / macOS | `2026-07-21T06:18:17Z`–`2026-07-21T06:30:46Z` | PASS; 7,238 pass, 787 skip, 1 warning | qualifying for repaired head |
+| [29809774107](https://github.com/itchyshin/gllvmTMB/actions/runs/29809774107) | same repaired head | manual / full-check | [88568008718](https://github.com/itchyshin/gllvmTMB/actions/runs/29809774107/job/88568008718) / Ubuntu | `2026-07-21T07:15:27Z`–`2026-07-21T08:12:44Z` | **PASS**: `Status: OK`; 13,611 passes, 103 skips, 9 classified warnings, 0 failures | qualifying repaired-head heavy receipt; predecessor evidence for the later receipt-only final head |
+
+Infrastructure event outside the attempt denominator:
+`gh workflow run full-check.yaml --repo itchyshin/gllvmTMB --ref
+codex/gllvmtmb-060-m1-baseline-20260720` exited 1 at
+`2026-07-21T06:41:13Z` with GitHub HTTP 403 because the authenticated core
+REST quota was exhausted. The verified reset was
+`2026-07-21T07:15:00Z`. GitHub created no run, and no existing run was
+cancelled or overwritten.
+
+### Repaired-head local receipt
+
+- Targeted plot suite: 250 passes with no failures, errors, warnings, or skips.
+- Exact-head standard package check: 0 R CMD errors/warnings/notes; 7,010
+  passes, 809 declared skips, one expected plot warning; 565.6744 seconds.
+- Exact-head pkgdown: PASS.
+- Standard-check runner SHA-256:
+  `a0d633ccac8d69b90a4282d87ad6ecce539db923df799fb5bc61903393f2cddd`.
+- Results SHA-256:
+  `c29194ba1536033e9e01ea333f8aadf688df4e996c0f4114758032291e905fa2`.
+- Log SHA-256:
+  `42f98e2c64595da5950779d8f5109e0aa74e3077232284c54e528ed79e5021ac`.
+- Pkgdown log SHA-256:
+  `4cd0200ed0bddccb1561b06b5ffbf716a6ca4f6556abaa1235660aa716d6b3a8`.
 
 ## 6. Tests of the Tests
 
@@ -456,9 +514,9 @@ The following open issues were inspected and remain open:
 - **#750 — unconditional structured-tier redraw**: M1 preserves the fail-loud
   limitation and does not implement unconditional phylogenetic/spatial redraw.
 
-No issue closes. The eventual PR relates to #343, #341, #340, #345, #346,
-#348, and #750 but must explicitly say it closes none, especially not #346 or
-#750. No new issue is needed for this already-tracked M1 scope.
+No issue closes. Draft PR #778 relates to #343, #341, #340, #345, #346,
+#348, and #750 and explicitly closes none, especially not #346 or #750.
+No new issue is needed for this already-tracked M1 scope.
 
 ## 8. Consistency Audit
 
@@ -509,6 +567,37 @@ README, ROADMAP, vignettes, `_pkgdown.yml`, and the wider reader estate were
 inspected for scope but deliberately remain M4 surfaces; no M1 feature claim
 requires their mutation.
 
+### Definition-of-Done disposition for this branch-stage gate
+
+The package Definition of Done applies to completed public features. M1 is a
+branch-stage release-truth and qualification gate, so this report does not call
+the package, a feature, or 0.6 "done." Its six-item disposition is explicit:
+
+| Definition-of-Done item | M1 disposition and boundary |
+|---|---|
+| 1. Implementation merged on `main` with three-OS CI | **Pending outside the M1 branch-stage claim.** The reviewed implementation is committed and pushed on the sole branch under draft PR #778, but it is not merged. M1 may close only as a branch-stage release-truth gate ready for maintainer review; it cannot support "merged," "landed on main," or release wording. |
+| 2. Simulation recovery for a new likelihood, family, keyword, or estimator | **Not applicable to the M1 change type.** M1 adds none of those. Curie reviewed the retained existing recovery fixtures and the no-skip audit as regression evidence only; they do not scientifically admit a new model or estimator. |
+| 3. Documentation | **Satisfied for the bounded M1 contracts; release-wide work remains.** The affected design/status contracts and generated `extract_Sigma.Rd` agree with the existing API. README, ROADMAP, articles, vignettes, navigation, and the rendered reader estate remain explicit M4 gates. |
+| 4. Runnable user-facing example | **Not applicable to this non-feature repair.** M1 adds no exported function, syntax, likelihood, estimator, or public workflow. Pat reviewed refusal direction; the page-by-page runnable reader path remains M4 work. |
+| 5. Check-log entry | **Present.** `docs/dev-log/check-log.md` records exact commands, denominators, hashes, retained attempts, warnings, and deliberate non-runs. |
+| 6. Likelihood / parameterisation / scope review | **Present for M1 scope, with final closure still pending.** Gauss, Noether, Boole, Fisher, Curie, Pat, Grace, Florence, Shannon, and Rose reviewed their named contracts. Three fresh NOT-DONE-default D-43 verdicts remain required after the receipt-head local and remote evidence is terminal. |
+
+### Complete 0.6 feature-disposition ledger at M1
+
+| Candidate | M1 disposition | Boundary carried forward |
+|---|---|---|
+| Existing multinomial 0.6 surface | **LANDED; VERIFY ONLY.** | M1 changes no multinomial likelihood or API. Existing implementation/tests remain subject to final package and M4 reader verification; this row is not a new admission claim. |
+| Design 86 EVA | **ENTER M2 RESEARCH ONLY.** | Design 85 remains NO-GO. No Design 86 implementation, compute, public API, or scientific admission exists without the separate M2 authority and sequential gates. |
+| Correlation profile | **CUT from 0.6 integration.** | If pursued, it is a separate Laplace-only `Sigma_total` arc with its own evidence and approval. |
+| BCa intervals | **CUT.** | No BCa calibration or public claim enters 0.6 through M1. |
+| Unconditional structured redraw (#750) | **CUT.** | The current fail-loud limitation remains; no phylogenetic/spatial redraw claim is admitted. |
+| Plotting enhancement | **CUT as a new feature.** | M4 audits existing figures, captions, accessibility, and uncertainty without adding a plotting surface inside M1. |
+| CI-11 promotions | **CUT.** | Existing bounded evidence remains classified; no wider family/inference promotion enters 0.6. |
+| Wider structured, mixed, missing-data, or higher-rank EVA | **POST-0.6 / NOT ADMITTED.** | Every future cell requires its own symbolic, deterministic, Totoro, DRAC, recovery, and claim gates after fixed-rank q=1 succeeds. |
+
+Laplace remains the default and the automatic 0.6 fallback if Design 86 is cut
+at any M2 gate.
+
 ## 9. What Did Not Go Smoothly
 
 - The primary checkout was divergent and dirty, and the repository retained 38
@@ -533,12 +622,26 @@ requires their mutation.
   check-log failed because their committed histories differ. Comparing the
   primary file with its own HEAD blob proved the local 303-line tail exactly and
   prevented accidental import or overwrite.
+- The first manual three-OS cycle retained one Windows failure at
+  `tests/testthat/test-plot-gllvmTMB.R:447`: the test required bitwise
+  equality after floating-point division and summation. Direct reproduction
+  returned one stack total at `1 + .Machine$double.eps`; types, order,
+  scientific proportions, and rendered geometry were otherwise correct.
+  Two independent reviews rejected loose tolerance, rounding, sorting,
+  Windows skipping, assertion deletion, and production residual-forcing.
+  The accepted repair changed only an internal accuracy comment and the strict
+  test contract, used a component-scaled machine-roundoff bound, added finite
+  and non-negative guards, and added a deterministic pure-logic fixture.
+  The failed attempt remains in the platform denominator, and the repaired head
+  required a complete new local and remote qualification cycle.
 
 ## 10. Known Residuals
 
-- M1 still needs the exact-head local closeout check, one push/PR, the requested
-  three-platform package check, Ubuntu heavy CI, and final independent
-  NOT-DONE-default synthesis before it can close.
+- The receipt-only final source head still requires exact-head local standard
+  package and pkgdown checks, manual Windows/Ubuntu/macOS package CI,
+  Ubuntu-heavy CI, and three fresh NOT-DONE-default independent reviews before
+  M1 can close. The terminal run URLs are recorded externally in draft PR #778
+  and Mission Control after qualification so the package SHA remains immutable.
 - The nine complete-heavy warnings remain bounded evidence, not hidden:
   four loading-bootstrap smoke warnings with 30/40 surviving refits; one
   nbinom2 and one Tweedie `sdreport()` covariance warning; one expected
@@ -551,7 +654,7 @@ requires their mutation.
   wording, and maintainer decisions on retained pages/figures.
 - The inactive overlapping worktree and dirty primary remain quarantined; M1
   neither cleans nor reconciles them.
-- No remote compute was launched. Totoro/DRAC production remains prohibited
+- No Totoro/DRAC scientific compute was launched. Totoro/DRAC production remains prohibited
   until M2 has passed deterministic gates and the maintainer separately approves
   the exact smoke/pilot bundle.
 - No public EVA, source/API freeze, release-candidate freeze, tag, submission,

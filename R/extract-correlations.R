@@ -834,7 +834,7 @@ extract_correlations <- function(
 #'   `method = "point"`). Computed intervals carry an `interval_status` flag
 #'   (`"heuristic_unvalidated"` for `"wald"`, `"target_specific_uncalibrated"`
 #'   for `"bootstrap"`) -- coverage is not yet certified for any
-#'   route (validation register CI-11 pending).
+#'   route (recovery evidence for this route is not yet complete).
 #' @examples
 #' \dontrun{
 #' set.seed(12)

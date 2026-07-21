@@ -231,28 +231,28 @@ easiest to interpret.
 
 ## Current scope boundary
 
-The fixed-effect route demonstrated above is **covered** (FAM-20). Two later
+The fixed-effect route demonstrated above is **validated**. Two later
 extensions are deliberately **partial**, not universal categorical covariance
 support:
 
-- FAM-20A admits one `phylo_latent()` term and reports the standalone
+- The phylogenetic route admits one `phylo_latent()` term and reports the standalone
   \((K-1) \times (K-1)\) among-category phylogenetic covariance \(V\) described
   below. Its recovery is data-hungry.
-- FAM-20B permits one multinomial trait to share an ordinary `latent()` block
+- The cross-family route permits one multinomial trait to share an ordinary `latent()` block
   with other response families. The nominal trait remains an explicit \(K-1\)
   baseline-contrast block; `extract_cross_correlations()` supplies the
   reference-invariant partner summary. See
   [Cross-family trait correlations, including nominal responses](cross-family-correlations.html).
 - A fixed-effect-only fit still has no latent covariance, so
   `extract_correlations()` and `extract_Sigma()` refuse it rather than fabricate
-  a matrix. On the admitted FAM-20B route, point extraction is the default;
+  a matrix. On that cross-family route, point extraction is the default;
   Wald/bootstrap summaries are target-specific and uncalibrated, and nonlinear
   profile requests are withdrawn.
 - Multiple multinomial traits, augmented slopes, explicit multinomial
   `unique()`/`indep()`, and unlisted animal, spatial, kernel, or phylogenetic
   tiers remain blocked and fail loud.
 
-Thus coefficient recovery is covered only for FAM-20, while FAM-20A/FAM-20B
+Thus coefficient recovery is validated only for the fixed-effect route, while the phylogenetic and cross-family covariance routes
 retain their narrower `partial` labels. None of these rows establishes interval
 coverage.
 

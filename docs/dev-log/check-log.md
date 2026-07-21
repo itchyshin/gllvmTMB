@@ -45959,3 +45959,60 @@ Not run on this head: automatic Ubuntu, manual three-OS, Ubuntu-heavy, or the th
 D-43 reviews. **M1 is therefore NOT closed.** One known-residual row (R-6) awaits
 maintainer sign-off. No push, CI spend, merge, candidate freeze, version bump, tag,
 submission, or readiness/release claim is authorised or made.
+
+## 2026-07-21 (later) — D-43 panel WITHHELD M1; four must-fixes applied (Claude Code)
+
+The D-43 completion panel returned **3/3 NOT-DONE**, withholding M1. The engineering was
+found sound; the failures were documentary and receipt-level — which is precisely what this
+milestone certifies. Four blocking items, all now addressed:
+
+**1. Internal register codes on reader-facing surfaces.** `NEWS.md` asserted that
+"reader-facing pages no longer expose internal validation identifiers", while this head
+carried **7** such codes in `NEWS.md`, 2 in rendered articles, and 1 in a man page.
+`origin/main` carried **0**, so the 11-commit estate introduced them, violating the standing
+repo rule. All removed and rewritten in plain reader language across `NEWS.md`,
+`vignettes/articles/cross-family-correlations.Rmd`, `vignettes/articles/multinomial.Rmd`, and
+`R/extract-correlations.R` (Rd regenerated). Where the codes had been carrying the meaning —
+the per-route admission sentence — the text was rewritten to say what it means rather than
+merely deleting the identifiers.
+
+**2. The R-2 figures had no command trace.** They were measured but never logged. Re-run and
+grounded on the qualified tree:
+
+```
+COMMAND: NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 GLLVMTMB_RUN_B2_LOGIT=1 \
+  Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); \
+  devtools::test(filter="phylo-unique-slope-binomial-logit")'
+TREE:    25c767893430d0aeee4832a4e2f28ee5999a6c3b + must-fix edits
+DATE:    2026-07-21T17:13:15Z
+RESULT:  FAIL 3 | WARN 0 | SKIP 0 | PASS 24
+  sigma^2_int   rel err 0.82  (true 0.40)
+  sigma^2_slope rel err 0.78  (true 0.30)
+  rho           abs err 0.367 (true 0.50)
+```
+
+This reproduces the earlier figures exactly, so they stand rather than being struck. `NEWS.md`
+previously quoted a **stale pre-rework 50-60%** and disclosed only the slope entry; it now
+carries the measured current-engine figures for **all three** targets, including the
+previously undisclosed intercept-variance bias.
+
+**3. The binomial slope routes are structurally tested only.**
+`tests/testthat/test-binomial-slope-recovery.R:28` states the contract "does not certify
+variance recovery or interval calibration", and applies to the `phylo_indep()` route — the
+route `NEWS.md` steers users toward as `phylo_unique()` is soft-deprecated. The limitation is
+now stated as a **data-regime condition** (single-trial binary, few observations per grouping
+level) covering both the `*_indep()` and `*_unique()` forms, rather than being attached to one
+keyword, and the structural-only status is stated explicitly.
+
+**4. Register updated.** R-6 recorded as SIGNED OFF with its structural slope-identifiability
+guard deferred to 0.7. New row **R-7** records the eight pre-existing heavy-suite warnings with
+their sites, the like-for-like causation evidence, and — explicitly — the limit of that
+evidence: a `-1` delta does not independently re-verify the remaining eight, and **two sites
+are still unnamed**. R-7 is AWAITING SIGN-OFF, not waived.
+
+The "a further commit would change the qualified SHA" argument used to defer items 2 and 4 was
+**self-defeating** and is withdrawn: items 1-3 require source edits regardless, so the freeze
+bought nothing. Conceded to the panel.
+
+These edits invalidate the A11 receipts and the three CI runs bound to `25c76789`.
+Re-qualification is required and M1 remains **NOT closed**.

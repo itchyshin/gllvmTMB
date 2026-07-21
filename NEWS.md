@@ -20,7 +20,7 @@ required for the main workflow.
   a supplied dense kernel `K`, byte-equivalent to the phylogenetic path with
   `vcv = K`.
 * Random-slope routes are runtime-permitted for **lognormal** and **Student-t**
-  responses under the C1-partial RE-14 contract. This is fit admission only:
+  responses. This is fit admission only:
   direct route-specific recovery and inference evidence are not yet covered, so
   this release makes no scientific-validation claim for those combinations.
 * New **`multinomial()`** response family for an *unordered* categorical response
@@ -28,9 +28,10 @@ required for the main workflow.
   per-category intercepts and slopes as contrasts against a reference category, and
   `predict(type = "response")` returns per-category probabilities. Use
   `multinomial(baseline = ...)` to choose the reference category. The validation
-  boundary is explicit: fixed-effect recovery is `covered` (FAM-20), while the
-  single `phylo_latent()` route (FAM-20A) and the narrow ordinary
-  shared-`latent()` cross-family route (FAM-20B) are `partial`. The latter reports the nominal
+  boundary is explicit: **fixed-effect recovery is validated**, while the two
+  covariance routes — a single `phylo_latent()` term, and the narrow ordinary
+  shared-`latent()` cross-family route — are **only partially validated**, meaning
+  they fit and report but their recovery has not been certified. The latter reports the nominal
   trait as its `K - 1` baseline-contrast block rather than inventing one scalar
   categorical correlation; it permits one multinomial trait per fit and rejects
   unsupported tiers before TMB construction. Multiple multinomial traits,
@@ -39,7 +40,7 @@ required for the main workflow.
   `binomial(link = "logit")`. For
   *ordered* categories use `ordinal_probit()`. See the *Unordered categories with
   `multinomial()`* article for a worked diet-guild example.
-* **`phylo_latent()` on a `multinomial()` trait (Design 84; FAM-20A `partial`)** reports the
+* **`phylo_latent()` on a `multinomial()` trait (partially validated)** reports the
   `(K-1) x (K-1)` among-category phylogenetic covariance V (how the category
   liabilities coevolve) via
   `extract_Sigma(fit, level = "phy", part = "shared", link_residual = "none")`.
@@ -53,7 +54,7 @@ required for the main workflow.
   observation-scale link residual is applied as `(pi^2/6)(I + J)` -- the softmax
   analog of binomial's `pi^2/3`). Treat this phylogenetic V route as
   recovery-oriented and data-hungry, not universally validated.
-* For the admitted cross-family nominal route (FAM-20B `partial`), ordinary
+* For the admitted cross-family nominal route (partially validated), ordinary
   `latent()` keeps its default diagonal companion but the current engine maps
   off multinomial-contrast `Psi`. That variance is not identified with one
   categorical draw per unit; replication can identify it in principle, but the
@@ -70,21 +71,38 @@ required for the main workflow.
   a source-tier cross-family correlation was never validated on those paths, and
   returning an uncalibrated number was worse than refusing. Use
   `extract_Sigma()` for source-tier covariance.
-* **Known limitation — phylogenetic slope variance under `binomial(link = "logit")`.**
-  For a `phylo_unique()` random-slope fit with a logit link, the estimated
-  slope variance is **upward-biased by roughly 50-60%** at realistic signal
-  levels. The bias does **not** shrink with sample size: it persists across
-  `n = 60`, `120`, and `240` (21 seeds tested), on fits that are otherwise
-  healthy (converged, positive-definite Hessian, valid `sdreport`). The cause is
-  **too little information per cluster**, not a defect: with only a handful of
-  single-trial binary observations per species, the sampling variance of each
-  species' estimated slope is comparable to the true between-species variance
-  itself, and roughly half the spread across species is sampling noise. The
-  identical design recovers cleanly under a Gaussian response, which is what
-  rules out an engine problem. **Do not read a logit phylo-slope variance as
-  calibrated.** The remedy is more information per species -- more replicates
-  per species, or multi-trial `cbind(successes, failures)` data rather than
-  single 0/1 draws -- rather than more species. The
+* **Known limitation — random-slope covariance is not calibrated when each
+  cluster carries little information.** This is a limitation of the *data
+  regime*, not of one keyword: it applies to any random-slope covariance fitted
+  on **single-trial binary responses with few observations per grouping level**,
+  and it affects both the current `phylo_indep()` / `animal_indep()` /
+  `spatial_indep()` slope forms and the soft-deprecated `*_unique()` forms.
+  Measured on a phylogenetic slope fit with a logit link (60 species, 4
+  replicates, 3 traits — 12 single-Bernoulli observations per species), the
+  **whole 2x2 slope covariance is over-estimated**, not just its slope entry:
+
+  | target | true | relative error |
+  |---|---|---|
+  | intercept variance | 0.40 | **0.82** |
+  | slope variance | 0.30 | **0.78** |
+  | intercept-slope correlation | 0.50 | **0.367** (absolute) |
+
+  The bias does **not** shrink with more clusters — it persists across 60, 120
+  and 240 species — on fits that are otherwise healthy (converged,
+  positive-definite Hessian, valid `sdreport`). The cause is too little
+  information per cluster: with a handful of single-trial binary observations
+  per species, the sampling variance of each species' estimated slope is
+  comparable to the true between-species variance itself, so roughly half the
+  spread across species is sampling noise. The identical design recovers cleanly
+  under a Gaussian response, which is what rules out an engine problem.
+
+  **Do not read a random-slope variance or correlation from sparse binary data
+  as calibrated.** The remedy is more information *per* grouping level — more
+  replicates per species, or multi-trial `cbind(successes, failures)` data
+  instead of single 0/1 draws — rather than more species. Note also that the
+  binomial slope routes are covered by a **structural** contract only: those
+  tests check that the model fits and reports the right shapes, and
+  **deliberately do not certify variance recovery or interval calibration**. The
   corresponding recovery test is deliberately skipped rather than passed by
   retuning its data-generating truth; see
   `docs/dev-log/known-residuals-register.md` (R-2).
@@ -127,8 +145,13 @@ required for the main workflow.
   instead use a full 2T x 2T augmented covariance. The soft-deprecated
   `phylo_unique()`, `animal_unique()`, and `spatial_unique()` slope forms retain
   their legacy shared 2 x 2 channels; they are not aliases for the current
-  `*_indep()` shape. Admission remains family- and route-specific (ANI-11;
-  PHY-11 to PHY-16, PHY-18; SPA-08, SPA-10; RE-14).
+  `*_indep()` shape. **Admission is decided separately for each response family
+  and each random-effect route**, so a combination that fits is not thereby
+  validated: some routes are admitted with recovery evidence, others are
+  permitted at fit time only. The pedigree, phylogenetic, and spatial slope
+  routes each carry their own status. Check the help page for the specific
+  keyword you are using — it states what is and is not covered for that route —
+  and treat any combination not described there as unvalidated.
 * `fit$fit_health` separates optimiser success, raw and objective-scaled
   gradients, Hessian health, and `sdreport()` availability. Its `converged` field
   is conservative: optimiser success, a finite objective, and a small raw maximum

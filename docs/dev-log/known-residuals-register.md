@@ -96,7 +96,21 @@ than minimising them.
 | **Necessary vs sufficient** | The condition is **necessary, not sufficient**. The Phase-B2 logit fixture (R-2) *satisfies* it — 4 distinct `x` per species — and still fails, because single-trial binary observations carry too little information. The identical design recovers cleanly under Gaussian. Keep the two conditions separate: **structural identifiability** (distinct `x` within cluster) versus **statistical information** (enough signal per cluster to beat sampling noise). |
 | **Impact** | Not a 0.6 blocker — an unidentifiable specification will typically fail to converge rather than return a confident wrong answer. But a mysterious non-convergence is a poor user experience compared with a typed refusal naming the actual problem. |
 | **Recommended for 0.7** | Add a structural check at slope-term construction: for each augmented slope term, count distinct `x` values within each grouping level and refuse (typed) when no level has ≥2, warn when few do. Mirror the honest replication counting already used for `kernel_unique`. |
-| **Status** | `AWAITING SIGN-OFF` — recorded as a deferred capability gap, not a defect in current results. |
+| **Decision** | 2026-07-21, maintainer: **defer the guard to 0.7.** Signed off as a recorded capability gap. |
+| **Status** | `SIGNED OFF` (2026-07-21) — deferred to 0.7. Not a defect in current results; an unidentifiable specification fails to converge rather than returning a confident wrong answer, so the cost is a poor error message, not a wrong number. |
+
+### R-7 · Eight pre-existing warnings in the heavy suite
+
+| | |
+|---|---|
+| **Class** | Pre-existing test warnings, surfaced only under `GLLVMTMB_HEAVY_TESTS=1` |
+| **Surfaces as** | `FAIL 0 \| WARN 8 \| SKIP 102 \| PASS 13647` in the Ubuntu-heavy CI run |
+| **Why it went unseen locally** | The complete local suite is **non-heavy**, and the local heavy run was filtered to the four touched groups. These sites are heavy-gated, so no local run reached them. `R CMD check` also fails its tests step only on **error**, so eight testthat warnings sit invisibly behind `Status: OK`. |
+| **Sites — all eight now identified** | 1–4. `test-loading-ci-bootstrap.R` :60, :84, :105, :171 — all four emitted from `R/loading-ci-bootstrap.R:287`, so likely **one defect presenting four times**, not four defects · 5. `test-matrix-nbinom2-spatial.R:258` · 6. `test-missing-response-gaussian.R:192` (from `R/predictive-diagnostics.R:377`) · 7. `test-phylo-signal-ci.R:197` (from `R/phylo-signal-ci.R:471`) · 8. `test-tweedie-recovery.R:51` (from `R/methods-gllvmTMB.R:1098`) |
+| **Causation — EXACT SET MATCH, not a count delta** | Site-by-site comparison against the previous heavy run on this branch at predecessor `c6e1dd8a`: sites present in the predecessor but **not** now = `test-plot-visual-snapshots.R:253:3` **and nothing else** — exactly the warning R-1 fixed. Sites present now but **not** in the predecessor = **none**. So this arc removed precisely one warning site and **introduced none**. (An earlier version of this row offered only the aggregate delta `WARN 9 -> 8`; the set comparison supersedes it and is strictly stronger.) |
+| **Note on site 8** | `test-tweedie-recovery.R:51` emits from `R/methods-gllvmTMB.R:1098` — the `simulate()` conditional-fallback warning whose **text this arc rewrote** (see R-5). The site and the count are unchanged; only the message content differs, now stating that simulate-based intervals for that fit are too narrow. That is the intended user-protective behaviour firing in a real test, not a new warning. |
+| **Remaining limit of the evidence** | The set match establishes that no site was added and one was removed. It does **not** independently diagnose the eight underlying causes — each still needs its own decision. The four `loading-ci-bootstrap` sites should be triaged together given their shared source line. |
+| **Status** | `AWAITING SIGN-OFF` — surfaced with evidence, not waived. Each site needs an individual decision, and the two unnamed sites need identifying first. |
 
 ---
 

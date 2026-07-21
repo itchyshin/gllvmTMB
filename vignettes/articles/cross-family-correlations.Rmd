@@ -1,6 +1,6 @@
 ---
 title: "Cross-family trait correlations, including nominal responses"
-description: "Fit the partial ordinary-unit FAM-20B route, recover latent correlations across five response families, and compute the reference-invariant nominal summary on its admitted non-ordinal partner set."
+description: "Fit the partially-validated ordinary-unit cross-family route, recover latent correlations across five response families, and compute the reference-invariant nominal summary on its admitted non-ordinal partner set."
 tier: 2 # worked demonstration of the multi-family latent factor and the 2C nominal summary
 output:
   rmarkdown::html_vignette:
@@ -33,7 +33,7 @@ class. The question this article answers is narrow and concrete: can a
 shared latent factor** in a single `gllvmTMB()` fit, and can the model report
 the correlations *between* those families — including the categorical one?
 
-This page covers only the **partial FAM-20B ordinary-unit route**: one
+This page covers only the **partially-validated ordinary-unit cross-family route**: one
 `multinomial()` trait and its non-nominal partners share
 `latent(0 + trait | unit, d)`. A single powered simulation demonstrates point
 recovery on that route. It does not admit multiple nominal traits, structured

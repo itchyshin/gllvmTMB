@@ -73,7 +73,7 @@ the requested \code{method} keeps point-only interval columns (\code{NA} bounds,
 \code{method = "point"}). Computed intervals carry an \code{interval_status} flag
 (\code{"heuristic_unvalidated"} for \code{"wald"}, \code{"target_specific_uncalibrated"}
 for \code{"bootstrap"}) -- coverage is not yet certified for any
-route (validation register CI-11 pending).
+route (recovery evidence for this route is not yet complete).
 }
 \description{
 For a fit where a \code{multinomial()} trait shares a latent factor with

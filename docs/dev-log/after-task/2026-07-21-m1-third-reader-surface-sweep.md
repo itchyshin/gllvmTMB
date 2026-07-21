@@ -96,6 +96,40 @@ deliberately left unchanged include `coverage_study()`'s `covered`/`n_covered` o
 (documented schema) and `profile_cross_rho_ci`'s "its coverage has not been calibrated"
 (*coverage* in its correct statistical sense).
 
+## 5b. A SECOND method finding — the verification step itself reported falsely
+
+**Added after the fact, because it falsifies part of §4 above.**
+
+After the R-10 message rewrites, this report's author ran the non-heavy suite and reported
+**`FAIL 0 | WARN 0 | SKIP 779`**, then committed on that basis. **The claim was false.** The
+suite had one failure — `test-augmented-slope-family-policy.R:80` asserts the canonical
+policy text matches `"C1-partial"`, the exact internal token R-10 had just removed. It sat
+in the log the whole time.
+
+**How the false report was produced.** The check grepped for `── Failure` and `^Failure (`.
+The `summary` reporter does not format failures that way, and emits no `[ FAIL … ]` summary
+line either. Zero matches came back, and zero matches was read as *clean*.
+
+**The rule that was broken is the project's own**: *never the exit code, never a negative
+grep*. It was broken **inside the step whose entire purpose is to enforce it**. A missing
+summary line should have meant **CANNOT VERIFY**, never **PASS**. Confirming a pattern is
+absent is not the same as confirming a result is good, and only the second is verification.
+
+**What caught it.** The durable package-check runner, whose structured receipt read
+`M1_FINAL_RECEIPT_CHECK_ERRORS=1` — unambiguous where the ad-hoc parse was not. The Ubuntu
+CI run then failed independently on the same test. **Two structured checks caught what one
+hand-written grep missed**, and they caught it before the D-43 panel rather than after.
+
+**Method fix adopted for the remainder of this lane:**
+- Verify from **structured results** — `as.data.frame(<testthat result>)` counts, or the
+  runner's `M1_FINAL_RECEIPT_CHECK_*` fields — never by grepping reporter prose.
+- **A missing or unparseable field is a failure of verification, not a pass.**
+- Where a structured result is unavailable, say "unverified" rather than reporting a number.
+
+**This also falsifies a claim in R-10.** That row stated "no snapshot or assertion contains a
+`Design` code", flagged as *evidenced, not proven*. One assertion did — on `C1-partial`,
+which the `Design [0-9]` pattern never covered. The hedge was correct; not verifying was not.
+
 ## 6. Traps hit
 
 - A **backgrounded launcher shell reported exit 0 while the suite it launched was still

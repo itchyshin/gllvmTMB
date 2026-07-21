@@ -112,5 +112,5 @@ extract_Sigma(fit)
 matrix wrapper \code{gllvmTMB_wide(Y, ...)} is soft-deprecated in
 0.2.0; wide-data examples now use the \code{traits(...)} LHS through
 \code{\link[=gllvmTMB]{gllvmTMB()}}. The source-tree contract is
-\code{docs/design/01-formula-grammar.md}.
+the \emph{Formula grammar} article.
 }

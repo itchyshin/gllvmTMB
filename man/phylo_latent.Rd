@@ -66,7 +66,7 @@ still depends on labels, scaling, and fitting health; the function does not
 estimate or report ancestral states.
 
 See \code{vignette("phylogenetic-gllvm")} for the benchmark and
-\code{docs/design/04-random-effects.md} for the implementation contract.
+the \emph{Random effects} article for the modelling contract.
 }
 }
 \examples{

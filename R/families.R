@@ -805,7 +805,7 @@ ordinal_probit <- function(link = "probit") {
 #' (\code{latent()}, \code{unique()}, \code{indep()}, \code{phylo_*()},
 #' \code{spatial_*()}, random slopes, cluster) on a multinomial trait are not
 #' supported, because an unordered categorical response spans \eqn{K-1} latent
-#' liability dimensions rather than one (see the family registry / Design 83).
+#' liability dimensions rather than one.
 #' A two-category response is exactly \code{binomial(link = "logit")} and is
 #' redirected there. See also \code{\link{ordinal_probit}()} for \emph{ordered}
 #' categories.

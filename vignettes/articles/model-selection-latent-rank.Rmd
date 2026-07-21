@@ -454,7 +454,7 @@ Report the candidate set and the checks that constrained it.
 This article covers a model-selection workflow for Gaussian
 ordinary `latent()` candidate ranks using base `AIC()` / `BIC()`,
 `logLik()`, and `check_gllvmTMB()` fit-health rows, then shows a
-Gaussian-only `REML = TRUE` refit for the chosen rank (MIS-33).
+Gaussian-only `REML = TRUE` refit for the chosen rank.
 It does not validate AIC/BIC as universally correct latent-rank
 selectors, calibrate confidence intervals, compare likelihoods from
 different fitting approximations, or advertise REML for non-Gaussian,

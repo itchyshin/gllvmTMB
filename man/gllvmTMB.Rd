@@ -193,7 +193,7 @@ prefer \verb{tree =}. The dense path inverts via \code{Matrix::solve()},
 giving the same MLE as the sparse path but at \code{O(n^2)} memory and
 \code{O(n^3)} Cholesky cost. Use only when you have a Cphy in hand and
 no Newick tree (e.g. comparing against \code{nlme::corPagel}). See
-\code{docs/design/04-random-effects.md} for the full
+the \emph{Random effects} article for the full
 technical justification.}
 
 \item{phylo_tree}{(legacy global) Optional \code{ape::phylo} tree. The current

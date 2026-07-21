@@ -98,7 +98,7 @@
 #'   matrix wrapper `gllvmTMB_wide(Y, ...)` is soft-deprecated in
 #'   0.2.0; wide-data examples now use the `traits(...)` LHS through
 #'   [gllvmTMB()]. The source-tree contract is
-#'   `docs/design/01-formula-grammar.md`.
+#'   the *Formula grammar* article.
 #' @examples
 #' \dontrun{
 #' # Wide format: one column per trait; traits() stacks them internally.

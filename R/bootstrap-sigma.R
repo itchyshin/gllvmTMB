@@ -53,9 +53,9 @@
 #'
 #' Scope boundary: Gaussian bootstrap summaries and mixed-family refit
 #' plumbing are covered by current tests.
-#' Non-Gaussian bootstrap calibration remains experimental until the M3
-#' target-explicit grid is rerun, and production calibration evidence for
-#' mixed-family intervals remains future M3 work.
+#' Non-Gaussian bootstrap calibration is experimental: its repeated-sampling
+#' behaviour has not been certified, and there is no production calibration
+#' evidence for mixed-family intervals. Treat those intervals as indicative.
 #'
 #' Each bootstrap replicate (1) draws a new response vector from
 #' `simulate(fit, nsim = 1)`, (2) refits the model with the same formula
@@ -128,11 +128,19 @@
 #'
 #' @section Caveats:
 #' \itemize{
-#'   \item Uses the existing [simulate.gllvmTMB_multi()] method, which
-#'     conditions on the fitted random effects (\eqn{\eta = \hat\eta})
-#'     and redraws the response from the fitted family where implemented.
+#'   \item Uses the existing [simulate.gllvmTMB_multi()] method. By default
+#'     that method REDRAWS the random effects from the fitted covariance,
+#'     which is what makes these intervals span between-unit variability.
 #'     CIs reflect parametric simulate-refit variability, not a
 #'     Bayesian posterior distribution for variance components.
+#'   \item **Intervals are too narrow when the simulator cannot redraw a
+#'     tier.** Redraw is not implemented for every random-effect tier —
+#'     notably the SPDE spatial tier and the diagonal phylogenetic tier.
+#'     For a fit using one of those, [simulate.gllvmTMB_multi()] falls back
+#'     to reusing the fitted random-effect modes and emits a one-shot
+#'     warning. That fallback understates between-unit variability, so the
+#'     intervals returned here are **not calibrated** for such fits. Treat
+#'     the warning as a signal that these intervals cannot be trusted.
 #'     Unsupported families fall back through the simulator's own
 #'     warning path.
 #'   \item Refits use the same `formula` reconstructed from

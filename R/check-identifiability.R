@@ -42,8 +42,7 @@
 #'
 #' Scope boundary: covered for Gaussian simulate-refit loading
 #' identifiability checks. Non-Gaussian and mixed-family support is not
-#' yet implemented; broader family coverage is planned for the Phase 1b
-#' / M3 validation path.
+#' yet implemented; broader family coverage is planned.
 #'
 #' The canonical case this catches that no other diagnostic does is a
 #' **spurious extra factor masquerading as identified**: when `d_B` is

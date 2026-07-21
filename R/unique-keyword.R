@@ -66,8 +66,7 @@
 #'   `animal_latent(..., unique = FALSE) + animal_unique()`,
 #'   `spatial_latent(..., unique = FALSE) + spatial_unique()`, and
 #'   `kernel_latent(..., unique = FALSE) + kernel_unique()` remain accepted. See
-#'   `vignettes/articles/pitfalls.Rmd` section 5 and
-#'   `docs/dev-log/decisions.md` 2026-05-14 entry.
+#'   the *Pitfalls* article, section 5.
 #' * **Confirmatory factor models**. Sometimes domain knowledge tells
 #'   you the latent-only model is correct (no trait-specific residuals);
 #'   confirm with a likelihood-ratio test.

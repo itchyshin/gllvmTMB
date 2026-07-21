@@ -46007,8 +46007,22 @@ keyword, and the structural-only status is stated explicitly.
 **4. Register updated.** R-6 recorded as SIGNED OFF with its structural slope-identifiability
 guard deferred to 0.7. New row **R-7** records the eight pre-existing heavy-suite warnings with
 their sites, the like-for-like causation evidence, and — explicitly — the limit of that
-evidence: a `-1` delta does not independently re-verify the remaining eight, and **two sites
-are still unnamed**. R-7 is AWAITING SIGN-OFF, not waived.
+evidence: the set comparison establishes that no site was added and one removed, but does not
+independently diagnose the eight underlying causes. R-7 is AWAITING SIGN-OFF, not waived.
+
+**Correction (same day).** Two statements made in the entry above were wrong and are retracted
+here rather than edited away:
+
+1. **"origin/main carried zero such codes" is FALSE.** That was established by grepping
+   `NEWS.md` alone and generalising to all reader-facing surfaces. `MIS-33` is present in
+   `vignettes/articles/model-selection-latent-rank.Rmd` **on origin/main**. The diff-against-main
+   method used for that repair structurally could not detect this class.
+2. **The register row claimed "two sites unnamed" after the Sites row had named all eight.**
+   The row contradicted itself; the stale clause propagated here and into `LOOP/checkpoint.md`.
+
+A second D-43 panel returned 3/3 NOT-DONE on these and related findings. The repair was a
+targeted string removal, not a class sweep. `tools/check-reader-surface.sh` now enforces the
+property mechanically so it cannot rest on assertion again.
 
 The "a further commit would change the qualified SHA" argument used to defer items 2 and 4 was
 **self-defeating** and is withdrawn: items 1-3 require source edits regardless, so the freeze

@@ -43,8 +43,7 @@
 #' Scope boundary: IN, local Laplace-consistency diagnostics
 #' for a fitted model. PARTIAL, this is a diagnostic signal rather than
 #' a substitute for bootstrap, profile, or external Bayesian
-#' calibration. PLANNED, broader calibration evidence belongs to the M3
-#' validation workflow.
+#' calibration. Broader calibration evidence is not yet available.
 #'
 #' This is a complementary signal to [sanity_multi()] (which checks
 #' Hessian definiteness, gradient magnitude, convergence flags) and

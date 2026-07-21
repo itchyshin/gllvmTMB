@@ -104,8 +104,7 @@ required for the main workflow.
   tests check that the model fits and reports the right shapes, and
   **deliberately do not certify variance recovery or interval calibration**. The
   corresponding recovery test is deliberately skipped rather than passed by
-  retuning its data-generating truth; see
-  `docs/dev-log/known-residuals-register.md` (R-2).
+  retuning its data-generating truth.
 * The reader-facing covariance grammar crosses five correlation sources
   (`none`, `animal`, `phylo`, `spatial`, and `kernel`) with three taught modes:
   independent, dependent, and latent. The one-shared-variance ("scalar") case is
@@ -148,10 +147,12 @@ required for the main workflow.
   `*_indep()` shape. **Admission is decided separately for each response family
   and each random-effect route**, so a combination that fits is not thereby
   validated: some routes are admitted with recovery evidence, others are
-  permitted at fit time only. The pedigree, phylogenetic, and spatial slope
-  routes each carry their own status. Check the help page for the specific
-  keyword you are using — it states what is and is not covered for that route —
-  and treat any combination not described there as unvalidated.
+  permitted at fit time only. **This release does not publish a per-route
+  coverage table, so the documentation will not tell you which of the two a
+  given combination is.** Treat a successful fit as evidence that the model is
+  *admissible*, not that its variance components or intervals have been
+  validated. Where a route is known to be weak this changelog says so
+  explicitly — see the random-slope limitation above.
 * `fit$fit_health` separates optimiser success, raw and objective-scaled
   gradients, Hessian health, and `sdreport()` availability. Its `converged` field
   is conservative: optimiser success, a finite objective, and a small raw maximum

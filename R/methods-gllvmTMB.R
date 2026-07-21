@@ -991,10 +991,14 @@ tidy.gllvmTMB_multi <- function(
 
 #' Simulate new responses from a fitted gllvmTMB model
 #'
-#' Conditional on the fitted parameters and posterior modes of the random
-#' effects, draws `nsim` new response vectors. Each draw uses the same
-#' linear predictor (`fit$report$eta`) and adds Gaussian residual noise
-#' with `sd = exp(log_sigma_eps)`.
+#' Draws `nsim` new response vectors from a fitted model. By default
+#' (`condition_on_RE = FALSE`) the random effects are **redrawn** from the
+#' fitted covariance and the response is drawn from the fitted family — the
+#' unconditional simulation appropriate for a parametric bootstrap. Redraw is
+#' not implemented for every tier; a fit using an unhandled tier falls back to
+#' conditional simulation with a warning, and intervals derived from it are too
+#' narrow. Set `condition_on_RE = TRUE` for the older conditional behaviour,
+#' which reuses the fitted random-effect modes and only adds residual noise.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param nsim Number of replicate response vectors to draw. Default 1.
@@ -1129,8 +1133,8 @@ simulate.gllvmTMB_multi <- function(
 #' at the linear predictor `eta`. Supports the 5 families exercised by
 #' the M1.2 fixture (Gaussian, binomial, Poisson, Gamma, nbinom2) plus
 #' lognormal. Other families warn once per session and fall back to
-#' Gaussian-on-the-link-scale (i.e., previous behaviour) until M2 / M3
-#' family-completeness slices add their per-family draws.
+#' Gaussian-on-the-link-scale (i.e., previous behaviour); per-family draws for
+#' the remaining families are not yet implemented.
 #'
 #' @keywords internal
 #' @noRd

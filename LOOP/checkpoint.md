@@ -14,9 +14,12 @@ The engineering was found sound by all three reviewers. The failures were **docu
 receipt-level — which is exactly what this milestone certifies.**
 
 1. **Register codes on reader surfaces.** `NEWS.md` asserted "reader-facing pages no longer
-   expose internal validation identifiers" while carrying **7** such codes; `origin/main`
-   carried **0**, so the estate introduced them, against a standing repo rule. Also in 2
-   rendered articles and 1 man page.
+   expose internal validation identifiers" while carrying **7** such codes, plus 2 rendered
+   articles and a man page.
+   **CORRECTION (second panel):** the accompanying claim that `origin/main` "carried 0" was
+   **FALSE** — it came from grepping `NEWS.md` alone and generalising. `MIS-33` is present in
+   `vignettes/articles/model-selection-latent-rank.Rmd` on `origin/main`. The
+   diff-against-main method structurally could not find this class.
 2. **The R-2 figures had no command trace** — measured but never logged — while `NEWS.md`
    quoted a stale pre-rework figure and omitted the intercept-variance bias entirely.
 3. **The binomial slope routes are structurally tested only** and do not certify variance
@@ -41,7 +44,7 @@ register because a further commit would change the qualified SHA. That was **sel
   observations per grouping level) covering both `*_indep()` and `*_unique()` forms, with the
   structural-only test status stated explicitly.
 - Register: R-6 SIGNED OFF (guard deferred to 0.7); new **R-7** records the 8 warnings, their
-  sites, the causation evidence, and its limits — **two sites remain unnamed**.
+  sites (all eight named), the exact-set-match causation evidence, and its limits.
   R-7 is `AWAITING SIGN-OFF`, not waived.
 
 ## RE-QUALIFICATION STATUS
@@ -66,7 +69,7 @@ comment; no functional code changed.
 
 ## OPEN GATES (need human)
 
-- **R-7 awaits sign-off** — 8 pre-existing heavy warnings, 2 sites still unidentified.
+- **R-7 awaits sign-off** — 8 pre-existing heavy warnings, all sites now named.
 - **CI re-spend** for the new head.
 - Re-run the D-43 panel after re-qualification; M1 cannot close on the withheld verdict.
 - M3 freeze + version bump · M4 **page decisions** · M4 candidate freeze · M5 RC/final tags ·

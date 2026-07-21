@@ -74,7 +74,7 @@
 #'   (long format or wide data frames via [traits()] LHS sugar);
 #'   [extract_Sigma()] for post-fit covariance summaries;
 #'   [extract_ordination()] for scores and loadings. The source-tree
-#'   contract is `docs/design/02-data-shape-and-weights.md`.
+#'   contract is described in the *Data shape and weights* article.
 #'
 #' @section Deprecation:
 #' `gllvmTMB_wide()` is **soft-deprecated** as of gllvmTMB 0.2.0. The
@@ -104,7 +104,7 @@
 #' Per-cell weight matrices (the one path `gllvmTMB_wide()` uniquely
 #' supports) remain available via the long-format API by passing a
 #' long-format `weights` column aligned with `(unit, trait)` rows.
-#' See `docs/design/02-data-shape-and-weights.md`.
+#' See the *Data shape and weights* article.
 #'
 #' @keywords internal
 #' @export

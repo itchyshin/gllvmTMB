@@ -58,8 +58,8 @@
 #' coverage summaries for a fitted model and the requested direct
 #' profile targets. PARTIAL, package-level production calibration has
 #' not yet passed for every family, dimension, and target surface.
-#' PLANNED, M3 target-explicit simulation grids decide when broader
-#' interval-calibration claims move to covered.
+#' Broader interval-calibration claims require target-explicit simulation
+#' evidence that has not yet been produced.
 #'
 #' When coverage rates fall below 94%, common causes are:
 #'

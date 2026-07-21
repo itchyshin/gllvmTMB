@@ -633,7 +633,7 @@ NULL
 #' estimate or report ancestral states.
 #'
 #' See `vignette("phylogenetic-gllvm")` for the benchmark and
-#' `docs/design/04-random-effects.md` for the implementation contract.
+#' the *Random effects* article for the modelling contract.
 #'
 #' @param species Unquoted column name for the species factor.
 #' @param d Integer; number of phylogenetic latent factors.

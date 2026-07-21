@@ -205,7 +205,7 @@
 #'   giving the same MLE as the sparse path but at `O(n^2)` memory and
 #'   `O(n^3)` Cholesky cost. Use only when you have a Cphy in hand and
 #'   no Newick tree (e.g. comparing against `nlme::corPagel`). See
-#'   `docs/design/04-random-effects.md` for the full
+#'   the *Random effects* article for the full
 #'   technical justification.
 #' @param known_V Optional list of block-diagonal sampling-error matrices
 #'   `V_t`. Used by the `equalto()` two-stage workflow when sampling-error

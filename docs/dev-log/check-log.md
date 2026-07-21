@@ -46056,3 +46056,68 @@ that `.Rbuildignore` excludes from the tarball.
 
 STILL OUTSTANDING for M1: durable runners on the final head (mirrored with SHA-256, not left
 in `/private/tmp`), the authorised CI cycle, and a THIRD D-43 panel. **M1 remains WITHHELD.**
+
+### 2026-07-21 — complete non-heavy suite on the R-8/R-9 sweep head `e506dc94`
+
+Run after the third reader-surface sweep (R-8 dangling citations deleted, R-9 scope
+vocabulary rewritten across 14 files, three user-facing `cli` messages reworded). The
+`cli` edits were the only behaviour-adjacent change in the set, so this run exists
+specifically to prove they changed nothing.
+
+```
+devtools::test(reporter = "summary")        # non-heavy; GLLVMTMB_HEAVY_TESTS unset
+
+FAIL 0 | WARN 0 | SKIP 779
+```
+
+**Read from the log, not from an exit code** — and deliberately so: the launcher shell
+returned exit 0 while the suite was still running, which was nearly misread as a pass.
+Counts were parsed from the log itself: zero `Failure (` / `Error (` blocks, **no
+`══ Warnings` section at all**, and 779 skip entries. Identical to the pre-sweep baseline,
+confirming the sweep was documentation-only.
+
+Log: `~/gllvmTMB-0.6-evidence/m1/diagnostics/da267eaf-post-r9-suite.log` (named for the head
+at launch; the tree advanced to `e506dc94` by documentation-only commits while it ran, and
+no source file it exercises changed).
+
+Also verified on this head: `tools/check-reader-surface.sh` **PASS**, Rd regenerated with
+0 errors / 0 warnings, and the `Scope boundary` / `What is covered` / `covered (partially)`
+construction family **absent from both `R/` and `man/`**.
+
+**Both newly added article URLs were fetched and confirmed live** rather than assumed:
+`articles/api-keyword-grid.html` → "Formula keyword grid"; `articles/phylogenetic-gllvm.html`
+→ "Phylogenetic covariance among traits". Neither is a 404, so the `remote = TRUE` URL check
+should stay clean.
+
+### 2026-07-21 — CRAN-configuration check on the sweep head `f56310ff`
+
+Re-run because the previously recorded check (`ce2fb177`) was five commits stale, `NEWS.md`
+and eleven `man/` pages had changed again, and **two new external URLs had been introduced**
+that a `remote = TRUE` run would exercise for the first time.
+
+```
+NOT_CRAN=false devtools::check(document = FALSE, remote = TRUE, incoming = TRUE,
+                               force_suggests = TRUE, manual = TRUE, error_on = "never",
+                               env_vars = c(NOT_CRAN = "false", GLLVMTMB_HEAVY_TESTS = ""))
+
+Duration: 5m 39.6s
+0 errors ✔ | 0 warnings ✔ | 1 note ✖
+
+❯ checking CRAN incoming feasibility ... NOTE
+    Maintainer: 'Shinichi Nakagawa <itchyshin@gmail.com>'
+    New submission
+```
+
+The single NOTE is the expected first-release `New submission`. **No URL NOTE or WARNING was
+raised**, which is the specific thing this re-run existed to test; it agrees with the direct
+fetch of both links recorded above. `checking for detritus in the temp directory ... OK`.
+
+Log: `~/gllvmTMB-0.6-evidence/m1/diagnostics/f56310ff-cran-check.log`
+
+STILL OUTSTANDING for M1: **R-10 sign-off** (15 internal `Design NN` / `Phase NN` codes in
+user-facing error messages — surfaced, not waived), durable runners on the frozen head, the
+**gated** CI cycle, and a THIRD D-43 panel. **M1 remains WITHHELD.**
+
+Note the standing conflict recorded in `LOOP/checkpoint.md`: the session goal requires
+closing M1 *and* forbids push/CI spend, and M1's definition of done requires exact-SHA
+platform evidence. That is a maintainer decision, not an agent one.

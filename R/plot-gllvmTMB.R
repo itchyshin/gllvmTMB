@@ -224,7 +224,8 @@ plot.gllvmTMB_multi <- function(
 ## Stabilise stacked-bar geometry without changing the scientific values kept
 ## in `proportion`. Components below `tol` occupy far less than one device
 ## pixel but can serialize to platform-dependent 1e-6-point SVG widths. Set
-## only the rendering values to zero, then renormalise each stack exactly.
+## only the rendering values to zero, then renormalise each stack to
+## floating-point precision.
 .gtmb_stable_stack_values <- function(x, group, tol = 1e-7) {
   out <- as.numeric(x)
   out[is.finite(out) & abs(out) < tol] <- 0

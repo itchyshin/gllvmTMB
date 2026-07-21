@@ -45666,3 +45666,63 @@ Issue ledger and nonclaims:
   statement, or 0.6 release claim occurred in this receipt.
 - Final exact-head local package/pkgdown checks, one PR, three-platform package
   CI, Ubuntu heavy CI, and final independent M1 synthesis remain pending.
+
+## 2026-07-21 — M1 first platform cycle: retained Windows roundoff failure and narrow repair (Codex)
+
+Platform evidence at source head
+`f4628a8cdda885ee66da6b806923c9c2501f463a`:
+
+- Draft PR #778 remained the sole open programme PR and the builder remained
+  the sole writer.
+- The shared-file coordination census found no competing recent commit or PR.
+  The historical `gllvmtmb-windows-ci-fixture-repair` worktree was clean; the
+  known inactive overlap remained confined to unrelated profile/register files.
+- PR Ubuntu run `29804219087` passed.
+- Manual three-OS run `29804302347` retained a mixed result: Ubuntu and macOS
+  passed; Windows job `88551611475` failed one assertion at
+  `tests/testthat/test-plot-gllvmTMB.R:447`. The Windows denominator was 7,235
+  passes, 786 skips, one classified warning, and one failure. This failed
+  attempt remains evidence and is not reclassified or removed.
+- Manual Ubuntu-heavy run `29804303658` was still in progress when this entry
+  was written. It is not treated as a PASS until its final conclusion is
+  recorded.
+
+The Windows failure was the bitwise assertion
+`expect_equal(plot_totals, rep(1, fit$n_traits), tolerance = 0)`. Direct local
+reproduction returned an ordinary unclassed double vector whose first stack
+total was `1 + .Machine$double.eps`; all remaining totals were exactly one.
+Two independent reviews agreed that binary division followed by `sum()` is not
+portable at bitwise equality and that this was a test-contract defect, not a
+scientific variance-decomposition or plotting defect.
+
+The narrow repair:
+
+- preserves the original scientific `proportion` column and does not change
+  plotting or model behavior;
+- corrects the internal helper comment from exact normalization to
+  floating-point precision;
+- retains the sum-to-one check with a strict bound of
+  `16 * n_components * .Machine$double.eps`;
+- additionally requires every plotted proportion to be finite and
+  non-negative; and
+- adds a deterministic `c(0.1, 0.2, 0.3)` pure-logic roundoff case while
+  preserving the exact sub-pixel-zero and input-immutability assertions.
+
+Verification before commit:
+
+```sh
+Rscript --vanilla -e 'res <- devtools::test(filter = "plot-gllvmTMB", stop_on_failure = FALSE); d <- as.data.frame(res); cat(sprintf("rows=%d failed=%d errors=%d warnings=%d skips=%d passes=%d\\n", nrow(d), sum(d$failed), sum(as.integer(d$error)), sum(d$warning), sum(d$skipped), sum(d$passed))); quit(status = if (sum(d$failed) + sum(as.integer(d$error)) > 0L) 1L else 0L)'
+Rscript --vanilla -e 'parse(file = "R/plot-gllvmTMB.R"); parse(file = "tests/testthat/test-plot-gllvmTMB.R"); cat("PARSE_PASS\\n")'
+git diff --check
+```
+
+Results: 250 targeted assertions passed with zero failures, errors, warnings,
+or skips; both modified R files parsed; `git diff --check` passed. Independent
+post-edit review passed: the `1.4211e-14` four-component bound rejects
+deliberate `1e-12` and larger total defects while the deterministic roundoff
+case closes at `1.1102e-16`.
+
+The repair does not admit EVA, launch scientific compute, merge PR #778,
+freeze an RC, tag, submit, or support a release/readiness claim. A new exact
+head must pass the local package/pkgdown gates and fresh three-OS plus
+Ubuntu-heavy platform gates before M1 can close.

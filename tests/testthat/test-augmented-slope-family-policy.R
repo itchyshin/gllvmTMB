@@ -77,6 +77,11 @@ test_that("all six structured augmented-slope guards use the canonical policy", 
   scope <- gllvmTMB:::.augmented_slope_family_scope_text()
   expect_match(scope, "lognormal\\(\\)")
   expect_match(scope, "student\\(\\)")
-  expect_match(scope, "C1-partial")
+  ## The canonical text must still state the weaker-evidence caveat for
+  ## lognormal()/student(). This previously asserted the internal register
+  ## token "C1-partial", which R-10 removed from user-facing message text;
+  ## the assertion tracks the plain-English wording that replaced it so the
+  ## test still checks the same property.
+  expect_match(scope, "more limited evidence")
   expect_match(scope, "logit/probit only")
 })

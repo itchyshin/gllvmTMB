@@ -11,4 +11,3 @@ independent reversible work. An empty queue does not waive gates listed in
 | Remote scientific compute | NOT YET OPEN | Approve Totoro smoke + DRAC pilot for the frozen campaign? | only after deterministic gates and immutable manifest | Totoro/DRAC jobs | local deterministic proof |
 | Public EVA | NOT YET OPEN | Admit the evidence-backed allowlist to the installed package? | default CUT unless M2 scientific GO and M3 package gates pass | public API/docs | Laplace-only release path |
 | Release ceremony | NOT YET OPEN | Approve API/candidate freeze, RC/final tag, and submission at each rung? | separate decisions; never bundle them | irreversible outward action | read-only review and receipt assembly |
-

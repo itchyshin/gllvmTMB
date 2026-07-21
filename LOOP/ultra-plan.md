@@ -129,4 +129,3 @@ At the start of every arc:
 
 At every close, state what the arc did not cover. At programme close,
 reconcile plan versus actual and surface all scope/evidence/claim drift.
-

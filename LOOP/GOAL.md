@@ -76,4 +76,3 @@ has a frozen source/tarball identity, clean local package and pkgdown evidence,
 green exact-SHA three-OS and heavy package checks, reconciled public claims,
 fresh adversarial reviews, and explicit maintainer approval at every remaining
 ceremony gate. CRAN submission itself remains a separate maintainer act.
-

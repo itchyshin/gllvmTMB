@@ -28,6 +28,15 @@ namespace, then run the complete non-heavy suite. If green, run the touched
 heavy group, render all four changed articles, run pkgdown and source-package
 checks, and proceed through the exact-head CI/D-43 ladder in the handover.
 
+**POST-FREEZE CHECKPOINT RULE:** before the final M1 source freeze, overwrite
+this file with the candidate SHA and an explicit pointer to PR #778 plus the
+canonical Mission Control board as the external checkpoint for terminal CI and
+D-43 state. After that commit is locally qualified and pushed, do not edit the
+package repository merely to record external receipts: update PR #778 and
+Mission Control instead. A fresh session must consult those two external
+receipts before acting. Any load-bearing failure returns to the responsible
+earlier arc, updates this file, and mints a new exact head.
+
 **OPEN GATES (need human):** M1-to-M2 admission remains closed. Design 86,
 Totoro/DRAC scientific compute, public EVA, merge, release-candidate/tag,
 submission, and readiness claims remain prohibited without their separate
@@ -46,4 +55,3 @@ Read LOOP/GOAL.md -> LOOP/checkpoint.md -> LOOP/ultra-plan.md -> AGENTS.md ->
 docs/dev-log/handover/2026-07-21-claude-handover.md. Continue the L2 arc-loop
 from M1 complete-local qualification. Stop at the M1-to-M2 gate.
 ```
-

@@ -1,8 +1,8 @@
 # After task — M1 public-boundary repair and arc-loop checkpoint
 
-**Branch:** `codex/gllvmtmb-060-m1-baseline-20260720`  
-**Draft PR:** #778  
-**Date:** 2026-07-21  
+**Branch:** `codex/gllvmtmb-060-m1-baseline-20260720`
+**Draft PR:** #778
+**Date:** 2026-07-21
 **Roles engaged:** Ada, Noether, Rose, Grace, Boole, Pat
 
 ## 1. Goal

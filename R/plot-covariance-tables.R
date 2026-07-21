@@ -989,7 +989,7 @@
 #' rows. Use [plot_Sigma_table()] or [plot_Sigma_heatmap()] for point-only
 #' Julia bridge correlation displays.
 #'
-#' Scope boundary: IN, the helper plots tidy cross-trait correlation rows from
+#' Scope: the helper plots tidy cross-trait correlation rows from
 #' [extract_correlations()], extracts those rows from a fit returned by
 #' [gllvmTMB()] (this is covered by the package's extractor-contract
 #' validation tests), or converts `bootstrap_Sigma()` correlation summaries to
@@ -997,8 +997,8 @@
 #' ellipse/oval displays, including upper-estimate/lower-CI and two-level
 #' upper/lower layouts, are point-estimate summaries with optional numeric
 #' interval labels (covered separately).
-#' PARTIAL, the plot does not compute new intervals; it displays whatever
-#' interval method the input rows already contain. PLANNED, matrix-style visual
+#' The plot does not compute new intervals; it displays whatever
+#' interval method the input rows already contain. Matrix-style visual
 #' comparisons against known truth remain article code rather than part of this
 #' helper.
 #'
@@ -1363,13 +1363,13 @@ plot_correlations <- function(
 #' "scatter"` shows estimate versus truth with a one-to-one reference line.
 #' Segments in these plots are comparison residuals, not confidence intervals.
 #'
-#' Scope boundary: IN, the helper plots [compare_Sigma_table()] rows or builds
+#' Scope: the helper plots [compare_Sigma_table()] rows or builds
 #' them from a fitted model / Sigma table plus one supplied truth matrix
 #' (covered by the package's comparison-table validation tests, which build on
-#' the underlying Sigma-table extraction tests). PARTIAL, it is a visual
+#' the underlying Sigma-table extraction tests). It is a visual
 #' comparison helper only: it does not run simulations, compute intervals, or
 #' validate calibration.
-#' PLANNED, article-specific simulation summaries and richer calibration plots
+#' Article-specific simulation summaries and richer calibration plots
 #' remain future work.
 #'
 #' @param x A fit returned by [gllvmTMB()], an admitted `engine = "julia"`
@@ -1695,13 +1695,13 @@ plot_Sigma_comparison <- function(
 #' example from a bootstrap workflow; [extract_Sigma_table()] itself currently
 #' leaves interval columns as placeholders.
 #'
-#' Scope boundary: IN, the helper plots point-estimate rows from
+#' Scope: the helper plots point-estimate rows from
 #' [extract_Sigma_table()] or extracts those rows from a fit returned by
 #' [gllvmTMB()] or an admitted `engine = "julia"` bridge fit (covered by the
 #' package's extractor-contract validation tests, including the Julia-bridge
-#' fit path). PARTIAL, interval columns are displayed when present and
-#' finite, but this helper does not compute Sigma intervals. PLANNED,
-#' uncertainty propagation for arbitrary Sigma entries belongs in
+#' fit path). Interval columns are displayed when present and
+#' finite, but this helper does not compute Sigma intervals.
+#' Uncertainty propagation for arbitrary Sigma entries belongs in
 #' bootstrap/profile infrastructure.
 #'
 #' @param x A fit returned by [gllvmTMB()], an admitted `engine = "julia"`
@@ -2035,14 +2035,14 @@ plot_Sigma_table <- function(
 #' Heatmap cells are point estimates only; interval columns, when present, stay
 #' available in the returned plot data but are not displayed.
 #'
-#' Scope boundary: IN, the helper plots point-estimate heatmaps from
+#' Scope: the helper plots point-estimate heatmaps from
 #' [extract_Sigma_table()] rows or extracts those rows from a fit returned by
 #' [gllvmTMB()], an admitted `engine = "julia"` bridge fit, or from a
 #' `bootstrap_Sigma` object (covered by the package's heatmap validation
 #' tests, which build on the underlying extractor-contract and Julia-bridge
-#' fit tests). PARTIAL, it does not display interval bounds or compare fitted values to
+#' fit tests). It does not display interval bounds or compare fitted values to
 #' known truth. Use [plot_Sigma_table()] for interval forests or confidence
-#' eyes, and [plot_Sigma_comparison()] for estimate-vs-truth displays. PLANNED,
+#' eyes, and [plot_Sigma_comparison()] for estimate-vs-truth displays.
 #' vdiffr snapshots and richer multi-model layout helpers remain future figure
 #' work.
 #'

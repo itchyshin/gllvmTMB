@@ -32,12 +32,12 @@ diagnostic rows, residual rows, row-status counts, or fit-health table
 without inspecting object attributes directly.
 }
 \details{
-Scope boundary: IN, table extraction from existing
+Scope: table extraction from existing
 \code{attr(x, "gllvmTMB_diagnostic")} metadata on \code{predictive_check()}
-plots and diagnostic residual data frames. PARTIAL, this helper does
-not compute new diagnostics, refit models, run formal residual tests,
-or calibrate uncertainty. PLANNED, richer article tables can build on
-this stable metadata path once the diagnostic examples are restored.
+plots and diagnostic residual data frames. This helper does not
+compute new diagnostics, refit models, run formal residual tests, or
+calibrate uncertainty. Richer article tables can build on this
+stable metadata path once the diagnostic examples are restored.
 }
 \examples{
 \donttest{

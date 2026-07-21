@@ -224,9 +224,9 @@ rotate_loadings <- function(
 #'
 #' Scope: covered for fitted `latent()` components at `level = "unit"` or
 #' `level = "unit_obs"` with raw or standardized point-estimate loadings.
-#' PARTIAL: this table does not attach uncertainty intervals to loadings.
-#' PLANNED: bootstrap or simulation-based uncertainty can be layered on top in
-#' a later inference slice.
+#' This table does not attach uncertainty intervals to loadings. Bootstrap
+#' or simulation-based uncertainty is not yet implemented and remains
+#' possible future work for a later inference slice.
 #'
 #' @param fit A fitted multivariate model returned by [gllvmTMB()].
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).

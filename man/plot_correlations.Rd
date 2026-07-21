@@ -120,7 +120,7 @@ because this helper depends on interval-bearing \code{\link[=extract_correlation
 rows. Use \code{\link[=plot_Sigma_table]{plot_Sigma_table()}} or \code{\link[=plot_Sigma_heatmap]{plot_Sigma_heatmap()}} for point-only
 Julia bridge correlation displays.
 
-Scope boundary: IN, the helper plots tidy cross-trait correlation rows from
+Scope: the helper plots tidy cross-trait correlation rows from
 \code{\link[=extract_correlations]{extract_correlations()}}, extracts those rows from a fit returned by
 \code{\link[=gllvmTMB]{gllvmTMB()}} (this is covered by the package's extractor-contract
 validation tests), or converts \code{bootstrap_Sigma()} correlation summaries to
@@ -128,8 +128,8 @@ the same plotting schema (also covered by those tests). Matrix heatmaps and
 ellipse/oval displays, including upper-estimate/lower-CI and two-level
 upper/lower layouts, are point-estimate summaries with optional numeric
 interval labels (covered separately).
-PARTIAL, the plot does not compute new intervals; it displays whatever
-interval method the input rows already contain. PLANNED, matrix-style visual
+The plot does not compute new intervals; it displays whatever
+interval method the input rows already contain. Matrix-style visual
 comparisons against known truth remain article code rather than part of this
 helper.
 }

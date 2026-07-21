@@ -1600,9 +1600,9 @@ extract_Sigma <- function(
 #' fitted dense-kernel model, covered by the package's validation tests at the
 #' fixed-rho scale: when the fitted kernel tier was built from [make_cross_kernel()],
 #' `scale = "effect"` returns `Gamma_effect = rho * Gamma_shape` using the
-#' fixed `rho` recorded on that kernel. PARTIAL: uncertainty for `Gamma` is
-#' not yet reported by this helper; use bootstrap workflows when interval
-#' estimates are required. Use [profile_cross_rho()] to compare a fixed `rho`
+#' fixed `rho` recorded on that kernel. Uncertainty for `Gamma` is not yet
+#' reported by this helper; use bootstrap workflows when interval estimates
+#' are required. Use [profile_cross_rho()] to compare a fixed `rho`
 #' grid; in-engine `rho` estimation and profile intervals remain planned work.
 #'
 #' @details
@@ -1732,7 +1732,7 @@ extract_Gamma <- function(
 #' Fixed dense `kernel_latent()` tiers, covered by the package's validation
 #' tests, store their
 #' aligned `K` matrices on the fit, and this helper returns point estimates for
-#' named species/lineage pairs. PARTIAL: it does not estimate `rho`, produce
+#' named species/lineage pairs. It does not estimate `rho`, produce
 #' intervals, calibrate null thresholds, or combine components into a universal
 #' total `Gamma`.
 #'
@@ -2093,7 +2093,7 @@ print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
 #' This is a point-estimate derived-output helper, covered by the package's
 #' validation tests, for fitted
 #' dense-kernel coevolution models whose component-specific `Gamma` blocks are
-#' already extractable with [extract_Gamma()]. PARTIAL: it does not report
+#' already extractable with [extract_Gamma()]. It does not report
 #' uncertainty, choose the biological rank, estimate `rho`, or calibrate null
 #' thresholds. Use simulation, bootstrap, and kernel-separability checks before
 #' treating the returned axes as scientific evidence.

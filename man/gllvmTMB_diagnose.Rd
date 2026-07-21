@@ -39,12 +39,12 @@ signal. Use \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} when you need the sa
 checks as a stable table for scripts or reports.
 }
 \details{
-Scope boundary: covered are first-line convergence, Hessian,
-standard-error, restart, and rotation diagnostics. Partially
-covered: it reports risks and summaries but does not replace
-profile, bootstrap, or simulation calibration. Planned:
-target-explicit validation will decide which interval warnings can
-be promoted to broader guarantees.
+Scope: first-line convergence, Hessian, standard-error,
+restart, and rotation diagnostics. It reports risks and
+summaries but does not replace profile, bootstrap, or
+simulation calibration. Target-explicit validation will
+decide which interval warnings can be promoted to broader
+guarantees.
 }
 \examples{
 \dontrun{

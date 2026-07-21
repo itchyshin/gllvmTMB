@@ -56,9 +56,9 @@ example \code{b_fix[1]}, \code{sigma_eps}, or \code{sd_B[2]}) and can be passed 
 \code{confint(fit, parm = ..., method = "profile")}. Nonlinear derived targets
 are excluded because their former penalty-profile routes are withheld.
 
-Scope boundary: IN, the controlled vocabulary and
-direct-profile routing is covered for fitted models with retained TMB
-objects. Broader target-explicit profile calibration remains future work.
+Scope: the controlled vocabulary and direct-profile routing is
+covered for fitted models with retained TMB objects. Broader
+target-explicit profile calibration remains future work.
 
 The output uses a controlled vocabulary for direct target classes,
 transformations, and readiness notes.

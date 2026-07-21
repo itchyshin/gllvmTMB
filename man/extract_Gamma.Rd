@@ -33,9 +33,9 @@ is a point-estimate extractor for the shared covariance block of a
 fitted dense-kernel model, covered by the package's validation tests at the
 fixed-rho scale: when the fitted kernel tier was built from \code{\link[=make_cross_kernel]{make_cross_kernel()}},
 \code{scale = "effect"} returns \code{Gamma_effect = rho * Gamma_shape} using the
-fixed \code{rho} recorded on that kernel. PARTIAL: uncertainty for \code{Gamma} is
-not yet reported by this helper; use bootstrap workflows when interval
-estimates are required. Use \code{\link[=profile_cross_rho]{profile_cross_rho()}} to compare a fixed \code{rho}
+fixed \code{rho} recorded on that kernel. Uncertainty for \code{Gamma} is not yet
+reported by this helper; use bootstrap workflows when interval estimates
+are required. Use \code{\link[=profile_cross_rho]{profile_cross_rho()}} to compare a fixed \code{rho}
 grid; in-engine \code{rho} estimation and profile intervals remain planned work.
 }
 \details{

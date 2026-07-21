@@ -38,9 +38,9 @@ kernels are highly overlapping, component-specific \code{Gamma} blocks are weak
 evidence and should be treated as descriptive unless simulations justify the
 split.
 
-What is covered (partially): use this helper to screen candidate \code{K_phy} and
+Use this helper to screen candidate \code{K_phy} and
 \code{K_tip} definitions, including raw-network and residualized-network choices,
-before fitting \code{kernel_latent(..., name = ...)} tiers. What is not covered:
+before fitting \code{kernel_latent(..., name = ...)} tiers. Note its limits:
 this is a diagnostic, not recovery evidence, interval calibration, or an
 in-engine identifiability proof.
 }

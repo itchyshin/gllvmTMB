@@ -447,13 +447,13 @@ extract_Sigma_table <- function(
 #' teaching articles that need estimate-vs-truth tables without hand-indexing
 #' matrices inside the article.
 #'
-#' Scope boundary: IN, the helper compares fitted or precomputed
+#' Scope: the helper compares fitted or precomputed
 #' `extract_Sigma_table()` rows against one supplied truth matrix (covered
-#' by the package's Sigma-table validation tests).
-#' PARTIAL, it is a table helper only: it does not compute uncertainty,
-#' simulate data, or validate calibration. For the first visual comparison
-#' layer, use [plot_Sigma_comparison()]; richer article-specific calibration
-#' summaries remain future visualization work.
+#' by the package's Sigma-table validation tests). It is a table helper
+#' only: it does not compute uncertainty, simulate data, or validate
+#' calibration. For the first visual comparison layer, use
+#' [plot_Sigma_comparison()]; richer article-specific calibration summaries
+#' remain future visualization work.
 #'
 #' @param x A fit returned by [gllvmTMB()], an admitted `engine = "julia"`
 #'   bridge fit, or a data frame returned by [extract_Sigma_table()].

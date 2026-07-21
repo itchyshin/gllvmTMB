@@ -68,15 +68,15 @@ diagnostics. It is the machine-readable companion to
 where parsing printed messages would be brittle.
 }
 \details{
-Scope boundary: covered are optimisation and inference-risk signals
-for fitted models, including latent-axis rotation, weak-axis,
-near-zero \code{psi}, residual-scale boundary flags, a binomial
+Scope: optimisation and inference-risk signals for fitted
+models, including latent-axis rotation, weak-axis, near-zero
+\code{psi}, residual-scale boundary flags, a binomial
 near-constant/loading/saturation screen, and the intentional
-\code{gllvmTMBcontrol(se = FALSE)} point-estimate path. Partially
-covered: the table does not calibrate interval coverage, prove
-formal separation, or prove the selected latent rank by itself.
-Planned: target-explicit known-DGP simulations decide when broader
-interval or rank-selection claims move beyond diagnostic status.
+\code{gllvmTMBcontrol(se = FALSE)} point-estimate path. The table
+does not calibrate interval coverage, prove formal separation,
+or prove the selected latent rank by itself. Target-explicit
+known-DGP simulations will decide when broader interval or
+rank-selection claims can move beyond diagnostic status.
 
 A \code{WARN} row, including \code{pdHess = FALSE}, means that Wald standard
 errors or curvature-based inference need more care; it is not by

@@ -1410,10 +1410,10 @@ simulate.gllvmTMB_multi <- function(
 #' loadings. For report tables use [check_gllvmTMB()]; for a broader
 #' human-readable summary use [gllvmTMB_diagnose()].
 #'
-#' Scope boundary: IN, fast numerical and loading-shape checks
-#' for fitted models. PARTIAL, a PASS here does not prove interval
-#' calibration or latent-rank identifiability. PLANNED, use
-#' target-explicit known-DGP simulation studies for those heavier questions.
+#' Scope: fast numerical and loading-shape checks for fitted models.
+#' A PASS here does not prove interval calibration or latent-rank
+#' identifiability; use target-explicit known-DGP simulation studies for
+#' those heavier questions.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param gradient_thresh Maximum allowed absolute gradient component.

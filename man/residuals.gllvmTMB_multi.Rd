@@ -57,12 +57,11 @@ implemented.
 Rows are retained even when a residual cannot be computed. Inspect the
 \code{status} column before treating residuals as complete.
 
-Scope boundary: IN, exact family-CDF randomized-quantile
-residuals for Gaussian, Poisson, and NB2 rows plus simulation-rank
-residuals from fitted-model draws. PARTIAL, unsupported families are
-retained with row status rather than promoted to exact residual
-claims. PLANNED, broader family coverage and formal residual tests
-remain later validation work.
+Scope: exact family-CDF randomized-quantile residuals for Gaussian,
+Poisson, and NB2 rows plus simulation-rank residuals from fitted-model
+draws. Unsupported families are retained with row status rather than
+promoted to exact residual claims. Broader family coverage and formal
+residual tests remain later validation work.
 
 The returned data frame also carries \code{attr(x, "gllvmTMB_diagnostic")}
 with \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} output and the fitted object's \code{fit_health}

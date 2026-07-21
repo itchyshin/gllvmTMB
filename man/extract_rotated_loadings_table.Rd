@@ -56,9 +56,9 @@ instead of left inside a matrix.
 \details{
 Scope: covered for fitted \code{latent()} components at \code{level = "unit"} or
 \code{level = "unit_obs"} with raw or standardized point-estimate loadings.
-PARTIAL: this table does not attach uncertainty intervals to loadings.
-PLANNED: bootstrap or simulation-based uncertainty can be layered on top in
-a later inference slice.
+This table does not attach uncertainty intervals to loadings. Bootstrap
+or simulation-based uncertainty is not yet implemented and remains
+possible future work for a later inference slice.
 }
 \examples{
 \dontrun{

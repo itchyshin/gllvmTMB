@@ -2,15 +2,15 @@
 #'
 #' @description
 #' `make_cross_kernel()` builds the block relatedness matrix for the C0
-#' coevolution prototype. What is covered here is building a correlation-scale
+#' coevolution prototype. It builds a correlation-scale
 #' positive-semidefinite matrix
 #' `K_star = rbind(cbind(A_H, C_HP), cbind(t(C_HP), A_P))`, where `A_H`
 #' and `A_P` are within-lineage relatedness matrices and `C_HP` is the
-#' cross-lineage bridge induced by the association matrix `W`. What is only
-#' partially covered is the prototype path: use `K_star` through the
+#' cross-lineage bridge induced by the association matrix `W`. The intended
+#' route is a prototype: pass `K_star` through the
 #' existing `phylo_latent(..., vcv = K_star, unique = TRUE)` engine. The
 #' generic `kernel_*()` surface and the
-#' validated `extract_Gamma()` coevolution gate are now covered
+#' validated `extract_Gamma()` coevolution gate are documented
 #' separately; this helper only builds the input kernel.
 #'
 #' @param A_H,A_P Numeric square correlation matrices for the host and
@@ -125,10 +125,10 @@ make_cross_kernel <- function(A_H, A_P, W, rho = 0.5, eps = 1e-8) {
 #' `refit(K, rho, ...)` function for each grid value, and returns a tidy
 #' likelihood table.
 #'
-#' What is covered: this is a fixed-kernel profile workflow for
-#' comparing defended `rho` values. What is only partially covered: `rho` is still not a TMB parameter,
-#' this helper does not estimate `rho`, and it does not produce confidence
-#' intervals or null calibration.
+#' This is a fixed-kernel profile workflow for
+#' comparing defended `rho` values. Note its limits: `rho` is not a TMB
+#' parameter, this helper does not estimate `rho`, and it does not produce
+#' confidence intervals or null calibration.
 #'
 #' @param A_H,A_P,W Inputs passed to [make_cross_kernel()].
 #' @param rho Numeric vector of fixed `rho` values to evaluate.
@@ -541,9 +541,9 @@ profile_cross_rho_ci <- function(profile, level = 0.95) {
 #' evidence and should be treated as descriptive unless simulations justify the
 #' split.
 #'
-#' What is covered (partially): use this helper to screen candidate `K_phy` and
+#' Use this helper to screen candidate `K_phy` and
 #' `K_tip` definitions, including raw-network and residualized-network choices,
-#' before fitting `kernel_latent(..., name = ...)` tiers. What is not covered:
+#' before fitting `kernel_latent(..., name = ...)` tiers. Note its limits:
 #' this is a diagnostic, not recovery evidence, interval calibration, or an
 #' in-engine identifiability proof.
 #'

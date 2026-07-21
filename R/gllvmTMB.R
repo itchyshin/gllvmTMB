@@ -37,8 +37,9 @@
 #' slopes), [meta_V()] (known-V meta-analytic; [meta_known_V()] is a
 #' deprecated alias), and the engine-internal `propto()` /
 #' `equalto()` covstructs (used by the canonical keywords above; not
-#' typically called directly). See `vignette("api-keyword-grid")` for a
-#' one-paragraph tour of each cell.
+#' typically called directly). See the
+#' [formula keyword grid article](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html)
+#' for a one-paragraph tour of each cell.
 #'
 #' @param formula A glmmTMB-style formula, e.g.
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
@@ -204,9 +205,7 @@
 #'   prefer `tree =`. The dense path inverts via `Matrix::solve()`,
 #'   giving the same MLE as the sparse path but at `O(n^2)` memory and
 #'   `O(n^3)` Cholesky cost. Use only when you have a Cphy in hand and
-#'   no Newick tree (e.g. comparing against `nlme::corPagel`). See
-#'   the *Random effects* article for the full
-#'   technical justification.
+#'   no Newick tree (e.g. comparing against `nlme::corPagel`).
 #' @param known_V Optional list of block-diagonal sampling-error matrices
 #'   `V_t`. Used by the `equalto()` two-stage workflow when sampling-error
 #'   matrices are available from a prior stage of estimation.

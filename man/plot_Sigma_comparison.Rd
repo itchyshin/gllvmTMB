@@ -54,13 +54,13 @@ row-labelled comparison plot. The default \code{style = "difference"} shows
 Segments in these plots are comparison residuals, not confidence intervals.
 }
 \details{
-Scope boundary: IN, the helper plots \code{\link[=compare_Sigma_table]{compare_Sigma_table()}} rows or builds
+Scope: the helper plots \code{\link[=compare_Sigma_table]{compare_Sigma_table()}} rows or builds
 them from a fitted model / Sigma table plus one supplied truth matrix
 (covered by the package's comparison-table validation tests, which build on
-the underlying Sigma-table extraction tests). PARTIAL, it is a visual
+the underlying Sigma-table extraction tests). It is a visual
 comparison helper only: it does not run simulations, compute intervals, or
 validate calibration.
-PLANNED, article-specific simulation summaries and richer calibration plots
+Article-specific simulation summaries and richer calibration plots
 remain future work.
 }
 \examples{

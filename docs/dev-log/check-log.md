@@ -46030,3 +46030,29 @@ bought nothing. Conceded to the panel.
 
 These edits invalidate the A11 receipts and the three CI runs bound to `25c76789`.
 Re-qualification is required and M1 remains **NOT closed**.
+
+### 2026-07-21 — CRAN-configuration check on the swept head `e494f6ff`
+
+Run after the reader-surface class sweep (11 R files re-documented, 10 Rd regenerated,
+NEWS and one vignette edited) — the change set the second D-43 panel required.
+
+```
+devtools::check(document = FALSE, remote = TRUE, incoming = TRUE,
+                force_suggests = TRUE, manual = TRUE,
+                env_vars = c(NOT_CRAN = "false", GLLVMTMB_HEAVY_TESTS = ""))
+
+ERRORS 0 | WARNINGS 0 | NOTES 1   ("New submission" — expected for a first release)
+  checking PDF version of manual ....... OK
+  checking top-level files ............. OK
+  checking CRAN incoming feasibility ... NOTE (the expected one)
+```
+
+Also on this head: `tools/check-reader-surface.sh` PASS, and the complete non-heavy suite
+`FAIL 0 | WARN 0 | SKIP 779 | PASS 7287` — identical to the pre-sweep run, confirming the
+sweep was documentation-only despite touching eleven R files.
+
+Applies unchanged to `310cbaab`, which adds only the R-7 diagnosis to a `docs/dev-log/` path
+that `.Rbuildignore` excludes from the tarball.
+
+STILL OUTSTANDING for M1: durable runners on the final head (mirrored with SHA-256, not left
+in `/private/tmp`), the authorised CI cycle, and a THIRD D-43 panel. **M1 remains WITHHELD.**

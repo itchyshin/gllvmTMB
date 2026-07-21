@@ -134,3 +134,46 @@ lies **outside Design 85's admitted data contract**, so 0.7 requires a new Gate-
 scope freeze, not a `q`-extension.
 
 Full record: `docs/dev-log/2026-07-21-eva-cut-to-0.7.md`.
+
+---
+
+# MAINTAINER AMENDMENT 2 — 2026-07-21 (later the same day)
+
+**Authority:** Shinichi Nakagawa, 2026-07-21, in session. Recorded by Claude Code.
+Same legitimacy as Amendment 1: a maintainer decision taken at a gate.
+
+## What prompted it
+
+A session `/goal` issued earlier this day carried the discipline line **"stop before any
+push/CI spend"** alongside the deliverable **"Close M1 (release truth + qualified head)"**.
+Those are contradictory: M1's definition of done requires exact-SHA three-OS platform
+evidence, which only CI can produce. The lane obeyed the discipline line and stopped,
+leaving M1 unclosable by construction.
+
+The conflict was **accidental**: that discipline line silently revoked a CI authorisation
+the standing handover had already granted ("CI spend is authorised. Push, Ubuntu, heavy and
+the three-OS matrix are approved — do not re-ask").
+
+## The decision
+
+**CI authorisation is RESTORED.** Push, the Ubuntu run, the heavy run, and the full
+three-OS matrix are approved for this arc. **Do not re-ask.** The "stop before any push/CI
+spend" line is **superseded** and no longer binds.
+
+## What is UNCHANGED and still binding
+
+- **Every other discipline stands**: no merge, no tag, no submission, no readiness claim.
+- **"No exception is self-granted"** stands unchanged. **R-10 still requires the
+  maintainer's individual sign-off**, and by the register's own rule an `AWAITING SIGN-OFF`
+  row blocks M1's closing claim regardless of CI being green.
+- Scientific simulation compute remains **LOCAL only** — this restores *package-check* CI,
+  not campaign compute. D-50 stands: no simulation/coverage/power campaigns on GitHub
+  Actions, no campaign artifacts there.
+- Design 85 remains a closed NO-GO; EVA stays cut to 0.7.
+
+## Sequencing this creates — do not get it backwards
+
+If R-10 is answered **"rewrite"**, it requires source edits, which re-mint the source
+identity and **invalidate any receipts and any CI run made before them**. So the order is:
+**R-10 decision → apply → freeze → push → CI → third D-43 panel.** Pushing before R-10 is
+settled spends a CI cycle on a SHA that is about to change.

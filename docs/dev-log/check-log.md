@@ -46121,3 +46121,25 @@ user-facing error messages — surfaced, not waived), durable runners on the fro
 Note the standing conflict recorded in `LOOP/checkpoint.md`: the session goal requires
 closing M1 *and* forbids push/CI spend, and M1's definition of done requires exact-SHA
 platform evidence. That is a maintainer decision, not an agent one.
+**RESOLVED later the same day** — see `LOOP/GOAL.md` Amendment 2: CI authorisation restored.
+
+### 2026-07-21 — non-heavy suite after the R-10 message rewrites
+
+Run because R-10 changed **27 user-facing message strings** across six R files. Message text
+is exactly the kind of change that breaks `expect_error()` regexes and snapshots, so this run
+is the proof that it did not.
+
+```
+devtools::test(reporter = "summary")
+
+FAIL 0 | WARN 0 | SKIP 779
+```
+
+Identical to the baseline. Counts parsed from the log: 0 `Failure`/`Error` blocks, no
+`══ Warnings` section, 779 skips.
+
+Belt-and-braces before that: **every file in `R/` was `parse()`-checked**, which is the check
+that catches an unbalanced `{.code ...}` brace or a broken `cli` interpolation — a class of
+error that would otherwise only appear when a user triggers that specific message.
+
+Log: `~/gllvmTMB-0.6-evidence/m1/diagnostics/r10-post-suite.log`

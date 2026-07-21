@@ -176,7 +176,7 @@
     "Augmented structured random slopes are permitted for gaussian(),",
     "binomial() (logit/probit only), poisson(), Gamma(), nbinom2(),",
     "nbinom1(), Beta(), and ordinal_probit(); lognormal() and student()",
-    "are permitted under C1-partial evidence only (RE-14).",
+    "are permitted on more limited evidence only.",
     "Validation depth remains family- and covariance-mode-specific."
   )
 }
@@ -601,7 +601,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
       cli::cli_warn(c(
         "Two {.fn kernel_unique} tiers are not separable without replication.",
-        "i" = "The two-{.field Psi} split ({.code Psi_phy + Psi_non}) is confounded with a single observation per species/trait: one community realisation is only one replicate of the uniqueness signal (Boettiger et al. 2012; Design 65 C3.2).",
+        "i" = "The two-{.field Psi} split ({.code Psi_phy + Psi_non}) is confounded with a single observation per species/trait: one community realisation is only one replicate of the uniqueness signal (Boettiger et al. 2012).",
         ">" = "Defaulting to a single uniqueness tier. To estimate both {.field Psi}, supply within-species replication (repeated communities, or species means + SE)."
       ))
     }
@@ -920,7 +920,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         cli::cli_abort(c(
           "{.fn spatial_dep} random slopes are not admitted for this family/link combination.",
           "i" = .augmented_slope_family_scope_text(),
-          "i" = "The full-unstructured spatial route has its own evidence boundary (SPA-10); RE-14 does not make lognormal or Student-t route-specific recovery covered.",
+          "i" = "The full-unstructured spatial route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
           ">" = "Use an admitted family/link combination and consult the validation register before making recovery or inference claims."
         ))
       }
@@ -932,7 +932,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "Augmented spatial random slopes are not admitted for this family/link combination.",
         "i" = .augmented_slope_family_scope_text(),
-        "i" = "The spatial_unique/spatial_indep route has its own evidence boundary (SPA-08); RE-14 does not make lognormal or Student-t route-specific recovery covered.",
+        "i" = "The spatial_unique/spatial_indep route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
         ">" = "Use an admitted family/link combination and consult the validation register before making recovery or inference claims."
       ))
     }
@@ -963,7 +963,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "Augmented {.fn spatial_latent} random slopes are not admitted for this family/link combination.",
         "i" = .augmented_slope_family_scope_text(),
-        "i" = "The reduced-rank spatial route has its own evidence boundary (SPA-09); RE-14 does not make lognormal or Student-t route-specific recovery covered.",
+        "i" = "The reduced-rank spatial route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
         ">" = "Use an admitted family/link combination and consult the validation register before making recovery or inference claims."
       ))
     }
@@ -1495,7 +1495,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cli::cli_abort(c(
       "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
       "i" = .augmented_slope_family_scope_text(),
-      "i" = "The phylo_indep route has its own evidence boundary (PHY-11..PHY-16); RE-14 does not make lognormal or Student-t route-specific recovery covered.",
+      "i" = "The phylo_indep route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
       ">" = "Use {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit, and consult the validation register before making recovery or inference claims."
     ))
   }
@@ -1528,7 +1528,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cli::cli_abort(c(
       "{.fn phylo_dep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
       "i" = .augmented_slope_family_scope_text(),
-      "i" = "The full-unstructured phylogenetic route has its own evidence boundary (PHY-18); RE-14 does not make lognormal or Student-t route-specific recovery covered.",
+      "i" = "The full-unstructured phylogenetic route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
       ">" = "Use {.code phylo_dep(0 + trait | species)} for the intercept-only unstructured phylogenetic fit, and consult the validation register before making recovery or inference claims."
     ))
   }
@@ -1584,8 +1584,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_phylo_dep_slope && n_phy_slope >= 2L && any(family_id_vec != 0L)) {
     cli::cli_abort(c(
       "{.fn phylo_dep} with two or more random slopes is not yet validated for non-Gaussian families.",
-      "i" = "Gaussian {.code phylo_dep(1 + x1 + x2 | species)} is covered under RE-03; non-Gaussian {.code s >= 2} remains reserved pending the RE-03 identifiability sweep.",
-      ">" = "Use {.code phylo_dep(1 + x | species)} for the validated non-Gaussian single-slope path, or fit the multi-slope path under {.code gaussian()} until the RE-03 gate clears."
+      "i" = "Gaussian {.code phylo_dep(1 + x1 + x2 | species)} is validated; non-Gaussian {.code s >= 2} remains reserved pending an identifiability sweep.",
+      ">" = "Use {.code phylo_dep(1 + x | species)} for the validated non-Gaussian single-slope path, or fit the multi-slope path under {.code gaussian()} until that sweep clears."
     ))
   }
 
@@ -1608,7 +1608,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cli::cli_abort(c(
       "{.fn phylo_latent} random slopes are not yet supported for this family.",
       "i" = .augmented_slope_family_scope_text(),
-      "i" = "The reduced-rank phylogenetic route has its own evidence boundary (PHY-17); RE-14 does not make lognormal or Student-t route-specific recovery covered.",
+      "i" = "The reduced-rank phylogenetic route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
       ">" = "Use {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit, and consult the validation register before making recovery or inference claims."
     ))
   }
@@ -1870,7 +1870,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "{.fn multinomial} supports fixed effects, {.fn phylo_latent}, and a shared {.fn latent} ordination in this release.",
         "x" = "An unsupported latent / random-effect / structured term was combined with a categorical (multinomial) response.",
         "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off), or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface. Replication could identify a contrast-specific diagonal in principle, but an explicit multinomial {.fn unique}/{.fn indep} term is not admitted in this release.",
-        ">" = "Other latent-scale structures on categorical responses are deferred (Design 84, Tier 2b+)."
+        ">" = "Other latent-scale structures on categorical responses are deferred."
       ))
     }
   }

@@ -1154,12 +1154,12 @@ extract_Sigma <- function(
       notes,
       if (identical(kernel_level$internal_level, "kernel")) {
         sprintf(
-          "Kernel tier '%s' uses the fixed dense multi-kernel engine path (Design 65 C3.1).",
+          "Kernel tier '%s' uses the fixed dense multi-kernel engine path.",
           kernel_level$name
         )
       } else {
         sprintf(
-          "Kernel tier '%s' uses the dense phylo-equivalent engine path (Design 65 C1).",
+          "Kernel tier '%s' uses the dense phylo-equivalent engine path.",
           kernel_level$name
         )
       }
@@ -1308,7 +1308,7 @@ extract_Sigma <- function(
           "phylo_latent random slope: block-diagonal across LHS columns.",
           "Sigma$intercept and Sigma$slope are the per-column cross-trait",
           "covariances (Lambda_k Lambda_k^T). No intercept-slope correlation",
-          "is modelled (Design 56 Sec. 5.3 latent semantics)."
+          "is modelled."
         )
       ),
       class = "gllvmTMB_Sigma_phy_slope"
@@ -1347,8 +1347,7 @@ extract_Sigma <- function(
           "spatial_latent random slope: block-diagonal across LHS columns.",
           "Sigma$intercept and Sigma$slope are the per-column cross-trait",
           "covariances (Lambda_k Lambda_k^T) on the SPDE field-covariance scale.",
-          "No intercept-slope correlation is modelled (Design 64 sec.3 latent",
-          "semantics)."
+          "No intercept-slope correlation is modelled."
         )
       ),
       class = "gllvmTMB_Sigma_phy_slope"

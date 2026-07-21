@@ -1005,9 +1005,23 @@ tidy.gllvmTMB_multi <- function(
 #'   any random-effect grouping that was active.
 #' @param condition_on_RE Logical (default `FALSE`). When `FALSE`
 #'   (the default), random effects are redrawn from the fitted
-#'   covariance at every tier (`rr_B`, `diag_B`, `rr_W`, `diag_W`,
-#'   `phylo`, `spde`) — the unconditional simulation appropriate for
-#'   parametric bootstrap. When `TRUE`, the existing fitted RE modes
+#'   covariance — the unconditional simulation appropriate for
+#'   parametric bootstrap. Redraw is currently implemented for the
+#'   `rr_B`, `diag_B`, `rr_W`, `diag_W`, `propto`, `lv_B`, `phylo_rr`,
+#'   and `diag_species` tiers.
+#'
+#'   **Not every tier is covered.** A fit using any other active tier —
+#'   notably the SPDE spatial tier (`spde`) and the diagonal
+#'   phylogenetic tier (`phylo_diag`) — falls back to conditional
+#'   simulation and emits a one-shot warning naming the unhandled
+#'   tiers. Because conditional simulation reuses the fitted random-
+#'   effect modes rather than redrawing them, it understates
+#'   between-unit variability: intervals derived from it (for example
+#'   via [bootstrap_Sigma()]) are **too narrow** and should not be read
+#'   as calibrated. Treat the warning as a signal that simulate-based
+#'   uncertainty is not trustworthy for that fit.
+#'
+#'   When `TRUE`, the existing fitted RE modes
 #'   are reused (the older glmmTMB-style conditional simulation that
 #'   only adds Gaussian noise on top of `fit$report$eta`). Forced to
 #'   `TRUE` when `newdata` is supplied (RE modes for unseen levels
@@ -1075,13 +1089,16 @@ simulate.gllvmTMB_multi <- function(
   ## downstream caller) needs for the variance-component CIs to span the
   ## parametric simulate-refit uncertainty.
   ##
-  ## Currently handles: rr_B, diag_B, rr_W, diag_W, propto (single-factor
-  ## phylo). Other tiers fall back to conditional with a one-shot warning.
+  ## Currently handles: rr_B, diag_B, rr_W, diag_W, propto, lv_B, phylo_rr,
+  ## diag_species -- see .check_simulate_unconditional(), which is the single
+  ## source of truth for this list. Other tiers (notably spde and phylo_diag)
+  ## fall back to conditional with a one-shot warning.
   ok <- .check_simulate_unconditional(object)
   if (!ok$can_redraw) {
     cli::cli_warn(c(
       "Unconditional {.fn simulate} does not yet redraw RE tiers: {.val {ok$unhandled}}.",
-      "i" = "Falling back to conditional simulation. Use {.code condition_on_RE = TRUE} explicitly to silence this warning."
+      "!" = "Falling back to conditional simulation, which reuses the fitted random-effect modes. It understates between-unit variability, so simulate-based intervals for this fit (e.g. from {.fn bootstrap_Sigma}) are too narrow and are not calibrated.",
+      "i" = "Use {.code condition_on_RE = TRUE} explicitly to acknowledge conditional simulation and silence this warning."
     ))
     return(simulate.gllvmTMB_multi(
       object,

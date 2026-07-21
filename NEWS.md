@@ -62,6 +62,32 @@ required for the main workflow.
   extraction and target-specific
   Wald/bootstrap interval plumbing exist, but their repeated-sampling
   calibration is not covered. Nonlinear profile intervals are withdrawn.
+* `extract_cross_correlations()` now restricts `level` to the ordinary unit tier
+  for **every** method. Previously only `method = "profile"` enforced this, so
+  `level = "unit_obs"`, `"phy"`, or `"spatial"` combined with `method = "point"`,
+  `"wald"`, or `"bootstrap"` were reachable. Those combinations now raise a typed
+  error. This is a deliberate reduction rather than a regression: the estimand for
+  a source-tier cross-family correlation was never validated on those paths, and
+  returning an uncalibrated number was worse than refusing. Use
+  `extract_Sigma()` for source-tier covariance.
+* **Known limitation — phylogenetic slope variance under `binomial(link = "logit")`.**
+  For a `phylo_unique()` random-slope fit with a logit link, the estimated
+  slope variance is **upward-biased by roughly 50-60%** at realistic signal
+  levels. The bias does **not** shrink with sample size: it persists across
+  `n = 60`, `120`, and `240` (21 seeds tested), on fits that are otherwise
+  healthy (converged, positive-definite Hessian, valid `sdreport`). The cause is
+  **too little information per cluster**, not a defect: with only a handful of
+  single-trial binary observations per species, the sampling variance of each
+  species' estimated slope is comparable to the true between-species variance
+  itself, and roughly half the spread across species is sampling noise. The
+  identical design recovers cleanly under a Gaussian response, which is what
+  rules out an engine problem. **Do not read a logit phylo-slope variance as
+  calibrated.** The remedy is more information per species -- more replicates
+  per species, or multi-trial `cbind(successes, failures)` data rather than
+  single 0/1 draws -- rather than more species. The
+  corresponding recovery test is deliberately skipped rather than passed by
+  retuning its data-generating truth; see
+  `docs/dev-log/known-residuals-register.md` (R-2).
 * The reader-facing covariance grammar crosses five correlation sources
   (`none`, `animal`, `phylo`, `spatial`, and `kernel`) with three taught modes:
   independent, dependent, and latent. The one-shared-variance ("scalar") case is

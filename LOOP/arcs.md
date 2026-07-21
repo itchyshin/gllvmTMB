@@ -6,8 +6,8 @@ Status values: `DONE`, `IN PROGRESS`, `PENDING`, `GATED`, `CUT`.
 |---|---|---|---|---|
 | P0 | DONE | Exclusive ownership, clean builder/verifier, compute inventory | one owner; frozen predecessor; clean lanes; no overlap | none remaining |
 | M1 | IN PROGRESS | Release truth, public-boundary repair, green heavy baseline | full release ledger; clean local package checks; exact-SHA Ubuntu/heavy + 3-OS; fresh D-43 | admit M2 only after M1 closes |
-| M2 | PENDING | Design 86 narrow EVA scientific admission | approved contract; deterministic anchors; Totoro/DRAC receipts; explicit allowlist or durable CUT | contract, compute stages, scientific GO |
-| M3 | PENDING | Public feature admission and source/API freeze | install-time route, guard matrix, refusals, Laplace regression protection | public EVA admission; API freeze |
+| M2 | **CUT** | ~~Design 86 narrow EVA scientific admission~~ — **CUT 2026-07-21 by maintainer decision; EVA moves to 0.7.** See `docs/dev-log/2026-07-21-eva-cut-to-0.7.md` | n/a — no EVA work is attempted for 0.6 | none; its gates are dissolved |
+| M3 | PENDING | **Source/API freeze only** (EVA admission removed) + version bump `0.5.0` -> `0.6.0` | frozen source/API/feature list; permissible-claims list; bump lands AFTER the freeze | API freeze |
 | M4 | PENDING | Reader-ready release candidate | reconciled docs/Rd/pkgdown; source tarball; local `--as-cran`; candidate hashes | page decisions; candidate freeze |
 | M5 | PENDING | Immutable RC, platform, and CRAN ceremony | exact RC/final-tag evidence; NOT-READY-default review | RC tag; final tag; submission |
 
@@ -21,11 +21,31 @@ Status values: `DONE`, `IN PROGRESS`, `PENDING`, `GATED`, `CUT`.
 | Auto-Psi guidance/frequency | FOCUSED PASS | binomial, multinomial, and combined messages have distinct once IDs |
 | Cross-family ordinary-tier/ordinal fences | FOCUSED PASS | unit-only typed fence; ordinal `auto` typed refusal; safe article path |
 | Generated Rd and exact example | PASS | `devtools::document()` changed only the two expected Rd topics; exact `\dontrun{}` example passed |
-| Complete local qualification | PENDING | full non-heavy; touched heavy; four article renders; pkgdown; source `--as-cran` |
-| Exact-head remote qualification | PENDING | commit/push; automatic Ubuntu; manual 3-OS; Ubuntu heavy; retained receipts |
+| Complete local qualification | **PASS** | full non-heavy `FAIL 0 \| WARN 0 \| SKIP 779 \| PASS 7287`; touched heavy `PASS 173`, 0 heavy-skips, 1186.7s; four articles rendered to `pkgdown-site/` with the ordinal-refusal string oracle passing; **CRAN-config check 0 errors / 0 warnings / 1 `New submission` note**, PDF manual OK, incoming feasibility ran, top-level files OK |
+| Programme reshape (EVA cut) | **PASS** | `GOAL.md` amended append-only; `arcs.md`/`ultra-plan.md`/`decision-queue.md` reshaped; `docs/dev-log/2026-07-21-eva-cut-to-0.7.md`; Mission Control rewritten + JSON-validated |
+| Known-residuals register | **PASS** | `docs/dev-log/known-residuals-register.md`; R-1/R-3 resolved, R-4 resolved as far as this package can, R-2 signed off as a declared limitation, **R-6 awaits sign-off** |
+| Exact-head remote qualification | PENDING | push; automatic Ubuntu; manual 3-OS (`full_matrix=true`); Ubuntu heavy; retained receipts. **Gated on maintainer go/no-go before any CI spend.** |
 | M1 closeout | IN PROGRESS | bounded repair after-task/check-log/handoff now; terminal M1 close still needs Mission Control + three fresh D-43 reviews |
 
-## M2 sequential ladder — no skipping
+## M2 sequential ladder — CUT for 0.6, RETAINED for 0.7
+
+**STATUS: CUT on 2026-07-21 by maintainer decision. None of the steps below run
+for 0.6.** The ladder is kept verbatim rather than deleted because its sequential
+discipline remains correct whenever EVA is revived. Two corrections a 0.7 reader
+must apply before using it:
+
+- **Step 1's target cell is superseded.** The maintainer directed that 0.7's EVA
+  target **sparse binary first**, not the `q = 1` complete multi-trial
+  binomial-logit cell below. Multi-trial binomial with a complete design is
+  information-rich — the regime where Laplace already performs well — so proving
+  the estimator there demonstrates correctness but no user value. Note that
+  sparse binary at high `q` lies **outside Design 85's admitted data contract**,
+  so it requires a new Gate-0 scope freeze, not an extension of existing evidence.
+- **"Design 86" was never written or approved.** It exists only as this sketch;
+  `LOOP/decision-queue.md` records it as `NOT YET OPEN`. Do not cite it as a
+  contract. Separate the *correctness anchor* (an easy, verifiable cell) from the
+  *admission criterion* (does it beat Laplace where Laplace is weak) — the sketch
+  below conflated them.
 
 1. Write Design 86 from the approved narrow fixed-rank q=1 complete
    multi-trial binomial-logit contract.
@@ -43,12 +63,26 @@ Status values: `DONE`, `IN PROGRESS`, `PENDING`, `GATED`, `CUT`.
     derivation, deterministic gate, smoke, parity, pilot, confirmation, and
     `ADMIT`/`CUT`. No family inherits another's evidence.
 
-## Honest current estimates
+## Honest current estimates — revised 2026-07-21 after the EVA cut
 
-- M1 from this handoff: roughly 8–16 active hours plus CI wait, normally 1–3
-  working days if no new load-bearing defect appears.
-- Laplace-only 0.6 from M1 close: roughly 6–10 additional working days.
-- Minimal public q1 EVA: roughly 4–7 weeks from here.
-- Broad family-layer q1 EVA: roughly 10–16+ weeks.
-- Universal ranks/structures/mixed/missing-data EVA: a research programme,
-  at least 2–4+ months; not silently implied by 0.6 scope intent.
+**0.6 (the live programme, Laplace-only):**
+
+- M1 remaining: roughly 7 active hours plus CI wait, assuming no load-bearing
+  repair. That assumption is weak — the prior session found four such defects —
+  so budget a handoff if one fires.
+- M3 source/API freeze + version bump: ~0.5 working day.
+- M4 reader-ready candidate: ~2–4 agent working days, **plus N sessions of
+  Shinichi's own page-by-page review, which is his time, not agent wall-clock**.
+- M5 RC + platform + CRAN ceremony: ~1–2 working days plus CI.
+- **Total: roughly 4–7 agent working days plus the page-review sessions.**
+
+**0.7 (EVA, deferred — NOT part of this programme):**
+
+- The earlier figures priced the OLD non-sparse scope: minimal q1 EVA ~4–7 weeks;
+  broad family-layer q1 ~10–16+ weeks; universal ranks/structures/mixed/
+  missing-data a 2–4+ month research programme.
+- **The redirected sparse-binary target is UNESTIMATED.** Do not reuse the
+  figures above for it — it needs a fresh Gate-0 scope freeze, and the
+  second-order surrogate's fixed-order bias is worst in exactly that regime.
+- A "minimal EVA" is, by the reasoning in the decision record, permanently not
+  worth shipping: 0.7's EVA is the broad version or it is nothing.

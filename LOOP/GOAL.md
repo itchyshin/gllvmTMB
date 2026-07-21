@@ -76,3 +76,61 @@ has a frozen source/tarball identity, clean local package and pkgdown evidence,
 green exact-SHA three-OS and heavy package checks, reconciled public claims,
 fresh adversarial reviews, and explicit maintainer approval at every remaining
 ceremony gate. CRAN submission itself remains a separate maintainer act.
+
+---
+
+# MAINTAINER AMENDMENT — 2026-07-21
+
+**Everything above this line is the ORIGINAL frozen goal and is left intact and
+auditable. It was not edited. This block amends it by maintainer decision taken
+at a gate, which is the only legitimate way this file changes.**
+
+**Authority:** Shinichi Nakagawa, 2026-07-21, in session. Recorded by Claude Code.
+
+## The decision (verbatim)
+
+- gllvmTMB **0.6 ships Laplace-only**. EVA moves to **0.7**.
+- 0.7's EVA should target **sparse binary first**, not the `q = 1` multi-trial cell.
+- Failures this arc did not cause may **not** be waived on the agent's judgment;
+  each needs individual maintainer sign-off and a durable record.
+
+## What this amendment supersedes above
+
+- **Mission, paragraph 3** — "EVA enters the public package only if the new narrow
+  fixed-rank experiment passes every sequential scientific and package gate. If it
+  fails, the automatic 0.6 fallback is Laplace-only." The condition is no longer
+  live: the fallback is now the chosen route. EVA is not attempted for 0.6.
+- **Invariants, "M2 starts only after M1 closes"** — M2 is **CUT** from this
+  programme, so it does not start at all. The invariant is retained for 0.7.
+- **Definition of done, item 2** — "a narrowly evidence-admitted EVA 0.6 candidate"
+  is **VOID**. Item 1, the Laplace-only candidate, is now the sole completion route.
+
+## What is UNCHANGED and still binding
+
+- Design 85 remains a closed **NO-GO**. `docs/design/85-*` is **READ-ONLY**: never
+  amend a closed NO-GO; supersede it with a new dated note.
+- Design 72's sequential proof logic remains binding for any future EVA work.
+- Every gate, quarantine, compute, and claim invariant above stands unchanged.
+- The no-ELBO/marginal-likelihood/REML-language rule stands.
+
+## Reasoning, and its epistemic status
+
+The reasoning behind this decision is **AGENT-INFERRED** and is recorded separately
+so it is never mistaken for the maintainer's own stated reasons. Two load-bearing
+corrections a later reader must not lose:
+
+1. Design 85 is **unproven with a known numerical weakness**, NOT "the estimator
+   failed" — its predeclared Gate-3 experiment was never obtained (the pilot
+   conflated fixed-rank Gate 3 with ML-rank Gate 4), and 8 applicable q1/q2 fits
+   failed the predeclared optimiser gate.
+2. **Design 86 was never written or approved.** It exists only as a sketch in
+   `LOOP/ultra-plan.md` and `LOOP/arcs.md`; `LOOP/decision-queue.md` records it as
+   `NOT YET OPEN`. Do not cite it as an existing contract.
+
+The `q >= 4` threshold that motivates the sparse-binary target is
+**UNVERIFIED — source not supplied**, and must be citation-checked BEFORE it is
+used to define any 0.7 admission gate. Note also that sparse binary at high `q`
+lies **outside Design 85's admitted data contract**, so 0.7 requires a new Gate-0
+scope freeze, not a `q`-extension.
+
+Full record: `docs/dev-log/2026-07-21-eva-cut-to-0.7.md`.

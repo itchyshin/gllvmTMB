@@ -93,9 +93,20 @@ make_phylo_unique_slope_fixture <- function(
   ## Logit-scale trait intercepts: kept modest in magnitude so the
   ## marginal probability across rows is not saturated. plogis(0.0)
   ## = 0.5, plogis(0.3) ~= 0.574, plogis(-0.3) ~= 0.426 — same
-  ## intercepts as the Phase B1 probit sibling, since the implied
-  ## probability range is similar enough that the binary observations
-  ## still carry adequate information for slope-variance recovery.
+  ## intercepts as the Phase B1 probit sibling.
+  ##
+  ## CORRECTED 2026-07-21: an earlier version of this comment claimed the
+  ## binary observations "still carry adequate information for slope-variance
+  ## recovery". Measurement contradicts that. With n_rep = 4 and n_traits = 3
+  ## there are 12 single-Bernoulli observations per species over 4 distinct x
+  ## values, so the sampling variance of a per-species slope is roughly
+  ## (pi^2/3) / 12 ~= 0.27 -- nearly as large as the true between-species slope
+  ## variance of 0.30. Half the spread in the estimated slopes is therefore
+  ## sampling noise, which is why sigma^2_slope comes back inflated. The same
+  ## design recovers cleanly under Gaussian, so this is an information limit of
+  ## single-trial binary data, not an engine defect. More information PER
+  ## species (more reps, or multi-trial binomial) is the fix; raising the true
+  ## variance is not. See docs/dev-log/known-residuals-register.md (R-2).
   mu_t <- c(0.0, 0.3, -0.3)[as.integer(df_long$trait)]
   alpha_sp <- ab[as.character(df_long$species), "alpha"]
   beta_sp <- ab[as.character(df_long$species), "beta"]
@@ -233,9 +244,17 @@ test_that("phylo_unique augmented binomial(logit) fit recovers Sigma_b", {
   ## Byte-identity and forced-n_lhs_cols=1 negative test (below) are
   ## NOT affected -- both still pass cleanly under logit, confirming
   ## parser routing and engine guard work as expected for the family.
-  testthat::skip(
-    "Logit recovery requires fixture beyond B0 defaults; see Phase B2-recalibration follow-up."
-  )
+  ## Skipped by default, but RE-MEASURABLE on demand: set
+  ## GLLVMTMB_RUN_B2_LOGIT=1 to run it. A declared limitation should be
+  ## checkable, not merely asserted -- and the finding above was recorded on
+  ## 2026-07-06, before the 2026-07-20 slope-engine rework (6e46a24a), so it
+  ## must be re-measured rather than assumed still current.
+  ## See docs/dev-log/known-residuals-register.md (R-2).
+  if (!nzchar(Sys.getenv("GLLVMTMB_RUN_B2_LOGIT"))) {
+    testthat::skip(
+      "Logit recovery requires fixture beyond B0 defaults; see Phase B2-recalibration follow-up. Set GLLVMTMB_RUN_B2_LOGIT=1 to re-measure."
+    )
+  }
 
   fx <- make_phylo_unique_slope_fixture()
   fit <- fit_phylo_unique_slope_pair(fx)$long

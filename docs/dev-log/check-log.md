@@ -45917,3 +45917,45 @@ three-OS, Ubuntu-heavy, or terminal D-43 gates. Therefore the bounded repair is
 focused PASS but M1 remains IN PROGRESS. No Design 86 implementation,
 Totoro/DRAC scientific job, public EVA admission, merge, candidate freeze,
 version, tag, submission, or readiness/release claim is authorised or made.
+
+## 2026-07-21 — M1 local qualification complete; programme reshaped to Laplace-only (Claude Code)
+
+Maintainer decision this arc: **EVA is CUT from 0.6 to 0.7**; 0.6 ships Laplace-only.
+M2 is CUT and its gates (Design 86 contract, Totoro/DRAC scientific compute, public EVA
+admission) are dissolved. M3 reduces to a source/API freeze plus the version bump.
+Record: `docs/dev-log/2026-07-21-eva-cut-to-0.7.md`. `LOOP/GOAL.md` was amended
+append-only, leaving the original frozen goal intact and auditable.
+
+Checks run on this head (all logs read, all artifacts opened):
+
+```
+complete non-heavy (post-edit)  FAIL 0 | WARN 0 | SKIP 779 | PASS 7287
+touched heavy (4 groups)        FAIL 0 | WARN 0 | SKIP 0   | PASS 173   (1186.7s)
+                                GLLVMTMB_HEAVY_TESTS verified inside the process;
+                                heavy-skip string count = 0
+four article renders            built to pkgdown-site/articles/; ordinal-refusal
+                                string oracle present in evaluated HTML
+tarball manifest                LOOP = 0 entries; internal dirs = 0
+CRAN-configuration check        0 errors | 0 warnings | 1 note ("New submission")
+  remote=TRUE, incoming=TRUE,   checking PDF version of manual ... OK
+  force_suggests=TRUE,          checking CRAN incoming feasibility ... NOTE
+  manual=TRUE, NOT_CRAN=false   checking top-level files ... OK
+after-task structure validator  passed
+git diff --check                passed
+Actions boundary guard          passed
+```
+
+The A1r deltas were predicted before the run and matched exactly (WARN 1 -> 0,
+SKIP 780 -> 779, PASS 7274 -> 7287 = +13), with no unexplained movement across 311 test
+files.
+
+Two corrections to the record, both verified: `^LOOP$` was missing from `.Rbuildignore`,
+so the internal arc-loop kit shipped inside the source tarball; and the retained
+final-receipt runner uses `NOT_CRAN=true` with incoming feasibility disabled, so it is a
+package-regression check and **not** CRAN evidence. The CRAN-configuration check above is
+the first genuine CRAN evidence this programme has produced.
+
+Not run on this head: automatic Ubuntu, manual three-OS, Ubuntu-heavy, or the three fresh
+D-43 reviews. **M1 is therefore NOT closed.** One known-residual row (R-6) awaits
+maintainer sign-off. No push, CI spend, merge, candidate freeze, version bump, tag,
+submission, or readiness/release claim is authorised or made.

@@ -103,11 +103,23 @@ test_that("Stage 2: rr() + diag() on the same grouping matches glmmTMB", {
     data = df, REML = FALSE
   ))
   ll_t <- as.numeric(stats::logLik(fit_t))
-  ## glmmTMB's combined-rr-and-diag fits sometimes hit non-PD Hessians on
-  ## small samples; in that case we have nothing to compare against, so skip
-  ## the logLik comparison rather than fail the test.
-  testthat::skip_if(is.na(ll_t),
-                    "glmmTMB hit non-PD Hessian on this dataset")
+  ## glmmTMB's combined-rr-and-diag fits can hit a non-PD Hessian here, in
+  ## which case there is no reference value to compare against. The dataset is
+  ## SEEDED (seed = 7), so this is deterministic per environment rather than an
+  ## unlucky draw -- if it fires, it fires every run on that platform.
+  ##
+  ## Say plainly what coverage is forfeited: the gllvmTMB-side assertions above
+  ## (convergence, active tiers, Lambda_B dimensions) have already run and hold.
+  ## What is lost is only the cross-implementation logLik agreement check.
+  testthat::skip_if(
+    is.na(ll_t),
+    paste0(
+      "glmmTMB reference fit returned a non-PD Hessian, so the ",
+      "cross-implementation logLik check did NOT run. gllvmTMB-side ",
+      "assertions above still passed. See ",
+      "docs/dev-log/known-residuals-register.md (R-4)."
+    )
+  )
   expect_equal(ll_g, ll_t, tolerance = 1e-4)
 })
 

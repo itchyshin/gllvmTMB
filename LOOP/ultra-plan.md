@@ -36,7 +36,21 @@ or likelihood-comparable quantity.
 - Multinomial 0.6 is verify-only; optional correlation-profile/BCa/structured
   redraw/plotting promotions remain cut or separate.
 
-### M2 — Design 86 EVA scientific admission
+### M2 — Design 86 EVA scientific admission — **CUT 2026-07-21**
+
+> **THIS ARC IS CUT.** By maintainer decision on 2026-07-21, EVA is removed from
+> 0.6 and deferred to 0.7; 0.6 ships Laplace-only. None of the stages below run
+> in this programme, and the gates they name (Design 86 contract, Totoro smoke,
+> DRAC pilot, scientific GO) are **dissolved**, not merely deferred.
+>
+> The text is retained verbatim, not deleted, because its discipline is correct
+> whenever EVA revives. A 0.7 reader must apply two corrections: the target cell
+> becomes **sparse binary** (not `q=1` multi-trial, which is information-rich and
+> therefore where Laplace already suffices), and that target lies **outside
+> Design 85's admitted data contract**, so it needs a fresh Gate-0 scope freeze
+> rather than an extension of existing evidence.
+>
+> Full record: `docs/dev-log/2026-07-21-eva-cut-to-0.7.md`.
 
 - Contract and deterministic proof precede remote compute.
 - Totoro is mandatory smoke/reference; one CPU per R process; numerical
@@ -62,12 +76,19 @@ or likelihood-comparable quantity.
 - Outcomes are `SCIENTIFIC-GO` with an explicit allowlist or `CUT` with durable
   negative/partial evidence. No public API is created in M2.
 
-### M3 — public feature admission and source/API freeze
+### M3 — source/API freeze (public EVA admission **REMOVED** 2026-07-21)
 
-- Candidate surface:
+> **Scope reduced.** With EVA cut to 0.7, M3 no longer admits any public feature.
+> It is now a freeze-and-bump arc only. The EVA candidate surface described below
+> is **not created in 0.6**; it is retained as the 0.7 design target.
+
+- **0.6 actual scope:** freeze source, API, feature list, and permissible claims;
+  then bump `DESCRIPTION`/`NEWS` from `0.5.0` to `0.6.0`. The bump is a source
+  edit and therefore **invalidates every M1 platform receipt** — M1's CI evidence
+  qualifies a pre-bump identity, and M5 must price a second exact-tag 3-OS cycle.
+- **Deferred to 0.7 — not built in 0.6:** candidate surface
   `gllvmTMB(..., control = gllvmTMBcontrol(integration = "eva"))`.
-- Laplace remains default. EVA uses the installed compiled template; no runtime
-  temporary DLL.
+- Laplace remains the default and, for 0.6, the **only** integration route.
 - Unsupported combinations fail before TMB construction.
 - No EVA `logLik`, AIC/BIC, LRT/anova/model weights, `vcov`, confidence/profile/
   Wald intervals, bootstrap/BCa, or ELBO rank selection without separate

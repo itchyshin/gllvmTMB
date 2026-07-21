@@ -250,13 +250,26 @@ test_that("anchored rotated ordination has stable visual output", {
   skip_if_no_visual_snapshot()
   fit <- make_snapshot_ordination_fit()
 
-  p <- suppressMessages(plot(
-    fit,
-    type = "ordination",
-    level = "unit",
-    rotation = "varimax",
-    anchor_traits = c("T1", "T3"),
-    standardize_loadings = TRUE
+  ## `standardize_loadings = TRUE` routes through extract_Sigma() ->
+  ## link_residual_per_trait(). This fixture is a synthetic fit with no
+  ## `tmb_data`, so no trait rows are found and the residual variance is
+  ## genuinely unavailable. The correct behaviour is to return NA rather than
+  ## substitute a finite value, and to say so -- assert that warning here rather
+  ## than let it escape as an unexplained WARN. `suppressMessages()` does not
+  ## catch it: it is a warning(), not a message().
+  ## NB: in testthat 3e `expect_warning()` returns the CONDITION, not the value
+  ## of the expression, so assign `p` inside the call rather than from it.
+  p <- NULL
+  suppressMessages(expect_warning(
+    p <- plot(
+      fit,
+      type = "ordination",
+      level = "unit",
+      rotation = "varimax",
+      anchor_traits = c("T1", "T3"),
+      standardize_loadings = TRUE
+    ),
+    regexp = "Link-scale residual variance is unavailable"
   ))
 
   vdiffr::expect_doppelganger(

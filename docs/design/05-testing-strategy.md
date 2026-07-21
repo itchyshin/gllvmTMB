@@ -77,10 +77,10 @@ Implemented (or planned) comparator smoke tests:
 
 **Comparator-test guard**: Fast CRAN tests use
 `skip_if_not_installed()` and only tiny comparator cases (under
-60 seconds each). Full comparator sweeps belong in optional
-local scripts or scheduled CI; package conventions, likelihood
-constants, priors, and optimiser settings can differ
-non-trivially.
+60 seconds each). Full comparator sweeps belong in optional local
+scripts, Totoro smoke runs, or frozen DRAC arrays; they are not GitHub
+Actions jobs or artifacts (D-50). Package conventions, likelihood
+constants, priors, and optimiser settings can differ non-trivially.
 
 `brms` and `lavaan` are **deferred post-CRAN** per the
 audit-2 2026-05-15 decision (brms has known identifiability
@@ -332,9 +332,11 @@ has its own test file:
 
 ## CRAN-safe vs long tests
 
-Routine package tests must be **deterministic, fast, and
-small**. Larger recovery grids belong in optional local scripts
-or scheduled CI.
+Routine package tests must be **deterministic, fast, and small**. The
+bounded `full-check` workflow may run the complete package-regression
+suite, but it is not claim-bearing simulation evidence. Larger recovery,
+coverage, power, and comparator grids belong in optional local scripts,
+Totoro smoke runs, or frozen DRAC arrays, never GitHub Actions (D-50).
 
 | Test class | Scope | Wall-time budget | Where it lives |
 |------------|-------|------------------|----------------|

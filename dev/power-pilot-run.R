@@ -1,15 +1,19 @@
 ## dev/power-pilot-run.R
 ## =====================
-## Design 66 power-study CAMPAIGN runner -- the per-shard entry point for
-## the self-scheduling sweep workflow (.github/workflows/power-pilot-sweep.yaml).
+## Design 66 legacy/smoke task runner. It supports deterministic local checks
+## and the bounded local/Totoro smoke in dev/power-pilot-smoke.sh. Its shard and
+## chunk modes are retained as developer primitives and historical readers, not
+## as an admitted production DRAC route: remote claim-bearing use requires a
+## separate reviewed driver and compute-admission bundle. The former Actions
+## workflow was retired under D-50.
 ##
 ## This is a THIN command-line wrapper around the accumulate engine in
 ## dev/m3-pilot-launch.R (run_accumulate_pilot_batch / pilot_accum_status).
 ## It does NOT reimplement the DGP, the estimand machinery, or the
 ## accumulation logic -- it only: (1) selects this shard's slice of the
 ## 48-cell pilot grid, (2) calls the accumulate engine for those cells,
-## (3) emits machine-readable outputs the workflow's guard/summary jobs
-## consume (the run-level failure rate, and an all-complete flag).
+## (3) emits machine-readable outputs that campaign guards/reducers consume
+## (the run-level failure rate and an all-complete flag).
 ##
 ## Modes (one --mode=... per invocation):
 ##   audit-mini -- build + validate the fixed four-cell audit-mini manifest
@@ -17,17 +21,17 @@
 ##   audit-mini-run -- build the same fixed four-cell manifest, run the
 ##              immutable chunk rows, audit their files, and exit.
 ##   preflight -- build + validate this shard's manifest and exit before
-##              fitting; used for Totoro/DRAC manifest-parse smoke tests.
+##              fitting; manifest-shape plumbing only, not compute admission.
 ##   chunk   -- build this shard's immutable-chunk manifest, run the active
 ##              chunk rows, and write one chunk RDS per planned row.
 ##   chunk-audit -- read chunk manifests and require every planned chunk
 ##              file to exist before a future aggregation job runs.
 ##   chunk-aggregate -- read validated chunk outputs and write derived
 ##              per-cell aggregate RDS files for downstream reporting.
-##   shard   -- run one shard's cells: accumulate +n_sim_step reps toward
-##              the cap for every cell in this shard that is below cap.
+##   shard   -- run one legacy/local shard's cells: accumulate +n_sim_step reps
+##              toward the cap for every cell in this shard that is below cap.
 ##   slice   -- copy only this shard's touched per-cell files + runstats
-##              into a clean artifact directory for the persist job.
+##              into a clean transfer directory for the reducer.
 ##   status  -- print pilot_accum_status() over the store and write a
 ##              compact status payload (used by the guard + summary jobs).
 ##
@@ -36,9 +40,10 @@
 ##     --seed-base=1 --results-dir=/tmp/pilot-smoke
 ##   Rscript dev/power-pilot-run.R --mode=audit-mini-run \
 ##     --seed-base=1 --results-dir=/tmp/pilot-smoke --n-boot=0
+##   # Historical/local diagnostic only; inadmissible as a remote campaign:
 ##   Rscript dev/power-pilot-run.R --mode=shard --shard=1 --n-shards=8 \
-##     --n-sim-step=200 --n-sim-cap=2000 --seed-base=$GITHUB_RUN_NUMBER \
-##     --results-dir=dev/m3-pilot-results --n-boot=25
+##     --n-sim-step=200 --n-sim-cap=2000 --seed-base=1001 \
+##     --results-dir=/tmp/pilot-shard --n-boot=25
 ##   Rscript dev/power-pilot-run.R --mode=preflight --shard=1 --n-shards=48 \
 ##     --n-sim-step=2 --n-sim-cap=10 --seed-base=1 \
 ##     --results-dir=/tmp/pilot-smoke --n-boot=0 --output-mode=chunk
@@ -55,7 +60,7 @@
 ##
 ##   dry_run smoke (cheap): --dry-run=true restricts to <=2 cells and a
 ##   tiny n_sim_step regardless of the passed step, so the maintainer can
-##   confirm the whole pipeline on GHA before trusting the cron.
+##   confirm local smoke plumbing before a separate compute-admission review.
 ##
 ## This file is in dev/ (.Rbuildignore) -- NOT shipped with the package.
 
@@ -104,9 +109,9 @@ aggregate_dir <- arg_value(
   pilot_chunk_aggregate_dir(results_dir)
 )
 
-## Append a single KEY=VALUE line to the GitHub Actions step-output file
-## ($GITHUB_OUTPUT), if present. No-op locally. Used so downstream jobs
-## (guards, summary) can branch on this run's results.
+## Append a single KEY=VALUE line to a legacy GitHub step-output file when
+## present. This compatibility path is a no-op in current local/Totoro/DRAC
+## runs; reducers read the ordinary output files.
 emit_output <- function(key, value) {
   gh_out <- Sys.getenv("GITHUB_OUTPUT", "")
   line <- sprintf("%s=%s", key, value)
@@ -380,7 +385,7 @@ if (identical(mode, "shard")) {
   n_shards <- as.integer(arg_value("--n-shards", "8"))
   seed_base <- arg_value("--seed-base", NULL)
   if (is.null(seed_base)) {
-    stop("--seed-base is required (the GHA run number).")
+    stop("--seed-base is required (use a frozen batch/task identifier).")
   }
   seed_base <- as.integer(seed_base)
 
@@ -388,8 +393,8 @@ if (identical(mode, "shard")) {
 
   if (dry_run) {
     ## Cheap smoke: at most 2 cells, tiny step, so the maintainer can
-    ## confirm the whole pipeline (run -> persist -> summary) on GHA
-    ## without paying for real reps. Keep only cells in this shard so a
+    ## confirm the whole pipeline (run -> persist -> summary) locally
+    ## before remote compute. Keep only cells in this shard so a
     ## dry-run still exercises the matrix.
     cells <- utils::head(cells, 1L) # 1 cell per shard
     n_sim_step <- 4L

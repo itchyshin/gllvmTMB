@@ -43,8 +43,11 @@
 ##   * Profile CIs on per-trait psi for the production grid.
 ##   * Optional bootstrap CIs on total Sigma_unit[tt] for the
 ##     target-explicit M3.3 pilot.
-##   * Full 5-family x 3-d grid execution is dispatched by the
-##     M3 production-grid GitHub Actions workflow.
+##   * This script supports deterministic local diagnostics and bounded smoke.
+##     It does not create the checksummed campaign identity required for formal
+##     Totoro/DRAC evidence; remote execution remains planned behind a separate
+##     compute-admission driver. GitHub Actions campaign dispatch was retired
+##     under D-50.
 
 suppressPackageStartupMessages({
   if (requireNamespace("pkgload", quietly = TRUE)) {
@@ -365,9 +368,10 @@ n_start_configs <- if (identical(mode, "nb2-start-probe")) {
 }
 ## Seed-base resolution. CLI override via `--seed-base=<int>` wins;
 ## otherwise mode-specific defaults preserve the 2026-05-17 / 2026-05-20
-## historical seeds. Workflow_dispatch plumbs the input here so a pilot
-## dispatch can stay clear of the failed 2026-05-19 production seed
-## (per Curie 2026-05-24 consult).
+## historical seeds. The CLI override keeps a new local diagnostic run clear
+## of the failed 2026-05-19 production seed (per Curie 2026-05-24 consult);
+## it does not by itself create an admissible Totoro/DRAC campaign. Legacy
+## workflow inputs remain readable through the same flag.
 seed_base_arg <- arg_value("--seed-base")
 run_seed_base <- if (!is.null(seed_base_arg) && nzchar(seed_base_arg)) {
   parsed_seed <- suppressWarnings(as.integer(seed_base_arg))
@@ -481,7 +485,7 @@ if (identical(mode, "nb2-stress-map")) {
     n_boot = n_boot,
     n_cores_boot = n_cores_boot,
     ci_level = ci_level,
-    parallel = FALSE # workflow matrix parallelises cells
+    parallel = FALSE # the external Totoro/DRAC task map parallelises cells
   )
 }
 t_elapsed <- as.numeric(difftime(Sys.time(), t_start, units = "secs"))

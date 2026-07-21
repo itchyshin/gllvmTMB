@@ -40,7 +40,7 @@ together.
 | Jason | Landscape and source-map scout | What should we learn from related packages? | Maintain external evidence map and translate lessons into `gllvmTMB` tasks. |
 | Curie | Simulation and testing specialist | Do simulations recover the intended target under realistic stress? | Design M3.3a pilot, family stress grids, bootstrap/profile simulations, and CRAN-safe tests. |
 | Emmy | R package architecture reviewer | Are object structures and S3 methods coherent? | Review fit objects, diagnostic return objects, extractor compatibility, and plotting APIs. |
-| Grace | CI, pkgdown, CRAN, reproducibility engineer | Will this pass locally, on CI, and on larger compute? | Own CI pacing, manual Actions, local multicore, Slurm/Canada Compute workflow, and artifacts. |
+| Grace | CI, pkgdown, CRAN, reproducibility engineer | Will this pass locally, on CI, and on larger compute? | Own package-check CI pacing, local/Totoro smoke, DRAC/Slurm manifests, portability, and keeper provenance. |
 | Rose | Systems auditor | What claims are stale, unsupported, or inconsistent? | Audit validation-debt rows, roadmap claims, README/pkgdown consistency, and after-task reports. |
 | Shannon | Cross-team coordination auditor | Are parallel branches and agents coordinated safely? | Check open PRs, shared-file collisions, branch state, dev-log entries, and handoff completeness. |
 
@@ -183,9 +183,10 @@ Pilot acceptance before a larger rerun:
    `drmTMB`, with target matching declared before fitting.
 3. Profile/bootstrap lanes: parallel profile over selected scalar
    summaries and bootstrap refit provenance.
-4. HPC lanes: local multicore wrapper, manual GitHub Actions inputs,
-   Slurm/Canada Compute shard manifests, reducers, and artifact
-   schema.
+4. HPC lanes: local multicore wrapper, bounded Totoro smoke, DRAC/Slurm
+   array manifests, reducers, and local/`/project` keeper schema. GitHub
+   Actions remains package-check and documentation infrastructure only
+   (D-50).
 5. Figure lanes: convergence, `pdHess`, coverage, CI width,
    objective-spread, selected-start, bootstrap-failure, trait-level
    heatmap, variance-allocation, and profile-curve plots.

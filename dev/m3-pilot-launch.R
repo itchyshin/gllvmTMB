@@ -32,9 +32,10 @@
 ##     status (done|failed), n_sim, wall_s, coverage_primary, and (for
 ##     failures) the error message. The index is the local resume cache
 ##     for "what is already done"; if it is absent it is rebuilt from the
-##     per-cell .rds files on disk. In the sharded workflow, per-cell
-##     grids plus per-shard manifests are the audit trail and the index
-##     is rebuilt as a derived cache by the single-writer persist job.
+##     per-cell .rds files on disk. A future admitted Totoro/DRAC campaign
+##     must preserve per-cell grids plus per-task manifests as its audit trail
+##     and rebuild the index as a derived cache through one reducer; this file
+##     does not itself supply that campaign's compute-admission contract.
 ##   * Re-running skips cells already marked done (idempotent).
 ##   * A cell that errors is caught, logged, marked `failed`, and skipped
 ##     -- it never crashes the batch (failure-tolerant). Failed cells are
@@ -79,8 +80,8 @@ PILOT_INDEX_FILE <- "pilot-index.rds"
 ## derived index.
 PILOT_MANIFEST_DIR <- "_manifests"
 
-## Planned immutable chunk output root. Current GitHub accumulation still writes
-## per-cell stores, but DRAC preflight uses this path to prove that future array
+## Planned immutable chunk output root. Current local accumulation writes
+## per-cell stores; DRAC preflight uses this path to prove that future array
 ## tasks can write one chunk per (campaign, cell, chunk) without shared files.
 PILOT_CHUNK_DIR <- "_chunks"
 
@@ -1548,13 +1549,12 @@ pilot_status <- function(
 }
 
 ## ======================================================================
-## ACCUMULATE MODE -- Design 66 campaign engine (cron-driven sweep)
+## ACCUMULATE MODE -- Design 66 historical/local accumulation engine
 ## ======================================================================
 ##
 ## The batch driver above (run_next_pilot_batch) marks a cell DONE after
 ## ONE n_sim pass. The campaign engine below instead ACCUMULATES reps
-## toward a target cap across MANY autonomous runs (a self-scheduling
-## GitHub Actions cron, see .github/workflows/power-pilot-sweep.yaml):
+## toward a target cap across MANY deterministic legacy/local batches:
 ## each invocation adds `n_sim_step` fresh reps to every cell that is
 ## still below `n_sim_cap`, COMBINES them with the cell's prior stored
 ## per-replicate grid, re-summarises coverage on the COMBINED grid, and
@@ -1563,7 +1563,8 @@ pilot_status <- function(
 ##
 ## Determinism contract (no wall-clock / RNG seeds):
 ##   The per-batch seed is derived ONLY from the passed `seed_base` (in
-##   GHA: the run number) and the cell's own stable `seed_base`. We NEVER
+##   the scheduler batch/task identifier) and the cell's stable `seed_base`.
+##   We NEVER
 ##   call Sys.time()/runif() to seed -- a given (cell, run-number) pair
 ##   always produces the same reps, so a re-run of the same run number is
 ##   reproducible. Distinct run numbers produce DISJOINT seed blocks (the
@@ -1608,7 +1609,7 @@ ACCUM_N_SIM_CAP_DEFAULT <- 2000L
 ACCUM_N_SIM_STEP_DEFAULT <- 200L
 
 ## Overflow-safe per-batch seed base for a cell, derived ONLY from the
-## passed run-level seed_base (the GHA run number) and the cell's stable
+## passed run-level seed_base (a batch/task identifier) and the cell's stable
 ## seed_base. Computed in double precision, then coerced into the signed
 ## 32-bit integer range R uses for seeds. Distinct run numbers map to
 ## disjoint blocks (stride ACCUM_SEED_RUN_STRIDE); the cell seed_base
@@ -1697,14 +1698,15 @@ pilot_summarise_primary <- function(df) {
 ## index is saved after EACH cell so an interrupted run keeps its
 ## progress. Prior accumulated reps are preserved on a cell error.
 ##
-## `seed_base` MUST be supplied (in GHA: the run number) -- it is the only
+## `seed_base` MUST be supplied (for example, a frozen task number) -- it is
+## the only
 ## source of per-batch seed variation; there is intentionally no
 ## wall-clock / RNG fallback.
 ##
 ## Returns (invisibly) a list with the updated `index`, a per-cell
 ## `report` data.frame (cell_id, action, n_before, n_after, coverage_primary,
 ## fail-soft error), and the run-level `fail_rate` (fraction of attempted
-## cells that errored this run) for the workflow's failure-rate guard.
+## cells that errored this run) for the campaign failure-rate guard.
 run_accumulate_pilot_batch <- function(
   cell_ids = NULL,
   n_sim_step = ACCUM_N_SIM_STEP_DEFAULT,
@@ -1718,12 +1720,10 @@ run_accumulate_pilot_batch <- function(
 ) {
   ## `seed_fn(run_seed_base, cell_seed_base) -> integer` maps the run-level
   ## seed_base + the cell's stable seed_base to this batch's seed base.
-  ## DEFAULT is the GHA scheme (pilot_accum_batch_seed): the GHA runner
-  ## (dev/power-pilot-run.R) calls this function by name and never passes
-  ## seed_fn, so the cron path is byte-identical to before this argument
-  ## existed. A SECOND engine (the local continuous loop in
-  ## dev/m3-pilot-local-loop.R) injects a DISJOINT seed_fn so its reps can
-  ## never share an RNG draw with the GHA cron's reps -- see that file's
+  ## DEFAULT is the historical run-number scheme (pilot_accum_batch_seed),
+  ## retained so old stores remain reproducible. A second engine (the local
+  ## continuous loop in dev/m3-pilot-local-loop.R) injects a DISJOINT seed_fn
+  ## so its reps can never share an RNG draw with historical reps -- see that file's
   ## local_accum_batch_seed() and the disjointness proof in its header.
   stopifnot(is.function(seed_fn))
   n_sim_step <- as.integer(n_sim_step)
@@ -1731,7 +1731,7 @@ run_accumulate_pilot_batch <- function(
   stopifnot(n_sim_step >= 1L, n_sim_cap >= 1L)
   if (is.null(seed_base)) {
     stop(
-      "run_accumulate_pilot_batch requires `seed_base` (e.g. the GHA run ",
+      "run_accumulate_pilot_batch requires `seed_base` (e.g. a frozen task ",
       "number). Seeding is deterministic -- there is no wall-clock fallback."
     )
   }
@@ -1810,7 +1810,7 @@ run_accumulate_pilot_batch <- function(
 
     ## Deterministic per-batch seed block, disjoint across run numbers
     ## (overflow-safe; derived ONLY from the passed seed_base via seed_fn,
-    ## which defaults to the GHA scheme pilot_accum_batch_seed).
+    ## which defaults to the historical pilot_accum_batch_seed scheme).
     batch_seed_base <- seed_fn(seed_base, cell$seed_base)
 
     cat(sprintf(
@@ -1997,8 +1997,7 @@ run_accumulate_pilot_batch <- function(
 ## Like pilot_status() but the DONE / PENDING split is by the cap, not by
 ## a single pass: a cell is "complete" once its accumulated n_sim >= cap.
 ## Returns (invisibly) counts + the per-cell table; prints a compact
-## ASCII report. Used by the workflow's auto-stop guard (all_complete)
-## and the issue-#340 summary job.
+## ASCII report. Used by campaign auto-stop checks and reducers.
 pilot_accum_status <- function(
   results_dir = PILOT_RESULTS_DIR_DEFAULT,
   n_sim_cap = ACCUM_N_SIM_CAP_DEFAULT,

@@ -1,13 +1,21 @@
 # Design 66 -- Capstone power / accuracy / coverage simulation study
 
-**Status:** APPROVED design contract (build contract). Pre-spec for the
-end-of-road capstone (issue #349, milestone `power-study`). The seven open
-questions of the original draft (former section 12) are now RESOLVED by
-the maintainer; the locked plan is section 12. Compute is phased: Phase 1
-is a local pilot at n_sim ~= 200 (this week, free local compute); Phase 2
-is the core grid at n_sim = 2000 on HPC (later). The Phase-1 pilot is
-driven by `dev/m3-pilot-launch.R` (a thin resumable driver over the
-validated `dev/m3-grid.R` harness).
+**Status:** APPROVED scientific design contract; execution route superseded
+under D-50. This is the pre-specification for the end-of-road capstone (issue
+#349, milestone `power-study`). The seven scientific questions of the original
+draft remain resolved by the maintainer in section 12. The former execution
+plan paired a local `n_sim ~= 200` pilot with an `n_sim = 2000` HPC core and
+used `dev/m3-pilot-launch.R`; that plan is retained as historical design
+provenance, not current launch authority.
+
+**2026-07-20 D-50 execution supersession:** deterministic local diagnostics and
+bounded non-claim local/Totoro smoke may exercise the existing primitives. No
+48-cell pilot, claim-bearing fit campaign, or production DRAC array is admitted
+until a separate compute-admission slice freezes and validates source/archive/
+runner checksums, campaign/task identity, immutable destinations, retry policy,
+and result schema, followed by explicit maintainer approval. Scientific cell
+definitions and thresholds below remain design inputs; present-tense execution
+language in the retained locked plan is superseded by this boundary.
 
 **Maintained by:** (to assign). **Reviewers:** Fisher (validation design),
 Curie (DGP fixtures), Noether (identifiability), Rose (scope honesty),
@@ -40,7 +48,10 @@ grid.
 `fix(m3): coverage gate keys on Sigma_unit_diag bootstrap, not psi
 proxy`); PR #366 (merged 2026-05-31, RE-09 within-unit latent()+unique()
 recovery test). The capstone reuses the `dev/m3-grid.R` engine and the
-`.github/workflows/m3-production-grid.yaml` dispatch pattern.
+current immutable task-manifest and reducer primitives. The repository has
+smoke-only Slurm plumbing, not an admitted production DRAC array harness; that
+driver must still be built, reviewed, and frozen. The former Actions dispatch
+is retired under D-50 and remains only in Git history.
 
 ---
 
@@ -322,16 +333,21 @@ them; this is a correctness constraint, not a power-tuning choice.
 
 ### 4.7 Seeds and reproducibility
 
-Reuse the M3 seed discipline: a per-dispatch `seed_base` (distinct per
-run to avoid collision, per the workflow input help) plus deterministic
-per-cell/per-rep derivation inside `m3_run_cell()`. The Phase-1
-accumulation driver writes a per-shard manifest before fitting. Each
-manifest row records the source SHA, workflow run id/number, shard,
-cell, current accumulated-store path, future immutable chunk path,
-planned replicate count, batch seed base, and `rep_seed` range. The
-persist/status path validates the merged manifest for duplicate output
-paths, duplicate chunk paths, overlapping per-cell replicate windows,
-and overlapping seed ranges before treating the store as auditable.
+Reuse the M3 seed discipline: freeze a per-campaign `seed_base` and
+deterministic per-cell/per-rep derivation inside `m3_run_cell()`. The legacy
+Phase-1 accumulation driver can write a per-shard manifest before fitting,
+including campaign, shard, cell, path, replicate-window, and seed fields.
+Outside its former Actions environment, however, `source_sha` may be `NA`, and
+its campaign identifier is seed-derived. Those manifests remain readable for
+historical diagnostics but are not admissible for a new claim-bearing local,
+Totoro, or DRAC campaign. Before remote production, a separate compute-admission
+slice must require and validate a non-missing frozen source SHA, source-archive
+checksum, unique campaign and task identities, exact runner checksum, and
+immutable destination paths. Legacy workflow run fields remain readable only
+for historical stores. The current persist/status path checks duplicate output
+paths, duplicate chunk paths, overlapping per-cell replicate windows, and
+overlapping seed ranges; those checks are necessary but not sufficient for a
+new scientific campaign.
 For future immutable-chunk array jobs, `--mode=chunk` runs the active
 rows in a chunk manifest and writes one RDS per planned chunk, while
 `--mode=chunk-audit` reads the written manifests and requires every
@@ -352,7 +368,8 @@ for every failed fit, seed, and CI (Williams et al. 2024 transparency
 items; Design 42 sec.1). The first Totoro/DRAC smoke step is
 manifest-only: `dev/power-pilot-smoke.sh` runs with
 `SMOKE_STAGE=manifest`, or `dev/power-pilot-slurm-smoke.sh` writes and
-optionally submits the same manifest-only smoke as a SLURM job. It
+only after explicit maintainer approval optionally submits the same
+manifest-only smoke as a SLURM job. It
 parses the fixed audit-mini grid, writes the manifest, validates unique
 immutable chunk destinations, and exits before fitting. Before any real
 SLURM submission, prepare the remote checkout on the login node with
@@ -487,9 +504,11 @@ calibrate against `mean_runtime_s` from a pilot before committing):
 
 These are *single-core* figures to make the scale unmistakable: the
 capstone is **embarrassingly parallel** but **not a GitHub Actions job**.
-The M3 workflow already shards `family x d` into 4 shards x 5 max-parallel
-on `ubuntu-latest` with a 120-min job cap; that is fine for R = 200 smoke
-but cannot absorb 10^6-10^7 fits. Concretely, the core spoke design at
+The retired M3 Actions workflow demonstrated a historical shard shape,
+but D-50 supersedes that route even for pilots. Current bounded smoke
+plumbing can run locally or on Totoro; no new claim-bearing pilot or
+production DRAC array is admitted until its driver receives its own
+implementation, review, and frozen manifest. Concretely, the core spoke design at
 n_sim = 1000, n_boot = 100, 2 s/fit is ~117 single-core-days -> roughly a
 day on ~128 cores, or a few days on a modest cluster allocation. The full
 192-cell x n_sim = 2000 reading is a multi-CPU-year job and is only
@@ -507,11 +526,13 @@ realistic on HPC.
 3. **Fractional core (spoke vs full 192):** the single biggest lever.
 4. **Family subset** (Q-f): 4 core families, not 14.
 
-**Recommendation:** budget the core (Tier 0) explicitly, run it on a
-cluster (or a large cloud spot allocation), and treat GHA only for the
-*pilot* and for *aggregation/reporting*, not the production sweep. Whether
-a cluster is available is Q-a -- the rest of the budget plan branches on
-it.
+**Recommendation:** budget the core (Tier 0) explicitly. The intended route is
+Totoro for bounded smoke and DRAC for frozen claim-bearing arrays, with
+aggregation from checksummed local/`/project` keepers. That DRAC route is not
+admitted until the production driver and compute-admission contract above are
+built and reviewed. GitHub Actions is not used for pilot, production,
+aggregation, or result storage. Available DRAC allocation and measured task
+resources determine the eventual production branch.
 
 ---
 
@@ -528,7 +549,7 @@ provides the pieces. Explicit reuse map (verified on origin/main):
 | Signal knobs | `--lambda-scale`, `--psi-scale`, `--phi`, `--n-units`, `--n-traits`, `--d` (precompute CLI) | wire a signal-strength factor (incl. the 0 / null level for H4) |
 | Convergence filtering | `pd_hessian_rate`, `sdreport_ok_rate`, `boot_fail_rate`, restart cols | none (reuse) |
 | Persistence | `*-grid.rds` + `*-summary.rds` writers | none (reuse) |
-| Dispatch | `.github/workflows/m3-production-grid.yaml` (matrix shards) | replace GHA matrix with a cluster array job for production; keep GHA for pilot + aggregation |
+| Dispatch | frozen task manifest + reducer contract | run bounded Totoro smoke; build and review the production DRAC array driver before submission; aggregate from local/`/project` keepers |
 
 The new code surface is: (a) a between-unit-`K` DGP extension, (b) a
 signal-strength + null factor, (c) a target-aligned detection /
@@ -607,33 +628,30 @@ volume/page details as checked.
 
 ---
 
-## 12. LOCKED PLAN (maintainer decisions -- supersedes the open questions)
+## 12. LOCKED SCIENTIFIC PLAN (execution superseded under D-50)
 
-The seven open questions of the original draft are RESOLVED. The plan
-below is the build contract. Each item records the decision and its
-direct consequence for the grid and the compute.
+The seven open questions of the original draft are RESOLVED. The plan below
+locks the scientific grid, estimands, and intended evidence depth. Its original
+local/HPC launch instructions are historical and do not override the 2026-07-20
+compute-admission boundary above.
 
-- **L-a (compute) -- PHASED, local pilot then HPC core (resolves Q-a +
-  Q-d).** Phase 1 is a LOCAL pilot at `n_sim ~= 200` on the maintainer's
-  Mac, run in bounded batches (free compute while the maintainer is
-  away); it sizes wall-time and surfaces gross miscalibration / failure
-  modes before any cluster time is spent. Phase 2 is the core grid at
-  `n_sim = 2000` on HPC (MCSE 0.49 pp at p = 0.95; section 7.2 floor),
-  run on the maintainer's return. The pilot is local-only and is NOT a
-  GitHub Actions job. At `n_sim = 200` the coverage MCSE is ~1.54 pp
-  (section 7.1) -- the pilot is a SMOKE/sizing instrument, not the gate
-  adjudication; the 94/95 adjudication belongs to the n_sim = 2000 HPC
-  Phase 2.
-- **L-b (core grid) -- core-4 confirmatory grid; PILOT is a bounded
-  subset (resolves Q-b).** The Phase-2 confirmatory grid is the core-4
-  cross (section 4.2). The Phase-1 PILOT is a deliberately bounded
-  enumeration of **48 cells**: core-4 family (4) x latent rank d {1, 2}
+- **L-a (compute target) -- PHASED pilot then HPC core (resolves Q-a +
+  Q-d).** The scientific design targets a pilot at `n_sim ~= 200` to size
+  wall-time and expose gross miscalibration, followed by an `n_sim = 2000` HPC
+  core (MCSE 0.49 pp at p = 0.95; section 7.2 floor). Neither fitting stage is
+  currently admitted. The pilot and core require the later compute-admission
+  bundle and separate approval and are never GitHub Actions jobs. At
+  `n_sim = 200`, coverage MCSE is ~1.54 pp (section 7.1), so that stage is a
+  sizing/diagnostic instrument rather than gate adjudication; the intended
+  94/95 adjudication remains the `n_sim = 2000` target.
+- **L-b (core grid) -- core-4 confirmatory grid; proposed pilot is a bounded
+  subset (resolves Q-b).** The intended confirmatory grid is the core-4 cross
+  (section 4.2). The proposed pilot is a deliberately bounded enumeration of
+  **48 cells**: core-4 family (4) x latent rank d {1, 2}
   (2) x n_units {50, 150} (2) x signal {0, 0.2, 0.5} (3) = 4 x 2 x 2 x 3
-  = 48. This is "a few dozen" cells -- smaller than the full 192-cell
-  core grid -- chosen so the pilot completes locally in bounded batches
-  while still touching every family, both ranks, both n, and all three
-  signal levels at least once. The exact pilot enumeration is the
-  `pilot_grid()` data.frame in `dev/m3-pilot-launch.R`.
+  = 48. This is smaller than the full 192-cell core grid and touches every
+  family, rank, sample size, and signal level at least once. It remains a design
+  enumeration in `pilot_grid()`, not an authorised fitting campaign.
 - **L-c (coverage gate) -- report BOTH 94% and 95%; size to the stricter
   95% (resolves Q-c).** CIs are constructed at 95% nominal
   (`ci_level = 0.95`). Both the 94% audit-1 gate (`M3_PASS_GATE`, the
@@ -641,10 +659,11 @@ direct consequence for the grid and the compute.
   per cell. The n_sim FLOOR is sized to adjudicate the stricter 95% gate
   (this is why Phase 2 uses n_sim = 2000, section 7.2). `pilot_status()`
   reports both gates side by side.
-- **L-d (n_sim) -- pilot ~= 200, core = 2000 (resolves Q-d; folded into
-  L-a).** Pilot `n_sim ~= 200` (sizing only); core `n_sim = 2000` (gate
-  adjudication at MCSE < 0.5 pp). The minimum-defensible 1000 is NOT
-  used for the headline core grid.
+- **L-d (n_sim target) -- pilot ~= 200, core = 2000 (resolves Q-d; folded
+  into L-a).** The proposed pilot uses `n_sim ~= 200` for sizing; the intended
+  core uses `n_sim = 2000` for gate adjudication at MCSE < 0.5 pp. The
+  minimum-defensible 1000 is not used for the headline grid. These counts do
+  not themselves authorise execution.
 - **L-e (coevolution / Gamma) -- DEFERRED (resolves Q-e).** Design 65 /
   #361 (`kernel_*()`, Gamma coevolution) is OUT of scope for this
   capstone. The `kernel_*()` engine is not built on origin/main; the
@@ -660,7 +679,7 @@ direct consequence for the grid and the compute.
   *Pilot harness note (binomial link).* The current `m3_run_cell`
   harness has a true `binomial_probit` path: the DGP uses `pnorm()` and
   the fit uses `stats::binomial(link = "probit")`. Older Phase-1 pilot
-  artifacts, including the first fir scheduled smoke jobs recorded on
+  artifacts, including the first Fir scheduled smoke jobs recorded on
   2026-06-24, used the existing binary LOGIT harness behind
   `binomial_probit` cell IDs and saved
   `evidence_family = "binomial_logit_harness"` for traceability. Those
@@ -683,21 +702,20 @@ direct consequence for the grid and the compute.
   absent -- the H4 null cell. This gives the power curve an interpretable
   x-axis (a variance share, not an opaque loading scale).
 
-### 12.1 Phase-1 pilot driver (build summary)
+### 12.1 Historical pilot primitives and current smoke boundary
 
-The pilot is driven by `dev/m3-pilot-launch.R`, a thin RESUMABLE driver
-over `dev/m3-grid.R` (it reuses `m3_run_cell()` for the DGP/estimand/CI
-machinery and `m3_summarise()` for per-cell coverage; it does NOT
-reimplement any of it). Entry points:
+`dev/m3-pilot-launch.R` retains the former resumable pilot primitives over
+`dev/m3-grid.R`: it reuses `m3_run_cell()` for DGP/estimand/CI machinery and
+`m3_summarise()` for per-cell coverage. Current admissible use is deterministic
+local inspection and bounded non-claim smoke. The 48-cell fit driver below is
+historical/local diagnostic plumbing and must not create new claim-bearing
+evidence until the separate compute-admission route passes. Entry points:
 
 - `pilot_grid()` -- the enumerated 48-cell core-4 pilot grid (L-b).
-- `run_next_pilot_batch(k, n_sim = 200, results_dir)` -- runs the next
-  `k` PENDING cells, writes each result to `<results_dir>/<cell-id>.rds`,
-  updates an index RDS, and prints a one-line progress summary. Designed
-  to be invoked in bounded batches (e.g. every ~2 h locally). It is
-  idempotent (re-running skips done cells), failure-tolerant (a cell
-  that errors is logged + marked failed + skipped, never crashing the
-  batch), and ASCII-logging.
+- `run_next_pilot_batch(k, n_sim = 200, results_dir)` -- retained historical/
+  local diagnostic driver that runs pending cells and updates the legacy index.
+  Its idempotence and fail-soft behavior preserve old stores, but it is not an
+  admitted local, Totoro, or DRAC evidence route.
 - `pilot_status(results_dir)` -- summarizes done / pending / failed and
   the preliminary 94%/95% coverage (signal > 0) plus the signal-zero
   coverage diagnostic (signal = 0) available so far. The signal-zero
@@ -794,6 +812,7 @@ reimplement any of it). Entry points:
   --mode=preflight --output-mode=chunk` validates the future immutable
   chunk destinations without launching fits.
 
-Phase 2 (HPC, n_sim = 2000, the full core grid)
-reuses the same harness with a cluster array-job driver (section 9); the
-pilot driver and its results directory are the bridge.
+Phase 2 (HPC, n_sim = 2000, the full core grid) will require a reviewed
+cluster array-job driver and frozen compute-admission bundle (section 9). The
+current pilot primitives and results schema are inputs to that future driver;
+they are not themselves an admitted production harness.

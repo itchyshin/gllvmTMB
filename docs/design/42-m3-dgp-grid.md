@@ -29,7 +29,7 @@ over.
 The grid is reported in ADEMP terms--aims, data-generating
 mechanisms, estimands, methods, and performance measures--following
 Morris, White & Crowther (2019). For ecology/evolution readers, the
-long-grid artefacts, seeds, failed-fit rows, and retained workflow
+long-grid artefacts, seeds, failed-fit rows, and retained historical
 outputs also follow the transparent simulation-reporting discipline
 summarised by Williams et al. (2024).
 
@@ -197,11 +197,13 @@ Two artefacts:
    `coverage_prof` is computed on the converged `(rep, trait)` rows
    only.
 
-Smoke artefacts are committed under `inst/extdata/` for the M3.6
-article. Production artefacts are uploaded by the manual GitHub
-Actions workflow and promoted to `inst/extdata/` only if the evidence
-is publication-ready. The 2026-05-19 production run was not promoted
-because the statistical gate failed.
+Existing smoke artefacts are committed under `inst/extdata/` for the M3.6
+article. Under D-50, any new claim-bearing campaign requires an approved
+Totoro/DRAC driver and immutable campaign bundle; all attempts remain in local
+and `/project` keepers, never GitHub Actions artifacts. Only a compact reviewed
+summary may later be promoted to `inst/extdata/` if the evidence is
+publication-ready. The historical 2026-05-19 Actions production run was not
+promoted because the statistical gate failed.
 
 ## 6. Honest scope
 

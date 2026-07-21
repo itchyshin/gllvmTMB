@@ -45483,3 +45483,186 @@ multinomial Tier-2b cross-family arc is now **fully landed on `main`** — five 
 **Handover for the next multinomial lane:** `docs/dev-log/handover/2026-07-18-claude-handover.md`
 (the arc is shipped; next lane picks a depth arc — item-3 recovery certificate or calibrated cross-family
 intervals — at a discussion checkpoint). Reusable compute: Totoro `~/gtmb_work` (gllvmTMB compiled + MCMCglmm).
+
+## 2026-07-20 — gllvmTMB 0.6 M1 release truth and local heavy-baseline receipt (Codex)
+
+Scope and authority:
+
+- Sole writer: root Codex in clean builder
+  `/private/tmp/gllvmtmb-060-m1-builder`, branch
+  `codex/gllvmtmb-060-m1-baseline-20260720`, frozen from `origin/main`
+  `de211f762812c574646938adaca22cbf41c6175e`.
+- Detached verifier remains at the same base. The dirty primary checkout remains
+  quarantined at `6fcf0998a87d00b791c299c94e7995f23c744199` and was not edited,
+  switched, stashed, cleaned, reset, or used as a source of repair hunks.
+- Primary check-log provenance was re-proven against its own HEAD blob: exact
+  committed prefix PASS, followed by one 303-line / 24,675-byte local tail with
+  SHA-256 `902d88919d88b43c89cec54fd4cd08b619529e2110ac79eca02e244597425ced`.
+  That tail remains only in the primary and was not imported here.
+- Shannon census at `2026-07-21T05:00:22Z`: 0 open PRs; 0 queued,
+  in-progress, waiting, requested, or pending runs; no remote M1 branch; no
+  competing writer; 38 registered worktrees. One inactive July-16 worktree
+  overlaps `docs/design/35-validation-debt-register.md`; it remains untouched.
+
+Baseline reproduction and repair truth:
+
+- Untouched verifier reproduced 48 total failures/errors: 46 nonvisual (26
+  failed expectations + 20 errors) plus two visual snapshot mismatches.
+- Failure taxonomy: 12 structured-slope contracts; 8 matrix point-only
+  contracts; 2 bootstrap contracts; 17 nonlinear-profile contracts; 7
+  extractor-channel contracts; 2 deterministic visual contracts; 0 additional
+  neighbour-audit failures.
+- Verifier receipt: 106 summary rows, 3 declared skips, 373 passes, 954.6822 s;
+  `/private/tmp/gllvmtmb-060-m1-verifier-results.rds`, SHA-256
+  `d8634915ebdb2bd67fc5f1a3797c5daaabe39ff773cf299ff84904b3bef24153`.
+- Repairs centralise the landed augmented-slope family/link policy, correct
+  current/legacy structured covariance channel read-out, withdraw every public
+  nonlinear penalty-profile route with typed refusals, stabilise two plot
+  snapshots, and reconcile NEWS/design/register/generated-help truth. No new
+  likelihood, family, formula grammar, exported symbol, function signature,
+  NAMESPACE entry, estimator, or public EVA route was added. Public admission,
+  covariance read-out, and typed-refusal behavior did change as recorded above.
+- Complete repaired heavy suite at `c471bbea`: 1,951 summary rows, 0 failures,
+  0 errors, 87 declared skips, 9 classified warnings, 13,641 passes, 7,525.879 s.
+  RDS SHA-256
+  `9da6e27a46a0b68bb6eb804205543139d04efc5b1233361bcd8e5d95745794ac`;
+  summary CSV SHA-256
+  `6ca6ad5947b6a59ba32c10895ab3de71013f9a967404b77dcd31f81694f7ec0a`;
+  log SHA-256
+  `fdb6e2ce29a2926c0ce6e62b6ce3ea7776bf01bdf243de17bebf4a9da9b2ca5f`.
+- M1 no-skip audit: 59 named rows across 19 files, 523 passes, 0
+  failures/errors/skips/warnings. CSV SHA-256
+  `2218d7978ddb429cf7222a23386eb2e59289a0b817ec78d748ab879ab57bd32d`.
+- The nine warnings remain bounded: four loading-bootstrap smoke warnings with
+  30/40 survivors; nbinom2 and Tweedie `sdreport()` covariance warnings; one
+  expected conditional-residual warning; one phylogenetic unconditional-redraw
+  fallback; and one mock-ordination unavailable-link-residual warning. They do
+  not support interval/coverage or unconditional-redraw claims.
+
+Package/documentation receipts:
+
+- Explicit roxygen2 8 document: PASS, no unplanned generated diff. Initial log
+  SHA-256 `a833c94f496dab9b59ef9e0fe0d1ae50449adf710a8404b9750f74132693db1c`;
+  post-metadata log SHA-256
+  `9b834fee77389dd90c3663b56ad898a55a74fbe3aa47395bf0c3c5de7d472e83`.
+- `pkgdown::check_pkgdown()`: PASS; log SHA-256
+  `4cd0200ed0bddccb1561b06b5ffbf716a6ca4f6556abaa1235660aa716d6b3a8`.
+- Heavy source-package check at `c471bbea`: 0 R CMD errors/warnings/notes;
+  internal testthat 13,313 passes, 131 skips, 9 classified warnings. RDS
+  SHA-256 `06f439037aff2e41a362d39da5e7e834d89dbffcf75e345cb6c85582ec7e9742`.
+- Standard source-package check at `d05db562`: 0 R CMD
+  errors/warnings/notes; internal testthat 7,007 passes, 809 skips, one expected
+  ordination warning. RDS SHA-256
+  `54bc1a84c67e2989fd2e4c928448931d7c84e06bc7630a6077799183ecfd8c35`.
+- Removed stale `DESCRIPTION` `RoxygenNote: 7.3.2`; retained
+  `Config/roxygen2/version: 8.0.0`.
+
+Exact load-bearing invocations and receipt paths:
+
+```sh
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  Rscript --vanilla /private/tmp/gllvmtmb-060-m1-full-heavy-runner.R \
+  > /private/tmp/gllvmtmb-060-m1-full-heavy-current.log 2>&1
+Rscript --vanilla /private/tmp/gllvmtmb-060-m1-no-skip-audit.R
+Rscript --vanilla -e 'devtools::document(); cat("ROXYGEN_VERSION=", as.character(packageVersion("roxygen2")), "\n", sep = "")' \
+  > /private/tmp/gllvmtmb-060-m1-document-postmetadata.log 2>&1
+Rscript --vanilla -e 'pkgdown::check_pkgdown()' \
+  > /private/tmp/gllvmtmb-060-m1-pkgdown-check.log 2>&1
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  Rscript --vanilla /private/tmp/gllvmtmb-060-m1-check-runner.R \
+  > /private/tmp/gllvmtmb-060-m1-check-current.log 2>&1
+NOT_CRAN=true OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  Rscript --vanilla /private/tmp/gllvmtmb-060-m1-final-check-runner.R \
+  > /private/tmp/gllvmtmb-060-m1-final-check.log 2>&1
+```
+
+- Complete-heavy receipts:
+  `/private/tmp/gllvmtmb-060-m1-full-heavy-current-results.rds`,
+  `/private/tmp/gllvmtmb-060-m1-full-heavy-current-summary.csv`, and
+  `/private/tmp/gllvmtmb-060-m1-full-heavy-current.log`; runner SHA-256
+  `b8339478d4bb3638e2d1cc2829a11a213d0d07bae231c3148152743e40ca8919`.
+- No-skip receipt: `/private/tmp/gllvmtmb-060-m1-no-skip-audit.csv`;
+  runner SHA-256
+  `9dbaa157a4b46e6fff0bc9f7eb96a5aee234a9fa269f4e240aa60636039576d5`.
+- Documentation/pkgdown receipts:
+  `/private/tmp/gllvmtmb-060-m1-document-postmetadata.log` and
+  `/private/tmp/gllvmtmb-060-m1-pkgdown-check.log`.
+- Heavy package-check receipts:
+  `/private/tmp/gllvmtmb-060-m1-check-current-results.rds` and
+  `/private/tmp/gllvmtmb-060-m1-check-current.log`; runner SHA-256
+  `7ef79c70359e03392b6ea015843f42dfdbbc543bf74ad2e6fb77f18827599a1d`.
+- Standard package-check receipts:
+  `/private/tmp/gllvmtmb-060-m1-final-check-results.rds` and
+  `/private/tmp/gllvmtmb-060-m1-final-check.log`; runner SHA-256
+  `31f2df652630fafa0c1988f52116f0d8337115fe1e017e5114f5931e737dad48`.
+- The untouched baseline invocation is reproduced in full in the M1 after-task
+  report; receipts are `/private/tmp/gllvmtmb-060-m1-verifier-results.rds` and
+  `/private/tmp/gllvmtmb-060-m1-verifier-m1-subset.log`.
+
+D-50 fail-closed compute boundary:
+
+- Deleted exactly 14 scientific workflow sources:
+  `coevolution-two-kernel-recovery.yaml`,
+  `dep-slope-identifiability-sweep.yaml`,
+  `dep-slope-poisson-recovery.yaml`,
+  `gamma-ordinal-recovery-depth.yaml`,
+  `m3-production-grid.yaml`,
+  `nightly-stale-test-fixups-gate.yaml`,
+  `phylo-q-decomposition-recovery.yaml`,
+  `power-pilot-sweep.yaml`,
+  `simulate-unit-trait-recovery.yaml`,
+  `slope-grid-residuals-recovery.yaml`,
+  `spatial-dep-slope-nongaussian-recovery.yaml`,
+  `spatial-indep-slope-nongaussian-recovery.yaml`,
+  `spatial-latent-slope-nongaussian-recovery.yaml`, and
+  `spde-slope-base-engine-check.yaml`.
+- Retained source allowlist: `R-CMD-check.yaml`, `full-check.yaml`, and
+  `pkgdown.yaml` only. Live GitHub registrations show those three active and the
+  retired scientific entries disabled manually; no run is active or queued.
+- Both package checks invoke `tools/check-actions-boundary.sh` with explicit
+  `shell: bash`, `upload-snapshots: false`, and `upload-results: never`.
+  Direct Actions artifacts are prohibited; only pkgdown may use a Pages artifact.
+- `bash -n`, positive guard, all retained YAML parses, all five modified dev R
+  parses, and `git diff --check`: PASS.
+- `devtools::test(filter = "m3-pilot-manifest")`: 147 passes, 0
+  failures/warnings/skips.
+- Tests of the guard: four deliberately corrupted temporary workflow estates
+  were all rejected for their intended reason: extra workflow; direct
+  `actions/upload-artifact@v4`; `upload-snapshots: true`; missing
+  `upload-results: never`. Guard SHA-256
+  `b94d91e7cca9996de6c28ca41f94c304e757f411c193b22422e9610d7d25717e`.
+- Historical ANI-12 and CI-08 receipts, legacy seed bands, manifest fields, and
+  Fir smoke jobs remain preserved and explicitly historical. The tested
+  manifest compatibility paths pass 147 assertions; this is not a claim that
+  every historical result store was replayed. Current scripts are local
+  diagnostic/bounded-smoke primitives only; a claim-bearing DRAC route remains
+  unbuilt and requires a separately approved compute-admission bundle.
+- Grace final D-50 review: PASS. Rose's pre-receipt review required Design 42
+  routing and this durable receipt; both are now corrected for the final gate.
+
+Exact consistency scans:
+
+```sh
+rg -n 'penalty[-_ ]profile|nonlinear[_ -]profile|gllvmTMB_nonlinear_profile_withdrawn' R tests/testthat NEWS.md docs/design man
+rg -n 'coevolution-two-kernel-recovery|dep-slope-identifiability-sweep|dep-slope-poisson-recovery|gamma-ordinal-recovery-depth|m3-production-grid|nightly-stale-test-fixups-gate|phylo-q-decomposition-recovery|power-pilot-sweep|simulate-unit-trait-recovery|slope-grid-residuals-recovery|spatial-dep-slope-nongaussian-recovery|spatial-indep-slope-nongaussian-recovery|spatial-latent-slope-nongaussian-recovery|spde-slope-base-engine-check' .github docs/design dev tests/testthat
+rg -n 'actions/upload-artifact@|upload-snapshots:[[:space:]]+true|upload-results:[[:space:]]+(always|on-error)' .github/workflows
+rg -n 'integration[[:space:]]*=[[:space:]]*["'"']eva|\bEVA\b|variational approximation' R src man NAMESPACE tests/testthat
+rg -n 'test-zzz-qdebug|qdebug|RoxygenNote:[[:space:]]*7\.3\.2' DESCRIPTION tests docs NEWS.md
+```
+
+Verdicts: nonlinear profiles are consistently withdrawn/blocked or labelled
+historical; no current scientific Actions route or prohibited package artifact
+setting remains; only the research-only `R/va-r3-proto.R` matches EVA; qdebug
+appears only in its historical warning and the stale roxygen note is absent.
+
+Issue ledger and nonclaims:
+
+- Inspected open #343, #341, #340, #345, #346, #348, and #750. All remain
+  open. M1 relates to them but closes none; in particular it neither completes
+  #346's DRAC simulation/coverage programme nor implements #750's unconditional
+  structured-tier redraw.
+- Design 85 remains NO-GO; Design 86 has not begun. No Totoro/DRAC job, remote
+  branch, push, PR, tag, submission, release-candidate freeze, release-ready
+  statement, or 0.6 release claim occurred in this receipt.
+- Final exact-head local package/pkgdown checks, one PR, three-platform package
+  CI, Ubuntu heavy CI, and final independent M1 synthesis remain pending.

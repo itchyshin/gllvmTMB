@@ -51,33 +51,61 @@ standard error and **0 NaN estimates**. The asserted quantity survives (gap 0.07
 **0.7 must budget for this: repairing the gate will likely make the cell SKIP, moving
 SPA-02(nbinom2) from covered back toward partial.**
 
+## ⚠️ RECEIPT SHA vs HEAD — read before trusting either
+
+**The durable receipts describe `5d7b6de6`.** This checkpoint update is the FIRST commit
+after them, and it is **deliberately declared NON-CERTIFYING**: it touches only `LOOP/`, so
+it changes no source, but it does move HEAD off the receipt SHA. That is the same drift that
+superseded `25c76789`, so it is named here rather than left to be discovered.
+
+The trade was made knowingly: a **stale resume pointer is a worse hazard than a one-commit
+SHA gap**, because `5d7b6de6` is very unlikely to be the release SHA anyway — R-10 is still
+open, and if the maintainer chooses "rewrite" it requires source edits and a fresh freeze.
+
+**Receipts (SHA-256 verified) live at:**
+`~/gllvmTMB-0.6-evidence/m1/final-receipt/5d7b6de6b3e24cd99506041791278bd2a25aed8b/`
+containing both runner RDS files, both runner logs, the CRAN-check log, the suite log, and
+the R-7 probe script + log, with `SHA256SUMS.txt`.
+
 ## Evidence state
 
 | Item | State |
 |---|---|
-| Reader-surface guard | **PASS** at `e506dc94` |
+| Reader-surface guard | **PASS** |
 | Construction family in `R/` + `man/` | **absent** (verified after final regeneration) |
 | Rd regeneration | **done**, 0 errors / 0 warnings |
-| CRAN-configuration check | 0 errors / 0 warnings / 1 note — **but recorded at `ce2fb177`, now SUPERSEDED by 3 commits** |
-| Non-heavy suite | **WAS STILL RUNNING** at `e506dc94`; result NOT recorded |
-| Durable runners | **NOT RUN** on the final head |
+| Non-heavy suite | **`FAIL 0 \| WARN 0 \| SKIP 779`** — identical to the pre-sweep baseline |
+| CRAN-configuration check (`remote`+`incoming`) | **0 errors / 0 warnings / 1 note** (`New submission`, expected) at `f56310ff` |
+| New article URLs | **fetched and confirmed live**, not assumed |
+| Durable package-check runner | **CLEAN at `5d7b6de6`** — 0 errors / 0 warnings / **0 notes**, no runner errors |
+| Durable pkgdown runner | **CLEAN at `5d7b6de6`** |
+| Receipts mirrored + SHA-256 | **DONE** — see the block above |
 | CI cycle | **NOT RUN** (gated by the discipline line) |
-| Third D-43 panel | **NOT RUN** |
+| Third D-43 panel | **NOT RUN** (needs the gated platform evidence) |
+
+**Why the runner reports 0 notes while the CRAN check reports 1** — not a contradiction. The
+runner calls `devtools::check(args = c("--as-cran", "--no-manual"))` **without** `remote` /
+`incoming`, and the `New submission` NOTE originates in the CRAN incoming-feasibility step,
+which only runs with those enabled. Both results are correct for what they ran.
+
+**Limit of the pkgdown receipt:** `pkgdown::check_pkgdown()` validates configuration only. It
+**does not build the site**, so this is not evidence that the site renders. A previous arc was
+burned by exactly that assumption (exit 0 with artifacts absent, destination `pkgdown-site`).
 
 ## NEXT — in order
 
-1. **Record the non-heavy suite result.** Log:
-   `~/gllvmTMB-0.6-evidence/m1/diagnostics/da267eaf-post-r9-suite.log`. Expect the prior
-   `FAIL 0 | WARN 0 | SKIP 779 | PASS 7287`; the only behaviour-adjacent change was three
-   `cli` message strings. **Investigate any deviation rather than accepting it.**
-2. **Re-run the CRAN-configuration check** — `NEWS.md`/`man/` changed again, and the
-   recorded result is three commits stale. Two NEW published-article URLs were added, so
-   the `remote = TRUE` URL check matters this time.
-3. **R-10 decision** from the maintainer.
-4. **Freeze the SHA**, then durable runners, mirrored with `SHA256SUMS.txt` into
-   `~/gllvmTMB-0.6-evidence/m1/final-receipt/<sha>/`.
-5. **STOP** — push/CI is gated. Do not self-grant it.
-6. Third D-43 panel once platform evidence exists.
+**All local evidence that can be produced without a maintainer decision is DONE.** The lane
+is stopped at the gate, exactly as the discipline line requires.
+
+1. **🛑 R-10 decision** — the only thing blocking on evidence grounds. If "rewrite", it needs
+   source edits and therefore a **fresh freeze and fresh runners**; `5d7b6de6` would be
+   superseded. If "accept", the register row flips to SIGNED OFF and no re-freeze is needed.
+2. **🛑 The goal conflict** — "close M1" vs "stop before any push/CI spend". Until resolved,
+   M1 cannot close, because its definition of done requires exact-SHA platform evidence.
+3. **🛑 The R-8 deviation** — two `vignette()` citations converted rather than deleted.
+4. Then, once 1–3 are settled: freeze → push → full CI matrix (**assert three OS-named
+   jobs**; do not dispatch `R-CMD-check.yaml` while an Ubuntu run is in flight, the
+   concurrency group cancels it) → third D-43 panel.
 
 ## OPEN GATES (need the maintainer)
 
@@ -103,21 +131,31 @@ code and no path in it — **it cannot know the article does not exist**.
 
 ## TRUTH LIVES IN
 
-Branch `codex/gllvmtmb-060-m1-baseline-20260720` @ **`e506dc94`** (tree clean, **4 commits
-unpushed**), draft PR #778, this `LOOP/` kit, `docs/dev-log/known-residuals-register.md`,
-`docs/dev-log/check-log.md`, and `~/gllvmTMB-0.6-evidence/`.
+Branch `codex/gllvmtmb-060-m1-baseline-20260720`, **receipts at `5d7b6de6`**, tree clean,
+**10 commits unpushed**, draft PR #778, this `LOOP/` kit,
+`docs/dev-log/known-residuals-register.md`, `docs/dev-log/check-log.md`,
+`docs/dev-log/after-task/2026-07-21-m1-third-reader-surface-sweep.md`, and
+`~/gllvmTMB-0.6-evidence/m1/final-receipt/5d7b6de6b3e24cd99506041791278bd2a25aed8b/`.
 
 ## RESUME
 
 ```text
 Read LOOP/GOAL.md (incl. the 2026-07-21 amendment) -> LOOP/checkpoint.md ->
-LOOP/decision-queue.md -> docs/dev-log/known-residuals-register.md.
-M1 is WITHHELD. R-7/R-8/R-9 are closed; R-10 AWAITS SIGN-OFF and blocks the closing claim.
-Head e506dc94, tree clean, 4 commits unpushed, guard PASSES.
-Start by recording the non-heavy suite result from
-~/gllvmTMB-0.6-evidence/m1/diagnostics/da267eaf-post-r9-suite.log, then re-run the
-CRAN-configuration check (it is 3 commits stale and two new URLs were added), then get
-R-10 signed off, then freeze the SHA and run the durable runners.
-STOP before push/CI — it is gated by the goal's discipline line, and the goal's "close M1"
-deliverable CONFLICTS with that gate. Do not resolve the conflict yourself.
+LOOP/decision-queue.md -> docs/dev-log/known-residuals-register.md ->
+docs/dev-log/after-task/2026-07-21-m1-third-reader-surface-sweep.md.
+
+M1 is WITHHELD. R-1..R-9 are closed (R-7 signed off, site (d) deferred to 0.7).
+R-10 AWAITS SIGN-OFF and blocks the closing claim by the register's own rule.
+
+ALL LOCAL EVIDENCE IS DONE at 5d7b6de6 and mirrored with SHA-256: guard PASS, suite
+FAIL 0 | WARN 0 | SKIP 779, CRAN check 0/0/1 (New submission), both durable runners clean,
+both new article URLs fetched live. Do NOT re-run these unless source changes.
+
+The lane is STOPPED AT THE GATE. Do not push, dispatch CI, merge, tag, or claim readiness.
+Three maintainer decisions are outstanding: (1) R-10, (2) the goal's "close M1" vs "stop
+before any push/CI spend" CONFLICT, (3) the R-8 vignette-URL conversion deviation.
+Do not resolve any of them yourself.
+
+If R-10 is answered "rewrite", it needs source edits -> re-freeze and re-run both runners;
+5d7b6de6's receipts are then superseded.
 ```

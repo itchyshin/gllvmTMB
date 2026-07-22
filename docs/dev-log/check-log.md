@@ -46257,3 +46257,45 @@ the register said `RESOLVED` — **two release-truth documents contradicting eac
 same SHA**, which is precisely what M1 exists to prevent. All three corrected.
 
 **M1 remains WITHHELD.** Four panels, four withholds, every one finding something real.
+
+### 2026-07-22 — evidence at the frozen head `71753ccb`, and the FIFTH panel: 3/3 NOT-DONE
+
+**Every check re-earned at `71753ccb` after the panel-4 fixes re-minted the SHA:**
+
+```
+devtools::test()                 FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290
+durable R CMD check --as-cran    0 errors | 0 warnings | 0 notes
+CRAN-configuration check         0 errors | 0 warnings | 1 note (New submission)
+Ubuntu CI            29891503417 success
+three-OS matrix      29892340756 ubuntu-latest + macos-latest + windows-latest — all success
+heavy full-check     29891513258 FAIL 0 | WARN 9 | SKIP 103 | PASS 13656
+tools/check-reader-surface.sh    PASS
+```
+
+Receipts mirrored with `SHA256SUMS.txt` to
+`~/gllvmTMB-0.6-evidence/m1/final-receipt/71753ccbbedd3f0f34c9fb06a58ce6b5ab986d64/`.
+
+**The heavy warning set is now an established invariant**, not an inference: **identical nine
+sites across four consecutive Ubuntu runs**, spanning two heads and a message-string rewrite.
+
+**FIFTH PANEL WITHHELD, and every finding was the same defect recurring inside its own fix:**
+
+1. `R/fit-multi.R:1588` still read *"the **validated** non-Gaussian single-slope path"* — in
+   the **same `cli_abort`** whose line 1587 had just been changed from "is validated" to "is
+   covered". The line below the one being edited was never looked at. That guard fires for
+   lognormal and Student-t, and PHY-18 / RE-14 record **no direct `phylo_dep` recovery** for
+   them — so it steered exactly those users to a route it called "validated".
+2. Register **R-9** still read *"Nothing is committed. Do not treat this row as closed"* though
+   the work had landed at `e506dc94`. The fourth panel caught this identical contradiction for
+   **R-10**; the repair fixed R-10 and never checked its siblings.
+3. This log had **no entry for `71753ccb`** — while the commit message claimed it added one
+   "for any check on the frozen head". The entry added was headed `d8bb05fa`, the parent.
+   **The commit message was false.**
+
+**A sweep — not a point fix — then found a further defect the panel did not name:** six
+`cli_abort` messages told users to *"consult the validation register"*, a document under
+`docs/design/` that **`.Rbuildignore` excludes from the package**. Same dangling-reference
+class as R-8. All six rewritten; all "validation register" pointers removed; the only
+remaining uses of "validated" in user-facing strings are **negative** claims.
+
+**M1 remains WITHHELD.** Five panels, five withholds.

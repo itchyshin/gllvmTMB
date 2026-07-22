@@ -55,7 +55,47 @@ This repository **already carries AGHQ scaffolding**: `test-aghq-o3-gllvmtmb-uni
 `aghq-r2-reference-harness`. So the shortest credible path is to exercise what exists, not to
 revive a closed NO-GO.
 
+## 3b. 🔴 CORRECTION (2026-07-22, from the cross-repo adjudication note) — SECTION 4 BELOW OVERSTATES OUR SIDE
+
+**Section 4 was written as though "gllvmTMB measures the bias going UP" were established. It is
+not, and this correction is load-bearing for everything downstream.**
+
+**(a) Our headline numbers carry NO SIGN.** `0.82 / 0.78 / 0.367` are computed with `abs()` —
+the register itself says "rel. err" (`known-residuals-register.md:54`). **The upward direction
+rests entirely on prose comments in the test file** ("consistent upward bias", "systematically
+over-estimated"), not on any retained signed measurement. **As a signed quantity the claim is
+UNVERIFIED — a lead, never load-bearing.** The cross-repo "sign conflict" hangs on a number
+that was never retained with its sign.
+
+**(b) Scale mismatch — Section 4 overstates the gap by ~2.4×.** We score on the **variance**
+scale; drmTMB scores on the **RE-SD** scale. Normalised: our **+78% variance = +33% SD**, and
+their −7.3% SD = −14.1% variance. **Quoting "78 versus 7.3" is not a like-for-like comparison.**
+
+**(c) One seed, and a selected order statistic.** Our figure is a **single draw at the default
+seed**; the historical sweep reports a **minimum over seeds** ("Best (1024)") — a selected order
+statistic, not a bias estimate. drmTMB's comparators are **means over 40–80 independent seeds**
+against three external oracles. Presenting these as symmetric poles of a conflict overstates
+our side. Worse, our draw is phylogenetically correlated (`ape::rcoal(60)`), so the **realized**
+between-species slope variance departs from the population value more than an iid draw would —
+**a realized-vs-population sampling explanation for the +78% is live, untested, and is not an
+estimator-bias explanation at all.**
+
+**(d) Do NOT re-run an `n_each` ladder looking for a sign flip.** drmTMB has run it: fixed M=40,
+single-trial Bernoulli, 80 seeds, `glmer` oracle — **+0.3%, −9.9%, −13.7%, −23.1%** at
+`n_each` = 20/8/4/2. **Monotonically more negative** as information falls, the opposite of what
+the conjecture needs. Repeating it spends Totoro time to re-derive a negative.
+
+**What survives:** the **structural** hypothesis in Section 4 — a correlated 2×2 intercept+slope
+block under a phylogenetic Kronecker with a logit link, a structure drmTMB has **never measured
+under a non-Gaussian family**. It survives *only if* the sign survives (a) and (c) first.
+
+**What our side genuinely got right, and is load-bearing:** the **M-invariance** check (no
+shrinkage across n_sp = 60/120/240 rules out a cluster-count-limited effect) and the **Gaussian
+control** (identical fixture, 27/27 pass, same engine and session — refutes an engine
+regression, the first alternative any reviewer reaches for).
+
 ## 4. THE UNEXPLAINED PART — the cross-repo sign anomaly
+### ⚠ Read §3b first: this section overstates our side. Retained for the audit trail.
 
 This is the loose thread most worth pulling, and it is genuinely unresolved.
 
@@ -74,7 +114,36 @@ REFUTED the same day**.
 gllvmTMB cell that fails is a **correlated `(1 + x | species)` intercept-and-slope 2×2 block**
 (`rho = 0.5`) — *a structure drmTMB has never measured.*
 
-### The experiment that would settle it
+### ✅ EXPERIMENT B — the actual prerequisite (supersedes the sketch below)
+
+**This is the gllvmTMB lane's job, roughly one afternoon, and it must run BEFORE any
+cross-repo sign claim is made.** Re-run the Phase-B2 fixture with:
+
+1. **≥60 seeds**, reporting the **mean SIGNED relative bias** — not `abs()`, not a
+   best-of-seeds minimum.
+2. **Both scales reported** (SD *and* variance), so no one has to renormalise our numbers.
+3. The **realized** per-draw `Σ_b` (from the actual simulated species effects) recorded
+   **alongside** the population `Σ_b`.
+4. An **iid control arm** — identical fixture with `A_phy = I` — isolating the phylogenetic
+   contribution.
+
+**Decision rule, stated in advance:**
+
+- **Mean signed bias small against REALIZED truth but large against POPULATION truth**
+  ⇒ this is a **sampling / estimand-definition issue, not estimator bias**, and **the sign
+  conflict dissolves.**
+- **Still large against realized truth** ⇒ a real result, properly measured, and the
+  **structural** hypothesis (correlated 2×2 block under a non-Gaussian family) becomes live.
+
+**Compute: Totoro** (≤100 cores, no queue) is right-sized. **Results stay LOCAL per D-50 — not
+GitHub Actions.**
+
+**Why this matters beyond the science:** right now drmTMB's pole is 40–80-seed signed means
+against three external oracles; ours is an `abs()` assertion on one seed plus a code comment,
+in a test **skipped by default** (`GLLVMTMB_RUN_B2_LOGIT=1`). Experiment B is the cheapest
+possible fix, and if the effect is real it converts a comment into a result.
+
+### The experiment that would settle it (earlier sketch — superseded by Experiment B above)
 
 Small and well-posed: fit the **same correlated 2×2 intercept-slope block** in a regime where
 `glmer` can arbitrate, and compare gllvmTMB's Laplace estimate against the oracle.

@@ -1287,6 +1287,20 @@ test_that("Julia bridge exposes Gaussian predictor-informed LV payloads", {
     unique(axis_effects$uncertainty_status),
     "julia_bridge_point_estimate_only_no_ci_validation"
   )
+  ## `axis_effect` is the DEFAULT branch of extract_lv_effects(). Its
+  ## `validation_row` column is internal provenance and must not print, so the
+  ## returned frame has to carry the reportable-table class. This branch was
+  ## previously left unwrapped while the trait_effect branch was fixed, so the
+  ## column still surfaced on the ordinary call path; assert it directly.
+  expect_s3_class(axis_effects, "gllvmTMB_reportable_table")
+  ## Retained for programmatic use ...
+  expect_true("validation_row" %in% names(axis_effects))
+  ## ... but absent from what the user actually sees. Test the printed OUTPUT,
+  ## not the return value: print.gllvmTMB_reportable_table() deliberately
+  ## returns the complete object invisibly.
+  expect_false(
+    any(grepl("validation_row", capture.output(print(axis_effects)), fixed = TRUE))
+  )
 
   total <- extract_ordination(fit, component = "total")
   mean <- extract_ordination(fit, component = "mean")

@@ -213,7 +213,11 @@ evidence — it is the recorded "FAIL 0 while the assertion was skipped" trap, r
 
 - **No push, no CI, no merge, no tag** — gated, and deliberately not self-granted.
 - **No third D-43 panel** — it needs platform evidence that the gate forbids producing.
-- **R-10 not repaired.**
+- ~~**R-10 not repaired.**~~ **SUPERSEDED 2026-07-22** — R-10 *was* subsequently repaired (27
+  message sites across six files) and the register records it `RESOLVED`. This line was left
+  stale when the repair landed, so this report and the register **contradicted each other at
+  the same SHA** — a defect the fourth D-43 panel caught. Two release-truth documents
+  disagreeing is exactly what M1 exists to prevent; corrected rather than quietly deleted.
 - **R-7 site (d) not repaired** — deferred to 0.7 by decision.
 - Whether the prose that replaced the codes is true **everywhere**; two independent reviewers
   checked the R-9 rewrites and the highest-risk pages were read directly, but no mechanical

@@ -1855,7 +1855,12 @@ gllvm_julia_capabilities <- function() {
     },
     validation_row = validation_row,
     stringsAsFactors = FALSE
-  )
+  ) |>
+    ## Both return branches must suppress `validation_row` from printing, not
+    ## just the trait_effect one. This is the DEFAULT branch (`type` defaults to
+    ## "axis_effect" via match.arg), so leaving it unwrapped meant the column
+    ## still printed on the ordinary call path.
+    .reportable_table()
 }
 
 .gllvm_julia_x_eta <- function(object, p, n) {

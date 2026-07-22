@@ -46223,3 +46223,37 @@ withheld.** Blocking findings:
 
 **M1 is NOT complete and must not be described as such.** Repair in progress under the
 maintainer's decision to strip the codes from the values in 0.6 rather than defer.
+
+### 2026-07-22 — R-11 repaired, and the FOURTH D-43 panel: 3/3 NOT-DONE
+
+**Evidence at the frozen head `d8bb05fa`, every item re-earned after R-11 re-minted the SHA:**
+
+```
+devtools::test()                 FAILED 0 | ERROR 0 | SKIP 779 | PASS 7287
+durable R CMD check --as-cran    0 errors | 0 warnings | 0 notes
+CRAN-configuration check         0 errors | 0 warnings | 1 note (New submission)
+Ubuntu CI            29886382044 success
+three-OS matrix      29887223413 ubuntu-latest + macos-latest + windows-latest — all success
+heavy full-check     29887111648 FAIL 0 | WARN 9 | SKIP 103 | PASS 13653
+tools/check-reader-surface.sh    PASS
+```
+
+**The heavy warning set was identical, site for site, to the previous run** — a third Ubuntu
+sample, and the first on a head where message strings *had* changed. That is direct evidence
+the R-11 rewrite altered nothing numerical, and it firms up the R-7 correction: the set is
+stable within an environment and varies across platform/epoch.
+
+**FOURTH PANEL WITHHELD ANYWAY, and was right to.** It found a real code defect the agent
+missed: **`.reportable_table()` had been applied to only ONE of the two return branches** of
+`.gllvm_julia_extract_lv_effects()`, and the unwrapped branch (`axis_effect`) is the
+**default**. So the third panel's defect — `validation_row` printing at the console by
+default — **survived on the ordinary call path**, while the commit message asserted it was
+fixed. Now wrapped on both branches and **asserted by a test** on the default path.
+
+It also found three documentation defects, all real: the register still read
+`AWAITING SIGN-OFF … blocks M1's closing claim` after the code repair landed; this check-log
+had no entry for the repair at all; and the after-task report said "R-10 not repaired" while
+the register said `RESOLVED` — **two release-truth documents contradicting each other at the
+same SHA**, which is precisely what M1 exists to prevent. All three corrected.
+
+**M1 remains WITHHELD.** Four panels, four withholds, every one finding something real.

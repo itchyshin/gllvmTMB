@@ -188,8 +188,14 @@ surfaces was itself instance-thinking, one level up.
 | Targeted `test-julia-bridge.R` | `FAILED 0 \| ERROR 0 \| SKIP 19 \| PASS 562` |
 | Old-string sweep | zero residue across `R/`, `tests/`, `man/`, `NEWS.md`, `vignettes/` |
 | **3-OS matrix** `29926771814` | ✅ **SUCCESS at `d13916f3`.** All three OS-named jobs `completed/success`: `ubuntu-latest (release)`, `macos-latest (release)`, `windows-latest (release)`. **Verified from the LOG, not the conclusion field:** the 27,256-line log carries **three `Status: OK` lines**, one per platform, and **zero** `ERROR`/`WARNING`/`NOTE` count lines. This matters because `error_on: "error"` lets warnings and notes pass — a green conclusion alone would not have established 0/0/0. |
-| **Heavy full-check** `29926795733` | **IN FLIGHT** — dispatched at `d13916f3`. `matrix-setup` succeeded; `ubuntu-latest (release)` running. `FAIL` is the only regression signal; `WARN n` is not. |
-| **CRAN-configuration check** | **NOT YET re-earned at this SHA.** Runner committed at **`dev/m1-cran-config-check.R`** (`^dev$` is build-ignored, so it does not ship). |
+| **Heavy full-check** `29926795733` | ✅ **`FAIL 0 \| WARN 9 \| SKIP 102 \| PASS 13650`**, `Status: OK`, at `d13916f3`. Heavy gate confirmed genuinely ON — `GLLVMTMB_HEAVY_TESTS` appears 18× in the log, asserted because `skip_if_not_heavy()` **fails open**. Baseline was `WARN 10 \| SKIP 103 \| PASS 13656`; the `SKIP −1 / PASS −6` drift is **recorded, not waived** (claim §4.1). |
+| **CRAN-configuration check** | ✅ **0 errors, 0 warnings, 1 NOTE, 0 unexpected**, at `7f9b9ed1`. The NOTE is *"New submission"* — on the expected allowlist. `SHA_STABLE=TRUE`. Runner **`dev/m1-cran-config-check.R`** (`^dev$` build-ignored, does not ship). |
+
+**The two evidence SHAs are interchangeable:** the shipped-path diff `d13916f3..7f9b9ed1` is
+**empty** — `7f9b9ed1` touches only `LOOP/` and `dev/`, both build-ignored. Same shipped tree.
+
+**The chain is COMPLETE. This is the SEVENTH of the arc; the previous six were each forfeited by a
+later source change, and every one was green.**
 
 **Dispatching both at once is safe here** — the concurrency group is `workflow-ref`, and
 `R-CMD-check` and `full-check` are different workflows, so they cannot cancel each other. The
@@ -318,17 +324,17 @@ Head d13916f3 on claude/0.6-m1-close-20260722, CLEAN, pushed, 0/0 vs origin. The
 21e04eb5 is FORFEITED — applying the decisions edited NEWS.md, R/julia-bridge.R and its test. That
 is expected (the sixth such re-mint), not a fault.
 
-RE-EARNED at d13916f3:
-  devtools::test()  FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290 — EXACT match to the baseline.
-  3-OS matrix 29926771814  SUCCESS. All three OS-named jobs passed; the LOG carries three
-    "Status: OK" lines and ZERO ERROR/WARNING/NOTE lines. Read from the log, not the conclusion —
-    error_on:"error" lets warnings and notes pass, so green alone would not have proven 0/0/0.
-STILL OUTSTANDING: heavy full-check 29926795733 (in flight); CRAN-configuration check (not started;
-runner is dev/m1-cran-config-check.R).
+EVIDENCE CHAIN COMPLETE AND GREEN (the seventh of the arc):
+  devtools::test()   FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290 — EXACT match to the baseline
+  3-OS 29926771814   SUCCESS, ubuntu+macos+windows; LOG shows three "Status: OK", ZERO warn/note
+  heavy 29926795733  FAIL 0 | WARN 9 | SKIP 102 | PASS 13650, Status OK, heavy gate asserted ON
+  CRAN-config        0 errors | 0 warnings | 1 NOTE ("New submission", allowlisted) | 0 unexpected
+All read from LOGS, not conclusions — error_on:"error" lets warnings and notes pass, so a green
+conclusion alone would NOT have proven 0/0/0.
 
-NEXT ACTION: finish those two, reading RESULTS not exit status. For heavy, only FAIL is a
-regression signal; WARN n is not. For CRAN-config the bar is an ALLOWLIST ("New submission",
-install size) — NOT zero notes, which would self-grant a waiver of real CRAN behaviour. Then:
+THE CLOSING CLAIM IS SIGNED: docs/dev-log/2026-07-22-m1-closing-claim.md.
+
+NEXT ACTION — no evidence work remains, only recording:
   1. fill §4 of docs/dev-log/2026-07-22-m1-closing-claim.md and flip DRAFTED -> SIGNED
   2. rewrite Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json (§4c — check git status
      on it FIRST; it was dirty from another writer and must not be clobbered)

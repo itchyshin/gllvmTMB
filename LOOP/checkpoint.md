@@ -51,6 +51,56 @@ standard error and **0 NaN estimates**. The asserted quantity survives (gap 0.07
 **0.7 must budget for this: repairing the gate will likely make the cell SKIP, moving
 SPA-02(nbinom2) from covered back toward partial.**
 
+## 🔴 THIRD D-43 PANEL: 3/3 NOT-DONE. R-11 REPAIR IN FLIGHT.
+
+**M1 WITHHELD A THIRD TIME.** All three lenses withheld independently, each having been told
+the agent shipped a regression, reported a false pass, and under-scoped repeatedly, and
+instructed to re-derive every number from artifacts rather than trust any agent summary.
+
+**Blocking findings:** (1) **R-11 far worse than the register had stated** —
+`extract_lv_effects()` (exported) printed `"EXT-31; JUL-01; JUL-01A; LV-01"` at the console
+**by default, unsuppressed, in an undocumented column**, while the `.reportable_table()`
+mechanism that hides exactly this for sibling extractors was simply never applied there; it
+also reached `plot_Sigma_table`/`_heatmap`/`_comparison` via the **documented public**
+`gllvmTMB_data` attribute. (2) The CRAN check was **stale** — an asserted transfer, not a
+tested one. (3) R-11 `AWAITING SIGN-OFF` blocks by the register's own rule.
+
+**Maintainer decided: fix R-11 in 0.6, strip the codes from the VALUES, and also apply the
+wrapper.** The agent had recommended deferring — that recommendation was **wrong**, and the
+panel's findings vindicate the override.
+
+### The most important thing that happened in the repair
+
+An adversarial reviewer returned **`claims_faithful: false`** on the automated replacements
+and caught **seven categories of overstatement**. The systemic one: writing **"validated"** on
+a CI row reads as a **coverage/calibration claim**, which every governing design doc forbids —
+and the empirical gate has **FAILED** (`CI-08`: *"only Gaussian d=1 and d=3 cleared the 94%
+gate; 13/15 cells remain below gate"*). One replacement stamped "validated" across six rows,
+none of which is `covered`, including a **structural-zero correlation** and a
+**not-applicable communality**.
+
+**Left unchecked, the fix would have been worse than the defect it repaired** — shipping false
+calibration claims in place of opaque codes. All seven were corrected to the reviewer's
+evidence-cited fallbacks. **Never let a code→prose rewrite of an evidence column go
+unreviewed.**
+
+### Verification standard now in force (two failures paid for it)
+
+- **Structured results only** — `as.data.frame(<testthat result>)` counts, or the runner's
+  `M1_FINAL_RECEIPT_CHECK_*` fields. **A missing or unparseable field is CANNOT VERIFY, never
+  PASS.**
+- **`test_dir()` is NOT equivalent to `devtools::test()`.** Measured this session:
+  `test_dir()` gave `FAILED=2` at `SKIP=1001`; `devtools::test()` gave **`FAILED=3 + ERROR=1`**
+  at the correct `SKIP=779 / PASS=7276`. **~2,400 tests silently did not run.** Only the
+  `SKIP=779` profile counts as evidence.
+
+### Housekeeping resolved without deleting anything
+
+`vignettes/*.png` added to `.gitignore` (maintainer approved; the agent's `rm` had been denied
+and was not retried). The files remain on disk, `git status` reads clean, and the durable
+runners are unblocked. **Their tarball effect is no longer untested** — the CRAN check on the
+current head ran *with* them present and returned 0/0/1.
+
 ## 🌙 OVERNIGHT RUN IN PROGRESS (2026-07-21 → 05:00 2026-07-22)
 
 Maintainer away until 05:00 and has authorised the lane to keep running. **CI authorisation

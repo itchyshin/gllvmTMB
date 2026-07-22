@@ -46275,8 +46275,10 @@ tools/check-reader-surface.sh    PASS
 Receipts mirrored with `SHA256SUMS.txt` to
 `~/gllvmTMB-0.6-evidence/m1/final-receipt/71753ccbbedd3f0f34c9fb06a58ce6b5ab986d64/`.
 
-**The heavy warning set is now an established invariant**, not an inference: **identical nine
-sites across four consecutive Ubuntu runs**, spanning two heads and a message-string rewrite.
+**The heavy warning set was identical across four consecutive Ubuntu runs** at this point,
+spanning two heads and a message-string rewrite. ⚠ **The agent then recorded this as an
+"established invariant". THAT CLAIM WAS FALSE and is retracted — see the entry below: the
+fifth run returned a different set.** An invariant asserted from n=4.
 
 **FIFTH PANEL WITHHELD, and every finding was the same defect recurring inside its own fix:**
 
@@ -46299,3 +46301,44 @@ class as R-8. All six rewritten; all "validation register" pointers removed; the
 remaining uses of "validated" in user-facing strings are **negative** claims.
 
 **M1 remains WITHHELD.** Five panels, five withholds.
+
+### 2026-07-22 — evidence at head `95f7d06a`, and a RETRACTION
+
+```
+devtools::test()                 FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290
+durable R CMD check --as-cran    0 errors | 0 warnings | 0 notes
+CRAN-configuration check         0 errors | 0 warnings | 1 note (New submission)
+Ubuntu CI            29896493966 success
+three-OS matrix      29897677138 ubuntu-latest + macos-latest + windows-latest — all success
+heavy full-check     29896539701 FAIL 0 | WARN 8 | SKIP 102 | PASS 13650
+tools/check-reader-surface.sh    PASS
+```
+
+Receipts + `SHA256SUMS.txt`:
+`~/gllvmTMB-0.6-evidence/m1/final-receipt/95f7d06a69fc91cf11084f11ff7d00b152f649f5/`
+
+**🔴 RETRACTION — the "established invariant" claim above is FALSE.**
+
+Four consecutive Ubuntu heavy runs had returned an identical **nine**-site warning set, and the
+agent recorded that as *"an established invariant, not an inference"*. **The fifth run refuted
+it.** This run returned **eight** sites, a different set:
+
+- **absent:** `test-matrix-slope-spatial-unique.R:249:3`, `:293:3`
+- **present again:** `test-matrix-nbinom2-spatial.R:258:3` — **site (d)**
+
+Same platform, same environment epoch, separated from the previous run only by a
+documentation-and-message-string commit that cannot touch the numerical path. The skip count
+moved 103 → 102 and passes 13656 → 13650, so a different set of tests ran.
+
+**The original claim — that the set is not stable — was correct. Both subsequent narrowings
+were wrong, and the second was an invariant asserted from n=4.** The mechanism is consistent
+with every observation: the contingent sites are **optimiser-convergence-dependent** (site (d)
+emits `NaNs produced` from a non-PD covariance; the `spatial-unique` pair emits `NA/NaN
+function evaluation` while fitting). Whether each fires depends on whether a hard fit
+converges on that particular run.
+
+**Consequence for R-7: an exact set match between ANY two heavy runs cannot establish that an
+arc added no warning site, because the set is not a function of the code alone.** No site here
+is a defect; the *evidence standard* was.
+
+**M1 remains WITHHELD.**

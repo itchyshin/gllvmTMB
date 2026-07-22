@@ -67,10 +67,17 @@ Receipts + `SHA256SUMS.txt`:
 guard PASS. **Its runners, CRAN check and CI are NOT yet earned.** The push has started an
 Ubuntu run; the matrix and heavy still need dispatching.
 
-**Established invariant (four consecutive Ubuntu runs, two heads, across a message rewrite):**
-the heavy warning set is **identical, site for site** — nine sites. This settles R-7: the set
-is stable within an environment and varies across platform/epoch, so an "exact set match"
-between different epochs never proved what R-7 claimed.
+**🔴 RETRACTED — the heavy warning set is NOT stable.** This checkpoint previously called it an
+*"established invariant"* after four consecutive identical nine-site Ubuntu runs. **The fifth
+run (`29896539701`) returned EIGHT sites, a different set** — `test-matrix-slope-spatial-unique.R:249,:293`
+absent, `test-matrix-nbinom2-spatial.R:258` (site (d)) back — on the same platform, one
+docs-and-message-string commit apart. Skip 103 → 102, pass 13656 → 13650.
+
+**An invariant asserted from n=4, refuted at n=5.** The contingent sites are
+**optimiser-convergence-dependent**, so the set is not a function of the code alone.
+**Therefore an exact set match between ANY two heavy runs cannot show that an arc added no
+warning site** — which is what R-7's causation evidence rested on. No site is a defect; the
+evidence standard was.
 
 ---
 

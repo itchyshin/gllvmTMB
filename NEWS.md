@@ -197,6 +197,11 @@ required for the main workflow.
 
 ## Known limitations
 
+* **Variance components: what is and is not claimed.** For non-Gaussian families,
+  **point estimates** of variance components are the supported claim. **Interval
+  calibration** is established only for the Gaussian cells that cleared the
+  coverage gate; no other cell in this release is empirical-coverage-calibrated.
+  Intervals returned elsewhere are route output, not a coverage guarantee.
 * Interval support is target-specific. A route that returns bounds is not, by
   itself, evidence of nominal repeated-sampling coverage.
 * The previous public `check_identifiability()` and `coverage_study()` prototypes

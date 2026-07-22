@@ -1270,7 +1270,7 @@ test_that("Julia bridge exposes Gaussian predictor-informed LV payloads", {
   )
   expect_equal(
     unique(trait_effects$validation_row),
-    "experimental route: partial validation only"
+    "experimental route: point estimate only; no coverage evidence"
   )
 
   axis_effects <- extract_lv_effects(fit, type = "axis_effect")

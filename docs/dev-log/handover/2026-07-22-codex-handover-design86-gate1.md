@@ -1,9 +1,10 @@
 # Codex handover — Design 86, Gate 1 (EVA sparse-binary feasibility)
 
-**Meta:** 2026-07-22 · from Claude Code (design86 lane) · to **Codex** · cross-tool, sequential.
-You are Codex, picking up the **first coding rung** of an approved feasibility experiment. This doc
-stands alone; you will not see the Claude chat that produced it. Read it, then the two in-repo files
-it points to, and you have everything.
+**Meta:** 2026-07-22 · from Claude Code (design86 lane) · to **Codex** · cross-tool, sequential ·
+**COMPLETE LANE TRANSFER.** You are Codex, taking ownership of the **entire EVA feasibility
+workstream** for gllvmTMB — not just its first rung. Gate 1 is where you *start*; §"The complete
+gate ladder" below is what you *own*. This doc stands alone; you will not see the Claude chat that
+produced it. Read it, then the two in-repo files it points to, and you have everything.
 
 ---
 
@@ -115,6 +116,70 @@ it points to, and you have everything.
 
 ---
 
+## The complete gate ladder (0→5) — the whole workstream you own
+
+This is a **complete transfer**: you own the EVA feasibility lane end-to-end, gate by gate, not just
+Gate 1. The gates are **sequential** (Design 72): a later gate never compensates for an earlier
+failure, and tolerances are never widened after a result is seen. Full text and NO-GO lists are in
+contract §11; this is the map.
+
+| Gate | Proves | You may run it | One-line NO-GO |
+|---|---|---|---|
+| **0 — freeze** | scope + coordinates are locked; the parameter file exists + is checksummed | **now** (approval covers it) | any implicit `Psi`, `n_it≠1`, checksum mismatch, or parked VA source reused without a fresh derivation audit |
+| **1 — algebra** | the objective is implemented correctly and is numerically sane on tiny fixtures | **now** | omitted constants (incl. `+q`), wrong KL sign, clipping for finiteness, Gaussian identity fails, bound question unresolved |
+| **2 — anchor** | recovery is right on an information-rich (non-sparse) cell | if Gate 1 passes | recovery outside the numeric tolerances §11 G2 now states; single-start reliance |
+| **3 — reference** | EVA vs the Gauss–Hermite reference at fixed coordinates = pure Taylor error | if Gate 2 passes | family mismatch between arms; a one-sided bound test; **tolerances not re-derived for this regime** |
+| **4 — admission** | interval **coverage** across the n-ladder + the T/z second ladder | **STOP — separate maintainer + compute approval** | see below |
+| **5 — claim audit** | nothing public follows without a separate maintainer decision | n/a until 4 passes | — |
+
+**STOP at the Gate-3 boundary.** Gate 4 is the coverage campaign; it needs compute and it is the
+next platform boundary that returns to the maintainer.
+
+### Gate 4 compute — the plan, for when it is approved (do NOT run it now)
+
+- **Where:** Totoro (≤100 cores, no queue) or DRAC job arrays (one seed per `$SLURM_ARRAY_TASK_ID`).
+  Multi-seed coverage over the ladder points to DRAC arrays; Totoro if it fits and you want it
+  faster. **Never GitHub Actions, never store outputs as GH artifacts (D-50); results stay local.**
+- **Smoke first — the D1 lesson:** run **one cell / tiny n / one rep**, confirm NON-EMPTY, in-range
+  output, **read the log**, inspect one fit past its guards. A harness can pass every pre-check then
+  die after drawing seeds. Only then park "Gate-4 campaign ready — smoke green, launch on
+  <Totoro|DRAC>?" for the maintainer's go.
+- **Both arms' convergence criteria must be frozen** (contract §2.5, added after review): an
+  asymmetry between "failed Laplace" and "failed EVA" moves the paired margin for reasons unrelated
+  to accuracy. This is a NO-GO if left implicit.
+
+### The roadmap beyond this contract (contract §14 — NON-BINDING, not a gate)
+
+The eventual differentiator is **not** "do EVA" — gllvm already does EVA, and even structured
+(Kronecker) VA. It is **EVA whose KL term is taken against gllvmTMB's exact sparse precision** (the
+Hadfield `A^{-1}`, Design 47; the SPDE `Q`, Design 64) rather than gllvm's nearest-neighbour GP
+approximation — the checkable claim being "no nearest-neighbour ordering artefact." Plus
+mixed-response GLLVMs (the stacked-trait long format already supports it). Each needs its own scope
+freeze, derivation, and gates; none inherits this contract's evidence. **Do not build toward this
+during feasibility** — it is recorded so the direction is not lost.
+
+### Review history — settled, do not re-litigate
+
+The contract survived **two D-43 adversarial panels** (3 fresh reviewers each, default NOT-DONE).
+Round 1 found real structural defects (an un-fireable CUT rule; a `+q` KL-scale bug) — fixed.
+Round 2 verified those fixes and found only editorial seams — fixed. The §5.3 bound-property
+derivation was **reproduced independently from scratch** by a ceiling reviewer and is settled: your
+Gate-1 D4 confirms it in code, it does not re-open it. The full arc is in
+`docs/dev-log/2026-07-22-design86-lane-research-and-ultra-plan.md`.
+
+### The design family (how the numbered docs relate)
+
+- **Design 72** — the *sequential proof logic* (this ladder's discipline). Not an implementation spec.
+- **Design 85** — a landed **NO-GO, READ-ONLY**. You reuse its *apparatus* (`va_r3` quadrature),
+  inherit **none** of its results, and only after a fresh derivation audit.
+- **Design 04** — package boundary: VA-as-*primary*-engine is out of scope; gllvm is the VA
+  alternative. An optional non-default research path is not excluded, but this contract admits no
+  public `method=` surface (Gate 5).
+- **Design 43** — the Gaussian-only REML-language reservation. EVA may **not** borrow REML/AI-REML
+  language (contract §10).
+- **drmTMB Design 160** — the sibling GVA gate; source of the `DATA_INTEGER(method)` flag pattern
+  you would use *only at graduation*, never during feasibility.
+
 ## How to resume (one paste, in your own terminal at the repo root)
 
 ```
@@ -156,6 +221,14 @@ that.
 | Shipped surface (`src/gllvmTMB.cpp`, NAMESPACE, …) | **DO NOT TOUCH** |
 | Release (M1) lane | Separate lane, separate checkout; do not edit its surfaces (`LOOP/`, CLAUDE.md pointer) |
 
-**One-line routing:** Codex builds and runs the live TMB Gate-1 code in an isolated worktree behind a
-standalone prototype template; Claude did the design and the two review panels. The next platform
-boundary is Gate 4, which neither tool starts without a fresh maintainer approval.
+**One-line routing:** Codex now **owns the whole EVA feasibility workstream** (Gates 0–3, live TMB
+build, isolated worktree, standalone prototype template); Claude did the design and the two review
+panels and has **closed the design lane**. The next platform boundary that returns to the maintainer
+is Gate 4 (compute) — neither tool starts it without a fresh approval.
+
+**Complete-transfer confirmation.** Nothing about this lane remains on Claude's side. The durable
+record is: this handover + the approved contract + the Gate-1 build brief (all on branch
+`claude/design86-eva-contract-20260722`), the full arc dev-log
+(`docs/dev-log/2026-07-22-design86-lane-research-and-ultra-plan.md`), and the brain note
+*"Design 86 EVA contract — APPROVED, Gate 1 to Codex (2026-07-22)"*. If any of those is unreadable,
+say so before proceeding rather than reconstructing from assumption.

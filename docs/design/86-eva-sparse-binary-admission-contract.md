@@ -1,8 +1,13 @@
 # Design 86 — EVA sparse-binary scientific-admission contract
 
-**Status:** **DRAFT — NOT APPROVED.** This document is a proposal; it becomes a contract only when
-the maintainer approves it in writing. This lane may not treat its own brief, `LOOP/GOAL.md`, or
-its ultra-plan as that approval.
+**Status:** **APPROVED by the maintainer, 2026-07-22 (chat).** The experimental design in this
+document is approved. Two things this approval does **not** do, and both are recorded so the coding
+lane cannot over-read it: (1) the parameter-file checksum (§2.5) still does not exist because the
+frozen file does not exist — **building and checksumming it is Gate 0, the coding lane's first
+action**, not an approval blocker resolved here; (2) approval unlocks Gates 0–3 (algebra, anchor,
+reference) only — **Gate-4 compute is a separate, later maintainer approval** (Totoro/DRAC), and
+nothing here authorises it. The maintainer additionally directed that **Gate 1 be handed to Codex**;
+see the handover at [`docs/dev-log/handover/2026-07-22-codex-handover-design86-gate1.md`](../dev-log/handover/2026-07-22-codex-handover-design86-gate1.md).
 
 > **Ledger discrepancy, reported rather than resolved.** Amendment 3 states that
 > `LOOP/decision-queue.md` "records it `NOT YET OPEN`". It does not. That file's Design 86 row
@@ -1021,19 +1026,21 @@ inherits anything from this contract.
   difference exploiting the byte-identical design; the covariance estimator **named**; and the
   second ladder in `T` and `z` **fully specified** rather than gestured at.
 
-**Still outstanding, and this document remains NOT APPROVED:**
+**APPROVED by the maintainer, 2026-07-22 (chat).** The three confirmed preconditions above are
+resolved as recorded, and the maintainer approved the experimental design and directed that Gate 1
+be handed to Codex. What approval carries and what it does not:
 
-- The **bound property is refuted in the target regime** (§5.3). This is a finding, not a blocker,
-  but it is material to how the contract should be read and postdates the maintainer's confirmations
-  above.
-- The **parameter-file checksum** (§2.5) does not yet exist, because the frozen parameter file does
-  not yet exist. It is recorded here at approval.
-- **Approval of this contract is a separate maintainer act and has not been given.** For the ledger
-  status, see the status block at the top of this document (§ Status): `LOOP/decision-queue.md:10`
-  currently reads **`CUT 2026-07-21`** — the row for the superseded q1 sketch — and correcting it is
-  a release-lane act outside this lane's fence, not evidence of approval here. Confirming the
-  preconditions above resolved *preconditions* only; it did not approve the contract, and this lane
-  does not treat it as having done so. No exception is self-granted.
+- **Carried into the coding lane, not resolved here:** the **bound property is refuted in the target
+  regime** (§5.3 — a finding, not a blocker) and the **parameter-file checksum** (§2.5) does not yet
+  exist because the frozen file does not exist. **Building and checksumming that file is Gate 0** —
+  the coding lane's first action — and the checksum is recorded then. Approval of the *design* does
+  not require the file to pre-exist.
+- **Scope of the approval:** it unlocks **Gates 0–3** (freeze, algebra, correctness anchor,
+  reference comparison). **Gate-4 compute is a separate, later maintainer approval** (Totoro/DRAC);
+  nothing here authorises it, and the coding lane must stop at the Gate-3 boundary and return for it.
+- **The ledger** (`LOOP/decision-queue.md:10`, still reading `CUT 2026-07-21`) lies outside this
+  lane's write fence; correcting it to reflect the approval is a release-lane action, flagged not
+  performed.
 
-Nothing in this document authorises compute. Compute requires a separate approval **after** the
-contract is approved.
+Compute requires a separate approval **after** the coding reaches the Gate-4 boundary. This approval
+is not that.

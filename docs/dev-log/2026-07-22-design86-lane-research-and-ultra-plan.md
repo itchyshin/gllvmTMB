@@ -645,3 +645,42 @@ The pattern is what adversarial review is supposed to produce: each pass catches
 class of defect than the last. The single most valuable output of the whole lane is not the contract
 but the §5.3 result — **EVA's objective is provably not a bound in the sparse regime that carries
 the user value** — which is now independently derived twice.
+
+---
+
+## LANE CLOSED — contract APPROVED, Gate 1 handed to Codex (2026-07-22)
+
+**The maintainer approved the contract (chat, 2026-07-22) and directed that Gate 1 be handed to
+Codex.** This closes the design lane. Recorded in the contract's Status block and Approval section.
+
+**What approval carries, precisely** (so the coding lane cannot over-read it):
+
+- It approves the **experimental design**. It does **not** require the frozen parameter file to
+  pre-exist — building and checksumming it is **Gate 0**, the coding lane's first action.
+- It unlocks **Gates 0–3** (freeze, algebra, correctness anchor, reference comparison). **Gate-4
+  compute is a separate, later maintainer approval** (Totoro/DRAC).
+- It does not authorise editing the release lane's surfaces (`LOOP/`, the CLAUDE.md snapshot
+  pointer). The stale ledger row is flagged, not corrected, from here.
+
+**Handoff artifact:** `docs/dev-log/handover/2026-07-22-codex-handover-design86-gate1.md` — a
+turnkey, stand-alone Codex handover. It points Codex at the approved contract + the Gate-1 build
+brief, tells it to branch off `origin/claude/design86-eva-contract-20260722` (which carries all of
+main's code plus the contract), build a **standalone** prototype template (shipped `src/gllvmTMB.cpp`
+untouched), and STOP at the Gate-3 boundary.
+
+**Deliberately NOT done, per the multi-lane handover rule:** the CLAUDE.md / AGENTS.md snapshot
+pointer was **not** refreshed to this lane — that pointer belongs to the release (M1) lane, and
+overwriting it would orphan theirs. The design86 branch was **not** self-merged to `main` (the lane's
+no-self-merge rule holds; merging is the maintainer's call, and Codex does not need it — it branches
+off the design86 branch directly).
+
+**Platform routing:** Codex now owns the live-toolchain Gate-1 build (real TMB compile, fixtures,
+tests) in its own isolated worktree; the design + the two review panels were Claude's. The next
+platform boundary is Gate 4, which neither tool starts without a fresh maintainer approval. Claude
+and Codex remain sequential per repo — the safety the maintainer confirmed rests on the Gate-1 lane
+running in its own worktree, disjoint from both this design lane and the release checkout.
+
+**The design86 lane's write fence held to the end.** Every file it wrote is a `docs/design/86-*.md`,
+this dev-log, or — under the maintainer's explicit handoff instruction — the one Codex handover doc
+in the conventional `docs/dev-log/handover/` location. No `R/`, `src/`, `tests/`, `LOOP/`, or
+release-lane surface was touched.

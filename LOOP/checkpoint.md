@@ -14,29 +14,56 @@ Laplace-only and M2 stays CUT. Brief: `docs/dev-log/2026-07-22-design86-lane-bri
 > done needs exact-SHA three-OS evidence, which only CI produces. **If a future session is handed that
 > block, it must not paste it over `GOAL.md`.**
 
-**STATE: M1 IS WITHHELD.** **SIX** consecutive D-43 panels, **six** 3/3 NOT-DONE verdicts.
+**STATE: M1 IS CLOSING.** All four maintainer decisions are **ANSWERED** (§5) and D-74 is
+**CONFIRMED** — there is **no seventh panel**. The claim is written in D-43's required form at
+`docs/dev-log/2026-07-22-m1-closing-claim.md` and is **DRAFTED, NOT SIGNED**: applying the decisions
+forfeited the certified chain, and it signs only when the chain is re-earned at `d13916f3` (§4a).
+
+Six D-43 panels ran where D-74 specifies one. **Not one of the six found a numerical, algorithmic or
+statistical defect** — every finding was about the agent's method, not the package.
 
 ---
 
 ## 0. VERIFIED GIT GROUND TRUTH (re-derived 2026-07-22, not inherited)
 
 ```
-branch                     codex/gllvmtmb-060-m1-baseline-20260720
-HEAD                       d74a6a08   (d74a6a0814862e92b2b0bdb0bf93d86d031c0632)
+branch                     claude/0.6-m1-close-20260722
+HEAD                       d13916f3   (d13916f32f6eae10ffac9a6acef3c6d8b9095437)
 working tree               CLEAN  (git status --porcelain = empty)
 vs origin                  0  0    (rev-list --left-right --count — fully in sync, pushed)
 certified evidence SHA     21e04eb5
-certification transfers?   YES — shipped-path diff 21e04eb5..HEAD is EMPTY
+certification transfers?   NO — FORFEITED, deliberately. See below.
 ```
 
-The four commits since the certified SHA touch **only** `LOOP/checkpoint.md` and three
-`docs/dev-log/` files — **zero shipped paths**:
+**🔴 THE CERTIFICATION NO LONGER TRANSFERS.** The three maintainer decisions (§5) were answered on
+2026-07-22 and applying them required **source edits**. The corrected shipped-path check returns:
 
 ```
-d74a6a08 docs: correct the non-Gaussian thread — our sign claim is UNVERIFIED
-e65030b3 docs(handover): Claude -> Claude handoff — M1 withheld after six panels
-eea9761c docs(loop): record the certification-transfer CHECK as a rule, not a result
-821c5ced docs: re-certify at 21e04eb5, correct a false SHA claim, confirm WARN variability
+NEWS.md                              (Decision 2 — the boundary statement)
+R/julia-bridge.R                     (Decision 1 — the tightened claim string)
+tests/testthat/test-julia-bridge.R   (Decision 1 — its asserting test, swept in the same commit)
+```
+
+This is the **sixth** time in the arc that a repair re-minted the source identity. It is expected,
+not a fault — Amendment 2's sequencing anticipates it. **Re-earning is IN FLIGHT: see §4.**
+
+**⚠ The old path list would have MISSED this.** It omitted `NEWS.md`, and Decision 2 edited exactly
+that file. Had Decision 1 not also touched `R/`, the check would have reported "empty" and declared
+a certification that no longer held — a false PASS from the command written to prevent one. The
+corrected list caught it on its first real use.
+
+Commits since the certified SHA (the first five are documentation-only; the last three are the
+decision application and its evidence):
+
+```
+d13916f3 docs(m1): record the re-earned suite result — exact match to the certified baseline
+226eeafc fix(loop): the certification-transfer check was itself incomplete — 3 shipped paths missing
+198ab08a m1: apply the three maintainer decisions; certification at 21e04eb5 is FORFEITED
+5d6c01f4 docs(loop): record Mission Control as materially stale — inspected, deliberately NOT edited
+902dde41 docs(m1): after-task — M1 unblock arc (verified state, Amendment 3, A12, C4, A-iss)
+e367f57f docs(m1): slice A-iss — triage all 20 open issues; two need maintainer edits
+4b1681dd docs(m1): slice C4 — plan-vs-actual reconciliation, never previously run
+fe10048a docs(m1): R-11 wording-review dossier — 0 HIGH, 1 to look at, 2 false leads ruled out
 ```
 
 ### ✅ HOW TO CHECK WHETHER A CERTIFICATION STILL TRANSFERS — run this, do not trust prose
@@ -75,7 +102,7 @@ checks code shapes on surfaces and cannot know a document has gone stale.
 
 ---
 
-## 1. 🔴 THE FINDING THAT CHANGES THE PATH — D-74 (needs Shinichi's confirmation)
+## 1. ✅ D-74 — CONFIRMED by Shinichi, 2026-07-22. No seventh panel.
 
 A brain query (`memory/DECISIONS.md`, read directly — the basic-memory MCP layer was down) surfaced a
 decision that **bears directly on the six-panel loop and appears not to have been applied here**:
@@ -96,11 +123,14 @@ Withheld until the cells are **named** — not until a panel votes DONE. **D-46*
 shape from the first real panel: 3 NOT-DONE → repair → **the same three reviewers re-ran and voted 3
 DONE**. One cycle with a re-vote, not six fresh panels.
 
-**Consequence, if Shinichi confirms:** the uncovered cells *are* named exhaustively — R-1…R-11 plus
-each handover's "does NOT cover" section — so D-43's remedy is **already satisfied**, and M1 should
-close by stating the claim in D-43's required form (cite the tier, name the uncovered cells) rather
-than by running a seventh panel. **Do not act on this alone — it is an agent reading of a decision,
-and this agent's readings have been wrong before. Get Shinichi's confirmation.**
+**CONFIRMED.** Shinichi set a session goal on 2026-07-22 carrying this verbatim: *"DO NOT CONVENE A
+SEVENTH: D-74 says D-43 fires ONCE per milestone and records repeat panels as DRIFT… D-43's remedy
+is 'withheld until the uncovered cells are NAMED', not 'until a panel passes'."*
+
+**Consequence, now binding:** the uncovered cells *are* named exhaustively — R-1…R-11 plus each
+handover's "does NOT cover" section — so D-43's remedy is **already satisfied**. M1 closes by
+stating the claim in D-43's required form (cite the tier, name the uncovered cells), **not** by
+running a seventh panel. That claim is written: `docs/dev-log/2026-07-22-m1-closing-claim.md`.
 
 ---
 
@@ -148,7 +178,27 @@ surfaces was itself instance-thinking, one level up.
 
 ---
 
-## 4. CERTIFIED EVIDENCE — green at `21e04eb5`, and it TRANSFERS to head `d74a6a08`
+## 4. EVIDENCE — the `21e04eb5` chain is **FORFEITED**; re-earning at `d13916f3` is IN FLIGHT
+
+### 4a. Re-earned so far, at the edited tree `d13916f3`
+
+| Step | Result |
+|---|---|
+| `devtools::test()` | **`FAILED 0 \| ERROR 0 \| SKIP 779 \| PASS 7290`** — an **exact match** to the certified baseline, so the wording change is behaviourally neutral. `SKIP 779` (not `test_dir()`'s 1001) confirms the **full** suite ran. |
+| Targeted `test-julia-bridge.R` | `FAILED 0 \| ERROR 0 \| SKIP 19 \| PASS 562` |
+| Old-string sweep | zero residue across `R/`, `tests/`, `man/`, `NEWS.md`, `vignettes/` |
+| **3-OS matrix** `29926771814` | **IN FLIGHT** — dispatched at `d13916f3` with `full_matrix=true`. Must assert **three OS-named jobs**; `full_matrix` defaults false and silently degrades to Ubuntu-only, going green. |
+| **Heavy full-check** `29926795733` | **IN FLIGHT** — dispatched at `d13916f3`. `FAIL` is the only regression signal; `WARN n` is not. |
+| durable `--as-cran` · CRAN-config | **NOT YET re-earned at this SHA.** |
+
+**Dispatching both at once is safe here** — the concurrency group is `workflow-ref`, and
+`R-CMD-check` and `full-check` are different workflows, so they cannot cancel each other. The
+standing rule (never dispatch `R-CMD-check.yaml` while an Ubuntu run is in flight) concerns **two
+runs of the same workflow on the same ref**; one `full_matrix=true` run avoids it entirely.
+
+**Until these land, the closing claim stays DRAFTED, NOT SIGNED.**
+
+### 4b. The FORFEITED chain, for reference — green at `21e04eb5`
 
 ```
 devtools::test()                 FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290
@@ -177,7 +227,7 @@ validates configuration and **does not build the site**.
 
 ---
 
-## 4b. ⚠ MISSION CONTROL IS MATERIALLY STALE — NOT UPDATED, and deliberately so
+## 4c. ⚠ MISSION CONTROL IS MATERIALLY STALE — NOT UPDATED, and deliberately so
 
 `Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json` (the board `CLAUDE.md` makes step 0
 of every session) is **wrong on several load-bearing facts and internally self-contradictory**:
@@ -198,23 +248,25 @@ stale board is a smaller harm than a silently clobbered one.
 **Next session: re-check `git status` on that path first.** If clean, rewrite it against §0 and §4
 of this file. If still dirty, read the other writer's diff before touching it.
 
-## 5. 🔴 OPEN FOR THE MAINTAINER — nothing else blocks
+## 5. ✅ THE MAINTAINER DECISIONS — ALL FOUR ANSWERED 2026-07-22
 
-1. **Wording review of the R-11 replacement strings.** *The one property no check can establish.* An
-   Opus reviewer caught **seven overstatements** in the first attempt — worst was `"validated"` on CI
-   rows, which `docs/design/75:99` forbids and which `CI-08` records as a **FAILED** gate (13/15 cells
-   below 94%; independently corroborated by brain **D-42**, which notes only Gaussian d=1/d=3 cleared).
-   Current strings include `"direct profile route (not coverage-calibrated)"`, `"diagonal grouping
-   tier: no calibrated interval"`, `"no CI (point estimate only)"`, `"experimental route: partial
-   validation only"`. **The question is not style — it is whether any still claims more than is true.**
-2. **`NEWS.md` boundary statement** — drafted, deliberately NOT written in (release-level claim):
-   *variance-component **point estimates** are the supported claim for non-Gaussian families;
-   **interval calibration** is established only for the Gaussian cells that cleared the coverage gate.*
-3. **Does R-7's SIGN-OFF still stand?** Its "exact set match" causation evidence is **retired** — six
-   heavy runs gave three different warning counts, so the set is not a function of the code. The row is
-   signed off; its basis is weaker than when signed.
-4. **Confirm or reject the D-74 reading in §1** — it decides whether a seventh panel happens at all.
-5. **🛑 DO NOT convene a seventh panel before items 1 and 4.**
+**Nothing is open for the maintainer.** Applied in `198ab08a`; recorded in
+`docs/dev-log/2026-07-22-m1-closing-claim.md` §1.
+
+| # | Question | Answer | Applied as |
+|---|---|---|---|
+| 1 | R-11 wording — keep or tighten the one flagged string | **TIGHTEN** | `R/julia-bridge.R:1671` `"experimental route: partial validation only"` → `"experimental route: point estimate only; no coverage evidence"`, **plus** its asserting test at `test-julia-bridge.R:1273`. Grep across `R/`, `tests/`, `man/`, `NEWS.md`, `vignettes/` now returns **zero residue** — swept, not patched. |
+| 2 | Write the `NEWS.md` boundary statement in | **YES** | New first bullet under `## Known limitations`: variance-component **point estimates** are the supported claim for non-Gaussian families; **interval calibration** holds only for the Gaussian cells that cleared the gate. |
+| 3 | Does R-7's sign-off stand | **YES** | Stands. What was retired is **one strand of causation evidence** (the "exact set match" argument), not any of the eight diagnoses — all traced to source — nor site (d)'s mechanism, confirmed by direct measurement. D-43 governs **claims**, not signed-off register rows. |
+| 4 | Confirm or reject the D-74 reading in §1 | **CONFIRMED** | Shinichi set a session goal on 2026-07-22 containing, verbatim: *"DO NOT CONVENE A SEVENTH: D-74 says D-43 fires ONCE per milestone and records repeat panels as DRIFT."* **No seventh panel.** M1 closes by stating the claim in D-43's required form. |
+
+> **⚠ Read-back recorded on Decision 1.** The reply was *"yes experment"*. Both options began
+> "experimental route:", so it did not disambiguate on its own. Taken as assent to the proposed
+> tightening because the asymmetry is one-sided — the tighter string claims **strictly less** and
+> cannot become a false claim, whereas a vague one risks exactly the failure this milestone was
+> withheld for. **If "keep as-is" was meant, it is a one-line revert in two files.**
+
+**The only thing now standing between M1 and closure is the re-earned evidence chain in §4.**
 
 ---
 
@@ -244,11 +296,13 @@ and the cross-repo sign anomaly (our sign claim was downgraded to **UNVERIFIED**
 
 ## TRUTH LIVES IN
 
-Branch `codex/gllvmtmb-060-m1-baseline-20260720` @ **`d74a6a08`** (clean, pushed, in sync; certified
-evidence `21e04eb5`, transfer **verified empty**). Draft PR #778.
+Branch `claude/0.6-m1-close-20260722` @ **`d13916f3`** (clean, pushed, `0 0` vs origin). Certified
+evidence `21e04eb5` is **FORFEITED**; re-earning in flight (§4a). PRs **#778 and #779 are MERGED**
+— this branch has no open PR, which is why a push alone triggers nothing and CI must be dispatched.
+`docs/dev-log/2026-07-22-m1-closing-claim.md` — **the claim itself, DRAFTED not signed** ·
 `docs/dev-log/known-residuals-register.md` · `docs/dev-log/check-log.md` ·
-`docs/dev-log/handover/2026-07-22-claude-handover-m1-withheld-six-panels.md` ·
-`~/gllvmTMB-0.6-evidence/m1/`.
+`docs/dev-log/2026-07-22-r11-wording-review-dossier.md` ·
+`docs/dev-log/plan-actual/2026-07-22-m1-plan-vs-actual.md` · `~/gllvmTMB-0.6-evidence/m1/`.
 
 ## RESUME
 
@@ -257,22 +311,32 @@ Read LOOP/GOAL.md (ALL THREE amendments — CI IS AUTHORISED; Amendment 3 opens 
 design-only Design 86 lane that does NOT gate 0.6) -> LOOP/checkpoint.md ->
 docs/dev-log/known-residuals-register.md -> docs/dev-log/check-log.md.
 
-M1 is WITHHELD after SIX 3/3 NOT-DONE panels. No register row blocks it, no check fails, no defect
-is outstanding. Withheld on a BASE RATE, not a known problem.
+ALL FOUR MAINTAINER DECISIONS ARE ANSWERED (§5). NOTHING IS OPEN FOR SHINICHI. D-74 is CONFIRMED
+by the goal he set: NO SEVENTH PANEL. M1 closes by stating the claim in D-43's required form.
 
-Head d74a6a08, CLEAN, pushed, 0/0 vs origin. Certified 21e04eb5 and the transfer is VERIFIED
-(shipped-path diff empty). Suite 0/779/7290, durable runner 0/0/0, CRAN check 0/0/1, Ubuntu success,
-three-OS matrix all green, heavy FAIL 0 | WARN 10, guard PASS, receipts with SHA256SUMS.
-NOTHING NEEDS RE-EARNING.
+Head d13916f3 on claude/0.6-m1-close-20260722, CLEAN, pushed, 0/0 vs origin. The certification at
+21e04eb5 is FORFEITED — applying the decisions edited NEWS.md, R/julia-bridge.R and its test. That
+is expected (the sixth such re-mint), not a fault.
 
-BEFORE REPEATING ANY SHA CLAIM, RE-DERIVE IT FROM git, FROM INSIDE THE WORKTREE. This file and the
-six-panel handover were BOTH stale on the head. That failure has now appeared SIX times.
+RE-EARNED: devtools::test() = FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290, an EXACT match to the
+certified baseline. IN FLIGHT at d13916f3: 3-OS matrix run 29926771814 (full_matrix=true) and heavy
+full-check run 29926795733. NOT yet re-earned: durable --as-cran, CRAN-config.
 
-BRAIN FINDING (needs Shinichi's confirmation, §1): D-74 says D-43 fires ONCE per milestone claim and
-records repeat panels as DRIFT; D-43's remedy is "withheld until the uncovered cells are NAMED", not
-"until a panel passes". If confirmed, close M1 in D-43's form instead of running a seventh panel.
+NEXT ACTION: read those two runs' RESULTS — not their exit status. Assert the 3-OS run shows THREE
+OS-NAMED JOBS (full_matrix defaults false and silently degrades to Ubuntu-only while going green).
+For heavy, only FAIL is a regression signal; WARN n is not. Then:
+  1. fill §4 of docs/dev-log/2026-07-22-m1-closing-claim.md and flip DRAFTED -> SIGNED
+  2. rewrite Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json (§4c — check git status
+     on it FIRST; it was dirty from another writer and must not be clobbered)
+  3. commit with git commit -F, push
+  4. then M3: API freeze, then bump DESCRIPTION/NEWS 0.5.0 -> 0.6.0 (a source edit that WILL
+     invalidate the receipts earned above — expected; M5 prices a second exact-tag cycle)
 
-DO NOT convene a seventh panel before the wording review (item 1) and the D-74 call (item 4).
+BEFORE REPEATING ANY SHA CLAIM, RE-DERIVE IT FROM git, FROM INSIDE THE WORKTREE. This file was
+stale on the head for the SEVENTH time (it still listed the three decisions as open two commits
+after they were applied). The class is structural: a document true when written goes false as the
+repo moves. tools/check-reader-surface.sh cannot catch it.
+
 SWEEP THE CLASS, NEVER PATCH THE INSTANCE. Verify from structured results only.
 Do not trust this agent's commit messages — three were false or damaged.
 ```

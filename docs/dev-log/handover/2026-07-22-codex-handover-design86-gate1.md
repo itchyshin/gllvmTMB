@@ -1,10 +1,13 @@
 # Codex handover — Design 86, Gate 1 (EVA sparse-binary feasibility)
 
-**Meta:** 2026-07-22 · from Claude Code (design86 lane) · to **Codex** · cross-tool, sequential ·
-**COMPLETE LANE TRANSFER.** You are Codex, taking ownership of the **entire EVA feasibility
-workstream** for gllvmTMB — not just its first rung. Gate 1 is where you *start*; §"The complete
-gate ladder" below is what you *own*. This doc stands alone; you will not see the Claude chat that
-produced it. Read it, then the two in-repo files it points to, and you have everything.
+**Meta:** 2026-07-22 · from Claude Code (design86 lane) · to **Codex** · cross-tool, sequential.
+**WORKSTREAM TRANSFER — executed ARC BY ARC, maintainer-driven.** You are Codex, receiving the whole
+EVA feasibility workstream, but the maintainer drives it **one arc at a time**: you do an arc, verify
+it, **STOP, and report**; the maintainer reviews and hands you the next arc as a separate task.
+**This hand-off is Arc 1 only** (Gate 0 + Gate 1). The gate ladder below is the full map so you know
+where Arc 1 sits — it is **not** a licence to run ahead. This doc stands alone; you will not see the
+Claude chat that produced it. Read it, then the two in-repo files it points to, and you have
+everything.
 
 ---
 
@@ -24,11 +27,13 @@ produced it. Read it, then the two in-repo files it points to, and you have ever
    - `docs/design/86-gate1-build-brief.md` — the build brief. It names the four deliverables, the
      verification matrix, the reuse map, and the file layout. **Follow it; it defers every tolerance
      to the contract so the two cannot drift.**
-4. **Your scope is Gate 0 + Gate 1 ONLY.** Approval unlocked Gates 0–3. Do Gate 0 (freeze the
-   parameter file) and Gate 1 (the algebra/autodiff/bound probe). You *may* proceed into Gate 2 and
-   Gate 3 if Gate 1 passes cleanly, but **STOP at the Gate-3 boundary** — Gate-4 (the coverage
-   campaign, needs Totoro/DRAC) is a **separate, later maintainer approval**. Do not run any
-   compute campaign.
+4. **This hand-off is Arc 1 = Gate 0 + Gate 1 ONLY.** Do Gate 0 (freeze the parameter file) and
+   Gate 1 (the algebra/autodiff/bound probe), verify, then **STOP and report.** The maintainer
+   reviews and hands you Arc 2 (Gate 2) as a **separate** task. **Do NOT roll on into Gate 2 or 3
+   yourself** — the maintainer is driving this arc by arc, and reviews between arcs. (Approval does
+   cover Gates 0–3 in principle, but the cadence is one arc per hand-off, not a run-through.) Gate 4
+   is the coverage campaign — a separate compute approval, far past this arc; do not run any compute
+   campaign.
 5. **The headline scientific finding is already in hand and it is a caution, not a green light:**
    §5.3 proves EVA's objective is **not a bound in the sparse regime** (`p̄ < 0.211` — the whole
    admitted `z ∈ [0.90, 0.97]` band). Gate 1's bound-probe *observes* that overshoot; it does not
@@ -60,35 +65,57 @@ produced it. Read it, then the two in-repo files it points to, and you have ever
 
 ---
 
-## Next immediate steps — in order
+## Execution model — arc by arc, maintainer-driven (NOT a loop)
 
-1. **Branch a fresh worktree off the design86 branch**, outside Dropbox (repo convention: worktrees
-   live under `~/local-scratch/worktrees/`). E.g. branch `codex/design86-gate1-<date>` off
-   `origin/claude/design86-eva-contract-20260722`.
-2. **Gate 0 — freeze the parameter file.** Build the single machine-readable frozen file the
-   contract §2.5 specifies (the `n` ladder, the `T`/`z` second ladders, `R`, `T`, `q`, planted
-   `beta`/`Lambda`, zero-fraction target, `I_unit` floor, the named Schur-complement covariance
-   estimator, **both arms' convergence criteria**, the full per-replicate seed list, and the
-   denominator rules). Compute its checksum and **record it in the contract's §2.5 / Status** (that
-   edit is now in-scope for the coding lane). Gate-1 fixtures are tiny and may not need every field,
-   but the file must exist and be checksummed.
-3. **Gate 1 — the four deliverables from the build brief (§4):**
-   - **D1** a pure-R scalar oracle for `ell_EVA` (Bernoulli-logit, §5.1, **with `+ q`**), sharing no
-     code with the template;
-   - **D2** the EVA objective in a **standalone** `inst/tmb/gllvmTMB_eva.cpp` + unexported
-     `R/eva-proto.R`, `random = NULL` in `MakeADFun`;
-   - **D3** the AGHQ marginal bound probe at `q = 1` (reuse `.va_r3_gh_rule` from `R/va-r3-proto.R`);
-   - **D4** a checked-in reproduction of the §5.3 derivation (finite-difference `s''''`, MC sign of
-     `E_q[R]` for `p̄ < 0.211`).
-4. **Run the verification matrix (brief §5).** Identities to `1e-10`, gradients to `1e-5`, small-`v`
-   continuity, quadrature oracle. Honour every §7 numerical rule — the `+ q` constant, stabilised
-   `softplus` (`η` runs far negative in this regime by construction), the small-`v` limit, loud
-   failure on non-finite values.
-5. **If Gate 1 passes:** you may continue into Gate 2 (correctness anchor, information-rich cell) and
-   Gate 3 (EVA-vs-GH reference at fixed coordinates), each with its own contract tolerances — **but
-   STOP at the Gate-3 boundary and hand back for the Gate-4 compute approval.**
-6. **Before any "done" claim:** run the repo's mandatory review lens (Rose, `.codex/agents/*.toml`),
-   and write an after-task report under `docs/dev-log/after-task/`.
+The maintainer hands you **one arc at a time**. You do that arc, verify it, **STOP, and report.** The
+maintainer reviews, then hands you the next arc as a separate task. There is no autonomous loop and
+nothing to "continue" while you wait: the gates are strictly sequential (Design 72), so a later arc
+cannot start until this one passes, and a later gate never compensates for an earlier failure. The
+arcs are:
+
+- **Arc 1 = Gate 0 (freeze) + Gate 1 (objective correctness)** — this hand-off.
+- **Arc 2 = Gate 2** (correctness anchor) — handed separately after Arc 1 passes.
+- **Arc 3 = Gate 3** (reference comparison) — after Arc 2.
+- **Arc 4 = Gate 4** (admission campaign) — needs a separate compute approval + target; smoke-first.
+
+## Arc 1 — the ultra-plan (do this, then STOP)
+
+**0. Set up.** Branch a fresh worktree off `origin/claude/design86-eva-contract-20260722`, outside
+Dropbox (`~/local-scratch/worktrees/`), e.g. `codex/design86-arc1-<date>`. It inherits all of main's
+code (incl. the `va_r3` assets) plus the approved contract.
+
+**1. Orient.** Read contract §5.1 (objective, **with `+ q`**), §5.3 (bound derivation), §7 (numerical
+rules), §11 Gate 0/1, and build brief §4–5.
+
+**2. Build the slices** — mostly yourself; they are small and interdependent, so do **not** shard
+them across parallel sub-agents (you would create integration seams for no speed gain):
+
+| Slice | Deliverable | Note |
+|---|---|---|
+| **S0** | Gate 0: freeze + checksum the parameter file (contract §2.5); record the checksum in the contract §2.5 / Status | first; Gate-1 fixtures are tiny but the file must exist + be checksummed |
+| **S1** | D1: pure-R scalar oracle for `ell_EVA` (Bernoulli-logit, §5.1, **+ q**), no code shared with the template | the independent yardstick |
+| **S2** | D2: EVA objective in a **standalone** `inst/tmb/gllvmTMB_eva.cpp` + unexported `R/eva-proto.R`, `random = NULL` | the shipped `src/gllvmTMB.cpp` stays byte-unchanged |
+| **S3** | D3: AGHQ bound probe at `q = 1` (reuse `.va_r3_gh_rule`) — a **measurement**, observes the §5.3 overshoot | needs S2 |
+| **S4** | D4: reproduce §5.3 in code (finite-diff `s''''`, MC sign of `E_q[R]` for `p̄ < 0.211`) | standalone |
+
+**3. Verify — the fan-out lives here, not in the build.** Run the verification matrix (brief §5):
+identities to `1e-10` (S2 template vs S1 oracle, plus the Gaussian exactness identity), gradients to
+`1e-5`, small-`v` continuity, the quadrature oracle. Honour every §7 rule — the `+ q` constant,
+stabilised `softplus` (`η` runs far negative here by construction), the small-`v` limit, loud failure
+on any non-finite value. Then **fan out a 3-lens adversarial panel** (each defaulting NOT-DONE, ≥2
+withhold): **(a) math** — code matches §5.1/§5.3; **(b) numerics** — softplus/small-`v`/finiteness,
+no clipping, `+ q` present; **(c) scope** — standalone template, shipped surface untouched, nothing
+over-claimed.
+
+**4. Consolidate, then STOP.** After-task report under `docs/dev-log/after-task/`; **Rose review
+before any "Arc 1 passed" claim** (`.codex/agents/*.toml`); then STOP and report to the maintainer.
+**Do not begin Arc 2.**
+
+**Arc 1 is done when:** the frozen file exists + its checksum is recorded; the template matches the
+oracle to `1e-10` and the Gaussian identity holds; gradients match finite differences to `1e-5`; the
+bound probe has *observed* the sign of `ell_EVA − log p(y)` at `q = 1` (the §5.3 overshoot, in code);
+no numerical rule is violated; `src/gllvmTMB.cpp` is byte-unchanged; and the panel + Rose clear it.
+**A pass licenses the maintainer to hand you Arc 2 — nothing else.**
 
 ## Blockers / open questions (for the maintainer, not for you to self-resolve)
 
@@ -116,24 +143,25 @@ produced it. Read it, then the two in-repo files it points to, and you have ever
 
 ---
 
-## The complete gate ladder (0→5) — the whole workstream you own
+## The full gate ladder (0→5) — the map, handed one arc at a time
 
-This is a **complete transfer**: you own the EVA feasibility lane end-to-end, gate by gate, not just
-Gate 1. The gates are **sequential** (Design 72): a later gate never compensates for an earlier
+You receive the EVA feasibility lane in full, but it is **handed to you one arc at a time** (see the
+execution model above) — this table is the map so Arc 1 sits in context, **not** a licence to run
+ahead. The gates are **sequential** (Design 72): a later gate never compensates for an earlier
 failure, and tolerances are never widened after a result is seen. Full text and NO-GO lists are in
-contract §11; this is the map.
+contract §11.
 
-| Gate | Proves | You may run it | One-line NO-GO |
+| Gate | Arc | Proves | One-line NO-GO |
 |---|---|---|---|
-| **0 — freeze** | scope + coordinates are locked; the parameter file exists + is checksummed | **now** (approval covers it) | any implicit `Psi`, `n_it≠1`, checksum mismatch, or parked VA source reused without a fresh derivation audit |
-| **1 — algebra** | the objective is implemented correctly and is numerically sane on tiny fixtures | **now** | omitted constants (incl. `+q`), wrong KL sign, clipping for finiteness, Gaussian identity fails, bound question unresolved |
-| **2 — anchor** | recovery is right on an information-rich (non-sparse) cell | if Gate 1 passes | recovery outside the numeric tolerances §11 G2 now states; single-start reliance |
-| **3 — reference** | EVA vs the Gauss–Hermite reference at fixed coordinates = pure Taylor error | if Gate 2 passes | family mismatch between arms; a one-sided bound test; **tolerances not re-derived for this regime** |
-| **4 — admission** | interval **coverage** across the n-ladder + the T/z second ladder | **STOP — separate maintainer + compute approval** | see below |
-| **5 — claim audit** | nothing public follows without a separate maintainer decision | n/a until 4 passes | — |
+| **0 — freeze** | Arc 1 | scope + coordinates locked; parameter file exists + checksummed | any implicit `Psi`, `n_it≠1`, checksum mismatch, or parked VA source reused without a fresh derivation audit |
+| **1 — algebra** | Arc 1 | the objective is implemented correctly and numerically sane on tiny fixtures | omitted constants (incl. `+q`), wrong KL sign, clipping for finiteness, Gaussian identity fails, bound question unresolved |
+| **2 — anchor** | Arc 2 | recovery is right on an information-rich (non-sparse) cell | recovery outside the numeric tolerances §11 G2 states; single-start reliance |
+| **3 — reference** | Arc 3 | EVA vs the Gauss–Hermite reference at fixed coordinates = pure Taylor error | family mismatch between arms; a one-sided bound test; **tolerances not re-derived for this regime** |
+| **4 — admission** | Arc 4 | interval **coverage** across the n-ladder + the T/z second ladder | **separate maintainer + compute approval**; see below |
+| **5 — claim audit** | — | nothing public follows without a separate maintainer decision | — |
 
-**STOP at the Gate-3 boundary.** Gate 4 is the coverage campaign; it needs compute and it is the
-next platform boundary that returns to the maintainer.
+**Report and STOP after every arc.** Arc 4 additionally needs a compute approval and is the next
+platform boundary that returns to the maintainer regardless.
 
 ### Gate 4 compute — the plan, for when it is approved (do NOT run it now)
 
@@ -185,9 +213,10 @@ Gate-1 D4 confirms it in code, it does not re-open it. The full arc is in
 ```
 Rehydrate from docs/dev-log/handover/2026-07-22-codex-handover-design86-gate1.md plus the two
 files it points to (docs/design/86-eva-sparse-binary-admission-contract.md and
-docs/design/86-gate1-build-brief.md), then execute the Next Immediate Steps: branch off
-origin/claude/design86-eva-contract-20260722, do Gate 0 (freeze + checksum the parameter file),
-then Gate 1 (D1–D4), stopping at the Gate-3 boundary.
+docs/design/86-gate1-build-brief.md). Execute ARC 1 ONLY: branch off
+origin/claude/design86-eva-contract-20260722, do Gate 0 (freeze + checksum the parameter file)
+then Gate 1 (slices S0–S4), run the verification matrix + a 3-lens panel, write an after-task +
+Rose review, then STOP and report. Do NOT begin Gate 2 — the maintainer hands the next arc.
 ```
 
 ### Live-toolchain env (Codex runs the real build; Claude could not)
@@ -214,20 +243,19 @@ that.
 |---|---|
 | Design 86 contract | **APPROVED** 2026-07-22; on branch `claude/design86-eva-contract-20260722`, not merged |
 | Gate-1 build brief | Written, turnkey — `docs/design/86-gate1-build-brief.md` |
-| Gate 0 (freeze param file) | **NOT STARTED** — your first action |
-| Gate 1 (algebra/autodiff/bound probe) | **NOT STARTED** — D1–D4 in the brief |
-| Gates 2–3 | Optional continuation if Gate 1 passes; STOP at the Gate-3 boundary |
-| Gate 4 (coverage campaign) | **FENCED** — separate maintainer + compute approval |
+| **Arc 1** = Gate 0 (freeze) + Gate 1 (algebra/autodiff/bound probe) | **THIS HAND-OFF — NOT STARTED.** Do it, verify, STOP, report |
+| Arc 2 (Gate 2, anchor) · Arc 3 (Gate 3, reference) | Handed **separately** by the maintainer after the prior arc passes — do not start them yourself |
+| Arc 4 (Gate 4, coverage campaign) | **FENCED** — separate maintainer + compute approval |
 | Shipped surface (`src/gllvmTMB.cpp`, NAMESPACE, …) | **DO NOT TOUCH** |
 | Release (M1) lane | Separate lane, separate checkout; do not edit its surfaces (`LOOP/`, CLAUDE.md pointer) |
 
-**One-line routing:** Codex now **owns the whole EVA feasibility workstream** (Gates 0–3, live TMB
-build, isolated worktree, standalone prototype template); Claude did the design and the two review
-panels and has **closed the design lane**. The next platform boundary that returns to the maintainer
-is Gate 4 (compute) — neither tool starts it without a fresh approval.
+**One-line routing:** the EVA feasibility workstream is yours (live TMB build, isolated worktree,
+standalone prototype template), but **executed arc by arc — the maintainer hands one arc, you do it,
+verify, STOP, report.** Claude did the design + the two review panels and has closed the design lane.
+The next platform boundary that returns to the maintainer is Arc 4 (Gate 4 compute).
 
-**Complete-transfer confirmation.** Nothing about this lane remains on Claude's side. The durable
-record is: this handover + the approved contract + the Gate-1 build brief (all on branch
+**Transfer confirmation.** Nothing about this lane remains on Claude's side. The durable record is:
+this handover + the approved contract + the Gate-1 build brief (all on branch
 `claude/design86-eva-contract-20260722`), the full arc dev-log
 (`docs/dev-log/2026-07-22-design86-lane-research-and-ultra-plan.md`), and the brain note
 *"Design 86 EVA contract — APPROVED, Gate 1 to Codex (2026-07-22)"*. If any of those is unreadable,

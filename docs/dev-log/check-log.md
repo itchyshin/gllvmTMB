@@ -46413,3 +46413,47 @@ gap, CI-08's 13/15 failing cells, CI-10 at 0.55, FAM-17/MIX-10). **No seventh D-
 convened**: D-74 fires D-43 once per milestone claim and records repeat panels as drift, and D-43's
 remedy is "withheld until the uncovered cells are NAMED", not "until a panel passes". Six panels ran
 where one was specified, and **not one found a numerical, algorithmic or statistical defect.**
+
+## 2026-07-22 (later) — M3: API freeze + bump to 0.6.0; the EIGHTH chain, green (Claude Code)
+
+Freeze record: `docs/dev-log/2026-07-22-m3-api-freeze.md`. Pinned by checksum —
+`NAMESPACE` SHA-256 `c97ae039…` at `5cacf173`; 153 exports, 33 S3 methods.
+
+**The bump invalidated every M1 receipt, by design.** Chain re-earned at `458dc01b`:
+
+```sh
+devtools::test()                    FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290   (identical pre/post)
+
+gh workflow run R-CMD-check.yaml --ref claude/0.6-m1-close-20260722 -f full_matrix=true
+  run 29934531169   3x "Status: OK", zero ERROR/WARNING/NOTE
+                    ubuntu-latest, macos-latest, windows-latest : all success
+  built artefact    gllvmTMB_0.6.0.tar.gz     <- the bump reached the BUILD, not just the files
+
+gh workflow run full-check.yaml  --ref claude/0.6-m1-close-20260722
+  run 29934532873   FAIL 0 | WARN 10 | SKIP 103 | PASS 13656, Status: OK
+
+Rscript --no-init-file dev/m1-cran-config-check.R
+  ERRORS=0  WARNINGS=0  NOTES=1 ("New submission")  UNEXPECTED_NOTES=0  SHA_STABLE=TRUE
+```
+
+### The heavy counts oscillated BACK to the certified baseline
+
+`WARN 10 | SKIP 103 | PASS 13656` — **exactly** the original baseline at `21e04eb5`, from a run whose
+immediate predecessor at `d13916f3` gave `WARN 9 | SKIP 102 | PASS 13650`.
+
+This is **third-run confirmation** of the mechanism recorded two entries above: the contingent sites
+are optimiser-convergence-dependent, so the counts oscillate between runs of functionally identical
+code. The standard drawn from it stands — **an exact set match between two heavy runs cannot
+establish that an arc added no warning site.** That is exactly the strand retired from R-7.
+
+### ⚠ A STANDING RULE WAS TOO BROAD — corrected here
+
+The rule read *"never dispatch `R-CMD-check.yaml` while an Ubuntu run is in flight — concurrency
+cancels it."* **That holds only when the two runs share a ref.** The concurrency group is
+`${{ github.workflow }}-${{ github.ref }}`, and a `pull_request` run's ref is `refs/pull/780/merge`
+while a `workflow_dispatch` on the branch is `refs/heads/claude/…`. **Different refs → different
+groups → no cancellation.**
+
+Observed directly: dispatch `29934531169` and PR-triggered `29934510132` ran **concurrently to
+completion at the same SHA**, neither cancelled. The earlier cancellations in this arc happened
+because both runs shared the *branch* ref. The rule is real but narrower than stated.

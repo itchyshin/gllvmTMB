@@ -14,13 +14,23 @@ Laplace-only and M2 stays CUT. Brief: `docs/dev-log/2026-07-22-design86-lane-bri
 > done needs exact-SHA three-OS evidence, which only CI produces. **If a future session is handed that
 > block, it must not paste it over `GOAL.md`.**
 
-**STATE: M1 IS CLOSING.** All four maintainer decisions are **ANSWERED** (§5) and D-74 is
-**CONFIRMED** — there is **no seventh panel**. The claim is written in D-43's required form at
-`docs/dev-log/2026-07-22-m1-closing-claim.md` and is **DRAFTED, NOT SIGNED**: applying the decisions
-forfeited the certified chain, and it signs only when the chain is re-earned at `d13916f3` (§4a).
+**STATE: M1 CLOSED · M3 CLOSED · M4 IS NEXT.**
 
-Six D-43 panels ran where D-74 specifies one. **Not one of the six found a numerical, algorithmic or
-statistical defect** — every finding was about the agent's method, not the package.
+- **M1 CLOSED.** All four maintainer decisions ANSWERED; D-74 CONFIRMED, so **no seventh panel**.
+  The claim is **SIGNED** at `docs/dev-log/2026-07-22-m1-closing-claim.md`, in D-43's required form.
+  Six panels ran where D-74 specifies one, and **not one of the six found a numerical, algorithmic
+  or statistical defect** — every finding was about the agent's method, not the package.
+- **M3 CLOSED.** API frozen on the maintainer's sign-off and pinned by checksum (`NAMESPACE`
+  SHA-256 `c97ae039…`, 153 exports / 33 S3 methods); version bumped `0.5.0 → 0.6.0`. Record:
+  `docs/dev-log/2026-07-22-m3-api-freeze.md`.
+- **Version is now `0.6.0`. Head `458dc01b`. Draft PR #780.** The EIGHTH evidence chain is complete
+  and green **on the bumped identity** — local suite `0 | 779 | 7290`, three-OS `29934531169` with
+  three `Status: OK` and zero warn/note, heavy `29934532873` `FAIL 0`, CRAN-config 0/0/1 with the
+  NOTE allowlisted. The built artefact was confirmed to be `gllvmTMB_0.6.0.tar.gz` — the bump
+  reached the **build**, not merely the files.
+
+**M4 is largely SHINICHI'S HOURS, not agent wall-clock:** the page-by-page reader review. Two items
+are already queued for it, both stated in the freeze record §3.
 
 ---
 
@@ -352,7 +362,21 @@ separate gates.
 set `full_matrix`), so it is a bonus re-qualification of the documentation commits — **not** M1's
 platform evidence, which is the exact-SHA three-OS run at `d13916f3`. Do not conflate them.
 
-**M1 IS CLOSED — every item done.** Next is M3, which STOPS at the API-freeze gate:
+**M1 AND M3 ARE BOTH CLOSED.** M4 is next. Its two already-known items:
+
+  D-41's mandatory experimental warning is UNVERIFIED and gllvmTMB is NOT exempt — pkgdown callout,
+  README badge, lifecycle badges on exports, .onAttach message, DESCRIPTION Description line.
+  A RELEASE BLOCKER if absent; resolve it early rather than discovering it at M5.
+
+  A live reader-facing CONTRADICTION, deliberately not guessed at: _pkgdown.yml:319 tells readers
+  the deprecated covariance functions are "soft-deprecated as of 0.5.0", while brms-sugar.R:131
+  tells users 0.2.0. One is wrong on a reader surface. Resolve with the maintainer, not by picking.
+
+  Also for M4: the claim-string class OUTSIDE the five R-11 files -- man/, the shipped vignette,
+  NEWS.md, README.md, the DESCRIPTION Description -- was never swept.
+
+M5 then needs its own exact-TAG three-OS cycle; the eighth chain qualifies the bumped branch head,
+not a tag. Historical M3 detail follows:
   1. fill §4 of docs/dev-log/2026-07-22-m1-closing-claim.md and flip DRAFTED -> SIGNED
   2. rewrite Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json (§4c — check git status
      on it FIRST; it was dirty from another writer and must not be clobbered)

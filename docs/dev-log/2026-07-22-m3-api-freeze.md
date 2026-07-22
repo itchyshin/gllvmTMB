@@ -105,14 +105,42 @@ would have produced a false "these are silent" finding.
 - **Release readiness.** Per D-49 name the rung; per D-66 it is **NOT READY, below source-clean** —
   the gap is *evidence, not capability*.
 
-## 5. The consequence the next session must expect
+## 5. The bump invalidated M1's receipts — and the eighth chain has been earned
 
-The version bump `0.5.0 → 0.6.0` is a **source edit**, so it **invalidates every M1 platform
+The version bump `0.5.0 → 0.6.0` is a **source edit**, so it **invalidated every M1 platform
 receipt** — the three-OS matrix at `d13916f3`, the heavy run, and the CRAN-configuration check all
-qualify a **pre-bump identity**. This is **by design and is not a regression**. M5 must price a
-second exact-tag three-OS cycle.
+qualify a **pre-bump identity**. **By design, not a regression.**
 
-The eighth evidence chain of the arc therefore begins at the bump.
+### The eighth chain, at the bumped SHA `458dc01b`
+
+| Check | Result |
+|---|---|
+| `devtools::test()` (local) | `FAILED 0 \| ERROR 0 \| SKIP 779 \| PASS 7290` — identical to pre-bump |
+| Three-OS matrix `29934531169` | **SUCCESS** — `ubuntu-latest`, `macos-latest`, `windows-latest`; three `Status: OK` lines, **zero** ERROR/WARNING/NOTE |
+| Heavy full-check `29934532873` | `FAIL 0 \| WARN 10 \| SKIP 103 \| PASS 13656`, `Status: OK` |
+| CRAN-configuration check | **0 errors, 0 warnings, 1 NOTE, 0 unexpected.** The NOTE is *"New submission"* under incoming feasibility — allowlisted. `SHA_STABLE=TRUE`. |
+
+**The chain is COMPLETE at `458dc01b`.** All four legs green on the bumped identity.
+
+**The build actually produced `gllvmTMB_0.6.0.tar.gz`.** Confirmed from the log — so the bump took
+effect in the *built artefact*, not merely in the source files. Checking the files alone would not
+have established this.
+
+### The heavy counts oscillated back to the certified baseline — corroborating the diagnosis
+
+This run returned `WARN 10 | SKIP 103 | PASS 13656`, which is **exactly** the original certified
+baseline at `21e04eb5`. The immediately preceding run at `d13916f3` returned `WARN 9 | SKIP 102 |
+PASS 13650`.
+
+That is independent confirmation of the mechanism recorded in `check-log.md`: the contingent sites
+are **optimiser-convergence-dependent**, so the counts oscillate between runs of functionally
+identical code — here, oscillating *back* to the baseline values. It further confirms the standard
+derived from it: **an exact set match between two heavy runs cannot establish that an arc added no
+warning site**, because the set is not a function of the code alone. `FAIL 0`, which does not vary,
+is the gate.
+
+M5 must still price its own exact-**tag** three-OS cycle; this chain qualifies the bumped branch
+head, not a tag.
 
 ## 6. What this freeze does NOT authorise
 

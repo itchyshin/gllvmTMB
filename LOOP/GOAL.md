@@ -177,3 +177,72 @@ If R-10 is answered **"rewrite"**, it requires source edits, which re-mint the s
 identity and **invalidate any receipts and any CI run made before them**. So the order is:
 **R-10 decision → apply → freeze → push → CI → third D-43 panel.** Pushing before R-10 is
 settled spends a CI cycle on a SHA that is about to change.
+
+---
+
+# MAINTAINER AMENDMENT 3 — 2026-07-22
+
+**Authority:** Shinichi Nakagawa, 2026-07-22, in session. Recorded by Claude Code.
+Same legitimacy as Amendments 1 and 2: a maintainer decision taken at a gate.
+
+## The decision
+
+**Design 86 design work starts NOW, on its own branch, in parallel. 0.6 stays Laplace-only.**
+EVA admission is reconsidered at the **M3 freeze window**, on evidence rather than an estimate.
+
+## What this does NOT change — read this before concluding anything
+
+**This is NOT a reversal of Amendment 1.** 0.6 still ships **Laplace-only**; **M2 remains CUT**;
+Definition-of-done item 2 stays **VOID**. Amendment 1 forbade EVA *entering 0.6*. It never
+forbade 0.7's design work *starting early*. Amendment 3 authorises only the latter.
+
+**The new lane does not gate 0.6.** Nothing in it may block, delay, or be cited as evidence by
+M1, M3, M4 or M5. If Design 86 is unfinished when M3's freeze window arrives, 0.6 freezes
+without it — that is the expected case, not a failure.
+
+## What this DOES amend
+
+**Invariants, "one mutating macro-arc, one branch, and one PR at a time."** A **second lane is
+permitted**, on exactly these conditions:
+
+1. **Disjoint write scope.** The Design 86 lane writes `docs/design/86-*.md` and its own
+   dev-log entry — **nothing else**. No `R/`, `src/`, `tests/`, `man/`, `vignettes/`,
+   `DESCRIPTION`, `NAMESPACE`. Separate write scopes are what makes parallel work legal here
+   (`CLAUDE.md`, Collaboration Rhythm); breaking the fence dissolves the permission.
+2. **Separate worktree, outside Dropbox** — `~/local-scratch/worktrees/` (D-69, D-77).
+3. **Design-only.** No implementation, no campaign, no compute, no public API.
+4. **Still sequential per tool.** Claude and Codex do not run concurrently on this repo; the
+   two *lanes* are separated by write scope, not by running two tools at once.
+
+The single-writer rule otherwise stands, and returns in full the moment the Design 86 lane
+attempts anything outside its fence.
+
+## Three prerequisites, unresolved, before any derivation
+
+1. **Name the estimator.** Design 85 = full-covariance Gaussian VA (1-D Gauss–Hermite);
+   EVA (Korhonen et al. 2023) = second-order Taylor surrogate. **Different estimators.** The
+   planning has been sliding between them.
+2. **Citation-check the `q >= 4` threshold** — recorded **UNVERIFIED, source not supplied**.
+   It must not define a gate until grounded.
+3. **A new Gate-0 scope freeze.** Sparse binary at high `q` lies **outside** Design 85's
+   admitted data contract — a fresh scope, not an extension of existing evidence.
+
+## Scientific caution to carry into the document
+
+The second-order surrogate's fixed-order bias is **worst in exactly the sparse regime** that
+carries the user value. Design 86 must state this plainly and **predeclare what result would
+CUT it**, and must separate the **correctness anchor** (easy, information-rich: is it right?)
+from the **admission criterion** (sparse binary: does it beat Laplace where Laplace is weak?).
+Conflating those two is what invalidated Design 85's Gate 4.
+
+## Unchanged and still binding
+
+- `docs/design/85-*` remains a closed **NO-GO** and **READ-ONLY** — supersede with a new dated
+  note, never amend.
+- **Design 72's** sequential proof logic; the **no-ELBO/marginal-likelihood/REML** language rule.
+- Every compute, claim, and ceremony gate above. **No exception is self-granted.**
+- **Design 86 is not a contract until Shinichi approves the written document.**
+  `LOOP/decision-queue.md` records it `NOT YET OPEN`. The lane may not treat this amendment as
+  that approval.
+
+Full brief and the paste-ready lane GOAL: `docs/dev-log/2026-07-22-design86-lane-brief.md`.

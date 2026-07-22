@@ -1,6 +1,6 @@
 ---
 title: "Unordered categories with multinomial()"
-description: "Model an unordered categorical response as baseline-category log-odds, read the per-category contrasts and predicted probabilities, and stop at the fixed-effects-only boundary."
+description: "Model an unordered categorical response as baseline-category log-odds, read its fixed-effect contrasts and probabilities, and distinguish the covered core from two partial covariance routes."
 tier: 2
 output:
   rmarkdown::html_vignette:
@@ -115,10 +115,11 @@ diet <- data.frame(
 table(diet$guild)
 ```
 
-A multinomial response is a **single** categorical column, so the model is fit
-from long data only; there is no wide `traits(...)` twin, because that shorthand
-is for stacking several response columns into a shared covariance — which a
-fixed-effects-only multinomial trait does not use.
+This worked example has one categorical response column, so it uses the long
+form directly; there is no useful wide `traits(...)` twin for this isolated
+fixed-effect fit. The separate partial cross-family route uses a shared
+long-format mixed-family model and is demonstrated in
+[Cross-family trait correlations, including nominal responses](cross-family-correlations.html).
 
 ```{r fit}
 fit <- gllvmTMB(
@@ -228,29 +229,32 @@ The two log-likelihoods match; only whether coefficients read "versus frugivore"
 or "versus granivore" changes. Choose the reference that makes your contrasts
 easiest to interpret.
 
-## What this release does not do
+## Current scope boundary
 
-`multinomial()` is fixed-effects-first, with one random-effect extension: a
-`phylo_latent()` term is admitted and reports the among-category *phylogenetic*
-covariance (see below). The remaining boundaries are deliberate — an unordered
-response over \(K\) categories is not one latent dimension but \(K - 1\) of them
-(the contrasts), so it does not fit the single-latent-scale contract that the
-package's *cross-trait* covariance machinery depends on. Concretely:
+The fixed-effect route demonstrated above is **validated**. Two later
+extensions are deliberately **partial**, not universal categorical covariance
+support:
 
-- Every latent / random-effect / structured tier *other than* `phylo_latent()` —
-  `latent()`, `indep()`, `spatial_*()`, the other `phylo_*()` tiers, random slopes
-  — is **not supported** on a multinomial trait and fails loud.
-- **Cross-trait** correlation with a categorical trait is still deferred:
-  `extract_correlations()` and `extract_Sigma()` decline a *fixed-effects-only*
-  multinomial fit (no latent covariance to report), and folding a categorical
-  trait, which occupies \(K-1\) latent dimensions, into the *cross-trait*
-  correlation matrix alongside ordinary single-scale traits — settling which
-  reference and scale convention to report it on — is the harder open problem. The
-  *standalone* \((K-1) \times (K-1)\) among-category table, by contrast, is now
-  available in the phylogenetic setting (below).
-- Coefficient recovery is validated (see the package's recovery tests), but the
-  family is not part of the interval-coverage certification; treat its intervals
-  as recovery-oriented.
+- The phylogenetic route admits one `phylo_latent()` term and reports the standalone
+  \((K-1) \times (K-1)\) among-category phylogenetic covariance \(V\) described
+  below. Its recovery is data-hungry.
+- The cross-family route permits one multinomial trait to share an ordinary `latent()` block
+  with other response families. The nominal trait remains an explicit \(K-1\)
+  baseline-contrast block; `extract_cross_correlations()` supplies the
+  reference-invariant partner summary. See
+  [Cross-family trait correlations, including nominal responses](cross-family-correlations.html).
+- A fixed-effect-only fit still has no latent covariance, so
+  `extract_correlations()` and `extract_Sigma()` refuse it rather than fabricate
+  a matrix. On that cross-family route, point extraction is the default;
+  Wald/bootstrap summaries are target-specific and uncalibrated, and nonlinear
+  profile requests are withdrawn.
+- Multiple multinomial traits, augmented slopes, explicit multinomial
+  `unique()`/`indep()`, and unlisted animal, spatial, kernel, or phylogenetic
+  tiers remain blocked and fail loud.
+
+Thus coefficient recovery is validated only for the fixed-effect route, while the phylogenetic and cross-family covariance routes
+retain their narrower `partial` labels. None of these rows establishes interval
+coverage.
 
 ### The phylogenetic route: a standalone among-category table
 
@@ -260,7 +264,10 @@ multinomial GLMM of Mizuno, Drobniak, Williams, Lagisz & Nakagawa (2025, *Journa
 of Evolutionary Biology*, doi:10.1093/jeb/voaf116). A `phylo_latent()` factor on
 the \(K-1\) category contrasts estimates the among-category covariance \(V\) — how
 the category liabilities coevolve across the tree — read out with
-`extract_Sigma(fit, level = "phy")`. A categorical trait already occupies
+`extract_Sigma(fit, level = "phy", part = "shared", link_residual = "none")`.
+That explicit call returns the fitted \(V_{\mathrm{phy}}\); the default total
+extraction with `link_residual = "auto"` adds the fixed softmax residual
+\((\pi^2/6)(\mathbf I + \mathbf J)\). A categorical trait already occupies
 \(K-1\) latent dimensions, so a low-rank factor on those contrasts is exactly the
 right object; no new likelihood is needed beyond the softmax you have here.
 

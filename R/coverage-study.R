@@ -54,12 +54,12 @@
 #' parameters that matter is the recommended fit-specific check before
 #' treating CIs as publication-ready.
 #'
-#' Scope boundary: covered, the helper returns reproducible
-#' coverage summaries for a fitted model and the requested direct
-#' profile targets. PARTIAL, package-level production calibration has
-#' not yet passed for every family, dimension, and target surface.
-#' PLANNED, M3 target-explicit simulation grids decide when broader
-#' interval-calibration claims move to covered.
+#' Scope: the helper returns reproducible coverage summaries for a
+#' fitted model and the requested direct profile targets.
+#' Package-level production calibration has not yet passed for
+#' every family, dimension, and target surface. Broader
+#' interval-calibration claims require target-explicit simulation
+#' evidence that has not yet been produced.
 #'
 #' When coverage rates fall below 94%, common causes are:
 #'

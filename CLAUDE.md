@@ -2,7 +2,27 @@
 
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
-For the current handoff, read
+
+## Live Phase Snapshot — 2026-07-21
+
+- **Single active lane:** Claude Code now owns
+  `codex/gllvmtmb-060-m1-baseline-20260720`, draft PR #778, sequentially after
+  Codex. Codex is stopped; do not open a second repo-writing lane.
+- **Current state:** P0 is complete. The M1 public-boundary repair is focused
+  green (117 pass, 0 fail, 0 warning, 11 declared heavy skips), but complete
+  local, article/pkgdown, source-package, exact-SHA platform, and fresh D-43
+  qualification remain open. M1 is **IN PROGRESS**, not release-ready.
+- **Arc-loop:** read and follow
+  `/Users/z3437171/Dropbox/Github Local/Shinichi/skills/arc-loop/SKILL.md`; the
+  approved durable kit is under `LOOP/`. Resume at the complete non-heavy gate
+  and stop at the M1-to-M2 maintainer gate.
+- **START HERE:**
+  `docs/dev-log/handover/2026-07-21-claude-handover.md`.
+
+The older handoff narrative below is historical and must not override this
+snapshot, the latest handover, or `AGENTS.md`.
+
+For historical context, the former handoff was
 `docs/dev-log/handover/2026-07-18-claude-handover.md` (Claude→Claude, 2026-07-18;
 **the multinomial cross-family arc is SHIPPED to `main`** — item 1 matrix
 `link_residual` (#758), item 2a-ii cross-family correlations +
@@ -130,8 +150,9 @@ does NOT do" section), see
 
 ## Collaboration Rhythm
 
-Claude Code and Codex can work in parallel only when the write scopes
-are separate and the handoff is explicit. The default pattern is:
+Claude Code and Codex work sequentially, never concurrently, in this
+repository. The baton can move in either direction through a landed handoff.
+The usual role pattern is:
 
 - Claude Code gathers evidence, writes read-only audits, drafts
   decisions, and identifies the smallest safe PR shape.
@@ -160,6 +181,9 @@ file overlap, CI state, message-bus coverage, and after-task report
 coverage. Shannon reports; it does not edit or merge.
 
 ### Merge authority
+
+For the active five-macro 0.6 lane, the handoff is stricter than the general
+rule below: do not merge draft PR #778 without explicit maintainer authority.
 
 Both Claude Code and Codex may merge their own PRs when CI is green
 and the PR is **low-risk**: documentation, dev-log entries, audits,

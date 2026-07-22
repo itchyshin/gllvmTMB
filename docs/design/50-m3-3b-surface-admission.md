@@ -175,9 +175,12 @@ The report must include:
    `TARGET_FAIL`, or `COMPUTE_FAIL`.
 
 Report plots must use the long grid, not filtered summaries alone.
-When the next run uses GitHub Actions or HPC shards, the grid should
-carry `worker_id`, `artifact_id`, or equivalent provenance so a figure
-can trace each point back to its compute source.
+When the next run uses Totoro processes or DRAC array tasks, the grid
+must carry stable campaign, task/shard, worker, source, and keeper
+provenance, using the existing fields or an equivalent predeclared schema,
+so a figure can trace each point back to its compute source.
+The grid and failed attempts stay outside GitHub Actions artifacts
+(D-50).
 
 The first implementation is dev-only: `m3_source_map_dashboard_data()`
 keeps the long-grid-derived trait ratios, failure ledger, and verdict

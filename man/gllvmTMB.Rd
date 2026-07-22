@@ -192,9 +192,7 @@ is \verb{vcv =} inside each \verb{phylo_*()} keyword. \strong{\ifelse{html}{\hre
 prefer \verb{tree =}. The dense path inverts via \code{Matrix::solve()},
 giving the same MLE as the sparse path but at \code{O(n^2)} memory and
 \code{O(n^3)} Cholesky cost. Use only when you have a Cphy in hand and
-no Newick tree (e.g. comparing against \code{nlme::corPagel}). See
-\code{docs/design/04-random-effects.md} for the full
-technical justification.}
+no Newick tree (e.g. comparing against \code{nlme::corPagel}).}
 
 \item{phylo_tree}{(legacy global) Optional \code{ape::phylo} tree. The current
 syntax is to pass \verb{tree =} inside
@@ -335,8 +333,9 @@ Plus the supporting \code{\link[=phylo_slope]{phylo_slope()}} / \code{\link[=ani
 slopes), \code{\link[=meta_V]{meta_V()}} (known-V meta-analytic; \code{\link[=meta_known_V]{meta_known_V()}} is a
 deprecated alias), and the engine-internal \code{propto()} /
 \code{equalto()} covstructs (used by the canonical keywords above; not
-typically called directly). See \code{vignette("api-keyword-grid")} for a
-one-paragraph tour of each cell.
+typically called directly). See the
+\href{https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html}{formula keyword grid article}
+for a one-paragraph tour of each cell.
 
 \code{gllvmTMB()} parses the glmmTMB-style formula, converts wide
 \code{\link[=traits]{traits()}} input to the same internal stacked-trait representation as

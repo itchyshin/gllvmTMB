@@ -56,7 +56,8 @@ verification pending), `r` reserved (planned for M1/M2),
 | `extract_Sigma_B(fit)` | c | cl | cl | cl | legacy alias for `level = "B"` ($\equiv$ `"unit"`) |
 | `extract_Sigma_W(fit)` | c | cl | cl | cl | legacy alias for `level = "W"` ($\equiv$ `"unit_obs"`) |
 | `extract_Omega(fit)` | c | cl | cl | cl | cross-partition integration (phy/spatial shares back into unit-tier) |
-| `extract_correlations(fit, method, link_residual)` | c | cl | cl | cl | Fisher-z, Wald, profile, bootstrap |
+| `extract_correlations(fit, method, link_residual)` | c | cl | cl | cl | point, Fisher-z, Wald, bootstrap; accepted profile token stops with typed withdrawal |
+| `extract_cross_correlations(fit, level, contrasts, method)` | c | cl | cl | cl | one `multinomial()` trait with ordinary shared `latent()` tier; point, Wald, bootstrap; profile token stops with typed withdrawal |
 | `extract_communality(fit)` | c | cl | cl | cl | $H^2 + C^2 + \psi^2 = 1$ partition |
 | `extract_repeatability(fit)` | c | cl | cl | cl | ICC / R |
 | `extract_phylo_signal(fit)` | c | cl | cl | cl | phylogenetic $H^2$ |
@@ -72,10 +73,10 @@ verification pending), `r` reserved (planned for M1/M2),
 | `getLV(fit)` | c | cl | cl | cl | legacy ordination alias |
 | `getResidualCor(fit)` | c | cl | cl | cl | glmmTMB-style residual correlation matrix |
 | `getResidualCov(fit)` | c | cl | cl | cl | glmmTMB-style residual covariance matrix |
-| `profile_ci_repeatability(fit)` | c | cl | cl | r | Phase 1b PR #105 |
+| `profile_ci_repeatability(fit)` | r | r | r | r | internal withdrawn nonlinear prototype; not exported |
 | `profile_ci_phylo_signal(fit)` | c | cl | cl | r | Phase 1b PR #105 |
-| `profile_ci_communality(fit)` | c | cl | cl | r | Phase 1b PR #120 |
-| `profile_ci_correlation(fit)` | c | cl | cl | r | Phase 1b PR #122 |
+| `profile_ci_communality(fit)` | r | r | r | r | internal withdrawn nonlinear prototype; not exported |
+| `profile_ci_correlation(fit)` | r | r | r | r | internal withdrawn nonlinear prototype; not exported |
 | `profile_targets(fit)` | c | cl | cl | cl | Phase 1b PR #109 (drmTMB-style controlled vocabulary) |
 | `tmbprofile_wrapper(fit, target)` | c | cl | cl | cl | Phase 1b PR #109 |
 | `confint_inspect(fit, parameter)` | c | cl | cl | cl | Phase 1b PR #121 |
@@ -99,10 +100,25 @@ link-residual / OLRE caveats.
 
 ### 1. Covariance family
 
-#### `extract_Sigma(fit, level = c("unit", "unit_obs", "cluster", "phy", "spatial"), part = c("total", "shared", "unique"))`
+#### `extract_Sigma(fit, level = c("unit", "unit_slope", "unit_obs", "cluster", "cluster2", "phy", "phy_slope", "spatial", "spde_slope"), part = c("total", "shared", "unique"))`
 
-**Return**: a `T x T` symmetric positive-semidefinite matrix
-with row and column names = trait labels.
+**Return**: ordinary covariance levels return a `T x T` symmetric
+positive-semidefinite matrix with row and column names equal to trait labels.
+Augmented random-regression levels are explicit shape exceptions:
+
+| Fitted surface | Returned covariance | Return labels |
+|---|---|---|
+| ordinary `latent(1 + x \| unit)` / `indep(1 + x \| unit)` | interleaved `2T x 2T`, decomposable by `part` | `level = "unit_slope"` |
+| legacy/shared `phylo_unique(1 + x \| species)` | shared `2 x 2` intercept-slope block | `level = "phy_unique_slope"` |
+| current `phylo_indep(1 + x \| species)` | interleaved `2T x 2T`, `T` independent within-trait blocks | `level = "phy_indep_slope"`, `part = "indep"` |
+| `phylo_dep(1 + x1 + ... + xs \| species)` | full interleaved `(1+s)T x (1+s)T` | `level = "phy_dep"`, `part = "dep"` |
+| legacy/shared `spatial_unique(1 + x \| coords)` | shared `2 x 2` SPDE field block | `level = "spde_base_slope"` |
+| current `spatial_indep(1 + x \| coords)` | interleaved `2T x 2T`, `T` independent within-trait field blocks | `level = "spde_indep_slope"`, `part = "indep"` |
+| `spatial_dep(1 + x \| coords)` | full interleaved `2T x 2T` field covariance | `level = "spde_dep"`, `part = "dep"` |
+
+The SPDE augmented matrices are on the fitted field-covariance scale; the
+returned note gives the marginal-scale conversion. Current Design 79/80
+`*_indep` must not be relabelled as the legacy shared `2 x 2` channel.
 
 The `level` argument accepts two conceptually distinct
 classes of value. The engine treats both uniformly as
@@ -306,8 +322,9 @@ it is NOT auto-rejected (the once-planned
   an arbitrary effective sample size.
 - `wald`: backward-compatible alias for `fisher-z`; the
   output `method` column preserves the user's requested label.
-- `profile`: profile-likelihood CI via
-  `profile_ci_correlation()` (Phase 1b PR #122).
+- `profile`: accepted for compatibility but stops with
+  `gllvmTMB_nonlinear_profile_withdrawn`. The former penalty-based
+  `profile_ci_correlation()` prototype is internal research machinery.
 - `bootstrap`: bootstrap CI from `bootstrap_Sigma()`.
   Structured tiers that `bootstrap_Sigma()` does not yet
   resample, currently the SPDE spatial tier, return an explicit
@@ -324,6 +341,43 @@ $\Sigma_\text{spde} =
 $\Lambda_\text{spde}\Lambda_\text{spde}^\top$ and therefore rank-1
 correlations can be mechanically $\pm 1$. Report figures must label
 which subset was fitted.
+
+#### `extract_cross_correlations(fit, level = "unit", contrasts = FALSE, link_residual = c("auto", "none"), method = c("point", "bootstrap", "profile", "wald"), conf = 0.95, nsim = 500, seed = NULL)`
+
+**Scope**: this extractor is only for a fitted model containing one
+`multinomial()` trait and one or more non-nominal partner traits that share an
+ordinary `latent()` tier. It summarizes the association between each partner
+and the multinomial trait's whole baseline-category contrast block. It is not
+a general correlation extractor for multiple nominal traits, structured
+phylogenetic or spatial tiers, or models without the shared ordinary latent
+structure. Any level that does not normalize to the ordinary `B` / `unit` tier
+fails with `gllvmTMB_cross_level_unsupported`. With
+`link_residual = "auto"`, ordinal-probit partners fail with
+`gllvmTMB_cross_auto_ordinal_unsupported`: their threshold model already fixes
+the latent residual at one, so the current automatic addition would count it
+twice. Latent-scale pairwise covariance remains available through
+`extract_Sigma(..., part = "shared", link_residual = "none")`; the one-number
+nominal summary should be reported from an admitted non-ordinal partner set.
+
+**Return**: one row per nominal-partner pair. Point output has `nominal`,
+`partner`, and `multiple_r`; with `contrasts = TRUE`, it also has the list
+column `contrast_r`. `multiple_r` is the reference-invariant multiple
+correlation for the full contrast block. Wald or bootstrap requests add
+`multiple_r_lower`, `multiple_r_upper`, `multiple_r_method`, and
+`multiple_r_interval_status`; with contrasts, the corresponding `contrast_r_*`
+columns are also present. Bounds that were not computed remain `NA` and are
+labelled `"point"` rather than being presented as another method.
+
+**Method semantics**: `"point"` is the default. `"wald"` uses a Fisher-z
+approximation for both summaries and is labelled
+`"heuristic_unvalidated"`; it is not a calibrated inference procedure.
+`"bootstrap"` uses `bootstrap_Sigma()` for `multiple_r`, while contrast rows
+remain point-only, and is labelled `"target_specific_uncalibrated"`.
+`"profile"` is retained only as a compatibility token and stops with
+`gllvmTMB_nonlinear_profile_withdrawn`: the nonlinear constrained-refit
+prototype is not a public interval route. None of these non-point interval
+routes has coverage calibration, so users must report the returned method and
+status rather than call the bounds profile or validated confidence intervals.
 
 #### `extract_communality(fit, level)`
 
@@ -342,8 +396,8 @@ Psi_phy)`, not whole-model phylogenetic signal. When `ci = TRUE`, the return
 is a `data.frame` with columns `trait`, `tier`, `c2`, `lower`, `upper`, and
 `method`.
 
-For fitted `gllvmTMB_multi` objects, `method = "profile"` delegates to
-`profile_ci_communality()`, while `method = "bootstrap"` runs
+For fitted `gllvmTMB_multi` objects, `method = "profile"` stops with
+`gllvmTMB_nonlinear_profile_withdrawn`, while `method = "bootstrap"` runs
 `bootstrap_Sigma(..., what = "communality")` and returns the resulting
 percentile bounds. For existing `bootstrap_Sigma()` objects that already
 contain `communality_B` / `communality_W` / `communality_phy` summaries,
@@ -361,10 +415,11 @@ stacked communality / uniqueness bars.
 columns `trait`, `R` (the ICC / repeatability), `lower`, `upper`, and
 `method`.
 
-For fitted `gllvmTMB_multi` objects, `method = "profile"` currently reports an
-honest fallback to `method = "wald"` for full-Sigma repeatability, while
-`method = "bootstrap"` runs `bootstrap_Sigma(..., what = "ICC")` with both the
-`unit` and `unit_obs` levels. For existing `bootstrap_Sigma()` objects that
+For fitted `gllvmTMB_multi` objects, `method = "profile"` stops with
+`gllvmTMB_repeatability_profile_withdrawn`; it does not silently fall back to a
+different estimand or method. `method = "bootstrap"` runs
+`bootstrap_Sigma(..., what = "ICC")` with both the `unit` and `unit_obs`
+levels. For existing `bootstrap_Sigma()` objects that
 already contain `ICC_site`, `extract_repeatability()` reuses the stored point
 estimates and percentile bounds without rerunning bootstrap refits (EXT-22).
 
@@ -539,16 +594,19 @@ its return value is undefined under the current engine.
 Legacy; superseded by `extract_repeatability()`. Kept
 through 0.2.x.
 
-### 5. Profile-CI extractors
+### 5. Profile-CI routes and internal prototypes
 
-The Phase 1b validation milestone added a family of
-profile-likelihood CI helpers:
+The public release distinguishes admitted direct/simple profile routes from
+withdrawn nonlinear penalty-profile prototypes. Only
+`profile_ci_phylo_signal()` below remains exported as a derived simple route.
+The repeatability, communality, correlation, and proportion helpers are
+internal research machinery and do not license public intervals.
 
 #### `profile_ci_repeatability(fit, trait_idx, level)` (PR #105)
 
-**Return**: a `data.frame` with `trait`, `lower`, `upper`,
-`level`. Uses the Lagrange fix-and-refit approach
-documented in `R/profile-derived.R`.
+Internal prototype only. Public repeatability profile requests stop with
+`gllvmTMB_repeatability_profile_withdrawn` because the prototype targeted a
+diagonal-companion ratio rather than canonical full-Sigma repeatability.
 
 #### `profile_ci_phylo_signal(fit, trait_idx, level)` (PR #105)
 
@@ -556,22 +614,15 @@ Same shape as `profile_ci_repeatability()`.
 
 #### `profile_ci_communality(fit, ...)` (PR #120)
 
-**Return**: same shape, computing CI on each of
-$H^2_t / C^2_t / \psi^2_t$ separately.
+Internal prototype only. Public communality profile requests stop with
+`gllvmTMB_nonlinear_profile_withdrawn`.
 
 #### `profile_ci_correlation(fit, trait_pair, level)` (PR #122)
 
-**Return**: a `data.frame` with `trait1`, `trait2`,
-`lower`, `upper`, `level`. CI on the latent-scale
-correlation between the named trait pair.
-
-For `tier = "spatial"`, the derived profile target rebuilds the same
-spatial total covariance as `extract_Sigma(level = "spatial",
-part = "total")`. When `spatial_latent(unique = TRUE)` is active, the
-diagonal contribution is `exp(-2 * log_tau_spde)` because the SPDE
-field prior uses `SCALE(GMRF(Q), 1 / tau)`. The profile-inversion
-coverage row remains partial in the validation-debt register until a
-heavy constrained-refit gate is added for this total-covariance target.
+Internal prototype only. Public correlation profile requests stop with
+`gllvmTMB_nonlinear_profile_withdrawn`. This includes the former spatial and
+augmented selected-entry canaries; a heavier constrained-refit smoke test alone
+cannot restore them.
 
 #### `profile_targets(fit, ready_only = FALSE)` (PR #109)
 
@@ -732,10 +783,10 @@ does NOT do. From this contract:
   rotation, but the engine does not pin $\Lambda$ during
   fitting; the rotation chosen at fit time is identifiability-
   algorithm-dependent.
-- **No Hessian / SE on derived quantities except via
-  profile-CI helpers**: Wald SEs on $H^2$ etc. are not
-  exposed; profile CI is the canonical path (per Phase 1b
-  validation milestone).
+- **Derived uncertainty is route-specific**: point, Wald/Fisher-z, bootstrap,
+  and retained simple-profile support must be read separately. Nonlinear
+  penalty profiles for repeatability, communality, correlation, and proportion
+  are withdrawn and are not the canonical uncertainty path.
 - **No automatic dispatch on `confint(fit, parm,
   method = "profile")` for arbitrary parameters**: only the
   parameters listed in `profile_targets(fit, ready_only =

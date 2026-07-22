@@ -1,12 +1,12 @@
 # Design 83 — Multinomial (unordered categorical) response family
 
-**Status date:** 2026-07-16.
-**Decision owner:** maintainer (S. Nakagawa); re-scoped multinomial out of "post-CRAN" into the
-0.6 dev cycle, **fixed-effects-only (Tier 1)**.
-**FAM-20 status:** **`covered`** for the fixed-effect recovery route — promoted 2026-07-16 after a
-clean fresh 3-lens D-43 re-audit (likelihood / honesty / recovery all DONE) + maintainer sign-off.
-The latent-scale correlation surface stays **Tier 2, deferred**. Reader-facing article coverage
-(response-families) is a deliberate follow-up with the maintainer, not batched here.
+**Status date:** 2026-07-21.
+**Historical decision record:** maintainer (S. Nakagawa) re-scoped multinomial
+out of "post-CRAN" into the 0.6 dev cycle as **fixed-effects-only (Tier 1)**.
+**Historical FAM-20 status:** the fixed-effect recovery route was promoted
+`covered` on 2026-07-16 after a clean fresh 3-lens D-43 re-audit and maintainer
+sign-off. That historical Tier-2 deferral is updated by the current-status note
+below. Reader-facing article coverage remains a separate follow-up.
 **Scope:** R-only this arc (Julia parity is a separate later arc).
 **Design panel (ultra-plan):** Gauss (TMB likelihood), Boole (R API), Noether (symbolic
 alignment / identifiability), Fisher + Emmy (inference / S3), Curie (recovery), Rose + Jason
@@ -14,9 +14,31 @@ alignment / identifiability), Fisher + Emmy (inference / S3), Curie (recovery), 
 **Runtime id:** `family_id 16` (next free after `nbinom1 = 15`).
 **Register row:** `docs/design/35-validation-debt-register.md` **FAM-20**.
 
+> **Current-status supersession (2026-07-21).** The Tier-1 rationale below is
+> retained as the historical admission record. Subsequent maintainer-approved
+> 0.6 PRs #753, #758, #761, #762, and #766 changed the current boundary:
+> fixed-effect recovery remains **covered**; `phylo_latent()` may report the
+> fitted $(K-1)\times(K-1)$ among-category covariance $V$ through
+> `part = "shared", link_residual = "none"`, but is **partial** and
+> data-hungry; and one multinomial trait may share an ordinary `latent()` block
+> with other families, also **partial**. The cross-family report preserves the
+> $K-1$ contrast block rather than claiming one categorical correlation. The
+> matrix softmax link residual $(\pi^2/6)(I+J)$ is applied on that block only
+> for the separate total/`link_residual = "auto"` extraction.
+> Ordinary `latent()` default `Psi` is allowed for identified partner traits,
+> while the current engine maps off the multinomial contrast diagonal. That
+> term is unidentified with one categorical draw per unit and identifiable in
+> principle under replication, but the current conservative implementation
+> still suppresses it; explicit multinomial `unique()`/`indep()` terms remain
+> fenced. FAM-20B point, Wald, and bootstrap plumbing are not
+> interval-calibration evidence; nonlinear profile intervals are withdrawn by
+> the M1 public-boundary repair and are typed-refusal tested in
+> `tests/testthat/test-cross-family-intervals.R`. Everything not named by this
+> allow-list remains fail-closed.
+
 ---
 
-## 1. Context — the decisive gate (why fixed-effects-only)
+## 1. Historical context — the original fixed-effects-only gate
 
 The natural companion to the ordinal cell is a genuine *unordered* categorical response. A
 prior-work sweep established four load-bearing facts:
@@ -74,7 +96,7 @@ log-odds of category `k` vs category 1 at `x = 0`; `β_{tk}` is the change in th
 | per-category slopes `β_{tk}`, k=2..K | `(0 + trait):x` on pseudo-trait level | `η_{itk}=β0+xβ` | `fixef()` row `trait:cat_k:x` | `∂/∂x log[P(k)/P(1)]` |
 | response draw `y_i` | `family = multinomial()`, y a ≥3-level unordered factor | `sample.int(K,1,prob=softmax)` | grouped softmax logLik, once per observation-group | `E[1{y=k}] = p_ik` |
 | reference-choice invariance | relevel `y` | refit with a different baseline | logLik + fitted `p_ik` **unchanged to 1e-6** | invariant; coefficients relabel |
-| **link residual `σ²_{d,t}`** | link-residual slot | — | `link_residual_per_trait()` returns **NA** (guarded) | **N/A by design** (K−1 dim) |
+| **link residual matrix** | link-residual slot | — | `extract_Sigma(..., link_residual = "auto")` adds $(\pi^2/6)(I+J)$ within the contrast block | softmax random-utility residual; $\pi^2/3$ diagonal and $\pi^2/6$ off-diagonal |
 
 ### Identifiability
 
@@ -99,9 +121,9 @@ and redirect to `binomial()`** (guard mirrors `R/missing-predictor.R:1167`).
 
 ---
 
-## 3. Why the latent-scale correlation surface is deferred (Tier 2)
+## 3. Historical Tier-2 deferral and its narrow successor routes
 
-The Link Residual Contract (Design 02) requires **one scalar `σ²_d` per trait**; every currently
+The original Link Residual Contract (Design 02) required **one scalar `σ²_d` per trait**; every currently
 supported family has a one-dimensional latent liability (binomial's single logistic/probit/cloglog
 axis; ordinal's *single ordered* axis, which is exactly why ordinal yields a scalar and multinomial
 does not). An unordered categorical response has no monotone axis to collapse `K` exchangeable
@@ -113,7 +135,8 @@ The delta escape hatch (constrain latent to one interpretable submodel — Desig
 resolution) **does not transfer**: the `K−1` contrasts are exchangeable, so there is no privileged
 single scale to nominate. Categorical is therefore strictly harder than delta and stays deferred.
 
-**Consequences enforced in Tier 1:**
+**Historical Tier-1 consequences (superseded where the current-status note says
+otherwise):**
 - `multinomial()` declares its `link_residual_rule` as **N/A-by-design**;
   `link_residual_per_trait()` (`R/extract-sigma.R`) gains an explicit `fid == 16 → NA_real_` branch.
 - `extract_correlations()` and `extract_Sigma()` both **hard-refuse** a fit containing a categorical
@@ -166,12 +189,14 @@ for any `η`; an AD-safe floor mirrors ordinal's `tiny_p` (defensive, should nev
 - **No new `PARAMETER_VECTOR`** (the key simplification vs ordinal): category effects enter through
   `X_fix`/`b_fix`; the baseline pin is structural. Dispersion + auto-`Psi` are `map`-ed off.
 
-### 4.4 Guards (Tier 1)
-`K < 3` → redirect to `binomial()`; `multinomial()` inside a mixed-family `list(...)` → reject
-(defer to Tier 2); any latent/RE/structured term on a categorical trait → fail loud; a categorical
-trait must **own all rows of its trait** (softmax is estimated per trait); `weights` on a multinomial
-trait rejected in Tier 1 (per-group weight semantics deferred); unobserved non-baseline categories →
-abort (`droplevels`, infer `K` from observed categories).
+### 4.4 Guards (historical Tier 1; current partial allow-list above)
+`K < 3` → redirect to `binomial()`; the original mixed-family and all-latent
+refusals are retained here as history. Current 0.6 permits only one multinomial
+trait per fit, the named `phylo_latent()` route, and the named ordinary shared
+`latent()` route. Augmented slopes, explicit multinomial `unique()`/`indep()`,
+and all unlisted source/tier combinations fail loud. A categorical trait must
+**own all rows of its trait** (softmax is estimated per trait); `weights` on a
+multinomial trait remain rejected; unobserved non-baseline categories abort.
 
 ### 4.5 The one integration point to pin first (C1a)
 The exact response encoding the C++ branch reads — a per-row 0/1 indicator (Gauss) vs a repeated
@@ -193,11 +218,11 @@ S3 method assumes (methods co-index at `n = length(y)`). Each method therefore n
 | `predict(type="response")` | K per-category probabilities (long-in-category, sums to 1); point only | prediction intervals / prob SEs |
 | `predict(type="link")` | K−1 non-baseline etas (category 1 omitted) | SEs on etas |
 | `fitted()` (new method) | per-category probability; modal category via arg | — |
-| `simulate()` | **not defined** → fails loud (typed `gllvmTMB_simulate_multinomial_unsupported`); the fid-16 softmax draw branch is **deferred** rather than fall back to Gaussian-on-link (which would fabricate data) | per-group softmax `simulate()` draw (deferred) |
+| `simulate()` | softmax simulation is implemented for the admitted route | broader unvalidated simulation regimes remain fenced |
 | `residuals()` | **not defined** → `status = "unsupported_family"` (nominal categories have no ordered CDF; the pseudo-rows are not independent) — exactly where fid 14 already lands | ordinal quantile residual / multinomial deviance residual, calibration-gated |
-| `confint()` / SE | **Wald** on per-category `b_fix` intercept + slope (free) | profile CI (runs but uncalibrated → **not advertised**) |
+| `confint()` / SE | standard fixed-effect Wald output for free `b_fix` coefficients | fixed-effect bootstrap is not implemented; direct profiles are not multinomial recovery evidence |
 | `print()` / `summary()` | `trait:cat_k[:x]` coefficient labels + a baseline advisory line | — |
-| `extract_correlations` / `extract_Sigma` | **hard-refuse** a fid-16 trait (typed abort: `gllvmTMB_multinomial_correlation_undefined` / `gllvmTMB_multinomial_sigma_undefined`); `extract_repeatability` errors on the absent variance components | latent-scale trait correlation |
+| `extract_correlations` / `extract_Sigma` | fixed-effect-only fits still refuse; admitted latent routes return an explicit contrast block and `extract_cross_correlations()` summary; FAM-20B Wald/bootstrap summaries are route-only and uncalibrated | universal scalar nominal correlation, calibrated intervals, nonlinear profile, and unlisted tiers |
 
 ---
 
@@ -240,12 +265,14 @@ reserved for thousands of slow fits / >100 cores; never GitHub Actions — D-50)
 "matrix" recovery test is deliberately **not** authored — it needs random effects on a categorical
 trait = out of Tier-1 scope (that row stays `blocked/planned`).
 
-**The two-part draw trap (R4).** The inline `sample()` DGP does *not* depend on `simulate()`, so
-recovery is not blocked by it — but it **must match the C++ packing** (§4.5). Separately,
-`simulate.gllvmTMB_multi()` routes through `.draw_y_per_family()` whose `supported` set lacks 16 and
-returns one scalar per row → a multinomial fit would **silently fall back to a Gaussian-on-link
-draw**. Any test touching `simulate()` / `bootstrap_Sigma()` / predictive diagnostics on a
-multinomial fit **must honest-skip** until the fid-16 draw branch lands — never accept the fallback.
+**Historical two-part draw trap (R4; resolved by PR #766).** The original
+Tier-1 implementation lacked a fid-16 simulator, so simulation-dependent routes
+were required to honest-skip rather than fall back to a Gaussian-on-link draw.
+PR #766 (`ab3098e4`) added the grouped softmax draw in
+`.draw_y_per_family()` and `tests/testthat/test-simulate-multinomial.R` guards
+the current behavior. Simulation is available for the admitted multinomial
+routes only; unlisted model structures remain fenced and must not inherit a
+generic fallback.
 
 ---
 

@@ -1,3 +1,9 @@
+# pkgdown::build_articles() drops rendered chunk figures into vignettes/.
+# They are generated output, never source, and were previously left untracked —
+# which dirtied the tree after every render and blocked the durable receipt
+# runners, since those require a clean worktree.
+vignettes/*.png
+
 # History files
 .Rhistory
 .Rapp.history

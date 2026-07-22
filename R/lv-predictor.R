@@ -70,9 +70,9 @@ gll_prepare_lv_predictor_setup <- function(
       character(1L)
     )
     cli::cli_abort(c(
-      "Only one {.arg lv} predictor-informed latent-score term is allowed in this Design 73 C1 slice.",
+      "Only one {.arg lv} predictor-informed latent-score term is allowed.",
       "x" = "Found terms: {paste(unique(labels), collapse = ', ')}.",
-      "i" = "C1 targets one ordinary unit-tier {.fn latent} block."
+      "i" = "This route targets one ordinary unit-tier {.fn latent} block."
     ))
   }
 
@@ -91,7 +91,7 @@ gll_prepare_lv_predictor_setup <- function(
     cli::cli_abort(c(
       "{.arg lv} is currently limited to ordinary unit-tier {.fn latent}.",
       "x" = "Found {.code {label}} on grouping {.val {group}}.",
-      "i" = "Design 73 C1 excludes W-tier, cluster, cluster2, source-specific, kernel, and dep/latent-slope terms.",
+      "i" = "This route excludes W-tier, cluster, cluster2, source-specific, kernel, and dep/latent-slope terms.",
       ">" = "Use {.code latent(0 + trait | {site}, d = K, lv = ~ x)} with the fit's {.arg unit} column."
     ))
   }
@@ -99,7 +99,7 @@ gll_prepare_lv_predictor_setup <- function(
     cli::cli_abort(c(
       "{.arg lv} cannot yet be combined with augmented latent random-regression syntax.",
       "x" = "The latent term has LHS form {.val {lhs_form}}.",
-      "i" = "Design 73 C1 requires an intercept-only latent block.",
+      "i" = "This route requires an intercept-only latent block.",
       ">" = "Use {.code latent(0 + trait | {site}, d = K, lv = ~ x)} without an augmented LHS."
     ))
   }
@@ -127,7 +127,7 @@ gll_prepare_lv_predictor_setup <- function(
     cli::cli_abort(c(
       "{.arg lv} currently admits only Gaussian and pure binomial fits with standard links.",
       "x" = "Found at least one row outside {.code gaussian()} or {.code binomial(link = \"logit\" / \"probit\" / \"cloglog\")}.",
-      "i" = "Other non-Gaussian predictor-informed latent scores remain blocked under {.code LV-05}."
+      "i" = "Other non-Gaussian predictor-informed latent scores are not yet supported."
     ))
   }
 
@@ -156,19 +156,19 @@ gll_prepare_lv_predictor_setup <- function(
   if ("offset" %in% rhs_functions) {
     cli::cli_abort(c(
       "{.arg lv} formulas cannot contain {.fn offset} terms.",
-      "i" = "Design 73 has not derived offset handling for latent-score means."
+      "i" = "Offset handling for latent-score means has not been derived."
     ))
   }
   if ("mi" %in% rhs_functions) {
     cli::cli_abort(c(
       "{.arg lv} formulas cannot contain {.fn mi} terms.",
-      "i" = "Missing {.arg lv} predictors remain blocked under {.code LV-03}."
+      "i" = "Missing {.arg lv} predictors are not yet supported."
     ))
   }
   smooth_calls <- intersect(rhs_functions, c("s", "te", "ti", "t2"))
   if (length(smooth_calls) > 0L) {
     cli::cli_abort(c(
-      "{.arg lv} formulas cannot contain smooth terms in this C1 slice.",
+      "{.arg lv} formulas cannot contain smooth terms.",
       "x" = "Found {.fn {smooth_calls}}.",
       "i" = "Use already-computed unit-level columns, or wait for a smooth-specific design."
     ))
@@ -217,7 +217,7 @@ gll_prepare_lv_predictor_setup <- function(
     cli::cli_abort(c(
       "{.arg lv} predictor-informed latent scores cannot yet be combined with fixed-effect RHS covariates.",
       "x" = "Found fixed-effect RHS column(s): {.var {fixed_rhs_vars}}.",
-      "i" = "Design 73 C1 keeps fixed effects and latent-score means distinct; the {.code X + X_lv} regime remains gated until it has its own derivation and recovery evidence."
+      "i" = "This route keeps fixed effects and latent-score means distinct; the {.code X + X_lv} regime remains gated until it has its own derivation and recovery evidence."
     ))
   }
   lv_no_intercept <- gll_lv_no_intercept_formula(lv_formula)
@@ -252,7 +252,7 @@ gll_prepare_lv_predictor_setup <- function(
   if (anyNA(X_row) || any(!is.finite(X_row))) {
     cli::cli_abort(c(
       "{.arg lv} predictor design contains missing or non-finite values.",
-      "i" = "Missing {.arg lv} predictors remain blocked under {.code LV-03}."
+      "i" = "Missing {.arg lv} predictors are not yet supported."
     ))
   }
 
@@ -284,7 +284,7 @@ gll_prepare_lv_predictor_setup <- function(
     cli::cli_abort(c(
       "{.arg lv} predictors must be constant within each {.arg unit}.",
       "x" = "Nonconstant unit level(s): {.val {bad_units}}.",
-      "i" = "Design 73 C1 builds one latent-score mean row per unit, not one per observation."
+      "i" = "This route builds one latent-score mean row per unit, not one per observation."
     ))
   }
 

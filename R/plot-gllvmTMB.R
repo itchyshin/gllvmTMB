@@ -221,6 +221,20 @@ plot.gllvmTMB_multi <- function(
   grid = "#D9D9D9"
 )
 
+## Stabilise stacked-bar geometry without changing the scientific values kept
+## in `proportion`. Components below `tol` occupy far less than one device
+## pixel but can serialize to platform-dependent 1e-6-point SVG widths. Set
+## only the rendering values to zero, then renormalise each stack to
+## floating-point precision.
+.gtmb_stable_stack_values <- function(x, group, tol = 1e-7) {
+  out <- as.numeric(x)
+  out[is.finite(out) & abs(out) < tol] <- 0
+  totals <- stats::ave(out, group, FUN = sum)
+  ok <- is.finite(totals) & totals > 0
+  out[ok] <- out[ok] / totals[ok]
+  out
+}
+
 .gtmb_theme_figure <- function(base_size = 11) {
   ggplot2::theme_minimal(base_size = base_size) +
     ggplot2::theme(
@@ -1260,6 +1274,10 @@ plot.gllvmTMB_multi <- function(
     out$component,
     levels = c("Shared latent (c^2)", "Trait-specific uniqueness")
   )
+  out$plot_proportion <- .gtmb_stable_stack_values(
+    out$proportion,
+    interaction(out$trait, out$level, drop = TRUE)
+  )
   out
 }
 
@@ -1276,7 +1294,11 @@ plot.gllvmTMB_multi <- function(
 
   p <- ggplot2::ggplot(
     dat,
-    ggplot2::aes(x = .data$proportion, y = .data$trait, fill = .data$component)
+    ggplot2::aes(
+      x = .data$plot_proportion,
+      y = .data$trait,
+      fill = .data$component
+    )
   ) +
     ggplot2::geom_col(
       position = "stack",
@@ -1398,6 +1420,10 @@ plot.gllvmTMB_multi <- function(
     dat$component_label,
     levels = component_levels
   )
+  dat$plot_proportion <- .gtmb_stable_stack_values(
+    dat$proportion,
+    dat$trait
+  )
 
   ## Stable colourblind-friendly component palette.
   pal <- c(
@@ -1414,7 +1440,7 @@ plot.gllvmTMB_multi <- function(
   p <- ggplot2::ggplot(
     dat,
     ggplot2::aes(
-      x = .data$proportion,
+      x = .data$plot_proportion,
       y = .data$trait,
       fill = .data$component_label
     )

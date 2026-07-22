@@ -74,8 +74,7 @@ explicit compatibility spellings
 \code{animal_latent(..., unique = FALSE) + animal_unique()},
 \code{spatial_latent(..., unique = FALSE) + spatial_unique()}, and
 \code{kernel_latent(..., unique = FALSE) + kernel_unique()} remain accepted. See
-\code{vignettes/articles/pitfalls.Rmd} section 5 and
-\code{docs/dev-log/decisions.md} 2026-05-14 entry.
+the \emph{Pitfalls} article, section 5.
 \item \strong{Confirmatory factor models}. Sometimes domain knowledge tells
 you the latent-only model is correct (no trait-specific residuals);
 confirm with a likelihood-ratio test.

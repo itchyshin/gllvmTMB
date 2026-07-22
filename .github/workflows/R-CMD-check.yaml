@@ -52,8 +52,10 @@ jobs:
       # tests are gated behind the GLLVMTMB_HEAVY_TESTS env flag (see
       # tests/testthat/setup.R::skip_if_not_heavy). It is intentionally NOT set
       # here, so those tests skip and routine PR CI stays fast (~12 min). The
-      # full heavy suite runs nightly + pre-release across all 3 OSes via
-      # .github/workflows/full-check.yaml (which sets GLLVMTMB_HEAVY_TESTS=1).
+      # bounded full heavy package-regression suite runs nightly and on demand
+      # on Ubuntu via .github/workflows/full-check.yaml; release tags run its
+      # three-OS matrix. Scientific recovery/coverage/power campaigns are never
+      # GitHub Actions jobs (D-50): they run on Totoro/DRAC with local keepers.
       matrix:
         config: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.full_matrix) && '[{"os":"ubuntu-latest","r":"release"},{"os":"macos-latest","r":"release"},{"os":"windows-latest","r":"release"}]' || '[{"os":"ubuntu-latest","r":"release"}]') }}
 
@@ -65,6 +67,10 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Enforce GitHub Actions compute boundary
+        shell: bash
+        run: bash tools/check-actions-boundary.sh
 
       - name: Classify R CMD check scope
         id: scope
@@ -207,7 +213,8 @@ jobs:
       - uses: r-lib/actions/check-r-package@v2
         if: steps.scope.outputs.full_required == 'true'
         with:
-          upload-snapshots: true
+          upload-snapshots: false
+          upload-results: never
           # Routine PRs: fail only on real errors; cosmetic CRAN warnings
           # (non-ASCII, NEWS format) are caught by the nightly full-check.yaml.
           error-on: '"error"'

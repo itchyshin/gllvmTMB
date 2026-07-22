@@ -102,9 +102,9 @@ skip_on_cran()
   NULL
 }
 
-## CI smoke: TRUE iff extract_correlations(tier = "unit") yields all-finite
-## point estimates and bounds.
-.ec_unit_finite <- function(fit) {
+## Default-surface smoke: extract_correlations(tier = "unit") returns finite
+## point estimates without manufacturing an interval when no method is asked.
+.ec_unit_point_only <- function(fit) {
   cc <- tryCatch(
     suppressMessages(
       extract_correlations(fit, tier = "unit", link_residual = "auto")
@@ -115,15 +115,17 @@ skip_on_cran()
     return(FALSE)
   }
   all(is.finite(cc$correlation)) &&
-    all(is.finite(cc$lower)) &&
-    all(is.finite(cc$upper))
+    all(is.na(cc$lower)) &&
+    all(is.na(cc$upper)) &&
+    all(cc$method == "none") &&
+    all(cc$interval_status == "none")
 }
 
 ## ===========================================================================
 ##  latent(0 + trait | unit, d = 1) -- Sigma recovery (rank-1 loading)
 ## ===========================================================================
 
-test_that("poisson x latent(unit, d=1): converges, PD, recovers rank-1 loading sign + finite rho CI", {
+test_that("poisson x latent(unit, d=1): converges, PD, recovers rank-1 loading sign + point-only rho", {
   skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
@@ -148,15 +150,15 @@ test_that("poisson x latent(unit, d=1): converges, PD, recovers rank-1 loading s
   ev <- eigen(fit$report$Sigma_B, symmetric = TRUE, only.values = TRUE)$values
   expect_true(all(ev > -1e-6), info = "Sigma_B positive-semidefinite")
 
-  ## CI smoke (finite cross-trait correlation interval).
-  expect_true(.ec_unit_finite(fit))
+  ## Default extractor contract: point estimate only, with explicit NA bounds.
+  expect_true(.ec_unit_point_only(fit))
 })
 
 ## ===========================================================================
 ##  unique(0 + trait | unit) -- per-trait diagonal recovery
 ## ===========================================================================
 
-test_that("poisson x unique(unit): converges, PD, recovers positive diag w/ correct dominant trait + finite rho CI", {
+test_that("poisson x unique(unit): converges, PD, recovers positive diag w/ correct dominant trait + point-only rho", {
   skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
@@ -179,14 +181,14 @@ test_that("poisson x unique(unit): converges, PD, recovers positive diag w/ corr
   expect_equal(which.max(v_est), which.max(diag(d$Sigma_B)),
                info = "unique() recovers the dominant-variance trait")
 
-  expect_true(.ec_unit_finite(fit))
+  expect_true(.ec_unit_point_only(fit))
 })
 
 ## ===========================================================================
 ##  latent + unique (paired) -- both blocks present
 ## ===========================================================================
 
-test_that("poisson x latent(unit, d=1) + unique(unit): converges, PD, recovers both blocks + finite rho CI", {
+test_that("poisson x latent(unit, d=1) + unique(unit): converges, PD, recovers both blocks + point-only rho", {
   skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
@@ -212,14 +214,14 @@ test_that("poisson x latent(unit, d=1) + unique(unit): converges, PD, recovers b
   v_diag <- as.numeric(fit$report$sd_B)
   expect_true(all(is.finite(v_diag)) && all(v_diag > 0))
 
-  expect_true(.ec_unit_finite(fit))
+  expect_true(.ec_unit_point_only(fit))
 })
 
 ## ===========================================================================
 ##  indep(0 + trait | unit) -- diagonal-only marginal mode (recovery/smoke)
 ## ===========================================================================
 
-test_that("poisson x indep(unit): converges, PD, sets indep marker, recovers positive diag + finite rho CI", {
+test_that("poisson x indep(unit): converges, PD, sets indep marker, recovers positive diag + point-only rho", {
   skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
@@ -239,14 +241,14 @@ test_that("poisson x indep(unit): converges, PD, sets indep marker, recovers pos
   expect_equal(which.max(v_est), which.max(diag(d$Sigma_B)),
                info = "indep() recovers the dominant-variance trait")
 
-  expect_true(.ec_unit_finite(fit))
+  expect_true(.ec_unit_point_only(fit))
 })
 
 ## ===========================================================================
 ##  dep(0 + trait | unit) -- full unstructured Sigma (recovery/smoke)
 ## ===========================================================================
 
-test_that("poisson x dep(unit): converges, PD, recovers off-diagonal correlations + finite rho CI", {
+test_that("poisson x dep(unit): converges, PD, recovers off-diagonal correlations + point-only rho", {
   skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
@@ -269,14 +271,14 @@ test_that("poisson x dep(unit): converges, PD, recovers off-diagonal correlation
               info = "dep() off-diagonal correlation signs match truth")
   expect_lt(max(abs(cor_est[off] - cor_true[off])), 0.30)
 
-  expect_true(.ec_unit_finite(fit))
+  expect_true(.ec_unit_point_only(fit))
 })
 
 ## ===========================================================================
 ##  scalar (one shared variance) == unique(..., common = TRUE) (recovery/smoke)
 ## ===========================================================================
 
-test_that("poisson x scalar/unique(common=TRUE) (unit): converges, PD, ties one shared variance + finite rho CI", {
+test_that("poisson x scalar/unique(common=TRUE) (unit): converges, PD, ties one shared variance + point-only rho", {
   skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
@@ -296,5 +298,5 @@ test_that("poisson x scalar/unique(common=TRUE) (unit): converges, PD, ties one 
               info = "scalar mode ties all per-trait variances to one value")
   expect_true(sds[1L] > 0)
 
-  expect_true(.ec_unit_finite(fit))
+  expect_true(.ec_unit_point_only(fit))
 })

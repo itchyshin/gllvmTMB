@@ -86,4 +86,3 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 SystemRequirements: GNU make, C++17
 Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.2

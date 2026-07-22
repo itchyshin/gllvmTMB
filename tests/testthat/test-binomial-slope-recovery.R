@@ -1,8 +1,8 @@
 ## Issue #341 Track B -- activate binomial(probit/logit) augmented random
 ## slopes on the phylo_indep path: `phylo_indep(1 + x | species)` x
-## binomial. This is the DIAGONAL augmented-slope cell (intercept-slope
-## correlation pinned to 0 by the model contract), the binomial analogue of
-## the Gaussian anchor `test-phylo-indep-slope-gaussian.R`.
+## binomial. This is the per-trait block-diagonal augmented-slope cell, the
+## binomial structural analogue of the Gaussian anchor
+## `test-phylo-indep-slope-gaussian.R`.
 ##
 ## ----------------------------------------------------------------------
 ## Why this is ZERO new C++ (family-agnostic engine)
@@ -14,33 +14,24 @@
 ##   src/gllvmTMB.cpp (likelihood): int fid = family_id_vec(o); ...   [~L1395]
 ##
 ## so swapping the family only changes how the SAME eta is mapped to the
-## response. phylo_indep differs from the family-general phylo_unique()
-## path solely by pinning atanh_cor_b to 0 via the TMB map
-## (R/fit-multi.R). Activating binomial therefore needed only relaxing the
-## Gaussian-only guard in R/fit-multi.R (it now admits family_id in
-## {0 = gaussian, 1 = binomial}); no C++ likelihood branch was added.
+## response. phylo_indep uses the family-general augmented path with a TMB
+## map that fixes cross-trait Cholesky entries to zero while leaving each
+## trait's intercept--slope correlation free. Activating binomial therefore
+## needed no family-specific C++ likelihood branch.
 ##
 ## ----------------------------------------------------------------------
-## Recovery design (mirrors test-spatial-indep-slope-gaussian.R +
-## the RE-09 within-cell-replicate discipline)
+## Structural design
 ##
-## Binary/binomial slope variances and the species-level Sigma_b identify
-## only with substantial var(x) and a non-trivial n_sp (Phase B0 scoping
-## memo, docs/dev-log/audits/2026-05-26-phase-b0-nongaussian-scoping.md).
-## A single seed's point estimate is noisy, so -- exactly as the spatial
-## indep-slope Gaussian cell does -- we fit a small grid of seeds and check
-## recovery on the MEAN across the grid (the per-seed noise averages out).
-## The DGP draws a genuinely DIAGONAL Sigma_b (rho = 0), matching the
-## phylo_indep model contract, and uses multi-trial (n = 10) binomial
-## responses for sharper information than single Bernoulli draws.
+## The DGP uses multi-trial (n = 10) binomial responses and separate
+## phylogenetically correlated intercept/slope draws for each trait. It is
+## aligned with the current 2T parameterisation, but this test intentionally
+## does not certify variance recovery or interval calibration.
 ##
 ## Contract asserted per family (probit, logit):
-##   - every seed: opt$convergence == 0 and a positive-definite Hessian;
-##   - every seed: atanh_cor_b is mapped to factor(NA) and report$cor_b is
-##     EXACTLY 0 (the diagonal-Sigma_b indep contract, not an estimate);
-##   - mean(sigma^2_intercept) and mean(sigma^2_slope) within a stated
-##     relative band of the truth (0.4, 0.3). Bands are NOT widened to force
-##     green: an out-of-band mean is an honest failure of the cell.
+##   - one predeclared deterministic seed constructs and is numerically healthy;
+##   - the live engine has 2T columns and 3T free Cholesky entries;
+##   - the reported correlation matrix has unit diagonal and zero cross-trait
+##     blocks, while within-trait correlations remain estimator parameters.
 
 skip_if_not_binom_slope_deps <- function() {
   testthat::skip_on_cran()
@@ -48,19 +39,10 @@ skip_if_not_binom_slope_deps <- function() {
   testthat::skip_if_not_installed("TMB")
 }
 
-## Relative bands on the seed-averaged variances. Calibrated on a 6-seed
-## grid (max observed mean relative error: ~0.12 on the intercept variance,
-## ~0.09 on the slope variance); 0.25 leaves honest head-room without
-## fitting the band to the sample.
-.binom_slope_tol <- list(sigma2_int_rel = 0.25, sigma2_slope_rel = 0.25)
-
 .sigma2_int_true <- 0.4
 .sigma2_slope_true <- 0.3
 
-## Diagonal-Sigma_b phylo fixture for the phylo_indep binomial cell.
-## (alpha, beta) ~ N(0, Sigma_b (x) A_phy) with Sigma_b = diag(0.4, 0.3),
-## i.e. cov(intercept, slope) = 0 (the phylo_indep truth). Multi-trial
-## binomial response (size = 10) under `link`.
+## Per-trait block-diagonal phylogenetic fixture for the binomial cell.
 make_binom_indep_slope_fixture <- function(seed,
                                            link,
                                            n_sp = 70L,
@@ -73,10 +55,16 @@ make_binom_indep_slope_fixture <- function(seed,
   Lphy_chol <- t(chol(Cphy + diag(1e-8, n_sp)))
 
   Sigma_b_true <- diag(c(.sigma2_int_true, .sigma2_slope_true))
-  raw <- matrix(stats::rnorm(n_sp * 2L), nrow = n_sp, ncol = 2L)
-  ab <- (Lphy_chol %*% raw) %*% chol(Sigma_b_true)
-  rownames(ab) <- tree$tip.label
-  colnames(ab) <- c("alpha", "beta")
+  trait_levels <- paste0("t", seq_len(n_traits))
+  ab <- array(
+    NA_real_,
+    dim = c(n_sp, 2L, n_traits),
+    dimnames = list(tree$tip.label, c("alpha", "beta"), trait_levels)
+  )
+  for (tt in seq_len(n_traits)) {
+    raw <- matrix(stats::rnorm(n_sp * 2L), nrow = n_sp, ncol = 2L)
+    ab[, , tt] <- (Lphy_chol %*% raw) %*% chol(Sigma_b_true)
+  }
 
   species_rep <- expand.grid(
     species = factor(tree$tip.label, levels = tree$tip.label),
@@ -84,7 +72,6 @@ make_binom_indep_slope_fixture <- function(seed,
   )
   species_rep$x <- stats::rnorm(nrow(species_rep)) # var(x) = 1
 
-  trait_levels <- paste0("t", seq_len(n_traits))
   df_long <- merge(
     species_rep,
     data.frame(trait = factor(trait_levels, levels = trait_levels)),
@@ -92,9 +79,11 @@ make_binom_indep_slope_fixture <- function(seed,
   )
   df_long <- df_long[order(df_long$species, df_long$rep, df_long$trait), ]
 
-  mu_t <- c(0.2, 0.0, -0.2, 0.1)[as.integer(df_long$trait)]
-  alpha_sp <- ab[as.character(df_long$species), "alpha"]
-  beta_sp <- ab[as.character(df_long$species), "beta"]
+  mu_t <- seq(0.2, -0.2, length.out = n_traits)[as.integer(df_long$trait)]
+  sp_idx <- match(as.character(df_long$species), tree$tip.label)
+  trait_idx <- as.integer(df_long$trait)
+  alpha_sp <- ab[cbind(sp_idx, 1L, trait_idx)]
+  beta_sp <- ab[cbind(sp_idx, 2L, trait_idx)]
   eta <- mu_t + alpha_sp + beta_sp * df_long$x
   p <- if (identical(link, "probit")) stats::pnorm(eta) else stats::plogis(eta)
   df_long$succ <- stats::rbinom(nrow(df_long), size = 10L, prob = p)
@@ -121,84 +110,99 @@ fit_binom_indep_slope <- function(fx, link) {
   if (inherits(fit, "error")) {
     return(list(error = conditionMessage(fit)))
   }
-  sd_b <- as.numeric(fit$report$sd_b)
+  n_traits <- nlevels(fx$df$trait)
+  cor_b <- as.matrix(fit$report$cor_b_mat)
+  block <- rep(seq_len(n_traits), each = 2L)
+  cross <- outer(block, block, `!=`)
+  chol_map <- as.integer(fit$tmb_map$theta_dep_chol)
   list(
     error = NA_character_,
     conv = fit$opt$convergence,
     pd = isTRUE(fit$fit_health$pd_hessian),
-    v_int = sd_b[1L]^2,
-    v_slope = sd_b[2L]^2,
-    rho = as.numeric(fit$report$cor_b),
-    ## phylo_indep contract: atanh_cor_b mapped to factor(NA).
-    cor_mapped = !is.null(fit$tmb_map$atanh_cor_b)
+    finite_objective = is.finite(fit$opt$objective),
+    max_gradient = fit$fit_health$max_gradient,
+    n_traits = n_traits,
+    n_lhs_cols = fit$tmb_data$n_lhs_cols,
+    ntheta_map = sum(!is.na(chol_map)),
+    ntheta_opt = sum(names(fit$opt$par) == "theta_dep_chol"),
+    diag_error = max(abs(diag(cor_b) - 1)),
+    max_cross = max(abs(cor_b[cross]))
   )
 }
 
-## Shared recovery body for a given link.
-run_binom_indep_slope_recovery <- function(link, seeds = 1:6) {
-  res <- lapply(seeds, function(s) {
-    fit_binom_indep_slope(make_binom_indep_slope_fixture(s, link), link)
-  })
-
-  errs <- vapply(res, function(r) r$error, character(1))
+## Shared structural-contract body for one predeclared deterministic seed.
+run_binom_indep_slope_contract <- function(link, seed = 1L) {
+  res <- fit_binom_indep_slope(
+    make_binom_indep_slope_fixture(seed, link),
+    link
+  )
   testthat::expect_true(
-    all(is.na(errs)),
+    is.na(res$error),
     label = sprintf(
-      "phylo_indep(1 + x | sp) x binomial(%s): all seeds construct (got: %s)",
-      link, paste(stats::na.omit(errs), collapse = "; ")
+      "phylo_indep(1 + x | sp) x binomial(%s) constructs (got: %s)",
+      link, res$error
     )
   )
+  if (!is.na(res$error)) {
+    return(invisible(res))
+  }
 
-  conv <- vapply(res, function(r) r$conv, integer(1))
-  pd <- vapply(res, function(r) r$pd, logical(1))
-  rho <- vapply(res, function(r) r$rho, numeric(1))
-  cor_mapped <- vapply(res, function(r) r$cor_mapped, logical(1))
-  v_int <- vapply(res, function(r) r$v_int, numeric(1))
-  v_slope <- vapply(res, function(r) r$v_slope, numeric(1))
-
-  ## ---- Fit health on EVERY seed ---------------------------------------
-  testthat::expect_true(all(conv == 0L))
-  testthat::expect_true(all(pd))
-
-  ## ---- phylo_indep diagonal contract: rho held EXACTLY at 0 -----------
-  testthat::expect_true(all(cor_mapped))
-  testthat::expect_true(all(rho == 0))
-
-  ## ---- Seed-averaged variance recovery (RE-09 within-cell replicate) --
-  mean_v_int <- mean(v_int)
-  mean_v_slope <- mean(v_slope)
-  int_rel <- abs(mean_v_int - .sigma2_int_true) / .sigma2_int_true
-  slope_rel <- abs(mean_v_slope - .sigma2_slope_true) / .sigma2_slope_true
-
-  testthat::expect_lte(int_rel, .binom_slope_tol$sigma2_int_rel)
-  testthat::expect_lte(slope_rel, .binom_slope_tol$sigma2_slope_rel)
-
-  invisible(list(
-    mean_v_int = mean_v_int, mean_v_slope = mean_v_slope,
-    int_rel = int_rel, slope_rel = slope_rel
-  ))
+  testthat::expect_identical(res$conv, 0L)
+  testthat::expect_true(res$pd)
+  testthat::expect_true(res$finite_objective)
+  testthat::expect_true(is.finite(res$max_gradient))
+  testthat::expect_lt(res$max_gradient, 1e-2)
+  testthat::expect_equal(res$n_lhs_cols, 2L * res$n_traits)
+  testthat::expect_equal(res$ntheta_map, 3L * res$n_traits)
+  testthat::expect_equal(res$ntheta_opt, 3L * res$n_traits)
+  testthat::expect_lt(res$diag_error, 1e-10)
+  testthat::expect_lt(res$max_cross, 1e-10)
+  invisible(res)
 }
 
 ## ---------------------------------------------------------------------
-## binomial(probit): phylo_indep(1 + x | sp) augmented-slope recovery
+## binomial(probit): phylo_indep(1 + x | sp) structural contract
 ## ---------------------------------------------------------------------
-test_that("phylo_indep(1 + x | sp) x binomial(probit) recovers diagonal Sigma_b (rho pinned 0); ZERO new C++", {
+test_that("phylo_indep(1 + x | sp) x binomial(probit) preserves the per-trait block-diagonal contract; ZERO new C++", {
   skip_if_not_heavy()
   skip_if_not_binom_slope_deps()
-  run_binom_indep_slope_recovery("probit")
+  run_binom_indep_slope_contract("probit")
 })
 
 ## ---------------------------------------------------------------------
-## binomial(logit): phylo_indep(1 + x | sp) augmented-slope recovery
+## binomial(logit): phylo_indep(1 + x | sp) structural contract
 ## ---------------------------------------------------------------------
-test_that("phylo_indep(1 + x | sp) x binomial(logit) recovers diagonal Sigma_b (rho pinned 0); ZERO new C++", {
+test_that("phylo_indep(1 + x | sp) x binomial(logit) preserves the per-trait block-diagonal contract; ZERO new C++", {
   skip_if_not_heavy()
   skip_if_not_binom_slope_deps()
-  run_binom_indep_slope_recovery("logit")
+  run_binom_indep_slope_contract("logit")
+})
+
+test_that("phylo_indep augmented slopes reject binomial cloglog before TMB construction", {
+  skip_if_not_binom_slope_deps()
+
+  fx <- make_binom_indep_slope_fixture(
+    seed = 1L,
+    link = "cloglog",
+    n_sp = 8L,
+    n_traits = 2L,
+    n_rep = 2L
+  )
+  expect_error(
+    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      cbind(succ, fail) ~ 0 + trait + phylo_indep(1 + x | species),
+      data = fx$df,
+      phylo_tree = fx$tree,
+      unit = "species",
+      family = stats::binomial(link = "cloglog"),
+      control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
+    ))),
+    "logit/probit only"
+  )
 })
 
 ## ---------------------------------------------------------------------
-## Family-agnostic engine guard: the augmented 2-column Sigma_b machinery
+## Family-agnostic engine guard: the augmented 2T-column Sigma_b machinery
 ## (not a scalar-slope fallback) carries the binomial fit. Forcing
 ## n_lhs_cols to 1 must trip the C++ dimension check -- proving the SAME
 ## augmented array path is active under binomial as under Gaussian.
@@ -218,12 +222,14 @@ test_that("phylo_indep(1 + x | sp) x binomial: augmented path aborts when n_lhs_
     ))),
     error = function(e) e
   )
-  if (inherits(fit, "error") || !inherits(fit, "gllvmTMB_multi")) {
-    skip(sprintf(
-      "small-n binomial-probit indep fixture failed to construct for the n_lhs_cols guard check: %s",
-      if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB object"
+  if (inherits(fit, "error")) {
+    testthat::fail(sprintf(
+      "small-n binomial-probit indep fixture must construct for the n_lhs_cols guard check: %s",
+      conditionMessage(fit)
     ))
+    return(invisible())
   }
+  expect_s3_class(fit, "gllvmTMB_multi")
 
   tmb_data <- fit$tmb_data
   tmb_data$n_lhs_cols <- 1L

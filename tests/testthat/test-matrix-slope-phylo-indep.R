@@ -2,39 +2,12 @@
 ## anchor LHS `phylo_indep(1 + x | species)` x the non-Gaussian families --
 ## allowlist-boundary contract assertion (NOT a recovery cell).
 ##
-## SCOPE UPDATE (issue #341):
-##   * #381 ACTIVATED the binomial cells (probit / logit) -- diagonal-Sigma_b
-##     recovery in test-binomial-slope-recovery.R.
-##   * THIS slice ACTIVATES poisson, nbinom2, Gamma, Beta, and
-##     ordinal_probit -- diagonal-Sigma_b recovery in
-##     test-phylo-indep-slope-nongaussian.R (each passed a per-family
-##     recovery cell before earning the R/fit-multi.R allowlist).
-##
-## So none of the five families this file used to LOCK as reserved are
-## reserved any more. The file's remaining job is to lock the OTHER side of
-## the boundary: (a) a positive smoke that each newly-activated family now
-## constructs a fit on the augmented phylo_indep slope path (the guard no
-## longer aborts it), and (b) the negative lock that a family OFF the
-## allowlist (e.g. tweedie) still fail-loud-aborts with the stable
-## "LHS richer than" substring -- so the allowlist boundary stays a tested,
-## reproducible contract rather than an accident.
-##
-## ----------------------------------------------------------------------
-## Why the activated-family smoke is a construct-check, not a recovery
-##
-## The numeric recovery (conv == 0, PD Hessian, rho pinned 0, variances in
-## the inherited per-family band) is owned by the dedicated recovery cells
-## (test-phylo-indep-slope-nongaussian.R / test-binomial-slope-recovery.R).
-## Re-asserting it here would duplicate those cells on a tiny fixture. The
-## honest, non-redundant assertion here is simply that the family guard now
-## ADMITS each activated family -- i.e. the call no longer raises the
-## reserved "LHS richer than" abort. We assert that the call does not raise
-## that specific abort (it returns a gllvmTMB fit on this small fixture).
-##
-## Register implication: the `phylo_indep(1 + x | sp)` x {binomial, poisson,
-## nbinom2, Gamma, Beta, ordinal} cells of the random-slope column are now
-## `covered` (PHY-11..PHY-16). Families OFF the allowlist stay
-## "not-applicable / reserved by contract" and are NOT an open recovery debt.
+## This file proves only the runtime allowlist boundary. A permitted family
+## must clear the stable "LHS richer than" abort; because the fixture is tiny,
+## a later construction/optimisation error is tolerated. A family outside the
+## allowlist must receive that abort. These checks are not fit-health,
+## parameter-recovery, interval, or scientific-admission evidence and cannot
+## promote PHY-11..PHY-16; the dedicated family tests own those statuses.
 
 skip_if_not_slope_phylo_indep_deps <- function() {
   testthat::skip_on_cran()
@@ -73,10 +46,9 @@ make_slope_phylo_indep_fixture <- function(seed = 20260529L,
 ## allowlist), not a generic construction failure.
 .phylo_indep_augmented_regexp <- "LHS richer than"
 
-## Assert that `phylo_indep(1 + x | species)` ADMITS the augmented LHS for an
-## activated family: the call must NOT raise the reserved "LHS richer than"
-## abort (it returns a gllvmTMB fit on this small fixture). Recovery is
-## checked elsewhere; this only locks that the guard lets the family through.
+## Assert only that a permitted family clears the allowlist abort. The tiny
+## fixture may fail later for another reason, so this is not construction or
+## recovery evidence.
 expect_phylo_indep_slope_activated <- function(formula, data, tree, family) {
   fit <- tryCatch(
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(

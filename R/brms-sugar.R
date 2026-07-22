@@ -632,8 +632,9 @@ NULL
 #' still depends on labels, scaling, and fitting health; the function does not
 #' estimate or report ancestral states.
 #'
-#' See `vignette("phylogenetic-gllvm")` for the benchmark and
-#' `docs/design/04-random-effects.md` for the implementation contract.
+#' See the
+#' [phylogenetic covariance article](https://itchyshin.github.io/gllvmTMB/articles/phylogenetic-gllvm.html)
+#' for the benchmark.
 #'
 #' @param species Unquoted column name for the species factor.
 #' @param d Integer; number of phylogenetic latent factors.
@@ -2448,7 +2449,7 @@ rewrite_canonical_aliases <- function(formula) {
         if (!fn %in% c(.uncorr_marked, .uncorr_latent)) {
           cli::cli_abort(c(
             "{.code ||} (uncorrelated intercept--slope) is not yet supported for {.fn {fn}}.",
-            "i" = "The `||` coupling currently ships for {.fn phylo_indep}/{.fn animal_indep}, {.fn phylo_dep}/{.fn animal_dep}, and the source-tier {.fn phylo_latent}/{.fn animal_latent}/{.fn spatial_latent} random slopes; other modes/sources are on the way (Design 79).",
+            "i" = "The `||` coupling currently ships for {.fn phylo_indep}/{.fn animal_indep}, {.fn phylo_dep}/{.fn animal_dep}, and the source-tier {.fn phylo_latent}/{.fn animal_latent}/{.fn spatial_latent} random slopes; other modes/sources are on the way.",
             ">" = "Use a single {.code |} for the correlated form, or one of those keywords with {.code ||}."
           ))
         }
@@ -2950,7 +2951,7 @@ rewrite_canonical_aliases <- function(formula) {
             ) {
               cli::cli_abort(c(
                 "{.code animal_indep(..., common = TRUE)} is intercept-only.",
-                ">" = "One shared variance across traits applies to {.code animal_indep(0 + trait | id, common = TRUE)}; the shared-variance random slope is a later slice."
+                ">" = "One shared variance across traits applies to {.code animal_indep(0 + trait | id, common = TRUE)}; the shared-variance random slope is not yet supported."
               ))
             }
             new_call <- call("phylo", species_arg)
@@ -3964,7 +3965,7 @@ rewrite_canonical_aliases <- function(formula) {
             cli::cli_abort(c(
               "{.code phylo_indep(..., common = TRUE)} is intercept-only.",
               "i" = "Got LHS: {.code {deparse(lhs_bar)}}.",
-              ">" = "One shared variance across traits applies to {.code phylo_indep(0 + trait | species, common = TRUE)}; the shared-variance random slope (former {.code scalar(1 + x | g)}) is a later slice."
+              ">" = "One shared variance across traits applies to {.code phylo_indep(0 + trait | species, common = TRUE)}; the shared-variance random slope (former {.code scalar(1 + x | g)}) is not yet supported."
             ))
           }
           extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
@@ -4039,7 +4040,7 @@ rewrite_canonical_aliases <- function(formula) {
           ) {
             cli::cli_abort(c(
               "{.code spatial_indep(..., common = TRUE)} is intercept-only.",
-              ">" = "One shared variance across traits applies to {.code spatial_indep(0 + trait | coords, common = TRUE)}; the shared-variance spatial random slope is a later slice."
+              ">" = "One shared variance across traits applies to {.code spatial_indep(0 + trait | coords, common = TRUE)}; the shared-variance spatial random slope is not yet supported."
             ))
           }
           new_call <- as.call(c(

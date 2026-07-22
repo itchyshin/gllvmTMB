@@ -197,7 +197,7 @@
       matrix_label = matrix_label,
       entries = entries,
       scale = scale,
-      validation_row = "EXT-20"
+      validation_row = "bootstrap-CI table formatting only (not a new CI)"
     )
     lower <- boot$ci_lower[[key]]
     upper <- boot$ci_upper[[key]]
@@ -416,9 +416,9 @@ extract_Sigma_table <- function(
       scale <- "latent"
     }
     validation_row <- if (inherits(fit, "gllvmTMB_julia")) {
-      "JUL-01A"
+      "Julia-bridge covariance/ordination extractor (partial)"
     } else {
-      "EXT-18"
+      "Sigma/Psi summary table (point estimates only)"
     }
     pieces[[k]] <- .sigma_table_from_matrix(
       mat = mat,
@@ -447,13 +447,13 @@ extract_Sigma_table <- function(
 #' teaching articles that need estimate-vs-truth tables without hand-indexing
 #' matrices inside the article.
 #'
-#' Scope boundary: IN, the helper compares fitted or precomputed
+#' Scope: the helper compares fitted or precomputed
 #' `extract_Sigma_table()` rows against one supplied truth matrix (covered
-#' by the package's Sigma-table validation tests).
-#' PARTIAL, it is a table helper only: it does not compute uncertainty,
-#' simulate data, or validate calibration. For the first visual comparison
-#' layer, use [plot_Sigma_comparison()]; richer article-specific calibration
-#' summaries remain future visualization work.
+#' by the package's Sigma-table validation tests). It is a table helper
+#' only: it does not compute uncertainty, simulate data, or validate
+#' calibration. For the first visual comparison layer, use
+#' [plot_Sigma_comparison()]; richer article-specific calibration summaries
+#' remain future visualization work.
 #'
 #' @param x A fit returned by [gllvmTMB()], an admitted `engine = "julia"`
 #'   bridge fit, or a data frame returned by [extract_Sigma_table()].

@@ -48,7 +48,7 @@ returned by \code{\link[=extract_Sigma]{extract_Sigma()}}, then applies a singul
 This is a point-estimate derived-output helper, covered by the package's
 validation tests, for fitted
 dense-kernel coevolution models whose component-specific \code{Gamma} blocks are
-already extractable with \code{\link[=extract_Gamma]{extract_Gamma()}}. PARTIAL: it does not report
+already extractable with \code{\link[=extract_Gamma]{extract_Gamma()}}. It does not report
 uncertainty, choose the biological rank, estimate \code{rho}, or calibrate null
 thresholds. Use simulation, bootstrap, and kernel-separability checks before
 treating the returned axes as scientific evidence.

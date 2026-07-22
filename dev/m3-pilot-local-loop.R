@@ -1,21 +1,23 @@
 ## dev/m3-pilot-local-loop.R
 ## =========================
-## Design 66 power-study -- SECOND (local) accumulation engine.
+## Design 66 power-study -- HISTORICAL LOCAL-ONLY accumulation engine.
 ##
-## A continuous, resumable, fail-soft loop that accumulates pilot reps on
-## the maintainer's Mac, IN PARALLEL with (and independent of) the durable
-## GitHub Actions cron (.github/workflows/power-pilot-sweep.yaml). It is a
-## THIN driver over the validated accumulate engine in
+## This continuous, resumable, fail-soft loop is retained to read and reproduce
+## legacy local stores. It is not an admitted route for new local, Totoro, or
+## DRAC evidence: its defaults allow a 10-worker, 10,000-replicate accumulation
+## without requiring a frozen campaign manifest. The former GitHub Actions cron
+## was retired under D-50. New bounded local/Totoro smoke uses
+## dev/power-pilot-smoke.sh; production DRAC arrays require a separately built,
+## reviewed, and frozen driver. This file is a THIN driver over the validated
+## accumulate engine in
 ## dev/m3-pilot-launch.R (run_accumulate_pilot_batch / pilot_accum_status /
 ## pilot_grid). It does NOT reimplement the DGP, the estimand machinery, or
 ## the accumulation logic -- it only schedules parallel calls to that
 ## engine with a DISJOINT seed namespace and a SEPARATE local store.
 ##
-## WHY a second engine: the GHA cron is durable but rate-limited (~2 h
-## cadence, concurrency-locked). Running a capped local pool in parallel
-## adds reps faster while leaving the cron untouched. Because the two use
-## DISJOINT seeds (below) their per-cell .rds stores are later COMBINABLE
-## (rbind of independent draws) without double-counting any RNG draw.
+## HISTORICAL COMPATIBILITY: older local and Actions stores used disjoint seed
+## bands. Those bands remain readable and combinable. They are historical
+## diagnostics, not admissible new claim-bearing evidence.
 ##
 ## ---------------------------------------------------------------------
 ## CORE CAP: <= 10 cores.
@@ -25,15 +27,15 @@
 ##   more than LOCAL_CORES cores. Lower it to leave more headroom.
 ##
 ## ---------------------------------------------------------------------
-## DISJOINT-SEED SCHEME (local reps can NEVER collide with GHA reps):
+## LEGACY DISJOINT-SEED SCHEME (local reps cannot collide with old Actions reps):
 ##   Both engines call run_accumulate_pilot_batch(), which derives a
 ##   per-(cell,batch) seed base via a seed_fn(run_seed_base, cell_seed_base)
 ##   and m3_run_cell() then derives rep_seed = batch_seed_base + 1000*d +
 ##   100000*family_index + r. Two reps share an RNG draw IFF their rep_seed
-##   coincide. So local+GHA are combinable IFF their rep_seed SETS are
-##   disjoint.
+##   coincide. So local and historical stores are combinable IFF their
+##   rep_seed SETS are disjoint.
 ##
-##   GHA seed_fn (pilot_accum_batch_seed, UNCHANGED):
+##   Legacy Actions seed_fn (pilot_accum_batch_seed, unchanged for readers):
 ##     batch_seed_base = 700000 + run_number*5e6 + cell_seed_base
 ##     -> blocks for run_number = 1, 2, 3, ... (small monotonic integers;
 ##        ~84 runs in a 1-week campaign, ~12/day). The engine itself only
@@ -47,23 +49,22 @@
 ##     LOCAL_SEED_LANES = 800. The local band is [~1.0077e9 .. ~1.807e9],
 ##     all < .Machine$integer.max (2.147e9) -> NO fold.
 ##
-##   Disjointness (verified numerically, see PR body): the SMALLEST GHA
-##   run_number whose block could arithmetically reach the local band is
-##   202 (~17 days of cron). A 1-week campaign uses ~84 GHA runs -> a
-##   ~118-run (~10-day) margin. No GHA run in 1..200 touches the local
-##   band, and every local lane is < imax (fold-free). LOCAL_SEED_STRIDE
+##   Disjointness (verified numerically, see PR body): the smallest legacy
+##   Actions run whose block could arithmetically reach the local band is 202.
+##   No legacy run in 1..200 touches the local band, and every local lane is < imax
+##   (fold-free). LOCAL_SEED_STRIDE
 ##   (1e6) exceeds one batch's rep_seed span (~5.02e5 + step) so distinct
 ##   local iterations also never overlap EACH OTHER. The loop exits at the
 ##   cap long before LOCAL_SEED_LANES (800) iterations, so the mod never
 ##   wraps in practice (a wrap would merely reuse a lane, never collide
-##   with GHA).
+##   with the historical store).
 ##
 ## ---------------------------------------------------------------------
-## STORE: dev/m3-pilot-results-local/  (SEPARATE from the GHA branch
+## STORE: dev/m3-pilot-results-local/  (separate from the historical branch
 ##   store dev/m3-pilot-results). It is under dev/ (in .Rbuildignore, so
 ##   never shipped) and is added to .gitignore (so local reps never commit
 ##   to main). Resumable: on (re)start the loop re-reads the store and
-##   skips cells already at the cap. Combine with the GHA store offline.
+##   skips cells already at the cap. Historical stores may be combined offline.
 ##
 ## CONCURRENCY-SAFE INDEX: run_accumulate_pilot_batch() rewrites a single
 ##   shared pilot-index.rds after each cell. To avoid 10 workers racing on
@@ -72,14 +73,14 @@
 ##   PARENT then copies each worker's updated per-cell .rds back into the
 ##   canonical local store and rebuilds the single index from disk via
 ##   pilot_load_index() (the same single-writer / rebuild-from-disk
-##   pattern the GHA persist job uses). The per-cell .rds files are the
+##   pattern used by the retired persist job). The per-cell .rds files are the
 ##   source of truth; the index is a derived cache.
 ##
 ## ---------------------------------------------------------------------
 ## CONTROLS:
 ##   --cap=N      / env LOCAL_N_SIM_CAP  : accumulated reps target per cell
-##                                          (default 10000; same high cap as
-##                                          the raised GHA cron).
+##                                          (default 10000; retained for
+##                                          historical-store compatibility).
 ##   --step=N     / env LOCAL_N_SIM_STEP : reps ADDED per cell per iteration
 ##                                          (default 150).
 ##   --cores=N    / env LOCAL_CORES      : worker pool size (default 10).
@@ -139,18 +140,18 @@ LOCAL_CORES <- .local_int_setting("--cores", "LOCAL_CORES", 10L)
 ## flag / Ctrl-C loses at most one small batch per worker.
 LOCAL_N_SIM_STEP <- .local_int_setting("--step", "LOCAL_N_SIM_STEP", 150L)
 
-## Accumulated-reps target per cell. Default 10000 == the raised GHA cron
-## cap, so both engines accumulate toward the same target.
+## Accumulated-reps target per cell. Default 10000 preserves compatibility
+## with the historical campaign store.
 LOCAL_N_SIM_CAP <- .local_int_setting("--cap", "LOCAL_N_SIM_CAP", 10000L)
 
 ## n_boot for the primary Sigma_unit_diag bootstrap CI (pilot default;
-## matches the GHA N_BOOT=25).
+## matches the historical N_BOOT=25 setting).
 LOCAL_N_BOOT <- .local_int_setting("--n-boot", "LOCAL_N_BOOT", PILOT_N_BOOT_DEFAULT)
 
 ## Seconds to sleep between iterations (lets the OS breathe; cheap).
 LOCAL_SLEEP_S <- .local_int_setting("--sleep", "LOCAL_SLEEP_S", 5L)
 
-## SEPARATE local store (NOT the GHA branch store dev/m3-pilot-results).
+## Separate local store (not the historical branch store dev/m3-pilot-results).
 LOCAL_RESULTS_DIR <- "dev/m3-pilot-results-local"
 
 ## Stop-flag file: create it to halt the loop cleanly after the current
@@ -163,13 +164,12 @@ LOCAL_LOG <- "dev/m3-pilot-local.log"
 ## ---- Disjoint local seed scheme ---------------------------------------
 ## See the header's DISJOINT-SEED SCHEME block for the full argument and
 ## the numeric disjointness proof. These three constants place every local
-## rep_seed in a high 32-bit band that GHA's run-number-driven scheme
+## rep_seed in a high 32-bit band that the historical run-number scheme
 ## cannot reach within (well beyond) the 1-week campaign, and keep all
 ## local seeds < .Machine$integer.max (no fold).
 
-## Local band floor: above GHA's block for run_number 200 (~1.0019e9),
-## rounded clear with margin. GHA run 1..200 (~16 days of 2-hourly cron)
-## never reaches this.
+## Local band floor: above the historical block for run_number 200 (~1.0019e9),
+## rounded clear with margin. Legacy runs 1..200 never reach this.
 LOCAL_SEED_BASE0 <- 1007000000
 
 ## Per-iteration stride. > one batch's rep_seed span (~5.02e5 + step), so
@@ -183,7 +183,7 @@ LOCAL_SEED_STRIDE <- 1000000
 LOCAL_SEED_LANES <- 800L
 
 ## local_accum_batch_seed: the local engine's seed_fn. Same SHAPE as the
-## GHA pilot_accum_batch_seed (run-level base + cell base -> integer seed),
+## legacy pilot_accum_batch_seed (run-level base + cell base -> integer seed),
 ## but mapped into the disjoint high band above. `run_seed_base` here is
 ## the loop ITERATION index (a small non-negative integer the engine
 ## passes through unchanged); the high offset lives in this function so the
@@ -196,7 +196,7 @@ local_accum_batch_seed <- function(run_seed_base, cell_seed_base) {
   imax <- .Machine$integer.max
   ## By construction raw < imax (see LOCAL_SEED_LANES sizing); assert it so
   ## a future constant edit that would fold is caught loudly rather than
-  ## silently risking a GHA collision.
+  ## silently risking a collision with a historical store.
   if (raw > imax || raw < 0) {
     stop(sprintf(
       "local seed base %.0f out of 32-bit range; adjust LOCAL_SEED_* constants.",
@@ -234,7 +234,7 @@ local_pending_cells <- function(results_dir = LOCAL_RESULTS_DIR,
   st <- pilot_accum_status(results_dir = results_dir, n_sim_cap = n_sim_cap)
   cells <- st$cells
   ## Least-filled FIRST: spread local reps evenly across all still-incomplete
-  ## cells (complementing the even-but-slow GHA cron) instead of front-loading
+  ## cells instead of front-loading
   ## the lowest-id cells to the cap one batch at a time. Ties broken by cell_id
   ## for deterministic, resumable ordering.
   inc <- !cells$complete
@@ -275,7 +275,7 @@ local_run_one_cell <- function(cell_id, iteration,
         seed_base = iteration,            # iteration index; offset is in seed_fn
         results_dir = worker_dir,
         n_boot = n_boot,
-        seed_fn = local_accum_batch_seed, # DISJOINT high band (vs GHA)
+        seed_fn = local_accum_batch_seed, # disjoint from historical seed bands
         verbose = FALSE
       )
       updated <- file.path(worker_dir, paste0(cell_id, ".rds"))
@@ -393,7 +393,7 @@ run_local_pilot_loop <- function(n_workers = LOCAL_CORES,
     n_workers, n_sim_step, n_sim_cap, n_boot, results_dir
   ))
   local_log(sprintf(
-    "seed band [%.0f .. %.0f] (disjoint from GHA; fold-free < %.0f)",
+    "seed band [%.0f .. %.0f] (disjoint from historical stores; fold-free < %.0f)",
     LOCAL_SEED_BASE0 + 660001,
     LOCAL_SEED_BASE0 + (LOCAL_SEED_LANES - 1) * LOCAL_SEED_STRIDE + 660048,
     .Machine$integer.max

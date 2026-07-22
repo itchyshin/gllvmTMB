@@ -65,8 +65,9 @@ constructed from the same tree and aligned identically. Numerical agreement
 still depends on labels, scaling, and fitting health; the function does not
 estimate or report ancestral states.
 
-See \code{vignette("phylogenetic-gllvm")} for the benchmark and
-\code{docs/design/04-random-effects.md} for the implementation contract.
+See the
+\href{https://itchyshin.github.io/gllvmTMB/articles/phylogenetic-gllvm.html}{phylogenetic covariance article}
+for the benchmark.
 }
 }
 \examples{

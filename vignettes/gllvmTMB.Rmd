@@ -390,11 +390,11 @@ The next step depends on the question, not on adding every available model
 component:
 
 - **Interpret covariance:** continue with
-  [Individual morphometrics](morphometrics.html) for a fuller Gaussian worked
+  [Individual morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html) for a fuller Gaussian worked
   example.
-- **Check the fit:** use [Can I trust this fit?](fit-diagnostics.html) before
+- **Check the fit:** use [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) before
   relying on coefficients, covariance, or uncertainty.
-- **Choose a specialised model:** use the [Articles chooser](index.html) to
+- **Choose a specialised model:** use the [Articles chooser](https://itchyshin.github.io/gllvmTMB/articles/index.html) to
   select repeated behaviours, reaction norms, binary occurrence,
   phylogenetic covariance, missing data, rank selection, or a technical
   reference.

@@ -505,15 +505,15 @@
 #' [gllvmTMB_diagnose()]: use this in simulations, tests, and reports
 #' where parsing printed messages would be brittle.
 #'
-#' Scope boundary: covered are optimisation and inference-risk signals
-#' for fitted models, including latent-axis rotation, weak-axis,
-#' near-zero `psi`, residual-scale boundary flags, a binomial
+#' Scope: optimisation and inference-risk signals for fitted
+#' models, including latent-axis rotation, weak-axis, near-zero
+#' `psi`, residual-scale boundary flags, a binomial
 #' near-constant/loading/saturation screen, and the intentional
-#' `gllvmTMBcontrol(se = FALSE)` point-estimate path. Partially
-#' covered: the table does not calibrate interval coverage, prove
-#' formal separation, or prove the selected latent rank by itself.
-#' Planned: target-explicit known-DGP simulations decide when broader
-#' interval or rank-selection claims move beyond diagnostic status.
+#' `gllvmTMBcontrol(se = FALSE)` point-estimate path. The table
+#' does not calibrate interval coverage, prove formal separation,
+#' or prove the selected latent rank by itself. Target-explicit
+#' known-DGP simulations will decide when broader interval or
+#' rank-selection claims can move beyond diagnostic status.
 #'
 #' A `WARN` row, including `pdHess = FALSE`, means that Wald standard
 #' errors or curvature-based inference need more care; it is not by
@@ -879,12 +879,12 @@ check_gllvmTMB <- function(
 #' signal. Use [check_gllvmTMB()] when you need the same fit-health
 #' checks as a stable table for scripts or reports.
 #'
-#' Scope boundary: covered are first-line convergence, Hessian,
-#' standard-error, restart, and rotation diagnostics. Partially
-#' covered: it reports risks and summaries but does not replace
-#' profile, bootstrap, or simulation calibration. Planned:
-#' target-explicit validation will decide which interval warnings can
-#' be promoted to broader guarantees.
+#' Scope: first-line convergence, Hessian, standard-error,
+#' restart, and rotation diagnostics. It reports risks and
+#' summaries but does not replace profile, bootstrap, or
+#' simulation calibration. Target-explicit validation will
+#' decide which interval warnings can be promoted to broader
+#' guarantees.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param gradient_thresh,se_thresh Forwarded to [sanity_multi()].

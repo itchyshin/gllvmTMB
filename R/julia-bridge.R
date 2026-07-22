@@ -206,28 +206,28 @@
     representative_test = "tests/testthat/test-julia-bridge.R",
     issue = "gllvmTMB#488",
     validation_row = c(
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01A",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01"
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge covariance/ordination extractor (partial)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)",
+      "Julia-bridge point-estimate route (partial evidence)"
     ),
     stringsAsFactors = FALSE
   )
@@ -1668,7 +1668,7 @@ gllvm_julia_capabilities <- function() {
 
   p <- .gllvm_julia_n_traits(fit)
   traits <- .gllvm_julia_trait_names(fit, p)
-  validation_row <- "EXT-31; JUL-01; JUL-01A; LV-01"
+  validation_row <- "experimental route: partial validation only"
 
   if (identical(type, "trait_effect")) {
     B_lv <- fit$lv_effects %||% NULL
@@ -1757,7 +1757,12 @@ gllvm_julia_capabilities <- function() {
       "julia_bridge_point_estimate_only_no_ci_validation"
     }
     res_df$validation_row <- validation_row
-    return(res_df)
+    ## `validation_row` is internal provenance, not reader-facing content. The
+    ## sibling extractors (extract_Sigma_table(), extract_correlations()) already
+    ## route through .reportable_table() so the column stays available
+    ## programmatically but never prints. This path did not, so the column
+    ## surfaced at the console by default.
+    return(.reportable_table(res_df))
   }
 
   alpha_lv <- fit$alpha_lv %||% NULL
@@ -1850,7 +1855,12 @@ gllvm_julia_capabilities <- function() {
     },
     validation_row = validation_row,
     stringsAsFactors = FALSE
-  )
+  ) |>
+    ## Both return branches must suppress `validation_row` from printing, not
+    ## just the trait_effect one. This is the DEFAULT branch (`type` defaults to
+    ## "axis_effect" via match.arg), so leaving it unwrapped meant the column
+    ## still printed on the ordinary call path.
+    .reportable_table()
 }
 
 .gllvm_julia_x_eta <- function(object, p, n) {

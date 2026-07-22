@@ -1,8 +1,7 @@
-## Stage 3b of the profile-CI unified framework (2026-05-27):
-## `profile_ci_proportions()` and routing through
-## `confint.gllvmTMB_multi()` via the `parm = "proportion[:...]"`
-## token. Mirrors the Stage 3a test layout (test-confint-derived.R)
-## but for the per-(trait, component) proportion decomposition.
+## Variance-proportion interval contracts. The retained
+## `profile_ci_proportions()` prototype is internal evidence only. Public
+## `confint(..., parm = "proportion[:...]")` defaults to Wald, admits
+## bootstrap explicitly, and refuses the withdrawn nonlinear profile route.
 ##
 ## Profile refits are slow (full constrained Lagrange refit per
 ## uniroot probe; ~20 s per (trait, component) cell on the fixture
@@ -99,15 +98,19 @@ get_full_prop_tbl <- function() {
   }
   fx <- build_prop_fixture()
   tbl <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_ci_proportions(fx$fit, trait_idx = 1L)
+    gllvmTMB:::profile_ci_proportions(fx$fit, trait_idx = 1L)
   ))
   .prop_fit_cache$tbl <- tbl
   tbl
 }
 
 ## ============================================================================
-##  Direct profile_ci_proportions() API (inspect the cached table)
+##  Internal profile_ci_proportions() prototype (inspect cached evidence)
 ## ============================================================================
+
+test_that("profile_ci_proportions() remains internal", {
+  expect_false("profile_ci_proportions" %in% getNamespaceExports("gllvmTMB"))
+})
 
 test_that("profile_ci_proportions() default has the right shape and column names", {
   skip_if_not_heavy()
@@ -198,7 +201,7 @@ test_that("profile_ci_proportions(components = 'shared_unit', trait_idx = 1) fil
   skip_on_cran()
   fx <- build_prop_fixture()
   tbl <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_ci_proportions(
+    gllvmTMB:::profile_ci_proportions(
       fx$fit,
       components = "shared_unit",
       trait_idx = 1L
@@ -218,7 +221,7 @@ test_that("profile_ci_proportions() profiles shared and unique unit_obs componen
   expect_true(isTRUE(fx$fit$use$diag_W))
   expect_false(isTRUE(fx$fit$use$rr_B))
   tbl <- suppressMessages(suppressWarnings(
-    gllvmTMB::profile_ci_proportions(
+    gllvmTMB:::profile_ci_proportions(
       fx$fit,
       components = c("shared_unit_obs", "unique_unit_obs"),
       trait_idx = 1L
@@ -271,7 +274,7 @@ test_that("profile_ci_proportions(): unknown component errors with available lis
   ## step before any refit runs.
   expect_error(
     suppressMessages(suppressWarnings(
-      gllvmTMB::profile_ci_proportions(
+      gllvmTMB:::profile_ci_proportions(
         fx$fit,
         components = "shared_phy",
         trait_idx = 1L
@@ -288,23 +291,21 @@ test_that("profile_ci_proportions(trait_idx = 99) errors with a range message", 
   fx <- build_prop_fixture()
   expect_error(
     suppressMessages(suppressWarnings(
-      gllvmTMB::profile_ci_proportions(fx$fit, trait_idx = 99L)
+      gllvmTMB:::profile_ci_proportions(fx$fit, trait_idx = 99L)
     )),
     "trait_idx|range|1:"
   )
 })
 
 ## ============================================================================
-##  confint() routing (one slow path, all others parse / error early)
+##  Public confint() routing (Wald default plus explicit refusal)
 ## ============================================================================
 
-test_that("confint(fit, parm = 'proportion:shared_unit:trait_1') returns one row with the right shape", {
+test_that("confint() defaults proportion tokens to Wald", {
   skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
-  ## This is the only confint() test that triggers a refit -- one
-  ## (component, trait) cell, ~20 s.
   ci <- suppressMessages(suppressWarnings(
     confint(fx$fit, parm = "proportion:shared_unit:trait_1")
   ))
@@ -313,6 +314,21 @@ test_that("confint(fit, parm = 'proportion:shared_unit:trait_1') returns one row
   expect_equal(rownames(ci), "proportion:shared_unit:trait_1")
   expect_equal(ncol(ci), 2L)
   expect_equal(colnames(ci), c("2.5 %", "97.5 %"))
+})
+
+test_that("confint() explicitly withholds nonlinear proportion profiles", {
+  skip_if_not_heavy()
+  skip_if_not_installed("TMB")
+  skip_on_cran()
+  fx <- build_prop_fixture()
+  expect_error(
+    suppressMessages(suppressWarnings(confint(
+      fx$fit,
+      parm = "proportion:shared_unit:trait_1",
+      method = "profile"
+    ))),
+    class = "gllvmTMB_nonlinear_profile_withdrawn"
+  )
 })
 
 test_that("confint(fit, parm = 'proportion'): bare token is recognised and routes (parse-only check)", {

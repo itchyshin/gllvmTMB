@@ -19,30 +19,92 @@ required for the main workflow.
   `kernel_dep(1 + x | g, K = K)` (and their `||` forms) fit a random regression on
   a supplied dense kernel `K`, byte-equivalent to the phylogenetic path with
   `vcv = K`.
-* Random slopes now support **lognormal** and **student** responses in addition to
-  the previous set.
+* Random-slope routes are runtime-permitted for **lognormal** and **Student-t**
+  responses. This is fit admission only:
+  direct route-specific recovery and inference evidence are not yet covered, so
+  this release makes no scientific-validation claim for those combinations.
 * New **`multinomial()`** response family for an *unordered* categorical response
   with three or more categories (baseline-category logit / softmax). It recovers the
   per-category intercepts and slopes as contrasts against a reference category, and
   `predict(type = "response")` returns per-category probabilities. Use
-  `multinomial(baseline = ...)` to choose the reference category. Fixed effects and
-  a single `phylo_latent()` term are supported; every other latent / random-effect
-  tier on a multinomial trait fails loud, and a *cross-trait* correlation with a
-  categorical response is still undefined (it spans several liability dimensions), so
-  `extract_correlations()` / `extract_Sigma()` decline a fixed-effects-only
-  multinomial fit. A two-category response is `binomial(link = "logit")`. For
+  `multinomial(baseline = ...)` to choose the reference category. The validation
+  boundary is explicit: **fixed-effect recovery is validated**, while the two
+  covariance routes — a single `phylo_latent()` term, and the narrow ordinary
+  shared-`latent()` cross-family route — are **only partially validated**, meaning
+  they fit and report but their recovery has not been certified. The latter reports the nominal
+  trait as its `K - 1` baseline-contrast block rather than inventing one scalar
+  categorical correlation; it permits one multinomial trait per fit and rejects
+  unsupported tiers before TMB construction. Multiple multinomial traits,
+  augmented slopes, explicit multinomial `unique()`/`indep()`, and unlisted
+  source tiers remain blocked. A two-category response is
+  `binomial(link = "logit")`. For
   *ordered* categories use `ordinal_probit()`. See the *Unordered categories with
   `multinomial()`* article for a worked diet-guild example.
-* **`phylo_latent()` on a `multinomial()` trait (Design 84)** reports the
+* **`phylo_latent()` on a `multinomial()` trait (partially validated)** reports the
   `(K-1) x (K-1)` among-category phylogenetic covariance V (how the category
-  liabilities coevolve) via `extract_Sigma(fit, level = "phy")`. Two honest caveats:
+  liabilities coevolve) via
+  `extract_Sigma(fit, level = "phy", part = "shared", link_residual = "none")`.
+  The default total/`"auto"` extraction instead reports V plus the fixed softmax
+  residual `(pi^2/6)(I + J)`. Two honest caveats:
   recovery of V is **data-hungry** (it needs per-species replication or large N; a
   single categorical draw per species is weakly informative, so one-per-species point
   estimates are high-variance and can reach the +/-1 boundary), and V is on the
   baseline-**contrast** scale, so a diagonal V is not independence -- the null contrast
   covariance is `(I + J)`-structured (equal diagonal, equal off-diagonal; the
-  observation-scale link residual has the same shape, `(pi^2/6)(I + J)` -- the softmax
-  analog of binomial's `pi^2/3`). Treat it as recovery-oriented.
+  observation-scale link residual is applied as `(pi^2/6)(I + J)` -- the softmax
+  analog of binomial's `pi^2/3`). Treat this phylogenetic V route as
+  recovery-oriented and data-hungry, not universally validated.
+* For the admitted cross-family nominal route (partially validated), ordinary
+  `latent()` keeps its default diagonal companion but the current engine maps
+  off multinomial-contrast `Psi`. That variance is not identified with one
+  categorical draw per unit; replication can identify it in principle, but the
+  current conservative implementation still suppresses it. Explicitly adding
+  `unique()` or `indep()` for those contrasts remains fail-closed. Point
+  extraction and target-specific
+  Wald/bootstrap interval plumbing exist, but their repeated-sampling
+  calibration is not covered. Nonlinear profile intervals are withdrawn.
+* `extract_cross_correlations()` now restricts `level` to the ordinary unit tier
+  for **every** method. Previously only `method = "profile"` enforced this, so
+  `level = "unit_obs"`, `"phy"`, or `"spatial"` combined with `method = "point"`,
+  `"wald"`, or `"bootstrap"` were reachable. Those combinations now raise a typed
+  error. This is a deliberate reduction rather than a regression: the estimand for
+  a source-tier cross-family correlation was never validated on those paths, and
+  returning an uncalibrated number was worse than refusing. Use
+  `extract_Sigma()` for source-tier covariance.
+* **Known limitation — random-slope covariance is not calibrated when each
+  cluster carries little information.** This is a limitation of the *data
+  regime*, not of one keyword: it applies to any random-slope covariance fitted
+  on **single-trial binary responses with few observations per grouping level**,
+  and it affects both the current `phylo_indep()` / `animal_indep()` /
+  `spatial_indep()` slope forms and the soft-deprecated `*_unique()` forms.
+  Measured on a phylogenetic slope fit with a logit link (60 species, 4
+  replicates, 3 traits — 12 single-Bernoulli observations per species), the
+  **whole 2x2 slope covariance is over-estimated**, not just its slope entry:
+
+  | target | true | relative error |
+  |---|---|---|
+  | intercept variance | 0.40 | **0.82** |
+  | slope variance | 0.30 | **0.78** |
+  | intercept-slope correlation | 0.50 | **0.367** (absolute) |
+
+  The bias does **not** shrink with more clusters — it persists across 60, 120
+  and 240 species — on fits that are otherwise healthy (converged,
+  positive-definite Hessian, valid `sdreport`). The cause is too little
+  information per cluster: with a handful of single-trial binary observations
+  per species, the sampling variance of each species' estimated slope is
+  comparable to the true between-species variance itself, so roughly half the
+  spread across species is sampling noise. The identical design recovers cleanly
+  under a Gaussian response, which is what rules out an engine problem.
+
+  **Do not read a random-slope variance or correlation from sparse binary data
+  as calibrated.** The remedy is more information *per* grouping level — more
+  replicates per species, or multi-trial `cbind(successes, failures)` data
+  instead of single 0/1 draws — rather than more species. Note also that the
+  binomial slope routes are covered by a **structural** contract only: those
+  tests check that the model fits and reports the right shapes, and
+  **deliberately do not certify variance recovery or interval calibration**. The
+  corresponding recovery test is deliberately skipped rather than passed by
+  retuning its data-generating truth.
 * The reader-facing covariance grammar crosses five correlation sources
   (`none`, `animal`, `phylo`, `spatial`, and `kernel`) with three taught modes:
   independent, dependent, and latent. The one-shared-variance ("scalar") case is
@@ -75,12 +137,22 @@ required for the main workflow.
   one variance shared across all traits (intercept-only). The covariance grid is
   taught as three modes -- independent, dependent, latent -- with `common =` as
   the scalar sub-case, rather than a separate fourth mode.
-* `phylo_indep()` and `animal_indep()` with an intercept-and-slope term
-  (`1 + x | g`) fit **one independent (intercept, slope) block per trait** --
-  each trait its own random regression, with an estimated intercept-slope
-  correlation and zero cross-trait covariance (a set of univariate random
-  regressions stacked over traits). The spatial `spde` intercept-slope path is
-  unchanged for now, pending its own verification.
+* Current `phylo_indep()`, `animal_indep()`, and `spatial_indep()`
+  intercept-and-slope terms fit **one independent 2 x 2 (intercept, slope)
+  block per trait**: within-trait correlation is estimated for `|`, fixed to
+  zero for `||`, and cross-trait covariance is zero. Current `*_dep()` routes
+  instead use a full 2T x 2T augmented covariance. The soft-deprecated
+  `phylo_unique()`, `animal_unique()`, and `spatial_unique()` slope forms retain
+  their legacy shared 2 x 2 channels; they are not aliases for the current
+  `*_indep()` shape. **Admission is decided separately for each response family
+  and each random-effect route**, so a combination that fits is not thereby
+  validated: some routes are admitted with recovery evidence, others are
+  permitted at fit time only. **This release does not publish a per-route
+  coverage table, so the documentation will not tell you which of the two a
+  given combination is.** Treat a successful fit as evidence that the model is
+  *admissible*, not that its variance components or intervals have been
+  validated. Where a route is known to be weak this changelog says so
+  explicitly — see the random-slope limitation above.
 * `fit$fit_health` separates optimiser success, raw and objective-scaled
   gradients, Hessian health, and `sdreport()` availability. Its `converged` field
   is conservative: optimiser success, a finite objective, and a small raw maximum

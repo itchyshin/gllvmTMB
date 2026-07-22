@@ -16,15 +16,13 @@ extract_cross_correlations(
 )
 }
 \arguments{
-\item{fit}{a fitted \code{gllvmTMB_multi} with a \code{multinomial()} trait and a shared
-latent tier (\code{latent(0 + trait | unit, d)}).}
+\item{fit}{a fitted \code{gllvmTMB_multi} with one \code{multinomial()} trait and a
+shared ordinary unit tier (\code{latent(0 + trait | unit, d)}).}
 
-\item{level}{covariance tier (default \code{"unit"}). For \code{method = "profile"}
-only \code{"unit"} and \code{"unit_obs"} are in scope; structured tiers
-(\code{"phy"}, \code{"spatial"}) are refused.}
+\item{level}{covariance tier. Only the ordinary \code{"unit"} tier is admitted.}
 
 \item{contrasts}{if \code{TRUE}, also return the per-contrast (K-1)-vector (as a
-list column). Required for \code{method = "profile"}.}
+list column).}
 
 \item{link_residual}{passed to \code{\link[=extract_Sigma]{extract_Sigma()}}; \code{"auto"} (default) puts the
 nominal block on the observation scale via the \eqn{(\pi^2/6)(I+J)} softmax
@@ -35,21 +33,23 @@ block dimension >= the partner's), \code{multiple_r} degenerates to 1 (the
 partner is then a deterministic function of the block). This is correct but
 uninformative, which is why \code{"auto"} (full-rank via the residual) is the
 sensible default for the single-number summary; read the per-pair latent
-correlations from \code{\link[=extract_Sigma]{extract_Sigma()}} / \code{\link[=extract_correlations]{extract_correlations()}} instead.}
+correlations from \code{\link[=extract_Sigma]{extract_Sigma()}} / \code{\link[=extract_correlations]{extract_correlations()}} instead.
+An ordinal-probit partner is not admitted with \code{"auto"}: its latent
+residual is already fixed at 1 by the threshold model, so adding another
+unit residual would double-count it. Use a supported non-ordinal partner
+set for the one-number summary, or report latent-scale pairwise quantities
+with \code{extract_Sigma(..., part = "shared", link_residual = "none")}.}
 
 \item{method}{one of \code{"point"} (default; point estimates only, no interval
 columns), \code{"wald"} (fast Fisher-z intervals on BOTH \code{multiple_r} and
-\code{contrast_r}; no refits or root-finding, so it always returns and is robust
-on messy real data; any partner family), \code{"bootstrap"} (parametric-bootstrap
-interval on the aggregate \code{multiple_r} via \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}), or
-\code{"profile"} (profile-likelihood interval on each pairwise \code{contrast_r} via
-\code{profile_ci_correlation()}; requires \code{contrasts = TRUE}; gaussian/binomial
-partners only). For \code{"bootstrap"}/\code{"profile"} the two estimands take
-DIFFERENT routes: \code{multiple_r} (a nonlinear \eqn{\Sigma}-block functional
-with no single profile parameter) is only ever bootstrapped; \code{contrast_r}
-(a single \eqn{\rho_{ij}}) is only ever profiled. \code{"wald"} covers both at
-once. Requesting \code{method = "profile"} with \code{contrasts = FALSE} fails loud.
-\strong{None of these intervals is coverage-calibrated yet} — they are
+\code{contrast_r}; no refits or root-finding; heuristic bounds can be unavailable
+when the effective sample size is too small or an estimate is on a
+boundary), \code{"bootstrap"} (parametric-bootstrap interval on the aggregate
+\code{multiple_r} via \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}), or
+\code{"profile"}. The profile token is retained for compatibility but is
+withdrawn: it always stops with a typed error rather than returning an
+interval. Use point estimates, \code{"wald"}, or \code{"bootstrap"} instead.
+\strong{None of the available intervals is coverage-calibrated yet} — they are
 recovery-oriented; \code{"wald"} is the most approximate (\code{multiple_r} is not a
 Pearson correlation). Use them to explore + report bugs, not for inference.}
 
@@ -64,7 +64,7 @@ Pearson correlation). Use them to explore + report bugs, not for inference.}
 a data.frame, one row per (nominal, partner) pair. With
 \code{method = "point"} the columns are \code{nominal}, \code{partner}, \code{multiple_r}
 (and \code{contrast_r} when \code{contrasts = TRUE}). With \code{method = "wald"},
-\code{"bootstrap"}, or \code{"profile"}, per-estimand interval columns are added:
+\code{"bootstrap"}, per-estimand interval columns are added:
 \code{multiple_r_lower}/\code{multiple_r_upper}/\code{multiple_r_method}/\code{multiple_r_interval_status}
 (scalar), and when \code{contrasts = TRUE}
 \code{contrast_r_lower}/\code{contrast_r_upper} (list columns) plus
@@ -72,8 +72,8 @@ a data.frame, one row per (nominal, partner) pair. With
 the requested \code{method} keeps point-only interval columns (\code{NA} bounds,
 \code{method = "point"}). Computed intervals carry an \code{interval_status} flag
 (\code{"heuristic_unvalidated"} for \code{"wald"}, \code{"target_specific_uncalibrated"}
-for \code{"bootstrap"}/\code{"profile"}) -- coverage is not yet certified for any
-route (validation register CI-11 pending).
+for \code{"bootstrap"}) -- coverage is not yet certified for any
+route (recovery evidence for this route is not yet complete).
 }
 \description{
 For a fit where a \code{multinomial()} trait shares a latent factor with
@@ -88,5 +88,36 @@ between partner \code{p} and the whole K-1 contrast block \code{c}. Invariant to
 baseline category; magnitude in [0, 1].
 \item \code{contrast_r} (when \code{contrasts = TRUE}): the (K-1)-vector of individual
 contrast correlations, labelled by category-vs-baseline.
+}
+}
+\examples{
+\dontrun{
+set.seed(12)
+n_unit <- 120L
+n_rep <- 3L
+unit_id <- rep(seq_len(n_unit), each = n_rep)
+score <- stats::rnorm(n_unit)
+score_obs <- score[unit_id]
+gaussian_y <- 0.8 * score_obs + stats::rnorm(length(unit_id), sd = 0.4)
+category_y <- vapply(seq_along(unit_id), function(i) {
+  eta <- c(0, 0.9 * score_obs[i], -0.6 * score_obs[i])
+  prob <- exp(eta - max(eta))
+  sample.int(3L, 1L, prob = prob / sum(prob))
+}, integer(1L))
+dat <- data.frame(
+  unit = factor(c(unit_id, unit_id)),
+  trait = factor(rep(c("g", "cat"), each = length(unit_id)),
+                 levels = c("g", "cat")),
+  family = factor(rep(c("g", "m"), each = length(unit_id)),
+                  levels = c("g", "m")),
+  value = c(gaussian_y, category_y)
+)
+families <- list(g = gaussian(), m = multinomial())
+attr(families, "family_var") <- "family"
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = TRUE),
+  data = dat, family = families, trait = "trait", unit = "unit"
+)
+extract_cross_correlations(fit, contrasts = TRUE)
 }
 }

@@ -1,7 +1,8 @@
 ## Per-trait repeatability with confidence intervals.
 ## extract_repeatability() is the canonical user-facing function
-## for the per-trait repeatability/ICC R_t = sigma2_B / (sigma2_B + sigma2_W),
-## with three method choices: profile / Wald / bootstrap.
+## for the per-trait repeatability/ICC R_t = v_B,t / (v_B,t + v_W,t),
+## with Wald (default) and bootstrap confidence intervals. The former profile
+## token is accepted only to fail loudly with a typed withdrawal.
 ##
 ## Conceptual prior: McCune/Nakagawa coxme_icc_ci() in
 ## https://github.com/kelseybmccune/Time-to-Event_Repeatability/blob/main/R/rptRsurv.R
@@ -9,10 +10,16 @@
 #' Per-trait repeatability with confidence intervals
 #'
 #' Returns the per-trait repeatability
-#' \eqn{R_t = \sigma^2_{B,t} / (\sigma^2_{B,t} + \sigma^2_{W,t})} for a
-#' fit returned by [gllvmTMB()] with both unit- and observation-level diagonal
-#' variance components. In new ordinary formulas those diagonal components are
-#' usually supplied by default `latent()` terms or explicit `indep()` terms.
+#' \deqn{R_t = v_{B,t} / (v_{B,t} + v_{W,t}),}
+#' where
+#' \deqn{v_{B,t} = [\Lambda_B\Lambda_B^\top]_{tt} + \sigma^2_{B,t}}
+#' and
+#' \deqn{v_{W,t} = [\Lambda_W\Lambda_W^\top]_{tt} + \sigma^2_{W,t} + \sigma^2_{d,t}.}
+#' The first two terms include the shared latent and diagonal companion variance
+#' at the unit and observation tiers; \eqn{\sigma^2_{d,t}} is the
+#' family-specific link residual used for non-Gaussian traits. The function is
+#' intended for a fit returned by [gllvmTMB()] with the relevant ordinary unit
+#' and observation-level components.
 #' Also known as the intraclass correlation coefficient (ICC) at the unit
 #' level.
 #'
@@ -21,10 +28,10 @@
 #'   \code{ICC_site} summary; in that case the function reuses the stored
 #'   point estimates and percentile bounds rather than refitting.
 #' @param level Confidence level. Default 0.95.
-#' @param method One of \code{"profile"} (default), \code{"wald"},
-#'   \code{"bootstrap"}. A profile request currently returns a clearly
-#'   labelled Wald interval because the full-covariance repeatability target
-#'   does not yet have a defensible profile implementation.
+#' @param method One of \code{"wald"} (default), \code{"profile"}, or
+#'   \code{"bootstrap"}. \code{"profile"} is accepted only for backwards
+#'   compatibility and aborts because a defensible profile interval for
+#'   canonical full-covariance repeatability is not available.
 #' @param nsim Number of bootstrap replicates when
 #'   \code{method = "bootstrap"}. Default 500.
 #' @param seed Optional RNG seed for the bootstrap.
@@ -33,12 +40,10 @@
 #'
 #' @section Method choice:
 #' \itemize{
-#'   \item \code{"profile"}: requests a profile interval, but currently falls
-#'     back to the same full-covariance Wald calculation described below. The
-#'     returned \code{method} is \code{"wald"}; it is never relabelled as a
-#'     profile interval.
-#'   \item \code{"wald"}: Gaussian-approximation CI via the delta method
-#'     on \code{plogis(2*(theta_B - theta_W))}.
+#'   \item \code{"wald"} (default): Gaussian-approximation CI via the delta method
+#'     on \code{log(v_B) - log(v_W)}, transformed with \code{plogis()}.
+#'   \item \code{"profile"}: withdrawn. It aborts rather than silently
+#'     substituting a different interval method or estimand.
 #'   \item \code{"bootstrap"}: parametric bootstrap via \code{bootstrap_Sigma()}.
 #' }
 #'
@@ -72,10 +77,18 @@
 extract_repeatability <- function(
   fit,
   level = 0.95,
-  method = c("profile", "wald", "bootstrap"),
+  method = c("wald", "profile", "bootstrap"),
   nsim = 500L,
   seed = NULL
 ) {
+  method <- match.arg(method)
+  if (method == "profile") {
+    cli::cli_abort(c(
+      "A profile interval for canonical full-covariance repeatability is not currently available.",
+      "i" = "The former profile token estimated only a diagonal-companion ratio and omitted shared latent variance.",
+      ">" = "Request {.code method = \"wald\"} or {.code method = \"bootstrap\"}, and report the method's limitations."
+    ), class = "gllvmTMB_repeatability_profile_withdrawn")
+  }
   if (inherits(fit, "bootstrap_Sigma")) {
     return(.repeatability_from_bootstrap(fit))
   }
@@ -84,34 +97,8 @@ extract_repeatability <- function(
       "Provide a fit returned by {.fun gllvmTMB} or a {.cls bootstrap_Sigma} object."
     )
   }
-  method <- match.arg(method)
-
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
-
-  if (method == "profile") {
-    ## Full-Sigma R = vB[t]/(vB[t]+vW[t]) is a non-linear function of
-    ## multiple parameters (Lambda_B / sd_B / Lambda_W / sd_W). Proper
-    ## profile-likelihood CI requires Lagrange-style fix-and-refit on
-    ## the ratio constraint -- not yet implemented. Fall back to the
-    ## Wald CI on the same definition; the point estimate is the
-    ## correct full-Sigma R from the MLE. We emit a one-shot info
-    ## message per session so users know the CI is Wald-approximated
-    ## without spamming on repeated calls.
-    if (!isTRUE(getOption("gllvmTMB.repeatability_profile_note_shown"))) {
-      cli::cli_inform(c(
-        "!" = "{.code method = \"profile\"} for full-{.field Sigma} repeatability is not yet implemented; falling back to {.code method = \"wald\"}.",
-        "i" = "The output's {.field method} column will report {.val wald} so the actual computation is honest.",
-        ">" = "A full-covariance profile requires a target-explicit constrained fit. For an empirical CI use {.code method = \"bootstrap\"}."
-      ))
-      options(gllvmTMB.repeatability_profile_note_shown = TRUE)
-    }
-    ## Honest labelling: don't overwrite method to "profile" when the
-    ## actual computation is wald. Users see method = "wald" and the
-    ## inform above tells them why their request was demoted.
-    out <- Recall(fit, level = level, method = "wald")
-    return(out)
-  }
 
   if (method == "wald") {
     ## Wald CI for FULL-Sigma R = vB[t] / (vB[t] + vW[t]), where
@@ -232,26 +219,52 @@ extract_repeatability <- function(
   if (is.null(x)) {
     return(rep(NA_real_, length(trait_names)))
   }
+  if (!is.numeric(x)) {
+    cli::cli_abort(
+      "Bootstrap repeatability {.field {field}} must be numeric.",
+      class = "gllvmTMB_invalid_bootstrap_Sigma"
+    )
+  }
   out <- as.numeric(x)
   nm <- names(x)
   if (!is.null(nm)) {
-    out <- out[match(trait_names, nm)]
+    idx <- match(trait_names, nm)
+    if (anyNA(idx)) {
+      cli::cli_abort(
+        "Bootstrap repeatability {.field {field}} names do not cover every point-estimate trait.",
+        class = "gllvmTMB_invalid_bootstrap_Sigma"
+      )
+    }
+    out <- out[idx]
   }
   if (length(out) != length(trait_names)) {
     cli::cli_abort(
-      "Bootstrap repeatability {.field {field}} does not match the point-estimate length."
+      "Bootstrap repeatability {.field {field}} does not match the point-estimate length.",
+      class = "gllvmTMB_invalid_bootstrap_Sigma"
     )
   }
   out
 }
 
 .repeatability_from_bootstrap <- function(boot) {
-  pe <- boot$point_est$ICC_site
+  if (!is.list(boot)) {
+    cli::cli_abort(c(
+      "Malformed {.cls bootstrap_Sigma} object.",
+      "i" = "The object must be a list containing the stored bootstrap summaries."
+    ), class = "gllvmTMB_invalid_bootstrap_Sigma")
+  }
+  pe <- if (is.list(boot$point_est)) boot$point_est$ICC_site else NULL
   if (is.null(pe)) {
     cli::cli_abort(c(
       "No repeatability / ICC bootstrap summary is available.",
       "i" = "Call {.fun bootstrap_Sigma} with {.code what = \"ICC\"} and both {.code level = c(\"unit\", \"unit_obs\")}."
-    ))
+    ), class = "gllvmTMB_invalid_bootstrap_Sigma")
+  }
+  if (!is.numeric(pe) || length(pe) == 0L || any(!is.finite(pe))) {
+    cli::cli_abort(c(
+      "Malformed {.cls bootstrap_Sigma} repeatability summary.",
+      "i" = "{.code point_est$ICC_site} must be a non-empty finite numeric vector."
+    ), class = "gllvmTMB_invalid_bootstrap_Sigma")
   }
   trait_names <- names(pe)
   if (is.null(trait_names)) {

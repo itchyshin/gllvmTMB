@@ -174,8 +174,18 @@ test_that("Stage 3: default latent covariance + propto can run together (smoke t
     data = df, REML = FALSE
   ))
   ll_t <- as.numeric(stats::logLik(fit_t))
-  testthat::skip_if(is.na(ll_t),
-                    "glmmTMB hit non-PD Hessian on combined model")
+  ## If the glmmTMB reference fit fails there is no value to compare against.
+  ## State what is forfeited: the gllvmTMB-side assertions above have already
+  ## run and hold; only the cross-implementation logLik agreement is lost.
+  testthat::skip_if(
+    is.na(ll_t),
+    paste0(
+      "glmmTMB reference fit returned a non-PD Hessian on the combined model, ",
+      "so the cross-implementation logLik check did NOT run. gllvmTMB-side ",
+      "assertions above still passed. See ",
+      "docs/dev-log/known-residuals-register.md (R-4)."
+    )
+  )
   expect_equal(ll_g, ll_t, tolerance = 1e-3)
 })
 

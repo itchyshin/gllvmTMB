@@ -118,14 +118,12 @@ fit <- gllvmTMB(
 Per-cell weight matrices (the one path \code{gllvmTMB_wide()} uniquely
 supports) remain available via the long-format API by passing a
 long-format \code{weights} column aligned with \verb{(unit, trait)} rows.
-See \code{docs/design/02-data-shape-and-weights.md}.
 }
 
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}} for the recommended formula-API entry point
 (long format or wide data frames via \code{\link[=traits]{traits()}} LHS sugar);
 \code{\link[=extract_Sigma]{extract_Sigma()}} for post-fit covariance summaries;
-\code{\link[=extract_ordination]{extract_ordination()}} for scores and loadings. The source-tree
-contract is \code{docs/design/02-data-shape-and-weights.md}.
+\code{\link[=extract_ordination]{extract_ordination()}} for scores and loadings.
 }
 \keyword{internal}

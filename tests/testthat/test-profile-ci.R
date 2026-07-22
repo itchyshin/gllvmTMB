@@ -1,6 +1,6 @@
-## Phase K: profile-likelihood confidence intervals.
-## Tests the three-method API (`profile` / `wald` / `bootstrap`) on
-## `confint.gllvmTMB_multi`, `extract_repeatability`,
+## Phase K: interval routes and retained internal profile research machinery.
+## Tests the public Wald/bootstrap API and typed withdrawal of nonlinear
+## profile tokens on `confint.gllvmTMB_multi`, `extract_repeatability`,
 ## `extract_communality`, `extract_correlations`, and
 ## `extract_phylo_signal`.
 
@@ -62,30 +62,60 @@ test_that("Direct profile on theta_diag_B agrees with Wald (upper bound) to ~30%
   expect_lt(rel_diff, 0.5)
 })
 
-## ---- 2. Repeatability profile gives reasonable bounds --------------------
+## ---- 2. Repeatability defaults to Wald; profile refuses ------------------
 
-test_that("extract_repeatability(method='profile') returns sane bounds", {
+test_that("extract_repeatability rejects withdrawn profile before fitting", {
+  expect_error(
+    gllvmTMB::extract_repeatability(NULL, method = "profile"),
+    class = "gllvmTMB_repeatability_profile_withdrawn"
+  )
+})
+
+test_that("extract_repeatability validates malformed bootstrap objects without masking profile withdrawal", {
+  malformed <- structure(1, class = "bootstrap_Sigma")
+  expect_error(
+    gllvmTMB::extract_repeatability(malformed),
+    class = "gllvmTMB_invalid_bootstrap_Sigma"
+  )
+  expect_error(
+    gllvmTMB::extract_repeatability(malformed, method = "profile"),
+    class = "gllvmTMB_repeatability_profile_withdrawn"
+  )
+
+  empty <- structure(list(), class = c("bootstrap_Sigma", "list"))
+  expect_error(
+    gllvmTMB::extract_repeatability(empty),
+    class = "gllvmTMB_invalid_bootstrap_Sigma"
+  )
+
+  mismatched <- structure(list(
+    point_est = list(ICC_site = c(a = 0.4, b = 0.5)),
+    ci_lower = list(ICC_site = c(a = 0.3)),
+    ci_upper = list(ICC_site = c(a = 0.5, b = 0.6))
+  ), class = c("bootstrap_Sigma", "list"))
+  expect_error(
+    gllvmTMB::extract_repeatability(mismatched),
+    class = "gllvmTMB_invalid_bootstrap_Sigma"
+  )
+})
+
+test_that("extract_repeatability declares Wald as its public default", {
+  expect_identical(
+    eval(formals(gllvmTMB::extract_repeatability)$method),
+    c("wald", "profile", "bootstrap")
+  )
+})
+
+test_that("extract_repeatability defaults to Wald", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
-  rep_ci <- suppressMessages(
-    gllvmTMB::extract_repeatability(fit, level = 0.95, method = "profile")
-  )
-  ## Shape
+  rep_ci <- gllvmTMB::extract_repeatability(fit, level = 0.95)
   expect_s3_class(rep_ci, "data.frame")
   expect_named(rep_ci, c("trait", "R", "lower", "upper", "method"))
   expect_equal(nrow(rep_ci), 3L)
-  ## Honest labelling: when method='profile' is requested but the
-  ## proper Lagrange-style profile-likelihood path isn't yet
-  ## implemented for full-Sigma repeatability, the output reports
-  ## method = "wald" (the actual computation) and emits a one-shot
-  ## inform message explaining the fallback. This avoids the
-  ## previous misleading behaviour where the label said "profile"
-  ## but the bounds were Wald.
   expect_true(all(rep_ci$method == "wald"))
-  ## R is in [0, 1]
   expect_true(all(rep_ci$R >= 0 & rep_ci$R <= 1))
-  ## When upper bound is finite, lower < estimate < upper
   has_upper <- !is.na(rep_ci$upper)
   expect_true(all(rep_ci$R[has_upper] <= rep_ci$upper[has_upper] + 1e-6))
 })
@@ -196,14 +226,14 @@ test_that("Wald Sigma_unit does not attach Psi-only bounds to latent total varia
   expect_true(all(is.na(ci$upper[diag_rows])))
 })
 
-## ---- 5. Speed: profile is meaningfully faster than bootstrap -------------
+## ---- 5. Speed: Wald is meaningfully faster than bootstrap ----------------
 
-test_that("Profile CI for repeatability is faster than bootstrap", {
+test_that("Wald CI for repeatability is faster than bootstrap", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
-  t_p <- system.time({
-    rep_p <- gllvmTMB::extract_repeatability(fit, method = "profile")
+  t_w <- system.time({
+    rep_w <- gllvmTMB::extract_repeatability(fit, method = "wald")
   })["elapsed"]
   t_b <- system.time({
     rep_b <- suppressMessages(gllvmTMB::extract_repeatability(
@@ -213,11 +243,11 @@ test_that("Profile CI for repeatability is faster than bootstrap", {
       seed = 1L
     ))
   })["elapsed"]
-  ## Profile should be faster than 30-rep bootstrap (typically 2-5x).
+  ## Wald should be faster than 30-rep bootstrap (typically 2-5x).
   ## We assert >= 1x to be safe -- the headline win shows up at larger
   ## scales (full T-trait fit with 5 tiers ~ 75 correlations).
-  expect_true(t_p < t_b * 2) ## generous bound to avoid CI flakiness
-  expect_s3_class(rep_p, "data.frame")
+  expect_true(t_w < t_b * 2) ## generous bound to avoid CI flakiness
+  expect_s3_class(rep_w, "data.frame")
   expect_s3_class(rep_b, "data.frame")
 })
 

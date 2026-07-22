@@ -70,14 +70,13 @@ from \code{\link[=check_gllvmTMB]{check_gllvmTMB()}}, and \code{fit$fit_health} 
 in \code{attr(plot, "gllvmTMB_diagnostic")} so the figure can be audited
 without reverse-engineering ggplot layers.
 
-Scope boundary: IN, fitted-model predictive plots
-and residual Q-Q/rootogram helpers for \code{gllvmTMB_multi} fits, with
-exact randomized-quantile residuals for Gaussian, Poisson, and NB2
-rows and a simulation-rank fallback. PARTIAL, these are diagnostic
-displays, not formal uniformity, dispersion, interval-calibration, or
-Bayesian posterior-predictive tests. PLANNED, exact residual support
-for delta, hurdle, truncated, ordinal, and mixture families remains
-future validation work.
+Scope: fitted-model predictive plots and residual Q-Q/rootogram helpers
+for \code{gllvmTMB_multi} fits, with exact randomized-quantile residuals for
+Gaussian, Poisson, and NB2 rows and a simulation-rank fallback. These
+are diagnostic displays, not formal uniformity, dispersion,
+interval-calibration, or Bayesian posterior-predictive tests. Exact
+residual support for delta, hurdle, truncated, ordinal, and mixture
+families is not yet implemented.
 }
 \examples{
 \donttest{

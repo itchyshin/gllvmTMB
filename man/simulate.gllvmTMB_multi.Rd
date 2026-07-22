@@ -27,9 +27,23 @@ any random-effect grouping that was active.}
 
 \item{condition_on_RE}{Logical (default \code{FALSE}). When \code{FALSE}
 (the default), random effects are redrawn from the fitted
-covariance at every tier (\code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W},
-\code{phylo}, \code{spde}) — the unconditional simulation appropriate for
-parametric bootstrap. When \code{TRUE}, the existing fitted RE modes
+covariance — the unconditional simulation appropriate for
+parametric bootstrap. Redraw is currently implemented for the
+\code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W}, \code{propto}, \code{lv_B}, \code{phylo_rr},
+and \code{diag_species} tiers.
+
+\strong{Not every tier is covered.} A fit using any other active tier —
+notably the SPDE spatial tier (\code{spde}) and the diagonal
+phylogenetic tier (\code{phylo_diag}) — falls back to conditional
+simulation and emits a one-shot warning naming the unhandled
+tiers. Because conditional simulation reuses the fitted random-
+effect modes rather than redrawing them, it understates
+between-unit variability: intervals derived from it (for example
+via \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}) are \strong{too narrow} and should not be read
+as calibrated. Treat the warning as a signal that simulate-based
+uncertainty is not trustworthy for that fit.
+
+When \code{TRUE}, the existing fitted RE modes
 are reused (the older glmmTMB-style conditional simulation that
 only adds Gaussian noise on top of \code{fit$report$eta}). Forced to
 \code{TRUE} when \code{newdata} is supplied (RE modes for unseen levels
@@ -42,8 +56,12 @@ A matrix of dimension \verb{n_obs x nsim} (or \verb{nrow(newdata) x nsim}
 when \code{newdata} is supplied).
 }
 \description{
-Conditional on the fitted parameters and posterior modes of the random
-effects, draws \code{nsim} new response vectors. Each draw uses the same
-linear predictor (\code{fit$report$eta}) and adds Gaussian residual noise
-with \code{sd = exp(log_sigma_eps)}.
+Draws \code{nsim} new response vectors from a fitted model. By default
+(\code{condition_on_RE = FALSE}) the random effects are \strong{redrawn} from the
+fitted covariance and the response is drawn from the fitted family — the
+unconditional simulation appropriate for a parametric bootstrap. Redraw is
+not implemented for every tier; a fit using an unhandled tier falls back to
+conditional simulation with a warning, and intervals derived from it are too
+narrow. Set \code{condition_on_RE = TRUE} for the older conditional behaviour,
+which reuses the fitted random-effect modes and only adds residual noise.
 }

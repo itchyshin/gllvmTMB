@@ -15,9 +15,10 @@ context only.
 the profile-primary path recorded in
 `docs/dev-log/after-task/2026-05-18-m3-3a-profile-primary.md`.
 The candidate-method comparison below is retained as historical
-rationale; the production workflow dispatches the current
-profile-CI grid with the post-M3.4 `init_strategy` option rather
-than adding another inference method.
+rationale. The former production workflow is retired under D-50;
+any replacement campaign must use the current profile-CI grid and
+post-M3.4 `init_strategy` through an approved Totoro/DRAC task manifest
+rather than adding another inference method.
 **Closes**: gap between M3.2 smoke (placeholder Wald) and the M3
 exit gate (≥ 94 % empirical coverage at 95 % nominal).
 **Backed by**: validation-debt rows **CI-08** (`coverage_study()`
@@ -185,24 +186,27 @@ stayed focused on inference while M3.4 shipped the warmup and phi
 clamp. The current M3.3 pilot should use those mitigations without
 turning this slice into a new convergence-engine PR.
 
-## 5. Compute budget and CI plan
+## 5. Compute budget and execution plan
 
 Compute estimates are anchored on M3.2c smoke runtimes and the
-post-M3.4 warm-start mitigation lane. M3.3 production runs by
-manual GitHub Actions `workflow_dispatch`, with one Linux matrix job
-per family × dimension cell and per-cell RDS artifacts uploaded for
-later aggregation.
+post-M3.4 warm-start mitigation lane. Under D-50, M3.3 uses local
+deterministic checks and a bounded Totoro smoke. A reviewed DRAC array
+driver remains to be built and frozen before production, with one task
+per family × dimension × seed/shard cell. Complete
+attempt records stay in local and `/project` keeper bundles; GitHub
+Actions does not run or store this campaign.
 
 | Run | Cells × reps × B | Estimated wall | Output |
 |---|---|---|---|
 | **Smoke M3.3a** | 15 × 10 × 30 | ~2 h serial / ~20 min ×8 cores | `inst/extdata/m3-coverage-grid-smoke.rds` refresh |
-| **Production M3.3a** | 15 × 200 | Manual Actions matrix; bounded by slowest cell and `max-parallel` | Per-cell workflow artifacts; follow-up PR aggregates to `inst/extdata/m3-coverage-grid-production.rds` if the evidence is publication-ready |
+| **Production M3.3a** | 15 × 200 | Planned DRAC array after driver review and Totoro/DRAC parity; size and throttle then frozen | Per-task keeper records consolidated locally; a follow-up PR may add only a compact reviewed summary if the evidence is publication-ready |
 | **Former profile-subset cross-validation** | 9 × 50 × N/A (profile) | ~12 h serial / ~2 h ×8 cores | `inst/extdata/m3-coverage-profile-subset.rds` |
 
-The workflow PR only installs reproducible dispatch and artifact
-capture. The production evidence is not claimed until a manual run
-finishes, the artifacts are reviewed, and a follow-up PR records the
-coverage summary, validation-debt status, and reader-facing figures.
+The campaign bundle freezes dispatch, task manifests, and result
+schemas before submission. Production evidence is not claimed until
+the complete attempt denominator is transferred and reviewed, and a
+follow-up PR records the coverage summary, validation-debt status, and
+reader-facing figures.
 
 ## 6. Validation-debt register interaction
 
@@ -213,14 +217,15 @@ M3.3a production → walks per-family rows to `covered` if the cell
 hits ≥94%, or to `partial` / `blocked` with the failure-mode
 flagged.
 
-**2026-05-19 production outcome.** Manual Actions run
+**Historical 2026-05-19 production outcome.** Before D-50, Actions run
 26100827665 completed all 15 cells with `n_reps = 200` and
 `init_strategy = "single_trait_warmup"`, but the artifact review
 found that only 2/15 cells cleared the 94 % profile-psi coverage
 gate. The review is filed at
 `docs/dev-log/audits/2026-05-19-m3-production-grid-artifact-review.md`.
 No production RDS was promoted to `inst/extdata/`, and CI-08 / CI-10
-remain `partial`.
+remain `partial`. The run is retained as negative historical evidence;
+it is not a current execution route.
 
 The planned 15 sub-row production promotion is deferred until the
 failure mode is diagnosed and a rerun supports the gate. The current

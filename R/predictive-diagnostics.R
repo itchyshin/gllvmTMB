@@ -16,14 +16,13 @@
 #' in `attr(plot, "gllvmTMB_diagnostic")` so the figure can be audited
 #' without reverse-engineering ggplot layers.
 #'
-#' Scope boundary: IN, fitted-model predictive plots
-#' and residual Q-Q/rootogram helpers for `gllvmTMB_multi` fits, with
-#' exact randomized-quantile residuals for Gaussian, Poisson, and NB2
-#' rows and a simulation-rank fallback. PARTIAL, these are diagnostic
-#' displays, not formal uniformity, dispersion, interval-calibration, or
-#' Bayesian posterior-predictive tests. PLANNED, exact residual support
-#' for delta, hurdle, truncated, ordinal, and mixture families remains
-#' future validation work.
+#' Scope: fitted-model predictive plots and residual Q-Q/rootogram helpers
+#' for `gllvmTMB_multi` fits, with exact randomized-quantile residuals for
+#' Gaussian, Poisson, and NB2 rows and a simulation-rank fallback. These
+#' are diagnostic displays, not formal uniformity, dispersion,
+#' interval-calibration, or Bayesian posterior-predictive tests. Exact
+#' residual support for delta, hurdle, truncated, ordinal, and mixture
+#' families is not yet implemented.
 #'
 #' @param object A `gllvmTMB_multi` fit.
 #' @param type Diagnostic plot type. `"rq_qq"` plots exact randomized-
@@ -163,12 +162,11 @@ predictive_check <- function(
 #' Rows are retained even when a residual cannot be computed. Inspect the
 #' `status` column before treating residuals as complete.
 #'
-#' Scope boundary: IN, exact family-CDF randomized-quantile
-#' residuals for Gaussian, Poisson, and NB2 rows plus simulation-rank
-#' residuals from fitted-model draws. PARTIAL, unsupported families are
-#' retained with row status rather than promoted to exact residual
-#' claims. PLANNED, broader family coverage and formal residual tests
-#' remain later validation work.
+#' Scope: exact family-CDF randomized-quantile residuals for Gaussian,
+#' Poisson, and NB2 rows plus simulation-rank residuals from fitted-model
+#' draws. Unsupported families are retained with row status rather than
+#' promoted to exact residual claims. Broader family coverage and formal
+#' residual tests remain later validation work.
 #'
 #' The returned data frame also carries `attr(x, "gllvmTMB_diagnostic")`
 #' with [check_gllvmTMB()] output and the fitted object's `fit_health`

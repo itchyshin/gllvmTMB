@@ -102,20 +102,18 @@ test_that("extract_correlations accepts canonical and legacy tier names", {
 })
 
 test_that(".normalise_level handles all canonical + legacy names", {
-  ## 0.2.0: testthat 3 doesn't expose unexported internal functions to the
-  ## test environment by default. Use gllvmTMB:::.normalise_level(...) when
-  ## migrating these assertions; for the bootstrap PR the `.normalise_level`
-  ## tests below were skipped because they call the bare-name internal
-  ## function, which trips the test suite under R CMD check.
-  skip("Skipped pending migration to gllvmTMB:::.normalise_level().")
+  ## `.normalise_level()` is unexported, and testthat 3 does not put internals
+  ## on the test environment's search path, so a bare-name call fails under
+  ## `R CMD check`. Address it explicitly via `:::` rather than skipping.
+  normalise_level <- gllvmTMB:::.normalise_level
   ## Canonical -> internal slot
-  expect_equal(.normalise_level("unit"),     "B")
-  expect_equal(.normalise_level("unit_obs"), "W")
-  expect_equal(.normalise_level("spatial"),  "spde")
-  expect_equal(.normalise_level("Omega"),    "Omega")
+  expect_equal(normalise_level("unit"),     "B")
+  expect_equal(normalise_level("unit_obs"), "W")
+  expect_equal(normalise_level("spatial"),  "spde")
+  expect_equal(normalise_level("Omega"),    "Omega")
   ## Canonical = internal already
-  expect_equal(.normalise_level("phy"),      "phy")
-  expect_equal(.normalise_level("cluster"),  "cluster")
+  expect_equal(normalise_level("phy"),      "phy")
+  expect_equal(normalise_level("cluster"),  "cluster")
 
   ## Legacy -> identity, with deprecation warning (reset once-only
   ## cache so the warning fires inside this test_that block).
@@ -123,18 +121,18 @@ test_that(".normalise_level handles all canonical + legacy names", {
     gllvmTMB.warned_level_B = NULL,
     gllvmTMB.warned_level_W = NULL
   )
-  expect_warning(out_B <- .normalise_level("B"), "deprecated")
+  expect_warning(out_B <- normalise_level("B"), "deprecated")
   expect_equal(out_B, "B")
 
   ## Second call within the same session — warning is suppressed by
   ## the cache; result is unchanged.
-  expect_silent(out_B2 <- .normalise_level("B"))
+  expect_silent(out_B2 <- normalise_level("B"))
   expect_equal(out_B2, "B")
 
   ## Legacy "tier" arg name uses a separate cache key.
   withr::local_options(gllvmTMB.warned_tier_W = NULL)
   expect_warning(
-    out_tier_W <- .normalise_level("W", arg_name = "tier"),
+    out_tier_W <- normalise_level("W", arg_name = "tier"),
     "deprecated"
   )
   expect_equal(out_tier_W, "W")

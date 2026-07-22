@@ -5,8 +5,9 @@
 ##
 ## This file is the reporting companion to dev/m3-pilot-launch.R (the
 ## accumulate engine) and dev/power-pilot-run.R (the CLI sweep wrapper).
-## It reads the ACCUMULATED per-cell results (the GHA `power-pilot-results`
-## orphan-branch store + any local store), folds them into one tidy
+## It reads accumulated per-cell results from local/`/project` keeper bundles
+## (and, when auditing history, the retired `power-pilot-results` branch),
+## folds them into one tidy
 ## per-cell table that carries BOTH the coverage / zero-exclusion diagnostics
 ## AND the issue columns (failed fits, non-PD Hessian, convergence failure
 ## rates, a flag), draws the drmTMB-style coverage-vs-nominal forest +
@@ -34,7 +35,7 @@
 ##   ggs <- pilot_plot(df)            # writes PNGs to dev/m3-pilot-figures/
 ##   pilot_record(df)                 # writes dev/m3-pilot-summary.{md,rds}
 ##
-## Usage (CLI, for the GHA summary job -- prints one ISSUES line to stdout):
+## Usage (CLI reducer -- prints one ISSUES line to stdout):
 ##   Rscript dev/m3-pilot-report.R --emit-issues \
 ##     --results-dir=dev/m3-pilot-results
 
@@ -93,7 +94,7 @@ PILOT_FLAG_CONV_FAIL_RATE <- 0.10
 ## Read every per-cell `<cell>.rds` (the long per-replicate grid written
 ## by m3_run_cell / the accumulate engine) from each directory in
 ## `results_dirs`, COMBINE same-cell grids across directories (so the
-## GHA-branch store and a local store add up), DEDUP replicates by their
+## historical branch store and a local store add up), DEDUP replicates by their
 ## true per-draw key (`rep_seed`, falling back to `rep`), and reduce each
 ## combined cell to ONE tidy row carrying:
 ##   - cell metadata: cell_id, family (label), harness_family, d, n_units,
@@ -1363,7 +1364,7 @@ pilot_record <- function(
 }
 
 ## Build the markdown record as a character vector (ASCII only). Exposed
-## so the GHA summary job can embed the same issues block.
+## so batch reducers can embed the same issues block.
 pilot_record_lines <- function(
   df,
   gate_94 = PILOT_GATE_94,
@@ -1480,7 +1481,7 @@ pilot_record_lines <- function(
 }
 
 ## The ISSUES block as a character vector (ASCII). Reused by the record
-## and by the GHA summary one-liner (pilot_issue_oneline()).
+## and by the batch-summary one-liner (pilot_issue_oneline()).
 pilot_issue_lines <- function(df) {
   flagged <- df[nzchar(df$flag %||% ""), , drop = FALSE]
   flagged <- flagged[!is.na(flagged$cell_id), , drop = FALSE]
@@ -1573,7 +1574,7 @@ pilot_issue_lines <- function(df) {
   out
 }
 
-## One-line ASCII issues string for the GHA #340 board, e.g.:
+## One-line ASCII issues string for a local campaign summary, e.g.:
 ##   "failures: nbinom2-d2-n50-sig0.0 conv-fail 22%; <cell> nonPD 14% (2 cells flagged)"
 ## Returns "none" when nothing is flagged.
 pilot_issue_oneline <- function(df, max_cells = 4L) {
@@ -1599,7 +1600,7 @@ pilot_issue_oneline <- function(df, max_cells = 4L) {
 }
 
 ## =====================================================================
-## CLI: print the one-line issues string (for the GHA summary job)
+## CLI: print the one-line issues string for a campaign reducer
 ## =====================================================================
 
 if (sys.nframe() == 0L && !interactive()) {

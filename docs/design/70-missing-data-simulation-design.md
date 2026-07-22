@@ -385,26 +385,26 @@ robustness studies run alongside S3 once a structured covariate model exists.
 
 ---
 
-## Compute-budget realism (CI vs local vs sprint)
+## Compute-budget realism (local vs Totoro vs DRAC)
 
-This is a heavy study; honest tiering matters (the drmTMB programme repeatedly
-flags singleton Actions runs as too large and shards them). The cost driver is
+This is a heavy study; honest tiering matters. The cost driver is
 NOT one fit but `n_sim x n_cells x n_methods`, and for M-MI an extra factor of
-`m` completed datasets per replicate. Per the user's standing rule, default to
-LOCAL checks over GitHub Actions; expand to CI/sprint only for the formal grids.
+`m` completed datasets per replicate. D-50 keeps deterministic checks local,
+uses Totoro for bounded smoke, and plans formal grids as frozen DRAC arrays
+after the relevant array driver has passed its own preflight.
 
 | Tier | What runs | Where | Replicates | Rationale |
 |---|---|---|---|---|
 | **Smoke** | seed/shape/no-op tests; one tiny cell per sub-study | CRAN tests + local | `n_sim = 20`, 1-2 cells | must stay CRAN-time-safe; no claims |
 | **Pilot** | factor-level tuning; convergence screening; the cross-package contract test | local (Mac) | `n_sim = 100-200`, reduced grid | catch pathologies before spending formal compute; local first per the local-over-CI rule |
-| **Formal (light)** | S1, S2a coverage + A2/A3 contrasts | local or single `workflow_dispatch` CI job, Linux-only | `n_sim = 1000`, smoke-grid factor levels | Gaussian fits are fast; tractable locally overnight |
-| **Formal (heavy)** | S3 phylo grid (tree sizes), S5 multivariate SUM, A4 MI cells | sprint / dispatched sharded CI, Linux-only | `n_sim = 1000`, full grid, sharded | phylo fits + MI ensembles + multivariate SUM are the bottleneck; SHARD like drmTMB's nbinom2-phylo formal grid; never a single giant Actions run |
+| **Formal (light)** | S1, S2a coverage + A2/A3 contrasts | Totoro or a short DRAC array after driver preflight and parity | `n_sim = 1000`, smoke-grid factor levels | Gaussian fits are fast, but the full attempt denominator still needs an immutable campaign bundle |
+| **Formal (heavy)** | S3 phylo grid (tree sizes), S5 multivariate SUM, A4 MI cells | Planned DRAC array after driver preflight | `n_sim = 1000`, full grid, sharded | phylo fits + MI ensembles + multivariate SUM are the bottleneck; one seed/task with retained failures |
 
-CI guidance, consistent with the user's standing rule: any CI grid runs on
-`workflow_dispatch` (manual trigger), `ubuntu-latest` only, sharded into bounded
-jobs; macOS/Windows runners are reserved for pre-release cross-OS checks, not for
-routine simulation sweeps (they cost 10x/2x the Linux rate). Use a bounded
-parallel replicate runner (drmTMB caps actual workers at 10 and at `n_sim`);
+Compute guidance: freeze source, DGP, seeds, thresholds, retry policy, and result
+schema before remote work. Use one CPU/task unless a benchmark proves within-fit
+parallel benefit; inspect `seff` before sizing later waves. GitHub Actions is
+reserved for package checks and documentation and stores no simulation output.
+Use a bounded parallel replicate runner;
 parallelise EITHER the replicate layer OR the MI/bootstrap inner layer, never
 both at once (drmTMB's nested-parallel guard). Flag the M-MI heavy cells as the
 single most expensive component and the first candidate for a reduced factor

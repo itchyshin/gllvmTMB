@@ -1,12 +1,14 @@
-# Full (heavy) test suite across all 3 OSes.
+# Bounded full (heavy) package-regression suite.
 #
 # R-CMD-check.yaml is the FAST check: it leaves GLLVMTMB_HEAVY_TESTS unset, so
 # the slow recovery/matrix/profile/bootstrap tests skip (see
 # tests/testthat/setup.R::skip_if_not_heavy) and routine PRs stay ~12 min.
 #
-# This workflow sets GLLVMTMB_HEAVY_TESTS=1 so the heavy tests RUN, exercising
-# the complete ~190-fit suite on ubuntu + macOS + windows. It runs nightly,
-# on demand (workflow_dispatch), and on every release tag.
+# This workflow sets GLLVMTMB_HEAVY_TESTS=1 so the heavy package tests RUN.
+# Nightly and manual dispatches are Ubuntu-only; release tags use the three-OS
+# matrix. This is package-regression evidence, not simulation-recovery,
+# coverage, power, or scientific-calibration evidence. Those campaigns run on
+# Totoro/DRAC and never upload GitHub Actions artifacts (D-50).
 on:
   schedule:
     # Nightly at 06:00 UTC.
@@ -67,6 +69,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Enforce GitHub Actions compute boundary
+        shell: bash
+        run: bash tools/check-actions-boundary.sh
+
       - uses: r-lib/actions/setup-pandoc@v2
 
       - uses: r-lib/actions/setup-r@v2
@@ -81,4 +87,5 @@ jobs:
 
       - uses: r-lib/actions/check-r-package@v2
         with:
-          upload-snapshots: true
+          upload-snapshots: false
+          upload-results: never

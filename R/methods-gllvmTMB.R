@@ -991,10 +991,14 @@ tidy.gllvmTMB_multi <- function(
 
 #' Simulate new responses from a fitted gllvmTMB model
 #'
-#' Conditional on the fitted parameters and posterior modes of the random
-#' effects, draws `nsim` new response vectors. Each draw uses the same
-#' linear predictor (`fit$report$eta`) and adds Gaussian residual noise
-#' with `sd = exp(log_sigma_eps)`.
+#' Draws `nsim` new response vectors from a fitted model. By default
+#' (`condition_on_RE = FALSE`) the random effects are **redrawn** from the
+#' fitted covariance and the response is drawn from the fitted family — the
+#' unconditional simulation appropriate for a parametric bootstrap. Redraw is
+#' not implemented for every tier; a fit using an unhandled tier falls back to
+#' conditional simulation with a warning, and intervals derived from it are too
+#' narrow. Set `condition_on_RE = TRUE` for the older conditional behaviour,
+#' which reuses the fitted random-effect modes and only adds residual noise.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param nsim Number of replicate response vectors to draw. Default 1.
@@ -1005,9 +1009,23 @@ tidy.gllvmTMB_multi <- function(
 #'   any random-effect grouping that was active.
 #' @param condition_on_RE Logical (default `FALSE`). When `FALSE`
 #'   (the default), random effects are redrawn from the fitted
-#'   covariance at every tier (`rr_B`, `diag_B`, `rr_W`, `diag_W`,
-#'   `phylo`, `spde`) — the unconditional simulation appropriate for
-#'   parametric bootstrap. When `TRUE`, the existing fitted RE modes
+#'   covariance — the unconditional simulation appropriate for
+#'   parametric bootstrap. Redraw is currently implemented for the
+#'   `rr_B`, `diag_B`, `rr_W`, `diag_W`, `propto`, `lv_B`, `phylo_rr`,
+#'   and `diag_species` tiers.
+#'
+#'   **Not every tier is covered.** A fit using any other active tier —
+#'   notably the SPDE spatial tier (`spde`) and the diagonal
+#'   phylogenetic tier (`phylo_diag`) — falls back to conditional
+#'   simulation and emits a one-shot warning naming the unhandled
+#'   tiers. Because conditional simulation reuses the fitted random-
+#'   effect modes rather than redrawing them, it understates
+#'   between-unit variability: intervals derived from it (for example
+#'   via [bootstrap_Sigma()]) are **too narrow** and should not be read
+#'   as calibrated. Treat the warning as a signal that simulate-based
+#'   uncertainty is not trustworthy for that fit.
+#'
+#'   When `TRUE`, the existing fitted RE modes
 #'   are reused (the older glmmTMB-style conditional simulation that
 #'   only adds Gaussian noise on top of `fit$report$eta`). Forced to
 #'   `TRUE` when `newdata` is supplied (RE modes for unseen levels
@@ -1054,7 +1072,7 @@ simulate.gllvmTMB_multi <- function(
         cli::cli_warn(
           c(
             "{.fn simulate} with {.arg newdata} falls back to Gaussian-on-link-scale draws.",
-            "i" = "Family-aware {.arg newdata} simulation needs per-row family lookup from {.arg newdata}; that is M2/M3 work.",
+            "i" = "Family-aware {.arg newdata} simulation needs per-row family lookup from {.arg newdata}; that is not yet implemented.",
             ">" = "For mixed-family bootstrap-style refits, call {.fn simulate} without {.arg newdata}."
           ),
           class = "gllvmTMB_simulate_newdata_gaussian_fallback"
@@ -1075,13 +1093,16 @@ simulate.gllvmTMB_multi <- function(
   ## downstream caller) needs for the variance-component CIs to span the
   ## parametric simulate-refit uncertainty.
   ##
-  ## Currently handles: rr_B, diag_B, rr_W, diag_W, propto (single-factor
-  ## phylo). Other tiers fall back to conditional with a one-shot warning.
+  ## Currently handles: rr_B, diag_B, rr_W, diag_W, propto, lv_B, phylo_rr,
+  ## diag_species -- see .check_simulate_unconditional(), which is the single
+  ## source of truth for this list. Other tiers (notably spde and phylo_diag)
+  ## fall back to conditional with a one-shot warning.
   ok <- .check_simulate_unconditional(object)
   if (!ok$can_redraw) {
     cli::cli_warn(c(
       "Unconditional {.fn simulate} does not yet redraw RE tiers: {.val {ok$unhandled}}.",
-      "i" = "Falling back to conditional simulation. Use {.code condition_on_RE = TRUE} explicitly to silence this warning."
+      "!" = "Falling back to conditional simulation, which reuses the fitted random-effect modes. It understates between-unit variability, so simulate-based intervals for this fit (e.g. from {.fn bootstrap_Sigma}) are too narrow and are not calibrated.",
+      "i" = "Use {.code condition_on_RE = TRUE} explicitly to acknowledge conditional simulation and silence this warning."
     ))
     return(simulate.gllvmTMB_multi(
       object,
@@ -1112,8 +1133,8 @@ simulate.gllvmTMB_multi <- function(
 #' at the linear predictor `eta`. Supports the 5 families exercised by
 #' the M1.2 fixture (Gaussian, binomial, Poisson, Gamma, nbinom2) plus
 #' lognormal. Other families warn once per session and fall back to
-#' Gaussian-on-the-link-scale (i.e., previous behaviour) until M2 / M3
-#' family-completeness slices add their per-family draws.
+#' Gaussian-on-the-link-scale (i.e., previous behaviour); per-family draws for
+#' the remaining families are not yet implemented.
 #'
 #' @keywords internal
 #' @noRd
@@ -1150,8 +1171,8 @@ simulate.gllvmTMB_multi <- function(
       cli::cli_warn(
         c(
           "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
-          "i" = "Affected rows fall back to Gaussian-on-link-scale draws (pre-M1.8 behaviour). This is M2/M3 family-completeness work.",
-          ">" = "Supported in M1.8: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), nbinom1 (15)."
+          "i" = "Affected rows fall back to Gaussian-on-link-scale draws. Broader family coverage is not yet implemented.",
+          ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), nbinom1 (15), multinomial (16)."
         ),
         class = "gllvmTMB_simulate_unsupported_family"
       )
@@ -1389,10 +1410,10 @@ simulate.gllvmTMB_multi <- function(
 #' loadings. For report tables use [check_gllvmTMB()]; for a broader
 #' human-readable summary use [gllvmTMB_diagnose()].
 #'
-#' Scope boundary: IN, fast numerical and loading-shape checks
-#' for fitted models. PARTIAL, a PASS here does not prove interval
-#' calibration or latent-rank identifiability. PLANNED, use
-#' target-explicit known-DGP simulation studies for those heavier questions.
+#' Scope: fast numerical and loading-shape checks for fitted models.
+#' A PASS here does not prove interval calibration or latent-rank
+#' identifiability; use target-explicit known-DGP simulation studies for
+#' those heavier questions.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param gradient_thresh Maximum allowed absolute gradient component.

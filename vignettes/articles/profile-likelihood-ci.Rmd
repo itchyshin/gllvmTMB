@@ -36,9 +36,8 @@ page does not call any interval method universally best or publication-ready.
 
 The key rule is simple: **choose a route that is actually available for the
 target, then inspect the returned bounds and any method or status columns.** A
-requested interval can legitimately become a labelled Wald fallback, and an
-unavailable bound must stay unavailable rather than being presented as a
-profile result.
+documented numerical-Wald fallback must retain its label, while a withdrawn
+nonlinear route must stop rather than being presented as a profile result.
 
 ```{r setup}
 library(gllvmTMB)
@@ -53,7 +52,7 @@ request now; it is not a claim about empirical coverage.
 | Target | Start here | Current behavior |
 |:-------|:-----------|:-----------------|
 | Direct fixed effect, dispersion, or variance component | `profile_targets(fit)` followed by `confint(fit, parm = ..., method = "profile")` | Direct likelihood profile when the target is marked ready. |
-| Repeatability | `extract_repeatability()` | Requesting profile currently returns labelled delta-method Wald bounds for the full covariance definition. |
+| Repeatability | `extract_repeatability()` | Wald is the default; requesting profile stops with a typed withdrawal because no full-covariance profile route is available. |
 | Trait correlation | `extract_correlations()` | Point-only is the default. Fisher-z and bootstrap bounds are opt-in; a profile interval is not currently available. |
 | Communality | `extract_communality()` | Point estimates are the default; Wald and bootstrap bounds are opt-in; a profile interval is not currently available. |
 | Phylogenetic signal | `extract_phylo_signal()` | A simple two-component decomposition can use a profile contrast. Richer decompositions return labelled numerical-Wald bounds; a general profile constraint is not implemented. |
@@ -194,32 +193,25 @@ regimes before it becomes reader-facing.
 
 ## Derived targets: read the method that came back
 
-### Repeatability currently falls back to Wald
+### Repeatability uses Wald; profile is withdrawn
 
-For the full covariance definition of repeatability, requesting profile does
-not currently perform a constrained likelihood profile. The extractor returns
-the same labelled Wald calculation as an explicit Wald request.
+For the full covariance definition of repeatability, the default is a
+delta-method Wald interval. `method = "profile"` does not perform a constrained
+likelihood profile and deliberately stops with
+`gllvmTMB_repeatability_profile_withdrawn`; the former profile token targeted
+only a diagonal-companion ratio and omitted shared latent variance. Use the
+default Wald route or the parametric-bootstrap route, and report its returned
+method and limitations.
 
 ```{r repeatability}
-rep_requested <- extract_repeatability(
-  fit,
-  level = 0.95,
-  method = "profile"
-)
-rep_wald <- extract_repeatability(
-  fit,
-  level = 0.95,
-  method = "wald"
-)
-
-rep_requested
-identical(rep_requested, rep_wald)
+rep_wald <- extract_repeatability(fit, level = 0.95)
+rep_wald
 ```
 
 The bounds are formed on a transformed scale and back-transformed to
-$[0,1]$; they are not symmetric on the natural repeatability scale. Reporting
-these rows as profile intervals would be wrong because the returned `method`
-column says `wald`.
+$[0,1]$; they are not symmetric on the natural repeatability scale. They are
+Wald bounds, not profile intervals, and this article does not establish their
+repeated-sampling calibration.
 
 ### Correlation intervals are opt-in
 
@@ -271,8 +263,9 @@ directly while another currently offers only point, Wald, or bootstrap routes.
 ## Troubleshoot the interval that came back
 
 Before diagnosing a profile, confirm that a profile actually ran. Read the
-returned `method` and status first: a labelled Wald fallback is not a failed
-profile because no profile was attempted.
+returned `method` and status first. For withdrawn nonlinear targets such as
+repeatability and cross-family correlations, a profile request stops with a
+typed error instead of silently substituting a Wald result.
 
 | Observed result | First check | Interpretation and safe next action |
 |:----------------|:------------|:------------------------------------|

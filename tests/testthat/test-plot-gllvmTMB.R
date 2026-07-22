@@ -439,6 +439,39 @@ test_that("plot(type = 'variance') returns a stacked-bar ggplot summing to 1 per
   ## Per-trait proportions sum to 1 (within numerical tolerance)
   totals <- as.numeric(tapply(p$data$proportion, p$data$trait, sum))
   expect_equal(totals, rep(1, fit$n_traits), tolerance = 1e-8)
+  plot_totals <- as.numeric(tapply(
+    p$data$plot_proportion,
+    p$data$trait,
+    sum
+  ))
+  n_components <- max(as.integer(table(p$data$trait)))
+  roundoff_bound <- 16 * n_components * .Machine$double.eps
+  expect_true(all(is.finite(p$data$plot_proportion)))
+  expect_true(all(p$data$plot_proportion >= 0))
+  expect_lte(max(abs(plot_totals - 1)), roundoff_bound)
+})
+
+test_that("stacked-bar rendering zeros sub-pixel components and renormalises", {
+  x <- c(1 - 3e-9, 3e-9, 0.7, 0.3)
+  group <- rep(c("a", "b"), each = 2L)
+  plotted <- .gtmb_stable_stack_values(x, group)
+  expect_equal(plotted[1:2], c(1, 0), tolerance = 0)
+  stack_totals <- as.numeric(tapply(plotted, group, sum))
+  stack_bound <- 16 * max(as.integer(table(group))) * .Machine$double.eps
+  expect_lte(max(abs(stack_totals - 1)), stack_bound)
+
+  ## Binary division followed by summation need not close bit-for-bit to 1.
+  ## This deterministic case guards the strict machine-roundoff contract.
+  roundoff_x <- c(0.1, 0.2, 0.3)
+  roundoff_plot <- .gtmb_stable_stack_values(
+    roundoff_x,
+    rep("roundoff", length(roundoff_x))
+  )
+  roundoff_bound <- 16 * length(roundoff_x) * .Machine$double.eps
+  expect_lte(abs(sum(roundoff_plot) - 1), roundoff_bound)
+  ## The helper returns separate rendering values; callers retain `x` as the
+  ## exact scientific decomposition in the plot data contract.
+  expect_equal(x, c(1 - 3e-9, 3e-9, 0.7, 0.3), tolerance = 0)
 })
 
 test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {

@@ -36,13 +36,13 @@ teaching articles that need estimate-vs-truth tables without hand-indexing
 matrices inside the article.
 }
 \details{
-Scope boundary: IN, the helper compares fitted or precomputed
+Scope: the helper compares fitted or precomputed
 \code{extract_Sigma_table()} rows against one supplied truth matrix (covered
-by the package's Sigma-table validation tests).
-PARTIAL, it is a table helper only: it does not compute uncertainty,
-simulate data, or validate calibration. For the first visual comparison
-layer, use \code{\link[=plot_Sigma_comparison]{plot_Sigma_comparison()}}; richer article-specific calibration
-summaries remain future visualization work.
+by the package's Sigma-table validation tests). It is a table helper
+only: it does not compute uncertainty, simulate data, or validate
+calibration. For the first visual comparison layer, use
+\code{\link[=plot_Sigma_comparison]{plot_Sigma_comparison()}}; richer article-specific calibration summaries
+remain future visualization work.
 }
 \examples{
 rows <- data.frame(

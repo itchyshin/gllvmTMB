@@ -8,6 +8,53 @@
   )
 }
 
+.auto_psi_skip_message <- function(binomial_labs = character(),
+                                   multinomial_labs = character()) {
+  affected <- c(binomial_labs, multinomial_labs)
+  n_affected <- length(affected)
+  noun <- if (n_affected == 1L) "trait" else "traits"
+  msg <- c(
+    "i" = sprintf(
+      "Skipping the default between-unit {.field Psi} for %d binary / categorical-contrast %s under the family-specific identifiability gate.",
+      n_affected, noun
+    ),
+    "i" = sprintf("Affected %s: %s.", noun, paste(affected, collapse = ", "))
+  )
+  if (length(binomial_labs) > 0L) {
+    msg <- c(msg,
+      "i" = sprintf(
+        "Single-trial binomial traits %s have one 0/1 trial per (trait, unit) cell. Multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) can identify the diagonal; an explicit {.fn indep} term is a separate deliberate model choice.",
+        paste(binomial_labs, collapse = ", ")
+      )
+    )
+  }
+  if (length(multinomial_labs) > 0L) {
+    msg <- c(msg,
+      "i" = sprintf(
+        "For multinomial contrast traits %s, replication can identify a contrast-specific diagonal in principle, but the current engine conservatively maps it off and rejects explicit multinomial {.fn unique}/{.fn indep} terms. Use the shared {.fn latent} block for admitted cross-family covariance.",
+        paste(multinomial_labs, collapse = ", ")
+      )
+    )
+  }
+  c(msg,
+    "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off."
+  )
+}
+
+.auto_psi_skip_frequency_id <- function(binomial_labs = character(),
+                                        multinomial_labs = character()) {
+  has_binomial <- length(binomial_labs) > 0L
+  has_multinomial <- length(multinomial_labs) > 0L
+  suffix <- if (has_binomial && has_multinomial) {
+    "binomial-multinomial"
+  } else if (has_multinomial) {
+    "multinomial"
+  } else {
+    "binomial"
+  }
+  paste0("gllvmTMB-psi-skip-", suffix)
+}
+
 .kernel_overlap_diagnostics <- function(K_array, names) {
   n_tiers <- dim(K_array)[1L]
   sim <- diag(1, n_tiers)
@@ -81,6 +128,57 @@
   out <- family[match(fam_levels, family_names)]
   attr(out, "family_var") <- fam_var
   out
+}
+
+.augmented_slope_family_contract <- function() {
+  data.frame(
+    family_id = c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L),
+    family = c(
+      "gaussian", "binomial", "poisson", "lognormal", "Gamma",
+      "nbinom2", "Beta", "student", "ordinal_probit", "nbinom1"
+    ),
+    link_0 = rep(TRUE, 10L),
+    link_1 = c(FALSE, TRUE, rep(FALSE, 8L)),
+    link_2 = rep(FALSE, 10L),
+    admission_basis = c(
+      rep("route_specific", 3L),
+      "c1_partial",
+      rep("route_specific", 3L),
+      "c1_partial",
+      rep("route_specific", 2L)
+    ),
+    evidence = c(
+      rep("route-specific validation-register rows", 3L),
+      "Lognormal/Student-t: permitted at runtime; single-seed evidence on one route only",
+      rep("route-specific validation-register rows", 3L),
+      "Lognormal/Student-t: permitted at runtime; single-seed evidence on one route only",
+      rep("route-specific validation-register rows", 2L)
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+.augmented_slope_family_allowed <- function(family_id, link_id) {
+  if (length(family_id) != length(link_id)) {
+    stop("Internal: augmented-slope family and link vectors must have equal length.", call. = FALSE)
+  }
+  contract <- .augmented_slope_family_contract()
+  family_row <- match(family_id, contract$family_id)
+  valid <- !is.na(family_row) & !is.na(link_id) & link_id %in% 0:2
+  allowed <- rep(FALSE, length(family_id))
+  link_matrix <- as.matrix(contract[c("link_0", "link_1", "link_2")])
+  allowed[valid] <- link_matrix[cbind(family_row[valid], link_id[valid] + 1L)]
+  allowed
+}
+
+.augmented_slope_family_scope_text <- function() {
+  paste(
+    "Augmented structured random slopes are permitted for gaussian(),",
+    "binomial() (logit/probit only), poisson(), Gamma(), nbinom2(),",
+    "nbinom1(), Beta(), and ordinal_probit(); lognormal() and student()",
+    "are permitted on more limited evidence only.",
+    "Validation depth remains family- and covariance-mode-specific."
+  )
 }
 
 .resolve_sparse_propto_precision <- function(Ainv, levs, jitter = 1e-8) {
@@ -503,7 +601,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
       cli::cli_warn(c(
         "Two {.fn kernel_unique} tiers are not separable without replication.",
-        "i" = "The two-{.field Psi} split ({.code Psi_phy + Psi_non}) is confounded with a single observation per species/trait: one community realisation is only one replicate of the uniqueness signal (Boettiger et al. 2012; Design 65 C3.2).",
+        "i" = "The two-{.field Psi} split ({.code Psi_phy + Psi_non}) is confounded with a single observation per species/trait: one community realisation is only one replicate of the uniqueness signal (Boettiger et al. 2012).",
         ">" = "Defaulting to a single uniqueness tier. To estimate both {.field Psi}, supply within-species replication (repeated communities, or species means + SE)."
       ))
     }
@@ -667,7 +765,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )) {
     cli::cli_warn(c(
       "!" = "The default diagonal-{.field Psi} companion of an augmented {.code latent(1 + x | {site}, d = K)} slope is Gaussian-only; it is omitted for this non-Gaussian fit (loadings-only).",
-      "i" = "The fit relies on the family/link-specific latent-scale residual instead (D-28).",
+      "i" = "The fit relies on the family/link-specific latent-scale residual instead.",
       ">" = "Pass {.code unique = FALSE} to request the loadings-only slope explicitly and silence this warning."
     ))
   }
@@ -754,23 +852,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   use_propto <- any(kinds == "propto")
   use_equalto <- any(kinds == "equalto")
   use_spde   <- any(kinds == "spde")
-  ## ---- BASE augmented SPDE random-slope detection (Design 60 §3.4) -------
-  ## spatial_unique(1 + x | coords) / spatial_indep(1 + x | coords) route to
-  ## an `spde` covstruct carrying the `.spatial_unique_augmented` marker (and,
-  ## for the indep diagonal special case, `.spatial_indep_augmented`). When
-  ## present we drive the now-integrated base SPDE slope engine
-  ## (use_spde_slope): a SECOND SPDE field on the covariate with a 2x2
-  ## cross-field covariance. The augmented field REPLACES the intercept-only
-  ## per-trait field, so use_spde is turned off on this path (the augmented
-  ## block reuses the same mesh / Q_base / log_kappa_spde).
-  ## The base unique / indep augmented SPDE slope carries the
-  ## `.spatial_unique_augmented` marker; the spatial_dep augmented slope
-  ## (Design 64 §2) carries `.spatial_dep_augmented` on the same `spde`
-  ## covstruct. BOTH drive the use_spde_slope engine (the dep path is the
-  ## C = 2T unstructured-Sigma_field generalisation that reuses the same
-  ## omega_spde_aug field array + A_proj eta projection); they are detected
-  ## together and the dep marker only widens n_lhs_cols_spde and frees
-  ## theta_spde_dep_chol below.
+  ## ---- Augmented SPDE random-slope detection ----------------------------
+  ## `spatial_unique(1 + x | coords)` retains the Design 60 shared 2x2
+  ## cross-field channel (`.spatial_unique_augmented`; the older
+  ## `.spatial_indep_augmented` marker is compatibility state). Current Design
+  ## 79/80 `spatial_indep(1 + x | coords)` instead carries
+  ## `.spatial_dep_augmented + .indep_blockdiag` and uses the interleaved 2T
+  ## theta_spde_dep_chol / Sigma_field engine with cross-trait blocks pinned.
+  ## Full `spatial_dep` uses the same 2T engine without those pins. All routes
+  ## reuse omega_spde_aug and the mesh projection; the augmented field replaces
+  ## the intercept-only per-trait field.
   spde_aug_idx <- which(vapply(seq_along(parsed$covstructs), function(i) {
     cs <- parsed$covstructs[[i]]
     identical(cs$kind, "spde") &&
@@ -815,76 +906,34 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_spde_slope) {
     ## The augmented SPDE field supersedes the intercept-only per-trait field.
     use_spde <- FALSE
-    ## Split family guard (was a single gaussian-only abort): the base
-    ## spatial_unique / spatial_indep (2x2 cross-field) augmented slope and the
-    ## spatial_dep (full unstructured 2T x 2T field covariance) augmented slope
-    ## nest under the same use_spde_slope engine but have different
-    ## identifiability, so each carries its own family-id allowlist (the #388 /
-    ## #392 allowlist discipline: a family joins a mode only after its recovery
-    ## cell passes empirically). Allowlists hold the RUNTIME family id
-    ## (family_to_id(): gaussian = 0, binomial = 1, poisson = 2, Gamma = 4,
-    ## nbinom2 = 5, Beta = 7, ordinal_probit = 14), NOT the enum.R column.
+    ## The six structured augmented-slope sites share one runtime family/link
+    ## admission contract. Route-specific recovery depth remains separate:
+    ## SPA-08 covers base unique/indep, while SPA-10 covers full dep. RE-14
+    ## permits lognormal and Student-t only at C1-partial family-generality
+    ## depth, and binomial cloglog remains reserved.
     if (use_spde_dep_slope) {
       ## spatial_dep(1 + x | coords): the full unstructured 2T x 2T field
-      ## covariance. SPA-10 relaxes this guard from the old gaussian-only abort
-      ## to a per-family allowlist, the spatial analogue of phylo_dep / PHY-18
-      ## (#422 / #424) and the unstructured generalisation of SPA-08
-      ## (spatial_indep, #427). The #388 / #392 discipline holds: a family joins
-      ## ONLY after its real-API recovery cell passes NON-SKIPPED in CI
-      ## (test-spatial-dep-slope-nongaussian.R, gated by
-      ## .github/workflows/spatial-dep-slope-nongaussian-recovery.yaml). The
-      ## retired #425 spike (hand-built precision Q) is NOT the basis for this
-      ## allowlist -- the cells fit the package's own validated Gaussian spatial
-      ## DGP. Allowlist holds the RUNTIME family id (family_to_id(): gaussian = 0,
-      ## binomial = 1, poisson = 2, Gamma = 4, nbinom2 = 5, Beta = 7,
-      ## ordinal_probit = 14), NOT the enum.R column. Families that still skip
-      ## after escalation stay reserved fail-loud. This is the SPLIT dep branch;
-      ## the base spatial_unique / spatial_indep `else if` below (SPA-08, #427)
-      ## is untouched.
-      ##
-      ## Recovery-gate history (2026-06-03): at n_sites = 400 gaussian / binomial
-      ## / poisson / Gamma passed non-skipped; nbinom2 / ordinal_probit recovered
-      ## just out-of-band (nbinom2 field-b BLUP cor 0.703 < 0.80 floor;
-      ## ordinal_probit marg_b 0.808 vs 0.50, just over the 0.30 tol) and Beta hit
-      ## a 0/1 response boundary at construction (DGP artifact). This round
-      ## escalates the three: Beta clamps its response off 0/1, nbinom2 /
-      ## ordinal_probit go to n_sites = 1000 to tighten BLUP / marginal recovery.
-      ## The allowlist admits all seven so each cell fits; the CI gate confirms
-      ## the final set and any family still skipping is trimmed back.
-      ##
-      ## nbinom1 (id 15, #350): admitted alongside the grid. nbinom1's
-      ## augmented-slope identifiability is gated by the phylo_dep nbinom1
-      ## VALIDATION cell (the HARDEST full-unstructured cell; passing it implies
-      ## the easier spatial modes by the same family-agnostic-engine argument
-      ## PHY-18 / SPA-10 used). If that gate skips, nbinom1 is removed from all
-      ## slope allowlists and reserved fail-loud.
-      if (any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
+      ## covariance. SPA-10 records the family-by-route recovery cells and their
+      ## sample-size history. That evidence does not promote RE-14's ID 3/9
+      ## family-generalisation cells to direct spatial_dep coverage.
+      if (any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec))) {
         cli::cli_abort(c(
-          "{.fn spatial_dep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
-          "i" = "Other families for the augmented {.code spatial_dep(1 + x | coords)} (full unstructured 2T x 2T field covariance) slope are reserved (Design 64; SPA-10).",
-          ">" = "Use a validated family for the augmented unstructured SPDE random-regression fit."
+          "{.fn spatial_dep} random slopes are not admitted for this family/link combination.",
+          "i" = .augmented_slope_family_scope_text(),
+          "i" = "The full-unstructured spatial route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
+          ">" = "Use an admitted family/link combination and do not treat an unadmitted combination as validated for recovery or inference."
         ))
       }
-    } else if (any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
-      ## Base spatial_unique / spatial_indep (1 + x | coords): the 2x2
-      ## cross-field augmented slope. SPA-08 relaxes this guard from the old
-      ## gaussian-only abort to a per-family allowlist, mirroring the
-      ## phylo_indep activation (#388 / #392 discipline: a family joins ONLY
-      ## after its real-API recovery cell passes NON-SKIPPED in CI). The
-      ## diagonal `spatial_indep` cells (rho pinned to 0) are validated by
-      ## test-spatial-indep-slope-nongaussian.R; the relaxation also admits
-      ## the shared base path generally (the free-correlation
-      ## spatial_unique(1 + x) read-out is a follow-up). Allowlist holds the
-      ## RUNTIME family id (family_to_id(): gaussian = 0, binomial = 1,
-      ## poisson = 2, Gamma = 4, nbinom2 = 5, Beta = 7, ordinal_probit = 14,
-      ## nbinom1 = 15), NOT the enum.R column. nbinom1 (#350) is gated by the
-      ## phylo_dep nbinom1 VALIDATION cell (the hardest cell in the grid); if it
-      ## skips, nbinom1 is removed from all slope allowlists. Other families stay
-      ## reserved fail-loud.
+    } else if (any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec))) {
+      ## Base spatial_unique / spatial_indep (1 + x | coords) routes have their
+      ## own SPA-08 evidence. The current Design 79/80 spatial_indep block is
+      ## distinct from the legacy shared 2x2 spatial_unique channel; neither
+      ## inherits direct ID 3/9 recovery from RE-14.
       cli::cli_abort(c(
-        "Augmented {.fn spatial_indep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
-        "i" = "Other families for the augmented 2x2 cross-field spatial slope are reserved (Design 60 sections 3.4-3.5, Design 64; SPA-08).",
-        ">" = "Use a validated family for the augmented SPDE random-regression fit."
+        "Augmented spatial random slopes are not admitted for this family/link combination.",
+        "i" = .augmented_slope_family_scope_text(),
+        "i" = "The spatial_unique/spatial_indep route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
+        ">" = "Use an admitted family/link combination and do not treat an unadmitted combination as validated for recovery or inference."
       ))
     }
   }
@@ -906,23 +955,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else NULL
   if (use_spde_latent_slope) {
     use_spde <- FALSE
-    ## spatial_latent(1 + x | coords, d): the block-diagonal reduced-rank
-    ## augmented slope (each LHS column gets its own Lambda_k Lambda_k^T; no
-    ## intercept-slope correlation block). Family-id allowlist per the
-    ## #388 / #392 discipline -- a family joins ONLY after its recovery cell in
-    ## test-matrix-slope-spatial-latent.R passes empirically. Like the phylo
-    ## analogue (phylo_latent activated across all families), the reduced-rank
-    ## latent path is the best-identified augmented spatial slope. Allowlist
-    ## holds the RUNTIME family id (family_to_id(): gaussian = 0, binomial = 1,
-    ## poisson = 2, Gamma = 4, nbinom2 = 5, Beta = 7, ordinal_probit = 14,
-    ## nbinom1 = 15). nbinom1 (#350) is gated by the phylo_dep nbinom1 VALIDATION
-    ## cell (the hardest cell); if it skips, nbinom1 is removed from all slope
-    ## allowlists.
-    if (any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
+    ## spatial_latent(1 + x | coords, d) is block-diagonal reduced rank: each
+    ## LHS column gets its own Lambda_k Lambda_k^T and there is no
+    ## intercept-slope correlation block. SPA-09 records direct route evidence;
+    ## RE-14's ID 3/9 admission remains C1 partial and non-route-specific.
+    if (any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec))) {
       cli::cli_abort(c(
-        "Augmented {.fn spatial_latent} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
-        "i" = "Other families for {.code spatial_latent(1 + x | coords, d = K)} are reserved (Design 64 section 6).",
-        ">" = "Use a validated family for the augmented SPDE reduced-rank random-regression fit."
+        "Augmented {.fn spatial_latent} random slopes are not admitted for this family/link combination.",
+        "i" = .augmented_slope_family_scope_text(),
+        "i" = "The reduced-rank spatial route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
+        ">" = "Use an admitted family/link combination and do not treat an unadmitted combination as validated for recovery or inference."
       ))
     }
   }
@@ -1431,47 +1473,39 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     isTRUE(phylo_slope_cs$extra$.uncorrelated)
   use_phylo_slope_correlated <- use_phylo_slope_correlated ||
     use_phylo_dep_slope
-  ## phylo_indep(1 + x | species): same augmented b_phy_aug engine as
-  ## phylo_unique() but the intercept-slope correlation is fixed at 0. The
-  ## `.indep` marker (set by the phylo_indep parser handler) triggers pinning
-  ## atanh_cor_b to 0 via the TMB map below. No new C++ likelihood block.
+  ## phylo_indep(1 + x | species) is a Design 79/80 specialisation of the
+  ## phylo_dep 2T engine. `.indep_blockdiag` pins only cross-trait Cholesky
+  ## entries below, leaving one free 2x2 intercept/slope block per trait.
+  ## This flag selects the family guard; it does not imply within-trait rho=0.
   use_phylo_slope_indep <- use_phylo_slope_correlated &&
     isTRUE(phylo_slope_cs$extra$.indep)
-  ## Track B scope (issue #341): the augmented phylo_indep(1 + x | sp) path
-  ## is validated for the Gaussian anchor cell, the binomial family
-  ## (probit + logit, #381) AND -- this slice -- poisson, nbinom2, Gamma,
-  ## Beta, and ordinal_probit. The augmented-slope engine is family-agnostic
-  ## -- eta += b_phy_aug . Z_phy_aug is accumulated BEFORE the C++ family
-  ## dispatch (src/gllvmTMB.cpp), and phylo_indep only differs from the
-  ## family-general phylo_unique() path by pinning atanh_cor_b to 0 via the
-  ## TMB map below -- so each family needs ZERO new C++; activation is just
-  ## this family-id allowlist relax once a per-family diagonal-Sigma_b
-  ## recovery cell passes (test-phylo-indep-slope-nongaussian.R; the binomial
-  ## anchor is test-binomial-slope-recovery.R). The allowlist holds the
-  ## runtime family ids (family_to_id(), NOT the .valid_family enum):
-  ## 0 gaussian, 1 binomial, 2 poisson, 4 Gamma, 5 nbinom2, 7 Beta,
-  ## 14 ordinal_probit, 15 nbinom1. Families NOT on this list (e.g. tweedie,
-  ## student, the delta / truncated / mixture families) stay reserved fail-loud
-  ## until their own recovery cells land. nbinom1 (#350) is gated by the
-  ## phylo_dep nbinom1 VALIDATION cell (the hardest cell); if it skips, nbinom1
-  ## is removed from all slope allowlists. Family is unknown at parse time, so
-  ## the reservation is enforced here where family_id_vec exists. The message
-  ## keeps the parser's "LHS richer than" phrasing so the contract substring
-  ## is unchanged.
-  if (use_phylo_slope_indep && any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
+  ## The augmented engine is family-agnostic: eta += b_phy_aug . Z_phy_aug is
+  ## accumulated before the C++ family dispatch. The allowlist below governs
+  ## permitted construction, while validation depth remains family-specific
+  ## in register rows PHY-11..PHY-16 (binomial and ordinal are partial). It
+  ## must not be read as a uniform recovery or inference claim. It holds the
+  ## runtime family/link contract in .augmented_slope_family_contract().
+  ## Lognormal and Student-t are C1-partial family-generalisation admissions
+  ## (RE-14), not route-specific recovery claims. Binomial cloglog remains
+  ## reserved because no augmented-slope recovery cell or explicit admission
+  ## covers link id 2. Family is unknown at parse time, so the reservation is
+  ## enforced here where family_id_vec and link_id_vec exist. The message keeps
+  ## the parser's "LHS richer than" phrasing so the contract substring is stable.
+  if (use_phylo_slope_indep && any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec))) {
     cli::cli_abort(c(
       "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
-      "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
-      ">" = "Use {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit; the correlated augmented reaction norm is validated only for the families listed above."
+      "i" = .augmented_slope_family_scope_text(),
+      "i" = "The phylo_indep route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
+      ">" = "Use {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit, and do not treat an unadmitted combination as validated for recovery or inference."
     ))
   }
   ## phylo_dep(1 + x | species) augmented-slope scope (Design 56 §9.5c):
   ## the full unstructured 2T x 2T Sigma_b path is validated for the Gaussian
-  ## anchor cell, poisson (GAP-B1 / PHY-18), and -- this slice -- the remaining
-  ## non-Gaussian families that pass their own recovery cells: binomial
-  ## (multi-trial), Gamma, nbinom2, Beta, ordinal_probit, and -- this slice
-  ## (#350) -- nbinom1, the last missing family in the structured non-Gaussian
-  ## slope grid. The engine is family-agnostic (eta += b_phy_aug . Z_phy_aug is
+  ## anchor cell, poisson (GAP-B1 / PHY-18), and the then-registered
+  ## route-specific core families with direct recovery cells: binomial
+  ## (multi-trial), Gamma, nbinom2, Beta, ordinal_probit, and nbinom1 (#350),
+  ## the last missing core family in that dated route-specific grid. The engine
+  ## is family-agnostic (eta += b_phy_aug . Z_phy_aug is
   ## accumulated before the C++ family dispatch), so construction succeeds for
   ## the wired families. The earlier reservation reflected finite-sample power,
   ## NOT structural non-identifiability: the GAP-B1 identifiability sweep proved
@@ -1485,18 +1519,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## (#350: only smoke-validated even intercept-only, board #340), so it is on
   ## this list provisionally -- if its recovery cell skips at the escalated n it
   ## is REMOVED and reserved fail-loud (honest evidence-based scoping). Families
-  ## NOT on this list (e.g. tweedie, student, the delta / truncated / mixture
-  ## families) stay reserved fail-loud until their own cells land. The allowlist
-  ## holds the runtime family ids (family_to_id(), NOT the .valid_family enum):
-  ## 0 gaussian, 1 binomial, 2 poisson, 4 Gamma, 5 nbinom2, 7 Beta,
-  ## 14 ordinal_probit, 15 nbinom1. Family is unknown at parse time, so the
-  ## reservation is enforced here where family_id_vec exists. Fail loud rather
-  ## than silently truncate (Design 56 §7).
-  if (use_phylo_dep_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
+  ## NOT in the central contract (e.g. tweedie and delta / truncated / mixture
+  ## families) stay reserved fail-loud. Lognormal and Student-t remain C1-partial
+  ## under RE-14, and binomial cloglog remains reserved. Family is unknown at
+  ## parse time, so the contract is enforced here where family_id_vec and
+  ## link_id_vec exist. Fail loud rather than silently truncate (Design 56 §7).
+  if (use_phylo_dep_slope && any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec))) {
     cli::cli_abort(c(
       "{.fn phylo_dep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
-      "i" = "Augmented {.code phylo_dep(1 + x | species)} (full unstructured 2T x 2T covariance) is validated for {.code gaussian()}, {.code binomial()} (logit / probit), {.code poisson()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
-      ">" = "Use {.code phylo_dep(0 + trait | species)} for the intercept-only unstructured phylogenetic fit (family-general), or wait for the remaining non-Gaussian dep-slope cells."
+      "i" = .augmented_slope_family_scope_text(),
+      "i" = "The full-unstructured phylogenetic route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
+      ">" = "Use {.code phylo_dep(0 + trait | species)} for the intercept-only unstructured phylogenetic fit, and do not treat an unadmitted combination as validated for recovery or inference."
     ))
   }
   phylo_slope_lhs_form <- if (use_phylo_slope_correlated) {
@@ -1551,8 +1584,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_phylo_dep_slope && n_phy_slope >= 2L && any(family_id_vec != 0L)) {
     cli::cli_abort(c(
       "{.fn phylo_dep} with two or more random slopes is not yet validated for non-Gaussian families.",
-      "i" = "Gaussian {.code phylo_dep(1 + x1 + x2 | species)} is covered under RE-03; non-Gaussian {.code s >= 2} remains reserved pending the RE-03 identifiability sweep.",
-      ">" = "Use {.code phylo_dep(1 + x | species)} for the validated non-Gaussian single-slope path, or fit the multi-slope path under {.code gaussian()} until the RE-03 gate clears."
+      "i" = "Gaussian {.code phylo_dep(1 + x1 + x2 | species)} is covered; non-Gaussian {.code s >= 2} remains reserved pending an identifiability sweep.",
+      ">" = "Use {.code phylo_dep(1 + x | species)} for the admitted non-Gaussian single-slope path, or fit the multi-slope path under {.code gaussian()} until that sweep clears."
     ))
   }
 
@@ -1564,24 +1597,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   phylo_latent_slope_cs <- if (use_phylo_latent_slope) {
     parsed$covstructs[[phylo_latent_slope_idx[1L]]]
   } else NULL
-  ## Gaussian anchor PLUS the wired non-Gaussian families in this slice. The
-  ## block-diagonal reduced-rank latent slope is family-agnostic exactly like
-  ## the phylo_indep sweep (#388): the eta contribution is accumulated before
-  ## the C++ family dispatch, so each family needs ZERO new C++ and activation
-  ## is just this family-id allowlist relax once its per-family recovery cell
-  ## passes (test-matrix-slope-phylo-latent.R). The allowlist holds the runtime
-  ## family ids (family_to_id(), NOT the .valid_family enum): 0 gaussian,
-  ## 1 binomial, 2 poisson, 4 Gamma, 5 nbinom2, 7 Beta, 14 ordinal_probit,
-  ## 15 nbinom1. nbinom1 (#350) is gated by the phylo_dep nbinom1 VALIDATION
-  ## cell (the hardest cell); if it skips, nbinom1 is removed from all slope
-  ## allowlists. Families NOT on this list stay reserved fail-loud until their
-  ## own recovery cells land. Family is unknown at parse time, so the
-  ## reservation is enforced here where family_id_vec exists.
-  if (use_phylo_latent_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 3L, 4L, 5L, 7L, 9L, 14L, 15L))) {
+  ## The block-diagonal reduced-rank contribution is accumulated before family
+  ## dispatch. PHY-17 records direct family-by-route evidence. The shared
+  ## runtime contract additionally permits lognormal and Student-t under RE-14,
+  ## but that is C1-partial family generality, not direct phylo_latent recovery.
+  ## Binomial cloglog and families outside the central contract remain
+  ## fail-loud. The guard runs here because the family/link vectors are now in
+  ## scope.
+  if (use_phylo_latent_slope && any(!.augmented_slope_family_allowed(family_id_vec, link_id_vec))) {
     cli::cli_abort(c(
       "{.fn phylo_latent} random slopes are not yet supported for this family.",
-      "i" = "Augmented {.code phylo_latent(1 + x | species, d = K)} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
-      ">" = "Use {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit; the correlated augmented reaction norm is validated only for the families listed above."
+      "i" = .augmented_slope_family_scope_text(),
+      "i" = "The reduced-rank phylogenetic route has its own evidence boundary; the admitted family/link list does not make lognormal or Student-t route-specific recovery covered.",
+      ">" = "Use {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit, and do not treat an unadmitted combination as validated for recovery or inference."
     ))
   }
   d_phy_slope <- if (use_phylo_latent_slope) {
@@ -1824,13 +1852,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     .mn_env <- environment()
     .mn_allowed_tiers <- c("use_phylo_rr", "use_rr_B", "use_lv_B")
     ## The DEFAULT between-unit auto-Psi -- latent(unique = TRUE), the ordinary
-    ## default -- is allowed: a multinomial's one-hot contrast pseudo-traits
-    ## auto-suppress their between-unit Psi (unidentified; Link Residual
-    ## Contract, design 02), while identified partners (Gaussian sigma^2,
-    ## overdispersed-Poisson OLRE) keep theirs. So `unique = TRUE` works out of
-    ## the box for cross-family correlations. An EXPLICIT unique()/indep()
-    ## diagonal (use_diag_B with auto_psi_B = FALSE) stays fenced -- it would
-    ## leave the contrast Psi free and non-identified.
+    ## default -- is allowed: the current engine auto-suppresses multinomial
+    ## contrast Psi while identified partners (Gaussian sigma^2,
+    ## overdispersed-Poisson OLRE) keep theirs. Replication could identify a
+    ## contrast-specific diagonal in principle, but that wider route is not
+    ## admitted in 0.6. So `unique = TRUE` works out of the box for cross-family
+    ## correlations, while an EXPLICIT unique()/indep() diagonal
+    ## (use_diag_B with auto_psi_B = FALSE) stays fenced.
     if (isTRUE(auto_psi_B)) .mn_allowed_tiers <- c(.mn_allowed_tiers, "use_diag_B")
     .mn_non_tier      <- c("use_equalto", "use_propto")
     .mn_use_flags <- setdiff(ls(envir = .mn_env, pattern = "^use_"),
@@ -1841,8 +1869,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn multinomial} supports fixed effects, {.fn phylo_latent}, and a shared {.fn latent} ordination in this release.",
         "x" = "An unsupported latent / random-effect / structured term was combined with a categorical (multinomial) response.",
-        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical trait's between-unit Psi auto-suppresses), or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface. An explicit {.fn unique}/{.fn indep} diagonal on a categorical trait is not identified and stays fenced.",
-        ">" = "Other latent-scale structures on categorical responses are deferred (Design 84, Tier 2b+)."
+        "i" = "Use a shared {.code latent(0 + trait | unit, d = k)} for cross-family (nominal <-> other) correlations (the default {.code unique = TRUE} works; the categorical contrast Psi is mapped off), or {.code phylo_latent(species, d = K)} for the among-category phylogenetic surface. Replication could identify a contrast-specific diagonal in principle, but an explicit multinomial {.fn unique}/{.fn indep} term is not admitted in this release.",
+        ">" = "Other latent-scale structures on categorical responses are deferred."
       ))
     }
   }
@@ -4026,18 +4054,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
     }
   } else if (use_phylo_dep_slope) {
-    ## phylo_dep: the full unstructured (1+s)T x (1+s)T Sigma_b is parameterised
-    ## by the FREE theta_dep_chol; the closed-form log_sd_b / atanh_cor_b do NOT
-    ## enter the dep prior, so they are mapped off (the dep covariance replaces
-    ## them). b_phy_aug stays free (it is a random effect joined to `random`
-    ## below).
+    ## Current augmented phylo_dep/phylo_indep routes share the theta_dep_chol
+    ## covariance engine. The dep route leaves its unstructured Cholesky entries
+    ## free; the indep route pins cross-trait entries below to obtain interleaved
+    ## 2 x 2 intercept-slope blocks. The legacy closed-form log_sd_b /
+    ## atanh_cor_b parameters do not enter either current prior, so map them off.
+    ## b_phy_aug stays free as the corresponding random effect.
     tmb_map$log_sd_b <- factor(rep(NA_integer_, length(tmb_params$log_sd_b)))
     if (length(tmb_params$atanh_cor_b) > 0L) {
       tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
     }
   } else if (use_phylo_slope_indep && length(tmb_params$atanh_cor_b) > 0L) {
-    ## phylo_indep: hold the intercept-slope correlation at its init (0) so the
-    ## C++ prior reduces to block-diagonal Sigma_b (rho = tanh(0) = 0).
+    ## Legacy closed-form fallback only. Current Design 79/80 phylo_indep uses
+    ## the `use_phylo_dep_slope` branch above, maps these parameters off, and
+    ## obtains block diagonality from theta_dep_chol cross-trait pins below.
     tmb_params$atanh_cor_b[] <- 0
     tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
   }
@@ -4049,11 +4079,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       tmb_map$atanh_cor_spde_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_spde_b)))
     }
   } else if (use_spde_dep_slope) {
-    ## spatial_dep: the full unstructured C x C Sigma_field is parameterised by
-    ## the FREE theta_spde_dep_chol; the closed-form log_sd_spde_b /
-    ## atanh_cor_spde_b do NOT enter the dep prior, so they are mapped off (the
-    ## unstructured covariance replaces them). omega_spde_aug stays free (it is
-    ## a random effect joined to `random` below). Mirrors the phylo_dep map.
+    ## Current spatial_dep/indep 2T routes are parameterised by
+    ## theta_spde_dep_chol; the closed-form shared-2x2 log_sd_spde_b /
+    ## atanh_cor_spde_b parameters do not enter this prior and are mapped off.
+    ## Full dep frees the complete Cholesky; indep pins cross-trait entries
+    ## below. omega_spde_aug stays free as the random field.
     tmb_map$log_sd_spde_b <- factor(rep(NA_integer_, length(tmb_params$log_sd_spde_b)))
     if (length(tmb_params$atanh_cor_spde_b) > 0L) {
       tmb_map$atanh_cor_spde_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_spde_b)))
@@ -4080,9 +4110,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$g_spde_slope <-
       factor(rep(NA_integer_, length(tmb_params$g_spde_slope)))
   }
-  ## theta_dep_chol is FREE only on the dep path; mapped off (length 0
-  ## no-op) everywhere else so the legacy / unique / indep fits stay
-  ## byte-identical and TMB never tries to optimise a stray parameter.
+  ## theta_dep_chol is active only on the current dep/indep 2T engine; it is
+  ## mapped off elsewhere so legacy/shared fits stay byte-identical and TMB
+  ## never optimises a stray parameter.
   if (!use_phylo_dep_slope) {
     tmb_map$theta_dep_chol <-
       factor(rep(NA_integer_, length(tmb_params$theta_dep_chol)))
@@ -4118,8 +4148,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       tmb_map$theta_dep_chol <- factor(m)
     }
   }
-  ## theta_spde_dep_chol is FREE only on the spatial_dep path; mapped off
-  ## (length-0 no-op) everywhere else.
+  ## theta_spde_dep_chol is active only on the current spatial dep/indep 2T
+  ## engine; it is mapped off elsewhere.
   if (!use_spde_dep_slope) {
     tmb_map$theta_spde_dep_chol <-
       factor(rep(NA_integer_, length(tmb_params$theta_spde_dep_chol)))
@@ -4448,14 +4478,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       rows_t <- which(trait_id == (t - 1L))
       if (length(rows_t) == 0L) return(FALSE)
       ## Single-trial Bernoulli: no within-cell information for a between-unit
-      ## Psi. Multinomial (fid 16): each baseline-contrast pseudo-trait is a
-      ## one-hot 0/1 per row, so its between-unit Psi is unidentified for the
-      ## same reason -- the softmax link's implicit scale (the fixed
-      ## (pi^2/6)(I+J) residual) IS the residual. Per the Link Residual Contract
-      ## (design 02, restated 2026-07-05) a categorical trait's observation-level
-      ## unique variance is 0; auto-drop the default between-unit Psi so
-      ## unique = TRUE works out of the box (the shared factor still carries the
-      ## cross-family covariance, and identified traits keep their Psi).
+      ## Psi. Multinomial (fid 16): one categorical draw per unit has the same
+      ## problem, while replication could identify a contrast-specific diagonal
+      ## in principle. The current engine deliberately keeps the narrower 0.6
+      ## contract and maps that diagonal off for every multinomial contrast;
+      ## explicit multinomial unique()/indep() remains fenced. This lets default
+      ## unique = TRUE work for the admitted shared-latent route while identified
+      ## partner traits keep their Psi and the fixed softmax link residual remains
+      ## a separate extraction-time quantity.
       isTRUE(all(family_id_vec[rows_t] == 1L) && all(n_trials[rows_t] == 1)) ||
         isTRUE(all(family_id_vec[rows_t] == 16L))
     }, logical(1))
@@ -4484,14 +4514,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       keep <- !is.na(sB_map)
       sB_map[keep] <- seq_len(sum(keep))
       tmb_map$s_B <- factor(as.integer(sB_map))
-      psi_skipped_labs <- levels(data[[trait]])[skip_psi_b_t]
-      n_psi_skip <- length(psi_skipped_labs)
-      cli::cli_inform(c(
-        "i" = "Skipping the default between-unit {.field Psi} for {n_psi_skip} single-trial binary / categorical-contrast trait{?s}: it is unidentified when each (trait, unit) cell is a single 0/1 (the link's implicit scale is the residual).",
-        "i" = "Trait{?s} affected: {.val {psi_skipped_labs}}.",
-        "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off. Pass multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) to recover identifiability, or add an explicit {.fn indep} term."
+      skipped_idx <- which(skip_psi_b_t)
+      skipped_is_multinomial <- vapply(skipped_idx, function(t) {
+        rows_t <- which(trait_id == (t - 1L))
+        isTRUE(length(rows_t) > 0L && all(family_id_vec[rows_t] == 16L))
+      }, logical(1))
+      skipped_labs <- levels(data[[trait]])[skipped_idx]
+      binomial_labs <- skipped_labs[!skipped_is_multinomial]
+      multinomial_labs <- skipped_labs[skipped_is_multinomial]
+      cli::cli_inform(.auto_psi_skip_message(
+        binomial_labs = binomial_labs,
+        multinomial_labs = multinomial_labs
       ), .frequency = "once",
-         .frequency_id = "gllvmTMB-psi-skip-single-trial-binary")
+         .frequency_id = .auto_psi_skip_frequency_id(
+           binomial_labs = binomial_labs,
+           multinomial_labs = multinomial_labs
+         ))
     }
   }
 
@@ -4876,12 +4914,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           phylo_dep      = isTRUE(is_phylo_dep),
                           spatial_dep    = isTRUE(is_spatial_dep),
                           ## DISTINCT from `phylo_dep` (= the intercept-only
-                          ## phylo_dep(0 + trait | sp) RR path). This flag
-                          ## marks the augmented phylo_dep(1 + x | sp)
-                          ## slope path (full unstructured 2T x 2T Sigma_b
-                          ## via theta_dep_chol). extract_Sigma() keys on
-                          ## it to surface the reported Sigma_b_dep.
+                          ## phylo_dep(0 + trait | sp) RR path). The engine flag
+                          ## marks an augmented phylo_dep/indep slope routed
+                          ## through the 2T theta_dep_chol / Sigma_b_dep block.
+                          ## The submode flag distinguishes current Design
+                          ## 79/80 block-diagonal phylo_indep from full dep.
                           phylo_dep_slope = isTRUE(use_phylo_dep_slope),
+                          phylo_indep_slope = isTRUE(use_phylo_indep_blockdiag),
                           ## RE-03 multi-slope: the ordered slope-covariate
                           ## names (length s) so extract_Sigma() can label the
                           ## (1+s)T interleaved Sigma_b_dep rows as
@@ -4892,18 +4931,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           kernel = isTRUE(has_kernel_term),
                           ## Augmented SPDE random slopes (Design 64). DISTINCT
                           ## from the intercept-only spatial_dep / spatial_latent
-                          ## flags above. spde_slope marks the base
-                          ## spatial_unique / spatial_indep (1 + x | coords)
-                          ## augmented path (2x2 cross-field Sigma_field via
-                          ## sd_spde_b / cor_spde_b; extract_Sigma keys on it).
-                          ## spde_dep_slope marks the
-                          ## spatial_dep(1 + x | coords) full unstructured 2T x 2T
-                          ## field-covariance path (extract_Sigma keys on it to
-                          ## surface the reported Sigma_field); spde_latent_slope
-                          ## marks the spatial_latent(1 + x | coords, d) block-
-                          ## diagonal reduced-rank path.
+                          ## flags above. spde_slope is the shared augmented
+                          ## field engine flag. spde_dep_slope marks the current
+                          ## 2T theta_spde_dep_chol / Sigma_field channel used by
+                          ## full dep and block-diagonal indep; the submode flag
+                          ## distinguishes indep. spde_latent_slope marks the
+                          ## separate reduced-rank path.
                           spde_slope     = isTRUE(use_spde_slope),
                           spde_dep_slope = isTRUE(use_spde_dep_slope),
+                          spde_indep_slope = isTRUE(use_spde_indep_blockdiag),
                           spde_latent_slope = isTRUE(use_spde_latent_slope),
                           re_int = use_re_int),
       kernel_levels = if (has_kernel_term) {

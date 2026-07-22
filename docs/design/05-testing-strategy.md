@@ -77,10 +77,10 @@ Implemented (or planned) comparator smoke tests:
 
 **Comparator-test guard**: Fast CRAN tests use
 `skip_if_not_installed()` and only tiny comparator cases (under
-60 seconds each). Full comparator sweeps belong in optional
-local scripts or scheduled CI; package conventions, likelihood
-constants, priors, and optimiser settings can differ
-non-trivially.
+60 seconds each). Full comparator sweeps belong in optional local
+scripts, Totoro smoke runs, or frozen DRAC arrays; they are not GitHub
+Actions jobs or artifacts (D-50). Package conventions, likelihood
+constants, priors, and optimiser settings can differ non-trivially.
 
 `brms` and `lavaan` are **deferred post-CRAN** per the
 audit-2 2026-05-15 decision (brms has known identifiability
@@ -247,9 +247,10 @@ Per slope count, per family (Gaussian first, then binomial):
 5. **Rotation-aware loadings recovery**: $\boldsymbol\Lambda$
    matches truth up to rotation via Procrustes alignment.
 
-Per the `04-random-effects.md` M1 design plan: $s \in \{0, 1\}$
-in M1 scope; $s \ge 2$ rejected at parse time with
-`gllvmTMB_too_many_slopes`.
+The original M1 plan scoped $s \in \{0,1\}$. Current evidence supersedes that
+blanket boundary: Gaussian `phylo_dep()` has a covered $s=2$ cell under RE-03;
+non-Gaussian $s\ge2$ remains guarded and partial. No broader rank or
+family-generalisation claim follows from the Gaussian cell.
 
 ### Phylogenetic random effects
 
@@ -261,6 +262,19 @@ in M1 scope; $s \ge 2$ rejected at parse time with
   levels 1 and 2).
 - Three-piece fallback when paired form under-identifies; the
   fallback's $\boldsymbol\Omega$ matches truth.
+- Soft-deprecated `phylo_unique(1 + x \| species)` legacy/shared
+  compatibility path: assert the block-local $2\times2$ `sd_b`/`cor_b`
+  covariance and `phy_unique_slope` extractor label independently of current
+  `phylo_indep()`.
+- Current Design 79/80 `phylo_indep(1 + x \| species)`: assert the
+  interleaved $2T\times2T$ `Sigma_b_dep` channel, exactly zero cross-trait
+  blocks, one free within-trait intercept-slope correlation per trait for `|`,
+  full diagonalisation for `||`, exact extractor labels/dimnames, and
+  family-specific health/recovery gates (PHY-11--PHY-16). IDs 3/9 are only C1
+  partial under RE-14.
+- `phylo_dep(1 + x \| species)`: test the full unstructured interleaved
+  `Sigma_b_dep` separately from the indep pins, with route-specific family
+  evidence under PHY-18 and the Gaussian multi-slope boundary under RE-03.
 
 ### Spatial random effects
 
@@ -270,6 +284,19 @@ in M1 scope; $s \ge 2$ rejected at parse time with
   `simulation-recovery.Rmd`).
 - Mesh size sweeps: cutoff 0.05 (fine), 0.10 (moderate), 0.20
   (coarse).
+- Soft-deprecated `spatial_unique(1 + x \| coords)` legacy/shared
+  compatibility path: assert the shared $2\times2$ `sd_spde_b`/`cor_spde_b`
+  field covariance, `spde_base_slope` label, and the field-to-marginal scale
+  note.
+- Current Design 79/80 `spatial_indep(1 + x \| coords)`: assert the
+  interleaved $2T\times2T$ `Sigma_field` channel, exactly zero cross-trait
+  blocks, one free within-trait intercept-slope correlation per trait for `|`,
+  full diagonalisation for `||`, exact extractor labels/dimnames, and the
+  $4\pi\kappa^2$ marginal conversion. Keep family-by-route evidence scoped to
+  SPA-08 and RE-14.
+- `spatial_dep(1 + x \| coords)`: test the full unstructured `Sigma_field`
+  separately from the indep pins and retain SPA-10's family-specific sample
+  sizes and recovery bands.
 
 ### `meta_V()` tests
 
@@ -305,9 +332,11 @@ has its own test file:
 
 ## CRAN-safe vs long tests
 
-Routine package tests must be **deterministic, fast, and
-small**. Larger recovery grids belong in optional local scripts
-or scheduled CI.
+Routine package tests must be **deterministic, fast, and small**. The
+bounded `full-check` workflow may run the complete package-regression
+suite, but it is not claim-bearing simulation evidence. Larger recovery,
+coverage, power, and comparator grids belong in optional local scripts,
+Totoro smoke runs, or frozen DRAC arrays, never GitHub Actions (D-50).
 
 | Test class | Scope | Wall-time budget | Where it lives |
 |------------|-------|------------------|----------------|
@@ -331,22 +360,18 @@ Optional long-test grids (in `dev/precompute-*.R` scripts):
 
 ## Profile-likelihood CI tests
 
-When profile-likelihood intervals are exercised, tests check:
+Direct/simple profile routes and nonlinear derived targets have separate test
+contracts. For admitted direct parameters and the retained simple
+phylogenetic-signal route, tests check transformed-scale intervals, diagnostic
+grids, labelled boundaries, and explicit failed-endpoint status.
 
-- direct TMB parameters recover sensible intervals on the
-  transformed response scale.
-- `uniroot()` bounds agree with a small diagnostic grid in
-  simple models.
-- boundary variance components return flagged one-sided
-  intervals.
-- failed constrained optimisations produce informative
-  fallbacks (the `profile_failed` flag in `confint_inspect()`).
-- profile CIs have better small-sample behaviour than Wald
-  intervals in targeted long simulations.
-- per-derived-quantity (communality, repeatability, phylo
-  signal, pairwise correlation) profile CIs return the
-  expected shape (the Phase 1b validation milestone closed
-  most of these via PRs #105, #120, #121, #122).
+Public nonlinear penalty profiles for communality, repeatability, pairwise
+correlation, and variance proportion are withdrawn. Their release tests assert
+the typed refusal classes unconditionally. Internal curve/refit prototypes may
+retain pure regression tests, but those tests are research-machinery evidence,
+not interval admission or a small-sample coverage claim. Any restoration needs
+an exact constraint solver, an exposed optimizer-status ledger, retained
+failures, target-specific calibration, and explicit maintainer promotion.
 
 ## Tests of the tests
 

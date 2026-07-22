@@ -44,7 +44,7 @@ shape-scale \code{Gamma} and does not multiply by \code{extract_Gamma(scale = "e
 Fixed dense \code{kernel_latent()} tiers, covered by the package's validation
 tests, store their
 aligned \code{K} matrices on the fit, and this helper returns point estimates for
-named species/lineage pairs. PARTIAL: it does not estimate \code{rho}, produce
+named species/lineage pairs. It does not estimate \code{rho}, produce
 intervals, calibrate null thresholds, or combine components into a universal
 total \code{Gamma}.
 }

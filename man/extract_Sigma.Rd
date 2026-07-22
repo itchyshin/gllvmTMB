@@ -68,6 +68,22 @@ s >= 2), \code{level = "phy_dep"}, \code{part = "dep"}, and a \code{note}. The \
 block and are ignored. (The unit / unit_obs tiers return \code{NULL} for a
 dep-only fit, as it carries no between/within-unit covariance term.)
 
+Current \code{phylo_indep(1 + x | species)} uses the same interleaved \verb{2T}
+report channel with all cross-trait blocks fixed to zero. Its return has
+\code{level = "phy_indep_slope"} and \code{part = "indep"}; each trait retains its
+own intercept-slope block. This is distinct from the legacy shared \verb{2 x 2}
+augmented \code{phylo_unique} channel.
+
+For augmented spatial slopes, call with \code{level = "spatial"}.
+\code{spatial_unique(1 + x | coords)} retains the shared \verb{2 x 2} field-scale
+channel and returns \code{level = "spde_base_slope"}. Current
+\code{spatial_indep(1 + x | coords)} returns the interleaved, cross-trait
+block-diagonal \verb{2T x 2T} field covariance with
+\code{level = "spde_indep_slope"} and \code{part = "indep"}; \code{spatial_dep} returns
+the full unstructured block with \code{level = "spde_dep"} and \code{part = "dep"}.
+These SPDE matrices are on the fitted field-covariance scale; the returned
+note records the marginal-scale conversion.
+
 For an ordinary individual-level random-regression fit with
 \code{latent(1 + x | unit, d = K)}, \code{indep(1 + x | unit)}, or their long-form
 equivalents, call with \code{level = "unit_slope"}: the result is the augmented

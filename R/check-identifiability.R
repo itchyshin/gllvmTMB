@@ -40,10 +40,9 @@
 #' `gllvmTMB_identifiability` with components `$recovery`, `$loadings`,
 #' `$hessian`, and `$flags`.
 #'
-#' Scope boundary: covered for Gaussian simulate-refit loading
-#' identifiability checks. Non-Gaussian and mixed-family support is not
-#' yet implemented; broader family coverage is planned for the Phase 1b
-#' / M3 validation path.
+#' Scope: Gaussian simulate-refit loading identifiability checks.
+#' Non-Gaussian and mixed-family support is not yet implemented;
+#' broader family coverage is planned.
 #'
 #' The canonical case this catches that no other diagnostic does is a
 #' **spurious extra factor masquerading as identified**: when `d_B` is
@@ -135,7 +134,7 @@ check_identifiability <- function(
       c(
         "{.fn check_identifiability} currently supports Gaussian fits only.",
         "x" = "This fit contains non-Gaussian families.",
-        "i" = "Non-Gaussian / mixed-family support is queued for the Phase 1b validation milestone.",
+        "i" = "Non-Gaussian / mixed-family support is not yet available.",
         ">" = "For now, use {.fn sanity_multi} + {.fn bootstrap_Sigma} as the inference-uncertainty surface for non-Gaussian fits."
       ),
       class = "gllvmTMB_check_identifiability_nongaussian"

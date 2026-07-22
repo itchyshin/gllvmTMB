@@ -7,9 +7,22 @@ line is **superseded**. Do not re-ask; do not re-litigate it.
 
 **STATE: M1 IS WITHHELD.** **Five** consecutive D-43 panels, **five** 3/3 NOT-DONE verdicts.
 
-**Branch head: `d342daec`** — clean, pushed. **Certified evidence SHA: `95f7d06a`.** The two
-commits since (`d342daec` and its parent) are **documentation only and NON-CERTIFYING**; they
-record the retraction below. No source file changed after `95f7d06a`.
+**Branch head: `21e04eb5`** — clean, pushed. **Certified evidence SHA: `21e04eb5`** (this head).
+
+**⚠ A PREVIOUS VERSION OF THIS LINE WAS FALSE.** It read: *"Certified evidence SHA `95f7d06a`
+… no source file changed after `95f7d06a`."* True when written; **false the moment `97f5c378`
+landed**, which changed **six source files** — `R/methods-gllvmTMB.R`, `R/fit-multi.R`,
+`R/profile-route-matrix.R`, `vignettes/gllvmTMB.Rmd`, `tools/check-reader-surface.sh` and a
+test (`git diff --stat 95f7d06a 21e04eb5` settles it). Evidence has since been **re-earned at
+`21e04eb5`**.
+
+**This is the fifth form of one failure: a document accurate at the moment of writing that
+silently goes false as the repo moves beneath it.** The same shape produced the stale head
+reference, the stale R-9 row, the stale check-log entry, and this. It is **structural, not
+carelessness**: any claim naming a SHA or a diff-state is a *snapshot*, and a snapshot must be
+**re-verified**, never merely written carefully. **`tools/check-reader-surface.sh` cannot
+catch this class** — it checks code shapes on surfaces; it cannot know a document has gone
+stale. Re-derive every SHA claim from `git` before repeating it.
 
 ---
 
@@ -75,20 +88,28 @@ defect; the evidence standard is.
 
 ---
 
-## 4. CERTIFIED EVIDENCE — all green at `95f7d06a`
+## 4. CERTIFIED EVIDENCE — all green at `21e04eb5` (the current head)
 
 ```
 devtools::test()                 FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290
 durable R CMD check --as-cran    0 errors | 0 warnings | 0 notes
 CRAN-configuration check         0 errors | 0 warnings | 1 note (New submission)
-Ubuntu CI            29896493966 success
-three-OS matrix      29897677138 ubuntu + macos + windows — all success (jobs asserted by name)
-heavy full-check     29896539701 FAIL 0 | WARN 8 | SKIP 102 | PASS 13650
-tools/check-reader-surface.sh    PASS
+Ubuntu CI            29903055881 success
+three-OS matrix      29904363055 ubuntu + macos + windows — all success (jobs asserted by name)
+heavy full-check     29903134856 FAIL 0 | WARN 10 | SKIP 103 | PASS 13656
+tools/check-reader-surface.sh    PASS (extended: R/ string literals + vignette links)
 ```
 
 Receipts + `SHA256SUMS.txt`:
-`~/gllvmTMB-0.6-evidence/m1/final-receipt/95f7d06a69fc91cf11084f11ff7d00b152f649f5/`
+`~/gllvmTMB-0.6-evidence/m1/final-receipt/21e04eb59679d1a92120bc367914a4de948f9afd/`
+
+**This is the FIFTH complete evidence chain of the arc.** The previous four were each
+forfeited by a later source change (R-11, then the panel-4, -5 and -6 fixes). Every one of the
+five was green on every check — the package has been in working order throughout.
+
+**`WARN 10` is not a regression.** Six Ubuntu heavy runs have returned **WARN 8, 9 and 10** —
+the contingent sites are optimiser-convergence-dependent. **Only `FAIL` is a regression signal;
+all six runs returned `FAIL 0`.** See R-7's third correction in the register.
 
 **Limits, stated:** the durable runner reports 0 notes only because it omits
 `remote`/`incoming` — the `New submission` NOTE is real and appears in the CRAN-configuration
@@ -144,8 +165,8 @@ not exist**.
 
 ## TRUTH LIVES IN
 
-Branch `codex/gllvmtmb-060-m1-baseline-20260720` @ **`d342daec`** (clean, pushed; certified
-evidence at `95f7d06a`). Draft PR #778. `docs/dev-log/known-residuals-register.md` ·
+Branch `codex/gllvmtmb-060-m1-baseline-20260720` @ **`21e04eb5`** (clean, pushed; certified
+evidence at that same head). Draft PR #778. `docs/dev-log/known-residuals-register.md` ·
 `docs/dev-log/check-log.md` · `docs/dev-log/after-task/2026-07-21-m1-third-reader-surface-sweep.md`
 · `docs/dev-log/2026-07-22-nongaussian-variance-component-thread.md` ·
 `~/gllvmTMB-0.6-evidence/m1/`.
@@ -160,10 +181,16 @@ M1 is WITHHELD after FIVE 3/3 NOT-DONE panels. No register row blocks it, no che
 failing, no defect is outstanding. It is withheld because five panels each found something
 and the base rate says a sixth would too — NOT because anything specific is known wrong.
 
-Head d342daec (clean, pushed). Certified evidence at 95f7d06a: suite 0/779/7290, durable
+Head 21e04eb5 (clean, pushed) AND certified at that same head: suite 0/779/7290, durable
 runner 0/0/0, CRAN check 0/0/1, Ubuntu success, three-OS matrix ubuntu+macos+windows success,
-heavy FAIL 0, guard PASS, receipts mirrored with SHA256SUMS. Commits after 95f7d06a are
-documentation-only and NON-CERTIFYING.
+heavy FAIL 0 | WARN 10, guard PASS, receipts mirrored with SHA256SUMS.
+
+BEFORE REPEATING ANY SHA CLAIM, RE-DERIVE IT FROM git. A previous version of this file said
+"no source changed after 95f7d06a" — true when written, false once 97f5c378 landed six source
+files. That failure mode has appeared FIVE times in five forms and no grep can catch it.
+
+WARN counts vary (8, 9, 10 observed across six Ubuntu heavy runs) because the contingent sites
+are optimiser-convergence-dependent. ONLY `FAIL` is a regression signal.
 
 DO NOT convene a sixth panel before the maintainer's wording review of the R-11 strings.
 SWEEP THE CLASS, NEVER PATCH THE INSTANCE. Verify from structured results only.

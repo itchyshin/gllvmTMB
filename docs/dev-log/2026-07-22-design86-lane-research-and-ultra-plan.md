@@ -209,9 +209,9 @@ executed inline by the orchestrator instead, which is recorded as adaptive, not 
 |---|---|---|---|---|---|---|
 | S0 | Prior-work sweep + receipt | Ada | inline | — | — | **DONE** |
 | S1 | Literature digest L1–L9 | Ranga | inline (PDF reads) | — | — | **DONE** |
-| S2 | Read gllvm's actual TMB source (`src/gllvm.cpp`, `R/gllvm.TMB.R`) — confirm no `random=`, covariance parameterisation, LA/VA/EVA switch, optimiser | Ranga | Sonnet / medium | Agent | — | PENDING |
-| S3 | Audit notebook `9b5e85d7-…` — enumerate sources; confirm or retire the `q >= 4` claim | Ebbinghaus | Haiku / low | Agent | — | PENDING |
-| S4 | Recover the Phase-1 prototype from `claude/va-phase1-proof` via `git show`; inventory Design 85's quadrature code | Recon | Sonnet / low | Agent | — | PENDING |
+| S2 | Read gllvm's actual TMB source (`src/gllvm.cpp`, `R/gllvm.TMB.R`) — confirm no `random=`, covariance parameterisation, LA/VA/EVA switch, optimiser | Ranga | Sonnet / medium | Agent | — | **DONE** — read at `JenniNiku/gllvm@50a2bcc4`. No `random=` under VA/EVA confirmed from code; one template with `DATA_INTEGER(method)`; default covariance is full log-Cholesky, not mean-field; SEs via Schur complement of the joint Hessian + CMSEP. Folded into Design 86 §7.8 |
+| S3 | Audit notebook `9b5e85d7-…` — enumerate sources; confirm or retire the `q >= 4` claim | Ebbinghaus | Sonnet / low | Agent | — | **DONE** — 66 sources enumerated (registry row 29 stale on both title and count). `q >= 4` traces to **exactly one** source: a `markdown` entry with `url: null` and no bibliographic identity. **RETIRED.** Folded into Design 86 §1.4 |
+| S4 | Recover the Phase-1 prototype from `claude/va-phase1-proof` via `git show`; inventory Design 85's quadrature code | Recon | Sonnet / low | Agent | — | **DONE** — Phase-1 at `claude/va-phase1-proof` tip `8bf1a11e`, unmerged, `random=` absent (confirmed in the source comment). **Correction: Design 85's R3 quadrature prototype is MERGED on `origin/main`**, not parked in a worktree. `method=` surface confirmed ABSENT on main |
 | S5 | **Write `docs/design/86-*.md`** | Ada + Fisher | Fable / high | inline | S1–S4 | BLOCKED on S2–S4 |
 | S6 | Adversarial review of the draft contract (does the CUT criterion actually bite?) | Rose | Opus / high | Agent | S5 | PENDING |
 | S7 | Reconcile plan vs actual | Melissa | Sonnet / low | Agent | S6 | PENDING |
@@ -355,5 +355,39 @@ preconditions; it is not approval of the contract**, which remains a separate ma
 `LOOP/decision-queue.md` still recording Design 86 as `NOT YET OPEN`.
 
 **D-43 panel FIRED** — three fresh reviewers, distinct lenses (scope · falsifiability · claims),
-each defaulting to NOT-DONE, composition 2 build + 1 ceiling. Outcome recorded below when it lands.
-Until then no completeness claim is made for the Design 86 draft.
+each defaulting to NOT-DONE, composition 2 build + 1 ceiling.
+
+---
+
+## D-43 completion panel — outcomes
+
+### Lens 1: SCOPE — **NOT-DONE** (3 blocking items, all accepted and fixed)
+
+Passed: the Gate-0 exclusion list holds under an adversarial sweep (every excluded term appears
+only in §10 prohibitions, §13 not-covered, or the §14 fence — never in an admitting role); the
+sparse-binary scope is genuinely independent of Design 85 rather than its extension; **§14's
+deletion test passes** (zero references to §14 anywhere outside itself, and §13.2 already carries
+the structured-prior boundary on its own terms); no 0.6 leak (the only reference to this document
+anywhere in the repo is its own dev-log entry); and the write fence holds at exactly two paths.
+
+**BLOCK 1 — Gate 3's tolerances were a Design 85 receipt relabelled.** The `0.05` / `0.10` / `0.25`
+values were carried over and called a "fresh predeclaration" with **no commitment to re-derive**,
+unlike §7.6's adjacent treatment of the optimiser gate — and Gate 3's own NO-GO list never named
+tolerance exceedance as a failure trigger at all. *Fixed:* re-derivation is now binding before
+Gate 3 is scored, the values are labelled placeholders until then, tolerance exceedance is added to
+the NO-GO list, and it is elevated to a **third precondition** in the Approval section.
+
+**BLOCK 2 — the contract claimed CONFIRMED where the lane's own tracker said PENDING.** §7.8 and
+§1.4 report completed work while the slice table above still marked S2/S3 as `PENDING`. The
+reviewer could not verify the external evidence from inside the worktree and correctly refused to
+assume. *Fixed:* the slice table now records S2/S3/S4 as DONE with their findings.
+
+**BLOCK 3 — a factual error in the document's first paragraph, inherited from Amendment 3 itself.**
+The contract asserted that `LOOP/decision-queue.md` records Design 86 as `NOT YET OPEN`. It does
+not: that row reads **`CUT 2026-07-21`**. Amendment 3 (`LOOP/GOAL.md:245`) makes the same incorrect
+claim about the repo's own ledger, and this document propagated it. *Fixed:* the discrepancy is now
+reported in place rather than repeated, noting that both readings agree Design 86 is not approved,
+so nothing turns on it. **Correcting the ledger row is outside this lane's fence and remains a
+maintainer action.**
+
+*(Lenses 2 and 3 — falsifiability and claims — still running.)*

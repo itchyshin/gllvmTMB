@@ -1,8 +1,17 @@
 # Design 86 — EVA sparse-binary scientific-admission contract
 
-**Status:** **DRAFT — NOT APPROVED.** `LOOP/decision-queue.md` records Design 86 as `NOT YET OPEN`.
-This document is a proposal; it becomes a contract only when the maintainer approves it in writing.
-This lane may not treat its own brief, `LOOP/GOAL.md`, or its ultra-plan as that approval.
+**Status:** **DRAFT — NOT APPROVED.** This document is a proposal; it becomes a contract only when
+the maintainer approves it in writing. This lane may not treat its own brief, `LOOP/GOAL.md`, or
+its ultra-plan as that approval.
+
+> **Ledger discrepancy, reported rather than resolved.** Amendment 3 states that
+> `LOOP/decision-queue.md` "records it `NOT YET OPEN`". It does not. That file's Design 86 row
+> currently reads **`CUT 2026-07-21`**, with the recommendation *"Superseded by the maintainer's
+> EVA cut. Never written or approved — do not cite as a contract."* That row is stale: it records
+> Amendment 1's cut of EVA from 0.6 and predates Amendment 3, which reopened this lane as
+> design-only on 2026-07-22. **Both readings agree on the only thing that matters here — Design 86
+> is not an approved contract — so nothing in this document turns on the difference.** Correcting
+> the ledger row lies outside this lane's write fence and is a maintainer action.
 
 **Authority to write it:** `LOOP/GOAL.md` Maintainer Amendment 3 (2026-07-22), which authorised a
 second, design-only lane on a disjoint write scope. **0.6 ships Laplace-only and is unaffected**
@@ -588,16 +597,29 @@ Per §9.2, with the same variational family and `(beta, Lambda)` fixed on both a
 tolerances on the SE-relevant quantities: unit-level variational means RMSE below `0.05`; covariance
 relative Frobenius error with median below `0.10` and no unit above `0.25`.
 
-> These values are taken from Design 85 §11 Gate 2 and are **restated here as fresh
-> predeclarations**. They were calibrated there against an AGHQ reference at `q <= 2` on
-> non-separated fixtures; **their calibration in the sparse regime is unestablished**, and that is
-> recorded rather than hidden.
+> **These three numbers are a Design 85 receipt, and calling them a "fresh predeclaration" does not
+> make them one.** They were calibrated in Design 85 §11 Gate 2 against an **AGHQ reference at
+> `q <= 2` on non-separated fixtures** — a materially different reference in a materially different
+> regime from sparse Bernoulli at the ranks this contract targets. Restating a number is not
+> re-deriving it.
+>
+> **Therefore, binding, and mirroring §7.6's treatment of the optimiser gate: these tolerances must
+> be RE-DERIVED against the EVA objective in the sparse regime, and the re-derivation recorded,
+> BEFORE Gate 3 is scored.** Until that happens the values above are placeholders carried forward
+> for continuity, not predeclarations this contract stands behind. This is the third
+> `TO CONFIRM BEFORE APPROVAL` item (see Approval).
+>
+> This distinction is the whole apparatus-versus-evidence line. Design 85's *machinery* — the
+> comparison design, the quantities compared — transfers. Its *calibrated constants* do not, any
+> more than its Gate-3 verdict does.
 
 The raw objective difference `L_H - ell_EVA` is **reported as a diagnostic and gates nothing** —
 there is no known mapping from an objective discrepancy to a coverage loss.
 
-**NO-GO:** a variational-family mismatch between arms; a directional/one-sided bound test used in
-place of the two-sided magnitude comparison; or dependence of the conclusion on one start.
+**NO-GO:** **any SE-relevant quantity exceeding its re-derived tolerance**; scoring Gate 3 against
+tolerances that have not been re-derived for this regime; a variational-family mismatch between
+arms; a directional/one-sided bound test used in place of the two-sided magnitude comparison; or
+dependence of the conclusion on one start.
 
 ### Gate 4 — admission
 
@@ -767,6 +789,16 @@ inherits anything from this contract.
   judgement rather than a cited figure recorded in place.
 - **§2.4, the Korhonen calibration** — the requirement is CONFIRMED as written. Performing it is a
   Gate-0 task; the UNQUANTIFIED fallback and its consequence for the `0.900` floor remain binding.
+
+**Added 2026-07-22 by the D-43 scope lens — a third precondition, NOT yet confirmed:**
+
+- **§11 Gate 3's tolerances** (`0.05` RMSE; `0.10` median / `0.25` maximum relative Frobenius error)
+  are a Design 85 receipt calibrated against an AGHQ reference at `q <= 2` on non-separated
+  fixtures. They must be **re-derived for the EVA objective in the sparse regime, with the
+  re-derivation recorded, before Gate 3 is scored** — mirroring §7.6's treatment of the optimiser
+  gate. Until then they are placeholders, not predeclarations. The panel found this had been
+  disclosed in prose but not elevated to precondition status, and not named in Gate 3's own NO-GO
+  list; both are now corrected.
 
 **Still outstanding, and this document remains NOT APPROVED:**
 

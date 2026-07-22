@@ -259,10 +259,11 @@ Prose did not prevent that. Therefore:
 **All predeclared quantities — the `n` ladder, the second ladders in `T` and `z`, replicate counts,
 the coverage floor, the margin over Laplace, `T`, `q`, the planted `beta` and `Lambda`, the
 zero-fraction target, the `I_unit` floor, the denominator rule (for coverage *and* for bias/RMSE),
-the named covariance estimator of §11 Gate 4, and the full per-replicate seed list — live in one
-machine-readable frozen file. Its checksum is recorded in this contract at approval. The runner
-READS that file; it does not restate any of these values.** A run whose parameter file checksum does
-not match the recorded value is not evidence under this contract.
+the named covariance estimator of §11 Gate 4, both arms' convergence-failure criteria (EVA's per
+§7.6 and Laplace's, with any asymmetry between them stated), and the full per-replicate seed list —
+live in one machine-readable frozen file. Its checksum is recorded in this contract at approval. The
+runner READS that file; it does not restate any of these values.** A run whose parameter file
+checksum does not match the recorded value is not evidence under this contract.
 
 **The seed list is frozen, not merely the seed count.** Freezing `R` alone would leave the study
 re-runnable from a fresh RNG state until a favourable curve appeared — a channel entirely distinct
@@ -763,12 +764,25 @@ MCSE is materially smaller than the independent figure. **The design already man
 the analysis must use it.** Reporting an unpaired margin SE understates the design's own power and
 is a NO-GO.
 
-**Denominator.** **All attempted replicates**, for coverage, bias and RMSE alike. A fit failing the
-optimiser gate counts as **non-covering**, and is carried in the bias/RMSE denominators by a
-predeclared rule recorded in the frozen file — not silently dropped. Attrition is reported per rung
-per arm. Sparse binary fails more often at small `n`, so a converged-only denominator would let a
-flattering "when it converges it is accurate" narrative ride alongside an honestly denominated
-coverage number.
+**Both arms' convergence gates are frozen, and symmetrically.** §7.6 requires EVA's optimiser gate
+to be re-derived, because `ell_EVA` is not a bound with known geometry. **The Laplace arm needs its
+own named, frozen convergence-failure criterion, recorded in the same parameter file** — because
+criterion (b) is a *paired* margin over Laplace and a failed fit counts as non-covering in both
+arms' denominators, so an unstated asymmetry in what counts as a "failed" Laplace fit versus a
+"failed" EVA fit would move the margin for a reason having nothing to do with either estimator's
+accuracy. The byte-identical data and seeds control the data side of the pairing; this controls the
+convergence-gate side. The two criteria need not be numerically identical — Laplace and EVA have
+different objective geometries — but each must be predeclared, and any deliberate asymmetry between
+them must be stated and justified, not left implicit.
+
+**Denominator.** **All attempted replicates**, for coverage, bias and RMSE alike. A fit failing its
+arm's frozen convergence gate counts as **non-covering**. For bias and RMSE the failed-fit
+contribution follows a predeclared rule in the frozen file; **the default, absent a stated reason
+otherwise, is that bias and RMSE are reported on the all-attempts denominator with failed fits'
+point estimates included**, so that a method which fails often cannot post a flattering accuracy
+number on a self-selected subset. Attrition is reported per rung per arm. Sparse binary fails more
+often at small `n`, so a converged-only denominator would let a flattering "when it converges it is
+accurate" narrative ride alongside an honestly denominated coverage number.
 
 **Targets, and the interval is NAMED.** Two-sided 95 % Wald interval coverage for (i) the primary
 fixed-effect coefficient and (ii) `Sigma_B`, **both co-equal**.
@@ -781,7 +795,7 @@ fixed-effect coefficient and (ii) `Sigma_B`, **both co-equal**.
 > pseudo-inverse — the construction `gllvm` uses at `R/se.gllvm.R:201-212`. It is recorded in the
 > frozen parameter file (§2.5). A coverage number from an unnamed interval construction does not
 > earn the sentence "EVA attains ≥ 0.900 coverage", and no result here transfers to any other
-> construction (§13.14).
+> construction (§13.13).
 
 **THE ADMISSION RULE — and the CUT.**
 
@@ -831,18 +845,24 @@ specified here in full rather than left to the runner:
 
 - **`T`-ladder:** `T ∈ {24, 48, 96}` at fixed `n = 600`, `z` at the band midpoint `0.95`, `R = 1000`.
 - **`z`-ladder:** `z ∈ {0.90, 0.95, 0.97}` at fixed `n = 600`, `T = 48`, `R = 1000`.
-- **Rule:** the admission rule above applies unchanged to every cell of both ladders, with (a)
-  evaluated **in-cell** rather than at `n_max`. **EVA is admitted only if it satisfies the rule on
-  the `n`-ladder AND on a predeclared contiguous majority of each second ladder** — at least two of
-  the three cells, including the `z = 0.95` midpoint in the `z`-ladder.
+- **Rule:** the admission rule above applies unchanged to every cell of both ladders, with **both
+  criteria evaluated in-cell** — (a) durability against the `0.900` floor and (b) the paired margin
+  over Laplace are each computed within the single cell, not borrowed from another cell of the
+  ladder. (The `n`-ladder's (b) is satisfied "at some rung" because it is one experiment sampled at
+  four sample sizes; a second-ladder cell is its own experiment, so "some rung" has no meaning there
+  and in-cell is the only coherent reading.) **EVA is admitted only if it satisfies the rule on the
+  `n`-ladder AND on a predeclared contiguous majority of each second ladder** — at least two of the
+  three cells, including the `z = 0.95` midpoint in the `z`-ladder.
 - Every cell reports realised `z`, `I_unit`, and `trace(H_i)/q` alongside coverage, so a failure can
   be attributed to information starvation rather than merely observed.
 
 **NO-GO:** success declared from convergence rate alone; failed fits excluded from any denominator;
 **an unpaired margin SE reported for criterion (b)**; **a coverage figure reported without naming
-its covariance estimator**; any fitted-`q` quantity in a gate table; bands widened post hoc;
-`n_max` chosen by affordability rather than on a stated scientific basis; or **the second ladder
-skipped, reduced, or reported after the `n`-ladder verdict has been formed**.
+its covariance estimator**; **only one arm's convergence-failure criterion frozen, or an
+undocumented asymmetry between the two arms' criteria**; any fitted-`q` quantity in a gate table;
+bands widened post hoc; `n_max` chosen by affordability rather than on a stated scientific basis;
+or **the second ladder skipped, reduced, or reported after the `n`-ladder verdict has been
+formed**.
 
 ### Gate 5 — claim audit
 
@@ -1006,15 +1026,14 @@ inherits anything from this contract.
 - The **bound property is refuted in the target regime** (§5.3). This is a finding, not a blocker,
   but it is material to how the contract should be read and postdates the maintainer's confirmations
   above.
-
-**Still outstanding, and this document remains NOT APPROVED:**
-
 - The **parameter-file checksum** (§2.5) does not yet exist, because the frozen parameter file does
   not yet exist. It is recorded here at approval.
-- **Approval of this contract is a separate maintainer act and has not been given.**
-  `LOOP/decision-queue.md` records Design 86 as `NOT YET OPEN`. Confirming the two items above
-  resolved two *preconditions*; it did not approve the contract, and this lane does not treat it as
-  having done so. No exception is self-granted.
+- **Approval of this contract is a separate maintainer act and has not been given.** For the ledger
+  status, see the status block at the top of this document (§ Status): `LOOP/decision-queue.md:10`
+  currently reads **`CUT 2026-07-21`** — the row for the superseded q1 sketch — and correcting it is
+  a release-lane act outside this lane's fence, not evidence of approval here. Confirming the
+  preconditions above resolved *preconditions* only; it did not approve the contract, and this lane
+  does not treat it as having done so. No exception is self-granted.
 
 Nothing in this document authorises compute. Compute requires a separate approval **after** the
 contract is approved.

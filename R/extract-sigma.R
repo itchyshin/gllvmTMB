@@ -1254,7 +1254,7 @@ extract_Sigma <- function(
           any(fit$tmb_data$family_id_vec == 16L)
         latent_only_note <- if (has_multinomial) {
           paste(
-            "FAM-20A multinomial phylogenetic covariance is deliberately",
+            "Multinomial phylogenetic covariance is deliberately",
             "loadings-only (Lambda_phy Lambda_phy^T).",
             "Use `link_residual = \"auto\"` for the fixed softmax residual;",
             "a free phylogenetic Psi (`unique = TRUE`) is not admitted for this route."

@@ -543,14 +543,14 @@ test_that("Julia bridge gate registry names every primary R admission stop", {
   expect_equal(anyDuplicated(gates$gate_id), 0L)
   expect_true(all(gates$status == "gated"))
   expect_true(all(gates$issue == "gllvmTMB#488"))
-  expect_true(all(gates$validation_row %in% c("JUL-01", "JUL-01A")))
+  expect_true(all(gates$validation_row %in% c("Julia-bridge point-estimate route (partial evidence)", "Julia-bridge covariance/ordination extractor (partial)")))
   expect_equal(
     gates$validation_row[gates$gate_id == "GJL-GATE-CORRELATION-INTERVALS"],
-    "JUL-01A"
+    "Julia-bridge covariance/ordination extractor (partial)"
   )
   expect_equal(
     gates$validation_row[gates$gate_id == "GJL-GATE-MASK-X-CI"],
-    "JUL-01"
+    "Julia-bridge point-estimate route (partial evidence)"
   )
   expect_true(all(
     gates$representative_test == "tests/testthat/test-julia-bridge.R"
@@ -950,7 +950,7 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
   expect_equal(unique(tbl$component), "total")
   expect_equal(unique(tbl$matrix), "Sigma")
   expect_equal(unique(tbl$interval_status), "none")
-  expect_equal(unique(tbl$validation_row), "JUL-01A")
+  expect_equal(unique(tbl$validation_row), "Julia-bridge covariance/ordination extractor (partial)")
   expect_equal(tbl$estimate, fit$Sigma[cbind(tbl$i, tbl$j)])
   expect_true(all(is.na(tbl$lower)))
   expect_true(all(is.na(tbl$upper)))
@@ -965,7 +965,7 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
   expect_equal(unique(tbl_r$level), "unit")
   expect_equal(unique(tbl_r$matrix), "R")
   expect_equal(unique(tbl_r$scale), "correlation")
-  expect_equal(unique(tbl_r$validation_row), "JUL-01A")
+  expect_equal(unique(tbl_r$validation_row), "Julia-bridge covariance/ordination extractor (partial)")
   expect_equal(tbl_r$estimate, fit$correlation[cbind(tbl_r$i, tbl_r$j)])
   expect_error(
     extract_Sigma_table(fit, level = "unit_obs"),
@@ -981,7 +981,7 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
   ))
   expect_s3_class(cmp, "data.frame")
   expect_equal(nrow(cmp), choose(fit$n_traits, 2L))
-  expect_equal(unique(cmp$validation_row), "JUL-01A")
+  expect_equal(unique(cmp$validation_row), "Julia-bridge covariance/ordination extractor (partial)")
   expect_equal(unique(cmp$comparison_status), "compared")
   expect_equal(unique(cmp$interval_status), "none")
   expect_equal(
@@ -1251,7 +1251,10 @@ test_that("Julia bridge exposes Gaussian predictor-informed LV payloads", {
   trait_effects <- extract_lv_effects(fit, type = "trait_effect")
   expect_equal(nrow(trait_effects), 4L)
   expect_equal(
-    trait_effects[, c("trait", "predictor")],
+    ## as.data.frame() strips the `gllvmTMB_reportable_table` class that
+    ## extract_lv_effects() now attaches so `validation_row` no longer prints
+    ## at the console. The comparison here is about the data, not the class.
+    as.data.frame(trait_effects[, c("trait", "predictor")]),
     expand.grid(
       trait = c("sp1", "sp2"),
       predictor = c("temp", "forest"),
@@ -1267,7 +1270,7 @@ test_that("Julia bridge exposes Gaussian predictor-informed LV payloads", {
   )
   expect_equal(
     unique(trait_effects$validation_row),
-    "EXT-31; JUL-01; JUL-01A; LV-01"
+    "experimental route: partial validation only"
   )
 
   axis_effects <- extract_lv_effects(fit, type = "axis_effect")
@@ -3332,7 +3335,7 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
       link_residual = "none"
     ))
     expect_equal(unique(sigma_table$level), "unit")
-    expect_equal(unique(sigma_table$validation_row), "JUL-01A")
+    expect_equal(unique(sigma_table$validation_row), "Julia-bridge covariance/ordination extractor (partial)")
     expect_equal(unique(sigma_table$interval_status), "none")
     expect_equal(
       sigma_table$estimate,

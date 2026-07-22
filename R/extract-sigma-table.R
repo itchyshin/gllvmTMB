@@ -197,7 +197,7 @@
       matrix_label = matrix_label,
       entries = entries,
       scale = scale,
-      validation_row = "EXT-20"
+      validation_row = "bootstrap-CI table formatting only (not a new CI)"
     )
     lower <- boot$ci_lower[[key]]
     upper <- boot$ci_upper[[key]]
@@ -416,9 +416,9 @@ extract_Sigma_table <- function(
       scale <- "latent"
     }
     validation_row <- if (inherits(fit, "gllvmTMB_julia")) {
-      "JUL-01A"
+      "Julia-bridge covariance/ordination extractor (partial)"
     } else {
-      "EXT-18"
+      "Sigma/Psi summary table (point estimates only)"
     }
     pieces[[k]] <- .sigma_table_from_matrix(
       mat = mat,

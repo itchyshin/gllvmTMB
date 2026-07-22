@@ -130,6 +130,63 @@ hand-written grep missed**, and they caught it before the D-43 panel rather than
 `Design` code", flagged as *evidenced, not proven*. One assertion did — on `C1-partial`,
 which the `Design [0-9]` pattern never covered. The hedge was correct; not verifying was not.
 
+## 5c. THIRD D-43 PANEL: 3/3 NOT-DONE — and what it found that I had not
+
+All three lenses withheld independently. Each was told, in its brief, that this agent had
+shipped a regression, reported a false pass, and under-scoped repeatedly, and was instructed
+to re-derive every number from artifacts rather than trust any summary I wrote.
+
+**Finding 1 — R-11 was materially worse than I had recorded it.** I described the codes as
+opaque provenance in "a table the user asked for", and rated the row **below R-8** on the
+grounds that nothing in it is false. Both judgements were wrong. `extract_lv_effects()` — an
+**exported** function — returns a plain `data.frame` carrying
+`validation_row = "EXT-31; JUL-01; JUL-01A; LV-01"` for Julia-bridge fits, **printed at the
+console by default, unsuppressed, in a column `man/extract_lv_effects.Rd` does not document.**
+The panel proved it live via the package's own passing test. It also reaches
+`plot_Sigma_table`/`_heatmap`/`_comparison` through the **documented public** `gllvmTMB_data`
+attribute. **I had recommended DEFERRING this to 0.7. The maintainer overrode me. The override
+was right, and deferring would have shipped it.**
+
+**Finding 2 — the CRAN check was stale, and that was my error specifically.** I told the
+maintainer its result "carries over" because R-10 changed only message strings. Five `R/`
+source files and one test file had changed since. I asserted a transfer argument instead of
+spending six minutes testing it. Re-run on the current head: **0 errors / 0 warnings / 1 note**
+— the argument was correct, but *being right by luck is not evidence*.
+
+## 5d. The repair nearly shipped something worse than the defect
+
+The automated code→prose rewrite resolved all 25 codes with doc citations. An adversarial
+reviewer then returned **`claims_faithful: false`** and found **seven categories of
+overstatement**.
+
+The systemic one: writing **"validated"** on a CI row reads as a **coverage/calibration
+claim**, which every governing design document explicitly forbids — and the empirical gate has
+**failed**: `CI-08` records that *"only Gaussian d=1 and Gaussian d=3 cleared the 94% gate;
+13/15 cells remain below gate."* One replacement stamped "validated" across **six rows, none
+of which is `covered`**, including a **structural-zero correlation** and a **not-applicable
+communality** — precisely the cells the design docs say *"must not receive fake intervals."*
+
+**That would have replaced an opaque code with a false calibration claim: strictly worse than
+the defect being repaired.** All seven were corrected to the reviewer's evidence-cited
+fallbacks. I also caught one of my own: rewriting `"is covered under RE-03"` to
+`"is validated"` was a silent strength upgrade, now reverted to `"is covered"`.
+
+**The durable lesson: a code→prose rewrite of an EVIDENCE column must never go unreviewed.**
+Paraphrasing provenance is not a formatting change; it is authoring new claims about what the
+software has been shown to do.
+
+## 5e. Two measured facts about verification itself
+
+**`test_dir()` is not equivalent to `devtools::test()`.** Measured directly this session on the
+same tree: `test_dir()` reported `FAILED=2` at `SKIP=1001`, while `devtools::test()` reported
+**`FAILED=3` plus `ERROR=1`** at the correct `SKIP=779 / PASS=7276`. **Roughly 2,400 tests
+silently did not execute** in the cheaper run. A `FAIL 0` from the under-powered profile is not
+evidence — it is the recorded "FAIL 0 while the assertion was skipped" trap, reproduced.
+
+**The standard now in force:** verify from structured results only —
+`as.data.frame(<testthat result>)` counts, or the runner's `M1_FINAL_RECEIPT_CHECK_*` fields.
+**A missing or unparseable field means CANNOT VERIFY, never PASS.**
+
 ## 6. Traps hit
 
 - A **backgrounded launcher shell reported exit 0 while the suite it launched was still

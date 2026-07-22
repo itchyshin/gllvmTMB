@@ -101,7 +101,7 @@ test_that("extract_Sigma_table returns one row per unique covariance entry", {
   expect_equal(unique(tbl$level), "unit")
   expect_equal(unique(tbl$component), "total")
   expect_equal(unique(tbl$matrix), "Sigma")
-  expect_equal(unique(tbl$validation_row), "EXT-18")
+  expect_equal(unique(tbl$validation_row), "Sigma/Psi summary table (point estimates only)")
   expect_equal(tbl$estimate, mat[cbind(tbl$i, tbl$j)])
 })
 
@@ -245,7 +245,7 @@ test_that("extract_Sigma_table preserves mixed-family link-residual Sigma rows",
 
   expect_equal(tbl$estimate, mat[cbind(tbl$i, tbl$j)], tolerance = 1e-10)
   expect_equal(unique(tbl$scale), "latent")
-  expect_equal(unique(tbl$validation_row), "EXT-18")
+  expect_equal(unique(tbl$validation_row), "Sigma/Psi summary table (point estimates only)")
 })
 
 test_that("extract_Sigma_table accepts bootstrap_Sigma objects with intervals", {
@@ -256,7 +256,7 @@ test_that("extract_Sigma_table accepts bootstrap_Sigma objects with intervals", 
   expect_equal(nrow(tbl), 3L)
   expect_equal(unique(tbl$level), "unit")
   expect_equal(unique(tbl$matrix), "Sigma")
-  expect_equal(unique(tbl$validation_row), "EXT-20")
+  expect_equal(unique(tbl$validation_row), "bootstrap-CI table formatting only (not a new CI)")
   expect_equal(unique(tbl$interval_method), "bootstrap")
   expect_equal(unique(tbl$interval_status), "provided")
   expect_true(all(is.finite(tbl$lower)))

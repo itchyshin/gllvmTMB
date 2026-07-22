@@ -149,9 +149,9 @@
     ),
     evidence = c(
       rep("route-specific validation-register rows", 3L),
-      "RE-14",
+      "Lognormal/Student-t: permitted at runtime; single-seed evidence on one route only",
       rep("route-specific validation-register rows", 3L),
-      "RE-14",
+      "Lognormal/Student-t: permitted at runtime; single-seed evidence on one route only",
       rep("route-specific validation-register rows", 2L)
     ),
     stringsAsFactors = FALSE
@@ -1584,7 +1584,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_phylo_dep_slope && n_phy_slope >= 2L && any(family_id_vec != 0L)) {
     cli::cli_abort(c(
       "{.fn phylo_dep} with two or more random slopes is not yet validated for non-Gaussian families.",
-      "i" = "Gaussian {.code phylo_dep(1 + x1 + x2 | species)} is validated; non-Gaussian {.code s >= 2} remains reserved pending an identifiability sweep.",
+      "i" = "Gaussian {.code phylo_dep(1 + x1 + x2 | species)} is covered; non-Gaussian {.code s >= 2} remains reserved pending an identifiability sweep.",
       ">" = "Use {.code phylo_dep(1 + x | species)} for the validated non-Gaussian single-slope path, or fit the multi-slope path under {.code gaussian()} until that sweep clears."
     ))
   }

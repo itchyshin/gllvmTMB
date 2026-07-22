@@ -20,7 +20,8 @@ test_that("augmented-slope family contract has one canonical admission table", {
     c("lognormal", "student")
   )
   expect_true(all(
-    contract$evidence[contract$admission_basis == "c1_partial"] == "RE-14"
+    contract$evidence[contract$admission_basis == "c1_partial"] ==
+      "Lognormal/Student-t: permitted at runtime; single-seed evidence on one route only"
   ))
   expect_true(contract$link_0[contract$family == "binomial"])
   expect_true(contract$link_1[contract$family == "binomial"])

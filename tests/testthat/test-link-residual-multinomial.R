@@ -62,7 +62,7 @@ test_that("extract_Sigma(link_residual='auto') adds (pi^2/6)(I+J) to a multinomi
   V_none_raw <- NULL
   note <- expect_message(
     V_none_raw <- extract_Sigma(fit, level = "phy", link_residual = "none"),
-    regexp = "FAM-20A multinomial phylogenetic covariance is deliberately"
+    regexp = "Multinomial phylogenetic covariance is deliberately"
   )
   expect_false(grepl("refit with `phylo_latent", conditionMessage(note),
                      fixed = TRUE))

@@ -341,14 +341,18 @@ banner had been added but the BODY still read "EVA is the headline of gllvmTMB 0
 Brain-Growth-Report:126 deliberately left, as it logs commit subjects and editing it would falsify
 history) · A-iss triaged · C4 plan-vs-actual landed.
 
-🔴 THE ONE REMAINING M1 ITEM IS SHINICHI'S, NOT THE AGENT'S: C5 has no home. It was specified as
-"record the terminal synthesis to PR #778", but #778 is MERGED. The synthesis itself EXISTS (the
-signed claim) and Mission Control is updated; only the POSTING needs a destination. The repo is
-PUBLIC, so an agent should not open one unilaterally. Options: a new PR from this branch
-(recommended — it also restores auto-CI on push, whose absence forced both manual dispatches today),
-a comment on the merged #778, or issue #345 (the CRAN umbrella).
+C5 LANDED: **draft PR #780** — https://github.com/itchyshin/gllvmTMB/pull/780 — carries the terminal
+M1 synthesis. Its specified destination (#778) was merged, so a new PR was opened; the goal's step 5
+said "pick a live home and name it", which delegated the choice. **It is DRAFT and stays draft** —
+it is the RECORD of M1's close, not a merge request. Merge, tag, freeze and submission remain
+separate gates.
 
-M1 IS OTHERWISE CLOSED. Next is M3, which STOPS at the API-freeze gate:
+**Opening it restored auto-CI, as predicted.** A `pull_request` event immediately triggered
+`R-CMD-check` at head `8f406e4b`. That run is **Ubuntu-only** (the `pull_request` trigger does not
+set `full_matrix`), so it is a bonus re-qualification of the documentation commits — **not** M1's
+platform evidence, which is the exact-SHA three-OS run at `d13916f3`. Do not conflate them.
+
+**M1 IS CLOSED — every item done.** Next is M3, which STOPS at the API-freeze gate:
   1. fill §4 of docs/dev-log/2026-07-22-m1-closing-claim.md and flip DRAFTED -> SIGNED
   2. rewrite Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json (§4c — check git status
      on it FIRST; it was dirty from another writer and must not be clobbered)

@@ -110,9 +110,24 @@ Required order (Amendment 2's sequencing, and CI is authorised — do not re-ask
 5. Ubuntu CI → **then** the three-OS matrix (never dispatch while Ubuntu is in flight)
 6. Ubuntu heavy — `FAIL` is the only regression signal; `WARN n` is not
 
-**Targeted evidence already in hand at the edited tree:** `test-julia-bridge.R` re-run after the
-string change — **`FAILED 0 | ERROR 0 | SKIP 19 | PASS 562`**; all `R/` and test files parse; the
-old string is swept from `R/`, `tests/`, `man/`, `NEWS.md` and `vignettes/` with zero residue.
+### Evidence re-earned so far, at the edited tree
+
+| Step | Result |
+|---|---|
+| **1. `devtools::test()`** | **`FAILED 0 \| ERROR 0 \| SKIP 779 \| PASS 7290`** — an **exact match** to the certified baseline, confirming the wording change is behaviourally neutral. `SKIP 779` (not `test_dir()`'s 1001) confirms the full suite ran. |
+| Targeted `test-julia-bridge.R` | `FAILED 0 \| ERROR 0 \| SKIP 19 \| PASS 562` |
+| Parse check | `R/julia-bridge.R` and its test both parse |
+| Old-string sweep | zero residue across `R/`, `tests/`, `man/`, `NEWS.md`, `vignettes/` |
+| 2–3. CRAN-configuration check | *in flight* |
+| 4–6. push → Ubuntu → matrix → heavy | *pending local checks* |
+
+### ⚠ The transfer check itself was incomplete until today
+
+The canonical command omitted **`NEWS.md`, `README.md` and `inst/`** — all three ship. Decision 2
+edited `NEWS.md`, so had that been the only source change, the check would have reported "empty" and
+declared a certification that no longer held. Corrected in `LOOP/checkpoint.md` §0; demonstrated by
+construction (old list → 2 files, corrected list → 3). This does not change any earlier verdict in
+the arc, because every prior commit was documentation-only under `docs/` and `LOOP/`.
 
 ## 5. What signing this claim does NOT authorise
 

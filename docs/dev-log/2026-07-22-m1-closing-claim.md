@@ -128,11 +128,21 @@ SKIP 102 | PASS 13650`. **`FAIL 0` is the gate and it is met** — and per the s
 is not a regression signal (six heavy runs across this arc returned WARN 8, 9 and 10 from
 functionally identical code; the contingent sites are optimiser-convergence-dependent).
 
-**Stated honestly:** the `SKIP −1 / PASS −6` drift is *consistent with* that same convergence
-variability, but it has **not been traced expectation-by-expectation**. It is small, it moves in the
-documented direction, and no test failed. It is recorded here rather than absorbed silently, because
-absorbing small unexplained drift is precisely how this arc's earlier false passes were produced.
-**If a later session needs the count to be exact, this is the thread to pull.**
+**This drift is already diagnosed — it is not a loose end.** `docs/dev-log/check-log.md` records the
+*identical* movement (`SKIP 103 → 102`, `PASS 13656 → 13650`) from an earlier pair of runs, and
+traced it: the contingent sites are **optimiser-convergence-dependent** — site (d) emits `NaNs
+produced` from a non-PD covariance, and the `spatial-unique` pair emits `NA/NaN function evaluation`
+while fitting. Whether each fires depends on whether a hard fit converges on that particular run, so
+**a different set of tests runs**, which moves `SKIP` and `PASS` together with `WARN`.
+
+**The consequence recorded there is the one that matters, and it is a standard, not a defect:** an
+exact set match between any two heavy runs **cannot** establish that an arc added no warning site,
+because the set is not a function of the code alone. That is precisely why R-7's "exact set match"
+strand was retired. No site here is a defect; the *evidence standard* was.
+
+So the drift is expected behaviour of a known mechanism, not an unexplained anomaly — and `FAIL 0`,
+which does not vary, is the gate. Recorded explicitly rather than absorbed silently, because
+absorbing small drift is how this arc produced its earlier false passes.
 
 ### 4.2 The order that was followed
 

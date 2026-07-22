@@ -46342,3 +46342,74 @@ arc added no warning site, because the set is not a function of the code alone.*
 is a defect; the *evidence standard* was.
 
 **M1 remains WITHHELD.**
+
+## 2026-07-22 — M1 CLOSED: decisions applied, chain re-earned, claim SIGNED (Claude Code)
+
+Branch `claude/0.6-m1-close-20260722`. PRs **#778 and #779 MERGED**, so the branch has no open PR —
+a push triggers nothing and CI must be dispatched by hand.
+
+**The four maintainer decisions were answered (`198ab08a`).** Two required source edits —
+`R/julia-bridge.R:1671` (the tightened claim string), its asserting test, and `NEWS.md` (the
+boundary statement) — which **forfeited the certified chain at `21e04eb5`**, the seventh such
+forfeit of the arc. Expected, not a fault.
+
+**The corrected transfer check earned its keep on first use.** It returned three files including
+**`NEWS.md`**, which the previous path list omitted. Had Decision 2's NEWS edit been the only source
+change, the old command would have reported "empty" and declared a certification that no longer
+held — a false PASS from the command written to prevent one.
+
+### Evidence re-earned — read from LOGS, not conclusion fields
+
+```sh
+# suite, at d13916f3
+devtools::test()            FAIL 0 | ERROR 0 | SKIP 779 | PASS 7290   (exact match to baseline)
+
+# three-OS matrix, run 29926771814 at d13916f3
+gh workflow run R-CMD-check.yaml --ref claude/0.6-m1-close-20260722 -f full_matrix=true
+gh run view 29926771814 --log | grep -oE "Status: .*"   ->  3x "Status: OK"
+gh run view 29926771814 --json jobs  ->  ubuntu-latest, macos-latest, windows-latest : all success
+
+# heavy full-check, run 29926795733 at d13916f3
+gh workflow run full-check.yaml --ref claude/0.6-m1-close-20260722
+                            FAIL 0 | WARN 9 | SKIP 102 | PASS 13650, Status: OK
+grep -c GLLVMTMB_HEAVY_TESTS heavy.log  ->  18    (gate asserted ON; it fails open)
+
+# CRAN-configuration check, at 7f9b9ed1
+Rscript --no-init-file dev/m1-cran-config-check.R
+  ERRORS=0  WARNINGS=0  NOTES=1  UNEXPECTED_NOTES=0  SHA_STABLE=TRUE
+  the NOTE is "New submission" under incoming feasibility — allowlisted
+```
+
+**The two evidence SHAs are interchangeable:** the shipped-path diff `d13916f3..7f9b9ed1` is empty
+(`7f9b9ed1` touches only `LOOP/` and `dev/`, both build-ignored).
+
+### Three things this run establishes about the checks themselves
+
+- **A green conclusion is not `0/0/0`.** `error_on` is `"error"`, so warnings and notes pass without
+  failing the run. Only the log's `Status:` line settles it.
+- **`full_matrix` degrades silently.** It defaults false; the three OS-named jobs must be asserted,
+  or a Ubuntu-only run passes as though it were three platforms.
+- **Dispatching `R-CMD-check` and `full-check` together is safe.** The concurrency group is
+  `workflow-ref`, so the standing "never while Ubuntu is in flight" rule concerns two runs of the
+  *same* workflow on one ref. One `full_matrix=true` run cannot collide with itself, and it removes
+  the window in which the second dispatch was cancelled — observed live twice in this arc.
+
+### Deviation recorded, not skipped
+
+The durable `--as-cran` was **not** re-run separately. It is subsumed: the three-OS matrix runs
+`R CMD check --as-cran` on three platforms and returned `Status: OK` on each — stronger than the
+single-platform durable runner — and the CRAN-configuration check supplies the incoming-feasibility
+leg the durable runner disables.
+
+### The heavy count drift is a KNOWN mechanism, not a new anomaly
+
+`WARN 10 → 9`, `SKIP 103 → 102`, `PASS 13656 → 13650`. **The entry immediately above already traced
+this identical movement:** the contingent sites are optimiser-convergence-dependent, so a different
+set of tests runs. `FAIL 0`, which does not vary, is the gate.
+
+**M1 is CLOSED.** The claim is signed at `docs/dev-log/2026-07-22-m1-closing-claim.md`, in D-43's
+required form — tier cited, uncovered cells named (R-2, R-6, R-7 site (d), R-5's SPDE/`phylo_diag`
+gap, CI-08's 13/15 failing cells, CI-10 at 0.55, FAM-17/MIX-10). **No seventh D-43 panel was
+convened**: D-74 fires D-43 once per milestone claim and records repeat panels as drift, and D-43's
+remedy is "withheld until the uncovered cells are NAMED", not "until a panel passes". Six panels ran
+where one was specified, and **not one found a numerical, algorithmic or statistical defect.**

@@ -390,4 +390,143 @@ reported in place rather than repeated, noting that both readings agree Design 8
 so nothing turns on it. **Correcting the ledger row is outside this lane's fence and remains a
 maintainer action.**
 
-*(Lenses 2 and 3 — falsifiability and claims — still running.)*
+### Lens 2: FALSIFIABILITY — **NOT-DONE** (7 blocking items)
+
+> **PANEL OUTCOME: ≥2 NOT-DONE. THE COMPLETION CLAIM IS WITHHELD.** The Design 86 draft is **not**
+> complete and **not** approvable in its current form. Items below are brought to the maintainer,
+> not patched around.
+
+**The lead finding, and it is fatal to Gate 4 as written: the CUT cannot fire.**
+
+Gate 4 admits EVA if **some contiguous region** of the ladder has coverage ≥ 0.900 AND beats
+Laplace by ≥ 0.02. No minimum region length is specified, so **one rung suffices**. Applying
+Korhonen's already-published Fig. 3 numbers:
+
+| n | Laplace | EVA | margin | ≥ 0.900? | margin ≥ 0.02? |
+|---|---|---|---|---|---|
+| 50 | 0.81 | 0.968 | **+0.158** | yes | **yes** |
+| 120 | 0.91 | 0.940 | **+0.030** | yes | **yes** |
+| 190 | 0.925 | 0.925 | 0.000 | yes | no |
+| 260 | 0.94 | 0.910 | −0.030 | yes | no |
+
+The ladder's lowest rung, `n = 100`, sits essentially on Korhonen's `n = 120` anchor, where **both
+criteria are already satisfied by 3.0 percentage points** — before a single new simulation runs.
+Since any single qualifying region admits, EVA is admitted **regardless of what happens at
+`n = 600` or `n = 1200`** — the exact regime §1.3 says the contract exists to probe.
+
+**This is the mirror image of the flaw Fisher's S6 review fixed.** Fisher removed a rule that bit
+only at the largest `n`, where EVA loses; the replacement can be satisfied only at the smallest `n`,
+where EVA's win is already in print. Both versions are decided in advance — in opposite directions.
+
+**Other blocking items, most severe first:**
+
+2. **The "second ladder" in `T` or `z` has no content whatsoever** — no grid, no replicate count,
+   no floor, no margin, no pass/fail rule. Yet the contract itself argues that because `H_i` does
+   not depend on `n`, the `n`-ladder alone can only confirm a foregone conclusion, making the second
+   ladder *the* test of the real question. The load-bearing test is entirely unquantified.
+3. **`R = 200` cannot measure a `0.02` margin.** MCSE near `p = 0.90` at `R = 200` is
+   `√(0.9·0.1/200) = 0.0212` — **larger than the threshold itself**. The two-arm difference SE is
+   ≈ `0.0271`. Three of four rungs, including the `n = 260` Korhonen replication anchor, are
+   underpowered for the quantity they gate; the anchor runs ~2.9× coarser than Korhonen's own
+   `R = 1000`, and "approximately reproduce 0.910" has no stated numerical tolerance.
+4. **Gate 2's "recovery failure" has no number at all** — a regression from Design 85's analogous
+   gate, which specified `0.05` absolute and a 5% axis-collapse rate.
+5. **The "no shared runner / denominator / output directory" cure has no NO-GO trigger and no
+   verification mechanism** — unlike the parameter-file checksum sitting beside it. It is therefore
+   enforced exactly as Design 85's failed separation was: prose stating an intention. This is the
+   reform aimed at Design 85's *actual* cause of failure.
+6. **An arithmetic error in the floor's two-sided defence.** Nominal error is `0.05`. Coverage
+   `0.900` → error `0.10` = **doubled**; coverage `0.85` → error `0.15` = **tripled**. §11 calls
+   `0.900` "the error rate doubles line" *and* says `0.85` "licenses a doubled error rate" in the
+   same paragraph. Both cannot be right; the `0.85` label is wrong.
+7. **`β` and `Σ_B` are called co-equal in §9.3 but the boxed rule in §11 does not require both to
+   satisfy the joint condition in the same region** — leaving room for a `β`-favourable,
+   `Σ_B`-unfavourable result to be reported as a clean GO, which §9.3 itself warns against.
+
+**What the lens credited, having verified it independently:** the §2.4 sparsity/information table is
+arithmetically correct throughout (0.36×, 0.19×, 0.078×, and the 5.3× headline); the `q >= 4`
+retirement is well-evidenced; the all-attempts denominator rule is a real fix correctly targeted;
+and the `R = 1000` MCSE arithmetic (3.5 SE separation, `R ≈ 3300` to resolve 0.91 from 0.90) checks
+out exactly.
+
+### Lens 3: CLAIMS (ceiling) — **NOT-DONE** (5 blocking, 6 further)
+
+**PANEL RESULT: 3 of 3 NOT-DONE, unanimous. The completion claim is WITHHELD.**
+
+**The bound property is now DERIVED, and §5.3 was right and understated.** The reviewer did not
+merely check the reasoning — it produced the result. Writing `ℓ(u) = log f(y_i|u)`, the EVA
+substitution is *exactly*
+
+```
+ell_EVA = L_exact − E_q[R],   R(u) = ℓ(u) − [ℓ(a) + g'(u−a) + ½(u−a)'H(u−a)]
+```
+
+so `ell_EVA <= log p(y)` holds only if `E_q[R] >= 0`. Concavity is **not** sufficient: pointwise
+`R >= 0` would need `p(1−p)|_η <= p(1−p)|_{η_a}` for all `η`, true only at `p = 1/2`. Under a
+symmetric `q` the third-order term vanishes and the leading contribution is fourth order:
+
+```
+s''''(η) = p(1−p)(1 − 6p + 6p²),   roots at p ≈ 0.2113 and 0.7887
+E_q[R] ≈ −(1/8) Σ_t s''''(η_t) v_t²
+```
+
+- **Balanced** (`0.211 < p < 0.789`): `s'''' < 0` ⇒ `E_q[R] > 0` ⇒ the bound **holds**.
+- **Sparse** (`p < 0.211`): `s'''' > 0` ⇒ `E_q[R] < 0` ⇒ **`ell_EVA > L_exact`** — the objective
+  **overshoots the exact ELBO, precisely in the `z ∈ [0.90, 0.97]` regime this contract targets.**
+
+And the optimiser maximises the surrogate, so it is *actively rewarded* for configurations where
+the overshoot is large. Declining the bound property was correct; the contract was too generous to
+Korhonen's prose. **This is a Gate-1 deliverable now largely discharged in advance.**
+
+**BLOCKING 1 — §5.1 and §5.2 are on different additive scales by `+N·q/2`, and Gate 3 differences
+them.** The exact `−KL(N(a,A)‖N(0,I))` is `0.5[log det A − a'a − tr A **+ q**]`. §5.2's `L_H` KL
+term carries the `q`; §5.1's `ell_EVA` KL term **omits it** (following Korhonen, who drops
+parameter-independent constants — harmless within EVA alone, fatal when differencing against
+`L_H`). At `n = 1200`, `q = 2` the spurious offset in the reported `L_H − ell_EVA` diagnostic is
+**+1200 nats**, which would read as "`ell_EVA` sits below the GH ELBO" — the bound property
+re-entering through a units error, in the one quantity §5.3 took trouble to neutralise. **Gate 1's
+own NO-GO names "omitted constants", so the contract's stated objective fails the contract's own
+Gate 1.**
+
+**BLOCKING 2 — §10 drops Design 85 §10's cross-method-objective prohibition** (85:329-330). §10
+forbids signed statements about `ell_EVA` versus the *marginal log-likelihood*, but nothing forbids
+"`ell_EVA` is higher than the Laplace objective, therefore better fit" — while Gate 4 runs a
+Laplace arm on byte-identical data at every rung, creating exactly that temptation.
+
+**BLOCKING 3 — Gate 4's headline claim is not tied to a defined interval.** "Two-sided 95 % Wald
+interval coverage" never names its covariance estimator, though §7.8's own source reading
+establishes that under VA/EVA the **Schur-complement correction** is required and that naive
+variational intervals are anti-conservative. The two constructions give materially different
+coverage. A coverage number from an unspecified interval does not earn "EVA attains ≥ 0.900".
+
+**BLOCKING 4 — §13 has no item confining a pass to the studied zero fraction**, `T`, or achieved
+`I_unit` — the parameters that define the experiment.
+
+**BLOCKING 5 — §1.4's own citations do not meet §1.4's standard:** two quotes introduced as "two
+further sources" carry one citation, and Niku et al. 2017 is absent from §12's evidence register.
+
+**Further (non-blocking):** `n` is never defined in §2.1; §9.2 calls the GH reference "an ELBO"
+without establishing it in-document; §10's inverse-Hessian prohibition is conditionalised on
+evidence Gate 4 itself supplies (self-licensing); Gate 1's NO-GO omits "bound question unresolved";
+and §14's "would still stand **complete**" is the file's only self-completeness assertion.
+
+**The reviewer's closing observation, which is the honest verdict on the milestone:** the artifact
+is "unusually honest … and on the central question it is mathematically right", but *"complete and
+approvable"* **is asserted by the milestone and denied by the artifact** — the parameter-file
+checksum does not exist because the file does not exist, and the Korhonen calibration carries a
+live dependency that may require §11 to be re-authored.
+
+---
+
+## PANEL CONSOLIDATION
+
+| Lens | Model | Verdict |
+|---|---|---|
+| Scope | Sonnet / high | **NOT-DONE** (3 blocking — all fixed) |
+| Falsifiability | Sonnet / high | **NOT-DONE** (7 blocking — brought, not patched) |
+| Claims (ceiling) | Opus / high | **NOT-DONE** (5 blocking + 6 — brought, not patched) |
+
+**3/3 NOT-DONE. The completion claim is WITHHELD.** Design 86 is a **draft with known defects**, not
+a complete or approvable contract. The two structural defects a successor must fix before anything
+else are: **Gate 4's admission rule can be satisfied at `n = 100` from already-published numbers**
+(falsifiability lens), and **the `+N·q/2` scale mismatch between the two objectives** (claims lens).

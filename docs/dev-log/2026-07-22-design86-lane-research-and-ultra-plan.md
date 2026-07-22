@@ -530,3 +530,52 @@ live dependency that may require §11 to be re-authored.
 a complete or approvable contract. The two structural defects a successor must fix before anything
 else are: **Gate 4's admission rule can be satisfied at `n = 100` from already-published numbers**
 (falsifiability lens), and **the `+N·q/2` scale mismatch between the two objectives** (claims lens).
+
+---
+
+## RESOLUTION — blocking items fixed (2026-07-22, commit `ffd1e4d8`)
+
+The maintainer approved all three outstanding decisions and directed the blocking items be closed.
+Applied to the contract. **The panel's verdict stands against the version it read**; the draft is
+now materially stronger but has **not been re-reviewed**, so it carries no completion claim. A fresh
+panel would be required to say anything about the current version.
+
+**The two structural defects, resolved:**
+
+1. **Gate 4's CUT now fires.** The single-region rule is replaced by a **conjunction**, required for
+   `beta` AND `Sigma_B`: (a) DURABILITY — coverage ≥ 0.900 at `n_max = 1200`, `R = 1000`; (b) USER
+   VALUE — coverage beats the *paired* Laplace coverage by ≥ 0.02 at some rung; **CUT if either
+   fails**. The halves probe opposite ends of the ladder, so the rule is falsifiable, and it fires
+   in the expected case (continued decay past `n = 1200`) that the old rule passed.
+2. **The `+q` KL constant is fixed** in §5.1, both forms, with the reason recorded so it is not
+   re-simplified out. The `L_H − ell_EVA` diagnostic is now on a common additive scale.
+
+**The bound property is now DERIVED and recorded in §5.3 — and it is REFUTED in the target regime.**
+`E_q[R]` has leading fourth-order term `−(1/8)Σ s''''(η_t)v_t²` with `s''''(η) = p(1−p)(1−6p+6p²)`,
+roots at `p ≈ 0.211/0.789`. Balanced data: bound holds. **Sparse (`p < 0.211`, i.e. our whole
+`z ∈ [0.90,0.97]` regime): `ell_EVA` overshoots the exact ELBO**, and the optimiser is rewarded for
+larger overshoot. This is the session's strongest finding — the estimator's objective is provably
+*not* a bound where the user value lives — and it strengthens rather than weakens the case for
+measuring coverage empirically.
+
+**Supporting fixes:** `R = 1000` at every rung (R=200 MCSE 0.021 > the 0.02 margin); paired McNemar
+margin; covariance estimator named (Schur complement); second ladder in `T`/`z` fully specified;
+Gate 2 given numeric tolerances; no-shared-runner cure given a provenance mechanism + NO-GO; seed
+list frozen; §10 given the cross-method prohibition; §13.13–13.14 added; Gate 1 bound probe added;
+`n` defined; the 0.85 arithmetic corrected (triples, not doubles); §1.4's own citations brought to
+§1.4's standard.
+
+**Maintainer approvals recorded in the contract's Approval section:** the zero-fraction band, the
+Korhonen calibration requirement, and the Gate-3 tolerance re-derivation are all CONFIRMED
+preconditions; the Gate-4 rule replacement is recorded.
+
+**Deliberately NOT done, and flagged:** `LOOP/decision-queue.md`'s stale row was **not** edited
+despite approval to fix it — `LOOP/` is the release lane's coordination surface and lies outside
+Amendment 3's fence; writing this lane's status there is the exact channel Amendment 3 forbids. The
+discrepancy is reported in the contract's own status block. Correcting the ledger is a release-lane
+act.
+
+**State at close.** Branch `claude/design86-eva-contract-20260722`, six commits, fence honoured
+(only `docs/design/86-*.md` and this file), Design 85 byte-unchanged, `LOOP/` untouched. The
+contract is **DRAFT — NOT APPROVED**; the parameter-file checksum cannot be recorded until the
+frozen file exists; approval is the maintainer's separate act.

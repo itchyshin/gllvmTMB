@@ -69,7 +69,17 @@ that are genuinely the maintainer's.
 
 | Check | Result |
 |---|---|
-| `git diff --name-only 21e04eb5 HEAD -- R/ src/ tests/ man/ vignettes/ tools/ DESCRIPTION NAMESPACE` | **empty** — re-run after every commit; certification holds |
+| `git diff --name-only 21e04eb5 HEAD -- R/ src/ tests/ man/ vignettes/ tools/ DESCRIPTION NAMESPACE` | **empty** — re-run after every commit; certification held for every commit in this arc |
+
+> **⚠ CORRECTION (same day, after the above ran).** That path list — the canonical one used
+> throughout this arc — is **incomplete**. It omits **`NEWS.md`, `README.md` and `inst/`**, all three
+> of which **ship** (absent from `.Rbuildignore`). A NEWS-only or README-only edit would have
+> forfeited the certification while this command reported "empty" — **a false PASS from the very
+> check written to prevent one.** Found by enumerating the top-level tree against `.Rbuildignore`
+> instead of trusting the list. It does **not** invalidate the results above: every commit in this
+> arc was documentation-only under `docs/` and `LOOP/`, both `.Rbuildignore`d, so the verdict was
+> right even though the instrument was blunt. Corrected list now in `LOOP/checkpoint.md` §0:
+> `R/ src/ tests/ man/ vignettes/ tools/ inst/ DESCRIPTION NAMESPACE NEWS.md README.md`.
 | `git status --porcelain` | clean at each commit |
 | `git rev-list --left-right --count origin/…...HEAD` | `0 0` after each push |
 | #779 CI, `gh pr checks 779` | `ubuntu-latest (release)  pass  18m38s` |

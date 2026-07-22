@@ -48,9 +48,19 @@ a result):
 
 ```sh
 cd /private/tmp/gllvmtmb-060-m1-builder
-git diff --name-only 21e04eb5 HEAD -- \
-  R/ src/ tests/ man/ vignettes/ tools/ DESCRIPTION NAMESPACE
+git diff --name-only <CERTIFIED_SHA> HEAD -- \
+  R/ src/ tests/ man/ vignettes/ tools/ inst/ DESCRIPTION NAMESPACE NEWS.md README.md
 ```
+
+> **⚠ THE PATH LIST WAS INCOMPLETE UNTIL 2026-07-22 — the check could miss a real forfeit.**
+> Every earlier version omitted **`NEWS.md`, `README.md` and `inst/`**, all three of which **ship**
+> (they are absent from `.Rbuildignore`). A NEWS-only or README-only edit would therefore have
+> forfeited the certification while the canonical check reported "empty" — a false PASS from the very
+> command written to prevent one. Found by enumerating the top-level tree against `.Rbuildignore`
+> rather than trusting the list. **The shipped set is:** `R/ src/ tests/ man/ vignettes/ tools/ inst/
+> DESCRIPTION NAMESPACE NEWS.md README.md` (note `vignettes/articles` and `inst/tmb/*.o|so|dll|dylib`
+> are excluded *within* otherwise-shipping trees). Re-derive this list from `.Rbuildignore` if the
+> package layout changes — do not copy it forward on trust.
 
 **Empty output ⇒ the certification transfers to HEAD.** Any output ⇒ **it does not**, and the
 evidence must be re-earned before any claim rests on it.

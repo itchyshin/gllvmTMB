@@ -187,9 +187,9 @@ surfaces was itself instance-thinking, one level up.
 | `devtools::test()` | **`FAILED 0 \| ERROR 0 \| SKIP 779 \| PASS 7290`** — an **exact match** to the certified baseline, so the wording change is behaviourally neutral. `SKIP 779` (not `test_dir()`'s 1001) confirms the **full** suite ran. |
 | Targeted `test-julia-bridge.R` | `FAILED 0 \| ERROR 0 \| SKIP 19 \| PASS 562` |
 | Old-string sweep | zero residue across `R/`, `tests/`, `man/`, `NEWS.md`, `vignettes/` |
-| **3-OS matrix** `29926771814` | **IN FLIGHT** — dispatched at `d13916f3` with `full_matrix=true`. Must assert **three OS-named jobs**; `full_matrix` defaults false and silently degrades to Ubuntu-only, going green. |
-| **Heavy full-check** `29926795733` | **IN FLIGHT** — dispatched at `d13916f3`. `FAIL` is the only regression signal; `WARN n` is not. |
-| durable `--as-cran` · CRAN-config | **NOT YET re-earned at this SHA.** |
+| **3-OS matrix** `29926771814` | ✅ **SUCCESS at `d13916f3`.** All three OS-named jobs `completed/success`: `ubuntu-latest (release)`, `macos-latest (release)`, `windows-latest (release)`. **Verified from the LOG, not the conclusion field:** the 27,256-line log carries **three `Status: OK` lines**, one per platform, and **zero** `ERROR`/`WARNING`/`NOTE` count lines. This matters because `error_on: "error"` lets warnings and notes pass — a green conclusion alone would not have established 0/0/0. |
+| **Heavy full-check** `29926795733` | **IN FLIGHT** — dispatched at `d13916f3`. `matrix-setup` succeeded; `ubuntu-latest (release)` running. `FAIL` is the only regression signal; `WARN n` is not. |
+| **CRAN-configuration check** | **NOT YET re-earned at this SHA.** Runner committed at **`dev/m1-cran-config-check.R`** (`^dev$` is build-ignored, so it does not ship). |
 
 **Dispatching both at once is safe here** — the concurrency group is `workflow-ref`, and
 `R-CMD-check` and `full-check` are different workflows, so they cannot cancel each other. The
@@ -318,13 +318,17 @@ Head d13916f3 on claude/0.6-m1-close-20260722, CLEAN, pushed, 0/0 vs origin. The
 21e04eb5 is FORFEITED — applying the decisions edited NEWS.md, R/julia-bridge.R and its test. That
 is expected (the sixth such re-mint), not a fault.
 
-RE-EARNED: devtools::test() = FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290, an EXACT match to the
-certified baseline. IN FLIGHT at d13916f3: 3-OS matrix run 29926771814 (full_matrix=true) and heavy
-full-check run 29926795733. NOT yet re-earned: durable --as-cran, CRAN-config.
+RE-EARNED at d13916f3:
+  devtools::test()  FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290 — EXACT match to the baseline.
+  3-OS matrix 29926771814  SUCCESS. All three OS-named jobs passed; the LOG carries three
+    "Status: OK" lines and ZERO ERROR/WARNING/NOTE lines. Read from the log, not the conclusion —
+    error_on:"error" lets warnings and notes pass, so green alone would not have proven 0/0/0.
+STILL OUTSTANDING: heavy full-check 29926795733 (in flight); CRAN-configuration check (not started;
+runner is dev/m1-cran-config-check.R).
 
-NEXT ACTION: read those two runs' RESULTS — not their exit status. Assert the 3-OS run shows THREE
-OS-NAMED JOBS (full_matrix defaults false and silently degrades to Ubuntu-only while going green).
-For heavy, only FAIL is a regression signal; WARN n is not. Then:
+NEXT ACTION: finish those two, reading RESULTS not exit status. For heavy, only FAIL is a
+regression signal; WARN n is not. For CRAN-config the bar is an ALLOWLIST ("New submission",
+install size) — NOT zero notes, which would self-grant a waiver of real CRAN behaviour. Then:
   1. fill §4 of docs/dev-log/2026-07-22-m1-closing-claim.md and flip DRAFTED -> SIGNED
   2. rewrite Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json (§4c — check git status
      on it FIRST; it was dirty from another writer and must not be clobbered)

@@ -1,9 +1,12 @@
 # gllvmTMB 0.6 arc-loop checkpoint
 
-**GOAL:** `LOOP/GOAL.md` — read **both** maintainer amendments. (1) EVA is CUT from 0.6 to 0.7;
-0.6 is Laplace-only. (2) **CI authorisation RESTORED** (`GOAL.md:159`) — push, Ubuntu, heavy
+**GOAL:** `LOOP/GOAL.md` — read **all THREE** maintainer amendments. (1) EVA is CUT from 0.6 to
+0.7; 0.6 is Laplace-only. (2) **CI authorisation RESTORED** (`GOAL.md:159`) — push, Ubuntu, heavy
 and the three-OS matrix are approved and the "stop before any push/CI spend" line is
-**superseded**. Do not re-ask; do not re-litigate it.
+**superseded**. Do not re-ask; do not re-litigate it. (3) **2026-07-22 — a parallel Design 86
+lane is authorised**, design-only, fenced to `docs/design/86-*.md`, in a worktree outside
+Dropbox. **It does NOT gate 0.6 and does NOT reverse Amendment 1** — 0.6 still ships
+Laplace-only and M2 stays CUT. Brief: `docs/dev-log/2026-07-22-design86-lane-brief.md`.
 
 > ⚠ **A source outside this repo still carries the revoked line.** The ultra-plan Rev 3 `🎯 GOAL`
 > block (and its `MD-5`) reads *"stop before any push/CI spend"*. Amendment 2 exists specifically to
@@ -219,7 +222,8 @@ evidence `21e04eb5`, transfer **verified empty**). Draft PR #778.
 ## RESUME
 
 ```text
-Read LOOP/GOAL.md (BOTH amendments — CI IS AUTHORISED) -> LOOP/checkpoint.md ->
+Read LOOP/GOAL.md (ALL THREE amendments — CI IS AUTHORISED; Amendment 3 opens a parallel
+design-only Design 86 lane that does NOT gate 0.6) -> LOOP/checkpoint.md ->
 docs/dev-log/known-residuals-register.md -> docs/dev-log/check-log.md.
 
 M1 is WITHHELD after SIX 3/3 NOT-DONE panels. No register row blocks it, no check fails, no defect

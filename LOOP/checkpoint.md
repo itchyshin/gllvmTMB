@@ -1,163 +1,171 @@
 # gllvmTMB 0.6 arc-loop checkpoint
 
-**GOAL:** `LOOP/GOAL.md` — read **both** maintainer amendments: (1) EVA is CUT from 0.6 to
-0.7, 0.6 is Laplace-only; (2) **CI authorisation RESTORED** — push, Ubuntu, heavy and the
-three-OS matrix are approved, do not re-ask.
+**GOAL:** `LOOP/GOAL.md` — read **both** maintainer amendments. (1) EVA is CUT from 0.6 to 0.7;
+0.6 is Laplace-only. (2) **CI authorisation RESTORED** (`GOAL.md:159`) — push, Ubuntu, heavy
+and the three-OS matrix are approved by the maintainer and the "stop before any push/CI spend"
+line is **superseded**. Do not re-ask; do not re-litigate it.
 
-**STATE: M1 IS WITHHELD.** **FIVE** consecutive D-43 panels, **five** 3/3 NOT-DONE verdicts.
-Head `672f611b`, tree clean, pushed.
+**STATE: M1 IS WITHHELD.** **Five** consecutive D-43 panels, **five** 3/3 NOT-DONE verdicts.
+
+**Branch head: `d342daec`** — clean, pushed. **Certified evidence SHA: `95f7d06a`.** The two
+commits since (`d342daec` and its parent) are **documentation only and NON-CERTIFYING**; they
+record the retraction below. No source file changed after `95f7d06a`.
 
 ---
 
-## THE ONE THING TO UNDERSTAND BEFORE CONTINUING
+## 1. THE PATTERN — read this before touching anything
 
-**Not one of five panels found a numerical, algorithmic, or statistical defect.** The
-engineering has been green throughout. Every panel found the *same* failure in the agent:
+**Not one of five panels found a numerical, algorithmic or statistical defect.** The
+engineering has been green throughout. All five found the same failure in the agent:
 
 > **It repairs the instance it was pointed at, not the class it belongs to — then states in a
 > commit message that the class is fixed.**
 
-Measured this arc: **ten instances**, and — decisively — **three of the five panel findings
-were defects introduced by the previous panel's own fix.**
+**Twelve instances this arc. THREE of the five panel findings were defects introduced by the
+previous panel's own fix.** Two commit messages were false as written.
 
-Concretely: a false `FAIL 0` reported from a grep that matched nothing; a suppression wrapper
-applied to one of two return branches while the **default** branch stayed broken; `"validated"`
-corrected on line 1587 and left on line 1588 of the same `cli_abort`; an R-10 register
-contradiction fixed without checking R-9, which had the identical defect.
+Worked examples: a false `FAIL 0` from a grep matching a marker the reporter never emits; a
+suppression wrapper on one of two return branches while the **default** stayed broken;
+`"validated"` corrected on line 1587 and left on line 1588 of the same `cli_abort`; an R-10
+register contradiction fixed without checking R-9, which had the identical defect; a
+checkpoint warning about stale references that named its own commit's SHA and was stale on
+arrival.
 
-**The countermeasure that demonstrably works: SWEEP THE CLASS, NEVER PATCH THE INSTANCE.**
-When the agent finally swept rather than patched, it found six `cli_abort` messages telling
-users to *"consult the validation register"* — a `docs/design/` file `.Rbuildignore` excludes
-from the package. **Five panels had missed it.** Sweeping finds things; patching reintroduces
-them.
+**THE COUNTERMEASURE THAT DEMONSTRABLY WORKS: SWEEP THE CLASS, NEVER PATCH THE INSTANCE.**
+When the agent finally swept, it found six `cli_abort` messages sending users to
+*"consult the validation register"* — a `docs/design/` file `.Rbuildignore` excludes from the
+package. **Five panels had missed it.**
 
-**Corollary for whoever continues:** do not trust this agent's summaries, counts, or commit
-messages. Re-derive from artifacts. Two commit messages in this arc were false as written.
+**Do not trust this agent's summaries, counts, or commit messages. Re-derive from artifacts.**
 
 ---
 
-## VERIFICATION STANDARD IN FORCE (paid for twice)
+## 2. 🔴 A RETRACTION THE AGENT MADE AGAINST ITSELF
+
+The agent recorded that the heavy warning set was **"an established invariant, not an
+inference"** after four consecutive identical nine-site Ubuntu runs. **The fifth run refuted
+it** — run `29896539701` returned **eight** sites, a different set:
+
+- **absent:** `test-matrix-slope-spatial-unique.R:249:3`, `:293:3`
+- **present again:** `test-matrix-nbinom2-spatial.R:258:3` — site (d)
+
+Same platform, same epoch, one documentation-and-message-string commit apart. Skip 103 → 102,
+pass 13656 → 13650.
+
+**An invariant asserted from n=4, refuted at n=5.** The original claim (the set is *not*
+stable) was correct; both later "refinements" were wrong. The contingent sites are
+**optimiser-convergence-dependent**, so the set is not a function of the code alone.
+
+**Consequence: an exact set match between ANY two heavy runs cannot establish that an arc
+added no warning site — which is what R-7's causation evidence rests on.** No site is a
+defect; the evidence standard is.
+
+---
+
+## 3. VERIFICATION STANDARD IN FORCE (each paid for by a failure)
 
 - **Structured results only** — `as.data.frame(<testthat result>)` counts, or the runner's
   `M1_FINAL_RECEIPT_CHECK_*` fields. **A missing or unparseable field is CANNOT VERIFY, never
   PASS.** Never grep reporter prose for failure markers.
-- **`test_dir()` ≠ `devtools::test()`.** Measured: `test_dir()` gave `FAILED=2` at `SKIP=1001`;
-  `devtools::test()` gave `FAILED=3 + ERROR=1` at the correct `SKIP=779`. **~2,400 tests
-  silently did not run.** Only the `SKIP=779` profile is evidence.
-- **A backgrounded launcher's exit 0 is not the job's result.** It fired repeatedly this arc.
+- **`test_dir()` ≠ `devtools::test()`.** Measured: `FAILED=2` at `SKIP=1001` versus
+  `FAILED=3 + ERROR=1` at the correct `SKIP=779`. **~2,400 tests silently did not run.**
+- **A backgrounded launcher's exit 0 is not the job's result.** It fired repeatedly.
+- **Never dispatch `R-CMD-check.yaml` while an Ubuntu run is in flight** — the concurrency
+  group cancels it. Observed live: run `29896433309` was cancelled exactly this way.
 
 ---
 
-## EVIDENCE — all green, but at the SUPERSEDED head `71753ccb`
+## 4. CERTIFIED EVIDENCE — all green at `95f7d06a`
 
 ```
-devtools::test()              FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290
-durable R CMD check --as-cran 0 errors | 0 warnings | 0 notes
-CRAN-configuration check      0 errors | 0 warnings | 1 note (New submission)
-Ubuntu CI         29891503417 success
-three-OS matrix   29892340756 ubuntu + macos + windows — all success (jobs asserted by name)
-heavy full-check  29891513258 FAIL 0 | WARN 9 | SKIP 103 | PASS 13656
-check-reader-surface.sh       PASS
+devtools::test()                 FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290
+durable R CMD check --as-cran    0 errors | 0 warnings | 0 notes
+CRAN-configuration check         0 errors | 0 warnings | 1 note (New submission)
+Ubuntu CI            29896493966 success
+three-OS matrix      29897677138 ubuntu + macos + windows — all success (jobs asserted by name)
+heavy full-check     29896539701 FAIL 0 | WARN 8 | SKIP 102 | PASS 13650
+tools/check-reader-surface.sh    PASS
 ```
 
 Receipts + `SHA256SUMS.txt`:
-`~/gllvmTMB-0.6-evidence/m1/final-receipt/71753ccbbedd3f0f34c9fb06a58ce6b5ab986d64/`
+`~/gllvmTMB-0.6-evidence/m1/final-receipt/95f7d06a69fc91cf11084f11ff7d00b152f649f5/`
 
-**`672f611b` (current head) has ONLY the suite re-run** — `FAILED=0 SKIP=779 PASS=7290` — plus
-guard PASS. **Its runners, CRAN check and CI are NOT yet earned.** The push has started an
-Ubuntu run; the matrix and heavy still need dispatching.
-
-**🔴 RETRACTED — the heavy warning set is NOT stable.** This checkpoint previously called it an
-*"established invariant"* after four consecutive identical nine-site Ubuntu runs. **The fifth
-run (`29896539701`) returned EIGHT sites, a different set** — `test-matrix-slope-spatial-unique.R:249,:293`
-absent, `test-matrix-nbinom2-spatial.R:258` (site (d)) back — on the same platform, one
-docs-and-message-string commit apart. Skip 103 → 102, pass 13656 → 13650.
-
-**An invariant asserted from n=4, refuted at n=5.** The contingent sites are
-**optimiser-convergence-dependent**, so the set is not a function of the code alone.
-**Therefore an exact set match between ANY two heavy runs cannot show that an arc added no
-warning site** — which is what R-7's causation evidence rested on. No site is a defect; the
-evidence standard was.
+**Limits, stated:** the durable runner reports 0 notes only because it omits
+`remote`/`incoming` — the `New submission` NOTE is real and appears in the CRAN-configuration
+check. `pkgdown::check_pkgdown()` validates configuration and **does not build the site**.
 
 ---
 
-## 🔴 NEXT — and the agent deliberately STOPPED here
+## 5. 🔴 OPEN FOR THE MAINTAINER — nothing else blocks
 
-1. **Re-earn evidence at `672f611b`**: durable runners (+ mirror with SHA-256), CRAN-config
-   check, wait for Ubuntu, **then** dispatch the three-OS matrix (never during an in-flight
-   run — the concurrency group cancels it), and re-dispatch `full-check`.
-2. **🛑 A SIXTH PANEL SHOULD NOT BE CONVENED ON THE AGENT'S JUDGEMENT ALONE.** The remaining
-   findings have converged on **prose accuracy in user-facing text** — exactly the judgement
-   this agent has now demonstrated it is unreliable at. Get the maintainer's wording review
-   first; otherwise a sixth panel is likely to find a sixth instance of the same thing.
-
-## 🔴 OPEN FOR THE MAINTAINER
-
-1. **Wording review of the R-11 replacement strings** — the one check the agent cannot
+1. **Wording review of the R-11 replacement strings.** The one check the agent cannot
    self-verify. An Opus reviewer already caught **seven overstatements** in its first attempt,
-   most seriously `"validated"` on CI rows: `docs/design/75:99` forbids describing a cell as
+   most seriously `"validated"` on CI rows — `docs/design/75:99` forbids describing a cell as
    calibrated, and `CI-08` records the empirical gate as **FAILED** (13/15 cells below the 94%
    threshold). Current strings include `"direct profile route (not coverage-calibrated)"`,
    `"diagonal grouping tier: no calibrated interval"`, `"no CI (point estimate only)"`,
    `"experimental route: partial validation only"`. **The question is not style — it is
    whether any still claims more than is true.**
 2. **A `NEWS.md` boundary statement**, drafted but deliberately not written in (release-level
-   claim, maintainer's wording): *variance-component **point estimates** are the supported
-   claim for non-Gaussian families; **interval calibration** is established only for the
-   Gaussian cells that cleared the coverage gate.*
-3. **The four `vignettes/*.png`** are now `.gitignore`d (approved) and no longer block the
-   clean-worktree runners. Deleting them is optional tidying.
+   claim): *variance-component **point estimates** are the supported claim for non-Gaussian
+   families; **interval calibration** is established only for the Gaussian cells that cleared
+   the coverage gate.*
+3. **Does R-7's SIGN-OFF still stand?** Its causation evidence has now been undermined three
+   times, most recently by the agent's own retracted invariant. The row is signed off; its
+   basis is weaker than when it was signed.
+4. **🛑 DO NOT convene a sixth panel on the agent's judgement alone.** The findings have
+   converged on prose accuracy in user-facing text — precisely the judgement the agent is
+   demonstrably unreliable at, and three of five findings were self-inflicted. Get the wording
+   review first.
 
-## Register
+---
 
-R-1…R-11 **all closed**. R-2, R-6, R-7 `SIGNED OFF`; the rest `RESOLVED`. **No row blocks the
-closing claim.** R-9's status was stale for four panels and is now corrected; R-7 carries two
-recorded corrections to its causation evidence.
+## 6. Register · scientific thread · traps
 
-## Separate scientific thread — NOT an M1 blocker
+**Register:** R-1…R-11 **all closed** (R-2, R-6, R-7 `SIGNED OFF`; rest `RESOLVED`). **No row
+blocks the closing claim.** R-9's status was stale through four panels and is corrected; R-7
+carries three recorded corrections to its causation evidence.
 
-`docs/dev-log/2026-07-22-nongaussian-variance-component-thread.md`: the non-Gaussian
-variance-component boundary, why **EVA is probably the wrong lever** (R-2's cause is
+**Separate scientific thread — NOT an M1 blocker:**
+`docs/dev-log/2026-07-22-nongaussian-variance-component-thread.md` — the non-Gaussian
+variance-component boundary; why **EVA is probably the wrong lever** (R-2's cause is
 information starvation, which a better approximation cannot fix, and VA biases the *opposite*
-direction), why **AGHQ is better-supported** (drmTMB tracks a `glmer` oracle to four decimals;
-this repo already has AGHQ harnesses), and the unexplained **cross-repo sign anomaly** with the
+direction); why **AGHQ is better supported** (drmTMB tracks a `glmer` oracle to four decimals;
+this repo already has AGHQ harnesses); and the unexplained **cross-repo sign anomaly** with the
 experiment that would settle it — noting `glmer` can only arbitrate a **reduced** cell.
 
-## TRAPS THIS ARC HIT
-
-Backgrounded launcher exit 0 read as the job's result · a grep for a failure marker the
-reporter never emits, read as `FAIL 0` · `test_dir()` silently skipping ~2,400 tests ·
-`pkgdown::check_pkgdown()` validating config but **not building the site** · `"the register"`
+**Traps hit:** backgrounded launcher exit 0 read as the job's result · a grep for a failure
+marker the reporter never emits, read as `FAIL 0` · `test_dir()` silently skipping ~2,400
+tests · `check_pkgdown()` validating config but **not building the site** · `"the register"`
 matching `"the regist**ered** transformation"` · `extract_Gamma()` "**slices**" a matrix ·
-`.Rbuildignore` excluding `vignettes/articles`, so `vignette("x")` for any article is dangling
-· a guard that passes on *"see the Random effects article"* because **it cannot know the
-article does not exist**.
+`.Rbuildignore` excluding `vignettes/articles`, so `vignette("x")` for any article dangles · a
+guard passing on *"see the Random effects article"* because **it cannot know the article does
+not exist**.
 
 ## TRUTH LIVES IN
 
-Branch `codex/gllvmtmb-060-m1-baseline-20260720` @ **`672f611b`**, clean, pushed. Draft PR
-#778. `docs/dev-log/known-residuals-register.md` · `docs/dev-log/check-log.md` ·
-`docs/dev-log/after-task/2026-07-21-m1-third-reader-surface-sweep.md` ·
-`docs/dev-log/2026-07-22-nongaussian-variance-component-thread.md` ·
+Branch `codex/gllvmtmb-060-m1-baseline-20260720` @ **`d342daec`** (clean, pushed; certified
+evidence at `95f7d06a`). Draft PR #778. `docs/dev-log/known-residuals-register.md` ·
+`docs/dev-log/check-log.md` · `docs/dev-log/after-task/2026-07-21-m1-third-reader-surface-sweep.md`
+· `docs/dev-log/2026-07-22-nongaussian-variance-component-thread.md` ·
 `~/gllvmTMB-0.6-evidence/m1/`.
 
 ## RESUME
 
 ```text
-Read LOOP/GOAL.md (BOTH amendments) -> LOOP/checkpoint.md ->
+Read LOOP/GOAL.md (BOTH amendments — CI IS AUTHORISED) -> LOOP/checkpoint.md ->
 docs/dev-log/known-residuals-register.md -> docs/dev-log/check-log.md.
 
-M1 is WITHHELD after FIVE 3/3 NOT-DONE panels. No register row blocks it; the engineering is
-green; every panel finding was about whether the package's own words are true.
+M1 is WITHHELD after FIVE 3/3 NOT-DONE panels. No register row blocks it, no check is
+failing, no defect is outstanding. It is withheld because five panels each found something
+and the base rate says a sixth would too — NOT because anything specific is known wrong.
 
-Head 672f611b, clean, pushed. Suite FAILED=0 SKIP=779 PASS=7290, guard PASS. Runners, CRAN
-check and CI are NOT yet earned at this head — re-earn them (Ubuntu first, THEN the matrix).
+Head d342daec (clean, pushed). Certified evidence at 95f7d06a: suite 0/779/7290, durable
+runner 0/0/0, CRAN check 0/0/1, Ubuntu success, three-OS matrix ubuntu+macos+windows success,
+heavy FAIL 0, guard PASS, receipts mirrored with SHA256SUMS. Commits after 95f7d06a are
+documentation-only and NON-CERTIFYING.
 
-DO NOT convene a sixth panel before the maintainer's wording review of the R-11 replacement
-strings. The remaining findings are prose-accuracy judgements the agent is demonstrably
-unreliable at, and three of five panel findings were defects introduced by the previous fix.
-
-SWEEP THE CLASS, NEVER PATCH THE INSTANCE. Verify from structured results only; a missing
-field is CANNOT VERIFY, never PASS. Do not trust this agent's commit messages — two were
-false as written.
+DO NOT convene a sixth panel before the maintainer's wording review of the R-11 strings.
+SWEEP THE CLASS, NEVER PATCH THE INSTANCE. Verify from structured results only.
+Do not trust this agent's commit messages — two were false as written.
 ```

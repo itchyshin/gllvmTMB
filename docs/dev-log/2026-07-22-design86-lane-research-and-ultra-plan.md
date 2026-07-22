@@ -35,7 +35,7 @@ approved. Design 85 is a closed NO-GO and READ-ONLY — supersede with a dated n
 | Surface | Evidence that it ran | Finding | Call |
 |---|---|---|---|
 | Repo git state | `git status -sb`; `git branch -a --sort=-committerdate`; `git worktree list`; `git stash list` | Dropbox checkout dirty + quarantined; 34 worktrees; 7 stashes; `origin/main` @ `acf20548` (4 days ahead of the session's start branch) | Fresh worktree from `origin/main`; touch nothing else |
-| Prior VA work, this repo | Read `docs/design/72-*.md`; `docs/dev-log/after-task/2026-06-03-va-phase1-proof.md` | **Phase-1 VA prototype BUILT AND RUN** — PR #431, branch `claude/va-phase1-proof`: `inst/tmb/gllvmTMB_va.cpp` (mean-field diagonal, closed-form Gaussian+Poisson ELBO, no `random=`), `inst/tmb/gllvmTMB_la_min.cpp`, `R/va-proto.R`, benchmark, CI workflow | **REUSE** — a validated correctness anchor already exists. Do not rebuild |
+| Prior VA work, this repo | Read `docs/design/72-*.md`; `docs/dev-log/after-task/2026-06-03-va-phase1-proof.md` | **Phase-1 VA prototype BUILT AND RUN** — branch `claude/va-phase1-proof` tip `8bf1a11e` (unmerged): `inst/tmb/gllvmTMB_va.cpp` (mean-field diagonal, closed-form Gaussian+Poisson ELBO, no `random=`), `inst/tmb/gllvmTMB_la_min.cpp`, `R/va-proto.R`, benchmark, CI workflow | ~~REUSE — a validated correctness anchor already exists~~ **WITHDRAWN 2026-07-22 (Fisher, S6 BLOCK B3).** It is a two-random-effect GLMM with **closed-form mean-field VA — not EVA**, no `Λ`, no `Σ_B`, no Taylor surrogate, separate template. It cannot anchor an EVA-for-GLLVM implementation; treating it as one would inherit an artifact's status across a boundary its evidence does not cross — Design 85 §13's own error class. **CONTEXT ONLY.** Gate 2 requires a fresh anchor built in the GLLVM path |
 | Design 85 | Read `docs/design/85-*.md` in full | Full-covariance Gaussian VA + 1-D Gauss–Hermite quadrature. Gates 0–2 passed; **Gate 3 never obtained** (pilot conflated fixed-rank Gate 3 with ML-rank Gate 4); 8 applicable q1/q2 fits failed the optimiser gate | **SUPERSEDE, never amend.** Reuse its numerical apparatus (§7), not its verdict |
 | Sister repo | brain `search_notes` (`search_all_projects: true`) → hits `160-gaussian-variational-approximation-gate`, `2026-06-04-gva-design-gate` | **drmTMB already designed a GVA gate** with a TMB plug-in point via an `inference_method` flag, `S` parameterisation, `drm_control(inference = "gva")` | **CO-OPT** the flag/dispatch design; do not re-derive |
 | Brain | `search_notes` rungs 1 gated intermittently → rung 3 `Read memory/PROJECT-NOTEBOOKS.md` | Row 29: **an unaudited notebook `9b5e85d7-…` "GLLVM approximations — LA vs VA/EVA"** is the recorded source of the LA-vs-VA/EVA synthesis; registry flags its grounding as possibly **LLM artefact, not literature**; status PENDING | **Likely origin of the unsourced `q >= 4` claim.** Audit before citing |
@@ -253,3 +253,95 @@ tool access is restored.
   PDFs were **not** successfully added (classifier outage) and remain pending.
 - Nothing here is an approval. Design 86 is a contract only when Shinichi approves the written
   document; `LOOP/decision-queue.md` records it `NOT YET OPEN`.
+
+---
+
+## S6 plan review — Rose (scope and claims), 2026-07-22
+
+**1 BLOCK, 7 CONCERN, 1 PASS.** Run in parallel with Fisher's method review. Both reviewers
+returned findings the single Phase-0.25 sweep gate had missed, which is itself the load-bearing
+lesson: **the review layers, not the model tier, are what caught this lane's errors.**
+
+### BLOCK — write-fence integrity. ACCEPTED; partly pre-empted, now fully resolved.
+
+Amendment 3 authorises `docs/design/86-*.md` **and its own dev-log entry — nothing else**, and adds
+that the single-writer rule "returns in full the moment the Design 86 lane attempts anything outside
+its fence". The ultra-plan nevertheless *directed* three out-of-fence writes:
+
+- `LOOP/checkpoint.md` — and this one is not idle ground: `git log -- LOOP/checkpoint.md` shows it
+  is **actively and exclusively owned by the M1 lane**. Writing there would both breach the fence
+  and collide with another lane's single-writer file. It is also the concrete channel by which this
+  lane's content could reach M1/M3/M4/M5 without an explicit citation — i.e. the literal
+  does-not-gate-0.6 leak vector.
+- `memory/DECISIONS.md` — outside this repo entirely.
+- A *second* dev-log file (`docs/dev-log/plan-actual/…`) plus an after-task report, against a
+  singular "its own dev-log entry".
+
+**Disposition:** `LOOP/checkpoint.md` was **never written** — the conflict between the session
+GOAL's generic closure line and Amendment 3's fence was resolved in the fence's favour at execution
+time, and recorded in the commit message. The plan's directive is now struck rather than left
+standing. **Whether "its own dev-log entry" (singular) permits additional closure files is a
+maintainer question and is NOT self-granted** — until answered, all closure content lands in this
+one file.
+
+Rose also found the plan cited **`protocols/after-task.md`, which does not exist** in this repo;
+the real protocol is `docs/design/10-after-task-protocol.md`. Corrected.
+
+And a structural point worth keeping: the plan's own fence check (S7) was scheduled **before** the
+steps that would breach it (S9/closure). A verification that runs before the risky step verifies
+nothing. **The fence check must run last.**
+
+### Finding A — the worktree did not contain its own authorisation. ACCEPTED; FIXED.
+
+`grep "AMENDMENT 3" LOOP/GOAL.md` in this worktree returned **nothing**: the lane was operating two
+commits behind `origin/main`, and Amendment 3 landed in `142ff39f`, after the base. The text was
+read from a *different* worktree (the M1 builder), so the content was right — but a lane whose
+stated discipline is "verify by reading the artifact" was running on a base that predates its own
+authority.
+
+**Fixed:** rebased onto `origin/main` (`509d5792`); Amendment 3 now present at `LOOP/GOAL.md:183`;
+branch is exactly one commit ahead with a clean tree.
+
+### CONCERN — the sweep receipt's wrong row had not been propagated. ACCEPTED; FIXED.
+
+Fisher's B3 correction was applied to the ultra-plan but **not to this file**, which still carried
+"REUSE — a validated correctness anchor already exists. Do not rebuild" as the artifact of record.
+Corrected in place above. This is exactly the failure mode the Rose principle exists for: a fix
+applied in one place and not walked to its neighbours.
+
+### CONCERN — Design 85 apparatus-vs-evidence needs a brief-level guard, not just review.
+
+The apparatus/evidence distinction is correct in language throughout, but the Phase-1 error shows a
+single gate does not enforce it. Any slice that recovers Design 85 code must be instructed
+explicitly: **read for orientation, re-derive independently, never paste as source** — echoing
+Design 85 §11 Gate 0. Design 86 §11 Gate 0 already carries the NO-GO; the *brief* must carry it too.
+
+### CONCERN — claims-audit vocabulary. Contract already compliant.
+
+Rose flagged the plan's verification grep (`likelihood, ELBO, REML, AIC, marginal, bound`) as
+narrower than Design 85 §10's prohibited vocabulary, missing `BIC`, `logLik`, `LRT`, `Cox–Reid`,
+`AI-REML`, `AGHQ`. **The contract itself is not affected** — Design 86 §10 already prohibits all of
+them explicitly. The *grep list* is what needs widening before the audit is trusted.
+
+### CONCERN — fan-out ceiling justification.
+
+The two-ceiling exception cites a real precedent but states no falsifiable trigger for when
+Sonnet-high would suffice. Rose's sharper point stands on the evidence: three BLOCK-level errors
+surfaced in an artifact the ceiling budget was meant to protect, and were caught by **a second
+independent pass**, not by the tier. Front-loading quality onto a single expensive pass is the
+weaker design; parallel adversarial review is the stronger one.
+
+### PASS — the D3 roadmap fence is concrete and checkable.
+
+Non-binding, not evidence, uncitable by §11, with a reader-executable test ("delete §14 and confirm
+the contract still stands") and two named owners.
+
+### Still open after both reviews
+
+- **Maintainer question:** does "its own dev-log entry" permit an after-task report and a
+  plan-actual file as additional paths, or must closure content stay in this single file?
+- The D-43 completion panel (three fresh reviewers, distinct lenses, default NOT-DONE) has **not**
+  fired. No completeness claim is made for the Design 86 draft.
+- Design 86's two `TO CONFIRM BEFORE APPROVAL` items stand: the zero-fraction band, and whether
+  Korhonen's realised prevalence and loading scale can be recovered to calibrate the information
+  floor.

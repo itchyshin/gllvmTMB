@@ -46176,5 +46176,50 @@ Mirrored with `SHA256SUMS.txt` to
 **Limits of this evidence, stated plainly:** the package-check runner reports 0 notes because
 it omits `remote`/`incoming`; the `New submission` NOTE is real and appears only in the
 CRAN-configuration check. `pkgdown::check_pkgdown()` validates configuration and **does not
-build the site**. And the heavy warning set is **not stable across runs** — see the R-7
+build the site**. And the heavy warning set varies by platform and environment — see the R-7
 correction in the register.
+
+### 2026-07-22 — CRAN-configuration check RE-RUN (closing a staleness finding)
+
+The third D-43 panel found the recorded CRAN check was taken at `f56310ff`, after which
+**five `R/` source files and one test file changed** (the R-10 rewrite and its regression
+fix), and that it had never been re-run. It also correctly noted that the durable
+package-check runner **cannot substitute**, because it calls
+`devtools::check(args = c("--as-cran", "--no-manual"))` with **no `remote`, no `incoming`**,
+so it never performs the CRAN-incoming-feasibility step.
+
+**That finding was valid.** The agent had asserted the earlier result "carries over" because
+R-10 changed only message strings — a transfer argument stated rather than tested. Re-run on
+the current head:
+
+```
+NOT_CRAN=false devtools::check(document = FALSE, remote = TRUE, incoming = TRUE,
+                               force_suggests = TRUE, manual = TRUE, error_on = "never")
+
+Duration: 5m 40.9s
+0 errors ✔ | 0 warnings ✔ | 1 note ✖
+❯ checking CRAN incoming feasibility ... NOTE — Maintainer: 'Shinichi Nakagawa'; New submission
+```
+
+The transfer argument turned out to be **correct** — but it is now **verified rather than
+asserted**, which is the whole point. Log:
+`~/gllvmTMB-0.6-evidence/m1/diagnostics/390c52e9-cran-check.log`
+
+### 2026-07-22 — THIRD D-43 PANEL: 3/3 NOT-DONE. M1 WITHHELD.
+
+Three independent lenses, fresh contexts, NOT-DONE default, each told that the agent had
+shipped a regression, reported a false pass, and under-scoped six times — and instructed to
+re-derive every number from artifacts rather than trust any agent summary. **All three
+withheld.** Blocking findings:
+
+1. **R-11 is worse than the register stated.** `extract_lv_effects()` (exported) returns a
+   plain `data.frame` carrying `validation_row = "EXT-31; JUL-01; JUL-01A; LV-01"` for
+   Julia-bridge fits — **printed at the console by default, unsuppressed, undocumented.**
+   The `.reportable_table()` mechanism that hides this for sibling extractors is simply not
+   applied there. It also reaches `plot_Sigma_table`/`_heatmap`/`_comparison` via the
+   **documented public** `gllvmTMB_data` attribute.
+2. **The stale CRAN check** — closed above.
+3. **R-11 `AWAITING SIGN-OFF` blocks the closing claim** by the register's own rule.
+
+**M1 is NOT complete and must not be described as such.** Repair in progress under the
+maintainer's decision to strip the codes from the values in 0.6 rather than defer.

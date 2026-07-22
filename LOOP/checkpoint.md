@@ -334,7 +334,21 @@ conclusion alone would NOT have proven 0/0/0.
 
 THE CLOSING CLAIM IS SIGNED: docs/dev-log/2026-07-22-m1-closing-claim.md.
 
-NEXT ACTION — no evidence work remains, only recording:
+RECORDING DONE: closing claim SIGNED · check-log entry landed · Mission Control rewritten and
+committed (vault 655cee6; JSON validated, key schema matches all seven sibling boards) · A12 swept
+(six brain files matched EVA-near-0.6; four already corrected, one fixed at vault 483cc8d where a
+banner had been added but the BODY still read "EVA is the headline of gllvmTMB 0.6.0";
+Brain-Growth-Report:126 deliberately left, as it logs commit subjects and editing it would falsify
+history) · A-iss triaged · C4 plan-vs-actual landed.
+
+🔴 THE ONE REMAINING M1 ITEM IS SHINICHI'S, NOT THE AGENT'S: C5 has no home. It was specified as
+"record the terminal synthesis to PR #778", but #778 is MERGED. The synthesis itself EXISTS (the
+signed claim) and Mission Control is updated; only the POSTING needs a destination. The repo is
+PUBLIC, so an agent should not open one unilaterally. Options: a new PR from this branch
+(recommended — it also restores auto-CI on push, whose absence forced both manual dispatches today),
+a comment on the merged #778, or issue #345 (the CRAN umbrella).
+
+M1 IS OTHERWISE CLOSED. Next is M3, which STOPS at the API-freeze gate:
   1. fill §4 of docs/dev-log/2026-07-22-m1-closing-claim.md and flip DRAFTED -> SIGNED
   2. rewrite Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json (§4c — check git status
      on it FIRST; it was dirty from another writer and must not be clobbered)

@@ -316,11 +316,12 @@ reference:
 
   - title: Deprecated covariance functions
     desc: >
-      Soft-deprecated as of 0.5.0; only the functions listed here are deprecated, and the broader
-      animal, phylogenetic, spatial, and kernel APIs remain current. The scalar family (one shared
-      variance) is now indep(..., common = TRUE); the *_unique diagonal companion folds into
-      latent(); the standalone slope keywords are superseded by the reduced-rank latent / indep / dep
-      slope forms. Existing calls keep working and warn once per session.
+      Only the functions listed here are deprecated; the broader animal, phylogenetic, spatial and
+      kernel APIs remain current. The scalar family (one shared variance) was soft-deprecated as of
+      0.5.0 and is now indep(..., common = TRUE). The *_unique diagonal companion was soft-deprecated
+      earlier, as of 0.2.0, and folds into latent(). The standalone slope keywords are superseded by
+      the reduced-rank latent / indep / dep slope forms. Existing calls keep working and warn once
+      per session.
     contents:
     - scalar
     - animal_scalar

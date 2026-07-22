@@ -765,7 +765,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )) {
     cli::cli_warn(c(
       "!" = "The default diagonal-{.field Psi} companion of an augmented {.code latent(1 + x | {site}, d = K)} slope is Gaussian-only; it is omitted for this non-Gaussian fit (loadings-only).",
-      "i" = "The fit relies on the family/link-specific latent-scale residual instead (D-28).",
+      "i" = "The fit relies on the family/link-specific latent-scale residual instead.",
       ">" = "Pass {.code unique = FALSE} to request the loadings-only slope explicitly and silence this warning."
     ))
   }

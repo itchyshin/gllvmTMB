@@ -262,7 +262,7 @@ test_that("profile route matrix keeps augmented split profile routes blocked", {
         expect_match(route$route, "withheld_nonlinear", fixed = TRUE)
       } else {
         expect_match(route$route, "augmented_split_target_table", fixed = TRUE)
-        expect_match(route$claim, "Design 74", fixed = TRUE)
+        expect_match(route$claim, "symbolic target is declared", fixed = TRUE)
         expect_true(nzchar(route$next_gate))
         expect_false(grepl(
           "symbolic target table required",

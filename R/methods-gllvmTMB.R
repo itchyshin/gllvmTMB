@@ -1072,7 +1072,7 @@ simulate.gllvmTMB_multi <- function(
         cli::cli_warn(
           c(
             "{.fn simulate} with {.arg newdata} falls back to Gaussian-on-link-scale draws.",
-            "i" = "Family-aware {.arg newdata} simulation needs per-row family lookup from {.arg newdata}; that is M2/M3 work.",
+            "i" = "Family-aware {.arg newdata} simulation needs per-row family lookup from {.arg newdata}; that is not yet implemented.",
             ">" = "For mixed-family bootstrap-style refits, call {.fn simulate} without {.arg newdata}."
           ),
           class = "gllvmTMB_simulate_newdata_gaussian_fallback"
@@ -1171,8 +1171,8 @@ simulate.gllvmTMB_multi <- function(
       cli::cli_warn(
         c(
           "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
-          "i" = "Affected rows fall back to Gaussian-on-link-scale draws (pre-M1.8 behaviour). This is M2/M3 family-completeness work.",
-          ">" = "Supported in M1.8: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), nbinom1 (15)."
+          "i" = "Affected rows fall back to Gaussian-on-link-scale draws. Broader family coverage is not yet implemented.",
+          ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), nbinom1 (15), multinomial (16)."
         ),
         class = "gllvmTMB_simulate_unsupported_family"
       )

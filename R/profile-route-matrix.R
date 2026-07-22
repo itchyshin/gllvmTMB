@@ -813,7 +813,7 @@
         if (is_nonlinear) "" else
           "augmented random-slope: recovery evidence varies by family/route; no CI",
         if (is_nonlinear) withdrawn_claim else
-          "Point extraction/recovery may exist, and Design 74 declares the symbolic target, but profile CIs are not implemented or calibrated.",
+          "Point extraction/recovery may exist and the symbolic target is declared, but profile CIs are not implemented or calibrated.",
         if (is_nonlinear) withdrawn_gate else target$profile_gate
       )
     }

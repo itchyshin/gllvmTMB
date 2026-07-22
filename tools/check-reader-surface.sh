@@ -31,14 +31,30 @@ cd "$repo_root"
 # 4. Paths under docs/, which are stripped from the tarball by .Rbuildignore
 #    (^docs$) and are therefore DEAD LINKS for the CRAN reader they address.
 #
+# 5. Milestone/decision identifiers with a dotted or hyphenated suffix —
+#    "M1.8", "D-28" — which the original three patterns did not match. SIX D-43
+#    panels withheld this milestone; each found a cell of a two-dimensional
+#    class (SURFACE x CODE SHAPE) that the guard did not cover. Sweeping the
+#    shapes it already knew, on the surfaces it already scanned, was itself
+#    instance-thinking one level up.
+#
 register_codes='\b[A-Z]{2,4}-[0-9]{2,}\b'
 phase_codes='\bM[0-9]\b'
+milestone_codes='\bM[0-9]\.[0-9]\b'
+decision_codes='\bD-[0-9]{1,3}\b'
 design_refs='\bDesign [0-9]{2}\b'
 dead_paths='docs/(design|dev-log)/'
 
-pattern="${register_codes}|${phase_codes}|${design_refs}|${dead_paths}"
+pattern="${register_codes}|${phase_codes}|${milestone_codes}|${decision_codes}|${design_refs}|${dead_paths}"
 
 # --- surfaces a user actually reads ---------------------------------------
+#
+# R/ IS A READER SURFACE. cli_abort/cli_warn/cli_inform message text and string
+# VALUES returned in data frames are printed to users at runtime. CLAUDE.md's
+# rule names "printed output" explicitly, but this guard scanned five FILE
+# surfaces and never R/. A panel found `Design 73 C1`, `Phase 1b`, `M2/M3` and
+# `D-28` being printed to users while this script reported PASS.
+#
 surfaces=(README.md NEWS.md DESCRIPTION)
 [ -d man ] && surfaces+=(man)
 [ -d vignettes ] && surfaces+=(vignettes)
@@ -60,6 +76,46 @@ exclude_re='refs\.bib|https?://[^ )]*docs/'
 violations=$(grep -rInE "$pattern" "${surfaces[@]}" 2>/dev/null \
   | grep -vE "$exclude_re" || true)
 
+# --- R/ runtime output: string literals ONLY --------------------------------
+#
+# Internal code COMMENTS in R/ legitimately carry these identifiers — that is
+# where engineering bookkeeping belongs, and a guard that fired on them would
+# cry wolf until it was ignored. What reaches a user is MESSAGE TEXT and string
+# VALUES: cli_abort/cli_warn/cli_inform, stop/warning/message, and character
+# columns returned in data frames.
+#
+# So: scan R/ for the pattern inside a double-quoted string, on lines that are
+# not comments. Roxygen (#') is excluded here because it is already covered
+# transitively — it generates man/, which is scanned above.
+#
+if [ -d R ]; then
+  r_violations=$(grep -rInE "\"[^\"]*(${pattern})" R 2>/dev/null \
+    | grep -vE '^[^:]+:[0-9]+: *#' \
+    | grep -vE "$exclude_re" || true)
+  if [ -n "$r_violations" ]; then
+    violations=$(printf '%s\n%s' "$violations" "$r_violations")
+  fi
+fi
+
+# --- shipped vignettes must not link to unshipped articles ------------------
+#
+# .Rbuildignore strips ^vignettes/articles$, so a RELATIVE link like
+# (morphometrics.html) from the one shipped vignette is a DEAD LINK for every
+# CRAN reader. R CMD check does not catch this. man/ already uses absolute
+# https://itchyshin.github.io/... URLs, which resolve; the vignette was the
+# outlier. A panel found this by building the tarball and enumerating it.
+#
+for vig in vignettes/*.Rmd; do
+  [ -e "$vig" ] || continue
+  dead_links=$(grep -noE '\]\([a-z0-9_-]+\.html\)' "$vig" 2>/dev/null || true)
+  if [ -n "$dead_links" ]; then
+    violations=$(printf '%s\n%s' "$violations" \
+      "$(printf '%s\n' "$dead_links" | sed "s|^|${vig}:|")")
+  fi
+done
+
+violations=$(printf '%s' "$violations" | sed '/^$/d')
+
 if [ -n "$violations" ]; then
   echo "READER-SURFACE CHECK: FAIL"
   echo
@@ -73,5 +129,12 @@ if [ -n "$violations" ]; then
   exit 1
 fi
 
-echo "READER-SURFACE CHECK: PASS — no internal identifiers or unshipped paths"
-echo "on README.md, NEWS.md, DESCRIPTION, man/, or vignettes/."
+echo "READER-SURFACE CHECK: PASS"
+echo "  files    : README.md, NEWS.md, DESCRIPTION, man/, vignettes/"
+echo "  runtime  : R/ string literals (cli/stop/warning message text and"
+echo "             character values returned to users; comments exempt)"
+echo "  links    : shipped vignettes carry no relative *.html links to"
+echo "             articles that .Rbuildignore strips from the tarball"
+echo
+echo "NOT covered: whether the prose that replaced a removed identifier is TRUE."
+echo "No grep can establish that. Four panels withheld on exactly that gap."

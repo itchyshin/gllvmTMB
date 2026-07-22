@@ -336,12 +336,24 @@ weaker design; parallel adversarial review is the stronger one.
 Non-binding, not evidence, uncitable by §11, with a reader-executable test ("delete §14 and confirm
 the contract still stands") and two named owners.
 
-### Still open after both reviews
+### Maintainer rulings, 2026-07-22
 
-- **Maintainer question:** does "its own dev-log entry" permit an after-task report and a
-  plan-actual file as additional paths, or must closure content stay in this single file?
-- The D-43 completion panel (three fresh reviewers, distinct lenses, default NOT-DONE) has **not**
-  fired. No completeness claim is made for the Design 86 draft.
-- Design 86's two `TO CONFIRM BEFORE APPROVAL` items stand: the zero-fraction band, and whether
-  Korhonen's realised prevalence and loading scale can be recovered to calibrate the information
-  floor.
+**ONE FILE.** "Its own dev-log entry" is **singular and literal**. All lane closure content —
+the research digest, the ultra-plan, both S6 reviews, the D-43 panel outcome, and the after-task
+report — lands in **this file**. No `docs/dev-log/plan-actual/…` file, no separate
+`docs/dev-log/after-task/…` file, no `LOOP/checkpoint.md` update, no `memory/DECISIONS.md` write.
+Melissa's plan-vs-actual reconciliation, when it runs, appends here.
+
+This resolves Rose's BLOCK: the lane's write scope is now exactly **two paths** —
+`docs/design/86-eva-sparse-binary-admission-contract.md` and this file — and any future slice that
+wants a third must return to the maintainer, not self-grant.
+
+**Design 86's two preconditions CONFIRMED** (§2.3 zero-fraction band; §2.4 Korhonen calibration
+requirement), and recorded in the contract with their epistemic status intact — a confirmed
+judgement is still a judgement, and the UNQUANTIFIED fallback remains binding. **This confirmed two
+preconditions; it is not approval of the contract**, which remains a separate maintainer act with
+`LOOP/decision-queue.md` still recording Design 86 as `NOT YET OPEN`.
+
+**D-43 panel FIRED** — three fresh reviewers, distinct lenses (scope · falsifiability · claims),
+each defaulting to NOT-DONE, composition 2 build + 1 ceiling. Outcome recorded below when it lands.
+Until then no completeness claim is made for the Design 86 draft.

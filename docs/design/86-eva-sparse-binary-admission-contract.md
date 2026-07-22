@@ -169,9 +169,12 @@ The DGP intercept is tuned to hit the band; the **realised `z` is reported for e
 and band achievement is a **Gate-0 receipt only** — replicates falling outside the band are **still
 analysed**. Excluding them would be post-hoc selection on an outcome-adjacent quantity.
 
-> **TO CONFIRM BEFORE APPROVAL.** The band `[0.90, 0.97]` is an *inference* about typical
-> presence–absence community matrices, not a cited figure. It must be either grounded in a citation
-> or replaced by the maintainer before this contract is approved.
+> **CONFIRMED by the maintainer, 2026-07-22.** The band `[0.90, 0.97]` stands as written.
+> Its epistemic status is recorded honestly and does not change by being confirmed: it is a
+> **judgement about typical presence–absence community matrices, not a cited figure**. It is
+> adequate to define a predeclared regime — which is all a scope freeze requires — but it may not
+> later be reported as an empirically grounded range. If a citation is found, it should be added;
+> if one is found that contradicts the band, the band moves and the freeze is re-issued.
 
 ### 2.4 Information per unit — the criterion that replaces `q >= 4`
 
@@ -210,10 +213,15 @@ same `T`. Every cell reports `T`, `q`, `z`, `I_unit`, and `trace(H_i)/q`.
 exists. This makes the extrapolation a measured distance rather than a rhetorical one, and it is
 feasible on a single axis because Korhonen's binary simulations are *also* `n_it = 1`.
 
-> **TO CONFIRM BEFORE APPROVAL.** Korhonen's realised prevalence and loading scale are not yet
-> recovered from the paper. **If they cannot be recovered, this contract must state that the
-> distance from Korhonen is UNQUANTIFIED**, which materially weakens every extrapolation in §11,
-> including the defence of the coverage floor. This caveat may not be dropped silently.
+> **CONFIRMED by the maintainer, 2026-07-22 — the calibration requirement stands as written.**
+> Korhonen's realised prevalence and loading scale are not yet recovered from the paper, so the
+> calibration is **not yet performed**. Recovering them is a Gate-0 task, not an approval condition.
+>
+> **The binding consequence is unchanged and may not be dropped silently: if they cannot be
+> recovered, this contract must state that the distance from Korhonen is UNQUANTIFIED**, and every
+> extrapolation in §11 — including the two-sided defence of the `0.900` coverage floor — is
+> correspondingly weakened. In that case the floor becomes a predeclared convention rather than a
+> calibrated distance from evidence, and §11 must say so in those words.
 
 ### 2.5 The frozen parameter file
 
@@ -753,6 +761,21 @@ inherits anything from this contract.
 
 ## Approval
 
-This document is **NOT APPROVED**. Approval requires the maintainer's explicit written act, at
-which point the parameter-file checksum (§2.5) and the two `TO CONFIRM BEFORE APPROVAL` items
-(§2.3 zero-fraction band; §2.4 Korhonen calibration) must be resolved and recorded here.
+**Resolved by the maintainer, 2026-07-22:**
+
+- **§2.3, the zero-fraction band `[0.90, 0.97]`** — CONFIRMED as written, with its status as a
+  judgement rather than a cited figure recorded in place.
+- **§2.4, the Korhonen calibration** — the requirement is CONFIRMED as written. Performing it is a
+  Gate-0 task; the UNQUANTIFIED fallback and its consequence for the `0.900` floor remain binding.
+
+**Still outstanding, and this document remains NOT APPROVED:**
+
+- The **parameter-file checksum** (§2.5) does not yet exist, because the frozen parameter file does
+  not yet exist. It is recorded here at approval.
+- **Approval of this contract is a separate maintainer act and has not been given.**
+  `LOOP/decision-queue.md` records Design 86 as `NOT YET OPEN`. Confirming the two items above
+  resolved two *preconditions*; it did not approve the contract, and this lane does not treat it as
+  having done so. No exception is self-granted.
+
+Nothing in this document authorises compute. Compute requires a separate approval **after** the
+contract is approved.

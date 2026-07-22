@@ -579,3 +579,69 @@ act.
 (only `docs/design/86-*.md` and this file), Design 85 byte-unchanged, `LOOP/` untouched. The
 contract is **DRAFT — NOT APPROVED**; the parameter-file checksum cannot be recorded until the
 frozen file exists; approval is the maintainer's separate act.
+
+---
+
+## D-43 RE-REVIEW (round 2) — on the REVISED draft, 2026-07-22
+
+The maintainer asked for a full fresh panel on the revised contract. Three fresh reviewers, distinct
+lenses, each defaulting to NOT-DONE. **Verdict: 2 of 3 NOT-DONE — milestone WITHHELD** — but the
+result is the opposite in character to round 1, and that difference is the finding.
+
+| Lens | Model | Verdict | What it establishes |
+|---|---|---|---|
+| Mathematics | Opus / high | **DONE** | The round-1 structural defects are gone, and the new math is right |
+| Falsifiability | Sonnet / high | **NOT-DONE** | The Gate-4 CUT now fires; two *new*, precise items |
+| Consistency & scope | Sonnet / high | **NOT-DONE** | Fence held; three surgery seams, one severe |
+
+**The structural core is now independently CONFIRMED — this is the headline.**
+
+- **The bound-property derivation is correct.** The ceiling reviewer re-derived §5.3 from scratch
+  *before* reading it: confirmed `ell_EVA = L_exact − E_q[R]`; verified `s'''' = p(1−p)(1−6p+6p²)`
+  against a 5-point finite difference; solved the roots as `(3±√3)/6 = 0.2113/0.7887`; confirmed the
+  sign flip and that the admitted `p̄ ∈ [0.03, 0.10]` sits entirely in the overshoot region. The
+  `+q` fix holds across both §5.1 displays and §5.2's scale; the §2.4 table is exact to the digit.
+- **The Gate-4 CUT can fire, and the `n=100` loophole is genuinely closed.** The falsifiability
+  reviewer reconstructed both an ADMIT and a CUT-FIRES scenario from Korhonen's published curve,
+  confirmed the conjunction is not a pre-ordained NO-GO either, and verified the arithmetic
+  (`R=1000` MCSE 0.0095; `R=200` MCSE 0.0212 > the 0.02 margin, confirming why `R=200` was dropped;
+  the paired-McNemar direction correct and conservative).
+
+So the two defects that made round 1 a genuine WITHHELD — the CUT couldn't fire, and the `+q`
+scale bug — are both **repaired and verified**, not merely claimed repaired.
+
+**The round-2 NOT-DONE verdicts are on four smaller, precise items the surgery itself introduced.
+All four are now fixed (commit `f2a8fb3c`):**
+
+1. **[falsify] The Laplace arm's convergence-failure criterion was never frozen** — only EVA's
+   (§7.6). Since criterion (b) is a *paired* margin over Laplace and a failed fit counts as
+   non-covering in both arms, an unstated asymmetry between "failed Laplace" and "failed EVA" could
+   move the margin for reasons unrelated to accuracy. **Fixed:** both arms' criteria frozen in the
+   parameter file, symmetry required or any asymmetry stated, matching NO-GO added. *This was the
+   best new catch of the round.*
+2. **[falsify] The second ladder disambiguated only criterion (a) as in-cell.** **Fixed:** both (a)
+   and (b) stated in-cell for the second ladders, with the reason a single-cell experiment has no
+   "some rung".
+3. **[consistency, SEVERE] The Approval section still asserted, as the document's own fact, that the
+   ledger "records Design 86 as `NOT YET OPEN`"** — the exact error the top status box corrects, and
+   false against the live file (`CUT 2026-07-21`). A fix applied at the top of the document in an
+   earlier round but never walked to its echo 1000 lines down — the Rose principle, in miniature.
+   **Fixed:** rewritten to forward-reference the corrected status box.
+4. **[consistency, MODERATE] Gate 4 cross-referenced §13.14 for content that lives in §13.13**, and
+   a duplicate "Still outstanding" header. **Both fixed.**
+
+A non-gating item — the bias/RMSE failed-fit imputation — was given an explicit all-attempts default
+rather than deferred wholesale to the not-yet-existing frozen file.
+
+**No third re-panel.** The structural core is verified and the remaining work was editorial seams,
+now closed. Another round would be over-processing — the estimator's math is confirmed, the gate is
+confirmed falsifiable, and what is left is the maintainer's read. **The milestone stands WITHHELD by
+the round-2 panel against the draft it saw; these fixes were applied because the items are precise,
+not to convert the verdict.** The contract remains **DRAFT — NOT APPROVED**.
+
+**Honest close on the two panels together.** Round 1 found real structural defects and withheld.
+Those were fixed. Round 2 verified the fixes and found only surgery seams, and withheld on those.
+The pattern is what adversarial review is supposed to produce: each pass catches a strictly smaller
+class of defect than the last. The single most valuable output of the whole lane is not the contract
+but the §5.3 result — **EVA's objective is provably not a bound in the sparse regime that carries
+the user value** — which is now independently derived twice.

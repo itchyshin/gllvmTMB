@@ -16,6 +16,25 @@ landed**, which changed **six source files** — `R/methods-gllvmTMB.R`, `R/fit-
 test (`git diff --stat 95f7d06a 21e04eb5` settles it). Evidence has since been **re-earned at
 `21e04eb5`**.
 
+### ✅ HOW TO CHECK WHETHER A CERTIFICATION STILL TRANSFERS — run this, do not trust prose
+
+The certified SHA and the branch head are allowed to differ, **provided no shipped file
+changed between them.** Do not take any document's word for that — including this one.
+**Re-derive it:**
+
+```sh
+git diff --name-only <CERTIFIED_SHA> HEAD -- \
+  R/ src/ tests/ man/ vignettes/ tools/ DESCRIPTION NAMESPACE
+```
+
+**Empty output ⇒ the certification transfers to HEAD.** Any output ⇒ **it does not**, and the
+evidence must be re-earned before any claim rests on it.
+
+This is written as a **rule rather than a result** deliberately: a rule stays true as the head
+moves; a recorded conclusion goes stale the moment someone commits — which is precisely the
+failure below. Verified by this method at the time of writing: `21e04eb5` → `HEAD` returned
+empty (the only later commits touch `LOOP/` and `docs/`, both `.Rbuildignore`d).
+
 **This is the fifth form of one failure: a document accurate at the moment of writing that
 silently goes false as the repo moves beneath it.** The same shape produced the stale head
 reference, the stale R-9 row, the stale check-log entry, and this. It is **structural, not

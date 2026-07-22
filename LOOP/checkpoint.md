@@ -167,6 +167,27 @@ validates configuration and **does not build the site**.
 
 ---
 
+## 4b. ⚠ MISSION CONTROL IS MATERIALLY STALE — NOT UPDATED, and deliberately so
+
+`Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json` (the board `CLAUDE.md` makes step 0
+of every session) is **wrong on several load-bearing facts and internally self-contradictory**:
+
+- Says **one** D-43 panel returned 3/3 NOT-DONE. **Six** have run.
+- Names the pushed head as `25c76789`. Actual head is on `claude/0.6-m1-close-20260722`; certified
+  evidence is `21e04eb5`. The same file *also* says `25c76789` is "SUPERSEDED" — it contradicts
+  itself two fields apart.
+- Lists **R-7 as `AWAITING SIGN-OFF`** and "two of the eight sites remain unidentified". R-7 is
+  **SIGNED OFF** and all eight sites are traced.
+- Carries a stale post-freeze rule, "DO NOT COMMIT to the package repo".
+
+**Why it was left alone (2026-07-22):** the file was **uncommitted-dirty from another writer** for
+the whole session, and the tool layer would not return its diff. Editing a file whose concurrent
+change you cannot read risks destroying it — D-60's rule is *identify the writer, never assume*. A
+stale board is a smaller harm than a silently clobbered one.
+
+**Next session: re-check `git status` on that path first.** If clean, rewrite it against §0 and §4
+of this file. If still dirty, read the other writer's diff before touching it.
+
 ## 5. 🔴 OPEN FOR THE MAINTAINER — nothing else blocks
 
 1. **Wording review of the R-11 replacement strings.** *The one property no check can establish.* An

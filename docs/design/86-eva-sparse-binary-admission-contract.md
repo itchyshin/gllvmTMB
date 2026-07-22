@@ -76,27 +76,41 @@ with no source supplied. **It is now traced, and it is retired.**
 
 A provenance audit (2026-07-22) enumerated the 66 sources of the notebook the claim came from and
 put the question to that corpus directly with citations required. The result: the `q >= 4` boundary
-appears in **exactly one** source — an entry of type `markdown` with **`url: null`**, titled
+**was retrieved from exactly one** source — an entry of type `markdown` with **`url: null`**, titled
 *"Computational Approaches for Frequentist Generalized Linear Latent Variable Models in
 High-Dimensional Latent Spaces"*, carrying no bibliographic identity. It is a self-authored or
 machine-generated synthesis that was added to the corpus as though it were a primary source. **No
-peer-reviewed source in that corpus states a Laplace-versus-VA crossover at `q >= 4`.** This is
-consistent with Korhonen et al. (2023), every one of whose simulations runs at `p = 2`, and with
-Joe (2008), who attributes Laplace bias to discreteness, information per cluster, and random-effect
-variance — **not** to latent dimension.
+peer-reviewed source in that corpus states a Laplace-versus-VA crossover at `q >= 4`.**
+Korhonen et al. (2023) provide **no evidence either way**, running every simulation at `p = 2` — a
+study that never varies `q` is uninformative about a `q`-crossover, and it would be an error to
+enlist its silence as corroboration. Joe (2008), read directly, does bear on the question, and
+attributes Laplace bias to discreteness, information per cluster, and random-effect variance —
+**not** to latent dimension.
 
-**The `q >= 4` claim is retired by this contract and may not be cited by any gate, article,
-register row, or public surface.** A claim whose only support is an uncited synthesis is not weak
-evidence; it is no evidence.
+Note what an enumeration plus a citation-required query does and does not establish: it shows
+**non-retrieval from one corpus**, not non-occurrence in the literature. That is sufficient here,
+because the claim's *warrant* was always that corpus.
+
+**The `q >= 4` claim is retired: it may not be cited by any gate or claim under this contract.**
+A claim whose only support is an uncited synthesis is not weak evidence; it is no evidence.
+Cleaning it out of any register row or public surface elsewhere in the project is a follow-up
+**outside this lane's write fence** — noted, not performed here.
 
 What the literature *does* support is a statement about **quadrature**, not about Laplace, and it
 is the correct framing to keep. Joe (2008) identifies the Laplace approximation **as** adaptive
 Gauss–Hermite quadrature with one node per dimension, and notes that AGHQ with ~5 nodes is
 essentially asymptotically unbiased but that its cost is **exponential in the random-effect
-dimension**. Two further sources in the audited corpus state the practical consequence directly:
-Gauss–Hermite quadrature becomes *"unfeasible with more than three"* latent variables, and
-*"computationally impractical if the number of latent variables is moderate, e.g. 8"*
-(Niku et al. 2017). EVA's cost is `O(n q³ + n T q²)` — polynomial.
+dimension**. Two further sources in the audited corpus state the practical consequence directly: Gauss–Hermite
+quadrature becomes *"unfeasible with more than three"* latent variables (an unattributed corpus
+entry on fast GLLVM estimation), and *"computationally impractical if the number of latent
+variables is moderate, e.g. 8"* (Niku et al. 2017). EVA's cost is `O(n q³ + n T q²)` — polynomial.
+
+> **Both quotations are corpus-sourced and NOT read directly**, and neither carries the "read
+> directly" status of Korhonen (2023) or Joe (2008) in §12. The first has no attribution beyond the
+> corpus entry. This is stated because §1.4 retires another claim precisely for lacking
+> bibliographic identity, and it would be self-refuting to lean on quotations of the same status
+> while doing so. **The framing above rests on Joe (2008), which was read directly; these two
+> quotations corroborate it and are not load-bearing.** Verifying them is a follow-up.
 
 So the defensible dimension argument is: **at higher latent dimension the case for EVA is not that
 Laplace gets worse, but that the standard remedy for Laplace — adding quadrature nodes — becomes
@@ -124,6 +138,10 @@ Design 04 is a separate question that this document deliberately does not decide
 ### 2.1 Symbols
 
 - `i = 1, …, N` indexes units; `t = 1, …, T` indexes traits.
+- **`n` denotes the number of units, i.e. `n ≡ N`.** It is the ladder variable of §11 Gate 4 and is
+  written `n` there for continuity with Korhonen, whose `n` is likewise the unit count and whose
+  `m` is the trait count (our `T`). Stated explicitly because §1.2 exists to stop exactly this kind
+  of notation sliding, and the ladder is the contract's decision axis.
 - `q` is the fitted latent rank, `1 <= q <= T`. (Korhonen writes `p`; we retain the package's `q`.)
 - `y_it ∈ {0, 1}` is the observed binary response; **`n_it = 1` identically**.
 - `x_it ∈ R^d` is a fixed, finite design row; `beta ∈ R^d` its coefficient vector.
@@ -238,12 +256,19 @@ Design 85's Gate-3 evidence was lost because its pilot **runner** implemented a 
 experiment from the one its prose specified [85 §13](85-highdim-nongaussian-va-formal-contract.md).
 Prose did not prevent that. Therefore:
 
-**All predeclared quantities — the `n` ladder, replicate counts, the coverage floor, the margin
-over Laplace, `T`, `q`, the planted `beta` and `Lambda`, the zero-fraction target, the `I_unit`
-floor, and the denominator rule — live in one machine-readable frozen file. Its checksum is
-recorded in this contract at approval. The runner READS that file; it does not restate any of
-these values.** A run whose parameter file checksum does not match the recorded value is not
-evidence under this contract.
+**All predeclared quantities — the `n` ladder, the second ladders in `T` and `z`, replicate counts,
+the coverage floor, the margin over Laplace, `T`, `q`, the planted `beta` and `Lambda`, the
+zero-fraction target, the `I_unit` floor, the denominator rule (for coverage *and* for bias/RMSE),
+the named covariance estimator of §11 Gate 4, and the full per-replicate seed list — live in one
+machine-readable frozen file. Its checksum is recorded in this contract at approval. The runner
+READS that file; it does not restate any of these values.** A run whose parameter file checksum does
+not match the recorded value is not evidence under this contract.
+
+**The seed list is frozen, not merely the seed count.** Freezing `R` alone would leave the study
+re-runnable from a fresh RNG state until a favourable curve appeared — a channel entirely distinct
+from, and not closed by, the all-attempts denominator rule. Re-running against the frozen seeds
+reproduces the same result or reveals a defect; re-running against new seeds is a new experiment and
+must be declared as one.
 
 ---
 
@@ -289,7 +314,7 @@ With `mu_it = x_it' beta + lambda_t' a_i` and the variational factor `q_i(u_i) =
 ```
 ell_EVA(beta, Lambda, a, A)
   = sum_i sum_t { log f(y_it | a_i) + 0.5 * tr( H_i(a_i) A_i ) }
-    + 0.5 * sum_i { log det(A_i) - a_i' a_i - tr(A_i) }
+    + 0.5 * sum_i { log det(A_i) - a_i' a_i - tr(A_i) + q }
 ```
 
 where `H_i(a_i) = d² [ sum_t log f(y_it | u_i) ] / du_i du_i'` evaluated at `u_i = a_i`
@@ -298,12 +323,24 @@ where `H_i(a_i) = d² [ sum_t log f(y_it | u_i) ] / du_i du_i'` evaluated at `u_
 ```
 ell_EVA = sum_i sum_t [ y_it * eta_it - log(1 + exp(eta_it)) ]
         - sum_i sum_t { exp(eta_it) / (2 (1 + exp(eta_it))²) } * lambda_t' A_i lambda_t
-        + 0.5 * sum_i { log det(A_i) - a_i' a_i - tr(A_i) }
+        + 0.5 * sum_i { log det(A_i) - a_i' a_i - tr(A_i) + q }
 ```
 
 with `eta_it = x_it' beta + lambda_t' a_i`. Note the middle term is `-0.5 * p_it(1-p_it) *
 lambda_t' A_i lambda_t`, i.e. the same `p(1-p)` weight that defines `I_unit` in §2.4 — the
 information geometry and the objective's curvature term are the same object.
+
+> **The `+ q` is REQUIRED and is a correction to Korhonen's printed form.** Korhonen eq. 5 omits it,
+> stating that constants with respect to the model and variational parameters are dropped. That is
+> harmless *within* EVA — the constant shifts the objective but not its argmax — and fatal the
+> moment the objective is differenced against anything else. The exact
+> `-KL(N(a_i, A_i) ‖ N(0, I_q))` is `0.5[log det A_i - a_i'a_i - tr A_i + q]`, and §5.2's `L_H`
+> carries the `q`. Dropping it here would put the two objectives on additive scales differing by
+> `N·q/2` — **at `n = 1200`, `q = 2` a spurious `+1200` nats** in the `L_H - ell_EVA` diagnostic of
+> §11 Gate 3, which a reader would naturally interpret as `ell_EVA` sitting *below* the
+> Gauss–Hermite ELBO. That is the bound property re-entering through a units error, in the one
+> quantity §5.3 exists to neutralise. Gate 1's NO-GO already names "omitted constants"; this
+> contract must not fail its own gate.
 
 ### 5.2 The Gauss–Hermite reference
 
@@ -338,26 +375,69 @@ arm:
 **The apparatus is reused; none of Design 85's results, receipts, or verdicts are.** Reuse is
 conditional on the Gate-0 fresh-derivation audit (§11).
 
-### 5.3 The bound property — NOT ESTABLISHED
+### 5.3 The bound property — REFUTED IN THE TARGET REGIME
 
 The standard variational bound follows from Jensen's inequality applied to the exact integrand.
-**EVA substitutes a second-order Taylor expansion for that integrand, and Jensen does not survive
+**EVA substitutes a second-order Taylor expansion for that integrand, and the bound does not survive
 the substitution.** Korhonen's prose describes the result as a "closed-form variational lower
-bound", but this contract does not inherit that description as a proven property.
+bound"; that is a description, not a theorem, and this contract does not inherit it.
 
-**Under this contract, until and unless a derivation establishes it:**
+**The derivation (adversarial review, 2026-07-22). It is worse than "unestablished".**
+
+Write `ℓ(u) = log f(y_i | u)` and let `L_exact(q_i) = E_q[ℓ(u)] − KL(q_i ‖ φ)` be the exact ELBO, so
+`L_exact <= log p(y_i)` by Jensen. EVA replaces `E_q[ℓ(u)]` by `ℓ(a_i) + ½ tr(H_i(a_i) A_i)` — which
+is exactly `E_q` of the second-order Taylor polynomial about `a_i`, the first-order term vanishing
+because `a_i = E_q[u]`. Hence, **exactly**:
+
+```
+ell_EVA  =  L_exact  −  E_q[R],     R(u) = ℓ(u) − [ℓ(a) + g'(u−a) + ½(u−a)'H(u−a)]
+```
+
+So `ell_EVA <= log p(y)` is guaranteed **only if `E_q[R] >= 0`**.
+
+Concavity is not sufficient. `ℓ` is concave in `u` (a linear term minus a softplus of an affine
+map), so `H ⪯ 0` — but concavity constrains the *first*-order remainder, not the second-order one.
+Pointwise `R >= 0` would require `p(1−p)|_η <= p(1−p)|_{η_a}` for all `η`, which holds only at
+`η_a = 0`, i.e. `p = ½`. Under a symmetric `q` the third-order term integrates to zero, so with
+`s = softplus` the leading contribution is fourth order:
+
+```
+s''''(η) = p(1−p)(1 − 6p + 6p²),        roots at p ≈ 0.2113 and 0.7887
+E_q[R]  ≈  −(1/8) · sum_t s''''(η_t) · v_t²,        v_t = lambda_t' A_i lambda_t
+```
+
+- **Balanced data** (`0.211 < p < 0.789`): `s'''' < 0`, so `E_q[R] > 0` and `ell_EVA < L_exact`.
+  **The bound holds.**
+- **Sparse data** (`p < 0.211`): `s'''' > 0`, so `E_q[R] < 0` and **`ell_EVA > L_exact`.** The
+  objective **overshoots the exact ELBO** — and whether it also overshoots `log p(y)` depends only
+  on whether the overshoot exceeds the `KL(q ‖ posterior)` slack.
+
+**The sign flips at `p ≈ 0.211`, and this contract's admitted regime is `z ∈ [0.90, 0.97]`, i.e.
+`p̄ ∈ [0.03, 0.10]` — entirely on the wrong side of it.** Worse, the optimiser maximises the
+surrogate, so it is *actively rewarded* for configurations where `−E_q[R]` is large: the slack is
+consumed deliberately, not left as margin.
+
+**This strengthens, rather than weakens, the case for the experiment** — a non-bound objective is
+exactly why interval coverage must be measured empirically rather than inferred from the objective's
+geometry. But it forecloses any argument that rests on bound-ness.
+
+**Under this contract:**
 
 - `ell_EVA` is called **the EVA objective**. It is **not** called a bound, a lower bound, an ELBO,
   a likelihood, a marginal likelihood, a restricted likelihood, REML, or AGHQ.
-- **No signed statement** may be made about `ell_EVA` relative to the marginal log-likelihood — not
-  "understates", not "overstates". The direction is unknown.
+- **No signed statement** may be made about `ell_EVA` relative to the **marginal** log-likelihood.
+  The derivation above signs `ell_EVA − L_exact` (positive in the sparse regime), but
+  `L_exact − log p(y)` carries the `KL(q ‖ posterior)` slack, whose magnitude is unknown, so the
+  composite direction remains open. Signing the relation to the *exact ELBO* is permitted and
+  established; signing the relation to the *marginal likelihood* is not.
 - Consequently **Design 85 Gate 2's acceptance form cannot be reused here.** That test is a
   one-sided bound-violation check (`ELBO <= log marginal likelihood` up to quadrature error), and
-  its validity is exactly the property in question. Gate 3 is therefore framed as a **two-sided
-  magnitude comparison** (§11), not a directional inequality.
+  its validity is exactly the property now refuted in this regime. Gate 3 is therefore framed as a
+  **two-sided magnitude comparison** (§11), not a directional inequality.
 
-Establishing or refuting the bound property is a Gate-1 deliverable. Either outcome is acceptable;
-an unexamined assumption is not.
+Gate 1 must **reproduce or refute this derivation**, and additionally run the cheap numerical bound
+probe against a high-order AGHQ marginal at `q = 1` (§11 Gate 1) — because no other gate in this
+contract compares `ell_EVA` to an exact marginal likelihood at all.
 
 ---
 
@@ -499,8 +579,10 @@ the symbol.
      the difference would contain the Taylor error **plus** a mean-field restriction error and
      could not be attributed. The family is a fixed coordinate (§4) and must be recorded.
    - **What this measures.** Departure of EVA from the *exact Gaussian-VA objective* — i.e. Taylor
-     error. It does **not** measure departure from the truth, because the reference is an ELBO, not
-     a marginal likelihood. The two must not be conflated.
+     error. It does **not** measure departure from the truth: the reference is itself an
+     approximation to the marginal likelihood, not the marginal likelihood. The two must not be
+     conflated. (`L_H` genuinely does satisfy the Jensen bound, since it applies no Taylor
+     substitution — but that property belongs to the reference and is not inherited by `ell_EVA`.)
    - This comparison is also the measurement that **resolves the open tension in Korhonen §7**,
      where EVA is said to underestimate latent posterior covariances more than standard VA while
      §5 reports EVA's covariance traces are larger. It shall be reported whichever way it falls.
@@ -516,12 +598,18 @@ the symbol.
 - Calling `ell_EVA` a marginal log-likelihood, exact likelihood, restricted likelihood, REML,
   AI-REML, Cox–Reid adjustment, AGHQ, ELBO, or lower bound (§5.3).
 - Any **signed** statement about `ell_EVA` relative to the marginal log-likelihood.
+- **Describing a larger `ell_EVA` — or a smaller negative objective — as better fit than the
+  Laplace or Gauss–Hermite objective on the same data.** `ell_EVA`, the Laplace objective, and
+  `L_H` are not on a comparable scale, and no ordering among them carries evidential content. This
+  prohibition is load-bearing because Gate 4 runs a Laplace arm on byte-identical data at every
+  rung, which makes the comparison a one-line temptation.
 - Computing or exposing `logLik`, AIC, BIC, LRT, likelihood-ratio profiles, or model weights from
   the EVA objective.
 - Selecting `q` by the objective, or comparing objective values across ranks as if the
   approximation gap were equal.
-- Interpreting the inverse EVA Hessian as calibrated frequentist uncertainty without the coverage
-  evidence this contract exists to obtain.
+- Interpreting the inverse EVA Hessian as calibrated frequentist uncertainty. (Gate 5, not this
+  clause, is where any future relaxation would be argued; a prohibition that carries its own
+  exception licenses itself.)
 - Treating `a_i` or `A_i` as model parameters, true latent scores, or repeated-sampling uncertainty
   for `u_i`.
 - Claiming variance-component, interval, coverage, rank-selection, or high-dimensional accuracy
@@ -555,10 +643,18 @@ never widened after a result is seen ([Design 72](72-variational-approximation-f
   data shape fails **before** objective construction.
 - Realised `z` reported per replicate; `I_unit` computed and reported per cell.
 - **The correctness anchor and the admission experiment have no shared runner, no shared
-  denominator, and no shared output directory.**
+  denominator, and no shared output directory.** This is the reform aimed at Design 85's *actual*
+  cause of failure, so it may not rest on prose the way Design 85's separation did. It requires the
+  same class of mechanism as the parameter-file checksum beside it: **a provenance record, emitted
+  by each runner and independently checkable, recording the runner's own source checksum, its
+  output path, and its denominator rule.** Two experiments whose provenance records show a shared
+  runner checksum or a shared output path have not satisfied this gate, whatever the design document
+  says.
 
 **NO-GO:** any implicit `Psi`, changed loading transform, missing cell, `n_it != 1`, a parameter
-file whose checksum does not match, or **parked VA source copied without a fresh derivation audit**.
+file whose checksum does not match, **a shared runner, denominator, or output directory between
+Gate 2 and Gate 4 — or the absence of the provenance records that would show it**, or **parked VA
+source copied without a fresh derivation audit**.
 
 ### Gate 1 — algebra, autodiff, and the bound question
 
@@ -571,10 +667,17 @@ file whose checksum does not match, or **parked VA source copied without a fresh
   agree with independent scalar calculations on tiny fixtures to `1e-10`.
 - Analytic/autodiff gradients agree with central finite differences to relative error `1e-5` away
   from declared boundaries; the small-`v` routine is value- and first-derivative continuous.
-- **The bound property (§5.3) is derived and its outcome recorded**, either way.
+- **The bound property (§5.3) is derived and its outcome recorded**, either way. A derivation
+  already exists and is recorded in §5.3; Gate 1 must reproduce or refute it, not restate it.
+- **A numerical bound probe, labelled a measurement and not a gate.** Evaluate `ell_EVA` against a
+  high-order AGHQ **marginal** log-likelihood at `q = 1` on a tiny sparse fixture. This is cheap and
+  it is the only place in the entire contract where the objective is compared to an exact marginal
+  likelihood at all — Gate 3's reference is itself an approximation and says so. Without this probe
+  the sign of `ell_EVA − log p(y)` is never observed anywhere, only reasoned about.
 
-**NO-GO:** clipping needed for finiteness; a wrong KL sign; omitted constants; an inconsistent
-negative-objective sign; or the Gaussian identity failing.
+**NO-GO:** clipping needed for finiteness; a wrong KL sign; **omitted constants — including the
+`+ q` per unit in the KL term of §5.1**; an inconsistent negative-objective sign; the Gaussian
+identity failing; or **the bound question left unresolved**.
 
 ### Gate 2 — correctness anchor, information-rich
 
@@ -589,7 +692,23 @@ right?"*, which is a different question from admission.
 > its evidence does not cross, which is the error class that produced Design 85's NO-GO. It may be
 > cited as **context only**.
 
-**NO-GO:** recovery failure on an information-rich cell, or reliance on a single start.
+**"Recovery" is given a number.** Design 85's analogous gate specified tolerances; leaving this one
+qualitative would be a regression. On the information-rich cell, with `R = 500` replicates:
+
+- relative bias of the primary `beta` below `0.05`;
+- relative bias of every `Sigma_B` diagonal element below `0.10`;
+- two-sided 95 % Wald coverage for `beta` within `[0.93, 0.97]` — this cell is information-rich, so
+  a correct implementation should be *calibrated* here, and failure to be is an implementation
+  defect rather than an approximation limit;
+- no planted latent axis collapsing in more than 5 % of replicates.
+
+Unlike Gate 3's tolerances, these are **not** carried over from Design 85 and are not
+regime-sensitive in the same way: an information-rich cell is the easy regime, where a correct
+implementation should recover cleanly by any reasonable standard. That is what makes fixed numbers
+defensible here and placeholders indefensible there.
+
+**NO-GO:** any tolerance above exceeded; reliance on a single start; or a Gate-2 cell that is not
+demonstrably information-rich by the reported `I_unit`.
 
 ### Gate 3 — EVA versus the reference, at fixed coordinates
 
@@ -628,52 +747,102 @@ to a shrinking standard error scales in `sqrt(n)`. **`n = 260` is a replication 
 Korhonen**: the design must reproduce approximately 0.910 EVA coverage there before any
 extrapolation from this ladder is believed.
 
-**Replicates.** `R = 200` at `n ∈ {100, 260, 600}`; **`R = 1000` at `n = 1200`**, where the decision
-is taken. Korhonen used `R = 1000`, giving `MCSE(0.95) = 0.0069`, so their 0.910-vs-0.950 gap is
-about 5.8 MCSE — the basis for treating the decay as real rather than noise.
+**Replicates.** **`R = 1000` at every rung.** An earlier draft used `R = 200` at the three lower
+rungs; that is withdrawn. `MCSE` near `p = 0.90` at `R = 200` is `sqrt(0.9·0.1/200) = 0.0212` —
+**larger than the `0.02` margin it was being asked to gate.** At `R = 1000` it is `0.0095`. The
+`n = 260` Korhonen replication anchor in particular must run at Korhonen's own `R = 1000`, or the
+word "replication" is not earned.
 
-**Both arms, every rung.** EVA and Laplace on byte-identical data with identical seeds. Without the
-Laplace arm the result is uninterpretable.
+**Both arms, every rung, and the margin is PAIRED.** EVA and Laplace run on byte-identical data with
+identical seeds, so each replicate yields a *pair* of covered/not indicators. The margin in (b)
+below is therefore a **paired** difference and its uncertainty is McNemar-based —
+`MCSE_paired = sqrt(b + c)/R`, with `b` and `c` the discordant counts — **not** the
+independent-samples `sqrt(SE_EVA² + SE_Lap²) ≈ 0.0131`. Because the arms share data, their coverage
+indicators are strongly positively correlated and the discordant counts are small, so the paired
+MCSE is materially smaller than the independent figure. **The design already mandates the pairing;
+the analysis must use it.** Reporting an unpaired margin SE understates the design's own power and
+is a NO-GO.
 
-**Denominator.** **All attempted replicates.** A fit failing the optimiser gate counts as
-**non-covering**; attrition is reported per rung. Sparse binary fails more often at small `n`, so
-dropping failures would manufacture or mask a coverage trend out of differential attrition alone.
+**Denominator.** **All attempted replicates**, for coverage, bias and RMSE alike. A fit failing the
+optimiser gate counts as **non-covering**, and is carried in the bias/RMSE denominators by a
+predeclared rule recorded in the frozen file — not silently dropped. Attrition is reported per rung
+per arm. Sparse binary fails more often at small `n`, so a converged-only denominator would let a
+flattering "when it converges it is accurate" narrative ride alongside an honestly denominated
+coverage number.
 
-**Targets.** Two-sided 95 % Wald interval coverage for (i) the primary fixed-effect coefficient and
-(ii) `Sigma_B`. Both are co-equal; a `beta`-only design measures EVA at its most flattering.
+**Targets, and the interval is NAMED.** Two-sided 95 % Wald interval coverage for (i) the primary
+fixed-effect coefficient and (ii) `Sigma_B`, **both co-equal**.
+
+> **The covariance estimator is part of the claim, not an implementation detail.** Under EVA there
+> is no `random=` block, so the naive variational covariance and the corrected one differ
+> materially, and §7.8 establishes from `gllvm`'s source that the naive intervals are known to be
+> **anti-conservative**. This contract predeclares the **Schur complement of the joint Hessian over
+> all coordinates including the variational ones**, `I = A − B D^{-1} B'` followed by a
+> pseudo-inverse — the construction `gllvm` uses at `R/se.gllvm.R:201-212`. It is recorded in the
+> frozen parameter file (§2.5). A coverage number from an unnamed interval construction does not
+> earn the sentence "EVA attains ≥ 0.900 coverage", and no result here transfers to any other
+> construction (§13.14).
 
 **THE ADMISSION RULE — and the CUT.**
 
-> **EVA is admitted only if there exists a predeclared contiguous region of the ladder in which
-> both (a) coverage is at least `0.900` and (b) coverage exceeds the Laplace arm's coverage by at
-> least `0.02`. The CUT fires if no such region exists.**
+> **EVA is admitted only if BOTH hold, for `beta` AND for `Sigma_B`:**
 >
-> Decided on the **point estimate** against the floor, with MCSE printed beside it.
+> **(a) DURABILITY — at `n_max = 1200`, `R = 1000`: coverage is at least `0.900`.**
+>
+> **(b) USER VALUE — at some rung of the ladder: coverage exceeds the Laplace arm's paired
+> coverage by at least `0.02`.**
+>
+> **The CUT fires if either fails.** Decided on the **point estimate**, with MCSE printed beside it;
+> the paired MCSE for (b).
 
-Why this shape, recorded now so it cannot be re-argued later:
+**Why a conjunction, and why the CUT can actually fire** — recorded now so it cannot be re-argued
+after a result:
 
-- **A one-sided "coverage below a floor at the largest `n`" rule is not a gate.** If a fixed-order
-  bias persists while standard errors shrink, coverage tends to zero for *any* such method, so that
-  rule's verdict is a function of where the ladder stops — a dial the designer sets.
-- **Laplace and EVA cross.** Korhonen Fig. 3 has Laplace improving (0.81 → 0.94) while EVA decays
-  (0.968 → 0.910); they cross between `n = 190` and `n = 260`. The scientific claim is "better than
-  the incumbent where the incumbent is weak", so the criterion must measure *that*.
+- **Neither half is a gate on its own, and the two failures are mirror images.** A rule biting only
+  at the largest `n` tests EVA only where a fixed-order bias must eventually dominate — its verdict
+  is a function of where the ladder stops, a dial the designer sets. But a rule satisfiable by *any*
+  contiguous region is worse: at the lowest rung `n = 100`, sitting essentially on Korhonen's
+  published `n = 120` anchor, **both criteria are already met by about 3 percentage points before a
+  single simulation runs** (EVA 0.940 vs Laplace 0.910). That version admits EVA regardless of what
+  happens at 600 or 1200 — decided in advance, in the opposite direction. **The conjunction is
+  falsifiable precisely because (a) and (b) probe opposite ends of the ladder.**
+- **The CUT fires in the expected case.** Korhonen's EVA coverage decays 0.968 → 0.940 → 0.925 →
+  0.910 across `n = 50 … 260`. Continued decay past `n = 1200` puts it below `0.900`, failing (a)
+  while (b) still passes at small `n`. **That is a GO-shaped result that this rule correctly
+  refuses** — and it is the single most likely outcome given the estimator's known behaviour.
+- **Laplace and EVA cross.** Korhonen Fig. 3 has Laplace improving while EVA decays; they cross
+  between `n = 190` and `n = 260` (a value read from the published figure, not a tabulated number).
+  The scientific claim is "better than the incumbent where the incumbent is weak", so (b) must
+  measure *that*, at whichever rung it occurs.
 - **The floor is defended two-sidedly.** `0.94` is **already breached by Korhonen's published
-  n = 260 result**, so it would pre-decide a NO-GO before any code is written. `0.85` licenses a
-  doubled error rate and fails the meaning test. Only `0.89–0.92` is informative, and `0.900` — the
-  "error rate doubles" line — is the defensible point in it.
-- **It is arithmetically decidable.** At `R = 1000`, coverage `0.91` is separated from `0.95` at
-  about 3.5 standard errors. Distinguishing `0.91` from `0.90` would need `R ≈ 3300`, which is why
-  the floor sits well away from the plausible truth.
+  `n = 260` result**, so it would pre-decide a NO-GO before any code is written. At the other end:
+  nominal error is `0.05`, so coverage `0.900` **doubles** it and coverage `0.85` **triples** it —
+  a tripled error rate fails the meaning test outright. Only `0.89–0.92` is informative, and
+  `0.900`, the error-rate-doubles line, is the defensible point in it.
+- **It is arithmetically decidable where it matters.** At `R = 1000`, `MCSE(0.90) = 0.0095`, so a
+  true coverage of `0.87` or below is separated from the `0.900` floor by more than 3 MCSE.
+  Resolving `0.91` from `0.90` would need `R ≈ 3300` and is **not** attempted — which is why the
+  floor is set well away from the plausible truth rather than adjacent to it.
 
-**A second ladder.** Because `H_i` does **not** depend on `n`, an `n`-only design can only ever
-confirm that a fixed per-unit error eventually dominates — a foregone conclusion. A second ladder
-in `T` (or in `z`) at fixed `n` is therefore required, and it is the one that can answer whether the
-per-unit error is small enough in the regime of interest.
+**THE SECOND LADDER — predeclared, not gestured at.** Because `H_i` does **not** depend on `n`, an
+`n`-only design can only confirm that a fixed per-unit error eventually dominates — a foregone
+conclusion. The second ladder is therefore **the test of the actual scientific question**, and is
+specified here in full rather than left to the runner:
 
-**NO-GO:** success declared from convergence rate alone; failed fits excluded from denominators;
-any fitted-`q` quantity in a gate table; bands widened post hoc; or `n_max` chosen by affordability
-rather than on a stated scientific basis.
+- **`T`-ladder:** `T ∈ {24, 48, 96}` at fixed `n = 600`, `z` at the band midpoint `0.95`, `R = 1000`.
+- **`z`-ladder:** `z ∈ {0.90, 0.95, 0.97}` at fixed `n = 600`, `T = 48`, `R = 1000`.
+- **Rule:** the admission rule above applies unchanged to every cell of both ladders, with (a)
+  evaluated **in-cell** rather than at `n_max`. **EVA is admitted only if it satisfies the rule on
+  the `n`-ladder AND on a predeclared contiguous majority of each second ladder** — at least two of
+  the three cells, including the `z = 0.95` midpoint in the `z`-ladder.
+- Every cell reports realised `z`, `I_unit`, and `trace(H_i)/q` alongside coverage, so a failure can
+  be attributed to information starvation rather than merely observed.
+
+**NO-GO:** success declared from convergence rate alone; failed fits excluded from any denominator;
+**an unpaired margin SE reported for criterion (b)**; **a coverage figure reported without naming
+its covariance estimator**; any fitted-`q` quantity in a gate table; bands widened post hoc;
+`n_max` chosen by affordability rather than on a stated scientific basis; or **the second ladder
+skipped, reduced, or reported after the `n`-ladder verdict has been formed**.
 
 ### Gate 5 — claim audit
 
@@ -691,6 +860,16 @@ TMB likelihood review, documentation cascade, and public-object contract would e
 - **Joe (2008)**, *CSDA* **52**:5066–5074 — what governs Laplace accuracy for discrete responses;
   the Laplace-as-one-node-AGHQ identification; AGHQ's exponential cost in random-effect dimension.
   Read directly.
+- **Niku, Warton, Hui & Taskinen (2017)**, GLLVMs for multivariate count and biomass data —
+  quoted in §1.4 for the quadrature-infeasibility statement. **NOT read directly**; the quotation
+  is corpus-sourced and is corroborative, not load-bearing (§1.4 says so in place).
+- **The `q >= 4` provenance audit (2026-07-22)** — enumeration of the 66 sources of notebook
+  `9b5e85d7-…` plus a citation-required query against it. Establishes **non-retrieval from that
+  corpus**, which is the claim's own warrant; it does not and cannot establish non-occurrence in
+  the wider literature.
+- **The bound-property derivation (adversarial review, 2026-07-22)** — reproduced in full at §5.3.
+  It is a derivation recorded in this document, not an external source, and Gate 1 must reproduce
+  or refute it rather than cite it.
 - [Design 72](72-variational-approximation-feasibility.md) — the VA/EVA taxonomy, the sequential
   proof logic, and the bias/likelihood-comparison boundary. Its `gllvm` implementation claims were
   reconstructed from web summaries and are flagged TO-VERIFY in its own §8.
@@ -719,8 +898,9 @@ Even if every gate passes, none of the following is licensed.
    SPA-09 — are untouched by this experiment.** This is the most likely over-reading.
 3. **Rank selection.** Fixed planted rank only; no objective-based selection, no cross-rank
    comparison.
-4. **Any likelihood-scale inference** — and, because the bound property is unsettled, not even a
-   signed statement about the objective's relation to the marginal likelihood.
+4. **Any likelihood-scale inference** — and, because the bound property is **refuted** in the target
+   regime (§5.3), not even a signed statement about the objective's relation to the marginal
+   likelihood, nor any comparison of objective values across the EVA, Laplace and `L_H` arms.
 5. **Latent-score or ordination inference.** Coverage for `beta` says nothing about intervals for
    `u_i`; prediction regions would need CMSEP and separate evidence.
 6. **Multi-trial binomial**, incomplete responses, mixed families, offsets, or weights.
@@ -739,14 +919,26 @@ Even if every gate passes, none of the following is licensed.
 12. **The incumbent's inadequacy.** **If the CUT does not fire, that is not evidence that Laplace
     is inadequate.** Korhonen's Laplace failure is in their configuration, not in `gllvmTMB`'s
     engine on `gllvmTMB`'s data shapes. A GO on EVA is not an argument to move off Laplace.
+13. **Any other interval construction.** Coverage is reported for the predeclared covariance
+    estimator of §11 Gate 4 — the Schur complement of the joint Hessian — and for that estimator
+    only. Nothing transfers to naive variational-covariance intervals, to a sandwich estimator, to
+    profile or bootstrap intervals, or to CMSEP-style prediction intervals. §7.8 records that the
+    naive construction is known to be anti-conservative, so this is a live distinction with a known
+    sign, not a formality.
+14. **Any other sparsity, breadth, or information level.** Results are confined to the realised `z`
+    band of §2.3, the studied `T`, and the achieved `I_unit`. **The band is a predeclared
+    convention, not a cited range** (§2.3 records exactly that), so a pass inside it is not a claim
+    about any other sparsity — and in particular not about the `z > 0.97` matrices common in
+    large-scale presence–absence data, where §2.4's table shows information per unit falling below
+    8 % of balanced.
 
 ---
 
 ## 14. Roadmap — structured EVA over exact sparse priors
 
 > **NON-BINDING. NOT EVIDENCE. This section predeclares no gate and may not be cited by §11.**
-> If this section were deleted, the contract above would still stand complete. It is recorded
-> because the maintainer asked for the direction of travel, not because anything here is approved.
+> If this section were deleted, the contract above would still stand. It is recorded because the
+> maintainer asked for the direction of travel, not because anything here is approved.
 
 The differentiator is **not** "do EVA" — that ground is taken, and Design 04 already concedes we
 should not claim novelty for the estimator. The question is what `gllvm` does *not* have.
@@ -790,15 +982,30 @@ inherits anything from this contract.
 - **§2.4, the Korhonen calibration** — the requirement is CONFIRMED as written. Performing it is a
   Gate-0 task; the UNQUANTIFIED fallback and its consequence for the `0.900` floor remain binding.
 
-**Added 2026-07-22 by the D-43 scope lens — a third precondition, NOT yet confirmed:**
-
 - **§11 Gate 3's tolerances** (`0.05` RMSE; `0.10` median / `0.25` maximum relative Frobenius error)
-  are a Design 85 receipt calibrated against an AGHQ reference at `q <= 2` on non-separated
-  fixtures. They must be **re-derived for the EVA objective in the sparse regime, with the
-  re-derivation recorded, before Gate 3 is scored** — mirroring §7.6's treatment of the optimiser
-  gate. Until then they are placeholders, not predeclarations. The panel found this had been
-  disclosed in prose but not elevated to precondition status, and not named in Gate 3's own NO-GO
-  list; both are now corrected.
+  — raised as a third precondition by the D-43 scope lens and **CONFIRMED by the maintainer,
+  2026-07-22**. They are a Design 85 receipt calibrated against an AGHQ reference at `q <= 2` on
+  non-separated fixtures, so they must be **re-derived for the EVA objective in the sparse regime,
+  with the re-derivation recorded, before Gate 3 is scored** — mirroring §7.6's treatment of the
+  optimiser gate. Until then they are placeholders, not predeclarations. The panel found this had
+  been disclosed in prose but neither elevated to precondition status nor named in Gate 3's own
+  NO-GO list; both are now corrected.
+
+**Resolved by the maintainer, 2026-07-22 — the Gate-4 admission rule (D-43 falsifiability lens):**
+
+- The single-region rule was **satisfiable at `n = 100` from Korhonen's published numbers before any
+  simulation ran**, and is replaced by the **conjunction** in §11 Gate 4: durability at `n_max`
+  AND a margin over Laplace somewhere, both for `beta` and for `Sigma_B`. The CUT now fires in the
+  most likely case — continued coverage decay past `n = 1200` — which the previous rule would have
+  passed. Supporting corrections: `R = 1000` at every rung; the margin computed as a **paired**
+  difference exploiting the byte-identical design; the covariance estimator **named**; and the
+  second ladder in `T` and `z` **fully specified** rather than gestured at.
+
+**Still outstanding, and this document remains NOT APPROVED:**
+
+- The **bound property is refuted in the target regime** (§5.3). This is a finding, not a blocker,
+  but it is material to how the contract should be read and postdates the maintainer's confirmations
+  above.
 
 **Still outstanding, and this document remains NOT APPROVED:**
 

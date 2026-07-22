@@ -22,7 +22,11 @@ Description: Fits multivariate models for data where each site,
     'sdmTMB' (Anderson et al. 2025 <doi:10.18637/jss.v115.i02>), and
     phylogenetic relatedness follows Hadfield & Nakagawa (2010)
     <doi:10.1111/j.1420-9101.2009.01915.x>. Upstream copyright holders
-    of inherited code are listed in 'inst/COPYRIGHTS'.
+    of inherited code are listed in 'inst/COPYRIGHTS'. This package is
+    experimental: it is not complete, is not fully human-verified, and
+    needs extensive further validation, so it should be used at your own
+    risk. Point estimates are the supported claim; interval calibration is
+    established only for the Gaussian cases that cleared the coverage gate.
 License: GPL-3
 Language: en-GB
 Copyright: inst/COPYRIGHTS

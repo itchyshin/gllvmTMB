@@ -6,6 +6,14 @@
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
+> [!WARNING]
+> **`gllvmTMB` is experimental — use at your own risk.** It is not complete, is
+> not fully human-verified, and needs extensive further validation. CRAN
+> availability is not a statement of scientific maturity. Point estimates are the
+> supported claim; interval calibration is established only for the Gaussian
+> cases that cleared the coverage gate. Treat everything else as provisional
+> until the package is declared mature.
+
 `gllvmTMB` fits multivariate models for data where each site,
 individual, species, or study has several responses: body traits,
 species occurrences, behaviours, outcomes, or similar measurements.

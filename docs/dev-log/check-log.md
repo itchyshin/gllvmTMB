@@ -46143,3 +46143,38 @@ that catches an unbalanced `{.code ...}` brace or a broken `cli` interpolation �
 error that would otherwise only appear when a user triggers that specific message.
 
 Log: `~/gllvmTMB-0.6-evidence/m1/diagnostics/r10-post-suite.log`
+
+### 2026-07-22 — PLATFORM EVIDENCE on the fixed head `59da7505`
+
+**A regression was shipped and caught first.** R-10 removed the internal token `C1-partial`,
+which `test-augmented-slope-family-policy.R:80` asserted on. Ubuntu run `29875507222` on
+`1e14e3e0` **FAILED**, as did the local durable runner (`ERRORS=1`). Fixed at `59da7505`;
+detail in `after-task/2026-07-21-m1-third-reader-surface-sweep.md` §5b.
+
+```
+R-CMD-check  29877269563  pull_request     ubuntu-latest (release)   success
+R-CMD-check  29878238017  workflow_dispatch full_matrix=true
+                                            ubuntu-latest  (release) success
+                                            macos-latest   (release) success
+                                            windows-latest (release) success
+```
+
+**Three OS-named jobs asserted explicitly**, not inferred from a green conclusion — a silent
+degradation to Ubuntu-only would also report success.
+
+Local durable receipts at `037e64f1` (same source; the diff to `59da7505` is one
+`docs/dev-log/` file that `.Rbuildignore` excludes from the tarball):
+
+```
+package-check runner : 0 errors | 0 warnings | 0 notes | no runner error
+pkgdown runner       : clean
+```
+
+Mirrored with `SHA256SUMS.txt` to
+`~/gllvmTMB-0.6-evidence/m1/final-receipt/037e64f16c84b227e2c820fb8f4c91d75cf122b4/`.
+
+**Limits of this evidence, stated plainly:** the package-check runner reports 0 notes because
+it omits `remote`/`incoming`; the `New submission` NOTE is real and appears only in the
+CRAN-configuration check. `pkgdown::check_pkgdown()` validates configuration and **does not
+build the site**. And the heavy warning set is **not stable across runs** — see the R-7
+correction in the register.

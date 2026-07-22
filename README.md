@@ -221,7 +221,7 @@ dependency papers it builds on. Run `citation("gllvmTMB")` for
 formatted entries; the curated list is:
 
 - **gllvmTMB**: Nakagawa S (2026). *gllvmTMB: Fit Multivariate
-  Models from Wide Response Data.* R package version 0.5.0.
+  Models from Wide Response Data.* R package version 0.6.0.
   <https://itchyshin.github.io/gllvmTMB/>
 - **TMB engine**: Kristensen K, Nielsen A, Berg CW, Skaug H,
   Bell BM (2016). *TMB: Automatic Differentiation and Laplace

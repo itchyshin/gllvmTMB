@@ -1,8 +1,8 @@
-# gllvmTMB 0.5.0
+# gllvmTMB 0.6.0
 
 This release focuses on multivariate stacked-trait models fitted through the
-R/TMB engine. The optional Julia bridge remains experimental and is not
-required for the main workflow.
+R/TMB engine. Models are fitted by **Laplace approximation**. The optional Julia
+bridge remains experimental and is not required for the main workflow.
 
 ## New
 
@@ -231,5 +231,5 @@ required for the main workflow.
 
 Earlier development release establishing the stacked-trait R/TMB engine, the
 long-format API, initial covariance keywords, simulation helpers, and extractor
-infrastructure. The 0.5.0 notes above describe the current taught syntax and
+infrastructure. The 0.6.0 notes above describe the current taught syntax and
 reader-facing scope.

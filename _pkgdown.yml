@@ -358,8 +358,12 @@ reference:
     - getResidualCov
     - ordiplot
 
-## news.releases intentionally omitted until the maintainer creates a 0.5.0 tag
+## news.releases intentionally omitted until the maintainer creates a 0.6.0 tag
 ## and GitHub release. The current site is pre-release documentation.
+##
+## NOT 0.5.0: the premature v0.5.0 tag was DROPPED. 0.5 was the
+## "cover-everything" dev cycle, never a release; the first CRAN release is
+## 0.6.0 (D-66). Updated at the M3 freeze, 2026-07-22.
 ##
 ## In the meantime, the navbar "News" dropdown will show only the
 ## "Changelog" entry (NEWS.md) — which is the correct pre-release UX.

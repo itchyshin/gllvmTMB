@@ -46570,3 +46570,17 @@ with "Checking for problems" clean.
 **Held for Shinichi (the freeze gate and beyond):** the page review, the candidate freeze, the RC/final
 tags, win-builder/macbuilder, and submission. Rung: **`tarball-clean` proven; NOT READY** for
 submission pending the review + gate sign-offs (D-49/D-66).
+
+## 2026-07-22 (overnight, cont.) — articles overclaim audit + staleness scan (Claude Code)
+
+Workflow `wf_1c404e47-89a`, 24 agents over the **19 pkgdown articles** (which the shipped-surface audit
+excluded), each candidate adversarially verified. **Result: the articles are CLEAN** — 5 low-severity
+borderline phrasings, all defensibly refuted on a full-context read (each self-fences; e.g.
+`multinomial.Rmd:234` "validated" is disambiguated by lines 255–257). **No autonomous edits** —
+reader prose is settled with the maintainer; the 5 are logged as optional tightening in the review
+report. A staleness grep found no deprecated syntax (the `link_residual =` hits are current API;
+`meta_known_V()` is correctly labelled deprecated) and no TODO/WIP markers.
+
+The single review entry point for the maintainer is
+**`docs/dev-log/2026-07-22-REVIEW-ME-shinichi.md`** — everything changed this session + everything
+suggested-not-applied + the held freeze items. Nothing crossed a gate.

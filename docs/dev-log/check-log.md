@@ -46570,3 +46570,29 @@ No V2 amendment, runner call, Gate-2 input/DGP, smoke, historical rescore,
 Laplace, public/API/C++ work, Gate-3/4, Totoro, DRAC, push, or PR was
 performed. A future live lane requires a fresh, separately approved diagnostic
 arc followed by a new Gate A and Gate B.
+
+### 2026-07-23 — Design 86 Arc 6 geometry diagnosis (parked)
+
+Added a private, deterministic `NON_GATE2` q=1 EVA geometry probe, raw ledger,
+and Gate-A audit. The derived scale ray preserves selected loading/variational
+combinations but its KL contribution makes the controlled objective rise at
+both extremes; it does not support an unbounded q=1 escape. The intercept-only
+labelled controls do not establish ordinary logistic separation, and the
+diagonal preconditioner fails the predeclared same-target and health
+conditions. Gauss/Noether and Rose both required `PARK`; no V2 or live lane
+was started.
+
+Checks: `Rscript --vanilla dev/test-design86-arc6-geometry-probe.R` -> PASS;
+controlled-ledger JSON validation -> PASS; historical/V1 manifest/result
+SHA-256 rehash -> PASS; `git diff --check` -> PASS; and
+`git diff --exit-code HEAD -- R/eva-proto.R src/gllvmTMB.cpp
+dev/design86-gate2-eva-runner.R dev/design86-gate2-laplace-runner.R` -> empty.
+Forbidden-wording scan:
+`rg -n -i 'gate[- ]?2 (pass|admission)|recovery|coverage|engine cause|numerical remedy|public capability|successful convergence' docs/design/86-arc6-gate-a-geometry-protocol.md docs/dev-log/forensic/2026-07-23-design86-arc6-gate-a-audit.md docs/dev-log/after-task/2026-07-23-design86-arc6-geometry-park.md`.
+
+No Design-86 runner, input construction, DGP, smoke, historical alteration or
+rescore, threshold/start/seed change, Laplace, public/API/C++ work, Gate-2
+campaign, Gate-3/4, Totoro, DRAC, push, or PR was performed. The planned Luna
+mechanical scout could not run because its dispatcher hit a readonly Codex
+state database and an app-server permission denial; manual mechanical checks
+are recorded as routing drift, not a Luna receipt.

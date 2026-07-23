@@ -1,0 +1,6 @@
+"role","path","sha256"
+"probe","dev/design86-arc6-geometry-probe.R","25c4c673d136fc25972b5c02d50516abc0742308c57d3dc6aec15220a9dbeab1"
+"harness","dev/design86-optimizer-diagnostic-harness.R","455f32091f656616ed80466ae00058d6d63fff44356a3fb0c4cc31e0420bf5f5"
+"eva_proto","R/eva-proto.R","84e2939e720e0c873b5dcc3ec0e932eb1ebc5d748688774a009ba6d579001e8b"
+"cpp","inst/tmb/gllvmTMB_eva.cpp","f19194b6c75e7226a59515f9fafbd419c5c315630556fb424b9ec83774b76d64"
+"fixture","docs/design/86-eva-gate1-parameters.json","a3cb2b9302132b2a917639ac30ce070d5d0f67e9c21f50ffbcc232ead448b036"

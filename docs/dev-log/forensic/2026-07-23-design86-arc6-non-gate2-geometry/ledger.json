@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0.0",
+  "label": "NON_GATE2_GEOMETRY_DIAGNOSTIC",
+  "ledger_status": "PARK",
+  "code_provenance": [
+    {
+      "role": "probe",
+      "path": "dev/design86-arc6-geometry-probe.R",
+      "sha256": "25c4c673d136fc25972b5c02d50516abc0742308c57d3dc6aec15220a9dbeab1",
+      "_row": "dev/design86-arc6-geometry-probe.R"
+    },
+    {
+      "role": "harness",
+      "path": "dev/design86-optimizer-diagnostic-harness.R",
+      "sha256": "455f32091f656616ed80466ae00058d6d63fff44356a3fb0c4cc31e0420bf5f5",
+      "_row": "dev/design86-optimizer-diagnostic-harness.R"
+    },
+    {
+      "role": "eva_proto",
+      "path": "R/eva-proto.R",
+      "sha256": "84e2939e720e0c873b5dcc3ec0e932eb1ebc5d748688774a009ba6d579001e8b",
+      "_row": "R/eva-proto.R"
+    },
+    {
+      "role": "cpp",
+      "path": "inst/tmb/gllvmTMB_eva.cpp",
+      "sha256": "f19194b6c75e7226a59515f9fafbd419c5c315630556fb424b9ec83774b76d64",
+      "_row": "inst/tmb/gllvmTMB_eva.cpp"
+    },
+    {
+      "role": "fixture",
+      "path": "docs/design/86-eva-gate1-parameters.json",
+      "sha256": "a3cb2b9302132b2a917639ac30ce070d5d0f67e9c21f50ffbcc232ead448b036",
+      "_row": "docs/design/86-eva-gate1-parameters.json"
+    }
+  ],
+  "sidecar_sha256": {
+    "a0_chain": "abfd525249e7124df495bd6a64789023266ea66b5b376d1d6dd8a4852a846d41",
+    "a2_fd_coordinates": "008bc9f1e65e3028256ad483cf2857258b1c57e27340fdddc4acd06c7e01a489",
+    "a3_profiles": "01713211d7a51662fdbe7f9f7c595f6ceb4e29cd8396fea97403c33e26ef88da",
+    "a3_curvature": "53d3c9839f46a40dc42cd3df984df1a1210fd5a3d0b3de18c214c10efe5fef94",
+    "a3_trace": "b9278104802fb3b84510cfc863b77e63de85e8f46c8f9e0412a64b7984f84146",
+    "code_provenance": "475d2be67048719f0b8468f2d0596cef59a5869ff5f916f305588f81b2577f35"
+  },
+  "a0_chain": [
+    {
+      "root_id": "historical",
+      "manifest_path": "docs/dev-log/simulation-artifacts/2026-07-22-design86-gate2-anchor-smoke-rerun2/inputs/manifest.json",
+      "result_path": "docs/dev-log/simulation-artifacts/2026-07-22-design86-gate2-anchor-smoke-rerun2/eva/seed-86200001-result.json",
+      "manifest_sha256": "dc01e37b02634f5b0de02f6c1b83e2941aafeb53ca5e4969f06a4ec62d585f63",
+      "result_sha256": "ec286f75a688b815d908fd23ea958827f7245fc666b896b1a812e90052bc9398",
+      "rehash_match": true
+    },
+    {
+      "root_id": "v1",
+      "manifest_path": "docs/dev-log/simulation-artifacts/2026-07-23-design86-gate2r-v1-one-seed/inputs/manifest.json",
+      "result_path": "docs/dev-log/simulation-artifacts/2026-07-23-design86-gate2r-v1-one-seed/eva/seed-86200002-result.json",
+      "manifest_sha256": "c5a3fbb93f04aa58ea725c73a19ec3d1d7a8d77797941d7c63b608ee896c9fb8",
+      "result_sha256": "afda2d76a4e687c99ead0cd7e07e9c29dfa93f751ae22a6025c4e33fb4fb191a",
+      "rehash_match": true
+    }
+  ],
+  "decision_limit": "Gate A PARK: the q=1 scale path is coercive, the response labels do not establish separation, the preconditioned traces fail same-target/health criteria, and this ledger is incomplete for promotion. This is retained NON_GATE2 evidence only; it does not authorize V2, a runner, or a smoke."
+}

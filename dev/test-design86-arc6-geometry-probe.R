@@ -1,0 +1,5 @@
+source("R/eva-proto.R"); source("dev/design86-optimizer-diagnostic-harness.R"); source("dev/design86-arc6-geometry-probe.R")
+out <- file.path(tempdir(), "design86-arc6-test"); unlink(out, recursive = TRUE)
+ledger <- design86_arc6_geometry_probe(out, rebuild = FALSE)
+stopifnot(identical(ledger$label, "NON_GATE2_GEOMETRY_DIAGNOSTIC"), all(file.exists(file.path(out, c("ledger.json", "a0_chain.csv", "a2_fd_coordinates.csv", "a3_profiles.csv", "a3_curvature.csv", "a3_trace.csv")))))
+message("Design 86 Arc-6 NON_GATE2 geometry-probe checks passed.")

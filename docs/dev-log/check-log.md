@@ -46524,3 +46524,49 @@ cleanly pinned. **Re-run at a stable HEAD with nothing committing during it**, w
 `SHA_STABLE` value recorded above. The discipline learned: do not commit while a SHA-sensitive check
 runs. Heavy `WARN 10` again equals the certified baseline — the convergence oscillation, now seen
 across four independent heavy runs.
+
+## 2026-07-22 (overnight) — M5-prep: tarball-clean rung PROVEN + extrachecks (Claude Code)
+
+Shinichi chose "review first, then freeze" and is away until ~05:00; authorised autonomous non-gated
+prep. **No gate crossed** — no freeze, no tag, no submission, no external upload. Rung advanced
+`source-clean → tarball-clean`.
+
+**Provisional candidate tarball** (built from `00e4ad35`; provisional because the page review may
+still change wording — a real freeze mints the final one):
+
+```
+tarball    gllvmTMB_0.6.0.tar.gz
+SHA-256    73893f9707b8940a8ad18b3f62520f4986ac5b46a8570aa3148ca5ca6fa31e37
+bytes      3245650
+forbidden-path scan   CLEAN (no LOOP/, dev/, docs/, .Rproj, scratch, .git, .DS_Store)
+top-level inventory   gllvmTMB/ only
+R CMD check --as-cran ON THE TARBALL   Status: 1 NOTE (New submission); 0 errors, 0 warnings
+  vignettes rebuild OK; installed size INFO (not a NOTE)
+```
+
+Ledger + logs: `~/gllvmTMB-0.6-evidence/m5-prep/`. This is the real CRAN-lane result on the built
+artefact, not a narrower `devtools::check()`.
+
+**Extrachecks (subordinate, feed rungs — do not establish readiness):**
+- **DESCRIPTION spell-check CLEAN** — the gate's hard blocker (a DESCRIPTION spell flag blocks) is
+  clear. `devtools::spell_check()` flags 142 words, but all are domain vocabulary (`Ainv`, `atanh`,
+  `coevolution`, `eigen`, `CFA`, author surnames) in `.Rmd`/`.Rd`, none in DESCRIPTION, and the
+  `--as-cran` lane itself emitted **no** spelling NOTE. Recommendation for freeze time: add an
+  `inst/WORDLIST` (a source edit — HELD until the freeze).
+- **`\value` coverage** — the CRAN lane is satisfied (no `\value` NOTE). Two exported topics
+  (`ordiplot`, `gllvmTMB_multi-methods`) lack an explicit `\value`; advisory doc polish, not a
+  blocker. HELD as page-review recommendations (adding a `\value` is content).
+- **DESCRIPTION conventions** — Title is title-case with no "package"; Description opens "Fits …",
+  not the package name or "This package". OK.
+
+**cran-comments.md corrected** — it was the D-49 partial-green trap: stale at 0.5.0, claiming
+`0/0/0` from a `--no-tests --no-build-vignettes` run. Rewritten to 0.6.0 with the honest
+`0/0/1` (New submission) and the real evidence, marked DRAFT for the maintainer's final read. It is
+`.Rbuildignore`d, so this does not change the tarball.
+
+**pkgdown site rendered** to `pkgdown-site/` (gitignored) for the page review — `build_site()` finished
+with "Checking for problems" clean.
+
+**Held for Shinichi (the freeze gate and beyond):** the page review, the candidate freeze, the RC/final
+tags, win-builder/macbuilder, and submission. Rung: **`tarball-clean` proven; NOT READY** for
+submission pending the review + gate sign-offs (D-49/D-66).

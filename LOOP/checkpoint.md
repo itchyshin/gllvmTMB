@@ -43,10 +43,22 @@ at `kernel-helpers.R:13`; `@section Interval calibration:` on `extract_phylo_sig
 `extract_repeatability`. Each surfaced as a diff for the page review; every one makes a claim smaller.
 
 **WHAT REMAINS IS SHINICHI'S — the page-by-page reader review**, now a focused sitting guided by the
-dossier (`docs/dev-log/2026-07-22-m4-overclaim-audit-dossier.md`): the hard surfaces are clean; the
-three CI-topic caveats are agent-proposed wording, revertible in one line. The M4→M5 gate sequence and
-the exact-TAG rule are on disk: `docs/dev-log/2026-07-22-m4-to-m5-runbook.md`. NEXT GATE: candidate
-freeze (his). Rung: NOT READY, below source-clean (D-49/D-66).
+dossier and the **page-review packet** (`docs/dev-log/2026-07-22-m4-page-review-packet.md`) + the
+**rendered site** (`pkgdown-site/index.html`). He chose "review first, then freeze" (2026-07-22). The
+M4→M5 gate sequence is on disk: `docs/dev-log/2026-07-22-m4-to-m5-runbook.md`.
+
+**M5-PREP DONE OVERNIGHT (no gate crossed), rung advanced `source-clean → tarball-clean`:** the
+provisional candidate tarball `gllvmTMB_0.6.0.tar.gz` (SHA-256 `73893f97…`, 3.25 MB) passes
+`R CMD check --as-cran` at **0/0/1** (New submission), forbidden-path scan clean; DESCRIPTION
+spell-check clean (the gate's hard blocker); `cran-comments.md` corrected from the stale-false 0/0/0
+to the honest 0/0/1. Evidence: `~/gllvmTMB-0.6-evidence/m5-prep/`. **HELD for the freeze:** an
+`inst/WORDLIST` (142 domain terms) and `\value` on `ordiplot`/`gllvmTMB_multi-methods` (both advisory,
+neither a blocker).
+
+**NEXT GATE: candidate freeze (Shinichi's), after his page review.** Then RC tag → exact-tag 3-OS →
+final tag → submission, each his gate. NOT DONE autonomously and never to be: RC/final tag,
+win-builder/macbuilder, CRAN submission. Rung: **`tarball-clean` proven; NOT READY** for submission —
+the gap is the review + gate sign-offs, not capability (D-49/D-66).
 
 ---
 

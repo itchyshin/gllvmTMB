@@ -1,0 +1,16 @@
+{
+  "gate": "G2",
+  "research_only": true,
+  "denominator_id": "G2_ALL_500_ATTEMPTS",
+  "seed": 86200002,
+  "row_order": "unit_major_trait_minor_zero_based_ids",
+  "N": 80,
+  "T": 12,
+  "q": 2,
+  "hashes": {
+    "ordered_cell_map_sha256": "2f53f888d769b893ae87d9437535ab92387fa166c9f6587d1d5706125b0d5e2b",
+    "truth_sha256": "535d3ed2bdf7dc4cf5dcb2b432118e0137655bf82eaba6353038549512a4a7bd",
+    "response_sha256": "c8339270cb2da13e52dd7204729ac128c5c4d210b76854d6afe2a0af5adae3f3",
+    "replicate_input_sha256": "79d30d1dc934b39e14d1d4fef482c5c1837b7f185a72c2660ae4d29e510f02b7"
+  }
+}

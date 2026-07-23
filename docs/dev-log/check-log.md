@@ -46488,3 +46488,36 @@ DONE for the candidate packet only after authorization-parser repairs.
 No runner, input construction, DGP draw, compile, smoke, artifact, Totoro,
 DRAC, Gate 3, Gate 4, public API, or shipped-engine work was run. Gate B is
 UNSIGNED, and this entry grants no smoke authority.
+
+### 2026-07-23 — Design 86 Arc 3 G2R-V1 signed prospective EVA smoke
+
+Maintainer Shinichi Nakagawa signed Gate B for the exact G2R-V1 fixture SHA
+`562830f03c6bc564ff01ebc9d7d4fba0634d5fe0c26b7069bb6ec4c568149e69` and
+the sole prospective seed `86200002`. The signature was committed locally as
+`74dacae5`; no branch was pushed and no PR was opened.
+
+Before the invocation, Noether (provenance), Gauss (numerics), and Rose
+(scope) confirmed the six signed source hashes, historical immutability,
+`R/eva-proto.R == 3b479354`, `src/gllvmTMB.cpp == origin/main`, a clean tree,
+and an absent prospective output root. The first relative-root call stopped at
+the scope guard before input construction, DGP draw, compile, or artifact.
+After explicit maintainer approval of the canonical absolute root, the sole
+EVA-only invocation used `rebuild = FALSE` and wrote exactly the V1 manifest,
+result, and receipt.
+
+The receipt is valid. All four frozen starts had code zero but failed the
+strict `max_abs_gradient < 1e-4` rule (0.0337028, 0.1037681, 0.0722319,
+0.1050105). Consequently there were zero healthy starts, no accepted winner or
+interval, and `collapsed = true`. This is a one-seed smoke failure record, not
+a Gate-2 campaign or admission; no retry, re-score, replacement seed, Laplace,
+Totoro/DRAC, Gate 3/4, public API, or shipped-engine work is authorised.
+
+Checks: signed fixture SHA / JSON fields -> PASS; six source hashes -> PASS;
+historical fixture SHA -> PASS; `git diff --exit-code 3b479354 --
+R/eva-proto.R` -> empty; `git diff --exit-code origin/main --
+src/gllvmTMB.cpp` -> empty; final clean-tree and absent-output-root preflight
+-> PASS; runner -> completed; manifest/result/receipt SHA relations -> PASS;
+`source_tree_clean = true` -> PASS; required receipt fields and JSON-null
+telemetry semantics -> PASS. `gh pr list --state open --limit 20` was attempted
+before closeout but GitHub API access was unavailable; no remote PR state was
+inferred.

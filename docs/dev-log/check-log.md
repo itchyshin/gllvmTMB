@@ -46620,3 +46620,11 @@ Forbidden-wording scan:
 No Design-86 runner, input construction, DGP, smoke, historical alteration or
 rescore, threshold/start/seed change, Laplace, public/API/C++ work, Gate-2
 campaign, Gate-3/4, Totoro, DRAC, push, or PR was performed.
+
+### 2026-07-23 — Design 86 Arc 8 terminal historical observability
+
+Completed a private, read-only terminal audit of the two immutable G2/EVA smoke chains. All six stored manifest/result/receipt files rehashed to their recorded values and each result/receipt cross-link resolves to its manifest and result. The field called `output_manifest_sha256` is the stored result-JSON digest, not a missing output-manifest artifact. The records remain comparable frozen-health failures, not executable replications.
+
+The retained fields cannot discriminate an optimizer, coordinate, derivative, ridge/rank, or separation mechanism: the anchor has only final summaries, V1 has stage summaries but no complete comparable labelled state, and realised inputs are retained as digests rather than arrays. Gauss/Noether and Rose both support `HISTORICAL_MECHANISM_UNOBSERVABLE`. This retires the current private Design-86/EVA admission path; it does not diagnose cause or authorize a retry.
+
+Checks: SHA-256 rehash and manifest/result/receipt link audit -> PASS; `git diff --exit-code HEAD -- R/eva-proto.R src/gllvmTMB.cpp dev/design86-gate2-eva-runner.R dev/design86-gate2-laplace-runner.R` -> empty; forbidden-wording scan -> PASS; `git diff --check` -> PASS. No runner, input, DGP, compile, probe, rescore, V2/Gate B/smoke work, campaign, Laplace, public/API/C++ work, Gate-3/4, Totoro, DRAC, rebase, merge, push, or PR was performed.

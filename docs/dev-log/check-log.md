@@ -46495,3 +46495,32 @@ Dossier: `docs/dev-log/2026-07-22-m4-overclaim-audit-dossier.md`. **These are pr
 maintainer's page review, not applied edits** — 0.6 reader wording is settled with Shinichi, not
 batch-rewritten (standing rule). The `confirmed_count: 0` is a reminder that the "read the log, not
 the summary" rule applies to one's own workflows.
+
+## 2026-07-22 (still later) — the TENTH chain, green at the fences SHA (Claude Code)
+
+The four additive-safe fences (`aa939ce8`) forfeited the ninth chain BY DESIGN (shipped `R/` + `man/`
+changed, comment-only). Re-earned at `aa939ce8`, all read from logs:
+
+```
+devtools::test()                    FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290   (identical to baseline)
+3-OS 29969703136 (full_matrix=true) 3x Status: OK, zero ERROR/WARNING/NOTE
+                                    ubuntu-latest, macos-latest, windows-latest : all success
+                                    built artefact gllvmTMB_0.6.0.tar.gz
+heavy 29969704205                   FAIL 0 | WARN 10 | SKIP 103 | PASS 13656, Status: OK
+CRAN-config (dev/m1-cran-config-check.R at 3c5fd11d)
+                                    ERRORS 0 | WARNINGS 0 | NOTES 1 ("New submission") | 0 unexpected
+                                    SHA_STABLE TRUE (START = END = 3c5fd11d)
+```
+
+Receipts + `SHA256SUMS.txt`: `~/gllvmTMB-0.6-evidence/m4/tenth-chain/`.
+
+### ⚠ A SHA_STABLE=FALSE was caught and corrected, not papered over
+
+The **first** CRAN-config run for this chain returned `SHA_STABLE=FALSE` — its `START_SHA` and
+`END_SHA` differed because a docs commit (the runbook + after-task, `3c5fd11d`) landed **while the
+check was still running**. The package content was provably identical (docs are `.Rbuildignore`d;
+shipped-path diff `aa939ce8..3c5fd11d` empty), so the 0/0/1 was valid — but the receipt was not
+cleanly pinned. **Re-run at a stable HEAD with nothing committing during it**, which is the
+`SHA_STABLE` value recorded above. The discipline learned: do not commit while a SHA-sensitive check
+runs. Heavy `WARN 10` again equals the certified baseline — the convergence oscillation, now seen
+across four independent heavy runs.

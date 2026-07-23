@@ -29,21 +29,24 @@ Laplace-only and M2 stays CUT. Brief: `docs/dev-log/2026-07-22-design86-lane-bri
   NOTE allowlisted. The built artefact was confirmed to be `gllvmTMB_0.6.0.tar.gz` — the bump
   reached the **build**, not merely the files.
 
-**M4 is UNDERWAY. Head is now `70e070be`. Draft PR #780.** The NINTH evidence chain is complete and
-green on the D-41 identity — local `0 | 779 | 7290`, 3-OS `29964958208` all three OS `Status: OK`
-building `gllvmTMB_0.6.0.tar.gz`, heavy `29964959674` `FAIL 0`, CRAN-config 0/0/1 `SHA_STABLE`.
-Receipts: `~/gllvmTMB-0.6-evidence/m4/70e070be-d41/`.
+**M4's MECHANICAL HALF IS DONE. Head `3c5fd11d` (draft PR #780). The mechanical work stops HERE, at
+the candidate-freeze gate — the freeze is Shinichi's.** The TENTH evidence chain is green at the
+fences SHA `aa939ce8` (local `0 | 779 | 7290`, 3-OS `29969703136` all three OS `Status: OK` building
+`gllvmTMB_0.6.0.tar.gz`, heavy `29969704205` `FAIL 0`, CRAN-config 0/0/1 pinned clean at `3c5fd11d`).
+Receipts: `~/gllvmTMB-0.6-evidence/m4/tenth-chain/`.
 
-**D-41 is DONE** — all four accepted channels (startup message, lifecycle badge, pkgdown/README
-callout, DESCRIPTION line), grounded from `memory/DECISIONS.md` D-41 (it is NOT a badge on 153
-exports). The release blocker is cleared. `.onAttach` verified firing via `load_all(attach = TRUE)`.
+**D-41 DONE** — all four accepted channels, grounded from `memory/DECISIONS.md` D-41 (NOT a per-export
+badge). `.onAttach` verified firing via `load_all(attach = TRUE)`.
 
-**M4 REMAINS SHINICHI'S HOURS** — the page-by-page reader review. The reader-surface overclaim audit
-(`docs/dev-log/2026-07-22-m4-overclaim-audit-dossier.md`) makes it fast: the hard surfaces are clean,
-and it leaves exactly **one medium item** (`kernel-helpers.R:13` "validated") + **three page-review
-candidates** (CI Rd topics needing a calibration caveat) — all as PROPOSALS, none applied, because
-reader wording is settled with Shinichi. The other M4 items (the `_pkgdown.yml`/`brms-sugar.R`
-deprecation-date fix; the DESCRIPTION-vs-vignette claim-string class) are recorded above.
+**Four additive-safe fences APPLIED** (`aa939ce8`, roxygen-comment only, zero code): dropped "validated"
+at `kernel-helpers.R:13`; `@section Interval calibration:` on `extract_phylo_signal`, `loading_ci`,
+`extract_repeatability`. Each surfaced as a diff for the page review; every one makes a claim smaller.
+
+**WHAT REMAINS IS SHINICHI'S — the page-by-page reader review**, now a focused sitting guided by the
+dossier (`docs/dev-log/2026-07-22-m4-overclaim-audit-dossier.md`): the hard surfaces are clean; the
+three CI-topic caveats are agent-proposed wording, revertible in one line. The M4→M5 gate sequence and
+the exact-TAG rule are on disk: `docs/dev-log/2026-07-22-m4-to-m5-runbook.md`. NEXT GATE: candidate
+freeze (his). Rung: NOT READY, below source-clean (D-49/D-66).
 
 ---
 

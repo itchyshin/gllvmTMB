@@ -14,6 +14,9 @@
 
 source(file.path(.d86_root(), "R", "eva-proto.R"))
 
+.d86_gate2_fixture_sha256 <- "fb71826c84cf94ee288e8843d8997423247da9459cdb83a3ed8e1bb4373034d6"
+.d86_gate2_seed_array_sha256 <- "9ab57cfb07f29e16a648088bbdfb4ebe6bb848a42b43ff3c48e7c76a67c4e29a"
+
 .eva_gate2_file <- function(path = NULL) {
   if (!is.null(path)) return(normalizePath(path, mustWork = TRUE))
   root <- .d86_root()
@@ -26,13 +29,33 @@ source(file.path(.d86_root(), "R", "eva-proto.R"))
   if (!requireNamespace("jsonlite", quietly = TRUE)) {
     stop("The Design 86 prototype requires jsonlite to read its frozen fixture.", call. = FALSE)
   }
-  x <- jsonlite::fromJSON(.eva_gate2_file(path), simplifyVector = FALSE)
+  fixture_path <- .eva_gate2_file(path)
+  if (!identical(.d86_sha256_file(fixture_path), .d86_gate2_fixture_sha256)) {
+    stop("The Design 86 Gate-2 fixture checksum does not match the approved freeze.", call. = FALSE)
+  }
+  x <- jsonlite::fromJSON(fixture_path, simplifyVector = FALSE)
   if (!identical(x$status, "FROZEN_GATE2_ANCHOR_ONLY") ||
       !identical(x$schema_version, "1.0.0") ||
       !identical(x$gate, "G2") || !isTRUE(x$research_only)) {
     stop("The Design 86 Gate-2 fixture is not the approved frozen schema.", call. = FALSE)
   }
+  .d86_validate_gate2_seed_receipt(x)
   x
+}
+
+.d86_seed_array_sha256 <- function(seeds) {
+  path <- tempfile("design86-seed-receipt-")
+  on.exit(unlink(path), add = TRUE)
+  writeLines(jsonlite::toJSON(as.integer(unlist(seeds, use.names = FALSE)), auto_unbox = TRUE), path)
+  unname(tools::sha256sum(path))
+}
+
+.d86_validate_gate2_seed_receipt <- function(parameters) {
+  seeds <- parameters$replicates$expanded_data_generation_seeds
+  if (!identical(.d86_seed_array_sha256(seeds), .d86_gate2_seed_array_sha256)) {
+    stop("The Design 86 Gate-2 seed receipt does not match the approved freeze.", call. = FALSE)
+  }
+  invisible(parameters)
 }
 
 .eva_sha256_object <- function(x) {
@@ -124,17 +147,24 @@ source(file.path(.d86_root(), "R", "eva-proto.R"))
   driver_path <- file.path(root, "R", "eva-proto.R")
   list(
     source_commit = .d86_git(root, c("rev-parse", "HEAD")),
-    source_tree_clean = identical(system2("git", c("-C", root, "diff", "--quiet")), 0L),
+    source_tree_clean = !length(system2("git", c("-C", root, "status", "--porcelain"), stdout = TRUE, stderr = FALSE)),
     engine_source_sha256 = .d86_sha256_file(source_path),
     driver_source_sha256 = .d86_sha256_file(driver_path),
     runner_source_sha256 = .d86_sha256_file(runner_path),
-    dll_sha256 = if (is.na(dll_path)) NA_character_ else .d86_sha256_file(dll_path)
+    dll_sha256 = if (is.na(dll_path)) NA_character_ else .d86_sha256_file(dll_path),
+    runtime = list(
+      R = R.version$version.string,
+      platform = R.version$platform,
+      TMB = if (requireNamespace("TMB", quietly = TRUE)) as.character(utils::packageVersion("TMB")) else NA_character_,
+      compiler = tryCatch(system2(file.path(R.home("bin"), "R"), c("CMD", "config", "CXX"), stdout = TRUE, stderr = FALSE)[1L],
+                            error = function(e) NA_character_)
+    )
   )
 }
 
 .d86_write_json_once <- function(x, path) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-  text <- jsonlite::toJSON(x, auto_unbox = TRUE, digits = 16, pretty = TRUE, null = "null")
+  text <- jsonlite::toJSON(x, auto_unbox = TRUE, digits = 16, pretty = TRUE, null = "null", na = "null")
   if (file.exists(path)) {
     old <- paste(readLines(path, warn = FALSE), collapse = "\n")
     if (!identical(sub("[\r\n]+$", "", old), sub("[\r\n]+$", "", as.character(text)))) {

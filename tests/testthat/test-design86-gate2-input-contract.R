@@ -14,3 +14,18 @@ test_that("Design 86 Gate-2 frozen input is deterministic and packed consistentl
   expect_true(all(is.finite(first$I_unit)))
   expect_error(.eva_gate2_input(1L), "approved Gate-2 seed")
 })
+
+test_that("Design 86 Gate-2 private receipt checks reject drift and write JSON null", {
+  source(test_path("..", "..", "dev", "design86-gate2-eva-runner.R"), local = TRUE)
+  fixture <- .eva_gate2_file()
+  altered <- tempfile(fileext = ".json")
+  writeLines(sub("FROZEN_GATE2_ANCHOR_ONLY", "MUTATED", readLines(fixture, warn = FALSE)), altered)
+  expect_error(.eva_read_gate2_parameters(altered), "checksum")
+  p <- .eva_read_gate2_parameters()
+  p$replicates$expanded_data_generation_seeds[[1L]] <- 1L
+  expect_error(.d86_validate_gate2_seed_receipt(p), "seed receipt")
+  receipt <- tempfile(fileext = ".json")
+  .d86_write_json_once(list(missing = NA_real_), receipt)
+  expect_match(paste(readLines(receipt, warn = FALSE), collapse = "\n"), '"missing": null', fixed = TRUE)
+  expect_false(grepl('"NA"', paste(readLines(receipt, warn = FALSE), collapse = "\n"), fixed = TRUE))
+})

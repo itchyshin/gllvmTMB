@@ -62,11 +62,18 @@ design86_gate2_laplace_run <- function(seed, output_root = NULL) {
   dll_path <- .d86_laplace_dll_path()
   source_receipt <- list(
     source_commit = .d86_git(root, c("rev-parse", "HEAD")),
-    source_tree_clean = identical(system2("git", c("-C", root, "diff", "--quiet")), 0L),
+    source_tree_clean = !length(system2("git", c("-C", root, "status", "--porcelain"), stdout = TRUE, stderr = FALSE)),
     engine_source_sha256 = .d86_sha256_file(file.path(root, "src", "gllvmTMB.cpp")),
     driver_source_sha256 = .d86_sha256_file(file.path(root, "R", "fit-multi.R")),
     runner_source_sha256 = .d86_sha256_file(runner),
-    dll_sha256 = if (is.na(dll_path)) NA_character_ else .d86_sha256_file(dll_path)
+    dll_sha256 = if (is.na(dll_path)) NA_character_ else .d86_sha256_file(dll_path),
+    runtime = list(
+      R = R.version$version.string,
+      platform = R.version$platform,
+      TMB = if (requireNamespace("TMB", quietly = TRUE)) as.character(utils::packageVersion("TMB")) else NA_character_,
+      compiler = tryCatch(system2(file.path(R.home("bin"), "R"), c("CMD", "config", "CXX"), stdout = TRUE, stderr = FALSE)[1L],
+                            error = function(e) NA_character_)
+    )
   )
   arm_dir <- file.path(output_root, "laplace")
   result_path <- file.path(arm_dir, sprintf("seed-%s-result.json", seed)); .d86_write_json_once(result, result_path)

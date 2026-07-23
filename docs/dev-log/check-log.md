@@ -46624,3 +46624,26 @@ D-49 review raised). Submission remains the maintainer's — NOT crossed.
 Rung unchanged: `platform-clean` at the RC, R-devel evidence pending the emailed result. Remaining is
 the maintainer's alone: read the win-builder email → reconcile `cran-comments.md` → final `v0.6.0` tag
 → CRAN submission.
+
+## 2026-07-23 — Codex independent adversarial review: real overclaim in the central claim (Claude Code)
+
+An independent Codex adversarial pre-CRAN review (different tool + model, live toolchain, read-only)
+ran on v0.6.0-rc.1. Verdict: do not submit yet. Findings, each checked against the artifacts:
+
+- REAL, held for the maintainer: the D-41 wording "interval calibration IS ESTABLISHED for the Gaussian
+  cases that cleared the coverage gate" (DESCRIPTION, README, .onAttach, NEWS, the three interval
+  caveats) contradicts docs/design/75:96-99 ("no cell is calibrated; CI-08/CI-10 remain failing") and
+  the project's own record (Sigma_unit certificate withheld at 0.95; CI-08 failed). Judged CORRECT on
+  the merits -- a CLASS overclaim my same-model reviewers rationalised; cross-tool review caught it.
+  Fix = strictly-honest reword across the class -> rc.2. HELD; not touched.
+- Codex TOOLING ERRORS (verified): "72 \dontrun is false / it's 0" -- WRONG, it genuinely is 72
+  (Codex's rg -F used a double backslash); "0 Rd missing \value" -- imprecise (135/139 have it, ~2
+  function-topics lack it). So Codex is not infallible; its counts were re-derived here.
+- NOT package defects: Codex could not rebuild the tarball (its sandbox denied mkdir), so the 0/0/1 is
+  verified by this lane only, not cross-tool -- win-builder R-devel is the genuinely independent check
+  (pending the maintainer's email). HEAD (19a65843) != tag (e9bc655a) but the delta is Rbuildignored
+  (docs), no package-source change.
+
+Findings doc: docs/dev-log/2026-07-23-codex-adversarial-findings.md. Verdict archived at
+~/gllvmTMB-0.6-evidence/m5-rc1/codex-adversarial-review.txt. NOTHING SUBMITTED. The calibration-wording
+decision gates submission and is the maintainer's.

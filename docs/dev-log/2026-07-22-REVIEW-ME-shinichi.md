@@ -1,5 +1,14 @@
 # 📋 REVIEW ME — Shinichi, ~05:00 (2026-07-22 overnight session)
 
+> 🔴 **NEW, 2026-07-23 — read this first.** An independent **Codex** adversarial review flagged a real
+> issue in the **central honesty claim**: the "interval calibration **is established** for the Gaussian
+> cases that cleared the coverage gate" wording (DESCRIPTION, README, `.onAttach`, NEWS, the interval
+> caveats) likely **overclaims** — `docs/design/75:96-99` says *no cell is calibrated*, and the
+> Sigma_unit certificate was withheld / CI-08 failed. **I judge Codex right on the merits.** This is a
+> class across surfaces and would need an **rc.2** reword. Full analysis + proposed wording + Codex's
+> other (mostly non-blocking, two erroneous) findings: **`docs/dev-log/2026-07-23-codex-adversarial-findings.md`**.
+> I changed nothing — it's your voice and your call. This gates submission.
+
 **Start here.** This is the single reminder of everything that changed while you were away and
 everything I'm *suggesting* but did **not** apply. Nothing crossed a gate — no freeze, no tag, no
 submission. The next action is yours: your page review, then the **candidate freeze**.

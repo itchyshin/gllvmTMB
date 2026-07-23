@@ -92,10 +92,10 @@ them across parallel sub-agents (you would create integration seams for no speed
 
 | Slice | Deliverable | Note |
 |---|---|---|
-| **S0** | Gate 0: freeze + checksum the parameter file (contract §2.5); record the checksum in the contract §2.5 / Status | first; Gate-1 fixtures are tiny but the file must exist + be checksummed |
+| **S0** | Arc-1 coordinate freeze: materialise + checksum the parameter file (contract §2.5); record the checksum in the contract §2.5 / Status | first; later-runner provenance is deferred until Gate 2/4 runners exist |
 | **S1** | D1: pure-R scalar oracle for `ell_EVA` (Bernoulli-logit, §5.1, **+ q**), no code shared with the template | the independent yardstick |
 | **S2** | D2: EVA objective in a **standalone** `inst/tmb/gllvmTMB_eva.cpp` + unexported `R/eva-proto.R`, `random = NULL` | the shipped `src/gllvmTMB.cpp` stays byte-unchanged |
-| **S3** | D3: AGHQ bound probe at `q = 1` (reuse `.va_r3_gh_rule`) — a **measurement**, observes the §5.3 overshoot | needs S2 |
+| **S3** | D3: AGHQ marginal probe at `q = 1` (reuse `.va_r3_gh_rule`) — a **measurement**; record, do not predict, its signed marginal difference | needs S2 |
 | **S4** | D4: reproduce §5.3 in code (finite-diff `s''''`, MC sign of `E_q[R]` for `p̄ < 0.211`) | standalone |
 
 **3. Verify — the fan-out lives here, not in the build.** Run the verification matrix (brief §5):
@@ -103,18 +103,23 @@ identities to `1e-10` (S2 template vs S1 oracle, plus the Gaussian exactness ide
 `1e-5`, small-`v` continuity, the quadrature oracle. Honour every §7 rule — the `+ q` constant,
 stabilised `softplus` (`η` runs far negative here by construction), the small-`v` limit, loud failure
 on any non-finite value. Then **fan out a 3-lens adversarial panel** (each defaulting NOT-DONE, ≥2
-withhold): **(a) math** — code matches §5.1/§5.3; **(b) numerics** — softplus/small-`v`/finiteness,
-no clipping, `+ q` present; **(c) scope** — standalone template, shipped surface untouched, nothing
+withhold): **Gauss + Noether (math)** — code matches §5.1/§5.3; **Fisher (numerics and inference
+interpretation)** — softplus/small-`v`/finiteness, no clipping, `+ q` present, and D3 carries no
+marginal-bound claim; **Rose (scope)** — standalone template, shipped surface untouched, nothing
 over-claimed.
 
-**4. Consolidate, then STOP.** After-task report under `docs/dev-log/after-task/`; **Rose review
-before any "Arc 1 passed" claim** (`.codex/agents/*.toml`); then STOP and report to the maintainer.
+**4. Consolidate, then STOP.** Append the exact commands, outcomes, stale-wording patterns,
+tests-of-tests classification, deliberate non-runs, roadmap tick, issue ledger, limitations, and
+named reviewer roles to `docs/dev-log/check-log.md`; write the after-task report under
+`docs/dev-log/after-task/`; obtain **Rose review before any "Arc 1 passed" claim**; then STOP and
+report to the maintainer.
 **Do not begin Arc 2.**
 
 **Arc 1 is done when:** the frozen file exists + its checksum is recorded; the template matches the
 oracle to `1e-10` and the Gaussian identity holds; gradients match finite differences to `1e-5`; the
-bound probe has *observed* the sign of `ell_EVA − log p(y)` at `q = 1` (the §5.3 overshoot, in code);
-no numerical rule is violated; `src/gllvmTMB.cpp` is byte-unchanged; and the panel + Rose clear it.
+marginal probe records (without predicted direction) `ell_EVA − log p(y)` at `q = 1`, while D4
+reproduces the §5.3 exact-ELBO overshoot; no numerical rule is violated; `src/gllvmTMB.cpp` is
+byte-unchanged; and the panel + Rose clear it.
 **A pass licenses the maintainer to hand you Arc 2 — nothing else.**
 
 ## Blockers / open questions (for the maintainer, not for you to self-resolve)

@@ -21,7 +21,7 @@ Neither is self-granted; both are recorded in the contract.
    precedes the code, and Gate 1 is the first rung. Until approval this brief is inert.
 2. **Gate 1 itself needs no compute campaign** — it runs on tiny fixtures on a laptop — but it does
    require the frozen parameter file to *exist* for the fixtures it shares with later gates
-   (contract §2.5). Its checksum is recorded at approval. Gate-4 **compute** is a *third*, separate
+   (contract §2.5). Its checksum is recorded by Arc 1's coordinate-freeze receipt. Gate-4 **compute** is a *third*, separate
    approval and is out of scope here entirely.
 
 If either gate is open, this document is read-only planning, nothing more.
@@ -85,15 +85,21 @@ Loading reconstruction uses the live packed-`Lambda` unpacker convention (contra
 every numerical requirement in contract §7 — the `+q` constant (§7 / Gate-1 NO-GO), stable
 `softplus` and `log det`, the small-`v` limit, and loud failure on any non-finite value.
 
+The same private template has a **test-only Gaussian identity-link branch** with an explicit fixed
+residual standard deviation and normalising constant. It exists only to exercise the Taylor
+machinery required by contract §11 Gate 1; it is neither an EVA family extension nor a public
+interface. The Bernoulli scalar oracle remains independent of the template.
+
 ### D3 — The AGHQ marginal bound probe at `q = 1`
 
 A high-order adaptive Gauss–Hermite evaluation of the **exact marginal** log-likelihood
 `log p(y_i)` at `q = 1` on a tiny sparse fixture, compared against `ell_EVA` on the same fixture.
 This is the **only** place in the whole contract where the objective meets a true marginal
 likelihood (contract §11 Gate 1). It is a **measurement, not a pass/fail gate** — its job is to
-*observe* the sign of `ell_EVA − log p(y)` that §5.3 derives, in the overshoot regime `p̄ < 0.211`.
-Reuse the Golub–Welsch node machinery already present in `R/va-r3-proto.R` (`.va_r3_gh_rule`);
-do not re-derive quadrature.
+record the observed signed difference, without asserting an expected marginal direction: §5.3 signs
+`ell_EVA - L_exact`, not `ell_EVA - log p(y)`. Freeze `q = 1`, the sparse fixture, and the
+`H = 15/25/61` convergence receipt in the parameter file. Reuse the Golub–Welsch node machinery
+already present in `R/va-r3-proto.R` (`.va_r3_gh_rule`); do not re-derive quadrature.
 
 ### D4 — The bound-derivation reproduction
 
@@ -102,6 +108,10 @@ Gate 1 must **reproduce or refute** the §5.3 derivation, not restate it: indepe
 `(3±√3)/6`, and the overshoot for `p̄ < 0.211`. The round-2 panel already reproduced this once by
 hand; D4 makes it a checked-in, re-runnable numerical confirmation (e.g. the finite-difference check
 of `s''''` and a Monte-Carlo estimate of `E_q[R]`'s sign on a sparse fixture).
+
+The D4 Monte-Carlo check is reproducible rather than illustrative: the frozen file records its
+seed, draw count, and one-sided decision rule (`mean(R) + 3 * SE(R) < 0`). It accompanies, rather
+than replaces, the deterministic finite-difference check of `s''''` and the analytic root check.
 
 ---
 

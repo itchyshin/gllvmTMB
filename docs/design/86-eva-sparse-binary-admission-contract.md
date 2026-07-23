@@ -2,9 +2,8 @@
 
 **Status:** **APPROVED by the maintainer, 2026-07-22 (chat).** The experimental design in this
 document is approved. Two things this approval does **not** do, and both are recorded so the coding
-lane cannot over-read it: (1) the parameter-file checksum (§2.5) still does not exist because the
-frozen file does not exist — **building and checksumming it is Gate 0, the coding lane's first
-action**, not an approval blocker resolved here; (2) approval unlocks Gates 0–3 (algebra, anchor,
+lane cannot over-read it: (1) the Arc-1 coordinate-freeze receipt has now materialised the frozen
+file and recorded its checksum (§2.5); this is not an approval of any later gate; (2) approval unlocks Gates 0–3 (algebra, anchor,
 reference) only — **Gate-4 compute is a separate, later maintainer approval** (Totoro/DRAC), and
 nothing here authorises it. The maintainer additionally directed that **Gate 1 be handed to Codex**;
 see the handover at [`docs/dev-log/handover/2026-07-22-codex-handover-design86-gate1.md`](../dev-log/handover/2026-07-22-codex-handover-design86-gate1.md).
@@ -261,20 +260,54 @@ Design 85's Gate-3 evidence was lost because its pilot **runner** implemented a 
 experiment from the one its prose specified [85 §13](85-highdim-nongaussian-va-formal-contract.md).
 Prose did not prevent that. Therefore:
 
-**All predeclared quantities — the `n` ladder, the second ladders in `T` and `z`, replicate counts,
-the coverage floor, the margin over Laplace, `T`, `q`, the planted `beta` and `Lambda`, the
-zero-fraction target, the `I_unit` floor, the denominator rule (for coverage *and* for bias/RMSE),
-the named covariance estimator of §11 Gate 4, both arms' convergence-failure criteria (EVA's per
-§7.6 and Laplace's, with any asymmetry between them stated), and the full per-replicate seed list —
-live in one machine-readable frozen file. Its checksum is recorded in this contract at approval. The
-runner READS that file; it does not restate any of these values.** A run whose parameter file
-checksum does not match the recorded value is not evidence under this contract.
+**A scope freeze is not allowed to pretend it knows quantities that a prior gate must re-derive.**
+Therefore this contract has two machine-readable freezes: (1) the **Gate-1 fixture file**, frozen
+and checksummed in Arc 1; and (2) one **Gate-4 campaign file**, frozen only after the required
+optimiser and Gate-3 tolerance re-derivations. The campaign file contains all campaign quantities —
+the `n` ladder, the second ladders in `T` and `z`, replicate counts, the coverage floor, the margin
+over Laplace, `T`, `q`, the planted `beta` and `Lambda`, the zero-fraction target, the `I_unit`
+floor, the denominator rule (for coverage *and* for bias/RMSE), the named covariance estimator,
+both arms' convergence-failure criteria (EVA's per §7.6 and Laplace's, with any asymmetry stated),
+and the full per-replicate seed list. Each runner READS its applicable frozen file; it does not
+restate those values. A run whose applicable checksum does not match the recorded value is not
+evidence under this contract.
 
 **The seed list is frozen, not merely the seed count.** Freezing `R` alone would leave the study
 re-runnable from a fresh RNG state until a favourable curve appeared — a channel entirely distinct
 from, and not closed by, the all-attempts denominator rule. Re-running against the frozen seeds
 reproduces the same result or reveals a defect; re-running against new seeds is a new experiment and
 must be declared as one.
+
+**Locations and schemas are predeclared.** Arc 1 writes
+[`docs/design/86-eva-gate1-parameters.json`](86-eva-gate1-parameters.json), containing only the
+tiny Gate-1 fixtures, including the D3 quadrature orders and D4 Monte-Carlo seed, draw count, and
+decision rule. Before Gate 4, a separately approved
+`docs/design/86-eva-gate4-campaign-parameters.json` must contain every campaign quantity listed
+above, including explicit expanded per-replicate seed arrays. Both files are canonical JSON (UTF-8,
+two-space indentation, terminal newline) before their SHA-256 values are recorded. A root seed or a
+seed-generating algorithm is not a substitute for the Gate-4 expanded arrays.
+
+**Coordinate choice, approved for the first freeze.** The Gate-1 Bernoulli fixture is `q = 1` and
+the values in the Gate-1 file. The proposed later baseline is `T = 48`, `q = 2`, an intercept-only
+`X`, and `beta = -3.20`; it is explicitly **not frozen** until the Gate-4 campaign file exists.
+`korhonen_calibration_status` is `"UNQUANTIFIED"` unless a primary-source recovery occurs before
+that later freeze, in which case a new maintainer-approved campaign freeze is required. Thus the
+`0.900` floor is a predeclared convention, not a calibrated distance from Korhonen, until that
+recovery exists.
+
+**Arc-1 checksum receipt (2026-07-22):** the Gate-1 fixture file SHA-256 is
+`a3cb2b9302132b2a917639ac30ce070d5d0f67e9c21f50ffbcc232ead448b036`.
+
+**Arc-1 apparatus and derivation receipt (2026-07-22):** direct reuse is limited to
+`.va_r3_gh_rule()` from `R/va-r3-proto.R` at
+`c38b3e8c87d1210ec7d3be90bdb95ee84a76a3a7`.  The stable-softplus formula and
+log-Cholesky parameterisation were freshly re-derived from §§5.1 and 7.1 and
+independently implemented in `R/eva-proto.R` / `inst/tmb/gllvmTMB_eva.cpp`; no
+Design-85 C++ or R softplus/expectation code was copied.  The independent
+scalar oracle and q=2/permuted-row tests are the equation-to-code audit of the
+EVA likelihood, variance, KL, and packed-Cholesky terms.  No source was copied
+from parked `origin/claude/va-phase1-proof` (`R/va-proto.R`,
+`inst/tmb/gllvmTMB_va.cpp`); its mean-field, closed-form VA is context only.
 
 ---
 
@@ -412,16 +445,17 @@ s''''(η) = p(1−p)(1 − 6p + 6p²),        roots at p ≈ 0.2113 and 0.7887
 E_q[R]  ≈  −(1/8) · sum_t s''''(η_t) · v_t²,        v_t = lambda_t' A_i lambda_t
 ```
 
-- **Balanced data** (`0.211 < p < 0.789`): `s'''' < 0`, so `E_q[R] > 0` and `ell_EVA < L_exact`.
-  **The bound holds.**
-- **Sparse data** (`p < 0.211`): `s'''' > 0`, so `E_q[R] < 0` and **`ell_EVA > L_exact`.** The
-  objective **overshoots the exact ELBO** — and whether it also overshoots `log p(y)` depends only
-  on whether the overshoot exceeds the `KL(q ‖ posterior)` slack.
+- **Balanced data** (`0.211 < p < 0.789`): the *local small-variance* term has `s'''' < 0`, so
+  `E_q[R] > 0` and `ell_EVA < L_exact` to fourth order.
+- **Sparse data** (`p < 0.211`): the *local small-variance* term has `s'''' > 0`, so
+  `E_q[R] < 0` and **`ell_EVA > L_exact` to fourth order.** The frozen D4 fixture verifies this
+  local overshoot numerically. It is not a theorem for arbitrary `A_i`: at large variance higher
+  terms can reverse the sign. Whether EVA also overshoots `log p(y)` always depends on the
+  `KL(q ‖ posterior)` slack.
 
-**The sign flips at `p ≈ 0.211`, and this contract's admitted regime is `z ∈ [0.90, 0.97]`, i.e.
-`p̄ ∈ [0.03, 0.10]` — entirely on the wrong side of it.** Worse, the optimiser maximises the
-surrogate, so it is *actively rewarded* for configurations where `−E_q[R]` is large: the slack is
-consumed deliberately, not left as margin.
+**The fourth-order local sign flips at `p ≈ 0.211`, and this contract's admitted regime is
+`z ∈ [0.90, 0.97]`, i.e. `p̄ ∈ [0.03, 0.10]` — entirely on the sparse side of that local result.**
+It does not license a universal sign claim outside its small-variance domain.
 
 **This strengthens, rather than weakens, the case for the experiment** — a non-bound objective is
 exactly why interval coverage must be measured empirically rather than inferred from the objective's
@@ -431,7 +465,7 @@ geometry. But it forecloses any argument that rests on bound-ness.
 
 - `ell_EVA` is called **the EVA objective**. It is **not** called a bound, a lower bound, an ELBO,
   a likelihood, a marginal likelihood, a restricted likelihood, REML, or AGHQ.
-- **No signed statement** may be made about `ell_EVA` relative to the **marginal** log-likelihood.
+- **No signed evidential statement** may be made about `ell_EVA` relative to the **marginal** log-likelihood.
   The derivation above signs `ell_EVA − L_exact` (positive in the sparse regime), but
   `L_exact − log p(y)` carries the `KL(q ‖ posterior)` slack, whose magnitude is unknown, so the
   composite direction remains open. Signing the relation to the *exact ELBO* is permitted and
@@ -603,7 +637,9 @@ the symbol.
 
 - Calling `ell_EVA` a marginal log-likelihood, exact likelihood, restricted likelihood, REML,
   AI-REML, Cox–Reid adjustment, AGHQ, ELBO, or lower bound (§5.3).
-- Any **signed** statement about `ell_EVA` relative to the marginal log-likelihood.
+- Any **signed evidential statement** about `ell_EVA` relative to the marginal log-likelihood.
+  A frozen, internal Gate-1 AGHQ diagnostic may retain its signed numeric value solely to detect
+  implementation drift; it neither predicts a direction nor supports an interpretation or claim.
 - **Describing a larger `ell_EVA` — or a smaller negative objective — as better fit than the
   Laplace or Gauss–Hermite objective on the same data.** `ell_EVA`, the Laplace objective, and
   `L_H` are not on a comparable scale, and no ordering among them carries evidential content. This
@@ -641,21 +677,18 @@ never widened after a result is seen ([Design 72](72-variational-approximation-f
 
 ### Gate 0 — scope and coordinate freeze
 
-- The frozen parameter file (§2.5) exists; its checksum is recorded in this contract; the runner
-  reads it and restates nothing.
-- A byte-identity checksum confirms EVA, the reference, and the Laplace arm receive the same
-  ordered response cells, trait IDs, unit IDs, and `X`.
-- `n_it = 1` for every cell; `unique = FALSE` asserted; every excluded keyword, family, link and
-  data shape fails **before** objective construction.
-- Realised `z` reported per replicate; `I_unit` computed and reported per cell.
-- **The correctness anchor and the admission experiment have no shared runner, no shared
-  denominator, and no shared output directory.** This is the reform aimed at Design 85's *actual*
-  cause of failure, so it may not rest on prose the way Design 85's separation did. It requires the
-  same class of mechanism as the parameter-file checksum beside it: **a provenance record, emitted
-  by each runner and independently checkable, recording the runner's own source checksum, its
-  output path, and its denominator rule.** Two experiments whose provenance records show a shared
-  runner checksum or a shared output path have not satisfied this gate, whatever the design document
-  says.
+- **Arc-1 coordinate-freeze receipt:** the frozen parameter file (§2.5) exists; its checksum is
+  recorded in this contract; the Gate-1 driver reads the applicable fixture fields and restates
+  none. `n_it = 1`, `unique = FALSE`, and the excluded data/model shapes are asserted before
+  objective construction. The receipt also lists each reused Design-85 apparatus component, its
+  source path and commit, the fresh equation-to-code audit, and confirms that no parked Phase-1 VA
+  source was copied.
+- **Later-runner provenance receipt (required before Gate 2 or Gate 4 is scored, not falsely
+  claimed complete by Arc 1):** a byte-identity checksum confirms EVA, the reference, and Laplace
+  receive the same ordered response cells, trait IDs, unit IDs, and `X`; realised `z` and `I_unit`
+  are reported; and each Gate-2/Gate-4 runner emits an independently checkable source checksum,
+  output path, and denominator rule. The two runners must not share a checksum, denominator, or
+  output directory.
 
 **NO-GO:** any implicit `Psi`, changed loading transform, missing cell, `n_it != 1`, a parameter
 file whose checksum does not match, **a shared runner, denominator, or output directory between
@@ -675,11 +708,12 @@ source copied without a fresh derivation audit**.
   from declared boundaries; the small-`v` routine is value- and first-derivative continuous.
 - **The bound property (§5.3) is derived and its outcome recorded**, either way. A derivation
   already exists and is recorded in §5.3; Gate 1 must reproduce or refute it, not restate it.
-- **A numerical bound probe, labelled a measurement and not a gate.** Evaluate `ell_EVA` against a
-  high-order AGHQ **marginal** log-likelihood at `q = 1` on a tiny sparse fixture. This is cheap and
-  it is the only place in the entire contract where the objective is compared to an exact marginal
-  likelihood at all — Gate 3's reference is itself an approximation and says so. Without this probe
-  the sign of `ell_EVA − log p(y)` is never observed anywhere, only reasoned about.
+- **A numerical marginal probe, labelled a measurement and not a gate.** Evaluate `ell_EVA` against
+  a high-order AGHQ **marginal** log-likelihood at `q = 1` on a tiny sparse fixture and record the
+  observed signed difference with its quadrature-convergence receipt. §5.3 does **not** predict
+  this marginal sign: it signs `ell_EVA - L_exact`, while the unknown posterior-KL slack remains.
+  The probe is the only place in the contract where the objective meets a marginal likelihood;
+  Gate 3's reference is itself an approximation.
 
 **NO-GO:** clipping needed for finiteness; a wrong KL sign; **omitted constants — including the
 `+ q` per unit in the KL term of §5.1**; an inconsistent negative-objective sign; the Gaussian

@@ -46342,3 +46342,48 @@ arc added no warning site, because the set is not a function of the code alone.*
 is a defect; the *evidence standard* was.
 
 **M1 remains WITHHELD.**
+
+### 2026-07-22 — Design 86 EVA Arc 1 (Gate 0 coordinate freeze + Gate 1 prototype)
+
+Branch: `codex/design86-arc1-20260722`, isolated from
+`origin/claude/design86-eva-contract-20260722` outside Dropbox.  This is a
+research-only, unexported prototype: it does not alter the shipped engine or
+public package surface, and it deliberately stops before Gate 2.
+
+Gate-0 coordinate receipt: the single frozen Gate-1 fixture file is
+`docs/design/86-eva-gate1-parameters.json`, SHA-256
+`a3cb2b9302132b2a917639ac30ce070d5d0f67e9c21f50ffbcc232ead448b036`.
+The contract records that checksum and distinguishes this coordinate freeze
+from the later Gate-4 campaign provenance freeze.
+
+Gate-0 apparatus receipt: direct reuse is limited to `.va_r3_gh_rule()` from
+`R/va-r3-proto.R` at `c38b3e8c87d1210ec7d3be90bdb95ee84a76a3a7`.  Stable
+softplus and log-Cholesky were re-derived from the contract and independently
+implemented; no Design-85 C++/R softplus or expectation implementation was
+copied.  Independent scalar-oracle, q=2, and permuted-row checks form the
+fresh equation-to-code audit.  No source from the parked mean-field Phase-1
+branch (`R/va-proto.R`, `inst/tmb/gllvmTMB_va.cpp`) was copied.
+
+Implemented and exercised:
+
+- independent scalar R oracles for Bernoulli-logit and a test-only Gaussian
+  identity branch, including the `+q` EVA KL constant;
+- standalone `inst/tmb/gllvmTMB_eva.cpp` plus unexported `R/eva-proto.R`, with
+  `random = NULL`, full log-Cholesky loading packing, stable softplus, and
+  long-row indexing through the supplied `unit_id` / `trait_id`;
+- q=1 AGHQ marginal measurement reusing `.va_r3_gh_rule`, retained only as a
+  frozen internal drift diagnostic; and
+- fourth-derivative and Monte-Carlo remainder checks for the local
+  small-variance statement, not a universal sign claim.
+
+Verification is recorded in
+`docs/dev-log/after-task/2026-07-22-design86-arc1-gate0-gate1.md`.  The final
+source-only Gate-1 test command reported 23 passes, 0 failures, warnings, or
+skips.  `git diff origin/main -- src/gllvmTMB.cpp` was empty; no prohibited
+public-surface path was changed.  Full `devtools::load_all()` / package checks
+were deliberately not run because the isolated worktree lacks permission to
+compile the shipped `src/gllvmTMB.cpp`; the standalone TMB template compiled
+in a temporary directory as part of the focused test.
+
+Reviews: Noether (math) and Gauss (numerics) both returned DONE after repair;
+Rose scope review is the closing receipt.  No compute campaign was run.

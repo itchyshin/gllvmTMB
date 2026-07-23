@@ -46,6 +46,18 @@ so I did **not** edit your prose. Listed so you can decide:
 - **`\value` on `ordiplot` and `gllvmTMB_multi-methods`** — the CRAN lane is satisfied, but these two
   exported topics lack an explicit return-value section. Adding one is factual content — your wording.
 
+## C2. One extracheck flag worth knowing before submission
+
+**72 man topics use `\dontrun`.** The tarball passes `--as-cran` regardless (dontrun examples aren't
+executed), so it is **not a blocker** — but CRAN policy prefers `\donttest` for examples that are
+merely *slow* and reserves `\dontrun` for examples that genuinely *cannot* run. 72 is high enough that
+a CRAN reviewer may ask about it. Worth a pass before submission to reclassify the slow-but-runnable
+ones; a large source edit, so **held for your decision**, not applied.
+
+**Site QA (rendered HTML) passed:** the D-41 callout renders on the home page; the three
+`Interval calibration` sections render in the reference pages; `make_cross_kernel` shows zero
+"validated"; no broken links or build problems.
+
 ## D. The "outdated content" axis (you raised this)
 
 A staleness grep of the articles found **no stale syntax**: the `link_residual =` uses are current API,

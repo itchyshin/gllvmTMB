@@ -100,6 +100,10 @@ This is not a completed Gate-2 anchor.  There is no Laplace result, recovery,
 coverage, covariance-bias, or comparison claim.  The fixed start/optimiser
 contract needs a fresh, maintainer-approved diagnosis or amendment before any
 new smoke; no fifth/replacement start is permitted under the current freeze.
+The scope closeout also found that Arc 2 extended `R/eva-proto.R`; although it
+is unexported and the `src/gllvmTMB.cpp` guard is clean, the Gate-2 brief
+permits new implementation only in `dev/`. A future authorised repair must
+move that Arc-2 support into `dev/` or obtain an explicit versioned amendment.
 
 ## 12. Cross-Product Coverage
 

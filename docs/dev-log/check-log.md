@@ -46647,3 +46647,50 @@ ran on v0.6.0-rc.1. Verdict: do not submit yet. Findings, each checked against t
 Findings doc: docs/dev-log/2026-07-23-codex-adversarial-findings.md. Verdict archived at
 ~/gllvmTMB-0.6-evidence/m5-rc1/codex-adversarial-review.txt. NOTHING SUBMITTED. The calibration-wording
 decision gates submission and is the maintainer's.
+
+## 2026-07-23 — corrected RC.2 evidence and GitHub-only v0.6.0 tag (Codex)
+
+The 11-file RC.2 honesty sweep was frozen at `c0af58d3f64593bff2d11adfeb0dba0c24c0ca5b`
+(`Withdraw legacy coverage gate narrative`). It removes the final shipped-source
+legacy coverage-gate narrative: supported claims are point estimates and focused
+route tests; no interval is coverage-calibrated. `v0.6.0-rc.2` and the final
+non-CRAN `v0.6.0` tag both resolve to that exact commit.
+
+Corrected tarball receipt:
+
+```
+gllvmTMB_0.6.0.tar.gz
+SHA-256 559db1f97260326633bac540aae0df2bd14f7afd46345b71c401df15aacd6aee
+size 3241935 bytes; 595 inventory entries; top-level gllvmTMB/ only
+forbidden-path scan CLEAN
+R CMD check --as-cran --run-donttest: Status 1 NOTE (New submission), 0 errors, 0 warnings
+```
+
+Local gates previously run on the corrected candidate: `devtools::document()`
+(only expected Rd pages), `pkgdown::check_pkgdown()` (pass),
+`urlchecker::url_check()` (pass), and the full structured suite (0 failures / 0
+errors; 779 skips). Required Suggests were available.
+
+Exact-tag CI: manual 3-OS fast run `30011350134` was success with macOS,
+Windows, and Ubuntu each reporting `Status: OK`. Heavy exact-tag run
+`30011327933` completed Success at the same `c0af58d3` head; public job receipts
+show macOS and Ubuntu success, and the public workflow result shows overall
+Success (therefore Windows success). GitHub's authenticated job-log download was
+rate-limited at closeout, so its raw per-job text could not be retained; this is
+a transparency limitation, not a failure claim.
+
+`devtools::check_win_devel()` was submitted for the corrected source, but its
+R-devel email had not arrived by release closeout. The maintainer explicitly
+authorised a GitHub-only non-CRAN release; it is retained as supplementary
+evidence for any later CRAN decision. No CRAN upload occurred.
+
+Claim-consistency scans (verbatim):
+
+```
+rg -n -i 'coverage[- ]calibrat|calibrated coverage|coverage gate|95% coverage|94% coverage' R man README.md NEWS.md vignettes docs
+rg -n -i 'coverage[- ]calibrat|calibrated coverage|coverage gate|95% coverage|94% coverage' . --glob '!docs/dev-log/**' --glob '!docs/design/**'
+```
+
+Verdict: active shipped source, Rd, README, NEWS, and vignettes contain no
+positive calibrated-interval or coverage-gate claim; retained historical logs
+are deliberately excluded from the second scan.

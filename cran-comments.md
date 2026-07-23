@@ -23,18 +23,22 @@ appears on the startup message, the README/pkgdown, and this DESCRIPTION.
 
 ## Test environments
 
-Evidence below is at the frozen tag **`v0.6.0-rc.1`** (source commit `e9bc655a`).
+The superseded `v0.6.0-rc.1` receipt is historical only. Evidence below is for
+the corrected exact tag **`v0.6.0-rc.2`** (and identical final `v0.6.0`), source
+commit `c0af58d3f64593bff2d11adfeb0dba0c24c0ca5b`.
 
 * local: macOS (Apple silicon), R 4.6.0 (2026-04-24) — `R CMD check` on the
   built tarball with `--as-cran` and CRAN incoming feasibility enabled
 * GitHub Actions three-OS matrix — ubuntu-latest, macos-latest, windows-latest,
-  R **release** — full suite and vignettes (run 29977191886, at the tag)
-* GitHub Actions heavy regression suite — three-OS (run 29977182659, at the tag)
+  R **release** — full suite and vignettes (run 30011350134, at the tag)
+* GitHub Actions heavy regression suite — three-OS (run 30011327933, at the tag)
 
-**Pending before upload (maintainer):** win-builder **R-devel** and macbuilder.
-CRAN checks first submissions on R-devel; the matrix above pins R *release*, so
-this is the one outstanding pre-submission check. Reconcile any R-devel findings
-here before uploading.
+**This document is not a submission instruction.** On 2026-07-23 the maintainer
+authorised a GitHub-only `v0.6.0` release and explicitly withheld CRAN
+submission. The final tag is `v0.6.0` at `c0af58d3`, identical to corrected
+`v0.6.0-rc.2`. The fresh R-devel win-builder result remains supplementary
+platform evidence for any later CRAN decision; no upload is authorised by this
+record.
 
 ## R CMD check results
 

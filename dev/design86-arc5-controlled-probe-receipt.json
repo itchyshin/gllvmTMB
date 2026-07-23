@@ -1,0 +1,50 @@
+{
+  "label": "NON_GATE2_CONTROLLED_EVA_DIAGNOSTIC",
+  "status": "GATE_A_PARK",
+  "base_commit": "e0e16079",
+  "probe_code_status_at_execution": "untracked development files; this receipt is not a stand-alone reproducibility record",
+  "fixture": "gate1_bernoulli_q2",
+  "scope": [
+    "deterministic pre-existing Gate-1 objective",
+    "no Design-86 runner",
+    "no Gate-2 input, smoke seed, DGP, or artifact root"
+  ],
+  "parameter_blocks": {
+    "beta": 1,
+    "theta_rr": 5,
+    "a": 4,
+    "log_A_diag": 4,
+    "A_off": 2
+  },
+  "parlist_roundtrip": true,
+  "ad_finite_difference": {
+    "steps": [0.0001, 0.00001, 0.000001],
+    "normalized_discrepancy_max": {
+      "interior": 5.144237e-09,
+      "offset": 5.531004e-09
+    },
+    "pass": true,
+    "interpretation_limit": "local derivative QA only"
+  },
+  "four_stage_telemetry": {
+    "convergent_quadratic": {
+      "final_code": 0,
+      "final_max_abs_gradient": 4.007905e-14,
+      "healthy": true
+    },
+    "nonstationary_linear": {
+      "codes": [1, 0, 0, 1],
+      "final_max_abs_gradient": 1,
+      "healthy": false
+    }
+  },
+  "raw_loading_scale_probe": {
+    "parameterization": "z_theta = theta_rr / 10; theta_rr = 10 * z_theta",
+    "start": "all theta_rr coordinates set to 5",
+    "raw": {"final_code": 0, "final_objective": 0.07072063, "final_max_abs_gradient": 3.45369310, "healthy": false},
+    "scaled": {"final_code": 0, "final_objective": 0.01601469, "final_max_abs_gradient": 1.26558302, "healthy": false},
+    "same_target_within_1e-8": false,
+    "discriminating_prediction_pass": false
+  },
+  "decision": "The controlled A1-A3 summaries are not sufficient to establish their full specification criteria; A0 was not performed by this helper; A4 is nondiscriminating. Gate A is PARK. Do not draft V2 or invoke a runner."
+}

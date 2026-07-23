@@ -46547,3 +46547,26 @@ public API, Gate-2 campaign, Gate-3/4, Totoro, DRAC, push, or PR was performed.
 PR state was inferred. The planned Luna mechanical-verification receipt was not
 produced; equivalent checks ran inline and this routing drift is recorded in
 `docs/dev-log/plan-actual/2026-07-23-design86-arc4-forensic.md`.
+
+### 2026-07-23 — Design 86 Arc 5 Gate-A numerical diagnosis (parked)
+
+Completed the static provenance/coordinate/source audits and one deterministic
+NON_GATE2 controlled EVA/TMB probe. The static map places the V1 extreme
+coordinates in raw `theta_rr` loadings. The runner's
+`output_manifest_sha256` field hashes its result JSON rather than a stored
+output manifest. On the controlled Gate-1 objective, AD/finite-difference and
+code/gradient telemetry behaved as expected, but the predeclared
+`theta_rr / 10` scaling comparison left both traces unhealthy and at different
+objectives. Gauss judged that result INCONCLUSIVE; Rose additionally found the
+receipt incomplete for a Gate-A promotion. The operative verdict is PARK.
+
+Checks: `Rscript --vanilla dev/test-design86-arc5-controlled-probe.R` -> PASS;
+JSON validation -> PASS; `git diff --check` -> PASS; and `git diff --exit-code
+HEAD -- R/eva-proto.R src/gllvmTMB.cpp dev/design86-gate2-eva-runner.R
+dev/design86-gate2-laplace-runner.R` -> empty. The temporary controlled build
+was the tiny Gate-1 prototype only.
+
+No V2 amendment, runner call, Gate-2 input/DGP, smoke, historical rescore,
+Laplace, public/API/C++ work, Gate-3/4, Totoro, DRAC, push, or PR was
+performed. A future live lane requires a fresh, separately approved diagnostic
+arc followed by a new Gate A and Gate B.

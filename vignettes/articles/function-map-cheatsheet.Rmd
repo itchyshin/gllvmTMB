@@ -34,8 +34,8 @@ get("source", envir = baseenv())(inventory_file)
   box-shadow: 0 8px 24px rgba(23, 48, 66, .08);
 }
 .gllvm-map *, .gllvm-downloads * { box-sizing: border-box; }
-.gllvm-map__header { display: flex; gap: .8rem; align-items: center; margin-bottom: .9rem; }
-.gllvm-map__mark { display: grid; place-items: center; flex: 0 0 3rem; width: 3rem; height: 3rem; border-radius: 12px; background: #052b3f; color: #fff; font-weight: 800; }
+.gllvm-map__visual { display: block; inline-size: 100%; max-inline-size: 38rem; block-size: auto; margin: .75rem auto 1rem; }
+.gllvm-map__header { margin-bottom: .9rem; }
 .gllvm-map__header h2 { margin: 0; color: var(--ink); font-size: 1.35rem; }
 .gllvm-map__header p, .gllvm-map__caption { margin: .2rem 0 0; color: var(--muted); }
 .gllvm-map__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
@@ -90,13 +90,12 @@ when you are new to GLLVMs.
 ![A looped gllvmTMB function map: prepare and specify, fit, check fit health,
 interpret covariance, choose uncertainty, then report, predict, or simulate.
 The map shows the primary R functions inside each task module; the accessible
-HTML map and sections below provide the complete details.](figures/gllvmTMB-function-map-illustration.png){fig-alt="Looped gllvmTMB function map showing real public R functions for preparation, fitting, checking, covariance interpretation, uncertainty, and reporting, prediction, or simulation."}
+HTML map and sections below provide the complete details.](figures/gllvmTMB-function-map-illustration.png){.gllvm-map__visual fig-alt="Looped gllvmTMB function map showing real public R functions for preparation, fitting, checking, covariance interpretation, uncertainty, and reporting, prediction, or simulation."}
 
 ```{=html}
 <section class="gllvm-map" role="figure" aria-label="gllvmTMB function map from data preparation through fitting, checking, interpretation, uncertainty, and reporting">
   <div class="gllvm-map__header">
-    <div class="gllvm-map__mark" aria-hidden="true">gLLVM</div>
-    <div><h2>gllvmTMB function map</h2><p>Choose the task first; then follow the relevant function and guide.</p></div>
+    <h2>gllvmTMB function map</h2><p>Choose the task first; then follow the relevant function and guide.</p>
   </div>
   <div class="gllvm-map__grid">
 ```

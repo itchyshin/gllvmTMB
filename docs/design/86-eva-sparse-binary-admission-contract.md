@@ -12,10 +12,10 @@ see the handover at [`docs/dev-log/handover/2026-07-22-codex-handover-design86-g
 > `LOOP/decision-queue.md` "records it `NOT YET OPEN`". It does not. That file's Design 86 row
 > currently reads **`CUT 2026-07-21`**, with the recommendation *"Superseded by the maintainer's
 > EVA cut. Never written or approved — do not cite as a contract."* That row is stale: it records
-> Amendment 1's cut of EVA from 0.6 and predates Amendment 3, which reopened this lane as
-> design-only on 2026-07-22. **Both readings agree on the only thing that matters here — Design 86
-> is not an approved contract — so nothing in this document turns on the difference.** Correcting
-> the ledger row lies outside this lane's write fence and is a maintainer action.
+> Amendment 1's cut of EVA from 0.6 and predates Amendment 3, which reopened this lane on
+> 2026-07-22. **The maintainer approved the Design-86 experimental contract on 2026-07-22.**
+> That approval is limited to the sequential private gates and does not authorise a public method,
+> release claim, or Gate-4 campaign.
 
 **Authority to write it:** `LOOP/GOAL.md` Maintainer Amendment 3 (2026-07-22), which authorised a
 second, design-only lane on a disjoint write scope. **0.6 ships Laplace-only and is unaffected**
@@ -261,9 +261,10 @@ experiment from the one its prose specified [85 §13](85-highdim-nongaussian-va-
 Prose did not prevent that. Therefore:
 
 **A scope freeze is not allowed to pretend it knows quantities that a prior gate must re-derive.**
-Therefore this contract has two machine-readable freezes: (1) the **Gate-1 fixture file**, frozen
-and checksummed in Arc 1; and (2) one **Gate-4 campaign file**, frozen only after the required
-optimiser and Gate-3 tolerance re-derivations. The campaign file contains all campaign quantities —
+Therefore this contract has three machine-readable freezes: (1) the **Gate-1 fixture file**, frozen
+and checksummed in Arc 1; (2) a **Gate-2 information-rich anchor file**, separately approved and
+checksummed before any Gate-2 input is generated; and (3) one **Gate-4 campaign file**, frozen
+only after the required optimiser and Gate-3 tolerance re-derivations. The campaign file contains all campaign quantities —
 the `n` ladder, the second ladders in `T` and `z`, replicate counts, the coverage floor, the margin
 over Laplace, `T`, `q`, the planted `beta` and `Lambda`, the zero-fraction target, the `I_unit`
 floor, the denominator rule (for coverage *and* for bias/RMSE), the named covariance estimator,
@@ -286,6 +287,14 @@ decision rule. Before Gate 4, a separately approved
 above, including explicit expanded per-replicate seed arrays. Both files are canonical JSON (UTF-8,
 two-space indentation, terminal newline) before their SHA-256 values are recorded. A root seed or a
 seed-generating algorithm is not a substitute for the Gate-4 expanded arrays.
+
+Before Gate 2, a separately maintainer-approved Gate-2 anchor parameter file
+(docs/design/86-eva-gate2-anchor-parameters.json) must contain its
+information-rich DGP, **all 500 expanded data-generation seeds**, the cell-level
+I_unit functional and floor, exact restart and winner rules for both arms, the named
+Schur-complement Wald covariance construction, collapse rule, all-attempt denominator/failure rule,
+and Gate-2-only runner/output identities. Its SHA-256 is recorded only after the maintainer signs
+off its values. Its runner and output root are distinct from Gate 4 by construction.
 
 **Coordinate choice, approved for the first freeze.** The Gate-1 Bernoulli fixture is `q = 1` and
 the values in the Gate-1 file. The proposed later baseline is `T = 48`, `q = 2`, an intercept-only

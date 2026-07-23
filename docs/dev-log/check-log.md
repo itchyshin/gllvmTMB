@@ -46387,3 +46387,35 @@ in a temporary directory as part of the focused test.
 
 Reviews: Noether (math) and Gauss (numerics) both returned DONE after repair;
 Rose scope review is the closing receipt.  No compute campaign was run.
+
+### 2026-07-22 — Design 86 Arc 2 Gate-2 fixture draft (awaiting maintainer sign-off)
+
+Arc 1 is sealed at 3b479354285a8dcd69ab43cc26d98f98e6b98041; Arc 2 begins in
+the external worktree codex/design86-arc2-20260722. This entry records a
+**DRAFT**, not a frozen fixture and not a run.
+
+The candidate Gate-2 JSON fixes a complete information-rich Bernoulli-logit
+cell (N = 80, T = 12, planted q = 2, intercept beta = -0.5), 500 expanded
+seeds (86200001 through 86200500), raw live packed loadings, unique = FALSE,
+Psi = 0, four deterministic EVA and live-Laplace starts, the Schur-complement
+beta Wald interval, all-attempt failure treatment, a rotation-invariant
+collapse rule, and private input/arm-receipt paths.
+
+Checks:
+
+- JSON parsing -> PASS.
+- Expanded seed audit -> 500 seeds, first 86200001, last 86200500, theta_rr
+  length 23.
+- Independent R unpacking/eigen check -> PASS; packed loadings reconstruct
+  exactly and the two nonzero truth covariance eigenvalues are 6, 6.
+- Analytic information receipt -> PASS: I_unit(0) = 1.4100222732; the frozen
+  0.35 pooled-Q10 floor is conservatively below the 90-percent Gaussian-ball
+  lower bound 0.371103565, without filtering a unit or a replicate.
+- Whitespace, shipped-source, and guarded public-path checks -> PASS.
+
+No runner, input manifest, local smoke, Totoro job, Gate-3 reference, or
+Gate-4 campaign was created or run. The fixture status remains
+DRAFT_REQUIRES_MAINTAINER_SIGNOFF, and its fixture/seed checksums remain null
+until the maintainer approves the exact values. Noether/Gauss and Rose both
+returned DONE for the draft specification after its deterministic-start, Schur,
+information, Laplace-health, and provenance details were completed.

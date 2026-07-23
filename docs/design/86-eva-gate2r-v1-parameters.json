@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0.0",
-  "status": "G2R_V1_UNSIGNED_CANDIDATE",
+  "status": "G2R_V1_SIGNED",
   "gate": "G2",
   "research_only": true,
   "objective_type": "EVA_TAYLOR2",
   "fixture_checksum_recorded_in": "docs/design/86-gate2r-v1-amendment.md",
-  "maintainer_signoff": "PENDING_GATE_B_SIGNATURE",
+  "maintainer_signoff": "SIGNED_GATE_B",
   "gate2r": {
     "version": "G2R-V1",
     "historical_fixture_path": "docs/design/86-eva-gate2-anchor-parameters.json",

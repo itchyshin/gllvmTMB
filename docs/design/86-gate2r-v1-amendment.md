@@ -60,13 +60,13 @@ telemetry with JSON `null` for unavailable numeric values. Stage states remain
 
 ## Gate B — final smoke authority
 
-**Gate-B status:** UNSIGNED
+**Gate-B status:** SIGNED
 
-**Fixture SHA-256:** `PENDING`
+**Fixture SHA-256:** `562830f03c6bc564ff01ebc9d7d4fba0634d5fe0c26b7069bb6ec4c568149e69`
 
-**Maintainer:** PENDING
+**Maintainer:** Shinichi Nakagawa
 
-**Signed on:** PENDING
+**Signed on:** 2026-07-23
 
 Replacing the four fields above with a consistent signed record is the only
 mechanism that can permit the private runners to proceed. The signature grants

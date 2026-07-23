@@ -1,0 +1,281 @@
+---
+title: "Function map and cheat sheet"
+description: "Find the documented function for preparing, fitting, checking, interpreting, or reporting a stacked-trait GLLVM."
+tier: 2 # Lookup guide from a modelling task to the current public API.
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Function map and cheat sheet}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE, warning = FALSE)
+library(gllvmTMB)
+inventory_file <- normalizePath(
+  file.path("..", "..", "dev", "function-map-inventory.R"),
+  mustWork = TRUE
+)
+get("source", envir = baseenv())(inventory_file)
+```
+
+<style>
+.gllvm-map {
+  --ink: #173042;
+  --muted: #536875;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #f7fafb;
+  border: 1px solid #d9e3e8;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(23, 48, 66, .08);
+}
+.gllvm-map *, .gllvm-downloads * { box-sizing: border-box; }
+.gllvm-map__header { display: flex; gap: .8rem; align-items: center; margin-bottom: .9rem; }
+.gllvm-map__mark { display: grid; place-items: center; flex: 0 0 3rem; width: 3rem; height: 3rem; border-radius: 12px; background: #052b3f; color: #fff; font-weight: 800; }
+.gllvm-map__header h2 { margin: 0; color: var(--ink); font-size: 1.35rem; }
+.gllvm-map__header p, .gllvm-map__caption { margin: .2rem 0 0; color: var(--muted); }
+.gllvm-map__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.gllvm-map__card { min-width: 0; padding: .8rem; border: 1.5px solid var(--accent); border-radius: 12px; background: var(--wash); }
+.gllvm-map__card h3 { margin: 0 0 .45rem; color: var(--accent-dark); font-size: .96rem; }
+.gllvm-map__card p { margin: .35rem 0; color: var(--ink); line-height: 1.42; }
+.gllvm-map__card small { display: block; margin-top: .45rem; color: var(--muted); line-height: 1.35; }
+.gllvm-map__card a { color: var(--accent-dark); font-weight: 700; text-decoration-thickness: .08em; }
+.gllvm-map__card a:focus-visible, .gllvm-download:focus-visible { outline: 3px solid #052b3f; outline-offset: 3px; }
+.map-prepare { --accent: #79a84b; --accent-dark: #466d22; --wash: #f4f8ef; }
+.map-fit { --accent: #4d87c3; --accent-dark: #245b91; --wash: #eff5fb; }
+.map-check { --accent: #8b68b0; --accent-dark: #5b3c83; --wash: #f5f1fa; }
+.map-interpret { --accent: #db914c; --accent-dark: #98521c; --wash: #fdf5ec; }
+.map-uncertainty { --accent: #c16c8c; --accent-dark: #8d3d5d; --wash: #fbf1f5; }
+.map-report { --accent: #32a1a0; --accent-dark: #126e70; --wash: #eff8f7; }
+.gllvm-map__route { margin: .9rem 0 0; padding: .7rem .8rem; border: 1px dashed #9eafb8; border-radius: 9px; background: #fff; color: var(--ink); }
+.gllvm-map__route strong { color: #052b3f; }
+.gllvm-downloads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; margin: 1rem 0 1.25rem; }
+.gllvm-download { display: block; padding: .85rem 1rem; border: 1px solid #bdd1d8; border-left: 5px solid #0a617d; border-radius: 10px; color: #173042; background: #f5f9fa; text-decoration: none; }
+.gllvm-download:hover { background: #ebf4f6; color: #173042; text-decoration: none; }
+.gllvm-download strong, .gllvm-download small { display: block; }
+.gllvm-download small { margin-top: .2rem; color: #536875; }
+@media (max-width: 760px) { .gllvm-map__grid { grid-template-columns: 1fr; } .gllvm-downloads { grid-template-columns: 1fr; } }
+</style>
+
+Use this guide when you have several responses for each site, individual,
+species, or study and know what you need to do next, but not which
+`gllvmTMB` function starts that task. It is a navigation aid, not a claim that
+every documented formula, family, covariance source, or interval is suitable
+for every data set.
+
+The page is a Tier 2 lookup guide within **Get started** because it routes
+readers to the current API and existing worked guides; [Get started](gllvmTMB.html) and
+[Individual morphometrics](morphometrics.html) remain the better first read
+when you are new to GLLVMs.
+
+```{=html}
+<div class="gllvm-downloads" aria-label="Download printable gllvmTMB function guides">
+  <a class="gllvm-download" href="../cheatsheets/gllvmTMB-function-map.pdf" download>
+    <strong>Download the visual function map (PDF)</strong>
+    <small>One landscape page with the six task modules and their key functions.</small>
+  </a>
+  <a class="gllvm-download" href="../cheatsheets/gllvmTMB-function-cheatsheet.pdf" download>
+    <strong>Download the one-page function cheatsheet (PDF)</strong>
+    <small>A compact landscape quick reference for all six task routes.</small>
+  </a>
+</div>
+```
+
+## Find the next step
+
+![A looped gllvmTMB function map: prepare and specify, fit, check fit health,
+interpret covariance, choose uncertainty, then report, predict, or simulate.
+The map shows the primary R functions inside each task module; the accessible
+HTML map and sections below provide the complete details.](figures/gllvmTMB-function-map-illustration.png){fig-alt="Looped gllvmTMB function map showing real public R functions for preparation, fitting, checking, covariance interpretation, uncertainty, and reporting, prediction, or simulation."}
+
+```{=html}
+<section class="gllvm-map" role="figure" aria-label="gllvmTMB function map from data preparation through fitting, checking, interpretation, uncertainty, and reporting">
+  <div class="gllvm-map__header">
+    <div class="gllvm-map__mark" aria-hidden="true">gLLVM</div>
+    <div><h2>gllvmTMB function map</h2><p>Choose the task first; then follow the relevant function and guide.</p></div>
+  </div>
+  <div class="gllvm-map__grid">
+```
+
+```{r function-map-cards, echo = FALSE, results = 'asis'}
+cat(function_map_html())
+```
+
+```{=html}
+  </div>
+  <p class="gllvm-map__route"><strong>Typical route:</strong> Prepare and specify → Fit → Check fit health → Interpret covariance. Prediction, simulation, and uncertainty are conditional branches, not compulsory stages.</p>
+  <p class="gllvm-map__caption">The cards use colour and order as helpful cues; their headings and links provide the complete reading order without colour, arrows, or CSS.</p>
+</section>
+```
+
+## A five-minute route through the map
+
+The smallest ordinary workflow asks whether three continuous traits covary
+across sites. Here, `latent()` represents a low-rank shared covariance and
+its ordinary default includes the trait-specific diagonal Psi. Thus
+`Sigma = Lambda Lambda^T + Psi`; `Sigma` is the model-implied trait covariance,
+`Lambda` is the shared loading matrix, and `Psi` is the diagonal of
+trait-specific variance.
+
+```{r simulate-and-fit}
+sim <- simulate_site_trait(
+  n_sites = 24, n_species = 1, n_traits = 3,
+  mean_species_per_site = 1,
+  Lambda_B = matrix(c(0.8, 0.5, -0.4), nrow = 3, ncol = 1),
+  psi_B = c(0.3, 0.25, 0.2), seed = 20260722
+)
+
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 1),
+  data = sim$data, trait = "trait", unit = "site",
+  control = gllvmTMBcontrol(n_init = 2, init_jitter = 0.05)
+)
+
+check_gllvmTMB(fit)
+extract_Sigma(fit, level = "unit", part = "total")$Sigma
+```
+
+The long form is canonical: one row per `(unit, trait)` observation. If your
+data start wide, `traits()` names the response columns and `gllvmTMB()` performs
+the same formula-level conversion:
+
+```{r wide-form, eval = FALSE}
+# One row per site and one response column per trait
+gllvmTMB(
+  traits(trait_1, trait_2, trait_3) ~ 1 + latent(1 | site, d = 1),
+  data = df_wide, unit = "site"
+)
+```
+
+This teaching fit demonstrates the route, not calibrated performance for other
+sample sizes, response families, ranks, or structured covariance sources. The
+next sections help you choose the right route for a different question.
+
+## Prepare and specify
+
+Start with three distinct choices.
+
+1. **Tier:** is the variation between units (`unit`), within repeated
+   observations (`unit_obs`), or a named structured component?
+2. **Relationship source:** are units ordinary-independent, pedigree-related,
+   phylogenetically related, spatially structured, or related through a supplied
+   dense kernel?
+3. **Trait covariance mode:** use `indep()` for a diagonal covariance, `dep()`
+   for a full covariance, or `latent()` for a reduced-rank covariance.
+
+The [Formula keyword grid](api-keyword-grid.html) is the canonical source for
+the source × mode grammar. It is intentionally not repeated here. In ordinary
+models, `latent()` includes Psi by default; `latent(..., unique = FALSE)` asks
+for the loadings-only subset. For animal, phylogenetic, spatial, and
+single-kernel latent terms, request the source-tier diagonal companion with
+`unique = TRUE`. New standalone diagonal code uses `indep()`.
+
+Use `gllvmTMBcontrol()` to choose documented optimisation settings. Choose a
+response only from [Response families](response-families.html), which separates
+supported multivariate routes from exported continuity constructors that
+deliberately stop when a route is unsupported. Use
+`meta_V(V = V)` only for its separate known sampling-covariance workflow; it is
+not another relationship-source row. The [Formula keyword grid](api-keyword-grid.html)
+includes a concise syntax example for that specialised route.
+
+## Fit the model
+
+Use [`gllvmTMB()`](../reference/gllvmTMB.html) for both long and wide
+data-frame formulas. A fitted model still needs a diagnostic read before it is
+used as biological evidence. For missing predictors, follow
+[Handling missing data](missing-data.html) rather than treating `mi()` or
+`impute_model()` as generic preprocessing helpers.
+
+## Check before you interpret
+
+[`check_gllvmTMB()`](../reference/check_gllvmTMB.html) returns a fit-health
+table for optimisation, gradient, standard-error, Hessian, restart, boundary,
+and latent-axis signals. [`gllvmTMB_diagnose()`](../reference/gllvmTMB_diagnose.html)
+adds a more detailed diagnostic route. For supported Gaussian, Poisson, and
+NB2 display diagnostics, [`predictive_check()`](../reference/predictive_check.html)
+shows fitted-response mismatch; it is not a general posterior-predictive or
+interval-calibration guarantee.
+
+If a fit is unstable, simplify rank or covariance mode, check replication at
+the relevant tier, and read [Convergence and start values](convergence-start-values.html).
+Do not interpret a convergence message as proof that every covariance component
+is identified.
+
+## Interpret the fitted quantity
+
+Start with rotation-invariant quantities.
+
+| Question | Function | What to carry forward |
+|---|---|---|
+| Which traits covary at a named tier? | [`extract_Sigma()`](../reference/extract_Sigma.html) | The model-implied total, shared, or diagonal covariance on a named scale. |
+| How strong is each association after scaling? | [`extract_correlations()`](../reference/extract_correlations.html) | Pairwise correlations plus the method/status returned for their intervals. |
+| How much trait variance is shared? | [`extract_communality()`](../reference/extract_communality.html) | A tier- and scale-specific shared-variance proportion. |
+| How should I display the fitted latent structure? | [`extract_ordination()`](../reference/extract_ordination.html) | Scores and loadings, whose axes and signs depend on orientation. |
+
+Use [Covariance and correlation](covariance-correlation.html) for interpretation
+of `Sigma`, `Lambda`, and `psi`. Use [`extract_Sigma_table()`](../reference/extract_Sigma_table.html),
+[`plot_Sigma_heatmap()`](../reference/plot_Sigma_heatmap.html), and
+[`plot_correlations()`](../reference/plot_correlations.html) when a table or
+figure is the appropriate next output.
+
+## Choose uncertainty by target
+
+Use [`profile_targets()`](../reference/profile_targets.html) and
+[`confint_inspect()`](../reference/confint_inspect.html) to learn what the
+fitted object can actually provide. Profile, Wald, bootstrap, and Fisher-z
+routes are target-specific. In particular, do not read this map as a promise
+of profile confidence intervals for every correlation or communality: inspect
+the returned method and status, then follow [Profile-likelihood confidence
+intervals](profile-likelihood-ci.html).
+
+`bootstrap_Sigma()` supplies a simulate-refit audit route for its documented
+targets. It can reveal failed refits; it does not by itself establish calibrated
+coverage in every model regime.
+
+## Report, predict, or simulate
+
+Use `extract_Sigma_table()` for report-ready covariance rows and
+`extract_correlations()` for correlation summaries; the `plot_Sigma_*()` helpers
+provide labelled visual summaries. `predict()` answers
+a fitted-response question; `simulate()` draws new responses from the fitted
+model. Those are different scientific tasks, particularly for non-Gaussian
+responses. Name the target, tier, and scale in the caption or table note.
+
+## Migration and advanced routes
+
+The public reference index contains more functions than this first-use map.
+Compatibility routes—including `gllvmTMB_wide()`, standalone `unique()`,
+`meta_known_V()`, `gr()`, `meta()`, `phylo_rr()`, and `spde()`—remain available
+for established analyses but are not new-code paths. Older extractors such as
+`getLV()` and `getLoadings()` are likewise migration helpers, not substitutes
+for the target-specific extractors above.
+
+Source-specific and kernel covariance terms, modelled missing-predictor tools,
+and the optional Julia bridge are advanced documented routes. Start from the
+[Formula keyword grid](api-keyword-grid.html), [Handling missing data](missing-data.html),
+or the [reference index](../reference/index.html) when one of those is required.
+Their presence in the reference index does not make them primary routes for a
+new stacked-trait analysis.
+
+## Scope and next pages
+
+**In:** the article's ordinary long/wide formula route and Gaussian teaching
+fit are covered by FG-01–FG-04 and FAM-01; `extract_Sigma()` and the ordinary
+interpretation route are covered by EXT-01 and EXT-05. **Partial:** response
+families, relationship sources, and interval targets have narrower evidence;
+the linked articles state their boundaries. **Not advertised here:** unsupported
+family constructors, experimental Julia-engine parity, causal kernel claims,
+or universal interval calibration. These identifiers are traceability links to
+the package's validation register, not prerequisites for using the guide.
+
+| If your next question is... | Go here next |
+|---|---|
+| Which keyword expresses my covariance assumption? | [Formula keyword grid](api-keyword-grid.html) |
+| What do `Sigma`, `Lambda`, and `Psi` mean? | [Plain-English vocabulary](gllvm-vocabulary.html) |
+| Can I trust this fit? | [Fit diagnostics](fit-diagnostics.html) |
+| How do I choose a response family? | [Response families](response-families.html) |
+| How do I interpret covariance biologically? | [Individual morphometrics](morphometrics.html) |

@@ -1,44 +1,15 @@
-## Phase 1b validation milestone 2026-05-15 (item 3 of 3):
-## coverage_study(fit, parm, n_reps, methods) -- empirical
-## coverage-rate estimator for any user's fit.
+## Withdrawn internal prototype (2026-07-23).
 ##
-## Audit recommendation 2026-05-15:
-##   "Empirical coverage study (Fisher's lane). Simulate from
-##    known DGPs (Gaussian, NB2, ordinal-probit; 50 reps each
-##    family). Fit each rep; profile every parameter; count
-##    fraction of CIs that contain truth. Output: a coverage-rate
-##    matrix as `.Rds` cached artifact + summary table in
-##    `docs/dev-log/`. Exit criterion: >= 94% empirical coverage
-##    per family."
-##
-## Implementation choice (2026-05-15): rather than a single
-## internal harness that runs the audit's three canonical fixtures,
-## ship the COVERAGE PATTERN as an exported function so any user
-## can audit their own fit. The 94% gate becomes a user-facing
-## sanity check: if `coverage_study(fit)` returns coverage rates
-## below 94% for the parameters that matter, the model may be
-## mis-specified, the fixture may be too small, or the inference
-## method may be off-calibrated for this particular DGP.
-##
-## Companion to (full Phase 1b diagnostic surface):
-##   - sanity_multi()                 -- fast: convergence + Hessian
-##   - gllvmTMB_diagnose()            -- fast: holistic + rotation
-##   - check_auto_residual()          -- fast: mixed-family safeguard
-##   - check_identifiability()        -- slow: Procrustes-aligned
-##                                       loadings recovery
-##   - gllvmTMB_check_consistency()   -- slow: Laplace-approximation
-##                                       score-centering test
-##   - coverage_study()               -- slow: empirical CI coverage
-##   - confint_inspect()              -- visual profile verification
+## This retained developer helper is not exported, does not retain all
+## attempted refits in its denominator, and must not be used as evidence that
+## any interval route is coverage-calibrated or publication-ready. Design 75
+## records that no current matrix cell has empirical-coverage calibration.
 
-#' Internal prototype for fitted-model interval simulations
+#' Withdrawn internal prototype for fitted-model interval simulations
 #'
-#' `coverage_study()` is an advanced validation helper for interval
-#' calibration, not a first-use diagnostic. Start with
-#' [check_gllvmTMB()], [gllvmTMB_diagnose()], [confint.gllvmTMB_multi()],
-#' or the report-ready extractors. Use this function when you need a
-#' fit-specific simulate-refit audit of whether nominal confidence
-#' intervals contain the fitted model's generating values.
+#' This helper is retained for developer archaeology only. It is not an
+#' exported validation tool and cannot establish empirical coverage calibration
+#' for any interval, family, target, or release.
 #'
 #' For each of `n_reps` parametric-bootstrap replicates, it simulates a
 #' new dataset from the fitted model, refits the same formula, computes
@@ -46,22 +17,12 @@
 #' fraction of CIs that contain the **original fit's** point estimate
 #' (the "truth" for this parametric-bootstrap study).
 #'
-#' This is the empirical-validation counterpart to
-#' `gllvmTMB_check_consistency()` (which tests whether the Laplace
-#' marginal score is centred) and `check_identifiability()` (which
-#' tests Procrustes-aligned loading recovery). Per the audit's Phase
-#' 1b validation milestone, **empirical coverage >= 94%** on the
-#' parameters that matter is the recommended fit-specific check before
-#' treating CIs as publication-ready.
+#' Its summaries are conditional on an original fitted model and omit failed
+#' refits from the denominator. They are exploratory diagnostics, not a
+#' calibration gate. See `docs/design/75-inference-route-truth-matrix.md` for
+#' the package-level claim boundary.
 #'
-#' Scope: the helper returns reproducible coverage summaries for a
-#' fitted model and the requested direct profile targets.
-#' Package-level production calibration has not yet passed for
-#' every family, dimension, and target surface. Broader
-#' interval-calibration claims require target-explicit simulation
-#' evidence that has not yet been produced.
-#'
-#' When coverage rates fall below 94%, common causes are:
+#' Exploratory variation in the returned rates can reflect:
 #'
 #' * **Boundary parameter**: variance pinned at zero -> Wald CIs
 #'   under-cover by construction; profile CIs are one-sided.
@@ -69,9 +30,8 @@
 #' * **Weak identifiability**: data don't constrain the parameter
 #'   well; rates can drop to near zero. `check_identifiability()`
 #'   confirms this for the loading entries.
-#' * **Non-quadratic profile surface**: Wald assumes symmetry, so
-#'   under-covers on the long-tail side. Profile CIs are accurate
-#'   here. `confint_inspect()` shows the curve shape.
+#' * **Non-quadratic profile surface**: Wald assumes symmetry and may
+#'   under-cover on a long-tail side. `confint_inspect()` shows the curve shape.
 #' * **Mis-specified model**: the bootstrap DGP doesn't match the
 #'   fitted model. Refit and retry.
 #'
@@ -85,9 +45,7 @@
 #'   `extract_*(method = "profile")` extractor with `nsim` for
 #'   bootstrap coverage instead -- those have their own machinery.
 #' @param n_reps Integer number of parametric-bootstrap replicates.
-#'   Default `30L` for a routine local check. Audit recommendation
-#'   for a publication-quality validation is `n_reps = 50L`
-#'   (or higher) per the Phase 1b validation milestone.
+#'   Default `30L`. This prototype is not a publication-quality validation.
 #' @param methods Character vector of CI methods to evaluate.
 #'   Default `c("wald", "profile")`. Each rep computes the CI via
 #'   each method and counts coverage separately. Bootstrap is not
@@ -106,16 +64,16 @@
 #'   \describe{
 #'     \item{`$coverage`}{Data frame, one row per (parm x method):
 #'       `parm`, `method`, `n_reps`, `n_covered`, `n_excluded`,
-#'       `rate` (coverage rate, between 0 and 1), `passes_94pct`
-#'       (logical, the audit's exit-gate flag).}
+#'       `rate` (exploratory rate, between 0 and 1), and a legacy
+#'       `passes_94pct` field that is not a calibration certificate.}
 #'     \item{`$intervals`}{Long-format data frame, one row per
 #'       (rep, parm, method): `rep`, `parm`, `method`, `truth`,
 #'       `lower`, `upper`, `covered`. Useful for diagnostic plots
 #'       and re-aggregation.}
 #'     \item{`$n_failed_refits`}{Integer; how many of `n_reps`
-#'       replicates had a refit that failed to converge. Replicates
-#'       are NOT included in the coverage rate denominator if their
-#'       refit failed (a separate `n_excluded` column tracks this).}
+#'       replicates had a refit that failed to converge. Their exclusion from
+#'       the denominator is precisely why this prototype cannot certify
+#'       empirical coverage.}
 #'     \item{`$call`}{The `match.call()` of the invocation.}
 #'   }
 #'
@@ -134,8 +92,8 @@
 #'                 unit  = "site")
 #' res <- coverage_study(fit, n_reps = 30L, seed = 1)
 #' res$coverage
-#' # passes_94pct column flags which targets meet the audit's
-#' # >= 94% empirical-coverage exit gate.
+#' # The legacy passes_94pct column is exploratory only; it is not a
+#' # coverage-calibration or publication-readiness gate.
 #' }
 #'
 #' @keywords internal
@@ -378,17 +336,17 @@ print.gllvmTMB_coverage_study <- function(x, ...) {
     "*" = "(parm x method) rows: {nrow(x$coverage)}"
   ))
   if (nrow(x$coverage) > 0L) {
-    cli::cli_h2("Coverage rates (audit's >= 94% exit gate)")
+    cli::cli_h2("Exploratory prototype rates (not a coverage-calibration gate)")
     print(x$coverage)
     n_fail <- sum(!x$coverage$passes_94pct)
     if (n_fail == 0L) {
       cli::cli_alert_success(
-        "All {nrow(x$coverage)} (parm x method) rows meet the 94% exit gate."
+        "All rows exceed the legacy 94% threshold; this does not establish calibrated coverage."
       )
     } else {
       offending <- x$coverage[!x$coverage$passes_94pct, , drop = FALSE]
       cli::cli_alert_warning(
-        "{n_fail} of {nrow(x$coverage)} (parm x method) rows fall short of 94%."
+        "{n_fail} of {nrow(x$coverage)} (parm x method) rows fall below the legacy 94% threshold."
       )
       cli::cli_text(
         "Common diagnoses include a natural boundary, weak identification, an irregular profile, or a mismatched model. Use {.fn confint_inspect} for direct-target curve inspection and the profile-likelihood article for the decision table."

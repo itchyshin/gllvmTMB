@@ -1,0 +1,16 @@
+test_that("Design 86 Gate-2 frozen input is deterministic and packed consistently", {
+  skip_if_not_installed("jsonlite")
+  source(test_path("..", "..", "R", "eva-proto.R"), local = TRUE)
+  truth <- .eva_gate2_truth()
+  first <- .eva_gate2_input(86200001L)
+  replay <- .eva_gate2_input(86200001L)
+  expect_equal(first$x$y, replay$x$y)
+  expect_equal(first$hashes, replay$hashes)
+  expect_equal(first$ordered_cell_map$unit_id, rep(0:79, each = 12))
+  expect_equal(first$ordered_cell_map$trait_id, rep(0:11, times = 80))
+  expect_equal(.eva_unpack_theta(truth$theta_rr, truth$T, truth$q), truth$Lambda,
+               tolerance = 1e-14)
+  expect_equal(tcrossprod(truth$Lambda), truth$Sigma_B, tolerance = 1e-14)
+  expect_true(all(is.finite(first$I_unit)))
+  expect_error(.eva_gate2_input(1L), "approved Gate-2 seed")
+})

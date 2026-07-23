@@ -14,6 +14,103 @@
   stop("Cannot find docs/design/86-eva-gate1-parameters.json.", call. = FALSE)
 }
 
+.eva_gate2_file <- function(path = NULL) {
+  if (!is.null(path)) return(normalizePath(path, mustWork = TRUE))
+  root <- normalizePath(getwd(), mustWork = TRUE)
+  repeat {
+    candidate <- file.path(root, "docs", "design", "86-eva-gate2-anchor-parameters.json")
+    if (file.exists(candidate)) return(normalizePath(candidate, mustWork = TRUE))
+    parent <- dirname(root)
+    if (identical(parent, root)) break
+    root <- parent
+  }
+  stop("Cannot find docs/design/86-eva-gate2-anchor-parameters.json.", call. = FALSE)
+}
+
+.eva_read_gate2_parameters <- function(path = NULL) {
+  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+    stop("The Design 86 prototype requires jsonlite to read its frozen fixture.", call. = FALSE)
+  }
+  x <- jsonlite::fromJSON(.eva_gate2_file(path), simplifyVector = FALSE)
+  if (!identical(x$status, "FROZEN_GATE2_ANCHOR_ONLY") ||
+      !identical(x$schema_version, "1.0.0") ||
+      !identical(x$gate, "G2") || !isTRUE(x$research_only)) {
+    stop("The Design 86 Gate-2 fixture is not the approved frozen schema.", call. = FALSE)
+  }
+  x
+}
+
+.eva_sha256_object <- function(x) {
+  path <- tempfile("design86-sha256-")
+  on.exit(unlink(path), add = TRUE)
+  saveRDS(x, path, version = 2)
+  unname(tools::sha256sum(path))
+}
+
+.eva_gate2_truth <- function(path = NULL) {
+  p <- .eva_read_gate2_parameters(path)
+  d <- p$anchor_dgp
+  N <- as.integer(d$N); T <- as.integer(d$T); q <- as.integer(d$q)
+  Lambda <- do.call(rbind, lapply(d$lambda_truth, as.numeric))
+  theta_rr <- as.numeric(unlist(d$theta_rr_truth, use.names = FALSE))
+  beta <- as.numeric(unlist(d$beta_truth, use.names = FALSE))
+  if (N < 1L || T < 1L || q < 1L || q > T || nrow(Lambda) != T || ncol(Lambda) != q ||
+      length(theta_rr) != .eva_theta_length(T, q) || length(beta) != 1L ||
+      max(abs(.eva_unpack_theta(theta_rr, T, q) - Lambda)) > 1e-14 ||
+      max(abs(crossprod(Lambda) - diag(6, q))) > 1e-12) {
+    stop("The frozen Gate-2 truth does not meet its packed-loading contract.", call. = FALSE)
+  }
+  list(N = N, T = T, q = q, beta = beta, Lambda = Lambda, theta_rr = theta_rr,
+       Sigma_B = tcrossprod(Lambda), parameter_file = .eva_gate2_file(path))
+}
+
+.eva_gate2_input <- function(seed, path = NULL) {
+  p <- .eva_read_gate2_parameters(path)
+  truth <- .eva_gate2_truth(path)
+  seed <- as.integer(seed)
+  if (length(seed) != 1L || is.na(seed) || !(seed %in% as.integer(unlist(
+      p$replicates$expanded_data_generation_seeds, use.names = FALSE)))) {
+    stop("seed is not in the approved Gate-2 seed array.", call. = FALSE)
+  }
+  do.call(RNGkind, as.list(unlist(p$anchor_dgp$rngkind, use.names = FALSE)))
+  set.seed(seed)
+  U <- matrix(stats::rnorm(truth$N * truth$q), truth$N, truth$q, byrow = TRUE)
+  unit_id <- rep(0:(truth$N - 1L), each = truth$T)
+  trait_id <- rep(0:(truth$T - 1L), times = truth$N)
+  X <- matrix(1, nrow = truth$N * truth$T, ncol = 1L,
+              dimnames = list(NULL, p$anchor_dgp$X$column_names[[1L]]))
+  eta <- drop(X %*% truth$beta) + rowSums(truth$Lambda[trait_id + 1L, , drop = FALSE] *
+    U[unit_id + 1L, , drop = FALSE])
+  y <- stats::rbinom(length(eta), size = 1L, prob = stats::plogis(eta))
+  I_unit <- vapply(seq_len(truth$N), function(i) {
+    rows <- which(unit_id == i - 1L)
+    weights <- stats::plogis(eta[rows]) * (1 - stats::plogis(eta[rows]))
+    min(eigen(crossprod(truth$Lambda[trait_id[rows] + 1L, , drop = FALSE] * sqrt(weights)),
+              symmetric = TRUE, only.values = TRUE)$values)
+  }, numeric(1))
+  long_data <- data.frame(
+    value = as.integer(y),
+    unit = factor(unit_id, levels = 0:(truth$N - 1L)),
+    trait = factor(trait_id, levels = 0:(truth$T - 1L)),
+    stringsAsFactors = FALSE
+  )
+  ordered_cell_map <- data.frame(unit_id = unit_id, trait_id = trait_id)
+  truth_receipt <- list(beta = truth$beta, theta_rr = truth$theta_rr, Lambda = truth$Lambda,
+                        Sigma_B = truth$Sigma_B, q = truth$q)
+  x <- list(y = as.numeric(y), X = X, unit_id = as.integer(unit_id), trait_id = as.integer(trait_id),
+            N = truth$N, T = truth$T, q = truth$q, beta = truth$beta,
+            theta_rr = truth$theta_rr, a = matrix(0, truth$N, truth$q),
+            log_A_diag = matrix(0, truth$N, truth$q),
+            A_off = matrix(0, truth$N, truth$q * (truth$q - 1L) / 2L), gaussian_sd = 1)
+  .eva_validate_fixture(x, 1L)
+  hashes <- list(ordered_cell_map_sha256 = .eva_sha256_object(ordered_cell_map),
+                 truth_sha256 = .eva_sha256_object(truth_receipt),
+                 response_sha256 = .eva_sha256_object(y),
+                 replicate_input_sha256 = .eva_sha256_object(list(ordered_cell_map, truth_receipt, y)))
+  list(seed = seed, x = x, long_data = long_data, U = U, eta = eta, I_unit = I_unit,
+       truth = truth_receipt, ordered_cell_map = ordered_cell_map, hashes = hashes)
+}
+
 .eva_read_gate1_parameters <- function(path = NULL) {
   if (!requireNamespace("jsonlite", quietly = TRUE)) {
     stop("The Design 86 prototype requires jsonlite to read its frozen fixture.", call. = FALSE)
@@ -129,7 +226,7 @@
     loaded[] <- FALSE
   }
   if (!any(loaded)) dyn.load(dll)
-  list(DLL = "gllvmTMB_eva", source = source, checksum = stamp)
+  list(DLL = "gllvmTMB_eva", source = source, checksum = stamp, dll_path = dll)
 }
 
 .eva_source_commit <- function(source) {

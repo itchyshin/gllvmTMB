@@ -20,6 +20,10 @@ This page is the syntax lookup for choosing a covariance keyword. The formula
 grammar has two decisions: what relates the grouping levels, and what covariance
 among traits is required at that grouping level.
 
+Use [Choose your next gllvmTMB step](function-map-cheatsheet.html) when you
+know the modelling task but need help locating this keyword reference or the
+next post-fit function.
+
 The keywords below are live API, but a valid formula does not guarantee that a
 complex covariance is estimable from a particular data set. Fit health,
 replication, trait count, and the scientific covariance question still matter.

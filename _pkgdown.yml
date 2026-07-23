@@ -35,6 +35,13 @@ navbar:
     left:  [intro, model_guides, concepts, diagnostics, reference, news]
     right: [search, github]
   components:
+    intro:
+      text: Get started
+      menu:
+      - text: Get started with gllvmTMB
+        href: articles/gllvmTMB.html
+      - text: Function map and cheat sheet
+        href: articles/function-map-cheatsheet.html
     model_guides:
       text: Model Guides
       menu:
@@ -86,6 +93,7 @@ navbar:
 articles:
   - title: Model Guides
     contents:
+    - articles/function-map-cheatsheet
     - articles/morphometrics
     - articles/behavioural-syndromes
     - articles/random-regression-reaction-norms

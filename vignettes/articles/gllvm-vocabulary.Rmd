@@ -20,6 +20,9 @@ GLLVMs combine vocabulary from multivariate statistics, ordination, factor
 analysis, and mixed models. This glossary translates the terms used in the
 public `gllvmTMB` guides and points to the page where each idea is demonstrated.
 
+Use [Choose your next gllvmTMB step](function-map-cheatsheet.html) when you
+know the task you need to complete but not the function or guide that starts it.
+
 These definitions describe the current public interface. They do not imply
 that every combination of response family, covariance source, and inferential
 method has equal evidence.

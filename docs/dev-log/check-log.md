@@ -46521,3 +46521,29 @@ src/gllvmTMB.cpp` -> empty; final clean-tree and absent-output-root preflight
 telemetry semantics -> PASS. `gh pr list --state open --limit 20` was attempted
 before closeout but GitHub API access was unavailable; no remote PR state was
 inferred.
+
+### 2026-07-23 — Design 86 Arc 4 post-smoke forensic decision packet
+
+Added a private, read-only comparison of the historical anchor smoke
+(`86200001`) and prospective V1 smoke (`86200002`). Both are G2/EVA smoke
+artifacts with the fixed `G2_ALL_500_ATTEMPTS` denominator label, but two smoke
+draws do not complete that denominator or yield Gate-2 admission. All eight
+recorded starts are unhealthy under `max_abs_gradient < 1e-4`; no winner or
+interval exists. The memo describes comparable frozen-contract failures, not
+code-identical replications, because source commits and driver/runner hashes
+differ while engine and DLL hashes agree.
+
+Checks: `jq -e` denominator/no-healthy/collapse assertions -> PASS for both
+results; `shasum -a 256` manifest/result checks -> PASS; `git diff --check` ->
+PASS. Gauss signed off on numerical and causal-boundary wording. Rose required
+and then verified two corrections: the historical receipt has no `runtime`
+field, and a smoke does not complete the 500-attempt Gate-2 denominator. Exact
+stale-wording scans are in
+`docs/dev-log/after-task/2026-07-23-design86-arc4-forensic-decision.md`.
+
+No runner, input construction, DGP, compile, protocol change, Laplace, C++,
+public API, Gate-2 campaign, Gate-3/4, Totoro, DRAC, push, or PR was performed.
+`gh pr list --state open --limit 20` could not reach the GitHub API; no remote
+PR state was inferred. The planned Luna mechanical-verification receipt was not
+produced; equivalent checks ran inline and this routing drift is recorded in
+`docs/dev-log/plan-actual/2026-07-23-design86-arc4-forensic.md`.

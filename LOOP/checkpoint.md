@@ -70,8 +70,17 @@ on 4 channels, tarball matches the tag exactly).
 **Rung: `platform-clean` at the RC. NOT submission-ready.** The remaining gap to submission is entirely
 the maintainer's: (1) win-builder R-devel + macbuilder, reconciled; (2) the page review (before a
 stable release); (3) the final `v0.6.0` tag; (4) the CRAN submission. NEVER self-granted:
-win-builder/macbuilder, final tag, submission. The agent ceremony has taken 0.6 as far as it can
-without Shinichi. Do NOT delete tag `v0.6.0-rc.1` — it is the evidence anchor.
+win-builder/macbuilder, final tag, submission. Do NOT delete tag `v0.6.0-rc.1` — it is the evidence anchor.
+
+**➡️ HANDED OVER TO CODEX (2026-07-23).** An independent Codex adversarial review found a REAL overclaim
+in the central honesty claim: *"interval calibration is established for the Gaussian cases that cleared
+the coverage gate"* (DESCRIPTION/README/`R/zzz.R`/NEWS + the interval caveats) contradicts
+`docs/design/75:96-99` ("no cell is calibrated"). Verified real. **Codex now executes the reword (a
+CLASS across surfaces) and cuts `v0.6.0-rc.2`** with the live toolchain — turnkey brief:
+`docs/dev-log/handover/2026-07-23-codex-handover.md`. Findings + proposed wording:
+`docs/dev-log/2026-07-23-codex-adversarial-findings.md`. RESUME (Codex): read that handover +
+`AGENTS.md`, execute §2 (reword) + §3 (rc.2 ceremony), STOP at submission-ready. This Claude lane is
+paused pending Codex; the two run SEQUENTIALLY.
 
 ---
 

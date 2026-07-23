@@ -353,6 +353,13 @@ extract_Omega <- function(
 #' `latent(..., unique = FALSE)` subset), \eqn{\psi_t = 0} for all traits and a
 #' `cli::cli_inform()` advisory fires.
 #'
+#' @section Interval calibration:
+#' The point estimates are the supported claim. When `ci = TRUE`, the interval
+#' methods are provided for exploration: their empirical coverage has **not**
+#' been calibrated for this estimand outside the Gaussian cases that cleared the
+#' coverage gate, so the intervals must not be reported as coverage-calibrated.
+#' See `NEWS.md` for the current coverage status.
+#'
 #' @section Which variances enter the denominator:
 #' `V_eta` is the **species-level** latent variance: only components whose
 #' grouping is the `cluster` column contribute. Concretely

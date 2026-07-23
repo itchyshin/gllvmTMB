@@ -40,6 +40,14 @@
 #' [suggest_lambda_constraint()], or at [extract_communality()] /
 #' [extract_Sigma()] for rotation-invariant summaries.
 #'
+#' @section Interval calibration:
+#' The point estimates are the supported claim. The interval methods here are
+#' provided for exploration: their empirical coverage has **not** been
+#' calibrated for this estimand outside the Gaussian cases that cleared the
+#' coverage gate (the worked example below is a binomial-probit fit), so the
+#' intervals must not be reported as coverage-calibrated. See `NEWS.md` for the
+#' current coverage status.
+#'
 #' @param fit A multivariate `gllvmTMB()` fit object.
 #' @param level Which loading matrix to summarise: `"unit"` (default)
 #'   or `"unit_obs"`. Legacy aliases `"B"` / `"W"` are accepted with a

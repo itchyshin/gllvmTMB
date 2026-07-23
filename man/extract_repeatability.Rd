@@ -49,6 +49,15 @@ and observation-level components.
 Also known as the intraclass correlation coefficient (ICC) at the unit
 level.
 }
+\section{Interval calibration}{
+
+The point estimates are the supported claim. The Wald and bootstrap interval
+methods here are provided for exploration: their empirical coverage has
+\strong{not} been calibrated for this estimand outside the Gaussian cases that
+cleared the coverage gate, so the intervals must not be reported as
+coverage-calibrated. See \code{NEWS.md} for the current coverage status.
+}
+
 \section{Method choice}{
 
 \itemize{

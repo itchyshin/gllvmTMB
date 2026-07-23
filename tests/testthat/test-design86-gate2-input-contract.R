@@ -1,6 +1,6 @@
 test_that("Design 86 Gate-2 frozen input is deterministic and packed consistently", {
   skip_if_not_installed("jsonlite")
-  source(test_path("..", "..", "R", "eva-proto.R"), local = TRUE)
+  source(test_path("..", "..", "dev", "design86-gate2-eva-runner.R"), local = TRUE)
   truth <- .eva_gate2_truth()
   first <- .eva_gate2_input(86200001L)
   replay <- .eva_gate2_input(86200001L)

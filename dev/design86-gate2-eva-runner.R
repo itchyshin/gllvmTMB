@@ -39,7 +39,7 @@ source(file.path(.d86_root(), "R", "eva-proto.R"))
   text <- jsonlite::toJSON(x, auto_unbox = TRUE, digits = 16, pretty = TRUE, null = "null")
   if (file.exists(path)) {
     old <- paste(readLines(path, warn = FALSE), collapse = "\n")
-    if (!identical(sub("[\r\n]+$", "", old), sub("[\r\n]+$", "", text))) {
+    if (!identical(sub("[\r\n]+$", "", old), sub("[\r\n]+$", "", as.character(text)))) {
       stop("Refusing to overwrite a non-identical Gate-2 immutable receipt.", call. = FALSE)
     }
   } else {

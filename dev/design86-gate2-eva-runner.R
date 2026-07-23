@@ -147,11 +147,12 @@ design86_gate2_eva_run <- function(seed, output_root = NULL, rebuild = FALSE) {
          healthy = healthy, fit = fit)
   })
   healthy <- which(vapply(starts, `[[`, logical(1), "healthy"))
-  winner <- if (length(healthy)) healthy[which.min(vapply(starts[healthy], `[[`, numeric(1), "negative_EVA"))] else NA_integer_
+  candidate_winner <- if (length(healthy)) healthy[which.min(vapply(starts[healthy], `[[`, numeric(1), "negative_EVA"))] else NA_integer_
   best_three_range <- if (length(healthy) >= 3L) diff(range(sort(vapply(starts[healthy], `[[`, numeric(1), "negative_EVA"))[1:3])) else NA_real_
   accepted_starts <- length(healthy) >= 3L && is.finite(best_three_range) && best_three_range <= 1e-6
-  interval <- if (is.na(winner) || !accepted_starts) list(ok = FALSE, reason = "no_accepted_winner",
-    lower = NA_real_, upper = NA_real_, variance = NA_real_) else .d86_eva_interval(obj, starts[[winner]]$fit$par)
+  interval <- if (is.na(candidate_winner) || !accepted_starts) list(ok = FALSE, reason = "no_accepted_winner",
+    lower = NA_real_, upper = NA_real_, variance = NA_real_) else .d86_eva_interval(obj, starts[[candidate_winner]]$fit$par)
+  winner <- if (isTRUE(interval$ok)) candidate_winner else NA_integer_
   Lambda <- if (is.na(winner)) matrix(NA_real_, input$x$T, input$x$q) else .eva_unpack_theta(
     starts[[winner]]$fit$par[names(obj$par) == "theta_rr"], input$x$T, input$x$q)
   Sigma_B <- tcrossprod(Lambda)

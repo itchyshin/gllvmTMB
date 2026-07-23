@@ -46419,3 +46419,27 @@ DRAFT_REQUIRES_MAINTAINER_SIGNOFF, and its fixture/seed checksums remain null
 until the maintainer approves the exact values. Noether/Gauss and Rose both
 returned DONE for the draft specification after its deterministic-start, Schur,
 information, Laplace-health, and provenance details were completed.
+
+### 2026-07-22 — Design 86 Arc 2 Gate-2 approved-smoke stop
+
+The maintainer approved the Gate-2 fixture; its frozen file SHA-256 is
+`fb71826c84cf94ee288e8843d8997423247da9459cdb83a3ed8e1bb4373034d6` and its
+expanded 500-seed array SHA-256 is
+`9ab57cfb07f29e16a648088bbdfb4ebe6bb848a42b43ff3c48e7c76a67c4e29a`.
+Private runners and a deterministic input-contract test were then added, with
+no change to `src/gllvmTMB.cpp` or the public package surface.
+
+The one permitted local EVA smoke (seed 86200001) produced manifest SHA-256
+`dc01e37b02634f5b0de02f6c1b83e2941aafeb53ca5e4969f06a4ec62d585f63` and
+information Q10 0.7518268378, above the 0.35 floor.  It nevertheless failed
+the frozen start rule: all four code-zero candidates had maximum gradient
+above 1e-4 (0.1589847, 0.0274503, 0.3654799, 8.4345128).  No winner or Wald
+interval was selected.  Therefore the smoke is red and Totoro is not
+authorised.  The live-Laplace process was stopped once that failure was known;
+there is no comparator result and no objective comparison.
+
+Checks: fixture JSON/checksums PASS; deterministic input test 8 expectations
+PASS; `git diff --check` PASS; `git diff origin/main -- src/gllvmTMB.cpp` empty.
+No Gate 3, Gate 4, DRAC, Totoro, public API, shipped-engine, package-check,
+or documentation-build work was run.  Full closeout is in
+`docs/dev-log/after-task/2026-07-22-design86-arc2-gate2-smoke-stop.md`.

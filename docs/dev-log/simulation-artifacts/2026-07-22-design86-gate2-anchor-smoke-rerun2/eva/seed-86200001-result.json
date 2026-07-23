@@ -1,0 +1,77 @@
+{
+  "gate": "G2",
+  "arm": "EVA",
+  "seed": 86200001,
+  "denominator_id": "G2_ALL_500_ATTEMPTS",
+  "input_manifest_sha256": "dc01e37b02634f5b0de02f6c1b83e2941aafeb53ca5e4969f06a4ec62d585f63",
+  "hashes": {
+    "ordered_cell_map_sha256": "2f53f888d769b893ae87d9437535ab92387fa166c9f6587d1d5706125b0d5e2b",
+    "truth_sha256": "535d3ed2bdf7dc4cf5dcb2b432118e0137655bf82eaba6353038549512a4a7bd",
+    "response_sha256": "193d97f647d4e3d6ec98d78fe1df7dfb1f4d20b4c50b67eb6958cd6739890b66",
+    "replicate_input_sha256": "6b9fde408477b429e2568a38dfe17143cb9b2261c03e493ae80a4c7f7c175c84"
+  },
+  "I_unit": {
+    "Min.": 0.5664861042117888,
+    "1st Qu.": 0.95956756735730209,
+    "Median": 1.1053938611647285,
+    "Mean": 1.0872059098581071,
+    "3rd Qu.": 1.2638837165023777,
+    "Max.": 1.4097059200223543
+  },
+  "I_unit_q10_type8": 0.75182683775421077,
+  "starts": [
+    {
+      "start_id": 1,
+      "code": 0,
+      "negative_EVA": 534.11939493969555,
+      "max_abs_gradient": 0.15898467377380815,
+      "healthy": false
+    },
+    {
+      "start_id": 2,
+      "code": 0,
+      "negative_EVA": 571.53069167448268,
+      "max_abs_gradient": 0.027450284265880854,
+      "healthy": false
+    },
+    {
+      "start_id": 3,
+      "code": 0,
+      "negative_EVA": 533.79118478985311,
+      "max_abs_gradient": 0.36547985794403737,
+      "healthy": false
+    },
+    {
+      "start_id": 4,
+      "code": 0,
+      "negative_EVA": 571.52767217307246,
+      "max_abs_gradient": 8.4345128211527989,
+      "healthy": false
+    }
+  ],
+  "accepted_starts": false,
+  "selected_start": "NA",
+  "interval": {
+    "ok": false,
+    "reason": "no_accepted_winner",
+    "lower": "NA",
+    "upper": "NA",
+    "variance": "NA"
+  },
+  "beta_hat": "NA",
+  "Sigma_B_hat": [
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"],
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"],
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"],
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"],
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"],
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"],
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"],
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"],
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"],
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"],
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"],
+    ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"]
+  ],
+  "collapsed": true
+}

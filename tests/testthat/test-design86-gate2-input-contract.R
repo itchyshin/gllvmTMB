@@ -1,26 +1,15 @@
-test_that("Design 86 Gate-2 frozen input is deterministic and packed consistently", {
+test_that("Design 86 Gate-2R blocks input construction before Gate B", {
   skip_if_not_installed("jsonlite")
   source(test_path("..", "..", "dev", "design86-gate2-eva-runner.R"), local = TRUE)
-  truth <- .eva_gate2_truth()
-  first <- .eva_gate2_input(86200001L)
-  replay <- .eva_gate2_input(86200001L)
-  expect_equal(first$x$y, replay$x$y)
-  expect_equal(first$hashes, replay$hashes)
-  expect_equal(first$ordered_cell_map$unit_id, rep(0:79, each = 12))
-  expect_equal(first$ordered_cell_map$trait_id, rep(0:11, times = 80))
-  expect_equal(.eva_unpack_theta(truth$theta_rr, truth$T, truth$q), truth$Lambda,
-               tolerance = 1e-14)
-  expect_equal(tcrossprod(truth$Lambda), truth$Sigma_B, tolerance = 1e-14)
-  expect_true(all(is.finite(first$I_unit)))
-  expect_error(.eva_gate2_input(1L), "approved Gate-2 seed")
+  expect_error(.eva_gate2_input(86200002L), "not signed for runner invocation")
 })
 
 test_that("Design 86 Gate-2 private receipt checks reject drift and write JSON null", {
   source(test_path("..", "..", "dev", "design86-gate2-eva-runner.R"), local = TRUE)
   fixture <- .eva_gate2_file()
   altered <- tempfile(fileext = ".json")
-  writeLines(sub("FROZEN_GATE2_ANCHOR_ONLY", "MUTATED", readLines(fixture, warn = FALSE)), altered)
-  expect_error(.eva_read_gate2_parameters(altered), "checksum")
+  writeLines(sub("G2R_V1_UNSIGNED_CANDIDATE", "MUTATED", readLines(fixture, warn = FALSE)), altered)
+  expect_error(.eva_read_gate2_parameters(altered), "candidate schema")
   p <- .eva_read_gate2_parameters()
   p$replicates$expanded_data_generation_seeds[[1L]] <- 1L
   expect_error(.d86_validate_gate2_seed_receipt(p), "seed receipt")

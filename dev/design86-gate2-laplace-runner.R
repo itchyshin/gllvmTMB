@@ -23,14 +23,16 @@ source(file.path(.d86_laplace_root(), "dev", "design86-gate2-eva-runner.R"))
 
 design86_gate2_laplace_run <- function(seed, output_root = NULL) {
   root <- .d86_laplace_root(); runner <- file.path(root, "dev", "design86-gate2-laplace-runner.R")
+  p <- .eva_read_gate2_parameters()
+  if (is.null(output_root)) output_root <- file.path(root, p$provenance$output_root)
+  .d86_gate2r_assert_smoke_scope(root, p, seed, output_root)
   .d86_assert_clean_tree(root)
   preflight_source_receipt <- .d86_source_receipt(
     root, runner,
     engine_source_path = file.path(root, "src", "gllvmTMB.cpp"),
     driver_source_path = file.path(root, "R", "fit-multi.R")
   )
-  p <- .eva_read_gate2_parameters(); input <- .eva_gate2_input(seed)
-  if (is.null(output_root)) output_root <- file.path(root, p$provenance$output_root)
+  input <- .eva_gate2_input(seed)
   manifest <- .d86_input_manifest(input, root, output_root)
   if (!requireNamespace("pkgload", quietly = TRUE)) stop("pkgload is required for the live source comparator.", call. = FALSE)
   pkgload::load_all(root, quiet = TRUE, export_all = FALSE)

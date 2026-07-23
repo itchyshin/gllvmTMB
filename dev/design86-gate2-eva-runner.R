@@ -14,15 +14,14 @@
 
 source(file.path(.d86_root(), "R", "eva-proto.R"))
 
-.d86_gate2_fixture_sha256 <- "fb71826c84cf94ee288e8843d8997423247da9459cdb83a3ed8e1bb4373034d6"
 .d86_gate2_seed_array_sha256 <- "9ab57cfb07f29e16a648088bbdfb4ebe6bb848a42b43ff3c48e7c76a67c4e29a"
 
 .eva_gate2_file <- function(path = NULL) {
   if (!is.null(path)) return(normalizePath(path, mustWork = TRUE))
   root <- .d86_root()
-  candidate <- file.path(root, "docs", "design", "86-eva-gate2-anchor-parameters.json")
+  candidate <- file.path(root, "docs", "design", "86-eva-gate2r-v1-parameters.json")
   if (file.exists(candidate)) return(normalizePath(candidate, mustWork = TRUE))
-  stop("Cannot find docs/design/86-eva-gate2-anchor-parameters.json.", call. = FALSE)
+  stop("Cannot find docs/design/86-eva-gate2r-v1-parameters.json.", call. = FALSE)
 }
 
 .eva_read_gate2_parameters <- function(path = NULL) {
@@ -30,17 +29,66 @@ source(file.path(.d86_root(), "R", "eva-proto.R"))
     stop("The Design 86 prototype requires jsonlite to read its frozen fixture.", call. = FALSE)
   }
   fixture_path <- .eva_gate2_file(path)
-  if (!identical(.d86_sha256_file(fixture_path), .d86_gate2_fixture_sha256)) {
-    stop("The Design 86 Gate-2 fixture checksum does not match the approved freeze.", call. = FALSE)
-  }
   x <- jsonlite::fromJSON(fixture_path, simplifyVector = FALSE)
-  if (!identical(x$status, "FROZEN_GATE2_ANCHOR_ONLY") ||
+  if (!(x$status %in% c("G2R_V1_UNSIGNED_CANDIDATE", "G2R_V1_SIGNED")) ||
       !identical(x$schema_version, "1.0.0") ||
-      !identical(x$gate, "G2") || !isTRUE(x$research_only)) {
-    stop("The Design 86 Gate-2 fixture is not the approved frozen schema.", call. = FALSE)
+      !identical(x$gate, "G2") || !isTRUE(x$research_only) ||
+      !identical(x$gate2r$version, "G2R-V1")) {
+    stop("The Design 86 Gate-2R fixture is not the approved candidate schema.", call. = FALSE)
   }
   .d86_validate_gate2_seed_receipt(x)
   x
+}
+
+.d86_gate2r_authorization <- function(root, parameters, fixture_path = .eva_gate2_file(), required = TRUE) {
+  amendment <- file.path(root, parameters$provenance$amendment_path)
+  lines <- if (file.exists(amendment)) readLines(amendment, warn = FALSE) else character()
+  heading <- which(lines == "## Gate B — final smoke authority")
+  next_heading <- if (length(heading) == 1L) {
+    heading[[1L]] + which(grepl("^## ", lines[(heading[[1L]] + 1L):length(lines)]))[1L]
+  } else {
+    NA_integer_
+  }
+  gate_b <- if (length(heading) == 1L && is.finite(next_heading)) {
+    lines[(heading[[1L]] + 1L):(next_heading - 1L)]
+  } else {
+    character()
+  }
+  status_fields <- grep("^\\*\\*Gate-B status:\\*\\*", gate_b, value = TRUE)
+  fixture_hash_fields <- grep("^\\*\\*Fixture SHA-256:\\*\\*", gate_b, value = TRUE)
+  signer_fields <- grep("^\\*\\*Maintainer:\\*\\*", gate_b, value = TRUE)
+  signed_on_fields <- grep("^\\*\\*Signed on:\\*\\*", gate_b, value = TRUE)
+  status <- grep("^\\*\\*Gate-B status:\\*\\* SIGNED$", gate_b, value = TRUE)
+  fixture_hash <- grep("^\\*\\*Fixture SHA-256:\\*\\* `[0-9a-f]{64}`$", gate_b, value = TRUE)
+  signer <- grep("^\\*\\*Maintainer:\\*\\* .+", gate_b, value = TRUE)
+  signed_on <- grep("^\\*\\*Signed on:\\*\\* [0-9]{4}-[0-9]{2}-[0-9]{2}$", gate_b, value = TRUE)
+  declared_hash <- if (length(fixture_hash) == 1L) sub(".*`([0-9a-f]{64})`$", "\\1", fixture_hash) else NA_character_
+  signer_name <- if (length(signer) == 1L) trimws(sub("^\\*\\*Maintainer:\\*\\* ", "", signer)) else NA_character_
+  valid_signer <- is.character(signer_name) && nzchar(signer_name) &&
+    !identical(toupper(signer_name), "PENDING")
+  signed <- length(status_fields) == 1L && length(fixture_hash_fields) == 1L &&
+    length(signer_fields) == 1L && length(signed_on_fields) == 1L &&
+    length(status) == 1L && length(fixture_hash) == 1L && valid_signer &&
+    length(signed_on) == 1L && identical(parameters$status, "G2R_V1_SIGNED") &&
+    identical(parameters$maintainer_signoff, "SIGNED_GATE_B") &&
+    identical(declared_hash, .d86_sha256_file(fixture_path))
+  if (required && !signed) {
+    stop("Gate-2R V1 is not signed for runner invocation; do not construct inputs or run a smoke.", call. = FALSE)
+  }
+  list(signed = signed, amendment = amendment, fixture_sha256 = declared_hash)
+}
+
+.d86_gate2r_assert_smoke_scope <- function(root, parameters, seed, output_root) {
+  .d86_gate2r_authorization(root, parameters, required = TRUE)
+  if (!identical(as.integer(seed), as.integer(parameters$gate2r$one_seed_smoke_seed))) {
+    stop("Gate-2R V1 authorizes only its reserved one-seed smoke.", call. = FALSE)
+  }
+  expected <- normalizePath(file.path(root, parameters$provenance$output_root), mustWork = FALSE)
+  actual <- normalizePath(output_root, mustWork = FALSE)
+  if (!identical(actual, expected)) {
+    stop("Gate-2R V1 authorizes only its reserved non-overwriting output root.", call. = FALSE)
+  }
+  invisible(TRUE)
 }
 
 .d86_seed_array_sha256 <- function(seeds) {
@@ -84,11 +132,12 @@ source(file.path(.d86_root(), "R", "eva-proto.R"))
 
 .eva_gate2_input <- function(seed, path = NULL) {
   p <- .eva_read_gate2_parameters(path)
+  .d86_gate2r_authorization(.d86_root(), p, .eva_gate2_file(path), required = TRUE)
   truth <- .eva_gate2_truth(path)
   seed <- as.integer(seed)
-  if (length(seed) != 1L || is.na(seed) || !(seed %in% as.integer(unlist(
-      p$replicates$expanded_data_generation_seeds, use.names = FALSE)))) {
-    stop("seed is not in the approved Gate-2 seed array.", call. = FALSE)
+  if (length(seed) != 1L || is.na(seed) ||
+      !identical(seed, as.integer(p$gate2r$one_seed_smoke_seed))) {
+    stop("Gate-2R V1 authorizes only its reserved one-seed smoke.", call. = FALSE)
   }
   do.call(RNGkind, as.list(unlist(p$anchor_dgp$rngkind, use.names = FALSE)))
   set.seed(seed)
@@ -304,10 +353,12 @@ source(file.path(.d86_root(), "R", "eva-proto.R"))
 
 design86_gate2_eva_run <- function(seed, output_root = NULL, rebuild = FALSE) {
   root <- .d86_root(); runner <- file.path(root, "dev", "design86-gate2-eva-runner.R")
+  p <- .eva_read_gate2_parameters()
+  if (is.null(output_root)) output_root <- file.path(root, p$provenance$output_root)
+  .d86_gate2r_assert_smoke_scope(root, p, seed, output_root)
   .d86_assert_clean_tree(root)
   preflight_source_receipt <- .d86_source_receipt(root, runner)
-  p <- .eva_read_gate2_parameters(); input <- .eva_gate2_input(seed)
-  if (is.null(output_root)) output_root <- file.path(root, p$provenance$output_root)
+  input <- .eva_gate2_input(seed)
   manifest <- .d86_input_manifest(input, root, output_root)
   dll <- .eva_load_dll(rebuild = rebuild)
   obj <- TMB::MakeADFun(data = c(input$x[c("y", "X", "unit_id", "trait_id", "N", "T", "q", "gaussian_sd")], family = 1L),

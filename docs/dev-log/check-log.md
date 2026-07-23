@@ -46468,3 +46468,23 @@ No fresh Gate-2 smoke, Gate-2 runner invocation, campaign output, Totoro,
 DRAC, Gate 3, Gate 4, public API, shipped-engine, package check, or pkgdown
 build was run. The historical red smoke remains immutable. The re-admission
 brief remains DRAFT_REQUIRES_MAINTAINER_SIGNOFF; fresh smoke is unauthorised.
+
+### 2026-07-23 — Design 86 Gate-2R V1 strict readmission candidate (unsigned)
+
+Under bounded Gate-A authority, created a prospective G2R-V1 fixture and
+amendment without changing the historical fixture or its artifacts. The V1
+fixture retains every numerical DGP, seed-array, start, optimiser, interval,
+collapse, and failure rule; it reserves only seed `86200002` and a new,
+non-overwriting output root. Both private runners now require a unique signed
+Gate-B record, a matching V1 fixture hash, a non-placeholder maintainer name,
+the sole seed, and the sole output root before any truth/input/DGP construction.
+
+Checks: static guard test -> 8 PASS; revised private input-contract test ->
+26 PASS; R/JSON parsing -> PASS; `git diff --check` -> PASS; `git diff
+--exit-code 3b479354 -- R/eva-proto.R` -> empty; `git diff origin/main --
+src/gllvmTMB.cpp` -> empty. Rose, Gauss, and Noether independently returned
+DONE for the candidate packet only after authorization-parser repairs.
+
+No runner, input construction, DGP draw, compile, smoke, artifact, Totoro,
+DRAC, Gate 3, Gate 4, public API, or shipped-engine work was run. Gate B is
+UNSIGNED, and this entry grants no smoke authority.

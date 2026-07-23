@@ -46610,3 +46610,17 @@ forbidden coverage claim on any shipped surface; D-41 on 4 channels; tarball mat
 **Rung: `platform-clean` at the RC; NOT submission-ready.** Remaining gap is the maintainer's:
 win-builder R-devel (+ macbuilder) reconciled → page review (before stable) → final `v0.6.0` tag →
 submission. The single maintainer entry point: `docs/dev-log/2026-07-22-REVIEW-ME-shinichi.md`.
+
+## 2026-07-23 — win-builder R-devel SUBMITTED; macbuilder service down (Claude Code)
+
+On the maintainer's "review finished, go ahead", ran the check-service uploads (the one blocker the
+D-49 review raised). Submission remains the maintainer's — NOT crossed.
+
+- **win-builder R-devel: SUBMITTED** (`devtools::check_win_devel()`), results emailed to
+  itchyshin@gmail.com ~05:25 AM. This is the R-devel check CRAN uses for first submissions.
+- **macbuilder: HTTP 502 twice** (`mac.r-project.org` service outage — transient, their end). Secondary
+  and redundant with the exact-tag 3-OS `macos-latest` release run; optional retry later.
+
+Rung unchanged: `platform-clean` at the RC, R-devel evidence pending the emailed result. Remaining is
+the maintainer's alone: read the win-builder email → reconcile `cran-comments.md` → final `v0.6.0` tag
+→ CRAN submission.

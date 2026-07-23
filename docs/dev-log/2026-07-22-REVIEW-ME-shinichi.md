@@ -82,11 +82,14 @@ You authorised the freeze + RC ceremony; I ran it and stopped at the R-devel gat
 
 ### 🔴 Your remaining steps to submit (in order)
 
-1. **Run win-builder R-devel + macbuilder** on
-   `~/gllvmTMB-0.6-evidence/m5-rc1/gllvmTMB_0.6.0.tar.gz`. Reconcile any R-devel findings into
-   `cran-comments.md` (already updated to cite the frozen-tag runs).
-2. **Do the page review** (Parts A–D) — required before a *stable* release; optional for rc.1.
-3. **Cut the final `v0.6.0` tag** and **submit** — both your acts. I will not do either.
+1. **win-builder R-devel — SUBMITTED (2026-07-23 ~05:00).** Results email you at **itchyshin@gmail.com
+   in ~15–30 min (~05:25 AM).** Read them; a clean R-devel result clears the one blocker the review
+   raised. **macbuilder** returned HTTP 502 twice (their service is down) — it is the *secondary* check
+   and macOS release is already covered by the 3-OS `macos-latest` run, so it is optional; retry later
+   if you want the extra signal.
+2. **Reconcile** any win-builder R-devel findings into `cran-comments.md` (already cites the frozen-tag
+   runs). Your page review is done ✓.
+3. **Cut the final `v0.6.0` tag** and **submit to CRAN** — both your acts. I will not do either.
 
 **Nothing is running now. State clean and pushed.** I did no simulation (none exists in the 0.6 path)
 and touched neither the EVA/Design 86 lane nor any parked worktree. The RC tag `v0.6.0-rc.1` is the

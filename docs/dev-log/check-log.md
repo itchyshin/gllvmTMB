@@ -45580,3 +45580,22 @@ From the coverage-analysis session (no package files touched; Lane A's uncommitt
 - **disp_group (shared NB2 dispersion): DEFERRED** (accepted in principle, possible 1.0). nbinom2 stays
   fenced / recovery-only for 0.6. Design record: docs/dev-log/2026-07-17-shared-dispersion-nbinom2-design.md
 - Full write-up: docs/dev-log/after-task/2026-07-17-sigma-coverage-nsim5000-confirm.md (committed f0f17333, local, not pushed).
+## 2026-07-22 — Function map and cheatsheet (Codex)
+
+- Added the public Tier-2 `vignettes/articles/function-map-cheatsheet.Rmd`, its
+  Get started navigation entry, reciprocal links from the vocabulary
+  and Formula keyword-grid articles, a generated function-map illustration, and
+  two generated printable assets under `pkgdown/assets/cheatsheets/`.
+- `Rscript --vanilla tools/build-function-cheatsheets.R` -> PASS; the generator
+  rejects unexported primary functions and compatibility aliases.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/function-map-cheatsheet", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'` -> PASS.
+- Focused vocabulary and keyword-grid renders plus rendered HTML/image/download
+  checks -> PASS; both PDF assets were present and non-empty in `pkgdown-site/`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> existing FAIL for
+  `kernel_scalar`, `reml_bridge`, and `scalar` missing from the reference index;
+  these unrelated omissions predate and are outside this article slice.
+- `pdfinfo`, `pdftotext`, and 160-dpi page renders -> PASS; the map and the
+  compact cheatsheet are each one landscape A4 page, with all six task routes
+  visible and no clipped text.
+- `git diff --check` -> PASS. See
+  `docs/dev-log/after-task/2026-07-22-function-map-cheatsheet.md`.

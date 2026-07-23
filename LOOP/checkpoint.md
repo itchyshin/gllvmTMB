@@ -14,29 +14,116 @@ Laplace-only and M2 stays CUT. Brief: `docs/dev-log/2026-07-22-design86-lane-bri
 > done needs exact-SHA three-OS evidence, which only CI produces. **If a future session is handed that
 > block, it must not paste it over `GOAL.md`.**
 
-**STATE: M1 IS WITHHELD.** **SIX** consecutive D-43 panels, **six** 3/3 NOT-DONE verdicts.
+**STATE: M1 CLOSED · M3 CLOSED · M4 IS NEXT.**
+
+- **M1 CLOSED.** All four maintainer decisions ANSWERED; D-74 CONFIRMED, so **no seventh panel**.
+  The claim is **SIGNED** at `docs/dev-log/2026-07-22-m1-closing-claim.md`, in D-43's required form.
+  Six panels ran where D-74 specifies one, and **not one of the six found a numerical, algorithmic
+  or statistical defect** — every finding was about the agent's method, not the package.
+- **M3 CLOSED.** API frozen on the maintainer's sign-off and pinned by checksum (`NAMESPACE`
+  SHA-256 `c97ae039…`, 153 exports / 33 S3 methods); version bumped `0.5.0 → 0.6.0`. Record:
+  `docs/dev-log/2026-07-22-m3-api-freeze.md`.
+- **Version is now `0.6.0`. Head `458dc01b`. Draft PR #780.** The EIGHTH evidence chain is complete
+  and green **on the bumped identity** — local suite `0 | 779 | 7290`, three-OS `29934531169` with
+  three `Status: OK` and zero warn/note, heavy `29934532873` `FAIL 0`, CRAN-config 0/0/1 with the
+  NOTE allowlisted. The built artefact was confirmed to be `gllvmTMB_0.6.0.tar.gz` — the bump
+  reached the **build**, not merely the files.
+
+**M4's MECHANICAL HALF IS DONE. Head `3c5fd11d` (draft PR #780). The mechanical work stops HERE, at
+the candidate-freeze gate — the freeze is Shinichi's.** The TENTH evidence chain is green at the
+fences SHA `aa939ce8` (local `0 | 779 | 7290`, 3-OS `29969703136` all three OS `Status: OK` building
+`gllvmTMB_0.6.0.tar.gz`, heavy `29969704205` `FAIL 0`, CRAN-config 0/0/1 pinned clean at `3c5fd11d`).
+Receipts: `~/gllvmTMB-0.6-evidence/m4/tenth-chain/`.
+
+**D-41 DONE** — all four accepted channels, grounded from `memory/DECISIONS.md` D-41 (NOT a per-export
+badge). `.onAttach` verified firing via `load_all(attach = TRUE)`.
+
+**Four additive-safe fences APPLIED** (`aa939ce8`, roxygen-comment only, zero code): dropped "validated"
+at `kernel-helpers.R:13`; `@section Interval calibration:` on `extract_phylo_signal`, `loading_ci`,
+`extract_repeatability`. Each surfaced as a diff for the page review; every one makes a claim smaller.
+
+**WHAT REMAINS IS SHINICHI'S — the page-by-page reader review**, now a focused sitting guided by the
+dossier and the **page-review packet** (`docs/dev-log/2026-07-22-m4-page-review-packet.md`) + the
+**rendered site** (`pkgdown-site/index.html`). He chose "review first, then freeze" (2026-07-22). The
+M4→M5 gate sequence is on disk: `docs/dev-log/2026-07-22-m4-to-m5-runbook.md`.
+
+**M5-PREP DONE OVERNIGHT (no gate crossed), rung advanced `source-clean → tarball-clean`:** the
+provisional candidate tarball `gllvmTMB_0.6.0.tar.gz` (SHA-256 `73893f97…`, 3.25 MB) passes
+`R CMD check --as-cran` at **0/0/1** (New submission), forbidden-path scan clean; DESCRIPTION
+spell-check clean (the gate's hard blocker); `cran-comments.md` corrected from the stale-false 0/0/0
+to the honest 0/0/1. Evidence: `~/gllvmTMB-0.6-evidence/m5-prep/`. **HELD for the freeze:** an
+`inst/WORDLIST` (142 domain terms) and `\value` on `ordiplot`/`gllvmTMB_multi-methods` (both advisory,
+neither a blocker).
+
+**RC CUT AND REVIEWED (2026-07-22, on Shinichi's authorisation).** `v0.6.0-rc.1` is tagged at frozen
+source `e9bc655a` (zero source edits). Exact-tag evidence green: RC tarball `--as-cran` 0/0/1
+(SHA-256 `532c205b…`), 3-OS `29977191886` all three OS Status OK, heavy `29977182659` all three OS
+`FAIL 0`. Record: `docs/dev-log/2026-07-22-rc1-review-and-rung.md`; ledger
+`~/gllvmTMB-0.6-evidence/m5-rc1/`.
+
+**The D-49 adversarial review returned 3/3 NOT-READY → submission WITHHELD** on ONE real gap:
+**win-builder R-devel + macbuilder have not run** (CRAN checks first submissions on R-devel; the matrix
+pins R release). It is an external upload HELD for the maintainer. The review independently confirmed
+the candidate is otherwise honest and clean (no forbidden coverage claim on any shipped surface, D-41
+on 4 channels, tarball matches the tag exactly).
+
+**Rung: `platform-clean` at the RC. NOT submission-ready.** The remaining gap to submission is entirely
+the maintainer's: (1) win-builder R-devel + macbuilder, reconciled; (2) the page review (before a
+stable release); (3) the final `v0.6.0` tag; (4) the CRAN submission. NEVER self-granted:
+win-builder/macbuilder, final tag, submission. Do NOT delete tag `v0.6.0-rc.1` — it is the evidence anchor.
+
+**➡️ HANDED OVER TO CODEX (2026-07-23).** An independent Codex adversarial review found a REAL overclaim
+in the central honesty claim: *"interval calibration is established for the Gaussian cases that cleared
+the coverage gate"* (DESCRIPTION/README/`R/zzz.R`/NEWS + the interval caveats) contradicts
+`docs/design/75:96-99` ("no cell is calibrated"). Verified real. **Codex now executes the reword (a
+CLASS across surfaces) and cuts `v0.6.0-rc.2`** with the live toolchain — turnkey brief:
+`docs/dev-log/handover/2026-07-23-codex-handover.md`. Findings + proposed wording:
+`docs/dev-log/2026-07-23-codex-adversarial-findings.md`. RESUME (Codex): read that handover +
+`AGENTS.md`, execute §2 (reword) + §3 (rc.2 ceremony), STOP at submission-ready. This Claude lane is
+paused pending Codex; the two run SEQUENTIALLY.
 
 ---
 
 ## 0. VERIFIED GIT GROUND TRUTH (re-derived 2026-07-22, not inherited)
 
 ```
-branch                     codex/gllvmtmb-060-m1-baseline-20260720
-HEAD                       d74a6a08   (d74a6a0814862e92b2b0bdb0bf93d86d031c0632)
+branch                     claude/0.6-m1-close-20260722
+HEAD                       d13916f3   (d13916f32f6eae10ffac9a6acef3c6d8b9095437)
 working tree               CLEAN  (git status --porcelain = empty)
 vs origin                  0  0    (rev-list --left-right --count — fully in sync, pushed)
 certified evidence SHA     21e04eb5
-certification transfers?   YES — shipped-path diff 21e04eb5..HEAD is EMPTY
+certification transfers?   NO — FORFEITED, deliberately. See below.
 ```
 
-The four commits since the certified SHA touch **only** `LOOP/checkpoint.md` and three
-`docs/dev-log/` files — **zero shipped paths**:
+**🔴 THE CERTIFICATION NO LONGER TRANSFERS.** The three maintainer decisions (§5) were answered on
+2026-07-22 and applying them required **source edits**. The corrected shipped-path check returns:
 
 ```
-d74a6a08 docs: correct the non-Gaussian thread — our sign claim is UNVERIFIED
-e65030b3 docs(handover): Claude -> Claude handoff — M1 withheld after six panels
-eea9761c docs(loop): record the certification-transfer CHECK as a rule, not a result
-821c5ced docs: re-certify at 21e04eb5, correct a false SHA claim, confirm WARN variability
+NEWS.md                              (Decision 2 — the boundary statement)
+R/julia-bridge.R                     (Decision 1 — the tightened claim string)
+tests/testthat/test-julia-bridge.R   (Decision 1 — its asserting test, swept in the same commit)
+```
+
+This is the **sixth** time in the arc that a repair re-minted the source identity. It is expected,
+not a fault — Amendment 2's sequencing anticipates it. **Re-earning is IN FLIGHT: see §4.**
+
+**⚠ The old path list would have MISSED this.** It omitted `NEWS.md`, and Decision 2 edited exactly
+that file. Had Decision 1 not also touched `R/`, the check would have reported "empty" and declared
+a certification that no longer held — a false PASS from the command written to prevent one. The
+corrected list caught it on its first real use.
+
+Commits since the certified SHA (the first five are documentation-only; the last three are the
+decision application and its evidence):
+
+```
+d13916f3 docs(m1): record the re-earned suite result — exact match to the certified baseline
+226eeafc fix(loop): the certification-transfer check was itself incomplete — 3 shipped paths missing
+198ab08a m1: apply the three maintainer decisions; certification at 21e04eb5 is FORFEITED
+5d6c01f4 docs(loop): record Mission Control as materially stale — inspected, deliberately NOT edited
+902dde41 docs(m1): after-task — M1 unblock arc (verified state, Amendment 3, A12, C4, A-iss)
+e367f57f docs(m1): slice A-iss — triage all 20 open issues; two need maintainer edits
+4b1681dd docs(m1): slice C4 — plan-vs-actual reconciliation, never previously run
+fe10048a docs(m1): R-11 wording-review dossier — 0 HIGH, 1 to look at, 2 false leads ruled out
 ```
 
 ### ✅ HOW TO CHECK WHETHER A CERTIFICATION STILL TRANSFERS — run this, do not trust prose
@@ -48,9 +135,19 @@ a result):
 
 ```sh
 cd /private/tmp/gllvmtmb-060-m1-builder
-git diff --name-only 21e04eb5 HEAD -- \
-  R/ src/ tests/ man/ vignettes/ tools/ DESCRIPTION NAMESPACE
+git diff --name-only <CERTIFIED_SHA> HEAD -- \
+  R/ src/ tests/ man/ vignettes/ tools/ inst/ DESCRIPTION NAMESPACE NEWS.md README.md
 ```
+
+> **⚠ THE PATH LIST WAS INCOMPLETE UNTIL 2026-07-22 — the check could miss a real forfeit.**
+> Every earlier version omitted **`NEWS.md`, `README.md` and `inst/`**, all three of which **ship**
+> (they are absent from `.Rbuildignore`). A NEWS-only or README-only edit would therefore have
+> forfeited the certification while the canonical check reported "empty" — a false PASS from the very
+> command written to prevent one. Found by enumerating the top-level tree against `.Rbuildignore`
+> rather than trusting the list. **The shipped set is:** `R/ src/ tests/ man/ vignettes/ tools/ inst/
+> DESCRIPTION NAMESPACE NEWS.md README.md` (note `vignettes/articles` and `inst/tmb/*.o|so|dll|dylib`
+> are excluded *within* otherwise-shipping trees). Re-derive this list from `.Rbuildignore` if the
+> package layout changes — do not copy it forward on trust.
 
 **Empty output ⇒ the certification transfers to HEAD.** Any output ⇒ **it does not**, and the
 evidence must be re-earned before any claim rests on it.
@@ -65,7 +162,7 @@ checks code shapes on surfaces and cannot know a document has gone stale.
 
 ---
 
-## 1. 🔴 THE FINDING THAT CHANGES THE PATH — D-74 (needs Shinichi's confirmation)
+## 1. ✅ D-74 — CONFIRMED by Shinichi, 2026-07-22. No seventh panel.
 
 A brain query (`memory/DECISIONS.md`, read directly — the basic-memory MCP layer was down) surfaced a
 decision that **bears directly on the six-panel loop and appears not to have been applied here**:
@@ -86,11 +183,14 @@ Withheld until the cells are **named** — not until a panel votes DONE. **D-46*
 shape from the first real panel: 3 NOT-DONE → repair → **the same three reviewers re-ran and voted 3
 DONE**. One cycle with a re-vote, not six fresh panels.
 
-**Consequence, if Shinichi confirms:** the uncovered cells *are* named exhaustively — R-1…R-11 plus
-each handover's "does NOT cover" section — so D-43's remedy is **already satisfied**, and M1 should
-close by stating the claim in D-43's required form (cite the tier, name the uncovered cells) rather
-than by running a seventh panel. **Do not act on this alone — it is an agent reading of a decision,
-and this agent's readings have been wrong before. Get Shinichi's confirmation.**
+**CONFIRMED.** Shinichi set a session goal on 2026-07-22 carrying this verbatim: *"DO NOT CONVENE A
+SEVENTH: D-74 says D-43 fires ONCE per milestone and records repeat panels as DRIFT… D-43's remedy
+is 'withheld until the uncovered cells are NAMED', not 'until a panel passes'."*
+
+**Consequence, now binding:** the uncovered cells *are* named exhaustively — R-1…R-11 plus each
+handover's "does NOT cover" section — so D-43's remedy is **already satisfied**. M1 closes by
+stating the claim in D-43's required form (cite the tier, name the uncovered cells), **not** by
+running a seventh panel. That claim is written: `docs/dev-log/2026-07-22-m1-closing-claim.md`.
 
 ---
 
@@ -138,7 +238,33 @@ surfaces was itself instance-thinking, one level up.
 
 ---
 
-## 4. CERTIFIED EVIDENCE — green at `21e04eb5`, and it TRANSFERS to head `d74a6a08`
+## 4. EVIDENCE — the `21e04eb5` chain is **FORFEITED**; re-earning at `d13916f3` is IN FLIGHT
+
+### 4a. Re-earned so far, at the edited tree `d13916f3`
+
+| Step | Result |
+|---|---|
+| `devtools::test()` | **`FAILED 0 \| ERROR 0 \| SKIP 779 \| PASS 7290`** — an **exact match** to the certified baseline, so the wording change is behaviourally neutral. `SKIP 779` (not `test_dir()`'s 1001) confirms the **full** suite ran. |
+| Targeted `test-julia-bridge.R` | `FAILED 0 \| ERROR 0 \| SKIP 19 \| PASS 562` |
+| Old-string sweep | zero residue across `R/`, `tests/`, `man/`, `NEWS.md`, `vignettes/` |
+| **3-OS matrix** `29926771814` | ✅ **SUCCESS at `d13916f3`.** All three OS-named jobs `completed/success`: `ubuntu-latest (release)`, `macos-latest (release)`, `windows-latest (release)`. **Verified from the LOG, not the conclusion field:** the 27,256-line log carries **three `Status: OK` lines**, one per platform, and **zero** `ERROR`/`WARNING`/`NOTE` count lines. This matters because `error_on: "error"` lets warnings and notes pass — a green conclusion alone would not have established 0/0/0. |
+| **Heavy full-check** `29926795733` | ✅ **`FAIL 0 \| WARN 9 \| SKIP 102 \| PASS 13650`**, `Status: OK`, at `d13916f3`. Heavy gate confirmed genuinely ON — `GLLVMTMB_HEAVY_TESTS` appears 18× in the log, asserted because `skip_if_not_heavy()` **fails open**. Baseline was `WARN 10 \| SKIP 103 \| PASS 13656`; the `SKIP −1 / PASS −6` drift is **recorded, not waived** (claim §4.1). |
+| **CRAN-configuration check** | ✅ **0 errors, 0 warnings, 1 NOTE, 0 unexpected**, at `7f9b9ed1`. The NOTE is *"New submission"* — on the expected allowlist. `SHA_STABLE=TRUE`. Runner **`dev/m1-cran-config-check.R`** (`^dev$` build-ignored, does not ship). |
+
+**The two evidence SHAs are interchangeable:** the shipped-path diff `d13916f3..7f9b9ed1` is
+**empty** — `7f9b9ed1` touches only `LOOP/` and `dev/`, both build-ignored. Same shipped tree.
+
+**The chain is COMPLETE. This is the SEVENTH of the arc; the previous six were each forfeited by a
+later source change, and every one was green.**
+
+**Dispatching both at once is safe here** — the concurrency group is `workflow-ref`, and
+`R-CMD-check` and `full-check` are different workflows, so they cannot cancel each other. The
+standing rule (never dispatch `R-CMD-check.yaml` while an Ubuntu run is in flight) concerns **two
+runs of the same workflow on the same ref**; one `full_matrix=true` run avoids it entirely.
+
+**Until these land, the closing claim stays DRAFTED, NOT SIGNED.**
+
+### 4b. The FORFEITED chain, for reference — green at `21e04eb5`
 
 ```
 devtools::test()                 FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290
@@ -167,23 +293,46 @@ validates configuration and **does not build the site**.
 
 ---
 
-## 5. 🔴 OPEN FOR THE MAINTAINER — nothing else blocks
+## 4c. ⚠ MISSION CONTROL IS MATERIALLY STALE — NOT UPDATED, and deliberately so
 
-1. **Wording review of the R-11 replacement strings.** *The one property no check can establish.* An
-   Opus reviewer caught **seven overstatements** in the first attempt — worst was `"validated"` on CI
-   rows, which `docs/design/75:99` forbids and which `CI-08` records as a **FAILED** gate (13/15 cells
-   below 94%; independently corroborated by brain **D-42**, which notes only Gaussian d=1/d=3 cleared).
-   Current strings include `"direct profile route (not coverage-calibrated)"`, `"diagonal grouping
-   tier: no calibrated interval"`, `"no CI (point estimate only)"`, `"experimental route: partial
-   validation only"`. **The question is not style — it is whether any still claims more than is true.**
-2. **`NEWS.md` boundary statement** — drafted, deliberately NOT written in (release-level claim):
-   *variance-component **point estimates** are the supported claim for non-Gaussian families;
-   **interval calibration** is established only for the Gaussian cells that cleared the coverage gate.*
-3. **Does R-7's SIGN-OFF still stand?** Its "exact set match" causation evidence is **retired** — six
-   heavy runs gave three different warning counts, so the set is not a function of the code. The row is
-   signed off; its basis is weaker than when signed.
-4. **Confirm or reject the D-74 reading in §1** — it decides whether a seventh panel happens at all.
-5. **🛑 DO NOT convene a seventh panel before items 1 and 4.**
+`Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json` (the board `CLAUDE.md` makes step 0
+of every session) is **wrong on several load-bearing facts and internally self-contradictory**:
+
+- Says **one** D-43 panel returned 3/3 NOT-DONE. **Six** have run.
+- Names the pushed head as `25c76789`. Actual head is on `claude/0.6-m1-close-20260722`; certified
+  evidence is `21e04eb5`. The same file *also* says `25c76789` is "SUPERSEDED" — it contradicts
+  itself two fields apart.
+- Lists **R-7 as `AWAITING SIGN-OFF`** and "two of the eight sites remain unidentified". R-7 is
+  **SIGNED OFF** and all eight sites are traced.
+- Carries a stale post-freeze rule, "DO NOT COMMIT to the package repo".
+
+**Why it was left alone (2026-07-22):** the file was **uncommitted-dirty from another writer** for
+the whole session, and the tool layer would not return its diff. Editing a file whose concurrent
+change you cannot read risks destroying it — D-60's rule is *identify the writer, never assume*. A
+stale board is a smaller harm than a silently clobbered one.
+
+**Next session: re-check `git status` on that path first.** If clean, rewrite it against §0 and §4
+of this file. If still dirty, read the other writer's diff before touching it.
+
+## 5. ✅ THE MAINTAINER DECISIONS — ALL FOUR ANSWERED 2026-07-22
+
+**Nothing is open for the maintainer.** Applied in `198ab08a`; recorded in
+`docs/dev-log/2026-07-22-m1-closing-claim.md` §1.
+
+| # | Question | Answer | Applied as |
+|---|---|---|---|
+| 1 | R-11 wording — keep or tighten the one flagged string | **TIGHTEN** | `R/julia-bridge.R:1671` `"experimental route: partial validation only"` → `"experimental route: point estimate only; no coverage evidence"`, **plus** its asserting test at `test-julia-bridge.R:1273`. Grep across `R/`, `tests/`, `man/`, `NEWS.md`, `vignettes/` now returns **zero residue** — swept, not patched. |
+| 2 | Write the `NEWS.md` boundary statement in | **YES** | New first bullet under `## Known limitations`: variance-component **point estimates** are the supported claim for non-Gaussian families; **interval calibration** holds only for the Gaussian cells that cleared the gate. |
+| 3 | Does R-7's sign-off stand | **YES** | Stands. What was retired is **one strand of causation evidence** (the "exact set match" argument), not any of the eight diagnoses — all traced to source — nor site (d)'s mechanism, confirmed by direct measurement. D-43 governs **claims**, not signed-off register rows. |
+| 4 | Confirm or reject the D-74 reading in §1 | **CONFIRMED** | Shinichi set a session goal on 2026-07-22 containing, verbatim: *"DO NOT CONVENE A SEVENTH: D-74 says D-43 fires ONCE per milestone and records repeat panels as DRIFT."* **No seventh panel.** M1 closes by stating the claim in D-43's required form. |
+
+> **⚠ Read-back recorded on Decision 1.** The reply was *"yes experment"*. Both options began
+> "experimental route:", so it did not disambiguate on its own. Taken as assent to the proposed
+> tightening because the asymmetry is one-sided — the tighter string claims **strictly less** and
+> cannot become a false claim, whereas a vague one risks exactly the failure this milestone was
+> withheld for. **If "keep as-is" was meant, it is a one-line revert in two files.**
+
+**The only thing now standing between M1 and closure is the re-earned evidence chain in §4.**
 
 ---
 
@@ -213,11 +362,13 @@ and the cross-repo sign anomaly (our sign claim was downgraded to **UNVERIFIED**
 
 ## TRUTH LIVES IN
 
-Branch `codex/gllvmtmb-060-m1-baseline-20260720` @ **`d74a6a08`** (clean, pushed, in sync; certified
-evidence `21e04eb5`, transfer **verified empty**). Draft PR #778.
+Branch `claude/0.6-m1-close-20260722` @ **`d13916f3`** (clean, pushed, `0 0` vs origin). Certified
+evidence `21e04eb5` is **FORFEITED**; re-earning in flight (§4a). PRs **#778 and #779 are MERGED**
+— this branch has no open PR, which is why a push alone triggers nothing and CI must be dispatched.
+`docs/dev-log/2026-07-22-m1-closing-claim.md` — **the claim itself, DRAFTED not signed** ·
 `docs/dev-log/known-residuals-register.md` · `docs/dev-log/check-log.md` ·
-`docs/dev-log/handover/2026-07-22-claude-handover-m1-withheld-six-panels.md` ·
-`~/gllvmTMB-0.6-evidence/m1/`.
+`docs/dev-log/2026-07-22-r11-wording-review-dossier.md` ·
+`docs/dev-log/plan-actual/2026-07-22-m1-plan-vs-actual.md` · `~/gllvmTMB-0.6-evidence/m1/`.
 
 ## RESUME
 
@@ -226,22 +377,68 @@ Read LOOP/GOAL.md (ALL THREE amendments — CI IS AUTHORISED; Amendment 3 opens 
 design-only Design 86 lane that does NOT gate 0.6) -> LOOP/checkpoint.md ->
 docs/dev-log/known-residuals-register.md -> docs/dev-log/check-log.md.
 
-M1 is WITHHELD after SIX 3/3 NOT-DONE panels. No register row blocks it, no check fails, no defect
-is outstanding. Withheld on a BASE RATE, not a known problem.
+ALL FOUR MAINTAINER DECISIONS ARE ANSWERED (§5). NOTHING IS OPEN FOR SHINICHI. D-74 is CONFIRMED
+by the goal he set: NO SEVENTH PANEL. M1 closes by stating the claim in D-43's required form.
 
-Head d74a6a08, CLEAN, pushed, 0/0 vs origin. Certified 21e04eb5 and the transfer is VERIFIED
-(shipped-path diff empty). Suite 0/779/7290, durable runner 0/0/0, CRAN check 0/0/1, Ubuntu success,
-three-OS matrix all green, heavy FAIL 0 | WARN 10, guard PASS, receipts with SHA256SUMS.
-NOTHING NEEDS RE-EARNING.
+Head d13916f3 on claude/0.6-m1-close-20260722, CLEAN, pushed, 0/0 vs origin. The certification at
+21e04eb5 is FORFEITED — applying the decisions edited NEWS.md, R/julia-bridge.R and its test. That
+is expected (the sixth such re-mint), not a fault.
 
-BEFORE REPEATING ANY SHA CLAIM, RE-DERIVE IT FROM git, FROM INSIDE THE WORKTREE. This file and the
-six-panel handover were BOTH stale on the head. That failure has now appeared SIX times.
+EVIDENCE CHAIN COMPLETE AND GREEN (the seventh of the arc):
+  devtools::test()   FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290 — EXACT match to the baseline
+  3-OS 29926771814   SUCCESS, ubuntu+macos+windows; LOG shows three "Status: OK", ZERO warn/note
+  heavy 29926795733  FAIL 0 | WARN 9 | SKIP 102 | PASS 13650, Status OK, heavy gate asserted ON
+  CRAN-config        0 errors | 0 warnings | 1 NOTE ("New submission", allowlisted) | 0 unexpected
+All read from LOGS, not conclusions — error_on:"error" lets warnings and notes pass, so a green
+conclusion alone would NOT have proven 0/0/0.
 
-BRAIN FINDING (needs Shinichi's confirmation, §1): D-74 says D-43 fires ONCE per milestone claim and
-records repeat panels as DRIFT; D-43's remedy is "withheld until the uncovered cells are NAMED", not
-"until a panel passes". If confirmed, close M1 in D-43's form instead of running a seventh panel.
+THE CLOSING CLAIM IS SIGNED: docs/dev-log/2026-07-22-m1-closing-claim.md.
 
-DO NOT convene a seventh panel before the wording review (item 1) and the D-74 call (item 4).
+RECORDING DONE: closing claim SIGNED · check-log entry landed · Mission Control rewritten and
+committed (vault 655cee6; JSON validated, key schema matches all seven sibling boards) · A12 swept
+(six brain files matched EVA-near-0.6; four already corrected, one fixed at vault 483cc8d where a
+banner had been added but the BODY still read "EVA is the headline of gllvmTMB 0.6.0";
+Brain-Growth-Report:126 deliberately left, as it logs commit subjects and editing it would falsify
+history) · A-iss triaged · C4 plan-vs-actual landed.
+
+C5 LANDED: **draft PR #780** — https://github.com/itchyshin/gllvmTMB/pull/780 — carries the terminal
+M1 synthesis. Its specified destination (#778) was merged, so a new PR was opened; the goal's step 5
+said "pick a live home and name it", which delegated the choice. **It is DRAFT and stays draft** —
+it is the RECORD of M1's close, not a merge request. Merge, tag, freeze and submission remain
+separate gates.
+
+**Opening it restored auto-CI, as predicted.** A `pull_request` event immediately triggered
+`R-CMD-check` at head `8f406e4b`. That run is **Ubuntu-only** (the `pull_request` trigger does not
+set `full_matrix`), so it is a bonus re-qualification of the documentation commits — **not** M1's
+platform evidence, which is the exact-SHA three-OS run at `d13916f3`. Do not conflate them.
+
+**M1 AND M3 ARE BOTH CLOSED.** M4 is next. Its two already-known items:
+
+  D-41's mandatory experimental warning is UNVERIFIED and gllvmTMB is NOT exempt — pkgdown callout,
+  README badge, lifecycle badges on exports, .onAttach message, DESCRIPTION Description line.
+  A RELEASE BLOCKER if absent; resolve it early rather than discovering it at M5.
+
+  A live reader-facing CONTRADICTION, deliberately not guessed at: _pkgdown.yml:319 tells readers
+  the deprecated covariance functions are "soft-deprecated as of 0.5.0", while brms-sugar.R:131
+  tells users 0.2.0. One is wrong on a reader surface. Resolve with the maintainer, not by picking.
+
+  Also for M4: the claim-string class OUTSIDE the five R-11 files -- man/, the shipped vignette,
+  NEWS.md, README.md, the DESCRIPTION Description -- was never swept.
+
+M5 then needs its own exact-TAG three-OS cycle; the eighth chain qualifies the bumped branch head,
+not a tag. Historical M3 detail follows:
+  1. fill §4 of docs/dev-log/2026-07-22-m1-closing-claim.md and flip DRAFTED -> SIGNED
+  2. rewrite Shinichi/Dashboards/mission-control/live/status/gllvmTMB.json (§4c — check git status
+     on it FIRST; it was dirty from another writer and must not be clobbered)
+  3. commit with git commit -F, push
+  4. then M3: API freeze, then bump DESCRIPTION/NEWS 0.5.0 -> 0.6.0 (a source edit that WILL
+     invalidate the receipts earned above — expected; M5 prices a second exact-tag cycle)
+
+BEFORE REPEATING ANY SHA CLAIM, RE-DERIVE IT FROM git, FROM INSIDE THE WORKTREE. This file was
+stale on the head for the SEVENTH time (it still listed the three decisions as open two commits
+after they were applied). The class is structural: a document true when written goes false as the
+repo moves. tools/check-reader-surface.sh cannot catch it.
+
 SWEEP THE CLASS, NEVER PATCH THE INSTANCE. Verify from structured results only.
 Do not trust this agent's commit messages — three were false or damaged.
 ```

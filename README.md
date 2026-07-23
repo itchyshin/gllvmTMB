@@ -6,6 +6,14 @@
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
+> [!WARNING]
+> **`gllvmTMB` is experimental — use at your own risk.** It is not complete, is
+> not fully human-verified, and needs extensive further validation. CRAN
+> availability is not a statement of scientific maturity. Point estimates are the
+> supported claim; no cell's interval coverage is certified, and covariance routes
+> have focused-test evidence only. Treat everything else as provisional until the
+> package is declared mature.
+
 `gllvmTMB` fits multivariate models for data where each site,
 individual, species, or study has several responses: body traits,
 species occurrences, behaviours, outcomes, or similar measurements.
@@ -221,7 +229,7 @@ dependency papers it builds on. Run `citation("gllvmTMB")` for
 formatted entries; the curated list is:
 
 - **gllvmTMB**: Nakagawa S (2026). *gllvmTMB: Fit Multivariate
-  Models from Wide Response Data.* R package version 0.5.0.
+  Models from Wide Response Data.* R package version 0.6.0.
   <https://itchyshin.github.io/gllvmTMB/>
 - **TMB engine**: Kristensen K, Nielsen A, Berg CW, Skaug H,
   Bell BM (2016). *TMB: Automatic Differentiation and Laplace

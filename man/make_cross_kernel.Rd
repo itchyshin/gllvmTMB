@@ -37,7 +37,7 @@ cross-lineage bridge induced by the association matrix \code{W}. The intended
 route is a prototype: pass \code{K_star} through the
 existing \code{phylo_latent(..., vcv = K_star, unique = TRUE)} engine. The
 generic \verb{kernel_*()} surface and the
-validated \code{extract_Gamma()} coevolution gate are documented
+\code{extract_Gamma()} coevolution gate are documented
 separately; this helper only builds the input kernel.
 }
 \examples{

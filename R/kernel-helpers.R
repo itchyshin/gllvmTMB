@@ -10,7 +10,7 @@
 #' route is a prototype: pass `K_star` through the
 #' existing `phylo_latent(..., vcv = K_star, unique = TRUE)` engine. The
 #' generic `kernel_*()` surface and the
-#' validated `extract_Gamma()` coevolution gate are documented
+#' `extract_Gamma()` coevolution gate are documented
 #' separately; this helper only builds the input kernel.
 #'
 #' @param A_H,A_P Numeric square correlation matrices for the host and

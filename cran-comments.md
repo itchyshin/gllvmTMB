@@ -1,77 +1,62 @@
 # cran-comments
 
-> **Draft (2026-07-11) — gllvmTMB 0.5.0.** First CRAN submission of `gllvmTMB`.
-> A fresh local `--as-cran` run on this release branch is **clean: 0 errors,
-> 0 warnings, 0 notes** (see "R CMD check results" below). The earlier PDF-manual
-> Unicode warning, DOI notes, Julia bridge namespace note, unused-import note,
-> NEWS heading note, and an undeclared test dependency have all been resolved.
-> `cran-comments.md` is listed in `.Rbuildignore`, so it is not part of the built
-> package.
+> **DRAFT for the maintainer's final review — gllvmTMB 0.6.0.** First CRAN
+> submission of `gllvmTMB`. This file is `.Rbuildignore`d, so it is not part of
+> the built package. **Submission is Shinichi's act;** this draft states the
+> honest check result and must be re-read before upload. It replaces a stale
+> 0.5.0 draft that claimed "0 errors | 0 warnings | 0 notes" from a
+> `--no-tests --no-build-vignettes` run — i.e. **not** the real CRAN lane. The
+> honest result is **0 errors | 0 warnings | 1 NOTE** (the expected "New
+> submission"). **Versioning and CRAN distribution are separate decisions:**
+> Shinichi may release `0.6.0` outside CRAN and elect not to upload this package
+> to CRAN; use this draft only if he chooses a CRAN submission.
 
 ## Submission
 
 This is a **new submission** — `gllvmTMB` is not yet on CRAN.
 
+`gllvmTMB` is released as **experimental** (lifecycle: experimental). This is a
+deliberate honesty label, not a defect report: the package is early, point
+estimates are the supported inferential claim, no cell's interval coverage is
+certified, and covariance routes have focused-test evidence only. The label
+appears on the startup message, the README/pkgdown, and this DESCRIPTION.
+
 ## Test environments
 
-* local: macOS (Apple), R 4.6.0 — `devtools::check(args = "--as-cran")`
-* GitHub Actions (recommended before submit): ubuntu-latest / macos-latest /
-  windows-latest, R release + devel
+The superseded `v0.6.0-rc.1` receipt is historical only. Evidence below is for
+the corrected exact tag **`v0.6.0-rc.2`** (and identical final `v0.6.0`), source
+commit `c0af58d3f64593bff2d11adfeb0dba0c24c0ca5b`.
+
+* local: macOS (Apple silicon), R 4.6.0 (2026-04-24) — `R CMD check` on the
+  built tarball with `--as-cran` and CRAN incoming feasibility enabled
+* GitHub Actions three-OS matrix — ubuntu-latest, macos-latest, windows-latest,
+  R **release** — full suite and vignettes (run 30011350134, at the tag)
+* GitHub Actions heavy regression suite — three-OS (run 30011327933, at the tag)
+
+**This document is not a submission instruction.** On 2026-07-23 the maintainer
+authorised a GitHub-only `v0.6.0` release and explicitly withheld CRAN
+submission. The final tag is `v0.6.0` at `c0af58d3`, identical to corrected
+`v0.6.0-rc.2`. The fresh R-devel win-builder result remains supplementary
+platform evidence for any later CRAN decision; no upload is authorised by this
+record.
 
 ## R CMD check results
 
-A fresh local `--as-cran` run on the 0.5.0 release branch reports
-**0 errors | 0 warnings | 0 notes**:
+`R CMD check --as-cran` on the built `gllvmTMB_0.6.0.tar.gz` tarball reports:
 
-```r
-Rscript -e 'devtools::check(args = c("--as-cran", "--no-tests", "--no-build-vignettes"), error_on = "never")'
-# Status: OK  (0 errors | 0 warnings | 0 notes)
+```
+Status: 1 NOTE
+
+* checking CRAN incoming feasibility ... NOTE
+  Maintainer: 'Shinichi Nakagawa <itchyshin@gmail.com>'
+  New submission
 ```
 
-(`--no-tests` / `--no-build-vignettes` keep the structural check fast; the test
-suite and vignettes are exercised separately by the GitHub Actions
-R-CMD-check matrix.) On CRAN's incoming feasibility checks a single "New
-submission" NOTE is expected.
-
-The items below were flagged by earlier checks and are now **all resolved**;
-they are retained here as a record of what changed.
-
-**Warnings**
-
-1. *Install warning* — Apple-clang `unknown warning group '-Wfixed-enum-extension'`
-   from `R_ext/Boolean.h`. Toolchain noise local to this macOS clang; not a package
-   defect and not expected on CRAN's runners.
-2. *PDF manual* — **FIXED.** The LaTeX-breaking Greek letters were ASCII-ised in
-   the `.Rd` sources (commit `93640b7`). Verified: `R CMD Rd2pdf` builds the full
-   reference manual with no `inputenc`/Unicode/LaTeX errors.
-
-**Notes**
-
-1. *CRAN incoming feasibility* — "New submission" (expected). The DOI sub-notes
-   are **FIXED**: the bioRxiv DOI was corrected to the registered
-   `10.64898/2025.12.20.695312` (the old `10.1101/...` prefix did not resolve);
-   the Felsenstein (2005) reference was corrected — its title belongs to *Phil.
-   Trans. R. Soc. B* **360**:1427–1434, `10.1098/rstb.2005.1669`, not the
-   non-resolving `Genetics`/`10.1534/genetics.104.025262` that was cited; and the
-   three `\doi{}`-form URLs in `diag_re.Rd` / `spde.Rd` were converted from
-   `\url{https://doi.org/...}` to `\doi{}`. All five DOIs were confirmed to
-   resolve via `doi.org`.
-2. *NEWS.md* — **FIXED.** R could not extract version info because the top
-   section header was `# gllvmTMB (development version)` (no version), which
-   made the parser fall back to the dated `##` topic sub-headers. Naming the
-   release section `# gllvmTMB 0.5.0` gives the parser a version and the
-   sub-headers are read as subsections; `tools:::.build_news_db_from_package_NEWS_md()`
-   now parses clean.
-3. *Non-standard file* `gllvmTMB-manual.tex` — was a leftover artifact of the
-   earlier failed PDF build; resolved now that the PDF manual builds.
-4. *R code namespace note* — **FIXED.** The Julia bridge S3 methods now import
-   `stats::coef`, `stats::fitted`, and `stats::setNames`; the current check has
-   `checking R code for possible problems ... OK`.
-
-**Submission readiness:** the local `--as-cran` structural check is clean
-(0/0/0). Remaining before submit: a full GitHub Actions `R-CMD-check` matrix run
-(3-OS, with tests and vignettes) and a final `--as-cran` including CRAN incoming
-feasibility, where the only expected note is the standard "New submission".
+**0 errors | 0 warnings | 1 NOTE.** The single NOTE is the standard "New
+submission" and is expected for a first submission. The three-OS matrix returned
+`Status: OK` on all three operating systems with zero errors, warnings, or notes
+across the full test suite and vignette rebuild; the heavy regression suite
+returned 0 failures.
 
 ## Downstream dependencies
 

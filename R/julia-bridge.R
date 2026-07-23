@@ -1668,7 +1668,7 @@ gllvm_julia_capabilities <- function() {
 
   p <- .gllvm_julia_n_traits(fit)
   traits <- .gllvm_julia_trait_names(fit, p)
-  validation_row <- "experimental route: partial validation only"
+  validation_row <- "experimental route: point estimate only; no coverage evidence"
 
   if (identical(type, "trait_effect")) {
     B_lv <- fit$lv_effects %||% NULL

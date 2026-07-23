@@ -142,7 +142,7 @@
 ## one-shared-variance case is now the canonical `indep(..., common = TRUE)`, which
 ## routes to the same *_scalar engine. The `scalar()` / `*_scalar()` keywords stay
 ## live as compatibility syntax but warn once per session, mirroring the
-## unique-family soft-deprecation (maintainer 2026-07-12: warn-once + rewrite).
+## scalar-family soft-deprecation (maintainer 2026-07-12: warn-once + rewrite).
 .gllvmTMB_warn_scalar_family_deprecated <- function(fn) {
   if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
     return(invisible(NULL))

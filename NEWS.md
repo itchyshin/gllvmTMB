@@ -1,8 +1,8 @@
-# gllvmTMB 0.5.0
+# gllvmTMB 0.6.0
 
 This release focuses on multivariate stacked-trait models fitted through the
-R/TMB engine. The optional Julia bridge remains experimental and is not
-required for the main workflow.
+R/TMB engine. Models are fitted by **Laplace approximation**. The optional Julia
+bridge remains experimental and is not required for the main workflow.
 
 ## New
 
@@ -197,6 +197,10 @@ required for the main workflow.
 
 ## Known limitations
 
+* **Variance components: what is and is not claimed.** For all families,
+  **point estimates** of variance components are the supported claim. No cell's
+  interval coverage is certified; the available covariance routes have focused-test
+  evidence only. Intervals are route output, not a coverage guarantee.
 * Interval support is target-specific. A route that returns bounds is not, by
   itself, evidence of nominal repeated-sampling coverage.
 * The previous public `check_identifiability()` and `coverage_study()` prototypes
@@ -226,5 +230,5 @@ required for the main workflow.
 
 Earlier development release establishing the stacked-trait R/TMB engine, the
 long-format API, initial covariance keywords, simulation helpers, and extractor
-infrastructure. The 0.5.0 notes above describe the current taught syntax and
+infrastructure. The 0.6.0 notes above describe the current taught syntax and
 reader-facing scope.

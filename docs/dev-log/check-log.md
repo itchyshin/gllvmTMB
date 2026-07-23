@@ -46343,6 +46343,358 @@ is a defect; the *evidence standard* was.
 
 **M1 remains WITHHELD.**
 
+## 2026-07-22 — M1 CLOSED: decisions applied, chain re-earned, claim SIGNED (Claude Code)
+
+Branch `claude/0.6-m1-close-20260722`. PRs **#778 and #779 MERGED**, so the branch has no open PR —
+a push triggers nothing and CI must be dispatched by hand.
+
+**The four maintainer decisions were answered (`198ab08a`).** Two required source edits —
+`R/julia-bridge.R:1671` (the tightened claim string), its asserting test, and `NEWS.md` (the
+boundary statement) — which **forfeited the certified chain at `21e04eb5`**, the seventh such
+forfeit of the arc. Expected, not a fault.
+
+**The corrected transfer check earned its keep on first use.** It returned three files including
+**`NEWS.md`**, which the previous path list omitted. Had Decision 2's NEWS edit been the only source
+change, the old command would have reported "empty" and declared a certification that no longer
+held — a false PASS from the command written to prevent one.
+
+### Evidence re-earned — read from LOGS, not conclusion fields
+
+```sh
+# suite, at d13916f3
+devtools::test()            FAIL 0 | ERROR 0 | SKIP 779 | PASS 7290   (exact match to baseline)
+
+# three-OS matrix, run 29926771814 at d13916f3
+gh workflow run R-CMD-check.yaml --ref claude/0.6-m1-close-20260722 -f full_matrix=true
+gh run view 29926771814 --log | grep -oE "Status: .*"   ->  3x "Status: OK"
+gh run view 29926771814 --json jobs  ->  ubuntu-latest, macos-latest, windows-latest : all success
+
+# heavy full-check, run 29926795733 at d13916f3
+gh workflow run full-check.yaml --ref claude/0.6-m1-close-20260722
+                            FAIL 0 | WARN 9 | SKIP 102 | PASS 13650, Status: OK
+grep -c GLLVMTMB_HEAVY_TESTS heavy.log  ->  18    (gate asserted ON; it fails open)
+
+# CRAN-configuration check, at 7f9b9ed1
+Rscript --no-init-file dev/m1-cran-config-check.R
+  ERRORS=0  WARNINGS=0  NOTES=1  UNEXPECTED_NOTES=0  SHA_STABLE=TRUE
+  the NOTE is "New submission" under incoming feasibility — allowlisted
+```
+
+**The two evidence SHAs are interchangeable:** the shipped-path diff `d13916f3..7f9b9ed1` is empty
+(`7f9b9ed1` touches only `LOOP/` and `dev/`, both build-ignored).
+
+### Three things this run establishes about the checks themselves
+
+- **A green conclusion is not `0/0/0`.** `error_on` is `"error"`, so warnings and notes pass without
+  failing the run. Only the log's `Status:` line settles it.
+- **`full_matrix` degrades silently.** It defaults false; the three OS-named jobs must be asserted,
+  or a Ubuntu-only run passes as though it were three platforms.
+- **Dispatching `R-CMD-check` and `full-check` together is safe.** The concurrency group is
+  `workflow-ref`, so the standing "never while Ubuntu is in flight" rule concerns two runs of the
+  *same* workflow on one ref. One `full_matrix=true` run cannot collide with itself, and it removes
+  the window in which the second dispatch was cancelled — observed live twice in this arc.
+
+### Deviation recorded, not skipped
+
+The durable `--as-cran` was **not** re-run separately. It is subsumed: the three-OS matrix runs
+`R CMD check --as-cran` on three platforms and returned `Status: OK` on each — stronger than the
+single-platform durable runner — and the CRAN-configuration check supplies the incoming-feasibility
+leg the durable runner disables.
+
+### The heavy count drift is a KNOWN mechanism, not a new anomaly
+
+`WARN 10 → 9`, `SKIP 103 → 102`, `PASS 13656 → 13650`. **The entry immediately above already traced
+this identical movement:** the contingent sites are optimiser-convergence-dependent, so a different
+set of tests runs. `FAIL 0`, which does not vary, is the gate.
+
+**M1 is CLOSED.** The claim is signed at `docs/dev-log/2026-07-22-m1-closing-claim.md`, in D-43's
+required form — tier cited, uncovered cells named (R-2, R-6, R-7 site (d), R-5's SPDE/`phylo_diag`
+gap, CI-08's 13/15 failing cells, CI-10 at 0.55, FAM-17/MIX-10). **No seventh D-43 panel was
+convened**: D-74 fires D-43 once per milestone claim and records repeat panels as drift, and D-43's
+remedy is "withheld until the uncovered cells are NAMED", not "until a panel passes". Six panels ran
+where one was specified, and **not one found a numerical, algorithmic or statistical defect.**
+
+## 2026-07-22 (later) — M3: API freeze + bump to 0.6.0; the EIGHTH chain, green (Claude Code)
+
+Freeze record: `docs/dev-log/2026-07-22-m3-api-freeze.md`. Pinned by checksum —
+`NAMESPACE` SHA-256 `c97ae039…` at `5cacf173`; 153 exports, 33 S3 methods.
+
+**The bump invalidated every M1 receipt, by design.** Chain re-earned at `458dc01b`:
+
+```sh
+devtools::test()                    FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290   (identical pre/post)
+
+gh workflow run R-CMD-check.yaml --ref claude/0.6-m1-close-20260722 -f full_matrix=true
+  run 29934531169   3x "Status: OK", zero ERROR/WARNING/NOTE
+                    ubuntu-latest, macos-latest, windows-latest : all success
+  built artefact    gllvmTMB_0.6.0.tar.gz     <- the bump reached the BUILD, not just the files
+
+gh workflow run full-check.yaml  --ref claude/0.6-m1-close-20260722
+  run 29934532873   FAIL 0 | WARN 10 | SKIP 103 | PASS 13656, Status: OK
+
+Rscript --no-init-file dev/m1-cran-config-check.R
+  ERRORS=0  WARNINGS=0  NOTES=1 ("New submission")  UNEXPECTED_NOTES=0  SHA_STABLE=TRUE
+```
+
+### The heavy counts oscillated BACK to the certified baseline
+
+`WARN 10 | SKIP 103 | PASS 13656` — **exactly** the original baseline at `21e04eb5`, from a run whose
+immediate predecessor at `d13916f3` gave `WARN 9 | SKIP 102 | PASS 13650`.
+
+This is **third-run confirmation** of the mechanism recorded two entries above: the contingent sites
+are optimiser-convergence-dependent, so the counts oscillate between runs of functionally identical
+code. The standard drawn from it stands — **an exact set match between two heavy runs cannot
+establish that an arc added no warning site.** That is exactly the strand retired from R-7.
+
+### ⚠ A STANDING RULE WAS TOO BROAD — corrected here
+
+The rule read *"never dispatch `R-CMD-check.yaml` while an Ubuntu run is in flight — concurrency
+cancels it."* **That holds only when the two runs share a ref.** The concurrency group is
+`${{ github.workflow }}-${{ github.ref }}`, and a `pull_request` run's ref is `refs/pull/780/merge`
+while a `workflow_dispatch` on the branch is `refs/heads/claude/…`. **Different refs → different
+groups → no cancellation.**
+
+Observed directly: dispatch `29934531169` and PR-triggered `29934510132` ran **concurrently to
+completion at the same SHA**, neither cancelled. The earlier cancellations in this arc happened
+because both runs shared the *branch* ref. The rule is real but narrower than stated.
+
+## 2026-07-22 (later still) — M4 opens: D-41 warning + the NINTH chain, green (Claude Code)
+
+Freeze is closed; M4 (reader-ready) has begun. Two landings.
+
+**D-41 experimental warning — all four accepted channels.** Grounded from `memory/DECISIONS.md`
+D-41 before acting: the accepted mechanism (brain, 2026-07-11) is startup message + lifecycle badge
++ pkgdown/README callout + DESCRIPTION line — **not** a badge on every export. `.onAttach` added to
+`R/zzz.R` and **verified firing** via `pkgload::load_all(attach = TRUE)`; the `DESCRIPTION`,
+`README.md` `[!WARNING]` callout, and a `_pkgdown.yml` home-sidebar Status callout carry the accepted
+wording. Internal typo `brms-sugar.R:145` ("unique-family" → "scalar-family") fixed in the same commit.
+
+**The ninth evidence chain, green at `70e070be`:**
+
+```
+devtools::test()                    FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290   (identical to baseline)
+3-OS 29964958208 (full_matrix=true) 3x Status: OK, zero ERROR/WARNING/NOTE
+                                    ubuntu-latest, macos-latest, windows-latest : all success
+                                    built artefact gllvmTMB_0.6.0.tar.gz
+heavy 29964959674                   FAIL 0 | WARN 10 | SKIP 103 | PASS 13656, Status: OK
+CRAN-config (dev/m1-cran-config-check.R)
+                                    ERRORS 0 | WARNINGS 0 | NOTES 1 ("New submission")
+                                    UNEXPECTED_NOTES 0 | SHA_STABLE TRUE
+```
+
+Receipts + `SHA256SUMS.txt`: `~/gllvmTMB-0.6-evidence/m4/70e070be-d41/`.
+
+**Reader-surface overclaim audit (workflow `wf_66ad8b73-0b3`, 10 agents).** Six reader surfaces swept
+for coverage/calibration overclaims, each candidate adversarially verified. The hard surfaces
+(README, NEWS, DESCRIPTION, shipped vignette, `cli` strings) are **clean**. The consolidation
+reported `confirmed_count: 0`, but a human re-read of `journal.jsonl` **corrected that to one medium
+item** — `kernel-helpers.R:13` calls `extract_Gamma()`'s coevolution gate *"validated"* while line
+281 of the same file forbids that word — **plus three M4 page-review candidates** (`extract_phylo_signal`,
+`loading_ci`, `extract_repeatability` offer CIs on non-Gaussian estimands with no calibration caveat).
+Dossier: `docs/dev-log/2026-07-22-m4-overclaim-audit-dossier.md`. **These are proposals for the
+maintainer's page review, not applied edits** — 0.6 reader wording is settled with Shinichi, not
+batch-rewritten (standing rule). The `confirmed_count: 0` is a reminder that the "read the log, not
+the summary" rule applies to one's own workflows.
+
+## 2026-07-22 (still later) — the TENTH chain, green at the fences SHA (Claude Code)
+
+The four additive-safe fences (`aa939ce8`) forfeited the ninth chain BY DESIGN (shipped `R/` + `man/`
+changed, comment-only). Re-earned at `aa939ce8`, all read from logs:
+
+```
+devtools::test()                    FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290   (identical to baseline)
+3-OS 29969703136 (full_matrix=true) 3x Status: OK, zero ERROR/WARNING/NOTE
+                                    ubuntu-latest, macos-latest, windows-latest : all success
+                                    built artefact gllvmTMB_0.6.0.tar.gz
+heavy 29969704205                   FAIL 0 | WARN 10 | SKIP 103 | PASS 13656, Status: OK
+CRAN-config (dev/m1-cran-config-check.R at 3c5fd11d)
+                                    ERRORS 0 | WARNINGS 0 | NOTES 1 ("New submission") | 0 unexpected
+                                    SHA_STABLE TRUE (START = END = 3c5fd11d)
+```
+
+Receipts + `SHA256SUMS.txt`: `~/gllvmTMB-0.6-evidence/m4/tenth-chain/`.
+
+### ⚠ A SHA_STABLE=FALSE was caught and corrected, not papered over
+
+The **first** CRAN-config run for this chain returned `SHA_STABLE=FALSE` — its `START_SHA` and
+`END_SHA` differed because a docs commit (the runbook + after-task, `3c5fd11d`) landed **while the
+check was still running**. The package content was provably identical (docs are `.Rbuildignore`d;
+shipped-path diff `aa939ce8..3c5fd11d` empty), so the 0/0/1 was valid — but the receipt was not
+cleanly pinned. **Re-run at a stable HEAD with nothing committing during it**, which is the
+`SHA_STABLE` value recorded above. The discipline learned: do not commit while a SHA-sensitive check
+runs. Heavy `WARN 10` again equals the certified baseline — the convergence oscillation, now seen
+across four independent heavy runs.
+
+## 2026-07-22 (overnight) — M5-prep: tarball-clean rung PROVEN + extrachecks (Claude Code)
+
+Shinichi chose "review first, then freeze" and is away until ~05:00; authorised autonomous non-gated
+prep. **No gate crossed** — no freeze, no tag, no submission, no external upload. Rung advanced
+`source-clean → tarball-clean`.
+
+**Provisional candidate tarball** (built from `00e4ad35`; provisional because the page review may
+still change wording — a real freeze mints the final one):
+
+```
+tarball    gllvmTMB_0.6.0.tar.gz
+SHA-256    73893f9707b8940a8ad18b3f62520f4986ac5b46a8570aa3148ca5ca6fa31e37
+bytes      3245650
+forbidden-path scan   CLEAN (no LOOP/, dev/, docs/, .Rproj, scratch, .git, .DS_Store)
+top-level inventory   gllvmTMB/ only
+R CMD check --as-cran ON THE TARBALL   Status: 1 NOTE (New submission); 0 errors, 0 warnings
+  vignettes rebuild OK; installed size INFO (not a NOTE)
+```
+
+Ledger + logs: `~/gllvmTMB-0.6-evidence/m5-prep/`. This is the real CRAN-lane result on the built
+artefact, not a narrower `devtools::check()`.
+
+**Extrachecks (subordinate, feed rungs — do not establish readiness):**
+- **DESCRIPTION spell-check CLEAN** — the gate's hard blocker (a DESCRIPTION spell flag blocks) is
+  clear. `devtools::spell_check()` flags 142 words, but all are domain vocabulary (`Ainv`, `atanh`,
+  `coevolution`, `eigen`, `CFA`, author surnames) in `.Rmd`/`.Rd`, none in DESCRIPTION, and the
+  `--as-cran` lane itself emitted **no** spelling NOTE. Recommendation for freeze time: add an
+  `inst/WORDLIST` (a source edit — HELD until the freeze).
+- **`\value` coverage** — the CRAN lane is satisfied (no `\value` NOTE). Two exported topics
+  (`ordiplot`, `gllvmTMB_multi-methods`) lack an explicit `\value`; advisory doc polish, not a
+  blocker. HELD as page-review recommendations (adding a `\value` is content).
+- **DESCRIPTION conventions** — Title is title-case with no "package"; Description opens "Fits …",
+  not the package name or "This package". OK.
+
+**cran-comments.md corrected** — it was the D-49 partial-green trap: stale at 0.5.0, claiming
+`0/0/0` from a `--no-tests --no-build-vignettes` run. Rewritten to 0.6.0 with the honest
+`0/0/1` (New submission) and the real evidence, marked DRAFT for the maintainer's final read. It is
+`.Rbuildignore`d, so this does not change the tarball.
+
+**pkgdown site rendered** to `pkgdown-site/` (gitignored) for the page review — `build_site()` finished
+with "Checking for problems" clean.
+
+**Held for Shinichi (the freeze gate and beyond):** the page review, the candidate freeze, the RC/final
+tags, win-builder/macbuilder, and submission. Rung: **`tarball-clean` proven; NOT READY** for
+submission pending the review + gate sign-offs (D-49/D-66).
+
+## 2026-07-22 (overnight, cont.) — articles overclaim audit + staleness scan (Claude Code)
+
+Workflow `wf_1c404e47-89a`, 24 agents over the **19 pkgdown articles** (which the shipped-surface audit
+excluded), each candidate adversarially verified. **Result: the articles are CLEAN** — 5 low-severity
+borderline phrasings, all defensibly refuted on a full-context read (each self-fences; e.g.
+`multinomial.Rmd:234` "validated" is disambiguated by lines 255–257). **No autonomous edits** —
+reader prose is settled with the maintainer; the 5 are logged as optional tightening in the review
+report. A staleness grep found no deprecated syntax (the `link_residual =` hits are current API;
+`meta_known_V()` is correctly labelled deprecated) and no TODO/WIP markers.
+
+The single review entry point for the maintainer is
+**`docs/dev-log/2026-07-22-REVIEW-ME-shinichi.md`** — everything changed this session + everything
+suggested-not-applied + the held freeze items. Nothing crossed a gate.
+
+## 2026-07-22 (RC ceremony) — v0.6.0-rc.1 cut, reviewed 3/3 NOT-READY, submission WITHHELD (Claude Code)
+
+Shinichi authorised the freeze + RC ceremony and delegated the freeze decision; submission stays his.
+Frozen at `e9bc655a` (ZERO source edits — held items all deferred, reasons in the freeze record).
+
+**Exact-tag evidence at `v0.6.0-rc.1`** (read from logs):
+```
+RC tarball gllvmTMB_0.6.0.tar.gz  SHA-256 532c205b…  3.25 MB
+  R CMD check --as-cran           Status 1 NOTE (New submission); 0 errors, 0 warnings; forbidden-path scan NONE
+3-OS  29977191886 (at the tag)    ubuntu + macos + windows all SUCCESS, 3x Status: OK
+heavy 29977182659 (at the tag)    3-OS, all FAIL 0, 3x Status: OK
+local suite + CRAN-config         transfer from the 10th chain (shipped diff empty): 0/779/7290, 0/0/1 SHA_STABLE
+```
+Ledger + SHA256SUMS + the review verdict: `~/gllvmTMB-0.6-evidence/m5-rc1/`.
+
+**D-49 adversarial review (3 fresh reviewers, NOT-READY default): 3/3 NOT-READY, submission WITHHELD.**
+One blocking reason, shared: **win-builder R-devel + macbuilder have not run** — CRAN checks first
+submissions on R-devel; the matrix pins R release. An external upload HELD for the maintainer; the
+ceremony correctly stopped there. One doc fix applied: `cran-comments.md` now cites the frozen-tag runs
+(was pre-freeze IDs). The review independently confirmed the candidate is honest and clean (no
+forbidden coverage claim on any shipped surface; D-41 on 4 channels; tarball matches the tag exactly).
+
+**Rung: `platform-clean` at the RC; NOT submission-ready.** Remaining gap is the maintainer's:
+win-builder R-devel (+ macbuilder) reconciled → page review (before stable) → final `v0.6.0` tag →
+submission. The single maintainer entry point: `docs/dev-log/2026-07-22-REVIEW-ME-shinichi.md`.
+
+## 2026-07-23 — win-builder R-devel SUBMITTED; macbuilder service down (Claude Code)
+
+On the maintainer's "review finished, go ahead", ran the check-service uploads (the one blocker the
+D-49 review raised). Submission remains the maintainer's — NOT crossed.
+
+- **win-builder R-devel: SUBMITTED** (`devtools::check_win_devel()`), results emailed to
+  itchyshin@gmail.com ~05:25 AM. This is the R-devel check CRAN uses for first submissions.
+- **macbuilder: HTTP 502 twice** (`mac.r-project.org` service outage — transient, their end). Secondary
+  and redundant with the exact-tag 3-OS `macos-latest` release run; optional retry later.
+
+Rung unchanged: `platform-clean` at the RC, R-devel evidence pending the emailed result. Remaining is
+the maintainer's alone: read the win-builder email → reconcile `cran-comments.md` → final `v0.6.0` tag
+→ CRAN submission.
+
+## 2026-07-23 — Codex independent adversarial review: real overclaim in the central claim (Claude Code)
+
+An independent Codex adversarial pre-CRAN review (different tool + model, live toolchain, read-only)
+ran on v0.6.0-rc.1. Verdict: do not submit yet. Findings, each checked against the artifacts:
+
+- REAL, held for the maintainer: the D-41 wording "interval calibration IS ESTABLISHED for the Gaussian
+  cases that cleared the coverage gate" (DESCRIPTION, README, .onAttach, NEWS, the three interval
+  caveats) contradicts docs/design/75:96-99 ("no cell is calibrated; CI-08/CI-10 remain failing") and
+  the project's own record (Sigma_unit certificate withheld at 0.95; CI-08 failed). Judged CORRECT on
+  the merits -- a CLASS overclaim my same-model reviewers rationalised; cross-tool review caught it.
+  Fix = strictly-honest reword across the class -> rc.2. HELD; not touched.
+- Codex TOOLING ERRORS (verified): "72 \dontrun is false / it's 0" -- WRONG, it genuinely is 72
+  (Codex's rg -F used a double backslash); "0 Rd missing \value" -- imprecise (135/139 have it, ~2
+  function-topics lack it). So Codex is not infallible; its counts were re-derived here.
+- NOT package defects: Codex could not rebuild the tarball (its sandbox denied mkdir), so the 0/0/1 is
+  verified by this lane only, not cross-tool -- win-builder R-devel is the genuinely independent check
+  (pending the maintainer's email). HEAD (19a65843) != tag (e9bc655a) but the delta is Rbuildignored
+  (docs), no package-source change.
+
+Findings doc: docs/dev-log/2026-07-23-codex-adversarial-findings.md. Verdict archived at
+~/gllvmTMB-0.6-evidence/m5-rc1/codex-adversarial-review.txt. NOTHING SUBMITTED. The calibration-wording
+decision gates submission and is the maintainer's.
+
+## 2026-07-23 — corrected RC.2 evidence and GitHub-only v0.6.0 tag (Codex)
+
+The 11-file RC.2 honesty sweep was frozen at `c0af58d3f64593bff2d11adfeb0dba0c24c0ca5b`
+(`Withdraw legacy coverage gate narrative`). It removes the final shipped-source
+legacy coverage-gate narrative: supported claims are point estimates and focused
+route tests; no interval is coverage-calibrated. `v0.6.0-rc.2` and the final
+non-CRAN `v0.6.0` tag both resolve to that exact commit.
+
+Corrected tarball receipt:
+
+```
+gllvmTMB_0.6.0.tar.gz
+SHA-256 559db1f97260326633bac540aae0df2bd14f7afd46345b71c401df15aacd6aee
+size 3241935 bytes; 595 inventory entries; top-level gllvmTMB/ only
+forbidden-path scan CLEAN
+R CMD check --as-cran --run-donttest: Status 1 NOTE (New submission), 0 errors, 0 warnings
+```
+
+Local gates previously run on the corrected candidate: `devtools::document()`
+(only expected Rd pages), `pkgdown::check_pkgdown()` (pass),
+`urlchecker::url_check()` (pass), and the full structured suite (0 failures / 0
+errors; 779 skips). Required Suggests were available.
+
+Exact-tag CI: manual 3-OS fast run `30011350134` was success with macOS,
+Windows, and Ubuntu each reporting `Status: OK`. Heavy exact-tag run
+`30011327933` completed Success at the same `c0af58d3` head; public job receipts
+show macOS and Ubuntu success, and the public workflow result shows overall
+Success (therefore Windows success). GitHub's authenticated job-log download was
+rate-limited at closeout, so its raw per-job text could not be retained; this is
+a transparency limitation, not a failure claim.
+
+`devtools::check_win_devel()` was submitted for the corrected source, but its
+R-devel email had not arrived by release closeout. The maintainer explicitly
+authorised a GitHub-only non-CRAN release; it is retained as supplementary
+evidence for any later CRAN decision. No CRAN upload occurred.
+
+Claim-consistency scans (verbatim):
+
+```
+rg -n -i 'coverage[- ]calibrat|calibrated coverage|coverage gate|95% coverage|94% coverage' R man README.md NEWS.md vignettes docs
+rg -n -i 'coverage[- ]calibrat|calibrated coverage|coverage gate|95% coverage|94% coverage' . --glob '!docs/dev-log/**' --glob '!docs/design/**'
+```
+
+Verdict: active shipped source, Rd, README, NEWS, and vignettes contain no
+positive calibrated-interval or coverage-gate claim; retained historical logs
+are deliberately excluded from the second scan.
+
 ## 2026-07-22 — Function map and cheat sheet (Codex)
 
 - Added the public Tier-2 `vignettes/articles/function-map-cheatsheet.Rmd` to

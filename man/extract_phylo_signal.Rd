@@ -72,6 +72,14 @@ diagonal Psi companion by default. If the species-tier Psi is absent (a
 \code{latent(..., unique = FALSE)} subset), \eqn{\psi_t = 0} for all traits and a
 \code{cli::cli_inform()} advisory fires.
 }
+\section{Interval calibration}{
+
+The point estimates are the supported claim. When \code{ci = TRUE}, the interval
+methods are provided for exploration: their empirical coverage is not
+certified for this estimand, so treat the intervals as exploratory rather
+than coverage-calibrated. See \code{NEWS.md} for the current coverage status.
+}
+
 \section{Which variances enter the denominator}{
 
 \code{V_eta} is the \strong{species-level} latent variance: only components whose

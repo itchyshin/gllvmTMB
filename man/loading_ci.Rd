@@ -71,6 +71,15 @@ fits and points the user at \code{\link[=confirmatory_lambda]{confirmatory_lambd
 \code{\link[=suggest_lambda_constraint]{suggest_lambda_constraint()}}, or at \code{\link[=extract_communality]{extract_communality()}} /
 \code{\link[=extract_Sigma]{extract_Sigma()}} for rotation-invariant summaries.
 }
+\section{Interval calibration}{
+
+The point estimates are the supported claim. The interval methods here are
+provided for exploration: their empirical coverage is not certified for this
+estimand (the worked example below is a binomial-probit fit), so treat the
+intervals as exploratory rather than coverage-calibrated. See \code{NEWS.md} for
+the current coverage status.
+}
+
 \examples{
 \dontrun{
 # Build a confirmatory fit

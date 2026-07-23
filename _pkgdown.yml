@@ -3,6 +3,21 @@ url: https://itchyshin.github.io/gllvmTMB/
 # project's design notes and dev-log (drmTMB-style scaffolding).
 # Matches drmTMB's _pkgdown.yml convention.
 destination: pkgdown-site
+
+# D-41: a prominent, site-wide EXPERIMENTAL callout on the home sidebar,
+# in addition to the README badge + callout and the DESCRIPTION line.
+home:
+  sidebar:
+    structure: [experimental, links, license, community, citation, authors, dev]
+    components:
+      experimental:
+        title: Status
+        text: >-
+          **Experimental — use at your own risk.** Not complete, not fully
+          human-verified, needs extensive further validation. CRAN availability
+          is not scientific maturity. Point estimates are supported; interval
+          calibration is established only for the Gaussian cases that cleared
+          the coverage gate.
 template:
   bootstrap: 5
   bootswatch: flatly
@@ -324,11 +339,12 @@ reference:
 
   - title: Deprecated covariance functions
     desc: >
-      Soft-deprecated as of 0.5.0; only the functions listed here are deprecated, and the broader
-      animal, phylogenetic, spatial, and kernel APIs remain current. The scalar family (one shared
-      variance) is now indep(..., common = TRUE); the *_unique diagonal companion folds into
-      latent(); the standalone slope keywords are superseded by the reduced-rank latent / indep / dep
-      slope forms. Existing calls keep working and warn once per session.
+      Only the functions listed here are deprecated; the broader animal, phylogenetic, spatial and
+      kernel APIs remain current. The scalar family (one shared variance) was soft-deprecated as of
+      0.5.0 and is now indep(..., common = TRUE). The *_unique diagonal companion was soft-deprecated
+      earlier, as of 0.2.0, and folds into latent(). The standalone slope keywords are superseded by
+      the reduced-rank latent / indep / dep slope forms. Existing calls keep working and warn once
+      per session.
     contents:
     - scalar
     - animal_scalar
@@ -366,8 +382,12 @@ reference:
     - getResidualCov
     - ordiplot
 
-## news.releases intentionally omitted until the maintainer creates a 0.5.0 tag
+## news.releases intentionally omitted until the maintainer creates a 0.6.0 tag
 ## and GitHub release. The current site is pre-release documentation.
+##
+## NOT 0.5.0: the premature v0.5.0 tag was DROPPED. 0.5 was the
+## "cover-everything" dev cycle, never a release; the first CRAN release is
+## 0.6.0 (D-66). Updated at the M3 freeze, 2026-07-22.
 ##
 ## In the meantime, the navbar "News" dropdown will show only the
 ## "Changelog" entry (NEWS.md) — which is the correct pre-release UX.

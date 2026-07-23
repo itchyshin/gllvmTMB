@@ -112,9 +112,9 @@ test_that("coverage_study() returns the documented structure", {
   ))
 })
 
-## ---- well-behaved fit hits the >= 94% gate on a small sample ----------
+## ---- well-behaved fit has a high exploratory prototype rate -------------
 
-test_that("Wald CI on sigma_eps passes the 94% gate on a tiny well-identified fit", {
+test_that("Wald CI on sigma_eps has a high exploratory rate on a tiny well-identified fit", {
   skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
@@ -128,10 +128,9 @@ test_that("Wald CI on sigma_eps passes the 94% gate on a tiny well-identified fi
       progress = FALSE
     )
   ))
-  ## Coverage for sigma_eps on a Gaussian fit should comfortably
-  ## hit the gate at n_reps = 10. (Finite-n_reps noise -- ~3
-  ## successes < 94% on 5 reps -- means we relax to >= 80% here;
-  ## the 94% gate is meaningful at audit-recommended n_reps = 50.)
+  ## The withdrawn prototype has a high rate on this Gaussian fixture.
+  ## Finite-replicate noise means the legacy prototype uses >= 80% here;
+  ## neither threshold establishes empirical coverage calibration.
   rate <- res$coverage$rate[res$coverage$method == "wald"]
   expect_gte(rate, 0.80)
 })

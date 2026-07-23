@@ -23,6 +23,12 @@ source(file.path(.d86_laplace_root(), "dev", "design86-gate2-eva-runner.R"))
 
 design86_gate2_laplace_run <- function(seed, output_root = NULL) {
   root <- .d86_laplace_root(); runner <- file.path(root, "dev", "design86-gate2-laplace-runner.R")
+  .d86_assert_clean_tree(root)
+  preflight_source_receipt <- .d86_source_receipt(
+    root, runner,
+    engine_source_path = file.path(root, "src", "gllvmTMB.cpp"),
+    driver_source_path = file.path(root, "R", "fit-multi.R")
+  )
   p <- .eva_read_gate2_parameters(); input <- .eva_gate2_input(seed)
   if (is.null(output_root)) output_root <- file.path(root, p$provenance$output_root)
   manifest <- .d86_input_manifest(input, root, output_root)
@@ -60,27 +66,13 @@ design86_gate2_laplace_run <- function(seed, output_root = NULL) {
     beta_hat = beta_hat, Sigma_B_hat = Sigma_B_hat,
     pd_hessian_report_only = if (is.null(fh)) NA else fh$pd_hessian)
   dll_path <- .d86_laplace_dll_path()
-  source_receipt <- list(
-    source_commit = .d86_git(root, c("rev-parse", "HEAD")),
-    source_tree_clean = !length(system2("git", c("-C", root, "status", "--porcelain"), stdout = TRUE, stderr = FALSE)),
-    engine_source_sha256 = .d86_sha256_file(file.path(root, "src", "gllvmTMB.cpp")),
-    driver_source_sha256 = .d86_sha256_file(file.path(root, "R", "fit-multi.R")),
-    runner_source_sha256 = .d86_sha256_file(runner),
-    dll_sha256 = if (is.na(dll_path)) NA_character_ else .d86_sha256_file(dll_path),
-    runtime = list(
-      R = R.version$version.string,
-      platform = R.version$platform,
-      TMB = if (requireNamespace("TMB", quietly = TRUE)) as.character(utils::packageVersion("TMB")) else NA_character_,
-      compiler = tryCatch(system2(file.path(R.home("bin"), "R"), c("CMD", "config", "CXX"), stdout = TRUE, stderr = FALSE)[1L],
-                            error = function(e) NA_character_)
-    )
-  )
+  preflight_source_receipt$dll_sha256 <- if (is.na(dll_path)) NA_character_ else .d86_sha256_file(dll_path)
   arm_dir <- file.path(output_root, "laplace")
   result_path <- file.path(arm_dir, sprintf("seed-%s-result.json", seed)); .d86_write_json_once(result, result_path)
   receipt <- c(list(parameter_file_sha256 = .d86_sha256_file(.eva_gate2_file()),
     inputs_manifest_sha256 = manifest$sha256,
     output_root_repo_relative = sub(paste0("^", root, "/?"), "", normalizePath(output_root, mustWork = FALSE)),
-    denominator_id = p$denominator$id), source_receipt)
+    denominator_id = p$denominator$id), preflight_source_receipt)
   receipt$output_manifest_sha256 <- .d86_sha256_file(result_path)
   .d86_write_json_once(receipt, file.path(arm_dir, sprintf("seed-%s-receipt.json", seed)))
   invisible(list(result = result, receipt = receipt, input_manifest = manifest, paths = list(result = result_path)))

@@ -11,7 +11,7 @@ not authorise a new smoke, Totoro/DRAC work, Gate 3, Gate 4, a public method,
 or a change to the shipped engine.
 
 The historical frozen fixture remains
-`inst/extdata/design86-gate2-parameters.json`, with SHA-256
+`docs/design/86-eva-gate2-anchor-parameters.json`, with SHA-256
 `fb71826c84cf94ee288e8843d8997423247da9459cdb83a3ed8e1bb4373034d6`.
 Its 500-seed array receipt remains
 `9ab57cfb07f29e16a648088bbdfb4ebe6bb848a42b43ff3c48e7c76a67c4e29a`.
@@ -30,7 +30,9 @@ or re-scored here.
    unavailable numeric quantities as JSON `null`, record R/TMB/compiler and
    platform details, and report whole-tree cleanliness from `git status
    --porcelain`.
-3. `dev/design86-optimizer-diagnostic-harness.R` is a controlled-objective
+3. The EVA runner retains a stage receipt for each frozen optimiser stage; it
+   does not alter stage order, controls, starts, or selection.  The separate
+   `dev/design86-optimizer-diagnostic-harness.R` is a controlled-objective
    diagnostic only.  It traces all three `nlminb` stages and BFGS (parameters,
    objective, maximum absolute gradient, convergence/message, and evaluation
    counts).  It neither reads the Gate-2 fixture or seed list, calls the DGP,
@@ -43,9 +45,10 @@ smoke.  No Gate-2 runner was invoked in Gate 2R.
 
 ## Diagnostic interpretation
 
-The controlled diagnostic proves that the required optimiser telemetry is
-available for a convergent and a deliberately non-stationary objective.  It
-does **not** diagnose the red EVA smoke, alter the frozen optimisation policy,
+The controlled diagnostic proves that the required telemetry schema is
+available for convergent and deliberately non-stationary objectives.  The
+runner's matching receipt records each frozen stage without changing its
+controls.  Neither result diagnoses the red EVA smoke or alters the frozen optimisation policy,
 or establish that any future Gate-2 fit is healthy.  The historical result
 therefore remains: the information screen passed, but all four starts failed
 the frozen stationarity criterion; no winner or interval was admitted.
@@ -55,12 +58,14 @@ the frozen stationarity criterion; no winner or interval was admitted.
 Before any new smoke, the maintainer must approve a new, versioned Gate-2R
 amendment and fixture.  That approval must explicitly state:
 
-- the fixture version, SHA-256, seed-array receipt, and any changed values;
+- the fixture version, canonical path, SHA-256, seed-array receipt, and any changed values;
 - whether the frozen starts, stage controls, and stationarity rule remain
   unchanged (the Gate-2R default is unchanged);
 - the required per-stage telemetry schema and treatment of missing numeric
   values as JSON `null`;
 - the precise one-seed smoke authority, output location, and failure rule;
+- the exact approved runner/source hashes and requirement that the recorded
+  `source_tree_clean` value is `true` before input construction;
 - that a smoke may not become a recovery campaign or authorize Totoro/DRAC,
   Gate 3, Gate 4, public API, or shipped-engine work.
 

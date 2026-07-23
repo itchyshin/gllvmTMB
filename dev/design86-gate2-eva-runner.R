@@ -142,14 +142,29 @@ source(file.path(.d86_root(), "R", "eva-proto.R"))
   if (!length(out)) NA_character_ else out[[1L]]
 }
 
-.d86_source_receipt <- function(root, runner_path, dll_path = NA_character_) {
-  source_path <- file.path(root, "inst", "tmb", "gllvmTMB_eva.cpp")
-  driver_path <- file.path(root, "R", "eva-proto.R")
+.d86_git_status_porcelain <- function(root) {
+  system2("git", c("-C", root, "status", "--porcelain"), stdout = TRUE, stderr = FALSE)
+}
+
+.d86_assert_clean_tree <- function(root) {
+  if (length(.d86_git_status_porcelain(root))) {
+    stop("Refusing Gate-2 input construction from a dirty source tree.", call. = FALSE)
+  }
+  invisible(root)
+}
+
+.d86_source_receipt <- function(
+  root,
+  runner_path,
+  dll_path = NA_character_,
+  engine_source_path = file.path(root, "inst", "tmb", "gllvmTMB_eva.cpp"),
+  driver_source_path = file.path(root, "R", "eva-proto.R")
+) {
   list(
     source_commit = .d86_git(root, c("rev-parse", "HEAD")),
-    source_tree_clean = !length(system2("git", c("-C", root, "status", "--porcelain"), stdout = TRUE, stderr = FALSE)),
-    engine_source_sha256 = .d86_sha256_file(source_path),
-    driver_source_sha256 = .d86_sha256_file(driver_path),
+    source_tree_clean = !length(.d86_git_status_porcelain(root)),
+    engine_source_sha256 = .d86_sha256_file(engine_source_path),
+    driver_source_sha256 = .d86_sha256_file(driver_source_path),
     runner_source_sha256 = .d86_sha256_file(runner_path),
     dll_sha256 = if (is.na(dll_path)) NA_character_ else .d86_sha256_file(dll_path),
     runtime = list(
@@ -220,19 +235,49 @@ source(file.path(.d86_root(), "R", "eva-proto.R"))
   run <- function(par) stats::nlminb(par, obj$fn, obj$gr,
     control = list(eval.max = as.integer(control$nlminb_eval_max),
                    iter.max = as.integer(control$nlminb_iter_max)))
+  trace_stage <- function(stage, optimizer, fit, state = "attempted") {
+    if (!identical(state, "attempted")) {
+      return(list(stage = stage, optimizer = optimizer, state = state, parameter = NA_real_,
+                  objective = NA_real_, max_abs_gradient = NA_real_, convergence = NA_integer_,
+                  message = NA_character_, counts = list(`function` = NA_integer_, gradient = NA_integer_)))
+    }
+    if (inherits(fit, "error")) {
+      return(list(stage = stage, optimizer = optimizer, state = "error", parameter = NA_real_,
+                  objective = NA_real_, max_abs_gradient = NA_real_,
+                  convergence = NA_integer_, message = conditionMessage(fit),
+                  counts = list(`function` = NA_integer_, gradient = NA_integer_)))
+    }
+    gradient <- tryCatch(obj$gr(fit$par), error = function(e) rep(NA_real_, length(fit$par)))
+    counts <- if (identical(optimizer, "BFGS")) fit$counts else fit$evaluations
+    list(stage = stage, optimizer = optimizer, state = "attempted", parameter = as.numeric(fit$par),
+         objective = tryCatch(as.numeric(obj$fn(fit$par)), error = function(e) NA_real_),
+         max_abs_gradient = if (all(is.finite(gradient))) max(abs(gradient)) else NA_real_,
+         convergence = as.integer(fit$convergence),
+         message = if (is.null(fit$message)) NA_character_ else as.character(fit$message),
+         counts = list(`function` = as.integer(counts[["function"]]), gradient = as.integer(counts[["gradient"]])))
+  }
   first <- tryCatch(run(start), error = identity)
-  second <- if (inherits(first, "error") || any(!is.finite(first$par))) first else tryCatch(run(first$par), error = identity)
-  third <- if (inherits(second, "error") || any(!is.finite(second$par))) second else tryCatch(run(second$par), error = identity)
-  fourth <- if (inherits(third, "error") || any(!is.finite(third$par))) third else tryCatch(
+  first_trace <- trace_stage("nlminb_1", "nlminb", first)
+  second <- if (inherits(first, "error") || any(!is.finite(first$par))) NULL else tryCatch(run(first$par), error = identity)
+  second_trace <- trace_stage("nlminb_2", "nlminb", second,
+                              if (is.null(second)) "skipped_after_failure" else "attempted")
+  third <- if (is.null(second) || inherits(second, "error") || any(!is.finite(second$par))) NULL else tryCatch(run(second$par), error = identity)
+  third_trace <- trace_stage("nlminb_3", "nlminb", third,
+                             if (is.null(third)) "skipped_after_failure" else "attempted")
+  fourth <- if (is.null(third) || inherits(third, "error") || any(!is.finite(third$par))) NULL else tryCatch(
     stats::optim(third$par, obj$fn, obj$gr, method = "BFGS",
                  control = list(maxit = as.integer(control$bfgs_maxit), reltol = control$bfgs_reltol)), error = identity)
-  if (inherits(fourth, "error")) return(list(code = NA_integer_, par = rep(NA_real_, length(start)),
-    objective = NA_real_, gradient = rep(NA_real_, length(start)), error = conditionMessage(fourth)))
+  fourth_trace <- trace_stage("bfgs", "BFGS", fourth,
+                              if (is.null(fourth)) "skipped_after_failure" else "attempted")
+  if (is.null(fourth) || inherits(fourth, "error")) return(list(code = NA_integer_, par = rep(NA_real_, length(start)),
+    objective = NA_real_, gradient = rep(NA_real_, length(start)),
+    error = if (is.null(fourth)) "skipped after prior optimizer failure" else conditionMessage(fourth),
+    stages = list(first_trace, second_trace, third_trace, fourth_trace)))
   code <- as.integer(fourth$convergence)
   par <- fourth$par
   gr <- tryCatch(obj$gr(par), error = function(e) rep(NA_real_, length(par)))
   list(code = code, par = par, objective = tryCatch(obj$fn(par), error = function(e) NA_real_),
-       gradient = gr, error = NA_character_)
+       gradient = gr, error = NA_character_, stages = list(first_trace, second_trace, third_trace, fourth_trace))
 }
 
 .d86_eva_interval <- function(obj, par, primary_index = 1L) {
@@ -259,6 +304,8 @@ source(file.path(.d86_root(), "R", "eva-proto.R"))
 
 design86_gate2_eva_run <- function(seed, output_root = NULL, rebuild = FALSE) {
   root <- .d86_root(); runner <- file.path(root, "dev", "design86-gate2-eva-runner.R")
+  .d86_assert_clean_tree(root)
+  preflight_source_receipt <- .d86_source_receipt(root, runner)
   p <- .eva_read_gate2_parameters(); input <- .eva_gate2_input(seed)
   if (is.null(output_root)) output_root <- file.path(root, p$provenance$output_root)
   manifest <- .d86_input_manifest(input, root, output_root)
@@ -290,13 +337,15 @@ design86_gate2_eva_run <- function(seed, output_root = NULL, rebuild = FALSE) {
     input_manifest_sha256 = manifest$sha256, hashes = input$hashes,
     I_unit = as.list(unclass(summary(input$I_unit))),
     I_unit_q10_type8 = unname(stats::quantile(input$I_unit, 0.10, type = 8)), starts = lapply(starts, function(z)
-      z[c("start_id", "code", "negative_EVA", "max_abs_gradient", "healthy")]),
+      c(z[c("start_id", "code", "negative_EVA", "max_abs_gradient", "healthy")], list(stages = z$fit$stages))),
     accepted_starts = accepted_starts, selected_start = winner, interval = interval,
     beta_hat = if (is.na(winner)) NA_real_ else starts[[winner]]$fit$par[names(obj$par) == "beta"][1L],
     Sigma_B_hat = Sigma_B, collapsed = collapse)
+  dll_path <- .d86_loaded_dll_path(dll$DLL)
+  preflight_source_receipt$dll_sha256 <- if (is.na(dll_path)) NA_character_ else .d86_sha256_file(dll_path)
   receipt <- c(list(parameter_file_sha256 = .d86_sha256_file(.eva_gate2_file()),
     inputs_manifest_sha256 = manifest$sha256, output_root_repo_relative = sub(paste0("^", root, "/?"), "", normalizePath(output_root, mustWork = FALSE)),
-    denominator_id = p$denominator$id), .d86_source_receipt(root, runner, .d86_loaded_dll_path(dll$DLL)))
+    denominator_id = p$denominator$id), preflight_source_receipt)
   arm_dir <- file.path(output_root, "eva")
   result_path <- file.path(arm_dir, sprintf("seed-%s-result.json", seed)); .d86_write_json_once(result, result_path)
   receipt$output_manifest_sha256 <- .d86_sha256_file(result_path)

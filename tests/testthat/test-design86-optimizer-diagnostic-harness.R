@@ -46,3 +46,18 @@ test_that("controlled optimizer trace records every stage", {
   expect_lte(final$max_abs_gradient, 1e-7)
   expect_equal(final$convergence, 0L)
 })
+
+test_that("controlled optimizer trace retains a deliberately non-stationary outcome", {
+  controlled <- design86_controlled_nonstationary_objective()
+  trace <- design86_optimizer_diagnostic_trace(
+    objective = controlled$objective,
+    gradient = controlled$gradient,
+    start = controlled$start,
+    nlminb_control = list(eval.max = 5L, iter.max = 5L),
+    bfgs_control = list(maxit = 5L, reltol = 1e-12)
+  )
+
+  expect_length(trace$stages, 4L)
+  expect_true(any(vapply(trace$stages, function(x) x$convergence != 0L, logical(1))))
+  expect_true(all(vapply(trace$stages, function(x) is.finite(x$max_abs_gradient) && x$max_abs_gradient > 0, logical(1))))
+})

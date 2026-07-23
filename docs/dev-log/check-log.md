@@ -46443,3 +46443,28 @@ PASS; `git diff --check` PASS; `git diff origin/main -- src/gllvmTMB.cpp` empty.
 No Gate 3, Gate 4, DRAC, Totoro, public API, shipped-engine, package-check,
 or documentation-build work was run.  Full closeout is in
 `docs/dev-log/after-task/2026-07-22-design86-arc2-gate2-smoke-stop.md`.
+
+### 2026-07-23 — Design 86 Arc 2R Gate-2 re-admission remediation (packet only)
+
+Arc 2R is a private repair packet, not a re-run. `R/eva-proto.R` was restored
+exactly to Arc-1 commit `3b479354`; Gate-2 fixture/input/hash support now lives
+only in `dev/design86-gate2-eva-runner.R`, with the Laplace runner sourcing it.
+The EVA runner validates the approved frozen fixture and seed-array SHA-256s
+before input construction. Receipts encode unavailable numeric quantities as
+JSON `null` and record whole-tree/R/TMB/compiler/platform provenance.
+
+The frozen optimiser logic was not changed. It now retains a receipt for each
+of its existing three `nlminb` stages and BFGS; the separate controlled-objective
+harness exercises the trace schema on convergent and deliberately non-stationary
+objectives without using a Gate-2 seed, DGP, runner, receipt, or campaign root.
+
+Checks: input/provenance test -> 33 PASS, 0 FAIL/WARN/SKIP; diagnostic harness
+test -> 42 PASS, 0 FAIL/WARN/SKIP; R parsing -> PASS; `git diff --check` ->
+PASS; `git diff --exit-code 3b479354 -- R/eva-proto.R` -> empty; `git diff
+origin/main -- src/gllvmTMB.cpp` -> empty; and the no-DGP harness `rg` guard
+returned no matches.
+
+No fresh Gate-2 smoke, Gate-2 runner invocation, campaign output, Totoro,
+DRAC, Gate 3, Gate 4, public API, shipped-engine, package check, or pkgdown
+build was run. The historical red smoke remains immutable. The re-admission
+brief remains DRAFT_REQUIRES_MAINTAINER_SIGNOFF; fresh smoke is unauthorised.

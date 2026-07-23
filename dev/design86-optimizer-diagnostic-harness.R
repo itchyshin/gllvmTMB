@@ -56,6 +56,14 @@ design86_controlled_quadratic_objective <- function() {
   )
 }
 
+design86_controlled_nonstationary_objective <- function() {
+  list(
+    start = c(alpha = 0, beta = 0),
+    objective = function(parameter) as.numeric(sum(parameter)),
+    gradient = function(parameter) c(alpha = 1, beta = 1)
+  )
+}
+
 design86_optimizer_diagnostic_trace <- function(
   objective,
   gradient,

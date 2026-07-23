@@ -29,3 +29,69 @@ test_that("Design 86 Gate-2 private receipt checks reject drift and write JSON n
   expect_match(paste(readLines(receipt, warn = FALSE), collapse = "\n"), '"missing": null', fixed = TRUE)
   expect_false(grepl('"NA"', paste(readLines(receipt, warn = FALSE), collapse = "\n"), fixed = TRUE))
 })
+
+test_that("Design 86 Gate-2 runner retains all optimizer stages without a DGP", {
+  source(test_path("..", "..", "dev", "design86-gate2-eva-runner.R"), local = TRUE)
+  obj <- list(
+    par = c(alpha = 0, beta = 0),
+    fn = function(parameter) sum(parameter ^ 2),
+    gr = function(parameter) 2 * parameter
+  )
+  control <- list(nlminb_eval_max = 20L, nlminb_iter_max = 20L,
+                  bfgs_maxit = 20L, bfgs_reltol = 1e-12)
+  fit <- .d86_eva_fit_start(obj, c(alpha = 1, beta = -1), control)
+  expect_length(fit$stages, 4L)
+  required <- c("stage", "optimizer", "state", "parameter", "objective", "max_abs_gradient",
+                "convergence", "message", "counts")
+  expect_equal(vapply(fit$stages, `[[`, character(1), "stage"),
+               c("nlminb_1", "nlminb_2", "nlminb_3", "bfgs"))
+  for (stage in fit$stages) {
+    expect_named(stage, required)
+    expect_true(stage$state %in% c("attempted", "error", "skipped_after_failure"))
+    expect_named(stage$counts, c("function", "gradient"))
+  }
+  expect_true(all(vapply(fit$stages, function(x) is.finite(x$objective), logical(1))))
+})
+
+test_that("Design 86 Gate-2 runner marks later stages skipped after an error", {
+  source(test_path("..", "..", "dev", "design86-gate2-eva-runner.R"), local = TRUE)
+  obj <- list(par = c(alpha = 0), fn = function(parameter) stop("controlled failure"),
+              gr = function(parameter) 0)
+  control <- list(nlminb_eval_max = 2L, nlminb_iter_max = 2L,
+                  bfgs_maxit = 2L, bfgs_reltol = 1e-12)
+  fit <- .d86_eva_fit_start(obj, 0, control)
+  expect_equal(vapply(fit$stages, `[[`, character(1), "state"),
+               c("error", "skipped_after_failure", "skipped_after_failure", "skipped_after_failure"))
+})
+
+test_that("Design 86 Gate-2 clean-tree guard rejects dirty provenance before a run", {
+  source(test_path("..", "..", "dev", "design86-gate2-eva-runner.R"), local = TRUE)
+  original <- .d86_git_status_porcelain
+  assign(".d86_git_status_porcelain", function(root) " M dirty", envir = environment(.d86_assert_clean_tree))
+  on.exit(assign(".d86_git_status_porcelain", original, envir = environment(.d86_assert_clean_tree)), add = TRUE)
+  expect_error(.d86_assert_clean_tree(getwd()), "dirty source tree")
+})
+
+test_that("Design 86 Gate-2 provenance snapshot is stable before output writes", {
+  source(test_path("..", "..", "dev", "design86-gate2-eva-runner.R"), local = TRUE)
+  original <- .d86_git_status_porcelain
+  env <- environment(.d86_assert_clean_tree)
+  assign(".d86_git_status_porcelain", function(root) character(), envir = env)
+  on.exit(assign(".d86_git_status_porcelain", original, envir = env), add = TRUE)
+  snapshot <- .d86_source_receipt(.d86_root(), test_path("..", "..", "dev", "design86-gate2-eva-runner.R"))
+  assign(".d86_git_status_porcelain", function(root) "?? later-output", envir = env)
+  expect_true(snapshot$source_tree_clean)
+  expect_error(.d86_assert_clean_tree(getwd()), "dirty source tree")
+})
+
+test_that("Design 86 Gate-2 Laplace provenance hashes its live sources", {
+  source(test_path("..", "..", "dev", "design86-gate2-laplace-runner.R"), local = TRUE)
+  root <- .d86_laplace_root()
+  receipt <- .d86_source_receipt(
+    root, test_path("..", "..", "dev", "design86-gate2-laplace-runner.R"),
+    engine_source_path = file.path(root, "src", "gllvmTMB.cpp"),
+    driver_source_path = file.path(root, "R", "fit-multi.R")
+  )
+  expect_identical(receipt$engine_source_sha256, .d86_sha256_file(file.path(root, "src", "gllvmTMB.cpp")))
+  expect_identical(receipt$driver_source_sha256, .d86_sha256_file(file.path(root, "R", "fit-multi.R")))
+})

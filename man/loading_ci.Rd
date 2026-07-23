@@ -74,11 +74,10 @@ fits and points the user at \code{\link[=confirmatory_lambda]{confirmatory_lambd
 \section{Interval calibration}{
 
 The point estimates are the supported claim. The interval methods here are
-provided for exploration: their empirical coverage has \strong{not} been
-calibrated for this estimand outside the Gaussian cases that cleared the
-coverage gate (the worked example below is a binomial-probit fit), so the
-intervals must not be reported as coverage-calibrated. See \code{NEWS.md} for the
-current coverage status.
+provided for exploration: their empirical coverage is not certified for this
+estimand (the worked example below is a binomial-probit fit), so treat the
+intervals as exploratory rather than coverage-calibrated. See \code{NEWS.md} for
+the current coverage status.
 }
 
 \examples{

@@ -355,10 +355,9 @@ extract_Omega <- function(
 #'
 #' @section Interval calibration:
 #' The point estimates are the supported claim. When `ci = TRUE`, the interval
-#' methods are provided for exploration: their empirical coverage has **not**
-#' been calibrated for this estimand outside the Gaussian cases that cleared the
-#' coverage gate, so the intervals must not be reported as coverage-calibrated.
-#' See `NEWS.md` for the current coverage status.
+#' methods are provided for exploration: their empirical coverage is not
+#' certified for this estimand, so treat the intervals as exploratory rather
+#' than coverage-calibrated. See `NEWS.md` for the current coverage status.
 #'
 #' @section Which variances enter the denominator:
 #' `V_eta` is the **species-level** latent variance: only components whose

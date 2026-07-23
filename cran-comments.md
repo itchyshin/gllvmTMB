@@ -7,7 +7,9 @@
 > 0.5.0 draft that claimed "0 errors | 0 warnings | 0 notes" from a
 > `--no-tests --no-build-vignettes` run — i.e. **not** the real CRAN lane. The
 > honest result is **0 errors | 0 warnings | 1 NOTE** (the expected "New
-> submission").
+> submission"). **Versioning and CRAN distribution are separate decisions:**
+> Shinichi may release `0.6.0` outside CRAN and elect not to upload this package
+> to CRAN; use this draft only if he chooses a CRAN submission.
 
 ## Submission
 
@@ -15,9 +17,9 @@ This is a **new submission** — `gllvmTMB` is not yet on CRAN.
 
 `gllvmTMB` is released as **experimental** (lifecycle: experimental). This is a
 deliberate honesty label, not a defect report: the package is early, point
-estimates are the supported inferential claim, and interval calibration is
-established only for the Gaussian cases that cleared its coverage gate. The
-label appears on the startup message, the README/pkgdown, and this DESCRIPTION.
+estimates are the supported inferential claim, no cell's interval coverage is
+certified, and covariance routes have focused-test evidence only. The label
+appears on the startup message, the README/pkgdown, and this DESCRIPTION.
 
 ## Test environments
 

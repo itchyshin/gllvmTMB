@@ -10,9 +10,9 @@
 > **`gllvmTMB` is experimental — use at your own risk.** It is not complete, is
 > not fully human-verified, and needs extensive further validation. CRAN
 > availability is not a statement of scientific maturity. Point estimates are the
-> supported claim; interval calibration is established only for the Gaussian
-> cases that cleared the coverage gate. Treat everything else as provisional
-> until the package is declared mature.
+> supported claim; no cell's interval coverage is certified, and covariance routes
+> have focused-test evidence only. Treat everything else as provisional until the
+> package is declared mature.
 
 `gllvmTMB` fits multivariate models for data where each site,
 individual, species, or study has several responses: body traits,

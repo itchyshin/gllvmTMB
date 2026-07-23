@@ -25,8 +25,8 @@ Description: Fits multivariate models for data where each site,
     of inherited code are listed in 'inst/COPYRIGHTS'. This package is
     experimental: it is not complete, is not fully human-verified, and
     needs extensive further validation, so it should be used at your own
-    risk. Point estimates are the supported claim; interval calibration is
-    established only for the Gaussian cases that cleared the coverage gate.
+    risk. Point estimates are the supported claim; no cell's interval coverage
+    is certified, and covariance routes have focused-test evidence only.
 License: GPL-3
 Language: en-GB
 Copyright: inst/COPYRIGHTS

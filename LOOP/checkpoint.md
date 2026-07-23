@@ -29,8 +29,21 @@ Laplace-only and M2 stays CUT. Brief: `docs/dev-log/2026-07-22-design86-lane-bri
   NOTE allowlisted. The built artefact was confirmed to be `gllvmTMB_0.6.0.tar.gz` — the bump
   reached the **build**, not merely the files.
 
-**M4 is largely SHINICHI'S HOURS, not agent wall-clock:** the page-by-page reader review. Two items
-are already queued for it, both stated in the freeze record §3.
+**M4 is UNDERWAY. Head is now `70e070be`. Draft PR #780.** The NINTH evidence chain is complete and
+green on the D-41 identity — local `0 | 779 | 7290`, 3-OS `29964958208` all three OS `Status: OK`
+building `gllvmTMB_0.6.0.tar.gz`, heavy `29964959674` `FAIL 0`, CRAN-config 0/0/1 `SHA_STABLE`.
+Receipts: `~/gllvmTMB-0.6-evidence/m4/70e070be-d41/`.
+
+**D-41 is DONE** — all four accepted channels (startup message, lifecycle badge, pkgdown/README
+callout, DESCRIPTION line), grounded from `memory/DECISIONS.md` D-41 (it is NOT a badge on 153
+exports). The release blocker is cleared. `.onAttach` verified firing via `load_all(attach = TRUE)`.
+
+**M4 REMAINS SHINICHI'S HOURS** — the page-by-page reader review. The reader-surface overclaim audit
+(`docs/dev-log/2026-07-22-m4-overclaim-audit-dossier.md`) makes it fast: the hard surfaces are clean,
+and it leaves exactly **one medium item** (`kernel-helpers.R:13` "validated") + **three page-review
+candidates** (CI Rd topics needing a calibration caveat) — all as PROPOSALS, none applied, because
+reader wording is settled with Shinichi. The other M4 items (the `_pkgdown.yml`/`brms-sugar.R`
+deprecation-date fix; the DESCRIPTION-vs-vignette claim-string class) are recorded above.
 
 ---
 

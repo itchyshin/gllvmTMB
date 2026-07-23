@@ -46457,3 +46457,41 @@ groups → no cancellation.**
 Observed directly: dispatch `29934531169` and PR-triggered `29934510132` ran **concurrently to
 completion at the same SHA**, neither cancelled. The earlier cancellations in this arc happened
 because both runs shared the *branch* ref. The rule is real but narrower than stated.
+
+## 2026-07-22 (later still) — M4 opens: D-41 warning + the NINTH chain, green (Claude Code)
+
+Freeze is closed; M4 (reader-ready) has begun. Two landings.
+
+**D-41 experimental warning — all four accepted channels.** Grounded from `memory/DECISIONS.md`
+D-41 before acting: the accepted mechanism (brain, 2026-07-11) is startup message + lifecycle badge
++ pkgdown/README callout + DESCRIPTION line — **not** a badge on every export. `.onAttach` added to
+`R/zzz.R` and **verified firing** via `pkgload::load_all(attach = TRUE)`; the `DESCRIPTION`,
+`README.md` `[!WARNING]` callout, and a `_pkgdown.yml` home-sidebar Status callout carry the accepted
+wording. Internal typo `brms-sugar.R:145` ("unique-family" → "scalar-family") fixed in the same commit.
+
+**The ninth evidence chain, green at `70e070be`:**
+
+```
+devtools::test()                    FAILED 0 | ERROR 0 | SKIP 779 | PASS 7290   (identical to baseline)
+3-OS 29964958208 (full_matrix=true) 3x Status: OK, zero ERROR/WARNING/NOTE
+                                    ubuntu-latest, macos-latest, windows-latest : all success
+                                    built artefact gllvmTMB_0.6.0.tar.gz
+heavy 29964959674                   FAIL 0 | WARN 10 | SKIP 103 | PASS 13656, Status: OK
+CRAN-config (dev/m1-cran-config-check.R)
+                                    ERRORS 0 | WARNINGS 0 | NOTES 1 ("New submission")
+                                    UNEXPECTED_NOTES 0 | SHA_STABLE TRUE
+```
+
+Receipts + `SHA256SUMS.txt`: `~/gllvmTMB-0.6-evidence/m4/70e070be-d41/`.
+
+**Reader-surface overclaim audit (workflow `wf_66ad8b73-0b3`, 10 agents).** Six reader surfaces swept
+for coverage/calibration overclaims, each candidate adversarially verified. The hard surfaces
+(README, NEWS, DESCRIPTION, shipped vignette, `cli` strings) are **clean**. The consolidation
+reported `confirmed_count: 0`, but a human re-read of `journal.jsonl` **corrected that to one medium
+item** — `kernel-helpers.R:13` calls `extract_Gamma()`'s coevolution gate *"validated"* while line
+281 of the same file forbids that word — **plus three M4 page-review candidates** (`extract_phylo_signal`,
+`loading_ci`, `extract_repeatability` offer CIs on non-Gaussian estimands with no calibration caveat).
+Dossier: `docs/dev-log/2026-07-22-m4-overclaim-audit-dossier.md`. **These are proposals for the
+maintainer's page review, not applied edits** — 0.6 reader wording is settled with Shinichi, not
+batch-rewritten (standing rule). The `confirmed_count: 0` is a reminder that the "read the log, not
+the summary" rule applies to one's own workflows.

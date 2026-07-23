@@ -1,7 +1,9 @@
 # Design 86 — Gate 2 build brief: information-rich correctness anchor
 
-**Status:** DRAFT — requires maintainer approval of the Gate-2 anchor parameter
-file before implementation, input generation, smoke testing, or Totoro use.
+**Status:** FROZEN — the approved Gate-2 anchor parameter file is
+`86-eva-gate2-anchor-parameters.json`, with its fixture and seed checksums
+recorded in the Design-86 contract. It authorises only the private runner and
+one-seed local smoke at this stage; Totoro remains conditional on a green smoke.
 
 ## Purpose and fence
 

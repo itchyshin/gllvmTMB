@@ -1,16 +1,11 @@
 {
   "schema_version": "1.0.0",
-  "status": "DRAFT_REQUIRES_MAINTAINER_SIGNOFF",
+  "status": "FROZEN_GATE2_ANCHOR_ONLY",
   "gate": "G2",
   "research_only": true,
   "objective_type": "EVA_TAYLOR2",
-  "fixture_checksum_sha256": null,
-  "signoff_required_before": [
-    "runner_implementation",
-    "input_generation",
-    "local_smoke",
-    "totoro_anchor"
-  ],
+  "fixture_checksum_recorded_in": "Design 86 contract section 2.5",
+  "maintainer_signoff": "approved 2026-07-22",
   "model": {
     "family": "bernoulli_logit",
     "n_trials": 1,
@@ -570,7 +565,7 @@
     86200499,
     86200500
     ],
-    "seed_array_checksum_sha256": null,
+    "seed_array_checksum_sha256": "9ab57cfb07f29e16a648088bbdfb4ebe6bb848a42b43ff3c48e7c76a67c4e29a",
     "no_replacement_seeds_or_conditioning": true
   },
   "starts": {

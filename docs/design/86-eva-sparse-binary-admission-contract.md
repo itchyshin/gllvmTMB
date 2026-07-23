@@ -307,6 +307,14 @@ recovery exists.
 **Arc-1 checksum receipt (2026-07-22):** the Gate-1 fixture file SHA-256 is
 `a3cb2b9302132b2a917639ac30ce070d5d0f67e9c21f50ffbcc232ead448b036`.
 
+**Arc-2 Gate-2 freeze receipt (2026-07-22):** the maintainer approved
+`docs/design/86-eva-gate2-anchor-parameters.json`, SHA-256
+`fb71826c84cf94ee288e8843d8997423247da9459cdb83a3ed8e1bb4373034d6`.
+Its expanded 500-seed array SHA-256 is
+`9ab57cfb07f29e16a648088bbdfb4ebe6bb848a42b43ff3c48e7c76a67c4e29a`.
+It is a Gate-2-only information-rich anchor freeze; it does not authorise
+Gate 3, Gate 4, any public surface, or a changed shipped engine.
+
 **Arc-1 apparatus and derivation receipt (2026-07-22):** direct reuse is limited to
 `.va_r3_gh_rule()` from `R/va-r3-proto.R` at
 `c38b3e8c87d1210ec7d3be90bdb95ee84a76a3a7`.  The stable-softplus formula and

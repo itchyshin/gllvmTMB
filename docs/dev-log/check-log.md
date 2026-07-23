@@ -46584,3 +46584,29 @@ report. A staleness grep found no deprecated syntax (the `link_residual =` hits 
 The single review entry point for the maintainer is
 **`docs/dev-log/2026-07-22-REVIEW-ME-shinichi.md`** — everything changed this session + everything
 suggested-not-applied + the held freeze items. Nothing crossed a gate.
+
+## 2026-07-22 (RC ceremony) — v0.6.0-rc.1 cut, reviewed 3/3 NOT-READY, submission WITHHELD (Claude Code)
+
+Shinichi authorised the freeze + RC ceremony and delegated the freeze decision; submission stays his.
+Frozen at `e9bc655a` (ZERO source edits — held items all deferred, reasons in the freeze record).
+
+**Exact-tag evidence at `v0.6.0-rc.1`** (read from logs):
+```
+RC tarball gllvmTMB_0.6.0.tar.gz  SHA-256 532c205b…  3.25 MB
+  R CMD check --as-cran           Status 1 NOTE (New submission); 0 errors, 0 warnings; forbidden-path scan NONE
+3-OS  29977191886 (at the tag)    ubuntu + macos + windows all SUCCESS, 3x Status: OK
+heavy 29977182659 (at the tag)    3-OS, all FAIL 0, 3x Status: OK
+local suite + CRAN-config         transfer from the 10th chain (shipped diff empty): 0/779/7290, 0/0/1 SHA_STABLE
+```
+Ledger + SHA256SUMS + the review verdict: `~/gllvmTMB-0.6-evidence/m5-rc1/`.
+
+**D-49 adversarial review (3 fresh reviewers, NOT-READY default): 3/3 NOT-READY, submission WITHHELD.**
+One blocking reason, shared: **win-builder R-devel + macbuilder have not run** — CRAN checks first
+submissions on R-devel; the matrix pins R release. An external upload HELD for the maintainer; the
+ceremony correctly stopped there. One doc fix applied: `cran-comments.md` now cites the frozen-tag runs
+(was pre-freeze IDs). The review independently confirmed the candidate is honest and clean (no
+forbidden coverage claim on any shipped surface; D-41 on 4 channels; tarball matches the tag exactly).
+
+**Rung: `platform-clean` at the RC; NOT submission-ready.** Remaining gap is the maintainer's:
+win-builder R-devel (+ macbuilder) reconciled → page review (before stable) → final `v0.6.0` tag →
+submission. The single maintainer entry point: `docs/dev-log/2026-07-22-REVIEW-ME-shinichi.md`.

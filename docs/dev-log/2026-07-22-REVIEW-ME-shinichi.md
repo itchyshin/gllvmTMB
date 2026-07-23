@@ -66,16 +66,28 @@ Two minor flags only — a historical "0.2.0 grammar" aside (`covariance-correla
 "placeholders:" line (`:315`). **Content currency** — whether an article's *approach* is superseded — a
 grep can't judge; that's your read.
 
-## E. Where the release stands
+## E. Where the release stands — RC CUT, submission WITHHELD (honest)
 
-- **Rung: `tarball-clean` proven.** The built `gllvmTMB_0.6.0.tar.gz` (SHA-256 `73893f97…`, 3.25 MB)
-  passes `R CMD check --as-cran` at **0/0/1** (New submission), forbidden-path scan clean, vignettes
-  rebuild OK. DESCRIPTION spell clean. Evidence: `~/gllvmTMB-0.6-evidence/m5-prep/`.
-- **NOT READY for submission** — the gap is your review + the gate sign-offs, not capability (D-49/D-66).
-- **Next gate: the candidate freeze (yours).** On your word I apply your review changes + the WORDLIST +
-  `\value` docs, build the **final** tarball, cut `v0.6.0-rc.1`, run the exact-tag 3-OS cycle, and stop
-  again for your final-tag and submission sign-offs. Sequence on disk:
-  `docs/dev-log/2026-07-22-m4-to-m5-runbook.md`.
+You authorised the freeze + RC ceremony; I ran it and stopped at the R-devel gate.
 
-**Nothing is running. State is clean and pushed at `195ecafb`+.** I did no simulation (none exists in
-the 0.6 path) and touched neither the EVA/Design 86 lane nor any parked worktree.
+- **`v0.6.0-rc.1` is cut** (frozen source `e9bc655a`, zero source edits) and is **`platform-clean`**:
+  the RC tarball passes `--as-cran` at **0/0/1**, the exact-tag 3-OS is green on all three OS, and the
+  exact-tag heavy is `FAIL 0` on all three. Record: `docs/dev-log/2026-07-22-rc1-review-and-rung.md`.
+- **The D-49 adversarial review returned 3/3 NOT-READY → submission WITHHELD**, on **one** real gap:
+  **win-builder R-devel + macbuilder have not run.** CRAN checks first submissions on R-devel; my
+  matrix pins R *release*. This is an **external upload I held for you** — the ceremony correctly
+  stopped rather than crossing it.
+- The review independently **confirmed the candidate is honest and clean**: no forbidden coverage claim
+  on any shipped surface, D-41 on all four channels, residuals disclosed, tarball matches the tag exactly.
+
+### 🔴 Your remaining steps to submit (in order)
+
+1. **Run win-builder R-devel + macbuilder** on
+   `~/gllvmTMB-0.6-evidence/m5-rc1/gllvmTMB_0.6.0.tar.gz`. Reconcile any R-devel findings into
+   `cran-comments.md` (already updated to cite the frozen-tag runs).
+2. **Do the page review** (Parts A–D) — required before a *stable* release; optional for rc.1.
+3. **Cut the final `v0.6.0` tag** and **submit** — both your acts. I will not do either.
+
+**Nothing is running now. State clean and pushed.** I did no simulation (none exists in the 0.6 path)
+and touched neither the EVA/Design 86 lane nor any parked worktree. The RC tag `v0.6.0-rc.1` is the
+evidence anchor — do not delete it.

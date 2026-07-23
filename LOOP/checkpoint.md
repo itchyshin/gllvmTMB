@@ -55,10 +55,23 @@ to the honest 0/0/1. Evidence: `~/gllvmTMB-0.6-evidence/m5-prep/`. **HELD for th
 `inst/WORDLIST` (142 domain terms) and `\value` on `ordiplot`/`gllvmTMB_multi-methods` (both advisory,
 neither a blocker).
 
-**NEXT GATE: candidate freeze (Shinichi's), after his page review.** Then RC tag → exact-tag 3-OS →
-final tag → submission, each his gate. NOT DONE autonomously and never to be: RC/final tag,
-win-builder/macbuilder, CRAN submission. Rung: **`tarball-clean` proven; NOT READY** for submission —
-the gap is the review + gate sign-offs, not capability (D-49/D-66).
+**RC CUT AND REVIEWED (2026-07-22, on Shinichi's authorisation).** `v0.6.0-rc.1` is tagged at frozen
+source `e9bc655a` (zero source edits). Exact-tag evidence green: RC tarball `--as-cran` 0/0/1
+(SHA-256 `532c205b…`), 3-OS `29977191886` all three OS Status OK, heavy `29977182659` all three OS
+`FAIL 0`. Record: `docs/dev-log/2026-07-22-rc1-review-and-rung.md`; ledger
+`~/gllvmTMB-0.6-evidence/m5-rc1/`.
+
+**The D-49 adversarial review returned 3/3 NOT-READY → submission WITHHELD** on ONE real gap:
+**win-builder R-devel + macbuilder have not run** (CRAN checks first submissions on R-devel; the matrix
+pins R release). It is an external upload HELD for the maintainer. The review independently confirmed
+the candidate is otherwise honest and clean (no forbidden coverage claim on any shipped surface, D-41
+on 4 channels, tarball matches the tag exactly).
+
+**Rung: `platform-clean` at the RC. NOT submission-ready.** The remaining gap to submission is entirely
+the maintainer's: (1) win-builder R-devel + macbuilder, reconciled; (2) the page review (before a
+stable release); (3) the final `v0.6.0` tag; (4) the CRAN submission. NEVER self-granted:
+win-builder/macbuilder, final tag, submission. The agent ceremony has taken 0.6 as far as it can
+without Shinichi. Do NOT delete tag `v0.6.0-rc.1` — it is the evidence anchor.
 
 ---
 

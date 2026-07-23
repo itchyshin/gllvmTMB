@@ -1,0 +1,6 @@
+"role","path","sha256"
+"probe","dev/design86-arc7-q2-geometry-probe.R","f43e6d3a278ba05bce531acbf4b6675baea0235fc4918daca341b0f570a51504"
+"eva_proto","R/eva-proto.R","84e2939e720e0c873b5dcc3ec0e932eb1ebc5d748688774a009ba6d579001e8b"
+"cpp","inst/tmb/gllvmTMB_eva.cpp","f19194b6c75e7226a59515f9fafbd419c5c315630556fb424b9ec83774b76d64"
+"harness","dev/design86-optimizer-diagnostic-harness.R","455f32091f656616ed80466ae00058d6d63fff44356a3fb0c4cc31e0420bf5f5"
+"protocol","docs/design/86-arc7-gate-a-q2-protocol.md","e780165b881df65276972f4d64d52b434e720e9cc3f794ab3cc1fe242a8f49b3"

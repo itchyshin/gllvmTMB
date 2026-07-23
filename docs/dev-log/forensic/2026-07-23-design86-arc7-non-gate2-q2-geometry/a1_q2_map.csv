@@ -1,0 +1,6 @@
+"coordinate_1based","physical_coordinate","transform","roundtrip_ok"
+1,"Lambda[1,1]","raw_signed_theta_rr",TRUE
+2,"Lambda[2,2]","raw_signed_theta_rr",TRUE
+3,"Lambda[2,1]","raw_signed_theta_rr",TRUE
+4,"Lambda[3,1]","raw_signed_theta_rr",TRUE
+5,"Lambda[3,2]","raw_signed_theta_rr",TRUE

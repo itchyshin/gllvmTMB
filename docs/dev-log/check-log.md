@@ -46596,3 +46596,27 @@ campaign, Gate-3/4, Totoro, DRAC, push, or PR was performed. The planned Luna
 mechanical scout could not run because its dispatcher hit a readonly Codex
 state database and an app-server permission denial; manual mechanical checks
 are recorded as routing drift, not a Luna receipt.
+
+### 2026-07-23 — Design 86 Arc 7 q=2 geometry diagnosis (parked)
+
+Added a deterministic private `NON_GATE2` q=2 geometry diagnostic, full raw
+sidecars, source map, and Gate-A audit. The controlled loading covariance map
+has rank five at the fixed interior fixture; the four sign reflections are
+discrete equivalents; and common q=2 scaling preserves selected moments but
+increases KL by the predicted `1.77572622223978`. A deliberately separable
+fixed-effect control reaches a healthy gradient while balanced and
+rank-deficient controls do not. This is controlled response-geometry evidence,
+not a causal explanation of either immutable smoke. Gauss/Noether and Rose
+both require `PARK`; no V2 or live lane started.
+
+Checks: `Rscript --vanilla dev/test-design86-arc7-q2-geometry-probe.R` -> PASS;
+ledger JSON validation -> PASS; reflection and scale-KL control assertions ->
+PASS; historical/V1 manifest/result/receipt SHA-256 rehash -> PASS; and
+`git diff --exit-code HEAD -- R/eva-proto.R src/gllvmTMB.cpp
+dev/design86-gate2-eva-runner.R dev/design86-gate2-laplace-runner.R` -> empty.
+Forbidden-wording scan:
+`rg -n -i 'gate[- ]?2 (pass|admission)|recovery|coverage|engine cause|numerical remedy|public capability|successful convergence' docs/design/86-arc7-gate-a-q2-protocol.md docs/dev-log/forensic/2026-07-23-design86-arc7-gate-a-audit.md docs/dev-log/after-task/2026-07-23-design86-arc7-q2-geometry-park.md`.
+
+No Design-86 runner, input construction, DGP, smoke, historical alteration or
+rescore, threshold/start/seed change, Laplace, public/API/C++ work, Gate-2
+campaign, Gate-3/4, Totoro, DRAC, push, or PR was performed.

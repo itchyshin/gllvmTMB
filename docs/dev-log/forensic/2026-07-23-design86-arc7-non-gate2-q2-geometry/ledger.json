@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "label": "NON_GATE2_Q2_GEOMETRY_DIAGNOSTIC",
+  "decision": "PARK",
+  "decision_limit": "Independent Gauss/Noether and Rose reviews require PARK: the constructed separable fixed-design control is not historical evidence; A0--A4 are not promotion-complete; no coordinate candidate, V2, Gate B, runner, or smoke is authorized.",
+  "runtime": {
+    "R": "R version 4.6.0 (2026-04-24)",
+    "platform": "aarch64-apple-darwin23",
+    "TMB": "1.9.21"
+  },
+  "sidecar_sha256": {
+    "a0_chain": "4c9f53ee8fd712dacc5b3f7d21b5a22f0c8baaea39c4bf2f5b04005bcb3c416b",
+    "a1_q2_map": "6ff4323b913747876d1c56ac670fc1e7f89bc5b5352129dff369613dbaf7a4eb",
+    "a2_fd": "1a5dac1d056011e3e426b872c9412223a71438a06f6db6b17813255bad3d8a5d",
+    "a2_points": "a2e07568d848f2cf8ac854185c6056e6e53438fba13ae77f83afa67082c96bf7",
+    "a2_ad_gradient": "fd209a2344b4843664ba24a110f36edf5045e7e0e935d573d41e76006b4f3dba",
+    "a3_profiles": "033fc6bd02cbeff917ff3c1cc087765356b6d5de1470223f40ca70918aa0d93b",
+    "a3_hessian": "8c7bf5a52f5d7eeaf9699b2221fcd23f26ca7be006674db79f6885de62146433",
+    "a3_eigen": "e9ab0c774a067c1a14b555c0aed5c830b9f51c67d9cdb0645f5517fabc9fc457",
+    "a3_trace": "4f1052cc0b6b758df9aa21368c0580bc7e6020e2036aa17b459a8e4f4c74142a",
+    "a3_parameters": "4c82c5e4d2e7f7898883a25813cdc3062f1101b5207d7886534babfc658aba18",
+    "a3_gradients": "659dbadd75ac5b5cf6410c8a8f1f6dab782e78b989d30e5caeec81e1f5bea7ae",
+    "a3_reflections": "6b31eee5c9b83dc0e5b2c68399a103f1e0a377f1611817fe5b0c2850db6e8c3a",
+    "a3_rank": "1009b46f40df7727c51f9ce6ba7e4b2e2d901f81ead313146283a57734c95c52",
+    "code_provenance": "833cf572c0c486547302b3a5207eddc67c46b0f096f164da2972d7324a43d9c7"
+  },
+  "candidate_id": "not_eligible_due_to_separation_control"
+}

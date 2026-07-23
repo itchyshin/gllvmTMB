@@ -1,0 +1,4 @@
+"fixture_id","point_id","scale","physical_parameter_sha256","objective_tmb","objective_scalar","scalar_difference","mu_equal","v_equal","kl_delta"
+"balanced","scale2",2,"7a33f9bd98c9a24dc72b809b476b373ac132233a68d04290afd04fdacd9ed476",8.27239829520586,8.27239829520586,-1.77635683940025e-15,TRUE,TRUE,1.77572622223978
+"separable","scale2",2,"7a33f9bd98c9a24dc72b809b476b373ac132233a68d04290afd04fdacd9ed476",7.71489829520586,7.71489829520586,-8.88178419700125e-16,TRUE,TRUE,1.77572622223978
+"rank_deficient","scale2",2,"7a33f9bd98c9a24dc72b809b476b373ac132233a68d04290afd04fdacd9ed476",8.06465438594137,8.06465438594137,0,TRUE,TRUE,1.77572622223978

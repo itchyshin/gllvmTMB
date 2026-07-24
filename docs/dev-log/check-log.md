@@ -46749,3 +46749,26 @@ attempts returned phase codes zero, but five breached the fixed post-BFGS
 gradient threshold and all moderate attempts breached the principal-eigenvalue
 error threshold. All results are retained; no rerun, start/threshold change,
 campaign, Totoro/DRAC, Actions, merge, push, or PR followed.
+
+## 2026-07-24 — Design 97 private full-covariance JJ stop (Codex)
+
+Design 97 is a separate private discriminator, not a repair of Designs
+72/85/86/90/91/94/95/96. Its contract is
+`docs/design/97-fullcov-jj-discrimination.md`; retained records are under
+`dev/design97-fullcov-jj/results/`.
+
+Ran:
+
+```
+Rscript --vanilla dev/design97-fullcov-jj/run-gate1-tests.R
+Rscript --vanilla dev/design97-fullcov-jj/run-discriminator.R
+Rscript --vanilla dev/design97-fullcov-jj/finalize-interrupted.R
+git diff --check
+git diff 1e113e32 -- src R man NAMESPACE DESCRIPTION inst vignettes README.md NEWS.md _pkgdown.yml
+```
+
+Gate 1 passed after Gauss/Noether and Rose review. Gate 2 retained a healthy
+fixed-global diagonal/full comparison but the one-shot runner did not create a
+Gate-3 record. No rerun occurred: an exclusive interruption receipt and
+`SMOKE_STOP` summary closed Design 97. No package/public paths, campaign,
+Totoro/DRAC, Actions, merge, push, or PR work occurred.

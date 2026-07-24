@@ -1,0 +1,13 @@
+{
+  "design": 97,
+  "source_sha256": "444275a2920c90992c2282f7d54e5a9183242340cf7fbc118e298ed2d3760f37",
+  "oracle_sha256": "3c31e745bcf659337779dbdd4db3e42e3e27603d8ffb0fa28fc2d605346f061b",
+  "R": "R version 4.6.0 (2026-04-24)",
+  "TMB": "1.9.21",
+  "platform": "aarch64-apple-darwin23",
+  "quadrature": {
+    "optimisation": 31,
+    "metrics": 61
+  },
+  "started_utc": "2026-07-24 12:29:00 UTC"
+}

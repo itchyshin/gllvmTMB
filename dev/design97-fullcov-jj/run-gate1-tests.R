@@ -1,0 +1,20 @@
+#!/usr/bin/env Rscript
+source(file.path("dev", "design97-fullcov-jj", "fullcov-jj-oracle.R"))
+y <- rbind(c(1,0,1,0), c(0,1,0,1), c(1,1,0,0), c(0,0,1,1), c(1,0,0,1)); n <- nrow(y); traits <- ncol(y)
+beta <- c(-.3,.2,.45,-.1); loading_free <- c(log(.7),-.25,log(.6),.3,-.2,-.15,.4)
+mean <- cbind(c(.2,-.1,.3,-.25,.05), c(-.15,.2,-.05,.1,-.2))
+chol_free <- cbind(log(c(.8,1.1,.9,1.2,.95)), c(.12,-.08,.05,.11,-.09), log(c(.9,1.05,.85,1.1,1.15)))
+cpp <- file.path("dev", "design97-fullcov-jj", "src", "design97_fullcov_jj.cpp"); TMB::compile(cpp, flags = "-O0"); dyn.load(TMB::dynlib(sub("[.]cpp$", "", cpp)))
+obj <- TMB::MakeADFun(data=list(y=y), parameters=list(beta=beta, loading_free=loading_free, mean=mean, chol_free=chol_free), DLL="design97_fullcov_jj", silent=TRUE)
+theta <- d97_pack(beta, loading_free, mean, chol_free); nll <- function(x) { z <- d97_unpack(x,n,traits); -d97_jj_elbo(y,z$beta,z$loading_free,z$mean,z$chol_free) }
+stopifnot(abs(obj$fn(obj$par)-nll(theta)) < 1e-10, max(abs(obj$gr(obj$par)-d97_central_gradient(nll,theta))) < 1e-5)
+gh41 <- d97_exact_elbo(y,beta,loading_free,mean,chol_free,order=41L); gh61 <- d97_exact_elbo(y,beta,loading_free,mean,chol_free,order=61L)
+stopifnot(d97_jj_elbo(y,beta,loading_free,mean,chol_free) <= gh61 + abs(gh61-gh41) + 1e-8)
+S <- d97_chol_to_cov(chol_free); stopifnot(all(S[,1] > 0), all(S[,3] > 0), all(S[,1]*S[,3]-S[,2]^2 > 0), abs(d97_omega(0)-1/8) < 1e-15)
+diagonal <- chol_free; diagonal[,2L] <- 0; flipped <- chol_free; flipped[,2L] <- -flipped[,2L]
+stopifnot(all(d97_chol_to_cov(diagonal)[,2L] == 0), max(abs(d97_jj_elbo(y,beta,loading_free,mean,chol_free)-d97_jj_elbo(y,beta,loading_free,mean,flipped))) > 1e-8)
+zero <- list(beta=rep(0,traits), loading_free=c(log(.4),0,log(.4),rep(0,2L*traits-4L)), mean=matrix(0,n,2L), chol_free=cbind(rep(0,n),rep(0,n),rep(0,n)))
+zero_obj <- TMB::MakeADFun(data=list(y=y), parameters=zero, DLL="design97_fullcov_jj", silent=TRUE)
+stopifnot(is.finite(zero_obj$fn(zero_obj$par)), all(is.finite(zero_obj$gr(zero_obj$par))))
+perm <- c(5L,2L,4L,1L,3L); stopifnot(abs(d97_jj_elbo(y[perm,],beta,loading_free,mean[perm,],chol_free[perm,])-d97_jj_elbo(y,beta,loading_free,mean,chol_free)) < 1e-12)
+cat("Design 97 Gate 1 full-covariance JJ tests: PASS\n")

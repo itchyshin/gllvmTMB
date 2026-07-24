@@ -1,0 +1,23 @@
+{
+  "gh_log_marginal": -163.33765205555952,
+  "diagonal": {
+    "label": "diagonal",
+    "phase1_convergence": 0,
+    "phase2_convergence": 0,
+    "objective": 163.76476225655767,
+    "gradient_max": 5.4001247917767614e-07,
+    "bound": -163.76476225655767,
+    "gh_gap": 0.42711020099815755,
+    "healthy": true
+  },
+  "full": {
+    "label": "full",
+    "phase1_convergence": 0,
+    "phase2_convergence": 0,
+    "objective": 163.76375905862548,
+    "gradient_max": 5.2580162446247414e-07,
+    "bound": -163.76375905862548,
+    "gh_gap": 0.42610700306596527,
+    "healthy": true
+  }
+}

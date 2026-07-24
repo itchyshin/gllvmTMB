@@ -1,0 +1,9 @@
+{
+  "label": "free",
+  "status": "RUNNER_INTERRUPTED_BEFORE_GATE3_RECORD",
+  "healthy": false,
+  "attempted_fit": null,
+  "retry_permitted": false,
+  "reason": "The one-shot runner produced immutable manifest, fixtures, and Gate-2 record but no Gate-3 record or summary. No fit is replayed; this receipt closes the design.",
+  "completed_utc": "2026-07-24 12:30:44 UTC"
+}

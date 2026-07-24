@@ -1,0 +1,8 @@
+{
+  "design": 97,
+  "verdict": "SMOKE_STOP",
+  "health": false,
+  "reason": "RUNNER_INTERRUPTED_BEFORE_GATE3_RECORD",
+  "retry_permitted": false,
+  "completed_utc": "2026-07-24 12:30:44 UTC"
+}

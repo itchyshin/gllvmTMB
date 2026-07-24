@@ -59,6 +59,7 @@ Design and reconciliation:
 - `docs/dev-log/plan-actual/2026-07-24-design99-exact-reference.md`
 - `docs/dev-log/check-log.md`
 - `docs/dev-log/after-task/2026-07-24-design99-exact-reference.md`
+- `docs/dev-log/handover/2026-07-24-codex-handover-design99.md`
 
 Private numerical implementation:
 

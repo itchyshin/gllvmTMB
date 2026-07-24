@@ -1,0 +1,10 @@
+{
+  "status": "blocked_dependency",
+  "healthy": false,
+  "reason": "gh_high_C_phase1",
+  "input_sha256": "a0bc503804dc8987b5b3c0aac608c35f74b9b84f37df4846b0ac56ee680e967c",
+  "worker_launches": 0,
+  "objective_constructions": 0,
+  "task_id": "gh_high_C_phase2",
+  "completed_utc": "2026-07-24 16:16:24 UTC"
+}

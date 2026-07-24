@@ -1,0 +1,12 @@
+{
+  "task_id": "evaluate_gh_low",
+  "dependencies": [
+    "gh_low_A_phase2",
+    "gh_low_B_phase2",
+    "gh_low_C_phase2"
+  ],
+  "input_sha256": "e87d2cef0909f87846decd2ec575b81ebf81db864c4faba87528cb77c6378c79",
+  "pid": null,
+  "host": "psychdhcp68.psych.ualberta.ca",
+  "started_utc": "2026-07-24 16:35:18 UTC"
+}

@@ -1,0 +1,10 @@
+{
+  "status": "blocked_dependency",
+  "healthy": false,
+  "reason": "evaluate_gh_low",
+  "input_sha256": "deaa3eae05a1a8246d28c86f1d69a4270e95976b4c7fe57dd08836771d6a34b0",
+  "worker_launches": 0,
+  "objective_constructions": 0,
+  "task_id": "fixed_qd_phase1",
+  "completed_utc": "2026-07-24 16:16:24 UTC"
+}

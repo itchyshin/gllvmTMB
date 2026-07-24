@@ -1,0 +1,40 @@
+{
+  "task_id": "gh_low_C_phase1",
+  "action": "gh_phase1",
+  "dependencies": [],
+  "fixture": {
+    "label": "low",
+    "n": 16,
+    "traits": 3,
+    "sha256": "727c1392d57a94c203cea6221101d7eea5af26e31c9e43876500ba01462b6af4"
+  },
+  "method": null,
+  "start": {
+    "id": "C",
+    "beta_rule": "empirical_logit",
+    "beta_offset": [0.14999999999999999, -0.10000000000000001, 0.050000000000000003],
+    "loading_free": [-0.43078291609245423, 0.10000000000000001, -0.51082562376599072, 0.10000000000000001, -0.10000000000000001]
+  },
+  "stage": "nlminb",
+  "dependency_policy": "all_healthy",
+  "variational_start": {
+    "mean": 0,
+    "chol_log_diag": -0.22314355131420971,
+    "chol_strict_lower": 0
+  },
+  "wall_time_sec": 60,
+  "heartbeat_sec": 5,
+  "toy_smoke": true,
+  "scientific_action": true,
+  "truth": {
+    "beta": [-0.45000000000000001, -0.10000000000000001, 0.29999999999999999],
+    "loading": [
+      [0.81999999999999995, 0],
+      [0.17999999999999999, 0.68000000000000005],
+      [-0.35999999999999999, 0.29999999999999999]
+    ]
+  },
+  "start_id": "C",
+  "created_utc": "2026-07-24 16:14:37 UTC",
+  "input_sha256": "85e6055ba7d87786d06b2541c8121180413f1848fba67e16bcdb4ab99a49aaa8"
+}

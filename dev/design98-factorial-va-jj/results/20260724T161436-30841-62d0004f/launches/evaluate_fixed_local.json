@@ -1,0 +1,13 @@
+{
+  "task_id": "evaluate_fixed_local",
+  "dependencies": [
+    "fixed_qd_phase2",
+    "fixed_qf_phase2",
+    "fixed_jd_phase2",
+    "fixed_jf_phase2"
+  ],
+  "input_sha256": "f0fd9aa2ceff79aed3bec9c3e6e47f7874859a9b73ce1da4211efc4722fb314e",
+  "pid": null,
+  "host": "psychdhcp68.psych.ualberta.ca",
+  "started_utc": "2026-07-24 17:16:16 UTC"
+}

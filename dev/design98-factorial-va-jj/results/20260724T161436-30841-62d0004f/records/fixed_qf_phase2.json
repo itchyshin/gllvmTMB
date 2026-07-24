@@ -1,0 +1,10 @@
+{
+  "status": "blocked_dependency",
+  "healthy": false,
+  "reason": "fixed_qf_phase1",
+  "input_sha256": "e11637d308642f383bc4cf181c92743a4866240956935c0a7748621c629637b9",
+  "worker_launches": 0,
+  "objective_constructions": 0,
+  "task_id": "fixed_qf_phase2",
+  "completed_utc": "2026-07-24 17:16:16 UTC"
+}

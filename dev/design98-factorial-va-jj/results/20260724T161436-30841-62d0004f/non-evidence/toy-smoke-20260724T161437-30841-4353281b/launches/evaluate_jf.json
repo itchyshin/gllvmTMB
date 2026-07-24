@@ -1,0 +1,12 @@
+{
+  "task_id": "evaluate_jf",
+  "dependencies": [
+    "va_jf_A_phase2",
+    "va_jf_B_phase2",
+    "va_jf_C_phase2"
+  ],
+  "input_sha256": "db784164751ff2b1848955f13007f9155b233543a44c2c4154dd71647dbcdecc",
+  "pid": null,
+  "host": "psychdhcp68.psych.ualberta.ca",
+  "started_utc": "2026-07-24 16:20:07 UTC"
+}

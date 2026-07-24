@@ -1,0 +1,267 @@
+{
+  "status": "worker_reported_unhealthy",
+  "healthy": false,
+  "reason": "representative_selection:fewer_than_two_healthy",
+  "input_sha256": "eb995e9a5a0568bde51148038252fa61beea092536da9d902c821befeb966ad2",
+  "pid": 33117,
+  "host": "psychdhcp68.psych.ualberta.ca",
+  "started_utc": "2026-07-24 16:16:24 UTC",
+  "elapsed_sec": 0.63741087913513184,
+  "exit_status": 0,
+  "signal": null,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "payload_sha256": "8afa9d36eec8bd399b3b5446546d369e3c2f80fe3ab69ae2cedd557889ad3ca2",
+  "payload": {
+    "status": "unhealthy",
+    "healthy": false,
+    "reason": "representative_selection:fewer_than_two_healthy",
+    "action": "evaluate",
+    "estimator_kind": "gh",
+    "method": "GH",
+    "start_id": null,
+    "raw_coordinates": [],
+    "transformed_parameters": [],
+    "objective": null,
+    "objective_type": null,
+    "phase_code": 0,
+    "gradient": [],
+    "gradient_max": null,
+    "metrics": [],
+    "optimizer": null,
+    "warnings": [],
+    "error": null,
+    "attempts": [
+      {
+        "status": "unhealthy",
+        "healthy": false,
+        "reason": "gradient_gate",
+        "action": "evaluate",
+        "estimator_kind": "gh",
+        "method": "GH",
+        "start_id": "A",
+        "raw_coordinates": [
+          -66.377754496318829,
+          20.003637451660353,
+          26.556529453227846,
+          73.486163790786691,
+          20.179027032560047,
+          71.599045875743087,
+          -123.89713338324444,
+          45.760727490477343
+        ],
+        "transformed_parameters": {
+          "beta": [
+            -66.377754496318829,
+            20.003637451660353,
+            26.556529453227846
+          ],
+          "loading_free": [
+            73.486163790786691,
+            20.179027032560047,
+            71.599045875743087,
+            -123.89713338324444,
+            45.760727490477343
+          ],
+          "loading": [
+            [
+              8.215527062407039e+31,
+              0
+            ],
+            [
+              20.179027032560047,
+              1.2447167486749939e+31
+            ],
+            [
+              -123.89713338324444,
+              45.760727490477343
+            ]
+          ],
+          "Sigma": [
+            [
+              6.7494884913142435e+63,
+              1.6578134267904028e+33,
+              -1.0178802522646993e+34
+            ],
+            [
+              1.6578134267904028e+33,
+              1.5493197844320477e+62,
+              5.6959143938949372e+32
+            ],
+            [
+              -1.0178802522646993e+34,
+              5.6959143938949372e+32,
+              17444.543841043193
+            ]
+          ],
+          "covariance_eigenvalues": [
+            6.7494884913142435e+63,
+            1.5493197844320482e+62
+          ],
+          "marginal_probability": [
+            0.42009292941110249,
+            0.42009292941110282,
+            0.57855051766496779
+          ]
+        },
+        "objective": -2.1617278211378381e+17,
+        "objective_type": "negative_GH31_marginal",
+        "phase_code": 0,
+        "gradient": [
+          6.7340915100683796e-29,
+          -0.04090413188624941,
+          -1.8717662616010535,
+          0,
+          0.045769871472896143,
+          0,
+          -17.153407225121612,
+          -11.942658018406817
+        ],
+        "gradient_max": 17.153407225121612,
+        "metrics": {
+          "second_covariance_eigenvalue": 1.5493197844320482e+62,
+          "beta_rmse": 42.583370739616612,
+          "covariance_max_error": 6.7494884913142435e+63,
+          "marginal_probability_rmse": 0.034867415748214267,
+          "accuracy_flag": false
+        },
+        "optimizer": {
+          "message": "",
+          "iterations": 2,
+          "evaluations": [
+            2,
+            1
+          ]
+        },
+        "warnings": [],
+        "error": null,
+        "source_task_id": "gh_high_A_phase2",
+        "source_terminal_status": "worker_reported_unhealthy",
+        "source_payload_sha256": "f84f017bcaec745315b6abc00ab67a0ad1e78fc4b703e197c1dbbf0ff4b6bcff"
+      },
+      {
+        "status": "unhealthy",
+        "healthy": false,
+        "reason": "blocked_dependency",
+        "action": "evaluate",
+        "estimator_kind": null,
+        "method": null,
+        "start_id": null,
+        "raw_coordinates": [],
+        "transformed_parameters": [],
+        "objective": null,
+        "objective_type": null,
+        "phase_code": null,
+        "gradient": [],
+        "gradient_max": null,
+        "metrics": [],
+        "optimizer": null,
+        "warnings": [],
+        "error": null,
+        "source_task_id": "gh_high_B_phase2",
+        "source_terminal_status": "blocked_dependency",
+        "source_payload_sha256": null
+      },
+      {
+        "status": "unhealthy",
+        "healthy": false,
+        "reason": "blocked_dependency",
+        "action": "evaluate",
+        "estimator_kind": null,
+        "method": null,
+        "start_id": null,
+        "raw_coordinates": [],
+        "transformed_parameters": [],
+        "objective": null,
+        "objective_type": null,
+        "phase_code": null,
+        "gradient": [],
+        "gradient_max": null,
+        "metrics": [],
+        "optimizer": null,
+        "warnings": [],
+        "error": null,
+        "source_task_id": "gh_high_C_phase2",
+        "source_terminal_status": "blocked_dependency",
+        "source_payload_sha256": null
+      }
+    ],
+    "selection": {
+      "comparable": false,
+      "reason": "fewer_than_two_healthy",
+      "attempt_count": 3,
+      "healthy_count": 0
+    },
+    "task_id": "evaluate_gh_high",
+    "input_sha256": "eb995e9a5a0568bde51148038252fa61beea092536da9d902c821befeb966ad2",
+    "dependency_task_ids": [
+      "gh_high_A_phase2",
+      "gh_high_B_phase2",
+      "gh_high_C_phase2"
+    ],
+    "dependency_payload_sha256": [
+      "f84f017bcaec745315b6abc00ab67a0ad1e78fc4b703e197c1dbbf0ff4b6bcff",
+      null,
+      null
+    ],
+    "realised_inputs": {
+      "task_id": "evaluate_gh_high",
+      "action": "evaluate",
+      "dependencies": [
+        "gh_high_A_phase2",
+        "gh_high_B_phase2",
+        "gh_high_C_phase2"
+      ],
+      "fixture": {
+        "label": "high",
+        "n": 16,
+        "traits": 3,
+        "sha256": "727c1392d57a94c203cea6221101d7eea5af26e31c9e43876500ba01462b6af4"
+      },
+      "method": {
+        "kind": "GH",
+        "decision": "select_representative"
+      },
+      "start": null,
+      "stage": null,
+      "dependency_policy": "all_terminal",
+      "variational_start": {
+        "mean": 0,
+        "chol_log_diag": -0.22314355131420971,
+        "chol_strict_lower": 0
+      },
+      "wall_time_sec": 60,
+      "heartbeat_sec": 5,
+      "toy_smoke": true,
+      "scientific_action": true,
+      "truth": {
+        "beta": [
+          -0.45000000000000001,
+          -0.10000000000000001,
+          0.29999999999999999
+        ],
+        "loading": [
+          [
+            0.81999999999999995,
+            0
+          ],
+          [
+            0.17999999999999999,
+            0.68000000000000005
+          ],
+          [
+            -0.35999999999999999,
+            0.29999999999999999
+          ]
+        ]
+      },
+      "created_utc": "2026-07-24 16:14:37 UTC",
+      "input_sha256": "eb995e9a5a0568bde51148038252fa61beea092536da9d902c821befeb966ad2"
+    },
+    "completed_utc": "2026-07-24 16:16:24 UTC"
+  },
+  "worker_launches": 1,
+  "objective_constructions": 0,
+  "task_id": "evaluate_gh_high",
+  "completed_utc": "2026-07-24 16:16:24 UTC"
+}

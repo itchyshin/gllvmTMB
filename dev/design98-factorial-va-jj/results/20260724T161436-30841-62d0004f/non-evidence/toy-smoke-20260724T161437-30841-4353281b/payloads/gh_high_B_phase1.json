@@ -1,0 +1,113 @@
+{
+  "status": "unhealthy",
+  "healthy": false,
+  "reason": "phase_code=1",
+  "action": "gh_phase1",
+  "estimator_kind": "gh",
+  "method": "GH",
+  "start_id": "B",
+  "raw_coordinates": [-17.369590981222494, -9.8111566144009164, 9.8309617302690384, 24.178471332237901, 7.7036398363322487, 30.436371120433581, -36.372763571749303, 40.271534643792464],
+  "transformed_parameters": {
+    "beta": [-17.369590981222494, -9.8111566144009164, 9.8309617302690384],
+    "loading_free": [24.178471332237901, 7.7036398363322487, 30.436371120433581, -36.372763571749303, 40.271534643792464],
+    "loading": [
+      [31664794980.019569, 0],
+      [7.7036398363322487, 16532861469512.365],
+      [-36.372763571749303, 40.271534643792464]
+    ],
+    "Sigma": [
+      [1.0026592411266725e+21, 243934176017.37216, -1151736101356.166],
+      [243934176017.37216, 2.7333550837008658e+26, 665803703430208.62],
+      [-1151736101356.166, 665803703430208.62, 2944.7744324125497]
+    ],
+    "covariance_eigenvalues": [2.7333550837008665e+26, 1.0026592411266725e+21],
+    "marginal_probability": [0.4200929339826488, 0.43706556120637435, 0.56134860186142865]
+  },
+  "objective": 27.28905160286682,
+  "objective_type": "negative_GH31_marginal",
+  "phase_code": 1,
+  "gradient": [1.9235976259374915e-08, 0.00022088521143114514, -0.00068900729158845797, 0, 0.00025486209843408311, 0, 0.00038714759025614649, 0.00049543476319611698],
+  "gradient_max": 0.00068900729158845797,
+  "metrics": {
+    "second_covariance_eigenvalue": 1.0026592411266725e+21,
+    "beta_rmse": 12.53552755524794,
+    "covariance_max_error": 2.7333550837008658e+26,
+    "marginal_probability_rmse": 0.025919214335041203,
+    "accuracy_flag": false
+  },
+  "optimizer": {
+    "message": "false convergence (8)",
+    "iterations": 23,
+    "evaluations": [39, 23]
+  },
+  "warnings": [],
+  "error": null,
+  "task_id": "gh_high_B_phase1",
+  "input_sha256": "e213f7857015270d9cba200fe17dd243e1f7c7f2dbc3a2b800b7f4445341dcef",
+  "dependency_task_ids": [],
+  "dependency_payload_sha256": [],
+  "realised_inputs": {
+    "task_id": "gh_high_B_phase1",
+    "action": "gh_phase1",
+    "dependencies": [],
+    "fixture": {
+      "label": "high",
+      "n": 16,
+      "traits": 3,
+      "sha256": "727c1392d57a94c203cea6221101d7eea5af26e31c9e43876500ba01462b6af4"
+    },
+    "method": null,
+    "start": {
+      "id": "B",
+      "beta_rule": "truth_near",
+      "beta": [
+        -0.40000000000000002,
+        -0.14000000000000001,
+        0.32999999999999996
+      ],
+      "loading_free": [
+        -0.30381145438166457,
+        0.16200000000000001,
+        -0.49102299646981079,
+        -0.32400000000000001,
+        0.27000000000000002
+      ]
+    },
+    "stage": "nlminb",
+    "dependency_policy": "all_healthy",
+    "variational_start": {
+      "mean": 0,
+      "chol_log_diag": -0.22314355131420971,
+      "chol_strict_lower": 0
+    },
+    "wall_time_sec": 60,
+    "heartbeat_sec": 5,
+    "toy_smoke": true,
+    "scientific_action": true,
+    "truth": {
+      "beta": [
+        -0.45000000000000001,
+        -0.10000000000000001,
+        0.29999999999999999
+      ],
+      "loading": [
+        [
+          0.81999999999999995,
+          0
+        ],
+        [
+          0.17999999999999999,
+          0.68000000000000005
+        ],
+        [
+          -0.35999999999999999,
+          0.29999999999999999
+        ]
+      ]
+    },
+    "start_id": "B",
+    "created_utc": "2026-07-24 16:14:37 UTC",
+    "input_sha256": "e213f7857015270d9cba200fe17dd243e1f7c7f2dbc3a2b800b7f4445341dcef"
+  },
+  "completed_utc": "2026-07-24 16:16:05 UTC"
+}

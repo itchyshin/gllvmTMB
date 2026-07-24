@@ -1,0 +1,197 @@
+[
+  {
+    "path": "dev/design95-free-jj-va/.gitignore",
+    "exists": true,
+    "sha256": "bdec9a20c99a8e110dbe2baf4515222045da0454aac3b2c8c25ea8b33342db95"
+  },
+  {
+    "path": "dev/design95-free-jj-va/jj-free-oracle.R",
+    "exists": true,
+    "sha256": "a76c434ad678687466e59aac357b050babd87cbf086d6579efc93b8a10bfbceb"
+  },
+  {
+    "path": "dev/design95-free-jj-va/run-tests.R",
+    "exists": true,
+    "sha256": "699769d1aedfbd2d181f7583b2ad26ad3dc931c4b6c412d27e4c9ec4e21ce9fe"
+  },
+  {
+    "path": "dev/design95-free-jj-va/src/design95_free_jj_va.cpp",
+    "exists": true,
+    "sha256": "00c890ef8fc1a016bb6d328b062a73693249c6dfea226a919a8019298b819dfc"
+  },
+  {
+    "path": "dev/design96-jj-recovery/.gitignore",
+    "exists": true,
+    "sha256": "bdec9a20c99a8e110dbe2baf4515222045da0454aac3b2c8c25ea8b33342db95"
+  },
+  {
+    "path": "dev/design96-jj-recovery/oracle.R",
+    "exists": true,
+    "sha256": "07d3c991a274974e2d20fbf756c1b66e613bb208075a22e7d8b0b81e428f9ca7"
+  },
+  {
+    "path": "dev/design96-jj-recovery/results/attempt-moderate-A.json",
+    "exists": true,
+    "sha256": "60192cb3e7b042f8611b78d9ae22ea6d271beaa76c3a5fad404b09e73ee195c7"
+  },
+  {
+    "path": "dev/design96-jj-recovery/results/attempt-moderate-B.json",
+    "exists": true,
+    "sha256": "d5d07b2371b8c04ff11fc59166e7c530b5f00e359bf5ff419b5d4562eac642a7"
+  },
+  {
+    "path": "dev/design96-jj-recovery/results/attempt-moderate-C.json",
+    "exists": true,
+    "sha256": "64e31eae8911c01f304f0359d17fa0dc23c26d8c857147cbf1b70d5c8585cc85"
+  },
+  {
+    "path": "dev/design96-jj-recovery/results/attempt-strong-A.json",
+    "exists": true,
+    "sha256": "2147159da79a464cc5325d0e71f2edb751b6f1d70c6b5a4a3579924bf5121ba9"
+  },
+  {
+    "path": "dev/design96-jj-recovery/results/attempt-strong-B.json",
+    "exists": true,
+    "sha256": "4517f8a7bff3e30384e71c1aa2a3840cda1a25f7e14b04daee395c79b535c8dd"
+  },
+  {
+    "path": "dev/design96-jj-recovery/results/attempt-strong-C.json",
+    "exists": true,
+    "sha256": "9b29a57abc03ceb5d434394612d6f7518d55002959916422c385de97c1e5c781"
+  },
+  {
+    "path": "dev/design96-jj-recovery/results/fixture-moderate.json",
+    "exists": true,
+    "sha256": "3504a8c6914f674c9e57df7ed198ed9e1df216fd00bc5a3e12f72a9096fcd95d"
+  },
+  {
+    "path": "dev/design96-jj-recovery/results/fixture-strong.json",
+    "exists": true,
+    "sha256": "1e2a7fc4ea0765b5c4cbe5dd2e8d839f1286547eabbd9a95663bec820d6c9236"
+  },
+  {
+    "path": "dev/design96-jj-recovery/results/manifest.json",
+    "exists": true,
+    "sha256": "73be2d4585ba81b32246d5a7c33a9625f5a30d3c51c4117a9afbc8db379a8fb9"
+  },
+  {
+    "path": "dev/design96-jj-recovery/results/summary.json",
+    "exists": true,
+    "sha256": "a1533486b3f19b3cb07cb144d44dd098283faf88ca562b1ad85a4e083932f3ef"
+  },
+  {
+    "path": "dev/design96-jj-recovery/run-smoke.R",
+    "exists": true,
+    "sha256": "4b3e3b61ecba7354381016aaceda5f2ef6d8b2ec6ef278c715b9eb0da9cf0465"
+  },
+  {
+    "path": "dev/design96-jj-recovery/src/design96_jj_va.cpp",
+    "exists": true,
+    "sha256": "fac0dba702152983aef3fc824db589ddc0e01f11f8008ea56dab3a1427f3ac20"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/.gitignore",
+    "exists": true,
+    "sha256": "6ed6cbc9fcee14c6aa51700474e3903951cfd337b0fbe462108a4582ef0f3717"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/finalize-interrupted.R",
+    "exists": true,
+    "sha256": "2dd034e5d27eb45ca445841cce045c3cb472a543e6028a4ccb9dc3083ee90067"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/fullcov-jj-oracle.R",
+    "exists": true,
+    "sha256": "9a4e4fca04ad379ccc48429f9293d23622e2ef5392edbb54ba3e3a996b575f7a"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/results/fixture-fixed.json",
+    "exists": true,
+    "sha256": "b51fcd6bf1b38a28ee729dd773075704176252da179bfd78afdf6ab3386ab381"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/results/fixture-free.json",
+    "exists": true,
+    "sha256": "64caee7f7b8623c87925bfd44603c4081818d9b8b178b7ae494c5e8da8fe305a"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/results/gate2-fixed.json",
+    "exists": true,
+    "sha256": "d2cd8f50c3d931b75a040db87eb6f7d7f0648143814d81b05b85cdf85d30ce09"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/results/gate3-free.json",
+    "exists": true,
+    "sha256": "c3e730849e480a2a066ead81bbc517aeac53d2a27deb8755aa30d1cb40018dad"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/results/manifest.json",
+    "exists": true,
+    "sha256": "0f81867fc0bd7737b120e44fe4204622464d8d85742cbfa3356e98fa6b3b60ff"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/results/summary.json",
+    "exists": true,
+    "sha256": "b8fcd51fb7bfc70ee3eb88facf9cfdce1c4ac9c2d3a265e7f2e0d0fa9cf3f14d"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/run-discriminator.R",
+    "exists": true,
+    "sha256": "eff84347f8bcc96a30868dd3cc1afc8e044ea93ed45a3c290d7e99d0c626e388"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/run-gate1-tests.R",
+    "exists": true,
+    "sha256": "4d1884636f195974ee43e73dcc16b2afc401264a4d3e1b254ed8591ed13df1ac"
+  },
+  {
+    "path": "dev/design97-fullcov-jj/src/design97_fullcov_jj.cpp",
+    "exists": true,
+    "sha256": "175216cb12de4762af6e7283dfdc87995ea5b9f9e83c2f0dc4fdd13259a6e78d"
+  },
+  {
+    "path": "docs/design/72-variational-approximation-feasibility.md",
+    "exists": true,
+    "sha256": "3c059fb3fd4723b8d9f3a44acf3731a2851e5c3c93478ca583196361f19b8ffa"
+  },
+  {
+    "path": "docs/design/85-highdim-nongaussian-va-formal-contract.md",
+    "exists": true,
+    "sha256": "344e93879c2526db1bd9a4ce91941256bd1f6d779c612956a5847d6ce4921f2b"
+  },
+  {
+    "path": "docs/design/95-free-jj-variational-arc.md",
+    "exists": true,
+    "sha256": "90416ebc1c1d8b17271816b5f0be3728ffa55df07438d282d233d90d711af14a"
+  },
+  {
+    "path": "docs/design/96-jj-recovery-smoke.md",
+    "exists": true,
+    "sha256": "8896ab5175a1a9258471bab3965a7f5efbac5839652143cf12a6ae435754cd09"
+  },
+  {
+    "path": "docs/design/97-fullcov-jj-discrimination.md",
+    "exists": true,
+    "sha256": "75323620518b5b40a2154beb1182b4055a69c20e2a30119091094d23621aad3b"
+  },
+  {
+    "path": "docs/dev-log/after-task/2026-07-23-design95-free-jj-prototype.md",
+    "exists": true,
+    "sha256": "64cbd35fd58e870d31c075d693b95dfb31f8e0e6178db1de3865d84410fad5f0"
+  },
+  {
+    "path": "docs/dev-log/after-task/2026-07-24-design96-jj-recovery-smoke-stop.md",
+    "exists": true,
+    "sha256": "603336e0513b8370a16761d661805a28e028ea118ffd25ddf07dfab095521149"
+  },
+  {
+    "path": "docs/dev-log/after-task/2026-07-24-design97-fullcov-jj-smoke-stop.md",
+    "exists": true,
+    "sha256": "8d237a82bef1ef8c16d78d996afade953e2714da5d27385a3820dacf4db0601c"
+  },
+  {
+    "path": "docs/dev-log/handover/2026-07-24-codex-handover-design97.md",
+    "exists": true,
+    "sha256": "b1e561a39374100dffad2f86e925260d279ac3cde23429f6e914bc3a962b099c"
+  }
+]

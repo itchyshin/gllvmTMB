@@ -1,0 +1,12 @@
+{
+  "task_id": "evaluate_qd",
+  "dependencies": [
+    "va_qd_A_phase2",
+    "va_qd_B_phase2",
+    "va_qd_C_phase2"
+  ],
+  "input_sha256": "7a94c30501af01577df5423be1ece2e37b3c41f7c066fdda5d3f85990f7bd03b",
+  "pid": null,
+  "host": "psychdhcp68.psych.ualberta.ca",
+  "started_utc": "2026-07-24 16:17:21 UTC"
+}

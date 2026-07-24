@@ -1,0 +1,16 @@
+{
+  "task_id": "evaluate_all",
+  "dependencies": [
+    "evaluate_gh_low",
+    "evaluate_gh_high",
+    "evaluate_fixed_local",
+    "evaluate_qd",
+    "evaluate_qf",
+    "evaluate_jd",
+    "evaluate_jf"
+  ],
+  "input_sha256": "42147dd33fa88234ab2c484d4d94e2d2175a34d3a0b6ad4ae82769e1a08ea3f6",
+  "pid": null,
+  "host": "psychdhcp68.psych.ualberta.ca",
+  "started_utc": "2026-07-24 17:21:17 UTC"
+}

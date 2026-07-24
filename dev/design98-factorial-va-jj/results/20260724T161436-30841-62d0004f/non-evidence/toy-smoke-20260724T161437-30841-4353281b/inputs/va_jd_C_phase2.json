@@ -1,0 +1,44 @@
+{
+  "task_id": "va_jd_C_phase2",
+  "action": "va_phase2",
+  "dependencies": "va_jd_C_phase1",
+  "fixture": {
+    "label": "low",
+    "n": 16,
+    "traits": 3,
+    "sha256": "727c1392d57a94c203cea6221101d7eea5af26e31c9e43876500ba01462b6af4"
+  },
+  "method": {
+    "id": "JD",
+    "objective": "J",
+    "geometry": "D"
+  },
+  "start": {
+    "id": "C",
+    "beta_rule": "empirical_logit",
+    "beta_offset": [0.14999999999999999, -0.10000000000000001, 0.050000000000000003],
+    "loading_free": [-0.43078291609245423, 0.10000000000000001, -0.51082562376599072, 0.10000000000000001, -0.10000000000000001]
+  },
+  "stage": "BFGS",
+  "dependency_policy": "all_healthy",
+  "variational_start": {
+    "mean": 0,
+    "chol_log_diag": -0.22314355131420971,
+    "chol_strict_lower": 0
+  },
+  "wall_time_sec": 60,
+  "heartbeat_sec": 5,
+  "toy_smoke": true,
+  "scientific_action": true,
+  "truth": {
+    "beta": [-0.45000000000000001, -0.10000000000000001, 0.29999999999999999],
+    "loading": [
+      [0.81999999999999995, 0],
+      [0.17999999999999999, 0.68000000000000005],
+      [-0.35999999999999999, 0.29999999999999999]
+    ]
+  },
+  "start_id": "C",
+  "created_utc": "2026-07-24 16:14:37 UTC",
+  "input_sha256": "29a1cd0fb0f038766dd3459f5cf9ebb6e24fda7287c14281e611b8654c6b80e6"
+}

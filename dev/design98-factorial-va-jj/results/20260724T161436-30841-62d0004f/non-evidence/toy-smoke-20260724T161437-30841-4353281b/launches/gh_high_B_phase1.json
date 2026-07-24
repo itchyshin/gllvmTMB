@@ -1,0 +1,8 @@
+{
+  "task_id": "gh_high_B_phase1",
+  "dependencies": [],
+  "input_sha256": "e213f7857015270d9cba200fe17dd243e1f7c7f2dbc3a2b800b7f4445341dcef",
+  "pid": null,
+  "host": "psychdhcp68.psych.ualberta.ca",
+  "started_utc": "2026-07-24 16:15:53 UTC"
+}

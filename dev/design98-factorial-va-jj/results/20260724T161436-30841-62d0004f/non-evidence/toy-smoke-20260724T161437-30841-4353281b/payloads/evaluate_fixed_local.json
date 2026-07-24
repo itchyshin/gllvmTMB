@@ -1,0 +1,210 @@
+{
+  "status": "unhealthy",
+  "healthy": false,
+  "reason": "no_healthy_fixed_local_method",
+  "action": "evaluate",
+  "estimator_kind": "fixed_local",
+  "method": "factorial",
+  "start_id": null,
+  "raw_coordinates": [],
+  "transformed_parameters": [],
+  "objective": null,
+  "objective_type": null,
+  "phase_code": 0,
+  "gradient": [],
+  "gradient_max": null,
+  "metrics": [],
+  "optimizer": null,
+  "warnings": [],
+  "error": null,
+  "attempts": [
+    {
+      "status": "unhealthy",
+      "healthy": false,
+      "reason": "blocked_dependency",
+      "action": "evaluate",
+      "estimator_kind": null,
+      "method": null,
+      "start_id": null,
+      "raw_coordinates": [],
+      "transformed_parameters": [],
+      "objective": null,
+      "objective_type": null,
+      "phase_code": null,
+      "gradient": [],
+      "gradient_max": null,
+      "metrics": [],
+      "optimizer": null,
+      "warnings": [],
+      "error": null,
+      "source_task_id": "fixed_qd_phase2",
+      "source_terminal_status": "blocked_dependency",
+      "source_payload_sha256": null
+    },
+    {
+      "status": "unhealthy",
+      "healthy": false,
+      "reason": "blocked_dependency",
+      "action": "evaluate",
+      "estimator_kind": null,
+      "method": null,
+      "start_id": null,
+      "raw_coordinates": [],
+      "transformed_parameters": [],
+      "objective": null,
+      "objective_type": null,
+      "phase_code": null,
+      "gradient": [],
+      "gradient_max": null,
+      "metrics": [],
+      "optimizer": null,
+      "warnings": [],
+      "error": null,
+      "source_task_id": "fixed_qf_phase2",
+      "source_terminal_status": "blocked_dependency",
+      "source_payload_sha256": null
+    },
+    {
+      "status": "unhealthy",
+      "healthy": false,
+      "reason": "blocked_dependency",
+      "action": "evaluate",
+      "estimator_kind": null,
+      "method": null,
+      "start_id": null,
+      "raw_coordinates": [],
+      "transformed_parameters": [],
+      "objective": null,
+      "objective_type": null,
+      "phase_code": null,
+      "gradient": [],
+      "gradient_max": null,
+      "metrics": [],
+      "optimizer": null,
+      "warnings": [],
+      "error": null,
+      "source_task_id": "fixed_jd_phase2",
+      "source_terminal_status": "blocked_dependency",
+      "source_payload_sha256": null
+    },
+    {
+      "status": "unhealthy",
+      "healthy": false,
+      "reason": "blocked_dependency",
+      "action": "evaluate",
+      "estimator_kind": null,
+      "method": null,
+      "start_id": null,
+      "raw_coordinates": [],
+      "transformed_parameters": [],
+      "objective": null,
+      "objective_type": null,
+      "phase_code": null,
+      "gradient": [],
+      "gradient_max": null,
+      "metrics": [],
+      "optimizer": null,
+      "warnings": [],
+      "error": null,
+      "source_task_id": "fixed_jf_phase2",
+      "source_terminal_status": "blocked_dependency",
+      "source_payload_sha256": null
+    }
+  ],
+  "contrasts": {
+    "available": {
+      "G_Q": false,
+      "G_J": false,
+      "B_D": false,
+      "B_F": false,
+      "D_D": false,
+      "D_F": false
+    },
+    "method_health": {
+      "QD": false,
+      "QF": false,
+      "JD": false,
+      "JF": false
+    },
+    "missing_methods": ["QD", "QF", "JD", "JF"],
+    "G_Q": null,
+    "G_J": null,
+    "B_D": null,
+    "B_F": null,
+    "D_D": null,
+    "D_F": null,
+    "Q_at_phi_J_D": null,
+    "Q_at_phi_J_F": null,
+    "optimized_objectives": {
+      "QD": null,
+      "QF": null,
+      "JD": null,
+      "JF": null
+    }
+  },
+  "task_id": "evaluate_fixed_local",
+  "input_sha256": "28f8f697e473d422e72d3105bdaf94f83245f1c39a4e92782be047747256c4d3",
+  "dependency_task_ids": [
+    "fixed_qd_phase2",
+    "fixed_qf_phase2",
+    "fixed_jd_phase2",
+    "fixed_jf_phase2"
+  ],
+  "dependency_payload_sha256": [null, null, null, null],
+  "realised_inputs": {
+    "task_id": "evaluate_fixed_local",
+    "action": "evaluate",
+    "dependencies": [
+      "fixed_qd_phase2",
+      "fixed_qf_phase2",
+      "fixed_jd_phase2",
+      "fixed_jf_phase2"
+    ],
+    "fixture": {
+      "label": "low",
+      "n": 16,
+      "traits": 3,
+      "sha256": "727c1392d57a94c203cea6221101d7eea5af26e31c9e43876500ba01462b6af4"
+    },
+    "method": {
+      "kind": "fixed_local",
+      "decision": "factorial_contrasts"
+    },
+    "start": null,
+    "stage": null,
+    "dependency_policy": "all_terminal",
+    "variational_start": {
+      "mean": 0,
+      "chol_log_diag": -0.22314355131420971,
+      "chol_strict_lower": 0
+    },
+    "wall_time_sec": 60,
+    "heartbeat_sec": 5,
+    "toy_smoke": true,
+    "scientific_action": true,
+    "truth": {
+      "beta": [
+        -0.45000000000000001,
+        -0.10000000000000001,
+        0.29999999999999999
+      ],
+      "loading": [
+        [
+          0.81999999999999995,
+          0
+        ],
+        [
+          0.17999999999999999,
+          0.68000000000000005
+        ],
+        [
+          -0.35999999999999999,
+          0.29999999999999999
+        ]
+      ]
+    },
+    "created_utc": "2026-07-24 16:14:37 UTC",
+    "input_sha256": "28f8f697e473d422e72d3105bdaf94f83245f1c39a4e92782be047747256c4d3"
+  },
+  "completed_utc": "2026-07-24 16:16:25 UTC"
+}

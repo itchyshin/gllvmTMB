@@ -46772,3 +46772,43 @@ fixed-global diagonal/full comparison but the one-shot runner did not create a
 Gate-3 record. No rerun occurred: an exclusive interruption receipt and
 `SMOKE_STOP` summary closed Design 97. No package/public paths, campaign,
 Totoro/DRAC, Actions, merge, push, or PR work occurred.
+
+## 2026-07-24 — Design 98 private factorial VA/JJ technical incomplete (Codex)
+
+Design 98 is a separately approved private 2×2 discriminator:
+direct Gaussian ELBO versus JJ bound, crossed with diagonal versus full
+variational covariance. Its contract is
+`docs/design/98-factorial-va-jj-discriminator.md`; the only real UUID is
+`20260724T161436-30841-62d0004f`.
+
+Ran:
+
+```
+Rscript --vanilla dev/design98-factorial-va-jj/run-gate0-provenance.R
+Rscript --vanilla dev/design98-factorial-va-jj/run-gate1-tests.R
+Rscript --vanilla dev/design98-factorial-va-jj/run-fault-tests.R
+Rscript --vanilla dev/design98-factorial-va-jj/run-fit-worker-tests.R
+Rscript --vanilla dev/design98-factorial-va-jj/run-adjudication-tests.R
+Rscript --vanilla dev/design98-factorial-va-jj/run-toy-smoke.R --execute --fit-worker /private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/fit-worker.R
+Rscript --vanilla dev/design98-factorial-va-jj/run-design98.R
+git diff --check
+git diff 7a725c5e -- src R man NAMESPACE DESCRIPTION inst vignettes README.md NEWS.md _pkgdown.yml
+git diff 7a725c5e -- docs/design/72-variational-approximation-feasibility.md docs/design/85-highdim-nongaussian-va-formal-contract.md dev/design95-free-jj-va dev/design96-jj-recovery dev/design97-fullcov-jj
+```
+
+Gate 0 and the numerical/mechanical suites passed. The real 52-task DAG reached
+52 terminal records: 33 healthy, 11 worker-reported unhealthy, and eight
+dependency-blocked. QD, QF, and JD produced comparable single-fixture
+endpoints; both GH anchors, the fixed-global contrasts, and JF were unavailable.
+The immutable scientific decision is therefore `TECHNICAL_INCOMPLETE`, with no
+mechanism, recovery, calibration, or admission claim.
+
+Three independent closeout lenses passed the retained packet only as an honest
+terminal incomplete result: mathematics/inference, scope/provenance, and
+mechanical linkage. The mechanical audit reproduced all input, payload, log,
+fixture, source, and predecessor hashes and found no retries or overwrites.
+
+The predeclared local-versus-Totoro benchmark was missed before high-GH
+execution. Already-launched immutable tasks were not migrated or replayed.
+No package/public path, prior Design artifact, campaign, Actions, Totoro/DRAC,
+merge, push, or PR work occurred.

@@ -1,0 +1,40 @@
+{
+  "task_id": "evaluate_jf",
+  "action": "evaluate",
+  "dependencies": ["va_jf_A_phase2", "va_jf_B_phase2", "va_jf_C_phase2"],
+  "fixture": {
+    "label": "low",
+    "n": 160,
+    "traits": 6,
+    "sha256": "b70f775a83ff09a556d20645a761a0a845776a7718254d8c047fb60293da263b"
+  },
+  "method": {
+    "id": "JF",
+    "decision": "select_representative"
+  },
+  "start": null,
+  "stage": null,
+  "dependency_policy": "all_terminal",
+  "variational_start": {
+    "mean": 0,
+    "chol_log_diag": -0.22314355131420971,
+    "chol_strict_lower": 0
+  },
+  "wall_time_sec": 1800,
+  "heartbeat_sec": 5,
+  "toy_smoke": false,
+  "scientific_action": true,
+  "truth": {
+    "beta": [-0.45000000000000001, -0.10000000000000001, 0.29999999999999999, 0.050000000000000003, -0.25, 0.40000000000000002],
+    "loading": [
+      [0.81999999999999995, 0],
+      [0.17999999999999999, 0.68000000000000005],
+      [-0.35999999999999999, 0.29999999999999999],
+      [0.46000000000000002, -0.23999999999999999],
+      [-0.20000000000000001, -0.44],
+      [0.28000000000000003, 0.38]
+    ]
+  },
+  "created_utc": "2026-07-24 16:20:11 UTC",
+  "input_sha256": "ae28626de3cac17e80afc714ea88324ff540e49e16a2ff0545fd3dc929b99bbc"
+}

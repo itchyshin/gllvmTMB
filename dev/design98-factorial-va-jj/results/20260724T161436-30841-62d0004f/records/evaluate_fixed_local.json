@@ -1,0 +1,254 @@
+{
+  "status": "worker_reported_unhealthy",
+  "healthy": false,
+  "reason": "no_healthy_fixed_local_method",
+  "input_sha256": "f0fd9aa2ceff79aed3bec9c3e6e47f7874859a9b73ce1da4211efc4722fb314e",
+  "pid": 1147,
+  "host": "psychdhcp68.psych.ualberta.ca",
+  "started_utc": "2026-07-24 17:16:16 UTC",
+  "elapsed_sec": 0.42020893096923828,
+  "exit_status": 0,
+  "signal": null,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "payload_sha256": "91779d3decffb4483543bbda69045d3ff1e68770091846431d8862efe5110ee9",
+  "payload": {
+    "status": "unhealthy",
+    "healthy": false,
+    "reason": "no_healthy_fixed_local_method",
+    "action": "evaluate",
+    "estimator_kind": "fixed_local",
+    "method": "factorial",
+    "start_id": null,
+    "raw_coordinates": [],
+    "transformed_parameters": [],
+    "objective": null,
+    "objective_type": null,
+    "phase_code": 0,
+    "gradient": [],
+    "gradient_max": null,
+    "metrics": [],
+    "optimizer": null,
+    "warnings": [],
+    "error": null,
+    "attempts": [
+      {
+        "status": "unhealthy",
+        "healthy": false,
+        "reason": "blocked_dependency",
+        "action": "evaluate",
+        "estimator_kind": null,
+        "method": null,
+        "start_id": null,
+        "raw_coordinates": [],
+        "transformed_parameters": [],
+        "objective": null,
+        "objective_type": null,
+        "phase_code": null,
+        "gradient": [],
+        "gradient_max": null,
+        "metrics": [],
+        "optimizer": null,
+        "warnings": [],
+        "error": null,
+        "source_task_id": "fixed_qd_phase2",
+        "source_terminal_status": "blocked_dependency",
+        "source_payload_sha256": null
+      },
+      {
+        "status": "unhealthy",
+        "healthy": false,
+        "reason": "blocked_dependency",
+        "action": "evaluate",
+        "estimator_kind": null,
+        "method": null,
+        "start_id": null,
+        "raw_coordinates": [],
+        "transformed_parameters": [],
+        "objective": null,
+        "objective_type": null,
+        "phase_code": null,
+        "gradient": [],
+        "gradient_max": null,
+        "metrics": [],
+        "optimizer": null,
+        "warnings": [],
+        "error": null,
+        "source_task_id": "fixed_qf_phase2",
+        "source_terminal_status": "blocked_dependency",
+        "source_payload_sha256": null
+      },
+      {
+        "status": "unhealthy",
+        "healthy": false,
+        "reason": "blocked_dependency",
+        "action": "evaluate",
+        "estimator_kind": null,
+        "method": null,
+        "start_id": null,
+        "raw_coordinates": [],
+        "transformed_parameters": [],
+        "objective": null,
+        "objective_type": null,
+        "phase_code": null,
+        "gradient": [],
+        "gradient_max": null,
+        "metrics": [],
+        "optimizer": null,
+        "warnings": [],
+        "error": null,
+        "source_task_id": "fixed_jd_phase2",
+        "source_terminal_status": "blocked_dependency",
+        "source_payload_sha256": null
+      },
+      {
+        "status": "unhealthy",
+        "healthy": false,
+        "reason": "blocked_dependency",
+        "action": "evaluate",
+        "estimator_kind": null,
+        "method": null,
+        "start_id": null,
+        "raw_coordinates": [],
+        "transformed_parameters": [],
+        "objective": null,
+        "objective_type": null,
+        "phase_code": null,
+        "gradient": [],
+        "gradient_max": null,
+        "metrics": [],
+        "optimizer": null,
+        "warnings": [],
+        "error": null,
+        "source_task_id": "fixed_jf_phase2",
+        "source_terminal_status": "blocked_dependency",
+        "source_payload_sha256": null
+      }
+    ],
+    "contrasts": {
+      "available": {
+        "G_Q": false,
+        "G_J": false,
+        "B_D": false,
+        "B_F": false,
+        "D_D": false,
+        "D_F": false
+      },
+      "method_health": {
+        "QD": false,
+        "QF": false,
+        "JD": false,
+        "JF": false
+      },
+      "missing_methods": [
+        "QD",
+        "QF",
+        "JD",
+        "JF"
+      ],
+      "G_Q": null,
+      "G_J": null,
+      "B_D": null,
+      "B_F": null,
+      "D_D": null,
+      "D_F": null,
+      "Q_at_phi_J_D": null,
+      "Q_at_phi_J_F": null,
+      "optimized_objectives": {
+        "QD": null,
+        "QF": null,
+        "JD": null,
+        "JF": null
+      }
+    },
+    "task_id": "evaluate_fixed_local",
+    "input_sha256": "f0fd9aa2ceff79aed3bec9c3e6e47f7874859a9b73ce1da4211efc4722fb314e",
+    "dependency_task_ids": [
+      "fixed_qd_phase2",
+      "fixed_qf_phase2",
+      "fixed_jd_phase2",
+      "fixed_jf_phase2"
+    ],
+    "dependency_payload_sha256": [
+      null,
+      null,
+      null,
+      null
+    ],
+    "realised_inputs": {
+      "task_id": "evaluate_fixed_local",
+      "action": "evaluate",
+      "dependencies": [
+        "fixed_qd_phase2",
+        "fixed_qf_phase2",
+        "fixed_jd_phase2",
+        "fixed_jf_phase2"
+      ],
+      "fixture": {
+        "label": "low",
+        "n": 160,
+        "traits": 6,
+        "sha256": "b70f775a83ff09a556d20645a761a0a845776a7718254d8c047fb60293da263b"
+      },
+      "method": {
+        "kind": "fixed_local",
+        "decision": "factorial_contrasts"
+      },
+      "start": null,
+      "stage": null,
+      "dependency_policy": "all_terminal",
+      "variational_start": {
+        "mean": 0,
+        "chol_log_diag": -0.22314355131420971,
+        "chol_strict_lower": 0
+      },
+      "wall_time_sec": 1800,
+      "heartbeat_sec": 5,
+      "toy_smoke": false,
+      "scientific_action": true,
+      "truth": {
+        "beta": [
+          -0.45000000000000001,
+          -0.10000000000000001,
+          0.29999999999999999,
+          0.050000000000000003,
+          -0.25,
+          0.40000000000000002
+        ],
+        "loading": [
+          [
+            0.81999999999999995,
+            0
+          ],
+          [
+            0.17999999999999999,
+            0.68000000000000005
+          ],
+          [
+            -0.35999999999999999,
+            0.29999999999999999
+          ],
+          [
+            0.46000000000000002,
+            -0.23999999999999999
+          ],
+          [
+            -0.20000000000000001,
+            -0.44
+          ],
+          [
+            0.28000000000000003,
+            0.38
+          ]
+        ]
+      },
+      "created_utc": "2026-07-24 16:20:11 UTC",
+      "input_sha256": "f0fd9aa2ceff79aed3bec9c3e6e47f7874859a9b73ce1da4211efc4722fb314e"
+    },
+    "completed_utc": "2026-07-24 17:16:16 UTC"
+  },
+  "worker_launches": 1,
+  "objective_constructions": 0,
+  "task_id": "evaluate_fixed_local",
+  "completed_utc": "2026-07-24 17:16:16 UTC"
+}

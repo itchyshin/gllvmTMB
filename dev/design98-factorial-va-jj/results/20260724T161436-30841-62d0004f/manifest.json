@@ -1,0 +1,231 @@
+{
+  "design": 98,
+  "uuid": "20260724T161436-30841-62d0004f",
+  "base_commit": "7a725c5e",
+  "source_head": "0a32a7f192490d4e3123b70bf3a7d7e040f18d67",
+  "contract_path": "docs/design/98-factorial-va-jj-discriminator.md",
+  "contract_sha256": "a389f7f5346a73539535286e4ad60927ea4f0060f9a5b5fde0e2f709fd2a6464",
+  "git_status_porcelain": "?? dev/design98-factorial-va-jj/results/",
+  "source_inventory": [
+    {
+      "path": "dev/design98-factorial-va-jj/.gitignore",
+      "exists": true,
+      "sha256": "45808d6573dda38012d9b20a94bcb67bf734a13028c5a72df6deb170d19dfec3",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/.gitignore"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/finalize.R",
+      "exists": true,
+      "sha256": "c36a5ab836595ba5b019ead61a371b7ae6456214a37b5d09720a9cc0f58aac1b",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/finalize.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/fit-worker.R",
+      "exists": true,
+      "sha256": "73c33e29ade48ce45111ee4d9f8f2fc2f4772a2ef88c67145cbc1f7938fda9ac",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/fit-worker.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/R/fits.R",
+      "exists": true,
+      "sha256": "ab68c5545ea3dc85913c21b7bd5fa5947a5fbfcc7fb4d918d7cca3204a988428",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/R/fits.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/R/fixture.R",
+      "exists": true,
+      "sha256": "57f604f6baae45e25556c6c8c5cbabc7f3ba6234d2431df622547ef955762485",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/R/fixture.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/R/oracle.R",
+      "exists": true,
+      "sha256": "c358c36e5c9dc8c5fc783302575a016c333bea405a12061671d707db720bacb5",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/R/oracle.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/R/provenance.R",
+      "exists": true,
+      "sha256": "e4bd9dfacaed0b756e97eb0f82c1591695a960ef52093291141c41a0c5aa8125",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/R/provenance.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/R/records.R",
+      "exists": true,
+      "sha256": "9d8fa998761e563d0ee3888d4fd80cf22d46a8a9977e916db8e420439daf6aa7",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/R/records.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/R/supervisor.R",
+      "exists": true,
+      "sha256": "b0b3becadf49dcba08d67c573ce477e63d6d1a8e80d90926e098a84f33bef498",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/R/supervisor.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/R/task-plan.R",
+      "exists": true,
+      "sha256": "a158ab945ed93fe5682cc3e0fd48485d3449fe12939423bf791728f518cf591b",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/R/task-plan.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/run-adjudication-tests.R",
+      "exists": true,
+      "sha256": "b4cadaaabb2d1609f28c0c67b185fdcf4a4199d85f026e4925635b587d5bc05a",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/run-adjudication-tests.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/run-design98.R",
+      "exists": true,
+      "sha256": "144c7f71980b7fb223900b6cd2b54fe8c321644c244daaf4d054c63659547cce",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/run-design98.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/run-fault-tests.R",
+      "exists": true,
+      "sha256": "2372445b7f6f316f0848c46e16db5712973a5c4f198f55ba7894cf7f469e7de4",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/run-fault-tests.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/run-fit-worker-tests.R",
+      "exists": true,
+      "sha256": "daec44c2e2c4dd2a0989943e65f1d7960a22ad8afd4ac57837784689143acb90",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/run-fit-worker-tests.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/run-gate0-provenance.R",
+      "exists": true,
+      "sha256": "39fad55f0a013dc5235fcb0291cca7e07b688347998748b3b5527b85842a17c1",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/run-gate0-provenance.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/run-gate1-tests.R",
+      "exists": true,
+      "sha256": "abcf3f8c95dd3e25d774646a853d7a6134ed4fee5900b624b0bc75b595cae292",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/run-gate1-tests.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/run-toy-smoke.R",
+      "exists": true,
+      "sha256": "5c3509babc21fc69f473172924cf36f5ba388a59dec015d889930ad6197af2c1",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/run-toy-smoke.R"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/src/design98_gh.cpp",
+      "exists": true,
+      "sha256": "0aeecb486f09cb5997ce354d8c145c9c2298316aec5aa56f337763413af88850",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/src/design98_gh.cpp"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/src/design98_variational.cpp",
+      "exists": true,
+      "sha256": "8fd9ae4a43116dd2953afa77f1e3811ca070a07bc83d0c2eb4405ee0fb439cf3",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/src/design98_variational.cpp"
+    },
+    {
+      "path": "dev/design98-factorial-va-jj/worker.R",
+      "exists": true,
+      "sha256": "e5e3709c03542b1fad0c0c32a004e01eadb982214d1613445909456dbcda3b81",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/dev/design98-factorial-va-jj/worker.R"
+    },
+    {
+      "path": "docs/design/98-factorial-va-jj-discriminator.md",
+      "exists": true,
+      "sha256": "a389f7f5346a73539535286e4ad60927ea4f0060f9a5b5fde0e2f709fd2a6464",
+      "_row": "/private/tmp/gllvmtmb-design98-factorial-va-jj/docs/design/98-factorial-va-jj-discriminator.md"
+    }
+  ],
+  "gh_checksums": {
+    "31": {
+      "order": 31,
+      "node_sha256": "63c6ddc364a9aaa8804e522cb3344addba53efba0b7efc529c6284eec1326eff",
+      "weight_sha256": "55b6a6bbf8fb6dd861978ab999eaa3bcd95fbcaa1b6df0e7bd913917ed257f27",
+      "weight_sum": 1
+    },
+    "41": {
+      "order": 41,
+      "node_sha256": "20bb1ac1b4c707121bede72518ba6efa598b4bc709e346a1fc0d90b9f07700ec",
+      "weight_sha256": "268a03bdf8bd65ce44d7f57e076ffa6c9ad891ab97073f826c58ff5b696da634",
+      "weight_sum": 0.99999999999999967
+    },
+    "61": {
+      "order": 61,
+      "node_sha256": "4ff4b567b2b554431547b36ef02e846b92413ff9853f9e30b6b59f5e6ba81a30",
+      "weight_sha256": "d10e7ce5d4f5c37a3e0c2b71339fbc308122ac5d84dc83473c7c43cfb1f95586",
+      "weight_sum": 0.99999999999999989
+    }
+  },
+  "versions": {
+    "R": "R version 4.6.0 (2026-04-24)",
+    "TMB": "1.9.21",
+    "compiler": null,
+    "CXX": "clang++ -arch arm64 -std=gnu++20",
+    "CXXFLAGS": "-falign-functions=64 -Wall -g -O2",
+    "platform": "aarch64-apple-darwin23",
+    "os": "Darwin"
+  },
+  "rng_kind": ["Mersenne-Twister", "Inversion", "Rejection"],
+  "oracle_sha256": "c358c36e5c9dc8c5fc783302575a016c333bea405a12061671d707db720bacb5",
+  "cpp_sha256": "67d1dcd0f8acb465ea22456ee6a9531c360eed0d3d09e4a8170a0c8745ad86d9",
+  "cpp_file_sha256": {
+    "design98_gh.cpp": "0aeecb486f09cb5997ce354d8c145c9c2298316aec5aa56f337763413af88850",
+    "design98_variational.cpp": "8fd9ae4a43116dd2953afa77f1e3811ca070a07bc83d0c2eb4405ee0fb439cf3"
+  },
+  "worker_sha256": "73c33e29ade48ce45111ee4d9f8f2fc2f4772a2ef88c67145cbc1f7938fda9ac",
+  "worker_executable_sha256": "d918ce5022d859e20c38094bb0b6199186cefd8bb96ffeb58618471c9a65a22d",
+  "task_order": [
+    "gh_low_A_phase1",
+    "gh_low_A_phase2",
+    "gh_low_B_phase1",
+    "gh_low_B_phase2",
+    "gh_low_C_phase1",
+    "gh_low_C_phase2",
+    "evaluate_gh_low",
+    "gh_high_A_phase1",
+    "gh_high_A_phase2",
+    "gh_high_B_phase1",
+    "gh_high_B_phase2",
+    "gh_high_C_phase1",
+    "gh_high_C_phase2",
+    "evaluate_gh_high",
+    "fixed_qd_phase1",
+    "fixed_qd_phase2",
+    "fixed_qf_phase1",
+    "fixed_qf_phase2",
+    "fixed_jd_phase1",
+    "fixed_jd_phase2",
+    "fixed_jf_phase1",
+    "fixed_jf_phase2",
+    "evaluate_fixed_local",
+    "va_qd_A_phase1",
+    "va_qd_A_phase2",
+    "va_qd_B_phase1",
+    "va_qd_B_phase2",
+    "va_qd_C_phase1",
+    "va_qd_C_phase2",
+    "evaluate_qd",
+    "va_qf_A_phase1",
+    "va_qf_A_phase2",
+    "va_qf_B_phase1",
+    "va_qf_B_phase2",
+    "va_qf_C_phase1",
+    "va_qf_C_phase2",
+    "evaluate_qf",
+    "va_jd_A_phase1",
+    "va_jd_A_phase2",
+    "va_jd_B_phase1",
+    "va_jd_B_phase2",
+    "va_jd_C_phase1",
+    "va_jd_C_phase2",
+    "evaluate_jd",
+    "va_jf_A_phase1",
+    "va_jf_A_phase2",
+    "va_jf_B_phase1",
+    "va_jf_B_phase2",
+    "va_jf_C_phase1",
+    "va_jf_C_phase2",
+    "evaluate_jf",
+    "evaluate_all"
+  ],
+  "benchmark_command": "Rscript --vanilla dev/design98-factorial-va-jj/run-design98.R (local staged task supervision; high GH remote only if a separately recorded pre-run benchmark exceeds 600 seconds)",
+  "created_utc": "2026-07-24 16:14:37 UTC"
+}

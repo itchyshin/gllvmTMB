@@ -654,12 +654,13 @@ d98_evaluate_endpoint <- function(input, dep, y, truth) {
   ladder_ok <- epsilon <= 1e-6 * max(1, abs(values[3L]))
   endpoint_ok <- ladder_ok
   gh_gradient_61 <- NA_real_
+  gradient_ok <- TRUE
   if (identical(dep$estimator_kind, "gh")) {
     gh61 <- d98_fit_gh(input, 61L)
     gh_obj <- d98_build_gh_objective(y, beta, loading_free, gh61)
     gh_gradient_61 <- max(abs(gh_obj$gr(gh_obj$par)))
-    endpoint_ok <- endpoint_ok &&
-      is.finite(gh_gradient_61) && gh_gradient_61 < 1e-3
+    gradient_ok <- is.finite(gh_gradient_61) && gh_gradient_61 < 1e-3
+    endpoint_ok <- endpoint_ok && gradient_ok
   }
   common <- d98_accuracy_metrics(
     d98_transform_global(beta, loading_free, d98_fit_gh(input, 61L)),
@@ -695,7 +696,13 @@ d98_evaluate_endpoint <- function(input, dep, y, truth) {
   list(
     status = if (endpoint_ok) "healthy" else "unhealthy",
     healthy = endpoint_ok,
-    reason = if (endpoint_ok) NULL else "GH_node_ladder",
+    reason = if (endpoint_ok) {
+      NULL
+    } else if (!ladder_ok) {
+      "GH_node_ladder"
+    } else {
+      "GH61_gradient_gate"
+    },
     action = "evaluate",
     estimator_kind = dep$estimator_kind,
     method = dep$method,
@@ -844,32 +851,21 @@ d98_fixed_factorial_contrasts <- function(attempts, y, input) {
     stop("Fixed-local evaluation received duplicate methods")
   }
   named <- setNames(attempts, methods)
-  missing <- required[
-    !required %in% names(named) |
-      !vapply(required, function(method) {
-        method %in% names(named) &&
-          identical(named[[method]]$status, "healthy")
-      }, logical(1))
-  ]
-  if (length(missing)) {
-    return(list(
-      available = FALSE,
-      reason = "required_fixed_local_method_unhealthy",
-      missing_methods = missing
-    ))
+  healthy <- setNames(vapply(required, function(method) {
+    method %in% names(named) &&
+      identical(named[[method]]$status, "healthy")
+  }, logical(1)), required)
+  objective <- setNames(rep(NA_real_, length(required)), required)
+  for (method in required[healthy]) {
+    objective[[method]] <- as.numeric(
+      named[[method]]$metrics$optimized_objective
+    )
   }
-  objective <- vapply(
-    required,
-    function(method) {
-      as.numeric(named[[method]]$metrics$optimized_objective)
-    },
-    numeric(1)
-  )
-  q_at_j <- numeric(2L)
-  names(q_at_j) <- c("D", "F")
+  q_at_j <- setNames(rep(NA_real_, 2L), c("D", "F"))
   for (geometry in names(q_at_j)) {
     jj_method <- paste0("J", geometry)
     direct_method <- paste0("Q", geometry)
+    if (!healthy[[jj_method]]) next
     payload <- named[[jj_method]]
     local <- d98_fixed_coordinates(payload, nrow(y), jj_method)
     q_at_j[[geometry]] <- d98_variational_elbo(
@@ -884,14 +880,38 @@ d98_fixed_factorial_contrasts <- function(attempts, y, input) {
       gh = d98_fit_gh(input, 31L)
     )
   }
+  available <- list(
+    G_Q = healthy[["QD"]] && healthy[["QF"]],
+    G_J = healthy[["JD"]] && healthy[["JF"]],
+    B_D = healthy[["JD"]] && is.finite(q_at_j[["D"]]),
+    B_F = healthy[["JF"]] && is.finite(q_at_j[["F"]]),
+    D_D = healthy[["QD"]] && healthy[["JD"]] &&
+      is.finite(q_at_j[["D"]]),
+    D_F = healthy[["QF"]] && healthy[["JF"]] &&
+      is.finite(q_at_j[["F"]])
+  )
   list(
-    available = TRUE,
-    G_Q = unname(objective[["QD"]] - objective[["QF"]]),
-    G_J = unname(objective[["JD"]] - objective[["JF"]]),
-    B_D = unname(q_at_j[["D"]] + objective[["JD"]]),
-    B_F = unname(q_at_j[["F"]] + objective[["JF"]]),
-    D_D = unname(-objective[["QD"]] - q_at_j[["D"]]),
-    D_F = unname(-objective[["QF"]] - q_at_j[["F"]]),
+    available = available,
+    method_health = as.list(healthy),
+    missing_methods = names(healthy)[!healthy],
+    G_Q = if (available$G_Q) {
+      unname(objective[["QD"]] - objective[["QF"]])
+    } else NA_real_,
+    G_J = if (available$G_J) {
+      unname(objective[["JD"]] - objective[["JF"]])
+    } else NA_real_,
+    B_D = if (available$B_D) {
+      unname(q_at_j[["D"]] + objective[["JD"]])
+    } else NA_real_,
+    B_F = if (available$B_F) {
+      unname(q_at_j[["F"]] + objective[["JF"]])
+    } else NA_real_,
+    D_D = if (available$D_D) {
+      unname(-objective[["QD"]] - q_at_j[["D"]])
+    } else NA_real_,
+    D_F = if (available$D_F) {
+      unname(-objective[["QF"]] - q_at_j[["F"]])
+    } else NA_real_,
     Q_at_phi_J_D = unname(q_at_j[["D"]]),
     Q_at_phi_J_F = unname(q_at_j[["F"]]),
     optimized_objectives = as.list(objective)
@@ -904,14 +924,17 @@ d98_evaluate_fixed_local <- function(input, entries, y, truth) {
   contrasts <- tryCatch(
     d98_fixed_factorial_contrasts(attempts, y, input),
     error = function(error) list(
-      available = FALSE,
+      available = list(),
       reason = paste0("factorial_error:", conditionMessage(error))
     )
   )
-  if (!isTRUE(contrasts$available)) {
+  healthy_index <- which(vapply(
+    attempts, function(x) identical(x$status, "healthy"), logical(1)
+  ))
+  if (!length(healthy_index)) {
     out <- d98_evaluation_shell(
       "unhealthy",
-      contrasts$reason,
+      contrasts$reason %||% "no_healthy_fixed_local_method",
       "fixed_local",
       "factorial",
       attempts
@@ -920,7 +943,14 @@ d98_evaluate_fixed_local <- function(input, entries, y, truth) {
     return(out)
   }
   methods <- vapply(attempts, function(x) x$method, character(1))
-  representative <- attempts[[match("QF", methods)]]
+  preferred <- match(c("QF", "QD", "JF", "JD"), methods)
+  preferred <- preferred[!is.na(preferred)]
+  representative_index <- preferred[
+    vapply(preferred, function(i) {
+      identical(attempts[[i]]$status, "healthy")
+    }, logical(1))
+  ][1L]
+  representative <- attempts[[representative_index]]
   representative$estimator_kind <- "fixed_local_factorial"
   representative$method <- "factorial"
   representative$attempts <- attempts
@@ -943,50 +973,57 @@ d98_summary_material <- function(a, b, delta) {
 d98_evaluate_summary <- function(input, entries) {
   payloads <- lapply(entries, `[[`, "payload")
   names(payloads) <- vapply(entries, `[[`, character(1), "task_id")
+  terminal_status <- setNames(
+    vapply(entries, `[[`, character(1), "terminal_status"),
+    names(payloads)
+  )
   required <- c(
-    "evaluate_gh_high", "evaluate_fixed_local",
+    "evaluate_gh_low", "evaluate_gh_high", "evaluate_fixed_local",
     "evaluate_qd", "evaluate_qf", "evaluate_jd", "evaluate_jf"
   )
   available <- required %in% names(payloads) &
     vapply(required, function(id) {
       id %in% names(payloads) &&
+        identical(terminal_status[[id]], "healthy") &&
         !is.null(payloads[[id]]) &&
         identical(payloads[[id]]$status, "healthy")
     }, logical(1))
   names(available) <- required
-  flags <- c(
-    NESTED_FIXTURE_INFORMATION_SIGNAL = FALSE,
-    MEAN_FIELD_SIGNAL = FALSE,
-    JJ_SIGNAL = FALSE,
-    GAUSSIAN_OR_GLOBAL_SIGNAL = FALSE
+  get <- function(id) if (isTRUE(available[[id]])) payloads[[id]] else NULL
+  low <- get("evaluate_gh_low")
+  high <- get("evaluate_gh_high")
+  fixed <- get("evaluate_fixed_local")
+  qd <- get("evaluate_qd")
+  qf <- get("evaluate_qf")
+  jd <- get("evaluate_jd")
+  jf <- get("evaluate_jf")
+  contrasts <- fixed$contrasts %||% NULL
+  ell <- function(x) {
+    if (is.null(x)) return(NA_real_)
+    as.numeric(x$metrics$gh_log_marginal_61)
+  }
+  deltas <- list(
+    Q_geometry = ell(qf) - ell(qd),
+    J_geometry = ell(jf) - ell(jd),
+    JJ = ell(qf) - ell(jf),
+    Gaussian_or_global = ell(low) - ell(qf)
   )
-  contrasts <- NULL
-  deltas <- NULL
-  if (all(available)) {
-    high <- payloads$evaluate_gh_high
-    fixed <- payloads$evaluate_fixed_local
-    qd <- payloads$evaluate_qd
-    qf <- payloads$evaluate_qf
-    jd <- payloads$evaluate_jd
-    jf <- payloads$evaluate_jf
-    contrasts <- fixed$contrasts
-    ell <- vapply(
-      list(low_gh = fixed, high_gh = high, QD = qd, QF = qf,
-           JD = jd, JF = jf),
-      function(x) as.numeric(x$metrics$gh_log_marginal_61),
-      numeric(1)
-    )
-    deltas <- list(
-      Q_geometry = unname(ell[["QF"]] - ell[["QD"]]),
-      J_geometry = unname(ell[["JF"]] - ell[["JD"]]),
-      JJ = unname(ell[["QF"]] - ell[["JF"]]),
-      Gaussian_or_global = unname(ell[["low_gh"]] - ell[["QF"]])
-    )
-    accuracy <- vapply(
-      list(low_gh = fixed, high_gh = high, QD = qd, QF = qf, JF = jf),
-      function(x) isTRUE(x$metrics$accuracy_flag),
-      logical(1)
-    )
+  accuracy <- function(x) {
+    if (is.null(x)) return(NA)
+    isTRUE(x$metrics$accuracy_flag)
+  }
+  flags <- c(
+    NESTED_FIXTURE_INFORMATION_SIGNAL = NA,
+    MEAN_FIELD_SIGNAL = NA,
+    JJ_SIGNAL = NA,
+    GAUSSIAN_OR_GLOBAL_SIGNAL = NA
+  )
+  if (!is.null(low) && !is.null(high)) {
+    flags[["NESTED_FIXTURE_INFORMATION_SIGNAL"]] <-
+      !accuracy(low) && accuracy(high)
+  }
+  if (!is.null(qd) && !is.null(qf) && !is.null(fixed) &&
+      isTRUE(contrasts$available$G_Q)) {
     fixed_methods <- setNames(
       fixed$attempts,
       vapply(fixed$attempts, function(x) x$method, character(1))
@@ -996,30 +1033,43 @@ d98_evaluate_summary <- function(input, entries) {
     ) - as.numeric(
       fixed_methods$QF$metrics$posterior_covariance_max_frobenius %||% Inf
     )
-    flags[["NESTED_FIXTURE_INFORMATION_SIGNAL"]] <-
-      !accuracy[["low_gh"]] && accuracy[["high_gh"]]
     flags[["MEAN_FIELD_SIGNAL"]] <-
       d98_summary_material(qf, qd, deltas$Q_geometry) &&
       isTRUE(contrasts$G_Q > 1e-4) &&
       is.finite(covariance_gain) && covariance_gain > 1e-3 &&
-      !accuracy[["QD"]] && accuracy[["QF"]]
+      !accuracy(qd) && accuracy(qf)
+  }
+  if (!is.null(qf) && !is.null(jf) && !is.null(fixed) &&
+      isTRUE(contrasts$available$D_F) &&
+      isTRUE(contrasts$available$B_F)) {
     flags[["JJ_SIGNAL"]] <-
       d98_summary_material(qf, jf, deltas$JJ) &&
       isTRUE(contrasts$D_F > 1e-4) &&
       isTRUE(contrasts$B_F > 1e-4) &&
-      !accuracy[["JF"]] && accuracy[["QF"]]
+      !accuracy(jf) && accuracy(qf)
+  }
+  if (!is.null(low) && !is.null(qf)) {
     flags[["GAUSSIAN_OR_GLOBAL_SIGNAL"]] <-
-      d98_summary_material(fixed, qf, deltas$Gaussian_or_global) &&
-      !accuracy[["QF"]] && accuracy[["low_gh"]]
+      d98_summary_material(low, qf, deltas$Gaussian_or_global) &&
+      !accuracy(qf) && accuracy(low)
   }
   missing <- names(available)[!available]
-  count <- sum(flags)
+  if (isTRUE(available[["evaluate_fixed_local"]])) {
+    needed_contrasts <- c("G_Q", "B_F", "D_F")
+    missing_contrasts <- needed_contrasts[
+      !vapply(needed_contrasts, function(name) {
+        isTRUE(payloads$evaluate_fixed_local$contrasts$available[[name]])
+      }, logical(1))
+    ]
+    missing <- c(missing, paste0("fixed_contrast:", missing_contrasts))
+  }
+  count <- sum(flags %in% TRUE)
   decision_status <- if (length(missing)) {
     "TECHNICAL_INCOMPLETE"
   } else if (count >= 2L) {
     "MIXED_SIGNAL"
   } else if (count == 1L) {
-    names(flags)[flags][[1L]]
+    names(flags)[which(flags %in% TRUE)][[1L]]
   } else {
     "NO_DIAGNOSTIC"
   }
@@ -1035,7 +1085,8 @@ d98_evaluate_summary <- function(input, entries) {
   out$common_scale_deltas <- deltas
   out$metrics <- list(
     comparable_method_count = sum(available),
-    mechanism_flag_count = count
+    mechanism_flag_count = count,
+    mechanism_flag_available_count = sum(!is.na(flags))
   )
   out
 }

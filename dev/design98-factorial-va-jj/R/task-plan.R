@@ -97,7 +97,13 @@ d98_plan_task <- function(
       chol_log_diag = log(.8),
       chol_strict_lower = 0
     ),
-    wall_time_sec = if (identical(fixture$label, "high")) 3600L else 1800L,
+    wall_time_sec = if (isTRUE(toy)) {
+      60L
+    } else if (identical(fixture$label, "high")) {
+      3600L
+    } else {
+      1800L
+    },
     heartbeat_sec = 5L,
     toy_smoke = isTRUE(toy),
     scientific_action = TRUE
@@ -262,6 +268,7 @@ d98_task_plan <- function(low, high, truth, toy = FALSE) {
     "evaluate",
     low,
     dependencies = c(
+      "evaluate_gh_low",
       "evaluate_gh_high",
       "evaluate_fixed_local",
       joint_evaluations

@@ -1,0 +1,23 @@
+{
+  "design": "Design 91 — row-support-conditioned upstream EVA/VA envelope",
+  "requested_method": "VA",
+  "initialization_seed": 912000001,
+  "fixture_path": "/home/snakagaw/gllvmtmb_design91/work/dev/design91-eva-va-envelope/fixtures/n060_t30_p25_s35_r00.rds",
+  "fixture_sha256": "4812df8d42cb2cfe6abdd4593bc65b75c2d7223d9145e9c55bd1cd3628eb9ac7",
+  "error": null,
+  "warnings": [],
+  "messages": [],
+  "convergence_value": true,
+  "convergence_type": "logical",
+  "log_likelihood": -975.8469,
+  "max_abs_gradient": 0.0107,
+  "hessian": {
+    "available": true,
+    "condition_number": 27494150.493
+  },
+  "parameter_coordinates": [1, 0.525, 0.7894, 0.2227, 0.0012, -0.0694, 0.3018, 0.2561, -0.407, -0.2764, -0.1192, 0.241, -0.3601, 0.1119, 0.1565, 0.1237, 0.1648, 0.2183, -0.1562, -0.368, -0.7846, 0.3942, -0.5599, -0.4385, -0.0763, 0.0244, 0.7898, -0.1844, -0.192, 0.2746, 0, 1, 1.8887, -2.8766, -4.4087, -7.1389, -0.8056, -0.6453, -3.0343, 2.0515, -7.7964, 4.3778, -6.116, 3.6897, -3.0607, 1.5448, -0.1097, 10.625, 4.5086, 3.0015, 3.1, -0.2408, 0.1432, 3.0445, 1.4858, 0.6227, 5.2953, 1.0706, -1.0865, -0.3264, 1.3972, 0.1448, -1.024, -1.7586, -1.3362, -0.6486, -0.7421, -0.6403, -0.9598, -1.3157, -0.7577, -1.4416, -1.9407, -1.1985, -2.0218, -1.4597, -1.6728, -0.555, -1.0214, -1.1894, -0.9165, -1.4892, -1.6986, -1.0667, -0.8555, -1.4064, -1.2015, -0.8488, -0.8975, -1.8988, -1.3074, -0.7122],
+  "parameter_transform": "UPSTREAM_INTERNAL_NOT_EXTRACTED",
+  "optimizer_counts": null,
+  "healthy": true,
+  "elapsed_seconds": 0.3886
+}

@@ -1,0 +1,34 @@
+{
+  "required_fields": [
+    "design",
+    "requested_method",
+    "initialization_seed",
+    "fixture_path",
+    "fixture_sha256",
+    "error",
+    "warnings",
+    "messages",
+    "convergence_value",
+    "convergence_type",
+    "log_likelihood",
+    "max_abs_gradient",
+    "hessian.available",
+    "hessian.condition_number",
+    "parameter_coordinates",
+    "parameter_transform",
+    "optimizer_counts",
+    "healthy",
+    "elapsed_seconds"
+  ],
+  "health_definition": {
+    "convergence": "logical TRUE",
+    "finite_fields": ["log_likelihood", "parameters", "raw_gradient"],
+    "max_abs_gradient_lte": 0.05,
+    "warnings": "none"
+  },
+  "interpretation": {
+    "EVA": "assessed independently",
+    "VA": "paired diagnostic comparator only",
+    "prohibited": ["objective equality", "raw loading comparison", "latent-score comparison", "recovery claim", "parity claim"]
+  }
+}

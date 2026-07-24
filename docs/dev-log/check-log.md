@@ -46707,3 +46707,35 @@ are deliberately excluded from the second scan.
   only reviewed first-use functions appear on the public primary path.
 - Final rendering and pkgdown checks are recorded in
   `docs/dev-log/after-task/2026-07-22-function-map-cheatsheet.md`.
+## 2026-07-23 — Design 91 Gate 0/1 private EVA/VA envelope (Codex)
+
+- Created an isolated worktree from `origin/main` commit `c6297589` on
+  `codex/design91-eva-va-envelope-20260723`; the lane check found no open PR.
+- Locked a fresh CRAN `gllvm` 2.0.13 source tarball at SHA-256
+  `d5305405853e2dc5d21552d7d21c171fcdd340acebc42fc834ef6ba5e449c2a4`.
+- Added a new support-conditioned Bernoulli-logit q=2 contract, fixture
+  producer, paired EVA/VA receipt writer, source/implementation lock,
+  telemetry schema, and a smoke driver guarded by `D91_AUTHORIZE_SMOKE=YES`.
+- Passed static parse/grid and Gate-0/1 checksum verification.  The smoke
+  guard was deliberately exercised and refused execution.  No fixture was
+  generated, no `gllvm` library was installed, and no model was fitted.
+- Exact scope scans:
+  `rg -n -i 'Design 8[6-9]|Design 90|gllvmTMB|parity|recovery|calibration' docs/design/91-upstream-eva-va-row-support-envelope.md dev/design91-eva-va-envelope`
+  and
+  `rg -n -i 'method.?=.?(EVA|VA)|row.?support|trait.?support|D91_AUTHORIZE_SMOKE' docs/design/91-upstream-eva-va-row-support-envelope.md dev/design91-eva-va-envelope`.
+  Both returned only the intended fences and contract terms.
+
+## 2026-07-23 — Design 91 Gate 2 paired-smoke terminal stop (Codex)
+
+- A fresh isolated Totoro installation loaded source-locked CRAN `gllvm`
+  2.0.13 with TMB 1.9.21.  Its `DESCRIPTION` SHA-256 is
+  `88f603dd919985b4c6de414bb491d81b1bd1954264a04b73edd84de9b3b1308c`
+  and `gllvm.so` SHA-256 is
+  `d0c3fb2528db10742f29998050155da2db3a034ddb4203c01380e22ec5a36582`.
+- The four predeclared row-and-trait-support-conditioned fixtures produced
+  eight receipts (EVA plus VA per fixture).  All four support checks passed;
+  only 4/8 method receipts were healthy.  EVA was healthy 2/4 and VA was
+  healthy 2/4, so the all-healthy smoke rule failed.
+- The 10-hour 1,536-attempt atlas was not launched.  Inputs, controls,
+  thresholds, method pair, receipts, and checksums are retained unchanged in
+  `dev/design91-eva-va-envelope/`.

@@ -1,0 +1,27 @@
+{
+  "design": "Design 91 — Gate 2 paired smoke",
+  "host": "Totoro",
+  "fixture_count": 4,
+  "receipt_count": 8,
+  "all_fixture_row_support": true,
+  "all_fixture_trait_support": true,
+  "EVA_healthy": 2,
+  "VA_healthy": 2,
+  "gate_verdict": "STOP: all-healthy paired smoke criterion failed; atlas not launched.",
+  "fixture_sha256": {
+    "n060_t30_p25_s35_r00.rds": "4812df8d42cb2cfe6abdd4593bc65b75c2d7223d9145e9c55bd1cd3628eb9ac7",
+    "n060_t60_p50_s35_r50.rds": "be30c970c03eae818965d61749e52dd930b486b7cac63d716c9a4d1db8f1c589",
+    "n240_t30_p25_s70_r00.rds": "79a08797ddae1727e21b531f14f4d8be76bc03b0359800fa25d12806852f4a33",
+    "n240_t60_p50_s70_r50.rds": "de3deac880eade92ba4bd535724f79f5cc9b0a2b9366ee3c26c985bbba7269c6"
+  },
+  "receipt_summary": [
+    {"file": "n060_t30_p25_s35_r00-eva-seed912000001.json", "method": "EVA", "convergence": false, "max_abs_gradient": 9.2998, "healthy": false},
+    {"file": "n060_t30_p25_s35_r00-va-seed912000001.json", "method": "VA", "convergence": true, "max_abs_gradient": 0.0107, "healthy": true},
+    {"file": "n060_t60_p50_s35_r50-eva-seed912000034.json", "method": "EVA", "convergence": true, "max_abs_gradient": 6.7994, "healthy": false},
+    {"file": "n060_t60_p50_s35_r50-va-seed912000034.json", "method": "VA", "convergence": true, "max_abs_gradient": 0.9509, "healthy": false},
+    {"file": "n240_t30_p25_s70_r00-eva-seed912000015.json", "method": "EVA", "convergence": true, "max_abs_gradient": 0.0321, "healthy": true},
+    {"file": "n240_t30_p25_s70_r00-va-seed912000015.json", "method": "VA", "convergence": true, "max_abs_gradient": 0.2642, "healthy": false},
+    {"file": "n240_t60_p50_s70_r50-eva-seed912000048.json", "method": "EVA", "convergence": true, "max_abs_gradient": 0.0263, "healthy": true},
+    {"file": "n240_t60_p50_s70_r50-va-seed912000048.json", "method": "VA", "convergence": true, "max_abs_gradient": 0.0223, "healthy": true}
+  ]
+}

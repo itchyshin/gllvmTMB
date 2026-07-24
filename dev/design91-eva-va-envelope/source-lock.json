@@ -1,0 +1,32 @@
+{
+  "design": "Design 91 — row-support-conditioned upstream EVA/VA envelope",
+  "authority": "CRAN source package",
+  "package": "gllvm",
+  "version": "2.0.13",
+  "tarball": "/private/tmp/design91-gllvm-source/gllvm_2.0.13.tar.gz",
+  "tarball_sha256": "d5305405853e2dc5d21552d7d21c171fcdd340acebc42fc834ef6ba5e449c2a4",
+  "source_url": "https://cran.r-project.org/src/contrib/gllvm_2.0.13.tar.gz",
+  "producer_sha256": "6ba2ebaf0eb2c0a5a06776d54b422028a310f79ea557121765302307cfbe7018",
+  "smoke_driver_sha256": "9b223276243e5e1b8bbf3e24871e115cd306b61fd6f9b081dc0f3441fb8bb708",
+  "config_sha256": "678fc676db7e257c4fb7d21110b10b52f8ea845c8b1d7c6246024d9f998a2ed9",
+  "telemetry_schema_sha256": "5e225a3a2e9cde73042adf094b9378fe3e5db5aefdc19ece48c8e9b45e85dbd5",
+  "target_calls": [
+    "gllvm(Y, family = 'binomial', link = 'logit', method = 'EVA', num.lv = 2, num.lv.c = 0)",
+    "gllvm(Y, family = 'binomial', link = 'logit', method = 'VA', num.lv = 2, num.lv.c = 0)"
+  ],
+  "excluded": [
+    "gllvmTMB implementation or parity",
+    "concurrent num.lv.c > 0",
+    "Design 86 through Design 90 inputs and results",
+    "recovery, calibration, coverage, or performance claims"
+  ],
+  "installed_library": "/home/snakagaw/gllvmtmb_design91/rlib",
+  "installed_description_sha256": "88f603dd919985b4c6de414bb491d81b1bd1954264a04b73edd84de9b3b1308c",
+  "installed_shared_object_sha256": "d0c3fb2528db10742f29998050155da2db3a034ddb4203c01380e22ec5a36582",
+  "platform": {
+    "host": "Totoro",
+    "R": "R version 4.5.3 (2026-03-11)",
+    "TMB": "1.9.21"
+  },
+  "installation_receipt": "Fresh isolated Totoro installation loaded gllvm 2.0.13 after fishMod, alabama, and nloptr were installed in the same isolated library."
+}

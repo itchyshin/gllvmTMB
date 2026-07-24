@@ -1,0 +1,35 @@
+{
+  "design": "Design 91 — row-support-conditioned upstream EVA/VA envelope",
+  "q": 2,
+  "n": [60, 120, 240],
+  "traits": [30, 60],
+  "marginal_prevalence": [0.25, 0.50],
+  "loading_signal": [0.35, 0.70],
+  "latent_correlation": [0.0, 0.5],
+  "generator_seed_base": 911000000,
+  "initialization_seed_base": 912000000,
+  "initialization_seeds_per_cell": 16,
+  "max_fixture_draws": 100,
+  "fit": {
+    "family": "binomial",
+    "link": "logit",
+    "methods": ["EVA", "VA"],
+    "num_lv": 2,
+    "num_lv_c": 0,
+    "lambda_structure": "unstructured",
+    "starting_value": "zero",
+    "sd_errors": false,
+    "n_init": 1
+  },
+  "health": {
+    "max_abs_gradient": 0.05,
+    "warnings_allowed": false,
+    "hessian_required": false
+  },
+  "compute": {
+    "target": "Totoro",
+    "max_workers": 64,
+    "max_wall_hours": 10,
+    "smoke_cells": 4
+  }
+}

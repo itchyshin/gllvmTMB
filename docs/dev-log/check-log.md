@@ -46707,3 +46707,15 @@ are deliberately excluded from the second scan.
   only reviewed first-use functions appear on the public primary path.
 - Final rendering and pkgdown checks are recorded in
   `docs/dev-log/after-task/2026-07-22-function-map-cheatsheet.md`.
+## 2026-07-23 — Design 92 private q=1/q=2 VA foundation (Codex)
+
+- Added a pure-R, fixed-global-parameter Bernoulli-logit Gaussian VA baseline
+  under `dev/design92-va-foundation/`; no package source or public surface was
+  touched.
+- `Rscript --vanilla dev/design92-va-foundation/run-tests.R` passed scalar and
+  grid numerical-integration oracles, q=1/q=2 gradient comparisons,
+  permutation and embedding invariance, ELBO lower-bound, optimization, and
+  malformed-input checks.
+- EVA is limited to a tested Bernoulli derivative kernel.  No extended
+  variational objective, upstream comparison, recovery claim, or TMB engine
+  implementation has been made.

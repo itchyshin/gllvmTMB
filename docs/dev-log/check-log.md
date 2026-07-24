@@ -46707,3 +46707,10 @@ are deliberately excluded from the second scan.
   only reviewed first-use functions appear on the public primary path.
 - Final rendering and pkgdown checks are recorded in
   `docs/dev-log/after-task/2026-07-22-function-map-cheatsheet.md`.
+## 2026-07-23 — Design 93 private scalar EVA source comparator (Codex)
+
+- Mapped released `gllvm` Bernoulli-logit `method > 1` source code to the
+  scalar Taylor correction `ell(mu) - 0.5 * p(mu) * {1-p(mu)} * v` when
+  `cQ = v/2`.
+- The pure-R comparator passed source-formula, zero-variance, quadrature-local,
+  and invalid-input tests.  It is not a full EVA objective or a package engine.

@@ -149,9 +149,23 @@ d98_assert_resume_provenance <- function(root, lock, manifest) {
   task_ids <- unlist(
     ready$value$task_order, recursive = TRUE, use.names = FALSE
   )
+  manifest_task_ids <- unlist(
+    manifest$task_order, recursive = TRUE, use.names = FALSE
+  )
   recorded_hashes <- unlist(
     ready$value$input_sha256, recursive = TRUE, use.names = FALSE
   )
+  recorded_hash_names <- names(unlist(
+    ready$value$input_sha256, recursive = TRUE, use.names = TRUE
+  ))
+  if (!identical(as.character(d98_scalar(ready$value$status)), "READY") ||
+      as.integer(d98_scalar(ready$value$task_count)) != length(task_ids) ||
+      anyDuplicated(task_ids) ||
+      !identical(task_ids, manifest_task_ids) ||
+      length(recorded_hashes) != length(task_ids) ||
+      !identical(recorded_hash_names, task_ids)) {
+    d98_abort("Resume refused: READY marker and manifest task sets differ")
+  }
   current_hashes <- vapply(task_ids, function(task_id) {
     d98_hash_file(d98_path(root, "inputs", task_id))
   }, character(1))
@@ -261,13 +275,15 @@ if (resume) {
   infrastructure_failure <- !toy_states %in% c(
     "healthy", "worker_reported_unhealthy", "blocked_dependency"
   )
-  toy_phase_ids <- toy_expected[grepl("phase[12]$", toy_expected)]
+  toy_phase1_ids <- toy_expected[grepl("phase1$", toy_expected)]
+  toy_phase2_ids <- toy_expected[grepl("phase2$", toy_expected)]
   toy_final_record <- d98_task_record(toy_root, "evaluate_all")
   toy_final_payload <- d98_task_payload(toy_root, "evaluate_all")
   toy_pass <- length(toy_states) == 52L &&
     identical(names(toy_states), toy_expected) &&
     !any(infrastructure_failure) &&
-    sum(toy_states[toy_phase_ids] == "healthy") >= 2L &&
+    sum(toy_states[toy_phase1_ids] == "healthy") >= 1L &&
+    sum(toy_states[toy_phase2_ids] == "healthy") >= 1L &&
     toy_final_record$ok &&
     identical(toy_final_record$value$status, "healthy") &&
     toy_final_payload$ok &&
@@ -283,8 +299,8 @@ if (resume) {
       fixture_sha256 = toy$sha256,
       task_states = as.list(toy_states),
       infrastructure_failure_count = sum(infrastructure_failure),
-      healthy_scientific_phase_count =
-        sum(toy_states[toy_phase_ids] == "healthy"),
+      healthy_phase1_count = sum(toy_states[toy_phase1_ids] == "healthy"),
+      healthy_phase2_count = sum(toy_states[toy_phase2_ids] == "healthy"),
       final_decision_status = if (toy_final_payload$ok) {
         toy_final_payload$value$decision_status
       } else {

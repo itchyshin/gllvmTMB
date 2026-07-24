@@ -1055,7 +1055,7 @@ d98_evaluate_summary <- function(input, entries) {
   }
   missing <- names(available)[!available]
   if (isTRUE(available[["evaluate_fixed_local"]])) {
-    needed_contrasts <- c("G_Q", "B_F", "D_F")
+    needed_contrasts <- c("G_Q", "G_J", "B_D", "B_F", "D_D", "D_F")
     missing_contrasts <- needed_contrasts[
       !vapply(needed_contrasts, function(name) {
         isTRUE(payloads$evaluate_fixed_local$contrasts$available[[name]])

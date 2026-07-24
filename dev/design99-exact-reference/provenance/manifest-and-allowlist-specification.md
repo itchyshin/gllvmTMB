@@ -37,7 +37,7 @@ agent's file ownership.
 
 `protected-paths.json` declares:
 
-- the exact baseline commit;
+- the exact baseline commit and expected Design-99 branch;
 - the immutable Design-98 real UUID;
 - the current-task and proposed complete-lane allowlists;
 - current-worktree protected groups for Designs 72, 85, and 95--98;
@@ -60,8 +60,9 @@ For current-worktree entries, SHA-256 covers the filesystem bytes and
 `git_blob` is recomputed from those bytes. For Design 94, SHA-256 covers the
 blob content read from the pinned historical commit. The summary records
 group-level counts/bytes, manifest and aggregate inventory SHA-256, missing
-paths, baseline head, branch, UUID, and the fact that Design 98 was not
-executed.
+paths, immutable baseline commit, current HEAD, expected/current branch, UUID,
+and the fact that Design 98 was not executed. `baseline_commit` is a lineage
+root, not a claim that later Design-99 work must leave `HEAD` unchanged.
 
 ## Immutable receipts and required lifecycle
 
@@ -78,7 +79,9 @@ receipt.
    inventory digest.
 2. `generate-protected-inventory.py compare --scope lane` writes nothing and
    requires the current inventory, frozen baseline TSV, and baseline summary to
-   reproduce the pinned digest.
+   reproduce the pinned digest. It also requires the immutable baseline commit
+   to be an ancestor of the current `HEAD`, and the current branch to equal the
+   manifest's expected Design-99 branch.
 3. Immediately before the one-shot real lock,
    `generate-protected-inventory.py prelock --scope lane` exclusively creates
    `prelock-protected-inventory.tsv` and
@@ -88,7 +91,10 @@ receipt.
    lane` exclusively creates `final-protected-inventory.tsv` and
    `final-protected-inventory-summary.json`. This mode also runs the runtime
    scanner itself before writing either receipt.
-5. Every mode verifies that the first 2,573,335 bytes of
+5. Baseline creation requires `HEAD` to equal the immutable baseline commit.
+   Compare, prelock, and final instead require that commit to be an ancestor of
+   the current `HEAD` on the expected Design-99 branch. Every mode verifies
+   that the first 2,573,335 bytes of
    `docs/dev-log/check-log.md` equal Git blob
    `9eb152e6894e6033ead47c6176947e229cec5ff4` and SHA-256
    `14f2beb50f007940bef74f1b5b67e1794daac37315221b3d197b8119c07f0b42`.
@@ -104,7 +110,8 @@ receipt.
 
 ## Fail-closed states
 
-- wrong baseline commit: `PROVENANCE_STOP`;
+- baseline creation at a different commit, a non-descendant later HEAD, or a
+  wrong Design-99 branch: `PROVENANCE_STOP`;
 - dirty path outside the explicitly selected allowlist: `PROVENANCE_STOP`;
 - missing protected current path: `PROVENANCE_STOP`;
 - missing historical Design-94 Git object: `PROVENANCE_STOP`;

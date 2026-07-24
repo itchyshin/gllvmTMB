@@ -3,8 +3,9 @@
 
 The script reads files and Git objects only. It never imports or executes
 Design-98 code. Baseline, prelock, and final receipts are exclusive-create;
-compare mode writes nothing. Every non-baseline mode checks the current
-inventory against the immutable digest pinned in protected-paths.json.
+compare mode writes nothing. The baseline commit pins the lineage root: only
+baseline creation requires HEAD to equal it. Later checks require that root to
+be an ancestor of the expected Design-99 branch's current HEAD.
 """
 
 from __future__ import annotations
@@ -141,6 +142,47 @@ def verify_allowlist(spec: dict[str, object], scope: str) -> list[str]:
     return outside
 
 
+def verify_receipt_layout(spec: dict[str, object]) -> None:
+    """Reject a manifest that aliases two lifecycle receipts to one file."""
+    receipt_files = spec["receipt_files"]
+    assert isinstance(receipt_files, dict)
+    names: list[str] = []
+    for mode in ("baseline", "prelock", "final"):
+        receipt = receipt_files[mode]
+        assert isinstance(receipt, dict)
+        names.extend((str(receipt["inventory"]), str(receipt["summary"])))
+    if len(names) != len(set(names)):
+        fail("receipt files must be distinct across baseline, prelock, and final")
+
+
+def is_ancestor(ancestor: str, descendant: str) -> bool:
+    result = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode in (0, 1):
+        return result.returncode == 0
+    fail("could not verify baseline ancestry: " + result.stderr.decode("utf-8"))
+
+
+def verify_head_context(spec: dict[str, object], mode: str, head: str) -> str:
+    """Enforce creation identity or later lineage and branch identity."""
+    baseline = str(spec["baseline_commit"])
+    branch = git("branch", "--show-current").strip()
+    if mode == "baseline":
+        if head != baseline:
+            fail(f"baseline mismatch: expected {baseline}, found {head}")
+        return branch
+
+    expected_branch = str(spec["expected_branch"])
+    if branch != expected_branch:
+        fail(f"Design-99 branch mismatch: expected {expected_branch}, found {branch}")
+    if not is_ancestor(baseline, head):
+        fail(f"baseline commit {baseline} is not an ancestor of HEAD {head}")
+    return branch
+
+
 def verify_check_log_prefix(root: Path, spec: dict[str, object]) -> dict[str, object]:
     guard = spec["design98_check_log_prefix"]
     assert isinstance(guard, dict)
@@ -266,6 +308,7 @@ def tsv_bytes(rows: list[dict[str, object]]) -> bytes:
 def make_summary(
     spec: dict[str, object],
     head: str,
+    branch: str,
     mode: str,
     scope: str,
     rows: list[dict[str, object]],
@@ -279,12 +322,14 @@ def make_summary(
         counts[group] = counts.get(group, 0) + 1
         byte_counts[group] = byte_counts.get(group, 0) + int(row["bytes"])
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "design": 99,
         "receipt_mode": mode,
         "allowlist_scope": scope,
-        "baseline_commit": head,
-        "branch": git("branch", "--show-current").strip(),
+        "baseline_commit": spec["baseline_commit"],
+        "current_head": head,
+        "expected_branch": spec["expected_branch"],
+        "current_branch": branch,
         "manifest_sha256": sha256(SPEC_PATH.read_bytes()),
         "expected_baseline_inventory_sha256": spec[
             "expected_baseline_inventory_sha256"
@@ -348,10 +393,10 @@ def main() -> int:
     args = parse_args()
     verify_mode_scope(args.mode, args.scope)
     spec = json.loads(SPEC_PATH.read_text(encoding="utf-8"))
+    verify_receipt_layout(spec)
     root = Path(git("rev-parse", "--show-toplevel").strip())
     head = git("rev-parse", "HEAD").strip()
-    if head != spec["baseline_commit"]:
-        fail(f"baseline mismatch: expected {spec['baseline_commit']}, found {head}")
+    branch = verify_head_context(spec, args.mode, head)
 
     verify_allowlist(spec, args.scope)
     runtime_scan = (
@@ -397,7 +442,7 @@ def main() -> int:
             )
 
     summary = make_summary(
-        spec, head, args.mode, args.scope, rows, inventory_digest, check_log
+        spec, head, branch, args.mode, args.scope, rows, inventory_digest, check_log
     )
     summary["runtime_scan"] = runtime_scan
     if output_paths is not None:

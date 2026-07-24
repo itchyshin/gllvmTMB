@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "design": 99,
+  "evidence_class": "NON_EVIDENCE",
+  "phase": "G3_MECHANICAL_GATE",
+  "terminal_outcome": "INFRASTRUCTURE_INCOMPLETE",
+  "ended_utc": "2026-07-24T20:46:12Z",
+  "external_output_root": "/private/tmp/d99-mechanical.WpLWgH",
+  "attempts": [
+    {
+      "sequence": 1,
+      "outcome": "LAUNCH_ERROR",
+      "detail": "The child Rscript expression used locale-sensitive curly quotes. No receipt was created."
+    },
+    {
+      "sequence": 2,
+      "outcome": "OPERATOR_INTERRUPTED",
+      "elapsed_cutoff_seconds": 2700,
+      "detail": "After the quoting repair, the strict independent-oracle stage produced no terminal receipt or progress record before the bounded cutoff."
+    }
+  ],
+  "receipt_created": false,
+  "approved_fixture_created": false,
+  "real_uuid_created": false,
+  "real_run_lock_created": false,
+  "optimization_started": false,
+  "information_ladder_started": false,
+  "retry_authorized": false,
+  "decision": "Stop Design 99 without replay, substitute oracle, altered timeout, real fixture, or optimization."
+}

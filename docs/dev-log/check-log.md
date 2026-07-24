@@ -46812,3 +46812,29 @@ The predeclared local-versus-Totoro benchmark was missed before high-GH
 execution. Already-launched immutable tasks were not migrated or replayed.
 No package/public path, prior Design artifact, campaign, Actions, Totoro/DRAC,
 merge, push, or PR work occurred.
+
+## 2026-07-24 — Design 99 exact q=2 reference infrastructure incomplete (Codex)
+
+Design 99 created a separate private pure-R adaptive Gaussian--Hermite
+reference lane. The protected 732-row predecessor inventory remained unchanged,
+and bounded synthetic suites passed for numerics, charts, optimizers, immutable
+records, runtime wiring, orchestration, provenance, and scope.
+
+The strict `NON_EVIDENCE` mechanical command was:
+
+```sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+Rscript --vanilla dev/design99-exact-reference/scripts/run-mechanical-gates.R \
+  --output-root /private/tmp/d99-mechanical.WpLWgH
+```
+
+The first launch exposed locale-sensitive quoting before a receipt was written.
+After repair, the independent-integration stage produced no terminal receipt
+or progress record before a 2,700-second operator cutoff. It was interrupted
+and not replayed. The terminal decision is `INFRASTRUCTURE_INCOMPLETE`.
+
+No approved fixture, real UUID, real-run lock, optimization, information
+ladder, VA/JJ/EVA analysis, package/public path, campaign, Totoro/DRAC,
+GitHub Actions, merge, push, or PR followed. Full commands, exact `rg`
+patterns, outcomes, and plan deviations are recorded in
+`docs/dev-log/after-task/2026-07-24-design99-exact-reference.md`.

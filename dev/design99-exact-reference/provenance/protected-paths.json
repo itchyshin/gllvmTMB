@@ -1,7 +1,8 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "design": 99,
   "baseline_commit": "7ca5da1cba583a19a12340f0ab60007190730685",
+  "expected_branch": "codex/design99-exact-reference-20260724",
   "design98_real_uuid": "20260724T161436-30841-62d0004f",
   "design99_runtime_root": "dev/design99-exact-reference",
   "expected_baseline_inventory_sha256": "0b8910908bd9b89a21994f008f806a2e973005fc69ae1d39e5b88396c6b64531",

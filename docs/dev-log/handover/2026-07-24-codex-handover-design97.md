@@ -34,7 +34,7 @@ Only private `dev/design97-fullcov-jj/` code is allowed.
 | Artifact / branch | Commit | Pushed | State |
 |---|---:|---|---|
 | Design 96 recovery stop | `1e113e32` | no | LANDED locally, immutable predecessor |
-| `codex/design97-fullcov-jj-20260724` | `85f27ae3` | no | CARRIED-OVER private `SMOKE_STOP` record |
+| `codex/design97-fullcov-jj-20260724` | `0ac1c348` | no | CARRIED-OVER private `SMOKE_STOP` record |
 
 The Design-97 branch is intentionally unpushed because this approved private
 arc deferred push/PR/merge. Resume locally with

@@ -1,0 +1,33 @@
+{
+  "baseline_commit": "7ca5da1cba583a19a12340f0ab60007190730685",
+  "branch": "codex/design99-exact-reference-20260724",
+  "bytes_by_group": {
+    "design72-current": 42124,
+    "design85-current": 177264,
+    "design94-historical": 12302,
+    "design95-current": 21159,
+    "design96-current": 45108,
+    "design97-current": 56614,
+    "design98-context-current": 185300,
+    "design98-real-packet": 18872472
+  },
+  "counts_by_group": {
+    "design72-current": 2,
+    "design85-current": 23,
+    "design94-historical": 7,
+    "design95-current": 7,
+    "design96-current": 17,
+    "design97-current": 15,
+    "design98-context-current": 25,
+    "design98-real-packet": 636
+  },
+  "design": 99,
+  "design98_execution": "not sourced; not executed",
+  "design98_real_uuid": "20260724T161436-30841-62d0004f",
+  "dirty_paths_outside_task_allowlist": [],
+  "inventory_sha256": "0b8910908bd9b89a21994f008f806a2e973005fc69ae1d39e5b88396c6b64531",
+  "manifest_sha256": "03cd0293822282f0c32738e0cf1dbaeb255ac57ccba58a81caeca02cd8abb3cc",
+  "missing_declared_paths": [],
+  "row_count": 732,
+  "schema_version": 1
+}

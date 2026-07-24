@@ -1,0 +1,154 @@
+{
+  "schema_version": 2,
+  "design": 99,
+  "baseline_commit": "7ca5da1cba583a19a12340f0ab60007190730685",
+  "design98_real_uuid": "20260724T161436-30841-62d0004f",
+  "design99_runtime_root": "dev/design99-exact-reference",
+  "expected_baseline_inventory_sha256": "0b8910908bd9b89a21994f008f806a2e973005fc69ae1d39e5b88396c6b64531",
+  "design98_check_log_prefix": {
+    "path": "docs/dev-log/check-log.md",
+    "commit": "7ca5da1cba583a19a12340f0ab60007190730685",
+    "bytes": 2573335,
+    "sha256": "14f2beb50f007940bef74f1b5b67e1794daac37315221b3d197b8119c07f0b42",
+    "git_blob": "9eb152e6894e6033ead47c6176947e229cec5ff4"
+  },
+  "receipt_files": {
+    "baseline": {
+      "inventory": "baseline-protected-inventory.tsv",
+      "summary": "baseline-protected-inventory-summary.json",
+      "inventory_file_sha256": "fdef8fdaff95f473cdd44cc994acd781d2ec2400a6798eabcc1289163ef41aaa",
+      "summary_file_sha256": "ffe262c5908a3f7a408c0d324700bdd7e23388bdc7dc39cb5f01fd5045ae872f"
+    },
+    "prelock": {
+      "inventory": "prelock-protected-inventory.tsv",
+      "summary": "prelock-protected-inventory-summary.json"
+    },
+    "final": {
+      "inventory": "final-protected-inventory.tsv",
+      "summary": "final-protected-inventory-summary.json"
+    }
+  },
+  "current_task_write_allowlist": [
+    "dev/design99-exact-reference/provenance/",
+    "docs/dev-log/plan-actual/2026-07-24-design99-exact-reference.md"
+  ],
+  "complete_lane_allowlist": [
+    "dev/design99-exact-reference/",
+    "docs/design/99-exact-q2-reference-stabilization.md",
+    "docs/dev-log/plan-actual/2026-07-24-design99-exact-reference.md",
+    "docs/dev-log/check-log.md",
+    "docs/dev-log/after-task/2026-07-24-design99-exact-reference.md",
+    "docs/dev-log/handover/2026-07-24-codex-handover-design99.md"
+  ],
+  "groups": [
+    {
+      "name": "design72-current",
+      "mode": "worktree",
+      "paths": [
+        "docs/design/72-variational-approximation-feasibility.md",
+        "docs/dev-log/after-task/2026-06-03-va-phase1-proof.md"
+      ]
+    },
+    {
+      "name": "design85-current",
+      "mode": "worktree",
+      "paths": [
+        "R/va-r3-proto.R",
+        "inst/tmb/gllvmTMB_va_r3.cpp",
+        "tools/va-r3-pilot.R",
+        "tests/testthat/test-va-r3-prototype.R",
+        "tests/testthat/helper-aghq-o3.R",
+        "tests/testthat/test-aghq-o3-gllvmtmb-unit-hook.R",
+        "tests/testthat/test-aghq-o3-q2-coupled-spike.R",
+        "tests/testthat/test-aghq-o3-scalar-spike.R",
+        "dev/aghq-o3-gllvmtmb-unit-hook.R",
+        "dev/aghq-o3-q2-coupled-spike.R",
+        "dev/aghq-o3-scalar-spike.R",
+        "docs/design/85-highdim-nongaussian-va-formal-contract.md",
+        "docs/dev-log/after-task/2026-07-19-aghq-o3-gllvmtmb-hooks.md",
+        "docs/dev-log/after-task/2026-07-19-aghq-o3-scalar-reference.md",
+        "docs/dev-log/after-task/2026-07-20-va-r2-mathematical-closure.md",
+        "docs/dev-log/after-task/2026-07-20-va-r3-prototype-no-go.md",
+        "docs/dev-log/audits/2026-07-20-va-r2-mathematical-closure-gate.md",
+        "docs/dev-log/audits/2026-07-20-va-r3-pilot-no-go.md",
+        "docs/dev-log/handover/2026-07-19-codex-aghq-o3-handoff.md",
+        "docs/dev-log/recovery-checkpoints/2026-07-20-090728-codex-va-r3-checkpoint.md",
+        "docs/dev-log/research/2026-07-20-va-r3-symbolic-implementation-map.md",
+        "docs/dev-log/spikes/2026-07-19-aghq-o3-gllvmtmb-hooks.md",
+        "docs/dev-log/spikes/2026-07-19-aghq-o3-scalar-research.md"
+      ]
+    },
+    {
+      "name": "design94-historical",
+      "mode": "git_tree",
+      "commit": "f88f44200300f65a30d9c338e620f1de8d6f9304",
+      "paths": [
+        "dev/design94-jj-va",
+        "docs/design/94-jj-variational-prototype.md",
+        "docs/design/94-ranga-research-record.md",
+        "docs/dev-log/after-task/2026-07-23-design94-jj-va-prototype.md"
+      ]
+    },
+    {
+      "name": "design95-current",
+      "mode": "worktree",
+      "paths": [
+        "dev/design95-free-jj-va",
+        "docs/design/95-free-jj-variational-arc.md",
+        "docs/dev-log/after-task/2026-07-23-design95-free-jj-prototype.md",
+        "docs/dev-log/plan-actual/2026-07-23-design95-free-jj-reconciliation.md"
+      ]
+    },
+    {
+      "name": "design96-current",
+      "mode": "worktree",
+      "paths": [
+        "dev/design96-jj-recovery",
+        "docs/design/96-jj-recovery-smoke.md",
+        "docs/dev-log/after-task/2026-07-24-design96-jj-recovery-smoke-stop.md",
+        "docs/dev-log/plan-actual/2026-07-24-design96-recovery-smoke-reconciliation.md"
+      ]
+    },
+    {
+      "name": "design97-current",
+      "mode": "worktree",
+      "paths": [
+        "dev/design97-fullcov-jj",
+        "docs/design/97-fullcov-jj-discrimination.md",
+        "docs/dev-log/after-task/2026-07-24-design97-fullcov-jj-smoke-stop.md",
+        "docs/dev-log/handover/2026-07-24-codex-handover-design97.md"
+      ]
+    },
+    {
+      "name": "design98-context-current",
+      "mode": "worktree",
+      "paths": [
+        "dev/design98-factorial-va-jj/.gitignore",
+        "dev/design98-factorial-va-jj/R",
+        "dev/design98-factorial-va-jj/src",
+        "dev/design98-factorial-va-jj/finalize.R",
+        "dev/design98-factorial-va-jj/fit-worker.R",
+        "dev/design98-factorial-va-jj/run-adjudication-tests.R",
+        "dev/design98-factorial-va-jj/run-design98.R",
+        "dev/design98-factorial-va-jj/run-fault-tests.R",
+        "dev/design98-factorial-va-jj/run-fit-worker-tests.R",
+        "dev/design98-factorial-va-jj/run-gate0-provenance.R",
+        "dev/design98-factorial-va-jj/run-gate1-tests.R",
+        "dev/design98-factorial-va-jj/run-toy-smoke.R",
+        "dev/design98-factorial-va-jj/worker.R",
+        "dev/design98-factorial-va-jj/results/REAL_RUN.json",
+        "docs/design/98-factorial-va-jj-discriminator.md",
+        "docs/dev-log/after-task/2026-07-24-design98-factorial-va-jj-technical-incomplete.md",
+        "docs/dev-log/handover/2026-07-24-codex-handover-design98.md",
+        "docs/dev-log/plan-actual/2026-07-24-design98-factorial-va-jj.md"
+      ]
+    },
+    {
+      "name": "design98-real-packet",
+      "mode": "worktree",
+      "paths": [
+        "dev/design98-factorial-va-jj/results/20260724T161436-30841-62d0004f"
+      ]
+    }
+  ]
+}

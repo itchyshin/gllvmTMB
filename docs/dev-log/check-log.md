@@ -46838,3 +46838,26 @@ ladder, VA/JJ/EVA analysis, package/public path, campaign, Totoro/DRAC,
 GitHub Actions, merge, push, or PR followed. Full commands, exact `rg`
 patterns, outcomes, and plan deviations are recorded in
 `docs/dev-log/after-task/2026-07-24-design99-exact-reference.md`.
+
+## 2026-07-24 — Design 100 progress-aware oracle infrastructure (Codex)
+
+Design 100 is a new private `RECORD_ONLY` lane branched from immutable Design-99
+terminal commit `d673dd61`. It creates no fixture, UUID, optimizer, information
+ladder, VA/JJ/EVA result, package path, or numerical computation.
+
+Ran:
+
+```sh
+git diff --check
+rg -n -i 'design 99|fixture|uuid|optimizer|information ladder|VA|JJ|EVA|package|compute|pattern terminal|component terminal|liveness|progress|timeout|max_workers|COST_BENCHMARK_STOP|REAL_RUN|system\\(|Rscript|processx' docs/design/100-progress-aware-q2-reference.md dev/design100-progress-oracle
+rg -n 'safe_path|path_token|receipt_snapshot|receipt_hash|receipt_identity_hash|receipt.*replacement|task_id.*\\.\\.|run_label.*\\.\\.' dev/design100-progress-oracle/R dev/design100-progress-oracle/scripts dev/design100-progress-oracle/tests
+find /Users/z3437171/Dropbox/Github\\ Local/gllvmTMB/dev/design100-progress-oracle -type f -print
+```
+
+`git diff --check` passed. The scans found only intentional Design-99 fences,
+record-only refusal/no-execution metadata, and safe-token/frozen-receipt guards.
+The primary dirty checkout contains no Design-100 path. R, testthat, direct
+integration, fixture creation, optimization, benchmark execution, pkgdown, and
+package checks were deliberately not run under the maintainer's no-compute
+boundary. Three Sol read-only admission reviews found and then verified fixes
+for protocol gaps; the final verdict was PASS with no P0/P1 blocker.

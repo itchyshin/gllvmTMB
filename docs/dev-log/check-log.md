@@ -46729,3 +46729,23 @@ row permutation, input rejection, and one deterministic fixed-start probe.
 The probe covariance distance was `1.236890`; it is diagnostic only and does
 not support recovery or stability claims.  No package source/API, comparator
 fit, campaign, Totoro/DRAC, Actions, merge, push, or PR work occurred.
+## 2026-07-24 — Design 96 private JJ recovery smoke stop (Codex)
+
+Design 96 is a separately approved private six-attempt recovery discriminator,
+not a continuation of Designs 72/85/86/90/91 or a package feature.  Contract:
+`docs/design/96-jj-recovery-smoke.md`; immutable records:
+`dev/design96-jj-recovery/results/`.
+
+Ran:
+
+```
+Rscript --vanilla dev/design96-jj-recovery/run-smoke.R
+git diff --check
+git diff 8b76a9db -- src R man NAMESPACE DESCRIPTION inst vignettes README.md NEWS.md _pkgdown.yml
+```
+
+The runner produced ten expected JSON files and `SMOKE_STOP`. All six optimizer
+attempts returned phase codes zero, but five breached the fixed post-BFGS
+gradient threshold and all moderate attempts breached the principal-eigenvalue
+error threshold. All results are retained; no rerun, start/threshold change,
+campaign, Totoro/DRAC, Actions, merge, push, or PR followed.

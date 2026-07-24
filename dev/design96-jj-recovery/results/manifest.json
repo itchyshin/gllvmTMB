@@ -1,0 +1,20 @@
+{
+  "design": 96,
+  "seeds": [96002, 96003],
+  "starts": ["A", "B", "C"],
+  "optimizer": {
+    "nlminb": {
+      "iter.max": 1000,
+      "eval.max": 1200
+    },
+    "BFGS": {
+      "reltol": 9.9999999999999998e-13,
+      "maxit": 1500
+    }
+  },
+  "source_md5": "01e7fee53c4e37c7816b2a354273e3e5",
+  "R": "R version 4.6.0 (2026-04-24)",
+  "TMB": "1.9.21",
+  "platform": "aarch64-apple-darwin23",
+  "started_utc": "2026-07-24 11:07:52 UTC"
+}

@@ -46707,3 +46707,25 @@ are deliberately excluded from the second scan.
   only reviewed first-use functions appear on the public primary path.
 - Final rendering and pkgdown checks are recorded in
   `docs/dev-log/after-task/2026-07-22-function-map-cheatsheet.md`.
+## 2026-07-23 — Design 95 private free-parameter JJ prototype (Codex)
+
+Design 95 is a new private research design, not a continuation or repair of
+Designs 72/85/86/90/91.  It adds only `dev/design95-free-jj-va/` and its design
+records.  The contract freezes a q=2 lower-triangular leading loading block,
+positive variational scales, and the complete profiled-xi Jaakkola--Jordan
+Bernoulli-logit ELBO.
+
+Ran:
+
+```
+Rscript --vanilla dev/design95-free-jj-va/run-tests.R
+git diff --check
+git diff c6297589 -- src R man NAMESPACE DESCRIPTION inst vignettes README.md NEWS.md _pkgdown.yml
+```
+
+The private TMB objective compiled and passed R-oracle equality, finite-
+difference gradients, a numerical lower-bound check, identification transforms,
+row permutation, input rejection, and one deterministic fixed-start probe.
+The probe covariance distance was `1.236890`; it is diagnostic only and does
+not support recovery or stability claims.  No package source/API, comparator
+fit, campaign, Totoro/DRAC, Actions, merge, push, or PR work occurred.

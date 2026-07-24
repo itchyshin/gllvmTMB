@@ -176,7 +176,13 @@ d98_fit_y <- function(input, root = NULL) {
         nrow(y) != as.integer(expected$n) ||
         ncol(y) != as.integer(expected$traits) ||
         !identical(as.character(fixture$sha256),
-                   as.character(expected$sha256))) {
+                   as.character(expected$sha256)) ||
+        !identical(
+          d98_hash_object(matrix(
+            as.integer(y), nrow = nrow(y), ncol = ncol(y)
+          )),
+          as.character(expected$sha256)
+        )) {
       stop("Fixture record does not match immutable task reference")
     }
   }

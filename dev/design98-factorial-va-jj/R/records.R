@@ -188,17 +188,11 @@ d98_create_manifest <- function(root, fields) {
       paste(missing, collapse = ", ")
     )
   }
-  d98_write_json_exclusive(
-    file.path(root, "manifest.json"),
-    c(
-      fields,
-      list(
-        design = 98L,
-        git_status_porcelain = fields$git_status_porcelain %||% "",
-        created_utc = d98_now()
-      )
-    )
-  )
+  manifest <- fields
+  manifest$design <- 98L
+  manifest$git_status_porcelain <- fields$git_status_porcelain %||% ""
+  manifest$created_utc <- d98_now()
+  d98_write_json_exclusive(file.path(root, "manifest.json"), manifest)
 }
 
 `%||%` <- function(x, y) if (is.null(x)) y else x

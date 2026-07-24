@@ -46707,3 +46707,24 @@ are deliberately excluded from the second scan.
   only reviewed first-use functions appear on the public primary path.
 - Final rendering and pkgdown checks are recorded in
   `docs/dev-log/after-task/2026-07-22-function-map-cheatsheet.md`.
+## 2026-07-23 — Design 94 private Jaakkola--Jordan VA prototype (Codex)
+
+New Design 94 is a private research lane, separate from terminal Designs 86,
+90, and 91 and from the Design 92/93 foundations.  Notebook research record:
+`docs/design/94-ranga-research-record.md`; mathematical contract:
+`docs/design/94-jj-variational-prototype.md`.
+
+Ran:
+
+```
+Rscript --vanilla dev/design94-jj-va/run-tests.R
+git diff --check
+git diff c6297589 -- src/gllvmTMB.cpp R DESCRIPTION NAMESPACE
+```
+
+The C++/TMB objective compiled and passed independent R-objective equality,
+finite-difference gradient agreement, the 61-node quadrature lower-bound
+check, and deterministic optimisation stationarity after BFGS refinement.
+The package fitting path and public surface were deliberately not touched.  No
+smoke, recovery campaign, external comparator fit, Totoro/DRAC job, GitHub
+Actions run, merge, push, or PR was performed.

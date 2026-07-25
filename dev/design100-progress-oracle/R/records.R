@@ -94,7 +94,7 @@ d100_integer_at_least <- function(x, lower = 0L) {
 d100_named_hashes <- function(x, allow_empty = FALSE) {
   is.list(x) && ((allow_empty && !length(x)) ||
     (length(x) > 0L && !is.null(names(x)) && all(nzchar(names(x))) &&
-      all(vapply(x, d100_hash, logical(1))))
+      all(vapply(x, d100_hash, logical(1)))))
 }
 
 d100_fenced_names <- c(
@@ -108,7 +108,7 @@ d100_has_fenced_fields <- function(x) {
   if (!is.list(x)) return(FALSE)
   nms <- names(x)
   own <- !is.null(nms) && any(vapply(d100_fenced_names, function(term) {
-    any(grepl(term, nms, fixed = TRUE, ignore.case = TRUE))
+    any(grepl(term, nms, ignore.case = TRUE))
   }, logical(1)))
   own || any(vapply(unname(x), function(value) {
     is.list(value) && d100_has_fenced_fields(value)
@@ -232,6 +232,13 @@ d100_validate_terminal <- function(x, launch = NULL) {
     d100_integer_at_least(x$telemetry$last_progress_sequence)
   if (!valid) return(FALSE)
 
+  component_ids <- if (is.character(x$component_ids)) {
+    x$component_ids
+  } else if (is.list(x$component_ids)) {
+    unlist(x$component_ids, use.names = FALSE)
+  } else {
+    character()
+  }
   task_valid <- if (identical(x$task_kind, "pattern")) {
     pattern_required <- c(
       "pattern_id", "pattern_hash", "pattern_index", "pattern_n_obs",
@@ -239,10 +246,10 @@ d100_validate_terminal <- function(x, launch = NULL) {
     )
     all(pattern_required %in% names(x)) && d100_nonempty_scalar(x$pattern_id) &&
       d100_hash(x$pattern_hash) && d100_integer_at_least(x$pattern_index, 1L) &&
-      d100_integer_at_least(x$pattern_n_obs) && is.character(x$component_ids) &&
-      length(x$component_ids) > 0L && all(nzchar(x$component_ids)) &&
+      d100_integer_at_least(x$pattern_n_obs) && is.character(component_ids) &&
+      length(component_ids) > 0L && all(nzchar(component_ids)) &&
       d100_named_hashes(x$component_terminal_hashes) &&
-      identical(sort(x$component_ids), sort(names(x$component_terminal_hashes)))
+      identical(sort(component_ids), sort(names(x$component_terminal_hashes)))
   } else {
     component_required <- c(
       "pattern_id", "component_id", "component_kind", "component_input_hash",

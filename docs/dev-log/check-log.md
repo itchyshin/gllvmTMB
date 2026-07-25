@@ -46861,3 +46861,55 @@ integration, fixture creation, optimization, benchmark execution, pkgdown, and
 package checks were deliberately not run under the maintainer's no-compute
 boundary. Three Sol read-only admission reviews found and then verified fixes
 for protocol gaps; the final verdict was PASS with no P0/P1 blocker.
+
+## 2026-07-24 — Design 100-B direct-2D one-shot terminal infrastructure failure (Codex)
+
+Maintainer approval authorized exactly one fresh private parameter manifest and
+one non-evidence direct-2D execution under the frozen Design-100-B preflight.
+The direct worker, 5x5 original-`u` rule, four pattern order, one-worker cap,
+and 300/300/60/30/1260-second schedule were frozen before launch.
+
+Ran:
+
+```sh
+Rscript --vanilla dev/design100-progress-oracle/scripts/run-direct-2d-non-evidence.R
+Rscript --vanilla dev/design100-progress-oracle/scripts/close-direct-2d-prelaunch-failure.R
+Rscript --vanilla -e '... d100_validate_terminal(component); d100_validate_terminal(gate) ...'
+git diff --check
+rg -n '"status"|"reason_code"|"numerical_evaluation_started"|"retry_performed"|"message"' /private/tmp/gllvmtmb-design100b-direct2d-output/{failures,terminals}/*.json
+```
+
+The first launched component stopped at the worker's theta-shape validation;
+its preserved failure record states `numerical_evaluation_started: false` and
+`retry_performed: false`. No result directory exists. Immutable terminals are
+`CRASH/UNHANDLED_ERROR` for `d100b-pattern-001` and
+`INFRASTRUCTURE_INCOMPLETE/MISSING_TERMINAL` for the pattern gate. Both
+terminals validate under the record schema. The output root is not deleted,
+repaired, or rerun. No optimization, information ladder, VA/JJ/EVA, package
+path, benchmark, public claim, push, PR, or merge followed.
+
+## 2026-07-24 — Design 101 private q=2 VA/JJ comparator (Codex)
+
+The maintainer approved one fresh private q=2 Bernoulli-logit comparator after
+the Design-101 plan froze QD/QF/JD/JF, one six-trait `n = 24` fixture, three
+starts, 31-node fitting, 61-node shared marginal evaluation, and no retry.
+The immutable root is `/private/tmp/gllvmtmb-design101b-q2-comparator`.
+
+Ran:
+
+```sh
+Rscript --vanilla dev/design101-va-jj-comparator/run-design101.R
+jq '{status, healthy_count, best_common_scale_endpoint, retained_failures, attempts}' \
+  /private/tmp/gllvmtmb-design101b-q2-comparator/summary.json
+Rscript --vanilla -e '... independent JSON readback of manifest, receipt, 12 records ...'
+git diff --check
+rg -n -i 'EVA|package|public claim|campaign|Design-99|Design-100' \
+  dev/design101-va-jj-comparator docs/dev-log/after-task/2026-07-24-design101-va-jj-comparator.md
+```
+
+The pure-logic receipt passed and all twelve immutable endpoints passed the
+predeclared convergence/gradient gate. On this one fixture, the best shared
+GH61 marginal score was QF-B (`-87.586408722981872`); this is a bounded
+descriptive observation only, not a method ranking or recovery result. No EVA,
+additional fixture, optimization retry, information ladder, package change,
+public claim, campaign, push, PR, or merge occurred.

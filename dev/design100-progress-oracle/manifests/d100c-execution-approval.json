@@ -1,0 +1,22 @@
+{
+  "schema": "d100c-execution-approval-v1",
+  "receipt_type": "execution_approval",
+  "source_anchor": "bc8da7e5124eb83bbca7d370f1dba6482b3af176",
+  "design99_anchor": "d673dd61e42ca3c43836744ae27e979fca2b3d0b",
+  "preflight_path": "100c-direct2d-execution-contract.md",
+  "preflight_hash": "8cbe4ad27d26d021c9d66ad18ee52633ec334d1a4b11b3b1ba3d3edc683d8593",
+  "records_hash": "3896b77d5d40ec8484bd8569e1ea6d89e3499924b087173ee98862da2a689bad",
+  "worker_hash": "ab03c12da437f8ae323c23fd8c7768f881b6817d72de0b7cae26de4e05d382a2",
+  "runner_hash": "dd3bce6b04871a4d4b351ccac436f91e43cadaa3912c9d0b59f9f9b1dc756b08",
+  "manifest_hash": "a172d114e625d54b0530b44919dca8139582b1f8c094c2ebb165e869c5f36e77",
+  "worker_id": "direct-2d-original-u-v1",
+  "output_root": "/private/tmp/gllvmtmb-design100c-direct2d-output",
+  "max_workers": 1,
+  "deadlines_s": {"component": 300, "pattern": 300, "stale_progress": 60, "liveness": 30, "whole_gate": 1260},
+  "run_class": "NON_EVIDENCE",
+  "executable": true,
+  "numeric_benchmark_created": false,
+  "numeric_benchmark_executed": false,
+  "approval": "Maintainer directed continuation after the terminal Design-100-B infrastructure failure; this authorizes a fresh Design-100-C direct-2D non-evidence run only.",
+  "approved_at": "2026-07-25T00:49:00Z"
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "d100b-execution-approval-v1",
+  "receipt_type": "execution_approval",
+  "source_anchor": "bc8da7e5124eb83bbca7d370f1dba6482b3af176",
+  "design99_anchor": "d673dd61e42ca3c43836744ae27e979fca2b3d0b",
+  "preflight_hash": "f5f912eb2a830980c8e2b7213a8484ccf277a27e7c486b3c6fc245c960e64fa3",
+  "worker_hash": "ab03c12da437f8ae323c23fd8c7768f881b6817d72de0b7cae26de4e05d382a2",
+  "manifest_hash": "8f43d69604116799e7c28ba81c33638ba9016e477e8b8378c3af0f09e1f17cd8",
+  "worker_id": "direct-2d-original-u-v1",
+  "output_root": "/private/tmp/gllvmtmb-design100b-direct2d-output",
+  "max_workers": 1,
+  "deadlines_s": {
+    "component": 300,
+    "pattern": 300,
+    "stale_progress": 60,
+    "liveness": 30,
+    "whole_gate": 1260
+  },
+  "run_class": "NON_EVIDENCE",
+  "executable": true,
+  "numeric_benchmark_created": false,
+  "numeric_benchmark_executed": false,
+  "approval": "Maintainer approved a fresh private Design-100-B parameter manifest and one non-evidence direct-2D execution; no optimisation, information ladder, VA/JJ/EVA, package changes, or public claim.",
+  "approved_at": "2026-07-25T00:36:38Z"
+}

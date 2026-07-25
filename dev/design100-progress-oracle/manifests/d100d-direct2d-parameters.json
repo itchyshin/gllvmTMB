@@ -1,0 +1,11 @@
+{
+  "schema": "d100d-direct2d-parameter-manifest-v1",
+  "manifest_id": "d100d-direct2d-parameters-v1",
+  "run_label": "d100d-direct2d-non-evidence-v1",
+  "worker_id": "direct-2d-original-u-v1",
+  "coordinate_rule": "normal-gh5-original-u-v1",
+  "pattern_ids": ["pattern-001", "pattern-002", "pattern-003", "pattern-004"],
+  "beta": [-1.1, -0.7, -0.3, 0.2, 0.6, 1.0],
+  "lambda": [[0.55, 0.00], [0.30, 0.45], [-0.40, 0.30], [0.00, -0.50], [0.45, 0.25], [-0.25, -0.40]],
+  "scope": "fresh private non-evidence direct-2D input only"
+}

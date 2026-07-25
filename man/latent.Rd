@@ -28,7 +28,14 @@ Runtime support is limited to ordinary unit-tier
 \code{latent(..., lv = ~ x)}, and only Gaussian and pure binomial
 (logit/probit/cloglog) fits are currently admitted (partial coverage,
 supported for the ordinary-latent case). Source-specific \verb{*_latent(..., lv = ~ x)} forms are
-parsed and then fail loud (not yet fittable).}
+parsed and then fail loud (not yet fittable). Where it is admitted, the
+fit is experimental and exploratory: extract the coefficients with
+\code{\link[=extract_lv_effects]{extract_lv_effects()}}, whose default \code{type = "axis_effect"} output is
+rotation-dependent (an intrinsic latent-axis indeterminacy, not a
+defect -- see \code{\link[=extract_lv_effects]{extract_lv_effects()}} for the rotation-invariant
+\code{type = "trait_effect"} alternative), and whose standard errors and
+intervals are Wald approximations with no established repeated-sampling
+coverage; do not treat them as calibrated.}
 }
 \value{
 A formula marker; never evaluated.
@@ -74,5 +81,6 @@ extract_Sigma(fit)
 }
 }
 \seealso{
-\code{\link[=indep]{indep()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \link{diag_re}, \code{\link[=extract_Sigma]{extract_Sigma()}}.
+\code{\link[=indep]{indep()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \link{diag_re}, \code{\link[=extract_Sigma]{extract_Sigma()}},
+\code{\link[=extract_lv_effects]{extract_lv_effects()}} for predictor-informed latent-score coefficients.
 }

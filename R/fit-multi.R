@@ -181,6 +181,55 @@
   )
 }
 
+## Diagnose a species-level coverage gap against a supplied phylogeny
+## (tree tip labels, or phylo_vcv/Ainv rownames). `levs` is the FULL set of
+## declared factor levels of `data[[species]]`; after a caller filters rows
+## (e.g. drops some species) without droplevels(), that set can include
+## levels with zero observations. Distinguish that case (actionable:
+## droplevels()) from a genuine coverage gap in a species that IS observed
+## (not fixable by droplevels -- the tree/vcv itself is incomplete).
+.gllvm_abort_uncovered_species_levels <- function(levs, covered, data, species, what) {
+  missing_levs <- setdiff(levs, covered)
+  if (!length(missing_levs)) {
+    return(invisible(NULL))
+  }
+  observed <- unique(as.character(data[[species]]))
+  unused_missing   <- intersect(missing_levs, setdiff(levs, observed))
+  observed_missing <- intersect(missing_levs, observed)
+  bullets <- c(sprintf("%s do not cover all species levels.", what))
+  if (length(unused_missing)) {
+    bullets <- c(
+      bullets,
+      "i" = sprintf(
+        "%d declared level%s of `%s` %s no observations in `data` and %s not covered: %s.",
+        length(unused_missing),
+        if (length(unused_missing) > 1L) "s" else "",
+        species,
+        if (length(unused_missing) > 1L) "have" else "has",
+        if (length(unused_missing) > 1L) "are" else "is",
+        paste(unused_missing, collapse = ", ")
+      ),
+      ">" = sprintf(
+        "Call `droplevels()` on `%s` (or refactor before fitting) so its levels match the species actually being fit.",
+        species
+      )
+    )
+  }
+  if (length(observed_missing)) {
+    bullets <- c(
+      bullets,
+      "i" = sprintf(
+        "%d observed species level%s of `%s` not covered: %s. This is a genuine mismatch and is NOT fixed by droplevels() -- supply a tree/vcv that covers these species.",
+        length(observed_missing),
+        if (length(observed_missing) > 1L) "s" else "",
+        species,
+        paste(observed_missing, collapse = ", ")
+      )
+    )
+  }
+  cli::cli_abort(bullets)
+}
+
 .resolve_sparse_propto_precision <- function(Ainv, levs, jitter = 1e-8) {
   if (is.null(rownames(Ainv))) {
     cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var species}.")
@@ -2958,8 +3007,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (!inherits(phylo_tree, "phylo"))
         cli::cli_abort("{.arg phylo_tree} must be an {.cls ape::phylo} tree.")
       levs <- levels(data[[species]])
-      if (!all(levs %in% phylo_tree$tip.label))
-        cli::cli_abort("phylo_tree tip labels do not cover all species levels.")
+      .gllvm_abort_uncovered_species_levels(
+        levs, phylo_tree$tip.label, data, species, "{.arg phylo_tree} tip labels"
+      )
       phy_prec <- .gllvm_phylo_tree_precision(phylo_tree, correlation = TRUE)
       Ainv_phy_rr      <- phy_prec$precision            # sparse dgCMatrix
       log_det_A_phy_rr <- -phy_prec$log_det_precision   # log det A = -log det A^-1
@@ -2988,8 +3038,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (is.null(rownames(phylo_vcv)))
         cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var {species}}.")
       levs <- levels(data[[species]])
-      if (!all(levs %in% rownames(phylo_vcv)))
-        cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.")
+      .gllvm_abort_uncovered_species_levels(
+        levs, rownames(phylo_vcv), data, species,
+        "Sparse {.arg phylo_vcv}/{.arg Ainv} rownames"
+      )
       sparse_phy <- .resolve_sparse_phylo_precision(
         phylo_vcv,
         levs = levs,
@@ -3006,8 +3058,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (is.null(rownames(phylo_vcv)))
         cli::cli_abort("phylo_vcv must have rownames matching levels of {.var {species}}.")
       levs <- levels(data[[species]])
-      if (!all(levs %in% rownames(phylo_vcv)))
-        cli::cli_abort("phylo_vcv rownames do not cover all species levels.")
+      .gllvm_abort_uncovered_species_levels(
+        levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
+      )
       Aphy <- phylo_vcv[levs, levs, drop = FALSE]
       Aphy <- Aphy + diag(1e-8, nrow = nrow(Aphy))
       Ainv_phy_rr      <- Matrix::Matrix(solve(Aphy), sparse = TRUE)
@@ -3059,8 +3112,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## routine already used for the sparse-Ainv branch just below.
       if (!inherits(phylo_tree, "phylo"))
         cli::cli_abort("{.arg phylo_tree} must be an {.cls ape::phylo} tree.")
-      if (!all(levs %in% phylo_tree$tip.label))
-        cli::cli_abort("phylo_tree tip labels do not cover all species levels.")
+      .gllvm_abort_uncovered_species_levels(
+        levs, phylo_tree$tip.label, data, species, "{.arg phylo_tree} tip labels"
+      )
       phy_prec_propto <- .gllvm_phylo_tree_precision(phylo_tree, correlation = TRUE)
       sparse_propto <- .resolve_sparse_propto_precision(phy_prec_propto$precision, levs)
       Cphy_inv <- sparse_propto$Cphy_inv
@@ -3074,8 +3128,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ))
       if (is.null(rownames(phylo_vcv)))
         cli::cli_abort("phylo_vcv must have rownames matching levels of {.var {species}}.")
-      if (!all(levs %in% rownames(phylo_vcv)))
-        cli::cli_abort("phylo_vcv rownames do not cover all species levels.")
+      .gllvm_abort_uncovered_species_levels(
+        levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
+      )
       if (inherits(phylo_vcv, "sparseMatrix")) {
         ## Design 47 follow-on (2026-05-18): sparse `phylo_vcv` IS the
         ## precomputed A^{-1} (from `pedigree_to_Ainv_sparse()` via the

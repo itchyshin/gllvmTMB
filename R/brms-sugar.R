@@ -531,9 +531,17 @@ meta <- function(value, sampling_var) {
 #'   `latent(..., lv = ~ x)`, and only Gaussian and pure binomial
 #'   (logit/probit/cloglog) fits are currently admitted (partial coverage,
 #'   supported for the ordinary-latent case). Source-specific `*_latent(..., lv = ~ x)` forms are
-#'   parsed and then fail loud (not yet fittable).
+#'   parsed and then fail loud (not yet fittable). Where it is admitted, the
+#'   fit is experimental and exploratory: extract the coefficients with
+#'   [extract_lv_effects()], whose default `type = "axis_effect"` output is
+#'   rotation-dependent (an intrinsic latent-axis indeterminacy, not a
+#'   defect -- see [extract_lv_effects()] for the rotation-invariant
+#'   `type = "trait_effect"` alternative), and whose standard errors and
+#'   intervals are Wald approximations with no established repeated-sampling
+#'   coverage; do not treat them as calibrated.
 #' @return A formula marker; never evaluated.
-#' @seealso [indep()], [phylo_latent()], [diag_re], [extract_Sigma()].
+#' @seealso [indep()], [phylo_latent()], [diag_re], [extract_Sigma()],
+#'   [extract_lv_effects()] for predictor-informed latent-score coefficients.
 #' @examples
 #' \dontrun{
 #' # Long-format stacked traits: a 2-factor latent random effect at `site`.

@@ -161,3 +161,47 @@ Every warning/message from every one of the 180 fits was captured via `withCalli
 **SYSTEMATIC -- the true tree does not win more often than chance (~1/3 with 3 trees); the S0 single-draw result replicates as a repeatable pattern, not noise.**
 
 Numbers: phylo_dep true-tree-wins proportion = 0.000 (0/20 usable reps); control arm all-tied = TRUE; positive-control true-tree-wins proportion = 0.900 (18/20 usable reps); mean signed delta (true - best wrong) for phylo_dep = -2.671772 (SD 0.746477).
+
+---
+
+## CORRECTION — D-43 adversarial re-execution panel, 2026-07-25
+
+The 20-replicate result above reproduces **bit-for-bit** on re-run
+(0/20, mean -2.671772, SD 0.746477; control 20/20 tied; positive control 18/20),
+and the harness survived the legitimacy checks: all three tree-fits are
+genuinely equal-parameter (df = 57, `length(opt$par)` = 57) and all three trees
+are ultrametric with `vcv(corr = TRUE)` normalising height away.
+
+**But the headline framing is overclaimed, on two counts.**
+
+**1. A tree-identity confound inflates the effect.** Rotating WHICH tree
+generates the data gives true-tree wins of 0/10, 1/10, 3/10 for truths A, B, C.
+`tree_A` wins **0 of 30** fits under every truth, including when it is wrong.
+Among the 16 replicates where the true tree lost under truths B and C, `tree_A`
+won 0 where exchangeability predicts ~8 (p ~ 1.5e-5). `tree_A` carries a fitting
+disadvantage tied to its identity, and `tree_A` is the designated true tree
+throughout the main arm. The effect survives in weakened form -- aggregate
+**4/30 = 0.133 vs chance 0.333, p ~ 0.004** -- but "0/20" and "mean delta -2.67"
+describe the worst-case cell, not the effect. Truth = `tree_C` sits at exactly
+chance, delta -0.94.
+
+**2. The proposed mechanism is UNSUPPORTED.** The saturation hypothesis (a free
+m(m+1)/2 Sigma absorbing what A should explain) predicts the effect scales with
+species count. The m-sweep is non-monotone and REVERSES at m = 15 -- true-tree
+wins 0/10, 0/10, **6/10**, 0/10 for m = 5/10/15/20 (mean delta -1.31, -2.61,
+**+0.77**, verified twice). A star tree (A = I) also scores far worse
+(29.95 vs 41-44), pointing opposite to the hypothesis. Reported as a lead only:
+because `trait` == `species` in this layout the effective covariance is the
+Hadamard `Sigma o A`, not `Sigma x A` -- equal parameter counts but unequal
+family richness. The panel's direct richness test failed twice and it drew no
+conclusion; neither do we.
+
+**3. "No warnings or messages captured from any fit" is no longer true.** On the
+integration branch 60 warnings fire, all on the `phylo_indep` control arm, from
+the diagnostic shipped in `a1b9b23e` ("every level of `trait` is observed for at
+most one level of `species`"). This corroborates the control-arm diagnosis, but
+it means the main arm runs in a layout the package now flags as structurally
+degenerate for the sibling keyword.
+
+**Status: phenomenon real, mechanism unsupported, wording overclaimed.** Nothing
+is promoted to the validation-debt register or any public surface.

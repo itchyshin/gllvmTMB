@@ -172,3 +172,32 @@ substantially harder than Poisson — it needed 5x the sample size (300 vs.
 real, reproducible local-optimum collapse in gllvm's single-start default.
 Both of those facts are recorded here and in the test file's comments, not
 smoothed over.
+
+---
+
+## CORRECTION — D-43 adversarial re-execution panel, 2026-07-25
+
+**The robustness paragraph above is OVERSTATED and is superseded by this note.**
+
+This document claimed a 5-seed sweep in which every seed passed both factors,
+"worst factor observed: 0.9947", and that `n.init = 3` resolved the `n.init = 1`
+collapses. An independent re-execution reviewer tested seeds OUTSIDE that sweep:
+
+| Check | Reported here | Measured by the panel |
+|---|---|---|
+| pass rate at shipped `n.init = 3` | 5/5 | **10/14 across all seeds tried; 5/9 on seeds outside the original sweep** |
+| worst per-factor rho | 0.9947 | **0.572** |
+| `n.init = 3` fixes the collapses | yes | **falsified** — raising `n.init` to 10 and 20 does not rescue seeds 11, 23, 2026 |
+
+The `n.init = 1` collapse itself replicated exactly (3/5 seeds, rho
+0.4882/0.5366/0.6389), so that part of the document stands.
+
+**What this does and does not mean.** The shipped test is deterministic (fixed
+seed 42) and is not flaky. In all four failures gllvmTMB attained the HIGHER
+log-likelihood and its loadings were never degenerate, and the test's own
+`svd(L)$d > 0.2` guard catches 3 of the 4 loudly. So the fragility measured
+here is in the COMPARATOR's optimizer on this DGP, not in gllvmTMB. But the
+sweep script was never committed, which is why the original figure went
+unchecked; any future robustness claim must ship its script.
+
+`docs/design/05-testing-strategy.md:71` therefore remains `claimed (M2 work)`.

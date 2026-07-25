@@ -10,6 +10,7 @@ a single writable lane.  It is a map, not a release/capability claim.
 | Eta simulation | Codex | **left in Codex** at `/private/tmp/gllvmtmb-design100-progress-oracle` on `codex/design100-progress-oracle-20260724` | Codex's local Design-100 materials | Claude must not run, edit, claim, or absorb this lane |
 | Design-103 private diagnosis | Codex | closed `TECHNICAL_PARTIAL`, local-only | `/private/tmp/gllvmtmb-design103-covariance-mechanism/dev/design103-covariance-mechanism/ADJUDICATION.md` | no package/public claim; new model design needs fresh approval |
 | Docs-infra / phylo-column question | Claude | pkgdown repaired and MERGED (`a900c4ae`, PR #787); CI economy open as PR #788 | `2026-07-25-claude-handover-phylo-column.md` | docs/CI only — no package source or API change; the M3 freeze (`NAMESPACE c97ae039`) stays untouched |
+| **Site × Species phylo capability + peer evidence** | Claude — **NEW LANE, NOT YET OPENED** | planned 2026-07-25 by Shinichi; **starts with an ultra-plan**, not with code | `2026-07-25-claude-handover-phylo-column.md` **Part II §II.4** (ultra-plan brief) | open a FRESH lane — not the profile/Tier-2a checkout, not any Codex worktree. Any new keyword is an API change needing Shinichi's authorization; rule 5 applies (design-doc first + recovery on a known DGP) |
 
 Before any repository mutation, re-check `git worktree list`, `git status -sb`
 in the intended worktree, and the target lane's named handover.  The active

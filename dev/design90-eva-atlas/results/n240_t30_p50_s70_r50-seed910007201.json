@@ -1,0 +1,11 @@
+{
+  "error": null,
+  "warnings": [],
+  "messages": [],
+  "convergence_value": true,
+  "convergence_type": "logical",
+  "log_likelihood": -4800.1811,
+  "max_abs_gradient": 54.349,
+  "healthy": false,
+  "elapsed_seconds": 5.4126
+}

@@ -46707,3 +46707,24 @@ are deliberately excluded from the second scan.
   only reviewed first-use functions appear on the public primary path.
 - Final rendering and pkgdown checks are recorded in
   `docs/dev-log/after-task/2026-07-22-function-map-cheatsheet.md`.
+
+## 2026-07-23 — Design 90 Gates 0--1 upstream q=2 EVA checkpoint
+
+Created an isolated Design-90 worktree from `origin/main`, locked a fresh CRAN
+`gllvm` 2.0.13 source and private compiled binary, and mapped the ordinary
+Bernoulli-logit EVA q=2 path as `num.lv = 2, num.lv.c = 0`. The 72-cell ×
+16-seed health-atlas contract, telemetry rule, nonseparation requirement, and
+empty result root are frozen. Constrained q=2 is excluded because upstream's
+direct EVA regression fixture is q=1 only. No fixture, gllvm fit, Totoro smoke,
+campaign, parity, package code, public/API/C++, merge, push, or PR work was
+performed. Gate 1 awaits a maintainer checkpoint before any compute.
+
+## 2026-07-23 — Design 90 Gate-2 upstream q=2 EVA smoke STOP
+
+The four predeclared ordinary-q=2 EVA smoke attempts ran once on Totoro with
+locked CRAN `gllvm` 2.0.13. All report logical convergence, but 0/4 meet the
+frozen health rule: three have all-zero-row warnings and gradients 0.002283541,
+0.455567475, and 1.252887510; the warning-free fourth has gradient
+54.348989836. The 1,152-attempt / 10-hour atlas was not launched. No start,
+seed, fixture, warning, or threshold change was made after this result, and no
+gllvmTMB package/public/API/C++/parity work occurred.

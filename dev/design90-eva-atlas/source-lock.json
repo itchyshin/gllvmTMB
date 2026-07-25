@@ -1,0 +1,21 @@
+{
+  "design": "Design 90 — upstream EVA reliability atlas",
+  "gate": "Gate 1 frozen source authority",
+  "package": "gllvm",
+  "version": "2.0.13",
+  "tarball": "/private/tmp/design90-gllvm-source/gllvm_2.0.13.tar.gz",
+  "tarball_sha256": "d5305405853e2dc5d21552d7d21c171fcdd340acebc42fc834ef6ba5e449c2a4",
+  "source_root": "/private/tmp/design90-gllvm-source/gllvm",
+  "r_gllvm_sha256": "4e56e72b9846a77183b19e4734cf4121ea56c74630b30637793e1457c3b2222d",
+  "r_tmb_driver_sha256": "93a3f5ae1701713fc71fcd7a4532c9774d3cf2340dfa4f3176a084befba55ca3",
+  "cpp_template_sha256": "1fe277aade1e09948781cfe8c5a417d977d25a0aa86d9eac7cedf1993e1325f2",
+  "installed_library": "/private/tmp/design90-r-lib-DpoaE1",
+  "installed_description_sha256": "7cecf3772f975271d896fdc4e714b768b9f7e4840f697bcbede4b3c8c7ffe553",
+  "installed_shared_object_sha256": "fa2fc7fc49fea86e764fc5c0c3382935c4ccb423f904919f5ad6903de8168f8a",
+  "r_version": "4.6.0",
+  "tmb_version": "1.9.21",
+  "target": "ordinary Bernoulli-logit EVA, num.lv=2, num.lv.c=0",
+  "excluded": "constrained num.lv.c=2 is source-supported but not direct upstream EVA regression coverage",
+  "result_root": "dev/design90-eva-atlas/results",
+  "one_call_rule": "No fit is authorised before the Gate-1 maintainer checkpoint."
+}

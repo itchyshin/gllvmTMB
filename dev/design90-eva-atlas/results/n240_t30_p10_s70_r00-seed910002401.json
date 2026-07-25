@@ -1,0 +1,11 @@
+{
+  "error": null,
+  "warnings": "There are rows full of zeros in y. \n",
+  "messages": [],
+  "convergence_value": true,
+  "convergence_type": "logical",
+  "log_likelihood": -2071.4246,
+  "max_abs_gradient": 1.2529,
+  "healthy": false,
+  "elapsed_seconds": 27.7099
+}

@@ -71,22 +71,27 @@ jobs:
           extra-packages: any::pkgdown, local::.
           needs: website
 
-      - name: Rebuild TMB-linked packages from source
-        # `needs: website` installs a BINARY glmmTMB compiled against whatever
-        # TMB it was built with, but the runner resolves TMB independently from
-        # RSPM. When the two drift, build_site() dies loading glmmTMB for the
-        # cross-package articles:
-        #   glmmTMB was built with TMB package version 1.9.21
-        #   Current TMB package version is 1.9.23
-        #   -> base::dyn.load() fails -> Execution halted
-        # That is exactly how this workflow failed at fe8388d9 and b87ab9ed
-        # while R-CMD-check passed at the same commits. Rebuilding from source
-        # links glmmTMB against the TMB actually installed here.
+      - name: Rebuild ABI-fragile binary packages from source
+        # RSPM binaries are compiled against library versions this runner does
+        # not necessarily have. Two have bitten the docs build, both as dyn.load
+        # failures during build_articles():
         #
-        # Only glmmTMB is rebuilt because only glmmTMB is known to break. gllvm
-        # and sdmTMB are also TMB-linked; if one ever fails the same way, add it
-        # to this vector rather than pre-emptively rebuilding all of them.
-        run: install.packages("glmmTMB", type = "source", repos = "https://cloud.r-project.org")
+        #   glmmTMB    built against TMB 1.9.21, runner resolved TMB 1.9.23
+        #              -> "package version mismatch" -> Execution halted
+        #              (this is how pkgdown failed at fe8388d9 and b87ab9ed
+        #              while R-CMD-check passed at the same commits)
+        #
+        #   stringfish undefined symbol _ZN3tbb8internal25concurrent_vector...
+        #              -> built against a different libtbb. Arrives transitively
+        #              via qs2; NOT a declared gllvmTMB dependency, but the
+        #              multinomial article loads something that pulls it.
+        #
+        # Rebuilding from source links each against what is actually installed.
+        # This list is deliberately reactive: add a package only once it has
+        # actually failed. If a third one appears, stop extending this and fix
+        # it systemically (source pkgType for the docs build, or trim what the
+        # articles load) rather than paying a rebuild per package forever.
+        run: install.packages(c("glmmTMB", "stringfish"), type = "source", repos = "https://cloud.r-project.org")
         shell: Rscript {0}
 
       - name: Hide internal agent-instruction files from pkgdown

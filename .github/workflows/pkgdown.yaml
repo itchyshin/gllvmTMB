@@ -61,6 +61,24 @@ jobs:
           extra-packages: any::pkgdown, local::.
           needs: website
 
+      - name: Rebuild TMB-linked packages from source
+        # `needs: website` installs a BINARY glmmTMB compiled against whatever
+        # TMB it was built with, but the runner resolves TMB independently from
+        # RSPM. When the two drift, build_site() dies loading glmmTMB for the
+        # cross-package articles:
+        #   glmmTMB was built with TMB package version 1.9.21
+        #   Current TMB package version is 1.9.23
+        #   -> base::dyn.load() fails -> Execution halted
+        # That is exactly how this workflow failed at fe8388d9 and b87ab9ed
+        # while R-CMD-check passed at the same commits. Rebuilding from source
+        # links glmmTMB against the TMB actually installed here.
+        #
+        # Only glmmTMB is rebuilt because only glmmTMB is known to break. gllvm
+        # and sdmTMB are also TMB-linked; if one ever fails the same way, add it
+        # to this vector rather than pre-emptively rebuilding all of them.
+        run: install.packages("glmmTMB", type = "source", repos = "https://cloud.r-project.org")
+        shell: Rscript {0}
+
       - name: Hide internal agent-instruction files from pkgdown
         # pkgdown 2.2.0 renders every root .md (incl. AGENTS.md, CLAUDE.md) as a
         # public page AND indexes it in search.json / sitemap.xml, honoring
@@ -87,4 +105,16 @@ jobs:
           path: pkgdown-site
 
       - id: deployment
+        # Publish ONLY from the default branch. The job admits workflow_dispatch
+        # (see the job-level `if:`), so without this guard dispatching pkgdown on
+        # any branch would build AND publish that branch to the live public site.
+        # With it, a dispatch on a feature branch builds without deploying —
+        # which is how a docs-build fix gets verified before it is merged.
+        #
+        # Both trigger shapes expose the branch differently: workflow_run gives
+        # `workflow_run.head_branch`, workflow_dispatch gives `github.ref`. A
+        # workflow_run always executes in the default-branch context, so its
+        # `github.ref` is refs/heads/main regardless — harmless only because the
+        # trigger's own `branches:` filter already restricts it.
+        if: ${{ github.event.workflow_run.head_branch == 'main' || github.ref == 'refs/heads/main' }}
         uses: actions/deploy-pages@v4

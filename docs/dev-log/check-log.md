@@ -4,6 +4,86 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-07-24 -- BIRDBASE-relevant performance-audit baseline
+
+Branch: `codex/performance-audit-20260724`; clean worktree from `origin/main`.
+No likelihood, API, or optimisation change.
+
+Purpose: establish a reproducible timing receipt before treating Ayumi's
+approximately eight-hour multi-start/sensitivity workflow as a package-level
+performance defect. The proxy retains mixed families plus ordinary and
+phylogenetic latent tiers, but it is not the 5,397-species BIRDBASE data set.
+
+Checks:
+
+```sh
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "m1-2-mixed-family-fixture", reporter = "summary")'
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "m1-7-extract-omega-phylo-signal-mixed-family", reporter = "summary")'
+Rscript --vanilla dev/benchmark-two-tier-mixed.R --out-dir=/private/tmp/gllvmtmb-performance-audit-smoke-20260724-v2
+git diff --check
+```
+
+Outcome: both focused heavy fixture tests passed. The benchmark proxy had
+1,359 rows, 20 species, 25 sites, and three traits. One `nlminb` start took
+2.268 s; five serial starts took 22.770 s; a BFGS fit warm-started from the
+one-start solution took 0.446 s. TMB's ten-call operation receipt measured
+0.004 s for the template likelihood and 0.011 s for the template gradient at
+the warm-start optimum. These are workflow and small-fixture measurements,
+not a claimed BIRDBASE speedup.
+
+Independent source review: no dense phylogenetic inverse/factorisation was
+found in the active path. The next evidence gate is a larger frozen benchmark
+that separately times `obj$fn`, `obj$gr`, and random-effect Hessian work before
+any C++ patch is proposed.
+
+Not run: a full synthetic scale ladder, a BIRDBASE-data fit, remote Totoro
+benchmarking, or any C++ modification.
+
+## 2026-07-24 -- species-level Totoro tutorial-scale ladder
+
+This entry supplements, rather than replaces, the preceding receipt. The
+initial 1,359-row crossed site-by-species proxy was useful for a smoke test,
+but its ordinary latent tier did not match Ayumi's all-species grouping. The
+following frozen synthetic ladder uses one row per `(species, trait)` pair and
+puts both ordinary and phylogenetic rank-1 latent tiers on `species`.
+
+All runs used one Totoro CPU core (`OPENBLAS_NUM_THREADS=1`), `se = FALSE`,
+the same generated tree/data per size, BFGS with `maxit = 1000`, and the
+non-shipped `dev/benchmark-two-tier-mixed.R` harness. Each receipt includes one
+start, five serial jittered starts, and an exact-model warm start from the
+one-start fit.
+
+| species x traits | rows | one start (s) | five starts (s) | warm start (s) |
+| --- | ---: | ---: | ---: | ---: |
+| 20 x 3 | 60 | 0.879 | 3.618 | 0.068 |
+| 200 x 3 | 600 | 2.233 | 11.828 | 0.508 |
+| 1,000 x 3 | 3,000 | 16.295 | 78.551 | 1.824 |
+| 200 x 9 | 1,800 | 12.140 | 113.900 | 0.956 |
+| 200 x 27 | 5,400 | 77.092 | 598.939 | 2.707 |
+
+At 200 x 27, the five selected BFGS trajectories took 75.378, 103.019,
+126.880, 162.333, and 128.324 seconds; all converged. The selected restart
+was the fourth. Thus most elapsed time is optimizer trajectory / multi-start
+work, not the final exact-model warm refit.
+
+`TMB::benchmark(..., n = 10)` at the 200 x 27 warm-start optimum recorded a
+total of 0.037 s for likelihood calls, 0.090 s for gradients, 0.006 s for the
+sparse Hessian, and 0.020 s for Cholesky across ten calls. These fixed-vector
+micro-times are diagnostic only: they do not measure all nested Laplace or
+optimizer costs and must not be extrapolated to BIRDBASE.
+
+Outcome: an eight-hour campaign containing five starts and several model
+variants is technically plausible. The first package-level opportunity is
+workflow-level restart scheduling / compatible warm-start reuse with a timing
+receipt, not a speculative C++ rewrite. No source change is justified by this
+baseline.
+
+Not run: a 5,397-species BIRDBASE fit; rank-2 synthetic ladder; ordinal and
+lognormal trait families; parallel restarts; native-symbol profiling; or any
+C++ modification. The current harness simulates one ordinary loading column,
+so it is intentionally limited to rank 1 until its rank-general data generator
+is validated.
+
 ## 2026-07-05 05:20 MDT -- Gamma phi decoupling
 
 Branch: `codex/r-bridge-grouped-dispersion`; local issue #622 repair.

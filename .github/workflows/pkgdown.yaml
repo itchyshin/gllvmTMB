@@ -25,14 +25,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  pkgdown:
+  # Build and deploy are separate jobs on purpose.
+  #
+  # The `github-pages` environment carries a protection rule restricting
+  # deployments to the default branch. When ONE job both built and deployed, that
+  # rule rejected the whole job before a single step ran, with:
+  #   Branch "<x>" is not allowed to deploy to github-pages due to environment
+  #   protection rules.
+  # So a pkgdown change could not be exercised anywhere except main — the docs
+  # build was unverifiable before merge, which is how a broken site reached main
+  # twice (fe8388d9, b87ab9ed).
+  #
+  # Splitting them means the build runs on any branch (no environment, nothing to
+  # reject) while only deploy touches the environment, and only from main. The
+  # artifact is the interface between them.
+  build:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - uses: actions/checkout@v5
@@ -58,7 +68,59 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::pkgdown, local::.
+          # Install hard dependencies plus ONLY what the site actually needs,
+          # instead of every Suggests. Suggests carries ~20 packages the docs
+          # build never uses, and three of them broke it as dyn.load failures
+          # during build_articles():
+          #
+          #   glmmTMB    binary built against TMB 1.9.21, runner had TMB 1.9.23
+          #              -> "package version mismatch" (this is how pkgdown
+          #              failed at fe8388d9 and b87ab9ed while R-CMD-check
+          #              passed at the same commits)
+          #   qs2        undefined symbol _ZTIN3tbb4taskE
+          #   stringfish undefined symbol _ZN3tbb8internal25concurrent_vector...
+          #
+          # qs2/stringfish are not gllvmTMB dependencies at all. They arrive via
+          # mirt -> SimDesign, and mirt is installed only because it is in
+          # Suggests. It is never called in a code chunk — it appears in ONE
+          # article as the inline prose reference `mirt::itemstats()`, which
+          # pkgdown/downlit resolves by loading the namespace. A backticked
+          # mention in a sentence was pulling in a broken TBB toolchain.
+          # Uninstalled, downlit simply skips the autolink.
+          #
+          # The list below is not guesswork. It is the union of two scans:
+          #   (a) packages referenced inside R code chunks across all vignettes
+          #       (ape, dplyr, ggplot2, knitr, tidyr — stats is base)
+          #   (b) Suggests that gllvmTMB's own R code conditionally loads via
+          #       requireNamespace() and an article could therefore reach
+          #       (ggplot2, MASS, future, future.apply, tidyselect, ggforce)
+          # Deliberately excluded: mirt, glmmTMB, MCMCglmm, gllvm, brms, galamm,
+          # lme4, DHARMa, mgcv, mvtnorm, nadiv, JuliaCall, sf. If an article
+          # ever needs one, the build fails loudly here and it gets added — a
+          # visible, cheap failure rather than a silent 20-package install.
+          # Bump this whenever the dependency set above is narrowed. The action
+          # caches the whole R library, so narrowing `dependencies:` does NOT by
+          # itself remove an already-cached package: run 30161701084 restored a
+          # cache still physically containing mirt, qs2 and stringfish, and
+          # downlit happily loaded mirt from it — the build failed exactly as
+          # before despite the list below being correct. Changing this key
+          # discards that library so the narrowed set is what actually exists.
+          cache-version: 2
+          dependencies: '"hard"'
+          extra-packages: |
+            any::pkgdown
+            any::rmarkdown
+            any::knitr
+            any::ape
+            any::dplyr
+            any::tidyr
+            any::tidyselect
+            any::ggplot2
+            any::ggforce
+            any::MASS
+            any::future
+            any::future.apply
+            local::.
           needs: website
 
       - name: Hide internal agent-instruction files from pkgdown
@@ -86,5 +148,26 @@ jobs:
           # `docs/` hosts design + dev-log scaffolding, not the rendered site.
           path: pkgdown-site
 
+  deploy:
+    needs: build
+    # Publish only from the default branch. The `github-pages` environment
+    # already enforces this itself; stating it here too means a non-main run
+    # SKIPS this job cleanly instead of failing it on the protection rule, so a
+    # branch build reports green on what it actually did — it built the site.
+    #
+    # The two trigger shapes expose the branch differently: workflow_run gives
+    # `workflow_run.head_branch`, workflow_dispatch gives `github.ref`. A
+    # workflow_run always executes in the default-branch context, so its
+    # `github.ref` is refs/heads/main regardless; the trigger's own `branches:`
+    # filter is what actually restricts it.
+    if: ${{ github.event.workflow_run.head_branch == 'main' || github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4

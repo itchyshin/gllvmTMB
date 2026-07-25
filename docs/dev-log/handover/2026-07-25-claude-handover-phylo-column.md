@@ -261,3 +261,153 @@ session learned the hard way. Spawn the **Rose** lens before any public claim.
 | Held calibration overclaim `a9ecd29f` | HELD | **Shinichi only** |
 | Release rung | **NOT READY** | gap is EVIDENCE, not capability |
 | Codex EVA + eta lanes | fenced | Codex only — no Claude mutation |
+
+---
+
+# Part II — the discussion record, and the ultra-plan brief
+
+*Added at Shinichi's request: "transfer all and also make a good note of our discussion — we
+need to do an ultra-plan in a new lane."* Part I above is the state. This part is the
+**reasoning**, because most of this session's value was in the argument, not the conclusions —
+and because four wrong turns are recorded here precisely so the next lane does not repeat them.
+
+## II.1 How the question arrived
+
+Shinichi's opening frame was not a feature request. It was: **what would make Ben Bolker, David
+Warton / Bert van der Veen, and Jarrod Hadfield accept, use, and approve this package?**
+(Wolfgang Viechtbauer was named too, then explicitly withdrawn — metafor belongs to drmTMB.)
+
+The agent's first answer was **wrong and worth recording**: it proposed that the barrier was
+*too much advertised surface relative to validated surface* (153 exports; 37% of validation-debt
+rows not `covered`) and recommended auditing and cutting the public API. **That would have
+reopened M3's signed, checksummed API freeze.** Withdrawn once Mission Control and git were
+consulted. The lesson is in Part I: milestone state must be re-derived from git.
+
+The second answer survived: **the gap is comparator evidence.** Verified by inspection —
+`glmmTMB` cross-checks are real (`expect_lt(abs(...), 0.05)`); **MCMCglmm is reproduced only at
+the `inverseA()` matrix level, never as a model fit**; and **there is no `gllvm` fit anywhere in
+the test suite** — the sole `gllvm::` call lives in `dev/jason-binomial-scout.R`, a scratch
+script. The direct competitor is unmeasured.
+
+## II.2 The conceptual thread — rows, columns, and what "phylo" attaches to
+
+Shinichi supplied the paper (Rugstad, van der Veen, O'Hara & Mehlhoop 2026, *One Toolbox, Many
+Tools*). Its **Figure 1** is the crux: phylogeny (`phyl_jk`) informs **β_j — species responses to
+covariates**. In gllvm's world species are **columns**.
+
+gllvm's own documentation confirms it: `colMat` is *"a matrix of similarity for the **column
+effects**"*, with `colMat.rho.struct` controlling whether the **signal parameter** is shared
+across covariates or estimated per term.
+
+The agent then made its **second and third errors**, in opposite directions:
+
+1. First it declared phylogeny-on-columns a **missing axis** requiring a new variance-share tier.
+2. Then it ran `phylo_indep(1 + env | species)` in a JSDM layout, saw **"FITTED OK"**, and
+   reversed — announcing the capability already existed.
+
+**Shinichi rejected the reversal on physical grounds** — *"where is the tree?"* and *"phylo_indep
+treating species as independent of each other??"* That challenge is what produced the decisive
+test: fit the same model with **two different trees**. Identical log-likelihoods to six decimal
+places. **The tree was never in the likelihood. "FITTED OK" was not evidence.**
+
+### The clarifications Shinichi's questions forced
+
+These are the conceptual points a future reader will need, each prompted by a question:
+
+- **`*_unique()` → `*_indep()`** is a **deprecation rename** (soft-deprecated 2026-07-03).
+- **`indep` vs `dep` is a MODELLING choice, not a deprecation.** The 4×5 grid has two axes:
+  *correlation* (`phylo_`) picks what correlates the **grouping** — the tree's **A**; *mode*
+  (`indep`/`dep`) picks the shape of the **trait-side** Σ. So in `Σ ⊗ A`, **species are always
+  correlated by A**; `indep` only makes a species' intercept and slope uncorrelated with each
+  other. Shinichi's instinct — *"we are imposing structure anyway"* — is right that `dep` is
+  usually the wanted model. **It does not converge on binomial data.**
+- **Why `env` sits in a random slope.** Phylogeny is a *correlation structure on a random
+  vector*. If each species had its own **fixed** slope there would be nothing for **A** to
+  correlate — just m unrelated numbers. This is exactly why gllvm requires `randomX = ~ env`
+  before `colMat` does anything. **Same requirement, same reason, different spelling.**
+- **`phylo_tree =` is deprecated** — Shinichi remembered this correctly and the agent did not.
+  `R/gllvmTMB.R:185` marks it "(legacy global)"; `:622` emits a runtime deprecation. Canonical is
+  `tree =` **inside** the keyword. (Separately, `vcv =` is soft-deprecated → `A =` / `Ainv =`.)
+- **The global `phylo_tree` cannot reach the column axis** — tested directly: `unit="site"` with
+  `dep(0 + trait | site)` or `latent(...)`, two different trees, **identical logLik**. It is only
+  a fallback supplier for `phylo_*()` keywords, which bind to `unit`.
+
+### Where it landed
+
+gllvmTMB **can** fit the model — but **only by calling species the `unit`** (data entered as
+Species × Site). It **cannot** do it in the **Site × Species** layout every community ecologist
+uses. Shinichi's ruling:
+
+> *"we should always keep the rotation regardless what we can or cannot — and add a capability
+> Site × Species can be run — unit = site and trait = species and somehow control for phylogeny
+> in column — this will be much easier than discussing this forever."*
+
+**The justification is in the transcript itself.** The transposition confused an expert author of
+the package across a long exchange. It will defeat applied users. A workaround that must be
+explained forever is more expensive than the capability.
+
+## II.3 Meta-lessons — how the wrong turns happened
+
+Recorded because each is a *method* failure that will recur:
+
+1. **"It fitted" is not "it worked."** The silent no-op fits cleanly. Every capability claim must
+   move a known input and watch the likelihood respond — the two-tree test is the pattern.
+2. **Filtering hides the truth.** Every test script grepped for `logLik|ERROR`, which discarded
+   the package's own `.frequency_id` deprecation warning. **gllvmTMB was telling the agent it was
+   using deprecated syntax and the agent's own filter deleted the message.**
+3. **A failed command can look like a clean result.** `git status --porcelain` erroring into an
+   empty string read as "CLEAN — safe to recycle" on a dead worktree.
+4. **Reading docs is not running code.** The gllvm comparator probe was written without
+   `randomX`, so `colMat` had nothing to act on and returned identical logLik for different
+   trees — a null result that meant nothing. **This was done twice.**
+5. **A stale dashboard is worse than none**, because it is trusted. See Part I §3.
+
+## II.4 Ultra-plan brief for the NEW lane
+
+**Shinichi's directive: this work opens a NEW lane and starts with an ultra-plan.** Do not run it
+inside the profile/Tier-2a checkout or any Codex lane. Load `skills/ultra-plan` first.
+
+**Mission.** Make gllvmTMB credible to Bolker, van der Veen/Warton, and Hadfield, by (a) adding
+the Site × Species phylogeny capability and (b) building the comparator evidence that the board
+already names as the gap to submission.
+
+**Hard constraints, inherited:**
+
+- **M3 API freeze holds** — `NAMESPACE c97ae039`, 153 exports / 33 S3 methods. Any new keyword is
+  an API change and needs Shinichi's authorization.
+- **AGENTS.md Design rule 5** — a new variance-share axis requires design-doc-first + simulation
+  recovery on a known DGP + Boole/Gauss/Noether review.
+- **D-50** — campaigns run on **Totoro/DRAC**, never GitHub Actions; results stay **local**.
+- **Codex fences** — EVA/VA/JJ (`design90`–`design98`) and the eta-simulation lane are untouchable.
+- **Rung stays NOT READY.** No release, freeze, tag, or submission from this lane.
+
+**Candidate slices** — the ultra-plan should re-derive these, not accept them:
+
+| # | Slice | Depends on | Notes |
+|---|---|---|---|
+| S0 | Orient — re-derive state from git; read this doc + the lane split | — | do NOT trust any board |
+| S1 | **Fix the silent unused-tree bug** | none | independent, small, highest value-per-line |
+| S2 | **gllvm comparator harness** — get `colMat` + `randomX` actually running | none | the reference model AND the future comparator; **the agent failed this twice** |
+| S3 | **Design doc: column-axis phylo tier** | S2 | rule 5; name the aliasing risk up front |
+| S4 | **Aliasing study** — ordination + phylogeny competing for the species axis | S2 | the literature calls this unsolved white space; may be a *negative result*, which is fine |
+| S5 | **R-2 / Experiment B** — ≥60 seeds, mean SIGNED bias, both scales, realized vs population Σ_b, iid control arm | none | Totoro; gates any phylogenetic-JSDM claim because binary IS the JSDM data type |
+| S6 | **Worked example + wide format** (`traits(...)`) | S3, S5 | the JSDM and phylogeny articles currently have **zero** overlap |
+| S7 | MCMCglmm **fit-level** comparator (currently matrix-only) | S2 | Hadfield's lens |
+
+**Sequencing judgement.** S1 and S2 are independent and should go first — S1 because it protects
+users today, S2 because **nothing downstream is trustworthy without a working reference
+implementation**. S3 should not start before S2 produces a gllvm fit that behaves.
+
+**Predeclare the stop conditions.** S4 may return "these cannot be separated at realistic n" and
+S5 may dissolve R-2 into a sampling artefact. Both are **legitimate results**. Per D-43, a
+milestone claim needs three fresh adversarial agents defaulting to NOT-DONE; ≥2 NOT-DONE verdicts
+withhold the claim.
+
+**Open questions for Shinichi, to settle in the plan, not during it:**
+
+1. Does the new capability get a **new keyword**, or an argument on the existing `phylo_*()`
+   family? (API-change decision — his.)
+2. Is a **per-covariate phylo signal** (gllvm's `colMat.rho.struct = "term"`) in scope, or is a
+   single shared signal enough for v1?
+3. Is **NNGP / sparse-precision scalability** (van der Veen & O'Hara's route) in scope, or
+   explicitly deferred?

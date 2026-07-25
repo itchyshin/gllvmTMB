@@ -6,6 +6,14 @@ bridge remains experimental and is not required for the main workflow.
 
 ## New
 
+* `getLV()` gains an `se = TRUE` argument that returns the standard error of
+  every unit-level (or within-unit) latent score, alongside the scores, as
+  `list(scores, se)`. The default `se = FALSE` is unchanged (a bare matrix).
+  SEs come from the fitted model's TMB `sdreport()` random-effect block and
+  were cross-checked against an independent joint-precision-inversion route
+  to machine precision. Requires `rotate = "none"`; predictor-informed
+  `latent(..., lv = ~ x)` fits and `engine = "julia"` bridge fits are not
+  yet supported and raise an informative error.
 * `gllvmTMB()` now accepts both canonical long data and wide data through a
   `traits(...)` left-hand side. The two forms use the same fitting engine.
 * Random slopes accept the **`||` uncorrelated coupling**: `mode(1 + x || g)`

@@ -8,11 +8,26 @@ https://claude.ai/code/artifact/46e611f2-69d1-48e1-8b8b-ccab2e89983d) and shows
 it to Shinichi as step 0 — it is the mission-control. Do this before reading
 further or planning.
 
-**➡️ gllvmTMB → Codex 2026-07-19 — the 0.6-finishing core arc moves to Codex (SAME repo, live toolchain).**
-Codex continues gllvmTMB (sequential — one tool at a time per repo) to finish 0.6; confirm the exact core from
-`ROADMAP.md` + the maintainer. PARKED (NOT this arc): CI-11 cross-family (CLOSED, human-gated merge/register +
-Ayumi pm), multinom/tier-2a (in-flight build). profile-coverage DONE (WITHHELD, `9476cbe4`). Codex handover +
-lane map: `docs/dev-log/handover/2026-07-19-codex-handover.md`.
+## Live Phase Snapshot — 2026-07-25
+
+- **Multi-lane split:** do not assume one active writer. The Claude
+  release/profile lanes and the Codex-owned lanes are separately fenced. **Codex
+  is live on the EVA / VA / JJ family** (`design90`–`design98` worktrees) and owns
+  the eta-simulation lane at `/private/tmp/gllvmtmb-design100-progress-oracle`.
+  Do not edit, run, claim, or absorb any Codex lane from Claude.
+- **Current state:** Design-103 direct-GH mechanism diagnosis is privately
+  closed `TECHNICAL_PARTIAL`; it produced no package/public claim. The
+  release/0.6 and profile/Tier-2a states must be re-derived from their named
+  handovers before any edit.
+- **START HERE:**
+  `docs/dev-log/handover/2026-07-25-active-lane-split.md`, then the
+  target-specific handover it names.
+
+The handoff narrative below is **historical** and must not override this
+snapshot, the latest handover, or `AGENTS.md`. In particular, the superseded
+2026-07-19 line "the 0.6-finishing core arc moves to Codex" is **no longer the
+lane map** — read the lane split above instead of treating this repository as a
+single writable lane.
 
 For the current handoff, read
 `docs/dev-log/handover/2026-07-19-claude-handover-profile-cert-v3.md` (Claude→Claude, 2026-07-19;

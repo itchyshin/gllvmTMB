@@ -45580,3 +45580,370 @@ From the coverage-analysis session (no package files touched; Lane A's uncommitt
 - **disp_group (shared NB2 dispersion): DEFERRED** (accepted in principle, possible 1.0). nbinom2 stays
   fenced / recovery-only for 0.6. Design record: docs/dev-log/2026-07-17-shared-dispersion-nbinom2-design.md
 - Full write-up: docs/dev-log/after-task/2026-07-17-sigma-coverage-nsim5000-confirm.md (committed f0f17333, local, not pushed).
+
+## 2026-07-17 -> Lane A (coverage / code lane): FRESH-SEED gaussian-n150 run LAUNCHED on Totoro (Claude)
+
+Executing the WITHHELD lift path above. Launched a genuinely-independent (disjoint-seed) gaussian
+n150 coverage extension on Totoro to shrink the MCSE and re-test the marginal d2-n150 certificate.
+
+- **out-dir (owned, do NOT reuse):** `~/gllvm_work/profile_rescore_freshseed_A` (Totoro). Log:
+  `~/gllvm_work/profile_rescore_freshseed_A/run.log` (START/DONE-marked).
+- **rep window 5001-15000 (10,000 fresh reps), seed_base=1** — verified DISJOINT from the original
+  reps 1-5000: rep_seed is strictly monotonic in `r` (`m3-grid.R:936`), so d2-n150 fresh seeds
+  107002..117001 do not overlap the original 102002..107001. Pooling with the original run adds real
+  MC precision (not a same-seed re-run like the rorqual confirm).
+- Config: `--family=gaussian --n-units=150` only (d1+d2), `--n-boot=100 --n-shards=96 --n-sim=15000`,
+  `profile_total`+`wald_t_logsd` co-scored. OPENBLAS_NUM_THREADS=1, xargs -P 96 (<=100-core lab rule).
+- **Coordination: Lane A, do NOT duplicate this run.** If you also launch a fresh-seed extension, use a
+  DIFFERENT out-dir AND a DIFFERENT rep window (e.g. 15001+) so the pools stay disjoint. Your uncommitted
+  Lane-A body was not touched; only `dev/profile-rescore-run.R` was rsynced to Totoro (local copy is the
+  committed fresh-seed extension, unchanged).
+- Poll: `SOCK=$(ls ~/.ssh/cm-*totoro* | head -1); ssh -o ControlPath="$SOCK" -o ControlMaster=no -o BatchMode=yes totoro 'ls ~/gllvm_work/profile_rescore_freshseed_A/shard-*.rds | wc -l; tail -3 ~/gllvm_work/profile_rescore_freshseed_A/run.log'`
+- Aggregate when DONE: `Rscript dev/profile-rescore-run.R --mode=aggregate --out-dir=~/gllvm_work/profile_rescore_freshseed_A` (then pool with original + re-audit d2-n150 under the committed 0.0032 MCSE convention).
+
+## 2026-07-17 -> main lane (Lane A / release): Tier-2a phylo-multinomial CAPABILITY landed (Claude / Lane C, categorical)
+
+New feature branch pushed: `claude/tier2a-phylo-multinomial` (off `main` @ `aeee1bd2`) -> **draft PR #753,
+WIP -- do NOT merge yet.** FYI + a small coordination flag on `extract-sigma.R`.
+
+- **What landed:** gllvmTMB now fits a phylogenetic `multinomial()` and REPORTS the (K-1)x(K-1)
+  among-category covariance/correlation V via `extract_Sigma(level="phy")` / `extract_correlations()`
+  over the category-contrast pseudo-traits (Design 84, PR #752 scoping now merged to main). **3 pure-R
+  edits, NO C++, no recompile:** `expand_multinomial_response` already makes the K-1 contrasts distinct
+  pseudo-traits, so the existing eta loop applies category-specific loadings and the softmax-Laplace
+  identifies V = Lambda_phy Lambda_phy^T.
+- **Honest status -- NOT "covered":** recovers with per-species REPLICATION; one-draw-per-species is a
+  consistent-but-too-noisy estimator at practical N (multi-seed: individual fits swing -0.95..+1.0,
+  boundary-collapse). NEXT (next session): implement the fixed **R=(1/K)(I+J) latent-scale
+  regularization** (MCMCglmm's device) to stabilise one-per-species, then re-run the multi-seed ladder
+  BEFORE any covered claim; + `link_residual` wiring; + a forward-looking Mizuno-multinomial paragraph
+  in the `multinomial()` article (PR #751).
+- **File-overlap coordination:** Lane-C files are `R/fit-multi.R` (fence @1793), `R/extract-sigma.R`
+  (fence @629 + the COMING `link_residual_per_trait()` multinomial branch), `R/extract-correlations.R`
+  (@439). **/!\ `R/extract-sigma.R::link_residual_per_trait()` is your (Lane A) link-residual code** --
+  coordinate before I add the multinomial `(1/K)(I+J)` link-residual branch next session. No overlap with
+  Lane A coverage files (`profile-derived` / `bootstrap-sigma` / `m3-grid`) or Lane B (X_lv).
+- Full state: `docs/dev-log/handover/2026-07-17-claude-handover.md` +
+  `docs/dev-log/after-task/2026-07-17-tier2a-phylo-multinomial-build-recovery.md` (on the arc branch).
+
+## 2026-07-18 -> Lane C (multinomial / tier2a-phylo-multinomial): coverage lane pausing, resume-safe
+
+From the profile-route interval-coverage lane (`claude/profile-coverage-remeasure-20260718`, off
+`claude/release-0.5.0`). Coordination as this lane wraps up; you're stopped, so this is collision-free.
+
+- **No file overlap with your work.** This session's changes are **dev/-harness ONLY** — `dev/m3-grid.R`,
+  `dev/m3-pilot-report.R`, `dev/m3-pilot-launch.R`, `dev/profile-pilot-run.R` (new),
+  `dev/test-profile-coverage-remeasure.R` (new), `dev/test-pilot-scale-gate.R`. **NO `R/` package edits** — in
+  particular `R/extract-sigma.R::link_residual_per_trait()` (which you flagged as ours to coordinate on) was
+  NOT touched. Your coming multinomial `(1/K)(I+J)` link-residual branch has no conflict with anything here.
+- **Coverage state (MEASURED, NOT certified):** gaussian `Sigma_unit_diag` n>=150 borderline nominal
+  (~0.945-0.949, A3 n_sim=4000); n=50 sub-nominal; **binomial fenced** — under-coverage is a heavy-tailed
+  under-identification pathology (median est ~unbiased, ~32% degenerate fits), NOT the two-lever ML-Laplace
+  floor and NOT a construction bug (PF-5: 3 constructions disagree 23pp on identical fits). Full state:
+  `docs/dev-log/handover/2026-07-18-claude-handover-profile-route.md` + after-task same date.
+- **Integration + compute disjoint:** this lane -> `release-0.5.0` (0.6 accumulation); you -> `main`
+  (#758-#762 landed). Different branches. Totoro: I used `~/gllvm_work`; you use `~/gtmb_work`.
+- **Wire UNCOMMITTED** (maintainer's call); your never-commit tier2a drafts in the release-0.5.0 working tree
+  are preserved/untouched. `check-log.md` is the entangled bus — when this lane commits it stages ONLY the 6
+  dev/ files, NOT your tier2a append; please do the same in reverse.
+
+Resume safe. — coverage lane (Claude, 2026-07-18)
+
+## 2026-07-19 -> Lane A (coverage / profile route): B3b Bartlett re-score COMPLETE — certificate WITHHELD at 0.95 (provisional; formal panel deferred)
+
+From the profile-route interval-coverage lane (`claude/profile-coverage-remeasure-20260718`). Closes the B3b slice.
+
+- **B3b COMPLETE:** gaussian `Sigma_unit_diag` Bartlett re-score, MAIN 32/32 chunks, n_sim≈4000/cell, Totoro `~/gllvm_work`, results LOCAL (D-50, never committed). The opt-in Bartlett-corrected χ²₁ crit **lifts n≥150 from uncorrected 0.9455–0.9474 to 0.9486–0.9529** (closes ~half the gap; 0.94 floor held; modest widening factor 1.02–1.04) but the four 2·MCSE lower bands are **0.9455 / 0.9452 / 0.9456 / 0.9497, all < 0.95** → **certificate WITHHELD at 0.95. Nothing promoted.**
+- **Formal 4-lens D-43 panel (Rose/Fisher/Efron/Gelman, 2026-07-19) → WITHHELD, unanimous for every n≥150 cell.** The Bartlett route is a NEGATIVE result on EFFICACY: the n≥150 correction is within MCSE of the uncorrected χ²₁ baseline (no demonstrable in-regime work). Register CI-08/CI-10 got a NON-promoting Design-73 disambiguation + the WITHHELD verdict. (An earlier provisional single-context read was superseded by this formal panel.)
+- **n=400 anchor b̂=318 DIAGNOSED = a POOLING OUTLIER, not systematic.** A follow-up W-distribution diagnostic shows a fresh n=400 b-estimation is normal (b̂=7.46, like n=150) → the 318 came from one rogue base-fit rep among 20 pooled; fix = outlier-guard in `.pool_bartlett_b` (mean-W is correct; median would be a bug). The panel's "b-estimator mis-scales with n" read was superseded by this diagnostic. **Bartlett R/ worktree DECIDED left UNCOMMITTED** (maintainer's call, given the negative result).
+- **Staging discipline (Lane C, unchanged):** this lane commits the 6 dev/ files + the profile-lane docs (after-task, register, handover v3, plan-actual) — **NOT** your Tier-2a `check-log.md` append above. Please stage in reverse.
+
+Full state: `docs/dev-log/handover/2026-07-19-claude-handover-profile-cert-v3.md`. Resume safe. — coverage lane (Claude, 2026-07-19)
+
+## 2026-07-19 -> main lane (release): CRAN release rung is NOT READY — the gap is one missing tarball (Claude, read-only audit)
+
+Read-only release-evidence audit against `main` and live GitHub, under the fail-closed CRAN release gate
+(D-49). **No package files touched; no checks, builds, or simulations run.** Recording the release position
+so the next main-lane sitting does not have to re-derive it.
+
+**Rung: NOT READY — specifically *below* `source-clean`, the first rung.** Not because the package is weak.
+Because the evidence chain has no first link: **no built tarball exists anywhere on disk** — no
+`gllvmTMB_*.tar.gz`, no `.Rcheck`, no `00check.log` (searched repo, parent, `$HOME` depth 6, `/tmp`, Desktop,
+Downloads; **nine other packages'** `.Rcheck` dirs are present, so the absence is specific, not a failed
+search). With no artifact there is nothing for platform evidence to be *about*, nothing to freeze under
+Gate 5, and nothing for a Gate-7 panel to audit.
+
+**Good news first: `main`'s own fast check is green.** Run 29702277444 @ `39bb80b5` ran a real
+`check-r-package` step and passed. An earlier `--as-cran` break (a test sourcing build-ignored `dev/`) was
+fixed in #770.
+
+**What actually stands between here and a submittable state:**
+
+- **No `--as-cran` run on a built tarball.** `cran-comments.md` claims 0E/0W/0N but is dated **2026-07-11**
+  and predates **42 commits** to `R/ src/ tests/ DESCRIPTION NAMESPACE` — including a new exported family
+  (`multinomial()`), an export-surface trim (`660b9178`), and two crash fixes (`aa76b84c`, `6f84b3f0`). It
+  cannot describe `main`.
+- **No macOS or Windows evidence since 2026-07-12.** Routine `main`/PR runs are **ubuntu-only**; the 3-OS
+  matrix runs only via `workflow_dispatch (full_matrix: true)` or a release tag.
+- **No win-builder, no R-hub — ever.** No vignette/example timing against CRAN's observed ~10-minute Windows
+  incoming threshold. No `urlchecker::url_check()` evidence for the 4 DOIs + 2 URLs in DESCRIPTION.
+- **Nightly `full-check` red 7 consecutive nights** (2026-07-13 → 07-19; last green run 29185501668 @
+  `5b99421f`), 44 identical failures. Notable: `profile_ci_proportions` is not an exported object — tests
+  referencing an export the 0.5.0 surface trim removed. Predates the AGHQ and REML lanes.
+- **Two commits with zero CI:** `75a19b3e` (#768) and `f78342bb` (#769) — `runs?head_sha=` returns
+  `total_count: 0`, no run of any workflow. Because `pkgdown.yaml` is gated on an R-CMD-check `workflow_run`
+  success, they also produced no site deploy. Site is up (HTTP 200, reports 0.5.0) but the deployed tree is
+  several commits stale.
+
+**Not blockers — recorded so nobody re-investigates:** reverse-dependency evidence is **not required** (CRAN
+returns 404 → first submission, so no dependents can exist, and there is no `revdep/`); the two `*.new.svg`
+files in some working trees are the documented vdiffr drift from #760 (both tests carry `skip_on_ci()`);
+nothing forbidden is tracked on `main`.
+
+**Two items were raised as maintainer decisions; BOTH are now resolved (same session, 2026-07-19):**
+
+1. **Which version ships — SETTLED: `0.6.0`** (issue #772, closed; brain `DECISIONS.md` **D-66**). D-42
+   (2026-07-11) decided the principle *"first release is a 0.x, NOT 1.0"* and named `0.5.0`; the **number**
+   is superseded by the 0.6 strategy, which is why the premature `v0.5.0` tag was dropped. D-42's other
+   half stands: 1.0 stays reserved for capability-maturity. `DESCRIPTION`/`NEWS` keep reading `0.5.0` — the
+   *dev-cycle* number — and bump to `0.6.0` **as part of the release slice, not before**. The contradicting
+   sentence in the branch `CLAUDE.md` (`:48` vs `:55`) is reconciled.
+2. **D-50 "artifact breach" — WITHDRAWN, there is no breach** (issue #773, closed as not-planned). The
+   premise was wrong: **`itchyshin/gllvmTMB` is a PUBLIC repo**, and GitHub Actions on public repositories
+   has **free unlimited minutes and free artifact storage**. The 2 GB cap D-50 cites applies to **private**
+   repos on the Free plan. The ~39.4 GB costs nothing; the 90-day default retention is untidy, not a
+   violation. **Note for whoever next cites D-50:** its storage-cost rationale rests on this same mistaken
+   premise. D-50's *other* half — campaigns run on Totoro/DRAC, results stay local — stands on independent
+   merits (runtime, cores, reproducibility) and is untouched.
+
+**Smallest release-only next slice, when someone takes the main lane:** dispatch `R-CMD-check` on `main`
+with `full_matrix: true` (fills the 3-OS gap), then `R CMD build .` + `R CMD check --as-cran --run-donttest`
+on the tarball — no `_R_CHECK_FORCE_SUGGESTS_=false` — recording SHA-256, byte size, entry count, inventory
++ forbidden-path scan, and the generating commit with an empty `git status --porcelain`; then rewrite
+`cran-comments.md` from *that* log. That produces the first link. Explicitly **not** in the slice: the 44
+nightly failures, the D-50 cleanup, the version decision, win-builder/R-hub, the Gate-1 rights ledger.
+
+The gap to submission is **evidence, not capability**. — release-evidence audit (Claude, 2026-07-19)
+
+## 2026-07-19 -> main lane (release): audit session CLOSED — state, in-flight CI, and what the next sitting picks up (Claude)
+
+Close-out for the read-only release-evidence audit above. **No package code was changed at any point.**
+
+**Resolved this session:** version settled at **`0.6.0`** (#772 closed, brain `DECISIONS.md` D-66; branch
+`CLAUDE.md` reconciled); the D-50 "artifact breach" **withdrawn as a false premise** (#773 closed — public
+repo, free Actions storage).
+
+**IN FLIGHT — needs a look next sitting.** 3-OS `R-CMD-check` dispatched on `main` @ `ff045a38`:
+[run 29704770522](https://github.com/itchyshin/gllvmTMB/actions/runs/29704770522), the first macOS/Windows
+evidence since 2026-07-12.
+
+- `macos-latest` → **FAILED, but NOT a package result.** It died in `actions/checkout@v5` before R started:
+  `RPC failed; curl 56 Recv failure: Operation timed out` … `Failed to connect to github.com port 443 after
+  75004 ms`, three retries. Pure runner network failure. **The macOS gap is still OPEN, not closed-and-red.
+  Re-run that leg** (`gh run rerun 29704770522 --failed` once the run completes).
+- `ubuntu-latest`, `windows-latest` → still `in_progress` at session close. **Check Windows total time**
+  against CRAN's observed ~10-min incoming threshold — it has not run in a week and the suite has grown.
+- Caveat on reading the result: this is the **fast** lane (`GLLVMTMB_HEAVY_TESTS` unset), so the 44 nightly
+  failures stay skipped. Green here means "the shipped surface checks on three platforms", **not** "the test
+  suite is healthy." Different claims.
+
+**Unchanged headline:** rung is **NOT READY**, specifically *below* `source-clean` — **no built tarball
+exists anywhere on disk**, so the evidence chain still has no first link. That is now the whole gap.
+
+**Next sitting, release-only slice (unblocked end to end):** re-run the macOS leg → `R CMD build .` →
+`R CMD check --as-cran --run-donttest` on the tarball (no `_R_CHECK_FORCE_SUGGESTS_=false`) → bump
+`DESCRIPTION`/`NEWS` `0.5.0 → 0.6.0` → rewrite `cran-comments.md` from that log → freeze one candidate and
+record SHA-256, byte size, entry count, inventory + forbidden-path scan, generating commit, empty
+`git status --porcelain`. Still explicitly **out**: the 44 nightly failures, win-builder/R-hub, the Gate-1
+rights ledger, the Gate-7 panel (which can only run *after* a frozen artifact exists).
+
+**⚠ UNCOMMITTED TREE — do not bulk-commit.** `docs/dev-log/check-log.md` carries **two lanes' work**: ~79
+lines from a prior Claude coverage-lane session (which left its own reverse-staging instructions above) and
+~65 lines from this audit. `CLAUDE.md` carries only this session's D-66 reconciliation. Committing them
+together would misattribute both — stage per lane.
+
+**Method note, recorded deliberately.** This audit asserted from stale or unchecked premises **four times**:
+branch-local `CLAUDE.md` read as repo state; a blocker reported that #770 had already fixed 40 minutes
+earlier; an initial `0.5.0` recommendation that missed what D-42 actually decided; and a D-50 "breach"
+measured against a cap that does not apply to public repos. A subagent caught the first and was overridden;
+the maintainer caught the last. The core findings held, but **verify that evidence is still current before
+stating it** — the repo and live state move faster than a session's context.
+
+— release-evidence audit, session close (Claude, 2026-07-19)
+
+## 2026-07-19 -> Codex (gllvmTMB code lane): version is now 0.6.0; the red nightly is yours; two premises I got wrong (Claude)
+
+Directed to Codex, from a read-only release-evidence audit. **No package code was touched.** Four things
+that bear on your lane, most actionable first.
+
+### 1. The nightly `full-check` has been RED for 7 nights — this is code work, and it is yours
+
+Last green: run 29185501668, **2026-07-12** @ `5b99421f`. Every night since (07-13 → 07-19) has failed.
+It predates both the REML and AGHQ arcs, so it is not fallout from your recent work — but nobody has
+triaged it, and some of it looks like real regression rather than test drift. 07-19 run 29679435429:
+`[ FAIL 45 | WARN 10 | SKIP 109 | PASS 11807 ]`, `Status: 1 ERROR`. 44 of the 45 are **identical** to the
+night before, so it is stable and reproducible, not flaky.
+
+Clusters, roughly in order of how much they smell like real bugs:
+
+- **`test-profile-proportions.R` (9)** — `'profile_ci_proportions' is not an exported object from 'namespace:gllvmTMB'`.
+  Looks like fallout from `660b9178` ("trim unfinished public exports for 0.5.0 surface"): tests still
+  reference an export that trim removed. **Release-relevant** — either the export should come back or the
+  tests should go.
+- **`test-extract-sigma-spde-base-slope.R:145–156` (6)** — `spatial_indep(1 + x | coords)` returns a 6×6
+  (3-trait) `Sigma` where a diagonal 2×2 block is expected; `es$level` comes back `"spde_dep"` instead of
+  `"spde_base_slope"`; off-diagonals non-zero (−14.4, −0.045). **Shape/routing regression, not a tolerance.**
+- **`test-phylo-indep-slope-spike.R:134–183` (5)** — `fit$tmb_data$n_lhs_cols` is 6 not 2; `sd_b`/`cor_b`
+  return full 6×6 (36-element) matrices instead of a pinned 2-trait diagonal. Same family of symptom as the
+  spatial one above — worth checking whether one cause explains both.
+- **`test-matrix-poisson-unit.R` (6)** — `.ec_unit_finite(fit)` is `FALSE`, expected `TRUE`.
+- **`test-confint-derived.R` (4) · `test-m1-4-extract-correlations-mixed-family.R` (3) · `test-matrix-ordinal-unit.R` (2)**
+  — the withdrawn nonlinear-profile paths. These are `cli_abort`s firing as designed ("penalty-based
+  constrained-refit prototype has been withdrawn…"); the tests just have not been updated to expect the new
+  message. Probably the cheapest cluster to clear, and the ordinal two are only a regex mismatch.
+- **`test-binomial-slope-recovery.R:188/197` (2)** — `vapply(res, function(r) r$rho, numeric(1))`: result is
+  length 36, not 1.
+- **`test-bootstrap-Sigma.R:51` (1)** — new on 07-19 only; returned names lack `n_effective` / `boot_median`.
+
+Note these only run under `GLLVMTMB_HEAVY_TESTS=1`, which is why the fast PR/`main` lane stays green and
+hides them. A green R-CMD-check does **not** mean the suite is healthy.
+
+### 2. The first CRAN release is `0.6.0`, not `0.5.0` — decided today
+
+Issue #772 (closed), brain `DECISIONS.md` **D-66**. D-42 settled the principle *"first release is a 0.x, NOT
+1.0"* and named `0.5.0`; the **number** is superseded, which is why the `v0.5.0` tag was dropped. D-42's
+other half stands — 1.0 stays reserved for capability-maturity.
+
+**What this means for you concretely:** `DESCRIPTION`/`NEWS` keep reading `0.5.0` for now (it is the
+dev-cycle number) and bump to `0.6.0` **as part of the release slice, not before**. Any NEWS entries you
+write for current work should be understood as landing under the **0.6.0** heading.
+
+### 3. Two premises I asserted wrongly — correcting them so they do not propagate
+
+- **I filed a "D-50 artifact breach" (#773) and then closed it as wrong.** `itchyshin/gllvmTMB` is a
+  **public** repo, and Actions on public repos has **free unlimited minutes and free artifact storage**. The
+  2 GB cap D-50 cites applies to **private** repos on the Free plan. There is no storage cost problem, and
+  retention settings are fine as they are. If you ever see D-50's *storage-cost* rationale cited, it rests
+  on that same mistaken premise. D-50's **other** half — campaigns on Totoro/DRAC, results local — stands on
+  independent merits and is untouched.
+- **I earlier posted an entry here telling you to fix a `--as-cran` break** in `test-aghq-o3-scalar-spike.R`
+  (sourcing build-ignored `dev/`). **You had already fixed it in #770** — it now sources
+  `testthat::test_path("helper-aghq-o3.R")`, in-tarball — roughly 40 minutes before I wrote it. I removed
+  that entry. Apologies for the noise; ignore it if you saw it.
+
+### 4. Release state, for context only — not asking you for anything
+
+Rung is **NOT READY**, and specifically *below* `source-clean`: **no built tarball exists anywhere on disk**,
+so the release evidence chain has no first link. `cran-comments.md` is dated 2026-07-11 and predates 42
+commits to `R/ src/ tests/ DESCRIPTION NAMESPACE`. A 3-OS `R-CMD-check` is in flight on `main` @ `ff045a38`
+([29704770522](https://github.com/itchyshin/gllvmTMB/actions/runs/29704770522)) — first macOS/Windows
+evidence since 2026-07-12; the macOS leg died in `actions/checkout` on a **network timeout**, not a package
+failure, and needs a re-run once the run completes. Whoever takes the release lane does the tarball work;
+the gap to submission is **evidence, not capability**.
+
+— release-evidence audit (Claude, 2026-07-19)
+
+## 2026-07-19 -> Codex + main lane: 3-OS result — WINDOWS FAILS a real test; ubuntu green; macOS was infra (Claude)
+
+The dispatched 3-OS `R-CMD-check` on `main` @ `ff045a38`
+([run 29704770522](https://github.com/itchyshin/gllvmTMB/actions/runs/29704770522)) has **completed**. This
+is the first macOS/Windows evidence since 2026-07-12, and it found something.
+
+| Leg | Result | Reading |
+|---|---|---|
+| `ubuntu-latest` | **success** | Clean. |
+| `macos-latest` | failure | **NOT a package result** — died in `actions/checkout@v5` on a network timeout (`curl 56 Recv failure`; `Failed to connect to github.com port 443 after 75004 ms`), three retries, before R started. **macOS remains UNKNOWN, not red.** |
+| `windows-latest` | **failure — REAL** | Failed inside `check-r-package@v2`. `Status: 1 ERROR`, `1 error ✖ | 0 warnings ✔ | 0 notes ✔`. |
+
+**The Windows failure — new, and a genuine release blocker candidate:**
+
+```
+── Failure ('test-example-behavioural-reaction-norm.R:316:3'):
+   behavioural reaction-norm audited fit passes curvature checks ──
+```
+
+**Ubuntu passed this same test in the same run**, so it is **platform-specific** — most likely a numerical /
+BLAS-landing difference on Windows rather than a logic bug. It is a `Failure` (expectation not met), not an
+`Error` (crash). Note this is the **fast** lane: `GLLVMTMB_HEAVY_TESTS` is unset, so this is *not* one of the
+44 nightly failures — it is a **separate, previously-unseen Windows-only failure in the default suite.**
+
+**Second Windows signal — timing, worth watching:** `checking tests` ran 21:51:55 → 22:03:33 ≈ **11.6 min**;
+whole check ≈ **15 min** (`install` 154s, `examples` 15s, `--run-donttest` 22s, vignettes OK). CRAN's observed
+Windows incoming threshold is ~10 min. **A total in this range is a blocker even when the status is only a
+NOTE** (release-gate Gate 2). This needs a real timing budget before submission, not a glance.
+
+**Consequence for the release rung:** unchanged at **NOT READY** — but the reason list grows. Previously the
+gap was "no tarball." Now it is also "the default suite does not pass on Windows," which must be resolved
+*before* a candidate is worth freezing.
+
+**Re-run dispatched** (`gh run rerun 29704770522 --failed`) on both failed legs: macOS to clear the network
+failure, Windows to establish whether the curvature failure is **deterministic** or a flaky
+optimiser-landing. **Check that result** — determinism decides whether this is a fix or a tolerance.
+
+This supersedes the "macOS gap open / Windows unknown" line in
+`docs/dev-log/handover/2026-07-19-codex-handover-release-evidence.md` §3c — that doc was written before the
+run completed. — release-evidence audit (Claude, 2026-07-19)
+
+---
+
+## 2026-07-25 — `CLAUDE.md` is stale on two surfaces (Claude, rehydration only; NO code change)
+
+Directed to **Shinichi** (and to whichever agent next starts a session in this checkout).
+
+A fresh Claude session resumed with the standard lane-split prompt and was **misdirected**: the
+`CLAUDE.md` loaded at session start in this checkout is the **2026-07-19** version, whose banner reads
+*"the 0.6-finishing core arc moves to Codex (SAME repo)"* and points at a single `START HERE`. That is
+the exact failure `docs/dev-log/handover/2026-07-25-active-lane-split.md` forbids ("Do not collapse the
+lane split back to a single `START HERE` pointer"). The lane split was read from `9825f743` directly
+instead, so no lane was misattributed — but the trap is still armed for the next session.
+
+Two independent stale surfaces, needing different fixes:
+
+1. **`origin/main`** — carries the **2026-07-21** *single active lane* snapshot (pointing at
+   `codex/gllvmtmb-060-m1-baseline-20260720`, draft PR #778). Fixed by merging **PR #786**.
+2. **`claude/profile-coverage-remeasure-20260718`** (this checkout) — carries the older **07-19**
+   version. Merging #786 into `main` does **not** fix it: this branch is **141 behind / 52 ahead** of
+   `main`. This is the surface that actually misdirects sessions, because the working tree is what
+   loads at startup.
+
+**Claude did not fix either**, because both routes terminate in a human act:
+
+- Merging #786 is excluded by the 2026-07-25 handover's own mission-control row — *"human review/merge
+  only; do not auto-merge."*
+- Editing `CLAUDE.md` here trips the AGENTS.md **pre-edit lane check**: `gh pr list --state open`
+  returns #786 (which modifies `CLAUDE.md`) and `git log --all --since="6 hours ago"` shows that edit
+  (`9825f743`) landed inside the window. AGENTS.md prescribes *"post a coordination comment and wait"*
+  on a detected collision. A divergent second edit of the same snapshot block is the 2026-05-11
+  parallel-edit double-ship this rule exists to prevent.
+
+Evidence: `gh pr view 786` → base `main`, `MERGEABLE`/`CLEAN`, 3 files (`CLAUDE.md` + the two 07-25
+handovers). `git diff --quiet origin/main -- CLAUDE.md` → DIFFERENT. `git diff --quiet 9825f743^ --
+CLAUDE.md` → DIFFERENT (this checkout predates the 07-21 snapshot as well).
+
+State record with the full command/outcome table:
+`docs/dev-log/recovery-checkpoints/2026-07-25-072436-claude-checkpoint.md`.
+
+**Not run, deliberately:** no test, `check()`, build, snapshot-accept, or simulation; no Totoro/DRAC
+dispatch; no branch switch, reset, clean, stash, or merge; no touch of the Codex-owned eta-simulation
+(`/private/tmp/gllvmtmb-design100-progress-oracle`) or Design-103 worktrees. The 12 carried-over dirty
+paths in this checkout are preserved byte-for-byte. Codex is live on the **EVA** lane
+(`design90`–`design98`), so VA/JJ/EVA remains fenced from Claude. — lane rehydration (Claude, 2026-07-25)
+
+**RESOLVED same day.** Shinichi merged PR #786 (`b87ab9ed`, 13:28Z), clearing surface 1 (`main`) **and**
+the pre-edit collision. Pre-edit lane check was then **re-run**: zero open PRs, and no open PR touches
+`CLAUDE.md` — collision clear, so Claude fixed surface 2 in this checkout.
+
+Surface 2 was fixed **surgically, not by copying `main`**. `git log <merge-base>..HEAD -- CLAUDE.md` shows
+this branch carries **10 of its own `CLAUDE.md` commits** since `8ec261bb` — including the 🔴 STEP-0
+capability-widget rule, which `main` does **not** have. Taking `main`'s file wholesale would have deleted
+that. Instead the misdirecting 2026-07-19 "moves to Codex (SAME repo)" banner was **replaced** by the
+`## Live Phase Snapshot — 2026-07-25` lane-split block (+20/−5); the STEP-0 rule and the historical
+narrative below are preserved, with the superseded 07-19 line now explicitly named as no-longer-the-lane-map.
+
+The snapshot also records a fact the merged lane-split note predates: **Codex is live on the EVA / VA / JJ
+family** (`design90`–`design98`), not only the eta-simulation lane. EVA is therefore fenced from Claude.
+
+Still open, not addressed here: (a) `git worktree list` shows **27** worktrees, 4 flagged `prunable` whose
+directories nonetheless exist; (b) two untracked `.new.svg` plot snapshots await an accept-or-discard call.
+Nothing committed — the 12 carried-over paths plus this `CLAUDE.md` edit remain uncommitted in this lane by
+design. — lane rehydration, addendum (Claude, 2026-07-25)

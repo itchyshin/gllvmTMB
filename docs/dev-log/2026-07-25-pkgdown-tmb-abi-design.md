@@ -194,3 +194,69 @@ normal path. Neither claim is made before its evidence exists.
   blocks legitimate deploys from `main` or leaves the hazard open. The dispatch run
   verifies the `workflow_dispatch` arm; the post-merge run verifies the `workflow_run`
   arm. Both arms are exercised before the change is called done.
+
+---
+
+## 7. Outcome (appended after implementation)
+
+**Result: the docs build is green on the branch** (run `30162092802`): `Build site`
+success, artifact uploaded, and the `deploy` job **skipped** as designed.
+
+Five runs were needed. The design in Sections 1–6 was right about the symptom and
+wrong about two things; both are recorded here rather than quietly fixed.
+
+### 7.1 The Unit-2 rationale was wrong
+
+Section 3 claimed that dispatching pkgdown on a branch would build **and publish**
+that branch to the live site, and justified the deploy guard on that basis. **That
+was false.** The `github-pages` environment already carries a protection rule
+restricting deployment to the default branch; run `30160710105` was rejected with
+
+```
+Branch "claude/pkgdown-tmb-abi-20260725" is not allowed to deploy to
+github-pages due to environment protection rules.
+```
+
+The protection rules were never checked before the claim was made.
+
+The real defect is the mirror image, and it matters more: because the single job
+declared `environment: github-pages`, that rule failed the job **before any step
+ran** — so the docs build could not be exercised anywhere except `main`. That is
+the mechanism by which a broken site reached `main` twice. Splitting build from
+deploy is therefore still correct, but as an *enabling* change, not a safety one.
+
+### 7.2 The failure was a chain, and the last link was the cache
+
+Three packages failed in sequence — `glmmTMB` (TMB 1.9.21 vs 1.9.23), then
+`stringfish`, then `qs2` (both unresolved Intel TBB symbols). Per-package source
+rebuilds were abandoned after the third as whack-a-mole.
+
+The actual cause, found by reading the namespace chain instead of guessing: the
+failing article is `pre-fit-response-screening.Rmd`, which references `mirt` **only
+as inline prose** — `` `mirt::itemstats()` ``. pkgdown/downlit resolves that
+autolink by loading the namespace: `mirt` → `SimDesign` → `qs2` → `stringfish`. A
+backticked mention in a sentence was pulling in a broken toolchain.
+
+Narrowing the install to hard dependencies plus an explicitly enumerated list was
+necessary but **not sufficient**: the action caches the whole R library, so run
+`30161701084` restored a library still physically containing `mirt`, `qs2` and
+`stringfish` and failed identically. **Narrowing a dependency set requires a
+`cache-version` bump to take effect** — that is the durable lesson.
+
+### 7.3 Verification, as run
+
+| Claim | Evidence |
+|---|---|
+| Deploy is guarded | Run `30162092802`: `deploy` **skipped** on a non-main branch |
+| Docs build off `main` | Same run: `build` completed green — impossible before the split |
+| The dependency narrowing holds | Same run: `Build site` success with no `dyn.load` failure |
+| The deploy arm still works | **NOT YET PROVEN** — only a post-merge `workflow_run` from `main` exercises it |
+
+The last row is deliberately open. The `workflow_dispatch` arm of the branch guard
+is verified; the `workflow_run` arm is not, and will not be until this lands on
+`main`. No claim is made that it is.
+
+### 7.4 Not addressed
+
+`mirt` remains in `Suggests` and the prose reference is untouched — the article is
+unchanged. The excluded packages fail loudly here if an article ever needs one.

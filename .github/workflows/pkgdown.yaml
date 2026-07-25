@@ -25,14 +25,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  pkgdown:
+  # Build and deploy are separate jobs on purpose.
+  #
+  # The `github-pages` environment carries a protection rule restricting
+  # deployments to the default branch. When ONE job both built and deployed, that
+  # rule rejected the whole job before a single step ran, with:
+  #   Branch "<x>" is not allowed to deploy to github-pages due to environment
+  #   protection rules.
+  # So a pkgdown change could not be exercised anywhere except main — the docs
+  # build was unverifiable before merge, which is how a broken site reached main
+  # twice (fe8388d9, b87ab9ed).
+  #
+  # Splitting them means the build runs on any branch (no environment, nothing to
+  # reject) while only deploy touches the environment, and only from main. The
+  # artifact is the interface between them.
+  build:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - uses: actions/checkout@v5
@@ -104,17 +114,26 @@ jobs:
           # `docs/` hosts design + dev-log scaffolding, not the rendered site.
           path: pkgdown-site
 
+  deploy:
+    needs: build
+    # Publish only from the default branch. The `github-pages` environment
+    # already enforces this itself; stating it here too means a non-main run
+    # SKIPS this job cleanly instead of failing it on the protection rule, so a
+    # branch build reports green on what it actually did — it built the site.
+    #
+    # The two trigger shapes expose the branch differently: workflow_run gives
+    # `workflow_run.head_branch`, workflow_dispatch gives `github.ref`. A
+    # workflow_run always executes in the default-branch context, so its
+    # `github.ref` is refs/heads/main regardless; the trigger's own `branches:`
+    # filter is what actually restricts it.
+    if: ${{ github.event.workflow_run.head_branch == 'main' || github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
       - id: deployment
-        # Publish ONLY from the default branch. The job admits workflow_dispatch
-        # (see the job-level `if:`), so without this guard dispatching pkgdown on
-        # any branch would build AND publish that branch to the live public site.
-        # With it, a dispatch on a feature branch builds without deploying —
-        # which is how a docs-build fix gets verified before it is merged.
-        #
-        # Both trigger shapes expose the branch differently: workflow_run gives
-        # `workflow_run.head_branch`, workflow_dispatch gives `github.ref`. A
-        # workflow_run always executes in the default-branch context, so its
-        # `github.ref` is refs/heads/main regardless — harmless only because the
-        # trigger's own `branches:` filter already restricts it.
-        if: ${{ github.event.workflow_run.head_branch == 'main' || github.ref == 'refs/heads/main' }}
         uses: actions/deploy-pages@v4

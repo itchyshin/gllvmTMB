@@ -1,0 +1,6 @@
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 1L || file.exists(file.path(args[[1L]], "cells.tsv"))) stop("fresh target required")
+dir.create(args[[1L]], recursive = TRUE, showWarnings = FALSE)
+dir.create(file.path(args[[1L]], "records"), showWarnings = FALSE); dir.create(file.path(args[[1L]], "logs"), showWarnings = FALSE)
+grid <- expand.grid(seed = 102001:102032, n = c(24L, 80L, 240L), regime = c("near_diag", "correlated"), KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+write.table(grid, file.path(args[[1L]], "cells.tsv"), sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)

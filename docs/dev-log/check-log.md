@@ -45483,3 +45483,13 @@ multinomial Tier-2b cross-family arc is now **fully landed on `main`** — five 
 **Handover for the next multinomial lane:** `docs/dev-log/handover/2026-07-18-claude-handover.md`
 (the arc is shipped; next lane picks a depth arc — item-3 recovery certificate or calibrated cross-family
 intervals — at a discussion checkpoint). Reusable compute: Totoro `~/gtmb_work` (gllvmTMB compiled + MCMCglmm).
+
+## 2026-07-24 — Design 102 private q=2 recovery envelope (Codex)
+
+Fresh Design-102 code ran a smoke plus DRAC CPU array `50767578`: 192 immutable
+cell records (including the smoke), 2,304 retained attempts, and 2,304 healthy
+terminals. Native-objective selection yielded 768 winners, 32 in each
+method/regime/N cell. Beta and probability error improved with N, while
+rotation-invariant covariance recovery remained above the frozen threshold at
+N=240; the private terminal result is therefore not a recovery admission.
+No EVA, package path, public claim, retry, or campaign extension occurred.

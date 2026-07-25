@@ -46787,3 +46787,48 @@ are deliberately excluded from the second scan.
   only reviewed first-use functions appear on the public primary path.
 - Final rendering and pkgdown checks are recorded in
   `docs/dev-log/after-task/2026-07-22-function-map-cheatsheet.md`.
+
+## 2026-07-25 — Site x Species phylo lane: capability CANCELLED, evidence landed (Claude)
+
+Lane opened per the 2026-07-25 handover Part II §II.4; capability half cancelled
+by the maintainer mid-arc. Six branches, none merged to `main`.
+
+Commands run and exact outcomes:
+
+```
+testthat::test_file("test-phylo-tree-unused-guard.R")   20 passed, 0 failed
+devtools::test(filter = "phylo")                        245 passed, 0 failed, 102 skipped
+GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter="phylo")   2615 passed, 0 failed, 14 skipped, 1 warning
+devtools::test(filter = "unique|indep|canonical")       460 expectations, 0 failures, 70 skipped
+testthat::test_file("test-comparator-gllvm.R") binary   6 passed, 0 failed (NOT_CRAN=true)
+gh run cancel x4 ; force-cancel x2                      HTTP 500 every time
+```
+
+Consistency-audit patterns used, verbatim, with verdicts:
+
+```
+grep -c 'gllvmTMB('  vs  grep -c 'trait *= *"'   per new test file
+  -> DISCREPANCY, left open: 2 new files omit explicit trait= (14 and 7 call
+     sites). trait = "trait" is the DEFAULT (R/gllvmTMB.R:436) so they are
+     correct, and 197/1122 (18%) of existing suite call sites pass it
+     explicitly. Documented rule vs practice disagree; not papered over.
+grep -c 'traits('    per new test file   -> 0; all new call sites long-format
+new exports                              -> 0; NAMESPACE untouched
+DESCRIPTION                              -> unchanged (gllvm already in Suggests)
+user-facing prose (NEWS/README/vignettes/roxygen) -> none touched
+```
+
+Deliberately NOT run: `devtools::check()`, `pkgdown::check_pkgdown()`,
+`build_articles()` — no roxygen, NAMESPACE, DESCRIPTION, or user-facing prose
+changed, so the Rd/pkgdown surface is unaffected. `GLLVMTMB_RUN_B2_LOGIT=1` not
+set (R-2's signed-off limitation; would fail for unrelated reasons).
+
+Wedged CI runs 30158126939 / 30158115396: maintainer decision LEAVE THEM after
+six failed cancellations across both documented endpoints. Do not re-attempt.
+
+Nothing promoted: `05-testing-strategy.md:71` stays `claimed (M2 work)`; the
+validation-debt register is untouched. The `phylo_dep` wrong-tree result
+(0/20) needs a D-43 panel before any register or public claim.
+
+After-task report:
+`docs/dev-log/after-task/2026-07-25-phylo-column-cancelled-and-comparator-evidence.md`

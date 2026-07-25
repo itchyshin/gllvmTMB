@@ -3,21 +3,18 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 
-## Live Phase Snapshot — 2026-07-21
+## Live Phase Snapshot — 2026-07-25
 
-- **Single active lane:** Claude Code now owns
-  `codex/gllvmtmb-060-m1-baseline-20260720`, draft PR #778, sequentially after
-  Codex. Codex is stopped; do not open a second repo-writing lane.
-- **Current state:** P0 is complete. The M1 public-boundary repair is focused
-  green (117 pass, 0 fail, 0 warning, 11 declared heavy skips), but complete
-  local, article/pkgdown, source-package, exact-SHA platform, and fresh D-43
-  qualification remain open. M1 is **IN PROGRESS**, not release-ready.
-- **Arc-loop:** read and follow
-  `/Users/z3437171/Dropbox/Github Local/Shinichi/skills/arc-loop/SKILL.md`; the
-  approved durable kit is under `LOOP/`. Resume at the complete non-heavy gate
-  and stop at the M1-to-M2 maintainer gate.
+- **Multi-lane split:** do not assume one active writer.  The current Claude
+  release/profile lanes and the remaining Codex-owned eta-simulation lane are
+  separately fenced.  Do not edit or run the eta lane from Claude.
+- **Current state:** Design-103 direct-GH mechanism diagnosis is privately
+  closed `TECHNICAL_PARTIAL`; it produced no package/public claim.  The
+  release/0.6 and profile/Tier-2a states must be re-derived from their named
+  handovers before any edit.
 - **START HERE:**
-  `docs/dev-log/handover/2026-07-21-claude-handover.md`.
+  `docs/dev-log/handover/2026-07-25-active-lane-split.md`, then the
+  target-specific handover it names.
 
 The older handoff narrative below is historical and must not override this
 snapshot, the latest handover, or `AGENTS.md`.

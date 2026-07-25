@@ -46628,3 +46628,25 @@ Completed a private, read-only terminal audit of the two immutable G2/EVA smoke 
 The retained fields cannot discriminate an optimizer, coordinate, derivative, ridge/rank, or separation mechanism: the anchor has only final summaries, V1 has stage summaries but no complete comparable labelled state, and realised inputs are retained as digests rather than arrays. Gauss/Noether and Rose both support `HISTORICAL_MECHANISM_UNOBSERVABLE`. This retires the current private Design-86/EVA admission path; it does not diagnose cause or authorize a retry.
 
 Checks: SHA-256 rehash and manifest/result/receipt link audit -> PASS; `git diff --exit-code HEAD -- R/eva-proto.R src/gllvmTMB.cpp dev/design86-gate2-eva-runner.R dev/design86-gate2-laplace-runner.R` -> empty; forbidden-wording scan -> PASS; `git diff --check` -> PASS. No runner, input, DGP, compile, probe, rescore, V2/Gate B/smoke work, campaign, Laplace, public/API/C++ work, Gate-3/4, Totoro, DRAC, rebase, merge, push, or PR was performed.
+
+### 2026-07-23 — Design 89 upstream-reference EVA reproducer (private baseline pass)
+
+Created an isolated, source-locked CRAN `gllvm` 2.0.13 reproduction packet and
+executed exactly one unmodified upstream `method = "EVA"` fixture from
+`tests/testthat/test-fitgllvm.R` (`corWithinLV works / fitlv2ar1cy`).  Both
+upstream assertions pass; the objective and parameters are finite and
+`max(abs(gradient)) = 0.00168 < 0.05`.  The initial raw RDS/JSON reported STOP
+because its runner compared gllvm's logical `fit$convergence` field to zero.
+The raw output is preserved; locked source `R/gllvm.TMB.R:3310` and absence of
+the wrapper's non-convergence warning establish the corrected pass without a
+second fit.  This is upstream baseline evidence only, not gllvmTMB parity or a
+new admission path.
+
+Checks: private `R CMD INSTALL` -> PASS; source/binary/fixture/result SHA-256
+locks -> PASS; runner parse -> PASS; raw assertion/finite/gradient audit ->
+PASS; `git diff --exit-code HEAD -- R src` -> empty; `git diff --check` ->
+PASS.  Scope scan:
+`rg -n 'Design 89|UPSTREAM_REFERENCE_(PASS|STOP)|gllvmTMB parity|Design-86|Design 86' docs/design/89-upstream-reference-eva.md dev/design89-upstream-reference` -> boundaries only.  Public-surface scan:
+`rg -n 'Design 89|EVA' README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md _pkgdown.yml` -> no Design-89 claim. `gh pr list --state open --limit 20` could not reach GitHub DNS; no remote state was inferred.
+
+No gllvmTMB implementation, custom fixture, retry, start/seed/control/threshold change, recovery, calibration, public/API/C++ work, Totoro/DRAC, merge, push, or PR was performed.

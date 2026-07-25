@@ -1,0 +1,25 @@
+{
+  "design": "Design 89 — upstream-reference EVA reproducer",
+  "verdict": "UPSTREAM_REFERENCE_STOP",
+  "executed_at_utc": "2026-07-24 01:37:42 UTC",
+  "gllvm_version": "2.0.13",
+  "gllvm_library": "/private/tmp/design89-r-lib-y3mIZj/gllvm",
+  "r_version": "R version 4.6.0 (2026-04-24)",
+  "tmb_version": "1.9.21",
+  "fixture": "upstream test-fitgllvm.R: corWithinLV works / fitlv2ar1cy",
+  "upstream_assertions": {
+    "rho_lv": true,
+    "lvs_dimension": true
+  },
+  "diagnostics": {
+    "convergence": false,
+    "log_likelihood": -1093.6096,
+    "parameters_finite": true,
+    "gradient_finite": true,
+    "max_abs_gradient": 0.0017,
+    "warnings": [],
+    "messages": [],
+    "error": null
+  },
+  "health_rule": "source identity + upstream assertions + finite objective/parameters + convergence + finite max|gradient| <= 0.05"
+}

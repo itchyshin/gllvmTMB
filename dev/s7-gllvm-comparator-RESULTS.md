@@ -1,7 +1,7 @@
 # S7 -- gllvmTMB vs gllvm fit-level comparator: results
 
-New test file: `tests/testthat/test-gllvm-comparator.R`. Run with
-`devtools::load_all(); testthat::test_file("tests/testthat/test-gllvm-comparator.R")`
+New test file: `tests/testthat/test-comparator-gllvm.R`. Run with
+`devtools::load_all(); testthat::test_file("tests/testthat/test-comparator-gllvm.R")`
 and `devtools::test(filter = "gllvm|phylo")`. gllvm 2.0.11, R 4.6.0/4.6.1,
 this worktree (`claude/gllvm-comparator-20260725`).
 
@@ -154,7 +154,7 @@ No warnings were dropped, muffled without recording, or grep-filtered.
 
 ## Test result
 
-`testthat::test_file("tests/testthat/test-gllvm-comparator.R")`: **3 test
+`testthat::test_file("tests/testthat/test-comparator-gllvm.R")`: **3 test
 blocks, 16 expectations, 0 failures, 0 warnings, 0 errors, 0 skipped**
 (with `NOT_CRAN=true`; the file's per-test `skip_on_cran()` calls mean it
 is skipped, not failed, in a plain CRAN check run).

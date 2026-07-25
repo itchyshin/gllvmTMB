@@ -5,14 +5,25 @@
 # tests/testthat/setup.R::skip_if_not_heavy) and routine PRs stay ~12 min.
 #
 # This workflow sets GLLVMTMB_HEAVY_TESTS=1 so the heavy package tests RUN.
-# Nightly and manual dispatches are Ubuntu-only; release tags use the three-OS
+# Scheduled and manual dispatches are Ubuntu-only; release tags use the three-OS
 # matrix. This is package-regression evidence, not simulation-recovery,
 # coverage, power, or scientific-calibration evidence. Those campaigns run on
 # Totoro/DRAC and never upload GitHub Actions artifacts (D-50).
 on:
   schedule:
-    # Nightly at 06:00 UTC.
-    - cron: "0 6 * * *"
+    # WEEKLY, Mondays at 06:00 UTC — deliberately NOT nightly.
+    #
+    # The heavy suite (~190 TMB fits) takes roughly 65 minutes. Run nightly on
+    # an Ubuntu runner that is ~2,000 Actions-minutes a month spent re-proving
+    # the same regression result on a repository that does not change every
+    # day — against the standing rule that routine CI should be pull_request +
+    # workflow_dispatch rather than a background schedule.
+    #
+    # Weekly keeps the regression net (a heavy-test break is still caught
+    # within days) and `workflow_dispatch` covers "check it right now". The
+    # three-OS matrix is untouched: it still runs on every release tag below,
+    # which is when cross-platform evidence is actually needed.
+    - cron: "0 6 * * 1"
   workflow_dispatch:
   push:
     tags: ["v*"]

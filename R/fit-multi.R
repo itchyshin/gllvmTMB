@@ -2928,6 +2928,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## has no phylo term (design 69 sec.2.2).
   use_any_phy_term <- use_phylo_rr || use_phylo_diag || use_phylo_slope ||
     use_phylo_latent_slope || use_mi_phylo
+  ## ---- Guard: a supplied tree/vcv with nothing in the formula to consume it --
+  ## `phylo_tree =` / `phylo_vcv =` can be supplied globally to gllvmTMB(), or
+  ## harvested above from an in-keyword `tree =` / `vcv =` on a phylo_rr /
+  ## propto / phylo_slope term. If NEITHER `use_any_phy_term` NOR `use_propto`
+  ## is set, no formula term reads phylo_tree/phylo_vcv at all: the tree is
+  ## silently ignored and a user can publish a "phylogenetic" fit that contains
+  ## no phylogeny (see dev/s0-rederive-two-tree-RESULTS.md, E2). This is
+  ## unambiguous user error -- the formula and the tree argument disagree about
+  ## whether there is a phylogenetic term -- so abort rather than warn.
+  if (!use_any_phy_term && !use_propto &&
+      (!is.null(phylo_tree) || !is.null(phylo_vcv))) {
+    supplied_arg <- if (!is.null(phylo_tree)) "phylo_tree" else "phylo_vcv"
+    cli::cli_abort(c(
+      "{.arg {supplied_arg}} was supplied, but the formula has no phylogenetic term to use it.",
+      "i" = "None of {.fn phylo_latent}, {.fn phylo_indep}, {.fn phylo_dep}, {.fn phylo_unique}, {.fn phylo_scalar}, {.fn phylo_slope}, or the {.fn mi} phylogenetic-covariate model is present in the formula.",
+      ">" = "Add a {.code phylo_*()} term (e.g. {.code phylo_latent(species, d = 2, tree = tree)}), or drop {.arg {supplied_arg}} if you did not mean to fit a phylogenetic model."
+    ))
+  }
   if (use_any_phy_term) {
     if (!is.null(phylo_tree)) {
       ## --- Stage 40: TRUE Hadfield sparse-A^-1 trick ----------------------
@@ -3025,29 +3043,95 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     mi_model$phylo_n_aug   <- as.integer(n_aug_phy)
   }
   if (use_propto) {
-    if (is.null(phylo_vcv))
-      cli::cli_abort("propto() found in formula but {.arg phylo_vcv} is NULL.")
-    if (is.null(rownames(phylo_vcv)))
-      cli::cli_abort("phylo_vcv must have rownames matching levels of {.var {species}}.")
     levs <- levels(data[[species]])
-    if (!all(levs %in% rownames(phylo_vcv)))
-      cli::cli_abort("phylo_vcv rownames do not cover all species levels.")
-    if (inherits(phylo_vcv, "sparseMatrix")) {
-      ## Design 47 follow-on (2026-05-18): sparse `phylo_vcv` IS the
-      ## precomputed A^{-1} (from `pedigree_to_Ainv_sparse()` via the
-      ## animal_scalar sugar, or a user-supplied sparse Ainv). The
-      ## propto C++ branch uses `Cphy_inv` directly. Subsetting a
-      ## precision is only a marginal precision when the sparse Ainv is
-      ## already tip-only; augmented precision matrices must be inverted
-      ## before subsetting their marginal covariance.
-      sparse_propto <- .resolve_sparse_propto_precision(phylo_vcv, levs)
+    if (is.null(phylo_vcv) && !is.null(phylo_tree)) {
+      ## Bug fix (2026-07-25): `phylo_scalar()` / `phylo_indep(common = TRUE)`
+      ## desugar to `propto()` (R/brms-sugar.R), and an in-keyword `tree = `
+      ## on those keywords IS harvested into the top-level `phylo_tree`
+      ## variable above ("Phase L: harvest per-term tree=/vcv=overrides").
+      ## But this block used to look ONLY at `phylo_vcv` (a dense/sparse
+      ## covariance-or-precision matrix) and never consulted `phylo_tree`,
+      ## so a perfectly valid in-keyword `tree = my_tree` still hit the
+      ## "phylo_vcv is NULL" abort below. Build the same augmented sparse
+      ## precision the phylo_rr/phylo_latent path uses
+      ## (.gllvm_phylo_tree_precision(), Stage 40) and marginalise it to the
+      ## observed tips via .resolve_sparse_propto_precision() -- the same
+      ## routine already used for the sparse-Ainv branch just below.
+      if (!inherits(phylo_tree, "phylo"))
+        cli::cli_abort("{.arg phylo_tree} must be an {.cls ape::phylo} tree.")
+      if (!all(levs %in% phylo_tree$tip.label))
+        cli::cli_abort("phylo_tree tip labels do not cover all species levels.")
+      phy_prec_propto <- .gllvm_phylo_tree_precision(phylo_tree, correlation = TRUE)
+      sparse_propto <- .resolve_sparse_propto_precision(phy_prec_propto$precision, levs)
       Cphy_inv <- sparse_propto$Cphy_inv
       log_det_Cphy <- sparse_propto$log_det_Cphy
     } else {
-      Cphy <- phylo_vcv[levs, levs, drop = FALSE]
-      Cphy <- Cphy + diag(1e-8, nrow = nrow(Cphy)) ## numerical jitter
-      Cphy_inv     <- solve(Cphy)
-      log_det_Cphy <- as.numeric(determinant(Cphy, logarithm = TRUE)$modulus)
+      if (is.null(phylo_vcv))
+        cli::cli_abort(c(
+          "propto() found in formula but neither {.arg phylo_vcv} nor {.arg phylo_tree} is set.",
+          "i" = "{.fn phylo_scalar}/{.fn phylo_indep(common = TRUE)} need a phylogeny.",
+          ">" = "Pass {.code tree = my_tree} (or {.code vcv = Cphy}) inside the keyword, or supply {.arg phylo_tree}/{.arg phylo_vcv} to {.fn gllvmTMB}."
+        ))
+      if (is.null(rownames(phylo_vcv)))
+        cli::cli_abort("phylo_vcv must have rownames matching levels of {.var {species}}.")
+      if (!all(levs %in% rownames(phylo_vcv)))
+        cli::cli_abort("phylo_vcv rownames do not cover all species levels.")
+      if (inherits(phylo_vcv, "sparseMatrix")) {
+        ## Design 47 follow-on (2026-05-18): sparse `phylo_vcv` IS the
+        ## precomputed A^{-1} (from `pedigree_to_Ainv_sparse()` via the
+        ## animal_scalar sugar, or a user-supplied sparse Ainv). The
+        ## propto C++ branch uses `Cphy_inv` directly. Subsetting a
+        ## precision is only a marginal precision when the sparse Ainv is
+        ## already tip-only; augmented precision matrices must be inverted
+        ## before subsetting their marginal covariance.
+        sparse_propto <- .resolve_sparse_propto_precision(phylo_vcv, levs)
+        Cphy_inv <- sparse_propto$Cphy_inv
+        log_det_Cphy <- sparse_propto$log_det_Cphy
+      } else {
+        Cphy <- phylo_vcv[levs, levs, drop = FALSE]
+        Cphy <- Cphy + diag(1e-8, nrow = nrow(Cphy)) ## numerical jitter
+        Cphy_inv     <- solve(Cphy)
+        log_det_Cphy <- as.numeric(determinant(Cphy, logarithm = TRUE)$modulus)
+      }
+    }
+  }
+
+  ## ---- Guard: structurally-unreachable phylogenetic variance (diagonal
+  ## marginal modes only) --------------------------------------------------
+  ## `phylo_indep()`/`phylo_unique()` (is_phylo_unique; reroutes to a
+  ## rank-T DIAGONAL Lambda_phy) and `propto()` (`phylo_scalar()` /
+  ## `phylo_indep(common = TRUE)`) both give each level of the `trait`-role
+  ## column its OWN factor column over `species`, all sharing the SAME
+  ## tree-derived correlation. If no `trait` level is ever observed for two
+  ## or more distinct `species` levels, no observation ever reads two
+  ## entries of the same column, so the tree's off-diagonal structure never
+  ## enters the likelihood -- large, well-identified fitted phylogenetic
+  ## variances can coexist with a completely unreachable tree (verified in
+  ## dev/s0-rederive-two-tree-RESULTS.md, E1b: identical logLik to 6 decimals
+  ## across three different trees). `phylo_dep()`/`phylo_latent()` (dense or
+  ## reduced-rank Lambda_phy) share factor columns across species by
+  ## construction and are NOT affected by this mechanism -- this guard must
+  ## not extend to them (is_phylo_unique is FALSE whenever a companion
+  ## loadings phylo_rr term, e.g. `phylo_latent(..., unique = TRUE)`, is
+  ## also present). This is a real, well-identified fit that is silently
+  ## uninformative about the tree, not a user typo -- warn, don't abort.
+  if ((is_phylo_unique || use_propto) &&
+      (!is.null(phylo_tree) || !is.null(phylo_vcv))) {
+    trait_species_counts <- tapply(
+      data[[species]], data[[trait]],
+      function(sp) length(unique(sp))
+    )
+    if (length(trait_species_counts) > 0L && max(trait_species_counts) <= 1L) {
+      term_label <- if (is_phylo_unique) {
+        "phylo_indep()/phylo_unique()"
+      } else {
+        "phylo_scalar()/phylo_indep(common = TRUE)"
+      }
+      cli::cli_warn(c(
+        "!" = "The supplied phylogenetic tree cannot enter the likelihood for this {term_label} term.",
+        "i" = "Every level of {.var {trait}} is observed for at most one level of {.var {species}}, so no observation ever compares two species' random effects on the same diagonal factor -- the tree's cross-species structure is structurally unreachable here, even though the fitted phylogenetic variance can be large and non-degenerate.",
+        ">" = "Use {.fn phylo_dep} or {.fn phylo_latent} (shared factor columns across species) if the tree's correlation structure should enter the fit, or restructure the data so a {.var {trait}} level is shared by more than one {.var {species}} (e.g. {.code unit = \"species\"} with a genuinely separate trait axis, as in the {.fn phylo_latent} examples)."
+      ))
     }
   }
 

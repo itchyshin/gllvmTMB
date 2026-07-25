@@ -68,31 +68,52 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::pkgdown, local::.
+          # Install hard dependencies plus ONLY what the site actually needs,
+          # instead of every Suggests. Suggests carries ~20 packages the docs
+          # build never uses, and three of them broke it as dyn.load failures
+          # during build_articles():
+          #
+          #   glmmTMB    binary built against TMB 1.9.21, runner had TMB 1.9.23
+          #              -> "package version mismatch" (this is how pkgdown
+          #              failed at fe8388d9 and b87ab9ed while R-CMD-check
+          #              passed at the same commits)
+          #   qs2        undefined symbol _ZTIN3tbb4taskE
+          #   stringfish undefined symbol _ZN3tbb8internal25concurrent_vector...
+          #
+          # qs2/stringfish are not gllvmTMB dependencies at all. They arrive via
+          # mirt -> SimDesign, and mirt is installed only because it is in
+          # Suggests. It is never called in a code chunk — it appears in ONE
+          # article as the inline prose reference `mirt::itemstats()`, which
+          # pkgdown/downlit resolves by loading the namespace. A backticked
+          # mention in a sentence was pulling in a broken TBB toolchain.
+          # Uninstalled, downlit simply skips the autolink.
+          #
+          # The list below is not guesswork. It is the union of two scans:
+          #   (a) packages referenced inside R code chunks across all vignettes
+          #       (ape, dplyr, ggplot2, knitr, tidyr — stats is base)
+          #   (b) Suggests that gllvmTMB's own R code conditionally loads via
+          #       requireNamespace() and an article could therefore reach
+          #       (ggplot2, MASS, future, future.apply, tidyselect, ggforce)
+          # Deliberately excluded: mirt, glmmTMB, MCMCglmm, gllvm, brms, galamm,
+          # lme4, DHARMa, mgcv, mvtnorm, nadiv, JuliaCall, sf. If an article
+          # ever needs one, the build fails loudly here and it gets added — a
+          # visible, cheap failure rather than a silent 20-package install.
+          dependencies: '"hard"'
+          extra-packages: |
+            any::pkgdown
+            any::rmarkdown
+            any::knitr
+            any::ape
+            any::dplyr
+            any::tidyr
+            any::tidyselect
+            any::ggplot2
+            any::ggforce
+            any::MASS
+            any::future
+            any::future.apply
+            local::.
           needs: website
-
-      - name: Rebuild ABI-fragile binary packages from source
-        # RSPM binaries are compiled against library versions this runner does
-        # not necessarily have. Two have bitten the docs build, both as dyn.load
-        # failures during build_articles():
-        #
-        #   glmmTMB    built against TMB 1.9.21, runner resolved TMB 1.9.23
-        #              -> "package version mismatch" -> Execution halted
-        #              (this is how pkgdown failed at fe8388d9 and b87ab9ed
-        #              while R-CMD-check passed at the same commits)
-        #
-        #   stringfish undefined symbol _ZN3tbb8internal25concurrent_vector...
-        #              -> built against a different libtbb. Arrives transitively
-        #              via qs2; NOT a declared gllvmTMB dependency, but the
-        #              multinomial article loads something that pulls it.
-        #
-        # Rebuilding from source links each against what is actually installed.
-        # This list is deliberately reactive: add a package only once it has
-        # actually failed. If a third one appears, stop extending this and fix
-        # it systemically (source pkgType for the docs build, or trim what the
-        # articles load) rather than paying a rebuild per package forever.
-        run: install.packages(c("glmmTMB", "stringfish"), type = "source", repos = "https://cloud.r-project.org")
-        shell: Rscript {0}
 
       - name: Hide internal agent-instruction files from pkgdown
         # pkgdown 2.2.0 renders every root .md (incl. AGENTS.md, CLAUDE.md) as a

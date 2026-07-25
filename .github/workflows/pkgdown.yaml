@@ -98,6 +98,14 @@ jobs:
           # lme4, DHARMa, mgcv, mvtnorm, nadiv, JuliaCall, sf. If an article
           # ever needs one, the build fails loudly here and it gets added — a
           # visible, cheap failure rather than a silent 20-package install.
+          # Bump this whenever the dependency set above is narrowed. The action
+          # caches the whole R library, so narrowing `dependencies:` does NOT by
+          # itself remove an already-cached package: run 30161701084 restored a
+          # cache still physically containing mirt, qs2 and stringfish, and
+          # downlit happily loaded mirt from it — the build failed exactly as
+          # before despite the list below being correct. Changing this key
+          # discards that library so the narrowed set is what actually exists.
+          cache-version: 2
           dependencies: '"hard"'
           extra-packages: |
             any::pkgdown

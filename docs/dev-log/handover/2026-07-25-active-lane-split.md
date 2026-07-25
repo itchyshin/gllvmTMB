@@ -9,7 +9,17 @@ a single writable lane.  It is a map, not a release/capability claim.
 | Profile / Tier-2a | Claude | dirty primary checkout on `claude/profile-coverage-remeasure-20260718` | `2026-07-25-claude-handover.md` | do not overwrite its uncommitted files from another checkout |
 | Eta simulation | Codex | **left in Codex** at `/private/tmp/gllvmtmb-design100-progress-oracle` on `codex/design100-progress-oracle-20260724` | Codex's local Design-100 materials | Claude must not run, edit, claim, or absorb this lane |
 | Design-103 private diagnosis | Codex | closed `TECHNICAL_PARTIAL`, local-only | `/private/tmp/gllvmtmb-design103-covariance-mechanism/dev/design103-covariance-mechanism/ADJUDICATION.md` | no package/public claim; new model design needs fresh approval |
+| Docs-infra / phylo-column question | Claude | pkgdown repaired and MERGED (`a900c4ae`, PR #787); CI economy open as PR #788 | `2026-07-25-claude-handover-phylo-column.md` | docs/CI only — no package source or API change; the M3 freeze (`NAMESPACE c97ae039`) stays untouched |
 
 Before any repository mutation, re-check `git worktree list`, `git status -sb`
 in the intended worktree, and the target lane's named handover.  The active
 checkout is not a safe generic workspace.
+
+**Milestone state is NOT in this note and must be re-derived from git.** This map
+records *ownership*, not progress. On 2026-07-25 a fresh session rehydrated from a
+Mission Control board that still read "M4 UNDERWAY / draft PR #780" and planned
+against a six-day-old picture — including a proposal to audit and cut the public
+surface, which would have reopened M3's signed API freeze. It was withdrawn only
+after `git` was consulted. Verified that day: M1 · M3 · M4 all CLOSED, PR #780
+merged 2026-07-23, RC.1 frozen, the RC.1 review 3/3 NOT-READY with submission
+WITHHELD, and the RC.2 non-CRAN closeout recorded. The rung remains **NOT READY**.

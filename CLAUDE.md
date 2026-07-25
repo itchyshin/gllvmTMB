@@ -79,20 +79,28 @@ does NOT do" section), see
 
 ## Syntax Rules to Preserve
 
-- Use the canonical 4 x 5 keyword grid (correlation x mode):
-  `latent`, `unique`, `indep`, `dep`, `scalar`, with `phylo_*` and
-  `spatial_*` variants plus the `animal_*` known-pedigree row. As of
-  2026-06-18, `unique()` / `*_unique()` are soft-deprecated
-  compatibility syntax: new standalone diagonal examples use
-  `indep()` / `*_indep()`, ordinary `latent()` now carries Psi by
-  default, and `latent(..., unique = FALSE)` requests the old
-  low-rank-only subset. Paired explicit-Psi examples and source-specific
-  `*_unique()` forms remain accepted as compatibility syntax until
-  their own fold/removal slices land.
-- Design 65 adds the generic dense-kernel quartet outside that
-  source-specific grid: `kernel_unique()`, `kernel_indep()`,
-  `kernel_dep()`, and `kernel_latent()`. C1 must stay
-  phylo-equivalent for dense `K` inputs to less than `1e-6`.
+- Use the canonical **5 x 3 keyword grid**: five correlation **sources**
+  (none, `animal_*`, `phylo_*`, `spatial_*`, `kernel_*`) x three
+  trait-covariance **modes** (`indep`, `dep`, `latent`). Every cell is a
+  live keyword. Canonical surface:
+  `vignettes/articles/api-keyword-grid.Rmd`.
+- **`scalar` and `unique` are MODIFIERS, not modes.** `scalar` is
+  `indep(..., common = TRUE)` (trait variances tied to one shared
+  value); `unique` is `latent(..., unique = TRUE)` (the trait-diagonal
+  Psi companion). Never restate the grid as "4 x 5" or list `scalar` /
+  `unique` as modes -- that framing is superseded.
+- The named **scalar family** (`scalar()`, `phylo_scalar()`,
+  `animal_scalar()`, `spatial_scalar()`, `kernel_scalar()`) is
+  **soft-deprecated** and emits a one-time warning; it fits the same
+  model as `indep(..., common = TRUE)`. Likewise `unique()` /
+  `*_unique()` are soft-deprecated: new standalone diagonal examples use
+  `indep()` / `*_indep()`, ordinary `latent()` carries Psi by default,
+  and `latent(..., unique = FALSE)` requests the old low-rank-only
+  subset. Both families remain accepted compatibility syntax until their
+  own removal slices land.
+- Design 65's dense-kernel row (`kernel_indep()`, `kernel_dep()`,
+  `kernel_latent()`) is part of the grid above, not outside it. C1 must
+  stay phylo-equivalent for dense `K` inputs to less than `1e-6`.
 - Ordinary `latent()` carries its diagonal Psi companion by default:
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
   Psi; see `decisions.md` 2026-05-14 notation reversal).

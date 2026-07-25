@@ -16,20 +16,34 @@ Model Builder.
 - The package fits multi-response models on long-format data: one row
   per `(unit, trait)` observation. The "unit" is typically a site or
   individual; the "trait" is one column of a multivariate response.
-- The covariance dispatch is the 4 x 5 keyword grid:
+- The covariance dispatch is the **5 x 3 keyword grid**: rows are the
+  five correlation **sources** across grouping levels, columns are the
+  three fundamental trait-covariance **modes**. Every cell is a live
+  keyword. (Canonical surface:
+  `vignettes/articles/api-keyword-grid.Rmd`.)
 
-| correlation \ mode | scalar | unique | indep | dep | latent |
-|---|---|---|---|---|---|
-| none    | (omit)             | `unique()`         | `indep()`         | `dep()`         | `latent()`         |
-| animal  | `animal_scalar()`  | `animal_unique()`  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
-| phylo   | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
-| spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+| source \ mode | indep | dep | latent |
+|---|---|---|---|
+| none    | `indep()`         | `dep()`         | `latent()`         |
+| animal  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
+| phylo   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
+| spatial | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+| kernel  | `kernel_indep()`  | `kernel_dep()`  | `kernel_latent()`  |
 
-- Design 65 adds the generic dense-kernel quartet
-  `kernel_unique()`, `kernel_indep()`, `kernel_dep()`, and
-  `kernel_latent()` outside the source-specific 4 x 5 grid. In C1 it
-  must remain phylo-equivalent for dense `K` inputs to less than
-  `1e-6` before any C2 coevolution advertising.
+- **`scalar` and `unique` are MODIFIERS, not modes.** `scalar` is
+  `indep` with the trait variances tied to one shared value --
+  `indep(..., common = TRUE)`. `unique` is `latent` with its
+  trait-diagonal Psi companion -- `latent(..., unique = TRUE)`.
+  Do not describe either as a fourth or fifth mode, and do not restate
+  this grid as "4 x 5"; that framing is superseded.
+- The named **scalar family** -- `scalar()`, `phylo_scalar()`,
+  `animal_scalar()`, `spatial_scalar()`, `kernel_scalar()` -- fits
+  exactly the `indep(..., common = TRUE)` model but is
+  **soft-deprecated compatibility syntax that emits a one-time
+  warning** (`NEWS.md`). Write `indep(..., common = TRUE)` in new code.
+- Design 65's dense-kernel row is part of the grid above, not outside
+  it. In C1 it must remain phylo-equivalent for dense `K` inputs to
+  less than `1e-6` before any C2 coevolution advertising.
 - As of 2026-07-03, `unique()` / source-specific `*_unique()` /
   `kernel_unique()` are soft-deprecated compatibility syntax. New
   standalone diagonal examples use `indep()` / source-specific
@@ -84,8 +98,8 @@ Model Builder.
    and a runnable example. The return-value contract for every
    exported `extract_*()` is recorded in
    `docs/design/06-extractors-contract.md`.
-3. Do not change formula grammar (the 4 x 5 keyword grid, the generic
-   `kernel_*()` tier, or `traits()` LHS) without updating
+3. Do not change formula grammar (the 5 x 3 keyword grid, the
+   `scalar` / `unique` modifiers, or `traits()` LHS) without updating
    `docs/design/01-formula-grammar.md` (the canonical grammar
    contract), the grid / kernel note in this file, and the parallel
    table in `CLAUDE.md`.
@@ -355,7 +369,7 @@ implementation reviewer.
 Use one narrow Rose pre-publish audit for any PR that touches
 README, vignettes, `_pkgdown.yml`, NEWS, roxygen for exported
 functions, or generated Rd files. The gate checks method lists,
-default-value claims, exported function names, the 4 x 5 keyword grid,
+default-value claims, exported function names, the 5 x 3 keyword grid,
 argument names, family lists, and stale terminology. It does not
 replace Boole, Gauss, Noether, Grace, Pat, or Darwin; it only checks
 cross-file consistency before user-facing content is published.

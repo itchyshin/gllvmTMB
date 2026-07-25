@@ -4,10 +4,13 @@
 **Reviewers:** Noether (math-vs-implementation alignment) and Rose
 (public-consistency audit).
 
-The formula grammar is the heart of `gllvmTMB`. The 4 x 5
-source-specific covariance keyword grid is the core public-API
-contract; the generic `kernel_*()` tier added by Design 65 sits beside
-that grid for user-supplied dense relatedness/covariance matrices.
+The formula grammar is the heart of `gllvmTMB`. The 5 x 3
+source-by-mode covariance keyword grid is the core public-API
+contract; the generic `kernel_*()` tier added by Design 65 is its
+fifth source row, and `scalar` / `unique` are modifiers rather than
+modes. The older "4 x 5" framing, which listed those two as separate
+mode columns and placed `kernel_*()` outside the grid, is superseded.
+The kernel row serves user-supplied dense relatedness/covariance matrices.
 Everything in the engine serves those surfaces. Per **AGENTS.md Design
 Rule #3**, no change to this grammar ships without updating this
 document first.
@@ -97,7 +100,7 @@ support from end-to-end verification:
 | `kernel_indep(unit, K = A)` / `kernel_dep(unit, K = A)` | **covered** | Generic dense-kernel marginal-only and full-rank companion modes. C1 fit equivalence is covered in `test-kernel-equivalence.R` against `phylo_indep(..., vcv = A)` and `phylo_dep(..., vcv = A)`; the engine route is the same phylo-equivalent dense `vcv` slot used by `kernel_latent()` / `kernel_unique()` (validation-debt register KER-02; Design 65 C1). |
 | `meta_V(V = V)` | **partial** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form and V-only parser compatibility), `test-traits-keyword.R` (wide `traits(...)` preservation), and `test-block-V.R` (block-V helper) (validation-debt register MET-01, MET-02). The legacy `meta_known_V(V = V)` is retained as a deprecated alias; both names desugar identically in the parser. Single-V inference validation remains partial under MET-01. |
 | `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
-| `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 4 × 5 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
+| `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 5 × 3 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
 | `(1 + x \| g)` ordinary random slope outside a structural keyword | **reserved** | Bare-bar random slopes remain rejected by `parse_re_int_call()`. Ordinary random regression is keyworded through `latent(1 + x \| unit, d = K)`; structured sources keep their own `phylo_*()` / `spatial_*()` forms. |
 | `(1 \| g1/g2)` slash-form nested random effects | **rejected** | Not parsed. Use globally unique level names instead (see "Crossed-vs-nested" below). |
 | `latent(0 + trait \| g) + lambda_constraint = list(B = M)` | **covered (Gaussian and binary IRT)** | Confirmatory factor analysis on the latent loadings; pins specific entries of $\boldsymbol\Lambda$. Test evidence: `test-lambda-constraint.R` asserts pinned-entry values within `1e-8` tolerance for diagonal-pin, off-diagonal-pin-to-zero, off-diagonal-pin-to-non-zero, W-level, and simultaneous B+W pin cases (validation-debt register LAM-01, LAM-02; Phase 0B.3 promotion 2026-05-16). `test-m2-3-lambda-constraint-binary.R` plus mirt and galamm cross-checks cover binary IRT fits (LAM-03). |
@@ -206,42 +209,59 @@ Removal is a later API-change decision and must not be claimed while
 the export remains live (validation-debt register rows FG-16 and
 MIS-03).
 
-## The 4 x 5 covariance keyword grid
+## The 5 x 3 covariance keyword grid
 
-The grid is the source-specific user-facing public-API contract. Rows
-are correlation sources; columns are covariance modes:
+The grid is the user-facing public-API contract. Rows are the five
+correlation **sources** across grouping levels; columns are the three
+fundamental trait-covariance **modes**. Every cell is a live keyword.
+The reader-facing presentation of this same contract is
+[`vignettes/articles/api-keyword-grid.Rmd`](../../vignettes/articles/api-keyword-grid.Rmd);
+the two must not drift.
 
-| correlation \ mode | scalar | unique | indep | dep | latent |
-|---|---|---|---|---|---|
-| **none** | (omit) | `unique()` | `indep()` | `dep()` | `latent()` |
-| **animal** | `animal_scalar()` | `animal_unique()` | `animal_indep()` | `animal_dep()` | `animal_latent()` |
-| **phylo** | `phylo_scalar()` | `phylo_unique()` | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
-| **spatial** | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+| source \ mode | indep | dep | latent |
+|---|---|---|---|
+| **none** | `indep()` | `dep()` | `latent()` |
+| **animal** | `animal_indep()` | `animal_dep()` | `animal_latent()` |
+| **phylo** | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
+| **spatial** | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+| **kernel** | `kernel_indep(unit, K = A)` | `kernel_dep(unit, K = A)` | `kernel_latent(unit, K = A, d = q)` |
 
-The four correlation rows go from finest-grained (individual
-pedigree) to broadest (geographic distance). Plus the random-slope
-keywords `phylo_slope(x | species)` and `animal_slope(x | id)` for
-per-group random regression slopes — see
+The source rows go from finest-grained (individual pedigree) to
+broadest (geographic distance), with the Design 65 generic dense kernel
+as the fifth row. Plus the random-slope keywords
+`phylo_slope(x | species)` and `animal_slope(x | id)` for per-group
+random regression slopes — see
 [`14-known-relatedness-keywords.md`](14-known-relatedness-keywords.md)
 for the team-ratified convention.
 
-Design 65 C1 adds a generic dense-kernel quartet beside, not inside,
-the source-specific grid:
+### `scalar` and `unique` are modifiers, not modes
 
-| generic kernel mode | Syntax | C1 route |
-|---|---|---|
-| unique | `kernel_unique(unit, K = A, name = "known")` | phylo-equivalent dense `vcv` path; compatibility spelling for the diagonal Psi companion |
-| indep | `kernel_indep(unit, K = A, name = "known")` | same route, marginal-only label |
-| dep | `kernel_dep(unit, K = A, name = "known")` | full-rank latent route (`d = n_traits`) |
-| latent | `kernel_latent(unit, K = A, d = q, name = "known")` | reduced-rank latent route |
+This is the load-bearing correction to the older "4 x 5" framing, which
+listed both as separate columns and is **superseded**:
 
-There is no C1 `kernel_scalar()` surface. Scalar single-variance
-kernel models remain a later unification/deprecation question. Design
-65 C2 uses the same dense `kernel_latent()` grammar, with `kernel_unique()`
-retained as compatibility spelling for explicit single-kernel Psi. It uses
-a cross-lineage `K_star = make_cross_kernel(...)` and recovers the host-trait
-x partner-trait block through `extract_Gamma()`; it does not add another
-formula keyword.
+- **`scalar`** is `indep` with all trait variances tied to one shared
+  value: `indep(..., common = TRUE)`.
+- **`unique`** is `latent` with its trait-diagonal Psi companion:
+  `latent(..., unique = TRUE)`.
+
+The named **scalar family** — `scalar()`, `phylo_scalar()`,
+`animal_scalar()`, `spatial_scalar()`, `kernel_scalar()` — fits exactly
+the `indep(..., common = TRUE)` model but is **soft-deprecated
+compatibility syntax emitting a one-time warning** (`NEWS.md`). The
+standalone **`unique()` family** is likewise soft-deprecated in favour of
+`indep()` for a plain diagonal and `latent(unique = TRUE)` for the paired
+companion. Both keep working; neither should be written in new code, and
+neither is a mode.
+
+Design 65 C1 kernel routes: `kernel_indep()` is the marginal-only label
+on the phylo-equivalent dense `vcv` path, `kernel_dep()` the full-rank
+latent route (`d = n_traits`), `kernel_latent()` the reduced-rank route,
+and `kernel_unique()` the soft-deprecated compatibility spelling for the
+explicit diagonal Psi companion. Design 65 C2 uses the same dense
+`kernel_latent()` grammar with a cross-lineage
+`K_star = make_cross_kernel(...)`, recovering the host-trait x
+partner-trait block through `extract_Gamma()`; it adds no formula
+keyword.
 
 **The A vs V naming boundary** (per Design 14 §3): `animal_*` and
 `phylo_*` keywords accept **A** / **Ainv** for *relatedness*
@@ -659,7 +679,7 @@ within-study correlation, build `V` via
 
 Currently:
 
-- **Random intercepts** `(1 | group)`: covered alongside the 4 × 5
+- **Random intercepts** `(1 | group)`: covered alongside the 5 × 3
   keywords as the default random-intercept on the grouping
   factor.
 - **Bare-bar random slopes** `(0 + x | g)` or `(1 + x | g)`: **reserved**.
@@ -668,7 +688,7 @@ Currently:
   `Lambda_aug Lambda_aug^T + Psi_B,aug` by default. Explicit
   `+ unique(1 + x | unit)` remains compatibility syntax. Non-Gaussian
   augmented `unique()` remains guarded, non-Gaussian augmented `latent()`
-  stays low-rank-only, and other 4 × 5 cells keep their own source-specific
+  stays low-rank-only, and other 5 × 3 cells keep their own source-specific
   random-slope validation boundaries.
 
 Random-slope design and parser details will live in

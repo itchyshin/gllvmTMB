@@ -92,7 +92,7 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(q);
   DATA_VECTOR(gh_nodes);
   DATA_VECTOR(gh_weights);
-  DATA_INTEGER(family);            // 0 = Gaussian anchor; 1 = binomial-logit
+  DATA_INTEGER(family);            // 0 = Gaussian anchor; 1 = binomial-logit; 2 = Poisson-log
   DATA_SCALAR(gaussian_sd);        // fixed observation SD for family == 0
 
   PARAMETER_VECTOR(beta);
@@ -107,8 +107,8 @@ Type objective_function<Type>::operator()()
 
   // Defensive dimension/scope checks. The R adapter performs the richer
   // pre-construction validation required by Design 85.
-  if (family != 0 && family != 1)
-    error("gllvmTMB_va_r3: family must be 0 (Gaussian) or 1 (binomial)");
+  if (family != 0 && family != 1 && family != 2)
+    error("gllvmTMB_va_r3: family must be 0 (Gaussian), 1 (binomial), or 2 (Poisson)");
   if (N <= 0 || T <= 0 || q <= 0 || q > T)
     error("gllvmTMB_va_r3: require N > 0, T > 0, and 1 <= q <= T");
   if (n_obs != N * T)
@@ -142,9 +142,14 @@ Type objective_function<Type>::operator()()
     if (family == 1) {
       double yd = asDouble(y(r));
       double nd = asDouble(n_trials(r));
-      if (nd < 2.0 || std::floor(nd) != nd || yd < 0.0 || yd > nd ||
+      if (nd < 1.0 || std::floor(nd) != nd || yd < 0.0 || yd > nd ||
           std::floor(yd) != yd)
-        error("gllvmTMB_va_r3: binomial cells require integer n >= 2 and 0 <= y <= n");
+        error("gllvmTMB_va_r3: binomial cells require integer n >= 1 and 0 <= y <= n");
+    }
+    if (family == 2) {
+      double yd = asDouble(y(r));
+      if (yd < 0.0 || std::floor(yd) != yd)
+        error("gllvmTMB_va_r3: Poisson cells require finite non-negative integer y");
     }
   }
   for (int cell = 0; cell < N * T; ++cell) {
@@ -277,7 +282,7 @@ Type objective_function<Type>::operator()()
       ell = -Type(0.5) *
         (log_two_pi + Type(2.0) * log(gaussian_sd)
          + (residual * residual + v) / gaussian_var);
-    } else {
+    } else if (family == 1) {
       Type n = n_trials(r);
       Type log_choose = lgamma(n + Type(1.0))
         - lgamma(y(r) + Type(1.0))
@@ -286,6 +291,10 @@ Type objective_function<Type>::operator()()
         va_r3_softplus_expectation(mu, v, gh_nodes, gh_weights);
       softplus_expectation_by_obs(r) = softplus_expectation;
       ell = log_choose + y(r) * mu - n * softplus_expectation;
+    } else {
+      // Poisson-log: E[exp(eta)] for eta ~ N(mu, v) is exact (log-normal
+      // mean), so no quadrature is required.
+      ell = y(r) * mu - exp(mu + v / Type(2.0)) - lgamma(y(r) + Type(1.0));
     }
     if (!std::isfinite(asDouble(ell)))
       Rf_error("gllvmTMB_va_r3: non-finite expected log-likelihood at unit %d trait %d", i, t);

@@ -38,7 +38,8 @@ test_that("Design 86 Bernoulli EVA template equals the independent scalar oracle
   permuted$unit_id <- q2$unit_id[idx]
   permuted$trait_id <- q2$trait_id[idx]
   permuted_obj <- TMB::MakeADFun(
-    data = c(permuted[c("y", "X", "unit_id", "trait_id", "N", "T", "q", "gaussian_sd")], family = 1L),
+    data = c(permuted[c("y", "X", "unit_id", "trait_id", "N", "T", "q", "gaussian_sd")],
+             family = 1L, n_trials = list(rep(1, length(permuted$y)))),
     parameters = permuted[c("beta", "theta_rr", "a", "log_A_diag", "A_off")],
     random = NULL, DLL = attr(q2_obj, "eva_dll")$DLL, silent = TRUE
   )

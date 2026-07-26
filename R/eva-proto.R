@@ -153,7 +153,8 @@
   family <- if (identical(fixture, "gaussian")) 0L else 1L
   .eva_validate_fixture(x, family)
   obj <- TMB::MakeADFun(
-    data = c(x[c("y", "X", "unit_id", "trait_id", "N", "T", "q", "gaussian_sd")], family = family),
+    data = c(x[c("y", "X", "unit_id", "trait_id", "N", "T", "q", "gaussian_sd")],
+             family = family, n_trials = list(rep(1, length(x$y)))),
     parameters = x[c("beta", "theta_rr", "a", "log_A_diag", "A_off")],
     random = NULL, DLL = dll$DLL, silent = silent
   )
@@ -187,6 +188,289 @@
   gr <- objective$gr(par)
   if (any(!is.finite(gr))) stop("EVA evaluation produced a non-finite gradient.", call. = FALSE)
   list(value = value, gradient = gr)
+}
+
+## Design 86 data-accepting fitting path (Curie). This is the EVA analogue of
+## .va_r3_validate_data() / .va_r3_default_parameters() / .va_r3_make_objective()
+## / .va_r3_fit() in R/va-r3-proto.R: it lets EVA construct and optimise an
+## objective from caller-supplied data, instead of only evaluating a frozen
+## Gate-1 fixture by name at a single fixed coordinate. It reuses
+## .va_r3_normalise_index() (index normalisation is identical for both
+## engines) exactly as this file already reuses .va_r3_gh_rule() in
+## .eva_aghq_marginal_q1() above.
+
+.eva_validate_data <- function(y, n_trials, X, unit_id, trait_id, q,
+                               N = NULL, T = NULL,
+                               family = c("binomial", "poisson", "gaussian_anchor"),
+                               link = switch(family[1L],
+                                 gaussian_anchor = "identity",
+                                 poisson = "log",
+                                 "logit"),
+                               unique = FALSE, gaussian_sd = 1) {
+  if (length(q) != 1L || !is.numeric(q) || !is.finite(q) ||
+      q != as.integer(q) || q < 1L || q > 6L) {
+    stop("q must be one integer in 1..6.", call. = FALSE)
+  }
+  q <- as.integer(q)
+  if (!is.matrix(X) || !is.numeric(X) || nrow(X) != length(y) ||
+      ncol(X) < 1L || any(!is.finite(X))) {
+    stop("X must be a finite numeric matrix with one row per response and at least one column.",
+         call. = FALSE)
+  }
+  if (length(unit_id) != length(y) || length(trait_id) != length(y) ||
+      length(n_trials) != length(y)) {
+    stop("y, n_trials, unit_id, trait_id, and the rows of X must have equal length.",
+         call. = FALSE)
+  }
+  if (is.null(N)) N <- length(unique(unit_id))
+  if (is.null(T)) T <- length(unique(trait_id))
+  if (length(N) != 1L || length(T) != 1L || !is.finite(N) || !is.finite(T) ||
+      N != as.integer(N) || T != as.integer(T) || N < 1L || T < 1L) {
+    stop("N and T must be positive integers.", call. = FALSE)
+  }
+  N <- as.integer(N)
+  T <- as.integer(T)
+  if (q > T) stop("q must not exceed T.", call. = FALSE)
+
+  uid <- .va_r3_normalise_index(unit_id, N, "unit_id")
+  tid <- .va_r3_normalise_index(trait_id, T, "trait_id")
+  cell <- uid * T + tid
+  if (length(y) != N * T || length(unique(cell)) != N * T ||
+      !identical(sort(cell), 0:(N * T - 1L))) {
+    stop("EVA requires exactly one complete observation for every unit-trait cell.",
+         call. = FALSE)
+  }
+  if (qr(X)$rank != ncol(X)) {
+    stop("X must have full column rank.", call. = FALSE)
+  }
+  if (!identical(unique, FALSE)) {
+    stop("EVA admits only ordinary latent(..., unique = FALSE) data.", call. = FALSE)
+  }
+
+  family <- match.arg(family, c("binomial", "poisson", "gaussian_anchor"))
+  if (family == "binomial") {
+    if (!identical(link, "logit")) {
+      stop("EVA admits only the binomial logit link.", call. = FALSE)
+    }
+    if (!is.numeric(y) || any(!is.finite(y)) || any(y != as.integer(y)) ||
+        !is.numeric(n_trials) || any(!is.finite(n_trials)) ||
+        any(n_trials != as.integer(n_trials)) || any(n_trials < 1L) ||
+        any(y < 0L) || any(y > n_trials)) {
+      stop("Binomial EVA data require integer n_trials >= 1 and integer 0 <= y <= n_trials.",
+           call. = FALSE)
+    }
+    family_code <- 1L
+  } else if (family == "poisson") {
+    if (!identical(link, "log")) {
+      stop("EVA admits only the Poisson log link.", call. = FALSE)
+    }
+    if (!is.numeric(y) || any(!is.finite(y)) || any(y != as.integer(y)) ||
+        any(y < 0L)) {
+      stop("Poisson EVA data require finite non-negative integer y.", call. = FALSE)
+    }
+    ## The standalone template declares n_trials for every branch; the Poisson
+    ## algebra does not use it, but it must be finite and correctly sized.
+    n_trials <- rep.int(1L, length(y))
+    family_code <- 2L
+  } else {
+    if (!identical(link, "identity")) {
+      stop("The Gaussian EVA anchor uses the identity link.", call. = FALSE)
+    }
+    if (!is.numeric(y) || any(!is.finite(y)) || length(gaussian_sd) != 1L ||
+        !is.numeric(gaussian_sd) || !is.finite(gaussian_sd) || gaussian_sd <= 0) {
+      stop("The Gaussian EVA anchor requires finite y and one positive gaussian_sd.",
+           call. = FALSE)
+    }
+    ## The standalone template declares n_trials for both branches.
+    n_trials <- rep.int(1L, length(y))
+    family_code <- 0L
+  }
+
+  list(
+    y = as.numeric(y),
+    n_trials = as.numeric(n_trials),
+    X = unname(X),
+    unit_id = uid,
+    trait_id = tid,
+    N = N,
+    T = T,
+    q = q,
+    family = family_code,
+    family_name = family,
+    link = link,
+    gaussian_sd = as.numeric(gaussian_sd)
+  )
+}
+
+.eva_default_parameters <- function(data) {
+  N <- data$N
+  T <- data$T
+  q <- data$q
+  p <- ncol(data$X)
+  beta <- rep(0, p)
+  if (data$family == 1L) {
+    prop <- (data$y + 0.5) / (data$n_trials + 1)
+    beta_fit <- tryCatch(stats::lm.fit(data$X, stats::qlogis(prop))$coefficients,
+                         error = function(e) rep(0, p))
+  } else if (data$family == 2L) {
+    ## Poisson uses a log link, so start beta on the log scale; the 0.5
+    ## offset keeps zero counts finite.
+    beta_fit <- tryCatch(stats::lm.fit(data$X, log(data$y + 0.5))$coefficients,
+                         error = function(e) rep(0, p))
+  } else {
+    beta_fit <- tryCatch(stats::lm.fit(data$X, data$y)$coefficients,
+                         error = function(e) rep(0, p))
+  }
+  if (length(beta_fit) == p && all(is.finite(beta_fit))) beta <- unname(beta_fit)
+
+  theta_rr <- rep(0, .eva_theta_length(T, q))
+  diagonal_scale <- 0.10
+  theta_rr[seq_len(q)] <- diagonal_scale * rep(c(1, -1), length.out = q)
+
+  list(
+    beta = beta,
+    theta_rr = theta_rr,
+    a = matrix(0, nrow = N, ncol = q),
+    log_A_diag = matrix(0, nrow = N, ncol = q),
+    A_off = matrix(0, nrow = N, ncol = q * (q - 1L) / 2L)
+  )
+}
+
+.eva_make_objective_data <- function(validated, source = NULL, rebuild = FALSE,
+                                     parameters = NULL, silent = TRUE) {
+  dll <- .eva_load_dll(source, rebuild)
+  if (is.null(parameters)) parameters <- .eva_default_parameters(validated)
+  tmb_data <- validated[c("y", "n_trials", "X", "unit_id", "trait_id",
+                          "N", "T", "q", "family", "gaussian_sd")]
+  obj <- TMB::MakeADFun(
+    data = tmb_data,
+    parameters = parameters,
+    random = NULL, DLL = dll$DLL, silent = silent
+  )
+  attr(obj, "eva_dll") <- dll
+  obj
+}
+
+.eva_fit <- function(y, n_trials, X, unit_id, trait_id, q,
+                     N = NULL, T = NULL,
+                     family = c("binomial", "poisson", "gaussian_anchor"),
+                     link = switch(family[1L],
+                       gaussian_anchor = "identity",
+                       poisson = "log",
+                       "logit"),
+                     unique = FALSE, gaussian_sd = 1,
+                     source = NULL, rebuild = FALSE,
+                     control = list(eval.max = 2000L, iter.max = 2000L),
+                     silent = TRUE) {
+  family <- match.arg(family)
+  validated <- .eva_validate_data(y, n_trials, X, unit_id, trait_id, q, N, T,
+                                  family, link, unique, gaussian_sd)
+  parameters <- .eva_default_parameters(validated)
+  obj <- .eva_make_objective_data(validated, source = source, rebuild = rebuild,
+                                  parameters = parameters, silent = silent)
+  dll <- attr(obj, "eva_dll")
+
+  opt <- tryCatch(
+    stats::nlminb(obj$par, obj$fn, obj$gr, control = control),
+    error = function(e) structure(list(message = conditionMessage(e)),
+                                  class = "eva_optimizer_error")
+  )
+  if (inherits(opt, "eva_optimizer_error")) {
+    return(list(
+      status = "failed_optimizer_error",
+      research_only = TRUE,
+      objective_type = "EVA_TAYLOR2",
+      family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson", "binomial"),
+      link = link,
+      unique = FALSE,
+      q = validated$q,
+      source_commit = .eva_source_commit(dll$source),
+      source_checksum = dll$checksum,
+      optimizer = "nlminb",
+      best = list(convergence = NA_integer_, objective = NA_real_,
+                  max_abs_gradient = Inf, finite_parameters = FALSE,
+                  healthy = FALSE, message = opt$message),
+      report = NULL,
+      objective = obj
+    ))
+  }
+
+  ## Mirror .va_r3_fit()'s polish loop exactly: up to two additional nlminb
+  ## passes while the gradient has not yet cleared the 1e-4 tolerance, then a
+  ## BFGS polish if nlminb alone did not get there. No other optimiser
+  ## strategy is introduced.
+  polish_passes <- 0L
+  polish_optimizer <- "nlminb_only"
+  for (polish in seq_len(2L)) {
+    current_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
+    if (all(is.finite(current_gradient)) && max(abs(current_gradient)) < 1e-4) break
+    candidate <- tryCatch(
+      stats::nlminb(opt$par, obj$fn, obj$gr, control = control),
+      error = function(e) NULL
+    )
+    if (is.null(candidate) || !is.finite(candidate$objective) ||
+        candidate$objective > opt$objective + 1e-8) break
+    opt <- candidate
+    polish_passes <- polish
+  }
+  post_nlminb_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
+  if (!all(is.finite(post_nlminb_gradient)) ||
+      max(abs(post_nlminb_gradient)) >= 1e-4) {
+    bfgs <- tryCatch(
+      stats::optim(opt$par, obj$fn, obj$gr, method = "BFGS",
+                   control = list(maxit = 500L, reltol = 1e-12)),
+      error = function(e) NULL
+    )
+    if (!is.null(bfgs) && identical(bfgs$convergence, 0L) &&
+        is.finite(bfgs$value) && bfgs$value <= opt$objective + 1e-8) {
+      opt <- list(
+        par = bfgs$par, objective = bfgs$value,
+        convergence = bfgs$convergence, message = bfgs$message,
+        evaluations = bfgs$counts, iterations = NA_integer_
+      )
+      polish_optimizer <- "nlminb_then_bfgs"
+    }
+  }
+
+  gradient <- tryCatch(obj$gr(opt$par), error = function(e) rep(NA_real_, length(opt$par)))
+  finite_parameters <- all(is.finite(opt$par))
+  max_abs_gradient <- if (length(gradient) && all(is.finite(gradient))) {
+    max(abs(gradient))
+  } else Inf
+  healthy <- identical(opt$convergence, 0L) && is.finite(opt$objective) &&
+    finite_parameters && max_abs_gradient < 1e-4
+  best <- list(
+    convergence = opt$convergence,
+    objective = unname(opt$objective),
+    max_abs_gradient = max_abs_gradient,
+    finite_parameters = finite_parameters,
+    healthy = healthy,
+    message = opt$message,
+    par = opt$par,
+    evaluations = opt$evaluations,
+    iterations = opt$iterations,
+    polish_passes = polish_passes,
+    polish_optimizer = polish_optimizer
+  )
+  report <- tryCatch(obj$report(opt$par), error = function(e) {
+    list(report_error = conditionMessage(e))
+  })
+
+  list(
+    status = if (healthy) "healthy" else "failed_health_gate",
+    research_only = TRUE,
+    objective_type = "EVA_TAYLOR2",
+    family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson", "binomial"),
+    link = link,
+    unique = FALSE,
+    q = validated$q,
+    source_commit = .eva_source_commit(dll$source),
+    source_checksum = dll$checksum,
+    optimizer = "nlminb",
+    best = best,
+    report = report,
+    objective = obj
+  )
 }
 
 .eva_softplus_R <- function(x) pmax(x, 0) + log1p(exp(-abs(x)))

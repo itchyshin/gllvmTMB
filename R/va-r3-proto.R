@@ -200,19 +200,31 @@
          call. = FALSE)
   }
 
-  family <- match.arg(family, c("binomial", "gaussian_anchor"))
+  family <- match.arg(family, c("binomial", "poisson", "gaussian_anchor"))
   if (family == "binomial") {
     if (!identical(link, "logit")) {
       stop("R3 admits only the binomial logit link.", call. = FALSE)
     }
     if (!is.numeric(y) || any(!is.finite(y)) || any(y != as.integer(y)) ||
         !is.numeric(n_trials) || any(!is.finite(n_trials)) ||
-        any(n_trials != as.integer(n_trials)) || any(n_trials < 2L) ||
+        any(n_trials != as.integer(n_trials)) || any(n_trials < 1L) ||
         any(y < 0L) || any(y > n_trials)) {
-      stop("Binomial R3 data require integer n_trials >= 2 and integer 0 <= y <= n_trials.",
+      stop("Binomial R3 data require integer n_trials >= 1 and integer 0 <= y <= n_trials.",
            call. = FALSE)
     }
     family_code <- 1L
+  } else if (family == "poisson") {
+    if (!identical(link, "log")) {
+      stop("R3 admits only the Poisson log link.", call. = FALSE)
+    }
+    if (!is.numeric(y) || any(!is.finite(y)) || any(y != as.integer(y)) ||
+        any(y < 0L)) {
+      stop("Poisson R3 data require finite non-negative integer y.", call. = FALSE)
+    }
+    ## The standalone template declares n_trials for every branch; the Poisson
+    ## algebra does not use it, but it must be finite and correctly sized.
+    n_trials <- rep.int(1L, length(y))
+    family_code <- 2L
   } else {
     if (!identical(link, "identity")) {
       stop("The Gaussian algebra anchor uses the identity link.", call. = FALSE)
@@ -339,6 +351,11 @@
     prop <- (data$y + 0.5) / (data$n_trials + 1)
     beta_fit <- tryCatch(stats::lm.fit(data$X, stats::qlogis(prop))$coefficients,
                          error = function(e) rep(0, p))
+  } else if (data$family == 2L) {
+    ## Poisson uses a log link, so start beta on the log scale; the 0.5
+    ## offset keeps zero counts finite.
+    beta_fit <- tryCatch(stats::lm.fit(data$X, log(data$y + 0.5))$coefficients,
+                         error = function(e) rep(0, p))
   } else {
     beta_fit <- tryCatch(stats::lm.fit(data$X, data$y)$coefficients,
                          error = function(e) rep(0, p))
@@ -423,9 +440,11 @@
 
 .va_r3_fit <- function(y, n_trials, X, unit_id, trait_id, q,
                        N = NULL, T = NULL,
-                       family = c("binomial", "gaussian_anchor"),
-                       link = if (identical(family[1L], "gaussian_anchor"))
-                         "identity" else "logit",
+                       family = c("binomial", "poisson", "gaussian_anchor"),
+                       link = switch(family[1L],
+                         gaussian_anchor = "identity",
+                         poisson = "log",
+                         "logit"),
                        unique = FALSE, psi = FALSE, structured = FALSE,
                        provider = NULL, lv = FALSE, missing = FALSE,
                        gaussian_sd = 1, H = 61L,
@@ -450,7 +469,8 @@
       research_only = TRUE,
       objective_type = "ELBO_GH",
       rank_source = rank_source,
-      family = if (family == "gaussian_anchor") "gaussian" else "binomial",
+      family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
+                      "binomial"),
       link = link,
       unique = FALSE,
       quadrature = NULL,
@@ -593,7 +613,8 @@
     research_only = TRUE,
     objective_type = "ELBO_GH",
     rank_source = rank_source,
-    family = if (family == "gaussian_anchor") "gaussian" else "binomial",
+    family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
+                    "binomial"),
     link = link,
     unique = FALSE,
     q = validated$q,

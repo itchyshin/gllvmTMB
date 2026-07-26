@@ -45947,3 +45947,110 @@ Still open, not addressed here: (a) `git worktree list` shows **27** worktrees, 
 directories nonetheless exist; (b) two untracked `.new.svg` plot snapshots await an accept-or-discard call.
 Nothing committed — the 12 carried-over paths plus this `CLAUDE.md` edit remain uncommitted in this lane by
 design. — lane rehydration, addendum (Claude, 2026-07-25)
+
+## 2026-07-26 -> main lane: a Claude VA/EVA **wiring** lane exists off-checkout; test assertions realigned (Claude)
+
+**Status correction, appended after the fact — read this first.** This entry was drafted while the work was
+uncommitted, and says so below. That is **no longer true.** At 16:32 MDT on 2026-07-26, mid-session, Shinichi
+committed the lane as **`4dcf3d80` "feat(research): VA + EVA engines for Poisson and binomial; verified
+against gllvm"** — 10 files, +897/−40, bundling the production changes *and* the four test edits described
+here. The commit is **local to `claude/va-wiring-20260726`, has no upstream, and is on no remote branch**, so
+"not on `main`" still holds; "uncommitted" does not. Ownership note for the next session: this is a case of
+two writers in one worktree — the commit was authored while a Claude session had uncommitted edits in the
+same files. Nothing was lost (the test edits are inside `4dcf3d80`, verified by `git show`), but do not
+assume single-writer state in this lane. After that commit the lane is **clean of tracked modifications** —
+see the Design 85 paragraph below.
+
+**In one paragraph, so this is not a surprise:** a Claude lane at `/private/tmp/gllvmtmb-va-wiring-20260726`
+(`claude/va-wiring-20260726`) holds VA/EVA work that is **not on `main` and not on any remote**. Its
+production changes relaxed VA-R3's binomial `n_trials` floor to `>= 1`, added Poisson to VA-R3, gave EVA a
+data-accepting fit path, and made `n_trials` unconditional in the EVA C++ template. **This sitting only
+realigned the four test assertions those changes invalidated — no production code was touched.** No API,
+grammar, likelihood, or family change reaches `main` from this note. Detail below.
+
+**Lane declaration, so no later session rediscovers this by collision.** There is an active Claude lane at
+`/private/tmp/gllvmtmb-va-wiring-20260726`, branch `claude/va-wiring-20260726` (based at `dc79753a`). It is
+**uncommitted and unpushed** — nothing of it is on `main`, and `git log` on `main` will not show it. It
+carries modifications to `R/approximation-engine.R`, `R/eva-proto.R`, `R/va-r3-proto.R`,
+`inst/tmb/gllvmTMB_eva.cpp`, `inst/tmb/gllvmTMB_va_r3.cpp`, plus untracked `dev/` inspection scripts and
+`docs/design/104-va-family-coverage.md`.
+
+**What that lane changed (production side — done before this sitting, recorded here for the first time):**
+
+1. **VA-R3's binomial `n_trials` floor was relaxed from `>= 2` to `>= 1`** (`.va_r3_validate_data()`), so the
+   Bernoulli case is now admitted rather than rejected.
+2. **VA-R3 gained Poisson-log**, so its advertised regime string became
+   `"complete cells (binomial: integer n_trials >= 1; Poisson: no trials)"` instead of
+   `"complete multi-trial (integer n_trials >= 2)"`.
+3. **EVA gained a data-accepting fit path** (`.eva_fit()` / `.eva_validate_data()`, wired through
+   `.approximation_engine_eva_fit()`). It admits binomial-logit (with `n_trials = 1` as the Bernoulli special
+   case), Poisson-log, and a Gaussian-identity **test anchor**. The pre-existing fixed-coordinate Gate-1
+   fixture evaluation is unchanged but now dispatches on a `fixture =` argument rather than on the absence of
+   data.
+4. `inst/tmb/gllvmTMB_eva.cpp` now requires `n_trials` **unconditionally**, for every family branch.
+
+**This sitting did exactly one thing: realigned the test assertions those four changes invalidated. No
+production code was touched.** Four edits:
+
+- `tests/testthat/test-approximation-engine.R` — the floor-violation case now uses `n_trials = 0` and expects
+  `"n_trials >= 1"` (the test's intent was a floor violation, and `1` is no longer one).
+- same file — the admitted-regime string assertion updated to the new binomial-or-Poisson wording.
+- same file — the EVA rejection test rewritten against the *new* admitted surface: an unsupported family
+  (`"gamma"`) and a wrong link (`binomial` + `probit`) still error, `unique = TRUE` still errors, and an
+  admitted family with no data now errors on `q` validation. A separate small test pins that the legacy
+  Bernoulli-only fixture regime is still enforced on the `fixture =` path.
+- `tests/testthat/test-eva-gate1.R` — the permutation-invariance check builds a raw `TMB::MakeADFun()` call
+  directly, bypassing `.eva_make_objective()`, so it never received the `n_trials` fix applied inside that
+  helper. Added `n_trials = list(rep(1, length(permuted$y)))` to the raw data list, mirroring
+  `R/eva-proto.R:157`. (The `list()` wrapper matters: a bare vector would splice into six `n_trials1..6`
+  elements under `c()`.)
+
+**Evidence.** `test_local(filter = "approximation-engine")` and `test_local(filter = "eva-gate1")` are both
+**green** (1 pre-existing skip, the sealed-helper-absent case, which does not apply in this checkout). The
+**full `devtools::test()` ran to completion, exit 0: 0 failures, 0 errors**, 782 skips, 2 warnings. The skips
+are the standing `GLLVMTMB_HEAVY_TESTS=1` recovery/matrix gate, not anything this change disabled; the two
+warnings are the pre-existing "rows full of zeros in y" notices from the `gllvm` cross-package comparator
+(`test-comparator-gllvm.R:418`, `:449`), unrelated to VA/EVA. Scope of the claim: this is a full-suite green
+on **macOS arm64, R 4.6, heavy tests skipped** — not a cross-OS or heavy-tests-enabled statement.
+
+**Blast-radius sweep (why the narrow evidence is nonetheless load-bearing).** The C++ change in item 4 can
+only break callers that build an objective against the `gllvmTMB_eva` / `gllvmTMB_va_r3` DLLs *without* going
+through the helpers. Every other raw `TMB::MakeADFun()` call under `tests/` targets the main `gllvmTMB` DLL,
+and every `dev/` script touching the sealed DLLs goes through the helpers. Exactly one raw caller existed —
+`tests/testthat/test-eva-gate1.R:40` — and it is the one fixed above.
+
+**Lane-overlap check, and a correction to the 2026-07-25 entry above.** That entry says "Codex is live on the
+EVA / VA / JJ family (`design90`–`design98`) ... EVA is therefore fenced from Claude." As of today that is no
+longer the state: `codex/va-eva-integration-20260726`, `codex/va-variance-gate-20260726`, and
+`codex/va-eva-engine-spine-20260726` all have **0 files differing from `main`** and **clean worktrees** — they
+are landed, not live. Zero open PRs. So there is no concurrent editor of the VA/EVA files right now. Per D-88
+this is a **weak** all-clear, not proof of sole ownership: it is a snapshot, and it does not authorise a
+future session to assume the fence is gone.
+
+**Design 85 — resolved, and an earlier framing in this entry was wrong.** An earlier draft of this note said
+`docs/design/85-highdim-nongaussian-va-formal-contract.md:57` ("complete **multi-trial** binomial",
+`n_it >= 2`) had fallen behind the code and needed a maintainer decision. That was a misreading. Design 85 is
+a **closed NO-GO record, frozen 2026-07-20** — not the live spec for the current prototype. Its section-2
+contract correctly states the scope that *was contracted and evaluated* when Gate 3 failed; rewriting it to
+match today's code would have falsified a decision record. The successor is
+`docs/design/104-va-family-coverage.md` (internal-research only, authorises no export). Action taken in the
+wiring lane: Design 85's contract, equations, and NO-GO verdict are **untouched**; a dated scope note was
+added at the top, plus a one-line cross-reference at the "multi-trial" sentence itself, both pointing to
+Design 104 and stating that section 2 is "what was tested in July 2026" rather than "what the prototype
+admits now".
+
+**That scope note was then reverted, by decision: Design 85 is left byte-for-byte untouched.** Shinichi's
+call, 2026-07-26 — the document is superseded, so it needs no annotation to say so, and a closed decision
+record is cleanest when nothing later reaches back into it. Recorded here so a future session finds the
+reasoning in the log rather than re-flagging the same non-issue: **`docs/design/85:57`'s `n_it >= 2` is
+correct for what it documents.** It is the July-2026 NO-GO scope, not a stale spec. If you want the current
+prototype's admitted families, read `docs/design/104-va-family-coverage.md`; do not "fix" Design 85 to match
+the code. No reopening of the NO-GO is implied or authorised.
+
+**Still open, deliberately:** nothing in the wiring lane is committed or pushed, and this note was written
+from a third worktree.
+
+**Where this note landed.** The main *checkout* (`/Users/z3437171/Dropbox/Github Local/gllvmTMB`) is itself on
+`claude/profile-coverage-remeasure-20260718`, not on `main`, and is carrying 12 pre-existing dirty paths. This
+entry is therefore an **uncommitted 13th** in that tree, not a commit on `main`. Landing it on `main` is
+Shinichi's call. — VA/EVA test realignment (Claude, 2026-07-26)

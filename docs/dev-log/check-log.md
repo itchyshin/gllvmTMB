@@ -46832,3 +46832,16 @@ validation-debt register is untouched. The `phylo_dep` wrong-tree result
 
 After-task report:
 `docs/dev-log/after-task/2026-07-25-phylo-column-cancelled-and-comparator-evidence.md`
+
+## 2026-07-26 — VA-R3 variance-domain gate (Codex, private)
+
+Created and ran the private multi-trial binomial-logit variance-domain harness
+in the isolated `codex/va-variance-gate-20260726` worktree. The four calibrated
+finite-fixture cells realized observed projected variances 4.613715, 5.987552,
+8.674338, and 22.190718. Independent q=2 product-GH truth was stable through
+8.674338 and uninterpretable at 22.190718 (H501-to-H801 spread 0.01636229), so
+the high-band ELBO--truth gap is intentionally `NA`. No gate threshold, package
+surface, or public capability was changed.
+
+Exact commands and complete receipts:
+`docs/dev-log/after-task/2026-07-26-va-r3-variance-domain-gate.md`.

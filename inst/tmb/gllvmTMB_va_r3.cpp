@@ -142,9 +142,12 @@ Type objective_function<Type>::operator()()
     if (family == 1) {
       double yd = asDouble(y(r));
       double nd = asDouble(n_trials(r));
-      if (nd < 2.0 || std::floor(nd) != nd || yd < 0.0 || yd > nd ||
+      // n >= 1 admits Bernoulli.  n enters only as the multiplier of the
+      // softplus expectation and inside lgamma-based log C(n, y), which is
+      // exactly zero at n = 1; the quadrature itself never sees n.
+      if (nd < 1.0 || std::floor(nd) != nd || yd < 0.0 || yd > nd ||
           std::floor(yd) != yd)
-        error("gllvmTMB_va_r3: binomial cells require integer n >= 2 and 0 <= y <= n");
+        error("gllvmTMB_va_r3: binomial cells require integer n >= 1 and 0 <= y <= n");
     }
   }
   for (int cell = 0; cell < N * T; ++cell) {

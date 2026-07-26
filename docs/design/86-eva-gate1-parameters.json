@@ -1,0 +1,204 @@
+{
+  "schema_version": "1.0.0",
+  "status": "FROZEN_GATE1_ONLY",
+  "family": "bernoulli_logit_and_test_only_gaussian",
+  "gate1": {
+    "bernoulli": {
+      "N": 2,
+      "T": 2,
+      "q": 1,
+      "y": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "X": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "unit_id": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "trait_id": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "beta": [
+        -3
+      ],
+      "theta_rr": [
+        0.8,
+        -0.35
+      ],
+      "a": [
+        [
+          0.1
+        ],
+        [
+          -0.2
+        ]
+      ],
+      "log_A_diag": [
+        [
+          -0.35667494393873245
+        ],
+        [
+          -0.10536051565782628
+        ]
+      ],
+      "A_off": [
+        [],
+        []
+      ]
+    },
+    "bernoulli_q2": {
+      "N": 2,
+      "T": 3,
+      "q": 2,
+      "y": [0, 0, 1, 0, 1, 0],
+      "X": [[1], [1], [1], [1], [1], [1]],
+      "unit_id": [0, 0, 0, 1, 1, 1],
+      "trait_id": [0, 1, 2, 0, 1, 2],
+      "beta": [-1.7],
+      "theta_rr": [0.8, 0.6, 0.15, -0.25, 0.35],
+      "a": [[0.1, -0.2], [-0.25, 0.15]],
+      "log_A_diag": [[-0.35667494393873245, -0.2231435513142097], [-0.10536051565782628, -0.2876820724517809]],
+      "A_off": [[0.12], [-0.08]]
+    },
+    "gaussian": {
+      "N": 1,
+      "T": 2,
+      "q": 1,
+      "y": [
+        0.1,
+        -0.4
+      ],
+      "X": [
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "unit_id": [
+        0,
+        0
+      ],
+      "trait_id": [
+        0,
+        1
+      ],
+      "beta": [
+        0.2
+      ],
+      "theta_rr": [
+        0.7,
+        -0.4
+      ],
+      "a": [
+        [
+          0.3
+        ]
+      ],
+      "log_A_diag": [
+        [
+          -0.2231435513142097
+        ]
+      ],
+      "A_off": [
+        []
+      ],
+      "gaussian_sd": 1.1
+    },
+    "d3_marginal_probe": {
+      "N": 1,
+      "T": 2,
+      "q": 1,
+      "y": [
+        0,
+        0
+      ],
+      "X": [
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "unit_id": [
+        0,
+        0
+      ],
+      "trait_id": [
+        0,
+        1
+      ],
+      "beta": [
+        -3.5
+      ],
+      "theta_rr": [
+        0.7,
+        -0.35
+      ],
+      "a": [
+        [
+          0.2
+        ]
+      ],
+      "log_A_diag": [
+        [
+          -0.5108256237659907
+        ]
+      ],
+      "A_off": [
+        []
+      ],
+      "quadrature_orders": [
+        15,
+        25,
+        61
+      ],
+      "reported_quantity": "ell_EVA_minus_AGHQ_marginal_no_expected_direction",
+      "diagnostic_reference_value": -0.20742240932815514,
+      "diagnostic_tolerance": 1e-10
+    },
+    "d4_remainder": {
+      "mu": -3.5,
+      "variance": 0.2,
+      "y": 0,
+      "seed": 860401,
+      "draws": 200000,
+      "decision_rule": "mean_R_plus_3_SE_R_less_than_0",
+      "analytic_root_probability": [
+        0.2113248654051871,
+        0.7886751345948129
+      ]
+    }
+  },
+  "prohibitions": {
+    "unique": false,
+    "psi": false,
+    "random": false,
+    "n_trials": 1,
+    "public_api": false,
+    "source_gllvmTMB_cpp_may_change": false
+  }
+}

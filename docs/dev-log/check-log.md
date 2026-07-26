@@ -46832,3 +46832,32 @@ validation-debt register is untouched. The `phylo_dep` wrong-tree result
 
 After-task report:
 `docs/dev-log/after-task/2026-07-25-phylo-column-cancelled-and-comparator-evidence.md`
+
+## 2026-07-26 — Private VA/EVA approximation-engine spine (Codex)
+
+New isolated worktree: `/private/tmp/gllvmtmb-va-eva-engine-spine`, branch
+`codex/va-eva-engine-spine-20260726`, created from `origin/main` at `966d24bb`.
+The dirty Dropbox primary checkout was not edited.  The pre-edit coordination
+query `gh pr list --state open --limit 20` could not reach `api.github.com`;
+the required recent-log inspection was run locally.  This is weak lane evidence,
+not an all-clear claim.
+
+Implemented only private VA-R3/EVA Gate-1 wiring, sealed-source provenance, and
+a comparator spine.  EVA's four source files are byte-identical to `3b479354`.
+No `NAMESPACE`, `DESCRIPTION`, NEWS, README, Rd, vignette, pkgdown, or
+`src/gllvmTMB.cpp` change was made.  The full checks, non-graduation dependency
+constraint, and exact stale-wording patterns are in
+`docs/dev-log/after-task/2026-07-26-va-eva-engine-spine.md`.
+
+Continuation receipt: the private executable runner separately ran internal
+VA-R3 / gllvmTMB Laplace / gllvm VA on a complete multi-trial binomial-logit
+fixture, and fixed Gate-1 EVA / gllvmTMB Laplace / gllvm EVA on the sealed
+Bernoulli fixture.  Raw records and the Markdown table are retained under
+`dev/va-eva-engine-spine/receipts/`.  Independent fixed-coordinate scalar
+reference gaps were `8.882e-15` (VA) and `4.441e-16` (EVA).  No objective
+ranking was calculated across engines or tracks.
+
+Fresh lane preflight found upstream handover `ebe3bd4f`, which documents that
+the broader high-variance/sparse brute-force truth ladder is non-convergent.
+This Arc's scalar oracle receipt is deliberately not extrapolated to that
+regime.

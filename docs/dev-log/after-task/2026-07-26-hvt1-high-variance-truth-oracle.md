@@ -96,11 +96,11 @@ several retained route checks.  The runner was corrected and both cells were
 rerun before this report.  **Noether** then found regenerated-fixture and
 shared-anchor defects; the final runner consumes the campaign's frozen fixture
 and independently codes the analytic and q=1 anchors, followed by a second
-rerun.  The planned fresh Rose completion review could not be launched because
-the runtime's four child-thread slots were already occupied by this task's
-earlier planning threads; this is a recorded routing deviation, not a waived
-review claim.  The final Curie review and final Noether review both passed;
-Curie required an explicit forward/reverse agreement gate before that pass.
+rerun.  The final Curie review and final Noether review both passed; Curie
+required an explicit forward/reverse agreement gate before that pass.  A fresh
+Rose audit ran after a child-thread slot became available; it passed the
+implementation/provenance evidence and identified two closeout-record wording
+discrepancies, both reconciled in the preservation branch.
 
 ## Known limitations and next action
 

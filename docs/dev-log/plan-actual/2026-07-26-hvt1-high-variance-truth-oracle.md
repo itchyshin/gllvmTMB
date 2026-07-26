@@ -12,7 +12,7 @@ therefore `ORACLE_NOT_CERTIFIED`, with no high-cell ELBO--truth gap.
 | --- | --- | --- | --- |
 | Scope | private q=2 multi-trial oracle | met; no public surface change | aligned |
 | Evidence | stable/high certification | stable certified; high tightened reverse failed | aligned outcome |
-| Routing | fresh 2 Terra + 1 Sol completion panel | Curie and Noether passed after remediation; fresh Rose slot was unavailable after planning children | adaptive deviation |
+| Routing | fresh 2 Terra + 1 Sol completion panel | Curie and Noether passed after remediation; Rose then completed the mechanical audit and its two record-level warnings were reconciled | aligned |
 | Safety | lock, no retuning, no fallback | met | aligned |
 | Claims | no VA admission/gate relaxation | met | aligned |
 | Handoff | report, receipt, branch preservation | met: committed and pushed as `3a22ac48` on `codex/hvt1-high-variance-truth-oracle-20260726` | aligned |

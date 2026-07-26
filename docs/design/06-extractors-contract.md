@@ -70,7 +70,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `getLoadings(fit, level, rotate)` | c | cl | cl | cl | raw or rotated $\Lambda$ matrix |
 | `rotate_loadings(fit, level, method)` | c | cl | cl | cl | none / varimax / promax post-fit rotation |
 | `extract_rotated_loadings_table(fit, level, method, loading_scale)` | c | cl | cl | cl | report-ready tidy rows over `rotate_loadings()` for ordination tables and figures |
-| `getLV(fit)` | c | cl | cl | cl | legacy ordination alias |
+| `getLV(fit, level, rotate, se)` | c | cl | cl | cl | legacy ordination alias; `se = TRUE` (Gaussian-fit z_B/z_W only, `rotate = "none"`) adds per-score standard errors |
 | `getResidualCor(fit)` | c | cl | cl | cl | glmmTMB-style residual correlation matrix |
 | `getResidualCov(fit)` | c | cl | cl | cl | glmmTMB-style residual covariance matrix |
 | `profile_ci_repeatability(fit)` | r | r | r | r | internal withdrawn nonlinear prototype; not exported |
@@ -561,10 +561,55 @@ matrix from tidy rows, assert varimax covariance invariance
 under ordering and sign flips, and check explicit anchor-trait
 signs.
 
-#### `getLV(fit)`
+#### `getLV(fit, level = "unit", rotate = c("none", "varimax", "promax"), se = FALSE)`
 
 Legacy alias for `extract_ordination(fit)`. Kept through
 0.2.x; slated for `lifecycle::deprecate_soft()` in 0.3.0.
+
+**`se` argument (added Design 06-follow-up, 2026-07-25; no NAMESPACE
+change — `se` is a new argument on the existing export):**
+
+- **Return contract.** `se = FALSE` (default): unchanged, a bare `n x d`
+  matrix (behaviour-preserving). `se = TRUE`: a `list(scores, se)`, where
+  `scores` is that same matrix and `se` is an `n x d` matrix of identical
+  shape and `dimnames`, so `se[i, k]` is always the standard error of
+  `scores[i, k]`. This mirrors `extract_ordination()`'s own
+  `list(scores, loadings, row_id)` shape (reusing the `scores` field name)
+  rather than switching to the long-format `data.frame` used by
+  `loading_ci()` / `extract_lv_effects()`, because `getLV()`'s contract is
+  "the same matrix, optionally with uncertainty attached" — not a per-row
+  tidy table.
+- **Computation.** Reads `sqrt(sd_report$diag.cov.random[idx])` for the
+  `z_B` (`level = "unit"`) or `z_W` (`level = "unit_obs"`) block of the
+  fit's TMB `sdreport()`, and reshapes with the identical
+  `matrix(nrow = d, ncol = n)` then transpose convention
+  `extract_ordination()` uses for the point estimates. `diag.cov.random`
+  is already computed by every `sdreport()` call with random effects
+  (independent of `getJointPrecision`), so `se = TRUE` costs no extra
+  `sdreport()` call. Verified during development to agree with an
+  independent route — inverting the fit's full joint precision matrix
+  (`TMB::sdreport(getJointPrecision = TRUE)`) and reading the diagonal of
+  the same block — to machine precision (`dev/getlv-score-se-RESULTS.md`).
+- **Guards, each a typed error rather than a silently wrong number:**
+  `rotate != "none"` with `se = TRUE`
+  (`gllvmTMB_getLV_se_rotated_unsupported`: rotation changes score
+  covariance, not propagated); predictor-informed `latent(..., lv = ~ x)`
+  fits at `level = "unit"` (`gllvmTMB_getLV_se_lv_predictor_unsupported`:
+  the score mean's own uncertainty is not yet propagated);
+  `engine = "julia"` bridge fits (`gllvmTMB_getLV_se_julia_unsupported`:
+  no native `sdreport`); a fit with no `sd_report`
+  (`gllvmTMB_getLV_se_no_sdreport`: refit with
+  `gllvmTMBcontrol(se = TRUE)`, the default). A non-positive-definite
+  Hessian returns `NA` standard errors with a `cli_warn`, matching
+  `loading_ci()`'s existing convention, rather than erroring.
+- **Ordering hazard.** The `z_B` / `z_W` random-effect block is flattened
+  column-major from a `(d x n)` matrix, so consecutive runs of `d` values
+  belong to the SAME unit — not the same axis. Swapping `nrow`/`ncol` in
+  the reshape is dimensionally silent (same `n x d` output shape) but
+  reads entirely wrong (unit, axis) pairings; this is exactly the
+  class of bug `tests/testthat/test-getlv-se.R` is built to catch (it
+  constructs the wrong reshape explicitly and asserts it disagrees with
+  the correct one).
 
 ### 4. Family-specific extractors
 

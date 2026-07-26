@@ -100,20 +100,58 @@ extract_loadings <- function(
 #' with `gllvm::getLV()`.
 #'
 #' @inheritParams getLoadings
-#' @return A matrix with one row per unit (`level = "unit"`) or one row per
-#'   within-unit observation (`level = "unit_obs"`), and one column per
-#'   latent factor.
+#' @param se Logical; if `TRUE`, also return the standard error of every
+#'   latent score, alongside the scores. Default `FALSE`, which preserves the
+#'   original behaviour (a bare matrix). See the Standard errors section.
+#' @return When `se = FALSE` (default): a matrix with one row per unit
+#'   (`level = "unit"`) or one row per within-unit observation
+#'   (`level = "unit_obs"`), and one column per latent factor. When
+#'   `se = TRUE`: a list with `scores` (that same matrix) and `se` (a matrix
+#'   of identical shape and dimnames holding the standard error of every
+#'   score).
+#'
+#' @section Standard errors:
+#' `se = TRUE` reads the marginal standard error of every unit-level (or
+#' within-unit) latent-score random effect -- `z_B` at `level = "unit"`,
+#' `z_W` at `level = "unit_obs"` -- from the fit's TMB `sdreport()`
+#' (`sqrt(sd_report$diag.cov.random)`), and reshapes it with the identical
+#' `matrix(..., nrow = d, ncol = n)` then transpose convention that
+#' [extract_ordination()] uses for the point estimates, so `scores[i, k]`
+#' and `se[i, k]` always refer to the same (unit, axis) cell. This value is
+#' mathematically equivalent to inverting the fit's full joint precision
+#' matrix (`TMB::sdreport(getJointPrecision = TRUE)`) and reading the
+#' diagonal of the same block; the two routes were verified to agree to
+#' machine precision during development (see
+#' `dev/getlv-score-se-RESULTS.md`). Requirements:
+#' \itemize{
+#'   \item The fit must carry a valid `sdreport()`
+#'     (`gllvmTMBcontrol(se = TRUE)`, the default) with a positive-definite
+#'     Hessian; otherwise `se = TRUE` raises an error (no `sdreport`) or a
+#'     warning with `NA` standard errors (non-positive-definite Hessian).
+#'   \item `rotate` must be `"none"`: rotating scores changes their
+#'     covariance, which is not currently propagated, so `se = TRUE` together
+#'     with `rotate != "none"` raises an error rather than silently pairing
+#'     rotated scores with un-rotated standard errors.
+#'   \item Predictor-informed `latent(..., lv = ~ x)` fits at `level =
+#'     "unit"` are not yet supported (the score mean's own uncertainty is
+#'     not yet propagated) and raise an error.
+#'   \item `engine = "julia"` bridge fits are not yet supported and raise an
+#'     error.
+#' }
+#'
 #' @seealso [extract_ordination()] for scores and loadings together.
 #' @keywords internal
 #' @export
 #' @examples
 #' \dontrun{
 #' getLV(fit, level = "unit")
+#' getLV(fit, level = "unit", se = TRUE)
 #' }
 getLV <- function(
   fit,
   level = "unit",
-  rotate = c("none", "varimax", "promax")
+  rotate = c("none", "varimax", "promax"),
+  se = FALSE
 ) {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
@@ -123,14 +161,91 @@ getLV <- function(
       "engine = 'julia': rotated latent scores are not routed yet; use {.code rotate = \"none\"} or engine = 'tmb'."
     )
   }
+  if (isTRUE(se) && inherits(fit, "gllvmTMB_julia")) {
+    cli::cli_abort(c(
+      "engine = 'julia': {.code se = TRUE} is not available for bridge fits.",
+      "i" = "Bridge fits do not carry a native TMB {.fn sdreport}; use {.code se = FALSE} for point estimates."
+    ), class = "gllvmTMB_getLV_se_julia_unsupported")
+  }
+  if (isTRUE(se) && rotate != "none") {
+    cli::cli_abort(c(
+      "{.code se = TRUE} is not supported together with {.code rotate != \"none\"}.",
+      "i" = "Rotating scores changes their covariance, which {.fn getLV} does not currently propagate.",
+      ">" = "Request {.code rotate = \"none\", se = TRUE} for standard errors, or {.code rotate = \"varimax\"}/{.code \"promax\"} with {.code se = FALSE} for rotated point estimates."
+    ), class = "gllvmTMB_getLV_se_rotated_unsupported")
+  }
   ord <- extract_ordination(fit, level = .canonical_level_name(level))
   if (is.null(ord)) {
     return(NULL)
   }
-  if (rotate == "none") {
-    return(ord$scores)
+  if (!isTRUE(se)) {
+    if (rotate == "none") {
+      return(ord$scores)
+    }
+    return(rotate_loadings(fit, .canonical_level_name(level), rotate)$scores)
   }
-  rotate_loadings(fit, .canonical_level_name(level), rotate)$scores
+  se_mat <- .getLV_se(fit, level = level, scores = ord$scores)
+  list(scores = ord$scores, se = se_mat)
+}
+
+#' Standard error of every unit-level (or within-unit) latent score
+#'
+#' Internal helper for `getLV(..., se = TRUE)`. Reads the marginal SE of
+#' the `z_B` / `z_W` random-effect block from `fit$sd_report` and reshapes
+#' it with the same `matrix(nrow = d, ncol = n)` then transpose convention
+#' [extract_ordination()] uses for the point estimates, so a misordered
+#' reshape here would silently pair the wrong SE with the wrong (unit,
+#' axis) score cell -- see `dev/getlv-score-se-RESULTS.md` for the
+#' verification this guards against.
+#'
+#' @param fit A `gllvmTMB_multi` fit.
+#' @param level Canonical `"B"` or `"W"` (already normalised by the caller).
+#' @param scores The `ord$scores` matrix, used only for its `dimnames`.
+#' @return A numeric matrix, same shape and dimnames as `scores`.
+#' @keywords internal
+#' @noRd
+.getLV_se <- function(fit, level, scores) {
+  if (level == "B" && isTRUE(fit$use$lv_B)) {
+    cli::cli_abort(c(
+      "{.code se = TRUE} is not yet supported for predictor-informed {.code latent(..., lv = ~ x)} fits.",
+      "i" = "The unit-level score mean depends on the fitted {.field alpha_lv_B} coefficients, whose uncertainty is not yet propagated into the score standard error.",
+      ">" = "Use {.code se = FALSE} for point estimates."
+    ), class = "gllvmTMB_getLV_se_lv_predictor_unsupported")
+  }
+  sd_rep <- fit$sd_report
+  if (is.null(sd_rep)) {
+    cli::cli_abort(c(
+      "{.code se = TRUE} requires the fit's TMB {.fn sdreport}.",
+      "i" = "This fit has no {.field sd_report} ({.code gllvmTMBcontrol(se = FALSE)}, or {.fn sdreport} failed at fitting time).",
+      ">" = "Refit with {.code control = gllvmTMBcontrol(se = TRUE)} (the default)."
+    ), class = "gllvmTMB_getLV_se_no_sdreport")
+  }
+  z_name <- if (level == "B") "z_B" else "z_W"
+  d <- if (level == "B") fit$d_B else fit$d_W
+  n <- if (level == "B") fit$n_sites else fit$n_site_species
+  par_names <- names(sd_rep$par.random)
+  idx <- which(par_names == z_name)
+  if (length(idx) != d * n) {
+    cli::cli_abort(c(
+      "Could not locate the {.field {z_name}} random-effect block in {.code sd_report$par.random}.",
+      "i" = "Expected {d * n} entries (d = {d}, n = {n}); found {length(idx)}.",
+      "i" = "This usually means the fit's {.field sd_report} is stale relative to its {.field tmb_obj}; refit and retry."
+    ), class = "gllvmTMB_getLV_se_block_mismatch")
+  }
+  if (!isTRUE(sd_rep$pdHess)) {
+    cli::cli_warn(c(
+      "Fit's Hessian is not positive-definite at the optimum.",
+      "i" = "Returning {.code NA} standard errors -- Wald inference is unavailable for this fit."
+    ))
+    se_vec <- rep(NA_real_, d * n)
+  } else {
+    ## pmax(., 0) guards against floating-point noise producing a
+    ## microscopically negative variance for an entry that is truly ~0.
+    se_vec <- sqrt(pmax(sd_rep$diag.cov.random[idx], 0))
+  }
+  se_mat <- t(matrix(se_vec, nrow = d, ncol = n))
+  dimnames(se_mat) <- dimnames(scores)
+  se_mat
 }
 
 #' Extract implied trait covariance or correlation

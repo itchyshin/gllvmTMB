@@ -4,7 +4,7 @@
 \alias{getLV}
 \title{Extract latent-variable scores from a fitted multivariate model}
 \usage{
-getLV(fit, level = "unit", rotate = c("none", "varimax", "promax"))
+getLV(fit, level = "unit", rotate = c("none", "varimax", "promax"), se = FALSE)
 }
 \arguments{
 \item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. Admitted
@@ -17,20 +17,58 @@ Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 \item{rotate}{Optional \code{"varimax"} or \code{"promax"} rotation after fitting.
 Default \code{"none"} returns the engine's native lower-triangular Lambda.
 For Julia bridge fits only \code{"none"} is currently routed.}
+
+\item{se}{Logical; if \code{TRUE}, also return the standard error of every
+latent score, alongside the scores. Default \code{FALSE}, which preserves the
+original behaviour (a bare matrix). See the Standard errors section.}
 }
 \value{
-A matrix with one row per unit (\code{level = "unit"}) or one row per
-within-unit observation (\code{level = "unit_obs"}), and one column per
-latent factor.
+When \code{se = FALSE} (default): a matrix with one row per unit
+(\code{level = "unit"}) or one row per within-unit observation
+(\code{level = "unit_obs"}), and one column per latent factor. When
+\code{se = TRUE}: a list with \code{scores} (that same matrix) and \code{se} (a matrix
+of identical shape and dimnames holding the standard error of every
+score).
 }
 \description{
 Returns latent scores from a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. This is a small
 compatibility wrapper around \code{\link[=extract_ordination]{extract_ordination()}} for readers familiar
 with \code{gllvm::getLV()}.
 }
+\section{Standard errors}{
+
+\code{se = TRUE} reads the marginal standard error of every unit-level (or
+within-unit) latent-score random effect -- \code{z_B} at \code{level = "unit"},
+\code{z_W} at \code{level = "unit_obs"} -- from the fit's TMB \code{sdreport()}
+(\code{sqrt(sd_report$diag.cov.random)}), and reshapes it with the identical
+\code{matrix(..., nrow = d, ncol = n)} then transpose convention that
+\code{\link[=extract_ordination]{extract_ordination()}} uses for the point estimates, so \code{scores[i, k]}
+and \code{se[i, k]} always refer to the same (unit, axis) cell. This value is
+mathematically equivalent to inverting the fit's full joint precision
+matrix (\code{TMB::sdreport(getJointPrecision = TRUE)}) and reading the
+diagonal of the same block; the two routes were verified to agree to
+machine precision during development (see
+\code{dev/getlv-score-se-RESULTS.md}). Requirements:
+\itemize{
+\item The fit must carry a valid \code{sdreport()}
+(\code{gllvmTMBcontrol(se = TRUE)}, the default) with a positive-definite
+Hessian; otherwise \code{se = TRUE} raises an error (no \code{sdreport}) or a
+warning with \code{NA} standard errors (non-positive-definite Hessian).
+\item \code{rotate} must be \code{"none"}: rotating scores changes their
+covariance, which is not currently propagated, so \code{se = TRUE} together
+with \code{rotate != "none"} raises an error rather than silently pairing
+rotated scores with un-rotated standard errors.
+\item Predictor-informed \code{latent(..., lv = ~ x)} fits at \code{level = "unit"} are not yet supported (the score mean's own uncertainty is
+not yet propagated) and raise an error.
+\item \code{engine = "julia"} bridge fits are not yet supported and raise an
+error.
+}
+}
+
 \examples{
 \dontrun{
 getLV(fit, level = "unit")
+getLV(fit, level = "unit", se = TRUE)
 }
 }
 \seealso{

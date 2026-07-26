@@ -133,6 +133,12 @@ elbo_H61, elbo_minus_truth
 The campaign must retain every attempted unit/cell, controls, and error string
 locally under D-50.
 
+The top-level `final_decision` is deliberately an **arc-level** decision, not a
+cell status: it is `CERTIFIED_FIXED_CELL` only when every requested cell is
+`TRUTH_CERTIFIED_ADAPTIVE`; otherwise it is `ORACLE_NOT_CERTIFIED`.  Thus a
+cell-level `TRUTH_UNINTERPRETABLE_ADAPTIVE` result is retained faithfully while
+the overall HVT-1 decision remains `ORACLE_NOT_CERTIFIED`.
+
 ## Forbidden outputs
 
 Even a `TRUTH_CERTIFIED_ADAPTIVE` result must not be reported as a Design 85

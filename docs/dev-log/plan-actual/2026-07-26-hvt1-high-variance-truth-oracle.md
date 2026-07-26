@@ -15,7 +15,7 @@ therefore `ORACLE_NOT_CERTIFIED`, with no high-cell ELBO--truth gap.
 | Routing | fresh 2 Terra + 1 Sol completion panel | Curie and Noether passed after remediation; fresh Rose slot was unavailable after planning children | adaptive deviation |
 | Safety | lock, no retuning, no fallback | met | aligned |
 | Claims | no VA admission/gate relaxation | met | aligned |
-| Handoff | report, receipt, branch preservation | met pending commit/push | pending closeout |
+| Handoff | report, receipt, branch preservation | met: committed and pushed as `3a22ac48` on `codex/hvt1-high-variance-truth-oracle-20260726` | aligned |
 
 ## Timing calibration
 

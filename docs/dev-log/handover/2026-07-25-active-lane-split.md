@@ -28,3 +28,7 @@ WITHHELD, and the RC.2 non-CRAN closeout recorded. The rung remains **NOT READY*
 **Standing interest (Shinichi, 2026-07-25):** *"I am still interested in EVA stuff too — please remember."* EVA is **cut from 0.6 to 0.7** and **Codex-owned** (`design90`–`design98` + the eta lane); Design 85 is negative evidence and READ-ONLY, Design 86 is design-only. Picking it up is a **lane reassignment + Gate-0 scope freeze decision**, not agent initiative. Keep it on the menu; raise it with him.
 
 **Next arc is UNCHOSEN** — Shinichi ruled out CRAN and the paper for now and reserved the choice. Ask.
+
+**Codex task handed over 2026-07-26 (Claude→Codex):** the **variance-domain-gate question** — is `max_projected_variance <= 4` (`R/va-r3-proto.R:648`) a real numerical limit or an arbitrary scope choice, as `n_trials >= 2` turned out to be? It decides whether the va-r3 route can ever reach sparse binary. Brief: `2026-07-26-codex-handover-va-variance-gate.md`. **Multi-trial fixtures only — Design 85 §10 prohibits Bernoulli widening and that call is Shinichi's.**
+
+**⚠ `claude/va-implementation-20260725` is DO-NOT-MERGE** pending Shinichi's §10 decision (new formal contract / revert / park). It carries verified evidence that the VA objective is correct, alongside a Bernoulli widening that §10 forbids.

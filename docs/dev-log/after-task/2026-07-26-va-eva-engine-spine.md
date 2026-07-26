@@ -32,7 +32,9 @@ New private code: `R/approximation-engine.R`, `R/eva-proto.R`,
 `inst/tmb/gllvmTMB_eva.cpp`, `tests/testthat/test-approximation-engine.R`, and
 `tests/testthat/test-eva-gate1.R`.  Private support: `dev/va-eva-comparator.R`
 and `dev/va-eva-engine-spine/` (manifest, sealed-source gate, smoke receipt).
-No example, roxygen, Rd, public API, or user-facing documentation file changed.
+`DESCRIPTION` adds `jsonlite` to `Suggests`, matching the sealed evaluator's
+existing `jsonlite::fromJSON()` dependency. No example, roxygen, Rd, public
+API, or user-facing documentation file changed.
 
 ## Checks Run
 
@@ -83,9 +85,9 @@ rg -n "approximation_engine|VA-R3|EVA Gate-1|EVA_TAYLOR2|ELBO_GH" R tests dev
 ```
 
 The public-surface scan returned no matches.  The private scan found only the
-new private spine and pre-existing VA prototype/test labels.  `NAMESPACE`,
-`DESCRIPTION`, NEWS, README, Rd, vignettes, and `src/gllvmTMB.cpp` remain
-unchanged.  No validation-debt row was changed because no capability is
+new private spine and pre-existing VA prototype/test labels. `NAMESPACE`, NEWS,
+README, Rd, vignettes, and `src/gllvmTMB.cpp` remain unchanged. `DESCRIPTION`
+now declares the sealed evaluator's `jsonlite` dependency. No validation-debt row was changed because no capability is
 advertised.
 
 ## What Did Not Go Smoothly
@@ -93,8 +95,9 @@ advertised.
 The worktree did not contain the sealed EVA files despite the planning receipt;
 they were restored from the pinned commit rather than assumed present.  Noether
 rejected the first score/fitted-result contract; its three P1 findings were
-repaired and must remain regression-fenced.  Rose also identified a real
-package-boundary issue: the sealed code uses `jsonlite` without a declaration.
+repaired and must remain regression-fenced. Rose identified the sealed
+evaluator's undeclared `jsonlite` dependency; the maintainer's later merge
+instruction authorized adding it to `Suggests`.
 
 ## Team Learning
 
@@ -113,9 +116,9 @@ separation statuses.
 This is private development code, not an experimental public API.  EVA is
 sealed Gate-1 fixture-only and has no optimizer.  VA remains limited to its
 existing complete multi-trial binomial-logit loadings-only regime and current
-variance gate.  Exact-truth hooks are small-fixture references only.  The
-undeclared `jsonlite` use means the branch is not recommended for merge or
-package checking while `DESCRIPTION` is frozen.
+variance gate. Exact-truth hooks are small-fixture references only. The
+`jsonlite` dependency is now declared in `Suggests`; package checking must
+still confirm its availability in the target installation.
 
 The newer upstream variance-gate handover (`origin/main:docs/dev-log/handover/
 2026-07-26-codex-handover-va-variance-gate.md`) also shows that its brute-force
@@ -130,9 +133,8 @@ they are failure-retention evidence, not external-fit agreement.
 
 ## Next Actions
 
-Before an API-exposure Arc, decide whether to declare `jsonlite` in package
-metadata or move the sealed evaluator into explicitly dev-only containment
-without changing its blob.  Only after that decision should a new, separately
+Before an API-exposure Arc, decide whether the sealed evaluator remains the
+right dev-only containment. Only after that decision should a new, separately
 approved Arc assess a constrained experimental approximation selector and its
 validation evidence.
 

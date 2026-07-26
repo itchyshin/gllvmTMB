@@ -63,6 +63,7 @@ Suggests:
     glmmTMB,
     gllvm,
     JuliaCall,
+    jsonlite,
     knitr,
     lme4,
     MASS,

@@ -78,6 +78,40 @@ Type va_r3_softplus_expectation(const Type &mu,
   return CppAD::CondExpGt(v, threshold, quadrature, expansion);
 }
 
+// Jaakkola-Jordan / Polya-Gamma variational upper bound on
+// E[softplus(mu + sqrt(v) Z)] for eta ~ N(mu, v), returned in the same
+// "softplus expectation" units as va_r3_softplus_expectation() above so the
+// two evaluation tiers plug into the identical ell = log_choose + y*mu -
+// n*softplus_expectation formula. With xi = sqrt(mu^2 + v):
+//   softplus_expectation_jj = log(2*cosh(xi/2)) + mu/2
+// which recovers the textbook bound
+//   ell_JJ = log_choose + (y - n/2)*mu - n*log(2*cosh(xi/2)).
+//
+// As xi^2 -> 0, sqrt(xi^2) has an unbounded derivative at zero, so below a
+// threshold on xi^2 = mu^2 + v this instead evaluates the Taylor series of
+// log(2*cosh(z)) in z^2 = xi^2/4 -- a smooth polynomial in mu and v with no
+// square root. At 1e-6 the omitted quartic term is O(1e-12) in value and
+// smaller still in the first derivative, matching the threshold convention
+// used for the small-v branch above.
+template <class Type>
+Type va_r3_jj_softplus_expectation(const Type &mu, const Type &v)
+{
+  const Type threshold = Type(1e-6);
+  Type xi2 = mu * mu + v;
+  Type safe_xi2 = CppAD::CondExpGt(xi2, threshold, xi2, threshold);
+  Type half_xi = sqrt(safe_xi2) / Type(2.0);
+  Type exact = logspace_add(half_xi, -half_xi) + mu / Type(2.0);
+
+  Type t = xi2 / Type(4.0);
+  Type expansion = log(Type(2.0))
+    + t / Type(2.0)
+    - t * t / Type(12.0)
+    + t * t * t / Type(45.0)
+    + mu / Type(2.0);
+
+  return CppAD::CondExpGt(xi2, threshold, exact, expansion);
+}
+
 template <class Type>
 Type objective_function<Type>::operator()()
 {
@@ -94,6 +128,9 @@ Type objective_function<Type>::operator()()
   DATA_VECTOR(gh_weights);
   DATA_INTEGER(family);            // 0 = Gaussian anchor; 1 = binomial-logit; 2 = Poisson-log
   DATA_SCALAR(gaussian_sd);        // fixed observation SD for family == 0
+  DATA_INTEGER(eval_method);       // 0 = auto (exact where available, GH for
+                                   // binomial); 1 = Jaakkola-Jordan/PG bound
+                                   // (binomial only)
 
   PARAMETER_VECTOR(beta);
   PARAMETER_VECTOR(theta_rr);      // live-engine packing; raw diagonal first
@@ -128,6 +165,10 @@ Type objective_function<Type>::operator()()
     error("gllvmTMB_va_r3: GH nodes and weights must have the same positive length");
   if (family == 0 && !(asDouble(gaussian_sd) > 0.0))
     error("gllvmTMB_va_r3: gaussian_sd must be positive for the Gaussian anchor");
+  if (eval_method != 0 && eval_method != 1)
+    error("gllvmTMB_va_r3: eval_method must be 0 (auto) or 1 (Jaakkola-Jordan/PG bound)");
+  if (eval_method == 1 && family != 1)
+    error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) is only defined for the binomial family");
 
   // Check that the long data contain each unit-trait cell exactly once.
   std::vector<int> cell_count(N * T, 0);
@@ -287,8 +328,12 @@ Type objective_function<Type>::operator()()
       Type log_choose = lgamma(n + Type(1.0))
         - lgamma(y(r) + Type(1.0))
         - lgamma(n - y(r) + Type(1.0));
-      Type softplus_expectation =
-        va_r3_softplus_expectation(mu, v, gh_nodes, gh_weights);
+      // eval_method is fixed DATA, not an AD parameter, so an ordinary
+      // if/else (not CondExp) selects the evaluation tier, matching the
+      // family dispatch above.
+      Type softplus_expectation = (eval_method == 1)
+        ? va_r3_jj_softplus_expectation(mu, v)
+        : va_r3_softplus_expectation(mu, v, gh_nodes, gh_weights);
       softplus_expectation_by_obs(r) = softplus_expectation;
       ell = log_choose + y(r) * mu - n * softplus_expectation;
     } else {
@@ -312,6 +357,7 @@ Type objective_function<Type>::operator()()
   if (!std::isfinite(asDouble(negative_elbo)))
     error("gllvmTMB_va_r3: non-finite negative ELBO");
 
+  REPORT(eval_method);
   REPORT(Lambda);
   REPORT(Sigma_B);
   REPORT(m);

@@ -390,13 +390,25 @@
   )
 }
 
+.va_r3_eval_method_code <- function(eval_method = c("auto", "jj"), family) {
+  eval_method <- match.arg(eval_method)
+  if (identical(eval_method, "jj") && !identical(family, 1L)) {
+    stop("eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for the binomial family.",
+         call. = FALSE)
+  }
+  if (identical(eval_method, "jj")) 1L else 0L
+}
+
 .va_r3_make_objective <- function(validated, H = 61L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
-                                  fixed_global = NULL, silent = TRUE) {
+                                  fixed_global = NULL, silent = TRUE,
+                                  eval_method = c("auto", "jj")) {
   if (validated$q == 0L) {
     stop("q = 0 is not applicable and must not construct an R3 objective.",
          call. = FALSE)
   }
+  eval_method <- match.arg(eval_method)
+  eval_method_code <- .va_r3_eval_method_code(eval_method, validated$family)
   rule <- .va_r3_gh_rule(H)
   dll <- .va_r3_load_dll(source, rebuild = rebuild)
   if (is.null(parameters)) parameters <- .va_r3_default_parameters(validated, 1L)
@@ -404,6 +416,7 @@
                           "N", "T", "q", "family", "gaussian_sd")]
   tmb_data$gh_nodes <- rule$nodes
   tmb_data$gh_weights <- rule$weights
+  tmb_data$eval_method <- eval_method_code
   map <- NULL
   if (!is.null(fixed_global)) {
     if (!is.list(fixed_global) ||
@@ -451,13 +464,17 @@
                        rank_source = c("fixed_fixture", "ml_bic"),
                        fixed_global = NULL, source = NULL, rebuild = FALSE,
                        control = list(eval.max = 2000L, iter.max = 2000L),
-                       silent = TRUE) {
+                       silent = TRUE, eval_method = c("auto", "jj")) {
   family <- match.arg(family)
   rank_source <- match.arg(rank_source)
+  eval_method <- match.arg(eval_method)
   validated <- .va_r3_validate_data(
     y, n_trials, X, unit_id, trait_id, q, N, T, family, link,
     unique, psi, structured, provider, lv, missing, gaussian_sd
   )
+  ## Validate eval_method against the family up front, before any objective
+  ## is constructed, so a mismatched request fails closed for every start.
+  .va_r3_eval_method_code(eval_method, validated$family)
   if (validated$q == 0L) {
     return(list(
       status = "not_applicable_rank_zero",
@@ -473,6 +490,7 @@
                       "binomial"),
       link = link,
       unique = FALSE,
+      eval_method = eval_method,
       quadrature = NULL,
       source_commit = NA_character_,
       objective_constructed = FALSE
@@ -502,7 +520,8 @@
   for (k in seq_along(starts)) {
     obj <- .va_r3_make_objective(
       validated, H = H, source = source, rebuild = rebuild && k == 1L,
-      parameters = starts[[k]], fixed_global = fixed_global, silent = silent
+      parameters = starts[[k]], fixed_global = fixed_global, silent = silent,
+      eval_method = eval_method
     )
     objects[[k]] <- obj
     opt <- tryCatch(
@@ -618,6 +637,7 @@
     link = link,
     unique = FALSE,
     q = validated$q,
+    eval_method = eval_method,
     quadrature = list(order = rule$order, convention = rule$convention,
                       nodes = rule$nodes, weights = rule$weights),
     source_commit = .va_r3_source_commit(dll$source),

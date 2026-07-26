@@ -60,14 +60,22 @@
     lv = FALSE, missing = FALSE, H = 61L,
     rank_source = c("fixed_fixture", "ml_bic"), fixed_global = NULL,
     source = NULL, rebuild = FALSE,
-    control = list(eval.max = 2000L, iter.max = 2000L), silent = TRUE) {
+    control = list(eval.max = 2000L, iter.max = 2000L), silent = TRUE,
+    eval_method = c("auto", "jj")) {
   family <- .approximation_engine_scalar_character(family, "family")
   link <- .approximation_engine_scalar_character(link, "link")
+  eval_method <- match.arg(eval_method)
   expected_link <- switch(family, binomial = "logit", poisson = "log", NA_character_)
   if (is.na(expected_link) || !identical(link, expected_link) ||
       !identical(unique, FALSE)) {
     stop(
       "VA-R3 admits only complete binomial-logit or Poisson-log data with unique = FALSE.",
+      call. = FALSE
+    )
+  }
+  if (identical(eval_method, "jj") && !identical(family, "binomial")) {
+    stop(
+      "eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for the binomial family.",
       call. = FALSE
     )
   }
@@ -88,7 +96,7 @@
     psi = psi, structured = structured, provider = provider, lv = lv,
     missing = missing, H = H, rank_source = rank_source,
     fixed_global = fixed_global, source = source, rebuild = rebuild,
-    control = control, silent = silent
+    control = control, silent = silent, eval_method = eval_method
   )
   elapsed <- proc.time()[["elapsed"]] - started
   best <- raw$best %||% list()
@@ -107,7 +115,8 @@
       implementation = "R/va-r3-proto.R",
       source_commit = raw$source_commit %||% NA_character_,
       source_checksum = raw$source_checksum %||% NA_character_,
-      rank_source = raw$rank_source %||% NA_character_
+      rank_source = raw$rank_source %||% NA_character_,
+      eval_method = raw$eval_method %||% NA_character_
     ),
     score = list(
       negative_elbo_gh = best$objective %||% NA_real_,

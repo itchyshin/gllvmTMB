@@ -96,11 +96,11 @@ authoritative packet paths and SHA-256 values are in the after-task report.
 
 | Artifact / branch | Committed | Pushed | PR | State |
 | --- | --- | --- | --- | --- |
-| `codex/hvt1-high-variance-truth-oracle-20260726` at `cfa4dbe6` plus this handoff commit | yes | pending handoff push | pending creation | CARRIED-OVER |
+| `codex/hvt1-high-variance-truth-oracle-20260726` at `21f551da` | yes | yes | [#795](https://github.com/itchyshin/gllvmTMB/pull/795) open, do not merge | LANDED |
 
-The branch is deliberately private and unmerged.  It must be pushed and have a
-non-merged PR opened once the handoff commit is made; GitHub API access was
-unavailable during this session, so no open-PR census was asserted.
+The branch is deliberately private and unmerged.  PR #795 exists only as a
+preservation/review vehicle; it must not be auto-merged.  GitHub API access was
+unavailable for the earlier PR census, so no broader open-PR census is asserted.
 
 ## Mission Control
 

@@ -553,8 +553,25 @@ extract_ordination <- function(
 #' \eqn{\mathbf B_{\mathrm{lv}} = \boldsymbol\Lambda \boldsymbol\alpha^\top}.
 #' The axis-scale table is the default because it matches the usual constrained
 #' latent-variable / ordination coefficient. It is conditional on the fitted
-#' loading constraint and axis orientation. The trait-scale table is the
-#' rotation-invariant induced slope surface on the trait linear-predictor scale.
+#' loading constraint and axis orientation: like the loadings themselves
+#' (`extract_loadings()`), \eqn{\boldsymbol\alpha} is identified only up to
+#' the same orthogonal (or oblique) rotation, so raw axis-scale coefficients
+#' from two fits -- even of the same model on the same data -- need not sit
+#' on a common axis and are not directly comparable without alignment. This
+#' is intrinsic to latent-variable identifiability, not a defect. For
+#' **cross-fit comparison**, prefer `type = "trait_effect"`, the
+#' rotation-invariant induced slope surface on the trait linear-predictor
+#' scale, described next.
+#'
+#' If the axis-scale representation is specifically required and cross-fit
+#' alignment matters, apply the same rotation used for the loadings: the
+#' mean latent score is \eqn{\mathbf X_s \boldsymbol\alpha}, so it rotates
+#' exactly as the scores in [rotate_loadings()] do -- \eqn{\boldsymbol\alpha
+#' \mathbf T} for the rotation matrix `T` returned by
+#' `rotate_loadings(fit, level, method)$T` (verified to reconstruct the
+#' rotated mean score to machine precision). There is no separate exported
+#' helper that performs this composition; it must be assembled from
+#' `rotate_loadings()`'s `T` and the `estimate` column here.
 #'
 #' For native TMB fits, `std.error` is populated from a positive-definite
 #' `sdreport()` when available. Axis-effect SEs come from the fixed-parameter

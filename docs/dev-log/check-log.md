@@ -46848,3 +46848,16 @@ No `NAMESPACE`, `DESCRIPTION`, NEWS, README, Rd, vignette, pkgdown, or
 `src/gllvmTMB.cpp` change was made.  The full checks, non-graduation dependency
 constraint, and exact stale-wording patterns are in
 `docs/dev-log/after-task/2026-07-26-va-eva-engine-spine.md`.
+
+Continuation receipt: the private executable runner separately ran internal
+VA-R3 / gllvmTMB Laplace / gllvm VA on a complete multi-trial binomial-logit
+fixture, and fixed Gate-1 EVA / gllvmTMB Laplace / gllvm EVA on the sealed
+Bernoulli fixture.  Raw records and the Markdown table are retained under
+`dev/va-eva-engine-spine/receipts/`.  Independent fixed-coordinate scalar
+reference gaps were `8.882e-15` (VA) and `4.441e-16` (EVA).  No objective
+ranking was calculated across engines or tracks.
+
+Fresh lane preflight found upstream handover `ebe3bd4f`, which documents that
+the broader high-variance/sparse brute-force truth ladder is non-convergent.
+This Arc's scalar oracle receipt is deliberately not extrapolated to that
+regime.

@@ -21,7 +21,21 @@ cd /private/tmp/gllvmtmb-va-eva-engine-spine
 Rscript --vanilla dev/va-eva-engine-spine/check-sealed-sources.R .
 Rscript --vanilla -e 'devtools::test(filter = "approximation-engine")'
 VA_EVA_COMPARATOR_SMOKE=true Rscript --vanilla dev/va-eva-comparator.R
+sh dev/va-eva-executable-comparisons.sh multitrial
+sh dev/va-eva-executable-comparisons.sh bernoulli
+sh dev/va-eva-executable-comparisons.sh va_exact
+sh dev/va-eva-executable-comparisons.sh eva_exact
+sh dev/va-eva-executable-comparisons.sh assemble
+Rscript --vanilla dev/va-eva-engine-spine/check-executable-comparison.R .
 ```
+
+Each executable-comparison command is intentionally a separate shell/R
+process.  Do not combine them into one R session: the prototype template DLL
+reload order is not evidence.
+
+The Bernoulli external calls currently finish at a separated boundary and are
+recorded as `boundary_or_invalid_for_comparison`.  Do not reinterpret their
+optimizer status as agreement with sealed EVA.
 
 ## Blocking decision
 
@@ -36,3 +50,10 @@ chooses one of:
 
 Do not solve this by editing the sealed EVA blob, importing Gate-2R, adding the
 VA Bernoulli widening, or exposing `method =` in `gllvmTMB()`.
+
+## Truth boundary updated upstream
+
+Before extending exact comparisons beyond the retained scalar probes, read
+`origin/main:docs/dev-log/handover/2026-07-26-codex-handover-va-variance-gate.md`.
+It records a non-convergent brute-force ladder in the high-variance/sparse
+regime.  Do not use its reported value as truth or average it into a result.

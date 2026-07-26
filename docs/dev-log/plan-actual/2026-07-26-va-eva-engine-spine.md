@@ -16,8 +16,21 @@ claim.
 - EVA remains sealed Bernoulli Gate-1, fixture-only and fixed-coordinate
   evaluation-only.  It is not an optimiser or a general Bernoulli engine.
 - A private comparator script with retained failures, oracle-reference fields,
-  and deliberately uncalled Laplace/gllvm hooks.
+  and executable gllvmTMB-Laplace, gllvm-VA, and gllvm-EVA tracks.
 - A byte-level sealed-source checker and source manifest.
+
+## Executable comparison receipt
+
+The completed private receipt runs the multi-trial VA track through internal
+VA-R3, `gllvmTMB()` Laplace, and `gllvm::gllvm(method = "VA")`; it runs the
+sealed Bernoulli EVA track through fixed Gate-1 EVA evaluation, `gllvmTMB()`
+Laplace, and `gllvm::gllvm(method = "EVA")`.  Every call is retained in the
+raw RDS manifest.  Fixed-coordinate scalar-oracle gaps are `8.882e-15` (VA)
+and `4.441e-16` (EVA).  These are oracle checks, not cross-engine rankings.
+The VA comparison fit is H61, with a fixed-coordinate H15/H25/H61 ladder
+spread of `2.842e-13`.  The sealed Bernoulli fixture is separated in one trait,
+so its external Laplace/EVA calls are retained as
+`boundary_or_invalid_for_comparison`, not healthy comparators.
 
 ## Deliberate deviations
 
@@ -29,6 +42,8 @@ claim.
    `model_selection_comparable = FALSE` fence.
 3. EVA produces no fitted quantities.  The fixed Gate-1 evaluation is carried
    under `fixed` and `evaluation`; its fitted block is explicitly unavailable.
+4. The EVA R scalar calculation is a sealed R-versus-C++ parity reference, not
+   an independently sourced truth instrument.
 
 ## Non-graduation constraint
 

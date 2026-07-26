@@ -10,9 +10,11 @@ general marginal likelihoods.
 
 `R/approximation-engine.R` supplies an unexported common result contract and
 strict dispatcher.  `dev/va-eva-comparator.R` produces separate VA and EVA
-records, retains failures, labels exact calculations as oracle/reference only,
-and leaves Laplace/gllvm hooks uncalled.  EVA's four sealed files are restored
-byte-identically and checked by `dev/va-eva-engine-spine/check-sealed-sources.R`.
+records, retains failures, and labels exact calculations as oracle/reference
+only.  `dev/va-eva-comparison-runner.R` then executes private multi-trial VA
+and sealed Bernoulli EVA comparison tracks against `gllvmTMB()` Laplace and
+the matching `gllvm::gllvm(method = "VA"/"EVA")` route.  EVA's four sealed
+files are restored byte-identically and checked by the provenance gate.
 
 ## Mathematical Contract
 
@@ -47,6 +49,15 @@ No example, roxygen, Rd, public API, or user-facing documentation file changed.
   when sealed helpers are present).
 - `VA_EVA_COMPARATOR_SMOKE=true Rscript --vanilla dev/va-eva-comparator.R` —
   `VA_EVA_COMPARATOR_CONTRACT_SMOKE_PASS`.
+- `sh dev/va-eva-executable-comparisons.sh {multitrial|bernoulli|va_exact|eva_exact}`
+  followed by `sh dev/va-eva-executable-comparisons.sh assemble` — PASS.  The
+  retained manifest records six actual engine/comparator calls: internal VA,
+  gllvmTMB Laplace, gllvm VA; fixed EVA evaluation, gllvmTMB Laplace, gllvm
+  EVA.  The VA H15/H25/H61 fixed-coordinate ladder spread is `2.842e-13`.
+  The VA independent-integral gap is `8.882e-15`; the EVA R-versus-C++ parity
+  gap is `4.441e-16`.
+- `Rscript --vanilla dev/va-eva-engine-spine/check-executable-comparison.R .`
+  — PASS.
 - `git diff --check` — PASS.
 
 Deliberately not run: `devtools::check()`, pkgdown checks, article rendering,
@@ -91,7 +102,11 @@ Gauss implemented and then repaired the adapter; Curie built the comparator;
 Emmy sealed provenance; Rose performed the mechanical audit; Noether performed
 the mathematical review.  The key lesson is that a common diagnostic schema
 must not imply a common inferential score or turn a fixed evaluation into a
-fit.
+fit.  A second lesson is operational: run the VA and EVA TMB templates in
+separate R processes, then assemble their retained raw records without loading
+either template.  Their continuation reviews passed after requiring the H61
+ladder, provenance-bound manifest, parity-only EVA wording, and explicit
+separation statuses.
 
 ## Known Limitations
 
@@ -101,6 +116,17 @@ existing complete multi-trial binomial-logit loadings-only regime and current
 variance gate.  Exact-truth hooks are small-fixture references only.  The
 undeclared `jsonlite` use means the branch is not recommended for merge or
 package checking while `DESCRIPTION` is frozen.
+
+The newer upstream variance-gate handover (`origin/main:docs/dev-log/handover/
+2026-07-26-codex-handover-va-variance-gate.md`) also shows that its brute-force
+truth ladder fails to converge in the high-variance/sparse regime.  This Arc's
+two scalar oracle receipts therefore prove only their fixed small-coordinate
+calculations; they do not validate any high-variance fit-level comparison.
+
+The sealed two-by-two Bernoulli fixture is completely separated in one trait.
+The external gllvmTMB-Laplace and gllvm-EVA calls are consequently retained as
+`boundary_or_invalid_for_comparison`, despite optimizer termination codes;
+they are failure-retention evidence, not external-fit agreement.
 
 ## Next Actions
 

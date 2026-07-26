@@ -39,7 +39,10 @@ va_spine <- c(
 )
 engine_spine <- c(
   "R/approximation-engine.R",
-  "dev/va-eva-comparator.R"
+  "dev/va-eva-comparator.R",
+  "dev/va-eva-comparison-runner.R",
+  "dev/va-eva-executable-comparisons.sh",
+  "dev/va-eva-engine-spine/check-executable-comparison.R"
 )
 
 invisible(run_git(c("rev-parse", "--verify", sealed_commit)))

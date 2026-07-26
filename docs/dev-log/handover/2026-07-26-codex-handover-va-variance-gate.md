@@ -169,10 +169,61 @@ Rehydrate from docs/dev-log/handover/2026-07-26-codex-handover-va-variance-gate.
 | `claude/eva-record-consolidation-20260725` | record rejected `NOT_ESTABLISHED`; needs a second pass |
 | merged to `main` | #790 (`a767026e`), #791 (`95c38cb4`), and the 07-25 arc `a0f568d1..84ca8290` |
 
+## State as of 2026-07-26 11:40 UTC — re-derive from git, do not trust this table blind
+
+| What | Where |
+|---|---|
+| 07-25 arc (bug fixes, gllvm comparators, 5×3 grid correction) | **on `main`**, `a0f568d1..84ca8290` |
+| Claude→Claude handover | **merged** `a767026e` (#790) |
+| Ayumi usability fixes | **merged** `95c38cb4` (#791) |
+| `getLV(se = TRUE)` | PR #792, `a9ae3dfe` — CI re-running after a fixture fix |
+| This handover | PR #793 |
+| VA lane | `claude/va-implementation-20260725` @ `981a8399` — **DO NOT MERGE**, §10 |
+| EVA record | `claude/eva-record-consolidation-20260725` — rejected `NOT_ESTABLISHED`, needs a second pass |
+
+Every Codex-owned research branch (`design86`–`design103`, the three `aghq-*` branches, and
+`reml-aghq-inference-ultraplan`) was **pushed to `origin` on 2026-07-25**. Several existed only as
+uncommitted files inside `/private/tmp` worktrees with no remote copy at all — including Design 101,
+which had no branch of its own and lived inside the design100 worktree. **That work is now backed up;
+it was not before.** Preservation commits are attributed to Codex, content unmodified, and change no
+status.
+
+## The `getLV` SE feature — what Codex should know if it touches extractors
+
+`getLV()` gained `se = TRUE`, returning per-score standard errors from the **Laplace** fit's
+`sdreport()` (`sqrt(diag.cov.random)`; `z_B` at `level = "unit"`, `z_W` at `"unit_obs"`). Verified
+against an independent full joint-precision inversion to **4.44e-16**. No new export —
+`NAMESPACE` is byte-identical to `main`, so the freeze holds.
+
+**Two things worth carrying:**
+
+1. **A silent-wrong-block bug was caught in development** — `.canonical_level_name(level)` was passed
+   instead of `level`, so *every* request read `z_W` regardless of the level asked for: plausible
+   numbers, no error. The regression guard failed 100% and caught it. **That guard must stay able to
+   fail** — it does not skip even on a non-PD Hessian, because "which block was read" is answerable
+   without valid numbers.
+2. **These SEs are NOT coverage-validated.** They are `sdreport` marginal SEs from the Laplace fit.
+   Given CI-08 (13/15 empirical-coverage cells below 94%) and the `wald_sdreport_no_ci_validation`
+   flag used elsewhere, a caveat line in the docs was **suggested and not yet added** — flagged for
+   the maintainer, not done unilaterally.
+
+**Do not confuse this with the §10 prohibition.** §10 forbids treating an inverse **VA** Hessian as
+calibrated frequentist uncertainty. `getLV(se=)` reads the **Laplace** joint precision — the existing
+supported route, a different object entirely. Keep that boundary sharp if VA ever gains SEs.
+
 ## Method warnings earned the hard way
 
-- **Local green ≠ CI green.** PR #792 reported FAIL 0 locally and failed on ubuntu-latest — a
-  `pdHess` assertion that is platform/BLAS-sensitive.
+- **Local green ≠ CI green.** PR #792 reported FAIL 0 locally on macOS/ARM and failed on
+  ubuntu-latest: a module-scope `stopifnot(isTRUE(pdHess))` on a demanding two-tier fixture. `pdHess`
+  is BLAS/platform-sensitive, and because the assertion sat *outside* `test_that()` it halted the
+  whole file. **Do not merge on a local pass.** When you fix such a fixture, check whether the fix
+  makes any guard vacuous before accepting it — the honest repair moved the fragile fixture inside
+  the tests that need it and let only the *numeric* assertion skip, keeping the block-selection guard
+  live.
+- **A sub-agent's completion report is not evidence — check the worktree.** Twice in this session an
+  agent returned a non-answer ("I'll wait for the monitor", "Good — clean, scoped changes") and
+  stopped, while its work sat complete and correct on disk. The repo told the truth; the summary did
+  not. Verify with `git status` / `git diff` and a fresh test run, never from the report.
 - **Every synthesis run through an adversarial reviewer on 2026-07-25 was rejected, and every
   distortion leaned optimistic** (four for four). Keep the adversarial step.
 - **Never impose a controlled vocabulary on a status corpus** — an enum manufactured six positive

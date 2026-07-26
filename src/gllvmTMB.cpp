@@ -110,6 +110,12 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(n_lv_B);            // columns in X_lv_B (>= 1 stub when inactive)
   DATA_MATRIX(X_lv_B);             // n_sites x n_lv_B unit-level score-mean design
   DATA_INTEGER(use_diag_B);        // 1/0
+  // Per-trait mask (length n_traits): 1 = this trait's between-unit Psi was
+  // pinned off by the R-side identifiability gate (single-trial binary /
+  // categorical traits), 0 = free. A pinned trait has s_B(t,.) fixed at 0 and
+  // sd_B(t) fixed near zero, so its density term is a large positive constant
+  // that must NOT enter the objective at all.
+  DATA_IVECTOR(diag_B_skip);
   DATA_INTEGER(use_rr_W);          // 1/0
   DATA_INTEGER(use_diag_W);        // 1/0
   DATA_INTEGER(use_rr_B_slope);     // 1/0 augmented B-tier random regression
@@ -883,10 +889,17 @@ Type objective_function<Type>::operator()()
   if (use_diag_B == 1) {
     if (theta_diag_B.size() != n_traits)
       error("gllvmTMB_multi: theta_diag_B has wrong length");
+    if (diag_B_skip.size() != n_traits)
+      error("gllvmTMB_multi: diag_B_skip has wrong length");
     vector<Type> sd_B = exp(theta_diag_B);
     REPORT(sd_B);
     for (int s = 0; s < n_sites; s++) {
       for (int t = 0; t < n_traits; t++) {
+        // A trait whose Psi was pinned off carries no between-unit density
+        // term.  Including it would add dnorm(0, 0, ~1e-6, log = TRUE), a
+        // large POSITIVE constant, once per (trait, site) cell -- which is
+        // how a Bernoulli fit could report a positive log-likelihood.
+        if (diag_B_skip(t) == 1) continue;
         nll -= dnorm(s_B(t, s), Type(0), sd_B(t), true);
       }
     }

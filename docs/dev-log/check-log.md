@@ -46832,3 +46832,19 @@ validation-debt register is untouched. The `phylo_dep` wrong-tree result
 
 After-task report:
 `docs/dev-log/after-task/2026-07-25-phylo-column-cancelled-and-comparator-evidence.md`
+
+## 2026-07-26 — Private VA/EVA approximation-engine spine (Codex)
+
+New isolated worktree: `/private/tmp/gllvmtmb-va-eva-engine-spine`, branch
+`codex/va-eva-engine-spine-20260726`, created from `origin/main` at `966d24bb`.
+The dirty Dropbox primary checkout was not edited.  The pre-edit coordination
+query `gh pr list --state open --limit 20` could not reach `api.github.com`;
+the required recent-log inspection was run locally.  This is weak lane evidence,
+not an all-clear claim.
+
+Implemented only private VA-R3/EVA Gate-1 wiring, sealed-source provenance, and
+a comparator spine.  EVA's four source files are byte-identical to `3b479354`.
+No `NAMESPACE`, `DESCRIPTION`, NEWS, README, Rd, vignette, pkgdown, or
+`src/gllvmTMB.cpp` change was made.  The full checks, non-graduation dependency
+constraint, and exact stale-wording patterns are in
+`docs/dev-log/after-task/2026-07-26-va-eva-engine-spine.md`.

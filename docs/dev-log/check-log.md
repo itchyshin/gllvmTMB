@@ -46873,3 +46873,33 @@ surface, or public capability was changed.
 
 Exact commands and complete receipts:
 `docs/dev-log/after-task/2026-07-26-va-r3-variance-domain-gate.md`.
+
+## 2026-07-26 — HVT-1 private adaptive high-variance truth instrument (Codex)
+
+Created isolated worktree `/private/tmp/gllvmtmb-hvt1-high-variance-truth-oracle-20260726`
+on `codex/hvt1-high-variance-truth-oracle-20260726` from `origin/main`
+`f2280081`; the dirty Dropbox primary checkout was not edited.  The runner
+enforces the frozen source and campaign-record hashes, then independently
+computes the fixed-coordinate complete multi-trial binomial-logit q=2 integral
+with adaptive nested `stats::integrate()`.
+
+Commands run:
+
+```sh
+Rscript --vanilla -e 'parse(file="dev/va-variance-gate/high-variance-oracle.R"); parse(file="dev/va-variance-gate/run-high-variance-oracle.R")'
+Rscript --vanilla dev/va-variance-gate/run-high-variance-oracle.R --observed-bands=4 --out=/private/tmp/hvt1-20260726-band4-final10
+Rscript --vanilla dev/va-variance-gate/run-high-variance-oracle.R --observed-bands=20 --out=/private/tmp/hvt1-20260726-band20-final10
+git diff --check
+```
+
+Band 4 passed every adaptive anchor and route check (`TRUTH_CERTIFIED_ADAPTIVE`);
+its H801 difference was `5.684342e-14`.  Band 20 was
+`TRUTH_UNINTERPRETABLE_ADAPTIVE`: the tightened reverse route retained two
+errors and its total was `NA`, so both ELBO fields are `NA`.  HVT-1's required
+overall decision is therefore `ORACLE_NOT_CERTIFIED`, with no high-cell truth
+gap.  No package source, public API, NAMESPACE, DESCRIPTION, NEWS, Rd,
+vignette, pkgdown, validation-register, or `src/gllvmTMB.cpp` file changed.
+Deliberately not run: `devtools::check()`, `pkgdown::check_pkgdown()`, and any
+Totoro/DRAC campaign; this private dev-only instrumentation changed none of
+their applicable surfaces.  Complete closeout:
+`docs/dev-log/after-task/2026-07-26-hvt1-high-variance-truth-oracle.md`.

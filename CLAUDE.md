@@ -12,6 +12,14 @@ This repository is shared by humans, Codex, and Claude Code. Read
   closed `TECHNICAL_PARTIAL`; it produced no package/public claim.  The
   release/0.6 and profile/Tier-2a states must be re-derived from their named
   handovers before any edit.
+- **2026-07-25 (latest):** the Site × Species phylo arc is **CLOSED** — capability
+  **CANCELLED** by decision (no new API; the M3 freeze holds), two user-facing bug
+  fixes plus the first `gllvm` fit-level comparators landed on `main`
+  `a0f568d1..84ca8290`, and a D-43 panel returned **3/3 NOT-DONE** so **nothing was
+  promoted**. The keyword grid was corrected to **5 × 3** across the rule files.
+  **Next arc is UNCHOSEN** (not CRAN, not the paper — Shinichi reserved the choice);
+  standing interest recorded in **EVA**. Handover:
+  `docs/dev-log/handover/2026-07-25-claude-handover-arc-closed.md`.
 - **START HERE:**
   `docs/dev-log/handover/2026-07-25-active-lane-split.md`, then the
   target-specific handover it names.

@@ -502,6 +502,23 @@ point-estimate `alpha_lv`/`lv_effects` rows unless a retained Wald
 payload is present; bridge interval payloads are reader plumbing only
 until the named Julia bridge CI rows pass.
 
+**Cross-fit comparison (Ayumi Mizuno, urbanisation_map #13)**:
+`axis_effect`'s rotation-dependence is intrinsic to latent-variable
+identifiability -- the same axis indeterminacy documented for
+`extract_loadings()`/`getLoadings()` above -- not a defect, and raw
+`alpha` from two fits is not directly comparable without alignment.
+For cross-fit comparison, prefer `type = "trait_effect"`
+($B_\text{lv}$), which is rotation-invariant by construction. If the
+axis-scale representation is specifically required, the mean latent
+score $\mathbf X_s\boldsymbol\alpha$ rotates exactly as
+`rotate_loadings()`'s `scores` do -- $\boldsymbol\alpha\mathbf T$ for
+the `T` returned by `rotate_loadings(fit, level, method)$T` (checked
+numerically to reconstruct the rotated mean score to machine
+precision). There is no separate exported helper for this composition;
+`rotate_loadings()` rotates `Lambda` and `scores` only, so aligning
+`axis_effect` across fits must be assembled by hand from its `T` and
+`extract_lv_effects()`'s `estimate` column.
+
 #### `getLoadings(fit, level = "unit", rotate = c("none", "varimax", "promax"))`
 
 **Return**: a `T x d` matrix of loadings ($\Lambda$). Row

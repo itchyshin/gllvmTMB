@@ -54,20 +54,25 @@ test_that("a partially skipped OLRE keeps the free traits estimable", {
   ## `use_diag_W <- 0` shortcut would break this; the per-trait mask must not.
   set.seed(789)
   n_units <- 150
+  trait_levels <- c("gaus", "bern", "pois")
+  fam_levels <- c("gaussian", "binomial", "poisson")
   df <- expand.grid(unit = seq_len(n_units), trait_idx = 1:3)
   df$obs <- factor(seq_len(nrow(df)))
-  df$trait <- factor(c("gaus", "bern", "pois")[df$trait_idx],
-                     levels = c("gaus", "bern", "pois"))
+  df$trait <- factor(trait_levels[df$trait_idx], levels = trait_levels)
+  ## A mixed-family fit needs the family column the `family_var` attribute names.
+  df$family <- factor(fam_levels[df$trait_idx], levels = fam_levels)
   df$value <- ifelse(
     df$trait_idx == 1L, stats::rnorm(nrow(df)),
     ifelse(df$trait_idx == 2L, stats::rbinom(nrow(df), 1L, 0.5),
            stats::rpois(nrow(df), 2))
   )
 
+  fams <- list(stats::gaussian(), stats::binomial(), stats::poisson())
+  attr(fams, "family_var") <- "family"
+
   fit <- suppressMessages(suppressWarnings(
     gllvmTMB(value ~ 0 + trait + indep(0 + trait | obs), data = df,
-             unit = "unit", unit_obs = "obs",
-             family = list(gaussian(), stats::binomial(), stats::poisson()))
+             unit = "unit", unit_obs = "obs", family = fams)
   ))
 
   td_map <- fit$tmb_obj$env$map$theta_diag_W

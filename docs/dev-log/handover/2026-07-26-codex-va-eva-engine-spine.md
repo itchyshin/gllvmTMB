@@ -6,9 +6,10 @@ Worktree: `/private/tmp/gllvmtmb-va-eva-engine-spine`
 Branch: `codex/va-eva-engine-spine-20260726`
 Base: `966d24bb` (`origin/main` at lane creation)
 
-At closeout the branch is `ahead 1, behind 1` of the moving `origin/main`.
-Do not rebase or merge it automatically: first repeat the lane preflight and
-resolve the package-boundary decision below against the then-current main.
+At continuation closeout the branch has local commits and remains behind the
+moving `origin/main`.  Do not rebase or merge it automatically: first repeat
+lane preflight and resolve the package-boundary decision below against the
+then-current main.
 
 The branch contains a private VA/EVA adapter, sealed EVA Gate-1 files,
 comparator, provenance gate, receipts, and after-task record.  No public API

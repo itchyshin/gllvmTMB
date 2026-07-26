@@ -136,5 +136,6 @@ without changing its blob.  Only after that decision should a new, separately
 approved Arc assess a constrained experimental approximation selector and its
 validation evidence.
 
-At closeout the isolated branch is ahead 1, behind 1 of moving `origin/main`.
-Do not automatically rebase it; rerun lane preflight before any integration.
+At continuation closeout the isolated branch has local commits and remains
+behind moving `origin/main`.  Do not automatically rebase it; rerun lane
+preflight before any integration.

@@ -50,7 +50,8 @@ All of this is verified and reproducible; scripts are on
    `ELBO = Σᵢ E_q[log p(yᵢ|uᵢ)] − Σᵢ KL(q(uᵢ)‖N(0,I))` were independently re-derived and match the
    TMB template to **machine precision**. `dev/va-elbo-bisection-RESULTS.md`.
 2. **The ELBO is a valid lower bound** — 14/14 independently computed ELBO−truth gaps negative.
-3. **Ground truth is computable**: brute-force per-unit 2-D product Gauss-Hermite, H-ladder stable,
+3. **Ground truth is computable — IN THE TESTED REGIME ONLY.** Brute-force per-unit 2-D product
+   Gauss-Hermite, H-ladder stable,
    cross-checked against nested adaptive `stats::integrate` to 1.3e-15–5.3e-15.
 4. **VA is closer to truth than Laplace in direction** (9/10 verdict-eligible reps) — but the
    advantage **shrinks** as data get sparser, the opposite of the programme's motivation.
@@ -59,6 +60,30 @@ All of this is verified and reproducible; scripts are on
    VA argument produced so far.
 6. **AGHQ is NOT a usable oracle** — `INFRASTRUCTURE_INCOMPLETE`, uncertified, external comparator
    only at q=1, fenced from repair. Do not rely on it.
+
+## ⚠ THE INSTRUMENT FAILS IN THE REGIME YOUR TASK PUSHES INTO — read before interpreting anything
+
+Your task raises projected variance through 4, 6, 10, 20. **High projected variance is exactly where
+the verification instrument stopped working**, so you must be able to tell instrument failure apart
+from a finding about the ELBO. Two independent failures were measured on 2026-07-25:
+
+1. **The brute-force truth ladder does NOT converge at high variance / sparsity.** At p̄ = 0.1028:
+
+   | H | 151 | 301 | 501 | 801 |
+   |---|---|---|---|---|
+   | "truth" | −212.997 | −217.984 | −214.919 | −216.638 |
+
+   That is not a converging sequence. Any ELBO-vs-truth gap computed there is meaningless.
+
+2. **The Laplace comparator itself diverges there.** On the same cell gllvmTMB returned
+   convergence code 0 with max|gradient| 4.6e-06 — i.e. it *claimed* success — while carrying Λ
+   entries of 13–70 and a Σ_B diagonal of 2938–6788, and reporting logLik −69.14 where the true
+   marginal is ≈ −113. **A clean convergence code is not a health certificate.**
+
+**Operational rule: report the H-ladder spread at every variance level, and treat a rep as
+uninterpretable when the ladder does not converge.** Do not average it in, do not silently drop it,
+and do not read a divergent truth value as evidence about the objective. A level at which the
+instrument fails is itself a result — it bounds where any claim about this route can be made.
 
 ## 🎯 YOUR TASK — is the variance-domain gate a real limit or a scope choice?
 

@@ -118,6 +118,12 @@ Type objective_function<Type>::operator()()
   DATA_IVECTOR(diag_B_skip);
   DATA_INTEGER(use_rr_W);          // 1/0
   DATA_INTEGER(use_diag_W);        // 1/0
+  // Per-trait mask (length n_traits): 1 = this trait's OLRE was pinned off by
+  // the R-side identifiability gate (single-trial Bernoulli / ordinal_probit /
+  // multinomial traits), 0 = free. Exactly the diag_B_skip situation one tier
+  // down: a pinned trait has s_W(t,.) fixed at 0 and sd_W(t) fixed near zero,
+  // so its density term is a large positive constant that must NOT enter.
+  DATA_IVECTOR(diag_W_skip);
   DATA_INTEGER(use_rr_B_slope);     // 1/0 augmented B-tier random regression
   DATA_INTEGER(use_diag_B_slope);   // 1/0 augmented B-tier unique random regression
   DATA_INTEGER(d_B_slope);          // rank of augmented B-tier random regression
@@ -965,10 +971,16 @@ Type objective_function<Type>::operator()()
   if (use_diag_W == 1) {
     if (theta_diag_W.size() != n_traits)
       error("gllvmTMB_multi: theta_diag_W has wrong length");
+    if (diag_W_skip.size() != n_traits)
+      error("gllvmTMB_multi: diag_W_skip has wrong length");
     vector<Type> sd_W = exp(theta_diag_W);
     REPORT(sd_W);
     for (int ss = 0; ss < n_site_species; ss++) {
       for (int t = 0; t < n_traits; t++) {
+        // A trait whose OLRE was pinned off carries no density term. See the
+        // diag_B_skip note above: including it would add
+        // dnorm(0, 0, ~1e-6, log = TRUE) once per (trait, site_species) cell.
+        if (diag_W_skip(t) == 1) continue;
         nll -= dnorm(s_W(t, ss), Type(0), sd_W(t), true);
       }
     }

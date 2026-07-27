@@ -498,6 +498,8 @@
           <tr><th>ML</th><td><span class="tag t-taught">✓ done</span> <span class="muted">default</span></td><td><span class="tag t-taught">✓ done</span> <span class="muted">default; RE&nbsp;SD biased down at small <i>n</i></span></td></tr>
           <tr><th>REML</th><td><span class="tag t-exp">Gaussian-only pilot</span> <span class="muted">exact where it applies</span></td><td class="muted">n/a — REML is a Gaussian-only tool</td></tr>
           <tr><th>AGHQ</th><td class="muted">n/a — likelihood already exact</td><td><span class="tag t-gone">planned</span> <span class="muted">critical for the logit/binary families (binomial, ordinal, beta) → Bar&nbsp;3</span></td></tr>
+          <tr><th>VA <span class="muted">(variational)</span></th><td><span class="tag t-gone">internal research</span> <span class="muted">exact closed form; not user-reachable</span></td><td><span class="tag t-gone">internal research</span> <span class="muted">Poisson exact; binomial by quadrature or Jaakkola–Jordan. No <code>method=</code> argument exists</span></td></tr>
+          <tr><th>EVA <span class="muted">(extended VA)</span></th><td class="muted">n/a — VA is already exact here</td><td><span class="tag t-gone">internal research</span> <span class="muted">2nd-order Taylor surrogate; binomial convergence poor (20/20 seeds fail the health gate)</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -505,6 +507,20 @@
       The ladder follows <code>docs/design/80-nongaussian-re-evidence-bars.md</code>. A large
       ML-vs-REML gap is the cheap diagnostic that flags the small-cluster regime where the
       variance estimate is untrustworthy — the natural hook for the AGHQ work.
+    </p>
+    <p class="note">
+      <strong>On VA / EVA.</strong> Both exist as sealed research engines with no export, no
+      <code>method=</code> argument and an untouched <code>NAMESPACE</code>; <strong>Laplace remains the
+      only estimation route</strong>. They are listed here so the ladder is complete, not because they
+      are available. Measured 2026-07-26/27 against <code>gllvm</code> 2.0.13 on 640 grid cells and a
+      48-cell scale sweep: agreement is exact where the algebra matches (Poisson 4.4e-09, binomial
+      Jaakkola–Jordan 2.7e-07 median relative difference), but <em>VA is not faster than Laplace at any
+      tested size</em> — the variational arms scale roughly quadratically in <em>n</em> against Laplace's
+      linear, and VA does not complete at all beyond n ≈ 2500. The one property that favours them is
+      honest failure: across those 640 cells VA never reported a clean status on a degenerate fit,
+      whereas 59 of 70 degenerate Laplace fits reported <code>convergence = 0</code> with
+      <code>pdHess = TRUE</code>. Their prospective role is therefore a <em>cross-engine second opinion</em>,
+      not a faster or more accurate estimator. Nothing here is promoted, and none of it gates 0.6.
     </p>
   </section>
 

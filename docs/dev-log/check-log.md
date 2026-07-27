@@ -46916,11 +46916,12 @@ touching `R/diagnose.R`, `R/gllvmTMB.R`, or
 API change, which `CLAUDE.md` puts in the discussion-checkpoint set.
 
 Lane note: this work was authored on `claude/loving-liskov-85d5d5`, which sits on
-top of ten UNPUSHED commits from the VA-wiring lane (`51d1fa81..197f1bce`).
-PR #797 merged an earlier state of that branch, so those ten are still not in
-`main` -- someone may believe they are. There was zero file overlap with this
-arc, so the eight commits here were cherry-picked onto a clean branch off
-`origin/main` rather than bundling another lane's work into this PR.
+top of ten commits from the VA-wiring lane (`51d1fa81..197f1bce`). Those are NOT
+in `main` -- PR #797 merged an earlier state of that branch -- but they are not
+stranded either: **PR #798 carries all ten** (verified). Zero file overlap with
+this arc, so the commits here were cherry-picked onto a clean branch off
+`origin/main` rather than bundling another lane's work into this PR. The two PRs
+are independent and can merge in either order; #799 does not wait on #798.
 
 Origin: a correctness bug handed over from the 2026-07-27 Laplace profiling
 campaign (`claude/va-wiring-20260726`) — `start_method = "res"` reaching an

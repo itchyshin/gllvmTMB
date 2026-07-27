@@ -177,24 +177,51 @@ worktree's build. Non-Gaussian families — the case the roxygen actually
 recommends `res` for — are **untested**, so the rate above does not transfer to
 them.
 
-**Two decisions for the maintainer (§3a):**
+**Fix A — LANDED (maintainer approved 2026-07-27).** The near-zero variance
+detection is now **relative as well as absolute**: `.gllvmTMB_relative_collapse()`
+flags a component whose magnitude is below `rel_thresh` times the largest in its
+block. Applied in `.gllvmTMB_boundary_flags()` (`sd_rel_thresh = 1e-3`) and in
+the `near_zero_psi_*` rows of `check_gllvmTMB()` (`psi_rel_thresh = 1e-3`, a new
+documented argument; the check message now reports the offending ratio).
 
-- **Fix A (recommended, surgical, diagnostic-only).** Make the near-zero variance
-  detection **relative** rather than absolute in `.gllvmTMB_boundary_flags()` and
-  the `near_zero_psi_*` check — flag when a component's sd is orders of magnitude
-  below its siblings. This fires on *both* fits above, is start-method agnostic,
-  changes no estimate and no API, and repairs the function against its own stated
-  isSingular-style intent. Blast radius: 3 test files reference these flags
-  directly, 8 reference `check_gllvmTMB()`; all would need review.
-- **Fix B (behaviour change, needs sign-off).** Make `res` never able to lose:
-  run the default start as an additional restart and keep the best. The
-  `restart_history` infrastructure already records a per-restart `start_method`
-  column, so this is mostly wiring. Cost: ~2× runtime for `res`. Since `res` was
-  refuted as a speed lever by the same campaign, its remaining purpose is
-  robustness, where that trade is defensible.
+Verified: both fits in §6a now report `near_zero_sd_B` and
+`near_zero_psi_unit = WARN` (ratios 5.3e-4 and 6.7e-4) where both previously
+passed. Detection is strictly additive — anything flagged before is still
+flagged. `test-slope-boundary-flag.R` (12 pass), `test-sanity-multi.R` (39 pass),
+`test-matrix-truncated.R` (heavy, 28 run) all green; 0 failures.
 
-Fix A removes the silence; Fix B removes the loss. They are independent, and
-**Fix A is the one that generalises beyond this start method.**
+**Fix B — REDIRECTED by the maintainer, not yet implemented.** The original
+sketch (run the default start as an extra restart, keep the best) is a guard, not
+a repair. The maintainer's diagnosis is better and supersedes it:
+
+> `res` could be useful — if we fit equivalent of GLMM models not GLM etc — do
+> not make it the same as glmmTMB.
+
+This is confirmed by the code. `resid_init <- fit_lm$residuals`
+(`R/fit-multi.R:2701`) comes from an `lm.fit` of the response on the **fixed
+effects only**. Those residuals therefore still contain the site random effect
+*and* the within-site noise, so the cell means the SVD decomposes have variance
+
+  Sigma_B[t,t] + sigma_eps^2 / count
+
+With `sigma_eps ~ 0.70` and `count ~ 8` that is ~0.061 of pure noise on every
+diagonal element, against a true `psi_B` of 0.3 — roughly 20 % inflation, worse
+in sparsely observed cells. Both the loadings and the `psi` start come out too
+large. **Mechanism hypothesis**: the inflated start is what steers into the basin
+where one `psi` is crushed to zero to compensate. Consistent with the evidence;
+the causal link is not experimentally isolated.
+
+The repair is to build the start from a fit that has **already absorbed the
+random effects** — either residuals from the independent diagonal model that
+`start_method = "indep"` already fits, or, more directly, an SVD of the
+**conditional modes of the site random effects** (`s_B`, a trait x site matrix),
+which are shrunk estimates of exactly what Lambda describes and carry no noise
+floor by construction.
+
+Note the current `indep` path seeds the GLMM pieces but leaves the reduced-rank
+block at its historical default (`theta_rr_B == c(0.5, 0)`, asserted in
+`test-start-method-residual.R`). So an SVD-of-BLUPs start would also close that
+gap. Open design choice: upgrade `indep` in place, or add a separate method.
 
 The regression test asserts Fix B's contract and will fail until B lands.
 Under routine PR CI it skips; under the nightly `GLLVMTMB_HEAVY_TESTS=1` run it

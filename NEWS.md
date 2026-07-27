@@ -174,6 +174,21 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Fixed
 
+* Near-zero variance components are now detected **relative to their
+  siblings**, not only against an absolute threshold. A boundary-pinned
+  (Heywood) component — one trait's unique variance collapsing to zero — could
+  previously pass every check the package had: `check_gllvmTMB()` reported
+  `near_zero_psi_unit … PASS` and `fit_health$boundary_flags` stayed empty for a
+  component whose variance was six orders of magnitude below the others. The
+  absolute threshold is expressed on the standard-deviation scale, so the old
+  `1e-4` demanded a variance below `1e-8` before flagging anything. `pdHess`
+  could not catch it either: `psi` is estimated on the log scale, so a collapsed
+  component is an interior point of the transformed parameter space and the
+  Hessian stays positive definite there. `check_gllvmTMB()` gains
+  `psi_rel_thresh` (default `0.001`) and reports the offending ratio in the
+  check message; `.gllvmTMB_boundary_flags()` applies the same relative test to
+  every variance block it already covered. Fits that were flagged before are
+  still flagged.
 * A diagonal covariance term is no longer duplicated when the `unit` and
   `cluster` columns are the same grouping factor. This removes a flat variance
   split and restores coherent covariance extraction and Wald infrastructure.

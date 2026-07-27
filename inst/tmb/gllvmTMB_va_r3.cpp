@@ -126,7 +126,8 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(q);
   DATA_VECTOR(gh_nodes);
   DATA_VECTOR(gh_weights);
-  DATA_INTEGER(family);            // 0 = Gaussian anchor; 1 = binomial-logit; 2 = Poisson-log
+  DATA_INTEGER(family);            // 0 = Gaussian anchor; 1 = binomial-logit; 2 = Poisson-log;
+                                   // 3 = nbinom2-log
   DATA_SCALAR(gaussian_sd);        // fixed observation SD for family == 0
   DATA_INTEGER(eval_method);       // 0 = Gauss-Hermite quadrature;
                                    // 1 = Jaakkola-Jordan/Polya-Gamma bound (binomial only)
@@ -136,6 +137,9 @@ Type objective_function<Type>::operator()()
   PARAMETER_MATRIX(m);             // N x q variational means
   PARAMETER_MATRIX(log_L_diag);    // N x q log Cholesky diagonals
   PARAMETER_MATRIX(L_off);         // N x q(q-1)/2 strict-lower entries
+  PARAMETER_VECTOR(log_phi);       // T-vector, nbinom2 dispersion on the log
+                                   // scale; mapped off (NA) for every other
+                                   // family, so it costs nothing there
 
   const int n_obs = y.size();
   const int n_off = q * (q - 1) / 2;
@@ -143,8 +147,8 @@ Type objective_function<Type>::operator()()
 
   // Defensive dimension/scope checks. The R adapter performs the richer
   // pre-construction validation required by Design 85.
-  if (family != 0 && family != 1 && family != 2)
-    error("gllvmTMB_va_r3: family must be 0 (Gaussian), 1 (binomial), or 2 (Poisson)");
+  if (family != 0 && family != 1 && family != 2 && family != 3)
+    error("gllvmTMB_va_r3: family must be 0 (Gaussian), 1 (binomial), 2 (Poisson), or 3 (nbinom2)");
   if (N <= 0 || T <= 0 || q <= 0 || q > T)
     error("gllvmTMB_va_r3: require N > 0, T > 0, and 1 <= q <= T");
   if (n_obs != N * T)
@@ -160,6 +164,8 @@ Type objective_function<Type>::operator()()
       log_L_diag.rows() != N || log_L_diag.cols() != q ||
       L_off.rows() != N || L_off.cols() != n_off)
     error("gllvmTMB_va_r3: variational parameter dimensions do not agree");
+  if (log_phi.size() != T)
+    error("gllvmTMB_va_r3: log_phi must have length T");
   if (gh_nodes.size() <= 0 || gh_weights.size() != gh_nodes.size())
     error("gllvmTMB_va_r3: GH nodes and weights must have the same positive length");
   if (family == 0 && !(asDouble(gaussian_sd) > 0.0))
@@ -186,10 +192,10 @@ Type objective_function<Type>::operator()()
           std::floor(yd) != yd)
         error("gllvmTMB_va_r3: binomial cells require integer n >= 1 and 0 <= y <= n");
     }
-    if (family == 2) {
+    if (family == 2 || family == 3) {
       double yd = asDouble(y(r));
       if (yd < 0.0 || std::floor(yd) != yd)
-        error("gllvmTMB_va_r3: Poisson cells require finite non-negative integer y");
+        error("gllvmTMB_va_r3: Poisson/nbinom2 cells require finite non-negative integer y");
     }
   }
   for (int cell = 0; cell < N * T; ++cell) {
@@ -335,10 +341,29 @@ Type objective_function<Type>::operator()()
         : va_r3_softplus_expectation(mu, v, gh_nodes, gh_weights);
       softplus_expectation_by_obs(r) = softplus_expectation;
       ell = log_choose + y(r) * mu - n * softplus_expectation;
-    } else {
+    } else if (family == 2) {
       // Poisson-log: E[exp(eta)] for eta ~ N(mu, v) is exact (log-normal
       // mean), so no quadrature is required.
       ell = y(r) * mu - exp(mu + v / Type(2.0)) - lgamma(y(r) + Type(1.0));
+    } else {
+      // nbinom2-log: log p(y|eta) = lgamma(y+phi) - lgamma(phi) - lgamma(y+1)
+      //   + phi*log(phi) - (y+phi)*log(phi + exp(eta)) + y*eta
+      // The only hard term is E[log(phi + exp(eta))]. Since
+      //   log(phi + exp(eta)) = log(phi) + softplus(eta - log(phi)),
+      // E[log(phi + exp(eta))] = log(phi) + E[softplus(eta - log(phi))],
+      // which is exactly the existing softplus-expectation helper evaluated
+      // at a shifted mean -- no new quadrature machinery. Collecting terms
+      // (phi*log(phi) - (y+phi)*log(phi) = -y*log(phi)):
+      //   E[log p] = lgamma(y+phi) - lgamma(phi) - lgamma(y+1) - y*log(phi)
+      //              + y*mu - (y+phi) * E[softplus(mu - log(phi), v)]
+      Type log_phi_t = log_phi(t);
+      Type phi = exp(log_phi_t);
+      Type softplus_expectation = va_r3_softplus_expectation(
+        mu - log_phi_t, v, gh_nodes, gh_weights);
+      softplus_expectation_by_obs(r) = softplus_expectation;
+      ell = lgamma(y(r) + phi) - lgamma(phi) - lgamma(y(r) + Type(1.0))
+        - y(r) * log_phi_t + y(r) * mu
+        - (y(r) + phi) * softplus_expectation;
     }
     if (!std::isfinite(asDouble(ell)))
       Rf_error("gllvmTMB_va_r3: non-finite expected log-likelihood at unit %d trait %d", i, t);

@@ -89,6 +89,85 @@ test_that("R3 H=61 scalar expectation passes the frozen oracle grid", {
   }
 })
 
+test_that("R3 nbinom2 expected log-likelihood passes a direct integrate() oracle", {
+  ## Independent check of the template's nbinom2 branch. The oracle density
+  ## uses base R's stats::dnbinom(mu = exp(eta), size = phi, log = TRUE) --
+  ## algebraically identical to
+  ##   log p(y|eta) = lgamma(y+phi) - lgamma(phi) - lgamma(y+1)
+  ##                  + phi*log(phi) - (y+phi)*log(phi + exp(eta)) + y*eta
+  ## but a genuinely separate implementation (R's own, numerically stable at
+  ## large mu), not the shifted-softplus identity the template uses. This is
+  ## then integrated against eta ~ N(mu, v) by stats::integrate() and compared
+  ## to the template's reported expected_loglik_by_obs.
+  validated <- .va_r3_validate_data(
+    y = 2L, n_trials = 1L, X = matrix(1, 1L, 1L),
+    unit_id = 1L, trait_id = 1L, q = 1L,
+    family = "nbinom2", link = "log"
+  )
+  parameters <- list(
+    beta = 0, theta_rr = 0, m = matrix(0, 1L, 1L),
+    log_L_diag = matrix(0, 1L, 1L), L_off = matrix(numeric(), 1L, 0L)
+  )
+  obj <- .va_r3_make_objective(validated, H = 61L, parameters = parameters,
+                               eval_method = "gh")
+  beta_index <- which(names(obj$par) == "beta")
+  theta_index <- which(names(obj$par) == "theta_rr")
+  phi_index <- which(names(obj$par) == "log_phi")
+  expect_length(phi_index, 1L)
+
+  nbinom2_logdensity <- function(y, eta, phi) {
+    stats::dnbinom(y, size = phi, mu = exp(eta), log = TRUE)
+  }
+
+  y_val <- 2
+  for (mu in c(-3, -1, 0, 1, 3)) {
+    for (variance in c(0, 1e-8, 1e-4, 0.1, 1, 4)) {
+      for (phi in c(0.5, 2, 10)) {
+        p <- obj$par
+        p[beta_index] <- mu
+        p[theta_index] <- sqrt(variance)
+        p[phi_index] <- log(phi)
+        observed <- obj$report(p)$expected_loglik_by_obs[1L]
+        expected <- if (variance == 0) {
+          nbinom2_logdensity(y_val, mu, phi)
+        } else {
+          ## Finite bounds, not (-Inf, Inf): unlike softplus (linear growth),
+          ## the direct oracle exponentiates eta with no stabilisation, so an
+          ## unbounded domain lets integrate() probe eta large enough to
+          ## overflow exp(). +-40 SD is far beyond where the tail mass matters
+          ## at this tolerance and stays well inside exp()'s safe range.
+          stats::integrate(function(z) {
+            eta <- mu + sqrt(variance) * z
+            nbinom2_logdensity(y_val, eta, phi) * stats::dnorm(z)
+          }, -40, 40, rel.tol = 1e-13)$value
+        }
+        expect_lt(abs(observed - expected), 1e-8)
+      }
+    }
+  }
+})
+
+test_that("R3 nbinom2 is mapped off (inert) for every other family", {
+  ## log_phi must not appear in obj$par -- and must not change the objective
+  ## or gradient -- for a family that never uses it. This is the guard against
+  ## the parameter-vector-cascade risk: adding log_phi to the template must
+  ## cost the pre-existing families nothing.
+  validated <- .va_r3_validate_data(
+    y = 1L, n_trials = 3L, X = matrix(1, 1L, 1L),
+    unit_id = 1L, trait_id = 1L, q = 1L
+  )
+  parameters <- list(
+    beta = 0.4, theta_rr = 0.3, m = matrix(0.1, 1L, 1L),
+    log_L_diag = matrix(0, 1L, 1L), L_off = matrix(numeric(), 1L, 0L)
+  )
+  obj <- .va_r3_make_objective(validated, H = 25L, parameters = parameters,
+                               eval_method = "gh")
+  expect_false("log_phi" %in% names(obj$par))
+  ## beta, theta_rr, m, log_L_diag; L_off is empty at q=1 (0 off-diagonal
+  ## entries), and log_phi is mapped off for this (binomial) family.
+  expect_identical(length(obj$par), 4L)
+})
+
 test_that("R3 latent posterior reads variational means and SDs out of the fitted par", {
   ## N = 2, q = 2. TMB matrices are column-major, so the packed vectors below
   ## give unit 1 the Cholesky [[1, 0], [3, 2]] and unit 2 [[0.5, 0], [-1, 1]].
@@ -140,6 +219,44 @@ test_that("R3 fit returns a latent posterior of the right shape", {
   expect_false(fit$latent$calibrated)
 })
 
+test_that("R3 nbinom2 fit is alive: simulate-then-fit returns a healthy status", {
+  ## A recovery SMOKE test, not a recovery accuracy test: the point is to
+  ## prove the whole nbinom2 pipeline (beta, loadings, per-trait log_phi, and
+  ## the variational block) is alive end to end, not to certify accuracy.
+  set.seed(2026L)
+  N <- 60L; T <- 4L; q <- 2L
+  trait_names <- paste0("sp", seq_len(T))
+  long <- data.frame(
+    unit = factor(rep(seq_len(N), each = T)),
+    trait = factor(rep(trait_names, N), levels = trait_names)
+  )
+  beta <- c(1.0, 0.8, 0.6, 0.9)
+  Lambda <- matrix(0, T, q)
+  Lambda[row(Lambda) >= col(Lambda)] <- c(0.5, 0.3, -0.2, 0.4, 0.35, -0.25, 0.2)
+  score <- matrix(rnorm(N * q), N, q)
+  unit <- as.integer(long$unit)
+  trait <- as.integer(long$trait)
+  eta <- beta[trait] + rowSums(
+    Lambda[trait, , drop = FALSE] * score[unit, , drop = FALSE]
+  )
+  phi_true <- 2
+  y <- rnbinom(N * T, size = phi_true, mu = exp(eta))
+
+  fit <- .va_r3_fit(
+    y = y, n_trials = rep(1L, N * T),
+    X = stats::model.matrix(~ 0 + trait, long),
+    unit_id = unit, trait_id = trait,
+    q = q, family = "nbinom2", link = "log", H = 15L
+  )
+
+  expect_identical(fit$status, "healthy")
+  expect_true(is.finite(fit$best$objective))
+  expect_gte(fit$health$healthy_starts, 3L)
+  fitted_log_phi <- unname(fit$best$par[names(fit$best$par) == "log_phi"])
+  expect_length(fitted_log_phi, T)
+  expect_true(all(is.finite(fitted_log_phi)))
+})
+
 test_that("R3 fixed-parameter information marginalises the variational block", {
   set.seed(9191)
   n <- 60L; p <- 5L
@@ -187,7 +304,7 @@ test_that("R3 family registry agrees with the validator and drives eval_method",
   ## drift from .va_r3_validate_data(), which is what actually assigns the
   ## family code the template sees. Adding a family without a registry entry
   ## (or with the wrong code/link) fails here rather than silently.
-  y_for <- list(gaussian_anchor = 0.5, binomial = 1L, poisson = 2L)
+  y_for <- list(gaussian_anchor = 0.5, binomial = 1L, poisson = 2L, nbinom2 = 2L)
   for (entry in .va_r3_family_registry) {
     validated <- .va_r3_validate_data(
       y = y_for[[entry$family]], n_trials = 3L, X = matrix(1, 1L, 1L),

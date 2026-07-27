@@ -200,7 +200,7 @@
          call. = FALSE)
   }
 
-  family <- match.arg(family, c("binomial", "poisson", "gaussian_anchor"))
+  family <- match.arg(family, c("binomial", "poisson", "gaussian_anchor", "nbinom2"))
   if (family == "binomial") {
     if (!identical(link, "logit")) {
       stop("R3 admits only the binomial logit link.", call. = FALSE)
@@ -225,6 +225,18 @@
     ## algebra does not use it, but it must be finite and correctly sized.
     n_trials <- rep.int(1L, length(y))
     family_code <- 2L
+  } else if (family == "nbinom2") {
+    if (!identical(link, "log")) {
+      stop("R3 admits only the nbinom2 log link.", call. = FALSE)
+    }
+    if (!is.numeric(y) || any(!is.finite(y)) || any(y != as.integer(y)) ||
+        any(y < 0L)) {
+      stop("nbinom2 R3 data require finite non-negative integer y.", call. = FALSE)
+    }
+    ## The standalone template declares n_trials for every branch; the nbinom2
+    ## algebra does not use it, but it must be finite and correctly sized.
+    n_trials <- rep.int(1L, length(y))
+    family_code <- 3L
   } else {
     if (!identical(link, "identity")) {
       stop("The Gaussian algebra anchor uses the identity link.", call. = FALSE)
@@ -379,7 +391,8 @@
   pseudo <- if (data$family == 1L) {
     prop <- pmin(pmax((data$y + 0.5) / (data$n_trials + 1), 1e-6), 1 - 1e-6)
     stats::qlogis(prop)
-  } else if (data$family == 2L) {
+  } else if (data$family == 2L || data$family == 3L) {
+    ## Poisson and nbinom2 share the log link.
     log(data$y + 0.5)
   } else {
     data$y
@@ -419,9 +432,9 @@
     prop <- (data$y + 0.5) / (data$n_trials + 1)
     beta_fit <- tryCatch(stats::lm.fit(data$X, stats::qlogis(prop))$coefficients,
                          error = function(e) rep(0, p))
-  } else if (data$family == 2L) {
-    ## Poisson uses a log link, so start beta on the log scale; the 0.5
-    ## offset keeps zero counts finite.
+  } else if (data$family == 2L || data$family == 3L) {
+    ## Poisson and nbinom2 share a log link, so start beta on the log scale;
+    ## the 0.5 offset keeps zero counts finite.
     beta_fit <- tryCatch(stats::lm.fit(data$X, log(data$y + 0.5))$coefficients,
                          error = function(e) rep(0, p))
   } else {
@@ -467,7 +480,10 @@
     theta_rr = theta_rr,
     m = m,
     log_L_diag = log_L_diag,
-    L_off = L_off
+    L_off = L_off,
+    ## Mapped off (fixed at this default) for every family except nbinom2;
+    ## log_phi = 0 means phi = 1 on the natural scale.
+    log_phi = rep(0, T)
   )
 }
 
@@ -525,6 +541,20 @@
     tiers = "gh",
     default_tier = "gh",
     expectation = "exact"
+  ),
+
+  ## Negative binomial (nbinom2, log link) -- the only hard term,
+  ## E[log(phi + exp(eta))], reduces to log(phi) + E[softplus(eta - log(phi))],
+  ## which is the same Gauss-Hermite softplus-expectation helper the binomial
+  ## family already uses, evaluated at a shifted mean. No new quadrature
+  ## machinery; only a shifted call.
+  list(
+    family = "nbinom2",
+    family_code = 3L,
+    link = "log",
+    tiers = "gh",
+    default_tier = "gh",
+    expectation = "quadrature"
   )
 )
 
@@ -720,12 +750,23 @@
   rule <- .va_r3_gh_rule(H)
   dll <- .va_r3_load_dll(source, rebuild = rebuild)
   if (is.null(parameters)) parameters <- .va_r3_default_parameters(validated, 1L)
+  ## Callers that hand-build a parameters list (tests exercising families 0-2
+  ## predate log_phi) never set it; every family needs a value passed to the
+  ## template regardless, so fill in the phi=1 default rather than requiring
+  ## every call site to know about a parameter that, for them, is inert.
+  if (is.null(parameters$log_phi)) parameters$log_phi <- rep(0, validated$T)
   tmb_data <- validated[c("y", "n_trials", "X", "unit_id", "trait_id",
                           "N", "T", "q", "family", "gaussian_sd")]
   tmb_data$gh_nodes <- rule$nodes
   tmb_data$gh_weights <- rule$weights
   tmb_data$eval_method <- eval_method_code
-  map <- NULL
+  ## log_phi is only a genuine free parameter for nbinom2 (family_code 3);
+  ## every other family maps it off at its default value, so adding it here
+  ## costs those families nothing.
+  map <- list()
+  if (!identical(validated$family, 3L)) {
+    map$log_phi <- factor(rep(NA_integer_, length(parameters$log_phi)))
+  }
   if (!is.null(fixed_global)) {
     if (!is.list(fixed_global) ||
         !identical(sort(names(fixed_global)), c("beta", "theta_rr"))) {
@@ -741,11 +782,10 @@
     .va_r3_unpack_theta_rr(fixed_global$theta_rr, validated$T, validated$q)
     parameters$beta <- as.numeric(fixed_global$beta)
     parameters$theta_rr <- as.numeric(fixed_global$theta_rr)
-    map <- list(
-      beta = factor(rep(NA_integer_, length(parameters$beta))),
-      theta_rr = factor(rep(NA_integer_, length(parameters$theta_rr)))
-    )
+    map$beta <- factor(rep(NA_integer_, length(parameters$beta)))
+    map$theta_rr <- factor(rep(NA_integer_, length(parameters$theta_rr)))
   }
+  if (!length(map)) map <- NULL
   obj <- TMB::MakeADFun(
     data = tmb_data,
     parameters = parameters,
@@ -761,10 +801,11 @@
 
 .va_r3_fit <- function(y, n_trials, X, unit_id, trait_id, q,
                        N = NULL, T = NULL,
-                       family = c("binomial", "poisson", "gaussian_anchor"),
+                       family = c("binomial", "poisson", "gaussian_anchor", "nbinom2"),
                        link = switch(family[1L],
                          gaussian_anchor = "identity",
                          poisson = "log",
+                         nbinom2 = "log",
                          "logit"),
                        unique = FALSE, psi = FALSE, structured = FALSE,
                        provider = NULL, lv = FALSE, missing = FALSE,
@@ -797,7 +838,7 @@
       objective_type = .va_r3_objective_type(resolved_eval_method),
       rank_source = rank_source,
       family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
-                      "binomial"),
+                      nbinom2 = "nbinom2", "binomial"),
       link = link,
       unique = FALSE,
       eval_method = resolved_eval_method,
@@ -958,7 +999,7 @@
     objective_type = .va_r3_objective_type(resolved_eval_method),
     rank_source = rank_source,
     family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
-                    "binomial"),
+                    nbinom2 = "nbinom2", "binomial"),
     link = link,
     unique = FALSE,
     q = validated$q,

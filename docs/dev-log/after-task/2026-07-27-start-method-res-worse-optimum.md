@@ -156,11 +156,24 @@ with evidence: `start_method = "res"` must **not** become a default.
 
 ## 8. What Did Not Go Smoothly
 
-I initially read the restart loop (`R/fit-multi.R:4821-4828`) and concluded that
-because `init_jitter` perturbs the whole parameter vector independently of the
-start method, `n_init > 1` was a working guard. **The experiment refuted that** —
-5/5 restarts return the identical worse optimum. Reading the code was not a
-substitute for running it.
+Three inferences in this slice were wrong, and all three were caught the same
+way — by running something instead of reasoning about it.
+
+1. I read the restart loop (`R/fit-multi.R:4821-4828`) and concluded that because
+   `init_jitter` perturbs the whole parameter vector independently of the start
+   method, `n_init > 1` was a working guard. **Refuted**: 5/5 restarts return the
+   identical worse optimum.
+2. I proposed the `sigma_eps^2 / count` noise floor as the mechanism steering
+   `res` into the worse basin. **Refuted** by the BLUP start landing identically.
+3. I predicted the copied `s_B` modes would drag old `indep` into the bad basin
+   too. **Refuted**: old `indep` reaches the best optimum 4/4.
+
+Worth noting the shape of the failure: (2) and (3) were both *plausible
+statistical stories* that survived scrutiny and would have survived a review. The
+BLUP argument in particular is textbook-correct about shrinkage and noise, and it
+predicted the wrong outcome anyway. Building it and measuring it took about
+twenty minutes; arguing about it could have taken much longer and settled
+nothing.
 
 ## 9. Team Learning
 
@@ -168,6 +181,14 @@ The existing tests asserted `convergence == 0` on a fit whose defect is that
 `convergence == 0` is clean. A contract test that only checks the shape of an
 input cannot detect a defect in the output. Where a feature's purpose is to
 improve an *outcome*, at least one test must assert something about that outcome.
+
+Second, and more reusable: **when a start-value or initialisation change is
+proposed on statistical grounds, measure it against the incumbent on the cells
+that motivated it before keeping it.** The BLUP-SVD start was better-motivated
+than what it replaced by every argument available beforehand, and was a 4/4 ->
+0/4 regression. The incumbent here is a crude constant; its virtue is that it
+commits to no direction. Cheap to build, cheap to measure, and the measurement
+is the only thing that settled it.
 
 ## 10. Known Limitations And Next Actions
 
@@ -211,17 +232,71 @@ large. **Mechanism hypothesis**: the inflated start is what steers into the basi
 where one `psi` is crushed to zero to compensate. Consistent with the evidence;
 the causal link is not experimentally isolated.
 
-The repair is to build the start from a fit that has **already absorbed the
-random effects** — either residuals from the independent diagonal model that
-`start_method = "indep"` already fits, or, more directly, an SVD of the
-**conditional modes of the site random effects** (`s_B`, a trait x site matrix),
-which are shrunk estimates of exactly what Lambda describes and carry no noise
-floor by construction.
+The proposed repair was to build the start from a fit that has **already absorbed
+the random effects**: an SVD of the **conditional modes of the site random
+effects** (`s_B`, a trait x site matrix), which are shrunk estimates of exactly
+what Lambda describes and carry no noise floor by construction. The current
+`indep` path already fits that model but leaves the reduced-rank block at its
+historical constant (`theta_rr_B == c(0.5, 0)`), so it pays for the extra fit and
+then discards the part that would inform the loadings.
 
-Note the current `indep` path seeds the GLMM pieces but leaves the reduced-rank
-block at its historical default (`theta_rr_B == c(0.5, 0)`, asserted in
-`test-start-method-residual.R`). So an SVD-of-BLUPs start would also close that
-gap. Open design choice: upgrade `indep` in place, or add a separate method.
+## 6b. The GLMM-start repair was BUILT, MEASURED, and REVERTED
+
+The maintainer chose "upgrade `indep` in place". It was implemented
+(`.gllvmTMB_factor_start_from_matrix()` factored out of the residual path,
+`.gllvmTMB_apply_start_from()` returning `source_params`, B/W-tier seeding after
+the warm-start copy), verified to actually fire (`auto_indep_rr_B = TRUE`,
+`theta_rr_B` seeded to `0.149 -0.465 1.108` rather than `0.5 0`), and it passed
+the suite. **It does not work, and it is a regression. Reverted.**
+
+Measured on the four cells where `res` was materially worse, plus four controls
+(nats above the best of the three starts; 0 = found the best optimum):
+
+| seed | default | `res` | `indep` (upgraded) |
+|---|---|---|---|
+| 301 | 0 | +3.696862 | +3.696862 |
+| 401 | 0 | +7.280591 | +7.280591 |
+| 1001 | 0 | +14.65014 | +14.65014 |
+| 1901 | 0 | +0.2056438 | +0.2056440 |
+| 4 controls | 0 | 0 | 0 |
+| **reached best** | **8/8** | 4/8 | 4/8 |
+
+The upgraded `indep` reproduces `res`'s failures **to six significant figures**.
+And the old `indep` — constant loadings — reaches the best optimum on all four
+bad cells (gaps within +/-0.0004). So the upgrade converts `indep` from 4/4 to
+0/4 on exactly the cells that motivated it.
+
+**Two hypotheses of mine were refuted by this, and both had looked reasonable.**
+
+1. *The noise floor causes the bad basin.* It does not. A start built from
+   noise-free BLUPs lands in the identical basin. The `sigma_eps^2 / count`
+   arithmetic in §10 is still correct as arithmetic; it is simply not the cause.
+2. *The copied `s_B` modes would drag old `indep` into the bad basin anyway.*
+   They do not. Old `indep` copies those same modes and still reaches the best
+   optimum. **The loadings alone select the basin.**
+
+**What the evidence actually supports.** Compare the loadings each start commits
+to on seed 101:
+
+| start | loadings | basin | outcome |
+|---|---|---|---|
+| `res` (noisy residual cell means) | 0.122, -0.274, **1.179** | trait 3 | worse |
+| `indep` (clean BLUPs) | 0.149, -0.465, **1.108** | trait 3 | worse |
+| `default` (constant `0.5, 0`) | — | trait 2 | **best** |
+
+Both *data-driven* starts commit to trait 3; the arbitrary constant start finds
+trait 2. The leading principal component of the between-site covariance is trait
+3, but the fit is `d = 1` against rank-3 truth — **misspecified** — and in that
+regime the best-likelihood single factor is not the leading PC. Any SVD-based
+start is drawn to the leading PC whether its input is clean or noisy. The
+constant start commits to no direction and the optimiser finds the better basin
+from there.
+
+This generalises past this bug: **an "informed" start is not automatically a
+better start.** For a misspecified reduced-rank fit, informing the start from the
+data's dominant direction is precisely what steers it wrong, and the neutral
+start's lack of commitment is a feature. That is why the correct fix here is a
+*diagnostic* (Fix A, landed) rather than a smarter starting value.
 
 The regression test asserts Fix B's contract and will fail until B lands.
 Under routine PR CI it skips; under the nightly `GLLVMTMB_HEAVY_TESTS=1` run it

@@ -46906,11 +46906,21 @@ their applicable surfaces.  Complete closeout:
 
 ## 2026-07-27 — start_method="res" correctness bug: diagnosed, one fix landed, method retired (Claude)
 
-**To the main lane.** Branch `claude/loving-liskov-85d5d5` in worktree
-`.claude/worktrees/awesome-fermat-0e06a9`, six commits `ebd46121..e8bd058b`,
-**not pushed, no PR yet**. Nothing here touches the eta-simulation lane or the
-0.6 five-macro lane. Read this before touching `R/diagnose.R`,
-`R/gllvmTMB.R`, or `vignettes/articles/convergence-start-values.Rmd`.
+**To the main lane.** Open as **PR #799**
+(`claude/res-start-diagnostic`, eight commits off `origin/main`). Nothing here
+touches the eta-simulation lane or the 0.6 five-macro lane. Read this before
+touching `R/diagnose.R`, `R/gllvmTMB.R`, or
+`vignettes/articles/convergence-start-values.Rmd`.
+
+**Do not merge without maintainer sign-off** -- the `res` soft-deprecation is an
+API change, which `CLAUDE.md` puts in the discussion-checkpoint set.
+
+Lane note: this work was authored on `claude/loving-liskov-85d5d5`, which sits on
+top of ten UNPUSHED commits from the VA-wiring lane (`51d1fa81..197f1bce`).
+PR #797 merged an earlier state of that branch, so those ten are still not in
+`main` -- someone may believe they are. There was zero file overlap with this
+arc, so the eight commits here were cherry-picked onto a clean branch off
+`origin/main` rather than bundling another lane's work into this PR.
 
 Origin: a correctness bug handed over from the 2026-07-27 Laplace profiling
 campaign (`claude/va-wiring-20260726`) — `start_method = "res"` reaching an

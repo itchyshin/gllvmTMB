@@ -522,6 +522,32 @@
       <code>pdHess = TRUE</code>. Their prospective role is therefore a <em>cross-engine second opinion</em>,
       not a faster or more accurate estimator. Nothing here is promoted, and none of it gates 0.6.
     </p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>What VA / EVA actually cover</th><th>VA</th><th>EVA</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Gaussian <span class="muted">(identity)</span></th><td>exact <span class="muted">&mdash; test anchor</span></td><td>Taylor <span class="muted">&mdash; test anchor</span></td></tr>
+          <tr><th>Poisson <span class="muted">(log)</span></th><td><strong>exact</strong> <span class="muted">closed form exp(&micro; + v/2)</span></td><td>Taylor <span class="muted">&mdash; strictly dominated here</span></td></tr>
+          <tr><th>Binomial / Bernoulli <span class="muted">(logit, n&nbsp;&ge;&nbsp;1)</span></th><td>quadrature <span class="muted">(H&nbsp;=&nbsp;15)</span> or Jaakkola&ndash;Jordan</td><td>Taylor <span class="muted">&mdash; converges poorly</span></td></tr>
+          <tr><th>The other 27+ families <span class="muted">(nbinom, Beta, betabinomial, ordinal, lognormal, <code>delta_*</code>, &hellip;)</span></th><td colspan="2"><span class="tag t-gone">not implemented</span> <span class="muted">&mdash; reachable in principle by the same 1-D quadrature; multinomial is <em>not</em>, it needs a T-dimensional integral</span></td></tr>
+          <tr><th>Covariance mode</th><td colspan="2">ordinary <code>latent(&hellip;, unique = FALSE)</code> only &mdash; &Sigma; = &Lambda;&Lambda;&#7488;, <strong>no &Psi;</strong></td></tr>
+          <tr><th>Correlation source</th><td colspan="2"><span class="muted">none only</span> &mdash; no phylo / spatial / animal / kernel tier</td></tr>
+          <tr><th>Structure</th><td colspan="2">single tier; no random slopes; <strong>no missing data</strong> (complete N &times; T cells required)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      Read against the grid at the top of this page, that is <strong>3 families of 30+, one mode of
+      three, one source of five, and no missing-data support</strong> &mdash; VA/EVA cover a small
+      corner of what Laplace already fits. Most of the gap is not conceptual: one 1-D Gauss&ndash;Hermite
+      rule admits any family whose latent variable enters through a scalar linear predictor
+      (<code>docs/design/104</code>&ndash;<code>105</code>), and multi-tier, random slopes and
+      structured priors all accumulate additively into the same &micro; and v
+      (<code>docs/design/106</code>). Missing data is the one gap that blocks real datasets outright
+      today.
+    </p>
   </section>
 
   <!-- RANDOM SLOPES + SPECIAL -->

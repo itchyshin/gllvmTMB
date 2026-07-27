@@ -1,0 +1,17 @@
+condition,q,arm,ok,elapsed_s,status
+eSpider_abund,2,gtmb_gh,TRUE,3.17,failed_health_gate
+eSpider_abund,2,gllvm_va,TRUE,2.59,converged
+eSpider_abund,2,gllvm_eva,FALSE,0.00,"ERROR: Family(families): poisson not implemented with method ' EVA ."
+eSpider_abund,2,gtmb_laplace,TRUE,5.21,pd_hessian
+eSpider_abund,3,gtmb_gh,TRUE,10.17,failed_variance_domain
+eSpider_abund,3,gllvm_va,TRUE,13.56,converged
+eSpider_abund,3,gllvm_eva,FALSE,0.00,"ERROR: Family(families): poisson not implemented with method ' EVA ."
+eSpider_abund,3,gtmb_laplace,TRUE,3.58,pd_hessian
+eSpider_pa,2,gtmb_gh,TRUE,7.94,failed_variance_domain
+eSpider_pa,2,gtmb_jj,TRUE,0.75,healthy
+eSpider_pa,2,gllvm_va,TRUE,0.53,converged
+eSpider_pa,2,gllvm_eva,TRUE,80.29,not_converged
+eSpider_pa,2,gtmb_laplace,TRUE,5.48,pd_hessian
+eSpider_pa,3,gtmb_gh,TRUE,13.28,failed_variance_domain
+eSpider_pa,3,gtmb_jj,TRUE,1.74,healthy
+eSpider_pa,3,gllvm_va,TRUE,1.20,converged

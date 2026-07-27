@@ -200,19 +200,31 @@
          call. = FALSE)
   }
 
-  family <- match.arg(family, c("binomial", "gaussian_anchor"))
+  family <- match.arg(family, c("binomial", "poisson", "gaussian_anchor"))
   if (family == "binomial") {
     if (!identical(link, "logit")) {
       stop("R3 admits only the binomial logit link.", call. = FALSE)
     }
     if (!is.numeric(y) || any(!is.finite(y)) || any(y != as.integer(y)) ||
         !is.numeric(n_trials) || any(!is.finite(n_trials)) ||
-        any(n_trials != as.integer(n_trials)) || any(n_trials < 2L) ||
+        any(n_trials != as.integer(n_trials)) || any(n_trials < 1L) ||
         any(y < 0L) || any(y > n_trials)) {
-      stop("Binomial R3 data require integer n_trials >= 2 and integer 0 <= y <= n_trials.",
+      stop("Binomial R3 data require integer n_trials >= 1 and integer 0 <= y <= n_trials.",
            call. = FALSE)
     }
     family_code <- 1L
+  } else if (family == "poisson") {
+    if (!identical(link, "log")) {
+      stop("R3 admits only the Poisson log link.", call. = FALSE)
+    }
+    if (!is.numeric(y) || any(!is.finite(y)) || any(y != as.integer(y)) ||
+        any(y < 0L)) {
+      stop("Poisson R3 data require finite non-negative integer y.", call. = FALSE)
+    }
+    ## The standalone template declares n_trials for every branch; the Poisson
+    ## algebra does not use it, but it must be finite and correctly sized.
+    n_trials <- rep.int(1L, length(y))
+    family_code <- 2L
   } else {
     if (!identical(link, "identity")) {
       stop("The Gaussian algebra anchor uses the identity link.", call. = FALSE)
@@ -328,6 +340,74 @@
   if (length(out) == 1L && grepl("^[0-9a-f]{40}$", out)) out else NA_character_
 }
 
+## Rotate a T x q loadings matrix Lambda (from an eigendecomposition, hence
+## generally dense) into the lower-triangular form .va_r3_pack_theta_rr()
+## requires, without changing Lambda %*% t(Lambda).  Factor loadings are only
+## identified up to a right-orthogonal rotation, so this picks the rotation Q
+## (q x q) that makes the top q x q block lower triangular: an LQ
+## decomposition of that block, obtained via the QR decomposition of its
+## transpose (t(L1) = Q1 R1 => L1 = t(R1) %*% t(Q1) => L1 %*% Q1 = t(R1),
+## lower triangular; Q1 is a legitimate rotation because it is orthogonal).
+## Below-block rows automatically satisfy the packer's zero-pattern
+## regardless of rotation.  QR leaves a strict-upper block that is
+## numerically ~0 rather than exactly 0, so it is hard-zeroed afterwards
+## (after checking it really is negligible).
+.va_r3_rotate_to_lower_triangular <- function(Lambda, q) {
+  L1 <- Lambda[seq_len(q), seq_len(q), drop = FALSE]
+  Q1 <- qr.Q(qr(t(L1)))
+  rotated <- Lambda %*% Q1
+  upper <- row(rotated) < col(rotated)
+  if (any(upper) && max(abs(rotated[upper])) > 1e-6) return(NULL)
+  rotated[upper] <- 0
+  rotated
+}
+
+## Factor-analytic warm start for the loadings: eigendecompose the
+## correlation of the link-scale residuals (response pseudo-data minus the
+## fixed-effect contribution already estimated in beta) and take the first q
+## eigenvectors, scaled by sqrt(eigenvalue), as Lambda.  This mirrors gllvm's
+## starting.val = "res".  Returns NULL (caller falls back to the constant
+## start) on any degeneracy: too few units, non-finite correlations, a
+## non-finite eigendecomposition, or a rotation that fails the lower-triangle
+## check above.
+.va_r3_warm_theta_rr <- function(data, beta) {
+  N <- data$N
+  T <- data$T
+  q <- data$q
+  if (N < 2L) return(NULL)
+  eta_fixed <- as.numeric(data$X %*% beta)
+  pseudo <- if (data$family == 1L) {
+    prop <- pmin(pmax((data$y + 0.5) / (data$n_trials + 1), 1e-6), 1 - 1e-6)
+    stats::qlogis(prop)
+  } else if (data$family == 2L) {
+    log(data$y + 0.5)
+  } else {
+    data$y
+  }
+  resid <- pseudo - eta_fixed
+  Z <- matrix(NA_real_, nrow = N, ncol = T)
+  Z[cbind(data$unit_id + 1L, data$trait_id + 1L)] <- resid
+  if (anyNA(Z) || !all(is.finite(Z))) return(NULL)
+  cor_Z <- tryCatch(stats::cor(Z), error = function(e) NULL)
+  if (is.null(cor_Z) || !all(is.finite(cor_Z))) return(NULL)
+  eig <- tryCatch(eigen(cor_Z, symmetric = TRUE), error = function(e) NULL)
+  if (is.null(eig) || !all(is.finite(eig$values)) || !all(is.finite(eig$vectors))) {
+    return(NULL)
+  }
+  Lambda <- eig$vectors[, seq_len(q), drop = FALSE] %*%
+    diag(sqrt(pmax(eig$values[seq_len(q)], 0)), nrow = q, ncol = q)
+  Lambda <- tryCatch(.va_r3_rotate_to_lower_triangular(Lambda, q),
+                     error = function(e) NULL)
+  if (is.null(Lambda) || !all(is.finite(Lambda))) return(NULL)
+  theta_rr <- tryCatch(.va_r3_pack_theta_rr(Lambda, q), error = function(e) NULL)
+  if (is.null(theta_rr) ||
+      length(theta_rr) != .va_r3_theta_length(T, q) ||
+      !all(is.finite(theta_rr))) {
+    return(NULL)
+  }
+  theta_rr
+}
+
 .va_r3_default_parameters <- function(data, start_id = 1L) {
   N <- data$N
   T <- data$T
@@ -339,18 +419,36 @@
     prop <- (data$y + 0.5) / (data$n_trials + 1)
     beta_fit <- tryCatch(stats::lm.fit(data$X, stats::qlogis(prop))$coefficients,
                          error = function(e) rep(0, p))
+  } else if (data$family == 2L) {
+    ## Poisson uses a log link, so start beta on the log scale; the 0.5
+    ## offset keeps zero counts finite.
+    beta_fit <- tryCatch(stats::lm.fit(data$X, log(data$y + 0.5))$coefficients,
+                         error = function(e) rep(0, p))
   } else {
     beta_fit <- tryCatch(stats::lm.fit(data$X, data$y)$coefficients,
                          error = function(e) rep(0, p))
   }
   if (length(beta_fit) == p && all(is.finite(beta_fit))) beta <- unname(beta_fit)
 
-  theta_rr <- rep(0, .va_r3_theta_length(T, q))
-  diagonal_scale <- c(0.10, -0.10, 0.20, -0.20)[start_id]
-  theta_rr[seq_len(q)] <- diagonal_scale * rep(c(1, -1), length.out = q)
-  if (length(theta_rr) > q && start_id > 1L) {
-    k <- seq_len(length(theta_rr) - q)
-    theta_rr[-seq_len(q)] <- (0.01 * start_id) * sin(k)
+  ## Start 1 = the factor-analytic warm start (data-driven loadings).  Starts
+  ## 2-4 add the pre-existing jitter pattern on top of that same warm base,
+  ## rather than replacing it, so the 4-start agreement gate still probes
+  ## genuinely different starting points.  A degenerate/non-finite warm start
+  ## falls back to the original constant-diagonal start for all four starts.
+  theta_rr <- .va_r3_warm_theta_rr(data, beta)
+  if (is.null(theta_rr)) {
+    theta_rr <- rep(0, .va_r3_theta_length(T, q))
+    theta_rr[seq_len(q)] <- c(0.10, -0.10, 0.20, -0.20)[1L] *
+      rep(c(1, -1), length.out = q)
+  }
+  if (start_id > 1L) {
+    diagonal_scale <- c(0.10, -0.10, 0.20, -0.20)[start_id]
+    theta_rr[seq_len(q)] <- theta_rr[seq_len(q)] +
+      diagonal_scale * rep(c(1, -1), length.out = q)
+    if (length(theta_rr) > q) {
+      k <- seq_len(length(theta_rr) - q)
+      theta_rr[-seq_len(q)] <- theta_rr[-seq_len(q)] + (0.01 * start_id) * sin(k)
+    }
   }
   m <- matrix(0, nrow = N, ncol = q)
   log_L_diag <- matrix(0, nrow = N, ncol = q)
@@ -373,13 +471,25 @@
   )
 }
 
+.va_r3_eval_method_code <- function(eval_method = c("auto", "jj"), family) {
+  eval_method <- match.arg(eval_method)
+  if (identical(eval_method, "jj") && !identical(family, 1L)) {
+    stop("eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for the binomial family.",
+         call. = FALSE)
+  }
+  if (identical(eval_method, "jj")) 1L else 0L
+}
+
 .va_r3_make_objective <- function(validated, H = 61L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
-                                  fixed_global = NULL, silent = TRUE) {
+                                  fixed_global = NULL, silent = TRUE,
+                                  eval_method = c("auto", "jj")) {
   if (validated$q == 0L) {
     stop("q = 0 is not applicable and must not construct an R3 objective.",
          call. = FALSE)
   }
+  eval_method <- match.arg(eval_method)
+  eval_method_code <- .va_r3_eval_method_code(eval_method, validated$family)
   rule <- .va_r3_gh_rule(H)
   dll <- .va_r3_load_dll(source, rebuild = rebuild)
   if (is.null(parameters)) parameters <- .va_r3_default_parameters(validated, 1L)
@@ -387,6 +497,7 @@
                           "N", "T", "q", "family", "gaussian_sd")]
   tmb_data$gh_nodes <- rule$nodes
   tmb_data$gh_weights <- rule$weights
+  tmb_data$eval_method <- eval_method_code
   map <- NULL
   if (!is.null(fixed_global)) {
     if (!is.list(fixed_global) ||
@@ -423,22 +534,28 @@
 
 .va_r3_fit <- function(y, n_trials, X, unit_id, trait_id, q,
                        N = NULL, T = NULL,
-                       family = c("binomial", "gaussian_anchor"),
-                       link = if (identical(family[1L], "gaussian_anchor"))
-                         "identity" else "logit",
+                       family = c("binomial", "poisson", "gaussian_anchor"),
+                       link = switch(family[1L],
+                         gaussian_anchor = "identity",
+                         poisson = "log",
+                         "logit"),
                        unique = FALSE, psi = FALSE, structured = FALSE,
                        provider = NULL, lv = FALSE, missing = FALSE,
                        gaussian_sd = 1, H = 61L,
                        rank_source = c("fixed_fixture", "ml_bic"),
                        fixed_global = NULL, source = NULL, rebuild = FALSE,
                        control = list(eval.max = 2000L, iter.max = 2000L),
-                       silent = TRUE) {
+                       silent = TRUE, eval_method = c("auto", "jj")) {
   family <- match.arg(family)
   rank_source <- match.arg(rank_source)
+  eval_method <- match.arg(eval_method)
   validated <- .va_r3_validate_data(
     y, n_trials, X, unit_id, trait_id, q, N, T, family, link,
     unique, psi, structured, provider, lv, missing, gaussian_sd
   )
+  ## Validate eval_method against the family up front, before any objective
+  ## is constructed, so a mismatched request fails closed for every start.
+  .va_r3_eval_method_code(eval_method, validated$family)
   if (validated$q == 0L) {
     return(list(
       status = "not_applicable_rank_zero",
@@ -450,9 +567,11 @@
       research_only = TRUE,
       objective_type = "ELBO_GH",
       rank_source = rank_source,
-      family = if (family == "gaussian_anchor") "gaussian" else "binomial",
+      family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
+                      "binomial"),
       link = link,
       unique = FALSE,
+      eval_method = eval_method,
       quadrature = NULL,
       source_commit = NA_character_,
       objective_constructed = FALSE
@@ -482,7 +601,8 @@
   for (k in seq_along(starts)) {
     obj <- .va_r3_make_objective(
       validated, H = H, source = source, rebuild = rebuild && k == 1L,
-      parameters = starts[[k]], fixed_global = fixed_global, silent = silent
+      parameters = starts[[k]], fixed_global = fixed_global, silent = silent,
+      eval_method = eval_method
     )
     objects[[k]] <- obj
     opt <- tryCatch(
@@ -593,10 +713,12 @@
     research_only = TRUE,
     objective_type = "ELBO_GH",
     rank_source = rank_source,
-    family = if (family == "gaussian_anchor") "gaussian" else "binomial",
+    family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
+                    "binomial"),
     link = link,
     unique = FALSE,
     q = validated$q,
+    eval_method = eval_method,
     quadrature = list(order = rule$order, convention = rule$convention,
                       nodes = rule$nodes, weights = rule$weights),
     source_commit = .va_r3_source_commit(dll$source),

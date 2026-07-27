@@ -34,8 +34,9 @@ Type objective_function<Type>::operator()() {
   DATA_INTEGER(N);
   DATA_INTEGER(T);
   DATA_INTEGER(q);
-  DATA_INTEGER(family); // 0 = test-only Gaussian; 1 = Bernoulli-logit
+  DATA_INTEGER(family); // 0 = test-only Gaussian; 1 = Binomial-logit (n_trials trials); 2 = Poisson-log
   DATA_SCALAR(gaussian_sd);
+  DATA_VECTOR(n_trials);
 
   PARAMETER_VECTOR(beta);
   PARAMETER_VECTOR(theta_rr);
@@ -46,11 +47,12 @@ Type objective_function<Type>::operator()() {
   const int n_obs = y.size();
   const int n_off = q * (q - 1) / 2;
   const int theta_expected = T * q - q * (q - 1) / 2;
-  if (family != 0 && family != 1)
-    error("gllvmTMB_eva: family must be 0 (Gaussian) or 1 (Bernoulli)");
+  if (family != 0 && family != 1 && family != 2)
+    error("gllvmTMB_eva: family must be 0 (Gaussian), 1 (Binomial-logit), or 2 (Poisson-log)");
   if (N <= 0 || T <= 0 || q <= 0 || q > T || n_obs != N * T)
     error("gllvmTMB_eva: require a complete N by T fixture with 1 <= q <= T");
   if (X.rows() != n_obs || unit_id.size() != n_obs || trait_id.size() != n_obs ||
+      n_trials.size() != n_obs ||
       X.cols() != beta.size() || theta_rr.size() != theta_expected ||
       a.rows() != N || a.cols() != q || log_A_diag.rows() != N ||
       log_A_diag.cols() != q || A_off.rows() != N || A_off.cols() != n_off)
@@ -78,8 +80,20 @@ Type objective_function<Type>::operator()() {
     if (i < 0 || i >= N || t < 0 || t >= T)
       error("gllvmTMB_eva: unit_id or trait_id is out of range");
     if (!std::isfinite(asDouble(y(r)))) error("gllvmTMB_eva: non-finite response");
-    if (family == 1 && !(asDouble(y(r)) == 0.0 || asDouble(y(r)) == 1.0))
-      error("gllvmTMB_eva: Bernoulli responses must be exactly zero or one");
+    if (!std::isfinite(asDouble(n_trials(r)))) error("gllvmTMB_eva: non-finite n_trials");
+    if (family == 1) {
+      double n_val = asDouble(n_trials(r));
+      double y_val = asDouble(y(r));
+      if (!(n_val == std::floor(n_val)) || n_val < 1.0)
+        error("gllvmTMB_eva: Binomial n_trials must be an integer >= 1");
+      if (!(y_val == std::floor(y_val)) || y_val < 0.0 || y_val > n_val)
+        error("gllvmTMB_eva: Binomial responses must be integers in [0, n_trials]");
+    }
+    if (family == 2) {
+      double y_val = asDouble(y(r));
+      if (!(y_val == std::floor(y_val)) || y_val < 0.0)
+        error("gllvmTMB_eva: Poisson responses must be non-negative integers");
+    }
     for (int p = 0; p < X.cols(); ++p)
       if (!std::isfinite(asDouble(X(r, p)))) error("gllvmTMB_eva: non-finite design coordinate");
     count[i * T + t] += 1;
@@ -147,8 +161,13 @@ Type objective_function<Type>::operator()() {
       if (!std::isfinite(asDouble(v)))
         Rf_error("gllvmTMB_eva: non-finite projected variance at unit %d trait %d", i, t);
       if (family == 1) {
+        Type n = n_trials(r);
         Type p = eva_invlogit(mu);
-        expected_loglik += y(r) * mu - eva_softplus(mu) - Type(0.5) * p * (Type(1.0) - p) * v;
+        Type log_choose = lgamma(n + Type(1.0)) - lgamma(y(r) + Type(1.0)) - lgamma(n - y(r) + Type(1.0));
+        expected_loglik += log_choose + y(r) * mu - n * eva_softplus(mu)
+          - Type(0.5) * v * n * p * (Type(1.0) - p);
+      } else if (family == 2) {
+        expected_loglik += y(r) * mu - exp(mu) - lgamma(y(r) + Type(1.0)) - Type(0.5) * v * exp(mu);
       } else {
         Type residual = y(r) - mu;
         expected_loglik += -Type(0.5) * (log_two_pi + Type(2.0) * log(gaussian_sd)

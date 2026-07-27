@@ -7,19 +7,20 @@
 .approximation_engine_regime <- function(engine) {
   switch(engine,
     va_r3 = list(
-      family = "binomial",
-      trials = "complete multi-trial (integer n_trials >= 2)",
-      link = "logit",
+      family = "binomial or Poisson",
+      trials = "complete cells (binomial: integer n_trials >= 1; Poisson: no trials)",
+      link = "logit or log",
       unique = FALSE,
       covariance = "ordinary latent loadings only"
     ),
     eva = list(
-      family = "bernoulli",
-      trials = "complete one-trial Gate-1 fixture",
-      link = "logit",
+      family = "binomial, Poisson, or Gaussian (identity, test-only)",
+      trials = "complete cells (binomial: integer n_trials >= 1; Poisson: no trials)",
+      link = "logit, log, or identity (Gaussian test anchor)",
       unique = FALSE,
       covariance = "ordinary latent loadings only",
-      fixture_only = TRUE
+      fixture_only = FALSE,
+      legacy_fixture_evaluation_available = TRUE
     )
   )
 }
@@ -59,13 +60,22 @@
     lv = FALSE, missing = FALSE, H = 61L,
     rank_source = c("fixed_fixture", "ml_bic"), fixed_global = NULL,
     source = NULL, rebuild = FALSE,
-    control = list(eval.max = 2000L, iter.max = 2000L), silent = TRUE) {
+    control = list(eval.max = 2000L, iter.max = 2000L), silent = TRUE,
+    eval_method = c("auto", "jj")) {
   family <- .approximation_engine_scalar_character(family, "family")
   link <- .approximation_engine_scalar_character(link, "link")
-  if (!identical(family, "binomial") || !identical(link, "logit") ||
+  eval_method <- match.arg(eval_method)
+  expected_link <- switch(family, binomial = "logit", poisson = "log", NA_character_)
+  if (is.na(expected_link) || !identical(link, expected_link) ||
       !identical(unique, FALSE)) {
     stop(
-      "VA-R3 admits only complete multi-trial binomial-logit data with unique = FALSE.",
+      "VA-R3 admits only complete binomial-logit or Poisson-log data with unique = FALSE.",
+      call. = FALSE
+    )
+  }
+  if (identical(eval_method, "jj") && !identical(family, "binomial")) {
+    stop(
+      "eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for the binomial family.",
       call. = FALSE
     )
   }
@@ -74,7 +84,7 @@
   .va_r3_validate_data(
     y = y, n_trials = n_trials, X = X, unit_id = unit_id,
     trait_id = trait_id, q = q, N = N, T = T,
-    family = "binomial", link = "logit", unique = FALSE,
+    family = family, link = link, unique = FALSE,
     psi = psi, structured = structured, provider = provider, lv = lv,
     missing = missing
   )
@@ -82,11 +92,11 @@
   raw <- .va_r3_fit(
     y = y, n_trials = n_trials, X = X, unit_id = unit_id,
     trait_id = trait_id, q = q, N = N, T = T,
-    family = "binomial", link = "logit", unique = FALSE,
+    family = family, link = link, unique = FALSE,
     psi = psi, structured = structured, provider = provider, lv = lv,
     missing = missing, H = H, rank_source = rank_source,
     fixed_global = fixed_global, source = source, rebuild = rebuild,
-    control = control, silent = silent
+    control = control, silent = silent, eval_method = eval_method
   )
   elapsed <- proc.time()[["elapsed"]] - started
   best <- raw$best %||% list()
@@ -105,7 +115,8 @@
       implementation = "R/va-r3-proto.R",
       source_commit = raw$source_commit %||% NA_character_,
       source_checksum = raw$source_checksum %||% NA_character_,
-      rank_source = raw$rank_source %||% NA_character_
+      rank_source = raw$rank_source %||% NA_character_,
+      eval_method = raw$eval_method %||% NA_character_
     ),
     score = list(
       negative_elbo_gh = best$objective %||% NA_real_,
@@ -163,7 +174,7 @@
   invisible(x)
 }
 
-.approximation_engine_eva_fit <- function(
+.approximation_engine_eva_fit_fixture <- function(
     fixture = c("bernoulli", "bernoulli_q2"), family = "bernoulli",
     link = "logit", unique = FALSE, rebuild = FALSE, silent = TRUE) {
   fixture <- match.arg(fixture)
@@ -220,6 +231,81 @@
       report = report
     ),
     engine_result = list(objective = objective, evaluation = evaluated)
+  )
+}
+
+## Data-accepting EVA fit, mirroring .approximation_engine_va_r3_fit()'s
+## contract shape. Dispatch on `fixture`: when a fixture name is supplied,
+## the legacy fixed-coordinate Gate-1 evaluation path above still runs
+## unchanged; otherwise this constructs and optimises an EVA objective from
+## caller-supplied data via R/eva-proto.R's .eva_fit().
+.approximation_engine_eva_fit <- function(
+    y = NULL, n_trials = NULL, X = NULL, unit_id = NULL, trait_id = NULL,
+    q = NULL, N = NULL, T = NULL, family = NULL, link = NULL,
+    unique = FALSE, gaussian_sd = 1, fixture = NULL, source = NULL,
+    rebuild = FALSE, control = list(eval.max = 2000L, iter.max = 2000L),
+    silent = TRUE) {
+  if (!is.null(fixture)) {
+    return(.approximation_engine_eva_fit_fixture(
+      fixture = fixture, family = family %||% "bernoulli",
+      link = link %||% "logit", unique = unique, rebuild = rebuild,
+      silent = silent
+    ))
+  }
+
+  family <- .approximation_engine_scalar_character(family %||% "binomial", "family")
+  link <- .approximation_engine_scalar_character(
+    link %||% switch(family, binomial = "logit", poisson = "log",
+                     gaussian_anchor = "identity", "logit"),
+    "link"
+  )
+  expected_link <- switch(family, binomial = "logit", poisson = "log",
+                          gaussian_anchor = "identity", NA_character_)
+  if (is.na(expected_link) || !identical(link, expected_link) ||
+      !identical(unique, FALSE)) {
+    stop(
+      "EVA admits only complete binomial-logit, Poisson-log, or Gaussian-identity data with unique = FALSE.",
+      call. = FALSE
+    )
+  }
+
+  started <- proc.time()[["elapsed"]]
+  raw <- .eva_fit(
+    y = y, n_trials = n_trials, X = X, unit_id = unit_id, trait_id = trait_id,
+    q = q, N = N, T = T, family = family, link = link, unique = FALSE,
+    gaussian_sd = gaussian_sd, source = source, rebuild = rebuild,
+    control = control, silent = silent
+  )
+  elapsed <- proc.time()[["elapsed"]] - started
+  best <- raw$best %||% list()
+
+  .approximation_engine_result(
+    engine = "eva",
+    objective_type = raw$objective_type %||% "EVA_TAYLOR2",
+    diagnostics = list(
+      status = raw$status %||% NA_character_,
+      convergence = best$convergence %||% NA_integer_,
+      max_abs_gradient = best$max_abs_gradient %||% NA_real_,
+      runtime_seconds = elapsed
+    ),
+    provenance = list(
+      implementation = "R/eva-proto.R",
+      source_commit = raw$source_commit %||% NA_character_,
+      source_checksum = raw$source_checksum %||% NA_character_
+    ),
+    score = list(
+      negative_ell_eva_taylor2 = best$objective %||% NA_real_,
+      direction = "minimize",
+      model_selection_comparable = FALSE
+    ),
+    fixed = list(),
+    fitted = list(
+      q = raw$q %||% q,
+      parameters = best$par %||% NULL,
+      objective_constructed = !is.null(raw$objective)
+    ),
+    status = raw$status %||% NA_character_,
+    engine_result = raw
   )
 }
 

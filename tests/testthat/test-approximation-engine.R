@@ -39,9 +39,9 @@ test_that("VA-R3 rejects unsupported regime before objective construction", {
   )
   expect_error(
     .approximation_engine_va_r3_fit(
-      y, rep(1L, 4L), X, unit, trait, q = 1L
+      y, rep(0L, 4L), X, unit, trait, q = 1L
     ),
-    "n_trials >= 2"
+    "n_trials >= 1"
   )
   expect_error(
     .approximation_engine_va_r3_fit(
@@ -68,18 +68,41 @@ test_that("VA-R3 rank-zero result is normalised without compiling an objective",
   expect_true(is.na(result$score$negative_elbo_gh))
   expect_identical(result$score$direction, "minimize")
   expect_false(isTRUE(result$score$model_selection_comparable))
-  expect_identical(result$admitted_regime$trials,
-                   "complete multi-trial (integer n_trials >= 2)")
+  expect_identical(
+    result$admitted_regime$trials,
+    "complete cells (binomial: integer n_trials >= 1; Poisson: no trials)"
+  )
 })
 
 test_that("EVA rejects unsupported inputs before Gate-1 objective construction", {
+  ## The data-accepting path admits binomial-logit, Poisson-log, and the
+  ## Gaussian-identity test anchor; anything outside that surface is rejected
+  ## before an objective is constructed.
   expect_error(
-    .approximation_engine_eva_fit(family = "binomial"),
-    "Bernoulli-logit"
+    .approximation_engine_eva_fit(family = "gamma"),
+    "binomial-logit, Poisson-log, or Gaussian-identity"
+  )
+  expect_error(
+    .approximation_engine_eva_fit(family = "binomial", link = "probit"),
+    "binomial-logit, Poisson-log, or Gaussian-identity"
   )
   expect_error(
     .approximation_engine_eva_fit(unique = TRUE),
     "unique = FALSE"
+  )
+  ## An admitted family still has to supply data: q is validated first.
+  expect_error(
+    .approximation_engine_eva_fit(family = "binomial"),
+    "q must be one integer in 1\\.\\.6"
+  )
+})
+
+test_that("EVA fixture evaluation is reached only via the fixture argument", {
+  ## The legacy fixed-coordinate Gate-1 path keeps its Bernoulli-only regime,
+  ## now dispatched by `fixture =` rather than by the absence of data.
+  expect_error(
+    .approximation_engine_eva_fit(fixture = "bernoulli", family = "poisson"),
+    "Bernoulli-logit"
   )
 })
 

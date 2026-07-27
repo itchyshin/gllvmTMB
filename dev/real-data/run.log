@@ -1,0 +1,41 @@
+Warning message:
+package ‘gllvm’ was built under R version 4.6.1 
+=== Warm-up: paying first-fit-in-session compile costs on toy fixtures ===
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+Warning message:
+In gllvm::gllvm(y = Yb0, family = "binomial", link = "logit", num.lv = 1,  :
+  There are rows full of zeros in y. 
+
+Warm-up complete.
+
+=== Dataset dimensions and family (chosen honestly from the data) ===
+  eSpider_abund    dim=100x12  family=poisson    real (range 0-189)
+  eSpider_pa       dim=100x12  family=binomial   derived (presence/absence of the same real eSpider survey) (range 0-1)
+  beetle_top12     dim=87x12  family=poisson    real (range 0-2893)
+
+--- condition=eSpider_abund  q=2 ---
+  gtmb_gh:      ok=TRUE elapsed=3.17s status=failed_health_gate
+  gllvm_va:     ok=TRUE elapsed=2.59s status=converged
+  gllvm_eva:    ok=FALSE elapsed=0.00s status=ERROR: Family(families): poisson not implemented with method ' EVA .
+  gtmb_laplace: ok=TRUE elapsed=5.21s status=pd_hessian
+
+--- condition=eSpider_abund  q=3 ---
+  gtmb_gh:      ok=TRUE elapsed=10.17s status=failed_variance_domain
+  gllvm_va:     ok=TRUE elapsed=13.56s status=converged
+  gllvm_eva:    ok=FALSE elapsed=0.00s status=ERROR: Family(families): poisson not implemented with method ' EVA .
+  gtmb_laplace: ok=TRUE elapsed=3.58s status=pd_hessian
+
+--- condition=eSpider_pa  q=2 ---
+  gtmb_gh:      ok=TRUE elapsed=7.94s status=failed_variance_domain
+  gtmb_jj:      ok=TRUE elapsed=0.75s status=healthy
+  gllvm_va:     ok=TRUE elapsed=0.53s status=converged
+  gllvm_eva:    ok=TRUE elapsed=80.29s status=not_converged
+  gtmb_laplace: ok=TRUE elapsed=5.48s status=pd_hessian
+
+--- condition=eSpider_pa  q=3 ---
+  gtmb_gh:      ok=TRUE elapsed=13.28s status=failed_variance_domain
+  gtmb_jj:      ok=TRUE elapsed=1.74s status=healthy
+  gllvm_va:     ok=TRUE elapsed=1.20s status=converged

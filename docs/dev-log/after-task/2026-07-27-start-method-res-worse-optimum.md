@@ -149,6 +149,48 @@ reported `convergence == 0` and `pdHess == TRUE` on 59 of 70 genuinely degenerat
 fits. **A relative test would fire here immediately**: min/max sd ratio is
 `6.7e-4`.
 
+## 6c. The complete `res` ledger — it has never been shown to help
+
+The Gaussian-only scope was the load-bearing gap: `res` is documented as "most
+relevant to non-Gaussian reduced-rank fits" (`docs/design/49`), so every earlier
+measurement came from the regime it was *not* aimed at. That gap is now closed
+(`dev/2026-07-27-res-nongaussian.R`). 89 fit-pairs, `res` vs the default start:
+
+| regime | n | `res` worse | `res` better |
+|---|---|---|---|
+| Gaussian, p=3, d=1 | 21 | 4 (0.21, 3.70, 7.28, **14.65**) | 1 (0.068) |
+| Poisson, p=3, d=1 | 12 | 3 (4.42, 6.01, **7.98**) | 0 |
+| nbinom2, p=3, d=1 | 12 | 1 (**5.58**) | 2 (0.29, 0.66) |
+| Gaussian, p=3, d=2 / d=3 | 10 | 0 | 0 |
+| Gaussian, p=5, d=1 | 10 | 0 | 0 |
+| Poisson, p=3, d=2 | 12 | 0 | 0 |
+| nbinom2, p=3, d=2 | 12 | 0 | 0 |
+| **total** | **89** | **8 (~50 nats)** | **3 (~1 nat)** |
+
+Two facts settle the disposition of `res`.
+
+1. **The defect is `d = 1`-specific, and that holds across all three families.**
+   At `d >= 2` the two starts agree to ~1e-7 in 34 of 34 pairs. The Heywood
+   boundary at exact identification is the whole failure mode.
+2. **`res` has never produced a materially better optimum in 89 pairs.** Its
+   three "wins" are 0.068, 0.29 and 0.66 nats — the scale of landing on a
+   trivially different point of the *same* basin, not a better one. Where it is
+   safe it is *exactly* neutral; where it is not, it costs up to 14.65 nats.
+
+So it is neutral where it is harmless and harmful where it is not. There is no
+cell in the tested envelope where it earns the extra fit it costs. **Recommend
+retiring it**: soft-deprecate per the repo's `scalar()`/`unique()` convention
+(one-time warning naming the failure mode and the objective comparison), remove
+after 0.6. Hard removal is also defensible — the package has never shipped to
+CRAN — but soft-deprecation costs one release cycle and gives existing GitHub
+users a pointer rather than an error. **Maintainer's call; not actioned.**
+
+Scope limit, stated so the recommendation is not over-read: the non-Gaussian
+sweeps deliberately target the same Heywood-prone corner (3 traits, rank-3 truth
+fitted at `d = 1` or `d = 2`). They test whether `res` redeems itself *there*.
+They are not a broad survey of non-Gaussian GLLVMs, and `n = 200`, one OS, one
+BLAS, `nlminb` only still apply.
+
 ## 7. Roadmap Tick
 
 Answers the open design question **Q-Boole-2** (`docs/design/48-m3-4-boundary-regimes.md:374`)

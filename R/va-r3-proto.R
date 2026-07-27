@@ -557,6 +557,145 @@
   if (identical(resolved_eval_method, "jj")) "ELBO_JJ" else "ELBO_GH"
 }
 
+## Latent-variable posterior summary from a fitted parameter vector.
+##
+## The variational posterior q(z_i) = N(m_i, L_i L_i') is ESTIMATED, so its
+## per-unit spread is already computed at the optimum and needs only to be
+## read out -- unlike beta and the loadings, which are point-estimated and
+## carry no variational distribution at all.
+##
+## Two honesty constraints are baked into the return value:
+##   * `uncertainty_basis` records that these are VARIATIONAL posterior SDs,
+##     conditional on the point estimates of beta and theta_rr. They are not
+##     Wald standard errors and they do not propagate loading uncertainty.
+##   * `calibrated = FALSE` until a coverage study says otherwise. Variational
+##     posteriors are known to understate spread; the size of that understatement
+##     here is unmeasured, so nothing downstream may quote these as intervals.
+## The list(scores=, se=) shape matches the existing getLV(se = TRUE) contract
+## in R/output-methods.R so this can be wired to that surface without a new API.
+.va_r3_latent_posterior <- function(par, N, q) {
+  N <- as.integer(N)
+  q <- as.integer(q)
+  nm <- names(par)
+  if (is.null(nm)) {
+    stop("par must carry TMB parameter names to read the variational block.",
+         call. = FALSE)
+  }
+  take <- function(what) unname(par[nm == what])
+  scores <- matrix(take("m"), nrow = N, ncol = q)
+  chol_factors <- .va_r3_unpack_variational_chol(
+    take("log_L_diag"), take("L_off"), N, q
+  )
+  se <- matrix(NA_real_, nrow = N, ncol = q)
+  for (i in seq_len(N)) {
+    L_i <- matrix(chol_factors[, , i], nrow = q, ncol = q)
+    ## pmax(., 0) mirrors .getLV_se(); a Cholesky product cannot be negative
+    ## on the diagonal except through floating-point error.
+    se[i, ] <- sqrt(pmax(diag(L_i %*% t(L_i)), 0))
+  }
+  list(
+    scores = scores,
+    se = se,
+    uncertainty_basis = "variational posterior, conditional on point estimates of beta and theta_rr",
+    calibrated = FALSE
+  )
+}
+
+## Observed information for the FIXED parameters (beta, theta_rr).
+##
+## Unlike the latent block above, beta and theta_rr have no variational
+## distribution -- they are maximised, so an SE has to come from curvature.
+## Two are computed, and the difference between them matters:
+##
+##   se_conditional : from H_ff alone, holding the variational coordinates at
+##                    their optimum. This is what a naive optimHess over the
+##                    fixed block gives. It IGNORES the fact that m and the
+##                    Cholesky would re-optimise as beta and theta_rr move, so
+##                    it overstates curvature and is expected ANTI-CONSERVATIVE.
+##   se_profile     : the Schur complement H_ff - H_fv H_vv^-1 H_vf, i.e. the
+##                    curvature of the objective with the variational block
+##                    profiled out. This is the correct observed information
+##                    for the fixed parameters and is the one to prefer.
+##
+## Conventions follow the package (R/extractors.R returns a status code; the
+## confint surface carries a pd_hessian column) and GLLVM.jl/src/confint.jl
+## (PD check, NA rather than a number when the Hessian is not usable).
+##
+## Neither SE is calibrated. Variational posteriors understate spread, and the
+## size of that understatement here is unmeasured, so `calibrated` stays FALSE
+## until a coverage study fills it in.
+.va_r3_fixed_information <- function(objective, par,
+                                     max_variational = 6000L) {
+  fail <- function(status) {
+    list(se_conditional = NULL, se_profile = NULL, pd_hessian = FALSE,
+         calibrated = FALSE, status = status)
+  }
+  nm <- names(par)
+  if (is.null(nm)) return(fail("va_unnamed_par_no_fixed_se"))
+  fixed_idx <- which(nm %in% c("beta", "theta_rr"))
+  var_idx <- which(nm %in% c("m", "log_L_diag", "L_off"))
+  if (!length(fixed_idx)) return(fail("va_no_fixed_block_no_fixed_se"))
+
+  hessian <- tryCatch(objective$he(par), error = function(e) NULL)
+  if (is.null(hessian) || !all(is.finite(hessian))) {
+    return(fail("va_hessian_error_no_fixed_se"))
+  }
+
+  ## sqrt of the diagonal of the inverse, guarded on positive-definiteness.
+  se_from <- function(info) {
+    ok <- tryCatch({
+      chol(info)
+      TRUE
+    }, error = function(e) FALSE)
+    if (!ok) return(NULL)
+    covariance <- tryCatch(solve(info), error = function(e) NULL)
+    if (is.null(covariance)) return(NULL)
+    diagonal <- diag(covariance)
+    if (any(!is.finite(diagonal)) || any(diagonal < 0)) return(NULL)
+    stats::setNames(sqrt(diagonal), nm[fixed_idx])
+  }
+
+  H_ff <- hessian[fixed_idx, fixed_idx, drop = FALSE]
+  se_conditional <- se_from(H_ff)
+
+  ## The Schur complement needs H_vv inverted. H_vv is block diagonal by unit,
+  ## so this is far cheaper than it looks -- but the dense solve below is not,
+  ## which is why it is size-guarded. Exploiting the block structure is the
+  ## scaling path when this is needed at large n.
+  se_profile <- NULL
+  profile_status <- "ok"
+  if (!length(var_idx)) {
+    profile_status <- "va_no_variational_block"
+  } else if (length(var_idx) > max_variational) {
+    profile_status <- "va_variational_block_too_large_for_dense_schur"
+  } else {
+    H_fv <- hessian[fixed_idx, var_idx, drop = FALSE]
+    H_vv <- hessian[var_idx, var_idx, drop = FALSE]
+    schur <- tryCatch(H_ff - H_fv %*% solve(H_vv, t(H_fv)),
+                      error = function(e) NULL)
+    if (is.null(schur)) {
+      profile_status <- "va_singular_variational_block"
+    } else {
+      se_profile <- se_from(schur)
+      if (is.null(se_profile)) profile_status <- "va_non_pd_profile_information"
+    }
+  }
+
+  list(
+    se_conditional = se_conditional,
+    se_profile = se_profile,
+    pd_hessian = !is.null(se_profile),
+    calibrated = FALSE,
+    status = if (is.null(se_conditional)) {
+      "va_non_pd_fixed_information_no_fixed_se"
+    } else profile_status,
+    basis = paste(
+      "observed information of the negative ELBO;",
+      "se_profile marginalises the variational block, se_conditional does not"
+    )
+  )
+}
+
 .va_r3_make_objective <- function(validated, H = 61L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
@@ -786,6 +925,15 @@
   variance_domain_ok <- max_projected_variance <= 4
   admitted <- admitted && variance_domain_ok
   dll <- attr(objects[[1L]], "va_r3_dll")
+  ## The variational block is already in best$par -- read it out rather than
+  ## discarding per-unit posterior spread the fit has genuinely estimated.
+  latent <- if (!is.null(best) && !is.null(best$par)) {
+    tryCatch(
+      .va_r3_latent_posterior(best$par, validated$N, validated$q),
+      error = function(e) list(scores = NULL, se = NULL,
+                               error = conditionMessage(e))
+    )
+  } else NULL
 
   list(
     status = if (admitted) {
@@ -826,6 +974,7 @@
       variance_domain_ok = variance_domain_ok
     ),
     best = best,
+    latent = latent,
     report = best_report,
     objective = if (!is.na(best_id)) objects[[best_id]] else NULL
   )

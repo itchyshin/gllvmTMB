@@ -89,6 +89,99 @@ test_that("R3 H=61 scalar expectation passes the frozen oracle grid", {
   }
 })
 
+test_that("R3 latent posterior reads variational means and SDs out of the fitted par", {
+  ## N = 2, q = 2. TMB matrices are column-major, so the packed vectors below
+  ## give unit 1 the Cholesky [[1, 0], [3, 2]] and unit 2 [[0.5, 0], [-1, 1]].
+  ##   unit 1: L L' = [[1, 3], [3, 13]]     -> sd = (1, sqrt(13))
+  ##   unit 2: L L' = [[0.25, -0.5], [-0.5, 2]] -> sd = (0.5, sqrt(2))
+  par <- c(
+    m = 0.1, m = 0.2, m = 0.3, m = 0.4,
+    log_L_diag = 0, log_L_diag = log(0.5), log_L_diag = log(2), log_L_diag = 0,
+    L_off = 3, L_off = -1
+  )
+  post <- .va_r3_latent_posterior(par, N = 2L, q = 2L)
+
+  expect_equal(post$scores, matrix(c(0.1, 0.2, 0.3, 0.4), 2L, 2L))
+  expect_equal(
+    post$se,
+    matrix(c(1, 0.5, sqrt(13), sqrt(2)), nrow = 2L, ncol = 2L),
+    tolerance = 1e-12
+  )
+  ## These are variational posterior SDs, not Wald SEs, and they are not
+  ## calibrated. Both facts must travel with the numbers.
+  expect_false(post$calibrated)
+  expect_match(post$uncertainty_basis, "variational posterior")
+
+  ## An unnamed par cannot be unpacked and must fail rather than guess.
+  expect_error(.va_r3_latent_posterior(unname(par), N = 2L, q = 2L),
+               "parameter names")
+})
+
+test_that("R3 fit returns a latent posterior of the right shape", {
+  set.seed(4242)
+  n <- 40L; p <- 4L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.5)
+  fit <- .va_r3_fit(
+    y = rbinom(n * p, 1L, plogis(eta)), n_trials = rep(1L, n * p),
+    X = stats::model.matrix(~ 0 + trait, long),
+    unit_id = as.integer(long$unit), trait_id = as.integer(long$trait),
+    q = 2L, family = "binomial", link = "logit", H = 15L
+  )
+  expect_false(is.null(fit$latent))
+  expect_identical(dim(fit$latent$scores), c(n, 2L))
+  expect_identical(dim(fit$latent$se), c(n, 2L))
+  expect_true(all(is.finite(fit$latent$se)))
+  expect_true(all(fit$latent$se > 0))
+  expect_false(fit$latent$calibrated)
+})
+
+test_that("R3 fixed-parameter information marginalises the variational block", {
+  set.seed(9191)
+  n <- 60L; p <- 5L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.6)
+  fit <- .va_r3_fit(
+    y = rbinom(n * p, 1L, plogis(eta)), n_trials = rep(1L, n * p),
+    X = stats::model.matrix(~ 0 + trait, long),
+    unit_id = as.integer(long$unit), trait_id = as.integer(long$trait),
+    q = 2L, family = "binomial", link = "logit", H = 15L
+  )
+  info <- .va_r3_fixed_information(fit$objective, fit$best$par)
+
+  expect_identical(info$status, "ok")
+  expect_true(info$pd_hessian)
+  expect_true(all(is.finite(info$se_conditional)))
+  expect_true(all(is.finite(info$se_profile)))
+  expect_true(all(info$se_profile > 0))
+
+  ## The load-bearing property. Profiling the variational block OUT can only
+  ## reduce curvature (the Schur complement subtracts a positive semi-definite
+  ## term), so the profile SE must be >= the conditional one. A naive
+  ## optimHess over the fixed block alone is therefore anti-conservative --
+  ## this test is what stops anyone "simplifying" to that later.
+  expect_true(all(info$se_profile >= info$se_conditional * (1 - 1e-8)))
+
+  ## Not calibrated, and that must travel with the numbers.
+  expect_false(info$calibrated)
+
+  ## Fails closed rather than returning a number it cannot justify.
+  broken <- .va_r3_fixed_information(
+    list(he = function(p) stop("no hessian")), fit$best$par
+  )
+  expect_false(broken$pd_hessian)
+  expect_null(broken$se_profile)
+  expect_match(broken$status, "hessian_error")
+})
+
 test_that("R3 family registry agrees with the validator and drives eval_method", {
   ## The registry is the declared per-family evaluation contract. It must not
   ## drift from .va_r3_validate_data(), which is what actually assigns the

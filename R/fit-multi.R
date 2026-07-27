@@ -3509,8 +3509,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     n_lv_B           = as.integer(n_lv_B),
     X_lv_B           = X_lv_B,
     use_diag_B       = as.integer(use_diag_B),
+    ## Per-trait between-unit Psi skip mask. Filled in below when the
+    ## identifiability gate pins individual traits; all-zero means every trait
+    ## keeps its Psi and contributes its density term as usual.
+    diag_B_skip      = integer(n_traits),
     use_rr_W         = as.integer(use_rr_W),
     use_diag_W       = as.integer(use_diag_W),
+    ## Per-trait OLRE skip mask, the W-tier twin of diag_B_skip above. Filled
+    ## in below when the identifiability gate pins individual traits; all-zero
+    ## means every trait keeps its OLRE density term.
+    diag_W_skip      = integer(n_traits),
     use_rr_B_slope   = as.integer(use_rr_B_slope),
     use_diag_B_slope = as.integer(use_diag_B_slope),
     d_B_slope        = as.integer(d_B_slope),
@@ -4535,6 +4543,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## essentially zero; map both the per-trait variance AND the
       ## corresponding s_W column to NA so neither is estimated.
       pin_log_sd <- log(1e-6)
+      ## Tell the C++ objective which traits were pinned, exactly as the
+      ## B-tier gate below does. Without this the diag_W loop still evaluates
+      ## dnorm(0, 0, ~1e-6, log = TRUE) for every pinned (trait,
+      ## site_species) cell -- a large POSITIVE constant per cell.
+      tmb_data$diag_W_skip <- as.integer(skip_olre_t)
       tmb_params$theta_diag_W[skip_olre_t] <- pin_log_sd
       ## Build a length-n_traits factor map: NA for skipped traits, 1L
       ## for the rest (so they remain free; unless diag_W_common is set,
@@ -4549,9 +4562,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         }
       }
       tmb_map$theta_diag_W <- factor(td_map)
-      ## Map off the s_W rows (one per trait) for skipped traits. The
-      ## init values stay at 0 so dnorm(0, 0, 1e-6, true) contributes
-      ## only a constant to the log-density.
+      ## Map off the s_W rows (one per trait) for skipped traits. The init
+      ## values stay at 0. NOTE: dnorm(0, 0, 1e-6, true) is a constant only in
+      ## the sense that it does not move the optimiser -- it is a LARGE
+      ## POSITIVE one (+12.8966 per cell), so it must be excluded from the
+      ## objective via diag_W_skip, not merely tolerated.
       sW_map <- matrix(seq_len(length(tmb_params$s_W)),
                        nrow = nrow(tmb_params$s_W),
                        ncol = ncol(tmb_params$s_W))
@@ -4629,6 +4644,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         isTRUE(all(family_id_vec[rows_t] == 16L))
     }, logical(1))
     if (any(skip_psi_b_t)) {
+      ## Tell the C++ objective which traits were pinned. Without this the
+      ## diag_B loop still evaluates dnorm(0, 0, ~1e-6, log = TRUE) for every
+      ## pinned (trait, site) cell -- a large POSITIVE constant per cell, which
+      ## made a Bernoulli fit report a positive log-likelihood.
+      tmb_data$diag_B_skip <- as.integer(skip_psi_b_t)
       ## Pin the skipped trait variances near zero and map them (and their
       ## s_B rows) off. Free traits keep the auto-Psi; honour diag_B_common
       ## by collapsing the free entries to one shared level.

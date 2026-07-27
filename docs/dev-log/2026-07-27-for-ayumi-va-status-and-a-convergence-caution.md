@@ -31,17 +31,28 @@ Your 27 responses against what the VA engine currently admits:
 | gaussian × 2 | gaussian (internal calls only) | ~ |
 | retained response missingness | requires one complete observation per unit-trait cell | ✗ |
 | **phylogeny** | structured covariance rejected outright | ✗ |
-| n = 5,397 | does not complete beyond n ≈ 2,500 | ✗ |
+| n = 5,397 | **reachable** — see the correction below | ✓ |
 
 So VA reaches **2 of your 27 responses**, and cannot express the phylogeny or
 the missingness at all — which are not incidental to your analysis, they are the
 analysis. A VA fit on what remains would not be a second opinion on your model;
 it would be a different model.
 
+**Correction to the first version of this note, which said your sample size was
+out of reach.** It is not. A profiling campaign on 2026-07-27 fitted n = 5,000
+(25,017 parameters) to `convergence = 0` in ~500–540 s per optimiser call — about
+40 minutes at the four-start default, and two measured same-optimum changes
+project that to well under a minute. The earlier claim that VA "does not complete
+beyond n ≈ 2,500" was a **wall-clock budget in a benchmark harness**, not a
+capability limit, and had been carried forward across sessions as though it were
+the latter. **Scale is therefore not what stands between VA and your model.** The
+family and structural gaps are.
+
 The two structural blockers (phylogeny, missingness) are harder than the family
-gaps and are not scheduled. The family gaps are tractable — the engine was just
+gaps and are not scheduled. The family gaps are tractable — the engine was
 restructured so that adding a family is a declaration plus one likelihood
-function — but probit alone would still leave the structural blockers standing.
+function, and a fourth family (`nbinom2`) has since been ported through it to
+confirm that — but probit alone would still leave the structural blockers standing.
 
 **Recommendation: do not wait for VA.** Continue with Laplace.
 

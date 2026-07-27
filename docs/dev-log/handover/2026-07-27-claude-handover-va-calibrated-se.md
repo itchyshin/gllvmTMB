@@ -20,9 +20,16 @@ they came back twice). First task: finish the two items in 'Immediate next steps
 **Four claims this lane carried are now retracted. Do not resurrect them.**
 
 1. **L-BFGS-B is NOT 16× at n=800.** Interleaved it measures **0.9×** — slower. It is
-   kept for gradient quality (4 vs 10/19/6 evaluations), not speed. The
-   "dense inverse-Hessian is the n≥2500 wall" hypothesis has **no support**; do not
-   frame any scale work as testing it.
+   kept for gradient quality (4 vs 10/19/6 evaluations), not speed.
+
+   **CORRECTION to the first version of this handover, which over-retracted.** That
+   experiment tested L-BFGS-B as the *conditional post-nlminb polish* only. It says
+   nothing about the **primary** optimiser, which is `stats::nlminb` (PORT) and also
+   carries O(p²) internal state. At n=5000, q=2 the variational block is
+   `N × (2q + q(q−1)/2) = 25,000` parameters — a dense 25,000² double array is
+   **5.0 GB**, which is squarely the n≥2500 wall. So: the dense-workspace hypothesis
+   is **REFUTED for the polish and UNTESTED for the primary optimiser.** Do not
+   record it as dead. It is the leading suspect and is being tested now.
 2. **gllvm EVA did NOT have "all reporting converged".** A `grepl` substring bug
    (`"converged"` matches `"not_converged"`) at `dev/totoro-grid/analyse-grid.R:100`.
    True 160/203. The arms were also scored on different fields. **Needs re-scoring

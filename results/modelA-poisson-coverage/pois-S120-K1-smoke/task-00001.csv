@@ -1,0 +1,4 @@
+"seed","truth","converged","pdHess","wald_lo","wald_hi","wald_cov","prof_lo","prof_hi","prof_cov","tdf_lo","tdf_hi","tdf_cov","cell_id","task_id"
+10001,0.313875209555426,FALSE,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,"pois-S120-K1-smoke",1
+10002,0.313875209555426,FALSE,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,"pois-S120-K1-smoke",1
+10003,0.313875209555426,FALSE,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,"pois-S120-K1-smoke",1

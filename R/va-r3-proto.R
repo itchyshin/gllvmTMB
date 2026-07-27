@@ -813,13 +813,45 @@
   )
 }
 
+## Recover N and q from the parameter layout alone.
+##   length(m) = length(log_L_diag) = N*q ;  length(L_off) = N*q(q-1)/2
+## so q = 2*n_off/n_m + 1 and N = n_m/q. q = 1 is the n_off == 0 case.
+.va_r3_infer_dims <- function(par_names) {
+  n_m <- sum(par_names == "m")
+  n_off <- sum(par_names == "L_off")
+  if (!n_m) return(NULL)
+  q <- as.integer(round(2 * n_off / n_m + 1))
+  if (q < 1L) return(NULL)
+  N <- n_m / q
+  if (N != as.integer(N)) return(NULL)
+  list(N = as.integer(N), q = q)
+}
+
+## Single entry point. Routes to the block-diagonal Schur by default, which is
+## exact (verified against the dense route to 1.5e-10 relative) and O(N) in
+## memory, so there is no scale at which this silently falls back to the
+## anti-conservative conditional SE. route = "dense" forces the original path
+## and exists to keep that cross-check runnable.
 .va_r3_fixed_information <- function(objective, par,
-                                     max_variational = 6000L) {
+                                     route = c("auto", "blocked", "dense")) {
+  route <- match.arg(route)
+  nm <- names(par)
+  if (!is.null(nm) && !identical(route, "dense")) {
+    dims <- .va_r3_infer_dims(nm)
+    if (!is.null(dims)) {
+      return(.va_r3_fixed_information_blocked(objective, par,
+                                              N = dims$N, q = dims$q))
+    }
+    if (identical(route, "blocked")) {
+      return(list(se_conditional = NULL, se_profile = NULL, pd_hessian = FALSE,
+                  calibrated = FALSE, route = "blocked",
+                  status = "va_variational_layout_unrecognised"))
+    }
+  }
   fail <- function(status) {
     list(se_conditional = NULL, se_profile = NULL, pd_hessian = FALSE,
-         calibrated = FALSE, status = status)
+         calibrated = FALSE, status = status, route = "dense")
   }
-  nm <- names(par)
   if (is.null(nm)) return(fail("va_unnamed_par_no_fixed_se"))
   fixed_idx <- which(nm %in% c("beta", "theta_rr"))
   var_idx <- which(nm %in% c("m", "log_L_diag", "L_off"))
@@ -884,11 +916,12 @@
       "se_conditional under-covers in every cell (0.885-0.910).",
       "Latent-score SDs are NOT calibrated. Nothing else is tested."
     ),
+    route = "dense",
     status = if (is.null(se_conditional)) {
       "va_non_pd_fixed_information_no_fixed_se"
     } else profile_status,
     basis = paste(
-      "observed information of the negative ELBO;",
+      "observed information of the negative ELBO (dense route);",
       "se_profile marginalises the variational block, se_conditional does not"
     )
   )

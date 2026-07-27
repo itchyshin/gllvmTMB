@@ -320,9 +320,14 @@ test_that("R3 blocked information reproduces the dense Schur complement exactly"
     q = 2L, family = "binomial", link = "logit", H = 15L
   )
 
-  dense <- .va_r3_fixed_information(fit$objective, fit$best$par)
+  ## route = "dense" is REQUIRED here. The default dispatches to the blocked
+  ## route, so calling it bare would compare blocked against blocked and this
+  ## test would pass vacuously while verifying nothing.
+  dense <- .va_r3_fixed_information(fit$objective, fit$best$par, route = "dense")
   blocked <- .va_r3_fixed_information_blocked(fit$objective, fit$best$par,
                                               N = n, q = 2L)
+  expect_identical(dense$route, "dense")
+  expect_identical(blocked$route, "blocked")
 
   expect_identical(dense$status, "ok")
   expect_identical(blocked$status, "ok")

@@ -89,6 +89,48 @@ test_that("R3 H=61 scalar expectation passes the frozen oracle grid", {
   }
 })
 
+test_that("R3 family registry agrees with the validator and drives eval_method", {
+  ## The registry is the declared per-family evaluation contract. It must not
+  ## drift from .va_r3_validate_data(), which is what actually assigns the
+  ## family code the template sees. Adding a family without a registry entry
+  ## (or with the wrong code/link) fails here rather than silently.
+  y_for <- list(gaussian_anchor = 0.5, binomial = 1L, poisson = 2L)
+  for (entry in .va_r3_family_registry) {
+    validated <- .va_r3_validate_data(
+      y = y_for[[entry$family]], n_trials = 3L, X = matrix(1, 1L, 1L),
+      unit_id = 1L, trait_id = 1L, q = 1L,
+      family = entry$family, link = entry$link
+    )
+    expect_identical(validated$family, entry$family_code)
+
+    ## "auto" resolves to whatever the registry declares.
+    expect_identical(
+      .va_r3_resolve_eval_method("auto", entry$family_code),
+      entry$default_tier
+    )
+    ## Every declared tier is accepted; anything else fails closed.
+    for (tier in entry$tiers) {
+      expect_identical(
+        .va_r3_resolve_eval_method(tier, entry$family_code), tier
+      )
+    }
+    for (tier in setdiff(c("gh", "jj"), entry$tiers)) {
+      expect_error(
+        .va_r3_resolve_eval_method(tier, entry$family_code),
+        "not implemented for the"
+      )
+    }
+    ## objective_type reports the resolved bound, never a hardcoded one.
+    expect_identical(
+      .va_r3_objective_type(.va_r3_resolve_eval_method("auto", entry$family_code)),
+      if (identical(entry$default_tier, "jj")) "ELBO_JJ" else "ELBO_GH"
+    )
+  }
+
+  ## A family code with no registry entry is an error, not a silent default.
+  expect_error(.va_r3_family_entry(99L), "no registry entry")
+})
+
 test_that("R3 JJ bound over-estimates the softplus expectation and is exact at zero variance", {
   ## The Jaakkola-Jordan/PG bound is not a quadrature rule, so it must not be
   ## held to the oracle grid above. Its contract is an INEQUALITY: it bounds

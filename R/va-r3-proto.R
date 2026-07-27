@@ -471,19 +471,82 @@
   )
 }
 
+## Per-family evaluation contract for the VA-R3 engine.
+##
+## The VA objective needs E[log p(y | eta)] with eta ~ N(mu, v). For every
+## family whose likelihood enters through a SCALAR linear predictor that is a
+## one-dimensional integral, so a family is specified here by which evaluation
+## tiers the template implements for it and which one `eval_method = "auto"`
+## resolves to. Adding a family is a registry entry plus a template branch,
+## not a new dispatch rule.
+##
+## Fields
+##   family       : R-side name accepted by .va_r3_validate_data()
+##   family_code  : integer passed to the template as DATA_INTEGER(family)
+##   link         : the single link this family admits
+##   tiers        : evaluation tiers the template implements for it
+##   default_tier : what eval_method = "auto" resolves to
+##   expectation  : how E[log p(y|eta)] is obtained under default_tier --
+##                  "exact" (closed form), "quadrature" (Gauss-Hermite), or
+##                  "bound" (a variational bound, deliberately not an equality)
+.va_r3_family_registry <- list(
+  ## Gaussian anchor -- E[(y - eta)^2] = (y - mu)^2 + v in closed form, so the
+  ## quadrature nodes are never touched and no bound is needed.
+  list(
+    family = "gaussian_anchor",
+    family_code = 0L,
+    link = "identity",
+    tiers = "gh",
+    default_tier = "gh",
+    expectation = "exact"
+  ),
+
+  ## Binomial-logit -- the only family with a genuine choice. Gauss-Hermite
+  ## evaluates E[softplus(eta)] to quadrature accuracy; the Jaakkola-Jordan/PG
+  ## bound over-estimates it in closed form, which is what keeps the ELBO a
+  ## valid lower bound. "auto" takes the bound: measured 1.9-4.0x faster
+  ## (n = 200/400/800, interleaved) with better Sigma_B recovery on 20/20
+  ## paired seeds. Ask for "gh" to force quadrature -- the controlled bound
+  ## comparisons in dev/ do exactly that.
+  list(
+    family = "binomial",
+    family_code = 1L,
+    link = "logit",
+    tiers = c("gh", "jj"),
+    default_tier = "jj",
+    expectation = "bound"
+  ),
+
+  ## Poisson-log -- E[exp(eta)] = exp(mu + v/2) is the log-normal mean, exact.
+  list(
+    family = "poisson",
+    family_code = 2L,
+    link = "log",
+    tiers = "gh",
+    default_tier = "gh",
+    expectation = "exact"
+  )
+)
+
+.va_r3_family_entry <- function(family_code) {
+  for (entry in .va_r3_family_registry) {
+    if (identical(entry$family_code, family_code)) return(entry)
+  }
+  stop("VA-R3 has no registry entry for family code ", family_code, ".",
+       call. = FALSE)
+}
+
 .va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh"), family) {
   eval_method <- match.arg(eval_method)
-  if (identical(eval_method, "jj") && !identical(family, 1L)) {
-    stop("eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for the binomial family.",
-         call. = FALSE)
+  entry <- .va_r3_family_entry(family)
+  if (identical(eval_method, "auto")) return(entry$default_tier)
+  if (!eval_method %in% entry$tiers) {
+    stop(sprintf(
+      "eval_method = \"%s\" is not implemented for the %s family; available: %s.",
+      eval_method, entry$family, paste(entry$tiers, collapse = ", ")),
+      call. = FALSE)
   }
-  ## "auto" is family-dependent. Binomial takes the Jaakkola-Jordan/PG bound:
-  ## it is 5-8x faster than Gauss-Hermite and recovers Sigma_B better on 20/20
-  ## paired seeds. Every other family has no PG augmentation and takes
-  ## Gauss-Hermite. Ask for "gh" to force quadrature on binomial, which is what
-  ## the controlled bound comparisons in dev/ do.
-  if (!identical(eval_method, "auto")) return(eval_method)
-  if (identical(family, 1L)) "jj" else "gh"
+  eval_method
 }
 
 .va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh"), family) {

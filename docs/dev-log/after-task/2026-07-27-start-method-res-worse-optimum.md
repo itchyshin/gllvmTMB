@@ -349,13 +349,28 @@ data's dominant direction is precisely what steers it wrong, and the neutral
 start's lack of commitment is a feature. That is why the correct fix here is a
 *diagnostic* (Fix A, landed) rather than a smarter starting value.
 
-The regression test asserts Fix B's contract and will fail until B lands.
-Under routine PR CI it skips; under the nightly `GLLVMTMB_HEAVY_TESTS=1` run it
-will show red. That is deliberate — an open defect should be visible — but if a
-red nightly is unacceptable, moving it behind its own env gate is a one-line
-change.
+**The pinned regression test has been retired** (see below). It did its job: it
+was written to fail on current behaviour and force a decision about `res`, and
+the decision was made — the method is soft-deprecated. Keeping a permanently red
+assertion about a method on its way out would buy nothing and would risk masking
+a genuine nightly failure.
 
-Documentation is **not** yet corrected: the roxygen and the article still
-recommend `res` with no caveat, and still recommend pairing it with `n_init > 1`,
-which this slice shows does not work. Deliberately left for the same decision, so
-the caveat can be written once against whichever fix lands.
+It was not converted into a characterisation test either. What it pinned is a
+*basin selection on a multimodal surface* — precisely the kind of result a
+different BLAS or platform can flip — so it is a poor fit for a cross-OS suite.
+The evidence lives in re-runnable scripts under `dev/` and in this report
+instead. What remains pinned in `test-unique-family-deprecation.R` is the part
+that is genuinely deterministic: the warning fires once per session, `res` still
+fits, no other start method triggers it.
+
+Documentation is corrected. The roxygen, `NEWS.md` and
+`vignettes/articles/convergence-start-values.Rmd` now mark `res` deprecated
+rather than recommended, and the claim that pairing it with `n_init > 1` detects
+the problem has been removed — that claim was false and was the most harmful
+sentence on the page, because it asserted a guard that does not exist.
+
+**Nothing is left open on this arc.** The one item that outlives it is a claim
+worth testing rather than a task: if the relative-collapse fix is the reason the
+campaign saw 59 of 70 degenerate fits report clean, re-running that grid should
+flip a large share of them to flagged. If it does not, the explanation in §6a is
+wrong and should be corrected.

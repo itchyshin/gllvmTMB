@@ -1,10 +1,6 @@
 ## McGillycuddy / glmmTMB-style residual starts.
 ## These tests pin the initialization contract only; convergence-rate claims
 ## belong to the M3 production grid, not CRAN-time unit tests.
-##
-## EXCEPTION: the final test in this file pins an *outcome* contract, not an
-## initialization one. It is a regression test for a known open defect and it
-## FAILS on current behaviour by design -- see the "worse optimum" test below.
 
 test_that("residual factor helper seeds finite lower-triangular rr starts", {
   set.seed(101)
@@ -120,70 +116,44 @@ test_that("start_method = 'indep' fits a simpler GLMM and copies matching starts
 })
 
 ## ---------------------------------------------------------------------------
-## Regression test for an OPEN defect (found 2026-07-27, Laplace profiling
-## campaign). It is expected to FAIL until the defect is fixed.
+## Why there is no "res reaches the best optimum" test here.
 ##
-## `start_method = "res"` is documented as a remedy to try on a hard
-## factor-analytic fit. In the cell below it does the opposite: it converges to
-## a strictly worse local optimum than the default start -- 1.84 nats worse --
-## while BOTH fits report `convergence == 0` and `pdHess == TRUE`. Every
-## diagnostic the user has is clean, so the worse answer is silent.
+## `start_method = "res"` DOES reach a worse optimum than the default start, and
+## that is now settled behaviour rather than an open defect: the method was
+## soft-deprecated in 0.6.0 on the strength of it, so a test asserting the
+## contrary would be a permanently red assertion about a method on its way out.
 ##
-## The cell is 3 traits at d = 1: Lambda (3x1) + psi (3) = 6 free parameters
-## for a 6-dimensional Sigma_B, i.e. exactly identified, no flat ridge. Both
-## starts land on a Heywood boundary (one psi collapsing to zero) but choose a
-## DIFFERENT trait to collapse:
+## The measured behaviour, for the record. Over 89 fit-pairs -- Gaussian,
+## Poisson and nbinom2, d = 1..3, three and five traits -- `res` was never
+## materially better than the default start (best margins 0.068, 0.29, 0.66
+## nats), was materially worse eight times (up to 14.65 nats), and was exactly
+## neutral at d >= 2 (34/34 agreeing to ~1e-7). Every failure reported
+## `convergence == 0` and `pdHess = TRUE` on both sides, and `n_init = 5`
+## returned the same worse optimum 5/5.
+##
+## The failure concentrates at 3 traits, d = 1 -- exactly identified, so both
+## starts land on a Heywood boundary and simply collapse a DIFFERENT trait:
 ##   default  psi = (1.009, 0.000, 1.275)   -logLik 5699.076
 ##   res      psi = (1.031, 0.821, 0.000)   -logLik 5700.919
-## `res` does not create the multimodality; it steers into the worse basin.
+## Which basin you land in is decided by the loadings, and seeding them from the
+## residual covariance commits the optimiser to that matrix's leading direction.
+## Not a noise problem: a start built from noise-free GLMM random-effect modes
+## lands in the same wrong basin (measured, then reverted).
 ##
-## `pdHess` cannot see this: psi is estimated on the log scale, so psi -> 0 is
-## an interior point of the transformed parameter space and the Hessian stays
-## positive definite at a collapsed variance component.
+## That behaviour is deliberately NOT pinned as a unit test. It is a basin
+## selection on a multimodal surface, so it is exactly the kind of thing a
+## different BLAS or platform can flip -- a poor fit for a cross-OS suite. The
+## evidence lives in re-runnable scripts instead:
+##   dev/2026-07-27-res-nongaussian.R
+##   dev/2026-07-27-res-nongaussian-d2.R
+##   dev/2026-07-27-eval-indep-blup-start.R
+##   docs/dev-log/after-task/2026-07-27-start-method-res-worse-optimum.md
 ##
-## Scope of the evidence (2026-07-27 sweep, Gaussian, n_sites = 200):
-##   * p=3, d=1 over 21 random generating configurations: 4 materially worse
-##     (up to 14.65 nats), ALL with pdHess = TRUE on both sides; 1 better.
-##   * p=3, d=2 and d=3 (over-parameterised): 0/5 each -- objectives agree.
-##   * p=5, d=1 (over-identified): 0/10.
-##   * n_init = 5 does NOT rescue the cell below: all five restarts return
-##     5700.9189. The documented multi-start remedy is ineffective here.
+## What IS pinned, in test-unique-family-deprecation.R: that the soft-deprecation
+## warning fires once per session, that `res` still fits, and that no other start
+## method triggers it. Delete this note with the method when `res` is removed.
 ##
-## The tests above this one pin only the *shape* of the seeded starts, which is
-## why this behaviour passed the existing suite.
+## The related diagnostic gap -- a collapsed variance component passing every
+## check because the threshold was absolute on the sd scale -- is fixed and
+## covered by test-slope-boundary-flag.R.
 ## ---------------------------------------------------------------------------
-test_that("start_method = 'res' does not reach a worse optimum than the default start", {
-  skip_if_not_heavy()
-  skip_on_cran()
-
-  sim <- gllvmTMB::simulate_site_trait(
-    n_sites = 200, n_species = 15, n_traits = 3,
-    mean_species_per_site = 8,
-    Lambda_B = matrix(c(0.8, 0.5, -0.2, 0.2, -0.4, 0.6, 0.3, -0.3, 0.1), 3, 3),
-    psi_B = c(0.3, 0.3, 0.3), seed = 101
-  )
-  ff <- value ~ 0 + trait + latent(0 + trait | site, d = 1)
-
-  fit_default <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    ff, data = sim$data,
-    control = gllvmTMB::gllvmTMBcontrol(n_init = 1L)
-  )))
-  fit_res <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    ff, data = sim$data,
-    control = gllvmTMB::gllvmTMBcontrol(
-      n_init = 1L, start_method = list(method = "res")
-    )
-  )))
-
-  ## Both paths must actually converge for the comparison to be meaningful.
-  expect_equal(fit_default$opt$convergence, 0L)
-  expect_equal(fit_res$opt$convergence, 0L)
-
-  ## The defect: `res` is 1.84 nats worse here, with pdHess = TRUE on both
-  ## sides. A start method may reach a *different* optimum; it must not
-  ## silently reach a materially *worse* one.
-  expect_lte(
-    fit_res$opt$objective,
-    fit_default$opt$objective + 0.01
-  )
-})

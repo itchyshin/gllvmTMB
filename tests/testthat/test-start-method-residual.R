@@ -1,6 +1,10 @@
 ## McGillycuddy / glmmTMB-style residual starts.
 ## These tests pin the initialization contract only; convergence-rate claims
 ## belong to the M3 production grid, not CRAN-time unit tests.
+##
+## EXCEPTION: the final test in this file pins an *outcome* contract, not an
+## initialization one. It is a regression test for a known open defect and it
+## FAILS on current behaviour by design -- see the "worse optimum" test below.
 
 test_that("residual factor helper seeds finite lower-triangular rr starts", {
   set.seed(101)
@@ -113,4 +117,73 @@ test_that("start_method = 'indep' fits a simpler GLMM and copies matching starts
   ## The independent warm start seeds the GLMM pieces but leaves the latent
   ## block at its historical default when no same-shaped rr block is available.
   expect_equal(fit$tmb_params$theta_rr_B, c(0.5, 0))
+})
+
+## ---------------------------------------------------------------------------
+## Regression test for an OPEN defect (found 2026-07-27, Laplace profiling
+## campaign). It is expected to FAIL until the defect is fixed.
+##
+## `start_method = "res"` is documented as a remedy to try on a hard
+## factor-analytic fit. In the cell below it does the opposite: it converges to
+## a strictly worse local optimum than the default start -- 1.84 nats worse --
+## while BOTH fits report `convergence == 0` and `pdHess == TRUE`. Every
+## diagnostic the user has is clean, so the worse answer is silent.
+##
+## The cell is 3 traits at d = 1: Lambda (3x1) + psi (3) = 6 free parameters
+## for a 6-dimensional Sigma_B, i.e. exactly identified, no flat ridge. Both
+## starts land on a Heywood boundary (one psi collapsing to zero) but choose a
+## DIFFERENT trait to collapse:
+##   default  psi = (1.009, 0.000, 1.275)   -logLik 5699.076
+##   res      psi = (1.031, 0.821, 0.000)   -logLik 5700.919
+## `res` does not create the multimodality; it steers into the worse basin.
+##
+## `pdHess` cannot see this: psi is estimated on the log scale, so psi -> 0 is
+## an interior point of the transformed parameter space and the Hessian stays
+## positive definite at a collapsed variance component.
+##
+## Scope of the evidence (2026-07-27 sweep, Gaussian, n_sites = 200):
+##   * p=3, d=1 over 21 random generating configurations: 4 materially worse
+##     (up to 14.65 nats), ALL with pdHess = TRUE on both sides; 1 better.
+##   * p=3, d=2 and d=3 (over-parameterised): 0/5 each -- objectives agree.
+##   * p=5, d=1 (over-identified): 0/10.
+##   * n_init = 5 does NOT rescue the cell below: all five restarts return
+##     5700.9189. The documented multi-start remedy is ineffective here.
+##
+## The tests above this one pin only the *shape* of the seeded starts, which is
+## why this behaviour passed the existing suite.
+## ---------------------------------------------------------------------------
+test_that("start_method = 'res' does not reach a worse optimum than the default start", {
+  skip_if_not_heavy()
+  skip_on_cran()
+
+  sim <- gllvmTMB::simulate_site_trait(
+    n_sites = 200, n_species = 15, n_traits = 3,
+    mean_species_per_site = 8,
+    Lambda_B = matrix(c(0.8, 0.5, -0.2, 0.2, -0.4, 0.6, 0.3, -0.3, 0.1), 3, 3),
+    psi_B = c(0.3, 0.3, 0.3), seed = 101
+  )
+  ff <- value ~ 0 + trait + latent(0 + trait | site, d = 1)
+
+  fit_default <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    ff, data = sim$data,
+    control = gllvmTMB::gllvmTMBcontrol(n_init = 1L)
+  )))
+  fit_res <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    ff, data = sim$data,
+    control = gllvmTMB::gllvmTMBcontrol(
+      n_init = 1L, start_method = list(method = "res")
+    )
+  )))
+
+  ## Both paths must actually converge for the comparison to be meaningful.
+  expect_equal(fit_default$opt$convergence, 0L)
+  expect_equal(fit_res$opt$convergence, 0L)
+
+  ## The defect: `res` is 1.84 nats worse here, with pdHess = TRUE on both
+  ## sides. A start method may reach a *different* optimum; it must not
+  ## silently reach a materially *worse* one.
+  expect_lte(
+    fit_res$opt$objective,
+    fit_default$opt$objective + 0.01
+  )
 })

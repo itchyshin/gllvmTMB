@@ -471,19 +471,33 @@
   )
 }
 
-.va_r3_eval_method_code <- function(eval_method = c("auto", "jj"), family) {
+.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh"), family) {
   eval_method <- match.arg(eval_method)
   if (identical(eval_method, "jj") && !identical(family, 1L)) {
     stop("eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for the binomial family.",
          call. = FALSE)
   }
-  if (identical(eval_method, "jj")) 1L else 0L
+  ## "auto" is family-dependent. Binomial takes the Jaakkola-Jordan/PG bound:
+  ## it is 5-8x faster than Gauss-Hermite and recovers Sigma_B better on 20/20
+  ## paired seeds. Every other family has no PG augmentation and takes
+  ## Gauss-Hermite. Ask for "gh" to force quadrature on binomial, which is what
+  ## the controlled bound comparisons in dev/ do.
+  if (!identical(eval_method, "auto")) return(eval_method)
+  if (identical(family, 1L)) "jj" else "gh"
+}
+
+.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh"), family) {
+  if (identical(.va_r3_resolve_eval_method(eval_method, family), "jj")) 1L else 0L
+}
+
+.va_r3_objective_type <- function(resolved_eval_method) {
+  if (identical(resolved_eval_method, "jj")) "ELBO_JJ" else "ELBO_GH"
 }
 
 .va_r3_make_objective <- function(validated, H = 61L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
-                                  eval_method = c("auto", "jj")) {
+                                  eval_method = c("auto", "jj", "gh")) {
   if (validated$q == 0L) {
     stop("q = 0 is not applicable and must not construct an R3 objective.",
          call. = FALSE)
@@ -545,7 +559,7 @@
                        rank_source = c("fixed_fixture", "ml_bic"),
                        fixed_global = NULL, source = NULL, rebuild = FALSE,
                        control = list(eval.max = 2000L, iter.max = 2000L),
-                       silent = TRUE, eval_method = c("auto", "jj")) {
+                       silent = TRUE, eval_method = c("auto", "jj", "gh")) {
   family <- match.arg(family)
   rank_source <- match.arg(rank_source)
   eval_method <- match.arg(eval_method)
@@ -553,9 +567,11 @@
     y, n_trials, X, unit_id, trait_id, q, N, T, family, link,
     unique, psi, structured, provider, lv, missing, gaussian_sd
   )
-  ## Validate eval_method against the family up front, before any objective
-  ## is constructed, so a mismatched request fails closed for every start.
-  .va_r3_eval_method_code(eval_method, validated$family)
+  ## Validate and resolve eval_method against the family up front, before any
+  ## objective is constructed, so a mismatched request fails closed for every
+  ## start. Everything downstream reports the RESOLVED bound, not the request,
+  ## so an "auto" fit never mislabels which bound it actually evaluated.
+  resolved_eval_method <- .va_r3_resolve_eval_method(eval_method, validated$family)
   if (validated$q == 0L) {
     return(list(
       status = "not_applicable_rank_zero",
@@ -565,13 +581,13 @@
         "The fixed research fixture has rank zero; there is no latent posterior to approximate."
       },
       research_only = TRUE,
-      objective_type = "ELBO_GH",
+      objective_type = .va_r3_objective_type(resolved_eval_method),
       rank_source = rank_source,
       family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
                       "binomial"),
       link = link,
       unique = FALSE,
-      eval_method = eval_method,
+      eval_method = resolved_eval_method,
       quadrature = NULL,
       source_commit = NA_character_,
       objective_constructed = FALSE
@@ -635,19 +651,25 @@
     post_nlminb_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
     if (!all(is.finite(post_nlminb_gradient)) ||
         max(abs(post_nlminb_gradient)) >= 1e-4) {
-      bfgs <- tryCatch(
-        stats::optim(opt$par, obj$fn, obj$gr, method = "BFGS",
-                     control = list(maxit = 500L, reltol = 1e-12)),
+      ## L-BFGS-B, not BFGS: BFGS carries a dense inverse-Hessian over the whole
+      ## parameter vector, which here includes N*(2q + q(q-1)/2) variational
+      ## coordinates, so its cost grows with n while L-BFGS-B's limited memory
+      ## stays flat. factr is L-BFGS-B's relative-tolerance control and
+      ## 1e-12 / .Machine$double.eps is the translation of BFGS's reltol = 1e-12.
+      lbfgsb <- tryCatch(
+        stats::optim(opt$par, obj$fn, obj$gr, method = "L-BFGS-B",
+                     control = list(maxit = 500L,
+                                    factr = 1e-12 / .Machine$double.eps)),
         error = function(e) NULL
       )
-      if (!is.null(bfgs) && identical(bfgs$convergence, 0L) &&
-          is.finite(bfgs$value) && bfgs$value <= opt$objective + 1e-8) {
+      if (!is.null(lbfgsb) && identical(lbfgsb$convergence, 0L) &&
+          is.finite(lbfgsb$value) && lbfgsb$value <= opt$objective + 1e-8) {
         opt <- list(
-          par = bfgs$par, objective = bfgs$value,
-          convergence = bfgs$convergence, message = bfgs$message,
-          evaluations = bfgs$counts, iterations = NA_integer_
+          par = lbfgsb$par, objective = lbfgsb$value,
+          convergence = lbfgsb$convergence, message = lbfgsb$message,
+          evaluations = lbfgsb$counts, iterations = NA_integer_
         )
-        polish_optimizer <- "nlminb_then_bfgs"
+        polish_optimizer <- "nlminb_then_lbfgsb"
       }
     }
     gradient <- tryCatch(obj$gr(opt$par), error = function(e) rep(NA_real_, length(opt$par)))
@@ -711,14 +733,14 @@
       "failed_health_gate"
     },
     research_only = TRUE,
-    objective_type = "ELBO_GH",
+    objective_type = .va_r3_objective_type(resolved_eval_method),
     rank_source = rank_source,
     family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
                     "binomial"),
     link = link,
     unique = FALSE,
     q = validated$q,
-    eval_method = eval_method,
+    eval_method = resolved_eval_method,
     quadrature = list(order = rule$order, convention = rule$convention,
                       nodes = rule$nodes, weights = rule$weights),
     source_commit = .va_r3_source_commit(dll$source),

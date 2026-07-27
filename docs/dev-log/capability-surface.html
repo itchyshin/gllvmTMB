@@ -176,7 +176,7 @@
   footer b { color: var(--ink-soft); font-weight: 600; }
 
   .subhead { font-size: 16px; font-weight: 700; color: var(--ink); margin: 30px 0 4px; letter-spacing: -0.01em; }
-  table.perfam { min-width: 900px; font-size: 13px; }
+  table.perfam { min-width: 1080px; font-size: 13px; }
   table.perfam td, table.perfam th { padding: 10px 13px; vertical-align: top; }
   .gram { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); letter-spacing: .02em; white-space: nowrap; }
   .yes { color: var(--taught); font-weight: 700; }
@@ -350,90 +350,104 @@
     <div class="scroll">
       <table class="perfam">
         <thead><tr>
-          <th>Family</th><th>Params</th><th>Modes</th><th>Structured</th>
+          <th>Family</th><th>Engine</th><th>Params</th><th>Modes</th><th>Structured</th>
           <th>Rand. slope</th><th>Diagnostics</th><th>Interval</th><th>Missing resp.</th><th>REML</th>
         </tr></thead>
         <tbody>
           <tr>
             <th><span class="fampip fp-w"></span><span class="fam">gaussian</span><div class="dom">continuous</div></th>
+            <td class="gram">LA · VA (exact, direct only) · EVA (Taylor-2)</td>
             <td class="gram">mu, sigma</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td><span class="tag t-avail">partial</span> <span class="gram">s1·s2</span></td><td><span class="yes">✓</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="gram">✓ pilot</td>
           </tr>
           <tr>
             <th><span class="fampip fp-w"></span><span class="fam">poisson</span><div class="dom">count · log</div></th>
+            <td class="gram">LA · VA (exact closed form) · EVA (Taylor-2)</td>
             <td class="gram">mu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td><span class="tag t-avail">partial</span></td><td><span class="yes">✓</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-w"></span><span class="fam">nbinom1 · nbinom2</span><div class="dom">overdispersed count</div></th>
+            <td class="gram">LA</td>
             <td class="gram">mu, phi</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td><span class="tag t-avail">partial</span></td><td><span class="yes">✓</span> <span class="no">(NB2)</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span> <span class="no">(NB2)</span></td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-w"></span><span class="fam">binomial</span><div class="dom">binary · logit/probit/cloglog</div></th>
+            <td class="gram">LA · VA (GH or JJ) · EVA (Taylor-2)</td>
             <td class="gram">mu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td><span class="tag t-avail">partial</span></td><td class="no">— <span style="font-size:10px">JSDM worked; single-trial diag RE off</span></td>
             <td><span class="tag t-avail">point</span></td><td><span class="yes">✓</span></td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">betabinomial</span><div class="dom">overdispersed binomial</div></th>
+            <td class="gram">LA</td>
             <td class="gram">mu, phi</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">beta</span><div class="dom">proportions · interior (0,1)</div></th>
+            <td class="gram">LA</td>
             <td class="gram">mu, phi</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">Gamma</span><div class="dom">positive · log</div></th>
+            <td class="gram">LA</td>
             <td class="gram">mu, shape</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">tweedie</span><div class="dom">semicontinuous</div></th>
+            <td class="gram">LA</td>
             <td class="gram">mu, phi, p</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">student</span><div class="dom">heavy-tailed continuous</div></th>
+            <td class="gram">LA</td>
             <td class="gram">mu, sigma, nu</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">— <span style="font-size:10px">sigma undefined if nu ≤ 2 → NA</span></td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">lognormal · gengamma</span><div class="dom">positive continuous</div></th>
+            <td class="gram">LA</td>
             <td class="gram">mu, sigma (,Q)</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">truncated_* · censored_poisson</span><div class="dom">truncated / censored count</div></th>
+            <td class="gram">LA</td>
             <td class="gram">mu (,phi)</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">ordinal_probit · cumulative_logit</span><div class="dom">ordered categorical</div></th>
+            <td class="gram">LA</td>
             <td class="gram">mu + cutpoints</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">— <span style="font-size:10px">ordinal RE not implemented</span></td><td class="no">—</td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">categorical</span><div class="dom" style="color:var(--gone)">nominal · major development pending</div></th>
+            <td class="gram">LA</td>
             <td class="gram">mu / category</td><td class="gram">limited</td><td class="gram">—</td>
             <td class="no">—</td><td class="no">—</td>
             <td><span class="tag t-gone">early</span></td><td class="no">—</td><td class="no">—</td>
           </tr>
           <tr>
             <th><span class="fampip fp-a"></span><span class="fam">delta_* · hurdle</span><div class="dom">two-stage semicontinuous</div></th>
+            <td class="gram">LA</td>
             <td class="gram">presence + positive</td><td class="gram">S I D L</td><td class="gram">phy spa ani ker</td>
             <td class="no">—</td><td class="no">— <span style="font-size:10px">no latent-scale correlation</span></td>
             <td><span class="tag t-avail">point</span></td><td class="no">—</td><td class="no">—</td>

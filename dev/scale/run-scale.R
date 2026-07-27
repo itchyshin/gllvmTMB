@@ -237,9 +237,9 @@ run_cell <- function(cell, FITSEC) {
     out <- list()
 
     ## --- gtmb_gh (always), gtmb_jj (bernoulli only) ---
-    for (em in c("auto", "jj")) {
+    for (em in c("gh", "jj")) {
       if (em == "jj" && family == "poisson") next
-      arm <- if (em == "auto") "gtmb_gh" else "gtmb_jj"
+      arm <- if (em == "gh") "gtmb_gh" else "gtmb_jj"
       r <- run_va_with_budget(
         list(yv = yv, n_trials = rep(1L, length(yv)), X = X,
              unit_id = lg$unit, trait_id = lg$trait, q = q,

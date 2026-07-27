@@ -14,7 +14,7 @@
 ## R/va-r3-proto.R / inst/tmb/gllvmTMB_va_r3.cpp), giving FOUR arms on the
 ## IDENTICAL simulated matrix:
 ##
-##   A: ours,  GH   (.approximation_engine_fit(engine="va_r3", eval_method="auto"))
+##   A: ours,  GH   (.approximation_engine_fit(engine="va_r3", eval_method="gh"))
 ##   B: ours,  JJ   (.approximation_engine_fit(engine="va_r3", eval_method="jj"))
 ##   C: gllvm, JJ   (gllvm::gllvm(method="VA"))
 ##   D: gllvmTMB Laplace, Psi-suppressed (latent(1|site, d=q, unique=FALSE))
@@ -234,7 +234,7 @@ for (cell in cells) {
     cat(sprintf("[n=%d p=%d seed=%d] simulating...\n", cell$n_units, cell$n_traits, seed))
     sim <- simulate_bernoulli_gllvm(cell$n_units, cell$n_traits, q, seed)
 
-    res_A <- fit_arm_ours(sim, eval_method = "auto")
+    res_A <- fit_arm_ours(sim, eval_method = "gh")
     cat(sprintf("  A (ours, GH):  ok=%s status=%s rel_frob=%.3f atten=%.3f time=%.2fs\n",
                res_A$ok, res_A$status %||% res_A$error, res_A$rel_frob, res_A$atten, res_A$elapsed))
 

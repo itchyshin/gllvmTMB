@@ -128,9 +128,8 @@ Type objective_function<Type>::operator()()
   DATA_VECTOR(gh_weights);
   DATA_INTEGER(family);            // 0 = Gaussian anchor; 1 = binomial-logit; 2 = Poisson-log
   DATA_SCALAR(gaussian_sd);        // fixed observation SD for family == 0
-  DATA_INTEGER(eval_method);       // 0 = auto (exact where available, GH for
-                                   // binomial); 1 = Jaakkola-Jordan/PG bound
-                                   // (binomial only)
+  DATA_INTEGER(eval_method);       // 0 = Gauss-Hermite quadrature;
+                                   // 1 = Jaakkola-Jordan/Polya-Gamma bound (binomial only)
 
   PARAMETER_VECTOR(beta);
   PARAMETER_VECTOR(theta_rr);      // live-engine packing; raw diagonal first
@@ -166,7 +165,7 @@ Type objective_function<Type>::operator()()
   if (family == 0 && !(asDouble(gaussian_sd) > 0.0))
     error("gllvmTMB_va_r3: gaussian_sd must be positive for the Gaussian anchor");
   if (eval_method != 0 && eval_method != 1)
-    error("gllvmTMB_va_r3: eval_method must be 0 (auto) or 1 (Jaakkola-Jordan/PG bound)");
+    error("gllvmTMB_va_r3: eval_method must be 0 (Gauss-Hermite) or 1 (Jaakkola-Jordan/PG bound)");
   if (eval_method == 1 && family != 1)
     error("gllvmTMB_va_r3: eval_method = 1 (Jaakkola-Jordan/PG bound) is only defined for the binomial family");
 

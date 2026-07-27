@@ -61,7 +61,7 @@
     rank_source = c("fixed_fixture", "ml_bic"), fixed_global = NULL,
     source = NULL, rebuild = FALSE,
     control = list(eval.max = 2000L, iter.max = 2000L), silent = TRUE,
-    eval_method = c("auto", "jj")) {
+    eval_method = c("auto", "jj", "gh")) {
   family <- .approximation_engine_scalar_character(family, "family")
   link <- .approximation_engine_scalar_character(link, "link")
   eval_method <- match.arg(eval_method)

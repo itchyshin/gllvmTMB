@@ -64,7 +64,12 @@ test_that("R3 H=61 scalar expectation passes the frozen oracle grid", {
     beta = 0, theta_rr = 0, m = matrix(0, 1L, 1L),
     log_L_diag = matrix(0, 1L, 1L), L_off = matrix(numeric(), 1L, 0L)
   )
-  obj <- .va_r3_make_objective(validated, H = 61L, parameters = parameters)
+  ## eval_method = "gh" is explicit because this grid checks the QUADRATURE
+  ## path against an exact integrate() oracle. Binomial "auto" resolves to the
+  ## Jaakkola-Jordan bound, which is deliberately not exact, so leaving the
+  ## default here would fail the oracle by construction rather than by defect.
+  obj <- .va_r3_make_objective(validated, H = 61L, parameters = parameters,
+                               eval_method = "gh")
   beta_index <- which(names(obj$par) == "beta")
   theta_index <- which(names(obj$par) == "theta_rr")
   stable_softplus <- function(x) pmax(x, 0) + log1p(exp(-abs(x)))
@@ -80,6 +85,46 @@ test_that("R3 H=61 scalar expectation passes the frozen oracle grid", {
         }, -Inf, Inf, rel.tol = 1e-13)$value
       }
       expect_lt(abs(observed - expected), 1e-10)
+    }
+  }
+})
+
+test_that("R3 JJ bound over-estimates the softplus expectation and is exact at zero variance", {
+  ## The Jaakkola-Jordan/PG bound is not a quadrature rule, so it must not be
+  ## held to the oracle grid above. Its contract is an INEQUALITY: it bounds
+  ## E[softplus(eta)] from ABOVE, which is what makes the ELBO -- which
+  ## subtracts n * softplus_expectation -- a genuine lower bound. It is tight
+  ## at v = 0, where xi = |mu| and the bound collapses to softplus(mu).
+  validated <- .va_r3_validate_data(
+    y = 1L, n_trials = 3L, X = matrix(1, 1L, 1L),
+    unit_id = 1L, trait_id = 1L, q = 1L
+  )
+  parameters <- list(
+    beta = 0, theta_rr = 0, m = matrix(0, 1L, 1L),
+    log_L_diag = matrix(0, 1L, 1L), L_off = matrix(numeric(), 1L, 0L)
+  )
+  obj <- .va_r3_make_objective(validated, H = 61L, parameters = parameters,
+                               eval_method = "jj")
+  beta_index <- which(names(obj$par) == "beta")
+  theta_index <- which(names(obj$par) == "theta_rr")
+  stable_softplus <- function(x) pmax(x, 0) + log1p(exp(-abs(x)))
+  for (mu in c(-20, -5, 0, 5, 20)) {
+    for (variance in c(0, 1e-8, 1e-4, 0.1, 1, 4)) {
+      p <- obj$par
+      p[beta_index] <- mu
+      p[theta_index] <- sqrt(variance)
+      observed <- obj$report(p)$softplus_expectation_by_obs[1L]
+      exact <- if (variance == 0) stable_softplus(mu) else {
+        stats::integrate(function(z) {
+          stable_softplus(mu + sqrt(variance) * z) * stats::dnorm(z)
+        }, -Inf, Inf, rel.tol = 1e-13)$value
+      }
+      ## Upper bound, up to floating-point slack.
+      expect_gt(observed - exact, -1e-10)
+      if (variance == 0) {
+        ## Tight at v = 0.
+        expect_lt(abs(observed - exact), 1e-10)
+      }
     }
   }
 })
@@ -152,7 +197,11 @@ test_that("R3 scalar ELBO, KL sign, and autodiff match independent calculations"
     beta = -0.3, theta_rr = 0.7, m = matrix(0.2, 1L, 1L),
     log_L_diag = matrix(log(0.8), 1L, 1L), L_off = matrix(numeric(), 1L, 0L)
   )
-  obj <- .va_r3_make_objective(validated, H = 25L, parameters = parameters)
+  ## expected_softplus below is an exact integrate() calculation, so the
+  ## objective must use quadrature; binomial "auto" resolves to the JJ bound,
+  ## which over-estimates it by construction.
+  obj <- .va_r3_make_objective(validated, H = 25L, parameters = parameters,
+                               eval_method = "gh")
   report <- obj$report(obj$par)
   mu <- -0.3 + 0.7 * 0.2
   variance <- 0.7^2 * 0.8^2

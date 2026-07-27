@@ -1170,22 +1170,23 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' 2. If that fails to converge cleanly, switch the optimiser to
 #'    `optim` with `BFGS`:
 #'    `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))`.
-#' 3. For factor-analytic models you can try
-#'    `start_method = list(method = "res", jitter.sd = 0.2)`. This fits
-#'    the fixed-effects part first and decomposes the residual matrix into
-#'    starting values for \eqn{\Lambda} and the latent scores.
+#' 3. `start_method = list(method = "res", jitter.sd = 0.2)` is
+#'    **soft-deprecated as of 0.6.0** and warns once per session. It still
+#'    fits: it decomposes the fixed-effect residual matrix into starting
+#'    values for \eqn{\Lambda} and the latent scores. Do not reach for it.
 #'
-#'    **Compare its objective against the default start before trusting
-#'    it.** A residual-informed start commits the optimiser to the leading
-#'    direction of the residual covariance, and on a multimodal
-#'    reduced-rank surface that is not always the best basin. In Gaussian
-#'    three-trait `d = 1` fits it reached a worse optimum than the default
-#'    start in 4 of 21 simulated data sets — by as much as 14.6 log-likelihood
-#'    units — with `convergence == 0` and a positive-definite Hessian on
-#'    both sides. Restarts do not reliably detect this: in one such fit all
-#'    five `n_init = 5` restarts returned the same worse optimum. The
-#'    cheap check is to fit once with `gllvmTMBcontrol()` and once with
-#'    this start method and keep the lower `-logLik`.
+#'    It was retired on measurement. Across 89 simulated fits — Gaussian,
+#'    Poisson and negative-binomial, `d = 1` to `3`, three and five traits —
+#'    it was **never materially better** than the default start (its three
+#'    best margins were 0.07, 0.29 and 0.66 log-likelihood units) and was
+#'    materially worse eight times, once by 14.6 units. At `d >= 2` it made
+#'    no difference at all. Every failure reported `convergence == 0` and a
+#'    positive-definite Hessian on both sides, so the worse fit was silent,
+#'    and restarts did not detect it: in one such fit all five `n_init = 5`
+#'    restarts returned the same worse optimum.
+#'
+#'    If you use it anyway, compare `fit$opt$objective` against a
+#'    default-start fit and keep the lower value.
 #' 4. For Gaussian two-level models, prefer
 #'    `start_method = list(method = "indep")` or manually fit a simpler
 #'    model and pass it through `start_from = simpler_fit`. This is a GLMM
@@ -1367,6 +1368,13 @@ miss_control <- function(
         "Unknown {.arg start_method$method}: {.val {method}}.",
         "i" = "Currently supported: {.code NULL} (default), {.code \"res\"}, or {.code \"indep\"}."
       ))
+    }
+    ## `"res"` remains accepted compatibility syntax but warns once per session:
+    ## it was measured to be never materially better than the default start and
+    ## sometimes much worse, silently. See
+    ## `.gllvmTMB_warn_start_method_res_deprecated()` for the evidence.
+    if (identical(method, "res")) {
+      .gllvmTMB_warn_start_method_res_deprecated()
     }
   }
 

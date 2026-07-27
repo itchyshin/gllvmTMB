@@ -373,9 +373,17 @@ activates.
     optional via `control = list(warmup_parallel = TRUE)`.
 - **Q-Boole-2**: should `start_method = list(method = "res")` become
   the default whenever a `latent()` term is present?
-  - Lean: no for v0.2.0. Keep opt-in until M3 target-explicit
-    evidence compares default, `single_trait_warmup`, residual starts,
-    and their combination.
+  - **RESOLVED 2026-07-27: no — and the method is soft-deprecated.**
+    The evidence this question was waiting for arrived from the Laplace
+    profiling campaign. Over 89 fit-pairs against the default start
+    (Gaussian / Poisson / nbinom2, `d = 1..3`, 3 and 5 traits) the residual
+    start was **never materially better** — best margins 0.07, 0.29, 0.66
+    nats — was materially worse 8 times, up to 14.65 nats, and was exactly
+    neutral at `d >= 2` (34/34 agreeing to ~1e-7). Failures were silent:
+    `convergence == 0` and `pdHess = TRUE` on both sides, and `n_init = 5`
+    returned the same worse optimum 5/5. Soft-deprecated in 0.6.0; removal
+    after 0.6. See
+    `docs/dev-log/after-task/2026-07-27-start-method-res-worse-optimum.md`.
 - **Q-Boole-3**: should `start_method = list(method = "indep")`
   become the recommended default for Gaussian two-level
   ordinary latent covariance fits?

@@ -212,29 +212,43 @@ table as a menu of things to try on a hard fit, not a proven policy.
 |---|---|---|
 | No warning or competing objective yet | Use the default first | `gllvmTMBcontrol()` |
 | Starts reach different objective values | Add restarts and modest jitter | `gllvmTMBcontrol(n_init = 5, init_jitter = 0.1)` |
-| A non-Gaussian reduced-rank fit repeatedly stops poorly | Seed loadings and scores from residual structure — but see the warning below | `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))` |
+| A non-Gaussian reduced-rank fit repeatedly stops poorly | *(soft-deprecated — see below; use the default starts)* | `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))` |
 | A Gaussian two-level latent fit is sensitive to its initial covariance | Warm-start from the matching independent model | `gllvmTMBcontrol(start_method = list(method = "indep"))` |
 | A scientifically sensible simpler fit is already available | Copy compatible starting parameters | `gllvmTMBcontrol(start_from = simpler_fit)` |
 | A fitted `phi` parameter is unstable, especially for NB1/NB2 | Warm up dispersion trait by trait | `gllvmTMBcontrol(init_strategy = "single_trait_warmup")` |
 | `nlminb` does not reach a stationary point | Compare `optim` with BFGS | `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))` |
 | Point estimates are stable but Wald calculation is the fragile step | Deliberately skip standard errors | `gllvmTMBcontrol(se = FALSE)` |
 
-### A residual-informed start can reach a worse optimum
+### The residual start is soft-deprecated (0.6.0)
 
 `start_method = list(method = "res")` seeds the loadings from the leading
-direction of the residual covariance. On a multimodal reduced-rank surface that
-direction is not always the best basin, and when it is not, **nothing in the
-output says so**.
+direction of the fixed-effect residual covariance. It still fits, and it warns
+once per session. **Prefer the default starts.**
 
-In Gaussian three-trait `d = 1` fits — the exactly identified corner, where one
-per-trait variance is prone to collapsing to zero — a residual start reached a
-worse optimum than the default in 4 of 21 simulated data sets, by up to 14.6
-log-likelihood units. In every one of those, both fits reported
-`convergence == 0` and a positive-definite Hessian. Restarts are not a reliable
-guard either: in one such fit all five `n_init = 5` restarts returned the same
-worse optimum.
+It was retired on measurement, not on taste. Across 89 simulated fits spanning
+Gaussian, Poisson and negative-binomial responses, `d = 1` to `3`, and three and
+five traits, the residual start was:
 
-The remedy is direct comparison. Fit once each way and keep the lower `-logLik`:
+- **never materially better** than the default start — its three best margins
+  were 0.07, 0.29 and 0.66 log-likelihood units, the scale of landing on a
+  slightly different point of the *same* optimum;
+- **materially worse eight times**, by as much as 14.6 log-likelihood units;
+- **exactly neutral at `d >= 2`** — objectives agreed to seven decimal places in
+  34 of 34 fits, so it changed nothing where it was safe.
+
+Every one of those failures reported `convergence == 0` and a positive-definite
+Hessian on both sides, so the worse fit was silent. Restarts were not a guard
+either: in one such fit all five `n_init = 5` restarts returned the same worse
+optimum.
+
+The damage concentrates at `d = 1` with three traits — the exactly identified
+corner, where one per-trait variance can collapse to zero and the likelihood has
+genuinely distinct optima. Seeding from the residual covariance commits the
+optimiser to that matrix's leading direction, which in that corner is not the
+best-likelihood factor. This is not a residual-noise problem: a start built from
+noise-free random-effect estimates lands in the same wrong place.
+
+If you use it anyway, compare the objectives directly and keep the lower one:
 
 ```r
 fit_default <- gllvmTMB(form, data = dat)
@@ -243,11 +257,8 @@ fit_res     <- gllvmTMB(form, data = dat,
 c(default = fit_default$opt$objective, res = fit_res$opt$objective)
 ```
 
-`check_gllvmTMB()` will also now flag a variance component that has collapsed
+`check_gllvmTMB()` will also flag a variance component that has collapsed
 relative to its siblings, which is the usual signature of this situation.
-
-Two limits on that evidence: it is Gaussian, and it is the `d = 1` corner. The
-same sweep found no such disagreement at `d = 2`, `d = 3`, or with five traits.
 
 For a difficult model, start with more than one restart and inspect
 `fit$restart_history`. This is currently a low-level fitted-object diagnostic

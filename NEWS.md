@@ -206,6 +206,27 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Deprecated compatibility syntax
 
+* `gllvmTMBcontrol(start_method = list(method = "res"))` is **soft-deprecated**
+  and warns once per session. It still fits; prefer the default starts.
+
+  It was retired on measurement. Across 89 simulated fits — Gaussian, Poisson
+  and negative-binomial, `d = 1` to `3`, three and five traits — the residual
+  start was **never materially better** than the default start (its three best
+  margins were 0.07, 0.29 and 0.66 log-likelihood units, the scale of landing on
+  a slightly different point of the same optimum), was **materially worse eight
+  times**, once by 14.6 units, and was **exactly neutral at `d >= 2`**
+  (objectives agreed to seven decimals in 34 of 34 fits). Every failure reported
+  `convergence == 0` and a positive-definite Hessian on both sides, so the worse
+  fit was silent, and restarts were not a guard: in one such fit all five
+  `n_init = 5` restarts returned the same worse optimum.
+
+  The damage concentrates at `d = 1` with three traits, the exactly identified
+  corner where a per-trait variance can collapse to zero. Seeding from the
+  residual covariance commits the optimiser to that matrix's leading direction,
+  which there is not the best-likelihood factor. This is not a residual-noise
+  problem — a start built from noise-free random-effect estimates lands in the
+  same wrong place — so it is not fixable by a better residual.
+
 * The formula parser continues to accept `unique()` as compatibility syntax;
   source-specific `*_unique()` functions remain exported soft-deprecated
   aliases. Use `indep()` / `*_indep()` in new standalone diagonal formulas.

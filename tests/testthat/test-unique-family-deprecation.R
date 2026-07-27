@@ -189,3 +189,48 @@ test_that("ordinary latent Psi fold matches the explicit compatibility pair", {
     tolerance = 1e-8
   )
 })
+
+## `start_method = list(method = "res")` soft-deprecation (0.6.0). Retired on
+## evidence: over 89 simulated fit-pairs it was never materially better than the
+## default start and was materially worse eight times, once by 14.65 nats, always
+## with convergence == 0 and pdHess = TRUE on both sides. See
+## docs/dev-log/after-task/2026-07-27-start-method-res-worse-optimum.md.
+
+test_that("start_method = 'res' warns once per session and still works", {
+  local_reset_lifecycle_cache()
+  withr::local_options(gllvmTMB.quiet_grammar_notes = FALSE)
+
+  ## Fires on first use ...
+  expect_warning(
+    ctl <- gllvmTMB::gllvmTMBcontrol(start_method = list(method = "res")),
+    "soft-deprecated"
+  )
+  ## ... and is a one-shot, so a second use in the same session is silent.
+  expect_no_warning(
+    gllvmTMB::gllvmTMBcontrol(start_method = list(method = "res"))
+  )
+  ## Soft-deprecated means still functional: the control is unchanged.
+  expect_equal(ctl$start_method$method, "res")
+  expect_equal(ctl$start_method$jitter.sd, 0)
+})
+
+test_that("the res soft-deprecation does not fire for other start methods", {
+  local_reset_lifecycle_cache()
+  withr::local_options(gllvmTMB.quiet_grammar_notes = FALSE)
+
+  expect_no_warning(gllvmTMB::gllvmTMBcontrol())
+  expect_no_warning(
+    gllvmTMB::gllvmTMBcontrol(start_method = list(method = "indep"))
+  )
+  expect_no_warning(
+    gllvmTMB::gllvmTMBcontrol(start_method = list(method = NULL))
+  )
+})
+
+test_that("the res soft-deprecation respects the grammar-notes mute", {
+  local_reset_lifecycle_cache()
+  withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE)
+  expect_no_warning(
+    gllvmTMB::gllvmTMBcontrol(start_method = list(method = "res"))
+  )
+})

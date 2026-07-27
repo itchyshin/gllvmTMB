@@ -178,12 +178,21 @@ Two facts settle the disposition of `res`.
    safe it is *exactly* neutral; where it is not, it costs up to 14.65 nats.
 
 So it is neutral where it is harmless and harmful where it is not. There is no
-cell in the tested envelope where it earns the extra fit it costs. **Recommend
-retiring it**: soft-deprecate per the repo's `scalar()`/`unique()` convention
-(one-time warning naming the failure mode and the objective comparison), remove
-after 0.6. Hard removal is also defensible — the package has never shipped to
-CRAN — but soft-deprecation costs one release cycle and gives existing GitHub
-users a pointer rather than an error. **Maintainer's call; not actioned.**
+cell in the tested envelope where it earns the extra fit it costs.
+
+**LANDED (maintainer chose soft-deprecation, 2026-07-27).**
+`.gllvmTMB_warn_start_method_res_deprecated()` follows the established
+`scalar()`/`unique()` pattern: the package's own `.gllvmTMB_deprecation_seen`
+one-shot tracker plus `cli::cli_warn`, muted by
+`options(gllvmTMB.quiet_grammar_notes = TRUE)`. It fires from
+`.gllvmTMB_normalize_start_method()`, the single choke point both
+`gllvmTMBcontrol()` and the fit path pass through, so a raw list reaches it too.
+`"res"` still fits — soft, not hard. Removal slice after 0.6.
+
+Verified live: warns on first use, silent on the second (one-shot holds), silent
+for `"indep"` and for the default, and muted under the grammar-notes option.
+`test-unique-family-deprecation.R` 31 pass (was 22), `test-gllvmTMBcontrol.R`
+and `test-start-method-residual.R` green, 0 failures.
 
 Scope limit, stated so the recommendation is not over-read: the non-Gaussian
 sweeps deliberately target the same Heywood-prone corner (3 traits, rank-3 truth

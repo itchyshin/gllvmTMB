@@ -46903,3 +46903,71 @@ Deliberately not run: `devtools::check()`, `pkgdown::check_pkgdown()`, and any
 Totoro/DRAC campaign; this private dev-only instrumentation changed none of
 their applicable surfaces.  Complete closeout:
 `docs/dev-log/after-task/2026-07-26-hvt1-high-variance-truth-oracle.md`.
+
+## 2026-07-27 — start_method="res" correctness bug: diagnosed, one fix landed, method retired (Claude)
+
+**To the main lane.** Branch `claude/loving-liskov-85d5d5` in worktree
+`.claude/worktrees/awesome-fermat-0e06a9`, six commits `ebd46121..e8bd058b`,
+**not pushed, no PR yet**. Nothing here touches the eta-simulation lane or the
+0.6 five-macro lane. Read this before touching `R/diagnose.R`,
+`R/gllvmTMB.R`, or `vignettes/articles/convergence-start-values.Rmd`.
+
+Origin: a correctness bug handed over from the 2026-07-27 Laplace profiling
+campaign (`claude/va-wiring-20260726`) — `start_method = "res"` reaching an
+optimum 1.84 nats worse than the default start with `pdHess = TRUE` and no
+warning. Reproduced exactly, then widened to 89 fit-pairs.
+
+**Two findings the main lane should carry forward.**
+
+1. **`check_gllvmTMB()` could not see a collapsed variance component, and this
+   is not specific to any start method.** A Heywood fit (one per-trait `psi`
+   pinned at zero) reported `near_zero_psi_unit … PASS … 0.0006826` and an empty
+   `boundary_flags`. The thresholds are `1e-4` on the **sd** scale, so they
+   demand a variance below `1e-8`; the real variance was `4.7e-7`, six orders of
+   magnitude below its siblings. `pdHess` is structurally blind to it too —
+   `psi` is estimated on the log scale, so a collapsed component is an interior
+   point of the transformed space and the Hessian stays positive definite.
+   **This is the most likely explanation for the campaign's separate observation
+   that 59 of 70 genuinely degenerate fits reported `convergence == 0` and
+   `pdHess = TRUE`.** Anyone re-running that grid should expect a large share to
+   flip to flagged now, and that is a measurable claim worth checking.
+   Fixed in `64d2299d`: detection is now relative to siblings
+   (`.gllvmTMB_relative_collapse()`, `psi_rel_thresh` / `sd_rel_thresh` = 1e-3).
+   Strictly additive — nothing that flagged before stops flagging.
+
+2. **`start_method = "res"` is soft-deprecated** (`e8bd058b`), retired on
+   measurement rather than taste. Over 89 fit-pairs (Gaussian / Poisson /
+   nbinom2, `d = 1..3`, 3 and 5 traits) it was **never materially better** than
+   the default start — best margins 0.068, 0.29, 0.66 nats — was materially
+   worse 8 times, up to 14.65 nats, and was exactly neutral at `d >= 2` (34/34
+   agreeing to ~1e-7). `n_init = 5` returned the same worse optimum 5/5, so the
+   documented multi-start remedy did not work and that claim has been removed
+   from the docs. Still fits; warns once per session. Removal after 0.6.
+   Resolves the open design question **Q-Boole-2**.
+
+**A negative result worth not repeating.** A GLMM/BLUP-based start (SVD of the
+independent model's random-effect conditional modes, seeding `indep`'s loadings
+instead of leaving them at the constant `0.5, 0`) was fully built and measured,
+and is a **4/4 -> 0/4 regression** — it reproduces `res`'s failures to six
+significant figures. The cause is not residual noise: any SVD-based start
+commits to the leading PC of the between-group covariance, and at exact
+identification that is not the best-likelihood factor. The neutral constant
+start's *lack* of commitment is what makes it 8/8. Reverted in `ebc67fc5`; do
+not re-propose without reading that commit.
+
+**One thing needs a decision.** `test-start-method-residual.R:156` asserts
+`res` does not reach a worse optimum. It still does — deprecation changed no
+behaviour — so under `GLLVMTMB_HEAVY_TESTS=1` **the nightly will fail**. It
+skips under routine PR CI. Either leave it red as an honest open-defect marker
+until the removal slice, or convert it to assert the deprecation warning and
+retire the objective contract with the method. Maintainer's call.
+
+Checks: `test-slope-boundary-flag` 12, `test-unique-family-deprecation` 31 (was
+22), `test-sanity-multi` 39, `test-gllvmTMBcontrol`, `test-start-method-residual`
+20 — 0 failures. Fits were run against the campaign worktree's compiled build;
+`git diff` over `R/` and `src/` between the two worktrees was empty at the time,
+so the code exercised was byte-identical. That worktree was restored clean.
+Not run: `devtools::check()`, `pkgdown`. Full record:
+`docs/dev-log/after-task/2026-07-27-start-method-res-worse-optimum.md`.
+Re-runnable evidence: `dev/2026-07-27-eval-indep-blup-start.R`,
+`dev/2026-07-27-res-nongaussian.R`, `dev/2026-07-27-res-nongaussian-d2.R`.

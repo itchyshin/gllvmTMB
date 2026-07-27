@@ -832,8 +832,14 @@
 ## memory, so there is no scale at which this silently falls back to the
 ## anti-conservative conditional SE. route = "dense" forces the original path
 ## and exists to keep that cross-check runnable.
+## max_variational is accepted and IGNORED. It used to bound the dense Schur
+## complement; the blocked route removed the limitation it guarded, so the
+## argument is vestigial. It is kept because callers written against the old
+## signature exist -- dropping it turned a running two-hour job's SE step into
+## an "unused argument" error after the fit had already succeeded.
 .va_r3_fixed_information <- function(objective, par,
-                                     route = c("auto", "blocked", "dense")) {
+                                     route = c("auto", "blocked", "dense"),
+                                     max_variational = NULL) {
   route <- match.arg(route)
   nm <- names(par)
   if (!is.null(nm) && !identical(route, "dense")) {

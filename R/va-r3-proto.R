@@ -654,6 +654,36 @@
 ## Neither SE is calibrated. Variational posteriors understate spread, and the
 ## size of that understatement here is unmeasured, so `calibrated` stays FALSE
 ## until a coverage study fills it in.
+## L-BFGS-B's relative-tolerance control. optim() expresses it as factr, a
+## MULTIPLE of machine epsilon, so this is the translation of nlminb-grade
+## tolerance. Passing optim's DEFAULT factr instead is catastrophic and silent:
+## measured at N=1600 it terminated in 24 MILLISECONDS at an objective 125-151
+## worse than nlminb's, in 3 of 3 replicates, while reporting convergence = 0.
+## With this value it reached nlminb's objective to <= 1e-4 in all 3, between
+## 17.7x and 37.7x faster. Never let this default.
+.VA_R3_LBFGSB_FACTR <- 1e-12 / .Machine$double.eps
+
+## The primary optimiser. nlminb (PORT) is the default and remains the
+## reference; "lbfgsb" is the measured-faster alternative. Both minimise the
+## same objective from the same start, so this is a route choice, not a model
+## choice -- but it is opt-in rather than the default because the same-optimum
+## evidence is currently gaussian_anchor at N=1600 and binomial-jj at n<=800,
+## which is not yet the whole admitted surface.
+.va_r3_run_primary <- function(optimizer, obj, start, control) {
+  if (identical(optimizer, "nlminb")) {
+    return(stats::nlminb(start, obj$fn, obj$gr, control = control))
+  }
+  maxit <- control$iter.max %||% control$eval.max %||% 2000L
+  fit <- stats::optim(start, obj$fn, obj$gr, method = "L-BFGS-B",
+                      control = list(maxit = maxit,
+                                     factr = .VA_R3_LBFGSB_FACTR))
+  ## Normalise onto nlminb's return shape so every downstream health gate,
+  ## polish step and diagnostic reads the same fields regardless of route.
+  list(par = fit$par, objective = fit$value, convergence = fit$convergence,
+       message = fit$message, evaluations = fit$counts,
+       iterations = NA_integer_)
+}
+
 ## Positions of each unit's variational coordinates within the parameter vector.
 ##
 ## The variational block is stored as three column-major matrices -- m (N x q),
@@ -1009,10 +1039,13 @@
                        rank_source = c("fixed_fixture", "ml_bic"),
                        fixed_global = NULL, source = NULL, rebuild = FALSE,
                        control = list(eval.max = 2000L, iter.max = 2000L),
-                       silent = TRUE, eval_method = c("auto", "jj", "gh")) {
+                       silent = TRUE, eval_method = c("auto", "jj", "gh"),
+                       n_starts = 4L,
+                       optimizer = c("nlminb", "lbfgsb")) {
   family <- match.arg(family)
   rank_source <- match.arg(rank_source)
   eval_method <- match.arg(eval_method)
+  optimizer <- match.arg(optimizer)
   validated <- .va_r3_validate_data(
     y, n_trials, X, unit_id, trait_id, q, N, T, family, link,
     unique, psi, structured, provider, lv, missing, gaussian_sd
@@ -1044,7 +1077,29 @@
     ))
   }
   rule <- .va_r3_gh_rule(H)
-  starts <- lapply(1:4, function(k) .va_r3_default_parameters(validated, k))
+  ## n_starts is the multi-start agreement gate's width. The DEFAULT STAYS 4 --
+  ## this exposes the knob, it does not weaken the gate. Measured cost of the
+  ## gate: 3.33x at N=200 and 3.93-4.45x at N=400, with objectives agreeing to
+  ## <6e-9 across starts and full parameter vectors to max|dpar| 1.98e-05, so
+  ## n_starts = 1 reproduces the same optimum at a quarter of the cost and is
+  ## the right setting for benchmarking and for the large-n path.
+  ##
+  ## Below 3 the gate cannot pass AT ALL -- admitted requires
+  ## length(healthy_id) >= 3L (see the health block below) -- so n_starts = 2
+  ## would silently force status = failed_health_gate rather than speed anything
+  ## up. Values of 2 are therefore rejected outright; 1 is allowed because it is
+  ## an explicit, visible opt-out of the gate rather than a silent breakage.
+  ## The upper bound is 4 because .va_r3_default_parameters() indexes a
+  ## four-entry jitter table by start_id; a fifth start would silently index NA
+  ## and produce a non-finite starting vector.
+  n_starts <- as.integer(n_starts)
+  if (length(n_starts) != 1L || is.na(n_starts) || n_starts < 1L ||
+      n_starts == 2L || n_starts > 4L) {
+    stop("n_starts must be 1 (gate explicitly bypassed), or 3 or 4 (the gate needs three healthy starts; the jitter table defines four).",
+         call. = FALSE)
+  }
+  starts <- lapply(seq_len(n_starts),
+                   function(k) .va_r3_default_parameters(validated, k))
   if (!is.null(fixed_global)) {
     if (!is.list(fixed_global) ||
         !identical(sort(names(fixed_global)), c("beta", "theta_rr"))) {
@@ -1072,7 +1127,7 @@
     )
     objects[[k]] <- obj
     opt <- tryCatch(
-      stats::nlminb(obj$par, obj$fn, obj$gr, control = control),
+      .va_r3_run_primary(optimizer, obj, obj$par, control),
       error = function(e) structure(list(message = conditionMessage(e)),
                                     class = "va_r3_optimizer_error")
     )
@@ -1205,7 +1260,7 @@
     source_commit = .va_r3_source_commit(dll$source),
     source_checksum = dll$checksum,
     fixed_global = !is.null(fixed_global),
-    optimizer = "nlminb",
+    optimizer = optimizer,
     starts = fits,
     health = list(
       admitted = admitted,

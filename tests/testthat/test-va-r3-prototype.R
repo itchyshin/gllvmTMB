@@ -352,6 +352,91 @@ test_that("R3 blocked information reproduces the dense Schur complement exactly"
   )
 })
 
+test_that("R3 n_starts exposes the gate width without weakening the gate", {
+  set.seed(88)
+  n <- 80L; p <- 5L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.6)
+  y <- rbinom(n * p, 1L, plogis(eta))
+  X <- stats::model.matrix(~ 0 + trait, long)
+  u <- as.integer(long$unit); tr <- as.integer(long$trait)
+  fit <- function(ns) {
+    .va_r3_fit(y, rep(1L, n * p), X, u, tr, q = 2L, family = "binomial",
+               link = "logit", H = 15L, n_starts = ns)
+  }
+
+  full <- fit(4L)
+  single <- fit(1L)
+
+  ## The default is unchanged: four starts, gate intact.
+  expect_identical(full$health$attempted_starts, 4L)
+  expect_identical(full$health$minimum_healthy_starts, 3L)
+
+  ## n_starts = 1 reaches the SAME optimum -- that is what makes it a speed
+  ## knob rather than a different fit.
+  expect_lt(abs(full$best$objective - single$best$objective), 1e-6)
+  expect_lt(max(abs(full$best$par - single$best$par)), 1e-3)
+
+  ## ...but it must NOT be able to report a passed gate. Bypassing the gate has
+  ## to be visible in the status, never silent.
+  expect_identical(single$health$attempted_starts, 1L)
+  expect_false(isTRUE(single$health$admitted))
+  expect_identical(single$status, "failed_health_gate")
+
+  ## 2 starts can never satisfy "3 healthy", so it is rejected rather than
+  ## silently forcing failed_health_gate; 5 would index past the 4-entry
+  ## jitter table in .va_r3_default_parameters() and produce NA starts.
+  expect_error(fit(2L), "n_starts must be")
+  expect_error(fit(5L), "n_starts must be")
+})
+
+test_that("R3 L-BFGS-B primary reaches the same optimum as nlminb", {
+  ## The optimiser is a ROUTE choice, not a model choice: both minimise the same
+  ## objective from the same start, so the fitted values must agree. This test
+  ## is the guard on that. It deliberately asserts NOTHING about speed -- a
+  ## timing assertion in a test suite is a flake generator, and the speed
+  ## evidence lives in dev/r2-fragility-resolution.csv.
+  set.seed(505)
+  n <- 200L; p <- 6L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.6)
+  y <- rbinom(n * p, 1L, plogis(eta))
+  X <- stats::model.matrix(~ 0 + trait, long)
+  u <- as.integer(long$unit); tr <- as.integer(long$trait)
+  fit <- function(o) {
+    .va_r3_fit(y, rep(1L, n * p), X, u, tr, q = 2L, family = "binomial",
+               link = "logit", H = 15L, n_starts = 1L, optimizer = o)
+  }
+
+  a <- fit("nlminb")
+  b <- fit("lbfgsb")
+
+  expect_identical(a$optimizer, "nlminb")
+  expect_identical(b$optimizer, "lbfgsb")
+  expect_lt(abs(a$best$objective - b$best$objective), 1e-5)
+  expect_lt(max(abs(a$best$par - b$best$par)), 1e-2)
+
+  ## nlminb remains the DEFAULT -- the same-optimum evidence does not yet span
+  ## the whole admitted surface, so lbfgsb is opt-in.
+  expect_identical(fit_default_optimizer <- .va_r3_fit(
+    y, rep(1L, n * p), X, u, tr, q = 2L, family = "binomial", link = "logit",
+    H = 15L, n_starts = 1L)$optimizer, "nlminb")
+
+  ## The factr constant is load-bearing: optim's DEFAULT factr terminated in
+  ## ~24ms at an objective 125-151 worse in 3 of 3 replicates at N=1600 while
+  ## reporting convergence = 0. Pin it so it cannot be "simplified" away.
+  expect_true(.VA_R3_LBFGSB_FACTR < 1e-6 / .Machine$double.eps)
+  expect_equal(.VA_R3_LBFGSB_FACTR, 1e-12 / .Machine$double.eps)
+})
+
 test_that("R3 family registry agrees with the validator and drives eval_method", {
   ## The registry is the declared per-family evaluation contract. It must not
   ## drift from .va_r3_validate_data(), which is what actually assigns the

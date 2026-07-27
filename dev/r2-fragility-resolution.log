@@ -1,0 +1,18 @@
+using C++ compiler: ‘Apple clang version 21.0.0 (clang-2100.1.1.101)’
+using SDK: ‘MacOSX26.5.sdk’
+clang++ -arch arm64 -std=gnu++20 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG -I"/Users/z3437171/Library/R/arm64/4.6/library/TMB/include" -I"/Users/z3437171/Library/R/arm64/4.6/library/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK  -I/opt/R/arm64/include    -fPIC  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+clang++ -arch arm64 -std=gnu++20 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -F/Library/Frameworks/R.framework/.. -framework R
+rep1 nlminb           69.504s obj=20264.1188 conv=0
+rep1 lbfgsb_defaul     0.024s obj=20399.2987 conv=0
+rep1 lbfgsb_prod       2.930s obj=20264.1188 conv=0
+rep2 nlminb           98.824s obj=20232.9829 conv=0
+rep2 lbfgsb_defaul     0.024s obj=20358.3646 conv=0
+rep2 lbfgsb_prod       5.590s obj=20232.9830 conv=0
+rep3 nlminb           68.310s obj=20362.2149 conv=0
+rep3 lbfgsb_defaul     0.027s obj=20512.9697 conv=0
+rep3 lbfgsb_prod       1.807s obj=20362.2149 conv=0
+
+=== objective vs nlminb, per rep ===
+rep1  default factr delta=+135.1799   production factr delta=+0.0000
+rep2  default factr delta=+125.3817   production factr delta=+0.0001
+rep3  default factr delta=+150.7548   production factr delta=+0.0000

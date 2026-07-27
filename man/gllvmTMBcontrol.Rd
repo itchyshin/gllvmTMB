@@ -106,12 +106,22 @@ with the lowest \code{-logLik}.
 \item If that fails to converge cleanly, switch the optimiser to
 \code{optim} with \code{BFGS}:
 \code{gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))}.
-\item For factor-analytic models, try
+\item For factor-analytic models you can try
 \code{start_method = list(method = "res", jitter.sd = 0.2)}. This fits
-the fixed-effects part first, decomposes the residual matrix into
-starting values for \eqn{\Lambda} and the latent scores, and can be
-combined with \code{n_init > 1} to check whether the optimiser repeatedly
-reaches the same likelihood basin.
+the fixed-effects part first and decomposes the residual matrix into
+starting values for \eqn{\Lambda} and the latent scores.
+
+\strong{Compare its objective against the default start before trusting
+it.} A residual-informed start commits the optimiser to the leading
+direction of the residual covariance, and on a multimodal
+reduced-rank surface that is not always the best basin. In Gaussian
+three-trait \code{d = 1} fits it reached a worse optimum than the default
+start in 4 of 21 simulated data sets — by as much as 14.6 log-likelihood
+units — with \code{convergence == 0} and a positive-definite Hessian on
+both sides. Restarts do not reliably detect this: in one such fit all
+five \code{n_init = 5} restarts returned the same worse optimum. The
+cheap check is to fit once with \code{gllvmTMBcontrol()} and once with
+this start method and keep the lower \code{-logLik}.
 \item For Gaussian two-level models, prefer
 \code{start_method = list(method = "indep")} or manually fit a simpler
 model and pass it through \code{start_from = simpler_fit}. This is a GLMM

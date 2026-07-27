@@ -1170,12 +1170,22 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' 2. If that fails to converge cleanly, switch the optimiser to
 #'    `optim` with `BFGS`:
 #'    `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))`.
-#' 3. For factor-analytic models, try
+#' 3. For factor-analytic models you can try
 #'    `start_method = list(method = "res", jitter.sd = 0.2)`. This fits
-#'    the fixed-effects part first, decomposes the residual matrix into
-#'    starting values for \eqn{\Lambda} and the latent scores, and can be
-#'    combined with `n_init > 1` to check whether the optimiser repeatedly
-#'    reaches the same likelihood basin.
+#'    the fixed-effects part first and decomposes the residual matrix into
+#'    starting values for \eqn{\Lambda} and the latent scores.
+#'
+#'    **Compare its objective against the default start before trusting
+#'    it.** A residual-informed start commits the optimiser to the leading
+#'    direction of the residual covariance, and on a multimodal
+#'    reduced-rank surface that is not always the best basin. In Gaussian
+#'    three-trait `d = 1` fits it reached a worse optimum than the default
+#'    start in 4 of 21 simulated data sets — by as much as 14.6 log-likelihood
+#'    units — with `convergence == 0` and a positive-definite Hessian on
+#'    both sides. Restarts do not reliably detect this: in one such fit all
+#'    five `n_init = 5` restarts returned the same worse optimum. The
+#'    cheap check is to fit once with `gllvmTMBcontrol()` and once with
+#'    this start method and keep the lower `-logLik`.
 #' 4. For Gaussian two-level models, prefer
 #'    `start_method = list(method = "indep")` or manually fit a simpler
 #'    model and pass it through `start_from = simpler_fit`. This is a GLMM

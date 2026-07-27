@@ -212,12 +212,42 @@ table as a menu of things to try on a hard fit, not a proven policy.
 |---|---|---|
 | No warning or competing objective yet | Use the default first | `gllvmTMBcontrol()` |
 | Starts reach different objective values | Add restarts and modest jitter | `gllvmTMBcontrol(n_init = 5, init_jitter = 0.1)` |
-| A non-Gaussian reduced-rank fit repeatedly stops poorly | Seed loadings and scores from residual structure | `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))` |
+| A non-Gaussian reduced-rank fit repeatedly stops poorly | Seed loadings and scores from residual structure — but see the warning below | `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))` |
 | A Gaussian two-level latent fit is sensitive to its initial covariance | Warm-start from the matching independent model | `gllvmTMBcontrol(start_method = list(method = "indep"))` |
 | A scientifically sensible simpler fit is already available | Copy compatible starting parameters | `gllvmTMBcontrol(start_from = simpler_fit)` |
 | A fitted `phi` parameter is unstable, especially for NB1/NB2 | Warm up dispersion trait by trait | `gllvmTMBcontrol(init_strategy = "single_trait_warmup")` |
 | `nlminb` does not reach a stationary point | Compare `optim` with BFGS | `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))` |
 | Point estimates are stable but Wald calculation is the fragile step | Deliberately skip standard errors | `gllvmTMBcontrol(se = FALSE)` |
+
+### A residual-informed start can reach a worse optimum
+
+`start_method = list(method = "res")` seeds the loadings from the leading
+direction of the residual covariance. On a multimodal reduced-rank surface that
+direction is not always the best basin, and when it is not, **nothing in the
+output says so**.
+
+In Gaussian three-trait `d = 1` fits — the exactly identified corner, where one
+per-trait variance is prone to collapsing to zero — a residual start reached a
+worse optimum than the default in 4 of 21 simulated data sets, by up to 14.6
+log-likelihood units. In every one of those, both fits reported
+`convergence == 0` and a positive-definite Hessian. Restarts are not a reliable
+guard either: in one such fit all five `n_init = 5` restarts returned the same
+worse optimum.
+
+The remedy is direct comparison. Fit once each way and keep the lower `-logLik`:
+
+```r
+fit_default <- gllvmTMB(form, data = dat)
+fit_res     <- gllvmTMB(form, data = dat,
+  control = gllvmTMBcontrol(start_method = list(method = "res")))
+c(default = fit_default$opt$objective, res = fit_res$opt$objective)
+```
+
+`check_gllvmTMB()` will also now flag a variance component that has collapsed
+relative to its siblings, which is the usual signature of this situation.
+
+Two limits on that evidence: it is Gaussian, and it is the `d = 1` corner. The
+same sweep found no such disagreement at `d = 2`, `d = 3`, or with five traits.
 
 For a difficult model, start with more than one restart and inspect
 `fit$restart_history`. This is currently a low-level fitted-object diagnostic

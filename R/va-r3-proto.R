@@ -340,6 +340,74 @@
   if (length(out) == 1L && grepl("^[0-9a-f]{40}$", out)) out else NA_character_
 }
 
+## Rotate a T x q loadings matrix Lambda (from an eigendecomposition, hence
+## generally dense) into the lower-triangular form .va_r3_pack_theta_rr()
+## requires, without changing Lambda %*% t(Lambda).  Factor loadings are only
+## identified up to a right-orthogonal rotation, so this picks the rotation Q
+## (q x q) that makes the top q x q block lower triangular: an LQ
+## decomposition of that block, obtained via the QR decomposition of its
+## transpose (t(L1) = Q1 R1 => L1 = t(R1) %*% t(Q1) => L1 %*% Q1 = t(R1),
+## lower triangular; Q1 is a legitimate rotation because it is orthogonal).
+## Below-block rows automatically satisfy the packer's zero-pattern
+## regardless of rotation.  QR leaves a strict-upper block that is
+## numerically ~0 rather than exactly 0, so it is hard-zeroed afterwards
+## (after checking it really is negligible).
+.va_r3_rotate_to_lower_triangular <- function(Lambda, q) {
+  L1 <- Lambda[seq_len(q), seq_len(q), drop = FALSE]
+  Q1 <- qr.Q(qr(t(L1)))
+  rotated <- Lambda %*% Q1
+  upper <- row(rotated) < col(rotated)
+  if (any(upper) && max(abs(rotated[upper])) > 1e-6) return(NULL)
+  rotated[upper] <- 0
+  rotated
+}
+
+## Factor-analytic warm start for the loadings: eigendecompose the
+## correlation of the link-scale residuals (response pseudo-data minus the
+## fixed-effect contribution already estimated in beta) and take the first q
+## eigenvectors, scaled by sqrt(eigenvalue), as Lambda.  This mirrors gllvm's
+## starting.val = "res".  Returns NULL (caller falls back to the constant
+## start) on any degeneracy: too few units, non-finite correlations, a
+## non-finite eigendecomposition, or a rotation that fails the lower-triangle
+## check above.
+.va_r3_warm_theta_rr <- function(data, beta) {
+  N <- data$N
+  T <- data$T
+  q <- data$q
+  if (N < 2L) return(NULL)
+  eta_fixed <- as.numeric(data$X %*% beta)
+  pseudo <- if (data$family == 1L) {
+    prop <- pmin(pmax((data$y + 0.5) / (data$n_trials + 1), 1e-6), 1 - 1e-6)
+    stats::qlogis(prop)
+  } else if (data$family == 2L) {
+    log(data$y + 0.5)
+  } else {
+    data$y
+  }
+  resid <- pseudo - eta_fixed
+  Z <- matrix(NA_real_, nrow = N, ncol = T)
+  Z[cbind(data$unit_id + 1L, data$trait_id + 1L)] <- resid
+  if (anyNA(Z) || !all(is.finite(Z))) return(NULL)
+  cor_Z <- tryCatch(stats::cor(Z), error = function(e) NULL)
+  if (is.null(cor_Z) || !all(is.finite(cor_Z))) return(NULL)
+  eig <- tryCatch(eigen(cor_Z, symmetric = TRUE), error = function(e) NULL)
+  if (is.null(eig) || !all(is.finite(eig$values)) || !all(is.finite(eig$vectors))) {
+    return(NULL)
+  }
+  Lambda <- eig$vectors[, seq_len(q), drop = FALSE] %*%
+    diag(sqrt(pmax(eig$values[seq_len(q)], 0)), nrow = q, ncol = q)
+  Lambda <- tryCatch(.va_r3_rotate_to_lower_triangular(Lambda, q),
+                     error = function(e) NULL)
+  if (is.null(Lambda) || !all(is.finite(Lambda))) return(NULL)
+  theta_rr <- tryCatch(.va_r3_pack_theta_rr(Lambda, q), error = function(e) NULL)
+  if (is.null(theta_rr) ||
+      length(theta_rr) != .va_r3_theta_length(T, q) ||
+      !all(is.finite(theta_rr))) {
+    return(NULL)
+  }
+  theta_rr
+}
+
 .va_r3_default_parameters <- function(data, start_id = 1L) {
   N <- data$N
   T <- data$T
@@ -362,12 +430,25 @@
   }
   if (length(beta_fit) == p && all(is.finite(beta_fit))) beta <- unname(beta_fit)
 
-  theta_rr <- rep(0, .va_r3_theta_length(T, q))
-  diagonal_scale <- c(0.10, -0.10, 0.20, -0.20)[start_id]
-  theta_rr[seq_len(q)] <- diagonal_scale * rep(c(1, -1), length.out = q)
-  if (length(theta_rr) > q && start_id > 1L) {
-    k <- seq_len(length(theta_rr) - q)
-    theta_rr[-seq_len(q)] <- (0.01 * start_id) * sin(k)
+  ## Start 1 = the factor-analytic warm start (data-driven loadings).  Starts
+  ## 2-4 add the pre-existing jitter pattern on top of that same warm base,
+  ## rather than replacing it, so the 4-start agreement gate still probes
+  ## genuinely different starting points.  A degenerate/non-finite warm start
+  ## falls back to the original constant-diagonal start for all four starts.
+  theta_rr <- .va_r3_warm_theta_rr(data, beta)
+  if (is.null(theta_rr)) {
+    theta_rr <- rep(0, .va_r3_theta_length(T, q))
+    theta_rr[seq_len(q)] <- c(0.10, -0.10, 0.20, -0.20)[1L] *
+      rep(c(1, -1), length.out = q)
+  }
+  if (start_id > 1L) {
+    diagonal_scale <- c(0.10, -0.10, 0.20, -0.20)[start_id]
+    theta_rr[seq_len(q)] <- theta_rr[seq_len(q)] +
+      diagonal_scale * rep(c(1, -1), length.out = q)
+    if (length(theta_rr) > q) {
+      k <- seq_len(length(theta_rr) - q)
+      theta_rr[-seq_len(q)] <- theta_rr[-seq_len(q)] + (0.01 * start_id) * sin(k)
+    }
   }
   m <- matrix(0, nrow = N, ncol = q)
   log_L_diag <- matrix(0, nrow = N, ncol = q)

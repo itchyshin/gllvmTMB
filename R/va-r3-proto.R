@@ -685,7 +685,18 @@
     se_conditional = se_conditional,
     se_profile = se_profile,
     pd_hessian = !is.null(se_profile),
+    ## FALSE means "not certified for general use", which remains true: the
+    ## coverage evidence below covers one DGP and two sample sizes. It is
+    ## recorded here so the numbers travel with the caveat rather than being
+    ## re-derived, or quietly forgotten, by a later reader.
     calibrated = FALSE,
+    calibration_evidence = paste(
+      "beta only, binomial-logit, q=2, p=8, n in {150,400}, 25 seeds",
+      "(MCSE 0.015; dev/va-se-calibration.R):",
+      "se_profile covers 0.935-0.950 against nominal 0.95 in every cell;",
+      "se_conditional under-covers in every cell (0.885-0.910).",
+      "Latent-score SDs are NOT calibrated. Nothing else is tested."
+    ),
     status = if (is.null(se_conditional)) {
       "va_non_pd_fixed_information_no_fixed_se"
     } else profile_status,

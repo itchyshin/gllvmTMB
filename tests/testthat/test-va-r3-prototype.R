@@ -299,6 +299,54 @@ test_that("R3 fixed-parameter information marginalises the variational block", {
   expect_match(broken$status, "hessian_error")
 })
 
+test_that("R3 blocked information reproduces the dense Schur complement exactly", {
+  ## The blocked route never forms the dense Hessian. It relies on units being
+  ## conditionally independent given the fixed parameters, so H_vv is EXACTLY
+  ## block diagonal. That is a structural claim about the model, and this test
+  ## is what verifies it rather than assuming it: if any cross-unit second
+  ## derivative were non-zero, the two routes would disagree here.
+  set.seed(31)
+  n <- 60L; p <- 5L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.6)
+  fit <- .va_r3_fit(
+    y = rbinom(n * p, 1L, plogis(eta)), n_trials = rep(1L, n * p),
+    X = stats::model.matrix(~ 0 + trait, long),
+    unit_id = as.integer(long$unit), trait_id = as.integer(long$trait),
+    q = 2L, family = "binomial", link = "logit", H = 15L
+  )
+
+  dense <- .va_r3_fixed_information(fit$objective, fit$best$par)
+  blocked <- .va_r3_fixed_information_blocked(fit$objective, fit$best$par,
+                                              N = n, q = 2L)
+
+  expect_identical(dense$status, "ok")
+  expect_identical(blocked$status, "ok")
+  expect_identical(blocked$route, "blocked")
+  expect_true(blocked$pd_hessian)
+
+  ## Agreement to numerical precision -- this is the load-bearing assertion.
+  expect_equal(blocked$se_profile, dense$se_profile, tolerance = 1e-8)
+  expect_equal(blocked$se_conditional, dense$se_conditional, tolerance = 1e-8)
+
+  ## The anti-conservatism invariant must hold on the blocked route too.
+  expect_true(all(blocked$se_profile >= blocked$se_conditional * (1 - 1e-8)))
+  expect_false(blocked$calibrated)
+
+  ## The index map must place every variational coordinate exactly once.
+  map <- .va_r3_variational_index_map(names(fit$best$par), N = n, q = 2L)
+  expect_identical(dim(map), c(n, 5L))          # k = 2q + q(q-1)/2 = 5
+  expect_identical(anyDuplicated(as.integer(map)), 0L)
+  expect_setequal(
+    as.integer(map),
+    which(names(fit$best$par) %in% c("m", "log_L_diag", "L_off"))
+  )
+})
+
 test_that("R3 family registry agrees with the validator and drives eval_method", {
   ## The registry is the declared per-family evaluation contract. It must not
   ## drift from .va_r3_validate_data(), which is what actually assigns the

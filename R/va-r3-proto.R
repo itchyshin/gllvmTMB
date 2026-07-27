@@ -654,6 +654,165 @@
 ## Neither SE is calibrated. Variational posteriors understate spread, and the
 ## size of that understatement here is unmeasured, so `calibrated` stays FALSE
 ## until a coverage study fills it in.
+## Positions of each unit's variational coordinates within the parameter vector.
+##
+## The variational block is stored as three column-major matrices -- m (N x q),
+## log_L_diag (N x q) and L_off (N x q(q-1)/2) -- so a single unit's k = 2q +
+## q(q-1)/2 coordinates are SCATTERED through the vector, not contiguous.
+## Returns an N x k matrix of absolute positions, column c being the c-th
+## within-unit coordinate for every unit.
+.va_r3_variational_index_map <- function(par_names, N, q) {
+  N <- as.integer(N)
+  q <- as.integer(q)
+  n_off <- as.integer(q * (q - 1L) / 2L)
+  columns <- list()
+  for (group in c("m", "log_L_diag", "L_off")) {
+    idx <- which(par_names == group)
+    n_col <- if (identical(group, "L_off")) n_off else q
+    if (!length(idx)) {
+      if (n_col > 0L) {
+        stop("variational group ", group, " is absent from par.", call. = FALSE)
+      }
+      next
+    }
+    if (length(idx) != N * n_col) {
+      stop("variational group ", group, " has an unexpected length.", call. = FALSE)
+    }
+    for (j in seq_len(n_col)) {
+      columns[[length(columns) + 1L]] <- idx[(j - 1L) * N + seq_len(N)]
+    }
+  }
+  if (!length(columns)) return(matrix(integer(), nrow = N, ncol = 0L))
+  do.call(cbind, columns)
+}
+
+## Hessian blocks WITHOUT forming the dense Hessian.
+##
+## Two structural facts make this O(N) in memory and O(1) in gradient calls:
+##
+##  * Units are conditionally independent given the fixed parameters, so H_vv is
+##    EXACTLY block diagonal -- N blocks of k x k. Differencing the gradient
+##    along "within-unit coordinate j of EVERY unit at once" therefore returns
+##    column j of every block simultaneously, with no cross-unit contamination.
+##    That is 2k gradient calls for the whole of H_vv, independent of N.
+##  * H_fv has only length(fixed) rows, so differencing along each fixed
+##    coordinate gives it in 2 * length(fixed) calls and it stays small.
+##
+## At n = 5397, q = 2 this replaces a 27,002^2 dense Hessian (~5.8 GB) with
+## ~44 gradient evaluations and a few MB.
+.va_r3_hessian_blocks <- function(objective, par, fixed_idx, index_map,
+                                  step = 1e-5) {
+  gradient <- function(p) objective$gr(p)
+  central <- function(direction) {
+    up <- par; down <- par
+    up[direction] <- up[direction] + step
+    down[direction] <- down[direction] - step
+    (as.numeric(gradient(up)) - as.numeric(gradient(down))) / (2 * step)
+  }
+
+  ## Columns of H at the fixed coordinates: gives H_ff and H_fv in one sweep.
+  n_fixed <- length(fixed_idx)
+  fixed_columns <- vapply(fixed_idx, function(i) central(i),
+                          numeric(length(par)))
+  H_ff <- fixed_columns[fixed_idx, , drop = FALSE]
+  ## Symmetrise: central differences of an exact gradient are symmetric only up
+  ## to truncation error, and the Schur complement below needs symmetry.
+  H_ff <- (H_ff + t(H_ff)) / 2
+
+  k <- ncol(index_map)
+  N <- nrow(index_map)
+  blocks <- array(0, dim = c(k, k, N))
+  for (j in seq_len(k)) {
+    delta <- central(index_map[, j])
+    for (c in seq_len(k)) {
+      blocks[c, j, ] <- delta[index_map[, c]]
+    }
+  }
+  ## Symmetrise each block for the same reason.
+  for (i in seq_len(N)) {
+    blocks[, , i] <- (blocks[, , i] + t(blocks[, , i])) / 2
+  }
+
+  list(H_ff = H_ff, fixed_columns = fixed_columns, blocks = blocks,
+       n_fixed = n_fixed, k = k, N = N)
+}
+
+## Block-structured route: same Schur complement, without the dense Hessian.
+## Use this whenever the variational block is large; it is O(N) in memory and
+## uses ~2*(n_fixed + k) gradient calls regardless of N.
+.va_r3_fixed_information_blocked <- function(objective, par, N, q) {
+  fail <- function(status) {
+    list(se_conditional = NULL, se_profile = NULL, pd_hessian = FALSE,
+         calibrated = FALSE, status = status, route = "blocked")
+  }
+  nm <- names(par)
+  if (is.null(nm)) return(fail("va_unnamed_par_no_fixed_se"))
+  fixed_idx <- which(nm %in% c("beta", "theta_rr"))
+  if (!length(fixed_idx)) return(fail("va_no_fixed_block_no_fixed_se"))
+
+  index_map <- tryCatch(.va_r3_variational_index_map(nm, N, q),
+                        error = function(e) NULL)
+  if (is.null(index_map) || !ncol(index_map)) {
+    return(fail("va_variational_layout_unrecognised"))
+  }
+
+  parts <- tryCatch(
+    .va_r3_hessian_blocks(objective, par, fixed_idx, index_map),
+    error = function(e) NULL
+  )
+  if (is.null(parts)) return(fail("va_hessian_error_no_fixed_se"))
+
+  se_from <- function(info) {
+    ok <- tryCatch({ chol(info); TRUE }, error = function(e) FALSE)
+    if (!ok) return(NULL)
+    covariance <- tryCatch(solve(info), error = function(e) NULL)
+    if (is.null(covariance)) return(NULL)
+    d <- diag(covariance)
+    if (any(!is.finite(d)) || any(d < 0)) return(NULL)
+    stats::setNames(sqrt(d), nm[fixed_idx])
+  }
+
+  se_conditional <- se_from(parts$H_ff)
+
+  ## Schur complement accumulated one unit at a time:
+  ##   H_ff - sum_i H_fv,i B_i^{-1} H_fv,i'
+  ## H_fv,i is n_fixed x k, read out of the fixed columns at unit i's positions.
+  correction <- matrix(0, parts$n_fixed, parts$n_fixed)
+  singular <- FALSE
+  for (i in seq_len(parts$N)) {
+    H_fv_i <- parts$fixed_columns[index_map[i, ], , drop = FALSE]  # k x n_fixed
+    solved <- tryCatch(solve(parts$blocks[, , i], H_fv_i), error = function(e) NULL)
+    if (is.null(solved)) { singular <- TRUE; break }
+    correction <- correction + crossprod(H_fv_i, solved)
+  }
+
+  se_profile <- NULL
+  profile_status <- "ok"
+  if (singular) {
+    profile_status <- "va_singular_variational_block"
+  } else {
+    schur <- parts$H_ff - correction
+    schur <- (schur + t(schur)) / 2
+    se_profile <- se_from(schur)
+    if (is.null(se_profile)) profile_status <- "va_non_pd_profile_information"
+  }
+
+  list(
+    se_conditional = se_conditional,
+    se_profile = se_profile,
+    pd_hessian = !is.null(se_profile),
+    calibrated = FALSE,
+    route = "blocked",
+    status = if (is.null(se_conditional)) {
+      "va_non_pd_fixed_information_no_fixed_se"
+    } else profile_status,
+    basis = paste(
+      "observed information of the negative ELBO via block-diagonal Schur;",
+      "se_profile marginalises the variational block, se_conditional does not"
+    )
+  )
+}
+
 .va_r3_fixed_information <- function(objective, par,
                                      max_variational = 6000L) {
   fail <- function(status) {
@@ -696,8 +855,6 @@
   profile_status <- "ok"
   if (!length(var_idx)) {
     profile_status <- "va_no_variational_block"
-  } else if (length(var_idx) > max_variational) {
-    profile_status <- "va_variational_block_too_large_for_dense_schur"
   } else {
     H_fv <- hessian[fixed_idx, var_idx, drop = FALSE]
     H_vv <- hessian[var_idx, var_idx, drop = FALSE]

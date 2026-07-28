@@ -5445,7 +5445,37 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         if (n_ok >= 2L && is.finite(shift) && shift < shift_tol &&
             ((is.finite(g_cur) && g_cur < grad_tol) ||
              (is.finite(dF) && abs(dF) < f_tol))) {
-          aghq_stop <- "converged (mode shift and honest objective settled)"
+          ## STUCK IS NOT SETTLED. The test above is an OR, so the f_tol leg can
+          ## fire alone -- and it fires most easily in the one case where it means
+          ## the opposite of convergence: the optimiser took its capped iteration,
+          ## moved NOTHING, so dF is exactly 0 and the re-adapted mode is
+          ## identical, and "nothing changed twice" is read as "settled".
+          ##
+          ## Measured on poisson (T = 6, n = 200), the whole run:
+          ##   pass 1  obj 2425.227  grad_max 0.5012  mode_shift Inf
+          ##   pass 2  obj 2425.227  grad_max 0.5012  mode_shift 0
+          ## -> declared "converged" at a gradient 5000x its own tolerance, having
+          ## never left the Laplace warm start. That is how AGHQ came to return
+          ## Laplace bit-for-bit while reporting success (D-43, 2026-07-28).
+          ##
+          ## The stop still happens -- there is no evidence more passes would
+          ## help, and forcing them risks the binomial path that genuinely
+          ## converges here (12 passes, par_shift 0.55). What changes is that it
+          ## is no longer CALLED convergence when the gradient says otherwise.
+          stalled <- isTRUE(identical(par_cur, par_start_aghq)) &&
+            is.finite(g_cur) && g_cur >= grad_tol
+          aghq_stop <- if (stalled) {
+            sprintf(paste0("STALLED at the warm start: the optimiser moved nothing, ",
+                           "so the objective and adaptation mode were unchanged; ",
+                           "max |grad| = %.3g against a tolerance of %.3g. NOT converged."),
+                    g_cur, grad_tol)
+          } else if (is.finite(g_cur) && g_cur < grad_tol) {
+            "converged (adaptation mode fixed; gradient below tolerance)"
+          } else {
+            sprintf(paste0("stopped: adaptation mode fixed and objective stagnated, ",
+                           "but max |grad| = %.3g exceeds the tolerance of %.3g"),
+                    g_cur, grad_tol)
+          }
           break
         }
         ## Continuation: after a run of accepted passes, let the optimiser take

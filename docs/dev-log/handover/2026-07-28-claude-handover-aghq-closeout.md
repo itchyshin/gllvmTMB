@@ -69,7 +69,32 @@ e35dfb79 evidence(aghq): first coverage evidence — shipped default covers 0.66
 9995a458 docs(decisions): fresh D-43 returns 2 NOT-DONE — four of my statements wrong
 ```
 
-## 🔴 NEXT ARC — MULTINOMIAL AGHQ (Shinichi, 2026-07-28)
+## 🔴 START HERE — THE NEXT ARC IS PLANNED
+
+**`docs/dev-log/2026-07-28-next-arc-sigma-intervals-ULTRAPLAN.md`** — a 10 h (7–12) ultra-plan
+with a copy-paste GOAL block, a Phase 0.25 sweep receipt, and 8 slices. Read it before
+anything else.
+
+**Its headline is NOT AGHQ.** Two panels converged on the same root cause: **gllvmTMB has no
+trustworthy standard error for Σ = ΛΛ'.** `src/gllvmTMB.cpp:910-912` REPORTs Σ_B rather than
+ADREPORTing it, `confint()` returns NA for a reduced-rank fit, and the delta route built this
+arc failed its own pre-registered SE/SD gate in 45 of 48 cells. Every coverage number in this
+arc — favourable and unfavourable alike — was instrument-limited, and two headline findings
+were retracted for exactly that reason. Interval coverage is also the 0.6 release's own
+headline gap, so fixing the instrument unblocks the AGHQ question, the Laplace question and a
+release gate at once.
+
+Slice order: **Ranga prior-art sweep first** (do `gllvm` / `Hmsc` / `boral` / `sdmTMB` already
+solve this? near-zero token cost, citation-backed, and the slice most likely to change the
+plan) ‖ interval-route inventory ‖ **poisson stall ROOT CAUSE** — then the validated Σ route
+‖ multinomial, then re-measure, adversarial verify, D-43 panel.
+
+**Risk branch worth knowing up front:** if the stall turns out to be a genuinely flat
+objective rather than an optimiser-handoff bug, AGHQ cannot help those cells at all and
+multinomial should be DEFERRED — adding a family to an engine that cannot make progress just
+widens an unusable surface. The plan is allowed to end there.
+
+## MULTINOMIAL AGHQ — the analysis, so you don't re-derive it (Shinichi asked for this arc)
 
 Shinichi's explicit instruction: **close this arc, then implement AGHQ for multinomial in
 the next one.** The analysis is already done and is on the capability surface — recording

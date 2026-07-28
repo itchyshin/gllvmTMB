@@ -1983,7 +1983,8 @@ confint.gllvmTMB_multi <- function(
   ## under Lambda. Fall back to bootstrap with a clear advisory.
   cli::cli_inform(c(
     "Profile CIs on {parm} entries when {.code latent()} is present require fix-and-refit on a non-linear function of multiple rotation-equivalent parameters and are unstable.",
-    "i" = "Falling back to {.code method = \"bootstrap\"}; pass {.code nsim} to control replicate count."
+    "i" = "Falling back to {.code method = \"bootstrap\"}; pass {.code nsim} to control replicate count.",
+    "!" = "The bootstrap fallback is {.strong not coverage-calibrated} for this target. It returns bounds, which is not evidence of nominal repeated-sampling coverage; treat them as exploratory."
   ))
   ## Reuse the bootstrap path with the caller's controls.
   return(.confint_sigma_bootstrap(

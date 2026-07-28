@@ -54,6 +54,45 @@ and record whatever it returns.
 THIS IS A TWO-SESSION ARC. Session A ends after S6/S8; hand over; Session B runs the campaign.
 ```
 
+> # 🔴 EXECUTION FINDING — S5a's DESIGN IS NOT IMPLEMENTABLE AS WRITTEN. READ BEFORE S5a.
+>
+> **S4b (2026-07-28) establishes that boundary DETECTION cannot be done with the information
+> available at the point the threshold is applied.** The GOAL block below still says the deliverable
+> is *"mixture iff the constrained optimum is at the boundary"*. **That instruction is now known to
+> be unbuildable on the current profile path.** Four independent reasons, each verified against
+> installed TMB 1.9.21 source and the package:
+>
+> 1. `TMB::tmbprofile()`'s inner refit is **unconstrained** — `nlminb(start, newfn, newgr, control)`,
+>    no `lower=`/`upper=`.
+> 2. Its **convergence status is discarded**. `tmbprofile()` returns **exactly two columns**
+>    (parameter, value). No convergence code, gradient norm, or active-set flag reaches the caller;
+>    `.profile_bounds()` consumes only those two (`R/profile-ci.R:111-112`).
+> 3. **No `parm.range` is ever imposed** in the certified path (`R/profile-ci.R:234` defaults to
+>    `c(-Inf, Inf)`; `.tmbprofile_block()` :305-313 has no such argument).
+> 4. **Decisive: the log-SD parameterisation puts SD = 0 at −∞** (`src/gllvmTMB.cpp:995`,
+>    `sd_B = exp(theta_diag_B)`). There is no finite boundary to detect, so "the optimum is at the
+>    boundary" is not a well-defined test here.
+>
+> **This does not kill the arc — it relocates the problem.** The statistical phenomenon is real: a
+> variance component at or near zero still produces an LR statistic with a point mass, whatever the
+> parameterisation. What is lost is the *detection mechanism*, not the defect.
+>
+> **What currently stands in for detection is itself a defect in the CERTIFIED path.**
+> `.profile_bounds()`'s `find_cross()` (`R/profile-ci.R:122-159`) treats "the trace never crossed
+> within ~20 adaptive steps" as "hit the boundary" and returns ±Inf. **A merely SLOW profile is
+> indistinguishable from a genuine boundary case.** That is in the already-certified diagonal cell,
+> not only in the routes the design doc marks blocked.
+>
+> **S5a must therefore choose a route before it writes code** — this is a decision for Shinichi, not
+> an agent: **(a)** raise the step budget so slowness is excluded, then treat non-crossing as
+> boundary — cheap, but still a heuristic; **(b)** a **simulated / parametric-bootstrap RLRT null
+> reference**, which sidesteps detection entirely and is the literature's usual answer; **(c)** an
+> explicit **LRT against the reduced model** with the component removed, where the boundary null is
+> known by construction rather than detected; **(d)** expose optimizer status through a patched
+> profile path, which is the largest change and duplicates the "optimizer-status ledger" the route
+> matrix already names as a missing gate. **S2's Q4 asks exactly this of the boundary-asymptotics
+> corpus; do not commit to a route before that returns.**
+
 > **Revision note (2026-07-28, refinement pass).** This replaces the first draft of this plan.
 > Changed: S5 promoted from prerequisite bugfix to the load-bearing slice, with a boundary-
 > **detection** deliverable and a bundled re-certification arm; Design 76 added to the sweep
@@ -234,16 +273,40 @@ z-vs-t site).
   number is computed, let alone quoted, until both are in hand. Last arc wrote that rule into its
   own script and skipped it — `25-coverage-fixedtruth.R:26-31`, and a panel found it fails in 45
   of 48 cells.
-* **🔴 S7 PRECONDITION — locate the artifact behind the certified number first.**
-  `docs/dev-log/decisions.md:2130-2135` records the *claim* (Gaussian `Sigma_unit` diagonal,
-  n ≥ 150, d ≤ 2, ~0.946–0.948 against a 0.94 gate) but **names no producing script**; the number
-  originates in the 2026-07-17 coverage-shipped arc (`dd80244a`), and `dev/` holds no obviously
-  matching `Sigma_unit` coverage script (`cross-family-coverage.R`, `lv-effects-ci-coverage.R`,
-  `lv-wald-coverage.R` are the near neighbours). **Before S7 runs, either find and re-run that
-  script, or state plainly that the re-certification arm is a FRESH MEASUREMENT and not a
-  like-for-like re-measurement.** Comparing a new harness's number against a remembered one and
-  calling the certificate "carried over" would be exactly this arc's failure mode — a correct
-  theory and an unverified mechanism agreeing, and the agreement stopping the checking.
+* **✅ S7 PRECONDITION — RESOLVED by S4b. The certificate's script is FOUND; it must be PORTED.**
+  `docs/dev-log/decisions.md:2130-2135` records the claim but names no script. S4b located it in
+  git history: **`dev/profile-rescore-run.R` + `dev/totoro-profile-rescore.sh`, commit `829c34cd`**
+  (2026-07-16, *"genuine profile + log-SD delta-Wald on Sigma_unit total variance V_t"*), together
+  with +301 lines in `R/profile-derived.R` (`.total_variance_spec()`,
+  `.profile_ci_total_variance()`, `.wald_ci_total_variance_logsd()`) and the `dev/m3-grid.R` wiring
+  for `profile_total` / `wald_t_logsd` / `coverage_certificate`. It lives on
+  `claude/release-0.5.0` and `claude/profile-coverage-remeasure-20260718` and is **NOT an ancestor
+  of this lane** (`git merge-base --is-ancestor 829c34cd HEAD` → false; `ls dev/` has no
+  `profile-rescore*`). `dd80244a` is the public-flip commit only and contains no script.
+  **So: port `829c34cd`'s scripts and wiring onto this lane BEFORE S7, and the re-certification arm
+  is then genuinely like-for-like.** This supersedes the weaker fallback recorded in `f6a317c7`
+  ("state it is a fresh measurement"). ⚠ The committed MCSE pointer `m3-pilot-report.R:768` is
+  **stale** — the file exists at HEAD (1658 lines), that line no longer holds the formula.
+* **🔴 NEW DEFECTS ON MAIN — from the recovered Codex review (S0), now that #801 has merged.**
+  Two are CONFIRMED and affect what this arc may assume:
+  - **`aghq = "auto"` does not use its advertised auto-routing (BLOCKING).**
+    `.aghq_auto_decide()` is **dead code — no call site**, so its trait-count cutoff and
+    decline-on-expensive-gate policy never affect a fit. The per-family optimizer recommendation is
+    inert too: `.aghq_resolve()` returns `optimizer`/`optArgs` but `.gllvmTMB_aghq_k()` keeps only
+    `k`, and `run_one()` uses `control$optimizer`. `"auto"` is materially less conservative than
+    documented. `R/fit-multi.R:5043, :5073, :6191, :4888`.
+  - **Continuation controls are silently ignored (IMPORTANT — may invalidate prior runs).** The loop
+    reads `aghq_continuation`, `aghq_shift_tol`, `aghq_grad_tol`, `aghq_f_tol`,
+    `aghq_escalate_patience`, `aghq_rho_min`, but **none is a formal `gllvmTMBcontrol()` argument**
+    and `...` is ignored with a warning. `gllvmTMBcontrol(aghq_continuation = FALSE)` **does
+    nothing**; only direct mutation of the returned list works. `R/fit-multi.R:5241`,
+    `R/gllvmTMB.R:1253`. **Any earlier measurement that set one of these via `gllvmTMBcontrol()` was
+    misconfigured and did not test what it recorded — re-check before citing such a run.**
+  - *(minor, not user-facing)* C++ does not validate `aghq_n_node > 0`; a direct TMB caller with a
+    zero-row grid reaches `aghq_logw(0)`. `src/gllvmTMB.cpp:2651`.
+  - **Reviewed and found SOUND:** the quadrature math (the `sqrt(2)` appears exactly once, via the R
+    grid), the shadowed-grid equivalence, state hygiene on examined paths, and the ridge
+    (`theta_rr_B / tau²` added in both wrapper and convergence gradient).
 * **The boundary-detection rule is tested as an object in its own right** — not merely "coverage
   improved". Report its misclassification rate beside the coverage.
 * **All four `.qchisq_threshold` callers carry regression evidence.** A change to a shared helper

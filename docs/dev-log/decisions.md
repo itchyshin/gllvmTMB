@@ -2117,3 +2117,36 @@ Poisson's null control, the complete-case coverage, nominal coverage, and now th
 defect. The last one is the sharpest because it was a NEGATIVE finding -- being unflattering
 to AGHQ did not protect it from being an artefact. **Direction of flattery is not a proxy for
 rigour. Compute the gate you wrote.**
+
+## 2026-07-28  CORRECTION — gllvmTMB DOES have a validated Σ interval route; I asserted an absence from a negative probe
+
+Decision: correct the framing of the next arc, and record the error, because it is the same
+one this arc spent all day documenting.
+
+**What I said:** "gllvmTMB has NO trustworthy standard error for Σ = ΛΛ'." Basis:
+`src/gllvmTMB.cpp:910-912` REPORTs rather than ADREPORTs Σ_B, and `confint()` returns NA for
+a reduced-rank fit. **Both true, and the conclusion does not follow.**
+
+**What is actually true.** There IS a validated route, it is a PROFILE route, and it WAS
+checked under Laplace: the Gaussian `Sigma_unit` DIAGONAL profile at n ≥ 150, d ≤ 2, coverage
+~0.946-0.948 against a 0.94 gate. It is the one coverage-certified cell in the package. An
+entire profile subsystem exists (`R/profile-ci.R`, `profile-route-matrix.R`,
+`profile-targets.R`, `profile-derived.R`) and the 2026-07-18 handover had ALREADY concluded
+that bootstrap is the wrong route here and profile / log-SD-Wald is the certificate path.
+
+**The precise gap, in the repo's own words** (`R/profile-route-matrix.R:631`): *"Pure diagonal
+Sigma_unit profiles directly; LOW-RANK TOTAL SIGMA FALLS BACK TO BOOTSTRAP."* Named gap:
+*"Target-explicit full-Sigma profile needs a separate gate."* Since AGHQ forces
+`unique = FALSE`, Σ = ΛΛ' is low-rank in every AGHQ fit, so the whole arc measured through
+that bootstrap fallback — which had already been ruled out for this target.
+
+**Consequences.**
+1. "Every coverage number was instrument-limited" OVER-REACHED. It is true of MY delta-route
+   numbers. It is NOT true of the pre-existing validated diagonal profile cell.
+2. The next arc gets cheaper and better founded: **extend a route that already carries a
+   coverage certificate**, rather than build a delta method from scratch. The repo has
+   already scoped the work.
+3. **The error is the arc's own recurring one.** [[CROSS-REPO-GUARDS]]: to check a capability
+   is PRESENT, USE it or read its vignette — a negative `exists`/probe cannot prove absence.
+   I ran two negative probes and concluded absence, having spent the day recording that
+   exact failure mode in others' work and my own. Caught by Shinichi, not by me.

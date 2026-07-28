@@ -3,9 +3,15 @@
 SOLO PLATFORM: CLAUDE. Worktree /private/tmp/gllvmtmb-arc0-identifiability, branch
 claude/aghq-engine-20260728 (PR #801 OPEN — merging is Shinichi's call, never a goal state).
 
-HEADLINE: gllvmTMB has NO trustworthy standard error for Σ = ΛΛ'. src/gllvmTMB.cpp:910-912
-REPORTs Σ_B rather than ADREPORTing it, confint() returns NA for a reduced-rank fit, and the
-delta route built on 2026-07-28 FAILED its own pre-registered SE/SD gate in 45 of 48 cells.
+HEADLINE: EXTEND THE EXISTING PROFILE ROUTE TO LOW-RANK Σ. gllvmTMB already HAS a
+simulation-validated interval route — the Gaussian Sigma_unit DIAGONAL profile at n≥150,
+d≤2, ~0.946-0.948 against a 0.94 gate, under Laplace. But R/profile-route-matrix.R:631 is
+explicit that "pure diagonal Sigma_unit profiles directly; LOW-RANK TOTAL SIGMA FALLS BACK TO
+BOOTSTRAP" — and the 2026-07-18 handover already concluded bootstrap is the WRONG route for
+this target. The repo names its own gap: "target-explicit full-Sigma profile needs a separate
+gate". Low-rank Σ = ΛΛ' (unique = FALSE) is exactly what the whole AGHQ arc measured, so
+every one of its coverage numbers went through the fallback. The delta route built on
+2026-07-28 to fill that hole FAILED its own pre-registered SE/SD gate in 45 of 48 cells.
 Every coverage number in the last arc — for AGHQ *and* for Laplace, favourable and
 unfavourable alike — was therefore instrument-limited, and two headline findings were
 retracted for exactly that reason. This is not an AGHQ problem: interval coverage is the
@@ -40,10 +46,26 @@ Four results dissolved under a mechanism check, and the last one is the diagnost
 The fourth matters most because it was an *unfavourable* finding. Direction of flattery gave
 no protection. What all four share is an untrustworthy or unchecked instrument.
 
-**So the binding constraint is the interval route, and it is not AGHQ-specific.** Per the
-capability surface, interval coverage is the 0.6 release's headline gap: no cell is
-coverage-certified, and `confint()` cannot even return a bound for a reduced-rank Σ. Fixing
-this unblocks the AGHQ question, the Laplace question, and a release gate simultaneously.
+**So the binding constraint is the interval route, and it is not AGHQ-specific.**
+
+**IMPORTANT CORRECTION to how this was first framed (Shinichi caught it).** It is NOT true
+that gllvmTMB has no trustworthy Σ interval. It has exactly one, it is a PROFILE route, and
+it WAS validated under Laplace: the Gaussian `Sigma_unit` diagonal at n≥150, d≤2, ~0.946-0.948
+against a 0.94 gate. Asserting an absence from a negative `ADREPORT`/`confint` probe was the
+same error this arc kept documenting — a negative probe cannot prove absence
+([[CROSS-REPO-GUARDS]]).
+
+The precise statement is narrower and more useful: **the validated route covers the pure
+diagonal; low-rank total Σ = ΛΛ' explicitly falls back to bootstrap**
+(`R/profile-route-matrix.R:631`), and bootstrap was already ruled out for this target on
+2026-07-18. Since `unique = FALSE` is forced everywhere AGHQ runs, the entire AGHQ arc
+measured through that fallback.
+
+This makes the arc CHEAPER and better founded: **extend a route that already has a coverage
+certificate, rather than build a delta method from scratch.** The repo has already scoped the
+work — "target-explicit full-Sigma profile needs a separate gate". Interval coverage is also
+the 0.6 release's headline gap, so this unblocks the AGHQ question, the Laplace question and
+a release gate at once.
 
 `ARC PROGRAM` — size mode, recommended **10 h** (range 7–12), confidence *inferred*.
 Two unknowns retired by S0/S1 before any build.
@@ -72,9 +94,9 @@ the first slice, because building an interval route without checking how `gllvm`
 | # | slice | member | model · effort | time | depends |
 |---|---|---|---|---|---|
 | **S0** | **Prior art on Σ uncertainty** — how do `gllvm`, `Hmsc`, `boral`, `sdmTMB`, and the factor-analysis literature report uncertainty on a reduced-rank covariance? Is there an established route (delta / profile / parametric bootstrap / posterior)? Any known pathology for ΛΛ' under rotational non-identifiability? | **Ranga** (NotebookLM) | n/a — runs outside context | 45 m | — |
-| **S1** | **Interval-route inventory** — every existing SE/CI path in `R/`, what `design/75` claims, what is dispatch-only vs calibrated, and exactly which quantities `sdreport` can and cannot reach today | recon | Haiku · low | 30 m | — |
+| **S1** | **Profile-route inventory** — read `R/profile-route-matrix.R`, `profile-ci.R`, `profile-targets.R`, `profile-derived.R` and `design/73`. What exactly does the validated diagonal profile do, why does low-rank fall back, and what would a target-explicit full-Σ profile need? This is now the load-bearing recon slice, not a survey | recon | **Sonnet · med** | 45 m | — |
 | **S2** | **Poisson stall ROOT CAUSE** — why does one capped iteration make no progress? Optimiser handoff, stale tape, or genuinely flat objective? These have opposite fixes. Last arc only *labelled* it | Curie | Sonnet · high | 120 m | — |
-| **S3** | **The Σ interval route, validated** — build on the log-SD convention; validate against the **within-truth empirical SD**, not the bootstrap; **COMPUTE the SE/SD gate and report it per cell as a precondition to quoting any coverage number** | Gauss | Sonnet · high | 180 m | S0, S1 |
+| **S3** | **EXTEND THE PROFILE ROUTE TO LOW-RANK Σ** — the target-explicit full-Σ profile the route matrix already names as its own gap. Reuse the validated diagonal profile machinery and the log-SD convention; do NOT rebuild a delta method. Validate against the **within-truth empirical SD**, not the bootstrap; **COMPUTE the SE/SD gate per cell as a precondition to quoting any coverage number** | Gauss | Sonnet · high | 180 m | S0, S1 |
 | **S4** | **Multinomial AGHQ** — move the grouped softmax reduction inside the node loop; assert a contrast group never straddles sites | Curie | Sonnet · high | 150 m | S2 |
 | **S5** | **Re-measure coverage on the fixed instrument** — 4 arms × fixed truths × lam_sd {0.5,1,3}, gate computed first | Gauss | Sonnet · med | 60 m + async | S3 |
 | **S6** | **Adversarial verify** — attack S3's validation specifically | Rose | Opus · high | 60 m | S3, S5 |

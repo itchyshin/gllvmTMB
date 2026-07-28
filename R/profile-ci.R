@@ -231,6 +231,34 @@
     p2 <- p_sub[i + 1L]
     e1 <- e_sub[i]
     e2 <- e_sub[i + 1L]
+    ## Interpolate on the ZETA scale rather than the deviance scale.
+    ##
+    ##   zeta = sign(theta - theta_hat) * sqrt(2 * (nll - nll_hat))
+    ##
+    ## For an exactly quadratic log-likelihood zeta is EXACTLY LINEAR in theta,
+    ## so linear interpolation in zeta is exact where interpolation in deviance
+    ## carries curvature error growing with grid spacing. The threshold on this
+    ## scale is exactly the normal quantile: |zeta| = sqrt(2 * crit)
+    ## = sqrt(qchisq(level, 1)) = qnorm((1 + level) / 2).
+    ##
+    ## Design lead: MixedModels.jl interpolates splines on the zeta scale
+    ## (docs/dev-log/2026-07-28-mixedmodels-jl-profile-lead.md). Read for design
+    ## only; no code ported.
+    zeta <- function(p, v) {
+      d <- 2 * (v - mle_val)
+      d[!is.finite(d) | d < 0] <- 0
+      sign(p - mle_par) * sqrt(d)
+    }
+    z1 <- zeta(p1, v_sub[i])
+    z2 <- zeta(p2, v_sub[i + 1L])
+    z_star <- if (side == "lower") -sqrt(2 * crit) else sqrt(2 * crit)
+    if (is.finite(z1) && is.finite(z2) && z2 != z1) {
+      return(list(
+        value = p1 + (z_star - z1) * (p2 - p1) / (z2 - z1),
+        status = "crossed"
+      ))
+    }
+    ## Fall back to the deviance scale if zeta is degenerate here.
     if (e2 == e1) {
       return(list(value = NA_real_, status = "failed"))
     }

@@ -2203,3 +2203,89 @@ non-identifiability?), since the small-sample-VC literature is already in the
 asking whether the interval convention was already decided. It was — REPO-VERIFIED, flagged
 *for this team*, with an issue number. **Query the brain before building the instrument, not
 after the panel rejects it.**
+
+## 2026-07-28  BRAIN SWEEP II — the house rules existed, and I broke two of them
+
+Decision: record what a four-way brain sweep returned on the next arc's open questions. It
+found established conventions I ran a whole coverage campaign without asking for, and two
+recorded failure modes I then reproduced.
+
+### A. COVERAGE CONVENTIONS — established, and I was two tiers below them
+
+REPO-VERIFIED, Design 66 §7 / Morris et al. 2019, one MCSE table:
+
+| n_sim | MCSE | status |
+|---|---|---|
+| ~200 | 1.54 pp | **pilot/smoke ONLY** — "cannot distinguish 94% from 95% from 92%" |
+| 1000 | 0.69 pp | "minimum defensible" |
+| **2000** | 0.49 pp | **the FLOOR for gate adjudication / certification** |
+
+**I ran 200 and 120 seeds and reported coverage against a 0.95 bar.** That is pilot grade.
+Design 66 separates the confirmatory CRAN gate (needs 2000) from register-promotion-only
+tiers (1000 acceptable). Neither of my runs reaches either.
+
+**FIXED TRUTH IS THE STANDING PRACTICE, not a discovery.** `m3_sample_truth(family, d, …)`
+draws ONE truth per design cell; replicates redraw DATA, not truth ("200 per design × truth
+cell"). Unbroken across M3 / Design 42 / Design 66, with no recorded debate or reversal. My
+first coverage cell redrew Λ every seed — I then "discovered" the confound the house
+convention already prevents, and treated fixing it as an innovation.
+
+### B. TWO RECORDED FAILURE MODES I REPRODUCED
+
+Of seven documented in prior campaigns, I hit two:
+* **#1 silent denominator laundering** — *"Failed fits, failed profiles and unavailable
+  intervals are part of the result. Do not compute coverage after silently removing them"*
+  (`74-phase-18-nbinom2-phylo-q1-ademp`). I reported complete-case coverage; the panel found
+  the asymmetric entry-level missingness.
+* **#5 reading a gate met at pilot n_sim as certification** — literally this, at 200 seeds.
+
+Avoided: #2 wrong/rotation-variant estimand (I used Σ, not Λ); #6 assuming bootstrap is the
+route; #7 single-panel claim.
+
+### C. AGHQ — a prior decision a new arc must reconcile with, and the regime tension
+
+* **A1 "stay Laplacian" was NOT "no AGHQ ever"** — it was *no engine implementation, add a
+  pedagogy caveat*. And **A3 explicitly ranks VA ABOVE AGHQ** as the priority post-CRAN
+  integrator, since AGHQ is infeasible at d ≥ 5 (k^d). A low-rank-Σ AGHQ arc must reconcile
+  with A1/A3 rather than assume they are superseded.
+* **The "flat likelihood" finding is LITERATURE-PREDICTED, not novel.** Rabe-Hesketh,
+  Skrondal & Pickles (2002): for discrete responses with small clusters and high ICC —
+  gllvmTMB's actual regime — *a single node can make the log-likelihood flat w.r.t. the
+  covariance parameters and drive posterior SDs to zero*; 5+ nodes typically needed. That is
+  a description of what I measured. It is already written up in the UNCOMMITTED out-of-lane
+  note `docs/dev-log/2026-07-22-quadrature-regime-trap-and-the-correlation-boundary-gap.md`.
+* **Laplace IS the 1-node member of the AGHQ family** — Liu & Pierce (1994), m-node GH error
+  O(n^−⌊m/3+1⌋), recovering O(n⁻¹) at m=1. The "1 node suffices" folklore comes from
+  Pinheiro & Bates (1995) on CONTINUOUS responses and must not be imported here.
+* **The stall is genuinely NEW.** The sweep searched specifically for a prior
+  adaptive-quadrature warm-start stall in drmTMB or elsewhere and found none. An honest
+  negative — this one we had not seen before.
+* **External corroboration, dated 2026-07-28:** a Bolker meeting brief
+  (`FOR-GLLVMTMB-2026-07-28-bolker-brief`) records independent agents converging on AGHQ over
+  VA/Laplace at **5-10 quadrature points**. Alex Stringer (Waterloo, AGHQ) is named as a
+  possible advisory contact but **has NOT agreed to anything** — do not cite him as involved.
+
+### D. MULTINOMIAL — far more exists than I assumed, and my plan was wrong about the work
+
+* **A phylo-multinomial factor arc was already SCOPED AND BUILT** (Design 84, Tier-2a,
+  2026-07-17, branch `claude/tier2a-phylo-multinomial`, commit `88d7820e`, with handover and
+  after-task).
+* **The pseudo-trait mechanism ALREADY EXISTS.** `expand_multinomial_response` turns the K−1
+  baseline contrasts into distinct pseudo-traits, so the per-trait `eta` loop already yields
+  category-specific loadings — **no new C++ for the factor route**. My handover said AGHQ
+  needs "bounded template work"; the real question is narrower than I framed it.
+* **A load-bearing precondition I did not know:** the multinomial logit's **latent scale is
+  non-identified**, and the RE covariance is estimable only if that residual is FIXED by
+  convention. Quadrature over the latent interacts with that convention — this must be
+  settled before any AGHQ-for-multinomial work.
+* **A regularization route is a recorded NEGATIVE marked "do NOT re-attempt"** (fixed
+  `R=(1/K)(I+J)` OLRE: mechanism active, recovery INERT).
+* **The real blocker is data-hungriness, not the integrator:** one-per-species multinomial
+  needs N≈800 (N=250 fails); the genuine fix is scoped as a **1.0-maturity arc**.
+
+### THE LESSON, and it is the one to carry
+
+I built an instrument, ran two campaigns and convened two panels without asking whether the
+conventions, the literature, or the prior attempt already existed. **They all did.** The
+sweep cost four parallel agents and a few minutes. **Query the brain BEFORE building, not
+after a panel rejects the result.**

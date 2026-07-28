@@ -1961,3 +1961,54 @@ observed 0.664. The mechanism is bias PLUS an SE deficiency, not bias alone.
 integral correctness is independently verified against an oracle and now regression-tested,
 and the shipped Laplace default under-covers in the one shape measured. Every comparative
 recovery and coverage claim remains WITHHELD.
+
+## 2026-07-28  Fixed-truth coverage RETRACTS the nominal-coverage claim — the confound was doing the work
+
+Decision: **withdraw** "AGHQ + ridge reaches nominal coverage at every n". It was an
+artefact of the DGP, exactly as D-43 lens 3 charged, and the corrected run says otherwise.
+5034 fits so far (partial, grid shuffled so it spans evenly), p=6 q=2 binomial, Totoro.
+
+**THE FIX.** The earlier cell (24-coverage) redrew the true Lambda ~ N(0, lam_sd) EVERY
+seed, so its "coverage" was marginalised over a Gaussian prior on Lambda -- and the ridge IS
+a Gaussian prior of the same functional form. 25-coverage-fixedtruth draws THREE truths ONCE
+(lam_sd 0.5 / 1.0 / 3.0, so the tau = 2 prior is too loose, well specified, and far too
+tight in turn) and resamples only the DATA within each.
+
+**Sigma diagonal coverage, coverage(2*MCSE lower band), nominal 0.95:**
+
+```
+              n=100            n=400            n=1600
+lam_sd 0.5  lap 0.838(.814)  lap 0.878(.855)  lap 0.906(.883)
+            a+r 0.850(.821)  a+r 0.932(.911)  a+r 0.939(.912)
+lam_sd 1.0  lap 0.849(.811)  lap 0.864(.841)  lap 0.710(.689)
+            a+r 0.951(.929)  a+r 0.933(.914)  a+r 0.892(.869)
+lam_sd 3.0  lap 0.171(.147)  lap 0.110(.088)  lap 0.023(.011)
+            a+r 0.938(.920)  a+r 0.810(.760)  a+r 0.669(.597)
+```
+
+**1. THE CLAIM IS RETRACTED.** At lam_sd = 1 -- the ONLY scale the earlier cell ran -- the
+same configuration reads 0.951 / 0.933 / **0.892**, degrading with n just as Laplace does.
+The earlier 0.951 at n=1600 was the confound. Of 36 cells, exactly ONE clears the 2*MCSE
+bar (lam_sd 1.0, n=100, `laplace_ridge` 0.968 / .955) -- and it is not an AGHQ arm.
+**NO CONFIGURATION IS COVERAGE-CERTIFIED.**
+
+**2. lam_sd = 3 IS THE WORST RESULT IN THIS ARC, and it is about the SHIPPED DEFAULT.**
+With large true loadings, Laplace covers **0.023 at n=1600** -- not a marginal shortfall,
+essentially zero. `laplace_ridge` is worse still (0.006), because tau = 2 against a true
+scale of 3 shrinks hard toward a wrong centre. This regime was never measured before because
+lam_sd had never been varied.
+
+**3. WHAT SURVIVES, and nothing more.** AGHQ beats Laplace on coverage in EVERY cell at
+matched ridge setting, and the gap widens with n (lam_sd 1, n=1600: 0.710 -> 0.847 unridged,
+0.706 -> 0.892 ridged). That is a real and consistent improvement. It is NOT nominal
+coverage, and must never again be reported as such.
+
+**4. THE PATTERN, recorded because it recurred all day.** This is the third time a flattering
+result dissolved under a mechanism check, and every instance had the same shape: a correct
+theory and a broken mechanism predicted the SAME number, and agreement with the prediction
+stopped the checking. Poisson's "null control" (AGHQ was not running), the complete-case
+coverage (asymmetric entry-level missingness), and now nominal coverage (a prior matched to
+the DGP). **A result that confirms the prediction is where the mechanism check is most
+needed, not least.**
+
+Nothing promoted. PR #801 unmerged, claim withheld.

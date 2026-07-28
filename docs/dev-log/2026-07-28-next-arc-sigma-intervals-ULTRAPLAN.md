@@ -1,12 +1,18 @@
 ```
 🎯 GOAL — gllvmTMB: correct the boundary reference, re-certify, extend Σ intervals to low-rank.
 SOLO PLATFORM: CLAUDE. Worktree /private/tmp/gllvmtmb-arc0-identifiability, branch
-claude/aghq-engine-20260728 (53 ahead, 0 behind main). PR #801 OPEN — merging is Shinichi's
-call, never a goal state.
+claude/sigma-intervals-boundary-20260728, based on main @ da7ee99e.
 
-HOUR 0 IS SHINICHI'S, NOT AN AGENT'S: merge claude/aghq-family-axis-20260728 first — it
-conflicts with this lane on decisions.md, which S1 writes. Agents start by rebasing onto it
-and proving `git rev-list --left-right --count origin/main...HEAD` reads 0 behind.
+⚠ BASELINE CHANGED 2026-07-28T21:46Z — PR #801 was MERGED by Shinichi (merge commit
+da7ee99e). The AGHQ engine and its four bug fixes are now ON MAIN. The old lane
+claude/aghq-engine-20260728 is CLOSED (0 ahead / 1 behind) — do NOT continue on it, and do
+not read "PR #801 OPEN / do not merge" anywhere in the handover chain as live: that was
+true when written and is now spent. This arc runs on the fresh lane named above.
+
+HOUR 0 IS SHINICHI'S, NOT AN AGENT'S: merge claude/aghq-family-axis-20260728 — STILL PENDING
+as of the baseline above. It conflicts with this lane on decisions.md, which S1 writes.
+S1 IS BLOCKED until it lands; every other CP-1 slice runs unblocked meanwhile. After it
+lands, rebase and prove `git rev-list --left-right --count origin/main...HEAD` reads 0 behind.
 
 HEADLINE: FIX THE BOUNDARY REFERENCE PACKAGE-WIDE, THEN EXTEND THE PROFILE TO LOW-RANK Σ.
 R/profile-ci.R:32 uses a bare qchisq(level,1)/2 through a SHARED helper with four callers —
@@ -133,7 +139,7 @@ condition under which it is worth anything.
 
 | surface | evidence run | finding | call |
 |---|---|---|---|
-| repo git | `git status -sb`, `git worktree list`, `git rev-list --left-right --count origin/main...origin/claude/aghq-engine-20260728` | clean; **53 ahead, 0 behind**; lane `claude/aghq-family-axis-20260728` conflicts on `decisions.md` | **resume**; Hour-0 merge is Shinichi's |
+| repo git | `git status -sb`, `git worktree list`, `git rev-list --left-right --count` | **re-run 21:5x: PR #801 MERGED (`da7ee99e`)** — old lane 0 ahead/1 behind, closed; re-baselined onto `claude/sigma-intervals-boundary-20260728`; `claude/aghq-family-axis-20260728` still unmerged and still conflicts on `decisions.md` | **re-baseline**; Hour-0 merge is Shinichi's, S1 blocked |
 | repo designs | `docs/design/{66,73,75,80}` | MCSE table, log-SD-Wald convention, route matrix, evidence-bar ladder all exist | **reuse** — invent no new taxonomy |
 | **repo designs (gap closed this pass)** | `grep -rn "chi.bar\|Self.Liang" docs/design/` | **`76-structured-xlv-phylo.md:350,393,434,487,526,592,631` already specifies the Self–Liang boundary reference + ≥500 reps/cell + MCSE** | **RESUME, not build** — S5 reads §5 first |
 | interval code | `grep -rn qchisq R/`; `sed -n '615,660p' R/profile-route-matrix.R` | certified diagonal profile exists; **:631 AND :638** both fall back to bootstrap; `.qchisq_threshold` shared by **4 callers**; **6 more bare χ² sites** outside it; `.qt_threshold` already exists carrying an on-record caution | **extend + correct**, do not rebuild |

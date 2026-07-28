@@ -1,1 +1,10 @@
 shipped-engine campaign: 90 fits on 6 cores
+
+=== SHIPPED ENGINE, p=6 q=2, 15 seeds ===
+     n arm          |  nfit      sigma    rho |e|   frob rat  runaway%    aghq?
+   100 laplace      |    15      1.011      0.293      1.458       47%       0%
+   100 aghq         |    15      1.083      0.312      3.401       73%     100%
+   100 aghq_ridge   |    15      1.262      0.264      1.226        0%     100%
+  1600 laplace      |    15      0.868      0.103      0.807        7%       0%
+  1600 aghq         |    15      0.962      0.085      1.143        7%     100%
+  1600 aghq_ridge   |    15      0.981      0.076      1.051        7%     100%

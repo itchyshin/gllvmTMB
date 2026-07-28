@@ -1783,3 +1783,50 @@ single-trial Bernoulli only escapes this because `auto_psi_B` pins Psi off
 (R/fit-multi.R:4695), which is the sole reason binomial works with package defaults. Point
 recovery only: NO coverage or interval evidence exists. `conv` is uninformative on ridge
 arms until the MAP/ML gradient defect is fixed. Results are LOCAL per D-50.
+
+## 2026-07-28  SHIPPED-ENGINE CAMPAIGN: the reference does NOT represent the engine at small n
+
+The pre-registered check completed — 90 fits, 15 seeds, through the real `gllvmTMB()`.
+It **partially fires the failure condition**, and the failure is on the headline cell.
+
+```
+     n  arm          nfit   sigma   rho|e|   frob    runaway%   aghq?
+   100  laplace        15   1.011    0.293   1.458      47%       0%
+   100  aghq           15   1.083    0.312   3.401      73%     100%
+   100  aghq_ridge     15   1.262    0.264   1.226       0%     100%
+  1600  laplace        15   0.868    0.103   0.807       7%       0%
+  1600  aghq           15   0.962    0.085   1.143       7%     100%
+  1600  aghq_ridge     15   0.981    0.076   1.051       7%     100%
+```
+
+**WHAT REPRODUCES.** At n = 1600 the reference is close to the engine on every arm
+(Laplace 0.882 vs 0.868; AGHQ+ridge 0.989 vs 0.981; rho ordering identical). Laplace's
+runaway rate at n = 100 matches (50% vs 47%). And AGHQ+ridge takes runaways to **0% at
+n = 100 in BOTH** — the single most reproducible result in this whole arc.
+
+**WHAT DOES NOT.** Two things, and the second is the important one.
+
+1. *Unpenalised* AGHQ runaway at n = 100: the reference said **13%**, the shipped engine
+   gives **73%**. Not a three-fit fluke — 15 seeds. The reference is far better behaved
+   without the ridge than the engine is.
+2. **The headline claim FAILS on sigma at n = 100.** In the shipped engine,
+   **Laplace's sigma is 1.011 (|error| 0.011) against AGHQ+ridge's 1.262 (|error|
+   0.262)** — Laplace is roughly 20x closer. The reference had this the other way round
+   (0.825 vs 1.043). So *"AGHQ + ridge gives the best latent-SD recovery at every sample
+   size tested"* is **FALSE on the shipped engine at n = 100** and is withdrawn.
+
+**WHAT STANDS, on the engine's own numbers:**
+
+* **Runaway elimination.** 47% -> 0% at n = 100. Unambiguous and reproduced.
+* **Large-n superiority.** sigma 0.868 -> 0.981 and rho 0.103 -> 0.076 at n = 1600.
+* **rho at BOTH sample sizes.** 0.293 -> 0.264 at n = 100, 0.103 -> 0.076 at n = 1600.
+
+**The defensible claim, on shipped-engine evidence only:** *AGHQ with the loading ridge
+eliminates the divergent-fit mode (47% -> 0% at n = 100) and improves correlation recovery
+at every sample size tested, and latent-SD recovery at large n. At small n Laplace's
+latent-SD point estimate is closer, and the reason is not established.*
+
+**Caveat on this run, stated not buried:** a concurrent lane was editing `R/fit-multi.R`
+during it. The fits forked from the package image loaded at launch and are probably
+internally consistent, but that cannot be proven. **Re-run before publishing anything from
+it.** The direction is clear enough to record; the third decimal is not.

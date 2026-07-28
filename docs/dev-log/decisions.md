@@ -1182,3 +1182,131 @@ examples. Record the source/render synchronization evidence in the check log.
 Rationale: the profile-likelihood page exposed an old rendered scope block even
 after its source had been rewritten. The served artefact, not the editor's
 source file, is the reader's contract.
+
+## 2026-07-28  AGHQ becomes the main integration engine — reversing "stay Laplacian"
+
+Decision (maintainer): adaptive Gauss-Hermite quadrature becomes gllvmTMB's main
+integration engine, implemented across all 16 families and all model classes, adaptive
+and auto-by-default. Laplace is retained only where it is mathematically required, and
+never as a silent fallback. This **reverses** the 2026-05-15 evening decision recorded
+in this log at "A1 (deprioritised … 'stay Laplacian')" and in
+`docs/dev-log/audits/2026-05-15-external-audit-2-response.md:60-66`.
+
+The 2026-05-15 grounds were literature-based and remain sound on their own terms.
+Pinheiro & Chao (2006, JCGS) measured the AGHQ gain falling from 5-15% on variance
+components at d=1 with ~5 observations per cluster, to 2-5% at d=2 with 20, to
+three-decimal agreement with Laplace at d=3 with >= 30. Joe (2008) puts Laplace's GLMM
+bias at O(1/n_i). On that evidence AGHQ was judged "theoretically correct but practically
+low-impact at the gllvmTMB user base's typical data shapes".
+
+What changed. (1) The simulation campaign's 70 degenerate bernoulli fits — 59 of them
+reporting `convergence == 0` and `pdHess == TRUE` — are real and remain unexplained after
+four hypotheses. (2) The variational route was built, measured, and frozen; its coverage
+was the deciding argument against it. (3) AGHQ was measured to move attenuation
+0.9215 -> 1.0438 at q=2, clearing a kill rule written before the run. (4) Decisively,
+**the literature's `n_i` is observations per cluster, which in this package is TRAITS PER
+SITE, not the number of sites.** The 2026-05-15 reading treated the gain as uniformly
+small; it is not — it is large exactly where `T` is small. That is a design input for the
+`aghq = "auto"` rule, not a veto, and it is the specific misreading this reversal corrects.
+
+Rationale for recording the reversal explicitly rather than superseding silently: the
+earlier decision was correct on its evidence, and a future reader who finds only the new
+entry would be unable to tell whether the old one was overturned or overlooked.
+
+## 2026-07-28  The AGHQ coverage claim, stated in its honest narrower form
+
+Decision: the sentence that justified redirecting this project from VA to AGHQ — "AGHQ is
+a refinement layer on the Laplace objective, so it inherits all 16 families, phylogeny,
+spatial and missing data" — is **not established as stated** and must not be advertised in
+that form. Adversarial testing against the source returned: family-agnosticism SURVIVES
+(all 16 families reach the latent only through the scalar `eta_o` in one lambda,
+`src/gllvmTMB.cpp:1994`, single call site `:2363`; the hurdle families branch on observed
+`y`, not on the latent, so they are not mixtures in the integration variable); missing data
+SURVIVES; **dimension and phylogeny/spatial BREAK** under a product rule, because those
+priors couple every species or mesh node into one block.
+
+The honest form, which is what may be claimed: *AGHQ inherits gllvmTMB's full family
+surface — all 16 — and missing data. It does not inherit phylogenetic, spatial or kernel
+structure under a product rule; those require a nested AGHQ-inside-Laplace decomposition,
+and `REML = TRUE` is excluded outright because `b_fix` enters the random vector with no
+prior term.*
+
+Rationale: the redirection away from VA was argued on coverage, and VA was faulted
+specifically for rejecting structured models. AGHQ's family coverage is genuinely better
+(16 of 16 against 4 of 16); its structural coverage under a product rule is not better.
+This is not an argument to unfreeze VA. It is that the comparison was scored on a premise
+nobody had checked, and the plan that follows from it must be scoped to what is true.
+
+## 2026-07-28  H4 — the 59/70 degeneracy may be an artefact of one-node Laplace
+
+Decision: record, as an untested hypothesis with a named source, that the campaign's
+degenerate fits may be caused by the Laplace approximation itself rather than by the data
+or the optimiser. Rabe-Hesketh, Skrondal & Pickles (2002), held in the engineering
+notebook, state that a single quadrature point **is** the first-order Laplace
+approximation, and that a single point "can make the log-likelihood flat with respect to
+the covariance parameters and drive predicted posterior SDs to zero."
+
+That is a description of the observed defect: flat likelihood in the covariance
+parameters, collapsed variance components, and `convergence == 0` because the optimiser
+genuinely reached a stationary point on a flat surface. Three earlier hypotheses (the
+relative-collapse diagnostic, the Lambda_B eigen-spectrum, and ordinary marginal
+separation) are dead; this one is literature-predicted and untested.
+
+It is tested as AGHQ's first acceptance test, with matched healthy controls and a kill
+rule registered before the run: AGHQ resolves the 59/70 only if, at k=9, the degenerate
+group's median `rel_frob` falls below 10 while the matched healthy controls are unchanged
+within MCSE. The pre-registration exists because all three previous hypotheses died by
+behaving identically on healthy cells.
+
+Consequence if H4 holds: Arc 0 and the AGHQ programme are the same problem, and the
+deliverable is an estimator improvement rather than an identifiability warning.
+
+## 2026-07-28  AGHQ ships opt-in; Laplace stays the default until evidence decides
+
+Decision (maintainer, in response to the plan's one flagged gate): **do not flip the
+default.** AGHQ is built as an opt-in integration route, tested head-to-head against
+Laplace under the pre-registered kill rule, and the decision to make it the default is
+taken separately, with the comparison in hand. Until then `gllvmTMB()` behaves exactly
+as it does today and no existing user's numbers move.
+
+Rationale: flipping the default changes the numbers every user gets while touching no
+export and no NAMESPACE, so it is invisible to `R CMD check` — a larger behavioural
+change than a normal API change, not a smaller one, and it would land against a package
+heading for its first CRAN release at 0.6.0. Building opt-in first also means a family
+that fails its kill rule simply never gets promoted, instead of leaving the default
+pointing at an unvalidated route.
+
+Practical consequence for the build: `aghq = "auto"` is implemented and tested, but
+`"auto"` is not yet the value of the formal argument's default. The flip, when
+authorised, is a one-line change plus the evidence that justifies it.
+
+## 2026-07-28  What "AGHQ for structured models" can and cannot mean
+
+Decision: record the distinction, because "AGHQ supports phylogenetic models" is true
+under one reading and false under another, and the false reading is the natural one.
+
+**Quadrature over the structured field itself is out of reach.** Under `phylo_*`,
+`animal_*`, `spatial_*`, `kernel_*` and `propto()`, the prior couples every species or
+mesh node into a single block: `g_phy` is one connected block over the augmented tree,
+`omega_spde` is a joint GMRF with treewidth O(sqrt(n_mesh)), and `propto`/`kernel_*` are
+dense. A product rule would need k^(large) nodes. This is combinatorial impossibility,
+not expense, and no fence tweak changes it.
+
+**Quadrature over the per-site block, nested inside a Laplace over the field, is
+reachable.** Conditional on the structured field, sites are independent again, so the
+marginal factorises as an outer Laplace over the field wrapping an inner per-site
+quadrature. The structured field stays in TMB's `random=` exactly as today; only the
+ordinary per-site latent block is quadratured. This is the INLA decomposition and it is
+the same template code path as the unstructured case — Stage 1 is simply the special case
+where `random=` is empty.
+
+**The honest limit, to be stated in user-facing text.** The gain requires the model to
+*have* a per-site latent tier to refine. `latent(1 | site, d = q) + phylo_latent(...)`
+benefits on its ordinary tier. A phylo-only or spatial-only model, where all latent
+structure lives on the field, has no per-site block and AGHQ does nothing for it. Such a
+model must be told so plainly rather than silently accepting an `aghq` argument that
+changes nothing.
+
+UNVERIFIED at the time of this entry: whether the outer Laplace converges reliably when
+its inner likelihood is a quadrature sum rather than a plug-in density. That is the
+gating validation for the structured stage and it is not assumed.

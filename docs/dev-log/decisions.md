@@ -1665,3 +1665,38 @@ optimum the honest gradient is lambda/4 ~ 0.25 against `grad_tol = 1e-4`.
 
 **Consequence.** The claim stays withheld. The merge stays blocked. The PR body must be
 corrected on "no existing user's results move" before anyone reads it as a guarantee.
+
+## 2026-07-28  ⚠️ EARLY SIGNAL: the shipped AGHQ arm may NOT reproduce the reference
+
+Recorded mid-run, on THREE fits, precisely because it is the pre-registered failure
+condition and must not be lost if the session ends first.
+
+`dev/aghq-evidence/18-shipped-engine-campaign.R` re-runs the campaign through the real
+`gllvmTMB()` rather than `dev/aghq-r-reference.R`, after a D-43 lens found that only 2 of
+16 evidence scripts exercise the shipped engine. Partial, 33 of 90 fits:
+
+```
+     n  arm          nfit    sigma   rho|e|    frob   runaway%
+   100  laplace        15    1.011    0.293   1.458      47%
+   100  aghq (no ridge) 3    1.090    0.200  29.700     100%
+  1600  laplace        15    0.868    0.103   0.807       7%
+```
+
+**The Laplace arm reproduces the reference well** — 0.868 at n = 1600 against the
+reference's 0.882; 47% runaway at n = 100 against 50%. That is reassuring for the
+reference's fidelity on that arm.
+
+**The AGHQ arm does NOT, on the evidence so far.** The reference put unpenalised AGHQ at
+**13% runaway** at n = 100; the shipped engine is showing **100% on 3 fits**, with a median
+`frob_rat` of 29.7. If that survives more seeds, the reference does not represent the
+engine on the arm that carries the claim, and **every AGHQ number derived from it must be
+withdrawn** — which is exactly the outcome the pre-registration named as more important
+than a confirmation.
+
+**Do not over-read three fits.** It may be chance; the `aghq_ridge` arm — the shipped
+default, and the one that actually matters — had not reported at all when this was written.
+But the direction is recorded now, unhedged, so that a later session cannot quietly inherit
+the reference-based numbers without checking this first.
+
+**Next session: read `dev/aghq-evidence/18-shipped-inc.csv` BEFORE citing any AGHQ figure
+from the reference campaigns.**

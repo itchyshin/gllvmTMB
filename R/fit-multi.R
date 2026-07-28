@@ -2390,11 +2390,58 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ))
   }
   if (isTRUE(REML)) {
-    if (any(family_id_vec != 0L)) {
+    ## NON-GAUSSIAN REML IS THE COX-REID ADJUSTED PROFILE LIKELIHOOD.
+    ##
+    ## REML is realised here by adding b_fix to TMB's `random` vector (see the
+    ## random-vector assembly below), so the Laplace machinery integrates the
+    ## fixed-effect block out under a flat prior. For a Gaussian LMM that step is
+    ## EXACT and returns the classical restricted likelihood -- which is why this
+    ## gate was Gaussian-only.
+    ##
+    ## For a non-Gaussian family the step is not exact, but the quantity it
+    ## computes, l_p(psi) - 0.5*log|j_bb|, IS the Cox-Reid adjusted profile
+    ## likelihood (Cox & Reid 1987) -- REML generalised to non-Gaussian.
+    ## Exactness was never the requirement; Cox-Reid is DEFINED as that adjustment.
+    ##
+    ## WHY IT MATTERS HERE. Small-cluster variance-component bias has two stacked
+    ## ORTHOGONAL parts and quadrature fixes only one. Measured cross-repo
+    ## (2026-07-18, drmTMB cumulative_logit, 40 seeds, against glmmTMB/glmer/lme4):
+    ## Laplace -7.3% -> +AGHQ -5.0% -> +Cox-Reid -0.9%, with the AGHQ node sweep
+    ## PLATEAUING DEAD FLAT. Nodes cannot cross the variance-bias floor.
+    ## This package's own n-ladder shows the same thing from the other side
+    ## (dev/aghq-evidence/05-descend-RESULT.txt, T=4, q=1, ratio ||L_hat||/||L_true||):
+    ##   n=3200 Laplace 0.794 / AGHQ 1.0021   <- AGHQ essentially unbiased
+    ##   n= 200 Laplace 0.836 / AGHQ 1.967    <- AGHQ worse; the residual is NOT
+    ##   n= 100 Laplace 0.892 / AGHQ 1.893       the quadrature but the ML variance
+    ## Laplace's small-n adequacy is TWO ERRORS CANCELLING -- its integral error
+    ## biases down, the small-sample variance bias biases up -- not accuracy. The
+    ## cancellation is uncontrolled and breaks with T, family or signal strength.
+    ## The lever below targets the half that AGHQ cannot reach.
+    ##
+    ## OPT-IN AND UNVALIDATED HERE. Two caveats worth respecting rather than
+    ## rediscovering (Reid & Fraser 2003): Cox-Reid is strictly justified when the
+    ## interest parameter is ORTHOGONAL to the nuisance block, and it is NOT
+    ## invariant to reparametrising that block. Neither is checked for the GLLVM
+    ## parameterisation, where variance lives in Lambda and Psi rather than in a
+    ## scalar random-effect SD -- so the drmTMB transfer is a hypothesis under
+    ## test, not an inherited result.
+    if (any(family_id_vec != 0L) && !isTRUE(control$allow_nongaussian_reml)) {
       cli::cli_abort(c(
-        "{.arg REML = TRUE} is currently implemented for Gaussian-only fits.",
+        "{.arg REML = TRUE} is validated for Gaussian-only fits.",
         "x" = "At least one response row uses a non-Gaussian family.",
-        "i" = "Use the default {.code REML = FALSE} for non-Gaussian and mixed-family GLLVMs."
+        "i" = "Use the default {.code REML = FALSE} for non-Gaussian and mixed-family GLLVMs.",
+        "i" = paste(
+          "Experimental non-Gaussian REML (the Cox-Reid adjusted profile likelihood)",
+          "is available, UNVALIDATED, via",
+          "{.code gllvmTMBcontrol(allow_nongaussian_reml = TRUE)}."
+        )
+      ))
+    }
+    if (any(family_id_vec != 0L)) {
+      cli::cli_warn(c(
+        "Non-Gaussian {.arg REML = TRUE} is EXPERIMENTAL and UNVALIDATED.",
+        "i" = "This is the Cox-Reid adjusted profile likelihood, not an exact restricted likelihood.",
+        "i" = "Do not report it as a validated estimator."
       ))
     }
     if (!is.null(weights)) {
@@ -4968,39 +5015,108 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       obj_lap <- obj
       par_cur <- opt$par
       mode_prev <- NULL
-      prev_obj <- Inf
       obj_aghq <- NULL
       opt_aghq <- NULL
-      ## ADAPTATION MUST BE REFRESHED OFTEN, and the cap below is the whole reason
-      ## this works. The quadrature nodes are frozen as DATA_ within one pass, so a
-      ## pass that optimises to convergence lets the parameters walk far away from
-      ## the point the nodes were adapted at -- the integrand is then evaluated in
-      ## the wrong place and the objective can be driven arbitrarily low. Measured
-      ## with an uncapped first pass on a 60x6 binomial q=2 fit: ||Sigma_B||_F ran
-      ## from 4.43 to 4.1e7 in ONE pass, after which re-adaptation ERRORED at the
-      ## runaway parameters and the loop exited keeping the bad state. Capping the
-      ## steps per pass keeps the nodes near the current parameters, which is what
-      ## "adaptive" quadrature means; the standalone R reference in
-      ## dev/aghq-r-reference.R gets this for free by re-solving the mode on every
-      ## objective evaluation, and it does not run away.
-      ## DEFAULT CAP IS 1: re-adapt after EVERY optimiser iteration. Measured on a
-      ## 60x6 binomial q=2 fit -- uncapped, one pass ran ||Sigma_B||_F from Laplace's
-      ## 4.43 to 4.1e7; cap 25 still reached 1.3e4; cap 1 lands at 9.25 against a
-      ## TRUE 5.79, with no runaway at all. Continuous re-adaptation is what makes
-      ## adaptive quadrature adaptive, and it is exactly what the standalone R
-      ## reference does by re-solving the mode on every objective evaluation.
+      ## ADAPTATION MUST BE REFRESHED OFTEN, and the per-pass cap is the whole
+      ## reason this works. The quadrature nodes are frozen as DATA_ within one
+      ## pass, so a pass that optimises to convergence lets the parameters walk
+      ## far away from the point the nodes were adapted at -- the integrand is
+      ## then evaluated in the wrong place and the objective can be driven
+      ## arbitrarily low. Measured with an uncapped first pass on a 60x6 binomial
+      ## q=2 fit: ||Sigma_B||_F ran from Laplace's 4.43 to 4.1e7 in ONE pass;
+      ## cap 25 still reached 1.3e4; cap 1 lands at 9.25 against a TRUE 5.79.
+      ##
+      ## THE MERIT FUNCTION. The quantity this loop actually minimises is
+      ##
+      ##     F(theta) = the AGHQ objective at theta with the nodes adapted AT theta,
+      ##
+      ## which is what the standalone R reference (dev/aghq-r-reference.R)
+      ## evaluates by re-solving the conditional mode on every call, and it is why
+      ## that reference does not run away. The template cannot do that (the
+      ## adaptation points are DATA_), so a pass minimises the SURROGATE
+      ## F(theta; theta_k) with the nodes pinned at theta_k. F is recovered for
+      ## free at the TOP of the next pass: after re-adapting at the new theta,
+      ## `obj_try$fn(theta)` IS F(theta). Two things follow, and both are new:
+      ##
+      ##  1. CONVERGENCE IS TESTED ON F, NOT ON THE SURROGATE. The old rule
+      ##     compared surrogate values across passes -- values computed on
+      ##     DIFFERENT tapes -- so its "objective gain" mixed real progress with
+      ##     the change in quadrature error from re-adapting, and never fell below
+      ##     its 1e-8 threshold. It converged by exhausting aghq_n_adapt instead.
+      ##     The rule here is stationarity of the AD-exact gradient of the
+      ##     surrogate at its own adaptation point (max |grad| < aghq_grad_tol)
+      ##     together with a settled adaptation point (max |mode shift| <
+      ##     aghq_shift_tol); at a fixed point of the adaptation map those two
+      ##     conditions ARE stationarity of F.
+      ##
+      ##  2. A STEP THAT RAISES F IS REJECTED. That single test is what makes a
+      ##     larger cap safe: a runaway is precisely a step that looks good
+      ##     against stale nodes and is worse under honest ones, so it is caught
+      ##     on the next pass, the iterate is rolled back to the last honest one,
+      ##     and the cap drops to 1.
+      ##
+      ## CONTINUATION. Cap 1 is robust but slow (a fresh nlminb rebuilds its
+      ## curvature model from scratch every pass, so it takes a first-iteration
+      ## step forever). The schedule starts at 1 to escape the runaway regime and
+      ## escalates 1 -> 2 -> 5 -> 25 -> uncapped as the adaptation point settles,
+      ## with the rejection test above as the safety net. Setting
+      ## control$aghq_iter_cap to anything other than 1, or
+      ## control$aghq_continuation = FALSE, pins the cap and disables escalation.
       n_adapt <- as.integer(control$aghq_n_adapt %||% 400L)
-      aghq_iter_cap <- as.integer(control$aghq_iter_cap %||% 1L)
+      cap_user <- as.integer(control$aghq_iter_cap %||% 1L)
+      use_continuation <- isTRUE(control$aghq_continuation %||% TRUE) &&
+        identical(cap_user, 1L)
+      ## NULL = uncapped, i.e. run_one's own convergence test.
+      cap_sched <- if (use_continuation) {
+        list(1L, 2L, 5L, 25L, NULL)
+      } else {
+        list(cap_user)
+      }
+      stage <- 1L
+      ## A stage that gets its step REJECTED is never retried: without this the
+      ## loop can oscillate escalate -> runaway -> reject -> escalate forever.
+      stage_ceiling <- length(cap_sched)
+      shift_tol <- as.numeric(control$aghq_shift_tol %||% 1e-4)
+      grad_tol  <- as.numeric(control$aghq_grad_tol  %||% 1e-4)
+      f_tol     <- as.numeric(control$aghq_f_tol     %||% 1e-9)
+      ## Escalate on SUCCESS COUNT, not on a mode-shift threshold: measured on a
+      ## healthy 60x6 binomial q=2 cell, the shift plateaus around 1.5e-2 - 2e-2
+      ## for eighty passes, so any fixed shift threshold either escalates at once
+      ## or never. Grow the cap after `esc_patience` consecutive accepted passes,
+      ## shrink it on a rejection -- the trust-region radius pattern.
+      esc_patience <- as.integer(control$aghq_escalate_patience %||% 3L)
+      rho_min <- as.numeric(control$aghq_rho_min %||% (1 / 64))
+      F_prev <- Inf
+      n_ok <- 0L
+      step_dir <- NULL
+      step_rho <- 1
       aghq_passes <- 0L
       aghq_mode_shift <- rep(NA_real_, n_adapt)
+      aghq_trace <- vector("list", n_adapt)
       aghq_err <- NULL
+      aghq_stop <- "adaptation cap reached"
       obj_try <- NULL
+      opt_last <- NULL
+      par_best <- par_cur
+      F_best <- Inf
+      opt_best <- NULL
       for (it in seq_len(n_adapt)) {
         ad <- tryCatch(
           .gllvmTMB_aghq_adapt(obj_lap, par_cur, d_B, n_sites),
           error = function(e) e
         )
-        if (inherits(ad, "error")) { aghq_err <- conditionMessage(ad); break }
+        if (inherits(ad, "error")) {
+          ## A failed re-adaptation at a bad iterate must NOT discard the honest
+          ## iterates already in hand (the pre-continuation loop exited keeping
+          ## the bad state instead).
+          if (is.finite(F_best)) {
+            aghq_stop <- paste0("adaptation failed at pass ", it,
+                                "; kept the last honest iterate")
+            break
+          }
+          aghq_err <- conditionMessage(ad)
+          break
+        }
         if (is.null(obj_try)) {
           data_aghq <- tmb_data
           data_aghq$use_aghq    <- 1L
@@ -5033,35 +5149,145 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
             obj_try$retape()
             TRUE
           }, error = function(e) e)
-          if (inherits(upd, "error")) { aghq_err <- conditionMessage(upd); break }
+          if (inherits(upd, "error")) {
+            if (is.finite(F_best)) {
+              aghq_stop <- paste0("retape failed at pass ", it,
+                                  "; kept the last honest iterate")
+              break
+            }
+            aghq_err <- conditionMessage(upd)
+            break
+          }
         }
-        opt_try <- tryCatch(run_one(par_cur, .obj = obj_try, .iter_cap = aghq_iter_cap),
-                            error = function(e) e)
-        if (inherits(opt_try, "error")) { aghq_err <- conditionMessage(opt_try); break }
-        if (!is.finite(.gllvmTMB_restart_objective(opt_try))) {
+        ## F(par_cur): the honest objective, nodes adapted AT par_cur.
+        F_cur <- tryCatch(as.numeric(obj_try$fn(par_cur)), error = function(e) e)
+        if (inherits(F_cur, "error") || length(F_cur) != 1L || !is.finite(F_cur)) {
+          if (is.finite(F_best)) {
+            aghq_stop <- paste0("non-finite AGHQ objective at pass ", it,
+                                "; kept the last honest iterate")
+            break
+          }
           aghq_err <- "AGHQ objective is not finite"
           break
         }
-        obj_aghq <- obj_try
-        opt_aghq <- opt_try
-        par_cur <- opt_try$par
-        aghq_passes <- it
+        g_cur <- tryCatch(max(abs(as.numeric(obj_try$gr(par_cur)))),
+                          error = function(e) NA_real_)
         shift <- if (is.null(mode_prev)) Inf else max(abs(ad$mode - mode_prev))
-        aghq_mode_shift[it] <- shift
         mode_prev <- ad$mode
+        aghq_passes <- it
+        aghq_mode_shift[it] <- shift
+        cap_now <- cap_sched[[stage]]
+        ## `iter_cap` is the cap that was in force when THIS pass's iterate was
+        ## produced (escalation, below, applies to the outgoing step).
+        aghq_trace[[it]] <- data.frame(
+          pass = it,
+          iter_cap = if (is.null(cap_now)) NA_integer_ else as.integer(cap_now),
+          objective = F_cur,
+          grad_max = g_cur,
+          mode_shift = shift
+        )
         if (isTRUE(control$verbose))
-          cat(sprintf("  AGHQ pass %d: -logLik = %.6f, max |mode shift| = %.3g\n",
-                      it, .gllvmTMB_restart_objective(opt_try), shift))
-        ## Converged when the adaptation points have stopped moving AND the capped
-        ## optimiser is no longer making progress -- both, because either alone can
-        ## be true while the other is not: a stalled optimiser leaves the modes
-        ## fixed, and a converged mode does not by itself mean the parameters have
-        ## settled.
-        obj_gain <- if (it == 1L) Inf else prev_obj - .gllvmTMB_restart_objective(opt_try)
-        prev_obj <- .gllvmTMB_restart_objective(opt_try)
-        if (is.finite(shift) && shift < 1e-4 &&
-            is.finite(obj_gain) && abs(obj_gain) < 1e-8) break
+          cat(sprintf(
+            "  AGHQ pass %d (cap %s): F = %.8f, max |grad| = %.3g, max |mode shift| = %.3g\n",
+            it, if (is.null(cap_now)) "inf" else as.character(cap_now),
+            F_cur, g_cur, shift))
+        ## ACCEPT / REJECT the step that produced par_cur, judged on F.
+        if (F_cur <= F_best + 1e-10) {
+          dF <- F_prev - F_cur
+          par_best <- par_cur
+          F_best   <- F_cur
+          F_prev   <- F_cur
+          opt_best <- opt_last
+          step_dir <- NULL
+          step_rho <- 1
+          n_ok <- n_ok + 1L
+        } else {
+          ## The step improved the frozen-node surrogate but made F worse: it was
+          ## a stale-node artefact.
+          n_ok <- 0L
+          ## BACKTRACK FIRST. The surrogate's step is a descent direction for the
+          ## surrogate, not necessarily for F, but a SHORTER step along it usually
+          ## is -- and without this the loop stops on the very first pass of a
+          ## degenerate cell (measured: a 60x6 q=2 cell whose Laplace fit is
+          ## already at ||Sigma_B||_F = 5.3e3 raises F by 1.9 on one full cap-1
+          ## step). Halve and re-measure before declaring failure.
+          if (!is.null(step_dir) && step_rho > rho_min) {
+            step_rho <- step_rho / 2
+            par_cur <- par_best + step_rho * step_dir
+            next
+          }
+          par_cur <- par_best
+          step_dir <- NULL
+          step_rho <- 1
+          if (stage == 1L) {
+            aghq_stop <- "stalled (no honest descent at cap 1 after backtracking)"
+            break
+          }
+          ## Overreached: permanently lower the working cap by one stage.
+          stage_ceiling <- max(1L, stage - 1L)
+          stage <- stage_ceiling
+          next
+        }
+        ## Converged: the adaptation point is a fixed point AND the parameters
+        ## have stopped moving on the honest objective -- either because the
+        ## AD-exact gradient of the quadrature objective at its own adaptation
+        ## point is ~0 (stationarity), or because F itself has stagnated. Both
+        ## legs are measured on quantities the loop does not control: the first
+        ## is TMB's gradient, the second is F recomputed on freshly adapted nodes.
+        ##
+        ## `n_ok >= 2` is not decoration: the pass that ROLLS BACK a rejected step
+        ## re-lands on par_best, so its dF is exactly 0 and its mode shift can be
+        ## tiny -- both legs would pass vacuously one pass after a failure. Require
+        ## two consecutive accepted passes before the test is allowed to fire.
+        if (n_ok >= 2L && is.finite(shift) && shift < shift_tol &&
+            ((is.finite(g_cur) && g_cur < grad_tol) ||
+             (is.finite(dF) && abs(dF) < f_tol))) {
+          aghq_stop <- "converged (mode shift and honest objective settled)"
+          break
+        }
+        ## Continuation: after a run of accepted passes, let the optimiser take
+        ## longer runs between re-adaptations.
+        if (stage < stage_ceiling && n_ok >= esc_patience) {
+          stage <- stage + 1L
+          n_ok <- 0L
+          cap_now <- cap_sched[[stage]]
+        }
+        opt_last <- tryCatch(run_one(par_cur, .obj = obj_try, .iter_cap = cap_now),
+                             error = function(e) e)
+        if (inherits(opt_last, "error")) {
+          aghq_stop <- paste0("optimiser failed at pass ", it,
+                              "; kept the last honest iterate")
+          opt_last <- opt_best
+          break
+        }
+        step_dir <- opt_last$par - par_cur
+        step_rho <- 1
+        par_cur <- opt_last$par
       }
+      ## FINALISE. Whatever iterate we return, the object handed downstream must
+      ## be adapted AT it -- report(), sdreport() and every extractor read this
+      ## tape. (The pre-continuation loop returned an object adapted at the
+      ## parameters BEFORE its last optimiser step.)
+      if (!is.null(obj_try) && is.finite(F_best)) {
+        fin <- tryCatch({
+          adF <- .gllvmTMB_aghq_adapt(obj_lap, par_best, d_B, n_sites)
+          obj_try$env$data$aghq_mode   <- adF$mode
+          obj_try$env$data$aghq_Lt     <- adF$Lt
+          obj_try$env$data$aghq_logdet <- as.numeric(adF$logdet)
+          obj_try$retape()
+          as.numeric(obj_try$fn(par_best))
+        }, error = function(e) e)
+        if (inherits(fin, "error") || !is.finite(fin)) {
+          aghq_err <- aghq_err %||% "AGHQ finalisation failed"
+        } else {
+          obj_aghq <- obj_try
+          opt_aghq <- opt_best %||% opt
+          opt_aghq$par <- par_best
+          opt_aghq$objective <- fin
+          F_best <- fin
+        }
+      }
+      aghq_trace <- do.call(rbind, aghq_trace[seq_len(max(aghq_passes, 0L))])
       if (is.null(obj_aghq)) {
         aghq_info$reason <- paste0(
           "laplace: AGHQ pass failed (", aghq_err %||% "unknown", ")"
@@ -5079,14 +5305,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           blocks = "z_B",
           optimizer = control$optimizer,
           reason = sprintf(
-            "quadrature on z_B (d = %d, k = %d, %d node%s); %d adaptation pass%s, final max |mode shift| = %.3g",
+            "quadrature on z_B (d = %d, k = %d, %d node%s); %d adaptation pass%s, %s; final max |mode shift| = %.3g",
             d_B, aghq_k_req, nrow(grid$nodes),
             if (nrow(grid$nodes) == 1L) "" else "s",
             aghq_passes, if (aghq_passes == 1L) "" else "es",
+            aghq_stop,
             aghq_mode_shift[aghq_passes]
           ),
           passes = aghq_passes,
-          mode_shift = aghq_mode_shift[seq_len(aghq_passes)]
+          stop_reason = aghq_stop,
+          mode_shift = aghq_mode_shift[seq_len(aghq_passes)],
+          trace = aghq_trace
         )
       }
     }

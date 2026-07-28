@@ -1221,6 +1221,7 @@ gllvmTMBcontrol <- function(
   aghq = FALSE,
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,
+  allow_nongaussian_reml = FALSE,
   ...
 ) {
   spde_mode <- match.arg(spde_mode)
@@ -1251,7 +1252,8 @@ gllvmTMBcontrol <- function(
     verbose = verbose,
     aghq = aghq,
     aghq_iter_cap = as.integer(aghq_iter_cap),
-    aghq_n_adapt = as.integer(aghq_n_adapt)
+    aghq_n_adapt = as.integer(aghq_n_adapt),
+    allow_nongaussian_reml = isTRUE(allow_nongaussian_reml)
   )
 }
 

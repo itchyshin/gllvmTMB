@@ -1,0 +1,8 @@
+=== GAUSSIAN EXACTNESS still holds? (must be ~0, k-independent) ===
+  k=3  delta = -9.875e-10  passes=2
+  k=9  delta = -9.875e-10  passes=2
+
+=== BINOMIAL: no runaway, and does it beat Laplace on Sigma recovery? ===
+  seed 7    LA ||S||=  4.4307 relF= 0.6729 | AGHQ ||S||= 15.8315 relF= 2.1486 | true  5.7924 | laplace better | passes=400 342s
+  seed 11   LA ||S||=2298.0898 relF=813.9841 | AGHQ ||S||=2309.1153 relF=817.8803 | true  2.8231 | laplace better | passes=400 351s
+  seed 23   LA ||S||=  7.3335 relF= 2.0261 | AGHQ ||S||= 26.8952 relF= 8.3433 | true  2.9859 | laplace better | passes=400 350s

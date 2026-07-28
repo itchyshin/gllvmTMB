@@ -1,0 +1,24 @@
+
+=== which objective prefers which point? ===
+degenerate n= 40 seed=1 | LA: hat   188.955 vs true   221.682 -> degenerate | AGHQ k=9: hat   209.167 vs true   220.763 -> degenerate | ||L||hat     1564
+degenerate n= 40 seed=2 | LA: hat   193.568 vs true   212.075 -> degenerate | AGHQ k=9: hat   203.384 vs true   211.101 -> degenerate | ||L||hat    108.2
+degenerate n= 40 seed=4 | LA: hat   190.086 vs true   212.849 -> degenerate | AGHQ k=9: hat   201.841 vs true   212.129 -> degenerate | ||L||hat    123.4
+degenerate n= 40 seed=5 | LA: hat   200.464 vs true   215.296 -> degenerate | AGHQ k=9: hat   199.144 vs true   214.648 -> degenerate | ||L||hat     4.12
+degenerate n= 40 seed=6 | LA: hat   209.061 vs true   219.992 -> degenerate | AGHQ k=9: hat   208.010 vs true   219.067 -> degenerate | ||L||hat    3.077
+degenerate n= 40 seed=7 | LA: hat   193.102 vs true   213.778 -> degenerate | AGHQ k=9: hat   204.354 vs true   212.399 -> degenerate | ||L||hat    86.09
+healthy    n=100 seed=1 | LA: hat   508.730 vs true   539.227 -> degenerate | AGHQ k=9: hat   534.694 vs true   537.198 -> degenerate | ||L||hat    110.3
+healthy    n=100 seed=2 | LA: hat   523.892 vs true   535.183 -> degenerate | AGHQ k=9: hat   521.263 vs true   532.887 -> degenerate | ||L||hat    3.112
+healthy    n=100 seed=3 | LA: hat   511.978 vs true   527.304 -> degenerate | AGHQ k=9: hat   509.454 vs true   526.223 -> degenerate | ||L||hat     3.05
+healthy    n=100 seed=4 | LA: hat   529.767 vs true   536.980 -> degenerate | AGHQ k=9: hat   528.295 vs true   534.903 -> degenerate | ||L||hat     2.11
+healthy    n=100 seed=5 | LA: hat   527.396 vs true   534.429 -> degenerate | AGHQ k=9: hat   525.372 vs true   532.987 -> degenerate | ||L||hat    2.343
+healthy    n=100 seed=6 | LA: hat   530.441 vs true   539.313 -> degenerate | AGHQ k=9: hat   528.898 vs true   537.173 -> degenerate | ||L||hat    2.317
+
+=== summary ===
+            LA_prefers
+group        degenerate
+  degenerate          6
+  healthy             6
+            AGHQ_prefers
+group        degenerate
+  degenerate          6
+  healthy             6

@@ -61,7 +61,55 @@ carry the family framing forward.
 THIS IS A TWO-SESSION ARC. Session A ends after S6/S8; hand over; Session B runs the campaign.
 ```
 
-> # 🔴 EXECUTION FINDING — S5a's DESIGN IS NOT IMPLEMENTABLE AS WRITTEN. READ BEFORE S5a.
+> # 🔴🔴 EXECUTION FINDING #2 (S2, decisive) — THE BOUNDARY CORRECTION POINTS THE WRONG WAY.
+>
+> **This is arithmetic, not synthesis, and it inverts the premise of this entire plan.**
+>
+> The 50:50 χ̄² mixture's 95% critical value is **2.706**, against **3.841** for χ²₁ — because
+> `P(T ≤ c) = 0.5 + 0.5·P(χ²₁ ≤ c) = 0.95` ⟹ `P(χ²₁ ≤ c) = 0.90` ⟹ `c = 2.706`. A **smaller**
+> critical value means a **narrower** profile interval and therefore **lower** coverage.
+>
+> **Our problem is UNDER-coverage** (the certified cell sits at ~0.946–0.948, and the Bartlett
+> attempt reached only 0.9486–0.9529 against a 0.95 target). **A boundary switch would make that
+> worse, precisely in the near-zero cells that are already weakest.** Using χ²₁ where the truth is
+> on the boundary is *conservative* — i.e. the current threshold is the **wide, safe** one.
+>
+> **So S5a as conceived should probably not be built at all.** It was framed as a coverage repair.
+> It is not one, and cannot be one. If a boundary reference enters this arc, it enters as a
+> *correctness* fix to the LR **test**, on a **separate ledger** from the interval certificate.
+>
+> Two further problems, both from primary sources:
+> - **Data-dependent selection invalidates both branches.** Self & Liang state the asymptotic
+>   distribution varies *discontinuously* over the null space with boundary proximity. A detector
+>   built on σ̂ is a random selection event sitting exactly on that discontinuity; the composite
+>   rule's coverage is the coverage of neither branch and would have to be **simulated**, not argued.
+> - **It may not be a mixture at all.** Self & Liang **Case 8**: when a *nuisance* parameter is also
+>   on the boundary, the distribution is "not always a mixture of chi-squareds". For
+>   Σ = ΛΛ' + diag(ψ) with several ψ near zero, **Case 8 is the realistic case, not Case 5.**
+>
+> **What the literature actually recommends instead**, in order: **(1) Stram & Lee — simulate the
+> null** (empirical reference density from null datasets; used exactly when the mixing probabilities
+> are intractable, which is our situation, and we have the compute); **(2) Self & Liang's
+> conservative critical value** — take the max over the null space, which for us means **keeping
+> χ²₁ everywhere and documenting why**.
+>
+> **⚠ A hazard that lands directly on S3.** The gllamm / adaptive-quadrature literature reports that
+> with **too few quadrature points the log-likelihood goes FLAT in the covariance parameters** and
+> posterior SDs are computed as spuriously **exactly zero** — numerically indistinguishable from a
+> true boundary estimate. S3 ran everything at `aghq = 9`. Any σ̂-threshold detector would fire on a
+> *numerics* regime and silently swap the reference distribution. **This is now an arm of the live
+> Totoro campaign** (`aghq_k ∈ {9, 25, 51}`), and it bears on the orphan note
+> `docs/dev-log/2026-07-22-quadrature-regime-trap-*.md`.
+>
+> **⚠ WE ARE NOT FIRST — prior art, external and non-self-cited.** **SAS PROC GLIMMIX**
+> `COVTEST … CL / TYPE=PLR` provides profile-likelihood-ratio confidence limits for **factor-analytic
+> covariance structures `FA(q)` (ΛΛ' + D) and `FA0(q)` (ΛΛ')** — exactly our object — shipped and
+> documented for ~two decades, tracing to **Jennrich & Schluchter (1986)**. **ADMB** does constrained
+> profiling of an arbitrary φ(θ). **No source combines them and checks coverage**, so a novelty claim
+> is defensible only at the *conjunction*, never at either half. Any wording that says "first to
+> profile a low-rank covariance" is false.
+
+> # 🔴 EXECUTION FINDING #1 — S5a's DESIGN IS NOT IMPLEMENTABLE AS WRITTEN. READ BEFORE S5a.
 >
 > **S4b (2026-07-28) establishes that boundary DETECTION cannot be done with the information
 > available at the point the threshold is applied.** The GOAL block below still says the deliverable

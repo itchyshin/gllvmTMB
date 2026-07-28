@@ -1,0 +1,4 @@
+Laplace           obj  237.27818  ||Sigma||_F      4.43073  (true 5.79239)
+cap=1   passes  60  obj  235.83883  ||Sigma||_F      9.24606  shift 1.38e-03  58s
+cap=3   passes  60  obj  235.78063  ||Sigma||_F     21.05665  shift 7.98e-04  57s
+cap=10  passes  60  obj  237.11374  ||Sigma||_F    404.26807  shift 1.11e-02  64s

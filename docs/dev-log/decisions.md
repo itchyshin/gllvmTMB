@@ -1508,3 +1508,36 @@ error that no amount of data removes; a weakly-informative ridge on the loadings
 a small-sample runaway that no amount of quadrature removes. Together they give the best
 latent-SD recovery at every sample size tested, and the best correlation recovery from
 moderate n upward.* Anything stronger is not supported.
+
+## 2026-07-28  Correction to the correction — the claim was fine; only the attribution needed care
+
+Decision: the previous entry withdrew more than the evidence required. Restoring the
+claim, with the comparator named.
+
+**The claim IS true against the comparator that matters.** gllvmTMB ships UNPENALISED
+Laplace; that is what every user gets today, and `Laplace + ridge` is not a route anyone
+can currently run — not in this package and not in `gllvm`. Against the shipped default,
+p = 6, q = 2, 30 seeds/cell, |sigma - 1| / rho error:
+
+```
+     n | Laplace (as shipped) | AGHQ + ridge
+   100 |    0.175 / 0.310     | 0.043 / 0.230
+   200 |    0.191 / 0.305     | 0.040 / 0.225
+   400 |    0.149 / 0.155     | 0.054 / 0.120
+  1600 |    0.118 / 0.087     | 0.011 / 0.062
+```
+
+Four of four on sigma, four of four on rho. **"AGHQ + ridge beats Laplace at every n on
+both sigma and rho" is a good and defensible statement**, provided the comparator is
+stated as the shipped Laplace default.
+
+**What the Laplace + ridge arm actually changes is ATTRIBUTION, not truth.** It shows
+that much of the small-n gain comes from the penalty rather than the quadrature, and
+that a hypothetical penalised Laplace would edge rho at n <= 200. That is a methods
+point — which component does what — and it belongs in the discussion of the design, not
+in the user-facing claim.
+
+The previous entry conflated the two and withdrew a true statement. Recorded because
+OVER-correction is its own failure mode: it destroys defensible results and makes the
+record less accurate, not more. The discipline is to name the comparator, not to
+abandon the comparison.

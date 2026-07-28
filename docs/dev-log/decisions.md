@@ -1310,3 +1310,47 @@ changes nothing.
 UNVERIFIED at the time of this entry: whether the outer Laplace converges reliably when
 its inner likelihood is a quadrature sum rather than a plug-in density. That is the
 gating validation for the structured stage and it is not assumed.
+
+## 2026-07-28  What AGHQ actually buys — a correct likelihood, not a better point estimate
+
+Decision: state the deliverable precisely, and record it BEFORE the multi-seed campaign
+returns, so that campaign is read against a stated expectation rather than an adjustable
+one.
+
+The evidence (`dev/aghq-evidence/`, both tests against a `stats::integrate()` oracle on
+models small enough to integrate exactly). In the regime the literature identifies as
+Laplace's worst — few observations per cluster, which in this package is TRAITS PER
+SITE `T`, not the number of sites, with strong loadings — at `T = 2`, `n = 80`:
+
+| | objective error vs oracle | ‖Λ‖ |
+|---|---|---|
+| Laplace | **+1.0340 nll** | 1.592 |
+| AGHQ k=9 | +2.1e-04 | 2.164 |
+| AGHQ k=25 | **+1.2e-09** | 2.155 |
+| truth | — | **0.962** |
+
+**AGHQ is near-exact at integration.** It is not worse at its job; it is almost perfect
+at it, and the template's objective matches the oracle at every `k` tested. But the TRUE
+MLE is itself biased upward in this regime, and Laplace's approximation error happens to
+shrink in the opposite direction — so the *worse integrator produced the better point
+estimate, by accident*. Laplace's wrongness is acting as shrinkage, and shrinkage lowers
+error when an estimate is noisy.
+
+**Therefore, what may be claimed:** AGHQ delivers a correct likelihood. Likelihood-ratio
+tests, AIC/BIC, profile intervals and standard errors all rest on the likelihood being
+right, and a Laplace objective wrong by 1.03 nll units makes every one of them quietly
+wrong. That is the deliverable.
+
+**What may NOT be claimed:** that AGHQ automatically improves point recovery at small
+`n`. Which engine wins on recovery is a bias-variance question, it cannot be settled on
+a single dataset, and it may well go Laplace's way in some regimes. Any promotion of a
+family or model class must be scored on the pre-registered `|attenuation − 1|` rule over
+at least 8 seeds, never on a favourable single cell.
+
+Corollary for the `aghq = "auto"` rule: "auto" should not be sold as "more accurate
+estimates". It should route on where the LIKELIHOOD is unreliable — small `T`, strong
+latent signal — which is exactly where the literature and this measurement agree.
+
+Recorded also: at `T = 3` with strong signal both engines land at ‖Λ‖ = 47.8 against a
+true 3.15. In that runaway regime the integrator is not the problem, and neither engine
+should be credited or blamed for it.

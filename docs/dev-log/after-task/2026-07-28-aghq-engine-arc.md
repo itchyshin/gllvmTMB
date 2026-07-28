@@ -61,9 +61,14 @@ Full list: `git diff --name-only origin/main...HEAD`.
   directly: agreement to **1.2e-09 at k=25**; the R reference reproduces gllvmTMB's own
   Laplace objective to **5.2e-08**.
 * **Laplace path byte-identical** on 4 cells (max |par diff| = 0).
-* Suites: `test-aghq-surface` 35/0 · `test-aghq-golden` 5/0 (3 skip) ·
-  `test-tmb-ad-safe-clamps` 7/0. **Full `devtools::test()` and CI were still running at
-  close** — see Residuals.
+* **Full `devtools::test()`: `FAIL 0 | ERROR 0 | WARN 2 | SKIP 785 | PASS 7767`.** This is
+  the check that matters for merge safety — the 4-cell byte-identity comparison could not
+  establish that the template edit left the Laplace path alone across the whole surface; the
+  suite can, and does.
+* Targeted: `test-aghq-surface` 35/0 · `test-tmb-ad-safe-clamps` 7/0 ·
+  `test-aghq-golden` reported 5/0 (3 skip) — **but see Residuals: those three skips are the
+  accuracy tests, and they can never run.**
+* CI on PR #801 was still pending at close.
 * **Compute**: 954-fit Totoro campaign (120 cores) + a killed 450-core-hour H4 campaign.
 
 ## 6. Tests of the tests
@@ -120,7 +125,17 @@ and had to be told; and I declared four healthy background jobs dead using
 6. **`s_B` fenced**, so poisson/gaussian *default* `latent()` models are uncovered (binary
    defaults are covered — single-trial Bernoulli has auto-Psi pinned off).
 7. **The flat direction is penalised, not fixed.**
-8. Full `devtools::test()` and CI unresolved at close.
+8. CI on PR #801 unresolved at close (full local suite is green: FAIL 0, PASS 7767).
+9. **The headline evidence does not exercise the shipped engine.** Only 2 of 16 evidence
+   scripts call the real `gllvmTMB()`, both at n <= 30; every multi-seed and large-n number
+   in this report came from `dev/aghq-r-reference.R`, which is explicitly not a shipping
+   route. Found by D-43 lens 1, not by me.
+10. **`test-aghq-golden.R`'s three accuracy tests silently SKIP** — the gating probe runs at
+   k = 1, which routes to plain Laplace by design, so `aghq$used` is never TRUE. The 5/0
+   above is five passes plus three that never executed.
+11. **"No existing user's results move" is FALSE as stated** — the branch carries an
+   unconditional pinned-trait constant-offset fix that moves `logLik`/AIC for existing
+   default-engine models with pinned traits. Asserted in the PR body and withdrawn.
 
 ## 11. Team learning
 

@@ -4983,35 +4983,57 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## "adaptive" quadrature means; the standalone R reference in
       ## dev/aghq-r-reference.R gets this for free by re-solving the mode on every
       ## objective evaluation, and it does not run away.
-      n_adapt <- as.integer(control$aghq_n_adapt %||% 200L)
-      aghq_iter_cap <- as.integer(control$aghq_iter_cap %||% 3L)
+      ## DEFAULT CAP IS 1: re-adapt after EVERY optimiser iteration. Measured on a
+      ## 60x6 binomial q=2 fit -- uncapped, one pass ran ||Sigma_B||_F from Laplace's
+      ## 4.43 to 4.1e7; cap 25 still reached 1.3e4; cap 1 lands at 9.25 against a
+      ## TRUE 5.79, with no runaway at all. Continuous re-adaptation is what makes
+      ## adaptive quadrature adaptive, and it is exactly what the standalone R
+      ## reference does by re-solving the mode on every objective evaluation.
+      n_adapt <- as.integer(control$aghq_n_adapt %||% 400L)
+      aghq_iter_cap <- as.integer(control$aghq_iter_cap %||% 1L)
       aghq_passes <- 0L
       aghq_mode_shift <- rep(NA_real_, n_adapt)
       aghq_err <- NULL
+      obj_try <- NULL
       for (it in seq_len(n_adapt)) {
         ad <- tryCatch(
           .gllvmTMB_aghq_adapt(obj_lap, par_cur, d_B, n_sites),
           error = function(e) e
         )
         if (inherits(ad, "error")) { aghq_err <- conditionMessage(ad); break }
-        data_aghq <- tmb_data
-        data_aghq$use_aghq    <- 1L
-        data_aghq$aghq_d      <- as.integer(d_B)
-        data_aghq$aghq_nodes  <- grid$nodes
-        data_aghq$aghq_logw   <- as.numeric(grid$logw)
-        data_aghq$aghq_mode   <- ad$mode
-        data_aghq$aghq_Lt     <- ad$Lt
-        data_aghq$aghq_logdet <- as.numeric(ad$logdet)
-        obj_try <- tryCatch(
-          TMB::MakeADFun(data = data_aghq, parameters = tmb_params,
-                         map = map_aghq, random = NULL,
-                         DLL = "gllvmTMB", silent = silent),
-          error = function(e) e
-        )
-        if (inherits(obj_try, "error")) { aghq_err <- conditionMessage(obj_try); break }
-        if (!identical(names(obj_try$par), names(par_cur))) {
-          aghq_err <- "AGHQ parameter vector does not align with the Laplace fit"
-          break
+        if (is.null(obj_try)) {
+          data_aghq <- tmb_data
+          data_aghq$use_aghq    <- 1L
+          data_aghq$aghq_d      <- as.integer(d_B)
+          data_aghq$aghq_nodes  <- grid$nodes
+          data_aghq$aghq_logw   <- as.numeric(grid$logw)
+          data_aghq$aghq_mode   <- ad$mode
+          data_aghq$aghq_Lt     <- ad$Lt
+          data_aghq$aghq_logdet <- as.numeric(ad$logdet)
+          obj_try <- tryCatch(
+            TMB::MakeADFun(data = data_aghq, parameters = tmb_params,
+                           map = map_aghq, random = NULL,
+                           DLL = "gllvmTMB", silent = silent),
+            error = function(e) e
+          )
+          if (inherits(obj_try, "error")) { aghq_err <- conditionMessage(obj_try); obj_try <- NULL; break }
+          if (!identical(names(obj_try$par), names(par_cur))) {
+            aghq_err <- "AGHQ parameter vector does not align with the Laplace fit"
+            obj_try <- NULL
+            break
+          }
+        } else {
+          ## Mutate the adaptation points in place and retape rather than rebuilding
+          ## MakeADFun. At cap = 1 the loop runs hundreds of passes, and a rebuild per
+          ## pass dominated the wall clock (58 s for 60 passes on a 60x6 fit).
+          upd <- tryCatch({
+            obj_try$env$data$aghq_mode   <- ad$mode
+            obj_try$env$data$aghq_Lt     <- ad$Lt
+            obj_try$env$data$aghq_logdet <- as.numeric(ad$logdet)
+            obj_try$retape()
+            TRUE
+          }, error = function(e) e)
+          if (inherits(upd, "error")) { aghq_err <- conditionMessage(upd); break }
         }
         opt_try <- tryCatch(run_one(par_cur, .obj = obj_try, .iter_cap = aghq_iter_cap),
                             error = function(e) e)

@@ -3,8 +3,27 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 
-## Live Phase Snapshot — 2026-07-25
+## Live Phase Snapshot — 2026-07-28
 
+- **2026-07-28 (latest) — VA/EVA + AGHQ lane.** **PR #799 MERGED** (`dc10fa6a`):
+  a collapsed variance component could pass every check the package had
+  (`near_zero_psi_unit … PASS … 0.0006826` for a component whose *variance* was
+  `4.7e-7`) — now detected relative to siblings; `start_method = "res"`
+  soft-deprecated on 89 fit-pairs. **PR #798 OPEN and CI-GREEN** (no API change,
+  nothing exported): per-family registry (4/16 families, proven by porting
+  `nbinom2` through it), **calibrated** VA standard errors (`se_profile` covers
+  0.935–0.950; a block-diagonal Schur replaced a 5.45 GB dense Hessian with
+  9.1 s / 220 MB at n=5397), and an Ayumi-scale second opinion (Laplace
+  `rel_frob` 0.167 vs VA-GH **0.103**). **DECISION: invest in Laplace + AGHQ,
+  freeze VA** — AGHQ inherits all 16 families plus the phylo/missing surface,
+  whereas VA reaches 4/16 and covers 2 of Ayumi's 27 responses. The AGHQ q=2
+  transfer test passed 5/5 (`c_full` 1.064; kill rule cleared). **NEXT ARC:
+  settle the 59/70 identifiability question BEFORE building anything** — three
+  hypotheses have died and the survivor is that those fits are well-converged
+  optima of *unidentified* models, in which case no fit-side diagnostic can flag
+  them and the deliverable is a warning, not a better estimator. Brief:
+  `docs/dev-log/2026-07-28-morning-brief.md`; handover:
+  `docs/dev-log/handover/2026-07-28-claude-handover.md`.
 - **Multi-lane split:** do not assume one active writer.  The current Claude
   release/profile lanes and the remaining Codex-owned eta-simulation lane are
   separately fenced.  Do not edit or run the eta lane from Claude.

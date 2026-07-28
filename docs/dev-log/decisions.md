@@ -1613,3 +1613,55 @@ CLAIM — specifically any statement that AGHQ improves recovery of sigma or rho
    suite. Evidence that only a human can reproduce is not evidence a package can rely on.
 
 Recorded so that a later session cannot mistake "the engine works" for "the claim passed".
+
+## 2026-07-28  D-43: THREE of three NOT-DONE — and two findings the author did not have
+
+Decision: all three lenses returned NOT-DONE. Recording the two findings that were NOT in
+the earlier withhold, because both are more serious than what was recorded, and one makes a
+statement I put in the PR body and told the maintainer **false**.
+
+**FINDING 1 (lens 1) — the headline evidence does not exercise the shipped code.**
+Of the 16 scripts in `dev/aghq-evidence/`, only the two toy-scale ones (n <= 30) call the
+real `gllvmTMB()`. **Every** multi-seed and large-n script — including the 954-fit Totoro
+suite and the n = 3200 descent that produce *every* sigma, rho and runaway number in the
+claim — sources `dev/aghq-r-reference.R`, a standalone R re-implementation whose own header
+says it "is NOT a shipping route and must never become one". The link between that reference
+and the real engine is validated only at n = 3–30.
+
+This is not a small caveat. The reference was built deliberately as an INDEPENDENT ORACLE
+and it did its job; but independence from the engine is exactly what disqualifies it as
+evidence ABOUT the engine at scale. Lens 1 hand-ran one real-engine cell at the suite's own
+DGP (n = 100, p = 6, q = 2): Laplace frob_rat 11.4 -> AGHQ+ridge 1.10, rho 0.507 -> 0.192.
+Directionally reassuring, and n = 1.
+
+**FINDING 2 (lens 2) — "no existing user's results move" is FALSE as stated.** The default
+is unchanged and the quadrature is properly gated, but the same branch carries two
+UNCONDITIONAL changes to shared likelihood code: a pinned-trait constant-offset fix, which
+**moves `logLik`/AIC for existing default-engine models with pinned traits**, and an
+`ordinal_probit` rewrite (machine-precision only, verified numerically). I asserted the
+stronger sentence in the PR body and in chat. It is withdrawn.
+
+**FINDING 3 (lens 2) — the golden accuracy tests all silently SKIP.** All three
+accuracy-proving tests in `test-aghq-golden.R` self-skip, and the mechanism is a genuine
+bug: the gating smoke probe runs at k = 1, but k = 1 is DEFINED to route to the plain-Laplace
+branch (`aghq$used = FALSE` by design), so the probe can never observe `used = TRUE` and the
+tests can never run. **"Validated" therefore has zero automated regression protection** — the
+5/0 I reported was five passing tests plus three that never executed.
+
+**FINDING 4 (lens 2) — the second shape was never reported.** `totoro-suite-inc.csv` holds
+480 fits at p = 4, q = 1 — the authors' own script calls it "where the runaway was worst" —
+and every `decisions.md` analysis covers only p = 6, q = 2. In that shape AGHQ+ridge runaway
+is **3.3%, not 0%**, so "eliminates the divergent-fit mode" is wrong.
+
+**FINDING 5 (lens 3) — an error cancellation inside the shipped default.** Laplace+ridge at
+n = 1600 is |sigma-1| = 0.138 against plain Laplace's 0.118: the ridge COSTS where no
+divergence confound is present. AGHQ+ridge shows no such cost because AGHQ's upward bias and
+the ridge's shrinkage CANCEL. That is an undiagnosed error-cancellation mechanism inside the
+shipped configuration — recorded one session after this same lane retracted an
+error-cancellation story about Laplace.
+
+**FINDING 6 (lens 3) — ridge-on fits can never pass the gradient check.** At the ridge
+optimum the honest gradient is lambda/4 ~ 0.25 against `grad_tol = 1e-4`.
+
+**Consequence.** The claim stays withheld. The merge stays blocked. The PR body must be
+corrected on "no existing user's results move" before anyone reads it as a guarantee.

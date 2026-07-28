@@ -1,0 +1,33 @@
+=== SELF-CHECK: sign of the Firth penalty (break it, confirm it changes the answer, restore) ===
+  AGHQ ratio                = 1.3887
+  CORRECT sign (-0.5*logdet) Firth ratio = 1.3887
+  FLIPPED sign (+0.5*logdet) Firth ratio = 1.4959  <- deliberately broken
+  assertion(the two signs give materially different answers) = TRUE
+  This is evaluated on the SAME data/fit/start; only the sign of the penalty
+  term differs, so this genuinely exercises the check's ability to go red under
+  a real code mutation (a tautological check could not fail this way).
+=== end self-check ===
+
+=== ratio ||Lambda_hat||/||Lambda_true||; T=4, q=1, k=9, NM maxit=12; wall clock = 598.2 s ===
+     n | Laplace              | AGHQ                 | AGHQ+Firth(NM)       |  n_seeds
+    50 |   1.218 (mcse 2.197) |   1.142 (mcse 0.316) |   1.105 (mcse 0.326) |        8
+   100 |   0.803 (mcse 1.500) |   1.193 (mcse 0.394) |   1.210 (mcse 0.394) |        6
+   200 |   0.751 (mcse 1.579) |   1.065 (mcse 0.248) |   1.023 (mcse 0.281) |        6
+   800 |   0.768 (mcse 0.105) |   1.109 (mcse 0.067) |   1.019 (mcse 0.072) |        3
+
+=== NM convergence and wall-clock per Firth fit, by n ===
+  n=  50: mean t_firth =  15.51s  n_ok=8/8  conv0(=maxit-not-hit)=0/8
+  n= 100: mean t_firth =  26.77s  n_ok=6/6  conv0(=maxit-not-hit)=0/6
+  n= 200: mean t_firth =  56.99s  n_ok=6/6  conv0(=maxit-not-hit)=0/6
+  n= 800: mean t_firth =  66.40s  n_ok=3/3  conv0(=maxit-not-hit)=0/3
+
+=== large-n vanishing self-check: median |step_norm| should FALL as n rises ===
+        50        100        200        800 
+0.29089302 0.07503405 0.15633928 0.00000000 
+  monotonically non-increasing across the n-ladder: FALSE
+
+=== separation correlation: does Firth help MORE where separation (|eta|>10) is worse? ===
+  Spearman cor(sep_frac, improvement) over 23 fits = NA
+Warning message:
+In cor(res$sep_frac[ok], res$improvement[ok], method = "spearman") :
+  the standard deviation is zero

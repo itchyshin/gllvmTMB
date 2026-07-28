@@ -1,0 +1,9 @@
+=== ratio of estimated to true ||Lambda|| (1.0 = unbiased), 30 seeds ===
+k=1 IS Laplace; k=15 is AGHQ. Median is reported because the ratio is skewed.
+
+  T=2   LAPLACE   n=30  median ratio  0.663   mean    4.847   IQR [0.343, 1.205]   ratio>2 in 4/30
+  T=2   AGHQ      n=30  median ratio  0.867   mean    1.329   IQR [0.458, 1.604]   ratio>2 in 5/30
+  T=5   LAPLACE   n=30  median ratio  6.369   mean    6.819   IQR [0.930, 8.899]   ratio>2 in 17/30
+  T=5   AGHQ      n=30  median ratio  1.635   mean    2.851   IQR [1.208, 2.712]   ratio>2 in 13/30
+  T=12  LAPLACE   n=30  median ratio  1.382   mean    3.913   IQR [1.009, 5.555]   ratio>2 in 12/30
+  T=12  AGHQ      n=30  median ratio  1.214   mean    1.486   IQR [1.014, 1.440]   ratio>2 in 4/30

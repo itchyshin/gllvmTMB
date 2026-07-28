@@ -1,0 +1,500 @@
+=== section 0: invariance check (must show abs_diff ~ 0) ===
+                                                       check            lhs
+1      ridge_free == trace(Sigma), lower-tri constrained fit  5.56534362036
+2 ||L||_F^2 == ||L R||_F^2, unconstrained, random rotation R 10.65453933476
+             rhs         abs_diff
+1  5.56534362036 8.8817841970e-16
+2 10.65453933476 1.7763568394e-15
+negative control (non-orthogonal R): abs_diff = 17.1059 -- must be >> 0 (it is a DELIBERATE break)
+negative control confirmed red, as required; real check above is the one that must stay green.
+
+
+=== running n=100 (cores=3, maxit=60, 20 seeds) ===
+[[1]]
+    n seed     method lambda_pen    ratio frob_true conv
+1 100  501    laplace         NA 1.467733  1.181734    0
+2 100  501       aghq       0.00 3.380835  1.181734    0
+3 100  501 aghq_ridge       0.02 3.085857  1.181734    0
+4 100  501 aghq_ridge       0.10 2.354155  1.181734    0
+5 100  501 aghq_ridge       0.30 1.845959  1.181734    0
+6 100  501 aghq_ridge       1.00 1.435059  1.181734    0
+
+[[2]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  502    laplace         NA 0.8227924  2.557054    0
+2 100  502       aghq       0.00 0.9503980  2.557054    0
+3 100  502 aghq_ridge       0.02 0.9448927  2.557054    0
+4 100  502 aghq_ridge       0.10 0.9244267  2.557054    0
+5 100  502 aghq_ridge       0.30 0.8807186  2.557054    0
+6 100  502 aghq_ridge       1.00 0.7693729  2.557054    0
+
+[[3]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  503    laplace         NA 0.7169660  3.114075    0
+2 100  503       aghq       0.00 1.4346935  3.114075    0
+3 100  503 aghq_ridge       0.02 1.3201343  3.114075    0
+4 100  503 aghq_ridge       0.10 1.0391233  3.114075    0
+5 100  503 aghq_ridge       0.30 0.8253313  3.114075    0
+6 100  503 aghq_ridge       1.00 0.6390107  3.114075    0
+
+[[4]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  504    laplace         NA 0.5030001   4.08458    0
+2 100  504       aghq       0.00 0.9051348   4.08458    0
+3 100  504 aghq_ridge       0.02 0.8094192   4.08458    0
+4 100  504 aghq_ridge       0.10 0.6630094   4.08458    0
+5 100  504 aghq_ridge       0.30 0.5783714   4.08458    0
+6 100  504 aghq_ridge       1.00 0.4701433   4.08458    0
+
+[[5]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  505    laplace         NA 9.8032723  3.381147    1
+2 100  505       aghq       0.00 9.9356534  3.381147    0
+3 100  505 aghq_ridge       0.02 1.6647104  3.381147    0
+4 100  505 aghq_ridge       0.10 1.3357387  3.381147    0
+5 100  505 aghq_ridge       0.30 1.1280235  3.381147    0
+6 100  505 aghq_ridge       1.00 0.9026783  3.381147    0
+
+[[6]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  506    laplace         NA 0.7823420  2.651784    0
+2 100  506       aghq       0.00 0.9016112  2.651784    0
+3 100  506 aghq_ridge       0.02 0.8965720  2.651784    0
+4 100  506 aghq_ridge       0.10 0.8774159  2.651784    0
+5 100  506 aghq_ridge       0.30 0.8352794  2.651784    0
+6 100  506 aghq_ridge       1.00 0.7257212  2.651784    0
+
+[[7]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  507    laplace         NA 0.6517947  2.308214    0
+2 100  507       aghq       0.00 0.8609022  2.308214    0
+3 100  507 aghq_ridge       0.02 0.8349000  2.308214    0
+4 100  507 aghq_ridge       0.10 0.7827955  2.308214    0
+5 100  507 aghq_ridge       0.30 0.7239627  2.308214    0
+6 100  507 aghq_ridge       1.00 0.6200469  2.308214    0
+
+[[8]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  508    laplace         NA 0.5084602  2.120013    0
+2 100  508       aghq       0.00 1.4610761  2.120013    0
+3 100  508 aghq_ridge       0.02 1.2516516  2.120013    0
+4 100  508 aghq_ridge       0.10 0.9273453  2.120013    0
+5 100  508 aghq_ridge       0.30 0.7249690  2.120013    0
+6 100  508 aghq_ridge       1.00 0.5341894  2.120013    0
+
+[[9]]
+    n seed     method lambda_pen      ratio frob_true conv
+1 100  509    laplace         NA 20.8532499  2.629552    1
+2 100  509       aghq       0.00 52.9190761  2.629552    1
+3 100  509 aghq_ridge       0.02 52.9190760  2.629552    1
+4 100  509 aghq_ridge       0.10  1.2872883  2.629552    0
+5 100  509 aghq_ridge       0.30  1.0493513  2.629552    0
+6 100  509 aghq_ridge       1.00  0.8215284  2.629552    0
+
+[[10]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  510    laplace         NA 0.2747614  3.421933    0
+2 100  510       aghq       0.00 0.8714853  3.421933    0
+3 100  510 aghq_ridge       0.02 0.6824351  3.421933    0
+4 100  510 aghq_ridge       0.10 0.4465279  3.421933    0
+5 100  510 aghq_ridge       0.30 0.3394241  3.421933    0
+6 100  510 aghq_ridge       1.00 0.2357933  3.421933    0
+
+[[11]]
+    n seed     method lambda_pen    ratio frob_true conv
+1 100  511    laplace         NA 1.101997  1.119947    0
+2 100  511       aghq       0.00 3.121031  1.119947    0
+3 100  511 aghq_ridge       0.02 2.774624  1.119947    0
+4 100  511 aghq_ridge       0.10 2.042194  1.119947    0
+5 100  511 aghq_ridge       0.30 1.537052  1.119947    0
+6 100  511 aghq_ridge       1.00 1.139396  1.119947    0
+
+[[12]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  512    laplace         NA 0.5744728  2.397824    0
+2 100  512       aghq       0.00 1.2530934  2.397824    0
+3 100  512 aghq_ridge       0.02 1.0485156  2.397824    0
+4 100  512 aghq_ridge       0.10 0.8306729  2.397824    0
+5 100  512 aghq_ridge       0.30 0.7206906  2.397824    0
+6 100  512 aghq_ridge       1.00 0.5845298  2.397824    0
+
+[[13]]
+    n seed     method lambda_pen    ratio frob_true conv
+1 100  513    laplace         NA 1.106741  1.580022    0
+2 100  513       aghq       0.00 1.513047  1.580022    0
+3 100  513 aghq_ridge       0.02 1.458457  1.580022    0
+4 100  513 aghq_ridge       0.10 1.364193  1.580022    0
+5 100  513 aghq_ridge       0.30 1.260370  1.580022    0
+6 100  513 aghq_ridge       1.00 1.064230  1.580022    0
+
+[[14]]
+    n seed     method lambda_pen      ratio frob_true conv
+1 100  514    laplace         NA  9.5769116  4.582752    1
+2 100  514       aghq       0.00 34.0389493  4.582752    1
+3 100  514 aghq_ridge       0.02  0.9932478  4.582752    0
+4 100  514 aghq_ridge       0.10  0.9278243  4.582752    0
+5 100  514 aghq_ridge       0.30  0.8243910  4.582752    0
+6 100  514 aghq_ridge       1.00  0.6571965  4.582752    0
+
+[[15]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  515    laplace         NA 0.8028070  3.301105    0
+2 100  515       aghq       0.00 0.8839796  3.301105    0
+3 100  515 aghq_ridge       0.02 0.8789560  3.301105    0
+4 100  515 aghq_ridge       0.10 0.8602203  3.301105    0
+5 100  515 aghq_ridge       0.30 0.8202226  3.301105    0
+6 100  515 aghq_ridge       1.00 0.7211130  3.301105    0
+
+[[16]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  516    laplace         NA 1.0121806  2.449337    0
+2 100  516       aghq       0.00 1.7050743  2.449337    0
+3 100  516 aghq_ridge       0.02 1.5203759  2.449337    0
+4 100  516 aghq_ridge       0.10 1.2553199  2.449337    0
+5 100  516 aghq_ridge       0.30 1.0962536  2.449337    0
+6 100  516 aghq_ridge       1.00 0.8895083  2.449337    0
+
+[[17]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  517    laplace         NA 0.5440107  3.982732    0
+2 100  517       aghq       0.00 0.9296773  3.982732    0
+3 100  517 aghq_ridge       0.02 0.8063402  3.982732    0
+4 100  517 aghq_ridge       0.10 0.6752519  3.982732    0
+5 100  517 aghq_ridge       0.30 0.6184228  3.982732    0
+6 100  517 aghq_ridge       1.00 0.5032343  3.982732    0
+
+[[18]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  518    laplace         NA 0.8326596  2.130083    0
+2 100  518       aghq       0.00 1.9409425  2.130083    0
+3 100  518 aghq_ridge       0.02 1.6327820  2.130083    0
+4 100  518 aghq_ridge       0.10 1.1689856  2.130083    0
+5 100  518 aghq_ridge       0.30 0.9650548  2.130083    0
+6 100  518 aghq_ridge       1.00 0.7630255  2.130083    0
+
+[[19]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  519    laplace         NA 0.8434039   2.70711    0
+2 100  519       aghq       0.00 1.3554535   2.70711    0
+3 100  519 aghq_ridge       0.02 1.1249988   2.70711    0
+4 100  519 aghq_ridge       0.10 1.0277383   2.70711    0
+5 100  519 aghq_ridge       0.30 0.9396767   2.70711    0
+6 100  519 aghq_ridge       1.00 0.7564418   2.70711    0
+
+[[20]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 100  520    laplace         NA 13.930592  2.483484    1
+2 100  520       aghq       0.00 11.771499  2.483484    0
+3 100  520 aghq_ridge       0.02  2.371712  2.483484    0
+4 100  520 aghq_ridge       0.10  1.920481  2.483484    0
+5 100  520 aghq_ridge       0.30  1.559952  2.483484    0
+6 100  520 aghq_ridge       1.00  1.208245  2.483484    0
+
+=== running n=200 (incl. log-variance comparison) ===
+[[1]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  501    laplace         NA 0.8000777  1.181734    0
+2 200  501       aghq       0.00 2.2258130  1.181734    0
+3 200  501 aghq_ridge       0.02 1.9509110  1.181734    0
+4 200  501 aghq_ridge       0.10 1.4550650  1.181734    0
+5 200  501 aghq_ridge       0.30 1.1540985  1.181734    0
+6 200  501 aghq_ridge       1.00 0.9201014  1.181734    0
+7 200  501  aghq_logv       0.30 1.8841228  1.181734    0
+8 200  501  aghq_logv       1.00 1.7653604  1.181734    0
+9 200  501  aghq_logv       3.00 1.7186745  1.181734    0
+
+[[2]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  502    laplace         NA 0.6746712  2.557054    0
+2 200  502       aghq       0.00 0.7495316  2.557054    0
+3 200  502 aghq_ridge       0.02 0.7476981  2.557054    0
+4 200  502 aghq_ridge       0.10 0.7406008  2.557054    0
+5 200  502 aghq_ridge       0.30 0.7244102  2.557054    0
+6 200  502 aghq_ridge       1.00 0.6778553  2.557054    0
+7 200  502  aghq_logv       0.30 0.7507738  2.557054    0
+8 200  502  aghq_logv       1.00 0.7533542  2.557054    0
+9 200  502  aghq_logv       3.00 0.7588658  2.557054    0
+
+[[3]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  503    laplace         NA 0.7016073  3.114075    0
+2 200  503       aghq       0.00 0.8405818  3.114075    0
+3 200  503 aghq_ridge       0.02 0.8365906  3.114075    0
+4 200  503 aghq_ridge       0.10 0.8222988  3.114075    0
+5 200  503 aghq_ridge       0.30 0.7934700  3.114075    0
+6 200  503 aghq_ridge       1.00 0.7220527  3.114075    0
+7 200  503  aghq_logv       0.30 0.8316202  3.114075    0
+8 200  503  aghq_logv       1.00 0.8147080  3.114075    0
+9 200  503  aghq_logv       3.00 0.7814502  3.114075    0
+
+[[4]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  504    laplace         NA 0.3681061   4.08458    0
+2 200  504       aghq       0.00 0.6498825   4.08458    0
+3 200  504 aghq_ridge       0.02 0.6071507   4.08458    0
+4 200  504 aghq_ridge       0.10 0.5375827   4.08458    0
+5 200  504 aghq_ridge       0.30 0.4800283   4.08458    0
+6 200  504 aghq_ridge       1.00 0.4125657   4.08458    0
+7 200  504  aghq_logv       0.30 0.5841333   4.08458    0
+8 200  504  aghq_logv       1.00 0.5449467   4.08458    0
+9 200  504  aghq_logv       3.00 0.5173658   4.08458    0
+
+[[5]]
+    n seed     method lambda_pen      ratio frob_true conv
+1 200  505    laplace         NA 10.1554463  3.381147    1
+2 200  505       aghq       0.00  9.2834561  3.381147    0
+3 200  505 aghq_ridge       0.02  1.5328101  3.381147    0
+4 200  505 aghq_ridge       0.10  1.3451633  3.381147    0
+5 200  505 aghq_ridge       0.30  1.1448079  3.381147    0
+6 200  505 aghq_ridge       1.00  0.9369204  3.381147    0
+7 200  505  aghq_logv       0.30  7.4731180  3.381147    0
+8 200  505  aghq_logv       1.00  1.2517404  3.381147    0
+9 200  505  aghq_logv       3.00  1.0396167  3.381147    0
+
+[[6]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  506    laplace         NA 0.9088005  2.651784    0
+2 200  506       aghq       0.00 1.2901799  2.651784    0
+3 200  506 aghq_ridge       0.02 1.1927840  2.651784    0
+4 200  506 aghq_ridge       0.10 1.0962821  2.651784    0
+5 200  506 aghq_ridge       0.30 1.0187918  2.651784    0
+6 200  506 aghq_ridge       1.00 0.8986022  2.651784    0
+7 200  506  aghq_logv       0.30 1.1354296  2.651784    0
+8 200  506  aghq_logv       1.00 1.0596322  2.651784    0
+9 200  506  aghq_logv       3.00 0.9814208  2.651784    0
+
+[[7]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  507    laplace         NA 0.9755075  2.308214    0
+2 200  507       aghq       0.00 1.6599950  2.308214    0
+3 200  507 aghq_ridge       0.02 1.5575431  2.308214    0
+4 200  507 aghq_ridge       0.10 1.3503994  2.308214    0
+5 200  507 aghq_ridge       0.30 1.1847418  2.308214    0
+6 200  507 aghq_ridge       1.00 1.0033928  2.308214    0
+7 200  507  aghq_logv       0.30 1.4383294  2.308214    0
+8 200  507  aghq_logv       1.00 1.2634210  2.308214    0
+9 200  507  aghq_logv       3.00 1.1208790  2.308214    0
+
+[[8]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  508    laplace         NA 0.7752222  2.120013    0
+2 200  508       aghq       0.00 1.4736078  2.120013    0
+3 200  508 aghq_ridge       0.02 1.3551040  2.120013    0
+4 200  508 aghq_ridge       0.10 1.1607099  2.120013    0
+5 200  508 aghq_ridge       0.30 1.0169132  2.120013    0
+6 200  508 aghq_ridge       1.00 0.8633936  2.120013    0
+7 200  508  aghq_logv       0.30 1.2561956  2.120013    0
+8 200  508  aghq_logv       1.00 1.1300195  2.120013    0
+9 200  508  aghq_logv       3.00 1.0424818  2.120013    0
+
+[[9]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  509    laplace         NA 0.8126723  2.629552    0
+2 200  509       aghq       0.00 1.0301822  2.629552    0
+3 200  509 aghq_ridge       0.02 1.0166960  2.629552    0
+4 200  509 aghq_ridge       0.10 0.9806289  2.629552    0
+5 200  509 aghq_ridge       0.30 0.9299851  2.629552    0
+6 200  509 aghq_ridge       1.00 0.8342302  2.629552    0
+7 200  509  aghq_logv       0.30 1.0018903  2.629552    0
+8 200  509  aghq_logv       1.00 0.9654585  2.629552    0
+9 200  509  aghq_logv       3.00 0.9147904  2.629552    0
+
+[[10]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  510    laplace         NA 0.3200469  3.421933    0
+2 200  510       aghq       0.00 0.7690528  3.421933    0
+3 200  510 aghq_ridge       0.02 0.6879940  3.421933    0
+4 200  510 aghq_ridge       0.10 0.5564291  3.421933    0
+5 200  510 aghq_ridge       0.30 0.4664527  3.421933    0
+6 200  510 aghq_ridge       1.00 0.3809935  3.421933    0
+7 200  510  aghq_logv       0.30 0.6618227  3.421933    0
+8 200  510  aghq_logv       1.00 0.6178840  3.421933    0
+9 200  510  aghq_logv       3.00 0.5974128  3.421933    0
+
+[[11]]
+    n seed     method lambda_pen    ratio frob_true conv
+1 200  511    laplace         NA 1.111229  1.119947    0
+2 200  511       aghq       0.00 1.354581  1.119947    0
+3 200  511 aghq_ridge       0.02 1.346613  1.119947    0
+4 200  511 aghq_ridge       0.10 1.320756  1.119947    0
+5 200  511 aghq_ridge       0.30 1.275043  1.119947    0
+6 200  511 aghq_ridge       1.00 1.166718  1.119947    0
+7 200  511  aghq_logv       0.30 1.430082  1.119947    0
+8 200  511  aghq_logv       1.00 1.628175  1.119947    0
+9 200  511  aghq_logv       3.00 1.734414  1.119947    0
+
+[[12]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  512    laplace         NA 0.5515592  2.397824    0
+2 200  512       aghq       0.00 0.6765965  2.397824    0
+3 200  512 aghq_ridge       0.02 0.6741607  2.397824    0
+4 200  512 aghq_ridge       0.10 0.6652148  2.397824    0
+5 200  512 aghq_ridge       0.30 0.6464611  2.397824    0
+6 200  512 aghq_ridge       1.00 0.5964716  2.397824    0
+7 200  512  aghq_logv       0.30 0.6884387  2.397824    0
+8 200  512  aghq_logv       1.00 0.7165322  2.397824    0
+9 200  512  aghq_logv       3.00 0.7785309  2.397824    0
+
+[[13]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  513    laplace         NA 0.9548881  1.580022    0
+2 200  513       aghq       0.00 1.9973416  1.580022    0
+3 200  513 aghq_ridge       0.02 1.8388043  1.580022    0
+4 200  513 aghq_ridge       0.10 1.5355733  1.580022    0
+5 200  513 aghq_ridge       0.30 1.3087074  1.580022    0
+6 200  513 aghq_ridge       1.00 1.0859454  1.580022    0
+7 200  513  aghq_logv       0.30 1.6879573  1.580022    0
+8 200  513  aghq_logv       1.00 1.4966955  1.580022    0
+9 200  513  aghq_logv       3.00 1.3766942  1.580022    0
+
+[[14]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  514    laplace         NA 0.9612161  4.582752    0
+2 200  514       aghq       0.00 1.0258408  4.582752    0
+3 200  514 aghq_ridge       0.02 1.0177909  4.582752    0
+4 200  514 aghq_ridge       0.10 0.9890998  4.582752    0
+5 200  514 aghq_ridge       0.30 0.9335244  4.582752    0
+6 200  514 aghq_ridge       1.00 0.8167704  4.582752    0
+7 200  514  aghq_logv       0.30 1.0075050  4.582752    0
+8 200  514  aghq_logv       1.00 0.9699324  4.582752    0
+9 200  514  aghq_logv       3.00 0.8889335  4.582752    0
+
+[[15]]
+    n seed     method lambda_pen      ratio frob_true conv
+1 200  515    laplace         NA 11.7298258  3.301105    0
+2 200  515       aghq       0.00 45.5626842  3.301105    1
+3 200  515 aghq_ridge       0.02  1.5979601  3.301105    0
+4 200  515 aghq_ridge       0.10  1.3674540  3.301105    0
+5 200  515 aghq_ridge       0.30  1.1703898  3.301105    0
+6 200  515 aghq_ridge       1.00  0.9727927  3.301105    0
+7 200  515  aghq_logv       0.30 11.4559671  3.301105    1
+8 200  515  aghq_logv       1.00  1.2709011  3.301105    0
+9 200  515  aghq_logv       3.00  1.0719278  3.301105    0
+
+[[16]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  516    laplace         NA 0.6950222  2.449337    0
+2 200  516       aghq       0.00 1.5196344  2.449337    0
+3 200  516 aghq_ridge       0.02 1.4319761  2.449337    0
+4 200  516 aghq_ridge       0.10 1.1888876  2.449337    0
+5 200  516 aghq_ridge       0.30 0.9760035  2.449337    0
+6 200  516 aghq_ridge       1.00 0.7866482  2.449337    0
+7 200  516  aghq_logv       0.30 1.3032151  2.449337    0
+8 200  516  aghq_logv       1.00 1.0909903  2.449337    0
+9 200  516  aghq_logv       3.00 0.9536809  2.449337    0
+
+[[17]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  517    laplace         NA 0.4434765  3.982732    0
+2 200  517       aghq       0.00 0.6889529  3.982732    0
+3 200  517 aghq_ridge       0.02 0.6591033  3.982732    0
+4 200  517 aghq_ridge       0.10 0.6042340  3.982732    0
+5 200  517 aghq_ridge       0.30 0.5523173  3.982732    0
+6 200  517 aghq_ridge       1.00 0.4836298  3.982732    0
+7 200  517  aghq_logv       0.30 0.6361833  3.982732    0
+8 200  517  aghq_logv       1.00 0.5956800  3.982732    0
+9 200  517  aghq_logv       3.00 0.5593775  3.982732    0
+
+[[18]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  518    laplace         NA 0.7623531  2.130083    0
+2 200  518       aghq       0.00 0.8792686  2.130083    0
+3 200  518 aghq_ridge       0.02 0.8773076  2.130083    0
+4 200  518 aghq_ridge       0.10 0.8695016  2.130083    0
+5 200  518 aghq_ridge       0.30 0.8512758  2.130083    0
+6 200  518 aghq_ridge       1.00 0.7966402  2.130083    0
+7 200  518  aghq_logv       0.30 0.8814524  2.130083    0
+8 200  518  aghq_logv       1.00 0.8859664  2.130083    0
+9 200  518  aghq_logv       3.00 0.8956595  2.130083    0
+
+[[19]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  519    laplace         NA 0.9330187   2.70711    0
+2 200  519       aghq       0.00 1.3273369   2.70711    0
+3 200  519 aghq_ridge       0.02 1.2219598   2.70711    0
+4 200  519 aghq_ridge       0.10 1.1578224   2.70711    0
+5 200  519 aghq_ridge       0.30 1.0954365   2.70711    0
+6 200  519 aghq_ridge       1.00 0.9497576   2.70711    0
+7 200  519  aghq_logv       0.30 1.1786552   2.70711    0
+8 200  519  aghq_logv       1.00 1.1299437   2.70711    0
+9 200  519  aghq_logv       3.00 1.0415258   2.70711    0
+
+[[20]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 200  520    laplace         NA 0.9097639  2.483484    0
+2 200  520       aghq       0.00 1.0356609  2.483484    0
+3 200  520 aghq_ridge       0.02 1.0328469  2.483484    0
+4 200  520 aghq_ridge       0.10 1.0218885  2.483484    0
+5 200  520 aghq_ridge       0.30 0.9962088  2.483484    0
+6 200  520 aghq_ridge       1.00 0.9211730  2.483484    0
+7 200  520  aghq_logv       0.30 1.0293588  2.483484    0
+8 200  520  aghq_logv       1.00 1.0157688  2.483484    0
+9 200  520  aghq_logv       3.00 0.9839136  2.483484    0
+
+=== running n=800 (trimmed grid, 8 seeds -- see deviation note above) ===
+[[1]]
+    n seed     method lambda_pen    ratio frob_true conv
+1 800  501    laplace         NA 1.048373  1.181734    0
+2 800  501       aghq          0 1.214222  1.181734    0
+3 800  501 aghq_ridge          1 1.179677  1.181734    0
+
+[[2]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 800  502    laplace         NA 0.7677410  2.557054    0
+2 800  502       aghq          0 0.9809849  2.557054    0
+3 800  502 aghq_ridge          1 0.8962605  2.557054    0
+
+[[3]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 800  503    laplace         NA 0.7089279  3.114075    0
+2 800  503       aghq          0 1.1090094  3.114075    0
+3 800  503 aghq_ridge          1 0.8524409  3.114075    0
+
+[[4]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 800  504    laplace         NA 0.4990284   4.08458    0
+2 800  504       aghq          0 0.8912139   4.08458    0
+3 800  504 aghq_ridge          1 0.6377295   4.08458    0
+
+[[5]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 800  505    laplace         NA 0.9182669  3.381147    0
+2 800  505       aghq          0 1.0310424  3.381147    0
+3 800  505 aghq_ridge          1 0.9494537  3.381147    0
+
+[[6]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 800  506    laplace         NA 0.8047739  2.651784    0
+2 800  506       aghq          0 1.3529186  2.651784    0
+3 800  506 aghq_ridge          1 0.9947197  2.651784    0
+
+[[7]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 800  507    laplace         NA 0.9045695  2.308214    0
+2 800  507       aghq          0 0.9884342  2.308214    0
+3 800  507 aghq_ridge          1 0.9638207  2.308214    0
+
+[[8]]
+    n seed     method lambda_pen     ratio frob_true conv
+1 800  508    laplace         NA 0.8424151  2.120013    0
+2 800  508       aghq          0 1.0891326  2.120013    0
+3 800  508 aghq_ridge          1 0.9952202  2.120013    0
+
+   n     method lambda_pen median   mean    mcse n_ok
+ 100       aghq       0.00 1.4479 6.6067 2.97658   20
+ 100 aghq_ridge       0.02 1.1883 3.9510 2.58159   20
+ 100 aghq_ridge       0.10 0.9778 1.1355 0.10853   20
+ 100 aghq_ridge       0.30 0.8580 0.9637 0.08138   20
+ 100 aghq_ridge       1.00 0.7411 0.7720 0.06252   20
+ 200       aghq       0.00 1.1629 3.8020 2.23704   20
+ 200  aghq_logv       0.30 1.0824 1.9158 0.60026   20
+ 200  aghq_logv       1.00 1.0377 1.0484 0.07504   20
+ 200  aghq_logv       3.00 0.9676 0.9879 0.07249   20
+ 200 aghq_ridge       0.02 1.1128 1.1592 0.09110   20
+ 200 aghq_ridge       0.10 1.0591 1.0383 0.06952   20
+ 200 aghq_ridge       0.30 0.9861 0.9360 0.05707   20
+ 200 aghq_ridge       1.00 0.8488 0.8113 0.04754   20
+ 800       aghq       0.00 1.0601 1.0821 0.05169    8
+ 800 aghq_ridge       1.00 0.9566 0.9337 0.05424    8
+
+written: /private/tmp/gllvmtmb-arc0-identifiability/dev/aghq-evidence/10-penalty-prior.csv ; /private/tmp/gllvmtmb-arc0-identifiability/dev/aghq-evidence/10-penalty-prior.log

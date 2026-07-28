@@ -1407,3 +1407,56 @@ therefore not evidence that the remaining gap is closable by more nodes.
 Recorded because the alternative was to run a 16-family campaign, watch families miss the
 kill rule, and diagnose the quadrature — when the measured cause may be a lever we have
 not built.
+
+## 2026-07-28  The routing surface is (T, M, family) — and the campaign measures levers, not pass/fail
+
+Decision: redefine what the 16-family evidence campaign produces, before it runs on the
+earlier design.
+
+**Why the earlier framing was wrong.** The campaign was scoped as "does AGHQ pass its
+kill rule for family X". But AGHQ works for every family BY CONSTRUCTION — there is one
+`obs_loglik` call site (`src/gllvmTMB.cpp:1994`, single use at `:2363`) and no
+per-family quadrature code exists or will be written. Pass/fail is therefore close to
+vacuous; what actually varies between families is **how much each lever buys**.
+
+**The two levers have different arguments, so the routing surface is three-dimensional.**
+
+* AGHQ corrects the Laplace **integral error**, which shrinks with `T` (observations per
+  cluster = traits per site) and grows with how NON-QUADRATIC the conditional
+  log-likelihood is.
+* Cox-Reid corrects the ML **finite-cluster variance bias**, which shrinks with `M`
+  (number of clusters = sites) and is largely a degrees-of-freedom effect, so much more
+  family-agnostic.
+
+| | few sites (M small) | many sites (M large) |
+|---|---|---|
+| few traits/site (T small) | **both levers** | **AGHQ only** |
+| many traits/site (T large) | **Cox-Reid only** | **neither** — plain Laplace ML is adequate |
+
+`T` and `M` are both known BEFORE fitting, so `aghq = "auto"` can route with no extra
+computation and every choice is explainable to a user in one sentence.
+
+**The family axis, with its anchor already measured.**
+
+| family | expected AGHQ lever | reason |
+|---|---|---|
+| gaussian | **exactly zero** | Laplace is exact; measured −9.9e-10, identical at k = 3 and k = 9 |
+| binary / bernoulli | largest | one bit per observation, strongly non-quadratic |
+| poisson / nbinom | mean-dependent | low counts behave like binary, high counts near-Gaussian on the log scale |
+| Gamma / beta | intermediate | continuous but skewed |
+| ordinal / tweedie / delta-hurdle | unknown, possibly large | sharp boundaries and mixture structure |
+
+**Consequences adopted.**
+
+1. The campaign reports a **lever-size table** — the change in `|attenuation − 1|` from
+   adding AGHQ, and from adding Cox-Reid — not a pass/fail column. The kill rule still
+   applies to any promotion, but the deliverable is the map.
+2. The gaussian row is the campaign's own positive control: if AGHQ's measured lever is
+   NOT ~zero there, the harness is wrong, not the family.
+3. An open design question, recorded rather than assumed: families with dispersion
+   parameters (`phi` for nbinom/beta/Gamma, `p` for tweedie, cutpoints for ordinal)
+   carry EXTRA estimated nuisance parameters, so a correct Cox-Reid adjustment for them
+   should plausibly integrate those out too, not only `b_fix`. Unresolved.
+4. Sweeps must cross `T` as well as `n`. An earlier ladder held `T = 4` fixed, which
+   walks a single row of the table above and would have calibrated `auto`'s thresholds
+   on one cell.

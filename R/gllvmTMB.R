@@ -1221,6 +1221,7 @@ gllvmTMBcontrol <- function(
   aghq = FALSE,
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,
+  aghq_ridge = 2,
   allow_nongaussian_reml = FALSE,
   ...
 ) {
@@ -1253,6 +1254,7 @@ gllvmTMBcontrol <- function(
     aghq = aghq,
     aghq_iter_cap = as.integer(aghq_iter_cap),
     aghq_n_adapt = as.integer(aghq_n_adapt),
+    aghq_ridge = aghq_ridge,
     allow_nongaussian_reml = isTRUE(allow_nongaussian_reml)
   )
 }

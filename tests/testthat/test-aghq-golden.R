@@ -306,11 +306,34 @@ test_that("GOLDEN 3 [null control, poisson]: a fully-active AGHQ k = 9 fit agree
   ))
 
   expect_true(isTRUE(fit_k9$aghq$used))
+
+  ## THIS TEST WAS VACUOUS AS ORIGINALLY WRITTEN, and the fix matters more than
+  ## the assertion. A D-43 panel showed that on poisson the adaptation loop
+  ## frequently STALLS BACK ONTO ITS LAPLACE WARM START while `aghq$used` still
+  ## reports TRUE -- measured par_shift identically 0 at T = 4 and T = 12. So
+  ## "a fully-active AGHQ agrees with Laplace" was passing because AGHQ HAD NOT
+  ## RUN, not because the quadrature had examined the problem and found nothing
+  ## to correct. That is exactly the inactivity objection this test was written
+  ## to be immune to.
+  ##
+  ## `aghq$par_shift` is the honest quantity (max |par_aghq - par_warmstart|).
+  ## It is asserted PRESENT and FINITE, and reported, so a future reader can see
+  ## whether the engine moved. It is deliberately NOT asserted > 0: on poisson it
+  ## is legitimately 0 on this fixture, and demanding movement would encode the
+  ## wrong expectation. What is forbidden is being unable to TELL.
+  expect_false(is.null(fit_k9$aghq$par_shift))
+  expect_true(is.finite(fit_k9$aghq$par_shift))
+  cat(sprintf("GOLDEN 3 par_shift = %.3e  (%s)\n", fit_k9$aghq$par_shift,
+              if (fit_k9$aghq$par_shift == 0)
+                "NO-OP: AGHQ returned its warm start -- agreement below is NOT evidence"
+              else "quadrature moved the estimate"))
+
   ## Bounds set generously above the measured values on this fixture (see the
   ## printed line above) -- tight enough to catch a genuinely broken
   ## quadrature (which would land nowhere near Laplace on a real, non-
   ## degenerate likelihood), loose enough not to be a flaky re-derivation of
-  ## the exact numbers.
+  ## the exact numbers. READ THEM TOGETHER WITH par_shift: if par_shift is 0
+  ## these two bounds are satisfied trivially and carry no information.
   expect_lt(obj_diff, 0.5)
   expect_lt(Lambda_rel_diff, 0.1)
 })

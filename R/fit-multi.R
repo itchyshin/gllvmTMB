@@ -5081,6 +5081,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       aghq_info$reason <- paste0("laplace: ", ineligible)
       if (isTRUE(control$verbose))
         cat(sprintf("  AGHQ skipped: %s\n", ineligible))
+      ## AN IGNORED ARGUMENT MUST NOT BE SILENT.
+      ##
+      ## A user writing `gllvmTMBcontrol(aghq = 9)` on the package's CURRENT
+      ## DEFAULT grammar -- ordinary `latent()`, which carries a per-trait Psi and
+      ## therefore puts s_B in the random vector -- got a plain Laplace fit with no
+      ## message of any kind. Verified for BOTH poisson and binomial; reason
+      ## "Stage 1a requires z_B as the only random block (random = z_B, s_B)".
+      ## Every fit in this lane's 10,749-fit evidence base used the soft-deprecated
+      ## `unique = FALSE` syntax, so the evidence describes a NON-DEFAULT grammar
+      ## and nothing warned anyone of the gap (D-43, 2026-07-28).
+      ##
+      ## `k = 1` is excluded from the warning: routing it to the Laplace path is
+      ## the documented, intended behaviour (one node IS the Laplace rule), not a
+      ## silently unmet request.
+      if (!identical(aghq_k_req, 1L)) {
+        cli::cli_warn(c(
+          "{.arg aghq} was requested but AGHQ did not run; this is a plain Laplace fit.",
+          "i" = "Reason: {ineligible}.",
+          ">" = "Ordinary {.fn latent} carries a per-trait Psi by default, which puts {.code s_B} in the random vector; AGHQ Stage 1a is loadings-only. Use {.code latent(..., unique = FALSE)} to make the model eligible, or drop {.arg aghq}."
+        ), .frequency = "once", .frequency_id = "gllvmTMB-aghq-ineligible")
+      }
     } else {
       grid <- .gllvmTMB_aghq_grid(d_B, aghq_k_req)
       ## Prefer a peer-supplied `.aghq_grid()` (R/aghq-control.R) ONLY if it
@@ -5254,6 +5275,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       par_best <- par_cur
       F_best <- Inf
       opt_best <- NULL
+      ## THE PARAMETER VECTOR AGHQ STARTS FROM, kept so we can answer the only
+      ## question that matters downstream: DID THE QUADRATURE ACTUALLY MOVE THE
+      ## ANSWER? A D-43 panel found `aghq$used == TRUE` on fits that returned the
+      ## Laplace optimum BIT FOR BIT -- measured here at T = 4, 6 and 12 with
+      ## max|dpar| identically 0. The adaptation loop can stall back onto its warm
+      ## start while the flag still reports success, so every claim resting on
+      ## `used` was really resting on "the quadrature branch was entered".
+      ## `used` keeps its structural meaning; `par_shift` is the honest one.
+      par_start_aghq <- par_cur
       for (it in seq_len(n_adapt)) {
         ad <- tryCatch(
           .gllvmTMB_aghq_adapt(obj_lap, par_cur, d_B, n_sites),
@@ -5486,6 +5516,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           ## to say so; Inf means unpenalised.
           ridge_tau = aghq_ridge_tau,
           penalised = is.finite(aghq_ridge_tau) && aghq_ridge_tau > 0,
+          ## DID THE QUADRATURE MOVE THE ANSWER? `used = TRUE` only means the
+          ## quadrature branch was entered and an AGHQ tape was built; it does NOT
+          ## mean the answer differs from Laplace. Read `par_shift` for that.
+          par_shift = tryCatch(max(abs(par_best - par_start_aghq)),
+                               error = function(e) NA_real_),
           optimizer = control$optimizer,
           reason = sprintf(
             "quadrature on z_B (d = %d, k = %d, %d node%s); %d adaptation pass%s, %s; final max |mode shift| = %.3g",
@@ -5500,6 +5535,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           mode_shift = aghq_mode_shift[seq_len(aghq_passes)],
           trace = aghq_trace
         )
+        ## A SILENT NO-OP IS A RESULT THE USER MUST BE TOLD ABOUT.
+        ##
+        ## The adaptation loop can stall straight back onto its Laplace warm start
+        ## and still report success. Measured on poisson at T = 4, 6 and 12:
+        ## max|par_aghq - par_laplace| identically 0 -- the user asked for
+        ## quadrature, waited for it, and received the Laplace answer bit for bit
+        ## while `aghq$used` said TRUE. Silence there is how an inactive engine
+        ## gets cited as a passing null control (D-43, 2026-07-28).
+        if (is.finite(aghq_info$par_shift) && aghq_info$par_shift == 0) {
+          cli::cli_warn(c(
+            "AGHQ ran but did not move the estimate: the result is bit-for-bit identical to the Laplace fit.",
+            "i" = "The adaptation loop returned its warm start, so {.code fit$aghq$used} is TRUE but the quadrature changed nothing.",
+            ">" = "Read {.code fit$aghq$par_shift} rather than {.code fit$aghq$used} when you need to know whether quadrature affected the answer."
+          ), .frequency = "once", .frequency_id = "gllvmTMB-aghq-no-op")
+        }
       }
     }
   }

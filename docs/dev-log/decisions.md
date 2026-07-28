@@ -1586,3 +1586,30 @@ project actually gates on.
 
 Recorded because a panel that is overruled is not a panel. Two NOT-DONE verdicts withhold
 the claim entirely; one is already in.
+
+## 2026-07-28  D-43: TWO NOT-DONE verdicts — the capability claim is WITHHELD
+
+Decision: the AGHQ capability claim is **withheld**. Lens 2 (scope) and lens 3 (method)
+both returned NOT-DONE. Under D-43, two NOT-DONE verdicts withhold the claim entirely,
+and the panel is not overruled.
+
+Nothing about the *code* is retracted by this. The engine is built, the Laplace default is
+untouched, and the correctness evidence (Gaussian exactness at ~1e-13 and k-independent;
+agreement with a brute-force integrate() oracle to 1.2e-09) stands. What is withheld is the
+CLAIM — specifically any statement that AGHQ improves recovery of sigma or rho.
+
+**The three things the next lane must clear, in order:**
+
+1. **A real defect, not a claim problem.** With the ridge on, the shipped configuration
+   returns a MAP point with ML curvature: `logLik` sits off its own maximum and the gradient
+   diagnostic cannot converge. Fix or fence it before anything is advertised. This is the
+   only item that also blocks a merge.
+2. **The adjudicating measurement.** A 30-seed coverage cell for the ACTUALLY SHIPPED
+   configuration — AGHQ k = 9 **with** `aghq_ridge = 2`, p = 6, q = 2, at n = 400 and
+   n = 1600 — reporting Wald coverage of the Sigma diagonal and off-diagonal against nominal
+   0.95 with MCSE, alongside the equivalent Laplace + ridge cell. One script, one Totoro run.
+3. **The correctness evidence is not automated.** Lens 2 notes it exists only as manually
+   run scripts under `dev/aghq-evidence/`; the golden-accuracy assertions do not run in the
+   suite. Evidence that only a human can reproduce is not evidence a package can rely on.
+
+Recorded so that a later session cannot mistake "the engine works" for "the claim passed".

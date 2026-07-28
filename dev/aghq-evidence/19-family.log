@@ -1,0 +1,12 @@
+family axis: 100 fits
+
+=== FAMILY AXIS, n=200 p=6 q=2, 10 seeds ===
+family     |  LA |s-1| AGHQ|s-1| |     LEVER |  used%
+gaussian   |    0.0099    0.0099 |   +0.0000 |   100%
+poisson    |    0.0032    0.0055 |   -0.0022 |   100%
+binomial   |    0.0616    0.1235 |   -0.0619 |   100%
+nbinom2    |    0.0197    0.0201 |   -0.0004 |   100%
+Gamma      | no usable fits
+
+POSITIVE CONTROL: gaussian's LEVER must be ~0 (Laplace is exact there).
+If it is not, the harness is wrong and no other row is interpretable.

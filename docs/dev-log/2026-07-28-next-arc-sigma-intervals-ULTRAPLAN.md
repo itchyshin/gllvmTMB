@@ -61,6 +61,59 @@ carry the family framing forward.
 THIS IS A TWO-SESSION ARC. Session A ends after S6/S8; hand over; Session B runs the campaign.
 ```
 
+> # 🔴🔴🔴 EXECUTION FINDING #3 — **THERE IS NO CERTIFICATE.** THE PREMISE OF "RE-CERTIFY" IS FALSE.
+>
+> This plan, its GOAL block, and every summary written this session say gllvmTMB has "ONE
+> coverage-certified interval (~0.946–0.948)". **It does not.** The primary record —
+> `docs/dev-log/after-task/2026-07-17-sigma-coverage-nsim5000-confirm.md`, in git history, *not on
+> this branch* — reads verbatim:
+>
+> > **Disposition: WITHHELD.** The scoped gaussian n≥150 `profile_total` diagonal certificate is
+> > **not** granted for 0.6.
+>
+> The measured cells (committed MCSE 0.0032, band = cov − 2·MCSE, **gate 0.94, not 0.95**):
+>
+> | cell | coverage | band | gate 0.94 |
+> |---|---|---|---|
+> | d1 n150 (Totoro) | 0.9482 | 0.9418 | ✓ |
+> | d1 n150 (rorqual) | 0.9481 | 0.9417 | ✓ |
+> | d2 n150 (Totoro) | 0.9473 | 0.9409 | ✓ **thin, +0.0009** |
+> | **d2 n150 (rorqual)** | **0.9462** | **0.9398** | **✗ FAILS** |
+>
+> **Two D-43 audits, both WITHHELD 0/3.** The document's own instruction: *"Do NOT restate the number
+> as unconditional or nominal-0.95 coverage; the gate is `coverage ≥ 0.94`."*
+>
+> **`decisions.md:2130-2135` overstates this** — it calls it *"the one coverage-certified cell in the
+> package"*. The after-task record is the primary source and it says withheld. **This plan inherited
+> the overstatement and repeated it, which is precisely the arc's own documented failure mode: a
+> claim restated more strongly than its evidence, and the restatement never checked against the
+> source.** Caught by a reframing panel, not by me.
+>
+> **Consequences.** (1) S7's "re-certification arm" has nothing to re-certify — the framing is void.
+> (2) `docs/design/76`-style language about a certified diagonal cell must not be relied on.
+> (3) The withheld document **already names the next step and already put the choice to the
+> maintainer**: *"(A) invest the fresh-seed MCSE-tightening run … so d2-n150 clears 0.94 with margin
+> — this is the primary lift; or (B) accept recovery-only framing for 0.6 and defer the certificate."*
+> **That decision is still open and is the real fork for this arc.**
+>
+> # 🔴 EXECUTION FINDING #4 — A SHIPPED, USER-FACING BUG: `level > 0.9545` ALWAYS RETURNS ±Inf.
+>
+> `ytol = 2` is hard-coded (`R/profile-ci.R:233`, `:312`, `R/confint-inspect.R:130`) while the
+> crossing threshold is `crit = qchisq(level, 1)/2`. Verified arithmetic:
+>
+> | level | crit | crosses `ytol = 2`? |
+> |---|---|---|
+> | 0.90 | 1.3528 | ✓ |
+> | 0.95 | 1.9207 | ✓ (margin **0.079 nats**) |
+> | 0.9545 | 2.0000 | ✗ |
+> | 0.99 | 3.3174 | ✗ |
+>
+> **So `confint(fit, method = "profile", level = 0.99)` can never cross the threshold and returns
+> ±Inf for every parameter, always.** At the default 0.95 the margin is 0.079 nats — thin. And the
+> roxygen at `R/profile-ci.R:211-222` asserts an infinite bound means *"the bound is at the natural
+> boundary of the parameter space, not unknown"* — **false in this path**. This is deterministic,
+> testable without compute, and fails on `main` today.
+>
 > # 🔴🔴 EXECUTION FINDING #2 (S2, decisive) — THE BOUNDARY CORRECTION POINTS THE WRONG WAY.
 >
 > **This is arithmetic, not synthesis, and it inverts the premise of this entire plan.**

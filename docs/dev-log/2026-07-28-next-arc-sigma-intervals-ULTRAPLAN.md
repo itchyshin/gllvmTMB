@@ -1,45 +1,74 @@
 ```
-🎯 GOAL — gllvmTMB: a Σ interval instrument that survives its own gate, then multinomial.
+🎯 GOAL — gllvmTMB: correct the boundary reference, re-certify, extend Σ intervals to low-rank.
 SOLO PLATFORM: CLAUDE. Worktree /private/tmp/gllvmtmb-arc0-identifiability, branch
-claude/aghq-engine-20260728. PR #801 OPEN — merging is Shinichi's call, never a goal state.
+claude/aghq-engine-20260728 (53 ahead, 0 behind main). PR #801 OPEN — merging is Shinichi's
+call, never a goal state.
 
-HEADLINE: EXTEND THE CERTIFIED PROFILE ROUTE TO LOW-RANK Σ. gllvmTMB already has ONE
-coverage-certified interval — the Gaussian Sigma_unit DIAGONAL profile — but
-R/profile-route-matrix.R:631 is explicit that LOW-RANK TOTAL Σ FALLS BACK TO BOOTSTRAP, which
-was ruled the wrong route on 2026-07-18. AGHQ forces unique = FALSE, so Σ = ΛΛ' is low-rank in
-every AGHQ fit and the entire last arc measured through that fallback. Interval coverage is
-also the 0.6 release's own headline gap. Fix the instrument and the AGHQ question, the Laplace
-question and a release gate unblock together.
+HOUR 0 IS SHINICHI'S, NOT AN AGENT'S: merge claude/aghq-family-axis-20260728 first — it
+conflicts with this lane on decisions.md, which S1 writes. Agents start by rebasing onto it
+and proving `git rev-list --left-right --count origin/main...HEAD` reads 0 behind.
 
-THEN MULTINOMIAL (Shinichi's standing ask), which needs LESS than assumed:
-expand_multinomial_response already makes K−1 pseudo-traits, so the factor route needs NO new
-C++ — but the multinomial latent scale is NON-IDENTIFIED and must be fixed by convention
-before quadrature over that same latent means anything.
+HEADLINE: FIX THE BOUNDARY REFERENCE PACKAGE-WIDE, THEN EXTEND THE PROFILE TO LOW-RANK Σ.
+R/profile-ci.R:32 uses a bare qchisq(level,1)/2 through a SHARED helper with four callers —
+including the path that produced gllvmTMB's ONLY coverage-certified interval. At a boundary the
+LR reference is a chi-bar-square mixture (Self-Liang, D-12; already specified in Design 76 §5).
+🔴 A BLANKET MIXTURE IS WRONG AWAY FROM THE BOUNDARY — it would narrow every interior interval
+and UNDER-cover, self-inflicting this arc's own failure mode. The deliverable is a BOUNDARY-
+DETECTING reference: mixture iff the constrained optimum is at the boundary, chi-square-1
+otherwise, with the detection rule itself tested. Then extend to low-rank total Sigma, which
+R/profile-route-matrix.R:631 AND :638 both name as falling back to bootstrap — the route ruled
+wrong on 2026-07-18. AGHQ forces unique=FALSE, so every AGHQ Sigma is low-rank and the last
+arc measured entirely through that fallback.
 
-IN PARALLEL: the poisson stall ROOT CAUSE (the one genuinely new finding — the brain searched
-and found no prior instance).
-DEFER: flipping the aghq default; any capability claim before the panel; merging #801.
+RE-CERTIFICATION IS PART OF THE JOB, NOT A RISK TO AVOID: the certified Gaussian Sigma_unit
+diagonal cell (n>=150, ~0.946-0.948) must be RE-EARNED at n_sim>=2000 under the new reference,
+as a bundled arm of the same campaign. If it lands inside its 2*MCSE band the certificate
+carries over with a corrected-reference note; if it lands outside, the certificate is
+WITHDRAWN TO PROVISIONAL pending the panel. That response is decided NOW, not when the
+number arrives.
+
+THEN MULTINOMIAL (Shinichi's standing ask): expand_multinomial_response() at R/gllvmTMB.R:830
+already makes K-1 pseudo-traits, so the factor route needs NO new C++ — but the multinomial
+latent scale is NON-IDENTIFIED and must be fixed by convention before quadrature over that
+same latent means anything.
+
+IN PARALLEL: the poisson stall ROOT CAUSE (the one genuinely new finding); the never-read Codex
+code review task-ms52uh0u-4mcgsc; Ranga's ONE open literature question.
+DEFER: flipping the aghq default; any capability claim before the D-43 panel; merging #801;
+the multinomial data-hungriness fix (N~800, a 1.0-maturity arc).
 DISCIPLINE: COMPUTE EVERY GATE YOU PRE-REGISTER (last arc wrote one and never ran it) ·
-n_sim ≥ 2000 for adjudication, ~200 is PILOT ONLY (Design 66 §7) · FIXED TRUTH PER CELL is
-the house standard, not an innovation · report the fit-health denominator, never complete-case
-alone · after ANY engine edit re-run every measurement that engine produced, not only the
-invariant · Gaussian exactness ~1e-9 identical across k · Totoro ≤150 cores, incremental
-writes · local ≤6 cores · `ps aux | grep exec/R`, never pgrep · D-43 panel (2 build + 1
-ceiling, default NOT-DONE) before any claim, and record whatever it returns.
+n_sim >= 2000 for adjudication, ~200 is PILOT ONLY (Design 66 §7) · FIXED TRUTH PER CELL is the
+house standard, not an innovation · report the fit-health denominator, never complete-case alone
+· after ANY engine edit re-run every measurement that engine produced · profile targets must be
+SIGMA-FUNCTIONALS (rotation invariants), never Lambda elements — Lambda is not identified ·
+Gaussian exactness ~1e-9 identical across k · SMOKE BEFORE CAMPAIGN · Totoro <=150 cores,
+incremental writes, read cell 1 early and abort on empty · local <=6 cores · `ps aux | grep
+exec/R`, never pgrep · D-43 panel (2 build + 1 ceiling, default NOT-DONE) before any claim,
+and record whatever it returns.
+THIS IS A TWO-SESSION ARC. Session A ends after S6/S8; hand over; Session B runs the campaign.
 ```
+
+> **Revision note (2026-07-28, refinement pass).** This replaces the first draft of this plan.
+> Changed: S5 promoted from prerequisite bugfix to the load-bearing slice, with a boundary-
+> **detection** deliverable and a bundled re-certification arm; Design 76 added to the sweep
+> receipt (S5 is *resume*, not *build*); six external χ² sites scoped; a scout tier added
+> (5 Haiku slices, including the one previously *labelled* "recon" at Sonnet); fan-out re-cut
+> into five legal checkpoints; Totoro named on the heavy slice with a smoke gate; the arc
+> re-scoped to **two sessions**; missing template fields supplied. Evidence for each change is
+> in the final section.
 
 # Context
 
-The 2026-07-28 arc built an opt-in AGHQ engine, fixed four real engine bugs, and cleared two
-of three original panel objections. **Two D-43 panels still withheld the claim, converging both
+The 2026-07-28 arc built an opt-in AGHQ engine, fixed four real engine bugs, and cleared two of
+three original panel objections. **Two D-43 panels still withheld the claim, converging both
 times on the measuring instrument rather than the engine.** Four results dissolved under a
 mechanism check; the fourth was *unfavourable* to AGHQ and dissolved anyway, which is the
 diagnostic — direction of flattery gave no protection. What they shared was an unchecked
-instrument.
+instrument. This arc fixes the instrument.
 
-A brain sweep then found that most of what the arc "discovered" was already on record:
+## WHAT THE BRAIN ALREADY KNOWS
 
-| the arc did | the brain already held |
+| the last arc did | already on record |
 |---|---|
 | ran 200- and 120-seed coverage cells | **Design 66 §7: ~200 = PILOT ONLY** (MCSE 1.54pp); **2000 = the adjudication floor** |
 | "discovered" the truth-redraw confound | **fixed truth per cell is the unbroken standing practice** (`m3_sample_truth`) |
@@ -47,13 +76,12 @@ A brain sweep then found that most of what the arc "discovered" was already on r
 | built a delta SE with `qnorm` | **z→t for LOCATION-axis VCs**, per-class map already filed as **gllvmTMB#565** |
 | measured Laplace bias by simulation | **`R/check-consistency.R` already wraps `TMB::checkConsistency()`** |
 | found a "flat likelihood direction" | **Rabe-Hesketh, Skrondal & Pickles 2002** predicts exactly this for discrete + small clusters + high ICC |
+| **(gap found this refinement)** | **`docs/design/76-structured-xlv-phylo.md` §5 already specifies the Self–Liang boundary reference**, with ≥500 reps/cell + MCSE and maintainer-authorization gating |
 
 **The stall is the one genuinely new finding** — the sweep searched for a prior
 adaptive-quadrature warm-start stall and found none.
 
-`ARC PROGRAM` — size mode, recommended **11 h** (range 8–12), confidence *inferred*.
-
-## DECISIONS LOCKED (Shinichi, this session)
+## WHAT SHINICHI TOLD US — DECISIONS LOCKED
 
 1. **Instrument first, then multinomial.** Multinomial would otherwise inherit the same broken
    measurement, and its recorded blocker is data-hungriness (N≈800), not the integrator.
@@ -62,6 +90,42 @@ adaptive-quadrature warm-start stall and found none.
    A1 was *no engine implementation*, not *no AGHQ ever*; A3 ranked VA above AGHQ. An engine
    now exists with measured evidence. **This must be written into `decisions.md` in S1, not
    assumed silently.**
+3. **S5 corrects the shared `.qchisq_threshold` and re-certifies** — not an opt-in side path.
+4. **All boundary-exposed χ² sites get fixed**, not only the profile route.
+5. **The family-axis lane merges first**; S1 rebases onto it.
+
+## WHAT THE TEAM RAISED
+
+```
+Gauss  — A blanket 50:50 mixture is wrong at interior points; the certified cell has SD > 0.
+         Unconditional swap → narrower intervals → under-coverage on all four shared callers.
+         → Deliverable is boundary DETECTION, not a constant. Q: accept a detection rule that
+         is itself an approximation?  Default if "your judgment": test the rule, report its
+         misclassification rate beside the coverage.
+Rose   — Correcting six user-facing interval surfaces is a behaviour change with no coverage
+         evidence for five of them. → Each corrected site gets a NEWS entry and is fenced from
+         any capability claim until S10. Default: fence, don't advertise.
+Fisher — 5 arms x 3 lam_sd x 2000 ~ 30,000 fits plus profile refits. → Smoke first, size the
+         grid from measured per-fit cost, not from hope. Default: hold lam_sd at {0.5,1,3}.
+Curie  — S3's stall has two opposite fixes (handoff bug vs genuinely flat objective). If flat,
+         S8 defers rather than adding a family to an engine that cannot progress.
+Ada    — Recommend: S5 goes first and alone on the critical path; S6 must not start until the
+         detection rule is tested, or every S6/S7 number is contaminated.
+```
+
+## ADA'S RECOMMENDATION
+
+Run it as **two sessions split at the campaign boundary**. Session A is all instrument work and
+lands nothing public; Session B runs compute and faces the panel. The split is free — the Totoro
+launch is an async boundary anyway — and it keeps the D-43 panel in a fresh context, which is the
+condition under which it is worth anything.
+
+## QUESTIONS STILL OPEN
+
+* Does the detection rule need to handle **near**-boundary (SD small but nonzero), where neither
+  reference is right? S2 may answer; otherwise a documented limitation, not a silent one.
+* If S9 finds the validation sound but S10 still withholds, is the certificate provisional or
+  withdrawn? Shinichi's call at the panel, not before.
 
 ---
 
@@ -69,51 +133,105 @@ adaptive-quadrature warm-start stall and found none.
 
 | surface | evidence run | finding | call |
 |---|---|---|---|
-| repo git | `git status -sb`, `log`, `worktree list` | clean, in sync, 51 commits; lane `claude/aghq-family-axis-20260728` conflicts on `decisions.md` | **resume**; surface conflict to Shinichi |
-| repo designs | `docs/design/66`, `73`, `75`, `80` | MCSE table, log-SD-Wald convention, route matrix, evidence-bar ladder all exist | **reuse** — invent no new taxonomy |
-| interval code | `R/profile-*.R`, `R/bootstrap-sigma.R`, `R/z-confint-gllvmTMB.R:1873` | certified diagonal profile exists; low-rank falls back to bootstrap (`profile-route-matrix.R:631`) | **extend**, do not rebuild |
+| repo git | `git status -sb`, `git worktree list`, `git rev-list --left-right --count origin/main...origin/claude/aghq-engine-20260728` | clean; **53 ahead, 0 behind**; lane `claude/aghq-family-axis-20260728` conflicts on `decisions.md` | **resume**; Hour-0 merge is Shinichi's |
+| repo designs | `docs/design/{66,73,75,80}` | MCSE table, log-SD-Wald convention, route matrix, evidence-bar ladder all exist | **reuse** — invent no new taxonomy |
+| **repo designs (gap closed this pass)** | `grep -rn "chi.bar\|Self.Liang" docs/design/` | **`76-structured-xlv-phylo.md:350,393,434,487,526,592,631` already specifies the Self–Liang boundary reference + ≥500 reps/cell + MCSE** | **RESUME, not build** — S5 reads §5 first |
+| interval code | `grep -rn qchisq R/`; `sed -n '615,660p' R/profile-route-matrix.R` | certified diagonal profile exists; **:631 AND :638** both fall back to bootstrap; `.qchisq_threshold` shared by **4 callers**; **6 more bare χ² sites** outside it; `.qt_threshold` already exists carrying an on-record caution | **extend + correct**, do not rebuild |
 | brain (4-way MCP sweep) | `search_notes(search_all_projects=true)` ×4 + `read_note` | coverage conventions, z-vs-t (#565), D-12's Self–Liang defect, `check_consistency()`, Design 84 multinomial, A1/A3 | **reuse all six** |
-| external prior art | **NOT DONE — S2** | the small-sample-VC literature is already in NotebookLM `3b3d2ec5` | narrow the ask |
+| external prior art | NotebookLM `3b3d2ec5` exists — **narrow ask only, S2** | the small-sample-VC literature is already gathered | **narrow the ask**, don't re-gather |
+| compute | `ssh totoro 'echo; nproc; ls ~/h4_work'` | **TOTORO_OK, 384 cores**, `aghq-lib` + `aghq-src` present | **reuse the installed lane** |
 
-**Verdict: resume + reuse.** The genuine gap is a *low-rank* profile, the Self–Liang fix, and
-the stall. Everything else already exists.
+**Verdict: resume + reuse + correct.** The genuine gap is (a) a *boundary-detecting* reference —
+Design 76 specifies the target but no implementation exists, (b) a low-rank profile, (c) the stall.
 
 ---
 
+# ARC PROGRAM
+
+Size mode. **Two sessions.** Session A ≈ **8.3 h**, Session B ≈ **4.75 h** attended (plus async
+Totoro wall-clock). **Effort sum ≈ 19.7 h** across 16 slices. Under-run response: pull S8
+forward. Integration/closeout slot: S11 + S12, 55 m.
+
 # Slices
 
-| # | slice | member | model · effort | time | dep |
-|---|---|---|---|---|---|
-| **S1** | **Record the A1/A3 reversal + land the orphan note.** Write the explicit supersession entry (locked above). Also land `docs/dev-log/2026-07-22-quadrature-regime-trap-*.md` — it is UNCOMMITTED and out-of-lane, and it holds the Rabe-Hesketh/Liu–Pierce regime analysis that predicts this arc's flat-likelihood finding | Ada | Sonnet · low | 30 m | — |
-| **S2** | **Ranga — the ONE open question.** Do NOT re-gather small-sample-VC literature (already in NotebookLM `3b3d2ec5`). Ask only: does anyone profile a **reduced-rank** covariance, and what happens to a profile under **rotational non-identifiability** (Σ identified, Λ not)? Plus how `gllvm`/`Hmsc`/`boral`/`sdmTMB` report Σ uncertainty | **Ranga** | outside context | 30 m | — |
-| **S3** | **Poisson stall ROOT CAUSE.** Why does the capped first iteration make no progress? Optimiser handoff, stale tape, or genuinely flat objective — opposite fixes. Last arc only *labelled* it. Reproducer: poisson, n=200, T=6, q=1, `unique=FALSE`, `aghq=9, aghq_ridge=Inf` | Curie | Sonnet · high | 120 m | — |
-| **S4** | **Profile-route deep read.** `profile-ci.R`, `profile-route-matrix.R`, `profile-targets.R`, `profile-derived.R`, `design/73`. What does the certified diagonal profile do, *why* does low-rank fall back, what would a target-explicit full-Σ profile need? | recon | Sonnet · med | 45 m | — |
-| **S5** | **Fix the Self–Liang defect.** `R/profile-ci.R:32` uses a bare `qchisq(level, 1)/2`; at a boundary the LR reference is a **chi-bar-square mixture**, so it mis-covers *in profile's own best regime* (D-12). Any low-rank extension inherits this unless fixed first | Gauss | Sonnet · high | 90 m | S4 |
-| **S6** | **Extend the profile to low-rank Σ** — the target-explicit full-Σ profile the route matrix names as its own gap. Reuse the certified diagonal machinery + the log-SD convention. Settle z-vs-t per **#565's per-class map** (Λ/Ψ/sd_B = location → t may help; dispersion → do NOT; correlations → Fisher-z) | Gauss | Sonnet · high | 180 m | S2, S4, S5 |
-| **S7** | **Coverage, to house standard.** `check_consistency()` FIRST as the cheap Laplace-bias gate. Then **n_sim ≥ 2000**, **fixed truth per cell**, lam_sd ∈ {0.5,1,3}, 4 arms. **Compute the SE/SD gate and the fit-health denominator BEFORE quoting any number** | Gauss | Sonnet · med | 90 m + async | S6 |
-| **S8** | **Multinomial** — settle the **latent-scale convention** first (non-identified; must be FIXED, and quadrature interacts with it). Then wire AGHQ through the *existing* pseudo-trait path. **Do NOT re-attempt the `R=(1/K)(I+J)` OLRE regularization** — recorded negative | Curie | Sonnet · high | 150 m | S3 |
-| **S9** | **Adversarial verify** — attack S6/S7's *validation*, not their output. That is where both prior arcs failed | Rose | Opus · high | 60 m | S7 |
-| **S10** | **D-43 panel**, 2 build + 1 ceiling, default NOT-DONE; **record whatever it returns** | panel | 2×Sonnet + 1×Opus · high | 60 m | S9 |
-| — | Melissa reconcile · after-task · handover | Melissa/Rose | Sonnet · low | 45 m | all |
+| # | slice | member | model · effort | dispatch | time | dep |
+|---|---|---|---|---|---|---|
+| **H0** | **Merge `claude/aghq-family-axis-20260728`; agents then rebase and prove 0-behind** | **Shinichi** | — | — | — | — |
+| **S0** | **Collect Codex review `task-ms52uh0u-4mcgsc`** — dispatched last arc, result never read; the first reading of this *code* rather than its claims. Summarise findings + severity | recon | **Haiku · low** | native/explicit | 15 m | — |
+| **S1** | **Record the A1/A3 supersession** in `decisions.md` (explicit reversal, 2026-05-15 style) + **land the orphan note** `docs/dev-log/2026-07-22-quadrature-regime-trap-*.md` — UNCOMMITTED in the MAIN worktree and out-of-lane; it holds the Rabe-Hesketh/Liu–Pierce regime analysis that *predicts* this arc's flat-likelihood finding | Ada (inline) | Sonnet · low | orchestrator | 40 m | H0 |
+| **S2** | **Ranga — the ONE open question.** Do NOT re-gather small-sample-VC literature (already in NotebookLM `3b3d2ec5`). Ask only: does anyone profile a **reduced-rank** covariance; what happens to a profile under **rotational non-identifiability** (Σ identified, Λ not); how do `gllvm`/`Hmsc`/`boral`/`sdmTMB` report Σ uncertainty; is there a **near**-boundary reference | **Ranga** | outside context | NotebookLM | 30 m | — |
+| **S3** | **Poisson stall ROOT CAUSE.** Why does the capped first iteration make no progress — optimiser handoff, stale tape, or genuinely flat objective? Opposite fixes. Last arc only *labelled* it. Reproducer: poisson, n=200, T=6, q=1, `unique=FALSE`, `aghq=9, aghq_ridge=Inf` | Curie | Sonnet · high | native/explicit | 120 m | — |
+| **S4a** | **Mechanical inventory.** Every profile call-site + target label + route-matrix row; **every `qchisq(level, 1)` site with the parameter it references**; the test file covering each. Structured map only — no judgment | recon | **Haiku · low** | native/explicit | 25 m | — |
+| **S4b** | **Profile-route judgment read.** `profile-ci.R`, `profile-route-matrix.R`, `profile-targets.R`, `profile-derived.R`, `design/73`, **`design/76 §5`**. What the certified diagonal profile does; *why* low-rank falls back; what a target-explicit full-Σ profile would need | Noether | Sonnet · med | native/explicit | 45 m | S4a |
+| **S5a** | **🔴 Boundary-DETECTING reference in `.qchisq_threshold`.** Mixture iff the constrained optimum sits at the boundary; χ²₁ otherwise; **the detection rule is itself tested**. Regression evidence for **all four callers** (`profile-ci.R:239`, `profile-derived.R:351`, `:1389`, `confint-inspect.R:177`). Honour `.qt_threshold`'s on-record caution — it is *not* a calibrated small-sample correction and stays a labelled sensitivity path | **Gauss** | Sonnet · high | native/explicit | 180 m | S2, S4b |
+| **S5b-i** | **Classify the six external χ² sites** — `loading-profile.R:236,323`, `plot-covariance-tables.R:915`, `profile-derived-curves.R:208,1028`, `kernel-helpers.R:314`. Boundary-exposed or interior-only? (a variance/SD can sit at a boundary; a loading under rotation cannot in the same sense; a correlation has *two* boundaries and is a different correction again) | recon | **Haiku · low** | native/explicit | 20 m | S4a |
+| **S5b-ii** | **Correct the boundary-exposed subset**; fence the rest **with the reason recorded** (a finding, not a skip). NEWS entry per corrected site; all fenced from capability claims until S10 | Gauss | Sonnet · high | native/explicit | 70 m | S5a, S5b-i |
+| **S6** | **Extend the profile to low-rank Σ — BOTH tiers** (`Sigma/unit` :631 *and* `Sigma/unit_obs` :638 carry the identical fallback). Reuse the certified diagonal machinery + the log-SD convention. **Targets must be Σ-functionals (rotation invariants), never Λ elements.** Route-matrix rows are a public surface — do not flip a status here | **Gauss** | Sonnet · high | native/explicit | 180 m | S2, S4b, S5a |
+| **S8** | **Multinomial** — settle the **latent-scale convention** first (non-identified; must be FIXED, and quadrature over that same latent interacts with it). Then wire AGHQ through the *existing* pseudo-trait path (`R/gllvmTMB.R:830`). **Do NOT re-attempt the `R=(1/K)(I+J)` OLRE regularization** — recorded negative, marked do-not-repeat | Curie | Sonnet · high | native/explicit | 150 m | S3 |
+| — | **🔻 SESSION A CLOSES — handover written here** | Rose | Sonnet · low | orchestrator | 30 m | S6, S8 |
+| **S7.0** | **SMOKE.** 1 cell, tiny n, 1 rep on Totoro. Prove non-empty, non-NA, in-range; `str()` **one fit past its guards** (guard-blocked ops return all-NA silently); confirm the invocation actually parsed. Measure per-fit cost to size the grid | recon | **Haiku · low** | native/explicit | 20 m | S6 |
+| **S7** | **Coverage, to house standard.** `check_consistency()` FIRST as the cheap Laplace-bias gate. Then **n_sim ≥ 2000**, **fixed truth per cell**, `lam_sd ∈ {0.5,1,3}`, 4 arms **+ the re-certification arm** (certified Gaussian `Sigma_unit` diagonal under the new reference). **Compute the SE/SD gate and the fit-health denominator BEFORE quoting any number.** Totoro ≤150 cores, incremental writes, read cell 1 early and abort on empty | Gauss | Sonnet · med | native/explicit + **Totoro** | 90 m attended + async | S7.0 |
+| **MV** | **Mechanical verify** — every slice delivered a non-empty artifact; every file:line cited resolves; AGHQ suite ≥1504 passing / 0 skipped; `devtools::test()` clean; Gaussian exactness ~1e-9 identical across k | recon | **Haiku · low** | native/explicit | 20 m | S7 |
+| **S9** | **Adversarial verify — attack S5/S6/S7's *validation*, not their output.** That is where both prior arcs failed. Specifically: is the boundary-detection rule right, and does the re-certification arm actually re-earn the number | **Rose** | **Opus · high** | native/explicit | 60 m | S7, MV |
+| **S10** | **D-43 panel** — 2 build + 1 ceiling, fresh context, default NOT-DONE; **record whatever it returns** | panel | 2×Sonnet + 1×Opus · high | `--phase completion` | 60 m | S9 |
+| **S11** | **Melissa reconcile** → `docs/dev-log/plan-actual/2026-07-2X-sigma-intervals.md` | Melissa | Sonnet · low | native/explicit | 25 m | S10 |
+| **S12** | **After-task report + handover** | Rose | Sonnet · low | native/explicit | 30 m | S11 |
 
-**PARALLEL:** {S1, S2, S3, S4} → {S5} → {S6 ‖ S8} → S7 → S9 → S10.
-**FAN-OUT BUDGET:** 6 new children per checkpoint, 1 ceiling. S2 is free (outside context).
+**PARALLEL / SEQUENTIAL:**
+`{S0, S2, S3, S4a}` → `S4b` → `S5a` → `{S5b-i→S5b-ii ‖ S6 ‖ S8}` → **SESSION SPLIT** →
+`S7.0` → `S7` → `{MV → S9}` → `S10` → `S11` → `S12`.
+Critical path: `S1 → S4a → S4b → S5a → S6` (Session A), then `S7.0 → S7 → S9 → S10` (Session B).
+
+---
+
+# Fan-out budget
+
+| checkpoint | children | ceiling | contents |
+|---|---|---|---|
+| **CP-1** | 4 (+Ranga, free) | 0 | S0·Haiku, S2·Ranga, S3·Sonnet, S4a·Haiku, S4b·Sonnet — *(S1 is Ada inline, not a child)* |
+| **CP-2** | 5 | 0 | S5a·Sonnet, S5b-i·Haiku, S5b-ii·Sonnet, S6·Sonnet, S8·Sonnet |
+| — | — | — | **SESSION SPLIT — handover** |
+| **CP-3** | 4 | **1** | S7.0·Haiku, S7·Sonnet, MV·Haiku, **S9·Opus** |
+| **CP-4** | *completion phase — separate budget* | 1 | S10: exactly 2 build + 1 ceiling |
+| **CP-5** | 2 | 0 | S11·Sonnet, S12·Sonnet |
+
+`LUNA SUITABILITY:` **yes** — S0, S4a, S5b-i, S7.0, MV are bounded, read-only/mechanical.
+`ULTRA EFFORT:` **no.**
+`MODELS:` Haiku·low ×5 · Sonnet·low ×4 · Sonnet·med ×2 · Sonnet·high ×5 · Opus·high ×1 (+ panel).
+`CONTEXT BRAKE:` parent input < 100k at launch; **the session split IS the brake** — no child forked past CP-2.
+`COMPACTIONS:` parent 0 · boundary = scope freezes at CP-2, fresh task for Session B.
+`LANE RECEIPT:` **START A FRESH TASK** at the Session-A close — the campaign is async and the panel needs a fresh context.
+`AUTO-REVIEW:` batch protected/network actions at the Totoro boundary; warn if guardian calls > 25/session.
+`D-43 PANEL:` milestone = `low-rank-Σ-interval-v1` · status = not fired · composition = 2 build + 1 ceiling.
+`ESTIMATE:` ~19.7 h effort · ~13 h critical path · 16 slices · **needs a handoff — does NOT fit one session.**
+`REVIEW:` Rose + Gauss critique **this plan** before any slice runs.
+`VERIFY:` see below. `CONSOLIDATE:` S12. `RECONCILE:` S11 → `docs/dev-log/plan-actual/`.
 
 ---
 
 # Critical files
 
-`R/profile-ci.R` (:32 Self–Liang) · `R/profile-route-matrix.R` (:631 the fallback) ·
-`R/profile-targets.R` · `R/profile-derived.R` · `R/check-consistency.R` (reuse, don't rebuild) ·
-`R/fit-multi.R` (the AGHQ adaptation loop, for S3) · `src/gllvmTMB.cpp` (:2310 `obs_loglik`
-fid-16 error, :2530 the grouped softmax, for S8) · `docs/design/{66,73,75,80}` ·
-`dev/aghq-evidence/22-sigma-se-delta.R` (**`qnorm` at :104 — the z-vs-t site**).
+`R/profile-ci.R` (**:32** the shared threshold · **:43** `.qt_threshold`'s on-record caution ·
+:239) · `R/profile-route-matrix.R` (**:631 and :638** — both fallbacks) · `R/profile-derived.R`
+(:351, :1389) · `R/confint-inspect.R:177` · `R/profile-targets.R` ·
+`R/loading-profile.R`, `R/plot-covariance-tables.R`, `R/profile-derived-curves.R`,
+`R/kernel-helpers.R` (the six external χ² sites) · `R/check-consistency.R` (**reuse, don't
+rebuild**) · `R/fit-multi.R` (:5102 the `unique=FALSE` eligibility gate; the AGHQ adaptation
+loop, for S3) · `R/gllvmTMB.R:830` (`expand_multinomial_response`, for S8) ·
+`src/gllvmTMB.cpp` (:2310 `obs_loglik` fid-16 error, :2530 the grouped softmax, for S8) ·
+`docs/design/{66,73,75,76,80}` · `dev/aghq-evidence/22-sigma-se-delta.R:104` (`qnorm` — the
+z-vs-t site).
 
 # Verification
 
 * **The SE/SD gate and the fit-health denominator are PRECONDITIONS, not reports.** No coverage
-  number is computed, let alone quoted, until both are in hand. Last arc wrote that rule into
-  its own script and skipped it.
+  number is computed, let alone quoted, until both are in hand. Last arc wrote that rule into its
+  own script and skipped it — `25-coverage-fixedtruth.R:26-31`, and a panel found it fails in 45
+  of 48 cells.
+* **The boundary-detection rule is tested as an object in its own right** — not merely "coverage
+  improved". Report its misclassification rate beside the coverage.
+* **All four `.qchisq_threshold` callers carry regression evidence.** A change to a shared helper
+  is not verified by testing one caller.
 * **n_sim ≥ 2000** for anything adjudicating; label a smaller run PILOT in the same sentence.
 * **After any engine edit, re-run every measurement that engine produced** — the invariant was
   insensitive to exactly what `12648f44` changed, and stale numbers were cited for hours.
@@ -121,17 +239,88 @@ fid-16 error, :2530 the grouped softmax, for S8) · `docs/design/{66,73,75,80}` 
 * AGHQ suite ≥1504 passing, 0 skipped; full `devtools::test()` before close.
 * **S9 attacks the validation, not the output.**
 
+# Compute (S7)
+
+Totoro, ≤150 cores; branch installed at `~/h4_work/aghq-lib`, source `~/h4_work/aghq-src`.
+Rebuild after any `src/` change:
+
+```bash
+R CMD INSTALL --no-docs --library=$HOME/h4_work/aghq-lib aghq-src
+```
+
+**Delete `src/*.so` and `src/*.o` on the remote first** — `rsync --delete` protects excluded
+files, and a macOS `.so` gives `invalid ELF header`. Grid ≈ 5 arms × 3 `lam_sd` × 2000 ≈
+**30,000 fits** plus profile refits — **size it from S7.0's measured per-fit cost, not from this
+estimate.** `ps aux | grep exec/R`, never `pgrep`. Local ≤6 cores (Codex shares it).
+
 # Not in this arc
 
-Flipping the `aghq` default · merging PR #801 · any capability claim before S10 ·
-`R/diagnose.R` · the remaining 12 unexercised families · CRAN work · the multinomial
-data-hungriness fix (N≈800; recorded as a **1.0-maturity** arc).
+Flipping the `aghq` default · merging PR #801 · any capability claim before S10 · flipping a
+route-matrix status · `R/diagnose.R` · the remaining 12 unexercised families · CRAN work ·
+the multinomial data-hungriness fix (N≈800; recorded as a **1.0-maturity** arc) ·
+**the separable/Kronecker lead — see below.**
+
+## Recorded next lead — separable (Kronecker) covariance via TMB `SEPARABLE`
+
+From Ben Bolker's 2026-07-28 follow-up (§9). **Deferred to after this arc by its own honest
+priority**, recorded here so it is not re-derived. Claims verified in this worktree 2026-07-28:
+
+| claim | check |
+|---|---|
+| `SEPARABLE_t` is TMB's own, not RTMB | `TMB/include/tmbutils/density.hpp:1106`; `kronecker.hpp` beside it. **RTMB is not needed.** |
+| the package hand-rolls what `SEPARABLE` provides | `grep -c "SEPARABLE\|kronecker" src/gllvmTMB.cpp` → **0**, against **22** `GMRF` uses |
+| the simulate caveat is real and is the header's own | `density.hpp:42-46` — every component must supply `cov_sqrt_scale`, or `SEPARABLE(...)` lacks the simulate method |
+
+The per-trait SPDE loop (`~:1468`, `~:1497`, comment `~:1564`) is `SEPARABLE(iid_over_traits,
+GMRF(Q_base))` with an identity trait factor; the phylo-slope block near `:1524-1531` hand-writes
+an MVN normalising constant (`0.5*(n·log 2π + log_det_A + quad)`). *(Line numbers drift — locate
+by pattern, not by number.)* Neither is claimed wrong; the argument is that log-determinant
+bookkeeping is where hand-rolled separable densities fail **silently**, and a misplaced `logdet`
+perturbs estimates rather than only the reported nll once the trait factor is estimated.
+
+**Ranked:** (1) an **estimated unstructured trait covariance** in the same density without a new
+derivation — a capability gain, the one that could justify moving this earlier; (2) `T×T` and
+`n×n` determinants/solves stay factored, with `GMRF`'s sparsity surviving; (3) ASReml parity,
+which is a comparator argument for the quant-gen audience.
+
+**Before adopting, check per path, not globally:** does the trait factor genuinely stay constant
+across units (unbalanced designs and trait-specific fixed effects break the product structure);
+does each composed component supply `cov_sqrt_scale`; and do **not** double-count the saving on
+`rr(...)` paths, where low-rank already achieves part of it.
+
+**🔗 Forward-coupling to S6 — the one thing this arc must not foreclose.** Opportunity (1) creates
+a *new Σ surface that will need intervals*, and it is **not** low-rank. S6 should therefore keep
+its Σ-functional targets general over the covariance's structure rather than hard-coding a
+`ΛΛ'`-only assumption. This costs nothing now and avoids a rewrite later. Routing: repo-wide
+engine, reaches GLLVM.jl as a design question, but **D-94 holds — the R half leads.**
 
 # Risk branches
 
 * **S3 finds a genuinely flat objective** (not a handoff bug) → AGHQ cannot help those cells;
   **S8 defers** rather than adding a family to an engine that cannot make progress.
+* **The re-certification arm moves the certified cell out of its 2·MCSE band** → the certificate
+  is **withdrawn to provisional** pending S10, per the GOAL block. Not quietly restated.
+* **S5b-i finds most sites interior-only** → S5b-ii shrinks to a fencing exercise, ~50 m saved.
 * **S2 finds an established low-rank route** → S6 collapses to an adaptation, ~2 h saved.
-* **S5 proves harder than 90 m** → it still goes first; an uncorrected Self–Liang reference
-  would silently contaminate every S6/S7 number, which is precisely this arc's recurring
-  failure.
+* **S5a proves harder than 180 m** → it still goes first and alone; an uncorrected reference
+  would silently contaminate every S6/S7 number, which is precisely this arc's recurring failure.
+
+---
+
+# Why this revision (evidence, verified in the worktree 2026-07-28)
+
+| change | evidence |
+|---|---|
+| S5 is load-bearing, not a prerequisite | `.qchisq_threshold` has **4 callers**: `profile-ci.R:239`, `profile-derived.R:351`, `:1389`, `confint-inspect.R:177` |
+| **boundary *detection*, not a constant swap** | Self–Liang applies at the boundary; the certified cell has SD > 0 (interior), where χ²₁ is correct. An unconditional mixture narrows interior intervals → under-coverage — this arc's own failure mode, self-inflicted |
+| Design 76 added to the receipt | `grep -rn "Self.Liang" docs/design/` → `76-structured-xlv-phylo.md:350,393,434,487,526,592,631` |
+| `.qt_threshold` constraint honoured | `R/profile-ci.R:43ff` — on-record: *"not a generally calibrated small-sample profile-likelihood correction"*; requires an explicit justified `df`; label as sensitivity analysis |
+| S6 is two tiers, not one | `R/profile-route-matrix.R:631` **and :638** carry identical fallback text |
+| six external χ² sites scoped | `loading-profile.R:236,323` · `plot-covariance-tables.R:915` · `profile-derived-curves.R:208,1028` · `kernel-helpers.R:314` |
+| Σ-functional targets, not Λ | Λ is not identified under rotation; a profile over a Λ element is not well-posed |
+| scout tier added | prior draft: 8 Sonnet + 1 Opus, with S4 *labelled* "recon" priced at Sonnet·med |
+| budget re-cut | prior draft: 10 slices against a stated 6-child cap, and **two** ceiling children (S9 + S10's) against a stated cap of 1 |
+| Totoro named + smoke gate | prior draft: `"90 m + async"` — no compute target, no smoke, against its own DISCIPLINE line |
+| two sessions | prior draft: 900 m of slices under a stated 11 h; after the five locked decisions, ≈19.7 h effort / ≈13 h path |
+| S0 exists | Codex review `task-ms52uh0u-4mcgsc` was dispatched last arc and its result never read — the cheapest high-value item available |
+| H0 is Shinichi's | `claude/aghq-family-axis-20260728` conflicts on `decisions.md`, which S1 writes; the prior draft quoted the conflict in its own receipt and then scheduled S1 into it |

@@ -4922,6 +4922,34 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  ## LAPLACE-PATH RIDGE -- the fair control, made runnable.
+  ##
+  ## `run_one()` above already takes `.ridge_tau` and applies it with no
+  ## dependence on the quadrature whatsoever: it wraps `fn`/`gr` and nothing
+  ## else. Until now only the AGHQ branch ever passed it, so the
+  ## `Laplace + ridge` arm did not exist -- which meant every comparison
+  ## crediting AGHQ with a small-sample gain was confounded with the penalty,
+  ## and the confound could not be measured because the control could not be
+  ## run. The comparator's absence was a packaging decision, not a fact about
+  ## the method.
+  ##
+  ## OPT-IN ONLY, and this is the load-bearing part. `aghq_ridge` DEFAULTS to
+  ## 2, so honouring that default here would penalise every Laplace fit in the
+  ## package -- moving every existing user's numbers while touching no export,
+  ## which `R CMD check` cannot catch. It therefore fires only when the caller
+  ## NAMED `aghq_ridge` (captured by `gllvmTMBcontrol()`). A control built by
+  ## any other route -- an older serialised one, a hand-made list -- has no
+  ## such field, and `isTRUE(NULL)` is FALSE, so it correctly reads as
+  ## not-explicit and nothing changes.
+  laplace_ridge_tau <- NULL
+  if (isTRUE(control$aghq_ridge_explicit)) {
+    tau_req <- control$aghq_ridge
+    if (is.numeric(tau_req) && length(tau_req) == 1L && !is.na(tau_req) &&
+        is.finite(tau_req) && tau_req > 0) {
+      laplace_ridge_tau <- tau_req
+    }
+  }
+
   ## Multi-start: run n_init fits with jittered starting parameter
   ## vectors (per Maeve McGillycuddy's recommendation), keep the best.
   best_opt <- NULL
@@ -4937,7 +4965,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
     }
     elapsed_start <- proc.time()[["elapsed"]]
-    opt_i <- tryCatch(run_one(par0), error = function(e) e)
+    opt_i <- tryCatch(run_one(par0, .ridge_tau = laplace_ridge_tau),
+                      error = function(e) e)
     elapsed_s <- proc.time()[["elapsed"]] - elapsed_start
     if (inherits(opt_i, "error")) {
       restart_history[[i]] <- .gllvmTMB_restart_history_row(

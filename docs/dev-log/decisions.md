@@ -2060,3 +2060,60 @@ faster one. Panelling this sentence is the NEXT session's first job, and D-43's
 newly-repaired-evidence condition is satisfied by: four engine bug fixes (silent
 ineligibility, the lying `aghq_used` flag, false convergence at 5000x tolerance, the vacuous
 GOLDEN 3), the elimination of the prototype dependency, and the fixed-truth coverage run.
+
+## 2026-07-28  Second panel on the NARROWED claim: 2 NOT-DONE. And it caught me violating my own pre-registered gate.
+
+Decision: the narrowed claim is **ALSO WITHHELD**. Fresh D-43 panel (2 build + 1 ceiling,
+distinct lenses, default NOT-DONE) returned **NOT-DONE / DONE / NOT-DONE**. Verdicts in
+`dev/aghq-evidence/D43c-lens{1,2,3}-*.md`. Two panels, two withholds. PR #801 unmerged.
+
+**WHAT PASSED (lens 2, DONE, lens-scoped to the fixes and the suite).** All four bug fixes
+independently reproduced against the diffs; `grad_tol` proven untouched across the ENTIRE
+file history (not just my diff); the suite reproduced exactly at FAIL 0 / SKIP 0 / PASS 1504
+with the 1502->1504 delta reconciled to the two new GOLDEN-3 expectations; GOLDEN 2's
+fixed-point ladder reproduced to the exact cited digits; no headline number traces to the
+prototype. **The engineering is sound. The claims are not.**
+
+**TWO FAILURES OF MINE, and the second is the worst thing in this arc.**
+
+1. **I INVALIDATED MY OWN EVIDENCE AND DID NOT RE-VERIFY.** I recorded "poisson par_shift
+   identically 0" from commit `09b2dbcd`. Then `12648f44` -- my own false-convergence fix --
+   landed and CHANGED that behaviour: poisson par_shift is now nonzero (~0.004-0.05,
+   deterministic). So "AGHQ does not run on poisson" was true before my fix and stale after
+   it, and I kept citing it. **After changing an engine, re-run every measurement that
+   engine produced, not only the invariant.** The invariant discipline caught nothing here
+   because gaussian exactness is insensitive to exactly what changed.
+
+2. **I WROTE A PRE-REGISTERED GATE AND THEN NEVER COMPUTED IT.**
+   `25-coverage-fixedtruth.R:26-31` says, in my own words: *"NO COVERAGE NUMBER FROM THIS RUN
+   MAY BE QUOTED UNLESS SE/SD IS NEAR 1 -- otherwise the run is measuring the Jacobian, not
+   the engine."* I then quoted the coverage numbers without ever computing it. Lens 3
+   computed it: **it fails in 45 of 48 diagonal cells (range 0.159-2.608).** A pre-registration
+   that is not executed is worse than none, because it manufactures the appearance of rigour.
+
+**CONSEQUENCE: THE 0.023 HEADLINE IS RETRACTED TOO.** Lens 3 substituted the within-truth
+empirical SD for my delta SE -- possible only because the truth is now fixed -- and got
+oracle-SE coverage of **0.970 / 0.969 / 0.959 / 0.649** at n = 100/200/400/1600 for Laplace
+at lam_sd = 3. So "the shipped default covers 0.023 at n=1600" is **~90% a property of my
+unexported SE route**, whose bootstrap validation had already failed and which I used anyway.
+The defect I announced as the most consequential finding of the arc is mostly my instrument.
+
+**WHAT SURVIVES, instrument-independent, and it is the only coverage-adjacent thing that may
+be cited:** at lam_sd = 1, n = 1600 the shipped Laplace default's Sigma-diagonal
+**bias exceeds one sampling SD** (bias/SD = -1.115; oracle-SE coverage 0.699). That uses the
+empirical SD, not the delta SE, so it does not depend on the failed instrument. It is a real
+statement about the shipped default. **It is not the sentence that was panelled**, so it is
+recorded as a candidate, not a claim.
+
+**ALSO FALSIFIED:** "uniformly better in every cell measured" -- 6 of 48 matched-ridge cells
+have Laplace ahead, two outside 2*MCSE (offdiag, lam_sd 0.5, n = 200 and 400; paired t =
+-4.01 and -4.03). And "gap widening in n" REVERSES at lam_sd = 0.5 (0.047 / 0.047 / 0.032 /
+0.013, ns). "Tracks traits-per-site" holds monotonically only at q=1, n=1600,
+lam_sd in {0.5, 1}.
+
+**THE STANDING LESSON, now four instances deep.** Every dissolved result this arc had the
+same shape: something that confirmed an expectation was accepted without a mechanism check.
+Poisson's null control, the complete-case coverage, nominal coverage, and now the 0.023
+defect. The last one is the sharpest because it was a NEGATIVE finding -- being unflattering
+to AGHQ did not protect it from being an artefact. **Direction of flattery is not a proxy for
+rigour. Compute the gate you wrote.**

@@ -1541,3 +1541,48 @@ The previous entry conflated the two and withdrew a true statement. Recorded bec
 OVER-correction is its own failure mode: it destroys defensible results and makes the
 record less accurate, not more. The discipline is to name the comparator, not to
 abandon the comparison.
+
+## 2026-07-28  D-43 lens 3 returns NOT-DONE — the claim is withdrawn to its defensible form
+
+Decision: honour the panel. The load-bearing reviewer's verdict is accepted in full and the
+2026-07-28 "restore the claim" entry above is **superseded**.
+
+**The reviewer's central point, which I concede.** I restored "beats Laplace at every n on
+both sigma and rho" on the ground that `Laplace + ridge` "is not a route anyone can
+currently run". But **that coupling is one I created**, in ~12 lines of `run_one` — the
+ridge is applied only on the AGHQ path by my own choice. Defending a claim by appealing to
+a restriction I authored is self-serving, and the control is legitimate.
+
+**Findings that stand against the claim:**
+
+* Paired on shared seeds, the QUADRATURE's contribution to rho is **indistinguishable from
+  zero at n = 100, 200 and 400**, and points the wrong way at n = 100 on both metrics.
+* **The ridge alone takes runaways to 0% exactly as well as AGHQ + ridge does.**
+* **AGHQ without the ridge is WORSE than Laplace on runaways in the p = 4 shape.**
+* **The sigma metric is anti-correlated with the failure it is meant to summarise**
+  (r = −0.21): diverged fits at ‖Λ̂‖/‖Λ‖ ≈ 16 score sigma = 0.80 while healthy fits score
+  0.92, so a substantial part of the advertised n = 100 effect is contamination. This is a
+  defect in my summary statistic, not in the engine.
+* **tau = 2 was adopted AFTER tau = 1 was measured**, and sits on a monotone sensitivity
+  curve spanning 1.45–0.74 that was never run at a true loading scale other than the one
+  matching the prior. The "chosen a priori" defence is weaker than I stated.
+* **A real defect, not just a claim problem:** with the ridge on, the shipped configuration
+  returns a MAP point with ML curvature — `logLik` sits off its own maximum and the gradient
+  diagnostic cannot converge. That must be fixed or fenced before anything is advertised.
+
+**The claim is withdrawn to:** *AGHQ corrects an integral error that no amount of data
+removes — measured as a flat ~21% downward bias in Laplace that 16x more data does not
+touch, and an AGHQ ratio of 1.0021 at n = 3200. A weakly-informative ridge on the loadings
+removes a small-sample runaway. Their separate and joint contributions to sigma and rho at
+small n are NOT yet cleanly attributed, and no coverage evidence exists for the shipped
+configuration.* "At every sample size" is dropped. The comparator is named.
+
+**The one measurement that would settle it**, per the reviewer: a 30-seed coverage cell for
+the ACTUALLY SHIPPED configuration — AGHQ k = 9 **with** `aghq_ridge = 2`, p = 6, q = 2, at
+n = 400 and n = 1600 — reporting Wald coverage of the Sigma diagonal and off-diagonal
+against nominal 0.95 with MCSE, alongside the equivalent Laplace + ridge cell. One script,
+one Totoro run. It adjudicates the MAP-point/ML-curvature problem and it is what this
+project actually gates on.
+
+Recorded because a panel that is overruled is not a panel. Two NOT-DONE verdicts withhold
+the claim entirely; one is already in.

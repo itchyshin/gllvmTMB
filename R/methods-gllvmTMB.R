@@ -530,10 +530,11 @@ print.gllvmTMB_multi <- function(x, ...) {
   if (!is.null(x$opt)) {
     estimator <- x$estimator %||% if (isTRUE(x$REML)) "REML" else "ML"
     cat(sprintf(
-      "  %s log L = %.3f   convergence = %d\n",
+      "  %s log L = %.3f   convergence = %d   engine = %s\n",
       estimator,
       -x$opt$objective,
-      x$opt$convergence
+      x$opt$convergence,
+      .aghq_engine_label(x)
     ))
   }
   ## Rotation advisory note (only if any of B / W / phy is unconstrained
@@ -581,7 +582,8 @@ summary.gllvmTMB_multi <- function(object, ...) {
     cluster_col = object$cluster_col %||% object$species_col,
     estimator = object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
     logLik = -object$opt$objective,
-    convergence = object$opt$convergence
+    convergence = object$opt$convergence,
+    engine = .aghq_engine_label(object)
   )
 
   ## Fixed effects with SE
@@ -646,10 +648,11 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
       cat("  Covstructs:", paste(used_labels, collapse = ", "), "\n")
     }
     cat(sprintf(
-      "  %s log L = %.3f   convergence = %d\n",
+      "  %s log L = %.3f   convergence = %d   engine = %s\n",
       estimator,
       logLik,
-      convergence
+      convergence,
+      engine
     ))
   })
 
@@ -741,6 +744,41 @@ logLik.gllvmTMB_multi <- function(object, ...) {
   attr(ll, "estimator") <- object$estimator %||%
     if (isTRUE(object$REML)) "REML" else "ML"
   attr(ll, "REML") <- isTRUE(object$REML)
+  ## Which integration engine produced this value (Arc 0 AGHQ). "Laplace" on
+  ## a fit that predates AGHQ (fit$aghq is NULL) or explicitly used it
+  ## (fit$aghq$used == FALSE); "AGHQ (k = ..., N nodes)" otherwise. AIC()/
+  ## BIC() (R/aghq-report.R) read this indirectly via .aghq_engine_label()
+  ## to warn once when a comparison mixes engines.
+  attr(ll, "engine") <- .aghq_engine_label(object)
+  ## PENALISED FITS: this is a LIKELIHOOD, but not at its own maximum.
+  ##
+  ## With a loading ridge active the optimiser minimises
+  ## F + 0.5*||lambda||^2/tau^2, so `opt$par` is a MAP point -- while
+  ## `opt$objective` is the UNPENALISED objective evaluated there (the AGHQ
+  ## finaliser sets it from `obj_try$fn(par_best)`). The number returned is
+  ## therefore a genuine log-likelihood sitting OFF ITS OWN MAXIMUM by an amount
+  ## nobody has measured. Left undisclosed that is an ML quantity computed at a
+  ## MAP point -- the defect the D-43 method lens named.
+  ##
+  ## It is deliberately NOT rewritten to the penalised value. In a nested LRT the
+  ## penalty pull scales with the NUMBER OF LOADINGS, so it does not cancel
+  ## between models: reporting the penalised objective as a log-likelihood would
+  ## bias every comparison against the larger model by an unquantified amount.
+  ## Returning the honest likelihood and labelling where it was evaluated is the
+  ## lesser evil; AIC()/BIC() warn on top (R/aghq-report.R).
+  ridge_tau <- object$aghq$ridge_tau %||% Inf
+  pen <- isTRUE(object$aghq$penalised) ||
+    (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
+       is.finite(ridge_tau) && ridge_tau > 0)
+  attr(ll, "penalised") <- pen
+  attr(ll, "ridge_tau") <- ridge_tau
+  if (pen) {
+    attr(ll, "penalised_note") <- paste0(
+      "evaluated at a penalised (MAP) optimum, ridge tau = ",
+      format(ridge_tau, digits = 4),
+      "; this is the unpenalised log-likelihood AT that point, not its maximum"
+    )
+  }
   ## nobs = likelihood-contributing rows. Under the default response="drop"
   ## every fitted row is observed, so this equals length(y) (unchanged). Under
   ## response="include" the masked rows carry a sentinel y gated out of the
@@ -1052,6 +1090,7 @@ simulate.gllvmTMB_multi <- function(
   ## old conditional behaviour). Newdata always uses fitted eta because
   ## we cannot redraw RE tiers for unseen levels.
   if (!is.null(newdata) || isTRUE(condition_on_RE)) {
+    .aghq_warn_re_gap(object, "simulate()")
     if (is.null(newdata)) {
       ## eta length matches family_id_vec length — family-aware OK.
       eta <- as.numeric(object$report$eta)
@@ -1562,6 +1601,7 @@ predict.gllvmTMB_multi <- function(
   ...
 ) {
   type <- match.arg(type)
+  .aghq_warn_re_gap(object, "predict()")
   ## Tier-1 fence (Design 83): a multinomial() fit stores K-1 category-contrast
   ## pseudo-trait rows; the response scale is a per-observation softmax over
   ## categories, NOT a per-row inverse link. Returning per-pseudo-row values

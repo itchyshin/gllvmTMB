@@ -1,0 +1,24 @@
+=== 09-bias-mechanism  2026-07-28 09:31:45 ===
+SELFTEST: flip=TRUE signrule=TRUE outward=TRUE inward=TRUE share1=TRUE share4=TRUE
+null median max_share for p=4 iid errors (no runaway): 0.598
+
+CELL A n=100 k=15 AGHQ               1.8 min  fits=40 conv0=39 | ratio med   2.663 [q10  0.956 q90   4.715] >2 26/40 | med max_share 0.966 | med sep10_hat 0.0000 (true 0.0000) | med rel_out_err -0.117
+CELL A n=100 k=1  LAPLACE            1.9 min  fits=40 conv0=30 | ratio med   0.996 [q10  0.626 q90  14.106] >2 12/40 | med max_share 0.721 | med sep10_hat 0.0000 (true 0.0000) | med rel_out_err -0.365
+CELL A n=800 k=15 AGHQ              15.5 min  fits=40 conv0=40 | ratio med   1.084 [q10  0.876 q90   2.749] >2  7/40 | med max_share 0.800 | med sep10_hat 0.0000 (true 0.0000) | med rel_out_err +0.006
+CELL A n=800 k=1  LAPLACE           14.8 min  fits=40 conv0=39 | ratio med   0.798 [q10  0.650 q90   0.951] >2  2/40 | med max_share 0.807 | med sep10_hat 0.0000 (true 0.0000) | med rel_out_err -0.109
+CELL B n=100 k=15 lam_sd=0.4         1.3 min  fits=20 conv0=20 | ratio med   6.844 [q10  2.240 q90  12.316] >2 18/20 | med max_share 0.965 | med sep10_hat 0.0000 (true 0.0000) | med rel_out_err -0.016
+CELL B n=100 k=15 lam_sd=0.8         1.1 min  fits=20 conv0=20 | ratio med   3.909 [q10  1.167 q90   5.840] >2 16/20 | med max_share 0.974 | med sep10_hat 0.0000 (true 0.0000) | med rel_out_err -0.097
+CELL B n=100 k=15 lam_sd=2.0         0.8 min  fits=20 conv0=20 | ratio med   1.248 [q10  0.877 q90   2.684] >2  6/20 | med max_share 0.804 | med sep10_hat 0.0000 (true 0.0000) | med rel_out_err +0.095
+CELL B n=100 k=1  lam_sd=0.4         0.6 min  fits=20 conv0=19 | ratio med   1.724 [q10  1.063 q90   3.054] >2  8/20 | med max_share 0.660 | med sep10_hat 0.0000 (true 0.0000) | med rel_out_err +0.146
+CELL B n=100 k=1  lam_sd=0.8         0.3 min  fits=20 conv0=19 | ratio med   1.007 [q10  0.785 q90   1.839] >2  1/20 | med max_share 0.658 | med sep10_hat 0.0000 (true 0.0000) | med rel_out_err -0.129
+CELL B n=100 k=1  lam_sd=2.0         0.7 min  fits=20 conv0=13 | ratio med   5.108 [q10  0.604 q90  11.325] >2 12/20 | med max_share 0.994 | med sep10_hat 0.1225 (true 0.0000) | med rel_out_err -0.300
+CELL B n=800 k=15 lam_sd=0.4         1.7 min  fits=16 conv0=16 | ratio med   1.296 [q10  0.930 q90   9.480] >2  4/16 | med max_share 0.701 | med sep10_hat 0.0000 (true 0.0000) | med rel_out_err +0.007
+CELL B n=800 k=15 lam_sd=0.8         1.5 min  fits=16 conv0=16 | ratio med   1.072 [q10  0.927 q90   2.726] >2  2/16 | med max_share 0.657 | med sep10_hat 0.0000 (true 0.0000) | med rel_out_err -0.019
+CELL B n=800 k=15 lam_sd=2.0         1.6 min  fits=16 conv0=16 | ratio med   1.050 [q10  0.907 q90   2.059] >2  2/16 | med max_share 0.839 | med sep10_hat 0.0000 (true 0.0002) | med rel_out_err -0.004
+
+=== done 2026-07-28 10:15:27 ===
+
+PART C truth-start check, n=100 k=15 lam_sd=1.2, 40 seeds
+  med ratio  default-start  2.663 | truth-start  2.663
+  objective: default BETTER (d_obj < -1e-4) in 0/40 ; truth-start BETTER in 0/40 ; tie in 40
+  among fits with ratio_default > 2 (n=26): truth-start ratio med  3.205, truth-start BETTER in 0

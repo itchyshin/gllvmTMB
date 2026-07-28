@@ -5,7 +5,41 @@ This repository is shared by humans, Codex, and Claude Code. Read
 
 ## Live Phase Snapshot — 2026-07-28
 
-- **2026-07-28 (latest) — VA/EVA + AGHQ lane.** **PR #799 MERGED** (`dc10fa6a`):
+- **2026-07-28 (LATEST) — AGHQ ENGINE LANE: BUILT, OPT-IN, DEFAULT UNCHANGED.**
+  Lane `claude/aghq-engine-20260728`, 20 commits, **not pushed, no PR**.
+  **START HERE:** `docs/dev-log/handover/2026-07-28-claude-handover-aghq-engine.md`,
+  then the lane map `docs/dev-log/handover/2026-07-25-active-lane-split.md`.
+  AGHQ ships **opt-in** (`gllvmTMBcontrol(aghq = k)`); **the default is still Laplace and
+  no existing user's numbers move**. Headline: Laplace carries a flat **~21% downward
+  bias that 16× more data does not touch** (its error is O(1/T), per CLUSTER), while AGHQ
+  reaches **1.0021 at n = 3200**. With a weakly-informative ridge on the loadings
+  (`aghq_ridge = 2`, on when AGHQ is on) it beats the shipped Laplace on **both** latent
+  SD and correlations at every n tested (954 fits, Totoro). **Name the comparator** — a
+  hypothetical penalised Laplace edges rho at n ≤ 200. **NOT done:** the family axis
+  (binomial-only evidence), the D-43 panel, and any coverage/interval evidence.
+  The invariant to re-check after ANY engine edit: **gaussian exactness ~1e-13 and
+  k-independent**. Durable finding in the brain: *"AGHQ exposes a flat likelihood
+  direction in GLLVMs — the runaway is bimodal, not biased."*
+- **2026-07-28 (earlier, superseded by the bullet above) — AGHQ IS THE MAIN
+  ENGINE.** Maintainer decision, `docs/dev-log/decisions.md` 2026-07-28: AGHQ
+  becomes gllvmTMB's integration engine across all 16 families and all model
+  classes, adaptive and auto-by-default. **This reverses the 2026-05-15 "stay
+  Laplacian" decision**, whose grounds were sound but rested on reading the
+  literature's `n_i` as sites rather than **traits per site** — the gain is large
+  exactly where `T` is small. **The Arc 0 fence is LIFTED**: the 59/70
+  identifiability question no longer gates the build; it becomes AGHQ's first
+  acceptance test (H4). **PR #798 is MERGED** (`72c2e53d`). Lane:
+  `claude/aghq-engine-20260728`, worktree
+  `/private/tmp/gllvmtmb-arc0-identifiability`. Plan:
+  `~/.claude/plans/starry-booping-starfish.md`.
+  **Two standing corrections.** (1) *"AGHQ inherits all 16 families, phylogeny,
+  spatial and missing data"* is **NOT ESTABLISHED as stated** — families and
+  missing data survive; phylogeny and spatial **break** under a product rule and
+  need a nested AGHQ-inside-Laplace decomposition; `REML = TRUE` is excluded
+  outright. Use the narrower form recorded in `decisions.md`. (2) The AGHQ spike's
+  **`1.4e-9` agreement is at ONE node, and one node IS Laplace** — it proves the
+  plumbing, not the quadrature. Never cite it as evidence about `k > 1`.
+- **2026-07-28 — VA/EVA + AGHQ lane (historical; see the bullet above).** **PR #799 MERGED** (`dc10fa6a`):
   a collapsed variance component could pass every check the package had
   (`near_zero_psi_unit … PASS … 0.0006826` for a component whose *variance* was
   `4.7e-7`) — now detected relative to siblings; `start_method = "res"`

@@ -68,6 +68,60 @@ Type gll_clamp(Type x, Type lower, Type upper)
 }
 
 template <class Type>
+Type gll_log_pnorm(Type x)
+{
+  // log Phi(x), stable in the far LEFT tail. For x >= -20 the direct
+  // log(pnorm(x)) is used (pnorm(-20) = 2.8e-89, so there is ~200 orders of
+  // headroom before underflow). Below that we use the Mills-ratio asymptotic
+  // expansion (Abramowitz & Stegun 26.2.12)
+  //   log Phi(x) = -x^2/2 - log(-x) - log(sqrt(2 pi))
+  //                + log(1 - 1/x^2 + 3/x^4 - 15/x^6 + 105/x^8)
+  // which is accurate to 9e-11 in log-probability at the -20 switch point
+  // (checked against R's pnorm(log.p = TRUE)) and is what keeps the density
+  // finite past x ~ -37.5, where pnorm underflows to 0 and log() gives -Inf.
+  //
+  // CppAD::CondExp evaluates BOTH branches, so each branch is fed a CLAMPED
+  // argument that keeps it finite on the side where it is not selected.
+  //
+  // Why this matters: the ordinal_probit cell probability used to be floored
+  // at 1e-12, which is harmless under Laplace (eta sits at the conditional
+  // mode) but BINDS at outer quadrature nodes, where eta is deliberately
+  // pushed several conditional SDs into the tail. A hard floor turns the
+  // tail into a constant and kills the node's gradient; this formulation
+  // lets the tail decay instead.
+  Type cut = Type(-20.0);
+  Type xa   = CppAD::CondExpLt(x, cut, x, cut);        // min(x, -20)
+  Type inv2 = Type(1.0) / (xa * xa);
+  Type series = Type(1.0) - inv2 * (Type(1.0) - Type(3.0) * inv2 *
+                (Type(1.0) - Type(5.0) * inv2 *
+                (Type(1.0) - Type(7.0) * inv2)));
+  Type tail = -Type(0.5) * xa * xa - log(-xa) -
+              Type(0.5) * log(Type(2.0) * M_PI) + log(series);
+  Type xd = CppAD::CondExpLt(x, cut, cut, x);          // max(x, -20)
+  Type direct = log(pnorm(xd));
+  return CppAD::CondExpLt(x, cut, tail, direct);
+}
+
+template <class Type>
+Type gll_log_pnorm_diff(Type a, Type b)
+{
+  // log( Phi(a) - Phi(b) ) for a > b, stable in BOTH tails.
+  //   left  form (a, b both left of centre): logPhi(a) + log1mexp(logPhi(b) - logPhi(a))
+  //   right form (a, b both right of centre): by symmetry Phi(a) - Phi(b)
+  //     = Phi(-b) - Phi(-a), with -b > -a both left of centre.
+  // Pick by the sign of a + b so the selected form always evaluates the
+  // SMALLER of the two probabilities as the leading term. Both arguments of
+  // gll_log1mexp are <= 0 by construction (a > b), on either branch.
+  Type la  = gll_log_pnorm(a);
+  Type lb  = gll_log_pnorm(b);
+  Type lna = gll_log_pnorm(-a);
+  Type lnb = gll_log_pnorm(-b);
+  Type left  = la  + gll_log1mexp(lb  - la);
+  Type right = lnb + gll_log1mexp(lna - lnb);
+  return CppAD::CondExpLe(a + b, Type(0.0), left, right);
+}
+
+template <class Type>
 Type gll_log_inv_logit_diff(Type upper, Type lower)
 {
   // log( F(upper) - F(lower) ) for upper > lower, stable form (drm_log_inv_
@@ -473,6 +527,42 @@ Type objective_function<Type>::operator()()
   DATA_MATRIX(X_fix_state);            // (sum_{missing u} |rows(u)| * K) x p
   DATA_IVECTOR(mi_state_row);          // length n_obs; 0-idx K-block base or -1
 
+  // -------- AGHQ (adaptive Gauss-Hermite quadrature) --------------------
+  // Stage 1a: quadrature over the B-tier reduced-rank latent block z_B only
+  // (latent(..., unique = FALSE)). use_aghq == 0 -> every line below is an
+  // exact no-op and the Laplace path is byte-identical to the pre-AGHQ
+  // template.
+  //
+  // The adaptation points are computed in R (conditional modes + Cholesky
+  // factors of the conditional Hessian at the CURRENT fixed parameters) and
+  // enter as DATA_, so the template stays differentiable in the fixed
+  // parameters and TMB supplies exact gradients for free.
+  //
+  // Per site i, with H_i = L_i L_i' the conditional Hessian of the negative
+  // log integrand and z = zhat_i + L_i^{-T} u,
+  //
+  //   log L_i = aghq_logdet(i)
+  //             + logsumexp_j [ aghq_logw(j) + inner_ll(i, j) ]
+  //
+  // where inner_ll(i, j) sums this site's row log-densities evaluated at
+  // z_ij = zhat_i + L_i^{-T} u_j PLUS log N(z_ij; 0, I).
+  //
+  // WEIGHT CONVENTION (must match R/fit-multi.R .gllvmTMB_aghq_grid()):
+  // aghq_nodes are PROBABILISTS' (N(0,1)-scaled) Gauss-Hermite nodes and
+  //   aghq_logw(j) = sum_m log w~_{j_m} + (d/2) log(2 pi) + 0.5 * u_j' u_j
+  // i.e. the log tensor weight, the (2 pi)^{d/2} factor from writing du in
+  // the standard-normal measure, and the exp(u'u/2) correction that undoes
+  // the Gauss-Hermite kernel are ALL folded in. With this convention k = 1
+  // reproduces the Laplace approximation EXACTLY (single node u = 0,
+  // w~ = 1 -> log L_i = logdet_i + (d/2) log(2 pi) + inner_ll(zhat_i)).
+  DATA_INTEGER(use_aghq);          // 0 = Laplace (default), 1 = quadrature
+  DATA_INTEGER(aghq_d);            // quadrature dimension (= d_B here)
+  DATA_MATRIX(aghq_nodes);         // n_node x aghq_d
+  DATA_VECTOR(aghq_logw);          // n_node
+  DATA_MATRIX(aghq_mode);          // n_sites x aghq_d
+  DATA_MATRIX(aghq_Lt);            // n_sites x (aghq_d * aghq_d), row-major
+  DATA_VECTOR(aghq_logdet);        // n_sites
+
   // -------- PARAMETERS --------------------------------------------------
   PARAMETER_VECTOR(b_fix);                       // fixed-effects coefficients (p)
   PARAMETER(log_sigma_eps);                      // residual log-SD
@@ -807,10 +897,15 @@ Type objective_function<Type>::operator()()
           Lambda_B(i, j) = lam_lower(j * p - (j + 1) * j / 2 + i - 1 - j);
       }
     }
-    // Spherical prior on z_B
-    for (int s = 0; s < n_sites; s++) {
-      vector<Type> col_s = z_B.col(s);
-      nll -= dnorm(col_s, Type(0), Type(1), true).sum();
+    // Spherical prior on z_B.
+    // Under AGHQ the z_B block is NOT a random effect: R maps the parameter
+    // off and the N(0, I) prior is evaluated INSIDE the quadrature (at each
+    // node), so it must not also be added here.
+    if (use_aghq == 0) {
+      for (int s = 0; s < n_sites; s++) {
+        vector<Type> col_s = z_B.col(s);
+        nll -= dnorm(col_s, Type(0), Type(1), true).sum();
+      }
     }
     REPORT(Lambda_B);
     matrix<Type> Sigma_B = Lambda_B * Lambda_B.transpose();
@@ -1848,7 +1943,11 @@ Type objective_function<Type>::operator()()
     int t  = trait_id(o);
     int s  = site_id(o);
     int ss = site_species_id(o);
-    if (use_rr_B == 1) {
+    // Under AGHQ the z_B contribution is added per QUADRATURE NODE in the
+    // observation loop below, not here: eta(o) is left as the "base" linear
+    // predictor with the B-tier latent block removed, so the node loop only
+    // has to add Lambda_B * z_ij.
+    if (use_rr_B == 1 && use_aghq == 0) {
       Type u_B_st = 0;
       for (int k = 0; k < d_B; k++) {
         Type score_k = (use_lv_B == 1) ? U_B_total(s, k) : z_B(k, s);
@@ -2172,22 +2271,30 @@ Type objective_function<Type>::operator()()
         cuts(j) = cuts(j - 1) + exp(ordinal_log_increments(offset + j - 1));
       }
       int yk = CppAD::Integer(y(o));   // observed category, 1..K
-      // Compute P(y = yk) = Phi(upper - eta) - Phi(lower - eta).
-      Type upper_p, lower_p;
+      // log P(y = yk) = log( Phi(upper - eta) - Phi(lower - eta) ), computed
+      // ENTIRELY on the log scale (gll_log_pnorm / gll_log_pnorm_diff).
+      //
+      // Was: p_k = upper_p - lower_p with a hard floor p_k >= 1e-12, then
+      // log(p_k). That floor is harmless under Laplace but BINDS at AGHQ
+      // quadrature nodes -- once the node pushes s_cond * |lambda| past about
+      // 1.56 at k = 9 the true cell probability drops below 1e-12 and the
+      // floor replaces the decaying tail with a constant (zero gradient in
+      // eta). The log-scale form below keeps decaying; the residual guard is
+      // at log(1e-300), i.e. only where a double would underflow anyway.
+      Type logp_k;
       if (yk >= K) {
-        upper_p = Type(1.0);
+        // Top category: P = 1 - Phi(lower - eta) = Phi(eta - lower).
+        logp_k = gll_log_pnorm(eta_o - cuts(yk - 2));
+      } else if (yk <= 1) {
+        // Bottom category: P = Phi(upper - eta).
+        logp_k = gll_log_pnorm(cuts(yk - 1) - eta_o);
       } else {
-        upper_p = pnorm(cuts(yk - 1) - eta_o);
+        logp_k = gll_log_pnorm_diff(cuts(yk - 1) - eta_o,
+                                    cuts(yk - 2) - eta_o);
       }
-      if (yk <= 1) {
-        lower_p = Type(0.0);
-      } else {
-        lower_p = pnorm(cuts(yk - 2) - eta_o);
-      }
-      Type p_k = upper_p - lower_p;
-      Type tiny_p = Type(1e-12);
-      p_k = CppAD::CondExpLt(p_k, tiny_p, tiny_p, p_k);
-      ll += log(p_k);
+      Type log_tiny_ord = Type(-690.7755278982137);   // log(1e-300)
+      logp_k = CppAD::CondExpLt(logp_k, log_tiny_ord, log_tiny_ord, logp_k);
+      ll += logp_k;
     } else if (fid == 15) {
       // NB1 (negative binomial, type 1), log link.
       // Var(y) = mu * (1 + phi) = mu + phi * mu, with one log_phi per trait
@@ -2345,6 +2452,69 @@ Type objective_function<Type>::operator()()
     }
   }
 
+  // -------- AGHQ setup (Stage 1a: the z_B block) -------------------------
+  // Everything below is skipped entirely when use_aghq == 0, and the sizes
+  // collapse to 1 so the no-op path allocates nothing meaningful.
+  int aghq_n_node = (use_aghq == 1) ? aghq_nodes.rows() : 1;
+  // Per-site, per-node latent value z_ij = zhat_i + L_i^{-T} u_j, and the
+  // per-node standard-normal log prior log N(z_ij; 0, I). Precomputed once so
+  // the observation loop (which visits each site's rows repeatedly) does not
+  // redo the d x d solve per row.
+  array<Type> aghq_z((use_aghq == 1) ? n_sites : 1,
+                     aghq_n_node,
+                     (use_aghq == 1) ? std::max(aghq_d, 1) : 1);
+  matrix<Type> aghq_site_ll((use_aghq == 1) ? n_sites : 1, aghq_n_node);
+  aghq_z.setZero();
+  aghq_site_ll.setZero();
+  if (use_aghq == 1) {
+    // Stage 1a fences. These are ALSO checked in R (R/fit-multi.R), but the
+    // template must not silently produce a wrong objective if it is driven
+    // directly, so they are re-asserted here.
+    if (use_rr_B != 1)
+      error("gllvmTMB_multi: use_aghq requires use_rr_B (the z_B block)");
+    if (aghq_d != d_B)
+      error("gllvmTMB_multi: aghq_d must equal d_B in Stage 1a");
+    if (use_lv_B == 1)
+      error("gllvmTMB_multi: use_aghq does not yet support use_lv_B");
+    if (use_diag_B == 1)
+      error("gllvmTMB_multi: use_aghq Stage 1a is loadings-only (no s_B)");
+    if (has_mi == 1)
+      error("gllvmTMB_multi: use_aghq does not yet support mi() predictors");
+    if (aghq_nodes.cols() != aghq_d)
+      error("gllvmTMB_multi: aghq_nodes must be n_node x aghq_d");
+    if (aghq_logw.size() != aghq_n_node)
+      error("gllvmTMB_multi: aghq_logw must have one entry per node");
+    if (aghq_mode.rows() != n_sites || aghq_mode.cols() != aghq_d)
+      error("gllvmTMB_multi: aghq_mode must be n_sites x aghq_d");
+    if (aghq_Lt.rows() != n_sites || aghq_Lt.cols() != aghq_d * aghq_d)
+      error("gllvmTMB_multi: aghq_Lt must be n_sites x (aghq_d * aghq_d)");
+    if (aghq_logdet.size() != n_sites)
+      error("gllvmTMB_multi: aghq_logdet must have one entry per site");
+    for (int o = 0; o < y.size(); o++) {
+      if (family_id_vec(o) == 16)
+        error("gllvmTMB_multi: use_aghq does not yet support multinomial rows");
+      if (site_id(o) < 0 || site_id(o) >= n_sites)
+        error("gllvmTMB_multi: site_id out of range under use_aghq");
+    }
+    Type half_log_2pi = Type(0.5) * log(Type(2.0) * M_PI);
+    for (int s = 0; s < n_sites; s++) {
+      for (int j = 0; j < aghq_n_node; j++) {
+        Type quad = Type(0.0);
+        for (int a = 0; a < aghq_d; a++) {
+          // Row-major L^{-T}: entry (a, b) at column a * aghq_d + b.
+          Type z_a = aghq_mode(s, a);
+          for (int b = 0; b < aghq_d; b++)
+            z_a += aghq_Lt(s, a * aghq_d + b) * aghq_nodes(j, b);
+          aghq_z(s, j, a) = z_a;
+          quad += z_a * z_a;
+        }
+        // log N(z_ij; 0, I) -- the latent prior, evaluated INSIDE the
+        // quadrature (it was removed from nll above under use_aghq == 1).
+        aghq_site_ll(s, j) = -Type(0.5) * quad - Type(aghq_d) * half_log_2pi;
+      }
+    }
+  }
+
   for (int o = 0; o < y.size(); o++) {
     // Capture the running NLL so we can scale this row's contribution by
     // its weight after the family-dispatch block. Mirrors the
@@ -2403,7 +2573,27 @@ Type objective_function<Type>::operator()()
       // discrete x (observed-x units take this path with the true x in eta(o)).
       // fid-16 rows are handled by the multinomial group branch above and skip
       // this per-row family dispatch.
-      nll -= obs_loglik(o, eta(o));
+      if (use_aghq == 1) {
+        // AGHQ path: instead of adding this row's log-density at the single
+        // Laplace point, accumulate it into the row's SITE at every
+        // quadrature node. eta(o) here is the base predictor with the z_B
+        // block removed (see the eta assembly guard above), so the node loop
+        // only adds Lambda_B(t, .) . z_ij.
+        //
+        // The weight is applied HERE (as on the mi() branch below) because
+        // this branch adds nothing to `nll`, so the outer row-weight scaling
+        // at the foot of the loop is a no-op for it.
+        int s_a = site_id(o);
+        int t_a = trait_id(o);
+        for (int j = 0; j < aghq_n_node; j++) {
+          Type eta_oj = eta(o);
+          for (int k = 0; k < d_B; k++)
+            eta_oj += Lambda_B(t_a, k) * aghq_z(s_a, j, k);
+          aghq_site_ll(s_a, j) += weights_i(o) * obs_loglik(o, eta_oj);
+        }
+      } else {
+        nll -= obs_loglik(o, eta(o));
+      }
     } else if (family_id_vec(o) != 16 && is_y_observed(o) && mi_missing_row) {
       // Discrete-SUM path (sec.3.3 steps 1-2): accumulate the per-state
       // response log-density into the unit's K-state accumulator. Weights enter
@@ -2449,6 +2639,28 @@ Type objective_function<Type>::operator()()
     // is a no-op too.
     Type row_nll = nll - nll_before_row;
     nll = nll_before_row + row_nll * weights_i(o);
+  }
+
+  // -------- AGHQ collapse: log-sum-exp over the quadrature nodes ---------
+  // log L_i = logdet_i + log sum_j exp( logw_j + inner_ll(i, j) ).
+  // The max-subtraction is written out explicitly: inner_ll runs to hundreds
+  // of nll units here, so a naive sum of exponentials overflows.
+  if (use_aghq == 1) {
+    vector<Type> aghq_site_logL(n_sites);
+    for (int s = 0; s < n_sites; s++) {
+      Type m = aghq_logw(0) + aghq_site_ll(s, 0);
+      for (int j = 1; j < aghq_n_node; j++) {
+        Type cand = aghq_logw(j) + aghq_site_ll(s, j);
+        m = CppAD::CondExpGt(cand, m, cand, m);
+      }
+      Type acc = Type(0.0);
+      for (int j = 0; j < aghq_n_node; j++)
+        acc += exp(aghq_logw(j) + aghq_site_ll(s, j) - m);
+      Type logL_s = aghq_logdet(s) + m + log(acc);
+      aghq_site_logL(s) = logL_s;
+      nll -= logL_s;
+    }
+    REPORT(aghq_site_logL);
   }
 
   // -------- Discrete missing-PREDICTOR SUM: collapse + report ------------

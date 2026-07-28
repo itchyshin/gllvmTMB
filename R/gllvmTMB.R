@@ -1218,12 +1218,35 @@ gllvmTMBcontrol <- function(
   start_from = NULL,
   se = TRUE,
   verbose = FALSE,
+  aghq = FALSE,
+  aghq_iter_cap = 1L,
+  aghq_n_adapt = 400L,
+  aghq_ridge = 2,
+  allow_nongaussian_reml = FALSE,
   ...
 ) {
+  ## Did the CALLER name `aghq_ridge`, or is this the package default? The
+  ## distinction is load-bearing and must be captured before any other
+  ## statement can touch the promise.
+  ##
+  ## The ridge was authored inside the AGHQ branch, so `Laplace + ridge` -- the
+  ## fair control for every claim that credits the QUADRATURE rather than the
+  ## PENALTY -- was unreachable. That coupling is a packaging accident, not a
+  ## property of the method: the ridge is a prior on the loadings and has no
+  ## dependence on the quadrature whatsoever. Unbundling it makes the control
+  ## runnable.
+  ##
+  ## But `aghq_ridge` DEFAULTS to 2, so applying the default on the Laplace
+  ## path would silently penalise every existing fit in the package -- a change
+  ## to every user's numbers that touches no export and that `R CMD check`
+  ## cannot see. So the Laplace-path ridge is opt-in ONLY: it fires when the
+  ## caller names `aghq_ridge` and never from the default.
+  aghq_ridge_explicit <- !missing(aghq_ridge)
   spde_mode <- match.arg(spde_mode)
   optimizer <- match.arg(optimizer)
   init_strategy <- match.arg(init_strategy)
   start_method <- .gllvmTMB_normalize_start_method(start_method)
+  aghq <- .gllvmTMB_normalize_aghq(aghq)
   if (!is.logical(se) || length(se) != 1L || is.na(se)) {
     cli::cli_abort("{.arg se} must be a single {.code TRUE} or {.code FALSE} value.")
   }
@@ -1244,8 +1267,39 @@ gllvmTMBcontrol <- function(
     start_method = start_method,
     start_from = start_from,
     se = se,
-    verbose = verbose
+    verbose = verbose,
+    aghq = aghq,
+    aghq_iter_cap = as.integer(aghq_iter_cap),
+    aghq_n_adapt = as.integer(aghq_n_adapt),
+    aghq_ridge = aghq_ridge,
+    aghq_ridge_explicit = aghq_ridge_explicit,
+    allow_nongaussian_reml = isTRUE(allow_nongaussian_reml)
   )
+}
+
+## `aghq` accepts FALSE (Laplace, the current default), "auto" (let the package
+## decide), or a positive integer node count. Anything else is a user error and is
+## caught here rather than surfacing as a template failure deep inside a fit.
+##
+## The DEFAULT IS DELIBERATELY `FALSE`, not "auto": the maintainer's decision of
+## 2026-07-28 is that AGHQ ships opt-in and Laplace stays the default until the
+## head-to-head evidence decides, because flipping it would change every existing
+## user's numbers while touching no export and so would be invisible to R CMD check.
+## See docs/dev-log/decisions.md. When that evidence lands, this one word is the flip.
+.gllvmTMB_normalize_aghq <- function(aghq) {
+  if (is.null(aghq) || isFALSE(aghq)) return(FALSE)
+  if (is.character(aghq) && length(aghq) == 1L && identical(aghq, "auto")) return("auto")
+  if (isTRUE(aghq)) return("auto")
+  if (is.numeric(aghq) && length(aghq) == 1L && is.finite(aghq) &&
+      aghq >= 1 && aghq == as.integer(aghq)) {
+    return(as.integer(aghq))
+  }
+  cli::cli_abort(c(
+    "{.arg aghq} must be {.code FALSE}, {.val auto}, or a single positive integer.",
+    "i" = "{.code aghq = FALSE} uses the Laplace approximation (the current default).",
+    "i" = "{.code aghq = \"auto\"} lets the package choose the node count.",
+    "i" = "{.code aghq = 9} uses a fixed 9-node rule per latent dimension."
+  ))
 }
 
 #' Missing-data control for [gllvmTMB()]

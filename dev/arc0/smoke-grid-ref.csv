@@ -1,0 +1,3 @@
+"family","n","p","q","seed","arm","objective","seconds","status","rel_frob","attenuation","note"
+"bernoulli",40,8,2,1,"gtmb_laplace",-184.90632547961,0.487000000000002,"conv0_pdHessTRUE",3617.67715898511,2854.81764629305,"Sigma_B may include link-implicit residual on diag"
+"bernoulli",100,8,2,1,"gtmb_laplace",-532.680883818489,0.43,"conv0_pdHessTRUE",0.926506868952655,0.910731799859652,"Sigma_B may include link-implicit residual on diag"

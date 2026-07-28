@@ -2390,11 +2390,58 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ))
   }
   if (isTRUE(REML)) {
-    if (any(family_id_vec != 0L)) {
+    ## NON-GAUSSIAN REML IS THE COX-REID ADJUSTED PROFILE LIKELIHOOD.
+    ##
+    ## REML is realised here by adding b_fix to TMB's `random` vector (see the
+    ## random-vector assembly below), so the Laplace machinery integrates the
+    ## fixed-effect block out under a flat prior. For a Gaussian LMM that step is
+    ## EXACT and returns the classical restricted likelihood -- which is why this
+    ## gate was Gaussian-only.
+    ##
+    ## For a non-Gaussian family the step is not exact, but the quantity it
+    ## computes, l_p(psi) - 0.5*log|j_bb|, IS the Cox-Reid adjusted profile
+    ## likelihood (Cox & Reid 1987) -- REML generalised to non-Gaussian.
+    ## Exactness was never the requirement; Cox-Reid is DEFINED as that adjustment.
+    ##
+    ## WHY IT MATTERS HERE. Small-cluster variance-component bias has two stacked
+    ## ORTHOGONAL parts and quadrature fixes only one. Measured cross-repo
+    ## (2026-07-18, drmTMB cumulative_logit, 40 seeds, against glmmTMB/glmer/lme4):
+    ## Laplace -7.3% -> +AGHQ -5.0% -> +Cox-Reid -0.9%, with the AGHQ node sweep
+    ## PLATEAUING DEAD FLAT. Nodes cannot cross the variance-bias floor.
+    ## This package's own n-ladder shows the same thing from the other side
+    ## (dev/aghq-evidence/05-descend-RESULT.txt, T=4, q=1, ratio ||L_hat||/||L_true||):
+    ##   n=3200 Laplace 0.794 / AGHQ 1.0021   <- AGHQ essentially unbiased
+    ##   n= 200 Laplace 0.836 / AGHQ 1.967    <- AGHQ worse; the residual is NOT
+    ##   n= 100 Laplace 0.892 / AGHQ 1.893       the quadrature but the ML variance
+    ## Laplace's small-n adequacy is TWO ERRORS CANCELLING -- its integral error
+    ## biases down, the small-sample variance bias biases up -- not accuracy. The
+    ## cancellation is uncontrolled and breaks with T, family or signal strength.
+    ## The lever below targets the half that AGHQ cannot reach.
+    ##
+    ## OPT-IN AND UNVALIDATED HERE. Two caveats worth respecting rather than
+    ## rediscovering (Reid & Fraser 2003): Cox-Reid is strictly justified when the
+    ## interest parameter is ORTHOGONAL to the nuisance block, and it is NOT
+    ## invariant to reparametrising that block. Neither is checked for the GLLVM
+    ## parameterisation, where variance lives in Lambda and Psi rather than in a
+    ## scalar random-effect SD -- so the drmTMB transfer is a hypothesis under
+    ## test, not an inherited result.
+    if (any(family_id_vec != 0L) && !isTRUE(control$allow_nongaussian_reml)) {
       cli::cli_abort(c(
-        "{.arg REML = TRUE} is currently implemented for Gaussian-only fits.",
+        "{.arg REML = TRUE} is validated for Gaussian-only fits.",
         "x" = "At least one response row uses a non-Gaussian family.",
-        "i" = "Use the default {.code REML = FALSE} for non-Gaussian and mixed-family GLLVMs."
+        "i" = "Use the default {.code REML = FALSE} for non-Gaussian and mixed-family GLLVMs.",
+        "i" = paste(
+          "Experimental non-Gaussian REML (the Cox-Reid adjusted profile likelihood)",
+          "is available, UNVALIDATED, via",
+          "{.code gllvmTMBcontrol(allow_nongaussian_reml = TRUE)}."
+        )
+      ))
+    }
+    if (any(family_id_vec != 0L)) {
+      cli::cli_warn(c(
+        "Non-Gaussian {.arg REML = TRUE} is EXPERIMENTAL and UNVALIDATED.",
+        "i" = "This is the Cox-Reid adjusted profile likelihood, not an exact restricted likelihood.",
+        "i" = "Do not report it as a validated estimator."
       ))
     }
     if (!is.null(weights)) {
@@ -3623,6 +3670,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Phase 2a missing-predictor DATA slots (has_mi = 0 no-op when disabled).
   tmb_data <- c(tmb_data, gll_tmb_mi_data(mi_model, n_obs))
 
+  ## AGHQ DATA slots. Always present so the template's DATA_ macros resolve;
+  ## `use_aghq = 0` makes every one of them an exact no-op (stubs of size 1).
+  ## The real grid / modes / Cholesky factors are written in by the adaptation
+  ## loop below, after a Laplace fit has supplied them.
+  tmb_data <- c(tmb_data, .gllvmTMB_aghq_data_stub())
+
   init_rr_theta <- function(p, rank) {
     ## Lambda_B/W ~ I_rank diagonal start (so initial Sigma is the identity
     ## scaled by 0). Concretely: lam_diag = 0.5 (sd 1.65), lam_lower = 0.
@@ -4777,13 +4830,67 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Optimiser dispatch: nlminb (default) or optim with user-supplied
   ## method (per Maeve McGillycuddy's email — optim/BFGS is often more
   ## robust than nlminb for two-level rr fits).
-  run_one <- function(par_init) {
+  ## `.obj` defaults to the Laplace object built above; the AGHQ adaptation
+  ## loop passes its own object so it reuses this exact optimiser dispatch.
+  ## `.iter_cap` bounds the optimiser steps taken in ONE call. The AGHQ adaptation
+  ## loop uses it to keep the quadrature nodes fresh; see the loop for why that is
+  ## not optional.
+  ## `.ridge_tau` adds a weakly-informative Gaussian prior on the free loadings:
+  ##     penalty = 0.5 * sum(theta_rr_B^2) / tau^2
+  ## Its gradient is exactly theta_rr_B / tau^2, so this stays AD-exact with no
+  ## template change and no recompile -- the ridge's derivative is trivial.
+  ##
+  ## WHY IT EXISTS. With the integral solved exactly by AGHQ, what remains at small n
+  ## is a nearly FLAT likelihood ridge along the direction that inflates Sigma: at one
+  ## converged optimum, sweeping k = 5/9/15/21 moves the objective < 0.01 nll while
+  ## the argmin's ||Sigma_B||_F wanders 13.3 / 45.5 / 119.3 / 38.6. The data barely
+  ## distinguishes those solutions, so a fraction of fits walk out along the ridge.
+  ## Nothing that improves the INTEGRAL can help -- only something that adds CURVATURE
+  ## where the likelihood has none.
+  ##
+  ## WHY tau = 2, fixed a priori and not tuned against any truth. The latent variables
+  ## are standardised N(0, I), so a loading IS the trait's latent SD contribution in
+  ## logit units: a loading of 1 swings occurrence 0.27-0.73 across +/-1 SD, 4 swings
+  ## 0.018-0.98, 10 saturates. tau = 2 therefore barely touches anything plausible
+  ## while making a runaway astronomically unlikely. And a FIXED prior contributes
+  ## O(1) to a log-likelihood growing as O(n), so it vanishes as n grows.
+  ##
+  ## MEASURED (Totoro, 954 fits, 30 seeds/cell, p=6 q=2 binomial; sigma = ratio of
+  ## estimated to true latent SD, 1.000 unbiased; rho = mean |error| of the
+  ## correlations; runaway = fraction with ||Lambda|| ratio > 2):
+  ##        n     engine        sigma    rho    runaway
+  ##      100   Laplace         0.825  0.310      50%
+  ##      100   AGHQ            1.197  0.233      13%
+  ##      100   AGHQ + ridge    1.043  0.230       0%
+  ##     1600   Laplace         0.882  0.087       7%
+  ##     1600   AGHQ + ridge    0.989  0.062       0%
+  ## The ridge removes the runaway entirely at this shape, improves BOTH sigma and rho
+  ## against Laplace at every n, and costs nothing at large n (0.988 -> 0.989).
+  ## Note also that LAPLACE runs away MORE than AGHQ here (50% vs 13%), not less.
+  ##
+  ## The penalty is rotation-invariant: ||Lambda Q||_F = ||Lambda||_F for orthogonal Q,
+  ## and sum(lambda^2) = tr(Lambda Lambda') = tr(Sigma), so it does not interact with
+  ## the rotational non-identifiability of the loadings.
+  run_one <- function(par_init, .obj = obj, .iter_cap = NULL, .ridge_tau = NULL) {
+    obj <- .obj
+    if (!is.null(.ridge_tau) && is.finite(.ridge_tau) && .ridge_tau > 0) {
+      lam_idx <- which(names(obj$par) == "theta_rr_B")
+      if (length(lam_idx)) {
+        inv_t2 <- 1 / (.ridge_tau^2)
+        base_fn <- obj$fn; base_gr <- obj$gr
+        obj <- list(
+          par = obj$par, env = obj$env, report = obj$report,
+          fn = function(p) base_fn(p) + 0.5 * sum(p[lam_idx]^2) * inv_t2,
+          gr = function(p) { g <- base_gr(p); g[lam_idx] <- g[lam_idx] + p[lam_idx] * inv_t2; g }
+        )
+      }
+    }
     if (identical(control$optimizer, "optim")) {
       opt_args <- control$optArgs
       method <- opt_args$method %||% "BFGS"
       opt_args$method <- method
       opt_args$control <- utils::modifyList(
-        list(maxit = 2000),
+        list(maxit = if (is.null(.iter_cap)) 2000 else as.integer(.iter_cap)),
         opt_args$control %||% list()
       )
       do.call(stats::optim,
@@ -4803,12 +4910,43 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       }
       nlminb_args <- nlminb_args[keep]
       nlminb_args$control <- utils::modifyList(
-        list(eval.max = 2000, iter.max = 1500),
+        if (is.null(.iter_cap))
+          list(eval.max = 2000, iter.max = 1500)
+        else
+          list(eval.max = 4L * as.integer(.iter_cap), iter.max = as.integer(.iter_cap)),
         nlminb_args$control %||% list()
       )
       do.call(stats::nlminb,
               c(list(start = par_init, objective = obj$fn,
                      gradient = obj$gr), nlminb_args))
+    }
+  }
+
+  ## LAPLACE-PATH RIDGE -- the fair control, made runnable.
+  ##
+  ## `run_one()` above already takes `.ridge_tau` and applies it with no
+  ## dependence on the quadrature whatsoever: it wraps `fn`/`gr` and nothing
+  ## else. Until now only the AGHQ branch ever passed it, so the
+  ## `Laplace + ridge` arm did not exist -- which meant every comparison
+  ## crediting AGHQ with a small-sample gain was confounded with the penalty,
+  ## and the confound could not be measured because the control could not be
+  ## run. The comparator's absence was a packaging decision, not a fact about
+  ## the method.
+  ##
+  ## OPT-IN ONLY, and this is the load-bearing part. `aghq_ridge` DEFAULTS to
+  ## 2, so honouring that default here would penalise every Laplace fit in the
+  ## package -- moving every existing user's numbers while touching no export,
+  ## which `R CMD check` cannot catch. It therefore fires only when the caller
+  ## NAMED `aghq_ridge` (captured by `gllvmTMBcontrol()`). A control built by
+  ## any other route -- an older serialised one, a hand-made list -- has no
+  ## such field, and `isTRUE(NULL)` is FALSE, so it correctly reads as
+  ## not-explicit and nothing changes.
+  laplace_ridge_tau <- NULL
+  if (isTRUE(control$aghq_ridge_explicit)) {
+    tau_req <- control$aghq_ridge
+    if (is.numeric(tau_req) && length(tau_req) == 1L && !is.na(tau_req) &&
+        is.finite(tau_req) && tau_req > 0) {
+      laplace_ridge_tau <- tau_req
     }
   }
 
@@ -4827,7 +4965,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
     }
     elapsed_start <- proc.time()[["elapsed"]]
-    opt_i <- tryCatch(run_one(par0), error = function(e) e)
+    opt_i <- tryCatch(run_one(par0, .ridge_tau = laplace_ridge_tau),
+                      error = function(e) e)
     elapsed_s <- proc.time()[["elapsed"]] - elapsed_start
     if (inherits(opt_i, "error")) {
       restart_history[[i]] <- .gllvmTMB_restart_history_row(
@@ -4879,6 +5018,571 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   start_provenance$selected_restart <- restart_history$restart[
     which(restart_history$selected)[1L]
   ]
+
+  ## ---- AGHQ outer adaptation loop (Stage 1a: the z_B block) ------------
+  ## The Laplace fit above is the ADAPTATION source, not the answer: AGHQ is
+  ## optimised THROUGH, so the fixed parameters are re-estimated against the
+  ## quadrature objective. Each pass:
+  ##   1. evaluate the Laplace object at the current fixed parameters to get
+  ##      the conditional modes and the sparse conditional Hessian;
+  ##   2. Cholesky each site's d_B x d_B block -> L^{-T}, log|det L^{-T}|;
+  ##   3. rebuild the TMB object with use_aghq = 1 (z_B dropped from `random`
+  ##      AND mapped off) and optimise the fixed parameters through it;
+  ##   4. repeat until the modes stop moving.
+  ## Gradients are exact because the quadrature lives in the template and the
+  ## adaptation points enter as DATA_.
+  aghq_info <- list(
+    used = FALSE, k = NA_integer_, blocks = character(0),
+    ## The LAPLACE path can now be penalised too (the ridge was unbundled at
+    ## 4dc351ed), so `ridge_tau`/`penalised` are recorded on BOTH engines and
+    ## every reporting surface reads the same two fields regardless of route.
+    ridge_tau = if (is.null(laplace_ridge_tau)) Inf else laplace_ridge_tau,
+    penalised = !is.null(laplace_ridge_tau),
+    optimizer = control$optimizer, reason = "aghq not requested"
+  )
+  aghq_k_req <- .gllvmTMB_aghq_k(control, d_B, family = family,
+                                 n_traits = n_traits)
+  if (!is.null(aghq_k_req)) {
+    aghq_block <- NULL
+    if (exists(".aghq_gate", mode = "function")) {
+      aghq_block <- tryCatch(.aghq_gate(obj, tmb_data), error = function(e) NULL)
+    }
+    ineligible <- if (aghq_k_req < 2L) {
+      ## k = 1 IS the Laplace rule (single node at the mode), so a fit through
+      ## it can only reproduce the Laplace answer -- and it reproduces it
+      ## badly: with the adaptation point frozen as DATA, the k = 1 objective
+      ## is first-order sensitive to that point, its gradient is missing the
+      ## d(logdet)/d(theta) term, and the outer loop does not reach a fixed
+      ## point (measured: it burns the 5-pass cap and lands 4.5 nll units
+      ## WORSE than Laplace). For k >= 3 the same frozen adaptation is
+      ## harmless because a converged quadrature is invariant to the change
+      ## of variables. So route k = 1 to the Laplace path, which is the same
+      ## approximation computed correctly.
+      "k = 1 is the Laplace rule; the Laplace path computes it exactly"
+    } else if (!identical(random, "z_B")) {
+      paste0("Stage 1a requires z_B as the only random block (random = ",
+             paste(random, collapse = ", "), ")")
+    } else if (!isTRUE(use_rr_B)) {
+      "no B-tier latent() block"
+    } else if (isTRUE(use_lv_B)) {
+      "predictor-informed latent scores (use_lv_B) not supported yet"
+    } else if (isTRUE(use_mi_predictor)) {
+      "mi() predictors not supported yet"
+    } else if (any(family_id_vec == 16L)) {
+      "multinomial rows not supported yet"
+    } else if (!is.null(aghq_block) && is.data.frame(aghq_block) &&
+               "route" %in% names(aghq_block) &&
+               !any(aghq_block$route == "quadrature")) {
+      "gated to laplace by .aghq_gate()"
+    } else {
+      NULL
+    }
+    if (!is.null(ineligible)) {
+      aghq_info$reason <- paste0("laplace: ", ineligible)
+      if (isTRUE(control$verbose))
+        cat(sprintf("  AGHQ skipped: %s\n", ineligible))
+      ## AN IGNORED ARGUMENT MUST NOT BE SILENT.
+      ##
+      ## A user writing `gllvmTMBcontrol(aghq = 9)` on the package's CURRENT
+      ## DEFAULT grammar -- ordinary `latent()`, which carries a per-trait Psi and
+      ## therefore puts s_B in the random vector -- got a plain Laplace fit with no
+      ## message of any kind. Verified for BOTH poisson and binomial; reason
+      ## "Stage 1a requires z_B as the only random block (random = z_B, s_B)".
+      ## Every fit in this lane's 10,749-fit evidence base used the soft-deprecated
+      ## `unique = FALSE` syntax, so the evidence describes a NON-DEFAULT grammar
+      ## and nothing warned anyone of the gap (D-43, 2026-07-28).
+      ##
+      ## `k = 1` is excluded from the warning: routing it to the Laplace path is
+      ## the documented, intended behaviour (one node IS the Laplace rule), not a
+      ## silently unmet request.
+      if (!identical(aghq_k_req, 1L)) {
+        cli::cli_warn(c(
+          "{.arg aghq} was requested but AGHQ did not run; this is a plain Laplace fit.",
+          "i" = "Reason: {ineligible}.",
+          ">" = "Ordinary {.fn latent} carries a per-trait Psi by default, which puts {.code s_B} in the random vector; AGHQ Stage 1a is loadings-only. Use {.code latent(..., unique = FALSE)} to make the model eligible, or drop {.arg aghq}."
+        ), .frequency = "once", .frequency_id = "gllvmTMB-aghq-ineligible")
+      }
+    } else {
+      grid <- .gllvmTMB_aghq_grid(d_B, aghq_k_req)
+      ## Prefer a peer-supplied `.aghq_grid()` (R/aghq-control.R) ONLY if it
+      ## satisfies the log-weight convention this template is built against
+      ## -- sum_j exp(logw_j) phi_d(u_j) == 1 with unit second moment. A
+      ## silent convention mismatch would corrupt the objective, so the check
+      ## is mandatory rather than advisory.
+      if (exists(".aghq_grid", mode = "function")) {
+        cand <- tryCatch(.aghq_grid(d_B, aghq_k_req), error = function(e) NULL)
+        if (.gllvmTMB_aghq_grid_ok(cand, d_B)) grid <- cand
+      }
+      map_aghq <- tmb_map
+      map_aghq$z_B <- factor(rep(NA_integer_, length(tmb_params$z_B)))
+      obj_lap <- obj
+      ## Defined here rather than with the other AGHQ settings below because the start
+      ## selection immediately following needs it.
+      aghq_ridge_tau <- control$aghq_ridge %||% 2
+      ## THE WARM START CAN POISON AGHQ, and this was measured, not feared.
+      ##
+      ## AGHQ starts from the Laplace optimum. But Laplace itself runs away on a
+      ## substantial fraction of small-n binomial fits -- 50% at n = 100, p = 6, q = 2
+      ## in a 954-fit Totoro run -- and when it has, AGHQ inherits the runaway and
+      ## stays in that basin. Measured on one such cell (n = 100, p = 6, q = 2,
+      ## seed 1001; true ||Lambda||_F = 4.38):
+      ##      Laplace optimum, which AGHQ warm-starts from : 49.9  (ratio 11.4)
+      ##      independent reference from a SANE cold start :  7.1  (ratio  1.63)
+      ##      the SAME reference started at the Laplace pt : 79.8  (ratio 18.2)
+      ## The engine is identical in the last two lines; only the start differs. So the
+      ## runaway was being INHERITED, not generated -- and the earlier reading that
+      ## "the template runs away where the reference does not" was an artefact of that
+      ## start, not a defect in the quadrature.
+      ##
+      ## Fix: offer AGHQ a second, sane starting point and keep whichever converges to
+      ## the better objective. The alternative start is deliberately data-driven but
+      ## truth-free -- intercepts from the empirical logit (always finite: a pre-fit
+      ## scan of 281 campaign cells found ZERO all-0/all-1 traits), loadings at the
+      ## modest scale the standardised latent implies. This is ordinary multi-start;
+      ## it can only improve the objective, and it costs one extra adaptation run.
+      ## Set control$aghq_multistart = FALSE to restore the single warm start.
+      aghq_starts <- list(opt$par)
+      if (!identical(control$aghq_multistart, FALSE)) {
+        alt <- opt$par
+        lam_i <- which(names(alt) == "theta_rr_B")
+        b_i   <- which(names(alt) == "b_fix")
+        if (length(lam_i) && length(b_i)) {
+          alt[lam_i] <- 0.3
+          pr <- tryCatch({
+            m <- tapply(tmb_data$y, tmb_data$trait_id, function(z) mean(z, na.rm = TRUE))
+            as.numeric(m)
+          }, error = function(e) NULL)
+          if (!is.null(pr) && length(pr) == length(b_i) && all(is.finite(pr)) &&
+              identical(family_id_vec[1L], 1L)) {
+            eps <- 1 / (4 * max(1L, tmb_data$n_sites))
+            alt[b_i] <- stats::qlogis(pmin(pmax(pr, eps), 1 - eps))
+          }
+          aghq_starts[[2L]] <- alt
+        }
+      }
+      ## Pick between them on the PENALISED objective, and only when a penalty is in
+      ## force. This matters: an investigation of 40 seeds showed the runaway IS the
+      ## maximum-likelihood solution -- refitting from the TRUE parameters ties the
+      ## objective in 40/40 and then walks back out -- so the UNPENALISED objective
+      ## cannot tell a runaway from a good fit. The ridge is what makes the two
+      ## distinguishable, because it charges ||Lambda||^2. Without a penalty there is
+      ## nothing to choose on, so the Laplace warm start is kept as before.
+      par_cur <- aghq_starts[[1L]]
+      if (length(aghq_starts) > 1L && is.finite(aghq_ridge_tau) && aghq_ridge_tau > 0) {
+        lam_i <- which(names(opt$par) == "theta_rr_B")
+        pen_of <- function(p) {
+          v <- tryCatch(obj_lap$fn(p), error = function(e) NA_real_)
+          if (!is.finite(v)) return(Inf)
+          v + 0.5 * sum(p[lam_i]^2) / (aghq_ridge_tau^2)
+        }
+        scores <- vapply(aghq_starts, pen_of, numeric(1))
+        if (all(!is.finite(scores))) scores[1L] <- 0     # nothing to choose on
+        par_cur <- aghq_starts[[which.min(scores)]]
+        if (isTRUE(control$verbose)) {
+          cat(sprintf("  AGHQ start selection (penalised): laplace %.4f, alternative %.4f -> %s\n",
+                      scores[1L], scores[2L],
+                      if (which.min(scores) == 1L) "laplace" else "alternative"))
+        }
+      }
+      mode_prev <- NULL
+      obj_aghq <- NULL
+      opt_aghq <- NULL
+      ## ADAPTATION MUST BE REFRESHED OFTEN, and the per-pass cap is the whole
+      ## reason this works. The quadrature nodes are frozen as DATA_ within one
+      ## pass, so a pass that optimises to convergence lets the parameters walk
+      ## far away from the point the nodes were adapted at -- the integrand is
+      ## then evaluated in the wrong place and the objective can be driven
+      ## arbitrarily low. Measured with an uncapped first pass on a 60x6 binomial
+      ## q=2 fit: ||Sigma_B||_F ran from Laplace's 4.43 to 4.1e7 in ONE pass;
+      ## cap 25 still reached 1.3e4; cap 1 lands at 9.25 against a TRUE 5.79.
+      ##
+      ## THE MERIT FUNCTION. The quantity this loop actually minimises is
+      ##
+      ##     F(theta) = the AGHQ objective at theta with the nodes adapted AT theta,
+      ##
+      ## which is what the standalone R reference (dev/aghq-r-reference.R)
+      ## evaluates by re-solving the conditional mode on every call, and it is why
+      ## that reference does not run away. The template cannot do that (the
+      ## adaptation points are DATA_), so a pass minimises the SURROGATE
+      ## F(theta; theta_k) with the nodes pinned at theta_k. F is recovered for
+      ## free at the TOP of the next pass: after re-adapting at the new theta,
+      ## `obj_try$fn(theta)` IS F(theta). Two things follow, and both are new:
+      ##
+      ##  1. CONVERGENCE IS TESTED ON F, NOT ON THE SURROGATE. The old rule
+      ##     compared surrogate values across passes -- values computed on
+      ##     DIFFERENT tapes -- so its "objective gain" mixed real progress with
+      ##     the change in quadrature error from re-adapting, and never fell below
+      ##     its 1e-8 threshold. It converged by exhausting aghq_n_adapt instead.
+      ##     The rule here is stationarity of the AD-exact gradient of the
+      ##     surrogate at its own adaptation point (max |grad| < aghq_grad_tol)
+      ##     together with a settled adaptation point (max |mode shift| <
+      ##     aghq_shift_tol); at a fixed point of the adaptation map those two
+      ##     conditions ARE stationarity of F.
+      ##
+      ##  2. A STEP THAT RAISES F IS REJECTED. That single test is what makes a
+      ##     larger cap safe: a runaway is precisely a step that looks good
+      ##     against stale nodes and is worse under honest ones, so it is caught
+      ##     on the next pass, the iterate is rolled back to the last honest one,
+      ##     and the cap drops to 1.
+      ##
+      ## CONTINUATION. Cap 1 is robust but slow (a fresh nlminb rebuilds its
+      ## curvature model from scratch every pass, so it takes a first-iteration
+      ## step forever). The schedule starts at 1 to escape the runaway regime and
+      ## escalates 1 -> 2 -> 5 -> 25 -> uncapped as the adaptation point settles,
+      ## with the rejection test above as the safety net. Setting
+      ## control$aghq_iter_cap to anything other than 1, or
+      ## control$aghq_continuation = FALSE, pins the cap and disables escalation.
+      ## Default tau = 2 -- ON whenever AGHQ is on. This changes NO existing user's
+      ## results, because AGHQ is itself opt-in and off by default; it only decides
+      ## what the AGHQ route does once a user asks for it. Set aghq_ridge = Inf to
+      ## disable and reproduce the unpenalised quadrature.
+      ## (aghq_ridge_tau is set earlier, above the start selection that needs it.)
+      n_adapt <- as.integer(control$aghq_n_adapt %||% 400L)
+      cap_user <- as.integer(control$aghq_iter_cap %||% 1L)
+      use_continuation <- isTRUE(control$aghq_continuation %||% TRUE) &&
+        identical(cap_user, 1L)
+      ## NULL = uncapped, i.e. run_one's own convergence test.
+      cap_sched <- if (use_continuation) {
+        list(1L, 2L, 5L, 25L, NULL)
+      } else {
+        list(cap_user)
+      }
+      stage <- 1L
+      ## A stage that gets its step REJECTED is never retried: without this the
+      ## loop can oscillate escalate -> runaway -> reject -> escalate forever.
+      stage_ceiling <- length(cap_sched)
+      shift_tol <- as.numeric(control$aghq_shift_tol %||% 1e-4)
+      grad_tol  <- as.numeric(control$aghq_grad_tol  %||% 1e-4)
+      f_tol     <- as.numeric(control$aghq_f_tol     %||% 1e-9)
+      ## Escalate on SUCCESS COUNT, not on a mode-shift threshold: measured on a
+      ## healthy 60x6 binomial q=2 cell, the shift plateaus around 1.5e-2 - 2e-2
+      ## for eighty passes, so any fixed shift threshold either escalates at once
+      ## or never. Grow the cap after `esc_patience` consecutive accepted passes,
+      ## shrink it on a rejection -- the trust-region radius pattern.
+      esc_patience <- as.integer(control$aghq_escalate_patience %||% 3L)
+      rho_min <- as.numeric(control$aghq_rho_min %||% (1 / 64))
+      F_prev <- Inf
+      n_ok <- 0L
+      step_dir <- NULL
+      step_rho <- 1
+      aghq_passes <- 0L
+      aghq_mode_shift <- rep(NA_real_, n_adapt)
+      aghq_trace <- vector("list", n_adapt)
+      aghq_err <- NULL
+      aghq_stop <- "adaptation cap reached"
+      obj_try <- NULL
+      opt_last <- NULL
+      par_best <- par_cur
+      F_best <- Inf
+      opt_best <- NULL
+      ## THE PARAMETER VECTOR AGHQ STARTS FROM, kept so we can answer the only
+      ## question that matters downstream: DID THE QUADRATURE ACTUALLY MOVE THE
+      ## ANSWER? A D-43 panel found `aghq$used == TRUE` on fits that returned the
+      ## Laplace optimum BIT FOR BIT -- measured here at T = 4, 6 and 12 with
+      ## max|dpar| identically 0. The adaptation loop can stall back onto its warm
+      ## start while the flag still reports success, so every claim resting on
+      ## `used` was really resting on "the quadrature branch was entered".
+      ## `used` keeps its structural meaning; `par_shift` is the honest one.
+      par_start_aghq <- par_cur
+      for (it in seq_len(n_adapt)) {
+        ad <- tryCatch(
+          .gllvmTMB_aghq_adapt(obj_lap, par_cur, d_B, n_sites),
+          error = function(e) e
+        )
+        if (inherits(ad, "error")) {
+          ## A failed re-adaptation at a bad iterate must NOT discard the honest
+          ## iterates already in hand (the pre-continuation loop exited keeping
+          ## the bad state instead).
+          if (is.finite(F_best)) {
+            aghq_stop <- paste0("adaptation failed at pass ", it,
+                                "; kept the last honest iterate")
+            break
+          }
+          aghq_err <- conditionMessage(ad)
+          break
+        }
+        if (is.null(obj_try)) {
+          data_aghq <- tmb_data
+          data_aghq$use_aghq    <- 1L
+          data_aghq$aghq_d      <- as.integer(d_B)
+          data_aghq$aghq_nodes  <- grid$nodes
+          data_aghq$aghq_logw   <- as.numeric(grid$logw)
+          data_aghq$aghq_mode   <- ad$mode
+          data_aghq$aghq_Lt     <- ad$Lt
+          data_aghq$aghq_logdet <- as.numeric(ad$logdet)
+          obj_try <- tryCatch(
+            TMB::MakeADFun(data = data_aghq, parameters = tmb_params,
+                           map = map_aghq, random = NULL,
+                           DLL = "gllvmTMB", silent = silent),
+            error = function(e) e
+          )
+          if (inherits(obj_try, "error")) { aghq_err <- conditionMessage(obj_try); obj_try <- NULL; break }
+          if (!identical(names(obj_try$par), names(par_cur))) {
+            aghq_err <- "AGHQ parameter vector does not align with the Laplace fit"
+            obj_try <- NULL
+            break
+          }
+        } else {
+          ## Mutate the adaptation points in place and retape rather than rebuilding
+          ## MakeADFun. At cap = 1 the loop runs hundreds of passes, and a rebuild per
+          ## pass dominated the wall clock (58 s for 60 passes on a 60x6 fit).
+          upd <- tryCatch({
+            obj_try$env$data$aghq_mode   <- ad$mode
+            obj_try$env$data$aghq_Lt     <- ad$Lt
+            obj_try$env$data$aghq_logdet <- as.numeric(ad$logdet)
+            obj_try$retape()
+            TRUE
+          }, error = function(e) e)
+          if (inherits(upd, "error")) {
+            if (is.finite(F_best)) {
+              aghq_stop <- paste0("retape failed at pass ", it,
+                                  "; kept the last honest iterate")
+              break
+            }
+            aghq_err <- conditionMessage(upd)
+            break
+          }
+        }
+        ## F(par_cur): the honest objective, nodes adapted AT par_cur.
+        F_cur <- tryCatch(as.numeric(obj_try$fn(par_cur)), error = function(e) e)
+        if (inherits(F_cur, "error") || length(F_cur) != 1L || !is.finite(F_cur)) {
+          if (is.finite(F_best)) {
+            aghq_stop <- paste0("non-finite AGHQ objective at pass ", it,
+                                "; kept the last honest iterate")
+            break
+          }
+          aghq_err <- "AGHQ objective is not finite"
+          break
+        }
+        ## THE GRADIENT MUST MATCH THE OBJECTIVE THE OPTIMISER IS ACTUALLY
+        ## MINIMISING. `obj_try$gr` is the UNPENALISED gradient, but with the
+        ## ridge on, `run_one()` minimises F + 0.5*||lambda||^2/tau^2. At that
+        ## optimum the unpenalised gradient does not vanish -- it equals
+        ## lambda/tau^2 per loading, about 0.25 for lambda ~ 1 at tau = 2, which
+        ## is 2500x the 1e-4 tolerance. So the gradient leg of the convergence
+        ## test could NEVER fire on a ridged fit: every such fit was forced out
+        ## through the f_tol leg, and any downstream gradient-based check read it
+        ## as unconverged. Found by the D-43 method lens.
+        ##
+        ## The fix is to test the gradient of the objective being minimised, NOT
+        ## to loosen the tolerance -- a loosened tolerance would hide a genuine
+        ## non-convergence just as effectively.
+        g_cur <- tryCatch({
+          g <- as.numeric(obj_try$gr(par_cur))
+          if (is.finite(aghq_ridge_tau) && aghq_ridge_tau > 0) {
+            li <- which(names(obj_try$par) == "theta_rr_B")
+            if (length(li)) g[li] <- g[li] + par_cur[li] / (aghq_ridge_tau^2)
+          }
+          max(abs(g))
+        }, error = function(e) NA_real_)
+        shift <- if (is.null(mode_prev)) Inf else max(abs(ad$mode - mode_prev))
+        mode_prev <- ad$mode
+        aghq_passes <- it
+        aghq_mode_shift[it] <- shift
+        cap_now <- cap_sched[[stage]]
+        ## `iter_cap` is the cap that was in force when THIS pass's iterate was
+        ## produced (escalation, below, applies to the outgoing step).
+        aghq_trace[[it]] <- data.frame(
+          pass = it,
+          iter_cap = if (is.null(cap_now)) NA_integer_ else as.integer(cap_now),
+          objective = F_cur,
+          grad_max = g_cur,
+          mode_shift = shift
+        )
+        if (isTRUE(control$verbose))
+          cat(sprintf(
+            "  AGHQ pass %d (cap %s): F = %.8f, max |grad| = %.3g, max |mode shift| = %.3g\n",
+            it, if (is.null(cap_now)) "inf" else as.character(cap_now),
+            F_cur, g_cur, shift))
+        ## ACCEPT / REJECT the step that produced par_cur, judged on F.
+        if (F_cur <= F_best + 1e-10) {
+          dF <- F_prev - F_cur
+          par_best <- par_cur
+          F_best   <- F_cur
+          F_prev   <- F_cur
+          opt_best <- opt_last
+          step_dir <- NULL
+          step_rho <- 1
+          n_ok <- n_ok + 1L
+        } else {
+          ## The step improved the frozen-node surrogate but made F worse: it was
+          ## a stale-node artefact.
+          n_ok <- 0L
+          ## BACKTRACK FIRST. The surrogate's step is a descent direction for the
+          ## surrogate, not necessarily for F, but a SHORTER step along it usually
+          ## is -- and without this the loop stops on the very first pass of a
+          ## degenerate cell (measured: a 60x6 q=2 cell whose Laplace fit is
+          ## already at ||Sigma_B||_F = 5.3e3 raises F by 1.9 on one full cap-1
+          ## step). Halve and re-measure before declaring failure.
+          if (!is.null(step_dir) && step_rho > rho_min) {
+            step_rho <- step_rho / 2
+            par_cur <- par_best + step_rho * step_dir
+            next
+          }
+          par_cur <- par_best
+          step_dir <- NULL
+          step_rho <- 1
+          if (stage == 1L) {
+            aghq_stop <- "stalled (no honest descent at cap 1 after backtracking)"
+            break
+          }
+          ## Overreached: permanently lower the working cap by one stage.
+          stage_ceiling <- max(1L, stage - 1L)
+          stage <- stage_ceiling
+          next
+        }
+        ## Converged: the adaptation point is a fixed point AND the parameters
+        ## have stopped moving on the honest objective -- either because the
+        ## AD-exact gradient of the quadrature objective at its own adaptation
+        ## point is ~0 (stationarity), or because F itself has stagnated. Both
+        ## legs are measured on quantities the loop does not control: the first
+        ## is TMB's gradient, the second is F recomputed on freshly adapted nodes.
+        ##
+        ## `n_ok >= 2` is not decoration: the pass that ROLLS BACK a rejected step
+        ## re-lands on par_best, so its dF is exactly 0 and its mode shift can be
+        ## tiny -- both legs would pass vacuously one pass after a failure. Require
+        ## two consecutive accepted passes before the test is allowed to fire.
+        if (n_ok >= 2L && is.finite(shift) && shift < shift_tol &&
+            ((is.finite(g_cur) && g_cur < grad_tol) ||
+             (is.finite(dF) && abs(dF) < f_tol))) {
+          ## STUCK IS NOT SETTLED. The test above is an OR, so the f_tol leg can
+          ## fire alone -- and it fires most easily in the one case where it means
+          ## the opposite of convergence: the optimiser took its capped iteration,
+          ## moved NOTHING, so dF is exactly 0 and the re-adapted mode is
+          ## identical, and "nothing changed twice" is read as "settled".
+          ##
+          ## Measured on poisson (T = 6, n = 200), the whole run:
+          ##   pass 1  obj 2425.227  grad_max 0.5012  mode_shift Inf
+          ##   pass 2  obj 2425.227  grad_max 0.5012  mode_shift 0
+          ## -> declared "converged" at a gradient 5000x its own tolerance, having
+          ## never left the Laplace warm start. That is how AGHQ came to return
+          ## Laplace bit-for-bit while reporting success (D-43, 2026-07-28).
+          ##
+          ## The stop still happens -- there is no evidence more passes would
+          ## help, and forcing them risks the binomial path that genuinely
+          ## converges here (12 passes, par_shift 0.55). What changes is that it
+          ## is no longer CALLED convergence when the gradient says otherwise.
+          stalled <- isTRUE(identical(par_cur, par_start_aghq)) &&
+            is.finite(g_cur) && g_cur >= grad_tol
+          aghq_stop <- if (stalled) {
+            sprintf(paste0("STALLED at the warm start: the optimiser moved nothing, ",
+                           "so the objective and adaptation mode were unchanged; ",
+                           "max |grad| = %.3g against a tolerance of %.3g. NOT converged."),
+                    g_cur, grad_tol)
+          } else if (is.finite(g_cur) && g_cur < grad_tol) {
+            "converged (adaptation mode fixed; gradient below tolerance)"
+          } else {
+            sprintf(paste0("stopped: adaptation mode fixed and objective stagnated, ",
+                           "but max |grad| = %.3g exceeds the tolerance of %.3g"),
+                    g_cur, grad_tol)
+          }
+          break
+        }
+        ## Continuation: after a run of accepted passes, let the optimiser take
+        ## longer runs between re-adaptations.
+        if (stage < stage_ceiling && n_ok >= esc_patience) {
+          stage <- stage + 1L
+          n_ok <- 0L
+          cap_now <- cap_sched[[stage]]
+        }
+        opt_last <- tryCatch(run_one(par_cur, .obj = obj_try, .iter_cap = cap_now,
+                                     .ridge_tau = aghq_ridge_tau),
+                             error = function(e) e)
+        if (inherits(opt_last, "error")) {
+          aghq_stop <- paste0("optimiser failed at pass ", it,
+                              "; kept the last honest iterate")
+          opt_last <- opt_best
+          break
+        }
+        step_dir <- opt_last$par - par_cur
+        step_rho <- 1
+        par_cur <- opt_last$par
+      }
+      ## FINALISE. Whatever iterate we return, the object handed downstream must
+      ## be adapted AT it -- report(), sdreport() and every extractor read this
+      ## tape. (The pre-continuation loop returned an object adapted at the
+      ## parameters BEFORE its last optimiser step.)
+      if (!is.null(obj_try) && is.finite(F_best)) {
+        fin <- tryCatch({
+          adF <- .gllvmTMB_aghq_adapt(obj_lap, par_best, d_B, n_sites)
+          obj_try$env$data$aghq_mode   <- adF$mode
+          obj_try$env$data$aghq_Lt     <- adF$Lt
+          obj_try$env$data$aghq_logdet <- as.numeric(adF$logdet)
+          obj_try$retape()
+          as.numeric(obj_try$fn(par_best))
+        }, error = function(e) e)
+        if (inherits(fin, "error") || !is.finite(fin)) {
+          aghq_err <- aghq_err %||% "AGHQ finalisation failed"
+        } else {
+          obj_aghq <- obj_try
+          opt_aghq <- opt_best %||% opt
+          opt_aghq$par <- par_best
+          opt_aghq$objective <- fin
+          F_best <- fin
+        }
+      }
+      aghq_trace <- do.call(rbind, aghq_trace[seq_len(max(aghq_passes, 0L))])
+      if (is.null(obj_aghq)) {
+        aghq_info$reason <- paste0(
+          "laplace: AGHQ pass failed (", aghq_err %||% "unknown", ")"
+        )
+        cli::cli_warn("AGHQ failed; falling back to the Laplace fit: {aghq_err %||% 'unknown'}")
+      } else {
+        ## Swap the objective: from here on `obj` / `opt` ARE the AGHQ fit, so
+        ## report(), sdreport() and every downstream extractor read the
+        ## quadrature-optimised parameters.
+        obj <- obj_aghq
+        opt <- opt_aghq
+        aghq_info <- list(
+          used = TRUE,
+          k = as.integer(aghq_k_req),
+          blocks = "z_B",
+          ## RECORDED SO THE REPORTING SURFACES CAN ASK. `opt$objective` is
+          ## `obj_try$fn(par_best)` -- the UNPENALISED objective evaluated at the
+          ## PENALISED (MAP) optimum. That makes it a genuine log-likelihood
+          ## sitting OFF ITS OWN MAXIMUM. Nothing downstream could previously
+          ## detect that, so logLik()/AIC() reported an ML quantity at a MAP point
+          ## with no disclosure. `ridge_tau` is what logLik() and .aghq_*() read
+          ## to say so; Inf means unpenalised.
+          ridge_tau = aghq_ridge_tau,
+          penalised = is.finite(aghq_ridge_tau) && aghq_ridge_tau > 0,
+          ## DID THE QUADRATURE MOVE THE ANSWER? `used = TRUE` only means the
+          ## quadrature branch was entered and an AGHQ tape was built; it does NOT
+          ## mean the answer differs from Laplace. Read `par_shift` for that.
+          par_shift = tryCatch(max(abs(par_best - par_start_aghq)),
+                               error = function(e) NA_real_),
+          optimizer = control$optimizer,
+          reason = sprintf(
+            "quadrature on z_B (d = %d, k = %d, %d node%s); %d adaptation pass%s, %s; final max |mode shift| = %.3g",
+            d_B, aghq_k_req, nrow(grid$nodes),
+            if (nrow(grid$nodes) == 1L) "" else "s",
+            aghq_passes, if (aghq_passes == 1L) "" else "es",
+            aghq_stop,
+            aghq_mode_shift[aghq_passes]
+          ),
+          passes = aghq_passes,
+          stop_reason = aghq_stop,
+          mode_shift = aghq_mode_shift[seq_len(aghq_passes)],
+          trace = aghq_trace
+        )
+        ## A SILENT NO-OP IS A RESULT THE USER MUST BE TOLD ABOUT.
+        ##
+        ## The adaptation loop can stall straight back onto its Laplace warm start
+        ## and still report success. Measured on poisson at T = 4, 6 and 12:
+        ## max|par_aghq - par_laplace| identically 0 -- the user asked for
+        ## quadrature, waited for it, and received the Laplace answer bit for bit
+        ## while `aghq$used` said TRUE. Silence there is how an inactive engine
+        ## gets cited as a passing null control (D-43, 2026-07-28).
+        if (is.finite(aghq_info$par_shift) && aghq_info$par_shift == 0) {
+          cli::cli_warn(c(
+            "AGHQ ran but did not move the estimate: the result is bit-for-bit identical to the Laplace fit.",
+            "i" = "The adaptation loop returned its warm start, so {.code fit$aghq$used} is TRUE but the quadrature changed nothing.",
+            ">" = "Read {.code fit$aghq$par_shift} rather than {.code fit$aghq$used} when you need to know whether quadrature affected the answer."
+          ), .frequency = "once", .frequency_id = "gllvmTMB-aghq-no-op")
+        }
+      }
+    }
+  }
 
   ## ---- Force TMB internal state to the selected optimum --------------
   ## After the multi-start loop, TMB's internal `obj$env$last.par` is
@@ -4982,6 +5686,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       missing_data = .gllvmTMB_build_missing_data(missing_meta, is_y_observed, mi_model),
       data_original = if (!is.null(missing_meta)) missing_meta$data_original else data,
       random       = random,
+      ## AGHQ provenance (Stage 1a). `used = FALSE` means the fit is the
+      ## ordinary Laplace fit and `reason` says why.
+      aghq         = aghq_info,
       trait_col    = trait,
       unit_col     = site,
       unit_obs_col = unit_obs,
@@ -5341,4 +6048,158 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ]
   restart_history$selected[selected_idx] <- TRUE
   restart_history
+}
+
+## ======================================================================
+## AGHQ (adaptive Gauss-Hermite quadrature) -- Stage 1a helpers
+## ======================================================================
+## Scope: quadrature over the B-tier reduced-rank latent block `z_B` only,
+## i.e. `latent(..., unique = FALSE)` with z_B the ONLY random block. Every
+## other model class still runs the Laplace path unchanged.
+##
+## Division of labour with the template (src/gllvmTMB.cpp): R computes the
+## adaptation points (conditional modes + Cholesky factors) and the tensor
+## quadrature grid and passes them in as DATA_, so the template stays
+## differentiable in the fixed parameters and TMB supplies exact gradients.
+
+## Inert AGHQ DATA slots. Shape-valid stubs; `use_aghq = 0` short-circuits
+## every use of them in the template.
+.gllvmTMB_aghq_data_stub <- function() {
+  list(
+    use_aghq    = 0L,
+    aghq_d      = 1L,
+    aghq_nodes  = matrix(0.0, 1L, 1L),
+    aghq_logw   = 0.0,
+    aghq_mode   = matrix(0.0, 1L, 1L),
+    aghq_Lt     = matrix(0.0, 1L, 1L),
+    aghq_logdet = 0.0
+  )
+}
+
+## One-dimensional Gauss-Hermite rule for the STANDARD NORMAL measure
+## ("probabilists'" scaling): nodes x_j and weights w_j with sum(w) == 1 and
+## sum(w * x^2) == 1, so that E[g(Z)] ~= sum_j w_j g(x_j) for Z ~ N(0, 1).
+## Golub-Welsch: the nodes are the eigenvalues of the symmetric tridiagonal
+## Jacobi matrix with zero diagonal and off-diagonal sqrt(1:(k-1)), and the
+## weights are the squared first components of the eigenvectors. No package
+## dependency (statmod is not imported by gllvmTMB).
+.gllvmTMB_gh_normal <- function(k) {
+  k <- as.integer(k)
+  if (k < 1L) stop("AGHQ: k must be >= 1")
+  if (k == 1L) return(list(nodes = 0.0, weights = 1.0))
+  off <- sqrt(seq_len(k - 1L))
+  J <- matrix(0.0, k, k)
+  J[cbind(seq_len(k - 1L), seq_len(k - 1L) + 1L)] <- off
+  J[cbind(seq_len(k - 1L) + 1L, seq_len(k - 1L))] <- off
+  ev <- eigen(J, symmetric = TRUE)
+  ord <- order(ev$values)
+  list(nodes = ev$values[ord], weights = (ev$vectors[1L, ord])^2)
+}
+
+## Tensor-product AGHQ grid in `d` dimensions with `k` nodes per dimension.
+##
+## Returns `nodes` (k^d x d) and `logw` (k^d), where
+##   logw_j = sum_m log(w_{j_m}) + (d/2) * log(2*pi) + 0.5 * u_j' u_j
+## The three terms are, in order: the tensor weight; the (2*pi)^(d/2) factor
+## from rewriting the flat Lebesgue integral du in the standard-normal
+## measure; and the exp(u'u/2) correction that undoes the Gauss-Hermite
+## kernel. Folding all three in is what lets the template write
+##   log L_i = logdet_i + logsumexp_j( logw_j + inner_ll(i, j) ).
+##
+## With this convention k = 1 reproduces the Laplace approximation EXACTLY:
+## the single node is u = 0 with w = 1, so logw = (d/2) log(2*pi) and
+## log L_i = -0.5 log det H_i + (d/2) log(2*pi) + inner_ll(zhat_i).
+##
+## The identity that PINS the convention (checked by
+## `.gllvmTMB_aghq_grid_ok()`): sum_j exp(logw_j) * phi_d(u_j) == 1, where
+## phi_d is the d-variate standard normal density.
+.gllvmTMB_aghq_grid <- function(d, k) {
+  d <- as.integer(d); k <- as.integer(k)
+  gh <- .gllvmTMB_gh_normal(k)
+  idx <- as.matrix(expand.grid(rep(list(seq_len(k)), d), KEEP.OUT.ATTRS = FALSE))
+  nodes <- matrix(gh$nodes[idx], nrow = nrow(idx), ncol = d)
+  logw_tensor <- rowSums(matrix(log(gh$weights)[idx], nrow = nrow(idx), ncol = d))
+  logw <- logw_tensor + (d / 2) * log(2 * pi) + 0.5 * rowSums(nodes^2)
+  list(nodes = nodes, logw = logw)
+}
+
+## Convention check for an AGHQ grid, used to decide whether a peer-supplied
+## `.aghq_grid()` may be substituted for the internal one. Verifies the
+## normalising identity sum_j exp(logw_j) phi_d(u_j) == 1 and the second
+## moment sum_j exp(logw_j) phi_d(u_j) u_j u_j' == I.
+.gllvmTMB_aghq_grid_ok <- function(grid, d, tol = 1e-8) {
+  if (!is.list(grid) || is.null(grid$nodes) || is.null(grid$logw)) return(FALSE)
+  nodes <- as.matrix(grid$nodes)
+  if (ncol(nodes) != d || length(grid$logw) != nrow(nodes)) return(FALSE)
+  log_phi <- -0.5 * rowSums(nodes^2) - (d / 2) * log(2 * pi)
+  w <- exp(grid$logw + log_phi)
+  if (!isTRUE(all.equal(sum(w), 1, tolerance = tol))) return(FALSE)
+  ## The k = 1 rule is the Laplace point rule: it has a single node at 0 and
+  ## carries no second moment, so only the normalisation applies there.
+  if (nrow(nodes) == 1L) return(TRUE)
+  M <- crossprod(nodes * sqrt(pmax(w, 0)))
+  isTRUE(all.equal(unname(M), diag(d), tolerance = 1e-6))
+}
+
+## Extract the per-site conditional modes and Cholesky-derived adaptation
+## quantities for the z_B block from a fitted Laplace TMB object, evaluated
+## at the fixed-parameter vector `par_fixed`.
+##
+## Requires z_B to be the ONLY random block, so the random-effect index set
+## is exactly z_B in column-major (d_B x n_sites) order and the sparse
+## conditional Hessian's site blocks are the contiguous d_B x d_B diagonal
+## blocks. (Established this session: the s_B x s_B off-diagonal of spHess is
+## identically zero for the star graph -- but Stage 1a does not carry s_B at
+## all, so the block extraction here is exact by construction, not by
+## measurement.)
+.gllvmTMB_aghq_adapt <- function(obj, par_fixed, d_B, n_sites) {
+  invisible(obj$fn(par_fixed))
+  full <- obj$env$last.par
+  ridx <- obj$env$random
+  if (!all(names(full)[ridx] == "z_B"))
+    stop("AGHQ adaptation: z_B must be the only random block")
+  zhat <- matrix(full[ridx], nrow = d_B, ncol = n_sites)   # column-major
+  H <- obj$env$spHess(full, random = TRUE)
+  mode <- matrix(0.0, n_sites, d_B)
+  Lt <- matrix(0.0, n_sites, d_B * d_B)
+  logdet <- numeric(n_sites)
+  for (s in seq_len(n_sites)) {
+    ii <- (s - 1L) * d_B + seq_len(d_B)
+    Hs <- as.matrix(H[ii, ii, drop = FALSE])
+    Hs <- (Hs + t(Hs)) / 2
+    R <- tryCatch(chol(Hs), error = function(e) NULL)
+    if (is.null(R)) {
+      ## Not positive definite (should not happen at a conditional mode, but
+      ## can during a bad outer step): fall back to a ridge-corrected factor
+      ## rather than aborting the fit.
+      ev <- eigen(Hs, symmetric = TRUE)
+      Hs <- ev$vectors %*% diag(pmax(ev$values, 1e-8), d_B) %*% t(ev$vectors)
+      R <- chol(Hs)
+    }
+    ## H = L L' with L = t(R) lower-triangular, so L^{-T} = R^{-1}.
+    Lti <- backsolve(R, diag(d_B))
+    mode[s, ] <- zhat[, s]
+    Lt[s, ] <- as.numeric(t(Lti))          # ROW-major, as the template reads it
+    logdet[s] <- -sum(log(diag(R)))        # log|det L^{-T}| = -0.5 log det H
+  }
+  list(mode = mode, Lt = Lt, logdet = logdet)
+}
+
+## Resolve `control$aghq` into a node count. FALSE / NULL -> NULL (Laplace).
+## "auto" -> 9 for now (the resolver `.aghq_resolve()` in R/aghq-control.R
+## owns the real policy; when it is on disk it takes precedence).
+.gllvmTMB_aghq_k <- function(control, d_B, family = NULL, n_traits = NA_integer_) {
+  a <- control$aghq
+  if (is.null(a) || identical(a, FALSE)) return(NULL)
+  if (identical(a, "auto")) {
+    if (exists(".aghq_resolve", mode = "function")) {
+      res <- try(.aghq_resolve(family, "B", n_traits, d_B, control), silent = TRUE)
+      if (!inherits(res, "try-error") && is.list(res) && is.numeric(res$k))
+        return(as.integer(res$k))
+    }
+    return(9L)
+  }
+  if (!is.numeric(a) || length(a) != 1L || is.na(a) || a < 1)
+    stop("control$aghq must be FALSE, \"auto\", or a positive integer")
+  as.integer(a)
 }

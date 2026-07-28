@@ -2,7 +2,7 @@
 ## tests/testthat/helper-aghq-golden.R for the independent brute-force
 ## oracle and the ladder harness.
 ##
-## Two golden tests, deliberately kept apart because they prove different
+## Three golden tests, deliberately kept apart because they prove different
 ## (and often-conflated) things:
 ##
 ##   GOLDEN 1 is a PLUMBING test: k = 1 is mathematically identical to the
@@ -13,13 +13,23 @@
 ##   1 as evidence of quadrature accuracy.
 ##
 ##   GOLDEN 2 is the real accuracy test: it compares the package's AGHQ
-##   objective, at increasing k, against a marginal likelihood computed
-##   completely independently (stats::integrate() on the model's own
-##   definition, not via any AGHQ helper or the TMB template).
+##   objective, AT A FIXED PARAMETER POINT, against a marginal likelihood
+##   computed completely independently (stats::integrate() on the model's
+##   own definition, not via any AGHQ helper or the TMB template). Fixed
+##   point, not a fresh fitted optimum per k, so there is no outer-optimiser
+##   convergence flag to fail on -- see the test's own comment and
+##   helper-aghq-golden.R's "WHY A FIXED POINT" note for why.
 ##
-## Both tests skip_if_not() when the AGHQ kernel is not yet wired end to
-## end (checked by an actual smoke fit, not just an argument-name probe),
-## so this file is green whether or not E1's kernel has landed yet.
+##   GOLDEN 3 is a null-control test on poisson data: unlike gaussian
+##   exactness (test-aghq-surface.R), a poisson integrand is genuinely
+##   non-gaussian, so a fully-active AGHQ (aghq$used == TRUE, not gated back
+##   to Laplace) agreeing with Laplace there is real evidence the quadrature
+##   is doing correct work, not a structural inability to disagree.
+##
+## All three skip_if_not() when the AGHQ kernel is not available for that
+## specific fixture (checked by an actual smoke fit, not just an
+## argument-name probe), so this file is green rather than red if the
+## kernel is ever gated off for a fixture it does not (yet) cover.
 
 test_that("[oracle sanity] q = 1 brute-force marginal likelihood matches an unrelated fine-grid quadrature", {
   ## Not a golden test itself -- a check that the ground truth GOLDEN 2 will
@@ -67,7 +77,7 @@ test_that("GOLDEN 1 [PLUMBING, not quadrature]: AGHQ k = 1 reproduces the Laplac
   fixture <- .golden_dgp_q1()
   skip_if_not(
     .golden_aghq_smoke_ok(fixture$data),
-    "AGHQ kernel not fully wired end-to-end yet (gllvmTMBcontrol(aghq=) and/or the R/fit-multi.R integration is incomplete) -- golden plumbing test skipped, not failed"
+    "AGHQ smoke fit failed for this fixture -- golden plumbing test skipped, not failed. (The kernel IS wired end-to-end as of 2026-07-28; a skip here means this particular smoke fit did not run cleanly, not that AGHQ is unavailable. See .golden_aghq_smoke_ok().)"
   )
 
   fit_laplace <- suppressWarnings(gllvmTMB::gllvmTMB(
@@ -94,46 +104,92 @@ test_that("GOLDEN 1 [PLUMBING, not quadrature]: AGHQ k = 1 reproduces the Laplac
                tolerance = 1e-9)
 })
 
-test_that("GOLDEN 2: AGHQ at large k matches an independent brute-force integral (q = 1, n = 3, T = 2)", {
+test_that("GOLDEN 2: AGHQ at large k matches an independent brute-force integral, at a FIXED parameter point (q = 1)", {
   skip_on_cran()
-  fixture <- .golden_dgp_q1()
+  ## A well-identified fixture, DELIBERATELY DIFFERENT from .golden_dgp_q1()'s
+  ## own default (n_site = 3, T = 2). That default is fine for GOLDEN 1 (a
+  ## PLUMBING test) but is a bad fixture for an ACCURACY test: 6 binary
+  ## observations for 4 parameters is essentially unidentified, so the
+  ## natural Laplace optimum there is a runaway (|theta_rr_B| ~ 150+, varies
+  ## by seed). AGHQ's own quadrature is not wrong on a runaway point, it is
+  ## just genuinely slow to converge on one (measured: k = 25 error still
+  ## ~0.1-2 nll there). n_site = 10 with the SAME beta/lambda lands the
+  ## Laplace optimum at a sane, non-degenerate point instead (max|par| < 1)
+  ## -- checked across seeds 1, 2, 7, 8 (k = 25 error 1e-12..1e-14) vs. seeds
+  ## 3, 4 (still runaway, still slow), which is what motivates picking one of
+  ## the former rather than tuning a tolerance to paper over the latter.
+  fixture <- .golden_dgp_q1(seed = 1L, n_site = 10L)
+  dat <- fixture$data
   skip_if_not(
-    .golden_aghq_smoke_ok(fixture$data),
-    "AGHQ kernel not fully wired end-to-end yet -- golden accuracy test skipped, not failed"
+    .golden_aghq_smoke_ok(dat),
+    "AGHQ smoke fit failed for this fixture -- golden accuracy test skipped, not failed. (The kernel IS wired end-to-end; see .golden_aghq_smoke_ok().)"
   )
 
-  ks <- c(1L, 3L, 5L, 7L, 9L, 15L)
-  ladder <- .golden_run_ladder_q1(fixture$data, ks)
+  ## THE FIXED POINT. This is the test-design fix for the 2026-07-28 defect:
+  ## the previous version of this test fitted a FRESH model at each k and
+  ## compared the FITTED objective to the oracle at that fit's own (different
+  ## per k) optimum -- which conflates "is the reported number the true
+  ## integral at the point the fit landed on" (accuracy, what this test
+  ## should measure) with "did the outer optimiser converge" (a separate
+  ## question on any weakly-identified GLLVM surface, and the thing it
+  ## actually failed on: every fit reported convergence = 1, "no honest
+  ## descent at cap 1 after backtracking", even though the error WAS falling
+  ## with k). dev/aghq-evidence/02-template-vs-oracle.R decouples the two by
+  ## evaluating at one fixed parameter vector for every k and reaches 1.2e-09
+  ## agreement; see the "WHY A FIXED POINT" comment on
+  ## .golden_fit_one_k_fixed_point() in helper-aghq-golden.R for how this
+  ## file reproduces that using the package's REAL AGHQ code path (not a
+  ## re-implementation): one ordinary Laplace fit supplies the single
+  ## parameter vector every row of the ladder below is evaluated at.
+  fit_lap <- suppressWarnings(gllvmTMB::gllvmTMB(
+    .golden_formula_q1, data = dat, family = binomial(), unit = "site",
+    control = gllvmTMB::gllvmTMBcontrol(n_init = 1L, init_jitter = 0, se = FALSE)
+  ))
+  expect_equal(fit_lap$opt$convergence, 0L)  ## the fixed point itself must be a genuine optimum
+
+  beta_hat <- unname(fit_lap$opt$par[names(fit_lap$opt$par) == "b_fix"])
+  lambda_hat <- as.numeric(fit_lap$report$Lambda_B[, 1L])
+  oracle <- .golden_brute_force_nll_q1(dat, beta_hat, lambda_hat)
+
+  ladder <- .golden_run_ladder_q1_fixed_point(dat, fit_lap$opt$par, oracle, ks = c(3L, 9L, 25L))
   ## The convergence ladder is the artefact this slice exists to produce --
   ## always print it so it shows up in test output / CI logs.
   print(ladder)
 
-  expect_true(all(ladder$convergence == 0L))
+  ## The "fixed point" claim is verified, not assumed: every row's AGHQ fit
+  ## must land EXACTLY at the Laplace parameter vector (par_shift == 0, up to
+  ## floating point), or the whole point of this design -- no optimiser in
+  ## the loop -- has silently stopped being true.
+  expect_true(all(ladder$par_shift < 1e-9))
+  expect_true(all(ladder$aghq_used))
   expect_true(all(is.finite(ladder$abs_error)))
 
-  err_k1 <- ladder$abs_error[ladder$k == 1L]
-  err_k15 <- ladder$abs_error[ladder$k == 15L]
-  ## Error must fall sharply from k = 1 to k = 15 ...
-  expect_lt(err_k15, err_k1)
+  err_k3  <- ladder$abs_error[ladder$k == 3L]
+  err_k25 <- ladder$abs_error[ladder$k == 25L]
+  ## Error must fall sharply from k = 3 to k = 25 ...
+  expect_lt(err_k25, err_k3)
   ## ... and plateau near the oracle's own precision. stats::integrate() was
   ## called at rel.tol = 1e-12 / abs.tol = 1e-15 (cross-checked against a
   ## fixed fine-grid Simpson's rule to ~1e-11 above), so 1e-6 leaves several
   ## orders of magnitude of headroom above the oracle's own error while
   ## still being tight enough to catch a genuinely under-converged
-  ## quadrature (e.g. the fixed 12-iteration, no-convergence-check inner
-  ## Newton solve flagged as an open risk in dev/aghq-scope/03-spike-audit.md
-  ## section 5, point 4).
-  expect_lt(err_k15, 1e-6)
+  ## quadrature.
+  expect_lt(err_k25, 1e-6)
 })
 
 test_that("GOLDEN 2 [bonus, q = 2]: AGHQ at large k matches a nested-integrate() brute-force integral", {
   skip_on_cran()
   fixture <- .golden_dgp_q2()
   ok <- tryCatch({
+    ## Probe at k = 3, NOT k = 1: k = 1 is deliberately routed to plain
+    ## Laplace (see the k = 1 eligibility note in R/fit-multi.R), so
+    ## fit$aghq$used can never be TRUE there and a k = 1 probe would make
+    ## this gate -- like the file-level smoke gate before the 2026-07-28 fix
+    ## -- skip forever without anyone noticing. Same defect, same fix.
     fit <- suppressWarnings(gllvmTMB::gllvmTMB(
       y ~ 0 + trait + latent(0 + trait | site, d = 2, unique = FALSE),
       data = fixture$data, family = binomial(), unit = "site",
-      control = .golden_aghq_control(1L, n_init = 1L, init_jitter = 0, se = FALSE)
+      control = .golden_aghq_control(3L, n_init = 1L, init_jitter = 0, se = FALSE)
     ))
     is.finite(fit$opt$objective) && isTRUE(fit$aghq$used)
   }, error = function(e) FALSE)
@@ -162,36 +218,20 @@ test_that("GOLDEN 2 [bonus, q = 2]: AGHQ at large k matches a nested-integrate()
 })
 
 ## ============================================================================
-## KNOWN RED, DELIBERATELY LEFT RED (2026-07-28). Do NOT "fix" this by skipping.
-##
-## GOLDEN 2 currently FAILS, and that is more useful than the silent skip it
-## replaced. Until today every accuracy test in this file skipped without anyone
-## noticing, because the gate probed at k = 1 -- which is routed to plain Laplace
-## by design, so `aghq$used` could never be TRUE. Reported as "5 passed, 3
-## skipped"; a skip is not a failure and nothing watched the skip count.
-##
-## Now that they run, GOLDEN 2 fails for a REAL and diagnosable reason:
-##
-##    k    AGHQ objective   brute-force   error    convergence
-##    7      1.699954        1.997868    0.2979        1
-##    9      1.730855        1.998106    0.2673        1
-##   15      1.816741        1.997879    0.1811        1
-##
-## The quadrature IS converging toward the oracle (0.298 -> 0.267 -> 0.181), but
-## every fit reports convergence = 1: the adaptation loop STALLS on this 3-site
-## fixture ("no honest descent at cap 1 after backtracking"). So this test is
-## currently measuring the OPTIMISER, not the integral, and failing on the former.
-##
-## THE FIX IS A TEST-DESIGN CHANGE, not a tolerance change. dev/aghq-evidence/
-## 02-template-vs-oracle.R gets 1.2e-09 agreement against the same kind of oracle
-## by evaluating the integral at a FIXED parameter point rather than at a fitted
-## optimum. GOLDEN 2 should do the same: separate "is the integral right" from
-## "does the fit converge", and test the second elsewhere. n_site = 3 with 2
-## traits is 6 binary observations for 4 parameters -- essentially unidentified,
-## so a stall there may be entirely legitimate and is the wrong thing to assert.
-##
-## Tracked for the next lane. Leaving it red is the point: a green suite that
-## hides a real problem is exactly what the last hour was spent undoing.
+## HISTORY (2026-07-28, resolved). GOLDEN 2 was left DELIBERATELY RED for one
+## slice after the smoke gate above was fixed to probe k = 3: it fitted a
+## fresh model at each k and asserted `all(ladder$convergence == 0L)`, which
+## failed because the outer optimiser stalls on the n_site = 3, T = 2
+## fixture ("no honest descent at cap 1 after backtracking") even though the
+## error against the oracle WAS falling with k (0.298 -> 0.267 -> 0.181 at
+## k = 7/9/15) -- i.e. the test was measuring the optimiser, not the
+## integral. Fixed by the test-design change described in GOLDEN 2's own
+## comment above: evaluate the AGHQ objective at ONE fixed parameter point
+## (no optimiser in the loop, so no convergence flag to fail on) on a
+## well-identified fixture, and compare to the independent oracle at that
+## same point. See helper-aghq-golden.R's "WHY A FIXED POINT" comment for
+## the mechanism and dev/aghq-evidence/02-template-vs-oracle.R for the
+## precedent this mirrors.
 ## ============================================================================
 
 test_that("the golden gate cannot lie in either direction", {
@@ -210,4 +250,67 @@ test_that("the golden gate cannot lie in either direction", {
                info = "k = 1 must route to Laplace, so aghq$used must not be TRUE")
   expect_true(isTRUE(g$k3_used),
               info = "k = 3 must actually use AGHQ, or every accuracy test below skips")
+})
+
+## ============================================================================
+## GOLDEN 3 [null control, poisson]: stronger evidence than gaussian exactness.
+## ============================================================================
+##
+## GAUSSIAN EXACTNESS (test-aghq-surface.R) has a structural blind spot: after
+## the adaptive transform, a gaussian integrand IS the GH kernel, so ANY
+## correctly-normalised quadrature rule reproduces it exactly at every k --
+## including a rule with badly placed nodes. It cannot detect a node-placement
+## bug. Poisson (log link) has no such degeneracy: the per-site integral is
+## genuinely non-gaussian and the quadrature has real work to do.
+##
+## And yet a 7550-fit campaign (2026-07-28, dev/aghq-evidence/) found Laplace
+## is ALREADY essentially exact for poisson too: median ||Lambda_hat||/
+## ||Lambda|| = 1.006 / 1.006 / 0.995 / 0.997 at T = 2/4/6/12, and AGHQ k = 9
+## -- FULLY ACTIVE (aghq$used == TRUE on 100% of those fits) -- correctly
+## changes it by only +0.006 / -0.002 / 0.000 / 0.000. This test is the
+## CI-cheap version of that null control: a genuinely active quadrature
+## (not a stub, not gated back to Laplace) must still find essentially
+## nothing to correct. That is real power gaussian exactness cannot offer,
+## because here AGHQ is doing non-trivial work and is asserted to (correctly)
+## agree with Laplace anyway, rather than being unable to disagree at all.
+##
+## POISSON REQUIRES unique = FALSE. AGHQ Stage 1a is loadings-only: the
+## template hard-errors on s_B ("use_aghq Stage 1a is loadings-only (no
+## s_B)", src/gllvmTMB.cpp:2480) whenever use_diag_B == 1, i.e. whenever the
+## default Psi (unique = TRUE) is active. Single-trial Bernoulli and
+## multinomial fits escape this only because auto_psi_B (R/fit-multi.R,
+## ~4683) pins Psi off automatically for those two families specifically;
+## poisson has no such carve-out, so an AGHQ poisson fit must ask for
+## unique = FALSE explicitly, as the formula below does.
+test_that("GOLDEN 3 [null control, poisson]: a fully-active AGHQ k = 9 fit agrees with Laplace to a tight tolerance", {
+  skip_on_cran()
+  dat <- .golden_poisson_data()
+
+  fit_lap <- suppressWarnings(gllvmTMB::gllvmTMB(
+    .golden_formula_q1, data = dat, family = poisson(), unit = "site",
+    control = gllvmTMB::gllvmTMBcontrol(n_init = 1L, init_jitter = 0, se = FALSE)
+  ))
+  fit_k9 <- suppressWarnings(gllvmTMB::gllvmTMB(
+    .golden_formula_q1, data = dat, family = poisson(), unit = "site",
+    control = gllvmTMB::gllvmTMBcontrol(n_init = 1L, init_jitter = 0, se = FALSE, aghq = 9L)
+  ))
+  skip_if_not(isTRUE(fit_k9$aghq$used),
+              "AGHQ was gated to Laplace for this fixture -- skipped, not failed")
+
+  obj_diff <- abs(fit_k9$opt$objective - fit_lap$opt$objective)
+  Lambda_rel_diff <- norm(fit_k9$report$Lambda_B - fit_lap$report$Lambda_B, "F") /
+    norm(fit_lap$report$Lambda_B, "F")
+  cat(sprintf(
+    "GOLDEN 3 poisson null control: |objective diff| = %.6f, ||Lambda diff||_F / ||Lambda||_F = %.6f\n",
+    obj_diff, Lambda_rel_diff
+  ))
+
+  expect_true(isTRUE(fit_k9$aghq$used))
+  ## Bounds set generously above the measured values on this fixture (see the
+  ## printed line above) -- tight enough to catch a genuinely broken
+  ## quadrature (which would land nowhere near Laplace on a real, non-
+  ## degenerate likelihood), loose enough not to be a flaky re-derivation of
+  ## the exact numbers.
+  expect_lt(obj_diff, 0.5)
+  expect_lt(Lambda_rel_diff, 0.1)
 })

@@ -150,14 +150,11 @@
 ## ---------------------------------------------------------------------
 
 ## Build a gllvmTMBcontrol()-based control list requesting AGHQ at k nodes.
-## `aghq` is NOT (yet) a formal argument of gllvmTMBcontrol() -- the
-## interface contract's eventual `gllvmTMBcontrol(aghq = k)` surface has not
-## landed as of this file. The actual wiring (R/fit-multi.R's
-## .gllvmTMB_aghq_k()) reads `control$aghq` off the control LIST, so this
-## sets it directly after construction. This is a stopgap against the
-## documented contract, not a guess: verified against
-## .gllvmTMB_aghq_k(control, d_B) in R/fit-multi.R, which does exactly
-## `a <- control$aghq`.
+## `aghq` IS a formal, validated argument of gllvmTMBcontrol() (see
+## test-aghq-surface.R section 5, "THE CONTROL SURFACE"); this helper sets
+## `ctrl$aghq <- k` on the constructed list rather than passing `aghq = k`
+## through, so callers of `.golden_aghq_control(k, ...)` only need to name
+## the OTHER control arguments (n_init, init_jitter, se, ...) via `...`.
 ## THE GOLDEN TESTS MEASURE QUADRATURE ACCURACY, so they must run the quadrature
 ## UNPENALISED: aghq_ridge = Inf. Two reasons, both concrete.
 ##
@@ -230,30 +227,96 @@
   list(k1_used = probe(1L), k3_used = probe(3L))
 }
 
-## Fit the q = 1 golden fixture at one AGHQ node count k and return the
-## package's reported objective alongside the INDEPENDENT brute-force
-## marginal evaluated at that same fit's own converged (beta, Lambda) --
-## i.e. "is the number the package reports accurate at the point it landed
-## on", decoupled from where different k happen to converge.
-.golden_fit_one_k <- function(dat, k) {
-  fit <- suppressWarnings(gllvmTMB::gllvmTMB(
-    .golden_formula_q1, data = dat, family = binomial(), unit = "site",
-    control = .golden_aghq_control(k, n_init = 1L, init_jitter = 0, se = FALSE)
-  ))
-  par <- fit$tmb_obj$env$last.par.best
-  beta_hat <- unname(par[names(par) == "b_fix"])
-  lambda_hat <- as.numeric(fit$report$Lambda_B[, 1L])
-  if (length(beta_hat) != length(lambda_hat)) {
-    stop("golden ladder: b_fix / Lambda_B length mismatch at k = ", k)
-  }
-  brute <- .golden_brute_force_nll_q1(dat, beta_hat, lambda_hat)
-  data.frame(k = k, aghq_objective = fit$opt$objective,
-             brute_force_nll = brute,
-             abs_error = abs(fit$opt$objective - brute),
-             convergence = fit$opt$convergence)
+## ---------------------------------------------------------------------
+## GOLDEN 2 harness: AGHQ objective at a FIXED parameter point.
+## ---------------------------------------------------------------------
+##
+## WHY A FIXED POINT, NOT A FRESH FITTED OPTIMUM PER k. An earlier version of
+## GOLDEN 2 fitted a fresh model at each k and compared the FITTED objective
+## to the oracle evaluated at that fit's OWN (different-per-k) converged
+## point. That conflates two questions: "is the reported number the true
+## integral AT THE POINT THE FIT LANDED ON" (accuracy -- what GOLDEN 2 exists
+## to measure) and "did the outer optimiser converge" (a separate, harder
+## problem on any weakly-identified GLLVM surface). It failed on the second
+## while the first was fine: the error against the oracle was genuinely
+## falling with k, but every fit reported convergence = 1 ("no honest
+## descent at cap 1 after backtracking"), so the OLD test's
+## `all(ladder$convergence == 0L)` assertion failed for a reason that had
+## nothing to do with quadrature accuracy. See
+## dev/aghq-evidence/02-template-vs-oracle.R, which reaches 1.2e-09 agreement
+## against the same kind of oracle by evaluating at a fixed parameter vector
+## instead of a fitted one.
+##
+## THE MECHANISM. `aghq_n_adapt = 1L` makes the AGHQ outer adaptation loop
+## (R/fit-multi.R) take exactly ONE pass: it re-adapts the quadrature nodes
+## at `par_cur` (the pass's starting point), evaluates the honest AGHQ
+## objective F(par_cur) there, and only THEN would take an optimiser step --
+## but with n_adapt capped at 1 that step's output is never used, because
+## the pass loop ends before a second iteration could consume it, and
+## FINALISE just re-adapts and re-evaluates at that same `par_best ==
+## par_cur`. So the returned `fit$opt$par`/`fit$opt$objective` are exactly
+## the AGHQ objective, quadrature nodes freshly adapted, evaluated at
+## whichever point the pass started from -- with NO optimiser move in
+## between. That starting point is `aghq_starts[[1]]`, the PRECEDING plain
+## Laplace fit's own optimum (computed identically inside the same
+## gllvmTMB() call), PROVIDED `aghq_ridge = Inf` (set by
+## `.golden_aghq_control()`) so the ridge-based alternative-start selection
+## never engages and `aghq_starts[[1]]` is used unconditionally.
+##
+## This uses the package's REAL AGHQ code path end to end -- the same
+## `.gllvmTMB_aghq_grid()`/`TMB::MakeADFun()`/adaptation machinery a real
+## k = 9 fit uses -- not a re-implementation; only the OUTER optimiser is
+## short-circuited. What varies with k is exactly the quadrature grid, at a
+## point held fixed by construction and RE-VERIFIED on every call (see
+## `par_shift` below) rather than assumed.
+.golden_aghq_control_fixed_point <- function(k, ...) {
+  ctrl <- .golden_aghq_control(k, ...)
+  ctrl$aghq_n_adapt <- 1L
+  ctrl
 }
 
-## The convergence ladder itself: one row per k, each an independent fit.
-.golden_run_ladder_q1 <- function(dat, ks = c(1L, 3L, 5L, 7L, 9L, 15L)) {
-  do.call(rbind, lapply(ks, .golden_fit_one_k, dat = dat))
+## One row of the ladder: fit at (fixed-point) k, and confirm the parameter
+## vector really did stay pinned at `par_fixed` (par_shift ~ 0) rather than
+## assuming the mechanism above still holds.
+.golden_fit_one_k_fixed_point <- function(dat, k, par_fixed, oracle_nll) {
+  fit <- suppressWarnings(gllvmTMB::gllvmTMB(
+    .golden_formula_q1, data = dat, family = binomial(), unit = "site",
+    control = .golden_aghq_control_fixed_point(k, n_init = 1L, init_jitter = 0, se = FALSE)
+  ))
+  data.frame(k = k, aghq_objective = fit$opt$objective,
+             oracle_nll = oracle_nll,
+             abs_error = abs(fit$opt$objective - oracle_nll),
+             aghq_used = isTRUE(fit$aghq$used),
+             par_shift = max(abs(fit$opt$par - par_fixed)))
+}
+
+## The ladder itself: the SAME fixed point at every k, only the quadrature
+## grid changes across rows.
+.golden_run_ladder_q1_fixed_point <- function(dat, par_fixed, oracle_nll, ks = c(3L, 9L, 25L)) {
+  do.call(rbind, lapply(ks, .golden_fit_one_k_fixed_point,
+                         dat = dat, par_fixed = par_fixed, oracle_nll = oracle_nll))
+}
+
+## ---------------------------------------------------------------------
+## GOLDEN 3 fixture: poisson (log link), q = 1 -- the null-control DGP.
+## ---------------------------------------------------------------------
+##
+## Structurally the same shape as .golden_dgp_q1() (one shared N(0,1) latent
+## score per site, no Psi) but poisson counts instead of bernoulli, and a
+## larger, well-identified n_site (30, matching test-aghq-surface.R's own
+## gaussian/binomial fixtures) since GOLDEN 3 compares two REAL fitted
+## optima to each other rather than to a brute-force integral, and needs a
+## non-degenerate fit on both sides for that comparison to mean anything.
+.golden_poisson_data <- function(seed = 103L, n_site = 30L,
+                                  beta = c(0.2, -0.1, 0.3), lambda = c(0.6, -0.5, 0.4)) {
+  n_trait <- length(beta)
+  stopifnot(length(beta) == length(lambda), n_site >= 1L)
+  set.seed(seed)
+  u <- rnorm(n_site)
+  site  <- factor(rep(paste0("s", seq_len(n_site)), each = n_trait))
+  trait <- factor(rep(paste0("t", seq_len(n_trait)), n_site),
+                  levels = paste0("t", seq_len(n_trait)))
+  eta <- beta[as.integer(trait)] + lambda[as.integer(trait)] * u[as.integer(site)]
+  y <- rpois(length(eta), exp(eta))
+  data.frame(site = site, trait = trait, y = y)
 }

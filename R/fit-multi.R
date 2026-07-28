@@ -5033,6 +5033,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## adaptation points enter as DATA_.
   aghq_info <- list(
     used = FALSE, k = NA_integer_, blocks = character(0),
+    ## The LAPLACE path can now be penalised too (the ridge was unbundled at
+    ## 4dc351ed), so `ridge_tau`/`penalised` are recorded on BOTH engines and
+    ## every reporting surface reads the same two fields regardless of route.
+    ridge_tau = if (is.null(laplace_ridge_tau)) Inf else laplace_ridge_tau,
+    penalised = !is.null(laplace_ridge_tau),
     optimizer = control$optimizer, reason = "aghq not requested"
   )
   aghq_k_req <- .gllvmTMB_aghq_k(control, d_B, family = family,
@@ -5319,8 +5324,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           aghq_err <- "AGHQ objective is not finite"
           break
         }
-        g_cur <- tryCatch(max(abs(as.numeric(obj_try$gr(par_cur)))),
-                          error = function(e) NA_real_)
+        ## THE GRADIENT MUST MATCH THE OBJECTIVE THE OPTIMISER IS ACTUALLY
+        ## MINIMISING. `obj_try$gr` is the UNPENALISED gradient, but with the
+        ## ridge on, `run_one()` minimises F + 0.5*||lambda||^2/tau^2. At that
+        ## optimum the unpenalised gradient does not vanish -- it equals
+        ## lambda/tau^2 per loading, about 0.25 for lambda ~ 1 at tau = 2, which
+        ## is 2500x the 1e-4 tolerance. So the gradient leg of the convergence
+        ## test could NEVER fire on a ridged fit: every such fit was forced out
+        ## through the f_tol leg, and any downstream gradient-based check read it
+        ## as unconverged. Found by the D-43 method lens.
+        ##
+        ## The fix is to test the gradient of the objective being minimised, NOT
+        ## to loosen the tolerance -- a loosened tolerance would hide a genuine
+        ## non-convergence just as effectively.
+        g_cur <- tryCatch({
+          g <- as.numeric(obj_try$gr(par_cur))
+          if (is.finite(aghq_ridge_tau) && aghq_ridge_tau > 0) {
+            li <- which(names(obj_try$par) == "theta_rr_B")
+            if (length(li)) g[li] <- g[li] + par_cur[li] / (aghq_ridge_tau^2)
+          }
+          max(abs(g))
+        }, error = function(e) NA_real_)
         shift <- if (is.null(mode_prev)) Inf else max(abs(ad$mode - mode_prev))
         mode_prev <- ad$mode
         aghq_passes <- it
@@ -5453,6 +5477,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           used = TRUE,
           k = as.integer(aghq_k_req),
           blocks = "z_B",
+          ## RECORDED SO THE REPORTING SURFACES CAN ASK. `opt$objective` is
+          ## `obj_try$fn(par_best)` -- the UNPENALISED objective evaluated at the
+          ## PENALISED (MAP) optimum. That makes it a genuine log-likelihood
+          ## sitting OFF ITS OWN MAXIMUM. Nothing downstream could previously
+          ## detect that, so logLik()/AIC() reported an ML quantity at a MAP point
+          ## with no disclosure. `ridge_tau` is what logLik() and .aghq_*() read
+          ## to say so; Inf means unpenalised.
+          ridge_tau = aghq_ridge_tau,
+          penalised = is.finite(aghq_ridge_tau) && aghq_ridge_tau > 0,
           optimizer = control$optimizer,
           reason = sprintf(
             "quadrature on z_B (d = %d, k = %d, %d node%s); %d adaptation pass%s, %s; final max |mode shift| = %.3g",

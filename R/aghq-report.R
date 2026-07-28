@@ -64,6 +64,42 @@
   invisible(NULL)
 }
 
+## Warn ONCE when AIC()/BIC() is taken on a PENALISED (ridged) fit.
+##
+## With a loading ridge the optimiser minimises F + 0.5*||lambda||^2/tau^2, so the
+## reported parameters are a MAP point while `opt$objective` -- and hence
+## `logLik()` -- is the UNPENALISED objective evaluated there. AIC = -2*logLik +
+## 2*df therefore combines a likelihood that is NOT at its maximum with a
+## parameter count that does NOT describe the effective flexibility of a
+## penalised fit. Neither half is what AIC assumes.
+##
+## This is a DISCLOSURE, not a correction: no penalised-AIC variant is
+## substituted, because the honest replacement (an effective-df criterion) has
+## not been derived or validated here. The user is told the quantity is not AIC
+## rather than being handed a differently-wrong number silently.
+.aghq_check_penalised <- function(objs, fn_label = "AIC") {
+  is_fit <- vapply(objs, inherits, logical(1L), what = "gllvmTMB_multi")
+  if (!any(is_fit)) {
+    return(invisible(NULL))
+  }
+  pen <- vapply(objs[is_fit], function(f) {
+    tau <- f$aghq$ridge_tau
+    isTRUE(f$aghq$penalised) ||
+      (is.numeric(tau) && length(tau) == 1L && is.finite(tau) && tau > 0)
+  }, logical(1L))
+  if (!any(pen)) {
+    return(invisible(NULL))
+  }
+  cli::cli_warn(c(
+    "{fn_label}() on a fit with a loading ridge ({.arg aghq_ridge}): this is not {fn_label}.",
+    "i" = "The ridge makes the reported estimate a penalised (MAP) point, while {.fn logLik} is the unpenalised log-likelihood AT that point -- not at its maximum.",
+    "i" = "The parameter count also overstates a penalised fit's effective flexibility, so both halves of {fn_label} = -2*logLik + k*df are violated.",
+    ">" = "For likelihood-based model comparison set {.code aghq_ridge = Inf} and refit every model being compared."
+  ), .frequency = "once",
+     .frequency_id = paste0("gllvmTMB-aghq-penalised-", fn_label))
+  invisible(NULL)
+}
+
 ## Under AGHQ (Stage 1a), the between-unit (z_B) latent block is REMOVED
 ## from the base `eta` that the template REPORTs -- src/gllvmTMB.cpp's
 ## eta-assembly loop guards the z_B contribution with
@@ -127,11 +163,13 @@
 ## `registerS3method()` is not a NAMESPACE edit and not an export.
 AIC.gllvmTMB_multi <- function(object, ..., k = 2) {
   .aghq_check_engine_consistency(c(list(object), list(...)))
+  .aghq_check_penalised(c(list(object), list(...)), "AIC")
   NextMethod()
 }
 
 BIC.gllvmTMB_multi <- function(object, ...) {
   .aghq_check_engine_consistency(c(list(object), list(...)))
+  .aghq_check_penalised(c(list(object), list(...)), "BIC")
   NextMethod()
 }
 

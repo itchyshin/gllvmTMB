@@ -514,7 +514,9 @@
     link = "identity",
     tiers = "gh",
     default_tier = "gh",
-    expectation = "exact"
+    expectation = "exact",
+    ## lbfgsb median 2.13x (range 1.76-2.50, 4 cells), all agreeing.
+    optimizer_by_tier = list(gh = "lbfgsb")
   ),
 
   ## Binomial-logit -- the only family with a genuine choice. Gauss-Hermite
@@ -530,7 +532,13 @@
     link = "logit",
     tiers = c("gh", "jj"),
     default_tier = "jj",
-    expectation = "bound"
+    expectation = "bound",
+    ## The tiers disagree sharply and in OPPOSITE directions, which is why the
+    ## optimiser has to be resolved per TIER and not per family: on jj lbfgsb is
+    ## median 2.54x FASTER (1.31-6.33, 4 cells); on gh it is median 0.57x, i.e.
+    ## 1.7x SLOWER (0.35-1.02). gh is the accurate tier, so a family-level
+    ## choice would have slowed down the arm we most want fast.
+    optimizer_by_tier = list(gh = "nlminb", jj = "lbfgsb")
   ),
 
   ## Poisson-log -- E[exp(eta)] = exp(mu + v/2) is the log-normal mean, exact.
@@ -540,7 +548,10 @@
     link = "log",
     tiers = "gh",
     default_tier = "gh",
-    expectation = "exact"
+    expectation = "exact",
+    ## lbfgsb median 1.25x but the range STRADDLES 1 (0.96-3.25, 6 cells), so
+    ## it is not reliably faster. nlminb stays the reference here.
+    optimizer_by_tier = list(gh = "nlminb")
   ),
 
   ## Negative binomial (nbinom2, log link) -- the only hard term,
@@ -554,7 +565,12 @@
     link = "log",
     tiers = "gh",
     default_tier = "gh",
-    expectation = "quadrature"
+    expectation = "quadrature",
+    ## lbfgsb median 0.42x -- 2.4x SLOWER (0.26-0.63, 6 cells) -- and nbinom2
+    ## produced the ONLY same-optimum disagreement in the whole sweep
+    ## (max|dpar| 0.0119 at q=2 with identical objectives). Routing here to
+    ## nlminb keeps "auto" away from the one cell that disagreed.
+    optimizer_by_tier = list(gh = "nlminb")
   )
 )
 
@@ -669,6 +685,30 @@
 ## choice -- but it is opt-in rather than the default because the same-optimum
 ## evidence is currently gaussian_anchor at N=1600 and binomial-jj at n<=800,
 ## which is not yet the whole admitted surface.
+## Resolve optimizer = "auto" from the registry, per FAMILY and per TIER.
+##
+## Which optimiser wins is not a property of the family alone -- binomial splits
+## in opposite directions across its two tiers (jj 2.54x toward lbfgsb, gh 0.57x
+## toward nlminb), so resolving per family would have slowed the accurate tier
+## down. Each registry row therefore carries optimizer_by_tier, and "auto" reads
+## it after eval_method has itself been resolved.
+##
+## The routing is deliberately conservative: lbfgsb is chosen only where it was
+## measured reliably faster AND every cell agreed on the optimum. Where the
+## speed-up straddled 1 (poisson) or lbfgsb was slower (binomial-gh, nbinom2),
+## auto keeps nlminb. That also routes auto AWAY from nbinom2, the only family
+## that produced a same-optimum disagreement in the sweep.
+.va_r3_resolve_optimizer <- function(optimizer = c("auto", "nlminb", "lbfgsb"),
+                                     family, resolved_eval_method) {
+  optimizer <- match.arg(optimizer)
+  if (!identical(optimizer, "auto")) return(optimizer)
+  entry <- .va_r3_family_entry(family)
+  choice <- entry$optimizer_by_tier[[resolved_eval_method]]
+  ## A tier with no declared route falls back to the reference optimiser rather
+  ## than guessing; a new tier must opt in explicitly.
+  if (is.null(choice)) "nlminb" else choice
+}
+
 .va_r3_run_primary <- function(optimizer, obj, start, control) {
   if (identical(optimizer, "nlminb")) {
     return(stats::nlminb(start, obj$fn, obj$gr, control = control))
@@ -1041,11 +1081,12 @@
                        control = list(eval.max = 2000L, iter.max = 2000L),
                        silent = TRUE, eval_method = c("auto", "jj", "gh"),
                        n_starts = 4L,
-                       optimizer = c("nlminb", "lbfgsb")) {
+                       optimizer = c("auto", "nlminb", "lbfgsb")) {
   family <- match.arg(family)
   rank_source <- match.arg(rank_source)
   eval_method <- match.arg(eval_method)
   optimizer <- match.arg(optimizer)
+  ## Resolved below, once validated$family and the eval tier are both known.
   validated <- .va_r3_validate_data(
     y, n_trials, X, unit_id, trait_id, q, N, T, family, link,
     unique, psi, structured, provider, lv, missing, gaussian_sd
@@ -1055,6 +1096,8 @@
   ## start. Everything downstream reports the RESOLVED bound, not the request,
   ## so an "auto" fit never mislabels which bound it actually evaluated.
   resolved_eval_method <- .va_r3_resolve_eval_method(eval_method, validated$family)
+  optimizer <- .va_r3_resolve_optimizer(optimizer, validated$family,
+                                        resolved_eval_method)
   if (validated$q == 0L) {
     return(list(
       status = "not_applicable_rank_zero",

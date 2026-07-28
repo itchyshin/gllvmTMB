@@ -424,17 +424,80 @@ test_that("R3 L-BFGS-B primary reaches the same optimum as nlminb", {
   expect_lt(abs(a$best$objective - b$best$objective), 1e-5)
   expect_lt(max(abs(a$best$par - b$best$par)), 1e-2)
 
-  ## nlminb remains the DEFAULT -- the same-optimum evidence does not yet span
-  ## the whole admitted surface, so lbfgsb is opt-in.
-  expect_identical(fit_default_optimizer <- .va_r3_fit(
+  ## The DEFAULT is now "auto", which resolves per family AND per tier from the
+  ## registry (see the auto-routing test). For binomial the default tier is jj,
+  ## where lbfgsb was measured 2.54x faster with every cell agreeing -- so the
+  ## default fit here resolves to lbfgsb, not to nlminb.
+  expect_identical(.va_r3_fit(
     y, rep(1L, n * p), X, u, tr, q = 2L, family = "binomial", link = "logit",
-    H = 15L, n_starts = 1L)$optimizer, "nlminb")
+    H = 15L, n_starts = 1L)$optimizer, "lbfgsb")
 
   ## The factr constant is load-bearing: optim's DEFAULT factr terminated in
   ## ~24ms at an objective 125-151 worse in 3 of 3 replicates at N=1600 while
   ## reporting convergence = 0. Pin it so it cannot be "simplified" away.
   expect_true(.VA_R3_LBFGSB_FACTR < 1e-6 / .Machine$double.eps)
   expect_equal(.VA_R3_LBFGSB_FACTR, 1e-12 / .Machine$double.eps)
+})
+
+test_that("R3 optimizer auto-routes per family AND per tier", {
+  ## The routing is measured, not chosen by taste. Medians over the sweep in
+  ## dev/lbfgsb-default-*.csv (nlminb/lbfgsb; > 1 means lbfgsb faster):
+  ##   binomial jj       2.54x  (1.31-6.33)  -> lbfgsb
+  ##   gaussian gh       2.13x  (1.76-2.50)  -> lbfgsb
+  ##   poisson  gh       1.25x  (0.96-3.25)  -> nlminb, the range straddles 1
+  ##   binomial gh       0.57x  (0.35-1.02)  -> nlminb, lbfgsb is SLOWER
+  ##   nbinom2  gh       0.42x  (0.26-0.63)  -> nlminb, slower AND the only
+  ##                                            same-optimum disagreement
+  expected <- list(
+    gaussian_anchor = c(gh = "lbfgsb"),
+    binomial        = c(gh = "nlminb", jj = "lbfgsb"),
+    poisson         = c(gh = "nlminb"),
+    nbinom2         = c(gh = "nlminb")
+  )
+  for (entry in .va_r3_family_registry) {
+    want <- expected[[entry$family]]
+    expect_false(is.null(want))
+    for (tier in entry$tiers) {
+      expect_identical(
+        .va_r3_resolve_optimizer("auto", entry$family_code, tier),
+        unname(want[[tier]]),
+        info = paste(entry$family, tier)
+      )
+    }
+  }
+
+  ## binomial is the reason routing must be per TIER, not per family: its two
+  ## tiers point in OPPOSITE directions. A family-level choice would have
+  ## slowed down gh, the accurate tier.
+  expect_identical(.va_r3_resolve_optimizer("auto", 1L, "jj"), "lbfgsb")
+  expect_identical(.va_r3_resolve_optimizer("auto", 1L, "gh"), "nlminb")
+
+  ## An explicit request always wins over the routing.
+  expect_identical(.va_r3_resolve_optimizer("lbfgsb", 1L, "gh"), "lbfgsb")
+  expect_identical(.va_r3_resolve_optimizer("nlminb", 1L, "jj"), "nlminb")
+
+  ## A tier with no declared route falls back to the reference optimiser
+  ## rather than guessing.
+  expect_identical(.va_r3_resolve_optimizer("auto", 1L, "not_a_tier"), "nlminb")
+
+  ## And the fit reports the RESOLVED optimiser, so a run is auditable.
+  set.seed(606)
+  n <- 120L; p <- 5L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.6)
+  y <- rbinom(n * p, 1L, plogis(eta))
+  X <- stats::model.matrix(~ 0 + trait, long)
+  u <- as.integer(long$unit); tr <- as.integer(long$trait)
+  fit <- function(em) {
+    .va_r3_fit(y, rep(1L, n * p), X, u, tr, q = 2L, family = "binomial",
+               link = "logit", H = 15L, n_starts = 1L, eval_method = em)
+  }
+  expect_identical(fit("jj")$optimizer, "lbfgsb")
+  expect_identical(fit("gh")$optimizer, "nlminb")
 })
 
 test_that("R3 family registry agrees with the validator and drives eval_method", {

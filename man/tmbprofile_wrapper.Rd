@@ -76,13 +76,26 @@ estimates are available.
 When a variance component is near zero, the profile likelihood becomes
 one-sided: the parameter can decrease to negative infinity in log-SD
 space (variance to zero) without an additional likelihood penalty.
-In that case the bound is at the natural boundary of the parameter
-space, not unknown. \code{tmbprofile_wrapper()} therefore returns the
-transformed boundary (e.g. \code{lower = 0} for \code{transform = exp},
-\code{lower = 0} for \code{transform = plogis}, \code{lower = -1} for
-\code{transform = tanh}, \code{lower = -Inf} for \code{transform = identity}).
-\code{NA} is reserved for genuine profile failure (e.g. tmbprofile()
-threw an error or returned too few points).
+The profile deviance then flattens without ever crossing the threshold,
+and the bound really is at the natural boundary of the parameter space.
+\code{tmbprofile_wrapper()} returns the transformed boundary (e.g.
+\code{lower = 0} for \code{transform = exp}, \code{lower = 0} for
+\code{transform = plogis}, \code{lower = -1} for \code{transform = tanh},
+\code{lower = -Inf} for \code{transform = identity}).
+
+A profile can also fail to cross the threshold for a quite different
+reason: the search stopped while the deviance was \strong{still climbing}.
+The bound is then \emph{unknown}, not infinite, and reporting a boundary
+would assert an unbounded parameter on the strength of having stopped
+looking. These two cases are separated from the trace itself -- an
+asymptoting profile's outward slope decays toward zero, a truncated
+one's does not -- and the truncated case returns \code{NA}.
+
+\code{NA} therefore covers both genuine profile failure (e.g. \code{tmbprofile()}
+threw an error or returned too few points) and a bound that could not
+be determined within the search budget. \code{.profile_bounds()} reports
+which via its \code{lower_status}/\code{upper_status} fields
+(\code{"crossed"}, \code{"asymptotic"}, \code{"truncated"}, \code{"failed"}).
 }
 
 \keyword{internal}

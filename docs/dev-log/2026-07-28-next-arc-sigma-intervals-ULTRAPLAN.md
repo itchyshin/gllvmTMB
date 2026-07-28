@@ -234,6 +234,16 @@ z-vs-t site).
   number is computed, let alone quoted, until both are in hand. Last arc wrote that rule into its
   own script and skipped it — `25-coverage-fixedtruth.R:26-31`, and a panel found it fails in 45
   of 48 cells.
+* **🔴 S7 PRECONDITION — locate the artifact behind the certified number first.**
+  `docs/dev-log/decisions.md:2130-2135` records the *claim* (Gaussian `Sigma_unit` diagonal,
+  n ≥ 150, d ≤ 2, ~0.946–0.948 against a 0.94 gate) but **names no producing script**; the number
+  originates in the 2026-07-17 coverage-shipped arc (`dd80244a`), and `dev/` holds no obviously
+  matching `Sigma_unit` coverage script (`cross-family-coverage.R`, `lv-effects-ci-coverage.R`,
+  `lv-wald-coverage.R` are the near neighbours). **Before S7 runs, either find and re-run that
+  script, or state plainly that the re-certification arm is a FRESH MEASUREMENT and not a
+  like-for-like re-measurement.** Comparing a new harness's number against a remembered one and
+  calling the certificate "carried over" would be exactly this arc's failure mode — a correct
+  theory and an unverified mechanism agreeing, and the agreement stopping the checking.
 * **The boundary-detection rule is tested as an object in its own right** — not merely "coverage
   improved". Report its misclassification rate beside the coverage.
 * **All four `.qchisq_threshold` callers carry regression evidence.** A change to a shared helper

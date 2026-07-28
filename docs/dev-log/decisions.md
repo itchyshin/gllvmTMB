@@ -2150,3 +2150,56 @@ that bootstrap fallback — which had already been ruled out for this target.
    is PRESENT, USE it or read its vignette — a negative `exists`/probe cannot prove absence.
    I ran two negative probes and concluded absence, having spent the day recording that
    exact failure mode in others' work and my own. Caught by Shinichi, not by me.
+
+## 2026-07-28  BRAIN SWEEP — four things already on record that this arc should have used first
+
+Decision: re-scope the next arc against the second brain, which Shinichi told me to consult
+before making a big claim. It holds material that would have changed how this arc was run.
+All four verified against the repo, not taken from the note alone.
+
+**1. THE INTERVAL SHOULD PROBABLY USE A t-QUANTILE, AND MINE USED z.** `LEARNINGS-archive`,
+2026-06-27, REPO-VERIFIED and maintainer-flagged **for the GLLVM team specifically**: drmTMB
+decomposed small-g Wald under-coverage into **(a) df-narrowness** — a `z = 1.96` interval
+shipped where a t-quantile with ~`g−1` df belongs (Satterthwaite / Kenward–Roger); `t(df=7)`
+lifts coverage **+3-5 pts** — plus **(b) ML shrinkage bias**, which only REML or larger g
+fixes. My `sigma_ci()` uses `stats::qnorm` (`22-sigma-se-delta.R:104`). **So an unknown part
+of the under-coverage I attributed to Laplace and to AGHQ is df-narrowness in my own
+interval.**
+
+   **AND THE HEADLINE CORRECTION, which matters more:** *t is NOT a blanket small-sample
+   default.* It is opt-in and scoped to **location-axis** variance components. The SIGN of the
+   z-error depends on the axis — location under-covers (t helps), scale/dispersion
+   OVER-covers under z (t overshoots toward 1.0). A per-class map for gllvm's own components
+   is already filed as **gllvmTMB#565**: Λ loadings / Ψ unique variances / sd_B = location →
+   t may help; NB2 φ, Γ shape, Beta φ, Tweedie = dispersion → do NOT apply t; correlations →
+   Fisher-z, separately. Σ's diagonal is location-axis, so it is in scope.
+
+**2. THE PROFILE ROUTE ALREADY SELF-CORRECTS MOST OF THIS — AND IS CERTIFIED NOMINAL AT g=32.**
+Same entry: profile ~0.91 vs Wald ~0.88 at g=8, and at g=32 profile is **certified NOMINAL
+(0.948-0.956, MCSE ~0.01)** with reliable widths. That is the target to extend, and it
+corroborates the correction Shinichi made earlier today: extend the certified profile route,
+do not build a delta method.
+
+**3. THE PROFILE ROUTE HAS A KNOWN, UNFIXED DEFECT — and it is in profile's OWN best regime.**
+D-12: at a boundary the LR reference is a **chi-bar-square mixture (Self-Liang)**, so a bare
+`qchisq(level, 1)` mis-covers. **Verified still present at `R/profile-ci.R:32`.** Any arc that
+extends the profile route must fix this or it inherits it.
+
+**4. I RE-DERIVED BY SIMULATION SOMETHING TMB ALREADY DIAGNOSES — AND THE PACKAGE ALREADY
+WRAPS IT.** D-12 says gate on `TMB::checkConsistency()` for Laplace bias. **`R/check-consistency.R`
+exists and wraps it.** I spent an arc measuring Laplace bias with 15,900 simulated fits while
+the package carried a built-in diagnostic for exactly that quantity. The simulation is not
+wasted — it measures magnitude across T, n and family, which the diagnostic does not — but it
+should have STARTED from `check_consistency()` and used simulation to calibrate it.
+
+**Consequence for the next arc:** four new items ahead of the build — the z→t question scoped
+by #565's per-class map; the Self-Liang fix at `profile-ci.R:32`; `check_consistency()` as the
+cheap first-line Laplace-bias gate; and Ranga's sweep narrowed to the one genuinely open
+question (does anyone profile a REDUCED-RANK covariance, and what happens under rotational
+non-identifiability?), since the small-sample-VC literature is already in the
+'Fast & Accurate Algorithms' NotebookLM (`3b3d2ec5`).
+
+**The lesson, and it is the arc's own, again.** I ran a whole coverage campaign without
+asking whether the interval convention was already decided. It was — REPO-VERIFIED, flagged
+*for this team*, with an issue number. **Query the brain before building the instrument, not
+after the panel rejects it.**

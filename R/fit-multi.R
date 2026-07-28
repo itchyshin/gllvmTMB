@@ -3623,6 +3623,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Phase 2a missing-predictor DATA slots (has_mi = 0 no-op when disabled).
   tmb_data <- c(tmb_data, gll_tmb_mi_data(mi_model, n_obs))
 
+  ## AGHQ DATA slots. Always present so the template's DATA_ macros resolve;
+  ## `use_aghq = 0` makes every one of them an exact no-op (stubs of size 1).
+  ## The real grid / modes / Cholesky factors are written in by the adaptation
+  ## loop below, after a Laplace fit has supplied them.
+  tmb_data <- c(tmb_data, .gllvmTMB_aghq_data_stub())
+
   init_rr_theta <- function(p, rank) {
     ## Lambda_B/W ~ I_rank diagonal start (so initial Sigma is the identity
     ## scaled by 0). Concretely: lam_diag = 0.5 (sd 1.65), lam_lower = 0.
@@ -4777,13 +4783,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Optimiser dispatch: nlminb (default) or optim with user-supplied
   ## method (per Maeve McGillycuddy's email — optim/BFGS is often more
   ## robust than nlminb for two-level rr fits).
-  run_one <- function(par_init) {
+  ## `.obj` defaults to the Laplace object built above; the AGHQ adaptation
+  ## loop passes its own object so it reuses this exact optimiser dispatch.
+  ## `.iter_cap` bounds the optimiser steps taken in ONE call. The AGHQ adaptation
+  ## loop uses it to keep the quadrature nodes fresh; see the loop for why that is
+  ## not optional.
+  run_one <- function(par_init, .obj = obj, .iter_cap = NULL) {
+    obj <- .obj
     if (identical(control$optimizer, "optim")) {
       opt_args <- control$optArgs
       method <- opt_args$method %||% "BFGS"
       opt_args$method <- method
       opt_args$control <- utils::modifyList(
-        list(maxit = 2000),
+        list(maxit = if (is.null(.iter_cap)) 2000 else as.integer(.iter_cap)),
         opt_args$control %||% list()
       )
       do.call(stats::optim,
@@ -4803,7 +4815,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       }
       nlminb_args <- nlminb_args[keep]
       nlminb_args$control <- utils::modifyList(
-        list(eval.max = 2000, iter.max = 1500),
+        if (is.null(.iter_cap))
+          list(eval.max = 2000, iter.max = 1500)
+        else
+          list(eval.max = 4L * as.integer(.iter_cap), iter.max = as.integer(.iter_cap)),
         nlminb_args$control %||% list()
       )
       do.call(stats::nlminb,
@@ -4879,6 +4894,181 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   start_provenance$selected_restart <- restart_history$restart[
     which(restart_history$selected)[1L]
   ]
+
+  ## ---- AGHQ outer adaptation loop (Stage 1a: the z_B block) ------------
+  ## The Laplace fit above is the ADAPTATION source, not the answer: AGHQ is
+  ## optimised THROUGH, so the fixed parameters are re-estimated against the
+  ## quadrature objective. Each pass:
+  ##   1. evaluate the Laplace object at the current fixed parameters to get
+  ##      the conditional modes and the sparse conditional Hessian;
+  ##   2. Cholesky each site's d_B x d_B block -> L^{-T}, log|det L^{-T}|;
+  ##   3. rebuild the TMB object with use_aghq = 1 (z_B dropped from `random`
+  ##      AND mapped off) and optimise the fixed parameters through it;
+  ##   4. repeat until the modes stop moving.
+  ## Gradients are exact because the quadrature lives in the template and the
+  ## adaptation points enter as DATA_.
+  aghq_info <- list(
+    used = FALSE, k = NA_integer_, blocks = character(0),
+    optimizer = control$optimizer, reason = "aghq not requested"
+  )
+  aghq_k_req <- .gllvmTMB_aghq_k(control, d_B, family = family,
+                                 n_traits = n_traits)
+  if (!is.null(aghq_k_req)) {
+    aghq_block <- NULL
+    if (exists(".aghq_gate", mode = "function")) {
+      aghq_block <- tryCatch(.aghq_gate(obj, tmb_data), error = function(e) NULL)
+    }
+    ineligible <- if (aghq_k_req < 2L) {
+      ## k = 1 IS the Laplace rule (single node at the mode), so a fit through
+      ## it can only reproduce the Laplace answer -- and it reproduces it
+      ## badly: with the adaptation point frozen as DATA, the k = 1 objective
+      ## is first-order sensitive to that point, its gradient is missing the
+      ## d(logdet)/d(theta) term, and the outer loop does not reach a fixed
+      ## point (measured: it burns the 5-pass cap and lands 4.5 nll units
+      ## WORSE than Laplace). For k >= 3 the same frozen adaptation is
+      ## harmless because a converged quadrature is invariant to the change
+      ## of variables. So route k = 1 to the Laplace path, which is the same
+      ## approximation computed correctly.
+      "k = 1 is the Laplace rule; the Laplace path computes it exactly"
+    } else if (!identical(random, "z_B")) {
+      paste0("Stage 1a requires z_B as the only random block (random = ",
+             paste(random, collapse = ", "), ")")
+    } else if (!isTRUE(use_rr_B)) {
+      "no B-tier latent() block"
+    } else if (isTRUE(use_lv_B)) {
+      "predictor-informed latent scores (use_lv_B) not supported yet"
+    } else if (isTRUE(use_mi_predictor)) {
+      "mi() predictors not supported yet"
+    } else if (any(family_id_vec == 16L)) {
+      "multinomial rows not supported yet"
+    } else if (!is.null(aghq_block) && is.data.frame(aghq_block) &&
+               "route" %in% names(aghq_block) &&
+               !any(aghq_block$route == "quadrature")) {
+      "gated to laplace by .aghq_gate()"
+    } else {
+      NULL
+    }
+    if (!is.null(ineligible)) {
+      aghq_info$reason <- paste0("laplace: ", ineligible)
+      if (isTRUE(control$verbose))
+        cat(sprintf("  AGHQ skipped: %s\n", ineligible))
+    } else {
+      grid <- .gllvmTMB_aghq_grid(d_B, aghq_k_req)
+      ## Prefer a peer-supplied `.aghq_grid()` (R/aghq-control.R) ONLY if it
+      ## satisfies the log-weight convention this template is built against
+      ## -- sum_j exp(logw_j) phi_d(u_j) == 1 with unit second moment. A
+      ## silent convention mismatch would corrupt the objective, so the check
+      ## is mandatory rather than advisory.
+      if (exists(".aghq_grid", mode = "function")) {
+        cand <- tryCatch(.aghq_grid(d_B, aghq_k_req), error = function(e) NULL)
+        if (.gllvmTMB_aghq_grid_ok(cand, d_B)) grid <- cand
+      }
+      map_aghq <- tmb_map
+      map_aghq$z_B <- factor(rep(NA_integer_, length(tmb_params$z_B)))
+      obj_lap <- obj
+      par_cur <- opt$par
+      mode_prev <- NULL
+      prev_obj <- Inf
+      obj_aghq <- NULL
+      opt_aghq <- NULL
+      ## ADAPTATION MUST BE REFRESHED OFTEN, and the cap below is the whole reason
+      ## this works. The quadrature nodes are frozen as DATA_ within one pass, so a
+      ## pass that optimises to convergence lets the parameters walk far away from
+      ## the point the nodes were adapted at -- the integrand is then evaluated in
+      ## the wrong place and the objective can be driven arbitrarily low. Measured
+      ## with an uncapped first pass on a 60x6 binomial q=2 fit: ||Sigma_B||_F ran
+      ## from 4.43 to 4.1e7 in ONE pass, after which re-adaptation ERRORED at the
+      ## runaway parameters and the loop exited keeping the bad state. Capping the
+      ## steps per pass keeps the nodes near the current parameters, which is what
+      ## "adaptive" quadrature means; the standalone R reference in
+      ## dev/aghq-r-reference.R gets this for free by re-solving the mode on every
+      ## objective evaluation, and it does not run away.
+      n_adapt <- as.integer(control$aghq_n_adapt %||% 200L)
+      aghq_iter_cap <- as.integer(control$aghq_iter_cap %||% 3L)
+      aghq_passes <- 0L
+      aghq_mode_shift <- rep(NA_real_, n_adapt)
+      aghq_err <- NULL
+      for (it in seq_len(n_adapt)) {
+        ad <- tryCatch(
+          .gllvmTMB_aghq_adapt(obj_lap, par_cur, d_B, n_sites),
+          error = function(e) e
+        )
+        if (inherits(ad, "error")) { aghq_err <- conditionMessage(ad); break }
+        data_aghq <- tmb_data
+        data_aghq$use_aghq    <- 1L
+        data_aghq$aghq_d      <- as.integer(d_B)
+        data_aghq$aghq_nodes  <- grid$nodes
+        data_aghq$aghq_logw   <- as.numeric(grid$logw)
+        data_aghq$aghq_mode   <- ad$mode
+        data_aghq$aghq_Lt     <- ad$Lt
+        data_aghq$aghq_logdet <- as.numeric(ad$logdet)
+        obj_try <- tryCatch(
+          TMB::MakeADFun(data = data_aghq, parameters = tmb_params,
+                         map = map_aghq, random = NULL,
+                         DLL = "gllvmTMB", silent = silent),
+          error = function(e) e
+        )
+        if (inherits(obj_try, "error")) { aghq_err <- conditionMessage(obj_try); break }
+        if (!identical(names(obj_try$par), names(par_cur))) {
+          aghq_err <- "AGHQ parameter vector does not align with the Laplace fit"
+          break
+        }
+        opt_try <- tryCatch(run_one(par_cur, .obj = obj_try, .iter_cap = aghq_iter_cap),
+                            error = function(e) e)
+        if (inherits(opt_try, "error")) { aghq_err <- conditionMessage(opt_try); break }
+        if (!is.finite(.gllvmTMB_restart_objective(opt_try))) {
+          aghq_err <- "AGHQ objective is not finite"
+          break
+        }
+        obj_aghq <- obj_try
+        opt_aghq <- opt_try
+        par_cur <- opt_try$par
+        aghq_passes <- it
+        shift <- if (is.null(mode_prev)) Inf else max(abs(ad$mode - mode_prev))
+        aghq_mode_shift[it] <- shift
+        mode_prev <- ad$mode
+        if (isTRUE(control$verbose))
+          cat(sprintf("  AGHQ pass %d: -logLik = %.6f, max |mode shift| = %.3g\n",
+                      it, .gllvmTMB_restart_objective(opt_try), shift))
+        ## Converged when the adaptation points have stopped moving AND the capped
+        ## optimiser is no longer making progress -- both, because either alone can
+        ## be true while the other is not: a stalled optimiser leaves the modes
+        ## fixed, and a converged mode does not by itself mean the parameters have
+        ## settled.
+        obj_gain <- if (it == 1L) Inf else prev_obj - .gllvmTMB_restart_objective(opt_try)
+        prev_obj <- .gllvmTMB_restart_objective(opt_try)
+        if (is.finite(shift) && shift < 1e-4 &&
+            is.finite(obj_gain) && abs(obj_gain) < 1e-8) break
+      }
+      if (is.null(obj_aghq)) {
+        aghq_info$reason <- paste0(
+          "laplace: AGHQ pass failed (", aghq_err %||% "unknown", ")"
+        )
+        cli::cli_warn("AGHQ failed; falling back to the Laplace fit: {aghq_err %||% 'unknown'}")
+      } else {
+        ## Swap the objective: from here on `obj` / `opt` ARE the AGHQ fit, so
+        ## report(), sdreport() and every downstream extractor read the
+        ## quadrature-optimised parameters.
+        obj <- obj_aghq
+        opt <- opt_aghq
+        aghq_info <- list(
+          used = TRUE,
+          k = as.integer(aghq_k_req),
+          blocks = "z_B",
+          optimizer = control$optimizer,
+          reason = sprintf(
+            "quadrature on z_B (d = %d, k = %d, %d node%s); %d adaptation pass%s, final max |mode shift| = %.3g",
+            d_B, aghq_k_req, nrow(grid$nodes),
+            if (nrow(grid$nodes) == 1L) "" else "s",
+            aghq_passes, if (aghq_passes == 1L) "" else "es",
+            aghq_mode_shift[aghq_passes]
+          ),
+          passes = aghq_passes,
+          mode_shift = aghq_mode_shift[seq_len(aghq_passes)]
+        )
+      }
+    }
+  }
 
   ## ---- Force TMB internal state to the selected optimum --------------
   ## After the multi-start loop, TMB's internal `obj$env$last.par` is
@@ -4982,6 +5172,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       missing_data = .gllvmTMB_build_missing_data(missing_meta, is_y_observed, mi_model),
       data_original = if (!is.null(missing_meta)) missing_meta$data_original else data,
       random       = random,
+      ## AGHQ provenance (Stage 1a). `used = FALSE` means the fit is the
+      ## ordinary Laplace fit and `reason` says why.
+      aghq         = aghq_info,
       trait_col    = trait,
       unit_col     = site,
       unit_obs_col = unit_obs,
@@ -5341,4 +5534,158 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ]
   restart_history$selected[selected_idx] <- TRUE
   restart_history
+}
+
+## ======================================================================
+## AGHQ (adaptive Gauss-Hermite quadrature) -- Stage 1a helpers
+## ======================================================================
+## Scope: quadrature over the B-tier reduced-rank latent block `z_B` only,
+## i.e. `latent(..., unique = FALSE)` with z_B the ONLY random block. Every
+## other model class still runs the Laplace path unchanged.
+##
+## Division of labour with the template (src/gllvmTMB.cpp): R computes the
+## adaptation points (conditional modes + Cholesky factors) and the tensor
+## quadrature grid and passes them in as DATA_, so the template stays
+## differentiable in the fixed parameters and TMB supplies exact gradients.
+
+## Inert AGHQ DATA slots. Shape-valid stubs; `use_aghq = 0` short-circuits
+## every use of them in the template.
+.gllvmTMB_aghq_data_stub <- function() {
+  list(
+    use_aghq    = 0L,
+    aghq_d      = 1L,
+    aghq_nodes  = matrix(0.0, 1L, 1L),
+    aghq_logw   = 0.0,
+    aghq_mode   = matrix(0.0, 1L, 1L),
+    aghq_Lt     = matrix(0.0, 1L, 1L),
+    aghq_logdet = 0.0
+  )
+}
+
+## One-dimensional Gauss-Hermite rule for the STANDARD NORMAL measure
+## ("probabilists'" scaling): nodes x_j and weights w_j with sum(w) == 1 and
+## sum(w * x^2) == 1, so that E[g(Z)] ~= sum_j w_j g(x_j) for Z ~ N(0, 1).
+## Golub-Welsch: the nodes are the eigenvalues of the symmetric tridiagonal
+## Jacobi matrix with zero diagonal and off-diagonal sqrt(1:(k-1)), and the
+## weights are the squared first components of the eigenvectors. No package
+## dependency (statmod is not imported by gllvmTMB).
+.gllvmTMB_gh_normal <- function(k) {
+  k <- as.integer(k)
+  if (k < 1L) stop("AGHQ: k must be >= 1")
+  if (k == 1L) return(list(nodes = 0.0, weights = 1.0))
+  off <- sqrt(seq_len(k - 1L))
+  J <- matrix(0.0, k, k)
+  J[cbind(seq_len(k - 1L), seq_len(k - 1L) + 1L)] <- off
+  J[cbind(seq_len(k - 1L) + 1L, seq_len(k - 1L))] <- off
+  ev <- eigen(J, symmetric = TRUE)
+  ord <- order(ev$values)
+  list(nodes = ev$values[ord], weights = (ev$vectors[1L, ord])^2)
+}
+
+## Tensor-product AGHQ grid in `d` dimensions with `k` nodes per dimension.
+##
+## Returns `nodes` (k^d x d) and `logw` (k^d), where
+##   logw_j = sum_m log(w_{j_m}) + (d/2) * log(2*pi) + 0.5 * u_j' u_j
+## The three terms are, in order: the tensor weight; the (2*pi)^(d/2) factor
+## from rewriting the flat Lebesgue integral du in the standard-normal
+## measure; and the exp(u'u/2) correction that undoes the Gauss-Hermite
+## kernel. Folding all three in is what lets the template write
+##   log L_i = logdet_i + logsumexp_j( logw_j + inner_ll(i, j) ).
+##
+## With this convention k = 1 reproduces the Laplace approximation EXACTLY:
+## the single node is u = 0 with w = 1, so logw = (d/2) log(2*pi) and
+## log L_i = -0.5 log det H_i + (d/2) log(2*pi) + inner_ll(zhat_i).
+##
+## The identity that PINS the convention (checked by
+## `.gllvmTMB_aghq_grid_ok()`): sum_j exp(logw_j) * phi_d(u_j) == 1, where
+## phi_d is the d-variate standard normal density.
+.gllvmTMB_aghq_grid <- function(d, k) {
+  d <- as.integer(d); k <- as.integer(k)
+  gh <- .gllvmTMB_gh_normal(k)
+  idx <- as.matrix(expand.grid(rep(list(seq_len(k)), d), KEEP.OUT.ATTRS = FALSE))
+  nodes <- matrix(gh$nodes[idx], nrow = nrow(idx), ncol = d)
+  logw_tensor <- rowSums(matrix(log(gh$weights)[idx], nrow = nrow(idx), ncol = d))
+  logw <- logw_tensor + (d / 2) * log(2 * pi) + 0.5 * rowSums(nodes^2)
+  list(nodes = nodes, logw = logw)
+}
+
+## Convention check for an AGHQ grid, used to decide whether a peer-supplied
+## `.aghq_grid()` may be substituted for the internal one. Verifies the
+## normalising identity sum_j exp(logw_j) phi_d(u_j) == 1 and the second
+## moment sum_j exp(logw_j) phi_d(u_j) u_j u_j' == I.
+.gllvmTMB_aghq_grid_ok <- function(grid, d, tol = 1e-8) {
+  if (!is.list(grid) || is.null(grid$nodes) || is.null(grid$logw)) return(FALSE)
+  nodes <- as.matrix(grid$nodes)
+  if (ncol(nodes) != d || length(grid$logw) != nrow(nodes)) return(FALSE)
+  log_phi <- -0.5 * rowSums(nodes^2) - (d / 2) * log(2 * pi)
+  w <- exp(grid$logw + log_phi)
+  if (!isTRUE(all.equal(sum(w), 1, tolerance = tol))) return(FALSE)
+  ## The k = 1 rule is the Laplace point rule: it has a single node at 0 and
+  ## carries no second moment, so only the normalisation applies there.
+  if (nrow(nodes) == 1L) return(TRUE)
+  M <- crossprod(nodes * sqrt(pmax(w, 0)))
+  isTRUE(all.equal(unname(M), diag(d), tolerance = 1e-6))
+}
+
+## Extract the per-site conditional modes and Cholesky-derived adaptation
+## quantities for the z_B block from a fitted Laplace TMB object, evaluated
+## at the fixed-parameter vector `par_fixed`.
+##
+## Requires z_B to be the ONLY random block, so the random-effect index set
+## is exactly z_B in column-major (d_B x n_sites) order and the sparse
+## conditional Hessian's site blocks are the contiguous d_B x d_B diagonal
+## blocks. (Established this session: the s_B x s_B off-diagonal of spHess is
+## identically zero for the star graph -- but Stage 1a does not carry s_B at
+## all, so the block extraction here is exact by construction, not by
+## measurement.)
+.gllvmTMB_aghq_adapt <- function(obj, par_fixed, d_B, n_sites) {
+  invisible(obj$fn(par_fixed))
+  full <- obj$env$last.par
+  ridx <- obj$env$random
+  if (!all(names(full)[ridx] == "z_B"))
+    stop("AGHQ adaptation: z_B must be the only random block")
+  zhat <- matrix(full[ridx], nrow = d_B, ncol = n_sites)   # column-major
+  H <- obj$env$spHess(full, random = TRUE)
+  mode <- matrix(0.0, n_sites, d_B)
+  Lt <- matrix(0.0, n_sites, d_B * d_B)
+  logdet <- numeric(n_sites)
+  for (s in seq_len(n_sites)) {
+    ii <- (s - 1L) * d_B + seq_len(d_B)
+    Hs <- as.matrix(H[ii, ii, drop = FALSE])
+    Hs <- (Hs + t(Hs)) / 2
+    R <- tryCatch(chol(Hs), error = function(e) NULL)
+    if (is.null(R)) {
+      ## Not positive definite (should not happen at a conditional mode, but
+      ## can during a bad outer step): fall back to a ridge-corrected factor
+      ## rather than aborting the fit.
+      ev <- eigen(Hs, symmetric = TRUE)
+      Hs <- ev$vectors %*% diag(pmax(ev$values, 1e-8), d_B) %*% t(ev$vectors)
+      R <- chol(Hs)
+    }
+    ## H = L L' with L = t(R) lower-triangular, so L^{-T} = R^{-1}.
+    Lti <- backsolve(R, diag(d_B))
+    mode[s, ] <- zhat[, s]
+    Lt[s, ] <- as.numeric(t(Lti))          # ROW-major, as the template reads it
+    logdet[s] <- -sum(log(diag(R)))        # log|det L^{-T}| = -0.5 log det H
+  }
+  list(mode = mode, Lt = Lt, logdet = logdet)
+}
+
+## Resolve `control$aghq` into a node count. FALSE / NULL -> NULL (Laplace).
+## "auto" -> 9 for now (the resolver `.aghq_resolve()` in R/aghq-control.R
+## owns the real policy; when it is on disk it takes precedence).
+.gllvmTMB_aghq_k <- function(control, d_B, family = NULL, n_traits = NA_integer_) {
+  a <- control$aghq
+  if (is.null(a) || identical(a, FALSE)) return(NULL)
+  if (identical(a, "auto")) {
+    if (exists(".aghq_resolve", mode = "function")) {
+      res <- try(.aghq_resolve(family, "B", n_traits, d_B, control), silent = TRUE)
+      if (!inherits(res, "try-error") && is.list(res) && is.numeric(res$k))
+        return(as.integer(res$k))
+    }
+    return(9L)
+  }
+  if (!is.numeric(a) || length(a) != 1L || is.na(a) || a < 1)
+    stop("control$aghq must be FALSE, \"auto\", or a positive integer")
+  as.integer(a)
 }

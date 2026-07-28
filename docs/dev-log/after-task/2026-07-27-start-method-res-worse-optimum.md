@@ -144,10 +144,33 @@ Two independent reasons the package cannot see this:
    for a weakly-identified random-slope fit" — and the absolute threshold does not
    deliver it.
 
-This is the same failure mode as the campaign's separate observation that Laplace
-reported `convergence == 0` and `pdHess == TRUE` on 59 of 70 genuinely degenerate
-fits. **A relative test would fire here immediately**: min/max sd ratio is
-`6.7e-4`.
+**A relative test fires here immediately**: min/max sd ratio is `6.7e-4`. That is
+the case this fix addresses, and it stands.
+
+> **CORRECTION, 2026-07-27.** This paragraph originally continued: *"This is the
+> same failure mode as the campaign's separate observation that Laplace reported
+> `convergence == 0` and `pdHess == TRUE` on 59 of 70 genuinely degenerate
+> fits."* **That generalisation is REFUTED and is withdrawn.**
+>
+> The 70 degenerate cells were re-identified from the original grid by
+> `family`/`n`/`p`/`q`/`seed`, and 24 were re-fitted on this branch and passed to
+> the new detector: **0 of 22 successful refits were flagged**, while 20 still
+> reported `convergence == 0` with `pdHess = TRUE`. The reason is structural
+> rather than a threshold choice — the grid's Laplace arm fits
+> `latent(..., unique = FALSE)` (`run-grid.R:18`, *"Psi SUPPRESSED"*) and every
+> degenerate cell is bernoulli, so those fits contain **no `psi` and no residual
+> sd**. The relative check reaches only the `sd_*` block; the loading check kept
+> its absolute `1e-3` threshold. There was nothing for a relative variance test
+> to act on, under any threshold.
+>
+> **The fix is unaffected** — the sd-vs-variance square is real and the
+> sibling-relative remedy is right. What is withdrawn is only the claim that it
+> explains the campaign's finding. **That finding remains undiagnosed**, and it
+> is the one that affects the production route on the models users actually fit.
+> Full record, including the next untested hypothesis — that an absolute
+> `loading_thresh` on `diag(Lambda_B)` is the same shape of blind spot, absolute
+> where it should be relative — is in
+> `docs/dev-log/2026-07-27-relative-collapse-does-not-explain-59of70.md`.
 
 ## 6c. The complete `res` ledger — it has never been shown to help
 

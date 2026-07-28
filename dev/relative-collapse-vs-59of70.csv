@@ -1,0 +1,25 @@
+"n","p","q","seed","orig_status","refit","conv","pdHess","flags","flagged"
+40,8,2,1,"conv0_pdHessTRUE","ok",0,FALSE,"",FALSE
+40,8,4,1,"conv0_pdHessTRUE","ok",0,FALSE,"",FALSE
+40,8,2,2,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,4,2,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,4,3,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,2,4,"conv0_pdHessFALSE","ok",0,TRUE,"",FALSE
+40,8,4,4,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,2,5,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,4,5,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,2,6,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,4,6,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,2,7,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,4,7,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,2,8,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,4,8,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,2,9,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,4,9,"conv0_pdHessFALSE","ok",0,TRUE,"",FALSE
+40,8,2,10,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,8,4,10,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,20,2,2,"conv1_pdHessFALSE","ERROR",NA,NA,"All 1 restarts failed.",NA
+100,8,4,2,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+40,20,2,3,"conv0_pdHessTRUE","ERROR",NA,NA,"All 1 restarts failed.",NA
+40,20,2,4,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE
+100,8,4,4,"conv0_pdHessTRUE","ok",0,TRUE,"",FALSE

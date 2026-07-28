@@ -2012,3 +2012,51 @@ the DGP). **A result that confirms the prediction is where the mechanism check i
 needed, not least.**
 
 Nothing promoted. PR #801 unmerged, claim withheld.
+
+## 2026-07-28  The NARROWED claim — what the corrected evidence actually supports
+
+Decision: record the claim sentence a future panel should judge. The 2026-07-28 panel
+returned 2 NOT-DONE against a BROADER sentence, and this arc then falsified part of that
+sentence itself (the nominal-coverage retraction). Both dissenting lenses said the same
+thing: there is a real result, and it is narrower than the claim. This writes it down so a
+future panel judges the defensible sentence rather than the dead one. **It is NOT a claim
+being made — it is a candidate awaiting a panel, and nothing may cite it until one runs.**
+
+**CANDIDATE SENTENCE, to be panelled, not asserted:**
+
+> gllvmTMB has an OPT-IN adaptive Gauss-Hermite integration engine. Laplace remains the
+> default, nothing is exported, and no user's existing numbers move. Its INTEGRAL is
+> correct: agreement to 1.2e-09 with a brute-force `integrate()` oracle evaluated at a
+> FIXED parameter point, monotone in k (5.4e-05 -> 8.7e-13 -> 1.6e-14 at k = 3/9/25),
+> k-independent Gaussian exactness that goes RED under injected defects, and a
+> regression-tested suite (FAIL 0 / SKIP 0 / PASS 1504).
+>
+> On the ONE family where the engine demonstrably engages -- binomial-logit, `unique =
+> FALSE`, single ordinary `latent()` block -- AGHQ reduces Laplace's latent-covariance bias,
+> and the reduction tracks traits-per-site in the direction theory predicts. AGHQ also gives
+> UNIFORMLY better Wald coverage of Sigma than Laplace at matched ridge setting, in every
+> cell measured, with the gap widening in n. **Neither engine achieves nominal coverage in
+> any configuration tested.**
+>
+> The SHIPPED LAPLACE DEFAULT has a previously unmeasured coverage failure: with large true
+> loadings (lam_sd = 3) it covers **0.023 at n = 1600**.
+
+**WHAT THE SENTENCE DELIBERATELY DOES NOT SAY**, each because this arc disproved it:
+* not "nominal coverage" -- retracted; the fixed-truth run gives 0.892 at n=1600, and 1 of
+  36 cells clears the 2*MCSE bar (and that one is `laplace_ridge`).
+* not "AGHQ improves point recovery" -- at small n the RIDGE does that work, and AGHQ alone
+  is harmful there.
+* not "family-agnostic" -- AGHQ does not run at all on poisson (par_shift identically 0),
+  and 14 of 16 families are unexercised.
+* not "eliminates the divergent-fit mode" -- that metric is circular with the penalty;
+  McNemar p = 0.134.
+* not anything about the DEFAULT grammar -- AGHQ is ineligible there (s_B in the random
+  vector) and now warns instead of silently declining.
+
+**WHY IT IS NOT BEING PANELLED IN THIS SESSION.** A panel costs ~450k subagent tokens and
+its value is the freshness and care of its reviewers. This session's context is nearly
+exhausted, and a panel convened from an exhausted orchestrator is a worse panel, not a
+faster one. Panelling this sentence is the NEXT session's first job, and D-43's
+newly-repaired-evidence condition is satisfied by: four engine bug fixes (silent
+ineligibility, the lying `aghq_used` flag, false convergence at 5000x tolerance, the vacuous
+GOLDEN 3), the elimination of the prototype dependency, and the fixed-truth coverage run.

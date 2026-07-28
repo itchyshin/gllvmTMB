@@ -1700,3 +1700,86 @@ the reference-based numbers without checking this first.
 
 **Next session: read `dev/aghq-evidence/18-shipped-inc.csv` BEFORE citing any AGHQ figure
 from the reference campaigns.**
+
+## 2026-07-28  The wide factorial: Laplace's bias is O(1/T) and BINARY-SPECIFIC — and poisson is the correctness control we did not have
+
+Decision: record, from 7550 fits through the SHIPPED engine on Totoro, the three findings
+that together scope what AGHQ is for. This supersedes every AGHQ comparative number
+derived from `dev/aghq-r-reference.R`, which D-43 lens 1 showed is not a valid model of
+the engine (the reference reproduces the shipped LAPLACE arm but not the shipped AGHQ arm).
+
+**1. Laplace's bias obeys O(1/T) in traits per site, and is invisible in n.** Binomial,
+q=1, lam_sd=1, n=1600, median `||Lambda_hat||/||Lambda||`:
+
+```
+   T =      2       4       6      12
+ Laplace  0.653   0.824   0.887   0.962      bias = 0.347 / 0.176 / 0.113 / 0.038
+```
+
+The bias halves as T doubles. This is the mechanism, measured: it is an approximation
+error in EACH SITE's integral, so adding sites adds clusters each carrying the same error
+and it never averages away. **Laplace is consistent for the WRONG value** — more data makes
+it more precisely wrong. That resolves the apparent paradox that Laplace looks "more
+biased" at n=1600 (0.798) than n=100 (0.924): at small n the constant downward error is
+masked by noise and by an opposing upward small-sample effect; as n grows the noise clears
+and the systematic error is revealed underneath. It does not grow; it is exposed.
+
+**2. The bias is BINARY-SPECIFIC. Poisson has none, at any T.**
+
+```
+   T =      2       4       6      12
+ poisson  1.006   1.006   0.995   0.997     AGHQ correction: +0.006 -0.002 0.000 0.000
+```
+
+A Bernoulli carries at most one bit and its conditional log-likelihood is far from
+quadratic in eta; a poisson with reasonable counts is nearly Gaussian, and Laplace is exact
+for a Gaussian integrand. So AGHQ's entire measured value proposition applies to binomial,
+NOT to poisson. Any claim of the form "AGHQ corrects an integral error in gllvmTMB" must
+name the family.
+
+**3. Poisson is a LIVE null control, and it is stronger evidence than Gaussian exactness.**
+`aghq_used` is TRUE on 100% of poisson AGHQ fits — the quadrature is fully active on a
+genuinely non-Gaussian integrand at k=9 — and it independently concludes there is nothing
+to correct, to three decimals, at all four T. Gaussian exactness cannot do this: a gaussian
+integrand IS the GH kernel after adaptation, so any correctly-normalised rule reproduces it
+and AGHQ is effectively inactive. This is the non-Gaussian check lens 1 recorded as
+missing, and it is now satisfied by a control that arrived unplanned.
+
+**Why AGHQ is sometimes WORSE, stated so it is not re-litigated.** Two errors of opposite
+sign. The true MLE of `||Lambda||` is biased UP at small n (the flat likelihood direction
+lets the optimiser drift); Laplace's integral error biases DOWN by O(1/T). At small n they
+partially cancel, so LAPLACE IS RIGHT BY ACCIDENT. AGHQ removes the downward error and
+exposes the upward MLE bias in full. This is not a quadrature defect and it is exactly why
+the recorded deliverable is "a correct LIKELIHOOD", never "a better point estimate".
+
+**The ridge's job is RUNAWAY PREVENTION, not shrinkage to truth — refuting our own
+prediction.** Pre-registered: the ridge would HURT where its prior is mis-specified. It does
+the opposite. Binomial, T=4, q=1, median |frob-1|:
+
+```
+  lam_sd = 0.5 : laplace 0.717 -> +ridge 0.613   HELPS
+  lam_sd = 1.0 : laplace 0.109 -> +ridge 0.156   hurts slightly
+  lam_sd = 3.0 : laplace 5.418 -> +ridge 0.227   HELPS ENORMOUSLY
+```
+
+At lam_sd = 3 the unpenalised fit DIVERGES, and a badly-specified prior still beats
+divergence. So the ridge is not competing with the truth, it is competing with a runaway.
+
+**The routing map this licenses** (and `aghq = "auto"` should route on THIS, not on keywords):
+
+| regime | route |
+|---|---|
+| poisson, any T, any n | Laplace — AGHQ buys 0.000 |
+| binomial, T small (<= 4), large n | AGHQ + ridge — the O(1/T) error is large and real |
+| binomial, T large (12) | Laplace nearly adequate (4% bias) |
+| binomial, small n | the RIDGE is the lever; AGHQ ALONE IS HARMFUL (runaway 47% -> 73%) |
+| strong signal / weak identification | ridge essential regardless of engine |
+
+**Scope, stated rather than implied.** 2 families of 16 (binomial-logit, poisson-log);
+q in {1,2}; T in {2,4,6,12}; lam_sd in {0.5,1,3}; n in {100,400,1600}; 15 seeds; balanced,
+complete, no covariates, no missing cells; `unique = FALSE` forced everywhere because AGHQ
+Stage 1a is loadings-only and the template hard-errors on `s_B` (src/gllvmTMB.cpp:2480) --
+single-trial Bernoulli only escapes this because `auto_psi_B` pins Psi off
+(R/fit-multi.R:4695), which is the sole reason binomial works with package defaults. Point
+recovery only: NO coverage or interval evidence exists. `conv` is uninformative on ridge
+arms until the MAP/ML gradient defect is fixed. Results are LOCAL per D-50.

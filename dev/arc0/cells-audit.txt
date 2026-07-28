@@ -1,0 +1,39 @@
+==== design: primary (32 cells) ====
+-- grp x n --
+            
+             40 100 200
+  degenerate 16   0   0
+  healthy     1  13   2
+-- grp x q --
+            
+             2 4
+  degenerate 8 8
+  healthy    9 7
+-- rel_frob median/range per grp --
+  degenerate: median=1.376e+04, range=[806.6, 1.963e+06], n=16
+  healthy: median=0.8862, range=[0.5503, 1.912], n=16
+VERDICT: design 'primary' IS confounded with n (grp-by-n overlap=TRUE, max within-grp n-concentration=1.00) -- as expected, this is the point of the audit.
+
+==== design: matched (16 cells) ====
+-- grp x n --
+            
+             40 100
+  degenerate  1   7
+  healthy     1   7
+-- grp x q --
+            
+             2 4
+  degenerate 4 4
+  healthy    4 4
+-- rel_frob median/range per grp --
+  degenerate: median=1657, range=[728, 3618], n=8
+  healthy: median=0.8862, range=[0.5791, 1.72], n=8
+VERDICT: design 'matched' is NOT confounded with n (overlap=TRUE, max concentration=0.88) and NOT confounded with q (overlap=TRUE, max concentration=0.50).
+
+Strata skipped (no both-group support): n200q4
+-- per-stratum counts (matched design) --
+        
+         degenerate healthy
+  n100q2          3       3
+  n100q4          4       4
+  n40q2           1       1

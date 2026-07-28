@@ -1,8 +1,13 @@
 # Claude → Claude handover, 2026-07-28 — the Σ-interval arc: premise collapse + four machinery fixes
 
 Lane `claude/sigma-intervals-boundary-20260728` · worktree `/private/tmp/gllvmtmb-arc0-identifiability`
-· **15 ahead / 3 BEHIND `origin/main`** · **UNPUSHED — see Landing State** · working tree clean.
+· **17 ahead / 0 BEHIND `origin/main`** · **UNPUSHED — see Landing State** · working tree clean.
 Totoro campaign **RUNNING**.
+
+> `git rev-list --left-right --count origin/main...HEAD` → **`0  17`**. The lane was 3 behind
+> (a consequence of my own H0 family-axis merge); `origin/main` has been merged in, cleanly, with
+> **no conflicts**. Post-merge regression: **96 passed, 0 failed, 0 errors** on the six
+> profile/coverage files. Nothing to rebase before resuming.
 
 ---
 

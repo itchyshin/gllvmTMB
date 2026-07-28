@@ -1830,3 +1830,46 @@ latent-SD point estimate is closer, and the reason is not established.*
 during it. The fits forked from the package image loaded at launch and are probably
 internally consistent, but that cannot be proven. **Re-run before publishing anything from
 it.** The direction is clear enough to record; the third decimal is not.
+
+## 2026-07-28  FAMILY AXIS measured — positive control passes, substantive answer NEGATIVE
+
+The last reachable goal criterion. Run in an ISOLATED worktree (detached at `1d6a82af`,
+`src/` verified unmodified in the shared one) because a concurrent lane was editing `R/`.
+n = 200, p = 6, q = 2, 10 seeds, Laplace vs AGHQ+ridge, lever = |sigma-1| under Laplace
+MINUS the same under AGHQ+ridge, so POSITIVE means AGHQ+ridge is closer to unbiased.
+
+```
+family     |  LA |s-1|  AGHQ|s-1| |   LEVER  | aghq used%
+gaussian   |   0.0099    0.0099   |  +0.0000 |   100%
+poisson    |   0.0032    0.0055   |  -0.0022 |   100%
+binomial   |   0.0616    0.1235   |  -0.0619 |   100%
+nbinom2    |   0.0197    0.0201   |  -0.0004 |   100%
+Gamma      |            no usable fits
+```
+
+**THE POSITIVE CONTROL PASSES, EXACTLY.** Laplace is exact for a gaussian latent-linear
+model, so AGHQ's lever there must be zero — and it is **+0.0000**. The harness is sound,
+which is the precondition for reading anything else here. (The goal named this check for
+exactly this reason: a non-zero gaussian lever would have meant the harness was wrong
+rather than the family.)
+
+**THE SUBSTANTIVE ANSWER IS NEGATIVE.** Every non-control row is a tie or worse. At
+n = 200, across four families, **AGHQ + ridge does not improve latent-SD recovery on any
+of them**, and is meaningfully worse on binomial (-0.062). This CONFIRMS AND GENERALISES
+the shipped-engine finding at n = 100 (Laplace sigma 1.011 vs AGHQ+ridge 1.262): the
+small-and-moderate-n sigma claim is dead, and it is dead across families, not just in the
+one cell where it was first noticed.
+
+**Gamma produced no usable fits** — recorded as a named exclusion, not dropped.
+
+**What this does NOT test, stated so the negative is not over-read:** only sigma, only
+n = 200, only one shape, only four of sixteen families. It says nothing about the large-n
+regime, where the shipped engine DID show AGHQ ahead (sigma 0.868 -> 0.981 at n = 1600),
+nor about rho, which improved at every n tested, nor about the runaway elimination
+(47% -> 0%), which remains the most robust result of the arc.
+
+**Consequence for the goal.** The `(T, M, family)` map now has its family axis measured
+with a passing positive control — and the answer is that the sigma lever is absent or
+negative at moderate n for every family tried. That is a completed criterion with a
+negative result, which is a legitimate outcome and is more useful than the confirmation
+that was hoped for.

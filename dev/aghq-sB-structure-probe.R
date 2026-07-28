@@ -1,0 +1,55 @@
+## TASK 2 FEASIBILITY: is the (z_B, s_B) per-site graph really a STAR?
+##
+## The factorisation that makes s_B tractable needs THREE things to hold, and
+## only the first is cheap to assert:
+##   1. s_B[.,i] x s_B[.,i] off-diagonal of the conditional Hessian is ZERO
+##      (the T inner integrals are mutually independent GIVEN z_B);
+##   2. the z_B x s_B cross-block is NOT zero (else there is nothing to nest);
+##   3. s_B[t,i] enters only the rows of cell (t, i).
+## This measures 1 and 2 on a live default-latent() fit.
+suppressMessages(devtools::load_all("/private/tmp/gllvmtmb-arc0-identifiability", quiet = TRUE))
+
+set.seed(4); n <- 40; p <- 5; q <- 2
+Lt <- matrix(rnorm(p * q, 0, 0.6), p, q); u <- matrix(rnorm(n * q), n, q)
+b  <- rnorm(p, 0.3, 0.3); psi <- runif(p, 0.2, 0.6)
+eta <- sweep(u %*% t(Lt), 2, b, "+") + matrix(rnorm(n * p), n, p) %*% diag(psi)
+Y <- matrix(rpois(n * p, exp(pmin(eta, 4))), n, p); colnames(Y) <- paste0("sp", seq_len(p))
+df <- as.data.frame(Y); df$site <- factor(seq_len(n))
+fml <- as.formula(sprintf("traits(%s) ~ 1 + latent(1 | site, d = %d)",
+                          paste(colnames(Y), collapse = ", "), q))
+f <- suppressWarnings(gllvmTMB(fml, data = df, family = poisson()))
+
+o <- f$tmb_obj
+invisible(o$fn(f$opt$par))
+full <- o$env$last.par; ridx <- o$env$random
+nm <- names(full)[ridx]
+cat("random blocks present:", paste(unique(nm), collapse = ", "), "\n")
+cat("counts:", paste(names(table(nm)), table(nm), sep = "=", collapse = " "), "\n")
+cat("aghq reason on this model:", f$aghq$reason, "\n")
+
+H <- o$env$spHess(full, random = TRUE)
+iz <- which(nm == "z_B"); is_ <- which(nm == "s_B")
+Hzz <- as.matrix(H[iz, iz, drop = FALSE])
+Hss <- as.matrix(H[is_, is_, drop = FALSE])
+Hzs <- as.matrix(H[iz, is_, drop = FALSE])
+offs <- Hss; diag(offs) <- 0
+cat(sprintf("max |s_B x s_B OFF-diagonal| = %.6g   (claim: identically zero)\n",
+            max(abs(offs))))
+cat(sprintf("max |z_B x s_B cross-block|   = %.6g   (must NOT be zero)\n",
+            max(abs(Hzs))))
+## z_B x z_B must be block-diagonal by site (d_B x d_B blocks), else the outer
+## grid is not per-site either.
+d_B <- q; n_sites <- n
+offz <- Hzz
+for (s in seq_len(n_sites)) {
+  ii <- (s - 1L) * d_B + seq_len(d_B); offz[ii, ii] <- 0
+}
+cat(sprintf("max |z_B x z_B off-site-block| = %.6g   (claim: zero)\n", max(abs(offz))))
+## And the cross-block must itself be per-site: s_B[t, i] may only couple to z_B[., i].
+bad <- 0
+for (s in seq_len(n_sites)) {
+  zz <- (s - 1L) * d_B + seq_len(d_B)
+  ss <- which(((seq_along(is_) - 1L) %/% p) + 1L != s)   # s_B is n_traits x n_sites
+  bad <- max(bad, max(abs(Hzs[zz, ss, drop = FALSE])))
+}
+cat(sprintf("max |z_B[.,i] x s_B[.,j!=i]|   = %.6g   (claim: zero)\n", bad))

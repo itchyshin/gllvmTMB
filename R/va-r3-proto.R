@@ -200,7 +200,7 @@
          call. = FALSE)
   }
 
-  family <- match.arg(family, c("binomial", "poisson", "gaussian_anchor"))
+  family <- match.arg(family, c("binomial", "poisson", "gaussian_anchor", "nbinom2"))
   if (family == "binomial") {
     if (!identical(link, "logit")) {
       stop("R3 admits only the binomial logit link.", call. = FALSE)
@@ -225,6 +225,18 @@
     ## algebra does not use it, but it must be finite and correctly sized.
     n_trials <- rep.int(1L, length(y))
     family_code <- 2L
+  } else if (family == "nbinom2") {
+    if (!identical(link, "log")) {
+      stop("R3 admits only the nbinom2 log link.", call. = FALSE)
+    }
+    if (!is.numeric(y) || any(!is.finite(y)) || any(y != as.integer(y)) ||
+        any(y < 0L)) {
+      stop("nbinom2 R3 data require finite non-negative integer y.", call. = FALSE)
+    }
+    ## The standalone template declares n_trials for every branch; the nbinom2
+    ## algebra does not use it, but it must be finite and correctly sized.
+    n_trials <- rep.int(1L, length(y))
+    family_code <- 3L
   } else {
     if (!identical(link, "identity")) {
       stop("The Gaussian algebra anchor uses the identity link.", call. = FALSE)
@@ -379,7 +391,8 @@
   pseudo <- if (data$family == 1L) {
     prop <- pmin(pmax((data$y + 0.5) / (data$n_trials + 1), 1e-6), 1 - 1e-6)
     stats::qlogis(prop)
-  } else if (data$family == 2L) {
+  } else if (data$family == 2L || data$family == 3L) {
+    ## Poisson and nbinom2 share the log link.
     log(data$y + 0.5)
   } else {
     data$y
@@ -419,9 +432,9 @@
     prop <- (data$y + 0.5) / (data$n_trials + 1)
     beta_fit <- tryCatch(stats::lm.fit(data$X, stats::qlogis(prop))$coefficients,
                          error = function(e) rep(0, p))
-  } else if (data$family == 2L) {
-    ## Poisson uses a log link, so start beta on the log scale; the 0.5
-    ## offset keeps zero counts finite.
+  } else if (data$family == 2L || data$family == 3L) {
+    ## Poisson and nbinom2 share a log link, so start beta on the log scale;
+    ## the 0.5 offset keeps zero counts finite.
     beta_fit <- tryCatch(stats::lm.fit(data$X, log(data$y + 0.5))$coefficients,
                          error = function(e) rep(0, p))
   } else {
@@ -467,23 +480,533 @@
     theta_rr = theta_rr,
     m = m,
     log_L_diag = log_L_diag,
-    L_off = L_off
+    L_off = L_off,
+    ## Mapped off (fixed at this default) for every family except nbinom2;
+    ## log_phi = 0 means phi = 1 on the natural scale.
+    log_phi = rep(0, T)
   )
 }
 
-.va_r3_eval_method_code <- function(eval_method = c("auto", "jj"), family) {
+## Per-family evaluation contract for the VA-R3 engine.
+##
+## The VA objective needs E[log p(y | eta)] with eta ~ N(mu, v). For every
+## family whose likelihood enters through a SCALAR linear predictor that is a
+## one-dimensional integral, so a family is specified here by which evaluation
+## tiers the template implements for it and which one `eval_method = "auto"`
+## resolves to. Adding a family is a registry entry plus a template branch,
+## not a new dispatch rule.
+##
+## Fields
+##   family       : R-side name accepted by .va_r3_validate_data()
+##   family_code  : integer passed to the template as DATA_INTEGER(family)
+##   link         : the single link this family admits
+##   tiers        : evaluation tiers the template implements for it
+##   default_tier : what eval_method = "auto" resolves to
+##   expectation  : how E[log p(y|eta)] is obtained under default_tier --
+##                  "exact" (closed form), "quadrature" (Gauss-Hermite), or
+##                  "bound" (a variational bound, deliberately not an equality)
+.va_r3_family_registry <- list(
+  ## Gaussian anchor -- E[(y - eta)^2] = (y - mu)^2 + v in closed form, so the
+  ## quadrature nodes are never touched and no bound is needed.
+  list(
+    family = "gaussian_anchor",
+    family_code = 0L,
+    link = "identity",
+    tiers = "gh",
+    default_tier = "gh",
+    expectation = "exact",
+    ## lbfgsb median 2.13x (range 1.76-2.50, 4 cells), all agreeing.
+    optimizer_by_tier = list(gh = "lbfgsb")
+  ),
+
+  ## Binomial-logit -- the only family with a genuine choice. Gauss-Hermite
+  ## evaluates E[softplus(eta)] to quadrature accuracy; the Jaakkola-Jordan/PG
+  ## bound over-estimates it in closed form, which is what keeps the ELBO a
+  ## valid lower bound. "auto" takes the bound: measured 1.9-4.0x faster
+  ## (n = 200/400/800, interleaved) with better Sigma_B recovery on 20/20
+  ## paired seeds. Ask for "gh" to force quadrature -- the controlled bound
+  ## comparisons in dev/ do exactly that.
+  list(
+    family = "binomial",
+    family_code = 1L,
+    link = "logit",
+    tiers = c("gh", "jj"),
+    default_tier = "jj",
+    expectation = "bound",
+    ## The tiers disagree sharply and in OPPOSITE directions, which is why the
+    ## optimiser has to be resolved per TIER and not per family: on jj lbfgsb is
+    ## median 2.54x FASTER (1.31-6.33, 4 cells); on gh it is median 0.57x, i.e.
+    ## 1.7x SLOWER (0.35-1.02). gh is the accurate tier, so a family-level
+    ## choice would have slowed down the arm we most want fast.
+    optimizer_by_tier = list(gh = "nlminb", jj = "lbfgsb")
+  ),
+
+  ## Poisson-log -- E[exp(eta)] = exp(mu + v/2) is the log-normal mean, exact.
+  list(
+    family = "poisson",
+    family_code = 2L,
+    link = "log",
+    tiers = "gh",
+    default_tier = "gh",
+    expectation = "exact",
+    ## lbfgsb median 1.25x but the range STRADDLES 1 (0.96-3.25, 6 cells), so
+    ## it is not reliably faster. nlminb stays the reference here.
+    optimizer_by_tier = list(gh = "nlminb")
+  ),
+
+  ## Negative binomial (nbinom2, log link) -- the only hard term,
+  ## E[log(phi + exp(eta))], reduces to log(phi) + E[softplus(eta - log(phi))],
+  ## which is the same Gauss-Hermite softplus-expectation helper the binomial
+  ## family already uses, evaluated at a shifted mean. No new quadrature
+  ## machinery; only a shifted call.
+  list(
+    family = "nbinom2",
+    family_code = 3L,
+    link = "log",
+    tiers = "gh",
+    default_tier = "gh",
+    expectation = "quadrature",
+    ## lbfgsb median 0.42x -- 2.4x SLOWER (0.26-0.63, 6 cells) -- and nbinom2
+    ## produced the ONLY same-optimum disagreement in the whole sweep
+    ## (max|dpar| 0.0119 at q=2 with identical objectives). Routing here to
+    ## nlminb keeps "auto" away from the one cell that disagreed.
+    optimizer_by_tier = list(gh = "nlminb")
+  )
+)
+
+.va_r3_family_entry <- function(family_code) {
+  for (entry in .va_r3_family_registry) {
+    if (identical(entry$family_code, family_code)) return(entry)
+  }
+  stop("VA-R3 has no registry entry for family code ", family_code, ".",
+       call. = FALSE)
+}
+
+.va_r3_resolve_eval_method <- function(eval_method = c("auto", "jj", "gh"), family) {
   eval_method <- match.arg(eval_method)
-  if (identical(eval_method, "jj") && !identical(family, 1L)) {
-    stop("eval_method = \"jj\" (Jaakkola-Jordan/PG bound) is only defined for the binomial family.",
+  entry <- .va_r3_family_entry(family)
+  if (identical(eval_method, "auto")) return(entry$default_tier)
+  if (!eval_method %in% entry$tiers) {
+    stop(sprintf(
+      "eval_method = \"%s\" is not implemented for the %s family; available: %s.",
+      eval_method, entry$family, paste(entry$tiers, collapse = ", ")),
+      call. = FALSE)
+  }
+  eval_method
+}
+
+.va_r3_eval_method_code <- function(eval_method = c("auto", "jj", "gh"), family) {
+  if (identical(.va_r3_resolve_eval_method(eval_method, family), "jj")) 1L else 0L
+}
+
+.va_r3_objective_type <- function(resolved_eval_method) {
+  if (identical(resolved_eval_method, "jj")) "ELBO_JJ" else "ELBO_GH"
+}
+
+## Latent-variable posterior summary from a fitted parameter vector.
+##
+## The variational posterior q(z_i) = N(m_i, L_i L_i') is ESTIMATED, so its
+## per-unit spread is already computed at the optimum and needs only to be
+## read out -- unlike beta and the loadings, which are point-estimated and
+## carry no variational distribution at all.
+##
+## Two honesty constraints are baked into the return value:
+##   * `uncertainty_basis` records that these are VARIATIONAL posterior SDs,
+##     conditional on the point estimates of beta and theta_rr. They are not
+##     Wald standard errors and they do not propagate loading uncertainty.
+##   * `calibrated = FALSE` until a coverage study says otherwise. Variational
+##     posteriors are known to understate spread; the size of that understatement
+##     here is unmeasured, so nothing downstream may quote these as intervals.
+## The list(scores=, se=) shape matches the existing getLV(se = TRUE) contract
+## in R/output-methods.R so this can be wired to that surface without a new API.
+.va_r3_latent_posterior <- function(par, N, q) {
+  N <- as.integer(N)
+  q <- as.integer(q)
+  nm <- names(par)
+  if (is.null(nm)) {
+    stop("par must carry TMB parameter names to read the variational block.",
          call. = FALSE)
   }
-  if (identical(eval_method, "jj")) 1L else 0L
+  take <- function(what) unname(par[nm == what])
+  scores <- matrix(take("m"), nrow = N, ncol = q)
+  chol_factors <- .va_r3_unpack_variational_chol(
+    take("log_L_diag"), take("L_off"), N, q
+  )
+  se <- matrix(NA_real_, nrow = N, ncol = q)
+  for (i in seq_len(N)) {
+    L_i <- matrix(chol_factors[, , i], nrow = q, ncol = q)
+    ## pmax(., 0) mirrors .getLV_se(); a Cholesky product cannot be negative
+    ## on the diagonal except through floating-point error.
+    se[i, ] <- sqrt(pmax(diag(L_i %*% t(L_i)), 0))
+  }
+  list(
+    scores = scores,
+    se = se,
+    uncertainty_basis = "variational posterior, conditional on point estimates of beta and theta_rr",
+    calibrated = FALSE
+  )
+}
+
+## Observed information for the FIXED parameters (beta, theta_rr).
+##
+## Unlike the latent block above, beta and theta_rr have no variational
+## distribution -- they are maximised, so an SE has to come from curvature.
+## Two are computed, and the difference between them matters:
+##
+##   se_conditional : from H_ff alone, holding the variational coordinates at
+##                    their optimum. This is what a naive optimHess over the
+##                    fixed block gives. It IGNORES the fact that m and the
+##                    Cholesky would re-optimise as beta and theta_rr move, so
+##                    it overstates curvature and is expected ANTI-CONSERVATIVE.
+##   se_profile     : the Schur complement H_ff - H_fv H_vv^-1 H_vf, i.e. the
+##                    curvature of the objective with the variational block
+##                    profiled out. This is the correct observed information
+##                    for the fixed parameters and is the one to prefer.
+##
+## Conventions follow the package (R/extractors.R returns a status code; the
+## confint surface carries a pd_hessian column) and GLLVM.jl/src/confint.jl
+## (PD check, NA rather than a number when the Hessian is not usable).
+##
+## Neither SE is calibrated. Variational posteriors understate spread, and the
+## size of that understatement here is unmeasured, so `calibrated` stays FALSE
+## until a coverage study fills it in.
+## L-BFGS-B's relative-tolerance control. optim() expresses it as factr, a
+## MULTIPLE of machine epsilon, so this is the translation of nlminb-grade
+## tolerance. Passing optim's DEFAULT factr instead is catastrophic and silent:
+## measured at N=1600 it terminated in 24 MILLISECONDS at an objective 125-151
+## worse than nlminb's, in 3 of 3 replicates, while reporting convergence = 0.
+## With this value it reached nlminb's objective to <= 1e-4 in all 3, between
+## 17.7x and 37.7x faster. Never let this default.
+.VA_R3_LBFGSB_FACTR <- 1e-12 / .Machine$double.eps
+
+## The primary optimiser. nlminb (PORT) is the default and remains the
+## reference; "lbfgsb" is the measured-faster alternative. Both minimise the
+## same objective from the same start, so this is a route choice, not a model
+## choice -- but it is opt-in rather than the default because the same-optimum
+## evidence is currently gaussian_anchor at N=1600 and binomial-jj at n<=800,
+## which is not yet the whole admitted surface.
+## Resolve optimizer = "auto" from the registry, per FAMILY and per TIER.
+##
+## Which optimiser wins is not a property of the family alone -- binomial splits
+## in opposite directions across its two tiers (jj 2.54x toward lbfgsb, gh 0.57x
+## toward nlminb), so resolving per family would have slowed the accurate tier
+## down. Each registry row therefore carries optimizer_by_tier, and "auto" reads
+## it after eval_method has itself been resolved.
+##
+## The routing is deliberately conservative: lbfgsb is chosen only where it was
+## measured reliably faster AND every cell agreed on the optimum. Where the
+## speed-up straddled 1 (poisson) or lbfgsb was slower (binomial-gh, nbinom2),
+## auto keeps nlminb. That also routes auto AWAY from nbinom2, the only family
+## that produced a same-optimum disagreement in the sweep.
+.va_r3_resolve_optimizer <- function(optimizer = c("auto", "nlminb", "lbfgsb"),
+                                     family, resolved_eval_method) {
+  optimizer <- match.arg(optimizer)
+  if (!identical(optimizer, "auto")) return(optimizer)
+  entry <- .va_r3_family_entry(family)
+  choice <- entry$optimizer_by_tier[[resolved_eval_method]]
+  ## A tier with no declared route falls back to the reference optimiser rather
+  ## than guessing; a new tier must opt in explicitly.
+  if (is.null(choice)) "nlminb" else choice
+}
+
+.va_r3_run_primary <- function(optimizer, obj, start, control) {
+  if (identical(optimizer, "nlminb")) {
+    return(stats::nlminb(start, obj$fn, obj$gr, control = control))
+  }
+  maxit <- control$iter.max %||% control$eval.max %||% 2000L
+  fit <- stats::optim(start, obj$fn, obj$gr, method = "L-BFGS-B",
+                      control = list(maxit = maxit,
+                                     factr = .VA_R3_LBFGSB_FACTR))
+  ## Normalise onto nlminb's return shape so every downstream health gate,
+  ## polish step and diagnostic reads the same fields regardless of route.
+  list(par = fit$par, objective = fit$value, convergence = fit$convergence,
+       message = fit$message, evaluations = fit$counts,
+       iterations = NA_integer_)
+}
+
+## Positions of each unit's variational coordinates within the parameter vector.
+##
+## The variational block is stored as three column-major matrices -- m (N x q),
+## log_L_diag (N x q) and L_off (N x q(q-1)/2) -- so a single unit's k = 2q +
+## q(q-1)/2 coordinates are SCATTERED through the vector, not contiguous.
+## Returns an N x k matrix of absolute positions, column c being the c-th
+## within-unit coordinate for every unit.
+.va_r3_variational_index_map <- function(par_names, N, q) {
+  N <- as.integer(N)
+  q <- as.integer(q)
+  n_off <- as.integer(q * (q - 1L) / 2L)
+  columns <- list()
+  for (group in c("m", "log_L_diag", "L_off")) {
+    idx <- which(par_names == group)
+    n_col <- if (identical(group, "L_off")) n_off else q
+    if (!length(idx)) {
+      if (n_col > 0L) {
+        stop("variational group ", group, " is absent from par.", call. = FALSE)
+      }
+      next
+    }
+    if (length(idx) != N * n_col) {
+      stop("variational group ", group, " has an unexpected length.", call. = FALSE)
+    }
+    for (j in seq_len(n_col)) {
+      columns[[length(columns) + 1L]] <- idx[(j - 1L) * N + seq_len(N)]
+    }
+  }
+  if (!length(columns)) return(matrix(integer(), nrow = N, ncol = 0L))
+  do.call(cbind, columns)
+}
+
+## Hessian blocks WITHOUT forming the dense Hessian.
+##
+## Two structural facts make this O(N) in memory and O(1) in gradient calls:
+##
+##  * Units are conditionally independent given the fixed parameters, so H_vv is
+##    EXACTLY block diagonal -- N blocks of k x k. Differencing the gradient
+##    along "within-unit coordinate j of EVERY unit at once" therefore returns
+##    column j of every block simultaneously, with no cross-unit contamination.
+##    That is 2k gradient calls for the whole of H_vv, independent of N.
+##  * H_fv has only length(fixed) rows, so differencing along each fixed
+##    coordinate gives it in 2 * length(fixed) calls and it stays small.
+##
+## At n = 5397, q = 2 this replaces a 27,002^2 dense Hessian (~5.8 GB) with
+## ~44 gradient evaluations and a few MB.
+.va_r3_hessian_blocks <- function(objective, par, fixed_idx, index_map,
+                                  step = 1e-5) {
+  gradient <- function(p) objective$gr(p)
+  central <- function(direction) {
+    up <- par; down <- par
+    up[direction] <- up[direction] + step
+    down[direction] <- down[direction] - step
+    (as.numeric(gradient(up)) - as.numeric(gradient(down))) / (2 * step)
+  }
+
+  ## Columns of H at the fixed coordinates: gives H_ff and H_fv in one sweep.
+  n_fixed <- length(fixed_idx)
+  fixed_columns <- vapply(fixed_idx, function(i) central(i),
+                          numeric(length(par)))
+  H_ff <- fixed_columns[fixed_idx, , drop = FALSE]
+  ## Symmetrise: central differences of an exact gradient are symmetric only up
+  ## to truncation error, and the Schur complement below needs symmetry.
+  H_ff <- (H_ff + t(H_ff)) / 2
+
+  k <- ncol(index_map)
+  N <- nrow(index_map)
+  blocks <- array(0, dim = c(k, k, N))
+  for (j in seq_len(k)) {
+    delta <- central(index_map[, j])
+    for (c in seq_len(k)) {
+      blocks[c, j, ] <- delta[index_map[, c]]
+    }
+  }
+  ## Symmetrise each block for the same reason.
+  for (i in seq_len(N)) {
+    blocks[, , i] <- (blocks[, , i] + t(blocks[, , i])) / 2
+  }
+
+  list(H_ff = H_ff, fixed_columns = fixed_columns, blocks = blocks,
+       n_fixed = n_fixed, k = k, N = N)
+}
+
+## Block-structured route: same Schur complement, without the dense Hessian.
+## Use this whenever the variational block is large; it is O(N) in memory and
+## uses ~2*(n_fixed + k) gradient calls regardless of N.
+.va_r3_fixed_information_blocked <- function(objective, par, N, q) {
+  fail <- function(status) {
+    list(se_conditional = NULL, se_profile = NULL, pd_hessian = FALSE,
+         calibrated = FALSE, status = status, route = "blocked")
+  }
+  nm <- names(par)
+  if (is.null(nm)) return(fail("va_unnamed_par_no_fixed_se"))
+  fixed_idx <- which(nm %in% c("beta", "theta_rr"))
+  if (!length(fixed_idx)) return(fail("va_no_fixed_block_no_fixed_se"))
+
+  index_map <- tryCatch(.va_r3_variational_index_map(nm, N, q),
+                        error = function(e) NULL)
+  if (is.null(index_map) || !ncol(index_map)) {
+    return(fail("va_variational_layout_unrecognised"))
+  }
+
+  parts <- tryCatch(
+    .va_r3_hessian_blocks(objective, par, fixed_idx, index_map),
+    error = function(e) NULL
+  )
+  if (is.null(parts)) return(fail("va_hessian_error_no_fixed_se"))
+
+  se_from <- function(info) {
+    ok <- tryCatch({ chol(info); TRUE }, error = function(e) FALSE)
+    if (!ok) return(NULL)
+    covariance <- tryCatch(solve(info), error = function(e) NULL)
+    if (is.null(covariance)) return(NULL)
+    d <- diag(covariance)
+    if (any(!is.finite(d)) || any(d < 0)) return(NULL)
+    stats::setNames(sqrt(d), nm[fixed_idx])
+  }
+
+  se_conditional <- se_from(parts$H_ff)
+
+  ## Schur complement accumulated one unit at a time:
+  ##   H_ff - sum_i H_fv,i B_i^{-1} H_fv,i'
+  ## H_fv,i is n_fixed x k, read out of the fixed columns at unit i's positions.
+  correction <- matrix(0, parts$n_fixed, parts$n_fixed)
+  singular <- FALSE
+  for (i in seq_len(parts$N)) {
+    H_fv_i <- parts$fixed_columns[index_map[i, ], , drop = FALSE]  # k x n_fixed
+    solved <- tryCatch(solve(parts$blocks[, , i], H_fv_i), error = function(e) NULL)
+    if (is.null(solved)) { singular <- TRUE; break }
+    correction <- correction + crossprod(H_fv_i, solved)
+  }
+
+  se_profile <- NULL
+  profile_status <- "ok"
+  if (singular) {
+    profile_status <- "va_singular_variational_block"
+  } else {
+    schur <- parts$H_ff - correction
+    schur <- (schur + t(schur)) / 2
+    se_profile <- se_from(schur)
+    if (is.null(se_profile)) profile_status <- "va_non_pd_profile_information"
+  }
+
+  list(
+    se_conditional = se_conditional,
+    se_profile = se_profile,
+    pd_hessian = !is.null(se_profile),
+    calibrated = FALSE,
+    route = "blocked",
+    status = if (is.null(se_conditional)) {
+      "va_non_pd_fixed_information_no_fixed_se"
+    } else profile_status,
+    basis = paste(
+      "observed information of the negative ELBO via block-diagonal Schur;",
+      "se_profile marginalises the variational block, se_conditional does not"
+    )
+  )
+}
+
+## Recover N and q from the parameter layout alone.
+##   length(m) = length(log_L_diag) = N*q ;  length(L_off) = N*q(q-1)/2
+## so q = 2*n_off/n_m + 1 and N = n_m/q. q = 1 is the n_off == 0 case.
+.va_r3_infer_dims <- function(par_names) {
+  n_m <- sum(par_names == "m")
+  n_off <- sum(par_names == "L_off")
+  if (!n_m) return(NULL)
+  q <- as.integer(round(2 * n_off / n_m + 1))
+  if (q < 1L) return(NULL)
+  N <- n_m / q
+  if (N != as.integer(N)) return(NULL)
+  list(N = as.integer(N), q = q)
+}
+
+## Single entry point. Routes to the block-diagonal Schur by default, which is
+## exact (verified against the dense route to 1.5e-10 relative) and O(N) in
+## memory, so there is no scale at which this silently falls back to the
+## anti-conservative conditional SE. route = "dense" forces the original path
+## and exists to keep that cross-check runnable.
+## max_variational is accepted and IGNORED. It used to bound the dense Schur
+## complement; the blocked route removed the limitation it guarded, so the
+## argument is vestigial. It is kept because callers written against the old
+## signature exist -- dropping it turned a running two-hour job's SE step into
+## an "unused argument" error after the fit had already succeeded.
+.va_r3_fixed_information <- function(objective, par,
+                                     route = c("auto", "blocked", "dense"),
+                                     max_variational = NULL) {
+  route <- match.arg(route)
+  nm <- names(par)
+  if (!is.null(nm) && !identical(route, "dense")) {
+    dims <- .va_r3_infer_dims(nm)
+    if (!is.null(dims)) {
+      return(.va_r3_fixed_information_blocked(objective, par,
+                                              N = dims$N, q = dims$q))
+    }
+    if (identical(route, "blocked")) {
+      return(list(se_conditional = NULL, se_profile = NULL, pd_hessian = FALSE,
+                  calibrated = FALSE, route = "blocked",
+                  status = "va_variational_layout_unrecognised"))
+    }
+  }
+  fail <- function(status) {
+    list(se_conditional = NULL, se_profile = NULL, pd_hessian = FALSE,
+         calibrated = FALSE, status = status, route = "dense")
+  }
+  if (is.null(nm)) return(fail("va_unnamed_par_no_fixed_se"))
+  fixed_idx <- which(nm %in% c("beta", "theta_rr"))
+  var_idx <- which(nm %in% c("m", "log_L_diag", "L_off"))
+  if (!length(fixed_idx)) return(fail("va_no_fixed_block_no_fixed_se"))
+
+  hessian <- tryCatch(objective$he(par), error = function(e) NULL)
+  if (is.null(hessian) || !all(is.finite(hessian))) {
+    return(fail("va_hessian_error_no_fixed_se"))
+  }
+
+  ## sqrt of the diagonal of the inverse, guarded on positive-definiteness.
+  se_from <- function(info) {
+    ok <- tryCatch({
+      chol(info)
+      TRUE
+    }, error = function(e) FALSE)
+    if (!ok) return(NULL)
+    covariance <- tryCatch(solve(info), error = function(e) NULL)
+    if (is.null(covariance)) return(NULL)
+    diagonal <- diag(covariance)
+    if (any(!is.finite(diagonal)) || any(diagonal < 0)) return(NULL)
+    stats::setNames(sqrt(diagonal), nm[fixed_idx])
+  }
+
+  H_ff <- hessian[fixed_idx, fixed_idx, drop = FALSE]
+  se_conditional <- se_from(H_ff)
+
+  ## The Schur complement needs H_vv inverted. H_vv is block diagonal by unit,
+  ## so this is far cheaper than it looks -- but the dense solve below is not,
+  ## which is why it is size-guarded. Exploiting the block structure is the
+  ## scaling path when this is needed at large n.
+  se_profile <- NULL
+  profile_status <- "ok"
+  if (!length(var_idx)) {
+    profile_status <- "va_no_variational_block"
+  } else {
+    H_fv <- hessian[fixed_idx, var_idx, drop = FALSE]
+    H_vv <- hessian[var_idx, var_idx, drop = FALSE]
+    schur <- tryCatch(H_ff - H_fv %*% solve(H_vv, t(H_fv)),
+                      error = function(e) NULL)
+    if (is.null(schur)) {
+      profile_status <- "va_singular_variational_block"
+    } else {
+      se_profile <- se_from(schur)
+      if (is.null(se_profile)) profile_status <- "va_non_pd_profile_information"
+    }
+  }
+
+  list(
+    se_conditional = se_conditional,
+    se_profile = se_profile,
+    pd_hessian = !is.null(se_profile),
+    ## FALSE means "not certified for general use", which remains true: the
+    ## coverage evidence below covers one DGP and two sample sizes. It is
+    ## recorded here so the numbers travel with the caveat rather than being
+    ## re-derived, or quietly forgotten, by a later reader.
+    calibrated = FALSE,
+    calibration_evidence = paste(
+      "beta only, binomial-logit, q=2, p=8, n in {150,400}, 25 seeds",
+      "(MCSE 0.015; dev/va-se-calibration.R):",
+      "se_profile covers 0.935-0.950 against nominal 0.95 in every cell;",
+      "se_conditional under-covers in every cell (0.885-0.910).",
+      "Latent-score SDs are NOT calibrated. Nothing else is tested."
+    ),
+    route = "dense",
+    status = if (is.null(se_conditional)) {
+      "va_non_pd_fixed_information_no_fixed_se"
+    } else profile_status,
+    basis = paste(
+      "observed information of the negative ELBO (dense route);",
+      "se_profile marginalises the variational block, se_conditional does not"
+    )
+  )
 }
 
 .va_r3_make_objective <- function(validated, H = 61L, source = NULL,
                                   rebuild = FALSE, parameters = NULL,
                                   fixed_global = NULL, silent = TRUE,
-                                  eval_method = c("auto", "jj")) {
+                                  eval_method = c("auto", "jj", "gh")) {
   if (validated$q == 0L) {
     stop("q = 0 is not applicable and must not construct an R3 objective.",
          call. = FALSE)
@@ -493,12 +1016,23 @@
   rule <- .va_r3_gh_rule(H)
   dll <- .va_r3_load_dll(source, rebuild = rebuild)
   if (is.null(parameters)) parameters <- .va_r3_default_parameters(validated, 1L)
+  ## Callers that hand-build a parameters list (tests exercising families 0-2
+  ## predate log_phi) never set it; every family needs a value passed to the
+  ## template regardless, so fill in the phi=1 default rather than requiring
+  ## every call site to know about a parameter that, for them, is inert.
+  if (is.null(parameters$log_phi)) parameters$log_phi <- rep(0, validated$T)
   tmb_data <- validated[c("y", "n_trials", "X", "unit_id", "trait_id",
                           "N", "T", "q", "family", "gaussian_sd")]
   tmb_data$gh_nodes <- rule$nodes
   tmb_data$gh_weights <- rule$weights
   tmb_data$eval_method <- eval_method_code
-  map <- NULL
+  ## log_phi is only a genuine free parameter for nbinom2 (family_code 3);
+  ## every other family maps it off at its default value, so adding it here
+  ## costs those families nothing.
+  map <- list()
+  if (!identical(validated$family, 3L)) {
+    map$log_phi <- factor(rep(NA_integer_, length(parameters$log_phi)))
+  }
   if (!is.null(fixed_global)) {
     if (!is.list(fixed_global) ||
         !identical(sort(names(fixed_global)), c("beta", "theta_rr"))) {
@@ -514,11 +1048,10 @@
     .va_r3_unpack_theta_rr(fixed_global$theta_rr, validated$T, validated$q)
     parameters$beta <- as.numeric(fixed_global$beta)
     parameters$theta_rr <- as.numeric(fixed_global$theta_rr)
-    map <- list(
-      beta = factor(rep(NA_integer_, length(parameters$beta))),
-      theta_rr = factor(rep(NA_integer_, length(parameters$theta_rr)))
-    )
+    map$beta <- factor(rep(NA_integer_, length(parameters$beta)))
+    map$theta_rr <- factor(rep(NA_integer_, length(parameters$theta_rr)))
   }
+  if (!length(map)) map <- NULL
   obj <- TMB::MakeADFun(
     data = tmb_data,
     parameters = parameters,
@@ -534,10 +1067,11 @@
 
 .va_r3_fit <- function(y, n_trials, X, unit_id, trait_id, q,
                        N = NULL, T = NULL,
-                       family = c("binomial", "poisson", "gaussian_anchor"),
+                       family = c("binomial", "poisson", "gaussian_anchor", "nbinom2"),
                        link = switch(family[1L],
                          gaussian_anchor = "identity",
                          poisson = "log",
+                         nbinom2 = "log",
                          "logit"),
                        unique = FALSE, psi = FALSE, structured = FALSE,
                        provider = NULL, lv = FALSE, missing = FALSE,
@@ -545,17 +1079,25 @@
                        rank_source = c("fixed_fixture", "ml_bic"),
                        fixed_global = NULL, source = NULL, rebuild = FALSE,
                        control = list(eval.max = 2000L, iter.max = 2000L),
-                       silent = TRUE, eval_method = c("auto", "jj")) {
+                       silent = TRUE, eval_method = c("auto", "jj", "gh"),
+                       n_starts = 4L,
+                       optimizer = c("auto", "nlminb", "lbfgsb")) {
   family <- match.arg(family)
   rank_source <- match.arg(rank_source)
   eval_method <- match.arg(eval_method)
+  optimizer <- match.arg(optimizer)
+  ## Resolved below, once validated$family and the eval tier are both known.
   validated <- .va_r3_validate_data(
     y, n_trials, X, unit_id, trait_id, q, N, T, family, link,
     unique, psi, structured, provider, lv, missing, gaussian_sd
   )
-  ## Validate eval_method against the family up front, before any objective
-  ## is constructed, so a mismatched request fails closed for every start.
-  .va_r3_eval_method_code(eval_method, validated$family)
+  ## Validate and resolve eval_method against the family up front, before any
+  ## objective is constructed, so a mismatched request fails closed for every
+  ## start. Everything downstream reports the RESOLVED bound, not the request,
+  ## so an "auto" fit never mislabels which bound it actually evaluated.
+  resolved_eval_method <- .va_r3_resolve_eval_method(eval_method, validated$family)
+  optimizer <- .va_r3_resolve_optimizer(optimizer, validated$family,
+                                        resolved_eval_method)
   if (validated$q == 0L) {
     return(list(
       status = "not_applicable_rank_zero",
@@ -565,20 +1107,42 @@
         "The fixed research fixture has rank zero; there is no latent posterior to approximate."
       },
       research_only = TRUE,
-      objective_type = "ELBO_GH",
+      objective_type = .va_r3_objective_type(resolved_eval_method),
       rank_source = rank_source,
       family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
-                      "binomial"),
+                      nbinom2 = "nbinom2", "binomial"),
       link = link,
       unique = FALSE,
-      eval_method = eval_method,
+      eval_method = resolved_eval_method,
       quadrature = NULL,
       source_commit = NA_character_,
       objective_constructed = FALSE
     ))
   }
   rule <- .va_r3_gh_rule(H)
-  starts <- lapply(1:4, function(k) .va_r3_default_parameters(validated, k))
+  ## n_starts is the multi-start agreement gate's width. The DEFAULT STAYS 4 --
+  ## this exposes the knob, it does not weaken the gate. Measured cost of the
+  ## gate: 3.33x at N=200 and 3.93-4.45x at N=400, with objectives agreeing to
+  ## <6e-9 across starts and full parameter vectors to max|dpar| 1.98e-05, so
+  ## n_starts = 1 reproduces the same optimum at a quarter of the cost and is
+  ## the right setting for benchmarking and for the large-n path.
+  ##
+  ## Below 3 the gate cannot pass AT ALL -- admitted requires
+  ## length(healthy_id) >= 3L (see the health block below) -- so n_starts = 2
+  ## would silently force status = failed_health_gate rather than speed anything
+  ## up. Values of 2 are therefore rejected outright; 1 is allowed because it is
+  ## an explicit, visible opt-out of the gate rather than a silent breakage.
+  ## The upper bound is 4 because .va_r3_default_parameters() indexes a
+  ## four-entry jitter table by start_id; a fifth start would silently index NA
+  ## and produce a non-finite starting vector.
+  n_starts <- as.integer(n_starts)
+  if (length(n_starts) != 1L || is.na(n_starts) || n_starts < 1L ||
+      n_starts == 2L || n_starts > 4L) {
+    stop("n_starts must be 1 (gate explicitly bypassed), or 3 or 4 (the gate needs three healthy starts; the jitter table defines four).",
+         call. = FALSE)
+  }
+  starts <- lapply(seq_len(n_starts),
+                   function(k) .va_r3_default_parameters(validated, k))
   if (!is.null(fixed_global)) {
     if (!is.list(fixed_global) ||
         !identical(sort(names(fixed_global)), c("beta", "theta_rr"))) {
@@ -606,7 +1170,7 @@
     )
     objects[[k]] <- obj
     opt <- tryCatch(
-      stats::nlminb(obj$par, obj$fn, obj$gr, control = control),
+      .va_r3_run_primary(optimizer, obj, obj$par, control),
       error = function(e) structure(list(message = conditionMessage(e)),
                                     class = "va_r3_optimizer_error")
     )
@@ -635,19 +1199,25 @@
     post_nlminb_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
     if (!all(is.finite(post_nlminb_gradient)) ||
         max(abs(post_nlminb_gradient)) >= 1e-4) {
-      bfgs <- tryCatch(
-        stats::optim(opt$par, obj$fn, obj$gr, method = "BFGS",
-                     control = list(maxit = 500L, reltol = 1e-12)),
+      ## L-BFGS-B, not BFGS: BFGS carries a dense inverse-Hessian over the whole
+      ## parameter vector, which here includes N*(2q + q(q-1)/2) variational
+      ## coordinates, so its cost grows with n while L-BFGS-B's limited memory
+      ## stays flat. factr is L-BFGS-B's relative-tolerance control and
+      ## 1e-12 / .Machine$double.eps is the translation of BFGS's reltol = 1e-12.
+      lbfgsb <- tryCatch(
+        stats::optim(opt$par, obj$fn, obj$gr, method = "L-BFGS-B",
+                     control = list(maxit = 500L,
+                                    factr = 1e-12 / .Machine$double.eps)),
         error = function(e) NULL
       )
-      if (!is.null(bfgs) && identical(bfgs$convergence, 0L) &&
-          is.finite(bfgs$value) && bfgs$value <= opt$objective + 1e-8) {
+      if (!is.null(lbfgsb) && identical(lbfgsb$convergence, 0L) &&
+          is.finite(lbfgsb$value) && lbfgsb$value <= opt$objective + 1e-8) {
         opt <- list(
-          par = bfgs$par, objective = bfgs$value,
-          convergence = bfgs$convergence, message = bfgs$message,
-          evaluations = bfgs$counts, iterations = NA_integer_
+          par = lbfgsb$par, objective = lbfgsb$value,
+          convergence = lbfgsb$convergence, message = lbfgsb$message,
+          evaluations = lbfgsb$counts, iterations = NA_integer_
         )
-        polish_optimizer <- "nlminb_then_bfgs"
+        polish_optimizer <- "nlminb_then_lbfgsb"
       }
     }
     gradient <- tryCatch(obj$gr(opt$par), error = function(e) rep(NA_real_, length(opt$par)))
@@ -701,6 +1271,15 @@
   variance_domain_ok <- max_projected_variance <= 4
   admitted <- admitted && variance_domain_ok
   dll <- attr(objects[[1L]], "va_r3_dll")
+  ## The variational block is already in best$par -- read it out rather than
+  ## discarding per-unit posterior spread the fit has genuinely estimated.
+  latent <- if (!is.null(best) && !is.null(best$par)) {
+    tryCatch(
+      .va_r3_latent_posterior(best$par, validated$N, validated$q),
+      error = function(e) list(scores = NULL, se = NULL,
+                               error = conditionMessage(e))
+    )
+  } else NULL
 
   list(
     status = if (admitted) {
@@ -711,20 +1290,20 @@
       "failed_health_gate"
     },
     research_only = TRUE,
-    objective_type = "ELBO_GH",
+    objective_type = .va_r3_objective_type(resolved_eval_method),
     rank_source = rank_source,
     family = switch(family, gaussian_anchor = "gaussian", poisson = "poisson",
-                    "binomial"),
+                    nbinom2 = "nbinom2", "binomial"),
     link = link,
     unique = FALSE,
     q = validated$q,
-    eval_method = eval_method,
+    eval_method = resolved_eval_method,
     quadrature = list(order = rule$order, convention = rule$convention,
                       nodes = rule$nodes, weights = rule$weights),
     source_commit = .va_r3_source_commit(dll$source),
     source_checksum = dll$checksum,
     fixed_global = !is.null(fixed_global),
-    optimizer = "nlminb",
+    optimizer = optimizer,
     starts = fits,
     health = list(
       admitted = admitted,
@@ -741,6 +1320,7 @@
       variance_domain_ok = variance_domain_ok
     ),
     best = best,
+    latent = latent,
     report = best_report,
     objective = if (!is.na(best_id)) objects[[best_id]] else NULL
   )

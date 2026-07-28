@@ -37,8 +37,9 @@ a cross-engine comparator. Full plan:
 
 ## What was accomplished
 
-- VA/EVA/JJ as swappable evaluation tiers (`eval_method = "auto" | "jj"`),
-  families Poisson / Bernoulli / multi-trial binomial. Nothing exported.
+- VA/EVA/JJ as swappable evaluation tiers (`eval_method = "auto" | "jj" | "gh"`),
+  with "auto" resolving family-dependently (binomial→JJ, others→GH).
+  Families Poisson / Bernoulli / multi-trial binomial. Nothing exported.
 - Verified against `gllvm` 2.0.13: Poisson 4.4e-09, JJ binomial 2.7e-07 median
   relative difference; bound ordering correct **320/320** cells.
 - 640-cell Totoro grid + 48-cell scale sweep; results local (D-50).
@@ -68,10 +69,13 @@ a cross-engine comparator. Full plan:
 
 1. **Re-run `devtools::test()`** and confirm green before pushing. Do not push on
    an unrun suite — this lane touches TMB templates.
-2. **Arc 0 (60 min, highest value in the plan):** flip the binomial default from
-   GH to **JJ**, and swap `stats::optim(method="BFGS")` for **`"L-BFGS-B"`** at
-   `R/va-r3-proto.R:639`. Both already measured: 5–8x and 16x, identical
-   objectives.
+2. **Arc 0 (60 min, highest value in the plan):** implement family-dependent
+   `eval_method="auto"` (binomial→**JJ**, others→**GH**), and swap
+   `stats::optim(method="BFGS")` for **`"L-BFGS-B"`** at `R/va-r3-proto.R:639`.
+   JJ is measured 5–8x faster with better recovery; L-BFGS-B was retracted from
+   16x claim (single sequential pass inflated by ~3x penalty) and is retained for
+   demonstrable gradient tightness (4 function evals vs 10/19/6 with identical
+   objectives to ~1e-13).
 3. **R2: re-run the Totoro scale sweep** and check whether the n>=2500 wall falls.
 4. Then the comparator plumbing (R3–R4).
 
@@ -122,5 +126,5 @@ optimal** under the loading-support criterion — a justification they do not ci
 ## How to resume
 
 ```sh
-cd /private/tmp/gllvmtmb-va-wiring-20260726 && claude "Read docs/dev-log/handover/2026-07-27-claude-handover-va-speedup.md then docs/dev-log/2026-07-27-ultra-plan-va-speedup-and-comparator.md and the morning brief docs/dev-log/2026-07-27-morning-brief-va-eva.md. Re-run devtools::test() and confirm green BEFORE pushing. Then execute Arc 0: flip the binomial default from GH to JJ, and swap stats::optim(method='BFGS') to 'L-BFGS-B' at R/va-r3-proto.R:639. Verify objectives are IDENTICAL before and after, and measure the speed-up with INTERLEAVED replicates - never a single sequential pass. Poisson must be untouched. Do not plan as though VA is a faster or better estimator; it is not, and the plan explains why."
+cd /private/tmp/gllvmtmb-va-wiring-20260726 && claude "Read docs/dev-log/handover/2026-07-27-claude-handover-va-speedup.md then docs/dev-log/2026-07-27-ultra-plan-va-speedup-and-comparator.md and the morning brief docs/dev-log/2026-07-27-morning-brief-va-eva.md. Re-run devtools::test() and confirm green BEFORE pushing. Then execute Arc 0: implement family-dependent eval_method='auto' (binomial→JJ, others→GH), and swap stats::optim(method='BFGS') to 'L-BFGS-B' at R/va-r3-proto.R:639. Verify objectives are IDENTICAL before and after (aim for ~1e-13), and verify gradient tightness and function-evaluation efficiency. Poisson must be untouched. Do not plan as though VA is a faster or better estimator; it is not, and the plan explains why."
 ```

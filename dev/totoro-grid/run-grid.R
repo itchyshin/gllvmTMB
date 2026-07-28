@@ -11,7 +11,7 @@
 ## Arms, named by their ALGEBRA rather than by a package flag, because calling
 ## gllvm's binomial route "VA" is what made "EVA looks better than VA" seem
 ## plausible earlier:
-##   A gtmb_gh      gllvmTMB GH-VA, eval_method="auto", H=15
+##   A gtmb_gh      gllvmTMB GH-VA, eval_method="gh", H=15
 ##   B gtmb_jj      gllvmTMB JJ-VA, eval_method="jj"   (same engine as A)
 ##   C gllvm_va     gllvm method="VA"  (= JJ/Polya-Gamma for binomial; exact for Poisson)
 ##   D gllvm_eva    gllvm method="EVA" (2nd-order Taylor surrogate)
@@ -86,9 +86,9 @@ run_cell <- function(cell, FITSEC) {
     }
     out <- list()
 
-    for (em in c("auto", "jj")) {
+    for (em in c("gh", "jj")) {
       if (em == "jj" && family == "poisson") next   # JJ is binomial-only
-      arm <- if (em == "auto") "gtmb_gh" else "gtmb_jj"
+      arm <- if (em == "gh") "gtmb_gh" else "gtmb_jj"
       r <- timed(gllvmTMB:::.approximation_engine_fit(
         engine = "va_r3", y = yv, n_trials = rep(1L, length(yv)), X = X,
         unit_id = lg$unit, trait_id = lg$trait, q = q,

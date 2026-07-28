@@ -23,7 +23,7 @@
 ##      p to eSpider. Family: Poisson (counts).
 ##
 ## Arms per condition x q in {2, 3}:
-##   gtmb_gh       .approximation_engine_fit(engine="va_r3", eval_method="auto")
+##   gtmb_gh       .approximation_engine_fit(engine="va_r3", eval_method="gh")
 ##   gtmb_jj       eval_method="jj"                          [binomial only]
 ##   gllvm_va      gllvm::gllvm(method="VA")
 ##   gllvm_eva     gllvm::gllvm(method="EVA")                [errors on Poisson --
@@ -319,7 +319,7 @@ for (cond in conditions) {
     cat(sprintf("--- condition=%s  q=%d ---\n", cond$name, q))
     arm_results <- list()
 
-    r <- run_gtmb_engine(cond$Y, cond$family, cond$link, q, eval_method = "auto")
+    r <- run_gtmb_engine(cond$Y, cond$family, cond$link, q, eval_method = "gh")
     arm_results[["gtmb_gh"]] <- r
     cat(sprintf("  gtmb_gh:      ok=%s elapsed=%.2fs status=%s\n",
                r$ok, r$elapsed, status_of(r, "gtmb_gh")))

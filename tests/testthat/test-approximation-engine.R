@@ -62,7 +62,10 @@ test_that("VA-R3 rank-zero result is normalised without compiling an objective",
     "va_r3", y, trials, X, unit, trait, q = 0L
   )
   expect_identical(result$status, "not_applicable_rank_zero")
-  expect_identical(result$objective_type, "ELBO_GH")
+  ## Binomial data with eval_method = "auto" resolves to the Jaakkola-Jordan
+  ## bound, and objective_type now reports the RESOLVED bound instead of a
+  ## hardcoded "ELBO_GH".
+  expect_identical(result$objective_type, "ELBO_JJ")
   expect_true(isTRUE(result$research_only))
   expect_false(isTRUE(result$fitted$objective_constructed))
   expect_true(is.na(result$score$negative_elbo_gh))

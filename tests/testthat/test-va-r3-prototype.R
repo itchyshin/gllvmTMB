@@ -64,7 +64,12 @@ test_that("R3 H=61 scalar expectation passes the frozen oracle grid", {
     beta = 0, theta_rr = 0, m = matrix(0, 1L, 1L),
     log_L_diag = matrix(0, 1L, 1L), L_off = matrix(numeric(), 1L, 0L)
   )
-  obj <- .va_r3_make_objective(validated, H = 61L, parameters = parameters)
+  ## eval_method = "gh" is explicit because this grid checks the QUADRATURE
+  ## path against an exact integrate() oracle. Binomial "auto" resolves to the
+  ## Jaakkola-Jordan bound, which is deliberately not exact, so leaving the
+  ## default here would fail the oracle by construction rather than by defect.
+  obj <- .va_r3_make_objective(validated, H = 61L, parameters = parameters,
+                               eval_method = "gh")
   beta_index <- which(names(obj$par) == "beta")
   theta_index <- which(names(obj$par) == "theta_rr")
   stable_softplus <- function(x) pmax(x, 0) + log1p(exp(-abs(x)))
@@ -80,6 +85,523 @@ test_that("R3 H=61 scalar expectation passes the frozen oracle grid", {
         }, -Inf, Inf, rel.tol = 1e-13)$value
       }
       expect_lt(abs(observed - expected), 1e-10)
+    }
+  }
+})
+
+test_that("R3 nbinom2 expected log-likelihood passes a direct integrate() oracle", {
+  ## Independent check of the template's nbinom2 branch. The oracle density
+  ## uses base R's stats::dnbinom(mu = exp(eta), size = phi, log = TRUE) --
+  ## algebraically identical to
+  ##   log p(y|eta) = lgamma(y+phi) - lgamma(phi) - lgamma(y+1)
+  ##                  + phi*log(phi) - (y+phi)*log(phi + exp(eta)) + y*eta
+  ## but a genuinely separate implementation (R's own, numerically stable at
+  ## large mu), not the shifted-softplus identity the template uses. This is
+  ## then integrated against eta ~ N(mu, v) by stats::integrate() and compared
+  ## to the template's reported expected_loglik_by_obs.
+  validated <- .va_r3_validate_data(
+    y = 2L, n_trials = 1L, X = matrix(1, 1L, 1L),
+    unit_id = 1L, trait_id = 1L, q = 1L,
+    family = "nbinom2", link = "log"
+  )
+  parameters <- list(
+    beta = 0, theta_rr = 0, m = matrix(0, 1L, 1L),
+    log_L_diag = matrix(0, 1L, 1L), L_off = matrix(numeric(), 1L, 0L)
+  )
+  obj <- .va_r3_make_objective(validated, H = 61L, parameters = parameters,
+                               eval_method = "gh")
+  beta_index <- which(names(obj$par) == "beta")
+  theta_index <- which(names(obj$par) == "theta_rr")
+  phi_index <- which(names(obj$par) == "log_phi")
+  expect_length(phi_index, 1L)
+
+  nbinom2_logdensity <- function(y, eta, phi) {
+    stats::dnbinom(y, size = phi, mu = exp(eta), log = TRUE)
+  }
+
+  y_val <- 2
+  for (mu in c(-3, -1, 0, 1, 3)) {
+    for (variance in c(0, 1e-8, 1e-4, 0.1, 1, 4)) {
+      for (phi in c(0.5, 2, 10)) {
+        p <- obj$par
+        p[beta_index] <- mu
+        p[theta_index] <- sqrt(variance)
+        p[phi_index] <- log(phi)
+        observed <- obj$report(p)$expected_loglik_by_obs[1L]
+        expected <- if (variance == 0) {
+          nbinom2_logdensity(y_val, mu, phi)
+        } else {
+          ## Finite bounds, not (-Inf, Inf): unlike softplus (linear growth),
+          ## the direct oracle exponentiates eta with no stabilisation, so an
+          ## unbounded domain lets integrate() probe eta large enough to
+          ## overflow exp(). +-40 SD is far beyond where the tail mass matters
+          ## at this tolerance and stays well inside exp()'s safe range.
+          stats::integrate(function(z) {
+            eta <- mu + sqrt(variance) * z
+            nbinom2_logdensity(y_val, eta, phi) * stats::dnorm(z)
+          }, -40, 40, rel.tol = 1e-13)$value
+        }
+        expect_lt(abs(observed - expected), 1e-8)
+      }
+    }
+  }
+})
+
+test_that("R3 nbinom2 is mapped off (inert) for every other family", {
+  ## log_phi must not appear in obj$par -- and must not change the objective
+  ## or gradient -- for a family that never uses it. This is the guard against
+  ## the parameter-vector-cascade risk: adding log_phi to the template must
+  ## cost the pre-existing families nothing.
+  validated <- .va_r3_validate_data(
+    y = 1L, n_trials = 3L, X = matrix(1, 1L, 1L),
+    unit_id = 1L, trait_id = 1L, q = 1L
+  )
+  parameters <- list(
+    beta = 0.4, theta_rr = 0.3, m = matrix(0.1, 1L, 1L),
+    log_L_diag = matrix(0, 1L, 1L), L_off = matrix(numeric(), 1L, 0L)
+  )
+  obj <- .va_r3_make_objective(validated, H = 25L, parameters = parameters,
+                               eval_method = "gh")
+  expect_false("log_phi" %in% names(obj$par))
+  ## beta, theta_rr, m, log_L_diag; L_off is empty at q=1 (0 off-diagonal
+  ## entries), and log_phi is mapped off for this (binomial) family.
+  expect_identical(length(obj$par), 4L)
+})
+
+test_that("R3 latent posterior reads variational means and SDs out of the fitted par", {
+  ## N = 2, q = 2. TMB matrices are column-major, so the packed vectors below
+  ## give unit 1 the Cholesky [[1, 0], [3, 2]] and unit 2 [[0.5, 0], [-1, 1]].
+  ##   unit 1: L L' = [[1, 3], [3, 13]]     -> sd = (1, sqrt(13))
+  ##   unit 2: L L' = [[0.25, -0.5], [-0.5, 2]] -> sd = (0.5, sqrt(2))
+  par <- c(
+    m = 0.1, m = 0.2, m = 0.3, m = 0.4,
+    log_L_diag = 0, log_L_diag = log(0.5), log_L_diag = log(2), log_L_diag = 0,
+    L_off = 3, L_off = -1
+  )
+  post <- .va_r3_latent_posterior(par, N = 2L, q = 2L)
+
+  expect_equal(post$scores, matrix(c(0.1, 0.2, 0.3, 0.4), 2L, 2L))
+  expect_equal(
+    post$se,
+    matrix(c(1, 0.5, sqrt(13), sqrt(2)), nrow = 2L, ncol = 2L),
+    tolerance = 1e-12
+  )
+  ## These are variational posterior SDs, not Wald SEs, and they are not
+  ## calibrated. Both facts must travel with the numbers.
+  expect_false(post$calibrated)
+  expect_match(post$uncertainty_basis, "variational posterior")
+
+  ## An unnamed par cannot be unpacked and must fail rather than guess.
+  expect_error(.va_r3_latent_posterior(unname(par), N = 2L, q = 2L),
+               "parameter names")
+})
+
+test_that("R3 fit returns a latent posterior of the right shape", {
+  set.seed(4242)
+  n <- 40L; p <- 4L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.5)
+  fit <- .va_r3_fit(
+    y = rbinom(n * p, 1L, plogis(eta)), n_trials = rep(1L, n * p),
+    X = stats::model.matrix(~ 0 + trait, long),
+    unit_id = as.integer(long$unit), trait_id = as.integer(long$trait),
+    q = 2L, family = "binomial", link = "logit", H = 15L
+  )
+  expect_false(is.null(fit$latent))
+  expect_identical(dim(fit$latent$scores), c(n, 2L))
+  expect_identical(dim(fit$latent$se), c(n, 2L))
+  expect_true(all(is.finite(fit$latent$se)))
+  expect_true(all(fit$latent$se > 0))
+  expect_false(fit$latent$calibrated)
+})
+
+test_that("R3 nbinom2 fit is alive: simulate-then-fit returns a healthy status", {
+  ## A recovery SMOKE test, not a recovery accuracy test: the point is to
+  ## prove the whole nbinom2 pipeline (beta, loadings, per-trait log_phi, and
+  ## the variational block) is alive end to end, not to certify accuracy.
+  set.seed(2026L)
+  N <- 60L; T <- 4L; q <- 2L
+  trait_names <- paste0("sp", seq_len(T))
+  long <- data.frame(
+    unit = factor(rep(seq_len(N), each = T)),
+    trait = factor(rep(trait_names, N), levels = trait_names)
+  )
+  beta <- c(1.0, 0.8, 0.6, 0.9)
+  Lambda <- matrix(0, T, q)
+  Lambda[row(Lambda) >= col(Lambda)] <- c(0.5, 0.3, -0.2, 0.4, 0.35, -0.25, 0.2)
+  score <- matrix(rnorm(N * q), N, q)
+  unit <- as.integer(long$unit)
+  trait <- as.integer(long$trait)
+  eta <- beta[trait] + rowSums(
+    Lambda[trait, , drop = FALSE] * score[unit, , drop = FALSE]
+  )
+  phi_true <- 2
+  y <- rnbinom(N * T, size = phi_true, mu = exp(eta))
+
+  fit <- .va_r3_fit(
+    y = y, n_trials = rep(1L, N * T),
+    X = stats::model.matrix(~ 0 + trait, long),
+    unit_id = unit, trait_id = trait,
+    q = q, family = "nbinom2", link = "log", H = 15L
+  )
+
+  expect_identical(fit$status, "healthy")
+  expect_true(is.finite(fit$best$objective))
+  expect_gte(fit$health$healthy_starts, 3L)
+  fitted_log_phi <- unname(fit$best$par[names(fit$best$par) == "log_phi"])
+  expect_length(fitted_log_phi, T)
+  expect_true(all(is.finite(fitted_log_phi)))
+})
+
+test_that("R3 fixed-parameter information marginalises the variational block", {
+  set.seed(9191)
+  n <- 60L; p <- 5L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.6)
+  fit <- .va_r3_fit(
+    y = rbinom(n * p, 1L, plogis(eta)), n_trials = rep(1L, n * p),
+    X = stats::model.matrix(~ 0 + trait, long),
+    unit_id = as.integer(long$unit), trait_id = as.integer(long$trait),
+    q = 2L, family = "binomial", link = "logit", H = 15L
+  )
+  info <- .va_r3_fixed_information(fit$objective, fit$best$par)
+
+  expect_identical(info$status, "ok")
+  expect_true(info$pd_hessian)
+  expect_true(all(is.finite(info$se_conditional)))
+  expect_true(all(is.finite(info$se_profile)))
+  expect_true(all(info$se_profile > 0))
+
+  ## The load-bearing property. Profiling the variational block OUT can only
+  ## reduce curvature (the Schur complement subtracts a positive semi-definite
+  ## term), so the profile SE must be >= the conditional one. A naive
+  ## optimHess over the fixed block alone is therefore anti-conservative --
+  ## this test is what stops anyone "simplifying" to that later.
+  expect_true(all(info$se_profile >= info$se_conditional * (1 - 1e-8)))
+
+  ## Not calibrated, and that must travel with the numbers.
+  expect_false(info$calibrated)
+
+  ## Fails closed rather than returning a number it cannot justify.
+  broken <- .va_r3_fixed_information(
+    list(he = function(p) stop("no hessian")), fit$best$par
+  )
+  expect_false(broken$pd_hessian)
+  expect_null(broken$se_profile)
+  expect_match(broken$status, "hessian_error")
+})
+
+test_that("R3 blocked information reproduces the dense Schur complement exactly", {
+  ## The blocked route never forms the dense Hessian. It relies on units being
+  ## conditionally independent given the fixed parameters, so H_vv is EXACTLY
+  ## block diagonal. That is a structural claim about the model, and this test
+  ## is what verifies it rather than assuming it: if any cross-unit second
+  ## derivative were non-zero, the two routes would disagree here.
+  set.seed(31)
+  n <- 60L; p <- 5L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.6)
+  fit <- .va_r3_fit(
+    y = rbinom(n * p, 1L, plogis(eta)), n_trials = rep(1L, n * p),
+    X = stats::model.matrix(~ 0 + trait, long),
+    unit_id = as.integer(long$unit), trait_id = as.integer(long$trait),
+    q = 2L, family = "binomial", link = "logit", H = 15L
+  )
+
+  ## route = "dense" is REQUIRED here. The default dispatches to the blocked
+  ## route, so calling it bare would compare blocked against blocked and this
+  ## test would pass vacuously while verifying nothing.
+  dense <- .va_r3_fixed_information(fit$objective, fit$best$par, route = "dense")
+  blocked <- .va_r3_fixed_information_blocked(fit$objective, fit$best$par,
+                                              N = n, q = 2L)
+  expect_identical(dense$route, "dense")
+  expect_identical(blocked$route, "blocked")
+
+  ## The BLOCKED route is the one this package uses, so its health is asserted
+  ## unconditionally.
+  expect_identical(blocked$status, "ok")
+  expect_identical(blocked$route, "blocked")
+  expect_true(blocked$pd_hessian)
+
+  ## The DENSE route is only the comparator, and its success is
+  ## PLATFORM-DEPENDENT: it forms the full Hessian and Cholesky-factors it, so
+  ## whether it comes back positive-definite at this fixture depends on the
+  ## BLAS. Observed passing on macOS/Accelerate and failing on Linux CI at the
+  ## same commit. Asserting dense$status == "ok" therefore tested the host's
+  ## BLAS, not this package.
+  ##
+  ## Guarded rather than weakened: where dense DOES produce SEs the agreement
+  ## is still checked at full 1e-8 strictness, so the block-diagonal claim is
+  ## verified wherever it can be. Loosening the tolerance instead would
+  ## silently stop verifying anything. The comparison is deferred to the END of
+  ## this test so that every unconditional assertion below still runs when the
+  ## comparator is unavailable.
+  dense_available <- identical(dense$status, "ok") && !is.null(dense$se_profile)
+
+  ## The anti-conservatism invariant must hold on the blocked route too.
+  expect_true(all(blocked$se_profile >= blocked$se_conditional * (1 - 1e-8)))
+  expect_false(blocked$calibrated)
+
+  ## The index map must place every variational coordinate exactly once.
+  map <- .va_r3_variational_index_map(names(fit$best$par), N = n, q = 2L)
+  expect_identical(dim(map), c(n, 5L))          # k = 2q + q(q-1)/2 = 5
+  expect_identical(anyDuplicated(as.integer(map)), 0L)
+  expect_setequal(
+    as.integer(map),
+    which(names(fit$best$par) %in% c("m", "log_L_diag", "L_off"))
+  )
+
+  ## THE LOAD-BEARING ASSERTION, run wherever the comparator exists. If the
+  ## dense route could not factor its Hessian on this BLAS, say so out loud
+  ## rather than passing silently -- a green test that verified nothing is the
+  ## failure mode this file has already hit three times.
+  if (!dense_available) {
+    skip(paste0("dense comparator unavailable on this BLAS (status: ",
+                dense$status, ") -- blocked route asserted above, ",
+                "cross-check not runnable here"))
+  }
+  expect_equal(blocked$se_profile, dense$se_profile, tolerance = 1e-8)
+  expect_equal(blocked$se_conditional, dense$se_conditional, tolerance = 1e-8)
+})
+
+test_that("R3 n_starts exposes the gate width without weakening the gate", {
+  set.seed(88)
+  n <- 80L; p <- 5L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.6)
+  y <- rbinom(n * p, 1L, plogis(eta))
+  X <- stats::model.matrix(~ 0 + trait, long)
+  u <- as.integer(long$unit); tr <- as.integer(long$trait)
+  fit <- function(ns) {
+    .va_r3_fit(y, rep(1L, n * p), X, u, tr, q = 2L, family = "binomial",
+               link = "logit", H = 15L, n_starts = ns)
+  }
+
+  full <- fit(4L)
+  single <- fit(1L)
+
+  ## The default is unchanged: four starts, gate intact.
+  expect_identical(full$health$attempted_starts, 4L)
+  expect_identical(full$health$minimum_healthy_starts, 3L)
+
+  ## n_starts = 1 reaches the SAME optimum -- that is what makes it a speed
+  ## knob rather than a different fit.
+  expect_lt(abs(full$best$objective - single$best$objective), 1e-6)
+  expect_lt(max(abs(full$best$par - single$best$par)), 1e-3)
+
+  ## ...but it must NOT be able to report a passed gate. Bypassing the gate has
+  ## to be visible in the status, never silent.
+  expect_identical(single$health$attempted_starts, 1L)
+  expect_false(isTRUE(single$health$admitted))
+  expect_identical(single$status, "failed_health_gate")
+
+  ## 2 starts can never satisfy "3 healthy", so it is rejected rather than
+  ## silently forcing failed_health_gate; 5 would index past the 4-entry
+  ## jitter table in .va_r3_default_parameters() and produce NA starts.
+  expect_error(fit(2L), "n_starts must be")
+  expect_error(fit(5L), "n_starts must be")
+})
+
+test_that("R3 L-BFGS-B primary reaches the same optimum as nlminb", {
+  ## The optimiser is a ROUTE choice, not a model choice: both minimise the same
+  ## objective from the same start, so the fitted values must agree. This test
+  ## is the guard on that. It deliberately asserts NOTHING about speed -- a
+  ## timing assertion in a test suite is a flake generator, and the speed
+  ## evidence lives in dev/r2-fragility-resolution.csv.
+  set.seed(505)
+  n <- 200L; p <- 6L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.6)
+  y <- rbinom(n * p, 1L, plogis(eta))
+  X <- stats::model.matrix(~ 0 + trait, long)
+  u <- as.integer(long$unit); tr <- as.integer(long$trait)
+  fit <- function(o) {
+    .va_r3_fit(y, rep(1L, n * p), X, u, tr, q = 2L, family = "binomial",
+               link = "logit", H = 15L, n_starts = 1L, optimizer = o)
+  }
+
+  a <- fit("nlminb")
+  b <- fit("lbfgsb")
+
+  expect_identical(a$optimizer, "nlminb")
+  expect_identical(b$optimizer, "lbfgsb")
+  expect_lt(abs(a$best$objective - b$best$objective), 1e-5)
+  expect_lt(max(abs(a$best$par - b$best$par)), 1e-2)
+
+  ## The DEFAULT is now "auto", which resolves per family AND per tier from the
+  ## registry (see the auto-routing test). For binomial the default tier is jj,
+  ## where lbfgsb was measured 2.54x faster with every cell agreeing -- so the
+  ## default fit here resolves to lbfgsb, not to nlminb.
+  expect_identical(.va_r3_fit(
+    y, rep(1L, n * p), X, u, tr, q = 2L, family = "binomial", link = "logit",
+    H = 15L, n_starts = 1L)$optimizer, "lbfgsb")
+
+  ## The factr constant is load-bearing: optim's DEFAULT factr terminated in
+  ## ~24ms at an objective 125-151 worse in 3 of 3 replicates at N=1600 while
+  ## reporting convergence = 0. Pin it so it cannot be "simplified" away.
+  expect_true(.VA_R3_LBFGSB_FACTR < 1e-6 / .Machine$double.eps)
+  expect_equal(.VA_R3_LBFGSB_FACTR, 1e-12 / .Machine$double.eps)
+})
+
+test_that("R3 optimizer auto-routes per family AND per tier", {
+  ## The routing is measured, not chosen by taste. Medians over the sweep in
+  ## dev/lbfgsb-default-*.csv (nlminb/lbfgsb; > 1 means lbfgsb faster):
+  ##   binomial jj       2.54x  (1.31-6.33)  -> lbfgsb
+  ##   gaussian gh       2.13x  (1.76-2.50)  -> lbfgsb
+  ##   poisson  gh       1.25x  (0.96-3.25)  -> nlminb, the range straddles 1
+  ##   binomial gh       0.57x  (0.35-1.02)  -> nlminb, lbfgsb is SLOWER
+  ##   nbinom2  gh       0.42x  (0.26-0.63)  -> nlminb, slower AND the only
+  ##                                            same-optimum disagreement
+  expected <- list(
+    gaussian_anchor = c(gh = "lbfgsb"),
+    binomial        = c(gh = "nlminb", jj = "lbfgsb"),
+    poisson         = c(gh = "nlminb"),
+    nbinom2         = c(gh = "nlminb")
+  )
+  for (entry in .va_r3_family_registry) {
+    want <- expected[[entry$family]]
+    expect_false(is.null(want))
+    for (tier in entry$tiers) {
+      expect_identical(
+        .va_r3_resolve_optimizer("auto", entry$family_code, tier),
+        unname(want[[tier]]),
+        info = paste(entry$family, tier)
+      )
+    }
+  }
+
+  ## binomial is the reason routing must be per TIER, not per family: its two
+  ## tiers point in OPPOSITE directions. A family-level choice would have
+  ## slowed down gh, the accurate tier.
+  expect_identical(.va_r3_resolve_optimizer("auto", 1L, "jj"), "lbfgsb")
+  expect_identical(.va_r3_resolve_optimizer("auto", 1L, "gh"), "nlminb")
+
+  ## An explicit request always wins over the routing.
+  expect_identical(.va_r3_resolve_optimizer("lbfgsb", 1L, "gh"), "lbfgsb")
+  expect_identical(.va_r3_resolve_optimizer("nlminb", 1L, "jj"), "nlminb")
+
+  ## A tier with no declared route falls back to the reference optimiser
+  ## rather than guessing.
+  expect_identical(.va_r3_resolve_optimizer("auto", 1L, "not_a_tier"), "nlminb")
+
+  ## And the fit reports the RESOLVED optimiser, so a run is auditable.
+  set.seed(606)
+  n <- 120L; p <- 5L
+  trait_names <- paste0("sp", seq_len(p))
+  long <- data.frame(
+    unit = factor(rep(seq_len(n), times = p)),
+    trait = factor(rep(trait_names, each = n), levels = trait_names)
+  )
+  eta <- rnorm(n * p, sd = 0.6)
+  y <- rbinom(n * p, 1L, plogis(eta))
+  X <- stats::model.matrix(~ 0 + trait, long)
+  u <- as.integer(long$unit); tr <- as.integer(long$trait)
+  fit <- function(em) {
+    .va_r3_fit(y, rep(1L, n * p), X, u, tr, q = 2L, family = "binomial",
+               link = "logit", H = 15L, n_starts = 1L, eval_method = em)
+  }
+  expect_identical(fit("jj")$optimizer, "lbfgsb")
+  expect_identical(fit("gh")$optimizer, "nlminb")
+})
+
+test_that("R3 family registry agrees with the validator and drives eval_method", {
+  ## The registry is the declared per-family evaluation contract. It must not
+  ## drift from .va_r3_validate_data(), which is what actually assigns the
+  ## family code the template sees. Adding a family without a registry entry
+  ## (or with the wrong code/link) fails here rather than silently.
+  y_for <- list(gaussian_anchor = 0.5, binomial = 1L, poisson = 2L, nbinom2 = 2L)
+  for (entry in .va_r3_family_registry) {
+    validated <- .va_r3_validate_data(
+      y = y_for[[entry$family]], n_trials = 3L, X = matrix(1, 1L, 1L),
+      unit_id = 1L, trait_id = 1L, q = 1L,
+      family = entry$family, link = entry$link
+    )
+    expect_identical(validated$family, entry$family_code)
+
+    ## "auto" resolves to whatever the registry declares.
+    expect_identical(
+      .va_r3_resolve_eval_method("auto", entry$family_code),
+      entry$default_tier
+    )
+    ## Every declared tier is accepted; anything else fails closed.
+    for (tier in entry$tiers) {
+      expect_identical(
+        .va_r3_resolve_eval_method(tier, entry$family_code), tier
+      )
+    }
+    for (tier in setdiff(c("gh", "jj"), entry$tiers)) {
+      expect_error(
+        .va_r3_resolve_eval_method(tier, entry$family_code),
+        "not implemented for the"
+      )
+    }
+    ## objective_type reports the resolved bound, never a hardcoded one.
+    expect_identical(
+      .va_r3_objective_type(.va_r3_resolve_eval_method("auto", entry$family_code)),
+      if (identical(entry$default_tier, "jj")) "ELBO_JJ" else "ELBO_GH"
+    )
+  }
+
+  ## A family code with no registry entry is an error, not a silent default.
+  expect_error(.va_r3_family_entry(99L), "no registry entry")
+})
+
+test_that("R3 JJ bound over-estimates the softplus expectation and is exact at zero variance", {
+  ## The Jaakkola-Jordan/PG bound is not a quadrature rule, so it must not be
+  ## held to the oracle grid above. Its contract is an INEQUALITY: it bounds
+  ## E[softplus(eta)] from ABOVE, which is what makes the ELBO -- which
+  ## subtracts n * softplus_expectation -- a genuine lower bound. It is tight
+  ## at v = 0, where xi = |mu| and the bound collapses to softplus(mu).
+  validated <- .va_r3_validate_data(
+    y = 1L, n_trials = 3L, X = matrix(1, 1L, 1L),
+    unit_id = 1L, trait_id = 1L, q = 1L
+  )
+  parameters <- list(
+    beta = 0, theta_rr = 0, m = matrix(0, 1L, 1L),
+    log_L_diag = matrix(0, 1L, 1L), L_off = matrix(numeric(), 1L, 0L)
+  )
+  obj <- .va_r3_make_objective(validated, H = 61L, parameters = parameters,
+                               eval_method = "jj")
+  beta_index <- which(names(obj$par) == "beta")
+  theta_index <- which(names(obj$par) == "theta_rr")
+  stable_softplus <- function(x) pmax(x, 0) + log1p(exp(-abs(x)))
+  for (mu in c(-20, -5, 0, 5, 20)) {
+    for (variance in c(0, 1e-8, 1e-4, 0.1, 1, 4)) {
+      p <- obj$par
+      p[beta_index] <- mu
+      p[theta_index] <- sqrt(variance)
+      observed <- obj$report(p)$softplus_expectation_by_obs[1L]
+      exact <- if (variance == 0) stable_softplus(mu) else {
+        stats::integrate(function(z) {
+          stable_softplus(mu + sqrt(variance) * z) * stats::dnorm(z)
+        }, -Inf, Inf, rel.tol = 1e-13)$value
+      }
+      ## Upper bound, up to floating-point slack.
+      expect_gt(observed - exact, -1e-10)
+      if (variance == 0) {
+        ## Tight at v = 0.
+        expect_lt(abs(observed - exact), 1e-10)
+      }
     }
   }
 })
@@ -152,7 +674,11 @@ test_that("R3 scalar ELBO, KL sign, and autodiff match independent calculations"
     beta = -0.3, theta_rr = 0.7, m = matrix(0.2, 1L, 1L),
     log_L_diag = matrix(log(0.8), 1L, 1L), L_off = matrix(numeric(), 1L, 0L)
   )
-  obj <- .va_r3_make_objective(validated, H = 25L, parameters = parameters)
+  ## expected_softplus below is an exact integrate() calculation, so the
+  ## objective must use quadrature; binomial "auto" resolves to the JJ bound,
+  ## which over-estimates it by construction.
+  obj <- .va_r3_make_objective(validated, H = 25L, parameters = parameters,
+                               eval_method = "gh")
   report <- obj$report(obj$par)
   mu <- -0.3 + 0.7 * 0.2
   variance <- 0.7^2 * 0.8^2

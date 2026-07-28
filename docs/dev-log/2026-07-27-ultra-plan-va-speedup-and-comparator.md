@@ -9,9 +9,10 @@ LANE: claude/va-wiring-20260726 · worktree /private/tmp/gllvmtmb-va-wiring-2026
 DELIVERABLE: (a) make VA fast enough to be usable — two measured changes first,
 then two borrowed from gllvm; (b) ship VA/EVA as a CROSS-ENGINE COMPARATOR, not
 as a competing estimator.
-HEADLINE: Arc 0 — flip the binomial default to JJ and swap BFGS for L-BFGS-B.
-Both are already measured (5–8x and 16x, identical objectives). Potentially
-compounding before anything structural is touched.
+HEADLINE: Arc 0 — implement family-dependent resolution for `eval_method="auto"` (binomial→JJ, others→GH) and swap BFGS for L-BFGS-B.
+The JJ default is already measured (5–8x, identical objectives). L-BFGS-B is
+retained on different grounds (see verification rules). Potentially compounding before
+anything structural is touched.
 IN PARALLEL: nothing until Arc 0 lands — everything downstream depends on the
 engine being fast enough to be worth comparing against.
 DEFER (fenced, do NOT do): method="VA" as a user-selectable estimator; any claim
@@ -48,7 +49,7 @@ be worth running, then wire it in as a comparator.
 
 | Order | Budget | Outcome | Done when |
 |---|---:|---|---|
-| **Arc 0** | 60 m | Flip binomial default GH→JJ; swap `optim(BFGS)`→`L-BFGS-B` | Objectives identical to pre-change; speed-up measured **interleaved** |
+| **Arc 0** | 60 m | Implement family-dependent `eval_method="auto"` (binomial→JJ, others→GH); swap `optim(BFGS)`→`L-BFGS-B` | Objectives identical to pre-change; gradient tightness and function-evaluation count verified |
 | R1 | 120 m | Block-diagonal / low-rank variational covariance behind an option | Fits converge; parameter count drops as predicted |
 | R2 | 90 m | Re-run the scale sweep on Totoro | **Does the n>=2500 wall fall?** |
 | R3 | 120 m | VA reachable *from a fitted object* (comparator plumbing) | Same data, both engines, both Λ |
@@ -62,12 +63,12 @@ be worth running, then wire it in as a comparator.
 
 | # | Change | Where it came from | Evidence |
 |---|---|---|---|
-| 1 | Binomial default **JJ**, not GH | ours | JJ 5–8x faster **and** better `Sigma_B` on 20/20 seeds; already implemented as `eval_method="jj"` |
-| 2 | **L-BFGS-B** not BFGS | measured; gllvm uses both | 0.16 s → 0.01 s at n=800, **identical objective**; BFGS cost grows with n, L-BFGS-B flat |
+| 1 | `eval_method="auto"` resolves family-dependently: **JJ** for binomial, **GH** for others | ours | JJ 5–8x faster **and** better `Sigma_B` on 20/20 seeds; binomial default is JJ via "auto" resolution |
+| 2 | **L-BFGS-B** not BFGS | measured; gllvm uses both | **Retracted:** earlier timing from single sequential pass inflated by ~3x first-fit penalty. Remeasured with interleaved replicates: **0.9x — marginally slower**. Retained for gradient tightness (reaches tighter gradient norm in fewer function evaluations: 4 vs 10/19/6), and objectives agree to ~1e-13. |
 | 3 | **Block-diagonal / low-rank** variational covariance | gllvm `Ab.struct` (default `"blockdiagonal"`), `Ab.struct.rank = 1` | inferred |
 | 4 | **Two-stage warm-up** (diagonal S first, then relax) | gllvm `diag.iter = 1` | inferred |
 
-**Why #2 is likely the whole scaling story.** `stats::optim(method="BFGS")`
+**Why #2 was hypothesized (and contradicted by measurement).** `stats::optim(method="BFGS")`
 maintains a **dense** inverse-Hessian over the entire parameter vector, which for
 VA includes `N*(2q + q(q-1)/2)` variational coordinates:
 
@@ -76,8 +77,11 @@ VA includes `N*(2q + q(q-1)/2)` variational coordinates:
 | 2500 | 12,581 | **1.3 GB** |
 | 5000 | 25,081 | **5.0 GB** |
 
-n=2500 is exactly where the sweep timed out 12/12. Treat this as a strong
-hypothesis, not a fact, until R2 re-runs the sweep.
+n=2500 is exactly where the sweep timed out 12/12, supporting the hypothesis. However,
+empirical timing with interleaved replicates shows L-BFGS-B is **0.9x** (marginally slower),
+not faster. The hypothesis about memory-induced scaling was refuted; the scaling wall remains
+unexplained. The change is retained for its demonstrable benefit to gradient tightness and
+function-evaluation efficiency, not speed.
 
 **Why #3 is worth borrowing with a proof gllvm does not cite.** Their default
 `Ab.struct = "blockdiagonal"` is presented as an engineering choice. **Proposition

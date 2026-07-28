@@ -1354,3 +1354,56 @@ latent signal — which is exactly where the literature and this measurement agr
 Recorded also: at `T = 3` with strong signal both engines land at ‖Λ‖ = 47.8 against a
 true 3.15. In that runaway regime the integrator is not the problem, and neither engine
 should be credited or blamed for it.
+
+## 2026-07-28  AGHQ is ONE of two levers, and it is the smaller one
+
+Decision: record, before the 16-family campaign runs, that AGHQ alone cannot reach
+nominal variance-component recovery, and that no node count will get it there. This is
+not a projection — it is measured, in a sister repo, and it was already in the brain.
+
+Source: `memory/Two-lever fix for small-cluster non-Gaussian variance-component bias
+(AGHQ + Cox-Reid REML) — cross-repo map.md` (2026-07-18; origin drmTMB
+`cumulative_logit`, 40 seeds, validated against glmmTMB / glmer / lme4 oracles).
+
+**The bias has two stacked, ORTHOGONAL components.**
+
+1. **Laplace integral error** — the one-point-at-the-mode approximation to the marginal.
+   Fixed by AGHQ. Shrinks with observations PER CLUSTER, which in this package is traits
+   per site `T`.
+2. **ML finite-cluster variance-component bias** — present even under EXACT integration.
+   Fixed only by a restricted likelihood: exact REML for Gaussian, or the **Cox-Reid
+   adjusted profile likelihood** for non-Gaussian (integrate the fixed effects out under
+   a flat prior, subtract ½·log|I_ββ|). Shrinks with the NUMBER of clusters.
+
+Measured, M=40, n_each=15, true slope-SD 0.5:
+
+```
+Laplace         -7.3%
+  + AGHQ        -5.0%   (integral lever, +2.3 pt)
+  + Cox-Reid    -0.9%   (variance lever, +4.0 pt)  -> nominal
+```
+
+**Cox-Reid is the bigger lever, about 1.7x.** And the decisive line: the AGHQ node sweep
+converges by nq ≈ 5 and then **plateaus dead flat at −5.0% — nodes cannot cross the
+variance-bias floor; only Cox-Reid drops it.** A node ladder that appears to converge is
+therefore not evidence that the remaining gap is closable by more nodes.
+
+**Consequences for this plan, adopted:**
+
+* The deliverable claim stays as recorded earlier — AGHQ buys a CORRECT LIKELIHOOD — and
+  must NOT be extended to "AGHQ reaches nominal recovery". It does not, alone.
+* The 16-family kill rule remains as pre-registered, but a family failing it is now
+  ambiguous between "the quadrature is inadequate" and "the ML variance bias dominates".
+  The campaign must therefore report the node-ladder plateau per family, since a flat
+  plateau is the signature that the residual gap is the OTHER lever.
+* `gllvmTMB`'s `reml_bridge` **aborts for non-Gaussian** (`R/reml-bridge.R:106`,
+  "Gaussian-only"), so the second lever does not exist here yet. Building it is a
+  separate arc and is NOT in scope today.
+* The GLLVM shape of that lever is not drmTMB's. Latent variables are fixed `N(0, I)` and
+  the variance lives in the loadings `Lambda` and `Psi`, not in a scalar random-effect
+  SD, so a Cox-Reid adjustment here is a multi-dimensional-latent build rather than the
+  scalar probe drmTMB could run.
+
+Recorded because the alternative was to run a 16-family campaign, watch families miss the
+kill rule, and diagnose the quadrature — when the measured cause may be a lever we have
+not built.

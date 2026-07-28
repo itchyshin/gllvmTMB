@@ -6197,8 +6197,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 }
 
 ## Resolve `control$aghq` into a node count. FALSE / NULL -> NULL (Laplace).
-## "auto" -> 9 for now (the resolver `.aghq_resolve()` in R/aghq-control.R
-## owns the real policy; when it is on disk it takes precedence).
+## "auto" -> the ladder start from `.aghq_resolve()`, else 9.
+##
+## The ON/OFF decision for "auto" is NOT made here -- it belongs to
+## `.aghq_auto_gate()` in the fit-time eligibility chain, which is the only
+## place the `.aghq_gate()` table exists. This function answers "how many
+## nodes", never "should we".
+##
+## `.aghq_resolve()` also returns `optimizer` and `optArgs`, and this function
+## deliberately keeps only `k`. That is a PROVABLE NO-OP on this path, not an
+## oversight, and it should stay that way unless someone brings evidence:
+## `.aghq_optimizer_table()` returns "lbfgsb" only for family = binomial with a
+## "jj" tier, and the AGHQ path always calls `.aghq_resolve(family, "B", ...)`.
+## Checked by evaluation across gaussian/poisson/binomial/nbinom2/Gamma/beta/
+## tweedie at tier "B": every one returns "nlminb", which is already
+## `control$optimizer`'s default. So the discarded recommendation would change
+## nothing, and the un-`factr`'d lbfgsb hazard the table's own comment warns
+## about is unreachable from quadrature. Wiring it through would be a
+## results-changing edit with no measured benefit behind it.
 .gllvmTMB_aghq_k <- function(control, d_B, family = NULL, n_traits = NA_integer_) {
   a <- control$aghq
   if (is.null(a) || identical(a, FALSE)) return(NULL)

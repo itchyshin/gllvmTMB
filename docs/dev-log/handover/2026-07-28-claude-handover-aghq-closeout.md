@@ -59,6 +59,30 @@ e35dfb79 evidence(aghq): first coverage evidence — shipped default covers 0.66
 9995a458 docs(decisions): fresh D-43 returns 2 NOT-DONE — four of my statements wrong
 ```
 
+## 🔴 NEXT ARC — MULTINOMIAL AGHQ (Shinichi, 2026-07-28)
+
+Shinichi's explicit instruction: **close this arc, then implement AGHQ for multinomial in
+the next one.** The analysis is already done and is on the capability surface — recording
+it here so the next lane starts from it rather than re-deriving:
+
+* **It is possible.** The quadrature is family-free: nodes, weights, mode, Cholesky and
+  logdet never see the family. It integrates the LATENT (dimension `q`), which multinomial
+  does not change. It needs only the site's conditional log-likelihood at each node, which
+  multinomial can supply.
+* **The obstruction is structural, in ONE place.** Multinomial is the sole family evaluated
+  as a **grouped softmax at an anchor row** (`src/gllvmTMB.cpp:2530`) rather than per-row
+  through the scalar-`eta` `obs_loglik` contract — `obs_loglik` explicitly errors for
+  fid 16 (`:2310`). Its K−1 contrast pseudo-rows share one normaliser and shift together
+  with the latent, so they cannot be accumulated independently.
+* **The work:** move that grouped reduction INSIDE the node loop (compute all K−1 etas at
+  node *u*, then one log-sum-exp), plus an assertion that a contrast group never straddles
+  sites — true by construction, currently unchecked. Bounded template work + a recompile.
+* **NOT the same barrier as VA's.** VA needs a K−1-dimensional integral over the category
+  contrasts; that one *is* dimensional. AGHQ's is not. Do not conflate them.
+* **DO THE STALL FIRST.** If AGHQ can silently return its warm start on a family it
+  nominally supports, adding a fifteenth family before that is diagnosed just widens the
+  surface where `aghq_used = TRUE` means nothing.
+
 ## Next session's job, in order
 
 1. **Fix the silent decline.** AGHQ does not activate on the package's **current default

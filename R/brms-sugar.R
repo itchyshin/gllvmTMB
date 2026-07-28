@@ -161,6 +161,40 @@
   invisible(NULL)
 }
 
+## One-shot fire-on-use notice for the start_method = "res" soft-deprecation.
+##
+## Retired on evidence, not on taste (2026-07-27; see
+## docs/dev-log/after-task/2026-07-27-start-method-res-worse-optimum.md). Over 89
+## fit-pairs against the default start -- Gaussian, Poisson and nbinom2, d = 1..3,
+## 3 and 5 traits -- the residual start was materially WORSE 8 times (up to 14.65
+## nats) and better 3 times by 0.068, 0.29 and 0.66 nats, i.e. never once by a
+## margin distinguishable from landing elsewhere on the same basin. At d >= 2 it
+## is exactly neutral (objectives agree to ~1e-7 in 34/34 pairs), so it is
+## pointless where it is safe and expensive where it is not. Every failure
+## reported `convergence == 0` and `pdHess = TRUE` on both sides.
+##
+## The mechanism: seeding from the residual covariance commits the optimiser to
+## that matrix's leading direction, and at exact identification (3 traits, d = 1)
+## the best-likelihood factor is not the leading PC. A start built from
+## noise-free GLMM random-effect modes was also tried and lands in the same wrong
+## basin, so this is not a residual-noise problem and cannot be fixed by a better
+## residual.
+.gllvmTMB_warn_start_method_res_deprecated <- function() {
+  if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    return(invisible(NULL))
+  }
+  if (!isTRUE(.gllvmTMB_deprecation_seen[["start-method-res"]])) {
+    cli::cli_warn(c(
+      "!" = "{.code start_method = list(method = \"res\")} is soft-deprecated as of gllvmTMB 0.6.0.",
+      "i" = "It can converge to a materially worse optimum than the default start while reporting {.code convergence == 0} and a positive-definite Hessian, so the worse fit is silent.",
+      "i" = "Across 89 simulated fits it was never materially better than the default start, and at {.code d >= 2} it made no difference at all.",
+      ">" = "Use the default starts, i.e. omit {.arg start_method}. If you do use this one, compare {.code fit$opt$objective} against a default-start fit and keep the lower value."
+    ))
+    .gllvmTMB_deprecation_seen[["start-method-res"]] <- TRUE
+  }
+  invisible(NULL)
+}
+
 ## One-shot fire-on-use notice for the bare-latent() meaning change: ordinary
 ## latent() now carries the per-trait Psi by DEFAULT (was Lambda-only). This is a
 ## silent behavior change for existing analyses, flagged as the key hazard in the

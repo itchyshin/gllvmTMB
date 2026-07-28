@@ -97,10 +97,35 @@
   )
 }
 
+## A variance component can be fully collapsed and still clear an absolute
+## standard-deviation threshold: `sd_thresh = 1e-4` on the sd scale demands a
+## variance below 1e-8, so a boundary-pinned component with sd 6.8e-4 (variance
+## 4.7e-7) passes while its siblings sit near 1. `psi` is estimated on the log
+## scale, so `psi -> 0` is an interior point of the transformed space and
+## `pdHess` stays positive definite there too -- neither existing signal can see
+## a Heywood case. The relative test below is the isSingular-style signal this
+## function's contract promises: a component orders of magnitude below its
+## siblings is collapsed regardless of its absolute size.
+##
+## It needs at least two components to have something to compare against; a
+## lone component is still covered only by the absolute threshold.
+.gllvmTMB_relative_collapse <- function(val, rel_thresh) {
+  val <- abs(val[is.finite(val)])
+  if (length(val) < 2L) {
+    return(FALSE)
+  }
+  max_val <- max(val)
+  if (!is.finite(max_val) || max_val <= 0) {
+    return(FALSE)
+  }
+  min(val) / max_val < rel_thresh
+}
+
 .gllvmTMB_boundary_flags <- function(
   object,
   loading_thresh = 1e-3,
-  sd_thresh = 1e-4
+  sd_thresh = 1e-4,
+  sd_rel_thresh = 1e-3
 ) {
   flags <- character(0)
   rep <- object$report
@@ -143,7 +168,9 @@
   )) {
     val <- as.numeric(rep[[nm]])
     val <- val[is.finite(val)]
-    if (length(val) > 0L && any(val < sd_thresh)) {
+    if (length(val) > 0L &&
+        (any(val < sd_thresh) ||
+           .gllvmTMB_relative_collapse(val, sd_rel_thresh))) {
       flags <- c(flags, paste0("near_zero_", nm))
     }
   }
@@ -529,6 +556,14 @@
 #'   energy for a fitted latent axis. Default 0.05.
 #' @param psi_thresh Threshold below which a fitted per-trait `psi`
 #'   standard deviation is flagged as near zero. Default 0.0001.
+#' @param psi_rel_thresh Threshold on the ratio of the smallest to the
+#'   largest fitted per-trait `psi` standard deviation, below which the
+#'   smallest is flagged as collapsed relative to its siblings. This
+#'   catches boundary-pinned (Heywood) components whose absolute standard
+#'   deviation still clears `psi_thresh`: `psi` is estimated on the log
+#'   scale, so a component at the boundary is an interior point of the
+#'   transformed space and `pdHess` stays positive definite there.
+#'   Needs at least two components. Default 0.001.
 #' @param sigma_eps_thresh Threshold below which an estimated residual
 #'   `sigma_eps` is flagged as near boundary. Default 0.0001.
 #' @param cross_loading_thresh Minimum median trait dominance on a
@@ -559,6 +594,7 @@ check_gllvmTMB <- function(
   se_thresh = 100,
   weak_axis_thresh = 0.05,
   psi_thresh = 1e-4,
+  psi_rel_thresh = 1e-3,
   sigma_eps_thresh = 1e-4,
   cross_loading_thresh = 0.6,
   binary_prevalence_thresh = 0.9,
@@ -825,14 +861,31 @@ check_gllvmTMB <- function(
       next
     }
     min_val <- min(abs(val))
+    ## Absolute OR relative: a component orders of magnitude below its siblings
+    ## is collapsed even when its absolute sd clears `psi_thresh`. See
+    ## `.gllvmTMB_relative_collapse()` for why the absolute test alone cannot
+    ## detect a Heywood case.
+    relative_collapse <- .gllvmTMB_relative_collapse(val, psi_rel_thresh)
+    passes <- is.finite(min_val) && min_val >= psi_thresh && !relative_collapse
     rows <- c(
       rows,
       list(.gllvmTMB_check_row(
         paste0("near_zero_psi_", level),
-        if (is.finite(min_val) && min_val >= psi_thresh) "PASS" else "WARN",
+        if (passes) "PASS" else "WARN",
         .gllvmTMB_fmt_num(min_val, digits = 4L),
-        psi_thresh,
-        paste0(nm, " minimum fitted per-trait psi standard deviation"),
+        paste0(psi_thresh, " absolute / ", psi_rel_thresh, " relative"),
+        paste0(
+          nm, " minimum fitted per-trait psi standard deviation",
+          if (relative_collapse) {
+            paste0(
+              "; collapsed relative to the largest (ratio ",
+              .gllvmTMB_fmt_num(min_val / max(abs(val)), digits = 4L),
+              ")"
+            )
+          } else {
+            ""
+          }
+        ),
         "check whether the trait-specific component is intentionally mapped off, boundary-pinned, or redundant"
       ))
     )

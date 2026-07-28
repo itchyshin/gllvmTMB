@@ -106,12 +106,23 @@ with the lowest \code{-logLik}.
 \item If that fails to converge cleanly, switch the optimiser to
 \code{optim} with \code{BFGS}:
 \code{gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))}.
-\item For factor-analytic models, try
-\code{start_method = list(method = "res", jitter.sd = 0.2)}. This fits
-the fixed-effects part first, decomposes the residual matrix into
-starting values for \eqn{\Lambda} and the latent scores, and can be
-combined with \code{n_init > 1} to check whether the optimiser repeatedly
-reaches the same likelihood basin.
+\item \code{start_method = list(method = "res", jitter.sd = 0.2)} is
+\strong{soft-deprecated as of 0.6.0} and warns once per session. It still
+fits: it decomposes the fixed-effect residual matrix into starting
+values for \eqn{\Lambda} and the latent scores. Do not reach for it.
+
+It was retired on measurement. Across 89 simulated fits — Gaussian,
+Poisson and negative-binomial, \code{d = 1} to \code{3}, three and five traits —
+it was \strong{never materially better} than the default start (its three
+best margins were 0.07, 0.29 and 0.66 log-likelihood units) and was
+materially worse eight times, once by 14.6 units. At \code{d >= 2} it made
+no difference at all. Every failure reported \code{convergence == 0} and a
+positive-definite Hessian on both sides, so the worse fit was silent,
+and restarts did not detect it: in one such fit all five \code{n_init = 5}
+restarts returned the same worse optimum.
+
+If you use it anyway, compare \code{fit$opt$objective} against a
+default-start fit and keep the lower value.
 \item For Gaussian two-level models, prefer
 \code{start_method = list(method = "indep")} or manually fit a simpler
 model and pass it through \code{start_from = simpler_fit}. This is a GLMM

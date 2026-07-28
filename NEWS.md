@@ -174,6 +174,21 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Fixed
 
+* Near-zero variance components are now detected **relative to their
+  siblings**, not only against an absolute threshold. A boundary-pinned
+  (Heywood) component — one trait's unique variance collapsing to zero — could
+  previously pass every check the package had: `check_gllvmTMB()` reported
+  `near_zero_psi_unit … PASS` and `fit_health$boundary_flags` stayed empty for a
+  component whose variance was six orders of magnitude below the others. The
+  absolute threshold is expressed on the standard-deviation scale, so the old
+  `1e-4` demanded a variance below `1e-8` before flagging anything. `pdHess`
+  could not catch it either: `psi` is estimated on the log scale, so a collapsed
+  component is an interior point of the transformed parameter space and the
+  Hessian stays positive definite there. `check_gllvmTMB()` gains
+  `psi_rel_thresh` (default `0.001`) and reports the offending ratio in the
+  check message; `.gllvmTMB_boundary_flags()` applies the same relative test to
+  every variance block it already covered. Fits that were flagged before are
+  still flagged.
 * A diagonal covariance term is no longer duplicated when the `unit` and
   `cluster` columns are the same grouping factor. This removes a flat variance
   split and restores coherent covariance extraction and Wald infrastructure.
@@ -190,6 +205,27 @@ bridge remains experimental and is not required for the main workflow.
   output. The bridge remains experimental.
 
 ## Deprecated compatibility syntax
+
+* `gllvmTMBcontrol(start_method = list(method = "res"))` is **soft-deprecated**
+  and warns once per session. It still fits; prefer the default starts.
+
+  It was retired on measurement. Across 89 simulated fits — Gaussian, Poisson
+  and negative-binomial, `d = 1` to `3`, three and five traits — the residual
+  start was **never materially better** than the default start (its three best
+  margins were 0.07, 0.29 and 0.66 log-likelihood units, the scale of landing on
+  a slightly different point of the same optimum), was **materially worse eight
+  times**, once by 14.6 units, and was **exactly neutral at `d >= 2`**
+  (objectives agreed to seven decimals in 34 of 34 fits). Every failure reported
+  `convergence == 0` and a positive-definite Hessian on both sides, so the worse
+  fit was silent, and restarts were not a guard: in one such fit all five
+  `n_init = 5` restarts returned the same worse optimum.
+
+  The damage concentrates at `d = 1` with three traits, the exactly identified
+  corner where a per-trait variance can collapse to zero. Seeding from the
+  residual covariance commits the optimiser to that matrix's leading direction,
+  which there is not the best-likelihood factor. This is not a residual-noise
+  problem — a start built from noise-free random-effect estimates lands in the
+  same wrong place — so it is not fixable by a better residual.
 
 * The formula parser continues to accept `unique()` as compatibility syntax;
   source-specific `*_unique()` functions remain exported soft-deprecated

@@ -10,6 +10,7 @@ check_gllvmTMB(
   se_thresh = 100,
   weak_axis_thresh = 0.05,
   psi_thresh = 1e-04,
+  psi_rel_thresh = 0.001,
   sigma_eps_thresh = 1e-04,
   cross_loading_thresh = 0.6,
   binary_prevalence_thresh = 0.9,
@@ -32,6 +33,15 @@ energy for a fitted latent axis. Default 0.05.}
 
 \item{psi_thresh}{Threshold below which a fitted per-trait \code{psi}
 standard deviation is flagged as near zero. Default 0.0001.}
+
+\item{psi_rel_thresh}{Threshold on the ratio of the smallest to the
+largest fitted per-trait \code{psi} standard deviation, below which the
+smallest is flagged as collapsed relative to its siblings. This
+catches boundary-pinned (Heywood) components whose absolute standard
+deviation still clears \code{psi_thresh}: \code{psi} is estimated on the log
+scale, so a component at the boundary is an interior point of the
+transformed space and \code{pdHess} stays positive definite there.
+Needs at least two components. Default 0.001.}
 
 \item{sigma_eps_thresh}{Threshold below which an estimated residual
 \code{sigma_eps} is flagged as near boundary. Default 0.0001.}

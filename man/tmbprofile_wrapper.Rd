@@ -12,7 +12,7 @@ tmbprofile_wrapper(
   level = 0.95,
   transform = identity,
   ystep = 0.5,
-  ytol = 2,
+  ytol = NULL,
   parm.range = c(-Inf, Inf)
 )
 }

@@ -34,6 +34,26 @@
 
 #' @keywords internal
 #' @noRd
+## Profile search budget, coupled to the requested level.
+##
+## `TMB::tmbprofile()`'s `ytol` caps how far the deviance trace is allowed to
+## climb before the search stops. The bound is located where that trace crosses
+## `crit = .qchisq_threshold(level)`, so a budget below `crit` can never produce
+## a crossing and the bound comes back infinite -- silently, and previously
+## documented as "at the natural boundary of the parameter space". `ytol` was
+## hard-coded to 2, which is below `crit` for every level above 0.9545.
+##
+## Equality would not be enough either: `.profile_bounds()` interpolates a sign
+## change on EACH side, so the trace must travel past `crit` far enough to
+## bracket it in both directions. Measured on a 4-trait Gaussian fit at level
+## 0.99 (crit = 3.3174): ytol = 3 still gave 0/4 finite bounds; ytol = 4 gave
+## 4/4. Hence a margin above `crit`, not equality with it.
+.profile_ytol <- function(level, margin = 1) {
+  .qchisq_threshold(level) + margin
+}
+
+#' @keywords internal
+#' @noRd
 ## Optional t-based sensitivity cutoff. This substitutes
 ## qt((1 + level) / 2, df)^2 for the standard chi-square reference, widening the
 ## profile-deviance threshold for finite df and approaching chi-square as
@@ -230,13 +250,15 @@ tmbprofile_wrapper <- function(
   level = 0.95,
   transform = identity,
   ystep = 0.5,
-  ytol = 2,
+  ytol = NULL,
   parm.range = c(-Inf, Inf)
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   crit <- .qchisq_threshold(level)
+  ## NULL means "size the budget for this level"; an explicit value still wins.
+  if (is.null(ytol)) ytol <- .profile_ytol(level)
   mle_val <- as.numeric(fit$opt$objective)
 
   if (!is.null(lincomb)) {
@@ -309,7 +331,7 @@ tmbprofile_wrapper <- function(
   transform = identity,
   labels = NULL,
   ystep = 0.5,
-  ytol = 2
+  ytol = NULL
 ) {
   par_names <- names(fit$opt$par)
   hits <- which(par_names == name)

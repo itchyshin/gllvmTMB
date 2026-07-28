@@ -17,6 +17,11 @@ gllvmTMBcontrol(
   start_from = NULL,
   se = TRUE,
   verbose = FALSE,
+  aghq = FALSE,
+  aghq_iter_cap = 1L,
+  aghq_n_adapt = 400L,
+  aghq_ridge = 2,
+  allow_nongaussian_reml = FALSE,
   ...
 )
 }

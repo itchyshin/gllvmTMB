@@ -62,7 +62,10 @@
 #' @param ystep Profile grid spacing on the deviance scale, passed
 #'   to [TMB::tmbprofile()]. Default `0.5`.
 #' @param ytol Profile maximum-deviance budget, passed to
-#'   [TMB::tmbprofile()]. Default `2`.
+#'   [TMB::tmbprofile()]. Default `NULL`, which sizes the budget for the
+#'   requested `level` (the crossing threshold plus a margin). A budget below
+#'   the threshold cannot produce a crossing, so the bound would come back
+#'   infinite; supply a number only if you want to override that.
 #' @param parm.range Two-element numeric range (in the TMB-link
 #'   scale) for the profile walk, passed to [TMB::tmbprofile()].
 #'   Default `c(-Inf, Inf)`.
@@ -127,12 +130,13 @@ confint_inspect <- function(
   parm,
   level = 0.95,
   ystep = 0.5,
-  ytol = 2,
+  ytol = NULL,
   parm.range = c(-Inf, Inf)
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  if (is.null(ytol)) ytol <- .profile_ytol(level)
   if (missing(parm) || !is.character(parm) || length(parm) != 1L) {
     cli::cli_abort(
       "{.arg parm} must be a single character target label (see {.fn profile_targets})."

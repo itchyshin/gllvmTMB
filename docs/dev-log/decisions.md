@@ -1898,3 +1898,66 @@ user-facing interval route exists; `confint()` still returns NA for a reduced-ra
 balanced/complete, unique = FALSE forced, 200 seeds. All 3199 fits returned an interval --
 availability 100%, so no missingness correction was needed. NOTHING IS PROMOTED; PR #801
 stays unmerged and the capability claim stays withheld pending a fresh D-43 panel.
+
+## 2026-07-28  The fresh D-43 panel returns 2 NOT-DONE — the claim is WITHHELD a second time, and four of my own statements were wrong
+
+Decision: the AGHQ capability claim remains **WITHHELD**. A fresh 3-lens panel (2 build +
+1 ceiling, distinct lenses, default NOT-DONE) returned **NOT-DONE / DONE / NOT-DONE**.
+Verdicts in `dev/aghq-evidence/D43b-lens{1,2,3}-*.md`. PR #801 stays unmerged.
+
+**What SURVIVED (lens 2, DONE, and not disputed by the others).** All four headline numbers
+recompute from the cited CSVs. No headline number traces to `dev/aghq-r-reference.R` any
+more -- 20/21/24 all call the real `gllvmTMB()`, which was lens 1's original objection and
+it is cleared. The golden suite genuinely runs: 23 blocks, 0 failed, 0 skipped, 1502
+expectations, with real quadrature convergence against an independent oracle -- lens 2's
+original objection, cleared. The MAP/ML gradient fix is a real correctness fix, with
+`grad_tol` verified unchanged and only the tested gradient corrected.
+
+**FOUR STATEMENTS OF MINE THAT WERE WRONG. Recorded because the arc's value is the
+correction, not the claim.**
+
+1. **"availability 100%, no missingness correction needed" -- FALSE.** I checked
+   FIT-level, not ENTRY-level. Non-finite SE per Sigma entry: aghq 4.83%, aghq_ridge 1.27%,
+   laplace_ridge 0.96%, **laplace 0.06%**. The missingness is ASYMMETRIC and favours exactly
+   the arms I was crediting. Complete-case vs conservative (non-finite counted as
+   not-covered) for aghq_ridge diagonal:
+       n=100  0.961 -> 0.944 | n=200 0.957 -> 0.946 | n=400 0.949 -> 0.936 | n=1600 0.951 -> 0.949
+   The conservative figure is the honest one. "Reaches nominal at every n" does not survive.
+
+2. **"AGHQ+ridge reaches nominal" -- fails the project's own bar.** All eight seed-clustered
+   2*MCSE lower bands sit below 0.95, so the B3b precedent (2026-07-19) withholds it
+   regardless of the point estimate. Lens 1 independently makes the same count: 5 of 8 cells.
+
+3. **The poisson "live null control" is NOT a control -- and this is the worst of the four.**
+   15/15 poisson AGHQ fits at T=12 return the Laplace answer BIT-FOR-BIT (73%/60% at
+   T=6/4), because the adaptation loop stalls back to its warm start while `aghq_used` still
+   reports TRUE. So the "AGHQ is fully active and correctly finds nothing" argument is
+   false: it is largely AGHQ not doing anything. That is the SAME inactivity objection I
+   used to dismiss Gaussian exactness as near-tautological -- only worse, because here the
+   `aghq_used` flag actively misreports it. **`aghq_used = TRUE` does not mean the
+   quadrature moved the answer, and no future claim may treat it as such.**
+
+4. **"Divergence 47% -> 73%" is not significant.** The metric ||Lambda_hat||/||Lambda|| > 2
+   is exactly circular with a penalty equal to 0.5*tr(Sigma_hat)/tau^2. McNemar on the
+   quoted rates gives **p = 0.134**. The attribution survives only via the non-circular
+   `rho_absd` test lens 3 ran.
+
+**Partially corrected, not withdrawn.** Laplace's under-coverage (claim 2) SURVIVES in
+substance -- lens 3 confirms Laplace's SE is NOT broken (within-truth-stratum SE/SD ~
+1.02/1.10/0.97 at n <= 400 with persistent non-shrinking bias). But my bias-ONLY attribution
+is wrong: at n=1600 the SE is also ~28% too small, and bias alone predicts 0.88, not the
+observed 0.664. The mechanism is bias PLUS an SE deficiency, not bias alone.
+
+**Two new scope facts that bound everything above.**
+* **AGHQ does not activate on the package's CURRENT DEFAULT grammar.** Lens 1 ran a default
+  poisson `latent()` through `gllvmTMBcontrol(aghq = 9)` and AGHQ silently declined --
+  `aghq$used = FALSE`, NO WARNING. Every one of the 7550 + 3199 evidence fits used the
+  soft-deprecated `unique = FALSE` compatibility syntax. So the evidence describes a
+  non-default grammar, and the silent decline is itself a defect worth fixing.
+* The O(1/T) law's `bias x T` is constant only in the single `(lam_sd = 1, n = 1600)` cell
+  of the 7550, so "O(1/T)" is a fit to one row, not a law established across the factorial.
+
+**What may be said, and nothing stronger:** AGHQ is built, opt-in, default unchanged, its
+integral correctness is independently verified against an oracle and now regression-tested,
+and the shipped Laplace default under-covers in the one shape measured. Every comparative
+recovery and coverage claim remains WITHHELD.

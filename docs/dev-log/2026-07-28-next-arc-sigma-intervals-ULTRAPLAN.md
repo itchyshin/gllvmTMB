@@ -1,154 +1,137 @@
 ```
-🎯 GOAL — gllvmTMB: build a Σ interval route that survives its own validation gate.
+🎯 GOAL — gllvmTMB: a Σ interval instrument that survives its own gate, then multinomial.
 SOLO PLATFORM: CLAUDE. Worktree /private/tmp/gllvmtmb-arc0-identifiability, branch
-claude/aghq-engine-20260728 (PR #801 OPEN — merging is Shinichi's call, never a goal state).
+claude/aghq-engine-20260728. PR #801 OPEN — merging is Shinichi's call, never a goal state.
 
-HEADLINE: EXTEND THE EXISTING PROFILE ROUTE TO LOW-RANK Σ. gllvmTMB already HAS a
-simulation-validated interval route — the Gaussian Sigma_unit DIAGONAL profile at n≥150,
-d≤2, ~0.946-0.948 against a 0.94 gate, under Laplace. But R/profile-route-matrix.R:631 is
-explicit that "pure diagonal Sigma_unit profiles directly; LOW-RANK TOTAL SIGMA FALLS BACK TO
-BOOTSTRAP" — and the 2026-07-18 handover already concluded bootstrap is the WRONG route for
-this target. The repo names its own gap: "target-explicit full-Sigma profile needs a separate
-gate". Low-rank Σ = ΛΛ' (unique = FALSE) is exactly what the whole AGHQ arc measured, so
-every one of its coverage numbers went through the fallback. The delta route built on
-2026-07-28 to fill that hole FAILED its own pre-registered SE/SD gate in 45 of 48 cells.
-Every coverage number in the last arc — for AGHQ *and* for Laplace, favourable and
-unfavourable alike — was therefore instrument-limited, and two headline findings were
-retracted for exactly that reason. This is not an AGHQ problem: interval coverage is the
-0.6 release's own headline gap. Fix the instrument and several blocked questions unblock at
-once.
+HEADLINE: EXTEND THE CERTIFIED PROFILE ROUTE TO LOW-RANK Σ. gllvmTMB already has ONE
+coverage-certified interval — the Gaussian Sigma_unit DIAGONAL profile — but
+R/profile-route-matrix.R:631 is explicit that LOW-RANK TOTAL Σ FALLS BACK TO BOOTSTRAP, which
+was ruled the wrong route on 2026-07-18. AGHQ forces unique = FALSE, so Σ = ΛΛ' is low-rank in
+every AGHQ fit and the entire last arc measured through that fallback. Interval coverage is
+also the 0.6 release's own headline gap. Fix the instrument and the AGHQ question, the Laplace
+question and a release gate unblock together.
 
-IN PARALLEL: prior-art sweep (Ranga/NotebookLM — do comparable packages already solve this?);
-poisson-stall root cause; multinomial AGHQ.
-DEFER: flipping the aghq default; any capability claim; merging #801.
-DISCIPLINE: COMPUTE EVERY GATE YOU PRE-REGISTER — the last arc wrote one and never ran it ·
-after ANY engine edit re-run every measurement that engine produced, not only the invariant ·
-Gaussian exactness ~1e-9 and identical across k · Totoro ≤150 cores, incremental writes ·
-local cores ≤6 · verify jobs with `ps aux | grep exec/R` · D-43 panel (2 build + 1 ceiling,
-default NOT-DONE) before any claim, and record whatever it returns.
+THEN MULTINOMIAL (Shinichi's standing ask), which needs LESS than assumed:
+expand_multinomial_response already makes K−1 pseudo-traits, so the factor route needs NO new
+C++ — but the multinomial latent scale is NON-IDENTIFIED and must be fixed by convention
+before quadrature over that same latent means anything.
+
+IN PARALLEL: the poisson stall ROOT CAUSE (the one genuinely new finding — the brain searched
+and found no prior instance).
+DEFER: flipping the aghq default; any capability claim before the panel; merging #801.
+DISCIPLINE: COMPUTE EVERY GATE YOU PRE-REGISTER (last arc wrote one and never ran it) ·
+n_sim ≥ 2000 for adjudication, ~200 is PILOT ONLY (Design 66 §7) · FIXED TRUTH PER CELL is
+the house standard, not an innovation · report the fit-health denominator, never complete-case
+alone · after ANY engine edit re-run every measurement that engine produced, not only the
+invariant · Gaussian exactness ~1e-9 identical across k · Totoro ≤150 cores, incremental
+writes · local ≤6 cores · `ps aux | grep exec/R`, never pgrep · D-43 panel (2 build + 1
+ceiling, default NOT-DONE) before any claim, and record whatever it returns.
 ```
 
-# Context — why this arc, and why not more AGHQ
+# Context
 
-The 2026-07-28 arc fixed four real engine bugs and cleared two of three original panel
-objections. Two successive D-43 panels still withheld the claim, and the reason converged
-both times on one thing: **the measuring instrument, not the engine.**
+The 2026-07-28 arc built an opt-in AGHQ engine, fixed four real engine bugs, and cleared two
+of three original panel objections. **Two D-43 panels still withheld the claim, converging both
+times on the measuring instrument rather than the engine.** Four results dissolved under a
+mechanism check; the fourth was *unfavourable* to AGHQ and dissolved anyway, which is the
+diagnostic — direction of flattery gave no protection. What they shared was an unchecked
+instrument.
 
-Four results dissolved under a mechanism check, and the last one is the diagnostic:
+A brain sweep then found that most of what the arc "discovered" was already on record:
 
-| dissolved | cause |
+| the arc did | the brain already held |
 |---|---|
-| poisson "null control" | AGHQ wasn't running |
-| complete-case coverage | asymmetric entry-level SE missingness |
-| "nominal at every n" | DGP redrew Λ per seed = the ridge's own prior |
-| **"Laplace covers 0.023"** | **~90% an artefact of the delta SE route** |
+| ran 200- and 120-seed coverage cells | **Design 66 §7: ~200 = PILOT ONLY** (MCSE 1.54pp); **2000 = the adjudication floor** |
+| "discovered" the truth-redraw confound | **fixed truth per cell is the unbroken standing practice** (`m3_sample_truth`) |
+| reported complete-case coverage | recorded failure mode **#1, silent denominator laundering** |
+| built a delta SE with `qnorm` | **z→t for LOCATION-axis VCs**, per-class map already filed as **gllvmTMB#565** |
+| measured Laplace bias by simulation | **`R/check-consistency.R` already wraps `TMB::checkConsistency()`** |
+| found a "flat likelihood direction" | **Rabe-Hesketh, Skrondal & Pickles 2002** predicts exactly this for discrete + small clusters + high ICC |
 
-The fourth matters most because it was an *unfavourable* finding. Direction of flattery gave
-no protection. What all four share is an untrustworthy or unchecked instrument.
+**The stall is the one genuinely new finding** — the sweep searched for a prior
+adaptive-quadrature warm-start stall and found none.
 
-**So the binding constraint is the interval route, and it is not AGHQ-specific.**
+`ARC PROGRAM` — size mode, recommended **11 h** (range 8–12), confidence *inferred*.
 
-**IMPORTANT CORRECTION to how this was first framed (Shinichi caught it).** It is NOT true
-that gllvmTMB has no trustworthy Σ interval. It has exactly one, it is a PROFILE route, and
-it WAS validated under Laplace: the Gaussian `Sigma_unit` diagonal at n≥150, d≤2, ~0.946-0.948
-against a 0.94 gate. Asserting an absence from a negative `ADREPORT`/`confint` probe was the
-same error this arc kept documenting — a negative probe cannot prove absence
-([[CROSS-REPO-GUARDS]]).
+## DECISIONS LOCKED (Shinichi, this session)
 
-The precise statement is narrower and more useful: **the validated route covers the pure
-diagonal; low-rank total Σ = ΛΛ' explicitly falls back to bootstrap**
-(`R/profile-route-matrix.R:631`), and bootstrap was already ruled out for this target on
-2026-07-18. Since `unique = FALSE` is forced everywhere AGHQ runs, the entire AGHQ arc
-measured through that fallback.
-
-This makes the arc CHEAPER and better founded: **extend a route that already has a coverage
-certificate, rather than build a delta method from scratch.** The repo has already scoped the
-work — "target-explicit full-Sigma profile needs a separate gate". Interval coverage is also
-the 0.6 release's headline gap, so this unblocks the AGHQ question, the Laplace question and
-a release gate at once.
-
-`ARC PROGRAM` — size mode, recommended **10 h** (range 7–12), confidence *inferred*.
-Two unknowns retired by S0/S1 before any build.
+1. **Instrument first, then multinomial.** Multinomial would otherwise inherit the same broken
+   measurement, and its recorded blocker is data-hungriness (N≈800), not the integrator.
+2. **A1/A3 are SUPERSEDED — record the reversal explicitly**, the way the 2026-05-15 reversal
+   was recorded, so a future reader can tell they were overturned rather than overlooked.
+   A1 was *no engine implementation*, not *no AGHQ ever*; A3 ranked VA above AGHQ. An engine
+   now exists with measured evidence. **This must be written into `decisions.md` in S1, not
+   assumed silently.**
 
 ---
 
-# Phase 0.25 — sweep receipt (carry this forward; Phase 1 may not start without it)
+# Phase 0.25 — sweep receipt (complete; Phase 1 may begin)
 
 | surface | evidence run | finding | call |
 |---|---|---|---|
-| repo git | `git status -sb`, `git log`, `worktree list` | branch clean, in sync, 47 commits; concurrent lane `claude/aghq-family-axis-20260728` conflicts on `decisions.md` | **resume** this branch; surface the conflict to Shinichi |
-| this repo's own designs | `docs/design/75-*` (inference-route matrix), `80-nongaussian-re-evidence-bars.md` | a route matrix and an evidence-bar ladder already exist; "covered" means *dispatches*, never *calibrated* | **reuse** — do not invent a new taxonomy |
-| existing interval code | `R/bootstrap-sigma.R`, `R/z-confint-gllvmTMB.R:1862-1880` | `bootstrap_Sigma()` exists (percentile, known to under-cover); log-SD Wald convention already established at `:1873` | **reuse** the log-SD convention; bootstrap is a *comparator*, not the route |
-| brain | (S0 re-runs this properly) | 2026-07-18 handover already concluded bootstrap is the WRONG route for `Sigma_unit_diag`; profile / log-SD-Wald is the certificate path | **reuse** — the direction was already decided and not followed |
-| **external prior art** | **NOT DONE — this is S0** | — | **must run before building** |
+| repo git | `git status -sb`, `log`, `worktree list` | clean, in sync, 51 commits; lane `claude/aghq-family-axis-20260728` conflicts on `decisions.md` | **resume**; surface conflict to Shinichi |
+| repo designs | `docs/design/66`, `73`, `75`, `80` | MCSE table, log-SD-Wald convention, route matrix, evidence-bar ladder all exist | **reuse** — invent no new taxonomy |
+| interval code | `R/profile-*.R`, `R/bootstrap-sigma.R`, `R/z-confint-gllvmTMB.R:1873` | certified diagonal profile exists; low-rank falls back to bootstrap (`profile-route-matrix.R:631`) | **extend**, do not rebuild |
+| brain (4-way MCP sweep) | `search_notes(search_all_projects=true)` ×4 + `read_note` | coverage conventions, z-vs-t (#565), D-12's Self–Liang defect, `check_consistency()`, Design 84 multinomial, A1/A3 | **reuse all six** |
+| external prior art | **NOT DONE — S2** | the small-sample-VC literature is already in NotebookLM `3b3d2ec5` | narrow the ask |
 
-**Verdict:** resume the branch; reuse the log-SD convention and the existing route matrix;
-the genuine gap is a *validated* Σ SE plus the stall. External prior art is unswept and is
-the first slice, because building an interval route without checking how `gllvm`, `Hmsc`,
-`boral` and `sdmTMB` do it risks reinventing — or worse, reinventing worse.
+**Verdict: resume + reuse.** The genuine gap is a *low-rank* profile, the Self–Liang fix, and
+the stall. Everything else already exists.
 
 ---
 
 # Slices
 
-| # | slice | member | model · effort | time | depends |
+| # | slice | member | model · effort | time | dep |
 |---|---|---|---|---|---|
-| **S-1** | **🔴 READ THE BRAIN FIRST — four items already on record.** (a) location-axis VCs may need a **t**-quantile not z (`qnorm` at `22-sigma-se-delta.R:104`); per-class map already filed as **gllvmTMB#565** — Λ/Ψ/sd_B = location → t may help; NB2 φ/Γ shape/Beta φ/Tweedie = dispersion → do NOT; correlations → Fisher-z. (b) profile already **certified NOMINAL at g=32** (0.948-0.956) in drmTMB. (c) profile has a KNOWN unfixed defect — bare `qchisq` at **`R/profile-ci.R:32`**, Self-Liang chi-bar-square at boundaries. (d) **`R/check-consistency.R` already wraps `TMB::checkConsistency()`** — the built-in Laplace-bias diagnostic this arc re-derived by simulation | Ada | — | 20 m | — |
-| **S0** | **Prior art — NARROWED by the brain sweep.** The small-sample-VC literature (Satterthwaite / Kenward-Roger / t-vs-z) is ALREADY in the `Fast & Accurate Algorithms` NotebookLM (`3b3d2ec5`) — do not re-gather it. Ask only the genuinely open question: **does anyone profile a REDUCED-RANK covariance, and what happens to a profile under rotational non-identifiability** (Σ identified, Λ not)? Plus: how do `gllvm` / `Hmsc` / `boral` / `sdmTMB` report Σ uncertainty? | **Ranga** (NotebookLM) | n/a — outside context | 30 m | S-1 |
-| **S1** | **Profile-route inventory** — read `R/profile-route-matrix.R`, `profile-ci.R`, `profile-targets.R`, `profile-derived.R` and `design/73`. What exactly does the validated diagonal profile do, why does low-rank fall back, and what would a target-explicit full-Σ profile need? This is now the load-bearing recon slice, not a survey | recon | **Sonnet · med** | 45 m | — |
-| **S2** | **Poisson stall ROOT CAUSE** — why does one capped iteration make no progress? Optimiser handoff, stale tape, or genuinely flat objective? These have opposite fixes. Last arc only *labelled* it | Curie | Sonnet · high | 120 m | — |
-| **S3** | **EXTEND THE PROFILE ROUTE TO LOW-RANK Σ** — the target-explicit full-Σ profile the route matrix already names as its own gap. Reuse the validated diagonal profile machinery and the log-SD convention; do NOT rebuild a delta method. Validate against the **within-truth empirical SD**, not the bootstrap; **COMPUTE the SE/SD gate per cell as a precondition to quoting any coverage number** | Gauss | Sonnet · high | 180 m | S0, S1 |
-| **S4** | **Multinomial AGHQ** — move the grouped softmax reduction inside the node loop; assert a contrast group never straddles sites | Curie | Sonnet · high | 150 m | S2 |
-| **S5** | **Re-measure coverage on the fixed instrument** — 4 arms × fixed truths × lam_sd {0.5,1,3}, gate computed first | Gauss | Sonnet · med | 60 m + async | S3 |
-| **S6** | **Adversarial verify** — attack S3's validation specifically | Rose | Opus · high | 60 m | S3, S5 |
-| **S7** | **D-43 panel**, 2 build + 1 ceiling, default NOT-DONE; record whatever it returns | panel | 2×Sonnet + 1×Opus · high | 60 m | S6 |
-| — | Melissa reconcile + after-task + handover | Melissa/Rose | Sonnet · low | 45 m | all |
+| **S1** | **Record the A1/A3 reversal + land the orphan note.** Write the explicit supersession entry (locked above). Also land `docs/dev-log/2026-07-22-quadrature-regime-trap-*.md` — it is UNCOMMITTED and out-of-lane, and it holds the Rabe-Hesketh/Liu–Pierce regime analysis that predicts this arc's flat-likelihood finding | Ada | Sonnet · low | 30 m | — |
+| **S2** | **Ranga — the ONE open question.** Do NOT re-gather small-sample-VC literature (already in NotebookLM `3b3d2ec5`). Ask only: does anyone profile a **reduced-rank** covariance, and what happens to a profile under **rotational non-identifiability** (Σ identified, Λ not)? Plus how `gllvm`/`Hmsc`/`boral`/`sdmTMB` report Σ uncertainty | **Ranga** | outside context | 30 m | — |
+| **S3** | **Poisson stall ROOT CAUSE.** Why does the capped first iteration make no progress? Optimiser handoff, stale tape, or genuinely flat objective — opposite fixes. Last arc only *labelled* it. Reproducer: poisson, n=200, T=6, q=1, `unique=FALSE`, `aghq=9, aghq_ridge=Inf` | Curie | Sonnet · high | 120 m | — |
+| **S4** | **Profile-route deep read.** `profile-ci.R`, `profile-route-matrix.R`, `profile-targets.R`, `profile-derived.R`, `design/73`. What does the certified diagonal profile do, *why* does low-rank fall back, what would a target-explicit full-Σ profile need? | recon | Sonnet · med | 45 m | — |
+| **S5** | **Fix the Self–Liang defect.** `R/profile-ci.R:32` uses a bare `qchisq(level, 1)/2`; at a boundary the LR reference is a **chi-bar-square mixture**, so it mis-covers *in profile's own best regime* (D-12). Any low-rank extension inherits this unless fixed first | Gauss | Sonnet · high | 90 m | S4 |
+| **S6** | **Extend the profile to low-rank Σ** — the target-explicit full-Σ profile the route matrix names as its own gap. Reuse the certified diagonal machinery + the log-SD convention. Settle z-vs-t per **#565's per-class map** (Λ/Ψ/sd_B = location → t may help; dispersion → do NOT; correlations → Fisher-z) | Gauss | Sonnet · high | 180 m | S2, S4, S5 |
+| **S7** | **Coverage, to house standard.** `check_consistency()` FIRST as the cheap Laplace-bias gate. Then **n_sim ≥ 2000**, **fixed truth per cell**, lam_sd ∈ {0.5,1,3}, 4 arms. **Compute the SE/SD gate and the fit-health denominator BEFORE quoting any number** | Gauss | Sonnet · med | 90 m + async | S6 |
+| **S8** | **Multinomial** — settle the **latent-scale convention** first (non-identified; must be FIXED, and quadrature interacts with it). Then wire AGHQ through the *existing* pseudo-trait path. **Do NOT re-attempt the `R=(1/K)(I+J)` OLRE regularization** — recorded negative | Curie | Sonnet · high | 150 m | S3 |
+| **S9** | **Adversarial verify** — attack S6/S7's *validation*, not their output. That is where both prior arcs failed | Rose | Opus · high | 60 m | S7 |
+| **S10** | **D-43 panel**, 2 build + 1 ceiling, default NOT-DONE; **record whatever it returns** | panel | 2×Sonnet + 1×Opus · high | 60 m | S9 |
+| — | Melissa reconcile · after-task · handover | Melissa/Rose | Sonnet · low | 45 m | all |
 
-**PARALLEL:** {S0, S1, S2} at once. Then S3 ‖ S4. Then S5 → S6 → S7.
-**FAN-OUT BUDGET:** 6 new children max, 1 ceiling. S0 is free (runs outside context).
-
-## Why Ranga first, and what to ask
-
-This is the slice most likely to change the plan, which is why it runs before the build.
-Concretely, ask:
-
-1. How does **`gllvm`** report uncertainty on `Sigma`/loadings — does it, and by what route?
-2. **`Hmsc`** and **`boral`** are Bayesian: they get posterior intervals on Σ for free. Is
-   there a published comparison of frequentist vs posterior interval behaviour for
-   reduced-rank Σ that tells us what coverage to *expect*?
-3. Is there known prior art on **delta-method intervals for ΛΛ'** under rotational
-   non-identifiability, and is the log scale for the diagonal the established convention?
-4. **`sdmTMB`** shares our TMB lineage — does it ADREPORT derived covariance quantities, and
-   what did that cost?
-5. Any literature on **why a Wald interval on a variance component under-covers** that would
-   let us predict rather than discover.
-
-Honour the guardrails: **triage, not authority**; auto-added sources are UNVERIFIED until
-checked; exclude our own vignettes/drafts or the sweep will cite us back to ourselves.
+**PARALLEL:** {S1, S2, S3, S4} → {S5} → {S6 ‖ S8} → S7 → S9 → S10.
+**FAN-OUT BUDGET:** 6 new children per checkpoint, 1 ceiling. S2 is free (outside context).
 
 ---
 
+# Critical files
+
+`R/profile-ci.R` (:32 Self–Liang) · `R/profile-route-matrix.R` (:631 the fallback) ·
+`R/profile-targets.R` · `R/profile-derived.R` · `R/check-consistency.R` (reuse, don't rebuild) ·
+`R/fit-multi.R` (the AGHQ adaptation loop, for S3) · `src/gllvmTMB.cpp` (:2310 `obs_loglik`
+fid-16 error, :2530 the grouped softmax, for S8) · `docs/design/{66,73,75,80}` ·
+`dev/aghq-evidence/22-sigma-se-delta.R` (**`qnorm` at :104 — the z-vs-t site**).
+
 # Verification
 
-* **The SE/SD gate is a PRECONDITION, not a report.** No coverage number may be computed,
-  let alone quoted, until SE/sd(est−truth) within truth strata is near 1. Last arc wrote
-  that rule and skipped it; this arc computes it first and prints it per cell.
-* **After any engine edit, re-run every measurement that engine produced.** The invariant is
-  necessary but was insensitive to exactly what `12648f44` changed.
-* Gaussian exactness ~1e-9 and identical across k after every edit.
-* Full `devtools::test()` before close; AGHQ suite must stay ≥1504 passing, 0 skipped.
-* S6 attacks S3's *validation*, not its output — that is where the last two arcs failed.
+* **The SE/SD gate and the fit-health denominator are PRECONDITIONS, not reports.** No coverage
+  number is computed, let alone quoted, until both are in hand. Last arc wrote that rule into
+  its own script and skipped it.
+* **n_sim ≥ 2000** for anything adjudicating; label a smaller run PILOT in the same sentence.
+* **After any engine edit, re-run every measurement that engine produced** — the invariant was
+  insensitive to exactly what `12648f44` changed, and stale numbers were cited for hours.
+* Gaussian exactness ~1e-9, identical across k, after every edit.
+* AGHQ suite ≥1504 passing, 0 skipped; full `devtools::test()` before close.
+* **S9 attacks the validation, not the output.**
 
 # Not in this arc
 
-Flipping the `aghq` default · merging PR #801 · any capability claim before S7 ·
-`R/diagnose.R` · the remaining 12 unexercised families · CRAN work.
+Flipping the `aghq` default · merging PR #801 · any capability claim before S10 ·
+`R/diagnose.R` · the remaining 12 unexercised families · CRAN work · the multinomial
+data-hungriness fix (N≈800; recorded as a **1.0-maturity** arc).
 
-# Risk branch
+# Risk branches
 
-If **S0 finds an established route** (e.g. `sdmTMB` already ADREPORTs a derived covariance),
-adopt it and cut S3 to an adaptation — likely saving 2 h. If **S2 finds the stall is a
-genuinely flat objective** rather than a handoff bug, then AGHQ cannot help those cells at
-all and S4 (multinomial) should be *deferred*, because adding a family to an engine that
-cannot make progress widens an unusable surface. That is a real possible outcome and the
-plan should be allowed to end there.
+* **S3 finds a genuinely flat objective** (not a handoff bug) → AGHQ cannot help those cells;
+  **S8 defers** rather than adding a family to an engine that cannot make progress.
+* **S2 finds an established low-rank route** → S6 collapses to an adaptation, ~2 h saved.
+* **S5 proves harder than 90 m** → it still goes first; an uncorrected Self–Liang reference
+  would silently contaminate every S6/S7 number, which is precisely this arc's recurring
+  failure.

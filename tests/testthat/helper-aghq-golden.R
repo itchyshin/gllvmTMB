@@ -158,9 +158,27 @@
 ## documented contract, not a guess: verified against
 ## .gllvmTMB_aghq_k(control, d_B) in R/fit-multi.R, which does exactly
 ## `a <- control$aghq`.
+## THE GOLDEN TESTS MEASURE QUADRATURE ACCURACY, so they must run the quadrature
+## UNPENALISED: aghq_ridge = Inf. Two reasons, both concrete.
+##
+## 1. A penalised fit does not land at the maximum of the likelihood these tests
+##    compare against, so "does the package's reported objective match a
+##    brute-force integral at its own optimum" becomes a question about the MAP
+##    point rather than about the integral. That is a different test.
+## 2. At the ridge optimum the honest gradient is lambda/tau^2 ~ 0.25 against
+##    grad_tol = 1e-4, so a ridge-on fit can NEVER satisfy the gradient
+##    convergence leg. With the ridge left on (the shipped default), GOLDEN 2
+##    fails on `all(ladder$convergence == 0L)` -- NOT on accuracy. That is the
+##    MAP-point/ML-curvature defect a D-43 lens identified on 2026-07-28,
+##    surfacing here as a test failure now that these tests actually run.
+##
+## Keeping the ridge on here would have conflated an accuracy test with a
+## convergence-reporting defect. The defect is real and tracked separately; it
+## does not belong inside the instrument that measures the integral.
 .golden_aghq_control <- function(k, ...) {
   ctrl <- gllvmTMB::gllvmTMBcontrol(...)
   ctrl$aghq <- k
+  ctrl$aghq_ridge <- Inf
   ctrl
 }
 
@@ -168,22 +186,48 @@
 ## only (unique = FALSE => no Psi), matching the GOLDEN 2 spec.
 .golden_formula_q1 <- y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE)
 
-## Full end-to-end smoke test: does an actual gllvmTMB() call requesting
-## AGHQ at k = 1 run to a finite objective, with fit$aghq$used TRUE? Probing
-## by USING the capability (a real toy fit), not by checking whether a
-## function/argument merely exists, since a negative exists()/formals()
-## check cannot prove the kernel is absent or ready. This is the gate the
-## golden tests use to decide skip() vs run-for-real, since E1's kernel may
-## land (or partially land) at any point while this file is in use.
+## Full end-to-end smoke test: does an actual gllvmTMB() call requesting AGHQ run
+## to a finite objective, with fit$aghq$used TRUE? Probing by USING the capability
+## (a real toy fit) rather than checking whether a function or argument merely
+## exists, since a negative exists()/formals() check cannot prove the kernel is
+## absent or ready. This is the gate the golden tests use to decide skip() vs
+## run-for-real.
+##
+## PROBE AT k = 3, NOT k = 1 -- and this is not cosmetic. A full fit at k = 1 is
+## DELIBERATELY routed to the plain-Laplace branch (k = 1 IS the Laplace
+## approximation, and with the adaptation frozen as DATA the k = 1 gradient is
+## missing d(logdet)/d(theta)), so fit$aghq$used is FALSE BY DESIGN there. Probing
+## at k = 1 therefore could NEVER observe used = TRUE, and every accuracy test in
+## this file skipped SILENTLY -- reported as "5 passed, 3 skipped" while the three
+## that actually prove quadrature accuracy had never executed once. Found by a D-43
+## review lens on 2026-07-28, not by the suite, because a skip is not a failure and
+## nothing was watching the skip count.
+##
+## The lesson generalises: a capability probe must request a configuration the
+## capability can actually satisfy. `.golden_gate_is_honest()` asserts exactly that.
 .golden_aghq_smoke_ok <- function(dat) {
   ok <- tryCatch({
     fit <- suppressWarnings(gllvmTMB::gllvmTMB(
       .golden_formula_q1, data = dat, family = binomial(), unit = "site",
-      control = .golden_aghq_control(1L, n_init = 1L, init_jitter = 0, se = FALSE)
+      control = .golden_aghq_control(3L, n_init = 1L, init_jitter = 0, se = FALSE)
     ))
     is.finite(fit$opt$objective) && isTRUE(fit$aghq$used)
   }, error = function(e) FALSE)
   isTRUE(ok)
+}
+
+## Self-check on the GATE, so the gate cannot lie in either direction: k = 1 must
+## NOT report used = TRUE (it is Laplace), and k = 3 MUST. If either flips, the
+## golden tests are silently skipping or silently running against the wrong branch.
+.golden_gate_is_honest <- function(dat) {
+  probe <- function(k) tryCatch({
+    fit <- suppressWarnings(gllvmTMB::gllvmTMB(
+      .golden_formula_q1, data = dat, family = binomial(), unit = "site",
+      control = .golden_aghq_control(k, n_init = 1L, init_jitter = 0, se = FALSE)
+    ))
+    isTRUE(fit$aghq$used)
+  }, error = function(e) NA)
+  list(k1_used = probe(1L), k3_used = probe(3L))
 }
 
 ## Fit the q = 1 golden fixture at one AGHQ node count k and return the

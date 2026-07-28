@@ -160,3 +160,54 @@ test_that("GOLDEN 2 [bonus, q = 2]: AGHQ at large k matches a nested-integrate()
   expect_lt(ladder$abs_error[ladder$k == 9L], ladder$abs_error[ladder$k == 1L])
   expect_lt(ladder$abs_error[ladder$k == 9L], 1e-4)
 })
+
+## ============================================================================
+## KNOWN RED, DELIBERATELY LEFT RED (2026-07-28). Do NOT "fix" this by skipping.
+##
+## GOLDEN 2 currently FAILS, and that is more useful than the silent skip it
+## replaced. Until today every accuracy test in this file skipped without anyone
+## noticing, because the gate probed at k = 1 -- which is routed to plain Laplace
+## by design, so `aghq$used` could never be TRUE. Reported as "5 passed, 3
+## skipped"; a skip is not a failure and nothing watched the skip count.
+##
+## Now that they run, GOLDEN 2 fails for a REAL and diagnosable reason:
+##
+##    k    AGHQ objective   brute-force   error    convergence
+##    7      1.699954        1.997868    0.2979        1
+##    9      1.730855        1.998106    0.2673        1
+##   15      1.816741        1.997879    0.1811        1
+##
+## The quadrature IS converging toward the oracle (0.298 -> 0.267 -> 0.181), but
+## every fit reports convergence = 1: the adaptation loop STALLS on this 3-site
+## fixture ("no honest descent at cap 1 after backtracking"). So this test is
+## currently measuring the OPTIMISER, not the integral, and failing on the former.
+##
+## THE FIX IS A TEST-DESIGN CHANGE, not a tolerance change. dev/aghq-evidence/
+## 02-template-vs-oracle.R gets 1.2e-09 agreement against the same kind of oracle
+## by evaluating the integral at a FIXED parameter point rather than at a fitted
+## optimum. GOLDEN 2 should do the same: separate "is the integral right" from
+## "does the fit converge", and test the second elsewhere. n_site = 3 with 2
+## traits is 6 binary observations for 4 parameters -- essentially unidentified,
+## so a stall there may be entirely legitimate and is the wrong thing to assert.
+##
+## Tracked for the next lane. Leaving it red is the point: a green suite that
+## hides a real problem is exactly what the last hour was spent undoing.
+## ============================================================================
+
+test_that("the golden gate cannot lie in either direction", {
+  ## WHY THIS EXISTS. Every accuracy test in this file skipped SILENTLY until
+  ## 2026-07-28: the gate probed at k = 1, but k = 1 is deliberately routed to the
+  ## plain-Laplace branch, so fit$aghq$used could never be TRUE. The suite reported
+  ## "5 passed, 3 skipped" and nobody was watching the skip count -- a skip is not a
+  ## failure. A D-43 review lens found it, not the suite.
+  ##
+  ## So the gate now gets its own test. k = 1 must NOT claim AGHQ (it is Laplace);
+  ## k = 3 MUST. If either flips, the accuracy tests are either skipping silently
+  ## again or running against the wrong branch, and this goes red instead.
+  dat <- .golden_dgp_q1()$data
+  g <- .golden_gate_is_honest(dat)
+  expect_false(isTRUE(g$k1_used),
+               info = "k = 1 must route to Laplace, so aghq$used must not be TRUE")
+  expect_true(isTRUE(g$k3_used),
+              info = "k = 3 must actually use AGHQ, or every accuracy test below skips")
+})

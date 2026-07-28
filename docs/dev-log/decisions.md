@@ -1830,3 +1830,71 @@ latent-SD point estimate is closer, and the reason is not established.*
 during it. The fits forked from the package image loaded at launch and are probably
 internally consistent, but that cannot be proven. **Re-run before publishing anything from
 it.** The direction is clear enough to record; the third decimal is not.
+
+## 2026-07-28  The coverage cell: the SHIPPED DEFAULT covers 0.66 at n=1600, and AGHQ+ridge reaches nominal
+
+Decision: record the first interval-coverage evidence AGHQ has ever had, on the shipped
+engine, and record it with the two caveats that stop it being over-read. 3199 fits, 200
+seeds, p=6 q=2 binomial-logit, four arms, n in {100,200,400,1600}, on Totoro. D-50: local.
+
+**Wald coverage of Sigma, nominal 0.95** (per-seed proportion, then SE across seeds):
+
+```
+   DIAGONAL                              OFF-DIAGONAL
+   n   laplace lap+rdg  aghq aghq+rdg    laplace lap+rdg  aghq aghq+rdg
+  100    0.776   0.948 0.869   0.961       0.801   0.930 0.905   0.959
+  200    0.861   0.909 0.895   0.957       0.851   0.899 0.925   0.962
+  400    0.825   0.835 0.912   0.949       0.830   0.836 0.923   0.959
+ 1600    0.664   0.669 0.937   0.951       0.675   0.676 0.947   0.952
+```
+
+**1. THE SHIPPED DEFAULT UNDER-COVERS BADLY, AND WORSE AS n GROWS.** Laplace: 0.776 ->
+0.861 -> 0.825 -> 0.664 on the diagonal. That direction is not a paradox, it is the
+signature of an estimator that is CONSISTENT FOR THE WRONG VALUE: the O(1/T) integral bias
+does not shrink with n, while the interval does, so the interval narrows around a
+displaced point. It ties directly to the same-day O(1/T) measurement (bias 0.347/0.176/
+0.113/0.038 at T = 2/4/6/12). This is a finding about the package AS IT SHIPS, not about
+AGHQ, and it is the most consequential number in this arc.
+
+**2. AGHQ + RIDGE REACHES NOMINAL AT EVERY n, on both parts.** The MAP-point concern that
+motivated the cell did NOT materialise: the shipped configuration slightly OVER-covers if
+anything (0.949-0.962). Under the project's 2*MCSE-lower-band >= 0.95 rule (the B3b
+precedent) it CLEARS at diag n=100 (0.950) and offdiag n=100/200/400 (0.950/0.954/0.950),
+and misses at diag n=200/400/1600 (0.945/0.934/0.936) and offdiag n=1600 (0.939). So:
+nominal as a point estimate everywhere, clearing the strict band in half the cells. NOT a
+certificate.
+
+**3. THE RUN VALIDATED ITS OWN INSTRUMENT, and the check is itself a bias diagnostic.**
+mean(SE) / sd(est - truth) -- note sd of the ERROR, because the truth is redrawn per seed
+so sd(est) alone confounds truth-variation with sampling variation:
+
+```
+  diag     n=100  200   400   1600      offdiag  n=100  200   400   1600
+  aghq_ridge 1.24 1.18  1.05  0.51               1.05  1.04  1.01  0.20
+  laplace    0.24 0.11  0.07  0.02               0.10  0.13  0.20  0.07
+```
+
+Only aghq_ridge is calibrated (~1.0) where the claim would be made. Laplace's ratio
+collapsing toward zero is MECHANICAL EVIDENCE OF BIAS: a biased estimator's error SD is
+driven by the spread of the truth and does not shrink with n, while its SE does. So
+Laplace's under-coverage is caused by a displaced centre, not by a broken SE -- an interval
+centred on a biased point cannot cover however well its width is estimated.
+
+**TWO CAVEATS THAT BOUND THE CLAIM, recorded rather than buried.**
+
+(a) THE TRUTH IS REDRAWN EVERY SEED (`mk()` draws Lambda ~ N(0, lam_sd) per seed). So this
+is coverage MARGINALISED OVER A GAUSSIAN PRIOR ON LAMBDA -- a Bayes-flavoured quantity, not
+pure frequentist coverage at a fixed parameter. And the ridge IS a Gaussian prior of the
+same functional form, so the DGP is structurally favourable to the ridge arms in a way that
+appears ONLY in a coverage study. A fixed-truth replication is required before any
+certificate. D-43 lens 3 flagged exactly this and it is not yet answered.
+
+(b) THE SE ROUTE IS EVIDENCE CODE AND IS CALIBRATED ONLY FOR aghq_ridge. The delta-method
+Sigma SE (dev/aghq-evidence/22-sigma-se-delta.R) passed its index-map guard but did NOT
+cleanly pass against bootstrap_Sigma (widths 1.4-3.4x). It is not exported and no
+user-facing interval route exists; `confint()` still returns NA for a reduced-rank Sigma.
+
+**SCOPE.** One shape (p=6, q=2), one family (binomial-logit), lam_sd = 1 never varied,
+balanced/complete, unique = FALSE forced, 200 seeds. All 3199 fits returned an interval --
+availability 100%, so no missingness correction was needed. NOTHING IS PROMOTED; PR #801
+stays unmerged and the capability claim stays withheld pending a fresh D-43 panel.

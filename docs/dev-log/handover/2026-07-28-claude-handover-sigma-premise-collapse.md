@@ -99,7 +99,23 @@ H1 DGP artefact (`eta_cap` on/off) · H2 inherent Rabe-Hesketh regime (`lam_sd`)
 adaptive-quadrature literature reports too-few nodes flatten the likelihood in covariance
 parameters with spuriously **exactly zero** SDs, indistinguishable from a true boundary.
 
-⚠ **S3's verdict (C) is PROVISIONAL until the `aghq_k` arm returns.**
+✅ **RESOLVED — S3's verdict (C) SURVIVES and is no longer provisional.** Read at 5% of the grid
+(~5,300 usable rows per marginal, all four `lam_sd` levels and all three families populated by the
+shuffle):
+
+| hypothesis | measurement | verdict |
+|---|---|---|
+| **H3 quadrature** | `k=9` **0.5530** · `k=25` **0.5506** · `k=51` **0.5581** (each ±0.012, 2·MCSE) | **REFUTED** — flat across a 5.7× change in node count |
+| **H1 DGP cap** (`lam_sd ≥ 2`, where the cap bites) | uncapped **0.6264** vs capped **0.6081** (±0.013) | **REFUTED** — and *uncapped* stalls slightly **more**, the opposite of an artefact |
+| **H2 inherent regime** | 0.4351 → 0.5456 → 0.6109 → 0.6236 across `lam_sd` 0.5→3 (±0.013) | **SUPPORTED** — clean monotone dose-response, far outside MCSE |
+
+So the S2 literature hazard — too few quadrature nodes flattening the covariance likelihood with
+spuriously exactly-zero SDs — **does not explain this stall**. The near-flatness is a property of
+the regime, as S3 concluded. **The multinomial deferral therefore rests on a confirmed finding, not
+a provisional one.**
+
+*(Still running to 100% for the full family × n × `lam_sd` map; the marginals above are already
+well outside MCSE and are not expected to move.)*
 
 ⚠ **Launch error, corrected:** the first run **sorted** the grid, so at 8% every row was
 `binomial, lam_sd = 0.5` — one corner, none of H1/H2/H3 readable. Relaunched with a **seeded

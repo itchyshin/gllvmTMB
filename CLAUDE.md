@@ -5,7 +5,22 @@ This repository is shared by humans, Codex, and Claude Code. Read
 
 ## Live Phase Snapshot — 2026-07-28
 
-- **2026-07-28 (LATEST — supersedes the VA/EVA bullet below) — AGHQ IS THE MAIN
+- **2026-07-28 (LATEST) — AGHQ ENGINE LANE: BUILT, OPT-IN, DEFAULT UNCHANGED.**
+  Lane `claude/aghq-engine-20260728`, 20 commits, **not pushed, no PR**.
+  **START HERE:** `docs/dev-log/handover/2026-07-28-claude-handover-aghq-engine.md`,
+  then the lane map `docs/dev-log/handover/2026-07-25-active-lane-split.md`.
+  AGHQ ships **opt-in** (`gllvmTMBcontrol(aghq = k)`); **the default is still Laplace and
+  no existing user's numbers move**. Headline: Laplace carries a flat **~21% downward
+  bias that 16× more data does not touch** (its error is O(1/T), per CLUSTER), while AGHQ
+  reaches **1.0021 at n = 3200**. With a weakly-informative ridge on the loadings
+  (`aghq_ridge = 2`, on when AGHQ is on) it beats the shipped Laplace on **both** latent
+  SD and correlations at every n tested (954 fits, Totoro). **Name the comparator** — a
+  hypothetical penalised Laplace edges rho at n ≤ 200. **NOT done:** the family axis
+  (binomial-only evidence), the D-43 panel, and any coverage/interval evidence.
+  The invariant to re-check after ANY engine edit: **gaussian exactness ~1e-13 and
+  k-independent**. Durable finding in the brain: *"AGHQ exposes a flat likelihood
+  direction in GLLVMs — the runaway is bimodal, not biased."*
+- **2026-07-28 (earlier, superseded by the bullet above) — AGHQ IS THE MAIN
   ENGINE.** Maintainer decision, `docs/dev-log/decisions.md` 2026-07-28: AGHQ
   becomes gllvmTMB's integration engine across all 16 families and all model
   classes, adaptive and auto-by-default. **This reverses the 2026-05-15 "stay

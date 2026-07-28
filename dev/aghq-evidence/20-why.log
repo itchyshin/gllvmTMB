@@ -1,0 +1,10 @@
+=== binomial, n=200, p=6, q=2, 16 seeds — SIGNED, not |.| ===
+
+arm           |  nfit | med sigma signed err |  med frob  runaway%
+laplace       |    16 |    0.9963   -0.0037 |    0.9686       19%
+aghq_noridge  |    16 |    1.1143   +0.1143 |    1.8543       44%
+aghq_ridge    |    16 |    1.1235   +0.1235 |    1.2204        0%
+
+DOWN for aghq_ridge but ~1 for aghq_noridge => OUR RIDGE over-shrinks (a defect).
+UP for both                                  => the exact MLE is biased up; Laplace
+                                                partially cancels it (real, not a bug).

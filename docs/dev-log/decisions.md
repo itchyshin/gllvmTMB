@@ -1873,3 +1873,30 @@ with a passing positive control — and the answer is that the sigma lever is ab
 negative at moderate n for every family tried. That is a completed criterion with a
 negative result, which is a legitimate outcome and is more useful than the confirmation
 that was hoped for.
+
+## 2026-07-28  Why Laplace wins on sigma at moderate n — NOT a bug
+
+binomial, n=200, p=6, q=2, 16 seeds, SIGNED error (the family axis reported |.|, which
+hid the sign — and the sign is the whole diagnostic):
+
+```
+arm            med sigma   signed err   med frob   runaway%
+laplace          0.9963      -0.0037      0.9686     19%
+aghq_noridge     1.1143      +0.1143      1.8543     44%
+aghq_ridge       1.1235      +0.1235      1.2204      0%
+```
+
+**BOTH AGHQ arms are biased UPWARD, with and without the ridge.** So this is not our
+penalty over-shrinking — it is the EXACT MLE being finite-sample biased upward, with
+Laplace's downward integral error partially cancelling it. A real statistical
+phenomenon, not a defect. (Consistent with Ju et al. 2020, who document the same
+crossover in sparse binary data; Capanu et al. 2013 do not, so it is design-dependent.)
+
+Note also the ridge's actual job is visible here: it leaves the bias essentially
+unchanged (+0.114 -> +0.124) while taking runaways from 44% to 0%. It is a
+divergence control, not a bias correction — exactly as scoped.
+
+AND, from the concurrent lane's coverage run: AGHQ+ridge reaches NOMINAL 0.95 coverage
+at every n on both the Sigma diagonal and off-diagonal, where Laplace degrades to 0.664
+at n=1600 — an interval narrowing around a biased point. On the metric this project
+actually gates on, AGHQ+ridge is the calibrated arm.

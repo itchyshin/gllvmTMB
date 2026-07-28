@@ -1,16 +1,16 @@
 # Claude → Claude handover, 2026-07-28 — the AGHQ close-out arc
 
 Lane: `claude/aghq-engine-20260728`, worktree `/private/tmp/gllvmtmb-arc0-identifiability`,
-base `main` @ `72c2e53d`. **PR #801 OPEN — DO NOT MERGE.** 6 commits added this arc, pushed.
+base `main` @ `72c2e53d`. **PR #801 OPEN — DO NOT MERGE.** 46 commits added this arc, pushed.
 
 ## Mission control
 
 | | |
 |---|---|
 | **what this arc did** | cleared lens 1 and lens 2's objections; produced the first coverage evidence AGHQ has ever had |
-| **verdict** | **WITHHELD.** A fresh D-43 panel returned **NOT-DONE / DONE / NOT-DONE** |
+| **verdict** | **WITHHELD TWICE.** Two fresh D-43 panels, both **NOT-DONE / DONE / NOT-DONE** |
 | **default** | UNCHANGED. `aghq = FALSE`, nothing exported, NAMESPACE untouched |
-| **suites** | AGHQ suite **FAIL 0 / SKIP 0 / PASS 1502** (was FAIL 2 / SKIP 1 / PASS 10) |
+| **suites** | AGHQ suite **FAIL 0 / SKIP 0 / PASS 1504** (was FAIL 2 / SKIP 1 / PASS 10) |
 | **rung** | NOT READY. No capability claim. Two panels have now withheld it |
 
 ## ⚠ Read this before quoting any number from this arc
@@ -18,16 +18,22 @@ base `main` @ `72c2e53d`. **PR #801 OPEN — DO NOT MERGE.** 6 commits added thi
 `docs/dev-log/decisions.md`, the final 2026-07-28 entry, lists **four statements of mine the
 panel proved wrong**. The most important:
 
-**`aghq_used == TRUE` DOES NOT MEAN THE QUADRATURE MOVED THE ANSWER.** 15/15 poisson AGHQ
-fits at T=12 return the Laplace answer bit-for-bit (73%/60% at T=6/4) because the adaptation
-loop stalls back to its warm start while the flag still reports TRUE. This destroys the
-"poisson is a live null control" argument I built — it is largely AGHQ not doing anything,
-which is the same inactivity objection I had used to dismiss Gaussian exactness. **Any future
-claim must verify the quadrature moved the objective, not read the flag.**
+**`aghq_used == TRUE` DOES NOT MEAN THE QUADRATURE MOVED THE ANSWER.** Read
+`fit$aghq$par_shift` instead — it was added for exactly this. **Any future claim must verify
+the quadrature moved the objective, not read the flag.**
 
-Also: entry-level SE missingness is asymmetric (aghq 4.83% / aghq_ridge 1.27% vs laplace
-0.06%), so the honest coverage figures are the **conservative** ones — 0.944 / 0.946 / 0.936
-/ 0.949, not the complete-case 0.961 / 0.957 / 0.949 / 0.951 I first reported.
+**⚠ THE "poisson par_shift identically 0" FIGURE IS STALE — DO NOT CITE IT.** It was measured
+at `09b2dbcd`; my own false-convergence fix `12648f44` landed after it and CHANGED the
+behaviour. Poisson `par_shift` is now nonzero (~0.004–0.05, deterministic). The second panel
+caught this. The general lesson stands and is the important part: **after changing an engine,
+re-run every measurement that engine produced — not only the invariant**, which was
+insensitive to precisely what changed.
+
+**⚠ EVERY COVERAGE NUMBER IN THIS ARC IS SUSPECT.** `25-coverage-fixedtruth.R:26-31` carries
+a pre-registered gate in my own words — *"no coverage number may be quoted unless SE/SD is
+near 1"* — which I **never computed**. The second panel computed it: it **fails in 45 of 48
+diagonal cells** (0.159–2.608). Entry-level SE missingness is also asymmetric (aghq 4.83% vs
+laplace 0.06%), so complete-case figures flatter the AGHQ arms.
 
 ## What is SOLID and cleared
 
@@ -42,10 +48,14 @@ Also: entry-level SE missingness is asymmetric (aghq 4.83% / aghq_ridge 1.27% vs
   Trace descends 0.324 → 3.55e-05.
 * **The ridge is unbundled** (`4dc351ed`), so `Laplace+ridge` — the fair control — is
   runnable for the first time. Opt-in only; the default path is byte-identical.
-* **The shipped Laplace default under-covers** and worse as n grows (0.776/0.861/0.825/
-  **0.664** on the Σ diagonal). Lens 3 confirmed Laplace's SE is *not* broken within truth
-  strata, so this is real — but the mechanism is bias **plus** a ~28% SE deficiency at
-  n=1600, not bias alone as I claimed.
+* **RETRACTED — do not carry this forward.** I reported "the shipped Laplace default covers
+  0.023 at n=1600". The second panel substituted the within-truth empirical SD for my delta
+  SE (possible only because the truth is fixed) and got **0.970 / 0.969 / 0.959 / 0.649**.
+  The "defect" is ~90% my own unexported SE route, whose bootstrap validation had already
+  failed and which I used anyway.
+* **What survives instrument-independently** (a CANDIDATE, not a claim): at lam_sd = 1,
+  n = 1600 the shipped Laplace default's Σ-diagonal **bias exceeds one sampling SD**
+  (bias/SD = −1.115, oracle-SE coverage 0.699). Uses the empirical SD, not the delta SE.
 
 ## Commits this arc
 

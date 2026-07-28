@@ -5074,6 +5074,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                "route" %in% names(aghq_block) &&
                !any(aghq_block$route == "quadrature")) {
       "gated to laplace by .aghq_gate()"
+    } else if (exists(".aghq_auto_gate", mode = "function") &&
+               ## `n` is part of .aghq_auto_decide()'s signature but its body
+               ## does not use it (the policy turns on n_traits, q and the gate
+               ## table), so NA is passed rather than inventing a value here.
+               !is.null(auto_decline <- .aghq_auto_gate(
+                 control, aghq_block, n_traits, d_B, NA_integer_))) {
+      ## `aghq = "auto"` only. The auto policy owns the DEFAULT on/off call --
+      ## chiefly the Pinheiro & Chao n_traits cutoff, which could never fire
+      ## while `.aghq_auto_decide()` had no call site. An explicit numeric
+      ## `aghq` is a deliberate request and is not subject to it.
+      auto_decline
     } else {
       NULL
     }

@@ -1155,6 +1155,31 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' @param verbose If `TRUE`, prints a one-line summary per restart so
 #'   the user can see which seed led to the winning fit. Default
 #'   `FALSE`.
+#' @param aghq Adaptive Gauss-Hermite quadrature for the between-unit latent
+#'   block. `FALSE` (default) fits by Laplace approximation. A positive integer
+#'   requests that many quadrature nodes. `"auto"` lets the package decide, and
+#'   it declines to Laplace whenever the model is ineligible or the expected
+#'   gain does not justify the cost. **Opt-in and experimental**: no capability
+#'   claim is made for quadrature-fitted models, and eligibility is narrow — the
+#'   random part must be a single ordinary `latent()` block on the unit tier.
+#' @param aghq_iter_cap Optimiser iteration budget for the first adaptation
+#'   pass. Default `1L`. Later passes escalate when continuation is enabled.
+#' @param aghq_n_adapt Maximum number of adaptation passes. Default `400L`.
+#' @param aghq_ridge Ridge penalty on the loadings, as the scale `tau`;
+#'   `Inf` disables it. Default `2`. Naming it explicitly also makes the
+#'   `Laplace + ridge` control reachable without quadrature.
+#' @param aghq_continuation If `TRUE` (default), the adaptation loop may raise
+#'   `aghq_iter_cap` across passes. `FALSE` pins the cap and disables escalation.
+#' @param aghq_shift_tol,aghq_grad_tol,aghq_f_tol Convergence tolerances for the
+#'   adaptation loop: the quadrature-point shift, the gradient at the adaptation
+#'   point, and the change in objective. Defaults `1e-4`, `1e-4`, `1e-9`.
+#' @param aghq_escalate_patience Number of accepted passes before the iteration
+#'   cap is escalated. Default `3L`.
+#' @param aghq_rho_min Minimum trust-region-style acceptance ratio for a pass.
+#'   Default `1/64`.
+#' @param allow_nongaussian_reml Permit `REML = TRUE` for non-Gaussian families.
+#'   Default `FALSE`; the restricted likelihood is defined by a Gaussian
+#'   marginalisation, so this is an escape hatch, not an endorsement.
 #' @param ... Reserved for future use. Currently ignored with a warning.
 #'
 #' @return A `gllvmTMBcontrol` list.
@@ -1222,6 +1247,17 @@ gllvmTMBcontrol <- function(
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,
   aghq_ridge = 2,
+  ## The adaptation loop reads all six of these. They were previously absent
+  ## from this signature, so `...` swallowed them with an "ignored" warning and
+  ## the engine quietly used its own fallbacks -- a caller who set one had a
+  ## misconfigured fit that looked configured. These defaults MUST stay equal to
+  ## the `%||%` fallbacks in the loop (R/fit-multi.R:5242-5263).
+  aghq_continuation = TRUE,
+  aghq_shift_tol = 1e-4,
+  aghq_grad_tol = 1e-4,
+  aghq_f_tol = 1e-9,
+  aghq_escalate_patience = 3L,
+  aghq_rho_min = 1 / 64,
   allow_nongaussian_reml = FALSE,
   ...
 ) {
@@ -1273,6 +1309,12 @@ gllvmTMBcontrol <- function(
     aghq_n_adapt = as.integer(aghq_n_adapt),
     aghq_ridge = aghq_ridge,
     aghq_ridge_explicit = aghq_ridge_explicit,
+    aghq_continuation = isTRUE(aghq_continuation),
+    aghq_shift_tol = as.numeric(aghq_shift_tol),
+    aghq_grad_tol = as.numeric(aghq_grad_tol),
+    aghq_f_tol = as.numeric(aghq_f_tol),
+    aghq_escalate_patience = as.integer(aghq_escalate_patience),
+    aghq_rho_min = as.numeric(aghq_rho_min),
     allow_nongaussian_reml = isTRUE(allow_nongaussian_reml)
   )
 }

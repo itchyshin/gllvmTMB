@@ -266,6 +266,31 @@
 ## nearly gone.
 .AGHQ_AUTO_N_TRAITS_CUTOFF <- 20L
 
+## The call-site seam for the auto decision.
+##
+## `.aghq_auto_decide()` below was written complete and then left with NO CALL
+## SITE. `aghq = "auto"` ran through `.gllvmTMB_aghq_k()`, which asks
+## `.aghq_resolve()` for a NODE COUNT and never for the on/off decision, so
+## "auto" always turned AGHQ ON and the n_traits cutoff could never fire.
+##
+## This wraps the decision for the fit-time eligibility chain, which is the one
+## place where the gate table exists. Returns NULL when AGHQ may proceed, or the
+## decline reason when the auto policy says no.
+##
+## Only `aghq = "auto"` is subject to the policy: an EXPLICIT numeric `aghq` is
+## a deliberate request and is never vetoed here. The cutoff is a default, not a
+## prohibition.
+.aghq_auto_gate <- function(control, gate_table, n_traits, q, n) {
+  if (!identical(control$aghq, "auto")) {
+    return(NULL)
+  }
+  dec <- .aghq_auto_decide(gate_table, n_traits, q, n)
+  if (isTRUE(dec$use)) {
+    return(NULL)
+  }
+  dec$reason
+}
+
 ## `.aghq_auto_decide(gate_table, n_traits, q, n)` -> list(use, k, reason).
 ## `gate_table` is the data.frame produced by `.aghq_gate()` (owned by G1):
 ## columns block, size, n_components, treewidth, route, reason. This function

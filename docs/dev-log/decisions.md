@@ -1460,3 +1460,51 @@ computation and every choice is explainable to a user in one sentence.
 4. Sweeps must cross `T` as well as `n`. An earlier ladder held `T = 4` fixed, which
    walks a single row of the table above and would have calibrated `auto`'s thresholds
    on one cell.
+
+## 2026-07-28  The fair four-arm comparison — and a correction to my own claim
+
+Decision: record the comparison against a FAIRLY PENALISED Laplace, and retract the
+claim made before it was run.
+
+**The claim I made:** "AGHQ + ridge recovers sigma and rho better than Laplace at every
+sample size tested." That was measured against UNPENALISED Laplace, which is not the
+right control: if the ridge is doing the work, the gain is not attributable to the
+quadrature. The control was already in the same 954-fit dataset and I did not report it.
+
+**All four arms, p = 6 traits, q = 2 latent, 30 seeds/cell — |sigma - 1| / rho error,
+smaller better in both:**
+
+```
+     n | Laplace+none   Laplace+ridge  AGHQ+none      AGHQ+ridge
+   100 | 0.175 / 0.310  0.053 / 0.223  0.197 / 0.233  0.043 / 0.230
+   200 | 0.191 / 0.305  0.140 / 0.204  0.063 / 0.224  0.040 / 0.225
+   400 | 0.149 / 0.155  0.105 / 0.130  0.070 / 0.121  0.054 / 0.120
+  1600 | 0.118 / 0.087  0.138 / 0.091  0.012 / 0.075  0.011 / 0.062
+```
+
+**What survives:** AGHQ + ridge wins **sigma at every n**.
+
+**What does NOT survive:** the rho half. Against a penalised Laplace, **Laplace + ridge
+is marginally better on rho at n = 100 and n = 200** (0.223 vs 0.230; 0.204 vs 0.225).
+AGHQ only leads on rho from n = 400 upward. The sentence "better on both at every n" is
+false and must not be used.
+
+**The attribution, which is the useful finding.** The two components fix DIFFERENT
+regimes, and that is why they compose rather than duplicate:
+
+* **The ridge dominates at small n.** It takes Laplace from 0.175 to 0.053 at n = 100 --
+  a larger improvement than the same penalty gives AGHQ. It is treating the flat-ridge
+  runaway, which is a small-n phenomenon.
+* **The quadrature dominates at large n.** At n = 1600, AGHQ + ridge reaches 0.011
+  against Laplace + ridge's 0.138 -- a **12x** difference that no penalty can produce,
+  because it removes the O(1/T) integral bias, which does not shrink with n at all.
+
+Neither alone is sufficient. That is a coherent design story and it is better than the
+one I told, but it is NOT the story I told, and the difference matters for what may be
+advertised.
+
+**Consequence for the claim.** The defensible sentence is: *AGHQ corrects an integral
+error that no amount of data removes; a weakly-informative ridge on the loadings removes
+a small-sample runaway that no amount of quadrature removes. Together they give the best
+latent-SD recovery at every sample size tested, and the best correlation recovery from
+moderate n upward.* Anything stronger is not supported.

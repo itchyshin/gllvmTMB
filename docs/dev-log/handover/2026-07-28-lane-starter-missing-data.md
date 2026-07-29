@@ -98,9 +98,16 @@ manufacture findings.
 Open the MISSING-DATA lane on gllvmTMB — this is a THIRD concurrent lane, not a switch.
 Lane 1 = PR #802 (interval machinery, OPEN). Lane 2 = claude/docs-honesty-20260728.
 
-FIRST read docs/dev-log/handover/2026-07-28-lane-starter-missing-data.md IN FULL. It has the
-three-lane map, lane 1's fenced file list, and — critically — §2, which documents that the
-OLDER starter's missing-data scope is factually wrong. Do not work from the older one.
+FIRST read the lane starter IN FULL. It has the three-lane map, lane 1's fenced file list, and
+— critically — §2, which documents that the OLDER starter's missing-data scope is factually
+wrong. Do not work from the older one.
+
+  THE STARTER IS NOT ON main. It is on lane 2's branch. Read it with:
+    git fetch origin claude/docs-honesty-20260728
+    git show origin/claude/docs-honesty-20260728:docs/dev-log/handover/2026-07-28-lane-starter-missing-data.md
+
+  (If that path 404s, list what exists — do NOT proceed on the older starter:
+    git ls-tree origin/claude/docs-honesty-20260728 docs/dev-log/handover/ | grep missing)
 
 Set up: git worktree add /private/tmp/gllvmtmb-missing-data -b claude/missing-data-20260728 origin/main
 

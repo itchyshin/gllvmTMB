@@ -18,7 +18,7 @@ SPDE `Q`).
 * the ELBO uses a per-unit full-covariance Gaussian `q(u_i) = N(m_i, S_i)`,
   `S_i = L_i L_i'`;
 * the variational coordinates are **ordinary TMB parameters**, not `random=`
-  (Design 160) — so there is **one joint outer optimisation**, and this fact does
+  (Design 72 §2) — so there is **one joint outer optimisation**, and this fact does
   real work in §3.4 and §4.3;
 * `mu_ij = x_ij' beta + lambda_j' m_i`, `v_ij = || L_i' lambda_j ||^2`;
 * Poisson and Gaussian are EXACT, binomial needs GH, EVA is a 2nd-order Taylor
@@ -348,7 +348,7 @@ exact AD in `kappa`, and still no sparse machinery.
 it contains neither. So under a hypothetical inner optimisation over `q` alone
 it could be dropped outright.
 
-But Design 160 makes the variational coordinates **ordinary parameters**, so
+But Design 72 §2 makes the variational coordinates **ordinary parameters**, so
 there is a single joint optimisation over `(beta, Lambda, sd, kappa, m, L)`.
 The rule is therefore sharper than "constant, drop it":
 
@@ -563,7 +563,7 @@ which is far outside gllvmTMB's operating range for these models. **Verdict:
 irrelevant here; revisit only if a high-`q` cell ever appears.**
 
 **What *is* binding at this scale is the optimiser, not the covariance shape.**
-Design 160 makes the variational coordinates ordinary parameters, so the outer
+Design 72 §2 makes the variational coordinates ordinary parameters, so the outer
 optimiser must carry `P ~ 5.4 x 10^4` (or `8.1 x 10^4` augmented) coordinates
 *in addition to* the structural parameters. A dense quasi-Newton stores an
 `O(P^2)` approximation:
@@ -584,8 +584,38 @@ optimiser (L-BFGS-type) rather than a dense quasi-Newton; and (c) consider a
 two-loop scheme — cheap per-level updates of `(m_g, L_g)`, which are
 independent `d x d` problems and embarrassingly parallel, inside an outer loop
 over `(beta, Lambda, sd, kappa)`. (c) is a named option, not a recommendation;
-it changes the optimisation architecture Design 160 settled and should not be
-opened without a separate decision.
+it changes the optimisation architecture inherited from Design 72 §2 (lines
+145–154) and should not be opened without a separate decision.
+
+> **Correction, 2026-07-29.** This paragraph, and seven other citations across
+> Designs 106, 107 and 108, previously deferred to **"Design 160"**,
+> which **does not exist** on any branch (verified by `git log --all
+> --diff-filter=AD` over `docs/design/`; the highest real number is 110). The real
+> origin of the "variational coordinates as ordinary TMB parameters, NOT
+> `random=`" decision is **Design 72 §2, lines 145–154**, which states it *with its
+> reasoning*: no inner Laplace mode-find, no inner Hessian factorisation, and
+> "the structural reason VA can be more stable".
+>
+> **The architecture question no longer needs a citation, because it has been
+> measured.** Three-arm A/B on the existing `va_r3` engine — binomial-logit, T=20,
+> q=2, H=15, identical inputs (`dev/vgh/ab-runs/`, 2026-07-29):
+>
+> | arm | N=200 | N=400 | N=800 | outer par |
+> |---|---:|---:|---:|---:|
+> | A `random = NULL` (status quo) | 11.3 s | 28.2 s | 80.3 s | 1060 → 4060 |
+> | B `random = c(...)` | 140.0 s | 83.2 s | 458.4 s | 60 |
+> | C `profile = c(...)` | 73.2 s | 347.2 s | 588.8 s | 60 |
+>
+> Arm C reaches the **same objective** as arm A to ~1e-10, so `profile=` is the
+> semantically correct route (arm B returns a Laplace-*marginalised* objective and
+> is not comparable). The outer parameter count collapses exactly as predicted —
+> and the fit is **7.3× slower at N=800**. Moving the variational block into
+> `random=`/`profile=` is therefore refuted as a speed fix.
+>
+> That does **not** endorse (c) either; it removes the phantom fence around it. A
+> block coordinate-ascent prototype using closed-form per-level updates is at
+> `dev/vgh/`, its objective verified identical to this package's TMB template to
+> 4.7e-15. See `docs/dev-log/2026-07-29-vgh-report.md`.
 
 ### 4.4 One cross-tier block worth buying
 

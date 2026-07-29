@@ -16,7 +16,7 @@ them. It is not a session. It is not a week.
 
 **Inherited, established this session, not re-derived here.** The ELBO uses a
 per-unit full-covariance Gaussian `q(u_i) = N(m_i, S_i)`, `S_i = L_i L_i'`, with
-variational coordinates as ordinary TMB parameters (Design 160); every family
+variational coordinates as ordinary TMB parameters (Design 72 §2); every family
 sees the latent variable only through a scalar `eta_ij ~ N(mu_ij, v_ij)`, so one
 1-D Gauss-Hermite rule covers the family surface (Design 104); Poisson-log and
 Gaussian-identity are EXACT, binomial-logit needs GH, EVA is a 2nd-order Taylor
@@ -206,7 +206,7 @@ fitted — with an *iid* prior standing in for the phylogeny.
 |---|---|---|---|---|---|
 | **7** | **Structured phylogenetic KL** — `Ainv`, `diag(Ainv)`, `log_det_A` as DATA; the KL becomes the general Gaussian–Gaussian form under the engine's standardized-field convention. | **Her phylogenetic tier being the actual model** rather than an iid tier wearing its name. Until this lands, a two-tier VA fit is not the model she wrote. | **3–4 d** | **6 (hard prerequisite)** | **Mixed.** The derivation is done (Design 106 §3.1–3.5), the KL carries no hyperparameters under the standardized convention, the trace needs only `diag(A^{-1})` as a DATA vector, and the quadratic form already exists in the Laplace engine (`src/gllvmTMB.cpp:1285-1294`). What is **NEW** is the augmented-node decision: `n_aug ≈ 2N-1 = 10,793`, so the phylo tier costs **twice** what the species count suggests, invisibly from the formula (§4.2) — and Design 106 §6.4(5) flags tips-only-vs-augmented as a *genuine open question* for VA specifically. Settle it with a measurement, not a preference. |
 | **8** | **Probit + missingness recovery study** — `Sigma_B` recovery and the Laplace silent-divergence rate on probit / ordinal-probit / missing data, on Totoro. | **The claim that any of this is worth doing.** §0.2's argument for VA rests on a Bernoulli-*logit* measurement; §2 establishes that logit evidence does not transfer to probit. **Required before any statement about her model.** | **2–3 d** incl. compute | 1, 4, 5 | **NEW measurement, no new machinery.** Totoro (≤100 cores, no queue) per the standing compute default; results stay local (D-50). |
-| **9** | **Scale gate at `N = 5397`** — verify the optimiser actually carries the coordinate count. | Whether the programme's output runs on her data at all. Design 106 §4.2: **53,970** variational coordinates factorised tips-only, **80,950** on the augmented route, plus `2.1 × 10^6` integrand evaluations per ELBO at `H=15`. §4.3's dense-quasi-Newton-vs-L-BFGS arithmetic (`~52 GB` vs `~6 MB` at `P = 80,950`) is flagged as an **inference that must be verified against what `nlminb`/`optim` actually allocate** before it drives a decision. | **2–3 d** | 6, 7 | **NEW**, and it is the stage most likely to force an architecture change (Design 106 §4.3's two-loop scheme is a *named option*, not a recommendation, and reopening it reopens Design 160). |
+| **9** | **Scale gate at `N = 5397`** — verify the optimiser actually carries the coordinate count. | Whether the programme's output runs on her data at all. Design 106 §4.2: **53,970** variational coordinates factorised tips-only, **80,950** on the augmented route, plus `2.1 × 10^6` integrand evaluations per ELBO at `H=15`. §4.3's dense-quasi-Newton-vs-L-BFGS arithmetic (`~52 GB` vs `~6 MB` at `P = 80,950`) is flagged as an **inference that must be verified against what `nlminb`/`optim` actually allocate** before it drives a decision. | **2–3 d** | 6, 7 | **NEW**, and it is the stage most likely to force an architecture change (Design 106 §4.3's two-loop scheme is a *named option*, not a recommendation, and reopening it reopens Design 72 §2). |
 
 **Gate A + Gate B critical path: 17–26 working days.**
 
@@ -282,7 +282,7 @@ Stage 9 forces a redesign. Two named ways it could:
   Then §0.2's justification evaporates and the remaining stages become
   optional. **This is a live possibility, not a formality.**
 * Stage 9 finds the optimiser cannot carry 80,950 coordinates without the
-  two-loop scheme. That reopens Design 160, which is an architecture decision,
+  two-loop scheme. That reopens Design 72 §2, which is an architecture decision,
   not a stage.
 
 ### What cannot be done in one session — stated plainly

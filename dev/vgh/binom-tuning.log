@@ -6,3 +6,11 @@
      high    1.6     9    0.503      6.92      0.2276   0.9656     5.16
      high    1.6    15    0.503      6.93      0.2276   0.9656     5.87
      high    1.6    21    0.503      6.93      0.2276   0.9656     6.49
+     high    1.6    31    0.503      6.93      0.2276   0.9656     8.75
+  extreme    2.6     9    0.503     16.14      0.2208   0.9582     8.05
+  extreme    2.6    15    0.503     16.17      0.2206   0.9587    10.83
+  extreme    2.6    21    0.503     16.17      0.2204   0.9586    13.13
+  extreme    2.6    31    0.503     16.17      0.2205   0.9587    15.18
+
+attenuation < 1 = loadings shrunk toward zero (the known VA bias).
+If rel_err is flat in Q, the quadrature is NOT the binomial problem.

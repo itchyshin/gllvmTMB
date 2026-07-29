@@ -203,6 +203,21 @@ family list; names are matched to selector levels, so accidental list ordering
 cannot silently swap likelihoods.
 
 ```{r mixed-syntax, eval = FALSE}
+set.seed(20260711)
+n_mixed <- 60L
+mixed_unit <- factor(seq_len(n_mixed))
+z_mixed <- rnorm(n_mixed, sd = 0.45)
+
+mixed_long <- rbind(
+  data.frame(unit = mixed_unit, trait = "size", family = "continuous",
+             value = rnorm(n_mixed, 0.3 + 0.7 * z_mixed)),
+  data.frame(unit = mixed_unit, trait = "present", family = "presence",
+             value = rbinom(n_mixed, 1, plogis(0.2 + 0.9 * z_mixed))),
+  data.frame(unit = mixed_unit, trait = "abundance", family = "count",
+             value = rpois(n_mixed, exp(0.4 + 0.5 * z_mixed)))
+)
+mixed_long$trait <- factor(mixed_long$trait)
+
 mixed_long$family <- factor(
   mixed_long$family,
   levels = c("continuous", "presence", "count")

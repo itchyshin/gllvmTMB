@@ -152,3 +152,85 @@ test_that("articles pass only admissible values to match.arg'd arguments", {
   }
   expect_equal(bad, character())
 })
+
+## ---------------------------------------------------------------------------
+## An article can prescribe a call that resolves perfectly and still be broken,
+## if the object it operates on does not exist. That is the class that produced
+## drmTMB's only BLOCKER in its equivalent audit, and it produced one here:
+## response-families.Rmd operated on `mixed_long`, defined nowhere in the repo.
+
+## Walk every call in a parse tree, applying fn to each.
+walk_calls <- function(x, fn) {
+  if (is.expression(x)) {
+    for (e in as.list(x)) walk_calls(e, fn)
+    return(invisible(NULL))
+  }
+  if (is.call(x)) {
+    fn(x)
+    parts <- as.list(x)
+    for (i in seq_along(parts)) {
+      tryCatch(walk_calls(parts[[i]], fn), error = function(e) NULL)
+    }
+  }
+  invisible(NULL)
+}
+
+## Names bound anywhere in the chunk: plain assignment, for-loop variable, and
+## function formals. NOT `x$col <- v` -- in R that ERRORS when x is absent, so
+## counting it as a binding makes this check vacuous for the very defect it
+## exists to catch.
+assigned_names <- function(expr) {
+  acc <- character()
+  walk_calls(expr, function(cl) {
+    f <- as.character(cl[[1]])[1]
+    if (f %in% c("<-", "=", "<<-") && length(cl) >= 2L && is.name(cl[[2]])) {
+      acc <<- c(acc, as.character(cl[[2]]))
+    }
+    if (f == "for" && length(cl) >= 2L && is.name(cl[[2]])) {
+      acc <<- c(acc, as.character(cl[[2]]))
+    }
+    if (f == "function") {
+      fm <- cl[[2]]
+      if (!is.null(names(fm))) acc <<- c(acc, names(fm))
+    }
+  })
+  unique(acc)
+}
+
+## Objects the chunk OPERATES ON: `x$col`, `x[["col"]]`. A name merely passed as
+## `data = x` is deliberately excluded -- that is a placeholder in a syntax
+## sketch, where the reader substitutes their own frame, not a broken example.
+operated_on <- function(expr) {
+  acc <- character()
+  walk_calls(expr, function(cl) {
+    f <- as.character(cl[[1]])[1]
+    if (f %in% c("$", "[[") && length(cl) >= 2L && is.name(cl[[2]])) {
+      acc <<- c(acc, as.character(cl[[2]]))
+    }
+  })
+  unique(acc)
+}
+
+test_that("articles do not operate on objects they never define", {
+  skip_if_no_articles()
+  known <- c(ls("package:base"), ls("package:datasets"), getNamespaceExports("gllvmTMB"))
+
+  bad <- character()
+  for (f in list.files(articles_dir, pattern = "[.]Rmd$", full.names = TRUE)) {
+    chs <- chunk_code(f)
+    ## Whole-article binding set first: flag only names bound NOWHERE in the
+    ## article. "Used before defined" is a weaker, separate defect (it only
+    ## bites when chunks are run out of order) and would drown this one.
+    defs <- unique(unlist(lapply(chs, function(ch) assigned_names(ch$expr))))
+    for (ch in chs) {
+      missing <- setdiff(operated_on(ch$expr), c(defs, known))
+      if (length(missing)) {
+        bad <- c(bad, sprintf(
+          "%s:%d operates on undefined %s", basename(f), ch$line,
+          paste(missing, collapse = ", ")
+        ))
+      }
+    }
+  }
+  expect_equal(bad, character())
+})

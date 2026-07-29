@@ -85,3 +85,40 @@ The warm-start-for-speed premise is disproved for the families VGH covers. Genui
 2. **Do not quote Phase 1's internal speedups as if they were this number.** They measure
    VGH against gllvmTMB's own engines on VGH's own objective. This measures what a user
    would feel.
+
+## Melissa reconciliation — the two "unclear" items, answered
+
+Full reconciliation: `docs/dev-log/plan-actual/2026-07-29-vgh-phase2.md`. Seven deviations
+came back *adaptive*; two came back **unclear** for want of a recorded rationale. Both are
+answered here rather than left open.
+
+**Unclear #6 — model routing.** The plan's slice table specified Sonnet for S1–S6/S8, Opus
+for S7, Haiku for S5. What actually ran: the orchestrator did most slices inline on the
+session model (Fable), and the S7 adversarial-verify function was delivered **inside the two
+workflows** rather than as a standalone agent — `verify:adversarial` (Opus, high) on the
+verification harness, and `adjudicate:refute` (Opus, high) on the competitive claim. Both
+returned `REFUTED: true` with reproduced defects, so the gate fired twice and did its job.
+Haiku ran S0 recon, not S5. **Assessment: the routing was cheaper than planned at the
+producer tier and correct at the gate tier, but it was never written down — Melissa is right
+that an unrecorded deviation is indistinguishable from drift.** The rule for the next arc:
+when the adversarial gate is delivered via a workflow phase rather than a plan row, say so in
+the plan row.
+
+**Unclear #9 — branch landing.** Closed: PR opened for this branch (see below). Nothing is
+carried over silently.
+
+## Handoff state — explicit
+
+- **LANDED:** PR #819 (Phase 0 + Phase 1) is merged to `main`.
+- **PUSHED, AWAITING REVIEW:** `claude/vgh-phase2-20260730`, 12 commits, `rcmdcheck --as-cran`
+  clean (0/0/1 benign). Contains the wiring, the transform, the verification harness, and the
+  negative result. **The merge is the maintainer's**, as with #819.
+- **CARRIED-OVER (fenced, not started):** the Phase 3 degenerate-fit screen — the one
+  genuinely promising remaining use for this engine, motivated by the n=120 seed-1 cell where
+  a cold fit took 8.6× longer than the same size at another seed and the warm start avoided
+  it. Needs a seed-stratified test, not a campaign.
+- **CARRIED-OVER (flagged separately):** `.vgh_fit` returns `elbo = prev`, the ELBO from the
+  previous sweep rather than at the returned parameters. Spawned as its own task; it is on
+  `main` now via #819 and is not this branch's to fix.
+- **NOT carried over:** the Totoro campaign. Deliberately dropped, not deferred — the
+  hypothesis it would have measured is disproved.

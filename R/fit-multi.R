@@ -447,6 +447,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ))
       )
     }
+    ## fid == 0L (gaussian) had NO link check while every other family from
+    ## fid 1..16 did, and the C++ template hardcodes the identity link. So
+    ## `gaussian(link = "log")` was accepted and silently discarded: measured
+    ## 2026-07-29, it fitted without error and returned an objective identical
+    ## to `gaussian()` (422.7948 both), i.e. the user got an identity-link fit
+    ## while believing they had asked for a log link. A silent wrong answer.
+    if (fid == 0L && !identical(f$link, "identity"))
+      cli::cli_abort(c(
+        "gaussian: only the identity link is currently supported.",
+        "x" = "Got {.val {f$link}}.",
+        "i" = "Use {.code gaussian()}. For a multiplicative mean on positive data, {.code lognormal()} or {.code Gamma(link = \"log\")} model the log scale directly."
+      ))
     if (fid == 2L && !identical(f$link, "log"))
       cli::cli_abort("poisson: only the log link is currently supported.")
     if (fid == 3L && !identical(f$link, "log"))

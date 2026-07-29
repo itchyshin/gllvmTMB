@@ -75,9 +75,37 @@ nothing): logLik **−36.261352 with and without** `offset(offv)` — difference
 identical, **no error and no warning**. Confirmed in both the wide and long paths, independently by
 two agents and by the orchestrator.
 
-Supporting static evidence: `gllvmTMB()` has no `offset` formal; `grep` for `offset` in
-`R/parse-multi-formula.R` and `R/traits-keyword.R` returns **0** hits; **0** guards anywhere in `R/`
-reject it.
+Supporting static evidence: `gllvmTMB()` has no `offset` formal, and `grep` for `offset` in
+`R/parse-multi-formula.R` and `R/traits-keyword.R` returns **0** hits.
+
+**Correction to an earlier draft of this row.** It stated "0 guards anywhere in `R/` reject it."
+That is **false**. A guard exists — `R/lv-predictor.R:156-161`:
+
+```r
+if ("offset" %in% rhs_functions) {
+  cli::cli_abort(c(
+    "{.arg lv} formulas cannot contain {.fn offset} terms.",
+    "i" = "Offset handling for latent-score means has not been derived."
+  ))
+}
+```
+
+The original grep required `offset` and the abort token on the *same line*; this guard spans two.
+(Third instance in this audit of a line-scoped or case-folded string test returning a confidently
+wrong answer.)
+
+This makes the finding **stronger and the intent unambiguous.** Confirmed live:
+
+| call | result |
+|---|---|
+| `offset()` **inside `lv`** | `ERROR: 'lv' formulas cannot contain 'offset()' terms.` |
+| `offset()` at **top level** | **no error — fits**, logLik −76.5653 |
+
+So offsets are *deliberately* rejected where the rejection was written, and the design docs list
+offsets among terms that "still reject" (`docs/design/01-formula-grammar.md:403`,
+`docs/design/35-validation-debt-register.md:102`). The top-level fixed-effect formula simply never
+received the equivalent guard. This is an **oversight, not a design decision** — and the fix is to
+extend an existing, working pattern rather than to invent one.
 
 Ecological count models routinely carry a sampling-effort offset. Silently dropping it yields a
 different model from the one the user wrote, with no signal. Two shipped articles

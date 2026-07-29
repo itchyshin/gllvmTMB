@@ -54,11 +54,26 @@ as proof their grouping variable was clean. `README.md` belongs to the reader-su
 
 **B2 (HIGH) — `offset()` is silently ignored, everywhere.**
 Varying offset, wide and long: logLik **−36.261352 with and without**, difference **exactly 0**, same
-`npar`, no error, no warning. `gllvmTMB()` has no `offset` formal; `grep` finds 0 references in the
-formula parsers and 0 guards in `R/`. Two shipped articles nonetheless tell readers to "revisit …
-offsets". Ecological count models routinely carry an effort offset, so a user can get a different
-model than the one they wrote with no signal. **Outside the missing-data remit — reported with
-numbers, not audited. Needs its own investigation.**
+`npar`, no error, no warning. Ecological count models routinely carry an effort offset, so a user can
+get a different model than the one they wrote with no signal. Two shipped articles nonetheless tell
+readers to "revisit … offsets".
+
+**The intent is documented and the guard already exists — for `lv` only.**
+`R/lv-predictor.R:156-161` aborts on `offset()` inside an `lv` formula, and the design docs list
+offsets among terms that "still reject" (`docs/design/01-formula-grammar.md:403`,
+`docs/design/35-validation-debt-register.md:102`). Confirmed live:
+
+| call | result |
+|---|---|
+| `offset()` inside `lv` | `ERROR: 'lv' formulas cannot contain 'offset()' terms.` |
+| `offset()` at top level | **no error — fits**, logLik −76.5653 |
+
+So this is an **oversight, not a design decision**: the top-level fixed-effect formula never received
+the guard that the `lv` sub-formula has. The fix is to extend the existing pattern
+(`gll_lv_rhs_functions()` + a membership test), not to invent one.
+
+*(An earlier draft of this handover said "0 guards in `R/`" — that was wrong, from a grep requiring
+both tokens on one line. Corrected above.)*
 
 **B3 (HIGH/MEDIUM) — `NA` in a grouping/unit identifier silently changes the fit.**
 Not dropped, not reported, not rejected: `nobs` stays 60 while logLik moves −34.49161 → −35.83823.

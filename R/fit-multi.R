@@ -4083,6 +4083,74 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     start_provenance$start_from_copied <- warm$copied
   }
 
+  ## ---- VGH warm start (internal, opt-in via control$vgh_warm_start) -----
+  ## Seeds theta_rr_B / z_B from a fast variational solve. The REPORTED
+  ## estimate stays the Laplace MLE -- this only moves where Laplace starts, so
+  ## no VA accuracy question reaches a user. Fail-closed: the builder returns
+  ## NULL for any model VGH does not cover (see
+  ## docs/dev-log/2026-07-29-vgh-phase2-psi-scope.md).
+  if (isTRUE(control$vgh_warm_start)) {
+    vgh_fam <- if (length(unique(family_id_vec)) == 1L) {
+      switch(as.character(family_id_vec[1L]),
+             "0" = "gaussian", "1" = "binomial", "2" = "poisson",
+             NA_character_)
+    } else NA_character_
+    ## Iteration counts show the warm start buys Laplace only 5-14% fewer outer
+    ## iterations, so most of VGH's sweeps are refining detail Laplace does not
+    ## use -- while VGH's cost is what sinks the economics. Capping the sweeps
+    ## trades start quality we are not spending against cost we are.
+    ## Default 3, not VGH's own 50: a maxit sweep (dev/vgh/e2e-maxit-sweep.R)
+    ## gives median ratios 1.00x at 3 against 0.92x at 50, because past a few
+    ## sweeps VGH is refining detail Laplace does not consume while still
+    ## charging for it.
+    vgh_maxit <- control$vgh_warm_start_maxit %||% 3L
+    vgh_start <- if (is.na(vgh_fam)) NULL else {
+      .vgh_build_warm_start(tmb_data, vgh_fam, maxit = as.integer(vgh_maxit),
+                            verbose = isTRUE(control$verbose))
+    }
+    if (!is.null(vgh_start)) {
+      ## z_B is a RANDOM effect: TMB re-solves it in the inner Laplace problem at
+      ## every outer iteration. Seeding it is MEASURABLY HARMFUL -- on a gaussian
+      ## n=120 fixture the end-to-end ratio was 0.39x with z_B seeded and 4.43x
+      ## without, on identical data (dev/vgh/e2e-warmstart-sweep.R). So the
+      ## default is loadings-only; control$vgh_warm_start_z = TRUE restores the
+      ## old behaviour for anyone who wants to re-measure it.
+      seed_z <- isTRUE(control$vgh_warm_start_z)
+      tmb_params$theta_rr_B <- vgh_start$theta_rr
+      if (seed_z) tmb_params$z_B <- vgh_start$z
+      ## Seed the fixed effects and dispersion too, where the shapes line up.
+      ## Without these Laplace re-solves them from scratch, which is where most
+      ## of its outer iterations were going.
+      ## OPT-IN, not default: measured on 4 cells it improved iteration count in
+      ## 1 and worsened it in 3 (dev/vgh/e2e-fixed-effects.R). Seeding more
+      ## parameters does not help, which is itself the finding -- see below.
+      if (isTRUE(control$vgh_warm_start_fixed)) {
+        if (!is.null(vgh_start$b_fix) &&
+            length(vgh_start$b_fix) == length(tmb_params$b_fix)) {
+          tmb_params$b_fix <- vgh_start$b_fix
+        }
+        if (!is.null(vgh_start$log_sigma_eps) &&
+            length(tmb_params$log_sigma_eps) == 1L) {
+          tmb_params$log_sigma_eps <- vgh_start$log_sigma_eps
+        }
+      }
+      ## Never assume a start landed: shape-mismatched copies are skipped in
+      ## SILENCE elsewhere in this file, and a speedup measured on a start that
+      ## never landed is meaningless.
+      if (seed_z) {
+        .vgh_assert_start_landed(tmb_params, vgh_start, "theta_rr_B", "z_B")
+      } else if (!isTRUE(all.equal(as.numeric(tmb_params$theta_rr_B),
+                                   as.numeric(vgh_start$theta_rr)))) {
+        stop("VGH warm start did not land in `theta_rr_B`.", call. = FALSE)
+      }
+      start_provenance$vgh_warm_start <- TRUE
+      start_provenance$vgh_warm_start_z <- seed_z
+      start_provenance$vgh_seconds <- vgh_start$vgh_seconds
+    } else {
+      start_provenance$vgh_warm_start <- FALSE
+    }
+  }
+
   ## ---- Map: zero-out unused parameters ---------------------------------
   tmb_map <- list()
   if (isTRUE(xcoef_fixed$has_fixed)) {

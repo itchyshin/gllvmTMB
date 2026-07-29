@@ -283,5 +283,22 @@
   }
   start$vgh_seconds <- fit$seconds
   start$vgh_elbo <- fit$elbo
+
+  ## VGH also estimates the fixed effects (Beta) and carries a dispersion. The
+  ## first Phase 2 wiring discarded both and seeded only the loadings -- which is
+  ## why Laplace still needed 400+ outer iterations from a near-optimal latent
+  ## start: it was still solving for the fixed effects from scratch.
+  ##
+  ## Fail-closed on the mapping. VGH is called with X = intercept only, so Beta
+  ## is 1 x T and lines up with a trait-intercept b_fix of length T. Any other
+  ## shape means the design is richer than VGH saw, and we must not guess.
+  if (is.matrix(fit$Beta) && nrow(fit$Beta) == 1L &&
+      ncol(fit$Beta) == n_traits && all(is.finite(fit$Beta))) {
+    start$b_fix <- as.numeric(fit$Beta)
+  }
+  if (identical(family_name, "gaussian") && is.finite(gaussian_sd) &&
+      gaussian_sd > 0) {
+    start$log_sigma_eps <- log(gaussian_sd)
+  }
   start
 }

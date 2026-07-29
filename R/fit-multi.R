@@ -4118,6 +4118,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       seed_z <- isTRUE(control$vgh_warm_start_z)
       tmb_params$theta_rr_B <- vgh_start$theta_rr
       if (seed_z) tmb_params$z_B <- vgh_start$z
+      ## Seed the fixed effects and dispersion too, where the shapes line up.
+      ## Without these Laplace re-solves them from scratch, which is where most
+      ## of its outer iterations were going.
+      ## OPT-IN, not default: measured on 4 cells it improved iteration count in
+      ## 1 and worsened it in 3 (dev/vgh/e2e-fixed-effects.R). Seeding more
+      ## parameters does not help, which is itself the finding -- see below.
+      if (isTRUE(control$vgh_warm_start_fixed)) {
+        if (!is.null(vgh_start$b_fix) &&
+            length(vgh_start$b_fix) == length(tmb_params$b_fix)) {
+          tmb_params$b_fix <- vgh_start$b_fix
+        }
+        if (!is.null(vgh_start$log_sigma_eps) &&
+            length(tmb_params$log_sigma_eps) == 1L) {
+          tmb_params$log_sigma_eps <- vgh_start$log_sigma_eps
+        }
+      }
       ## Never assume a start landed: shape-mismatched copies are skipped in
       ## SILENCE elsewhere in this file, and a speedup measured on a start that
       ## never landed is meaningless.

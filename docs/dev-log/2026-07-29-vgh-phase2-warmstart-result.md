@@ -269,3 +269,42 @@ The honest close is not "we failed to reach 1.5×" but "1.5× was never availabl
 here is the bound that shows it." The warm start is now net-neutral rather than harmful,
 which is worth keeping for the Phase 3 screen, where the reason to hold a VGH solution is
 robustness rather than speed.
+
+## Follow-up 6: seeding MORE parameters does not help — and that is the real mechanism
+
+The bound in Follow-up 5 raised an obvious question: if Laplace still needs 400–500 outer
+iterations from a near-optimal *latent* start, what is it spending them on? The first wiring
+seeded only the loadings and scores and **discarded VGH's `Beta` and dispersion entirely**.
+So those were seeded too (`control$vgh_warm_start_fixed`), `maxit = 3`:
+
+| cell | arm | secs | ratio | iters | Δ iters |
+|---|---|---|---|---|---|
+| 1000/10/4 s1 | cold | 3.99 | 1.00 | 233 | — |
+| | loadings | 5.87 | 0.68 | 218 | −6.4 % |
+| | **+ fixed** | 3.55 | **1.13** | 205 | **−12.0 %** |
+| 1000/10/4 s2 | cold | 2.90 | 1.00 | 190 | — |
+| | loadings | 2.93 | 0.99 | 152 | **−20.0 %** |
+| | + fixed | 3.12 | 0.93 | 164 | −13.7 % |
+| 2000/15/5 s1 | cold | 20.19 | 1.00 | 523 | — |
+| | loadings | 20.52 | 0.98 | 487 | −6.9 % |
+| | + fixed | 21.29 | 0.95 | 536 | **+2.5 %** |
+| 2000/15/5 s2 | cold | 17.02 | 1.00 | 403 | — |
+| | loadings | 17.66 | 0.96 | 394 | −2.2 % |
+| | + fixed | 18.08 | 0.94 | 415 | **+3.0 %** |
+
+Seeding the fixed effects and dispersion improves iteration count in **one** cell and makes
+it **worse in three**. It is therefore **opt-in, not default**. Log-likelihood is identical
+across every arm (e.g. −12279.0052 in all three arms of the first cell), so correctness is
+untouched throughout.
+
+**The mechanism, finally.** Laplace's outer-iteration count is **largely insensitive to its
+starting values**. Seeding loadings, scores, fixed effects and dispersion — individually and
+together, at every VGH iteration cap from 1 to 50 — all leave it needing roughly the same
+400–500 iterations. The iterations are being spent traversing a difficult surface, not
+covering distance from the start.
+
+That closes the approach as a class, not just this implementation: **no warm start of any
+kind can deliver ≥1.5× here**, because the quantity a warm start controls (where the
+optimiser begins) is not the quantity that determines the cost (how many iterations it takes
+regardless). The 20 % best-case iteration reduction, and the 1.25× ceiling that follows from
+it, are properties of the optimiser's behaviour on this problem — not of VGH.

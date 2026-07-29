@@ -1939,6 +1939,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           "{.code (1 | {gname})} found in formula but {.var {gname}} is not a column in {.arg data}.",
           "i" = "Add a {.var {gname}} column to {.arg data} or rename the grouping factor."
         ))
+      ## A missing group LABEL is not a group. Left unchecked, the NA rows were
+      ## absorbed rather than rejected: the fit ran, `nobs` was unchanged, and
+      ## both the parameter count and the likelihood moved. Missing responses
+      ## are the supported case; a missing label is not, because the model
+      ## cannot place that row.
+      if (anyNA(data[[gname]])) {
+        n_bad <- sum(is.na(data[[gname]]))
+        cli::cli_abort(c(
+          "{.var {gname}} has {n_bad} missing value{?s}, but a grouping factor cannot be {.code NA}.",
+          "i" = "A row with no group label cannot be placed in the random-effect design.",
+          ">" = "Drop those rows, or give them an explicit group level, before fitting."
+        ))
+      }
       if (!is.factor(data[[gname]])) data[[gname]] <- factor(data[[gname]])
       re_int_groups[k]   <- gname
       re_int_n_groups[k] <- nlevels(data[[gname]])
@@ -1948,6 +1961,26 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
 
   ## ---- Build factors and indices ----------------------------------------
+  ## Same rule for the structural identifier columns: a row with no unit (or no
+  ## trait) label cannot be placed in the unit x trait array, so it must be
+  ## rejected rather than silently absorbed. Missing RESPONSES remain supported
+  ## -- this guards the labels, not the values.
+  ## NB: loop variables must NOT start with a dot -- cli reads `{.name}` as an
+  ## inline style directive, so `{.idcol}` errors with "Invalid cli literal"
+  ## instead of interpolating.
+  for (idcol in unique(c(trait, site))) {
+    if (!is.null(idcol) && idcol %in% names(data) && anyNA(data[[idcol]])) {
+      n_bad_id <- sum(is.na(data[[idcol]]))
+      cli::cli_abort(c(
+        ## Count stacked rows, not cells of the user's wide frame -- say so, or a
+        ## wide user reads "4 missing" and goes looking for four NAs in a column
+        ## that has two.
+        "{.var {idcol}} is missing on {n_bad_id} stacked row{?s}, but it identifies rows and cannot be {.code NA}.",
+        "i" = "Missing responses are supported; a missing {.var {idcol}} label is not, because the row cannot be placed.",
+        ">" = "Drop those rows, or supply the missing label, before fitting."
+      ))
+    }
+  }
   if (!is.factor(data[[trait]])) data[[trait]] <- factor(data[[trait]])
   if (!is.factor(data[[site]]))  data[[site]] <- factor(data[[site]])
   if (!is.factor(data[[species]])) data[[species]] <- factor(data[[species]])

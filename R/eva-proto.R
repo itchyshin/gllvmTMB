@@ -11,6 +11,21 @@
     if (identical(parent, root)) break
     root <- parent
   }
+  ## Installed-package fallback. The walk above only finds the file inside a
+  ## source checkout, because `docs/` is excluded from the build
+  ## (.Rbuildignore). Under `R CMD check` the tests run from a temp directory
+  ## against the INSTALLED package, so the walk ran to the filesystem root and
+  ## stopped -- surfacing as 7 test failures and the check's only ERROR, while
+  ## `devtools::load_all()` stayed green. A copy of the same 3.3 KB fixture is
+  ## shipped in inst/extdata/ so the gate tests run from an installed package
+  ## too, rather than being skipped.
+  installed <- system.file(
+    "extdata", "86-eva-gate1-parameters.json",
+    package = "gllvmTMB"
+  )
+  if (nzchar(installed) && file.exists(installed)) {
+    return(normalizePath(installed, mustWork = TRUE))
+  }
   stop("Cannot find docs/design/86-eva-gate1-parameters.json.", call. = FALSE)
 }
 
@@ -82,6 +97,17 @@
     parent <- dirname(root)
     if (identical(parent, root)) break
     root <- parent
+  }
+  ## Installed-package fallback -- the same defect as `.eva_gate1_file()` above,
+  ## and found only because fixing that one let R CMD check reach this call.
+  ## On install the contents of inst/ move up to the package root, so
+  ## "inst/tmb/gllvmTMB_eva.cpp" does not exist in an installed package; the
+  ## file is at system.file("tmb", ...). Only the compiled objects are excluded
+  ## from the build (.Rbuildignore "^inst/tmb/.*\\.(o|so|dll|dylib)$"), so the
+  ## source itself does ship.
+  installed <- system.file("tmb", "gllvmTMB_eva.cpp", package = "gllvmTMB")
+  if (nzchar(installed) && file.exists(installed)) {
+    return(normalizePath(installed, mustWork = TRUE))
   }
   stop("Cannot find inst/tmb/gllvmTMB_eva.cpp.", call. = FALSE)
 }

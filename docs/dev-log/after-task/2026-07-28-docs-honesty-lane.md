@@ -14,11 +14,18 @@ and does the code it *prescribes* actually work — minus lane 1's fenced set (P
 
 The first axis returned a **negative result**; the second found a **blocker**.
 
-**Honesty-fencing was already correct.** All 4 `certified` and effectively all 27 `calibrated`
-hits across 21 articles + README are *negative* constructions ("no cell's interval coverage is
-certified"; "do not present these intervals as coverage-certified"). No positive assertion
-anywhere. Register-code leaks on rendered surfaces: **zero**. Version stamps consistent
-(`DESCRIPTION` and README both 0.6.0). The surface is consistent with the WITHHELD disposition.
+**Honesty-fencing was largely already correct.** All 4 `certified` and effectively all 27
+`calibrated` hits across 21 articles + README are *negative* constructions ("no cell's interval
+coverage is certified"; "do not present these intervals as coverage-certified"). Register-code
+leaks on rendered surfaces: **zero**. Version stamps consistent (`DESCRIPTION` and README both
+0.6.0). The surface is broadly consistent with the WITHHELD disposition.
+
+> 🔴 **Corrected 2026-07-29.** This section originally read "No positive assertion anywhere."
+> That was an overstatement: polarity was verified for `certified` and `calibrated` only, and
+> generalised to the other three words without checking them. A separate lane (PR #803) then
+> found `multinomial.Rmd:234` — *"The fixed-effect route demonstrated above is **validated**"*,
+> bolded and unqualified — a genuine positive overclaim in the one word I had skipped. The
+> completed sweep is in §8.
 
 **Executable honesty was not.** 15 candidates → 13 confirmed, 2 refuted. Fixed 5:
 
@@ -36,7 +43,10 @@ Added `tests/testthat/test-article-prescribed-calls.R` as the compensating stati
 ## 3. Decisions
 
 Redirected the lane from adjective-hunting to executable honesty once the adjective sweep came
-back clean — making the deliverable the measurement rather than the result. Assigned the
+back clean — making the deliverable the measurement rather than the result. **That redirect was
+right in outcome but premature in basis:** the sweep was two-thirds unfinished when I called it
+clean (see §2's correction). The executable-honesty axis was still the higher-yield one, but the
+decision rested on less evidence than I claimed for it. Assigned the
 contested `missing-data.Rmd` to lane 3. Fixed only defects with a single defensible answer.
 
 ## 3a. Decisions and Rejected Alternatives
@@ -115,8 +125,21 @@ Full detail in `docs/dev-log/2026-07-28-article-executable-honesty-ledger.md`.
 
 ## 8. Consistency Audit
 
-* Overclaim vocabulary across `vignettes/` + `README.md`: `certified` 4, `validated` 6,
-  `coverage` 42, `calibrated` 27, `guarantee` 10 — polarity swept, **all negative**.
+* Overclaim vocabulary across `vignettes/` + `README.md`. **Polarity now verified for all five
+  words** (originally only two were checked — see the correction in §2):
+  * `certified` 4 — all negative.
+  * `calibrated` 27 — all negative.
+  * `guarantee` 10 — all negative ("does not guarantee", "not recovery guarantees").
+  * `coverage` 42 — **no positive interval-coverage claim.** Most apparent bare hits are
+    line-wrap fragments whose negation sits on the previous line, or a different sense entirely
+    (design coverage — "repeated within-individual context coverage"). Three checked in
+    context and all honest: `fit-diagnostics.Rmd:339` describes what a validation study *would
+    need*, not one that exists; `convergence-start-values.Rmd:319` and
+    `function-map-cheatsheet.Rmd:236` are explicit negations.
+  * `validated` 6 — **one genuine positive overclaim**, `multinomial.Rmd:234` (fixed by PR
+    #803, a separate lane). `multinomial.Rmd:255` is a *scoped* positive ("validated only for
+    the fixed-effect route") and honest; the `cross-family-correlations.Rmd` pair say
+    "partially-validated"; `profile-likelihood-ci.Rmd:232` is `heuristic_unvalidated`.
 * Register codes (`CI-xx`, `D-xx`, `Design NN`, `Phase NN`) on rendered surfaces: **0**. Two
   hits exist in `_pkgdown.yml:7,390` but are YAML *comments*, never rendered.
 * Version stamps: `DESCRIPTION` 0.6.0, `README.md:232` 0.6.0 — consistent.
@@ -139,6 +162,17 @@ Three of my own errors, all the same shape — **a check that silently reported 
 3. **I mis-attributed a finding in my own ledger** to `function-map-cheatsheet.Rmd:381`, a
    280-line file, because one auditor covered three files and my extraction took the last path
    from a comma-joined string.
+4. **I generalised a two-word polarity check into a five-word claim** (added 2026-07-29). I
+   verified `certified` and `calibrated`, then wrote "No positive assertion anywhere" and
+   "polarity swept, all negative" across all five words. The single genuine overclaim on the
+   whole surface — `multinomial.Rmd:234`, bolded and unqualified — sat in `validated`, one of
+   the three I never opened. Found by a *different lane* (PR #803), not by me, and only because
+   they went to the primary evidence.
+
+   This is the worst of the four, because the other three were caught by my own checking and
+   this one was not. It is also the same mechanism as §2 of the lane-starter's own warning: an
+   agreeable result stopped the checking. "The docs are already honest" was the answer I
+   expected and wanted, so I stopped one word short of the one that wasn't.
 
 Also: the starter I was pointed at did not exist at the given path (it lives only on PR #802's
 branch; `main` carries a differently-named file describing a different PR), and lane D's premise

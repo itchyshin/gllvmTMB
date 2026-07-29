@@ -119,7 +119,7 @@ needed a content decision (2026-07-28).
 | — consequential | **fixed** — "three CI methods" framing corrected; my own edit invalidated the count | `9ca80ba9` |
 | 2 HIGH `covariance-correlation.Rmd:411` | **fixed** — `method = "fisher-z"` added, fix-forward per decision | `1bb5a827` |
 | 13 `convergence-start-values.Rmd:381` | **fixed** — checklist item aligned with the article's own deprecation section | this commit |
-| 4, 5 (ICC Wald fallback; ICC profile → `NA`) | **not fixed, deliberately** — runtime claims. Unlike `extract_correlations()`, `extract_communality()` genuinely accepts `method = "profile"` and does not abort (`R/extractors.R:207,214`), so the article may well be right. Verifying needs a fit. |
+| 4, 5 (ICC claims) | **ADJUDICATED 2026-07-29 by a real fit** — finding 4 REFUTED (Wald *is* implemented and does not fall back); finding 5 confirmed but its mechanism was wrong (`method = "profile"` ERRORS at `R/extractors.R:268`, it does not return `NA`). The earlier note here claiming `extract_communality()` "does not abort" was wrong. Follow-up: issue #813 |
 | 6, 7, 8, 9, 10, 11, 12 | **open** — need either a fit or a content judgement |
 
 ### Regression guard

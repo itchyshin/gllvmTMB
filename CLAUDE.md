@@ -100,9 +100,15 @@ register sweeps, reference/roxygen sweep, `validation_row` print-fix); the
 `1.0.0 → 0.5.0` version correction (PR #748) is MERGED to `main`. Standing rule:
 reader-facing content shows only what makes sense to the reader — no internal
 register codes on any surface (articles, reference/roxygen, NEWS, printed output).
-**gllvmTMB's first CRAN release is `0.5.0`, NOT 1.0 (D-42, 2026-07-11) — 1.0 is
-reserved for the capability-maturity milestone (complete surface + full story +
-committed-stable API), mirroring drmTMB's D-40.** The engineering (all five arcs
+**gllvmTMB's first CRAN release is `0.6.0`, NOT 1.0 — settled 2026-07-19
+(issue #772). D-42 (2026-07-11) established the principle "first release is a
+0.x, NOT 1.0" and named `0.5.0`; that *number* was superseded by the 0.6
+strategy, which is why the premature `v0.5.0` tag was dropped. D-42's other half
+stands unchanged: 1.0 is reserved for the capability-maturity milestone (complete
+surface + full story + committed-stable API), mirroring drmTMB's D-40.
+`DESCRIPTION` and `NEWS.md` both read `0.6.0` as of `origin/main` @ `869e92b5` —
+the earlier note that they "still read 0.5.0 and get bumped as part of the
+release slice" is stale and has been removed.** The engineering (all five arcs
 A–E, merged #737–#745, on `main` `e4188105`) is cross-OS verified — local
 `--as-cran` 0E/0W/0N, 3-OS `R CMD check` passed, 4478 tests / 0 failures — but the
 package is NOT submitted to CRAN. **The one thing NOT done — and the next session's
@@ -112,7 +118,7 @@ lands (intervals framed recovery-only; delta/hurdle latent-scale correlation "do
 not advertise"). The automated article cleanup is **open PR #746** (2 cut, 26
 improved, pkgdown reorganised); the QG `animal-model` cut-vs-keep call is open. The
 issue closeout is staged at `dev/issue-closeout-2026-07-10.sh` (Shinichi runs it —
-reword its version strings to 0.5.0 first; the agent is safety-blocked from bulk
+reword its version strings to 0.6.0 first; the agent is safety-blocked from bulk
 closes). CRAN submission is Shinichi's act. Toward the 1.0 maturity milestone:
 Julia parity, the paper, the full coverage campaign. Earlier arc detail:
 `docs/dev-log/handover/2026-07-09-claude-handover-arcs.md`; ultra-plan at

@@ -194,3 +194,47 @@ test_that("VGH adds no public surface", {
   ns <- getNamespaceExports("gllvmTMB")
   expect_false(any(grepl("vgh", ns, ignore.case = TRUE)))
 })
+
+## --- Reported ELBO corresponds to the RETURNED parameters ----------------------
+## `.vgh_fit()` used to return `elbo = prev`, the ELBO from the PREVIOUS sweep:
+## the convergence test breaks BEFORE `prev <- e`, so on a converged fit the
+## reported objective was stale by one iteration relative to the Beta/Lambda it
+## shipped alongside.
+##
+## The gaussian exactness test above could not catch this because it runs to
+## tol = 1e-14, where the final increment is far below its own 1e-10 tolerance
+## and a one-iteration lag is invisible. This test converges LOOSELY on purpose,
+## so the last increment is large enough that reporting the previous sweep's
+## value is detectably wrong -- the check a stale answer cannot satisfy.
+test_that("reported elbo is the objective at the returned parameters", {
+  n <- 200L; T <- 10L; q <- 2L; sdv <- 1.3
+  s <- .vgh_test_sim("gaussian_anchor", n, T, q, seed = 7L, sd_gauss = sdv)
+  d <- .vgh_test_long(s$Y)
+
+  ## Loose tol: stop while the ELBO is still moving appreciably per sweep.
+  f <- .vgh_fit(d$y, d$n_trials, d$X, d$unit_id, d$trait_id, q = q,
+                N = n, T = T, family = "gaussian_anchor", link = "identity",
+                gaussian_sd = sdv, Q = 9L, maxit = 3000L, tol = 1e-6)
+
+  ## The fit must actually have converged (taken the break), or the trailing
+  ## `prev <- e` would mask the defect and this test would prove nothing.
+  expect_true(f$converged)
+
+  ## Independent recomputation: for gaussian the VA bound is tight at the
+  ## optimal variational covariance, so the ELBO at the returned Beta/Lambda
+  ## equals the exact marginal log-likelihood there, up to the same constant
+  ## the exactness test above uses.
+  const <- sum(-s$Y^2 / (2 * sdv^2) - 0.5 * log(2 * pi * sdv^2))
+  Sigma <- tcrossprod(f$Lambda) + diag(sdv^2, T)
+  R <- s$Y - matrix(as.vector(f$Beta), n, T, byrow = TRUE)
+  ch <- chol(Sigma)
+  exact <- -0.5 * (n * (T * log(2 * pi) + 2 * sum(log(diag(ch)))) +
+                     sum(backsolve(ch, t(R), transpose = TRUE)^2))
+
+  expect_equal(f$elbo + const, exact, tolerance = 1e-9)
+
+  ## And the reported value must be the LAST entry of the path, not the one
+  ## before it -- the direct statement of the defect.
+  expect_equal(f$elbo, f$elbo_path[length(f$elbo_path)], tolerance = 1e-12)
+  expect_gt(length(f$elbo_path), 1L)
+})

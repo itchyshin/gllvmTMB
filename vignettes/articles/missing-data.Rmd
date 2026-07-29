@@ -1,6 +1,6 @@
 ---
 title: "Handling missing data"
-description: "Choose among omitted, retained, or explicitly modelled missing values and verify how each choice changes the estimand and fitted rows."
+description: "Choose among omitted, retained, or explicitly modelled missing values: omitting and retaining reach the same estimates and differ in which rows you can predict, while modelling a missing predictor changes the estimand."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -43,9 +43,14 @@ the model, the probability that a value is missing must not depend on its
 unobserved value. The response and predictor models must also be adequate.
 `gllvmTMB` does not model a missing-not-at-random process.
 
-By default, `miss_control()` drops rows with missing responses and rejects
-missing predictors. The likelihood-based routes in this article are explicit
-choices:
+By default, `miss_control()` omits each missing response *cell* and rejects
+missing predictors. Omitting a cell is not the same as discarding a unit: a site
+with one missing trait still contributes every trait it does have. Every observed
+cell still enters the likelihood, so the fit uses all observed responses rather
+than deleting incomplete units -- the full-information principle behind FIML. (As
+everywhere else in the package, the marginal likelihood is evaluated by a Laplace
+approximation for non-Gaussian families.) The likelihood-based routes in this
+article are explicit choices:
 
 ```{r controls}
 library(gllvmTMB)

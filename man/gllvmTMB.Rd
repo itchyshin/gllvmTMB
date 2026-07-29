@@ -242,10 +242,12 @@ objects still report all fixed-effect rows; pinned rows have
 
 \item{missing}{Output of \code{\link[=miss_control]{miss_control()}} configuring missing-data
 handling. The default \code{miss_control()} (\code{response = "drop"},
-\code{predictor = "fail"}) is the historical complete-case behaviour.
-\code{miss_control(response = "include")} keeps rows with a missing response
-and masks them out of the likelihood, preserving original-row accounting
-in \code{fit$missing_data}.}
+\code{predictor = "fail"}) omits each missing response \emph{cell}: a unit keeps
+every trait it does have, so this is not case-wise deletion.
+\code{miss_control(response = "include")} instead keeps those cells and masks
+them out of the likelihood, preserving original-row accounting in
+\code{fit$missing_data}; it reaches the same optimum as the default and differs
+in which cells \code{\link[=predict_missing]{predict_missing()}} can return.}
 
 \item{impute}{Optional specification of the covariate model for a predictor
 declared missing with \code{mi(x)} in \code{formula}, used only when

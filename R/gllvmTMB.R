@@ -236,10 +236,12 @@
 #' @param control Output of `gllvmTMBcontrol()`.
 #' @param missing Output of [miss_control()] configuring missing-data
 #'   handling. The default `miss_control()` (`response = "drop"`,
-#'   `predictor = "fail"`) is the historical complete-case behaviour.
-#'   `miss_control(response = "include")` keeps rows with a missing response
-#'   and masks them out of the likelihood, preserving original-row accounting
-#'   in `fit$missing_data`.
+#'   `predictor = "fail"`) omits each missing response *cell*: a unit keeps
+#'   every trait it does have, so this is not case-wise deletion.
+#'   `miss_control(response = "include")` instead keeps those cells and masks
+#'   them out of the likelihood, preserving original-row accounting in
+#'   `fit$missing_data`; it reaches the same optimum as the default and differs
+#'   in which cells [predict_missing()] can return.
 #' @param impute Optional specification of the covariate model for a predictor
 #'   declared missing with `mi(x)` in `formula`, used only when
 #'   `missing = miss_control(predictor = "model")`. Supply a two-sided
@@ -1351,8 +1353,11 @@ gllvmTMBcontrol <- function(
 #' [gllvmTMB()].
 #'
 #' @param response How to treat rows whose response value is `NA`.
-#'   `"drop"` (default) is the historical complete-case behaviour: rows with
-#'   a missing response are removed before the likelihood is built. `"include"`
+#'   `"drop"` (default) omits each missing response *cell* before the
+#'   likelihood is built. In long format one row is one `(unit, trait)` cell,
+#'   and the wide `traits()` route drops the same cells, so a unit keeps every
+#'   trait it does have -- this is cell-wise omission, not case-wise deletion.
+#'   `"include"`
 #'   keeps those rows, builds an observed-response mask (`is_y_observed`), and
 #'   contributes nothing to the likelihood for the masked rows -- the
 #'   frequentist observed-data likelihood. For the supported routes, the

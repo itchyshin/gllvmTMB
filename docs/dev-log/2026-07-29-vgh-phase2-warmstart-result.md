@@ -101,6 +101,40 @@ entirely attributable to it.
 **But θ-only still does not deliver the target.** Median ratio ≈ 0.99× — parity, not
 ≥1.5×. The conclusion above is unchanged: VGH is re-deriving a start Laplace already had.
 
+## Follow-up 3: scale — the disproof now covers the regime that actually matters
+
+The earlier cells were all sub-second at q = 2, n ≤ 1000, where fixed overheads dominate
+and a ratio says little. Since a speedup only *matters* on expensive fits, the sweep was
+pushed on both axes the plan's S5 asked for (n and rank), gaussian, loadings-only:
+
+| n | T | q | cold (s) | warm (s) | ratio |
+|---|---|---|---|---|---|
+| 1000 | 10 | 4 | 4.11 | 5.76 | 0.71× |
+| 1000 | 10 | 4 | 2.99 | 3.51 | 0.85× |
+| 2000 | 10 | 2 | 2.77 | 3.24 | 0.86× |
+| 2000 | 10 | 2 | 4.38 | 3.28 | 1.33× |
+| 2000 | 10 | 4 | 5.91 | 7.28 | 0.81× |
+| 2000 | 10 | 4 | 6.52 | 7.62 | 0.86× |
+| 1000 | 15 | 6 | 9.02 | 11.29 | 0.80× |
+| 1000 | 15 | 6 | 10.50 | 12.82 | 0.82× |
+| 2000 | 15 | 5 | **20.23** | 22.86 | 0.89× |
+| 2000 | 15 | 5 | **17.02** | 17.75 | 0.96× |
+
+**Median 0.85×. No upward trend in either n or rank** — the q = 4 cells are if anything
+slightly worse than q = 2, and at a 20-second cold fit the warm start is still behind. The
+lone 1.33× is the cheapest cell in the table. Log-likelihood agreement holds throughout
+(1.96e-12 – 3.22e-11).
+
+**This closes the scoping gap.** The disproof now spans n = 120–2000, q = 2–6, T = 5–15,
+three families, and cold fits from 0.09 s to 20.2 s — roughly 34 cells. There is no
+remaining regime where a reversal to ≥1.5× is plausible.
+
+**Consequence for the Totoro campaign:** it is now genuinely unnecessary, and for a better
+reason than the one first given. Totoro *was* checked and *is* provisionable (R 4.5.3, TMB
+1.9.21, RcppEigen and Matrix present, so gllvmTMB builds there). It is not being skipped
+because it is hard or pointless in the abstract — it is being skipped because a flat trend
+across two scaling axes out to 20-second fits leaves nothing for 384 cores to discover.
+
 ## Follow-up 2: poisson and binomial tested — the premise fails there too
 
 The one place the premise could still have held: families where Laplace is dearer per

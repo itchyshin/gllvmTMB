@@ -42,6 +42,33 @@ another Totoro job above ~150 cores total — the machine is shared and the cap 
 * **Multinomial is deferred** by a pre-registered gate, since the AGHQ stall was shown to be a
   genuinely near-flat objective (quadrature and DGP-cap explanations both refuted on Totoro).
 
+## 2b · 🔴 Two corrections to what this lane told Shinichi — both verified
+
+**CORRECTION 1 — the certificate numbers are NOT stale.** I told him today's four fixes made
+option (A) "a full re-measurement rather than a top-up", and used that as one of three reasons to
+recommend (B). **That was wrong.** The certificate route is `.profile_ci_via_refit()`
+(`R/profile-derived.R`), which uses its own `stats::uniroot` on a deviance-excess function — it
+only *mentions* `.profile_bounds()` in a comment about matching its boundary semantics, and never
+calls it, nor `TMB::tmbprofile()`. So none of `e34176eb` (ytol budget, in `tmbprofile_wrapper`),
+`26ac8301` (terminus, in `.profile_bounds`) or `bb4862bb` (ζ interpolation, in `.profile_bounds`)
+is on that path. `.qchisq_threshold()` *is* used, and was never changed.
+**Consequence:** (A) is a **top-up of ~20k reps against still-valid numbers**, materially cheaper
+than described. (B) remains defensible on its other two legs — a 0.94-gated claim has already
+proven easy to overstate, and the machinery fixes are an honest 0.6.0 story needing no gate — but
+one leg of the argument he decided on was false.
+
+**CORRECTION 2 — reparameterising for boundary detection cannot work alone.**
+`TMB::tmbprofile()`'s inner refit is `control <- list(step.min = 0.001); nlminb(start, newfn,
+newgr, control = control)` — **`control` is hard-coded in the body**, and although the signature
+takes `...` it is *not* threaded into that call, and no `lower=`/`upper=` is passed (verified by
+reading the installed source). So even with finite parameter bounds the inner profile optimiser
+still cannot be told about them. Reparameterisation is **necessary but not sufficient**; it is two
+projects (≈3–5 weeks, plus a TMB fork or a hand-written profile loop), not one.
+**Consequence:** the MixedModels.jl lead in
+`docs/dev-log/2026-07-28-mixedmodels-jl-profile-lead.md` stands as design insight but the
+parameterisation route should be **DROPPED** unless someone first establishes that
+`tmbprofile`'s inner refit can be box-constrained. That single probe is the only part worth doing.
+
 ## 3 · Candidate parallel lanes
 
 Ranked by value-per-risk. All are disjoint from the fenced set above.

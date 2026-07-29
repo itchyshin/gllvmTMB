@@ -78,7 +78,18 @@ Same withdrawn-path family as (1). See the audit record for the exact reachabili
     overreaches and needs narrowing"* — take the narrowed version, not the original.
 11. `response-families.Rmd:329` — rootogram family-support comment.
 12. `covariance-correlation.Rmd:331` — Ψ diagonal return-shape claim.
-13. `function-map-cheatsheet.Rmd:381` — deprecated form taught as current.
+13. `convergence-start-values.Rmd:381` — deprecated form taught as current. The checklist said
+    "Try residual starts for non-Gaussian reduced-rank models" while **the same article's own
+    section at line 222** is headed "The residual start is soft-deprecated (0.6.0)" and line 215
+    marks it *(soft-deprecated — see below; use the default starts)*. A self-contradiction
+    inside one article.
+
+    > **Correction:** this was filed in the first draft of this ledger as
+    > `function-map-cheatsheet.Rmd:381`. That file is 280 lines long. The error was mine, not
+    > the auditor's — that agent covered three files, and my extraction took the *last* path
+    > from a comma-joined string as the attribution for every finding in the group. Caught by
+    > opening the file and finding no line 381. Same failure mode as the refuted
+    > `gllvm-vocabulary.Rmd:342` below, from a different cause.
 
 ---
 
@@ -94,8 +105,47 @@ That second one is the case for the refutation pass in one line: a confident, sp
 plausible `file:line` that was simply **not real**. It would have been believed without a
 verifier whose default was *refuted*.
 
+---
+
+## Fix status
+
+Shinichi authorised fixing the unambiguous defects and chose the approach for the two that
+needed a content decision (2026-07-28).
+
+| # | Status | Commit |
+|---|---|---|
+| 1 BLOCKER `joint-sdm.Rmd` | **fixed** — dead chunk and stale prose cut, replaced with a withdrawal note in the abort's own wording | `9ca80ba9` |
+| 3 HIGH `joint-sdm.Rmd:216` | **fixed** — `"profile"` removed from the available-alternatives list, and the scale caveat that applied only to that path | `9ca80ba9` |
+| — consequential | **fixed** — "three CI methods" framing corrected; my own edit invalidated the count | `9ca80ba9` |
+| 2 HIGH `covariance-correlation.Rmd:411` | **fixed** — `method = "fisher-z"` added, fix-forward per decision | `1bb5a827` |
+| 13 `convergence-start-values.Rmd:381` | **fixed** — checklist item aligned with the article's own deprecation section | this commit |
+| 4, 5 (ICC Wald fallback; ICC profile → `NA`) | **not fixed, deliberately** — runtime claims. Unlike `extract_correlations()`, `extract_communality()` genuinely accepts `method = "profile"` and does not abort (`R/extractors.R:207,214`), so the article may well be right. Verifying needs a fit. |
+| 6, 7, 8, 9, 10, 11, 12 | **open** — need either a fit or a content judgement |
+
+### Regression guard
+
+`tests/testthat/test-article-prescribed-calls.R` now parses every article chunk (including
+`eval = FALSE`) and asserts prescribed calls resolve, named arguments are in formals, literal
+values are among declared choices, and no withdrawn value is used. Verified to **fail** on
+finding 1 before the fix and pass after.
+
+It catches 1 of the 13 findings, and that limit is the honest point: the other 12 are prose
+claims, which no static parser can adjudicate. The guard closes the *invalid-call* class only.
+
+**The test had three bugs that each made it pass vacuously**, all found by insisting it fail
+first: `parse()` returns an `expression`, for which `is.call()` is FALSE, so the walker never
+descended; `as.list()` on a call yields the empty symbol for missing arguments, which errors on
+*any* evaluation — including a predicate written to detect it; and `formals()` entries without
+defaults are that same empty symbol. A guard test that silently passes is worse than no guard.
+
 ## Scope note
 
-Six articles are affected. Per CLAUDE.md, broad article rewrites need maintainer discussion, so
-**no article prose has been edited.** This ledger records; it does not fix.
-`missing-data.Rmd` is fenced out of this lane (lane 3 owns it) and was not audited here.
+Six articles are affected. Per CLAUDE.md this review is meant to be slow and deliberate, so
+only defects with a single defensible answer were fixed; everything needing a content call is
+left open above. `missing-data.Rmd` is fenced out of this lane (lane 3 owns it) and was not
+audited here.
+
+**Adjacent, not changed (surgical-changes rule):** `R/diagnose.R:1081` emits a message
+recommending "residual starts", the same soft-deprecated form corrected in finding 13. Printed
+output is a reader surface under CLAUDE.md, so this is probably stale too — but it is a
+behaviour change outside this lane's documentation scope. Flagging, not fixing.

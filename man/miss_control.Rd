@@ -12,8 +12,11 @@ miss_control(
 }
 \arguments{
 \item{response}{How to treat rows whose response value is \code{NA}.
-\code{"drop"} (default) is the historical complete-case behaviour: rows with
-a missing response are removed before the likelihood is built. \code{"include"}
+\code{"drop"} (default) omits each missing response \emph{cell} before the
+likelihood is built. In long format one row is one \verb{(unit, trait)} cell,
+and the wide \code{traits()} route drops the same cells, so a unit keeps every
+trait it does have -- this is cell-wise omission, not case-wise deletion.
+\code{"include"}
 keeps those rows, builds an observed-response mask (\code{is_y_observed}), and
 contributes nothing to the likelihood for the masked rows -- the
 frequentist observed-data likelihood. For the supported routes, the

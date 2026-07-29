@@ -96,6 +96,17 @@ THIS IS A TWO-SESSION ARC. Session A ends after S6/S8; hand over; Session B runs
 > — this is the primary lift; or (B) accept recovery-only framing for 0.6 and defer the certificate."*
 > **That decision is still open and is the real fork for this arc.**
 >
+> **🔴 Addendum, 2026-07-29 (evidence-gap slice A1).** "THE PREMISE ... IS FALSE" / "there is no
+> certificate" above overcorrects. The withheld after-task cited here is one of *two* same-day
+> 2026-07-17 records — the WITHHELD one, at 5k reps orig-only seeds. A second, later panel pooled
+> those reps with a disjoint fresh-seed batch to N≈15k and returned **BOTH cells CERTIFY, 3-0**
+> against the identical 0.94 gate (`dd80244a:docs/dev-log/2026-07-17-sigma-coverage-d43-panel.md`,
+> unmerged for 12 days; quoted with provenance in the 2026-07-29 reconciliation note and
+> deliberately NOT ported to `main`, per R-5). Fork (A) was, in effect, already run and
+> already earned once — its raw is simply gone, which is why option (A) is the right call
+> regardless, now as a confirmatory rather than exploratory run. See
+> `docs/dev-log/2026-07-29-certificate-record-reconciliation.md`.
+>
 > # 🔴 EXECUTION FINDING #4 — A SHIPPED, USER-FACING BUG: `level > 0.9545` ALWAYS RETURNS ±Inf.
 >
 > `ytol = 2` is hard-coded (`R/profile-ci.R:233`, `:312`, `R/confint-inspect.R:130`) while the

@@ -2129,7 +2129,11 @@ a reduced-rank fit. **Both true, and the conclusion does not follow.**
 
 **What is actually true.** There IS a validated route, it is a PROFILE route, and it WAS
 checked under Laplace: the Gaussian `Sigma_unit` DIAGONAL profile at n ≥ 150, d ≤ 2, coverage
-~0.946-0.948 against a 0.94 gate. It is the one coverage-certified cell in the package. An
+~0.946-0.948 against a 0.94 gate. **[CORRECTED 2026-07-29 — see the entry below and
+`docs/dev-log/2026-07-29-certificate-record-reconciliation.md`: "the one coverage-certified
+cell in the package" overstates this. The 0.94 gate was met once, 2026-07-17, by a pooled-15k
+D-43 panel (3-0 CERTIFY) that never reached `main`; its raw is no longer reproducible; there is
+NO live certificate today and no public claim stands on this line.]** An
 entire profile subsystem exists (`R/profile-ci.R`, `profile-route-matrix.R`,
 `profile-targets.R`, `profile-derived.R`) and the 2026-07-18 handover had ALREADY concluded
 that bootstrap is the wrong route here and profile / log-SD-Wald is the certificate path.
@@ -2358,3 +2362,57 @@ AND, from the concurrent lane's coverage run: AGHQ+ridge reaches NOMINAL 0.95 co
 at every n on both the Sigma diagonal and off-diagonal, where Laplace degrades to 0.664
 at n=1600 — an interval narrowing around a biased point. On the metric this project
 actually gates on, AGHQ+ridge is the calibrated arm.
+
+## 2026-07-29  CORRECTION — the 2130-2135 "one coverage-certified cell" line split into an overstatement AND an understatement, neither of them the truth
+
+Decision: correct 2130-2135 in place (inline, above) and record why, because the 2026-07-28 arc's
+own correction of it (§ "2026-07-28 CORRECTION") produced the opposite error rather than the
+truth.
+
+**What 2130-2135 got wrong.** "It is the one coverage-certified cell in the package" states a
+live, current certificate. There is no live certificate. Nothing is flipped on any public
+surface — not `NEWS.md`, not `confint()` roxygen, not `capability-surface.html` — and none of
+them should be, on this evidence.
+
+**What the 2026-07-28 arc's correction (`docs/dev-log/2026-07-28-next-arc-sigma-intervals-ULTRAPLAN.md`,
+"EXECUTION FINDING #3"; `docs/dev-log/after-task/2026-07-28-sigma-interval-arc-premise-collapse.md`
+§9.3) also got wrong.** "THE PREMISE OF 'RE-CERTIFY' IS FALSE" / "the certificate does not exist"
+overcorrects. That arc's cited primary source,
+`docs/dev-log/after-task/2026-07-17-sigma-coverage-nsim5000-confirm.md`, records a 5k-rep,
+orig-only-seed run: WITHHELD, d2-n150 0.9462 against band 0.9398. **That is real and accurately
+quoted — but it is not the only 2026-07-17 record.** A second, later same-day panel pooled the
+orig-only reps with a disjoint fresh-seed batch to N≈15k, halved the MCSE (0.0032 → 0.00185
+committed), and returned **BOTH cells CERTIFY, 3-0** against the same 0.94 gate: d1-n150 0.9477
+(band 0.9440), d2-n150 0.9461 (band 0.9424). That panel is recorded verbatim at
+`dd80244a:docs/dev-log/2026-07-17-sigma-coverage-d43-panel.md`, where it originated and where it
+sat unmerged for 12 days. It is **deliberately NOT ported** to `main`: R-5 (2026-07-21) fences that
+branch estate to avoid re-minting M1's source identity, so the panel's numbers, method and verdict
+are quoted with provenance in `docs/dev-log/2026-07-29-certificate-record-reconciliation.md` rather
+than the file being imported.
+
+**Why the correction missed it.** `dd80244a` was inspected — the 2026-07-28 arc names it and its
+diffstat correctly ("the public-flip commit only and contains no script") — but its diff also
+carries the panel markdown itself, and that content was not read. `after-task/2026-07-17-sigma-coverage-nsim5000-confirm.md`
+was treated as "the primary record" because it was the first WITHHELD document found; a second,
+CERTIFY document from the same day sitting in the same unmerged commit was not cross-checked
+against it. **Neither the 5k WITHHELD document nor the 15k CERTIFY document was ever on `main`
+before today** — both lived exclusively on `claude/profile-coverage-remeasure-20260718` and
+sibling parked branches. Everything on `main` before this entry was a second-hand citation of the
+5k numbers embedded in later (2026-07-28/07-29) synthesis documents; none of those citations had
+ever seen the 15k panel.
+
+**The standing lesson, restated because it recurred one level up from where it was caught the
+first time (§ "2026-07-28 CORRECTION" above).** Catching an overstatement is not the same
+operation as establishing the accurate position — it only proves the checked claim was too
+strong, not what the right claim is. Both errors here have the identical shape: a claim restated
+from a citation rather than re-derived from every primary source that citation's own trail
+pointed to. See `docs/dev-log/2026-07-29-certificate-record-reconciliation.md` for the full
+reconciliation, the corrected position as of today, and the pointer for any future session before
+re-deriving this cell's certificate state.
+
+**Status as of today, stated once so it does not drift again:** the 0.94 gate was met once, at
+pooled N≈15k, by a panel that never reached `main`. Its raw (`~/gllvm_work/results/` on Totoro) no
+longer exists, so the result is recorded but not reproducible. A confirmatory, pre-registered
+20,000-rep-per-cell re-run supersedes it
+(`docs/dev-log/2026-07-29-certificate-gate-preregistration.md`, commit `90798365`). **No live
+certificate. No public claim.**

@@ -43,6 +43,12 @@ Totoro campaign **RUNNING**.
    ⚠ **`decisions.md:2130-2135` overstates this as "the one coverage-certified cell in the
    package".** I inherited that sentence and repeated it in every summary until a panel caught it.
    **Read the primary record, not the summary citing it.**
+   🔴 **2026-07-29 addendum:** "the primary record" above is one of two same-day 2026-07-17
+   records. A later panel pooled its reps to N≈15k and returned CERTIFY 3-0 for both cells against
+   this same gate (`dd80244a:docs/dev-log/2026-07-17-sigma-coverage-d43-panel.md`, quoted with
+   provenance in the reconciliation note; deliberately NOT ported to `main` per R-5).
+   "THERE IS NO CERTIFICATE" overcorrects in the same way the line it replaced overstated — see
+   `docs/dev-log/2026-07-29-certificate-record-reconciliation.md`.
 4. **Multinomial deferred** — S3 fired the plan's own pre-registered risk branch.
 
 **Also: we are NOT first.** SAS PROC GLIMMIX `COVTEST … CL / TYPE=PLR` profiles factor-analytic

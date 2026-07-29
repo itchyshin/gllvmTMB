@@ -98,6 +98,17 @@
     if (identical(parent, root)) break
     root <- parent
   }
+  ## Installed-package fallback -- the same defect as `.eva_gate1_file()` above,
+  ## and found only because fixing that one let R CMD check reach this call.
+  ## On install the contents of inst/ move up to the package root, so
+  ## "inst/tmb/gllvmTMB_eva.cpp" does not exist in an installed package; the
+  ## file is at system.file("tmb", ...). Only the compiled objects are excluded
+  ## from the build (.Rbuildignore "^inst/tmb/.*\\.(o|so|dll|dylib)$"), so the
+  ## source itself does ship.
+  installed <- system.file("tmb", "gllvmTMB_eva.cpp", package = "gllvmTMB")
+  if (nzchar(installed) && file.exists(installed)) {
+    return(normalizePath(installed, mustWork = TRUE))
+  }
   stop("Cannot find inst/tmb/gllvmTMB_eva.cpp.", call. = FALSE)
 }
 

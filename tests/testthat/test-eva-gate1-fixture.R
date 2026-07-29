@@ -31,6 +31,18 @@ test_that("the parameters actually parse from that resolved path", {
   expect_gt(length(pars), 0L)
 })
 
+test_that(".eva_find_source() resolves the TMB source without a checkout", {
+  # Same defect class as .eva_gate1_file(): "inst/tmb/..." does not exist in an
+  # installed package, because inst/ contents move up to the package root on
+  # install. Found only because fixing the JSON path let R CMD check reach here.
+  tmp <- withr::local_tempdir()
+  withr::local_dir(tmp)
+
+  path <- gllvmTMB:::.eva_find_source()
+  expect_true(file.exists(path))
+  expect_match(basename(path), "gllvmTMB_eva.cpp", fixed = TRUE)
+})
+
 test_that("the shipped fixture has not drifted from the source copy", {
   # Only meaningful in a source checkout, where both copies exist.
   src <- file.path("..", "..", "docs", "design", "86-eva-gate1-parameters.json")

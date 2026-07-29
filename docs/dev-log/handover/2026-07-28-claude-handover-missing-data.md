@@ -92,7 +92,29 @@ proposal rather than shipped, per the agreed change authority. **Maintainer's ca
 1. `devtools::test()` on the touched files locally (not CI-first). Last measured: default run
    133 pass / 80 skip / **0 fail**; heavy run (`GLLVMTMB_HEAVY_TESTS=1`) **665 pass / 0 skip /
    0 fail** / 1 warn.
-2. `rcmdcheck` before pushing.
+2. `rcmdcheck` — **run, and it is NOT clean. None of it is this lane's.** Read this before you
+   conclude the branch broke something:
+
+   `1 ERROR / 4 WARNINGS / 2 NOTES`, all pre-existing on `origin/main`:
+   - **ERROR — `tests/testthat.R` fails** (`FAIL 7 | SKIP 1060 | PASS 4996`). The visible failure is
+     `test-eva-gate1.R:101` — *"Cannot find docs/design/86-eva-gate1-parameters.json"*. `docs/` is
+     excluded from the build (`.Rbuildignore:18` = `^docs$`), so any test resolving a `docs/design`
+     path **cannot** pass under `R CMD check`. That file has 6 blocks and belongs to the VA/EVA
+     lane; a further ~15 test files read `docs/design` the same way.
+   - **WARNINGS ×3 — `.onLoad` fails: `object 'AIC' not found`.** A namespace-load problem.
+   - **WARNING — codoc mismatch in `man/gllvmTMBcontrol.Rd`**, which is one of **lane 1's fenced
+     files** and is actively being changed by PR #802.
+
+   **Attribution is decisive:** `git diff --name-only origin/main HEAD -- R/ src/ NAMESPACE` returns
+   **0 files**. This branch changes only 4 dev-log documents, 1 test file, and 1 pkgdown article
+   (itself build-excluded). It cannot have caused a namespace-load or codoc failure. The new test
+   file appears **nowhere** in the check log (verified two ways).
+
+   The lane's own verification: default run 133 pass / 80 skip / **0 fail**; heavy run
+   (`GLLVMTMB_HEAVY_TESTS=1`) **665 pass / 0 skip / 0 fail**; the new file 8 pass / 0 skip / 0 fail.
+
+   **Do not treat the tree as check-clean.** The `AIC` `.onLoad` warning in particular looks like it
+   deserves its own look by whoever owns the namespace.
 3. Re-run `tools/lane_preflight.sh .` — three lanes were concurrent on 2026-07-28 and lane 1's
    PR #802 was open.
 

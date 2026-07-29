@@ -150,6 +150,12 @@ Fences, non-negotiable:
 
 ## Explicitly deferred
 
+**See `2026-07-29-vgh-coverage-map.md` for the full family/structure map** — it
+records that the recorded *"4 of 16 families"* is too pessimistic (the real figure
+is **13–14 of 16**), that phylo/animal/kernel/pedigree are reachable via the
+`Q_gg` derivation, and which items are genuinely unfixable. It also lists the
+three things to do first when this arc resumes.
+
 | item | why |
 |---|---|
 | Structured tiers (phylo / animal / kernel) | Derivation recorded (`2026-07-29-vgh-structured-stationarity.md`); only `Q_gg` enters, so it *will* work — but not needed for Phases 0–3 |

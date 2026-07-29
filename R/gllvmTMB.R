@@ -176,12 +176,15 @@
 #'   stacked response vector before fitting.
 #' @param REML Logical; use restricted maximum likelihood for Gaussian-only
 #'   fits. The current REML pilot is deliberately narrow: all response rows
-#'   must be Gaussian, observation weights are not supported, missing
-#'   responses must use the default `miss_control(response = "drop")`, and
-#'   `mi()` predictor models, predictor-informed `latent(..., lv = ~ x)`
-#'   scores, and `Xcoef_fixed` maps are not supported. The observed fixed
-#'   design must be full rank with positive residual degrees of freedom. The
-#'   default `FALSE` keeps the historical ML fit.
+#'   must be Gaussian, observation weights are not supported, and `mi()`
+#'   predictor models, predictor-informed `latent(..., lv = ~ x)` scores, and
+#'   `Xcoef_fixed` maps are not supported. The observed fixed design must be
+#'   full rank with positive residual degrees of freedom. Either
+#'   missing-response policy may be used: masked cells
+#'   (`miss_control(response = "include")`) contribute nothing to the
+#'   likelihood, so the restricted likelihood is formed over the observed rows
+#'   and matches the corresponding `"drop"` fit. The default `FALSE` keeps the
+#'   historical ML fit.
 #' @param mesh Optional mesh object from [make_mesh()]. Required for any
 #'   `spatial_*()` or `spatial()` term unless that term supplies its own
 #'   `mesh =` argument; ignored only when the model has no spatial term.
@@ -1380,8 +1383,10 @@ gllvmTMBcontrol <- function(
 #' @details
 #' There is deliberately **no** `estimator` argument in `miss_control()`:
 #' estimator choice belongs to [gllvmTMB()]. The default `gllvmTMB()` fit uses
-#' ML; `gllvmTMB(REML = TRUE)` is a Gaussian-only pilot and does not yet combine
-#' with `miss_control(response = "include")` or `mi()` predictor models. There
+#' ML; `gllvmTMB(REML = TRUE)` is a Gaussian-only pilot. It combines with either
+#' missing-response policy -- including `miss_control(response = "include")`,
+#' where the restricted likelihood is formed over the observed rows -- but not
+#' yet with `mi()` predictor models. There
 #' is **no** MI ("multiple imputation") engine here; multiple imputation is a
 #' separate workflow.
 #'

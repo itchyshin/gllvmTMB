@@ -2495,12 +2495,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Use {.code REML = FALSE}, or fit an unweighted Gaussian model for the REML pilot."
       ))
     }
-    if (any(masked_response)) {
-      cli::cli_abort(c(
-        "{.arg REML = TRUE} currently requires {.code miss_control(response = \"drop\")}.",
-        "i" = "Use the default missing-response policy, or use {.code REML = FALSE} with {.code response = \"include\"}."
-      ))
-    }
+    ## `response = "include"` is supported. REML here integrates `b_fix` out
+    ## through TMB's Laplace machinery (see "Gaussian REML is implemented by
+    ## integrating the fixed-effect coefficient block" below). Masked rows
+    ## contribute exactly zero to the joint likelihood via the `is_y_observed`
+    ## gate, so the joint remains a Gaussian LMM over the OBSERVED rows; the
+    ## Laplace step is still exact there, and integrating `b_fix` over it gives
+    ## the restricted likelihood for the observed rows. The rank check below
+    ## already subsets the design by `!masked_response`, which is the piece that
+    ## has to be observed-row-only.
+    ##
+    ## Verified rather than argued: a REML fit under `response = "include"`
+    ## matches a REML fit under `drop` on the same data -- and `drop` physically
+    ## removes those cells, so that comparison IS "REML on the reduced data".
+    ## See tests/testthat/test-reml-missing-response.R, which also pins that
+    ## REML still differs from ML in both policies, so the agreement cannot be a
+    ## silent fallback to ML.
     if (isTRUE(use_mi_predictor)) {
       cli::cli_abort(c(
         "{.arg REML = TRUE} does not yet support {.fn mi} predictor models.",

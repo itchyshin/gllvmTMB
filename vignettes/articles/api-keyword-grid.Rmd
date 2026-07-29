@@ -300,7 +300,9 @@ and \(T\) traits):
 - `*_indep(1 + x | g)` estimates **\(T\) independent per-trait \(2 \times 2\)
   (intercept, slope) blocks** -- each trait gets its own intercept variance,
   slope variance, and intercept--slope correlation, with no covariance across
-  traits. Extract it at `level = "phy"` / `"spatial"` / `"kernel"`.
+  traits. Extract it at `level = "phy"` / `"spatial"`; a `kernel_` tier is
+  addressed by the `name` you gave it, so a tier declared
+  `kernel_indep(..., name = "known")` is extracted at `level = "known"`.
 - `*_dep(1 + x | g)` estimates a **full interleaved \(2T \times 2T\)** covariance
   across all trait intercepts and slopes. Same extraction levels.
 - `*_latent(1 + x | g, d = K)` estimates **separate reduced-rank cross-trait
@@ -327,8 +329,11 @@ cross-trait structure. For \(T\) traits:
 | `dep` | full \(2T \times 2T\) across all trait intercepts and slopes | a full intercept covariance and a full slope covariance, with intercepts \(\perp\) slopes (\(\boldsymbol\Sigma_{\text{int}} \oplus \boldsymbol\Sigma_{\text{slope}}\)) |
 | `latent` | separate reduced-rank \(\boldsymbol\Lambda\) per column block (already uncorrelated) | the same -- `\|\|` is the explicit spelling |
 
-Both bar forms are available for the `phylo_`, `animal_`, `kernel_`, and
-`spatial_` sources.
+Both bar forms are available for the `phylo_` and `animal_` sources, for
+`spatial_indep()` / `spatial_dep()` / `spatial_latent()`, and for
+`kernel_indep()` / `kernel_dep()`. `kernel_latent()` currently takes the single
+`|` only: a `||` there stops with a message rather than silently fitting the
+correlated form you wrote `||` to avoid.
 
 Choose the mode from the scientific covariance assumption, not as an automatic
 fallback after a difficult fit. Centre and scale `x`, retain the transformation,

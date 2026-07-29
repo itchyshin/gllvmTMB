@@ -172,15 +172,31 @@ recov <- function(Ltrue, Lhat) {
        cov_relerr = norm(tcrossprod(Lhat) - tcrossprod(Ltrue), "F") /
                     norm(tcrossprod(Ltrue), "F"))
 }
-rg <- recov(Lam0, fit_g$Lambda)
+## NOTE: fit_p and fit_b above were run with maxit = 60, tol = 0 deliberately,
+## to expose every ELBO increment for the monotonicity checks.  They are NOT
+## converged, so they must not be used to judge recovery -- doing so reports a
+## failure of the test harness as if it were a failure of the engine.  Refit to
+## convergence here.
+fit_gc <- fit_g                                        # already tol = 1e-12
+fit_pc <- vgh_fit(Yp, matrix(1, np, 1), d = 2, family = "poisson",
+                  maxit = 500, tol = 1e-10)
+fit_bc <- vgh_fit(Yb, matrix(1, nb, 1), d = 2, family = "binomial",
+                  maxit = 500, tol = 1e-10)
+
+rg <- recov(Lam0, fit_gc$Lambda)
 pass("Recovery: gaussian Lambda Lambda' rel err < 0.15",
      rg$cov_relerr < 0.15, sprintf("rel Frobenius err %.4f", rg$cov_relerr))
-rp <- recov(Lp, fit_p$Lambda)
+rp <- recov(Lp, fit_pc$Lambda)
 pass("Recovery: poisson Lambda Lambda' rel err < 0.35",
-     rp$cov_relerr < 0.35, sprintf("rel Frobenius err %.4f", rp$cov_relerr))
-rb <- recov(Lb, fit_b$Lambda)
-cat(sprintf("  (binomial Lambda Lambda' rel Frobenius err %.4f -- reported, not gated)\n",
-            rb$cov_relerr))
+     rp$cov_relerr < 0.35,
+     sprintf("rel Frobenius err %.4f (%d sweeps)", rp$cov_relerr, fit_pc$sweeps))
+rb <- recov(Lb, fit_bc$Lambda)
+## Binomial is REPORTED, NOT GATED, on purpose.  It is the weakest cell: n = 300,
+## m = 15 Bernoulli.  Design 102's 2,304-attempt campaign found VA loading-
+## covariance relative error 0.67-3.36 at N = 240 for sparse binary, so a gate
+## here would encode an expectation the method has never met.
+cat(sprintf("  (binomial Lambda Lambda' rel Frobenius err %.4f, %d sweeps -- reported, not gated)\n",
+            rb$cov_relerr, fit_bc$sweeps))
 
 cat("\n")
 if (ANY_FAIL) { cat("RESULT: at least one check FAILED\n"); quit(status = 1) }

@@ -285,8 +285,13 @@ vgh_update_model <- function(Y, X, Beta, Lambda, phi, amean, Avec, logdetA,
     resid <- Y[, j] - mom$B1[, j]
 
     # gradient: d/dbeta = sum_i x_i r_i ; d/dlambda = sum_i (r_i a_i - B2_ij A_i lambda_j)
+    # A_i %*% lambda_j for every unit at once: an R-level loop over i here would
+    # be n*m tiny matrix products per sweep and dominates everything else.
     Alam <- matrix(0, n, d)
-    for (i in seq_len(n)) Alam[i, ] <- matrix(Avec[i, ], d, d) %*% Lambda[j, ]
+    for (k in seq_len(d)) {
+      idx <- (seq_len(d) - 1L) * d + k
+      Alam[, k] <- Avec[, idx, drop = FALSE] %*% Lambda[j, ]
+    }
     g <- c(crossprod(X, resid),
            crossprod(amean, resid) - crossprod(Alam, b2j)) / phi[j]
 

@@ -4095,8 +4095,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
              "0" = "gaussian", "1" = "binomial", "2" = "poisson",
              NA_character_)
     } else NA_character_
+    ## Iteration counts show the warm start buys Laplace only 5-14% fewer outer
+    ## iterations, so most of VGH's sweeps are refining detail Laplace does not
+    ## use -- while VGH's cost is what sinks the economics. Capping the sweeps
+    ## trades start quality we are not spending against cost we are.
+    ## Default 3, not VGH's own 50: a maxit sweep (dev/vgh/e2e-maxit-sweep.R)
+    ## gives median ratios 1.00x at 3 against 0.92x at 50, because past a few
+    ## sweeps VGH is refining detail Laplace does not consume while still
+    ## charging for it.
+    vgh_maxit <- control$vgh_warm_start_maxit %||% 3L
     vgh_start <- if (is.na(vgh_fam)) NULL else {
-      .vgh_build_warm_start(tmb_data, vgh_fam, verbose = isTRUE(control$verbose))
+      .vgh_build_warm_start(tmb_data, vgh_fam, maxit = as.integer(vgh_maxit),
+                            verbose = isTRUE(control$verbose))
     }
     if (!is.null(vgh_start)) {
       ## z_B is a RANDOM effect: TMB re-solves it in the inner Laplace problem at

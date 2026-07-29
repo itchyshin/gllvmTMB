@@ -213,3 +213,59 @@ The fix is not a better start — it is a **cheaper** one. Two concrete, falsifi
 
 Neither is in scope for Phase 2, and neither is promised to work. But they are the specific
 experiments the measurement points at, rather than "try harder".
+
+## Follow-up 5: the target is unreachable IN PRINCIPLE — an upper bound
+
+Follow-up 4 said the start is good but over-priced, and named two fixes. Both are now
+settled, the first by experiment and the second by arithmetic.
+
+### Making the start cheaper does help — and ceilings at ~1.14×
+
+Sweeping VGH's iteration cap (`control$vgh_warm_start_maxit`), gaussian:
+
+| cell | cold (s) | maxit 1 | maxit 3 | maxit 8 | maxit 50 |
+|---|---|---|---|---|---|
+| 1000/10/4 s1 | 4.06 | 0.76× | 1.10× | 1.13× | 1.14× |
+| 1000/10/4 s2 | 2.99 | 0.97× | 1.00× | 0.89× | 0.88× |
+| 2000/15/5 s1 | 20.37 | 1.05× | 1.00× | 0.90× | 0.90× |
+| 2000/15/5 s2 | 16.92 | **1.13×** | 0.96× | 0.95× | 0.94× |
+| **median** | | 1.01× | **1.00×** | 0.93× | 0.92× |
+
+The diagnosis was right: cheaper is better, and the median moves from 0.92× to 1.00×.
+**The default is now `maxit = 3`, not VGH's own 50** — past a few sweeps VGH refines detail
+Laplace does not consume while still charging for it. A single sweep already captures most
+of the iteration saving (at 2000/15/5 s2: 403 → 325 iterations, −19 %, for 0.274 s).
+
+### Why the second fix cannot close the gap either — the bound
+
+End-to-end speedup is bounded above by the iteration ratio, because even a **costless**
+start still has to run Laplace:
+
+> `speedup ≤ cold_iters / warm_iters`
+
+| cell | cold iters | best warm iters | ratio | max speedup if the start were FREE |
+|---|---|---|---|---|
+| 1000/10/4 s1 | 233 | 191 | 0.820 | 1.22× |
+| 1000/10/4 s2 | 190 | 152 | 0.800 | **1.25×** |
+| 2000/15/5 s1 | 523 | 485 | 0.927 | 1.08× |
+| 2000/15/5 s2 | 403 | 325 | 0.806 | 1.24× |
+
+**Best iteration reduction observed: 20 %. A 1.5× speedup requires 33.3 %.**
+
+So the ≥1.5× target is **not reachable in principle** by any version of this approach, not
+merely unreached in practice. Option 2 from Follow-up 4 — stop recomputing the
+eigendecomposition `.gllvmTMB_residual_factor_start()` already has — is worth doing on its
+own merits, but it can only recover VGH's remaining cost (0.12–0.28 s at `maxit = 1`, i.e.
+1–7 % of these fits). Driving that to exactly zero still lands at **1.25× at best**.
+
+### Final status of the Phase 2 target
+
+| half | status |
+|---|---|
+| provably identical optimum | **PASS** — loglik agrees to 1.65e-13 – 3.22e-11 over ~38 cells |
+| ≥1.5× end-to-end | **IMPOSSIBLE** — bounded above by 1.25× even with a free start |
+
+The honest close is not "we failed to reach 1.5×" but "1.5× was never available here, and
+here is the bound that shows it." The warm start is now net-neutral rather than harmful,
+which is worth keeping for the Phase 3 screen, where the reason to hold a VGH solution is
+robustness rather than speed.

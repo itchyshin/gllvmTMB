@@ -119,5 +119,28 @@ test and missed the shape most users write.
 - This does **not** implement offsets; it refuses them.
 - It does **not** change missing-*response* handling in any way — that is explicitly regression-tested.
 - It makes **no** coverage or interval claim.
-- It does not audit the rest of the formula grammar for other silently-ignored terms. Given two were
-  found here, **that sweep is worth doing** and is not done.
+- It does not sweep every possible identifier column, only `trait` and `unit`.
+
+## 13. The neighbourhood sweep — done, and it came back clean
+
+§12 originally recorded the grammar-wide sweep as *not done*. It has since been run, because finding
+two members of a class is reason to assume more.
+
+Each candidate term was classified by whether it **changes the fit** (correct), is **rejected**
+(safe), or is **accepted while leaving the likelihood bit-identical to baseline** — the dangerous
+class that `offset()` belonged to.
+
+| term | verdict |
+|---|---|
+| `I(w2^2)`, `poly(w2, 2)`, `log(...)`, a factor covariate, `z:w2`, a plain covariate | **changes the fit** ✓ |
+| `offset(w2)` | **rejected** (this change) |
+| `s(w2)`, `te(w2)` | rejected — *and still rejected with `mgcv` attached*, which was the plausible escape route |
+| `strata(fac)`, `cluster(grp)`, `weights(w2)` | rejected |
+
+**No further silent terms found. `offset()` was the unique member of its class.**
+
+One residual, lower priority and **not fixed here**: the rejections differ in quality. `offset()`
+now fails with a designed message; `s()`/`te()`/`strata()`/`cluster()` fail with R's opaque
+`could not find function` or `invalid type (list) for variable`, and `weights(w2)` with
+`$ operator is invalid for atomic vectors`. All fail loud, so none is a correctness risk — but a
+user meeting them learns nothing about why. Worth a polish pass; not urgent.

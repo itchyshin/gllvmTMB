@@ -1,0 +1,12 @@
+      n    VGH_sec   sweeps    rel_err    sec_per_n
+    250       3.00       49     0.3713      0.01199
+    500       3.24       36     0.2893      0.00648
+   1000       4.37       27     0.2028      0.00437
+   2000      10.64       35     0.1432      0.00532
+   4000      15.63       26     0.1932      0.00391
+   8000      51.20       43     0.0971      0.00640
+  16000     110.27       46     0.0435      0.00689
+
+VGH scaling exponent = 0.907  (95% CI 0.647 to 1.168)
+1.0 = linear, 2.0 = quadratic.
+Sweeps: min 26 max 49 -- if flat in n, the per-sweep cost is the whole story.

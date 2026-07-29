@@ -1,0 +1,2 @@
+"arm","N","T","q","H","n_obs","n_outer_par","n_inner_par","setup_sec","optim_sec","total_sec","objective","iterations","evaluations","convergence","peak_mb","status","message"
+"B",3200,20,2,15,64000,60,16000,64.94,907.084,972.024,87794.5114006438,68,86,0,179,"ok","relative convergence (4)"

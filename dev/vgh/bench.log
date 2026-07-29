@@ -1,0 +1,11 @@
+warm-up (untimed, absorbs any first-call/compile cost) ...
+done
+
+     n      m     LA_sec    VGH_sec   speedup      LA_logLik     VGH_logLik       d_ll  sweeps
+   200     20       7.30       0.64     11.5x       -6077.71       -6071.48      6.233      59
+   500     20      11.78       1.41      8.4x      -15297.28      -15290.61      6.667      59
+  1000     20      35.12       2.40     14.6x      -30677.63      -30667.63      9.992      53
+  2000     20      82.23       6.79     12.1x      -61415.41      -61403.45     11.962      78
+  4000     20     174.50      13.84     12.6x     -123497.20     -123484.89     12.306      81
+
+d_ll > 0 => VGH attained a HIGHER exact log-likelihood than Laplace.

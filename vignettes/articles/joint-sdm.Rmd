@@ -213,11 +213,9 @@ Pairwise species correlations on the latent-liability scale. The
 opt-in `method = "fisher-z"` gives Fisher-transform heuristic bounds that
 are fast (seconds) and bounded inside $[-1, 1]$ by construction.
 `method = "wald"` is an accepted alias for the same Fisher-z path.
-Two heavier alternatives are also available: `method = "bootstrap"`
+A heavier alternative is also available: `method = "bootstrap"`
 re-fits the model under a parametric bootstrap for a full
-sampling-distribution CI, and `method = "profile"` inverts the
-profile likelihood pair-by-pair (cost scales as $O(T(T-1)/2)$
-constrained refits).
+sampling-distribution CI.
 
 One scale caveat is worth stating up front, because it trips people
 up on binary fits. The default `link_residual = "auto"` puts the
@@ -225,13 +223,7 @@ correlation on the **latent-liability** scale — it adds the fixed
 logistic residual $\pi^2/3$ to the diagonal of
 $\boldsymbol\Sigma_B$ before forming the correlation, which is the
 interpretable co-occurrence quantity for a JSDM. `fisher-z`,
-`wald`, and `bootstrap` all honour that argument. The current
-`profile` path, however, always reports the correlation of the
-**bare** $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top$
-(it ignores `link_residual`), so its point estimate is the
-undiluted latent-factor correlation, not the latent-liability one.
-The optional comparison snippets below make the difference explicit
-for readers who want to audit the scale.
+`wald`, and `bootstrap` all honour that argument.
 
 What is and is not certified: the point estimates and Fisher-z
 bounds are useful diagnostics for this fitted example, but the
@@ -277,14 +269,14 @@ for the rotation-invariant co-occurrence story.
 
 ## Confidence intervals on the binary latent scale
 
-This section works through the three CI methods on two estimands —
+This section works through the available CI methods on two estimands —
 a pairwise species **correlation** and a per-species **ICC** — to
 show what each method returns and where it currently stops short.
-These chunks are optional because the bootstrap and profile paths
-re-fit the model; run them when the interval method itself is the
-question, not for a first pass through the article.
+These chunks are optional because the bootstrap path re-fits the
+model; run them when the interval method itself is the question, not
+for a first pass through the article.
 
-### Three CI methods for one correlation
+### Two CI methods for one correlation
 
 Take a single species pair (`sp_1`, `sp_2`) and ask for the same
 correlation three ways. Keeping `link_residual = "auto"` for the
@@ -310,36 +302,14 @@ The Fisher-z and bootstrap point estimates match because both add
 the $\pi^2/3$ logistic residual to the diagonal; the bootstrap
 interval is the empirical 2.5/97.5 percentile across the refits.
 
-The `profile` method is the one that reports a *different* number,
-because it currently works on the bare $\boldsymbol\Sigma_B$ scale.
-To compare it fairly, request the Fisher-z interval with
-`link_residual = "none"` so both sit on the same (undiluted) scale:
+Nonlinear profile intervals for correlations are not currently
+available: the penalty-based constrained-refit prototype has been
+withdrawn pending an exact constraint solver and calibration
+evidence. Requesting `method = "profile"` raises an error.
 
-```{r jsdm-cor-profile, eval = FALSE}
-cor_profile <- extract_correlations(
-  fit_jsdm, tier = "unit", pair = pair_ij,
-  method = "profile"
-)
-cor_fisher_bare <- extract_correlations(
-  fit_jsdm, tier = "unit", pair = pair_ij,
-  method = "fisher-z", link_residual = "none"
-)
-rbind(cor_profile, cor_fisher_bare)[, c("trait_i", "trait_j",
-                                        "correlation", "lower", "upper", "method")]
-```
-
-Now the two point estimates agree: the profile correlation matches
-the bare-scale Fisher-z value. The profile *interval* is a
-likelihood-ratio inversion around that point — but note it can come
-back as `NA` when the constrained refit fails to bracket the bound
-(a near-boundary correlation here is a common cause), which is the
-same not-yet-calibrated CI story flagged above. The take-home is
-*not* that one method is wrong, but that **`profile` and the default
-latent-liability correlations live on different scales** until the
-profile path learns to honour `link_residual`. For the interpretable
-JSDM co-occurrence story, prefer the latent-liability scale
-(`auto`), and use Fisher-z for speed or the bootstrap when you want
-an empirical sampling-distribution interval.
+For the interpretable JSDM co-occurrence story, prefer the
+latent-liability scale (`auto`), and use Fisher-z for speed or the
+bootstrap when you want an empirical sampling-distribution interval.
 
 ### ICC (communality) on the latent scale
 

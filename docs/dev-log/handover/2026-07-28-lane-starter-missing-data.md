@@ -13,7 +13,7 @@ false** — see §2.
 | Lane | Branch | Owns | State |
 |---|---|---|---|
 | 1 | `claude/sigma-intervals-boundary-20260728` | interval machinery (fenced set below) | **PR #802 OPEN** — do not merge, do not edit |
-| 2 | `claude/docs-honesty-20260728` | reader surfaces: `vignettes/` (**except** `missing-data.Rmd`), `README.md`, `_pkgdown.yml`, unfenced `man/*.Rd`, roxygen in unfenced `R/` | live |
+| 2 | `claude/docs-honesty-20260728` | reader surfaces: `vignettes/` (**except** `missing-data.Rmd`), `README.md`, `_pkgdown.yml`, unfenced `man/*.Rd`, roxygen in unfenced `R/` | **MERGED** (PR #805) — closed, not a live writer |
 | 3 | **this lane** | `vignettes/articles/missing-data.Rmd`, `R/missing-predictor.R`, `R/gllvmTMB-wide.R` (missing-data paths), `tests/testthat/test-missing-*.R`, `man/{predict_missing,impute_model,imputed}.Rd` | opening |
 
 **Lane 1's fenced files — this lane must not edit any of them:**
@@ -180,12 +180,11 @@ FIRST read the lane starter IN FULL. It has the three-lane map, lane 1's fenced 
 — critically — §2, which documents that the OLDER starter's missing-data scope is factually
 wrong. Do not work from the older one.
 
-  THE STARTER IS NOT ON main. It is on lane 2's branch. Read it with:
-    git fetch origin claude/docs-honesty-20260728
-    git show origin/claude/docs-honesty-20260728:docs/dev-log/handover/2026-07-28-lane-starter-missing-data.md
+    docs/dev-log/handover/2026-07-28-lane-starter-missing-data.md
 
-  (If that path 404s, list what exists — do NOT proceed on the older starter:
-    git ls-tree origin/claude/docs-honesty-20260728 docs/dev-log/handover/ | grep missing)
+  (It is on main as of PR #805. If that path is missing, list what exists — do NOT fall
+  back to the older parallel-lanes starter, whose missing-data scope is wrong:
+    git ls-tree origin/main docs/dev-log/handover/ | grep missing)
 
 Set up: git worktree add /private/tmp/gllvmtmb-missing-data -b claude/missing-data-20260728 origin/main
 

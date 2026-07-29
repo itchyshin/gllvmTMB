@@ -1,0 +1,31 @@
+PASS GH rule: normal moments to k=6                 max abs err 3.55e-14
+PASS C1: 1-D collapse == d-dim expectation (d=4)    1D 1.54983225  MC 1.54977780  diff 5.44e-05
+PASS C2: Stein  dB/ds = s E[b'']                    fd 0.2306445427  stein 0.2306445426  diff 8.23e-11
+PASS C-exact: gaussian ELBO == exact marginal loglik ELBO -5778.938282  exact -5778.938282  rel 1.26e-12
+PASS Monotone ELBO (gaussian)                       min increment 2.556e-05 over 59 sweeps
+PASS Monotone ELBO (poisson)                        min increment 5.956e-01
+PASS Monotone ELBO (binomial-logit, GH)             min increment 1.773e-04
+
+  GH order study (binomial-logit cumulant, vs Q=80 reference)
+     Q     max|dB|     max|dB1|    max|dB2|
+     5   4.532e-02   3.934e-02   4.410e-02
+     9   1.011e-02   1.263e-02   1.831e-02
+    11   5.559e-03   7.933e-03   1.249e-02
+    15   1.988e-03   3.299e-03   6.228e-03
+    21   5.522e-04   1.010e-03   2.482e-03
+    31   9.709e-05   2.419e-04   6.629e-04
+
+  EVA (2nd-order Taylor) error vs exact quadrature, logit cumulant
+      s     max|EVA - exact|   at m
+   0.25   0.000060          +0.00
+   0.50   0.000904          +0.00
+   1.00   0.012088          +0.00
+   1.50   0.049345          +0.00
+   2.00   0.125433          +0.00
+   3.00   0.424069          +0.00
+   4.00   0.943340          +0.00
+PASS Recovery: gaussian Lambda Lambda' rel err < 0.15 rel Frobenius err 0.1088
+PASS Recovery: poisson Lambda Lambda' rel err < 0.35 rel Frobenius err 0.1371 (500 sweeps)
+  (binomial Lambda Lambda' rel Frobenius err 0.4578, 114 sweeps -- reported, not gated)
+
+RESULT: all gated checks passed

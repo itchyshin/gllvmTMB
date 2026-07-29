@@ -530,11 +530,38 @@
       48-cell scale sweep: agreement is exact where the algebra matches (Poisson 4.4e-09, binomial
       Jaakkola–Jordan 2.7e-07 median relative difference), but <em>VA is not faster than Laplace at any
       tested size</em> — the variational arms scale roughly quadratically in <em>n</em> against Laplace's
-      linear, and VA does not complete at all beyond n ≈ 2500. The one property that favours them is
+      linear. The one property that favours them is
       honest failure: across those 640 cells VA never reported a clean status on a degenerate fit,
       whereas 59 of 70 degenerate Laplace fits reported <code>convergence = 0</code> with
       <code>pdHess = TRUE</code>. Their prospective role is therefore a <em>cross-engine second opinion</em>,
       not a faster or more accurate estimator. Nothing here is promoted, and none of it gates 0.6.
+    </p>
+    <p class="note">
+      <strong>Update 2026-07-29 — a THIRD engine, and the slowness is diagnosed.</strong>
+      The 2026-07-26/27 slowness is <em>not a property of VA</em>: it is the optimisation architecture.
+      <code>va_r3</code> hands all <code>N(2q + q(q−1)/2)</code> variational coordinates to one
+      quasi-Newton solve (26,985 at n = 5397, q = 2). A three-arm A/B on that engine
+      (<code>dev/vgh/ab-runs/</code>) shows moving the block to <code>random=</code> is <em>invalid</em>
+      (it estimates a biased Σ<sub>B</sub>, rel. Frobenius 0.65–0.74, flat in n) and
+      <code>profile=</code> is correct but 4–7× slower — though with <em>linear</em> per-evaluation cost
+      and flat memory against the status quo's <em>n</em><sup>1.35</sup> and quadratic memory. Two
+      corrections to the paragraph above: the status-quo arm <strong>did complete at N = 3200</strong>
+      (895.6 s — the earlier non-completion is not reproduced), and its binding limit is
+      <strong>memory, not time</strong> (1340 Mb at N = 3200; projected 9.3 GB at N = 10,000).
+      <br><br>
+      A block coordinate-ascent engine (<code>R/va-vgh.R</code>, internal, unexported, added
+      2026-07-29) solves each block instead — closed-form variational covariance from Stein/Price, a
+      free Newton step in the mean, and a response-separable model step, so no optimiser sees more than
+      <code>p + q</code> coordinates. It computes the <strong>identical objective</strong> to
+      <code>va_r3</code> (4.7e-15 over 46 comparisons, 7 negative controls firing) and reaches the
+      <strong>same estimates</strong> (binomial n = 800, 12 seeds, paired difference bounded within
+      ±0.0003 on a metric of level 0.218 — an equivalence result), at <strong>~17× per start</strong>.
+      SQUAREM acceleration then cut poisson from 450 sweeps to 77 at the same ELBO, closing the one
+      real defect. Gaussian ELBO equals the exact marginal log-likelihood to <strong>1.35e-15</strong>.
+      Still <strong>internal, unexported, and not an estimator</strong>: the intended role is to
+      warm-start Laplace and to screen the degenerate fits Laplace reports as clean, with the published
+      estimate remaining Laplace's. Nothing promoted; none of it gates 0.6.
+      See <code>docs/dev-log/2026-07-29-vgh-report.md</code>.
     </p>
     <div class="tablewrap">
       <table>

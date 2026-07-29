@@ -1,0 +1,17 @@
+warm-up (untimed)...
+done
+
+      n    LA_sec   VGH_sec   speedup    LA_err   VGH_err
+    250     28.64      3.70      7.7x         -    0.3713
+    500     39.33      4.21      9.3x         -    0.2893
+   1000     61.51      5.67     10.8x         -    0.2028
+   2000    105.20     14.43      7.3x         -    0.1432
+   4000    305.24     19.68     15.5x         -    0.1932
+   8000    883.94     64.33     13.7x         -    0.0971
+
+--- fitted scaling exponents (slope of log time vs log n) ---
+  VGH     : 0.818
+  Laplace : 0.982
+
+1.0 = linear, 2.0 = quadratic. Mission control measured the EXISTING VA
+at ~2.0 and Laplace at ~1.0, with VA not completing beyond n ~ 2500.

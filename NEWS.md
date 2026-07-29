@@ -36,9 +36,13 @@ bridge remains experimental and is not required for the main workflow.
   per-category intercepts and slopes as contrasts against a reference category, and
   `predict(type = "response")` returns per-category probabilities. Use
   `multinomial(baseline = ...)` to choose the reference category. The validation
-  boundary is explicit: **fixed-effect recovery is validated**, while the two
-  covariance routes — a single `phylo_latent()` term, and the narrow ordinary
-  shared-`latent()` cross-family route — are **only partially validated**, meaning
+  boundary is explicit: **fixed-effect point recovery is validated** — no
+  detectable bias (|bias| ≤ 0.02 per coefficient across a 500-seed calibration,
+  with recovery asserted on a 20-seed aggregate at `K = 3` and `K = 4` rather
+  than any single fit) — and that is a statement about the estimates, not about
+  their intervals. The two covariance routes — a single `phylo_latent()` term,
+  and the narrow ordinary shared-`latent()` cross-family route — are
+  **only partially validated**, meaning
   they fit and report but their recovery has not been certified. The latter reports the nominal
   trait as its `K - 1` baseline-contrast block rather than inventing one scalar
   categorical correlation; it permits one multinomial trait per fit and rejects

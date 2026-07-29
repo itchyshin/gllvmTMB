@@ -67,7 +67,7 @@ kl_by_unit(i) = 0.5 * (trace_S + mean_sq - logdet_S - q);
 Nothing in that expression references `y`, `unit_id`, `trait_id`, or any
 per-cell quantity — it is a function of the unit's own variational
 coordinates against the fixed `N(0, I_q)` prior. It is per-*unit*, not
-per-*cell*, by construction (Design 160's parameterisation). Introducing
+per-*cell*, by construction (drmTMB Design 160's parameterisation). Introducing
 `O_it` therefore leaves `total_kl` and every `kl_by_unit(i)` bit-for-bit
 identical for identical `(m_i, log_L_diag(i,.), L_off(i,.))`. This was asked
 to be confirmed rather than asserted; the confirmation is that the formula

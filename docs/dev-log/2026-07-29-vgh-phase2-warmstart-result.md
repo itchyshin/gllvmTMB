@@ -101,6 +101,33 @@ entirely attributable to it.
 **But θ-only still does not deliver the target.** Median ratio ≈ 0.99× — parity, not
 ≥1.5×. The conclusion above is unchanged: VGH is re-deriving a start Laplace already had.
 
+## Follow-up 2: poisson and binomial tested — the premise fails there too
+
+The one place the premise could still have held: families where Laplace is dearer per
+iteration and its default SVD-on-link-residuals start is a cruder approximation. Both
+families VGH admits were run end-to-end, loadings-only, T = 5, q = 2, 3 seeds:
+
+| family | n | ratios (3 seeds) | median |
+|---|---|---|---|
+| poisson | 200 | 0.38, 0.55, 1.32 | 0.55× |
+| poisson | 600 | 1.16, 0.95, 1.63 | 1.16× |
+| binomial | 200 | 0.67, 0.65, 0.81 | 0.67× |
+| binomial | 600 | 0.77, 0.86, 0.69 | 0.77× |
+
+**Binomial is consistently SLOWER — zero of six cells reach parity.** Poisson is a wash
+with high variance (0.38× to 1.63×); one cell clears 1.5×, which at this sample size is
+noise, not a result. Log-likelihood agreement stays excellent throughout
+(1.65e-13 – 1.96e-11), so correctness is unaffected in every family.
+
+Confound checked and cleared: this was re-run after reinstalling with the loadings-only
+default, and the numbers were identical to the run under the old default — so `z_B`
+seeding is not the dominant factor for non-gaussian, unlike gaussian.
+
+**Verdict across all three admitted families: the ≥1.5× target is not reachable with this
+design.** gaussian ≈ 0.99×, poisson ≈ 1.05× and erratic, binomial ≈ 0.73× and consistently
+worse. The hypothesis that a VGH warm start accelerates Laplace is disproved for the
+families VGH covers, at the sizes tested.
+
 **One cell worth a targeted follow-up, NOT a claim.** At n=120 seed 1 the *cold* fit took
 0.895 s where the same size at seed 2 took 0.104 s — an 8.6× spread at identical n. The
 warm start avoided whatever that was (0.202 s). That hints the real value may be

@@ -1,0 +1,15 @@
+=== running arm A, N = 200 (timeout 1800s) ===
+[A-200] status=ok total=11.3s outer=1060 inner=0 obj=5854.50366458623
+=== running arm B, N = 200 (timeout 1800s) ===
+[B-200] status=ok total=140.0s outer=60 inner=1000 obj=5542.697247283
+=== running arm C, N = 200 (timeout 1800s) ===
+[C-200] status=ok total=73.2s outer=60 inner=1000 obj=5854.50366457373
+=== running arm A, N = 400 (timeout 1800s) ===
+[A-400] status=ok total=28.2s outer=2060 inner=0 obj=11858.80653725
+=== running arm B, N = 400 (timeout 1800s) ===
+[B-400] status=ok total=83.2s outer=60 inner=2000 obj=10942.876309712
+=== running arm C, N = 400 (timeout 1800s) ===
+[C-400] status=ok total=347.2s outer=60 inner=2000 obj=11858.8065371243
+=== running arm A, N = 800 (timeout 1800s) ===
+[A-800] status=ok total=80.3s outer=4060 inner=0 obj=23196.6936602147
+=== running arm B, N = 800 (timeout 1800s) ===

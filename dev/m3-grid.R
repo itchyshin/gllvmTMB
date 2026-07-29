@@ -2293,6 +2293,23 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
   if ("scenario" %in% names(grid_df)) {
     split_keys <- c(list(grid_df$scenario), split_keys)
   }
+  ## ATTEMPTED reps per cell, counted BEFORE the (cell, target, ci_method)
+  ## split (2026-07-29). A fit that fails to converge emits its placeholder row
+  ## under m3_placeholder_ci_method() -- "bootstrap" in the certificate config --
+  ## so it never enters the `profile_total` subset. `n_failed` was then computed
+  ## inside that subset and reported 0 while 607 of 20,000 d1 fits had failed:
+  ## the column that exists to report failures could not see them, and `n_reps`
+  ## silently WAS the converged count. Counting attempts at cell level is the
+  ## only place the failures are still visible.
+  attempted_by_cell <- if ("cell" %in% names(grid_df)) {
+    vapply(
+      split(grid_df$rep, grid_df$cell, drop = TRUE),
+      function(r) length(unique(r)),
+      integer(1)
+    )
+  } else {
+    integer(0)
+  }
   by_cell <- split(grid_df, split_keys, drop = TRUE)
   out <- do.call(
     rbind,
@@ -2394,7 +2411,19 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         NA_real_
       }
       n_reps <- length(rep_status)
-      n_failed <- sum(!rep_converged)
+      ## n_attempted is cell-level (see attempted_by_cell above), so a rep whose
+      ## fit failed is counted even though it never reaches this ci_method's
+      ## subset. n_failed is then attempts minus reps that actually converged,
+      ## which is consistent whichever subset it is computed in: the bootstrap
+      ## subset sees all 20,000 and 19,393 converged; the profile_total subset
+      ## sees only the 19,393, and both yield 607.
+      cell_key <- if ("cell" %in% names(sub)) as.character(sub$cell[1]) else NA_character_
+      n_attempted <- if (!is.na(cell_key) && cell_key %in% names(attempted_by_cell)) {
+        as.integer(attempted_by_cell[[cell_key]])
+      } else {
+        n_reps
+      }
+      n_failed <- n_attempted - sum(rep_converged)
       n_trait_rows <- nrow(trait_rows)
       n_ci_missing <- sum(!ci_available, na.rm = TRUE)
       if ("n_boot_failed" %in% names(sub) && "n_boot" %in% names(sub)) {
@@ -2554,6 +2583,11 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         target = sub$target[1],
         ci_method = sub$ci_method[1],
         n_reps = n_reps,
+        ## Every replicate the cell attempted, including those whose fit failed
+        ## and therefore never reached this ci_method. Without this column a
+        ## reader cannot tell that n_reps is a CONVERGED count, which is the
+        ## scope any coverage claim has to state.
+        n_attempted = n_attempted,
         n_completed = sum(rep_converged),
         n_failed = n_failed,
         n_trait_rows = n_trait_rows,

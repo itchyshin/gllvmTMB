@@ -102,7 +102,19 @@ test_that("M3 harness simulates and fits true binomial-probit", {
 
   expect_equal(unique(one$family), "binomial_probit")
   expect_equal(unique(one$target), "Sigma_unit_diag")
-  expect_equal(unique(one$n_boot), 0L)
+
+  ## `n_boot = 0` + targets = "Sigma_unit_diag" used to route to the "none"
+  ## method and carry n_boot = 0 on the row. The Sigma_unit_diag DEFAULT route is
+  ## now the genuine chi-square_1 profile ("profile_total", the certificate
+  ## candidate), which is reached without any bootstrap -- so the row records
+  ## n_boot = NA rather than 0. NA is the honest value: no resampling occurred,
+  ## and writing 0 would imply a bootstrap that ran and drew nothing.
+  ##
+  ## Asserting the route as well as the count, which the original single
+  ## assertion did not, so a silent re-route back to bootstrap/none fails here.
+  expect_equal(unique(one$ci_method), "profile_total")
+  expect_true(all(is.na(one$n_boot)))
+  expect_true(all(is.na(one$n_boot_failed)))
 })
 
 test_that("power pilot report carries denominators, MCSEs, and evidence labels", {

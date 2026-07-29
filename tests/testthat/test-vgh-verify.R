@@ -143,9 +143,12 @@ test_that("eta comparison is included when both fits expose it, omitted when not
     report = list(Lambda_B = base$Lambda)  # no eta
   )
 
+  ## A fit that never reported eta cannot be failed on eta -- but the result
+  ## must SAY so, so a caller can tell "eta agreed" from "eta was never checked".
   res <- .vgh_compare_optima(fit_cold, fit_warm_no_eta)
-  expect_null(res$eta_max_absdiff)
-  expect_true(res$identical_optimum)  # eta is not load-bearing
+  expect_false(res$eta_checked)
+  expect_true(is.na(res$eta_max_absdiff))
+  expect_true(res$identical_optimum)
 })
 
 test_that("g_eigen vectors are returned in descending order", {
@@ -156,4 +159,111 @@ test_that("g_eigen vectors are returned in descending order", {
   res <- .vgh_compare_optima(fit_cold, fit_warm)
   expect_equal(res$g_eigen_cold, sort(res$g_eigen_cold, decreasing = TRUE))
   expect_equal(res$g_eigen_warm, sort(res$g_eigen_warm, decreasing = TRUE))
+})
+
+## ---------------------------------------------------------------------------
+## Regression tests for six defects found by adversarial review, 2026-07-29.
+## Each uses the exact input that the earlier implementation certified wrongly,
+## so each of these fails against that version. The harness passed its own
+## 8-block suite while carrying all six -- which is why these are written from
+## the refutation, not from the implementation.
+## ---------------------------------------------------------------------------
+
+test_that("DEFECT 1: two fits that BOTH failed to converge are not the same optimum", {
+  base <- .vgh_verify_fixture()
+  ## Identical in every respect except that neither converged.
+  bad <- .vgh_verify_make_fit(base$Lambda, base$eta, objective = 100,
+                              convergence = 1L, pdHess = FALSE)
+  res <- .vgh_compare_optima(bad, bad)
+  ## Old code tested identical(cold, warm) -- equality of flags, not truth.
+  expect_false(res$identical_optimum)
+  expect_match(res$verdict, "not both converged")
+
+  ## And a fit carrying NO convergence evidence at all must not pass either:
+  ## absent must not collapse to FALSE and then compare equal.
+  silent <- list(opt = list(objective = 100),
+                 report = list(Lambda_B = base$Lambda, eta = base$eta))
+  expect_true(is.na(.vgh_read_converged(silent)))
+  expect_false(.vgh_compare_optima(silent, silent)$identical_optimum)
+})
+
+test_that("DEFECT 2: a disagreeing second loading tier is not invisible", {
+  base <- .vgh_verify_fixture()
+  LW <- matrix(stats::rnorm(8), 4L, 2L)
+
+  cold <- .vgh_verify_make_fit(base$Lambda, base$eta, objective = 1)
+  warm <- cold
+  cold$report$Lambda_W <- LW
+  warm$report$Lambda_W <- LW * 100      # W-tier g_rel_frob ~ 9999
+
+  res <- .vgh_compare_optima(cold, warm)
+  expect_false(res$identical_optimum)
+  expect_true("Lambda_W" %in% res$tiers)
+  expect_gt(res$g_rel_frob_by_tier[["Lambda_W"]], 100)
+
+  ## A tier present in one fit but not the other is a comparison error, not a pass.
+  warm2 <- .vgh_verify_make_fit(base$Lambda, base$eta, objective = 1)
+  expect_error(.vgh_compare_optima(cold, warm2), "loading tiers")
+})
+
+test_that("DEFECT 3: eta is load-bearing, not computed and discarded", {
+  base <- .vgh_verify_fixture()
+  Z2 <- matrix(stats::rnorm(length(base$Z)), nrow(base$Z), ncol(base$Z))
+
+  cold <- .vgh_verify_make_fit(base$Lambda, base$eta, objective = 100)
+  ## Same Lambda, same objective, but an independent eta: at equal parameters
+  ## the conditional modes are determined, so this is a different point.
+  warm <- .vgh_verify_make_fit(base$Lambda, tcrossprod(Z2, base$Lambda),
+                               objective = 100)
+
+  res <- .vgh_compare_optima(cold, warm)
+  expect_true(res$eta_checked)
+  expect_gt(res$eta_max_absdiff, 1e-3)
+  expect_false(res$identical_optimum)
+  expect_match(res$verdict, "eta differs")
+})
+
+test_that("DEFECT 4: a non-finite eta errors rather than returning NA silently", {
+  base <- .vgh_verify_fixture()
+  cold <- .vgh_verify_make_fit(base$Lambda, base$eta, objective = 1)
+  warm <- cold
+  warm$report$eta[1L, 1L] <- NA_real_
+  expect_error(.vgh_compare_optima(cold, warm), "Non-finite")
+})
+
+test_that("DEFECT 5: identified parameters outside Lambda are compared", {
+  base <- .vgh_verify_fixture()
+  cold <- .vgh_verify_make_fit(base$Lambda, base$eta, objective = 1)
+  warm <- cold
+  ## A 100-fold difference in the diagonal/Psi tier, everything else equal.
+  cold$opt$par <- c(b_fix = 1, theta_diag_B = 1, theta_rr_B = 0.3)
+  warm$opt$par <- c(b_fix = 1, theta_diag_B = 100, theta_rr_B = 0.3)
+  res <- .vgh_compare_optima(cold, warm)
+  expect_false(res$identical_optimum)
+  expect_match(res$verdict, "identified parameters differ")
+
+  ## theta_rr_* is EXCLUDED on purpose: a loading-column sign flip is the
+  ## rotation/sign ambiguity, is invisible in eta and G, and must not be
+  ## reported as a different optimum.
+  warm2 <- cold
+  warm2$opt$par <- c(b_fix = 1, theta_diag_B = 1, theta_rr_B = -0.3)
+  expect_true(.vgh_compare_optima(cold, warm2)$identical_optimum)
+})
+
+test_that("DEFECT 6: the loglik tolerance is relative, not scale-blind", {
+  base <- .vgh_verify_fixture()
+  ## A realistic objective with a 1e-9 RELATIVE gap -- inside optimiser noise.
+  ## Absolute |diff| here is 1.2e-4, which an absolute 1e-6 tolerance rejects.
+  obj <- -1.234e5
+  cold <- .vgh_verify_make_fit(base$Lambda, base$eta, objective = obj)
+  warm <- .vgh_verify_make_fit(base$Lambda, base$eta, objective = obj * (1 + 1e-9))
+
+  res <- .vgh_compare_optima(cold, warm)
+  expect_gt(res$loglik_absdiff, 1e-5)     # absolute gap is large...
+  expect_lt(res$loglik_reldiff, 1e-8)     # ...but relative gap is tiny
+  expect_true(res$identical_optimum)
+
+  ## A genuinely different optimum at the same scale is still caught.
+  far <- .vgh_verify_make_fit(base$Lambda, base$eta, objective = obj * (1 + 1e-3))
+  expect_false(.vgh_compare_optima(cold, far)$identical_optimum)
 })

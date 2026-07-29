@@ -37,7 +37,29 @@ package** with `docs/` unreachable.
 Poisson recovery, Phase 0's DGP, 6 seeds, medians: **0.1547 / 0.1047 / 0.0626**
 at n = 200/400/800, against `va_r3` GH's 0.1611 / 0.1047 / 0.0749.
 
-## 🔴 Phase 2 must settle this FIRST
+## 🔴 Before any Phase 2 code — land PR #819
+
+Phase 0 + Phase 1 are in **PR #819**, open and unmerged, on
+`claude/vgh-phase1-20260729`. **Land it before writing Phase 2 code**, or Phase 2
+piles onto an already-reviewed PR and the two phases stop being separately
+reviewable.
+
+Two preconditions, in order:
+
+1. **Reconcile with `origin/main`** (18 behind). Note the branch is **pushed with
+   an open PR**, so a rebase means a force-push over published history — prefer
+   merging `main` in unless the maintainer wants otherwise.
+2. **Run `rcmdcheck::rcmdcheck(args = "--as-cran")`.** Phase 1 ran only a
+   targeted installed-package test (27/27, `docs/` unreachable), which answers
+   the specific packaging risk but is not the full check.
+
+**The merge itself is the maintainer's** — `R/va-vgh.R` is package code, and the
+repo's merge rule reserves that. Do not self-merge.
+
+Until #819 lands, Phase 2 must branch from `claude/vgh-phase1-20260729`, not from
+`main`, or it will not have `R/va-vgh.R`.
+
+## 🔴 Then Phase 2 must settle this FIRST
 
 **Rotational identifiability is unhandled.** `Lambda` in `R/va-vgh.R` is dense
 and unconstrained — nothing resolves the rotation. `va_r3` packs it

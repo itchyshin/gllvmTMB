@@ -1,0 +1,21 @@
+.libPaths(c("/private/tmp/vgh-p3-lib", .libPaths()))
+suppressPackageStartupMessages(library(gllvmTMB))
+set.seed(3); n<-60L; p<-12L; q<-2L
+Lam <- matrix(rnorm(p*q,0,0.7),p,q); B <- rnorm(p,0,0.3); Z <- matrix(rnorm(n*q),n,q)
+eta <- Z%*%t(Lam) + matrix(B,n,p,byrow=TRUE)
+Y <- matrix(rbinom(n*p,1,plogis(as.numeric(eta))),n,p); colnames(Y)<-paste0("sp",1:p)
+dat <- data.frame(y=as.numeric(t(Y)), trait=factor(rep(1:p,times=n)), site=factor(rep(1:n,each=p)))
+f <- suppressWarnings(gllvmTMB::gllvmTMB(y ~ 0+trait+latent(0+trait|site,d=2,unique=FALSE),
+      data=dat, family=binomial(), unit="site"))
+cat("relfrob =", sprintf("%.1f", norm(tcrossprod(gllvmTMB::extract_ordination(f,level="unit")$loadings)-tcrossprod(Lam),"F")/norm(tcrossprod(Lam),"F")), "\n")
+cat("conv =", f$opt$convergence, " pdHess =", isTRUE(f$sd_report$pdHess), "\n\n")
+ck <- gllvmTMB::check_gllvmTMB(f)
+cat("class:", paste(class(ck), collapse="/"), "\n")
+cat("names:", paste(names(ck), collapse=", "), "\n\n")
+print(ck)
+
+cat("\n\n=========== STATUS PER CHECK ===========\n")
+tb <- as.data.frame(ck)
+print(tb[, intersect(c("check","status","value"), names(tb))], right=FALSE)
+cat("\n=== rows NOT ok ===\n")
+print(tb[!tolower(as.character(tb$status)) %in% c("ok","pass","not applicable","not_applicable","na",""), intersect(c("check","status","value"), names(tb))], right=FALSE)

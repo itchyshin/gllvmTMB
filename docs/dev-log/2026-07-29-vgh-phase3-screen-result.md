@@ -67,19 +67,66 @@ pooled (n = 59); any cut in `[30, 417]` separates perfectly. Three other quantit
 already in the same table also beat `h` (`vgh_h_sd` 0.875, `vgh_trG` 0.852, even the
 Laplace `loglik` 0.841). `h` was the **worst** candidate available.
 
-## 4. Why nothing in the package catches it today
+## 4. Why nothing catches it today — and the real reason, which I first got wrong
 
-`R/diagnose.R:15-178` (`.gllvmTMB_build_fit_health()`, `.gllvmTMB_boundary_flags()`)
-already flags loadings and variances **collapsing toward zero** — the Heywood-style
-direction. This failure is the **opposite**: runaway blow-up. `diagnose.R`'s own
-comment (`:100-108`) records that `pdHess` stays positive-definite through a
-zero-collapse; by the same logic it stays PD through an explosion.
-`check_identifiability()` targets a third, unrelated failure (a spurious extra factor
-under rank over-specification). So there is **no duplication risk** — and a real gap.
+**Correction to an earlier version of this document.** I wrote that the gap was one
+of *direction*: that `diagnose.R:15-178` flags only collapse-toward-zero while this
+failure is a blow-up. That is true of the boundary flags, but it is **not** the
+important finding, and it understated how close the package already is.
+
+`check_gllvmTMB()` — **exported** — already has a
+`binomial_prevalence_loading` row (`.gllvmTMB_binomial_prevalence_loading_row()`,
+`R/diagnose.R:381-515`) that computes exactly the right quantity. Run on a
+catastrophically degenerate fit (n=60, p=12, seed 3, `rel_frob = 156645`), it
+reports:
+
+```
+check  : binomial_prevalence_loading
+status : PASS
+value  : sp12 prevalence=0.617; max_loading=949; relative_loading=6980; saturated_fit=1
+```
+
+**It has `relative_loading = 6980` against its own `loading_relative_thresh = 8` — 872×
+over the line — and reports PASS.** The whole check returns only two WARNs on this
+fit: a gradient of 0.011, and the generic `rotation_ambiguous` note. Nothing tells the
+user their `Sigma_B` is off by five orders of magnitude.
+
+The cause is a single conjunction, `R/diagnose.R:464`:
+
+```r
+tab$flag <- tab$extreme_prevalence & (tab$dominant_loading | tab$saturated_fit)
+```
+
+`extreme_prevalence` (prevalence ≥ 0.9 or ≤ 0.1) is a **required** conjunct. Here
+prevalence is 0.617, so no matter how far the loading runs away, the row cannot fire.
+But the recorded cause of this failure is **quasi-complete separation**, which
+produces a runaway loading at *moderate* marginal prevalence — separation is a
+property of the fitted linear predictor, not of the marginal rate.
+
+So the accurate statement is: the package **already measures** the degeneracy and
+then gates the flag behind a condition the failure does not satisfy.
+
+For completeness: `check_identifiability()` (unexported) targets a third, unrelated
+failure — a spurious extra factor under rank over-specification — and
+`docs/design/61-capability-status.md:193` already records it as accepting
+"optimiser convergence or a positive-definite Hessian rather than requiring a healthy
+conjunction", the same defect class in a different function.
+
+**Vocabulary.** This failure has an established name: a **Heywood case** /
+improper solution, the classical (1931) factor-analysis term for a boundary or
+out-of-bounds ML solution. Any fix should use that vocabulary rather than invent
+new terms. [UNVERIFIED, web-sourced: one paper generalises the definition to
+exponential-family latent-variable models, which would license applying it here.]
 
 ## 5. Recommendation
 
-Do not build a VGH-based screen. Extend `diagnose.R`'s existing boundary flags with
+Do not build a VGH-based screen, and do not add a new public route. **Fix the gate on
+the check that already exists.** `R/diagnose.R:464` requires extreme prevalence as a
+conjunct; a runaway `relative_loading` (6980 against a threshold of 8) should be
+sufficient on its own, since quasi-complete separation produces one at moderate
+prevalence. That is a small change to an already-exported diagnostic.
+
+Superseded earlier wording: extend the boundary flags with
 the direction they currently miss — implausibly **large** implied latent variance —
 which needs no second fit and no new public route.
 

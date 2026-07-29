@@ -69,14 +69,22 @@ matrix. VGH re-derives a start Laplace already had. We paid for a start we alrea
 
 ## Not done, and why
 
-- **S5 Totoro campaign** — not run. The premise failed at local scale in every family, so a
-  384-core campaign would have measured a disproved hypothesis more precisely. Totoro was
-  verified reachable (384 cores, load 0.23) and is ready if a future arc needs it.
+- **S5 Totoro campaign** — not run, and **my justification for dropping it was wrong.** I
+  argued a 384-core campaign would only measure a disproved hypothesis more precisely. But
+  every cell behind that disproof was **sub-second at q = 2, n ≤ 1000**, where fixed
+  overheads dominate: a ratio of 0.99× on a 0.4 s fit says little about a 60 s fit, and a
+  speedup only *matters* on expensive problems. Rank was never varied at all, though the
+  plan's S5 explicitly called for an n × p × d grid. A first attempt at n = 2000–4000 with
+  q = 5–8 **timed out past 10 minutes locally** — simultaneously the regime that matters and
+  the reason it cannot be settled on this machine.
+  **Corrected status: the disproof is scoped to q = 2 and n ≤ 1000. The large-n / high-rank
+  regime is genuinely OPEN, and it is the honest case for a Totoro campaign.**
 - **Scratch pruning** — deliberately declined, see above.
 
 ## What should happen next
 
-The warm-start-for-speed premise is disproved for the families VGH covers. Genuinely open:
+The warm-start-for-speed premise is disproved **at q = 2, n ≤ 1000** for the families VGH
+covers. It is NOT disproved where a speedup would actually be worth having. Genuinely open:
 
 1. **Robustness, not speed.** At gaussian n=120 seed 1 the *cold* fit took 0.895 s where the
    same size at seed 2 took 0.104 s, and the warm start avoided it. That is the Phase 3

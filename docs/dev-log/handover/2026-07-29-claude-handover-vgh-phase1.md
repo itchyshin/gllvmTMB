@@ -155,6 +155,72 @@ docs/design/10{6,7,8}                                 ⚠ bc9f6992 — REPAIR TH
 * `vgh_elbo()` has **no `n_trials` argument** — the binomial entry point is
   Bernoulli-only. Slice S2.
 
+## House conventions for the port (S0 result — read before writing code)
+
+**Naming and docs.** Dot-prefix with a per-engine stem: `.vgh_*`, matching
+`.va_r3_*` / `.eva_*`. The two dormant engines carry **zero roxygen** — `grep -c
+"^#'"` returns 0 on both — and instead open with a `##` banner stating why the
+file must never become a user-facing route. Match that, not the wider package's
+`@keywords internal` / `@noRd` style. All 13 current `vgh_*` names are bare and
+public-shaped; every one needs renaming.
+
+**Guards.** Bare `stop(msg, call. = FALSE)`, **not** `cli::` — the dormant
+engines have 0 `cli::` calls, deliberately, because they are unreachable. The
+house `cli_abort(c("problem", "i" = "why", ">" = "fix"))` idiom applies to the
+public surface, not here. The whole admission check is *one* combined guard:
+`R/va-r3-proto.R:196-201` rejects `unique` / `psi` / `structured` / `provider` /
+`lv` / `missing` in a single `stop()`.
+
+**⚠ Three things my plan assumed were free and are not:**
+
+1. **The data contract is a reshaping job, not a signature change.**
+   `.va_r3_validate_data()` is **long format** — `y, n_trials, X, unit_id,
+   trait_id` as parallel per-observation vectors, returned 0-based for TMB.
+   `vgh_fit()` is **wide** — an `n × m` matrix `Y`, no ids, no `n_trials`, no
+   `link`, no `q = 0` case. A real adapter must be written.
+   `dev/vgh/crosscheck-va-r3.R:1-58` has a one-off converter for cross-checking
+   only — not reusable. Precedent: EVA **duplicates** the validator's shape
+   rather than calling R3's, while reusing the small primitive
+   `.va_r3_normalise_index()` directly. Follow that.
+2. **The Gauss-Hermite conventions differ.** `.va_r3_gh_rule()` is
+   **physicists'** (weights sum to `sqrt(pi)`, `H` restricted to {15, 25, 61});
+   `vgh_gh_rule()` is **probabilists'** (weights sum to 1, any `Q`). Reuse
+   requires a rescale wrapper *and* a decision on whether to inherit the
+   node-count restriction. (Note Phase 0 measured Q=9 as sufficient — which the
+   {15,25,61} restriction would forbid.)
+3. **Rotational identifiability is unhandled in the prototype.** `va_r3` packs
+   loadings lower-triangular via `.va_r3_pack_theta_rr()` /
+   `.va_r3_unpack_theta_rr()` / `.va_r3_rotate_to_lower_triangular()`. **`vgh`'s
+   `Lambda` is dense and unconstrained — nothing resolves rotation at all.** That
+   is an explicit modelling decision for the port, not a rename. It also matters
+   for the hand-off (Phase 2), which must map into Laplace's convention.
+
+**The actual drop-in point is a third file.** `R/approximation-engine.R:312-318`
+hardcodes two engines into `match.arg` and a `switch()`. Making VGH reachable the
+way `va_r3`/`eva` are means (i) adding `"vgh"` to `.approximation_engine_regime()`
+and `.approximation_engine_fit()`, and (ii) writing
+`.approximation_engine_vgh_fit()` in the same shape as the two existing wrappers
+— a separate, smaller piece than the engine port itself.
+`tests/testthat/test-approximation-engine.R` tests **this layer**, not the engines.
+
+**Reuse vs write fresh.**
+
+| item | call |
+|---|---|
+| `.va_r3_normalise_index()` | **reuse as-is** |
+| `.va_r3_gh_rule()` / `.gauss_hermite_physicist()` | reuse **with a rescale wrapper** |
+| `.va_r3_pack/unpack_theta_rr()`, `.va_r3_rotate_to_lower_triangular()` | reuse **if** you adopt the lower-triangular constraint |
+| `.procrustes_align()` (`R/check-identifiability.R:399`) | reuse for target alignment (Phase 2) |
+| batched `vgh_batch_inv` / `vgh_batch_mv` | **no house equivalent — port fresh** |
+| backtracking / line search | **no house equivalent** — three independent inline implementations already exist |
+
+**Fixtures: `inst/extdata/` + `system.file()`.** Already the working pattern
+(`inst/extdata/mixed-family-fixture.rds`). Or generate inline, as
+`test-va-r3-prototype.R` does with `.va_r3_gaussian_fixture()` at the bottom of
+the test file. **Never `docs/`** — `test-eva-gate1.R:3` reaches
+`docs/design/86-…json` through `.eva_gate1_file()`, and `.Rbuildignore` has
+`^docs$`.
+
 ## Next immediate steps
 
 1. Repair `bc9f6992` per the locked decision (docs-only, independent — do it first, it is cheap).

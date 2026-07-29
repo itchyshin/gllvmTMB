@@ -49,8 +49,10 @@ Configures how \code{\link[=gllvmTMB]{gllvmTMB()}} treats missing \strong{respon
 \details{
 There is deliberately \strong{no} \code{estimator} argument in \code{miss_control()}:
 estimator choice belongs to \code{\link[=gllvmTMB]{gllvmTMB()}}. The default \code{gllvmTMB()} fit uses
-ML; \code{gllvmTMB(REML = TRUE)} is a Gaussian-only pilot and does not yet combine
-with \code{miss_control(response = "include")} or \code{mi()} predictor models. There
+ML; \code{gllvmTMB(REML = TRUE)} is a Gaussian-only pilot. It combines with either
+missing-response policy -- including \code{miss_control(response = "include")},
+where the restricted likelihood is formed over the observed rows -- but not
+yet with \code{mi()} predictor models. There
 is \strong{no} MI ("multiple imputation") engine here; multiple imputation is a
 separate workflow.
 

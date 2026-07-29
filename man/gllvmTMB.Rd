@@ -176,12 +176,15 @@ stacked response vector before fitting.
 
 \item{REML}{Logical; use restricted maximum likelihood for Gaussian-only
 fits. The current REML pilot is deliberately narrow: all response rows
-must be Gaussian, observation weights are not supported, missing
-responses must use the default \code{miss_control(response = "drop")}, and
-\code{mi()} predictor models, predictor-informed \code{latent(..., lv = ~ x)}
-scores, and \code{Xcoef_fixed} maps are not supported. The observed fixed
-design must be full rank with positive residual degrees of freedom. The
-default \code{FALSE} keeps the historical ML fit.}
+must be Gaussian, observation weights are not supported, and \code{mi()}
+predictor models, predictor-informed \code{latent(..., lv = ~ x)} scores, and
+\code{Xcoef_fixed} maps are not supported. The observed fixed design must be
+full rank with positive residual degrees of freedom. Either
+missing-response policy may be used: masked cells
+(\code{miss_control(response = "include")}) contribute nothing to the
+likelihood, so the restricted likelihood is formed over the observed rows
+and matches the corresponding \code{"drop"} fit. The default \code{FALSE} keeps the
+historical ML fit.}
 
 \item{mesh}{Optional mesh object from \code{\link[=make_mesh]{make_mesh()}}. Required for any
 \verb{spatial_*()} or \code{spatial()} term unless that term supplies its own

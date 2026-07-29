@@ -301,6 +301,15 @@ family_spec <- function() {
        .aghq_sim_poisson),
     mk("lognormal",         3L, function() lognormal(),
        .aghq_sim_lognormal),
+    ## `link = "log"` is REQUIRED here, not stylistic: stats::Gamma()'s own
+    ## default is link = "inverse", which R/fit-multi.R's fid==4 link check
+    ## (cli_abort("Gamma: only the log link is currently supported...")))
+    ## rejects immediately. Calling bare `stats::Gamma()` (as
+    ## dev/aghq-evidence/19-family-axis.R did) is exactly what produced that
+    ## script's silent "Gamma | no usable fits" outcome: a plain, immediately
+    ## R-caught link-mismatch error, not a crash -- see
+    ## docs/dev-log/2026-07-29-aghq-family-harness-audit.md. Do not drop this
+    ## argument.
     mk("Gamma",             4L, function() stats::Gamma(link = "log"),
        .aghq_sim_gamma),
     mk("nbinom2",           5L, function() nbinom2(),

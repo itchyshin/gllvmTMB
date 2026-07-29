@@ -92,6 +92,84 @@ read-the-code-then-write-failing-tests work.
 An audit that returns "the docs are accurate" is a **valid and valuable result**. Do not
 manufacture findings.
 
+## 3a · Scoping audit results — 3 confirmed leads, 4 killed
+
+A read-only scoping audit ran on 2026-07-28 (14 agents: 6 auditors → reconciler → one
+adversarial refuter per candidate, each instructed to default to *refuted*). It produced **7
+candidates; 4 were refuted on inspection.** The 3 survivors below are **leads, not findings**.
+
+> ⚠️ **NONE OF THIS WAS EXECUTED.** Every claim is from reading source, not from running a fit.
+> That is precisely why lane 3's first move is *write the failing test*. Treat each as
+> `AGENT-INFERRED` until a test reproduces it at runtime. If a test does not reproduce it, the
+> lead is wrong — say so and delete it.
+
+### Lead A (HIGH) — `gllvmTMB_wide()` drops NA response cells silently
+
+`R/gllvmTMB-wide.R:218-221` strips NA cells with **no `cli_inform`, no warning** (grep for
+`cli_inform`/`cli_warn` in that file returns nothing) — while the long path and the `traits()`
+path both message for the same event (`R/traits-keyword.R:448-452` emits
+`traits(): dropped N (trait, row) cell(s) with NA response.`). `man/gllvmTMB_wide.Rd` never
+mentions NA response handling; its `Y` argument documents only "A `n_units × n_traits` numeric
+matrix of responses".
+
+*User impact:* rows vanish from the likelihood with no signal at all. **This is the
+silent-estimand-change finding §3 predicted was the highest-value one available here.**
+
+Note `gllvmTMB_wide()` is soft-deprecated (CLAUDE.md), which bears on the **fix** (message vs
+document vs leave) — but not on whether the behaviour is currently undisclosed.
+
+### Lead B (HIGH) — docs promise a guard on missing grouping variables that does not exist
+
+`man/gllvmTMB.Rd:51` (roxygen `R/gllvmTMB.R:56`) and `man/gllvmTMB.Rd:373` (roxygen
+`R/gllvmTMB.R:310-312`) both state *"Ordinary missing predictors, grouping variables, and
+design-matrix values still error."* The predictor half is real. **The grouping half is not:**
+`R/gllvmTMB.R:662-667` coerces the trait/unit columns with `factor()` and no NA check, and
+`R/gllvmTMB.R:683-687` then builds `site_species` by `paste()` — so an NA propagates into the
+factor and into the TMB integer index.
+
+*User impact:* a user reads that the fit will fail loudly, does not pre-clean the column, and
+gets an opaque TMB failure — or a bad index — instead of the promised error. **This is the most
+serious of the three: a documented safety guarantee with no implementation behind it.**
+
+*Suggested first test:* long-format fit, one NA in the `unit` column, assert a clear error.
+Watch for the case where it currently neither errors nor warns.
+
+### Lead C (MEDIUM) — `predict_missing()` on an AGHQ fit, with a suppressible warning
+
+`predict_missing()` delegates wholly to `predict()` (`R/methods-gllvmTMB.R:1816`), which on an
+AGHQ fit returns fixed-effects-only predictions omitting the unit's latent contribution. The
+guard `.aghq_warn_re_gap(object, "predict()")` at `R/methods-gllvmTMB.R:1604` hard-codes the
+label `"predict()"` and is registered **once per session under that label** — so a prior
+`predict()` call suppresses the warning for the later `predict_missing()` call. The man page
+never mentions AGHQ.
+
+*User impact:* `est` is read as a per-unit reconstruction of the missing cell but is
+systematically missing the latent score — the exact purpose the extractor exists for.
+
+### Killed — do NOT re-derive these four
+
+Each was refuted by an agent that opened the files. Recorded so lane 3 does not spend time on
+them:
+
+1. **`predict_missing()` returns zero rows under default `drop` mode without warning.** The
+   code half is right, but four of the five cited doc locations explicitly scope the promise to
+   `response = "include"` (`man/gllvmTMB.Rd:243-248`, `:47-50`, `:365-371`;
+   `man/predict_missing.Rd:26-32`). Not a doc/code contradiction.
+2. **Wide `fit$missing_data` under-reports `n_dropped`.** Real code asymmetry, but the doc
+   locations naming that slot are scoped to include-mode, and `missing_data` appears nowhere in
+   `vignettes/`. Worth a *bug* report; not a documentation defect.
+3. **`type = "response"` returns the probit latent scale for `ordinal_probit`.** Misread:
+   `R/methods-gllvmTMB.R:338` is `out[i] <- stats::pnorm(e)`, which *applies* the inverse link.
+   The agent believed the code's own loose comment instead of the expression under it. What
+   survives is one imprecise gloss ("conditional mean") at `man/predict_missing.Rd:13`.
+4. **Wide and long declare different factor level sets.** Overstated — the refuter found
+   `R/traits-keyword.R:435` re-pins the full trait level set after the pivot. Divergence needs
+   an *entirely* NA wide row, and with a factor `unit` column even that mostly agrees. Neither
+   cited doc location claims level-set equivalence.
+
+**Read the kill list as calibration:** more than half of a careful audit's candidates did not
+survive contact with the source. Expect the same of your own.
+
 ## 4 · Copy-paste opener
 
 ```

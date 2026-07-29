@@ -25,10 +25,24 @@ between them is the roadmap.** Close the gap — do not widen the model surface.
 
 ### 1 · Certify ONE interval
 
-gllvmTMB has **zero** certified intervals. The nearest candidate — Gaussian `Sigma_unit`
-**diagonal** profile — was **WITHHELD** by two D-43 panels, not certified. Against a **0.94** gate
-(not 0.95): d1-n150 passes (0.9482 / 0.9481); **d2-n150 fails on rorqual** (0.9462, band 0.9398)
-and clears on Totoro by +0.0009.
+gllvmTMB has **zero live certified intervals.** The nearest candidate — Gaussian `Sigma_unit`
+**diagonal** profile — was **WITHHELD** by two D-43 panels against 5k-rep, orig-only-seed evidence,
+not certified. Against a **0.94** gate (not 0.95): d1-n150 passes (0.9482 / 0.9481); **d2-n150 fails
+on rorqual** (0.9462, band 0.9398) and clears on Totoro by +0.0009.
+
+> 🔴 **Addendum, 2026-07-29 (evidence-gap slice A1).** The two WITHHELD panels above are not the
+> whole 2026-07-17 record. A later same-day panel pooled these reps with a disjoint fresh-seed
+> batch to N≈15k and returned **BOTH cells CERTIFY, 3-0** (d1 0.9477/band 0.9440, d2 0.9461/band
+> 0.9424) — `dd80244a:docs/dev-log/2026-07-17-sigma-coverage-d43-panel.md`, where it sat unmerged
+> for 12 days. It is **deliberately NOT ported** to `main`: R-5 (2026-07-21) fences that branch
+> estate, so its numbers, method and verdict are quoted with provenance in
+> `docs/dev-log/2026-07-29-certificate-record-reconciliation.md` instead. That does not make the "certify
+> ONE interval" step below unnecessary — the CERTIFY panel's raw is gone (Totoro results emptied),
+> so it is not reproducible, and it never reached a public surface. **It does change why the
+> confirmatory run below matters: the expected answer is already known, not merely hoped for**, and
+> a parallel lane already acted on this the same day — `90798365` ports the harness and
+> pre-registers the 20k-rep gate (`docs/dev-log/2026-07-29-certificate-gate-preregistration.md`).
+> Check whether that run has launched or completed before re-porting `829c34cd` below.
 
 **The lift is a ~20k-rep top-up, not a fresh campaign.** MCSE is 0.0032 at 5k reps; quadrupling
 halves it, moving bands to cov − 0.0032, and both clusters then clear.
@@ -123,7 +137,11 @@ to measure. An infinite bound manufactured, then credited, then asserted, then i
 
 * **Check the PRIMARY source, not the summary citing it.** `decisions.md:2130-2135` calls the
   Gaussian cell "the one coverage-certified cell"; the after-task record says **WITHHELD**. That
-  overstatement was repeated all session before a panel caught it.
+  overstatement was repeated all session before a panel caught it. **This gotcha has a sequel:
+  "the after-task record" cited here is one of two same-day 2026-07-17 records, and it is the
+  WITHHELD one — the other, a later panel that pooled to N≈15k and returned CERTIFY 3-0, was not
+  found in this session either. Checking A primary source is not the same as checking ALL of
+  them.** See the addendum above and `docs/dev-log/2026-07-29-certificate-record-reconciliation.md`.
 * **An agent's confident `file:line` is not evidence.** Five separate agent claims failed
   verification this session — wrong line numbers, "±Inf for every parameter always" (it is
   level-dependent), "silent bootstrap fallback" (it already warns), "one seeded fixture" (it is a

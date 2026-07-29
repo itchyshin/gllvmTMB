@@ -37,6 +37,13 @@ another Totoro job above ~150 cores total — the machine is shared and the cap 
   unconstrained, its convergence status is discarded, and log-SD puts SD = 0 at −∞.
 * **There is NO coverage certificate.** The primary record says `Disposition: WITHHELD`.
   `decisions.md:2130-2135` overstates it — read the after-task record, not the summary citing it.
+  🔴 **2026-07-29 addendum:** that after-task record is one of two same-day 2026-07-17 records —
+  a later panel pooled to N≈15k and returned CERTIFY 3-0 for both cells against the same 0.94
+  gate (`dd80244a:docs/dev-log/2026-07-17-sigma-coverage-d43-panel.md`, quoted with provenance in
+  the reconciliation note; deliberately NOT ported to `main` per R-5). "NO
+  coverage certificate" overcorrects the same way the overstatement it replaced did; there is no
+  LIVE certificate (the CERTIFY panel's raw is gone), but the gate was met once. See
+  `docs/dev-log/2026-07-29-certificate-record-reconciliation.md`.
 * **We are NOT first** at profiling a low-rank covariance: SAS PROC GLIMMIX
   `COVTEST … CL / TYPE=PLR` on `FA(q)`/`FA0(q)`, tracing to Jennrich & Schluchter (1986).
 * **Multinomial is deferred** by a pre-registered gate, since the AGHQ stall was shown to be a

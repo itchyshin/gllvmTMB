@@ -120,6 +120,17 @@ deliberately left (§3a).
    that overstatement in every summary until a panel caught it. **This is the arc's own
    documented failure mode, committed by me: a claim restated more strongly than its evidence,
    and the restatement never checked against the source.**
+
+   **🔴 Addendum, 2026-07-29 (evidence-gap slice A1) — the correction above has the same shape as
+   the error it corrects.** `nsim5000-confirm.md` is one of *two* same-day 2026-07-17 records. A
+   second, later panel pooled its reps with a disjoint fresh-seed batch to N≈15k and returned
+   **BOTH cells CERTIFY, 3-0** against the same 0.94 gate
+   (`dd80244a:docs/dev-log/2026-07-17-sigma-coverage-d43-panel.md`, unmerged for 12 days; quoted
+   with provenance in the reconciliation note below, and deliberately NOT ported to `main` per
+   R-5). "The certificate does not exist" is therefore also a claim restated more
+   strongly than the full evidence supports — it is accurate that no LIVE, reproducible certificate
+   exists today (the CERTIFY panel's raw is gone), but the 0.94 gate was met once. See
+   `docs/dev-log/2026-07-29-certificate-record-reconciliation.md`.
 4. **S3** fired the pre-registered risk branch, deferring multinomial.
 
 Also: I dispatched S4b with a read-only agent type, so it could not write its own artifact and

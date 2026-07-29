@@ -641,6 +641,307 @@ profile_ci_communality <- function(
   do.call(rbind, out_list)
 }
 
+## ---- Total unit variance: shared builder + profile + delta-Wald -----------
+## V_t = (Lambda Lambda^T)_tt + psi_t = diag(Sigma_unit)_t, the per-trait total
+## variance at a covariance tier -- the rotation-INVARIANT, bounded, right-
+## skewed location-axis variance component whose percentile-bootstrap interval
+## under-covers (misses are "truth above upper"). `.total_variance_spec()` is the
+## SINGLE source of truth for V_t and its exact gradient, so the profile route
+## (`.profile_ci_total_variance`, the certificate candidate) and the delta-method
+## log-SD Wald (`.wald_ci_total_variance_logsd`, a diagnostic companion) target
+## the IDENTICAL functional. psi is reconstructed through `.expand_mapped_diag`
+## so mapped-off single-trial-binary psi (issue #717) is handled, not misindexed;
+## the theta_rr -> Lambda packing is LINEAR, so d vec(Lambda)/d theta_rr is a
+## constant 0/1 map obtained once via build_Lambda on basis vectors (no hand-
+## derived packing-index arithmetic).
+#' @keywords internal
+#' @noRd
+.total_variance_spec <- function(
+  fit,
+  tier = c("unit", "unit_obs", "phy", "B", "W")
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
+  tier <- match.arg(tier)
+  tier <- .normalise_level(tier, arg_name = "tier")
+
+  par_names <- names(fit$opt$par)
+  rr_name <- switch(tier, B = "theta_rr_B", W = "theta_rr_W", phy = "theta_rr_phy")
+  diag_name <- switch(
+    tier,
+    B = "theta_diag_B",
+    W = "theta_diag_W",
+    phy = "log_sd_phy_diag"
+  )
+  d_tier <- switch(tier, B = fit$d_B, W = fit$d_W, phy = fit$d_phy)
+
+  ix_rr <- which(par_names == rr_name)
+  ix_diag <- which(par_names == diag_name)
+  if (length(ix_rr) == 0L && length(ix_diag) == 0L) {
+    cli::cli_abort(
+      "Total-variance intervals at tier {.val {tier}} need a latent and/or diagonal component in the fit."
+    )
+  }
+
+  trait_names <- levels(fit$data[[fit$trait_col]])
+  n_traits <- length(trait_names)
+  if (n_traits == 0L) {
+    n_traits <- length(ix_diag)
+  }
+
+  has_rr <- length(ix_rr) > 0L
+  rank <- if (has_rr) as.integer(d_tier) else 0L
+
+  build_Lambda <- function(theta_rr, p, rank) {
+    L <- matrix(0, p, rank)
+    if (length(theta_rr) == 0L || rank == 0L) {
+      return(L)
+    }
+    lam_diag <- theta_rr[seq_len(rank)]
+    lam_lower <- theta_rr[-seq_len(rank)]
+    for (j in seq_len(rank)) {
+      L[j, j] <- lam_diag[j]
+    }
+    idx <- 1L
+    for (j in seq_len(rank)) {
+      if (j < p) {
+        for (i in (j + 1L):p) {
+          if (idx <= length(lam_lower)) {
+            L[i, j] <- lam_lower[idx]
+          }
+          idx <- idx + 1L
+        }
+      }
+    }
+    L
+  }
+
+  ## Constant linear map d vec(Lambda)/d theta_rr as 0/1 basis matrices.
+  basis_L <- if (has_rr) {
+    lapply(seq_along(ix_rr), function(m) {
+      e <- numeric(length(ix_rr))
+      e[m] <- 1
+      build_Lambda(e, p = n_traits, rank = rank)
+    })
+  } else {
+    list()
+  }
+
+  ## trait -> free theta_diag par index (for the psi gradient term); NA if the
+  ## trait's psi is mapped off / pinned (no free parameter to differentiate).
+  diag_map <- fit$tmb_map[[diag_name]]
+  diag_free_for_trait <- function(t) {
+    if (length(ix_diag) == 0L) {
+      return(NA_integer_)
+    }
+    if (is.null(diag_map)) {
+      if (length(ix_diag) == n_traits) {
+        return(ix_diag[t])
+      }
+      if (length(ix_diag) == 1L) {
+        return(ix_diag[1L])
+      }
+      return(NA_integer_)
+    }
+    lvl <- as.integer(diag_map)
+    if (
+      t > length(lvl) || is.na(lvl[t]) || lvl[t] < 1L || lvl[t] > length(ix_diag)
+    ) {
+      return(NA_integer_)
+    }
+    ix_diag[lvl[t]]
+  }
+
+  psi_full <- function(par) {
+    if (length(ix_diag) == 0L) {
+      return(rep(0, n_traits))
+    }
+    exp(2 * .expand_mapped_diag(fit, diag_name, par[ix_diag], n_traits))
+  }
+
+  V_of_par <- function(par, t) {
+    llt <- if (has_rr) {
+      sum(build_Lambda(par[ix_rr], p = n_traits, rank = rank)[t, ]^2)
+    } else {
+      0
+    }
+    psi_t <- if (length(ix_diag) > 0L) psi_full(par)[t] else 0
+    llt + psi_t
+  }
+
+  ## Exact natural-scale gradient dV_t/dpar over the fit$opt$par vector.
+  dV_dpar <- function(par, t) {
+    g <- numeric(length(par))
+    if (has_rr) {
+      Lt <- build_Lambda(par[ix_rr], p = n_traits, rank = rank)[t, ]
+      for (m in seq_along(ix_rr)) {
+        contrib <- 2 * sum(Lt * basis_L[[m]][t, ])
+        if (contrib != 0) {
+          g[ix_rr[m]] <- contrib
+        }
+      }
+    }
+    di <- diag_free_for_trait(t)
+    if (!is.na(di)) {
+      g[di] <- g[di] + 2 * psi_full(par)[t]
+    }
+    g
+  }
+
+  list(
+    tier = tier,
+    n_traits = n_traits,
+    trait_names = trait_names,
+    ix_rr = ix_rr,
+    ix_diag = ix_diag,
+    has_rr = has_rr,
+    V_of_par = V_of_par,
+    dV_dpar = dV_dpar
+  )
+}
+
+## Route A -- CERTIFICATE CANDIDATE. Genuine per-trait profile on log(V_t).
+## Profiled on the LOG scale (transformation-invariant, so an identical interval
+## to profiling V_t directly) which makes the fixed `.fix_and_refit_nll`
+## constraint tolerance act as a relative tolerance and maps V_t -> 0 to
+## q -> -Inf cleanly. `crit` is chi-square_1 (NOT the `.qt_threshold` sensitivity
+## cutoff). The analytic `target_grad` (mandatory for the fix-and-refit speedup)
+## is dV/dpar / V from the shared spec.
+#' @keywords internal
+#' @noRd
+.profile_ci_total_variance <- function(
+  fit,
+  tier = c("unit", "unit_obs", "phy", "B", "W"),
+  trait_idx = NULL,
+  level = 0.95
+) {
+  spec <- .total_variance_spec(fit, tier)
+  if (is.null(trait_idx)) {
+    trait_idx <- seq_len(spec$n_traits)
+  }
+  out_list <- vector("list", length(trait_idx))
+  for (k in seq_along(trait_idx)) {
+    t <- trait_idx[k]
+    target_fn <- function(par, fit) {
+      V <- spec$V_of_par(par, t)
+      if (is.na(V) || V <= 0) {
+        return(NA_real_)
+      }
+      log(V)
+    }
+    target_grad <- function(par, fit) {
+      V <- spec$V_of_par(par, t)
+      if (is.na(V) || V <= 0) {
+        return(numeric(length(par)))
+      }
+      spec$dV_dpar(par, t) / V
+    }
+    V_hat <- spec$V_of_par(fit$opt$par, t)
+    if (is.na(V_hat) || V_hat <= 0) {
+      out_list[[k]] <- data.frame(
+        trait = spec$trait_names[t], tier = spec$tier, estimate = NA_real_,
+        lower = NA_real_, upper = NA_real_, method = "profile",
+        stringsAsFactors = FALSE, row.names = NULL
+      )
+      next
+    }
+    q_hat <- log(V_hat)
+    bounds <- .profile_ci_via_refit(
+      fit, target_fn, q_hat, level = level, target_grad = target_grad,
+      q_lo_hint = q_hat - 0.35, q_hi_hint = q_hat + 0.35,
+      q_lo_floor = q_hat - 15, q_hi_ceiling = q_hat + 15
+    )
+    out_list[[k]] <- data.frame(
+      trait = spec$trait_names[t], tier = spec$tier, estimate = V_hat,
+      lower = if (is.na(bounds$lower)) NA_real_ else exp(bounds$lower),
+      upper = if (is.na(bounds$upper)) NA_real_ else exp(bounds$upper),
+      method = "profile", stringsAsFactors = FALSE, row.names = NULL
+    )
+  }
+  do.call(rbind, out_list)
+}
+
+## Route B -- DIAGNOSTIC COMPANION (never a certificate). Delta-method Wald on
+## the log-SD scale g_t = 0.5*log(V_t): SE(V_t) = sqrt(J' cov.fixed J) with the
+## EXACT analytic Jacobian J = dV_t/dpar from the shared spec (so it targets the
+## identical estimand and inherits the mapped-off-psi handling), then
+## SE(g)=SE(V)/(2V) and interval g +/- z*SE(g) back-transformed. z (not t): df =
+## n_unit-1 makes the t-quantile cosmetic. Structurally symmetric on log-SD, so
+## it under-corrects the generalized-chi-square right-skew -- expect under-
+## coverage on small-loading (esp. binomial, loadings-only) traits. Gates on
+## pdHess; NA-guards V_t -> 0.
+#' @keywords internal
+#' @noRd
+.wald_ci_total_variance_logsd <- function(
+  fit,
+  tier = c("unit", "unit_obs", "phy", "B", "W"),
+  trait_idx = NULL,
+  level = 0.95
+) {
+  spec <- .total_variance_spec(fit, tier)
+  if (is.null(trait_idx)) {
+    trait_idx <- seq_len(spec$n_traits)
+  }
+  has_sd <- !is.null(fit$sd_report) && inherits(fit$sd_report, "sdreport")
+  pd_ok <- has_sd && isTRUE(fit$sd_report$pdHess)
+  cov_fixed <- if (has_sd) fit$sd_report$cov.fixed else NULL
+  dim_ok <- !is.null(cov_fixed) && nrow(cov_fixed) == length(fit$opt$par)
+  z <- stats::qnorm(0.5 + level / 2)
+
+  na_row <- function(t, V, status) {
+    data.frame(
+      trait = spec$trait_names[t], tier = spec$tier, estimate = V,
+      lower = NA_real_, upper = NA_real_, se_logsd = NA_real_,
+      method = "wald_logsd", pd_hessian = pd_ok, ci_status = status,
+      stringsAsFactors = FALSE, row.names = NULL
+    )
+  }
+
+  out_list <- lapply(trait_idx, function(t) {
+    V <- spec$V_of_par(fit$opt$par, t)
+    if (!pd_ok || !dim_ok) {
+      status <- if (!has_sd) {
+        "no_sdreport"
+      } else if (!dim_ok) {
+        "cov_dim_mismatch"
+      } else {
+        "pdHess_false"
+      }
+      return(na_row(t, V, status))
+    }
+    ## NA-guard the small-V boundary: SE(g)=SE(V)/(2V) is non-normal as V -> 0.
+    if (is.na(V) || V <= 1e-8) {
+      return(na_row(t, V, "boundary_na"))
+    }
+    J <- spec$dV_dpar(fit$opt$par, t)
+    varV <- as.numeric(t(J) %*% cov_fixed %*% J)
+    seV <- sqrt(max(varV, 0))
+    if (!is.finite(seV)) {
+      return(na_row(t, V, "se_nonfinite"))
+    }
+    se_g <- seV / (2 * V)
+    ## The log-SD delta method is a first-order approximation valid only when V
+    ## is well-separated from the zero boundary relative to its SE. se_g =
+    ## SE(V)/(2V) is half the coefficient of variation of V; when it is large the
+    ## component is barely identified (e.g. a collapsed binomial loading) and the
+    ## interval spans many orders of magnitude -- uninformative, and it would
+    ## spuriously "cover" everything. Emit NA rather than a garbage-wide bound;
+    ## the NA rate is itself a diagnostic. (Route B is never the certificate.)
+    if (se_g > 2.5) {
+      return(na_row(t, V, "wide_na"))
+    }
+    g <- 0.5 * log(V)
+    data.frame(
+      trait = spec$trait_names[t], tier = spec$tier, estimate = V,
+      lower = exp(2 * (g - z * se_g)), upper = exp(2 * (g + z * se_g)),
+      se_logsd = se_g, method = "wald_logsd", pd_hessian = TRUE,
+      ci_status = "ok", stringsAsFactors = FALSE, row.names = NULL
+    )
+  })
+  do.call(rbind, out_list)
+}
+
 ## ---- Cross-trait correlation: fix-and-refit profile ----------------------
 ## rho_ij = Sigma_ij / sqrt(Sigma_ii * Sigma_jj). Profile via fix-and-refit
 ## using the same penalty driver.

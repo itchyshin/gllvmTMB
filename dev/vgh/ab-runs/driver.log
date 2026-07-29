@@ -25,3 +25,4 @@
 === running arm A, N = 3200 (timeout 1800s) ===
     arm A marked dead from N = 3200 onward (crash)
 === running arm B, N = 3200 (timeout 1800s) ===
+[B-3200] status=ok total=972.0s outer=60 inner=16000 obj=87794.5114006438

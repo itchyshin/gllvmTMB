@@ -171,3 +171,45 @@ seed-stratified test, nothing more.
 
 What must **not** happen is quoting the Phase 1 internal speedups as though they were this
 number. They measure different things, and this is the one that matters to a user.
+
+## Follow-up 4: iteration counts — WHY it fails, precisely
+
+The Phase 2 contract asked for "Laplace outer-iteration count and wall time, with and
+without the warm start". Only wall time had been measured. Closing that gap changes the
+diagnosis from *"the warm start doesn't help"* to something sharper.
+
+| n | T | q | cold iters | warm iters | Δ iters | cold s | warm s | VGH reported s |
+|---|---|---|---|---|---|---|---|---|
+| 1000 | 10 | 4 | 233 | 201 | **−14 %** | 4.17 | 5.67 | 0.547 |
+| 1000 | 10 | 4 | 190 | 175 | −8 % | 3.01 | 3.49 | 0.596 |
+| 2000 | 15 | 5 | 523 | 552 | +6 % | 20.34 | 22.74 | 1.508 |
+| 2000 | 15 | 5 | 403 | 384 | −5 % | 16.95 | 17.90 | 1.395 |
+
+**The start is genuinely better.** Laplace needs fewer outer iterations from it in three of
+four cells. The premise is directionally correct — it was never that VGH's solution is a bad
+place to start.
+
+**The economics do not close.** The iteration saving is 5–14 % and inconsistent (one cell is
+*worse*), while producing the start costs 0.5–1.5 s. At n = 1000/q = 4 seed 1 the ~14 %
+saving on a 4.17 s fit is worth ≈ 0.58 s against a ≥ 0.55 s VGH bill — break-even at best,
+before the rest of the overhead.
+
+**And VGH under-reports its own cost.** `fit$seconds` sets `t0` *after*
+`.vgh_validate_data()`, `.vgh_long_to_wide()`, `.vgh_gh_rule()` and `.vgh_init()`
+(`R/va-vgh.R:500-539`), so the true wall cost of the warm start exceeds the figure above.
+That accounts for the residual gap between "iterations saved" and "wall time lost".
+
+### What this implies for anyone who wants to revive the idea
+
+The fix is not a better start — it is a **cheaper** one. Two concrete, falsifiable options:
+
+1. **Do not run VGH to convergence.** The iteration saving is small, so most of VGH's
+   sweeps are buying nothing Laplace needed. A handful of sweeps may capture the whole
+   benefit at a fraction of the cost.
+2. **Do not recompute the eigendecomposition.** `.vgh_init()` computes an eigendecomposition
+   of the residual covariance that `.gllvmTMB_residual_factor_start()` has *already computed*
+   for the cold path (`R/fit-multi.R:4029`). Handing VGH that existing start instead of
+   redoing it removes duplicated work from both sides.
+
+Neither is in scope for Phase 2, and neither is promised to work. But they are the specific
+experiments the measurement points at, rather than "try harder".

@@ -4083,6 +4083,35 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     start_provenance$start_from_copied <- warm$copied
   }
 
+  ## ---- VGH warm start (internal, opt-in via control$vgh_warm_start) -----
+  ## Seeds theta_rr_B / z_B from a fast variational solve. The REPORTED
+  ## estimate stays the Laplace MLE -- this only moves where Laplace starts, so
+  ## no VA accuracy question reaches a user. Fail-closed: the builder returns
+  ## NULL for any model VGH does not cover (see
+  ## docs/dev-log/2026-07-29-vgh-phase2-psi-scope.md).
+  if (isTRUE(control$vgh_warm_start)) {
+    vgh_fam <- if (length(unique(family_id_vec)) == 1L) {
+      switch(as.character(family_id_vec[1L]),
+             "0" = "gaussian", "1" = "binomial", "2" = "poisson",
+             NA_character_)
+    } else NA_character_
+    vgh_start <- if (is.na(vgh_fam)) NULL else {
+      .vgh_build_warm_start(tmb_data, vgh_fam, verbose = isTRUE(control$verbose))
+    }
+    if (!is.null(vgh_start)) {
+      tmb_params$theta_rr_B <- vgh_start$theta_rr
+      tmb_params$z_B <- vgh_start$z
+      ## Never assume a start landed: shape-mismatched copies are skipped in
+      ## SILENCE elsewhere in this file, and a speedup measured on a start that
+      ## never landed is meaningless.
+      .vgh_assert_start_landed(tmb_params, vgh_start, "theta_rr_B", "z_B")
+      start_provenance$vgh_warm_start <- TRUE
+      start_provenance$vgh_seconds <- vgh_start$vgh_seconds
+    } else {
+      start_provenance$vgh_warm_start <- FALSE
+    }
+  }
+
   ## ---- Map: zero-out unused parameters ---------------------------------
   tmb_map <- list()
   if (isTRUE(xcoef_fixed$has_fixed)) {

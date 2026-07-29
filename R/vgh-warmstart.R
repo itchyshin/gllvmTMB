@@ -173,3 +173,115 @@
 
   invisible(TRUE)
 }
+
+## Decide whether a VGH warm start applies to THIS model, and if so produce it.
+##
+## Fail-closed. VGH solves Sigma = Lambda Lambda' with no diagonal tier, three
+## families, a complete balanced unit x trait grid, and no missing data. Where
+## the target model differs, there is no warm start to give and we say so rather
+## than seeding a mismatched start -- see
+## docs/dev-log/2026-07-29-vgh-phase2-psi-scope.md for why a free diagonal tier
+## in particular must decline (VGH's Lambda has absorbed the covariance a
+## diagonal tier would otherwise explain, so seeding it alongside the template
+## default inflates every trait's starting variance by exactly 1.0).
+##
+## Returns NULL when ineligible; otherwise a list(theta_rr, z, ...) from
+## .vgh_to_laplace_start() plus the reason string.
+
+.vgh_warm_start_eligible <- function(tmb_data, family_name) {
+  if (!isTRUE(as.integer(tmb_data$use_rr_B) == 1L)) {
+    return("no between-unit reduced-rank tier")
+  }
+  if (isTRUE(as.integer(tmb_data$use_diag_B) == 1L)) {
+    return("a free between-unit diagonal tier is present (Psi scope, see dev-log)")
+  }
+  if (isTRUE(as.integer(tmb_data$use_rr_W %||% 0L) == 1L) ||
+      isTRUE(as.integer(tmb_data$use_diag_W %||% 0L) == 1L)) {
+    return("a within-unit tier is present; VGH covers the between-unit tier only")
+  }
+  if (!identical(family_name, "gaussian") &&
+      !identical(family_name, "binomial") &&
+      !identical(family_name, "poisson")) {
+    return(sprintf("family '%s' is not one VGH admits", family_name))
+  }
+  if (any(as.integer(tmb_data$is_y_observed) != 1L)) {
+    return("missing responses; VGH requires a complete grid")
+  }
+  n_expected <- as.integer(tmb_data$n_sites) * as.integer(tmb_data$n_traits)
+  if (length(tmb_data$y) != n_expected) {
+    return("unbalanced unit x trait grid; VGH requires a complete rectangle")
+  }
+  TRUE
+}
+
+.vgh_build_warm_start <- function(tmb_data, family_name, maxit = 50L,
+                                  verbose = FALSE) {
+  ok <- .vgh_warm_start_eligible(tmb_data, family_name)
+  if (!isTRUE(ok)) {
+    if (isTRUE(verbose)) message("VGH warm start declined: ", ok)
+    return(NULL)
+  }
+
+  ## TMB indices are 0-based; VGH wants 1-based.
+  bump <- function(ix) {
+    ix <- as.integer(ix)
+    if (length(ix) && min(ix) == 0L) ix + 1L else ix
+  }
+
+  n_units <- as.integer(tmb_data$n_sites)
+  n_traits <- as.integer(tmb_data$n_traits)
+
+  ## gaussian_anchor FIXES the residual sd rather than estimating it, so a plug-in
+  ## is required here. This is an ESTIMATE from the data, never a true value: the
+  ## per-trait residual sd after removing trait means, pooled. It only has to be
+  ## good enough to start Laplace from -- Laplace re-estimates dispersion itself,
+  ## and the reported estimate is Laplace's.
+  gaussian_sd <- 1
+  if (identical(family_name, "gaussian")) {
+    tid <- bump(tmb_data$trait_id)
+    resid <- as.numeric(tmb_data$y) - ave(as.numeric(tmb_data$y), tid)
+    gaussian_sd <- stats::sd(resid)
+    if (!is.finite(gaussian_sd) || gaussian_sd <= 0) gaussian_sd <- 1
+  }
+
+  fam <- if (identical(family_name, "gaussian")) "gaussian_anchor" else family_name
+  link <- if (identical(family_name, "gaussian")) "identity" else
+    if (identical(family_name, "binomial")) "logit" else "log"
+
+  fit <- tryCatch(
+    .vgh_fit(
+      y = as.numeric(tmb_data$y),
+      n_trials = as.integer(tmb_data$n_trials),
+      X = matrix(1, length(tmb_data$y), 1),
+      unit_id = bump(tmb_data$site_id),
+      trait_id = bump(tmb_data$trait_id),
+      N = n_units, T = n_traits, q = as.integer(tmb_data$d_B),
+      family = fam, link = link, gaussian_sd = gaussian_sd,
+      maxit = maxit
+    ),
+    error = function(e) {
+      if (isTRUE(verbose)) message("VGH warm start failed: ", conditionMessage(e))
+      NULL
+    }
+  )
+  if (is.null(fit)) return(NULL)
+
+  start <- tryCatch(.vgh_to_laplace_start(fit), error = function(e) {
+    if (isTRUE(verbose)) message("VGH packing transform failed: ", conditionMessage(e))
+    NULL
+  })
+  if (is.null(start)) return(NULL)
+
+  ## The template's z_B is d_B x n_sites. Anything else means the transform and
+  ## the template disagree, and .gllvmTMB_apply_start_from()-style silent
+  ## shape-skipping would hide it -- so check here rather than trust it.
+  if (!identical(dim(start$z), c(as.integer(tmb_data$d_B), n_units))) {
+    stop(sprintf(
+      "VGH warm start produced z of %s; template expects %d x %d.",
+      paste(dim(start$z), collapse = " x "), as.integer(tmb_data$d_B), n_units
+    ), call. = FALSE)
+  }
+  start$vgh_seconds <- fit$seconds
+  start$vgh_elbo <- fit$elbo
+  start
+}

@@ -1,0 +1,10 @@
+
+DEGENERATE  n= 40 p= 8 q=2 seed=1
+  LAPLACE  : nll     188.9551  ||L||_F       1564  rel_frob    6.236e+05
+  AGHQ k=9 : nll     209.1413  ||L||_F       1564  rel_frob    6.236e+05   (3s, conv=1)
+  --> rel_frob ROSE by 1 x ; true ||L||_F = 2.297
+
+HEALTHY     n=100 p= 8 q=2 seed=1
+  LAPLACE  : nll     508.7305  ||L||_F      110.3  rel_frob         3107
+  AGHQ k=9 : nll     520.8964  ||L||_F      34.87  rel_frob        308.7   (88s, conv=0)
+  --> rel_frob FELL by 10.06 x ; true ||L||_F = 2.297

@@ -9,7 +9,7 @@ confint_inspect(
   parm,
   level = 0.95,
   ystep = 0.5,
-  ytol = 2,
+  ytol = NULL,
   parm.range = c(-Inf, Inf)
 )
 }
@@ -27,7 +27,10 @@ this direct-parameter diagnostic.}
 to \code{\link[TMB:tmbprofile]{TMB::tmbprofile()}}. Default \code{0.5}.}
 
 \item{ytol}{Profile maximum-deviance budget, passed to
-\code{\link[TMB:tmbprofile]{TMB::tmbprofile()}}. Default \code{2}.}
+\code{\link[TMB:tmbprofile]{TMB::tmbprofile()}}. Default \code{NULL}, which sizes the budget for the
+requested \code{level} (the crossing threshold plus a margin). A budget below
+the threshold cannot produce a crossing, so the bound would come back
+infinite; supply a number only if you want to override that.}
 
 \item{parm.range}{Two-element numeric range (in the TMB-link
 scale) for the profile walk, passed to \code{\link[TMB:tmbprofile]{TMB::tmbprofile()}}.

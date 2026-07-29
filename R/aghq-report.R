@@ -188,7 +188,30 @@ BIC.gllvmTMB_multi <- function(object, ...) {
 ## `stats::AIC`/`stats::BIC` generics. This is the standard pattern for
 ## adding a method for another package's generic without formally
 ## depending on it (e.g. the `vctrs`-style `s3_register()` idiom).
+## The 4th argument is load-bearing and was missing. `registerS3method()` looks
+## the GENERIC up with `get(genname, envir = envir)`, and `envir` defaults to
+## `parent.frame()` -- here the `.onLoad` frame. At load time only the base
+## namespace is guaranteed present, so `AIC` was not found and `.onLoad` threw
+## `object 'AIC' not found`. R CMD check surfaced that as three WARNINGs
+## ("package can[not] be loaded with stated dependencies", "cannot be unloaded
+## cleanly", "namespace cannot be loaded with stated dependencies") plus two
+## NOTEs -- CRAN-blocking.
+##
+## `devtools::load_all()` does NOT reproduce it, which is exactly why a green
+## `devtools::test()` run did not catch this and only R CMD check did.
+##
+## Naming `asNamespace("stats")` is the documented idiom, and is what the
+## `vctrs::s3_register()` pattern cited above actually does: look the generic up
+## where the generic LIVES, not wherever the call happens to sit. `stats` is
+## already in DESCRIPTION Imports, so this adds no dependency and still requires
+## no NAMESPACE edit -- the fence the original slice worked under is preserved.
 .onLoad <- function(libname, pkgname) {
-  registerS3method("AIC", "gllvmTMB_multi", AIC.gllvmTMB_multi)
-  registerS3method("BIC", "gllvmTMB_multi", BIC.gllvmTMB_multi)
+  registerS3method(
+    "AIC", "gllvmTMB_multi", AIC.gllvmTMB_multi,
+    envir = asNamespace("stats")
+  )
+  registerS3method(
+    "BIC", "gllvmTMB_multi", BIC.gllvmTMB_multi,
+    envir = asNamespace("stats")
+  )
 }

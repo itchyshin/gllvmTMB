@@ -34,6 +34,26 @@
 
 #' @keywords internal
 #' @noRd
+## Profile search budget, coupled to the requested level.
+##
+## `TMB::tmbprofile()`'s `ytol` caps how far the deviance trace is allowed to
+## climb before the search stops. The bound is located where that trace crosses
+## `crit = .qchisq_threshold(level)`, so a budget below `crit` can never produce
+## a crossing and the bound comes back infinite -- silently, and previously
+## documented as "at the natural boundary of the parameter space". `ytol` was
+## hard-coded to 2, which is below `crit` for every level above 0.9545.
+##
+## Equality would not be enough either: `.profile_bounds()` interpolates a sign
+## change on EACH side, so the trace must travel past `crit` far enough to
+## bracket it in both directions. Measured on a 4-trait Gaussian fit at level
+## 0.99 (crit = 3.3174): ytol = 3 still gave 0/4 finite bounds; ytol = 4 gave
+## 4/4. Hence a margin above `crit`, not equality with it.
+.profile_ytol <- function(level, margin = 1) {
+  .qchisq_threshold(level) + margin
+}
+
+#' @keywords internal
+#' @noRd
 ## Optional t-based sensitivity cutoff. This substitutes
 ## qt((1 + level) / 2, df)^2 for the standard chi-square reference, widening the
 ## profile-deviance threshold for finite df and approaching chi-square as
@@ -105,6 +125,51 @@
 
 #' @keywords internal
 #' @noRd
+## Did a non-crossing profile ASYMPTOTE, or was it merely TRUNCATED?
+##
+## Decidable from the trace alone -- no optimizer status required, which matters
+## because TMB::tmbprofile() returns only two columns (parameter, value) and
+## discards its inner optimizer's convergence code.
+##
+## Walk outward from the MLE and compare the final outward slope with the
+## steepest slope seen. A profile that has flattened has a final slope near
+## zero relative to its own maximum; one that is still climbing does not.
+## `slope_ratio_tol` is the fraction of the maximum slope below which the tail
+## counts as flat.
+##
+## Returns "asymptotic", "truncated", or "undecidable" (too few points to say --
+## treated as truncated by the caller, because "unknown" is the safe answer).
+.profile_terminus_status <- function(p_sub, v_sub, side, slope_ratio_tol = 0.1) {
+  ord <- if (identical(side, "lower")) order(p_sub, decreasing = TRUE) else order(p_sub)
+  p <- p_sub[ord]
+  v <- v_sub[ord]
+  keep <- is.finite(p) & is.finite(v)
+  p <- p[keep]
+  v <- v[keep]
+  if (length(p) < 3L) {
+    return("undecidable")
+  }
+  dp <- abs(diff(p))
+  dv <- diff(v)
+  ok <- dp > 0
+  if (!any(ok)) {
+    return("undecidable")
+  }
+  slope <- dv[ok] / dp[ok]
+  max_slope <- max(slope, na.rm = TRUE)
+  if (!is.finite(max_slope) || max_slope <= 0) {
+    ## never climbed at all: nothing to extrapolate towards, treat as flat
+    return("asymptotic")
+  }
+  tail_slope <- slope[length(slope)]
+  if (!is.finite(tail_slope)) {
+    return("undecidable")
+  }
+  if (tail_slope <= slope_ratio_tol * max_slope) "asymptotic" else "truncated"
+}
+
+#' @keywords internal
+#' @noRd
 .profile_bounds <- function(prof, mle_val, mle_par, crit) {
   ## Sort by parameter
   prof <- prof[order(prof[[1L]]), , drop = FALSE]
@@ -122,45 +187,97 @@
   find_cross <- function(idx, side = c("lower", "upper")) {
     side <- match.arg(side)
     if (length(idx) < 2L) {
-      return(NA_real_)
+      return(list(value = NA_real_, status = "failed"))
     }
     p_sub <- pars[idx]
     v_sub <- vals[idx]
     e_sub <- v_sub - thresh
     pos <- which(e_sub > 0) # outside CI
     neg <- which(e_sub <= 0) # inside CI
-    ## Boundary case: tmbprofile() returned points on this side but the
-    ## profile never reached the chi-square threshold. The variance is
-    ## pinned at the natural boundary or weakly identified. Return the
-    ## parameter limit (+/- Inf) so that downstream transforms map to
-    ## the natural CI boundary (plogis: R -> 0/1; tanh: rho -> -1/1;
-    ## exp: sigma2 -> 0/Inf; identity: -Inf/Inf for unbounded params).
-    ## NA is reserved for genuine profile failure.
+    ## No point on this side reached the threshold. That has TWO meanings and
+    ## this function used to report only one of them:
+    ##
+    ##   ASYMPTOTIC -- the profile has flattened out, so no finite bound
+    ##     exists. +/-Inf is the honest answer, and downstream transforms map
+    ##     it to the natural CI boundary (plogis: R -> 0/1; tanh: rho -> -1/1;
+    ##     exp: sigma2 -> 0/Inf; identity: -Inf/Inf).
+    ##   TRUNCATED -- the deviance was still climbing when the search stopped.
+    ##     The bound is UNKNOWN, not infinite. Returning Inf here asserts an
+    ##     unbounded parameter on the strength of having stopped looking, and
+    ##     downstream that Inf was being scored as a successful cover.
+    ##
+    ## The two are separable from the trace alone: an asymptoting profile's
+    ## outward slope decays toward zero, a truncated one's does not.
     if (length(pos) == 0L) {
-      return(if (side == "lower") -Inf else Inf)
+      status <- .profile_terminus_status(p_sub, v_sub, side)
+      if (identical(status, "asymptotic")) {
+        return(list(
+          value = if (side == "lower") -Inf else Inf,
+          status = "asymptotic"
+        ))
+      }
+      return(list(value = NA_real_, status = "truncated"))
     }
     if (length(neg) == 0L) {
-      return(NA_real_)
+      return(list(value = NA_real_, status = "failed"))
     }
     ## Standard case: find sign-change closest to MLE and linear-interpolate.
     transitions <- which(diff(sign(e_sub)) != 0)
     if (length(transitions) == 0L) {
-      return(NA_real_)
+      return(list(value = NA_real_, status = "failed"))
     }
     i <- if (side == "lower") max(transitions) else min(transitions)
     p1 <- p_sub[i]
     p2 <- p_sub[i + 1L]
     e1 <- e_sub[i]
     e2 <- e_sub[i + 1L]
-    if (e2 == e1) {
-      return(NA_real_)
+    ## Interpolate on the ZETA scale rather than the deviance scale.
+    ##
+    ##   zeta = sign(theta - theta_hat) * sqrt(2 * (nll - nll_hat))
+    ##
+    ## For an exactly quadratic log-likelihood zeta is EXACTLY LINEAR in theta,
+    ## so linear interpolation in zeta is exact where interpolation in deviance
+    ## carries curvature error growing with grid spacing. The threshold on this
+    ## scale is exactly the normal quantile: |zeta| = sqrt(2 * crit)
+    ## = sqrt(qchisq(level, 1)) = qnorm((1 + level) / 2).
+    ##
+    ## Design lead: MixedModels.jl interpolates splines on the zeta scale
+    ## (docs/dev-log/2026-07-28-mixedmodels-jl-profile-lead.md). Read for design
+    ## only; no code ported.
+    zeta <- function(p, v) {
+      d <- 2 * (v - mle_val)
+      d[!is.finite(d) | d < 0] <- 0
+      sign(p - mle_par) * sqrt(d)
     }
-    p1 + (0 - e1) * (p2 - p1) / (e2 - e1)
+    z1 <- zeta(p1, v_sub[i])
+    z2 <- zeta(p2, v_sub[i + 1L])
+    z_star <- if (side == "lower") -sqrt(2 * crit) else sqrt(2 * crit)
+    if (is.finite(z1) && is.finite(z2) && z2 != z1) {
+      return(list(
+        value = p1 + (z_star - z1) * (p2 - p1) / (z2 - z1),
+        status = "crossed"
+      ))
+    }
+    ## Fall back to the deviance scale if zeta is degenerate here.
+    if (e2 == e1) {
+      return(list(value = NA_real_, status = "failed"))
+    }
+    list(
+      value = p1 + (0 - e1) * (p2 - p1) / (e2 - e1),
+      status = "crossed"
+    )
   }
 
   lo <- find_cross(lo_idx, "lower")
   hi <- find_cross(hi_idx, "upper")
-  list(lower = lo, upper = hi)
+  ## `lower`/`upper` keep their historical meaning and position; the two status
+  ## fields are additive, so existing callers reading $lower/$upper are unaffected.
+  list(
+    lower = lo$value,
+    upper = hi$value,
+    lower_status = lo$status,
+    upper_status = hi$status
+  )
 }
 
 ## ---- One-shot profile CI for a single parameter or lincomb ----------------
@@ -212,13 +329,26 @@
 #' When a variance component is near zero, the profile likelihood becomes
 #' one-sided: the parameter can decrease to negative infinity in log-SD
 #' space (variance to zero) without an additional likelihood penalty.
-#' In that case the bound is at the natural boundary of the parameter
-#' space, not unknown. `tmbprofile_wrapper()` therefore returns the
-#' transformed boundary (e.g. `lower = 0` for `transform = exp`,
-#' `lower = 0` for `transform = plogis`, `lower = -1` for
-#' `transform = tanh`, `lower = -Inf` for `transform = identity`).
-#' `NA` is reserved for genuine profile failure (e.g. tmbprofile()
-#' threw an error or returned too few points).
+#' The profile deviance then flattens without ever crossing the threshold,
+#' and the bound really is at the natural boundary of the parameter space.
+#' `tmbprofile_wrapper()` returns the transformed boundary (e.g.
+#' `lower = 0` for `transform = exp`, `lower = 0` for
+#' `transform = plogis`, `lower = -1` for `transform = tanh`,
+#' `lower = -Inf` for `transform = identity`).
+#'
+#' A profile can also fail to cross the threshold for a quite different
+#' reason: the search stopped while the deviance was **still climbing**.
+#' The bound is then *unknown*, not infinite, and reporting a boundary
+#' would assert an unbounded parameter on the strength of having stopped
+#' looking. These two cases are separated from the trace itself -- an
+#' asymptoting profile's outward slope decays toward zero, a truncated
+#' one's does not -- and the truncated case returns `NA`.
+#'
+#' `NA` therefore covers both genuine profile failure (e.g. `tmbprofile()`
+#' threw an error or returned too few points) and a bound that could not
+#' be determined within the search budget. `.profile_bounds()` reports
+#' which via its `lower_status`/`upper_status` fields
+#' (`"crossed"`, `"asymptotic"`, `"truncated"`, `"failed"`).
 #'
 #' @keywords internal
 #' @export
@@ -230,13 +360,15 @@ tmbprofile_wrapper <- function(
   level = 0.95,
   transform = identity,
   ystep = 0.5,
-  ytol = 2,
+  ytol = NULL,
   parm.range = c(-Inf, Inf)
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   crit <- .qchisq_threshold(level)
+  ## NULL means "size the budget for this level"; an explicit value still wins.
+  if (is.null(ytol)) ytol <- .profile_ytol(level)
   mle_val <- as.numeric(fit$opt$objective)
 
   if (!is.null(lincomb)) {
@@ -309,7 +441,7 @@ tmbprofile_wrapper <- function(
   transform = identity,
   labels = NULL,
   ystep = 0.5,
-  ytol = 2
+  ytol = NULL
 ) {
   par_names <- names(fit$opt$par)
   hits <- which(par_names == name)

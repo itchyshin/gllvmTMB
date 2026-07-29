@@ -174,6 +174,38 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Fixed
 
+* **Profile confidence intervals no longer lose their bounds at higher
+  confidence levels.** The profile search used a fixed deviance budget that did
+  not depend on `level`, and that budget was smaller than the threshold a
+  profile must cross for any level above roughly 0.955. Above it the search
+  could stop short and the bound was reported as infinite. On a four-trait
+  Gaussian fit, `level = 0.99` returned an infinite bound for four of ten
+  targets where `level = 0.95` returned all ten finite. The budget is now sized
+  from the requested `level`, with headroom — merely reaching the threshold is
+  not enough, because the bound is located by interpolating across it. The
+  default `level = 0.95` also gains margin it did not previously have.
+* **An unbounded interval is no longer reported where the bound is simply
+  unknown.** A profile that stops without crossing its threshold can mean two
+  different things, and only one was reported. If the profile has flattened out,
+  no finite bound exists and an infinite bound is the honest answer. If the
+  profile was still climbing when the search stopped, the bound is *unknown* —
+  calling it infinite asserts an unbounded parameter on the strength of having
+  stopped looking. The two are now distinguished from the shape of the profile
+  itself, and the second returns `NA`.
+* **Interval bounds are more accurate.** Bounds are now interpolated on the
+  signed-square-root (`zeta`) scale rather than the deviance scale. For a
+  quadratic log-likelihood `zeta` is exactly linear in the parameter, so the
+  interpolation is exact there; on the deviance scale it carried curvature error
+  that grew with the spacing of the profile grid. Reported bounds may shift
+  slightly, and are closer to what a finer grid would give.
+* **The internal coverage-study helper no longer counts an interval it could not
+  compute as a success.** A missing bound was already treated as non-coverage,
+  but an *infinite* bound fell through that guard, was scored as covering, and
+  stayed in the denominator. A method returning an unbounded interval on every
+  replicate would have reported perfect coverage. Missing and infinite bounds
+  are now both excluded and reported as excluded. The helper is internal and
+  unexported; the correction is recorded because any coverage figure produced
+  with an earlier version of it is affected.
 * Near-zero variance components are now detected **relative to their
   siblings**, not only against an absolute threshold. A boundary-pinned
   (Heywood) component — one trait's unique variance collapsing to zero — could

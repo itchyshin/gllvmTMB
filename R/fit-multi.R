@@ -5074,6 +5074,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                "route" %in% names(aghq_block) &&
                !any(aghq_block$route == "quadrature")) {
       "gated to laplace by .aghq_gate()"
+    } else if (exists(".aghq_auto_gate", mode = "function") &&
+               ## `n` is part of .aghq_auto_decide()'s signature but its body
+               ## does not use it (the policy turns on n_traits, q and the gate
+               ## table), so NA is passed rather than inventing a value here.
+               !is.null(auto_decline <- .aghq_auto_gate(
+                 control, aghq_block, n_traits, d_B, NA_integer_))) {
+      ## `aghq = "auto"` only. The auto policy owns the DEFAULT on/off call --
+      ## chiefly the Pinheiro & Chao n_traits cutoff, which could never fire
+      ## while `.aghq_auto_decide()` had no call site. An explicit numeric
+      ## `aghq` is a deliberate request and is not subject to it.
+      auto_decline
     } else {
       NULL
     }
@@ -6186,8 +6197,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 }
 
 ## Resolve `control$aghq` into a node count. FALSE / NULL -> NULL (Laplace).
-## "auto" -> 9 for now (the resolver `.aghq_resolve()` in R/aghq-control.R
-## owns the real policy; when it is on disk it takes precedence).
+## "auto" -> the ladder start from `.aghq_resolve()`, else 9.
+##
+## The ON/OFF decision for "auto" is NOT made here -- it belongs to
+## `.aghq_auto_gate()` in the fit-time eligibility chain, which is the only
+## place the `.aghq_gate()` table exists. This function answers "how many
+## nodes", never "should we".
+##
+## `.aghq_resolve()` also returns `optimizer` and `optArgs`, and this function
+## deliberately keeps only `k`. That is a PROVABLE NO-OP on this path, not an
+## oversight, and it should stay that way unless someone brings evidence:
+## `.aghq_optimizer_table()` returns "lbfgsb" only for family = binomial with a
+## "jj" tier, and the AGHQ path always calls `.aghq_resolve(family, "B", ...)`.
+## Checked by evaluation across gaussian/poisson/binomial/nbinom2/Gamma/beta/
+## tweedie at tier "B": every one returns "nlminb", which is already
+## `control$optimizer`'s default. So the discarded recommendation would change
+## nothing, and the un-`factr`'d lbfgsb hazard the table's own comment warns
+## about is unreachable from quadrature. Wiring it through would be a
+## results-changing edit with no measured benefit behind it.
 .gllvmTMB_aghq_k <- function(control, d_B, family = NULL, n_traits = NA_integer_) {
   a <- control$aghq
   if (is.null(a) || identical(a, FALSE)) return(NULL)

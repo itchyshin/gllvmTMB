@@ -5,6 +5,27 @@
 ## any interval route is coverage-calibrated or publication-ready. Design 75
 ## records that no current matrix cell has empirical-coverage calibration.
 
+#' @keywords internal
+#' @noRd
+## Does a computed interval cover the truth?
+##
+## A replicate is credited ONLY when both bounds are finite and bracket the
+## truth. Two distinct failures collapse to the same answer here, deliberately:
+##   NA bound   -- the interval could not be computed for this replicate;
+##   +/-Inf bound -- the profile search never crossed its threshold, so the
+##                   "interval" is unbounded on that side.
+## Neither is coverage. The previous guard tested `is.na(lo) || is.na(hi)`, and
+## `is.na(-Inf)` is FALSE, so an infinite bound fell through to
+## `tr >= lo & tr <= hi`, which for (-Inf, Inf) is TRUE. A method that returned
+## (-Inf, Inf) on every replicate measured 100% coverage. `is.finite()` catches
+## both cases in one predicate.
+.ci_covers <- function(truth, lower, upper) {
+  if (!is.finite(lower) || !is.finite(upper)) {
+    return(FALSE)
+  }
+  isTRUE(truth >= lower && truth <= upper)
+}
+
 #' Withdrawn internal prototype for fitted-model interval simulations
 #'
 #' This helper is retained for developer archaeology only. It is not an
@@ -98,6 +119,7 @@
 #'
 #' @keywords internal
 #' @noRd
+
 coverage_study <- function(
   fit,
   parm = NULL,
@@ -222,7 +244,8 @@ coverage_study <- function(
         next
       }
       ## Match parm rows by rowname order; some bound entries may be
-      ## NA when a profile failed on a specific replicate.
+      ## NA when a profile failed on a specific replicate; +/-Inf when the
+      ## profile search never crossed its threshold.
       for (p in parm) {
         row_idx <- which(rownames(ci_mat) == p)
         if (length(row_idx) != 1L) {
@@ -231,14 +254,7 @@ coverage_study <- function(
         lo <- ci_mat[row_idx, 1L]
         hi <- ci_mat[row_idx, 2L]
         tr <- truth[[p]]
-        ## NA bounds are treated as a non-coverage failure: the CI
-        ## isn't well-defined for this replicate, so don't credit
-        ## the method with coverage.
-        covered <- if (is.na(lo) || is.na(hi)) {
-          FALSE
-        } else {
-          (tr >= lo & tr <= hi)
-        }
+        covered <- .ci_covers(tr, lo, hi)
         intervals[[length(intervals) + 1L]] <- data.frame(
           rep = i,
           parm = p,
@@ -288,7 +304,10 @@ coverage_study <- function(
   splits <- split(intervals_df, agg_key)
   coverage_rows <- lapply(splits, function(df) {
     n_total <- nrow(df)
-    n_excl <- sum(is.na(df$lower) | is.na(df$upper))
+    ## Non-finite covers NA *and* +/-Inf: a replicate whose interval could not be
+    ## computed, and one whose interval is unbounded, are both "no usable CI here".
+    ## Counting only NA left infinite bounds in the denominator AND credited them.
+    n_excl <- sum(!is.finite(df$lower) | !is.finite(df$upper))
     n_used <- n_total - n_excl
     n_cov <- sum(df$covered, na.rm = TRUE)
     rate <- if (n_used > 0L) n_cov / n_used else NA_real_

@@ -17,6 +17,17 @@ gllvmTMBcontrol(
   start_from = NULL,
   se = TRUE,
   verbose = FALSE,
+  aghq = FALSE,
+  aghq_iter_cap = 1L,
+  aghq_n_adapt = 400L,
+  aghq_ridge = 2,
+  aghq_continuation = TRUE,
+  aghq_shift_tol = 1e-04,
+  aghq_grad_tol = 1e-04,
+  aghq_f_tol = 1e-09,
+  aghq_escalate_patience = 3L,
+  aghq_rho_min = 1/64,
+  allow_nongaussian_reml = FALSE,
   ...
 )
 }
@@ -86,6 +97,40 @@ uncertainty will be obtained by bootstrap or profile methods. Default
 \item{verbose}{If \code{TRUE}, prints a one-line summary per restart so
 the user can see which seed led to the winning fit. Default
 \code{FALSE}.}
+
+\item{aghq}{Adaptive Gauss-Hermite quadrature for the between-unit latent
+block. \code{FALSE} (default) fits by Laplace approximation. A positive integer
+requests that many quadrature nodes. \code{"auto"} lets the package decide, and
+it declines to Laplace whenever the model is ineligible or the expected
+gain does not justify the cost. \strong{Opt-in and experimental}: no capability
+claim is made for quadrature-fitted models, and eligibility is narrow — the
+random part must be a single ordinary \code{latent()} block on the unit tier.}
+
+\item{aghq_iter_cap}{Optimiser iteration budget for the first adaptation
+pass. Default \code{1L}. Later passes escalate when continuation is enabled.}
+
+\item{aghq_n_adapt}{Maximum number of adaptation passes. Default \code{400L}.}
+
+\item{aghq_ridge}{Ridge penalty on the loadings, as the scale \code{tau};
+\code{Inf} disables it. Default \code{2}. Naming it explicitly also makes the
+\code{Laplace + ridge} control reachable without quadrature.}
+
+\item{aghq_continuation}{If \code{TRUE} (default), the adaptation loop may raise
+\code{aghq_iter_cap} across passes. \code{FALSE} pins the cap and disables escalation.}
+
+\item{aghq_shift_tol, aghq_grad_tol, aghq_f_tol}{Convergence tolerances for the
+adaptation loop: the quadrature-point shift, the gradient at the adaptation
+point, and the change in objective. Defaults \code{1e-4}, \code{1e-4}, \code{1e-9}.}
+
+\item{aghq_escalate_patience}{Number of accepted passes before the iteration
+cap is escalated. Default \code{3L}.}
+
+\item{aghq_rho_min}{Minimum trust-region-style acceptance ratio for a pass.
+Default \code{1/64}.}
+
+\item{allow_nongaussian_reml}{Permit \code{REML = TRUE} for non-Gaussian families.
+Default \code{FALSE}; the restricted likelihood is defined by a Gaussian
+marginalisation, so this is an escape hatch, not an endorsement.}
 
 \item{...}{Reserved for future use. Currently ignored with a warning.}
 }

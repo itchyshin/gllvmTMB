@@ -1,0 +1,4 @@
+"family","n","seed","T","q","H","arm","seconds","rel_frob","atten_F","atten_tr","degenerate","status","conv","health","message"
+"poisson",400,11,20,2,15,"vgh",1.223,0.139063261077899,0.936592070083322,0.877204705742963,FALSE,"ok",NA,"sweeps=200","elbo=-13420.7613"
+"poisson",400,11,20,2,15,"va_r3_gh",40.546,0.127435983865776,0.945278064856723,0.893550619899272,FALSE,"ok",0,"failed_health_gate/healthy=0of4","tier=gh maxgrad=1.55e-03"
+"poisson",400,11,20,2,15,"laplace",20.012,0.126773190438898,0.945746319675614,0.894436101179969,FALSE,"ok",0,"nlminb/0","relative convergence (4)"

@@ -1,0 +1,5 @@
+"family","n","seed","T","q","H","arm","seconds","rel_frob","atten_F","atten_tr","degenerate","status","conv","health","message"
+"binomial",800,12,20,2,15,"vgh",3.09,0.29122086664101,0.962957325893383,0.927286811491735,FALSE,"ok",NA,"sweeps=21","elbo=-10726.4605"
+"binomial",800,12,20,2,15,"va_r3_gh",298.844,0.291232414418622,0.963160663657389,0.927678464016943,FALSE,"ok",0,"failed_health_gate/healthy=0of4","tier=gh maxgrad=1.08e-04"
+"binomial",800,12,20,2,15,"laplace",71.135,0.31200046159656,0.928081815704317,0.861335856641021,FALSE,"ok",0,"nlminb/0","relative convergence (4)"
+"binomial",800,12,20,2,15,"va_r3_jj",15.501,0.397494548284474,0.855174186979037,0.731322890075257,FALSE,"ok",0,"failed_health_gate/healthy=2of4","tier=jj maxgrad=9.62e-05"

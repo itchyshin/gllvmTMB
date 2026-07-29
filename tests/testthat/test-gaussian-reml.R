@@ -215,18 +215,14 @@ test_that("Gaussian REML guardrails reject unsupported pilot cases", {
     "observation weights"
   )
 
-  df_missing <- df
-  df_missing$value[1] <- NA_real_
-  expect_error(
-    gllvmTMB(
-      value ~ 0 + trait + (1 | study),
-      data = df_missing,
-      unit = "study",
-      REML = TRUE,
-      missing = miss_control(response = "include")
-    ),
-    "response = \"drop\""
-  )
+  ## `miss_control(response = "include")` was rejected here and no longer is.
+  ## The restriction was conservative: REML integrates `b_fix` out through
+  ## Laplace, masked rows contribute exactly zero via `is_y_observed`, so the
+  ## joint stays a Gaussian LMM over the OBSERVED rows and the restricted
+  ## likelihood is formed over those rows. Verified: a REML fit under "include"
+  ## matches the "drop" fit to 1.4e-14, and both still differ from ML.
+  ## The supported behaviour is pinned in test-reml-missing-response.R; it is
+  ## not re-asserted here because this block tests what REML REFUSES.
 
   df$x1 <- as.numeric(df$trait == levels(df$trait)[1L])
   df$x2 <- as.numeric(df$trait == levels(df$trait)[2L])

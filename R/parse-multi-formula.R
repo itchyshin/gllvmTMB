@@ -110,6 +110,31 @@ parse_multi_formula <- function(formula) {
         return(invisible())
       }
     }
+    ## offset(): NOT supported, and must fail loud rather than pass through.
+    ## An offset() term otherwise reaches fixed_terms and is then dropped by
+    ## model.matrix() (R treats offsets specially), so the fit silently used a
+    ## different model from the one written -- with a *varying* offset the logLik
+    ## was identical with and without it, to the last digit.
+    ##
+    ## The check is on the whole term, not just its head, because the traits()
+    ## expander rewrites an ordinary predictor to `(0 + trait):x`, so a wide
+    ## `offset(offv)` arrives here as `(0 + trait):offset(offv)`.
+    ##
+    ## The lv sub-formula has rejected offsets since R/lv-predictor.R:156; this
+    ## applies the same rule to the fixed-effect formula. walk() returns early on
+    ## covstruct calls, so `lv = ~ offset(x)` never reaches here and keeps its
+    ## own, more specific message.
+    if ("offset" %in% all.names(e, functions = TRUE)) {
+      cli::cli_abort(c(
+        "{.fn offset} terms are not supported in {.fn gllvmTMB} formulas.",
+        "i" = paste(
+          "Offsets are not wired into the likelihood. Accepting one would drop",
+          "it from the design matrix and fit a different model than the one",
+          "written."
+        ),
+        ">" = "Remove the {.fn offset} term from the formula."
+      ))
+    }
     ## Record any nested mi() calls (e.g. mi(x):z) so the validator can count
     ## and reject them, even when the term itself is an interaction.
     nested_mi <- gll_find_mi_calls(e)

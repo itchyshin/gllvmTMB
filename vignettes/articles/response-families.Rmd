@@ -341,7 +341,7 @@ check_gllvmTMB(fit_long)
 # Gaussian, Poisson, NB1, and NB2 rows.
 residuals(fit_long, type = "randomized_quantile", seed = 1)
 
-# Rootograms currently support Poisson and NB2 count rows.
+# Rootograms currently support Poisson, NB1, and NB2 count rows.
 predictive_check(fit_long, type = "rootogram", ndraws = 100, seed = 1)
 ```
 

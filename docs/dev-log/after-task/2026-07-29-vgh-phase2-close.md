@@ -104,13 +104,13 @@ that an unrecorded deviation is indistinguishable from drift.** The rule for the
 when the adversarial gate is delivered via a workflow phase rather than a plan row, say so in
 the plan row.
 
-**Unclear #9 — branch landing.** Closed: PR opened for this branch (see below). Nothing is
+**Unclear #9 — branch landing.** Closed: PR #820 opened for this branch. Nothing is
 carried over silently.
 
 ## Handoff state — explicit
 
 - **LANDED:** PR #819 (Phase 0 + Phase 1) is merged to `main`.
-- **PUSHED, AWAITING REVIEW:** `claude/vgh-phase2-20260730`, 12 commits, `rcmdcheck --as-cran`
+- **PUSHED, PR #820 OPEN:** `claude/vgh-phase2-20260730`, 13 commits, `rcmdcheck --as-cran`
   clean (0/0/1 benign). Contains the wiring, the transform, the verification harness, and the
   negative result. **The merge is the maintainer's**, as with #819.
 - **CARRIED-OVER (fenced, not started):** the Phase 3 degenerate-fit screen — the one

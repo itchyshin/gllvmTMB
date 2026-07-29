@@ -68,12 +68,24 @@ No fenced file touched — in particular `NEWS.md`, `R/gllvmTMB.R`, `R/fit-multi
 * `devtools::test(filter = "no-deprecated-recommendations")` → **1 passed** after the
   `R/diagnose.R` fix; verified failing on exactly one offender before it.
 * `devtools::test(filter = "diagnose")` → **10 passed**, covering the edited file.
-* Full `devtools::test()` — see §5a.
+* **Full `devtools::test()` → 6,372 passed, 773 skipped, 0 failed** (`EXIT=0`; zero
+  `Failure (`/`Error (` markers; no `══ Failed` section). The 773 skips are the standing
+  heavy-test gate (`GLLVMTMB_HEAVY_TESTS` unset). Two warnings are pre-existing and unrelated —
+  "rows full of zeros in y" in `test-comparator-gllvm.R:418,449`.
 * Chunk-fence balance in the edited article: 22 (even).
 * `tools/lane_preflight.sh .` at lane open.
 
-**NOT run:** `rcmdcheck`; any article knit; any model fit. The fixes are
-verified by source reading and the static guard, **not** by a build.
+**NOT run:** `rcmdcheck`; any article knit; any model fit. The article fixes are verified by
+source reading and the static guards, **not** by a build — the full suite passing says the
+package is healthy, not that the articles render.
+
+### Lane-hygiene note
+
+`lane_preflight.sh` reported "no codex lane detected in the last 12h" and marked it *weak*
+evidence. A live Codex lane was in fact running throughout (`tools/run-lane-b-phylo-dens…`,
+PIDs 91194/91195) — in **drmTMB**, not this repo, so no collision. Found by `ps aux | grep
+exec/R` while checking suite progress, not by the preflight. D-87 holds: silence is not proof
+of sole ownership.
 
 ## 6. Tests of the Tests
 

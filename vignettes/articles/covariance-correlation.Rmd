@@ -408,7 +408,9 @@ values for reading, with estimates in the upper triangle and interval
 bounds in the lower triangle:
 
 ```{r communality-correlation-rows}
-corr_B <- extract_correlations(fit_B, tier = "unit")
+corr_B <- extract_correlations(
+  fit_B, tier = "unit", method = "fisher-z"
+)
 corr_B
 ```
 

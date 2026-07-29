@@ -1078,8 +1078,8 @@ gllvmTMB_diagnose <- function(
       paste(
         "Optimiser did NOT converge.",
         "Try `gllvmTMBcontrol(n_init = 5, optimizer = \"optim\",",
-        "optArgs = list(method = \"BFGS\"))`, residual starts for",
-        "non-Gaussian latent fits, or `start_method = list(method = \"indep\")`",
+        "optArgs = list(method = \"BFGS\"))`, more starts with modest",
+        "jitter, or `start_method = list(method = \"indep\")`",
         "for simpler-model warm starts."
       )
     )

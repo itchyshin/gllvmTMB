@@ -378,7 +378,8 @@ Use this order when a hard model does not give clean inference:
 4. Inspect boundary flags for near-zero variance, redundant rank, or
    unstable dispersion.
 5. Try more starts and modest jitter.
-6. Try residual starts for non-Gaussian reduced-rank models.
+6. Use the default starts for non-Gaussian reduced-rank models; the
+   residual start is soft-deprecated (see above).
 7. Try independent or simpler-model starts for Gaussian two-level
    models.
 8. Try `optimizer = "optim"` with `optArgs = list(method = "BFGS")`, or a

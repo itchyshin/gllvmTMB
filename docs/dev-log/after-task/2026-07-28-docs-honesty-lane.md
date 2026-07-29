@@ -56,9 +56,22 @@ contested `missing-data.Rmd` to lane 3. Fixed only defects with a single defensi
 | Cut the withdrawn-API section, keep a short note | Keep it marked "withdrawn"; or cut with no note | Shinichi's call. Cutting silently leaves a reader who sees `"profile"` still in the function's own choices vector with no explanation |
 | Add `method = "fisher-z"` | Rewrite the prose as point-only | Shinichi's call: fix-forward. Fisher-z is genuinely available here, and the existing text already frames the bounds honestly as nominal |
 | Static guard test | A CI job building articles on PRs | Standing local-checks-over-Actions rule. A static resolve-check runs in seconds; a site build is a new billable matrix job |
-| Left findings 4 and 5 unfixed | Fix for completeness | Runtime claims. `extract_communality()` *does* accept `method = "profile"` and does not abort (`R/extractors.R:207,214`) — unlike `extract_correlations()` — so the article may be right. Verifying needs a fit |
+| Left findings 4 and 5 unfixed | Fix for completeness | Runtime claims; verifying needed a fit. 🔴 **The stated justification was WRONG** — see the correction below |
 | Fixed `R/diagnose.R:1081` **after** flagging it | Fix it silently while in the area; or leave it | Printed output is a reader surface, but a message change is behaviour, not documentation — so it was surfaced as a decision rather than absorbed. Shinichi ruled it in, and it then shipped with its own guard test |
 | CLAUDE.md rewritten to 0.6.0, historical references left | Replace every `0.5.0` string | The branch name `claude/release-0.5.0` and the `1.0.0 → 0.5.0` correction in PR #748 are accurate *history*. Only the forward-looking claims were wrong |
+
+> 🔴 **Correction, 2026-07-29.** The row above originally justified deferring findings 4 and 5
+> with: *"`extract_communality()` does accept `method = \"profile\"` and does not abort
+> (`R/extractors.R:207,214`) — unlike `extract_correlations()`."* **That is false.**
+> `extract_communality()` aborts on `method = "profile"` at **`R/extractors.R:268`**, with the
+> same `gllvmTMB_nonlinear_profile_withdrawn` class as `extract_correlations()`. I read the
+> formals at `:207` and the class check at `:214`/`:219`, saw no profile abort, and stopped —
+> the abort is ~50 lines further down. Confirmed by running a real single-trial binary JSDM fit
+> on 2026-07-29: `method = "profile"` errors, it does not return `NA`.
+>
+> The decision to defer was still right (both findings genuinely needed a fit), but the reason
+> given for it was not. Same failure as §9 item 4: read far enough to confirm the expected
+> answer, then stopped. Follow-up filed as issue #813.
 
 ## 4. Files Touched
 

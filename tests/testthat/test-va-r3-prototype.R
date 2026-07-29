@@ -56,6 +56,9 @@ test_that("R3 Gauss-Hermite rules are normalized and stable", {
 })
 
 test_that("R3 H=61 scalar expectation passes the frozen oracle grid", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   validated <- .va_r3_validate_data(
     y = 1L, n_trials = 3L, X = matrix(1, 1L, 1L),
     unit_id = 1L, trait_id = 1L, q = 1L
@@ -90,6 +93,9 @@ test_that("R3 H=61 scalar expectation passes the frozen oracle grid", {
 })
 
 test_that("R3 nbinom2 expected log-likelihood passes a direct integrate() oracle", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   ## Independent check of the template's nbinom2 branch. The oracle density
   ## uses base R's stats::dnbinom(mu = exp(eta), size = phi, log = TRUE) --
   ## algebraically identical to
@@ -148,6 +154,9 @@ test_that("R3 nbinom2 expected log-likelihood passes a direct integrate() oracle
 })
 
 test_that("R3 nbinom2 is mapped off (inert) for every other family", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   ## log_phi must not appear in obj$par -- and must not change the objective
   ## or gradient -- for a family that never uses it. This is the guard against
   ## the parameter-vector-cascade risk: adding log_phi to the template must
@@ -567,6 +576,9 @@ test_that("R3 family registry agrees with the validator and drives eval_method",
 })
 
 test_that("R3 JJ bound over-estimates the softplus expectation and is exact at zero variance", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   ## The Jaakkola-Jordan/PG bound is not a quadrature rule, so it must not be
   ## held to the oracle grid above. Its contract is an INEQUALITY: it bounds
   ## E[softplus(eta)] from ABOVE, which is what makes the ELBO -- which
@@ -633,6 +645,9 @@ test_that("R3 variational Cholesky unpack matches TMB column-major packing", {
 })
 
 test_that("R3 q>1 projected variances and KL match direct matrix algebra", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   N <- 2L; T <- 3L; q <- 2L
   X <- model.matrix(~ 0 + factor(rep(seq_len(T), N), levels = seq_len(T)))
   validated <- .va_r3_validate_data(
@@ -666,6 +681,9 @@ test_that("R3 q>1 projected variances and KL match direct matrix algebra", {
 })
 
 test_that("R3 scalar ELBO, KL sign, and autodiff match independent calculations", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   validated <- .va_r3_validate_data(
     y = 3L, n_trials = 8L, X = matrix(1, 1L, 1L),
     unit_id = 1L, trait_id = 1L, q = 1L
@@ -707,6 +725,9 @@ test_that("R3 scalar ELBO, KL sign, and autodiff match independent calculations"
 })
 
 test_that("R3 small-variance branch is value- and derivative-continuous", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   validated <- .va_r3_validate_data(
     y = 1L, n_trials = 3L, X = matrix(1, 1L, 1L),
     unit_id = 1L, trait_id = 1L, q = 1L
@@ -793,6 +814,9 @@ test_that("R3 Gaussian variational posterior equals the analytic posterior", {
 })
 
 test_that("R3 Gaussian variational gradients match analytic matrix derivatives", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   z <- .va_r3_gaussian_fixture()
   validated <- .va_r3_validate_data(
     z$y, rep(1L, length(z$y)), z$X, z$unit, z$trait, z$q,

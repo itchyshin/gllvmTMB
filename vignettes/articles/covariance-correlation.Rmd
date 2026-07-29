@@ -193,6 +193,10 @@ The long-format formulas are:
 ```{r formulas-long}
 covex$edge_cases$latent_only$formula_long
 
+# The stored formula printed above spells the switch as `residual = FALSE`,
+# which is the soft-deprecated alias. `unique = FALSE` is the current spelling
+# and is what the explicit forms below use.
+#
 # Model A is loadings-only (Psi switched off); Model B is the ordinary default
 # (latent() carries the per-trait Psi). Written explicitly so the contrast is
 # unambiguous under the 0.2.0 grammar where latent() carries Psi by default.
@@ -328,7 +332,8 @@ sigma_rows_B
 `part = "total"` is the default and is what you almost always want for
 reporting. `"shared"` is useful if you specifically want the latent-implied
 component (e.g. for ordination interpretation or communality). `"unique"`
-gives the diagonal of $\boldsymbol\Psi$ as a named numeric vector.
+returns the diagonal of $\boldsymbol\Psi$ in its `s` component, as a named
+numeric vector (`part = "psi"` is an alias for the same thing).
 
 The same table helper exposes the three decomposition parts without
 hand-indexing matrices:

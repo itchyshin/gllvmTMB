@@ -175,10 +175,13 @@ $$
 
 The logistic residual term is fixed by the binomial logit link, not estimated
 from the data. Ordinary `latent()` normally carries a diagonal
-$\boldsymbol\Psi_B$ companion, but the fit message explains why that default
-component is mapped off for these single-trial cells. Multi-trial binomial data
-or genuine repeated observations can identify additional variation; they are
-different designs and should not be inferred from this occurrence matrix.
+$\boldsymbol\Psi_B$ companion, and it is mapped off here under the
+family-specific identifiability gate: a single-trial binomial trait has one
+0/1 trial per (trait, site) cell, which cannot identify a per-trait diagonal
+on top of the fixed logistic residual. Multi-trial binomial data
+(`cbind(successes, failures)` or `weights = n_trials`) can identify that
+diagonal, and an explicit `indep()` term is a separate deliberate choice; both
+are different designs and should not be inferred from this occurrence matrix.
 
 ### Where loading constraints fit
 
@@ -355,15 +358,14 @@ The intervals are wide — eight species and 120 sites is modest
 information for a per-species variance share, and the upper bounds
 for the more strongly-loading species run close to 1.
 
-Two limitations apply to the ICC interval in this example:
+One limitation applies to the ICC interval in this example:
 
-* **Wald is not implemented** for communality (it is a non-linear
-  function of several parameters); requesting `method = "wald"`
-  emits a note and falls back to the bootstrap.
-* **Profile bounds are not yet delivered** for this proportion on a
-  single-trial binary fit — the constrained refit fails to bracket
-  and the interval returns `NA`. The point estimate is still the
-  correct latent-scale ICC; only the profile *interval* is missing.
+* **Profile bounds are not available.** The penalty-based
+  constrained-refit prototype has been withdrawn pending an exact
+  constraint solver and calibration evidence, so `method = "profile"`
+  raises an error rather than returning a bound. The default
+  `method = "wald"` and `method = "bootstrap"` both return intervals;
+  report which one you used, and read the caveat below.
 
 The point estimates are available, but interval coverage on binary and
 mixed-family scales has not been established. Report the point estimate and

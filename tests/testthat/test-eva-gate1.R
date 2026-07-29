@@ -12,6 +12,9 @@ test_that("Design 86 frozen Gate-1 fixture is readable and checksummed", {
 })
 
 test_that("Design 86 Bernoulli EVA template equals the independent scalar oracle", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   skip_if_not_installed("TMB")
   skip_if_not_installed("jsonlite")
   x <- .eva_fixture("bernoulli")
@@ -47,6 +50,9 @@ test_that("Design 86 Bernoulli EVA template equals the independent scalar oracle
 })
 
 test_that("Design 86 test-only Gaussian branch is Taylor exact", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   skip_if_not_installed("TMB")
   skip_if_not_installed("jsonlite")
   x <- .eva_fixture("gaussian")
@@ -55,6 +61,9 @@ test_that("Design 86 test-only Gaussian branch is Taylor exact", {
 })
 
 test_that("Design 86 autodiff and small-variance behaviour meet Gate 1", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   skip_if_not_installed("TMB")
   skip_if_not_installed("jsonlite")
   obj <- .eva_make_objective("bernoulli")
@@ -83,6 +92,9 @@ test_that("Design 86 autodiff and small-variance behaviour meet Gate 1", {
 })
 
 test_that("Design 86 AGHQ marginal probe is converged and intentionally unsigned", {
+  # VA/EVA development is paused; these are prototype gates. Do not make
+  # CRAN build a parked prototype's DLL. They still run under devtools::test().
+  skip_on_cran()
   skip_if_not_installed("jsonlite")
   x <- .eva_fixture("d3_marginal_probe")
   d3 <- .eva_read_gate1_parameters()$gate1$d3_marginal_probe

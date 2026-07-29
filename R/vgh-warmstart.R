@@ -239,7 +239,7 @@
   gaussian_sd <- 1
   if (identical(family_name, "gaussian")) {
     tid <- bump(tmb_data$trait_id)
-    resid <- as.numeric(tmb_data$y) - ave(as.numeric(tmb_data$y), tid)
+    resid <- as.numeric(tmb_data$y) - stats::ave(as.numeric(tmb_data$y), tid)
     gaussian_sd <- stats::sd(resid)
     if (!is.finite(gaussian_sd) || gaussian_sd <= 0) gaussian_sd <- 1
   }

@@ -78,5 +78,35 @@ gaussian at n ≤ 1000**. Options, in order of honesty:
    problem at every outer iteration; seeding it may be worthless or harmful. Seeding only
    `theta_rr_B` is a cheap, falsifiable variant.
 
+## Follow-up: option 3 was tested, and `z_B` seeding IS the harm
+
+Three arms on identical data — cold, warm with both seeded, warm with loadings only:
+
+| n | seed | cold | warm (both) | warm (θ only) | ratio both | ratio θ-only |
+|---|---|---|---|---|---|---|
+| 120 | 1 | 0.895 | 2.284 | 0.202 | 0.39× | **4.43×** |
+| 120 | 2 | 0.104 | 0.110 | 0.099 | 0.95× | 1.05× |
+| 400 | 1 | 0.202 | 0.199 | 0.201 | 1.02× | 1.00× |
+| 400 | 2 | 0.260 | 0.279 | 0.276 | 0.93× | 0.94× |
+| 1000 | 1 | 0.432 | 0.515 | 0.438 | 0.84× | 0.99× |
+| 1000 | 2 | 0.520 | 0.574 | 0.567 | 0.91× | 0.92× |
+
+Log-likelihood still agrees to 2.85e-13 – 6.34e-12 in the θ-only arm, so correctness is
+unaffected.
+
+**Seeding `z_B` is a defect, and the default is now loadings-only** (`R/fit-multi.R`;
+`control$vgh_warm_start_z = TRUE` restores it for re-measurement). The 2.5× slowdown was
+entirely attributable to it.
+
+**But θ-only still does not deliver the target.** Median ratio ≈ 0.99× — parity, not
+≥1.5×. The conclusion above is unchanged: VGH is re-deriving a start Laplace already had.
+
+**One cell worth a targeted follow-up, NOT a claim.** At n=120 seed 1 the *cold* fit took
+0.895 s where the same size at seed 2 took 0.104 s — an 8.6× spread at identical n. The
+warm start avoided whatever that was (0.202 s). That hints the real value may be
+**robustness against a bad cold start** rather than raw speed — which is the Phase 3
+degenerate-fit-screen use case, not Phase 2's. One cell is an anecdote; it justifies a
+seed-stratified test, nothing more.
+
 What must **not** happen is quoting the Phase 1 internal speedups as though they were this
 number. They measure different things, and this is the one that matters to a user.

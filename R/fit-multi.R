@@ -4099,13 +4099,26 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       .vgh_build_warm_start(tmb_data, vgh_fam, verbose = isTRUE(control$verbose))
     }
     if (!is.null(vgh_start)) {
+      ## z_B is a RANDOM effect: TMB re-solves it in the inner Laplace problem at
+      ## every outer iteration. Seeding it is MEASURABLY HARMFUL -- on a gaussian
+      ## n=120 fixture the end-to-end ratio was 0.39x with z_B seeded and 4.43x
+      ## without, on identical data (dev/vgh/e2e-warmstart-sweep.R). So the
+      ## default is loadings-only; control$vgh_warm_start_z = TRUE restores the
+      ## old behaviour for anyone who wants to re-measure it.
+      seed_z <- isTRUE(control$vgh_warm_start_z)
       tmb_params$theta_rr_B <- vgh_start$theta_rr
-      tmb_params$z_B <- vgh_start$z
+      if (seed_z) tmb_params$z_B <- vgh_start$z
       ## Never assume a start landed: shape-mismatched copies are skipped in
       ## SILENCE elsewhere in this file, and a speedup measured on a start that
       ## never landed is meaningless.
-      .vgh_assert_start_landed(tmb_params, vgh_start, "theta_rr_B", "z_B")
+      if (seed_z) {
+        .vgh_assert_start_landed(tmb_params, vgh_start, "theta_rr_B", "z_B")
+      } else if (!isTRUE(all.equal(as.numeric(tmb_params$theta_rr_B),
+                                   as.numeric(vgh_start$theta_rr)))) {
+        stop("VGH warm start did not land in `theta_rr_B`.", call. = FALSE)
+      }
       start_provenance$vgh_warm_start <- TRUE
+      start_provenance$vgh_warm_start_z <- seed_z
       start_provenance$vgh_seconds <- vgh_start$vgh_seconds
     } else {
       start_provenance$vgh_warm_start <- FALSE

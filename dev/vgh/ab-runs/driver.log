@@ -13,3 +13,15 @@
 === running arm A, N = 800 (timeout 1800s) ===
 [A-800] status=ok total=80.3s outer=4060 inner=0 obj=23196.6936602147
 === running arm B, N = 800 (timeout 1800s) ===
+[B-800] status=ok total=458.4s outer=60 inner=4000 obj=21761.7119571821
+=== running arm C, N = 800 (timeout 1800s) ===
+[C-800] status=ok total=588.8s outer=60 inner=4000 obj=23196.6936599235
+=== running arm A, N = 1600 (timeout 1800s) ===
+[A-1600] status=ok total=252.5s outer=8060 inner=0 obj=47850.2144900591
+=== running arm B, N = 1600 (timeout 1800s) ===
+[B-1600] status=ok total=425.1s outer=60 inner=8000 obj=44351.4525251456
+=== running arm C, N = 1600 (timeout 1800s) ===
+[C-1600] status=ok total=1073.8s outer=60 inner=8000 obj=47850.2144885936
+=== running arm A, N = 3200 (timeout 1800s) ===
+    arm A marked dead from N = 3200 onward (crash)
+=== running arm B, N = 3200 (timeout 1800s) ===

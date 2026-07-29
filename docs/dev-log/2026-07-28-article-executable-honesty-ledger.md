@@ -145,7 +145,15 @@ only defects with a single defensible answer were fixed; everything needing a co
 left open above. `missing-data.Rmd` is fenced out of this lane (lane 3 owns it) and was not
 audited here.
 
-**Adjacent, not changed (surgical-changes rule):** `R/diagnose.R:1081` emits a message
-recommending "residual starts", the same soft-deprecated form corrected in finding 13. Printed
-output is a reader surface under CLAUDE.md, so this is probably stale too — but it is a
-behaviour change outside this lane's documentation scope. Flagging, not fixing.
+**Adjacent — flagged, then fixed on Shinichi's instruction.** `R/diagnose.R:1081` emitted a
+non-convergence hint recommending "residual starts for non-Gaussian latent fits", the same
+soft-deprecated form corrected in finding 13. Printed output is a reader surface under
+CLAUDE.md. Initially left alone under the surgical-changes rule since it is a behaviour change
+rather than documentation; Shinichi ruled it in.
+
+Guarded by `tests/testthat/test-no-deprecated-recommendations.R`, which scans string literals
+across `R/` and asserts none *recommends* the residual start. Two deliberate exemptions: it
+reads literals from `parse()`, so code **comments** are excluded — necessary, because
+`R/fit-multi.R:3912` legitimately names the mechanism in a comment — and messages that mention
+the deprecation are allowed, since it is the recommendation that is the defect. Verified to fail
+on exactly one offender before the fix and pass after.

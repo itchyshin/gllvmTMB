@@ -47,23 +47,32 @@ contested `missing-data.Rmd` to lane 3. Fixed only defects with a single defensi
 | Add `method = "fisher-z"` | Rewrite the prose as point-only | Shinichi's call: fix-forward. Fisher-z is genuinely available here, and the existing text already frames the bounds honestly as nominal |
 | Static guard test | A CI job building articles on PRs | Standing local-checks-over-Actions rule. A static resolve-check runs in seconds; a site build is a new billable matrix job |
 | Left findings 4 and 5 unfixed | Fix for completeness | Runtime claims. `extract_communality()` *does* accept `method = "profile"` and does not abort (`R/extractors.R:207,214`) — unlike `extract_correlations()` — so the article may be right. Verifying needs a fit |
-| Flagged `R/diagnose.R:1081`, did not change it | Fix while in the area | Printed output is a reader surface, but this is a behaviour change outside a documentation lane |
+| Fixed `R/diagnose.R:1081` **after** flagging it | Fix it silently while in the area; or leave it | Printed output is a reader surface, but a message change is behaviour, not documentation — so it was surfaced as a decision rather than absorbed. Shinichi ruled it in, and it then shipped with its own guard test |
+| CLAUDE.md rewritten to 0.6.0, historical references left | Replace every `0.5.0` string | The branch name `claude/release-0.5.0` and the `1.0.0 → 0.5.0` correction in PR #748 are accurate *history*. Only the forward-looking claims were wrong |
 
 ## 4. Files Touched
 
-`vignettes/articles/joint-sdm.Rmd`, `vignettes/articles/covariance-correlation.Rmd`,
-`vignettes/articles/convergence-start-values.Rmd`,
-`tests/testthat/test-article-prescribed-calls.R` (new), `docs/dev-log/` ×3, and the lane-3
-starter. No fenced file touched. Never `git add -A`.
+Articles: `joint-sdm.Rmd`, `covariance-correlation.Rmd`, `convergence-start-values.Rmd`.
+Code: `R/diagnose.R` (one hint string). Project doc: `CLAUDE.md`.
+Tests (new): `test-article-prescribed-calls.R`, `test-no-deprecated-recommendations.R`.
+Records: the verification-gap note, the ledger, this report, and the lane-3 starter.
+
+No fenced file touched — in particular `NEWS.md`, `R/gllvmTMB.R`, `R/fit-multi.R`, and
+`R/profile-ci.R` were read but never edited. `missing-data.Rmd` untouched (lane 3). Never
+`git add -A`.
 
 ## 5. Checks Run
 
 * `devtools::test(filter = "article-prescribed-calls")` → **2 passed, 0 failed**, against 0.6.0
   source via `load_all`, after the fixes.
+* `devtools::test(filter = "no-deprecated-recommendations")` → **1 passed** after the
+  `R/diagnose.R` fix; verified failing on exactly one offender before it.
+* `devtools::test(filter = "diagnose")` → **10 passed**, covering the edited file.
+* Full `devtools::test()` — see §5a.
 * Chunk-fence balance in the edited article: 22 (even).
 * `tools/lane_preflight.sh .` at lane open.
 
-**NOT run:** full `devtools::test()`; `rcmdcheck`; any article knit; any model fit. The fixes are
+**NOT run:** `rcmdcheck`; any article knit; any model fit. The fixes are
 verified by source reading and the static guard, **not** by a build.
 
 ## 6. Tests of the Tests
@@ -125,10 +134,18 @@ in that starter was factually wrong in the opposite direction from what it claim
 
 ## 10. Known Residuals
 
-8 findings open. `CLAUDE.md` is stale — it says `DESCRIPTION`/`NEWS` "still read 0.5.0";
-`DESCRIPTION` reads **0.6.0**. Unowned by any lane. `R/diagnose.R:1081` recommends the same
-soft-deprecated residual start in printed output; flagged, not fixed. Nothing merged; no PR
-opened.
+8 article findings remain open (see the ledger) — each needs either a fit or a content
+judgement, and none was guessed at.
+
+Closed after this report's first draft, on Shinichi's instruction:
+
+* **`CLAUDE.md` corrected to 0.6.0.** It claimed the first CRAN release is `0.5.0` and that
+  `DESCRIPTION`/`NEWS` "still read 0.5.0". Both files already read **0.6.0** (verified). D-42
+  established the "first release is a 0.x" principle and named 0.5.0; the *number* was
+  superseded by the 0.6 strategy (issue #772). Historical references — the
+  `claude/release-0.5.0` branch name, the `1.0.0 → 0.5.0` correction in PR #748 — were left
+  alone as accurate history.
+* **`R/diagnose.R:1081` fixed**, with a guard test. Printed output is a reader surface.
 
 ## 11. Team Learning
 

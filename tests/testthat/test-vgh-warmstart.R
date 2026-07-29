@@ -86,6 +86,40 @@ test_that("a Lambda-only rotation moves eta -- the control that proves the rest"
   expect_gt(max(abs(eta_bad - eta_true)), 1e-6)
 })
 
+test_that("the transform handles a REAL vgh_fit, not just a fixture", {
+  ## A synthetic Lambda/amean pair proves the linear algebra. Only a live fit
+  ## proves the transform matches VGH's actual return contract and the numeric
+  ## ranges it produces.
+  set.seed(11L)
+  n <- 60L; n_traits <- 5L; rank <- 2L
+
+  lambda_true <- matrix(stats::rnorm(n_traits * rank, 0, 0.7), n_traits, rank)
+  u <- matrix(stats::rnorm(n * rank), n, rank)
+  beta <- stats::rnorm(n_traits, 0, 0.4)
+  eta <- matrix(beta, n, n_traits, byrow = TRUE) + u %*% t(lambda_true)
+  y <- eta + matrix(stats::rnorm(n * n_traits, 0, 0.5), n, n_traits)
+
+  fit <- .vgh_fit(
+    y = as.numeric(t(y)),
+    n_trials = rep(1L, n * n_traits),
+    X = matrix(1, n * n_traits, 1),
+    unit_id = rep(seq_len(n), each = n_traits),
+    trait_id = rep(seq_len(n_traits), times = n),
+    N = n, T = n_traits, q = rank,
+    family = "gaussian_anchor", link = "identity",
+    gaussian_sd = 0.5, maxit = 60L
+  )
+  expect_s3_class(fit, "vgh_fit")
+
+  st <- .vgh_to_laplace_start(fit)
+
+  expect_equal(tcrossprod(t(st$z), st$loadings),
+               tcrossprod(fit$amean, fit$Lambda),
+               tolerance = 1e-12)
+  expect_length(st$theta_rr, n_traits * rank - rank * (rank - 1L) / 2L)
+  expect_identical(dim(st$z), c(rank, n))
+})
+
 test_that("a silently-skipped warm start is detected", {
   fit <- .vgh_ws_fixture()
   st <- .vgh_to_laplace_start(fit)

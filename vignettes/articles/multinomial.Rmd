@@ -231,9 +231,13 @@ easiest to interpret.
 
 ## Current scope boundary
 
-The fixed-effect route demonstrated above is **validated**. Two later
-extensions are deliberately **partial**, not universal categorical covariance
-support:
+The fixed-effect route demonstrated above is **validated for point recovery**:
+the per-category intercepts and slopes are recovered with no detectable bias
+(|bias| $\le$ 0.02 per coefficient across a 500-seed calibration), and the
+package's tests assert aggregate recovery at $K = 3$ and $K = 4$ rather than
+leaning on any single fit. Note what that does *not* cover — it is a statement
+about the estimates, not about their intervals. Two later extensions are
+deliberately **partial**, not universal categorical covariance support:
 
 - The phylogenetic route admits one `phylo_latent()` term and reports the standalone
   \((K-1) \times (K-1)\) among-category phylogenetic covariance \(V\) described
@@ -259,7 +263,7 @@ coverage.
 ### The phylogenetic route: a standalone among-category table
 
 The standalone \((K-1) \times (K-1)\) table is most natural in a *phylogenetic*
-setting, and gllvmTMB now reports it there (design 84), following the phylogenetic
+setting, and gllvmTMB now reports it there, following the phylogenetic
 multinomial GLMM of Mizuno, Drobniak, Williams, Lagisz & Nakagawa (2025, *Journal
 of Evolutionary Biology*, doi:10.1093/jeb/voaf116). A `phylo_latent()` factor on
 the \(K-1\) category contrasts estimates the among-category covariance \(V\) — how

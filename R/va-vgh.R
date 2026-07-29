@@ -585,10 +585,20 @@
     prev <- e
   }
 
+  ## `prev` holds the ELBO from the PREVIOUS sweep, not this one: the
+  ## convergence test above breaks BEFORE `prev <- e` runs, so on a converged
+  ## fit -- the normal path -- `prev` is stale by one iteration relative to the
+  ## Beta/Lambda/Svec/amean actually being returned. (When maxit is exhausted
+  ## instead, the trailing `prev <- e` happens to make them agree, which is why
+  ## this hid.) `e` is elbo_at() evaluated at exactly the returned tuple and is
+  ## already computed, so reporting it is correct and costs nothing extra.
+  ## `e` is undefined only when maxit < 1 and no sweep ever ran.
+  elbo_out <- if (exists("e", inherits = FALSE)) e else prev
+
   structure(list(
     Beta = Beta, Lambda = Lambda, phi = phi,
     amean = state$amean, Svec = cur$Svec,
-    elbo = prev, elbo_path = path,
+    elbo = elbo_out, elbo_path = path,
     outer = outer, sweeps = sweeps, accelerations = accel_used,
     converged = (outer < maxit),
     family = v$family_name, link = v$link, q = v$q, Q = rule$order,

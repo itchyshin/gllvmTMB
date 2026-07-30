@@ -47040,6 +47040,12 @@ acted on either inside your files.
    > nothing (max 2.21), but that is a spot check. **If you need a gaussian
    > degeneracy claim, the psi boundary is where to look, not the loading
    > magnitude.**
+   >
+   > **📄 Full brief, easier to find than this file:**
+   > `docs/dev-log/handover/2026-07-30-to-la-aghq-ridge-lane-gaussian-findings.md`
+   > — same findings, plus the psi-boundary experiment spelled out and two cheap
+   > questions back to your lane (was the binomial gating deliberate or
+   > incidental; does `aghq_ridge` have any gaussian coverage).
 
 2. **Both *research* degeneracy metrics false-positive at small true `Lambda`.**
    `atten_F` flagged 8/36 and `rel_frob` 1/36 — but the flagged fits carry

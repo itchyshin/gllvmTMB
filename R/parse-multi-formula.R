@@ -21,6 +21,9 @@
 #'     `group` (the RHS of the bar — site or site_species or species or
 #'     a generic grouping factor), and `extra` (term-specific arguments
 #'     such as `d` for `rr`).}
+#'   \item{offset_expr}{The inner expression of a top-level `offset(...)`
+#'     term, or `NULL`. Kept out of `fixed` because an offset carries no
+#'     coefficient and `model.matrix()` would drop it.}
 #' }
 #'
 #' @keywords internal
@@ -42,6 +45,10 @@ parse_multi_formula <- function(formula) {
   ## one, bare predictor, additive) downstream.
   mi_vars <- character(0)
   mi_calls <- list()
+  ## The inner expression of a top-level `offset(...)` term, or NULL. Held
+  ## separately from fixed_terms because an offset carries no coefficient and
+  ## must never reach model.matrix().
+  offset_expr <- NULL
 
   walk <- function(e, sign = 1L) {
     if (is.call(e)) {
@@ -109,30 +116,51 @@ parse_multi_formula <- function(formula) {
         fixed_terms[[length(fixed_terms) + 1L]] <<- list(expr = e, sign = sign)
         return(invisible())
       }
+      ## offset(): a KNOWN per-row addition to the linear predictor, carrying
+      ## no coefficient. It must NOT reach fixed_terms -- model.matrix() treats
+      ## offsets specially and drops them, which is exactly how a varying
+      ## offset came to be silently ignored before #807. Capture the inner
+      ## expression here and let the fit evaluate it against the data.
+      if (fn == "offset") {
+        if (length(e) != 2L)
+          cli::cli_abort(c(
+            "{.fn offset} takes one expression in a long-format formula.",
+            "x" = "Got {.code {deparse(e)}}.",
+            "i" = "The per-trait form {.code offset(e1, e2, ...)} is wide-format only; in long format each row already names its trait, so one column carries the whole offset."
+          ))
+        if (!is.null(offset_expr))
+          cli::cli_abort(c(
+            "At most one {.fn offset} term is allowed.",
+            "x" = "Found {.code {deparse(offset_expr)}} and {.code {deparse(e[[2L]])}}.",
+            ">" = "Combine them into a single column."
+          ))
+        if (sign < 0)
+          cli::cli_abort(c(
+            "A subtracted {.fn offset} term is not supported.",
+            "i" = "Negate the column itself, e.g. {.code offset(-log_effort)}."
+          ))
+        offset_expr <<- e[[2L]]
+        return(invisible())
+      }
     }
-    ## offset(): NOT supported, and must fail loud rather than pass through.
-    ## An offset() term otherwise reaches fixed_terms and is then dropped by
-    ## model.matrix() (R treats offsets specially), so the fit silently used a
-    ## different model from the one written -- with a *varying* offset the logLik
-    ## was identical with and without it, to the last digit.
+    ## An offset() that is not a bare additive term -- e.g. `(0 + trait):
+    ## offset(w)` or `I(offset(w))`. The supported shape is a top-level
+    ## additive `offset(...)`, handled above. Anything else would be dropped by
+    ## model.matrix() and silently ignored -- the exact failure #807 fixed --
+    ## so it must fail loud. The check is on the whole term, not just its head,
+    ## because the traits() expander rewrites ordinary predictors to
+    ## `(0 + trait):x`; that is why the head-only version of this guard caught
+    ## long format and missed wide.
     ##
-    ## The check is on the whole term, not just its head, because the traits()
-    ## expander rewrites an ordinary predictor to `(0 + trait):x`, so a wide
-    ## `offset(offv)` arrives here as `(0 + trait):offset(offv)`.
-    ##
-    ## The lv sub-formula has rejected offsets since R/lv-predictor.R:156; this
-    ## applies the same rule to the fixed-effect formula. walk() returns early on
-    ## covstruct calls, so `lv = ~ offset(x)` never reaches here and keeps its
-    ## own, more specific message.
+    ## walk() returns early on covstruct calls, so `lv = ~ offset(x)` never
+    ## reaches here and keeps its own, more specific message
+    ## (R/lv-predictor.R:156).
     if ("offset" %in% all.names(e, functions = TRUE)) {
       cli::cli_abort(c(
-        "{.fn offset} terms are not supported in {.fn gllvmTMB} formulas.",
-        "i" = paste(
-          "Offsets are not wired into the likelihood. Accepting one would drop",
-          "it from the design matrix and fit a different model than the one",
-          "written."
-        ),
-        ">" = "Remove the {.fn offset} term from the formula."
+        "{.fn offset} must be its own additive term.",
+        "x" = "Found {.fn offset} inside {.code {deparse(e)}}.",
+        "i" = "An offset enters the linear predictor directly and is shared across traits, so it is not interacted with {.code trait}.",
+        ">" = "Write it as a separate term, e.g. {.code ... + offset(log_effort)}."
       ))
     }
     ## Record any nested mi() calls (e.g. mi(x):z) so the validator can count
@@ -177,7 +205,8 @@ parse_multi_formula <- function(formula) {
     covstructs = covstructs,
     mi_vars = mi_vars,
     mi_calls = mi_calls,
-    mi_rhs = mi_rhs
+    mi_rhs = mi_rhs,
+    offset_expr = offset_expr
   )
 }
 

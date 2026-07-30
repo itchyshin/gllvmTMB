@@ -326,6 +326,20 @@ Type objective_function<Type>::operator()()
   // and unused.
   DATA_IVECTOR(link_id_vec);
 
+  // offset_vec is length n_obs: a KNOWN per-row addition to the linear
+  // predictor, contributing no parameter. On the log link this is the usual
+  // exposure/effort idiom, eta = log(effort) + X b, i.e. a multiplicative
+  // rate adjustment. Zeros when the user supplied no offset(), so a fit
+  // without one is unchanged.
+  //
+  // The R side gates this to count families (fids 2, 5, 10, 11, 15) and
+  // rejects a NONZERO entry on any other row, so the template applies it
+  // unconditionally: a permitted row carries the offset, a non-count row
+  // carries an exact zero. Gating here as well would silently discard a
+  // value the R side had already accepted, which is the failure mode
+  // (#807) this feature exists to avoid repeating.
+  DATA_VECTOR(offset_vec);
+
   // ordinal_probit (fid 14): per-trait cutpoint metadata.
   // n_ordinal_cuts_per_trait(t)  = K_t - 2, the number of FREE cutpoints
   //                               for trait t (0 for non-ordinal traits).
@@ -778,7 +792,7 @@ Type objective_function<Type>::operator()()
   // -------- Fixed-effects part of the linear predictor ------------------
   vector<Type> eta_fix = X_fix * b_fix;
   vector<Type> eta(y.size());
-  for (int o = 0; o < y.size(); o++) eta(o) = eta_fix(o);
+  for (int o = 0; o < y.size(); o++) eta(o) = eta_fix(o) + offset_vec(o);
 
   // -------- Missing-PREDICTOR block (Phase 2a, mi_family == 0) ----------
   // Direct analogue of drmTMB src/drmTMB.cpp mi_family == 0, with the design

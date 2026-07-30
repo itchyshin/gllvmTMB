@@ -640,6 +640,20 @@ gll_validate_single_impute_formula <- function(impute, variable) {
       "Nested {.fn mi} terms inside {.arg impute} formulas are not implemented."
     )
   }
+  ## The covariate model has its own design matrix and no offset plumbing, so
+  ## an offset() here reached model.matrix() and failed with the raw base-R
+  ## "undefined columns selected" -- an error that names nothing about offsets
+  ## or impute formulas, and reads like a data problem. Diagnose it instead.
+  ## Response-model offsets ARE supported for count families (#833); this
+  ## surface is separate and is not part of that.
+  if ("offset" %in% all.names(formula[[3L]], functions = TRUE)) {
+    cli::cli_abort(c(
+      "{.fn offset} terms inside {.arg impute} formulas are not supported.",
+      "i" = "The imputation model for {.val {variable}} builds its own design matrix, which has no offset term wired into it.",
+      "i" = "An {.fn offset} in the main response formula is supported for count families.",
+      ">" = "Remove the {.fn offset} from the {.arg impute} formula, or fold it into the predictor it adjusts."
+    ))
+  }
   ## Phase 3: pull at most ONE phylogenetic structured-intercept marker
   ## `phylo(1 | species, tree =)` off the RHS FIRST. It declares the SPECIES
   ## level x lives at (reused as the Phase-2c group key for the broadcast) AND a

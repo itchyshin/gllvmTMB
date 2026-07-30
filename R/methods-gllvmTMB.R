@@ -1327,10 +1327,14 @@ simulate.gllvmTMB_multi <- function(
 #' @keywords internal
 #' @noRd
 .simulate_eta_unconditional <- function(fit) {
-  ## Fixed-effects part: eta_fix = X b_fix
+  ## Fixed-effects part: eta_fix = X b_fix, plus the known offset. The offset
+  ## is stored row-aligned with X_fix, so it needs no re-evaluation here.
+  ## Omitting it would redraw responses from a predictor the fit never used --
+  ## silently wrong rather than an error, and it would propagate into
+  ## bootstrap_Sigma() and coverage_study(), which both redraw through here.
   X <- fit$tmb_data$X_fix
   b_fix <- .gllvmTMB_b_fix_values(fit)
-  eta <- as.numeric(X %*% b_fix)
+  eta <- as.numeric(X %*% b_fix) + .gllvmTMB_offset_vec(fit)
 
   trait_id <- fit$tmb_data$trait_id + 1L # 1-indexed
   n_traits <- fit$tmb_data$n_traits
@@ -1644,7 +1648,11 @@ predict.gllvmTMB_multi <- function(
     )
 
     X_new <- stats::model.matrix(object$formula, nd)
-    eta <- .gllvmTMB_predict_fixed_eta(object, X_new)
+    ## `object$formula` is the offset-free fixed formula (the offset is held
+    ## out of it so model.matrix cannot drop it), so the offset for the new
+    ## rows is re-evaluated separately against `nd`.
+    eta <- .gllvmTMB_predict_fixed_eta(object, X_new) +
+      .gllvmTMB_offset_newdata(object, nd)
 
     ## Random-effect contributions for KNOWN sites / species ----------------
     re_zero <- inherits(re_form, "formula") && identical(deparse(re_form), "~0")

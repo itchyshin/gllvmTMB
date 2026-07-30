@@ -291,11 +291,95 @@ is_traits_lhs <- function(formula) {
     if (identical(fn, "mi")) {
       return(expr)
     }
+    ## offset(): a known addition to the linear predictor, not a predictor with
+    ## a coefficient, so it must NOT be trait-interacted. Passing it through
+    ## verbatim leaves `offset(w)` as a unit-level column that the wide -> long
+    ## pivot replicates across traits -- the recycled form. The per-trait form
+    ## `offset(e1, e2, ...)` has already been collapsed to a single synthetic
+    ## column by .traits_offset_rewrite() before this runs.
+    if (identical(fn, "offset")) {
+      return(expr)
+    }
   }
   if (.traits_contains_symbol(expr, "trait")) {
     return(expr)
   }
   call(":", .traits_trait_term(), expr)
+}
+
+## ---- Internal: collapse a per-trait wide offset(e1, e2, ...) ------------
+##
+## Wide `offset(w)` names ONE unit-level column, which the wide -> long pivot
+## replicates across traits: the recycled form, and the right answer for a fit
+## whose traits are all counts.
+##
+## Wide `offset(e1, e2, ...)` names one column per trait, in `traits()` order.
+## It is collapsed here into a single synthetic `.offset_wide_` column stacked
+## ROW-MAJOR -- traits varying within source row, the same order
+## `tidyr::pivot_longer()` uses for the responses -- so it aligns cell for cell
+## with `.y_wide_`. Getting that order wrong would attach each trait's offset
+## to the wrong rows, which is silent rather than fatal, so the alignment is
+## asserted by the wide/long agreement test rather than left to inspection.
+##
+## Returns `list(rhs = <RHS, offset term rewritten>, values = <n_unit x
+## n_trait matrix, or NULL when there is nothing to collapse>)`.
+.traits_offset_rewrite <- function(rhs, data, trait_cols, eval_env) {
+  found <- NULL
+  subst <- function(e) {
+    if (!is.call(e)) return(e)
+    fn <- .traits_call_name(e)
+    ## Descend only through additive structure and parentheses; an offset()
+    ## anywhere else is not a supported shape and is caught downstream by the
+    ## parser's "must be its own additive term" guard.
+    if (!is.null(fn) && fn %in% c("+", "-", "(")) {
+      for (i in seq_along(e)[-1L]) e[[i]] <- subst(e[[i]])
+      return(e)
+    }
+    if (identical(fn, "offset") && length(e) > 2L) {
+      if (!is.null(found))
+        cli::cli_abort("At most one {.fn offset} term is allowed.")
+      found <<- as.list(e)[-1L]
+      return(call("offset", as.name(".offset_wide_")))
+    }
+    e
+  }
+  rhs <- subst(rhs)
+  if (is.null(found)) return(list(rhs = rhs, values = NULL))
+
+  if (length(found) != length(trait_cols))
+    cli::cli_abort(c(
+      "{.fn offset} lists {length(found)} column{?s} but {.fn traits} lists {length(trait_cols)}.",
+      "i" = "The per-trait form gives one offset column per trait, in {.fn traits} order: {.val {trait_cols}}.",
+      ">" = "Use a single {.code offset(w)} to apply one column to every trait, or supply {length(trait_cols)} column{?s}."
+    ))
+  if (".offset_wide_" %in% names(data))
+    cli::cli_abort(c(
+      "{.fn offset} reserves the column name {.code .offset_wide_} for the per-trait form.",
+      "x" = "{.arg data} already has a column named {.code .offset_wide_}.",
+      "i" = "Rename that column before calling {.fn gllvmTMB}."
+    ))
+
+  cols <- lapply(found, function(a) {
+    v <- tryCatch(
+      eval(a, data, eval_env),
+      error = function(e) cli::cli_abort(c(
+        "{.fn offset} could not evaluate {.code {deparse(a)}}.",
+        "x" = conditionMessage(e)
+      ))
+    )
+    if (!is.numeric(v))
+      cli::cli_abort("{.fn offset}: {.code {deparse(a)}} is not numeric.")
+    if (length(v) == 1L) v <- rep(v, nrow(data))
+    if (length(v) != nrow(data))
+      cli::cli_abort(c(
+        "{.fn offset}: {.code {deparse(a)}} has length {length(v)}.",
+        "i" = "Each per-trait offset column must have one value per row of {.arg data} ({nrow(data)}), or be a single value."
+      ))
+    as.numeric(v)
+  })
+
+  list(rhs = rhs, values = matrix(unlist(cols), nrow = nrow(data),
+                                  ncol = length(trait_cols)))
 }
 
 .traits_expand_rhs_subtract <- function(expr) {
@@ -379,6 +463,14 @@ rewrite_traits_lhs <- function(
     ))
   }
 
+  ## Collapse a per-trait `offset(e1, e2, ...)` into one synthetic column now,
+  ## so its arity is checked against `traits()` before any pivoting happens and
+  ## a mismatch is reported against the formula the user wrote.
+  offset_rw <- .traits_offset_rewrite(
+    rhs = formula[[3L]], data = data, trait_cols = trait_cols,
+    eval_env = eval_env
+  )
+
   ## Number of NA (trait, row) cells in the wide response block.
   n_NA_in_traits <- sum(vapply(
     trait_cols,
@@ -445,6 +537,16 @@ rewrite_traits_lhs <- function(
     source_row <- source_row[!as.vector(t(is.na(as.matrix(data[trait_cols]))))]
   }
 
+  ## Stack the per-trait offset the same way, so it survives the NA-cell drop
+  ## in lockstep with the response.
+  if (!is.null(offset_rw$values)) {
+    off_long <- as.vector(t(offset_rw$values))
+    if (drop_na_cells) {
+      off_long <- off_long[!as.vector(t(is.na(as.matrix(data[trait_cols]))))]
+    }
+    data_long[[".offset_wide_"]] <- off_long
+  }
+
   if (n_NA_in_traits > 0L) {
     if (drop_na_cells) {
       cli::cli_inform(c(
@@ -464,7 +566,7 @@ rewrite_traits_lhs <- function(
   ## returns a `call` object; we wrap it via stats::as.formula() to obtain
   ## a proper "formula" class object (sdmTMB's downstream assertthat check
   ## requires class(formula) %in% c("formula", "list")).
-  rhs <- .traits_expand_rhs(formula[[3L]])
+  rhs <- .traits_expand_rhs(offset_rw$rhs)
   formula_long <- stats::as.formula(
     bquote(.y_wide_ ~ .(rhs), splice = TRUE),
     env = eval_env

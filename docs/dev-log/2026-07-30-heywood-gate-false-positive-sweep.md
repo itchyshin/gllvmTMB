@@ -273,6 +273,39 @@ ratio of **0.08** (masked); restricted to the binomial traits it is **48**
 (reported). Fixed here, with the first mixed-family test the row has ever had —
 `grep -rn "relative_loading" tests/` previously returned nothing at all.
 
+### 6.2 The stratified denominator, validated on real mixed-family fits
+
+§6.1 demonstrated the pooled-denominator defect on a hand-built fixture. This
+measures it on **180 real mixed-family fits** (3 binomial + 3 gaussian traits,
+`n` 60/100, `q = 2`, 30 seeds), sweeping the gaussian traits' loading scale —
+the axis the defect lives on. Both denominators are computed on the *same* fits,
+so nothing is confounded. Label: relative Frobenius error of the **binomial
+block** of `G` against its known truth. Script:
+`dev/heywood/mixed-family-validation.R`.
+
+**Detection of a degenerate binomial block at the shipped threshold of 25:**
+
+| gaussian loading scale | pooled (old) | stratified (shipped) |
+|---|---|---|
+| ×1 | 4/5 (0.800) | 3/5 (0.600) |
+| ×10 | 4/24 (**0.167**) | 22/24 (**0.917**) |
+| ×100 | 0/37 (**0.000**) | 22/37 (**0.595**) |
+
+**At a ×100 response scale the old behaviour detected nothing at all — 0 of 37.**
+The mechanism is direct: the median ratio of the stratified to the pooled
+`relative_loading` is 1.03 at scale ×1, 4.02 at ×10 and **30.24 at ×100**, so
+pooling was dividing the binomial ratio by up to thirty.
+
+**False positives: 0 at every scale, under both denominators.** The worst healthy
+stratified ratio observed was 7.95, against a threshold of 25.
+
+Two honest notes. At scale ×1 the stratified denominator detects 3/5 where
+pooled detects 4/5 — a one-fit difference on five fits, i.e. noise, and the
+regime where the two are expected to agree (their median ratio there is 1.03).
+And 59.5% at ×100 is a large improvement on 0% but is not high: the fits still
+missed are ones whose binomial block degenerates without a single-trait runaway,
+which a per-trait ratio cannot see by construction.
+
 ### What this does not do
 
 - **It does not catch every degenerate fit.** 54 of 1,465 remain unflagged, and

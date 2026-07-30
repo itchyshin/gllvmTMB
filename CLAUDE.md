@@ -3,9 +3,27 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 
-## Live Phase Snapshot — 2026-07-28
+## Live Phase Snapshot — 2026-07-30
 
-- **2026-07-28 (LATEST) — AGHQ ENGINE LANE: BUILT, OPT-IN, DEFAULT UNCHANGED.**
+- **2026-07-30 (LATEST) — HEYWOOD GATE MERGED (#838, `main` @ `a51ca881`); VGH
+  PLURALISM LANE OPEN.** `check_gllvmTMB()` now reports **both faces** of a Heywood
+  case: a runaway loading (`loading_runaway_thresh = 25`, plus a link-scale
+  `loading_absolute_thresh = 6` judged on the unit tiers only) and a unique variance
+  collapsed relative to its siblings (`psi_rel_thresh` 0.001 → **0.01**). The
+  denominator is now taken over the traits being screened, so a large-scale trait from
+  another family can no longer mask a binomial runaway. **`aghq_ridge` is announced in
+  NEWS** — a measured 47% → 0% runaway remedy that was previously undiscoverable.
+  Calibrated on ~12,400 fits across thirteen cells; `--as-cran` 0/0/1.
+  **This is a BEHAVIOUR CHANGE**: fits that previously passed will now warn.
+  **START HERE:** `docs/dev-log/handover/2026-07-30-claude-handover.md`, then the lane
+  map `docs/dev-log/handover/2026-07-25-active-lane-split.md`.
+  Open lane `claude/vgh-pluralism-20260730` (**unpushed**) carries the follow-on: VGH
+  has **0/148 degenerate fits where Laplace has 50/148, 49 of them silent**, so the
+  gate is a Laplace-specific patch for a pathology VA does not have. Slice 1 (a
+  matched-parameterisation accuracy run) is **half done** — binomial is already matched
+  because it carries no dispersion parameter; the gaussian arm remains.
+
+- **2026-07-28 — AGHQ ENGINE LANE: BUILT, OPT-IN, DEFAULT UNCHANGED.**
   Lane `claude/aghq-engine-20260728`, 20 commits, **not pushed, no PR**.
   **START HERE:** `docs/dev-log/handover/2026-07-28-claude-handover-aghq-engine.md`,
   then the lane map `docs/dev-log/handover/2026-07-25-active-lane-split.md`.

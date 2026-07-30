@@ -127,15 +127,39 @@ on its own, without `extreme_prevalence`.
 
 ## How to Resume
 
-Run the fix in a fresh lane off `main`:
+Create the lane. **The `cd` is load-bearing** — `git worktree add` run from `~` fails
+with `fatal: not a git repository` (this bit once already):
 
 ```
-git worktree add /private/tmp/gllvmtmb-heywood -b claude/heywood-gate-20260730 origin/main
+cd "/Users/z3437171/Dropbox/Github Local/gllvmTMB" && git worktree add /private/tmp/gllvmtmb-heywood -b claude/heywood-gate-20260730 origin/main
 ```
 
+Then start the session **inside the new worktree**, not from `~`:
+
 ```
-claude "Rehydrate from docs/dev-log/handover/2026-07-29-claude-handover-vgh-heywood-gate.md. Reproduce the check_gllvmTMB() PASS on a degenerate Bernoulli fit FIRST, then fix the R/diagnose.R:464 conjunction so a runaway relative_loading flags without extreme_prevalence. Then run the false-positive sweep across families/n/T/q on healthy fits before opening a PR — an absolute threshold will not transport."
+cd /private/tmp/gllvmtmb-heywood && claude "Rehydrate from docs/dev-log/handover/2026-07-29-claude-handover-vgh-heywood-gate.md. Reproduce the check_gllvmTMB() PASS on a degenerate Bernoulli fit FIRST, then fix the R/diagnose.R:464 conjunction so a runaway relative_loading flags without extreme_prevalence. Then run the false-positive sweep across families/n/T/q on healthy fits before opening a PR — an absolute threshold will not transport."
 ```
 
 Read PR #825's result doc for the evidence, and #826 for why no new public surface.
 Do **not** re-open VGH performance or screening work; both are closed by measurement.
+
+## Repo hygiene at handover (2026-07-30)
+
+All six VGH PRs are **merged**: #819 (Phase 1), #820 (Phase 2), #821 (stale ELBO),
+#825 (Phase 3), #826 (Phase 4 design), #827 (this handover). `main` at `84bb2c44`.
+
+Cleaned: every VGH worktree and branch removed — `claude/vgh-phase1-20260729`,
+`claude/vgh-variational-20260729`, `claude/vgh-phase2-20260730`,
+`claude/vgh-elbo-fix-20260729`, `claude/vgh-phase3-screen-20260729`,
+`claude/vgh-phase4-design-20260729`, `claude/handover-vgh-20260729`, and the
+`/private/tmp/gllvmtmb-vgh*` worktrees. Verified 0 remaining before deletion — each
+had no uncommitted changes and no unpushed commits.
+
+**Deliberately NOT touched: `CLAUDE.md`'s Live Phase Snapshot.** It is dated
+2026-07-25 and therefore stale, but it is a **multi-lane map**, not a single-arc
+pointer — it states "do not assume one active writer" and fences the Codex-owned
+lanes. Repointing it at the VGH arc would replace a lane warning with a single-lane
+claim and orphan the others; #828 merging from a different lane mid-session confirms
+that risk is live. Refreshing it is an adjudication across lanes this session did not
+own, so it is **Shinichi's call**, not an agent's. The same decision was taken by the
+preceding lane for the same reason.

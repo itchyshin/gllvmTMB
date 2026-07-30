@@ -47009,6 +47009,38 @@ acted on either inside your files.
    `dev/vgh/gaussian-degeneracy-reachability.{R,csv}`, write-up
    `docs/dev-log/2026-07-30-gaussian-has-no-degeneracy-tail.md`.
 
+   > **🔴 CORRECTION 2026-07-30, same day, after an adversarial pass — and the
+   > correction is MORE useful to your lane than what it replaces.** The comparison
+   > "2.77 against the shipped absolute threshold of 6" above is **invalid**, for a
+   > reason that is itself a fact about your gate: **`loading_absolute_thresh = 6`
+   > is binomial-gated and never evaluates on a gaussian fit.** It lives only in
+   > `.gllvmTMB_binomial_prevalence_loading_row()`, which returns `NULL` unless
+   > `family_id == 1L` rows exist (`R/diagnose.R:464-471`; gaussian is `0L`).
+   > Confirmed by running it: `check_gllvmTMB()` on a gaussian fit returns 13 rows
+   > and no such row. Its stated justification is also **logit-scale** — *"a
+   > binomial loading IS the trait's latent SD in link units"* (`:530-533`) — which
+   > has no identity-link analogue, so the constant is not scale-free there.
+   > Demonstrated: multiplying `Y` by 10 lifts every loading past 6 with no
+   > pathology and no new warning, and adversarial fits reached raw
+   > `max|Lambda_hat| = 32.64` on scale-heterogeneous and t2-contaminated data.
+   >
+   > **The conclusion survives on better, scale-free evidence:** in **59 of 59**
+   > gaussian fits, `max|Lambda_hat|` stayed **below that dataset's own largest
+   > trait SD** (max ratio 0.961). And the mechanism is now **derived, not
+   > inferred**: the gaussian marginal log-likelihood is **coercive in Lambda**
+   > (`log|Lambda Lambda' + diag(psi)| -> inf` while the quadratic term stays
+   > non-negative, so `ll -> -inf` as `||Lambda|| -> inf`; measured -592.8 -> -1352.3
+   > under `Lambda -> 1000*Lambda`, against a separated logistic going -6.27 -> 0).
+   > So `log|Sigma|` pins Lambda to the data's second moments.
+   >
+   > **One live gap that matters for your lane specifically:** the likelihood is
+   > **NOT** coercive in `psi`, and `psi_j -> 0` is the classic Heywood boundary.
+   > My search could not see it at all — all 36 fits used `unique = FALSE`, so
+   > there is no per-trait `psi` to collapse. A 9-fit `psi`-model spot check found
+   > nothing (max 2.21), but that is a spot check. **If you need a gaussian
+   > degeneracy claim, the psi boundary is where to look, not the loading
+   > magnitude.**
+
 2. **Both *research* degeneracy metrics false-positive at small true `Lambda`.**
    `atten_F` flagged 8/36 and `rel_frob` 1/36 — but the flagged fits carry
    *smaller* loadings than the unflagged (median `max|Lambda|` 0.83 vs 1.44),

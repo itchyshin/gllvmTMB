@@ -57,20 +57,45 @@ names as VGH's one unexploited use — *"a genuinely independent implementation 
 likelihood … a software test, not a statistical instrument."* A pure-R reimplementation
 reproduces the compiled C++ template's gaussian estimates to ~5e-05 relative.
 
-### One systematic detail, reported rather than smoothed over
+**That 5e-05 is the RESOLUTION of the check, not a measured discrepancy.** The objective is flat
+here: a relative `Σ_B` perturbation of 1.4e-05 costs only 2.1e-07 in log-likelihood — the size
+of the residual gap itself — so **a genuine template discrepancy below roughly 1e-05 to 5e-05
+relative would be invisible to this design.** The check is real but its sensitivity is bounded,
+and the scope is narrow: intercept-only, loadings-only, no ψ, no covariates, no missing data.
+Do not quote it as "the template is correct to 5e-05"; it is "this design could not have seen an
+error larger than that."
 
-The residual pooled gap is **negative in 24 of 24 cells** — never positive. By the test's own
-design the sign is diagnostic: negative means **VGH** reached the very slightly worse optimum,
-by 5e-08 to 8e-07 on a log-likelihood of order −3e+04 (relative ~3e-12).
+### One systematic detail — measured, after my first explanation of it was wrong
 
-That 24/24 consistency is systematic, not noise, so it deserves a named explanation rather
-than a shrug. The natural one is optimiser precision, and the asymmetry is built into the
-design: Laplace runs `nlminb` with analytic gradients **and 5 restarts**, while `vgh_fit()` is
-coordinate ascent stopping on a relative-ELBO tolerance of 1e-11 from a **single deterministic
-start** (its init is an eigendecomposition; the engine exposes no start argument, so it cannot
-be multi-started without editing it). A uniformly tiny shortfall in the less-polished optimiser
-is exactly the expected signature. **It is not evidence of a defect, and it is not evidence
-against it either** — distinguishing the two would need a multi-start VGH, which is deferred.
+The residual pooled gap is **negative in 24 of 24 cells**. My original reading was that VGH
+reached the slightly worse optimum, with the sign attributed to optimiser asymmetry, and I
+deferred settling it "pending a multi-start VGH". **An adversarial pass showed that was
+unnecessary and directionally wrong.**
+
+What it actually is: a **stopping-tolerance artifact**, and the direction is set by whichever
+tolerance is looser. `|d_ll_pooled|` measures **0.17–3.46×** (median 1.56×) VGH's own stopping
+threshold `1e-11·(|ELBO|+1)`, and monotone ascent halted one step short always lands *below*
+— so the sign is forced by the threshold, not by the engine. The decisive test takes seconds:
+**re-run the pooled arm at `tol = 1e-14` and the sign reverses in 24 of 24 cells** (VGH then
+sits *above* Laplace by ≤4.3e-07). Meanwhile Laplace's five restarts buy it at most **2.5e-07**
+over `n_init = 1` — the same order as the gap, so the restart asymmetry cannot manufacture a
+24/24 pattern either.
+
+**So the residual is the joint numerical floor of the two optimisers, and it is not a VGH ELBO
+or M-step bias.** If anything, once VGH is tightened it is *Laplace* that sits a hair short.
+
+Two further objections were also closed empirically rather than deferred:
+
+- **The collapse is not inherited from the shared init.** VGH's start is a deterministic
+  eigendecomposition of the residual covariance, which raised the possibility that agreement
+  came from the starting point rather than from reaching a common optimum. Run from **8 random
+  starts per cell** across all 12 n=200 seeds (`Beta ~ N(0,3)`, Λ scale `U(0.05,3)`, random
+  `amean`, `φ ~ U(0.2,5)`), the attained `exact_ll` spread is **7.3e-11 to 5.1e-10**, and no
+  random start ever beat the default by more than 3e-10.
+- **The pooled update is the exact constrained maximiser, not merely a fixed point of a
+  modified algorithm.** Setting `dELBO/dφ = 0` under `φ_1 = … = φ_T` gives
+  `φ = mean_ij[(Y−M)² + S2]`, which is literally `vgh_update_phi(..., pool = TRUE)`
+  (`dev/vgh/vgh-engine.R:344-348`). Had it not been, the collapse would have been a coincidence.
 
 ## Result B — the unpooled gap is what 19 parameters buy, distributionally
 
@@ -93,6 +118,29 @@ not merely the mean. This is the evidence the adversarial review said was missin
 five bench cells were single draws, and `sim()` there redrew `Lambda` and `beta` at every n, so
 they were five draws from five *different* truths.
 
+**This BOUNDS a residual advantage; it does not exclude one.** A second adversarial pass
+quantified the design's power, and the honest reading is weaker than "confirmed":
+
+- At 12 cells the **80%-power MDE is 2.74 log-likelihood units** (5.47 on the `2·d_ll` scale);
+  pooling all cells, 1.84. KS power against a `+3` shift in `2·d_ll` is only **0.32** at k=12.
+  So a genuine VGH advantage of up to ~29% of the measured 9.4 gap would pass unnoticed.
+- **χ²₂₀ also fits these data** (KS p = 0.256; t-test against its mean p = 0.194). So the
+  df = 19 rests on the **parameter-count argument**, not on this measurement — the data cannot
+  distinguish 19 from 20. The count itself is solid (`np_vgh_unpool − np_laplace = 19` in all 24
+  CSV rows, and `src/gllvmTMB.cpp:884-885` fixes the loading dof at 39 on both sides), and the
+  conclusion is unchanged at either df, but the measurement corroborates the *magnitude*, not
+  the df.
+- **The 24 cells carry only 12 truths.** `sim_cell()` seeds on `20260730 + 977*seed` with **no n
+  dependence** (`gaussian-collapse.R:69`), so each seed's Λ and `b0` are *identical* at n=200
+  and n=800; `cor(d_ll)` across n = 0.197. A design defect in my script. "0 of 24 cells" and the
+  pooled statistics therefore overstate independence.
+- One hole the original write-up did not address, now closed: **the unpooled arm really is at
+  its unconstrained maximum** — multi-start plus `tol = 1e-14` improves `ll_vgh_unpooled` by at
+  most 2.5e-07 across all 12 n=200 cells. So the mean's 0.34 shortfall from 19 is sampling
+  noise, not an optimiser deficit.
+
+**The n-trend corollary below, by contrast, is well powered and survives strongly.**
+
 ### A corollary that kills the apparent n-trend
 
 The bench's `d_ll` appeared to grow with n — 6.23, 6.67, 9.99, 11.96, 12.31. Under a nested
@@ -102,6 +150,13 @@ n = 800** — flat, and if anything very slightly lower at the larger n.
 
 **So the apparent growth was an artifact of redrawing the truth at every n**, exactly as
 suspected. Nothing should be read into it.
+
+**And here the shared-truths design defect flagged above turns into an advantage.** Because
+each seed's Λ and `b0` are identical at n=200 and n=800, the two blocks are **paired**, which is
+the more powerful comparison. Paired over the 12 shared truths: mean difference **−0.128**,
+p = 0.892, `sd(diff)` = 3.168, paired MDE 2.81 — and **power 0.962** against the bench's own
++3.76 growth from n=200 to n=800. So this design does not merely fail to detect the trend; it
+**excludes** it. Unlike the χ² comparison above, this corollary is well powered.
 
 ## Timing — recorded, but not a benchmark
 

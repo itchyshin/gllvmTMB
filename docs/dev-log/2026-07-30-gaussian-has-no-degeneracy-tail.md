@@ -31,22 +31,50 @@ data per parameter, an over-specified rank, and weak true signal.
 | weak-signal | 60 | 8 | 2→2 | 0.15 | 3.254 | 0.64 |
 | weak+overspec | 50 | 12 | 1→4 | 0.15 | 7.937 | 0.76 |
 
-**Max \|Λ̂\| across all 36 fits = 2.77.** The shipped absolute-loading criterion for a real
-runaway is **6** (`loading_absolute_thresh`, merged in #838). **Zero fits exceed it.** For
-contrast, the binomial Heywood arc measured loadings *"running to 24,057× typical"* and found
-Laplace degenerate in **50 of 148** paired fits (49 silently). Every fit here converged
-(`opt$convergence == 0`, 0 non-convergences).
+> **🔴 CORRECTED 2026-07-30 after adversarial review — the original headline was WITHDRAWN.**
+> It read: *"Max |Λ̂| across all 36 fits = 2.77. The shipped absolute-loading criterion for a
+> real runaway is 6 (`loading_absolute_thresh`, merged in #838). Zero fits exceed it."*
+> **Both halves were wrong.** The criterion is **binomial-gated** — it lives only inside
+> `.gllvmTMB_binomial_prevalence_loading_row()` and that row returns `NULL` unless
+> `family_id == 1L` rows exist (`R/diagnose.R:464-471`; gaussian is `0L`). Verified by running
+> it: `check_gllvmTMB()` on a gaussian fit returns 13 rows and **no** such row, so there is no
+> shipped absolute-loading criterion for gaussian to be "under". And the reviewer produced
+> **5 gaussian Laplace fits exceeding 6, max |Λ̂| = 32.64** — and reached **11.42 by nothing
+> but multiplying `Y` by 10**, with `check_gllvmTMB()` reporting no new warning. On an identity
+> link, "6" is not scale-free. The corrected, scale-free statement follows.
 
-The first regime is the direct analogue of the binomial cell that degenerates a third of the
-time. On gaussian it is the *healthiest* cell in the table.
+**The scale-free result.** Max \|Λ̂\| across all 36 fits = 2.77 — and in **every** fit the
+largest loading sat **below that dataset's own largest trait SD** (max ratio **0.906**, 0 of 36
+above 1). Across the reviewer's 23 additional adversarial fits, including deliberately
+scale-heterogeneous and t₂-contaminated data, the same bound held (max ratio **0.961**). **In
+59 of 59 gaussian fits, loadings track the data's own scale rather than escaping it.**
 
-**Mechanism, and it is a prediction rather than a measurement (AGENT-INFERRED).** The binomial
-runaway is driven by quasi-complete separation: the logistic link **saturates**, so the linear
-predictor can run toward ±∞ at essentially no likelihood cost, and the loadings inflate to
-carry it. The gaussian identity link **cannot saturate** — squared error penalises large η
-directly — so no such flat escape direction exists. If that is the mechanism, gaussian is
-*structurally* immune, not merely lucky in these six regimes. Worth an adversarial check
-before it is relied on.
+That is the honest comparator. The original "2.77 versus 6" said only that this simulation's
+trait SDs (max 3.053) happened to be below 6.
+
+For contrast, the binomial Heywood arc measured loadings *"running to 24,057× typical"* and
+found Laplace degenerate in **50 of 148** paired fits (49 silently). Every fit here converged
+(`opt$convergence == 0`, 0 non-convergences). The first regime is the direct analogue of the
+binomial cell that degenerates a third of the time; on gaussian it is the *healthiest* cell in
+the table.
+
+**Mechanism — now DERIVED, not inferred.** The original text guessed that "the identity link
+cannot saturate". The real and provable statement is stronger: the gaussian marginal
+log-likelihood is **coercive in Λ**. Since `log|ΛΛ' + diag(ψ)| → ∞` while the quadratic term
+stays non-negative, `ll → −∞` as `‖Λ‖ → ∞`, for *any* data. Measured under `Λ → cΛ`:
+**−592.8 (c=1) → −800.6 (c=10) → −1352.3 (c=1000)**. A separated logistic does the opposite:
+**−6.27 → −9.1e-04 → 0**.
+
+So Λ is **pinned to the data's second moments** by `log|Σ|`. That is simultaneously why the
+loading-to-trait-SD bound holds and why no absolute link-scale threshold can be meaningful
+here. Note the culprit is *not* an unbounded latent scale — gaussian has one of those too.
+
+**But the likelihood is NOT coercive in ψ**, and that is the live gap: `ψ_j → 0` is the classic
+Heywood boundary, and **this search could not see it at all**, because all 36 fits used
+`unique = FALSE` — `Σ = ΛΛ' + σ²I`, with no per-trait ψ (`gaussian-degeneracy-reachability.R:43`).
+A 9-fit ψ-model spot check (`latent(0 + trait | site, d = k)`, 3 configs × 3 seeds including
+n=25/T=12/d 1→4) also found no runaway, max \|Λ̂\| = **2.21**, all converged — but 9 fits is a
+spot check, not coverage.
 
 ## Result 2 — both research degeneracy metrics FALSE-POSITIVE at small true Λ
 
@@ -118,16 +146,25 @@ gaussian*. Build it where the bound is loose and the tail is real — binomial a
 
 ## Limits of this result
 
-- **Six regimes, six seeds each.** Absence of a runaway in 36 fits is not proof of structural
-  immunity; it is a strong reachability failure. The mechanism in Result 1 is **AGENT-INFERRED**
-  and should be treated as a lead until checked.
-- **Laplace only.** VGH was deliberately not run — there was no point once the comparator
-  showed no pathology. If a harsher gaussian regime is ever found, the comparison becomes live
-  again.
-- **Single-start.** Consistent with the adversarial wound recorded in the re-scope doc: a
-  Laplace fit stuck on a worse optimum could in principle hide a runaway. All 36 reported
-  `convergence == 0`, which the brain note warns is *not* evidence of a good optimum
-  (`R/gllvmTMB.R:1213-1216`).
-- **I did not attempt to induce separation-analogous behaviour by other means** (e.g. extreme
-  trait scale heterogeneity, near-collinear traits). A determined search might yet find a
-  gaussian runaway.
+- **The 36 fits are NOT 36 independent draws.** `sim()` seeds on `20260730 + 1000 * seed` with
+  **no dependence on the regime** (`gaussian-degeneracy-reachability.R:29`), so all six regimes
+  at a given seed index run on the *same* `N(0,1)` stream. Verified: `heywood-analogue` seed 1
+  and `rank-overspec` seed 1 have byte-identical `Λ[,1]`, and `weak-signal`'s Λ is that same
+  stream scaled by 0.15/0.8. So this is **6 independent streams reused six ways**, not 36
+  independent cells. A design defect in my script; the reachability conclusion is unaffected
+  (a runaway would show on any stream) but the effective replication is a sixth of what the
+  cell count suggests.
+- **`ψ_j → 0` was structurally unreachable.** All 36 fits used `unique = FALSE`, so there is no
+  per-trait ψ to collapse — and ψ→0 is what *defines* a classic Heywood case. The 9-fit ψ-model
+  spot check found nothing, but the main search could not have.
+- **Absence in 59 fits is not proof of structural immunity.** The coercivity argument in
+  Result 1 *is* now derived rather than inferred, and it does bound Λ — but it says nothing
+  about ψ.
+- **Laplace only.** VGH was deliberately not run once the comparator showed no pathology. If a
+  gaussian regime with a genuine runaway is found, the engine comparison becomes live again.
+- **Single-start.** All 36 reported `convergence == 0`, which the brain note warns is *not*
+  evidence of a good optimum (`R/gllvmTMB.R:1213-1216`).
+- **What the adversarial pass DID find, so it is not re-attempted blindly:** trait-scale
+  heterogeneity (two traits at SD 20/30 against one shared `sigma_eps`) and t₂-contaminated
+  errors both push raw \|Λ̂\| past 6 — up to 32.64 — **without producing a runaway**, because the
+  loading-to-trait-SD ratio stays under 1. Those are scale effects, not pathologies.

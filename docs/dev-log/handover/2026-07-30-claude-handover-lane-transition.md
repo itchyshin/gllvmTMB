@@ -53,8 +53,34 @@ gaussian fits `max|Λ̂|` stayed below each dataset's own largest trait SD (max 
 **derived**: the gaussian marginal log-likelihood is coercive in Λ (`log|ΛΛ' + diag(ψ)| → ∞`;
 measured −592.8 → −1352.3 under `Λ → 1000Λ`, against a separated logistic going −6.27 → 0).
 
-**⇒ The pluralist route is a NON-GAUSSIAN proposition.** Build VGH for binomial/Poisson. **Do not
-build VGH for gaussian** — that work has no target.
+**⇒ The pluralist route is a NON-GAUSSIAN proposition.** **Do not build VGH for gaussian** — that
+work has no target.
+
+> **🔴 AMENDED after the scoping ran — my "build VGH for binomial/Poisson" line was premature, and
+> the scoping refuted its premise before any production fit.** Full detail:
+> `docs/dev-log/2026-07-30-vgh-degeneracy-at-scale-scope.md` §"READ FIRST".
+>
+> **VGH's 0/148 does NOT survive at larger q and p.** Measured — 10 probe fits at the corner the
+> campaign would extend into (`.vgh_fit()`, binomial-logit, Q=15, the same 148-fit DGP, seeds 1–4):
+> at **n=40, p=80, q=4**, `rel_frob` = **10.671 / 10.449** on 2 of 4 seeds, `atten_F > 2` on
+> **4 of 4**, `max|Λ|` **8.53–12.53**.
+>
+> **And `converged = TRUE` on every one.** Structurally so — `R/va-vgh.R:603` only tests
+> `outer < maxit`. **VGH's `$converged` is therefore not a health signal either.** The "98% silent"
+> failure property I attributed to Laplace alone is **shared**. Treat VGH's convergence flag exactly
+> as sceptically as Laplace's; the standing discipline (health = recovery against truth, never
+> convergence) applies to *both* engines, not just the one it was written for.
+>
+> **Why the 0/148 never covered this:** `q` was **never a grid column** in
+> `dev/heywood/vgh-vs-laplace-degeneracy.R` — it is a module scalar at `:30`, fixed at 2. So the
+> claim is confined to **n ≥ 60, p ≤ 12, q = 2**, and `q` looks like the primary driver.
+>
+> **What it does to the strategy.** "Both engines plus an honest gate" is still the right shape, but
+> VGH's tail advantage is **regime-bounded, not general**, and the boundary sits roughly where the
+> campaign begins. **Do not open an engine-building arc on the strength of the 0/148 figure.** The
+> campaign is still worth running, but **re-aimed**: from *"does the advantage survive?"* (answered:
+> no, at q=4/p=80) to *"where is the boundary, and is the region where VGH wins big enough to be
+> worth an engine?"*
 
 **Two lanes converged independently, which is the strongest result of the day.** The AGHQ/ridge
 audit (#842, `docs/dev-log/audits/2026-07-30-aghq-ridge-verification-audit.md`) found across
@@ -99,8 +125,48 @@ re-scope before planning** — do not plan the campaign without it, and see Next
 3. **Ultra-plan the campaign in that lane.** It genuinely wants the method: real compute, a
    grid, parallel slices, an adversarial gate on the claim. **Fire the adversarial gate BEFORE
    publishing any result, not after** — see Gotcha 8.
-4. **Compute → Totoro** (≤100 cores, no queue). Results stay **LOCAL (D-50)** — never GitHub
-   artifacts. Escalate to DRAC only for >100 cores or multi-node.
+4. **Compute — and the scoping changed this too.** The campaign is **~3,570 fits / ≈13.5 CPU-hours
+   / 30–60 min at 96 workers**, so **it is not compute-bound.** Totoro is for provisioning and
+   seed-widening headroom, not necessity — local is viable. Results stay **LOCAL (D-50)**, never
+   GitHub artifacts. My earlier "compute → Totoro" framing implied the cost was the constraint; it
+   is not. Four operational blockers, all measured, all in the scope doc:
+   - **🔴 Totoro's installed `gllvmTMB` does NOT contain the VGH engine.**
+     `exists(".vgh_fit", asNamespace("gllvmTMB"))` → **FALSE** there, while `.va_r3_fit` → TRUE, and
+     no source tree on the box has `va-vgh.R`. The install was built **2.5 h after** `R/va-vgh.R`
+     reached `main` but **not from `main`**. So **you cannot infer VGH presence from the version
+     string or the build date** — a VGH campaign needs a source push + reinstall first, or the VGH
+     arm errors on every cell.
+   - **🔴 Re-running `run-grid.R` as-is would CLOBBER the 2026-07-26 grid results** — the very
+     numbers the lane brief cites as its evidence base (`gtmb_laplace` 70/601, `gtmb_jj` 0/320,
+     `gllvm_va` 0/600). It writes `grid.rds`/`grid.csv` unconditionally under `tag = "grid"`. Use a
+     new directory *and* tag. Recoverable from `dev/totoro-grid/results/` — but only if noticed.
+   - **Lane hygiene on Totoro's shared `$HOME`:** `~/gllvm_work/`, `~/gllvmtmb_design9*` and
+     `~/staged-eta-*` hold **Codex-owned** lane material that `CLAUDE.md` fences. Use a fresh
+     directory.
+   - **`run-grid.R` has no resume and no per-fit budget** — `FITSEC` is accepted and never used, and
+     one cell in the original run took 3742.7 s. Reuse `dev/scale/run-scale.R:303`'s per-cell
+     `saveRDS` + callr budget. **Do NOT use `setTimeLimit`** — `dev/scale/SCALE.md:164-167` records
+     that it HUNG.
+
+5. **Two reporting-layer defects must be fixed, not inherited.** `analyse-grid.R:100` uses an
+   **unanchored** `grepl("pdHessTRUE|healthy|converged", status)`, which **already produced a
+   published wrong number** (RESULTS.md:117's 203 should be 160). So: replace it with an exact-match
+   test, and **never give the new arm a status vocabulary where a failure label contains a success
+   substring** (i.e. never `not_converged`). Separately, `analyse-grid.R:85` medians over *all*
+   finite rows with no status filter — "degeneracy rate among fits the engine calls good" is a
+   different question and needs an analysis-layer change too. **Decide which question the campaign
+   asks before reusing §3/§4.**
+
+6. **Engine choice is forced, and it is the good outcome.** Use `R/va-vgh.R::.vgh_fit()` (the
+   in-package engine, so results transfer). `dev/vgh/vgh-engine.R::vgh_fit()` **cannot run
+   multi-trial binomial at all** — no `n_trials` argument, its warm start hardcodes the Bernoulli
+   denominator (`:360`, NaN for y ≥ 2, dies in `eigen`), and its ELBO omits the `n_trials` multiplier
+   (`:122` vs production `:180`). It is Bernoulli-only: not a fallback, not a cross-check.
+   Constraints to state up front: `.vgh_fit()` rejects **probit and cloglog**, so **no same-link
+   VGH-vs-`gllvm` binomial head-to-head is possible** (`gllvm`'s VA is probit-only for binary); no
+   per-trait covariates; no missing cells; and `latent(..., unique = FALSE)` only — **so the
+   campaign's fits are NOT of the default user-facing model**, which has carried Psi since
+   2026-06-18.
 5. **Then, and only then**, the decision this campaign informs: whether to "implement VGH properly"
    (unify the two half-implementations — `docs/design/108-va-parity-programme.md:194` scopes part at
    2–3 days).

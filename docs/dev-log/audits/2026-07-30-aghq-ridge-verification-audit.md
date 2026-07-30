@@ -8,7 +8,9 @@ session and would otherwise be lost. Every claim below is cited to `file:line` o
 output was observed; claims that could not be established say so.
 
 **Scope note.** Nothing here changes package code. Two of the four defects are filed as issues; the
-other two are recorded here pending a decision.
+other two were initially recorded pending a decision; that decision was made on 2026-07-30 after a
+cross-lane request and they are now filed as #847 (D3) and #848 (D4). See §4a for the composition
+argument that forced it, and for a correction to this audit's own D3 framing.
 
 ---
 
@@ -113,7 +115,7 @@ is a live alternative explanation for the n=100 result.
 returned** regardless of family or tier. Passing the string `"gaussian"` returns the documented
 k = 5. The one adaptive path does not adapt.
 
-### D3 — the ridge is scale-dependent and harmful above τ (recorded)
+### D3 — the ridge's τ is fixed when it should scale (filed as #847; see §4a)
 
 τ is fixed at 2 — a prior claim that loadings are about 2. From `21-wide-inc.csv`, median σ by true
 `lam_sd`:
@@ -129,7 +131,7 @@ At `lam_sd = 3` the ridge makes **both** engines worse. It does nothing at 0.5 o
 path it is **on at τ = 2 unconditionally, with no warning** (`R/fit-multi.R:5255`, comment at
 `:5369`: *"Default tau = 2 -- ON whenever AGHQ is on."*).
 
-### D4 — penalised-fit disclosure is partial and sometimes false (recorded)
+### D4 — penalised-fit disclosure is partial and sometimes false (filed as #848; see §4a)
 
 - `logLik()` is silent — returns `-object$opt$objective` (`R/methods-gllvmTMB.R:741`) with attributes
   but no condition.
@@ -145,6 +147,55 @@ path it is **on at τ = 2 unconditionally, with no warning** (`R/fit-multi.R:525
   (`R/fit-multi.R:5676-5679`). `logLik()` returns different quantities depending on engine.
 
 ---
+
+## 4a · The D3 decision, and a correction to §4 D3's own framing
+
+Added 2026-07-30 after a cross-lane request from the VA/VGH lane (`claude/vgh-pluralism-20260730`,
+merged as #840), routed via the maintainer. It asked that the D3 decision be **made** rather than
+left pending. It was right to, and it contributed the argument that forced it.
+
+### The composition — missing from this audit, and the strongest reason to act
+
+**D3 composes with D4 into something worse than either.** The ridge is ON by default whenever AGHQ
+is on, with no warning; `logLik()` on a penalised fit is silent, `AIC()`/`BIC()` warn once per
+*session*, and `summary()` says nothing. So a user can receive a **silently penalised MAP fit,
+reported as an MLE**, in the regime where the penalty degrades the estimate. `#838` sharpens it
+further: its WARN action now actively recommends `aghq_ridge = 2`.
+
+### The correction: "never helps" is drawn from σ alone, and σ cannot show runaway
+
+The request argued the default *"never helps and sometimes hurts"*, citing this audit's §4 D3 table.
+That table reports σ only. Runaway — the ridge's entire purpose — moves the other way:
+
+| true lam_sd | 0.5 | 1 | 3 |
+|---|---|---|---|
+| σ, laplace → +ridge | 1.030 → 1.028 | 0.993 → 0.993 | 0.959 → **0.920** |
+| **runaway %, laplace → +ridge** | 7 → 5 | 6 → 1 | **32 → 8** |
+| ρ error, laplace → +ridge | 0.177 → 0.178 | 0.082 → 0.080 | 0.107 → **0.093** |
+
+At `lam_sd = 3` the ridge **cuts runaway fourfold and improves ρ**, at the cost of σ. That is a
+genuine trade, not a free harm, and defaulting the ridge off would reintroduce a 32% runaway rate.
+§4 D3 above states only the σ face and should be read with this table beside it.
+
+### The decision
+
+**Keep the ridge on. The defect is τ, not the ridge.** τ = 2 is an absolute magnitude standing in
+for a scale the data determines. Make it scale-relative; until then, warn when it is likely to bind.
+Filed as #847, with the disclosure half as #848.
+
+### Answers to the two questions the request asked back
+
+1. **The binomial gating of `loading_absolute_thresh` is deliberate, not incidental.**
+   `R/diagnose.R:530-533` justifies the threshold on the link scale specifically — *"the latent
+   scores are standard normal by identification, so a binomial loading IS the trait's latent SD in
+   link units"*. The `binomial_rows` → `return(NULL)` gate follows from that argument. So it is
+   binomial-**by-design**, and the request's item 4 is a **documentation** gap rather than a code
+   gap: the design is defensible, but the consequence — *gaussian has no absolute-loading criterion
+   at all* — is stated nowhere.
+2. **`aghq_ridge` has no test coverage in any family.** `git grep aghq_ridge -- tests/` returns
+   three lines, all in `helper-aghq-golden.R`, all turning it **off**. The finding is stronger than
+   the question supposed: it is not that gaussian ridge cells measure nothing, it is that **nothing
+   measures the ridge at all**. Any change under #847 ships with new tests or ships unguarded.
 
 ## 5 · Two facts that reframe the whole evidence base
 

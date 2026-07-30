@@ -344,6 +344,48 @@ And 59.5% at ×100 is a large improvement on 0% but is not high: the fits still
 missed are ones whose binomial block degenerates without a single-trait runaway,
 which a per-trait ratio cannot see by construction.
 
+### 6.3 Large p, multi-trial, and whether a third statistic is needed
+
+**MEASURED**, 897 usable fits (`dev/heywood/arcC-threshold-coverage.R`). Three
+gaps closed, each of which could have changed a shipped number.
+
+**A. The healthy tail keeps accelerating — and the relative arm is at its limit.**
+Worst healthy `rl_max` by trait count, extending the p = 5/12/25 series
+(4.11 / 5.32 / 12.07) that justified choosing 25 over 15:
+
+| p | 25 | 50 | **100** |
+|---|---|---|---|
+| worst healthy `rl_max` | 11.05 | 13.22 | **23.95** |
+| 99th percentile | 9.35 | 12.00 | 19.11 |
+| worst healthy `max_loading` | 2.95 | 3.79 | **4.69** |
+
+**At p = 100 the worst healthy relative loading is 23.95 against a threshold of
+25 — a margin of 4%.** The trend does not saturate, so `loading_runaway_thresh`
+should be expected to false-positive somewhere beyond p = 100 **if it were the
+only criterion**.
+
+It is not, and that is what saves it. **The absolute arm is stable in p** —
+worst healthy `max_loading` rises only 2.95 → 3.79 → 4.69 against a threshold of
+6 — because it is a link-scale quantity that does not depend on how many traits
+share the denominator. **Measured false positives at the shipped pair: 0 at every
+p (0/246 healthy). Detection: 109/109 at every p.**
+
+**This is the argument for having both arms.** A ratio degrades as the trait
+count grows; an absolute magnitude does not. Neither is sufficient alone at
+large p.
+
+**B. Multi-trial binomial with `unique = TRUE`.** 354 healthy fits, 0 degenerate:
+**false positives 0/354**. Worst healthy `rl_max` 21.65 (again close to 25),
+worst healthy `max_loading` 4.07.
+
+**C. A third statistic is not justified.** The shipped pair catches **109 of 109**
+degenerate fits, so a rotation-invariant scale statistic (`g_norm_var`) has
+nothing left to add. Recorded as a negative result so it is not re-proposed.
+
+**Consequence for the reader.** Beyond roughly p = 100, `loading_runaway_thresh`
+carries little margin and the absolute arm is doing the work. A user with several
+hundred traits should not rely on the relative criterion alone.
+
 ### What this does not do
 
 - **It does not catch every degenerate fit.** 54 of 1,465 remain unflagged, and

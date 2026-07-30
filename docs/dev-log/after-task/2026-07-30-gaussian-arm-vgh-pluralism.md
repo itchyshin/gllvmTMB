@@ -114,10 +114,28 @@ Commits: `193d035f`, `69f96642`, `22ee3fa6`, `fc701f29`, `cdeb57a3`, `909666f0`,
 | collapse-test integrity (24 cells) | yardstick `abs(exact_ll − logLik)` = 2.0e-10; counts matched 24/24; pooled φ flat 24/24; 0 sweep-cap hits; 0 non-convergences |
 | Laplace timing (Totoro trigger) | 6.4 s single-start at n=200 — trigger (60 s) never fired |
 
-**Not run:** `devtools::check()`, `pkgdown`, the full `devtools::test()` suite. Two workflows and
-a background campaign were concurrently active, so a full-suite run would have mixed their
-in-flight edits into the result; the narrow runs above are the honest scope. **This is a gap a
-release would have to close.**
+**GAP CLOSED after the arc, at the maintainer's instruction and before merging.** The full
+`rcmdcheck::rcmdcheck(args = c("--as-cran", "--no-manual"))` was deferred during the arc because
+two workflows and a background campaign were concurrently active and would have mixed their
+in-flight edits into the result. Run on the settled tree:
+
+| stage | result |
+|---|---|
+| **overall** | **0 ERRORS / 0 WARNINGS / 1 NOTE** |
+| the one note | `checking CRAN incoming feasibility … NOTE — New submission` (the standard first-release note; pre-existing, unrelated to this arc) |
+| `checking tests` | **OK**, `Running 'testthat.R' [216s/254s]` — the full suite, passed |
+| `checking examples` / `--run-donttest` | OK / OK |
+| `checking R code for possible problems` | OK |
+| `checking S3 generic/method consistency` | OK |
+| vignettes (build + re-build) | OK / OK |
+
+`rcmdcheck` surfaces a testthat count only on failure, so "tests OK at 216s" is the precise
+statement available; a test failure would have surfaced as an ERROR, and there are none. Baseline
+match: the lane's recorded pre-arc state was also 0E/0W/1N (New submission), so **this arc
+introduced no check regression.**
+
+**Still not run:** `pkgdown::build_site()`. No user-facing surface changed (`R/`, `src/`, `NEWS.md`
+and roxygen are all untouched), so there is nothing for it to re-render from this arc.
 
 ## 6. Tests of the Tests
 
@@ -237,8 +255,10 @@ the installed package it errors 11 of 12 tests. I nearly read that as a failure 
 
 ## 10. Known Residuals
 
-- **`devtools::check()` and the full `devtools::test()` were not run** — concurrent jobs would
-  have contaminated the result. A release must close this.
+- ~~`devtools::check()` and the full test suite were not run~~ — **CLOSED.** `--as-cran` on the
+  settled tree gives **0E / 0W / 1N** (New submission), tests OK at 216s, matching the pre-arc
+  baseline. See §5. `pkgdown` remains unrun and has nothing to render — no user-facing surface
+  changed.
 - **Power, not calibration, bounds the χ² conclusion.** At 12 cells the 80%-power MDE is 2.74
   log-likelihood units, so a residual VGH advantage up to ~29% of the measured gap would pass
   unnoticed. **χ²₂₀ also fits the same data** (KS p = 0.256), so `df = 19` rests on the

@@ -182,6 +182,28 @@ Laplace fits **60** parameters, VGH **79** — per-trait `phi_j` against a singl
 shared gaussian `sigma`. A gain of that size on 19 extra parameters is roughly
 what the extra parameters buy. **No equal-accuracy claim is established.**
 
+> **ADDENDUM 2026-07-30 — this caveat was right; here it is quantified.** The paragraph
+> above called the gain *"roughly what the extra parameters buy"*. That is now a measurement
+> rather than a judgement. The two models are strictly **nested** (Laplace = VGH under
+> `φ_1 = … = φ_m`), the bench DGP is **homoscedastic** (`dev/vgh/vgh-bench.R:13`), and both
+> log-likelihoods are **exact** (`:2-3`) — so `2·d_ll` is a likelihood-ratio statistic on
+> 19 df against a *true* null. Result: p = 0.865, 0.821, 0.396, 0.199, 0.174 across
+> n = 200…4000 — **0 of 5 cells reach p < 0.05**, and two fall *below* the null's expected
+> `d_ll = 9.5 ± 3.08`. Nothing here needed correcting; the conclusion this section drew is
+> confirmed, and the caveat is conservative — had Laplace stopped short, `d_ll` would be
+> inflated, and it is still not significant.
+>
+> **Housekeeping:** the range is now stale, not wrong. "+6.2 to +10.0" covered the three
+> cells that existed when written (`2026-07-29-vgh-variational-speed-probe.md:133-134`
+> records that n=2000 and n=4000 did not complete); those have since landed, so
+> `dev/vgh/vgh-bench-gaussian.csv` now runs **6.23 to 12.31**.
+>
+> **What does not survive is a stronger reading than this section ever made.** On gaussian,
+> Laplace is exact and the VGH ELBO is exact, so — in the bench script's own words (`:3`) —
+> *"both optimise the SAME objective."* Same objective ⇒ same MLE, so "which engine is more
+> accurate" is not well-posed on gaussian. Later documents that treated this gap as an
+> *accuracy advantage awaiting explanation* read more into it than this section claimed.
+
 ## 6. Accuracy
 
 | family | rel. Frobenius error on `Lambda Lambda'` |

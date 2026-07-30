@@ -46982,3 +46982,107 @@ Not run: `devtools::check()`, `pkgdown`. Full record:
 `docs/dev-log/after-task/2026-07-27-start-method-res-worse-optimum.md`.
 Re-runnable evidence: `dev/2026-07-27-eval-indep-blup-start.R`,
 `dev/2026-07-27-res-nongaussian.R`, `dev/2026-07-27-res-nongaussian-d2.R`.
+
+## 2026-07-30 — Gaussian VGH arm: two findings, and a directed note for the LA+AGHQ+ridge lane (Claude)
+
+Lane: `claude/vgh-pluralism-20260730`. Scope touched: `dev/vgh/*`,
+`docs/dev-log/2026-07-{29,30}-*`, the 2026-07-30 handover. **Nothing in `R/`,
+`src/`, `NEWS.md`, or `check_gllvmTMB()` was touched.**
+
+**🔵 Directed to whoever owns the LA + AGHQ + ridge lane — information, not a
+request.** Two results from this lane bear on yours, and I have deliberately not
+acted on either inside your files.
+
+1. **Gaussian appears to have no loading-runaway tail at all.** 36 gaussian
+   Laplace fits across 6 regimes chosen to provoke one — small n, wide T,
+   rank over-specified `d = 1 -> 4`, weak signal — gave **max `|Lambda_hat|` =
+   2.77 against the shipped absolute threshold of 6, with 0 exceedances** and 0
+   non-convergences. The direct analogue of the binomial cell that degenerates
+   50/148 (49 silently) is the *healthiest* gaussian cell (median `rel_frob`
+   0.355). Inferred mechanism, **AGENT-INFERRED and wanting an adversarial
+   check**: the binomial runaway rides on quasi-complete separation, where the
+   logistic link saturates and `eta` can run to +/-inf at no likelihood cost;
+   the identity link cannot saturate, so there is no flat escape direction.
+   **If that holds, `aghq_ridge` and the Heywood gate are both non-gaussian
+   instruments** — worth knowing before either is scoped or claimed over
+   gaussian cells. Evidence:
+   `dev/vgh/gaussian-degeneracy-reachability.{R,csv}`, write-up
+   `docs/dev-log/2026-07-30-gaussian-has-no-degeneracy-tail.md`.
+
+   > **🔴 CORRECTION 2026-07-30, same day, after an adversarial pass — and the
+   > correction is MORE useful to your lane than what it replaces.** The comparison
+   > "2.77 against the shipped absolute threshold of 6" above is **invalid**, for a
+   > reason that is itself a fact about your gate: **`loading_absolute_thresh = 6`
+   > is binomial-gated and never evaluates on a gaussian fit.** It lives only in
+   > `.gllvmTMB_binomial_prevalence_loading_row()`, which returns `NULL` unless
+   > `family_id == 1L` rows exist (`R/diagnose.R:464-471`; gaussian is `0L`).
+   > Confirmed by running it: `check_gllvmTMB()` on a gaussian fit returns 13 rows
+   > and no such row. Its stated justification is also **logit-scale** — *"a
+   > binomial loading IS the trait's latent SD in link units"* (`:530-533`) — which
+   > has no identity-link analogue, so the constant is not scale-free there.
+   > Demonstrated: multiplying `Y` by 10 lifts every loading past 6 with no
+   > pathology and no new warning, and adversarial fits reached raw
+   > `max|Lambda_hat| = 32.64` on scale-heterogeneous and t2-contaminated data.
+   >
+   > **The conclusion survives on better, scale-free evidence:** in **59 of 59**
+   > gaussian fits, `max|Lambda_hat|` stayed **below that dataset's own largest
+   > trait SD** (max ratio 0.961). And the mechanism is now **derived, not
+   > inferred**: the gaussian marginal log-likelihood is **coercive in Lambda**
+   > (`log|Lambda Lambda' + diag(psi)| -> inf` while the quadratic term stays
+   > non-negative, so `ll -> -inf` as `||Lambda|| -> inf`; measured -592.8 -> -1352.3
+   > under `Lambda -> 1000*Lambda`, against a separated logistic going -6.27 -> 0).
+   > So `log|Sigma|` pins Lambda to the data's second moments.
+   >
+   > **One live gap that matters for your lane specifically:** the likelihood is
+   > **NOT** coercive in `psi`, and `psi_j -> 0` is the classic Heywood boundary.
+   > My search could not see it at all — all 36 fits used `unique = FALSE`, so
+   > there is no per-trait `psi` to collapse. A 9-fit `psi`-model spot check found
+   > nothing (max 2.21), but that is a spot check. **If you need a gaussian
+   > degeneracy claim, the psi boundary is where to look, not the loading
+   > magnitude.**
+   >
+   > **📄 Full brief, easier to find than this file:**
+   > `docs/dev-log/handover/2026-07-30-to-la-aghq-ridge-lane-gaussian-findings.md`
+   > — same findings, plus the psi-boundary experiment spelled out and two cheap
+   > questions back to your lane (was the binomial gating deliberate or
+   > incidental; does `aghq_ridge` have any gaussian coverage).
+
+2. **Both *research* degeneracy metrics false-positive at small true `Lambda`.**
+   `atten_F` flagged 8/36 and `rel_frob` 1/36 — but the flagged fits carry
+   *smaller* loadings than the unflagged (median `max|Lambda|` 0.83 vs 1.44),
+   and the effect tracks the true loading scale monotonically rather than the
+   pathology. Both normalise by the truth's magnitude, so a near-null factor
+   structure inflates the ratio while the fit itself stays small. **Diagnostic
+   rule: when a ratio flags degeneracy, check the absolute loading magnitude; if
+   it is not elevated, the flag is a denominator artifact.** Relevant if your
+   lane scores coverage or recovery with `rel_frob`/`atten_F`.
+   **Scope guard: this is NOT about `check_gllvmTMB()`.** Its statistics never
+   use `Sigma_true` — they cannot, since truth is unavailable at diagnosis time —
+   so the shipped gate is unaffected and no change to it is implied or asked for.
+
+**Third result, which is a gift to the TMB template rather than a warning.** The
+gaussian collapse test pools the dev VGH engine's per-trait dispersion to one
+shared value so both engines fit 60 parameters on the same data. At smoke scale
+(T=6, n=200) `d_ll` collapses from **+0.550 to +3.2e-09**, `Sigma_hat` agrees to
+**1.5e-05**, and `rel_frob` is **identical to four decimals in both arms**
+(0.1771). That is an **independent reimplementation reproducing the TMB gaussian
+path**, which is exactly the one use the settled-position note grants VGH — *"a
+software test, not a statistical instrument."* The full 24-cell grid is running;
+`dev/vgh/gaussian-collapse.R`.
+
+**Consequence for the pluralist route, stated so it is not overread.** On
+gaussian both engines optimise the same objective
+(`dev/vgh/vgh-bench.R:2-3` says so outright), hence share an MLE, hence there is
+no accuracy question; and now, no tail either. The LA+VGH pluralist design has
+**no gaussian instance** — it is a non-gaussian proposition. This does not
+weaken the binomial evidence (0/148 vs 50/148), which stands untouched.
+
+Checks: `test-vgh-pooled-phi` 6/6, independently re-run, and confirmed to FAIL
+against a deliberately broken `pool = TRUE`. Bit-for-bit backward compatibility
+of the default path verified with `identical()` on `phi`/`Beta`/`Lambda`/
+`amean`/`Avec`/`elbo` against `git show HEAD`. Not run: `devtools::check()`,
+`pkgdown`. **Pre-existing bug found in passing and deliberately not fixed:**
+`vgh_fit(..., d = 1L)` crashes ("non-conformable arrays") in
+`vgh_update_model()` — `apply()` simplifies to a vector at `d == 1` before the
+`d == 1` correction runs. Reproduces against `git show HEAD`, so it predates this
+work; a follow-up task is filed.

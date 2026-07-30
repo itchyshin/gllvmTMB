@@ -123,3 +123,45 @@ test_that("vgh_fit runs at d = 1L for every family and keeps the ELBO monotone",
     expect_true(all(diff(fit$elbo_path) >= -1e-8), info = family)
   }
 })
+
+
+## --- Reported ELBO corresponds to the RETURNED parameters ----------------------
+## vgh_fit() used to return `elbo = prev`, the ELBO from the PREVIOUS sweep: the
+## convergence test breaks BEFORE `prev <- e$value`, so on a converged fit the
+## reported objective was stale by one sweep relative to the Beta/Lambda it
+## shipped alongside.  Design ported from the production engine's test in
+## test-vgh-oracle.R.
+##
+## The tolerance has to be LOOSE on purpose.  At a tight tol the last increment
+## is negligible and a one-sweep lag is invisible; at tol = 1e-4 it is ~0.1 ELBO
+## units, large enough that the previous sweep's value is detectably wrong.  The
+## sweeps < maxit check is what keeps this non-vacuous: on an maxit-exhausted run
+## the trailing `prev <- e$value` masks the defect.
+test_that("reported elbo is the objective at the returned parameters", {
+  source_vgh_engine()
+  maxit <- 200L
+
+  for (family in c("gaussian", "poisson")) {
+    fx <- if (family == "gaussian") .vgh_pool_fixture() else
+      .vgh_d1_fixture("poisson", n = 200L, m = 5L)
+    d <- if (family == "gaussian") fx$d else 1L
+
+    fit <- vgh_fit(fx$Y, fx$X, d = d, family = family,
+                   maxit = maxit, tol = 1e-4, trace_elbo = TRUE)
+
+    # (a) the fit converged rather than running out of sweeps -- otherwise the
+    # assertion below passes for the wrong reason.
+    expect_lt(fit$sweeps, maxit)
+    expect_gt(length(fit$elbo_path), 1L)
+
+    # (b) the reported value is the LAST path entry, not the one before it --
+    # the direct statement of the defect.
+    expect_equal(fit$elbo, fit$elbo_path[length(fit$elbo_path)],
+                 tolerance = 1e-12, info = family)
+
+    # (c) and it is not merely close: the stale value is a DIFFERENT number, so
+    # the previous entry must fail the same check.  This arm proves (b) can fail.
+    expect_gt(abs(fit$elbo_path[length(fit$elbo_path) - 1L] -
+                    fit$elbo_path[length(fit$elbo_path)]), 1e-6)
+  }
+})

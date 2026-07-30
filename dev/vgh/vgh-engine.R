@@ -418,10 +418,20 @@ vgh_fit <- function(Y, X = matrix(1, nrow(Y), 1), d = 2L, family = "gaussian",
     prev <- e$value
   }
 
+  # `prev` is the PREVIOUS sweep's ELBO: the test above breaks BEFORE
+  # `prev <- e$value` runs, so on a converged fit -- the normal path -- it is
+  # stale by one sweep relative to the Beta/Lambda/phi/amean returned. (When
+  # maxit is exhausted the trailing assignment happens to make them agree,
+  # which is why this hid.) `e$value` is the ELBO at exactly the returned
+  # tuple and is already computed, so reporting it costs nothing.  `e` is
+  # undefined only when maxit < 1 and no sweep ever ran.  Back-ported from
+  # R/va-vgh.R, which carries the same fix.
+  elbo_out <- if (exists("e", inherits = FALSE)) e$value else prev
+
   structure(list(
     Beta = Beta, Lambda = Lambda, phi = phi,
     amean = amean, Avec = v$Avec,
-    elbo = prev, elbo_path = if (trace_elbo) elbo_path else NULL,
+    elbo = elbo_out, elbo_path = if (trace_elbo) elbo_path else NULL,
     sweeps = sweep, family = family, d = d, Q = Q, phi_pool = phi_pool,
     seconds = proc.time()[["elapsed"]] - t0
   ), class = "vgh_fit")

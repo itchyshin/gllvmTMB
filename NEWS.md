@@ -6,6 +6,32 @@ bridge remains experimental and is not required for the main workflow.
 
 ## New
 
+* **A loading penalty is available for fits that run away, via
+  `gllvmTMBcontrol(aghq_ridge = tau)`.** Binomial fits at small sample sizes can
+  drive one trait's loading to an absurd value while reporting every
+  conventional sign of health — `convergence = 0` and a positive-definite
+  Hessian — because quasi-complete separation makes that solution the genuine
+  maximum of the likelihood. A Gaussian ridge on the loadings adds curvature
+  where the likelihood is flat and removes the runaway: measured at **47% of
+  fits down to 0%** at n = 100, and on one reproduction fit it takes the largest
+  implied loading norm from 979.1 to 3.35.
+
+  The penalty is **opt-in and never applied unless you name it**, so no existing
+  fit changes. `tau` is the prior standard deviation on each free loading, and
+  its scale is set by the model rather than tuned: the latent scores are
+  standard normal by identification, so a loading is the trait's latent standard
+  deviation in link units, making `tau = 2` weakly informative. Its influence
+  also vanishes as the sample grows, because a fixed penalty contributes a
+  constant against a log-likelihood growing with n. The penalty is
+  rotation-invariant.
+
+  Two costs, stated plainly. A penalised fit is a **maximum-a-posteriori point,
+  not a maximum-likelihood estimate**, so `logLik()`, `AIC()` and `BIC()` no
+  longer describe it — set `aghq_ridge = Inf` and refit every model being
+  compared if you need likelihood-based comparison. And the penalty currently
+  covers the unit-tier loadings only. `check_gllvmTMB()` now names this remedy
+  when it reports a runaway loading.
+
 * `getLV()` gains an `se = TRUE` argument that returns the standard error of
   every unit-level (or within-unit) latent score, alongside the scores, as
   `list(scores, se)`. The default `se = FALSE` is unchanged (a bare matrix).
@@ -177,6 +203,78 @@ bridge remains experimental and is not required for the main workflow.
   development phases, agent roles, or capability bookkeeping.
 
 ## Fixed
+
+* **`check_gllvmTMB()` no longer passes a binomial fit whose loading has run
+  away.** The loading row could only fire when the trait's marginal prevalence
+  was also extreme (at or beyond 0.9). But quasi-complete separation is a
+  property of the fitted linear predictor, not of the marginal rate, so it runs
+  a loading away while prevalence stays entirely ordinary — and the row was
+  keyed on a quantity the pathology does not move. Across 3,944 simulated
+  binomial fits the worst-affected trait's prevalence never left 0.20 to 0.807,
+  and its distance from 0.5 was essentially uncorrelated with the size of the
+  blow-up, while loadings reached 24,000 times the typical trait's. On one
+  Bernoulli fit the row reported `PASS` with a loading 6,980 times typical and
+  every fitted probability saturated, while the implied covariance was wrong by
+  a factor of 156,645. A loading at or beyond `loading_runaway_thresh` (new
+  argument, default 25) now reports on its own, naming the improper solution
+  (Heywood case) and pointing at the loading penalty in
+  `gllvmTMBcontrol(aghq_ridge = )`. The existing `loading_relative_thresh` of 8
+  keeps its prevalence conjunct, because healthy fits with a sparse loading
+  structure reach that level routinely — so nothing that was flagged before
+  stops being flagged, including a genuinely near-constant trait, which the row
+  still reports as it always did.
+
+  A second, complementary criterion is added alongside it. A relative
+  criterion cannot see a loading matrix that is inflated *as a whole*, because
+  scaling every loading leaves every ratio unchanged — so
+  `loading_absolute_thresh` (new argument, default 6) reports a loading that is
+  simply too large on the link scale. That threshold is meaningful because the
+  latent scores are standard normal by identification, making a binomial
+  loading the trait's latent standard deviation in link units; a value of 6
+  already implies a fitted probability indistinguishable from 0 or 1 across an
+  ordinary swing of the axis. Measured over the same 3,944 fits: no healthy fit
+  exceeded 3.99, none was flagged, and it reported 97.3% of degenerate fits —
+  catching 14 that the relative criterion missed. Being a link-scale quantity
+  it does not transport to families whose response scale is arbitrary, which is
+  why this row remains binomial-only.
+
+  Two limits on the calibration are stated plainly. It was measured on
+  single-family binomial fits at the true latent rank, where it reports 96.3% of
+  fits whose implied covariance is wrong by a factor of five or more, with no
+  healthy fit reaching the threshold (the largest was 12.1). When the fitted
+  rank is larger than the truth, several traits can inflate together, which
+  lifts the very yardstick the ratio is measured against; in one such run the
+  row missed 3 of 8 degenerate fits, and they were the three worst. A scale
+  diagnostic, not a ratio, is the right instrument for that case and none is
+  wired yet.
+
+* **`check_gllvmTMB()` now reports a unique variance that has collapsed only
+  relative to its siblings.** A Heywood case in a Gaussian or Poisson fit
+  usually appears as a per-trait unique variance driven to the boundary, not as
+  a runaway loading — and because `psi` is estimated on the log scale, the
+  boundary is an interior point of the transformed space, so `pdHess` stays
+  positive definite and nothing else objects. Across 360 fits with a
+  deliberately over-specified latent rank, **58% drove a unique standard
+  deviation below a tenth of its true value while reporting `convergence = 0`
+  and `pdHess = TRUE`** — one reached 6e-50. The covariance itself was still
+  recovered to within 7%, so this is a failure of the
+  `Lambda Lambda' + Psi` decomposition rather than of the fitted covariance,
+  and no recovery-based check can see it.
+
+  `psi_rel_thresh` is raised from 0.001 to **0.01**, which reports 96.2% of
+  those fits rather than 73.7%. The measured false-positive rate is **zero**
+  both on 151 healthy fits and on 359 healthy fits whose true unique variances
+  differ by up to a factor of 1000 — the case that decides whether the number
+  transports, since a small ratio is then correct rather than pathological.
+  Looser values do not transport: 0.1 reaches full sensitivity but flags 19% of
+  those healthy fits. **Some fits that previously passed will now warn**; on
+  this evidence they are fits with a genuinely boundary-pinned component.
+
+* **The typical loading size is now taken over the traits being screened.**
+  Previously it pooled every trait in the fit regardless of family, so in a
+  mixed-family model a trait on a large response scale could set the yardstick
+  for a binomial one — masking a genuine runaway, or manufacturing a spurious
+  one when the other family's loadings were small.
 
 * **Profile confidence intervals no longer lose their bounds at higher
   confidence levels.** The profile search used a fixed deviance budget that did

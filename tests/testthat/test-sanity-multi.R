@@ -93,6 +93,49 @@ test_that("check_gllvmTMB flags weak axes and near-boundary variance terms", {
   expect_equal(chk$status[chk$component == "boundary_sigma_eps"], "WARN")
 })
 
+test_that("a psi collapsed only relative to its siblings is still reported", {
+  ## The absolute arm (psi_thresh) catches a unique SD driven to ~0. The
+  ## relative arm exists for the commoner case: a component pinned at the
+  ## boundary whose absolute value still clears psi_thresh, because psi is
+  ## estimated on the log scale so the boundary is an interior point and
+  ## `pdHess` stays positive definite there.
+  ##
+  ## sd_B below is 0.005 against siblings of 1.0 -- a ratio of 0.005, which is
+  ## 50x above the absolute threshold of 1e-4 and so invisible to that arm.
+  ## It sits in the band the default covered only after psi_rel_thresh was
+  ## raised from 0.001 to 0.01 on measured evidence.
+  set.seed(2028)
+  sim <- simulate_site_trait(
+    n_sites = 40,
+    n_species = 10,
+    n_traits = 3,
+    mean_species_per_site = 4,
+    Lambda_B = matrix(c(0.8, 0.5, -0.2, 0.2, -0.4, 0.6), nrow = 3, ncol = 2),
+    psi_B = c(0.3, 0.3, 0.3),
+    seed = 2028
+  )
+  fit <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
+    data = sim$data
+  )
+  fit$report$sd_B <- c(0.005, 1, 1)
+  fit$fit_health <- NULL
+
+  expect_equal(
+    check_gllvmTMB(fit)$status[
+      check_gllvmTMB(fit)$component == "near_zero_psi_unit"
+    ],
+    "WARN"
+  )
+  ## and it is the relative arm doing the work, not the absolute one
+  expect_equal(
+    check_gllvmTMB(fit, psi_rel_thresh = 1e-3)$status[
+      check_gllvmTMB(fit, psi_rel_thresh = 1e-3)$component == "near_zero_psi_unit"
+    ],
+    "PASS"
+  )
+})
+
 test_that("check_gllvmTMB flags near-constant binary traits with dominant loadings", {
   trait_levels <- paste0("item", 1:4)
   n_per_trait <- 10L
@@ -164,6 +207,282 @@ test_that("check_gllvmTMB flags near-constant binary traits with dominant loadin
     chk$action[chk$component == "weak_axis_unit"],
     "near-constant binary trait"
   )
+})
+
+test_that("check_gllvmTMB flags a runaway loading at moderate prevalence", {
+  ## Quasi-complete separation produces a Heywood case -- a loading that runs
+  ## away while the trait's MARGINAL prevalence stays unremarkable, because
+  ## separation is a property of the fitted linear predictor, not of the
+  ## marginal rate. item4 below has prevalence 0.6 and a loading 4000x the
+  ## typical trait's, with every fitted probability saturated.
+  trait_levels <- paste0("item", 1:4)
+  n_per_trait <- 10L
+  trait_id <- rep(seq_along(trait_levels) - 1L, each = n_per_trait)
+  y <- c(
+    rep(c(0, 1), 5L),
+    rep(c(0, 1), 5L),
+    rep(c(0, 1), 5L),
+    rep(1, 6L),
+    rep(0, 4L)
+  )
+  eta <- c(rep(0, 30L), rep(8, 6L), rep(-8, 4L))
+  fit <- list(
+    fit_health = list(
+      convergence = 0L,
+      message = "relative convergence",
+      max_gradient = 0,
+      sdreport_ok = TRUE,
+      sdreport_error = NA_character_,
+      pd_hessian = TRUE,
+      max_fixed_se = 1,
+      boundary_flags = character(0),
+      selected_restart = 1L
+    ),
+    sd_report = list(
+      pdHess = TRUE,
+      cov.fixed = diag(2)
+    ),
+    restart_history = data.frame(
+      restart = 1L,
+      optimizer = "nlminb",
+      objective = 0,
+      convergence = 0L,
+      selected = TRUE
+    ),
+    report = list(
+      Lambda_B = matrix(
+        c(0.25, -0.2, 0.15, 900),
+        nrow = length(trait_levels),
+        dimnames = list(trait_levels, "LV1")
+      ),
+      eta = eta
+    ),
+    tmb_data = list(
+      y = y,
+      n_trials = rep(1, length(y)),
+      is_y_observed = rep(1L, length(y)),
+      family_id_vec = rep(1L, length(y)),
+      link_id_vec = rep(1L, length(y)),
+      trait_id = trait_id
+    ),
+    data = data.frame(
+      trait = factor(trait_levels[trait_id + 1L], levels = trait_levels)
+    ),
+    trait_col = "trait",
+    n_traits = length(trait_levels),
+    use = list(rr_B = TRUE)
+  )
+  class(fit) <- "gllvmTMB_multi"
+
+  chk <- check_gllvmTMB(fit)
+  row <- chk[chk$component == "binomial_prevalence_loading", , drop = FALSE]
+
+  expect_equal(nrow(row), 1L)
+  expect_equal(row$status, "WARN")
+  expect_match(row$value, "item4")
+  expect_match(row$value, "prevalence=0.6")
+
+  ## the weak-axis advice must follow the path that actually fired: this
+  ## trait is not near-constant, so it must not be described as one
+  weak <- chk$action[chk$component == "weak_axis_unit"]
+  expect_match(weak, "runaway trait loading")
+  expect_false(any(grepl("near-constant", weak, fixed = TRUE)))
+})
+
+test_that("a loading matrix inflated as a whole is still reported", {
+  ## A within-fit ratio is PROVABLY blind to a uniform inflation: under
+  ## Lambda -> c * Lambda every per-trait maximum scales by c, so the median
+  ## scales by c and relative_loading does not move at all. Here every loading
+  ## is ~40 on the link scale -- absurd for a binomial trait, since the latent
+  ## scores are standard normal by identification -- yet every ratio is O(1).
+  trait_levels <- paste0("item", 1:4)
+  n_per_trait <- 10L
+  trait_id <- rep(seq_along(trait_levels) - 1L, each = n_per_trait)
+  y <- rep(rep(c(0, 1), 5L), 4L)
+  eta <- rep(0, 40L)
+  fit <- list(
+    fit_health = list(
+      convergence = 0L, message = "relative convergence", max_gradient = 0,
+      sdreport_ok = TRUE, sdreport_error = NA_character_, pd_hessian = TRUE,
+      max_fixed_se = 1, boundary_flags = character(0), selected_restart = 1L
+    ),
+    sd_report = list(pdHess = TRUE, cov.fixed = diag(2)),
+    restart_history = data.frame(
+      restart = 1L, optimizer = "nlminb", objective = 0,
+      convergence = 0L, selected = TRUE
+    ),
+    report = list(
+      Lambda_B = matrix(
+        c(40, -38, 42, 39),
+        nrow = length(trait_levels),
+        dimnames = list(trait_levels, "LV1")
+      ),
+      eta = eta
+    ),
+    tmb_data = list(
+      y = y, n_trials = rep(1, length(y)), is_y_observed = rep(1L, length(y)),
+      family_id_vec = rep(1L, length(y)), link_id_vec = rep(1L, length(y)),
+      trait_id = trait_id
+    ),
+    data = data.frame(
+      trait = factor(trait_levels[trait_id + 1L], levels = trait_levels)
+    ),
+    trait_col = "trait", n_traits = length(trait_levels),
+    use = list(rr_B = TRUE)
+  )
+  class(fit) <- "gllvmTMB_multi"
+
+  chk <- check_gllvmTMB(fit)
+  row <- chk[chk$component == "binomial_prevalence_loading", , drop = FALSE]
+  expect_equal(row$status, "WARN")
+
+  ## the ratio alone cannot see it -- disable the absolute arm and it passes
+  row_ratio_only <- check_gllvmTMB(fit, loading_absolute_thresh = Inf)
+  expect_equal(
+    row_ratio_only$status[
+      row_ratio_only$component == "binomial_prevalence_loading"
+    ],
+    "PASS"
+  )
+})
+
+test_that("a large-scale trait from another family cannot mask a binomial runaway", {
+  ## The typical loading size must be taken over the traits being screened. If
+  ## it is pooled across families, a gaussian trait on a large response scale
+  ## sets the yardstick and a genuine binomial runaway is divided into
+  ## invisibility.
+  ##
+  ## Loadings here are c(0.25, 0.2, 12 | 300, 280, 320), binomial first.
+  ##   pooled     : median 146, mad 145.8 -> denom 146 -> item3 ratio 0.08 (PASS)
+  ##   binomial-only: median 0.25, mad 0.05 -> denom 0.25 -> item3 ratio 48 (WARN)
+  trait_levels <- paste0("item", 1:6)
+  n_per_trait <- 10L
+  trait_id <- rep(seq_along(trait_levels) - 1L, each = n_per_trait)
+  ## traits 1-3 binomial, traits 4-6 gaussian
+  family_id <- rep(c(1L, 1L, 1L, 0L, 0L, 0L), each = n_per_trait)
+  y <- c(
+    rep(c(0, 1), 5L),
+    rep(c(0, 1), 5L),
+    c(rep(1, 6L), rep(0, 4L)),
+    rep(c(-2.5, 3.1, 0.4, -1.2, 2.2), 6L)
+  )
+  eta <- c(
+    rep(0, 20L),
+    c(rep(8, 6L), rep(-8, 4L)),
+    rep(0, 30L)
+  )
+  fit <- list(
+    fit_health = list(
+      convergence = 0L,
+      message = "relative convergence",
+      max_gradient = 0,
+      sdreport_ok = TRUE,
+      sdreport_error = NA_character_,
+      pd_hessian = TRUE,
+      max_fixed_se = 1,
+      boundary_flags = character(0),
+      selected_restart = 1L
+    ),
+    sd_report = list(pdHess = TRUE, cov.fixed = diag(2)),
+    restart_history = data.frame(
+      restart = 1L,
+      optimizer = "nlminb",
+      objective = 0,
+      convergence = 0L,
+      selected = TRUE
+    ),
+    report = list(
+      Lambda_B = matrix(
+        c(0.25, -0.2, 12, 300, -280, 320),
+        nrow = length(trait_levels),
+        dimnames = list(trait_levels, "LV1")
+      ),
+      eta = eta
+    ),
+    tmb_data = list(
+      y = y,
+      n_trials = rep(1, length(y)),
+      is_y_observed = rep(1L, length(y)),
+      family_id_vec = family_id,
+      link_id_vec = rep(1L, length(y)),
+      trait_id = trait_id
+    ),
+    data = data.frame(
+      trait = factor(trait_levels[trait_id + 1L], levels = trait_levels)
+    ),
+    trait_col = "trait",
+    n_traits = length(trait_levels),
+    use = list(rr_B = TRUE)
+  )
+  class(fit) <- "gllvmTMB_multi"
+
+  chk <- check_gllvmTMB(fit)
+  row <- chk[chk$component == "binomial_prevalence_loading", , drop = FALSE]
+
+  expect_equal(nrow(row), 1L)
+  expect_equal(row$status, "WARN")
+  expect_match(row$value, "item3")
+
+  ## and the reported ratio must be the binomial-only one, not the pooled one
+  ratio <- as.numeric(sub(".*relative_loading=([0-9.eE+-]+).*", "\\1", row$value))
+  expect_gt(ratio, 25)
+})
+
+test_that("the two Heywood faces are reported by independent statistics", {
+  ## A Heywood case has two faces and gllvmTMB reports each with its own
+  ## single-fit statistic on the Laplace path:
+  ##   Lambda-face  a loading too large on the link scale -> binomial row
+  ##   psi-face     a unique variance collapsed relative to its siblings
+  ##                -> near_zero_psi row
+  ## They must fire on DISJOINT inputs, or one is redundant.
+  mk <- function(lam, sd_b) {
+    tl <- paste0("item", 1:4)
+    tid <- rep(0:3, each = 10L)
+    fit <- list(
+      fit_health = list(
+        convergence = 0L, message = "ok", max_gradient = 0,
+        sdreport_ok = TRUE, sdreport_error = NA_character_, pd_hessian = TRUE,
+        max_fixed_se = 1, boundary_flags = character(0), selected_restart = 1L
+      ),
+      sd_report = list(pdHess = TRUE, cov.fixed = diag(2)),
+      restart_history = data.frame(
+        restart = 1L, optimizer = "nlminb", objective = 0,
+        convergence = 0L, selected = TRUE
+      ),
+      report = list(
+        Lambda_B = matrix(lam, nrow = 4L, dimnames = list(tl, "LV1")),
+        sd_B = sd_b, eta = rep(0, 40L)
+      ),
+      tmb_data = list(
+        y = rep(rep(c(0, 1), 5L), 4L), n_trials = rep(1, 40L),
+        is_y_observed = rep(1L, 40L), family_id_vec = rep(1L, 40L),
+        link_id_vec = rep(1L, 40L), trait_id = tid
+      ),
+      data = data.frame(trait = factor(tl[tid + 1L], levels = tl)),
+      trait_col = "trait", n_traits = 4L, use = list(rr_B = TRUE)
+    )
+    class(fit) <- "gllvmTMB_multi"
+    fit
+  }
+  st <- function(chk, cmp) chk$status[chk$component == cmp]
+
+  ## Lambda-face only: a runaway loading with healthy unique variances
+  a <- check_gllvmTMB(mk(c(40, -38, 42, 39), c(1, 1, 1, 1)))
+  expect_equal(st(a, "binomial_prevalence_loading"), "WARN")
+  expect_equal(st(a, "near_zero_psi_unit"), "PASS")
+
+  ## psi-face only: healthy loadings with one unique variance collapsed
+  b <- check_gllvmTMB(mk(c(0.25, -0.2, 0.3, 0.28), c(0.005, 1, 1, 1)))
+  expect_equal(st(b, "binomial_prevalence_loading"), "PASS")
+  expect_equal(st(b, "near_zero_psi_unit"), "WARN")
+
+  ## and the psi arm only reaches that band at the current default -- at the
+  ## previous 1e-3 it returned PASS on a genuine collapse
+  b_old <- check_gllvmTMB(
+    mk(c(0.25, -0.2, 0.3, 0.28), c(0.005, 1, 1, 1)),
+    psi_rel_thresh = 1e-3
+  )
+  expect_equal(st(b_old, "near_zero_psi_unit"), "PASS")
 })
 
 test_that("diagnostics degrade gracefully when sdreport is unavailable", {

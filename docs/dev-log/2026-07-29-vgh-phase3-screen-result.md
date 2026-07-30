@@ -22,6 +22,45 @@ One degenerate fit had `pdHess = FALSE`, so `pdHess` catches *some* but not most
 
 ## 2. The VGH screen fails, on four independent grounds
 
+> ### ⚠️ SCOPE CORRECTION, added 2026-07-30 (lane `claude/heywood-gate-20260730`)
+>
+> **Everything below is sound about the statistic it tested. It is over-scoped as
+> a verdict on VGH as a class**, and this section's title and the later "do not
+> build a VGH-based screen" should be read accordingly.
+>
+> * **What was refuted is `h`, one Λ-blind statistic.** Ground (a) says so
+>   itself, and this document elsewhere calls `h` *"the worst candidate
+>   available"*. A class verdict does not follow from a single instance — least
+>   of all the instance the document identifies as the worst one.
+> * **The exclusion rule that selected `h` is too broad.** Λ-derived statistics
+>   were excluded on rotation-invariance grounds, but `G = Lambda Lambda'` **is**
+>   rotation-invariant, as `R/vgh-verify.R:17` states. The right family of
+>   statistics was ruled out by fiat rather than by measurement.
+> * **A Λ-sensitive column in the same CSV was never scored.** `vgh_trG` gives
+>   held-out **AUC 0.671** (sens 0.682 / spec 0.647, frozen-threshold Youden
+>   **+0.329**) against `h`'s 0.4986 / −0.196. Ground (b)'s "a flag makes you
+>   less confident than not running the screen at all" is therefore **false for
+>   the Λ-sensitive column sitting in the same rows**. `vgh_frobG` — the column
+>   closest to what the Phase 4 design actually proposed — has **no held-out
+>   values at all**, and was discarded by association.
+> * **Two provenance defects.** `p3-screen-merged.csv`, cited as the verification
+>   source, **does not exist and was never committed**; neither was the harness
+>   that produced any `p3-*` CSV.
+> * **The `AUC 1.0000` for `||Sigma_B||_F` is label-circular** and must not be
+>   quoted as a clean baseline: `cor(log frob_hat, log rel_frob) = 0.9942`, and
+>   `frob_true` spans only 5.6–22.1, so the statistic is close to the label's own
+>   numerator divided by a near-constant.
+>
+> **The recommendation still stands, on stronger grounds than the ones given.** A
+> free single-fit disjunction (`relative_loading >= 25 OR max_loading >= 6`)
+> scores **1.000 / 1.000, 0 FP / 0 FN on 3,904 binomial fits**, so there is no
+> detection headroom for a second fit to buy; and VGH's eligibility is
+> *anti-correlated with need* — it declines the default `latent()` grammar, every
+> non-unit tier, and 27 of 30 families, while `.vgh_find_lambdas()` rejects a
+> `vgh_fit` outright ("has no loading matrix"), so the reference adapter does not
+> exist. **Right answer, for reasons this document does not state.** Detail:
+> `docs/dev-log/2026-07-30-heywood-gate-false-positive-sweep.md`.
+
 The candidate statistic was `h = -(1/(Nq)) * sum_i logdet S_i`, the mean per-unit
 posterior log-contraction, chosen because the KL term's `logdet` piece is the only
 unbounded penalty. It does not work.

@@ -10,13 +10,15 @@ check_gllvmTMB(
   se_thresh = 100,
   weak_axis_thresh = 0.05,
   psi_thresh = 1e-04,
-  psi_rel_thresh = 0.001,
+  psi_rel_thresh = 0.01,
   sigma_eps_thresh = 1e-04,
   cross_loading_thresh = 0.6,
   binary_prevalence_thresh = 0.9,
   binary_saturation_prob_thresh = 0.99,
   binary_saturation_share_thresh = 0.5,
-  loading_relative_thresh = 8
+  loading_relative_thresh = 8,
+  loading_runaway_thresh = 25,
+  loading_absolute_thresh = 6
 )
 }
 \arguments{
@@ -41,7 +43,18 @@ catches boundary-pinned (Heywood) components whose absolute standard
 deviation still clears \code{psi_thresh}: \code{psi} is estimated on the log
 scale, so a component at the boundary is an interior point of the
 transformed space and \code{pdHess} stays positive definite there.
-Needs at least two components. Default 0.001.}
+Needs at least two components. Default 0.01, raised from 0.001 on
+measured evidence: across 360 gaussian and Poisson fits with a
+deliberately over-specified latent rank, 58\% drove a unique standard
+deviation below a tenth of its true value while reporting
+\code{convergence = 0} (208 of 209) and \code{pdHess = TRUE} (190 of 209). At
+0.001 the row reported 73.7\% of those; at 0.01 it reports 96.2\%. The
+false-positive rate is zero at both, measured on 151 healthy fits and
+again on 359 healthy fits whose \emph{true} unique variances differ by up
+to a factor of 1000 — the case that decides transport, since a small
+ratio is then correct rather than pathological. Looser thresholds do
+not transport: 0.1 reaches full sensitivity but flags 19\% of those
+healthy heterogeneous fits.}
 
 \item{sigma_eps_thresh}{Threshold below which an estimated residual
 \code{sigma_eps} is flagged as near boundary. Default 0.0001.}
@@ -61,7 +74,42 @@ fitted probabilities before a binomial trait is flagged. Default
 0.5.}
 
 \item{loading_relative_thresh}{Threshold for the largest trait loading
-relative to the typical fitted loading size. Default 8.}
+relative to the typical fitted loading size. At this level the
+loading is only reported alongside an extreme prevalence, because a
+sparse but genuine loading structure reaches it on healthy fits.
+Default 8.}
+
+\item{loading_runaway_thresh}{Threshold for the largest trait loading,
+relative to the typical fitted loading size, at which the loading is
+reported on its own without requiring an extreme prevalence. This
+catches an improper solution (Heywood case) from quasi-complete
+separation, which runs a loading away while the trait's marginal
+prevalence stays unremarkable. Default 25, calibrated on 6,824
+simulated \strong{single-family binomial} fits: no healthy fit reached it
+(the largest was 12.1), while it reported 96.3\% of fits whose
+implied covariance was wrong by a factor of five or more. Two limits
+on that calibration are worth knowing. It has not been measured on
+mixed-family fits, and it would not transport to another family on
+its own, because a sparse but genuine loading structure pushes the
+ratio much higher there. The typical loading size is therefore taken
+over the binomial traits alone, so that a trait from another family
+cannot set the scale this threshold is judged against.}
+
+\item{loading_absolute_thresh}{Threshold on the largest trait loading
+itself, on the link scale, at which it is reported regardless of the
+other traits. A ratio cannot see a loading matrix inflated as a
+whole, because scaling every loading leaves every ratio unchanged;
+this supplies the absolute reference the ratio lacks. It is
+meaningful because the latent scores are standard normal by
+identification, so a binomial loading is the trait's latent standard
+deviation in link units: a value of 6 already implies a fitted
+probability indistinguishable from 0 or 1 across an ordinary swing
+of the axis. Default 6. Measured over 3,944 simulated binomial fits:
+no healthy fit exceeded 3.99 and none was flagged, while the
+threshold reported 97.3\% of degenerate fits and caught 14 that the
+relative criterion missed. Being a link-scale quantity it does not
+transport to families whose response scale is arbitrary, which is
+why this row is binomial-only.}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},

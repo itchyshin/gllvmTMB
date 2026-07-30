@@ -6,6 +6,32 @@ bridge remains experimental and is not required for the main workflow.
 
 ## New
 
+* **A loading penalty is available for fits that run away, via
+  `gllvmTMBcontrol(aghq_ridge = tau)`.** Binomial fits at small sample sizes can
+  drive one trait's loading to an absurd value while reporting every
+  conventional sign of health — `convergence = 0` and a positive-definite
+  Hessian — because quasi-complete separation makes that solution the genuine
+  maximum of the likelihood. A Gaussian ridge on the loadings adds curvature
+  where the likelihood is flat and removes the runaway: measured at **47% of
+  fits down to 0%** at n = 100, and on one reproduction fit it takes the largest
+  implied loading norm from 979.1 to 3.35.
+
+  The penalty is **opt-in and never applied unless you name it**, so no existing
+  fit changes. `tau` is the prior standard deviation on each free loading, and
+  its scale is set by the model rather than tuned: the latent scores are
+  standard normal by identification, so a loading is the trait's latent standard
+  deviation in link units, making `tau = 2` weakly informative. Its influence
+  also vanishes as the sample grows, because a fixed penalty contributes a
+  constant against a log-likelihood growing with n. The penalty is
+  rotation-invariant.
+
+  Two costs, stated plainly. A penalised fit is a **maximum-a-posteriori point,
+  not a maximum-likelihood estimate**, so `logLik()`, `AIC()` and `BIC()` no
+  longer describe it — set `aghq_ridge = Inf` and refit every model being
+  compared if you need likelihood-based comparison. And the penalty currently
+  covers the unit-tier loadings only. `check_gllvmTMB()` now names this remedy
+  when it reports a runaway loading.
+
 * `getLV()` gains an `se = TRUE` argument that returns the standard error of
   every unit-level (or within-unit) latent score, alongside the scores, as
   `list(scores, se)`. The default `se = FALSE` is unchanged (a bare matrix).

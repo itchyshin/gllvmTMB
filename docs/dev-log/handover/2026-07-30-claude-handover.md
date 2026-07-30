@@ -122,7 +122,29 @@ exploratory output on an earlier column schema.
 Read the lane brief first — it carries the do-not-re-derive list:
 `docs/dev-log/2026-07-30-vgh-pluralism-lane-brief.md`.
 
+> **🔴 SUPERSEDED 2026-07-30 — do not run the command below as written.** It contains two
+> defects that were acted on before being caught, and it is left visible rather than deleted
+> because the second one is the instructive part.
+>
+> 1. **"note VGH FIXES rather than estimates the residual SD" is inverted** for the engine
+>    this arm actually uses. `dev/vgh/vgh-engine.R::vgh_fit()` (family `"gaussian"`)
+>    **estimates** per-trait φ_j; it is `R/va-vgh.R::.vgh_fit()` (family
+>    `"gaussian_anchor"`) that fixes it. This handover's own predecessor said it correctly —
+>    `2026-07-29-claude-handover-vgh-heywood-gate.md:110` writes *"`gaussian_anchor` FIXES…"*.
+>    Compressing `gaussian_anchor` to "VGH" dropped the only word carrying the distinction,
+>    and the inverted version then travelled into a live instruction.
+> 2. **"score recovery against known truth" is not a well-posed request on gaussian.** Laplace
+>    is exact for a gaussian-identity GLLVM and the VGH ELBO is exact, so both optimise the
+>    same objective (`dev/vgh/vgh-bench.R:3`) and share an MLE. There is no accuracy
+>    difference to score. The arm was re-scoped accordingly — see
+>    `docs/dev-log/2026-07-30-gaussian-arm-rescope.md`.
+>
+> **The lesson worth carrying:** a resume command is executable instruction, not prose. A
+> one-word compression in it is a defect that the next session will act on before it reads
+> the evidence. Keep engine names exact in resume commands, even at the cost of brevity.
+
 ```bash
+# SUPERSEDED — see the note above. Kept for provenance.
 cd /private/tmp/gllvmtmb-vgh-pluralism && claude "Rehydrate from docs/dev-log/2026-07-30-vgh-pluralism-lane-brief.md and docs/dev-log/handover/2026-07-30-claude-handover.md. Push this branch first. Then run the GAUSSIAN arm of Slice 1: match dispersion across Laplace and VGH — note VGH FIXES rather than estimates the residual SD — and score recovery against known truth. Make no accuracy claim in either direction until the parameterisations match."
 ```
 

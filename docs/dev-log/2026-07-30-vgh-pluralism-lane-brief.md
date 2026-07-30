@@ -67,8 +67,43 @@ ships today.
 
 **No equal-accuracy statement exists in either direction.** The speed benchmark
 is confounded: Laplace fits **60** parameters and VGH **79** (per-trait `phi_j`
-against one shared gaussian `sigma`), so VGH's +6.2 to +10.0 log-likelihood
+against one shared gaussian `sigma`), so VGH's log-likelihood
 advantage is roughly what 19 extra parameters buy on their own.
+
+> **UPDATE 2026-07-30 — "roughly" is now measured, and the range has moved.**
+>
+> *The range.* This brief said "+6.2 to +10.0", inherited from
+> `2026-07-29-vgh-variational-speed-probe.md:125`. That was **correct when
+> written** — that doc states at `:133-134` that *"n=2000 and n=4000 did not
+> complete in this session."* Those cells have since landed in
+> `dev/vgh/vgh-bench-gaussian.csv`, so the actual range is **6.23 to 12.31**.
+> Stale, not wrong.
+>
+> *The quantification.* The confound is testable, because the two models are
+> strictly **nested** (Laplace = VGH under `φ_1 = … = φ_m`), the bench DGP is
+> **homoscedastic** by construction (`dev/vgh/vgh-bench.R:13`), and both
+> log-likelihoods are **exact** (`:2-3`). So `2·d_ll ~ χ²₁₉` under a *true* null:
+>
+> | n | d_ll | 2·d_ll | p (χ²₁₉) |
+> |---|---|---|---|
+> | 200 | 6.23 | 12.47 | 0.865 |
+> | 500 | 6.67 | 13.33 | 0.821 |
+> | 1000 | 9.99 | 19.98 | 0.396 |
+> | 2000 | 11.96 | 23.92 | 0.199 |
+> | 4000 | 12.31 | 24.61 | 0.174 |
+>
+> The null **expects** `d_ll = 9.5 ± 3.08`. **0 of 5 cells reach p < 0.05**, and
+> two fall *below* the null expectation — VGH gained *less* than 19 free
+> parameters typically buy. Effective loading dof is 39 on both sides (Laplace
+> constrains the strict upper triangle, `src/gllvmTMB.cpp:875-899`; VGH's Λ is
+> unconstrained at 40 raw but only 39 identified), so the gap is exactly the 19
+> dispersions.
+>
+> **Caveat, from adversarial review:** five cells, one seed, single-start, no
+> convergence verification, and `sim()` redraws Λ and β at every n — so these are
+> five draws from five *different* truths, not replicates at growing n. This
+> refutes *"the advantage is real"*; it does not establish *"the advantage is
+> exactly 19 dof"*. The collapse test does that properly.
 
 **Slice 1, and it gates everything else: a MATCHED-PARAMETERISATION accuracy
 run.** Same parameter count both arms, same data, recovery scored against known
@@ -97,9 +132,37 @@ n >= 100, and VGH has no catastrophic tail.
 
 **What remains of Slice 1 is the GAUSSIAN arm only** — where the confound
 actually lives. Matching it requires either per-trait residual SDs on the
-Laplace side or a shared dispersion on the VGH side; note also that VGH's
-gaussian route FIXES the residual dispersion rather than estimating it
-(`gaussian_sd`), which is a second, separate mismatch and must be disclosed.
+Laplace side or a shared dispersion on the VGH side.
+
+> **CORRECTION 2026-07-30 — this paragraph named the wrong engine.** It
+> previously read *"VGH's gaussian route FIXES the residual dispersion rather
+> than estimating it (`gaussian_sd`)"*. That is true of a **different engine**.
+> There are two, and the distinction is the whole point:
+>
+> | engine | family | dispersion |
+> |---|---|---|
+> | `R/va-vgh.R::.vgh_fit()` | `"gaussian_anchor"` | **FIXED** at `gaussian_sd^2` (`:575-576`) |
+> | `dev/vgh/vgh-engine.R::vgh_fit()` | `"gaussian"` | **ESTIMATES per-trait φ_j** (`has_phi = TRUE` :67; `vgh_update_phi()` :341, called :402) |
+>
+> The 60-vs-79 parameter count above comes from **`vgh_fit()`**, which estimates.
+> The count is itself the proof: fixed dispersions would not be parameters, and
+> the total would be 59, not 79. Verified by running it — on heteroscedastic
+> truth φ moves off its initialisation and spreads across traits (range 1.737).
+>
+> **Provenance of the error, because it is instructive.** The predecessor
+> handover stated it correctly —
+> `handover/2026-07-29-claude-handover-vgh-heywood-gate.md:110`, *"**`gaussian_anchor`
+> FIXES the residual dispersion**"* — as did
+> `2026-07-29-vgh-vs-gllvm-headtohead.md:83`. Compressing `gaussian_anchor` to
+> "gaussian route" dropped the only word carrying the distinction, and the wrong
+> version then propagated into this brief *and* into the resume command at
+> `handover/2026-07-30-claude-handover.md:126`, which is how it reached the next
+> session as an instruction. **A one-word compression inverted a fact.**
+>
+> Matching *upward* is also unavailable: `src/gllvmTMB.cpp:568` declares
+> `PARAMETER(log_sigma_eps)` — a **scalar** — and per-trait gaussian dispersion is
+> an unbuilt roadmap item (`docs/design/108-va-parity-programme.md:194`). So the
+> match is downward: pool `vgh_fit()`'s φ to one shared estimated dispersion.
 
 ## Candidate slices, after Slice 1
 

@@ -133,6 +133,24 @@ and it is not explained by VGH stopping early — but a clean equal-accuracy sta
 a matched dispersion parameterisation, which has not been run.* n=2000 and n=4000 did not
 complete in this session.
 
+> **ADDENDUM 2026-07-30 — the missing run, and what it found.** This section named the exact
+> gap (*"a matched dispersion parameterisation, which has not been run"*) and it is now being
+> run. Three updates, none of which contradict anything above.
+>
+> 1. **The range moved because the grid finished.** n=2000 and n=4000 have since landed in
+>    `dev/vgh/vgh-bench-gaussian.csv`, so `d_ll` runs **6.23 to 12.31**, not 6.2 to 10.0.
+>    Stale, not wrong — this section says plainly those cells did not complete.
+> 2. **"Roughly what the extra parameters buy" is now measured.** The models are strictly
+>    nested, the DGP is homoscedastic (`dev/vgh/vgh-bench.R:13`), and both log-likelihoods are
+>    exact, so `2·d_ll ~ χ²₁₉` against a *true* null: p = 0.865, 0.821, 0.396, 0.199, 0.174.
+>    **0 of 5 cells reach p < 0.05**; two fall below the null's expected `d_ll = 9.5 ± 3.08`.
+> 3. **The equal-accuracy statement this section asked for turns out not to be well-posed on
+>    gaussian.** Laplace is exact here and the VGH ELBO is exact, so both optimise the same
+>    objective and therefore share an MLE — there is no accuracy difference to state. The
+>    remaining questions on gaussian are the *optimiser* (do both reach it?) and the
+>    *degeneracy tail* (the KL term that protects VA elsewhere contributes nothing when the
+>    bound is tight).
+
 ## 6. A negative result worth keeping — the exponential-tilting identity
 
 `dev/vgh/tilt-probe.R`. With one covariate profile (the pure-ordination setting, and the

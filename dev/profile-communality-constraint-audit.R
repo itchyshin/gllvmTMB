@@ -56,11 +56,38 @@ cat("\n-- unconverged refits ACCEPTED onto the curve --\n")
 bad <- all[!all$refit_converged, c("target", "profile_value", "constraint_error", "delta_deviance")]
 print(bad, digits = 5, row.names = FALSE)
 
+## The chi-square_1 crossing is the only thing here a confidence interval
+## actually depends on, so report it directly rather than inferring importance
+## from curve-shape statistics.
+crit <- qchisq(0.95, 1)
+cat("\n-- upper chi-square_1 crossing per trait (the CI-relevant number) --\n")
+for (tg in unique(all$target)) {
+  s <- all[all$target == tg, ]
+  s <- s[order(s$profile_value), ]
+  hi <- s[s$profile_value > s$estimate[1], ]
+  x <- if (nrow(hi) >= 2 && any(hi$delta_deviance >= crit, na.rm = TRUE) &&
+             any(hi$delta_deviance < crit, na.rm = TRUE)) {
+    approx(hi$delta_deviance, hi$profile_value, xout = crit)$y
+  } else {
+    NA_real_
+  }
+  cat(sprintf("%s: %.5f\n", tg, x))
+}
+
 ## Finding 3: monotonicity. A profile deviance curve must rise away from the
 ## MLE. A drop between adjacent grid points on the same side means the two
 ## refits landed on DIFFERENT local optima -- which the convergence flag does
 ## not catch, because both converged.
-cat("\n-- non-monotone steps (adjacent-point drops on the same side of the MLE) --\n")
+## Report monotonicity at TWO thresholds. 1e-6 is a numerical-noise detector,
+## six orders of magnitude below the 3.84 chi-square_1 cutoff -- optimising
+## against it measures the algorithm, not the likelihood. 1e-3 deviance is the
+## smallest drop that could plausibly move a bound. Always read the second.
+for (tol in c(1e-6, 1e-3)) {
+cat(sprintf(
+  "\n-- non-monotone steps, drop > %g deviance %s --\n",
+  tol,
+  if (tol <= 1e-6) "(NOISE DETECTOR -- not a quality metric)" else "(CI-relevant)"
+))
 for (tg in unique(all$target)) {
   s <- all[all$target == tg, ]
   s <- s[order(s$profile_value), ]
@@ -72,7 +99,7 @@ for (tg in unique(all$target)) {
       s[s$profile_value > mle, ]
     }
     dd <- ss$delta_deviance
-    drops <- which(diff(dd) < -1e-6)
+    drops <- which(diff(dd) < -tol)
     for (i in drops) {
       cat(sprintf(
         "%s [%s]: %.4f -> %.4f  (dd %.3f -> %.3f, drop %.3f) converged: %s -> %s\n",
@@ -82,4 +109,4 @@ for (tg in unique(all$target)) {
       ))
     }
   }
-}
+}}

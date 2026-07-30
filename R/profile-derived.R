@@ -862,6 +862,143 @@ profile_ci_communality <- function(
   do.call(rbind, out_list)
 }
 
+## Is this (fit, tier, level) inside the ONE regime the D-43 panel certified?
+##
+## The certificate (2026-07-29; docs/dev-log/2026-07-29-certificate-disposition.md)
+## covers simulation from a known Gaussian DGP, tier "unit", the diagonal
+## V_t = (Lambda Lambda')[t,t] + psi[t], d in {1,2}, n_units >= 150, two-sided,
+## nominal-95% input, among converged fits. Everything else the signature admits
+## -- every other family, tier, rank, sample size and level -- was NOT measured.
+## Keep this predicate conservative: d = 0 (a diagonal-only unit tier) and every
+## n between 50 and 150 are unmeasured, so they are uncertified, not "close
+## enough".
+.total_variance_in_certified_regime <- function(fit, tier, level) {
+  ## Family: every observation Gaussian (family id 0).
+  if (any((fit$tmb_data$family_id_vec %||% 0L) != 0L)) {
+    return(FALSE)
+  }
+  ## Tier: the ordinary unit tier only ("unit" normalises to internal "B").
+  norm_tier <- .normalise_level(tier, arg_name = "tier", .skip_warn = TRUE)
+  if (!identical(norm_tier, "B")) {
+    return(FALSE)
+  }
+  ## Rank: a unit-tier latent of rank 1 or 2 (the two certified cells).
+  if (!isTRUE(fit$use$rr_B) || !(as.integer(fit$d_B) %in% c(1L, 2L))) {
+    return(FALSE)
+  }
+  ## Sample size: n_units >= 150.
+  if (!isTRUE(as.integer(fit$n_sites) >= 150L)) {
+    return(FALSE)
+  }
+  ## Level: the gate was measured for the nominal-95% interval and no other.
+  if (!isTRUE(all.equal(level, 0.95))) {
+    return(FALSE)
+  }
+  ## Conditional on convergence -- the certificate is among converged fits only.
+  health <- fit$fit_health %||% .gllvmTMB_build_fit_health(fit)
+  isTRUE(health$converged)
+}
+
+## Claim-boundary marker for the rows profile_ci_total_variance() returns.
+##
+## The failure mode this repo keeps hitting is a true-but-narrow number restated
+## more broadly, and prose does not survive restatement -- so the boundary rides
+## on the row, machine-visible, the way extract_correlations() already does it.
+.total_variance_interval_status <- function(fit, tier, level, lower, upper) {
+  in_regime <- .total_variance_in_certified_regime(fit, tier = tier, level = level)
+  status <- rep(
+    if (in_regime) "certified-0.94" else "route-only",
+    length(lower)
+  )
+  ## A row with no interval is point-only, not an uncertified interval.
+  status[is.na(lower) & is.na(upper)] <- "none"
+  status
+}
+
+#' Profile-likelihood CI for per-trait total variance
+#'
+#' Genuine chi-square_1 profile intervals (via fix-and-refit on `log V_t`) for
+#' the per-trait total variance `V_t = (Lambda Lambda')[t,t] + psi[t]`, the
+#' diagonal of the requested covariance tier. This is the same functional
+#' [extract_Sigma()] returns on its diagonal, and the same one
+#' [bootstrap_Sigma()] resamples.
+#'
+#' @section What the coverage evidence does and does not cover:
+#' One regime of this function has measured frequentist coverage. Under
+#' simulation from a known Gaussian data-generating process with `n_units >= 150`
+#' and `d <= 2`, the two-sided intervals met a **pre-registered `>= 0.94` gate**
+#' (0.9467 in both cells, 20,000 replicates each, computed among converged fits
+#' only). **That gate is 0.94, not nominal 95%** -- both cells sit roughly 3.3
+#' cluster standard errors below 0.95, so do not describe these as 95%
+#' intervals. Coverage is a *marginal average* over the simulated `V_t`
+#' distribution and does **not** hold in the smallest-`V_t` ventile (0.926 at
+#' `d = 1`). The interval is not equal-tailed, so **one-sided use is invalid**.
+#' The evidence is one simulated DGP, not a claim about any real dataset.
+#'
+#' Everything else the arguments admit is an uncertified computed route: every
+#' non-Gaussian family, every tier other than `"unit"`, `d > 2`, `d = 0`,
+#' `n_units < 150`, any `level` other than 0.95, and the off-diagonal and
+#' `psi` targets (the `psi` target was measured on the same run and **failed**).
+#' Rather than refuse those calls -- they are legitimately useful for
+#' exploration -- the returned `interval_status` column marks each row.
+#'
+#' @param fit A fit returned by [gllvmTMB()].
+#' @param tier Covariance tier: `"unit"`, `"unit_obs"`, `"phy"`, or the
+#'   soft-deprecated legacy aliases `"B"` / `"W"`. Default `"unit"`.
+#' @param trait_idx Integer indices of traits, or `NULL` for all.
+#' @param level Confidence level. Default 0.95. Only 0.95 carries coverage
+#'   evidence.
+#' @return A data frame with one row per trait and columns:
+#' \describe{
+#'   \item{`trait`, `tier`}{Trait name and the canonical tier name.}
+#'   \item{`estimate`}{Point estimate of `V_t`.}
+#'   \item{`lower`, `upper`}{Two-sided profile bounds, `NA` when the profile
+#'     could not be computed.}
+#'   \item{`method`}{Always `"profile"`.}
+#'   \item{`interval_status`}{Claim-boundary marker:
+#'     `"certified-0.94"` when the row falls inside the certified regime above,
+#'     `"route-only"` for a computed but uncertified interval, and `"none"`
+#'     for a point-only row with no interval. `"certified-0.94"` marks *regime
+#'     membership*; it does not certify the individual interval.}
+#' }
+#' @seealso [extract_Sigma()] for the point estimate, [bootstrap_Sigma()] for
+#'   the resampling route to the same estimand.
+#' @export
+profile_ci_total_variance <- function(
+  fit,
+  tier = c("unit", "unit_obs", "phy", "B", "W"),
+  trait_idx = NULL,
+  level = 0.95
+) {
+  tier <- match.arg(tier)
+  out <- .profile_ci_total_variance(
+    fit,
+    tier = tier,
+    trait_idx = trait_idx,
+    level = level
+  )
+  if (is.null(out) || nrow(out) == 0L) {
+    return(out)
+  }
+  ## Speak the canonical tier name on the public surface; the internal spec
+  ## carries the legacy slot name. `.canonical_level_name()` is scalar-only, so
+  ## map it element-wise over the one-row-per-trait column.
+  out$tier <- vapply(
+    out$tier,
+    .canonical_level_name,
+    character(1),
+    USE.NAMES = FALSE
+  )
+  out$interval_status <- .total_variance_interval_status(
+    fit,
+    tier = tier,
+    level = level,
+    lower = out$lower,
+    upper = out$upper
+  )
+  out
+}
+
 ## Route B -- DIAGNOSTIC COMPANION (never a certificate). Delta-method Wald on
 ## the log-SD scale g_t = 0.5*log(V_t): SE(V_t) = sqrt(J' cov.fixed J) with the
 ## EXACT analytic Jacobian J = dV_t/dpar from the shared spec (so it targets the

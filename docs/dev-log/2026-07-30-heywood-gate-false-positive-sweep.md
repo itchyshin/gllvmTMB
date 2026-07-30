@@ -453,10 +453,32 @@ large p the *relative* arm is the fragile one (§6.3, 23.95 against a threshold 
 the fragile one and the ratio is stable. **Each arm covers the other's failure
 mode**, and neither would be safe alone.
 
-**Limitation, stated plainly:** no *healthy* spatial fit was obtained — both
-attempts degenerated (`rel_frob` 677 on the well-specified one) — so this is a
-demonstration that the pooled statistic is driven by the SPDE parameterisation,
-**not** a false-positive rate for spatial fits. Spatial coverage remains open.
+**Measured false-positive rate, after the fix.** The earlier failure to obtain a
+healthy spatial fit was a fault in the data-generating process, not the package:
+single-trial Bernoulli at n = 80 with two competing latent structures is close
+to the hardest case available. **Multi-trial** binomial supplies roughly ten
+times the information per cell and converges cleanly.
+
+**MEASURED**, 64 fits (n 200/300 sites, p 6/8, 10/20 trials;
+`dev/heywood/spatial-fpr.R`), 61 healthy:
+
+| | value |
+|---|---|
+| **false positives at the shipped thresholds** | **0 / 61** |
+| worst healthy `rl_max` | 13.20 (threshold 25) |
+| worst healthy `max_loading_unit` | **1.766** (threshold 6) |
+| shipped row on all 61 healthy fits | **PASS** |
+
+**And the counterfactual shows how severe the defect was.** On those same healthy
+fits the *pooled* `max_loading` ranges **5 to 87**, so the pre-fix rule would
+have fired on **60 of 61** — a **98% false-positive rate on healthy spatial
+binomial fits**, every one of them driven by the SPDE parameterisation rather
+than by anything wrong with the model.
+
+One behaviour worth recording: in a spatial fit carrying **no** unit tier,
+`max_loading_unit` is `NA` throughout and the absolute arm is inert by
+construction. That is correct — there are no standard-normal-score loadings to
+judge — and the relative arm still applies.
 
 ### What this does not do
 

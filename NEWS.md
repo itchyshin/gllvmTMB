@@ -208,6 +208,28 @@ bridge remains experimental and is not required for the main workflow.
   diagnostic, not a ratio, is the right instrument for that case and none is
   wired yet.
 
+* **`check_gllvmTMB()` now reports a unique variance that has collapsed only
+  relative to its siblings.** A Heywood case in a Gaussian or Poisson fit
+  usually appears as a per-trait unique variance driven to the boundary, not as
+  a runaway loading — and because `psi` is estimated on the log scale, the
+  boundary is an interior point of the transformed space, so `pdHess` stays
+  positive definite and nothing else objects. Across 360 fits with a
+  deliberately over-specified latent rank, **58% drove a unique standard
+  deviation below a tenth of its true value while reporting `convergence = 0`
+  and `pdHess = TRUE`** — one reached 6e-50. The covariance itself was still
+  recovered to within 7%, so this is a failure of the
+  `Lambda Lambda' + Psi` decomposition rather than of the fitted covariance,
+  and no recovery-based check can see it.
+
+  `psi_rel_thresh` is raised from 0.001 to **0.01**, which reports 96.2% of
+  those fits rather than 73.7%. The measured false-positive rate is **zero**
+  both on 151 healthy fits and on 359 healthy fits whose true unique variances
+  differ by up to a factor of 1000 — the case that decides whether the number
+  transports, since a small ratio is then correct rather than pathological.
+  Looser values do not transport: 0.1 reaches full sensitivity but flags 19% of
+  those healthy fits. **Some fits that previously passed will now warn**; on
+  this evidence they are fits with a genuinely boundary-pinned component.
+
 * **The typical loading size is now taken over the traits being screened.**
   Previously it pooled every trait in the fit regardless of family, so in a
   mixed-family model a trait on a large response scale could set the yardstick

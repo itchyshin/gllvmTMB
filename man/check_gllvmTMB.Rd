@@ -10,7 +10,7 @@ check_gllvmTMB(
   se_thresh = 100,
   weak_axis_thresh = 0.05,
   psi_thresh = 1e-04,
-  psi_rel_thresh = 0.001,
+  psi_rel_thresh = 0.01,
   sigma_eps_thresh = 1e-04,
   cross_loading_thresh = 0.6,
   binary_prevalence_thresh = 0.9,
@@ -42,7 +42,18 @@ catches boundary-pinned (Heywood) components whose absolute standard
 deviation still clears \code{psi_thresh}: \code{psi} is estimated on the log
 scale, so a component at the boundary is an interior point of the
 transformed space and \code{pdHess} stays positive definite there.
-Needs at least two components. Default 0.001.}
+Needs at least two components. Default 0.01, raised from 0.001 on
+measured evidence: across 360 gaussian and Poisson fits with a
+deliberately over-specified latent rank, 58\% drove a unique standard
+deviation below a tenth of its true value while reporting
+\code{convergence = 0} (208 of 209) and \code{pdHess = TRUE} (190 of 209). At
+0.001 the row reported 73.7\% of those; at 0.01 it reports 96.2\%. The
+false-positive rate is zero at both, measured on 151 healthy fits and
+again on 359 healthy fits whose \emph{true} unique variances differ by up
+to a factor of 1000 — the case that decides transport, since a small
+ratio is then correct rather than pathological. Looser thresholds do
+not transport: 0.1 reaches full sensitivity but flags 19\% of those
+healthy heterogeneous fits.}
 
 \item{sigma_eps_thresh}{Threshold below which an estimated residual
 \code{sigma_eps} is flagged as near boundary. Default 0.0001.}

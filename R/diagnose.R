@@ -603,7 +603,18 @@
 #'   deviation still clears `psi_thresh`: `psi` is estimated on the log
 #'   scale, so a component at the boundary is an interior point of the
 #'   transformed space and `pdHess` stays positive definite there.
-#'   Needs at least two components. Default 0.001.
+#'   Needs at least two components. Default 0.01, raised from 0.001 on
+#'   measured evidence: across 360 gaussian and Poisson fits with a
+#'   deliberately over-specified latent rank, 58% drove a unique standard
+#'   deviation below a tenth of its true value while reporting
+#'   `convergence = 0` (208 of 209) and `pdHess = TRUE` (190 of 209). At
+#'   0.001 the row reported 73.7% of those; at 0.01 it reports 96.2%. The
+#'   false-positive rate is zero at both, measured on 151 healthy fits and
+#'   again on 359 healthy fits whose *true* unique variances differ by up
+#'   to a factor of 1000 — the case that decides transport, since a small
+#'   ratio is then correct rather than pathological. Looser thresholds do
+#'   not transport: 0.1 reaches full sensitivity but flags 19% of those
+#'   healthy heterogeneous fits.
 #' @param sigma_eps_thresh Threshold below which an estimated residual
 #'   `sigma_eps` is flagged as near boundary. Default 0.0001.
 #' @param cross_loading_thresh Minimum median trait dominance on a
@@ -652,7 +663,7 @@ check_gllvmTMB <- function(
   se_thresh = 100,
   weak_axis_thresh = 0.05,
   psi_thresh = 1e-4,
-  psi_rel_thresh = 1e-3,
+  psi_rel_thresh = 1e-2,
   sigma_eps_thresh = 1e-4,
   cross_loading_thresh = 0.6,
   binary_prevalence_thresh = 0.9,

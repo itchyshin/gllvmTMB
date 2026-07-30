@@ -93,6 +93,49 @@ test_that("check_gllvmTMB flags weak axes and near-boundary variance terms", {
   expect_equal(chk$status[chk$component == "boundary_sigma_eps"], "WARN")
 })
 
+test_that("a psi collapsed only relative to its siblings is still reported", {
+  ## The absolute arm (psi_thresh) catches a unique SD driven to ~0. The
+  ## relative arm exists for the commoner case: a component pinned at the
+  ## boundary whose absolute value still clears psi_thresh, because psi is
+  ## estimated on the log scale so the boundary is an interior point and
+  ## `pdHess` stays positive definite there.
+  ##
+  ## sd_B below is 0.005 against siblings of 1.0 -- a ratio of 0.005, which is
+  ## 50x above the absolute threshold of 1e-4 and so invisible to that arm.
+  ## It sits in the band the default covered only after psi_rel_thresh was
+  ## raised from 0.001 to 0.01 on measured evidence.
+  set.seed(2028)
+  sim <- simulate_site_trait(
+    n_sites = 40,
+    n_species = 10,
+    n_traits = 3,
+    mean_species_per_site = 4,
+    Lambda_B = matrix(c(0.8, 0.5, -0.2, 0.2, -0.4, 0.6), nrow = 3, ncol = 2),
+    psi_B = c(0.3, 0.3, 0.3),
+    seed = 2028
+  )
+  fit <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
+    data = sim$data
+  )
+  fit$report$sd_B <- c(0.005, 1, 1)
+  fit$fit_health <- NULL
+
+  expect_equal(
+    check_gllvmTMB(fit)$status[
+      check_gllvmTMB(fit)$component == "near_zero_psi_unit"
+    ],
+    "WARN"
+  )
+  ## and it is the relative arm doing the work, not the absolute one
+  expect_equal(
+    check_gllvmTMB(fit, psi_rel_thresh = 1e-3)$status[
+      check_gllvmTMB(fit, psi_rel_thresh = 1e-3)$component == "near_zero_psi_unit"
+    ],
+    "PASS"
+  )
+})
+
 test_that("check_gllvmTMB flags near-constant binary traits with dominant loadings", {
   trait_levels <- paste0("item", 1:4)
   n_per_trait <- 10L

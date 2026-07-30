@@ -428,6 +428,63 @@ test_that("a large-scale trait from another family cannot mask a binomial runawa
   expect_gt(ratio, 25)
 })
 
+test_that("the two Heywood faces are reported by independent statistics", {
+  ## A Heywood case has two faces and gllvmTMB reports each with its own
+  ## single-fit statistic on the Laplace path:
+  ##   Lambda-face  a loading too large on the link scale -> binomial row
+  ##   psi-face     a unique variance collapsed relative to its siblings
+  ##                -> near_zero_psi row
+  ## They must fire on DISJOINT inputs, or one is redundant.
+  mk <- function(lam, sd_b) {
+    tl <- paste0("item", 1:4)
+    tid <- rep(0:3, each = 10L)
+    fit <- list(
+      fit_health = list(
+        convergence = 0L, message = "ok", max_gradient = 0,
+        sdreport_ok = TRUE, sdreport_error = NA_character_, pd_hessian = TRUE,
+        max_fixed_se = 1, boundary_flags = character(0), selected_restart = 1L
+      ),
+      sd_report = list(pdHess = TRUE, cov.fixed = diag(2)),
+      restart_history = data.frame(
+        restart = 1L, optimizer = "nlminb", objective = 0,
+        convergence = 0L, selected = TRUE
+      ),
+      report = list(
+        Lambda_B = matrix(lam, nrow = 4L, dimnames = list(tl, "LV1")),
+        sd_B = sd_b, eta = rep(0, 40L)
+      ),
+      tmb_data = list(
+        y = rep(rep(c(0, 1), 5L), 4L), n_trials = rep(1, 40L),
+        is_y_observed = rep(1L, 40L), family_id_vec = rep(1L, 40L),
+        link_id_vec = rep(1L, 40L), trait_id = tid
+      ),
+      data = data.frame(trait = factor(tl[tid + 1L], levels = tl)),
+      trait_col = "trait", n_traits = 4L, use = list(rr_B = TRUE)
+    )
+    class(fit) <- "gllvmTMB_multi"
+    fit
+  }
+  st <- function(chk, cmp) chk$status[chk$component == cmp]
+
+  ## Lambda-face only: a runaway loading with healthy unique variances
+  a <- check_gllvmTMB(mk(c(40, -38, 42, 39), c(1, 1, 1, 1)))
+  expect_equal(st(a, "binomial_prevalence_loading"), "WARN")
+  expect_equal(st(a, "near_zero_psi_unit"), "PASS")
+
+  ## psi-face only: healthy loadings with one unique variance collapsed
+  b <- check_gllvmTMB(mk(c(0.25, -0.2, 0.3, 0.28), c(0.005, 1, 1, 1)))
+  expect_equal(st(b, "binomial_prevalence_loading"), "PASS")
+  expect_equal(st(b, "near_zero_psi_unit"), "WARN")
+
+  ## and the psi arm only reaches that band at the current default -- at the
+  ## previous 1e-3 it returned PASS on a genuine collapse
+  b_old <- check_gllvmTMB(
+    mk(c(0.25, -0.2, 0.3, 0.28), c(0.005, 1, 1, 1)),
+    psi_rel_thresh = 1e-3
+  )
+  expect_equal(st(b_old, "near_zero_psi_unit"), "PASS")
+})
+
 test_that("diagnostics degrade gracefully when sdreport is unavailable", {
   set.seed(2026)
   sim <- simulate_site_trait(

@@ -254,6 +254,14 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
 ## the constraint to numerical precision (default 1e8). Returns the
 ## constrained -log-likelihood (the inner-max value).
 
+## The constraint tolerance this route accepts. The stated reason the public
+## nonlinear-profile routes were withdrawn is that a penalty "could accept loose
+## constraints and unconverged refits" (R/extractors.R:264) -- this constant is
+## HOW loose, and for a target on [0, 1] such as communality it is 5% of the
+## whole parameter range. Named rather than inlined so it is greppable and can
+## be reported. See issue #813.
+.fix_and_refit_constraint_tol <- 0.05
+
 #' @keywords internal
 #' @noRd
 .fix_and_refit_nll <- function(
@@ -262,8 +270,27 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   q_0,
   lambda = 1e6,
   target_grad = NULL,
-  control = list(eval.max = 100, iter.max = 100, rel.tol = 1e-7)
+  control = list(eval.max = 100, iter.max = 100, rel.tol = 1e-7),
+  .details = FALSE
 ) {
+  ## `.details = TRUE` returns the ACHIEVED target value and the constrained
+  ## refit's convergence status alongside the nll, instead of collapsing every
+  ## failure mode to a bare NA. Both were already computed here and thrown
+  ## away, which is why the stated withdrawal reason could not be checked from
+  ## any output at all (issue #813, step 1). The default path returns the same
+  ## bare numeric it always did, so no existing caller changes behaviour.
+  detail <- function(nll, achieved = NA_real_, converged = NA, status) {
+    if (!.details) {
+      return(nll)
+    }
+    list(
+      nll = nll,
+      achieved = achieved,
+      constraint_error = if (is.na(achieved)) NA_real_ else achieved - q_0,
+      converged = converged,
+      status = status
+    )
+  }
   obj <- fit$tmb_obj
   par0 <- fit$opt$par
   ## Penalised NLL
@@ -306,21 +333,37 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
     }
   )
   if (is.null(opt_pen) || !is.finite(opt_pen$objective)) {
-    return(NA_real_)
+    return(detail(NA_real_, status = "refit_failed"))
   }
+  refit_converged <- isTRUE(identical(as.integer(opt_pen$convergence), 0L))
   ## Pull the underlying NLL at the constrained optimum (sans penalty)
   par_hat <- opt_pen$par
   q_hat_ach <- as.numeric(target_fn(par_hat, fit))
   ## If the constraint wasn't met to reasonable precision, the penalty
   ## was too small or the optimum was elsewhere; flag and return NA.
-  if (is.na(q_hat_ach) || abs(q_hat_ach - q_0) > 0.05) {
-    return(NA_real_)
+  if (is.na(q_hat_ach) || abs(q_hat_ach - q_0) > .fix_and_refit_constraint_tol) {
+    return(detail(
+      NA_real_,
+      achieved = q_hat_ach,
+      converged = refit_converged,
+      status = "constraint_missed"
+    ))
   }
   nll_at_constraint <- tryCatch(obj$fn(par_hat), error = function(e) NA_real_)
   if (is.na(nll_at_constraint) || !is.finite(nll_at_constraint)) {
-    return(NA_real_)
+    return(detail(
+      NA_real_,
+      achieved = q_hat_ach,
+      converged = refit_converged,
+      status = "nll_nonfinite"
+    ))
   }
-  nll_at_constraint
+  detail(
+    nll_at_constraint,
+    achieved = q_hat_ach,
+    converged = refit_converged,
+    status = "ok"
+  )
 }
 
 ## ---- Generic profile CI via fix-and-refit + uniroot ----------------------

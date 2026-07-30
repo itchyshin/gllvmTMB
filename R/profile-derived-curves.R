@@ -86,11 +86,37 @@
 
 #' @keywords internal
 #' @noRd
-.profile_curve_grid <- function(fit, target_fn, grid, lambda = 1e6) {
-  vapply(
-    grid,
-    function(q0) .fix_and_refit_nll(fit, target_fn, q0, lambda = lambda),
-    numeric(1)
+.profile_curve_grid <- function(
+  fit,
+  target_fn,
+  grid,
+  lambda = 1e6,
+  .details = FALSE
+) {
+  if (!.details) {
+    return(vapply(
+      grid,
+      function(q0) .fix_and_refit_nll(fit, target_fn, q0, lambda = lambda),
+      numeric(1)
+    ))
+  }
+  ## Instrumented path (issue #813, step 1): one row per grid point carrying
+  ## the ACHIEVED target value, not only the requested one. A calibration
+  ## harness cannot honestly report coverage without this, because it cannot
+  ## discard the refits that missed their constraint.
+  rows <- lapply(grid, function(q0) {
+    .fix_and_refit_nll(fit, target_fn, q0, lambda = lambda, .details = TRUE)
+  })
+  data.frame(
+    objective = vapply(rows, function(r) r$nll, numeric(1)),
+    achieved_value = vapply(rows, function(r) r$achieved, numeric(1)),
+    constraint_error = vapply(rows, function(r) r$constraint_error, numeric(1)),
+    refit_converged = vapply(
+      rows, function(r) as.logical(r$converged), logical(1)
+    ),
+    refit_status = vapply(rows, function(r) r$status, character(1)),
+    stringsAsFactors = FALSE,
+    row.names = NULL
   )
 }
 
@@ -609,7 +635,13 @@ profile_communality <- function(
       n_grid = n_grid,
       grid_extent = grid_extent
     )
-    obj <- .profile_curve_grid(fit, target_fn, grid)
+    ## Instrumented grid (issue #813, step 1). `profile_value` is the REQUESTED
+    ## constraint; `achieved_value` is where the constrained refit actually
+    ## landed. Reporting both is what makes the stated withdrawal reason --
+    ## "the penalty route could accept loose constraints and unconverged
+    ## refits" -- checkable from the output rather than merely assumed.
+    grid_out <- .profile_curve_grid(fit, target_fn, grid, .details = TRUE)
+    obj <- grid_out$objective
     target_lab <- paste0("communality:", tier_user, ":", trait_names[t])
     out_list[[k]] <- data.frame(
       target = target_lab,
@@ -618,6 +650,10 @@ profile_communality <- function(
       delta_deviance = .profile_curve_delta_deviance(obj, fit),
       estimate = c2_hat,
       conf_level = conf_level,
+      achieved_value = grid_out$achieved_value,
+      constraint_error = grid_out$constraint_error,
+      refit_converged = grid_out$refit_converged,
+      refit_status = grid_out$refit_status,
       stringsAsFactors = FALSE,
       row.names = NULL
     )

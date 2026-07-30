@@ -16,7 +16,8 @@ check_gllvmTMB(
   binary_prevalence_thresh = 0.9,
   binary_saturation_prob_thresh = 0.99,
   binary_saturation_share_thresh = 0.5,
-  loading_relative_thresh = 8
+  loading_relative_thresh = 8,
+  loading_runaway_thresh = 25
 )
 }
 \arguments{
@@ -61,7 +62,26 @@ fitted probabilities before a binomial trait is flagged. Default
 0.5.}
 
 \item{loading_relative_thresh}{Threshold for the largest trait loading
-relative to the typical fitted loading size. Default 8.}
+relative to the typical fitted loading size. At this level the
+loading is only reported alongside an extreme prevalence, because a
+sparse but genuine loading structure reaches it on healthy fits.
+Default 8.}
+
+\item{loading_runaway_thresh}{Threshold for the largest trait loading,
+relative to the typical fitted loading size, at which the loading is
+reported on its own without requiring an extreme prevalence. This
+catches an improper solution (Heywood case) from quasi-complete
+separation, which runs a loading away while the trait's marginal
+prevalence stays unremarkable. Default 25, calibrated on 6,824
+simulated \strong{single-family binomial} fits: no healthy fit reached it
+(the largest was 12.1), while it reported 96.3\% of fits whose
+implied covariance was wrong by a factor of five or more. Two limits
+on that calibration are worth knowing. It has not been measured on
+mixed-family fits, and it would not transport to another family on
+its own, because a sparse but genuine loading structure pushes the
+ratio much higher there. The typical loading size is therefore taken
+over the binomial traits alone, so that a trait from another family
+cannot set the scale this threshold is judged against.}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},

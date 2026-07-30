@@ -318,7 +318,14 @@
   paste0("trait_", seq_len(n_traits))
 }
 
-.gllvmTMB_max_loading_by_trait <- function(object) {
+## `keep` restricts which traits define the typical loading size. Pooling that
+## reference across families lets a large-scale gaussian trait set a binomial
+## trait's yardstick -- inflating the denominator until a genuine runaway looks
+## ordinary, or deflating it until an ordinary loading looks like a runaway.
+## Callers screening one family pass that family's trait ids.
+## NOTE: the merge loop below uses a local `keep`, so this argument must not
+## share that name.
+.gllvmTMB_max_loading_by_trait <- function(object, reference_traits = NULL) {
   trait_names <- .gllvmTMB_trait_names(object)
   out <- rep(NA_real_, length(trait_names))
   names(out) <- trait_names
@@ -348,7 +355,12 @@
     }
   }
 
-  finite <- out[is.finite(out) & out > 0]
+  reference <- if (is.null(reference_traits)) {
+    out
+  } else {
+    out[intersect(as.integer(reference_traits), seq_along(out))]
+  }
+  finite <- reference[is.finite(reference) & reference > 0]
   typical <- if (length(finite) > 0L) {
     stats::median(finite, na.rm = TRUE)
   } else {
@@ -383,7 +395,8 @@
   prevalence_thresh = 0.9,
   saturation_prob_thresh = 0.99,
   saturation_share_thresh = 0.5,
-  loading_relative_thresh = 8
+  loading_relative_thresh = 8,
+  loading_runaway_thresh = 25
 ) {
   tmb <- object$tmb_data
   required <- c("y", "family_id_vec", "link_id_vec", "trait_id")
@@ -451,7 +464,7 @@
     )
   }
   tab <- do.call(rbind, rows)
-  loadings <- .gllvmTMB_max_loading_by_trait(object)
+  loadings <- .gllvmTMB_max_loading_by_trait(object, reference_traits = ids)
   tab <- merge(tab, loadings, by = c("trait_id", "trait"), all.x = TRUE)
 
   tab$extreme_prevalence <- is.finite(tab$prevalence) &
@@ -461,8 +474,18 @@
     tab$relative_loading >= loading_relative_thresh
   tab$saturated_fit <- is.finite(tab$saturation_share) &
     tab$saturation_share >= saturation_share_thresh
-  tab$flag <- tab$extreme_prevalence &
-    (tab$dominant_loading | tab$saturated_fit)
+  ## A loading this far above the other traits' is an improper solution
+  ## whatever the marginal prevalence does. Quasi-complete separation is a
+  ## property of the fitted linear predictor, so it runs a loading away at
+  ## ordinary prevalence -- which the extreme-prevalence conjunct below cannot
+  ## see. `dominant_loading` stays gated on prevalence because at 8x it is a
+  ## hint that needs corroboration; `runaway_loading` does not, because a
+  ## healthy fit does not reach it.
+  tab$runaway_loading <- is.finite(tab$relative_loading) &
+    tab$relative_loading >= loading_runaway_thresh
+  tab$flag <- (tab$extreme_prevalence &
+    (tab$dominant_loading | tab$saturated_fit)) |
+    tab$runaway_loading
 
   score <- abs(tab$prevalence - 0.5)
   score[!is.finite(score)] <- -Inf
@@ -472,13 +495,21 @@
     ifelse(tab$saturated_fit, 1, 0)
   best <- tab[which.max(score), , drop = FALSE]
   status <- if (any(tab$flag)) "WARN" else "PASS"
-  msg <- if (identical(status, "WARN")) {
-    "near-constant binomial trait with dominant loading or saturated fitted probabilities"
-  } else {
+  ## The wording follows the trait actually being reported. A near-constant
+  ## trait is usually the CAUSE of the separation, so where prevalence explains
+  ## the loading the near-constant advice is the more actionable one; the
+  ## runaway wording is for the case prevalence cannot explain.
+  runaway_hit <- isTRUE(best$runaway_loading) &&
+    !isTRUE(best$extreme_prevalence)
+  msg <- if (!identical(status, "WARN")) {
     "binomial trait prevalence/loading/saturation screen"
+  } else if (runaway_hit) {
+    "trait loading has run away from the rest (an improper solution, or Heywood case); quasi-complete separation produces this at ordinary prevalence"
+  } else {
+    "near-constant binomial trait with dominant loading or saturated fitted probabilities"
   }
 
-  .gllvmTMB_check_row(
+  out <- .gllvmTMB_check_row(
     "binomial_prevalence_loading",
     status,
     paste0(
@@ -503,15 +534,24 @@
       .gllvmTMB_fmt_num(1 - saturation_prob_thresh),
       "; loading >= ",
       loading_relative_thresh,
-      "x typical"
+      "x typical with extreme prevalence, or >= ",
+      loading_runaway_thresh,
+      "x typical on its own"
     ),
     msg,
-    if (identical(status, "WARN")) {
-      "remove or re-code the near-constant binary indicator; lowering rank will not resolve quasi-separation by itself"
-    } else {
+    if (!identical(status, "WARN")) {
       "none"
+    } else if (runaway_hit) {
+      "treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; refit with a loading penalty via gllvmTMBcontrol(aghq_ridge = 2), which makes the result a penalised (MAP) estimate, so logLik(), AIC() and BIC() no longer apply to it"
+    } else {
+      "remove or re-code the near-constant binary indicator; lowering rank will not resolve quasi-separation by itself"
     }
   )
+  ## Which path fired, so the weak-axis row can give matching advice: a
+  ## runaway trait need not be near-constant, and telling the reader to
+  ## re-code a trait sitting at prevalence 0.6 sends them the wrong way.
+  attr(out, "runaway_loading") <- runaway_hit
+  out
 }
 
 .gllvmTMB_sigma_eps_mapped_off <- function(object) {
@@ -577,7 +617,25 @@
 #'   fitted probabilities before a binomial trait is flagged. Default
 #'   0.5.
 #' @param loading_relative_thresh Threshold for the largest trait loading
-#'   relative to the typical fitted loading size. Default 8.
+#'   relative to the typical fitted loading size. At this level the
+#'   loading is only reported alongside an extreme prevalence, because a
+#'   sparse but genuine loading structure reaches it on healthy fits.
+#'   Default 8.
+#' @param loading_runaway_thresh Threshold for the largest trait loading,
+#'   relative to the typical fitted loading size, at which the loading is
+#'   reported on its own without requiring an extreme prevalence. This
+#'   catches an improper solution (Heywood case) from quasi-complete
+#'   separation, which runs a loading away while the trait's marginal
+#'   prevalence stays unremarkable. Default 25, calibrated on 6,824
+#'   simulated **single-family binomial** fits: no healthy fit reached it
+#'   (the largest was 12.1), while it reported 96.3% of fits whose
+#'   implied covariance was wrong by a factor of five or more. Two limits
+#'   on that calibration are worth knowing. It has not been measured on
+#'   mixed-family fits, and it would not transport to another family on
+#'   its own, because a sparse but genuine loading structure pushes the
+#'   ratio much higher there. The typical loading size is therefore taken
+#'   over the binomial traits alone, so that a trait from another family
+#'   cannot set the scale this threshold is judged against.
 #' @return A data frame with columns `component`, `status`, `value`,
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
 #'   `"WARN"`, or `"FAIL"`.
@@ -600,7 +658,8 @@ check_gllvmTMB <- function(
   binary_prevalence_thresh = 0.9,
   binary_saturation_prob_thresh = 0.99,
   binary_saturation_share_thresh = 0.5,
-  loading_relative_thresh = 8
+  loading_relative_thresh = 8,
+  loading_runaway_thresh = 25
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
@@ -746,10 +805,13 @@ check_gllvmTMB <- function(
     prevalence_thresh = binary_prevalence_thresh,
     saturation_prob_thresh = binary_saturation_prob_thresh,
     saturation_share_thresh = binary_saturation_share_thresh,
-    loading_relative_thresh = loading_relative_thresh
+    loading_relative_thresh = loading_relative_thresh,
+    loading_runaway_thresh = loading_runaway_thresh
   )
   binomial_warn <- !is.null(binomial_row) &&
     identical(binomial_row$status[[1L]], "WARN")
+  binomial_runaway <- binomial_warn &&
+    isTRUE(attr(binomial_row, "runaway_loading"))
   if (length(latent_specs) == 0L) {
     rows <- c(
       rows,
@@ -810,7 +872,9 @@ check_gllvmTMB <- function(
           ),
           weak_axis_thresh,
           paste0(spec$lambda, " column share of shared loading energy"),
-          if (isTRUE(binomial_warn)) {
+          if (isTRUE(binomial_runaway)) {
+            "if driven by a runaway trait loading, treat the fit as an improper solution rather than re-ranking it; otherwise compare lower ranks and use known-DGP simulations to evaluate the selection rule"
+          } else if (isTRUE(binomial_warn)) {
             "if driven by a high-loading near-constant binary trait, remove or re-code that indicator; otherwise compare lower ranks and use known-DGP simulations to evaluate the selection rule"
           } else {
             "compare lower ranks, inspect fit stability, and avoid over-interpreting weak axes"

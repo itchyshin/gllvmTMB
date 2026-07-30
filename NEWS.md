@@ -178,6 +178,42 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Fixed
 
+* **`check_gllvmTMB()` no longer passes a binomial fit whose loading has run
+  away.** The loading row could only fire when the trait's marginal prevalence
+  was also extreme (at or beyond 0.9). But quasi-complete separation is a
+  property of the fitted linear predictor, not of the marginal rate, so it runs
+  a loading away while prevalence stays entirely ordinary — and the row was
+  keyed on a quantity the pathology does not move. Across 3,944 simulated
+  binomial fits the worst-affected trait's prevalence never left 0.20 to 0.807,
+  and its distance from 0.5 was essentially uncorrelated with the size of the
+  blow-up, while loadings reached 24,000 times the typical trait's. On one
+  Bernoulli fit the row reported `PASS` with a loading 6,980 times typical and
+  every fitted probability saturated, while the implied covariance was wrong by
+  a factor of 156,645. A loading at or beyond `loading_runaway_thresh` (new
+  argument, default 25) now reports on its own, naming the improper solution
+  (Heywood case) and pointing at the loading penalty in
+  `gllvmTMBcontrol(aghq_ridge = )`. The existing `loading_relative_thresh` of 8
+  keeps its prevalence conjunct, because healthy fits with a sparse loading
+  structure reach that level routinely — so nothing that was flagged before
+  stops being flagged, including a genuinely near-constant trait, which the row
+  still reports as it always did.
+
+  Two limits on the calibration are stated plainly. It was measured on
+  single-family binomial fits at the true latent rank, where it reports 96.3% of
+  fits whose implied covariance is wrong by a factor of five or more, with no
+  healthy fit reaching the threshold (the largest was 12.1). When the fitted
+  rank is larger than the truth, several traits can inflate together, which
+  lifts the very yardstick the ratio is measured against; in one such run the
+  row missed 3 of 8 degenerate fits, and they were the three worst. A scale
+  diagnostic, not a ratio, is the right instrument for that case and none is
+  wired yet.
+
+* **The typical loading size is now taken over the traits being screened.**
+  Previously it pooled every trait in the fit regardless of family, so in a
+  mixed-family model a trait on a large response scale could set the yardstick
+  for a binomial one — masking a genuine runaway, or manufacturing a spurious
+  one when the other family's loadings were small.
+
 * **Profile confidence intervals no longer lose their bounds at higher
   confidence levels.** The profile search used a fixed deviance budget that did
   not depend on `level`, and that budget was smaller than the threshold a

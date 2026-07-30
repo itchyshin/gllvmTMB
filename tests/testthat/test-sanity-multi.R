@@ -166,6 +166,168 @@ test_that("check_gllvmTMB flags near-constant binary traits with dominant loadin
   )
 })
 
+test_that("check_gllvmTMB flags a runaway loading at moderate prevalence", {
+  ## Quasi-complete separation produces a Heywood case -- a loading that runs
+  ## away while the trait's MARGINAL prevalence stays unremarkable, because
+  ## separation is a property of the fitted linear predictor, not of the
+  ## marginal rate. item4 below has prevalence 0.6 and a loading 4000x the
+  ## typical trait's, with every fitted probability saturated.
+  trait_levels <- paste0("item", 1:4)
+  n_per_trait <- 10L
+  trait_id <- rep(seq_along(trait_levels) - 1L, each = n_per_trait)
+  y <- c(
+    rep(c(0, 1), 5L),
+    rep(c(0, 1), 5L),
+    rep(c(0, 1), 5L),
+    rep(1, 6L),
+    rep(0, 4L)
+  )
+  eta <- c(rep(0, 30L), rep(8, 6L), rep(-8, 4L))
+  fit <- list(
+    fit_health = list(
+      convergence = 0L,
+      message = "relative convergence",
+      max_gradient = 0,
+      sdreport_ok = TRUE,
+      sdreport_error = NA_character_,
+      pd_hessian = TRUE,
+      max_fixed_se = 1,
+      boundary_flags = character(0),
+      selected_restart = 1L
+    ),
+    sd_report = list(
+      pdHess = TRUE,
+      cov.fixed = diag(2)
+    ),
+    restart_history = data.frame(
+      restart = 1L,
+      optimizer = "nlminb",
+      objective = 0,
+      convergence = 0L,
+      selected = TRUE
+    ),
+    report = list(
+      Lambda_B = matrix(
+        c(0.25, -0.2, 0.15, 900),
+        nrow = length(trait_levels),
+        dimnames = list(trait_levels, "LV1")
+      ),
+      eta = eta
+    ),
+    tmb_data = list(
+      y = y,
+      n_trials = rep(1, length(y)),
+      is_y_observed = rep(1L, length(y)),
+      family_id_vec = rep(1L, length(y)),
+      link_id_vec = rep(1L, length(y)),
+      trait_id = trait_id
+    ),
+    data = data.frame(
+      trait = factor(trait_levels[trait_id + 1L], levels = trait_levels)
+    ),
+    trait_col = "trait",
+    n_traits = length(trait_levels),
+    use = list(rr_B = TRUE)
+  )
+  class(fit) <- "gllvmTMB_multi"
+
+  chk <- check_gllvmTMB(fit)
+  row <- chk[chk$component == "binomial_prevalence_loading", , drop = FALSE]
+
+  expect_equal(nrow(row), 1L)
+  expect_equal(row$status, "WARN")
+  expect_match(row$value, "item4")
+  expect_match(row$value, "prevalence=0.6")
+
+  ## the weak-axis advice must follow the path that actually fired: this
+  ## trait is not near-constant, so it must not be described as one
+  weak <- chk$action[chk$component == "weak_axis_unit"]
+  expect_match(weak, "runaway trait loading")
+  expect_false(any(grepl("near-constant", weak, fixed = TRUE)))
+})
+
+test_that("a large-scale trait from another family cannot mask a binomial runaway", {
+  ## The typical loading size must be taken over the traits being screened. If
+  ## it is pooled across families, a gaussian trait on a large response scale
+  ## sets the yardstick and a genuine binomial runaway is divided into
+  ## invisibility.
+  ##
+  ## Loadings here are c(0.25, 0.2, 12 | 300, 280, 320), binomial first.
+  ##   pooled     : median 146, mad 145.8 -> denom 146 -> item3 ratio 0.08 (PASS)
+  ##   binomial-only: median 0.25, mad 0.05 -> denom 0.25 -> item3 ratio 48 (WARN)
+  trait_levels <- paste0("item", 1:6)
+  n_per_trait <- 10L
+  trait_id <- rep(seq_along(trait_levels) - 1L, each = n_per_trait)
+  ## traits 1-3 binomial, traits 4-6 gaussian
+  family_id <- rep(c(1L, 1L, 1L, 0L, 0L, 0L), each = n_per_trait)
+  y <- c(
+    rep(c(0, 1), 5L),
+    rep(c(0, 1), 5L),
+    c(rep(1, 6L), rep(0, 4L)),
+    rep(c(-2.5, 3.1, 0.4, -1.2, 2.2), 6L)
+  )
+  eta <- c(
+    rep(0, 20L),
+    c(rep(8, 6L), rep(-8, 4L)),
+    rep(0, 30L)
+  )
+  fit <- list(
+    fit_health = list(
+      convergence = 0L,
+      message = "relative convergence",
+      max_gradient = 0,
+      sdreport_ok = TRUE,
+      sdreport_error = NA_character_,
+      pd_hessian = TRUE,
+      max_fixed_se = 1,
+      boundary_flags = character(0),
+      selected_restart = 1L
+    ),
+    sd_report = list(pdHess = TRUE, cov.fixed = diag(2)),
+    restart_history = data.frame(
+      restart = 1L,
+      optimizer = "nlminb",
+      objective = 0,
+      convergence = 0L,
+      selected = TRUE
+    ),
+    report = list(
+      Lambda_B = matrix(
+        c(0.25, -0.2, 12, 300, -280, 320),
+        nrow = length(trait_levels),
+        dimnames = list(trait_levels, "LV1")
+      ),
+      eta = eta
+    ),
+    tmb_data = list(
+      y = y,
+      n_trials = rep(1, length(y)),
+      is_y_observed = rep(1L, length(y)),
+      family_id_vec = family_id,
+      link_id_vec = rep(1L, length(y)),
+      trait_id = trait_id
+    ),
+    data = data.frame(
+      trait = factor(trait_levels[trait_id + 1L], levels = trait_levels)
+    ),
+    trait_col = "trait",
+    n_traits = length(trait_levels),
+    use = list(rr_B = TRUE)
+  )
+  class(fit) <- "gllvmTMB_multi"
+
+  chk <- check_gllvmTMB(fit)
+  row <- chk[chk$component == "binomial_prevalence_loading", , drop = FALSE]
+
+  expect_equal(nrow(row), 1L)
+  expect_equal(row$status, "WARN")
+  expect_match(row$value, "item3")
+
+  ## and the reported ratio must be the binomial-only one, not the pooled one
+  ratio <- as.numeric(sub(".*relative_loading=([0-9.eE+-]+).*", "\\1", row$value))
+  expect_gt(ratio, 25)
+})
+
 test_that("diagnostics degrade gracefully when sdreport is unavailable", {
   set.seed(2026)
   sim <- simulate_site_trait(

@@ -417,6 +417,47 @@ every link but the margin above 6 is roughly three times tighter off logit, so
 The computed rule agrees with the **shipped** row on **633 of 634** fits (the
 single disagreement is the extreme-prevalence path firing, which is correct).
 
+### 6.5 A defect the tier sweep found in this lane's own fix
+
+**MEASURED, and it would have shipped.** Extending coverage to the spatial tier
+found that the **absolute** criterion added in this lane false-positives on
+**every** spatial binomial fit.
+
+`.gllvmTMB_max_loading_by_trait()` takes each trait's maximum across *every*
+latent spec present. On a spatial fit:
+
+| quantity | value |
+|---|---|
+| `max\|Lambda_B\|` (unit tier) | **1.879** |
+| `max\|Lambda_spde\|` | **70,792** |
+| pooled `max_loading` | 70,792 → absolute arm **fires** |
+| shipped row | **WARN** (on a fit whose unit tier is healthy) |
+
+**The cause is a parameterisation, not a pathology.** The absolute threshold is
+justified *only* because the latent scores are standard normal by
+identification, which makes a loading the trait's latent SD in link units. SPDE
+loadings multiply **basis coefficients** carrying their own `sqrt(4*pi)*kappa`
+normalisation, so they are not on that scale at all and the justification simply
+does not apply to them. Arc A's `reference_traits` fix restricts by **family**,
+not by **tier**, so it gave no protection here.
+
+**Fix:** the absolute arm is judged on `max_loading_unit` — the maximum over the
+`unit` and `unit_obs` tiers only. The pooled `max_loading` is still reported in
+the row's value string, and the **relative** arm still uses the pooled
+denominator, which is correct: a ratio is scale-free, and `rl_max` on the same
+fit was a healthy **1.85** throughout. After the fix the row reports **PASS**.
+
+**Note the inversion, because it is the argument for carrying both arms.** At
+large p the *relative* arm is the fragile one (§6.3, 23.95 against a threshold of
+25) and the absolute arm is stable. On a structured tier the *absolute* arm is
+the fragile one and the ratio is stable. **Each arm covers the other's failure
+mode**, and neither would be safe alone.
+
+**Limitation, stated plainly:** no *healthy* spatial fit was obtained — both
+attempts degenerated (`rel_frob` 677 on the well-specified one) — so this is a
+demonstration that the pooled statistic is driven by the SPDE parameterisation,
+**not** a false-positive rate for spatial fits. Spatial coverage remains open.
+
 ### What this does not do
 
 - **It does not catch every degenerate fit.** 54 of 1,465 remain unflagged, and

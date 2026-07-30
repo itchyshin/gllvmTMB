@@ -381,10 +381,50 @@
     NA_real_
   }
 
+  ## The ABSOLUTE criterion is justified only where the latent scores are
+  ## standard normal by identification, which makes a loading the trait's latent
+  ## SD in link units. That holds for the unit tiers. It does NOT hold for the
+  ## SPDE tier, whose loadings multiply basis coefficients carrying their own
+  ## sqrt(4*pi)*kappa normalisation -- measured at 6.5e6 against 66 on the unit
+  ## tier in the same fit. Pooling that into an absolute link-scale threshold
+  ## would flag a spatial fit on the strength of a parameterisation, so the
+  ## absolute column is reported separately from the pooled maximum.
+  unit_levels <- c("unit", "unit_obs")
+  out_unit <- rep(NA_real_, length(trait_names))
+  names(out_unit) <- trait_names
+  for (spec in .gllvmTMB_latent_specs(object)) {
+    if (!spec$level %in% unit_levels) {
+      next
+    }
+    L <- abs(spec$matrix)
+    if (nrow(L) == 0L || ncol(L) == 0L) {
+      next
+    }
+    vals <- apply(L, 1L, max, na.rm = TRUE)
+    vals[!is.finite(vals)] <- NA_real_
+    if (!is.null(rownames(L)) && any(rownames(L) %in% trait_names)) {
+      hit <- match(rownames(L), trait_names)
+      k <- !is.na(hit)
+      old <- out_unit[hit[k]]
+      new <- vals[k]
+      rep_i <- is.finite(new) & (!is.finite(old) | new > old)
+      old[rep_i] <- new[rep_i]
+      out_unit[hit[k]] <- old
+    } else {
+      nn <- min(length(out_unit), length(vals))
+      old <- out_unit[seq_len(nn)]
+      new <- vals[seq_len(nn)]
+      rep_i <- is.finite(new) & (!is.finite(old) | new > old)
+      old[rep_i] <- new[rep_i]
+      out_unit[seq_len(nn)] <- old
+    }
+  }
+
   data.frame(
     trait_id = seq_along(trait_names),
     trait = trait_names,
     max_loading = unname(out),
+    max_loading_unit = unname(out_unit),
     relative_loading = if (is.finite(denom)) unname(out) / denom else NA_real_,
     stringsAsFactors = FALSE
   )
@@ -491,8 +531,11 @@
   ## identification, so a binomial loading IS the trait's latent SD in link
   ## units, and a value this large means a fitted probability indistinguishable
   ## from 0 or 1 across an ordinary swing of the axis.
-  tab$extreme_magnitude <- is.finite(tab$max_loading) &
-    tab$max_loading >= loading_absolute_thresh
+  ## judged on the unit tiers only -- see the note in
+  ## `.gllvmTMB_max_loading_by_trait()`; a structured tier's loadings are not on
+  ## the link scale this threshold is defined against.
+  tab$extreme_magnitude <- is.finite(tab$max_loading_unit) &
+    tab$max_loading_unit >= loading_absolute_thresh
   tab$flag <- (tab$extreme_prevalence &
     (tab$dominant_loading | tab$saturated_fit)) |
     tab$runaway_loading |

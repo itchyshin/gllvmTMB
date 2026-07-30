@@ -386,6 +386,37 @@ nothing left to add. Recorded as a negative result so it is not re-proposed.
 carries little margin and the absolute arm is doing the work. A user with several
 hundred traits should not rely on the relative criterion alone.
 
+### 6.4 Probit and cloglog
+
+The row fires on `family_id == 1` regardless of link, but every calibration fit
+used **logit**. That matters specifically for `loading_absolute_thresh`, whose
+justification is *link-scale*: a loading is the trait's latent SD in link units.
+**That argument is link-specific** — a probit coefficient is roughly 1.7x smaller
+than the logit coefficient for the same probability curve, and cloglog is
+asymmetric.
+
+**MEASURED**, 634 usable fits (`dev/heywood/link-coverage.R`), p 12/25, n 60–400,
+all three loading structures:
+
+| link | false positives | detection | worst healthy `max_loading` | worst healthy `rl_max` |
+|---|---|---|---|---|
+| logit | **0 / 39** | 66/67 (0.985) | 3.18 | 11.46 |
+| probit | **0 / 44** | **120/120 (1.000)** | 2.69 | 10.41 |
+| cloglog | **0 / 47** | **78/78 (1.000)** | 2.85 | 14.32 |
+
+**The thresholds transport.** Healthy `max_loading` stays under 3.2 on every
+link against a threshold of 6, and the ordering is the predicted one — probit
+smallest (2.69), consistent with its smaller coefficient scale, so 6 is
+*conservative* there rather than dangerous.
+
+One asymmetry worth recording: the degenerate 5th percentile of `max_loading` is
+**25.04 (logit) but 8.53 (probit) and 9.71 (cloglog)**. The separation is real on
+every link but the margin above 6 is roughly three times tighter off logit, so
+`loading_absolute_thresh` should not be raised without re-measuring there.
+
+The computed rule agrees with the **shipped** row on **633 of 634** fits (the
+single disagreement is the extreme-prevalence path firing, which is correct).
+
 ### What this does not do
 
 - **It does not catch every degenerate fit.** 54 of 1,465 remain unflagged, and

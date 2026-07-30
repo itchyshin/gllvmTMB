@@ -272,8 +272,8 @@ vgh_update_model <- function(Y, X, Beta, Lambda, phi, amean, Avec, logdetA,
     t(apply(Lambda, 1L, function(l) as.vector(tcrossprod(l))))
 
   # R[i, ] = vec(a_i a_i' + A_i) = vec(E_q[u_i u_i'])
-  R <- Avec + t(apply(amean, 1L, function(a) as.vector(tcrossprod(a))))
-  if (d == 1L) R <- Avec + matrix(amean[, 1]^2, ncol = 1L)
+  R <- if (d == 1L) Avec + matrix(amean[, 1]^2, ncol = 1L) else
+    Avec + t(apply(amean, 1L, function(a) as.vector(tcrossprod(a))))
 
   M  <- X %*% Beta + amean %*% t(Lambda)
   S2 <- Avec %*% t(L2)

@@ -24,12 +24,13 @@ source_vgh_engine <- function() {
 ## Heteroscedastic gaussian fixture: phi_j spans an 8x range (0.25 to 2), so
 ## pooled and unpooled dispersion estimates are genuinely distinguishable --
 ## a homoscedastic truth would make phi_pool a no-op and the test vacuous.
-## d = 2L: vgh_update_model()'s R <- Avec + t(apply(amean, 1L, ...)) line has a
-## PRE-EXISTING shape bug at d == 1L (apply() simplifies a length-1 FUN result
-## to a plain vector, so t() transposes to the wrong orientation before the
-## `if (d == 1L)` correction below it ever runs) -- unrelated to phi_pool and
-## reproducible on an unmodified checkout, so this fixture uses d = 2L to stay
-## on the working code path rather than papering over that defect here.
+## d = 2L keeps this fixture on the full d^2 vec path.  It previously ALSO
+## dodged a shape bug in vgh_update_model() at d == 1L (the
+## R <- Avec + t(apply(amean, 1L, ...)) line ran unconditionally, ahead of its
+## own `if (d == 1L)` correction, so apply()'s length-1 simplification produced
+## a 1 x n term and the sum with the n x 1 Avec errored).  That is now FIXED --
+## the two lines are one if/else expression -- and the d == 1L test at the
+## bottom of this file is the regression guard.
 .vgh_pool_fixture <- function(n = 200L, m = 5L, d = 2L, seed = 20260730L) {
   set.seed(seed)
   phi_true <- seq(0.25, 2, length.out = m)
@@ -75,4 +76,50 @@ test_that("phi_pool shares one dispersion across traits, matches an independent 
   # (e) pooling is a constraint on the phi block; the optimiser must still
   # ascend the ELBO every sweep.
   expect_true(all(diff(fit_pool$elbo_path) >= -1e-8))
+})
+
+
+## Single-factor fixture for the d == 1L regression test: one latent dimension,
+## per-family responses generated off a common eta.  Deliberately small
+## (n = 120, m = 4) -- this is a shape guard, not a recovery test; it only has to
+## reach vgh_update_model() and stay monotone.
+.vgh_d1_fixture <- function(family, n = 120L, m = 4L, seed = 20260730L) {
+  set.seed(seed)
+  X <- matrix(1, n, 1L)
+  eta <- X %*% matrix(stats::rnorm(m, 0, 0.3), 1L, m) +
+    matrix(stats::rnorm(n), n, 1L) %*% t(matrix(stats::rnorm(m, 0, 0.7), m, 1L))
+  Y <- switch(family,
+    gaussian = eta + matrix(stats::rnorm(n * m, 0, 0.5), n, m),
+    poisson  = matrix(stats::rpois(n * m, exp(eta)), n, m),
+    binomial = matrix(stats::rbinom(n * m, 1L, stats::plogis(eta)), n, m))
+  list(Y = Y, X = X)
+}
+
+test_that("vgh_fit runs at d = 1L for every family and keeps the ELBO monotone", {
+  source_vgh_engine()
+
+  # The R = vec(E_q[u u']) block in vgh_update_model() is family-independent, so
+  # a d == 1L shape failure there breaks every family -- all three are checked.
+  for (family in c("gaussian", "poisson", "binomial")) {
+    fx <- .vgh_d1_fixture(family)
+
+    # (a) the fit completes.  This is the arm that fails on the unfixed engine,
+    # where sweep 1 dies in vgh_update_model() with "non-conformable arrays".
+    fit <- expect_no_error(
+      vgh_fit(fx$Y, fx$X, d = 1L, family = family, trace_elbo = TRUE)
+    )
+
+    # (b) one latent dimension in, one column of loadings out
+    expect_equal(ncol(fit$Lambda), 1L, info = family)
+
+    # (c) nothing degenerate came back
+    expect_true(all(is.finite(fit$Beta)), info = family)
+    expect_true(all(is.finite(fit$Lambda)), info = family)
+    expect_true(all(is.finite(fit$phi)), info = family)
+
+    # (d) coordinate ascent still ascends at d == 1L.  The length check keeps
+    # the monotonicity assertion from passing vacuously on a 1-sweep path.
+    expect_gt(length(fit$elbo_path), 1L)
+    expect_true(all(diff(fit$elbo_path) >= -1e-8), info = family)
+  }
 })

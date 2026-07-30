@@ -5,8 +5,45 @@ This repository is shared by humans, Codex, and Claude Code. Read
 
 ## Live Phase Snapshot — 2026-07-30
 
-- **2026-07-30 (LATEST) — HEYWOOD GATE MERGED (#838, `main` @ `a51ca881`); VGH
-  PLURALISM LANE OPEN.** `check_gllvmTMB()` now reports **both faces** of a Heywood
+> **🔴 MULTI-LANE REPO — this snapshot is NOT a single lane's status.** No one bullet
+> represents the project. **The lane map is authoritative for ownership:**
+> `docs/dev-log/handover/2026-07-25-active-lane-split.md`, which names EACH lane's own
+> current handover. Read it before any repository mutation. Milestone state is not in
+> either place and must be re-derived from `git`.
+
+- **2026-07-30 (LATEST) — GAUSSIAN ARM MERGED (#840, `main` @ `7ed3f238`); the pluralist
+  route is established as a NON-GAUSSIAN proposition.** On gaussian, Laplace is exact and
+  the VGH ELBO is exact, so **both engines optimise the same objective** — "which estimator
+  is more accurate" is not a well-posed question there, and VGH's KL-based anti-degeneracy
+  mechanism is **switched off** (a tight bound means `KL = 0`). The reported VGH
+  log-likelihood advantage was **degrees of freedom**: matched at 60 free parameters `d_ll`
+  collapses from a median 9.96 to max 8.3e-07 over 24 cells, `2·d_ll ~ χ²₁₉` fits the whole
+  distribution (KS p = 0.810 / 0.901). Gaussian also has **no loading-runaway tail for
+  either engine** (59 fits, `max|Λ̂|` below each dataset's largest trait SD, ratio ≤ 0.961;
+  the gaussian marginal likelihood is coercive in Λ). Also shipped: three `dev/` engine
+  fixes (`d = 1` crash, stale `$elbo`, `q = 1` coverage), each with a test proven to fail
+  against the defect. `--as-cran` **0E/0W/1N**; CI green; `R/` and `src/` untouched.
+  **⚠ Two claims from this lane were RETRACTED** — `loading_absolute_thresh = 6` is
+  **binomial-gated and never evaluates on a gaussian fit** (`R/diagnose.R:464-471`), so any
+  "gaussian stays under the threshold" statement is void; and the 2026-07-29 docs were
+  wrongly accused of a category error. See the handover's Retractions section before citing
+  anything from this arc.
+  **CONVERGENT with #842** (the AGHQ/ridge audit): across 432,000 fits `aghq = k` returns
+  the Laplace warm start bit-for-bit **89.6%** on gaussian and AGHQ *"helps binomial only,
+  and only at large n"* — two unrelated alternatives to Laplace, same verdict, arrived at
+  independently.
+  **NEXT ARC CHOSEN by Shinichi:** VGH degeneracy at scale on the non-gaussian grid, to be
+  ultra-planned **in a NEW lane** (the pluralism lane is merged and closed).
+  **START HERE:** `docs/dev-log/handover/2026-07-30-claude-handover-lane-transition.md`,
+  then the lane map above.
+  **🔴 Needs Shinichi:** D3 from #842 (the ridge's `τ = 2` is ON by default, net-harmful or
+  inert at every measured scale, and composes with D4 into a silently penalised fit) has
+  **no owner**; and the scale-dependent-constants class it shares with
+  `loading_absolute_thresh` spans two lanes, so it falls between them by default.
+
+- **2026-07-30 — HEYWOOD GATE MERGED (#838, `main` @ `a51ca881`); VGH
+  PLURALISM LANE OPEN.** *(Superseded above: that lane is now merged as #840 — it is no
+  longer "unpushed", and the gaussian arm no longer "remains".)* `check_gllvmTMB()` now reports **both faces** of a Heywood
   case: a runaway loading (`loading_runaway_thresh = 25`, plus a link-scale
   `loading_absolute_thresh = 6` judged on the unit tiers only) and a unique variance
   collapsed relative to its siblings (`psi_rel_thresh` 0.001 → **0.01**). The

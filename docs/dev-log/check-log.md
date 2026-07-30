@@ -47082,7 +47082,12 @@ against a deliberately broken `pool = TRUE`. Bit-for-bit backward compatibility
 of the default path verified with `identical()` on `phi`/`Beta`/`Lambda`/
 `amean`/`Avec`/`elbo` against `git show HEAD`. Not run: `devtools::check()`,
 `pkgdown`. **Pre-existing bug found in passing and deliberately not fixed:**
-`vgh_fit(..., d = 1L)` crashes ("non-conformable arrays") in
-`vgh_update_model()` — `apply()` simplifies to a vector at `d == 1` before the
-`d == 1` correction runs. Reproduces against `git show HEAD`, so it predates this
-work; a follow-up task is filed.
+`vgh_fit(..., d = 1L)` crashed ("non-conformable arrays") in
+`vgh_update_model()` — `apply()` simplified to a vector at `d == 1` before the
+`d == 1` correction ran.
+**✅ CORRECTION 2026-07-30, later the same day: this was FIXED, in `909666f0`.**
+The entry above was written before the fix landed and is stale as worded. The
+`d == 1` guards are present (`dev/vgh/vgh-engine.R:206-207, :271-272, :275-276`) and
+`d = 1` now fits cleanly for gaussian, poisson and binomial. Do NOT re-file it. The
+accurate record is `docs/dev-log/after-task/2026-07-30-gaussian-arm-vgh-pluralism.md`
+§7a. Caught by a scoping scout that checked the claim instead of trusting it.

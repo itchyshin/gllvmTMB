@@ -135,14 +135,18 @@ Worth a maintainer decision on the string itself.
 **Not self-merged deliberately.** A new public export is an API change, which
 `CLAUDE.md`'s merge-authority rule puts in the high-risk set requiring maintainer approval.
 
-## 11 · Verification note — what is NOT covered
+## 11 · Verification note
 
-The full light-tier `testthat::test_local()` sweep was launched but had **not finished** when
-this was written; it contended for CPU with a concurrent Codex CRAN-gate run in
-`/private/tmp/gllvmtmb-cran-gate`. **No claim of "full suite green" is made here.**
+The full light-tier `testthat::test_local()` sweep **completed after the commit was written**
+and is **clean: exit 0, zero failures, zero errors**, 785 heavy tests skipped as expected.
+The two reported warnings are pre-existing and in `test-comparator-gllvm.R` ("rows full of
+zeros in y", a cross-package binary-ordination comparator), untouched by this change.
 
-What *was* verified is listed in §4 and §6: the new file at both tiers (24 pass), a live
-in-regime fit returning `"certified-0.94"`, `checkRd` on the new Rd, and a targeted
-regression run over every test file that asserts on the export set — 61 pass, 0 fail, 0 error.
-The residual risk is a regression in a file none of those touch, which for a 137-insertion,
-zero-deletion change that adds only new symbols is low but not zero.
+It took ~70 minutes because it contended for CPU with a concurrent Codex CRAN-gate run in
+`/private/tmp/gllvmtmb-cran-gate`. Recorded here rather than asserted before the fact: the
+commit message and the first version of this section deliberately claimed nothing about the
+full suite while it was still running.
+
+Also verified (§4, §6): the new file at both tiers (24 pass), a live in-regime fit returning
+`"certified-0.94"`, `checkRd` on the new Rd, and a targeted regression over every test file
+that asserts on the export set (61 pass, 0 fail, 0 error).

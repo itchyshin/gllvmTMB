@@ -66,3 +66,19 @@ test_that(".profile_curve_grid(.details = TRUE) returns the documented frame", {
   ## achieved_value must be the ACHIEVED value, never an echo of the request.
   expect_false(isTRUE(all.equal(det$achieved_value, grid)))
 })
+
+test_that("the refit budget is large enough not to stop the constrained fit early", {
+  ## Measured on the #813 fixture at eval.max/iter.max = 100, rel.tol = 1e-7:
+  ## three of sixty constrained refits returned nlminb convergence != 0 and were
+  ## still accepted onto the curve, and one trait's upper chi-square_1 crossing
+  ## sat at 0.64481 instead of 0.65356. Raising the budget fixed both, and
+  ## nlminb still stops at rel.tol so the cost lands only where it was needed.
+  ##
+  ## This assertion belongs to the budget commit. If that commit is dropped --
+  ## it regresses one knife-edge cross-path test, see the after-task -- drop
+  ## this test with it.
+  ctrl <- eval(formals(gllvmTMB:::.fix_and_refit_nll)$control)
+  expect_gte(ctrl$eval.max, 1000)
+  expect_gte(ctrl$iter.max, 1000)
+  expect_lte(ctrl$rel.tol, 1e-8)
+})

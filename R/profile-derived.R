@@ -270,7 +270,20 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   q_0,
   lambda = 1e6,
   target_grad = NULL,
-  control = list(eval.max = 100, iter.max = 100, rel.tol = 1e-7),
+  ## Issue #813. The old budget (eval.max/iter.max 100, rel.tol 1e-7) stopped
+  ## the constrained refit early often enough to matter: adjacent grid points
+  ## settled on different local optima, so the curve's delta_deviance could FALL
+  ## while moving away from the MLE. Raising the budget fixes the CI-relevant
+  ## cases directly. nlminb still stops at rel.tol, so the extra budget is spent
+  ## only where the refit actually needed it, not on every point.
+  ##
+  ## Preferred over warm-start continuation between grid points, which an
+  ## adversarial review showed buys the same crossing shift while (a) costing
+  ## ~8-11x, (b) selecting on raw nll and thereby rewarding constraint drift
+  ## toward the MLE, and (c) improving only the curve -- .profile_ci_via_refit()
+  ## builds the reported bounds through this same helper, so a fix HERE moves
+  ## the curve and the bounds together instead of splitting them.
+  control = list(eval.max = 5000, iter.max = 5000, rel.tol = 1e-10),
   .details = FALSE
 ) {
   ## `.details = TRUE` returns the ACHIEVED target value and the constrained

@@ -106,3 +106,10 @@ dev/STOP-LOCAL-PILOT
 
 # Claude Code background-agent worktrees (ephemeral; auto-removed)
 .claude/worktrees/
+
+# Claude Code machine-local session config. settings.local.json is per-machine
+# by convention and launch.json points at a local dev server. Both sat
+# permanently untracked, which is how genuinely unsaved work ends up
+# camouflaged among noise -- see this commit's message.
+.claude/settings.local.json
+.claude/launch.json

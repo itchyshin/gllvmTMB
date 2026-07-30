@@ -187,15 +187,15 @@ coverage at all.
 **Every surface citing a corrected number was swept**, not just the one I noticed: the wrong
 `d_ll` range appeared in **three** documents; the C-exact figure in **four** places.
 
-**Memory receipt.** Loaded and used: the brain note *"VGH in gllvmTMB — the settled position"*
+**Memory receipt:** loaded and used — the brain note *"VGH in gllvmTMB — the settled position"*
 (its Q1–Q4 taxonomy shaped how the arm was scoped, and its `rel_frob` like-for-like caveat became
 alignment problem A3); `docs/design/108-va-parity-programme.md` (which pre-scoped the
 per-trait-dispersion work, so it was not re-derived); `CLAUDE.md`'s multi-lane fence and
 likelihood-change rule. **Recall came before scouting**: two `search_notes` queries with
 `search_all_projects: true` preceded the prior-work sweep, and the sweep receipt is in the plan
 file. A durable delta was written back to the brain note (the KL scope limit) rather than left in
-chat. Golden Set (`tools/memory_regression.py`) **not run** — no known-mistake class from that set
-was in scope. Cross-repo guards that fired: *"to check a capability is present, USE it"* (the
+chat. **Golden Set:** not run (`tools/memory_regression.py`) — no known-mistake class from that
+set was in scope for this arc. Cross-repo guards that fired: *"to check a capability is present, USE it"* (the
 `q = 1` fits and the `phi` estimation probe were run, not read), and *"state what a partial arc
 does NOT cover"* (§12).
 

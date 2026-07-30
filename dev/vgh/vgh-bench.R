@@ -1,6 +1,15 @@
 ## Head-to-head: VGH (pure R) vs gllvmTMB Laplace (compiled TMB), gaussian.
 ## For a gaussian-identity GLLVM Laplace is EXACT and the VGH ELBO is exact
-## (validate.R check C-exact, 1.3e-12), so both optimise the SAME objective.
+## (validate.R check C-exact: rel 3.76e-13 at tol = 1e-12 / 102 sweeps, falling to
+## 1.26e-15 -- ~5 ulp -- run to convergence), so both optimise the SAME objective.
+## CORRECTED 2026-07-30: this line read "1.3e-12". That figure was measured while
+## vgh_fit() returned a $elbo stale by one sweep; 70% of it (5.11e-09 of 7.28e-09
+## absolute) WAS the staleness, not an ELBO/likelihood discrepancy. Fixed engine
+## reads 3.76e-13 on the identical DGP and seeds. NOTE the figure is TOLERANCE
+## DEPENDENT -- always quote it with its tol, since quoting it bare is what let it
+## be mistaken for a fixed property of the ELBO. The d_ll column below is NOT
+## affected: exact_ll() at :53 recomputes from the returned parameters and never
+## reads $elbo.
 ## Timing is therefore a fair fight, and the attained exact log-likelihood is
 ## reported as proof neither side wins by stopping early.
 ## Handicap runs AGAINST VGH: interpreted R vs compiled C++ with AD.

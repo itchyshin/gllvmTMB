@@ -88,6 +88,25 @@ Gaussian, so the variational family **contains** it and the ELBO must be tight. 
 the exact marginal log-likelihood to 1.3e-12. Anything wrong in the ELBO or the KL term
 would show up here.
 
+> **ADDENDUM 2026-07-30 — the reasoning is right and the figure was pessimistic.** The
+> theorem stated above is the actual basis of the claim, and it is untouched. But the
+> **1.3e-12** was measured while `vgh_fit()` returned a `$elbo` that was **stale by one
+> sweep** (the convergence test breaks before `prev <- e$value`, so the reported scalar was
+> the objective at the *previous* parameters). Fixed, the same check on the identical DGP and
+> seeds reads **3.76e-13** — a 3.35× improvement, because **70% of the recorded gap
+> (5.11e-09 of 7.28e-09 absolute) was the staleness**, not an ELBO/likelihood discrepancy.
+>
+> A tolerance ladder shows what remains is stopping tolerance, not a tightness defect:
+> rel 3.76e-13 at `tol = 1e-12` (102 sweeps), 9.76e-15 at `tol = 1e-14`, and **1.26e-15 —
+> about 5 ulp — with `tol = 0` and `maxit` exhausted**, where both engines agree *exactly*.
+>
+> **Lesson worth keeping: quote this figure with its tolerance.** Stated bare it reads as a
+> fixed property of the ELBO, which is how it came to be cited as the justification for
+> "both optimise the same objective" in `dev/vgh/vgh-bench.R:3`. The claim is sound — it
+> rests on the theorem — but the number is a convergence artifact of whatever `tol` produced
+> it. Nothing else was exposed: `crosscheck-va-r3.R` never calls `vgh_fit()`, and the
+> `d_ll` column in `vgh-bench-gaussian.csv` recomputes from returned parameters.
+
 **A real bug this found.** First run, Poisson monotonicity FAILED (min increment −0.43) and
 recovery was 0.69. Cause: undamped Newton in `a_i` overshooting through `exp()`. The
 contraction condition is sharp — for `d=1` Poisson, `|T'(A)| <= max_j lambda_j^2 / 8`, so

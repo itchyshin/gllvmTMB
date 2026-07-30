@@ -13,6 +13,23 @@ inference — it is stated in the benchmark script that produced the numbers und
 > *"For a gaussian-identity GLLVM Laplace is EXACT and the VGH ELBO is exact (validate.R check
 > C-exact, 1.3e-12), so both optimise the SAME objective."*
 
+**The quoted figure has since been corrected to 3.76e-13, and it does not matter here.** That
+`1.3e-12` was measured while `vgh_fit()` returned a `$elbo` stale by one sweep; 70% of it was
+the staleness, and the fixed engine reads **3.76e-13** at `tol = 1e-12`, falling to 1.26e-15
+(~5 ulp) run to convergence. So the figure moved *favourably* — see
+`2026-07-29-vgh-variational-speed-probe.md`'s addendum.
+
+It does not matter here for two reasons worth stating, because "the number I cited was wrong"
+would otherwise look like it threatens the argument. **First, the claim rests on a theorem, not
+on the number** — the gaussian posterior of `u_i` is Gaussian, so the variational family
+contains it and the bound is tight at the optimum; the figure was numerical corroboration of a
+proved identity, and it now corroborates it 3.35× more sharply. **Second, nothing downstream in
+this arc read the stale value at all**: `dev/vgh/gaussian-collapse.R` contains the string
+`elbo` zero times, and `vgh-bench.R` itself recomputes `exact_ll()` from the returned
+parameters at `:53` — so every number in `vgh-bench-gaussian.csv`, *including the `d_ll` column
+that is the actual same-objective evidence*, is unaffected. The exposure was confined to the
+citation in that header comment.
+
 and corroborated by the package's own strongest oracle,
 `tests/testthat/test-vgh-oracle.R:54-60`:
 

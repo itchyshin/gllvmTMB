@@ -337,15 +337,22 @@ vgh_obj_j <- function(yj, X, amean, Avec, L2, theta, phij, fam, rule, p, d, j) {
 
 
 # --- Dispersion (gaussian only, closed form) --------------------------------
-# phi_j = mean_i [ (y_ij - m_ij)^2 + s2_ij ]
-vgh_update_phi <- function(Y, M, S2) colMeans((Y - M)^2 + S2)
+# phi_j = mean_i [ (y_ij - m_ij)^2 + s2_ij ]; pool = TRUE shares one phi across
+# all traits (Y/M/S2 are n x m rectangular, so mean(colMeans(X)) == mean(X)
+# exactly -- the direct mean is used).  Floored so a well-fitting trait cannot
+# drive phi to zero.
+vgh_update_phi <- function(Y, M, S2, pool = FALSE, phi_floor = 1e-8) {
+  resid2 <- (Y - M)^2 + S2
+  phi <- if (pool) rep(mean(resid2), ncol(Y)) else colMeans(resid2)
+  pmax(phi, phi_floor)
+}
 
 
 # --- Spectral warm start ----------------------------------------------------
 # Eigendecomposition of the (link-scale) residual covariance.  For gaussian this
 # is the exact moment estimator of Lambda; for other families it is a cheap and
 # well-conditioned starting point that removes most of the outer iterations.
-vgh_init <- function(Y, X, fam, d) {
+vgh_init <- function(Y, X, fam, d, pool = FALSE) {
   n <- nrow(Y); m <- ncol(Y); p <- ncol(X)
   Z <- switch(fam$name,
     gaussian = Y,
@@ -358,9 +365,11 @@ vgh_init <- function(Y, X, fam, d) {
   lam <- pmax(ev$values[seq_len(d)], 1e-6)
   Lambda <- ev$vectors[, seq_len(d), drop = FALSE] %*% diag(sqrt(lam), d)
   Lambda <- Lambda * 0.5   # shrink: VA is better behaved starting inside
+  phi0 <- if (fam$has_phi) pmax(diag(Sc) - rowSums(Lambda^2), 1e-3) else rep(1, m)
+  if (pool) phi0 <- rep(mean(phi0), m)   # pool the STARTING phi too
   list(Beta = Beta, Lambda = Lambda,
        amean = matrix(0, n, d),
-       phi = if (fam$has_phi) pmax(diag(Sc) - rowSums(Lambda^2), 1e-3) else rep(1, m))
+       phi = phi0)
 }
 
 
@@ -372,12 +381,13 @@ vgh_init <- function(Y, X, fam, d) {
 #' @param Q Gauss-Hermite nodes (ignored for families with an exact form)
 #' @param maxit maximum coordinate-ascent sweeps
 #' @param tol relative ELBO convergence tolerance
+#' @param phi_pool pool gaussian dispersion to one shared value across traits
 vgh_fit <- function(Y, X = matrix(1, nrow(Y), 1), d = 2L, family = "gaussian",
                     Q = 15L, maxit = 200L, tol = 1e-8, verbose = FALSE,
-                    n_inner = 2L, trace_elbo = FALSE) {
+                    n_inner = 2L, trace_elbo = FALSE, phi_pool = FALSE) {
   fam <- vgh_family(family)
   rule <- vgh_gh_rule(Q)
-  init <- vgh_init(Y, X, fam, d)
+  init <- vgh_init(Y, X, fam, d, pool = phi_pool)
   Beta <- init$Beta; Lambda <- init$Lambda; amean <- init$amean; phi <- init$phi
 
   elbo_path <- numeric(0)
@@ -399,7 +409,7 @@ vgh_fit <- function(Y, X = matrix(1, nrow(Y), 1), d = 2L, family = "gaussian",
       t(apply(Lambda, 1L, function(l) as.vector(tcrossprod(l))))
     M <- X %*% Beta + amean %*% t(Lambda)
     S2 <- v$Avec %*% t(L2)
-    if (fam$has_phi) phi <- vgh_update_phi(Y, M, S2)
+    if (fam$has_phi) phi <- vgh_update_phi(Y, M, S2, pool = phi_pool)
 
     e <- vgh_elbo(Y, fam, M, S2, amean, v$Avec, phi, rule, v$logdetA)
     elbo_path <- c(elbo_path, e$value)
@@ -412,7 +422,7 @@ vgh_fit <- function(Y, X = matrix(1, nrow(Y), 1), d = 2L, family = "gaussian",
     Beta = Beta, Lambda = Lambda, phi = phi,
     amean = amean, Avec = v$Avec,
     elbo = prev, elbo_path = if (trace_elbo) elbo_path else NULL,
-    sweeps = sweep, family = family, d = d, Q = Q,
+    sweeps = sweep, family = family, d = d, Q = Q, phi_pool = phi_pool,
     seconds = proc.time()[["elapsed"]] - t0
   ), class = "vgh_fit")
 }

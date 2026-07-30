@@ -189,6 +189,61 @@ test_that("the Gauss-Hermite rule is the probabilists' rule", {
 })
 
 
+## --- q = 1: the one-dimensional latent space -----------------------------------
+## `apply(M, 1L, f)` returns a VECTOR, not a one-column matrix, when `f` returns
+## a scalar -- the shape collapse that crashed the dev prototype at d = 1.  The
+## engine guards it at two sites: `.vgh_loading_outer()` with an EARLY RETURN,
+## and `.vgh_update_model()` with an if/else EXPRESSION, so R never evaluates the
+## untaken branch.  Every other test in this file uses q = 2, which takes the
+## other branch at both sites, so without these two tests both guards are
+## unpinned and a refactor can reintroduce the prototype bug into shipped code.
+##
+## The tightness argument above is dimension-independent -- the true posterior of
+## u_i is Gaussian whatever q is -- so the strongest oracle in the file must hold
+## here verbatim, and it is what proves the q = 1 algebra is right rather than
+## merely non-crashing.
+test_that("gaussian ELBO equals the exact marginal log-likelihood at q = 1", {
+  n <- 200L; T <- 10L; q <- 1L; sdv <- 1.3
+  s <- .vgh_test_sim("gaussian_anchor", n, T, q, seed = 7L, sd_gauss = sdv)
+  d <- .vgh_test_long(s$Y)
+  f <- .vgh_fit(d$y, d$n_trials, d$X, d$unit_id, d$trait_id, q = q,
+                N = n, T = T, family = "gaussian_anchor", link = "identity",
+                gaussian_sd = sdv, Q = 9L, maxit = 3000L, tol = 1e-14)
+
+  const <- sum(-s$Y^2 / (2 * sdv^2) - 0.5 * log(2 * pi * sdv^2))
+  Sigma <- tcrossprod(f$Lambda) + diag(sdv^2, T)
+  R <- s$Y - matrix(as.vector(f$Beta), n, T, byrow = TRUE)
+  ch <- chol(Sigma)
+  exact <- -0.5 * (n * (T * log(2 * pi) + 2 * sum(log(diag(ch)))) +
+                     sum(backsolve(ch, t(R), transpose = TRUE)^2))
+  expect_equal(f$elbo + const, exact, tolerance = 1e-10)
+
+  ## The rank must survive the round trip as a matrix, not a dropped vector.
+  expect_equal(ncol(f$Lambda), 1L)
+  expect_true(all(is.finite(f$Beta)))
+  expect_true(all(is.finite(f$Lambda)))
+  expect_true(all(is.finite(f$phi)))
+})
+
+
+test_that("the ELBO is monotone at q = 1 for every admitted family", {
+  for (fam in c("gaussian_anchor", "poisson", "binomial")) {
+    lk <- switch(fam, gaussian_anchor = "identity", poisson = "log",
+                 binomial = "logit")
+    s <- .vgh_test_sim(fam, n = 150L, T = 8L, q = 1L, seed = 11L)
+    d <- .vgh_test_long(s$Y)
+    f <- .vgh_fit(d$y, d$n_trials, d$X, d$unit_id, d$trait_id, q = 1L,
+                  N = 150L, T = 8L, family = fam, link = lk,
+                  Q = 9L, maxit = 120L, tol = 0)
+    expect_gt(min(diff(f$elbo_path)), -1e-6)
+    expect_equal(ncol(f$Lambda), 1L)
+    expect_true(all(is.finite(f$Beta)))
+    expect_true(all(is.finite(f$Lambda)))
+    expect_true(all(is.finite(f$phi)))
+  }
+})
+
+
 ## --- Nothing is exported ---------------------------------------------------------
 test_that("VGH adds no public surface", {
   ns <- getNamespaceExports("gllvmTMB")

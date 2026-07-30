@@ -72,8 +72,34 @@ advantage is roughly what 19 extra parameters buy on their own.
 
 **Slice 1, and it gates everything else: a MATCHED-PARAMETERISATION accuracy
 run.** Same parameter count both arms, same data, recovery scored against known
-truth. Until that exists, neither "VGH is as accurate" nor "VGH is less
-accurate" may be said.
+truth.
+
+**UPDATE 2026-07-30, and it halves the slice.** The confound is
+**gaussian-specific**: it is per-trait `phi_j` against one shared `sigma`.
+**Binomial carries no dispersion parameter at all** — VGH reports `phi = 1`,
+fixed — so both engines fit p intercepts + p*q loadings under the same
+lower-triangular identifiability constraint. MEASURED at p = 6, q = 2: Laplace
+`length(opt$par)` = 17, VGH 6 + 11 = 17. **Matched.**
+
+Therefore the existing 148-fit paired binomial comparison
+(`dev/heywood/vgh-vs-laplace-degeneracy.csv`, carried over from the Heywood
+lane) **is already a valid matched-parameterisation result**, and the confound
+caveat was wrongly carried onto it. It stands:
+
+| median | n = 60 | n = 100 | n = 200 |
+|---|---|---|---|
+| `abs(sigma-1)` Laplace | 27.56 | **0.179** | **0.113** |
+| `abs(sigma-1)` VGH | **0.590** | 0.344 | 0.120 |
+| degenerate | Laplace **50/148** (49 silent) | | VGH **0/148** |
+
+**Both halves of that are now sayable:** Laplace has the better median at
+n >= 100, and VGH has no catastrophic tail.
+
+**What remains of Slice 1 is the GAUSSIAN arm only** — where the confound
+actually lives. Matching it requires either per-trait residual SDs on the
+Laplace side or a shared dispersion on the VGH side; note also that VGH's
+gaussian route FIXES the residual dispersion rather than estimating it
+(`gaussian_sd`), which is a second, separate mismatch and must be disclosed.
 
 ## Candidate slices, after Slice 1
 

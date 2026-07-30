@@ -3747,10 +3747,35 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## loop below, after a Laplace fit has supplied them.
   tmb_data <- c(tmb_data, .gllvmTMB_aghq_data_stub())
 
+  ## Loading start, on the scale of the data (issue #851).
+  ##
+  ## The diagonal used to be a hardcoded 0.5. But the loadings carry the
+  ## RESPONSE scale -- standardising the latent scores to N(0, I) is precisely
+  ## what pushes that scale into Lambda -- so 0.5 silently assumed sd(y) ~ 1.
+  ## Where it does not hold, the fit collapses without any signal: Lambda_B is
+  ## on the RAW scale while theta_diag (Psi) is a LOG-sd, so the optimiser can
+  ## move Psi across orders of magnitude for free and cannot move Lambda. It
+  ## takes the cheap path, Psi absorbs everything, and the ordination is lost.
+  ## Measured before this fix (gaussian, q = 1): ||Lambda||/k held at 1.3663 up
+  ## to sd(y) ~ 1854 and fell to 0.000325 at sd(y) ~ 9268 -- a 4200x collapse
+  ## reported as `convergence = 0` and `converged = TRUE`.
+  ##
+  ## `resid_init` is the right yardstick and is already family-aware: it is the
+  ## residual of the initial fit on raw y for gaussian, and on the normal-scores
+  ## working response for non-gaussian, so its sd is on the scale Lambda lives
+  ## on in both cases. `.gllvmTMB_log_sigma_eps_start()` above keys the residual
+  ## sd off the same vector -- this is the same idiom, not a new one.
+  ##
+  ## The 0.5 is retained as the coefficient, so a working residual sd of 1
+  ## reproduces the historical start exactly.
+  lam_scale_init <- .gllvmTMB_loading_start_scale(resid_init)
   init_rr_theta <- function(p, rank) {
-    ## Lambda_B/W ~ I_rank diagonal start (so initial Sigma is the identity
-    ## scaled by 0). Concretely: lam_diag = 0.5 (sd 1.65), lam_lower = 0.
-    c(rep(0.5, rank), rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank))
+    ## Lambda_B/W ~ I_rank diagonal start scaled to the data: lam_diag =
+    ## 0.5 * sd(resid_init), lam_lower = 0.
+    c(
+      rep(0.5 * lam_scale_init, rank),
+      rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank)
+    )
   }
 
   ## Design 48 §2-B (M3.4 boundary regimes): clamp initial value of any
@@ -3774,13 +3799,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                          rep(0.0, theta_rr_B_slope_len)
                        },
     z_B_slope    = matrix(0, nrow = max(d_B_slope, 1L), ncol = n_sites),
-    theta_diag_B = rep(0.0, n_traits),
+    ## Psi starts on the same scale as Lambda (issue #851). theta_diag is a
+    ## LOG-sd, so log(scale) here is the exact counterpart of multiplying the
+    ## Lambda start by `scale`. Scaling BOTH keeps the starting split between
+    ## the shared (Lambda Lambda') and independent (Psi) components identical
+    ## to the historical one and merely moves the overall scale -- at
+    ## scale = 1 this is log(1) = 0, i.e. byte-identical to before.
+    ##
+    ## Scaling Lambda ALONE was tried first and is wrong: it changes the
+    ## BALANCE of the two competing variance components, not just the scale,
+    ## and it drove a d = 2 gaussian fixture to a non-positive-definite
+    ## Hessian (tests/testthat/test-getlv-se.R).
+    theta_diag_B = rep(log(lam_scale_init), n_traits),
     s_B          = matrix(0, nrow = n_traits, ncol = n_sites),
     theta_diag_B_slope = rep(0.0, n_lhs_cols_B_diag),
     s_B_slope    = matrix(0, nrow = n_lhs_cols_B_diag, ncol = n_sites),
     theta_rr_W   = if (use_rr_W) init_rr_theta(n_traits, d_W) else rep(0.0, theta_rr_W_len),
     z_W          = matrix(0, nrow = max(d_W, 1L), ncol = n_site_species),
-    theta_diag_W = rep(0.0, n_traits),
+    theta_diag_W = rep(log(lam_scale_init), n_traits),
     s_W          = matrix(0, nrow = n_traits, ncol = n_site_species),
     loglambda_phy = 0.0,
     p_phy        = matrix(0, nrow = n_species, ncol = n_traits),
@@ -6134,6 +6170,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   sigma <- stats::sd(resid)
   if (!is.finite(sigma)) sigma <- 0
   log(max(sigma, floor))
+}
+
+## Scale for the reduced-rank loading start (issue #851). Same input and the
+## same idiom as `.gllvmTMB_log_sigma_eps_start()` above: the sd of the initial
+## fit's residuals, which is on raw y for gaussian and on the normal-scores
+## working response otherwise -- i.e. the scale Lambda itself lives on.
+##
+## Returns 1 for a degenerate residual vector, so the caller reproduces the
+## historical hardcoded start rather than collapsing to zero. A zero start would
+## be far worse than a mis-scaled one: it puts Lambda on a stationary point of
+## the reduced-rank block and the ordination can never leave it.
+.gllvmTMB_loading_start_scale <- function(resid, floor = 1e-6) {
+  sigma <- suppressWarnings(stats::sd(as.numeric(resid), na.rm = TRUE))
+  if (length(sigma) != 1L || !is.finite(sigma) || sigma < floor) {
+    return(1)
+  }
+  sigma
 }
 
 .gllvmTMB_reclamp_start_par <- function(par) {

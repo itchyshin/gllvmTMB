@@ -11,7 +11,22 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
-- **2026-07-30 (LATEST) — GAUSSIAN ARM MERGED (#840, `main` @ `7ed3f238`); the pluralist
+- **2026-07-30 (LATEST) — SESSION CLOSED; the re-aimed degeneracy campaign is APPROVED and
+  UNSTARTED.** `main` @ `bef1a5aa` (#840 + #850 merged). **🔴 The campaign's original premise was
+  refuted pre-flight, by measurement:** VGH's 0/148 does **not** survive at larger q/p — at
+  n=40/p=80/q=4, `rel_frob` 10.671/10.449 on 2 of 4 seeds, `atten_F > 2` on 4 of 4, `max|Λ|`
+  8.53–12.53, and **`converged = TRUE` on every one** (structural — `R/va-vgh.R:603` only tests
+  `outer < maxit`). **So VGH's convergence flag is no more trustworthy than Laplace's**; the "98%
+  silent failure" property is **shared**, not Laplace's alone. The 0/148 held only at n≥60, p≤12,
+  **q=2** — and `q` was never a grid column. **Do NOT open an engine-building arc on that figure.**
+  The campaign is re-aimed to *"where is the boundary in (n,p,q), and is the winning region worth an
+  engine?"* **START HERE:**
+  `docs/dev-log/handover/2026-07-30-claude-handover-campaign-approved.md`, then the scope doc's READ
+  FIRST section, then the lane map. **Needs Shinichi:** routing the drafted D3 request
+  (`2026-07-30-request-to-la-aghq-ridge-lane-take-D3.md`), and an owner for the
+  scale-dependent-constants class.
+
+- **2026-07-30 — GAUSSIAN ARM MERGED (#840, `main` @ `7ed3f238`); the pluralist
   route is established as a NON-GAUSSIAN proposition.** On gaussian, Laplace is exact and
   the VGH ELBO is exact, so **both engines optimise the same objective** — "which estimator
   is more accurate" is not a well-posed question there, and VGH's KL-based anti-degeneracy

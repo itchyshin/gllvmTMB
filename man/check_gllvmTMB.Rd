@@ -17,7 +17,8 @@ check_gllvmTMB(
   binary_saturation_prob_thresh = 0.99,
   binary_saturation_share_thresh = 0.5,
   loading_relative_thresh = 8,
-  loading_runaway_thresh = 25
+  loading_runaway_thresh = 25,
+  loading_absolute_thresh = 6
 )
 }
 \arguments{
@@ -93,6 +94,22 @@ its own, because a sparse but genuine loading structure pushes the
 ratio much higher there. The typical loading size is therefore taken
 over the binomial traits alone, so that a trait from another family
 cannot set the scale this threshold is judged against.}
+
+\item{loading_absolute_thresh}{Threshold on the largest trait loading
+itself, on the link scale, at which it is reported regardless of the
+other traits. A ratio cannot see a loading matrix inflated as a
+whole, because scaling every loading leaves every ratio unchanged;
+this supplies the absolute reference the ratio lacks. It is
+meaningful because the latent scores are standard normal by
+identification, so a binomial loading is the trait's latent standard
+deviation in link units: a value of 6 already implies a fitted
+probability indistinguishable from 0 or 1 across an ordinary swing
+of the axis. Default 6. Measured over 3,944 simulated binomial fits:
+no healthy fit exceeded 3.99 and none was flagged, while the
+threshold reported 97.3\% of degenerate fits and caught 14 that the
+relative criterion missed. Being a link-scale quantity it does not
+transport to families whose response scale is arbitrary, which is
+why this row is binomial-only.}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},

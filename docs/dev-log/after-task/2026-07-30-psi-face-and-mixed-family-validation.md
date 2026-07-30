@@ -140,5 +140,16 @@ Running it showed 100% sensitivity on severe cases at zero false positives.
 | Link | logit, identity, log | probit, cloglog |
 | Data | complete, balanced | missing responses, unbalanced grids |
 
-The largest untested cell is **binomial with `unique = TRUE`**, where both faces
-could occur at once and neither instrument has been measured.
+**CORRECTION (same day, from the code rather than from reasoning).** An earlier
+draft of this section named *"binomial with `unique = TRUE`"* as the largest
+untested cell, "where both faces could occur at once". **That is wrong for
+single-trial Bernoulli**: `R/fit-multi.R:4806-4830` deliberately pins those
+traits' `theta_diag_B` at `log(1e-6)` and maps them off, because a single trial
+per cell carries no information to identify a between-unit `Psi`. There is no
+psi channel there to test.
+
+The guard is `all(n_trials[rows_t] == 1)`, so the cell where both faces genuinely
+coexist is **multi-trial binomial (and betabinomial) with `unique = TRUE`** —
+narrower and more specific than the claim it replaces. This was the fifth
+instance in one day of asserting from a summary rather than the code; it is
+recorded here because the pattern, not the instance, is the lesson.

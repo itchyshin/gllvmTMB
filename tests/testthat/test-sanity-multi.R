@@ -289,6 +289,63 @@ test_that("check_gllvmTMB flags a runaway loading at moderate prevalence", {
   expect_false(any(grepl("near-constant", weak, fixed = TRUE)))
 })
 
+test_that("a loading matrix inflated as a whole is still reported", {
+  ## A within-fit ratio is PROVABLY blind to a uniform inflation: under
+  ## Lambda -> c * Lambda every per-trait maximum scales by c, so the median
+  ## scales by c and relative_loading does not move at all. Here every loading
+  ## is ~40 on the link scale -- absurd for a binomial trait, since the latent
+  ## scores are standard normal by identification -- yet every ratio is O(1).
+  trait_levels <- paste0("item", 1:4)
+  n_per_trait <- 10L
+  trait_id <- rep(seq_along(trait_levels) - 1L, each = n_per_trait)
+  y <- rep(rep(c(0, 1), 5L), 4L)
+  eta <- rep(0, 40L)
+  fit <- list(
+    fit_health = list(
+      convergence = 0L, message = "relative convergence", max_gradient = 0,
+      sdreport_ok = TRUE, sdreport_error = NA_character_, pd_hessian = TRUE,
+      max_fixed_se = 1, boundary_flags = character(0), selected_restart = 1L
+    ),
+    sd_report = list(pdHess = TRUE, cov.fixed = diag(2)),
+    restart_history = data.frame(
+      restart = 1L, optimizer = "nlminb", objective = 0,
+      convergence = 0L, selected = TRUE
+    ),
+    report = list(
+      Lambda_B = matrix(
+        c(40, -38, 42, 39),
+        nrow = length(trait_levels),
+        dimnames = list(trait_levels, "LV1")
+      ),
+      eta = eta
+    ),
+    tmb_data = list(
+      y = y, n_trials = rep(1, length(y)), is_y_observed = rep(1L, length(y)),
+      family_id_vec = rep(1L, length(y)), link_id_vec = rep(1L, length(y)),
+      trait_id = trait_id
+    ),
+    data = data.frame(
+      trait = factor(trait_levels[trait_id + 1L], levels = trait_levels)
+    ),
+    trait_col = "trait", n_traits = length(trait_levels),
+    use = list(rr_B = TRUE)
+  )
+  class(fit) <- "gllvmTMB_multi"
+
+  chk <- check_gllvmTMB(fit)
+  row <- chk[chk$component == "binomial_prevalence_loading", , drop = FALSE]
+  expect_equal(row$status, "WARN")
+
+  ## the ratio alone cannot see it -- disable the absolute arm and it passes
+  row_ratio_only <- check_gllvmTMB(fit, loading_absolute_thresh = Inf)
+  expect_equal(
+    row_ratio_only$status[
+      row_ratio_only$component == "binomial_prevalence_loading"
+    ],
+    "PASS"
+  )
+})
+
 test_that("a large-scale trait from another family cannot mask a binomial runaway", {
   ## The typical loading size must be taken over the traits being screened. If
   ## it is pooled across families, a gaussian trait on a large response scale

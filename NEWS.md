@@ -198,6 +198,20 @@ bridge remains experimental and is not required for the main workflow.
   stops being flagged, including a genuinely near-constant trait, which the row
   still reports as it always did.
 
+  A second, complementary criterion is added alongside it. A relative
+  criterion cannot see a loading matrix that is inflated *as a whole*, because
+  scaling every loading leaves every ratio unchanged — so
+  `loading_absolute_thresh` (new argument, default 6) reports a loading that is
+  simply too large on the link scale. That threshold is meaningful because the
+  latent scores are standard normal by identification, making a binomial
+  loading the trait's latent standard deviation in link units; a value of 6
+  already implies a fitted probability indistinguishable from 0 or 1 across an
+  ordinary swing of the axis. Measured over the same 3,944 fits: no healthy fit
+  exceeded 3.99, none was flagged, and it reported 97.3% of degenerate fits —
+  catching 14 that the relative criterion missed. Being a link-scale quantity
+  it does not transport to families whose response scale is arbitrary, which is
+  why this row remains binomial-only.
+
   Two limits on the calibration are stated plainly. It was measured on
   single-family binomial fits at the true latent rank, where it reports 96.3% of
   fits whose implied covariance is wrong by a factor of five or more, with no

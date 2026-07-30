@@ -273,6 +273,44 @@ ratio of **0.08** (masked); restricted to the binomial traits it is **48**
 (reported). Fixed here, with the first mixed-family test the row has ever had —
 `grep -rn "relative_loading" tests/` previously returned nothing at all.
 
+### 6.1a The second criterion: what a ratio cannot see, and the fix
+
+§6.1 recorded that the ratio degrades when several traits inflate together. The
+limiting case is exact and provable: **under `Lambda -> c * Lambda` every
+per-trait maximum scales by `c`, the denominator scales by `c`, and
+`relative_loading` does not move at all.** A uniformly inflated loading matrix
+is invisible to it by construction, not by miscalibration.
+
+An earlier pass rejected a scale statistic at AUC 0.466 — but that was measured
+against the **psi** face, which it was never proposed for. **That rejection was
+invalid**, and re-measuring it on the face it was meant for reverses the answer.
+
+**MEASURED**, 360 binomial fits at an over-specified rank (truth `q = 2`, fitted
+`d` in 2/3/4, `n` 60–200; `dev/heywood/scale-statistic-overrank.R`): the
+shipped ratio catches 70 of 73 degenerate fits, and the worst miss has
+`rel_frob = 6597`. `max_loading` catches **72 of 73 at FPR 0.0000**.
+
+**Confirmed on the main 3,944-fit sweep**, which has the far larger healthy
+sample:
+
+| cut | sensitivity | false positives | adds over the ratio |
+|---|---|---|---|
+| `max_loading >= 4` | 0.9727 | 0 / 551 | 14 |
+| **`max_loading >= 6`** | **0.9727** | **0 / 551** | **14** |
+| `max_loading >= 10` | 0.9727 | 0 / 551 | 14 |
+
+Performance is flat across every cut because the separation is enormous: the
+worst healthy `max_loading` is **3.99** (99th percentile 3.25 or below in all
+three loading structures; the excluded middle band tops out at 3.87), while the
+degenerate 5th percentile is **25**. A cut at 6 sits 1.5x above the worst
+healthy value and 4x below the degenerate tail.
+
+**Why an absolute cut is legitimate here specifically.** The latent scores are
+standard normal by identification, so a binomial loading *is* the trait's latent
+SD in link units — the link supplies a real scale that a gaussian identity link
+does not. This is exactly why the criterion is binomial-only, and why the same
+number must never be reused for another family.
+
 ### 6.2 The stratified denominator, validated on real mixed-family fits
 
 §6.1 demonstrated the pooled-denominator defect on a hand-built fixture. This

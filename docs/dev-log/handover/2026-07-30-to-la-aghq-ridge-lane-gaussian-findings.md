@@ -101,6 +101,49 @@ If you saw the earlier version, §1–§2 above supersede it.
 
 ---
 
+## 6. Where our two lanes converge — read this before the questions
+
+Your `docs/dev-log/audits/2026-07-30-aghq-ridge-verification-audit.md` landed on `main` (#842) while
+this arc was closing. I read it afterwards. **Three of its findings independently corroborate mine
+from a different estimator and a vastly larger sample, and one is the same bug class.** That
+convergence is worth more than either result alone.
+
+**(a) Same verdict on gaussian, two different alternative estimators.** Your §5b: across 432,000
+fits, `aghq = k` returns the Laplace warm start **bit-for-bit 89.6% of the time on gaussian**
+(poisson 0.740, binomial 0.000). My collapse test: matched at 60 parameters, pooled VGH and Laplace
+agree at the joint numerical floor (`d_ll` max 8.3e-07, `Σ̂` ~5e-05, identical recovery). **Two
+unrelated alternatives to Laplace, and on gaussian neither moves the answer.** Yours is 432k fits
+to my 24 cells, so treat yours as the load-bearing version.
+
+**(b) Same verdict on where the value is.** Your §6: *"Where AGHQ actually helps — binomial only,
+and only at large n."* My conclusion for VGH: build it for binomial/Poisson, not gaussian. Same
+recommendation, arrived at independently for a different engine.
+
+**(c) 🔴 The same bug class, in two different constants — this is the one I'd act on.** Your **D3**
+records that the ridge's `τ = 2` is *"a prior claim that loadings are about 2"*, and that at
+`lam_sd = 3` it makes **both** engines worse. My §1 finds `loading_absolute_thresh = 6` is
+justified on the **logit** scale and is trivially exceeded on identity by rescaling `Y`.
+
+**These are the same defect family: a hardcoded magnitude constant calibrated to an assumed loading
+scale.** Two lanes found it in two different constants on the same day, which makes it a pattern
+rather than two coincidences. **Suggestion: a systematic sweep for scale-dependent magnitude
+constants across the diagnostic and penalty surfaces** would likely find more, and is cheap
+compared to discovering each one separately. I have not run it — it is your surface.
+
+**(d) One gap of yours my arc partially fills.** Your §1 headline: *"θ̂ — where the optimiser lands
+— is not established at any n, for any family. No test compares an AGHQ point estimate to a known
+truth or to an oracle maximiser."* For the **gaussian Laplace** path specifically, my collapse test
+does both: point estimates scored against known truth (`rel_frob` 0.1130), *and* against an
+independent pure-R reimplementation of the same likelihood (agreement ~5e-05). Two caveats before
+you lean on it — that ~5e-05 is the **resolution** of the design rather than a measured
+discrepancy (the objective is flat: a 1.4e-05 relative `Σ_B` perturbation costs only 2.1e-07 in
+log-likelihood), and the scope is narrow (intercept-only, loadings-only, no ψ, no covariates). It is
+an oracle for the gaussian path, not for AGHQ, and not for any other family.
+
+Also worth noting: your audit uses *"gaussian, q=1 — Laplace is exact"* as a reference to validate
+the AGHQ integrator (1.1e-13). That is the same theorem my entire re-scope rests on, so it is now
+load-bearing in two lanes independently.
+
 ## What I'd find useful back, if you have it cheaply
 
 1. Was the binomial gating of `loading_absolute_thresh` **deliberate** (gate is binomial-only by

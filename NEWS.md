@@ -6,6 +6,45 @@ bridge remains experimental and is not required for the main workflow.
 
 ## New
 
+* **`offset()` now works, for count responses.** `offset(log(trap_nights))`
+  in a Poisson or negative-binomial model is the standard way to model a rate
+  rather than a raw count, and until now gllvmTMB rejected it. Both closest
+  comparators offer offsets, so this was a gap rather than a rough edge — and
+  for counts there is no workaround, since an effort adjustment cannot be
+  folded into the response the way a Gaussian one can be centred by hand.
+
+  **It is deliberately restricted to count families** — `poisson()`,
+  `nbinom1()`, `nbinom2()`, `truncated_poisson()`, `truncated_nbinom2()`.
+  An offset is a multiplicative rate adjustment on the log link; under
+  `gaussian()` it would be an unexplained mean shift and under `binomial()`
+  a fixed shift in log-odds, neither of which is what the term is for. In a
+  stacked model the check is per trait, so the refusal says which one:
+
+  ```
+  offsets are supported for count families (poisson, nbinom) only;
+  trait `t2` uses `gaussian`.
+  ```
+
+  This is the advantage of a mixed-family design rather than a cost of one.
+  A single-family package can only recycle one offset across every response.
+
+  **A zero offset is allowed everywhere and does nothing**, because zero on
+  the log scale is a multiplier of one. That is how a mixed-family model
+  gives an offset to its count traits and not the rest — set the offset
+  column to `0` on the other rows. In wide format, `offset(w)` applies one
+  unit-level column to every trait, while `offset(e1, e2)` gives one column
+  per trait in `traits()` order.
+
+  The offset also reaches `simulate()`, `bootstrap_Sigma()`,
+  `coverage_study()`, and `predict(newdata = )` — all of which rebuild the
+  linear predictor themselves and would otherwise have used a model you did
+  not fit. `predict(newdata = )` needs the offset variable present in
+  `newdata` and says so if it is missing. `engine = "julia"` has no offset in
+  its predictor and refuses the term rather than dropping it.
+
+  Offsets inside an `lv = ~ ...` sub-formula, or inside an `impute` / `mi()`
+  covariate formula, are still not supported.
+
 * **A loading penalty is available for fits that run away, via
   `gllvmTMBcontrol(aghq_ridge = tau)`.** Binomial fits at small sample sizes can
   drive one trait's loading to an absurd value while reporting every

@@ -45,6 +45,23 @@
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
 #'   Fixed effects and any of the four-mode grid covstructs above are
 #'   supported (plus [phylo_slope()], [animal_slope()], and [meta_V()]).
+#'
+#'   An `offset()` term is supported for **count responses only** — `poisson()`,
+#'   `nbinom1()`, `nbinom2()`, `truncated_poisson()`, and
+#'   `truncated_nbinom2()` — where it is the usual exposure or effort
+#'   adjustment. Supply it already on the link scale, e.g.
+#'   `offset(log(trap_nights))`. It must be its own additive term; it is not
+#'   interacted with `trait`.
+#'
+#'   In long format the offset column carries one value per `(unit, trait)`
+#'   row, so it can differ by trait. In wide format, `offset(w)` names one
+#'   unit-level column and applies it to every trait, while
+#'   `offset(e1, e2, ...)` names one column per trait, in [traits()] order.
+#'
+#'   A **nonzero** offset on a non-count trait is an error naming that trait.
+#'   Zero is always allowed and does nothing (on the log scale it is a
+#'   multiplier of one), which is how a mixed-family model gives an offset to
+#'   its count traits and not the rest.
 #' @param data A data frame. With an ordinary response LHS such as
 #'   `value ~ ...`, `data` is long: one row per `(unit, trait)`
 #'   observation, with the trait column named by `trait`. With a
@@ -767,6 +784,16 @@ gllvmTMB <- function(
   ## dispatch maps the unconstrained-ordination core and errors loudly on
   ## anything the bridge does not yet cover (R/julia-bridge.R).
   if (identical(engine, "julia")) {
+    ## The bridge marshals `parsed$fixed` only, and the offset is deliberately
+    ## held out of that formula. Passing an offset through would therefore
+    ## drop it from the whole fit with no error -- the silent-offset failure
+    ## (#807) one level earlier in the pipeline -- so refuse instead.
+    if (!is.null(parsed$offset_expr))
+      cli::cli_abort(c(
+        "{.code engine = \"julia\"} does not support {.fn offset} terms.",
+        "i" = "The GLLVM.jl bridge has no offset in its linear predictor, so the term would be dropped from the fit rather than applied.",
+        ">" = "Use the default {.code engine = \"tmb\"} for a model with an offset."
+      ))
     return(.gllvmTMB_julia_dispatch(
       parsed         = parsed,
       data           = data,

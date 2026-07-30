@@ -8,6 +8,12 @@
 ## they wrote, with no error and no warning. Measured before the fix: logLik
 ## identical with and without a *varying* offset, difference exactly 0.
 ##
+## Offsets are now SUPPORTED for count families (#833; see
+## test-offset-support.R). These fixtures are all gaussian, so they still
+## reject -- but on the family gate rather than a blanket refusal, and the
+## message changed accordingly. What must not change is that a gaussian fit
+## never silently accepts a varying offset.
+##
 ## These tests are deliberately cheap and un-gated: the failure they guard is
 ## silent, so it must be caught on an ordinary run.
 
@@ -63,9 +69,11 @@ test_that("the rejection message points the user somewhere", {
     ),
     error = function(e) conditionMessage(e)
   )
-  # It must say offsets are not supported, not merely that something failed.
+  # It must diagnose WHY, not merely report that something failed: which
+  # families do support an offset, and which trait broke the rule.
   expect_match(err, "offset", ignore.case = TRUE)
-  expect_match(err, "not (yet )?support|not implemented|cannot", ignore.case = TRUE)
+  expect_match(err, "count", ignore.case = TRUE)
+  expect_match(err, "gaussian", ignore.case = TRUE)
 })
 
 test_that("a formula with no offset still fits (the guard is not over-broad)", {

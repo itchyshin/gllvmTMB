@@ -2147,6 +2147,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
   X_fix <- stats::model.matrix(parsed$fixed, mf)
 
+  ## The offset is evaluated against the SAME `data` the model frame was built
+  ## from, so the two stay row-aligned after any upstream row dropping. It is
+  ## deliberately not part of `parsed$fixed`: model.matrix() drops offset terms,
+  ## and that drop is how a varying offset came to be silently ignored (#807).
+  offset_vec <- gll_prepare_offset(
+    offset_expr    = parsed$offset_expr,
+    data           = data,
+    formula_env    = environment(parsed$fixed),
+    family_id_vec  = family_id_vec,
+    family_per_row = family_per_row,
+    trait_vec      = data[[trait]]
+  )
+
   y_raw <- stats::model.response(mf)
   ## Multi-trial binomial via Wilkinson `cbind(succ, fail) ~ ...`:
   ## `model.response()` returns a 2-column matrix. Split into a length-n
@@ -3668,6 +3681,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     Z_spde_lat       = Z_spde_lat,
     family_id_vec    = as.integer(family_id_vec),
     link_id_vec      = as.integer(link_id_vec),
+    ## All zeros when the formula carries no offset(), so a fit without one is
+    ## unchanged.
+    offset_vec       = as.numeric(offset_vec),
     n_ordinal_cuts_per_trait = as.integer(n_ordinal_cuts_per_trait),
     ordinal_offset_per_trait = as.integer(ordinal_offset_per_trait),
     multinom_group_id    = as.integer(multinom_group_id),
@@ -5985,6 +6001,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       phylo_tree   = phylo_tree,
       X_fix        = X_fix,
       X_fix_names  = colnames(X_fix),
+      ## The offset expression, kept so predict(newdata = ) can re-evaluate it
+      ## for rows the fit never saw. NULL when the formula carried no offset.
+      offset_expr  = parsed$offset_expr,
       Xcoef_fixed  = xcoef_fixed,
       lambda_constraint     = lambda_constraint,
       needs_rotation_advice = needs_rotation_advice,

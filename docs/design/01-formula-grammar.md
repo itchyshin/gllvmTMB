@@ -675,6 +675,94 @@ argument when using the additive form. For block-diagonal
 within-study correlation, build `V` via
 `block_V(study_id, sampling_var, rho_within)`.
 
+## Offsets (count families only)
+
+An `offset()` term adds a **known** quantity to the linear predictor,
+carrying no coefficient: `eta = offset + X b`. On a log link that is the
+exposure / effort idiom — sampling effort, trap-nights, area surveyed — and
+it is the reason the term exists.
+
+**The term is gated to count families**: `poisson`, `nbinom1`, `nbinom2`,
+`truncated_poisson`, `truncated_nbinom2` (family ids 2, 15, 5, 10, 11).
+These are every count family the engine supports; `truncated_nbinom1` has no
+engine row, so it is not a candidate.
+
+The gate is on **family, not link**. A link gate would admit Gamma,
+lognormal and Tweedie on log links, each needing its own semantics decision;
+the family set is small, enumerable, and matches the use case. Under
+`gaussian` an offset would be an unexplained mean shift and under `binomial`
+a fixed shift in log-odds — neither is what a user asking for an offset
+wants.
+
+Because `family_id_vec` is already per-row, the gate is per-row too, and the
+error names the offending trait:
+
+```
+offsets are supported for count families (poisson, nbinom) only;
+trait `t2` uses `gaussian`.
+```
+
+This is a capability the single-family comparators cannot offer cleanly.
+`gllvm` 2.0.13 takes an `offset` argument with no family conditional
+anywhere near it, so in a mixed-family model it applies `log(effort)` to a
+Gaussian trait and a Poisson trait alike.
+
+### Grammar
+
+The offset is expressed **in the formula**, matching `glmmTMB` and the
+sibling `drmTMB`; there is no `offset =` argument.
+
+| shape | form | meaning |
+|---|---|---|
+| long | `offset(col)` | per-row `(unit, trait)` values, as supplied |
+| wide | `offset(w)` | one unit-level column, recycled across all traits |
+| wide | `offset(e1, e2, ...)` | one column per trait, in `traits()` order |
+
+`offset()` must be its **own additive term**. It is not interacted with
+`trait` — an offset enters the predictor directly and shares the trait
+dimension through the row it sits on. `(0 + trait):offset(w)` and other
+nested shapes are rejected, because `model.matrix()` drops offset terms and
+a dropped offset is a silently different model.
+
+### Zero is a legal no-op, and that is what makes mixed fits expressible
+
+Only a **nonzero** offset is gated. An offset of 0 is a multiplier of 1 on
+the response scale, so it genuinely does nothing. A mixed-family model
+therefore gives its count traits an offset and zeroes the rest:
+
+```r
+# long: t2 is gaussian
+d$off <- ifelse(d$trait == "t2", 0, log(d$effort))
+value ~ 0 + trait + (0 + trait):z + offset(off)
+
+# wide: same model, per-trait offset columns
+d$zero <- 0
+traits(t1, t2) ~ 1 + z + offset(log_effort, zero)
+```
+
+### Paths that rebuild the predictor on the R side
+
+Most consumers read the TMB-reported `eta`, which already carries the
+offset. Three do not, and each needed the offset added explicitly:
+
+- `simulate()`'s unconditional redraw rebuilds `eta` from `X_fix %*% b_fix`.
+  It reads the stored `offset_vec`. `bootstrap_Sigma()` and
+  `coverage_study()` redraw through it, so omitting it would have quietly
+  corrupted both.
+- `predict(newdata = )` rebuilds the predictor for rows the fit never saw,
+  so it **re-evaluates** the offset expression against `newdata` and errors
+  if the column is absent.
+- `engine = "julia"` marshals only the fixed formula, which the offset is
+  deliberately held out of. It **refuses** an offset rather than dropping
+  it.
+
+### Still rejected
+
+Offsets inside an `lv = ~ ...` sub-formula keep their own, older rejection
+(`R/lv-predictor.R`): the latent-score mean has no derived offset
+semantics. An `offset()` inside an `impute` / `mi()` covariate formula is
+also still unsupported; that surface has its own design decision to make.
+
 ## Random-effect eligibility
 
 Currently:

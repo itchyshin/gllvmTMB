@@ -38,7 +38,24 @@ gllvmTMB(
 \item{formula}{A glmmTMB-style formula, e.g.
 \code{value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip}.
 Fixed effects and any of the four-mode grid covstructs above are
-supported (plus \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, and \code{\link[=meta_V]{meta_V()}}).}
+supported (plus \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, and \code{\link[=meta_V]{meta_V()}}).
+
+An \code{offset()} term is supported for \strong{count responses only} — \code{poisson()},
+\code{nbinom1()}, \code{nbinom2()}, \code{truncated_poisson()}, and
+\code{truncated_nbinom2()} — where it is the usual exposure or effort
+adjustment. Supply it already on the link scale, e.g.
+\code{offset(log(trap_nights))}. It must be its own additive term; it is not
+interacted with \code{trait}.
+
+In long format the offset column carries one value per \verb{(unit, trait)}
+row, so it can differ by trait. In wide format, \code{offset(w)} names one
+unit-level column and applies it to every trait, while
+\code{offset(e1, e2, ...)} names one column per trait, in \code{\link[=traits]{traits()}} order.
+
+A \strong{nonzero} offset on a non-count trait is an error naming that trait.
+Zero is always allowed and does nothing (on the log scale it is a
+multiplier of one), which is how a mixed-family model gives an offset to
+its count traits and not the rest.}
 
 \item{data}{A data frame. With an ordinary response LHS such as
 \code{value ~ ...}, \code{data} is long: one row per \verb{(unit, trait)}

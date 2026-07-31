@@ -77,6 +77,40 @@ a stagnated objective*.
 
 ---
 
+## The sharpest case: AGHQ declines to certify a point Laplace certifies
+
+Found while exercising the runner's gaussian path, and it isolates the problem better than
+the n-ladder does.
+
+On **gaussian**, n = 100, the AGHQ arms return the Laplace optimum **bit-for-bit** —
+`par_shift = 0.0000`, every derived quantity identical to the printed precision:
+
+| arm | rho_mae | frob_rat | par_shift | **converged** |
+|---|---|---|---|---|
+| `laplace` | 0.1202 | 0.898 | — | **TRUE** |
+| `aghq` | 0.1202 | 0.898 | **0.0000** | **FALSE** |
+| `aghq_alt` | 0.1202 | 0.898 | 0.0000 | FALSE |
+| `aghq_ridge` | 0.1202 | 0.898 | 0.0000 | FALSE |
+
+*(second replicate identical in structure: 0.0713 / 1.026 across all four arms.)*
+
+**The AGHQ arm lands on the exact point the Laplace arm certifies as converged, and declines
+to certify it.** Same parameter vector to machine precision — so there is no question of a
+bad fit, a runaway, or a hard objective.
+
+That isolates the defect to the **criterion**, not the optimisation. The n-ladder alone
+could not do this: there, a non-convergence label could always have meant "the fit really is
+not at an optimum". Here it provably is one.
+
+It also gives a second, independent reason the campaign's converged-only population is
+unusable — even cells where AGHQ provably reaches Laplace's optimum contribute **zero**
+converged fits. And it re-confirms the audit's §5 point and `decisions.md:1927-1938`:
+`aghq_used = TRUE` on a fit where the quadrature moved nothing, which is why the campaign
+records `par_shift` as a first-class measure.
+
+Poisson in the same run: `par_shift = 0.0225` — small but nonzero — and also
+`converged = FALSE` on every AGHQ arm.
+
 ## What this does NOT establish
 
 - **The `stalled at cap 1` branch does not report its gradient**, so those fits (33/22/11)

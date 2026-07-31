@@ -3758,27 +3758,6 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## start exactly.
   lam_scale_init <- .gllvmTMB_loading_start_scale(resid_init)
 
-  ## Seeded latent scores, plus the per-trait scale of what the low-rank part
-  ## does NOT explain. Computed once here so Psi's start can use the REMAINDER
-  ## rather than the total response scale -- see the helper for why that
-  ## distinction matters where a second diagonal competes for the same variance.
-  .z_B_seed <- if (use_rr_B && d_B >= 1L) {
-    .gllvmTMB_latent_score_start(
-      resid = resid_init, trait_id = trait_id, group_id = site_id,
-      n_traits = n_traits, n_groups = n_sites, rank = d_B
-    )
-  } else NULL
-  .psi_B_start <- {
-    sdr <- if (!is.null(.z_B_seed)) attr(.z_B_seed, "sd_remainder") else NULL
-    if (is.null(sdr) || length(sdr) != n_traits || all(is.na(sdr))) {
-      ## no usable decomposition: fall back to the overall working scale
-      rep(log(lam_scale_init), n_traits)
-    } else {
-      sdr[is.na(sdr)] <- lam_scale_init
-      log(pmax(sdr, 1e-3))
-    }
-  }
-
   init_rr_theta <- function(p, rank) {
     ## Lambda_B/W ~ I_rank diagonal start, scaled to the data:
     ## lam_diag = 0.5 * sd(resid_init), lam_lower = 0.
@@ -3811,7 +3790,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## never the magnitude. Falls back to zeros on every degenerate path.
     z_B          = {
       .z0 <- matrix(0, nrow = max(d_B, 1L), ncol = n_sites)
-      if (is.null(.z_B_seed)) .z0 else .z_B_seed
+      .zs <- if (use_rr_B && d_B >= 1L) {
+        .gllvmTMB_latent_score_start(
+          resid = resid_init, trait_id = trait_id, group_id = site_id,
+          n_traits = n_traits, n_groups = n_sites, rank = d_B
+        )
+      } else NULL
+      if (is.null(.zs)) .z0 else .zs
     },
     alpha_lv_B   = matrix(0, nrow = max(n_lv_B, 1L), ncol = max(d_B, 1L)),
     theta_rr_B_slope = if (use_rr_B_slope) {
@@ -3833,7 +3818,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## byte-identical for existing fits at ordinary scale -- it moves the
     ## starting point of EVERY fit. The suite is the check on that, not this
     ## comment.
-    theta_diag_B = .psi_B_start,
+    theta_diag_B = rep(log(lam_scale_init), n_traits),
     s_B          = matrix(0, nrow = n_traits, ncol = n_sites),
     theta_diag_B_slope = rep(0.0, n_lhs_cols_B_diag),
     s_B_slope    = matrix(0, nrow = n_lhs_cols_B_diag, ncol = n_sites),

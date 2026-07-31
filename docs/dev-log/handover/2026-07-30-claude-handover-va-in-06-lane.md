@@ -2,7 +2,9 @@
 
 Date: 2026-07-30 (late). Author: Claude. Target: **Claude** (same platform), or Shinichi at ~05:00.
 Lane: `claude/va-in-06-20260730`, worktree `/private/tmp/gllvmtmb-va-in-06`, off `origin/main`
-`c473364e`. **10 commits, pushed** (`git log --oneline origin/main..HEAD | wc -l`).
+`c473364e`. **Pushed.** For the exact commit list, run `git log --oneline origin/main..HEAD` — a
+literal count written here goes stale the moment anything else lands, including a fix to the count
+itself, which is how it went stale twice already.
 
 ## Mission control
 

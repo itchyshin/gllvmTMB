@@ -231,6 +231,24 @@ bridge remains experimental and is not required for the main workflow.
   replicate one trait and not another. The message now names the traits it
   applies to.
 
+  **A residual SD can now reach the zero boundary where it previously could
+  not.** This is the honest cost of the change and is worth stating plainly.
+  With exactly one row per (grouping, trait) cell and a shared low-rank latent
+  score — the standard joint species distribution and trait-matrix layout — the
+  per-unit latent score can absorb one trait's variation entirely, driving that
+  trait's residual SD to zero. The old shared parameter could not follow it
+  there, because the other traits needed it positive; that protection was a side
+  effect of the pooling rather than a designed safeguard, and it goes away with
+  the pooling. On such a design roughly two thirds of simulated datasets show at
+  least one trait collapsing, and neither the convergence code nor the Hessian
+  check registers it.
+
+  Replication cures it: two or more rows per cell removes the collapse entirely.
+  `check_gllvmTMB()` now flags a residual SD that is negligible relative to that
+  trait's own spread, so the condition is reported rather than silent — an
+  absolute threshold alone missed most cases. If you fit one observation per
+  unit per trait with a latent term, check that row.
+
 * Ordinary `latent()` now represents
   `Sigma = Lambda Lambda^T + Psi` by default. Use
   `latent(..., unique = FALSE)` for the earlier loadings-only subset.

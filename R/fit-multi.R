@@ -4693,6 +4693,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     has_eps_rows_t <- vapply(seq_len(n_traits), function(t) {
       any(family_id_vec[trait_id == (t - 1L)] %in% c(0L, 3L))
     }, logical(1))
+    ## Family is per ROW, so a single trait can carry both Gaussian (identity
+    ## scale) and lognormal (log scale) rows. Per-trait `sigma_eps` gives that
+    ## trait ONE residual SD spanning both, which is a well-defined number for
+    ## neither scale. Warn rather than report it silently; the same situation is
+    ## already reported as NA by `link_residual_per_trait()`.
+    mixed_scale_t <- vapply(seq_len(n_traits), function(t) {
+      fids_t <- family_id_vec[trait_id == (t - 1L)]
+      any(fids_t == 0L) && any(fids_t == 3L)
+    }, logical(1))
+    if (any(mixed_scale_t)) {
+      mixed_labs <- levels(data[[trait]])[mixed_scale_t]
+      cli::cli_warn(c(
+        "!" = "Trait{?s} {.val {mixed_labs}} carr{?ies/y} both Gaussian and lognormal rows.",
+        "*" = "{.code sigma_eps} is estimated once per trait, so that trait's residual SD spans an identity-scale and a log-scale family at once and is not interpretable on either.",
+        "i" = "Split the scales into separate traits if you need an interpretable residual SD."
+      ))
+    }
     per_row_suppress_t <- per_row_diag_B_t | per_row_diag_W_t
     suppress_eps_t <- per_row_suppress_t | !has_eps_rows_t
     data_sd  <- stats::sd(y)

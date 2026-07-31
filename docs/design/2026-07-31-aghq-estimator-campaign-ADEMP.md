@@ -286,6 +286,52 @@ If **P2 fails**, the honest headline is *"AGHQ does not demonstrably improve poi
 estimates anywhere we measured"* — and that is a publishable, lane-closing result, not a
 failure of the campaign.
 
+### P.3b 🔴 AMENDMENT, made after the 10-seed smoke test and before any campaign run
+
+Recorded in the open rather than quietly applied. The smoke test (1 cell, 10 replicates,
+50 fits) invalidated two things in the design above, both about **measurement validity**,
+neither about the direction of any answer. The grid had not been run.
+
+**Amendment 1 — convergence must be read from `aghq$stop_reason`, not `opt$convergence`.**
+On the AGHQ path `opt$convergence` is nlminb's code for the **per-pass iteration cap** set
+by the continuation schedule; it returns 1 ("iteration limit reached") on a healthy fit.
+The original design would have measured the cap and called it non-convergence. The engine's
+own verdict is `aghq$stop_reason`, and the only value meaning converged begins
+`"converged (adaptation mode fixed; gradient below tolerance)"`.
+
+**Amendment 2 — convergence becomes a PRIMARY OUTCOME, not a gate.** With the correct
+field, the smoke shows the AGHQ adaptation loop reports clean convergence in **3/30 fits**:
+
+| stop reason | n/30 |
+|---|---|
+| `stalled (no honest descent at cap 1 after backtracking)` | **20** |
+| `stopped: … max \|grad\| = 1.0e-4 … 2.2e-4 exceeds the tolerance` | 7 |
+| `converged (adaptation mode fixed; gradient below tolerance)` | **3** |
+
+The original 90% convergence gate would therefore mark **every AGHQ cell INCONCLUSIVE**
+and the campaign could not answer its own question. Lowering the gate to fit the data
+would be exactly the post-hoc tuning pre-registration exists to prevent. So the gate is
+**removed and replaced by reporting**:
+
+- Convergence rate per arm per cell, with MCSE, is a **headline performance measure**.
+- The accuracy contrasts run on **three explicitly reported populations**: (i) all fits
+  — primary; (ii) converged-only, by the engine's own criterion; (iii) non-runaway.
+  Disagreement between them is reported, never resolved silently.
+- A cell whose AGHQ arm converges in < 50% of fits carries the tag **`OPTIMISER-LIMITED`**
+  on its verdict — because there the contrast is between Laplace *at its optimum* and
+  AGHQ *somewhere*, which is a weaker claim and must not be stated as an estimator result.
+
+**This is itself a finding, and arguably outranks the accuracy question.** Two observations
+worth separating, both needing the campaign to size properly:
+
+- The 7 near-misses sit at max\|grad\| = 1.03e-4 – 2.2e-4 against `aghq_grad_tol = 1e-4` —
+  a factor of 1–2.2. Either the tolerance is slightly tight for this regime or the gradient
+  is not scale-normalised. Cheap to check; not this lane's job to fix.
+- The dominant mode (20/30) is `stalled at cap 1`, a continuation-schedule behaviour, and
+  its message does **not** report the gradient — so a stall cannot currently be told apart
+  from a legitimate local-optimum stop. **Recommend the engine report `max |grad|` on the
+  stalled branch too**; without it this distinction is unmeasurable from the outside.
+
 ### P.4 🔴 Failed and pathological fits — no quiet dropping (Williams item 10b)
 
 - Fits that **error** are recorded with reason and counted; they are never silently absent.

@@ -89,10 +89,36 @@ Corrected to `laplace`, `laplace_ridge`, **`aghq_single`** (explicitly `aghq_mul
 FALSE`), `aghq`, `aghq_ridge`. Keeping `aghq_single` is a deliberate improvement on the
 original design: it prices what multi-start bought, in the same replicate, on the same data.
 
-## Next
+## 🔴 The campaign is READY but NOT LAUNCHED — Totoro is fully committed to another lane
 
-1. **Reinstall gllvmTMB on Totoro** — its build predates every fix in #870/#875. Check the
-   build date, not the branch.
+Checked before launching rather than after. **The VA lane's Gate-3 campaign is live on
+Totoro right now**: `2160 tasks (6480 fits), 96 workers`, load average ~97, 238 R processes.
+
+The courtesy limit on Totoro is **≤100 cores**, and another lane already holds 96. Launching
+a 16,000-fit campaign on top would blow through the budget and slow a running campaign that
+is not mine. **Not launched.** That is a compute-scheduling decision, not a technical
+blocker — everything else is ready.
+
+### Ready state (so the next session launches, not prepares)
+
+- Source shipped to Totoro at `~/gllvmtmb-aghq-20260731/pkg` (from `main`, all fixes).
+- gllvmTMB **rebuilt and verified**: `0.6.0`, `Built: 2026-07-31 16:20:19 UTC` — current,
+  against the 2026-07-29 build that predated every fix.
+- Runner arms corrected; re-gate passed; `NSIM = 400` justified.
+
+### ⚠️ One thing I did that wants recording
+
+That install went to `~/R/lib`, which **is on Totoro's default library path** — so it
+overwrote the shared `gllvmTMB` while two lanes were running. **No harm done, but by luck
+rather than by care:** both live lanes load with `devtools::load_all()` from their own
+source trees (the gate3 script's own header says *"library(gllvmTMB) is unsafe here"*), so
+neither reads the shared library. The shared library now holds current `main` rather than a
+2-day-old build, which is an improvement for anyone who does use `library()` — but I should
+have checked what else lived there **before** writing to it, not after.
+
+### Then
+
+1. Wait for Totoro to free (or take a maintainer ruling on priority against the VA lane).
 2. `STAGE=1 NSIM=400 CORES=100` (~6.4 h), then `STAGE=2 NSIM=200` (~1.3 h measured).
 3. Report all three populations side by side. The sign disagreement above says the headline
    is *which population*, not just *which engine*.

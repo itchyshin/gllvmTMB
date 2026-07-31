@@ -71,9 +71,17 @@ re-derived this session (18 fail / 3 err: `test-m3-pilot-manifest.R` 16+2,
 | + `lv` gate | 21 | 3 | 3 | `test-lv-factor-runtime.R` |
 | + test re-fixturing | **18** | **3** | **0** | `test-traits-keyword.R` ×2, `test-canonical-keywords.R` ×1 |
 
-The final run is **file-for-file identical to the `main` baseline** — the only failing
-files are `test-m3-pilot-manifest.R` (16+2), `test-profile-derived-curves.R` (2) and
+That run was **file-for-file identical to the `main` baseline** — the only failing files
+were `test-m3-pilot-manifest.R` (16+2), `test-profile-derived-curves.R` (2) and
 `test-tweedie-fixed-p.R` (1 err), all pre-existing. PASS rose 14129 → 14131.
+
+**Then `origin/main` moved under the branch** (the AGHQ lane merged #875, 204 lines in the
+same `R/fit-multi.R`). The baseline was therefore re-derived rather than reused — a stale
+baseline is worse than none. Post-merge, on 347 files: `main` **18 fail / 3 err**, branch
+**19 fail / 3 err**. The single difference is `test-aghq-multistart-convergence.R`,
+analysed in §7a. `git merge` produced **no conflict in `R/`** — the two lanes' edits are in
+different regions (~:3770 and ~:6360); the only collision was append-append in
+`check-log.md`.
 
 **`R CMD check` — partial, and labelled as such.** A *restricted* check was run locally
 (`--as-cran --no-tests --no-vignettes --no-manual`): `Status: 2 WARNINGs, 1 NOTE`, where
@@ -143,6 +151,37 @@ folded in:
 - **`theta_dep_chol` / `theta_spde_dep_chol`** inline the same `log(0.5)` Cholesky-diagonal
   start in two places (`R/fit-multi.R:3895`, `:3961`) — the same un-centralised shape that
   made this bug invisible, one level down.
+
+## 7a. Merge decision — NOT MERGED, and why
+
+The arc's deliverable was "PR #873 merged, or a written, evidenced decision not to." This
+is that decision: **not merged.** It is not a quality verdict — everything inside this
+lane's control is green — but four gates are unmet, and three of them are not mine to
+clear.
+
+1. **One test fails, and it belongs to another lane.**
+   `test-aghq-multistart-convergence.R:103` pins `objective == 379.7134` as a
+   backward-compatibility snapshot under `aghq_multistart = FALSE`. #851 changes the
+   default start, so that single start is no longer the same point. Measured on both
+   trees: the branch reaches a **less** severe runaway (‖Λ̂‖/‖Λ‖ 22.57 vs 29.70,
+   max|Λ| 53.3 vs 81.7) at a 0.83-higher objective, in a region that lane's own file
+   documents as non-MLE (a truth-start reaches 375.175). So it is two pathological points,
+   not a quality regression — but it is **their** test, landed the same day in #875, and
+   per the lane-split doctrine an overlap is the maintainer's call, not an agent's. A
+   directed note with the measurement and three options is in `check-log.md`.
+2. **Merge authority.** `CLAUDE.md` lets an agent merge its own PR only for the
+   enumerated low-risk set, which is documentation-shaped. This changes `R/`.
+3. **3-OS CI.** `AGENTS.md`'s completion protocol requires it. The workflow runs
+   `ubuntu-latest` only by default; the macOS + Windows matrix is behind a
+   `workflow_dispatch` input reserved for pre-release, and those runners bill at 10× and
+   2×. Spending that is a maintainer decision, so it was not triggered. The ubuntu runs
+   were also superseded by successive pushes and reported no result.
+4. **Full `--as-cran` not re-established** — only the restricted form above.
+
+**What IS established:** two root causes found and fixed on merit, the headline
+scale-equivariance result preserved exactly and now guarded in-suite for the first time,
+an overclaim corrected, a register row added, and — against a `main` baseline re-derived
+after `origin/main` moved under this branch mid-arc — no failure attributable to this work.
 
 ## 9. What did not go smoothly
 

@@ -42,8 +42,28 @@ That closes the 13-failure streak.
 
 Not run: a full `pkgdown::build_site()` (unnecessary — the failure is in index validation, which the above exercises directly) and `devtools::check()` (`_pkgdown.yml` is not part of the R package build).
 
-## Follow-up (not done here — out of scope)
-Reference-index completeness is **invisible to `R CMD check`**, so this class of breakage is structurally undetectable until after merge to `main` — which is why it burned 13 runs before being noticed. `pkgdown::check_pkgdown()` runs in seconds without a site build and would catch it pre-merge. Wiring it into the PR check is a small, separate change, and matches the standing "local checks over CI" rule. Deliberately not bundled here, to keep the fix surgical.
+## THE RECURRENCE — this is the fourth time, and the guard has never been built
+Found while filing this report, and it is the most important thing here. **This is not a one-off.** The same defect class — a documented export missing from the `_pkgdown.yml` reference index, breaking the docs build on `main` — has now happened at least four times:
+
+| date | report | what was missing |
+|---|---|---|
+| 2026-05-31 | `2026-05-31-pkgdown-phylo-signal-mi-hotfix.md` | `check_pkgdown()` failing on `main` |
+| 2026-06-17 | `2026-06-17-pkgdown-julia-index-main-repair.md` | `gllvm_julia_fit`, `gllvm_julia_setup` |
+| 2026-06-21 | `2026-06-21-pkgdown-reference-index-fix.md` | **3 topics** missing from index |
+| 2026-07-30 | this report | `profile_ci_total_variance` |
+
+Worse: **three of those reports already name `pkgdown::check_pkgdown()` as the right reproducer** — 2026-05-31 calls it "the right local reproducer," 2026-06-17 records it as the verification command — and `grep -rn "check_pkgdown" .github/workflows/` returns **nothing**. The guard has been identified repeatedly and built zero times. Each session diagnosed correctly, fixed the instance, recommended the guard, and moved on; the next session then paid the same cost.
+
+That reframes the follow-up below. It is not a nice-to-have — it is the actual fix for the recurring problem, and writing "worth considering" a fourth time would just continue the pattern.
+
+## Follow-up (not done here — deliberately deferred, with a reason)
+Reference-index completeness is **invisible to `R CMD check`**, so this class of breakage is structurally undetectable until after merge to `main` — which is why it burned 13 runs before being noticed. `pkgdown::check_pkgdown()` runs in seconds without a site build and would catch it pre-merge, matching the standing "local checks over CI" rule.
+
+It is deferred rather than bundled because wiring it in correctly is a real design task, not a one-liner, and getting it wrong gates every PR in a repo mid-release-prep. What the next session needs to decide, with the groundwork already done:
+
+- **Insertion point:** `.github/workflows/R-CMD-check.yaml`, after the `setup-r-dependencies` step (currently line ~201, `extra-packages: any::rcmdcheck` → add `any::pkgdown`), before `check-r-package`.
+- **The scoping wrinkle:** that workflow gates its heavy steps on `steps.scope.outputs.full_required == 'true'`, with a "Fast pass" branch for ignored-source/process changes. A PR that edits **only** `_pkgdown.yml` may take the fast path — so a guard gated on `full_required` would miss exactly the config-only PRs most likely to break the index. The check should run on both branches, which means R must be available in the light path too (`light_r_required`).
+- **Open question to resolve first:** whether `pkgdown::as_pkgdown(".")` works without the package installed. It reads DESCRIPTION and `man/*.Rd` from source, which suggests yes, but this was only verified locally where gllvmTMB *was* installed. If it needs the installed package, the step must run after the build rather than before — which changes both cost and placement. The cheapest way to settle it is to let the guard's own PR run be the test.
 
 Secondary observations, noted rather than silently fixed:
 - Neither `profile_ci_total_variance` nor its sibling `profile_ci_phylo_signal` appears in `NEWS.md`. Since both are absent, this is a pre-existing pattern rather than a regression introduced by #832 — but it is worth a decision before the 0.6 release slice.

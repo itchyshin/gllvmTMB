@@ -1275,6 +1275,14 @@ gllvmTMBcontrol <- function(
   start_from = NULL,
   se = TRUE,
   verbose = FALSE,
+  ## Which integration method evaluates the latent-variable integral.
+  ## "laplace" is the default and the only route carrying a marginal
+  ## likelihood, so it is the only one for which logLik()/AIC()/BIC()/LRT are
+  ## defined. "va" and "eva" are OPT-IN research routes whose objective is an
+  ## ELBO -- not a marginal likelihood (Design 85 s10) -- with no calibrated
+  ## uncertainty. Offering a value here does NOT advertise it: admission to any
+  ## user-facing claim is Design 85 s11 Gate 3's to grant, not this argument's.
+  integration = c("laplace", "va", "eva"),
   aghq = FALSE,
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,
@@ -1314,7 +1322,18 @@ gllvmTMBcontrol <- function(
   optimizer <- match.arg(optimizer)
   init_strategy <- match.arg(init_strategy)
   start_method <- .gllvmTMB_normalize_start_method(start_method)
+  integration <- match.arg(integration)
   aghq <- .gllvmTMB_normalize_aghq(aghq)
+  ## AGHQ and the variational routes are alternative evaluations of the SAME
+  ## latent integral, not layers. Requesting both is incoherent, and silently
+  ## letting one win would hand back a fit that is not the one asked for.
+  if (!identical(integration, "laplace") && !isFALSE(aghq)) {
+    cli::cli_abort(c(
+      "{.arg integration} = {.val {integration}} cannot be combined with {.arg aghq}.",
+      "i" = "AGHQ and the variational routes are alternative evaluations of the same latent integral, not layers.",
+      ">" = "Set {.code aghq = FALSE}, or use {.code integration = \"laplace\"}."
+    ))
+  }
   if (!is.logical(se) || length(se) != 1L || is.na(se)) {
     cli::cli_abort("{.arg se} must be a single {.code TRUE} or {.code FALSE} value.")
   }
@@ -1327,6 +1346,7 @@ gllvmTMBcontrol <- function(
     d_B = d_B,
     d_W = d_W,
     spde_mode = spde_mode,
+    integration = integration,
     n_init = as.integer(n_init),
     optimizer = optimizer,
     optArgs = optArgs,

@@ -89,12 +89,27 @@ test_that("Gamma dispersion is decoupled from Gaussian sigma_eps in mixed fits",
   expect_equal(fit$opt$convergence, 0L)
   expect_true(any(fit$tmb_data$family_id_vec == 0L))
   expect_true(any(fit$tmb_data$family_id_vec == 4L))
-  expect_true(is.finite(fit$report$sigma_eps))
+  ## #856: sigma_eps is per-trait, so this is now a length-2 vector -- entry 1
+  ## for the Gaussian trait, entry 2 for the Gamma trait. The Gamma trait has
+  ## no rows with family id in {0, 3}, so its entry is mapped off and fixed at
+  ## a negligible placeholder rather than estimated. The assertions below are
+  ## the SAME claim as before (Gaussian residual SD and Gamma CV are estimated
+  ## independently and differ); only the indexing changed with the shape.
+  expect_equal(length(fit$report$sigma_eps), 2L)
+  expect_true(all(is.finite(fit$report$sigma_eps)))
   expect_equal(length(fit$report$phi_gamma), 2L)
 
-  sigma_hat <- as.numeric(fit$report$sigma_eps)
+  sigma_hat <- as.numeric(fit$report$sigma_eps)[1L]
   gamma_shape_hat <- as.numeric(fit$report$phi_gamma)[2L]
   gamma_cv_hat <- 1 / sqrt(gamma_shape_hat)
+
+  ## The Gamma trait must not be carrying an estimated residual SD: its
+  ## dispersion lives in phi_gamma. This strengthens the original #622 canary,
+  ## which could only check that ONE shared scalar tracked the Gaussian trait.
+  eps_map <- fit$tmb_obj$env$map$log_sigma_eps
+  expect_false(is.null(eps_map))
+  expect_true(is.na(as.vector(eps_map)[2L]))
+  expect_false(is.na(as.vector(eps_map)[1L]))
 
   expect_lt(abs(sigma_hat - sigma_g), 0.08)
   expect_lt(abs(gamma_cv_hat - 1 / sqrt(shape_gamma)), 0.08)

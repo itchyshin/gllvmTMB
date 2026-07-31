@@ -1,3 +1,13 @@
+> 🔴 **HALTED — DO NOT MERGE. Read
+> [`2026-07-31-856-halted-premise-withdrawn.md`](../handover/2026-07-31-856-halted-premise-withdrawn.md)
+> first.** Issue #856 was closed by the maintainer at `2026-07-31T00:29:03Z` as "filed on a false
+> premise" — **twenty minutes before this branch's first commit** (`00:49:26Z`). The pooled scalar
+> is deliberate and documented; the per-trait role is already served by `theta_diag` under the
+> recommended `indep(0 + trait | g)` grammar. No PR was opened and nothing merged. This report is
+> retained as the record of an arc built on a withdrawn premise, and its adversarial evidence
+> (13/20 silent boundary collapse) argues **against** the change it describes. Everything below
+> was written before the closure was discovered; only this banner was added afterwards.
+
 # After Task: per-trait gaussian/lognormal residual SD (#856)
 
 **Branch**: `claude/856-sigma-eps-archaeology-20260730`
@@ -143,6 +153,20 @@ Rscript --vanilla dev/856-sigma-eps-mixed-design-guard.R
 # mixed identity/log-scale trait (item 3): warning fires on trait "A", pooled value 5.0008
 Rscript --vanilla -e 'devtools::document(quiet = TRUE)'   # only man/diag_re.Rd; NAMESPACE untouched
 ```
+
+**The non-negotiable, discharged by proof rather than assertion.**
+`test-sigma-eps-autosuppress.R` had to pass *unchanged* — a fix that edits the test guarding the
+behaviour it changes has proved nothing. Both halves checked:
+
+```sh
+git diff --stat origin/main...HEAD -- tests/testthat/test-sigma-eps-autosuppress.R   # empty: untouched
+NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript -e '...test_file("test-sigma-eps-autosuppress.R")'
+#   7 assertions, 0 failures, against the post-fix code
+```
+
+**CI-visible regressions** (`tests/testthat/test-sigma-eps-per-trait-regressions.R`) — 8
+assertions, 0 failures, run with `NOT_CRAN=true` and **no** heavy flag, confirming they execute
+in a routine run rather than only under `GLLVMTMB_HEAVY_TESTS=1`.
 
 **Scale-equivariance oracle** (`dev/scale-equivariance-check.R`, both blocks) — run because the
 plan's VERIFY list required it, with the prediction "not expected to move". It did not move.

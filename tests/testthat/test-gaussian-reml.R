@@ -56,7 +56,12 @@ dense_unit_V <- function(fit, report = fit$report) {
   trait_id <- fit$tmb_data$trait_id + 1L
   same_unit <- outer(fit$tmb_data$site_id, fit$tmb_data$site_id, `==`)
   V <- Sigma[trait_id, trait_id] * same_unit
-  diag(V) <- diag(V) + as.numeric(report$sigma_eps)[1L]^2
+  ## #856: sigma_eps is per-trait. Each row's residual variance is ITS OWN
+  ## trait's entry -- taking [1L] would add trait 1's residual variance to
+  ## every trait's diagonal and make this oracle disagree with a correct
+  ## engine. `trait_id` is already 1-indexed above.
+  eps_v <- as.numeric(report$sigma_eps)
+  diag(V) <- diag(V) + eps_v[pmin(trait_id, length(eps_v))]^2
   V
 }
 

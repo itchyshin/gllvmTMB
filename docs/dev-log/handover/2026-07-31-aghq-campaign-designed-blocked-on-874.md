@@ -82,6 +82,25 @@ Smoke first (`STAGE=smoke NSIM=10`), read it, abort on garbage. That is how #874
 - campaign 12 (its O(1/T) premise is retracted)
 - the 73%/47% n=100 headline **without** the single-start caveat
 
+## A tidiness defect I introduced, flagged rather than left to be found
+
+`dev/aghq-evidence/` numbers its scripts `NN-name.R`, and **22–25 were already in use**
+(`22-sigma-se-delta.R`, `23-flat-regime-campaign.R`, `24-coverage-cell.R`,
+`25-coverage-fixedtruth.R`). This lane's four scripts reuse those prefixes:
+
+| mine | pre-existing, same prefix |
+|---|---|
+| `22-truthstart-shipped.R` | `22-sigma-se-delta.R` |
+| `23-altstart-shipped.R` | `23-flat-regime-campaign.R` |
+| `24-estimator-campaign.R`, `24-summarise.R` | `24-coverage-cell.R` |
+| `25-convergence-nladder.R`, `25-analyse.R` | `25-coverage-fixedtruth.R` |
+
+**Nothing was overwritten** — the names are distinct and all six landed as git *additions*,
+not modifications. But the numbering no longer reads as a sequence. I did **not** renumber,
+because the paths are cited in two audits, two after-task reports, `decisions.md`, three
+issue comments and the PR body, and the churn outweighs the tidiness. **Maintainer's call**
+— if you want them renumbered to 26+, say so and it is a mechanical sweep.
+
 ## Carried over
 
 **PR #870 is OPEN and not self-merged** — it carries one source change (the

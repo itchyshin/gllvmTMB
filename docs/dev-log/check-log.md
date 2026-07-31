@@ -47151,3 +47151,39 @@ Checks: `rcmdcheck --as-cran` **0E/0W/1N** (New submission) on the settled tree,
 216 s, CI green on every PR. Log retained at `dev/vgh/checks/`. Not run: `pkgdown` (no
 user-facing surface changed). Two merged worktrees removed after verifying each was fully
 merged with nothing unpushed.
+
+## 2026-07-31 — Gamma/sigma_eps documentation correction (Claude)
+
+Branch: `claude/gamma-sigma-eps-doc-fix-20260731`, cut clean from `origin/main`
+`6b2d34a4`. Documentation only — no `R/` behaviour, no `src/`, no `NAMESPACE`
+change.
+
+Fixes a stale claim, not a wording preference. `R/unique-keyword.R:127` (rendered
+into `man/diag_re.Rd`) told users that "Gaussian / lognormal / **Gamma** fits"
+share one observation-scale `sigma_eps`. The Gamma half stopped being true at
+`dff9b363` (2026-07-05), which gave ordinary Gamma its own per-trait
+`log_phi_gamma`. Ground truth: `src/gllvmTMB.cpp:312` restricts `sigma_eps` to
+family ids {0, 3}, and `R/fit-multi.R:4630` states it directly.
+
+Checks:
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+Rscript --vanilla -e 'rcmdcheck::rcmdcheck(args = "--as-cran", error_on = "never")'
+```
+
+Outcome: `document()` regenerated `man/diag_re.Rd` only; `NAMESPACE` unchanged.
+`--as-cran` **0 errors, 0 warnings, 1 note** in 6m 44s. The single note is
+`checking CRAN incoming feasibility ... New submission`, which is the standard
+note for a package not yet on CRAN and is unrelated to this change.
+
+Two neighbouring mentions were checked and deliberately left alone:
+`R/unique-keyword.R` ~155 (about the family-agnostic standalone diagonal tier,
+not `sigma_eps` ownership) and `R/extract-sigma.R:1437` (`fids %in% c(0L, 3L, 4L)`,
+a continuity test for the Lambda-only advisory). Neither is a `sigma_eps`
+ownership claim.
+
+Provenance: found while re-deriving the documentation surface for #856. That
+issue has since been closed by the maintainer as filed on a false premise and the
+branch exploring it is **not for merging**; this fix is independent of it and
+true on `main` today, so it was lifted out on its own.

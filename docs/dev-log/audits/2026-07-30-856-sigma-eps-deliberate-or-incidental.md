@@ -96,7 +96,8 @@ reported **7.1× too large**, trait 2's **1.4× too small**. The model-free esti
 truths essentially exactly, so **the per-trait information is fully present in the data** — the
 restriction is *expressive, not informational*.
 
-Script: `dev/856-sigma-eps-degenerate-probe.R` and the cost script promoted alongside it.
+Reproducers: `dev/856-sigma-eps-pooled-cost.R` (this measurement) and
+`dev/856-sigma-eps-degenerate-probe.R` (the no-replicate case).
 
 ## Correction to #856's own framing
 

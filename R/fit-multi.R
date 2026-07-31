@@ -2814,7 +2814,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     b_fix_init[fixed_idx] <- xcoef_fixed$init_fixed[fixed_idx]
   }
   resid_init <- fit_lm$residuals
-  log_sigma_eps_init <- .gllvmTMB_log_sigma_eps_start(resid_init)
+  ## Per-trait start (#856): log_sigma_eps is now PARAMETER_VECTOR(length
+  ## n_traits). Reuse the scalar helper per trait (same floor/NA handling as
+  ## before) rather than change its contract; mirrors the per-trait split
+  ## already used for the ordinal/tweedie inits above.
+  log_sigma_eps_init <- vapply(seq_len(n_traits), function(t) {
+    rows_t <- which(trait_id == (t - 1L))
+    .gllvmTMB_log_sigma_eps_start(resid_init[rows_t])
+  }, numeric(1))
 
   ## ---- Phase L: harvest per-term `tree = ...` / `vcv = ...` overrides -------
   ## Phase L (May 2026): users can now write
@@ -4155,8 +4162,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
             length(vgh_start$b_fix) == length(tmb_params$b_fix)) {
           tmb_params$b_fix <- vgh_start$b_fix
         }
+        ## Shape-matched, not a hardcoded length: log_sigma_eps is now
+        ## length n_traits (#856), matching vgh_start$log_sigma_eps (built
+        ## per-trait in .vgh_build_warm_start()). A literal `== 1L` check
+        ## would silently stop applying once the parameter is vectorized --
+        ## the exact SILENCE this comment block warns against.
         if (!is.null(vgh_start$log_sigma_eps) &&
-            length(tmb_params$log_sigma_eps) == 1L) {
+            length(vgh_start$log_sigma_eps) == length(tmb_params$log_sigma_eps)) {
           tmb_params$log_sigma_eps <- vgh_start$log_sigma_eps
         }
       }
@@ -4638,29 +4650,56 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   cell_B <- paste(trait_id, site_id, sep = "_")
   per_row_diag_B <- use_diag_B && length(unique(cell_B)) == n_obs
   if (!any_sigma_eps) {
-    tmb_map$log_sigma_eps <- factor(NA_integer_)
-    tmb_params$log_sigma_eps <- 0
+    tmb_map$log_sigma_eps <- factor(rep(NA_integer_, n_traits))
+    tmb_params$log_sigma_eps <- rep(0, n_traits)
   } else {
-    ## Q7: auto-suppress sigma_eps when a diagonal term is at the per-row
-    ## level, i.e. the diagonal random effects index the same atoms as the
-    ## observation residual. Keeping both estimable creates a non-identifiable
-    ## sum sd_W[t]^2 + sigma_eps^2; the user's intent when they wrote
-    ## `+ indep(0 + trait | <row-level group>)` (or legacy `unique()`
+    ## Q7: auto-suppress sigma_eps PER TRAIT (#856) when a diagonal term is
+    ## at the per-row level FOR THAT TRAIT, i.e. that trait's diagonal random
+    ## effect indexes the same atoms as that trait's observation residual.
+    ## Keeping both estimable creates a non-identifiable
+    ## sd_W[t]^2 + sigma_eps[t]^2 for that trait; the user's intent when they
+    ## wrote `+ indep(0 + trait | <row-level group>)` (or legacy `unique()`
     ## compatibility spelling) is for diag(Psi) to BE the row-level residual.
-    ## We honour that by fixing sigma_eps to a tiny fraction of the response sd
-    ## so the Gaussian density stays well-defined while diag(Psi) absorbs the
-    ## row-level variation.
-    if (per_row_diag_W || per_row_diag_B) {
-      level_lab <- if (per_row_diag_W) ss_name else site
+    ## We honour that by fixing sigma_eps[t] to a tiny fraction of the
+    ## response sd so the Gaussian density stays well-defined while diag(Psi)
+    ## absorbs the row-level variation.
+    ##
+    ## The check is PER TRAIT, not dataset-wide: a mixed design can have
+    ## per-row replication for one trait and multi-row replication for
+    ## another (e.g. trait A has 3 reps/unit, trait B has 1). Now that
+    ## sigma_eps is a length-n_traits vector, a dataset-wide check would
+    ## either wrongly suppress an identified trait or wrongly leave a
+    ## confounded trait free. `cell_B` / `cell_W` already pair (trait, group);
+    ## per trait, compare the number of unique cells among that trait's rows
+    ## to the number of rows for that trait.
+    per_row_diag_B_t <- vapply(seq_len(n_traits), function(t) {
+      if (!use_diag_B) return(FALSE)
+      rows_t <- which(trait_id == (t - 1L))
+      length(rows_t) > 0L && length(unique(cell_B[rows_t])) == length(rows_t)
+    }, logical(1))
+    per_row_diag_W_t <- vapply(seq_len(n_traits), function(t) {
+      if (!use_diag_W) return(FALSE)
+      rows_t <- which(trait_id == (t - 1L))
+      length(rows_t) > 0L && length(unique(cell_W[rows_t])) == length(rows_t)
+    }, logical(1))
+    suppress_eps_t <- per_row_diag_B_t | per_row_diag_W_t
+    if (any(suppress_eps_t)) {
+      level_lab <- if (any(per_row_diag_W_t) && any(per_row_diag_B_t)) {
+        paste(site, "/", ss_name)
+      } else if (any(per_row_diag_W_t)) ss_name else site
       data_sd  <- stats::sd(y)
       small_eps <- max(1e-3 * data_sd, 1e-6)
-      tmb_params$log_sigma_eps <- log(small_eps)
-      tmb_map$log_sigma_eps    <- factor(NA_integer_)
+      tmb_params$log_sigma_eps[suppress_eps_t] <- log(small_eps)
+      eps_map <- seq_len(n_traits)
+      eps_map[suppress_eps_t] <- NA
+      tmb_map$log_sigma_eps <- factor(eps_map)
+      suppressed_labs <- levels(data[[trait]])[suppress_eps_t]
       cli::cli_inform(c(
         "i" = paste0(
           "Auto-suppressing {.code sigma_eps}: ",
           "{.code indep(0 + trait | ", level_lab, ")} is at the per-row level, so it already absorbs the observation residual."
         ),
+        "i" = "Trait{?s} affected: {.val {suppressed_labs}}.",
         "*" = "Fixed at {.val {signif(small_eps, 3)}} (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term."
       ))
     }

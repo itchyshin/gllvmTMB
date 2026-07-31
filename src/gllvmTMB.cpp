@@ -309,7 +309,9 @@ Type objective_function<Type>::operator()()
   //                        ONCE at the group's anchor (first) row, NOT per row.
   //                        See multinom_group_id / multinom_K_per_trait below.
   // For single-family fits the vector is filled with the same value.
-  // sigma_eps is mapped off when no row has family_id_vec(o) in {0, 3}.
+  // sigma_eps is a length-n_traits vector (PARAMETER_VECTOR(log_sigma_eps));
+  // a trait's entry is mapped off when no row of that trait has
+  // family_id_vec(o) in {0, 3} (R/fit-multi.R Q7 per-trait auto-suppress).
   // Ordinary Gamma (fid 4) has its own per-trait shape/CV parameter below.
   // Delta families share ONE linear predictor for both components: p =
   // invlogit(eta) for presence and mu_pos = exp(eta) for the positive
@@ -579,7 +581,7 @@ Type objective_function<Type>::operator()()
 
   // -------- PARAMETERS --------------------------------------------------
   PARAMETER_VECTOR(b_fix);                       // fixed-effects coefficients (p)
-  PARAMETER(log_sigma_eps);                      // residual log-SD
+  PARAMETER_VECTOR(log_sigma_eps);               // length n_traits (or 1 if unused)
 
   // Missing-predictor (Phase 2a): Gaussian covariate-model coefficients,
   // log residual SD, and the latent missing UNIT-level x values (random).
@@ -2100,7 +2102,7 @@ Type objective_function<Type>::operator()()
   }
 
   // -------- Observation likelihood --------------------------------------
-  Type sigma_eps = exp(log_sigma_eps);
+  vector<Type> sigma_eps = exp(log_sigma_eps);
   REPORT(sigma_eps);
   // Per-row response log-density log p(y(o) | eta_o), factored out of the
   // family-dispatch loop so the SAME kernels can be evaluated at a STATE-
@@ -2115,7 +2117,8 @@ Type objective_function<Type>::operator()()
     Type ll = Type(0.0);
     if (fid == 0) {
       // Gaussian, identity link
-      ll += dnorm(y(o), eta_o, sigma_eps, true);
+      int t = trait_id(o);
+      ll += dnorm(y(o), eta_o, sigma_eps(t), true);
     } else if (fid == 1) {
       // Bernoulli / binomial(k-of-n). Link depends on link_id_vec(o):
       //   0 = logit:    p = 1 / (1 + exp(-eta))
@@ -2146,7 +2149,8 @@ Type objective_function<Type>::operator()()
     } else if (fid == 3) {
       // Lognormal, log link
       // y > 0 strictly. log(y) ~ Normal(eta, sigma_eps); add Jacobian -log(y).
-      ll += dnorm(log(y(o)), eta_o, sigma_eps, true) - log(y(o));
+      int t = trait_id(o);
+      ll += dnorm(log(y(o)), eta_o, sigma_eps(t), true) - log(y(o));
     } else if (fid == 4) {
       // Gamma, log link, mean-shape parametrization
       // mu = exp(eta); per-trait shape phi = exp(log_phi_gamma(t)).

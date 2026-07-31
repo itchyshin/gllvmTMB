@@ -237,11 +237,20 @@
   ## good enough to start Laplace from -- Laplace re-estimates dispersion itself,
   ## and the reported estimate is Laplace's.
   gaussian_sd <- 1
+  gaussian_sd_t <- NULL
   if (identical(family_name, "gaussian")) {
     tid <- bump(tmb_data$trait_id)
     resid <- as.numeric(tmb_data$y) - stats::ave(as.numeric(tmb_data$y), tid)
     gaussian_sd <- stats::sd(resid)
     if (!is.finite(gaussian_sd) || gaussian_sd <= 0) gaussian_sd <- 1
+    ## Per-trait residual sd (#856: log_sigma_eps is now PARAMETER_VECTOR
+    ## length n_traits). Falls back to the pooled gaussian_sd for a trait
+    ## whose own residual sd is degenerate (e.g. too few units for that
+    ## trait alone).
+    gaussian_sd_t <- vapply(seq_len(n_traits), function(t) {
+      sd_t <- stats::sd(resid[tid == t])
+      if (!is.finite(sd_t) || sd_t <= 0) gaussian_sd else sd_t
+    }, numeric(1))
   }
 
   fam <- if (identical(family_name, "gaussian")) "gaussian_anchor" else family_name
@@ -296,9 +305,9 @@
       ncol(fit$Beta) == n_traits && all(is.finite(fit$Beta))) {
     start$b_fix <- as.numeric(fit$Beta)
   }
-  if (identical(family_name, "gaussian") && is.finite(gaussian_sd) &&
-      gaussian_sd > 0) {
-    start$log_sigma_eps <- log(gaussian_sd)
+  if (identical(family_name, "gaussian") && !is.null(gaussian_sd_t) &&
+      all(is.finite(gaussian_sd_t)) && all(gaussian_sd_t > 0)) {
+    start$log_sigma_eps <- log(gaussian_sd_t)
   }
   start
 }

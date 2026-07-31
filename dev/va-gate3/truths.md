@@ -5,7 +5,7 @@ Generated once under `set.seed(20260730)` by `.gate3_build_truths()` in
 outer, q inner-outer, p innermost). Never regenerated: this file's own
 runner loads `truths.rds` unconditionally when it already exists.
 
-`truths.rds` md5sum: `2d7bdd2fc601e8371cfa2727d1b68634`
+`truths.rds` md5sum: `e7219cfec23a8dada05bb35b7b1888a8`
 
 | truth | q | p | target max\|Lambda_0\| | actual max\|Lambda_0\| |
 |---|---|---|---|---|
@@ -27,3 +27,12 @@ runner loads `truths.rds` unconditionally when it already exists.
 | T-strong | 2 | 8 | 1.400000 | 1.400000 |
 | T-strong | 2 | 20 | 1.400000 | 1.400000 |
 | T-strong | 2 | 80 | 1.400000 | 1.400000 |
+| T-weak | 4 | 8 | 0.350000 | 0.350000 |
+| T-weak | 4 | 20 | 0.350000 | 0.350000 |
+| T-weak | 4 | 80 | 0.350000 | 0.350000 |
+| T-mid | 4 | 8 | 0.700000 | 0.700000 |
+| T-mid | 4 | 20 | 0.700000 | 0.700000 |
+| T-mid | 4 | 80 | 0.700000 | 0.700000 |
+| T-strong | 4 | 8 | 1.400000 | 1.400000 |
+| T-strong | 4 | 20 | 1.400000 | 1.400000 |
+| T-strong | 4 | 80 | 1.400000 | 1.400000 |

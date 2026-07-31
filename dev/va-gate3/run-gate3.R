@@ -84,7 +84,15 @@ FITSEC <- as.integer(Sys.getenv("GATE3_FIT_SECONDS", "900"))
 ## Lambda_0" but a cell count that needs 18); see the handoff note on this.
 TRUTH_NAMES <- c("T-weak", "T-mid", "T-strong")
 TRUTH_TARGET_MAX <- c("T-weak" = 0.35, "T-mid" = 0.70, "T-strong" = 1.40)
-Q_VALUES <- c(1L, 2L)
+## Q_VALUES is the campaign grid; Q_VALUES_FROZEN is what truths.rds was
+## generated under on 2026-07-30 (md5 2d7bdd2fc601e8371cfa2727d1b68634).
+## They differ because the 2026-07-31 scope freeze raised the fence to q <= 4.
+## The truths are built in nested truth x q x p order, so ADDING q = 4 to the
+## original loop would shift the RNG stream and silently change all 18 already
+## frozen truths.  q = 4 is therefore APPENDED under its own seed and the
+## frozen 18 are never regenerated.  See .gate3_extend_truths().
+Q_VALUES        <- c(1L, 2L, 4L)
+Q_VALUES_FROZEN <- c(1L, 2L)
 P_VALUES <- c(8L, 20L, 80L)
 N_VALUES <- c(100L, 400L)
 SEEDS    <- 1:40
@@ -103,7 +111,7 @@ SEEDS    <- 1:40
   truths <- list()
   for (truth in TRUTH_NAMES) {
     target <- TRUTH_TARGET_MAX[[truth]]
-    for (q in Q_VALUES) {
+    for (q in Q_VALUES_FROZEN) {
       for (p in P_VALUES) {
         raw <- matrix(stats::rnorm(p * q, 0, 0.6), p, q)
         Lambda_0 <- raw / max(abs(raw)) * target
@@ -160,12 +168,66 @@ SEEDS    <- 1:40
   writeLines(lines, md_path)
 }
 
+## Append the truths for a q the frozen file does not cover, under that q's own
+## seed, leaving every existing entry untouched.  Same construction as
+## .gate3_build_truths(); only the seed and the q loop differ.  Authorised by
+## docs/dev-log/2026-07-31-gate0-scope-extension-and-s11-departure.R (Decision 2).
+.gate3_extend_truths <- function(truths, q_new, seed) {
+  set.seed(seed)
+  for (truth in TRUTH_NAMES) {
+    target <- TRUTH_TARGET_MAX[[truth]]
+    for (p in P_VALUES) {
+      raw <- matrix(stats::rnorm(p * q_new, 0, 0.6), p, q_new)
+      Lambda_0 <- raw / max(abs(raw)) * target
+      beta_0 <- stats::rnorm(p, 0.3, 0.3)
+      Lambda_0_aligned <- gllvmTMB:::.va_r3_rotate_to_lower_triangular(Lambda_0, q_new)
+      if (is.null(Lambda_0_aligned)) {
+        stop("Truth ", truth, " q=", q_new, " p=", p, " failed the lower-",
+             "triangular rotation check; the seed must be revisited, not ",
+             "silently redrawn.", call. = FALSE)
+      }
+      truths[[.gate3_truth_key(truth, q_new, p)]] <- list(
+        truth = truth, q = q_new, p = p,
+        target_max_abs_lambda0 = unname(target),
+        Lambda_0 = Lambda_0,
+        Lambda_0_aligned = Lambda_0_aligned,
+        beta_0 = beta_0
+      )
+    }
+  }
+  truths
+}
+
+## Seed per appended q, declared here rather than derived, so the extension is
+## reproducible and auditable.
+Q_EXTENSION_SEEDS <- c("4" = 20260731L)
+
 TRUTHS_FILE <- file.path("dev", "va-gate3", "truths.rds")
 TRUTHS_MD   <- file.path("dev", "va-gate3", "truths.md")
 if (file.exists(TRUTHS_FILE)) {
   truths <- readRDS(TRUTHS_FILE)
 } else {
   truths <- .gate3_build_truths()
+  saveRDS(truths, TRUTHS_FILE)
+  .gate3_write_truths_md(truths, TRUTHS_FILE, TRUTHS_MD)
+}
+
+## Extend for any campaign q the file does not yet carry.  The frozen entries
+## are compared before and after and must be identical -- an extension that
+## perturbs them is a bug, not an amendment.
+.gate3_missing_q <- setdiff(Q_VALUES, unique(vapply(truths, function(x) x$q, integer(1))))
+if (length(.gate3_missing_q)) {
+  .gate3_before <- truths
+  for (qq in .gate3_missing_q) {
+    key <- as.character(qq)
+    if (!key %in% names(Q_EXTENSION_SEEDS)) {
+      stop("No declared extension seed for q = ", qq, ".", call. = FALSE)
+    }
+    truths <- .gate3_extend_truths(truths, qq, Q_EXTENSION_SEEDS[[key]])
+  }
+  if (!identical(.gate3_before, truths[names(.gate3_before)])) {
+    stop("Extending the truths perturbed a frozen entry. Aborting.", call. = FALSE)
+  }
   saveRDS(truths, TRUTHS_FILE)
   .gate3_write_truths_md(truths, TRUTHS_FILE, TRUTHS_MD)
 }

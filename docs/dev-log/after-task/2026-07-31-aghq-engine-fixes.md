@@ -135,6 +135,22 @@ it and the last place anyone would look.
   visible; the first run errored rather than skipping. Replaced with a local equivalent.
 - **A stale full-suite run was left competing for cores** with its replacement after I
   corrected the tests mid-flight. Stopped it rather than let two runs fight and one mislead.
+- 🔴 **I pushed a branch that did not contain two of my own fixes, and CI caught it before I
+  did.** Rebasing onto the merged main, I used `git stash` → `git checkout -B` →
+  `git stash pop`. **`pop` restores changes unstaged**, and I committed without re-adding —
+  so commit `3f0ab5b0`, whose message describes the entire engine change, actually contains
+  only the two *new* files. Its message is misleading about its own contents.
+
+  The engine code still landed, by luck: the two later commits each staged whole files and
+  swept it in. What did **not** land was the NEWS entry and the gaussian-exactness test
+  correction — which is precisely why CI went red on the pushed state while my local suite
+  was green. **The local suite was testing my working tree, which had the fixes all along;
+  it could not have caught this.**
+
+  Two lessons, both mine: run `git status` after a stash/pop and before committing; and a
+  green local suite proves nothing about a tree you have not actually pushed. I left the
+  intermediate history honest rather than rewriting it, since the PR discussion references
+  those commits and the squash merge produces correct final content regardless.
 - The gaussian regression cost real time to diagnose, and the first hypothesis (that #874
   caused it) was wrong — isolating it required running the two changes independently.
 - 🔴 **The full suite caught a real regression in my own fix that the isolated AGHQ run had

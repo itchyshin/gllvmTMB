@@ -477,5 +477,21 @@
   out <- matrix(0.0, nrow = rank, ncol = n_groups)
   out[seq_len(r_use), ] <- t(scores)
   out[!is.finite(out)] <- 0
+
+  ## Per-trait scale of what the low-rank part does NOT explain, attached for
+  ## Psi's start. Psi should begin at the REMAINDER, not at the total response
+  ## scale: starting both Lambda and Psi at the full scale double-counts it,
+  ## and where a second diagonal competes for the same variance -- an explicit
+  ## `unique()` on the grouping a `latent()` already carries -- that redundancy
+  ## leaves nlminb's quadratic model singular at the start, which it reports as
+  ## "singular convergence (7)" even though the optimum it reaches is correct.
+  ## Same idiom as `.gllvmTMB_residual_factor_start()` above, which computes
+  ## theta_diag from the remainder for exactly this reason.
+  loadings <- sv$v[, seq_len(r_use), drop = FALSE] %*%
+    diag(sv$d[seq_len(r_use)] / sqrt(max(n_groups - 1L, 1L)), nrow = r_use)
+  remainder <- R - scores %*% t(loadings)
+  sd_rem <- apply(remainder, 2L, stats::sd)
+  sd_rem[!is.finite(sd_rem) | sd_rem <= 0] <- NA_real_
+  attr(out, "sd_remainder") <- sd_rem
   out
 }

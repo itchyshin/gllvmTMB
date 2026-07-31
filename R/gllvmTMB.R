@@ -1237,8 +1237,11 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'
 #'   It is admitted only inside the region for which evidence exists —
 #'   `latent(..., unique = FALSE)`, binomial-logit or Poisson-log, `d` up to
-#'   4, up to 80 responses, at least 100 units, and the native TMB engine — and
-#'   requesting it outside that region is an **error**, not a warning.
+#'   2, up to 80 responses, at least 100 units, and the native TMB engine — and
+#'   requesting it outside that region is an **error**, not a warning. The `d`
+#'   limit is where a pre-registered recovery gate actually passed: `d = 4` was
+#'   measured and refused, because with few responses the planted axes collapse
+#'   far more often than the gate's tolerance allows.
 #'   It cannot be combined with `aghq`, which is an alternative evaluation of
 #'   the same integral rather than an additional layer.
 #'

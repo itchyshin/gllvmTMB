@@ -19,16 +19,26 @@
 ##   * `n >= 100` -- a hard error, not a caution. Recomputed from
 ##     dev/totoro-grid/results/grid.csv, the GH arm's signed scale
 ##     tr(Sigma_hat)/tr(Sigma_true) is 4.302 at n = 40: fourfold inflation.
-##   * `q <= 4`, `p <= 80` -- the grid's own extent. q = 4 is admitted by the
-##     2026-07-31 scope freeze and ships only if Gate 3's q = 4 cells pass on
-##     their own terms.
+##   * `q <= 2`, `p <= 80` -- the measured extent. The 2026-07-31 scope freeze
+##     admitted q = 4 CONDITIONALLY: it ships "only if Gate 3's q = 4 cells pass
+##     on their own terms." They did not. Gate 3 (2026-07-31) found every one of
+##     va_jj's axis-collapse failures in the single q = 4, p = 8 corner, at rates
+##     0.26-0.77 against a 0.05 tolerance, with every lower 2*MCSE bound strictly
+##     above the threshold -- four latent axes are not identifiable from eight
+##     responses. So the fence stays at the region that DID pass: va_jj clears
+##     the full conjunction in 100% of q <= 2 cells under BOTH pre-declared
+##     rules (36/36 raw, 34/34 paired-exclusion), across all three truths, both
+##     n, and every p.
+##     Honest note: q <= 2 is further still from the 5+ latent factors that
+##     decisions.md A3 names as the motivating regime. This narrows what we
+##     claim, not the gap to that target.
 ##   * `engine = "julia"` -- the bridge implements no variational route at all.
 ##     R first, Julia next (maintainer, 2026-07-31).
 .gllvmTMB_integration_fence_limits <- function() {
   list(
     families = c("binomial", "poisson"),
     links = c(binomial = "logit", poisson = "log"),
-    q_max = 4L,
+    q_max = 2L,
     p_max = 80L,
     n_min = 100L
   )
@@ -76,7 +86,9 @@
   }
   if (!is.null(q) && q > lim$q_max) {
     bad("{.arg q} = {q} exceeds the evidenced maximum of {lim$q_max}.",
-        "Gate 3 covers q up to {lim$q_max}; beyond that there is no evidence.")
+        "Gate 3 measured q up to 4, and the recovery gate PASSED only up to
+         {lim$q_max}: at q = 4 with few responses, planted axes collapse in
+         26-77% of replicates against a 5% tolerance.")
   }
   if (!is.null(p) && p > lim$p_max) {
     bad("{p} responses exceeds the evidenced maximum of {lim$p_max}.",

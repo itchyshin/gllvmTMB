@@ -34,7 +34,7 @@
 test_that("integration = \"va\" routes to the same fit as calling the engine", {
   skip_on_cran()
 
-  ## In-fence by construction: n = 120 >= 100, p = 6 <= 80, q = 2 <= 4,
+  ## In-fence by construction: n = 120 >= 100, p = 6 <= 80, q = 2 <= 2,
   ## binomial-logit. Complete crossed unit x trait design (one Bernoulli draw
   ## per cell), which the engine requires.
   set.seed(20260731L)
@@ -52,9 +52,9 @@ test_that("integration = \"va\" routes to the same fit as calling the engine", {
                     control = gllvmTMBcontrol(integration = "va"))
 
   ## Route B -- the engine directly, reconstructing exactly what the
-  ## translation layer derives (R/va-routing.R). `eval_method = "gh"` must
-  ## match the route's provisional choice or this compares two different
-  ## estimators rather than two paths to one.
+  ## translation layer derives (R/va-routing.R). `eval_method = "jj"` must
+  ## match the route's choice (settled by Gate 3) or this compares two
+  ## different estimators rather than two paths to one.
   X <- stats::model.matrix(~ 0 + trait, data = df)
   ## Derive the grouping from the formula rather than hardcoding `df$site`, so
   ## the two routes do not share that assumption (see the header note). Walk
@@ -78,7 +78,7 @@ test_that("integration = \"va\" routes to the same fit as calling the engine", {
     trait_id = as.integer(df$trait) - 1L,
     q = q, N = n, T = p,
     family = "binomial", link = "logit",
-    eval_method = "gh"
+    eval_method = "jj"
   )
 
   expect_identical(fit_a$status, "healthy")
@@ -103,7 +103,7 @@ test_that("integration = \"va\" routes to the same fit as calling the engine", {
   expect_s3_class(fit_a, "gllvmTMB_va")
   expect_false(inherits(fit_a, "gllvmTMB_multi"))
   expect_identical(fit_a$integration, "va")
-  expect_identical(fit_a$eval_method, "gh")
+  expect_identical(fit_a$eval_method, "jj")
   expect_identical(fit_a$q, q)
   expect_identical(fit_a$p, p)
   expect_identical(fit_a$n, n)
@@ -118,7 +118,7 @@ test_that("likelihood-shaped methods fail loudly on a variational fit", {
   ## real class, so this stays cheap and runs on routine CI. What is being
   ## tested is DISPATCH plus the message, not the numbers.
   fit <- structure(
-    list(integration = "va", eval_method = "gh", family = "binomial",
+    list(integration = "va", eval_method = "jj", family = "binomial",
          link = "logit", q = 2L, p = 6L, n = 120L, calibrated = FALSE,
          status = "healthy", objective_type = "ELBO_GH",
          score = list(negative_elbo_gh = 123.45),

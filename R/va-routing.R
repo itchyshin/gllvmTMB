@@ -269,12 +269,29 @@
   }
   .va_route_check_complete_design(unit_id, trait_id, n_units, n_traits)
 
-  ## The estimator is OPEN: `default_tier = "jj"` (R/va-r3-proto.R) is under
-  ## review, and the Gate 3 campaign exists to settle GH vs JJ. Route
-  ## EXPLICITLY to "gh" rather than inheriting a default that is being
-  ## measured, and record the choice on the fit so it is visible in print().
-  ## PROVISIONAL -- revisit when Gate 3 reports.
-  eval_method <- "gh"
+  ## SETTLED by Gate 3 (2026-07-31), maintainer decision the same day. This was
+  ## provisionally "gh" while the campaign ran; the campaign chose "jj".
+  ##
+  ## Under the paired-exclusion rule, va_jj passes the RMSE criterion in EVERY
+  ## cell of the design (50/50; 54/54 raw), with a worst-case gap of 0.0393
+  ## against a 0.05 tolerance. Ignoring the Laplace comparator entirely, it has
+  ## the lower Sigma_B error in 52 of 54 cells (sign test p = 1.7e-13), and that
+  ## holds in all eleven leave-one-out subsets over truth, q, p and n -- it is
+  ## not carried by any single factor. va_gh passes 13/50, and 26 of its 35
+  ## apparent raw-rule passes rest on a Laplace comparator that was itself
+  ## degenerate.
+  ##
+  ## Still named EXPLICITLY rather than inherited from `default_tier` (which is
+  ## also "jj", R/va-r3-proto.R): the choice is evidence, so it should be
+  ## visible here and on the fit, not implied by a default that could move.
+  ##
+  ## Binomial only. The Jaakkola-Jordan bound is defined for the logistic term
+  ## and nothing else -- poisson-log implements the single tier "gh", where the
+  ## expectation is EXACT in closed form, so there is no estimator choice to
+  ## make and no Gate 3 evidence to carry (the campaign was Bernoulli). Asking
+  ## for "jj" there would simply error. "auto" resolves through the family
+  ## registry, which is the right behaviour when the family admits one tier.
+  eval_method <- if (identical(fl$family, "binomial")) "jj" else "auto"
 
   ## KNOWN LIMITATION, recorded rather than guarded. The engine runs its own
   ## multi-start and optimiser policy, so `gllvmTMBcontrol()`'s search settings

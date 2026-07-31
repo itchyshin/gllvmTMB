@@ -62,8 +62,24 @@ test_that("the fence admits an in-region variational fit", {
     "va", family = "binomial", link = "logit", q = 2L, p = 20L, n = 100L
   ))
   expect_true(.gllvmTMB_check_integration_fence(
-    "va", family = "poisson", link = "log", q = 4L, p = 80L, n = 400L
+    "va", family = "poisson", link = "log", q = 2L, p = 80L, n = 400L
   ))
+})
+
+test_that("the fence stops at q = 2, where the recovery gate actually passed", {
+  ## The 2026-07-31 scope freeze admitted q <= 4 CONDITIONALLY -- "only if
+  ## Gate 3's q = 4 cells pass on their own terms." They did not: every one of
+  ## va_jj's axis-collapse failures sits in the q = 4, p = 8 corner, at rates
+  ## 0.26-0.77 against a 0.05 tolerance. So q = 3 and q = 4 are refused, and
+  ## the boundary is asserted from BOTH sides so a silent widening cannot pass.
+  ok <- list(integration = "va", family = "binomial", link = "logit",
+             p = 20L, n = 100L)
+  pass <- function(q) do.call(.gllvmTMB_check_integration_fence,
+                              utils::modifyList(ok, list(q = q)))
+  expect_true(pass(1L))
+  expect_true(pass(2L))
+  expect_error(pass(3L), "exceeds the evidenced maximum")
+  expect_error(pass(4L), "exceeds the evidenced maximum")
 })
 
 test_that("the fence errors, rather than warns, outside every boundary", {
@@ -132,9 +148,11 @@ test_that("the data-aware fence limits are reachable from gllvmTMB()", {
              control = gllvmTMBcontrol(integration = "va")),
     "below the evidenced minimum"
   )
-  ## q above the evidenced maximum.
+  ## q above the evidenced maximum -- d = 4 rather than an obviously-silly
+  ## value, because 4 is the rank Gate 3 actually measured and refused, so this
+  ## asserts the real boundary rather than a comfortable distance from it.
   expect_error(
-    gllvmTMB(y ~ 0 + trait + latent(0 + trait | site, d = 6L, unique = FALSE),
+    gllvmTMB(y ~ 0 + trait + latent(0 + trait | site, d = 4L, unique = FALSE),
              data = .fence_fixture(n = 120L, p = 8L),
              family = stats::binomial(), unit = "site",
              control = gllvmTMBcontrol(integration = "va")),

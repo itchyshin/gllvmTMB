@@ -47187,3 +47187,77 @@ Provenance: found while re-deriving the documentation surface for #856. That
 issue has since been closed by the maintainer as filed on a false premise and the
 branch exploring it is **not for merging**; this fix is independent of it and
 true on `main` today, so it was lifted out on its own.
+
+## 2026-07-31 — #851 scale-aware start: regressions resolved (Claude)
+
+Branch: `claude/851-scale-aware-start-20260731`, PR #873 (open, **not merged**).
+Touches `R/fit-multi.R` (starting values only — no `src/`, no `NAMESPACE`, no
+likelihood, no family, no formula grammar), `NEWS.md`, two test files, one `dev/`
+script, three docs.
+
+Inherited state was "5 regressions, 2 undiagnosed". Re-derived from a fresh
+branch-vs-baseline pair it was **two root causes plus three miscalibrated
+assertions**. Root cause 1: `init_rr_theta()` is shared, so scaling its `0.5`
+moved the loading start on six tiers while the companion Psi moved on one —
+leaving five tiers scaling Lambda without its Psi, the variant this branch had
+itself measured and rejected. Root cause 2: the SVD score seeding is internally
+inconsistent under `latent(..., lv = ~x)`, where the scores carry a modelled mean
+whose coefficient starts at zero.
+
+Checks — full suite on **Totoro**, 32 cores, ~17.5 min per run, each against a
+`main` baseline re-derived this session (18 fail / 3 err):
+
+```sh
+# baseline and branch trees; src/ is byte-identical, so the compiled .so is shared
+ssh totoro 'cd ~/gllvm_work && NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 \
+  Rscript --vanilla fullsuite.R'
+Rscript --vanilla dev/scale-equivariance-check.R
+Rscript --vanilla dev/851-scale-equivariance-comparators.R
+Rscript --vanilla dev/851-dep-vs-latent-ridge-tolerance.R   # new this session
+R CMD check --as-cran --no-tests --no-vignettes --no-manual  # local, RESTRICTED
+```
+
+Outcome, as a decomposition rather than a single count:
+
+| state | FAIL | ERR | new vs main |
+|---|---|---|---|
+| branch as inherited | 25 | 3 | 7 |
+| + B-tier scoping (`0c52362f`) | 22 | 3 | 4 |
+| + `lv` seeding gate (`f31935e5`) | 21 | 3 | 3 |
+| + test re-fixturing (`b0e41aa4`) | **18** | **3** | **0** |
+| + helper de-duplication (`ae6308d2`) | *(run in progress at time of writing)* | | |
+
+The 18/3 run is file-for-file identical to the `main` baseline
+(`test-m3-pilot-manifest.R` 16+2, `test-profile-derived-curves.R` 2,
+`test-tweedie-fixed-p.R` 1 err). PASS rose 14129 → 14131.
+
+Scale-equivariance preserved: oracle k=100 every law OK (6.35e-06 … 1.4e-05);
+cross-package comparator gllvmTMB **0/8** at k=100 and k=5000 (worst 0.0105) vs
+gllvm 3/16 (worst 0.998) and glmmTMB 14/16 (worst 2.00) — the pre-existing
+numbers, reproduced exactly.
+
+**Deliberately NOT run, and why:**
+
+- **Full `R CMD check --as-cran`.** Only the restricted form above was run
+  (`--no-tests --no-vignettes --no-manual`): 2 WARNINGs + 1 NOTE, where both
+  WARNINGs are artefacts of `--no-build-vignettes` (no `inst/doc` built) and the
+  NOTE is the standard "New submission". `checking examples ... OK`. The prior
+  0E/0W/1N is therefore **not** re-established on this branch.
+- **`--as-cran` on Totoro.** Attempted and **abandoned as useless there**: the box
+  lacks nine `Suggests` (`DHARMa`, `ggforce`, `galamm`, `glmmTMB`, `mirt`,
+  `nadiv`, `tweedie`, `vegan`, `vdiffr`), so the run aborts at the dependency
+  stage before examining the package.
+- **`spatial_latent()` / `theta_rr_spde_lv` live coverage.** INLA is installed on
+  **neither** the Mac nor Totoro, so those tests skip on both. The de-duplication
+  of that branch is covered by an exhaustive identity proof over all 820
+  `(p, rank)` pairs with `rank <= p <= 40`, not by a fit.
+- **3-OS CI.** Only `ubuntu-latest (release)` had been dispatched at time of
+  writing, and it was still pending.
+- **`devtools::document()`.** No roxygen block changed; `man/` untouched.
+- **Windows.** Nothing here was run on it.
+
+rg patterns used for the neighbourhood sweep:
+`rg -n "init_rr_theta"` (call-site inventory across tiers) and
+`rg -n "theta_diag_[A-Za-z_]+ *="` (which tiers have a companion Psi start).
+That sweep is what found the blast radius, and separately found two further
+private copies of the helper — folded in as `ae6308d2`.

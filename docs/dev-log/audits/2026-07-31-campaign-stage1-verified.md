@@ -101,3 +101,74 @@ Not "AGHQ is better". Regime **and** population, both required.
 
 Stage 2 (gaussian/poisson controls) is submitted and queued on fir — scheduler-bound, not
 blocked. Nothing in the above turns on it; it is a generality check.
+
+---
+
+# ADDENDUM — three corrections from the full verification (17 agents, 1.9M tokens)
+
+The consolidated verification landed after the above was written and **corrects it in three
+ways that change the characterisation, not the arithmetic**. Recorded here rather than
+silently edited in.
+
+## C1. The effect is a runaway-avoidance signal, not a broad accuracy gain
+
+This is the biggest correction. The paired mean is carried by a **handful of replicates**:
+
+| cell, contrast | dbar | median d | share of dbar from 20 of 400 replicates |
+|---|---|---|---|
+| n=400 σ_λ=1, laplace−aghq | +0.0226 | **+0.00014** | **79%** |
+| n=1600 σ_λ=1, laplace−aghq | +0.0254 | +0.0104 | 65% |
+| n=1600 σ_λ=1, aghq_single−aghq | +0.0096 | 0 (**50.75% of pairs exactly zero**) | 100.5% |
+
+At n=400 σ_λ=1 **exactly 50.0% of replicates favour each arm**. At σ_λ=3 the pairs where
+"Laplace runs away and AGHQ does not" contribute **91% / 99% / 99%** of dbar.
+
+So the honest mechanism statement is stronger than "the mechanism is runaway": **the paired
+difference very nearly *is* the runaway-frequency difference.** On replicates where neither
+arm runs away, the arms are close to indistinguishable. Any sentence implying AGHQ is broadly
+more accurate is wrong.
+
+## C2. Four of the ten "AGHQ HELPS" tags are multi-start verdicts wearing a quadrature label
+
+The `aghq_single − aghq` contrast has **AGHQ on both sides** — it isolates the *start rule*,
+not the quadrature. The summariser prints "AGHQ HELPS" for it, which is a **labelling defect
+in my own tooling**. The numbers are right; the label is not. Of 18 contrasts: 10 HELPS, of
+which 4 are this contrast.
+
+## C3. The replicate budget under-delivered its own pre-registration
+
+Design §D.3 assumed pilot `sd(d) = 0.0624`, promising `3×MCSE = 0.0094`, "comfortably below
+δ = 0.02". Realised `sd(d)` on the primary unpenalised contrast is **0.0806–0.1203 — 1.29× to
+1.93× the pilot** — so realised `3×MCSE` reaches **0.0181, i.e. 0.9δ, not 0.47δ**.
+
+Consequence: the two INCONCLUSIVE cells are inconclusive **on precision, not on effect**.
+To resolve them would need **B = 857** (n=1600 σ_λ=1) and **B = 6,338** (n=400 σ_λ=1). The
+second is effectively unreachable, and that is a fact about the estimand's variance, not about
+the compute budget.
+
+**The pilot was drawn from one cell and did not generalise.** A single-cell pilot is not a
+sound basis for a multi-cell MCSE budget — my error, and a reusable one.
+
+## What the verification CONFIRMED (worth stating, since so much was corrected)
+
+- **Pairing exact**: 2400 unique (cell, seed) keys × 5 arms, 0 duplicates, 0 failures, 0 NA.
+- **The primary measure reconstructs from raw Λ̂** to `max|diff| = 1.8e-08` over all 12,000 rows.
+- **MCSE is correct *and* robust**: against 20,000 bootstrap resamples per contrast the normal
+  SE agrees to ≤1% and CI endpoints to ≤4e-4, *despite* skew to 6.4 and kurtosis to 49.
+- **Multiplicity is not a threat**: minimum decisive margin 3.94 MCSE against a Bonferroni-54
+  requirement of 3.29. No verdict changes.
+- **ρ-MAE hides nothing at entry level**: gain positive on all 15 entries in all 6 cells, in
+  every |ρ_true| stratum, no entry above 1.57× its cell mean.
+
+## An unresolved disagreement between lenses, left unresolved
+
+One lens computed measure-scale benchmarks (rank-1 collapse → ρ-MAE 0.3625, all-zero → 0.6375,
+independent draw → 0.8120) and concluded **δ = 0.02 IS defensible**, since observed arm means
+0.10–0.31 sit in a discriminating range. A refuter concluded the opposite. **I am not
+adjudicating this.** δ's role as a *pre-registered* threshold is unaffected either way.
+
+## Also flagged, and it is a tooling defect
+
+The non-runaway sensitivity at σ_λ=3 retains **5/400, 5/400, 7/400 pairs (1.2–1.8%)** and the
+summariser prints them as `dbar ± MCSE` **with no flag**. They should be suppressed or marked
+NOT REPORTABLE. I flagged this in prose; the tool should flag it itself.

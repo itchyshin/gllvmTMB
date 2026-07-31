@@ -3758,8 +3758,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## start exactly.
   lam_scale_init <- .gllvmTMB_loading_start_scale(resid_init)
 
-  ## `scale` is OPT-IN and defaults to the historical 1.0, because this helper
-  ## is shared by six tiers (B, B_slope, W, spde_slope, kernel, phy_slope) and
+  ## The single source of the reduced-rank loading start, for ALL EIGHT tiers
+  ## that have one: B, B_slope, W, spde_lv, spde_slope, kernel, phy, phy_slope.
+  ## `spde_lv` and `phy` used to carry their own private copies of this body;
+  ## that is precisely how the #851 blast radius stayed invisible, since those
+  ## two escaped a change to "the" helper by accident rather than by decision.
+  ## One definition means the per-tier scale policy is now readable at every
+  ## call site.
+  ##
+  ## `scale` is OPT-IN and defaults to the historical 1.0, because
   ## only the B tier has a companion Psi start that moves with it
   ## (`theta_diag_B`, below). Scaling Lambda WITHOUT its Psi is the one variant
   ## already measured and rejected here -- it changes the shared/independent
@@ -3870,10 +3877,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## and K_S shared spatial fields. Allocated with dim 1 when not in use
     ## so TMB can still read a valid (mapped-off) matrix.
     theta_rr_spde_lv = if (is_spatial_latent) {
-                          init_rr_theta_spde_lv <- function(p, rank)
-                            c(rep(0.5, rank),
-                              rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank))
-                          init_rr_theta_spde_lv(n_traits, d_spde_lv)
+                          init_rr_theta(n_traits, d_spde_lv)
                         } else 0.0,
     omega_spde_lv = matrix(0, nrow = n_mesh,
                            ncol = if (is_spatial_latent) d_spde_lv else 1L),
@@ -3905,9 +3909,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           },
     g_spde_slope     = array(0.0, dim = c(n_mesh, d_spde_slope, n_lhs_cols_spde_lat)),
     theta_rr_phy = if (use_phylo_rr) {
-                     init_rr_theta_pkg <- function(p, rank)
-                       c(rep(0.5, rank), rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank))
-                     init_rr_theta_pkg(n_traits, d_phy)
+                     init_rr_theta(n_traits, d_phy)
                    } else 0.0,
     g_phy        = matrix(0, nrow = n_aug_phy, ncol = if (use_phylo_rr) d_phy else 1L),
     ## Paired phylogenetic PGLLVM: per-trait phylogenetic random intercept

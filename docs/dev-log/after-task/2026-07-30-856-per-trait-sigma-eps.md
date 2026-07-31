@@ -229,8 +229,13 @@ not a new roadmap capability. No coverage or interval claim moves.
 
 ## 7a. GitHub Issue Ledger
 
-- **#856** — the subject of this arc. Gating question answered (incidental); capability fix
-  implemented. Left OPEN pending maintainer review and merge.
+- **#856** — **CLOSED by the maintainer at `2026-07-31T00:29:03Z`**, twenty minutes before this
+  branch's first commit, as "filed on a false premise": the pooled scalar is deliberate and
+  documented, and the per-trait role is already served by `theta_diag`. This line previously read
+  "left OPEN pending maintainer review and merge", which was written before the closure was
+  discovered and was wrong when written. The arc's own answer to the gating question —
+  "incidental" — is superseded by the maintainer's, and the arc's adversarial evidence supports
+  his reading rather than its own. No PR was opened; nothing merged.
 - **#622** — inspected and left CLOSED by decision; one comment posted
   (`issuecomment-5137858662`) recording that clause two of its proposed fix was never
   implemented and that the 2026-07-09 triage matched only clause one.

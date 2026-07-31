@@ -47225,7 +47225,10 @@ Outcome, as a decomposition rather than a single count:
 | + B-tier scoping (`0c52362f`) | 22 | 3 | 4 |
 | + `lv` seeding gate (`f31935e5`) | 21 | 3 | 3 |
 | + test re-fixturing (`b0e41aa4`) | **18** | **3** | **0** |
-| + helper de-duplication (`ae6308d2`) | *(run in progress at time of writing)* | | |
+| + helper de-duplication (`ae6308d2`) | **18** | **3** | **0** |
+
+The last two rows are identical down to the PASS count (14131 both), which is
+the suite-level confirmation that `ae6308d2` is behaviour-neutral.
 
 The 18/3 run is file-for-file identical to the `main` baseline
 (`test-m3-pilot-manifest.R` 16+2, `test-profile-derived-curves.R` 2,

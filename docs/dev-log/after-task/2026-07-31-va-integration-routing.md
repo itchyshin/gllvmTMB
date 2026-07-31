@@ -53,6 +53,18 @@ aborting — the VA lane's designated first job
 - **`eval_method = "gh"`, explicit and PROVISIONAL** — `default_tier = "jj"` is under review
   and Gate 3 exists to settle GH vs JJ, so the route must not inherit a default being
   measured. Recorded on the fit and shown by `print()`.
+- **`"eva"` dropped from the `integration` enum** (maintainer decision, same session, commit
+  `042336c1`). `gllvmTMBcontrol()` now admits `"laplace"` and `"va"` only. An argument value
+  that can only ever raise an error advertises a capability the package does not have — the
+  Design 35 overpromise pattern — and it would ship that way in the *first* CRAN release.
+  EVA's own measurements are why it is not a candidate rather than merely unfinished: the
+  literature states, and this repo's grid independently found, that EVA delivers valid
+  inference for `B` but **not** for `Lambda Lambda'` = `Sigma_B`, the estimand this package
+  exists to compute. Nothing is removed: the engine, its template and
+  `.approximation_engine_fit(engine = "eva", ...)` are untouched and still tested.
+  No-silent-fallback is preserved on the path that no longer passes through `match.arg` — a
+  hand-built control list can still carry any `integration`, so `gllvmTMB()` now aborts on
+  anything that is not `"laplace"` or `"va"`, with its own regression test.
 - **Work done in a separate worktree** — see §8.
 
 ## 4. Checks Run

@@ -243,6 +243,36 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Fixed
 
+* **Ordination no longer collapses when the response is on a large scale.**
+  Starting values for the latent structure were built as though the response had
+  a standard deviation of about 1 — a hardcoded loading start, a matching
+  variance start, and latent scores beginning at exactly zero. Standardising the
+  latent scores is precisely what pushes the response scale into the loadings, so
+  where that assumption did not hold the fit could collapse: loadings, the
+  covariance, the fixed effects, **and the correlations and communality that most
+  users actually report** all came back wrong, with every convergence signal
+  green. Nothing warned you.
+
+  All three starts now follow the data. The loadings and the variance term are
+  placed on the scale of the working residuals, and the latent scores are seeded
+  from the data instead of from zero — scaled to unit variance, since the scores
+  are standardised by definition and it is the starting *direction* that was
+  missing, not the magnitude.
+
+  For an ordinary single-tier `latent()` model this is now exact: on a
+  4-trait fit, multiplying the response by 100 or by 5000 reproduces every
+  expected transformation to within about one part in 100,000. Two other
+  implementations of the same model do not hold that law on the same data, so if
+  you have worked around this by rescaling your response by hand, you no longer
+  need to.
+
+  One case is **not** fully resolved. In a nested two-tier fit the residual scale
+  error is around 2%, and that remainder is a property of the likelihood surface
+  rather than of the starting values — a fit can report convergence while sitting
+  some distance from the optimum, because a wide region of parameter space is
+  nearly flat there. That is tracked separately and no starting value will
+  address it.
+
 * **`check_gllvmTMB()` no longer passes a binomial fit whose loading has run
   away.** The loading row could only fire when the trait's marginal prevalence
   was also extreme (at or beyond 0.9). But quasi-complete separation is a

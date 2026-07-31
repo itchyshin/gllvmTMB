@@ -54,7 +54,32 @@ prices.
   advertising a model class we have not measured.
 - families: **binomial-logit** and **poisson-log**. (Poisson-log and Gaussian-identity are EXACT
   under the VA objective; binomial-logit uses 1-D Gauss-Hermite. Design 104 §4.2.)
-- `q <= 4`, `p <= 80`, **`n >= 100`**.
+- **`q <= 2`** — see the correction immediately below — `p <= 80`, **`n >= 100`**.
+
+### ⚠ Fence correction, same day: `q <= 4` → `q <= 2`
+
+The maintainer's goal statement named `q <= 4`. **Design 85 §11 Gate 3 is titled "joint-fit
+known-DGP recovery at `q = 1/2`"** — it is defined over q=1 and q=2 only. §11 also states that
+gates are **sequential** and that *"a later gate cannot compensate for a failed earlier gate"*.
+Shipping a fence of `q <= 4` on the strength of a gate defined at `q <= 2` would be admitting a
+region the gate never covered.
+
+Worse, the extension to higher `q` is precisely what was already refused: the 2026-07-20 audit's
+stated claim boundary is *"whether the internal Gaussian-VA experiment may advance from q=1/q=2
+references to q=4/q=6 stress"*, and its decision was **NO-GO**.
+
+**The fence is therefore `q <= 2` in 0.6.** Raising it to 4 requires either a new gate authorising
+`q = 4` stress, or the maintainer explicitly shipping beyond the evidence — a decision, not an
+inference an agent may make. **Flagged for Shinichi; the conservative direction was taken in the
+meantime because it is the reversible one.**
+
+### Gates 0–2 are prerequisites, not optional
+
+§11's sequencing means Gate 3 counts only if **Gate 0** (byte-identity of the cells VA/ML/O3
+receive; exact packed-loading reconstruction; `unique = FALSE` asserted), **Gate 1** (algebra and
+autodiff to `1e-10`, gradients to `1e-5`, the Gaussian anchor to `1e-8`) and **Gate 2** (the O3
+low-dimensional references) hold. Their status must be established before Gate 3 is run, not
+assumed from the fact that a prior pilot reached Gate 3.
 
 **Why `n >= 100` is a hard error and not a warning.** Recomputed from
 `dev/totoro-grid/results/grid.csv`, the signed scale `attenuation = tr(Sigma_hat)/tr(Sigma_true)`

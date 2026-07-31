@@ -296,10 +296,17 @@ and the Design 85 NO-GO record were put in front of the maintainer. It is a deci
 ## The scope fence — `engine = "va"` errors outside this class
 
 `latent(..., unique = FALSE)` only (the default `latent()` carries `diag(psi)` and **no VA evidence
-exists for it**) · **binomial-logit** and **poisson-log** only · `q <= 4` · `p <= 80` ·
+exists for it**) · **binomial-logit** and **poisson-log** only · **`q <= 2`** · `p <= 80` ·
 **`n >= 100`**, a hard error: the GH arm's signed scale `tr(Sigma_hat)/tr(Sigma_true)` is **4.302
 at n=40** (recomputed from `dev/totoro-grid/results/grid.csv`), so small `n` is disqualified rather
 than cautioned.
+
+**⚠ `q <= 2`, not `q <= 4` — corrected against the gate.** The decision as stated named `q <= 4`,
+but Design 85 §11 Gate 3 is *"joint-fit known-DGP recovery at `q = 1/2`"* and §11 forbids a later
+gate compensating for an earlier one. The advance from `q=1/q=2` references to `q=4/q=6` stress is
+exactly what the 2026-07-20 audit refused (**NO-GO**). Raising the fence to 4 needs a new gate or an
+explicit maintainer decision to ship beyond the evidence — **open for Shinichi**. Gates 0–2 are
+prerequisites and their status must be established, not assumed.
 
 ## What must still be earned
 

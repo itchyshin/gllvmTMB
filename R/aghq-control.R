@@ -161,8 +161,36 @@
 ## responses and families whose conditional shape is least quadratic
 ## (hurdle/delta, ordinal, Tweedie) start higher on the ladder; continuous,
 ## more Gaussian-like conditionals start at the floor.
+## Collapse whatever a caller passes as `family` to ONE lowercase string
+## (issue #844).
+##
+## The live "auto" call site passes a family OBJECT. `as.character()` on one of
+## those returns a length-12 vector (the list's elements), so the
+## `vapply(..., logical(1))` guards below received a length-12 logical and
+## errored. The caller wrapped the call in `try()`, so the error was swallowed
+## and the resolver fell through to a hardcoded k = 9 -- for EVERY family and
+## every tier. The ladder was dead code, and the one mode whose whole purpose is
+## to adapt the node count was a constant.
+##
+## Normalised here rather than at the call site so every caller is fixed;
+## `.aghq_optimizer_table()` below carried the identical coercion.
+.aghq_family_label <- function(family) {
+  if (is.null(family)) return("")
+  ## family objects and glm-style lists carry the name in `$family`
+  if (is.list(family) && !is.null(family$family)) family <- family$family
+  if (is.function(family)) {
+    family <- tryCatch(family()$family, error = function(e) "")
+  }
+  out <- tryCatch(as.character(family), error = function(e) character(0))
+  out <- out[!is.na(out) & nzchar(out)]
+  if (length(out) == 0L) return("")
+  ## A mixed-family fit can legitimately supply several; keep them all so the
+  ## grepl() tests still see every one.
+  tolower(paste(out, collapse = " "))
+}
+
 .aghq_start_index <- function(family, tier) {
-  family <- tolower(as.character(family))
+  family <- .aghq_family_label(family)
   tier <- tolower(as.character(tier))
 
   high_curvature <- c(
@@ -191,7 +219,7 @@
 ## is 1.7x SLOWER). nbinom2 favours nlminb (lbfgsb 2.4x slower). Unknown
 ## cells default to nlminb as the safe choice.
 .aghq_optimizer_table <- function(family, tier) {
-  family <- tolower(as.character(family))
+  family <- .aghq_family_label(family)  # same coercion defect as #844
   tier <- tolower(as.character(tier))
 
   if (grepl("binomial", family) && grepl("jj", tier)) {

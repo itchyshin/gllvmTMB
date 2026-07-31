@@ -61,6 +61,31 @@ at −21 to +37 when Hessian diagnostics flag non-convergence: the mode is docum
 **Right frame: Heywood-case / boundary-solution theory**, not ordinary estimator bias — which is the
 frame this package's degeneracy work already uses.
 
+### The mechanism, derived — and it dovetails with Polya
+
+EVA's only variance penalty is `0.5·b''(η)·V`, and `b''` decays like `exp(−|η|)`. Along a scaling
+ray that penalty rises to 4.8e7 and then **collapses to 24.7** — a barrier the optimiser tunnels
+through into a spurious mode. Scored under **EVA's own objective**: runaway **−327.4**, VA solution
+−467.5, **true parameters −618.6**. *EVA prefers the runaway to the truth by 291 nats.* Under the JJ
+bound the ordering reverses. **VA rejects the runaway; EVA rewards it.**
+
+That is the exact complement of Polya's result: JJ's objective is **coercive** in `‖Λ‖` so it cannot
+run away; EVA's penalty **vanishes** at large `|η|` so it can. Two engines, opposite failure modes,
+one mechanism.
+
+**And the corrected characterisation, which supersedes every "7 orders of magnitude" line:**
+degenerate-mode rate **67.7%** (203/300), strongly regime-dependent — **100% at p=8, 10% at
+p=40/q=2** — while median attenuation over the **non-degenerate 32.3% is 1.2111**, comparable to
+`gtmb_laplace` (1.10) and `gtmb_gh` (1.45). **EVA is an ordinary estimator with a mode-selection
+failure**, not a broken one.
+
+**Use `is.list(fit$sd)` as the degeneracy guard** — 6/6 correct, including a degenerate fit gllvm
+reports as converged. `convergence` is useless here (257 "converged" rows, median attenuation 7.6e6).
+We muffled the good signal at `run-grid.R:82`.
+
+**Do not try more restarts.** On `n=100 p=20 q=2` the default fit is *good* (1.16); `n.init=5` finds
+a *better EVA optimum* at 3.8e8 and `n.init=10` at 6.3e8. The standard remedy destroys the estimate.
+
 **So EVA's next work is family coverage, not algorithm repair.** `.eva_fit()` accepts only
 `binomial`, `poisson`, `gaussian_anchor` — precisely the families where VA is already exact or
 tractable. Tweedie, beta, `betaH`, `orderedBeta`, ordinal — the families EVA exists for — are

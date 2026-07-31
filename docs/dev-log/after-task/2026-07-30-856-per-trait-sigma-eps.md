@@ -124,9 +124,44 @@ gllvmTMB-internal lines instead.
 
 ## 4. Checks Run
 
-PENDING — full `devtools::test()` and `--as-cran` results, plus the adversarial gate verdict,
-are recorded here before this report is committed. Nothing in this document may claim a check
-that has not been run.
+**Adversarial gate** (`docs/dev-log/audits/2026-07-30-856-adversarial-review.md`) —
+**DO-NOT-SHIP** on first pass: REFUTED 3, SURVIVES 3, UNCERTAIN 1. Every regression claim
+measured against a recompiled pre-fix worktree at `16aeb208`. Both blockers subsequently fixed
+(`95cfa10a`, `95e41882`, `0e633f5b`) and each fix verified on its own reproducing design.
+
+**Targeted measurements**, all re-run by the orchestrator rather than accepted from a report:
+
+```sh
+Rscript --vanilla dev/856-sigma-eps-pooled-cost.R
+#   sigma_eps = 0.19695, 2.0116 vs true 0.2, 2.0 (model-free check: 0.197, 2.012)
+Rscript --vanilla dev/856-sigma-eps-mixed-design-guard.R
+#   map `1, NA`; sigma_eps[1] = 0.50165 vs true 0.5; message names "t2"; 3/3 pass
+# gaussian + poisson (blocker 1): map `1, NA`; pdHess TRUE; rank 5/5 PASS;
+#   free log_sigma_eps 2 -> 1; no fabricated boundary row
+# 20-seed collapse sweep (blocker 2): 13/20 collapse; 13/13 now WARN (was 2/13);
+#   no false positives on healthy fits
+# mixed identity/log-scale trait (item 3): warning fires on trait "A", pooled value 5.0008
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'   # only man/diag_re.Rd; NAMESPACE untouched
+```
+
+**Scale-equivariance oracle** (`dev/scale-equivariance-check.R`, both blocks) — run because the
+plan's VERIFY list required it, with the prediction "not expected to move". It did not move.
+Results are identical to the baseline recorded in the script header from `origin/main`:
+
+```
+k = 100 : Lambda 1.3e-4, fixed 9.3e-5, Sigma 1.3e-4, correlations 1.3e-4,
+          communality 2.5e-4, logLik exact              -- all OK
+k = 5000: every law VIOLATED, rel.err 1 on Lambda/Sigma/correlations/communality,
+          fixed effects 9.5% out, logLik 49 units out   -- unchanged from main
+```
+
+This is the intended negative result: #856 is not a fix for #851 and does not pretend to be. It
+neither improves nor regresses the scale-constant class.
+
+**Full suite and `--as-cran`: PENDING.** The first full run was stopped because it was executing
+code from four commits earlier; the authoritative run is against the post-gate tree. Results are
+written here before this report is treated as closed. Nothing above claims a check that was not
+run.
 
 ## 5. Tests of the Tests
 

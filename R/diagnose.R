@@ -1076,6 +1076,30 @@ check_gllvmTMB <- function(
     } else {
       rep(TRUE, n_se)
     }
+    ## Scale-relative collapse floor. `sigma_eps_thresh` is an ABSOLUTE
+    ## magnitude, so on data of ordinary scale a residual SD that has collapsed
+    ## to the zero boundary can still sit above it and be reported PASS. A
+    ## boundary-collapsed trait is better identified by how small its residual
+    ## SD is RELATIVE to that trait's own response spread, which is scale-free.
+    ## Compared on sigma_eps's own scale: identity for Gaussian rows, log for
+    ## lognormal rows.
+    trait_scale <- if (!is.null(tmb_d$y) && !is.null(tmb_d$family_id_vec) &&
+                       !is.null(tmb_d$trait_id)) {
+      y_v <- as.numeric(tmb_d$y)
+      fid_v <- as.integer(tmb_d$family_id_vec)
+      tid_v <- as.integer(tmb_d$trait_id)
+      vapply(seq_len(n_se), function(.t) {
+        keep <- tid_v == (.t - 1L) & fid_v %in% c(0L, 3L)
+        yy <- y_v[keep]
+        ff <- fid_v[keep]
+        ## lognormal rows enter the likelihood as log(y)
+        yy[ff == 3L] <- suppressWarnings(log(yy[ff == 3L]))
+        yy <- yy[is.finite(yy)]
+        if (length(yy) < 2L) NA_real_ else stats::sd(yy)
+      }, numeric(1))
+    } else {
+      rep(NA_real_, n_se)
+    }
     for (.t in seq_len(n_se)) {
       se_t <- sigma_eps[.t]
       if (!is.finite(se_t)) next
@@ -1087,11 +1111,15 @@ check_gllvmTMB <- function(
       } else {
         "boundary_sigma_eps"
       }
+      scale_t <- trait_scale[.t]
+      collapsed_rel_t <- !isTRUE(mapped_off_t) && is.finite(scale_t) &&
+        scale_t > 0 && se_t < 1e-3 * scale_t
       rows <- c(
         rows,
         list(.gllvmTMB_check_row(
           comp_name,
-          if (isTRUE(mapped_off_t) || se_t >= sigma_eps_thresh) {
+          if (isTRUE(mapped_off_t) ||
+                (se_t >= sigma_eps_thresh && !collapsed_rel_t)) {
             "PASS"
           } else {
             "WARN"
@@ -1100,6 +1128,12 @@ check_gllvmTMB <- function(
           sigma_eps_thresh,
           if (isTRUE(mapped_off_t)) {
             "sigma_eps is mapped off by the fitted model/family path"
+          } else if (collapsed_rel_t) {
+            paste0(
+              "estimated residual scale has collapsed toward zero relative to ",
+              "this trait's own spread (sd ",
+              .gllvmTMB_fmt_num(scale_t, digits = 4L), ")"
+            )
           } else {
             "estimated continuous-family residual scale"
           },

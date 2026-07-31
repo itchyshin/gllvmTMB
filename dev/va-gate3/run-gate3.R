@@ -237,8 +237,19 @@ grid <- expand.grid(truth = TRUTH_NAMES, q = Q_VALUES, p = P_VALUES, n = N_VALUE
                      seed = SEEDS, stringsAsFactors = FALSE)
 grid$cell_id <- seq_len(nrow(grid))
 if (SMOKE) {
-  grid <- grid[grid$truth == "T-mid" & grid$q == 2L & grid$p == 8L &
-               grid$n == 100L & grid$seed == 1L, ]
+  ## The smoke cell is overridable so a NEW code path can be smoked on its own
+  ## terms. q = 4 was added by the 2026-07-31 scope freeze and is untested by
+  ## the default q = 2 cell; smoking only the old path would prove nothing
+  ## about the new one.
+  .smoke_q <- as.integer(Sys.getenv("GATE3_SMOKE_Q", "2"))
+  .smoke_p <- as.integer(Sys.getenv("GATE3_SMOKE_P", "8"))
+  .smoke_n <- as.integer(Sys.getenv("GATE3_SMOKE_N", "100"))
+  grid <- grid[grid$truth == "T-mid" & grid$q == .smoke_q & grid$p == .smoke_p &
+               grid$n == .smoke_n & grid$seed == 1L, ]
+  if (!nrow(grid)) {
+    stop("Smoke cell (q=", .smoke_q, ", p=", .smoke_p, ", n=", .smoke_n,
+         ") is not in the campaign grid.", call. = FALSE)
+  }
 }
 
 ## ================================================ 3. data-generation ======

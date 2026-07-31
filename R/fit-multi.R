@@ -4682,18 +4682,36 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       rows_t <- which(trait_id == (t - 1L))
       length(rows_t) > 0L && length(unique(cell_W[rows_t])) == length(rows_t)
     }, logical(1))
-    suppress_eps_t <- per_row_diag_B_t | per_row_diag_W_t
+    ## A trait whose rows are ALL non-Gaussian/lognormal never enters the
+    ## `sigma_eps` branch of the likelihood, so its entry has no data and is an
+    ## exactly flat direction: the gradient there is identically zero, the
+    ## Hessian loses rank, and the reported value is just the frozen `lm` start.
+    ## The dataset-wide `any_sigma_eps` test above is not enough once the
+    ## parameter is per-trait -- one Gaussian trait keeps the whole vector alive.
+    ## (Before #856 the single scalar was shared, so any Gaussian row anywhere
+    ## identified it; this failure mode is created by the promotion.)
+    has_eps_rows_t <- vapply(seq_len(n_traits), function(t) {
+      any(family_id_vec[trait_id == (t - 1L)] %in% c(0L, 3L))
+    }, logical(1))
+    per_row_suppress_t <- per_row_diag_B_t | per_row_diag_W_t
+    suppress_eps_t <- per_row_suppress_t | !has_eps_rows_t
+    data_sd  <- stats::sd(y)
+    small_eps <- max(1e-3 * data_sd, 1e-6)
     if (any(suppress_eps_t)) {
-      level_lab <- if (any(per_row_diag_W_t) && any(per_row_diag_B_t)) {
-        paste(site, "/", ss_name)
-      } else if (any(per_row_diag_W_t)) ss_name else site
-      data_sd  <- stats::sd(y)
-      small_eps <- max(1e-3 * data_sd, 1e-6)
       tmb_params$log_sigma_eps[suppress_eps_t] <- log(small_eps)
       eps_map <- seq_len(n_traits)
       eps_map[suppress_eps_t] <- NA
       tmb_map$log_sigma_eps <- factor(eps_map)
-      suppressed_labs <- levels(data[[trait]])[suppress_eps_t]
+    }
+    ## Only the per-row-identifiability case is worth telling the user about.
+    ## Mapping off a trait that has no continuous rows is internal hygiene, not
+    ## a modelling trade-off, and reporting it under the identifiability message
+    ## would state something untrue of that trait.
+    if (any(per_row_suppress_t)) {
+      level_lab <- if (any(per_row_diag_W_t) && any(per_row_diag_B_t)) {
+        paste(site, "/", ss_name)
+      } else if (any(per_row_diag_W_t)) ss_name else site
+      suppressed_labs <- levels(data[[trait]])[per_row_suppress_t]
       cli::cli_inform(c(
         "i" = paste0(
           "Auto-suppressing {.code sigma_eps}: ",

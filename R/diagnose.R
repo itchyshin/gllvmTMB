@@ -1061,9 +1061,25 @@ check_gllvmTMB <- function(
     trait_labs <- .gllvmTMB_trait_names(object)
     n_se <- length(sigma_eps)
     multi <- n_se > 1L
+    ## Report the residual scale only for traits that actually have
+    ## Gaussian/lognormal rows. A trait with no such rows never enters the
+    ## sigma_eps branch of the likelihood, so its entry is a fixed placeholder,
+    ## not an estimate; emitting a boundary row for it presents a fabricated
+    ## residual scale for (say) a Poisson trait, and marks it PASS.
+    tmb_d <- object$tmb_data
+    has_eps_rows <- if (!is.null(tmb_d$family_id_vec) && !is.null(tmb_d$trait_id)) {
+      fid_v <- as.integer(tmb_d$family_id_vec)
+      tid_v <- as.integer(tmb_d$trait_id)
+      vapply(seq_len(n_se), function(.t) {
+        any(fid_v[tid_v == (.t - 1L)] %in% c(0L, 3L))
+      }, logical(1))
+    } else {
+      rep(TRUE, n_se)
+    }
     for (.t in seq_len(n_se)) {
       se_t <- sigma_eps[.t]
       if (!is.finite(se_t)) next
+      if (!has_eps_rows[.t]) next
       mapped_off_t <- if (length(mapped_off_vec) >= .t) mapped_off_vec[.t] else FALSE
       comp_name <- if (multi) {
         lab_t <- if (length(trait_labs) >= .t) trait_labs[.t] else as.character(.t)

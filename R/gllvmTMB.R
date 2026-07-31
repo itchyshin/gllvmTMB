@@ -489,6 +489,27 @@ gllvmTMB <- function(
   ## engine = "julia" routes through the experimental GLLVM.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  ## An opt-in integration route must never SILENTLY fall back to Laplace. The
+  ## caller would get a fit that is not the one they asked for and no signal
+  ## that it happened -- the exact failure `gllvmTMBcontrol()` already records
+  ## for arguments that `...` used to swallow. So: check the fence first (so an
+  ## out-of-region request fails on its own terms), then abort explicitly while
+  ## the translation layer is unbuilt. Loud and wrong-shaped beats quiet and
+  ## wrong.
+  integration_route <- control$integration %||% "laplace"
+  if (!identical(integration_route, "laplace")) {
+    .gllvmTMB_check_integration_fence(integration_route, engine = engine)
+    cli::cli_abort(c(
+      "{.arg integration} = {.val {integration_route}} is not yet routed from {.fn gllvmTMB}.",
+      "i" = "The engine, its TMB template and its dispatch all exist, but the
+             formula-to-long-format translation layer that connects them to
+             {.fn gllvmTMB} is not built yet.",
+      "i" = "Reachable today only as
+             {.code gllvmTMB:::.approximation_engine_fit(engine = \"va_r3\", ...)},
+             which is research-only and takes long-format vectors.",
+      ">" = "Use {.code integration = \"laplace\"} (the default)."
+    ))
+  }
   ci_method <- match.arg(ci_method)
   ci_defaults <- identical(ci_method, "none") &&
     is.numeric(ci_level) &&
@@ -1187,6 +1208,27 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' @param verbose If `TRUE`, prints a one-line summary per restart so
 #'   the user can see which seed led to the winning fit. Default
 #'   `FALSE`.
+#' @param integration Which method evaluates the latent-variable integral.
+#'   `"laplace"` (default) is the Laplace approximation and is the **only**
+#'   route that yields a marginal likelihood, so it is the only one for which
+#'   [logLik()], [AIC()], [BIC()] and likelihood-ratio tests are defined.
+#'
+#'   `"va"` and `"eva"` select opt-in **research** routes whose objective is an
+#'   evidence lower bound, not a marginal likelihood. They report no calibrated
+#'   uncertainty: no standard errors, no confidence intervals, and no coverage
+#'   claim. A bound must not be compared across ranks or models, so they cannot
+#'   be used for model or rank selection.
+#'
+#'   These routes are admitted only inside the region for which evidence exists
+#'   — `latent(..., unique = FALSE)`, binomial-logit or Poisson-log, `d` up to
+#'   4, up to 80 responses, at least 100 units, and the native TMB engine — and
+#'   requesting one outside that region is an **error**, not a warning.
+#'   They cannot be combined with `aghq`, which is an alternative evaluation of
+#'   the same integral rather than an additional layer.
+#'
+#'   Offering these values advertises nothing about their accuracy. **They are
+#'   not yet routed from [gllvmTMB()]** and currently abort with an explanatory
+#'   message rather than silently returning a Laplace fit.
 #' @param aghq Adaptive Gauss-Hermite quadrature for the between-unit latent
 #'   block. `FALSE` (default) fits by Laplace approximation. A positive integer
 #'   requests that many quadrature nodes. `"auto"` lets the package decide, and

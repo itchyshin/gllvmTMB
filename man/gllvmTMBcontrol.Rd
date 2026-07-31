@@ -17,6 +17,7 @@ gllvmTMBcontrol(
   start_from = NULL,
   se = TRUE,
   verbose = FALSE,
+  integration = c("laplace", "va", "eva"),
   aghq = FALSE,
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,
@@ -97,6 +98,28 @@ uncertainty will be obtained by bootstrap or profile methods. Default
 \item{verbose}{If \code{TRUE}, prints a one-line summary per restart so
 the user can see which seed led to the winning fit. Default
 \code{FALSE}.}
+
+\item{integration}{Which method evaluates the latent-variable integral.
+\code{"laplace"} (default) is the Laplace approximation and is the \strong{only}
+route that yields a marginal likelihood, so it is the only one for which
+\code{\link[=logLik]{logLik()}}, \code{\link[=AIC]{AIC()}}, \code{\link[=BIC]{BIC()}} and likelihood-ratio tests are defined.
+
+\code{"va"} and \code{"eva"} select opt-in \strong{research} routes whose objective is an
+evidence lower bound, not a marginal likelihood. They report no calibrated
+uncertainty: no standard errors, no confidence intervals, and no coverage
+claim. A bound must not be compared across ranks or models, so they cannot
+be used for model or rank selection.
+
+These routes are admitted only inside the region for which evidence exists
+— \code{latent(..., unique = FALSE)}, binomial-logit or Poisson-log, \code{d} up to
+4, up to 80 responses, at least 100 units, and the native TMB engine — and
+requesting one outside that region is an \strong{error}, not a warning.
+They cannot be combined with \code{aghq}, which is an alternative evaluation of
+the same integral rather than an additional layer.
+
+Offering these values advertises nothing about their accuracy. \strong{They are
+not yet routed from \code{\link[=gllvmTMB]{gllvmTMB()}}} and currently abort with an explanatory
+message rather than silently returning a Laplace fit.}
 
 \item{aghq}{Adaptive Gauss-Hermite quadrature for the between-unit latent
 block. \code{FALSE} (default) fits by Laplace approximation. A positive integer

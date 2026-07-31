@@ -57,3 +57,31 @@ test_that("n = 40 is refused because the measurement says so, not by taste", {
                                       q = 2L, p = 20L, n = 100L)
   )
 })
+
+test_that("a variational request never silently returns a Laplace fit", {
+  ## The failure this guards against is not an error, it is a SUCCESS that
+  ## quietly ignored the argument -- the caller keeps a Laplace fit believing
+  ## it is variational. Requesting one must either work or abort, never fall
+  ## back.
+  set.seed(1L)
+  n <- 120L; p <- 6L
+  Y <- matrix(rbinom(n * p, 1L, 0.5), n, p)
+  df <- data.frame(y = as.numeric(t(Y)),
+                   trait = factor(rep(seq_len(p), times = n)),
+                   site  = factor(rep(seq_len(n), each = p)))
+  fml <- y ~ 0 + trait + latent(0 + trait | site, d = 2L, unique = FALSE)
+
+  expect_error(
+    gllvmTMB(fml, data = df, family = stats::binomial(), unit = "site",
+             control = gllvmTMBcontrol(integration = "va")),
+    "not yet routed"
+  )
+  ## …and the out-of-region case fails on the FENCE, not on the routing stub,
+  ## so the more specific complaint is the one the user sees.
+  expect_error(
+    gllvmTMB(fml, data = df, family = stats::binomial(), unit = "site",
+             engine = "julia",
+             control = gllvmTMBcontrol(integration = "va")),
+    "no variational route"
+  )
+})

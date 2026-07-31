@@ -108,8 +108,22 @@ apply_pass_rule <- function(summary_df) {
   va <- summary_df[summary_df$arm %in% c("va_gh", "va_jj"), ]
   merged <- merge(va, ml, by = key, all.x = TRUE)
   merged$rmse_gap <- merged$sigma_rmse - merged$sigma_rmse_ml
-  merged$pass_rmse <- is.finite(merged$rmse_gap) & merged$rmse_gap <= 0.05
-  merged$pass_collapse <- is.finite(merged$collapse_rate) & merged$collapse_rate <= 0.05
+  ## UNDEFINED IS NOT FAILURE. `is.finite(x) & x <= tol` silently turns NA into
+  ## FALSE, scoring a cell as failing a criterion that was never measured. That
+  ## bit the collapse half in 6 cells where `n_ok == 0`: no fit produced a
+  ## usable axis, so `collapse_rate` is NA -- undefined, not 0% and not 100%.
+  ## Scoring those FAIL made va_gh's collapse record read 51/54 when its
+  ## MEASURED record is 51/51, and va_jj's 45/54 when it is 45/51.
+  ##
+  ## NA now propagates deliberately: a cell whose criterion is undefined is
+  ## reported as NA and is NOT scored -- the same treatment the R2
+  ## no-comparator cells get below. Downstream summaries must use na.rm and
+  ## report the NA count separately; folding NA into the failure count is the
+  ## bug this replaces.
+  merged$pass_rmse     <- ifelse(is.na(merged$rmse_gap), NA,
+                                 merged$rmse_gap <= 0.05)
+  merged$pass_collapse <- ifelse(is.na(merged$collapse_rate), NA,
+                                 merged$collapse_rate <= 0.05)
   merged$pass <- merged$pass_rmse & merged$pass_collapse
   merged[order(merged$truth, merged$q, merged$p, merged$n, merged$arm), ]
 }
@@ -144,6 +158,53 @@ apply_pass_rule <- function(summary_df) {
   rows[!(key %in% drop), , drop = FALSE]
 }
 
+## ---- R2 cells with zero surviving replicates: no valid comparator ---------
+## Paired exclusion removes a seed from ALL arms, so a cell in which 100% of
+## seeds have a degenerate ML comparator loses its va_gh/va_jj rows too -- not
+## because VA failed, but because R2's own restriction leaves nothing to
+## compare against. Those rows then vanish from the R2 table entirely, which
+## breaks the pre-registration's commitment that BOTH rules are computed and
+## reported for EVERY cell, and it hides a finding: an ML comparator that is
+## degenerate in 40 of 40 replicates is itself evidence about Laplace.
+##
+## They are restored as explicit `pass = NA` ("no_comparator") rows: reported,
+## never silently dropped, and NOT scored as either pass or fail. This is a
+## reporting convention, not a third analysis rule -- it changes no estimand,
+## no tolerance, and no exclusion filter.
+.append_no_comparator_cells <- function(rows, rows_r2, verdict_r2) {
+  key <- c("truth", "q", "p", "n")
+  all_cells <- unique(rows[key])
+  survived  <- if (nrow(rows_r2)) unique(rows_r2[key]) else all_cells[0, , drop = FALSE]
+  all_k  <- do.call(paste, c(all_cells, sep = "\r"))
+  surv_k <- do.call(paste, c(survived,  sep = "\r"))
+  dropped <- all_cells[!(all_k %in% surv_k), , drop = FALSE]
+  if (!"verdict_note" %in% names(verdict_r2)) verdict_r2$verdict_note <- NA_character_
+  if (!nrow(dropped)) return(verdict_r2)
+  cat(sprintf("\nR2 WARNING: %d cell(s) had a degenerate ML comparator in EVERY replicate.\n",
+              nrow(dropped)))
+  cat("  Reported as NA (no_comparator) and NOT scored. This is a finding about ML, not VA:\n")
+  print(dropped)
+  template <- verdict_r2[0, , drop = FALSE]
+  extra <- do.call(rbind, lapply(seq_len(nrow(dropped)), function(i) {
+    cell <- dropped[i, , drop = FALSE]
+    n_seeds <- sum(rows$truth == cell$truth & rows$q == cell$q &
+                     rows$p == cell$p & rows$n == cell$n & rows$arm == "ml_laplace")
+    do.call(rbind, lapply(c("va_gh", "va_jj"), function(a) {
+      r <- template[NA_integer_, , drop = FALSE]
+      r[1, names(cell)] <- cell
+      r$arm  <- a
+      r$pass <- NA
+      r$pass_rmse <- NA
+      r$pass_collapse <- NA
+      r$verdict_note <- sprintf("no_comparator: ML degenerate in %d/%d replicates",
+                                n_seeds, n_seeds)
+      r
+    }))
+  }))
+  out <- rbind(verdict_r2, extra)
+  out[order(out$truth, out$q, out$p, out$n, out$arm), , drop = FALSE]
+}
+
 ## ==================================================== run =================
 rows <- load_gate3_rows()
 
@@ -165,6 +226,9 @@ n_dropped <- (nrow(rows) - nrow(rows_r2)) / 3L
 cat(sprintf("\nR2 paired exclusion: %d replicate(s) dropped from ALL arms because the ML comparator was degenerate (%.1f%% of replicates).\n",
             n_dropped, 100 * n_dropped / (nrow(rows) / 3L)))
 verdict_r2 <- if (nrow(rows_r2)) apply_pass_rule(.summarise_all(rows_r2)) else verdict_r1[0, ]
+verdict_r2 <- .append_no_comparator_cells(rows, rows_r2, verdict_r2)
+if (!"verdict_note" %in% names(verdict_r1)) verdict_r1$verdict_note <- NA_character_
+stopifnot(nrow(verdict_r1) == nrow(verdict_r2))   # both rules, every cell
 
 dir.create(RESULTS_DIR, showWarnings = FALSE, recursive = TRUE)
 utils::write.csv(summary_df, file.path(RESULTS_DIR, "gate3-cell-summary.csv"), row.names = FALSE)

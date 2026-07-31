@@ -405,12 +405,25 @@ if (SMOKE) {
 }
 
 ## ==================================================== 5. row builder ======
+## `max_abs_gradient` is recorded for the SAME reason the pre-registration
+## required the continuous `max_projected_variance` rather than the collapsed
+## status label: the engine computes it, the row builder dropped it, and
+## without it no threshold sensitivity is derivable without re-fitting.
+##
+## It is load-bearing for one open question. The per-start health test is
+## `max_abs_gradient < 1e-4` -- an ABSOLUTE constant applied to a max over a
+## variational parameter vector whose LENGTH grows with the number of units, so
+## a max over more coordinates is stochastically larger independently of fit
+## quality. Whether the collapse of usable fits at large n is that constant
+## mis-scaling, or the method genuinely failing, could only be INFERRED from
+## the columns as they stood. Recording this makes it measurable.
 .gate3_extra_defaults <- list(
   max_projected_variance = NA_real_, variance_domain_ok = NA,
   healthy_starts = NA_integer_, attempted_starts = NA_integer_,
   objective_agreement = NA, best_three_objective_range = NA_real_,
   admitted = NA, source_commit = NA_character_, source_checksum = NA_character_,
-  convergence_code = NA_integer_, pd_hess = NA
+  convergence_code = NA_integer_, pd_hess = NA,
+  max_abs_gradient = NA_real_
 )
 
 make_row <- function(arm, truth_entry, n, seed, status, seconds, detail = "",
@@ -564,6 +577,7 @@ extract_laplace_fields <- function(fit) {
   fields <- extract_va_fields(res)
   health <- res$engine_result$health %||% list()
   prov   <- res$provenance %||% list()
+  diag   <- res$diagnostics %||% list()
   extra <- list(
     max_projected_variance = health$max_projected_variance %||% NA_real_,
     variance_domain_ok = health$variance_domain_ok %||% NA,
@@ -573,7 +587,9 @@ extract_laplace_fields <- function(fit) {
     best_three_objective_range = health$best_three_objective_range %||% NA_real_,
     admitted = health$admitted %||% NA,
     source_commit = prov$source_commit %||% NA_character_,
-    source_checksum = prov$source_checksum %||% NA_character_
+    source_checksum = prov$source_checksum %||% NA_character_,
+    ## The gate's own per-start threshold. See .gate3_extra_defaults.
+    max_abs_gradient = diag$max_abs_gradient %||% NA_real_
   )
   make_row(arm, truth_entry, n, seed, status = status, seconds = r$secs,
            detail = res$status %||% NA_character_,

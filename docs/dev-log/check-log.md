@@ -47366,3 +47366,43 @@ record of the interaction; no action is needed from that lane.
 `R CMD check --as-cran --no-tests --no-manual` (local, Mac, vignettes built, all Suggests
 present): **0 errors, 0 warnings, 1 NOTE** — the standard "New submission". The test suite
 is verified by the 348-file Totoro run above rather than inside the check.
+
+### 3-OS CI on the #851 branch (2026-07-31, authorised by Shinichi)
+
+Dispatched with `gh workflow run R-CMD-check.yaml -f full_matrix=true` on `d30ba6f`.
+Routine PR CI is ubuntu-only by design (macOS/Windows bill 10× / 2×), so the full matrix
+is the only thing that sees a Windows-only defect — which is why this one survived.
+
+| leg | branch `d30ba6f` |
+|---|---|
+| `ubuntu-latest` | **success** (also success on the separate PR check) |
+| `macos-latest` | **success** |
+| `windows-latest` | **failure** — `Status: 1 ERROR`, `[ FAIL 1 \| WARN 2 \| SKIP 796 \| PASS 8219 ]` |
+
+**The single Windows failure is a line-ending defect in a frozen-fixture checksum, and it
+is not #851's.** `test-eva-gate1.R:4` compares `tools::sha256sum()` of
+`inst/extdata/86-eva-gate1-parameters.json` against a hardcoded digest. Computed directly:
+
+```
+stored (LF)  sha256 = a3cb2b9302132b2a917639ac30ce070d5d0f67e9c21f50ffbcc232ead448b036   <- the hardcoded value
+same bytes as CRLF   = 4cb55e963180c4c570c76b74faeb65ee8ef98e656412e7f9e46a5296465b9b14
+file contains CRLF as stored? FALSE
+```
+
+The repo has **no `.gitattributes`**, so nothing pins that file's line endings; Windows
+runners check out with `core.autocrlf`, the bytes change, the digest does not match. This
+is arithmetic, not inference. `git diff --stat origin/main...HEAD` also shows the branch
+touches no `eva` / `gate1` / `design86` path at all.
+
+**Not fixed here: EVA / Design 86 is a Codex-owned lane** per
+`2026-07-25-active-lane-split.md`. Filed for routing instead. Two candidate fixes: pin the
+bytes with `.gitattributes` (`... .json -text`), or checksum the *parsed* content so the
+test freezes the parameters rather than the line endings — the test's own name
+("readable and checksummed") reads like the latter's intent implemented as the former.
+
+A matched 3-OS run on `main` @ `7a6b1ee` was dispatched for confirmation. Its ubuntu and
+macOS legs are **success**; the Windows leg was **cancelled** mid-run on the first attempt
+and re-dispatched. Note that the previously recorded Windows blocker
+(`2026-07-19-codex-handover-release-evidence.md` §3c) was a *different* test
+(`test-example-behavioural-reaction-norm.R:316`), so that record does **not** substitute
+for this comparison and was not used as if it did.

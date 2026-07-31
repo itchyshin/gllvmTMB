@@ -124,8 +124,10 @@
 #'
 #' ## Per-row `indep()` / legacy `unique()` and `sigma_eps`: auto-suppression
 #'
-#' For Gaussian / lognormal / Gamma fits, the engine also estimates a
-#' single observation-scale residual `sigma_eps` (the sigma_eps of the response).
+#' For Gaussian and lognormal fits, the engine also estimates an
+#' observation-scale residual `sigma_eps` (the sigma_eps of the response).
+#' Ordinary Gamma carries its own per-trait shape `phi_gamma` and does not use
+#' `sigma_eps`.
 #' In new code, write observation-level diagonal residual terms as
 #' `indep(0 + trait | g)`. The legacy `unique(0 + trait | g)` spelling is
 #' still accepted as compatibility syntax. If that grouping `g` has **one row

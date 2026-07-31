@@ -139,9 +139,14 @@ is still running (451/2,160 cells at time of writing) and is what would license 
 
 ## 10. Known Limitations And Next Actions
 
-- **The complete-crossed-design requirement is a real scope limit**, and worth surfacing to
-  users: `integration = "va"` refuses ragged data, which is the common shape for community /
-  JSDM datasets. Gate 3 uses complete designs, so it is unaffected.
+- **The complete-crossed-design requirement is a scope limit, but a narrower one than first
+  recorded here.** ⚠ Correction: an earlier draft of this section said the requirement refuses
+  "the common shape for community / JSDM datasets." That overstates it. The canonical
+  presence/absence site × species matrix scores every species at every site and so IS
+  complete; in long format it satisfies the check. What is refused is genuinely *ragged* data
+  — unequal sampling, a response not measured at some units, trait data collected on
+  different subsets. That is a real limit, but it does not exclude the motivating JSDM case.
+  Gate 3 uses complete designs, so it is unaffected either way.
 - **`gllvmTMBcontrol()` search settings** — `n_init`, `optimizer`, `optArgs`, `start_from`,
   `init_*`, `se` — do not reach the engine and are accepted silently. Recorded in
   `?gllvmTMBcontrol`; they cannot change *which* model is fitted, only how it is searched for.

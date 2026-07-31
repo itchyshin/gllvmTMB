@@ -161,3 +161,40 @@ test_that("#874: opt$convergence is NOT the AGHQ convergence field", {
   ## the two are independent quantities; this documents that they may disagree
   expect_true(is.logical(f$aghq$converged))
 })
+
+test_that("#843: multi-start never prefers a NON-converged fit over a converged one", {
+  skip_on_cran()
+  ## THE REGRESSION THIS GUARDS, measured 2026-07-31. Selecting purely on the AGHQ
+  ## objective is only as trustworthy as the objective, and at small k it is not.
+  ## On the q = 2 golden fixture at k = 3 the alternative start reached a LOWER
+  ## objective (1.884065 vs 1.909543) at a point where the k = 3 quadrature is
+  ## wrong by 0.107 against an independent nested-integrate() oracle, while the
+  ## warm start sat at 2.9e-09 from it. The optimiser had exploited quadrature
+  ## error -- the same shape as a runaway exploiting Laplace's error.
+  ##
+  ## Ranking on (converged, objective) fixes it. This test asserts the CONSEQUENCE
+  ## on the same fixture, so it fails if the ranking is ever reduced back to the
+  ## objective alone. The golden test also catches it, but obscurely; this names
+  ## the mechanism.
+  skip_if_not(exists(".golden_dgp_q2"), "golden q = 2 helper not available")
+  fx <- .golden_dgp_q2()
+  fml <- y ~ 0 + trait + latent(0 + trait | site, d = 2, unique = FALSE)
+  fit <- function(ms) suppressWarnings(gllvmTMB::gllvmTMB(
+    fml, data = fx$data, family = stats::binomial(), unit = "site",
+    control = gllvmTMB::gllvmTMBcontrol(n_init = 1L, init_jitter = 0, se = FALSE,
+                                        aghq = 3L, aghq_multistart = ms)))
+  one  <- fit(FALSE)
+  many <- fit(TRUE)
+
+  err <- function(f) {
+    par <- f$tmb_obj$env$last.par.best
+    abs(f$opt$objective -
+        .golden_brute_force_nll_q2(fx$data, unname(par[names(par) == "b_fix"]),
+                                   f$report$Lambda_B))
+  }
+  ## multi-start must not be WORSE against the independent oracle than single-start
+  expect_lt(err(many), 1e-6)
+  expect_lt(err(many), 10 * err(one))
+  ## and the fit it selected must be the converged one
+  expect_true(isTRUE(many$aghq$converged))
+})

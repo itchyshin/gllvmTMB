@@ -2416,3 +2416,53 @@ longer exists, so the result is recorded but not reproducible. A confirmatory, p
 20,000-rep-per-cell re-run supersedes it
 (`docs/dev-log/2026-07-29-certificate-gate-preregistration.md`, commit `90798365`). **No live
 certificate. No public claim.**
+
+## 2026-07-31  The AGHQ small-n runaway is an OPTIMISER FAILURE, not the MLE — every "AGHQ alone" number is single-start
+
+Decision: record, from 120 fits through the SHIPPED engine (#843, PR #870), that the AGHQ
+runaway at n = 100 is substantially an optimiser artefact, and that the fix already exists in
+the code, switched off. This **withdraws the empirical basis** for the in-source claim at
+`R/fit-multi.R:5314-5318` that "the runaway IS the maximum-likelihood solution -- ties in
+40/40". That investigation (`09C-truthstart.csv`) ran on `dev/aghq-r-reference.R`, invalidated
+at `decisions.md:1706-1709`. Re-run on `gllvmTMB()` itself, in exactly the `aghq` arm of
+`18-shipped-engine-campaign.R` (n=100, p=6, q=2, binomial, `aghq = 9`, `aghq_ridge = Inf`,
+40 seeds), **the objective ties in 13/40, not 40/40 -- and 0/16 on the catastrophic seeds.**
+
+**On the 16/40 seeds with ||Lambda_hat||/||Lambda|| > 5, the runaway is not the MLE, 16/16.**
+Started at the truth the same engine reaches a strictly better objective by 1.14-12.94 nll
+(median 4.70) and median frob 16.23 -> 2.12. Where the default fit is already fine the two
+arms agree and the objective is genuinely flat, so the start is the whole story exactly where
+it fails.
+
+**The fix needs no new idea.** The truth-free alternative start the engine already builds
+(`R/fit-multi.R:5296-5313`) is discarded under `aghq_ridge = Inf` because the selection at
+`:5321` is gated on a finite tau. Run to convergence it recovers the lost optimum 16/16,
+median gap closed 1.00. Best-of-both (run both, keep the better FINAL objective -- not the
+start-point objective, which is the weak proxy that made the unpenalised case look unfixable)
+takes catastrophic fits 16/40 -> 1/40 and matches the truth start's objective without using
+the truth (381.433 vs 381.434). Altstart is worse on 6/40, so the rule is multi-start, not
+"always use the alternative".
+
+**Consequence, binding on future citation:** `aghq_ridge = Inf` IS the `aghq` arm of every
+campaign in `dev/aghq-evidence/`, so **no "AGHQ alone" small-n number may be cited without the
+single-start caveat**, including the 73%-runaway-at-n=100 headline in #842/#843. "AGHQ alone
+is worse at small n" cannot stand as measured.
+
+**Not decided here:** whether to ungate the selection. That changes fitted results for every
+`aghq_ridge = Inf` fit and is the maintainer's call (#843). **Not established here:** anything
+at n >= 400, any other family, the default grammar, or whether the AGHQ argmin is *good* --
+this slice says where the optimiser lands, not whether the answer is right. Residual moderate
+runaway survives the start fix (65% -> 52%, and 48% from the truth) and is unexplained.
+
+Two secondary findings, both in-source comments that now mislead and neither changing
+behaviour: (1) `aghq_multistart` is read at `:5308` but `gllvmTMBcontrol()` never produces it,
+so the documented off-switch is dead and it mislabels `19-warmstart-vs-flatness.R`'s
+"discriminating arm" -- same class as D2/#844, filed as #871; (2) the `MEASURED (Totoro, 954
+fits)` table justifying the ridge's tau = 2 at `:4997` is from the invalidated reference AND
+is contradicted in direction by the shipped engine (it says Laplace runs away MORE than AGHQ,
+50% vs 13%; `18-shipped.csv` measured laplace 47% / aghq 73%) -- routed to #847, where it
+implies the tau recalibration should be sequenced AFTER the start decision or it will be
+calibrated to compensate for an optimiser bug.
+
+Evidence: `docs/dev-log/audits/2026-07-31-aghq-truthstart-shipped-engine.md`,
+`dev/aghq-evidence/22-truthstart-shipped.R`, `23-altstart-shipped.R`. Results LOCAL (D-50).

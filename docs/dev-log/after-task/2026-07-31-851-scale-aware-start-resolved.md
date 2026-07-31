@@ -164,9 +164,10 @@ closed on merit, not waived:
 | gate | state |
 |---|---|
 | Suite vs `main` | **CLOSED.** 348 files, **18 fail / 3 err** — file-for-file identical to the re-derived `main` baseline (`test-m3-pilot-manifest.R` 16+2, `test-profile-derived-curves.R` 2, `test-tweedie-fixed-p.R` 1 err). PASS 14173 vs main's 14161. |
-| Cross-lane AGHQ failure | **CLOSED on merit** — see below. Their test was not touched. |
+| Cross-lane AGHQ failure | **CLOSED on merit** — see below. Their test was not touched, and no action is needed from that lane. Shinichi separately approved editing it (his lean: assert the property rather than the number); that approval was **not used**, because the family gate removed the interaction entirely. His reasoning still stands as advice for whoever revisits that test on its own terms. |
 | `R CMD check --as-cran` | **CLOSED. 0 errors, 0 warnings, 1 NOTE** (the standard "New submission"), vignettes built and examples run. The 348-file suite was verified separately on Totoro rather than inside the check. |
-| Merge authority | **OPEN, and not mine.** `CLAUDE.md` limits agent self-merge to the enumerated low-risk set, which is documentation-shaped; this changes `R/`. `AGENTS.md` additionally wants 3-OS CI, and that matrix sits behind a `workflow_dispatch` reserved for pre-release (macOS and Windows bill at 10× and 2×), so triggering that spend is a maintainer decision too. |
+| Merge authority | **GRANTED by Shinichi, 2026-07-31**, together with authorisation to spend the 3-OS matrix. Both were withheld until then: `CLAUDE.md` limits agent self-merge to the enumerated low-risk set, which is documentation-shaped, and this changes `R/`; and the macOS/Windows legs bill at 10× and 2×, so triggering them is a spend decision. |
+| 3-OS CI | Dispatched on the final SHA via `workflow_dispatch -f full_matrix=true` after that authorisation. |
 
 **How the cross-lane failure was closed, because it matters more than the fact that it
 was.** The AGHQ lane's new test pins a start-dependent objective, and #851 moved it. The

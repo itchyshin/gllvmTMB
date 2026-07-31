@@ -111,8 +111,18 @@ test_that("start_method = 'indep' fits a simpler GLMM and copies matching starts
   expect_true(any(abs(fit$tmb_params$s_B) > 1e-8))
   expect_true(any(abs(fit$tmb_params$theta_diag_B) > 1e-8))
   ## The independent warm start seeds the GLMM pieces but leaves the latent
-  ## block at its historical default when no same-shaped rr block is available.
-  expect_equal(fit$tmb_params$theta_rr_B, c(0.5, 0))
+  ## block at the DEFAULT start when no same-shaped rr block is available.
+  ##
+  ## That default used to be the literal c(0.5, 0). It is now
+  ## c(0.5 * sd(working residuals), 0) -- the hardcoded 0.5 silently assumed
+  ## sd(y) ~ 1 and is the defect behind #851, so pinning the old value here
+  ## would be asserting the bug. What this test is FOR is that the `indep`
+  ## warm start does not touch the latent block: the diagonal is still a
+  ## positive multiple of the coefficient and the off-diagonal is still
+  ## exactly zero.
+  expect_length(fit$tmb_params$theta_rr_B, 2L)
+  expect_gt(fit$tmb_params$theta_rr_B[1], 0)
+  expect_equal(fit$tmb_params$theta_rr_B[2], 0)
 })
 
 ## ---------------------------------------------------------------------------

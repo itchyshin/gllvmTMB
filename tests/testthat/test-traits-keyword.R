@@ -82,7 +82,13 @@ test_that("traits() formula-LHS marker is recognised and a basic fit runs", {
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(tidyselect::all_of(trait_cols)) ~ 1 +
       env_temp +
-      latent(1 | individual, d = 1) +
+      ## `unique = FALSE` is the identified form of this pairing: ordinary
+      ## `latent()` carries a diagonal Psi companion by DEFAULT, so
+      ## `latent(...) + unique(...)` on the SAME grouping asks for that
+      ## diagonal twice and is over-parameterised. This test is about the
+      ## `traits()` LHS grammar, not about covariance identifiability, so it
+      ## uses the well-posed spelling of the same two keywords.
+      latent(1 | individual, d = 1, unique = FALSE) +
       unique(1 | individual),
     data = wide,
     unit = "individual",
@@ -528,7 +534,10 @@ test_that("long-format calls without traits() are not intercepted", {
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 +
       trait +
-      latent(0 + trait | site, d = 1) +
+      ## identified spelling of the pairing -- see the note above (#851):
+      ## ordinary latent() already carries diag(Psi), so pairing it with
+      ## unique() on the SAME grouping requests that diagonal twice.
+      latent(0 + trait | site, d = 1, unique = FALSE) +
       unique(0 + trait | site),
     data = long
   )))

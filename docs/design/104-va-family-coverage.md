@@ -86,8 +86,13 @@ same method, and looser than what we already have.
 
 ## 4. Defaults, and why
 
-1. **Laplace stays the package default.** 0.6 ships Laplace-only. VA/EVA are
-   internal research with no user-facing route.
+1. **Laplace stays the package default.** ~~0.6 ships Laplace-only. VA/EVA are
+   internal research with no user-facing route.~~
+   **⚠ AMENDED 2026-07-30.** Laplace remains the **default** — that half stands. But 0.6 is no
+   longer Laplace-*only*: it ships an opt-in, hard-fenced `engine = "va"`
+   (`latent(unique = FALSE)`; binomial-logit + poisson-log; `q <= 4`, `p <= 80`, `n >= 100`),
+   admitted by Design 85 §11 Gate 3 and shipping with **no intervals** (`calibrated = FALSE`).
+   See `LOOP/GOAL.md` Amendment 4 and `docs/dev-log/2026-07-30-va-ships-in-06-reversal.md`.
 2. **Within VA: EXACT where it exists, GH otherwise.** Poisson and Gaussian take
    the closed form — accuracy is free there, so there is no tradeoff to expose.
 3. **GH order: `H = 15`.** Measured 2026-07-26 (n=60, T=12, q=2, Bernoulli),

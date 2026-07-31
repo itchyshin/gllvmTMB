@@ -2,6 +2,15 @@
 
 **IMMUTABLE FOR THIS RUN. Re-read this file at the start of every arc.**
 
+> ## ⚠ READ AMENDMENT 4 (2026-07-30) BEFORE ACTING ON ANYTHING BELOW
+>
+> **0.6 is no longer Laplace-only.** It ships an opt-in, hard-fenced `engine = "va"`. Every
+> "0.6 ships Laplace-only" / "EVA cut to 0.7" statement in the Mission and in Amendments 1–3
+> below is **superseded on the point of admission** — they are retained as dated records, not as
+> current instructions. Laplace remains the **default**; there are **no VA intervals** in 0.6.
+> Jump to **MAINTAINER AMENDMENT 4** at the end of this file, then
+> `docs/dev-log/2026-07-30-va-ships-in-06-reversal.md`.
+
 ## Mission
 
 Take `gllvmTMB` through the evidence required for a truthful 0.6 release
@@ -170,6 +179,8 @@ spend" line is **superseded** and no longer binds.
   not campaign compute. D-50 stands: no simulation/coverage/power campaigns on GitHub
   Actions, no campaign artifacts there.
 - Design 85 remains a closed NO-GO; EVA stays cut to 0.7.
+  **⚠ SUPERSEDED 2026-07-30 by Amendment 4 (below): 0.6 now ships an opt-in `engine = "va"` and
+  the NO-GO is re-opened on the terms stated there. Design 85 itself stays READ-ONLY.**
 
 ## Sequencing this creates — do not get it backwards
 
@@ -246,3 +257,64 @@ Conflating those two is what invalidated Design 85's Gate 4.
   that approval.
 
 Full brief and the paste-ready lane GOAL: `docs/dev-log/2026-07-22-design86-lane-brief.md`.
+
+---
+
+# MAINTAINER AMENDMENT 4 — 2026-07-30
+
+**Authority:** Shinichi Nakagawa, 2026-07-30, in session. Recorded by Claude Code.
+Same legitimacy as Amendments 1–3: a maintainer decision taken at a gate.
+
+## The decision
+
+**gllvmTMB 0.6 ships a variational-approximation engine.** `engine = "va"`, opt-in, hard-fenced.
+
+**This IS a reversal of Amendment 1.** Amendment 1 cut EVA/VA from 0.6 to 0.7 and made 0.6
+Laplace-only. Amendment 3 explicitly preserved that. Both are now reversed on the point of
+admission. Amendment 3's design-only lane fence is superseded, not broken: admission is decided.
+
+The decision was taken **after** Design 108's costing (*"26–42 working days excluding spatial"*)
+and the Design 85 NO-GO record were put in front of the maintainer. It is a decision to spend.
+
+## What this does NOT change — read before concluding anything
+
+1. **Laplace remains the package default.** Design 104 §4.1's first sentence stands; only its
+   "0.6 ships Laplace-only" clause falls.
+2. **Design 85 §10 prohibitions stand in full** — no `logLik`/AIC/BIC/LRT/model weights from the
+   ELBO, no rank selection by ELBO, `L_H` is not a marginal likelihood, the inverse VA Hessian is
+   not calibrated frequentist uncertainty.
+3. **No intervals in 0.6.** `calibrated = FALSE` stays: no SE, no `confint`, no coverage claim from
+   the VA path. This is what makes 0.6 achievable — it defers the ~1,900-replicate-per-cell
+   coverage campaign to whichever release exposes intervals.
+4. **Design 105 §10's breakages are not repealed by decision** — the architecture breaks for
+   **multinomial** and **zero-inflated / `*_mix`** families. Out of scope for any VA route.
+5. **TMB template edits stay HIGH-RISK** — Design 72 §7: maintainer discussion + Codex, never a
+   Claude auto-merge.
+6. **No advertising** until a validation-register row carries VA-vs-LA recovery evidence.
+7. Every compute, claim, and ceremony gate above. **No exception is self-granted.**
+
+## The scope fence — `engine = "va"` errors outside this class
+
+`latent(..., unique = FALSE)` only (the default `latent()` carries `diag(psi)` and **no VA evidence
+exists for it**) · **binomial-logit** and **poisson-log** only · `q <= 4` · `p <= 80` ·
+**`n >= 100`**, a hard error: the GH arm's signed scale `tr(Sigma_hat)/tr(Sigma_true)` is **4.302
+at n=40** (recomputed from `dev/totoro-grid/results/grid.csv`), so small `n` is disqualified rather
+than cautioned.
+
+## What must still be earned
+
+Admission is granted by **Design 85 §11 Gate 3, as written** — `Sigma_B` relative Frobenius RMSE no
+more than 0.05 worse in absolute terms than ML, no planted axis collapsing in more than 5% of
+otherwise healthy non-separated replicates, on primary targets **`beta`, `Sigma_B`, and fitted
+probabilities**. §11: gates are sequential and *"tolerances cannot be widened after seeing the
+result."* We meet that gate; we do not substitute a fresh one.
+
+Run at **fixed rank** with **every attempted fit in the denominator** — the 2026-07-20 pilot's
+NO-GO was caused by selecting rank by ML before fitting VA, which is the Gate-4 hand-off design,
+not Gate 3. Truths are **fixed and pre-declared**, not redrawn per seed. Signed scale is reported
+beside `rel_frob`, stratified.
+
+`docs/design/85-*` remains **READ-ONLY** — this amendment supersedes its NO-GO status by a new
+dated note, and does not amend that document.
+
+Full decision record: `docs/dev-log/2026-07-30-va-ships-in-06-reversal.md`.

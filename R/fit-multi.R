@@ -3747,10 +3747,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## loop below, after a Laplace fit has supplied them.
   tmb_data <- c(tmb_data, .gllvmTMB_aghq_data_stub())
 
+  ## Loading start, on the scale of the data (issue #851). The loadings carry
+  ## the RESPONSE scale, because standardising the latent scores to N(0, I) is
+  ## precisely what pushes that scale into Lambda -- so a hardcoded 0.5 assumed
+  ## sd(y) ~ 1, and above a scale threshold the ordination collapsed with every
+  ## convergence signal green. `resid_init` is the right yardstick and is
+  ## already family-aware (raw y for gaussian, the working response otherwise);
+  ## `.gllvmTMB_log_sigma_eps_start()` keys off the same vector. The 0.5 is kept
+  ## as the coefficient, so a working residual sd of 1 reproduces the historical
+  ## start exactly.
+  lam_scale_init <- .gllvmTMB_loading_start_scale(resid_init)
+
   init_rr_theta <- function(p, rank) {
-    ## Lambda_B/W ~ I_rank diagonal start (so initial Sigma is the identity
-    ## scaled by 0). Concretely: lam_diag = 0.5 (sd 1.65), lam_lower = 0.
-    c(rep(0.5, rank), rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank))
+    ## Lambda_B/W ~ I_rank diagonal start, scaled to the data:
+    ## lam_diag = 0.5 * sd(resid_init), lam_lower = 0.
+    c(
+      rep(0.5 * lam_scale_init, rank),
+      rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank)
+    )
   }
 
   ## Design 48 §2-B (M3.4 boundary regimes): clamp initial value of any
@@ -3766,7 +3780,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     b_fix        = unname(b_fix_init),
     log_sigma_eps = log_sigma_eps_init,
     theta_rr_B   = if (use_rr_B) init_rr_theta(n_traits, d_B) else rep(0.0, theta_rr_B_len),
-    z_B          = matrix(0, nrow = max(d_B, 1L), ncol = n_sites),
+    ## Latent-score start (issue #851). Seeded from an SVD of the grouped
+    ## residual matrix rather than left at exactly zero. This is the one piece
+    ## the previous attempt omitted, and the piece the diagnosis points at: the
+    ## `unique = FALSE` route has no Psi block at all and fails identically at
+    ## large scale, so the residual mechanism is not the Lambda/Psi balance but
+    ## the all-zero score start. Scale-FREE by construction -- the scores are
+    ## standardised to unit variance, so this changes the starting DIRECTION,
+    ## never the magnitude. Falls back to zeros on every degenerate path.
+    z_B          = {
+      .z0 <- matrix(0, nrow = max(d_B, 1L), ncol = n_sites)
+      .zs <- if (use_rr_B && d_B >= 1L) {
+        .gllvmTMB_latent_score_start(
+          resid = resid_init, trait_id = trait_id, group_id = site_id,
+          n_traits = n_traits, n_groups = n_sites, rank = d_B
+        )
+      } else NULL
+      if (is.null(.zs)) .z0 else .zs
+    },
     alpha_lv_B   = matrix(0, nrow = max(n_lv_B, 1L), ncol = max(d_B, 1L)),
     theta_rr_B_slope = if (use_rr_B_slope) {
                          init_rr_theta(n_lhs_cols_B_lat, d_B_slope)
@@ -3774,7 +3805,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                          rep(0.0, theta_rr_B_slope_len)
                        },
     z_B_slope    = matrix(0, nrow = max(d_B_slope, 1L), ncol = n_sites),
-    theta_diag_B = rep(0.0, n_traits),
+    ## Psi starts on the same scale as Lambda (issue #851). theta_diag is a
+    ## LOG-sd, so log(scale) is the exact counterpart of multiplying the Lambda
+    ## start by `scale`: it moves the overall scale while leaving the starting
+    ## SPLIT between the shared (Lambda Lambda') and independent (Psi)
+    ## components identical to the historical one. Scaling Lambda ALONE was
+    ## tried and is wrong -- it changes that balance rather than the scale, and
+    ## drove a d = 2 gaussian fixture to a non-positive-definite Hessian.
+    ##
+    ## NOTE, because it is easy to state this too kindly: this reproduces the
+    ## historical start only when sd(resid_init) happens to be 1. It is NOT
+    ## byte-identical for existing fits at ordinary scale -- it moves the
+    ## starting point of EVERY fit. The suite is the check on that, not this
+    ## comment.
+    theta_diag_B = rep(log(lam_scale_init), n_traits),
     s_B          = matrix(0, nrow = n_traits, ncol = n_sites),
     theta_diag_B_slope = rep(0.0, n_lhs_cols_B_diag),
     s_B_slope    = matrix(0, nrow = n_lhs_cols_B_diag, ncol = n_sites),

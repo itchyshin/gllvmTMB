@@ -82,8 +82,36 @@ Only the **data** is redrawn across seeds. `beta_0` is frozen alongside each `La
   design" and does not fix `p`; adding it **widens no tolerance** and closes a structural gap (below).
 - **`n` in {100, 400}** — the fence is `n >= 100`.
 - **Seeds: 1:40 per cell**, declared now.
-- **Family:** binomial-logit, `latent(..., unique = FALSE)`, **`n_trials = 5`** — see the blocking
-  correction below. **NOT `n_trials = 1`.**
+- **Family:** binomial-logit, `latent(..., unique = FALSE)`, **`n_trials = 1` (Bernoulli)** — see the
+  2026-07-31 amendment immediately below, which supersedes the blocking correction that follows it.
+
+### ✅ AMENDED 2026-07-31 — the blocker below is RESOLVED by maintainer decision
+
+`docs/dev-log/2026-07-31-gate0-scope-extension-and-s11-departure.md` records a **fresh Gate 0 scope
+freeze** extending the data contract to **`n_trials >= 1`**, on the ground that the hazard which
+justified excluding Bernoulli — unguarded separation at pure 0/1 responses — is now guarded by
+`.va_r3_check_separation()` (landed `08010b02`). A3 names binary JSDM as VA's purpose, so the
+campaign runs **Bernoulli**, the regime that motivates the engine.
+
+Two further amendments from the same decision:
+
+- **`q ∈ {1, 2, 4}`** — the fence rises to `q <= 4`, **earned** by extending this design rather than
+  asserted. `q <= 4` ships **only if the `q = 4` cells pass on their own terms**; a pass at
+  `q ∈ {1,2}` does not license it. `q = 6` stays out of scope.
+- **The `RMSE_ml` rule is chosen after both variants are seen** — an **explicit, recorded departure
+  from §11**, mitigated by pre-declaring the admissible set to exactly two rules **now**:
+  **R1 (raw)**, every replicate with finite output, no exclusions; and **R2 (paired exclusion)**,
+  dropping replicates where **ML** is degenerate by the two-sided detector (`rel_frob > 10` or
+  `kappa < 1/3`), applied identically to both arms so the comparison stays paired. **No third rule
+  may be introduced later**, both are computed and reported for every cell, and whichever is chosen
+  the other is published beside it. Nothing else moves — not the `0.05` tolerance, the 5%
+  axis-collapse rate, the truths, the seeds, the cells, or the denominator.
+
+Revised size: 3 truths × **3 `q`** × 3 `p` × 2 `n` × 40 seeds = 2,160 datasets × 3 arms =
+**6,480 fits**.
+
+**The text below is retained as the dated record of why the original design was blocked. It is
+superseded on `n_trials` and on `q`; its reasoning about Gate 0's sequencing still stands.**
 
 ### 🔴 BLOCKING CORRECTION — `n_trials = 1` would fail Gate 0 by construction
 

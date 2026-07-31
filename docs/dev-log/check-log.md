@@ -47286,3 +47286,51 @@ rg patterns used for the neighbourhood sweep:
 `rg -n "theta_diag_[A-Za-z_]+ *="` (which tiers have a companion Psi start).
 That sweep is what found the blast radius, and separately found two further
 private copies of the helper — folded in as `ae6308d2`.
+
+### Directed note → the AGHQ lane (from the #851 start lane, 2026-07-31)
+
+**`test-aghq-multistart-convergence.R:103` fails on `claude/851-scale-aware-start-20260731`,
+and I have deliberately NOT touched it — it is your test, landed today in #875, and the
+call is yours (or Shinichi's).**
+
+The assertion is the backward-compatibility snapshot
+`expect_equal(unname(f$opt$objective), 379.7134, tolerance = 1e-3)` under
+`aghq_multistart = FALSE`. #851 changes the DEFAULT starting values, so the single start
+this test exercises is no longer the same point, and the pinned objective moves.
+
+Measured on Totoro, same cell (`.ms_cell()`, seed 2003, n=100, p=6, q=2, binomial,
+`aghq = 9`, `aghq_ridge = Inf`, `aghq_multistart = FALSE`), both trees, one fit each:
+
+| tree | objective | ‖Λ̂‖/‖Λ‖ | max&#124;Λ&#124; | aghq$converged |
+|---|---|---|---|---|
+| `origin/main` | 379.7134 | 29.70 | 81.66 | FALSE |
+| `#851 branch` | 380.5439 | 22.57 | 53.34 | FALSE |
+
+**Read it against your own criterion before reading it as a regression.** Your file's own
+header records that this cell's single start is a *known catastrophic runaway* — 29.7 —
+and that a truth-start reaches **375.175**, i.e. neither 379.71 nor 380.54 is the
+maximum-likelihood solution. Both sit inside the pathological region your #843 finding is
+about. On the health metric that finding uses, the #851 start is **less** runaway
+(29.70 → 22.57, and max|Λ| 81.7 → 53.3); on the objective it is 0.83 higher. So this is
+not "the start change made the fit worse" — it is two different non-MLE points in a region
+where the likelihood rewards divergence.
+
+What that implies for the test is your call. The options as I see them:
+
+1. **Re-snapshot** 379.7134 → 380.5439 once #851 lands, keeping the test's intent (the
+   off-switch still runs exactly one start).
+2. **Assert the property instead of the number** — `n_starts == 1L` plus
+   `frob(one) > 5` — which is what "reproduces the old single-start answer" is actually
+   protecting, and which no future start change can move. The sibling test above already
+   uses exactly this shape.
+3. Something I have not thought of, because I do not own this surface.
+
+I lean to (2) on the same reasoning #851 applied to its own re-fixtured tests: a hardcoded
+objective on a fit your own comment calls catastrophic is a snapshot of a pathology, and
+any legitimate change to starts, BLAS, or compiler will move it. But (1) is the smaller
+diff and preserves the exact-reproduction wording.
+
+Cross-lane context: #873 and #875 both touch `R/fit-multi.R`, in different regions —
+`git merge origin/main` into the #851 branch produced **no conflict in `R/`** (only an
+append-append collision in this file, resolved keeping both entries). The interaction is
+behavioural, through starting values, not textual.

@@ -114,25 +114,73 @@ apply_pass_rule <- function(summary_df) {
   merged[order(merged$truth, merged$q, merged$p, merged$n, merged$arm), ]
 }
 
+## ---- R2: paired exclusion of ML-degenerate replicates --------------------
+## The 2026-07-31 scope freeze pre-declares EXACTLY TWO admissible rules and
+## forbids a third. R1 is the raw rule above. R2 drops every replicate in which
+## the ML comparator is itself degenerate by the two-sided detector
+## (rel_frob > 10 OR kappa < 1/3), and drops it from ALL arms so the comparison
+## stays paired -- excluding it from ML alone would compare arms on different
+## data.
+##
+## R2 is the CONSERVATIVE direction: it removes ML's disasters, which makes
+## VA's bar harder rather than easier. Both are computed and reported for every
+## cell; whichever is chosen, the other is published beside it.
+##
+## Why this is not optional. Exercised against the partial campaign, R1 already
+## produced cells with sigma_rmse_ml near 2.98e+04, where rmse_gap is about
+## -2.98e+04 and pass_rmse is TRUE -- VA "passing" solely because ML exploded.
+## A rule a broken comparator makes trivially passable certifies nothing.
+.ml_degenerate_keys <- function(rows) {
+  ml <- rows[rows$arm == "ml_laplace", , drop = FALSE]
+  bad <- (is.finite(ml$sigma_relfrob) & ml$sigma_relfrob > 10) |
+         (is.finite(ml$kappa) & ml$kappa < 1 / 3) |
+         !is.finite(ml$sigma_relfrob)
+  unique(paste(ml$truth, ml$q, ml$p, ml$n, ml$seed, sep = "\r")[bad])
+}
+
+.drop_ml_degenerate <- function(rows) {
+  drop <- .ml_degenerate_keys(rows)
+  key <- paste(rows$truth, rows$q, rows$p, rows$n, rows$seed, sep = "\r")
+  rows[!(key %in% drop), , drop = FALSE]
+}
+
 ## ==================================================== run =================
 rows <- load_gate3_rows()
 
 cat("status counts, exact labels (never a success-substring collapse):\n")
 print(table(arm = rows$arm, status = rows$status, useNA = "ifany"))
 
-split_key <- interaction(rows$truth, rows$q, rows$p, rows$n, rows$arm, drop = TRUE)
-summary_df <- do.call(rbind, lapply(split(rows, split_key), summarise_cell))
-rownames(summary_df) <- NULL
+.summarise_all <- function(r) {
+  k <- interaction(r$truth, r$q, r$p, r$n, r$arm, drop = TRUE)
+  s <- do.call(rbind, lapply(split(r, k), summarise_cell))
+  rownames(s) <- NULL
+  s
+}
 
-verdict <- apply_pass_rule(summary_df)
+summary_df <- .summarise_all(rows)
+verdict_r1 <- apply_pass_rule(summary_df)
+
+rows_r2 <- .drop_ml_degenerate(rows)
+n_dropped <- (nrow(rows) - nrow(rows_r2)) / 3L
+cat(sprintf("\nR2 paired exclusion: %d replicate(s) dropped from ALL arms because the ML comparator was degenerate (%.1f%% of replicates).\n",
+            n_dropped, 100 * n_dropped / (nrow(rows) / 3L)))
+verdict_r2 <- if (nrow(rows_r2)) apply_pass_rule(.summarise_all(rows_r2)) else verdict_r1[0, ]
 
 dir.create(RESULTS_DIR, showWarnings = FALSE, recursive = TRUE)
 utils::write.csv(summary_df, file.path(RESULTS_DIR, "gate3-cell-summary.csv"), row.names = FALSE)
-utils::write.csv(verdict, file.path(RESULTS_DIR, "gate3-verdict.csv"), row.names = FALSE)
+utils::write.csv(verdict_r1, file.path(RESULTS_DIR, "gate3-verdict-R1-raw.csv"), row.names = FALSE)
+utils::write.csv(verdict_r2, file.path(RESULTS_DIR, "gate3-verdict-R2-paired-exclusion.csv"), row.names = FALSE)
+## Retained under the original name so nothing downstream silently reads only
+## one rule while believing it read "the" verdict.
+utils::write.csv(verdict_r1, file.path(RESULTS_DIR, "gate3-verdict.csv"), row.names = FALSE)
 
-cat(sprintf("\n%d cell x arm summar%s, %d VA-vs-ML verdict row%s written to %s/.\n",
-            nrow(summary_df), if (nrow(summary_df) == 1L) "y" else "ies",
-            nrow(verdict), if (nrow(verdict) == 1L) "" else "s", RESULTS_DIR))
-cat("\nverdict (rmse_gap <= 0.05 AND collapse_rate <= 0.05):\n")
-print(verdict[, c("truth", "q", "p", "n", "arm", "n_attempted", "sigma_rmse", "sigma_rmse_ml",
-                   "rmse_gap", "collapse_rate", "pass")])
+cat(sprintf("\n%d cell x arm summaries; R1 %d verdict rows, R2 %d verdict rows, written to %s/.\n",
+            nrow(summary_df), nrow(verdict_r1), nrow(verdict_r2), RESULTS_DIR))
+cols <- c("truth", "q", "p", "n", "arm", "n_attempted", "sigma_rmse", "sigma_rmse_ml",
+          "rmse_gap", "collapse_rate", "pass")
+cat("\n=== R1 (raw) — pass rule read literally ===\n")
+print(utils::head(verdict_r1[, cols], 20))
+cat("\n=== R2 (paired exclusion of ML-degenerate replicates) ===\n")
+print(utils::head(verdict_r2[, cols], 20))
+cat("\nBoth rules are reported. Which one carries the verdict is the maintainer's\n",
+    "choice under the recorded Design 85 s11 departure; the other is published beside it.\n", sep = "")

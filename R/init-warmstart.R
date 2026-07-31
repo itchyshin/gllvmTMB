@@ -406,3 +406,76 @@
   }
   list(params = tmb_params, copied = copied)
 }
+
+## ---------------------------------------------------------------------------
+## Issue #851: a scale-aware DEFAULT start.
+##
+## The default start hardcoded `lam_diag = 0.5` and `z_B = 0`. The 0.5 silently
+## assumed sd(y) ~ 1 -- standardising the latent scores to N(0, I) is exactly
+## what pushes the response scale into Lambda -- so above a scale threshold the
+## ordination collapses with every convergence signal green.
+##
+## A previous attempt scaled Lambda and Psi only and was WORSE than baseline
+## above 5e4. The diagnosis: it left `z_B = 0`. That the `unique = FALSE` route,
+## which has no Psi block at all, fails identically is the evidence that the
+## Lambda/Psi balance is not the residual mechanism -- the all-zero latent-score
+## start is.
+##
+## The two pieces below are deliberately separate, because they answer to
+## different scales:
+##
+##   * the LOADINGS carry the response scale, so their start is multiplied by
+##     the working residual sd;
+##   * the SCORES are standardised N(0, I) BY CONSTRUCTION, so their start must
+##     NOT be scaled. Seeding them is about DIRECTION, not magnitude -- giving
+##     the inner problem a non-degenerate starting point that already reflects
+##     the data's correlation structure. It is scale-FREE and therefore cannot
+##     reintroduce a scale assumption of its own.
+##
+## This borrows the one mechanism from `start_method = "res"` that matters at
+## scale (it seeds the scores from the data) without reviving a method retired
+## on 89 fits of contrary evidence at sd(y) ~ 1.
+
+.gllvmTMB_loading_start_scale <- function(resid, floor = 1e-3) {
+  s <- suppressWarnings(stats::sd(as.numeric(resid)))
+  if (!is.finite(s) || s <= 0) return(1.0)
+  max(s, floor)
+}
+
+## Unit-variance latent scores from an SVD of the group x trait residual
+## matrix. Returns NULL whenever it cannot do better than zeros, so every
+## caller keeps the historical start on the degenerate paths.
+.gllvmTMB_latent_score_start <- function(resid, trait_id, group_id,
+                                         n_traits, n_groups, rank) {
+  rank <- as.integer(rank)
+  if (rank < 1L || n_groups < 2L || n_traits < 1L) return(NULL)
+  mat <- tryCatch(
+    .gllvmTMB_group_trait_residual_matrix(
+      resid = resid, trait_id = trait_id, group_id = group_id,
+      n_traits = n_traits, n_groups = n_groups
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(mat)) return(NULL)
+  R <- mat$resid
+  R[!is.finite(R)] <- 0
+  if (stats::var(as.numeric(R)) <= 1e-12) return(NULL)
+
+  r_eff <- min(rank, nrow(R), ncol(R))
+  if (r_eff < 1L) return(NULL)
+  sv <- tryCatch(svd(R, nu = r_eff, nv = r_eff), error = function(e) NULL)
+  if (is.null(sv) || length(sv$d) < 1L) return(NULL)
+  keep <- which(sv$d[seq_len(r_eff)] > sqrt(.Machine$double.eps))
+  if (length(keep) < 1L) return(NULL)
+  r_use <- min(r_eff, max(keep))
+
+  ## u has orthonormal columns, so multiplying by sqrt(n - 1) gives columns of
+  ## unit VARIANCE -- the scale z is defined to have. Nothing here depends on
+  ## sd(y).
+  scores <- sv$u[, seq_len(r_use), drop = FALSE] * sqrt(max(n_groups - 1L, 1L))
+
+  out <- matrix(0.0, nrow = rank, ncol = n_groups)
+  out[seq_len(r_use), ] <- t(scores)
+  out[!is.finite(out)] <- 0
+  out
+}

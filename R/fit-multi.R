@@ -3747,10 +3747,61 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## loop below, after a Laplace fit has supplied them.
   tmb_data <- c(tmb_data, .gllvmTMB_aghq_data_stub())
 
-  init_rr_theta <- function(p, rank) {
-    ## Lambda_B/W ~ I_rank diagonal start (so initial Sigma is the identity
-    ## scaled by 0). Concretely: lam_diag = 0.5 (sd 1.65), lam_lower = 0.
-    c(rep(0.5, rank), rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank))
+  ## Loading start, on the scale of the data (issue #851). The loadings carry
+  ## the RESPONSE scale, because standardising the latent scores to N(0, I) is
+  ## precisely what pushes that scale into Lambda -- so a hardcoded 0.5 assumed
+  ## sd(y) ~ 1, and above a scale threshold the ordination collapsed with every
+  ## convergence signal green. `resid_init` is the right yardstick and is
+  ## already family-aware (raw y for gaussian, the working response otherwise);
+  ## `.gllvmTMB_log_sigma_eps_start()` keys off the same vector. The 0.5 is kept
+  ## as the coefficient, so a working residual sd of 1 reproduces the historical
+  ## start exactly.
+  ##
+  ## GAUSSIAN-ONLY, on the same rule that scopes this to one tier: apply the
+  ## scale where it was MEASURED, and nowhere it was not. "Multiply the response
+  ## by k" is only a meaningful perturbation for an unbounded continuous
+  ## response; every #851 measurement is gaussian. For a binomial fit y is 0/1
+  ## and there is no response scale to get wrong, yet keying off the working
+  ## residual still moved those fits -- measurably, and for no reason the
+  ## evidence supports: it perturbed a binomial AGHQ cell (`.ms_cell()` in
+  ## `test-aghq-multistart-convergence.R`) from objective 379.7134 to 380.5439.
+  ## Gating restores that cell EXACTLY (379.7133, loading-runaway ratio 29.700,
+  ## identical to main) and leaves every gaussian result untouched: the
+  ## two-tier oracle is byte-identical gated and ungated at k = 100 and
+  ## k = 5000 (6.15e-06 / 7.19e-06 / 7.27e-06 / 1.38e-05 and 0.0102 / 0.0131 /
+  ## 0.011 / 0.0187), because those models are gaussian and so take this branch.
+  ##
+  ## This is a narrowing, not a retreat. Counts on a large scale may well have
+  ## the same defect -- but that is UNMEASURED, and #851's own argument for
+  ## leaving five tiers alone was that moving an unmeasured start trades a known
+  ## problem for an unknown one. The same rule has to apply across families or
+  ## it was never a rule.
+  lam_scale_init <- if (all(family_id_vec == 0L)) {
+    .gllvmTMB_loading_start_scale(resid_init)
+  } else 1.0
+
+  ## The single source of the reduced-rank loading start, for ALL EIGHT tiers
+  ## that have one: B, B_slope, W, spde_lv, spde_slope, kernel, phy, phy_slope.
+  ## `spde_lv` and `phy` used to carry their own private copies of this body;
+  ## that is precisely how the #851 blast radius stayed invisible, since those
+  ## two escaped a change to "the" helper by accident rather than by decision.
+  ## One definition means the per-tier scale policy is now readable at every
+  ## call site.
+  ##
+  ## `scale` is OPT-IN and defaults to the historical 1.0, because
+  ## only the B tier has a companion Psi start that moves with it
+  ## (`theta_diag_B`, below). Scaling Lambda WITHOUT its Psi is the one variant
+  ## already measured and rejected here -- it changes the shared/independent
+  ## BALANCE rather than the scale -- so handing the scale to a tier whose Psi
+  ## stays at log(1) would silently put that tier in the known-bad regime. Every
+  ## #851 measurement is single-tier `latent()`, i.e. the B tier; the other five
+  ## keep the historical 0.5 and stay byte-identical to main.
+  init_rr_theta <- function(p, rank, scale = 1.0) {
+    ## Lambda ~ I_rank diagonal start: lam_diag = 0.5 * scale, lam_lower = 0.
+    c(
+      rep(0.5 * scale, rank),
+      rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank)
+    )
   }
 
   ## Design 48 §2-B (M3.4 boundary regimes): clamp initial value of any
@@ -3765,8 +3816,38 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   tmb_params <- list(
     b_fix        = unname(b_fix_init),
     log_sigma_eps = log_sigma_eps_init,
-    theta_rr_B   = if (use_rr_B) init_rr_theta(n_traits, d_B) else rep(0.0, theta_rr_B_len),
-    z_B          = matrix(0, nrow = max(d_B, 1L), ncol = n_sites),
+    theta_rr_B   = if (use_rr_B) {
+                     init_rr_theta(n_traits, d_B, scale = lam_scale_init)
+                   } else rep(0.0, theta_rr_B_len),
+    ## Latent-score start (issue #851). Seeded from an SVD of the grouped
+    ## residual matrix rather than left at exactly zero. This is the one piece
+    ## the previous attempt omitted, and the piece the diagnosis points at: the
+    ## `unique = FALSE` route has no Psi block at all and fails identically at
+    ## large scale, so the residual mechanism is not the Lambda/Psi balance but
+    ## the all-zero score start. Scale-FREE by construction -- the scores are
+    ## standardised to unit variance, so this changes the starting DIRECTION,
+    ## never the magnitude. Falls back to zeros on every degenerate path.
+    ##
+    ## NOT seeded when an `lv` predictor is present (`use_lv_B`). There the
+    ## scores are not free -- they carry a MODELLED mean, `alpha_lv_B %*% x` --
+    ## and `alpha_lv_B` starts at exactly zero. Seeding the scores from the
+    ## residual structure while telling the model that structure has zero
+    ## coefficient is an internally inconsistent start: it asserts and denies
+    ## the same signal. It measures as such -- on the `lv = ~habitat` fixture
+    ## the seeded start stops at max|grad| 3.37e-03 against 2.04e-03 without it
+    ## (same objective, 59.30745), i.e. the inconsistency costs convergence
+    ## tightness and buys nothing. Neither scale-equivariance oracle uses an
+    ## `lv` predictor, so this gate does not touch the #851 result.
+    z_B          = {
+      .z0 <- matrix(0, nrow = max(d_B, 1L), ncol = n_sites)
+      .zs <- if (use_rr_B && !use_lv_B && d_B >= 1L) {
+        .gllvmTMB_latent_score_start(
+          resid = resid_init, trait_id = trait_id, group_id = site_id,
+          n_traits = n_traits, n_groups = n_sites, rank = d_B
+        )
+      } else NULL
+      if (is.null(.zs)) .z0 else .zs
+    },
     alpha_lv_B   = matrix(0, nrow = max(n_lv_B, 1L), ncol = max(d_B, 1L)),
     theta_rr_B_slope = if (use_rr_B_slope) {
                          init_rr_theta(n_lhs_cols_B_lat, d_B_slope)
@@ -3774,11 +3855,33 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                          rep(0.0, theta_rr_B_slope_len)
                        },
     z_B_slope    = matrix(0, nrow = max(d_B_slope, 1L), ncol = n_sites),
-    theta_diag_B = rep(0.0, n_traits),
+    ## Psi starts on the same scale as Lambda (issue #851). theta_diag is a
+    ## LOG-sd, so log(scale) is the exact counterpart of multiplying the Lambda
+    ## start by `scale`: it moves the overall scale while leaving the starting
+    ## SPLIT between the shared (Lambda Lambda') and independent (Psi)
+    ## components identical to the historical one. Scaling Lambda ALONE was
+    ## tried and is wrong -- it changes that balance rather than the scale, and
+    ## drove a d = 2 gaussian fixture to a non-positive-definite Hessian.
+    ##
+    ## NOTE, because it is easy to state this too kindly: this reproduces the
+    ## historical start only when sd(resid_init) happens to be 1. It is NOT
+    ## byte-identical for existing fits at ordinary scale -- it moves the
+    ## starting point of EVERY fit. The suite is the check on that, not this
+    ## comment.
+    theta_diag_B = rep(log(lam_scale_init), n_traits),
     s_B          = matrix(0, nrow = n_traits, ncol = n_sites),
     theta_diag_B_slope = rep(0.0, n_lhs_cols_B_diag),
     s_B_slope    = matrix(0, nrow = n_lhs_cols_B_diag, ncol = n_sites),
     theta_rr_W   = if (use_rr_W) init_rr_theta(n_traits, d_W) else rep(0.0, theta_rr_W_len),
+    ## NOTE (#851): giving the W tier the same scaled Psi start and seeded
+    ## scores as the B tier was TRIED and REVERTED. It was a natural symmetry
+    ## argument and it did not survive its own test: the k = 5000 residual moved
+    ## 0.0204 -> 0.0202 (noise) while k = 100 got about 10x looser
+    ## (6.4e-06 -> 7.0e-05, both still well inside tolerance). No evidence for
+    ## it, so it is not carried. The residual scale error is NOT W-tier
+    ## asymmetry. Consequently the W tier keeps the HISTORICAL start outright --
+    ## Lambda included (`init_rr_theta` is called without `scale`) -- rather than
+    ## the scaled-Lambda/unscaled-Psi hybrid, which is the known-bad balance.
     z_W          = matrix(0, nrow = max(d_W, 1L), ncol = n_site_species),
     theta_diag_W = rep(0.0, n_traits),
     s_W          = matrix(0, nrow = n_traits, ncol = n_site_species),
@@ -3796,10 +3899,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## and K_S shared spatial fields. Allocated with dim 1 when not in use
     ## so TMB can still read a valid (mapped-off) matrix.
     theta_rr_spde_lv = if (is_spatial_latent) {
-                          init_rr_theta_spde_lv <- function(p, rank)
-                            c(rep(0.5, rank),
-                              rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank))
-                          init_rr_theta_spde_lv(n_traits, d_spde_lv)
+                          init_rr_theta(n_traits, d_spde_lv)
                         } else 0.0,
     omega_spde_lv = matrix(0, nrow = n_mesh,
                            ncol = if (is_spatial_latent) d_spde_lv else 1L),
@@ -3831,9 +3931,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           },
     g_spde_slope     = array(0.0, dim = c(n_mesh, d_spde_slope, n_lhs_cols_spde_lat)),
     theta_rr_phy = if (use_phylo_rr) {
-                     init_rr_theta_pkg <- function(p, rank)
-                       c(rep(0.5, rank), rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank))
-                     init_rr_theta_pkg(n_traits, d_phy)
+                     init_rr_theta(n_traits, d_phy)
                    } else 0.0,
     g_phy        = matrix(0, nrow = n_aug_phy, ncol = if (use_phylo_rr) d_phy else 1L),
     ## Paired phylogenetic PGLLVM: per-trait phylogenetic random intercept

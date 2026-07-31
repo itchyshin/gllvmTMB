@@ -552,8 +552,21 @@ test_that("dep(0+trait|g) standalone fits identically to latent(0+trait|g, d=n_t
   )))
   expect_equal(fit_dep$opt$convergence, 0L)
   expect_equal(fit_latent$opt$convergence, 0L)
-  ## Byte-identical objective (same engine path; only the .dep marker differs).
-  expect_equal(fit_dep$opt$objective, fit_latent$opt$objective, tolerance = 1e-10)
+  ## Same engine path; only the .dep marker differs -- so the two spellings
+  ## must reach the same optimum. They are NOT bit-identical routes to it,
+  ## though, and the previous `tolerance = 1e-10` asserted that they were.
+  ## With 4 traits, `latent(d = 4)` saturates Lambda Lambda' to a full
+  ## unstructured covariance AND carries its default diag(Psi) on top, so it is
+  ## over-parameterised by 4 dimensions and stops somewhere on a flat ridge;
+  ## `dep()` is not. Where on that ridge each run stops is a property of the
+  ## optimiser path, not of the model.
+  ##
+  ## `dev/851-dep-vs-latent-ridge-tolerance.R` measures this over 12 seeds on
+  ## both trees: `origin/main` breaches 1e-10 on 6 of them (worst 5.31e-09) and
+  ## passes at seed 42 by luck. The tolerance is therefore restored to
+  ## testthat's default (~1.5e-8), which is what a flat ridge can actually
+  ## deliver, and remains far tighter than any real model difference.
+  expect_equal(fit_dep$opt$objective, fit_latent$opt$objective)
   ## Use-flag dispatch: dep_B should be TRUE only on the dep fit.
   expect_true(isTRUE(fit_dep$use$dep_B))
   expect_false(isTRUE(fit_latent$use$dep_B))

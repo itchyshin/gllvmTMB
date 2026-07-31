@@ -47334,3 +47334,18 @@ Cross-lane context: #873 and #875 both touch `R/fit-multi.R`, in different regio
 `git merge origin/main` into the #851 branch produced **no conflict in `R/`** (only an
 append-append collision in this file, resolved keeping both entries). The interaction is
 behavioural, through starting values, not textual.
+
+**Final state of the #851 branch, after merging `origin/main` (which moved mid-arc when
+the AGHQ lane landed #875) and after Rose's pre-merge audit fixes.** Totoro, 348 files
+(the new `test-scale-equivariance.R` included):
+
+| tree | files | PASS | FAIL | ERROR |
+|---|---|---|---|---|
+| `origin/main` | 347 | 14161 | 18 | 3 |
+| `claude/851-scale-aware-start-20260731` | 348 | 14172 | 19 | 3 |
+
+The 18 + 3 are identical on both, file for file. The one difference is
+`test-aghq-multistart-convergence.R`, which pins a start-dependent objective belonging to
+the AGHQ lane — measurement and options in the directed note above; deliberately not
+touched. `test-scale-equivariance.R` passes, and was verified to FAIL on `origin/main`
+(Λ rel.err 0.99 at k = 5000) before being trusted.

@@ -2466,3 +2466,52 @@ calibrated to compensate for an optimiser bug.
 
 Evidence: `docs/dev-log/audits/2026-07-31-aghq-truthstart-shipped-engine.md`,
 `dev/aghq-evidence/22-truthstart-shipped.R`, `23-altstart-shipped.R`. Results LOCAL (D-50).
+
+## 2026-07-31  The AGHQ estimator campaign is DESIGNED and BLOCKED — the loop cannot certify convergence at n >= 400
+
+Decision: record the ADEMP campaign design as pre-registered and turnkey, and record that
+it must NOT run yet, for a measured reason rather than caution.
+
+**The design** (`docs/design/2026-07-31-aghq-estimator-campaign-ADEMP.md`) follows Morris,
+White & Crowther (2019) and the Williams et al. (2024) 11 reporting items. Five arms fitted
+to the SAME data per replicate (PAIRED -- 2.2x tighter than unpaired, which is how
+n_sim = 400 was justified from a real 40-seed pilot rather than habit). The primary estimand
+is the ROTATION-INVARIANT trait correlation, because Lambda is identified only up to
+rotation. Contrasts are LIKE-FOR-LIKE on the penalty and `aghq_ridge` vs plain `laplace` is
+BANNED by pre-registration as the confound #842 named. `Lambda_hat` is stored for every fit,
+so the primary estimand remains a post-hoc choice. Arm `aghq_ms` is DERIVED
+(`min(aghq, aghq_alt)` on the final objective), so the campaign costs 5 fits per replicate,
+not 6. The acceptance rule is fixed in advance with an EQUIVALENCE branch, so "no practical
+difference" is a conclusion rather than a failed test, and four predictions are
+pre-registered with P2's failure named in advance as a publishable, lane-closing result.
+
+**The blocker (#874).** The smoke test showed the AGHQ loop reports convergence in **0% of
+fits at n = 400 and n = 1600**, and 0-2.5% at n = 100, under the engine's own criterion.
+Two parts, both binding on future work:
+
+ 1. **`opt$convergence` is the WRONG FIELD on the AGHQ path** -- it is nlminb's code for the
+    per-pass iteration cap from the continuation schedule and returns 1 on a healthy fit.
+    The engine's verdict is `aghq$stop_reason`; only a value beginning "converged" counts.
+    **No future AGHQ convergence number may be taken from `opt$convergence`.**
+ 2. **`aghq_grad_tol` is a FIXED 1e-4 while the gradient at the stop grows ~sqrt(n)**
+    (median max|grad| 1.39e-4 -> 2.68e-4 -> 6.72e-4 at n = 100/400/1600; step ratios 1.93
+    and 2.51 against an n-ratio of 4.00). Under a tolerance scaled 1e-4*(n/100), 27/27
+    near-misses at n = 400 and 34/37 at n = 1600 would clear. Same class as #847 (tau = 2)
+    and the #857 inventory, and the worst instance so far: it does not bias an estimate, it
+    stops the engine certifying convergence in the regime the method is for.
+
+**Consequence, binding:** the campaign's converged-only analysis population -- the one that
+answers "is AGHQ a better ESTIMATOR" rather than "does the AGHQ code emit better numbers" --
+is EMPTY at every n. Running the 16,000 fits now returns a full table tagged
+OPTIMISER-LIMITED, comparing Laplace AT ITS OPTIMUM against AGHQ SOMEWHERE. The design does
+not change; the sequence does: fix the tolerance and have the stalled branch report its
+gradient (engine changes, maintainer's call), then run.
+
+**Not claimed:** that the fits are bad (accuracy is a separate axis); that the stopped
+points are true optima ("mode fixed, objective stagnated" plus a small tolerance multiple is
+supportive, not a certificate); that sqrt(n) is a derived rate (it describes three points).
+The `stalled at cap 1` branch does not report its gradient, so a third of the fits are
+unclassifiable from outside the engine and the counterfactual is a LOWER bound.
+
+Evidence: `docs/dev-log/audits/2026-07-31-aghq-convergence-nladder.md` (270 fits; 150 on
+Totoro in its own lane dir, Codex's design90/91 untouched). Results LOCAL (D-50).

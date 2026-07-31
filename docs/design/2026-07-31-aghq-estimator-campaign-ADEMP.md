@@ -1,7 +1,18 @@
 # ADEMP design — does AGHQ produce better point estimates than Laplace, and where?
 
 **gllvmTMB · AGHQ estimator-validation lane · 2026-07-31 · Claude (Fable 5)**
-**Status: DESIGN, PRE-REGISTERED. Nothing has been run against it. 🔴 Not approved.**
+**Status: DESIGN, PRE-REGISTERED and TURNKEY. 🔴 Not approved, and DO NOT RUN THE GRID YET.**
+
+> **🔴 BLOCKER, added 2026-07-31 after the smoke test — [#874](https://github.com/itchyshin/gllvmTMB/issues/874).**
+> The AGHQ loop reports convergence in **0% of fits at n = 400 and n = 1600** (and 0–2.5%
+> at n = 100), because `aghq_grad_tol` is a fixed 1e-4 while the gradient at the stop grows
+> ~√n. **This design's analysis population (ii), converged-only — the population that
+> answers "is AGHQ a better ESTIMATOR" rather than "does the AGHQ code emit better
+> numbers" — is therefore EMPTY at every n.** Running the 16,000 fits now would return a
+> complete table in which every cell is tagged `OPTIMISER-LIMITED`.
+> **The design does not change. The sequence does:** fix the tolerance (and have the
+> stalled branch report its gradient) first, then run. Evidence:
+> `docs/dev-log/audits/2026-07-31-aghq-convergence-nladder.md`.
 
 Framework: **ADEMP** (Morris, White & Crowther 2019, *Stat Med* 38:2074–2102).
 Reporting: the **11 transparent-reporting items** of Williams et al. (2024), *MEE*

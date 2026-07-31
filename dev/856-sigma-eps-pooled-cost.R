@@ -18,7 +18,9 @@
 ## Companion: dev/856-sigma-eps-degenerate-probe.R measures the DEGENERATE
 ## (no-replicate) case, which is the one Q7 already guards.
 
-suppressPackageStartupMessages(library(gllvmTMB))
+## load_all(), NOT library(): `library(gllvmTMB)` would load the INSTALLED
+## package and silently report pre-fix behaviour on a branch that has the fix.
+suppressPackageStartupMessages(devtools::load_all(".", quiet = TRUE))
 set.seed(2026)
 
 n_unit <- 120L

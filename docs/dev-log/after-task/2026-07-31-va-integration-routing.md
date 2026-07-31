@@ -61,8 +61,8 @@ aborting — the VA lane's designated first job
 |---|---|
 | `test-integration-fence.R` | **34 pass**, 0 fail, 0 skip |
 | `test-va-routing-oracle.R` | **31 pass**, 0 fail, 0 skip |
-| Full suite, pre-Rose-fixes | **8,237 pass, 0 fail**, 2 warn, 786 skip |
-| Full suite, post-fixes | re-run recorded in §10 |
+| Full suite, pre-change baseline | 8,237 pass, **0 fail**, 2 warn, 786 skip |
+| Full suite, final | **8,264 pass, 0 fail**, 2 warn, 785 skip |
 | `tools::checkDocFiles` | clean |
 | Real `R CMD INSTALL` + dispatch probe | all 9 fail-loud methods registered and erroring; `AIC`/`BIC` error via `logLik`; `nobs` returns 720 |
 

@@ -11,6 +11,26 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-07-30 — THE SCALE-DEPENDENT-CONSTANTS CLASS NOW HAS AN OWNER AND EVIDENCE** (this
+  resolves a "Needs Shinichi" flagged twice below). 8 PRs merged (#832, #839, #842, #845, #846,
+  #849, #854, #858); `R/` touched only by the #832 export. **It is a CLASS, not a bug** — ~10
+  instances, 10 confirmed by fitting at 1x and 10x/0.01x — with one generative mechanism: the
+  package argues from *"latent scores are standardised N(0, I)"* and then applies constants to
+  **Lambda**, but standardising the latent is exactly what pushes the response scale INTO Lambda.
+  **🔴 The worst instance (#851) is far broader than the loadings:** at sd(y) ~ 9268 *every*
+  reported quantity is wrong — Sigma, fixed effects, logLik, and **correlations and communality
+  (rel.err 1)** — with `convergence = 0` and a PD Hessian throughout. **Two fixes were built and
+  WITHDRAWN** (see the handover's Gotchas; do not retry scale-Lambda-alone, and do not use
+  `||Lambda||/k` as an acceptance test — use `dev/scale-equivariance-check.R`, both blocks).
+  Also: **AGHQ's integrator is CORRECT** (six independent checks) while **its estimator is NOT
+  established**; and **D3 is decided** — keep the ridge, fix tau (#847), because the ridge cuts
+  runaway 32% -> 8% at `lam_sd = 3` even while costing sigma. New: #851, #855 (standardisation
+  design, feasibility gate COMPLETE), #856 (`log_sigma_eps` is a scalar shared across all gaussian
+  AND lognormal rows while every other family's dispersion is per-trait).
+  **START HERE:** `docs/dev-log/handover/2026-07-30-claude-handover-scale-constant-lane.md`, then
+  the lane map. **Needs Shinichi:** #856 (deliberate or incidental? it gates #855), and the
+  sequencing call between #851/#855 and #847/#848.
+
 - **2026-07-30 (LATEST) — SESSION CLOSED; the re-aimed degeneracy campaign is APPROVED and
   UNSTARTED.** `main` @ `bef1a5aa` (#840 + #850 merged). **🔴 The campaign's original premise was
   refuted pre-flight, by measurement:** VGH's 0/148 does **not** survive at larger q/p — at

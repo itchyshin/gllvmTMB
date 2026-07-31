@@ -492,23 +492,33 @@ gllvmTMB <- function(
   ## An opt-in integration route must never SILENTLY fall back to Laplace. The
   ## caller would get a fit that is not the one they asked for and no signal
   ## that it happened -- the exact failure `gllvmTMBcontrol()` already records
-  ## for arguments that `...` used to swallow. So: check the fence first (so an
-  ## out-of-region request fails on its own terms), then abort explicitly while
-  ## the translation layer is unbuilt. Loud and wrong-shaped beats quiet and
-  ## wrong.
+  ## for arguments that `...` used to swallow. So the fence is checked first,
+  ## here, so an out-of-region request fails on its own terms before any
+  ## parsing cost -- in particular `engine = "julia"`, which has no variational
+  ## route at all. Loud and wrong-shaped beats quiet and wrong.
+  ##
+  ## Only `engine` is knowable at this point; `q`/`p`/`n`/family/link are not
+  ## resolved until the formula and data have been parsed, so the fence is
+  ## called a SECOND time inside `gllvmTMB_multi_fit()` with those values.
   integration_route <- control$integration %||% "laplace"
   if (!identical(integration_route, "laplace")) {
     .gllvmTMB_check_integration_fence(integration_route, engine = engine)
-    cli::cli_abort(c(
-      "{.arg integration} = {.val {integration_route}} is not yet routed from {.fn gllvmTMB}.",
-      "i" = "The engine, its TMB template and its dispatch all exist, but the
-             formula-to-long-format translation layer that connects them to
-             {.fn gllvmTMB} is not built yet.",
-      "i" = "Reachable today only as
-             {.code gllvmTMB:::.approximation_engine_fit(engine = \"va_r3\", ...)},
-             which is research-only and takes long-format vectors.",
-      ">" = "Use {.code integration = \"laplace\"} (the default)."
-    ))
+    if (identical(integration_route, "eva")) {
+      cli::cli_abort(c(
+        "{.arg integration} = {.val {integration_route}} is not yet routed from {.fn gllvmTMB}.",
+        "i" = "The engine, its TMB template and its dispatch all exist, but the
+               formula-to-long-format translation layer that connects them to
+               {.fn gllvmTMB} is not built yet.",
+        "i" = "Reachable today only as
+               {.code gllvmTMB:::.approximation_engine_fit(engine = \"eva\", ...)},
+               which is research-only and takes long-format vectors.",
+        ">" = "Use {.code integration = \"laplace\"} (the default)."
+      ))
+    }
+    ## `integration = "va"` falls through to `gllvmTMB_multi_fit()`, which
+    ## performs the data-aware fence check and dispatches to the variational
+    ## engine. No-silent-fallback holds there too: that branch either returns a
+    ## variational fit or aborts, and never builds the Laplace objective.
   }
   ci_method <- match.arg(ci_method)
   ci_defaults <- identical(ci_method, "none") &&
@@ -868,6 +878,12 @@ gllvmTMB <- function(
   if (isTRUE(.mn_expand$expanded)) {
     .fit$multinomial_meta <- .mn_expand[c("K", "categories", "baseline")]
   }
+  ## The variational route is built inside gllvmTMB_multi_fit(), which cannot
+  ## see the user's call. Attach it here, where match.call() is the call the
+  ## user actually wrote, so print() can show it.
+  if (inherits(.fit, "gllvmTMB_va")) {
+    .fit$call <- match.call()
+  }
   .fit
 }
 
@@ -1226,9 +1242,21 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   They cannot be combined with `aghq`, which is an alternative evaluation of
 #'   the same integral rather than an additional layer.
 #'
-#'   Offering these values advertises nothing about their accuracy. **They are
-#'   not yet routed from [gllvmTMB()]** and currently abort with an explanatory
-#'   message rather than silently returning a Laplace fit.
+#'   Offering these values advertises nothing about their accuracy.
+#'
+#'   `"va"` returns an object of class `"gllvmTMB_va"` (see
+#'   [gllvmTMB_va-methods]) rather than an ordinary fit, so that every method
+#'   which would treat its objective as a likelihood fails loudly instead of
+#'   returning a number. Because the engine runs its own multi-start and
+#'   optimiser policy, the search settings of [gllvmTMBcontrol()] — `n_init`,
+#'   `optimizer`, `optArgs`, `start_from`, `init_*` and `se` — have no effect
+#'   on this route. Any model structure the route cannot represent (a latent
+#'   term away from the unit grouping, a constrained ordination, an offset,
+#'   weights, `REML`, `lambda_constraint`, `Xcoef_fixed`, or a further random
+#'   effect) is an **error**, never a silent omission.
+#'
+#'   `"eva"` is **not yet routed from [gllvmTMB()]** and aborts with an
+#'   explanatory message rather than silently returning a Laplace fit.
 #' @param aghq Adaptive Gauss-Hermite quadrature for the between-unit latent
 #'   block. `FALSE` (default) fits by Laplace approximation. A positive integer
 #'   requests that many quadrature nodes. `"auto"` lets the package decide, and

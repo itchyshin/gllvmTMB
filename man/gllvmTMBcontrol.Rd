@@ -117,9 +117,21 @@ requesting one outside that region is an \strong{error}, not a warning.
 They cannot be combined with \code{aghq}, which is an alternative evaluation of
 the same integral rather than an additional layer.
 
-Offering these values advertises nothing about their accuracy. \strong{They are
-not yet routed from \code{\link[=gllvmTMB]{gllvmTMB()}}} and currently abort with an explanatory
-message rather than silently returning a Laplace fit.}
+Offering these values advertises nothing about their accuracy.
+
+\code{"va"} returns an object of class \code{"gllvmTMB_va"} (see
+\link{gllvmTMB_va-methods}) rather than an ordinary fit, so that every method
+which would treat its objective as a likelihood fails loudly instead of
+returning a number. Because the engine runs its own multi-start and
+optimiser policy, the search settings of \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} — \code{n_init},
+\code{optimizer}, \code{optArgs}, \code{start_from}, \verb{init_*} and \code{se} — have no effect
+on this route. Any model structure the route cannot represent (a latent
+term away from the unit grouping, a constrained ordination, an offset,
+weights, \code{REML}, \code{lambda_constraint}, \code{Xcoef_fixed}, or a further random
+effect) is an \strong{error}, never a silent omission.
+
+\code{"eva"} is \strong{not yet routed from \code{\link[=gllvmTMB]{gllvmTMB()}}} and aborts with an
+explanatory message rather than silently returning a Laplace fit.}
 
 \item{aghq}{Adaptive Gauss-Hermite quadrature for the between-unit latent
 block. \code{FALSE} (default) fits by Laplace approximation. A positive integer

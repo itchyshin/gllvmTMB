@@ -58,30 +58,194 @@ test_that("n = 40 is refused because the measurement says so, not by taste", {
   )
 })
 
+## Build a complete crossed unit x trait Bernoulli frame.
+.fence_fixture <- function(n, p, seed = 1L) {
+  set.seed(seed)
+  Y <- matrix(rbinom(n * p, 1L, 0.5), n, p)
+  data.frame(y = as.numeric(t(Y)),
+             trait = factor(rep(seq_len(p), times = n)),
+             site  = factor(rep(seq_len(n), each = p)))
+}
+
 test_that("a variational request never silently returns a Laplace fit", {
   ## The failure this guards against is not an error, it is a SUCCESS that
   ## quietly ignored the argument -- the caller keeps a Laplace fit believing
   ## it is variational. Requesting one must either work or abort, never fall
   ## back.
-  set.seed(1L)
-  n <- 120L; p <- 6L
-  Y <- matrix(rbinom(n * p, 1L, 0.5), n, p)
-  df <- data.frame(y = as.numeric(t(Y)),
-                   trait = factor(rep(seq_len(p), times = n)),
-                   site  = factor(rep(seq_len(n), each = p)))
+  df <- .fence_fixture(n = 120L, p = 6L)
   fml <- y ~ 0 + trait + latent(0 + trait | site, d = 2L, unique = FALSE)
 
+  ## "eva" is still unrouted and must still abort rather than fall back.
   expect_error(
     gllvmTMB(fml, data = df, family = stats::binomial(), unit = "site",
-             control = gllvmTMBcontrol(integration = "va")),
+             control = gllvmTMBcontrol(integration = "eva")),
     "not yet routed"
   )
-  ## …and the out-of-region case fails on the FENCE, not on the routing stub,
-  ## so the more specific complaint is the one the user sees.
+  ## …and the out-of-region case fails on the FENCE, before any parsing, so the
+  ## more specific complaint is the one the user sees.
   expect_error(
     gllvmTMB(fml, data = df, family = stats::binomial(), unit = "site",
              engine = "julia",
              control = gllvmTMBcontrol(integration = "va")),
     "no variational route"
+  )
+})
+
+test_that("the data-aware fence limits are reachable from gllvmTMB()", {
+  ## Until routing landed, `gllvmTMB()` could only check `engine` -- it aborted
+  ## before n/q/p/family/link were known, so those limits were implemented and
+  ## tested but UNREACHABLE from the user-facing entry point. These assert they
+  ## now bite. None of them fits a model: each aborts during setup, which is
+  ## also why this file stays cheap.
+  fml2 <- y ~ 0 + trait + latent(0 + trait | site, d = 2L, unique = FALSE)
+
+  ## n below the evidenced minimum.
+  expect_error(
+    gllvmTMB(fml2, data = .fence_fixture(n = 50L, p = 6L),
+             family = stats::binomial(), unit = "site",
+             control = gllvmTMBcontrol(integration = "va")),
+    "below the evidenced minimum"
+  )
+  ## q above the evidenced maximum.
+  expect_error(
+    gllvmTMB(y ~ 0 + trait + latent(0 + trait | site, d = 6L, unique = FALSE),
+             data = .fence_fixture(n = 120L, p = 8L),
+             family = stats::binomial(), unit = "site",
+             control = gllvmTMBcontrol(integration = "va")),
+    "exceeds the evidenced maximum"
+  )
+  ## A family with no admitted variational evaluation.
+  expect_error(
+    gllvmTMB(fml2, data = .fence_fixture(n = 120L, p = 6L),
+             family = stats::gaussian(), unit = "site",
+             control = gllvmTMBcontrol(integration = "va")),
+    "no admitted variational evaluation"
+  )
+})
+
+test_that("the variational route refuses structure it cannot represent", {
+  ## Each of these would otherwise be SILENTLY DROPPED: the route wires only
+  ## (X, unit_id, trait_id, q), so anything else in the formula would simply
+  ## not be fitted while the fit still reported a healthy status.
+  df <- .fence_fixture(n = 120L, p = 6L)
+
+  expect_error(
+    gllvmTMB(y ~ 0 + trait, data = df, family = stats::binomial(),
+             unit = "site", control = gllvmTMBcontrol(integration = "va")),
+    "no ordinary"
+  )
+  ## An incomplete crossed design -- the engine requires exactly one row per
+  ## (unit, response) cell, and ragged community data is the common case.
+  ragged <- df[-1L, , drop = FALSE]
+  expect_error(
+    gllvmTMB(y ~ 0 + trait + latent(0 + trait | site, d = 2L, unique = FALSE),
+             data = ragged, family = stats::binomial(), unit = "site",
+             control = gllvmTMBcontrol(integration = "va")),
+    "not complete"
+  )
+})
+
+test_that("the variational route refuses a latent term at a non-unit grouping", {
+  ## REGRESSION (Rose, 2026-07-31). The engine takes ONE unit_id vector, so a
+  ## latent term grouped by anything other than the unit column was being
+  ## refitted at the unit level -- a different model, reported healthy. This is
+  ## the sharpest silent-substitution the route can make, because nothing
+  ## downstream can detect it: the completeness check validates the substituted
+  ## design, and the fence's n >= 100 is evaluated on the substituted n.
+  set.seed(3L)
+  n_site <- 120L; n_sp <- 2L; p <- 6L
+  df <- expand.grid(trait = factor(seq_len(p)),
+                    species = factor(seq_len(n_sp)),
+                    site = factor(seq_len(n_site)))
+  df$site_species <- factor(paste(df$site, df$species, sep = "_"))
+  df$y <- rbinom(nrow(df), 1L, 0.5)
+
+  expect_error(
+    gllvmTMB(y ~ 0 + trait + latent(0 + trait | site_species, d = 2L, unique = FALSE),
+             data = df, family = stats::binomial(),
+             unit = "site", species = "species",
+             control = gllvmTMBcontrol(integration = "va")),
+    "not by the unit column"
+  )
+})
+
+test_that("the variational route refuses latent options it cannot honour", {
+  ## REGRESSION (Rose, 2026-07-31). `latent(..., lv = ~ x)` is a CONSTRAINED
+  ## ordination; the route has no unit-level predictor channel, so the
+  ## constraint was being dropped and an unconstrained ordination fitted.
+  ## The guard is a whitelist, so any latent option added later also aborts
+  ## here rather than being silently ignored.
+  df <- .fence_fixture(n = 120L, p = 6L)
+  df$env <- rep(rnorm(120L), each = 6L)
+
+  expect_error(
+    gllvmTMB(y ~ 0 + trait + latent(0 + trait | site, d = 2L, unique = FALSE,
+                                    lv = ~ env),
+             data = df, family = stats::binomial(), unit = "site",
+             control = gllvmTMBcontrol(integration = "va")),
+    "cannot honour"
+  )
+})
+
+test_that("the variational route refuses fit arguments it would ignore", {
+  ## REGRESSION (Rose, 2026-07-31). Each of these is consumed further down
+  ## gllvmTMB_multi_fit(), i.e. AFTER the variational branch returns, so
+  ## without an explicit refusal each was accepted and then silently ignored.
+  df <- .fence_fixture(n = 120L, p = 6L)
+  fml <- y ~ 0 + trait + latent(0 + trait | site, d = 2L, unique = FALSE)
+  va <- gllvmTMBcontrol(integration = "va")
+
+  expect_error(
+    gllvmTMB(fml, data = df, family = stats::binomial(), unit = "site",
+             REML = TRUE, control = va),
+    "REML"
+  )
+  expect_error(
+    gllvmTMB(fml, data = df, family = stats::binomial(), unit = "site",
+             lambda_constraint = matrix(0, 6L, 2L), control = va),
+    "lambda_constraint"
+  )
+  expect_error(
+    gllvmTMB(fml, data = df, family = stats::binomial(), unit = "site",
+             Xcoef_fixed = list(trait1 = 0), control = va),
+    "Xcoef_fixed"
+  )
+  ## …but an EMPTY constraint is a no-op under Laplace, so refusing it would
+  ## reject a fit that asked for nothing. It must reach the fence instead and
+  ## fail there only if the model itself is out of region -- here it is in
+  ## region, so this must NOT raise the lambda_constraint error.
+  expect_error(
+    gllvmTMB(fml, data = .fence_fixture(n = 50L, p = 6L),
+             family = stats::binomial(), unit = "site",
+             lambda_constraint = list(), control = va),
+    "below the evidenced minimum"
+  )
+})
+
+test_that("the latent-option whitelist refuses unknown options generically", {
+  ## The guard is a whitelist, so an option it has never heard of aborts too --
+  ## that is the point, and it is what protects against a latent option added
+  ## later being silently ignored. Exercised here with a synthetic field so the
+  ## generic branch is covered, not only the `lv_formula` branch.
+  df <- .fence_fixture(n = 120L, p = 6L)
+  parsed <- gllvmTMB:::parse_multi_formula(
+    gllvmTMB:::desugar_brms_sugar(
+      y ~ 0 + trait + latent(0 + trait | site, d = 2L, unique = FALSE),
+      trait_col = "trait"))
+  i <- which(vapply(parsed$covstructs, function(z) z$kind, character(1)) == "rr")
+  parsed$covstructs[[i]]$extra$some_future_option <- TRUE
+
+  expect_error(
+    gllvmTMB:::.gllvmTMB_va_route(
+      parsed = parsed, y = df$y, n_trials = rep(1, nrow(df)),
+      X = stats::model.matrix(~ 0 + trait, data = df),
+      unit_id = as.integer(df$site) - 1L,
+      trait_id = as.integer(df$trait) - 1L,
+      n_units = 120L, n_traits = 6L, unit_col = "site",
+      family_per_row = list(stats::binomial()),
+      family_id_vec = rep(1L, nrow(df)), link_id_vec = rep(0L, nrow(df)),
+      is_y_observed = rep(1L, nrow(df)), weights_i = rep(1, nrow(df)),
+      mi_enabled = FALSE, offset_expr = NULL),
+    "cannot honour"
   )
 })

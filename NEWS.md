@@ -303,17 +303,24 @@ bridge remains experimental and is not required for the main workflow.
   loading that should have doubled did not move. If you have worked around this
   by rescaling your response by hand, you no longer need to.
 
-  This covers the ordinary latent structure on your unit grouping — `latent()`
-  and the variance term it carries. Everything else deliberately keeps its
-  previous starting values: the phylogenetic, spatial, kernel and random-slope
-  latent terms, and also the **second grouping of a nested two-tier fit** (the
+  This covers **Gaussian responses**, and the ordinary latent structure on your
+  unit grouping — `latent()` and the variance term it carries. Everything else
+  deliberately keeps its previous starting values: any model with a
+  non-Gaussian response, the phylogenetic, spatial, kernel and random-slope
+  latent terms, and the **second grouping of a nested two-tier fit** (the
   within-unit level, e.g. species-within-site). Starting values for the latent
   scores are also left alone when you give `latent()` a predictor with
   `lv = ~ ...`, because there the scores have a fitted mean rather than a free
-  one. The collapse above has only been measured for the ordinary single-tier
-  case, and moving a starting value that has not been measured trades a known
-  problem for an unmeasured one. If you fit any of those forms on a response far
-  from unit scale, rescaling it by hand is still worth doing.
+  one.
+
+  The reason for drawing the line there rather than wider: "multiply the
+  response by 100" is only a meaningful thing to do to an unbounded continuous
+  response, and that is the only case the collapse was measured on. A count or a
+  presence/absence on an awkward scale may well have the same problem — but
+  moving a starting value that has not been measured trades a known problem for
+  an unmeasured one, which is the whole reason the old default was dangerous. If
+  you fit any of the excluded forms on a response far from unit scale, rescaling
+  it by hand is still worth doing.
 
   One case is **not** fully resolved. In a nested two-tier fit the residual scale
   error is around 2%, and that remainder is a property of the likelihood surface

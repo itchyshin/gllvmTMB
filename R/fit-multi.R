@@ -3756,7 +3756,29 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## `.gllvmTMB_log_sigma_eps_start()` keys off the same vector. The 0.5 is kept
   ## as the coefficient, so a working residual sd of 1 reproduces the historical
   ## start exactly.
-  lam_scale_init <- .gllvmTMB_loading_start_scale(resid_init)
+  ##
+  ## GAUSSIAN-ONLY, on the same rule that scopes this to one tier: apply the
+  ## scale where it was MEASURED, and nowhere it was not. "Multiply the response
+  ## by k" is only a meaningful perturbation for an unbounded continuous
+  ## response; every #851 measurement is gaussian. For a binomial fit y is 0/1
+  ## and there is no response scale to get wrong, yet keying off the working
+  ## residual still moved those fits -- measurably, and for no reason the
+  ## evidence supports: it perturbed a binomial AGHQ cell (`.ms_cell()` in
+  ## `test-aghq-multistart-convergence.R`) from objective 379.7134 to 380.5439.
+  ## Gating restores that cell EXACTLY (379.7133, loading-runaway ratio 29.700,
+  ## identical to main) and leaves every gaussian result untouched: the
+  ## two-tier oracle is byte-identical gated and ungated at k = 100 and
+  ## k = 5000 (6.15e-06 / 7.19e-06 / 7.27e-06 / 1.38e-05 and 0.0102 / 0.0131 /
+  ## 0.011 / 0.0187), because those models are gaussian and so take this branch.
+  ##
+  ## This is a narrowing, not a retreat. Counts on a large scale may well have
+  ## the same defect -- but that is UNMEASURED, and #851's own argument for
+  ## leaving five tiers alone was that moving an unmeasured start trades a known
+  ## problem for an unknown one. The same rule has to apply across families or
+  ## it was never a rule.
+  lam_scale_init <- if (all(family_id_vec == 0L)) {
+    .gllvmTMB_loading_start_scale(resid_init)
+  } else 1.0
 
   ## The single source of the reduced-rank loading start, for ALL EIGHT tiers
   ## that have one: B, B_slope, W, spde_lv, spde_slope, kernel, phy, phy_slope.

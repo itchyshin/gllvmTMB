@@ -54,7 +54,7 @@ test_that("coverage_study() rejects unknown parm labels", {
   expect_error(
     gllvmTMB:::coverage_study(
       fit,
-      parm = c("sigma_eps", "not_real"),
+      parm = c("sigma_eps[1]", "not_real"),
       n_reps = 3L
     ),
     "Unknown profile-target label"
@@ -70,7 +70,7 @@ test_that("coverage_study() returns the documented structure", {
   res <- suppressMessages(suppressWarnings(
     gllvmTMB:::coverage_study(
       fit,
-      parm = c("sigma_eps", "sd_B[1]"),
+      parm = c("sigma_eps[1]", "sd_B[1]"),
       n_reps = 5L,
       methods = "wald",
       seed = 1,
@@ -121,7 +121,7 @@ test_that("Wald CI on sigma_eps has a high exploratory rate on a tiny well-ident
   res <- suppressMessages(suppressWarnings(
     gllvmTMB:::coverage_study(
       fit,
-      parm = "sigma_eps",
+      parm = "sigma_eps[1]",
       n_reps = 10L,
       methods = "wald",
       seed = 1,
@@ -165,7 +165,7 @@ test_that("print.gllvmTMB_coverage_study runs without error", {
   res <- suppressMessages(suppressWarnings(
     gllvmTMB:::coverage_study(
       fit,
-      parm = "sigma_eps",
+      parm = "sigma_eps[1]",
       n_reps = 3L,
       methods = "wald",
       seed = 1,
@@ -182,10 +182,10 @@ test_that("confint(method = 'wald') routes through profile_targets() for non-fix
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   ci <- suppressMessages(suppressWarnings(
-    stats::confint(fit, parm = c("sigma_eps", "sd_B[1]"), method = "wald")
+    stats::confint(fit, parm = c("sigma_eps[1]", "sd_B[1]"), method = "wald")
   ))
   expect_true(is.matrix(ci))
-  expect_equal(rownames(ci), c("sigma_eps", "sd_B[1]"))
+  expect_equal(rownames(ci), c("sigma_eps[1]", "sd_B[1]"))
   ## Wald bound for sigma_eps is finite (well-behaved fit).
-  expect_true(all(is.finite(ci["sigma_eps", ])))
+  expect_true(all(is.finite(ci["sigma_eps[1]", ])))
 })

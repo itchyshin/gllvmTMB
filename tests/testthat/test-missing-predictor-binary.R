@@ -113,7 +113,11 @@ manual_binary_mi_loglik <- function(fit, data) {
   par <- fit$tmb_obj$env$parList(fit$opt$par)
   b_fix <- par$b_fix
   beta_mi <- par$beta_mi
+  ## sigma is per-trait (length n_traits) since #856; index it by each
+  ## row's own trait rather than treating it as a scalar (#856 S3 fix --
+  ## sigma[1] alone silently used trait 1's residual SD for every trait).
   sigma <- exp(fit$tmb_obj$env$parList(fit$opt$par)$log_sigma_eps)
+  trait_id <- fit$tmb_data$trait_id + 1L # 1-indexed
 
   reg <- fit$missing_data$predictors$x
   mu_col <- reg$mu_col           # 1-indexed mi() column in X_fix
@@ -150,7 +154,8 @@ manual_binary_mi_loglik <- function(fit, data) {
       for (j in seq_along(rows)) {
         if (observed_y[rows[j]]) {
           ll_resp <- ll_resp +
-            stats::dnorm(y[rows[j]], eta_obs[j], sigma, log = TRUE)
+            stats::dnorm(y[rows[j]], eta_obs[j], sigma[trait_id[rows[j]]],
+                         log = TRUE)
         }
       }
       prior <- if (xk == 1) log_p1[u] else log_p0[u]
@@ -162,11 +167,12 @@ manual_binary_mi_loglik <- function(fit, data) {
       ll_y0 <- 0
       for (j in seq_along(rows)) {
         if (observed_y[rows[j]]) {
+          sigma_j <- sigma[trait_id[rows[j]]]
           ll_y1 <- ll_y1 +
-            stats::dnorm(y[rows[j]], eta_base[rows[j]] + b_x * 1, sigma,
+            stats::dnorm(y[rows[j]], eta_base[rows[j]] + b_x * 1, sigma_j,
                          log = TRUE)
           ll_y0 <- ll_y0 +
-            stats::dnorm(y[rows[j]], eta_base[rows[j]] + b_x * 0, sigma,
+            stats::dnorm(y[rows[j]], eta_base[rows[j]] + b_x * 0, sigma_j,
                          log = TRUE)
         }
       }
@@ -187,7 +193,12 @@ manual_binary_mi_loglik_perrow <- function(fit, data) {
   par <- fit$tmb_obj$env$parList(fit$opt$par)
   b_fix <- par$b_fix
   beta_mi <- par$beta_mi
+  ## Per-trait sigma (#856 S3), same fix as manual_binary_mi_loglik() above --
+  ## this helper is a deliberately WRONG per-row reference (design 68 sec.7.1
+  ## per-row-vs-per-unit discrimination), and it must stay wrong for ONLY that
+  ## reason, not additionally confounded by a sigma-shape bug.
   sigma <- exp(par$log_sigma_eps)
+  trait_id <- fit$tmb_data$trait_id + 1L # 1-indexed
   reg <- fit$missing_data$predictors$x
   mu_col <- reg$mu_col
   b_x <- b_fix[mu_col]
@@ -207,16 +218,17 @@ manual_binary_mi_loglik_perrow <- function(fit, data) {
   for (o in seq_along(y)) {
     if (!observed_y[o]) next
     u <- unit_id[o]
+    sigma_o <- sigma[trait_id[o]]
     if (observed_unit[u]) {
       xk <- X_fix[o, mu_col]
-      total <- total + stats::dnorm(y[o], eta_base[o] + b_x * xk, sigma,
+      total <- total + stats::dnorm(y[o], eta_base[o] + b_x * xk, sigma_o,
                                     log = TRUE) +
         (if (xk == 1) log_p1[u] else log_p0[u])
     } else {
       lp1 <- log_p1[u] +
-        stats::dnorm(y[o], eta_base[o] + b_x, sigma, log = TRUE)
+        stats::dnorm(y[o], eta_base[o] + b_x, sigma_o, log = TRUE)
       lp0 <- log_p0[u] +
-        stats::dnorm(y[o], eta_base[o], sigma, log = TRUE)
+        stats::dnorm(y[o], eta_base[o], sigma_o, log = TRUE)
       m <- max(lp1, lp0)
       total <- total + (m + log(exp(lp1 - m) + exp(lp0 - m)))
     }

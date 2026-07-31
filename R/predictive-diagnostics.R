@@ -397,7 +397,15 @@ residuals.gllvmTMB_multi <- function(
     }
 
     if (fid == 0L) {
-      lower[i] <- stats::pnorm(y_i, mean = eta[i], sd = sigma_eps)
+      ## Per-trait residual SD (#856 S3): `tid` is this row's (1-indexed)
+      ## trait; falls back to sigma_eps[1] only if trait_id is somehow out
+      ## of range (should not happen for a well-formed fit).
+      sigma_eps_i <- if (is.finite(tid) && tid >= 1L && tid <= length(sigma_eps)) {
+        sigma_eps[tid]
+      } else {
+        sigma_eps[1L]
+      }
+      lower[i] <- stats::pnorm(y_i, mean = eta[i], sd = sigma_eps_i)
       upper[i] <- lower[i]
       u[i] <- lower[i]
     } else if (fid == 2L) {
@@ -1109,17 +1117,22 @@ residuals.gllvmTMB_multi <- function(
   as.integer(out)
 }
 
+## Returns the FULL per-trait sigma_eps vector (#856 S3). Callers must index
+## by each row's trait_id rather than assume a scalar -- `report$sigma_eps`
+## is length n_traits (PARAMETER_VECTOR(log_sigma_eps) since #856); using
+## `[1L]` silently applies trait 1's residual SD to every trait.
 .gllvmTMB_sigma_eps <- function(object) {
   sigma_eps <- as.numeric(object$report$sigma_eps)
-  if (
-    is.null(sigma_eps) || length(sigma_eps) == 0L || !is.finite(sigma_eps[1])
-  ) {
-    sigma_eps <- exp(unname(object$opt$par["log_sigma_eps"]))
+  if (is.null(sigma_eps) || length(sigma_eps) == 0L || !any(is.finite(sigma_eps))) {
+    ## Name-lookup fallback: TMB gives every element of a PARAMETER_VECTOR
+    ## the SAME name, so `opt$par["log_sigma_eps"]` (single-bracket, single
+    ## string) would silently return only the first match. Use the
+    ## `.par_indices()` convention (R/profile-derived.R) instead.
+    idx <- .par_indices(object, "log_sigma_eps")
+    sigma_eps <- if (length(idx)) exp(unname(object$opt$par[idx])) else 1
   }
-  if (is.na(sigma_eps[1]) || sigma_eps[1] <= 0) {
-    sigma_eps <- 1
-  }
-  sigma_eps[1L]
+  sigma_eps[!is.finite(sigma_eps) | sigma_eps <= 0] <- 1
+  sigma_eps
 }
 
 .gllvmTMB_clip_unit_interval <- function(u) {

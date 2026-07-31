@@ -208,7 +208,11 @@ manual_categorical_mi_loglik <- function(fit) {
   par <- fit$tmb_obj$env$parList(fit$opt$par)
   b_fix <- par$b_fix
   beta_mi <- par$beta_mi
+  ## sigma is per-trait (length n_traits) since #856; index it by each
+  ## row's own trait (#856 S3 fix -- a bare `sigma` silently used trait 1's
+  ## residual SD for every trait).
   sigma <- exp(par$log_sigma_eps)
+  trait_id <- fit$tmb_data$trait_id + 1L # 1-indexed
 
   reg <- fit$missing_data$predictors$habitat
   K <- reg$n_state
@@ -240,7 +244,8 @@ manual_categorical_mi_loglik <- function(fit) {
       ll_resp <- 0
       for (o in rows) {
         if (observed_y[o]) {
-          ll_resp <- ll_resp + stats::dnorm(y[o], eta_obs[o], sigma, log = TRUE)
+          ll_resp <- ll_resp +
+            stats::dnorm(y[o], eta_obs[o], sigma[trait_id[o]], log = TRUE)
         }
       }
       total <- total + ll_resp + log_prior[u, state]
@@ -249,12 +254,13 @@ manual_categorical_mi_loglik <- function(fit) {
       for (o in rows) {
         if (!observed_y[o]) next
         base <- mi_state_row[o]                       # 0-indexed K-block base
+        sigma_o <- sigma[trait_id[o]]
         for (k in seq_len(K)) {
           eta_state <- eta_obs[o] -
             sum(X_fix[o, ] * b_fix) +
             sum(X_fix_state[base + k, ] * b_fix)
           log_terms[k] <- log_terms[k] +
-            stats::dnorm(y[o], eta_state, sigma, log = TRUE)
+            stats::dnorm(y[o], eta_state, sigma_o, log = TRUE)
         }
       }
       m <- max(log_terms)
@@ -272,7 +278,12 @@ manual_categorical_mi_loglik_perrow <- function(fit) {
   par <- fit$tmb_obj$env$parList(fit$opt$par)
   b_fix <- par$b_fix
   beta_mi <- par$beta_mi
+  ## Per-trait sigma (#856 S3), same fix as manual_categorical_mi_loglik()
+  ## above -- this helper must stay wrong ONLY for the intended per-row-vs-
+  ## per-unit reason (design 68 sec.7.1), not additionally confounded by a
+  ## sigma-shape bug.
   sigma <- exp(par$log_sigma_eps)
+  trait_id <- fit$tmb_data$trait_id + 1L # 1-indexed
   reg <- fit$missing_data$predictors$habitat
   K <- reg$n_state
   X_fix <- fit$tmb_data$X_fix
@@ -290,9 +301,10 @@ manual_categorical_mi_loglik_perrow <- function(fit) {
   for (o in seq_along(y)) {
     if (!observed_y[o]) next
     u <- unit_id[o]
+    sigma_o <- sigma[trait_id[o]]
     if (observed_unit[u]) {
       state <- as.integer(round(x_unit_int[u]))
-      total <- total + stats::dnorm(y[o], eta_obs[o], sigma, log = TRUE) +
+      total <- total + stats::dnorm(y[o], eta_obs[o], sigma_o, log = TRUE) +
         log_prior[u, state]
     } else {
       base <- mi_state_row[o]
@@ -301,7 +313,7 @@ manual_categorical_mi_loglik_perrow <- function(fit) {
         eta_state <- eta_obs[o] - sum(X_fix[o, ] * b_fix) +
           sum(X_fix_state[base + k, ] * b_fix)
         log_terms[k] <- log_terms[k] +
-          stats::dnorm(y[o], eta_state, sigma, log = TRUE)
+          stats::dnorm(y[o], eta_state, sigma_o, log = TRUE)
       }
       m <- max(log_terms)
       total <- total + (m + log(sum(exp(log_terms - m))))

@@ -26,10 +26,34 @@ make_gauss <- function(seed = 1L) {
   ## ordinary `latent()` fit now includes a diagonal Psi companion; this
   ## file is about row-weight semantics, not the Psi decomposition, so
   ## the test fixture opts out with `unique = FALSE`.
+  ##
+  ## n_species = 3 / mean_species_per_site = 3, NOT the original 1 (#856
+  ## S3, Root Cause C investigation): with exactly ONE row per (site,
+  ## trait) and a rank-1 loadings-only `latent()` term, the shared
+  ## per-site latent score z_B[site] can nearly perfectly explain a
+  ## SINGLE trait's site-to-site pattern on its own, driving that
+  ## trait's residual toward the zero boundary -- a structural
+  ## degeneracy, not a sample-size one (doubling n_sites to 60 at
+  ## mean_species_per_site = 1 reproduced the SAME boundary collapse).
+  ## Under the pre-#856 SHARED scalar sigma_eps this was invisible: the
+  ## scalar was a compromise pooled across all 4 traits, so one trait
+  ## wanting near-zero residual could not pull the shared value all the
+  ## way to the boundary. Per-trait sigma_eps removes that accidental
+  ## protection, so the ORIGINAL one-row-per-cell fixture is no longer
+  ## adequate. Adding species-level replication within each site breaks
+  ## the exact one-row-per-cell degeneracy and restores clean
+  ## convergence with no boundary-pinned trait. 10 species/site (not a
+  ## smaller number): empirically, 3 species/site already fixes
+  ## convergence and the boundary collapse, but leaves a small residual
+  ## b_fix / SE finite-sample gap under weight doubling that shrinks
+  ## monotonically with more per-trait data (checked at 3, 6, 8, 10, 20
+  ## species/site); 10 is the smallest of those that reliably closes the
+  ## b_fix equality check to within the test's 1e-3 tolerance across
+  ## seeds 1-3 (the only seeds this file uses).
   set.seed(seed)
   sim <- gllvmTMB::simulate_site_trait(
-    n_sites = 30, n_species = 1, n_traits = 4,
-    mean_species_per_site = 1,
+    n_sites = 30, n_species = 10, n_traits = 4,
+    mean_species_per_site = 10,
     Lambda_B = matrix(rnorm(8, sd = 0.4), 4, 2),
     psi_B = rep(0.2, 4),
     seed = seed
@@ -146,9 +170,14 @@ test_that("Heteroscedastic Gaussian: weighted fit improves sigma recovery", {
   set.seed(42L)
   ## 30 sites x 3 traits, all Gaussian, but with row-wise variance
   ## inflation drawn from Uniform(0.5, 5). True sigma_0 = 1.
+  ## n_species = 10 / mean_species_per_site = 10, NOT the original 1
+  ## (#856 S3): same one-row-per-cell boundary-collapse hazard as
+  ## make_gauss() above (a rank-1 loadings-only `latent()` term can
+  ## drive one trait's per-trait sigma_eps to the zero boundary when
+  ## there is exactly one row per (site, trait)); fixed the same way.
   sim <- gllvmTMB::simulate_site_trait(
-    n_sites = 30, n_species = 1, n_traits = 3,
-    mean_species_per_site = 1,
+    n_sites = 30, n_species = 10, n_traits = 3,
+    mean_species_per_site = 10,
     sigma2_eps = 0.0,                  # turn off the simulator's noise
     Lambda_B   = matrix(rnorm(6, sd = 0.4), 3, 2),
     psi_B        = rep(0.2, 3),
@@ -171,10 +200,16 @@ test_that("Heteroscedastic Gaussian: weighted fit improves sigma recovery", {
     weights = w_i,
     silent  = TRUE
   )))
-  ## Both fits expose log_sigma_eps via report().
+  ## Both fits expose log_sigma_eps via report(). sigma_eps is per-trait
+  ## (length n_traits, #856); the row-wise variance multiplier `var_i` was
+  ## applied identically across all 3 traits above, so the TRUE residual sd
+  ## is the same sigma_0 for every trait, and each trait's recovered value
+  ## should independently be closer to sigma_0 in the weighted fit.
   rep_unw <- fit_unw$tmb_obj$report()
   rep_w   <- fit_w$tmb_obj$report()
-  expect_lt(abs(rep_w$sigma_eps - sigma_0), abs(rep_unw$sigma_eps - sigma_0))
+  expect_true(all(
+    abs(rep_w$sigma_eps - sigma_0) < abs(rep_unw$sigma_eps - sigma_0)
+  ))
 })
 
 # ----------------------------------------------------------------------

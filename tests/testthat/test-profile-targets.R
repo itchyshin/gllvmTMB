@@ -9,8 +9,12 @@
 
 make_tiny_fit_for_pt <- function(seed = 1L) {
   set.seed(seed)
+  ## n_sites = 30, matching test-confint-inspect.R's make_tiny_fit_for_inspect()
+  ## (#856 S3: sigma_eps is per-trait, so each trait's profile needs more
+  ## than the old n_sites = 20 to keep the profile-vs-Wald agreement well
+  ## inside tolerance; see that file's fixture comment for the measurement).
   sim <- gllvmTMB::simulate_site_trait(
-    n_sites = 20,
+    n_sites = 30,
     n_species = 4,
     n_traits = 3,
     mean_species_per_site = 3,
@@ -67,7 +71,10 @@ test_that("profile_targets() direct rows for this fixture include b_fix, sigma_e
   pt <- gllvmTMB::profile_targets(fit)
   direct_parms <- pt$parm[pt$target_type == "direct"]
   expect_true(any(grepl("^b_fix\\[", direct_parms)))
-  expect_true("sigma_eps" %in% direct_parms)
+  ## sigma_eps is per-trait (length n_traits) since #856; the inventory
+  ## indexes it exactly like the other vector-valued direct targets below
+  ## (sd_B[t], Lambda_B_packed[t]) rather than a bare "sigma_eps" label.
+  expect_true(any(grepl("^sigma_eps\\[", direct_parms)))
   expect_true(any(grepl("^sd_B\\[", direct_parms)))
   expect_true(any(grepl("^Lambda_B_packed\\[", direct_parms)))
 })
@@ -142,16 +149,16 @@ test_that("confint(method = 'profile') accepts profile_targets() labels for dire
   fit <- make_tiny_fit_for_pt()
   ci <- suppressMessages(suppressWarnings(stats::confint(
     fit,
-    parm = c("sigma_eps", "sd_B[1]"),
+    parm = c("sigma_eps[1]", "sd_B[1]"),
     method = "profile"
   )))
   expect_true(is.matrix(ci))
   expect_equal(nrow(ci), 2L)
-  expect_equal(rownames(ci), c("sigma_eps", "sd_B[1]"))
+  expect_equal(rownames(ci), c("sigma_eps[1]", "sd_B[1]"))
   ## CI bounds should be finite for sigma_eps (well away from boundary).
-  expect_true(all(is.finite(ci["sigma_eps", ])))
+  expect_true(all(is.finite(ci["sigma_eps[1]", ])))
   ## Lower bound for sigma_eps is positive (variance components > 0).
-  expect_gt(ci["sigma_eps", 1], 0)
+  expect_gt(ci["sigma_eps[1]", 1], 0)
 })
 
 test_that("bare unsupported derived profile token errors loudly", {

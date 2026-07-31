@@ -490,8 +490,11 @@ VP <- function(fit) {
   out <- numeric(Tn)
   names(out) <- trait_names
 
+  ## sigma_eps is per-trait (length n_traits) since #856. Early-return only
+  ## when NOTHING usable is available at all; per-trait validity is checked
+  ## inside the loop below rather than gating on the first element only.
   sigma_eps <- as.numeric(fit$report$sigma_eps %||% numeric(0))
-  if (!length(sigma_eps) || !is.finite(sigma_eps[1L]) || sigma_eps[1L] <= 0) {
+  if (!length(sigma_eps) || !any(is.finite(sigma_eps) & sigma_eps > 0)) {
     return(out)
   }
 
@@ -508,8 +511,10 @@ VP <- function(fit) {
     fams_uniq <- unique(as.integer(fams_t))
     tab <- tabulate(match(as.integer(fams_t), fams_uniq))
     fid <- fams_uniq[which.max(tab)]
-    if (fid %in% c(0L, 3L)) {
-      out[t] <- sigma_eps[1L]^2
+    ## #856 S3: this trait's OWN sigma_eps entry, not sigma_eps[1L].
+    sigma_eps_t <- if (t <= length(sigma_eps)) sigma_eps[t] else NA_real_
+    if (fid %in% c(0L, 3L) && is.finite(sigma_eps_t) && sigma_eps_t > 0) {
+      out[t] <- sigma_eps_t^2
     }
   }
   out

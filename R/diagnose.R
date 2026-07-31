@@ -611,12 +611,20 @@
   out
 }
 
+## Returns a PER-TRAIT logical vector: TRUE where that trait's sigma_eps
+## entry is mapped off (NA in the TMB map), FALSE where it is estimated.
+## Before #856, suppression was all-or-nothing so a single `all(is.na(...))`
+## scalar was the right contract. Since the per-trait Q7 guard (#856), a
+## MIXED design can suppress some traits and not others; `all()` would
+## silently report "not suppressed" (FALSE) whenever at least one trait is
+## free, hiding the traits that ARE fixed. Returns `logical(0L)` when the
+## parameter is not in the map at all (fully estimated, no entries fixed).
 .gllvmTMB_sigma_eps_mapped_off <- function(object) {
   map <- object$tmb_obj$env$map
   if (is.null(map) || !"log_sigma_eps" %in% names(map)) {
-    return(FALSE)
+    return(logical(0L))
   }
-  all(is.na(as.vector(map$log_sigma_eps)))
+  is.na(as.vector(map$log_sigma_eps))
 }
 
 #' Check convergence, Hessian, gradients, and interval readiness
@@ -1040,30 +1048,49 @@ check_gllvmTMB <- function(
     )
   }
 
+  ## #856 S3: sigma_eps is per-trait (length n_traits). Emit ONE row per
+  ## trait so a multi-trait fit's boundary check covers every trait, not
+  ## just the first; a single-trait fit keeps the original bare
+  ## "boundary_sigma_eps" component name for byte-identical output.
+  ## `.gllvmTMB_sigma_eps_mapped_off()` now returns a per-trait vector, so a
+  ## MIXED design (some traits Q7-suppressed, some not) is reported
+  ## per-trait rather than collapsed to a single all-or-nothing flag.
   sigma_eps <- as.numeric(object$report$sigma_eps %||% numeric(0L))
-  sigma_eps <- sigma_eps[is.finite(sigma_eps)]
   if (length(sigma_eps) > 0L) {
-    sigma_eps <- sigma_eps[1L]
-    mapped_off <- .gllvmTMB_sigma_eps_mapped_off(object)
-    rows <- c(
-      rows,
-      list(.gllvmTMB_check_row(
-        "boundary_sigma_eps",
-        if (isTRUE(mapped_off) || sigma_eps >= sigma_eps_thresh) {
-          "PASS"
-        } else {
-          "WARN"
-        },
-        .gllvmTMB_fmt_num(sigma_eps, digits = 4L),
-        sigma_eps_thresh,
-        if (isTRUE(mapped_off)) {
-          "sigma_eps is mapped off by the fitted model/family path"
-        } else {
-          "estimated continuous-family residual scale"
-        },
-        "if estimated near zero, check row-level unique terms or residual-scale identifiability"
-      ))
-    )
+    mapped_off_vec <- .gllvmTMB_sigma_eps_mapped_off(object)
+    trait_labs <- .gllvmTMB_trait_names(object)
+    n_se <- length(sigma_eps)
+    multi <- n_se > 1L
+    for (.t in seq_len(n_se)) {
+      se_t <- sigma_eps[.t]
+      if (!is.finite(se_t)) next
+      mapped_off_t <- if (length(mapped_off_vec) >= .t) mapped_off_vec[.t] else FALSE
+      comp_name <- if (multi) {
+        lab_t <- if (length(trait_labs) >= .t) trait_labs[.t] else as.character(.t)
+        paste0("boundary_sigma_eps_", lab_t)
+      } else {
+        "boundary_sigma_eps"
+      }
+      rows <- c(
+        rows,
+        list(.gllvmTMB_check_row(
+          comp_name,
+          if (isTRUE(mapped_off_t) || se_t >= sigma_eps_thresh) {
+            "PASS"
+          } else {
+            "WARN"
+          },
+          .gllvmTMB_fmt_num(se_t, digits = 4L),
+          sigma_eps_thresh,
+          if (isTRUE(mapped_off_t)) {
+            "sigma_eps is mapped off by the fitted model/family path"
+          } else {
+            "estimated continuous-family residual scale"
+          },
+          "if estimated near zero, check row-level unique terms or residual-scale identifiability"
+        ))
+      )
+    }
   }
 
   out <- do.call(rbind, rows)

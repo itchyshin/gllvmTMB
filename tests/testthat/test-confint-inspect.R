@@ -7,8 +7,15 @@
 
 make_tiny_fit_for_inspect <- function(seed = 1L) {
   set.seed(seed)
+  ## n_sites = 30, not the original 20 (#856 S3): sigma_eps is now per-trait
+  ## (length n_traits = 3), so each trait's own profile is informed by only
+  ## its own ~1/3 slice of the data, not the old pooled scalar's full n.
+  ## At n_sites = 20 (~53 obs/trait) the profile-vs-Wald 10% band in the
+  ## test below was measured to be MARGINAL (up to 0.1016, i.e. failing);
+  ## at n_sites = 30 (~79 obs/trait) it is comfortably inside (<= 0.08 for
+  ## all 3 traits, empirically re-checked at seed = 1).
   sim <- gllvmTMB::simulate_site_trait(
-    n_sites = 20,
+    n_sites = 30,
     n_species = 4,
     n_traits = 3,
     mean_species_per_site = 3,
@@ -29,7 +36,7 @@ make_tiny_fit_for_inspect <- function(seed = 1L) {
 
 test_that("confint_inspect() errors on non-fit input", {
   expect_error(
-    gllvmTMB::confint_inspect(list(foo = 1), parm = "sigma_eps"),
+    gllvmTMB::confint_inspect(list(foo = 1), parm = "sigma_eps[1]"),
     "fit returned by `gllvmTMB\\(\\)`"
   )
 })
@@ -39,7 +46,7 @@ test_that("confint_inspect() errors on missing or multi-element parm", {
   fit <- make_tiny_fit_for_inspect()
   expect_error(gllvmTMB::confint_inspect(fit), "single character target label")
   expect_error(
-    gllvmTMB::confint_inspect(fit, parm = c("sigma_eps", "b_fix[1]")),
+    gllvmTMB::confint_inspect(fit, parm = c("sigma_eps[1]", "b_fix[1]")),
     "single character target label"
   )
 })
@@ -68,7 +75,7 @@ test_that("confint_inspect() returns the documented structure", {
   skip_on_cran()
   fit <- make_tiny_fit_for_inspect()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::confint_inspect(fit, parm = "sigma_eps")
+    gllvmTMB::confint_inspect(fit, parm = "sigma_eps[1]")
   ))
   expect_s3_class(res, "gllvmTMB_confint_inspect")
   expect_named(res, c("curve", "bounds", "plot", "diagnostics", "call"))
@@ -107,7 +114,7 @@ test_that("sigma_eps profile is well-behaved and matches Wald to within 10%", {
   skip_on_cran()
   fit <- make_tiny_fit_for_inspect()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::confint_inspect(fit, parm = "sigma_eps")
+    gllvmTMB::confint_inspect(fit, parm = "sigma_eps[1]")
   ))
   ## No heuristic warning is not a quadratic-shape certificate.
   expect_equal(res$diagnostics, "no_heuristic_warning")
@@ -137,7 +144,7 @@ test_that("confint_inspect() returns a ggplot when ggplot2 is available", {
   skip_if_not_installed("ggplot2")
   fit <- make_tiny_fit_for_inspect()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::confint_inspect(fit, parm = "sigma_eps")
+    gllvmTMB::confint_inspect(fit, parm = "sigma_eps[1]")
   ))
   expect_s3_class(res$plot, "ggplot")
 })
@@ -170,7 +177,7 @@ test_that("print.gllvmTMB_confint_inspect runs without error", {
   skip_on_cran()
   fit <- make_tiny_fit_for_inspect()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::confint_inspect(fit, parm = "sigma_eps")
+    gllvmTMB::confint_inspect(fit, parm = "sigma_eps[1]")
   ))
   ## cli::cli_h1 etc. write to stderr; test that the data-frame portion
   ## (printed via base::print()) appears on stdout, and the cli headers

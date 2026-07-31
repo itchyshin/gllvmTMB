@@ -105,9 +105,14 @@ test_that("phylo_latent(1 + x | sp, d = 1) recovers per-column Sigma on Gaussian
   testthat::expect_lt(max(abs(S0bar - fx1$Sig0_true)), 0.30)
   testthat::expect_lt(max(abs(S1bar - fx1$Sig1_true)), 0.15)
 
-  ## Residual SD recovered on the first replicate.
+  ## Residual SD recovered on the first replicate. sigma_eps is now per-trait
+  ## (length n_traits, #856); the fixture's DGP uses the SAME true resid_sd
+  ## for every trait (see make_platent_slope_fixture()'s single `resid_sd`
+  ## argument), so each recovered per-trait entry should independently be
+  ## close to that one true value.
   fit1 <- fit_platent_slope(fx1$df, fx1$tree)
-  testthat::expect_equal(as.numeric(fit1$report$sigma_eps), fx1$resid_sd,
+  sigma_eps_hat <- as.numeric(fit1$report$sigma_eps)
+  testthat::expect_equal(sigma_eps_hat, rep(fx1$resid_sd, length(sigma_eps_hat)),
                          tolerance = 0.05)
 })
 
@@ -186,8 +191,12 @@ test_that("independent analytic joint-density cross-check matches TMB (< 1e-9)",
     }
     eta[o] <- eta[o] + add
   }
+  ## sigma_eps is per-trait (length n_traits) since #856; select each row's
+  ## own trait's residual SD rather than recycling a shorter vector across
+  ## rows of different traits (#856 S3 fix).
   sigma_eps <- exp(p$log_sigma_eps)
-  nll_obs <- -sum(stats::dnorm(dat$y, eta, sigma_eps, log = TRUE))
+  sigma_eps_row <- sigma_eps[trait_id + 1L]
+  nll_obs <- -sum(stats::dnorm(dat$y, eta, sigma_eps_row, log = TRUE))
 
   ## Independent N(0, A) prior on every factor column.
   nll_prior <- 0

@@ -307,14 +307,26 @@
   out
 }
 
-.apply_linkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL) {
+.apply_linkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL,
+                                    trait_id_1 = NULL) {
   n <- length(eta)
   out <- eta
   sigma_eps <- as.numeric(sigma_eps %||% 0)
-  sigma_eps <- if (length(sigma_eps) && is.finite(sigma_eps[1L])) {
-    sigma_eps[1L]
+  ## Per-row residual SD for the lognormal conditional mean (#856 S3).
+  ## `sigma_eps` is length n_traits; index it by each row's (1-indexed)
+  ## trait via `trait_id_1` when supplied and shape-matched. Callers that
+  ## cannot supply a per-row trait index fall back to broadcasting the
+  ## first element (previous behaviour), which is only exact for a
+  ## single-trait fit.
+  sigma_eps_row <- if (!is.null(trait_id_1) && length(trait_id_1) == n &&
+                        length(sigma_eps)) {
+    idx <- pmin(pmax(as.integer(trait_id_1), 1L), length(sigma_eps))
+    val <- sigma_eps[idx]
+    fallback <- if (is.finite(sigma_eps[1L])) sigma_eps[1L] else 0
+    val[!is.finite(val)] <- fallback
+    val
   } else {
-    0
+    rep(if (length(sigma_eps) && is.finite(sigma_eps[1L])) sigma_eps[1L] else 0, n)
   }
   for (i in seq_len(n)) {
     fid <- family_id[i]
@@ -339,7 +351,7 @@
     } else if (fid == 3L) {
       ## lognormal: eta is the mean on the log scale, so exp(eta) is the
       ## median; the conditional response mean includes sigma_eps^2 / 2.
-      out[i] <- exp(e + 0.5 * sigma_eps^2)
+      out[i] <- exp(e + 0.5 * sigma_eps_row[i]^2)
     } else {
       ## log-link families (poisson, Gamma, nbinom1/2, tweedie,
       ## truncated, delta): the conditional mean is exp(eta).
@@ -1104,7 +1116,24 @@ simulate.gllvmTMB_multi <- function(
       eta <- pp$est
       sigma <- as.numeric(object$report$sigma_eps)
       if (is.null(sigma) || length(sigma) == 0L) {
-        sigma <- exp(unname(object$opt$par["log_sigma_eps"]))
+        ## Name-lookup fallback: every element of a PARAMETER_VECTOR shares
+        ## one name in opt$par, so single-bracket `["log_sigma_eps"]` would
+        ## silently return only the first trait (#856 S3). Use .par_indices().
+        idx <- .par_indices(object, "log_sigma_eps")
+        sigma <- if (length(idx)) exp(unname(object$opt$par[idx])) else NA_real_
+      }
+      ## Per-row residual SD: index `sigma` (length n_traits) by each
+      ## newdata row's own trait rather than broadcasting one value across
+      ## every row/trait (#856 S3).
+      sigma_row <- if (!is.null(object$trait_col) &&
+                        object$trait_col %in% names(pp) && length(sigma)) {
+        tr_pp <- as.integer(pp[[object$trait_col]])
+        idx <- pmin(pmax(tr_pp, 1L), length(sigma))
+        val <- sigma[idx]
+        val[!is.finite(val)] <- sigma[1L]
+        val
+      } else {
+        rep(sigma[1L], length(eta))
       }
       cache_key <- "gllvmTMB.warned_simulate_newdata_gaussian_fallback"
       if (is.null(getOption(cache_key))) {
@@ -1118,7 +1147,7 @@ simulate.gllvmTMB_multi <- function(
         )
         options(stats::setNames(list(TRUE), cache_key))
       }
-      out <- replicate(nsim, eta + stats::rnorm(length(eta), sd = sigma))
+      out <- replicate(nsim, eta + stats::rnorm(length(eta), sd = sigma_row))
     }
     if (is.null(dim(out))) {
       out <- as.matrix(out)
@@ -1184,14 +1213,18 @@ simulate.gllvmTMB_multi <- function(
   n <- length(eta)
   y <- numeric(n)
 
-  ## sigma_eps is scalar for Gaussian/lognormal traits. Ordinary Gamma uses
-  ## per-trait phi_gamma shape below.
+  ## sigma_eps is per-trait (length n_traits) for Gaussian/lognormal traits
+  ## since #856. Ordinary Gamma uses per-trait phi_gamma shape below.
   sigma_eps <- as.numeric(fit$report$sigma_eps)
   if (is.null(sigma_eps) || length(sigma_eps) == 0L) {
-    sigma_eps <- exp(unname(fit$opt$par["log_sigma_eps"]))
-    if (is.na(sigma_eps)) sigma_eps <- 1
+    ## Name-lookup fallback: every element of a PARAMETER_VECTOR shares one
+    ## name in opt$par, so single-bracket `["log_sigma_eps"]` would
+    ## silently return only the first trait. Use .par_indices() instead
+    ## (R/profile-derived.R), the codebase's convention for vector params.
+    idx <- .par_indices(fit, "log_sigma_eps")
+    sigma_eps <- if (length(idx)) exp(unname(fit$opt$par[idx])) else 1
   }
-  sigma_eps <- sigma_eps[1L]
+  sigma_eps[!is.finite(sigma_eps)] <- 1
   phi_gamma <- as.numeric(fit$report$phi_gamma %||% numeric(0L))
   phi_nbinom2 <- fit$report$phi_nbinom2 # length n_traits
   phi_nbinom1 <- fit$report$phi_nbinom1 # length n_traits
@@ -1224,10 +1257,13 @@ simulate.gllvmTMB_multi <- function(
     lid <- lids[i]
     tid_1 <- tids[i] + 1L # 1-indexed for R
     eta_i <- eta[i]
+    ## Per-trait residual SD (#856 S3): fall back to trait 1's value only
+    ## if tid_1 is somehow out of range for the fitted sigma_eps vector.
+    sigma_eps_i <- if (length(sigma_eps) >= tid_1) sigma_eps[tid_1] else sigma_eps[1L]
 
     if (fid == 0L) {
       ## Gaussian, identity link
-      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps)
+      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps_i)
     } else if (fid == 1L) {
       ## Binomial — gllvmTMB does 1-trial Bernoulli per row
       p <- if (lid == 0L) {
@@ -1245,7 +1281,7 @@ simulate.gllvmTMB_multi <- function(
       y[i] <- stats::rpois(1L, lambda = exp(eta_i))
     } else if (fid == 3L) {
       ## Lognormal — y = exp(eta + N(0, sigma_eps))
-      y[i] <- exp(eta_i + stats::rnorm(1L, sd = sigma_eps))
+      y[i] <- exp(eta_i + stats::rnorm(1L, sd = sigma_eps_i))
     } else if (fid == 4L) {
       ## Gamma, log link with per-trait shape phi_gamma.
       ## scale = mu / shape; E(y) = mu.
@@ -1279,7 +1315,7 @@ simulate.gllvmTMB_multi <- function(
       ## link fallback does NOT overwrite the one-hot (panel Slice-1 correctness).
     } else {
       ## Unsupported family — Gaussian-on-link-scale fallback (warned above)
-      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps)
+      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps_i)
     }
   }
 
@@ -1732,7 +1768,10 @@ predict.gllvmTMB_multi <- function(
           out$est,
           fid_vec,
           lid_vec,
-          sigma_eps = object$report$sigma_eps
+          sigma_eps = object$report$sigma_eps,
+          ## #856 S3: row-aligned 1-indexed trait, so a lognormal
+          ## conditional mean uses THAT trait's sigma_eps, not trait 1's.
+          trait_id_1 = object$tmb_data$trait_id + 1L
         )
       } else if (!is.null(object$family$linkinv)) {
         out$est <- object$family$linkinv(out$est)
@@ -1770,7 +1809,9 @@ predict.gllvmTMB_multi <- function(
           out$est,
           fid_by_trait[tr_out],
           lid_by_trait[tr_out],
-          sigma_eps = object$report$sigma_eps
+          sigma_eps = object$report$sigma_eps,
+          ## #856 S3: `tr_out` is already the per-output-row 1-indexed trait.
+          trait_id_1 = tr_out
         )
       } else if (!is.null(object$family$linkinv)) {
         out$est <- object$family$linkinv(out$est)

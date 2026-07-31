@@ -47188,6 +47188,28 @@ issue has since been closed by the maintainer as filed on a false premise and th
 branch exploring it is **not for merging**; this fix is independent of it and
 true on `main` today, so it was lifted out on its own.
 
+## 2026-07-31  #843 shipped-engine truth start — Claude, evidence lane (PR #870)
+
+Checks for the AGHQ truth-start slice, recorded because the result withdraws the empirical
+basis of a shipped in-source justification.
+
+- `R CMD INSTALL` from `main` (`5999811a`): **EXIT=0**. Done FIRST because the installed
+  binary was built 2026-07-18 — 13 days stale, missing #844. A "shipped-engine" measurement
+  on a stale install is the same class of error as one on `dev/aghq-r-reference.R`.
+- `test-aghq-control-wiring.R` / `test-aghq-surface.R` / `test-aghq-golden.R` against the
+  patched source: **75 assertions, 0 failures, 0 errors** (5 pre-existing skips). The
+  `control$aghq_start_par` hook is additive and inert.
+- Pre-flight, run before any campaign fit: LQ rotation preserves Σ (`max|ΔΣ| = 3.55e-15`);
+  rotated Λ lower-triangular (`0`); **the C++ template round-trips the truth → packed-parameter
+  mapping (`max|ΔΛ| = 0`)** — the template, not the harness, certifies the map.
+- 120 shipped-engine fits (40 seeds × 3 arms), 0 failures. Local, 4 cores, ~25 min.
+  Totoro not used: the toolchain build would have cost more than the job. Results LOCAL (D-50).
+
+Directed note → whoever takes the AGHQ campaign next: **the `aghq` arm of every campaign in
+`dev/aghq-evidence/` is single-start and optimiser-limited.** Decide the start rule before
+scoping arms, or the campaign measures the start rather than the estimator. See
+`docs/dev-log/handover/2026-07-31-aghq-truthstart-done-campaign-next.md`.
+
 ## 2026-07-31 — #851 scale-aware start: regressions resolved (Claude)
 
 Branch: `claude/851-scale-aware-start-20260731`, PR #873 (open, **not merged**).

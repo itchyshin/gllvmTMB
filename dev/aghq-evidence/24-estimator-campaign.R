@@ -85,15 +85,29 @@ ARM_CTL <- list(
   aghq_ridge    = function() gllvmTMBcontrol(aghq = 9)
 )
 
-## the truth-free alternative start, exactly as R/fit-multi.R:5296-5313 builds it
-alt_start <- function(par, df, p, n) {
+## The truth-free alternative start, exactly as R/fit-multi.R:5310-5323 builds it.
+##
+## THE FAMILY GUARD IS LOAD-BEARING and was missing from the first draft of this
+## function. The engine applies the empirical-LOGIT intercepts only when
+## `identical(family_id_vec[1L], 1L)` -- i.e. binomial. For every other family the
+## intercepts stay at their Laplace values and only the loadings move to 0.3.
+## Dropping that guard does not merely diverge from the engine, it produces a
+## catastrophically bad start off the logit scale: measured at poisson n = 1600,
+## `aghq_alt` took 941 s against `aghq`'s 19 s, a 50x slowdown. Caught by exercising
+## the Stage 2 family switch, which is the whole reason that exercise was run.
+## Binomial -- Stage 1 and every slice-1 number -- is unaffected either way.
+alt_start <- function(par, df, p, n, family) {
   a <- par
   li <- which(names(a) == "theta_rr_B"); bi <- which(names(a) == "b_fix")
   if (!length(li) || !length(bi)) return(NULL)
   a[li] <- 0.3
-  pr <- colMeans(as.matrix(df[, paste0("sp", seq_len(p))]))
-  eps <- 1 / (4 * n)
-  a[bi] <- stats::qlogis(pmin(pmax(pr, eps), 1 - eps))
+  if (identical(family, "binomial")) {
+    pr <- colMeans(as.matrix(df[, paste0("sp", seq_len(p))]))
+    if (all(is.finite(pr))) {
+      eps <- 1 / (4 * n)
+      a[bi] <- stats::qlogis(pmin(pmax(pr, eps), 1 - eps))
+    }
+  }
   a
 }
 
@@ -109,7 +123,7 @@ one <- function(job) {
     ctl <- ARM_CTL[[arm]]()
     if (arm == "aghq_alt") {
       if (is.null(fits$aghq)) next
-      a <- alt_start(fits$aghq$opt$par, d$df, job$p, job$n)
+      a <- alt_start(fits$aghq$opt$par, d$df, job$p, job$n, job$family)
       if (is.null(a)) next
       ctl$aghq_start_par <- a
     }

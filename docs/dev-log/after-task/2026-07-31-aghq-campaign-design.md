@@ -121,6 +121,22 @@ Walking the neighbourhood of the convergence finding:
   than assumed either way.
 - Two R one-liners failed on shell escaping before I moved the analysis into a file. Minor,
   but the lesson is to put anything with regex metacharacters in a script.
+- **I shipped a fidelity bug in the runner and the Stage 2 exercise caught it.** My
+  `alt_start()` reimplements the engine's truth-free alternative start, and I dropped its
+  family guard: the engine applies the empirical-**logit** intercepts only when
+  `identical(family_id_vec[1L], 1L)` (binomial), leaving them at their Laplace values
+  otherwise. Mine applied `qlogis()` unconditionally, which off the logit scale is a
+  catastrophic start — **poisson n=1600 `aghq_alt` took 941 s against `aghq`'s 19 s, a 50×
+  slowdown**, which is how it announced itself. Fixed, and Stage 2 re-run clean.
+  **Binomial is unaffected**, so Stage 1 and every slice-1 number stand. The general lesson
+  is the sharper one: *reimplementing engine logic in a harness reintroduces exactly the
+  divergence risk that invalidated `dev/aghq-r-reference.R`* — the thing this whole lane
+  exists to correct. Where a harness must mirror engine code, it should mirror it line by
+  line and say so.
+- **My rapid pushes auto-cancelled four CI runs.** The concurrency group cancels in-flight
+  runs on a new push; batching the commits would have cost one run instead of five. The
+  last green run (`85e87099`) covers the only package-source change on the branch, and
+  nothing in `R/`, `src/` or `tests/` has changed since — verified, not assumed.
 
 ## 10. Known Residuals
 
@@ -130,8 +146,18 @@ Walking the neighbourhood of the convergence finding:
   the true convergence picture is bounded, not known.
 - **The √n reading describes three points.** It is consistent with the score's scale; it is
   not a derived rate and is not claimed as one.
-- **Stage 2 (gaussian/poisson) is designed but unexercised** — the runner's family switch
-  has only been run for binomial. Smoke it before Stage 2.
+- ~~Stage 2 unexercised~~ — **closed.** The family switch has now been run end-to-end for
+  gaussian and poisson at n = 100 and 1600, 0 fit failures, which is what surfaced the
+  `alt_start` fidelity bug above and re-costed the budget (252 → **134** measured
+  core-hours; poisson n=1600 dominates Stage 2 entirely).
+- **#874 is family-general**, on small cells: gaussian and poisson AGHQ arms converge **0%**
+  at both n. Gaussian returns the Laplace optimum bit-for-bit (`par_shift = 0`) at n = 1600
+  as well as n = 100 — and still reports non-convergence.
+- **My prediction P3 looks wrong for poisson.** I predicted a near-zero quadrature-moved
+  rate from the audit's *"poisson (74.0%) returns the Laplace answer bit-for-bit"*; poisson
+  moved in 4/4 fits (median |shift| ≈ 1.4–1.9e-2). Four fits cannot overturn the audit, and
+  the two may measure different things (bit-for-bit vs a 1e-6 threshold) — recorded now as a
+  prediction that currently looks wrong rather than dropped later.
 - **n = 400 per-fit time is interpolated**, not measured; flagged in the design's budget.
 - **The design's items 4, 6 and 9** (methods citations, package versions, worked case study)
   are short or absent and marked as such in the self-audit.

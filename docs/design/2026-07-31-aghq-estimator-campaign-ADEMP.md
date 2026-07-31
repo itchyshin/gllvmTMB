@@ -365,8 +365,13 @@ existing ControlMaster socket. Budget from **measured** per-fit times in
 | stage | fits | core-hours | wall-clock @100 cores |
 |---|---|---|---|
 | 1 — binomial, 3 n × 2 σ_λ × 5 arms × 400 | 12,000 | 640 | **6.4 h** |
-| 2 — gaussian + poisson, 2 n × 5 arms × 200 | 4,000 | 252 | **2.5 h** |
-| **total** | **16,000** | **893** | **~8.9 h** |
+| 2 — gaussian + poisson, 2 n × 5 arms × 200 | 4,000 | 252 → **134 (measured)** | **1.3 h** |
+| **total** | **16,000** | **~775** | **~7.8 h** |
+
+**Stage 2 re-costed from its own measured timings** (the original 252 extrapolated binomial
+times, which was conservative). Per replicate, summed over 5 arms: gaussian n=100 15 s,
+poisson n=100 186 s, gaussian n=1600 244 s, poisson n=1600 1973 s. Poisson at n=1600
+dominates Stage 2 entirely — if the budget needs trimming, trim there first.
 
 **Smoke-first, and abort on garbage:** run one cell (binomial, n=100, σ_λ=1, all 5 arms,
 10 seeds), read it, confirm non-empty valid output and that arm 4 differs from arm 3,

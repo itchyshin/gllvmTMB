@@ -5292,6 +5292,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## it can only improve the objective, and it costs one extra adaptation run.
       ## Set control$aghq_multistart = FALSE to restore the single warm start.
       aghq_starts <- list(opt$par)
+      ## DIAGNOSTIC HOOK (#843) -- deliberately NOT a `gllvmTMBcontrol()` argument.
+      ## Replaces the Laplace warm start with a caller-supplied vector so the AGHQ
+      ## arm's OWN argmin can be probed from a known point (e.g. the true
+      ## parameters). Reached only by hand-augmenting the control list; a control
+      ## built by `gllvmTMBcontrol()` has no such field, so this is inert for every
+      ## user and changes no shipped behaviour.
+      if (!is.null(control$aghq_start_par)) {
+        inj <- control$aghq_start_par
+        if (!identical(names(inj), names(opt$par))) {
+          cli::cli_abort("{.code control$aghq_start_par} does not match the fitted parameter vector.")
+        }
+        aghq_starts[[1L]] <- inj
+      }
       if (!identical(control$aghq_multistart, FALSE)) {
         alt <- opt$par
         lam_i <- which(names(alt) == "theta_rr_B")

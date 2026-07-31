@@ -1,0 +1,3 @@
+"truth","q","p","n","arm","n_attempted","n_ok","rate_ok","rate_ok_mcse","n_sigma_usable","sigma_rmse","sigma_rmse_mcse","n_healthy_nonseparated","n_collapse_usable","collapse_rate","collapse_rate_mcse","kappa_median","guard_rejected_rate","sigma_rmse_ml","n_sigma_usable_ml","rmse_gap","pass_rmse","pass_collapse","pass"
+"T-mid",2,8,100,"va_gh",1,1,1,0,1,4.87746391184344,NA,1,1,0,0,5.38880443376496,0,3.13038325095053,1,1.74708066089291,FALSE,TRUE,FALSE
+"T-mid",2,8,100,"va_jj",1,1,1,0,1,2.06248553147698,NA,1,1,0,0,2.53374563296321,0,3.13038325095053,1,-1.06789771947355,TRUE,TRUE,TRUE

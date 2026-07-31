@@ -82,7 +82,57 @@ Only the **data** is redrawn across seeds. `beta_0` is frozen alongside each `La
   design" and does not fix `p`; adding it **widens no tolerance** and closes a structural gap (below).
 - **`n` in {100, 400}** — the fence is `n >= 100`.
 - **Seeds: 1:40 per cell**, declared now.
-- **Family:** binomial-logit, `latent(..., unique = FALSE)`, `n_trials = 1`.
+- **Family:** binomial-logit, `latent(..., unique = FALSE)`, **`n_trials = 5`** — see the blocking
+  correction below. **NOT `n_trials = 1`.**
+
+### 🔴 BLOCKING CORRECTION — `n_trials = 1` would fail Gate 0 by construction
+
+This document originally specified `n_trials = 1` (Bernoulli). That is **outside Design 85's data
+contract and is an explicit Gate 0 NO-GO.** Verified against the source:
+
+- **§2:** *"The data are **complete multi-trial binomial** data: `n_it ∈ {2,3,…}` … There are no
+  response masks, case weights, offsets, fractional successes, **single-trial Bernoulli rows**, or
+  trait-specific links."*
+- **Gate 0 NO-GO list:** *"any implicit `Psi`, changed loading transform, missing cell, **trial count
+  below two**, or parked VA source copied without a fresh derivation audit."*
+
+Gates are sequential and Gate 3 cannot compensate for a failed Gate 0. A Bernoulli campaign would
+therefore have produced a result that **could never be admitted**, however it came out. Corrected to
+`n_trials = 5` (multi-trial, inside the contract). The three frozen truths are unaffected.
+
+### 🔴 …and the correction exposes a scope contradiction that is the MAINTAINER'S to resolve
+
+Three positions in this repository are mutually inconsistent:
+
+1. **Design 85 §2 / Gate 0** — Bernoulli is *excluded*; trial count below two is a NO-GO.
+2. **`main`'s validator** — `R/va-r3-proto.R:210-212` *admits* `n_trials >= 1`. The relaxation from
+   `>= 2` landed via `4dcf3d80` (PR #797), **and the separation guard written to protect it did
+   not** (`docs/dev-log/2026-07-30-va-branch-reconciliation.md`).
+3. **The motivating use case** — decisions.md **A3** names VA's purpose as *"high-$d$ **binary**
+   JSDM … the regime where Laplace genuinely degrades (5+ latent factors)"*. Binary means
+   presence/absence, i.e. **Bernoulli** — precisely what Design 85's contract excludes.
+
+**So a Gate-3 campaign that is *valid* cannot cover the regime that motivates the engine, and a
+campaign that covers that regime cannot be admitted.** This is not resolvable by an agent. It needs
+one of: (a) ship `engine="va"` fenced to **multi-trial only** (`n_trials >= 2`), and say plainly that
+binary JSDM — the headline use case — is **not** covered; (b) extend the contract to Bernoulli, which
+requires a **fresh Gate 0 scope freeze** and the separation guard landed first, since separation is
+endemic to sparse binary data; or (c) something else Shinichi decides.
+
+**The campaign does not run until this is resolved.** Recorded rather than chosen.
+
+### ⚠ A second risk to the pass rule's meaning, found during the smoke
+
+The pass rule is *"VA … no more than `0.05` worse in absolute terms than ML."* Debugging the smoke
+cell (5 extra seeds, in-memory, not persisted) found `ml_laplace` `kappa` ranging from **3.1 to
+1,430**, with **every** seed reporting `convergence = 0, pdHess = TRUE` — including the catastrophic
+ones. This is the same family as the pre-existing 12%-degeneracy-under-clean-status finding.
+
+If `RMSE_ml` is outlier-dominated, *"no more than 0.05 worse than ML"* becomes **trivially passable**
+— VA would clear a bar that ML itself is failing. A gate that a broken comparator makes easy is not a
+gate. **How `RMSE_ml` handles its own degenerate replicates must be decided before any verdict is
+read**, and it must be decided *now*, not after seeing the numbers (§11: tolerances cannot be widened
+after the fact). Flagged for the maintainer.
 - **Arms, all on byte-identical data:** `va_gh` (`eval_method = "gh"`, H = 15) · `va_jj`
   (`eval_method = "jj"`) · **`ml_laplace`** (the shipped engine, `unique = FALSE`) as the comparator
   Gate 3's pass rule is written against.

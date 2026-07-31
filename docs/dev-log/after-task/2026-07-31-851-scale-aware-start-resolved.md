@@ -152,36 +152,42 @@ folded in:
   start in two places (`R/fit-multi.R:3895`, `:3961`) — the same un-centralised shape that
   made this bug invisible, one level down.
 
-## 7a. Merge decision — NOT MERGED, and why
+## 7a. Merge decision — READY on the evidence; merging is the maintainer's act
 
-The arc's deliverable was "PR #873 merged, or a written, evidenced decision not to." This
-is that decision: **not merged.** It is not a quality verdict — everything inside this
-lane's control is green — but four gates are unmet, and three of them are not mine to
-clear.
+The deliverable was "PR #873 merged, or a written, evidenced decision not to." This is the
+decision: **the branch is ready and I recommend merging it; I am not merging it myself,
+because that specific act is reserved.**
 
-1. **One test fails, and it belongs to another lane.**
-   `test-aghq-multistart-convergence.R:103` pins `objective == 379.7134` as a
-   backward-compatibility snapshot under `aghq_multistart = FALSE`. #851 changes the
-   default start, so that single start is no longer the same point. Measured on both
-   trees: the branch reaches a **less** severe runaway (‖Λ̂‖/‖Λ‖ 22.57 vs 29.70,
-   max|Λ| 53.3 vs 81.7) at a 0.83-higher objective, in a region that lane's own file
-   documents as non-MLE (a truth-start reaches 375.175). So it is two pathological points,
-   not a quality regression — but it is **their** test, landed the same day in #875, and
-   per the lane-split doctrine an overlap is the maintainer's call, not an agent's. A
-   directed note with the measurement and three options is in `check-log.md`.
-2. **Merge authority.** `CLAUDE.md` lets an agent merge its own PR only for the
-   enumerated low-risk set, which is documentation-shaped. This changes `R/`.
-3. **3-OS CI.** `AGENTS.md`'s completion protocol requires it. The workflow runs
-   `ubuntu-latest` only by default; the macOS + Windows matrix is behind a
-   `workflow_dispatch` input reserved for pre-release, and those runners bill at 10× and
-   2×. Spending that is a maintainer decision, so it was not triggered. The ubuntu runs
-   were also superseded by successive pushes and reported no result.
-4. **Full `--as-cran` not re-established** — only the restricted form above.
+Three of the four gates that were open when this section was first written have since been
+closed on merit, not waived:
 
-**What IS established:** two root causes found and fixed on merit, the headline
-scale-equivariance result preserved exactly and now guarded in-suite for the first time,
-an overclaim corrected, a register row added, and — against a `main` baseline re-derived
-after `origin/main` moved under this branch mid-arc — no failure attributable to this work.
+| gate | state |
+|---|---|
+| Suite vs `main` | **CLOSED.** 348 files, **18 fail / 3 err** — file-for-file identical to the re-derived `main` baseline (`test-m3-pilot-manifest.R` 16+2, `test-profile-derived-curves.R` 2, `test-tweedie-fixed-p.R` 1 err). PASS 14173 vs main's 14161. |
+| Cross-lane AGHQ failure | **CLOSED on merit** — see below. Their test was not touched. |
+| `R CMD check --as-cran` | **CLOSED. 0 errors, 0 warnings, 1 NOTE** (the standard "New submission"), vignettes built and examples run. The 348-file suite was verified separately on Totoro rather than inside the check. |
+| Merge authority | **OPEN, and not mine.** `CLAUDE.md` limits agent self-merge to the enumerated low-risk set, which is documentation-shaped; this changes `R/`. `AGENTS.md` additionally wants 3-OS CI, and that matrix sits behind a `workflow_dispatch` reserved for pre-release (macOS and Windows bill at 10× and 2×), so triggering that spend is a maintainer decision too. |
+
+**How the cross-lane failure was closed, because it matters more than the fact that it
+was.** The AGHQ lane's new test pins a start-dependent objective, and #851 moved it. The
+tempting fixes were both wrong: re-snapshotting their number, or arguing from my
+measurement that their fit was "less runaway" and therefore fine. Neither addresses why my
+change was touching that fit at all.
+
+It should not have been. Every #851 measurement is **gaussian** — "multiply the response
+by k" is only a meaningful perturbation of an unbounded continuous response. For a
+binomial fit y is 0 or 1 and there is no response scale to get wrong. The start
+nevertheless keyed off the working residual for every family, so it perturbed fits it had
+no evidence to perturb. That is the *same* error as the original blast radius, one axis
+over: this branch had already argued that five tiers must keep their historical start
+because moving an unmeasured start trades a known problem for an unknown one — and then
+did not apply that rule across families.
+
+Gating on `all(family_id_vec == 0L)` restores the binomial cell **exactly** (379.7133 vs
+main's 379.7134, loading-runaway ratio 29.700, max|Λ| 81.655 — identical) and costs the
+gaussian result nothing: on a matched pair of runs the two-tier oracle is byte-identical
+gated and ungated at both scales. So the cross-lane test passes on its own terms, and the
+scoping rule is now consistent instead of nearly consistent.
 
 ## 9. What did not go smoothly
 

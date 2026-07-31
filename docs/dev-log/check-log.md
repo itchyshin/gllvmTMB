@@ -47349,3 +47349,20 @@ The 18 + 3 are identical on both, file for file. The one difference is
 the AGHQ lane — measurement and options in the directed note above; deliberately not
 touched. `test-scale-equivariance.R` passes, and was verified to FAIL on `origin/main`
 (Λ rel.err 0.99 at k = 5000) before being trusted.
+
+**FINAL — after gating the scale to gaussian fits (`faca8289`).** Totoro, 348 files:
+
+| tree | files | PASS | FAIL | ERROR |
+|---|---|---|---|---|
+| `origin/main` | 347 | 14161 | 18 | 3 |
+| `claude/851-scale-aware-start-20260731` | 348 | **14173** | **18** | **3** |
+
+File-for-file identical failure sets. The `test-aghq-multistart-convergence.R` failure
+reported in the directed note above is **resolved** — not by editing that lane's test, but
+by narrowing #851 to the family it was measured on, which restores their cell exactly
+(379.7133 vs 379.7134, runaway ratio 29.700 both). The directed note is retained as the
+record of the interaction; no action is needed from that lane.
+
+`R CMD check --as-cran --no-tests --no-manual` (local, Mac, vignettes built, all Suggests
+present): **0 errors, 0 warnings, 1 NOTE** — the standard "New submission". The test suite
+is verified by the 348-file Totoro run above rather than inside the check.

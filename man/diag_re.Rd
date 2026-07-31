@@ -134,23 +134,33 @@ non-phylogenetic species-level covariance). Their sum is
 
 \subsection{Per-row \code{indep()} / legacy \code{unique()} and \code{sigma_eps}: auto-suppression}{
 
-For Gaussian / lognormal / Gamma fits, the engine also estimates a
-single observation-scale residual \code{sigma_eps} (the sigma_eps of the response).
+For Gaussian and lognormal fits, the engine also estimates an
+observation-scale residual \code{sigma_eps} (the sigma_eps of the response).
+Ordinary Gamma carries its own per-trait shape \code{phi_gamma} and does not use
+\code{sigma_eps}.
+\code{sigma_eps} is estimated \strong{per trait}, one residual SD for each Gaussian or
+lognormal trait.
+
 In new code, write observation-level diagonal residual terms as
 \code{indep(0 + trait | g)}. The legacy \code{unique(0 + trait | g)} spelling is
-still accepted as compatibility syntax. If that grouping \code{g} has \strong{one row
-per (trait, g) cell} (i.e. the diagonal random effects are at the per-row /
-per-observation level), the diagonal-variance parameters and \code{sigma_eps} are
-jointly unidentifiable -- only the sum
-\eqn{\mathrm{sd}_g[t]^2 + \sigma_\varepsilon^2} is identified.
+still accepted as compatibility syntax. If a trait has \strong{one row per
+(trait, g) cell} (i.e. its diagonal random effect is at the per-row /
+per-observation level), that trait's diagonal variance and its \code{sigma_eps}
+are jointly unidentifiable -- only the sum
+\eqn{\mathrm{sd}_g[t]^2 + \sigma_\varepsilon[t]^2} is identified.
 
-In that case the engine \strong{auto-suppresses} \code{sigma_eps} (fixed at
+For such a trait the engine \strong{auto-suppresses} \code{sigma_eps} (fixed at
 \eqn{\approx 10^{-3}} of \code{sd(y)}) so the diagonal random effects fully
 absorb the row-level residual variance, and emits a one-shot message
-announcing the suppression. This matches the user's intent when they
+naming the traits affected. This matches the user's intent when they
 write a per-row \code{indep()} term: they want the diagonal variance to
 represent the row-level residual, not to compete with \code{sigma_eps}
 for it.
+
+The decision is made \strong{separately for each trait}, because a design can
+replicate one trait and not another. In a fit where trait \code{t1} has several
+rows per cell and trait \code{t2} has one, \code{sigma_eps[1]} is estimated normally
+while \code{sigma_eps[2]} is suppressed, and the message names \code{t2} alone.
 
 If you have multiple rows per (trait, g) cell (e.g. \code{indep(0 + trait | site)} with several species per site), \code{sigma_eps} is the \emph{within-cell}
 residual and the diagonal random effects are the \emph{between-cell} per-trait

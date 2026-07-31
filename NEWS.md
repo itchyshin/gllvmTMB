@@ -202,6 +202,35 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Changed
 
+* **Gaussian and lognormal residual standard deviations are now estimated per
+  trait.** Until now a single residual SD was shared across every Gaussian and
+  lognormal row in a fit, while every other family already had one dispersion
+  parameter per trait. In a stacked-trait model that is a real restriction: two
+  traits measured in different units — a mass in grams and a length in
+  millimetres — were forced to the same residual SD, and the fitted value came
+  out as a compromise between them rather than either one. There was no way to
+  say "these traits vary differently around their means".
+
+  `report$sigma_eps` is therefore a vector with one entry per trait, and the
+  quantities built from it — predictions, simulated responses, residuals, and
+  the fit-health checks — are trait-aware accordingly.
+
+  Two consequences worth knowing before you upgrade:
+
+  **Residual SDs are now named per trait when you ask for intervals.** They
+  follow the same convention as the other per-trait variances, so what was
+  `"sigma_eps"` is now `"sigma_eps[1]"`, `"sigma_eps[2]"`, and so on, exactly
+  as `"sd_B[1]"` already worked. Code that passes `parm = "sigma_eps"` to
+  `confint_inspect()` needs the index added.
+
+  **Automatic suppression is now decided per trait.** When a diagonal residual
+  term sits at the per-row level, the residual SD and that diagonal cannot both
+  be identified, and the engine already fixed the residual SD at a negligible
+  value so the diagonal absorbs it. That decision used to be made once for the
+  whole fit; it is now made for each trait, because a design can perfectly well
+  replicate one trait and not another. The message now names the traits it
+  applies to.
+
 * Ordinary `latent()` now represents
   `Sigma = Lambda Lambda^T + Psi` by default. Use
   `latent(..., unique = FALSE)` for the earlier loadings-only subset.

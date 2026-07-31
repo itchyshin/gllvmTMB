@@ -293,20 +293,27 @@ bridge remains experimental and is not required for the main workflow.
   are standardised by definition and it is the starting *direction* that was
   missing, not the magnitude.
 
-  For an ordinary single-tier `latent()` model this is now exact: on a
-  4-trait fit, multiplying the response by 100 or by 5000 reproduces every
-  expected transformation to within about one part in 100,000. Two other
-  implementations of the same model do not hold that law on the same data, so if
-  you have worked around this by rescaling your response by hand, you no longer
-  need to.
+  For an ordinary single-tier `latent()` model on 4 traits, multiplying the
+  response by 100 now reproduces every expected transformation to within about
+  one part in 100,000. At a factor of 5000 it holds to about 1% in the worst of
+  eight simulated datasets — looser, but well inside the 2% we accept, and the
+  quantities most people report (the correlations and the communality) hold
+  there too. Two other implementations of the same model do not hold that law on
+  the same data: their worst cases are roughly 100% and 200% out, meaning a
+  loading that should have doubled did not move. If you have worked around this
+  by rescaling your response by hand, you no longer need to.
 
   This covers the ordinary latent structure on your unit grouping — `latent()`
-  and the variance term it carries. The phylogenetic, spatial, kernel and
-  random-slope latent terms deliberately keep their previous starting values: the
-  collapse above has only been measured for the ordinary case, and moving a
-  starting value that has not been measured trades a known problem for an
-  unmeasured one. If you fit one of those forms on a response far from unit
-  scale, rescaling it by hand is still worth doing.
+  and the variance term it carries. Everything else deliberately keeps its
+  previous starting values: the phylogenetic, spatial, kernel and random-slope
+  latent terms, and also the **second grouping of a nested two-tier fit** (the
+  within-unit level, e.g. species-within-site). Starting values for the latent
+  scores are also left alone when you give `latent()` a predictor with
+  `lv = ~ ...`, because there the scores have a fitted mean rather than a free
+  one. The collapse above has only been measured for the ordinary single-tier
+  case, and moving a starting value that has not been measured trades a known
+  problem for an unmeasured one. If you fit any of those forms on a response far
+  from unit scale, rescaling it by hand is still worth doing.
 
   One case is **not** fully resolved. In a nested two-tier fit the residual scale
   error is around 2%, and that remainder is a property of the likelihood surface

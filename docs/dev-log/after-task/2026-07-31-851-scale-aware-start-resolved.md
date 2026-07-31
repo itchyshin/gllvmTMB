@@ -47,8 +47,12 @@ Three commits, in the order the evidence arrived.
 
 ## 4. Files touched
 
-**Package** — `R/fit-multi.R` (both engine commits), `NEWS.md` (scope disclosure).
-**Tests** — `tests/testthat/test-traits-keyword.R`, `tests/testthat/test-canonical-keywords.R`.
+**Register row — `MIS-35`** (`docs/design/35-validation-debt-register.md`), added per that
+document's rule that every PR touching an advertised capability appends or updates a row.
+**Package** — `R/fit-multi.R` (both engine commits, plus the helper de-duplication),
+`NEWS.md` (scope disclosure + the corrected precision figure).
+**Tests** — `tests/testthat/test-scale-equivariance.R` (**new** — the in-suite guard),
+`tests/testthat/test-traits-keyword.R`, `tests/testthat/test-canonical-keywords.R`.
 **dev/** — `dev/851-dep-vs-latent-ridge-tolerance.R` (new; the 12-seed ridge measurement).
 **docs/** — this report.
 Not touched: `src/` (byte-identical to `main` throughout, which is what made the baseline
@@ -86,7 +90,32 @@ packages, so the run aborts at the dependency stage before examining the package
 k = 100 and k = 5000, worst case 0.0105, against gllvm 3/16 (worst 0.998) and glmmTMB
 14/16 (worst 2.00) — reproducing the pre-existing numbers exactly.
 
+## 5b. Rose's pre-merge audit, and what it changed
+
+`AGENTS.md` requires a Rose cross-file consistency audit before merge on an
+inference-machinery touch. It returned **NOT READY** with two blockers, both fair:
+
+- **NEWS overclaimed by ~3 orders of magnitude.** It said scaling by 100 *or 5000*
+  reproduced every transformation "to within about one part in 100,000". True at k = 100;
+  at k = 5000 the measured worst case across eight seeds is 0.0105, i.e. about 1%. The
+  figure had been inherited unexamined from an internal handover that stated it two
+  sentences above its own contradicting table. Corrected to state both scales separately.
+- **No validation-debt register row**, contrary to the register's own binding rule. Added
+  as `MIS-35`.
+
+Writing that row surfaced the more serious gap: **no test in the suite asserted the scale
+law at all.** The entire headline claim rested on two opt-in `dev/` scripts, so a future
+regression would have been invisible to CI. Closed by `test-scale-equivariance.R`.
+
 ## 6. Tests of the tests
+
+`test-scale-equivariance.R` was checked to bite before being trusted, and the first two
+drafts of it failed that check. A k = 100-only version passes on `origin/main` — the
+pre-fix engine already held the law there — so it would have guarded nothing. A fixture
+with unmodelled within-unit replication was mis-specified and drifted at both scales
+regardless of the fix. The shipped version uses the comparator study's exact fixture and
+**fails on `origin/main` with Lambda rel.err 0.99** (the loadings do not move at all when
+the response is scaled by 5000), while k = 100 passes on both trees.
 
 The re-fixtured assertions were checked to still bite: the rejected loadings-only fixture
 fails them loudly (`|grad|` ~1e+11), and the retained `convergence == 0` checks now run on
@@ -95,11 +124,25 @@ a model where both trees converge cleanly with gradients three to four orders ti
 
 ## 8. Consistency audit
 
-Swept the neighbourhood for the same defect class. `init_rr_theta` has **two further
-private copies** — `init_rr_theta_spde_lv` and `init_rr_theta_pkg` — that hardcode `0.5`.
-They are why two tiers escaped the original blast radius, by accident rather than design.
-Not fixed here (out of scope, and a pure de-duplication should not ride on a behaviour
-commit); filed as a follow-up task.
+Swept the neighbourhood for the same defect class. `init_rr_theta` had **two further
+private copies** — `init_rr_theta_spde_lv` and `init_rr_theta_pkg` — each hardcoding
+`0.5`. They are why two tiers escaped the original blast radius, by accident rather than
+design. Consolidated in `ae6308d2` at Shinichi's request, as a separate commit from any
+behaviour change; identity proved over all 820 `(p, rank)` pairs with `rank <= p <= 40`,
+and the suite is unchanged down to the PASS count.
+
+Rose's audit then found two the first sweep missed, both left for follow-up rather than
+folded in:
+
+- **`.gllvmTMB_default_rr_lambda`** (`R/init-warmstart.R:328`) hardcodes `0.5` with no
+  reference to response scale — the same defect class, in the degenerate fallback of the
+  opt-in `start_method = "res"`. Worse, that branch already computes a *scale-aware* Psi
+  beside it, so it pairs a scale-blind Λ with a scale-aware Ψ: the imbalance this arc
+  spent its effort removing from the default path, still present in the opt-in one.
+  Bounded (opt-in, degenerate data only) but real, and not disclosed in NEWS.
+- **`theta_dep_chol` / `theta_spde_dep_chol`** inline the same `log(0.5)` Cholesky-diagonal
+  start in two places (`R/fit-multi.R:3895`, `:3961`) — the same un-centralised shape that
+  made this bug invisible, one level down.
 
 ## 9. What did not go smoothly
 

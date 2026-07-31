@@ -1205,6 +1205,22 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' @param aghq_shift_tol,aghq_grad_tol,aghq_f_tol Convergence tolerances for the
 #'   adaptation loop: the quadrature-point shift, the gradient at the adaptation
 #'   point, and the change in objective. Defaults `1e-4`, `1e-4`, `1e-9`.
+#' @param aghq_grad_tol_rel Relative gradient tolerance, tested as
+#'   `max|grad| / max(1, |objective|)`. Default `1e-6`. The gradient of a
+#'   likelihood summed over many observations grows with the sample, so the
+#'   absolute `aghq_grad_tol` on its own becomes unreachable at scale. The two are
+#'   combined with `OR`, so this can only ever admit more fits as converged, never
+#'   fewer; set it to `0` to test the absolute tolerance only. Read
+#'   `fit$aghq$converged` for the verdict — **not** `fit$opt$convergence`, which
+#'   on the quadrature path records the optimiser's per-pass iteration cap and so
+#'   reports a limit even on a healthy fit.
+#' @param aghq_multistart If `TRUE` (default), the quadrature is run from two
+#'   starting points — the Laplace optimum and a data-driven alternative that uses
+#'   no knowledge of the truth — and the fit with the better final objective is
+#'   kept. `FALSE` uses the Laplace warm start only, reproducing the behaviour of
+#'   earlier versions. The extra start costs one additional adaptation run, and
+#'   exists because the Laplace optimum is sometimes itself a runaway that the
+#'   quadrature would otherwise inherit.
 #' @param aghq_escalate_patience Number of accepted passes before the iteration
 #'   cap is escalated. Default `3L`.
 #' @param aghq_rho_min Minimum trust-region-style acceptance ratio for a pass.
@@ -1287,6 +1303,29 @@ gllvmTMBcontrol <- function(
   aghq_continuation = TRUE,
   aghq_shift_tol = 1e-4,
   aghq_grad_tol = 1e-4,
+  ## RELATIVE gradient tolerance, and why it exists (#874).
+  ##
+  ## `aghq_grad_tol` is ABSOLUTE, and the gradient of a log-likelihood summed over
+  ## n x p observations grows with the data. Measured, binomial p=6 q=2: the
+  ## max |grad| the loop stops at runs 1.39e-4 -> 2.68e-4 -> 6.72e-4 for
+  ## n = 100 -> 400 -> 1600 (step ratios 1.93 and 2.51 against an n-ratio of 4).
+  ## Against a fixed 1e-4 that made convergence UNREACHABLE at scale: 0% of fits
+  ## converged at n = 400 and n = 1600, in gaussian, poisson AND binomial -- i.e.
+  ## in exactly the large-n regime AGHQ is for. Gaussian makes it sharpest: AGHQ
+  ## returns the Laplace optimum BIT-FOR-BIT (par_shift = 0), Laplace certifies
+  ## that point converged, and AGHQ did not.
+  ##
+  ## The test is an OR -- absolute OR relative, relative being
+  ## max|grad| / max(1, |F|). Keeping the absolute leg means nothing that
+  ## converged before stops converging; the relative leg only ever ADDS
+  ## convergent cases. Set `aghq_grad_tol_rel = 0` for the old absolute-only rule.
+  aghq_grad_tol_rel = 1e-6,
+  ## READ at R/fit-multi.R but never PRODUCED here, so `control$aghq_multistart`
+  ## was always NULL and the documented off-switch was unreachable -- `...` swallowed
+  ## it with an "ignored" warning (#871). Same defect class as the six AGHQ fields
+  ## noted above and as #844's dead k-ladder. Now load-bearing: it is the opt-out
+  ## for the two-start AGHQ search (#843).
+  aghq_multistart = TRUE,
   aghq_f_tol = 1e-9,
   aghq_escalate_patience = 3L,
   aghq_rho_min = 1 / 64,
@@ -1344,6 +1383,8 @@ gllvmTMBcontrol <- function(
     aghq_continuation = isTRUE(aghq_continuation),
     aghq_shift_tol = as.numeric(aghq_shift_tol),
     aghq_grad_tol = as.numeric(aghq_grad_tol),
+    aghq_grad_tol_rel = as.numeric(aghq_grad_tol_rel),
+    aghq_multistart = isTRUE(aghq_multistart),
     aghq_f_tol = as.numeric(aghq_f_tol),
     aghq_escalate_patience = as.integer(aghq_escalate_patience),
     aghq_rho_min = as.numeric(aghq_rho_min),

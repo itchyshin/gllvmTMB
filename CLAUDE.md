@@ -11,7 +11,24 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
-- **2026-07-30 (LATEST) — SESSION CLOSED; the re-aimed degeneracy campaign is APPROVED and
+- **2026-07-31 (LATEST) — VA SHIPS IN 0.6; Gate 3 is RUNNING.** Lane
+  `claude/va-in-06-20260730`, **PR #869** (open, **not for merge** — the campaign's verdict is part
+  of its evidence). Maintainer decisions 2026-07-30/31: VA ships in 0.6 reversing the 2026-07-21
+  cut, and **Laplace stays the DEFAULT with AGHQ for accuracy — VA and EVA are OPT-IN.**
+  `gllvmTMBcontrol(integration=)` + a hard fence are built, tested and honest (it aborts rather than
+  silently returning Laplace) but **NOT yet routed**. Gates 0/1/2 PASS by measurement. The
+  **separation guard** landed — `main` had accepted Bernoulli VA fits with no separation check since
+  PR #797. **EVA is settled: ours ≡ gllvm's algebra, and its degeneracy is genuine** (its own
+  objective scores the runaway 291 nats above the truth; more restarts make it *worse*) — a **67.7%
+  mode-selection failure**, not a 7-OOM error.
+  **🔴 A campaign is writing to `/private/tmp/gllvmtmb-va-in-06` — do NOT delete or clean that
+  worktree, and read `dev/va-gate3/results/LIVENESS-NOTE.md` before judging it dead (0% CPU is by
+  design).** **START HERE:** `docs/dev-log/handover/2026-07-31-claude-handover.md`, then the
+  operative spec `docs/dev-log/2026-07-31-gate0-scope-extension-and-s11-departure.md`, then the lane
+  map. **Needs Shinichi:** the estimator (Gate 3 decides), the `RMSE_ml` rule once both variants are
+  visible, and whether `"eva"` stays a fenced value.
+
+- **2026-07-30 — SESSION CLOSED; the re-aimed degeneracy campaign is APPROVED and
   UNSTARTED.** `main` @ `bef1a5aa` (#840 + #850 merged). **🔴 The campaign's original premise was
   refuted pre-flight, by measurement:** VGH's 0/148 does **not** survive at larger q/p — at
   n=40/p=80/q=4, `rel_frob` 10.671/10.449 on 2 of 4 seeds, `atten_F > 2` on 4 of 4, `max|Λ|`

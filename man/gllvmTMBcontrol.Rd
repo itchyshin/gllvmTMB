@@ -24,6 +24,8 @@ gllvmTMBcontrol(
   aghq_continuation = TRUE,
   aghq_shift_tol = 1e-04,
   aghq_grad_tol = 1e-04,
+  aghq_grad_tol_rel = 1e-06,
+  aghq_multistart = TRUE,
   aghq_f_tol = 1e-09,
   aghq_escalate_patience = 3L,
   aghq_rho_min = 1/64,
@@ -121,6 +123,24 @@ pass. Default \code{1L}. Later passes escalate when continuation is enabled.}
 \item{aghq_shift_tol, aghq_grad_tol, aghq_f_tol}{Convergence tolerances for the
 adaptation loop: the quadrature-point shift, the gradient at the adaptation
 point, and the change in objective. Defaults \code{1e-4}, \code{1e-4}, \code{1e-9}.}
+
+\item{aghq_grad_tol_rel}{Relative gradient tolerance, tested as
+\verb{max|grad| / max(1, |objective|)}. Default \code{1e-6}. The gradient of a
+likelihood summed over many observations grows with the sample, so the
+absolute \code{aghq_grad_tol} on its own becomes unreachable at scale. The two are
+combined with \code{OR}, so this can only ever admit more fits as converged, never
+fewer; set it to \code{0} to test the absolute tolerance only. Read
+\code{fit$aghq$converged} for the verdict — \strong{not} \code{fit$opt$convergence}, which
+on the quadrature path records the optimiser's per-pass iteration cap and so
+reports a limit even on a healthy fit.}
+
+\item{aghq_multistart}{If \code{TRUE} (default), the quadrature is run from two
+starting points — the Laplace optimum and a data-driven alternative that uses
+no knowledge of the truth — and the fit with the better final objective is
+kept. \code{FALSE} uses the Laplace warm start only, reproducing the behaviour of
+earlier versions. The extra start costs one additional adaptation run, and
+exists because the Laplace optimum is sometimes itself a runaway that the
+quadrature would otherwise inherit.}
 
 \item{aghq_escalate_patience}{Number of accepted passes before the iteration
 cap is escalated. Default \code{3L}.}

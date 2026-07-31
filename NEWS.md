@@ -71,6 +71,40 @@ bridge remains experimental and is not required for the main workflow.
   covers the unit-tier loadings only. `check_gllvmTMB()` now names this remedy
   when it reports a runaway loading.
 
+* **Adaptive quadrature (`gllvmTMBcontrol(aghq = k)`) now tries two starting
+  points and keeps the better fit.** It previously ran from a single start — the
+  Laplace optimum — on the grounds that without a penalty there is nothing to
+  choose between two starts. That holds for two *starting points*; it does not
+  hold for two *converged fits*, which can simply be compared. It matters
+  because the Laplace optimum is sometimes itself a runaway, and quadrature then
+  inherits it: measured over 40 binomial fits at n = 100, sixteen ran away
+  catastrophically, and on **all sixteen** the second start reached a strictly
+  better objective — by 1.1 to 12.9 in negative log-likelihood — and a far more
+  plausible loading matrix. Catastrophic fits fell from **16 in 40 to 1 in 40**.
+
+  The second start is data-driven and uses no knowledge of the truth; the cost
+  is one extra adaptation run. `aghq_multistart = FALSE` restores the previous
+  single-start behaviour exactly. Note that this switch was documented but
+  **did not previously take effect**, because it was not among the arguments
+  `gllvmTMBcontrol()` accepted.
+
+* **Quadrature fits can now report convergence at realistic sample sizes, and
+  every stop says why.** The convergence test compared the gradient against a
+  fixed threshold. Because a likelihood's gradient grows with the amount of
+  data, that threshold became unreachable as the sample grew: no fit at n = 400
+  or n = 1600 could be certified as converged, in any family tried — including
+  cases where the quadrature had landed on precisely the point the Laplace fit
+  reported as converged. The test now also accepts a **relative** gradient
+  (`aghq_grad_tol_rel`). This changes the verdict, not the estimate: fits are
+  identical either way.
+
+  Every stopping condition now reports its gradient, including the one that
+  previously reported none, so a genuine stall can be distinguished from a near
+  miss. Read `fit$aghq$converged` for the verdict — **not**
+  `fit$opt$convergence`, which on this path records the optimiser's per-pass
+  iteration cap and therefore reports a limit even on a healthy fit. `fit$aghq`
+  also now carries `grad_max`, `grad_rel`, and how many starts were run.
+
 * `getLV()` gains an `se = TRUE` argument that returns the standard error of
   every unit-level (or within-unit) latent score, alongside the scores, as
   `list(scores, se)`. The default `se = FALSE` is unchanged (a bare matrix).

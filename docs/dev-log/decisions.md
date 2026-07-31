@@ -2515,3 +2515,48 @@ unclassifiable from outside the engine and the counterfactual is a LOWER bound.
 
 Evidence: `docs/dev-log/audits/2026-07-31-aghq-convergence-nladder.md` (270 fits; 150 on
 Totoro in its own lane dir, Codex's design90/91 untouched). Results LOCAL (D-50).
+
+## 2026-07-31  Three AGHQ engine fixes land — and multi-start selection is only as good as the objective it ranks on
+
+Decision: record the three fixes (#843, #871, #874, PR #875) and, more importantly, the
+correction that emerged while making them.
+
+**#843 -- multi-start.** AGHQ ran from ONE start under `aghq_ridge = Inf`. Both starts now run
+to convergence and the better fit wins. Catastrophic fits **16/40 -> 1/40**; seed 2003 frob
+29.700 -> 2.365, objective 379.7134 -> 375.179. **#871 -- `aghq_multistart`** was read but
+never produced by `gllvmTMBcontrol()`; it had to be made reachable BEFORE the default could
+change, and `FALSE` reproduces the old answer exactly. **#874 -- convergence.** The gradient
+tolerance was ABSOLUTE while the gradient grows with the data, so convergence was unreachable
+at scale (0% at n = 400 and n = 1600, in three families). A RELATIVE leg, OR-ed with the
+absolute one so it can only ever ADD convergent cases: n=100 8.3% -> 25%, n=400 0% -> 58.3%,
+with the estimates **byte-identical** -- a criterion fix must change the verdict, not the
+answer.
+
+**THE CORRECTION, and it is binding on future work.** "Select the better final objective" --
+this lane's own recommendation two slices earlier -- is INCOMPLETE. Selection is only as
+trustworthy as the objective it ranks on. Measured on the q = 2 golden fixture at **k = 3**:
+the alternative start reached a LOWER AGHQ objective (1.884065 vs 1.909543) at a point where
+the k = 3 quadrature is wrong by **0.107** against an independent nested-`integrate()` oracle,
+while the warm start sat at 2.9e-09 from it. **The optimiser had exploited quadrature error**
+-- the same shape as a runaway exploiting Laplace's error, which is the failure this lane
+began on. At k = 5, 7, 9 the two starts agree to the last digit, so the trap is specific to a
+grid too coarse to be believed. Ranking is now on **(converged, objective)**; when both runs
+agree on convergence it reduces exactly to the objective comparison.
+
+**Two consequences that generalise beyond AGHQ.** (1) Any multi-start or model-selection rule
+that ranks on an APPROXIMATE criterion inherits that approximation's error, and fails silently
+because the criterion reports success. (2) The campaign's own evidence base could never have
+caught this -- it uses k = 9, where the quadrature is accurate. Only a fixture whose ground
+truth comes from OUTSIDE the machinery did. Keep at least one such oracle in any estimator
+validation.
+
+**Also binding: state which suite number you mean.** The AGHQ suite reports **105** assertions
+with skips active and **1571** with `NOT_CRAN=true`. The k = 3 regression was hiding in that
+15x gap. Full suite on the final state: **9012 assertions, 0 failures**.
+
+**Not decided here:** whether the campaign may now run. #874 was its blocker and is cleared,
+but n = 400 convergence is 58%, not 100%, and the residual STALLS are a separate, unfixed
+question -- the new gradient reporting shows they sit at ~50x tolerance, so they are genuinely
+not near-misses. The campaign must be RE-GATED on a fresh smoke before 16,000 fits are spent.
+
+Evidence: `docs/dev-log/after-task/2026-07-31-aghq-engine-fixes.md`. Results LOCAL (D-50).

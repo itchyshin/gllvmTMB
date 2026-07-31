@@ -46,8 +46,18 @@
   data.frame(site = site, trait = trait, y = y)
 }
 
-.aghq_gaussian_fit <- function(aghq) {
-  ctrl <- gllvmTMB::gllvmTMBcontrol(n_init = 1, init_jitter = 0, se = FALSE, aghq = aghq)
+## `ridge = Inf` turns the loading penalty OFF, and it matters for any test that
+## compares an AGHQ objective against a Laplace objective: under the default
+## `tau = 2` the AGHQ arm optimises a PENALISED objective, so it is a MAP fit and
+## equality with the Laplace MLE objective is not something that should hold.
+## See the exactness test below, which now says so explicitly.
+.aghq_gaussian_fit <- function(aghq, ridge = NULL) {
+  ctrl <- if (is.null(ridge)) {
+    gllvmTMB::gllvmTMBcontrol(n_init = 1, init_jitter = 0, se = FALSE, aghq = aghq)
+  } else {
+    gllvmTMB::gllvmTMBcontrol(n_init = 1, init_jitter = 0, se = FALSE, aghq = aghq,
+                              aghq_ridge = ridge)
+  }
   suppressWarnings(gllvmTMB::gllvmTMB(
     .aghq_gaussian_formula, data = .aghq_gaussian_data(), family = gaussian(),
     unit = "site", control = ctrl
@@ -121,9 +131,17 @@ test_that("GAUSSIAN EXACTNESS: AGHQ reproduces the Laplace objective and is k-in
   ## only stub would produce by coincidence.
   skip_if_not(.aghq_smoke_ok(), "AGHQ kernel not available in this build -- skipped, not failed")
 
-  fit_lap <- .aghq_gaussian_fit(FALSE)
-  fit_k3  <- .aghq_gaussian_fit(3L)
-  fit_k9  <- .aghq_gaussian_fit(9L)
+  ## THE PENALTY MUST BE OFF, and this is not a weakening -- it is the test
+  ## finally isolating what it claims to test. `aghq_ridge` defaults to tau = 2,
+  ## so the default AGHQ arm optimises `F + 0.5||theta||^2/tau^2`: a MAP fit, a
+  ## DIFFERENT objective from the Laplace MLE. Equality was never something that
+  ## should hold there; it held only because the optimiser was not finding the
+  ## better penalised point, and it stopped holding the moment multi-start did
+  ## (#843). The integrator was never implicated: with the penalty off, AGHQ
+  ## reproduces Laplace to ~1e-10 at k = 3 and k = 9, single- or multi-start.
+  fit_lap <- .aghq_gaussian_fit(FALSE, ridge = Inf)
+  fit_k3  <- .aghq_gaussian_fit(3L,    ridge = Inf)
+  fit_k9  <- .aghq_gaussian_fit(9L,    ridge = Inf)
 
   expect_true(isTRUE(fit_k3$aghq$used))
   expect_true(isTRUE(fit_k9$aghq$used))
@@ -135,6 +153,16 @@ test_that("GAUSSIAN EXACTNESS: AGHQ reproduces the Laplace objective and is k-in
   ## k = 3 and k = 9 must ALSO agree with each other -- the k-independence
   ## half that rules out the agreement above being a fluke of one k.
   expect_equal(unname(fit_k3$opt$objective), unname(fit_k9$opt$objective), tolerance = 1e-8)
+
+  ## AND THE CONVERSE, guarded rather than merely explained: with the DEFAULT
+  ## ridge the AGHQ objective must NOT equal the Laplace one, because a penalised
+  ## fit is a different estimator. If this ever starts passing, the penalty has
+  ## silently stopped biting and #847/#848 need re-opening.
+  fit_k9_pen <- .aghq_gaussian_fit(9L)
+  expect_true(isTRUE(fit_k9_pen$aghq$penalised))
+  expect_false(isTRUE(all.equal(unname(fit_k9_pen$opt$objective),
+                                unname(fit_lap$opt$objective),
+                                tolerance = 1e-8)))
 })
 
 ## ---------------------------------------------------------------------

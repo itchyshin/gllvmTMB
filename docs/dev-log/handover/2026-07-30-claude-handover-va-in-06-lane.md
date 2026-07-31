@@ -2,7 +2,7 @@
 
 Date: 2026-07-30 (late). Author: Claude. Target: **Claude** (same platform), or Shinichi at ~05:00.
 Lane: `claude/va-in-06-20260730`, worktree `/private/tmp/gllvmtmb-va-in-06`, off `origin/main`
-`c473364e`. **11 commits, pushed.**
+`c473364e`. **10 commits, pushed** (`git log --oneline origin/main..HEAD | wc -l`).
 
 ## Mission control
 

@@ -20,6 +20,16 @@ structure match the DGP; and no starting-value or restart setting escapes the mo
 restarts make it **worse**, because gllvm selects the restart with the best EVA objective
 and the degenerate mode *has* the best EVA objective.
 
+The two sharpest single facts, both computed here:
+
+- At the reproduced worst cell, EVA's own objective scores its runaway solution
+  (attenuation 8.8e+08) at **-327.4** and the **true generating parameters** at **-618.6**.
+  It prefers the degenerate answer by 291 nats. The optimiser is not failing.
+- On a cell where the default EVA fit is *good* (attenuation 1.16), setting `n.init = 5`
+  finds a better EVA optimum and lands at attenuation **3.8e+08**; `n.init = 10` gives
+  6.3e+08. **The standard remedy for start-sensitivity destroys the estimate**, which is
+  the opposite sign to what any "we under-specified the fit" hypothesis predicts.
+
 Two secondary findings **are** ours, and both are reporting defects rather than
 measurement defects:
 
@@ -188,6 +198,40 @@ optimiser that is failing. It also explains why restarts cannot be the fix *in p
 gllvm selects among `n.init` restarts by the EVA objective, and the degenerate mode
 maximises it. Adding restarts is a more thorough search for the wrong optimum.
 
+### 5.1 The cleanest demonstration: `n=100, p=20, q=2, seed=1`
+
+Two further cells were probed the same way. `n=40, p=8, q=2, seed=1` behaves like the cell
+above (every variant degenerate; `start.lvs = u` gives attenuation 6.064e+07 at
+`convergence = TRUE`; VA reference 1.743). But `n=100, p=20, q=2, seed=1` is the decisive
+one, because **the default EVA fit on that cell is good**:
+
+| variant | EVA logL | converged | attenuation |
+|---|---:|---|---:|
+| **default (`n.init = 1`)** | **-1306.295** | TRUE | **1.164** |
+| `start.lvs = ` the TRUE latent variables | -1306.307 | TRUE | **1.158** |
+| `max.iter = 50000` | -1306.295 | TRUE | 1.164 |
+| `starting.val = "zero"` | -1253.683 | TRUE | 2.004e+08 |
+| `starting.val = "random"`, `n.init = 5` | -1253.002 | TRUE | 5.034e+08 |
+| **`n.init = 5`** | **-1199.687** | TRUE | **3.815e+08** |
+| **`n.init = 10`** | **-1196.953** | TRUE | **6.282e+08** |
+| VA reference | -1310.864 | TRUE | 0.8786 |
+
+Read the top and bottom of that table together. **`n.init = 5` converts a perfectly good
+EVA fit (attenuation 1.16) into a catastrophic one (3.8e+08), and `n.init = 10` makes it
+worse still.** The good answer and the true-LV start sit at EVA objective ≈ -1306; the
+degenerate mode sits at -1197, i.e. **109 nats better**. The good fit survives only because
+a single default start happens to land in a *worse* local optimum and stay there.
+
+This is the whole finding in one cell: the standard remedy for start-sensitivity does not
+rescue EVA, it destroys it, because it is a more thorough search for a global optimum that
+is wrong. Any hypothesis of the form "we under-specified the optimiser" predicts the
+opposite sign.
+
+(Incidental, and further against hypothesis 1: on the **good** `n=100 p=20 q=2` fit,
+`max abs theta = 7.58e+03` while `max abs sigma.lv = 1.99e-04`. Enormous `theta` with a
+correct `Lambda Lambda^T`. Neither factor alone diagnoses anything — only the product does,
+and the product is what `getLoadings()` returns.)
+
 ---
 
 ## 6. The crux (brief item 5) — is the fit degenerate, or only the derived quantity?
@@ -313,8 +357,12 @@ Stated plainly, because the prior was that we would be.
    | n100 p80 q2 s1 | EVA | 1.426 | TRUE | **TRUE** |
    | n200 p80 q2 s2 | EVA | 1.105 | TRUE | **TRUE** |
    | **n40 p8 q2 s1** | **EVA** | **1.229e+07** | **TRUE** | **FALSE** |
+   | n100 p20 q4 s1 | EVA | 5.470e+07 | FALSE | **FALSE** |
    | n40 p20 q4 s7 | EVA | 8.814e+08 | FALSE | **FALSE** |
-   | (all five) | VA | 0.85 - 1.74 | TRUE | TRUE |
+   | (all six) | VA | 0.85 - 1.74 | TRUE | TRUE |
+
+   Six for six: `is.list(fit$sd)` is TRUE on every non-degenerate fit and FALSE on every
+   degenerate one, across both methods.
 
    Note row 4: gllvm reports `convergence = TRUE` on a fit with attenuation 1.2e+07, and
    `sd` still catches it. The harness's `status` column (built from `convergence` alone)
@@ -339,8 +387,9 @@ None of these change the point estimates. They change how the numbers should be 
 
 ## 9. Corrected numbers
 
-There is **no usage fix**. Nine settings were tried (§5) and every one stayed in the
-degenerate mode; the better ones went further into it. The corrected reporting is:
+There is **no usage fix**. Twelve settings were tried across three cells (§5, §5.1); none
+escapes the degenerate mode where it exists, and on `n=100 p=20 q=2 s1` restarts *created*
+it. The corrected reporting is:
 
 | statistic | as recorded | corrected framing |
 |---|---:|---|
@@ -382,9 +431,12 @@ objective that produces it.
   gllvm's own reported `logL` at gllvm's own solution to 7e-5 relative, and its JJ sibling
   matches gllvm's VA `logL` exactly, so I treat it as verified for the purpose it is used
   for. It is **not** a claim about gllvm's internal implementation details.
-- Four cells were probed for starting values (`n=40 p=20 q=4 s7` completely; three others
-  in progress at write time). The regime table in §7 is from the full 300-row recorded
-  grid, which is the broader evidence.
+- Three cells were probed completely for starting values (`n=40 p=20 q=4 s7`,
+  `n=40 p=8 q=2 s1`, `n=100 p=20 q=2 s1`), plus five cells for the `sd` flag. The regime
+  table in §7 is from the full 300-row recorded grid, which is the broader evidence. The
+  `n=100 p=20 q=2 s1` result in §5.1 is a single cell; it is decisive about *direction*
+  (restarts move the estimate the wrong way) but the 67.7 % rate comes from the grid, not
+  from it.
 - I did not read the EVA source paper. The framing of "what the literature claims" is
   taken from the brief, not independently checked.
 
@@ -398,5 +450,14 @@ All under `/private/tmp/gllvmtmb-va-in-06/dev/eva-probe/`:
 - `p3-starts.R` / `p3.log` — starting values and restarts
 - `p4b-objective.R` — validated EVA/JJ objective reconstruction and the scaling rays
 - `p5-knobs.R` / `p5.log` — `control.va` / `control.start` / optimiser knobs
+- `p6-sdflag.R` / `p6.log` — `is.list(fit$sd)` as a degeneracy flag, 5 cells x 2 methods
 
 Nothing in `R/`, `src/`, or `dev/totoro-grid/` was modified.
+
+**Lane note (surfaced, not resolved).** While this probe was still running, a concurrent
+session committed a mid-flight snapshot of these files as `32859a74` and then closed the
+lane with `8d12ff9a`. That snapshot is **stale**: it predates §5.1, the `n.init`
+sign-reversal cell, and the completed `p3`/`p6` runs — i.e. it is missing the strongest
+single piece of evidence in this report. The complete version is the working-tree copy at
+this path. I have deliberately **not** committed, amended, or reverted anything: the lane
+was closed by another writer and re-opening it is the maintainer's call, not mine.

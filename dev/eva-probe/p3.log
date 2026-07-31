@@ -55,3 +55,8 @@ n100 p20 q2 s1   EVA start=zero              logL=  -1253.683 conv=TRUE  att=  2
 Standard errors for parameters could not be calculated, due to singular fit.
 n100 p20 q2 s1   EVA start=random n.init=5   logL=  -1253.002 conv=TRUE  att=  5.034e+08 max|th|= 1.22e+05 max|sig|=    0.613 max|eta|= 1.42e+05 (12s) 
 n100 p20 q2 s1   EVA start.lvs=TRUE u        logL=  -1306.307 conv=TRUE  att=      1.158 max|th|= 1.59e+03 max|sig|=  0.00168 max|eta|=     3.26 (2s) 
+n100 p20 q2 s1   EVA max.iter=50000          logL=  -1306.295 conv=TRUE  att=      1.164 max|th|= 7.58e+03 max|sig|= 0.000199 max|eta|=     3.32 (3s) 
+n100 p20 q2 s1   VA reference                logL=  -1310.864 conv=TRUE  att=     0.8786 max|th|= 9.01e+03 max|sig|= 0.000143
+There were 50 or more warnings (use warnings() to see the first 50)
+
+DONE

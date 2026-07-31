@@ -2254,6 +2254,45 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   site_id         <- as.integer(data[[site]]) - 1L
   site_species_id <- as.integer(data[[ss_name]]) - 1L
 
+  ## ---- Opt-in variational route (integration = "va") --------------------
+  ## Every engine input now exists in the right form, and nothing of the
+  ## Laplace objective has been assembled yet -- so this is where the
+  ## variational route branches off and returns. See R/va-routing.R.
+  ##
+  ## The test is `identical(., "va")`, NOT `!= "laplace"`: a direct call to
+  ## this function with an unrouted route (e.g. "eva", bypassing gllvmTMB())
+  ## must not fall through into Laplace assembly. Unknown routes abort.
+  integration_route <- control$integration %||% "laplace"
+  if (!identical(integration_route, "laplace")) {
+    if (!identical(integration_route, "va")) {
+      cli::cli_abort(c(
+        "{.arg integration} = {.val {integration_route}} is not routed.",
+        ">" = "Use {.code integration = \"laplace\"} (the default)."
+      ))
+    }
+    return(.gllvmTMB_va_route(
+      parsed         = parsed,
+      y              = y,
+      n_trials       = n_trials,
+      X              = X_fix,
+      unit_id        = site_id,
+      trait_id       = trait_id,
+      n_units        = n_sites,
+      n_traits       = n_traits,
+      unit_col       = site,
+      family_per_row = family_per_row,
+      family_id_vec  = family_id_vec,
+      link_id_vec    = link_id_vec,
+      is_y_observed  = is_y_observed,
+      weights_i      = weights_i,
+      mi_enabled     = isTRUE(mi_setup$enabled),
+      offset_expr    = parsed$offset_expr,
+      REML           = REML,
+      lambda_constraint = lambda_constraint,
+      Xcoef_fixed    = Xcoef_fixed
+    ))
+  }
+
   ## ---- Phase 2a/2b/2c missing-PREDICTOR layer (design 67) ---------------
   ## Detect + validate mi(x), build the latent-level Gaussian covariate model,
   ## and locate the broadcast mi() column in X_fix. The latent-bearing level is

@@ -1,0 +1,64 @@
+Warning message:
+package ‘gllvm’ was built under R version 4.6.1 
+Standard errors for parameters could not be calculated, due to singular fit.
+Lambda.start = 1.0                       logL=   -312.088 conv=FALSE att=  1.239e+09 max|sig.lv|= 1.28e+03 (22s)
+Warning messages:
+1: In se.gllvm(out) : Hessian calculation produced na/nan's.
+2: In sweep(cov.mat.mod, 2, sds[incl], "/") :
+  STATS is longer than the extent of 'dim(x)[MARGIN]'
+3: In (function (y = NULL, X = NULL, TR = NULL, data = NULL, formula = NULL,  :
+  The algorithm did not converge, the maximum number of iterations might have been reached.
+Standard errors for parameters could not be calculated, due to singular fit.
+Lambda.start = 2.0                       logL=   -326.553 conv=FALSE att=  1.895e+09 max|sig.lv|= 1.89e+03 (22s)
+Warning messages:
+1: In se.gllvm(out) : Hessian calculation produced na/nan's.
+2: In sweep(cov.mat.mod, 2, sds[incl], "/") :
+  STATS is longer than the extent of 'dim(x)[MARGIN]'
+3: In (function (y = NULL, X = NULL, TR = NULL, data = NULL, formula = NULL,  :
+  The algorithm did not converge, the maximum number of iterations might have been reached.
+Standard errors for parameters could not be calculated, due to singular fit.
+Lambda.struc = diagonal                  logL=   -328.469 conv=FALSE att=  8.949e+08 max|sig.lv|= 1.44e+03 (9s)
+Warning messages:
+1: In se.gllvm(out) : Hessian calculation produced na/nan's.
+2: In sweep(cov.mat.mod, 2, sds[incl], "/") :
+  STATS is longer than the extent of 'dim(x)[MARGIN]'
+3: In (function (y = NULL, X = NULL, TR = NULL, data = NULL, formula = NULL,  :
+  The algorithm did not converge, the maximum number of iterations might have been reached.
+Standard errors for parameters could not be calculated, due to singular fit.
+diag.iter = 0                            logL=   -313.712 conv=FALSE att=  5.338e+10 max|sig.lv|=      675 (16s)
+Warning messages:
+1: In se.gllvm(out) : Hessian calculation produced na/nan's.
+2: In sweep(cov.mat.mod, 2, sds[incl], "/") :
+  STATS is longer than the extent of 'dim(x)[MARGIN]'
+3: In (function (y = NULL, X = NULL, TR = NULL, data = NULL, formula = NULL,  :
+  The algorithm did not converge, the maximum number of iterations might have been reached.
+Standard errors for parameters could not be calculated, due to singular fit.
+start.struc = 'all'                      logL=   -327.404 conv=FALSE att=  8.814e+08 max|sig.lv|= 1.92e+03 (22s)
+Warning messages:
+1: In se.gllvm(out) : Hessian calculation produced na/nan's.
+2: In sweep(cov.mat.mod, 2, sds[incl], "/") :
+  STATS is longer than the extent of 'dim(x)[MARGIN]'
+3: In (function (y = NULL, X = NULL, TR = NULL, data = NULL, formula = NULL,  :
+  The algorithm did not converge, the maximum number of iterations might have been reached.
+Standard errors for parameters could not be calculated, due to singular fit.
+jitter.var = 0.2, n.init=5               logL=   -329.518 conv=TRUE  att=   1.31e+09 max|sig.lv|=      161 (96s)
+Warning messages:
+1: In se.gllvm(out) : Hessian calculation produced na/nan's.
+2: In sweep(cov.mat.mod, 2, sds[incl], "/") :
+  STATS is longer than the extent of 'dim(x)[MARGIN]'
+Standard errors for parameters could not be calculated, due to singular fit.
+optim.method = L-BFGS-B                  logL=   -336.251 conv=FALSE att=  2.922e+05 max|sig.lv|=     82.2 (9s)
+Warning messages:
+1: In optim(objr$par, objr$fn, objr$gr, method = optim.method, control = list(reltol = reltol,  :
+  method L-BFGS-B uses 'factr' (and 'pgtol') instead of 'reltol' and 'abstol'
+2: In se.gllvm(out) : Hessian calculation produced na/nan's.
+3: In sweep(cov.mat.mod, 2, sds[incl], "/") :
+  STATS is longer than the extent of 'dim(x)[MARGIN]'
+4: In (function (y = NULL, X = NULL, TR = NULL, data = NULL, formula = NULL,  :
+  The algorithm did not converge, the maximum number of iterations might have been reached.
+Standard errors for parameters could not be calculated, due to singular fit.
+reltol = 1e-4 (loose stop)               logL=   -389.330 conv=TRUE  att=  1.382e+04 max|sig.lv|=     8.43 (1s)
+Warning messages:
+1: In se.gllvm(out) : Hessian calculation produced na/nan's.
+2: In sweep(cov.mat.mod, 2, sds[incl], "/") :
+  STATS is longer than the extent of 'dim(x)[MARGIN]'

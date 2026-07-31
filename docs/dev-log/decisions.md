@@ -2417,6 +2417,48 @@ longer exists, so the result is recorded but not reproducible. A confirmatory, p
 (`docs/dev-log/2026-07-29-certificate-gate-preregistration.md`, commit `90798365`). **No live
 certificate. No public claim.**
 
+## 2026-07-30  VA SHIPS IN 0.6 — Amendment 1 reversed on admission, with the costing on the table
+
+**Maintainer decision, Shinichi Nakagawa, in session.** gllvmTMB 0.6 ships an **opt-in, hard-fenced
+`engine = "va"`**, reversing the 2026-07-21 cut of EVA/VA to 0.7 (`LOOP/GOAL.md` Amendment 1,
+preserved by Amendment 3) and re-opening Design 85's closed NO-GO status (`LOOP/GOAL.md:172`) on
+stated terms. Recorded as `LOOP/GOAL.md` **Amendment 4**; full record
+`docs/dev-log/2026-07-30-va-ships-in-06-reversal.md`.
+
+**The decision was taken after the costing was surfaced, not before it.** Design 108 prices the VA
+parity programme at *"26–42 working days excluding spatial, critical path 17–26"*, and the
+2026-07-20 pilot audit is a NO-GO whose stated cause is that the runner selected rank by ML before
+fitting VA — *"the Gate-4 hand-off design, not the required fixed-rank Gate-3 known-DGP
+comparison"*, with failed fits excluded from the denominator. Both were put in front of the
+maintainer. The 0.6 route is a fenced subset far smaller than the programme Design 108 prices.
+
+**What does not change:** Laplace remains the **default** (Design 104 §4.1's first sentence stands);
+Design 85 §10's prohibitions stand in full; **no intervals, SEs, or coverage claims** from the VA
+path (`calibrated = FALSE` stays, which is what defers the ~1,900-replicate-per-cell coverage
+campaign out of 0.6); Design 105 §10's architectural breakages for **multinomial** and
+**zero-inflated / `*_mix`** are not repealed by a decision; TMB template edits stay HIGH-RISK
+(Design 72 §7 — maintainer discussion + Codex, never a Claude auto-merge); no advertising until a
+register row carries VA-vs-LA recovery evidence.
+
+**Admission is earned, not granted by this decision** — by **Design 85 §11 Gate 3 as written**
+(`beta`, `Sigma_B`, fitted probabilities; RMSE no more than 0.05 worse than ML in absolute terms;
+no planted axis collapsing in >5% of healthy non-separated replicates), run at **fixed rank** with
+**every attempted fit in the denominator**, against **fixed pre-declared truths** rather than
+truths redrawn per seed. §11: tolerances cannot be widened after seeing the result.
+
+🔴 **SUPERSEDED 2026-07-31 by Gate 3 — the estimator is JJ, not GH.** The paragraph below is
+kept as the dated record of what was believed before the campaign ran, and it is a good example
+of why the gate existed: the reasoning was principled and the measurement disagreed. See the
+2026-07-31 entry at the end of this file.
+
+**Estimator: GH quadrature, not the JJ/Pólya-Gamma bound** — already Design 104 §4.2's policy
+(*"EXACT where it exists, GH otherwise"*), now derived rather than assumed. JJ's objective is
+coercive in `‖Λ‖`, so it cannot produce a runaway and its 0/320 degeneracy record was a theorem
+before a fit ran; and `rel_frob > 10` requires `‖Sigma_hat‖ > 9‖Sigma_true‖`, so the detector is
+structurally blind to contraction. Recomputed from `dev/totoro-grid/results/grid.csv`, JJ's signed
+scale `tr(Sigma_hat)/tr(Sigma_true)` runs 1.670 → 1.015 → 0.857 → 0.780 across n = 40/100/200/400
+— through 1 and still falling. GH is not innocent either: **4.302 at n=40**, which is why the fence
+sets `n >= 100` as a hard error rather than a warning.
 ## 2026-07-31  The AGHQ small-n runaway is an OPTIMISER FAILURE, not the MLE — every "AGHQ alone" number is single-start
 
 Decision: record, from 120 fits through the SHIPPED engine (#843, PR #870), that the AGHQ
@@ -2560,3 +2602,74 @@ question -- the new gradient reporting shows they sit at ~50x tolerance, so they
 not near-misses. The campaign must be RE-GATED on a fresh smoke before 16,000 fits are spent.
 
 Evidence: `docs/dev-log/after-task/2026-07-31-aghq-engine-fixes.md`. Results LOCAL (D-50).
+
+## 2026-07-31  Gate 3 reports — estimator JJ, rule R2, fence q<=2. And two reporting passes were wrong before a panel caught them.
+
+**Maintainer decisions, Shinichi Nakagawa, in session**, on the corrected Gate 3 result
+(`docs/dev-log/2026-07-31-gate3-result-corrected.md`): **(1) estimator = JJ; (2) rule = R2 (paired
+exclusion); (3) fence at `q <= 2`.**
+
+**This supersedes the 2026-07-30 "Estimator: GH quadrature, not the JJ/Pólya-Gamma bound" entry
+above**, which is left in place as the dated record of what was believed before the campaign ran.
+That reasoning was principled — JJ's objective is coercive in `‖Λ‖`, so its clean degeneracy record
+was a theorem before a fit ran, and the `rel_frob > 10` detector is structurally blind to
+contraction. The measurement disagreed anyway. **That is what the gate was for.**
+
+**What Gate 3 measured.** 2,160 datasets × 3 arms = 6,480 fits, known truth, fixed rank, full
+denominators, no filtering on status or admitted, run on Totoro
+(`docs/dev-log/2026-07-31-gate3-totoro-migration.md`). Under R2, `va_jj` passes the RMSE criterion in
+**every cell** (50/50; 54/54 raw) with a worst gap of 0.0393 against a 0.05 tolerance, and holds the
+lower `Sigma_B` error in 52 of 54 cells ignoring Laplace entirely (sign test p = 1.7e-13) — in all
+eleven leave-one-out subsets over truth, q, p and n. `va_gh` passes 13/50. **`va_jj` clears the full
+frozen conjunction in 100% of `q <= 2` cells under BOTH pre-declared rules** (36/36, 34/34), so the
+shipped boundary does not depend on the recorded §11 departure.
+
+**`q <= 4` was refused on its own terms.** The 2026-07-31 scope freeze admitted it *conditionally* —
+"only if Gate 3's q = 4 cells pass on their own terms." Every `va_jj` axis-collapse failure sits in
+the single `q = 4, p = 8` corner at rates 0.26–0.77 against a 0.05 tolerance, every lower 2·MCSE
+bound above the threshold. Four latent axes are not identifiable from eight responses. **The fence
+ships at `q <= 2` — narrower than hoped, and further from A3's 5+ factors, not closer.**
+
+### 🔴 The reporting failed twice before the numbers were trustworthy
+
+Recorded because the errors are more transferable than the result.
+
+1. **A conjunction reported as one half.** The first pass reported "va_jj passes 50/50" — that is
+   `pass_rmse` alone. The frozen rule is RMSE **and** collapse.
+2. **A pooled median hid the signal.** κ was said to "clear the contraction worry" from a pooled
+   median of 1.68, while a real JJ contraction subgroup (`T-strong × n=400`, median κ 0.74) sat
+   underneath it. Exactly the *check the gradient any pooled summary pools over* failure already in
+   this repo's ledger.
+3. **Then an over-correction.** Told GH scored better on the collapse half, the second pass declared
+   "a genuine crossover, neither arm wins." Also wrong — and **declining a conclusion the evidence
+   supports is a defect symmetric with overclaiming.**
+
+A **D-43 panel of three fresh reviewers returned 3/3 NOT-DONE**, and an independent reimplementation
+then reproduced every shipped number to float precision. **The analyser's arithmetic was never in
+doubt; the reporting was.**
+
+### The collapse criterion cannot rank the two arms — do not cite it as if it can
+
+`any_axis_collapsed` is TRUE **zero times in 6,480 rows** for `va_gh`. Not rare — never. Its
+degenerate solutions are intercepted upstream by a variance-domain guard that **`va_jj` does not have
+at all**, and those rows are then removed from the collapse denominator by `status == "ok"`: va_gh
+loses 39.4% of attempts from that denominator, va_jj 28.2%. Under the alternative denominator the
+direction **flips**. The two arms are not measured with the same instrument on that criterion.
+
+Also killed: "fails collapse in ~18% of cells" is **not** "above the 5% tolerance" — the tolerance is
+a **per-cell rate**, and `va_jj`'s pooled collapse rate is **4.45%**, below it.
+
+### Three analyser defects fixed, all one family
+
+An undefined value silently becoming a verdict: R2 **dropped 4 cells outright** where the ML
+comparator was degenerate in 40/40 replicates (breaking the both-rules-every-cell commitment *and*
+hiding a finding about Laplace); `is.finite(x) & x <= tol` scored 6 **unmeasured** cells as failures;
+and `max_abs_gradient` was computed by the engine and dropped by the row builder. The second was
+found only because the first was fixed inconsistently — same bug, one function away.
+
+**Not supported by this evidence, and not claimed:** any interval or coverage statement
+(`calibrated = FALSE`); anything at `q >= 3`; anything at `n = 400, p = 80`, where the usable-fit
+rate is 6% and the RMSE is a survivor statistic; and poisson-log, which the fence admits on
+theoretical grounds but Gate 3 never tested (the campaign was Bernoulli).
+
+> Register: `docs/design/35-validation-debt-register.md` Section 15 (VA-01..VA-09).

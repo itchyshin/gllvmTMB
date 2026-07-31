@@ -1,0 +1,33 @@
+Warning message:
+package ‘gllvm’ was built under R version 4.6.1 
+cell             mth   attenuation   conv  sd_list max|sig.lv|
+n200 p40 q2 s1   EVA          1.03   TRUE     TRUE     0.3867
+n200 p40 q2 s1   VA         0.8492   TRUE     TRUE     0.3901
+n100 p80 q2 s1   EVA         1.426   TRUE     TRUE     0.2721
+n100 p80 q2 s1   VA          1.182   TRUE     TRUE     0.2905
+n200 p80 q2 s2   EVA         1.105   TRUE     TRUE     0.9185
+n200 p80 q2 s2   VA         0.9909   TRUE     TRUE     0.8913
+Standard errors for parameters could not be calculated, due to singular fit.
+n40 p8 q2 s1     EVA     1.229e+07   TRUE    FALSE       42.4
+n40 p8 q2 s1     VA          1.743   TRUE     TRUE      1.393
+Standard errors for parameters could not be calculated, due to singular fit.
+n100 p20 q4 s1   EVA      5.47e+07  FALSE    FALSE      160.1
+n100 p20 q4 s1   VA         0.8464   TRUE     TRUE      1.444
+Warning messages:
+1: In se.gllvm(out) :
+  25 parameter(s) have negative variance estimates (lambda x24, sigmaLV x1). The model likely has not converged - consider re-fitting.
+2: In se.gllvm(out) :
+  28 parameter(s) have negative variance estimates (lambda x27, sigmaLV x1). The model likely has not converged - consider re-fitting.
+3: In se.gllvm(out) :
+  8 parameter(s) have negative variance estimates (lambda x8). The model likely has not converged - consider re-fitting.
+4: In se.gllvm(out) :
+  26 parameter(s) have negative variance estimates (lambda x26). The model likely has not converged - consider re-fitting.
+5: In se.gllvm(out) : Hessian calculation produced na/nan's.
+6: In sweep(cov.mat.mod, 2, sds[incl], "/") :
+  STATS is longer than the extent of 'dim(x)[MARGIN]'
+7: In se.gllvm(out) : Hessian calculation produced na/nan's.
+8: In sweep(cov.mat.mod, 2, sds[incl], "/") :
+  STATS is longer than the extent of 'dim(x)[MARGIN]'
+9: In gllvm::gllvm(y = cl$Y, family = binomial(), num.lv = cl$q, method = mth,  :
+  The algorithm did not converge, the maximum number of iterations might have been reached.
+DONE6

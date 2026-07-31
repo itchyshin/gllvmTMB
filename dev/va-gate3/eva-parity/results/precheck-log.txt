@@ -1,0 +1,52 @@
+gllvm package version: 2.0.13 
+
+=== STEP 1: documentation (tools::Rd_db, ?gllvm) ===
+Usage default (from the `link = ...` line in Usage):
+          link = "probit", 
+
+Arguments section entry for `link`:
+       link: link function for binomial family if ‘method = "LA"’ and beta 
+             family. Options are "logit" and "probit" and "cloglog". 
+
+-> Documentation states the `link` ARGUMENT applies for method='LA' and
+   the beta family. It is silent on how VA/EVA choose a binomial link,
+   beyond the Usage default value link="probit". This is ambiguous on
+   its own, hence the empirical tests below.
+
+=== STEP 2: tiny fits, isolating num.lv = 0 (no latent confound) ===
+configuration                                                        logL max|b0-glm_logit|
+EVA, top-level link='logit', family=binomial() (default link)   -798.6615        4.46459e-05
+EVA, top-level link='probit', family=binomial() (default link)  -798.6615        4.46459e-05
+EVA, family=binomial(link='logit')                              -798.6615        4.46459e-05
+EVA, family=binomial(link='probit')                             -798.6615           0.446378
+LA, top-level link='probit', family=binomial() (default link)   -798.6615        4.46459e-05
+LA, family=binomial(link='probit')                              -798.6615           0.446378
+
+max|beta0 - glm_PROBIT_anchor| for the family=binomial(link='probit') EVA fit:
+   5.398801e-06 
+max|beta0 - glm_LOGIT_anchor| for the family=binomial(link='logit') EVA fit:
+   4.46459e-05 
+
+-> The two top-level-`link=`-argument fits (rows 1-2) are IDENTICAL to each
+   other regardless of 'logit' vs 'probit' being requested: the top-level
+   argument has NO effect. The two family-object fits (rows 3-4, 5-6) DO
+   differ and match their respective independent glm() anchor almost
+   exactly (~1e-5, optimizer tolerance) -- for BOTH EVA and LA.
+
+=== STEP 3: confirm the same holds WITH latent variables present (num.lv=1),
+    which is gllvmTMB's actual .eva_fit() use case ===
+logL, family=binomial(link='logit'),  num.lv=1, method=EVA: -101.9076 
+logL, family=binomial(link='probit'), num.lv=1, method=EVA: -110.2942 
+identical: FALSE 
+beta0 logit : 0.269 5.097 0.693 0 0.134 0.134 
+beta0 probit: 0.167 1.074 0.451 -0.073 0.111 0.083 
+
+=== VERDICT ===
+(a) gllvm::gllvm(family = binomial(link = 'logit'), method = 'EVA') IS genuine
+    logit-link EVA -- confirmed against an independent glm() anchor with no
+    latent confound, and confirmed to diverge appropriately from probit-EVA
+    once latent variables are present. A genuine same-link comparison against
+    our .eva_fit(..., link = 'logit') is possible.
+CAVEAT: the top-level gllvm(..., link = ...) ARGUMENT must NOT be used to
+    request this -- it is silently ignored for binomial family regardless of
+    method in every configuration tested here. Use family = binomial(link=...).

@@ -1,12 +1,18 @@
 # gllvmTMB 0.6 arc-loop checkpoint
 
-**GOAL:** `LOOP/GOAL.md` — read **all THREE** maintainer amendments. (1) EVA is CUT from 0.6 to
-0.7; 0.6 is Laplace-only. (2) **CI authorisation RESTORED** (`GOAL.md:159`) — push, Ubuntu, heavy
-and the three-OS matrix are approved and the "stop before any push/CI spend" line is
-**superseded**. Do not re-ask; do not re-litigate it. (3) **2026-07-22 — a parallel Design 86
-lane is authorised**, design-only, fenced to `docs/design/86-*.md`, in a worktree outside
-Dropbox. **It does NOT gate 0.6 and does NOT reverse Amendment 1** — 0.6 still ships
-Laplace-only and M2 stays CUT. Brief: `docs/dev-log/2026-07-22-design86-lane-brief.md`.
+**GOAL:** `LOOP/GOAL.md` — read **all FOUR** maintainer amendments. (1) EVA is CUT from 0.6 to
+0.7; 0.6 is Laplace-only — **⚠ REVERSED by Amendment 4, see (4)**. (2) **CI authorisation
+RESTORED** (`GOAL.md:159`) — push, Ubuntu, heavy and the three-OS matrix are approved and the
+"stop before any push/CI spend" line is **superseded**. Do not re-ask; do not re-litigate it.
+(3) **2026-07-22 — a parallel Design 86 lane is authorised**, design-only, fenced to
+`docs/design/86-*.md`, in a worktree outside Dropbox. It did not gate 0.6; its admission question
+is now decided by (4). Brief: `docs/dev-log/2026-07-22-design86-lane-brief.md`.
+(4) **2026-07-30 — 0.6 SHIPS AN OPT-IN `engine = "va"`**, reversing (1) on admission. Laplace
+remains the **default**; the engine is hard-fenced (`latent(unique = FALSE)`; binomial-logit +
+poisson-log; `q <= 4`, `p <= 80`, `n >= 100`), ships with **no intervals** (`calibrated = FALSE`),
+and is admitted only by **Design 85 §11 Gate 3 as written**. Design 85 §10's prohibitions and
+Design 105 §10's architectural breakages stand. Record:
+`docs/dev-log/2026-07-30-va-ships-in-06-reversal.md`.
 
 > ⚠ **A source outside this repo still carries the revoked line.** The ultra-plan Rev 3 `🎯 GOAL`
 > block (and its `MD-5`) reads *"stop before any push/CI spend"*. Amendment 2 exists specifically to

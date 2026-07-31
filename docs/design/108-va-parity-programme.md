@@ -351,7 +351,12 @@ one thing that can start tonight without contending for the template.
 
 It authorises nothing: no export, no `method=` argument, no capability claim,
 no NEWS line, no user-facing route. Laplace remains the package default and 0.6
-ships Laplace-only (Design 104 §4.1). Every size above is an estimate made
+ships Laplace-only (Design 104 §4.1). **⚠ AMENDED 2026-07-30: the "Laplace-only"
+half is reversed** — 0.6 now ships an opt-in, hard-fenced `engine = "va"` covering
+a subset far smaller than the parity programme priced here; Laplace remains the
+default, and this document still authorises nothing on its own (`LOOP/GOAL.md`
+Amendment 4). **The 26–42-day estimate below was put to the maintainer before that
+decision and is not disputed by it.** Every size above is an estimate made
 before the code exists, and the two flagged redesign risks (Stages 8 and 9) are
 real. Nothing here has been measured except the things explicitly cited as
 measured.

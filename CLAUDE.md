@@ -11,6 +11,28 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-07-31 (LATEST) — VA IS ROUTED AND GATE 3 HAS REPORTED.** Lane
+  `claude/va-routing-20260731` (fast-forward of `claude/va-in-06-20260730`, **PR #869**).
+  `gllvmTMB(control = gllvmTMBcontrol(integration = "va"))` now returns a real
+  `c("gllvmTMB_va","gllvmTMB")` fit; the admission fence is reachable at last (it could never fire
+  before, because `gllvmTMB()` aborted before `q`/`p`/`n`/family/link existed); and every
+  likelihood-shaped method fails loudly, verified under a real `R CMD INSTALL`.
+  **Gate 3 (2,160 datasets x 3 arms, run on Totoro) settled two open questions and the maintainer
+  decided both: estimator = JJ, rule = R2.** `va_jj` clears the full frozen conjunction in **100% of
+  q <= 2 cells under BOTH pre-declared rules**; `va_gh` was measured and **rejected**. `q = 4` was
+  measured and **failed** on axis collapse at p = 8, so **the fence ships at `q <= 2`, not 4** —
+  narrower than hoped and further from A3's 5+ factors, stated rather than buried.
+  **`"eva"` is no longer an admitted value** of `integration`: EVA gives valid inference for the
+  coefficients but not for `Lambda Lambda'`, this package's estimand — and gllvm's own EVA hits the
+  identical pathology while reporting `convergence = TRUE` on 71% of blown-up fits.
+  🔴 **Read the corrections before citing any Gate 3 number.** The first two reporting passes were
+  BOTH wrong — a conjunction reported as its RMSE half, then an over-correction that denied a
+  conclusion the evidence supports — and a 3/3 NOT-DONE panel caught them. The collapse criterion
+  **cannot rank the arms**: va_gh's detector fires zero times in 6,480 rows.
+  **START HERE:** `docs/dev-log/2026-07-31-gate3-result-corrected.md`, then
+  `docs/design/35-validation-debt-register.md` Section 15 (VA-01..VA-09), then the lane map.
+  **Needs Shinichi:** nothing blocking on this lane.
+
 - **2026-07-30 — THE SCALE-DEPENDENT-CONSTANTS CLASS NOW HAS AN OWNER AND EVIDENCE** (this
   resolves a "Needs Shinichi" flagged twice below). 8 PRs merged (#832, #839, #842, #845, #846,
   #849, #854, #858); `R/` touched only by the #832 export. **It is a CLASS, not a bug** — ~10
@@ -31,7 +53,7 @@ This repository is shared by humans, Codex, and Claude Code. Read
   the lane map. **Needs Shinichi:** #856 (deliberate or incidental? it gates #855), and the
   sequencing call between #851/#855 and #847/#848.
 
-- **2026-07-30 (LATEST) — SESSION CLOSED; the re-aimed degeneracy campaign is APPROVED and
+- **2026-07-30 — SESSION CLOSED; the re-aimed degeneracy campaign is APPROVED and
   UNSTARTED.** `main` @ `bef1a5aa` (#840 + #850 merged). **🔴 The campaign's original premise was
   refuted pre-flight, by measurement:** VGH's 0/148 does **not** survive at larger q/p — at
   n=40/p=80/q=4, `rel_frob` 10.671/10.449 on 2 of 4 seeds, `atten_F > 2` on 4 of 4, `max|Λ|`

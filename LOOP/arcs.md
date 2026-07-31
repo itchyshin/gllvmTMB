@@ -65,7 +65,8 @@ must apply before using it:
 
 ## Honest current estimates — revised 2026-07-21 after the EVA cut
 
-**0.6 (the live programme, Laplace-only):**
+**0.6 (the live programme; Laplace default + an opt-in fenced `engine = "va"` as of Amendment 4,
+2026-07-30 — the estimates below predate that decision and do NOT include it):**
 
 - M1 remaining: roughly 7 active hours plus CI wait, assuming no load-bearing
   repair. That assumption is weak — the prior session found four such defects —

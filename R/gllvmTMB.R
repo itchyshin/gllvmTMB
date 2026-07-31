@@ -489,6 +489,37 @@ gllvmTMB <- function(
   ## engine = "julia" routes through the experimental GLLVM.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  ## An opt-in integration route must never SILENTLY fall back to Laplace. The
+  ## caller would get a fit that is not the one they asked for and no signal
+  ## that it happened -- the exact failure `gllvmTMBcontrol()` already records
+  ## for arguments that `...` used to swallow. So the fence is checked first,
+  ## here, so an out-of-region request fails on its own terms before any
+  ## parsing cost -- in particular `engine = "julia"`, which has no variational
+  ## route at all. Loud and wrong-shaped beats quiet and wrong.
+  ##
+  ## Only `engine` is knowable at this point; `q`/`p`/`n`/family/link are not
+  ## resolved until the formula and data have been parsed, so the fence is
+  ## called a SECOND time inside `gllvmTMB_multi_fit()` with those values.
+  integration_route <- control$integration %||% "laplace"
+  if (!identical(integration_route, "laplace")) {
+    .gllvmTMB_check_integration_fence(integration_route, engine = engine)
+    ## `gllvmTMBcontrol()` admits only "laplace" and "va", so anything else here
+    ## arrives from a hand-built control list rather than the documented API.
+    ## Abort rather than fall through: an unrouted value must never reach the
+    ## Laplace assembly and come back looking like the route that was asked for.
+    if (!identical(integration_route, "va")) {
+      cli::cli_abort(c(
+        "{.arg integration} = {.val {integration_route}} is not a routed
+         integration method.",
+        "i" = "{.fn gllvmTMBcontrol} admits {.val laplace} and {.val va}.",
+        ">" = "Use {.code integration = \"laplace\"} (the default)."
+      ))
+    }
+    ## `integration = "va"` falls through to `gllvmTMB_multi_fit()`, which
+    ## performs the data-aware fence check and dispatches to the variational
+    ## engine. No-silent-fallback holds there too: that branch either returns a
+    ## variational fit or aborts, and never builds the Laplace objective.
+  }
   ci_method <- match.arg(ci_method)
   ci_defaults <- identical(ci_method, "none") &&
     is.numeric(ci_level) &&
@@ -847,6 +878,12 @@ gllvmTMB <- function(
   if (isTRUE(.mn_expand$expanded)) {
     .fit$multinomial_meta <- .mn_expand[c("K", "categories", "baseline")]
   }
+  ## The variational route is built inside gllvmTMB_multi_fit(), which cannot
+  ## see the user's call. Attach it here, where match.call() is the call the
+  ## user actually wrote, so print() can show it.
+  if (inherits(.fit, "gllvmTMB_va")) {
+    .fit$call <- match.call()
+  }
   .fit
 }
 
@@ -1187,6 +1224,47 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' @param verbose If `TRUE`, prints a one-line summary per restart so
 #'   the user can see which seed led to the winning fit. Default
 #'   `FALSE`.
+#' @param integration Which method evaluates the latent-variable integral.
+#'   `"laplace"` (default) is the Laplace approximation and is the **only**
+#'   route that yields a marginal likelihood, so it is the only one for which
+#'   [logLik()], [AIC()], [BIC()] and likelihood-ratio tests are defined.
+#'
+#'   `"va"` selects an opt-in **research** route whose objective is an evidence
+#'   lower bound, not a marginal likelihood. It reports no calibrated
+#'   uncertainty: no standard errors, no confidence intervals, and no coverage
+#'   claim. A bound must not be compared across ranks or models, so it cannot
+#'   be used for model or rank selection.
+#'
+#'   It is admitted only inside the region for which evidence exists —
+#'   `latent(..., unique = FALSE)`, binomial-logit or Poisson-log, `d` up to
+#'   2, up to 80 responses, at least 100 units, and the native TMB engine — and
+#'   requesting it outside that region is an **error**, not a warning. The `d`
+#'   limit is where a pre-registered recovery gate actually passed: `d = 4` was
+#'   measured and refused, because with few responses the planted axes collapse
+#'   far more often than the gate's tolerance allows.
+#'   It cannot be combined with `aghq`, which is an alternative evaluation of
+#'   the same integral rather than an additional layer.
+#'
+#'   Offering this value advertises nothing about its accuracy.
+#'
+#'   `"va"` returns an object of class `"gllvmTMB_va"` (see
+#'   [gllvmTMB_va-methods]) rather than an ordinary fit, so that every method
+#'   which would treat its objective as a likelihood fails loudly instead of
+#'   returning a number. Because the engine runs its own multi-start and
+#'   optimiser policy, the search settings of [gllvmTMBcontrol()] — `n_init`,
+#'   `optimizer`, `optArgs`, `start_from`, `init_*` and `se` — have no effect
+#'   on this route. Any model structure the route cannot represent (a latent
+#'   term away from the unit grouping, a constrained ordination, an offset,
+#'   weights, `REML`, `lambda_constraint`, `Xcoef_fixed`, or a further random
+#'   effect) is an **error**, never a silent omission.
+#'
+#'   There is no `"eva"` value. The EVA engine exists in this package and is
+#'   reachable as a research route, but it is not wired to [gllvmTMB()], and an
+#'   argument value that could only ever raise an error would advertise a
+#'   capability the package does not have. Its own measurements are the reason
+#'   it is not a candidate here: EVA delivers valid inference for the
+#'   regression coefficients but not for `Lambda Lambda'`, which is the
+#'   between-response covariance this package exists to estimate.
 #' @param aghq Adaptive Gauss-Hermite quadrature for the between-unit latent
 #'   block. `FALSE` (default) fits by Laplace approximation. A positive integer
 #'   requests that many quadrature nodes. `"auto"` lets the package decide, and
@@ -1291,6 +1369,18 @@ gllvmTMBcontrol <- function(
   start_from = NULL,
   se = TRUE,
   verbose = FALSE,
+  ## Which integration method evaluates the latent-variable integral. "eva" is
+  ## deliberately NOT admitted: its engine exists and is reachable as a research
+  ## route, but it is not wired to gllvmTMB(), and offering an argument value
+  ## that can only ever error would advertise a capability the package does not
+  ## have. See the note on the `integration` parameter.
+  ## "laplace" is the default and the only route carrying a marginal
+  ## likelihood, so it is the only one for which logLik()/AIC()/BIC()/LRT are
+  ## defined. "va" and "eva" are OPT-IN research routes whose objective is an
+  ## ELBO -- not a marginal likelihood (Design 85 s10) -- with no calibrated
+  ## uncertainty. Offering a value here does NOT advertise it: admission to any
+  ## user-facing claim is Design 85 s11 Gate 3's to grant, not this argument's.
+  integration = c("laplace", "va"),
   aghq = FALSE,
   aghq_iter_cap = 1L,
   aghq_n_adapt = 400L,
@@ -1353,7 +1443,18 @@ gllvmTMBcontrol <- function(
   optimizer <- match.arg(optimizer)
   init_strategy <- match.arg(init_strategy)
   start_method <- .gllvmTMB_normalize_start_method(start_method)
+  integration <- match.arg(integration)
   aghq <- .gllvmTMB_normalize_aghq(aghq)
+  ## AGHQ and the variational routes are alternative evaluations of the SAME
+  ## latent integral, not layers. Requesting both is incoherent, and silently
+  ## letting one win would hand back a fit that is not the one asked for.
+  if (!identical(integration, "laplace") && !isFALSE(aghq)) {
+    cli::cli_abort(c(
+      "{.arg integration} = {.val {integration}} cannot be combined with {.arg aghq}.",
+      "i" = "AGHQ and the variational routes are alternative evaluations of the same latent integral, not layers.",
+      ">" = "Set {.code aghq = FALSE}, or use {.code integration = \"laplace\"}."
+    ))
+  }
   if (!is.logical(se) || length(se) != 1L || is.na(se)) {
     cli::cli_abort("{.arg se} must be a single {.code TRUE} or {.code FALSE} value.")
   }
@@ -1366,6 +1467,7 @@ gllvmTMBcontrol <- function(
     d_B = d_B,
     d_W = d_W,
     spde_mode = spde_mode,
+    integration = integration,
     n_init = as.integer(n_init),
     optimizer = optimizer,
     optArgs = optArgs,

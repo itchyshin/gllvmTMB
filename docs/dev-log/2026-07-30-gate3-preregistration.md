@@ -123,9 +123,50 @@ Operationalised, and frozen:
 - Any post-hoc change to a truth, a seed set, a cell, or a tolerance in this document.
 - Any exclusion of attempted fits from a denominator.
 - A guard silently rejecting fits: `R/va-r3-proto.R:1271`'s
-  `variance_domain_ok <- max_projected_variance <= 4` is a hard `admitted = FALSE`. **Its reachability
-  under the three declared truths must be measured and reported before the campaign**, because if it
-  rejects `T-strong` it truncates the gate's own strong-signal arm. (Slice S3 owns this.)
+  `variance_domain_ok <- max_projected_variance <= 4` is a hard `admitted = FALSE`.
+
+### ⚠ The guard was measured before the campaign, and it is asymmetric — binding constraints
+
+Measured on the existing 2,880-row grid (recomputed this session, not read from `RESULTS.md`):
+
+| arm | `failed_variance_domain` | rate |
+|---|---:|---|
+| `gtmb_gh` | 93 / 640 | **14.5%** |
+| `gtmb_jj` | 0 / 320 | **0.0%** |
+
+On matched bernoulli cells (same `n,p,q,seed`), **84 of 320 (26.25%)** are cells where **GH is
+flagged by the variance gate specifically on data where JJ, fitted to the identical data, reports
+healthy**. GH's rejected rows are its most-inflated ones — median trace ratio **3.96** against
+**1.45** when healthy. JJ's own contraction makes it close to structurally immune to ever tripping
+this gate, independent of whether its fit is any good.
+
+**Therefore, binding on this campaign:**
+
+1. **No filtering on `status == "healthy"` or `health$admitted`, anywhere.** Such a filter would
+   silently delete GH's high-variance tail while leaving JJ untouched — manufacturing exactly the
+   result the campaign exists to test. Fitted `Lambda`, `v_by_obs` and the ELBO are fully populated
+   regardless of admission, so nothing requires it.
+2. **`admitted` is not a health signal at `n_starts = 1`.** It collapses the variance-domain check
+   with a multi-start-agreement check; at `n_starts = 1` it can **never** be `TRUE` regardless of fit
+   quality. A status-based rule would delete the whole campaign.
+3. **Record the continuous `max_projected_variance` and `variance_domain_ok` as separate columns**,
+   not the collapsed `status`/`admitted` pair. The value already exists at
+   `r$v$engine_result$health$max_projected_variance` (`R/approximation-engine.R:133`) and is dropped
+   by the existing `run-grid.R` `row()` helper — which is why `grid.csv` carries no such column and
+   no threshold sensitivity is derivable from it without re-fitting.
+4. **The `<= 4` threshold is NOT relaxed.** It is frozen by prior maintainer-level decision
+   (`docs/dev-log/handover/2026-07-26-codex-handover-va-variance-gate-close.md`: *"The `<= 4` gate
+   remains frozen. This result does not authorize a threshold relaxation"*). Recording the continuous
+   value makes later sensitivity analysis possible without changing any shipped behaviour now.
+5. `guard_rejected` remains a **recorded outcome inside the denominator**, never a dropped row.
+
+**Context, reported not re-verified (AGENT-INFERRED for this campaign's purposes):** a prior
+independent measurement on multi-trial binomial fixtures with a validated brute-force truth ladder
+found **no break at 4** — the ELBO stayed a valid negative-gap lower bound through observed variance
+`8.674`, with the *instrument* rather than the ELBO failing only at `22.19`. Separately, the guard
+fires on `gaussian_anchor` and `poisson`, whose closed forms are exact for any `v`, so its only
+imaginable quadrature-domain justification cannot apply there. Both are recorded as background for
+whoever revisits the threshold; **neither licenses changing it here.**
 
 ## Expectations, recorded so they can be wrong
 

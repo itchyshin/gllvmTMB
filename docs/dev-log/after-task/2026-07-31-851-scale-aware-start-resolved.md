@@ -71,6 +71,16 @@ The final run is **file-for-file identical to the `main` baseline** — the only
 files are `test-m3-pilot-manifest.R` (16+2), `test-profile-derived-curves.R` (2) and
 `test-tweedie-fixed-p.R` (1 err), all pre-existing. PASS rose 14129 → 14131.
 
+**`R CMD check` — partial, and labelled as such.** A *restricted* check was run locally
+(`--as-cran --no-tests --no-vignettes --no-manual`): `Status: 2 WARNINGs, 1 NOTE`, where
+both WARNINGs are artefacts of `--no-build-vignettes` (no `inst/doc` was built) and the
+NOTE is the standard "New submission" plus the same missing vignette index. `checking
+examples ... OK`, namespace OK. **A full `--as-cran` on this branch was NOT run this
+session**, so the prior 0E/0W/1N is not re-established here — only that nothing in these
+changes disturbs examples, namespace, Rd or NEWS parsing. The same check on Totoro is
+useless for this purpose and should not be attempted there: the box lacks nine `Suggests`
+packages, so the run aborts at the dependency stage before examining the package at all.
+
 **Equivariance, preserved.** `dev/scale-equivariance-check.R` k = 100: every law OK
 (6.35e-06 … 1.4e-05). `dev/851-scale-equivariance-comparators.R`: gllvmTMB **0/8** at both
 k = 100 and k = 5000, worst case 0.0105, against gllvm 3/16 (worst 0.998) and glmmTMB
